@@ -1,0 +1,379 @@
+<template>
+  <div class="pc-generation-preview">
+    <header class="pc-generation-preview-head">
+      <span class="pc-kicker">{{ sourceLabel }}</span>
+      <h2>{{ title }}</h2>
+      <div class="pc-detail-meta">
+        <span>{{ textProviderSummary }}</span>
+        <span>{{ warnings.length ? `${warnings.length} 条提示` : successLabel }}</span>
+      </div>
+    </header>
+    <section class="pc-preview-panel">
+      <div v-if="activeView === 'preview'" class="pc-preview-view">
+        <div class="pc-preview-toolbar">
+          <strong>{{ contentLabel }}</strong>
+          <button v-if="editable" class="pc-soft-btn compact" type="button" @click="editingContent = !editingContent">
+            {{ editingContent ? previewLabel : editLabel }}
+          </button>
+        </div>
+        <div class="pc-preview-body">
+          <textarea
+            v-if="editingContent"
+            v-model="editableContent"
+            class="pc-area pc-content-edit-area"
+            :placeholder="contentPlaceholder"
+          ></textarea>
+          <slot v-else name="content" :rendered-content="renderedContent">
+            <article class="pc-detail-content pc-rendered-markdown" v-html="renderedContent"></article>
+          </slot>
+          <div v-if="warnings.length" class="pc-status-card warning">
+            <strong>{{ warningTitle }}</strong>
+            <p>{{ warnings.join('；') }}</p>
+          </div>
+        </div>
+      </div>
+      <BaguScanPanel
+        v-else-if="activeView === 'bagu'"
+        class="pc-preview-view"
+        auto-scan
+        :content="content"
+        @apply="updateContent"
+      />
+      <RawOutputEditor
+        v-else
+        class="pc-preview-view"
+        :editable="rawEditable"
+        :model-value="raw"
+        :placeholder="rawPlaceholder"
+        :reparse-label="reparseLabel"
+        :title="rawOutputLabel"
+        @reparse="runReparse"
+        @update:model-value="emit('update:raw', $event)"
+      />
+    </section>
+    <div class="pc-preview-actions" :class="{ two: !scanEnabled }">
+      <button
+        v-if="scanEnabled"
+        class="pc-soft-btn"
+        :class="{ active: activeView === 'bagu' }"
+        type="button"
+        @click="activeView = activeView === 'bagu' ? 'preview' : 'bagu'"
+      >
+        {{ baguLabel }}
+      </button>
+      <button
+        class="pc-soft-btn"
+        :class="{ active: activeView === 'raw' }"
+        type="button"
+        @click="activeView = activeView === 'raw' ? 'preview' : 'raw'"
+      >
+        {{ rawOutputLabel }}
+      </button>
+      <button class="pc-primary-btn" type="button" :disabled="saveDisabled || saving" @click="handleSave">
+        {{ saving ? savingLabel : saveLabel }}
+      </button>
+    </div>
+    <section v-if="parseNoticeVisible" class="pc-preview-dialog-backdrop" role="presentation" @click.self="parseNoticeVisible = false">
+      <article class="pc-section-card pc-preview-dialog" role="dialog" aria-modal="true" :aria-label="parseNoticeTitle">
+        <h3>{{ parseNoticeTitle }}</h3>
+        <p>{{ parseNoticeMessage }}</p>
+        <div class="pc-form-actions">
+          <button class="pc-soft-btn" type="button" @click="goRawFromNotice">{{ rawOutputLabel }}</button>
+          <button class="pc-primary-btn" type="button" @click="parseNoticeVisible = false">{{ noticeConfirmLabel }}</button>
+        </div>
+      </article>
+    </section>
+  </div>
+</template>
+
+<script setup lang="ts">
+import BaguScanPanel from '@/components/BaguScanPanel.vue';
+import RawOutputEditor from '@/components/RawOutputEditor.vue';
+import { renderMarkdown } from '@/util/markdown';
+
+type PreviewView = 'bagu' | 'preview' | 'raw';
+
+const props = withDefaults(defineProps<{
+  baguLabel?: string;
+  backLabel?: string;
+  content: string;
+  contentLabel?: string;
+  contentPlaceholder?: string;
+  editable?: boolean;
+  editLabel?: string;
+  noticeConfirmLabel?: string;
+  parseNoticeMessage?: string;
+  parseNoticeTitle?: string;
+  previewLabel?: string;
+  raw: string;
+  rawEditable?: boolean;
+  rawOutputLabel?: string;
+  rawPlaceholder?: string;
+  reparseLabel?: string;
+  reparseHandler?: () => boolean | Promise<boolean>;
+  saveDisabled?: boolean;
+  saveLabel?: string;
+  savingLabel?: string;
+  scanEnabled?: boolean;
+  shortContentGuard?: boolean;
+  shortContentThreshold?: number;
+  sourceLabel: string;
+  successLabel?: string;
+  textProviderSummary: string;
+  title: string;
+  warningTitle?: string;
+  warnings: string[];
+}>(), {
+  baguLabel: '八股',
+  backLabel: '返回生成设置',
+  contentLabel: '生成内容',
+  contentPlaceholder: '在这里修改收到的 AI 输出内容。',
+  editable: true,
+  editLabel: '编辑输出',
+  noticeConfirmLabel: '知道了',
+  parseNoticeMessage: '当前预览内容过短，已尝试按原始输出重新解析，但仍然失败。请打开原始输出修改 XML 后再保存。',
+  parseNoticeTitle: '需要修复原始输出',
+  previewLabel: '查看预览',
+  rawEditable: false,
+  rawOutputLabel: '原始输出',
+  rawPlaceholder: '在这里修改 AI 返回的原始 XML。',
+  reparseLabel: '重新解析',
+  reparseHandler: undefined,
+  saveDisabled: false,
+  saveLabel: '保存',
+  savingLabel: '保存中',
+  scanEnabled: true,
+  shortContentGuard: true,
+  shortContentThreshold: 20,
+  successLabel: 'XML 解析成功',
+  warningTitle: '解析提示',
+});
+
+const emit = defineEmits<{
+  back: [];
+  reparse: [];
+  save: [];
+  'update:content': [value: string];
+  'update:raw': [value: string];
+}>();
+
+const activeView = ref<PreviewView>('preview');
+const acceptedContent = ref(props.content);
+const acceptedRaw = ref(props.raw);
+const editingContent = ref(false);
+const parseNoticeVisible = ref(false);
+const saving = ref(false);
+
+const editableContent = computed({
+  get: () => props.content,
+  set: updateContent,
+});
+
+const renderedContent = computed(() => renderMarkdown(props.content));
+const contentHasPendingChanges = computed(() => props.content !== acceptedContent.value);
+const rawHasPendingChanges = computed(() => props.raw.trim() !== acceptedRaw.value.trim());
+
+watch(
+  () => [props.sourceLabel, props.title],
+  () => {
+    acceptedContent.value = props.content;
+    acceptedRaw.value = props.raw;
+    activeView.value = 'preview';
+    editingContent.value = false;
+  },
+);
+
+function getVisibleTextLength(value: string) {
+  return value
+    .replace(/<[^>]*>/g, '')
+    .replace(/[`*_~>#\-[\](){}|]/g, '')
+    .replace(/\s+/g, '')
+    .trim()
+    .length;
+}
+
+async function runReparse() {
+  if (props.reparseHandler) {
+    const ok = await props.reparseHandler();
+    if (ok) {
+      await nextTick();
+      acceptedContent.value = props.content;
+      acceptedRaw.value = props.raw;
+      activeView.value = 'preview';
+      editingContent.value = false;
+    }
+    return ok;
+  }
+  emit('reparse');
+  return true;
+}
+
+function updateContent(value: string) {
+  emit('update:content', value);
+}
+
+async function handleSave() {
+  if (props.saveDisabled || saving.value) return;
+  saving.value = true;
+  try {
+    if (
+      rawHasPendingChanges.value
+      || props.shortContentGuard
+      && props.rawEditable
+      && !contentHasPendingChanges.value
+      && getVisibleTextLength(props.content) <= props.shortContentThreshold
+    ) {
+      const reparsed = await runReparse();
+      if (!reparsed) {
+        parseNoticeVisible.value = true;
+        return;
+      }
+    }
+    emit('save');
+  } finally {
+    saving.value = false;
+  }
+}
+
+function goRawFromNotice() {
+  parseNoticeVisible.value = false;
+  activeView.value = 'raw';
+}
+</script>
+
+<style scoped>
+.pc-generation-preview {
+  position: relative;
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr) auto;
+  gap: 12px;
+  height: 100%;
+  min-height: 0;
+}
+
+.pc-generation-preview h2 {
+  margin: 0;
+  font-size: 20px;
+  line-height: 1.25;
+}
+
+.pc-detail-meta {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.pc-detail-meta {
+  color: var(--pc-muted);
+}
+
+.pc-detail-meta span {
+  font-size: 12px;
+  color: var(--pc-muted);
+}
+
+.pc-detail-content {
+  min-height: 100%;
+  padding: 16px;
+  border-radius: 18px;
+  background: var(--pc-surface-strong);
+  white-space: pre-wrap;
+  color: var(--pc-text);
+  font-size: var(--pc-reader-font-size);
+  line-height: var(--pc-reader-line-height);
+}
+
+.pc-preview-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.pc-preview-toolbar strong {
+  font-size: 14px;
+}
+
+.pc-preview-panel,
+.pc-preview-view {
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr);
+  gap: 8px;
+  height: 100%;
+  min-height: 0;
+}
+
+.pc-preview-body {
+  min-height: 0;
+  overflow: auto;
+}
+
+.pc-content-edit-area {
+  min-height: var(--pc-raw-editor-area-height, var(--pc-reader-body-height, 320px));
+  height: var(--pc-raw-editor-area-height, var(--pc-reader-body-height, 320px));
+  font-family: var(--pc-reader-font-family, inherit);
+  font-size: var(--pc-reader-font-size);
+  line-height: var(--pc-reader-line-height);
+  white-space: pre-wrap;
+}
+
+.pc-status-card {
+  border: 1px solid var(--pc-border);
+  border-radius: 18px;
+  background: var(--pc-surface-strong);
+  padding: 14px;
+}
+
+.pc-status-card.warning {
+  border-color: color-mix(in srgb, #f5a623 42%, var(--pc-border) 58%);
+}
+
+.pc-status-card p {
+  color: var(--pc-muted);
+}
+
+.pc-preview-actions {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.pc-preview-actions.two {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.pc-preview-actions .active {
+  color: var(--pc-theme-accent);
+  background: color-mix(in srgb, var(--pc-theme-accent) 18%, var(--pc-surface-strong) 82%);
+}
+
+.pc-preview-dialog-backdrop {
+  position: absolute;
+  inset: 0;
+  z-index: 20;
+  display: grid;
+  place-items: center;
+  padding: 18px;
+  background: color-mix(in srgb, var(--pc-text) 32%, transparent 68%);
+}
+
+.pc-preview-dialog {
+  width: min(100%, 320px);
+}
+
+.pc-preview-dialog h3 {
+  margin: 0 0 8px;
+  font-size: 18px;
+}
+
+.pc-preview-dialog p {
+  margin: 0;
+  color: var(--pc-muted);
+  line-height: 1.55;
+}
+
+.pc-preview-dialog .pc-form-actions {
+  margin-top: 16px;
+}
+</style>

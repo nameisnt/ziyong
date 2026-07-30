@@ -1,0 +1,188 @@
+export interface TheaterFrontendBuildOptions {
+  channelId: string;
+  theme: 'dark' | 'light';
+  title?: string;
+}
+
+const FRONTEND_FRAME_SOURCE = 'st-phone-theater';
+const FRONTEND_IFRAME_CSP = [
+  "default-src 'none'",
+  "img-src https: data: blob:",
+  "media-src https: data: blob:",
+  "font-src https: data:",
+  "style-src 'unsafe-inline' https:",
+  "script-src 'unsafe-inline' https:",
+  "connect-src 'none'",
+  "frame-src 'none'",
+  "object-src 'none'",
+  "base-uri 'none'",
+  "form-action 'none'",
+].join('; ');
+
+function hasDocumentShell(raw: string) {
+  return /<!doctype|<html[\s>]|<head[\s>]|<body[\s>]/i.test(raw);
+}
+
+function stripDangerousNodes(document: Document) {
+  document.querySelectorAll('base, iframe, object, embed').forEach(node => node.remove());
+  document.querySelectorAll('meta[http-equiv]').forEach(node => {
+    const value = node.getAttribute('http-equiv')?.trim().toLowerCase();
+    if (value === 'refresh' || value === 'content-security-policy') {
+      node.remove();
+    }
+  });
+}
+
+function createBaseStyle(theme: 'dark' | 'light') {
+  const palette = theme === 'dark'
+    ? {
+      background: '#111827',
+      border: 'rgba(255, 255, 255, 0.08)',
+      muted: '#9ca3af',
+      text: '#f9fafb',
+    }
+    : {
+      background: '#ffffff',
+      border: 'rgba(15, 23, 42, 0.08)',
+      muted: '#475569',
+      text: '#0f172a',
+    };
+
+  return [
+    ':root {',
+    `  color-scheme: ${theme};`,
+    `  --pc-frame-bg: ${palette.background};`,
+    `  --pc-frame-text: ${palette.text};`,
+    `  --pc-frame-muted: ${palette.muted};`,
+    `  --pc-frame-border: ${palette.border};`,
+    '}',
+    'html {',
+    '  min-height: 100%;',
+    '  background: var(--pc-frame-bg);',
+    '  color: var(--pc-frame-text);',
+    '  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;',
+    '}',
+    'body {',
+    '  margin: 0;',
+    '  min-height: 100%;',
+    '  padding: 16px;',
+    '  background: var(--pc-frame-bg);',
+    '  color: var(--pc-frame-text);',
+    '  line-height: 1.6;',
+    '  word-break: break-word;',
+    '}',
+    'img, video, canvas, svg {',
+    '  max-width: 100%;',
+    '  height: auto;',
+    '}',
+    'table {',
+    '  width: 100%;',
+    '  border-collapse: collapse;',
+    '}',
+    'pre {',
+    '  white-space: pre-wrap;',
+    '  overflow-wrap: anywhere;',
+    '}',
+    'code, pre {',
+    '  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;',
+    '}',
+    'blockquote {',
+    '  margin: 0;',
+    '  padding-left: 12px;',
+    '  border-left: 3px solid var(--pc-frame-border);',
+    '  color: var(--pc-frame-muted);',
+    '}',
+  ].join('\n');
+}
+
+function escapeHtmlText(value: string) {
+  return value
+    .replaceAll('&', '&amp;')
+    .replaceAll('<', '&lt;')
+    .replaceAll('>', '&gt;');
+}
+
+function createResizeBridgeScript(channelId: string) {
+  return [
+    '(() => {',
+    `  const CHANNEL_ID = ${JSON.stringify(channelId)};`,
+    `  const SOURCE = ${JSON.stringify(FRONTEND_FRAME_SOURCE)};`,
+    '  const postHeight = () => {',
+    '    const root = document.documentElement;',
+    '    const body = document.body;',
+    '    const height = Math.max(',
+    '      root?.scrollHeight || 0,',
+    '      root?.offsetHeight || 0,',
+    '      body?.scrollHeight || 0,',
+    '      body?.offsetHeight || 0,',
+    '    );',
+    "    parent.postMessage({ source: SOURCE, channelId: CHANNEL_ID, type: 'height', height }, '*');",
+    '  };',
+    '  const queueHeight = () => requestAnimationFrame(postHeight);',
+    "  window.addEventListener('load', queueHeight);",
+    "  document.addEventListener('DOMContentLoaded', queueHeight);",
+    '  if (typeof ResizeObserver === "function") {',
+    '    const resizeObserver = new ResizeObserver(queueHeight);',
+    '    resizeObserver.observe(document.documentElement);',
+    '  }',
+    '  if (typeof MutationObserver === "function") {',
+    '    const mutationObserver = new MutationObserver(queueHeight);',
+    '    mutationObserver.observe(document.documentElement, {',
+    '      attributes: true,',
+    '      characterData: true,',
+    '      childList: true,',
+    '      subtree: true,',
+    '    });',
+    '  }',
+    '  setTimeout(queueHeight, 80);',
+    '  setTimeout(queueHeight, 320);',
+    '  setInterval(postHeight, 1500);',
+    '  queueHeight();',
+    '})();',
+  ].join('\n');
+}
+
+function sanitizeFrontendHtml(rawHtml: string) {
+  const parser = new DOMParser();
+  const document = parser.parseFromString(rawHtml, 'text/html');
+  stripDangerousNodes(document);
+
+  if (hasDocumentShell(rawHtml)) {
+    return {
+      bodyHtml: document.body.innerHTML.trim(),
+      headHtml: document.head.innerHTML.trim(),
+    };
+  }
+
+  return {
+    bodyHtml: document.body.innerHTML.trim(),
+    headHtml: '',
+  };
+}
+
+export function buildFrontendDocument(rawHtml: string, options: TheaterFrontendBuildOptions) {
+  const sanitized = sanitizeFrontendHtml(rawHtml);
+  const title = options.title?.trim() || '小剧场';
+
+  return [
+    '<!doctype html>',
+    '<html lang="zh-CN">',
+    '<head>',
+    '  <meta charset="utf-8" />',
+    '  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />',
+    `  <meta http-equiv="Content-Security-Policy" content="${FRONTEND_IFRAME_CSP}" />`,
+    `  <title>${escapeHtmlText(title)}</title>`,
+    `  <style>${createBaseStyle(options.theme)}</style>`,
+    sanitized.headHtml,
+    '</head>',
+    '<body>',
+    sanitized.bodyHtml,
+    `  <script>${createResizeBridgeScript(options.channelId)}</script>`,
+    '</body>',
+    '</html>',
+  ].filter(Boolean).join('\n');
+}
+
+export function getFrontendFrameSource() {
+  return FRONTEND_FRAME_SOURCE;
+}

@@ -1,0 +1,336 @@
+<template>
+  <div class="pc-generation-panel">
+    <slot name="before-fields"></slot>
+
+    <div class="pc-select-field pc-preset-field">
+      <label class="pc-field-label">{{ t`本次预设` }}</label>
+      <div class="pc-preset-select-row">
+        <select v-model="settings.generation.tavernPresetName" class="pc-select" :disabled="controlsDisabled">
+          <option value="">{{ t`跟随酒馆当前预设` }}</option>
+          <option v-for="presetName in tavernPresetNames" :key="presetName" :value="presetName">{{ presetName }}</option>
+        </select>
+        <button class="pc-icon-btn" type="button" :disabled="controlsDisabled" :title="t`刷新预设列表`" @click="refreshTavernPresetNames">
+          <i class="fa-solid fa-rotate"></i>
+        </button>
+      </div>
+    </div>
+
+    <GenerationSourceFields
+      :disabled="controlsDisabled"
+      :from-start-end="fromStartEnd"
+      :mode="sourceMode"
+      :range-text="rangeText"
+      :recent-count="recentCount"
+      :single-message-id="singleMessageId"
+      @update:from-start-end="emit('update:fromStartEnd', $event)"
+      @update:mode="emit('update:sourceMode', $event)"
+      @update:range-text="emit('update:rangeText', $event)"
+      @update:recent-count="emit('update:recentCount', $event)"
+      @update:single-message-id="emit('update:singleMessageId', $event)"
+    />
+
+    <ReferencePicker :model-value="references" :disabled="controlsDisabled" @update:model-value="emit('update:references', $event)" />
+
+    <slot name="after-references"></slot>
+
+    <div class="pc-number-field pc-requirement-field">
+      <div class="pc-field-head">
+        <label class="pc-field-label">{{ requirementLabel }}</label>
+        <button
+          class="pc-icon-btn"
+          type="button"
+          :disabled="controlsDisabled || !quickPhraseGroups.length"
+          :title="quickPhraseGroups.length ? t`添加快速短语` : t`还没有快速短语`"
+          @click="quickPhraseOpen = !quickPhraseOpen"
+        >
+          <i class="fa-solid fa-plus"></i>
+        </button>
+      </div>
+      <div v-if="quickPhraseOpen" class="pc-quick-phrase-panel">
+        <article v-for="group in quickPhraseGroups" :key="group.id" class="pc-quick-phrase-group">
+          <strong>{{ group.name }}</strong>
+          <div class="pc-quick-phrase-list">
+            <button
+              v-for="phrase in group.phrases"
+              :key="phrase.id"
+                class="pc-soft-btn compact pc-quick-phrase-chip"
+              type="button"
+              @click="appendQuickPhrase(phrase.text)"
+            >
+              {{ phrase.text }}
+            </button>
+          </div>
+        </article>
+      </div>
+      <textarea
+        :value="userRequirement"
+        class="pc-area compact"
+        :disabled="controlsDisabled"
+        :placeholder="requirementPlaceholder"
+        @input="emit('update:userRequirement', ($event.target as HTMLTextAreaElement).value)"
+      ></textarea>
+    </div>
+
+    <slot name="after-requirement"></slot>
+
+    <TavernPromptCapture :capture="capture" :reset-key="captureResetKey" />
+
+    <div v-if="error" class="pc-status-card danger">
+      <strong>{{ errorTitle }}</strong>
+      <p>{{ error }}</p>
+    </div>
+
+    <div v-if="generationBlocked" class="pc-status-card warning">
+      <strong>{{ t`历史聊天只读` }}</strong>
+      <p>{{ t`当前查看的不是酒馆当前聊天，已禁用 AI 生成。` }}</p>
+    </div>
+
+    <slot name="actions">
+      <div class="pc-form-actions pc-generation-actions">
+        <button class="pc-soft-btn" type="button" :disabled="running" @click="emit('cancel')">{{ cancelLabel }}</button>
+        <button v-if="running" class="pc-soft-btn danger" type="button" @click="emit('stop')">{{ stopLabel }}</button>
+        <button class="pc-primary-btn" type="button" :disabled="controlsDisabled" @click="emit('generate')">
+          <i :class="generateIcon"></i>
+          <span>{{ running ? runningLabel : generateLabel }}</span>
+        </button>
+      </div>
+    </slot>
+
+    <div v-if="running || rawOutput" class="pc-raw-output">
+      <div class="pc-raw-head">
+        <strong>{{ running ? liveOutputLabel : rawOutputLabel }}</strong>
+      </div>
+      <textarea :value="rawOutput" class="pc-area pc-raw-area" readonly></textarea>
+    </div>
+  </div>
+</template>
+
+<script setup lang="ts">
+import GenerationSourceFields from '@/components/GenerationSourceFields.vue';
+import ReferencePicker from '@/components/ReferencePicker.vue';
+import TavernPromptCapture from '@/components/TavernPromptCapture.vue';
+import { usePhoneStore } from '@/store/phone';
+import { usePromptStore } from '@/store/prompts';
+import { useSettingsStore } from '@/store/settings';
+import type { SummaryGenerationSourceMode } from '@/util/generationSource';
+import type { GenerationReferenceItem } from '@/util/references';
+import { getPresetNamesSafe, type CapturedTavernPromptPreview } from '@/util/runtime';
+import { storeToRefs } from 'pinia';
+
+const props = withDefaults(defineProps<{
+  cancelLabel?: string;
+  capture: () => Promise<CapturedTavernPromptPreview>;
+  captureResetKey?: unknown;
+  error?: string;
+  errorTitle?: string;
+  fromStartEnd: number;
+  generateIcon?: string;
+  generateLabel?: string;
+  liveOutputLabel?: string;
+  rangeText: string;
+  rawOutput?: string;
+  rawOutputLabel?: string;
+  recentCount: number;
+  references: GenerationReferenceItem[];
+  requirementLabel?: string;
+  requirementPlaceholder?: string;
+  running: boolean;
+  runningLabel?: string;
+  singleMessageId: number;
+  sourceMode: SummaryGenerationSourceMode;
+  stopLabel?: string;
+  userRequirement: string;
+}>(), {
+  cancelLabel: '取消',
+  captureResetKey: undefined,
+  error: '',
+  errorTitle: '生成失败',
+  generateIcon: 'fa-solid fa-sparkles',
+  generateLabel: '开始生成',
+  liveOutputLabel: '实时输出',
+  rawOutput: '',
+  rawOutputLabel: '原始输出',
+  requirementLabel: '追加要求',
+  requirementPlaceholder: '例如：重点概括角色关系变化，并保留后续悬念。',
+  runningLabel: '生成中',
+  stopLabel: '停止',
+});
+
+const phone = usePhoneStore();
+const prompts = usePromptStore();
+const settingsStore = useSettingsStore();
+const { quickPhraseGroups } = storeToRefs(prompts);
+const { settings } = storeToRefs(settingsStore);
+const quickPhraseOpen = ref(false);
+const tavernPresetNames = ref<string[]>([]);
+const generationBlocked = computed(() => !phone.isViewingCurrentChat);
+const controlsDisabled = computed(() => props.running || generationBlocked.value);
+
+const emit = defineEmits<{
+  cancel: [];
+  generate: [];
+  stop: [];
+  'update:fromStartEnd': [value: number];
+  'update:rangeText': [value: string];
+  'update:recentCount': [value: number];
+  'update:references': [value: GenerationReferenceItem[]];
+  'update:singleMessageId': [value: number];
+  'update:sourceMode': [value: SummaryGenerationSourceMode];
+  'update:userRequirement': [value: string];
+}>();
+
+watch(controlsDisabled, disabled => {
+  if (disabled) quickPhraseOpen.value = false;
+});
+
+onMounted(() => {
+  refreshTavernPresetNames();
+});
+
+function refreshTavernPresetNames() {
+  tavernPresetNames.value = getPresetNamesSafe();
+  const selectedPresetName = settings.value.generation.tavernPresetName.trim();
+  if (selectedPresetName && !tavernPresetNames.value.includes(selectedPresetName)) {
+    tavernPresetNames.value = [selectedPresetName, ...tavernPresetNames.value];
+  }
+}
+
+function appendQuickPhrase(text: string) {
+  const phrase = text.trim();
+  if (!phrase) return;
+  const current = props.userRequirement.trimEnd();
+  const separator = current ? '\n' : '';
+  emit('update:userRequirement', `${current}${separator}${phrase}`);
+  quickPhraseOpen.value = false;
+}
+</script>
+
+<style scoped>
+.pc-generation-panel,
+.pc-raw-output {
+  min-width: 0;
+  max-width: 100%;
+  overflow-x: hidden;
+  margin-top: 14px;
+}
+
+.pc-status-card {
+  border: 1px solid var(--pc-border);
+  border-radius: 18px;
+  background: var(--pc-surface-strong);
+  padding: 14px;
+}
+
+.pc-status-card.danger {
+  border-color: color-mix(in srgb, var(--pc-danger) 42%, var(--pc-border) 58%);
+}
+
+.pc-status-card.warning {
+  border-color: color-mix(in srgb, #f5a623 42%, var(--pc-border) 58%);
+}
+
+.pc-status-card p {
+  color: var(--pc-muted);
+}
+
+.pc-select-field {
+  margin-top: 14px;
+}
+
+.pc-generation-panel > .pc-select-field:first-child {
+  margin-top: 0;
+}
+
+.pc-preset-select-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 42px;
+  gap: 10px;
+  align-items: center;
+}
+
+.pc-field-head {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.pc-quick-phrase-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-top: 10px;
+  padding: 12px;
+  border: 1px solid var(--pc-border);
+  border-radius: 16px;
+  background: var(--pc-surface-strong);
+}
+
+.pc-quick-phrase-group strong {
+  display: block;
+  margin-bottom: 8px;
+  font-size: 13px;
+}
+
+.pc-quick-phrase-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  min-width: 0;
+  max-width: 100%;
+  overflow-x: hidden;
+}
+
+.pc-quick-phrase-chip {
+  max-width: 100%;
+  background: color-mix(in srgb, var(--pc-theme-accent) 12%, var(--pc-surface) 88%);
+  min-inline-size: 0;
+  padding: 7px 10px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.pc-number-field + .pc-number-field {
+  margin-top: 14px;
+}
+
+.pc-generation-panel > .pc-area {
+  margin-top: 14px;
+}
+
+.pc-area.compact {
+  min-height: 120px;
+}
+
+.pc-raw-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.pc-generation-actions {
+  display: flex;
+  flex-wrap: nowrap;
+  margin-top: 16px;
+  justify-content: flex-end;
+}
+
+.pc-generation-actions > button {
+  flex: 1 1 0;
+  min-width: 0;
+  white-space: nowrap;
+}
+
+.pc-raw-head {
+  align-items: baseline;
+}
+
+.pc-raw-area {
+  min-height: 180px;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 12px;
+}
+</style>

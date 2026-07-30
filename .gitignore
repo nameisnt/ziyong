@@ -1,0 +1,28 @@
+node_modules
+
+.DS_Store
+Thumbs.db
+
+*.log
+
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# Local editor and Codex working files
+.codex/
+.vscode/
+
+# Generated visual-check artifacts and temporary files
+tmp/
+*.bak
+
+# Local reference materials
+可参考拓展/
+酒馆手机-脚本基础款/
+QITA/
+预设/
+Anima正式版-文生图工作流.json
+手机端BUG分析.md
+一键安全推送dist到GitHub.cmd

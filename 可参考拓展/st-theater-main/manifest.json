@@ -1,0 +1,12 @@
+{
+    "display_name": "千夜浮梦 · 小剧场生成器",
+    "loading_order": 100,
+    "requires": [],
+    "optional": [],
+    "js": "index.js",
+    "css": "style.css",
+    "author": "Theater Generator",
+    "version": "3.2.2",
+    "homePage": "https://github.com/koichole213-ui/st-theater",
+    "auto_update": true
+}

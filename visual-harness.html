@@ -1,0 +1,34 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>酒馆手机 UI Visual Harness</title>
+    <style>
+      html,
+      body {
+        width: 100%;
+        min-height: 100%;
+        margin: 0;
+      }
+
+      body {
+        overflow: hidden;
+        background:
+          linear-gradient(rgba(255, 255, 255, 0.78), rgba(255, 255, 255, 0.78)),
+          repeating-linear-gradient(0deg, #d7dce8 0 1px, transparent 1px 96px),
+          repeating-linear-gradient(90deg, #d7dce8 0 1px, transparent 1px 96px);
+      }
+
+      #extensionsMenu,
+      #extensions_settings2 {
+        display: none;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="extensionsMenu"></div>
+    <div id="extensions_settings2"></div>
+    <script type="module" src="/src/testing/visual-harness.ts"></script>
+  </body>
+</html>

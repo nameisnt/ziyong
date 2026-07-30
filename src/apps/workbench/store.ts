@@ -1,0 +1,569 @@
+import { getCurrentChatScopeKey } from '@/store/chatScoped';
+import { getChatMessagesSafe, onTavernEvent } from '@/util/runtime';
+import { validateInplace } from '@/util/zod';
+// eslint-disable-next-line import-x/no-nodejs-modules
+import { saveSettingsDebounced } from '@sillytavern/script';
+import { extension_settings } from '@sillytavern/scripts/extensions';
+
+export const workbenchField = 'sillytavern_phone_workbench';
+
+export const WorkbenchStepConfigSchema = z.object({
+  comfyWorkflowId: z.string().default(''),
+  diaryBookId: z.string().default(''),
+  diaryBookTitle: z.string().default(''),
+  diaryOccurredAt: z.string().default(''),
+  diaryPerspectiveName: z.string().default(''),
+  extrasBookId: z.string().default(''),
+  extrasChapterMode: z.enum(['续写上一章', '新开一本书', '重写当前章节']).default('续写上一章'),
+  extrasTypeId: z.string().default(''),
+  extrasTypeName: z.string().default(''),
+  extrasTypePrompt: z.string().default(''),
+  forumBoardDescription: z.string().default(''),
+  forumBoardId: z.string().default(''),
+  forumBoardName: z.string().default('工作台'),
+  letterBookId: z.string().default(''),
+  letterBookTitle: z.string().default(''),
+  letterFormat: z.enum(['formal', 'sms', 'email', 'note']).default('formal'),
+  letterReceiverName: z.string().default(''),
+  letterRecentCount: z.number().int().min(0).max(20).default(6),
+  letterSenderName: z.string().default(''),
+  profileKind: z
+    .enum(['character', 'location', 'organization', 'item', 'world', 'rule', 'event', 'timeline', 'note'])
+    .default('character'),
+  profileTableId: z.string().default(''),
+  profileTitleHint: z.string().default(''),
+  relationshipCharacterNames: z.string().default(''),
+  summaryBookId: z.string().default(''),
+  theaterParticipants: z.string().default(''),
+  theaterRenderMode: z.enum(['markdown', 'frontend']).default('markdown'),
+  theaterTypeId: z.string().default(''),
+  theaterTypeName: z.string().default(''),
+  theaterTypePrompt: z.string().default(''),
+});
+export type WorkbenchStepConfig = z.infer<typeof WorkbenchStepConfigSchema>;
+
+export const WorkbenchStepSchema = z.object({
+  id: z.string(),
+  appId: z.string(),
+  actionId: z.string(),
+  config: WorkbenchStepConfigSchema.default(() => WorkbenchStepConfigSchema.parse({})),
+  enabled: z.boolean().default(true),
+  formatTemplate: z.string().default(''),
+  includeInInsert: z.boolean().default(true),
+  inputMode: z.enum(['chat', 'previous']).default('chat'),
+  userRequirement: z.string().default(''),
+});
+export type WorkbenchStep = z.infer<typeof WorkbenchStepSchema>;
+
+export const WorkbenchCheckpointSchema = z.object({
+  hasSuccessfulRun: z.boolean().default(false),
+  lastAiReplyCount: z.number().int().nonnegative().default(0),
+  lastMessageId: z.number().int().nonnegative().default(0),
+  lastRunAt: z.string().default(''),
+});
+export type WorkbenchCheckpoint = z.infer<typeof WorkbenchCheckpointSchema>;
+
+export const WorkbenchRunSourceSchema = z.object({
+  fromStartEnd: z.number().int().nonnegative().optional(),
+  mode: z.enum(['all', 'fromStart', 'range', 'recent']),
+  rangeText: z.string().optional(),
+  recentCount: z.number().int().min(1).max(200).optional(),
+});
+export type WorkbenchRunSource = z.infer<typeof WorkbenchRunSourceSchema>;
+
+export const WorkbenchCompletedStepSchema = z.object({
+  content: z.string().default(''),
+  insertBlock: z.string().default(''),
+});
+export type WorkbenchCompletedStep = z.infer<typeof WorkbenchCompletedStepSchema>;
+
+export const WorkbenchPendingRunSchema = z.object({
+  checkpoint: WorkbenchCheckpointSchema,
+  completedSteps: z.record(z.string(), WorkbenchCompletedStepSchema).default({}),
+  createdAt: z.string(),
+  failedDraftIds: z.record(z.string(), z.string()).default({}),
+  failedStepIds: z.array(z.string()).default([]),
+  source: WorkbenchRunSourceSchema,
+  steps: z.array(WorkbenchStepSchema).default([]),
+});
+export type WorkbenchPendingRun = z.infer<typeof WorkbenchPendingRunSchema>;
+
+export const WorkbenchWorkflowSchema = z.object({
+  id: z.string(),
+  name: z.string(),
+  apiMode: z.enum(['inherit', 'tavern', 'external']).default('inherit'),
+  externalProfileId: z.string().default(''),
+  enabled: z.boolean().default(true),
+  insertAfterRun: z.boolean().default(false),
+  insertTemplate: z.string().default('{{content}}'),
+  delayAiReplies: z.number().int().min(0).max(20).default(0),
+  recentCount: z.number().int().min(1).max(200).default(20),
+  sourceMode: z.enum(['new', 'recent', 'all']).default('new'),
+  tavernPresetName: z.string().default(''),
+  triggerAiReplies: z.number().int().positive().default(5),
+  steps: z.array(WorkbenchStepSchema).default([]),
+  checkpoints: z.record(z.string(), WorkbenchCheckpointSchema).default({}),
+  pendingRuns: z.record(z.string(), WorkbenchPendingRunSchema).default({}),
+});
+export type WorkbenchWorkflow = z.infer<typeof WorkbenchWorkflowSchema>;
+
+export const WorkbenchRunLogSchema = z.object({
+  id: z.string(),
+  workflowId: z.string(),
+  workflowName: z.string(),
+  scopeKey: z.string(),
+  status: z.enum(['running', 'success', 'failed', 'paused']).default('running'),
+  message: z.string().default(''),
+  createdAt: z.string(),
+  finishedAt: z.string().default(''),
+});
+export type WorkbenchRunLog = z.infer<typeof WorkbenchRunLogSchema>;
+
+export const WorkbenchInsertDraftSchema = z.object({
+  id: z.string(),
+  workflowId: z.string(),
+  workflowName: z.string(),
+  scopeKey: z.string(),
+  content: z.string(),
+  template: z.string().default('{{content}}'),
+  createdAt: z.string(),
+});
+export type WorkbenchInsertDraft = z.infer<typeof WorkbenchInsertDraftSchema>;
+
+export const WorkbenchSettingsSchema = z.object({
+  workflows: z.array(WorkbenchWorkflowSchema).default([]),
+  logs: z.array(WorkbenchRunLogSchema).default([]),
+  insertDrafts: z.array(WorkbenchInsertDraftSchema).default([]),
+});
+export type WorkbenchSettings = z.infer<typeof WorkbenchSettingsSchema>;
+
+function nowIso() {
+  return new Date().toISOString();
+}
+
+function createId(prefix: string) {
+  return `${prefix}_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+}
+
+function readSettings(raw: unknown): WorkbenchSettings {
+  try {
+    const source = raw && typeof raw === 'object' ? raw : {};
+    const rawWorkflows = Array.isArray((source as Record<string, unknown>).workflows)
+      ? ((source as Record<string, unknown>).workflows as Array<Record<string, unknown>>)
+      : [];
+    const parsed = validateInplace(WorkbenchSettingsSchema, source);
+    const scopeKey = getCurrentChatScopeKey();
+    parsed.workflows.forEach(workflow => {
+      const rawWorkflow = rawWorkflows.find(item => item.id === workflow.id);
+      const rawCheckpoints =
+        rawWorkflow?.checkpoints && typeof rawWorkflow.checkpoints === 'object'
+          ? (rawWorkflow.checkpoints as Record<string, unknown>)
+          : {};
+      const rawCheckpoint =
+        rawCheckpoints[scopeKey] && typeof rawCheckpoints[scopeKey] === 'object'
+          ? (rawCheckpoints[scopeKey] as Record<string, unknown>)
+          : null;
+      if (workflow.checkpoints[scopeKey] && rawCheckpoint && !('lastMessageId' in rawCheckpoint)) {
+        workflow.checkpoints[scopeKey].lastMessageId = getCurrentLastVisibleMessageId();
+      }
+      if (workflow.checkpoints[scopeKey] && rawCheckpoint && !('hasSuccessfulRun' in rawCheckpoint)) {
+        workflow.checkpoints[scopeKey].hasSuccessfulRun = parsed.logs.some(
+          log => log.workflowId === workflow.id && log.scopeKey === scopeKey && log.status === 'success',
+        );
+      }
+    });
+    return parsed;
+  } catch {
+    return validateInplace(WorkbenchSettingsSchema, {});
+  }
+}
+
+function getCurrentVisibleAssistantMessages() {
+  return getChatMessagesSafe('0-{{lastMessageId}}', { hide_state: 'unhidden' }).filter(
+    message => message.role === 'assistant' && String(message.message || '').trim(),
+  );
+}
+
+function countCurrentVisibleAssistantMessages() {
+  return getCurrentVisibleAssistantMessages().length;
+}
+
+function getCurrentLastVisibleMessageId() {
+  return getChatMessagesSafe('0-{{lastMessageId}}', { hide_state: 'unhidden' }).reduce(
+    (lastId, message) => Math.max(lastId, message.message_id),
+    0,
+  );
+}
+
+export function captureCurrentWorkbenchCheckpoint(): WorkbenchCheckpoint {
+  return {
+    hasSuccessfulRun: false,
+    lastAiReplyCount: countCurrentVisibleAssistantMessages(),
+    lastMessageId: getCurrentLastVisibleMessageId(),
+    lastRunAt: nowIso(),
+  };
+}
+
+export function captureDelayedWorkbenchCheckpoint(delayAiReplies: number): WorkbenchCheckpoint {
+  const delay = Math.min(20, Math.max(0, Math.round(delayAiReplies)));
+  if (!delay) return captureCurrentWorkbenchCheckpoint();
+  const assistantMessages = getCurrentVisibleAssistantMessages();
+  const eligibleMessages = assistantMessages.slice(0, Math.max(0, assistantMessages.length - delay));
+  return {
+    hasSuccessfulRun: false,
+    lastAiReplyCount: eligibleMessages.length,
+    lastMessageId: eligibleMessages.at(-1)?.message_id ?? 0,
+    lastRunAt: nowIso(),
+  };
+}
+
+export const useWorkbenchStore = defineStore('workbench', () => {
+  const settings = ref<WorkbenchSettings>(readSettings(_.get(extension_settings, workbenchField, {})));
+  const runningWorkflowIds = ref<string[]>([]);
+
+  const workflows = computed(() => settings.value.workflows);
+  const logs = computed(() => settings.value.logs);
+  const insertDrafts = computed(() => settings.value.insertDrafts);
+  const isRunning = computed(() => runningWorkflowIds.value.length > 0);
+
+  function persist() {
+    const parsed = readSettings(klona(settings.value));
+    _.set(extension_settings, workbenchField, parsed);
+    void saveSettingsDebounced();
+  }
+
+  watch(settings, persist, { deep: true });
+
+  function createWorkflow(name = '') {
+    const scopeKey = getCurrentChatScopeKey();
+    const workflow: WorkbenchWorkflow = {
+      apiMode: 'inherit',
+      checkpoints: {
+        [scopeKey]: captureCurrentWorkbenchCheckpoint(),
+      },
+      delayAiReplies: 0,
+      enabled: true,
+      externalProfileId: '',
+      id: createId('workbench_workflow'),
+      insertAfterRun: false,
+      insertTemplate: '{{content}}',
+      name: name.trim() || `工作流 ${settings.value.workflows.length + 1}`,
+      pendingRuns: {},
+      recentCount: 20,
+      sourceMode: 'new',
+      steps: [],
+      tavernPresetName: '',
+      triggerAiReplies: 5,
+    };
+    settings.value.workflows = [workflow, ...settings.value.workflows];
+    return workflow;
+  }
+
+  function updateWorkflow(
+    workflowId: string,
+    patch: Partial<
+      Pick<
+        WorkbenchWorkflow,
+        | 'apiMode'
+        | 'delayAiReplies'
+        | 'enabled'
+        | 'externalProfileId'
+        | 'insertAfterRun'
+        | 'insertTemplate'
+        | 'name'
+        | 'recentCount'
+        | 'sourceMode'
+        | 'tavernPresetName'
+        | 'triggerAiReplies'
+      >
+    >,
+  ) {
+    settings.value.workflows = settings.value.workflows.map(workflow => {
+      if (workflow.id !== workflowId) return workflow;
+      return {
+        ...workflow,
+        ...patch,
+        insertTemplate:
+          typeof patch.insertTemplate === 'string'
+            ? patch.insertTemplate.trim() || '{{content}}'
+            : workflow.insertTemplate,
+        delayAiReplies:
+          typeof patch.delayAiReplies === 'number'
+            ? Math.min(20, Math.max(0, Math.round(patch.delayAiReplies)))
+            : workflow.delayAiReplies,
+        externalProfileId:
+          typeof patch.externalProfileId === 'string' ? patch.externalProfileId.trim() : workflow.externalProfileId,
+        name: typeof patch.name === 'string' ? patch.name.trim() || workflow.name : workflow.name,
+        recentCount:
+          typeof patch.recentCount === 'number'
+            ? Math.min(200, Math.max(1, Math.round(patch.recentCount)))
+            : workflow.recentCount,
+        tavernPresetName:
+          typeof patch.tavernPresetName === 'string' ? patch.tavernPresetName.trim() : workflow.tavernPresetName,
+        triggerAiReplies:
+          typeof patch.triggerAiReplies === 'number'
+            ? Math.min(200, Math.max(1, Math.round(patch.triggerAiReplies)))
+            : workflow.triggerAiReplies,
+      };
+    });
+  }
+
+  function deleteWorkflow(workflowId: string) {
+    settings.value.workflows = settings.value.workflows.filter(workflow => workflow.id !== workflowId);
+  }
+
+  function addStep(workflowId: string, input: Pick<WorkbenchStep, 'actionId' | 'appId'>) {
+    const step: WorkbenchStep = {
+      actionId: input.actionId,
+      appId: input.appId,
+      config: validateInplace(WorkbenchStepConfigSchema, {}),
+      enabled: true,
+      formatTemplate: '',
+      id: createId('workbench_step'),
+      includeInInsert: true,
+      inputMode: 'chat',
+      userRequirement: '',
+    };
+    settings.value.workflows = settings.value.workflows.map(workflow =>
+      workflow.id === workflowId ? { ...workflow, steps: [...workflow.steps, step] } : workflow,
+    );
+    return step;
+  }
+
+  function updateStep(
+    workflowId: string,
+    stepId: string,
+    patch: Partial<
+      Pick<WorkbenchStep, 'config' | 'enabled' | 'formatTemplate' | 'includeInInsert' | 'inputMode' | 'userRequirement'>
+    >,
+  ) {
+    settings.value.workflows = settings.value.workflows.map(workflow => {
+      if (workflow.id !== workflowId) return workflow;
+      return {
+        ...workflow,
+        steps: workflow.steps.map(step =>
+          step.id === stepId
+            ? {
+                ...step,
+                ...patch,
+                config: patch.config ? validateInplace(WorkbenchStepConfigSchema, patch.config) : step.config,
+                formatTemplate: typeof patch.formatTemplate === 'string' ? patch.formatTemplate : step.formatTemplate,
+                userRequirement:
+                  typeof patch.userRequirement === 'string' ? patch.userRequirement : step.userRequirement,
+              }
+            : step,
+        ),
+      };
+    });
+  }
+
+  function deleteStep(workflowId: string, stepId: string) {
+    settings.value.workflows = settings.value.workflows.map(workflow =>
+      workflow.id === workflowId ? { ...workflow, steps: workflow.steps.filter(step => step.id !== stepId) } : workflow,
+    );
+  }
+
+  function moveStep(workflowId: string, stepId: string, direction: -1 | 1) {
+    settings.value.workflows = settings.value.workflows.map(workflow => {
+      if (workflow.id !== workflowId) return workflow;
+      const index = workflow.steps.findIndex(step => step.id === stepId);
+      const target = index + direction;
+      if (index < 0 || target < 0 || target >= workflow.steps.length) return workflow;
+      const steps = [...workflow.steps];
+      [steps[index], steps[target]] = [steps[target], steps[index]];
+      return { ...workflow, steps };
+    });
+  }
+
+  function getWorkflow(workflowId: string) {
+    return settings.value.workflows.find(workflow => workflow.id === workflowId) ?? null;
+  }
+
+  function setCheckpoint(workflowId: string, scopeKey: string, checkpoint: WorkbenchCheckpoint) {
+    settings.value.workflows = settings.value.workflows.map(workflow =>
+      workflow.id === workflowId
+        ? {
+            ...workflow,
+            checkpoints: {
+              ...workflow.checkpoints,
+              [scopeKey]: checkpoint,
+            },
+          }
+        : workflow,
+    );
+  }
+
+  function markCurrentCheckpoint(workflowId: string, scopeKey = getCurrentChatScopeKey()) {
+    setCheckpoint(workflowId, scopeKey, {
+      ...captureCurrentWorkbenchCheckpoint(),
+      hasSuccessfulRun: true,
+    });
+    clearPendingRun(workflowId, scopeKey);
+  }
+
+  function setPendingRun(workflowId: string, scopeKey: string, pendingRun: WorkbenchPendingRun) {
+    settings.value.workflows = settings.value.workflows.map(workflow =>
+      workflow.id === workflowId
+        ? {
+            ...workflow,
+            pendingRuns: {
+              ...workflow.pendingRuns,
+              [scopeKey]: validateInplace(WorkbenchPendingRunSchema, pendingRun),
+            },
+          }
+        : workflow,
+    );
+  }
+
+  function clearPendingRun(workflowId: string, scopeKey: string) {
+    settings.value.workflows = settings.value.workflows.map(workflow => {
+      if (workflow.id !== workflowId || !workflow.pendingRuns[scopeKey]) return workflow;
+      const pendingRuns = { ...workflow.pendingRuns };
+      delete pendingRuns[scopeKey];
+      return { ...workflow, pendingRuns };
+    });
+  }
+
+  function createLog(workflow: WorkbenchWorkflow, scopeKey: string) {
+    const log: WorkbenchRunLog = {
+      createdAt: nowIso(),
+      finishedAt: '',
+      id: createId('workbench_log'),
+      message: '正在运行',
+      scopeKey,
+      status: 'running',
+      workflowId: workflow.id,
+      workflowName: workflow.name,
+    };
+    settings.value.logs = [log, ...settings.value.logs].slice(0, 30);
+    runningWorkflowIds.value = [...new Set([...runningWorkflowIds.value, workflow.id])];
+    return log;
+  }
+
+  function finishLog(logId: string, status: 'success' | 'failed' | 'paused', message: string) {
+    settings.value.logs = settings.value.logs.map(log =>
+      log.id === logId
+        ? {
+            ...log,
+            finishedAt: nowIso(),
+            message,
+            status,
+          }
+        : log,
+    );
+    const workflowId = settings.value.logs.find(log => log.id === logId)?.workflowId;
+    if (workflowId) {
+      runningWorkflowIds.value = runningWorkflowIds.value.filter(id => id !== workflowId);
+    }
+  }
+
+  function clearLogs() {
+    settings.value.logs = [];
+  }
+
+  function createInsertDraft(
+    workflow: WorkbenchWorkflow,
+    scopeKey: string,
+    input: { content: string; template: string },
+  ) {
+    const draft: WorkbenchInsertDraft = {
+      content: input.content.trim(),
+      createdAt: nowIso(),
+      id: createId('workbench_insert'),
+      scopeKey,
+      template: input.template.trim() || '{{content}}',
+      workflowId: workflow.id,
+      workflowName: workflow.name,
+    };
+    if (!draft.content) return null;
+    settings.value.insertDrafts = [draft, ...settings.value.insertDrafts].slice(0, 20);
+    return draft;
+  }
+
+  function deleteInsertDraft(draftId: string) {
+    settings.value.insertDrafts = settings.value.insertDrafts.filter(draft => draft.id !== draftId);
+  }
+
+  function shouldRunWorkflow(workflow: WorkbenchWorkflow, scopeKey = getCurrentChatScopeKey()) {
+    if (!workflow.enabled || !workflow.steps.some(step => step.enabled)) return false;
+    if (runningWorkflowIds.value.includes(workflow.id)) return false;
+    if (workflow.pendingRuns[scopeKey]) return true;
+    const currentCheckpoint = captureCurrentWorkbenchCheckpoint();
+    const eligibleCheckpoint = captureDelayedWorkbenchCheckpoint(workflow.delayAiReplies);
+    const checkpoint = workflow.checkpoints[scopeKey];
+    if (!checkpoint) {
+      setCheckpoint(workflow.id, scopeKey, currentCheckpoint);
+      return false;
+    }
+    if (
+      currentCheckpoint.lastAiReplyCount < checkpoint.lastAiReplyCount ||
+      currentCheckpoint.lastMessageId < checkpoint.lastMessageId
+    ) {
+      setCheckpoint(workflow.id, scopeKey, currentCheckpoint);
+      return false;
+    }
+    return eligibleCheckpoint.lastAiReplyCount - checkpoint.lastAiReplyCount >= workflow.triggerAiReplies;
+  }
+
+  function getDueWorkflows(scopeKey = getCurrentChatScopeKey()) {
+    return settings.value.workflows.filter(workflow => shouldRunWorkflow(workflow, scopeKey));
+  }
+
+  function rehydrateFromSettings() {
+    settings.value = readSettings(_.get(extension_settings, workbenchField, {}));
+    runningWorkflowIds.value = [];
+  }
+
+  function resetCurrentScope(scopeKey = getCurrentChatScopeKey()) {
+    settings.value.workflows = settings.value.workflows.map(workflow => {
+      const checkpoints = { ...workflow.checkpoints };
+      const pendingRuns = { ...workflow.pendingRuns };
+      delete checkpoints[scopeKey];
+      delete pendingRuns[scopeKey];
+      return {
+        ...workflow,
+        checkpoints,
+        pendingRuns,
+      };
+    });
+    settings.value.logs = settings.value.logs.filter(log => log.scopeKey !== scopeKey);
+    settings.value.insertDrafts = settings.value.insertDrafts.filter(draft => draft.scopeKey !== scopeKey);
+    runningWorkflowIds.value = [];
+  }
+
+  const stopChatChanged = onTavernEvent('CHAT_CHANGED', () => {
+    runningWorkflowIds.value = [];
+  });
+  onScopeDispose(() => {
+    stopChatChanged.stop();
+  });
+
+  return {
+    addStep,
+    clearLogs,
+    clearPendingRun,
+    createLog,
+    createInsertDraft,
+    createWorkflow,
+    deleteInsertDraft,
+    deleteStep,
+    deleteWorkflow,
+    finishLog,
+    getDueWorkflows,
+    getWorkflow,
+    insertDrafts,
+    isRunning,
+    logs,
+    markCurrentCheckpoint,
+    moveStep,
+    rehydrateFromSettings,
+    resetCurrentScope,
+    settings,
+    shouldRunWorkflow,
+    setCheckpoint,
+    setPendingRun,
+    updateStep,
+    updateWorkflow,
+    workflows,
+  };
+});

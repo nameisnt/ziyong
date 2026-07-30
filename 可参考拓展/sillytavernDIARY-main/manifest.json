@@ -1,0 +1,10 @@
+{
+  "display_name": "Diary",
+  "loading_order": 50,
+  "requires": [],
+  "optional": [],
+  "js": "index.js",
+  "author": "Etaf Cisky",
+  "version": "7.2.1",
+  "homePage": "https://github.com/EtafCisky/sillytavernDIARY"
+}
