@@ -1,7 +1,13 @@
 <template>
   <div class="pc-detail-footer">
     <div class="pc-detail-nav">
-      <button class="pc-soft-btn icon-only" type="button" :disabled="previousDisabled" :title="previousLabel" @click="$emit('previous')">
+      <button
+        class="pc-soft-btn icon-only"
+        type="button"
+        :disabled="previousDisabled"
+        :title="previousLabel"
+        @click="$emit('previous')"
+      >
         <i class="fa-solid fa-arrow-left"></i>
         <span>{{ previousLabel }}</span>
       </button>
@@ -17,7 +23,13 @@
         <i class="fa-solid fa-arrow-down"></i>
         <span>{{ bottomLabel }}</span>
       </button>
-      <button class="pc-soft-btn icon-only" type="button" :disabled="nextDisabled" :title="nextLabel" @click="$emit('next')">
+      <button
+        class="pc-soft-btn icon-only"
+        type="button"
+        :disabled="nextDisabled"
+        :title="nextLabel"
+        @click="$emit('next')"
+      >
         <i class="fa-solid fa-arrow-right"></i>
         <span>{{ nextLabel }}</span>
       </button>
@@ -29,25 +41,28 @@
 </template>
 
 <script setup lang="ts">
-withDefaults(defineProps<{
-  actionsClass?: string;
-  bottomLabel?: string;
-  catalogLabel?: string;
-  nextDisabled?: boolean;
-  nextLabel?: string;
-  previousDisabled?: boolean;
-  previousLabel?: string;
-  topLabel?: string;
-}>(), {
-  actionsClass: '',
-  bottomLabel: '置底',
-  catalogLabel: '目录',
-  nextDisabled: false,
-  nextLabel: '下一章',
-  previousDisabled: false,
-  previousLabel: '上一章',
-  topLabel: '置顶',
-});
+withDefaults(
+  defineProps<{
+    actionsClass?: string;
+    bottomLabel?: string;
+    catalogLabel?: string;
+    nextDisabled?: boolean;
+    nextLabel?: string;
+    previousDisabled?: boolean;
+    previousLabel?: string;
+    topLabel?: string;
+  }>(),
+  {
+    actionsClass: '',
+    bottomLabel: '置底',
+    catalogLabel: '目录',
+    nextDisabled: false,
+    nextLabel: '下一章',
+    previousDisabled: false,
+    previousLabel: '上一章',
+    topLabel: '置顶',
+  },
+);
 
 defineEmits<{
   (event: 'bottom'): void;

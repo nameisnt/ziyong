@@ -1,10 +1,5 @@
 import DigestApp from './DigestApp.vue';
-import {
-  digestField,
-  DigestScopeDataSchema,
-  useDigestStore,
-  type DigestEntry,
-} from './store';
+import { digestField, DigestScopeDataSchema, useDigestStore, type DigestEntry } from './store';
 import { createDigestGenerationAdapter } from './generation';
 import { simpleXmlOutput } from '@/apps/outputDefinitions';
 import {
@@ -136,44 +131,50 @@ export default definePhoneApp({
   accent: '#3d8bfd',
   defaultRoute: 'root',
   defaultOrder: 65,
-  backupDomains: [{
-    key: 'digests',
-    exportData: currentScopeKey => readChatScopedEnvelope(digestField, currentScopeKey || getCurrentChatScopeKey()),
-    importData: data => {
-      _.set(extension_settings, digestField, data);
+  backupDomains: [
+    {
+      key: 'digests',
+      exportData: currentScopeKey => readChatScopedEnvelope(digestField, currentScopeKey || getCurrentChatScopeKey()),
+      importData: data => {
+        _.set(extension_settings, digestField, data);
+      },
+      rehydrateFromSettings: () => useDigestStore().rehydrateFromSettings(),
     },
-    rehydrateFromSettings: () => useDigestStore().rehydrateFromSettings(),
-  }],
+  ],
   component: DigestApp,
   contentStatsProvider: createDigestContentStats,
   favoriteProvider: createDigestFavoriteItems,
-  generationProvider: () => [{
-    actionId: 'generate',
-    label: '生成摘抄',
-    createAdapter: () => createDigestGenerationAdapter(useDigestStore()),
-  }],
-  promptDefinitions: [{
-    key: 'digest',
-    label: '摘抄',
-    defaultPrompt: [
-      '你负责从聊天内容中挑选值得保存的原文摘抄。',
-      'content 必须由来源文本中的原句或连续原文片段组成，可以用换行分隔多段，但不得改写、概括、扩写或替换措辞。',
-      'title 可以简短概括摘抄主题，但 content 必须忠实保留文内文字。',
-    ].join('\n'),
-    outputFormats: [
-      simpleXmlOutput(
-        'digest.generate',
-        '摘抄输出',
-        [
-          '请只输出一个完整 XML，不要输出 XML 之外的解释。',
-          '<result>',
-          '  <title>摘抄标题</title>',
-          '  <content>必须是来源文本中的原句或连续原文片段，不得改写、概括或扩写</content>',
-          '</result>',
-        ].join('\n'),
-      ),
-    ],
-  }],
+  generationProvider: () => [
+    {
+      actionId: 'generate',
+      label: '生成摘抄',
+      createAdapter: () => createDigestGenerationAdapter(useDigestStore()),
+    },
+  ],
+  promptDefinitions: [
+    {
+      key: 'digest',
+      label: '摘抄',
+      defaultPrompt: [
+        '你负责从聊天内容中挑选值得保存的原文摘抄。',
+        'content 必须由来源文本中的原句或连续原文片段组成，可以用换行分隔多段，但不得改写、概括、扩写或替换措辞。',
+        'title 可以简短概括摘抄主题，但 content 必须忠实保留文内文字。',
+      ].join('\n'),
+      outputFormats: [
+        simpleXmlOutput(
+          'digest.generate',
+          '摘抄输出',
+          [
+            '请只输出一个完整 XML，不要输出 XML 之外的解释。',
+            '<result>',
+            '  <title>摘抄标题</title>',
+            '  <content>必须是来源文本中的原句或连续原文片段，不得改写、概括或扩写</content>',
+            '</result>',
+          ].join('\n'),
+        ),
+      ],
+    },
+  ],
   referenceProvider: createDigestReferenceTree,
   resetCurrentScope: () => useDigestStore().resetCurrentScope(),
   scopeSwitchHandler: scopeKey => useDigestStore().switchScope(scopeKey),

@@ -91,7 +91,10 @@ function normalizeReplacement(replacements: string[]) {
 }
 
 function createHit(
-  input: Omit<BaguHit, 'id' | 'originalText' | 'postContext' | 'preContext' | 'replacementEnd' | 'replacementStart' | 'selected'>,
+  input: Omit<
+    BaguHit,
+    'id' | 'originalText' | 'postContext' | 'preContext' | 'replacementEnd' | 'replacementStart' | 'selected'
+  >,
   text: string,
   replacementRange?: { end: number; start: number },
 ): BaguHit {
@@ -165,7 +168,10 @@ export function scanTextWithBaguRules(text: string, rules: BaguRule[]) {
     rules
       .filter(rule => rule.enabled && rule.type === 'replacement' && rule.sources.length)
       .forEach(rule => {
-        const sources = [...rule.sources].map(item => item.trim()).filter(Boolean).sort((left, right) => right.length - left.length);
+        const sources = [...rule.sources]
+          .map(item => item.trim())
+          .filter(Boolean)
+          .sort((left, right) => right.length - left.length);
         const replacement = normalizeReplacement(rule.replacements);
         sources.forEach(source => {
           let searchFrom = 0;
@@ -200,7 +206,10 @@ export function scanTextWithBaguRules(text: string, rules: BaguRule[]) {
       });
   }
 
-  hits.sort((left, right) => left.start - right.start || right.end - left.end || left.ruleTitle.localeCompare(right.ruleTitle, 'zh-CN'));
+  hits.sort(
+    (left, right) =>
+      left.start - right.start || right.end - left.end || left.ruleTitle.localeCompare(right.ruleTitle, 'zh-CN'),
+  );
 
   const nonOverlappingHits: BaguHit[] = [];
   let occupiedEnd = -1;
@@ -215,7 +224,9 @@ export function scanTextWithBaguRules(text: string, rules: BaguRule[]) {
 export function applyBaguHits(text: string, hits: BaguHit[]): BaguApplyResult {
   const orderedHits = [...hits]
     .filter(hit => hit.replacementStart >= 0 && hit.replacementEnd > hit.replacementStart)
-    .sort((left, right) => right.replacementStart - left.replacementStart || right.replacementEnd - left.replacementEnd);
+    .sort(
+      (left, right) => right.replacementStart - left.replacementStart || right.replacementEnd - left.replacementEnd,
+    );
   let nextText = text;
   let appliedCount = 0;
   let reservedStart = Number.POSITIVE_INFINITY;

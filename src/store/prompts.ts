@@ -47,16 +47,18 @@ export type QuickPhraseGroup = z.infer<typeof QuickPhraseGroupSchema>;
 export const QuickTemplateGroupSchema = QuickPhraseGroupSchema;
 export type QuickTemplateGroup = z.infer<typeof QuickTemplateGroupSchema>;
 
-export const OutputParserFieldSchema: ZodType<PhoneOutputParserField> = z.lazy(() => z.object({
-  children: z.array(OutputParserFieldSchema).optional(),
-  defaultPath: z.string(),
-  extraction: z.enum(['markup', 'text']).optional(),
-  key: z.string(),
-  kind: z.enum(['object-list', 'text', 'text-list']),
-  label: z.string(),
-  required: z.boolean().optional(),
-  separator: z.string().optional(),
-}));
+export const OutputParserFieldSchema: ZodType<PhoneOutputParserField> = z.lazy(() =>
+  z.object({
+    children: z.array(OutputParserFieldSchema).optional(),
+    defaultPath: z.string(),
+    extraction: z.enum(['markup', 'text']).optional(),
+    key: z.string(),
+    kind: z.enum(['object-list', 'text', 'text-list']),
+    label: z.string(),
+    required: z.boolean().optional(),
+    separator: z.string().optional(),
+  }),
+);
 
 export const OutputParserConfigSchema: ZodType<PhoneOutputParserDefinition> = z.object({
   fields: z.array(OutputParserFieldSchema),
@@ -144,7 +146,9 @@ function getDefaultTypePromptOrder() {
 function ensureDefaultTypePrompts(settings: PromptSettings) {
   const existingKeys = new Set(settings.typePrompts.map(defaultTypeKey));
   const existingIds = new Set(settings.typePrompts.map(item => item.id));
-  const missing = createDefaultTypePrompts().filter(item => !existingKeys.has(defaultTypeKey(item)) && !existingIds.has(item.id));
+  const missing = createDefaultTypePrompts().filter(
+    item => !existingKeys.has(defaultTypeKey(item)) && !existingIds.has(item.id),
+  );
   if (missing.length) {
     settings.typePrompts = [...settings.typePrompts, ...missing];
   }
@@ -157,18 +161,19 @@ function ensureTheaterTypePromptRenderModes(settings: PromptSettings) {
 }
 
 function buildDefaultAppPrompts() {
-  return Object.fromEntries(getRegisteredPhonePromptDefinitions().map(definition => [definition.key, definition.defaultPrompt]));
+  return Object.fromEntries(
+    getRegisteredPhonePromptDefinitions().map(definition => [definition.key, definition.defaultPrompt]),
+  );
 }
 
 function buildDefaultSpecialPrompts() {
-  return Object.fromEntries(getRegisteredPhoneSpecialPromptDefinitions().map(definition => [definition.key, definition.defaultPrompt]));
+  return Object.fromEntries(
+    getRegisteredPhoneSpecialPromptDefinitions().map(definition => [definition.key, definition.defaultPrompt]),
+  );
 }
 
 function collectOutputFormatDefinitions() {
-  const definitions = [
-    ...getRegisteredPhonePromptDefinitions(),
-    ...getRegisteredPhoneSpecialPromptDefinitions(),
-  ];
+  const definitions = [...getRegisteredPhonePromptDefinitions(), ...getRegisteredPhoneSpecialPromptDefinitions()];
   const formats = new Map<string, PhonePromptOutputFormat>();
   definitions.forEach(definition => {
     definition.outputFormats?.forEach(format => {
@@ -227,9 +232,10 @@ function ensureRegisteredPromptDefaults(settings: PromptSettings) {
   const hadExtrasContinuePrompt = 'extrasContinue' in settings.appPrompts;
   const hadExtrasRewritePrompt = 'extrasRewrite' in settings.appPrompts;
   const appDefaults = buildDefaultAppPrompts();
-  const previousExtrasWasDefault = previousExtrasPrompt === migratedDefaultPrompts.extras.from
-    || previousExtrasPrompt === migratedDefaultPrompts.extras.to
-    || previousExtrasPrompt === appDefaults.extras;
+  const previousExtrasWasDefault =
+    previousExtrasPrompt === migratedDefaultPrompts.extras.from ||
+    previousExtrasPrompt === migratedDefaultPrompts.extras.to ||
+    previousExtrasPrompt === appDefaults.extras;
   Object.entries(appDefaults).forEach(([key, value]) => {
     if (!(key in settings.appPrompts)) settings.appPrompts[key] = value;
   });
@@ -323,12 +329,12 @@ export const usePromptStore = defineStore('prompts', () => {
   const appPromptValues = Object.values(data.value.appPrompts);
   const specialPromptValues = Object.values(data.value.specialPrompts);
   if (
-    appPromptValues.every(value => !value.trim())
-    && specialPromptValues.every(value => !value.trim())
-    && !Object.keys(data.value.outputRules).length
-    && !data.value.typePrompts.length
-    && !data.value.quickPhraseGroups.length
-    && !data.value.quickTemplateGroups.length
+    appPromptValues.every(value => !value.trim()) &&
+    specialPromptValues.every(value => !value.trim()) &&
+    !Object.keys(data.value.outputRules).length &&
+    !data.value.typePrompts.length &&
+    !data.value.quickPhraseGroups.length &&
+    !data.value.quickTemplateGroups.length
   ) {
     data.value = createDefaultPromptSettings();
   }
@@ -341,17 +347,19 @@ export const usePromptStore = defineStore('prompts', () => {
   const outputRules = computed(() => data.value.outputRules);
   const specialPromptDefinitions = computed(() => getRegisteredPhoneSpecialPromptDefinitions());
   const specialPrompts = computed(() => data.value.specialPrompts);
-  const typePrompts = computed(() => data.value.typePrompts
-    .map((item, index) => ({ item, index }))
-    .sort((left, right) => {
-      const usageDelta = right.item.usageCount - left.item.usageCount;
-      if (usageDelta) return usageDelta;
-      const defaultTypePromptOrder = getDefaultTypePromptOrder();
-      const leftDefaultOrder = defaultTypePromptOrder.get(defaultTypeKey(left.item)) ?? Number.MAX_SAFE_INTEGER;
-      const rightDefaultOrder = defaultTypePromptOrder.get(defaultTypeKey(right.item)) ?? Number.MAX_SAFE_INTEGER;
-      return leftDefaultOrder - rightDefaultOrder || left.index - right.index;
-    })
-    .map(({ item }) => item));
+  const typePrompts = computed(() =>
+    data.value.typePrompts
+      .map((item, index) => ({ item, index }))
+      .sort((left, right) => {
+        const usageDelta = right.item.usageCount - left.item.usageCount;
+        if (usageDelta) return usageDelta;
+        const defaultTypePromptOrder = getDefaultTypePromptOrder();
+        const leftDefaultOrder = defaultTypePromptOrder.get(defaultTypeKey(left.item)) ?? Number.MAX_SAFE_INTEGER;
+        const rightDefaultOrder = defaultTypePromptOrder.get(defaultTypeKey(right.item)) ?? Number.MAX_SAFE_INTEGER;
+        return leftDefaultOrder - rightDefaultOrder || left.index - right.index;
+      })
+      .map(({ item }) => item),
+  );
   const typePromptDomains = computed(() => getRegisteredPhoneTypePromptDomains());
   const quickPhraseGroups = computed(() => data.value.quickPhraseGroups);
   const quickTemplateGroups = computed(() => data.value.quickTemplateGroups);
@@ -493,8 +501,8 @@ export const usePromptStore = defineStore('prompts', () => {
   }
 
   function createTypePrompt(
-    input: Pick<TypePromptConfig, 'domain' | 'name' | 'prompt'>
-      & Partial<Pick<TypePromptConfig, 'charReplacement' | 'renderMode' | 'userReplacement'>>,
+    input: Pick<TypePromptConfig, 'domain' | 'name' | 'prompt'> &
+      Partial<Pick<TypePromptConfig, 'charReplacement' | 'renderMode' | 'userReplacement'>>,
   ) {
     const timestamp = nowIso();
     const item: TypePromptConfig = {
@@ -503,7 +511,7 @@ export const usePromptStore = defineStore('prompts', () => {
       name: input.name.trim() || '未命名类型提示词',
       prompt: input.prompt.trim(),
       charReplacement: input.charReplacement?.trim() || '',
-      renderMode: input.domain === 'theater' ? input.renderMode ?? 'markdown' : undefined,
+      renderMode: input.domain === 'theater' ? (input.renderMode ?? 'markdown') : undefined,
       userReplacement: input.userReplacement?.trim() || '',
       usageCount: 0,
       createdAt: timestamp,
@@ -515,8 +523,8 @@ export const usePromptStore = defineStore('prompts', () => {
 
   function updateTypePrompt(
     promptId: string,
-    input: Pick<TypePromptConfig, 'domain' | 'name' | 'prompt'>
-      & Partial<Pick<TypePromptConfig, 'charReplacement' | 'renderMode' | 'userReplacement'>>,
+    input: Pick<TypePromptConfig, 'domain' | 'name' | 'prompt'> &
+      Partial<Pick<TypePromptConfig, 'charReplacement' | 'renderMode' | 'userReplacement'>>,
   ) {
     const item = getTypePrompt(promptId);
     if (!item) return null;
@@ -525,7 +533,7 @@ export const usePromptStore = defineStore('prompts', () => {
     item.name = input.name.trim() || item.name;
     item.prompt = input.prompt.trim();
     item.charReplacement = input.charReplacement?.trim() || '';
-    item.renderMode = input.domain === 'theater' ? input.renderMode ?? previousRenderMode ?? 'markdown' : undefined;
+    item.renderMode = input.domain === 'theater' ? (input.renderMode ?? previousRenderMode ?? 'markdown') : undefined;
     item.userReplacement = input.userReplacement?.trim() || '';
     item.updatedAt = nowIso();
     return item;
@@ -641,9 +649,9 @@ export const usePromptStore = defineStore('prompts', () => {
 
   function rehydrateFromSettings() {
     data.value = validateInplace(PromptSettingsSchema, _.get(extension_settings, promptField, {}));
-  ensureRegisteredPromptDefaults(data.value);
-  ensureDefaultTypePrompts(data.value);
-  ensureTheaterTypePromptRenderModes(data.value);
+    ensureRegisteredPromptDefaults(data.value);
+    ensureDefaultTypePrompts(data.value);
+    ensureTheaterTypePromptRenderModes(data.value);
   }
 
   return {

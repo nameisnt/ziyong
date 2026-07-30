@@ -57,7 +57,10 @@
         <i class="fa-solid fa-rotate-right"></i>
         <span>{{ t`新一局` }}</span>
       </button>
-      <InfoHint :label="t`五子棋说明`" :text="t`你执黑先行，横、竖或斜线率先连成五子即可获胜。切换棋盘大小会开始新的一局。`" />
+      <InfoHint
+        :label="t`五子棋说明`"
+        :text="t`你执黑先行，横、竖或斜线率先连成五子即可获胜。切换棋盘大小会开始新的一局。`"
+      />
     </div>
   </section>
 </template>
@@ -118,7 +121,10 @@ const boardStyle = computed(() => ({
 
 function normalizeState(value: GomokuState): GomokuState {
   const dimension = boardSizeOptions.find(option => option.id === value.boardSize)?.dimension ?? 13;
-  if (value.board.length !== dimension * dimension || (value.previous && value.previous.board.length !== dimension * dimension)) {
+  if (
+    value.board.length !== dimension * dimension ||
+    (value.previous && value.previous.board.length !== dimension * dimension)
+  ) {
     return createState(value.blackWins, value.whiteWins, value.boardSize);
   }
   return value;
@@ -198,11 +204,16 @@ function countLine(board: Cell[], index: number, color: Cell, dx: number, dy: nu
 }
 
 function hasFive(board: Cell[], index: number, color: Cell) {
-  return [[1, 0], [0, 1], [1, 1], [1, -1]].some(([dx, dy]) => countLine(board, index, color, dx, dy) >= 5);
+  return [
+    [1, 0],
+    [0, 1],
+    [1, 1],
+    [1, -1],
+  ].some(([dx, dy]) => countLine(board, index, color, dx, dy) >= 5);
 }
 
 function emptyCells(board: Cell[]) {
-  return board.map((cell, index) => cell ? -1 : index).filter(index => index >= 0);
+  return board.map((cell, index) => (cell ? -1 : index)).filter(index => index >= 0);
 }
 
 function tryWinningMove(board: Cell[], color: Cell) {
@@ -320,7 +331,9 @@ function placeBlack(index: number) {
 
 .pc-gomoku-cell[data-stone='2'] .pc-gomoku-stone {
   background: var(--pc-surface);
-  box-shadow: inset 0 0 0 1px var(--pc-border), 0 2px 5px rgba(0, 0, 0, 0.14);
+  box-shadow:
+    inset 0 0 0 1px var(--pc-border),
+    0 2px 5px rgba(0, 0, 0, 0.14);
 }
 
 .pc-gomoku-cell[data-last='true'] .pc-gomoku-stone {

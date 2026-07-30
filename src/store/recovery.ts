@@ -23,9 +23,11 @@ export const useRecoveryStore = defineStore('recovery', () => {
     { deep: true },
   );
 
-  const entries = computed(() => Object.values(data.value).sort((left, right) => (
-    new Date(right.createdAt).getTime() - new Date(left.createdAt).getTime()
-  )));
+  const entries = computed(() =>
+    Object.values(data.value).sort(
+      (left, right) => new Date(right.createdAt).getTime() - new Date(left.createdAt).getTime(),
+    ),
+  );
 
   async function setRecovery(item: PendingVisibilityRecovery) {
     data.value = {

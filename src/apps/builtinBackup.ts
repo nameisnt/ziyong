@@ -114,11 +114,7 @@ export function createGenerationTasksBackupDomain(): PhoneBackupDomain {
     },
     importData: data => {
       const scopes =
-        data
-        && typeof data === 'object'
-        && 'scopes' in data
-        && data.scopes
-        && typeof data.scopes === 'object'
+        data && typeof data === 'object' && 'scopes' in data && data.scopes && typeof data.scopes === 'object'
           ? Object.entries(data.scopes)
           : [];
       const tasks = scopes.flatMap(([scopeKey, scope]) =>

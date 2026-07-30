@@ -31,15 +31,18 @@ export interface CatalogModalItem {
   title: string;
 }
 
-const props = withDefaults(defineProps<{
-  activeId?: string;
-  items: CatalogModalItem[];
-  open: boolean;
-  title?: string;
-}>(), {
-  activeId: '',
-  title: '目录',
-});
+const props = withDefaults(
+  defineProps<{
+    activeId?: string;
+    items: CatalogModalItem[];
+    open: boolean;
+    title?: string;
+  }>(),
+  {
+    activeId: '',
+    title: '目录',
+  },
+);
 
 const emit = defineEmits<{
   close: [];

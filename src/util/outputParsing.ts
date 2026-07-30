@@ -27,22 +27,32 @@ function extractRootBlock(raw: string, rootPath?: string) {
   const normalized = stripOutputCodeFence(raw);
   const root = rootPath?.trim();
   if (!root) return normalized;
-  const match = normalized.match(new RegExp(`<${escapeRegExp(root)}(?:\\s[^>]*)?>[\\s\\S]*?</${escapeRegExp(root)}>`, 'i'));
+  const match = normalized.match(
+    new RegExp(`<${escapeRegExp(root)}(?:\\s[^>]*)?>[\\s\\S]*?</${escapeRegExp(root)}>`, 'i'),
+  );
   return match?.[0] || '';
 }
 
 function serializeInnerMarkup(element: Element) {
   if (element instanceof HTMLElement) return element.innerHTML.trim();
   const serializer = new XMLSerializer();
-  return Array.from(element.childNodes).map(node => serializer.serializeToString(node)).join('').trim();
+  return Array.from(element.childNodes)
+    .map(node => serializer.serializeToString(node))
+    .join('')
+    .trim();
 }
 
 function xmlChildElements(parent: Element, path: string) {
-  const segments = path.split('/').map(item => item.trim()).filter(Boolean);
+  const segments = path
+    .split('/')
+    .map(item => item.trim())
+    .filter(Boolean);
   let current = [parent];
   if (segments[0]?.toLowerCase() === parent.tagName.toLowerCase()) segments.shift();
   segments.forEach(segment => {
-    current = current.flatMap(node => Array.from(node.children).filter(child => child.tagName.toLowerCase() === segment.toLowerCase()));
+    current = current.flatMap(node =>
+      Array.from(node.children).filter(child => child.tagName.toLowerCase() === segment.toLowerCase()),
+    );
   });
   return current;
 }
@@ -52,7 +62,10 @@ function readXmlValue(parent: Element, path: string, extraction: PhoneOutputPars
   if (!normalized || normalized === '#text') return parent.textContent?.trim() || '';
   if (normalized.startsWith('@')) return parent.getAttribute(normalized.slice(1))?.trim() || '';
 
-  const segments = normalized.split('/').map(item => item.trim()).filter(Boolean);
+  const segments = normalized
+    .split('/')
+    .map(item => item.trim())
+    .filter(Boolean);
   const tail = segments.at(-1) || '';
   if (tail.startsWith('@')) {
     const ownerPath = segments.slice(0, -1).join('/');
@@ -69,9 +82,15 @@ function splitListValue(value: string, separator?: string) {
   if (!value.trim()) return [];
   if (!separator) return [value.trim()];
   try {
-    return value.split(new RegExp(separator, 'g')).map(item => item.trim()).filter(Boolean);
+    return value
+      .split(new RegExp(separator, 'g'))
+      .map(item => item.trim())
+      .filter(Boolean);
   } catch {
-    return value.split(separator).map(item => item.trim()).filter(Boolean);
+    return value
+      .split(separator)
+      .map(item => item.trim())
+      .filter(Boolean);
   }
 }
 
@@ -95,9 +114,10 @@ function parseXmlFields(
 
     if (field.kind === 'text-list') {
       const nodes = xmlChildElements(parent, field.defaultPath);
-      const values = nodes.length > 1
-        ? nodes.flatMap(node => splitListValue(node.textContent?.trim() || '', field.separator))
-        : splitListValue(nodes[0]?.textContent?.trim() || '', field.separator);
+      const values =
+        nodes.length > 1
+          ? nodes.flatMap(node => splitListValue(node.textContent?.trim() || '', field.separator))
+          : splitListValue(nodes[0]?.textContent?.trim() || '', field.separator);
       if (field.required && !values.length) {
         errors.push(`缺少必填字段「${field.label}」(<${field.defaultPath}>)`);
       }
@@ -132,11 +152,7 @@ function getJsonPath(source: unknown, path: string) {
     }, source);
 }
 
-function parseJsonFields(
-  source: unknown,
-  fields: PhoneOutputParserField[],
-  errors: string[],
-): Record<string, unknown> {
+function parseJsonFields(source: unknown, fields: PhoneOutputParserField[], errors: string[]): Record<string, unknown> {
   const result: Record<string, unknown> = {};
   fields.forEach(field => {
     const value = getJsonPath(source, field.defaultPath);
@@ -178,7 +194,9 @@ function parseLabelFields(raw: string, config: PhoneOutputParserDefinition, erro
         ? { field, labelStart: match.index, valueStart: match.index + match[0].length }
         : { field, labelStart: -1, valueStart: -1 };
     });
-  const found = positions.filter(item => item.valueStart >= 0).sort((left, right) => left.valueStart - right.valueStart);
+  const found = positions
+    .filter(item => item.valueStart >= 0)
+    .sort((left, right) => left.valueStart - right.valueStart);
   const result: Record<string, unknown> = {};
   config.fields.forEach(field => {
     if (field.kind !== 'text') {
@@ -187,10 +205,15 @@ function parseLabelFields(raw: string, config: PhoneOutputParserDefinition, erro
     }
     const currentIndex = found.findIndex(item => item.field.key === field.key);
     const position = positions.find(item => item.field.key === field.key);
-    const end = currentIndex >= 0 && currentIndex < found.length - 1 ? found[currentIndex + 1]!.labelStart : source.length;
-    const value = position && position.valueStart >= 0
-      ? source.slice(position.valueStart, end).replace(/<\/[^>]+>\s*$/, '').trim()
-      : '';
+    const end =
+      currentIndex >= 0 && currentIndex < found.length - 1 ? found[currentIndex + 1]!.labelStart : source.length;
+    const value =
+      position && position.valueStart >= 0
+        ? source
+            .slice(position.valueStart, end)
+            .replace(/<\/[^>]+>\s*$/, '')
+            .trim()
+        : '';
     if (field.required && !value) {
       errors.push(`缺少必填字段「${field.label}」（应使用“${field.defaultPath}：”）`);
     }
@@ -218,9 +241,7 @@ function getOutputCandidates(raw: string, config: PhoneOutputParserDefinition) {
   }
   if (config.kind === 'json') return extractJsonOutputCandidates(raw);
   const rootName = config.rootPath?.trim();
-  return rootName
-    ? extractTaggedOutputCandidates(raw, rootName)
-    : [{ index: 0, raw: stripOutputCodeFence(raw) }];
+  return rootName ? extractTaggedOutputCandidates(raw, rootName) : [{ index: 0, raw: stripOutputCodeFence(raw) }];
 }
 
 function parseSingleOutputWithConfig(raw: string, config: PhoneOutputParserDefinition): DeclarativeParseResult {
@@ -241,7 +262,9 @@ function parseSingleOutputWithConfig(raw: string, config: PhoneOutputParserDefin
       if (document.querySelector('parsererror')) {
         const htmlDocument = parser.parseFromString(rootBlock, 'text/html');
         const rootTag = (config.rootPath || 'result').toLowerCase();
-        const root = Array.from(htmlDocument.body.querySelectorAll('*')).find(item => item.tagName.toLowerCase() === rootTag);
+        const root = Array.from(htmlDocument.body.querySelectorAll('*')).find(
+          item => item.tagName.toLowerCase() === rootTag,
+        );
         if (!root) return { ok: false, warnings: ['XML 标签未正确闭合或嵌套，无法识别根节点'] };
         warnings.push('XML 标签未完全闭合或嵌套不规范，已按标签边界兼容解析');
         data = parseXmlFields(root, config.fields, errors, warnings);
@@ -289,9 +312,8 @@ export function parseOutputWithConfig(raw: string, config: PhoneOutputParserDefi
     config.kind === 'json' ? ' JSON ' : ` <${rootName || 'result'}> `,
   );
   if (selected) {
-    const incompleteWarning = rootName && config.kind !== 'json'
-      ? getIncompleteTaggedRootWarning(raw, rootName, candidates.length)
-      : '';
+    const incompleteWarning =
+      rootName && config.kind !== 'json' ? getIncompleteTaggedRootWarning(raw, rootName, candidates.length) : '';
     const warnings = [...new Set([...selected.warnings, incompleteWarning].filter(Boolean))];
     return selected.ok
       ? { data: selected.data as Record<string, unknown>, ok: true, warnings }
@@ -356,9 +378,8 @@ export function parseConfiguredOutput<T>(
     };
   }
 
-  const incompleteWarning = rootName && parser.kind !== 'json'
-    ? getIncompleteTaggedRootWarning(raw, rootName, candidates.length)
-    : '';
+  const incompleteWarning =
+    rootName && parser.kind !== 'json' ? getIncompleteTaggedRootWarning(raw, rootName, candidates.length) : '';
   if (selected.ok) {
     return {
       data: selected.data as T,

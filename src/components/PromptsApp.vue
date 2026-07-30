@@ -4,12 +4,7 @@
       <div class="pc-prompts-hero">
         <div class="pc-hero-actions">
           <div ref="promptMenuRoot" class="pc-prompts-menu-anchor">
-            <button
-              class="pc-icon-btn"
-              type="button"
-              :title="t`切换分类`"
-              @click="promptMenuOpen = !promptMenuOpen"
-            >
+            <button class="pc-icon-btn" type="button" :title="t`切换分类`" @click="promptMenuOpen = !promptMenuOpen">
               <i class="fa-solid fa-bars"></i>
             </button>
             <div v-if="promptMenuOpen" class="pc-prompts-menu">
@@ -62,11 +57,7 @@
           <strong>{{ t`输出与解析` }}</strong>
         </div>
 
-        <article
-          v-for="item in outputRuleCards"
-          :key="item.id"
-          class="pc-card pc-output-rule-card"
-        >
+        <article v-for="item in outputRuleCards" :key="item.id" class="pc-card pc-output-rule-card">
           <button type="button" @click="openOutputRule(item.id)">
             <span>
               <strong>{{ item.label }}</strong>
@@ -138,7 +129,11 @@
             </div>
           </div>
 
-          <EmptyState v-if="isPhraseGroupOpen(group.id) && !group.phrases.length" compact :title="t`这个分组还没有短语。`" />
+          <EmptyState
+            v-if="isPhraseGroupOpen(group.id) && !group.phrases.length"
+            compact
+            :title="t`这个分组还没有短语。`"
+          />
 
           <div v-else-if="isPhraseGroupOpen(group.id)" class="pc-phrase-list">
             <article v-for="phrase in group.phrases" :key="phrase.id" class="pc-phrase-card">
@@ -189,7 +184,11 @@
             </div>
           </div>
 
-          <EmptyState v-if="isTemplateGroupOpen(group.id) && !group.phrases.length" compact :title="t`这个分组还没有模板。`" />
+          <EmptyState
+            v-if="isTemplateGroupOpen(group.id) && !group.phrases.length"
+            compact
+            :title="t`这个分组还没有模板。`"
+          />
 
           <div v-else-if="isTemplateGroupOpen(group.id)" class="pc-phrase-list">
             <article v-for="template in group.phrases" :key="template.id" class="pc-phrase-card">
@@ -215,7 +214,11 @@
       <div class="pc-editor-card">
         <span class="pc-kicker">{{ editingAppPrompt.appLabel }}</span>
         <h2>{{ editingAppPrompt.label }}</h2>
-        <textarea v-model="appPromptDraft" class="pc-area pc-app-prompt-editor-area" :placeholder="editingAppPrompt.placeholder"></textarea>
+        <textarea
+          v-model="appPromptDraft"
+          class="pc-area pc-app-prompt-editor-area"
+          :placeholder="editingAppPrompt.placeholder"
+        ></textarea>
         <div class="pc-form-actions">
           <button class="pc-soft-btn" type="button" @click="phone.goBack()">{{ t`取消` }}</button>
           <button class="pc-primary-btn" type="button" @click="submitAppPrompt">{{ t`保存` }}</button>
@@ -283,7 +286,11 @@
 
           <label class="pc-field-group">
             <span>{{ t`测试输出` }}</span>
-            <textarea v-model="outputDraft.sample" class="pc-area compact" :placeholder="t`粘贴一段 AI 输出`"></textarea>
+            <textarea
+              v-model="outputDraft.sample"
+              class="pc-area compact"
+              :placeholder="t`粘贴一段 AI 输出`"
+            ></textarea>
           </label>
           <button class="pc-soft-btn" type="button" @click="testOutputParser">
             {{ t`测试解析` }}
@@ -444,13 +451,29 @@
             {{ t`导出所选` }}
           </button>
         </div>
-        <input ref="transferInputEl" class="pc-hidden-input" type="file" accept="application/json,.json" @change="onTransferSelected" />
+        <input
+          ref="transferInputEl"
+          class="pc-hidden-input"
+          type="file"
+          accept="application/json,.json"
+          @change="onTransferSelected"
+        />
       </div>
     </section>
 
     <Teleport to=".pc-phone-shell">
-      <div v-if="activeAppPromptGroup && activeAppPrompt" class="pc-prompt-detail-backdrop" role="presentation" @click.self="closeAppPromptDetail">
-        <section class="pc-section-card pc-prompt-detail-dialog" role="dialog" aria-modal="true" :aria-label="activeAppPrompt.label">
+      <div
+        v-if="activeAppPromptGroup && activeAppPrompt"
+        class="pc-prompt-detail-backdrop"
+        role="presentation"
+        @click.self="closeAppPromptDetail"
+      >
+        <section
+          class="pc-section-card pc-prompt-detail-dialog"
+          role="dialog"
+          aria-modal="true"
+          :aria-label="activeAppPrompt.label"
+        >
           <header class="pc-prompt-detail-head">
             <div class="pc-app-prompt-dialog-title">
               <span class="pc-app-prompt-icon" :style="{ '--pc-prompt-accent': activeAppPromptGroup.accent }">
@@ -496,8 +519,18 @@
         </section>
       </div>
 
-      <div v-else-if="activeTypePrompt" class="pc-prompt-detail-backdrop" role="presentation" @click.self="closeTypePromptDetail">
-        <section class="pc-section-card pc-prompt-detail-dialog" role="dialog" aria-modal="true" :aria-label="activeTypePrompt.name">
+      <div
+        v-else-if="activeTypePrompt"
+        class="pc-prompt-detail-backdrop"
+        role="presentation"
+        @click.self="closeTypePromptDetail"
+      >
+        <section
+          class="pc-section-card pc-prompt-detail-dialog"
+          role="dialog"
+          aria-modal="true"
+          :aria-label="activeTypePrompt.name"
+        >
           <header class="pc-prompt-detail-head">
             <div>
               <span class="pc-kicker">{{ activeTypePromptDomainLabel }}</span>
@@ -535,7 +568,11 @@
 
 <script setup lang="ts">
 import EmptyState from '@/components/EmptyState.vue';
-import { getRegisteredPhoneApps, type PhoneOutputParserDefinition, type PhonePromptDefinition } from '@/core/appRegistry';
+import {
+  getRegisteredPhoneApps,
+  type PhoneOutputParserDefinition,
+  type PhonePromptDefinition,
+} from '@/core/appRegistry';
 import { usePhoneStore } from '@/store/phone';
 import { usePromptStore, type PromptTransferSelection, type QuickPhrase } from '@/store/prompts';
 import { parseOutputWithConfig } from '@/util/outputParsing';
@@ -636,24 +673,26 @@ function createAppPromptCard(
     openKey: `${kind}:${definition.key}`,
     outputFormats: definition.outputFormats ?? [],
     placeholder: `填写${definition.label}的默认提示词`,
-    value: kind === 'app'
-      ? appPrompts.value[definition.key] ?? ''
-      : specialPrompts.value[definition.key] ?? '',
+    value: kind === 'app' ? (appPrompts.value[definition.key] ?? '') : (specialPrompts.value[definition.key] ?? ''),
   };
 }
 
-const appPromptGroups = computed(() => getRegisteredPhoneApps()
-  .map(app => ({
-    accent: app.accent,
-    appId: app.id,
-    icon: app.icon,
-    items: [
-      ...(app.promptDefinitions ?? []).map(definition => createAppPromptCard(app.id, app.name, 'app', definition)),
-      ...(app.specialPromptDefinitions ?? []).map(definition => createAppPromptCard(app.id, app.name, 'special', definition)),
-    ],
-    label: app.name,
-  }))
-  .filter(group => group.items.length));
+const appPromptGroups = computed(() =>
+  getRegisteredPhoneApps()
+    .map(app => ({
+      accent: app.accent,
+      appId: app.id,
+      icon: app.icon,
+      items: [
+        ...(app.promptDefinitions ?? []).map(definition => createAppPromptCard(app.id, app.name, 'app', definition)),
+        ...(app.specialPromptDefinitions ?? []).map(definition =>
+          createAppPromptCard(app.id, app.name, 'special', definition),
+        ),
+      ],
+      label: app.name,
+    }))
+    .filter(group => group.items.length),
+);
 const appPromptCards = computed(() => appPromptGroups.value.flatMap(group => group.items));
 const promptMenuItems: Array<{ key: PromptTab; label: string }> = [
   { key: 'app', label: 'App 提示词' },
@@ -673,13 +712,14 @@ const outputRuleCards = computed(() => {
     const override = outputRules.value[definition.id];
     const formatCustomized = Boolean(override?.outputFormat);
     const parserCustomized = Boolean(override?.parserEnabled);
-    const status = formatCustomized && parserCustomized
-      ? '格式与解析已自定义'
-      : formatCustomized
-        ? '格式已修改 · 默认解析'
-        : parserCustomized
-          ? '解析已自定义'
-          : '默认规则';
+    const status =
+      formatCustomized && parserCustomized
+        ? '格式与解析已自定义'
+        : formatCustomized
+          ? '格式已修改 · 默认解析'
+          : parserCustomized
+            ? '解析已自定义'
+            : '默认规则';
     const owner = owners.get(definition.id) || '';
     return {
       ...definition,
@@ -689,45 +729,62 @@ const outputRuleCards = computed(() => {
   });
 });
 const fallbackTypeDomain = computed(() => typePromptDomains.value[0]?.key ?? '');
-const typePromptDomainCards = computed(() => typePromptDomains.value.map(domain => ({
-  ...domain,
-  emptyLabel: domain.emptyLabel || `还没有${domain.label}类型提示词`,
-  items: typePrompts.value.filter(item => item.domain === domain.key),
-})));
-const activeTypePrompt = computed(() => (
-  activeTypePromptId.value ? prompts.getTypePrompt(activeTypePromptId.value) : null
-));
-const activeAppPromptGroup = computed(() => (
-  appPromptGroups.value.find(group => group.appId === activeAppPromptGroupId.value) ?? null
-));
-const activeAppPrompt = computed(() => (
-  activeAppPromptGroup.value?.items.find(item => item.openKey === activeAppPromptOpenKey.value)
-  ?? activeAppPromptGroup.value?.items[0]
-  ?? null
-));
-const activeTypePromptDomainLabel = computed(() => (
-  typePromptDomains.value.find(domain => domain.key === activeTypePrompt.value?.domain)?.label || '类型提示词'
-));
+const typePromptDomainCards = computed(() =>
+  typePromptDomains.value.map(domain => ({
+    ...domain,
+    emptyLabel: domain.emptyLabel || `还没有${domain.label}类型提示词`,
+    items: typePrompts.value.filter(item => item.domain === domain.key),
+  })),
+);
+const activeTypePrompt = computed(() =>
+  activeTypePromptId.value ? prompts.getTypePrompt(activeTypePromptId.value) : null,
+);
+const activeAppPromptGroup = computed(
+  () => appPromptGroups.value.find(group => group.appId === activeAppPromptGroupId.value) ?? null,
+);
+const activeAppPrompt = computed(
+  () =>
+    activeAppPromptGroup.value?.items.find(item => item.openKey === activeAppPromptOpenKey.value) ??
+    activeAppPromptGroup.value?.items[0] ??
+    null,
+);
+const activeTypePromptDomainLabel = computed(
+  () => typePromptDomains.value.find(domain => domain.key === activeTypePrompt.value?.domain)?.label || '类型提示词',
+);
 
-const editingAppPrompt = computed(() => (
+const editingAppPrompt = computed(() =>
   route.value.params?.openKey
-    ? appPromptCards.value.find(item => item.openKey === route.value.params?.openKey) ?? null
-    : null
-));
-const editingTypePrompt = computed(() => (route.value.params?.promptId ? prompts.getTypePrompt(route.value.params.promptId) : null));
-const editingGroup = computed(() => (route.value.params?.groupId ? prompts.getQuickPhraseGroup(route.value.params.groupId) : null));
-const phraseGroup = computed(() => (route.value.params?.groupId ? prompts.getQuickPhraseGroup(route.value.params.groupId) : null));
-const editingPhrase = computed<QuickPhrase | null>(() => phraseGroup.value?.phrases.find(item => item.id === route.value.params?.phraseId) ?? null);
-const editingTemplateGroup = computed(() => (route.value.params?.groupId ? prompts.getQuickTemplateGroup(route.value.params.groupId) : null));
-const templateGroup = computed(() => (route.value.params?.groupId ? prompts.getQuickTemplateGroup(route.value.params.groupId) : null));
-const editingTemplate = computed<QuickPhrase | null>(() => templateGroup.value?.phrases.find(item => item.id === route.value.params?.phraseId) ?? null);
-const editingOutputDefinition = computed(() => (
-  route.value.params?.outputId ? prompts.getOutputFormatDefinition(route.value.params.outputId) : null
-));
+    ? (appPromptCards.value.find(item => item.openKey === route.value.params?.openKey) ?? null)
+    : null,
+);
+const editingTypePrompt = computed(() =>
+  route.value.params?.promptId ? prompts.getTypePrompt(route.value.params.promptId) : null,
+);
+const editingGroup = computed(() =>
+  route.value.params?.groupId ? prompts.getQuickPhraseGroup(route.value.params.groupId) : null,
+);
+const phraseGroup = computed(() =>
+  route.value.params?.groupId ? prompts.getQuickPhraseGroup(route.value.params.groupId) : null,
+);
+const editingPhrase = computed<QuickPhrase | null>(
+  () => phraseGroup.value?.phrases.find(item => item.id === route.value.params?.phraseId) ?? null,
+);
+const editingTemplateGroup = computed(() =>
+  route.value.params?.groupId ? prompts.getQuickTemplateGroup(route.value.params.groupId) : null,
+);
+const templateGroup = computed(() =>
+  route.value.params?.groupId ? prompts.getQuickTemplateGroup(route.value.params.groupId) : null,
+);
+const editingTemplate = computed<QuickPhrase | null>(
+  () => templateGroup.value?.phrases.find(item => item.id === route.value.params?.phraseId) ?? null,
+);
+const editingOutputDefinition = computed(() =>
+  route.value.params?.outputId ? prompts.getOutputFormatDefinition(route.value.params.outputId) : null,
+);
 const canUseLabelParser = computed(() => outputDraft.parser.fields.every(field => field.kind === 'text'));
-const canUsePlainTextParser = computed(() => (
-  outputDraft.parser.fields.length === 1 && outputDraft.parser.fields[0]?.kind === 'text'
-));
+const canUsePlainTextParser = computed(
+  () => outputDraft.parser.fields.length === 1 && outputDraft.parser.fields[0]?.kind === 'text',
+);
 
 function cloneParser(parser: PhoneOutputParserDefinition) {
   return structuredClone(parser);
@@ -915,15 +972,17 @@ function submitOutputRule() {
   const definition = editingOutputDefinition.value;
   if (!definition || !outputDraft.outputFormat.trim()) return;
   if (outputDraft.parserEnabled) {
-    const missingPath = outputDraft.parser.fields.some(field => (
-      !field.defaultPath.trim()
-      || field.children?.some(child => !child.defaultPath.trim())
-    ));
+    const missingPath = outputDraft.parser.fields.some(
+      field => !field.defaultPath.trim() || field.children?.some(child => !child.defaultPath.trim()),
+    );
     if (missingPath) {
       toastr.warning('解析字段路径不能为空');
       return;
     }
-    if (outputDraft.parser.kind === 'text' && outputDraft.parser.fields.filter(field => field.kind === 'text').length !== 1) {
+    if (
+      outputDraft.parser.kind === 'text' &&
+      outputDraft.parser.fields.filter(field => field.kind === 'text').length !== 1
+    ) {
       toastr.warning('纯文本解析只支持一个文本字段');
       return;
     }
@@ -1118,10 +1177,13 @@ async function removeTypePrompt(promptId: string) {
 
 async function removeQuickPhraseGroup(groupId: string) {
   const group = prompts.getQuickPhraseGroup(groupId);
-  const shouldDelete = await phone.confirmNotice(`要删除短语分组“${group?.name || '未命名分组'}”吗？组内短语也会一起删除。`, {
-    confirmLabel: '删除',
-    kind: 'warning',
-  });
+  const shouldDelete = await phone.confirmNotice(
+    `要删除短语分组“${group?.name || '未命名分组'}”吗？组内短语也会一起删除。`,
+    {
+      confirmLabel: '删除',
+      kind: 'warning',
+    },
+  );
   if (!shouldDelete) return;
   prompts.deleteQuickPhraseGroup(groupId);
   toastr.success('已删除短语分组');
@@ -1131,10 +1193,13 @@ async function removeQuickPhrase(groupId: string, phraseId: string) {
   const group = prompts.getQuickPhraseGroup(groupId);
   const phrase = group?.phrases.find(item => item.id === phraseId) ?? null;
   const preview = phrase?.text.trim().slice(0, 18) || '这条短语';
-  const shouldDelete = await phone.confirmNotice(`要删除短语“${preview}${phrase?.text.length && phrase.text.length > 18 ? '...' : ''}”吗？`, {
-    confirmLabel: '删除',
-    kind: 'warning',
-  });
+  const shouldDelete = await phone.confirmNotice(
+    `要删除短语“${preview}${phrase?.text.length && phrase.text.length > 18 ? '...' : ''}”吗？`,
+    {
+      confirmLabel: '删除',
+      kind: 'warning',
+    },
+  );
   if (!shouldDelete) return;
   prompts.deleteQuickPhrase(groupId, phraseId);
   toastr.success('已删除快速短语');
@@ -1142,10 +1207,13 @@ async function removeQuickPhrase(groupId: string, phraseId: string) {
 
 async function removeQuickTemplateGroup(groupId: string) {
   const group = prompts.getQuickTemplateGroup(groupId);
-  const shouldDelete = await phone.confirmNotice(`要删除模板分组“${group?.name || '未命名分组'}”吗？组内模板也会一起删除。`, {
-    confirmLabel: '删除',
-    kind: 'warning',
-  });
+  const shouldDelete = await phone.confirmNotice(
+    `要删除模板分组“${group?.name || '未命名分组'}”吗？组内模板也会一起删除。`,
+    {
+      confirmLabel: '删除',
+      kind: 'warning',
+    },
+  );
   if (!shouldDelete) return;
   prompts.deleteQuickTemplateGroup(groupId);
   toastr.success('已删除模板分组');
@@ -1155,20 +1223,26 @@ async function removeQuickTemplate(groupId: string, phraseId: string) {
   const group = prompts.getQuickTemplateGroup(groupId);
   const template = group?.phrases.find(item => item.id === phraseId) ?? null;
   const preview = template?.text.trim().slice(0, 18) || '这个模板';
-  const shouldDelete = await phone.confirmNotice(`要删除模板“${preview}${template?.text.length && template.text.length > 18 ? '...' : ''}”吗？`, {
-    confirmLabel: '删除',
-    kind: 'warning',
-  });
+  const shouldDelete = await phone.confirmNotice(
+    `要删除模板“${preview}${template?.text.length && template.text.length > 18 ? '...' : ''}”吗？`,
+    {
+      confirmLabel: '删除',
+      kind: 'warning',
+    },
+  );
   if (!shouldDelete) return;
   prompts.deleteQuickTemplate(groupId, phraseId);
   toastr.success('已删除模板');
 }
 
 async function resetDefaults() {
-  const shouldReset = await phone.confirmNotice('要恢复默认提示词配置吗？当前 App 提示词、输出与解析、类型提示词和快速短语都会被默认值覆盖。', {
-    confirmLabel: '恢复',
-    kind: 'warning',
-  });
+  const shouldReset = await phone.confirmNotice(
+    '要恢复默认提示词配置吗？当前 App 提示词、输出与解析、类型提示词和快速短语都会被默认值覆盖。',
+    {
+      confirmLabel: '恢复',
+      kind: 'warning',
+    },
+  );
   if (!shouldReset) return;
   prompts.resetDefaults();
   toastr.success('已恢复默认提示词配置');
@@ -1869,7 +1943,4 @@ async function copyText(text: string, successMessage: string) {
   min-width: 0;
   padding: 0 8px;
 }
-
 </style>
-
-

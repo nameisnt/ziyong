@@ -1,9 +1,18 @@
 <template>
   <section class="pc-minigame-panel">
     <section class="pc-minigame-stats">
-      <article><span>{{ t`棋盘` }}</span><strong>{{ dimension }}×{{ dimension }}</strong></article>
-      <article><span>{{ t`步数` }}</span><strong>{{ state.moves }}</strong></article>
-      <article><span>{{ t`最佳` }}</span><strong>{{ currentBest || '-' }}</strong></article>
+      <article>
+        <span>{{ t`棋盘` }}</span
+        ><strong>{{ dimension }}×{{ dimension }}</strong>
+      </article>
+      <article>
+        <span>{{ t`步数` }}</span
+        ><strong>{{ state.moves }}</strong>
+      </article>
+      <article>
+        <span>{{ t`最佳` }}</span
+        ><strong>{{ currentBest || '-' }}</strong>
+      </article>
     </section>
 
     <div class="pc-minigame-segment pc-minigame-segment-three" role="group" aria-label="数字华容道棋盘大小">
@@ -44,7 +53,12 @@
       <button class="pc-primary-btn" type="button" @click="newPuzzle">
         <i class="fa-solid fa-shuffle"></i><span>{{ t`新一局` }}</span>
       </button>
-      <InfoHint :label="t`数字华容道说明`" :text="t`点击空格旁的数字移动方块，按从左到右、从上到下的顺序排列全部数字。棋盘通过合法移动洗牌，因此每一局都保证可解。`" />
+      <InfoHint
+        :label="t`数字华容道说明`"
+        :text="
+          t`点击空格旁的数字移动方块，按从左到右、从上到下的顺序排列全部数字。棋盘通过合法移动洗牌，因此每一局都保证可解。`
+        "
+      />
     </div>
   </section>
 </template>
@@ -117,14 +131,14 @@ function createState(boardSize: BoardSize = 'small', best = { large: 0, medium: 
 
 function normalizeState(value: SlidingPuzzleState) {
   const expected = dimensionFor(value.size) ** 2;
-  return value.board.length === expected && value.initial.length === expected ? value : createState(value.size, value.best);
+  return value.board.length === expected && value.initial.length === expected
+    ? value
+    : createState(value.size, value.best);
 }
 
-const state = ref<SlidingPuzzleState>(normalizeState(readMiniGameSettings(
-  miniGameFields.slidingPuzzle,
-  SlidingPuzzleSchema,
-  () => createState(),
-)));
+const state = ref<SlidingPuzzleState>(
+  normalizeState(readMiniGameSettings(miniGameFields.slidingPuzzle, SlidingPuzzleSchema, () => createState())),
+);
 const dimension = computed(() => dimensionFor(state.value.size));
 const blankIndex = computed(() => state.value.board.indexOf(0));
 const movableIndices = computed(() => new Set(adjacentIndices(blankIndex.value, dimension.value)));

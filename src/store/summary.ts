@@ -21,7 +21,8 @@ export const useSummaryStore = defineStore('summary', () => {
   });
 
   const books = computed(() => data.value.books);
-  const { createFailedDraft, deleteFailedDraft, failedDrafts, getFailedDraft, updateFailedDraft } = createFailedDraftCollection(data, 'summary_failed');
+  const { createFailedDraft, deleteFailedDraft, failedDrafts, getFailedDraft, updateFailedDraft } =
+    createFailedDraftCollection(data, 'summary_failed');
 
   function getBook(bookId: string) {
     return books.value.find(book => book.id === bookId) ?? null;

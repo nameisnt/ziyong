@@ -1,9 +1,5 @@
 import ScenePlannerApp from './ScenePlannerApp.vue';
-import {
-  createScenePlannerGenerationAdapter,
-  scenePlannerOutputFormat,
-  scenePlannerOutputParser,
-} from './generation';
+import { createScenePlannerGenerationAdapter, scenePlannerOutputFormat, scenePlannerOutputParser } from './generation';
 import {
   getScenePlanStatusLabel,
   scenePlannerField,
@@ -48,7 +44,9 @@ function planContent(plan: ScenePlan) {
     plan.prompt ? `下一章提示词：\n${plan.prompt}` : '',
     plan.styleNote ? `文风要求：${plan.styleNote}` : '',
     plan.avoidNote ? `需要避免：${plan.avoidNote}` : '',
-  ].filter(Boolean).join('\n\n');
+  ]
+    .filter(Boolean)
+    .join('\n\n');
 }
 
 function createScenePlannerArchiveDomain(raw: unknown): PhoneArchiveDomain {
@@ -71,7 +69,10 @@ function createScenePlannerArchiveDomain(raw: unknown): PhoneArchiveDomain {
 }
 
 function createOverview(plans: ScenePlan[], scopeCount: number): PhoneContentOverview {
-  const chars = plans.reduce((sum, plan) => sum + plan.title.length + plan.brief.length + plan.analysis.length + plan.prompt.length, 0);
+  const chars = plans.reduce(
+    (sum, plan) => sum + plan.title.length + plan.brief.length + plan.analysis.length + plan.prompt.length,
+    0,
+  );
   return {
     averageChars: plans.length ? Math.round(chars / plans.length) : 0,
     chars,
@@ -153,38 +154,47 @@ export default definePhoneApp({
     field: scenePlannerField,
     collect: createScenePlannerArchiveDomain,
   },
-  backupDomains: [{
-    key: 'scene-planner',
-    exportData: currentScopeKey => readChatScopedEnvelope(scenePlannerField, currentScopeKey || getCurrentChatScopeKey()),
-    importData: data => {
-      _.set(extension_settings, scenePlannerField, data);
+  backupDomains: [
+    {
+      key: 'scene-planner',
+      exportData: currentScopeKey =>
+        readChatScopedEnvelope(scenePlannerField, currentScopeKey || getCurrentChatScopeKey()),
+      importData: data => {
+        _.set(extension_settings, scenePlannerField, data);
+      },
+      rehydrateFromSettings: () => useScenePlannerStore().rehydrateFromSettings(),
     },
-    rehydrateFromSettings: () => useScenePlannerStore().rehydrateFromSettings(),
-  }],
+  ],
   component: ScenePlannerApp,
   contentStatsProvider: createScenePlannerContentStats,
-  generationProvider: () => [{
-    actionId: 'generate',
-    label: '生成提示词',
-    createAdapter: () => createScenePlannerGenerationAdapter(useScenePlannerStore()),
-  }],
-  promptDefinitions: [{
-    key: 'scenePlanner',
-    label: '场景编排',
-    defaultPrompt: [
-      '你是与用户沟通下一章写法的场景编排器。',
-      '先理解用户提供的前情、人物状态、冲突、地点、情绪和推进目标，再给出简洁可确认的编排分析。',
-      '随后生成一份可直接用于续写下一章的完整提示词。',
-      '提示词必须要求直接输出正文，不得要求模型输出大纲或解释。',
-      '不要替用户把结果插入聊天，只生成可复制内容。',
-    ].join('\n'),
-    outputFormats: [{
-      id: 'scene-planner.generate',
-      label: '场景提示词',
-      content: scenePlannerOutputFormat,
-      parser: scenePlannerOutputParser,
-    }],
-  }],
+  generationProvider: () => [
+    {
+      actionId: 'generate',
+      label: '生成提示词',
+      createAdapter: () => createScenePlannerGenerationAdapter(useScenePlannerStore()),
+    },
+  ],
+  promptDefinitions: [
+    {
+      key: 'scenePlanner',
+      label: '场景编排',
+      defaultPrompt: [
+        '你是与用户沟通下一章写法的场景编排器。',
+        '先理解用户提供的前情、人物状态、冲突、地点、情绪和推进目标，再给出简洁可确认的编排分析。',
+        '随后生成一份可直接用于续写下一章的完整提示词。',
+        '提示词必须要求直接输出正文，不得要求模型输出大纲或解释。',
+        '不要替用户把结果插入聊天，只生成可复制内容。',
+      ].join('\n'),
+      outputFormats: [
+        {
+          id: 'scene-planner.generate',
+          label: '场景提示词',
+          content: scenePlannerOutputFormat,
+          parser: scenePlannerOutputParser,
+        },
+      ],
+    },
+  ],
   referenceProvider: createScenePlannerReferenceTree,
   resetCurrentScope: () => useScenePlannerStore().resetCurrentScope(),
   scopeSwitchHandler: scopeKey => useScenePlannerStore().switchScope(scopeKey),

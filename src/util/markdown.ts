@@ -30,7 +30,9 @@ function flushList(lines: string[], output: string[]) {
 }
 
 export function renderMarkdown(value: string) {
-  const source = String(value || '').replace(/\r\n?/g, '\n').trim();
+  const source = String(value || '')
+    .replace(/\r\n?/g, '\n')
+    .trim();
   if (!source) return '';
 
   const output: string[] = [];

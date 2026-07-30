@@ -16,16 +16,36 @@
         <article v-if="activeEntry" class="pc-section-card pc-now-playing">
           <div class="pc-section-head">
             <strong>{{ activeEntry.title }}</strong>
-            <button class="pc-icon-btn" type="button" :title="t`下载`" :aria-label="t`下载`" @click="downloadEntry(activeEntry)">
+            <button
+              class="pc-icon-btn"
+              type="button"
+              :title="t`下载`"
+              :aria-label="t`下载`"
+              @click="downloadEntry(activeEntry)"
+            >
               <i class="fa-solid fa-download"></i>
             </button>
           </div>
           <div class="pc-music-player">
-            <button class="pc-icon-btn" type="button" :title="audioPlaying ? t`暂停` : t`播放`" :aria-label="audioPlaying ? t`暂停` : t`播放`" @click="toggleAudio(activeEntry)">
+            <button
+              class="pc-icon-btn"
+              type="button"
+              :title="audioPlaying ? t`暂停` : t`播放`"
+              :aria-label="audioPlaying ? t`暂停` : t`播放`"
+              @click="toggleAudio(activeEntry)"
+            >
               <i :class="audioPlaying ? 'fa-solid fa-pause' : 'fa-solid fa-play'"></i>
             </button>
             <div class="pc-music-progress">
-              <input class="pc-music-range" type="range" min="0" :max="audioDuration || 1" step="0.1" :value="audioCurrentTime" @input="seekAudio(($event.target as HTMLInputElement).value)" />
+              <input
+                class="pc-music-range"
+                type="range"
+                min="0"
+                :max="audioDuration || 1"
+                step="0.1"
+                :value="audioCurrentTime"
+                @input="seekAudio(($event.target as HTMLInputElement).value)"
+              />
               <div class="pc-music-time">
                 <span>{{ formatAudioTime(audioCurrentTime) }}</span>
                 <span>{{ formatAudioTime(audioDuration) }}</span>
@@ -40,15 +60,31 @@
         </article>
 
         <div v-if="audioEntries.length" class="pc-playlist">
-          <article v-for="entry in audioEntries" :key="entry.id" :class="['pc-track-row', { active: activeAudioId === entry.id }]">
-            <button class="pc-icon-btn" type="button" :title="activeAudioId === entry.id && audioPlaying ? t`暂停` : t`播放`" :aria-label="activeAudioId === entry.id && audioPlaying ? t`暂停` : t`播放`" @click="toggleAudio(entry)">
+          <article
+            v-for="entry in audioEntries"
+            :key="entry.id"
+            :class="['pc-track-row', { active: activeAudioId === entry.id }]"
+          >
+            <button
+              class="pc-icon-btn"
+              type="button"
+              :title="activeAudioId === entry.id && audioPlaying ? t`暂停` : t`播放`"
+              :aria-label="activeAudioId === entry.id && audioPlaying ? t`暂停` : t`播放`"
+              @click="toggleAudio(entry)"
+            >
               <i :class="activeAudioId === entry.id && audioPlaying ? 'fa-solid fa-pause' : 'fa-solid fa-play'"></i>
             </button>
             <button class="pc-track-main" type="button" @click="selectAudio(entry)">
               <strong>{{ entry.title }}</strong>
               <span>{{ entry.note ? t`有歌词` : t`暂无歌词` }}</span>
             </button>
-            <button class="pc-icon-btn" type="button" :title="t`编辑`" :aria-label="t`编辑`" @click="openEditor(entry.id)">
+            <button
+              class="pc-icon-btn"
+              type="button"
+              :title="t`编辑`"
+              :aria-label="t`编辑`"
+              @click="openEditor(entry.id)"
+            >
               <i class="fa-solid fa-pen"></i>
             </button>
           </article>
@@ -64,7 +100,9 @@
         <input class="pc-field" type="file" accept="audio/*" @change="loadFile" />
         <textarea v-model="draft.note" class="pc-area pc-lyrics-area" :placeholder="t`歌词，可留空`"></textarea>
         <div class="pc-form-actions">
-          <button v-if="editingEntry" class="pc-soft-btn danger" type="button" @click="deleteEntry(editingEntry)">{{ t`删除` }}</button>
+          <button v-if="editingEntry" class="pc-soft-btn danger" type="button" @click="deleteEntry(editingEntry)">
+            {{ t`删除` }}
+          </button>
           <button class="pc-soft-btn" type="button" @click="phone.replacePage('root', '音乐')">{{ t`取消` }}</button>
           <button class="pc-primary-btn" type="button" @click="saveDraft">{{ t`保存` }}</button>
         </div>
@@ -107,8 +145,10 @@ const draft = reactive({
 });
 
 const audioEntries = computed(() => entries.value.filter(entry => entry.kind === 'audio'));
-const activeEntry = computed(() => activeAudioId.value ? media.getEntry(activeAudioId.value) : audioEntries.value[0] ?? null);
-const editingEntry = computed(() => route.value.params?.entryId ? media.getEntry(route.value.params.entryId) : null);
+const activeEntry = computed(() =>
+  activeAudioId.value ? media.getEntry(activeAudioId.value) : (audioEntries.value[0] ?? null),
+);
+const editingEntry = computed(() => (route.value.params?.entryId ? media.getEntry(route.value.params.entryId) : null));
 const activeLyrics = computed(() => activeEntry.value?.note.trim() || '');
 
 watch(
@@ -219,9 +259,7 @@ function saveDraft() {
     title: draft.title || '未命名音乐',
     url: draft.url,
   };
-  const entry = editingEntry.value
-    ? media.updateEntry(editingEntry.value.id, input)
-    : media.createEntry(input);
+  const entry = editingEntry.value ? media.updateEntry(editingEntry.value.id, input) : media.createEntry(input);
   if (!entry) return;
   activeAudioId.value = entry.id;
   phone.replacePage('root', '音乐');

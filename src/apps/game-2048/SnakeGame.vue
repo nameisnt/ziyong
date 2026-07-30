@@ -35,12 +35,7 @@
       @pointerdown="onPointerDown"
       @pointerup="onPointerUp"
     >
-      <span
-        v-for="cell in cells"
-        :key="cell.key"
-        class="pc-snake-cell"
-        :data-kind="cell.kind"
-      ></span>
+      <span v-for="cell in cells" :key="cell.key" class="pc-snake-cell" :data-kind="cell.kind"></span>
     </section>
 
     <article v-if="state.status === 'lost' || state.status === 'paused'" class="pc-section-card pc-minigame-message">
@@ -56,7 +51,10 @@
         <i class="fa-solid fa-rotate-right"></i>
         <span>{{ t`重开` }}</span>
       </button>
-      <InfoHint :label="t`贪吃蛇说明`" :text="t`在棋盘上滑动，或使用电脑方向键改变方向。吃到红点会增加长度，撞墙或撞到自己则结束。`" />
+      <InfoHint
+        :label="t`贪吃蛇说明`"
+        :text="t`在棋盘上滑动，或使用电脑方向键改变方向。吃到红点会增加长度，撞墙或撞到自己则结束。`"
+      />
     </div>
   </section>
 </template>
@@ -72,7 +70,18 @@ type SnakeStatus = 'idle' | 'lost' | 'paused' | 'running';
 type Point = { x: number; y: number };
 
 const size = 12;
-const PointSchema = z.object({ x: z.number().int().min(0).max(size - 1), y: z.number().int().min(0).max(size - 1) });
+const PointSchema = z.object({
+  x: z
+    .number()
+    .int()
+    .min(0)
+    .max(size - 1),
+  y: z
+    .number()
+    .int()
+    .min(0)
+    .max(size - 1),
+});
 const SnakeSchema = z.object({
   best: z.number().int().nonnegative().default(0),
   direction: z.enum(['down', 'left', 'right', 'up']).default('right'),
@@ -91,7 +100,11 @@ function initialState(best = 0): SnakeState {
     direction: 'right',
     food: { x: 8, y: 6 },
     score: 0,
-    snake: [{ x: 4, y: 6 }, { x: 3, y: 6 }, { x: 2, y: 6 }],
+    snake: [
+      { x: 4, y: 6 },
+      { x: 3, y: 6 },
+      { x: 2, y: 6 },
+    ],
     speed: 'normal',
     status: 'idle',
   };
@@ -117,9 +130,14 @@ const cells = computed(() => {
     const x = index % size;
     const y = Math.floor(index / size);
     const key = `${x}:${y}`;
-    const kind = head?.x === x && head.y === y
-      ? 'head'
-      : state.value.food.x === x && state.value.food.y === y ? 'food' : snakeKeys.has(key) ? 'body' : 'empty';
+    const kind =
+      head?.x === x && head.y === y
+        ? 'head'
+        : state.value.food.x === x && state.value.food.y === y
+          ? 'food'
+          : snakeKeys.has(key)
+            ? 'body'
+            : 'empty';
     return { key, kind };
   });
 });
@@ -136,8 +154,10 @@ function save() {
 
 function randomFood(snake: Point[]) {
   const occupied = new Set(snake.map(point => `${point.x}:${point.y}`));
-  const open = Array.from({ length: size * size }, (_, index) => ({ x: index % size, y: Math.floor(index / size) }))
-    .filter(point => !occupied.has(`${point.x}:${point.y}`));
+  const open = Array.from({ length: size * size }, (_, index) => ({
+    x: index % size,
+    y: Math.floor(index / size),
+  })).filter(point => !occupied.has(`${point.x}:${point.y}`));
   return open[Math.floor(Math.random() * open.length)] ?? { x: 0, y: 0 };
 }
 
@@ -154,10 +174,12 @@ function setSpeed(speed: SnakeSpeed) {
 }
 
 function isOpposite(next: Direction, current: Direction) {
-  return (next === 'up' && current === 'down')
-    || (next === 'down' && current === 'up')
-    || (next === 'left' && current === 'right')
-    || (next === 'right' && current === 'left');
+  return (
+    (next === 'up' && current === 'down') ||
+    (next === 'down' && current === 'up') ||
+    (next === 'left' && current === 'right') ||
+    (next === 'right' && current === 'left')
+  );
 }
 
 function setDirection(direction: Direction) {
@@ -209,9 +231,7 @@ function toggleRun() {
 
 function directionFromDelta(deltaX: number, deltaY: number): Direction | null {
   if (Math.max(Math.abs(deltaX), Math.abs(deltaY)) < 20) return null;
-  return Math.abs(deltaX) > Math.abs(deltaY)
-    ? deltaX > 0 ? 'right' : 'left'
-    : deltaY > 0 ? 'down' : 'up';
+  return Math.abs(deltaX) > Math.abs(deltaY) ? (deltaX > 0 ? 'right' : 'left') : deltaY > 0 ? 'down' : 'up';
 }
 
 function resetPointer() {

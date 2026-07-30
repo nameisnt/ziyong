@@ -195,11 +195,7 @@ import type { GenerationExecutionPreview, SourceSelection } from '@/type/generat
 import { formatGenerationReferences, type GenerationReferenceItem } from '@/util/references';
 import { stopGenerationByIdSafe } from '@/util/runtime';
 import { formatTextProviderSummary } from '@/util/textProvider';
-import {
-  createStorylineGenerationAdapter,
-  formatStorylineResult,
-  type StorylineGeneratedResult,
-} from './generation';
+import { createStorylineGenerationAdapter, formatStorylineResult, type StorylineGeneratedResult } from './generation';
 import {
   getBeatStatusLabel,
   getForeshadowStatusLabel,

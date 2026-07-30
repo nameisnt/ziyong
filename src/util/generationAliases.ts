@@ -16,7 +16,10 @@ export function replaceGenerationAliases(text: string | undefined, aliases: Gene
   return result;
 }
 
-export function applyGenerationAliases(request: GenerationRequestParts, aliases: GenerationAliases): GenerationRequestParts {
+export function applyGenerationAliases(
+  request: GenerationRequestParts,
+  aliases: GenerationAliases,
+): GenerationRequestParts {
   return {
     ...request,
     appPrompt: replaceGenerationAliases(request.appPrompt, aliases),

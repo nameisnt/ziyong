@@ -82,17 +82,24 @@ function formatRanges(ranges: Array<{ start: number; end: number }>) {
   return ranges.map(range => (range.start === range.end ? `${range.start}` : `${range.start}-${range.end}`)).join(', ');
 }
 
-function buildLabel(mode: GenerationSourceMode, selectedMessages: ChatMessage[], actualRanges: Array<{ start: number; end: number }>, options: {
-  fromStartEnd?: number;
-  rangeText?: string;
-  singleMessageId?: number;
-}) {
+function buildLabel(
+  mode: GenerationSourceMode,
+  selectedMessages: ChatMessage[],
+  actualRanges: Array<{ start: number; end: number }>,
+  options: {
+    fromStartEnd?: number;
+    rangeText?: string;
+    singleMessageId?: number;
+  },
+) {
   const lastMessageId = selectedMessages[selectedMessages.length - 1]?.message_id ?? 0;
   if (mode === 'latest') return `最新楼层 · 第 ${lastMessageId} 楼`;
   if (mode === 'all') return `全部可见楼层 · ${selectedMessages.length} 楼`;
   if (mode === 'recent') return `最近 ${selectedMessages.length} 楼`;
-  if (mode === 'single') return `单层 · 第 ${normalizeFloorNumber(options.singleMessageId ?? lastMessageId, lastMessageId)} 楼`;
-  if (mode === 'fromStart') return `从 0 到 ${normalizeFloorNumber(options.fromStartEnd ?? lastMessageId, lastMessageId)} 楼`;
+  if (mode === 'single')
+    return `单层 · 第 ${normalizeFloorNumber(options.singleMessageId ?? lastMessageId, lastMessageId)} 楼`;
+  if (mode === 'fromStart')
+    return `从 0 到 ${normalizeFloorNumber(options.fromStartEnd ?? lastMessageId, lastMessageId)} 楼`;
   if (mode === 'range') return `范围 · 第 ${formatRanges(actualRanges)} 楼`;
   return options.rangeText?.trim() || formatRanges(actualRanges);
 }
@@ -112,20 +119,27 @@ export function buildSourceSelection(options: {
     throw new Error('当前聊天里没有可用的可见楼层');
   }
 
-  const selectedMessages = mode === 'latest'
-    ? visibleMessages.slice(-1)
-    : mode === 'recent'
-      ? visibleMessages.slice(-getRecentCount(options.recentCount ?? 20))
-      : mode === 'all'
-        ? visibleMessages
-        : mode === 'single'
-          ? visibleMessages.filter(message => message.message_id === normalizeFloorNumber(options.singleMessageId ?? -1, -1))
-          : mode === 'fromStart'
-            ? visibleMessages.filter(message => message.message_id <= normalizeFloorNumber(options.fromStartEnd ?? -1, -1))
-            : (() => {
-                const requestedRanges = parseRangeText(options.rangeText || '');
-                return visibleMessages.filter(message => requestedRanges.some(range => message.message_id >= range.start && message.message_id <= range.end));
-              })();
+  const selectedMessages =
+    mode === 'latest'
+      ? visibleMessages.slice(-1)
+      : mode === 'recent'
+        ? visibleMessages.slice(-getRecentCount(options.recentCount ?? 20))
+        : mode === 'all'
+          ? visibleMessages
+          : mode === 'single'
+            ? visibleMessages.filter(
+                message => message.message_id === normalizeFloorNumber(options.singleMessageId ?? -1, -1),
+              )
+            : mode === 'fromStart'
+              ? visibleMessages.filter(
+                  message => message.message_id <= normalizeFloorNumber(options.fromStartEnd ?? -1, -1),
+                )
+              : (() => {
+                  const requestedRanges = parseRangeText(options.rangeText || '');
+                  return visibleMessages.filter(message =>
+                    requestedRanges.some(range => message.message_id >= range.start && message.message_id <= range.end),
+                  );
+                })();
 
   if (!selectedMessages.length) {
     if (mode === 'single') {

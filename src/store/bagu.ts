@@ -21,7 +21,9 @@ export const BaguRuleSchema = z.object({
 });
 export type BaguRule = z.infer<typeof BaguRuleSchema>;
 export type BaguRuleInput = Pick<BaguRule, 'type' | 'title' | 'note'> &
-  Partial<Pick<BaguRule, 'enabled' | 'flags' | 'pattern' | 'replacements' | 'sources' | 'suggestion' | 'targets' | 'template'>>;
+  Partial<
+    Pick<BaguRule, 'enabled' | 'flags' | 'pattern' | 'replacements' | 'sources' | 'suggestion' | 'targets' | 'template'>
+  >;
 
 const BAGU_RULESET_VERSION = 2;
 
@@ -307,15 +309,17 @@ export const useBaguStore = defineStore('bagu', () => {
       id: createId('bagu_rule'),
       type: input.type,
       title: input.title.trim() || '未命名规则',
-      pattern: input.type === 'regex'
-        ? input.pattern?.trim() || ''
-        : input.type === 'replacement'
-          ? cleanList(input.sources || []).join('|')
-          : input.template?.trim() || '',
+      pattern:
+        input.type === 'regex'
+          ? input.pattern?.trim() || ''
+          : input.type === 'replacement'
+            ? cleanList(input.sources || []).join('|')
+            : input.template?.trim() || '',
       flags: input.flags || '',
       replacements: cleanList(input.replacements || []),
       sources: cleanList(input.sources || []),
-      suggestion: input.type === 'regex' ? input.suggestion?.trim() || '' : cleanList(input.replacements || []).join(' / '),
+      suggestion:
+        input.type === 'regex' ? input.suggestion?.trim() || '' : cleanList(input.replacements || []).join(' / '),
       template: input.type === 'template' ? input.template?.trim() || '' : '',
       targets: cleanList(input.targets || []),
       note: input.note.trim(),
@@ -334,15 +338,17 @@ export const useBaguStore = defineStore('bagu', () => {
       ...rule,
       type: input.type,
       title: input.title.trim() || rule.title,
-      pattern: input.type === 'regex'
-        ? input.pattern?.trim() || ''
-        : input.type === 'replacement'
-          ? cleanList(input.sources || []).join('|')
-          : input.template?.trim() || '',
+      pattern:
+        input.type === 'regex'
+          ? input.pattern?.trim() || ''
+          : input.type === 'replacement'
+            ? cleanList(input.sources || []).join('|')
+            : input.template?.trim() || '',
       flags: input.flags || '',
       replacements: cleanList(input.replacements || []),
       sources: cleanList(input.sources || []),
-      suggestion: input.type === 'regex' ? input.suggestion?.trim() || '' : cleanList(input.replacements || []).join(' / '),
+      suggestion:
+        input.type === 'regex' ? input.suggestion?.trim() || '' : cleanList(input.replacements || []).join(' / '),
       template: input.type === 'template' ? input.template?.trim() || '' : '',
       targets: cleanList(input.targets || []),
       note: input.note.trim(),

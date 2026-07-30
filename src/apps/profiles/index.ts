@@ -41,7 +41,7 @@ function entryContent(entry: ProfileEntry) {
   const table = useProfilesStore().getTable(entry.tableId);
   const fieldLines = (table?.columns ?? [])
     .filter(column => !['title', 'summary', 'tags', 'content'].includes(column.id))
-    .map(column => entry.fields[column.id] ? `${column.label}：${entry.fields[column.id]}` : '')
+    .map(column => (entry.fields[column.id] ? `${column.label}：${entry.fields[column.id]}` : ''))
     .filter(Boolean);
   return [
     `分类：${getProfileKindLabel(entry.kind)}`,
@@ -49,7 +49,9 @@ function entryContent(entry: ProfileEntry) {
     entry.tags.length ? `标签：${entry.tags.join('、')}` : '',
     ...fieldLines,
     entry.content,
-  ].filter(Boolean).join('\n');
+  ]
+    .filter(Boolean)
+    .join('\n');
 }
 
 function createProfilesArchiveDomain(raw: unknown): PhoneArchiveDomain {
@@ -72,8 +74,13 @@ function createProfilesArchiveDomain(raw: unknown): PhoneArchiveDomain {
 }
 
 function createOverview(entries: ProfileEntry[], scopeCount: number): PhoneContentOverview {
-  const chars = entries.reduce((sum, entry) => sum + entry.title.length + entry.summary.length + entry.content.length, 0);
-  const latestUpdatedAt = entries.map(entry => entry.updatedAt).reduce((latest, value) => getLatestIso(latest, value), '');
+  const chars = entries.reduce(
+    (sum, entry) => sum + entry.title.length + entry.summary.length + entry.content.length,
+    0,
+  );
+  const latestUpdatedAt = entries
+    .map(entry => entry.updatedAt)
+    .reduce((latest, value) => getLatestIso(latest, value), '');
   return {
     averageChars: entries.length ? Math.round(chars / entries.length) : 0,
     chars,
@@ -177,57 +184,65 @@ export default definePhoneApp({
     field: profilesField,
     collect: createProfilesArchiveDomain,
   },
-  backupDomains: [{
-    key: 'profiles',
-    exportData: currentScopeKey => readChatScopedEnvelope(profilesField, currentScopeKey || getCurrentChatScopeKey()),
-    importData: data => {
-      _.set(extension_settings, profilesField, data);
+  backupDomains: [
+    {
+      key: 'profiles',
+      exportData: currentScopeKey => readChatScopedEnvelope(profilesField, currentScopeKey || getCurrentChatScopeKey()),
+      importData: data => {
+        _.set(extension_settings, profilesField, data);
+      },
+      rehydrateFromSettings: () => useProfilesStore().rehydrateFromSettings(),
     },
-    rehydrateFromSettings: () => useProfilesStore().rehydrateFromSettings(),
-  }],
+  ],
   component: ProfilesApp,
   contentStatsProvider: createProfilesContentStats,
   favoriteProvider: createProfilesFavoriteItems,
-  generationProvider: () => [{
-    actionId: 'generate',
-    label: '生成资料卡片',
-    createAdapter: () => createProfileGenerationAdapter(useProfilesStore()),
-  }],
-  promptDefinitions: [{
-    key: 'profiles',
-    label: '资料表',
-    defaultPrompt: [
-      '你负责根据聊天上下文整理可复用的资料卡片。',
-      '资料必须来自上下文中能确认的信息；不确定的信息请明确写成“未知”或不要写。',
-      'content 要结构清楚，适合作为后续世界书、角色设定或剧情资料引用。',
-      '不要输出 XML 之外的解释。',
-    ].join('\n'),
-    outputFormats: [{
-      id: 'profiles.generate',
-      label: '资料卡片输出',
-      content: [
-        '请只输出一个完整 XML，不要输出 XML 之外的解释。',
-        '字段值必须基于上下文已确认信息；没有可靠信息时留空。',
-        '<result>',
-        '  <title>资料标题</title>',
-        '  <summary>一句话摘要，可留空</summary>',
-        '  <tags>标签1、标签2</tags>',
-        '  <fields>',
-        '    <field id="字段id">字段值</field>',
-        '  </fields>',
-        '</result>',
+  generationProvider: () => [
+    {
+      actionId: 'generate',
+      label: '生成资料卡片',
+      createAdapter: () => createProfileGenerationAdapter(useProfilesStore()),
+    },
+  ],
+  promptDefinitions: [
+    {
+      key: 'profiles',
+      label: '资料表',
+      defaultPrompt: [
+        '你负责根据聊天上下文整理可复用的资料卡片。',
+        '资料必须来自上下文中能确认的信息；不确定的信息请明确写成“未知”或不要写。',
+        'content 要结构清楚，适合作为后续世界书、角色设定或剧情资料引用。',
+        '不要输出 XML 之外的解释。',
       ].join('\n'),
-      parser: xmlParser([
-        textField('title', '资料标题', 'title', { required: true }),
-        textField('summary', '一句话摘要', 'summary'),
-        textListField('tags', '标签', 'tags', '[,，、\\n]'),
-        objectListField('fields', '资料字段', 'fields/field', [
-          textField('id', '字段 ID', '@id', { required: true }),
-          textField('value', '字段值', '#text'),
-        ]),
-      ]),
-    }],
-  }],
+      outputFormats: [
+        {
+          id: 'profiles.generate',
+          label: '资料卡片输出',
+          content: [
+            '请只输出一个完整 XML，不要输出 XML 之外的解释。',
+            '字段值必须基于上下文已确认信息；没有可靠信息时留空。',
+            '<result>',
+            '  <title>资料标题</title>',
+            '  <summary>一句话摘要，可留空</summary>',
+            '  <tags>标签1、标签2</tags>',
+            '  <fields>',
+            '    <field id="字段id">字段值</field>',
+            '  </fields>',
+            '</result>',
+          ].join('\n'),
+          parser: xmlParser([
+            textField('title', '资料标题', 'title', { required: true }),
+            textField('summary', '一句话摘要', 'summary'),
+            textListField('tags', '标签', 'tags', '[,，、\\n]'),
+            objectListField('fields', '资料字段', 'fields/field', [
+              textField('id', '字段 ID', '@id', { required: true }),
+              textField('value', '字段值', '#text'),
+            ]),
+          ]),
+        },
+      ],
+    },
+  ],
   referenceProvider: createProfilesReferenceTree,
   resetCurrentScope: () => useProfilesStore().resetCurrentScope(),
   scopeSwitchHandler: scopeKey => useProfilesStore().switchScope(scopeKey),

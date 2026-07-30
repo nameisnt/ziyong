@@ -1,15 +1,6 @@
-import {
-  createDiaryGenerationAdapter,
-  createDiaryReadReactionGenerationAdapter,
-} from '@/core/diaryGeneration';
-import {
-  createExtraChapterGenerationAdapter,
-  createExtraSummaryGenerationAdapter,
-} from '@/core/extrasGeneration';
-import {
-  createForumReplyGenerationAdapter,
-  createForumThreadGenerationAdapter,
-} from '@/core/forumGeneration';
+import { createDiaryGenerationAdapter, createDiaryReadReactionGenerationAdapter } from '@/core/diaryGeneration';
+import { createExtraChapterGenerationAdapter, createExtraSummaryGenerationAdapter } from '@/core/extrasGeneration';
+import { createForumReplyGenerationAdapter, createForumThreadGenerationAdapter } from '@/core/forumGeneration';
 import { createLettersGenerationAdapter } from '@/core/lettersGeneration';
 import { createSummaryGenerationAdapter } from '@/core/summaryGeneration';
 import { createTheaterGenerationAdapter } from '@/core/theaterGeneration';

@@ -1,10 +1,6 @@
 import { getPhoneApp } from '@/core/appLayout';
 import { getRegisteredPhoneAppScopeSwitchHandlers } from '@/core/appRegistry';
-import {
-  areChatScopeKeysEquivalent,
-  getCurrentChatScopeKey,
-  isPlaceholderChatScopeKey,
-} from '@/store/chatScoped';
+import { areChatScopeKeysEquivalent, getCurrentChatScopeKey, isPlaceholderChatScopeKey } from '@/store/chatScoped';
 import { getOptionalGlobalFunction, getOptionalGlobalValue, onTavernEvent } from '@/util/runtime';
 
 export interface PhoneRoute {
@@ -92,13 +88,17 @@ export const usePhoneStore = defineStore('phone', () => {
   const noticeResolvers = new Map<string, (value: boolean) => void>();
   const noticePromptResolvers = new Map<string, (value: null | string) => void>();
 
-  const currentRoute = computed<PhoneRoute>(() => stack.value[stack.value.length - 1] ?? { appId: 'home', page: 'home', title: '酒馆手机' });
+  const currentRoute = computed<PhoneRoute>(
+    () => stack.value[stack.value.length - 1] ?? { appId: 'home', page: 'home', title: '酒馆手机' },
+  );
   const canGoBack = computed(() => stack.value.length > 1);
-  const currentApp = computed(() => (currentRoute.value.appId === 'home' ? null : getPhoneApp(currentRoute.value.appId)));
+  const currentApp = computed(() =>
+    currentRoute.value.appId === 'home' ? null : getPhoneApp(currentRoute.value.appId),
+  );
   const currentTitle = computed(() => currentRoute.value.title);
-  const isViewingCurrentChat = computed(() => (
-    areChatScopeKeysEquivalent(viewingScopeKey.value, currentTavernScopeKey.value)
-  ));
+  const isViewingCurrentChat = computed(() =>
+    areChatScopeKeysEquivalent(viewingScopeKey.value, currentTavernScopeKey.value),
+  );
 
   function createDefaultScopeMeta(scopeKey: string): PhoneViewingScopeMeta {
     const marker = ':chat:';
@@ -108,7 +108,10 @@ export const usePhoneStore = defineStore('phone', () => {
     }
     const owner = scopeKey.slice(0, index);
     const separator = owner.indexOf(':');
-    return formatScopeMetaParts(separator >= 0 ? owner.slice(separator + 1) : owner, scopeKey.slice(index + marker.length));
+    return formatScopeMetaParts(
+      separator >= 0 ? owner.slice(separator + 1) : owner,
+      scopeKey.slice(index + marker.length),
+    );
   }
 
   function formatScopeMetaParts(ownerName: string, chatTitle: string): PhoneViewingScopeMeta {
@@ -120,20 +123,20 @@ export const usePhoneStore = defineStore('phone', () => {
 
   function resolveOwnerDisplayName(ownerName: string) {
     const normalized = ownerName.trim();
-    const currentCharacterName = getOptionalGlobalFunction<() => string | null | undefined>('getCurrentCharacterName')?.()?.trim();
+    const currentCharacterName =
+      getOptionalGlobalFunction<() => string | null | undefined>('getCurrentCharacterName')?.()?.trim();
     const currentCharacterId = String(
-      getOptionalGlobalFunction<() => number | string | null | undefined>('getCurrentCharacterId')?.()
-        ?? getOptionalGlobalValue('this_chid')
-        ?? '',
+      getOptionalGlobalFunction<() => number | string | null | undefined>('getCurrentCharacterId')?.() ??
+        getOptionalGlobalValue('this_chid') ??
+        '',
     );
     if (normalized === '__no_character__') return currentCharacterName || '当前角色';
     if (currentCharacterName && normalized === currentCharacterId) return currentCharacterName;
 
     const characterIndex = Number(normalized);
     const runtimeCharacters = getOptionalGlobalValue<unknown[]>('characters');
-    const character = Number.isInteger(characterIndex) && Array.isArray(runtimeCharacters)
-      ? runtimeCharacters[characterIndex]
-      : null;
+    const character =
+      Number.isInteger(characterIndex) && Array.isArray(runtimeCharacters) ? runtimeCharacters[characterIndex] : null;
     if (character && typeof character === 'object') {
       const record = character as Record<string, unknown>;
       if (typeof record.name === 'string' && record.name.trim()) return record.name.trim();
@@ -163,8 +166,9 @@ export const usePhoneStore = defineStore('phone', () => {
 
   async function syncCurrentTavernScope(forceViewCurrent = false) {
     const previousScopeKey = currentTavernScopeKey.value;
-    const wasViewingCurrent = areChatScopeKeysEquivalent(viewingScopeKey.value, previousScopeKey)
-      || isPlaceholderChatScopeKey(viewingScopeKey.value);
+    const wasViewingCurrent =
+      areChatScopeKeysEquivalent(viewingScopeKey.value, previousScopeKey) ||
+      isPlaceholderChatScopeKey(viewingScopeKey.value);
     const nextScopeKey = getCurrentChatScopeKey();
     currentTavernScopeKey.value = nextScopeKey;
     if (forceViewCurrent || wasViewingCurrent) {
@@ -260,17 +264,17 @@ export const usePhoneStore = defineStore('phone', () => {
   }
 
   async function closePhone(options: PhoneNavigationOptions = {}) {
-    if (!await confirmNavigationLeave(options)) return;
+    if (!(await confirmNavigationLeave(options))) return;
     closePhoneNow();
   }
 
   async function goHome(options: PhoneNavigationOptions = {}) {
-    if (!await confirmNavigationLeave(options)) return;
+    if (!(await confirmNavigationLeave(options))) return;
     stack.value = [{ appId: 'home', page: 'home', title: '酒馆手机' }];
   }
 
   async function goBack(options: PhoneNavigationOptions = {}) {
-    if (!await confirmNavigationLeave(options)) return;
+    if (!(await confirmNavigationLeave(options))) return;
     if (stack.value.length > 1) {
       stack.value = stack.value.slice(0, -1);
       return;
@@ -287,7 +291,13 @@ export const usePhoneStore = defineStore('phone', () => {
     stack.value = [...stack.value, { appId, page: app.defaultRoute, title: app.name }];
   }
 
-  function pushRoute(appId: string, page: string, title: string, params?: Record<string, string>, origin?: 'home' | 'favorites') {
+  function pushRoute(
+    appId: string,
+    page: string,
+    title: string,
+    params?: Record<string, string>,
+    origin?: 'home' | 'favorites',
+  ) {
     const app = getPhoneApp(appId);
     if (!app) return;
     isOpen.value = true;
@@ -328,7 +338,7 @@ export const usePhoneStore = defineStore('phone', () => {
     const promptResolver = noticePromptResolvers.get(noticeId);
     if (promptResolver) {
       const notice = notices.value.find(item => item.id === noticeId);
-      promptResolver(value ? notice?.inputValue ?? '' : null);
+      promptResolver(value ? (notice?.inputValue ?? '') : null);
       noticePromptResolvers.delete(noticeId);
     }
     notices.value = notices.value.filter(notice => notice.id !== noticeId);
@@ -349,9 +359,7 @@ export const usePhoneStore = defineStore('phone', () => {
     const kind = input.kind ?? 'info';
     const retainedNotices = notices.value.slice(-2);
     const retainedIds = new Set(retainedNotices.map(notice => notice.id));
-    notices.value
-      .filter(notice => !retainedIds.has(notice.id))
-      .forEach(notice => dismissNotice(notice.id));
+    notices.value.filter(notice => !retainedIds.has(notice.id)).forEach(notice => dismissNotice(notice.id));
     notices.value = [
       ...retainedNotices,
       {
@@ -367,7 +375,10 @@ export const usePhoneStore = defineStore('phone', () => {
 
     const timeoutMs = input.timeoutMs ?? 3200;
     if (timeoutMs > 0) {
-      noticeTimers.set(id, window.setTimeout(() => dismissNotice(id), timeoutMs));
+      noticeTimers.set(
+        id,
+        window.setTimeout(() => dismissNotice(id), timeoutMs),
+      );
     }
     return id;
   }
@@ -402,7 +413,7 @@ export const usePhoneStore = defineStore('phone', () => {
   }
 
   function updateNoticeInput(noticeId: string, value: string) {
-    notices.value = notices.value.map(notice => notice.id === noticeId ? { ...notice, inputValue: value } : notice);
+    notices.value = notices.value.map(notice => (notice.id === noticeId ? { ...notice, inputValue: value } : notice));
   }
 
   function confirmNotice(message: string, options: PhoneConfirmOptions = {}) {

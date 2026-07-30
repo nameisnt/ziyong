@@ -1,9 +1,5 @@
 import StorylinesApp from './StorylinesApp.vue';
-import {
-  createStorylineGenerationAdapter,
-  storylineOutputFormat,
-  storylineOutputParser,
-} from './generation';
+import { createStorylineGenerationAdapter, storylineOutputFormat, storylineOutputParser } from './generation';
 import {
   getBeatStatusLabel,
   getForeshadowStatusLabel,
@@ -51,7 +47,10 @@ function lineContent(line: Storyline, data: StorylinesScopeData) {
     .map(beat => `- ${beat.title}（${getBeatStatusLabel(beat.status)}）：${beat.summary}`.trim());
   const hooks = data.hooks
     .filter(hook => hook.lineId === line.id)
-    .map(hook => `- ${hook.title}（${getForeshadowStatusLabel(hook.status)}）：埋设 ${hook.seed || '未写'}；回收 ${hook.payoff || '未写'}`);
+    .map(
+      hook =>
+        `- ${hook.title}（${getForeshadowStatusLabel(hook.status)}）：埋设 ${hook.seed || '未写'}；回收 ${hook.payoff || '未写'}`,
+    );
   return [
     `剧情线：${line.title}`,
     `类型：${getStorylineKindLabel(line.kind)} / 状态：${getStorylineStatusLabel(line.status)}`,
@@ -61,7 +60,9 @@ function lineContent(line: Storyline, data: StorylinesScopeData) {
     line.tags.length ? `标签：${line.tags.join('、')}` : '',
     beats.length ? ['节点', ...beats].join('\n') : '',
     hooks.length ? ['伏笔', ...hooks].join('\n') : '',
-  ].filter(Boolean).join('\n');
+  ]
+    .filter(Boolean)
+    .join('\n');
 }
 
 function hookContent(hook: Foreshadow, data: StorylinesScopeData) {
@@ -73,7 +74,9 @@ function hookContent(hook: Foreshadow, data: StorylinesScopeData) {
     hook.seed ? `埋设：${hook.seed}` : '',
     hook.payoff ? `回收：${hook.payoff}` : '',
     hook.tags.length ? `标签：${hook.tags.join('、')}` : '',
-  ].filter(Boolean).join('\n');
+  ]
+    .filter(Boolean)
+    .join('\n');
 }
 
 function createStorylinesArchiveDomain(raw: unknown): PhoneArchiveDomain {
@@ -114,9 +117,10 @@ function createOverview(data: StorylinesScopeData, scopeCount: number): PhoneCon
     ...data.hooks.map(hook => hook.updatedAt),
   ].reduce((latest, value) => getLatestIso(latest, value), '');
   return {
-    averageChars: data.lines.length + data.beats.length + data.hooks.length
-      ? Math.round(chars / (data.lines.length + data.beats.length + data.hooks.length))
-      : 0,
+    averageChars:
+      data.lines.length + data.beats.length + data.hooks.length
+        ? Math.round(chars / (data.lines.length + data.beats.length + data.hooks.length))
+        : 0,
     chars,
     collections: data.lines.length,
     items: data.lines.length + data.beats.length + data.hooks.length,
@@ -148,9 +152,10 @@ function createStorylinesContentStats(currentScopeKey: string): PhoneContentStat
     }
   });
 
-  const current = currentData.lines.length || currentData.beats.length || currentData.hooks.length
-    ? createOverview(currentData, 1)
-    : emptyOverview();
+  const current =
+    currentData.lines.length || currentData.beats.length || currentData.hooks.length
+      ? createOverview(currentData, 1)
+      : emptyOverview();
   const overview = createOverview(merged, scopeCount);
   return {
     current,
@@ -214,37 +219,46 @@ export default definePhoneApp({
     field: storylinesField,
     collect: createStorylinesArchiveDomain,
   },
-  backupDomains: [{
-    key: 'storylines',
-    exportData: currentScopeKey => readChatScopedEnvelope(storylinesField, currentScopeKey || getCurrentChatScopeKey()),
-    importData: data => {
-      _.set(extension_settings, storylinesField, data);
+  backupDomains: [
+    {
+      key: 'storylines',
+      exportData: currentScopeKey =>
+        readChatScopedEnvelope(storylinesField, currentScopeKey || getCurrentChatScopeKey()),
+      importData: data => {
+        _.set(extension_settings, storylinesField, data);
+      },
+      rehydrateFromSettings: () => useStorylinesStore().rehydrateFromSettings(),
     },
-    rehydrateFromSettings: () => useStorylinesStore().rehydrateFromSettings(),
-  }],
+  ],
   component: StorylinesApp,
   contentStatsProvider: createStorylinesContentStats,
-  generationProvider: () => [{
-    actionId: 'extract',
-    label: '梳理剧情',
-    createAdapter: () => createStorylineGenerationAdapter(useStorylinesStore()),
-  }],
-  promptDefinitions: [{
-    key: 'storylines',
-    label: '剧情梳理',
-    defaultPrompt: [
-      '你负责把已有剧情总结整理成可持续更新的剧情线。',
-      '只记录来源中已经发生或明确确认的信息，不要虚构未来剧情。',
-      '区分主线、支线、人物线、关系线与谜团线，并按发生顺序排列节点。',
-      '伏笔状态必须依据来源判断，不确定时保守标记。',
-    ].join('\n'),
-    outputFormats: [{
-      id: 'storylines.extract',
+  generationProvider: () => [
+    {
+      actionId: 'extract',
+      label: '梳理剧情',
+      createAdapter: () => createStorylineGenerationAdapter(useStorylinesStore()),
+    },
+  ],
+  promptDefinitions: [
+    {
+      key: 'storylines',
       label: '剧情梳理',
-      content: storylineOutputFormat,
-      parser: storylineOutputParser,
-    }],
-  }],
+      defaultPrompt: [
+        '你负责把已有剧情总结整理成可持续更新的剧情线。',
+        '只记录来源中已经发生或明确确认的信息，不要虚构未来剧情。',
+        '区分主线、支线、人物线、关系线与谜团线，并按发生顺序排列节点。',
+        '伏笔状态必须依据来源判断，不确定时保守标记。',
+      ].join('\n'),
+      outputFormats: [
+        {
+          id: 'storylines.extract',
+          label: '剧情梳理',
+          content: storylineOutputFormat,
+          parser: storylineOutputParser,
+        },
+      ],
+    },
+  ],
   referenceProvider: createStorylinesReferenceTree,
   resetCurrentScope: () => useStorylinesStore().resetCurrentScope(),
   scopeSwitchHandler: scopeKey => useStorylinesStore().switchScope(scopeKey),

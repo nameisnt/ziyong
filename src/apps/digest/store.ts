@@ -41,14 +41,19 @@ export const useDigestStore = defineStore('digest', () => {
     createDefault: () => validateInplace(DigestScopeDataSchema, {}),
   });
 
-  const entries = computed(() => [...data.value.entries].sort((left, right) => right.updatedAt.localeCompare(left.updatedAt)));
+  const entries = computed(() =>
+    [...data.value.entries].sort((left, right) => right.updatedAt.localeCompare(left.updatedAt)),
+  );
   const failedDraftCollection = createFailedDraftCollection(data, 'digest_failed');
 
   function getEntry(entryId: string) {
     return data.value.entries.find(entry => entry.id === entryId) ?? null;
   }
 
-  function createEntry(input: Partial<Pick<DigestEntry, 'kind' | 'sourceLabel' | 'sourceMessageId' | 'sourceText' | 'tags'>> & Pick<DigestEntry, 'content' | 'title'>) {
+  function createEntry(
+    input: Partial<Pick<DigestEntry, 'kind' | 'sourceLabel' | 'sourceMessageId' | 'sourceText' | 'tags'>> &
+      Pick<DigestEntry, 'content' | 'title'>,
+  ) {
     const timestamp = nowIso();
     const entry: DigestEntry = {
       id: createId('digest_entry'),
@@ -67,7 +72,10 @@ export const useDigestStore = defineStore('digest', () => {
     return entry;
   }
 
-  function updateEntry(entryId: string, input: Pick<DigestEntry, 'content' | 'sourceLabel' | 'sourceText' | 'tags' | 'title'>) {
+  function updateEntry(
+    entryId: string,
+    input: Pick<DigestEntry, 'content' | 'sourceLabel' | 'sourceText' | 'tags' | 'title'>,
+  ) {
     const entry = getEntry(entryId);
     if (!entry) return null;
     entry.title = input.title.trim() || entry.title;

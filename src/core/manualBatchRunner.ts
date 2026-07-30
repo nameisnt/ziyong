@@ -80,10 +80,7 @@ export async function runManualBatchTask(taskId: string) {
 
     const config = getConfig(task);
     const isDiary = task.kind === 'diary-batch';
-    const adapter = getRegisteredPhoneGenerationAdapter(
-      isDiary ? 'diary' : 'summary',
-      'generate',
-    );
+    const adapter = getRegisteredPhoneGenerationAdapter(isDiary ? 'diary' : 'summary', 'generate');
 
     for (let index = 0; index < task.jobs.length; index += 1) {
       const currentTask = tasks.getTask(taskId);
@@ -117,9 +114,8 @@ export async function runManualBatchTask(taskId: string) {
                 userRequirement: config.userRequirement,
               },
           {
-            createFailedDraft: input => isDiary
-              ? useDiaryStore().createFailedDraft(input)
-              : useSummaryStore().createFailedDraft(input),
+            createFailedDraft: input =>
+              isDiary ? useDiaryStore().createFailedDraft(input) : useSummaryStore().createFailedDraft(input),
             generationDefaults: {
               resultMode: 'save',
               stream: config.stream,
@@ -170,9 +166,7 @@ export async function runManualBatchTask(taskId: string) {
     if (!completed) return;
     tasks.completeTask(taskId);
     if (completed.draftCount) {
-      toastr.warning(
-        `批量生成完成：成功 ${completed.savedCount} 项，保留 ${completed.draftCount} 条解析失败草稿`,
-      );
+      toastr.warning(`批量生成完成：成功 ${completed.savedCount} 项，保留 ${completed.draftCount} 条解析失败草稿`);
     } else {
       toastr.success(`批量生成完成，共保存 ${completed.savedCount} 项`);
     }

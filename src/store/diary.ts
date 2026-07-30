@@ -25,7 +25,8 @@ export const useDiaryStore = defineStore('diary', () => {
   });
 
   const books = computed(() => data.value.books);
-  const { createFailedDraft, deleteFailedDraft, failedDrafts, getFailedDraft, updateFailedDraft } = createFailedDraftCollection(data, 'diary_failed');
+  const { createFailedDraft, deleteFailedDraft, failedDrafts, getFailedDraft, updateFailedDraft } =
+    createFailedDraftCollection(data, 'diary_failed');
 
   function getBook(bookId: string) {
     return books.value.find(book => book.id === bookId) ?? null;

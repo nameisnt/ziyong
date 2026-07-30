@@ -20,7 +20,13 @@
       @input="handleInput"
       @keydown="handleKeydown"
     />
-    <button class="pc-icon-btn pc-combobox-toggle" type="button" :disabled="disabled" :title="toggleTitle" @click="toggleMenu">
+    <button
+      class="pc-icon-btn pc-combobox-toggle"
+      type="button"
+      :disabled="disabled"
+      :title="toggleTitle"
+      @click="toggleMenu"
+    >
       <i class="fa-solid fa-chevron-down"></i>
     </button>
 
@@ -56,23 +62,26 @@ type ComboboxOption = {
   value: string;
 };
 
-const props = withDefaults(defineProps<{
-  allowCustom?: boolean;
-  disabled?: boolean;
-  emptyLabel?: string;
-  inputLabel?: string;
-  modelValue: string;
-  options: ComboboxOption[];
-  placeholder?: string;
-  toggleTitle?: string;
-}>(), {
-  allowCustom: false,
-  disabled: false,
-  emptyLabel: '没有匹配选项',
-  inputLabel: '选择选项',
-  placeholder: '',
-  toggleTitle: '展开选项',
-});
+const props = withDefaults(
+  defineProps<{
+    allowCustom?: boolean;
+    disabled?: boolean;
+    emptyLabel?: string;
+    inputLabel?: string;
+    modelValue: string;
+    options: ComboboxOption[];
+    placeholder?: string;
+    toggleTitle?: string;
+  }>(),
+  {
+    allowCustom: false,
+    disabled: false,
+    emptyLabel: '没有匹配选项',
+    inputLabel: '选择选项',
+    placeholder: '',
+    toggleTitle: '展开选项',
+  },
+);
 
 const emit = defineEmits<{
   'update:modelValue': [value: string];
@@ -94,7 +103,9 @@ const filteredOptions = computed(() => {
   if (!query) return props.options;
   return props.options.filter(option => option.label.toLowerCase().includes(query));
 });
-const activeDescendant = computed(() => (isOpen.value && activeIndex.value >= 0 ? `${listboxId}-option-${activeIndex.value}` : undefined));
+const activeDescendant = computed(() =>
+  isOpen.value && activeIndex.value >= 0 ? `${listboxId}-option-${activeIndex.value}` : undefined,
+);
 
 watch(
   () => props.modelValue,
@@ -125,7 +136,9 @@ function syncInputText() {
 }
 
 function resetActiveIndex() {
-  const selectedIndex = filteredOptions.value.findIndex(option => option.value === props.modelValue && !option.disabled);
+  const selectedIndex = filteredOptions.value.findIndex(
+    option => option.value === props.modelValue && !option.disabled,
+  );
   if (selectedIndex >= 0) {
     activeIndex.value = selectedIndex;
     return;

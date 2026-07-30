@@ -15,16 +15,19 @@
 <script setup lang="ts">
 import type { GenerationPreviewDraft } from '@/store/previewDrafts';
 
-const props = withDefaults(defineProps<{
-  discardLabel?: string;
-  draft: GenerationPreviewDraft | null;
-  label?: string;
-  openLabel?: string;
-}>(), {
-  discardLabel: '丢弃',
-  label: '未保存预览',
-  openLabel: '继续预览',
-});
+const props = withDefaults(
+  defineProps<{
+    discardLabel?: string;
+    draft: GenerationPreviewDraft | null;
+    label?: string;
+    openLabel?: string;
+  }>(),
+  {
+    discardLabel: '丢弃',
+    label: '未保存预览',
+    openLabel: '继续预览',
+  },
+);
 
 defineEmits<{
   discard: [];

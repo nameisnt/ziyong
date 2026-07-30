@@ -21,24 +21,27 @@
 </template>
 
 <script setup lang="ts">
-withDefaults(defineProps<{
-  active?: boolean;
-  compact?: boolean;
-  count?: number;
-  disabled?: boolean;
-  icon?: string;
-  interactive?: boolean;
-  label: string;
-  title?: string;
-}>(), {
-  active: false,
-  compact: false,
-  count: undefined,
-  disabled: false,
-  icon: '',
-  interactive: true,
-  title: '',
-});
+withDefaults(
+  defineProps<{
+    active?: boolean;
+    compact?: boolean;
+    count?: number;
+    disabled?: boolean;
+    icon?: string;
+    interactive?: boolean;
+    label: string;
+    title?: string;
+  }>(),
+  {
+    active: false,
+    compact: false,
+    count: undefined,
+    disabled: false,
+    icon: '',
+    interactive: true,
+    title: '',
+  },
+);
 
 defineEmits<{
   click: [];

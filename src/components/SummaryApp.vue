@@ -37,12 +37,16 @@
         <span class="pc-kicker">{{ route.page === 'create-book' ? t`生成总结` : t`重命名总结集` }}</span>
         <h2>{{ route.page === 'create-book' ? t`先设置总结集，再生成第一条` : t`更新标题` }}</h2>
         <input v-model="bookTitle" class="pc-field" type="text" :placeholder="t`例如 第一卷总结`" />
-        <div
-          :class="['pc-form-actions', { 'pc-summary-create-actions': route.page === 'create-book' }]"
-        >
+        <div :class="['pc-form-actions', { 'pc-summary-create-actions': route.page === 'create-book' }]">
           <button class="pc-soft-btn" type="button" @click="phone.goBack()">{{ t`取消` }}</button>
-          <button v-if="route.page === 'create-book'" class="pc-soft-btn" type="button" @click="submitBook">{{ t`先建空白` }}</button>
-          <button class="pc-primary-btn" type="button" @click="route.page === 'create-book' ? submitBookAndGenerate() : submitBook()">
+          <button v-if="route.page === 'create-book'" class="pc-soft-btn" type="button" @click="submitBook">
+            {{ t`先建空白` }}
+          </button>
+          <button
+            class="pc-primary-btn"
+            type="button"
+            @click="route.page === 'create-book' ? submitBookAndGenerate() : submitBook()"
+          >
             {{ route.page === 'create-book' ? t`开始生成` : t`保存` }}
           </button>
         </div>
@@ -100,7 +104,10 @@
       />
     </section>
 
-    <section v-else-if="route.page === 'entry' && activeBook && activeEntry" class="pc-summary-page pc-summary-detail-page">
+    <section
+      v-else-if="route.page === 'entry' && activeBook && activeEntry"
+      class="pc-summary-page pc-summary-detail-page"
+    >
       <ReaderDetailShell
         :content="activeEntry.content"
         :favorite-active="activeEntry.favorite"
@@ -120,7 +127,12 @@
           <span class="pc-kicker">{{ activeEntry.rangeLabel }}</span>
         </template>
         <template #actions>
-          <button class="pc-soft-btn danger" type="button" :title="t`删除`" @click="removeEntry(activeBook.id, activeEntry.id)">
+          <button
+            class="pc-soft-btn danger"
+            type="button"
+            :title="t`删除`"
+            @click="removeEntry(activeBook.id, activeEntry.id)"
+          >
             <i class="fa-solid fa-trash"></i>
           </button>
         </template>
@@ -171,16 +183,38 @@
         <h2>{{ t`导入 AI 楼层` }}</h2>
         <label class="pc-field-group">
           <span>{{ t`楼层正文提取` }}</span>
-          <select v-model="summaryImport.ruleId" class="pc-field pc-select" :disabled="summaryImport.loading" @change="reloadSummaryImport">
+          <select
+            v-model="summaryImport.ruleId"
+            class="pc-field pc-select"
+            :disabled="summaryImport.loading"
+            @change="reloadSummaryImport"
+          >
             <option value="__default_body__">{{ t`默认楼层正文提取` }}</option>
-            <option v-for="rule in summaryImportRules" :key="rule.id" :value="rule.id">{{ rule.name || t`未命名规则` }}</option>
+            <option v-for="rule in summaryImportRules" :key="rule.id" :value="rule.id">
+              {{ rule.name || t`未命名规则` }}
+            </option>
           </select>
         </label>
         <div class="pc-summary-import-head">
           <span>{{ t`AI 楼层` }} · {{ summaryImport.items.length }}</span>
           <div>
-            <button class="pc-icon-btn" type="button" :disabled="summaryImport.loading" :title="t`刷新楼层`" @click="reloadSummaryImport"><i :class="['fa-solid fa-rotate-right', { spinning: summaryImport.loading }]"></i></button>
-            <button class="pc-soft-btn compact" type="button" :disabled="!summaryImport.items.length" @click="toggleAllSummaryImports">{{ allSummaryImportsSelected ? t`取消全选` : t`全选` }}</button>
+            <button
+              class="pc-icon-btn"
+              type="button"
+              :disabled="summaryImport.loading"
+              :title="t`刷新楼层`"
+              @click="reloadSummaryImport"
+            >
+              <i :class="['fa-solid fa-rotate-right', { spinning: summaryImport.loading }]"></i>
+            </button>
+            <button
+              class="pc-soft-btn compact"
+              type="button"
+              :disabled="!summaryImport.items.length"
+              @click="toggleAllSummaryImports"
+            >
+              {{ allSummaryImportsSelected ? t`取消全选` : t`全选` }}
+            </button>
           </div>
         </div>
         <div v-if="summaryImport.error" class="pc-status-card warning">
@@ -189,7 +223,11 @@
         </div>
         <div v-else-if="summaryImport.items.length" class="pc-summary-import-list">
           <label v-for="item in summaryImport.items" :key="item.id" class="pc-summary-import-item">
-            <input :checked="summaryImport.selectedIds.includes(item.id)" type="checkbox" @change="toggleSummaryImport(item.id, ($event.target as HTMLInputElement).checked)" />
+            <input
+              :checked="summaryImport.selectedIds.includes(item.id)"
+              type="checkbox"
+              @change="toggleSummaryImport(item.id, ($event.target as HTMLInputElement).checked)"
+            />
             <span>
               <strong>{{ t`第 ${item.messageIndex} 楼总结` }}</strong>
               <small>{{ item.content }}</small>
@@ -199,7 +237,14 @@
         <EmptyState v-else-if="!summaryImport.loading" :title="t`没有可导入的 AI 楼层`" />
         <div class="pc-form-actions">
           <button class="pc-soft-btn" type="button" @click="phone.goBack()">{{ t`取消` }}</button>
-          <button class="pc-primary-btn" type="button" :disabled="!summaryImport.selectedIds.length" @click="importSummaryEntries">{{ t`导入 ${summaryImport.selectedIds.length} 条` }}</button>
+          <button
+            class="pc-primary-btn"
+            type="button"
+            :disabled="!summaryImport.selectedIds.length"
+            @click="importSummaryEntries"
+          >
+            {{ t`导入 ${summaryImport.selectedIds.length} 条` }}
+          </button>
         </div>
       </article>
     </section>
@@ -339,7 +384,11 @@
           <strong>
             {{ batchState.running ? t`批量生成中` : batchState.resumeAvailable ? t`批量已暂停` : t`批量生成完成` }}
           </strong>
-          <p>{{ `${batchState.done + batchState.failed}/${batchState.total} · 成功 ${batchState.done}${batchState.failed ? ` · 草稿 ${batchState.failed}` : ''}${batchState.currentLabel ? ` · ${batchState.currentLabel}` : ''}` }}</p>
+          <p>
+            {{
+              `${batchState.done + batchState.failed}/${batchState.total} · 成功 ${batchState.done}${batchState.failed ? ` · 草稿 ${batchState.failed}` : ''}${batchState.currentLabel ? ` · ${batchState.currentLabel}` : ''}`
+            }}
+          </p>
         </div>
 
         <div v-if="batchState.error" class="pc-status-card danger">
@@ -348,10 +397,7 @@
         </div>
 
         <div
-          :class="[
-            'pc-form-actions',
-            { 'pc-batch-actions-three': batchState.running || batchState.resumeAvailable },
-          ]"
+          :class="['pc-form-actions', { 'pc-batch-actions-three': batchState.running || batchState.resumeAvailable }]"
         >
           <button class="pc-soft-btn" type="button" :disabled="batchState.running" @click="phone.goBack()">
             {{ t`取消` }}
@@ -359,12 +405,7 @@
           <button v-if="batchState.running" class="pc-soft-btn danger" type="button" @click="stopBatchGeneration">
             {{ t`停止` }}
           </button>
-          <button
-            v-else-if="batchState.resumeAvailable"
-            class="pc-soft-btn"
-            type="button"
-            @click="resetBatchProgress"
-          >
+          <button v-else-if="batchState.resumeAvailable" class="pc-soft-btn" type="button" @click="resetBatchProgress">
             <i class="fa-solid fa-rotate-left"></i>
             <span>{{ t`重新设置` }}</span>
           </button>
@@ -383,7 +424,10 @@
       </div>
     </section>
 
-    <section v-else-if="route.page === 'preview' && activeBook && generationState.preview" class="pc-summary-page pc-generation-preview-page">
+    <section
+      v-else-if="route.page === 'preview' && activeBook && generationState.preview"
+      class="pc-summary-page pc-generation-preview-page"
+    >
       <div class="pc-detail-card pc-generation-preview-card">
         <GenerationPreviewPanel
           :content="generationState.preview.content"
@@ -431,7 +475,9 @@
         </div>
 
         <div class="pc-form-actions">
-          <button class="pc-soft-btn danger" type="button" @click="removeFailedDraft(activeFailedDraft.id)">{{ t`删除草稿` }}</button>
+          <button class="pc-soft-btn danger" type="button" @click="removeFailedDraft(activeFailedDraft.id)">
+            {{ t`删除草稿` }}
+          </button>
           <button class="pc-soft-btn" type="button" @click="reparseFailedDraft">{{ t`重新解析` }}</button>
         </div>
       </div>
@@ -464,7 +510,12 @@ import { useGenerationTaskStore } from '@/store/generationTasks';
 import { usePhoneStore } from '@/store/phone';
 import { usePromptStore } from '@/store/prompts';
 import { useRecoveryStore } from '@/store/recovery';
-import { defaultReaderBodyRule, normalizeArchivedMessage, type ChatReaderRegexRule, useReaderStore } from '@/store/reader';
+import {
+  defaultReaderBodyRule,
+  normalizeArchivedMessage,
+  type ChatReaderRegexRule,
+  useReaderStore,
+} from '@/store/reader';
 import { useSettingsStore } from '@/store/settings';
 import { useSummaryStore } from '@/store/summary';
 import type { FailedGenerationDraft } from '@/type/generation';
@@ -561,7 +612,7 @@ const {
   appId: 'summary',
   consumeFailedDraft: draftId => summary.deleteFailedDraft(draftId),
   getPreview: () => generationState.preview,
-  getRouteParams: () => route.value.params?.bookId ? { bookId: route.value.params.bookId } : {},
+  getRouteParams: () => (route.value.params?.bookId ? { bookId: route.value.params.bookId } : {}),
   page: 'preview',
   route,
   setPreview: preview => {
@@ -575,20 +626,20 @@ const activeBook = computed(() => {
   return bookId ? summary.getBook(bookId) : null;
 });
 
-const shelfBooks = computed(() => books.value.map(book => ({
-  count: book.entries.length,
-  gradient: 'linear-gradient(180deg, #0ea5e9 0%, #22c55e 100%)',
-  icon: 'fa-solid fa-layer-group',
-  id: book.id,
-  subtitle: `${book.entries.length} 条`,
-  title: book.title,
-})));
+const shelfBooks = computed(() =>
+  books.value.map(book => ({
+    count: book.entries.length,
+    gradient: 'linear-gradient(180deg, #0ea5e9 0%, #22c55e 100%)',
+    icon: 'fa-solid fa-layer-group',
+    id: book.id,
+    subtitle: `${book.entries.length} 条`,
+    title: book.title,
+  })),
+);
 
 const activeBookFailedDrafts = computed(() => {
   const bookId = activeBook.value?.id;
-  return bookId
-    ? failedDrafts.value.filter(draft => draft.context.bookId === bookId)
-    : [];
+  return bookId ? failedDrafts.value.filter(draft => draft.context.bookId === bookId) : [];
 });
 
 const activeEntry = computed(() => {
@@ -600,32 +651,42 @@ const activeEntryIndex = computed(() => {
   if (!activeBook.value || !activeEntry.value) return -1;
   return activeBook.value.entries.findIndex(entry => entry.id === activeEntry.value?.id);
 });
-const previousEntryId = computed(() => activeEntryIndex.value > 0 ? activeBook.value?.entries[activeEntryIndex.value - 1]?.id || '' : '');
-const nextEntryId = computed(() => activeBook.value && activeEntryIndex.value >= 0 ? activeBook.value.entries[activeEntryIndex.value + 1]?.id || '' : '');
-const entryCatalogItems = computed(() => (activeBook.value?.entries || []).map(entry => ({
-  id: entry.id,
-  title: entry.title,
-})));
+const previousEntryId = computed(() =>
+  activeEntryIndex.value > 0 ? activeBook.value?.entries[activeEntryIndex.value - 1]?.id || '' : '',
+);
+const nextEntryId = computed(() =>
+  activeBook.value && activeEntryIndex.value >= 0 ? activeBook.value.entries[activeEntryIndex.value + 1]?.id || '' : '',
+);
+const entryCatalogItems = computed(() =>
+  (activeBook.value?.entries || []).map(entry => ({
+    id: entry.id,
+    title: entry.title,
+  })),
+);
 const editingEntry = computed(() => (route.value.params?.entryId && activeEntry.value ? activeEntry.value : null));
 const activeFailedDraft = computed(() => {
   const draftId = route.value.params?.draftId;
   return draftId ? summary.getFailedDraft(draftId) : null;
 });
-const summaryImportRules = computed(() => regexDisplayRules.value.filter(rule => (
-  rule.enabled
-  && rule.pattern.trim()
-  && rule.targets.includes(regexDisplayReaderTarget)
-)));
-const allSummaryImportsSelected = computed(() => (
-  summaryImport.items.length > 0
-  && summaryImport.items.every(item => summaryImport.selectedIds.includes(item.id))
-));
+const summaryImportRules = computed(() =>
+  regexDisplayRules.value.filter(
+    rule => rule.enabled && rule.pattern.trim() && rule.targets.includes(regexDisplayReaderTarget),
+  ),
+);
+const allSummaryImportsSelected = computed(
+  () =>
+    summaryImport.items.length > 0 && summaryImport.items.every(item => summaryImport.selectedIds.includes(item.id)),
+);
 const formattedReferences = computed(() => formatGenerationReferences(selectedReferences.value));
-const batchTask = computed(() => generationTasks.tasks.find(task =>
-  task.kind === 'summary-batch'
-  && task.scopeKey === getCurrentChatScopeKey()
-  && (!route.value.params?.bookId || task.routeParams.bookId === route.value.params.bookId),
-) ?? null);
+const batchTask = computed(
+  () =>
+    generationTasks.tasks.find(
+      task =>
+        task.kind === 'summary-batch' &&
+        task.scopeKey === getCurrentChatScopeKey() &&
+        (!route.value.params?.bookId || task.routeParams.bookId === route.value.params.bookId),
+    ) ?? null,
+);
 const batchState = computed(() => {
   const task = batchTask.value;
   const running = task?.status === 'running' || task?.status === 'pause-requested';
@@ -649,12 +710,48 @@ const summaryPromptPreview = computed(() => {
   const bookId = route.value.params?.bookId || activeBook.value?.id;
   if (!bookId) return '未选择总结集';
   try {
-    return buildGenerationPreview(summaryGenerationAdapter, {
+    return buildGenerationPreview(
+      summaryGenerationAdapter,
+      {
+        appPrompt: prompts.appPrompts.summaries,
+        bookId,
+        outputFormat: buildSummaryOutputFormat(),
+        userRequirement: generationDraft.userRequirement,
+      },
+      {
+        generationDefaults: {
+          resultMode: settings.value.generation.resultMode,
+          stream: settings.value.generation.stream,
+          tavernPresetName: settings.value.generation.tavernPresetName,
+        },
+        references: formattedReferences.value,
+        source: {
+          fromStartEnd: generationDraft.fromStartEnd,
+          mode: settings.value.generation.sourceMode,
+          rangeText: generationDraft.rangeText,
+          recentCount: generationDraft.recentCount,
+          singleMessageId: generationDraft.singleMessageId,
+        },
+        textProvider: settings.value.textProvider,
+      },
+    ).text;
+  } catch (error) {
+    return error instanceof Error ? error.message : '无法生成提示词预览';
+  }
+});
+
+function captureSummaryPrompt() {
+  const bookId = route.value.params?.bookId || activeBook.value?.id;
+  if (!bookId) return Promise.reject(new Error('未选择总结集'));
+  return captureGenerationPrompt(
+    summaryGenerationAdapter,
+    {
       appPrompt: prompts.appPrompts.summaries,
       bookId,
       outputFormat: buildSummaryOutputFormat(),
       userRequirement: generationDraft.userRequirement,
-    }, {
+    },
+    {
       generationDefaults: {
         resultMode: settings.value.generation.resultMode,
         stream: settings.value.generation.stream,
@@ -669,36 +766,8 @@ const summaryPromptPreview = computed(() => {
         singleMessageId: generationDraft.singleMessageId,
       },
       textProvider: settings.value.textProvider,
-    }).text;
-  } catch (error) {
-    return error instanceof Error ? error.message : '无法生成提示词预览';
-  }
-});
-
-function captureSummaryPrompt() {
-  const bookId = route.value.params?.bookId || activeBook.value?.id;
-  if (!bookId) return Promise.reject(new Error('未选择总结集'));
-  return captureGenerationPrompt(summaryGenerationAdapter, {
-    appPrompt: prompts.appPrompts.summaries,
-    bookId,
-    outputFormat: buildSummaryOutputFormat(),
-    userRequirement: generationDraft.userRequirement,
-  }, {
-    generationDefaults: {
-      resultMode: settings.value.generation.resultMode,
-      stream: settings.value.generation.stream,
-      tavernPresetName: settings.value.generation.tavernPresetName,
     },
-    references: formattedReferences.value,
-    source: {
-      fromStartEnd: generationDraft.fromStartEnd,
-      mode: settings.value.generation.sourceMode,
-      rangeText: generationDraft.rangeText,
-      recentCount: generationDraft.recentCount,
-      singleMessageId: generationDraft.singleMessageId,
-    },
-    textProvider: settings.value.textProvider,
-  });
+  );
 }
 watch(
   () => route.value,
@@ -773,13 +842,13 @@ useInvalidRouteFallback({
     hasPreview: Boolean(generationState.preview),
     page: route.value.page,
   }),
-  isInvalid: current => current.appId === 'summary' && (
-    ['book', 'edit-book', 'generate', 'import-chat'].includes(current.page) && !current.hasBook
-    || ['entry', 'bagu-scan'].includes(current.page) && (!current.hasBook || !current.hasEntry)
-    || current.page === 'editor' && (!current.hasBook || Boolean(current.entryId) && !current.hasEntry)
-    || current.page === 'preview' && (!current.hasBook || !current.hasPreview)
-    || current.page === 'failed-draft' && !current.hasFailedDraft
-  ),
+  isInvalid: current =>
+    current.appId === 'summary' &&
+    ((['book', 'edit-book', 'generate', 'import-chat'].includes(current.page) && !current.hasBook) ||
+      (['entry', 'bagu-scan'].includes(current.page) && (!current.hasBook || !current.hasEntry)) ||
+      (current.page === 'editor' && (!current.hasBook || (Boolean(current.entryId) && !current.hasEntry))) ||
+      (current.page === 'preview' && (!current.hasBook || !current.hasPreview)) ||
+      (current.page === 'failed-draft' && !current.hasFailedDraft)),
   fallback: () => {
     if (route.value.appId !== 'summary') return;
     if (activeBook.value) {
@@ -828,10 +897,13 @@ function openBook(bookId: string) {
 
 async function removeBook(bookId: string) {
   const book = summary.getBook(bookId);
-  const shouldDelete = await phone.confirmNotice(`要删除总结集“${book?.title || '未命名总结集'}”吗？里面的条目也会一起删除。`, {
-    confirmLabel: '删除',
-    kind: 'warning',
-  });
+  const shouldDelete = await phone.confirmNotice(
+    `要删除总结集“${book?.title || '未命名总结集'}”吗？里面的条目也会一起删除。`,
+    {
+      confirmLabel: '删除',
+      kind: 'warning',
+    },
+  );
   if (!shouldDelete) return;
   summary.deleteBook(bookId);
   if (route.value.params?.bookId === bookId) {
@@ -850,9 +922,7 @@ function openImportChat(bookId: string) {
 
 function resolveSummaryImportRuleId() {
   const preferredId = readerSettings.value.bodyRuleId;
-  return summaryImportRules.value.some(rule => rule.id === preferredId)
-    ? preferredId
-    : '__default_body__';
+  return summaryImportRules.value.some(rule => rule.id === preferredId) ? preferredId : '__default_body__';
 }
 
 function getSummaryImportRule(): ChatReaderRegexRule {
@@ -871,15 +941,16 @@ async function reloadSummaryImport() {
   summaryImport.loading = true;
   try {
     const sourceMessages = getChatMessagesSafe('0-{{lastMessageId}}')
-      .map((item, index) => normalizeArchivedMessage(item, index, {
-        ...readerSettings.value,
-        showUserMessages: true,
-      }))
-      .filter((item): item is NonNullable<ReturnType<typeof normalizeArchivedMessage>> => (
-        Boolean(item)
-        && !item.isUser
-        && (readerSettings.value.showHiddenAssistantMessages || !item.isHidden)
-      ));
+      .map((item, index) =>
+        normalizeArchivedMessage(item, index, {
+          ...readerSettings.value,
+          showUserMessages: true,
+        }),
+      )
+      .filter(
+        (item): item is NonNullable<ReturnType<typeof normalizeArchivedMessage>> =>
+          Boolean(item) && !item.isUser && (readerSettings.value.showHiddenAssistantMessages || !item.isHidden),
+      );
     const transformed = await transformReaderMessages(
       sourceMessages.map(item => ({ messageIndex: item.messageIndex, rawText: item.rawText })),
       { find: '', flags: '', replace: '' },
@@ -909,9 +980,7 @@ function toggleSummaryImport(itemId: string, checked: boolean) {
 }
 
 function toggleAllSummaryImports() {
-  summaryImport.selectedIds = allSummaryImportsSelected.value
-    ? []
-    : summaryImport.items.map(item => item.id);
+  summaryImport.selectedIds = allSummaryImportsSelected.value ? [] : summaryImport.items.map(item => item.id);
 }
 
 function importSummaryEntries() {
@@ -1069,7 +1138,7 @@ function formatBatchRange(floors: number[]) {
     end = current;
   }
   ranges.push({ end, start });
-  return ranges.map(range => range.start === range.end ? `${range.start}` : `${range.start}-${range.end}`).join(', ');
+  return ranges.map(range => (range.start === range.end ? `${range.start}` : `${range.start}-${range.end}`)).join(', ');
 }
 
 function getBatchVisibleFloors() {
@@ -1079,21 +1148,26 @@ function getBatchVisibleFloors() {
 
   const visibleMessages = getChatMessagesSafe('0-{{lastMessageId}}', { hide_state: 'unhidden' });
   const visibleById = new Map(visibleMessages.map(message => [message.message_id, message]));
-  const requestedFloors = batchDraft.floorMode === 'all'
-    ? visibleMessages.map(message => message.message_id)
-    : parseBatchFloorText(batchDraft.floorText);
-  const floors = requestedFloors.filter(floor => {
-    const message = visibleById.get(floor);
-    if (!message) return false;
-    if (message.role === 'assistant') return batchDraft.includeAi;
-    if (message.role === 'user') return batchDraft.includeUser;
-    return false;
-  }).sort((left, right) => left - right);
+  const requestedFloors =
+    batchDraft.floorMode === 'all'
+      ? visibleMessages.map(message => message.message_id)
+      : parseBatchFloorText(batchDraft.floorText);
+  const floors = requestedFloors
+    .filter(floor => {
+      const message = visibleById.get(floor);
+      if (!message) return false;
+      if (message.role === 'assistant') return batchDraft.includeAi;
+      if (message.role === 'user') return batchDraft.includeUser;
+      return false;
+    })
+    .sort((left, right) => left - right);
 
   if (!floors.length) {
-    throw new Error(batchDraft.floorMode === 'all'
-      ? '当前聊天没有符合条件的可见 AI/用户楼层'
-      : '给定范围内没有符合条件的可见 AI/用户楼层');
+    throw new Error(
+      batchDraft.floorMode === 'all'
+        ? '当前聊天没有符合条件的可见 AI/用户楼层'
+        : '给定范围内没有符合条件的可见 AI/用户楼层',
+    );
   }
   return floors;
 }
@@ -1217,41 +1291,45 @@ async function runGeneration() {
   generationState.rawOutput = '';
 
   try {
-    const result = await generateContent(summaryGenerationAdapter, {
-      appPrompt: prompts.appPrompts.summaries,
-      bookId,
-      outputFormat: buildSummaryOutputFormat(),
-      userRequirement: generationDraft.userRequirement,
-    }, {
-      createFailedDraft: input => summary.createFailedDraft(input),
-      generationDefaults: {
-        resultMode: settings.value.generation.resultMode,
-        stream: settings.value.generation.stream,
-        tavernPresetName: settings.value.generation.tavernPresetName,
+    const result = await generateContent(
+      summaryGenerationAdapter,
+      {
+        appPrompt: prompts.appPrompts.summaries,
+        bookId,
+        outputFormat: buildSummaryOutputFormat(),
+        userRequirement: generationDraft.userRequirement,
       },
-      references: formattedReferences.value,
-      lifecycle: {
-        onFinish() {
-          generationState.running = false;
-          generationState.generationId = '';
+      {
+        createFailedDraft: input => summary.createFailedDraft(input),
+        generationDefaults: {
+          resultMode: settings.value.generation.resultMode,
+          stream: settings.value.generation.stream,
+          tavernPresetName: settings.value.generation.tavernPresetName,
         },
-        onRawOutput(rawOutput) {
-          generationState.rawOutput = rawOutput;
+        references: formattedReferences.value,
+        lifecycle: {
+          onFinish() {
+            generationState.running = false;
+            generationState.generationId = '';
+          },
+          onRawOutput(rawOutput) {
+            generationState.rawOutput = rawOutput;
+          },
+          onStart(generationId) {
+            generationState.running = true;
+            generationState.generationId = generationId;
+          },
         },
-        onStart(generationId) {
-          generationState.running = true;
-          generationState.generationId = generationId;
+        source: {
+          fromStartEnd: generationDraft.fromStartEnd,
+          mode: settings.value.generation.sourceMode,
+          rangeText: generationDraft.rangeText,
+          recentCount: generationDraft.recentCount,
+          singleMessageId: generationDraft.singleMessageId,
         },
+        textProvider: settings.value.textProvider,
       },
-      source: {
-        fromStartEnd: generationDraft.fromStartEnd,
-        mode: settings.value.generation.sourceMode,
-        rangeText: generationDraft.rangeText,
-        recentCount: generationDraft.recentCount,
-        singleMessageId: generationDraft.singleMessageId,
-      },
-      textProvider: settings.value.textProvider,
-    });
+    );
 
     if (result.status === 'failed') {
       generationState.error = result.warnings.join('；') || '模型没有返回可解析的总结 XML';
@@ -1426,7 +1504,6 @@ async function removeEntry(bookId: string, entryId: string) {
 function formatBookMeta(count: number) {
   return `${count} 条`;
 }
-
 </script>
 
 <style scoped>
@@ -1805,7 +1882,4 @@ function formatBookMeta(count: number) {
   font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
   font-size: 12px;
 }
-
 </style>
-
-

@@ -17,12 +17,32 @@
         <template v-else>
           <div class="pc-relationship-viewbar">
             <select v-model="perspectiveCharacterId" class="pc-field">
-              <option v-for="character in characters" :key="character.id" :value="character.id">{{ character.name }}</option>
+              <option v-for="character in characters" :key="character.id" :value="character.id">
+                {{ character.name }}
+              </option>
             </select>
             <div class="pc-view-segment">
-              <button :class="['pc-view-btn', { active: relationViewMode === 'all' }]" type="button" @click="relationViewMode = 'all'">all</button>
-              <button :class="['pc-view-btn', { active: relationViewMode === 'from' }]" type="button" @click="relationViewMode = 'from'">{{ t`他是` }}</button>
-              <button :class="['pc-view-btn', { active: relationViewMode === 'to' }]" type="button" @click="relationViewMode = 'to'">{{ t`是他` }}</button>
+              <button
+                :class="['pc-view-btn', { active: relationViewMode === 'all' }]"
+                type="button"
+                @click="relationViewMode = 'all'"
+              >
+                all
+              </button>
+              <button
+                :class="['pc-view-btn', { active: relationViewMode === 'from' }]"
+                type="button"
+                @click="relationViewMode = 'from'"
+              >
+                {{ t`他是` }}
+              </button>
+              <button
+                :class="['pc-view-btn', { active: relationViewMode === 'to' }]"
+                type="button"
+                @click="relationViewMode = 'to'"
+              >
+                {{ t`是他` }}
+              </button>
             </div>
           </div>
           <svg
@@ -41,7 +61,14 @@
 
             <g v-for="view in relationViews" :key="view.id" class="pc-relation-line">
               <line :x1="view.x1" :x2="view.x2" :y1="view.y1" :y2="view.y2"></line>
-              <rect class="pc-relation-label-bg" :height="20" :rx="8" :width="view.labelWidth" :x="view.labelX - view.labelWidth / 2" :y="view.labelY - 15"></rect>
+              <rect
+                class="pc-relation-label-bg"
+                :height="20"
+                :rx="8"
+                :width="view.labelWidth"
+                :x="view.labelX - view.labelWidth / 2"
+                :y="view.labelY - 15"
+              ></rect>
               <text :x="view.labelX" :y="view.labelY">{{ view.label }}</text>
             </g>
 
@@ -83,12 +110,24 @@
               :placeholder="t`从资料表选择人物`"
               :show-open-button="false"
             />
-            <button class="pc-icon-btn" type="button" :disabled="!profileCharacterDraft" :title="t`添加关联人物`" @click="addProfileCharacter">
+            <button
+              class="pc-icon-btn"
+              type="button"
+              :disabled="!profileCharacterDraft"
+              :title="t`添加关联人物`"
+              @click="addProfileCharacter"
+            >
               <i class="fa-solid fa-link"></i>
             </button>
           </div>
           <div class="pc-inline-form">
-            <input v-model="characterDraft" class="pc-field" type="text" :placeholder="t`人物名字`" @keydown.enter.prevent="addCharacter" />
+            <input
+              v-model="characterDraft"
+              class="pc-field"
+              type="text"
+              :placeholder="t`人物名字`"
+              @keydown.enter.prevent="addCharacter"
+            />
             <button class="pc-icon-btn" type="button" :title="t`新增人物`" @click="addCharacter">
               <i class="fa-solid fa-plus"></i>
             </button>
@@ -103,7 +142,12 @@
                   :value="character.name"
                   @change="renameCharacter(character.id, $event)"
                 />
-                <button class="pc-icon-btn danger" type="button" :title="t`删除`" @click="removeCharacter(character.id)">
+                <button
+                  class="pc-icon-btn danger"
+                  type="button"
+                  :title="t`删除`"
+                  @click="removeCharacter(character.id)"
+                >
                   <i class="fa-solid fa-trash"></i>
                 </button>
               </div>
@@ -131,14 +175,24 @@
           <div class="pc-relation-form">
             <select v-model="linkDraft.fromId" class="pc-field">
               <option value="">{{ t`谁` }}</option>
-              <option v-for="character in characters" :key="character.id" :value="character.id">{{ character.name }}</option>
+              <option v-for="character in characters" :key="character.id" :value="character.id">
+                {{ character.name }}
+              </option>
             </select>
             <span class="pc-relation-word">{{ t`是` }}</span>
             <select v-model="linkDraft.toId" class="pc-field">
               <option value="">{{ t`谁的` }}</option>
-              <option v-for="character in characters" :key="character.id" :value="character.id">{{ character.name }}</option>
+              <option v-for="character in characters" :key="character.id" :value="character.id">
+                {{ character.name }}
+              </option>
             </select>
-            <input v-model="linkDraft.label" class="pc-field" type="text" :placeholder="t`关系，例如 父亲`" @keydown.enter.prevent="addLink" />
+            <input
+              v-model="linkDraft.label"
+              class="pc-field"
+              type="text"
+              :placeholder="t`关系，例如 父亲`"
+              @keydown.enter.prevent="addLink"
+            />
             <button class="pc-icon-btn" type="button" :title="t`新增关系`" @click="addLink">
               <i class="fa-solid fa-plus"></i>
             </button>
@@ -147,26 +201,68 @@
           <div v-if="links.length" class="pc-list-filter">
             <select v-model="linkFilterCharacterId" class="pc-field">
               <option value="">{{ t`全部人物` }}</option>
-              <option v-for="character in characters" :key="character.id" :value="character.id">{{ character.name }}</option>
+              <option v-for="character in characters" :key="character.id" :value="character.id">
+                {{ character.name }}
+              </option>
             </select>
             <div class="pc-view-segment compact">
-              <button :class="['pc-view-btn', { active: linkFilterMode === 'all' }]" type="button" @click="linkFilterMode = 'all'">all</button>
-              <button :class="['pc-view-btn', { active: linkFilterMode === 'from' }]" type="button" @click="linkFilterMode = 'from'">{{ t`他是` }}</button>
-              <button :class="['pc-view-btn', { active: linkFilterMode === 'to' }]" type="button" @click="linkFilterMode = 'to'">{{ t`是他` }}</button>
+              <button
+                :class="['pc-view-btn', { active: linkFilterMode === 'all' }]"
+                type="button"
+                @click="linkFilterMode = 'all'"
+              >
+                all
+              </button>
+              <button
+                :class="['pc-view-btn', { active: linkFilterMode === 'from' }]"
+                type="button"
+                @click="linkFilterMode = 'from'"
+              >
+                {{ t`他是` }}
+              </button>
+              <button
+                :class="['pc-view-btn', { active: linkFilterMode === 'to' }]"
+                type="button"
+                @click="linkFilterMode = 'to'"
+              >
+                {{ t`是他` }}
+              </button>
             </div>
           </div>
 
           <div v-if="filteredLinks.length" class="pc-compact-list">
             <article v-for="link in filteredLinks" :key="link.id" class="pc-relation-row">
-              <select class="pc-field" :value="link.fromId" @change="relationship.updateLink(link.id, { fromId: ($event.target as HTMLSelectElement).value })">
-                <option v-for="character in characters" :key="character.id" :value="character.id">{{ character.name }}</option>
+              <select
+                class="pc-field"
+                :value="link.fromId"
+                @change="relationship.updateLink(link.id, { fromId: ($event.target as HTMLSelectElement).value })"
+              >
+                <option v-for="character in characters" :key="character.id" :value="character.id">
+                  {{ character.name }}
+                </option>
               </select>
               <span class="pc-relation-word">{{ t`是` }}</span>
-              <select class="pc-field" :value="link.toId" @change="relationship.updateLink(link.id, { toId: ($event.target as HTMLSelectElement).value })">
-                <option v-for="character in characters" :key="character.id" :value="character.id">{{ character.name }}</option>
+              <select
+                class="pc-field"
+                :value="link.toId"
+                @change="relationship.updateLink(link.id, { toId: ($event.target as HTMLSelectElement).value })"
+              >
+                <option v-for="character in characters" :key="character.id" :value="character.id">
+                  {{ character.name }}
+                </option>
               </select>
-              <input class="pc-field" type="text" :value="link.label" @change="relationship.updateLink(link.id, { label: ($event.target as HTMLInputElement).value })" />
-              <button class="pc-icon-btn danger" type="button" :title="t`删除`" @click="relationship.deleteLink(link.id)">
+              <input
+                class="pc-field"
+                type="text"
+                :value="link.label"
+                @change="relationship.updateLink(link.id, { label: ($event.target as HTMLInputElement).value })"
+              />
+              <button
+                class="pc-icon-btn danger"
+                type="button"
+                :title="t`删除`"
+                @click="relationship.deleteLink(link.id)"
+              >
                 <i class="fa-solid fa-xmark"></i>
               </button>
             </article>
@@ -194,7 +290,12 @@
       <article class="pc-editor-card">
         <span class="pc-kicker">{{ t`AI 关系识别` }}</span>
         <h2>{{ t`读取上下文生成当前关系` }}</h2>
-        <input v-model="generationDraft.characterNames" class="pc-field" type="text" :placeholder="t`角色名，用逗号分隔，例如 沐辞, 谢无咎`" />
+        <input
+          v-model="generationDraft.characterNames"
+          class="pc-field"
+          type="text"
+          :placeholder="t`角色名，用逗号分隔，例如 沐辞, 谢无咎`"
+        />
         <GenerationPanel
           :capture="captureRelationshipPrompt"
           :capture-reset-key="relationshipPromptPreview"
@@ -223,7 +324,10 @@
       </article>
     </section>
 
-    <section v-else-if="route.page === 'preview' && generationState.preview" class="pc-relationship-page pc-generation-preview-page">
+    <section
+      v-else-if="route.page === 'preview' && generationState.preview"
+      class="pc-relationship-page pc-generation-preview-page"
+    >
       <article class="pc-detail-card pc-generation-preview-card">
         <GenerationPreviewPanel
           :content="relationshipPreviewText"
@@ -274,7 +378,9 @@
           />
         </label>
         <div class="pc-form-actions pc-relationship-actions">
-          <button class="pc-soft-btn danger" type="button" @click="removeFailedDraft(activeFailedDraft.id)">{{ t`删除草稿` }}</button>
+          <button class="pc-soft-btn danger" type="button" @click="removeFailedDraft(activeFailedDraft.id)">
+            {{ t`删除草稿` }}
+          </button>
           <button class="pc-soft-btn" type="button" @click="reparseFailedDraft">{{ t`重新解析` }}</button>
         </div>
       </article>
@@ -379,11 +485,15 @@ const {
 });
 
 const characterById = computed(() => new Map(characters.value.map(character => [character.id, character])));
-const activeFailedDraft = computed(() => route.value.params?.draftId ? relationship.getFailedDraft(route.value.params.draftId) : null);
+const activeFailedDraft = computed(() =>
+  route.value.params?.draftId ? relationship.getFailedDraft(route.value.params.draftId) : null,
+);
 const formattedReferences = computed(() => formatGenerationReferences(selectedReferences.value));
-const textProviderSummary = computed(() => settings.value.textProvider.mode === 'external'
-  ? formatTextProviderSummary(settings.value.textProvider)
-  : '跟随酒馆当前模型');
+const textProviderSummary = computed(() =>
+  settings.value.textProvider.mode === 'external'
+    ? formatTextProviderSummary(settings.value.textProvider)
+    : '跟随酒馆当前模型',
+);
 const normalizedGraphZoom = computed(() => Math.min(100, Math.max(50, Number(graphZoom.value) || 100)));
 const graphViewBox = computed(() => {
   const scale = 100 / normalizedGraphZoom.value;
@@ -405,41 +515,45 @@ const filteredLinks = computed(() => {
   }
   return links.value.filter(link => link.toId === linkFilterCharacterId.value);
 });
-const relationViews = computed(() => visibleLinks.value.map(link => {
-  const from = characterById.value.get(link.fromId);
-  const to = characterById.value.get(link.toId);
-  if (!from || !to) return null;
+const relationViews = computed(() =>
+  visibleLinks.value
+    .map(link => {
+      const from = characterById.value.get(link.fromId);
+      const to = characterById.value.get(link.toId);
+      if (!from || !to) return null;
 
-  const dx = to.x - from.x;
-  const dy = to.y - from.y;
-  const length = Math.max(1, Math.hypot(dx, dy));
-  const unitX = dx / length;
-  const unitY = dy / length;
-  const reverse = visibleLinks.value.some(item => item.fromId === link.toId && item.toId === link.fromId);
-  const first = from.x < to.x || (from.x === to.x && from.y <= to.y) ? from : to;
-  const second = first.id === from.id ? to : from;
-  const pairDx = second.x - first.x;
-  const pairDy = second.y - first.y;
-  const pairLength = Math.max(1, Math.hypot(pairDx, pairDy));
-  const pairNormalX = -(pairDy / pairLength);
-  const pairNormalY = pairDx / pairLength;
-  const side = reverse ? (link.fromId === first.id ? -1 : 1) : 0;
-  const labelSide = reverse ? side : -1;
-  const lineOffset = reverse ? side * 14 : 0;
-  const labelOffset = labelSide * 34;
-  const labelWidth = Math.min(104, Math.max(34, link.label.length * 13 + 18));
-  return {
-    id: link.id,
-    label: link.label,
-    labelWidth,
-    labelX: (from.x + to.x) / 2 + pairNormalX * labelOffset,
-    labelY: (from.y + to.y) / 2 + pairNormalY * labelOffset + 4,
-    x1: from.x + unitX * 28 + pairNormalX * lineOffset,
-    x2: to.x - unitX * 32 + pairNormalX * lineOffset,
-    y1: from.y + unitY * 28 + pairNormalY * lineOffset,
-    y2: to.y - unitY * 32 + pairNormalY * lineOffset,
-  };
-}).filter((view): view is NonNullable<typeof view> => Boolean(view)));
+      const dx = to.x - from.x;
+      const dy = to.y - from.y;
+      const length = Math.max(1, Math.hypot(dx, dy));
+      const unitX = dx / length;
+      const unitY = dy / length;
+      const reverse = visibleLinks.value.some(item => item.fromId === link.toId && item.toId === link.fromId);
+      const first = from.x < to.x || (from.x === to.x && from.y <= to.y) ? from : to;
+      const second = first.id === from.id ? to : from;
+      const pairDx = second.x - first.x;
+      const pairDy = second.y - first.y;
+      const pairLength = Math.max(1, Math.hypot(pairDx, pairDy));
+      const pairNormalX = -(pairDy / pairLength);
+      const pairNormalY = pairDx / pairLength;
+      const side = reverse ? (link.fromId === first.id ? -1 : 1) : 0;
+      const labelSide = reverse ? side : -1;
+      const lineOffset = reverse ? side * 14 : 0;
+      const labelOffset = labelSide * 34;
+      const labelWidth = Math.min(104, Math.max(34, link.label.length * 13 + 18));
+      return {
+        id: link.id,
+        label: link.label,
+        labelWidth,
+        labelX: (from.x + to.x) / 2 + pairNormalX * labelOffset,
+        labelY: (from.y + to.y) / 2 + pairNormalY * labelOffset + 4,
+        x1: from.x + unitX * 28 + pairNormalX * lineOffset,
+        x2: to.x - unitX * 32 + pairNormalX * lineOffset,
+        y1: from.y + unitY * 28 + pairNormalY * lineOffset,
+        y2: to.y - unitY * 32 + pairNormalY * lineOffset,
+      };
+    })
+    .filter((view): view is NonNullable<typeof view> => Boolean(view)),
+);
 const relationshipPromptPreview = computed(() => {
   try {
     return buildGenerationPreview(adapter, buildGenerationConfig(), getGenerationOptions()).text;
@@ -496,10 +610,10 @@ useInvalidRouteFallback({
     hasPreview: Boolean(generationState.preview),
     page: route.value.page,
   }),
-  isInvalid: current => current.appId === 'relationship' && (
-    current.page === 'preview' && !current.hasPreview
-    || current.page === 'failed-draft' && !current.hasFailedDraft
-  ),
+  isInvalid: current =>
+    current.appId === 'relationship' &&
+    ((current.page === 'preview' && !current.hasPreview) ||
+      (current.page === 'failed-draft' && !current.hasFailedDraft)),
   fallback: () => {
     if (route.value.appId !== 'relationship') return;
     phone.replacePage('root', '关系网');

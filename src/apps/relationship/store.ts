@@ -76,8 +76,12 @@ export const useRelationshipStore = defineStore('relationship', () => {
     createDefault: () => validateInplace(RelationshipScopeDataSchema, {}),
   });
 
-  const characters = computed(() => [...data.value.characters].sort((left, right) => left.createdAt.localeCompare(right.createdAt)));
-  const links = computed(() => [...data.value.links].sort((left, right) => left.createdAt.localeCompare(right.createdAt)));
+  const characters = computed(() =>
+    [...data.value.characters].sort((left, right) => left.createdAt.localeCompare(right.createdAt)),
+  );
+  const links = computed(() =>
+    [...data.value.links].sort((left, right) => left.createdAt.localeCompare(right.createdAt)),
+  );
   const failedDraftCollection = createFailedDraftCollection(data, 'relationship_failed');
 
   watch(
@@ -104,7 +108,11 @@ export const useRelationshipStore = defineStore('relationship', () => {
   function findDuplicateCharacterName(name: string, exceptCharacterId = '') {
     const key = characterKey(name);
     if (!key) return null;
-    return data.value.characters.find(character => character.id !== exceptCharacterId && characterKey(character.name) === key) ?? null;
+    return (
+      data.value.characters.find(
+        character => character.id !== exceptCharacterId && characterKey(character.name) === key,
+      ) ?? null
+    );
   }
 
   function createCharacter(name: string, profileEntryId = '') {
@@ -153,9 +161,7 @@ export const useRelationshipStore = defineStore('relationship', () => {
     }
     const entry = profiles.getEntry(profileEntryId);
     if (!entry || entry.kind !== 'character') return false;
-    const duplicate = data.value.characters.find(item => (
-      item.id !== characterId && item.profileEntryId === entry.id
-    ));
+    const duplicate = data.value.characters.find(item => item.id !== characterId && item.profileEntryId === entry.id);
     if (duplicate) return false;
     character.profileEntryId = entry.id;
     character.name = entry.title;
@@ -233,10 +239,9 @@ export const useRelationshipStore = defineStore('relationship', () => {
   function mergeGenerated(result: RelationshipGeneratedResult) {
     const createdCharacters: RelationshipCharacter[] = [];
     const changedLinks: RelationshipLink[] = [];
-    const names = [
-      ...result.characters,
-      ...result.relations.flatMap(relation => [relation.from, relation.to]),
-    ].map(normalizeName).filter(Boolean);
+    const names = [...result.characters, ...result.relations.flatMap(relation => [relation.from, relation.to])]
+      .map(normalizeName)
+      .filter(Boolean);
 
     names.forEach(name => {
       const before = findCharacterByName(name);

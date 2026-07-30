@@ -28,20 +28,23 @@
 </template>
 
 <script setup lang="ts">
-withDefaults(defineProps<{
-  description?: string;
-  editable?: boolean;
-  modelValue: string;
-  placeholder?: string;
-  reparseLabel?: string;
-  title?: string;
-}>(), {
-  description: '',
-  editable: true,
-  placeholder: '在这里修改 AI 返回的原始 XML。',
-  reparseLabel: '重新解析',
-  title: '原始输出',
-});
+withDefaults(
+  defineProps<{
+    description?: string;
+    editable?: boolean;
+    modelValue: string;
+    placeholder?: string;
+    reparseLabel?: string;
+    title?: string;
+  }>(),
+  {
+    description: '',
+    editable: true,
+    placeholder: '在这里修改 AI 返回的原始 XML。',
+    reparseLabel: '重新解析',
+    title: '原始输出',
+  },
+);
 
 const emit = defineEmits<{
   reparse: [];

@@ -1,16 +1,6 @@
 import { BUILTIN_PHONE_APP_MODULES } from '@/apps/builtin';
-import {
-  buildDefaultHomeLayout,
-  getPhoneApp,
-  getPhoneAppDefinitions,
-  normalizeHomeLayout,
-} from '@/core/appLayout';
-import {
-  registerPhoneApp,
-  registerPhoneApps,
-  type PhoneAppDefinition,
-  type PhoneAppModule,
-} from '@/core/appRegistry';
+import { buildDefaultHomeLayout, getPhoneApp, getPhoneAppDefinitions, normalizeHomeLayout } from '@/core/appLayout';
+import { registerPhoneApp, registerPhoneApps, type PhoneAppDefinition, type PhoneAppModule } from '@/core/appRegistry';
 
 export type { PhoneAppDefinition, PhoneAppModule } from '@/core/appRegistry';
 

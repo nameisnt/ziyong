@@ -1,8 +1,4 @@
-import {
-  getLoadedPresetNameSafe,
-  getOptionalGlobalFunction,
-  getPresetNamesSafe,
-} from '@/util/runtime';
+import { getLoadedPresetNameSafe, getOptionalGlobalFunction, getPresetNamesSafe } from '@/util/runtime';
 
 export type TavernPresetPrompt = {
   content?: string;
@@ -115,9 +111,7 @@ function patchPrompt(
 
 function enqueuePresetMutation<T>(presetName: string, task: () => Promise<T>) {
   const previous = presetMutationQueues.get(presetName) ?? Promise.resolve();
-  const current = previous
-    .catch(() => undefined)
-    .then(task);
+  const current = previous.catch(() => undefined).then(task);
   const settled = current.then(
     () => undefined,
     () => undefined,
@@ -138,20 +132,14 @@ export async function updateTavernPresetPrompt(
 ) {
   return enqueuePresetMutation(presetName, async () => {
     const updatePresetWith = requirePresetFunction<UpdatePresetFn>('updatePresetWith');
-    const stored = assertPreset(await updatePresetWith(
-      presetName,
-      preset => patchPrompt(preset, promptId, patch),
-      { render: 'none' },
-    ));
+    const stored = assertPreset(
+      await updatePresetWith(presetName, preset => patchPrompt(preset, promptId, patch), { render: 'none' }),
+    );
 
     let liveSynced = true;
     if (getCurrentTavernPresetName() === presetName) {
       try {
-        await updatePresetWith(
-          'in_use',
-          preset => patchPrompt(preset, promptId, patch),
-          { render: 'immediate' },
-        );
+        await updatePresetWith('in_use', preset => patchPrompt(preset, promptId, patch), { render: 'immediate' });
       } catch {
         liveSynced = false;
       }

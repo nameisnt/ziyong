@@ -18,16 +18,19 @@ import { renderMarkdown } from '@/util/markdown';
 import { formatReaderContent } from '@/util/readerContent';
 import { storeToRefs } from 'pinia';
 
-const props = withDefaults(defineProps<{
-  content: string;
-  formatted?: boolean;
-  reader?: Pick<ReaderAppearance, 'blankLineBetweenLines' | 'firstLineIndent'>;
-  title?: string;
-}>(), {
-  formatted: false,
-  reader: undefined,
-  title: '',
-});
+const props = withDefaults(
+  defineProps<{
+    content: string;
+    formatted?: boolean;
+    reader?: Pick<ReaderAppearance, 'blankLineBetweenLines' | 'firstLineIndent'>;
+    title?: string;
+  }>(),
+  {
+    formatted: false,
+    reader: undefined,
+    title: '',
+  },
+);
 
 const settingsStore = useSettingsStore();
 const { settings } = storeToRefs(settingsStore);

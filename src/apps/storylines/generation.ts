@@ -1,9 +1,4 @@
-import {
-  objectListField,
-  textField,
-  textListField,
-  xmlParser,
-} from '@/apps/outputDefinitions';
+import { objectListField, textField, textListField, xmlParser } from '@/apps/outputDefinitions';
 import type { PhoneOutputParserDefinition } from '@/core/appRegistry';
 import type { GenerationAdapter, XmlParseResult } from '@/type/generation';
 import { parseConfiguredOutput, parseOutputWithConfig } from '@/util/outputParsing';
@@ -54,27 +49,33 @@ export const StorylineGenerateConfigSchema = z.object({
 export type StorylineGenerateConfig = z.infer<typeof StorylineGenerateConfigSchema>;
 
 export const storylineOutputParser: PhoneOutputParserDefinition = xmlParser([
-  objectListField('lines', '剧情线', 'line', [
-    textField('title', '标题', 'title', { required: true }),
-    textField('kind', '类型', 'kind'),
-    textField('status', '状态', 'status'),
-    textField('summary', '概述', 'summary'),
-    textField('goal', '当前目标', 'goal'),
-    textField('stakes', '风险与代价', 'stakes'),
-    textListField('tags', '标签', 'tags', '[,，、\\n]'),
-    objectListField('beats', '剧情节点', 'beat', [
-      textField('title', '节点标题', 'title', { required: true }),
-      textField('summary', '节点概述', 'summary'),
-      textField('status', '节点状态', 'status'),
-    ]),
-    objectListField('hooks', '伏笔', 'hook', [
-      textField('title', '伏笔标题', 'title', { required: true }),
-      textField('seed', '埋设内容', 'seed'),
-      textField('payoff', '回收情况', 'payoff'),
-      textField('status', '伏笔状态', 'status'),
-      textListField('tags', '伏笔标签', 'tags', '[,，、\\n]'),
-    ]),
-  ], true),
+  objectListField(
+    'lines',
+    '剧情线',
+    'line',
+    [
+      textField('title', '标题', 'title', { required: true }),
+      textField('kind', '类型', 'kind'),
+      textField('status', '状态', 'status'),
+      textField('summary', '概述', 'summary'),
+      textField('goal', '当前目标', 'goal'),
+      textField('stakes', '风险与代价', 'stakes'),
+      textListField('tags', '标签', 'tags', '[,，、\\n]'),
+      objectListField('beats', '剧情节点', 'beat', [
+        textField('title', '节点标题', 'title', { required: true }),
+        textField('summary', '节点概述', 'summary'),
+        textField('status', '节点状态', 'status'),
+      ]),
+      objectListField('hooks', '伏笔', 'hook', [
+        textField('title', '伏笔标题', 'title', { required: true }),
+        textField('seed', '埋设内容', 'seed'),
+        textField('payoff', '回收情况', 'payoff'),
+        textField('status', '伏笔状态', 'status'),
+        textListField('tags', '伏笔标签', 'tags', '[,，、\\n]'),
+      ]),
+    ],
+    true,
+  ),
 ]);
 
 export const storylineOutputFormat = [
@@ -128,19 +129,25 @@ function normalizedTitle(value: string) {
 }
 
 export function formatStorylineResult(result: StorylineGeneratedResult) {
-  return result.lines.map(line => {
-    const beats = line.beats.map((beat, index) => `${index + 1}. ${beat.title}：${beat.summary}`).join('\n');
-    const hooks = line.hooks.map(hook => `- ${hook.title}：${hook.seed}${hook.payoff ? `；回收：${hook.payoff}` : ''}`).join('\n');
-    return [
-      `## ${line.title}`,
-      `${line.kind} / ${line.status}`,
-      line.summary,
-      line.goal ? `**当前目标：** ${line.goal}` : '',
-      line.stakes ? `**风险与代价：** ${line.stakes}` : '',
-      beats ? `### 剧情节点\n${beats}` : '',
-      hooks ? `### 伏笔\n${hooks}` : '',
-    ].filter(Boolean).join('\n\n');
-  }).join('\n\n');
+  return result.lines
+    .map(line => {
+      const beats = line.beats.map((beat, index) => `${index + 1}. ${beat.title}：${beat.summary}`).join('\n');
+      const hooks = line.hooks
+        .map(hook => `- ${hook.title}：${hook.seed}${hook.payoff ? `；回收：${hook.payoff}` : ''}`)
+        .join('\n');
+      return [
+        `## ${line.title}`,
+        `${line.kind} / ${line.status}`,
+        line.summary,
+        line.goal ? `**当前目标：** ${line.goal}` : '',
+        line.stakes ? `**风险与代价：** ${line.stakes}` : '',
+        beats ? `### 剧情节点\n${beats}` : '',
+        hooks ? `### 伏笔\n${hooks}` : '',
+      ]
+        .filter(Boolean)
+        .join('\n\n');
+    })
+    .join('\n\n');
 }
 
 export function createStorylineGenerationAdapter(storylines: ReturnType<typeof useStorylinesStore>) {
@@ -157,18 +164,17 @@ export function createStorylineGenerationAdapter(storylines: ReturnType<typeof u
       };
     },
     parse(raw) {
-      return parseConfiguredOutput(
-        'storylines.extract',
-        raw,
-        StorylineGeneratedResultSchema,
-        () => parseWithDefault(raw),
+      return parseConfiguredOutput('storylines.extract', raw, StorylineGeneratedResultSchema, () =>
+        parseWithDefault(raw),
       );
     },
     save(result) {
       let beatCount = 0;
       let hookCount = 0;
       result.lines.forEach(generated => {
-        const existing = storylines.lines.find(line => normalizedTitle(line.title) === normalizedTitle(generated.title));
+        const existing = storylines.lines.find(
+          line => normalizedTitle(line.title) === normalizedTitle(generated.title),
+        );
         const line = existing
           ? storylines.updateLine(existing.id, {
               goal: generated.goal,

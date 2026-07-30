@@ -1,10 +1,4 @@
-export type TutorialCategoryId =
-  | 'data'
-  | 'dependency'
-  | 'generation'
-  | 'macro'
-  | 'start'
-  | 'troubleshooting';
+export type TutorialCategoryId = 'data' | 'dependency' | 'generation' | 'macro' | 'start' | 'troubleshooting';
 
 export type TutorialBlock =
   | {

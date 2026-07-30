@@ -1,8 +1,4 @@
-import type {
-  PhoneOutputParserDefinition,
-  PhoneOutputParserField,
-  PhonePromptOutputFormat,
-} from '@/core/appRegistry';
+import type { PhoneOutputParserDefinition, PhoneOutputParserField, PhonePromptOutputFormat } from '@/core/appRegistry';
 
 export function textField(
   key: string,
@@ -20,12 +16,7 @@ export function textField(
   };
 }
 
-export function textListField(
-  key: string,
-  label: string,
-  defaultPath: string,
-  separator = '',
-): PhoneOutputParserField {
+export function textListField(key: string, label: string, defaultPath: string, separator = ''): PhoneOutputParserField {
   return {
     defaultPath,
     key,
@@ -52,10 +43,7 @@ export function objectListField(
   };
 }
 
-export function xmlParser(
-  fields: PhoneOutputParserField[],
-  rootPath = 'result',
-): PhoneOutputParserDefinition {
+export function xmlParser(fields: PhoneOutputParserField[], rootPath = 'result'): PhoneOutputParserDefinition {
   return {
     fields,
     kind: 'xml',
@@ -70,10 +58,12 @@ export function simpleXmlOutput(
   options: { contentOnly?: boolean; preserveContentMarkup?: boolean } = {},
 ): PhonePromptOutputFormat {
   const fields = options.contentOnly
-    ? [textField('content', '正文', 'content', {
-        extraction: options.preserveContentMarkup ? 'markup' : 'text',
-        required: true,
-      })]
+    ? [
+        textField('content', '正文', 'content', {
+          extraction: options.preserveContentMarkup ? 'markup' : 'text',
+          required: true,
+        }),
+      ]
     : [
         textField('title', '标题', 'title', { required: true }),
         textField('content', '正文', 'content', {

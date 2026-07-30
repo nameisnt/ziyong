@@ -49,10 +49,24 @@
             <button class="pc-icon-btn" type="button" :title="t`导入`" :aria-label="t`导入`" @click="triggerImport">
               <i class="fa-solid fa-file-import"></i>
             </button>
-            <button class="pc-icon-btn" type="button" :title="t`复制`" :aria-label="t`复制`" :disabled="!activeWorkflow" @click="duplicateWorkflow">
+            <button
+              class="pc-icon-btn"
+              type="button"
+              :title="t`复制`"
+              :aria-label="t`复制`"
+              :disabled="!activeWorkflow"
+              @click="duplicateWorkflow"
+            >
               <i class="fa-solid fa-copy"></i>
             </button>
-            <button class="pc-icon-btn danger" type="button" :title="t`删除`" :aria-label="t`删除`" :disabled="!activeWorkflow" @click="deleteWorkflow">
+            <button
+              class="pc-icon-btn danger"
+              type="button"
+              :title="t`删除`"
+              :aria-label="t`删除`"
+              :disabled="!activeWorkflow"
+              @click="deleteWorkflow"
+            >
               <i class="fa-solid fa-trash"></i>
             </button>
           </div>
@@ -69,16 +83,29 @@
         <div class="pc-grid two pc-workflow-meta-grid">
           <label class="pc-field-group pc-inline-field">
             <span>{{ t`名称` }}</span>
-            <input v-model="workflowNameModel" class="pc-field" type="text" :placeholder="t`例如：头像生图 / 音乐片段 / 短视频`" />
+            <input
+              v-model="workflowNameModel"
+              class="pc-field"
+              type="text"
+              :placeholder="t`例如：头像生图 / 音乐片段 / 短视频`"
+            />
           </label>
           <label class="pc-field-group pc-inline-field">
             <span>{{ t`类型` }}</span>
             <select v-model="workflowKindModel" class="pc-field pc-select">
-              <option v-for="option in workflowKindOptions" :key="option.id" :value="option.id">{{ option.label }}</option>
+              <option v-for="option in workflowKindOptions" :key="option.id" :value="option.id">
+                {{ option.label }}
+              </option>
             </select>
           </label>
         </div>
-        <input ref="importInputEl" class="pc-hidden-input" type="file" accept=".json,application/json" @change="importWorkflowFile" />
+        <input
+          ref="importInputEl"
+          class="pc-hidden-input"
+          type="file"
+          accept=".json,application/json"
+          @change="importWorkflowFile"
+        />
       </article>
 
       <article class="pc-section-card">
@@ -104,7 +131,13 @@
               <option value="">{{ t`跟随工作流` }}</option>
               <option v-for="option in settings.modelOptions" :key="option" :value="option">{{ option }}</option>
             </select>
-            <input v-else v-model="settings.checkpoint" class="pc-field" type="text" :placeholder="t`可先读取模型，或手动填写`" />
+            <input
+              v-else
+              v-model="settings.checkpoint"
+              class="pc-field"
+              type="text"
+              :placeholder="t`可先读取模型，或手动填写`"
+            />
           </label>
           <label class="pc-field-group pc-inline-field">
             <span>{{ t`采样器` }}</span>
@@ -112,7 +145,13 @@
               <option value="">{{ t`跟随工作流` }}</option>
               <option v-for="option in settings.samplerOptions" :key="option" :value="option">{{ option }}</option>
             </select>
-            <input v-else v-model="settings.sampler" class="pc-field" type="text" :placeholder="t`可先读取模型，或手动填写`" />
+            <input
+              v-else
+              v-model="settings.sampler"
+              class="pc-field"
+              type="text"
+              :placeholder="t`可先读取模型，或手动填写`"
+            />
           </label>
           <label class="pc-field-group pc-inline-field">
             <span>{{ t`调度器` }}</span>
@@ -196,21 +235,44 @@
                 </div>
                 <label v-if="getParameterMode(item) === 'user'" class="pc-field-group pc-inline-field">
                   <span>{{ t`参数值` }}</span>
-                  <select v-if="item.options.length" :value="getMappingValue(item)" class="pc-field pc-select" @change="updateMapping(item, { value: ($event.target as HTMLSelectElement).value })">
+                  <select
+                    v-if="item.options.length"
+                    :value="getMappingValue(item)"
+                    class="pc-field pc-select"
+                    @change="updateMapping(item, { value: ($event.target as HTMLSelectElement).value })"
+                  >
                     <option value="">{{ t`跟随工作流原值` }}</option>
                     <option v-for="option in item.options" :key="option" :value="option">{{ option }}</option>
                   </select>
-                  <select v-else-if="item.fieldKind === 'boolean'" :value="getMappingValue(item)" class="pc-field pc-select" @change="updateMapping(item, { value: ($event.target as HTMLSelectElement).value })">
+                  <select
+                    v-else-if="item.fieldKind === 'boolean'"
+                    :value="getMappingValue(item)"
+                    class="pc-field pc-select"
+                    @change="updateMapping(item, { value: ($event.target as HTMLSelectElement).value })"
+                  >
                     <option value="">{{ t`跟随工作流原值` }}</option>
                     <option value="true">{{ t`是` }}</option>
                     <option value="false">{{ t`否` }}</option>
                   </select>
-                  <input v-else :value="getMappingValue(item)" class="pc-field" :type="item.fieldKind === 'number' ? 'number' : 'text'" :placeholder="t`留空则跟随工作流原值`" @input="updateMapping(item, { value: ($event.target as HTMLInputElement).value })" />
+                  <input
+                    v-else
+                    :value="getMappingValue(item)"
+                    class="pc-field"
+                    :type="item.fieldKind === 'number' ? 'number' : 'text'"
+                    :placeholder="t`留空则跟随工作流原值`"
+                    @input="updateMapping(item, { value: ($event.target as HTMLInputElement).value })"
+                  />
                 </label>
                 <div v-else-if="getParameterMode(item) === 'ai'" class="pc-ai-param-fields">
                   <label class="pc-field-group pc-inline-field">
                     <span>{{ t`占位符` }}</span>
-                    <input :value="getMappingPlaceholder(item)" class="pc-field" type="text" :placeholder="`{{${defaultPlaceholder(item)}}}`" @input="updateMapping(item, { placeholder: ($event.target as HTMLInputElement).value })" />
+                    <input
+                      :value="getMappingPlaceholder(item)"
+                      class="pc-field"
+                      type="text"
+                      :placeholder="`{{${defaultPlaceholder(item)}}}`"
+                      @input="updateMapping(item, { placeholder: ($event.target as HTMLInputElement).value })"
+                    />
                   </label>
                   <label class="pc-field-group">
                     <span>{{ t`用户说明` }}</span>
@@ -233,14 +295,23 @@
           <strong>{{ t`工作流 JSON` }}</strong>
           <span>{{ activeWorkflow ? workflowKindLabel(activeWorkflow.kind) : t`先新建或导入` }}</span>
         </div>
-        <textarea v-model="workflowJsonModel" class="pc-area pc-workflow-json-area" :placeholder="t`粘贴或导入 ComfyUI API 工作流 JSON`"></textarea>
+        <textarea
+          v-model="workflowJsonModel"
+          class="pc-area pc-workflow-json-area"
+          :placeholder="t`粘贴或导入 ComfyUI API 工作流 JSON`"
+        ></textarea>
       </article>
     </section>
   </section>
 </template>
 
 <script setup lang="ts">
-import { useComfyStore, type ComfyWorkflowInput, type ComfyWorkflowKind, type ComfyWorkflowParameterMapping } from './store';
+import {
+  useComfyStore,
+  type ComfyWorkflowInput,
+  type ComfyWorkflowKind,
+  type ComfyWorkflowParameterMapping,
+} from './store';
 import { usePhoneStore } from '@/store/phone';
 import { storeToRefs } from 'pinia';
 
@@ -289,11 +360,15 @@ const workflowParameterGroups = computed(() => {
   });
   return Array.from(groups.values());
 });
-const filteredWorkflows = computed(() => settings.value.workflows.filter(workflow => workflow.kind === activeKind.value));
+const filteredWorkflows = computed(() =>
+  settings.value.workflows.filter(workflow => workflow.kind === activeKind.value),
+);
 const parameterModeSummary = computed(() => {
   const mappings = activeWorkflow.value?.paramMappings ?? {};
   const aiCount = workflowParameterInputs.value.filter(item => mappings[item.key]?.aiFill).length;
-  const userCount = workflowParameterInputs.value.filter(item => mappings[item.key]?.exposed && !mappings[item.key]?.aiFill).length;
+  const userCount = workflowParameterInputs.value.filter(
+    item => mappings[item.key]?.exposed && !mappings[item.key]?.aiFill,
+  ).length;
   const fixedCount = Math.max(0, workflowParameterInputs.value.length - aiCount - userCount);
   return `${aiCount} AI · ${userCount} 用户 · ${fixedCount} 固定`;
 });
@@ -393,7 +468,9 @@ async function refresh() {
   loading.value = true;
   try {
     const result = await comfy.refreshObjectInfo();
-    toastr.success(`已读取 ${result.models} 个模型，${result.samplers} 个采样器，${result.schedulers} 个调度器，${result.nodes} 个工作流输入`);
+    toastr.success(
+      `已读取 ${result.models} 个模型，${result.samplers} 个采样器，${result.schedulers} 个调度器，${result.nodes} 个工作流输入`,
+    );
   } catch (error) {
     toastr.error(error instanceof Error ? error.message : '读取 ComfyUI 失败');
   } finally {

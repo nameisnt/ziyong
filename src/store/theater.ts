@@ -20,14 +20,20 @@ export const useTheaterStore = defineStore('theater', () => {
     createDefault: () => validateInplace(TheaterScopeDataSchema, {}),
   });
 
-  const entries = computed(() => [...data.value.entries].sort((left, right) => right.updatedAt.localeCompare(left.updatedAt)));
-  const { createFailedDraft, deleteFailedDraft, failedDrafts, getFailedDraft, updateFailedDraft } = createFailedDraftCollection(data, 'theater_failed');
+  const entries = computed(() =>
+    [...data.value.entries].sort((left, right) => right.updatedAt.localeCompare(left.updatedAt)),
+  );
+  const { createFailedDraft, deleteFailedDraft, failedDrafts, getFailedDraft, updateFailedDraft } =
+    createFailedDraftCollection(data, 'theater_failed');
 
   function getEntry(entryId: string) {
     return data.value.entries.find(entry => entry.id === entryId) ?? null;
   }
 
-  function createEntry(input: Pick<TheaterEntry, 'title' | 'content' | 'participants' | 'renderMode' | 'typeName'> & Partial<Pick<TheaterEntry, 'typeId'>>) {
+  function createEntry(
+    input: Pick<TheaterEntry, 'title' | 'content' | 'participants' | 'renderMode' | 'typeName'> &
+      Partial<Pick<TheaterEntry, 'typeId'>>,
+  ) {
     const timestamp = nowIso();
     const entry: TheaterEntry = {
       id: createId('theater_entry'),
@@ -47,7 +53,8 @@ export const useTheaterStore = defineStore('theater', () => {
 
   function updateEntry(
     entryId: string,
-    input: Pick<TheaterEntry, 'title' | 'content' | 'participants' | 'renderMode' | 'typeName'> & Partial<Pick<TheaterEntry, 'typeId'>>,
+    input: Pick<TheaterEntry, 'title' | 'content' | 'participants' | 'renderMode' | 'typeName'> &
+      Partial<Pick<TheaterEntry, 'typeId'>>,
   ) {
     const entry = getEntry(entryId);
     if (!entry) return null;
@@ -71,10 +78,7 @@ export const useTheaterStore = defineStore('theater', () => {
     entry.favorite = !entry.favorite;
   }
 
-  function updateFailedDraftRenderMode(
-    draftId: string,
-    renderMode: TheaterEntry['renderMode'],
-  ) {
+  function updateFailedDraftRenderMode(draftId: string, renderMode: TheaterEntry['renderMode']) {
     const draft = getFailedDraft(draftId);
     if (!draft) return null;
     draft.context = {

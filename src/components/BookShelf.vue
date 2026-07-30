@@ -32,18 +32,21 @@ interface BookShelfCard {
   title: string;
 }
 
-const props = withDefaults(defineProps<{
-  books: BookShelfCard[];
-  createLabel?: string;
-  createSubtitle?: string;
-  showCreate?: boolean;
-  variant?: 'diary' | 'extras';
-}>(), {
-  createLabel: '新建',
-  createSubtitle: '生成入口',
-  showCreate: true,
-  variant: 'diary',
-});
+const props = withDefaults(
+  defineProps<{
+    books: BookShelfCard[];
+    createLabel?: string;
+    createSubtitle?: string;
+    showCreate?: boolean;
+    variant?: 'diary' | 'extras';
+  }>(),
+  {
+    createLabel: '新建',
+    createSubtitle: '生成入口',
+    showCreate: true,
+    variant: 'diary',
+  },
+);
 
 defineEmits<{
   create: [];
@@ -99,7 +102,9 @@ const rows = computed(() => {
   place-items: center;
   overflow: hidden;
   border-radius: 4px 8px 8px 4px;
-  box-shadow: -2px 0 5px rgba(0, 0, 0, 0.18), 2px 4px 8px rgba(0, 0, 0, 0.12);
+  box-shadow:
+    -2px 0 5px rgba(0, 0, 0, 0.18),
+    2px 4px 8px rgba(0, 0, 0, 0.12);
   color: #fff;
   font-size: 24px;
 }

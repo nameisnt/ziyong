@@ -68,7 +68,10 @@
       </div>
     </section>
 
-    <section v-else-if="route.page === 'entry' && activeBook && activeEntry" class="pc-letters-page pc-letters-detail-page">
+    <section
+      v-else-if="route.page === 'entry' && activeBook && activeEntry"
+      class="pc-letters-page pc-letters-detail-page"
+    >
       <ReaderDetailShell
         actions-class="five"
         :content="activeEntry.content"
@@ -89,7 +92,12 @@
           <button class="pc-soft-btn" type="button" :title="t`回信`" @click="openReply(activeBook.id, activeEntry.id)">
             <i class="fa-solid fa-reply"></i>
           </button>
-          <button class="pc-soft-btn danger" type="button" :title="t`删除`" @click="removeEntry(activeBook.id, activeEntry.id)">
+          <button
+            class="pc-soft-btn danger"
+            type="button"
+            :title="t`删除`"
+            @click="removeEntry(activeBook.id, activeEntry.id)"
+          >
             <i class="fa-solid fa-trash"></i>
           </button>
         </template>
@@ -132,7 +140,13 @@
         <template v-else>
           <input v-model="draft.senderName" class="pc-field" type="text" :placeholder="t`发信人`" />
           <input v-model="draft.receiverName" class="pc-field" type="text" :placeholder="t`收信人`" />
-          <input v-if="!activeBook" v-model="draft.bookTitle" class="pc-field" type="text" :placeholder="t`分册名称（可留空）`" />
+          <input
+            v-if="!activeBook"
+            v-model="draft.bookTitle"
+            class="pc-field"
+            type="text"
+            :placeholder="t`分册名称（可留空）`"
+          />
         </template>
 
         <input v-model="draft.title" class="pc-field" type="text" :placeholder="t`标题`" />
@@ -186,8 +200,20 @@
           @update:user-requirement="generationDraft.userRequirement = $event"
         >
           <template #before-fields>
-            <input v-model="generationDraft.senderName" class="pc-field" type="text" :disabled="generationState.running" :placeholder="t`发信人`" />
-            <input v-model="generationDraft.receiverName" class="pc-field" type="text" :disabled="generationState.running" :placeholder="t`收信人`" />
+            <input
+              v-model="generationDraft.senderName"
+              class="pc-field"
+              type="text"
+              :disabled="generationState.running"
+              :placeholder="t`发信人`"
+            />
+            <input
+              v-model="generationDraft.receiverName"
+              class="pc-field"
+              type="text"
+              :disabled="generationState.running"
+              :placeholder="t`收信人`"
+            />
             <input
               v-if="!activeBook"
               v-model="generationDraft.bookTitle"
@@ -212,14 +238,24 @@
 
             <div class="pc-number-field">
               <label class="pc-field-label">{{ t`附带最近 N 封相关书信` }}</label>
-              <input v-model.number="generationDraft.recentEntryCount" class="pc-field" type="number" min="0" max="20" :disabled="generationState.running" />
+              <input
+                v-model.number="generationDraft.recentEntryCount"
+                class="pc-field"
+                type="number"
+                min="0"
+                max="20"
+                :disabled="generationState.running"
+              />
             </div>
           </template>
         </GenerationPanel>
       </div>
     </section>
 
-    <section v-else-if="route.page === 'preview' && generationState.preview" class="pc-letters-page pc-generation-preview-page">
+    <section
+      v-else-if="route.page === 'preview' && generationState.preview"
+      class="pc-letters-page pc-generation-preview-page"
+    >
       <div class="pc-detail-card pc-generation-preview-card">
         <GenerationPreviewPanel
           :content="generationState.preview.content"
@@ -252,7 +288,9 @@
         />
 
         <div class="pc-form-actions">
-          <button class="pc-soft-btn danger" type="button" @click="removeFailedDraft(activeFailedDraft.id)">{{ t`删除草稿` }}</button>
+          <button class="pc-soft-btn danger" type="button" @click="removeFailedDraft(activeFailedDraft.id)">
+            {{ t`删除草稿` }}
+          </button>
           <button class="pc-soft-btn" type="button" @click="reparseFailedDraft">{{ t`重新解析` }}</button>
         </div>
       </div>
@@ -381,14 +419,16 @@ const activeBook = computed(() => {
   const bookId = route.value.params?.bookId;
   return bookId ? letters.getBook(bookId) : null;
 });
-const shelfBooks = computed(() => books.value.map(book => ({
-  count: book.entries.length,
-  gradient: 'linear-gradient(180deg, #14b8a6 0%, #0f766e 100%)',
-  icon: 'fa-solid fa-envelope-open-text',
-  id: book.id,
-  subtitle: `${book.entries.length} 封`,
-  title: book.title,
-})));
+const shelfBooks = computed(() =>
+  books.value.map(book => ({
+    count: book.entries.length,
+    gradient: 'linear-gradient(180deg, #14b8a6 0%, #0f766e 100%)',
+    icon: 'fa-solid fa-envelope-open-text',
+    id: book.id,
+    subtitle: `${book.entries.length} 封`,
+    title: book.title,
+  })),
+);
 
 const activeEntry = computed(() => {
   const bookId = route.value.params?.bookId;
@@ -407,11 +447,12 @@ const filteredEntries = computed(() => {
   const normalized = query.value.trim().toLowerCase();
   const source = activeBook.value?.entries || [];
   const matched = normalized
-    ? source.filter(entry => (
-      entry.title.toLowerCase().includes(normalized)
-      || entry.sender.name.toLowerCase().includes(normalized)
-      || entry.receiver.name.toLowerCase().includes(normalized)
-    ))
+    ? source.filter(
+        entry =>
+          entry.title.toLowerCase().includes(normalized) ||
+          entry.sender.name.toLowerCase().includes(normalized) ||
+          entry.receiver.name.toLowerCase().includes(normalized),
+      )
     : source;
 
   return [...matched].sort((left, right) => {
@@ -420,12 +461,18 @@ const filteredEntries = computed(() => {
   });
 });
 const activeEntryIndex = computed(() => filteredEntries.value.findIndex(entry => entry.id === activeEntry.value?.id));
-const previousEntryId = computed(() => activeEntryIndex.value > 0 ? filteredEntries.value[activeEntryIndex.value - 1]?.id || '' : '');
-const nextEntryId = computed(() => activeEntryIndex.value >= 0 ? filteredEntries.value[activeEntryIndex.value + 1]?.id || '' : '');
-const entryCatalogItems = computed(() => filteredEntries.value.map(entry => ({
-  id: entry.id,
-  title: entry.title,
-})));
+const previousEntryId = computed(() =>
+  activeEntryIndex.value > 0 ? filteredEntries.value[activeEntryIndex.value - 1]?.id || '' : '',
+);
+const nextEntryId = computed(() =>
+  activeEntryIndex.value >= 0 ? filteredEntries.value[activeEntryIndex.value + 1]?.id || '' : '',
+);
+const entryCatalogItems = computed(() =>
+  filteredEntries.value.map(entry => ({
+    id: entry.id,
+    title: entry.title,
+  })),
+);
 
 const letterPromptPreview = computed(() => {
   try {
@@ -433,7 +480,49 @@ const letterPromptPreview = computed(() => {
       generationDraft.senderName.trim() || activeBook.value?.participants[0]?.name || '发信人',
       generationDraft.receiverName.trim() || activeBook.value?.participants[1]?.name || '收信人',
     );
-    return buildGenerationPreview(lettersGenerationAdapter, {
+    return buildGenerationPreview(
+      lettersGenerationAdapter,
+      {
+        appPrompt: prompts.appPrompts.letters,
+        bookId: activeBook.value?.id || '',
+        bookTitle: generationDraft.bookTitle || activeBook.value?.title || '',
+        format: generationDraft.format,
+        outputFormat: buildOutputFormat(),
+        recentLettersContext: buildRecentLettersContext(activeBook.value, generationDraft.recentEntryCount),
+        receiver,
+        sender,
+        userRequirement: generationDraft.userRequirement,
+      },
+      {
+        generationDefaults: {
+          resultMode: settings.value.generation.resultMode,
+          stream: settings.value.generation.stream,
+          tavernPresetName: settings.value.generation.tavernPresetName,
+        },
+        references: formattedReferences.value,
+        source: {
+          fromStartEnd: generationDraft.fromStartEnd,
+          mode: settings.value.generation.sourceMode,
+          rangeText: generationDraft.rangeText,
+          recentCount: generationDraft.recentCount,
+          singleMessageId: generationDraft.singleMessageId,
+        },
+        textProvider: settings.value.textProvider,
+      },
+    ).text;
+  } catch (error) {
+    return error instanceof Error ? error.message : '无法生成提示词预览';
+  }
+});
+
+function captureLetterPrompt() {
+  const { receiver, sender } = normalizeDraftPair(
+    generationDraft.senderName.trim() || activeBook.value?.participants[0]?.name || '发信人',
+    generationDraft.receiverName.trim() || activeBook.value?.participants[1]?.name || '收信人',
+  );
+  return captureGenerationPrompt(
+    lettersGenerationAdapter,
+    {
       appPrompt: prompts.appPrompts.letters,
       bookId: activeBook.value?.id || '',
       bookTitle: generationDraft.bookTitle || activeBook.value?.title || '',
@@ -443,7 +532,8 @@ const letterPromptPreview = computed(() => {
       receiver,
       sender,
       userRequirement: generationDraft.userRequirement,
-    }, {
+    },
+    {
       generationDefaults: {
         resultMode: settings.value.generation.resultMode,
         stream: settings.value.generation.stream,
@@ -458,43 +548,8 @@ const letterPromptPreview = computed(() => {
         singleMessageId: generationDraft.singleMessageId,
       },
       textProvider: settings.value.textProvider,
-    }).text;
-  } catch (error) {
-    return error instanceof Error ? error.message : '无法生成提示词预览';
-  }
-});
-
-function captureLetterPrompt() {
-  const { receiver, sender } = normalizeDraftPair(
-    generationDraft.senderName.trim() || activeBook.value?.participants[0]?.name || '发信人',
-    generationDraft.receiverName.trim() || activeBook.value?.participants[1]?.name || '收信人',
+    },
   );
-  return captureGenerationPrompt(lettersGenerationAdapter, {
-    appPrompt: prompts.appPrompts.letters,
-    bookId: activeBook.value?.id || '',
-    bookTitle: generationDraft.bookTitle || activeBook.value?.title || '',
-    format: generationDraft.format,
-    outputFormat: buildOutputFormat(),
-    recentLettersContext: buildRecentLettersContext(activeBook.value, generationDraft.recentEntryCount),
-    receiver,
-    sender,
-    userRequirement: generationDraft.userRequirement,
-  }, {
-    generationDefaults: {
-      resultMode: settings.value.generation.resultMode,
-      stream: settings.value.generation.stream,
-      tavernPresetName: settings.value.generation.tavernPresetName,
-    },
-    references: formattedReferences.value,
-    source: {
-      fromStartEnd: generationDraft.fromStartEnd,
-      mode: settings.value.generation.sourceMode,
-      rangeText: generationDraft.rangeText,
-      recentCount: generationDraft.recentCount,
-      singleMessageId: generationDraft.singleMessageId,
-    },
-    textProvider: settings.value.textProvider,
-  });
 }
 watch(
   () => route.value,
@@ -530,9 +585,10 @@ watch(
     }
 
     if (current.page === 'generate' && previous?.page !== 'preview') {
-      const replyEntry = current.params?.replyToEntryId && current.params?.bookId
-        ? letters.getEntry(current.params.bookId, current.params.replyToEntryId)
-        : null;
+      const replyEntry =
+        current.params?.replyToEntryId && current.params?.bookId
+          ? letters.getEntry(current.params.bookId, current.params.replyToEntryId)
+          : null;
       selectedReferences.value = [];
       generationDraft.bookTitle = activeBook.value?.title || '';
       generationDraft.format = replyEntry?.format || 'formal';
@@ -566,13 +622,13 @@ useInvalidRouteFallback({
     hasPreview: Boolean(generationState.preview),
     page: route.value.page,
   }),
-  isInvalid: current => current.appId === 'letters' && (
-    ['book', 'rename-book'].includes(current.page) && !current.hasBook
-    || ['entry', 'bagu-scan'].includes(current.page) && (!current.hasBook || !current.hasEntry)
-    || current.page === 'editor' && Boolean(current.entryId) && !current.hasEntry
-    || current.page === 'preview' && !current.hasPreview
-    || current.page === 'failed-draft' && !current.hasFailedDraft
-  ),
+  isInvalid: current =>
+    current.appId === 'letters' &&
+    ((['book', 'rename-book'].includes(current.page) && !current.hasBook) ||
+      (['entry', 'bagu-scan'].includes(current.page) && (!current.hasBook || !current.hasEntry)) ||
+      (current.page === 'editor' && Boolean(current.entryId) && !current.hasEntry) ||
+      (current.page === 'preview' && !current.hasPreview) ||
+      (current.page === 'failed-draft' && !current.hasFailedDraft)),
   fallback: () => {
     if (route.value.appId !== 'letters') return;
     if (activeBook.value) {
@@ -609,7 +665,10 @@ function normalizeDraftPair(senderName: string, receiverName: string) {
 
 function matchesActiveBook(sender: CharacterRef, receiver: CharacterRef) {
   if (!activeBook.value) return true;
-  const current = [...activeBook.value.participants].map(item => item.name).sort().join('::');
+  const current = [...activeBook.value.participants]
+    .map(item => item.name)
+    .sort()
+    .join('::');
   const next = [sender.name, receiver.name].sort().join('::');
   return current === next;
 }
@@ -727,10 +786,13 @@ function applyLettersBaguContent(content: string) {
 
 async function removeBook(bookId: string) {
   const book = letters.getBook(bookId);
-  const shouldDelete = await phone.confirmNotice(`要删除书信分册“${book?.title || '未命名分册'}”吗？里面的信件也会一起删除。`, {
-    confirmLabel: '删除',
-    kind: 'warning',
-  });
+  const shouldDelete = await phone.confirmNotice(
+    `要删除书信分册“${book?.title || '未命名分册'}”吗？里面的信件也会一起删除。`,
+    {
+      confirmLabel: '删除',
+      kind: 'warning',
+    },
+  );
   if (!shouldDelete) return;
   letters.deleteBook(bookId);
   toastr.success('已删除书信分册');
@@ -768,15 +830,14 @@ function buildRecentLettersContext(book = activeBook.value, count = generationDr
   if (!effectiveCount) return '';
   const entries = [...book.entries].slice(0, effectiveCount).reverse();
   if (!entries.length) return '';
-  const blocks = entries.map(entry => [
-    `${formatLabel(entry.format)} · ${entry.title}`,
-    `${entry.sender.name} -> ${entry.receiver.name}`,
-    entry.content,
-  ].join('\n'));
-  return [
-    '最近相关书信：',
-    blocks.join('\n\n'),
-  ].join('\n\n');
+  const blocks = entries.map(entry =>
+    [
+      `${formatLabel(entry.format)} · ${entry.title}`,
+      `${entry.sender.name} -> ${entry.receiver.name}`,
+      entry.content,
+    ].join('\n'),
+  );
+  return ['最近相关书信：', blocks.join('\n\n')].join('\n\n');
 }
 
 function failedDraftBookTitle(context: Record<string, unknown>) {
@@ -814,46 +875,50 @@ async function runGeneration() {
       return;
     }
 
-    const result = await generateContent(lettersGenerationAdapter, {
-      appPrompt: prompts.appPrompts.letters,
-      bookId: activeBook.value?.id || '',
-      bookTitle: generationDraft.bookTitle || activeBook.value?.title || '',
-      format: generationDraft.format,
-      outputFormat: buildOutputFormat(),
-      recentLettersContext: buildRecentLettersContext(activeBook.value, generationDraft.recentEntryCount),
-      receiver,
-      sender,
-      userRequirement: generationDraft.userRequirement,
-    }, {
-      createFailedDraft: input => letters.createFailedDraft(input),
-      generationDefaults: {
-        resultMode: settings.value.generation.resultMode,
-        stream: settings.value.generation.stream,
-        tavernPresetName: settings.value.generation.tavernPresetName,
+    const result = await generateContent(
+      lettersGenerationAdapter,
+      {
+        appPrompt: prompts.appPrompts.letters,
+        bookId: activeBook.value?.id || '',
+        bookTitle: generationDraft.bookTitle || activeBook.value?.title || '',
+        format: generationDraft.format,
+        outputFormat: buildOutputFormat(),
+        recentLettersContext: buildRecentLettersContext(activeBook.value, generationDraft.recentEntryCount),
+        receiver,
+        sender,
+        userRequirement: generationDraft.userRequirement,
       },
-      references: formattedReferences.value,
-      lifecycle: {
-        onFinish() {
-          generationState.running = false;
-          generationState.generationId = '';
+      {
+        createFailedDraft: input => letters.createFailedDraft(input),
+        generationDefaults: {
+          resultMode: settings.value.generation.resultMode,
+          stream: settings.value.generation.stream,
+          tavernPresetName: settings.value.generation.tavernPresetName,
         },
-        onRawOutput(rawOutput) {
-          generationState.rawOutput = rawOutput;
+        references: formattedReferences.value,
+        lifecycle: {
+          onFinish() {
+            generationState.running = false;
+            generationState.generationId = '';
+          },
+          onRawOutput(rawOutput) {
+            generationState.rawOutput = rawOutput;
+          },
+          onStart(generationId) {
+            generationState.running = true;
+            generationState.generationId = generationId;
+          },
         },
-        onStart(generationId) {
-          generationState.running = true;
-          generationState.generationId = generationId;
+        source: {
+          fromStartEnd: generationDraft.fromStartEnd,
+          mode: settings.value.generation.sourceMode,
+          rangeText: generationDraft.rangeText,
+          recentCount: generationDraft.recentCount,
+          singleMessageId: generationDraft.singleMessageId,
         },
+        textProvider: settings.value.textProvider,
       },
-      source: {
-        fromStartEnd: generationDraft.fromStartEnd,
-        mode: settings.value.generation.sourceMode,
-        rangeText: generationDraft.rangeText,
-        recentCount: generationDraft.recentCount,
-        singleMessageId: generationDraft.singleMessageId,
-      },
-      textProvider: settings.value.textProvider,
-    });
+    );
 
     if (result.status === 'failed') {
       generationState.error = result.warnings.join('；') || '模型没有返回可解析的书信 XML';
@@ -865,7 +930,10 @@ async function runGeneration() {
 
     if (result.status === 'saved') {
       toastr.success('已生成并保存信件');
-      phone.replacePage('entry', result.saved.entry.title, { bookId: result.saved.book.id, entryId: result.saved.entry.id });
+      phone.replacePage('entry', result.saved.entry.title, {
+        bookId: result.saved.book.id,
+        entryId: result.saved.entry.id,
+      });
       return;
     }
 
@@ -986,19 +1054,30 @@ function reparseFailedDraft() {
     return;
   }
 
-  const sender = typeof draft.context.sender === 'object' && draft.context.sender && typeof (draft.context.sender as CharacterRef).name === 'string'
-    ? draft.context.sender as CharacterRef
-    : { name: '未知发信人' };
-  const receiver = typeof draft.context.receiver === 'object' && draft.context.receiver && typeof (draft.context.receiver as CharacterRef).name === 'string'
-    ? draft.context.receiver as CharacterRef
-    : { name: '未知收信人' };
-  const format = draft.context.format === 'formal' || draft.context.format === 'note' || draft.context.format === 'sms' || draft.context.format === 'email'
-    ? draft.context.format
-    : 'formal';
+  const sender =
+    typeof draft.context.sender === 'object' &&
+    draft.context.sender &&
+    typeof (draft.context.sender as CharacterRef).name === 'string'
+      ? (draft.context.sender as CharacterRef)
+      : { name: '未知发信人' };
+  const receiver =
+    typeof draft.context.receiver === 'object' &&
+    draft.context.receiver &&
+    typeof (draft.context.receiver as CharacterRef).name === 'string'
+      ? (draft.context.receiver as CharacterRef)
+      : { name: '未知收信人' };
+  const format =
+    draft.context.format === 'formal' ||
+    draft.context.format === 'note' ||
+    draft.context.format === 'sms' ||
+    draft.context.format === 'email'
+      ? draft.context.format
+      : 'formal';
   const bookId = typeof draft.context.bookId === 'string' ? draft.context.bookId : '';
-  const bookTitleValue = typeof draft.context.bookTitle === 'string' && draft.context.bookTitle.trim()
-    ? draft.context.bookTitle
-    : letters.getBook(bookId)?.title || `${sender.name} 与 ${receiver.name}的书信`;
+  const bookTitleValue =
+    typeof draft.context.bookTitle === 'string' && draft.context.bookTitle.trim()
+      ? draft.context.bookTitle
+      : letters.getBook(bookId)?.title || `${sender.name} 与 ${receiver.name}的书信`;
 
   letters.updateFailedDraft(draft.id, {
     rawOutput: parsed.raw,
@@ -1036,7 +1115,6 @@ function formatLabel(format: LetterFormat) {
   if (format === 'note') return '便签';
   return '正式信';
 }
-
 </script>
 
 <style scoped>
@@ -1338,7 +1416,4 @@ function formatLabel(format: LetterFormat) {
   font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
   font-size: 12px;
 }
-
 </style>
-
-

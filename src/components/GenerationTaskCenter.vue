@@ -61,10 +61,10 @@
           </button>
           <button
             v-if="
-              task.status === 'paused'
-              || task.status === 'interrupted'
-              || task.status === 'completed'
-              || task.status === 'cancelled'
+              task.status === 'paused' ||
+              task.status === 'interrupted' ||
+              task.status === 'completed' ||
+              task.status === 'cancelled'
             "
             class="pc-icon-btn"
             type="button"
@@ -91,12 +91,10 @@ const expanded = ref(true);
 
 const visibleTasks = computed(() => generationTasks.currentScopeTasks.slice(0, 5));
 const statusSummary = computed(() => {
-  const running = visibleTasks.value.filter(task =>
-    task.status === 'running' || task.status === 'pause-requested',
+  const running = visibleTasks.value.filter(
+    task => task.status === 'running' || task.status === 'pause-requested',
   ).length;
-  const paused = visibleTasks.value.filter(task =>
-    task.status === 'paused' || task.status === 'interrupted',
-  ).length;
+  const paused = visibleTasks.value.filter(task => task.status === 'paused' || task.status === 'interrupted').length;
   if (running) return `${running} 个运行中`;
   if (paused) return `${paused} 个可继续`;
   return `${visibleTasks.value.length} 条记录`;
@@ -108,7 +106,7 @@ function doneCount(task: GenerationTask) {
 
 function progressPercent(task: GenerationTask) {
   if (!task.total) return task.status === 'completed' ? 100 : 0;
-  return Math.min(100, Math.round(doneCount(task) / task.total * 100));
+  return Math.min(100, Math.round((doneCount(task) / task.total) * 100));
 }
 
 function progressLabel(task: GenerationTask) {

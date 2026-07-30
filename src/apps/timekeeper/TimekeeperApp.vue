@@ -54,15 +54,34 @@
         </div>
 
         <template v-else>
-          <input v-model="settings.calendar.eraName" class="pc-field" type="text" :placeholder="t`例如 星历`" @change="timekeeper.normalizeCurrentDates()" />
+          <input
+            v-model="settings.calendar.eraName"
+            class="pc-field"
+            type="text"
+            :placeholder="t`例如 星历`"
+            @change="timekeeper.normalizeCurrentDates()"
+          />
           <div class="pc-grid two">
             <label class="pc-number-field">
               <span>{{ t`每年月份` }}</span>
-              <input v-model.number="settings.calendar.monthsPerYear" class="pc-field" type="number" min="1" max="24" @change="timekeeper.normalizeCurrentDates()" />
+              <input
+                v-model.number="settings.calendar.monthsPerYear"
+                class="pc-field"
+                type="number"
+                min="1"
+                max="24"
+                @change="timekeeper.normalizeCurrentDates()"
+              />
             </label>
             <label class="pc-number-field">
               <span>{{ t`每月天数` }}</span>
-              <input v-model="settings.calendar.monthDaysText" class="pc-field" type="text" :placeholder="t`30 或 31,28,31...`" @change="timekeeper.normalizeCurrentDates()" />
+              <input
+                v-model="settings.calendar.monthDaysText"
+                class="pc-field"
+                type="text"
+                :placeholder="t`30 或 31,28,31...`"
+                @change="timekeeper.normalizeCurrentDates()"
+              />
             </label>
           </div>
         </template>
@@ -82,15 +101,35 @@
         <div v-else class="pc-grid three">
           <label class="pc-number-field">
             <span>{{ t`年` }}</span>
-            <input v-model.number="settings.current.year" class="pc-field" type="number" min="1" @change="timekeeper.normalizeCurrentDates()" />
+            <input
+              v-model.number="settings.current.year"
+              class="pc-field"
+              type="number"
+              min="1"
+              @change="timekeeper.normalizeCurrentDates()"
+            />
           </label>
           <label class="pc-number-field">
             <span>{{ t`月` }}</span>
-            <input v-model.number="settings.current.month" class="pc-field" type="number" min="1" :max="settings.calendar.monthsPerYear" @change="timekeeper.normalizeCurrentDates()" />
+            <input
+              v-model.number="settings.current.month"
+              class="pc-field"
+              type="number"
+              min="1"
+              :max="settings.calendar.monthsPerYear"
+              @change="timekeeper.normalizeCurrentDates()"
+            />
           </label>
           <label class="pc-number-field">
             <span>{{ t`日` }}</span>
-            <input v-model.number="settings.current.day" class="pc-field" type="number" min="1" :max="timekeeper.getDaysInMonth(settings.current.month)" @change="timekeeper.normalizeCurrentDates()" />
+            <input
+              v-model.number="settings.current.day"
+              class="pc-field"
+              type="number"
+              min="1"
+              :max="timekeeper.getDaysInMonth(settings.current.month)"
+              @change="timekeeper.normalizeCurrentDates()"
+            />
           </label>
         </div>
       </article>
@@ -138,21 +177,46 @@
             <div v-else class="pc-grid three">
               <label class="pc-number-field">
                 <span>{{ t`生年` }}</span>
-                <input v-model.number="person.birth.year" class="pc-field" type="number" min="1" @change="timekeeper.normalizeCurrentDates()" />
+                <input
+                  v-model.number="person.birth.year"
+                  class="pc-field"
+                  type="number"
+                  min="1"
+                  @change="timekeeper.normalizeCurrentDates()"
+                />
               </label>
               <label class="pc-number-field">
                 <span>{{ t`生月` }}</span>
-                <input v-model.number="person.birth.month" class="pc-field" type="number" min="1" :max="settings.calendar.monthsPerYear" @change="timekeeper.normalizeCurrentDates()" />
+                <input
+                  v-model.number="person.birth.month"
+                  class="pc-field"
+                  type="number"
+                  min="1"
+                  :max="settings.calendar.monthsPerYear"
+                  @change="timekeeper.normalizeCurrentDates()"
+                />
               </label>
               <label class="pc-number-field">
                 <span>{{ t`生日` }}</span>
-                <input v-model.number="person.birth.day" class="pc-field" type="number" min="1" :max="timekeeper.getDaysInMonth(person.birth.month, person.birth.year)" @change="timekeeper.normalizeCurrentDates()" />
+                <input
+                  v-model.number="person.birth.day"
+                  class="pc-field"
+                  type="number"
+                  min="1"
+                  :max="timekeeper.getDaysInMonth(person.birth.month, person.birth.year)"
+                  @change="timekeeper.normalizeCurrentDates()"
+                />
               </label>
             </div>
             <div class="pc-person-foot">
               <span>{{ t`当前` }} {{ timekeeper.formatAge(timekeeper.getAgeAt(person, settings.current)) }}</span>
               <span>{{ t`推进后` }} {{ timekeeper.formatAge(timekeeper.getAgeAt(person, nextDate)) }}</span>
-              <button class="pc-icon-btn danger" type="button" :title="t`删除`" @click="timekeeper.deletePerson(person.id)">
+              <button
+                class="pc-icon-btn danger"
+                type="button"
+                :title="t`删除`"
+                @click="timekeeper.deletePerson(person.id)"
+              >
                 <i class="fa-solid fa-trash"></i>
               </button>
             </div>
@@ -226,7 +290,8 @@ const profiles = useProfilesStore();
 const settingsStore = useSettingsStore();
 const { nextDate, settings } = storeToRefs(timekeeper);
 const promptText = computed(() => timekeeper.buildPromptText());
-const calendarHelpText = '公历会自动计算大小月和闰年；手动历法可以填写统一天数或用逗号分开每个月。保存后的历法模板可在所有聊天中选择。';
+const calendarHelpText =
+  '公历会自动计算大小月和闰年；手动历法可以填写统一天数或用逗号分开每个月。保存后的历法模板可在所有聊天中选择。';
 const peopleHelpText = '只有勾选的人物会进入年龄计算和写入预览。可以关联人物资料；出生日期仍由时间确认单独保存。';
 const advanceHelpText = '这里只设置流逝时长；点击确认推进才会把当前世界时间改成推进后的日期。';
 const previewHelpText = '写入输入框只会把这段文本追加到酒馆输入框，不会自动发送，也不会改变当前世界时间。';
@@ -247,9 +312,9 @@ const calendarOptions = computed(() => {
   }
   return options;
 });
-const isCurrentGlobalTemplate = computed(() => (
-  settingsStore.settings.timekeeperCalendarTemplates.some(template => template.id === settings.value.calendar.id)
-));
+const isCurrentGlobalTemplate = computed(() =>
+  settingsStore.settings.timekeeperCalendarTemplates.some(template => template.id === settings.value.calendar.id),
+);
 
 function formatDateInput(date: TimekeeperDate) {
   const year = String(Math.max(1, Math.round(date.year))).padStart(4, '0');
@@ -323,14 +388,18 @@ async function saveCalendarTemplate() {
 }
 
 async function deleteCurrentCalendarTemplate() {
-  const template = settingsStore.settings.timekeeperCalendarTemplates
-    .find(item => item.id === settings.value.calendar.id);
+  const template = settingsStore.settings.timekeeperCalendarTemplates.find(
+    item => item.id === settings.value.calendar.id,
+  );
   if (!template) return;
-  const confirmed = await phone.confirmNotice(`删除全局历法模板“${template.name}”吗？当前聊天会继续保留它的历法快照。`, {
-    confirmLabel: '删除',
-    kind: 'warning',
-    title: '删除历法模板？',
-  });
+  const confirmed = await phone.confirmNotice(
+    `删除全局历法模板“${template.name}”吗？当前聊天会继续保留它的历法快照。`,
+    {
+      confirmLabel: '删除',
+      kind: 'warning',
+      title: '删除历法模板？',
+    },
+  );
   if (!confirmed) return;
   timekeeper.deleteCalendarTemplate(template.id);
   toastr.success('已删除历法模板');
@@ -512,4 +581,3 @@ async function copyPrompt() {
   margin-top: 14px;
 }
 </style>
-

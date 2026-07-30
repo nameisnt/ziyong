@@ -97,7 +97,11 @@ self.onmessage = event => {
 };
 `;
 
-function transformReaderMessagesSync(messages: ReaderRegexInput[], titleRule: ChatReaderRegexRule, bodyRule: ChatReaderRegexRule): ReaderRegexOutput[] {
+function transformReaderMessagesSync(
+  messages: ReaderRegexInput[],
+  titleRule: ChatReaderRegexRule,
+  bodyRule: ChatReaderRegexRule,
+): ReaderRegexOutput[] {
   function normalizeFlags(flags: string) {
     const allowed = new Set(['g', 'i', 'm', 's', 'u', 'y']);
     let normalized = '';
@@ -137,7 +141,9 @@ function transformReaderMessagesSync(messages: ReaderRegexInput[], titleRule: Ch
   }
 
   function extractCapturedReplacement(source: string, regex: RegExp, matchRegex: RegExp, replaceText: string) {
-    const matches = regex.global ? Array.from(source.matchAll(regex)) : [source.match(matchRegex)].filter((item): item is RegExpMatchArray => Boolean(item));
+    const matches = regex.global
+      ? Array.from(source.matchAll(regex))
+      : [source.match(matchRegex)].filter((item): item is RegExpMatchArray => Boolean(item));
     return matches
       .map(match => match[0].replace(matchRegex, replaceText).trim())
       .filter(Boolean)
@@ -176,7 +182,12 @@ function transformReaderMessagesSync(messages: ReaderRegexInput[], titleRule: Ch
   }));
 }
 
-export function transformReaderMessages(messages: ReaderRegexInput[], titleRule: ChatReaderRegexRule, bodyRule: ChatReaderRegexRule, timeoutMs = 1500) {
+export function transformReaderMessages(
+  messages: ReaderRegexInput[],
+  titleRule: ChatReaderRegexRule,
+  bodyRule: ChatReaderRegexRule,
+  timeoutMs = 1500,
+) {
   if (!messages.length) return Promise.resolve<ReaderRegexOutput[]>([]);
 
   if (typeof Worker === 'undefined') {
@@ -224,10 +235,12 @@ export function transformReaderMessages(messages: ReaderRegexInput[], titleRule:
           reject(new Error('正则处理结果无效'));
           return;
         }
-        resolve(result.map(item => ({
-          title: typeof item?.title === 'string' ? item.title : '',
-          body: typeof item?.body === 'string' ? item.body : '',
-        })));
+        resolve(
+          result.map(item => ({
+            title: typeof item?.title === 'string' ? item.title : '',
+            body: typeof item?.body === 'string' ? item.body : '',
+          })),
+        );
       });
     };
 

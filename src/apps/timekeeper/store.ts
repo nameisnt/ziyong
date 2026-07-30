@@ -1,10 +1,7 @@
 import { useChatScopedDomain } from '@/store/chatScoped';
 import { useSettingsStore } from '@/store/settings';
 import { useProfilesStore } from '@/apps/profiles/store';
-import {
-  TimekeeperCalendarTemplateSchema,
-  type TimekeeperCalendarTemplate,
-} from '@/type/settings';
+import { TimekeeperCalendarTemplateSchema, type TimekeeperCalendarTemplate } from '@/type/settings';
 import { validateInplace } from '@/util/zod';
 
 export const timekeeperField = 'sillytavern_phone_timekeeper';
@@ -151,15 +148,14 @@ function normalizeDate(date: TimekeeperDate, calendar: TimekeeperCalendarTemplat
 
 function normalizeSettings(raw: unknown): TimekeeperSettings {
   try {
-    const source = raw && typeof raw === 'object' ? klona(raw) as Record<string, unknown> : {};
+    const source = raw && typeof raw === 'object' ? (klona(raw) as Record<string, unknown>) : {};
     if (!source.calendar || typeof source.calendar !== 'object') {
       source.calendar = {
         eraName: typeof source.eraName === 'string' ? source.eraName : '世界历',
         id: 'manual',
         kind: 'fixed',
-        monthDaysText: typeof source.monthDaysText === 'string'
-          ? source.monthDaysText
-          : String(source.daysPerMonth || 30),
+        monthDaysText:
+          typeof source.monthDaysText === 'string' ? source.monthDaysText : String(source.daysPerMonth || 30),
         monthsPerYear: Number(source.monthsPerYear) || 12,
         name: '手动历法',
       };
@@ -195,10 +191,12 @@ function getFixedYearDays(calendar: TimekeeperCalendarTemplate) {
 
 function getDaysBeforeGregorianYear(year: number) {
   const completedYears = Math.max(0, year - 1);
-  return completedYears * 365
-    + Math.floor(completedYears / 4)
-    - Math.floor(completedYears / 100)
-    + Math.floor(completedYears / 400);
+  return (
+    completedYears * 365 +
+    Math.floor(completedYears / 4) -
+    Math.floor(completedYears / 100) +
+    Math.floor(completedYears / 400)
+  );
 }
 
 function getDaysBeforeYear(year: number, calendar: TimekeeperCalendarTemplate) {
@@ -253,20 +251,17 @@ function compareDates(left: TimekeeperDate, right: TimekeeperDate, calendar: Tim
   return dateToDays(left, calendar) - dateToDays(right, calendar);
 }
 
-function addYearsAndMonths(
-  date: TimekeeperDate,
-  years: number,
-  months: number,
-  calendar: TimekeeperCalendarTemplate,
-) {
+function addYearsAndMonths(date: TimekeeperDate, years: number, months: number, calendar: TimekeeperCalendarTemplate) {
   const normalized = normalizeDate(date, calendar);
   const monthsPerYear = getMonthsPerYear(calendar);
-  const monthIndex = (normalized.year - 1) * monthsPerYear
-    + normalized.month - 1
-    + Math.max(0, years) * monthsPerYear
-    + Math.max(0, months);
+  const monthIndex =
+    (normalized.year - 1) * monthsPerYear +
+    normalized.month -
+    1 +
+    Math.max(0, years) * monthsPerYear +
+    Math.max(0, months);
   const year = Math.floor(monthIndex / monthsPerYear) + 1;
-  const month = monthIndex % monthsPerYear + 1;
+  const month = (monthIndex % monthsPerYear) + 1;
   return {
     day: Math.min(normalized.day, getDaysInCalendarMonth(calendar, year, month)),
     month,
@@ -274,20 +269,12 @@ function addYearsAndMonths(
   };
 }
 
-function addDelta(
-  date: TimekeeperDate,
-  delta: TimekeeperDelta,
-  calendar: TimekeeperCalendarTemplate,
-) {
+function addDelta(date: TimekeeperDate, delta: TimekeeperDelta, calendar: TimekeeperCalendarTemplate) {
   const shifted = addYearsAndMonths(date, delta.years, delta.months, calendar);
   return daysToDate(dateToDays(shifted, calendar) + Math.max(0, delta.days), calendar);
 }
 
-function diffDates(
-  from: TimekeeperDate,
-  to: TimekeeperDate,
-  calendar: TimekeeperCalendarTemplate,
-) {
+function diffDates(from: TimekeeperDate, to: TimekeeperDate, calendar: TimekeeperCalendarTemplate) {
   const start = normalizeDate(from, calendar);
   const end = normalizeDate(to, calendar);
   if (compareDates(end, start, calendar) <= 0) return { days: 0, months: 0, years: 0 };
@@ -300,10 +287,7 @@ function diffDates(
   }
 
   const monthsPerYear = getMonthsPerYear(calendar);
-  let months = Math.max(
-    0,
-    (end.year - cursor.year) * monthsPerYear + end.month - cursor.month,
-  );
+  let months = Math.max(0, (end.year - cursor.year) * monthsPerYear + end.month - cursor.month);
   let monthCursor = addYearsAndMonths(cursor, 0, months, calendar);
   if (compareDates(monthCursor, end, calendar) > 0) {
     months -= 1;
@@ -320,14 +304,21 @@ function diffDates(
 export const useTimekeeperStore = defineStore('timekeeper', () => {
   const profiles = useProfilesStore();
   const settingsStore = useSettingsStore();
-  const { data: settings, rehydrateFromSettings, resetCurrentScope, scopeKey, switchScope } = useChatScopedDomain({
+  const {
+    data: settings,
+    rehydrateFromSettings,
+    resetCurrentScope,
+    scopeKey,
+    switchScope,
+  } = useChatScopedDomain({
     field: timekeeperField,
     schema: TimekeeperStorageSchema,
-    createDefault: () => normalizeSettings({
-      calendar: createManualCalendar(),
-      current: getTodayDefaultDate(),
-      people: [],
-    }),
+    createDefault: () =>
+      normalizeSettings({
+        calendar: createManualCalendar(),
+        current: getTodayDefaultDate(),
+        people: [],
+      }),
   });
 
   const nextDate = computed(() => addDelta(settings.value.current, settings.value.delta, settings.value.calendar));
@@ -396,9 +387,10 @@ export const useTimekeeperStore = defineStore('timekeeper', () => {
       return;
     }
     if (calendarId === 'manual') {
-      settings.value.calendar = settings.value.calendar.kind === 'fixed'
-        ? { ...settings.value.calendar, id: 'manual', name: '手动历法' }
-        : createManualCalendar();
+      settings.value.calendar =
+        settings.value.calendar.kind === 'fixed'
+          ? { ...settings.value.calendar, id: 'manual', name: '手动历法' }
+          : createManualCalendar();
       normalizeCurrentDates();
       return;
     }
@@ -435,7 +427,9 @@ export const useTimekeeperStore = defineStore('timekeeper', () => {
     ];
 
     selectedPeople.value.forEach(person => {
-      lines.push(`${person.name}：原年龄：${formatAge(getAgeAt(person, current))}，当前年龄：${formatAge(getAgeAt(person, next))}`);
+      lines.push(
+        `${person.name}：原年龄：${formatAge(getAgeAt(person, current))}，当前年龄：${formatAge(getAgeAt(person, next))}`,
+      );
     });
     return lines.join('\n');
   }
@@ -446,11 +440,14 @@ export const useTimekeeperStore = defineStore('timekeeper', () => {
       name: `人物 ${settings.value.people.length + 1}`,
       profileEntryId: '',
       selected: true,
-      birth: normalizeDate({
-        year: Math.max(1, settings.value.current.year - 18),
-        month: settings.value.current.month,
-        day: settings.value.current.day,
-      }, settings.value.calendar),
+      birth: normalizeDate(
+        {
+          year: Math.max(1, settings.value.current.year - 18),
+          month: settings.value.current.month,
+          day: settings.value.current.day,
+        },
+        settings.value.calendar,
+      ),
     };
     settings.value.people = [...settings.value.people, person];
     return person;

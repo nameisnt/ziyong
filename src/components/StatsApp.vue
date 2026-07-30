@@ -6,7 +6,13 @@
           <span>{{ t`统计范围` }}</span>
           <strong>{{ contentScopeTitle }}</strong>
         </div>
-        <button class="pc-icon-btn pc-refresh-btn" type="button" :disabled="loading" :title="loading ? t`刷新中` : t`刷新`" @click="stats.refresh()">
+        <button
+          class="pc-icon-btn pc-refresh-btn"
+          type="button"
+          :disabled="loading"
+          :title="loading ? t`刷新中` : t`刷新`"
+          @click="stats.refresh()"
+        >
           <i class="fa-solid fa-rotate-right"></i>
         </button>
       </header>
@@ -25,9 +31,19 @@
         <div class="pc-panel-head">
           <div>
             <strong>{{ t`创作内容` }}</strong>
-            <span>{{ contentOverview.scopeCount ? `${formatNumber(contentOverview.scopeCount)} 个聊天 · ${formatNumber(contentOverview.items)} 项内容` : t`还没有可统计内容` }}</span>
+            <span>{{
+              contentOverview.scopeCount
+                ? `${formatNumber(contentOverview.scopeCount)} 个聊天 · ${formatNumber(contentOverview.items)} 项内容`
+                : t`还没有可统计内容`
+            }}</span>
           </div>
-          <button class="pc-icon-btn pc-collapse-btn" type="button" :aria-expanded="domainExpanded" :title="domainExpanded ? t`收起` : t`展开`" @click="domainExpanded = !domainExpanded">
+          <button
+            class="pc-icon-btn pc-collapse-btn"
+            type="button"
+            :aria-expanded="domainExpanded"
+            :title="domainExpanded ? t`收起` : t`展开`"
+            @click="domainExpanded = !domainExpanded"
+          >
             <i :class="domainExpanded ? 'fa-solid fa-chevron-up' : 'fa-solid fa-chevron-down'"></i>
           </button>
         </div>
@@ -51,7 +67,10 @@
           </article>
         </div>
 
-        <EmptyState v-if="domainExpanded && !contentOverview.items && !contentOverview.collections" :title="t`还没有可统计内容`" />
+        <EmptyState
+          v-if="domainExpanded && !contentOverview.items && !contentOverview.collections"
+          :title="t`还没有可统计内容`"
+        />
         <div v-else-if="domainExpanded" class="pc-domain-list">
           <article v-for="domain in contentDomainStats" :key="domain.id" class="pc-domain-row">
             <div>
@@ -122,7 +141,10 @@
           </p>
           <p>
             <span>{{ t`角色字数` }}</span>
-            <strong>AI {{ formatNumber(roleCharTotals.assistant) }} / {{ t`用户` }} {{ formatNumber(roleCharTotals.user) }}</strong>
+            <strong
+              >AI {{ formatNumber(roleCharTotals.assistant) }} / {{ t`用户` }}
+              {{ formatNumber(roleCharTotals.user) }}</strong
+            >
           </p>
         </div>
         <div class="pc-subhead">{{ t`每楼字数分布` }}</div>
@@ -166,23 +188,25 @@ const {
 
 const domainExpanded = ref(true);
 const maxBarChars = computed(() => Math.max(...lengthDistribution.value.map(point => point.chars), 1));
-const roleCharTotals = computed(() => roleStats.value.reduce(
-  (totals, role) => {
-    totals[role.role] += role.chars;
-    return totals;
-  },
-  { assistant: 0, user: 0 },
-));
+const roleCharTotals = computed(() =>
+  roleStats.value.reduce(
+    (totals, role) => {
+      totals[role.role] += role.chars;
+      return totals;
+    },
+    { assistant: 0, user: 0 },
+  ),
+);
 
 function formatNumber(value: number) {
   return new Intl.NumberFormat('zh-CN').format(value);
 }
 
-function formatDomainMeta(domain: typeof contentDomainStats.value[number]) {
+function formatDomainMeta(domain: (typeof contentDomainStats.value)[number]) {
   return `${formatNumber(domain.scopeCount)} 个聊天 · ${formatNumber(domain.collections)} ${domain.collectionLabel} · ${formatNumber(domain.items)} ${domain.itemLabel}`;
 }
 
-function hasDomainMeta(domain: typeof contentDomainStats.value[number]) {
+function hasDomainMeta(domain: (typeof contentDomainStats.value)[number]) {
   return Boolean(domain.scopeCount || domain.collections || domain.items);
 }
 
@@ -407,4 +431,3 @@ function getBarWidth(value: number) {
   font-weight: 700;
 }
 </style>
-

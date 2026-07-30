@@ -4,7 +4,13 @@ import {
   type PhoneContentOverview,
 } from '@/core/appRegistry';
 import { getCurrentChatScopeKey } from '@/store/chatScoped';
-import { getChatMessagesSafe, getLastMessageIdSafe, getOptionalGlobalFunction, getOptionalGlobalValue, onTavernEvent } from '@/util/runtime';
+import {
+  getChatMessagesSafe,
+  getLastMessageIdSafe,
+  getOptionalGlobalFunction,
+  getOptionalGlobalValue,
+  onTavernEvent,
+} from '@/util/runtime';
 
 export interface ChatRoleStat {
   name: string;
@@ -108,10 +114,12 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 
 function isCountableChatMessage(message: unknown): message is CountableChatMessage {
   if (!isRecord(message)) return false;
-  return (message.role === 'assistant' || message.role === 'user')
-    && typeof message.message === 'string'
-    && typeof message.message_id === 'number'
-    && (typeof message.name === 'undefined' || typeof message.name === 'string');
+  return (
+    (message.role === 'assistant' || message.role === 'user') &&
+    typeof message.message === 'string' &&
+    typeof message.message_id === 'number' &&
+    (typeof message.name === 'undefined' || typeof message.name === 'string')
+  );
 }
 
 export const useStatsStore = defineStore('stats', () => {
@@ -204,7 +212,9 @@ export const useStatsStore = defineStore('stats', () => {
     totalChars.value = chars;
     averageChars.value = visibleMessages.length ? Math.round(chars / visibleMessages.length) : 0;
     longestMessageChars.value = longest;
-    roleStats.value = [...charsByRoleName.values()].sort((left, right) => right.count - left.count || right.chars - left.chars);
+    roleStats.value = [...charsByRoleName.values()].sort(
+      (left, right) => right.count - left.count || right.chars - left.chars,
+    );
     lengthDistribution.value = points.slice(-12).reverse();
   }
 

@@ -383,10 +383,7 @@
         </div>
 
         <div
-          :class="[
-            'pc-form-actions',
-            { 'pc-batch-actions-three': batchState.running || batchState.resumeAvailable },
-          ]"
+          :class="['pc-form-actions', { 'pc-batch-actions-three': batchState.running || batchState.resumeAvailable }]"
         >
           <button class="pc-soft-btn" type="button" :disabled="batchState.running" @click="phone.goBack()">
             {{ t`取消` }}
@@ -394,12 +391,7 @@
           <button v-if="batchState.running" class="pc-soft-btn danger" type="button" @click="stopBatchGeneration">
             {{ t`停止` }}
           </button>
-          <button
-            v-else-if="batchState.resumeAvailable"
-            class="pc-soft-btn"
-            type="button"
-            @click="resetBatchProgress"
-          >
+          <button v-else-if="batchState.resumeAvailable" class="pc-soft-btn" type="button" @click="resetBatchProgress">
             <i class="fa-solid fa-rotate-left"></i>
             <span>{{ t`重新设置` }}</span>
           </button>
@@ -675,9 +667,7 @@ const activeBook = computed(() => {
 
 const activeBookFailedDrafts = computed(() => {
   const bookId = activeBook.value?.id;
-  return bookId
-    ? failedDrafts.value.filter(draft => draft.context.bookId === bookId)
-    : [];
+  return bookId ? failedDrafts.value.filter(draft => draft.context.bookId === bookId) : [];
 });
 
 const activeEntry = computed(() => {
@@ -705,11 +695,15 @@ const batchPerspective = computed(() => {
   return name ? { name } : null;
 });
 const batchTargetBookTitle = computed(() => activeBook.value?.title || batchDraft.bookTitle.trim());
-const batchTask = computed(() => generationTasks.tasks.find(task =>
-  task.kind === 'diary-batch'
-  && task.scopeKey === getCurrentChatScopeKey()
-  && (!route.value.params?.bookId || task.routeParams.bookId === route.value.params.bookId),
-) ?? null);
+const batchTask = computed(
+  () =>
+    generationTasks.tasks.find(
+      task =>
+        task.kind === 'diary-batch' &&
+        task.scopeKey === getCurrentChatScopeKey() &&
+        (!route.value.params?.bookId || task.routeParams.bookId === route.value.params.bookId),
+    ) ?? null,
+);
 const batchState = computed(() => {
   const task = batchTask.value;
   const running = task?.status === 'running' || task?.status === 'pause-requested';

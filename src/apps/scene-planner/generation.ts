@@ -52,12 +52,7 @@ function parseWithDefault(raw: string): XmlParseResult<ScenePlannerGeneratedResu
 }
 
 export function formatScenePlannerResult(result: ScenePlannerGeneratedResult) {
-  return [
-    '## 编排分析',
-    result.analysis,
-    '## 下一章提示词',
-    result.prompt,
-  ].join('\n\n');
+  return ['## 编排分析', result.analysis, '## 下一章提示词', result.prompt].join('\n\n');
 }
 
 export function createScenePlannerGenerationAdapter(planner: ReturnType<typeof useScenePlannerStore>) {
@@ -74,16 +69,15 @@ export function createScenePlannerGenerationAdapter(planner: ReturnType<typeof u
           config.brief,
           config.styleNote ? `文风与节奏要求：${config.styleNote}` : '',
           config.avoidNote ? `必须避免：${config.avoidNote}` : '',
-        ].filter(Boolean).join('\n\n'),
+        ]
+          .filter(Boolean)
+          .join('\n\n'),
         userRequirement: config.userRequirement,
       };
     },
     parse(raw) {
-      return parseConfiguredOutput(
-        'scene-planner.generate',
-        raw,
-        ScenePlannerGeneratedResultSchema,
-        () => parseWithDefault(raw),
+      return parseConfiguredOutput('scene-planner.generate', raw, ScenePlannerGeneratedResultSchema, () =>
+        parseWithDefault(raw),
       );
     },
     save(result, context) {
@@ -123,5 +117,9 @@ export function createScenePlannerGenerationAdapter(planner: ReturnType<typeof u
         ],
       });
     },
-  } satisfies GenerationAdapter<ScenePlannerGenerateConfig, ScenePlannerGeneratedResult, ReturnType<typeof planner.createPlan>>;
+  } satisfies GenerationAdapter<
+    ScenePlannerGenerateConfig,
+    ScenePlannerGeneratedResult,
+    ReturnType<typeof planner.createPlan>
+  >;
 }

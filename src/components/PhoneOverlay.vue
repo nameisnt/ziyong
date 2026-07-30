@@ -272,13 +272,15 @@ let appDragLongPressTimer: ReturnType<typeof window.setTimeout> | null = null;
 
 const homeApps = computed(() => {
   const layout = normalizeHomeLayout(settings.value.layout);
-  return layout.appOrder.map(id => PHONE_APPS.find(app => app.id === id)).filter((app): app is (typeof PHONE_APPS)[number] => Boolean(app));
+  return layout.appOrder
+    .map(id => PHONE_APPS.find(app => app.id === id))
+    .filter((app): app is (typeof PHONE_APPS)[number] => Boolean(app));
 });
 
 const dockApps = computed(() => homeApps.value.filter(app => app.defaultDock));
 const gridApps = computed(() => homeApps.value.filter(app => !app.defaultDock));
 const homePages = computed(() => {
-  const pages: typeof gridApps.value[] = [];
+  const pages: (typeof gridApps.value)[] = [];
   for (let index = 0; index < gridApps.value.length; index += homePageSize.value) {
     pages.push(gridApps.value.slice(index, index + homePageSize.value));
   }
@@ -295,7 +297,11 @@ const insertBeforeAppId = computed(() => {
   if (appDrag.insertIndex < 0) return '';
   const currentPageIds = currentHomePageApps.value.map(app => app.id).filter(id => id !== appDrag.appId);
   const currentPageEnd = currentPageStartIndex.value + currentPageIds.length;
-  if (currentPageIds.length && appDrag.insertIndex >= currentPageEnd && appDrag.insertIndex <= currentPageStartIndex.value + homePageSize.value) {
+  if (
+    currentPageIds.length &&
+    appDrag.insertIndex >= currentPageEnd &&
+    appDrag.insertIndex <= currentPageStartIndex.value + homePageSize.value
+  ) {
     return '__end__';
   }
   if (appDrag.insertIndex >= order.length) return '__end__';
@@ -343,7 +349,9 @@ function getDisplayAppStyle(app: (typeof PHONE_APPS)[number]) {
   const accent = getDisplayAppAccent(app);
   return {
     '--pc-accent': accent,
-    '--pc-app-icon-bg': settings.value.visualTheme.appIconBackgroundColor || `color-mix(in srgb, ${accent} 18%, var(--pc-surface-strong) 82%)`,
+    '--pc-app-icon-bg':
+      settings.value.visualTheme.appIconBackgroundColor ||
+      `color-mix(in srgb, ${accent} 18%, var(--pc-surface-strong) 82%)`,
   };
 }
 
@@ -386,16 +394,18 @@ const rootStyle = computed(() => {
 });
 
 const shellStyle = computed(() => {
-  const highlightLayer = 'radial-gradient(circle at top, color-mix(in srgb, var(--pc-theme-accent) 18%, transparent 82%), transparent 30%)';
+  const highlightLayer =
+    'radial-gradient(circle at top, color-mix(in srgb, var(--pc-theme-accent) 18%, transparent 82%), transparent 30%)';
   const baseLayer = 'linear-gradient(180deg, color-mix(in srgb, var(--pc-bg) 88%, white 12%), var(--pc-bg))';
   const baseStyle = {
     height: `${settings.value.interfaceSize.phoneHeight}px`,
     width: `${settings.value.interfaceSize.phoneWidth}px`,
   };
 
-  const customWallpaper = settings.value.wallpaper.customWallpapers.find(item => item.id === settings.value.wallpaper.selectedCustomId)
-    ?? settings.value.wallpaper.customWallpapers.find(item => item.path === settings.value.wallpaper.customPath)
-    ?? null;
+  const customWallpaper =
+    settings.value.wallpaper.customWallpapers.find(item => item.id === settings.value.wallpaper.selectedCustomId) ??
+    settings.value.wallpaper.customWallpapers.find(item => item.path === settings.value.wallpaper.customPath) ??
+    null;
   const customWallpaperPath = customWallpaper?.path || settings.value.wallpaper.customPath;
 
   if (settings.value.wallpaper.mode === 'custom' && customWallpaperPath.trim()) {
@@ -449,17 +459,21 @@ watch(
     }
 
     const loadedFamilies: string[] = [];
-    styleEl.textContent = fontItems.map((item, index) => {
-      const normalizedPath = item.path.replace(/^\/+/, '');
-      const fontUrl = new URL(`/${normalizedPath}`, window.location.origin).href;
-      const family = item.id === 'legacy' ? 'TavernPhoneImportedFont' : getCustomFontFamily(item.id);
-      loadedFamilies.push(family);
-      const shouldCreateLegacyAlias = item.id === customFont.selectedFontId || (settings.value.fontFamily === 'TavernPhoneImportedFont' && index === 0);
-      const legacyAlias = shouldCreateLegacyAlias
-        ? `\n@font-face { font-family: "TavernPhoneImportedFont"; src: url("${fontUrl}"); font-display: swap; }`
-        : '';
-      return `@font-face { font-family: "${family}"; src: url("${fontUrl}"); font-display: swap; }${legacyAlias}`;
-    }).join('\n');
+    styleEl.textContent = fontItems
+      .map((item, index) => {
+        const normalizedPath = item.path.replace(/^\/+/, '');
+        const fontUrl = new URL(`/${normalizedPath}`, window.location.origin).href;
+        const family = item.id === 'legacy' ? 'TavernPhoneImportedFont' : getCustomFontFamily(item.id);
+        loadedFamilies.push(family);
+        const shouldCreateLegacyAlias =
+          item.id === customFont.selectedFontId ||
+          (settings.value.fontFamily === 'TavernPhoneImportedFont' && index === 0);
+        const legacyAlias = shouldCreateLegacyAlias
+          ? `\n@font-face { font-family: "TavernPhoneImportedFont"; src: url("${fontUrl}"); font-display: swap; }`
+          : '';
+        return `@font-face { font-family: "${family}"; src: url("${fontUrl}"); font-display: swap; }${legacyAlias}`;
+      })
+      .join('\n');
 
     if ('fonts' in document) {
       loadedFamilies.forEach(family => {
@@ -517,7 +531,7 @@ function installToastrBridge() {
         return undefined;
       }
       return toastrOriginals.get(kind)?.(message, title, options);
-    }) as typeof toastr[typeof kind];
+    }) as (typeof toastr)[typeof kind];
   });
   toastrBridgeInstalled = true;
 }
@@ -525,7 +539,7 @@ function installToastrBridge() {
 function restoreToastrBridge() {
   if (!toastrBridgeInstalled || typeof toastr === 'undefined') return;
   toastrOriginals.forEach((original, kind) => {
-    toastr[kind] = original as typeof toastr[typeof kind];
+    toastr[kind] = original as (typeof toastr)[typeof kind];
   });
   toastrOriginals.clear();
   toastrBridgeInstalled = false;
@@ -629,8 +643,9 @@ function resetHomeSwipe() {
 }
 
 function resolveInsertIndex(clientX: number, clientY: number) {
-  const tiles = Array.from(homeGridEl.value?.querySelectorAll<HTMLElement>('.pc-app-tile[data-app-id]') ?? [])
-    .filter(tile => tile.dataset.appId && tile.dataset.appId !== appDrag.appId);
+  const tiles = Array.from(homeGridEl.value?.querySelectorAll<HTMLElement>('.pc-app-tile[data-app-id]') ?? []).filter(
+    tile => tile.dataset.appId && tile.dataset.appId !== appDrag.appId,
+  );
 
   for (let index = 0; index < tiles.length; index += 1) {
     const rect = tiles[index].getBoundingClientRect();
@@ -655,9 +670,10 @@ function scheduleDragPageSwitch(direction: -1 | 1) {
   if (dragPageTimer) return;
   dragPageTimer = window.setTimeout(() => {
     goHomePage(nextPage);
-    appDrag.insertIndex = direction > 0
-      ? Math.min((nextPage + 1) * homePageSize.value, getHomeOrder().length)
-      : nextPage * homePageSize.value;
+    appDrag.insertIndex =
+      direction > 0
+        ? Math.min((nextPage + 1) * homePageSize.value, getHomeOrder().length)
+        : nextPage * homePageSize.value;
     dragPageTimer = null;
   }, 420);
 }
@@ -743,9 +759,11 @@ function onAppPointerCancel(event: PointerEvent) {
 function onHomeSwipePointerDown(event: PointerEvent) {
   if (event.button !== 0 || homePages.value.length <= 1) return;
   const target = event.target;
-  if (target instanceof Element && target.closest(
-    '.pc-page-dots, .pc-home-context, .pc-generation-task-center, .pc-home-dock',
-  )) return;
+  if (
+    target instanceof Element &&
+    target.closest('.pc-page-dots, .pc-home-context, .pc-generation-task-center, .pc-home-dock')
+  )
+    return;
   homeSwipe.pointerId = event.pointerId;
   homeSwipe.startX = event.clientX;
   homeSwipe.startY = event.clientY;
@@ -1323,7 +1341,10 @@ useEventListener(window, 'orientationchange', async () => {
   color: var(--pc-text);
   cursor: pointer;
   touch-action: none;
-  transition: background 0.16s ease, opacity 0.16s ease, transform 0.16s ease;
+  transition:
+    background 0.16s ease,
+    opacity 0.16s ease,
+    transform 0.16s ease;
 }
 
 .pc-app-tile:hover {
@@ -1500,5 +1521,4 @@ useEventListener(window, 'orientationchange', async () => {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }
-
 </style>

@@ -80,10 +80,10 @@ export function usePreviewDraftPersistence<TPreview>(options: PreviewDraftPersis
 
       const activePreview = options.getPreview();
       if (
-        activePreview
-        && typeof activePreview === 'object'
-        && 'draftId' in activePreview
-        && (activePreview as Record<string, unknown>).draftId === draftId
+        activePreview &&
+        typeof activePreview === 'object' &&
+        'draftId' in activePreview &&
+        (activePreview as Record<string, unknown>).draftId === draftId
       ) {
         options.setPreview(klona(normalized));
       }

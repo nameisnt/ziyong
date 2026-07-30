@@ -1,9 +1,18 @@
 <template>
   <section class="pc-minigame-panel">
     <section class="pc-minigame-stats">
-      <article><span>{{ t`黑棋` }}</span><strong>{{ blackCount }}</strong></article>
-      <article><span>{{ t`白棋` }}</span><strong>{{ whiteCount }}</strong></article>
-      <article><span>{{ t`回合` }}</span><strong>{{ turnText }}</strong></article>
+      <article>
+        <span>{{ t`黑棋` }}</span
+        ><strong>{{ blackCount }}</strong>
+      </article>
+      <article>
+        <span>{{ t`白棋` }}</span
+        ><strong>{{ whiteCount }}</strong>
+      </article>
+      <article>
+        <span>{{ t`回合` }}</span
+        ><strong>{{ turnText }}</strong>
+      </article>
     </section>
 
     <section class="pc-reversi-board" aria-label="黑白棋棋盘">
@@ -33,7 +42,10 @@
       <button class="pc-primary-btn" type="button" @click="newGame">
         <i class="fa-solid fa-rotate-right"></i><span>{{ t`新一局` }}</span>
       </button>
-      <InfoHint :label="t`黑白棋说明`" :text="t`你执黑先行。落子时必须夹住至少一枚白棋，被夹住的棋子会翻为黑色；双方都无法落子时，棋子较多者获胜。`" />
+      <InfoHint
+        :label="t`黑白棋说明`"
+        :text="t`你执黑先行。落子时必须夹住至少一枚白棋，被夹住的棋子会翻为黑色；双方都无法落子时，棋子较多者获胜。`"
+      />
     </div>
   </section>
 </template>
@@ -107,19 +119,24 @@ function flipsFor(board: Cell[], index: number, player: Player) {
 }
 
 function legalMoves(board: Cell[], player: Player) {
-  return new Map(Array.from({ length: 64 }, (_, index) => [index, flipsFor(board, index, player)] as const)
-    .filter(([, flips]) => flips.length));
+  return new Map(
+    Array.from({ length: 64 }, (_, index) => [index, flipsFor(board, index, player)] as const).filter(
+      ([, flips]) => flips.length,
+    ),
+  );
 }
 
 const blackCount = computed(() => state.value.board.filter(cell => cell === 1).length);
 const whiteCount = computed(() => state.value.board.filter(cell => cell === 2).length);
-const humanLegalMoves = computed(() => state.value.status === 'playing' && state.value.turn === 1
-  ? new Set(legalMoves(state.value.board, 1).keys())
-  : new Set<number>());
-const turnText = computed(() => state.value.status === 'done' ? t`结束` : state.value.turn === 1 ? t`你` : t`电脑`);
-const resultText = computed(() => blackCount.value === whiteCount.value
-  ? t`平局`
-  : blackCount.value > whiteCount.value ? t`你赢了` : t`电脑获胜`);
+const humanLegalMoves = computed(() =>
+  state.value.status === 'playing' && state.value.turn === 1
+    ? new Set(legalMoves(state.value.board, 1).keys())
+    : new Set<number>(),
+);
+const turnText = computed(() => (state.value.status === 'done' ? t`结束` : state.value.turn === 1 ? t`你` : t`电脑`));
+const resultText = computed(() =>
+  blackCount.value === whiteCount.value ? t`平局` : blackCount.value > whiteCount.value ? t`你赢了` : t`电脑获胜`,
+);
 
 function save() {
   writeMiniGameSettings(miniGameFields.reversi, ReversiSchema, state.value);
@@ -141,7 +158,9 @@ function applyMove(index: number, player: Player) {
   const flips = flipsFor(state.value.board, index, player);
   if (!flips.length) return false;
   state.value.board[index] = player;
-  flips.forEach(cellIndex => { state.value.board[cellIndex] = player; });
+  flips.forEach(cellIndex => {
+    state.value.board[cellIndex] = player;
+  });
   state.value.moves += 1;
   return true;
 }
@@ -182,7 +201,12 @@ function aiScore(index: number, flips: number[]) {
   const corners = new Set([0, 7, 56, 63]);
   const risky = new Set([9, 14, 49, 54]);
   const point = xy(index);
-  return flips.length + (corners.has(index) ? 100 : 0) + (point.x === 0 || point.x === 7 || point.y === 0 || point.y === 7 ? 12 : 0) - (risky.has(index) ? 18 : 0);
+  return (
+    flips.length +
+    (corners.has(index) ? 100 : 0) +
+    (point.x === 0 || point.x === 7 || point.y === 0 || point.y === 7 ? 12 : 0) -
+    (risky.has(index) ? 18 : 0)
+  );
 }
 
 function scheduleAi() {
@@ -271,7 +295,9 @@ onUnmounted(() => {
 
 .pc-reversi-cell[data-piece='2'] .pc-reversi-piece {
   background: var(--pc-surface);
-  box-shadow: inset 0 0 0 1px var(--pc-border), 0 2px 5px rgba(0, 0, 0, 0.14);
+  box-shadow:
+    inset 0 0 0 1px var(--pc-border),
+    0 2px 5px rgba(0, 0, 0, 0.14);
 }
 
 .pc-reversi-cell > i {

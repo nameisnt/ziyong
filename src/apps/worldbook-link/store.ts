@@ -165,15 +165,22 @@ export const useWorldbookLinkStore = defineStore('worldbook-link', () => {
     return Object.keys(sourceProfiles).length;
   }
 
-  function getStatus(scopeKey: string, bookName: string, suppliedEntries?: WorldbookEntry[]): Promise<WorldbookLinkStatus> | WorldbookLinkStatus {
+  function getStatus(
+    scopeKey: string,
+    bookName: string,
+    suppliedEntries?: WorldbookEntry[],
+  ): Promise<WorldbookLinkStatus> | WorldbookLinkStatus {
     if (!suppliedEntries) {
-      return getWorldbookEntries(bookName).then(entries => getStatus(scopeKey, bookName, entries) as WorldbookLinkStatus);
+      return getWorldbookEntries(bookName).then(
+        entries => getStatus(scopeKey, bookName, entries) as WorldbookLinkStatus,
+      );
     }
     const profile = getProfile(scopeKey, bookName);
     const currentByUid = new Map(suppliedEntries.map(entry => [entry.uid, entry]));
     const configured = profile ? stateMap(profile) : new Map<number, boolean>();
     const missingCount = profile?.entries.filter(entry => !currentByUid.has(entry.uid)).length ?? 0;
-    const matchesCurrent = Boolean(profile) && suppliedEntries.every(entry => entry.enabled === (configured.get(entry.uid) ?? false));
+    const matchesCurrent =
+      Boolean(profile) && suppliedEntries.every(entry => entry.enabled === (configured.get(entry.uid) ?? false));
     return {
       currentEntries: suppliedEntries,
       enabledCount: suppliedEntries.filter(entry => entry.enabled).length,

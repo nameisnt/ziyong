@@ -6,7 +6,13 @@
           <i class="fa-solid fa-magnifying-glass"></i>
           <input v-model="ownerQuery" type="search" :placeholder="t`搜索角色卡`" />
         </label>
-        <button class="pc-icon-btn" type="button" :disabled="loadingCharacters" :title="t`刷新`" @click="loadCharacters(true)">
+        <button
+          class="pc-icon-btn"
+          type="button"
+          :disabled="loadingCharacters"
+          :title="t`刷新`"
+          @click="loadCharacters(true)"
+        >
           <i :class="['fa-solid fa-rotate-right', { spinning: loadingCharacters }]"></i>
         </button>
       </div>
@@ -25,10 +31,19 @@
         <p>{{ error }}</p>
       </div>
 
-      <EmptyState v-if="!visibleOwners.length && !loadingCharacters" :title="activeTab === 'used' ? t`还没有用过手机创作的角色` : t`没有未使用角色`" />
+      <EmptyState
+        v-if="!visibleOwners.length && !loadingCharacters"
+        :title="activeTab === 'used' ? t`还没有用过手机创作的角色` : t`没有未使用角色`"
+      />
 
       <div v-else class="pc-owner-list">
-        <button v-for="owner in visibleOwners" :key="owner.key" class="pc-owner-row" type="button" @click="openOwner(owner)">
+        <button
+          v-for="owner in visibleOwners"
+          :key="owner.key"
+          class="pc-owner-row"
+          type="button"
+          @click="openOwner(owner)"
+        >
           <span class="pc-owner-avatar">{{ owner.initial }}</span>
           <span class="pc-owner-main">
             <strong>{{ owner.name }}</strong>
@@ -45,7 +60,13 @@
           <span class="pc-kicker">{{ activeOwner.usedChatIds.size ? t`已使用` : t`未使用` }}</span>
           <h2>{{ activeOwner.name }}</h2>
         </div>
-        <button class="pc-icon-btn" type="button" :disabled="loadingChats" :title="t`刷新聊天`" @click="loadChatsForActiveOwner(true)">
+        <button
+          class="pc-icon-btn"
+          type="button"
+          :disabled="loadingChats"
+          :title="t`刷新聊天`"
+          @click="loadChatsForActiveOwner(true)"
+        >
           <i :class="['fa-solid fa-rotate-right', { spinning: loadingChats }]"></i>
         </button>
       </div>
@@ -69,7 +90,13 @@
           <strong>{{ t`历史聊天只读` }}</strong>
           <p>{{ t`第一版不会切换酒馆当前聊天，因此此处禁用生成，只用于查看已保存内容。` }}</p>
         </div>
-        <button class="pc-icon-btn" type="button" :disabled="!canJumpSelectedChat" :title="t`跳转酒馆聊天`" @click="jumpSelectedChatToTavern">
+        <button
+          class="pc-icon-btn"
+          type="button"
+          :disabled="!canJumpSelectedChat"
+          :title="t`跳转酒馆聊天`"
+          @click="jumpSelectedChatToTavern"
+        >
           <i class="fa-solid fa-arrow-up-right-from-square"></i>
         </button>
       </div>
@@ -147,16 +174,17 @@ let characterLoadSequence = 0;
 let chatLoadSequence = 0;
 
 const activeOwner = computed(() => owners.value.find(owner => owner.key === route.value.params?.ownerKey) ?? null);
-const isSelectedCurrentChat = computed(() => Boolean(
-  selectedChat.value
-  && areChatScopeKeysEquivalent(selectedChat.value.scopeKey, currentTavernScopeKey.value),
-));
-const canJumpSelectedChat = computed(() => Boolean(
-  selectedChat.value?.key
-  && selectedChat.value.key !== '__no_chat__'
-  && activeOwner.value
-  && activeOwner.value.characterId !== null,
-));
+const isSelectedCurrentChat = computed(() =>
+  Boolean(selectedChat.value && areChatScopeKeysEquivalent(selectedChat.value.scopeKey, currentTavernScopeKey.value)),
+);
+const canJumpSelectedChat = computed(() =>
+  Boolean(
+    selectedChat.value?.key &&
+    selectedChat.value.key !== '__no_chat__' &&
+    activeOwner.value &&
+    activeOwner.value.characterId !== null,
+  ),
+);
 const visibleOwners = computed(() => {
   const keyword = ownerQuery.value.trim().toLowerCase();
   return owners.value.filter(owner => {
@@ -200,8 +228,9 @@ async function loadCharacters(force = false) {
     if (requestSequence !== characterLoadSequence) return;
     const usedScopes = getUsedChatArchiveScopes();
     const usedByOwner = groupUsedScopesByOwner(usedScopes);
-    const characterOwners = (Array.isArray(characters) ? characters : [])
-      .map((character, index) => createCharacterOwner(character, index, usedByOwner));
+    const characterOwners = (Array.isArray(characters) ? characters : []).map((character, index) =>
+      createCharacterOwner(character, index, usedByOwner),
+    );
     const matched = new Set(characterOwners.flatMap(owner => [...owner.aliases]));
     const orphanOwners = [...usedByOwner.entries()]
       .filter(([ownerId]) => !matched.has(ownerId))
@@ -230,8 +259,12 @@ function groupUsedScopesByOwner(scopes: ChatScopeRef[]) {
   return result;
 }
 
-function createCharacterOwner(character: unknown, index: number, usedByOwner: Map<string, ChatScopeRef[]>): ArchiveOwner {
-  const record = character && typeof character === 'object' ? character as Record<string, unknown> : {};
+function createCharacterOwner(
+  character: unknown,
+  index: number,
+  usedByOwner: Map<string, ChatScopeRef[]>,
+): ArchiveOwner {
+  const record = character && typeof character === 'object' ? (character as Record<string, unknown>) : {};
   const name = typeof record.name === 'string' && record.name.trim() ? record.name.trim() : `角色 ${index + 1}`;
   const avatar = typeof record.avatar === 'string' ? record.avatar : '';
   const aliases = new Set([String(index), name, avatar, avatar.replace(/\.[^/.]+$/, '')].filter(Boolean));
@@ -294,12 +327,15 @@ async function loadChatsForActiveOwner(force = false) {
   try {
     const briefs = owner.characterId === null ? [] : await getPastCharacterChats(owner.characterId);
     if (
-      requestSequence !== chatLoadSequence
-      || route.value.appId !== 'archive'
-      || route.value.params?.ownerKey !== owner.key
-    ) return;
+      requestSequence !== chatLoadSequence ||
+      route.value.appId !== 'archive' ||
+      route.value.params?.ownerKey !== owner.key
+    )
+      return;
 
-    const normalizedBriefs = (briefs || []).map(normalizeBrief).filter((item): item is ChatHistoryBriefItem => Boolean(item));
+    const normalizedBriefs = (briefs || [])
+      .map(normalizeBrief)
+      .filter((item): item is ChatHistoryBriefItem => Boolean(item));
     const rows = new Map<string, ArchiveChatRow>();
     const domainReader = createChatArchiveDomainReader();
     normalizedBriefs.forEach(brief => {
@@ -311,7 +347,9 @@ async function loadChatsForActiveOwner(force = false) {
         rows.set(chatId, createChatRow(owner, chatId, formatArchiveChatTitle(chatId), domainReader));
       }
     });
-    chatRows.value = [...rows.values()].sort((left, right) => Number(right.isUsed) - Number(left.isUsed) || left.title.localeCompare(right.title, 'zh-CN'));
+    chatRows.value = [...rows.values()].sort(
+      (left, right) => Number(right.isUsed) - Number(left.isUsed) || left.title.localeCompare(right.title, 'zh-CN'),
+    );
   } catch (caughtError) {
     if (requestSequence === chatLoadSequence) {
       error.value = caughtError instanceof Error ? caughtError.message : '读取聊天列表失败';
@@ -408,7 +446,6 @@ async function jumpSelectedChatToTavern() {
     toastr.error(message);
   }
 }
-
 </script>
 
 <style scoped>
@@ -581,6 +618,4 @@ async function jumpSelectedChatToTavern() {
   border-radius: 14px;
   background: var(--pc-surface-strong);
 }
-
 </style>
-

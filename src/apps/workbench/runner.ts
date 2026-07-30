@@ -528,10 +528,7 @@ function buildNextWorkflowRunContext(workflow: WorkbenchWorkflow, scopeKey: stri
     throw new Error('新增 AI 回复尚未达到工作流间隔');
   }
 
-  const targetAiReplyCount = Math.min(
-    delayedTarget.lastAiReplyCount,
-    previousCheckpoint.lastAiReplyCount + batchSize,
-  );
+  const targetAiReplyCount = Math.min(delayedTarget.lastAiReplyCount, previousCheckpoint.lastAiReplyCount + batchSize);
   const checkpoint = checkpointAtAssistantCount(assistantMessages, targetAiReplyCount);
   const source = buildChunkSource(workflow, previousCheckpoint, checkpoint, visibleMessages);
   const pendingRun: WorkbenchPendingRun = {
@@ -688,10 +685,7 @@ export async function runWorkbenchWorkflow(
       const currentProgress = Math.max(tasks.getTask(task.id)?.savedCount || 0, completedBeforeRun);
       tasks.patchTask(task.id, {
         currentJobIndex: currentProgress,
-        total: Math.max(
-          tasks.getTask(task.id)?.total || 0,
-          currentProgress + enabledSteps.length - completedBeforeRun,
-        ),
+        total: Math.max(tasks.getTask(task.id)?.total || 0, currentProgress + enabledSteps.length - completedBeforeRun),
       });
       let previousContent = '';
       const failures: string[] = [];
@@ -798,11 +792,7 @@ export async function runWorkbenchWorkflow(
       if (failures.length) {
         const message = `完成 ${batchCount} 批，本次保存 ${savedCount} 项；当前批次已记住成功步骤；失败：${failures.join('；')}`;
         tasks.setStatus(task.id, 'paused', `${message}。可继续重试未完成步骤`);
-        workbench.finishLog(
-          log.id,
-          'paused',
-          message,
-        );
+        workbench.finishLog(log.id, 'paused', message);
         return;
       }
 
@@ -850,9 +840,9 @@ export async function resumeWorkbenchTask(taskId: string) {
 export async function runDueWorkbenchWorkflows() {
   const workbench = useWorkbenchStore();
   const tasks = useGenerationTaskStore();
-  const due = workbench.getDueWorkflows().filter(
-    workflow => !tasks.getWorkbenchTask(workflow.id)?.status.match(/paused|interrupted/),
-  );
+  const due = workbench
+    .getDueWorkflows()
+    .filter(workflow => !tasks.getWorkbenchTask(workflow.id)?.status.match(/paused|interrupted/));
   for (const workflow of due) {
     await runWorkbenchWorkflow(workflow, { automatic: true });
   }
@@ -919,12 +909,13 @@ export function installWorkbenchAutoRunner() {
   };
   const handleMessageFallback = (...eventArgs: unknown[]) => {
     if (
-      backgroundGenerationIds.size
-      || anonymousGenerationKinds.includes(true)
-      || hasActivePhoneGeneration()
-      || isPhoneGenerationEvent(...eventArgs)
-      || isQuietGenerationEvent(eventArgs)
-    ) return;
+      backgroundGenerationIds.size ||
+      anonymousGenerationKinds.includes(true) ||
+      hasActivePhoneGeneration() ||
+      isPhoneGenerationEvent(...eventArgs) ||
+      isQuietGenerationEvent(eventArgs)
+    )
+      return;
     scheduleRun();
   };
 

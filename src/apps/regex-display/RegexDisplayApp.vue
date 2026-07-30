@@ -4,9 +4,13 @@
       <div>
         <strong>
           {{ t`正则显示设置` }}
-          <InfoHint :text="t`只负责把原文经过正则替换后预览成文字或网页；不会改动原始内容。后续资料表等 App 可以复用这些规则。`" />
+          <InfoHint
+            :text="t`只负责把原文经过正则替换后预览成文字或网页；不会改动原始内容。后续资料表等 App 可以复用这些规则。`"
+          />
         </strong>
-        <p>{{ `${rules.length} 条规则，${readerExtractRuleCount} 条正文抽取，${readerCleanupRuleCount} 条正文清理` }}</p>
+        <p>
+          {{ `${rules.length} 条规则，${readerExtractRuleCount} 条正文抽取，${readerCleanupRuleCount} 条正文清理` }}
+        </p>
       </div>
       <button class="pc-soft-btn compact" type="button" @click="addNewRule">
         <i class="fa-solid fa-plus"></i>
@@ -33,7 +37,11 @@
         <div class="pc-select-field">
           <label class="pc-field-label">
             {{ t`应用位置` }}
-            <InfoHint :text="t`楼层正文提取用于阅读聊天和总结集导入；正文清理会在提取后继续替换。资料表格式会按顺序应用全部已启用规则。`" />
+            <InfoHint
+              :text="
+                t`楼层正文提取用于阅读聊天和总结集导入；正文清理会在提取后继续替换。资料表格式会按顺序应用全部已启用规则。`
+              "
+            />
           </label>
           <div class="pc-target-row">
             <label class="pc-target-pill">
@@ -48,7 +56,9 @@
               <input
                 :checked="activeRule.targets.includes(regexDisplayReaderCleanupTarget)"
                 type="checkbox"
-                @change="setActiveRuleTarget(regexDisplayReaderCleanupTarget, ($event.target as HTMLInputElement).checked)"
+                @change="
+                  setActiveRuleTarget(regexDisplayReaderCleanupTarget, ($event.target as HTMLInputElement).checked)
+                "
               />
               <span>{{ t`正文清理` }}</span>
             </label>
@@ -82,7 +92,11 @@
 
         <div class="pc-select-field">
           <label class="pc-field-label">{{ t`匹配正则` }}</label>
-          <textarea v-model="activeRule.pattern" class="pc-area compact mono" :placeholder="t`填写 JS 正则主体，不需要写两侧 / /`"></textarea>
+          <textarea
+            v-model="activeRule.pattern"
+            class="pc-area compact mono"
+            :placeholder="t`填写 JS 正则主体，不需要写两侧 / /`"
+          ></textarea>
         </div>
 
         <div class="pc-select-field">
@@ -90,7 +104,11 @@
             {{ t`替换模板` }}
             <InfoHint :text="t`可使用 $1、$<name> 这类 JS replace 捕获组。选择网页时，替换结果会按 HTML 片段预览。`" />
           </label>
-          <textarea v-model="activeRule.replacement" class="pc-area mono" :placeholder="t`例如：<section class='profile'>$1</section>`"></textarea>
+          <textarea
+            v-model="activeRule.replacement"
+            class="pc-area mono"
+            :placeholder="t`例如：<section class='profile'>$1</section>`"
+          ></textarea>
         </div>
 
         <div class="pc-action-grid">
@@ -123,7 +141,11 @@
 
       <div class="pc-select-field">
         <label class="pc-field-label">{{ t`原文` }}</label>
-        <textarea v-model="settings.previewInput" class="pc-area preview-source" :placeholder="t`把资料表、楼层片段或任意文本放在这里测试。`"></textarea>
+        <textarea
+          v-model="settings.previewInput"
+          class="pc-area preview-source"
+          :placeholder="t`把资料表、楼层片段或任意文本放在这里测试。`"
+        ></textarea>
       </div>
 
       <div v-if="previewResult.errors.length" class="pc-error-list">
@@ -152,7 +174,13 @@ import { usePhoneStore } from '@/store/phone';
 import { useSettingsStore } from '@/store/settings';
 import { applyRegexDisplayRules } from '@/util/regexDisplay';
 import { storeToRefs } from 'pinia';
-import { defaultReaderBodyRegexDisplayRuleId, regexDisplayProfilesTarget, regexDisplayReaderCleanupTarget, regexDisplayReaderTarget, useRegexDisplayStore } from './store';
+import {
+  defaultReaderBodyRegexDisplayRuleId,
+  regexDisplayProfilesTarget,
+  regexDisplayReaderCleanupTarget,
+  regexDisplayReaderTarget,
+  useRegexDisplayStore,
+} from './store';
 
 const regexDisplay = useRegexDisplayStore();
 const phone = usePhoneStore();
@@ -162,8 +190,12 @@ const activeRuleId = ref('');
 
 const activeRule = computed(() => rules.value.find(rule => rule.id === activeRuleId.value) ?? rules.value[0] ?? null);
 const previewResult = computed(() => applyRegexDisplayRules(settings.value.previewInput, rules.value));
-const readerExtractRuleCount = computed(() => rules.value.filter(rule => rule.targets.includes(regexDisplayReaderTarget)).length);
-const readerCleanupRuleCount = computed(() => rules.value.filter(rule => rule.targets.includes(regexDisplayReaderCleanupTarget)).length);
+const readerExtractRuleCount = computed(
+  () => rules.value.filter(rule => rule.targets.includes(regexDisplayReaderTarget)).length,
+);
+const readerCleanupRuleCount = computed(
+  () => rules.value.filter(rule => rule.targets.includes(regexDisplayReaderCleanupTarget)).length,
+);
 const previewSummary = computed(() => {
   if (previewResult.value.errors.length) return `有 ${previewResult.value.errors.length} 条规则报错`;
   if (!previewResult.value.applied.length) return '当前没有命中规则';
@@ -262,7 +294,11 @@ async function deleteActiveRule() {
 }
 
 .mono {
-  font-family: SFMono-Regular, Consolas, Liberation Mono, monospace;
+  font-family:
+    SFMono-Regular,
+    Consolas,
+    Liberation Mono,
+    monospace;
 }
 
 .pc-toggle-row,
@@ -349,5 +385,4 @@ async function deleteActiveRule() {
   font: inherit;
   line-height: 1.6;
 }
-
 </style>

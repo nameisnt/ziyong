@@ -51,7 +51,9 @@ export const useMediaStore = defineStore('media', () => {
     createDefault: () => validateInplace(MediaScopeDataSchema, {}),
   });
 
-  const entries = computed(() => [...data.value.entries].sort((left, right) => right.updatedAt.localeCompare(left.updatedAt)));
+  const entries = computed(() =>
+    [...data.value.entries].sort((left, right) => right.updatedAt.localeCompare(left.updatedAt)),
+  );
   const failedDraftCollection = createFailedDraftCollection(data, 'media_failed_draft');
 
   function getEntry(entryId: string) {

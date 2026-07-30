@@ -118,7 +118,8 @@ function createRelationshipContentStats(currentScopeKey: string): PhoneContentSt
     }
   });
 
-  const current = currentData.characters.length || currentData.links.length ? createOverview(currentData, 1) : emptyOverview();
+  const current =
+    currentData.characters.length || currentData.links.length ? createOverview(currentData, 1) : emptyOverview();
   const overview = createOverview(merged, scopeCount);
   return {
     current,
@@ -147,18 +148,20 @@ function createRelationshipReferenceTree(): PhoneReferenceTreeNode {
     kind: 'branch',
     label: '关系网',
     children: content.trim()
-      ? [{
-          id: 'relationship:current',
-          kind: 'leaf',
-          item: {
+      ? [
+          {
             id: 'relationship:current',
-            title: '当前关系网',
-            content,
-            sourcePath: ['关系网'],
-            updatedAt: latestUpdatedAt,
-            timeLabel: latestUpdatedAt,
+            kind: 'leaf',
+            item: {
+              id: 'relationship:current',
+              title: '当前关系网',
+              content,
+              sourcePath: ['关系网'],
+              updatedAt: latestUpdatedAt,
+              timeLabel: latestUpdatedAt,
+            },
           },
-        }]
+        ]
       : [],
   };
 }
@@ -175,59 +178,68 @@ export default definePhoneApp({
     field: relationshipField,
     collect: createRelationshipArchiveDomain,
   },
-  backupDomains: [{
-    key: 'relationships',
-    exportData: currentScopeKey => readChatScopedEnvelope(relationshipField, currentScopeKey || getCurrentChatScopeKey()),
-    importData: data => {
-      _.set(extension_settings, relationshipField, data);
+  backupDomains: [
+    {
+      key: 'relationships',
+      exportData: currentScopeKey =>
+        readChatScopedEnvelope(relationshipField, currentScopeKey || getCurrentChatScopeKey()),
+      importData: data => {
+        _.set(extension_settings, relationshipField, data);
+      },
+      rehydrateFromSettings: () => useRelationshipStore().rehydrateFromSettings(),
     },
-    rehydrateFromSettings: () => useRelationshipStore().rehydrateFromSettings(),
-  }],
+  ],
   component: RelationshipApp,
   contentStatsProvider: createRelationshipContentStats,
-  generationProvider: () => [{
-    actionId: 'generate',
-    label: '生成关系网',
-    createAdapter: () => createRelationshipGenerationAdapter(useRelationshipStore()),
-  }],
-  promptDefinitions: [{
-    key: 'relationship',
-    label: '关系网',
-    defaultPrompt: [
-      '你负责从聊天上下文中识别人物之间的当前单向关系。',
-      '每条关系表示“from 是 to 的 label”，例如 from=父亲、to=儿子、label=父亲；反向关系需要另写一条。',
-      '只输出上下文中能判断的当前关系；不确定、过期、猜测性的关系不要输出。',
-      '关系词要短，优先使用身份、情感、立场或互动关系词。',
-    ].join('\n'),
-    outputFormats: [{
-      id: 'relationship.generate',
-      label: '关系网输出',
-      content: [
-        '请只输出一个完整 XML，不要输出 XML 之外的解释。',
-        '每条 relation 表示“from 是 to 的 label”；如果反向关系也成立，请另写一条 relation。',
-        '<result>',
-        '  <characters>',
-        '    <character>人物名字</character>',
-        '  </characters>',
-        '  <relations>',
-        '    <relation>',
-        '      <from>谁</from>',
-        '      <to>是谁的</to>',
-        '      <label>关系词</label>',
-        '    </relation>',
-        '  </relations>',
-        '</result>',
+  generationProvider: () => [
+    {
+      actionId: 'generate',
+      label: '生成关系网',
+      createAdapter: () => createRelationshipGenerationAdapter(useRelationshipStore()),
+    },
+  ],
+  promptDefinitions: [
+    {
+      key: 'relationship',
+      label: '关系网',
+      defaultPrompt: [
+        '你负责从聊天上下文中识别人物之间的当前单向关系。',
+        '每条关系表示“from 是 to 的 label”，例如 from=父亲、to=儿子、label=父亲；反向关系需要另写一条。',
+        '只输出上下文中能判断的当前关系；不确定、过期、猜测性的关系不要输出。',
+        '关系词要短，优先使用身份、情感、立场或互动关系词。',
       ].join('\n'),
-      parser: xmlParser([
-        textListField('characters', '人物列表', 'characters/character'),
-        objectListField('relations', '关系列表', 'relations/relation', [
-          textField('from', '关系起点', 'from', { required: true }),
-          textField('to', '关系终点', 'to', { required: true }),
-          textField('label', '关系名称', 'label', { required: true }),
-        ]),
-      ]),
-    }],
-  }],
+      outputFormats: [
+        {
+          id: 'relationship.generate',
+          label: '关系网输出',
+          content: [
+            '请只输出一个完整 XML，不要输出 XML 之外的解释。',
+            '每条 relation 表示“from 是 to 的 label”；如果反向关系也成立，请另写一条 relation。',
+            '<result>',
+            '  <characters>',
+            '    <character>人物名字</character>',
+            '  </characters>',
+            '  <relations>',
+            '    <relation>',
+            '      <from>谁</from>',
+            '      <to>是谁的</to>',
+            '      <label>关系词</label>',
+            '    </relation>',
+            '  </relations>',
+            '</result>',
+          ].join('\n'),
+          parser: xmlParser([
+            textListField('characters', '人物列表', 'characters/character'),
+            objectListField('relations', '关系列表', 'relations/relation', [
+              textField('from', '关系起点', 'from', { required: true }),
+              textField('to', '关系终点', 'to', { required: true }),
+              textField('label', '关系名称', 'label', { required: true }),
+            ]),
+          ]),
+        },
+      ],
+    },
+  ],
   referenceProvider: createRelationshipReferenceTree,
   resetCurrentScope: () => useRelationshipStore().resetCurrentScope(),
   scopeSwitchHandler: scopeKey => useRelationshipStore().switchScope(scopeKey),

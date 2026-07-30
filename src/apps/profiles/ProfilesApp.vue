@@ -15,7 +15,12 @@
           <input v-model="query" type="search" :placeholder="t`搜索当前表`" />
         </label>
         <div class="pc-profiles-toolbar-actions">
-          <button class="pc-icon-btn" type="button" :title="profileViewMode === 'list' ? t`切换为表格显示` : t`切换为列表显示`" @click="profileViewMode = profileViewMode === 'list' ? 'table' : 'list'">
+          <button
+            class="pc-icon-btn"
+            type="button"
+            :title="profileViewMode === 'list' ? t`切换为表格显示` : t`切换为列表显示`"
+            @click="profileViewMode = profileViewMode === 'list' ? 'table' : 'list'"
+          >
             <i :class="['fa-solid', profileViewMode === 'list' ? 'fa-table-columns' : 'fa-list']"></i>
           </button>
           <button class="pc-icon-btn" type="button" :title="t`管理资料表`" @click="openTableManager">
@@ -33,8 +38,18 @@
         </div>
       </section>
 
-      <section v-if="selectedTable && profileViewMode === 'list'" class="pc-profile-list" :aria-label="selectedTable.name">
-        <button v-for="entry in filteredEntries" :key="entry.id" class="pc-profile-list-row" type="button" @click="openEntry(entry.id)">
+      <section
+        v-if="selectedTable && profileViewMode === 'list'"
+        class="pc-profile-list"
+        :aria-label="selectedTable.name"
+      >
+        <button
+          v-for="entry in filteredEntries"
+          :key="entry.id"
+          class="pc-profile-list-row"
+          type="button"
+          @click="openEntry(entry.id)"
+        >
           <i :class="['fa-solid', 'pc-profile-list-icon', profileKindIcon(entry.kind)]"></i>
           <span class="pc-profile-list-main">
             <strong>{{ entry.title }}</strong>
@@ -52,13 +67,27 @@
           <div class="pc-profile-table-header" role="row">
             <span v-for="column in visibleTableColumns" :key="column.id" role="columnheader">{{ column.label }}</span>
           </div>
-          <button v-for="entry in filteredEntries" :key="entry.id" class="pc-profile-table-row" type="button" @click="openEntry(entry.id)">
-            <span v-for="column in visibleTableColumns" :key="column.id" :class="['pc-profile-table-cell', { 'is-status': isStatusColumn(column) }]" :title="profiles.getEntryField(entry, column.id)">
+          <button
+            v-for="entry in filteredEntries"
+            :key="entry.id"
+            class="pc-profile-table-row"
+            type="button"
+            @click="openEntry(entry.id)"
+          >
+            <span
+              v-for="column in visibleTableColumns"
+              :key="column.id"
+              :class="['pc-profile-table-cell', { 'is-status': isStatusColumn(column) }]"
+              :title="profiles.getEntryField(entry, column.id)"
+            >
               <template v-if="column.id === 'tags' && profiles.getEntryField(entry, column.id)">
                 <em v-for="tag in entry.tags.slice(0, 2)" :key="tag">{{ tag }}</em>
               </template>
               <template v-else>
-                <i v-if="isStatusColumn(column) && profiles.getEntryField(entry, column.id)" class="pc-profile-status-dot"></i>
+                <i
+                  v-if="isStatusColumn(column) && profiles.getEntryField(entry, column.id)"
+                  class="pc-profile-status-dot"
+                ></i>
                 {{ profiles.getEntryField(entry, column.id) || t`未填写` }}
               </template>
             </span>
@@ -66,7 +95,10 @@
           </button>
         </div>
       </section>
-      <EmptyState v-if="!filteredEntries.length" :title="tableEntries.length ? t`没有匹配的资料` : t`当前表还没有条目`" />
+      <EmptyState
+        v-if="!filteredEntries.length"
+        :title="tableEntries.length ? t`没有匹配的资料` : t`当前表还没有条目`"
+      />
 
       <FailedDraftList
         :drafts="failedDrafts"
@@ -94,11 +126,20 @@
             <i class="fa-solid fa-plus"></i>
           </button>
         </div>
-        <button v-for="table in tables" :key="table.id" class="pc-profile-table-manager-row" type="button" @click="openTableEditor(table.id)">
+        <button
+          v-for="table in tables"
+          :key="table.id"
+          class="pc-profile-table-manager-row"
+          type="button"
+          @click="openTableEditor(table.id)"
+        >
           <i :class="['fa-solid', 'pc-profile-table-manager-icon', profileKindIcon(table.kind)]"></i>
           <span>
             <strong>{{ table.name }}</strong>
-            <small>{{ table.builtIn ? t`内置` : t`自定义` }} · {{ table.columns.length }} {{ t`个字段` }} · {{ tableEntryCount(table.id) }} {{ t`条` }}</small>
+            <small
+              >{{ table.builtIn ? t`内置` : t`自定义` }} · {{ table.columns.length }} {{ t`个字段` }} ·
+              {{ tableEntryCount(table.id) }} {{ t`条` }}</small
+            >
           </span>
           <i class="fa-solid fa-chevron-right"></i>
         </button>
@@ -119,21 +160,69 @@
           <div class="pc-profile-display-format-head">
             <span class="pc-field-label">{{ t`资料展示` }}</span>
             <span class="pc-segment">
-              <button :class="['pc-segment-btn', { active: tableDraft.renderMode === 'markdown' }]" type="button" @click="tableDraft.renderMode = 'markdown'">Markdown</button>
-              <button :class="['pc-segment-btn', { active: tableDraft.renderMode === 'frontend' }]" type="button" @click="tableDraft.renderMode = 'frontend'">{{ t`网页渲染` }}</button>
+              <button
+                :class="['pc-segment-btn', { active: tableDraft.renderMode === 'markdown' }]"
+                type="button"
+                @click="tableDraft.renderMode = 'markdown'"
+              >
+                Markdown
+              </button>
+              <button
+                :class="['pc-segment-btn', { active: tableDraft.renderMode === 'frontend' }]"
+                type="button"
+                @click="tableDraft.renderMode = 'frontend'"
+              >
+                {{ t`网页渲染` }}
+              </button>
             </span>
           </div>
-          <textarea v-model="tableDraft.displayFormat" class="pc-area compact mono" :placeholder="t`<character>\n身份：{{identity}}\n</character>`"></textarea>
-          <button class="pc-soft-btn compact" type="button" @click="resetTableDisplayFormat"><i class="fa-solid fa-rotate-left"></i>{{ t`重置格式` }}</button>
+          <textarea
+            v-model="tableDraft.displayFormat"
+            class="pc-area compact mono"
+            :placeholder="t`<character>\n身份：{{identity}}\n</character>`"
+          ></textarea>
+          <button class="pc-soft-btn compact" type="button" @click="resetTableDisplayFormat">
+            <i class="fa-solid fa-rotate-left"></i>{{ t`重置格式` }}
+          </button>
         </section>
         <div class="pc-profile-column-list">
           <div v-for="(column, index) in tableDraft.columns" :key="column.id" class="pc-profile-column-row">
             <div class="pc-profile-column-actions">
-              <button class="pc-icon-btn" type="button" :disabled="index === 0" :title="t`上移字段`" @click="moveTableColumn(index, -1)"><i class="fa-solid fa-arrow-up"></i></button>
-              <button class="pc-icon-btn" type="button" :disabled="index === tableDraft.columns.length - 1" :title="t`下移字段`" @click="moveTableColumn(index, 1)"><i class="fa-solid fa-arrow-down"></i></button>
-              <button class="pc-icon-btn danger" type="button" :disabled="isCoreColumn(column.id)" :title="t`删除字段`" @click="removeTableColumn(index)"><i class="fa-solid fa-trash"></i></button>
+              <button
+                class="pc-icon-btn"
+                type="button"
+                :disabled="index === 0"
+                :title="t`上移字段`"
+                @click="moveTableColumn(index, -1)"
+              >
+                <i class="fa-solid fa-arrow-up"></i>
+              </button>
+              <button
+                class="pc-icon-btn"
+                type="button"
+                :disabled="index === tableDraft.columns.length - 1"
+                :title="t`下移字段`"
+                @click="moveTableColumn(index, 1)"
+              >
+                <i class="fa-solid fa-arrow-down"></i>
+              </button>
+              <button
+                class="pc-icon-btn danger"
+                type="button"
+                :disabled="isCoreColumn(column.id)"
+                :title="t`删除字段`"
+                @click="removeTableColumn(index)"
+              >
+                <i class="fa-solid fa-trash"></i>
+              </button>
             </div>
-            <input v-model="column.label" class="pc-field" type="text" :readonly="isCoreColumn(column.id)" :placeholder="t`字段名称`" />
+            <input
+              v-model="column.label"
+              class="pc-field"
+              type="text"
+              :readonly="isCoreColumn(column.id)"
+              :placeholder="t`字段名称`"
+            />
             <select v-model="column.type" class="pc-field pc-select" :disabled="isCoreColumn(column.id)">
               <option value="text">{{ t`短文本` }}</option>
               <option value="textarea">{{ t`长文本` }}</option>
@@ -141,7 +230,11 @@
               <option value="tags">{{ t`标签` }}</option>
               <option value="boolean">{{ t`是或否` }}</option>
             </select>
-            <textarea v-model="column.description" class="pc-area compact pc-profile-column-description" :placeholder="t`字段说明，会发送给 AI`"></textarea>
+            <textarea
+              v-model="column.description"
+              class="pc-area compact pc-profile-column-description"
+              :placeholder="t`字段说明，会发送给 AI`"
+            ></textarea>
             <div class="pc-profile-column-toggle">
               <span>{{ t`列表显示` }}</span>
               <label class="pc-toggle" :title="column.visible ? t`在列表中显示字段` : t`不在列表中显示字段`">
@@ -149,12 +242,27 @@
                 <span></span>
               </label>
             </div>
-            <input v-if="column.type === 'select'" v-model="column.optionsText" class="pc-field pc-profile-column-options" type="text" :placeholder="t`选项，用逗号分隔`" />
+            <input
+              v-if="column.type === 'select'"
+              v-model="column.optionsText"
+              class="pc-field pc-profile-column-options"
+              type="text"
+              :placeholder="t`选项，用逗号分隔`"
+            />
           </div>
         </div>
-        <button class="pc-soft-btn" type="button" @click="addTableColumn"><i class="fa-solid fa-plus"></i>{{ t`添加字段` }}</button>
+        <button class="pc-soft-btn" type="button" @click="addTableColumn">
+          <i class="fa-solid fa-plus"></i>{{ t`添加字段` }}
+        </button>
         <div class="pc-form-actions">
-          <button v-if="!editingTable.builtIn" class="pc-soft-btn danger" type="button" @click="removeTable(editingTable.id)">{{ t`删除表格` }}</button>
+          <button
+            v-if="!editingTable.builtIn"
+            class="pc-soft-btn danger"
+            type="button"
+            @click="removeTable(editingTable.id)"
+          >
+            {{ t`删除表格` }}
+          </button>
           <button class="pc-soft-btn" type="button" @click="phone.goBack()">{{ t`取消` }}</button>
           <button class="pc-primary-btn" type="button" @click="saveTableDraft">{{ t`保存` }}</button>
         </div>
@@ -165,7 +273,9 @@
       <article class="pc-detail-card pc-profile-detail-archive">
         <div class="pc-detail-title-row">
           <div>
-            <span class="pc-kicker"><i :class="['fa-solid', profileKindIcon(activeEntry.kind)]"></i>{{ entryTableName(activeEntry) }}</span>
+            <span class="pc-kicker"
+              ><i :class="['fa-solid', profileKindIcon(activeEntry.kind)]"></i>{{ entryTableName(activeEntry) }}</span
+            >
             <h2>{{ activeEntry.title }}</h2>
           </div>
           <button class="pc-detail-mini-btn" type="button" :title="t`编辑`" @click="openEditor(activeEntry.id)">
@@ -184,7 +294,12 @@
           <p>{{ profileFrontend.errors.join('；') }}</p>
         </div>
         <!-- eslint-disable-next-line vue/no-v-html -->
-        <article v-else ref="entryContentEl" class="pc-detail-content pc-rendered-markdown" v-html="renderMarkdown(profileMarkdownContent)"></article>
+        <article
+          v-else
+          ref="entryContentEl"
+          class="pc-detail-content pc-rendered-markdown"
+          v-html="renderMarkdown(profileMarkdownContent)"
+        ></article>
         <details v-if="activeEntry.content" class="pc-profile-legacy-content">
           <summary>{{ t`旧版正文` }}</summary>
           <!-- eslint-disable-next-line vue/no-v-html -->
@@ -204,10 +319,21 @@
         @top="scrollToTop"
       >
         <template #actions>
-          <button v-if="activeEntry.content" class="pc-soft-btn" type="button" :title="t`八股检测`" @click="openProfilesBaguScan">
+          <button
+            v-if="activeEntry.content"
+            class="pc-soft-btn"
+            type="button"
+            :title="t`八股检测`"
+            @click="openProfilesBaguScan"
+          >
             <i class="fa-solid fa-filter-circle-xmark"></i>
           </button>
-          <button :class="['pc-soft-btn', { active: activeEntry.favorite }]" type="button" :title="activeEntry.favorite ? t`取消收藏` : t`收藏`" @click="profiles.toggleFavorite(activeEntry.id)">
+          <button
+            :class="['pc-soft-btn', { active: activeEntry.favorite }]"
+            type="button"
+            :title="activeEntry.favorite ? t`取消收藏` : t`收藏`"
+            @click="profiles.toggleFavorite(activeEntry.id)"
+          >
             <i class="fa-solid fa-heart"></i>
           </button>
           <button class="pc-soft-btn" type="button" :title="t`编辑`" @click="openEditor(activeEntry.id)">
@@ -254,12 +380,32 @@
         <template v-for="column in editableDraftColumns" :key="column.id">
           <label class="pc-field-group">
             <span>{{ column.label }}</span>
-            <textarea v-if="column.type === 'textarea'" v-model="draft.fields[column.id]" class="pc-area compact"></textarea>
-            <select v-else-if="column.type === 'select' || column.type === 'boolean'" v-model="draft.fields[column.id]" class="pc-field pc-select">
+            <textarea
+              v-if="column.type === 'textarea'"
+              v-model="draft.fields[column.id]"
+              class="pc-area compact"
+            ></textarea>
+            <select
+              v-else-if="column.type === 'select' || column.type === 'boolean'"
+              v-model="draft.fields[column.id]"
+              class="pc-field pc-select"
+            >
               <option value="">{{ t`未填写` }}</option>
-              <option v-for="option in column.type === 'boolean' ? booleanOptions : column.options" :key="option" :value="option">{{ option }}</option>
+              <option
+                v-for="option in column.type === 'boolean' ? booleanOptions : column.options"
+                :key="option"
+                :value="option"
+              >
+                {{ option }}
+              </option>
             </select>
-            <input v-else v-model="draft.fields[column.id]" class="pc-field" type="text" :placeholder="column.type === 'tags' ? t`用逗号分隔` : t`可留空`" />
+            <input
+              v-else
+              v-model="draft.fields[column.id]"
+              class="pc-field"
+              type="text"
+              :placeholder="column.type === 'tags' ? t`用逗号分隔` : t`可留空`"
+            />
           </label>
         </template>
         <div class="pc-form-actions">
@@ -279,7 +425,12 @@
             <option v-for="table in tables" :key="table.id" :value="table.id">{{ table.name }}</option>
           </select>
         </label>
-        <input v-model="generationDraft.titleHint" class="pc-field" type="text" :placeholder="t`标题或对象名，可留空`" />
+        <input
+          v-model="generationDraft.titleHint"
+          class="pc-field"
+          type="text"
+          :placeholder="t`标题或对象名，可留空`"
+        />
         <GenerationPanel
           :capture="captureProfilePrompt"
           :capture-reset-key="profilePromptPreview"
@@ -308,7 +459,10 @@
       </article>
     </section>
 
-    <section v-else-if="route.page === 'preview' && generationState.preview" class="pc-profiles-page pc-generation-preview-page">
+    <section
+      v-else-if="route.page === 'preview' && generationState.preview"
+      class="pc-profiles-page pc-generation-preview-page"
+    >
       <article class="pc-detail-card pc-generation-preview-card">
         <GenerationPreviewPanel
           :content="generationState.preview.content"
@@ -346,7 +500,9 @@
           />
         </label>
         <div class="pc-form-actions">
-          <button class="pc-soft-btn danger" type="button" @click="removeFailedDraft(activeFailedDraft.id)">{{ t`删除草稿` }}</button>
+          <button class="pc-soft-btn danger" type="button" @click="removeFailedDraft(activeFailedDraft.id)">
+            {{ t`删除草稿` }}
+          </button>
           <button class="pc-soft-btn" type="button" @click="reparseFailedDraft">{{ t`重新解析` }}</button>
         </div>
       </article>
@@ -390,7 +546,12 @@ import {
   useProfilesStore,
 } from './store';
 import { parseProfileXmlResult } from './generation';
-import { createDefaultProfileDisplayFormat, formatProfileMarkdown, getProfileListPreview, renderProfileFrontend } from './rendering';
+import {
+  createDefaultProfileDisplayFormat,
+  formatProfileMarkdown,
+  getProfileListPreview,
+  renderProfileFrontend,
+} from './rendering';
 import { storeToRefs } from 'pinia';
 
 const phone = usePhoneStore();
@@ -479,53 +640,86 @@ const {
   title: '资料预览',
 });
 
-const activeEntry = computed(() => route.value.params?.entryId ? profiles.getEntry(route.value.params.entryId) : null);
-const editingEntry = computed(() => route.value.params?.entryId ? profiles.getEntry(route.value.params.entryId) : null);
-const editingTable = computed(() => route.value.params?.tableId ? profiles.getTable(route.value.params.tableId) : null);
-const activeFailedDraft = computed(() => route.value.params?.draftId ? profiles.getFailedDraft(route.value.params.draftId) : null);
+const activeEntry = computed(() =>
+  route.value.params?.entryId ? profiles.getEntry(route.value.params.entryId) : null,
+);
+const editingEntry = computed(() =>
+  route.value.params?.entryId ? profiles.getEntry(route.value.params.entryId) : null,
+);
+const editingTable = computed(() =>
+  route.value.params?.tableId ? profiles.getTable(route.value.params.tableId) : null,
+);
+const activeFailedDraft = computed(() =>
+  route.value.params?.draftId ? profiles.getFailedDraft(route.value.params.draftId) : null,
+);
 const activeEntryIndex = computed(() => entries.value.findIndex(entry => entry.id === activeEntry.value?.id));
-const previousEntryId = computed(() => activeEntryIndex.value > 0 ? entries.value[activeEntryIndex.value - 1]?.id || '' : '');
-const nextEntryId = computed(() => activeEntryIndex.value >= 0 ? entries.value[activeEntryIndex.value + 1]?.id || '' : '');
+const previousEntryId = computed(() =>
+  activeEntryIndex.value > 0 ? entries.value[activeEntryIndex.value - 1]?.id || '' : '',
+);
+const nextEntryId = computed(() =>
+  activeEntryIndex.value >= 0 ? entries.value[activeEntryIndex.value + 1]?.id || '' : '',
+);
 const normalizedQuery = computed(() => query.value.trim().toLowerCase());
 const selectedTable = computed(() => profiles.getTable(selectedTableId.value) ?? tables.value[0] ?? null);
-const tableEntries = computed(() => selectedTable.value ? profiles.getEntriesForTable(selectedTable.value.id) : []);
-const activeEntryTable = computed(() => activeEntry.value ? profiles.getTable(activeEntry.value.tableId) : null);
+const tableEntries = computed(() => (selectedTable.value ? profiles.getEntriesForTable(selectedTable.value.id) : []));
+const activeEntryTable = computed(() => (activeEntry.value ? profiles.getTable(activeEntry.value.tableId) : null));
 const visibleTableColumns = computed(() => {
   const columns = selectedTable.value?.columns.filter(column => column.visible) ?? [];
-  return columns.length ? columns.slice(0, 3) : [{ description: '', id: 'title', label: '名称', options: [], required: true, type: 'text' as const, visible: true }];
+  return columns.length
+    ? columns.slice(0, 3)
+    : [
+        {
+          description: '',
+          id: 'title',
+          label: '名称',
+          options: [],
+          required: true,
+          type: 'text' as const,
+          visible: true,
+        },
+      ];
 });
 const editableDraftColumns = computed(() => {
   const table = profiles.getTable(draft.tableId);
   return table?.columns.filter(column => !isCoreColumn(column.id)) ?? [];
 });
-const filteredEntries = computed(() => tableEntries.value.filter(entry => {
-  const search = normalizedQuery.value;
-  if (!search) return true;
-  return [
-    entry.title,
-    entry.summary,
-    entry.content,
-    getProfileKindLabel(entry.kind),
-    ...entry.tags,
-    ...Object.values(entry.fields),
-  ].join(' ').toLowerCase().includes(search);
-}));
+const filteredEntries = computed(() =>
+  tableEntries.value.filter(entry => {
+    const search = normalizedQuery.value;
+    if (!search) return true;
+    return [
+      entry.title,
+      entry.summary,
+      entry.content,
+      getProfileKindLabel(entry.kind),
+      ...entry.tags,
+      ...Object.values(entry.fields),
+    ]
+      .join(' ')
+      .toLowerCase()
+      .includes(search);
+  }),
+);
 const formattedReferences = computed(() => formatGenerationReferences(selectedReferences.value));
 const profileBaguContent = computed(() => activeEntry.value?.content || '');
 const profilePromptPreview = computed(() => buildGenerationConfig());
-const profileMarkdownContent = computed(() => activeEntry.value && activeEntryTable.value
-  ? formatProfileMarkdown(activeEntry.value, activeEntryTable.value)
-  : '');
-const profileFrontend = computed(() => activeEntry.value && activeEntryTable.value
-  ? renderProfileFrontend(
-      activeEntry.value,
-      activeEntryTable.value,
-      regexDisplayRules.value.filter(rule => rule.targets.includes(regexDisplayProfilesTarget)),
-    )
-  : { applied: [], content: '', errors: [], renderMode: 'html' as const });
-const textProviderSummary = computed(() => settings.value.textProvider.mode === 'external'
-  ? formatTextProviderSummary(settings.value.textProvider)
-  : `酒馆当前 API · ${settings.value.generation.tavernPresetName.trim() || '跟随当前预设'}`);
+const profileMarkdownContent = computed(() =>
+  activeEntry.value && activeEntryTable.value ? formatProfileMarkdown(activeEntry.value, activeEntryTable.value) : '',
+);
+const profileFrontend = computed(() =>
+  activeEntry.value && activeEntryTable.value
+    ? renderProfileFrontend(
+        activeEntry.value,
+        activeEntryTable.value,
+        regexDisplayRules.value.filter(rule => rule.targets.includes(regexDisplayProfilesTarget)),
+      )
+    : { applied: [], content: '', errors: [], renderMode: 'html' as const },
+);
+const textProviderSummary = computed(() =>
+  settings.value.textProvider.mode === 'external'
+    ? formatTextProviderSummary(settings.value.textProvider)
+    : `酒馆当前 API · ${settings.value.generation.tavernPresetName.trim() || '跟随当前预设'}`,
+);
 const { scrollToBottom, scrollToTop } = useDetailScroll(entryContentEl, '.pc-profiles-detail-page .pc-detail-content');
 
 onScopeDispose(() => {
@@ -584,11 +778,11 @@ useInvalidRouteFallback({
     hasPreview: Boolean(generationState.preview),
     page: route.value.page,
   }),
-  isInvalid: current => current.appId === 'profiles' && (
-    current.page === 'preview' && !current.hasPreview
-    || ['entry', 'bagu-scan'].includes(current.page) && !current.hasEntry
-    || current.page === 'failed-draft' && !current.hasFailedDraft
-  ),
+  isInvalid: current =>
+    current.appId === 'profiles' &&
+    ((current.page === 'preview' && !current.hasPreview) ||
+      (['entry', 'bagu-scan'].includes(current.page) && !current.hasEntry) ||
+      (current.page === 'failed-draft' && !current.hasFailedDraft)),
   fallback: () => {
     if (route.value.appId !== 'profiles') return;
     phone.replacePage('root', '资料表');
@@ -596,7 +790,10 @@ useInvalidRouteFallback({
 });
 
 function splitTags(text: string) {
-  return text.split(/[,，、\n]/g).map(tag => tag.trim()).filter(Boolean);
+  return text
+    .split(/[,，、\n]/g)
+    .map(tag => tag.trim())
+    .filter(Boolean);
 }
 
 function fillDraft(entry: ProfileEntry | null) {
@@ -741,9 +938,7 @@ function saveTableDraft() {
     ...column,
     description: column.description.trim(),
     label: column.label.trim() || '未命名字段',
-    options: column.type === 'select'
-      ? splitTags(column.optionsText)
-      : [],
+    options: column.type === 'select' ? splitTags(column.optionsText) : [],
   }));
   profiles.updateTable(table.id, {
     columns,
@@ -820,9 +1015,7 @@ function saveDraft() {
     tags: splitTags(draft.tagsText),
     title: draft.title,
   };
-  const entry = editingEntry.value
-    ? profiles.updateEntry(editingEntry.value.id, input)
-    : profiles.createEntry(input);
+  const entry = editingEntry.value ? profiles.updateEntry(editingEntry.value.id, input) : profiles.createEntry(input);
   if (!entry) return;
   phone.replacePage('entry', entry.title, { entryId: entry.id });
   toastr.success('已保存资料');
@@ -900,7 +1093,7 @@ function formatGeneratedFieldsPreview(
     tags.length ? `标签：${tags.join('、')}` : '',
     ...(table?.columns ?? [])
       .filter(column => !['title', 'summary', 'tags', 'content'].includes(column.id))
-      .map(column => fields[column.id]?.trim() ? `${column.label}：${fields[column.id]}` : ''),
+      .map(column => (fields[column.id]?.trim() ? `${column.label}：${fields[column.id]}` : '')),
   ].filter(Boolean);
   return lines.join('\n\n');
 }
@@ -952,7 +1145,13 @@ async function runGeneration() {
     }
 
     generationState.preview = {
-      content: formatGeneratedFieldsPreview(result.data.title, result.data.summary, result.data.tags, result.data.fields, generationDraft.tableId),
+      content: formatGeneratedFieldsPreview(
+        result.data.title,
+        result.data.summary,
+        result.data.tags,
+        result.data.fields,
+        generationDraft.tableId,
+      ),
       draftId: null,
       fields: fieldsForTable(result.data.fields, generationDraft.tableId),
       kind: generationDraft.kind,
@@ -1016,7 +1215,13 @@ function reparsePreviewRaw() {
     return false;
   }
 
-  preview.content = formatGeneratedFieldsPreview(parsed.data.title, parsed.data.summary, parsed.data.tags, parsed.data.fields, preview.tableId);
+  preview.content = formatGeneratedFieldsPreview(
+    parsed.data.title,
+    parsed.data.summary,
+    parsed.data.tags,
+    parsed.data.fields,
+    preview.tableId,
+  );
   preview.fields = fieldsForTable(parsed.data.fields, preview.tableId);
   preview.legacyContent = parsed.data.legacyContent;
   preview.raw = parsed.raw;
@@ -1030,7 +1235,7 @@ function reparsePreviewRaw() {
 
 function profileKindFromFailedDraft(draft: FailedGenerationDraft) {
   const kind = draft.context.kind;
-  return profileKindOptions.some(option => option.id === kind) ? kind as ProfileKind : generationDraft.kind;
+  return profileKindOptions.some(option => option.id === kind) ? (kind as ProfileKind) : generationDraft.kind;
 }
 
 function profileTableIdFromFailedDraft(draft: FailedGenerationDraft) {
@@ -1075,7 +1280,13 @@ function reparseFailedDraft() {
     warnings: parsed.warnings,
   });
   generationState.preview = {
-    content: formatGeneratedFieldsPreview(parsed.data.title, parsed.data.summary, parsed.data.tags, parsed.data.fields, profileTableIdFromFailedDraft(draft)),
+    content: formatGeneratedFieldsPreview(
+      parsed.data.title,
+      parsed.data.summary,
+      parsed.data.tags,
+      parsed.data.fields,
+      profileTableIdFromFailedDraft(draft),
+    ),
     draftId: null,
     fields: fieldsForTable(parsed.data.fields, profileTableIdFromFailedDraft(draft)),
     kind: profileKindFromFailedDraft(draft),
@@ -1100,7 +1311,6 @@ function stopGeneration() {
   generationState.running = false;
   generationState.error = '生成已停止';
 }
-
 </script>
 
 <style scoped>
@@ -1499,7 +1709,7 @@ function stopGeneration() {
 
 .pc-profile-detail-fields {
   display: grid;
-  grid-template-columns: minmax(84px, .55fr) minmax(0, 1fr);
+  grid-template-columns: minmax(84px, 0.55fr) minmax(0, 1fr);
   gap: 0;
   margin: 0 0 14px;
   border-top: 1px solid var(--pc-border);

@@ -27,20 +27,23 @@
 <script setup lang="ts">
 import type { FailedGenerationDraft } from '@/type/generation';
 
-withDefaults(defineProps<{
-  deleteTitle?: string;
-  drafts: FailedGenerationDraft[];
-  emptyWarning?: string;
-  getContext: (draft: FailedGenerationDraft) => string;
-  getTitle: (draft: FailedGenerationDraft) => string;
-  showHeader?: boolean;
-  title?: string;
-}>(), {
-  deleteTitle: '删除',
-  emptyWarning: '等待重新解析',
-  showHeader: true,
-  title: '解析失败草稿',
-});
+withDefaults(
+  defineProps<{
+    deleteTitle?: string;
+    drafts: FailedGenerationDraft[];
+    emptyWarning?: string;
+    getContext: (draft: FailedGenerationDraft) => string;
+    getTitle: (draft: FailedGenerationDraft) => string;
+    showHeader?: boolean;
+    title?: string;
+  }>(),
+  {
+    deleteTitle: '删除',
+    emptyWarning: '等待重新解析',
+    showHeader: true,
+    title: '解析失败草稿',
+  },
+);
 
 defineEmits<{
   (event: 'open', draftId: string): void;

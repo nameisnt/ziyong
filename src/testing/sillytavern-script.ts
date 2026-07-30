@@ -1,6 +1,4 @@
-export const characters = [
-  { avatar: 'visual-user.png', name: '测试角色' },
-];
+export const characters = [{ avatar: 'visual-user.png', name: '测试角色' }];
 
 export function eventClearAll() {}
 

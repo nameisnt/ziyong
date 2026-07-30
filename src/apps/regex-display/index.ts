@@ -11,13 +11,15 @@ export default definePhoneApp({
   accent: '#8e44ad',
   defaultRoute: 'root',
   defaultOrder: 125,
-  backupDomains: [{
-    key: 'regex-display',
-    exportData: () => _.get(extension_settings, regexDisplayField, {}),
-    importData: data => {
-      _.set(extension_settings, regexDisplayField, data);
+  backupDomains: [
+    {
+      key: 'regex-display',
+      exportData: () => _.get(extension_settings, regexDisplayField, {}),
+      importData: data => {
+        _.set(extension_settings, regexDisplayField, data);
+      },
+      rehydrateFromSettings: () => useRegexDisplayStore().rehydrateFromSettings(),
     },
-    rehydrateFromSettings: () => useRegexDisplayStore().rehydrateFromSettings(),
-  }],
+  ],
   component: RegexDisplayApp,
 });

@@ -80,7 +80,10 @@
         <i class="fa-solid fa-rotate-right"></i>
         <span>{{ t`新一局` }}</span>
       </button>
-      <InfoHint :label="t`扫雷说明`" :text="t`翻开所有安全格即可获胜。第一次翻开会保护当前格及相邻格；手机上可切换翻开和插旗模式。`" />
+      <InfoHint
+        :label="t`扫雷说明`"
+        :text="t`翻开所有安全格即可获胜。第一次翻开会保护当前格及相邻格；手机上可切换翻开和插旗模式。`"
+      />
     </div>
   </section>
 </template>
@@ -127,7 +130,9 @@ const mode = ref<'flag' | 'open'>('open');
 const storedState = readMiniGameSettings(miniGameFields.minesweeper, MinesweeperSchema, () => createEmptyState());
 const state = ref<MinesweeperState>(normalizeState(storedState));
 
-const boardDimension = computed(() => boardSizeOptions.find(option => option.id === state.value.boardSize)?.dimension ?? 8);
+const boardDimension = computed(
+  () => boardSizeOptions.find(option => option.id === state.value.boardSize)?.dimension ?? 8,
+);
 const cellCount = computed(() => boardDimension.value * boardDimension.value);
 const mineCount = computed(() => {
   const density = difficultyOptions.find(option => option.id === state.value.difficulty)?.density ?? 0.17;
@@ -136,18 +141,30 @@ const mineCount = computed(() => {
 const boardStyle = computed(() => ({
   '--mine-board-size': boardDimension.value,
 }));
-const remainingMines = computed(() => Math.max(0, mineCount.value - state.value.cells.filter(cell => cell.flag).length));
+const remainingMines = computed(() =>
+  Math.max(0, mineCount.value - state.value.cells.filter(cell => cell.flag).length),
+);
 const openedCount = computed(() => state.value.cells.filter(cell => cell.open).length);
 const statusTitle = computed(() => {
   if (state.value.status === 'won') return t`扫清了`;
   if (state.value.status === 'lost') return t`踩雷了`;
   return t`准备扫雷`;
 });
-function createEmptyState(boardSize: BoardSize = 'medium', difficulty: MineDifficulty = 'normal', wins = 0): MinesweeperState {
+function createEmptyState(
+  boardSize: BoardSize = 'medium',
+  difficulty: MineDifficulty = 'normal',
+  wins = 0,
+): MinesweeperState {
   const dimension = boardSizeOptions.find(option => option.id === boardSize)?.dimension ?? 8;
   return {
     boardSize,
-    cells: Array.from({ length: dimension * dimension }, (_, id) => ({ flag: false, id, mine: false, near: 0, open: false })),
+    cells: Array.from({ length: dimension * dimension }, (_, id) => ({
+      flag: false,
+      id,
+      mine: false,
+      near: 0,
+      open: false,
+    })),
     difficulty,
     status: 'ready',
     wins,

@@ -15,7 +15,14 @@
       <template v-if="route.page === 'root'">
         <div v-if="videoEntries.length" class="pc-video-grid">
           <article v-for="entry in videoEntries" :key="entry.id" class="pc-video-card">
-            <div class="pc-video-preview" role="button" tabindex="0" @click="openViewer(entry.id)" @keydown.enter.prevent="openViewer(entry.id)" @keydown.space.prevent="openViewer(entry.id)">
+            <div
+              class="pc-video-preview"
+              role="button"
+              tabindex="0"
+              @click="openViewer(entry.id)"
+              @keydown.enter.prevent="openViewer(entry.id)"
+              @keydown.space.prevent="openViewer(entry.id)"
+            >
               <video :src="entry.url" preload="metadata"></video>
               <i class="fa-solid fa-play"></i>
             </div>
@@ -73,7 +80,9 @@
         </div>
       </article>
       <EmptyState v-else-if="route.page === 'viewer'" :title="t`视频不存在`">
-        <button class="pc-soft-btn compact" type="button" @click="phone.replacePage('root', '视频')">{{ t`返回视频` }}</button>
+        <button class="pc-soft-btn compact" type="button" @click="phone.replacePage('root', '视频')">
+          {{ t`返回视频` }}
+        </button>
       </EmptyState>
 
       <article v-else-if="route.page === 'editor'" class="pc-editor-card">
@@ -84,7 +93,9 @@
         <input class="pc-field" type="file" accept="video/*" @change="loadFile" />
         <textarea v-model="draft.note" class="pc-area compact" :placeholder="t`备注，可留空`"></textarea>
         <div class="pc-form-actions">
-          <button v-if="editingEntry" class="pc-soft-btn danger" type="button" @click="deleteEntry(editingEntry)">{{ t`删除` }}</button>
+          <button v-if="editingEntry" class="pc-soft-btn danger" type="button" @click="deleteEntry(editingEntry)">
+            {{ t`删除` }}
+          </button>
           <button class="pc-soft-btn" type="button" @click="phone.replacePage('root', '视频')">{{ t`取消` }}</button>
           <button class="pc-primary-btn" type="button" @click="saveDraft">{{ t`保存` }}</button>
         </div>
@@ -111,9 +122,11 @@ const draft = reactive({
 });
 
 const videoEntries = computed(() => entries.value.filter(entry => entry.kind === 'video'));
-const activeEntry = computed(() => route.value.params?.entryId ? media.getEntry(route.value.params.entryId) : null);
-const editingEntry = computed(() => route.value.page === 'editor' ? activeEntry.value : null);
-const activeIndex = computed(() => activeEntry.value ? videoEntries.value.findIndex(entry => entry.id === activeEntry.value?.id) : -1);
+const activeEntry = computed(() => (route.value.params?.entryId ? media.getEntry(route.value.params.entryId) : null));
+const editingEntry = computed(() => (route.value.page === 'editor' ? activeEntry.value : null));
+const activeIndex = computed(() =>
+  activeEntry.value ? videoEntries.value.findIndex(entry => entry.id === activeEntry.value?.id) : -1,
+);
 
 watch(
   () => [route.value.appId, route.value.page, route.value.params?.entryId] as const,
@@ -170,9 +183,7 @@ function saveDraft() {
     title: draft.title || '未命名视频',
     url: draft.url,
   };
-  const entry = editingEntry.value
-    ? media.updateEntry(editingEntry.value.id, input)
-    : media.createEntry(input);
+  const entry = editingEntry.value ? media.updateEntry(editingEntry.value.id, input) : media.createEntry(input);
   if (!entry) return;
   phone.replacePage('viewer', '视频预览', { entryId: entry.id });
   toastr.success('已保存视频');

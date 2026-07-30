@@ -31,7 +31,8 @@ export function createSummaryFavoriteItems(): PhoneFavoriteItem[] {
         subtitle: entry.rangeLabel,
         updatedAt: entry.updatedAt,
         exists: () => Boolean(summary.getEntry(book.id, entry.id)),
-        open: () => phone.pushRoute('summary', 'entry', entry.title, { bookId: book.id, entryId: entry.id }, 'favorites'),
+        open: () =>
+          phone.pushRoute('summary', 'entry', entry.title, { bookId: book.id, entryId: entry.id }, 'favorites'),
         removeFavorite: () => {
           if (summary.getEntry(book.id, entry.id)?.favorite) summary.toggleFavorite(book.id, entry.id);
         },
@@ -92,7 +93,8 @@ export function createExtrasFavoriteItems(): PhoneFavoriteItem[] {
         subtitle: `${book.typeName} · 第 ${chapter.chapterNumber} 章`,
         updatedAt: chapter.updatedAt,
         exists: () => Boolean(extras.getChapter(book.id, chapter.id)),
-        open: () => phone.pushRoute('extras', 'chapter', chapter.title, { bookId: book.id, chapterId: chapter.id }, 'favorites'),
+        open: () =>
+          phone.pushRoute('extras', 'chapter', chapter.title, { bookId: book.id, chapterId: chapter.id }, 'favorites'),
         removeFavorite: () => {
           if (extras.getChapter(book.id, chapter.id)?.favorite) extras.toggleFavorite(book.id, chapter.id);
         },
@@ -122,7 +124,8 @@ export function createForumFavoriteItems(): PhoneFavoriteItem[] {
         subtitle: `${thread.author} · ${thread.replies.length} 条回复`,
         updatedAt: thread.updatedAt,
         exists: () => Boolean(forum.getThread(board.id, thread.id)),
-        open: () => phone.pushRoute('forum', 'thread', thread.title, { boardId: board.id, threadId: thread.id }, 'favorites'),
+        open: () =>
+          phone.pushRoute('forum', 'thread', thread.title, { boardId: board.id, threadId: thread.id }, 'favorites'),
         removeFavorite: () => {
           if (forum.getThread(board.id, thread.id)?.favorite) forum.toggleFavorite(board.id, thread.id);
         },
@@ -175,7 +178,8 @@ export function createLettersFavoriteItems(): PhoneFavoriteItem[] {
         subtitle: `${entry.sender.name} -> ${entry.receiver.name}`,
         updatedAt: entry.updatedAt,
         exists: () => Boolean(letters.getEntry(book.id, entry.id)),
-        open: () => phone.pushRoute('letters', 'entry', entry.title, { bookId: book.id, entryId: entry.id }, 'favorites'),
+        open: () =>
+          phone.pushRoute('letters', 'entry', entry.title, { bookId: book.id, entryId: entry.id }, 'favorites'),
         removeFavorite: () => {
           if (letters.getEntry(book.id, entry.id)?.favorite) letters.toggleFavorite(book.id, entry.id);
         },

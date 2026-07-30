@@ -11,7 +11,10 @@ export interface VisualScenarioResult {
 declare global {
   interface Window {
     __phoneVisualTest__?: {
-      applyScenario: (name: VisualScenarioName, options?: { height?: number; width?: number }) => Promise<VisualScenarioResult>;
+      applyScenario: (
+        name: VisualScenarioName,
+        options?: { height?: number; width?: number },
+      ) => Promise<VisualScenarioResult>;
       scenarios: VisualScenarioName[];
     };
   }
@@ -74,7 +77,7 @@ function setupVisualGlobals() {
   ];
   let visualLoadedPresetName = '视觉预设';
   const visualPresetStore: Record<string, Record<string, unknown>> = {
-    '视觉预设': {
+    视觉预设: {
       extensions: {
         baibaiToolkit: {
           presetPromptGroups: {
@@ -128,7 +131,7 @@ function setupVisualGlobals() {
       prompts_unused: [],
       settings: {},
     },
-    '简洁写作': {
+    简洁写作: {
       extensions: {},
       prompts: [
         {
@@ -142,7 +145,7 @@ function setupVisualGlobals() {
       prompts_unused: [],
       settings: {},
     },
-    '长篇剧情测试预设': {
+    长篇剧情测试预设: {
       extensions: {},
       prompts: [],
       prompts_unused: [],
@@ -155,9 +158,8 @@ function setupVisualGlobals() {
     _: {
       assign: Object.assign,
       get: getByPath,
-      mapValues: (source: Record<string, unknown>, iteratee: (value: unknown, key: string) => unknown) => Object.fromEntries(
-        Object.entries(source || {}).map(([key, value]) => [key, iteratee(value, key)]),
-      ),
+      mapValues: (source: Record<string, unknown>, iteratee: (value: unknown, key: string) => unknown) =>
+        Object.fromEntries(Object.entries(source || {}).map(([key, value]) => [key, iteratee(value, key)])),
       set: setByPath,
     },
     chatId: 'visual-chat',
@@ -483,10 +485,42 @@ function createProfilesFixture() {
     kind: 'character',
     name: '登场人物',
     columns: [
-      { description: '人物姓名。', id: 'title', label: '姓名', options: [], required: true, type: 'text', visible: true },
-      { description: '人物身份。', id: 'identity', label: '身份', options: [], required: false, type: 'text', visible: true },
-      { description: '人物当前状态。', id: 'status', label: '当前状态', options: ['在场', '失联', '未知'], required: false, type: 'select', visible: true },
-      { description: '一句话摘要。', id: 'summary', label: '摘要', options: [], required: false, type: 'text', visible: true },
+      {
+        description: '人物姓名。',
+        id: 'title',
+        label: '姓名',
+        options: [],
+        required: true,
+        type: 'text',
+        visible: true,
+      },
+      {
+        description: '人物身份。',
+        id: 'identity',
+        label: '身份',
+        options: [],
+        required: false,
+        type: 'text',
+        visible: true,
+      },
+      {
+        description: '人物当前状态。',
+        id: 'status',
+        label: '当前状态',
+        options: ['在场', '失联', '未知'],
+        required: false,
+        type: 'select',
+        visible: true,
+      },
+      {
+        description: '一句话摘要。',
+        id: 'summary',
+        label: '摘要',
+        options: [],
+        required: false,
+        type: 'text',
+        visible: true,
+      },
     ],
   });
   const characterTable = profiles.getDefaultTable('character');
@@ -524,7 +558,7 @@ function createGenerationTaskFixture() {
       mode: 'range' as const,
       rangeText: `${index * 5 + 1}-${index * 5 + 5}`,
       singleMessageId: 0,
-      status: index < 3 ? 'saved' as const : 'pending' as const,
+      status: index < 3 ? ('saved' as const) : ('pending' as const),
     })),
     kind: 'summary-batch',
     routePage: 'batch-generate',

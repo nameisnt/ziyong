@@ -42,12 +42,16 @@ const legacyArchiveProviders: PhoneArchiveProvider[] = [
     itemLabel: '总结',
     field: summaryField,
     collect(raw: unknown): ChatArchiveDomain {
-      const data = SummaryScopeDataSchema.safeParse(raw).success ? SummaryScopeDataSchema.parse(raw) : SummaryScopeDataSchema.parse({});
-      const entries = data.books.flatMap(book => book.entries.map(entry => ({
-        id: entry.id,
-        title: entry.title,
-        subtitle: `${book.title} · ${entry.rangeLabel}`,
-      })));
+      const data = SummaryScopeDataSchema.safeParse(raw).success
+        ? SummaryScopeDataSchema.parse(raw)
+        : SummaryScopeDataSchema.parse({});
+      const entries = data.books.flatMap(book =>
+        book.entries.map(entry => ({
+          id: entry.id,
+          title: entry.title,
+          subtitle: `${book.title} · ${entry.rangeLabel}`,
+        })),
+      );
       return makeDomain('summary', '总结', '总结集', '总结', data.books.length, entries);
     },
   },
@@ -58,12 +62,16 @@ const legacyArchiveProviders: PhoneArchiveProvider[] = [
     itemLabel: '篇',
     field: diaryField,
     collect(raw: unknown): ChatArchiveDomain {
-      const data = DiaryScopeDataSchema.safeParse(raw).success ? DiaryScopeDataSchema.parse(raw) : DiaryScopeDataSchema.parse({});
-      const entries = data.books.flatMap(book => book.entries.map(entry => ({
-        id: entry.id,
-        title: entry.title,
-        subtitle: `${book.title}${entry.occurredAt ? ` · ${entry.occurredAt}` : ''}`,
-      })));
+      const data = DiaryScopeDataSchema.safeParse(raw).success
+        ? DiaryScopeDataSchema.parse(raw)
+        : DiaryScopeDataSchema.parse({});
+      const entries = data.books.flatMap(book =>
+        book.entries.map(entry => ({
+          id: entry.id,
+          title: entry.title,
+          subtitle: `${book.title}${entry.occurredAt ? ` · ${entry.occurredAt}` : ''}`,
+        })),
+      );
       return makeDomain('diary', '日记', '日记本', '篇', data.books.length, entries);
     },
   },
@@ -74,7 +82,9 @@ const legacyArchiveProviders: PhoneArchiveProvider[] = [
     itemLabel: '章/总结',
     field: extrasField,
     collect(raw: unknown): ChatArchiveDomain {
-      const data = ExtraScopeDataSchema.safeParse(raw).success ? ExtraScopeDataSchema.parse(raw) : ExtraScopeDataSchema.parse({});
+      const data = ExtraScopeDataSchema.safeParse(raw).success
+        ? ExtraScopeDataSchema.parse(raw)
+        : ExtraScopeDataSchema.parse({});
       const entries = data.books.flatMap(book => [
         ...book.chapters.map(chapter => ({
           id: chapter.id,
@@ -97,19 +107,23 @@ const legacyArchiveProviders: PhoneArchiveProvider[] = [
     itemLabel: '帖/回复',
     field: forumField,
     collect(raw: unknown): ChatArchiveDomain {
-      const data = ForumScopeDataSchema.safeParse(raw).success ? ForumScopeDataSchema.parse(raw) : ForumScopeDataSchema.parse({});
-      const entries = data.boards.flatMap(board => board.threads.flatMap(thread => [
-        {
-          id: thread.id,
-          title: thread.title,
-          subtitle: `${board.name} · ${thread.author}`,
-        },
-        ...thread.replies.map(reply => ({
-          id: reply.id,
-          title: reply.content.slice(0, 32) || '回复',
-          subtitle: `${board.name} · ${reply.author}`,
-        })),
-      ]));
+      const data = ForumScopeDataSchema.safeParse(raw).success
+        ? ForumScopeDataSchema.parse(raw)
+        : ForumScopeDataSchema.parse({});
+      const entries = data.boards.flatMap(board =>
+        board.threads.flatMap(thread => [
+          {
+            id: thread.id,
+            title: thread.title,
+            subtitle: `${board.name} · ${thread.author}`,
+          },
+          ...thread.replies.map(reply => ({
+            id: reply.id,
+            title: reply.content.slice(0, 32) || '回复',
+            subtitle: `${board.name} · ${reply.author}`,
+          })),
+        ]),
+      );
       return makeDomain('forum', '论坛', '板块', '帖/回复', data.boards.length, entries);
     },
   },
@@ -120,7 +134,9 @@ const legacyArchiveProviders: PhoneArchiveProvider[] = [
     itemLabel: '篇',
     field: theaterField,
     collect(raw: unknown): ChatArchiveDomain {
-      const data = TheaterScopeDataSchema.safeParse(raw).success ? TheaterScopeDataSchema.parse(raw) : TheaterScopeDataSchema.parse({});
+      const data = TheaterScopeDataSchema.safeParse(raw).success
+        ? TheaterScopeDataSchema.parse(raw)
+        : TheaterScopeDataSchema.parse({});
       const entries = data.entries.map(entry => ({
         id: entry.id,
         title: entry.title,
@@ -136,12 +152,16 @@ const legacyArchiveProviders: PhoneArchiveProvider[] = [
     itemLabel: '封',
     field: lettersField,
     collect(raw: unknown): ChatArchiveDomain {
-      const data = LettersScopeDataSchema.safeParse(raw).success ? LettersScopeDataSchema.parse(raw) : LettersScopeDataSchema.parse({});
-      const entries = data.books.flatMap(book => book.entries.map(entry => ({
-        id: entry.id,
-        title: entry.title,
-        subtitle: `${book.title} · ${entry.sender.name} → ${entry.receiver.name}`,
-      })));
+      const data = LettersScopeDataSchema.safeParse(raw).success
+        ? LettersScopeDataSchema.parse(raw)
+        : LettersScopeDataSchema.parse({});
+      const entries = data.books.flatMap(book =>
+        book.entries.map(entry => ({
+          id: entry.id,
+          title: entry.title,
+          subtitle: `${book.title} · ${entry.sender.name} → ${entry.receiver.name}`,
+        })),
+      );
       return makeDomain('letters', '书信', '信箱', '封', data.books.length, entries);
     },
   },
@@ -212,20 +232,22 @@ export function createChatArchiveDomainReader() {
   }));
   const domainCache = new Map<string, ChatArchiveDomain[]>();
 
-  const collectDomains = (scopeKey: string) => snapshots
-    .map(({ envelope, provider }) => provider.collect(envelope.scopes[scopeKey], { currentScopeKey, scopeKey }))
-    .filter(domain => domain.collections || domain.items);
+  const collectDomains = (scopeKey: string) =>
+    snapshots
+      .map(({ envelope, provider }) => provider.collect(envelope.scopes[scopeKey], { currentScopeKey, scopeKey }))
+      .filter(domain => domain.collections || domain.items);
 
   const getDomains = (scopeKey: string) => {
     const cached = domainCache.get(scopeKey);
     if (cached) return cached;
 
     const exactDomains = collectDomains(scopeKey);
-    const domains = exactDomains.length || scopeKey !== currentScopeKey || isPlaceholderChatScopeKey(scopeKey)
-      ? exactDomains
-      : mergeChatArchiveDomains(
-          getLegacyNoChatScopeKeys(scopeKey).flatMap(legacyScopeKey => collectDomains(legacyScopeKey)),
-        );
+    const domains =
+      exactDomains.length || scopeKey !== currentScopeKey || isPlaceholderChatScopeKey(scopeKey)
+        ? exactDomains
+        : mergeChatArchiveDomains(
+            getLegacyNoChatScopeKeys(scopeKey).flatMap(legacyScopeKey => collectDomains(legacyScopeKey)),
+          );
     domainCache.set(scopeKey, domains);
     return domains;
   };

@@ -40,24 +40,23 @@ export function applyRegexDisplayRules(input: string, rules: RegexDisplayRuleLik
   const applied: string[] = [];
   const errors: string[] = [];
 
-  rules
-    .forEach(rule => {
-      if (rule.enabled === false) return;
-      const pattern = rule.pattern.trim();
-      if (!pattern) return;
+  rules.forEach(rule => {
+    if (rule.enabled === false) return;
+    const pattern = rule.pattern.trim();
+    if (!pattern) return;
 
-      try {
-        const regex = createDisplayRegex(pattern, rule.flags);
-        if (!regex.test(content)) return;
-        regex.lastIndex = 0;
-        content = content.replace(regex, rule.replacement);
-        applied.push(rule.name.trim() || pattern);
-        renderMode = rule.renderMode;
-      } catch (caughtError) {
-        const message = caughtError instanceof Error ? caughtError.message : '正则无效';
-        errors.push(`${rule.name.trim() || pattern}：${message}`);
-      }
-    });
+    try {
+      const regex = createDisplayRegex(pattern, rule.flags);
+      if (!regex.test(content)) return;
+      regex.lastIndex = 0;
+      content = content.replace(regex, rule.replacement);
+      applied.push(rule.name.trim() || pattern);
+      renderMode = rule.renderMode;
+    } catch (caughtError) {
+      const message = caughtError instanceof Error ? caughtError.message : '正则无效';
+      errors.push(`${rule.name.trim() || pattern}：${message}`);
+    }
+  });
 
   return {
     applied,

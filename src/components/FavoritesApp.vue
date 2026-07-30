@@ -11,11 +11,7 @@
 
       <div class="favorites-toolbar">
         <select :value="filter" class="favorite-select" @change="onFilterSelect">
-          <option
-            v-for="option in filterOptions"
-            :key="option.value"
-            :value="option.value"
-          >
+          <option v-for="option in filterOptions" :key="option.value" :value="option.value">
             {{ option.label }}
           </option>
         </select>
@@ -25,7 +21,13 @@
       <section class="favorites-content">
         <div class="favorites-scroll">
           <div v-if="visibleItems.length" class="ios-list">
-            <button v-for="item in visibleItems" :key="item.key" class="ios-item" type="button" @click="handleCardClick(item)">
+            <button
+              v-for="item in visibleItems"
+              :key="item.key"
+              class="ios-item"
+              type="button"
+              @click="handleCardClick(item)"
+            >
               <span class="item-icon" :style="{ '--favorite-accent': getTypeAccent(item.appId) }">
                 <i :class="getTypeIcon(item.appId)"></i>
               </span>
@@ -252,5 +254,4 @@ function getTypeAccent(appId: FavoriteItem['appId']) {
   font-size: 11px;
   font-style: normal;
 }
-
 </style>

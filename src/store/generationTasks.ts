@@ -39,7 +39,7 @@ function readSettings(raw: unknown): GenerationTaskSettings {
       ...task,
       activeGenerationId: '',
       error: '插件重新载入后任务已暂停，可从任务中心继续',
-      jobs: task.jobs.map(job => job.status === 'running' ? { ...job, status: 'pending' as const } : job),
+      jobs: task.jobs.map(job => (job.status === 'running' ? { ...job, status: 'pending' as const } : job)),
       status: 'interrupted' as const,
       updatedAt: nowIso(),
     };
@@ -48,9 +48,7 @@ function readSettings(raw: unknown): GenerationTaskSettings {
 }
 
 export const useGenerationTaskStore = defineStore('generationTasks', () => {
-  const settings = ref<GenerationTaskSettings>(
-    readSettings(_.get(extension_settings, generationTasksField, {})),
-  );
+  const settings = ref<GenerationTaskSettings>(readSettings(_.get(extension_settings, generationTasksField, {})));
   const currentScopeKey = ref(getCurrentChatScopeKey());
 
   const tasks = computed(() => settings.value.tasks);
@@ -58,12 +56,12 @@ export const useGenerationTaskStore = defineStore('generationTasks', () => {
     return settings.value.tasks.filter(task => task.scopeKey === currentScopeKey.value);
   });
   const activeTasks = computed(() => currentScopeTasks.value.filter(task => !terminalStatuses.has(task.status)));
-  const runningTasks = computed(() => currentScopeTasks.value.filter(
-    task => task.status === 'running' || task.status === 'pause-requested',
-  ));
-  const hasRunningTasks = computed(() => settings.value.tasks.some(
-    task => task.status === 'running' || task.status === 'pause-requested',
-  ));
+  const runningTasks = computed(() =>
+    currentScopeTasks.value.filter(task => task.status === 'running' || task.status === 'pause-requested'),
+  );
+  const hasRunningTasks = computed(() =>
+    settings.value.tasks.some(task => task.status === 'running' || task.status === 'pause-requested'),
+  );
 
   function persist() {
     const parsed = validateInplace(GenerationTaskSettingsSchema, klona(settings.value));
@@ -82,12 +80,15 @@ export const useGenerationTaskStore = defineStore('generationTasks', () => {
   }
 
   function getWorkbenchTask(workflowId: string, scopeKey = getCurrentChatScopeKey()) {
-    return settings.value.tasks.find(task =>
-      task.kind === 'workbench'
-      && task.scopeKey === scopeKey
-      && task.config.workflowId === workflowId
-      && !terminalStatuses.has(task.status),
-    ) ?? null;
+    return (
+      settings.value.tasks.find(
+        task =>
+          task.kind === 'workbench' &&
+          task.scopeKey === scopeKey &&
+          task.config.workflowId === workflowId &&
+          !terminalStatuses.has(task.status),
+      ) ?? null
+    );
   }
 
   function createTask(input: {
@@ -129,9 +130,7 @@ export const useGenerationTaskStore = defineStore('generationTasks', () => {
     });
     const allTasks = [task, ...settings.value.tasks];
     const active = allTasks.filter(item => !terminalStatuses.has(item.status));
-    const terminal = allTasks
-      .filter(item => terminalStatuses.has(item.status))
-      .slice(0, MAX_TERMINAL_TASKS);
+    const terminal = allTasks.filter(item => terminalStatuses.has(item.status)).slice(0, MAX_TERMINAL_TASKS);
     settings.value.tasks = [...active, ...terminal];
     return task;
   }
@@ -183,9 +182,12 @@ export const useGenerationTaskStore = defineStore('generationTasks', () => {
   function updateRawOutput(taskId: string, rawOutput: string) {
     pendingRawOutputs.set(taskId, rawOutput);
     if (rawOutputTimers.has(taskId)) return getTask(taskId);
-    rawOutputTimers.set(taskId, window.setTimeout(() => {
-      commitRawOutput(taskId);
-    }, RAW_OUTPUT_PERSIST_INTERVAL_MS));
+    rawOutputTimers.set(
+      taskId,
+      window.setTimeout(() => {
+        commitRawOutput(taskId);
+      }, RAW_OUTPUT_PERSIST_INTERVAL_MS),
+    );
     return getTask(taskId);
   }
 
@@ -262,9 +264,7 @@ export const useGenerationTaskStore = defineStore('generationTasks', () => {
   }
 
   function clearScopeTasks(scopeKey = getCurrentChatScopeKey()) {
-    settings.value.tasks
-      .filter(task => task.scopeKey === scopeKey)
-      .forEach(task => removeTask(task.id));
+    settings.value.tasks.filter(task => task.scopeKey === scopeKey).forEach(task => removeTask(task.id));
   }
 
   function beginExecution(taskId: string) {
@@ -296,10 +296,8 @@ export const useGenerationTaskStore = defineStore('generationTasks', () => {
     window.setTimeout(() => {
       currentScopeKey.value = getCurrentChatScopeKey();
       settings.value.tasks.forEach(task => {
-        if (
-          task.scopeKey === currentScopeKey.value
-          || !['queued', 'running', 'pause-requested'].includes(task.status)
-        ) return;
+        if (task.scopeKey === currentScopeKey.value || !['queued', 'running', 'pause-requested'].includes(task.status))
+          return;
         if (task.activeGenerationId) stopGenerationByIdSafe(task.activeGenerationId);
         setStatus(task.id, 'interrupted', '聊天已切换，任务已暂停以避免写入错误聊天');
       });

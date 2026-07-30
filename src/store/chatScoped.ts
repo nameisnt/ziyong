@@ -52,27 +52,30 @@ export function readChatScopedEnvelope(field: string, currentScopeKey: string): 
 
 export function getCurrentChatScopeKey() {
   const getCurrentChatId = getOptionalGlobalFunction<() => number | string | null | undefined>('getCurrentChatId');
-  const chatId = normalizeChatScopeId(normalizeScopePart(
-    getCurrentChatId?.()
-      ?? getOptionalGlobalValue('chatId')
-      ?? getOptionalGlobalValue('currentChatId')
-      ?? SillyTavern.getCurrentChatId?.()
-      ?? SillyTavern.chatId,
-    '__no_chat__',
-  ));
+  const chatId = normalizeChatScopeId(
+    normalizeScopePart(
+      getCurrentChatId?.() ??
+        getOptionalGlobalValue('chatId') ??
+        getOptionalGlobalValue('currentChatId') ??
+        SillyTavern.getCurrentChatId?.() ??
+        SillyTavern.chatId,
+      '__no_chat__',
+    ),
+  );
 
   const groupId = normalizeScopePart(getOptionalGlobalValue('groupId') ?? SillyTavern.groupId, '');
   if (groupId) {
     return `group:${groupId}:chat:${chatId}`;
   }
 
-  const getCurrentCharacterId = getOptionalGlobalFunction<() => number | string | null | undefined>('getCurrentCharacterId');
+  const getCurrentCharacterId =
+    getOptionalGlobalFunction<() => number | string | null | undefined>('getCurrentCharacterId');
   const getCurrentCharacterName = getOptionalGlobalFunction<() => string | null | undefined>('getCurrentCharacterName');
   const characterId = normalizeScopePart(
-    getCurrentCharacterId?.()
-      ?? getOptionalGlobalValue('this_chid')
-      ?? getOptionalGlobalValue('characterId')
-      ?? getCurrentCharacterName?.(),
+    getCurrentCharacterId?.() ??
+      getOptionalGlobalValue('this_chid') ??
+      getOptionalGlobalValue('characterId') ??
+      getCurrentCharacterName?.(),
     '__no_character__',
   );
   return `char:${characterId}:chat:${chatId}`;
@@ -126,7 +129,8 @@ function getCurrentOwnerAliases(scope: ParsedChatScopeKey) {
   }
   if (scope.kind !== 'char') return aliases;
 
-  const getCurrentCharacterId = getOptionalGlobalFunction<() => number | string | null | undefined>('getCurrentCharacterId');
+  const getCurrentCharacterId =
+    getOptionalGlobalFunction<() => number | string | null | undefined>('getCurrentCharacterId');
   const getCurrentCharacterName = getOptionalGlobalFunction<() => string | null | undefined>('getCurrentCharacterName');
   [
     getCurrentCharacterId?.(),
@@ -140,9 +144,10 @@ function getCurrentOwnerAliases(scope: ParsedChatScopeKey) {
 
   const characterIndex = Number(getOptionalGlobalValue('this_chid') ?? getCurrentCharacterId?.());
   const characters = getOptionalGlobalValue<unknown[]>('characters');
-  const currentCharacter = Number.isInteger(characterIndex) && characterIndex >= 0 && Array.isArray(characters)
-    ? characters[characterIndex]
-    : null;
+  const currentCharacter =
+    Number.isInteger(characterIndex) && characterIndex >= 0 && Array.isArray(characters)
+      ? characters[characterIndex]
+      : null;
   if (currentCharacter && typeof currentCharacter === 'object') {
     const record = currentCharacter as Record<string, unknown>;
     const name = typeof record.name === 'string' ? record.name.trim() : '';
@@ -201,11 +206,7 @@ function getCurrentScopeCompatibilityKeys(
   return [...candidates];
 }
 
-export function useChatScopedDomain<T>(options: {
-  field: string;
-  schema: ZodType<T>;
-  createDefault: () => T;
-}) {
+export function useChatScopedDomain<T>(options: { field: string; schema: ZodType<T>; createDefault: () => T }) {
   const scopeKey = ref(getCurrentChatScopeKey());
   const envelope = ref<ChatScopedEnvelope>(readChatScopedEnvelope(options.field, scopeKey.value));
   const hydrating = ref(false);

@@ -1,15 +1,5 @@
 const PHONE_ROOT_SELECTOR = '#phone-creative-root';
-const CHAT_ACTION_HINTS = [
-  'send',
-  'mes',
-  'message',
-  'chat',
-  'continue',
-  'regenerate',
-  'retry',
-  'textarea',
-  'input',
-];
+const CHAT_ACTION_HINTS = ['send', 'mes', 'message', 'chat', 'continue', 'regenerate', 'retry', 'textarea', 'input'];
 
 type SendGuardHandle = {
   release: () => void;

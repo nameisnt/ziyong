@@ -92,9 +92,10 @@ function moveBoard(board: Board, direction: Game2048Direction) {
   let gained = 0;
 
   for (let index = 0; index < 4; index += 1) {
-    const source = direction === 'left' || direction === 'right'
-      ? [board[index][0], board[index][1], board[index][2], board[index][3]]
-      : [board[0][index], board[1][index], board[2][index], board[3][index]];
+    const source =
+      direction === 'left' || direction === 'right'
+        ? [board[index][0], board[index][1], board[index][2], board[index][3]]
+        : [board[0][index], board[1][index], board[2][index], board[3][index]];
     const movingLine = direction === 'right' || direction === 'down' ? [...source].reverse() : source;
     const result = slideLine(movingLine);
     const output = direction === 'right' || direction === 'down' ? [...result.line].reverse() : result.line;
@@ -144,9 +145,10 @@ function readSettings(raw: unknown): Game2048Settings {
   const source = raw && typeof raw === 'object' ? raw : {};
   const result = Game2048SettingsSchema.safeParse(source);
   if (!result.success) {
-    const bestScore = typeof (source as Record<string, unknown>).bestScore === 'number'
-      ? Math.max(0, Math.floor((source as Record<string, number>).bestScore))
-      : 0;
+    const bestScore =
+      typeof (source as Record<string, unknown>).bestScore === 'number'
+        ? Math.max(0, Math.floor((source as Record<string, number>).bestScore))
+        : 0;
     return createNewSettings(bestScore);
   }
   const parsed = result.data;
@@ -189,9 +191,8 @@ export const useGame2048Store = defineStore('game2048', () => {
     const previous = createSnapshot(settings.value);
     const nextScore = settings.value.score + result.gained;
     const nextBoard = addRandomTile(result.board);
-    const nextStatus: Game2048Status = !settings.value.keepPlaying && hasWinningTile(nextBoard)
-      ? 'won'
-      : canMove(nextBoard) ? 'playing' : 'lost';
+    const nextStatus: Game2048Status =
+      !settings.value.keepPlaying && hasWinningTile(nextBoard) ? 'won' : canMove(nextBoard) ? 'playing' : 'lost';
 
     settings.value = {
       ...settings.value,

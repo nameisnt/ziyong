@@ -147,10 +147,7 @@ import {
   formatScenePlannerResult,
   type ScenePlannerGeneratedResult,
 } from './generation';
-import {
-  getScenePlanStatusLabel,
-  useScenePlannerStore,
-} from './store';
+import { getScenePlanStatusLabel, useScenePlannerStore } from './store';
 import type { SourceSelection } from '@/type/generation';
 import { storeToRefs } from 'pinia';
 
@@ -210,7 +207,7 @@ onScopeDispose(() => {
   }
 });
 
-const activePlan = computed(() => activePlanId.value ? planner.getPlan(activePlanId.value) : null);
+const activePlan = computed(() => (activePlanId.value ? planner.getPlan(activePlanId.value) : null));
 const formattedReferences = computed(() => formatGenerationReferences(selectedReferences.value));
 const textProviderSummary = computed(() => formatTextProviderSummary(settings.value.textProvider));
 

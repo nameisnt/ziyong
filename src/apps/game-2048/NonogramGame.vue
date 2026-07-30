@@ -1,9 +1,18 @@
 <template>
   <section class="pc-minigame-panel">
     <section class="pc-minigame-stats">
-      <article><span>{{ t`棋盘` }}</span><strong>{{ size }}×{{ size }}</strong></article>
-      <article><span>{{ t`完成` }}</span><strong>{{ correctCount }}/{{ targetCount }}</strong></article>
-      <article><span>{{ t`步数` }}</span><strong>{{ state.moves }}</strong></article>
+      <article>
+        <span>{{ t`棋盘` }}</span
+        ><strong>{{ size }}×{{ size }}</strong>
+      </article>
+      <article>
+        <span>{{ t`完成` }}</span
+        ><strong>{{ correctCount }}/{{ targetCount }}</strong>
+      </article>
+      <article>
+        <span>{{ t`步数` }}</span
+        ><strong>{{ state.moves }}</strong>
+      </article>
     </section>
 
     <div class="pc-minigame-segment pc-minigame-segment-three" role="group" aria-label="数织棋盘大小">
@@ -64,7 +73,12 @@
       <button class="pc-primary-btn" type="button" @click="newPuzzle">
         <i class="fa-solid fa-wand-magic-sparkles"></i><span>{{ t`新题` }}</span>
       </button>
-      <InfoHint :label="t`数织说明`" :text="t`根据行列旁的连续数字填黑格。数字表示连续黑格长度，不同数字组之间至少隔一个空格；长按格子可快速使用另一种标记。`" />
+      <InfoHint
+        :label="t`数织说明`"
+        :text="
+          t`根据行列旁的连续数字填黑格。数字表示连续黑格长度，不同数字组之间至少隔一个空格；长按格子可快速使用另一种标记。`
+        "
+      />
     </div>
   </section>
 </template>
@@ -119,7 +133,12 @@ function generateSolution(size: number) {
   let x = centerX;
   let y = Math.floor(size / 2);
   let attempts = 0;
-  const directions = [[1, 0], [-1, 0], [0, 1], [0, -1]] as const;
+  const directions = [
+    [1, 0],
+    [-1, 0],
+    [0, 1],
+    [0, -1],
+  ] as const;
   while (filledCount < targetCount && attempts < size * size * 30) {
     setSymmetricCell(x, y);
     if (filledCount < targetCount && Math.random() < 0.12) {
@@ -153,11 +172,15 @@ function normalizeState(value: NonogramState) {
   return value.marks.length === expected && value.solution.length === expected ? value : createState(value.size);
 }
 
-const state = ref<NonogramState>(normalizeState(readMiniGameSettings(miniGameFields.nonogram, NonogramSchema, () => createState())));
+const state = ref<NonogramState>(
+  normalizeState(readMiniGameSettings(miniGameFields.nonogram, NonogramSchema, () => createState())),
+);
 const mode = ref<MarkMode>('fill');
 const size = computed(() => dimensionFor(state.value.size));
 const targetCount = computed(() => state.value.solution.filter(Boolean).length);
-const correctCount = computed(() => state.value.marks.filter((mark, index) => mark === 1 && state.value.solution[index]).length);
+const correctCount = computed(
+  () => state.value.marks.filter((mark, index) => mark === 1 && state.value.solution[index]).length,
+);
 const clueLayout = computed(() => ({
   fontSize: state.value.size === 'large' ? '8px' : state.value.size === 'medium' ? '9px' : '11px',
   gutter: state.value.size === 'large' ? '82px' : state.value.size === 'medium' ? '68px' : '52px',
@@ -181,19 +204,25 @@ function cluesFor(line: boolean[]) {
   return clues.length ? clues : [0];
 }
 
-const rowClues = computed(() => Array.from({ length: size.value }, (_, row) => cluesFor(
-  state.value.solution.slice(row * size.value, row * size.value + size.value),
-)));
-const columnClues = computed(() => Array.from({ length: size.value }, (_, column) => cluesFor(
-  Array.from({ length: size.value }, (_, row) => Boolean(state.value.solution[row * size.value + column])),
-)));
+const rowClues = computed(() =>
+  Array.from({ length: size.value }, (_, row) =>
+    cluesFor(state.value.solution.slice(row * size.value, row * size.value + size.value)),
+  ),
+);
+const columnClues = computed(() =>
+  Array.from({ length: size.value }, (_, column) =>
+    cluesFor(Array.from({ length: size.value }, (_, row) => Boolean(state.value.solution[row * size.value + column]))),
+  ),
+);
 
 function save() {
   writeMiniGameSettings(miniGameFields.nonogram, NonogramSchema, state.value);
 }
 
 function checkDone() {
-  state.value.status = state.value.solution.every((filled, index) => filled ? state.value.marks[index] === 1 : state.value.marks[index] !== 1)
+  state.value.status = state.value.solution.every((filled, index) =>
+    filled ? state.value.marks[index] === 1 : state.value.marks[index] !== 1,
+  )
     ? 'done'
     : 'playing';
 }

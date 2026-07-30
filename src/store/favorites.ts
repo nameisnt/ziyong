@@ -21,18 +21,18 @@ export const useFavoritesStore = defineStore('favorites', () => {
   });
 
   const visibleItems = computed(() => {
-    const filteredByType = filter.value === 'all'
-      ? allItems.value
-      : allItems.value.filter(item => item.appId === filter.value);
+    const filteredByType =
+      filter.value === 'all' ? allItems.value : allItems.value.filter(item => item.appId === filter.value);
 
     const normalized = query.value.trim().toLowerCase();
     if (!normalized) return filteredByType;
 
-    return filteredByType.filter(item => (
-      item.title.toLowerCase().includes(normalized)
-      || item.bookTitle.toLowerCase().includes(normalized)
-      || item.subtitle.toLowerCase().includes(normalized)
-    ));
+    return filteredByType.filter(
+      item =>
+        item.title.toLowerCase().includes(normalized) ||
+        item.bookTitle.toLowerCase().includes(normalized) ||
+        item.subtitle.toLowerCase().includes(normalized),
+    );
   });
 
   function setFilter(next: FavoriteFilter) {

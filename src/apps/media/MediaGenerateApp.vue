@@ -29,16 +29,33 @@
           </div>
           <label v-for="item in exposedComfyInputs" :key="item.key" class="pc-field-group pc-inline-field">
             <span>{{ comfyInputLabel(item) }}</span>
-            <select v-if="item.options.length" :value="getComfyParamValue(item)" class="pc-field pc-select" @change="setComfyParamValue(item, ($event.target as HTMLSelectElement).value)">
+            <select
+              v-if="item.options.length"
+              :value="getComfyParamValue(item)"
+              class="pc-field pc-select"
+              @change="setComfyParamValue(item, ($event.target as HTMLSelectElement).value)"
+            >
               <option value="">{{ t`跟随工作流原值` }}</option>
               <option v-for="option in item.options" :key="option" :value="option">{{ option }}</option>
             </select>
-            <select v-else-if="item.fieldKind === 'boolean'" :value="getComfyParamValue(item)" class="pc-field pc-select" @change="setComfyParamValue(item, ($event.target as HTMLSelectElement).value)">
+            <select
+              v-else-if="item.fieldKind === 'boolean'"
+              :value="getComfyParamValue(item)"
+              class="pc-field pc-select"
+              @change="setComfyParamValue(item, ($event.target as HTMLSelectElement).value)"
+            >
               <option value="">{{ t`跟随工作流原值` }}</option>
               <option value="true">{{ t`是` }}</option>
               <option value="false">{{ t`否` }}</option>
             </select>
-            <input v-else :value="getComfyParamValue(item)" class="pc-field" :type="item.fieldKind === 'number' ? 'number' : 'text'" :placeholder="t`留空则跟随工作流原值`" @input="setComfyParamValue(item, ($event.target as HTMLInputElement).value)" />
+            <input
+              v-else
+              :value="getComfyParamValue(item)"
+              class="pc-field"
+              :type="item.fieldKind === 'number' ? 'number' : 'text'"
+              :placeholder="t`留空则跟随工作流原值`"
+              @input="setComfyParamValue(item, ($event.target as HTMLInputElement).value)"
+            />
           </label>
         </section>
         <EmptyState v-else :title="t`没有用户参数`">
@@ -98,7 +115,11 @@
           <template #before-fields>
             <label class="pc-field-group">
               <span>{{ t`工作流` }}</span>
-              <select :value="comfy.settings.activeWorkflowId" class="pc-field pc-select" @change="comfy.setActiveWorkflow(($event.target as HTMLSelectElement).value)">
+              <select
+                :value="comfy.settings.activeWorkflowId"
+                class="pc-field pc-select"
+                @change="comfy.setActiveWorkflow(($event.target as HTMLSelectElement).value)"
+              >
                 <option value="">{{ t`未选择` }}</option>
                 <option v-for="workflow in comfy.settings.workflows" :key="workflow.id" :value="workflow.id">
                   {{ workflow.name }}
@@ -118,7 +139,10 @@
         </GenerationPanel>
       </article>
 
-      <article v-else-if="route.page === 'preview' && generationState.preview" class="pc-editor-card pc-generation-preview-card">
+      <article
+        v-else-if="route.page === 'preview' && generationState.preview"
+        class="pc-editor-card pc-generation-preview-card"
+      >
         <GenerationPreviewPanel
           :content="previewParamsText"
           :raw="generationState.preview.raw"
@@ -145,7 +169,11 @@
               <div v-if="generationState.preview.params.length" class="pc-comfy-param-preview-list">
                 <label v-for="item in generationState.preview.params" :key="item.key" class="pc-field-group">
                   <span>{{ item.key }}</span>
-                  <textarea :value="item.value" class="pc-area compact pc-param-preview-area" @input="updatePreviewParam(item.key, ($event.target as HTMLTextAreaElement).value)"></textarea>
+                  <textarea
+                    :value="item.value"
+                    class="pc-area compact pc-param-preview-area"
+                    @input="updatePreviewParam(item.key, ($event.target as HTMLTextAreaElement).value)"
+                  ></textarea>
                 </label>
               </div>
               <p v-else>{{ t`未填写` }}</p>
@@ -170,7 +198,9 @@
           />
         </div>
         <div class="pc-form-actions">
-          <button class="pc-soft-btn danger" type="button" @click="removeFailedDraft(activeFailedDraft.id)">{{ t`删除草稿` }}</button>
+          <button class="pc-soft-btn danger" type="button" @click="removeFailedDraft(activeFailedDraft.id)">
+            {{ t`删除草稿` }}
+          </button>
           <button class="pc-soft-btn" type="button" @click="reparseFailedDraft">{{ t`重新解析` }}</button>
         </div>
       </article>
@@ -275,7 +305,9 @@ const runtimeComfyInputNames = new Set([
 
 const exposedComfyInputs = computed(() => {
   const mappings = activeWorkflow.value?.paramMappings ?? {};
-  return workflowInputs.value.filter(item => mappings[item.key]?.exposed && !mappings[item.key]?.aiFill && !isRuntimeComfyInput(item));
+  return workflowInputs.value.filter(
+    item => mappings[item.key]?.exposed && !mappings[item.key]?.aiFill && !isRuntimeComfyInput(item),
+  );
 });
 const aiFillComfyInputs = computed(() => {
   const mappings = activeWorkflow.value?.paramMappings ?? {};
@@ -287,10 +319,14 @@ const activeWorkflowLabel = computed(() => {
   return `${workflow.name} · ${getMediaKindLabel(workflow.kind === 'other' ? 'image' : workflow.kind)}`;
 });
 const formattedReferences = computed(() => formatGenerationReferences(selectedReferences.value));
-const activeFailedDraft = computed(() => route.value.params?.draftId ? media.getFailedDraft(route.value.params.draftId) : null);
-const textProviderSummary = computed(() => settings.value.textProvider.mode === 'external'
-  ? formatTextProviderSummary(settings.value.textProvider)
-  : `酒馆当前 API · ${settings.value.generation.tavernPresetName.trim() || '跟随当前预设'}`);
+const activeFailedDraft = computed(() =>
+  route.value.params?.draftId ? media.getFailedDraft(route.value.params.draftId) : null,
+);
+const textProviderSummary = computed(() =>
+  settings.value.textProvider.mode === 'external'
+    ? formatTextProviderSummary(settings.value.textProvider)
+    : `酒馆当前 API · ${settings.value.generation.tavernPresetName.trim() || '跟随当前预设'}`,
+);
 const comfyPromptPreview = computed(() => {
   try {
     return buildGenerationPreview(adapter, buildGenerationConfig(), getGenerationOptions()).text;
@@ -298,7 +334,9 @@ const comfyPromptPreview = computed(() => {
     return error instanceof Error ? error.message : '无法生成提示词预览';
   }
 });
-const previewParamsText = computed(() => generationState.preview ? formatComfyParams(generationState.preview.params) : '');
+const previewParamsText = computed(() =>
+  generationState.preview ? formatComfyParams(generationState.preview.params) : '',
+);
 
 watch(
   () => [route.value.appId, route.value.page, route.value.params?.draftId] as const,
@@ -316,10 +354,10 @@ useInvalidRouteFallback({
     hasPreview: Boolean(generationState.preview),
     page: route.value.page,
   }),
-  isInvalid: current => current.appId === 'media' && (
-    current.page === 'preview' && !current.hasPreview
-    || current.page === 'failed-draft' && !current.hasFailedDraft
-  ),
+  isInvalid: current =>
+    current.appId === 'media' &&
+    ((current.page === 'preview' && !current.hasPreview) ||
+      (current.page === 'failed-draft' && !current.hasFailedDraft)),
   fallback: () => {
     if (route.value.appId !== 'media') return;
     phone.replacePage('root', '媒体生成');
@@ -353,7 +391,11 @@ function failedDraftSourceLabel(draft: FailedGenerationDraft) {
 }
 
 function normalizePlaceholder(value: string) {
-  return value.trim().replace(/^\{\{\s*/, '').replace(/\s*\}\}$/, '').trim();
+  return value
+    .trim()
+    .replace(/^\{\{\s*/, '')
+    .replace(/\s*\}\}$/, '')
+    .trim();
 }
 
 function isRuntimeComfyInput(item: ComfyWorkflowInput) {
@@ -486,7 +528,9 @@ async function generateWithComfy() {
 }
 
 function paramsArrayToRecord(params: ComfyPromptResult['params']) {
-  return Object.fromEntries(params.map(item => [normalizePlaceholder(item.key), item.value]).filter(([key, value]) => key && value));
+  return Object.fromEntries(
+    params.map(item => [normalizePlaceholder(item.key), item.value]).filter(([key, value]) => key && value),
+  );
 }
 
 function formatComfyParams(params: ComfyPromptResult['params']) {
@@ -494,7 +538,9 @@ function formatComfyParams(params: ComfyPromptResult['params']) {
 }
 
 function formatComfyParamsRecord(params: Record<string, string>) {
-  return Object.entries(params).map(([key, value]) => `${key}: ${value}`).join('\n');
+  return Object.entries(params)
+    .map(([key, value]) => `${key}: ${value}`)
+    .join('\n');
 }
 
 function updatePreviewParam(key: string, value: string) {

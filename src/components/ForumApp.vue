@@ -56,7 +56,11 @@
         <span class="pc-kicker">{{ editingBoard ? t`编辑板块` : t`新建板块` }}</span>
         <h2>{{ editingBoard ? editingBoard.name : t`建立一个新的板块` }}</h2>
         <input v-model="boardDraft.name" class="pc-field" type="text" :placeholder="t`板块名称`" />
-        <textarea v-model="boardDraft.description" class="pc-area compact" :placeholder="t`板块说明（可留空）`"></textarea>
+        <textarea
+          v-model="boardDraft.description"
+          class="pc-area compact"
+          :placeholder="t`板块说明（可留空）`"
+        ></textarea>
         <div class="pc-form-actions">
           <button class="pc-soft-btn" type="button" @click="phone.goBack()">{{ t`取消` }}</button>
           <button class="pc-primary-btn" type="button" @click="submitBoard">{{ t`保存` }}</button>
@@ -126,7 +130,13 @@
             <option value="">{{ t`选择现有板块（可不选）` }}</option>
             <option v-for="board in boards" :key="board.id" :value="board.id">{{ board.name }}</option>
           </select>
-          <input v-if="!activeBoard && !threadDraft.boardId" v-model="threadDraft.boardName" class="pc-field" type="text" :placeholder="t`新板块名称`" />
+          <input
+            v-if="!activeBoard && !threadDraft.boardId"
+            v-model="threadDraft.boardName"
+            class="pc-field"
+            type="text"
+            :placeholder="t`新板块名称`"
+          />
           <textarea
             v-if="!activeBoard && !threadDraft.boardId"
             v-model="threadDraft.boardDescription"
@@ -137,7 +147,11 @@
 
         <input v-model="threadDraft.author" class="pc-field" type="text" :placeholder="t`主楼作者`" />
         <input v-model="threadDraft.title" class="pc-field" type="text" :placeholder="t`帖子标题`" />
-        <textarea v-model="threadDraft.content" class="pc-area pc-saved-content-area" :placeholder="t`主楼正文`"></textarea>
+        <textarea
+          v-model="threadDraft.content"
+          class="pc-area pc-saved-content-area"
+          :placeholder="t`主楼正文`"
+        ></textarea>
         <div class="pc-form-actions">
           <button class="pc-soft-btn" type="button" @click="phone.goBack()">{{ t`取消` }}</button>
           <button class="pc-primary-btn" type="button" @click="submitThread">{{ t`保存` }}</button>
@@ -162,16 +176,36 @@
           <button class="pc-soft-btn" type="button" :title="t`八股检测`" @click="openForumBaguScan">
             <i class="fa-solid fa-filter-circle-xmark"></i>
           </button>
-          <button class="pc-soft-btn" type="button" :title="t`生成回复`" @click="openGenerateReplies(activeBoard.id, activeThread.id)">
+          <button
+            class="pc-soft-btn"
+            type="button"
+            :title="t`生成回复`"
+            @click="openGenerateReplies(activeBoard.id, activeThread.id)"
+          >
             <i class="fa-solid fa-wand-magic-sparkles"></i>
           </button>
-          <button :class="['pc-soft-btn', { active: activeThread.favorite }]" type="button" :title="activeThread.favorite ? t`取消收藏` : t`收藏`" @click="forum.toggleFavorite(activeBoard.id, activeThread.id)">
+          <button
+            :class="['pc-soft-btn', { active: activeThread.favorite }]"
+            type="button"
+            :title="activeThread.favorite ? t`取消收藏` : t`收藏`"
+            @click="forum.toggleFavorite(activeBoard.id, activeThread.id)"
+          >
             <i class="fa-solid fa-bookmark"></i>
           </button>
-          <button class="pc-soft-btn" type="button" :title="t`编辑主楼`" @click="openEditThread(activeBoard.id, activeThread.id)">
+          <button
+            class="pc-soft-btn"
+            type="button"
+            :title="t`编辑主楼`"
+            @click="openEditThread(activeBoard.id, activeThread.id)"
+          >
             <i class="fa-solid fa-pen"></i>
           </button>
-          <button class="pc-soft-btn danger" type="button" :title="t`删帖`" @click="removeThread(activeBoard.id, activeThread.id)">
+          <button
+            class="pc-soft-btn danger"
+            type="button"
+            :title="t`删帖`"
+            @click="removeThread(activeBoard.id, activeThread.id)"
+          >
             <i class="fa-solid fa-trash"></i>
           </button>
         </div>
@@ -186,11 +220,7 @@
         <EmptyState v-if="!activeThread.replies.length" compact :title="t`还没有回复。`" />
 
         <div v-else class="pc-reply-list">
-          <article
-            v-for="reply in displayedReplies"
-            :key="reply.id"
-            class="pc-reply-card"
-          >
+          <article v-for="reply in displayedReplies" :key="reply.id" class="pc-reply-card">
             <div class="pc-reply-head">
               <strong>{{ reply.author }}</strong>
               <span>{{ `第 ${reply.floor} 层` }}</span>
@@ -204,16 +234,36 @@
             <button class="pc-soft-btn" type="button" :title="t`八股检测`" @click="openForumBaguScan">
               <i class="fa-solid fa-filter-circle-xmark"></i>
             </button>
-            <button class="pc-soft-btn" type="button" :title="t`生成回复`" @click="openGenerateReplies(activeBoard.id, activeThread.id)">
+            <button
+              class="pc-soft-btn"
+              type="button"
+              :title="t`生成回复`"
+              @click="openGenerateReplies(activeBoard.id, activeThread.id)"
+            >
               <i class="fa-solid fa-wand-magic-sparkles"></i>
             </button>
-            <button :class="['pc-soft-btn', { active: activeThread.favorite }]" type="button" :title="activeThread.favorite ? t`取消收藏` : t`收藏`" @click="forum.toggleFavorite(activeBoard.id, activeThread.id)">
+            <button
+              :class="['pc-soft-btn', { active: activeThread.favorite }]"
+              type="button"
+              :title="activeThread.favorite ? t`取消收藏` : t`收藏`"
+              @click="forum.toggleFavorite(activeBoard.id, activeThread.id)"
+            >
               <i class="fa-solid fa-bookmark"></i>
             </button>
-            <button class="pc-soft-btn" type="button" :title="t`编辑主楼`" @click="openEditThread(activeBoard.id, activeThread.id)">
+            <button
+              class="pc-soft-btn"
+              type="button"
+              :title="t`编辑主楼`"
+              @click="openEditThread(activeBoard.id, activeThread.id)"
+            >
               <i class="fa-solid fa-pen"></i>
             </button>
-            <button class="pc-soft-btn danger" type="button" :title="t`删帖`" @click="removeThread(activeBoard.id, activeThread.id)">
+            <button
+              class="pc-soft-btn danger"
+              type="button"
+              :title="t`删帖`"
+              @click="removeThread(activeBoard.id, activeThread.id)"
+            >
               <i class="fa-solid fa-trash"></i>
             </button>
           </div>
@@ -271,7 +321,12 @@
           @update:user-requirement="threadGenerationDraft.userRequirement = $event"
         >
           <template #before-fields>
-            <select v-if="!activeBoard" v-model="threadGenerationDraft.boardId" class="pc-field pc-select" :disabled="generationState.running">
+            <select
+              v-if="!activeBoard"
+              v-model="threadGenerationDraft.boardId"
+              class="pc-field pc-select"
+              :disabled="generationState.running"
+            >
               <option value="">{{ t`选择现有板块（可不选）` }}</option>
               <option v-for="board in boards" :key="board.id" :value="board.id">{{ board.name }}</option>
             </select>
@@ -328,18 +383,33 @@
       </div>
     </section>
 
-    <section v-else-if="route.page === 'preview' && generationState.preview" class="pc-forum-page pc-generation-preview-page">
+    <section
+      v-else-if="route.page === 'preview' && generationState.preview"
+      class="pc-forum-page pc-generation-preview-page"
+    >
       <div class="pc-detail-card pc-generation-preview-card">
         <GenerationPreviewPanel
-          :content="generationState.preview.action === 'thread' ? generationState.preview.content : generationState.preview.replies.map(reply => reply.content).join('\n')"
+          :content="
+            generationState.preview.action === 'thread'
+              ? generationState.preview.content
+              : generationState.preview.replies.map(reply => reply.content).join('\n')
+          "
           :raw="generationState.preview.raw"
           raw-editable
           :reparse-handler="reparsePreviewRaw"
           :save-label="generationState.preview.action === 'thread' ? '保存帖子' : '保存回复'"
           :scan-enabled="false"
           :source-label="generationState.preview.boardName"
-          :text-provider-summary="generationState.preview.action === 'thread' ? generationState.preview.author : `${generationState.preview.replies.length} ${t`条回复`}`"
-          :title="generationState.preview.action === 'thread' ? generationState.preview.title : generationState.preview.threadTitle"
+          :text-provider-summary="
+            generationState.preview.action === 'thread'
+              ? generationState.preview.author
+              : `${generationState.preview.replies.length} ${t`条回复`}`
+          "
+          :title="
+            generationState.preview.action === 'thread'
+              ? generationState.preview.title
+              : generationState.preview.threadTitle
+          "
           :warnings="generationState.preview.warnings"
           @back="returnToGenerate"
           @reparse="reparsePreviewRaw"
@@ -366,11 +436,7 @@
               </div>
               <EmptyState v-if="!generationState.preview?.replies.length" compact :title="t`没有回复内容。`" />
               <div v-else class="pc-reply-list">
-                <article
-                  v-for="reply in previewReplies"
-                  :key="reply.key"
-                  class="pc-reply-card"
-                >
+                <article v-for="reply in previewReplies" :key="reply.key" class="pc-reply-card">
                   <div class="pc-reply-head">
                     <strong>{{ reply.author }}</strong>
                     <span>{{ `第 ${reply.floor} 层` }}</span>
@@ -396,7 +462,9 @@
         />
 
         <div class="pc-form-actions">
-          <button class="pc-soft-btn danger" type="button" @click="removeFailedDraft(activeFailedDraft.id)">{{ t`删除草稿` }}</button>
+          <button class="pc-soft-btn danger" type="button" @click="removeFailedDraft(activeFailedDraft.id)">
+            {{ t`删除草稿` }}
+          </button>
           <button class="pc-soft-btn" type="button" @click="reparseFailedDraft">{{ t`重新解析` }}</button>
         </div>
       </div>
@@ -413,10 +481,7 @@ import GenerationPreviewPanel from '@/components/GenerationPreviewPanel.vue';
 import PreviewDraftNotice from '@/components/PreviewDraftNotice.vue';
 import RawOutputEditor from '@/components/RawOutputEditor.vue';
 import ReaderContent from '@/components/ReaderContent.vue';
-import {
-  materializeForumReplies,
-  persistForumReplyDrafts,
-} from '@/core/forumGeneration';
+import { materializeForumReplies, persistForumReplyDrafts } from '@/core/forumGeneration';
 import { getRegisteredPhoneGenerationAdapter } from '@/core/appRegistry';
 import { buildGenerationPreview, captureGenerationPrompt, generateContent } from '@/core/generationService';
 import { useForumStore } from '@/store/forum';
@@ -479,29 +544,34 @@ const replyGenerationDraft = reactive({
 const generationState = reactive({
   error: '',
   generationId: '',
-  preview: null as null | ({
-    action: 'thread';
-    author: string;
-    boardDescription: string;
-    boardId: string;
-    boardName: string;
-    content: string;
-    draftId: string | null;
-    raw: string;
-    replies: PreviewReplyDraft[];
-    title: string;
-    warnings: string[];
-  } | {
-    action: 'replies';
-    boardId: string;
-    boardName: string;
-    draftId: string | null;
-    raw: string;
-    replies: PreviewReplyDraft[];
-    threadId: string;
-    threadTitle: string;
-    warnings: string[];
-  }),
+  preview: null as
+    | null
+    | (
+        | {
+            action: 'thread';
+            author: string;
+            boardDescription: string;
+            boardId: string;
+            boardName: string;
+            content: string;
+            draftId: string | null;
+            raw: string;
+            replies: PreviewReplyDraft[];
+            title: string;
+            warnings: string[];
+          }
+        | {
+            action: 'replies';
+            boardId: string;
+            boardName: string;
+            draftId: string | null;
+            raw: string;
+            replies: PreviewReplyDraft[];
+            threadId: string;
+            threadTitle: string;
+            warnings: string[];
+          }
+      ),
   rawOutput: '',
   running: false,
 });
@@ -575,29 +645,33 @@ const forumPromptPreview = computed(() => {
       const boardId = route.value.params?.boardId || activeBoard.value?.id;
       const threadId = route.value.params?.threadId || activeThread.value?.id;
       if (!boardId || !threadId || !activeThread.value) return '未选择帖子';
-      return buildGenerationPreview(forumReplyGenerationAdapter, {
-        appPrompt: prompts.specialPrompts.forumReplies,
-        boardId,
-        outputFormat: buildRepliesOutputFormat(),
-        threadContext: buildReplyThreadContext(activeThread.value),
-        threadId,
-        userRequirement: replyGenerationDraft.userRequirement,
-      }, {
-        generationDefaults: {
-          resultMode: settings.value.generation.resultMode,
-          stream: settings.value.generation.stream,
-          tavernPresetName: settings.value.generation.tavernPresetName,
+      return buildGenerationPreview(
+        forumReplyGenerationAdapter,
+        {
+          appPrompt: prompts.specialPrompts.forumReplies,
+          boardId,
+          outputFormat: buildRepliesOutputFormat(),
+          threadContext: buildReplyThreadContext(activeThread.value),
+          threadId,
+          userRequirement: replyGenerationDraft.userRequirement,
         },
-        references: formattedReferences.value,
-        source: {
-          fromStartEnd: replyGenerationDraft.fromStartEnd,
-          mode: settings.value.generation.sourceMode,
-          rangeText: replyGenerationDraft.rangeText,
-          recentCount: replyGenerationDraft.recentCount,
-          singleMessageId: replyGenerationDraft.singleMessageId,
+        {
+          generationDefaults: {
+            resultMode: settings.value.generation.resultMode,
+            stream: settings.value.generation.stream,
+            tavernPresetName: settings.value.generation.tavernPresetName,
+          },
+          references: formattedReferences.value,
+          source: {
+            fromStartEnd: replyGenerationDraft.fromStartEnd,
+            mode: settings.value.generation.sourceMode,
+            rangeText: replyGenerationDraft.rangeText,
+            recentCount: replyGenerationDraft.recentCount,
+            singleMessageId: replyGenerationDraft.singleMessageId,
+          },
+          textProvider: settings.value.textProvider,
         },
-        textProvider: settings.value.textProvider,
-      }).text;
+      ).text;
     }
 
     return buildGenerationPreview(forumThreadGenerationAdapter, buildThreadGenerationConfig(), {
@@ -625,29 +699,33 @@ function captureForumReplyPrompt() {
   const boardId = route.value.params?.boardId || activeBoard.value?.id;
   const threadId = route.value.params?.threadId || activeThread.value?.id;
   if (!boardId || !threadId || !activeThread.value) return Promise.reject(new Error('未选择帖子'));
-  return captureGenerationPrompt(forumReplyGenerationAdapter, {
-    appPrompt: prompts.specialPrompts.forumReplies,
-    boardId,
-    outputFormat: buildRepliesOutputFormat(),
-    threadContext: buildReplyThreadContext(activeThread.value),
-    threadId,
-    userRequirement: replyGenerationDraft.userRequirement,
-  }, {
-    generationDefaults: {
-      resultMode: settings.value.generation.resultMode,
-      stream: settings.value.generation.stream,
-      tavernPresetName: settings.value.generation.tavernPresetName,
+  return captureGenerationPrompt(
+    forumReplyGenerationAdapter,
+    {
+      appPrompt: prompts.specialPrompts.forumReplies,
+      boardId,
+      outputFormat: buildRepliesOutputFormat(),
+      threadContext: buildReplyThreadContext(activeThread.value),
+      threadId,
+      userRequirement: replyGenerationDraft.userRequirement,
     },
-    references: formattedReferences.value,
-    source: {
-      fromStartEnd: replyGenerationDraft.fromStartEnd,
-      mode: settings.value.generation.sourceMode,
-      rangeText: replyGenerationDraft.rangeText,
-      recentCount: replyGenerationDraft.recentCount,
-      singleMessageId: replyGenerationDraft.singleMessageId,
+    {
+      generationDefaults: {
+        resultMode: settings.value.generation.resultMode,
+        stream: settings.value.generation.stream,
+        tavernPresetName: settings.value.generation.tavernPresetName,
+      },
+      references: formattedReferences.value,
+      source: {
+        fromStartEnd: replyGenerationDraft.fromStartEnd,
+        mode: settings.value.generation.sourceMode,
+        rangeText: replyGenerationDraft.rangeText,
+        recentCount: replyGenerationDraft.recentCount,
+        singleMessageId: replyGenerationDraft.singleMessageId,
+      },
+      textProvider: settings.value.textProvider,
     },
-    textProvider: settings.value.textProvider,
-  });
+  );
 }
 
 function captureForumThreadPrompt() {
@@ -672,11 +750,12 @@ const sortedThreads = computed(() => {
   const normalized = query.value.trim().toLowerCase();
   const source = activeBoard.value?.threads || [];
   const matched = normalized
-    ? source.filter(thread => (
-      thread.title.toLowerCase().includes(normalized)
-      || thread.author.toLowerCase().includes(normalized)
-      || thread.content.toLowerCase().includes(normalized)
-    ))
+    ? source.filter(
+        thread =>
+          thread.title.toLowerCase().includes(normalized) ||
+          thread.author.toLowerCase().includes(normalized) ||
+          thread.content.toLowerCase().includes(normalized),
+      )
     : source;
 
   return [...matched].sort((left, right) => {
@@ -698,14 +777,17 @@ const sortedThreads = computed(() => {
     return rightLatestReplyAt.localeCompare(leftLatestReplyAt);
   });
 });
-const displayedReplies = computed(() => (activeThread.value?.replies || []).map((reply, index) => ({
-  ...reply,
-  floor: index + 1,
-})));
+const displayedReplies = computed(() =>
+  (activeThread.value?.replies || []).map((reply, index) => ({
+    ...reply,
+    floor: index + 1,
+  })),
+);
 const previewReplies = computed(() => {
-  const existingCount = generationState.preview?.action === 'replies' && generationState.preview.threadId && generationState.preview.boardId
-    ? forum.getThread(generationState.preview.boardId, generationState.preview.threadId)?.replies.length || 0
-    : 0;
+  const existingCount =
+    generationState.preview?.action === 'replies' && generationState.preview.threadId && generationState.preview.boardId
+      ? forum.getThread(generationState.preview.boardId, generationState.preview.threadId)?.replies.length || 0
+      : 0;
   return (generationState.preview?.replies || []).map((reply, index) => ({
     ...reply,
     floor: existingCount + index + 1,
@@ -781,12 +863,13 @@ useInvalidRouteFallback({
     hasThread: Boolean(activeThread.value),
     page: route.value.page,
   }),
-  isInvalid: current => current.appId === 'forum' && (
-    current.page === 'preview' && !current.hasPreview
-    || current.page === 'failed-draft' && !current.hasFailedDraft
-    || current.page === 'board' && !current.hasBoard
-    || ['thread', 'bagu-scan', 'generate-replies'].includes(current.page) && (!current.hasBoard || !current.hasThread)
-  ),
+  isInvalid: current =>
+    current.appId === 'forum' &&
+    ((current.page === 'preview' && !current.hasPreview) ||
+      (current.page === 'failed-draft' && !current.hasFailedDraft) ||
+      (current.page === 'board' && !current.hasBoard) ||
+      (['thread', 'bagu-scan', 'generate-replies'].includes(current.page) &&
+        (!current.hasBoard || !current.hasThread))),
   fallback: () => {
     if (route.value.appId !== 'forum') return;
     phone.replacePage('root', '论坛板块');
@@ -909,10 +992,13 @@ function openForumBaguScan() {
 
 async function removeBoard(boardId: string) {
   const board = forum.getBoard(boardId);
-  const shouldDelete = await phone.confirmNotice(`要删除板块“${board?.name || '未命名板块'}”吗？里面的帖子和回复都会一起删除。`, {
-    confirmLabel: '删除',
-    kind: 'warning',
-  });
+  const shouldDelete = await phone.confirmNotice(
+    `要删除板块“${board?.name || '未命名板块'}”吗？里面的帖子和回复都会一起删除。`,
+    {
+      confirmLabel: '删除',
+      kind: 'warning',
+    },
+  );
   if (!shouldDelete) return;
   forum.deleteBoard(boardId);
   toastr.success('已删除板块');
@@ -920,10 +1006,13 @@ async function removeBoard(boardId: string) {
 
 async function removeThread(boardId: string, threadId: string) {
   const thread = forum.getThread(boardId, threadId);
-  const shouldDelete = await phone.confirmNotice(`要删除帖子“${thread?.title || '未命名帖子'}”吗？下面的回复也会一起删除。`, {
-    confirmLabel: '删除',
-    kind: 'warning',
-  });
+  const shouldDelete = await phone.confirmNotice(
+    `要删除帖子“${thread?.title || '未命名帖子'}”吗？下面的回复也会一起删除。`,
+    {
+      confirmLabel: '删除',
+      kind: 'warning',
+    },
+  );
   if (!shouldDelete) return;
   forum.deleteThread(boardId, threadId);
   const board = forum.getBoard(boardId);
@@ -957,10 +1046,9 @@ function buildRepliesOutputFormat() {
 }
 
 function buildReplyThreadContext(thread: ForumThread) {
-  const replyBlocks = thread.replies.map((reply, index) => [
-    `第 ${index + 1} 层 · ${reply.author}`,
-    reply.content,
-  ].join('\n'));
+  const replyBlocks = thread.replies.map((reply, index) =>
+    [`第 ${index + 1} 层 · ${reply.author}`, reply.content].join('\n'),
+  );
 
   return [
     `板块：${activeBoard.value?.name || ''}`,
@@ -968,13 +1056,16 @@ function buildReplyThreadContext(thread: ForumThread) {
     `主楼作者：${thread.author}`,
     `主楼正文：\n${thread.content}`,
     thread.replies.length ? `已有回复：\n${replyBlocks.join('\n\n')}` : '当前还没有回复。',
-  ].filter(Boolean).join('\n\n');
+  ]
+    .filter(Boolean)
+    .join('\n\n');
 }
 
 function failedDraftContextLabel(context: Record<string, unknown>) {
   const boardId = typeof context.boardId === 'string' ? context.boardId : '';
   const threadId = typeof context.threadId === 'string' ? context.threadId : '';
-  const boardLabel = forum.getBoard(boardId)?.name || (typeof context.boardName === 'string' ? context.boardName : '未知板块');
+  const boardLabel =
+    forum.getBoard(boardId)?.name || (typeof context.boardName === 'string' ? context.boardName : '未知板块');
   const threadLabel = boardId && threadId ? forum.getThread(boardId, threadId)?.title : '';
   return [boardLabel, threadLabel].filter(Boolean).join(' · ') || '论坛草稿';
 }
@@ -1063,7 +1154,10 @@ async function runThreadGeneration() {
 
     if (result.status === 'saved') {
       toastr.success('已生成并保存帖子');
-      phone.replacePage('thread', result.saved.thread.title, { boardId: result.saved.board.id, threadId: result.saved.thread.id });
+      phone.replacePage('thread', result.saved.thread.title, {
+        boardId: result.saved.board.id,
+        threadId: result.saved.thread.id,
+      });
       return;
     }
 
@@ -1082,7 +1176,11 @@ async function runThreadGeneration() {
       warnings: [...result.warnings, ...materialized.warnings],
     };
     persistForumPreviewDraft(generationState.preview.boardId ? { boardId: generationState.preview.boardId } : {});
-    phone.replacePage('preview', '生成预览', generationState.preview.boardId ? { boardId: generationState.preview.boardId } : undefined);
+    phone.replacePage(
+      'preview',
+      '生成预览',
+      generationState.preview.boardId ? { boardId: generationState.preview.boardId } : undefined,
+    );
   } catch (error) {
     generationState.error = error instanceof Error ? error.message : '生成失败，请稍后再试';
   }
@@ -1100,43 +1198,47 @@ async function runReplyGeneration() {
   generationState.rawOutput = '';
 
   try {
-    const result = await generateContent(forumReplyGenerationAdapter, {
-      appPrompt: prompts.specialPrompts.forumReplies,
-      boardId,
-      outputFormat: buildRepliesOutputFormat(),
-      threadContext: buildReplyThreadContext(thread),
-      threadId,
-      userRequirement: replyGenerationDraft.userRequirement,
-    }, {
-      createFailedDraft: input => forum.createFailedDraft(input),
-      generationDefaults: {
-        resultMode: settings.value.generation.resultMode,
-        stream: settings.value.generation.stream,
-        tavernPresetName: settings.value.generation.tavernPresetName,
+    const result = await generateContent(
+      forumReplyGenerationAdapter,
+      {
+        appPrompt: prompts.specialPrompts.forumReplies,
+        boardId,
+        outputFormat: buildRepliesOutputFormat(),
+        threadContext: buildReplyThreadContext(thread),
+        threadId,
+        userRequirement: replyGenerationDraft.userRequirement,
       },
-      references: formattedReferences.value,
-      lifecycle: {
-        onFinish() {
-          generationState.running = false;
-          generationState.generationId = '';
+      {
+        createFailedDraft: input => forum.createFailedDraft(input),
+        generationDefaults: {
+          resultMode: settings.value.generation.resultMode,
+          stream: settings.value.generation.stream,
+          tavernPresetName: settings.value.generation.tavernPresetName,
         },
-        onRawOutput(rawOutput) {
-          generationState.rawOutput = rawOutput;
+        references: formattedReferences.value,
+        lifecycle: {
+          onFinish() {
+            generationState.running = false;
+            generationState.generationId = '';
+          },
+          onRawOutput(rawOutput) {
+            generationState.rawOutput = rawOutput;
+          },
+          onStart(generationId) {
+            generationState.running = true;
+            generationState.generationId = generationId;
+          },
         },
-        onStart(generationId) {
-          generationState.running = true;
-          generationState.generationId = generationId;
+        source: {
+          fromStartEnd: replyGenerationDraft.fromStartEnd,
+          mode: settings.value.generation.sourceMode,
+          rangeText: replyGenerationDraft.rangeText,
+          recentCount: replyGenerationDraft.recentCount,
+          singleMessageId: replyGenerationDraft.singleMessageId,
         },
+        textProvider: settings.value.textProvider,
       },
-      source: {
-        fromStartEnd: replyGenerationDraft.fromStartEnd,
-        mode: settings.value.generation.sourceMode,
-        rangeText: replyGenerationDraft.rangeText,
-        recentCount: replyGenerationDraft.recentCount,
-        singleMessageId: replyGenerationDraft.singleMessageId,
-      },
-      textProvider: settings.value.textProvider,
-    });
+    );
 
     if (result.status === 'failed') {
       generationState.error = result.warnings.join('；') || '模型没有返回可解析的论坛回复 XML';
@@ -1328,7 +1430,11 @@ function reparseFailedDraft() {
     persistForumPreviewDraft(generationState.preview.boardId ? { boardId: generationState.preview.boardId } : {});
     forum.deleteFailedDraft(draft.id);
     failedDraftRawOutput.value = '';
-    phone.replacePage('preview', '生成预览', generationState.preview.boardId ? { boardId: generationState.preview.boardId } : undefined);
+    phone.replacePage(
+      'preview',
+      '生成预览',
+      generationState.preview.boardId ? { boardId: generationState.preview.boardId } : undefined,
+    );
     return;
   }
 
@@ -1372,7 +1478,6 @@ function reparseFailedDraft() {
   failedDraftRawOutput.value = '';
   phone.replacePage('preview', '生成预览', { boardId, threadId });
 }
-
 </script>
 
 <style scoped>
@@ -1650,7 +1755,4 @@ function reparseFailedDraft() {
   font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
   font-size: 12px;
 }
-
 </style>
-
-

@@ -25,7 +25,8 @@ export const useForumStore = defineStore('forum', () => {
   });
 
   const boards = computed(() => data.value.boards);
-  const { createFailedDraft, deleteFailedDraft, failedDrafts, getFailedDraft, updateFailedDraft } = createFailedDraftCollection(data, 'forum_failed');
+  const { createFailedDraft, deleteFailedDraft, failedDrafts, getFailedDraft, updateFailedDraft } =
+    createFailedDraftCollection(data, 'forum_failed');
 
   function getBoard(boardId: string) {
     return boards.value.find(board => board.id === boardId) ?? null;

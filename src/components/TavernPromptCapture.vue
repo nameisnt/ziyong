@@ -26,12 +26,14 @@
         <article v-for="message in captured.messages" :key="message.id" class="pc-capture-message">
           <button class="pc-capture-message-head" type="button" @click="toggle(message.id)">
             <span>{{ `Role: ${roleIcon(message.role)} ${message.role} | Tokens: ${message.token}` }}</span>
-            <i class="fa-solid" :class="expandedIds.includes(message.id) ? 'fa-circle-chevron-up' : 'fa-circle-chevron-down'"></i>
+            <i
+              class="fa-solid"
+              :class="expandedIds.includes(message.id) ? 'fa-circle-chevron-up' : 'fa-circle-chevron-down'"
+            ></i>
           </button>
-          <pre
-            v-if="expandedIds.includes(message.id)"
-            class="pc-capture-content"
-          >{{ message.content || '（空内容）' }}</pre>
+          <pre v-if="expandedIds.includes(message.id)" class="pc-capture-content">{{
+            message.content || '（空内容）'
+          }}</pre>
         </article>
       </div>
     </template>
@@ -50,13 +52,18 @@ const captured = ref<CapturedTavernPromptPreview | null>(null);
 const error = ref('');
 const expandedIds = ref<number[]>([]);
 const running = ref(false);
-const allExpanded = computed(() => Boolean(captured.value?.messages.length) && expandedIds.value.length === captured.value.messages.length);
+const allExpanded = computed(
+  () => Boolean(captured.value?.messages.length) && expandedIds.value.length === captured.value.messages.length,
+);
 
-watch(() => props.resetKey, () => {
-  captured.value = null;
-  expandedIds.value = [];
-  error.value = '';
-});
+watch(
+  () => props.resetKey,
+  () => {
+    captured.value = null;
+    expandedIds.value = [];
+    error.value = '';
+  },
+);
 
 function roleIcon(role: string) {
   if (role === 'system') return '⚙️';

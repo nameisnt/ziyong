@@ -1,7 +1,13 @@
 import { getCurrentChatScopeKey } from '@/store/chatScoped';
 import { useRecoveryStore } from '@/store/recovery';
 import type { PendingVisibilityRecovery } from '@/type/recovery';
-import { getChatMessagesSafe, getOptionalGlobalFunction, onTavernEvent, setChatMessagesSafe, stopGenerationByIdSafe } from '@/util/runtime';
+import {
+  getChatMessagesSafe,
+  getOptionalGlobalFunction,
+  onTavernEvent,
+  setChatMessagesSafe,
+  stopGenerationByIdSafe,
+} from '@/util/runtime';
 import { acquireSendGuard } from '@/util/sendGuard';
 
 function nowIso() {
@@ -16,17 +22,21 @@ async function hashMessageIdentity(message: Pick<ChatMessage, 'message' | 'name'
   const payload = `${message.role}\n${message.name}\n${message.message}`;
   const bytes = new TextEncoder().encode(payload);
   const buffer = await crypto.subtle.digest('SHA-256', bytes);
-  return Array.from(new Uint8Array(buffer)).map(item => item.toString(16).padStart(2, '0')).join('');
+  return Array.from(new Uint8Array(buffer))
+    .map(item => item.toString(16).padStart(2, '0'))
+    .join('');
 }
 
 async function createRecoverySnapshot(messages: ChatMessage[]) {
-  return Promise.all(messages.map(async message => ({
-    contentHash: await hashMessageIdentity(message),
-    isHidden: message.is_hidden,
-    messageId: message.message_id,
-    name: message.name,
-    role: message.role,
-  })));
+  return Promise.all(
+    messages.map(async message => ({
+      contentHash: await hashMessageIdentity(message),
+      isHidden: message.is_hidden,
+      messageId: message.message_id,
+      name: message.name,
+      role: message.role,
+    })),
+  );
 }
 
 async function restoreRecoveryIfSafe(item: PendingVisibilityRecovery) {
@@ -50,9 +60,9 @@ async function restoreRecoveryIfSafe(item: PendingVisibilityRecovery) {
 
     const currentHash = await hashMessageIdentity(currentMessage);
     if (
-      currentHash !== snapshotMessage.contentHash
-      || currentMessage.role !== snapshotMessage.role
-      || currentMessage.name !== snapshotMessage.name
+      currentHash !== snapshotMessage.contentHash ||
+      currentMessage.role !== snapshotMessage.role ||
+      currentMessage.name !== snapshotMessage.name
     ) {
       return {
         message: `第 ${snapshotMessage.messageId} 楼内容已变化，已保留恢复日志供手动处理`,
@@ -86,9 +96,12 @@ async function restoreRecoveryIfSafe(item: PendingVisibilityRecovery) {
   } as const;
 }
 
-export async function ensureCurrentScopeRecovery(scopeId: string, options?: {
-  discardInvalidRecovery?: boolean;
-}) {
+export async function ensureCurrentScopeRecovery(
+  scopeId: string,
+  options?: {
+    discardInvalidRecovery?: boolean;
+  },
+) {
   const recovery = useRecoveryStore();
   const item = recovery.data[scopeId];
   if (!item) {
@@ -122,7 +135,9 @@ export async function runWithVisibilityTransaction<T>(options: {
 }) {
   const recovery = useRecoveryStore();
   const allMessages = getAllChatMessages();
-  const visibleMessageIds = new Set(allMessages.filter(message => !message.is_hidden).map(message => message.message_id));
+  const visibleMessageIds = new Set(
+    allMessages.filter(message => !message.is_hidden).map(message => message.message_id),
+  );
   const selectedMessageIds = new Set(options.selectedMessageIds.filter(messageId => visibleMessageIds.has(messageId)));
   if (!selectedMessageIds.size) {
     throw new Error('来源范围内没有可用的可见楼层');
@@ -140,14 +155,17 @@ export async function runWithVisibilityTransaction<T>(options: {
   }
 
   const assertSelectedMessagesVisible = () => {
-    const actualVisibleIds = getChatMessagesSafe('0-{{lastMessageId}}', { hide_state: 'unhidden' })
-      .map(message => message.message_id);
+    const actualVisibleIds = getChatMessagesSafe('0-{{lastMessageId}}', { hide_state: 'unhidden' }).map(
+      message => message.message_id,
+    );
     const expectedIds = [...selectedMessageIds].sort((left, right) => left - right);
     const actualIds = actualVisibleIds.sort((left, right) => left - right);
     const sameLength = actualIds.length === expectedIds.length;
     const sameIds = sameLength && actualIds.every((messageId, index) => messageId === expectedIds[index]);
     if (!sameIds) {
-      throw new Error(`来源楼层隐藏未生效，期望可见楼层：${expectedIds.join(', ')}；实际可见楼层：${actualIds.join(', ')}`);
+      throw new Error(
+        `来源楼层隐藏未生效，期望可见楼层：${expectedIds.join(', ')}；实际可见楼层：${actualIds.join(', ')}`,
+      );
     }
   };
 

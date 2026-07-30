@@ -58,7 +58,10 @@
         <i class="fa-solid fa-forward"></i>
         <span>{{ t`换题` }}</span>
       </button>
-      <InfoHint :label="t`数独说明`" :text="t`每一行、每一列和每个 3×3 宫都需要填入不重复的 1 至 9。每次换题都会生成一局新的唯一解题目。`" />
+      <InfoHint
+        :label="t`数独说明`"
+        :text="t`每一行、每一列和每个 3×3 宫都需要填入不重复的 1 至 9。每次换题都会生成一局新的唯一解题目。`"
+      />
     </div>
   </section>
 </template>
@@ -158,11 +161,15 @@ function generatePuzzle() {
     const indices = [...new Set(pair)];
     if (clueCount - indices.length < targetClues) continue;
     const previous = indices.map(index => puzzle[index] ?? 0);
-    indices.forEach(index => { puzzle[index] = 0; });
+    indices.forEach(index => {
+      puzzle[index] = 0;
+    });
     if (countSolutions([...puzzle]) === 1) {
       clueCount -= indices.length;
     } else {
-      indices.forEach((index, pairIndex) => { puzzle[index] = previous[pairIndex] ?? 0; });
+      indices.forEach((index, pairIndex) => {
+        puzzle[index] = previous[pairIndex] ?? 0;
+      });
     }
     if (clueCount <= targetClues) break;
   }
@@ -202,11 +209,13 @@ const conflicts = computed(() => {
   }
   for (let boxY = 0; boxY < 3; boxY += 1) {
     for (let boxX = 0; boxX < 3; boxX += 1) {
-      groups.push(Array.from({ length: 9 }, (_, offset) => {
-        const x = boxX * 3 + (offset % 3);
-        const y = boxY * 3 + Math.floor(offset / 3);
-        return y * 9 + x;
-      }));
+      groups.push(
+        Array.from({ length: 9 }, (_, offset) => {
+          const x = boxX * 3 + (offset % 3);
+          const y = boxY * 3 + Math.floor(offset / 3);
+          return y * 9 + x;
+        }),
+      );
     }
   }
   groups.forEach(group => {
@@ -228,7 +237,9 @@ function save() {
 }
 
 function checkDone() {
-  state.value.status = state.value.board.every((value, index) => value === state.value.solution[index]) ? 'done' : 'playing';
+  state.value.status = state.value.board.every((value, index) => value === state.value.solution[index])
+    ? 'done'
+    : 'playing';
 }
 
 function setNumber(number: number) {
@@ -240,9 +251,14 @@ function setNumber(number: number) {
 }
 
 function fillHint() {
-  const index = selected.value !== null && !givens.value[selected.value] && state.value.board[selected.value] !== state.value.solution[selected.value]
-    ? selected.value
-    : state.value.board.findIndex((value, cellIndex) => !givens.value[cellIndex] && value !== state.value.solution[cellIndex]);
+  const index =
+    selected.value !== null &&
+    !givens.value[selected.value] &&
+    state.value.board[selected.value] !== state.value.solution[selected.value]
+      ? selected.value
+      : state.value.board.findIndex(
+          (value, cellIndex) => !givens.value[cellIndex] && value !== state.value.solution[cellIndex],
+        );
   if (index < 0) return;
   state.value.board[index] = state.value.solution[index] ?? 0;
   selected.value = index;

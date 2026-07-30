@@ -199,7 +199,8 @@ function readReaderSettings(raw: unknown): ChatReaderSettings {
 export function normalizeBrief(raw: unknown, index: number): ChatHistoryBriefItem | null {
   const record = asRecord(raw);
   if (!record) return null;
-  const fileName = pickString(record, ['file_name', 'fileName', 'chat_id', 'chatId', 'file', 'name', 'chat']) || `chat-${index + 1}`;
+  const fileName =
+    pickString(record, ['file_name', 'fileName', 'chat_id', 'chatId', 'file', 'name', 'chat']) || `chat-${index + 1}`;
   return {
     id: fileName,
     fileName,
@@ -225,7 +226,11 @@ function extractMessageText(record: Record<string, unknown>) {
   return '';
 }
 
-export function normalizeArchivedMessage(raw: unknown, index: number, settings: ChatReaderSettings): PendingReaderMessage | null {
+export function normalizeArchivedMessage(
+  raw: unknown,
+  index: number,
+  settings: ChatReaderSettings,
+): PendingReaderMessage | null {
   const record = asRecord(raw);
   if (!record) return null;
   const extra = asRecord(record.extra);
@@ -262,7 +267,9 @@ export const useReaderStore = defineStore('reader', () => {
   const loadingBriefs = ref(false);
   const loadingDetail = ref(false);
   const error = ref('');
-  const presets = computed(() => settings.value.presets.length ? settings.value.presets : defaultReaderSettings.presets);
+  const presets = computed(() =>
+    settings.value.presets.length ? settings.value.presets : defaultReaderSettings.presets,
+  );
 
   function persist(nextSettings: typeof settings.value) {
     const parsed = readReaderSettings(klona(nextSettings));
@@ -285,7 +292,9 @@ export const useReaderStore = defineStore('reader', () => {
     try {
       const items = await getChatHistoryBriefSafe('current');
       const itemList = Array.isArray(items) ? items : [];
-      briefs.value = itemList.map((item, index) => normalizeBrief(item, index)).filter((item): item is ChatHistoryBriefItem => Boolean(item));
+      briefs.value = itemList
+        .map((item, index) => normalizeBrief(item, index))
+        .filter((item): item is ChatHistoryBriefItem => Boolean(item));
       return briefs.value;
     } catch (caughtError) {
       error.value = caughtError instanceof Error ? caughtError.message : '读取聊天目录失败';
@@ -300,15 +309,19 @@ export const useReaderStore = defineStore('reader', () => {
     loadingDetail.value = true;
     error.value = '';
     try {
-      const brief = briefs.value.find(item => item.fileName === fileName) ?? (await loadBriefs()).find(item => item.fileName === fileName);
+      const brief =
+        briefs.value.find(item => item.fileName === fileName) ??
+        (await loadBriefs()).find(item => item.fileName === fileName);
       if (!brief) return [];
       const result = await getChatHistoryDetailSafe([brief.raw], Boolean(SillyTavern.groupId));
-      const resultRecord = result && typeof result === 'object' ? result as Record<string, unknown> : null;
+      const resultRecord = result && typeof result === 'object' ? (result as Record<string, unknown>) : null;
       const detailArray = resultRecord
-        ? Object.entries(resultRecord).find(([key]) => key === fileName)?.[1] ?? Object.values(resultRecord)[0]
+        ? (Object.entries(resultRecord).find(([key]) => key === fileName)?.[1] ?? Object.values(resultRecord)[0])
         : null;
       const baseMessages = Array.isArray(detailArray)
-        ? detailArray.map((item, index) => normalizeArchivedMessage(item, index, settings.value)).filter((item): item is PendingReaderMessage => Boolean(item))
+        ? detailArray
+            .map((item, index) => normalizeArchivedMessage(item, index, settings.value))
+            .filter((item): item is PendingReaderMessage => Boolean(item))
         : [];
       const transformed = await transformReaderMessages(
         baseMessages.map(item => ({
@@ -424,7 +437,7 @@ export const useReaderStore = defineStore('reader', () => {
       return {
         ...preset,
         ...patch,
-        name: typeof patch.name === 'string' ? (patch.name.trim() || preset.name) : preset.name,
+        name: typeof patch.name === 'string' ? patch.name.trim() || preset.name : preset.name,
         title: patch.title ? validateInplace(ChatReaderRegexRuleSchema, patch.title) : preset.title,
         body: patch.body ? validateInplace(ChatReaderRegexRuleSchema, patch.body) : preset.body,
       };

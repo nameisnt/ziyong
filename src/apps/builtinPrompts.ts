@@ -1,11 +1,5 @@
 import type { PhonePromptDefinition, PhoneTypePromptDomain } from '@/core/appRegistry';
-import {
-  cloneOutputFormat,
-  objectListField,
-  simpleXmlOutput,
-  textField,
-  xmlParser,
-} from '@/apps/outputDefinitions';
+import { cloneOutputFormat, objectListField, simpleXmlOutput, textField, xmlParser } from '@/apps/outputDefinitions';
 
 function lines(...items: string[]) {
   return items.join('\n');
@@ -15,7 +9,8 @@ export function createSummaryPromptDefinition(): PhonePromptDefinition {
   return {
     key: 'summaries',
     label: '总结',
-    defaultPrompt: '请根据提供的楼层内容生成一份总结。提炼关键事件脉络、人物状态变化和重要信息，语言精炼。不要写成剧情复述，不要添加主观评价。',
+    defaultPrompt:
+      '请根据提供的楼层内容生成一份总结。提炼关键事件脉络、人物状态变化和重要信息，语言精炼。不要写成剧情复述，不要添加主观评价。',
     outputFormats: [
       simpleXmlOutput(
         'summary.generate',
@@ -211,10 +206,16 @@ export function createForumPromptDefinition(): PhonePromptDefinition {
           '</result>',
         ),
         parser: xmlParser([
-          objectListField('replies', '回复列表', 'reply', [
-            textField('author', '回复作者', 'author', { required: true }),
-            textField('content', '回复正文', 'content', { required: true }),
-          ], true),
+          objectListField(
+            'replies',
+            '回复列表',
+            'reply',
+            [
+              textField('author', '回复作者', 'author', { required: true }),
+              textField('content', '回复正文', 'content', { required: true }),
+            ],
+            true,
+          ),
         ]),
       },
     ],

@@ -14,7 +14,13 @@
 
       <template v-if="route.page === 'root'">
         <div v-if="imageEntries.length" class="pc-gallery-grid">
-          <button v-for="entry in imageEntries" :key="entry.id" class="pc-gallery-tile" type="button" @click="openViewer(entry.id)">
+          <button
+            v-for="entry in imageEntries"
+            :key="entry.id"
+            class="pc-gallery-tile"
+            type="button"
+            @click="openViewer(entry.id)"
+          >
             <img :src="entry.url" :alt="entry.title" />
             <span>{{ entry.title }}</span>
           </button>
@@ -25,14 +31,26 @@
       <article v-else-if="route.page === 'viewer' && activeEntry" class="pc-gallery-viewer">
         <img :src="activeEntry.url" :alt="activeEntry.title" />
         <div class="pc-gallery-viewer-bar">
-          <button class="pc-icon-btn" type="button" :title="t`上一张`" :aria-label="t`上一张`" @click="showRelativeImage(-1)">
+          <button
+            class="pc-icon-btn"
+            type="button"
+            :title="t`上一张`"
+            :aria-label="t`上一张`"
+            @click="showRelativeImage(-1)"
+          >
             <i class="fa-solid fa-chevron-left"></i>
           </button>
           <div>
             <strong>{{ activeEntry.title }}</strong>
             <span>{{ activeIndex + 1 }} / {{ imageEntries.length }}</span>
           </div>
-          <button class="pc-icon-btn" type="button" :title="t`下一张`" :aria-label="t`下一张`" @click="showRelativeImage(1)">
+          <button
+            class="pc-icon-btn"
+            type="button"
+            :title="t`下一张`"
+            :aria-label="t`下一张`"
+            @click="showRelativeImage(1)"
+          >
             <i class="fa-solid fa-chevron-right"></i>
           </button>
         </div>
@@ -44,7 +62,9 @@
         </div>
       </article>
       <EmptyState v-else-if="route.page === 'viewer'" :title="t`图片不存在`">
-        <button class="pc-soft-btn compact" type="button" @click="phone.replacePage('root', '相册')">{{ t`返回相册` }}</button>
+        <button class="pc-soft-btn compact" type="button" @click="phone.replacePage('root', '相册')">
+          {{ t`返回相册` }}
+        </button>
       </EmptyState>
 
       <article v-else-if="route.page === 'editor'" class="pc-editor-card">
@@ -55,7 +75,9 @@
         <input class="pc-field" type="file" accept="image/*" @change="loadFile" />
         <textarea v-model="draft.note" class="pc-area compact" :placeholder="t`备注，可留空`"></textarea>
         <div class="pc-form-actions">
-          <button v-if="editingEntry" class="pc-soft-btn danger" type="button" @click="deleteEntry(editingEntry)">{{ t`删除` }}</button>
+          <button v-if="editingEntry" class="pc-soft-btn danger" type="button" @click="deleteEntry(editingEntry)">
+            {{ t`删除` }}
+          </button>
           <button class="pc-soft-btn" type="button" @click="phone.replacePage('root', '相册')">{{ t`取消` }}</button>
           <button class="pc-primary-btn" type="button" @click="saveDraft">{{ t`保存` }}</button>
         </div>
@@ -82,9 +104,11 @@ const draft = reactive({
 });
 
 const imageEntries = computed(() => entries.value.filter(entry => entry.kind === 'image'));
-const activeEntry = computed(() => route.value.params?.entryId ? media.getEntry(route.value.params.entryId) : null);
-const editingEntry = computed(() => route.value.page === 'editor' ? activeEntry.value : null);
-const activeIndex = computed(() => activeEntry.value ? imageEntries.value.findIndex(entry => entry.id === activeEntry.value?.id) : -1);
+const activeEntry = computed(() => (route.value.params?.entryId ? media.getEntry(route.value.params.entryId) : null));
+const editingEntry = computed(() => (route.value.page === 'editor' ? activeEntry.value : null));
+const activeIndex = computed(() =>
+  activeEntry.value ? imageEntries.value.findIndex(entry => entry.id === activeEntry.value?.id) : -1,
+);
 
 watch(
   () => [route.value.appId, route.value.page, route.value.params?.entryId] as const,
@@ -141,9 +165,7 @@ function saveDraft() {
     title: draft.title || '未命名图片',
     url: draft.url,
   };
-  const entry = editingEntry.value
-    ? media.updateEntry(editingEntry.value.id, input)
-    : media.createEntry(input);
+  const entry = editingEntry.value ? media.updateEntry(editingEntry.value.id, input) : media.createEntry(input);
   if (!entry) return;
   phone.replacePage('viewer', '图片预览', { entryId: entry.id });
   toastr.success('已保存图片');

@@ -143,12 +143,14 @@ const game = useGame2048Store();
 const { bestScore, board, canUndo, isPausedOnWin, moves, score, status } = storeToRefs(game);
 const pointerStart = ref<{ x: number; y: number } | null>(null);
 
-const cells = computed(() => board.value.flatMap((row, y) => row.map((value, x) => ({ key: `${x}:${y}`, value, x, y }))));
+const cells = computed(() =>
+  board.value.flatMap((row, y) => row.map((value, x) => ({ key: `${x}:${y}`, value, x, y }))),
+);
 const maxTile = computed(() => Math.max(...board.value.flatMap(row => row), 0));
 
-const statusTitle = computed(() => status.value === 'won' ? t`合成 2048 了` : t`没有可移动格子`);
+const statusTitle = computed(() => (status.value === 'won' ? t`合成 2048 了` : t`没有可移动格子`));
 function parseMiniGameId(value: unknown): MiniGameId | null {
-  return typeof value === 'string' && gameOptions.some(item => item.id === value) ? value as MiniGameId : null;
+  return typeof value === 'string' && gameOptions.some(item => item.id === value) ? (value as MiniGameId) : null;
 }
 
 function openMiniGame(id: MiniGameId) {

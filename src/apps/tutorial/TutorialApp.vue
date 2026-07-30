@@ -94,12 +94,7 @@
 <script setup lang="ts">
 import EmptyState from '@/components/EmptyState.vue';
 import { usePhoneStore } from '@/store/phone';
-import {
-  tutorialArticles,
-  tutorialCategories,
-  type TutorialArticle,
-  type TutorialCategoryId,
-} from './data';
+import { tutorialArticles, tutorialCategories, type TutorialArticle, type TutorialCategoryId } from './data';
 
 const phone = usePhoneStore();
 const route = computed(() => phone.currentRoute);
@@ -116,12 +111,9 @@ const visibleArticles = computed(() => {
   return tutorialArticles.filter(article => {
     if (activeCategory.value !== 'all' && article.category !== activeCategory.value) return false;
     if (!keyword) return true;
-    return [
-      article.title,
-      article.summary,
-      ...article.keywords,
-      ...(article.requirements || []),
-    ].some(text => text.toLocaleLowerCase().includes(keyword));
+    return [article.title, article.summary, ...article.keywords, ...(article.requirements || [])].some(text =>
+      text.toLocaleLowerCase().includes(keyword),
+    );
   });
 });
 

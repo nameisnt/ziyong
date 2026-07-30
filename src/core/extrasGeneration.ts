@@ -83,18 +83,20 @@ export function createExtraChapterGenerationRecord(
 
 function buildChapterTaskInstruction(config: ExtraChapterGenerateConfig) {
   const modeInstruction = {
-    '新开一本书': '请创作本书第一章，不要续接来源内容中的旧章节。',
-    '续写上一章': '请紧接上述最后一章续写，不要复述或重写已有章节，并延续上一章的语气与悬念。',
-    '重写当前章节': '请重写上述目标章节，保留整体前后文方向，但重新组织表达。',
+    新开一本书: '请创作本书第一章，不要续接来源内容中的旧章节。',
+    续写上一章: '请紧接上述最后一章续写，不要复述或重写已有章节，并延续上一章的语气与悬念。',
+    重写当前章节: '请重写上述目标章节，保留整体前后文方向，但重新组织表达。',
   }[config.chapterMode];
-  const typeFallback = !config.typePrompt.trim() && config.typeName.trim()
-    ? `本次番外类型为“${config.typeName.trim()}”。`
-    : '';
+  const typeFallback =
+    !config.typePrompt.trim() && config.typeName.trim() ? `本次番外类型为“${config.typeName.trim()}”。` : '';
   return [modeInstruction, typeFallback].filter(Boolean).join('\n');
 }
 
 export function createExtraSummaryGenerationAdapter(extrasStore: {
-  createSummary: (bookId: string, input: Pick<ExtraSummary, 'content' | 'coveredChapterIds' | 'enabled'>) => ExtraSummary | null;
+  createSummary: (
+    bookId: string,
+    input: Pick<ExtraSummary, 'content' | 'coveredChapterIds' | 'enabled'>,
+  ) => ExtraSummary | null;
 }) {
   return {
     actionId: 'chapter-summary',
@@ -127,7 +129,11 @@ export function createExtraSummaryGenerationAdapter(extrasStore: {
         summary,
       };
     },
-  } satisfies GenerationAdapter<ExtraSummaryGenerateConfig, ContentXmlResult, { entityId: string; summary: ExtraSummary }>;
+  } satisfies GenerationAdapter<
+    ExtraSummaryGenerateConfig,
+    ContentXmlResult,
+    { entityId: string; summary: ExtraSummary }
+  >;
 }
 
 export function createExtraChapterGenerationAdapter(extrasStore: {

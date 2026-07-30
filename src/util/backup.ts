@@ -124,9 +124,13 @@ function countBackupScopeData(domainKey: string, raw: unknown) {
     const books = Array.isArray(raw.books) ? raw.books : [];
     return {
       collections: books.length,
-      items: books.reduce((sum, book) => sum
-        + (Array.isArray(book.chapters) ? book.chapters.length : 0)
-        + (Array.isArray(book.summaries) ? book.summaries.length : 0), 0),
+      items: books.reduce(
+        (sum, book) =>
+          sum +
+          (Array.isArray(book.chapters) ? book.chapters.length : 0) +
+          (Array.isArray(book.summaries) ? book.summaries.length : 0),
+        0,
+      ),
     };
   }
 
@@ -136,7 +140,13 @@ function countBackupScopeData(domainKey: string, raw: unknown) {
       collections: boards.length,
       items: boards.reduce((sum, board) => {
         const threads = Array.isArray(board.threads) ? board.threads.filter(isRecord) : [];
-        return sum + threads.reduce((threadSum, thread) => threadSum + 1 + (Array.isArray(thread.replies) ? thread.replies.length : 0), 0);
+        return (
+          sum +
+          threads.reduce(
+            (threadSum, thread) => threadSum + 1 + (Array.isArray(thread.replies) ? thread.replies.length : 0),
+            0,
+          )
+        );
       }, 0),
     };
   }
@@ -160,7 +170,7 @@ function countBackupScopeData(domainKey: string, raw: unknown) {
   if (domainKey === 'media' || domainKey === 'profiles') {
     const entries = Array.isArray(raw.entries) ? raw.entries.filter(isRecord) : [];
     return {
-      collections: new Set(entries.map(entry => typeof entry.kind === 'string' ? entry.kind : '')).size,
+      collections: new Set(entries.map(entry => (typeof entry.kind === 'string' ? entry.kind : ''))).size,
       items: entries.length,
     };
   }
@@ -177,7 +187,7 @@ function countBackupScopeData(domainKey: string, raw: unknown) {
   if (domainKey === 'world-slots') {
     const slots = Array.isArray(raw.slots) ? raw.slots : [];
     return {
-      collections: typeof raw.bookName === 'string' && raw.bookName.trim() || slots.length ? 1 : 0,
+      collections: (typeof raw.bookName === 'string' && raw.bookName.trim()) || slots.length ? 1 : 0,
       items: slots.length,
     };
   }
@@ -284,11 +294,14 @@ export function buildCurrentChatPhoneBackup(): PhoneBackup {
     getRegisteredPhoneBackupDomains().map(domain => {
       const envelope = cloneChatScopedEnvelope(domain.exportData(scopeKey));
       const currentScopeData = envelope.scopes[scopeKey];
-      return [domain.key, {
-        __chatScoped: true,
-        legacyScopeMigrations: {},
-        scopes: typeof currentScopeData === 'undefined' ? {} : { [scopeKey]: currentScopeData },
-      }];
+      return [
+        domain.key,
+        {
+          __chatScoped: true,
+          legacyScopeMigrations: {},
+          scopes: typeof currentScopeData === 'undefined' ? {} : { [scopeKey]: currentScopeData },
+        },
+      ];
     }),
   );
 
@@ -351,7 +364,9 @@ export function listPhoneBackupScopeOptions(backup: PhoneBackup): PhoneBackupSco
     });
   });
 
-  return [...scopes.values()].sort((left, right) => right.items - left.items || left.label.localeCompare(right.label, 'zh-CN'));
+  return [...scopes.values()].sort(
+    (left, right) => right.items - left.items || left.label.localeCompare(right.label, 'zh-CN'),
+  );
 }
 
 export async function importPhoneBackupScopeToCurrentChat(backup: PhoneBackup, sourceScopeKey: string) {

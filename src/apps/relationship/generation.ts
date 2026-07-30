@@ -12,16 +12,22 @@ export const RelationshipGenerateConfigSchema = z.object({
 });
 export type RelationshipGenerateConfig = z.infer<typeof RelationshipGenerateConfigSchema>;
 
-export const RelationshipGeneratedResultSchema = z.object({
-  characters: z.array(z.string()).default([]),
-  relations: z.array(z.object({
-    from: z.string(),
-    label: z.string(),
-    to: z.string(),
-  })).default([]),
-}).refine(result => result.characters.length > 0 || result.relations.length > 0, {
-  message: '没有解析到人物或关系',
-});
+export const RelationshipGeneratedResultSchema = z
+  .object({
+    characters: z.array(z.string()).default([]),
+    relations: z
+      .array(
+        z.object({
+          from: z.string(),
+          label: z.string(),
+          to: z.string(),
+        }),
+      )
+      .default([]),
+  })
+  .refine(result => result.characters.length > 0 || result.relations.length > 0, {
+    message: '没有解析到人物或关系',
+  });
 
 function getTagCount(raw: string, tagName: string) {
   return raw.match(new RegExp(`<${tagName}(\\s|>)`, 'g'))?.length || 0;
@@ -89,10 +95,10 @@ function parseRelationshipXmlCandidate(raw: string): XmlParseResult<Relationship
     : [];
   const relations = relationCandidates
     .map(item => ({
-          from: getDirectChildText(item, 'from'),
-          label: getDirectChildText(item, 'label'),
-          to: getDirectChildText(item, 'to'),
-        }))
+      from: getDirectChildText(item, 'from'),
+      label: getDirectChildText(item, 'label'),
+      to: getDirectChildText(item, 'to'),
+    }))
     .filter(item => item.from && item.to && item.label);
 
   if (!characters.length && !relations.length) {
@@ -141,15 +147,16 @@ export function createRelationshipGenerationAdapter(relationshipStore: ReturnTyp
       };
     },
     parse(raw) {
-      return parseConfiguredOutput(
-        'relationship.generate',
-        raw,
-        RelationshipGeneratedResultSchema,
-        () => parseRelationshipXmlResult(raw),
+      return parseConfiguredOutput('relationship.generate', raw, RelationshipGeneratedResultSchema, () =>
+        parseRelationshipXmlResult(raw),
       );
     },
     save(result) {
       return relationshipStore.mergeGenerated(result);
     },
-  } satisfies GenerationAdapter<RelationshipGenerateConfig, RelationshipGeneratedResult, ReturnType<typeof relationshipStore.mergeGenerated>>;
+  } satisfies GenerationAdapter<
+    RelationshipGenerateConfig,
+    RelationshipGeneratedResult,
+    ReturnType<typeof relationshipStore.mergeGenerated>
+  >;
 }

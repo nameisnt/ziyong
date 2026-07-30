@@ -8,10 +8,20 @@
             <p>{{ ruleOverview }}</p>
           </div>
           <div class="pc-panel-actions">
-            <button class="pc-outline-btn" type="button" :disabled="!visibleRules.length" @click="setVisibleRulesEnabled(true)">
+            <button
+              class="pc-outline-btn"
+              type="button"
+              :disabled="!visibleRules.length"
+              @click="setVisibleRulesEnabled(true)"
+            >
               {{ t`启用可见` }}
             </button>
-            <button class="pc-outline-btn" type="button" :disabled="!visibleRules.length" @click="setVisibleRulesEnabled(false)">
+            <button
+              class="pc-outline-btn"
+              type="button"
+              :disabled="!visibleRules.length"
+              @click="setVisibleRulesEnabled(false)"
+            >
               {{ t`停用可见` }}
             </button>
           </div>
@@ -67,7 +77,9 @@
             </button>
           </div>
 
-          <div v-if="!visibleReplacementRules.length" class="pc-empty-row">{{ ruleQuery.trim() ? t`没有匹配的词汇规则` : t`暂无词汇规则` }}</div>
+          <div v-if="!visibleReplacementRules.length" class="pc-empty-row">
+            {{ ruleQuery.trim() ? t`没有匹配的词汇规则` : t`暂无词汇规则` }}
+          </div>
         </div>
       </section>
 
@@ -85,7 +97,9 @@
         </div>
 
         <div v-show="templateOpen" class="pc-rule-table">
-          <div class="pc-template-help">{{ t`模板写法：\`{A|B}\` 表示二选一，\`[A|B]\` 表示可选，\`…\` 表示中间任意内容。` }}</div>
+          <div class="pc-template-help">
+            {{ t`模板写法：\`{A|B}\` 表示二选一，\`[A|B]\` 表示可选，\`…\` 表示中间任意内容。` }}
+          </div>
           <div v-for="rule in visibleTemplateRules" :key="rule.id" class="pc-rule-row template">
             <label class="pc-check">
               <input
@@ -106,10 +120,11 @@
             </button>
           </div>
 
-          <div v-if="!visibleTemplateRules.length" class="pc-empty-row">{{ ruleQuery.trim() ? t`没有匹配的句式规则` : t`暂无句式规则` }}</div>
+          <div v-if="!visibleTemplateRules.length" class="pc-empty-row">
+            {{ ruleQuery.trim() ? t`没有匹配的句式规则` : t`暂无句式规则` }}
+          </div>
         </div>
       </section>
-
     </section>
   </section>
 </template>
@@ -153,7 +168,9 @@ function matchesRuleQuery(rule: BaguRule) {
     rule.template,
     ...rule.sources,
     ...rule.replacements,
-  ].join(' ').toLowerCase();
+  ]
+    .join(' ')
+    .toLowerCase();
   return text.includes(query);
 }
 
@@ -583,6 +600,4 @@ onBeforeUnmount(commitAllReplacementDrafts);
   color: var(--pc-muted);
   padding: 8px 2px;
 }
-
 </style>
-

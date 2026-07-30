@@ -42,7 +42,12 @@
       />
 
       <div class="pc-tag-cloud">
-        <CapsuleTag :active="customTypeOpen" icon="fa-solid fa-plus" :label="t`自定义`" @click="customTypeOpen = !customTypeOpen" />
+        <CapsuleTag
+          :active="customTypeOpen"
+          icon="fa-solid fa-plus"
+          :label="t`自定义`"
+          @click="customTypeOpen = !customTypeOpen"
+        />
         <CapsuleTag
           v-for="typePrompt in filteredTypePrompts"
           :key="typePrompt.id"
@@ -55,8 +60,19 @@
       </div>
 
       <div v-if="customTypeOpen" class="pc-custom-type-row">
-        <input v-model="customTypeName" class="pc-field" type="text" :placeholder="t`输入新类型名`" @keydown.enter="openCustomGenerate" />
-        <button class="pc-primary-btn compact" type="button" :disabled="!customTypeName.trim()" @click="openCustomGenerate">
+        <input
+          v-model="customTypeName"
+          class="pc-field"
+          type="text"
+          :placeholder="t`输入新类型名`"
+          @keydown.enter="openCustomGenerate"
+        />
+        <button
+          class="pc-primary-btn compact"
+          type="button"
+          :disabled="!customTypeName.trim()"
+          @click="openCustomGenerate"
+        >
           {{ t`添加` }}
         </button>
       </div>
@@ -105,7 +121,10 @@
         />
       </div>
 
-      <EmptyState v-if="!filteredEntries.length" :title="query || selectedHistoryTypeKeys.size ? t`暂无匹配记录` : t`还没有小剧场条目`" />
+      <EmptyState
+        v-if="!filteredEntries.length"
+        :title="query || selectedHistoryTypeKeys.size ? t`暂无匹配记录` : t`还没有小剧场条目`"
+      />
 
       <div v-else class="pc-entry-list">
         <article v-for="entry in filteredEntries" :key="entry.id" class="pc-entry-card">
@@ -124,10 +143,18 @@
         <h2>{{ editingEntry ? editingEntry.title : t`调整当前条目` }}</h2>
 
         <div class="pc-segment pc-mode-selector">
-          <button :class="['pc-segment-btn', { active: draft.renderMode === 'markdown' }]" type="button" @click="draft.renderMode = 'markdown'">
+          <button
+            :class="['pc-segment-btn', { active: draft.renderMode === 'markdown' }]"
+            type="button"
+            @click="draft.renderMode = 'markdown'"
+          >
             {{ t`Markdown 文本` }}
           </button>
-          <button :class="['pc-segment-btn', { active: draft.renderMode === 'frontend' }]" type="button" @click="draft.renderMode = 'frontend'">
+          <button
+            :class="['pc-segment-btn', { active: draft.renderMode === 'frontend' }]"
+            type="button"
+            @click="draft.renderMode = 'frontend'"
+          >
             {{ t`网页渲染` }}
           </button>
         </div>
@@ -159,9 +186,15 @@
         @top="scrollToTop"
       >
         <template #before-content>
-        <div class="pc-entry-tags">
-          <CapsuleTag compact active icon="fa-solid fa-masks-theater" :label="activeEntry.typeName || t`未分类小剧场`" @click="filterTheaterRecords(activeEntry.typeName || t`未分类小剧场`)" />
-        </div>
+          <div class="pc-entry-tags">
+            <CapsuleTag
+              compact
+              active
+              icon="fa-solid fa-masks-theater"
+              :label="activeEntry.typeName || t`未分类小剧场`"
+              @click="filterTheaterRecords(activeEntry.typeName || t`未分类小剧场`)"
+            />
+          </div>
         </template>
         <template #content>
           <FrontendFrame
@@ -174,7 +207,12 @@
           />
         </template>
         <template #actions>
-          <button class="pc-soft-btn" type="button" :title="t`续写`" @click="openGenerate(activeEntry.typeId, activeEntry.id)">
+          <button
+            class="pc-soft-btn"
+            type="button"
+            :title="t`续写`"
+            @click="openGenerate(activeEntry.typeId, activeEntry.id)"
+          >
             <i class="fa-solid fa-wand-magic-sparkles"></i>
           </button>
           <button class="pc-soft-btn danger" type="button" :title="t`删除`" @click="removeEntry(activeEntry.id)">
@@ -284,7 +322,10 @@
       </div>
     </section>
 
-    <section v-else-if="route.page === 'preview' && generationState.preview" class="pc-theater-page pc-generation-preview-page">
+    <section
+      v-else-if="route.page === 'preview' && generationState.preview"
+      class="pc-theater-page pc-generation-preview-page"
+    >
       <div class="pc-detail-card pc-generation-preview-card">
         <GenerationPreviewPanel
           :content="generationState.preview.content"
@@ -331,7 +372,11 @@
               @navigate-blocked="handleFrameNavigateBlocked"
             />
             <!-- eslint-disable-next-line vue/no-v-html -->
-            <article v-else class="pc-detail-content pc-rendered-markdown" v-html="renderMarkdown(formatReaderContent(generationState.preview.content, settings.reader))"></article>
+            <article
+              v-else
+              class="pc-detail-content pc-rendered-markdown"
+              v-html="renderMarkdown(formatReaderContent(generationState.preview.content, settings.reader))"
+            ></article>
           </template>
         </GenerationPreviewPanel>
       </div>
@@ -365,7 +410,9 @@
         />
 
         <div class="pc-form-actions">
-          <button class="pc-soft-btn danger" type="button" @click="removeFailedDraft(activeFailedDraft.id)">{{ t`删除草稿` }}</button>
+          <button class="pc-soft-btn danger" type="button" @click="removeFailedDraft(activeFailedDraft.id)">
+            {{ t`删除草稿` }}
+          </button>
           <button class="pc-soft-btn" type="button" @click="reparseFailedDraft">{{ t`重新解析` }}</button>
         </div>
       </div>
@@ -509,17 +556,27 @@ const activeEntry = computed(() => {
   const entryId = route.value.params?.entryId;
   return entryId ? theater.getEntry(entryId) : null;
 });
-const detailEntries = computed(() => [...entries.value].sort((left, right) => {
-  const compare = left.createdAt.localeCompare(right.createdAt);
-  return sortDesc.value ? -compare : compare;
-}));
-const activeEntryIndex = computed(() => activeEntry.value ? detailEntries.value.findIndex(entry => entry.id === activeEntry.value?.id) : -1);
-const previousEntryId = computed(() => activeEntryIndex.value > 0 ? detailEntries.value[activeEntryIndex.value - 1]?.id || '' : '');
-const nextEntryId = computed(() => activeEntryIndex.value >= 0 ? detailEntries.value[activeEntryIndex.value + 1]?.id || '' : '');
-const entryCatalogItems = computed(() => detailEntries.value.map(entry => ({
-  id: entry.id,
-  title: entry.title,
-})));
+const detailEntries = computed(() =>
+  [...entries.value].sort((left, right) => {
+    const compare = left.createdAt.localeCompare(right.createdAt);
+    return sortDesc.value ? -compare : compare;
+  }),
+);
+const activeEntryIndex = computed(() =>
+  activeEntry.value ? detailEntries.value.findIndex(entry => entry.id === activeEntry.value?.id) : -1,
+);
+const previousEntryId = computed(() =>
+  activeEntryIndex.value > 0 ? detailEntries.value[activeEntryIndex.value - 1]?.id || '' : '',
+);
+const nextEntryId = computed(() =>
+  activeEntryIndex.value >= 0 ? detailEntries.value[activeEntryIndex.value + 1]?.id || '' : '',
+);
+const entryCatalogItems = computed(() =>
+  detailEntries.value.map(entry => ({
+    id: entry.id,
+    title: entry.title,
+  })),
+);
 const editingEntry = computed(() => (route.value.params?.entryId && activeEntry.value ? activeEntry.value : null));
 const activeFailedDraft = computed(() => {
   const draftId = route.value.params?.draftId;
@@ -527,7 +584,9 @@ const activeFailedDraft = computed(() => {
 });
 const formattedReferences = computed(() => formatGenerationReferences(selectedReferences.value));
 const selectedEditorTypePrompt = computed(() => (draft.typeId ? prompts.getTypePrompt(draft.typeId) : null));
-const selectedGenerationTypePrompt = computed(() => (generationDraft.typeId ? prompts.getTypePrompt(generationDraft.typeId) : null));
+const selectedGenerationTypePrompt = computed(() =>
+  generationDraft.typeId ? prompts.getTypePrompt(generationDraft.typeId) : null,
+);
 const theaterTypeComboboxOptions = computed(() => [
   { label: '+ 自定义', value: CUSTOM_THEATER_TYPE_VALUE },
   ...theaterTypePrompts.value.map(typePrompt => ({ label: typePrompt.name, value: typePrompt.id })),
@@ -540,12 +599,15 @@ const typeUsageCounts = computed(() => {
   return counts;
 });
 const historyTypeTabs = computed(() => {
-  const groups = new Map<string, {
-    count: number;
-    key: string;
-    label: string;
-    latest: string;
-  }>();
+  const groups = new Map<
+    string,
+    {
+      count: number;
+      key: string;
+      label: string;
+      latest: string;
+    }
+  >();
   for (const entry of entries.value) {
     const label = entry.typeName.trim() || '未分类小剧场';
     const key = label;
@@ -562,7 +624,12 @@ const historyTypeTabs = computed(() => {
       latest: entry.updatedAt,
     });
   }
-  return [...groups.values()].sort((left, right) => right.count - left.count || right.latest.localeCompare(left.latest) || left.label.localeCompare(right.label, 'zh-CN'));
+  return [...groups.values()].sort(
+    (left, right) =>
+      right.count - left.count ||
+      right.latest.localeCompare(left.latest) ||
+      left.label.localeCompare(right.label, 'zh-CN'),
+  );
 });
 const generationTypeChoice = computed({
   get() {
@@ -581,11 +648,13 @@ const filteredTypePrompts = computed(() => {
   const normalized = query.value.trim().toLowerCase();
   const source = normalized
     ? theaterTypePrompts.value.filter(prompt => {
-      if (prompt.name.toLowerCase().includes(normalized)) return true;
-      return entries.value.some(entry =>
-        (entry.typeId === prompt.id || entry.typeName === prompt.name)
-        && `${entry.title}\n${entry.content}`.toLowerCase().includes(normalized));
-    })
+        if (prompt.name.toLowerCase().includes(normalized)) return true;
+        return entries.value.some(
+          entry =>
+            (entry.typeId === prompt.id || entry.typeName === prompt.name) &&
+            `${entry.title}\n${entry.content}`.toLowerCase().includes(normalized),
+        );
+      })
     : theaterTypePrompts.value;
 
   return [...source].sort((left, right) => {
@@ -602,9 +671,9 @@ const filteredEntries = computed(() => {
     if (activeTypeKeys.size && !activeTypeKeys.has(typeKey)) return false;
     if (!normalized) return true;
     return (
-      entry.title.toLowerCase().includes(normalized)
-      || entry.typeName.toLowerCase().includes(normalized)
-      || entry.participants.some(item => item.name.toLowerCase().includes(normalized))
+      entry.title.toLowerCase().includes(normalized) ||
+      entry.typeName.toLowerCase().includes(normalized) ||
+      entry.participants.some(item => item.name.toLowerCase().includes(normalized))
     );
   });
 
@@ -615,7 +684,43 @@ const filteredEntries = computed(() => {
 });
 const generationPromptPreview = computed(() => {
   try {
-    return buildGenerationPreview(theaterGenerationAdapter, {
+    return buildGenerationPreview(
+      theaterGenerationAdapter,
+      {
+        appPrompt: appPrompts.value.theater,
+        outputFormat: buildOutputFormat(generationDraft.renderMode),
+        renderMode: generationDraft.renderMode,
+        typeId: generationDraft.typeId,
+        typeName: generationDraft.typeName,
+        typePrompt: generationDraft.typePrompt,
+        userRequirement: generationDraft.userRequirement,
+      },
+      {
+        generationDefaults: {
+          resultMode: settings.value.generation.resultMode,
+          stream: settings.value.generation.stream,
+          tavernPresetName: settings.value.generation.tavernPresetName,
+        },
+        references: formattedReferences.value,
+        source: {
+          fromStartEnd: generationDraft.fromStartEnd,
+          mode: settings.value.generation.sourceMode,
+          rangeText: generationDraft.rangeText,
+          recentCount: generationDraft.recentCount,
+          singleMessageId: generationDraft.singleMessageId,
+        },
+        textProvider: settings.value.textProvider,
+      },
+    ).text;
+  } catch (error) {
+    return error instanceof Error ? error.message : '无法生成提示词预览';
+  }
+});
+
+function captureTheaterPrompt() {
+  return captureGenerationPrompt(
+    theaterGenerationAdapter,
+    {
       appPrompt: appPrompts.value.theater,
       outputFormat: buildOutputFormat(generationDraft.renderMode),
       renderMode: generationDraft.renderMode,
@@ -623,7 +728,8 @@ const generationPromptPreview = computed(() => {
       typeName: generationDraft.typeName,
       typePrompt: generationDraft.typePrompt,
       userRequirement: generationDraft.userRequirement,
-    }, {
+    },
+    {
       generationDefaults: {
         resultMode: settings.value.generation.resultMode,
         stream: settings.value.generation.stream,
@@ -638,37 +744,8 @@ const generationPromptPreview = computed(() => {
         singleMessageId: generationDraft.singleMessageId,
       },
       textProvider: settings.value.textProvider,
-    }).text;
-  } catch (error) {
-    return error instanceof Error ? error.message : '无法生成提示词预览';
-  }
-});
-
-function captureTheaterPrompt() {
-  return captureGenerationPrompt(theaterGenerationAdapter, {
-    appPrompt: appPrompts.value.theater,
-    outputFormat: buildOutputFormat(generationDraft.renderMode),
-    renderMode: generationDraft.renderMode,
-    typeId: generationDraft.typeId,
-    typeName: generationDraft.typeName,
-    typePrompt: generationDraft.typePrompt,
-    userRequirement: generationDraft.userRequirement,
-  }, {
-    generationDefaults: {
-      resultMode: settings.value.generation.resultMode,
-      stream: settings.value.generation.stream,
-      tavernPresetName: settings.value.generation.tavernPresetName,
     },
-    references: formattedReferences.value,
-    source: {
-      fromStartEnd: generationDraft.fromStartEnd,
-      mode: settings.value.generation.sourceMode,
-      rangeText: generationDraft.rangeText,
-      recentCount: generationDraft.recentCount,
-      singleMessageId: generationDraft.singleMessageId,
-    },
-    textProvider: settings.value.textProvider,
-  });
+  );
 }
 watch(
   () => route.value,
@@ -686,13 +763,14 @@ watch(
     if (current.page === 'generate' && previous?.page !== 'preview') {
       const initialTypePrompt = prompts.getTypePrompt(current.params?.typeId || '');
       const continuationEntry = current.params?.entryId ? theater.getEntry(current.params.entryId) : null;
-      const customTypeName = typeof current.params?.customTypeName === 'string' ? current.params.customTypeName.trim() : '';
+      const customTypeName =
+        typeof current.params?.customTypeName === 'string' ? current.params.customTypeName.trim() : '';
       selectedReferences.value = [];
       generationDraft.fromStartEnd = 20;
       generationDraft.rangeText = '';
       generationDraft.recentCount = 20;
-      generationDraft.renderMode = continuationEntry?.renderMode
-        || (initialTypePrompt?.renderMode === 'frontend' ? 'frontend' : 'markdown');
+      generationDraft.renderMode =
+        continuationEntry?.renderMode || (initialTypePrompt?.renderMode === 'frontend' ? 'frontend' : 'markdown');
       generationDraft.singleMessageId = 0;
       generationDraft.typeId = current.params?.typeId || '';
       generationDraft.typeName = initialTypePrompt?.name || customTypeName;
@@ -721,11 +799,11 @@ useInvalidRouteFallback({
     hasPreview: Boolean(generationState.preview),
     page: route.value.page,
   }),
-  isInvalid: current => current.appId === 'theater' && (
-    current.page === 'preview' && !current.hasPreview
-    || ['entry', 'bagu-scan'].includes(current.page) && !current.hasEntry
-    || current.page === 'failed-draft' && !current.hasFailedDraft
-  ),
+  isInvalid: current =>
+    current.appId === 'theater' &&
+    ((current.page === 'preview' && !current.hasPreview) ||
+      (['entry', 'bagu-scan'].includes(current.page) && !current.hasEntry) ||
+      (current.page === 'failed-draft' && !current.hasFailedDraft)),
   fallback: () => {
     if (route.value.appId !== 'theater') return;
     phone.replacePage(entries.value.length ? 'history' : 'root', entries.value.length ? '小剧场记录' : '小剧场');
@@ -906,7 +984,11 @@ function returnToGenerate() {
     phone.replacePage('failed-draft', '解析失败草稿', { draftId: generationState.preview.draftId });
     return;
   }
-  phone.replacePage('generate', '小剧场配置', generationState.preview?.typeId ? { typeId: generationState.preview.typeId } : undefined);
+  phone.replacePage(
+    'generate',
+    '小剧场配置',
+    generationState.preview?.typeId ? { typeId: generationState.preview.typeId } : undefined,
+  );
 }
 
 function saveGenerationTypePrompt() {
@@ -947,44 +1029,48 @@ async function runGeneration() {
   const savedTypePrompt = saveGenerationTypePrompt();
 
   try {
-    const result = await generateContent(theaterGenerationAdapter, {
-      appPrompt: appPrompts.value.theater,
-      outputFormat: buildOutputFormat(generationDraft.renderMode),
-      renderMode: generationDraft.renderMode,
-      typeId: savedTypePrompt?.id || generationDraft.typeId,
-      typeName: generationDraft.typeName,
-      typePrompt: generationDraft.typePrompt,
-      userRequirement: generationDraft.userRequirement,
-    }, {
-      createFailedDraft: input => theater.createFailedDraft(input),
-      generationDefaults: {
-        resultMode: settings.value.generation.resultMode,
-        stream: settings.value.generation.stream,
-        tavernPresetName: settings.value.generation.tavernPresetName,
+    const result = await generateContent(
+      theaterGenerationAdapter,
+      {
+        appPrompt: appPrompts.value.theater,
+        outputFormat: buildOutputFormat(generationDraft.renderMode),
+        renderMode: generationDraft.renderMode,
+        typeId: savedTypePrompt?.id || generationDraft.typeId,
+        typeName: generationDraft.typeName,
+        typePrompt: generationDraft.typePrompt,
+        userRequirement: generationDraft.userRequirement,
       },
-      references: formattedReferences.value,
-      lifecycle: {
-        onFinish() {
-          generationState.running = false;
-          generationState.generationId = '';
+      {
+        createFailedDraft: input => theater.createFailedDraft(input),
+        generationDefaults: {
+          resultMode: settings.value.generation.resultMode,
+          stream: settings.value.generation.stream,
+          tavernPresetName: settings.value.generation.tavernPresetName,
         },
-        onRawOutput(rawOutput) {
-          generationState.rawOutput = rawOutput;
+        references: formattedReferences.value,
+        lifecycle: {
+          onFinish() {
+            generationState.running = false;
+            generationState.generationId = '';
+          },
+          onRawOutput(rawOutput) {
+            generationState.rawOutput = rawOutput;
+          },
+          onStart(generationId) {
+            generationState.running = true;
+            generationState.generationId = generationId;
+          },
         },
-        onStart(generationId) {
-          generationState.running = true;
-          generationState.generationId = generationId;
+        source: {
+          fromStartEnd: generationDraft.fromStartEnd,
+          mode: settings.value.generation.sourceMode,
+          rangeText: generationDraft.rangeText,
+          recentCount: generationDraft.recentCount,
+          singleMessageId: generationDraft.singleMessageId,
         },
+        textProvider: settings.value.textProvider,
       },
-      source: {
-        fromStartEnd: generationDraft.fromStartEnd,
-        mode: settings.value.generation.sourceMode,
-        rangeText: generationDraft.rangeText,
-        recentCount: generationDraft.recentCount,
-        singleMessageId: generationDraft.singleMessageId,
-      },
-      textProvider: settings.value.textProvider,
-    });
+    );
 
     if (result.status === 'failed') {
       generationState.error = result.warnings.join('；') || '模型没有返回可解析的小剧场 XML';
@@ -1050,7 +1136,10 @@ function reparsePreviewAs(renderMode: TheaterRenderMode, successMessage: string)
     return false;
   }
 
-  const parsed = parseTheaterXmlResult(rawOutput, renderMode === 'frontend' ? { preserveContentMarkup: true } : undefined);
+  const parsed = parseTheaterXmlResult(
+    rawOutput,
+    renderMode === 'frontend' ? { preserveContentMarkup: true } : undefined,
+  );
   if (!parsed.ok) {
     preview.raw = rawOutput;
     preview.warnings = parsed.warnings;
@@ -1126,7 +1215,10 @@ function reparseFailedDraft() {
   }
 
   const renderMode = failedDraftRenderMode.value;
-  const parsed = parseTheaterXmlResult(rawOutput, renderMode === 'frontend' ? { preserveContentMarkup: true } : undefined);
+  const parsed = parseTheaterXmlResult(
+    rawOutput,
+    renderMode === 'frontend' ? { preserveContentMarkup: true } : undefined,
+  );
   if (!parsed.ok) {
     theater.updateFailedDraft(failedDraft.id, {
       rawOutput,
@@ -1151,7 +1243,10 @@ function reparseFailedDraft() {
     },
     title: parsed.data.title,
     typeId: typeof failedDraft.context.typeId === 'string' ? failedDraft.context.typeId : undefined,
-    typeName: typeof failedDraft.context.typeName === 'string' && failedDraft.context.typeName.trim() ? failedDraft.context.typeName : '未分类小剧场',
+    typeName:
+      typeof failedDraft.context.typeName === 'string' && failedDraft.context.typeName.trim()
+        ? failedDraft.context.typeName
+        : '未分类小剧场',
     warnings: parsed.warnings,
   };
   persistTheaterPreviewDraft();
@@ -1163,7 +1258,6 @@ function reparseFailedDraft() {
 function handleFrameNavigateBlocked() {
   toastr.warning('检测到 Frontend 视图尝试重新加载，已按安全策略卸载 iframe');
 }
-
 </script>
 
 <style scoped>
@@ -1498,7 +1592,4 @@ function handleFrameNavigateBlocked() {
   font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
   font-size: 12px;
 }
-
 </style>
-
-

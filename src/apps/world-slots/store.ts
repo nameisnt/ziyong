@@ -108,7 +108,9 @@ function buildProfileContent(entry: ProfileEntry) {
     entry.summary ? `摘要：${entry.summary}` : '',
     entry.tags.length ? `标签：${entry.tags.join('、')}` : '',
     entry.content,
-  ].filter(Boolean).join('\n');
+  ]
+    .filter(Boolean)
+    .join('\n');
 }
 
 function buildWorldEntryContent(slot: WorldSlot) {
@@ -117,10 +119,9 @@ function buildWorldEntryContent(slot: WorldSlot) {
     .map(entryId => profiles.getEntry(entryId))
     .filter((entry): entry is ProfileEntry => Boolean(entry))
     .map(buildProfileContent);
-  return [
-    slot.content.trim(),
-    profileBlocks.length ? ['[引用资料卡片]', ...profileBlocks].join('\n\n') : '',
-  ].filter(Boolean).join('\n\n');
+  return [slot.content.trim(), profileBlocks.length ? ['[引用资料卡片]', ...profileBlocks].join('\n\n') : '']
+    .filter(Boolean)
+    .join('\n\n');
 }
 
 function nextEntryId(entries: Record<string, WorldBookEntry>) {
@@ -137,7 +138,9 @@ export const useWorldSlotsStore = defineStore('world-slots', () => {
     createDefault: () => validateInplace(WorldSlotsScopeDataSchema, {}),
   });
 
-  const slots = computed(() => [...data.value.slots].sort((left, right) => right.updatedAt.localeCompare(left.updatedAt)));
+  const slots = computed(() =>
+    [...data.value.slots].sort((left, right) => right.updatedAt.localeCompare(left.updatedAt)),
+  );
 
   function getSlot(slotId: string) {
     return data.value.slots.find(slot => slot.id === slotId) ?? null;
@@ -147,7 +150,9 @@ export const useWorldSlotsStore = defineStore('world-slots', () => {
     data.value.bookName = bookName.trim();
   }
 
-  function createSlot(input: Partial<Pick<WorldSlot, 'content' | 'enabled' | 'keys' | 'profileEntryIds' | 'title' | 'type'>>) {
+  function createSlot(
+    input: Partial<Pick<WorldSlot, 'content' | 'enabled' | 'keys' | 'profileEntryIds' | 'title' | 'type'>>,
+  ) {
     const timestamp = nowIso();
     const slot: WorldSlot = {
       id: createId('world_slot'),
@@ -165,7 +170,10 @@ export const useWorldSlotsStore = defineStore('world-slots', () => {
     return slot;
   }
 
-  function updateSlot(slotId: string, input: Pick<WorldSlot, 'content' | 'enabled' | 'keys' | 'profileEntryIds' | 'title' | 'type'>) {
+  function updateSlot(
+    slotId: string,
+    input: Pick<WorldSlot, 'content' | 'enabled' | 'keys' | 'profileEntryIds' | 'title' | 'type'>,
+  ) {
     const slot = getSlot(slotId);
     if (!slot) return null;
     slot.title = input.title.trim() || slot.title;
@@ -186,15 +194,18 @@ export const useWorldSlotsStore = defineStore('world-slots', () => {
     const bookName = data.value.bookName.trim();
     if (!bookName) throw new Error('请先填写世界书名称');
     const loadWorldInfo = getOptionalGlobalFunction<(name: string) => Promise<unknown | null>>('loadWorldInfo');
-    const saveWorldInfo = getOptionalGlobalFunction<(name: string, data: unknown, immediately?: boolean) => Promise<void>>('saveWorldInfo');
+    const saveWorldInfo =
+      getOptionalGlobalFunction<(name: string, data: unknown, immediately?: boolean) => Promise<void>>('saveWorldInfo');
     const updateWorldInfoList = getOptionalGlobalFunction<() => Promise<void>>('updateWorldInfoList');
-    const reloadWorldInfoEditor = getOptionalGlobalFunction<(file: string, loadIfNotSelected?: boolean) => void>('reloadWorldInfoEditor');
+    const reloadWorldInfoEditor =
+      getOptionalGlobalFunction<(file: string, loadIfNotSelected?: boolean) => void>('reloadWorldInfoEditor');
     if (!loadWorldInfo || !saveWorldInfo) throw new Error('当前酒馆环境没有开放世界书读写 API');
 
     const loaded = await loadWorldInfo(bookName);
-    const book = loaded && typeof loaded === 'object'
-      ? klona(loaded) as { entries?: Record<string, WorldBookEntry>; name?: string }
-      : { entries: {}, name: bookName };
+    const book =
+      loaded && typeof loaded === 'object'
+        ? (klona(loaded) as { entries?: Record<string, WorldBookEntry>; name?: string })
+        : { entries: {}, name: bookName };
     const entries = book.entries && typeof book.entries === 'object' ? book.entries : {};
     const entryIdBySlot = new Map<string, number>();
 

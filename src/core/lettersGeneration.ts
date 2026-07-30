@@ -1,5 +1,10 @@
 import { CharacterRefSchema } from '@/type/diary';
-import { GenerationRequestPartsSchema, SimpleXmlResultSchema, type GenerationAdapter, type SimpleXmlResult } from '@/type/generation';
+import {
+  GenerationRequestPartsSchema,
+  SimpleXmlResultSchema,
+  type GenerationAdapter,
+  type SimpleXmlResult,
+} from '@/type/generation';
 import type { LetterBook, LetterEntry, LetterFormat } from '@/type/letter';
 import { LetterFormatSchema } from '@/type/letter';
 import { parseSimpleXmlResult } from '@/util/generation';
@@ -73,5 +78,9 @@ export function createLettersGenerationAdapter(lettersStore: {
         entry: saved.entry,
       };
     },
-  } satisfies GenerationAdapter<LetterGenerateConfig, SimpleXmlResult, { book: LetterBook; entityId: string; entry: LetterEntry }>;
+  } satisfies GenerationAdapter<
+    LetterGenerateConfig,
+    SimpleXmlResult,
+    { book: LetterBook; entityId: string; entry: LetterEntry }
+  >;
 }

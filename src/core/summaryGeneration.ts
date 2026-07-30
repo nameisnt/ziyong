@@ -1,5 +1,10 @@
 import type { SummaryEntry } from '@/type/summary';
-import { GenerationRequestPartsSchema, SimpleXmlResultSchema, type GenerationAdapter, type SimpleXmlResult } from '@/type/generation';
+import {
+  GenerationRequestPartsSchema,
+  SimpleXmlResultSchema,
+  type GenerationAdapter,
+  type SimpleXmlResult,
+} from '@/type/generation';
 import { parseSimpleXmlResult } from '@/util/generation';
 import { parseConfiguredOutput } from '@/util/outputParsing';
 import { parsePrettified } from '@/util/zod';

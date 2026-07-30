@@ -31,20 +31,25 @@ function draftKey(appId: string, page: string) {
 }
 
 export const usePreviewDraftStore = defineStore('previewDrafts', () => {
-  const { data, rehydrateFromSettings, resetCurrentScope, scopeKey, switchScope } = useChatScopedDomain<PreviewDraftScopeData>({
-    field: previewDraftsField,
-    schema: PreviewDraftScopeDataSchema,
-    createDefault: () => validateInplace(PreviewDraftScopeDataSchema, {}),
-  });
+  const { data, rehydrateFromSettings, resetCurrentScope, scopeKey, switchScope } =
+    useChatScopedDomain<PreviewDraftScopeData>({
+      field: previewDraftsField,
+      schema: PreviewDraftScopeDataSchema,
+      createDefault: () => validateInplace(PreviewDraftScopeDataSchema, {}),
+    });
 
-  const drafts = computed(() => [...data.value.drafts].sort((left, right) => right.updatedAt.localeCompare(left.updatedAt)));
+  const drafts = computed(() =>
+    [...data.value.drafts].sort((left, right) => right.updatedAt.localeCompare(left.updatedAt)),
+  );
 
   function getPreviewDraft(appId: string, page: string) {
     const key = draftKey(appId, page);
     return data.value.drafts.find(draft => draftKey(draft.appId, draft.page) === key) ?? null;
   }
 
-  function upsertPreviewDraft(input: Pick<GenerationPreviewDraft, 'appId' | 'page' | 'preview' | 'routeParams' | 'title'>) {
+  function upsertPreviewDraft(
+    input: Pick<GenerationPreviewDraft, 'appId' | 'page' | 'preview' | 'routeParams' | 'title'>,
+  ) {
     const timestamp = nowIso();
     const existing = getPreviewDraft(input.appId, input.page);
     if (existing) {

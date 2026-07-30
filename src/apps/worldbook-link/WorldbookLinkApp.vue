@@ -10,7 +10,13 @@
     <section v-else-if="route.page === 'root'" class="pc-worldbook-page">
       <header class="pc-worldbook-head">
         <span class="pc-kicker">{{ t`当前聊天` }}</span>
-        <button class="pc-icon-btn pc-worldbook-refresh" type="button" :title="t`刷新`" :disabled="refreshing" @click="refresh">
+        <button
+          class="pc-icon-btn pc-worldbook-refresh"
+          type="button"
+          :title="t`刷新`"
+          :disabled="refreshing"
+          @click="refresh"
+        >
           <i class="fa-solid fa-rotate" :class="{ 'fa-spin': refreshing }"></i>
         </button>
       </header>
@@ -73,7 +79,10 @@
             </article>
           </div>
         </section>
-        <EmptyState v-if="!visibleBookCount" :title="searchQuery.trim() ? t`没有找到匹配的世界书` : emptyCategoryTitle" />
+        <EmptyState
+          v-if="!visibleBookCount"
+          :title="searchQuery.trim() ? t`没有找到匹配的世界书` : emptyCategoryTitle"
+        />
       </div>
     </section>
 
@@ -84,7 +93,11 @@
           <span class="category">{{ activeCategoryLabel }}</span>
           <span>{{ detailStatus.currentEntries.length }} {{ t`个条目` }}</span>
           <span>{{ detailStatus.enabledCount }} {{ t`个启用` }}</span>
-          <span>{{ detailStatus.profile ? `${detailStatus.profile.entries.filter(entry => entry.enabled).length} 个关联` : t`未关联` }}</span>
+          <span>{{
+            detailStatus.profile
+              ? `${detailStatus.profile.entries.filter(entry => entry.enabled).length} 个关联`
+              : t`未关联`
+          }}</span>
         </div>
       </article>
 
@@ -100,17 +113,41 @@
         </div>
         <div class="pc-worldbook-link-actions">
           <template v-if="detailStatus.profile">
-            <button class="pc-icon-btn" type="button" :disabled="busy" :title="t`应用聊天配置`" @click="applySavedProfile">
+            <button
+              class="pc-icon-btn"
+              type="button"
+              :disabled="busy"
+              :title="t`应用聊天配置`"
+              @click="applySavedProfile"
+            >
               <i class="fa-solid fa-play"></i>
             </button>
-            <button class="pc-icon-btn" type="button" :disabled="busy" :title="t`以当前状态更新配置`" @click="captureCurrentProfile">
+            <button
+              class="pc-icon-btn"
+              type="button"
+              :disabled="busy"
+              :title="t`以当前状态更新配置`"
+              @click="captureCurrentProfile"
+            >
               <i class="fa-solid fa-floppy-disk"></i>
             </button>
-            <button class="pc-icon-btn danger" type="button" :disabled="busy" :title="t`停止联动`" @click="unlinkCurrentBook">
+            <button
+              class="pc-icon-btn danger"
+              type="button"
+              :disabled="busy"
+              :title="t`停止联动`"
+              @click="unlinkCurrentBook"
+            >
               <i class="fa-solid fa-link-slash"></i>
             </button>
           </template>
-          <button v-else class="pc-soft-btn pc-worldbook-link-create" type="button" :disabled="busy" @click="captureCurrentProfile">
+          <button
+            v-else
+            class="pc-soft-btn pc-worldbook-link-create"
+            type="button"
+            :disabled="busy"
+            @click="captureCurrentProfile"
+          >
             <i class="fa-solid fa-link"></i>
             <span>{{ t`关联` }}</span>
           </button>
@@ -141,7 +178,9 @@
                 >
                   <i class="fa-solid fa-chevron-right" :class="{ expanded: expandedEntryUid === entry.uid }"></i>
                   <span class="pc-worldbook-entry-copy">
-                    <strong :title="entry.name || `条目 #${entry.uid}`">{{ entry.name || `条目 #${entry.uid}` }}</strong>
+                    <strong :title="entry.name || `条目 #${entry.uid}`">{{
+                      entry.name || `条目 #${entry.uid}`
+                    }}</strong>
                     <small>{{ entry.enabled ? t`已启用` : t`未启用` }}</small>
                   </span>
                 </button>
@@ -162,7 +201,10 @@
             </article>
           </div>
         </section>
-        <EmptyState v-if="!visibleEntryCount" :title="entryQuery.trim() ? t`没有找到匹配的条目` : t`这本世界书没有条目`" />
+        <EmptyState
+          v-if="!visibleEntryCount"
+          :title="entryQuery.trim() ? t`没有找到匹配的条目` : t`这本世界书没有条目`"
+        />
       </template>
       <EmptyState v-else :title="t`正在读取世界书条目`" />
     </section>
@@ -215,7 +257,9 @@ let globalMutationQueue: Promise<void> = Promise.resolve();
 const entryMutationQueues = new Map<string, Promise<void>>();
 
 const currentScopeKey = computed(() => phone.currentTavernScopeKey);
-const activeCategoryLabel = computed(() => categories.find(category => category.id === activeCategory.value)?.label || '世界书');
+const activeCategoryLabel = computed(
+  () => categories.find(category => category.id === activeCategory.value)?.label || '世界书',
+);
 const detailBookName = computed(() => route.value.params?.bookName || '未命名世界书');
 const linkStateLabel = computed(() => {
   if (!detailStatus.value?.profile) return '未关联';
@@ -235,26 +279,34 @@ const visibleBookSections = computed(() => {
   }
   return [{ books: filterBooks(groups[activeCategory.value]), id: activeCategory.value, label: '' }];
 });
-const visibleBookCount = computed(() => visibleBookSections.value.reduce((sum, section) => sum + section.books.length, 0));
+const visibleBookCount = computed(() =>
+  visibleBookSections.value.reduce((sum, section) => sum + section.books.length, 0),
+);
 const visibleEntrySections = computed(() => {
   const keyword = entryQuery.value.trim().toLocaleLowerCase();
-  const entries = detailStatus.value?.currentEntries.filter(entry => {
-    if (!keyword) return true;
-    return (entry.name || `条目 #${entry.uid}`).toLocaleLowerCase().includes(keyword);
-  }) ?? [];
+  const entries =
+    detailStatus.value?.currentEntries.filter(entry => {
+      if (!keyword) return true;
+      return (entry.name || `条目 #${entry.uid}`).toLocaleLowerCase().includes(keyword);
+    }) ?? [];
   return [
     { entries: entries.filter(entry => entry.enabled), id: 'enabled', label: '已启用' },
     { entries: entries.filter(entry => !entry.enabled), id: 'disabled', label: '未启用' },
   ];
 });
-const visibleEntryCount = computed(() => visibleEntrySections.value.reduce((sum, section) => sum + section.entries.length, 0));
-const emptyCategoryTitle = computed(() => ({
-  global: '没有可归入全局分类的世界书',
-  character: '当前角色没有角色世界书',
-  additional: '当前角色没有附加世界书',
-  chat: '当前聊天没有绑定世界书',
-  other: '没有找到其他角色绑定的世界书',
-})[activeCategory.value]);
+const visibleEntryCount = computed(() =>
+  visibleEntrySections.value.reduce((sum, section) => sum + section.entries.length, 0),
+);
+const emptyCategoryTitle = computed(
+  () =>
+    ({
+      global: '没有可归入全局分类的世界书',
+      character: '当前角色没有角色世界书',
+      additional: '当前角色没有附加世界书',
+      chat: '当前聊天没有绑定世界书',
+      other: '没有找到其他角色绑定的世界书',
+    })[activeCategory.value],
+);
 
 watch(activeCategory, () => {
   searchQuery.value = '';
@@ -305,12 +357,16 @@ function isGlobalEnabled(bookName: string) {
 
 function bookSubtitle(bookName: string) {
   if (activeCategory.value === 'global') return isGlobalEnabled(bookName) ? '全局已启用' : '未全局启用';
-  return ({
-    additional: '当前角色附加世界书',
-    character: '当前角色世界书',
-    chat: '当前聊天世界书',
-    other: '其他角色绑定',
-  } as const)[activeCategory.value] || '世界书';
+  return (
+    (
+      {
+        additional: '当前角色附加世界书',
+        character: '当前角色世界书',
+        chat: '当前聊天世界书',
+        other: '其他角色绑定',
+      } as const
+    )[activeCategory.value] || '世界书'
+  );
 }
 
 function openBook(bookName: string) {
@@ -368,11 +424,14 @@ async function applySavedProfile() {
 }
 
 async function unlinkCurrentBook() {
-  const confirmed = await phone.confirmNotice(`停止“${detailBookName.value}”与当前聊天的联动，并恢复首次关联前的条目状态吗？`, {
-    confirmLabel: '停止联动',
-    kind: 'warning',
-    title: '停止世界书联动？',
-  });
+  const confirmed = await phone.confirmNotice(
+    `停止“${detailBookName.value}”与当前聊天的联动，并恢复首次关联前的条目状态吗？`,
+    {
+      confirmLabel: '停止联动',
+      kind: 'warning',
+      title: '停止世界书联动？',
+    },
+  );
   if (!confirmed) return;
   busy.value = true;
   try {
@@ -427,7 +486,10 @@ async function toggleWorldbookEntry(entry: WorldbookEntry, event: Event) {
       : await worldbookLinks.getStatus(scopeKey, bookName, result.entries);
     if (detailBookName.value === bookName) detailStatus.value = status;
   });
-  entryMutationQueues.set(bookName, mutation.catch(() => undefined));
+  entryMutationQueues.set(
+    bookName,
+    mutation.catch(() => undefined),
+  );
 
   try {
     await mutation;
@@ -440,7 +502,6 @@ async function toggleWorldbookEntry(entry: WorldbookEntry, event: Event) {
     entryBusyUids.value = next;
   }
 }
-
 </script>
 
 <style scoped>

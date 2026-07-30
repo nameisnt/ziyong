@@ -1,9 +1,18 @@
 <template>
   <section class="pc-minigame-panel pc-solitaire-game">
     <section class="pc-minigame-stats">
-      <article><span>{{ t`牌库` }}</span><strong>{{ stockCount }}</strong></article>
-      <article><span>{{ t`收集` }}</span><strong>{{ foundationCount }}/52</strong></article>
-      <article><span>{{ t`步数` }}</span><strong>{{ state.moves }}</strong></article>
+      <article>
+        <span>{{ t`牌库` }}</span
+        ><strong>{{ stockCount }}</strong>
+      </article>
+      <article>
+        <span>{{ t`收集` }}</span
+        ><strong>{{ foundationCount }}/52</strong>
+      </article>
+      <article>
+        <span>{{ t`步数` }}</span
+        ><strong>{{ state.moves }}</strong>
+      </article>
     </section>
 
     <section class="pc-solitaire-top" aria-label="接龙牌库与基础堆">
@@ -21,7 +30,8 @@
         @dblclick="moveWasteToFoundation"
       >
         <span v-if="wasteTop" class="pc-solitaire-card-face" :data-red="isRed(wasteTop)">
-          <strong>{{ rankLabel(wasteTop) }}</strong><i>{{ suitSymbol(wasteTop.getSuit()) }}</i>
+          <strong>{{ rankLabel(wasteTop) }}</strong
+          ><i>{{ suitSymbol(wasteTop.getSuit()) }}</i>
         </span>
       </button>
       <span class="pc-solitaire-top-spacer"></span>
@@ -34,7 +44,8 @@
         @click="selectOrMoveFoundation(foundation.suit)"
       >
         <span v-if="foundation.card" class="pc-solitaire-card-face" :data-red="isRed(foundation.card)">
-          <strong>{{ rankLabel(foundation.card) }}</strong><i>{{ suitSymbol(foundation.suit) }}</i>
+          <strong>{{ rankLabel(foundation.card) }}</strong
+          ><i>{{ suitSymbol(foundation.suit) }}</i>
         </span>
         <i v-else class="pc-solitaire-empty-suit">{{ suitSymbol(foundation.suit) }}</i>
       </button>
@@ -59,7 +70,8 @@
           @dblclick.stop="moveTableauCardToFoundation(pileIndex, cardIndex)"
         >
           <span v-if="card.getUpturned()" class="pc-solitaire-card-face" :data-red="isRed(card)">
-            <strong>{{ rankLabel(card) }}</strong><i>{{ suitSymbol(card.getSuit()) }}</i>
+            <strong>{{ rankLabel(card) }}</strong
+            ><i>{{ suitSymbol(card.getSuit()) }}</i>
           </span>
           <span v-else class="pc-solitaire-card-back"><i class="fa-solid fa-diamond"></i></span>
         </button>
@@ -77,7 +89,12 @@
       <button class="pc-primary-btn" type="button" @click="newGame">
         <i class="fa-solid fa-shuffle"></i><span>{{ t`新一局` }}</span>
       </button>
-      <InfoHint :label="t`纸牌接龙说明`" :text="t`点击牌库抽一张牌；先点击要移动的牌，再点击目标牌堆。桌面按红黑交替、点数递减排列，空列只能放 K；基础堆按同花色从 A 到 K 收集。双击可尝试自动收集。`" />
+      <InfoHint
+        :label="t`纸牌接龙说明`"
+        :text="
+          t`点击牌库抽一张牌；先点击要移动的牌，再点击目标牌堆。桌面按红黑交替、点数递减排列，空列只能放 K；基础堆按同花色从 A 到 K 收集。双击可尝试自动收集。`
+        "
+      />
     </div>
   </section>
 </template>
@@ -268,9 +285,10 @@ function selectOrMoveTableauCard(pileIndex: number, cardIndex: number) {
   }
   if (!card.getUpturned()) return;
   const next: Selection = { from: 'tableau', pile: pileIndex + 1, start: cardIndex };
-  selected.value = selected.value?.from === 'tableau' && selected.value.pile === next.pile && selected.value.start === next.start
-    ? null
-    : next;
+  selected.value =
+    selected.value?.from === 'tableau' && selected.value.pile === next.pile && selected.value.start === next.start
+      ? null
+      : next;
 }
 
 function moveSelectionToTableau(pileIndex: number) {
@@ -315,7 +333,9 @@ function newGame() {
 }
 
 function isSelectedTableauCard(pileIndex: number, cardIndex: number) {
-  return selected.value?.from === 'tableau' && selected.value.pile === pileIndex + 1 && cardIndex >= selected.value.start;
+  return (
+    selected.value?.from === 'tableau' && selected.value.pile === pileIndex + 1 && cardIndex >= selected.value.start
+  );
 }
 
 function isRed(card: Card) {
@@ -329,7 +349,6 @@ function suitSymbol(suit: TSuit) {
 function rankLabel(card: Card) {
   return ({ Ace: 'A', Jack: 'J', King: 'K', Queen: 'Q' } as Record<string, string>)[card.getRank()] ?? card.getRank();
 }
-
 </script>
 
 <style scoped>

@@ -239,9 +239,9 @@ export function isPhoneGenerationEvent(...eventArgs: unknown[]) {
   const generationId = getGenerationIdFromEventArgs(...eventArgs);
   return Boolean(
     generationId &&
-      (generationId.startsWith('phone_') ||
-        activePhoneGenerationIds.has(generationId) ||
-        recentPhoneGenerationIds.has(generationId)),
+    (generationId.startsWith('phone_') ||
+      activePhoneGenerationIds.has(generationId) ||
+      recentPhoneGenerationIds.has(generationId)),
   );
 }
 

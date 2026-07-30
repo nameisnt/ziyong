@@ -38,7 +38,11 @@
         </div>
         <ReferencePicker v-model="selectedReferences" />
         <div v-if="placeholderTokens.length" class="pc-placeholder-list">
-          <button class="pc-soft-btn compact pc-placeholder-chip" type="button" @click="insertPlaceholder(allReferencesToken)">
+          <button
+            class="pc-soft-btn compact pc-placeholder-chip"
+            type="button"
+            @click="insertPlaceholder(allReferencesToken)"
+          >
             {{ t`全部` }} {{ allReferencesToken }}
           </button>
           <button
@@ -107,10 +111,7 @@
 </template>
 
 <script setup lang="ts">
-import {
-  applyChatInsert,
-  formatChatInsertTemplate,
-} from '@/util/chatInsert';
+import { applyChatInsert, formatChatInsertTemplate } from '@/util/chatInsert';
 import InfoHint from '@/components/InfoHint.vue';
 import ReferencePicker from '@/components/ReferencePicker.vue';
 import { usePhoneStore } from '@/store/phone';
@@ -167,30 +168,40 @@ const referenceTokens = computed(() => {
     .filter(item => item.content);
 });
 const referenceContents = computed(() => referenceTokens.value.map(token => token.content));
-const placeholderTokens = computed(() => referenceTokens.value.flatMap(token => [
-  { label: `${token.label}正文`, value: token.value },
-  { label: `${token.label}标题`, value: `${token.value.slice(0, -2)}Title}}` },
-  { label: `${token.label}时间`, value: `${token.value.slice(0, -2)}Time}}` },
-]));
-const referenceHelpText = computed(() => referenceTokens.value.length
-  ? `每条引用都会按来源生成正文、标题、时间占位符：${placeholderTokens.value.map(token => token.value).join('、')}。{{references}} 会合并全部引用正文。`
-  : '选择引用后，会生成 {{diary1}}、{{diary1Title}}、{{diary1Time}} 这样的来源占位符。');
-const placeholderHelpText = computed(() => [
-  '模板会决定最终写入聊天的格式。',
-  '可用占位符：{{references}}。兼容保留 {{title}}、{{content}}，但楼层内容请直接在酒馆编辑。',
-  referenceTokens.value.length ? `当前引用：${placeholderTokens.value.map(token => token.value).join('、')}` : '选择引用后还会按来源出现正文、标题、时间占位符。',
-].join('\n'));
-const preview = computed(() => formatChatInsertTemplate(settings.value.template, {
-  content: '',
-  referenceReplacements: referenceTokens.value.map(token => ({
-    content: token.content,
-    time: token.time,
-    title: token.title,
-    token: token.value,
-  })),
-  references: referenceContents.value,
-  title: '',
-}));
+const placeholderTokens = computed(() =>
+  referenceTokens.value.flatMap(token => [
+    { label: `${token.label}正文`, value: token.value },
+    { label: `${token.label}标题`, value: `${token.value.slice(0, -2)}Title}}` },
+    { label: `${token.label}时间`, value: `${token.value.slice(0, -2)}Time}}` },
+  ]),
+);
+const referenceHelpText = computed(() =>
+  referenceTokens.value.length
+    ? `每条引用都会按来源生成正文、标题、时间占位符：${placeholderTokens.value.map(token => token.value).join('、')}。{{references}} 会合并全部引用正文。`
+    : '选择引用后，会生成 {{diary1}}、{{diary1Title}}、{{diary1Time}} 这样的来源占位符。',
+);
+const placeholderHelpText = computed(() =>
+  [
+    '模板会决定最终写入聊天的格式。',
+    '可用占位符：{{references}}。兼容保留 {{title}}、{{content}}，但楼层内容请直接在酒馆编辑。',
+    referenceTokens.value.length
+      ? `当前引用：${placeholderTokens.value.map(token => token.value).join('、')}`
+      : '选择引用后还会按来源出现正文、标题、时间占位符。',
+  ].join('\n'),
+);
+const preview = computed(() =>
+  formatChatInsertTemplate(settings.value.template, {
+    content: '',
+    referenceReplacements: referenceTokens.value.map(token => ({
+      content: token.content,
+      time: token.time,
+      title: token.title,
+      token: token.value,
+    })),
+    references: referenceContents.value,
+    title: '',
+  }),
+);
 
 function insertPlaceholder(token: string) {
   const current = settings.value.template.trimEnd();
@@ -334,4 +345,3 @@ async function confirmInsert() {
   margin-top: 14px;
 }
 </style>
-

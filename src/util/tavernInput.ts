@@ -11,12 +11,7 @@ export interface AppendToTavernInputResult {
   value: string;
 }
 
-const tavernInputSelectors = [
-  '#send_textarea',
-  'textarea.st-input',
-  'textarea[name="send_textarea"]',
-  'textarea',
-];
+const tavernInputSelectors = ['#send_textarea', 'textarea.st-input', 'textarea[name="send_textarea"]', 'textarea'];
 
 function getReachableDocuments() {
   const documents: Document[] = [];

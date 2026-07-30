@@ -114,9 +114,12 @@ function onPointerUp(event: PointerEvent) {
   }
 
   pointerId.value = null;
-  window.setTimeout(() => {
-    dragging.value = false;
-  }, dragging.value ? 300 : 0);
+  window.setTimeout(
+    () => {
+      dragging.value = false;
+    },
+    dragging.value ? 300 : 0,
+  );
 }
 
 function onPointerCancel(event: PointerEvent) {

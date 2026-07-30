@@ -7,9 +7,17 @@
       <div class="pc-preset-select-row">
         <select v-model="settings.generation.tavernPresetName" class="pc-select" :disabled="controlsDisabled">
           <option value="">{{ t`跟随酒馆当前预设` }}</option>
-          <option v-for="presetName in tavernPresetNames" :key="presetName" :value="presetName">{{ presetName }}</option>
+          <option v-for="presetName in tavernPresetNames" :key="presetName" :value="presetName">
+            {{ presetName }}
+          </option>
         </select>
-        <button class="pc-icon-btn" type="button" :disabled="controlsDisabled" :title="t`刷新预设列表`" @click="refreshTavernPresetNames">
+        <button
+          class="pc-icon-btn"
+          type="button"
+          :disabled="controlsDisabled"
+          :title="t`刷新预设列表`"
+          @click="refreshTavernPresetNames"
+        >
           <i class="fa-solid fa-rotate"></i>
         </button>
       </div>
@@ -29,7 +37,11 @@
       @update:single-message-id="emit('update:singleMessageId', $event)"
     />
 
-    <ReferencePicker :model-value="references" :disabled="controlsDisabled" @update:model-value="emit('update:references', $event)" />
+    <ReferencePicker
+      :model-value="references"
+      :disabled="controlsDisabled"
+      @update:model-value="emit('update:references', $event)"
+    />
 
     <slot name="after-references"></slot>
 
@@ -53,7 +65,7 @@
             <button
               v-for="phrase in group.phrases"
               :key="phrase.id"
-                class="pc-soft-btn compact pc-quick-phrase-chip"
+              class="pc-soft-btn compact pc-quick-phrase-chip"
               type="button"
               @click="appendQuickPhrase(phrase.text)"
             >
@@ -117,44 +129,47 @@ import type { GenerationReferenceItem } from '@/util/references';
 import { getPresetNamesSafe, type CapturedTavernPromptPreview } from '@/util/runtime';
 import { storeToRefs } from 'pinia';
 
-const props = withDefaults(defineProps<{
-  cancelLabel?: string;
-  capture: () => Promise<CapturedTavernPromptPreview>;
-  captureResetKey?: unknown;
-  error?: string;
-  errorTitle?: string;
-  fromStartEnd: number;
-  generateIcon?: string;
-  generateLabel?: string;
-  liveOutputLabel?: string;
-  rangeText: string;
-  rawOutput?: string;
-  rawOutputLabel?: string;
-  recentCount: number;
-  references: GenerationReferenceItem[];
-  requirementLabel?: string;
-  requirementPlaceholder?: string;
-  running: boolean;
-  runningLabel?: string;
-  singleMessageId: number;
-  sourceMode: SummaryGenerationSourceMode;
-  stopLabel?: string;
-  userRequirement: string;
-}>(), {
-  cancelLabel: '取消',
-  captureResetKey: undefined,
-  error: '',
-  errorTitle: '生成失败',
-  generateIcon: 'fa-solid fa-sparkles',
-  generateLabel: '开始生成',
-  liveOutputLabel: '实时输出',
-  rawOutput: '',
-  rawOutputLabel: '原始输出',
-  requirementLabel: '追加要求',
-  requirementPlaceholder: '例如：重点概括角色关系变化，并保留后续悬念。',
-  runningLabel: '生成中',
-  stopLabel: '停止',
-});
+const props = withDefaults(
+  defineProps<{
+    cancelLabel?: string;
+    capture: () => Promise<CapturedTavernPromptPreview>;
+    captureResetKey?: unknown;
+    error?: string;
+    errorTitle?: string;
+    fromStartEnd: number;
+    generateIcon?: string;
+    generateLabel?: string;
+    liveOutputLabel?: string;
+    rangeText: string;
+    rawOutput?: string;
+    rawOutputLabel?: string;
+    recentCount: number;
+    references: GenerationReferenceItem[];
+    requirementLabel?: string;
+    requirementPlaceholder?: string;
+    running: boolean;
+    runningLabel?: string;
+    singleMessageId: number;
+    sourceMode: SummaryGenerationSourceMode;
+    stopLabel?: string;
+    userRequirement: string;
+  }>(),
+  {
+    cancelLabel: '取消',
+    captureResetKey: undefined,
+    error: '',
+    errorTitle: '生成失败',
+    generateIcon: 'fa-solid fa-sparkles',
+    generateLabel: '开始生成',
+    liveOutputLabel: '实时输出',
+    rawOutput: '',
+    rawOutputLabel: '原始输出',
+    requirementLabel: '追加要求',
+    requirementPlaceholder: '例如：重点概括角色关系变化，并保留后续悬念。',
+    runningLabel: '生成中',
+    stopLabel: '停止',
+  },
+);
 
 const phone = usePhoneStore();
 const prompts = usePromptStore();

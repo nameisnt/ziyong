@@ -14,17 +14,39 @@
 
     <div v-if="mode === 'recent'" class="pc-number-field">
       <label class="pc-field-label">{{ t`最近 N 楼` }}</label>
-      <input :value="recentCount" class="pc-field" type="number" min="1" max="200" :disabled="disabled" @input="onRecentCountInput" />
+      <input
+        :value="recentCount"
+        class="pc-field"
+        type="number"
+        min="1"
+        max="200"
+        :disabled="disabled"
+        @input="onRecentCountInput"
+      />
     </div>
 
     <div v-else-if="mode === 'fromStart'" class="pc-number-field">
       <label class="pc-field-label">{{ t`结束楼层` }}</label>
-      <input :value="fromStartEnd" class="pc-field" type="number" min="0" :disabled="disabled" @input="onFromStartEndInput" />
+      <input
+        :value="fromStartEnd"
+        class="pc-field"
+        type="number"
+        min="0"
+        :disabled="disabled"
+        @input="onFromStartEndInput"
+      />
     </div>
 
     <div v-else-if="mode === 'single'" class="pc-number-field">
       <label class="pc-field-label">{{ t`指定楼层` }}</label>
-      <input :value="singleMessageId" class="pc-field" type="number" min="0" :disabled="disabled" @input="onSingleMessageIdInput" />
+      <input
+        :value="singleMessageId"
+        class="pc-field"
+        type="number"
+        min="0"
+        :disabled="disabled"
+        @input="onSingleMessageIdInput"
+      />
     </div>
 
     <div v-else-if="mode === 'range'" class="pc-number-field">
@@ -43,18 +65,21 @@
 <script setup lang="ts">
 type SourceMode = 'latest' | 'fromStart' | 'all' | 'single' | 'recent' | 'range';
 
-const props = withDefaults(defineProps<{
-  disabled?: boolean;
-  fromStartEnd: number;
-  label?: string;
-  mode: SourceMode;
-  rangeText: string;
-  recentCount: number;
-  singleMessageId: number;
-}>(), {
-  disabled: false,
-  label: '',
-});
+const props = withDefaults(
+  defineProps<{
+    disabled?: boolean;
+    fromStartEnd: number;
+    label?: string;
+    mode: SourceMode;
+    rangeText: string;
+    recentCount: number;
+    singleMessageId: number;
+  }>(),
+  {
+    disabled: false,
+    label: '',
+  },
+);
 
 const emit = defineEmits<{
   'update:fromStartEnd': [value: number];

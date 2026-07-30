@@ -48,18 +48,20 @@ export default definePhoneApp({
   accent: '#8e44ad',
   defaultRoute: 'root',
   defaultOrder: 128,
-  backupDomains: [{
-    key: 'theme',
-    exportData: readThemeBackupData,
-    importData: data => {
-      const current = parsePrettified(Settings, _.get(extension_settings, setting_field, {}));
-      const themeData = parsePrettified(ThemeBackupSchema, data ?? {});
-      _.set(extension_settings, setting_field, {
-        ...current,
-        ...themeData,
-      });
+  backupDomains: [
+    {
+      key: 'theme',
+      exportData: readThemeBackupData,
+      importData: data => {
+        const current = parsePrettified(Settings, _.get(extension_settings, setting_field, {}));
+        const themeData = parsePrettified(ThemeBackupSchema, data ?? {});
+        _.set(extension_settings, setting_field, {
+          ...current,
+          ...themeData,
+        });
+      },
+      rehydrateFromSettings: () => useSettingsStore().rehydrateFromSettings(),
     },
-    rehydrateFromSettings: () => useSettingsStore().rehydrateFromSettings(),
-  }],
+  ],
   component: ThemeApp,
 });

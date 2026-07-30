@@ -136,9 +136,17 @@ export const useStorylinesStore = defineStore('storylines', () => {
     createDefault: () => validateInplace(StorylinesScopeDataSchema, {}),
   });
 
-  const lines = computed(() => [...data.value.lines].sort((left, right) => right.updatedAt.localeCompare(left.updatedAt)));
-  const hooks = computed(() => [...data.value.hooks].sort((left, right) => right.updatedAt.localeCompare(left.updatedAt)));
-  const beats = computed(() => [...data.value.beats].sort((left, right) => left.order - right.order || left.createdAt.localeCompare(right.createdAt)));
+  const lines = computed(() =>
+    [...data.value.lines].sort((left, right) => right.updatedAt.localeCompare(left.updatedAt)),
+  );
+  const hooks = computed(() =>
+    [...data.value.hooks].sort((left, right) => right.updatedAt.localeCompare(left.updatedAt)),
+  );
+  const beats = computed(() =>
+    [...data.value.beats].sort(
+      (left, right) => left.order - right.order || left.createdAt.localeCompare(right.createdAt),
+    ),
+  );
   const { createFailedDraft, deleteFailedDraft, failedDrafts, getFailedDraft, updateFailedDraft } =
     createFailedDraftCollection(data, 'storylines_failed');
 
@@ -154,7 +162,10 @@ export const useStorylinesStore = defineStore('storylines', () => {
     return data.value.beats.find(beat => beat.id === beatId) ?? null;
   }
 
-  function createLine(input: Partial<Pick<Storyline, 'goal' | 'kind' | 'relatedProfileIds' | 'stakes' | 'status' | 'summary' | 'tags'>> & Pick<Storyline, 'title'>) {
+  function createLine(
+    input: Partial<Pick<Storyline, 'goal' | 'kind' | 'relatedProfileIds' | 'stakes' | 'status' | 'summary' | 'tags'>> &
+      Pick<Storyline, 'title'>,
+  ) {
     const timestamp = nowIso();
     const line: Storyline = {
       id: createId('storyline'),
@@ -173,7 +184,10 @@ export const useStorylinesStore = defineStore('storylines', () => {
     return line;
   }
 
-  function updateLine(lineId: string, input: Pick<Storyline, 'goal' | 'kind' | 'relatedProfileIds' | 'stakes' | 'status' | 'summary' | 'tags' | 'title'>) {
+  function updateLine(
+    lineId: string,
+    input: Pick<Storyline, 'goal' | 'kind' | 'relatedProfileIds' | 'stakes' | 'status' | 'summary' | 'tags' | 'title'>,
+  ) {
     const line = getLine(lineId);
     if (!line) return null;
     line.title = input.title.trim() || line.title;
@@ -196,7 +210,9 @@ export const useStorylinesStore = defineStore('storylines', () => {
     });
   }
 
-  function createBeat(input: Partial<Pick<StorylineBeat, 'order' | 'status' | 'summary'>> & Pick<StorylineBeat, 'lineId' | 'title'>) {
+  function createBeat(
+    input: Partial<Pick<StorylineBeat, 'order' | 'status' | 'summary'>> & Pick<StorylineBeat, 'lineId' | 'title'>,
+  ) {
     const timestamp = nowIso();
     const beat: StorylineBeat = {
       id: createId('storyline_beat'),
@@ -228,7 +244,10 @@ export const useStorylinesStore = defineStore('storylines', () => {
     data.value.beats = data.value.beats.filter(beat => beat.id !== beatId);
   }
 
-  function createHook(input: Partial<Pick<Foreshadow, 'lineId' | 'payoff' | 'relatedProfileIds' | 'seed' | 'status' | 'tags'>> & Pick<Foreshadow, 'title'>) {
+  function createHook(
+    input: Partial<Pick<Foreshadow, 'lineId' | 'payoff' | 'relatedProfileIds' | 'seed' | 'status' | 'tags'>> &
+      Pick<Foreshadow, 'title'>,
+  ) {
     const timestamp = nowIso();
     const hook: Foreshadow = {
       id: createId('foreshadow'),
@@ -246,7 +265,10 @@ export const useStorylinesStore = defineStore('storylines', () => {
     return hook;
   }
 
-  function updateHook(hookId: string, input: Pick<Foreshadow, 'lineId' | 'payoff' | 'relatedProfileIds' | 'seed' | 'status' | 'tags' | 'title'>) {
+  function updateHook(
+    hookId: string,
+    input: Pick<Foreshadow, 'lineId' | 'payoff' | 'relatedProfileIds' | 'seed' | 'status' | 'tags' | 'title'>,
+  ) {
     const hook = getHook(hookId);
     if (!hook) return null;
     hook.lineId = input.lineId.trim();

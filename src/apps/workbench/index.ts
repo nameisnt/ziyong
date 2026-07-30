@@ -12,12 +12,15 @@ export default definePhoneApp({
   defaultOrder: 65,
   component: WorkbenchApp,
   resetCurrentScope: () => import('./store').then(({ useWorkbenchStore }) => useWorkbenchStore().resetCurrentScope()),
-  backupDomains: [{
-    key: 'workbench',
-    exportData: () => _.get(extension_settings, 'sillytavern_phone_workbench', {}),
-    importData: data => {
-      _.set(extension_settings, 'sillytavern_phone_workbench', data);
+  backupDomains: [
+    {
+      key: 'workbench',
+      exportData: () => _.get(extension_settings, 'sillytavern_phone_workbench', {}),
+      importData: data => {
+        _.set(extension_settings, 'sillytavern_phone_workbench', data);
+      },
+      rehydrateFromSettings: () =>
+        import('./store').then(({ useWorkbenchStore }) => useWorkbenchStore().rehydrateFromSettings()),
     },
-    rehydrateFromSettings: () => import('./store').then(({ useWorkbenchStore }) => useWorkbenchStore().rehydrateFromSettings()),
-  }],
+  ],
 });

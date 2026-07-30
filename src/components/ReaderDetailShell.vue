@@ -63,10 +63,24 @@
             >
               <i :class="favoriteIcon"></i>
             </button>
-            <button v-if="branchEnabled" class="pc-soft-btn" type="button" :disabled="branchDisabled" :title="branchLabel" @click="emit('branch')">
+            <button
+              v-if="branchEnabled"
+              class="pc-soft-btn"
+              type="button"
+              :disabled="branchDisabled"
+              :title="branchLabel"
+              @click="emit('branch')"
+            >
               <i class="fa-solid fa-code-branch"></i>
             </button>
-            <button v-if="editEnabled" class="pc-soft-btn" type="button" :disabled="editDisabled" :title="editLabel" @click="emit('edit')">
+            <button
+              v-if="editEnabled"
+              class="pc-soft-btn"
+              type="button"
+              :disabled="editDisabled"
+              :title="editLabel"
+              @click="emit('edit')"
+            >
               <i class="fa-solid fa-pen"></i>
             </button>
             <slot name="actions"></slot>
@@ -83,54 +97,57 @@
 import DetailFooter from '@/components/DetailFooter.vue';
 import ReaderContent from '@/components/ReaderContent.vue';
 
-withDefaults(defineProps<{
-  actionsClass?: string;
-  baguEnabled?: boolean;
-  baguLabel?: string;
-  branchDisabled?: boolean;
-  branchEnabled?: boolean;
-  branchLabel?: string;
-  catalogLabel?: string;
-  content?: string;
-  contentFormatted?: boolean;
-  customContent?: boolean;
-  editDisabled?: boolean;
-  editEnabled?: boolean;
-  editLabel?: string;
-  favoriteActive?: boolean;
-  favoriteActiveLabel?: string;
-  favoriteEnabled?: boolean;
-  favoriteIcon?: string;
-  favoriteLabel?: string;
-  nextDisabled?: boolean;
-  nextLabel?: string;
-  previousDisabled?: boolean;
-  previousLabel?: string;
-  title: string;
-}>(), {
-  actionsClass: '',
-  baguEnabled: true,
-  baguLabel: '八股检测',
-  branchDisabled: false,
-  branchEnabled: false,
-  branchLabel: '从此处创建分支',
-  catalogLabel: '目录',
-  content: '',
-  contentFormatted: false,
-  customContent: false,
-  editDisabled: false,
-  editEnabled: true,
-  editLabel: '编辑',
-  favoriteActive: false,
-  favoriteActiveLabel: '取消收藏',
-  favoriteEnabled: true,
-  favoriteIcon: 'fa-solid fa-heart',
-  favoriteLabel: '收藏',
-  nextDisabled: false,
-  nextLabel: '下一章',
-  previousDisabled: false,
-  previousLabel: '上一章',
-});
+withDefaults(
+  defineProps<{
+    actionsClass?: string;
+    baguEnabled?: boolean;
+    baguLabel?: string;
+    branchDisabled?: boolean;
+    branchEnabled?: boolean;
+    branchLabel?: string;
+    catalogLabel?: string;
+    content?: string;
+    contentFormatted?: boolean;
+    customContent?: boolean;
+    editDisabled?: boolean;
+    editEnabled?: boolean;
+    editLabel?: string;
+    favoriteActive?: boolean;
+    favoriteActiveLabel?: string;
+    favoriteEnabled?: boolean;
+    favoriteIcon?: string;
+    favoriteLabel?: string;
+    nextDisabled?: boolean;
+    nextLabel?: string;
+    previousDisabled?: boolean;
+    previousLabel?: string;
+    title: string;
+  }>(),
+  {
+    actionsClass: '',
+    baguEnabled: true,
+    baguLabel: '八股检测',
+    branchDisabled: false,
+    branchEnabled: false,
+    branchLabel: '从此处创建分支',
+    catalogLabel: '目录',
+    content: '',
+    contentFormatted: false,
+    customContent: false,
+    editDisabled: false,
+    editEnabled: true,
+    editLabel: '编辑',
+    favoriteActive: false,
+    favoriteActiveLabel: '取消收藏',
+    favoriteEnabled: true,
+    favoriteIcon: 'fa-solid fa-heart',
+    favoriteLabel: '收藏',
+    nextDisabled: false,
+    nextLabel: '下一章',
+    previousDisabled: false,
+    previousLabel: '上一章',
+  },
+);
 
 const emit = defineEmits<{
   (event: 'bagu'): void;

@@ -33,14 +33,17 @@
 <script setup lang="ts">
 import type { TavernPresetPrompt } from './api';
 
-const props = withDefaults(defineProps<{
-  busy?: boolean;
-  groupDisabled?: boolean;
-  prompt: TavernPresetPrompt;
-}>(), {
-  busy: false,
-  groupDisabled: false,
-});
+const props = withDefaults(
+  defineProps<{
+    busy?: boolean;
+    groupDisabled?: boolean;
+    prompt: TavernPresetPrompt;
+  }>(),
+  {
+    busy: false,
+    groupDisabled: false,
+  },
+);
 
 defineEmits<{
   open: [prompt: TavernPresetPrompt];
@@ -48,11 +51,14 @@ defineEmits<{
 }>();
 
 const editable = computed(() => typeof props.prompt.content === 'string');
-const roleLabel = computed(() => ({
-  assistant: 'AI',
-  system: '系统',
-  user: '用户',
-}[props.prompt.role] || props.prompt.role));
+const roleLabel = computed(
+  () =>
+    ({
+      assistant: 'AI',
+      system: '系统',
+      user: '用户',
+    })[props.prompt.role] || props.prompt.role,
+);
 </script>
 
 <style scoped>

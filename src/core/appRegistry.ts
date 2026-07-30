@@ -233,7 +233,9 @@ export function getRegisteredPhoneAppResetHandlers() {
       app: module,
       resetCurrentScope: module.resetCurrentScope,
     }))
-    .filter((item): item is { app: PhoneAppModule; resetCurrentScope: PhoneAppResetHandler } => Boolean(item.resetCurrentScope));
+    .filter((item): item is { app: PhoneAppModule; resetCurrentScope: PhoneAppResetHandler } =>
+      Boolean(item.resetCurrentScope),
+    );
 }
 
 export function getRegisteredPhoneAppScopeSwitchHandlers() {
@@ -269,17 +271,22 @@ export function getRegisteredPhoneArchiveProviders() {
 }
 
 export function getRegisteredPhoneContentStats(currentScopeKey: string) {
-  return getRegisteredPhoneApps()
-    .flatMap(module => module.contentStatsProvider ? [module.contentStatsProvider(currentScopeKey)] : []);
+  return getRegisteredPhoneApps().flatMap(module =>
+    module.contentStatsProvider ? [module.contentStatsProvider(currentScopeKey)] : [],
+  );
 }
 
 export function getRegisteredPhoneGenerationActions(appId?: string) {
-  const source = appId ? [modules.get(appId)].filter((module): module is PhoneAppModule => Boolean(module)) : getRegisteredPhoneApps();
-  return source.flatMap(module => (module.generationProvider?.() ?? []).map(action => ({
-    ...action,
-    app: module,
-    appId: module.id,
-  })));
+  const source = appId
+    ? [modules.get(appId)].filter((module): module is PhoneAppModule => Boolean(module))
+    : getRegisteredPhoneApps();
+  return source.flatMap(module =>
+    (module.generationProvider?.() ?? []).map(action => ({
+      ...action,
+      app: module,
+      appId: module.id,
+    })),
+  );
 }
 
 export function getRegisteredPhoneGenerationAction(appId: string, actionId: string) {

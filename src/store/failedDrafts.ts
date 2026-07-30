@@ -16,7 +16,9 @@ function createId(prefix: string) {
 }
 
 export function createFailedDraftCollection<TData extends FailedDraftScopeData>(data: Ref<TData>, idPrefix: string) {
-  const failedDrafts = computed(() => [...data.value.failedDrafts].sort((left, right) => right.createdAt.localeCompare(left.createdAt)));
+  const failedDrafts = computed(() =>
+    [...data.value.failedDrafts].sort((left, right) => right.createdAt.localeCompare(left.createdAt)),
+  );
 
   function getFailedDraft(draftId: string) {
     return data.value.failedDrafts.find(item => item.id === draftId) ?? null;

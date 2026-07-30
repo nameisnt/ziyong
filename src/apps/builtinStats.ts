@@ -1,7 +1,4 @@
-import type {
-  PhoneContentOverview,
-  PhoneContentStatsContribution,
-} from '@/core/appRegistry';
+import type { PhoneContentOverview, PhoneContentStatsContribution } from '@/core/appRegistry';
 import { readChatScopedEnvelope } from '@/store/chatScoped';
 import { diaryField } from '@/store/diary';
 import { extrasField } from '@/store/extras';

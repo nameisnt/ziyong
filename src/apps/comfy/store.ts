@@ -95,7 +95,9 @@ function inferWorkflowName(json: string) {
     const saveNode = Object.values(workflow).find(node => {
       if (!node || typeof node !== 'object') return false;
       const record = node as Record<string, unknown>;
-      return String(record.class_type || '').toLowerCase().includes('save');
+      return String(record.class_type || '')
+        .toLowerCase()
+        .includes('save');
     }) as Record<string, unknown> | undefined;
     const title = String((saveNode?._meta as Record<string, unknown> | undefined)?.title || '').trim();
     return title || '导入工作流';
@@ -121,7 +123,8 @@ function migrateWorkflowSettings(settings: ComfySettings) {
   if (!settings.activeWorkflowId && settings.workflows[0]) {
     settings.activeWorkflowId = settings.workflows[0].id;
   }
-  const activeWorkflow = settings.workflows.find(workflow => workflow.id === settings.activeWorkflowId) ?? settings.workflows[0];
+  const activeWorkflow =
+    settings.workflows.find(workflow => workflow.id === settings.activeWorkflowId) ?? settings.workflows[0];
   if (activeWorkflow) {
     settings.activeWorkflowId = activeWorkflow.id;
     settings.workflowJson = activeWorkflow.json;
@@ -176,7 +179,9 @@ function replaceAllLiteral(value: string, search: string, replacement: string) {
 }
 
 function getActiveWorkflowFromSettings(settings: ComfySettings) {
-  return settings.workflows.find(workflow => workflow.id === settings.activeWorkflowId) ?? settings.workflows[0] ?? null;
+  return (
+    settings.workflows.find(workflow => workflow.id === settings.activeWorkflowId) ?? settings.workflows[0] ?? null
+  );
 }
 
 function getActiveWorkflowJson(settings: ComfySettings) {
@@ -196,10 +201,19 @@ function workflowInputKey(nodeId: string, inputName: string) {
 }
 
 function normalizePlaceholder(value: string) {
-  return value.trim().replace(/^\{\{\s*/, '').replace(/\s*\}\}$/, '').trim();
+  return value
+    .trim()
+    .replace(/^\{\{\s*/, '')
+    .replace(/\s*\}\}$/, '')
+    .trim();
 }
 
-function buildWorkflowJson(settings: ComfySettings, prompt: string, negativePrompt: string, params: Record<string, string> = {}) {
+function buildWorkflowJson(
+  settings: ComfySettings,
+  prompt: string,
+  negativePrompt: string,
+  params: Record<string, string> = {},
+) {
   const replacements: Array<[string, string]> = [];
   Object.entries(params).forEach(([key, value]) => {
     const normalizedKey = normalizePlaceholder(key);
@@ -217,7 +231,10 @@ function buildWorkflowJson(settings: ComfySettings, prompt: string, negativeProm
     ['{{sampler}}', settings.sampler],
     ['{{scheduler}}', settings.scheduler],
   );
-  return replacements.reduce((text, [search, replacement]) => replaceAllLiteral(text, search, replacement), getActiveWorkflowJson(settings));
+  return replacements.reduce(
+    (text, [search, replacement]) => replaceAllLiteral(text, search, replacement),
+    getActiveWorkflowJson(settings),
+  );
 }
 
 const workflowInputLabels: Record<string, string> = {
@@ -262,10 +279,10 @@ function getPrimaryModelInputName(classType: string, inputs: Record<string, unkn
     return 'ckpt_name' in inputs ? 'ckpt_name' : '';
   }
   if (
-    classType === 'UNETLoader'
-    || classType === 'UnetLoaderGGUF'
-    || classType === 'DiffusionModelLoader'
-    || classType.toLowerCase().includes('unetloader')
+    classType === 'UNETLoader' ||
+    classType === 'UnetLoaderGGUF' ||
+    classType === 'DiffusionModelLoader' ||
+    classType.toLowerCase().includes('unetloader')
   ) {
     return 'unet_name' in inputs ? 'unet_name' : '';
   }
@@ -281,7 +298,12 @@ function parseWorkflowJson(settings: ComfySettings, prompt = '', negativePrompt 
   }
 }
 
-function parseWorkflowJsonWithParams(settings: ComfySettings, prompt = '', negativePrompt = '', params: Record<string, string> = {}) {
+function parseWorkflowJsonWithParams(
+  settings: ComfySettings,
+  prompt = '',
+  negativePrompt = '',
+  params: Record<string, string> = {},
+) {
   const workflowText = buildWorkflowJson(settings, prompt, negativePrompt, params);
   try {
     return JSON.parse(workflowText) as Record<string, unknown>;
@@ -329,17 +351,19 @@ function collectWorkflowInputs(settings: ComfySettings, objectInfo: unknown): Co
       const fieldKind = getWorkflowInputValueKind(value);
       if (!fieldKind) return [];
       const options = getObjectInfoInputOptions(objectInfo, classType, inputName);
-      return [{
-        classType,
-        currentValue: String(value),
-        fieldKind,
-        inputName,
-        label: workflowInputLabels[inputName] || inputName,
-        key: workflowInputKey(nodeId, inputName),
-        nodeId,
-        nodeTitle,
-        options,
-      }];
+      return [
+        {
+          classType,
+          currentValue: String(value),
+          fieldKind,
+          inputName,
+          label: workflowInputLabels[inputName] || inputName,
+          key: workflowInputKey(nodeId, inputName),
+          nodeId,
+          nodeTitle,
+          options,
+        },
+      ];
     });
   });
 }
@@ -355,7 +379,11 @@ function coerceWorkflowValue(value: string, currentValue: unknown) {
   return value;
 }
 
-function applyWorkflowSelections(prompt: Record<string, unknown>, settings: ComfySettings, params: Record<string, string> = {}) {
+function applyWorkflowSelections(
+  prompt: Record<string, unknown>,
+  settings: ComfySettings,
+  params: Record<string, string> = {},
+) {
   Object.values(prompt).forEach(node => {
     if (!node || typeof node !== 'object') return;
     const nodeRecord = node as Record<string, unknown>;
@@ -430,11 +458,14 @@ function mediaMimeFromFormat(format: string) {
     wav: 'audio/wav',
     webm: 'video/webm',
   };
-  return mimeTypes[normalized] || (mediaKindFromFilename(`output.${normalized}`) === 'audio'
-    ? `audio/${normalized}`
-    : mediaKindFromFilename(`output.${normalized}`) === 'video'
-      ? `video/${normalized}`
-      : `image/${normalized}`);
+  return (
+    mimeTypes[normalized] ||
+    (mediaKindFromFilename(`output.${normalized}`) === 'audio'
+      ? `audio/${normalized}`
+      : mediaKindFromFilename(`output.${normalized}`) === 'video'
+        ? `video/${normalized}`
+        : `image/${normalized}`)
+  );
 }
 
 function buildViewUrl(baseUrl: string, file: Record<string, unknown>) {
@@ -617,7 +648,9 @@ export const useComfyStore = defineStore('comfy', () => {
       return fallbackResponse;
     } catch (error) {
       if (error instanceof TypeError) {
-        throw new Error('浏览器无法访问 ComfyUI，常见原因是 CORS 跨域限制。请切换为“酒馆”请求方式，或让 ComfyUI 开启跨域。');
+        throw new Error(
+          '浏览器无法访问 ComfyUI，常见原因是 CORS 跨域限制。请切换为“酒馆”请求方式，或让 ComfyUI 开启跨域。',
+        );
       }
       throw error;
     }
@@ -653,8 +686,10 @@ export const useComfyStore = defineStore('comfy', () => {
     } else if (!settings.value.checkpoint && settings.value.modelOptions[0]) {
       settings.value.checkpoint = settings.value.modelOptions[0];
     }
-    if (!settings.value.sampler && settings.value.samplerOptions[0]) settings.value.sampler = settings.value.samplerOptions[0];
-    if (!settings.value.scheduler && settings.value.schedulerOptions[0]) settings.value.scheduler = settings.value.schedulerOptions[0];
+    if (!settings.value.sampler && settings.value.samplerOptions[0])
+      settings.value.sampler = settings.value.samplerOptions[0];
+    if (!settings.value.scheduler && settings.value.schedulerOptions[0])
+      settings.value.scheduler = settings.value.schedulerOptions[0];
     settings.value.lastCheckedAt = new Date().toISOString();
     return {
       models: settings.value.modelOptions.length,
@@ -687,9 +722,12 @@ export const useComfyStore = defineStore('comfy', () => {
     settings.value.modelOptions = checkpointInputs;
     settings.value.samplerOptions = extractStringOptions(samplerInputs);
     settings.value.schedulerOptions = extractStringOptions(schedulerInputs);
-    if (!settings.value.checkpoint && settings.value.modelOptions[0]) settings.value.checkpoint = settings.value.modelOptions[0];
-    if (!settings.value.sampler && settings.value.samplerOptions[0]) settings.value.sampler = settings.value.samplerOptions[0];
-    if (!settings.value.scheduler && settings.value.schedulerOptions[0]) settings.value.scheduler = settings.value.schedulerOptions[0];
+    if (!settings.value.checkpoint && settings.value.modelOptions[0])
+      settings.value.checkpoint = settings.value.modelOptions[0];
+    if (!settings.value.sampler && settings.value.samplerOptions[0])
+      settings.value.sampler = settings.value.samplerOptions[0];
+    if (!settings.value.scheduler && settings.value.schedulerOptions[0])
+      settings.value.scheduler = settings.value.schedulerOptions[0];
     settings.value.lastCheckedAt = new Date().toISOString();
     return {
       models: settings.value.modelOptions.length,
@@ -721,16 +759,20 @@ export const useComfyStore = defineStore('comfy', () => {
         url: baseUrl,
       });
       const result = await response.json();
-      const format = String(result?.format || 'png').replace(/^\./, '').toLowerCase();
+      const format = String(result?.format || 'png')
+        .replace(/^\./, '')
+        .toLowerCase();
       const data = String(result?.data || '');
       if (!data) throw new Error('酒馆 ComfyUI 没有返回媒体数据');
       const kind = mediaKindFromFilename(`output.${format}`);
-      return [{
-        filename: `comfyui-${Date.now()}.${format}`,
-        kind,
-        title: `ComfyUI ${format.toUpperCase()}`,
-        url: `data:${mediaMimeFromFormat(format)};base64,${data}`,
-      }];
+      return [
+        {
+          filename: `comfyui-${Date.now()}.${format}`,
+          kind,
+          title: `ComfyUI ${format.toUpperCase()}`,
+          url: `data:${mediaMimeFromFormat(format)};base64,${data}`,
+        },
+      ];
     }
 
     const response = await browserComfyFetch('/prompt', {

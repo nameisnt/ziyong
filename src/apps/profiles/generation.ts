@@ -15,14 +15,19 @@ export const ProfileGenerateConfigSchema = z.object({
 export type ProfileGenerateConfig = z.infer<typeof ProfileGenerateConfigSchema>;
 
 export const ProfileXmlResultSchema = z.object({
-  fields: z.array(z.object({
-    id: z.string(),
-    value: z.string().default(''),
-  })).default([]).transform(fields => Object.fromEntries(
-    fields
-      .map(field => [field.id.trim(), field.value.trim()] as const)
-      .filter(([id]) => Boolean(id)),
-  )),
+  fields: z
+    .array(
+      z.object({
+        id: z.string(),
+        value: z.string().default(''),
+      }),
+    )
+    .default([])
+    .transform(fields =>
+      Object.fromEntries(
+        fields.map(field => [field.id.trim(), field.value.trim()] as const).filter(([id]) => Boolean(id)),
+      ),
+    ),
   legacyContent: z.string().default(''),
   title: z.string(),
   summary: z.string().default(''),
@@ -64,7 +69,10 @@ function createWarnings(raw: string) {
 }
 
 function splitTags(text: string) {
-  return text.split(/[,，、\n]/g).map(item => item.trim()).filter(Boolean);
+  return text
+    .split(/[,，、\n]/g)
+    .map(item => item.trim())
+    .filter(Boolean);
 }
 
 function parseProfileXmlCandidate(raw: string): XmlParseResult<ProfileXmlResult> {
@@ -95,14 +103,12 @@ function parseProfileXmlCandidate(raw: string): XmlParseResult<ProfileXmlResult>
   const fields = Array.from(fieldsRoot?.children ?? [])
     .filter(field => field.tagName === 'field')
     .map(field => ({
-    id: field.getAttribute('id')?.trim() || '',
-    value: field.textContent?.trim() || '',
+      id: field.getAttribute('id')?.trim() || '',
+      value: field.textContent?.trim() || '',
     }));
 
   if (!title) {
-    const warnings = [
-      !title ? '缺少必填字段「资料标题」(<title>)' : '',
-    ].filter(Boolean);
+    const warnings = [!title ? '缺少必填字段「资料标题」(<title>)' : ''].filter(Boolean);
     return {
       ok: false,
       raw,
@@ -135,14 +141,15 @@ export function createProfileGenerationAdapter(profilesStore: ReturnType<typeof 
     configSchema: ProfileGenerateConfigSchema,
     buildRequest(config) {
       const table = profilesStore.getTable(config.tableId) ?? profilesStore.getDefaultTable(config.kind);
-      const editableColumns = table?.columns
-        .filter(column => !['title', 'summary', 'tags', 'content'].includes(column.id))
-        .map(column => {
-          const options = column.options.length ? ` 可选值：${column.options.join('、')}。` : '';
-          const description = column.description.trim() ? ` 说明：${column.description.trim()}。` : '';
-          return `- ${column.label}（id=${column.id}，${column.type}）${description}${options}`;
-        })
-        .join('\n') || '';
+      const editableColumns =
+        table?.columns
+          .filter(column => !['title', 'summary', 'tags', 'content'].includes(column.id))
+          .map(column => {
+            const options = column.options.length ? ` 可选值：${column.options.join('、')}。` : '';
+            const description = column.description.trim() ? ` 说明：${column.description.trim()}。` : '';
+            return `- ${column.label}（id=${column.id}，${column.type}）${description}${options}`;
+          })
+          .join('\n') || '';
       return {
         appPrompt: config.appPrompt,
         outputFormat: config.outputFormat,
@@ -153,7 +160,9 @@ export function createProfileGenerationAdapter(profilesStore: ReturnType<typeof 
             ? `请按以下字段填写 <fields> 中的 <field id="字段id">字段值</field>；只填写上下文可确认的信息，未知可留空：\n${editableColumns}`
             : '',
           config.titleHint.trim() ? `标题或对象名：${config.titleHint.trim()}` : '',
-        ].filter(Boolean).join('\n'),
+        ]
+          .filter(Boolean)
+          .join('\n'),
         userRequirement: config.userRequirement,
       };
     },
@@ -163,7 +172,8 @@ export function createProfileGenerationAdapter(profilesStore: ReturnType<typeof 
       return parseConfiguredOutput('profiles.generate', raw, ProfileXmlResultSchema, () => direct);
     },
     save(result, context) {
-      const table = profilesStore.getTable(context.config.tableId) ?? profilesStore.getDefaultTable(context.config.kind);
+      const table =
+        profilesStore.getTable(context.config.tableId) ?? profilesStore.getDefaultTable(context.config.kind);
       const fieldIds = new Set(
         (table?.columns ?? [])
           .filter(column => !['title', 'summary', 'tags', 'content'].includes(column.id))

@@ -73,13 +73,20 @@
         {{ saving ? savingLabel : saveLabel }}
       </button>
     </div>
-    <section v-if="parseNoticeVisible" class="pc-preview-dialog-backdrop" role="presentation" @click.self="parseNoticeVisible = false">
+    <section
+      v-if="parseNoticeVisible"
+      class="pc-preview-dialog-backdrop"
+      role="presentation"
+      @click.self="parseNoticeVisible = false"
+    >
       <article class="pc-section-card pc-preview-dialog" role="dialog" aria-modal="true" :aria-label="parseNoticeTitle">
         <h3>{{ parseNoticeTitle }}</h3>
         <p>{{ parseNoticeMessage }}</p>
         <div class="pc-form-actions">
           <button class="pc-soft-btn" type="button" @click="goRawFromNotice">{{ rawOutputLabel }}</button>
-          <button class="pc-primary-btn" type="button" @click="parseNoticeVisible = false">{{ noticeConfirmLabel }}</button>
+          <button class="pc-primary-btn" type="button" @click="parseNoticeVisible = false">
+            {{ noticeConfirmLabel }}
+          </button>
         </div>
       </article>
     </section>
@@ -93,61 +100,64 @@ import { renderMarkdown } from '@/util/markdown';
 
 type PreviewView = 'bagu' | 'preview' | 'raw';
 
-const props = withDefaults(defineProps<{
-  baguLabel?: string;
-  backLabel?: string;
-  content: string;
-  contentLabel?: string;
-  contentPlaceholder?: string;
-  editable?: boolean;
-  editLabel?: string;
-  noticeConfirmLabel?: string;
-  parseNoticeMessage?: string;
-  parseNoticeTitle?: string;
-  previewLabel?: string;
-  raw: string;
-  rawEditable?: boolean;
-  rawOutputLabel?: string;
-  rawPlaceholder?: string;
-  reparseLabel?: string;
-  reparseHandler?: () => boolean | Promise<boolean>;
-  saveDisabled?: boolean;
-  saveLabel?: string;
-  savingLabel?: string;
-  scanEnabled?: boolean;
-  shortContentGuard?: boolean;
-  shortContentThreshold?: number;
-  sourceLabel: string;
-  successLabel?: string;
-  textProviderSummary: string;
-  title: string;
-  warningTitle?: string;
-  warnings: string[];
-}>(), {
-  baguLabel: '八股',
-  backLabel: '返回生成设置',
-  contentLabel: '生成内容',
-  contentPlaceholder: '在这里修改收到的 AI 输出内容。',
-  editable: true,
-  editLabel: '编辑输出',
-  noticeConfirmLabel: '知道了',
-  parseNoticeMessage: '当前预览内容过短，已尝试按原始输出重新解析，但仍然失败。请打开原始输出修改 XML 后再保存。',
-  parseNoticeTitle: '需要修复原始输出',
-  previewLabel: '查看预览',
-  rawEditable: false,
-  rawOutputLabel: '原始输出',
-  rawPlaceholder: '在这里修改 AI 返回的原始 XML。',
-  reparseLabel: '重新解析',
-  reparseHandler: undefined,
-  saveDisabled: false,
-  saveLabel: '保存',
-  savingLabel: '保存中',
-  scanEnabled: true,
-  shortContentGuard: true,
-  shortContentThreshold: 20,
-  successLabel: 'XML 解析成功',
-  warningTitle: '解析提示',
-});
+const props = withDefaults(
+  defineProps<{
+    baguLabel?: string;
+    backLabel?: string;
+    content: string;
+    contentLabel?: string;
+    contentPlaceholder?: string;
+    editable?: boolean;
+    editLabel?: string;
+    noticeConfirmLabel?: string;
+    parseNoticeMessage?: string;
+    parseNoticeTitle?: string;
+    previewLabel?: string;
+    raw: string;
+    rawEditable?: boolean;
+    rawOutputLabel?: string;
+    rawPlaceholder?: string;
+    reparseLabel?: string;
+    reparseHandler?: () => boolean | Promise<boolean>;
+    saveDisabled?: boolean;
+    saveLabel?: string;
+    savingLabel?: string;
+    scanEnabled?: boolean;
+    shortContentGuard?: boolean;
+    shortContentThreshold?: number;
+    sourceLabel: string;
+    successLabel?: string;
+    textProviderSummary: string;
+    title: string;
+    warningTitle?: string;
+    warnings: string[];
+  }>(),
+  {
+    baguLabel: '八股',
+    backLabel: '返回生成设置',
+    contentLabel: '生成内容',
+    contentPlaceholder: '在这里修改收到的 AI 输出内容。',
+    editable: true,
+    editLabel: '编辑输出',
+    noticeConfirmLabel: '知道了',
+    parseNoticeMessage: '当前预览内容过短，已尝试按原始输出重新解析，但仍然失败。请打开原始输出修改 XML 后再保存。',
+    parseNoticeTitle: '需要修复原始输出',
+    previewLabel: '查看预览',
+    rawEditable: false,
+    rawOutputLabel: '原始输出',
+    rawPlaceholder: '在这里修改 AI 返回的原始 XML。',
+    reparseLabel: '重新解析',
+    reparseHandler: undefined,
+    saveDisabled: false,
+    saveLabel: '保存',
+    savingLabel: '保存中',
+    scanEnabled: true,
+    shortContentGuard: true,
+    shortContentThreshold: 20,
+    successLabel: 'XML 解析成功',
+    warningTitle: '解析提示',
+  },
+);
 
 const emit = defineEmits<{
   back: [];
@@ -188,8 +198,7 @@ function getVisibleTextLength(value: string) {
     .replace(/<[^>]*>/g, '')
     .replace(/[`*_~>#\-[\](){}|]/g, '')
     .replace(/\s+/g, '')
-    .trim()
-    .length;
+    .trim().length;
 }
 
 async function runReparse() {
@@ -217,11 +226,11 @@ async function handleSave() {
   saving.value = true;
   try {
     if (
-      rawHasPendingChanges.value
-      || props.shortContentGuard
-      && props.rawEditable
-      && !contentHasPendingChanges.value
-      && getVisibleTextLength(props.content) <= props.shortContentThreshold
+      rawHasPendingChanges.value ||
+      (props.shortContentGuard &&
+        props.rawEditable &&
+        !contentHasPendingChanges.value &&
+        getVisibleTextLength(props.content) <= props.shortContentThreshold)
     ) {
       const reparsed = await runReparse();
       if (!reparsed) {

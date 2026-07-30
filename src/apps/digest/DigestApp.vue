@@ -65,7 +65,9 @@
         @top="scrollToTop"
       >
         <template #kicker>
-          <span class="pc-kicker">{{ activeEntry.sourceLabel || (activeEntry.kind === 'ai' ? t`AI 摘抄` : t`手动摘抄`) }}</span>
+          <span class="pc-kicker">{{
+            activeEntry.sourceLabel || (activeEntry.kind === 'ai' ? t`AI 摘抄` : t`手动摘抄`)
+          }}</span>
         </template>
         <template #after-content>
           <details v-if="activeEntry.sourceText" class="pc-source-box">
@@ -83,7 +85,9 @@
 
     <section v-else-if="route.page === 'bagu-scan' && activeEntry" class="pc-digest-page">
       <article class="pc-detail-card">
-        <span class="pc-kicker">{{ activeEntry.sourceLabel || (activeEntry.kind === 'ai' ? t`AI 摘抄` : t`手动摘抄`) }}</span>
+        <span class="pc-kicker">{{
+          activeEntry.sourceLabel || (activeEntry.kind === 'ai' ? t`AI 摘抄` : t`手动摘抄`)
+        }}</span>
         <div class="pc-detail-title-row">
           <h2>{{ activeEntry.title }}</h2>
         </div>
@@ -101,7 +105,11 @@
         <span class="pc-kicker">{{ editingEntry ? t`编辑摘抄` : t`新增摘抄` }}</span>
         <input v-model="draft.title" class="pc-field" type="text" :placeholder="t`标题`" />
         <input v-model="draft.sourceLabel" class="pc-field" type="text" :placeholder="t`来源，例如 第 12 楼`" />
-        <textarea v-model="draft.content" class="pc-area pc-saved-content-area" :placeholder="t`摘抄正文，必须是文内文字`"></textarea>
+        <textarea
+          v-model="draft.content"
+          class="pc-area pc-saved-content-area"
+          :placeholder="t`摘抄正文，必须是文内文字`"
+        ></textarea>
         <textarea v-model="draft.sourceText" class="pc-area compact" :placeholder="t`来源原文，可留空`"></textarea>
         <div class="pc-form-actions pc-digest-actions">
           <button class="pc-soft-btn" type="button" @click="phone.goBack()">{{ t`取消` }}</button>
@@ -142,7 +150,10 @@
       </article>
     </section>
 
-    <section v-else-if="route.page === 'preview' && generationState.preview" class="pc-digest-page pc-generation-preview-page">
+    <section
+      v-else-if="route.page === 'preview' && generationState.preview"
+      class="pc-digest-page pc-generation-preview-page"
+    >
       <article class="pc-detail-card pc-generation-preview-card">
         <GenerationPreviewPanel
           :content="generationState.preview.content"
@@ -180,7 +191,9 @@
           />
         </div>
         <div class="pc-form-actions">
-          <button class="pc-soft-btn danger" type="button" @click="removeFailedDraft(activeFailedDraft.id)">{{ t`删除草稿` }}</button>
+          <button class="pc-soft-btn danger" type="button" @click="removeFailedDraft(activeFailedDraft.id)">
+            {{ t`删除草稿` }}
+          </button>
           <button class="pc-soft-btn" type="button" @click="reparseFailedDraft">{{ t`重新解析` }}</button>
         </div>
       </article>
@@ -274,23 +287,35 @@ const {
   title: '摘抄预览',
 });
 
-const activeEntry = computed(() => route.value.params?.entryId ? digest.getEntry(route.value.params.entryId) : null);
-const editingEntry = computed(() => route.value.params?.entryId ? digest.getEntry(route.value.params.entryId) : null);
-const activeFailedDraft = computed(() => route.value.params?.draftId ? digest.getFailedDraft(route.value.params.draftId) : null);
+const activeEntry = computed(() => (route.value.params?.entryId ? digest.getEntry(route.value.params.entryId) : null));
+const editingEntry = computed(() => (route.value.params?.entryId ? digest.getEntry(route.value.params.entryId) : null));
+const activeFailedDraft = computed(() =>
+  route.value.params?.draftId ? digest.getFailedDraft(route.value.params.draftId) : null,
+);
 const formattedReferences = computed(() => formatGenerationReferences(selectedReferences.value));
 const activeEntryIndex = computed(() => entries.value.findIndex(entry => entry.id === activeEntry.value?.id));
-const previousEntryId = computed(() => activeEntryIndex.value > 0 ? entries.value[activeEntryIndex.value - 1]?.id || '' : '');
-const nextEntryId = computed(() => activeEntryIndex.value >= 0 ? entries.value[activeEntryIndex.value + 1]?.id || '' : '');
-const textProviderSummary = computed(() => settings.value.textProvider.mode === 'external'
-  ? formatTextProviderSummary(settings.value.textProvider)
-  : '跟随酒馆当前模型');
+const previousEntryId = computed(() =>
+  activeEntryIndex.value > 0 ? entries.value[activeEntryIndex.value - 1]?.id || '' : '',
+);
+const nextEntryId = computed(() =>
+  activeEntryIndex.value >= 0 ? entries.value[activeEntryIndex.value + 1]?.id || '' : '',
+);
+const textProviderSummary = computed(() =>
+  settings.value.textProvider.mode === 'external'
+    ? formatTextProviderSummary(settings.value.textProvider)
+    : '跟随酒馆当前模型',
+);
 const digestPromptPreview = computed(() => {
   try {
-    return buildGenerationPreview(adapter, {
-      appPrompt: prompts.appPrompts.digest,
-      outputFormat: buildDigestOutputFormat(),
-      userRequirement: generationDraft.userRequirement,
-    }, getGenerationOptions()).text;
+    return buildGenerationPreview(
+      adapter,
+      {
+        appPrompt: prompts.appPrompts.digest,
+        outputFormat: buildDigestOutputFormat(),
+        userRequirement: generationDraft.userRequirement,
+      },
+      getGenerationOptions(),
+    ).text;
   } catch (error) {
     return error instanceof Error ? error.message : '无法生成提示词预览';
   }
@@ -330,11 +355,11 @@ useInvalidRouteFallback({
     hasPreview: Boolean(generationState.preview),
     page: route.value.page,
   }),
-  isInvalid: current => current.appId === 'digest' && (
-    current.page === 'preview' && !current.hasPreview
-    || ['entry', 'bagu-scan'].includes(current.page) && !current.hasEntry
-    || current.page === 'failed-draft' && !current.hasFailedDraft
-  ),
+  isInvalid: current =>
+    current.appId === 'digest' &&
+    ((current.page === 'preview' && !current.hasPreview) ||
+      (['entry', 'bagu-scan'].includes(current.page) && !current.hasEntry) ||
+      (current.page === 'failed-draft' && !current.hasFailedDraft)),
   fallback: () => {
     if (route.value.appId !== 'digest') return;
     phone.replacePage('root', '摘抄');
@@ -451,11 +476,15 @@ function getGenerationOptions() {
 }
 
 function captureDigestPrompt() {
-  return captureGenerationPrompt(adapter, {
-    appPrompt: prompts.appPrompts.digest,
-    outputFormat: buildDigestOutputFormat(),
-    userRequirement: generationDraft.userRequirement,
-  }, getGenerationOptions());
+  return captureGenerationPrompt(
+    adapter,
+    {
+      appPrompt: prompts.appPrompts.digest,
+      outputFormat: buildDigestOutputFormat(),
+      userRequirement: generationDraft.userRequirement,
+    },
+    getGenerationOptions(),
+  );
 }
 
 async function runGeneration() {
@@ -464,27 +493,31 @@ async function runGeneration() {
   generationState.rawOutput = '';
   generationState.preview = null;
   try {
-    const result = await generateContent(adapter, {
-      appPrompt: prompts.appPrompts.digest,
-      outputFormat: buildDigestOutputFormat(),
-      userRequirement: generationDraft.userRequirement,
-    }, {
-      ...getGenerationOptions(),
-      createFailedDraft: input => digest.createFailedDraft(input),
-      lifecycle: {
-        onFinish() {
-          generationState.running = false;
-          generationState.generationId = '';
-        },
-        onRawOutput(rawOutput) {
-          generationState.rawOutput = rawOutput;
-        },
-        onStart(generationId) {
-          generationState.running = true;
-          generationState.generationId = generationId;
+    const result = await generateContent(
+      adapter,
+      {
+        appPrompt: prompts.appPrompts.digest,
+        outputFormat: buildDigestOutputFormat(),
+        userRequirement: generationDraft.userRequirement,
+      },
+      {
+        ...getGenerationOptions(),
+        createFailedDraft: input => digest.createFailedDraft(input),
+        lifecycle: {
+          onFinish() {
+            generationState.running = false;
+            generationState.generationId = '';
+          },
+          onRawOutput(rawOutput) {
+            generationState.rawOutput = rawOutput;
+          },
+          onStart(generationId) {
+            generationState.running = true;
+            generationState.generationId = generationId;
+          },
         },
       },
-    });
+    );
 
     if (result.status === 'failed') {
       generationState.error = result.warnings.join('；') || '模型没有返回可解析的摘抄 XML';
@@ -763,4 +796,3 @@ function stopGeneration() {
   justify-content: flex-end;
 }
 </style>
-

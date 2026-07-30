@@ -1,8 +1,4 @@
-import type {
-  ExternalApiPresetId,
-  ExternalApiProfile,
-  TextProviderSettings,
-} from '@/type/settings';
+import type { ExternalApiPresetId, ExternalApiProfile, TextProviderSettings } from '@/type/settings';
 
 export type ExternalApiPreset = {
   apiUrl: string;
@@ -57,9 +53,11 @@ export function resolveExternalApiProfileUrl(profile: ExternalApiProfile) {
 }
 
 export function getActiveExternalApiProfile(settings: TextProviderSettings) {
-  return settings.externalProfiles.find(profile => profile.id === settings.activeExternalProfileId)
-    ?? settings.externalProfiles[0]
-    ?? null;
+  return (
+    settings.externalProfiles.find(profile => profile.id === settings.activeExternalProfileId) ??
+    settings.externalProfiles[0] ??
+    null
+  );
 }
 
 export function resolveTextProviderSettings(settings: TextProviderSettings): ResolvedTextProviderSettings {

@@ -40,7 +40,9 @@ function slotContent(slot: WorldSlot) {
     `类型：${getWorldSlotTypeLabel(slot.type)}`,
     slot.keys.length ? `关键词：${slot.keys.join('、')}` : '',
     slot.content,
-  ].filter(Boolean).join('\n');
+  ]
+    .filter(Boolean)
+    .join('\n');
 }
 
 function createWorldSlotsArchiveDomain(raw: unknown): PhoneArchiveDomain {
@@ -146,14 +148,17 @@ export default definePhoneApp({
     field: worldSlotsField,
     collect: createWorldSlotsArchiveDomain,
   },
-  backupDomains: [{
-    key: 'world-slots',
-    exportData: currentScopeKey => readChatScopedEnvelope(worldSlotsField, currentScopeKey || getCurrentChatScopeKey()),
-    importData: data => {
-      _.set(extension_settings, worldSlotsField, data);
+  backupDomains: [
+    {
+      key: 'world-slots',
+      exportData: currentScopeKey =>
+        readChatScopedEnvelope(worldSlotsField, currentScopeKey || getCurrentChatScopeKey()),
+      importData: data => {
+        _.set(extension_settings, worldSlotsField, data);
+      },
+      rehydrateFromSettings: () => useWorldSlotsStore().rehydrateFromSettings(),
     },
-    rehydrateFromSettings: () => useWorldSlotsStore().rehydrateFromSettings(),
-  }],
+  ],
   component: WorldSlotsApp,
   contentStatsProvider: createWorldSlotsContentStats,
   referenceProvider: createWorldSlotsReferenceTree,

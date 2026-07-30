@@ -11,13 +11,15 @@ export default definePhoneApp({
   accent: '#00a896',
   defaultRoute: 'root',
   defaultOrder: 140,
-  backupDomains: [{
-    key: 'chat-insert',
-    exportData: () => _.get(extension_settings, chatInsertField, {}),
-    importData: data => {
-      _.set(extension_settings, chatInsertField, data);
+  backupDomains: [
+    {
+      key: 'chat-insert',
+      exportData: () => _.get(extension_settings, chatInsertField, {}),
+      importData: data => {
+        _.set(extension_settings, chatInsertField, data);
+      },
+      rehydrateFromSettings: () => useChatInsertStore().rehydrateFromSettings(),
     },
-    rehydrateFromSettings: () => useChatInsertStore().rehydrateFromSettings(),
-  }],
+  ],
   component: ChatInsertApp,
 });

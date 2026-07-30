@@ -24,29 +24,28 @@
 
 <script setup lang="ts">
 import SearchableCombobox from '@/components/SearchableCombobox.vue';
-import {
-  getProfileKindLabel,
-  useProfilesStore,
-  type ProfileKind,
-} from '@/apps/profiles/store';
+import { getProfileKindLabel, useProfilesStore, type ProfileKind } from '@/apps/profiles/store';
 import { usePhoneStore } from '@/store/phone';
 
-const props = withDefaults(defineProps<{
-  disabled?: boolean;
-  disabledIds?: string[];
-  emptyLabel?: string;
-  kinds?: ProfileKind[];
-  modelValue: string;
-  placeholder?: string;
-  showOpenButton?: boolean;
-}>(), {
-  disabled: false,
-  disabledIds: () => [],
-  emptyLabel: '不关联资料',
-  kinds: () => [],
-  placeholder: '选择人物资料',
-  showOpenButton: true,
-});
+const props = withDefaults(
+  defineProps<{
+    disabled?: boolean;
+    disabledIds?: string[];
+    emptyLabel?: string;
+    kinds?: ProfileKind[];
+    modelValue: string;
+    placeholder?: string;
+    showOpenButton?: boolean;
+  }>(),
+  {
+    disabled: false,
+    disabledIds: () => [],
+    emptyLabel: '不关联资料',
+    kinds: () => [],
+    placeholder: '选择人物资料',
+    showOpenButton: true,
+  },
+);
 
 const emit = defineEmits<{
   'update:modelValue': [value: string];
@@ -74,10 +73,7 @@ const options = computed(() => {
     });
   }
 
-  return [
-    { disabled: false, label: props.emptyLabel, value: '' },
-    ...entries,
-  ];
+  return [{ disabled: false, label: props.emptyLabel, value: '' }, ...entries];
 });
 
 function openSelectedEntry() {

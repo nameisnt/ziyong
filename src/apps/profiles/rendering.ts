@@ -14,18 +14,15 @@ function getFormatColumns(table: ProfileTable) {
 }
 
 export function createDefaultProfileDisplayFormat(table: ProfileTable) {
-  const lines = getFormatColumns(table)
-    .map(column => `  ${column.label}：{{${column.id}}}`);
-  return [
-    `<${table.kind}>`,
-    ...lines,
-    `</${table.kind}>`,
-  ].join('\n');
+  const lines = getFormatColumns(table).map(column => `  ${column.label}：{{${column.id}}}`);
+  return [`<${table.kind}>`, ...lines, `</${table.kind}>`].join('\n');
 }
 
 export function formatProfileRenderSource(entry: ProfileEntry, table: ProfileTable) {
   const template = table.displayFormat.trim() || createDefaultProfileDisplayFormat(table);
-  return template.replace(/\{\{\s*([A-Za-z0-9_-]+)\s*\}\}/g, (_match, columnId: string) => getEntryValue(entry, columnId));
+  return template.replace(/\{\{\s*([A-Za-z0-9_-]+)\s*\}\}/g, (_match, columnId: string) =>
+    getEntryValue(entry, columnId),
+  );
 }
 
 export function formatProfileMarkdown(entry: ProfileEntry, table: ProfileTable) {
@@ -38,8 +35,9 @@ export function formatProfileMarkdown(entry: ProfileEntry, table: ProfileTable) 
 
 export function getProfileListPreview(entry: ProfileEntry, table: ProfileTable | null) {
   if (entry.summary.trim()) return entry.summary.trim();
-  const column = table?.columns.find(item => !['title', 'summary', 'tags', 'content'].includes(item.id)
-    && getEntryValue(entry, item.id).trim());
+  const column = table?.columns.find(
+    item => !['title', 'summary', 'tags', 'content'].includes(item.id) && getEntryValue(entry, item.id).trim(),
+  );
   if (column) return `${column.label}：${getEntryValue(entry, column.id)}`;
   return entry.content.trim();
 }
@@ -51,10 +49,7 @@ export function renderProfileFrontend(entry: ProfileEntry, table: ProfileTable, 
   if (result.applied.length) return result;
   return {
     ...result,
-    content: `<pre>${source
-      .replaceAll('&', '&amp;')
-      .replaceAll('<', '&lt;')
-      .replaceAll('>', '&gt;')}</pre>`,
+    content: `<pre>${source.replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('>', '&gt;')}</pre>`,
   };
 }
 

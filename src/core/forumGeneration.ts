@@ -90,7 +90,10 @@ function buildThreadTaskInstruction(config: ForumThreadGenerateConfig) {
 }
 
 export function createForumThreadGenerationAdapter(forumStore: {
-  createThread: (boardId: string, input: Pick<ForumThread, 'title' | 'author' | 'content'>) => { board: ForumBoard; thread: ForumThread } | null;
+  createThread: (
+    boardId: string,
+    input: Pick<ForumThread, 'title' | 'author' | 'content'>,
+  ) => { board: ForumBoard; thread: ForumThread } | null;
   createReply: (boardId: string, threadId: string, input: ForumReplyDraftInput) => ForumReply | null;
   ensureBoard: (name: string, description?: string) => ForumBoard;
   getBoard: (boardId: string) => ForumBoard | null;
@@ -114,7 +117,8 @@ export function createForumThreadGenerationAdapter(forumStore: {
     async save(result, context) {
       const targetBoardName = context.config.boardName.trim() || result.board.trim();
       const board = context.config.boardId
-        ? forumStore.getBoard(context.config.boardId) || forumStore.ensureBoard(targetBoardName, context.config.boardDescription)
+        ? forumStore.getBoard(context.config.boardId) ||
+          forumStore.ensureBoard(targetBoardName, context.config.boardDescription)
         : forumStore.ensureBoard(targetBoardName, context.config.boardDescription);
       const created = forumStore.createThread(board.id, {
         author: result.author,
@@ -125,7 +129,12 @@ export function createForumThreadGenerationAdapter(forumStore: {
         throw new Error('目标板块不存在，无法保存论坛帖子');
       }
       const materialized = materializeForumReplies([], result.replies, context.source);
-      const createdReplies = persistForumReplyDrafts(forumStore.createReply, board.id, created.thread.id, materialized.replies);
+      const createdReplies = persistForumReplyDrafts(
+        forumStore.createReply,
+        board.id,
+        created.thread.id,
+        materialized.replies,
+      );
 
       return {
         board,
@@ -135,7 +144,11 @@ export function createForumThreadGenerationAdapter(forumStore: {
         thread: created.thread,
       };
     },
-  } satisfies GenerationAdapter<ForumThreadGenerateConfig, ForumXmlResult, { board: ForumBoard; conversionWarnings: string[]; entityId: string; replies: ForumReply[]; thread: ForumThread }>;
+  } satisfies GenerationAdapter<
+    ForumThreadGenerateConfig,
+    ForumXmlResult,
+    { board: ForumBoard; conversionWarnings: string[]; entityId: string; replies: ForumReply[]; thread: ForumThread }
+  >;
 }
 
 export function createForumReplyGenerationAdapter(forumStore: {
@@ -156,7 +169,9 @@ export function createForumReplyGenerationAdapter(forumStore: {
     },
     configSchema: ForumReplyGenerateConfigSchema,
     parse(raw) {
-      return parseConfiguredOutput('forum.replies', raw, ForumRepliesXmlResultSchema, () => parseForumRepliesXmlResult(raw));
+      return parseConfiguredOutput('forum.replies', raw, ForumRepliesXmlResultSchema, () =>
+        parseForumRepliesXmlResult(raw),
+      );
     },
     async save(result, context) {
       const thread = forumStore.getThread(context.config.boardId, context.config.threadId);
@@ -165,7 +180,12 @@ export function createForumReplyGenerationAdapter(forumStore: {
       }
 
       const materialized = materializeForumReplies(thread.replies, result.replies, context.source);
-      const createdReplies = persistForumReplyDrafts(forumStore.createReply, context.config.boardId, context.config.threadId, materialized.replies);
+      const createdReplies = persistForumReplyDrafts(
+        forumStore.createReply,
+        context.config.boardId,
+        context.config.threadId,
+        materialized.replies,
+      );
 
       return {
         conversionWarnings: materialized.warnings,
@@ -173,5 +193,9 @@ export function createForumReplyGenerationAdapter(forumStore: {
         entityId: createdReplies[0]?.id || context.config.threadId,
       };
     },
-  } satisfies GenerationAdapter<ForumReplyGenerateConfig, ForumRepliesXmlResult, { conversionWarnings: string[]; createdReplies: ForumReply[]; entityId: string }>;
+  } satisfies GenerationAdapter<
+    ForumReplyGenerateConfig,
+    ForumRepliesXmlResult,
+    { conversionWarnings: string[]; createdReplies: ForumReply[]; entityId: string }
+  >;
 }

@@ -5,7 +5,17 @@ import { validateInplace } from '@/util/zod';
 
 export const profilesField = 'sillytavern_phone_profiles';
 
-export const ProfileKindSchema = z.enum(['character', 'location', 'organization', 'item', 'world', 'rule', 'event', 'timeline', 'note']);
+export const ProfileKindSchema = z.enum([
+  'character',
+  'location',
+  'organization',
+  'item',
+  'world',
+  'rule',
+  'event',
+  'timeline',
+  'note',
+]);
 export type ProfileKind = z.infer<typeof ProfileKindSchema>;
 
 export const ProfileColumnTypeSchema = z.enum(['text', 'textarea', 'select', 'tags', 'boolean']);
@@ -72,44 +82,196 @@ export const profileKindOptions: Array<{ id: ProfileKind; label: string }> = [
 ];
 
 const coreColumns: ProfileTableColumn[] = [
-  { description: '资料的唯一名称或对象名。', id: 'title', label: '名称', options: [], required: true, type: 'text', visible: true },
-  { description: '用一句话概括资料最重要的身份、状态或作用。', id: 'summary', label: '摘要', options: [], required: false, type: 'text', visible: true },
-  { description: '用于检索与归类的关键词，使用顿号或逗号分隔。', id: 'tags', label: '标签', options: [], required: false, type: 'tags', visible: true },
+  {
+    description: '资料的唯一名称或对象名。',
+    id: 'title',
+    label: '名称',
+    options: [],
+    required: true,
+    type: 'text',
+    visible: true,
+  },
+  {
+    description: '用一句话概括资料最重要的身份、状态或作用。',
+    id: 'summary',
+    label: '摘要',
+    options: [],
+    required: false,
+    type: 'text',
+    visible: true,
+  },
+  {
+    description: '用于检索与归类的关键词，使用顿号或逗号分隔。',
+    id: 'tags',
+    label: '标签',
+    options: [],
+    required: false,
+    type: 'tags',
+    visible: true,
+  },
 ];
 
 const tableExtras: Record<ProfileKind, ProfileTableColumn[]> = {
   character: [
-    { description: '人物在当前故事中的身份、职业或社会定位。', id: 'identity', label: '身份', options: [], required: false, type: 'text', visible: true },
-    { description: '人物目前已确认的处境、行动或状态。', id: 'status', label: '当前状态', options: [], required: false, type: 'text', visible: true },
+    {
+      description: '人物在当前故事中的身份、职业或社会定位。',
+      id: 'identity',
+      label: '身份',
+      options: [],
+      required: false,
+      type: 'text',
+      visible: true,
+    },
+    {
+      description: '人物目前已确认的处境、行动或状态。',
+      id: 'status',
+      label: '当前状态',
+      options: [],
+      required: false,
+      type: 'text',
+      visible: true,
+    },
   ],
   event: [
-    { description: '事件发生的时间、阶段或相对顺序。', id: 'stage', label: '发生阶段', options: [], required: false, type: 'text', visible: true },
-    { description: '事件已经确认的结果与影响。', id: 'outcome', label: '结果', options: [], required: false, type: 'text', visible: true },
+    {
+      description: '事件发生的时间、阶段或相对顺序。',
+      id: 'stage',
+      label: '发生阶段',
+      options: [],
+      required: false,
+      type: 'text',
+      visible: true,
+    },
+    {
+      description: '事件已经确认的结果与影响。',
+      id: 'outcome',
+      label: '结果',
+      options: [],
+      required: false,
+      type: 'text',
+      visible: true,
+    },
   ],
   item: [
-    { description: '物品当前由谁持有、保管或控制。', id: 'holder', label: '当前持有者', options: [], required: false, type: 'text', visible: true },
-    { description: '物品目前的可用、损坏、遗失等状态。', id: 'status', label: '状态', options: [], required: false, type: 'text', visible: true },
+    {
+      description: '物品当前由谁持有、保管或控制。',
+      id: 'holder',
+      label: '当前持有者',
+      options: [],
+      required: false,
+      type: 'text',
+      visible: true,
+    },
+    {
+      description: '物品目前的可用、损坏、遗失等状态。',
+      id: 'status',
+      label: '状态',
+      options: [],
+      required: false,
+      type: 'text',
+      visible: true,
+    },
   ],
   location: [
-    { description: '地点所在区域、方位或与其他地点的关系。', id: 'region', label: '位置', options: [], required: false, type: 'text', visible: true },
-    { description: '地点当前开放、封锁、毁坏等状态。', id: 'status', label: '当前状态', options: [], required: false, type: 'text', visible: true },
+    {
+      description: '地点所在区域、方位或与其他地点的关系。',
+      id: 'region',
+      label: '位置',
+      options: [],
+      required: false,
+      type: 'text',
+      visible: true,
+    },
+    {
+      description: '地点当前开放、封锁、毁坏等状态。',
+      id: 'status',
+      label: '当前状态',
+      options: [],
+      required: false,
+      type: 'text',
+      visible: true,
+    },
   ],
   note: [],
   organization: [
-    { description: '组织的性质、职能或故事定位。', id: 'role', label: '定位', options: [], required: false, type: 'text', visible: true },
-    { description: '组织目前的活动、存续或立场状态。', id: 'status', label: '当前状态', options: [], required: false, type: 'text', visible: true },
+    {
+      description: '组织的性质、职能或故事定位。',
+      id: 'role',
+      label: '定位',
+      options: [],
+      required: false,
+      type: 'text',
+      visible: true,
+    },
+    {
+      description: '组织目前的活动、存续或立场状态。',
+      id: 'status',
+      label: '当前状态',
+      options: [],
+      required: false,
+      type: 'text',
+      visible: true,
+    },
   ],
   rule: [
-    { description: '规则适用的对象、区域或情境。', id: 'scope', label: '适用范围', options: [], required: false, type: 'text', visible: true },
-    { description: '规则是否已被剧情明确确认。', id: 'status', label: '确认状态', options: ['已确认', '待确认'], required: false, type: 'select', visible: true },
+    {
+      description: '规则适用的对象、区域或情境。',
+      id: 'scope',
+      label: '适用范围',
+      options: [],
+      required: false,
+      type: 'text',
+      visible: true,
+    },
+    {
+      description: '规则是否已被剧情明确确认。',
+      id: 'status',
+      label: '确认状态',
+      options: ['已确认', '待确认'],
+      required: false,
+      type: 'select',
+      visible: true,
+    },
   ],
   timeline: [
-    { description: '事件的具体时间、相对时间或剧情阶段。', id: 'time', label: '时间或阶段', options: [], required: false, type: 'text', visible: true },
-    { description: '事件是否发生、是否完成或当前进展。', id: 'status', label: '状态', options: [], required: false, type: 'text', visible: true },
+    {
+      description: '事件的具体时间、相对时间或剧情阶段。',
+      id: 'time',
+      label: '时间或阶段',
+      options: [],
+      required: false,
+      type: 'text',
+      visible: true,
+    },
+    {
+      description: '事件是否发生、是否完成或当前进展。',
+      id: 'status',
+      label: '状态',
+      options: [],
+      required: false,
+      type: 'text',
+      visible: true,
+    },
   ],
   world: [
-    { description: '世界观设定适用的对象、区域或情境。', id: 'scope', label: '适用范围', options: [], required: false, type: 'text', visible: true },
-    { description: '设定是否已经在剧情中明确确认。', id: 'status', label: '确认状态', options: ['已确认', '待确认'], required: false, type: 'select', visible: true },
+    {
+      description: '世界观设定适用的对象、区域或情境。',
+      id: 'scope',
+      label: '适用范围',
+      options: [],
+      required: false,
+      type: 'text',
+      visible: true,
+    },
+    {
+      description: '设定是否已经在剧情中明确确认。',
+      id: 'status',
+      label: '确认状态',
+      options: ['已确认', '待确认'],
+      required: false,
+      type: 'select',
+      visible: true,
+    },
   ],
 };
 
@@ -141,17 +303,20 @@ export function getProfileKindLabel(kind: ProfileKind) {
 
 export function createBuiltInProfileTables() {
   const timestamp = nowIso();
-  return profileKindOptions.map(({ id: kind, label }) => ({
-    builtIn: true,
-    columns: cloneColumns([...coreColumns, ...tableExtras[kind]]),
-    createdAt: timestamp,
-    displayFormat: '',
-    id: builtInTableId(kind),
-    kind,
-    name: label,
-    renderMode: 'markdown',
-    updatedAt: timestamp,
-  } satisfies ProfileTable));
+  return profileKindOptions.map(
+    ({ id: kind, label }) =>
+      ({
+        builtIn: true,
+        columns: cloneColumns([...coreColumns, ...tableExtras[kind]]),
+        createdAt: timestamp,
+        displayFormat: '',
+        id: builtInTableId(kind),
+        kind,
+        name: label,
+        renderMode: 'markdown',
+        updatedAt: timestamp,
+      }) satisfies ProfileTable,
+  );
 }
 
 function normalizeTables(data: z.infer<typeof ProfilesScopeDataBaseSchema>) {
@@ -160,9 +325,7 @@ function normalizeTables(data: z.infer<typeof ProfilesScopeDataBaseSchema>) {
   const tables = builtIns.map(table => {
     const saved = existing.get(table.id);
     const savedColumns = cloneColumns(saved?.columns ?? []);
-    return saved
-      ? { ...saved, builtIn: true, columns: savedColumns.length ? savedColumns : table.columns }
-      : table;
+    return saved ? { ...saved, builtIn: true, columns: savedColumns.length ? savedColumns : table.columns } : table;
   });
   data.tables.forEach(table => {
     if (!tables.some(item => item.id === table.id)) tables.push({ ...table, columns: cloneColumns(table.columns) });
@@ -177,17 +340,19 @@ export const ProfilesScopeDataSchema = ProfilesScopeDataBaseSchema.transform(dat
     entries: data.entries.map(entry => ({
       ...entry,
       fields: entry.fields ?? {},
-      tableId: tables.some(table => table.id === entry.tableId)
-        ? entry.tableId
-        : builtInTableId(entry.kind),
+      tableId: tables.some(table => table.id === entry.tableId) ? entry.tableId : builtInTableId(entry.kind),
     })),
     tables,
   };
 });
 export type ProfilesScopeData = z.infer<typeof ProfilesScopeDataSchema>;
 
-export type ProfileEntryInput = Partial<Pick<ProfileEntry, 'content' | 'favorite' | 'fields' | 'kind' | 'summary' | 'tableId' | 'tags'>> & Pick<ProfileEntry, 'title'>;
-export type ProfileEntryUpdate = Pick<ProfileEntry, 'content' | 'kind' | 'summary' | 'tags' | 'title'> & Partial<Pick<ProfileEntry, 'fields' | 'tableId'>>;
+export type ProfileEntryInput = Partial<
+  Pick<ProfileEntry, 'content' | 'favorite' | 'fields' | 'kind' | 'summary' | 'tableId' | 'tags'>
+> &
+  Pick<ProfileEntry, 'title'>;
+export type ProfileEntryUpdate = Pick<ProfileEntry, 'content' | 'kind' | 'summary' | 'tags' | 'title'> &
+  Partial<Pick<ProfileEntry, 'fields' | 'tableId'>>;
 
 export const useProfilesStore = defineStore('profiles', () => {
   const { data, rehydrateFromSettings, resetCurrentScope, scopeKey, switchScope } = useChatScopedDomain({
@@ -196,7 +361,9 @@ export const useProfilesStore = defineStore('profiles', () => {
     createDefault: () => validateInplace(ProfilesScopeDataSchema, {}),
   });
 
-  const entries = computed(() => [...data.value.entries].sort((left, right) => right.updatedAt.localeCompare(left.updatedAt)));
+  const entries = computed(() =>
+    [...data.value.entries].sort((left, right) => right.updatedAt.localeCompare(left.updatedAt)),
+  );
   const tables = computed(() => [...data.value.tables]);
   const failedDraftCollection = createFailedDraftCollection(data, 'profile_failed');
 
@@ -254,7 +421,9 @@ export const useProfilesStore = defineStore('profiles', () => {
     entry.summary = input.summary.trim();
     entry.content = input.content.trim();
     entry.tags = cleanTags(input.tags);
-    entry.fields = Object.fromEntries(Object.entries(input.fields ?? entry.fields).map(([key, value]) => [key, String(value).trim()]));
+    entry.fields = Object.fromEntries(
+      Object.entries(input.fields ?? entry.fields).map(([key, value]) => [key, String(value).trim()]),
+    );
     entry.updatedAt = nowIso();
     return entry;
   }
@@ -276,7 +445,10 @@ export const useProfilesStore = defineStore('profiles', () => {
     return table;
   }
 
-  function updateTable(tableId: string, input: Pick<ProfileTable, 'columns' | 'displayFormat' | 'kind' | 'name' | 'renderMode'>) {
+  function updateTable(
+    tableId: string,
+    input: Pick<ProfileTable, 'columns' | 'displayFormat' | 'kind' | 'name' | 'renderMode'>,
+  ) {
     const table = getTable(tableId);
     if (!table) return null;
     table.name = input.name.trim() || table.name;
@@ -285,9 +457,11 @@ export const useProfilesStore = defineStore('profiles', () => {
     table.displayFormat = input.displayFormat.trim();
     table.renderMode = input.renderMode;
     table.updatedAt = nowIso();
-    data.value.entries.filter(entry => entry.tableId === tableId).forEach(entry => {
-      entry.kind = table.kind;
-    });
+    data.value.entries
+      .filter(entry => entry.tableId === tableId)
+      .forEach(entry => {
+        entry.kind = table.kind;
+      });
     return table;
   }
 

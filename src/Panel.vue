@@ -68,7 +68,11 @@
             <input v-model="settings.floatBallColor" type="color" />
           </div>
 
-          <button class="menu_button menu_button_secondary" type="button" @click="settingsStore.resetFloatBallPosition()">
+          <button
+            class="menu_button menu_button_secondary"
+            type="button"
+            @click="settingsStore.resetFloatBallPosition()"
+          >
             {{ t`重置悬浮球位置` }}
           </button>
         </section>
@@ -79,7 +83,9 @@
             <span>{{ phone.isOpen ? t`手机已打开` : t`手机待机中` }}</span>
           </div>
           <p class="pc-copy">
-            {{ t`当前已接入手机壳、主屏、导航、悬浮球，以及总结、日记、番外、收藏、提示词、统计、阅读聊天、八股规则和设置。` }}
+            {{
+              t`当前已接入手机壳、主屏、导航、悬浮球，以及总结、日记、番外、收藏、提示词、统计、阅读聊天、八股规则和设置。`
+            }}
           </p>
         </section>
 

@@ -9,12 +9,15 @@
 <script setup lang="ts">
 import { usePhoneStore } from '@/store/phone';
 
-const props = withDefaults(defineProps<{
-  label?: string;
-  text: string;
-}>(), {
-  label: '说明',
-});
+const props = withDefaults(
+  defineProps<{
+    label?: string;
+    text: string;
+  }>(),
+  {
+    label: '说明',
+  },
+);
 
 const phone = usePhoneStore();
 

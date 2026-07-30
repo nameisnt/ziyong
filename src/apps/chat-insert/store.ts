@@ -21,7 +21,10 @@ export type ChatInsertSettings = z.infer<typeof ChatInsertSettingsSchema>;
 function readSettings(raw: unknown) {
   try {
     const settings = validateInplace(ChatInsertSettingsSchema, raw && typeof raw === 'object' ? raw : {});
-    if (settings.template.trim() === '<phone-entry data-title="{{title}}" data-source="{{source}}">\n{{content}}\n</phone-entry>') {
+    if (
+      settings.template.trim() ===
+      '<phone-entry data-title="{{title}}" data-source="{{source}}">\n{{content}}\n</phone-entry>'
+    ) {
       settings.template = '{{references}}';
     }
     if (settings.template.trim() === '{{content}}\n\n{{references}}') {
@@ -46,11 +49,7 @@ export const useChatInsertStore = defineStore('chat-insert', () => {
     void saveSettingsDebounced();
   }
 
-  watch(
-    settings,
-    nextSettings => persist(nextSettings),
-    { deep: true },
-  );
+  watch(settings, nextSettings => persist(nextSettings), { deep: true });
 
   function resetDraft() {
     settings.value.content = '';

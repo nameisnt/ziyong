@@ -5,19 +5,43 @@
         <button class="pc-soft-btn" type="button" @click="runScan">
           {{ hasScanned ? t`重新检测` : t`检测正文` }}
         </button>
-        <button v-if="writebackEnabled && lastAppliedContent !== null" class="pc-soft-btn" type="button" :disabled="writing" @click="undoLastApply">
+        <button
+          v-if="writebackEnabled && lastAppliedContent !== null"
+          class="pc-soft-btn"
+          type="button"
+          :disabled="writing"
+          @click="undoLastApply"
+        >
           {{ t`撤销应用` }}
         </button>
-        <button v-if="writebackEnabled && draftDirty" class="pc-soft-btn" type="button" :disabled="writing" @click="resetDraft">
+        <button
+          v-if="writebackEnabled && draftDirty"
+          class="pc-soft-btn"
+          type="button"
+          :disabled="writing"
+          @click="resetDraft"
+        >
           {{ t`撤销草稿` }}
         </button>
-        <button v-if="writebackEnabled" class="pc-soft-btn" type="button" :disabled="writing" @click="showDraftEditor = !showDraftEditor">
+        <button
+          v-if="writebackEnabled"
+          class="pc-soft-btn"
+          type="button"
+          :disabled="writing"
+          @click="showDraftEditor = !showDraftEditor"
+        >
           {{ showDraftEditor ? t`收起正文` : t`查看正文` }}
         </button>
         <button v-if="hits.length" class="pc-soft-btn accent" type="button" :disabled="writing" @click="applyAll">
           {{ t`全部应用` }}
         </button>
-        <button v-if="visibleHits.length && visibleHits.length < hits.length" class="pc-soft-btn accent-soft" type="button" :disabled="writing" @click="applyVisible">
+        <button
+          v-if="visibleHits.length && visibleHits.length < hits.length"
+          class="pc-soft-btn accent-soft"
+          type="button"
+          :disabled="writing"
+          @click="applyVisible"
+        >
           {{ `应用可见 ${visibleHits.length}` }}
         </button>
         <button v-if="selectedHits.length" class="pc-soft-btn" type="button" :disabled="writing" @click="applySelected">
@@ -34,8 +58,15 @@
       <textarea v-model="draftContent" :disabled="writing" :placeholder="t`正文内容`"></textarea>
       <div class="pc-bagu-draft-actions">
         <button class="pc-mini-btn" type="button" :disabled="writing" @click="runScan">{{ t`重新检测正文` }}</button>
-        <button class="pc-mini-btn" type="button" :disabled="writing || !draftDirty" @click="resetDraft">{{ t`恢复当前正文` }}</button>
-        <button class="pc-primary-btn compact" type="button" :disabled="writing || !draftDirty" @click="applyEditedDraft">
+        <button class="pc-mini-btn" type="button" :disabled="writing || !draftDirty" @click="resetDraft">
+          {{ t`恢复当前正文` }}
+        </button>
+        <button
+          class="pc-primary-btn compact"
+          type="button"
+          :disabled="writing || !draftDirty"
+          @click="applyEditedDraft"
+        >
           {{ writing ? t`写回中` : t`应用编辑` }}
         </button>
       </div>
@@ -66,8 +97,12 @@
     <div v-else-if="hits.length" class="pc-bagu-hit-list">
       <div class="pc-bagu-select-row">
         <span>{{ `可见 ${visibleHits.length} / ${hits.length}` }}</span>
-        <button class="pc-mini-btn" type="button" :disabled="!visibleHits.length" @click="toggleVisible(true)">{{ t`选可见` }}</button>
-        <button class="pc-mini-btn" type="button" :disabled="!visibleHits.length" @click="toggleVisible(false)">{{ t`取消可见` }}</button>
+        <button class="pc-mini-btn" type="button" :disabled="!visibleHits.length" @click="toggleVisible(true)">
+          {{ t`选可见` }}
+        </button>
+        <button class="pc-mini-btn" type="button" :disabled="!visibleHits.length" @click="toggleVisible(false)">
+          {{ t`取消可见` }}
+        </button>
         <button class="pc-mini-btn" type="button" @click="toggleAll(true)">{{ t`全选` }}</button>
         <button class="pc-mini-btn" type="button" @click="toggleAll(false)">{{ t`全不选` }}</button>
       </div>
@@ -82,7 +117,9 @@
             <input v-model="hit.selected" type="checkbox" />
             <span></span>
           </label>
-          <span class="pc-type-pill" :data-type="hit.type">{{ hit.type === 'replacement' ? t`词汇替换` : t`句式模板` }}</span>
+          <span class="pc-type-pill" :data-type="hit.type">{{
+            hit.type === 'replacement' ? t`词汇替换` : t`句式模板`
+          }}</span>
           <strong>{{ hit.ruleTitle }}</strong>
           <small>{{ hit.ruleLabel }}</small>
         </div>
@@ -145,28 +182,30 @@ const hitFilterOptions = [
 ] satisfies Array<{ label: string; value: HitFilter }>;
 const writebackEnabled = computed(() => Boolean(props.applyHandler));
 const draftDirty = computed(() => draftContent.value !== props.content);
-const effectiveRuleTypes = computed(() => props.ruleTypes?.length ? props.ruleTypes : ['replacement', 'template'] satisfies BaguRule['type'][]);
+const effectiveRuleTypes = computed(() =>
+  props.ruleTypes?.length ? props.ruleTypes : (['replacement', 'template'] satisfies BaguRule['type'][]),
+);
 const scanRules = computed(() => {
   return enabledRules.value.filter(rule => effectiveRuleTypes.value.includes(rule.type));
 });
 const selectedHits = computed(() => hits.value.filter(hit => hit.selected));
 const normalizedHitQuery = computed(() => hitQuery.value.trim().toLowerCase());
-const visibleHits = computed(() => hits.value.filter(hit => {
-  if (hitFilter.value === 'selected' && !hit.selected) return false;
-  if ((hitFilter.value === 'replacement' || hitFilter.value === 'template') && hit.type !== hitFilter.value) return false;
-  const query = normalizedHitQuery.value;
-  if (!query) return true;
-  return [
-    hit.match,
-    hit.originalText,
-    hit.replacement,
-    hit.ruleLabel,
-    hit.ruleTitle,
-    hit.preContext,
-    hit.postContext,
-  ].join(' ').toLowerCase().includes(query);
-}));
-const emptyMessage = computed(() => scanRules.value.length ? '当前没有命中已启用的八股规则。' : '当前选择的检测类型没有启用规则。');
+const visibleHits = computed(() =>
+  hits.value.filter(hit => {
+    if (hitFilter.value === 'selected' && !hit.selected) return false;
+    if ((hitFilter.value === 'replacement' || hitFilter.value === 'template') && hit.type !== hitFilter.value)
+      return false;
+    const query = normalizedHitQuery.value;
+    if (!query) return true;
+    return [hit.match, hit.originalText, hit.replacement, hit.ruleLabel, hit.ruleTitle, hit.preContext, hit.postContext]
+      .join(' ')
+      .toLowerCase()
+      .includes(query);
+  }),
+);
+const emptyMessage = computed(() =>
+  scanRules.value.length ? '当前没有命中已启用的八股规则。' : '当前选择的检测类型没有启用规则。',
+);
 
 watch(
   () => props.content,
@@ -239,9 +278,7 @@ async function applyHits(targetHits: BaguHit[]) {
 
   await commitContent(
     result.text,
-    writebackEnabled.value
-      ? `已应用并写回 ${result.appliedCount} 处改正`
-      : `已应用 ${result.appliedCount} 处改正`,
+    writebackEnabled.value ? `已应用并写回 ${result.appliedCount} 处改正` : `已应用 ${result.appliedCount} 处改正`,
   );
 }
 
@@ -625,6 +662,4 @@ onScopeDispose(stopNavigationGuard);
   margin-left: 6px;
   color: #c44c3e;
 }
-
 </style>
-

@@ -11,9 +11,7 @@ import {
   type SimpleXmlResult,
   type XmlParseResult,
 } from '@/type/generation';
-import {
-  parseTaggedOutputCandidates,
-} from '@/util/parseCandidates';
+import { parseTaggedOutputCandidates } from '@/util/parseCandidates';
 import { parsePrettified } from '@/util/zod';
 
 function normalizeSegment(value?: string) {
@@ -54,7 +52,10 @@ function getDirectChildInnerXml(parent: Element, tagName: string) {
   const child = Array.from(parent.children).find(item => item.tagName === tagName);
   if (!child) return '';
   const serializer = new XMLSerializer();
-  return Array.from(child.childNodes).map(node => serializer.serializeToString(node)).join('').trim();
+  return Array.from(child.childNodes)
+    .map(node => serializer.serializeToString(node))
+    .join('')
+    .trim();
 }
 
 function extractFirstTagInnerRaw(raw: string, tagName: string) {
@@ -77,10 +78,7 @@ function createWarnings(raw: string) {
   return warnings;
 }
 
-function parseResultCandidates<T>(
-  raw: string,
-  parse: (candidateRaw: string) => XmlParseResult<T>,
-): XmlParseResult<T> {
+function parseResultCandidates<T>(raw: string, parse: (candidateRaw: string) => XmlParseResult<T>): XmlParseResult<T> {
   return parseTaggedOutputCandidates(raw, 'result', parse);
 }
 
@@ -111,7 +109,10 @@ export function buildPhoneUserInput(parts: GenerationRequestParts, formUserInput
     .join('\n\n');
 }
 
-function parseSimpleXmlCandidate(raw: string, options?: { preserveContentMarkup?: boolean }): XmlParseResult<SimpleXmlResult> {
+function parseSimpleXmlCandidate(
+  raw: string,
+  options?: { preserveContentMarkup?: boolean },
+): XmlParseResult<SimpleXmlResult> {
   const resultBlock = extractFirstResultBlock(raw);
   if (!resultBlock) {
     return {
@@ -132,7 +133,9 @@ function parseSimpleXmlCandidate(raw: string, options?: { preserveContentMarkup?
 
   const root = document.documentElement;
   const title = getDirectChildText(root, 'title');
-  const content = options?.preserveContentMarkup ? getDirectChildInnerXml(root, 'content') : getDirectChildText(root, 'content');
+  const content = options?.preserveContentMarkup
+    ? getDirectChildInnerXml(root, 'content')
+    : getDirectChildText(root, 'content');
 
   if (!title || !content) {
     const warnings = [
@@ -157,11 +160,17 @@ function parseSimpleXmlCandidate(raw: string, options?: { preserveContentMarkup?
   };
 }
 
-export function parseSimpleXmlResult(raw: string, options?: { preserveContentMarkup?: boolean }): XmlParseResult<SimpleXmlResult> {
+export function parseSimpleXmlResult(
+  raw: string,
+  options?: { preserveContentMarkup?: boolean },
+): XmlParseResult<SimpleXmlResult> {
   return parseResultCandidates(raw, candidate => parseSimpleXmlCandidate(candidate, options));
 }
 
-export function parseTheaterXmlResult(raw: string, options?: { preserveContentMarkup?: boolean }): XmlParseResult<SimpleXmlResult> {
+export function parseTheaterXmlResult(
+  raw: string,
+  options?: { preserveContentMarkup?: boolean },
+): XmlParseResult<SimpleXmlResult> {
   if (!options?.preserveContentMarkup) {
     return parseSimpleXmlResult(raw);
   }
@@ -233,7 +242,10 @@ function parseTheaterXmlCandidate(raw: string): XmlParseResult<SimpleXmlResult> 
   };
 }
 
-function parseContentXmlCandidate(raw: string, options?: { preserveContentMarkup?: boolean }): XmlParseResult<ContentXmlResult> {
+function parseContentXmlCandidate(
+  raw: string,
+  options?: { preserveContentMarkup?: boolean },
+): XmlParseResult<ContentXmlResult> {
   const resultBlock = extractFirstResultBlock(raw);
   if (!resultBlock) {
     return {
@@ -253,7 +265,9 @@ function parseContentXmlCandidate(raw: string, options?: { preserveContentMarkup
   }
 
   const root = document.documentElement;
-  const content = options?.preserveContentMarkup ? getDirectChildInnerXml(root, 'content') : getDirectChildText(root, 'content');
+  const content = options?.preserveContentMarkup
+    ? getDirectChildInnerXml(root, 'content')
+    : getDirectChildText(root, 'content');
 
   if (!content) {
     return {
@@ -273,7 +287,10 @@ function parseContentXmlCandidate(raw: string, options?: { preserveContentMarkup
   };
 }
 
-export function parseContentXmlResult(raw: string, options?: { preserveContentMarkup?: boolean }): XmlParseResult<ContentXmlResult> {
+export function parseContentXmlResult(
+  raw: string,
+  options?: { preserveContentMarkup?: boolean },
+): XmlParseResult<ContentXmlResult> {
   return parseResultCandidates(raw, candidate => parseContentXmlCandidate(candidate, options));
 }
 

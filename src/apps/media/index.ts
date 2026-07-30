@@ -22,7 +22,9 @@ function getLatestIso(left: string, right: string) {
 }
 
 function createMediaArchiveDomain(raw: unknown): PhoneArchiveDomain {
-  const data = MediaScopeDataSchema.safeParse(raw).success ? MediaScopeDataSchema.parse(raw) : MediaScopeDataSchema.parse({});
+  const data = MediaScopeDataSchema.safeParse(raw).success
+    ? MediaScopeDataSchema.parse(raw)
+    : MediaScopeDataSchema.parse({});
   return {
     appId: 'media',
     label: '媒体内容',
@@ -61,7 +63,9 @@ function createMediaContentStats(currentScopeKey: string): PhoneContentStatsCont
       scopeKeys.push(scopeKey);
       allEntries.push(...data.entries);
     } catch (caughtError) {
-      warnings.push(`媒体内容 ${scopeKey}：${caughtError instanceof Error ? caughtError.message.split('\n')[0] : String(caughtError)}`);
+      warnings.push(
+        `媒体内容 ${scopeKey}：${caughtError instanceof Error ? caughtError.message.split('\n')[0] : String(caughtError)}`,
+      );
     }
   });
   const current = currentData.entries.length ? createOverview(currentData.entries, 1) : emptyOverview();
@@ -105,14 +109,16 @@ export default definePhoneApp({
   defaultRoute: 'root',
   defaultOrder: 135,
   archiveProvider: { field: mediaField, collect: createMediaArchiveDomain },
-  backupDomains: [{
-    key: 'media',
-    exportData: currentScopeKey => readChatScopedEnvelope(mediaField, currentScopeKey || getCurrentChatScopeKey()),
-    importData: data => {
-      _.set(extension_settings, mediaField, data);
+  backupDomains: [
+    {
+      key: 'media',
+      exportData: currentScopeKey => readChatScopedEnvelope(mediaField, currentScopeKey || getCurrentChatScopeKey()),
+      importData: data => {
+        _.set(extension_settings, mediaField, data);
+      },
+      rehydrateFromSettings: () => useMediaStore().rehydrateFromSettings(),
     },
-    rehydrateFromSettings: () => useMediaStore().rehydrateFromSettings(),
-  }],
+  ],
   component: MediaGenerateApp,
   contentStatsProvider: createMediaContentStats,
   referenceProvider: createMediaReferenceTree,

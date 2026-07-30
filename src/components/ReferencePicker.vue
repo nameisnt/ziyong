@@ -48,7 +48,13 @@
                 <strong>{{ item.title }}</strong>
                 <small>{{ item.sourcePath.join(' / ') }}</small>
               </div>
-              <button class="pc-reference-icon" type="button" :disabled="disabled" :title="t`移除引用`" @click="removeItem(item.id)">
+              <button
+                class="pc-reference-icon"
+                type="button"
+                :disabled="disabled"
+                :title="t`移除引用`"
+                @click="removeItem(item.id)"
+              >
                 <i class="fa-solid fa-xmark"></i>
               </button>
             </div>
@@ -67,10 +73,7 @@
 </template>
 
 <script setup lang="ts">
-import {
-  getRegisteredPhoneAppReferenceTrees,
-  type PhoneReferenceTreeNode,
-} from '@/core/appRegistry';
+import { getRegisteredPhoneAppReferenceTrees, type PhoneReferenceTreeNode } from '@/core/appRegistry';
 import type { GenerationReferenceItem } from '@/util/references';
 import { defineComponent, h, type PropType } from 'vue';
 
@@ -87,55 +90,70 @@ const ReferenceTreeNode = defineComponent({
       const paddingLeft = `${props.level * 14 + 10}px`;
       if (props.node.kind === 'leaf') {
         const selected = props.selectedIds.has(props.node.item.id);
-        return h('label', {
-          class: ['pc-reference-node', 'leaf', { selected }],
-          style: { paddingLeft },
-        }, [
-          h('input', {
-            class: 'pc-reference-checkbox',
-            checked: selected,
-            disabled: props.disabled,
-            onChange: () => emit('toggle-leaf', props.node.item),
-            type: 'checkbox',
-          }),
-          h('span', { class: 'pc-reference-node-title' }, props.node.item.title),
-        ]);
+        return h(
+          'label',
+          {
+            class: ['pc-reference-node', 'leaf', { selected }],
+            style: { paddingLeft },
+          },
+          [
+            h('input', {
+              class: 'pc-reference-checkbox',
+              checked: selected,
+              disabled: props.disabled,
+              onChange: () => emit('toggle-leaf', props.node.item),
+              type: 'checkbox',
+            }),
+            h('span', { class: 'pc-reference-node-title' }, props.node.item.title),
+          ],
+        );
       }
 
       return h('div', { class: 'pc-reference-branch' }, [
-        h('button', {
-          class: 'pc-reference-node branch',
-          disabled: props.disabled,
-          onClick: () => emit('toggle-branch', props.node.id),
-          style: { paddingLeft },
-          type: 'button',
-        }, [
-          h('i', { class: expanded.value.has(props.node.id) ? 'fa-solid fa-chevron-down' : 'fa-solid fa-chevron-right' }),
-          h('span', { class: 'pc-reference-node-title' }, props.node.label),
-          h('small', props.node.children.length),
-        ]),
+        h(
+          'button',
+          {
+            class: 'pc-reference-node branch',
+            disabled: props.disabled,
+            onClick: () => emit('toggle-branch', props.node.id),
+            style: { paddingLeft },
+            type: 'button',
+          },
+          [
+            h('i', {
+              class: expanded.value.has(props.node.id) ? 'fa-solid fa-chevron-down' : 'fa-solid fa-chevron-right',
+            }),
+            h('span', { class: 'pc-reference-node-title' }, props.node.label),
+            h('small', props.node.children.length),
+          ],
+        ),
         expanded.value.has(props.node.id)
-          ? props.node.children.map(child => h(ReferenceTreeNode, {
-              disabled: props.disabled,
-              key: child.id,
-              level: props.level + 1,
-              node: child,
-              selectedIds: props.selectedIds,
-              onToggleBranch: (id: string) => emit('toggle-branch', id),
-              onToggleLeaf: (item: GenerationReferenceItem) => emit('toggle-leaf', item),
-            }))
+          ? props.node.children.map(child =>
+              h(ReferenceTreeNode, {
+                disabled: props.disabled,
+                key: child.id,
+                level: props.level + 1,
+                node: child,
+                selectedIds: props.selectedIds,
+                onToggleBranch: (id: string) => emit('toggle-branch', id),
+                onToggleLeaf: (item: GenerationReferenceItem) => emit('toggle-leaf', item),
+              }),
+            )
           : null,
       ]);
     };
   },
 });
 
-const props = withDefaults(defineProps<{
-  disabled?: boolean;
-  modelValue: GenerationReferenceItem[];
-}>(), {
-  disabled: false,
-});
+const props = withDefaults(
+  defineProps<{
+    disabled?: boolean;
+    modelValue: GenerationReferenceItem[];
+  }>(),
+  {
+    disabled: false,
+  },
+);
 
 const emit = defineEmits<{
   'update:modelValue': [value: GenerationReferenceItem[]];
@@ -148,16 +166,16 @@ const expanded = ref(new Set<string>());
 
 const selectedIds = computed(() => new Set(props.modelValue.map(item => item.id)));
 
-const tree = computed(() => getRegisteredPhoneAppReferenceTrees().filter(item => item.kind === 'branch' ? item.children.length > 0 : Boolean(item.item.content.trim())));
+const tree = computed(() =>
+  getRegisteredPhoneAppReferenceTrees().filter(item =>
+    item.kind === 'branch' ? item.children.length > 0 : Boolean(item.item.content.trim()),
+  ),
+);
 
 function filterNode(node: PhoneReferenceTreeNode, normalizedQuery: string): PhoneReferenceTreeNode | null {
   if (!normalizedQuery) return node;
   if (node.kind === 'leaf') {
-    const haystack = [
-      node.item.title,
-      node.item.sourcePath.join(' '),
-      node.item.content,
-    ].join(' ').toLowerCase();
+    const haystack = [node.item.title, node.item.sourcePath.join(' '), node.item.content].join(' ').toLowerCase();
     return haystack.includes(normalizedQuery) ? node : null;
   }
 
@@ -220,18 +238,22 @@ function toggleBranch(id: string) {
 function toggleLeaf(item: GenerationReferenceItem) {
   if (props.disabled) return;
   const exists = selectedIds.value.has(item.id);
-  const next = exists
-    ? props.modelValue.filter(current => current.id !== item.id)
-    : [...props.modelValue, item];
+  const next = exists ? props.modelValue.filter(current => current.id !== item.id) : [...props.modelValue, item];
   emit('update:modelValue', next);
 }
 
 function removeItem(itemId: string) {
-  emit('update:modelValue', props.modelValue.filter(item => item.id !== itemId));
+  emit(
+    'update:modelValue',
+    props.modelValue.filter(item => item.id !== itemId),
+  );
 }
 
 function updateItemContent(itemId: string, content: string) {
-  emit('update:modelValue', props.modelValue.map(item => (item.id === itemId ? { ...item, content } : item)));
+  emit(
+    'update:modelValue',
+    props.modelValue.map(item => (item.id === itemId ? { ...item, content } : item)),
+  );
 }
 </script>
 

@@ -15,7 +15,13 @@
       <section class="pc-world-card">
         <label class="pc-field-label">{{ t`世界书名称` }}</label>
         <div class="pc-book-row">
-          <input class="pc-field" :value="data.bookName" type="text" :placeholder="t`例如：当前聊天资料槽`" @change="worldSlots.setBookName(($event.target as HTMLInputElement).value)" />
+          <input
+            class="pc-field"
+            :value="data.bookName"
+            type="text"
+            :placeholder="t`例如：当前聊天资料槽`"
+            @change="worldSlots.setBookName(($event.target as HTMLInputElement).value)"
+          />
           <button class="pc-primary-btn compact" type="button" :disabled="syncing || !slots.length" @click="syncSlots">
             <i class="fa-solid fa-cloud-arrow-up"></i>
             <span>{{ syncing ? t`同步中` : t`同步` }}</span>
@@ -68,11 +74,21 @@
             </option>
           </select>
           <div class="pc-profile-ref-actions">
-            <button class="pc-soft-btn" type="button" :disabled="!selectedProfileEntries.length" @click="appendSelectedProfiles">
+            <button
+              class="pc-soft-btn"
+              type="button"
+              :disabled="!selectedProfileEntries.length"
+              @click="appendSelectedProfiles"
+            >
               <i class="fa-solid fa-plus"></i>
               <span>{{ t`追加到正文` }}</span>
             </button>
-            <button class="pc-soft-btn" type="button" :disabled="!selectedProfileEntries.length" @click="fillFromSelectedProfiles">
+            <button
+              class="pc-soft-btn"
+              type="button"
+              :disabled="!selectedProfileEntries.length"
+              @click="fillFromSelectedProfiles"
+            >
               <i class="fa-solid fa-file-lines"></i>
               <span>{{ t`填入正文` }}</span>
             </button>
@@ -82,9 +98,15 @@
           <span>{{ t`启用条目` }}</span>
           <input v-model="draft.enabled" type="checkbox" />
         </label>
-        <textarea v-model="draft.content" class="pc-area pc-world-area pc-saved-content-area" :placeholder="t`写入世界书的内容`"></textarea>
+        <textarea
+          v-model="draft.content"
+          class="pc-area pc-world-area pc-saved-content-area"
+          :placeholder="t`写入世界书的内容`"
+        ></textarea>
         <div class="pc-form-actions">
-          <button v-if="editingSlot" class="pc-soft-btn danger" type="button" @click="deleteCurrent">{{ t`删除` }}</button>
+          <button v-if="editingSlot" class="pc-soft-btn danger" type="button" @click="deleteCurrent">
+            {{ t`删除` }}
+          </button>
           <button class="pc-soft-btn" type="button" @click="phone.goBack()">{{ t`取消` }}</button>
           <button class="pc-primary-btn" type="button" @click="saveDraft">{{ t`保存` }}</button>
         </div>
@@ -124,22 +146,24 @@ const draft = reactive({
   type: 'note' as WorldSlotType,
 });
 
-const editingSlot = computed(() => route.value.params?.slotId ? worldSlots.getSlot(route.value.params.slotId) : null);
-const selectedProfileEntries = computed(() => draft.profileEntryIds
-  .map(entryId => profiles.getEntry(entryId))
-  .filter((entry): entry is ProfileEntry => Boolean(entry)));
+const editingSlot = computed(() => (route.value.params?.slotId ? worldSlots.getSlot(route.value.params.slotId) : null));
+const selectedProfileEntries = computed(() =>
+  draft.profileEntryIds
+    .map(entryId => profiles.getEntry(entryId))
+    .filter((entry): entry is ProfileEntry => Boolean(entry)),
+);
 const normalizedQuery = computed(() => query.value.trim().toLowerCase());
-const filteredSlots = computed(() => slots.value.filter(slot => {
-  if (typeFilter.value && slot.type !== typeFilter.value) return false;
-  const search = normalizedQuery.value;
-  if (!search) return true;
-  return [
-    slot.title,
-    slot.content,
-    getWorldSlotTypeLabel(slot.type),
-    ...slot.keys,
-  ].join(' ').toLowerCase().includes(search);
-}));
+const filteredSlots = computed(() =>
+  slots.value.filter(slot => {
+    if (typeFilter.value && slot.type !== typeFilter.value) return false;
+    const search = normalizedQuery.value;
+    if (!search) return true;
+    return [slot.title, slot.content, getWorldSlotTypeLabel(slot.type), ...slot.keys]
+      .join(' ')
+      .toLowerCase()
+      .includes(search);
+  }),
+);
 
 watch(
   () => [route.value.appId, route.value.page, route.value.params?.slotId] as const,
@@ -151,7 +175,10 @@ watch(
 );
 
 function splitKeys(text: string) {
-  return text.split(/[,，、\n]/g).map(item => item.trim()).filter(Boolean);
+  return text
+    .split(/[,，、\n]/g)
+    .map(item => item.trim())
+    .filter(Boolean);
 }
 
 function fillDraft(slot: WorldSlot | null) {
@@ -180,9 +207,7 @@ function saveDraft() {
     title: draft.title,
     type: draft.type,
   };
-  const slot = editingSlot.value
-    ? worldSlots.updateSlot(editingSlot.value.id, input)
-    : worldSlots.createSlot(input);
+  const slot = editingSlot.value ? worldSlots.updateSlot(editingSlot.value.id, input) : worldSlots.createSlot(input);
   if (!slot) return;
   phone.goBack();
   toastr.success('已保存槽位');
@@ -195,7 +220,9 @@ function buildProfileText(entry: ProfileEntry) {
     entry.summary ? `摘要：${entry.summary}` : '',
     entry.tags.length ? `标签：${entry.tags.join('、')}` : '',
     entry.content,
-  ].filter(Boolean).join('\n');
+  ]
+    .filter(Boolean)
+    .join('\n');
 }
 
 function buildSelectedProfilesText() {
@@ -231,10 +258,13 @@ function fillFromSelectedProfiles() {
 
 async function deleteCurrent() {
   if (!editingSlot.value) return;
-  const shouldDelete = await phone.confirmNotice(`要删除槽位“${editingSlot.value.title}”吗？已同步的世界书条目不会自动删除。`, {
-    confirmLabel: '删除',
-    kind: 'warning',
-  });
+  const shouldDelete = await phone.confirmNotice(
+    `要删除槽位“${editingSlot.value.title}”吗？已同步的世界书条目不会自动删除。`,
+    {
+      confirmLabel: '删除',
+      kind: 'warning',
+    },
+  );
   if (!shouldDelete) return;
   worldSlots.deleteSlot(editingSlot.value.id);
   phone.goBack();

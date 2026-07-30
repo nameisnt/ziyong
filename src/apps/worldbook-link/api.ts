@@ -33,12 +33,14 @@ function uniqueNames(names: Array<null | string | undefined>) {
 }
 
 function normalizeCharacterId(value: null | string | undefined) {
-  return String(value || '').replace(/^.*[\\/]/, '').toLocaleLowerCase();
+  return String(value || '')
+    .replace(/^.*[\\/]/, '')
+    .toLocaleLowerCase();
 }
 
 function getRuntimeCharacters() {
   const characters = getOptionalGlobalValue<unknown>('characters');
-  return Array.isArray(characters) ? characters as RuntimeCharacter[] : [];
+  return Array.isArray(characters) ? (characters as RuntimeCharacter[]) : [];
 }
 
 function getEmbeddedWorldbookName(character: RuntimeCharacter) {
@@ -66,9 +68,7 @@ function getCharacterWorldbookGroups(
   for (const character of runtimeCharacters) {
     const characterId = normalizeCharacterId(character.avatar);
     const characterName = character.name?.trim() || character.data?.name?.trim() || '';
-    const isCurrent = currentId
-      ? characterId === currentId
-      : Boolean(currentName && characterName === currentName);
+    const isCurrent = currentId ? characterId === currentId : Boolean(currentName && characterName === currentName);
     const primary = character.data?.extensions?.world?.trim();
     const embedded = getEmbeddedWorldbookName(character);
     const target = isCurrent ? currentNames : otherNames;
@@ -140,18 +140,26 @@ export async function setGlobalWorldbookEnabled(bookName: string, enabled: boole
 }
 
 export async function setWorldbookEntryStates(bookName: string, states: Map<number, boolean>, disableUnknown: boolean) {
-  const updateWorldbook = requiredFunction<(
-    worldbookName: string,
-    updater: (entries: WorldbookEntry[]) => WorldbookEntry[],
-    options?: { render?: 'debounced' | 'immediate' },
-  ) => Promise<WorldbookEntry[]>>('updateWorldbookWith');
+  const updateWorldbook =
+    requiredFunction<
+      (
+        worldbookName: string,
+        updater: (entries: WorldbookEntry[]) => WorldbookEntry[],
+        options?: { render?: 'debounced' | 'immediate' },
+      ) => Promise<WorldbookEntry[]>
+    >('updateWorldbookWith');
   let changed = 0;
-  const entries = await updateWorldbook(bookName, currentEntries => currentEntries.map(entry => {
-    const target = states.has(entry.uid) ? states.get(entry.uid) : disableUnknown ? false : entry.enabled;
-    if (target === undefined || target === entry.enabled) return entry;
-    changed += 1;
-    return { ...entry, enabled: target };
-  }), { render: 'immediate' });
+  const entries = await updateWorldbook(
+    bookName,
+    currentEntries =>
+      currentEntries.map(entry => {
+        const target = states.has(entry.uid) ? states.get(entry.uid) : disableUnknown ? false : entry.enabled;
+        if (target === undefined || target === entry.enabled) return entry;
+        changed += 1;
+        return { ...entry, enabled: target };
+      }),
+    { render: 'immediate' },
+  );
   return { changed, entries };
 }
 

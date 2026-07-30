@@ -22,16 +22,19 @@
 <script setup lang="ts">
 import { buildFrontendDocument, getFrontendFrameSource } from '@/util/theaterFrontend';
 
-const props = withDefaults(defineProps<{
-  active?: boolean;
-  content: string;
-  theme?: 'dark' | 'light';
-  title?: string;
-}>(), {
-  active: true,
-  theme: 'light',
-  title: '',
-});
+const props = withDefaults(
+  defineProps<{
+    active?: boolean;
+    content: string;
+    theme?: 'dark' | 'light';
+    title?: string;
+  }>(),
+  {
+    active: true,
+    theme: 'light',
+    title: '',
+  },
+);
 
 const emit = defineEmits<{
   navigateBlocked: [];
@@ -45,14 +48,18 @@ const loadCount = ref(0);
 const channelId = `theater_frame_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
 const sandboxFlags = 'allow-scripts';
 
-const documentHtml = computed(() => buildFrontendDocument(props.content, {
-  channelId,
-  theme: props.theme,
-  title: props.title,
-}));
+const documentHtml = computed(() =>
+  buildFrontendDocument(props.content, {
+    channelId,
+    theme: props.theme,
+    title: props.title,
+  }),
+);
 const shouldRender = computed(() => props.active && !blocked.value);
-const statusTitle = computed(() => blocked.value ? '已阻止自导航' : '等待重新挂载');
-const statusCopy = computed(() => blocked.value ? '检测到 iframe 尝试重新加载，已按安全策略卸载。' : '当前视图已隐藏，iframe 会在重新进入时恢复。');
+const statusTitle = computed(() => (blocked.value ? '已阻止自导航' : '等待重新挂载'));
+const statusCopy = computed(() =>
+  blocked.value ? '检测到 iframe 尝试重新加载，已按安全策略卸载。' : '当前视图已隐藏，iframe 会在重新进入时恢复。',
+);
 
 watch(
   () => [props.active, props.content, props.theme, props.title] as const,

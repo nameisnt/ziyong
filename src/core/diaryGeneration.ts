@@ -48,7 +48,8 @@ export const DiaryGeneratedResultSchema = z.object({
 });
 export type DiaryGeneratedResult = z.infer<typeof DiaryGeneratedResultSchema>;
 
-const DIARY_BLOCK_REGEX = /<日记(?:\s[^>]*)?>\s*标题[：:]([^\n]+)\s*时间[：:]([^\n]+)\s*内容[：:]([\s\S]*?)\s*<\/日记>/i;
+const DIARY_BLOCK_REGEX =
+  /<日记(?:\s[^>]*)?>\s*标题[：:]([^\n]+)\s*时间[：:]([^\n]+)\s*内容[：:]([\s\S]*?)\s*<\/日记>/i;
 
 function extractOptionalTag(raw: string, tagName: string) {
   const match = raw.match(new RegExp(`<${tagName}(?:\\s[^>]*)?>([\\s\\S]*?)</${tagName}>`, 'i'));
@@ -137,10 +138,11 @@ export function parseDiaryGeneratedResult(raw: string, fallbackOccurredAt = ''):
     };
   }
 
-  const occurredAt = extractOptionalTag(parsed.raw, 'time')
-    || extractOptionalTag(parsed.raw, 'date')
-    || extractOptionalTag(parsed.raw, 'occurredAt')
-    || fallbackOccurredAt.trim();
+  const occurredAt =
+    extractOptionalTag(parsed.raw, 'time') ||
+    extractOptionalTag(parsed.raw, 'date') ||
+    extractOptionalTag(parsed.raw, 'occurredAt') ||
+    fallbackOccurredAt.trim();
   const warnings = [...parsed.warnings];
   if (!occurredAt) {
     warnings.push('没有读取到时间字段，已保存为空时间');
@@ -162,21 +164,22 @@ function buildDiaryTaskInstruction(config: DiaryGenerateConfig) {
   return [
     `请严格以${config.perspective.name}的第一人称口吻书写这篇日记，不要写成旁白总结。`,
     config.occurredAt.trim() ? `日记发生或写作时间：${config.occurredAt.trim()}` : '',
-  ].filter(Boolean).join('\n');
+  ]
+    .filter(Boolean)
+    .join('\n');
 }
 
 function buildDiaryReactionContext(config: DiaryReadReactionGenerateConfig) {
-  return [
-    '以下是被阅读的日记正文，请先读完再写读后反应：',
-    config.sourceContent,
-  ].filter(Boolean).join('\n\n');
+  return ['以下是被阅读的日记正文，请先读完再写读后反应：', config.sourceContent].filter(Boolean).join('\n\n');
 }
 
 function buildDiaryReactionTaskInstruction(config: DiaryReadReactionGenerateConfig) {
   return [
     `请严格以${config.perspective.name}的第一人称书写读后反应，重点放在阅读后的情绪、判断和联想，不要写成摘要。`,
     config.occurredAt.trim() ? `反应发生或写作时间：${config.occurredAt.trim()}` : '',
-  ].filter(Boolean).join('\n');
+  ]
+    .filter(Boolean)
+    .join('\n');
 }
 
 export function createDiaryGenerationAdapter(diaryStore: {
@@ -201,11 +204,8 @@ export function createDiaryGenerationAdapter(diaryStore: {
     },
     configSchema: DiaryGenerateConfigSchema,
     parse(raw, config) {
-      const parsed = parseConfiguredOutput(
-        'diary.generate',
-        raw,
-        DiaryGeneratedResultSchema,
-        () => parseDiaryGeneratedResult(raw, config.occurredAt),
+      const parsed = parseConfiguredOutput('diary.generate', raw, DiaryGeneratedResultSchema, () =>
+        parseDiaryGeneratedResult(raw, config.occurredAt),
       );
       if (!parsed.ok || parsed.data.occurredAt) return parsed;
       return {
@@ -236,7 +236,11 @@ export function createDiaryGenerationAdapter(diaryStore: {
         entry: created.entry,
       };
     },
-  } satisfies GenerationAdapter<DiaryGenerateConfig, DiaryGeneratedResult, { bookId: string; entityId: string; entry: DiaryEntry }>;
+  } satisfies GenerationAdapter<
+    DiaryGenerateConfig,
+    DiaryGeneratedResult,
+    { bookId: string; entityId: string; entry: DiaryEntry }
+  >;
 }
 
 export function createDiaryReadReactionGenerationAdapter(diaryStore: {
@@ -262,11 +266,8 @@ export function createDiaryReadReactionGenerationAdapter(diaryStore: {
     },
     configSchema: DiaryReadReactionGenerateConfigSchema,
     parse(raw, config) {
-      const parsed = parseConfiguredOutput(
-        'diary.reaction',
-        raw,
-        DiaryGeneratedResultSchema,
-        () => parseDiaryGeneratedResult(raw, config.occurredAt),
+      const parsed = parseConfiguredOutput('diary.reaction', raw, DiaryGeneratedResultSchema, () =>
+        parseDiaryGeneratedResult(raw, config.occurredAt),
       );
       if (!parsed.ok || parsed.data.occurredAt) return parsed;
       return {
@@ -297,5 +298,9 @@ export function createDiaryReadReactionGenerationAdapter(diaryStore: {
         entry: created.entry,
       };
     },
-  } satisfies GenerationAdapter<DiaryReadReactionGenerateConfig, DiaryGeneratedResult, { bookId: string; entityId: string; entry: DiaryEntry }>;
+  } satisfies GenerationAdapter<
+    DiaryReadReactionGenerateConfig,
+    DiaryGeneratedResult,
+    { bookId: string; entityId: string; entry: DiaryEntry }
+  >;
 }

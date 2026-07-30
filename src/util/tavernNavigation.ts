@@ -38,11 +38,7 @@ function getCharacterAvatar(character: unknown) {
   return typeof record.avatar === 'string' ? record.avatar : '';
 }
 
-function resolveCharacterIndex(input: {
-  avatar?: string;
-  characterId?: number | null;
-  ownerName?: string;
-}) {
+function resolveCharacterIndex(input: { avatar?: string; characterId?: number | null; ownerName?: string }) {
   const characters = getTavernCharacters();
   if (input.avatar) {
     const byAvatar = characters.findIndex(character => getCharacterAvatar(character) === input.avatar);

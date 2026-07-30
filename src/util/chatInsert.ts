@@ -51,15 +51,18 @@ function replaceAllLiteral(value: string, search: string, replacement: string) {
 
 export function formatChatInsertTemplate(template: string, values: ChatInsertTemplateValues) {
   const baseTemplate = template.trim() || '{{content}}';
-  const referenceReplacements = values.referenceReplacements
-    ?.map(item => ({
-      content: item.content.trim(),
-      time: item.time?.trim() || '',
-      title: item.title?.trim() || '',
-      token: item.token.trim(),
-    }))
-    .filter(item => item.token && (item.content || item.title || item.time)) ?? [];
-  const references = values.references?.map(reference => reference.trim()).filter(Boolean) ?? referenceReplacements.map(item => item.content);
+  const referenceReplacements =
+    values.referenceReplacements
+      ?.map(item => ({
+        content: item.content.trim(),
+        time: item.time?.trim() || '',
+        title: item.title?.trim() || '',
+        token: item.token.trim(),
+      }))
+      .filter(item => item.token && (item.content || item.title || item.time)) ?? [];
+  const references =
+    values.references?.map(reference => reference.trim()).filter(Boolean) ??
+    referenceReplacements.map(item => item.content);
   const replacements = [
     ['{{title}}', values.title?.trim() || ''],
     ['{{source}}', values.source?.trim() || ''],
@@ -72,7 +75,10 @@ export function formatChatInsertTemplate(template: string, values: ChatInsertTem
   return replacements
     .reduce((text, [search, replacement]) => replaceAllLiteral(text, search, replacement), baseTemplate)
     .replace(/\{\{reference\d+\}\}/g, '')
-    .replace(/\{\{(?:diary|extra|extras|theater|letter|letters|excerpt|digest|summary|forum)[\w-]*\d+(?:Title|Time)?\}\}/g, '')
+    .replace(
+      /\{\{(?:diary|extra|extras|theater|letter|letters|excerpt|digest|summary|forum)[\w-]*\d+(?:Title|Time)?\}\}/g,
+      '',
+    )
     .trim();
 }
 
@@ -107,24 +113,30 @@ export async function applyChatInsert(options: ChatInsertOptions): Promise<ChatI
   const targetMessageId = resolveAppendTarget(options.mode, options.targetMessageId);
 
   if (options.mode === 'new-end' || options.mode === 'new-before') {
-    const createChatMessages = getOptionalGlobalFunction<(
-      messages: CreateChatMessageInput[],
-      options?: { insert_before?: number | 'end'; refresh?: 'affected' | 'all' | 'none' },
-    ) => Promise<void>>('createChatMessages');
+    const createChatMessages =
+      getOptionalGlobalFunction<
+        (
+          messages: CreateChatMessageInput[],
+          options?: { insert_before?: number | 'end'; refresh?: 'affected' | 'all' | 'none' },
+        ) => Promise<void>
+      >('createChatMessages');
     if (!createChatMessages) {
       throw new Error('当前环境不支持 createChatMessages，无法创建新楼层');
     }
 
-    await createChatMessages([
+    await createChatMessages(
+      [
+        {
+          is_hidden: options.hidden,
+          message,
+          role: options.role,
+        },
+      ],
       {
-        is_hidden: options.hidden,
-        message,
-        role: options.role,
+        insert_before: targetMessageId,
+        refresh: 'affected',
       },
-    ], {
-      insert_before: targetMessageId,
-      refresh: 'affected',
-    });
+    );
     await saveChatIfAvailable();
     return {
       message,
@@ -137,18 +149,23 @@ export async function applyChatInsert(options: ChatInsertOptions): Promise<ChatI
     throw new Error('追加模式需要有效目标楼层');
   }
 
-  const targetMessage = getChatMessagesSafe(`0-${targetMessageId}`).find(message => message.message_id === targetMessageId);
+  const targetMessage = getChatMessagesSafe(`0-${targetMessageId}`).find(
+    message => message.message_id === targetMessageId,
+  );
   if (!targetMessage) {
     throw new Error(`没有找到第 ${targetMessageId} 楼`);
   }
 
   const separator = getAppendSeparator(targetMessage.message, options.separator);
-  await setChatMessagesSafe([
-    {
-      message_id: targetMessage.message_id,
-      message: `${targetMessage.message}${separator}${message}`,
-    },
-  ], { refresh: 'affected' });
+  await setChatMessagesSafe(
+    [
+      {
+        message_id: targetMessage.message_id,
+        message: `${targetMessage.message}${separator}${message}`,
+      },
+    ],
+    { refresh: 'affected' },
+  );
   await saveChatIfAvailable();
 
   return {

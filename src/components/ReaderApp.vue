@@ -6,7 +6,13 @@
           <span class="pc-kicker">{{ readerScopeLabel }}</span>
           <h2>{{ currentChatTitle }}</h2>
         </div>
-        <button class="pc-icon-btn pc-refresh-icon" type="button" :disabled="loadingDetail" :title="t`刷新`" @click="refreshCurrentChat">
+        <button
+          class="pc-icon-btn pc-refresh-icon"
+          type="button"
+          :disabled="loadingDetail"
+          :title="t`刷新`"
+          @click="refreshCurrentChat"
+        >
           <i :class="['fa-solid fa-rotate-right', { spinning: loadingDetail }]"></i>
         </button>
       </div>
@@ -17,7 +23,12 @@
             <strong>{{ t`阅读规则` }}</strong>
             <small>{{ readerRuleSummary }}</small>
           </div>
-          <button class="pc-icon-btn" type="button" :title="rulesOpen ? t`折叠规则` : t`展开规则`" @click="rulesOpen = !rulesOpen">
+          <button
+            class="pc-icon-btn"
+            type="button"
+            :title="rulesOpen ? t`折叠规则` : t`展开规则`"
+            @click="rulesOpen = !rulesOpen"
+          >
             <i :class="rulesOpen ? 'fa-solid fa-chevron-up' : 'fa-solid fa-chevron-down'"></i>
           </button>
         </div>
@@ -44,7 +55,11 @@
             </summary>
             <label class="pc-reader-cleanup-toggle">
               <span>{{ t`清理后为空则隐藏楼层` }}</span>
-              <input :checked="readerSettings.hideEmptyAfterCleanup" type="checkbox" @change="onHideEmptyAfterCleanupChange" />
+              <input
+                :checked="readerSettings.hideEmptyAfterCleanup"
+                type="checkbox"
+                @change="onHideEmptyAfterCleanupChange"
+              />
             </label>
             <div v-if="readerCleanupRules.length" class="pc-reader-cleanup-list">
               <label v-for="rule in readerCleanupRules" :key="rule.id" class="pc-reader-cleanup-item">
@@ -70,7 +85,9 @@
               <span aria-hidden="true"></span>
             </label>
           </div>
-          <p v-if="!readerRegexRules.length" class="pc-rule-help">{{ t`正则显示 App 中勾选“楼层正文提取”的规则会显示在这里。` }}</p>
+          <p v-if="!readerRegexRules.length" class="pc-rule-help">
+            {{ t`正则显示 App 中勾选“楼层正文提取”的规则会显示在这里。` }}
+          </p>
         </div>
       </section>
 
@@ -190,7 +207,13 @@ import {
   type ChatReaderRegexRule,
   type ReaderMessage,
 } from '@/store/reader';
-import { defaultReaderBodyRegexDisplayRuleId, regexDisplayReaderCleanupTarget, regexDisplayReaderTarget, type RegexDisplayRule, useRegexDisplayStore } from '@/apps/regex-display/store';
+import {
+  defaultReaderBodyRegexDisplayRuleId,
+  regexDisplayReaderCleanupTarget,
+  regexDisplayReaderTarget,
+  type RegexDisplayRule,
+  useRegexDisplayStore,
+} from '@/apps/regex-display/store';
 import { usePhoneStore } from '@/store/phone';
 import { useReaderStore } from '@/store/reader';
 import { useSettingsStore } from '@/store/settings';
@@ -199,7 +222,14 @@ import { useWorldbookLinkStore } from '@/apps/worldbook-link/store';
 import { normalizeChatArchiveId, parseChatScopeKey } from '@/util/chatArchive';
 import { canOpenBaguScan } from '@/util/baguScanGate';
 import { useDetailScroll } from '@/util/detailScroll';
-import { executeSlashCommandSafe, getChatHistoryDetailSafe, getChatMessagesSafe, getOptionalGlobalFunction, onTavernEvent, setChatMessagesSafe } from '@/util/runtime';
+import {
+  executeSlashCommandSafe,
+  getChatHistoryDetailSafe,
+  getChatMessagesSafe,
+  getOptionalGlobalFunction,
+  onTavernEvent,
+  setChatMessagesSafe,
+} from '@/util/runtime';
 import { getCurrentChatScopeKey, isPlaceholderChatScopeKey } from '@/store/chatScoped';
 import { transformReaderMessages } from '@/util/readerRegex';
 import { characters, getCharacters, getPastCharacterChats } from '@sillytavern/script';
@@ -235,13 +265,16 @@ const branching = ref(false);
 let pendingBranchSourceScopeKey = '';
 let pendingBranchExpiresAt = 0;
 const { scrollToBottom, scrollToTop } = useDetailScroll(messageBodyEl, '.pc-reader-detail-page .pc-reader-content');
-const currentChatTitle = computed(() => phone.viewingScopeMeta.chatTitle || String(SillyTavern.getCurrentChatId?.() || SillyTavern.chatId || '当前聊天'));
-const readerScopeLabel = computed(() => phone.isViewingCurrentChat ? '当前聊天' : '选中聊天');
+const currentChatTitle = computed(
+  () =>
+    phone.viewingScopeMeta.chatTitle || String(SillyTavern.getCurrentChatId?.() || SillyTavern.chatId || '当前聊天'),
+);
+const readerScopeLabel = computed(() => (phone.isViewingCurrentChat ? '当前聊天' : '选中聊天'));
 
 const activeMessages = computed(() => currentMessages.value);
 const activeMessage = computed(() => {
   const messageId = route.value.params?.messageId;
-  return messageId ? activeMessages.value.find(item => item.id === messageId) ?? null : null;
+  return messageId ? (activeMessages.value.find(item => item.id === messageId) ?? null) : null;
 });
 function escapeCssString(value: string) {
   return value.replace(/\\/g, '\\\\').replace(/"/g, '\\"');
@@ -257,31 +290,42 @@ function toReaderFontStack(fontFamily: string) {
 const readerBodyStyle = computed(() => ({
   fontFamily: toReaderFontStack(settings.value.reader.fontFamily),
 }));
-const activeMessageBody = computed(() => activeMessage.value ? formatReaderBody(activeMessage.value.body) : '');
+const activeMessageBody = computed(() => (activeMessage.value ? formatReaderBody(activeMessage.value.body) : ''));
 const readerBaguContent = computed(() => activeMessage.value?.body || '');
-const messageCatalogItems = computed(() => activeMessages.value.map(message => ({
-  id: message.id,
-  title: message.title,
-})));
+const messageCatalogItems = computed(() =>
+  activeMessages.value.map(message => ({
+    id: message.id,
+    title: message.title,
+  })),
+);
 const activeMessageIndex = computed(() => activeMessages.value.findIndex(item => item.id === activeMessage.value?.id));
-const previousMessageId = computed(() => activeMessageIndex.value > 0 ? activeMessages.value[activeMessageIndex.value - 1]?.id || '' : '');
-const nextMessageId = computed(() => activeMessageIndex.value >= 0 ? activeMessages.value[activeMessageIndex.value + 1]?.id || '' : '');
+const previousMessageId = computed(() =>
+  activeMessageIndex.value > 0 ? activeMessages.value[activeMessageIndex.value - 1]?.id || '' : '',
+);
+const nextMessageId = computed(() =>
+  activeMessageIndex.value >= 0 ? activeMessages.value[activeMessageIndex.value + 1]?.id || '' : '',
+);
 const defaultTitleRule: ChatReaderRegexRule = { find: '', flags: '', replace: '' };
-const readerRegexRules = computed(() => regexDisplayRules.value.filter(rule => (
-  rule.targets.includes(regexDisplayReaderTarget)
-  && rule.pattern.trim()
-)));
-const readerCleanupRules = computed(() => regexDisplayRules.value.filter(rule => (
-  rule.targets.includes(regexDisplayReaderCleanupTarget)
-  && rule.pattern.trim()
-)));
+const readerRegexRules = computed(() =>
+  regexDisplayRules.value.filter(rule => rule.targets.includes(regexDisplayReaderTarget) && rule.pattern.trim()),
+);
+const readerCleanupRules = computed(() =>
+  regexDisplayRules.value.filter(rule => rule.targets.includes(regexDisplayReaderCleanupTarget) && rule.pattern.trim()),
+);
 const selectedTitleRegexRule = computed(() => getSelectedReaderRegexRule(readerSettings.value.titleRuleId));
 const selectedBodyRegexRule = computed(() => getSelectedReaderRegexRule(readerSettings.value.bodyRuleId));
-const selectedCleanupRules = computed(() => readerCleanupRules.value.filter(rule => readerSettings.value.cleanupRuleIds.includes(rule.id)));
+const selectedCleanupRules = computed(() =>
+  readerCleanupRules.value.filter(rule => readerSettings.value.cleanupRuleIds.includes(rule.id)),
+);
 const activeTitleRule = computed(() => toReaderRegexRule(selectedTitleRegexRule.value, defaultTitleRule));
 const activeBodyRule = computed(() => toReaderRegexRule(selectedBodyRegexRule.value, defaultReaderBodyRule));
-const cleanupSummary = computed(() => selectedCleanupRules.value.length ? `已选 ${selectedCleanupRules.value.length} 条` : '未选择');
-const readerRuleSummary = computed(() => `${selectedTitleRegexRule.value?.name || '无正则'} / ${selectedBodyRegexRule.value?.name || '默认正文'} / 清理 ${selectedCleanupRules.value.length}`);
+const cleanupSummary = computed(() =>
+  selectedCleanupRules.value.length ? `已选 ${selectedCleanupRules.value.length} 条` : '未选择',
+);
+const readerRuleSummary = computed(
+  () =>
+    `${selectedTitleRegexRule.value?.name || '无正则'} / ${selectedBodyRegexRule.value?.name || '默认正文'} / 清理 ${selectedCleanupRules.value.length}`,
+);
 const bodyRuleSelectValue = computed(() => {
   if (readerSettings.value.bodyRuleId === '__default_body__') {
     return readerRegexRules.value.some(rule => rule.id === defaultReaderBodyRegexDisplayRuleId)
@@ -290,7 +334,9 @@ const bodyRuleSelectValue = computed(() => {
   }
   return readerSettings.value.bodyRuleId;
 });
-const activeMessageFavorite = computed(() => activeMessage.value ? reader.getFavorite(phone.viewingScopeKey, activeMessage.value.id) : null);
+const activeMessageFavorite = computed(() =>
+  activeMessage.value ? reader.getFavorite(phone.viewingScopeKey, activeMessage.value.id) : null,
+);
 const reloadActiveChatDebounced = useDebounceFn(() => {
   void reloadActiveChat();
 }, 250);
@@ -334,14 +380,22 @@ function onShowUserMessagesChange(event: Event) {
 }
 
 watch(
-  () => JSON.stringify({
-    bodyRuleId: readerSettings.value.bodyRuleId,
-    cleanupRuleIds: readerSettings.value.cleanupRuleIds,
-    hideEmptyAfterCleanup: readerSettings.value.hideEmptyAfterCleanup,
-    rules: [...readerRegexRules.value, ...readerCleanupRules.value].map(rule => [rule.id, rule.name, rule.pattern, rule.replacement, rule.flags, rule.targets.join(',')]),
-    titleRuleId: readerSettings.value.titleRuleId,
-    showUserMessages: readerSettings.value.showUserMessages,
-  }),
+  () =>
+    JSON.stringify({
+      bodyRuleId: readerSettings.value.bodyRuleId,
+      cleanupRuleIds: readerSettings.value.cleanupRuleIds,
+      hideEmptyAfterCleanup: readerSettings.value.hideEmptyAfterCleanup,
+      rules: [...readerRegexRules.value, ...readerCleanupRules.value].map(rule => [
+        rule.id,
+        rule.name,
+        rule.pattern,
+        rule.replacement,
+        rule.flags,
+        rule.targets.join(','),
+      ]),
+      titleRuleId: readerSettings.value.titleRuleId,
+      showUserMessages: readerSettings.value.showUserMessages,
+    }),
   () => {
     reloadActiveChatDebounced();
   },
@@ -351,7 +405,12 @@ watch(
   () => route.value,
   current => {
     if (current.appId !== 'reader') return;
-    if (current.page === 'root' || current.page === 'detail' || current.page === 'bagu-scan' || current.page === 'edit') {
+    if (
+      current.page === 'root' ||
+      current.page === 'detail' ||
+      current.page === 'bagu-scan' ||
+      current.page === 'edit'
+    ) {
       void loadCurrentChat();
     }
     if (current.page === 'edit') {
@@ -440,9 +499,7 @@ function applyPendingBranchInheritance() {
 
   const inheritedCount = worldbookLinks.inheritProfiles(pendingBranchSourceScopeKey, targetScopeKey);
   clearPendingBranch();
-  toastr.success(inheritedCount
-    ? `已创建分支，并继承 ${inheritedCount} 本世界书的条目开关`
-    : '已创建分支');
+  toastr.success(inheritedCount ? `已创建分支，并继承 ${inheritedCount} 本世界书的条目开关` : '已创建分支');
 }
 
 async function createReaderBranch() {
@@ -498,11 +555,12 @@ function saveSelectionToDigest() {
   }
 
   const sourceLabel = getActiveMessageSourceLabel();
-  const existingEntry = digest.data.entries.find(entry => (
-    entry.kind === 'manual'
-    && entry.sourceMessageId === activeMessage.value?.sourceMessageId
-    && entry.sourceLabel === sourceLabel
-  ));
+  const existingEntry = digest.data.entries.find(
+    entry =>
+      entry.kind === 'manual' &&
+      entry.sourceMessageId === activeMessage.value?.sourceMessageId &&
+      entry.sourceLabel === sourceLabel,
+  );
 
   const entry = existingEntry
     ? digest.updateEntry(existingEntry.id, {
@@ -610,12 +668,15 @@ async function applyReaderBaguContent(content: string) {
     throw new Error('当前正文规则无法安全写回原楼层，请先在酒馆楼层编辑中手动修改');
   }
 
-  await setChatMessagesSafe([
-    {
-      message_id: activeMessage.value.sourceMessageId,
-      message: nextRawText,
-    },
-  ], { refresh: 'affected' });
+  await setChatMessagesSafe(
+    [
+      {
+        message_id: activeMessage.value.sourceMessageId,
+        message: nextRawText,
+      },
+    ],
+    { refresh: 'affected' },
+  );
   await saveChatIfAvailable();
   await loadCurrentChat(true);
   return true;
@@ -640,18 +701,25 @@ async function saveReaderEdit() {
   }
 
   const messageId = activeMessage.value.id;
-  const nextRawText = replaceReaderBodyInRaw(activeMessage.value.rawText, activeMessage.value.body, readerEditDraft.value);
+  const nextRawText = replaceReaderBodyInRaw(
+    activeMessage.value.rawText,
+    activeMessage.value.body,
+    readerEditDraft.value,
+  );
   if (nextRawText === null) {
     toastr.error('当前正文规则无法安全写回原楼层，请改用酒馆楼层编辑或调整阅读正文规则');
     return;
   }
 
-  await setChatMessagesSafe([
-    {
-      message_id: activeMessage.value.sourceMessageId,
-      message: nextRawText,
-    },
-  ], { refresh: 'affected' });
+  await setChatMessagesSafe(
+    [
+      {
+        message_id: activeMessage.value.sourceMessageId,
+        message: nextRawText,
+      },
+    ],
+    { refresh: 'affected' },
+  );
   await saveChatIfAvailable();
   await loadCurrentChat(true);
   const updatedMessage = activeMessages.value.find(item => item.id === messageId);
@@ -686,17 +754,20 @@ async function loadCurrentChat(force = false) {
       activeBodyRule.value,
     );
 
-    const normalized = sourceMessages.map((item, index) => {
-      const body = applyReaderCleanupRules(transformed[index]?.body || item.rawText);
-      return {
-        ...item,
-        title: normalizeTitle(transformed[index]?.title || '', item.messageIndex, item.isUser),
-        body,
-      };
-    }).filter(item => (
-      (readerSettings.value.showHiddenAssistantMessages || !item.isHidden)
-      && (!readerSettings.value.hideEmptyAfterCleanup || item.body.trim())
-    ));
+    const normalized = sourceMessages
+      .map((item, index) => {
+        const body = applyReaderCleanupRules(transformed[index]?.body || item.rawText);
+        return {
+          ...item,
+          title: normalizeTitle(transformed[index]?.title || '', item.messageIndex, item.isUser),
+          body,
+        };
+      })
+      .filter(
+        item =>
+          (readerSettings.value.showHiddenAssistantMessages || !item.isHidden) &&
+          (!readerSettings.value.hideEmptyAfterCleanup || item.body.trim()),
+      );
 
     if (loadSerial !== readerLoadSerial || phone.viewingScopeKey !== scopeKeyAtStart) return currentMessages.value;
     currentMessages.value = normalized;
@@ -747,7 +818,9 @@ async function loadHistoryMessagesFromViewingScope(scopeKey: string) {
   }
 
   const briefs = await getPastCharacterChats(characterId);
-  const normalizedBriefs = (briefs || []).map(normalizeBrief).filter((item): item is NonNullable<ReturnType<typeof normalizeBrief>> => Boolean(item));
+  const normalizedBriefs = (briefs || [])
+    .map(normalizeBrief)
+    .filter((item): item is NonNullable<ReturnType<typeof normalizeBrief>> => Boolean(item));
   const targetChatId = normalizeChatArchiveId(scope.chatId);
   const brief = normalizedBriefs.find(item => isHistoryBriefMatch(item, targetChatId));
   if (!brief) {
@@ -755,9 +828,11 @@ async function loadHistoryMessagesFromViewingScope(scopeKey: string) {
   }
 
   const result = await getChatHistoryDetailSafe([brief.raw], false);
-  const detailArray = result && typeof result === 'object'
-    ? Object.entries(result).find(([key]) => normalizeChatArchiveId(key) === targetChatId)?.[1] ?? Object.values(result)[0]
-    : null;
+  const detailArray =
+    result && typeof result === 'object'
+      ? (Object.entries(result).find(([key]) => normalizeChatArchiveId(key) === targetChatId)?.[1] ??
+        Object.values(result)[0])
+      : null;
   if (!Array.isArray(detailArray)) return [];
   return detailArray;
 }
@@ -771,7 +846,12 @@ function isHistoryBriefMatch(brief: NonNullable<ReturnType<typeof normalizeBrief
 
 function resolveViewingCharacterId(ownerId: string, ownerName: string) {
   const numericOwnerId = Number(ownerId);
-  if (Number.isInteger(numericOwnerId) && numericOwnerId >= 0 && Array.isArray(characters) && characters[numericOwnerId]) {
+  if (
+    Number.isInteger(numericOwnerId) &&
+    numericOwnerId >= 0 &&
+    Array.isArray(characters) &&
+    characters[numericOwnerId]
+  ) {
     return numericOwnerId;
   }
 
@@ -785,8 +865,8 @@ function resolveViewingCharacterId(ownerId: string, ownerName: string) {
     const avatar = typeof record.avatar === 'string' ? record.avatar.trim().toLowerCase() : '';
     const avatarStem = avatar.replace(/\.[^/.]+$/, '');
     return Boolean(
-      (ownerNameLower && name === ownerNameLower)
-      || (ownerIdLower && (name === ownerIdLower || avatar === ownerIdLower || avatarStem === ownerIdLower)),
+      (ownerNameLower && name === ownerNameLower) ||
+      (ownerIdLower && (name === ownerIdLower || avatar === ownerIdLower || avatarStem === ownerIdLower)),
     );
   });
 }
@@ -1401,7 +1481,4 @@ function formatReaderBody(value: string) {
   display: flex;
   flex-direction: column;
 }
-
 </style>
-
-

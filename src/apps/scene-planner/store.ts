@@ -63,7 +63,9 @@ export const useScenePlannerStore = defineStore('scene-planner', () => {
     createDefault: () => validateInplace(ScenePlannerScopeDataSchema, {}),
   });
 
-  const plans = computed(() => [...data.value.plans].sort((left, right) => right.updatedAt.localeCompare(left.updatedAt)));
+  const plans = computed(() =>
+    [...data.value.plans].sort((left, right) => right.updatedAt.localeCompare(left.updatedAt)),
+  );
   const { createFailedDraft, deleteFailedDraft, failedDrafts, getFailedDraft, updateFailedDraft } =
     createFailedDraftCollection(data, 'scene_planner_failed');
 
@@ -71,7 +73,10 @@ export const useScenePlannerStore = defineStore('scene-planner', () => {
     return data.value.plans.find(plan => plan.id === planId) ?? null;
   }
 
-  function createPlan(input: Partial<Pick<ScenePlan, 'analysis' | 'avoidNote' | 'brief' | 'prompt' | 'status' | 'styleNote' | 'turns'>> & Pick<ScenePlan, 'title'>) {
+  function createPlan(
+    input: Partial<Pick<ScenePlan, 'analysis' | 'avoidNote' | 'brief' | 'prompt' | 'status' | 'styleNote' | 'turns'>> &
+      Pick<ScenePlan, 'title'>,
+  ) {
     const timestamp = nowIso();
     const plan: ScenePlan = {
       id: createId('scene_plan'),
@@ -90,7 +95,10 @@ export const useScenePlannerStore = defineStore('scene-planner', () => {
     return plan;
   }
 
-  function updatePlan(planId: string, input: Pick<ScenePlan, 'analysis' | 'avoidNote' | 'brief' | 'prompt' | 'status' | 'styleNote' | 'title'>) {
+  function updatePlan(
+    planId: string,
+    input: Pick<ScenePlan, 'analysis' | 'avoidNote' | 'brief' | 'prompt' | 'status' | 'styleNote' | 'title'>,
+  ) {
     const plan = getPlan(planId);
     if (!plan) return null;
     plan.title = input.title.trim() || plan.title;

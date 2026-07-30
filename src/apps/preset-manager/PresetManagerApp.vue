@@ -77,7 +77,10 @@
       </div>
 
       <div v-else-if="activePreset" class="pc-preset-nodes">
-        <template v-for="node in displayNodes" :key="node.type === 'group' ? `group:${node.group.id}` : `prompt:${node.prompt.id}`">
+        <template
+          v-for="node in displayNodes"
+          :key="node.type === 'group' ? `group:${node.group.id}` : `prompt:${node.prompt.id}`"
+        >
           <PresetPromptRow
             v-if="node.type === 'prompt'"
             :busy="busyPromptIds.has(node.prompt.id)"
@@ -165,14 +168,18 @@ const editorDraft = ref('');
 
 const detailPresetName = computed(() => route.value.params?.presetName || '');
 const activePromptId = computed(() => route.value.params?.promptId || '');
-const activePrompt = computed(() => activePreset.value?.prompts.find(prompt => prompt.id === activePromptId.value) ?? null);
-const displayNodes = computed(() => activePreset.value ? buildPresetDisplayNodes(activePreset.value) : []);
+const activePrompt = computed(
+  () => activePreset.value?.prompts.find(prompt => prompt.id === activePromptId.value) ?? null,
+);
+const displayNodes = computed(() => (activePreset.value ? buildPresetDisplayNodes(activePreset.value) : []));
 const visiblePresetNames = computed(() => {
   const keyword = presetQuery.value.trim().toLocaleLowerCase();
   if (!keyword) return presetNames.value;
   return presetNames.value.filter(name => name.toLocaleLowerCase().includes(keyword));
 });
-const editorDirty = computed(() => activePrompt.value ? editorDraft.value !== (activePrompt.value.content || '') : false);
+const editorDirty = computed(() =>
+  activePrompt.value ? editorDraft.value !== (activePrompt.value.content || '') : false,
+);
 const mutationBusy = computed(() => saving.value || busyPromptIds.value.size > 0);
 
 function setBusyPrompt(promptId: string, busy: boolean) {
@@ -274,22 +281,22 @@ function toggleGroup(groupId: string) {
 }
 
 function promptRoleLabel(role: TavernPresetPrompt['role']) {
-  return {
-    assistant: 'AI 消息',
-    system: '系统消息',
-    user: '用户消息',
-  }[role] || role;
+  return (
+    {
+      assistant: 'AI 消息',
+      system: '系统消息',
+      user: '用户消息',
+    }[role] || role
+  );
 }
 
 async function savePromptContent() {
   if (!activePrompt.value || !editorDirty.value || saving.value) return;
   saving.value = true;
   try {
-    const result = await updateTavernPresetPrompt(
-      detailPresetName.value,
-      activePrompt.value.id,
-      { content: editorDraft.value },
-    );
+    const result = await updateTavernPresetPrompt(detailPresetName.value, activePrompt.value.id, {
+      content: editorDraft.value,
+    });
     activePreset.value = result.preset;
     if (result.liveSynced) {
       toastr.success('预设条目已保存');

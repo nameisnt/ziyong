@@ -74,7 +74,11 @@ export function getTavernEventName(name: string) {
   return typeof value === 'string' ? value : null;
 }
 
-function removeEventListener(eventSource: EventSourceLike | null | undefined, eventName: string, listener: EventListener) {
+function removeEventListener(
+  eventSource: EventSourceLike | null | undefined,
+  eventName: string,
+  listener: EventListener,
+) {
   if (typeof eventSource?.removeListener === 'function') {
     eventSource.removeListener(eventName, listener);
     return;
@@ -148,10 +152,12 @@ export function getGenerationIdFromEventArgs(...args: unknown[]) {
     if (fromRecord) return fromRecord;
   }
 
-  return args
-    .slice(1)
-    .find((value): value is string => typeof value === 'string' && value.trim().length > 0)
-    ?.trim() ?? '';
+  return (
+    args
+      .slice(1)
+      .find((value): value is string => typeof value === 'string' && value.trim().length > 0)
+      ?.trim() ?? ''
+  );
 }
 
 export function hasVisibilityTransactionRuntime() {
@@ -175,7 +181,7 @@ function getTavernHelperRuntime() {
 function getTavernHelperMethod<T extends (...args: never[]) => unknown>(name: string): T | null {
   const helper = getTavernHelperRuntime();
   const value = helper?.[name];
-  return typeof value === 'function' ? value as T : null;
+  return typeof value === 'function' ? (value as T) : null;
 }
 
 export function getOptionalGlobalFunction<T extends (...args: never[]) => unknown>(name: string): T | null {
@@ -281,30 +287,32 @@ function normalizeSillyTavernRole(message: SillyTavern.ChatMessage): ChatMessage
 }
 
 function normalizeChatMessage(raw: unknown, fallbackIndex = 0) {
-  const record = raw && typeof raw === 'object' ? raw as Record<string, unknown> : {};
-  const data = record.data && typeof record.data === 'object' ? record.data as Record<string, unknown> : {};
-  const extra = record.extra && typeof record.extra === 'object' ? record.extra as Record<string, unknown> : {};
-  const role = typeof record.role === 'string'
-    ? record.role
-    : (typeof record.is_user === 'boolean' && record.is_user ? 'user' : 'assistant');
-  const messageId = typeof record.message_id === 'number'
-    ? record.message_id
-    : Number.isFinite(Number(record.message_id))
-      ? Number(record.message_id)
-      : fallbackIndex;
-  const message = typeof record.message === 'string'
-    ? record.message
-    : typeof record.mes === 'string'
-      ? record.mes
-      : '';
+  const record = raw && typeof raw === 'object' ? (raw as Record<string, unknown>) : {};
+  const data = record.data && typeof record.data === 'object' ? (record.data as Record<string, unknown>) : {};
+  const extra = record.extra && typeof record.extra === 'object' ? (record.extra as Record<string, unknown>) : {};
+  const role =
+    typeof record.role === 'string'
+      ? record.role
+      : typeof record.is_user === 'boolean' && record.is_user
+        ? 'user'
+        : 'assistant';
+  const messageId =
+    typeof record.message_id === 'number'
+      ? record.message_id
+      : Number.isFinite(Number(record.message_id))
+        ? Number(record.message_id)
+        : fallbackIndex;
+  const message =
+    typeof record.message === 'string' ? record.message : typeof record.mes === 'string' ? record.mes : '';
   const name = typeof record.name === 'string' ? record.name : '';
-  const hiddenSource = typeof record.is_hidden === 'boolean'
-    ? record.is_hidden
-    : typeof record.isHidden === 'boolean'
-      ? record.isHidden
-      : typeof record.is_system === 'boolean'
-        ? record.is_system
-        : false;
+  const hiddenSource =
+    typeof record.is_hidden === 'boolean'
+      ? record.is_hidden
+      : typeof record.isHidden === 'boolean'
+        ? record.isHidden
+        : typeof record.is_system === 'boolean'
+          ? record.is_system
+          : false;
 
   return {
     ...record,
@@ -320,7 +328,7 @@ function normalizeChatMessage(raw: unknown, fallbackIndex = 0) {
 
 function getChatMessagesFromSillyTavern(range: string, options?: Record<string, unknown>) {
   const context = getSillyTavernContext();
-  const chat = Array.isArray(context?.chat) ? context.chat as SillyTavern.ChatMessage[] : [];
+  const chat = Array.isArray(context?.chat) ? (context.chat as SillyTavern.ChatMessage[]) : [];
   const hideState = options?.hide_state;
   const normalized = chat.map((message, index) => ({
     data: {},
@@ -348,7 +356,8 @@ function getChatMessagesFromSillyTavern(range: string, options?: Record<string, 
 }
 
 export function getChatMessagesSafe(range: string, options?: Record<string, unknown>) {
-  const fn = getOptionalGlobalFunction<(range: string, options?: Record<string, unknown>) => ChatMessage[]>('getChatMessages');
+  const fn =
+    getOptionalGlobalFunction<(range: string, options?: Record<string, unknown>) => ChatMessage[]>('getChatMessages');
   if (fn) {
     return fn(range, options).map((message, index) => normalizeChatMessage(message, index));
   }
@@ -356,7 +365,10 @@ export function getChatMessagesSafe(range: string, options?: Record<string, unkn
 }
 
 export function setChatMessagesSafe(messages: unknown, options?: Record<string, unknown>) {
-  const fn = requiredGlobalFunction<(messages: unknown, options?: Record<string, unknown>) => Promise<void> | void>('setChatMessages');
+  const fn =
+    requiredGlobalFunction<(messages: unknown, options?: Record<string, unknown>) => Promise<void> | void>(
+      'setChatMessages',
+    );
   return fn(messages, options);
 }
 
@@ -385,12 +397,16 @@ export function generateRawSafe(config: Record<string, unknown>) {
 
 export function registerMacroLikeSafe(
   regex: RegExp,
-  replace: (context: { message_id?: number; role?: 'assistant' | 'system' | 'user' }, substring: string, ...args: unknown[]) => string,
+  replace: (
+    context: { message_id?: number; role?: 'assistant' | 'system' | 'user' },
+    substring: string,
+    ...args: unknown[]
+  ) => string,
 ) {
-  const fn = getOptionalGlobalFunction<(
-    macroRegex: RegExp,
-    macroReplace: typeof replace,
-  ) => { unregister?: () => void } | void>('registerMacroLike');
+  const fn =
+    getOptionalGlobalFunction<(macroRegex: RegExp, macroReplace: typeof replace) => { unregister?: () => void } | void>(
+      'registerMacroLike',
+    );
   if (!fn) {
     throw new Error('未检测到酒馆助手 registerMacroLike 接口，无法解析 {{phoneUserInput}}');
   }
@@ -467,9 +483,12 @@ export function getPresetNamesSafe() {
 
   try {
     const managerFn = getOptionalGlobalFunction<(apiId?: string) => unknown>('getPresetManager');
-    const manager = managerFn?.('openai') as {
-      getAllPresets?: () => unknown;
-    } | null | undefined;
+    const manager = managerFn?.('openai') as
+      | {
+          getAllPresets?: () => unknown;
+        }
+      | null
+      | undefined;
     const names = normalizePresetNames(manager?.getAllPresets?.());
     if (names.length) return names;
   } catch {
@@ -505,9 +524,12 @@ export function getSelectedPresetNameSafe(apiId?: string) {
   if (!fn) return '';
 
   try {
-    const manager = fn(apiId) as {
-      getSelectedPresetName?: () => unknown;
-    } | null | undefined;
+    const manager = fn(apiId) as
+      | {
+          getSelectedPresetName?: () => unknown;
+        }
+      | null
+      | undefined;
     const name = manager?.getSelectedPresetName?.();
     return typeof name === 'string' ? name : '';
   } catch {
@@ -532,16 +554,18 @@ function normalizePromptContent(content: unknown) {
       continue;
     }
     if (record.type === 'image_url') {
-      const imageUrl = record.image_url && typeof record.image_url === 'object'
-        ? (record.image_url as Record<string, unknown>).url
-        : '';
+      const imageUrl =
+        record.image_url && typeof record.image_url === 'object'
+          ? (record.image_url as Record<string, unknown>).url
+          : '';
       parts.push(`[Image] ${String(imageUrl || '')}`.trim());
       continue;
     }
     if (record.type === 'video_url') {
-      const videoUrl = record.video_url && typeof record.video_url === 'object'
-        ? (record.video_url as Record<string, unknown>).url
-        : '';
+      const videoUrl =
+        record.video_url && typeof record.video_url === 'object'
+          ? (record.video_url as Record<string, unknown>).url
+          : '';
       parts.push(`[Video] ${String(videoUrl || '')}`.trim());
       continue;
     }
@@ -593,24 +617,27 @@ export function captureTavernPromptPreview(
     return Promise.reject(new Error('未检测到 CHAT_COMPLETION_SETTINGS_READY 事件'));
   }
 
-  const helperGenerateFn = getTavernHelperMethod<(config: Record<string, unknown>) => Promise<unknown>>('generate')
-    ?? getOptionalGlobalFunction<(config: Record<string, unknown>) => Promise<unknown>>('generate');
+  const helperGenerateFn =
+    getTavernHelperMethod<(config: Record<string, unknown>) => Promise<unknown>>('generate') ??
+    getOptionalGlobalFunction<(config: Record<string, unknown>) => Promise<unknown>>('generate');
   const sillyTavernGenerateFn = (() => {
     const runtime = getOptionalGlobalValue<Record<string, unknown>>('SillyTavern');
     const fn = runtime?.generate;
     return typeof fn === 'function'
-      ? fn.bind(runtime) as (input: string, options?: Record<string, unknown>) => Promise<unknown>
+      ? (fn.bind(runtime) as (input: string, options?: Record<string, unknown>) => Promise<unknown>)
       : null;
   })();
   if (!helperGenerateFn && !sillyTavernGenerateFn) {
     return Promise.reject(new Error('未检测到酒馆助手 generate 接口'));
   }
 
-  const stopById = getTavernHelperMethod<(generationId: string) => unknown>('stopGenerationById')
-    ?? getOptionalGlobalFunction<(generationId: string) => unknown>('stopGenerationById');
-  const generationId = typeof generateConfig.generation_id === 'string' && generateConfig.generation_id.trim()
-    ? generateConfig.generation_id.trim()
-    : '';
+  const stopById =
+    getTavernHelperMethod<(generationId: string) => unknown>('stopGenerationById') ??
+    getOptionalGlobalFunction<(generationId: string) => unknown>('stopGenerationById');
+  const generationId =
+    typeof generateConfig.generation_id === 'string' && generateConfig.generation_id.trim()
+      ? generateConfig.generation_id.trim()
+      : '';
 
   return new Promise((resolve, reject) => {
     let settled = false;
@@ -663,11 +690,11 @@ export function captureTavernPromptPreview(
 
       cleanup();
       try {
-        const raw = payload && typeof payload === 'object' ? payload as Record<string, unknown> : {};
+        const raw = payload && typeof payload === 'object' ? (payload as Record<string, unknown>) : {};
         const messageRecords = Array.isArray(raw.messages) ? raw.messages : [];
         const messages = await Promise.all(
           messageRecords.map(async (message, index) => {
-            const record = message && typeof message === 'object' ? message as Record<string, unknown> : {};
+            const record = message && typeof message === 'object' ? (message as Record<string, unknown>) : {};
             const content = normalizePromptContent(record.content);
             return {
               content,
@@ -681,9 +708,10 @@ export function captureTavernPromptPreview(
           maxTokens: Number.isFinite(Number(raw.max_tokens)) ? Number(raw.max_tokens) : null,
           messages,
           model: typeof raw.model === 'string' ? raw.model : '',
-          preset: typeof generateConfig.preset_name === 'string' && generateConfig.preset_name.trim()
-            ? generateConfig.preset_name.trim()
-            : getLoadedPresetNameSafe(),
+          preset:
+            typeof generateConfig.preset_name === 'string' && generateConfig.preset_name.trim()
+              ? generateConfig.preset_name.trim()
+              : getLoadedPresetNameSafe(),
           raw,
           totalTokens: messages.reduce((sum, message) => sum + message.token, 0),
         });
@@ -756,20 +784,27 @@ export function getSelectedPresetPreviewSafe(apiId?: string, presetNameOverride 
   if (!fn) return '';
 
   try {
-    const manager = fn(apiId) as {
-      findPreset?: (name: string) => unknown;
-      getCompletionPresetByName?: (name: string) => unknown;
-      getSelectedPresetName?: () => unknown;
-      getPreset?: (name: string) => unknown;
-      selected_preset?: unknown;
-      selectedPreset?: unknown;
-    } | null | undefined;
+    const manager = fn(apiId) as
+      | {
+          findPreset?: (name: string) => unknown;
+          getCompletionPresetByName?: (name: string) => unknown;
+          getSelectedPresetName?: () => unknown;
+          getPreset?: (name: string) => unknown;
+          selected_preset?: unknown;
+          selectedPreset?: unknown;
+        }
+      | null
+      | undefined;
     const overriddenName = presetNameOverride.trim();
     const name = overriddenName || manager?.getSelectedPresetName?.();
     const presetName = typeof name === 'string' ? name : '';
     const preset = presetName
-      ? manager?.getCompletionPresetByName?.(presetName) ?? manager?.findPreset?.(presetName) ?? manager?.getPreset?.(presetName) ?? manager?.selectedPreset ?? manager?.selected_preset
-      : manager?.selectedPreset ?? manager?.selected_preset;
+      ? (manager?.getCompletionPresetByName?.(presetName) ??
+        manager?.findPreset?.(presetName) ??
+        manager?.getPreset?.(presetName) ??
+        manager?.selectedPreset ??
+        manager?.selected_preset)
+      : (manager?.selectedPreset ?? manager?.selected_preset);
     if (!isExpandablePresetValue(preset)) return '';
     const text = JSON.stringify(stringifyPresetPreview(preset), null, 2);
     return text.length > 10000 ? `${text.slice(0, 10000)}\n...（预设内容过长，已截断）` : text;
@@ -779,7 +814,9 @@ export function getSelectedPresetPreviewSafe(apiId?: string, presetNameOverride 
 }
 
 export function executeSlashCommandSafe(command: string, options?: Record<string, unknown>) {
-  const fn = getOptionalGlobalFunction<(command: string, options?: Record<string, unknown>) => Promise<unknown>>('executeSlashCommandsWithOptions');
+  const fn = getOptionalGlobalFunction<(command: string, options?: Record<string, unknown>) => Promise<unknown>>(
+    'executeSlashCommandsWithOptions',
+  );
   if (fn) {
     return fn(command, {
       abortController: null,
@@ -804,7 +841,8 @@ export function getChatHistoryBriefSafe(scope: string) {
 }
 
 export function getChatHistoryDetailSafe(files: unknown[], isGroup: boolean) {
-  const fn = requiredTavernHelperMethod<(files: unknown[], isGroup: boolean) => Promise<unknown>>('getChatHistoryDetail');
+  const fn =
+    requiredTavernHelperMethod<(files: unknown[], isGroup: boolean) => Promise<unknown>>('getChatHistoryDetail');
   return fn(files, isGroup);
 }
 

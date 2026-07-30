@@ -6,7 +6,11 @@ export interface OutputCandidate {
 }
 
 export function stripOutputCodeFence(raw: string) {
-  return raw.trim().replace(/^```(?:xml|json|html|text)?\s*/i, '').replace(/\s*```$/, '').trim();
+  return raw
+    .trim()
+    .replace(/^```(?:xml|json|html|text)?\s*/i, '')
+    .replace(/\s*```$/, '')
+    .trim();
 }
 
 function escapeRegExp(value: string) {
@@ -18,10 +22,7 @@ export function extractTaggedOutputCandidates(raw: string, rootName: string): Ou
   const root = rootName.trim();
   if (!root) return normalized ? [{ index: 0, raw: normalized }] : [];
 
-  const pattern = new RegExp(
-    `<${escapeRegExp(root)}(?:\\s[^>]*)?>[\\s\\S]*?</${escapeRegExp(root)}>`,
-    'gi',
-  );
+  const pattern = new RegExp(`<${escapeRegExp(root)}(?:\\s[^>]*)?>[\\s\\S]*?</${escapeRegExp(root)}>`, 'gi');
   return Array.from(normalized.matchAll(pattern), (match, index) => ({
     index,
     raw: match[0],
@@ -76,7 +77,7 @@ function extractBalancedJson(raw: string) {
       continue;
     }
 
-    if (character === '"' || character === '\'') {
+    if (character === '"' || character === "'") {
       if (start >= 0) quote = character;
       continue;
     }
@@ -118,8 +119,7 @@ export function getMeaningfulCharacterCount(value: unknown): number {
       .replace(/<[^>]*>/g, '')
       .replace(/[`*_~>#\-[\](){}|]/g, '')
       .replace(/\s+/g, '')
-      .trim()
-      .length;
+      .trim().length;
   }
   if (Array.isArray(value)) {
     return value.reduce((total, item) => total + getMeaningfulCharacterCount(item), 0);
@@ -147,24 +147,30 @@ export function selectBestParsedCandidate<T>(
     parsed: parse(candidate),
   }));
   const successes = attempts
-    .filter((attempt): attempt is typeof attempt & { parsed: Extract<XmlParseResult<T>, { ok: true }> } => attempt.parsed.ok)
+    .filter(
+      (attempt): attempt is typeof attempt & { parsed: Extract<XmlParseResult<T>, { ok: true }> } => attempt.parsed.ok,
+    )
     .map(attempt => ({
       ...attempt,
       contentLength: getMeaningfulCharacterCount(attempt.parsed.data),
     }))
-    .sort((left, right) =>
-      right.contentLength - left.contentLength
-      || left.parsed.warnings.length - right.parsed.warnings.length
-      || left.candidate.index - right.candidate.index);
+    .sort(
+      (left, right) =>
+        right.contentLength - left.contentLength ||
+        left.parsed.warnings.length - right.parsed.warnings.length ||
+        left.candidate.index - right.candidate.index,
+    );
 
   if (!successes.length) {
-    const warnings = candidates.length > 1
-      ? [
-          `检测到 ${candidates.length} 个${candidateLabel}候选，但都未通过格式校验`,
-          ...attempts.flatMap(({ candidate, parsed }) =>
-            parsed.warnings.map(warning => `候选 ${candidate.index + 1}：${warning}`)),
-        ]
-      : attempts[0]!.parsed.warnings;
+    const warnings =
+      candidates.length > 1
+        ? [
+            `检测到 ${candidates.length} 个${candidateLabel}候选，但都未通过格式校验`,
+            ...attempts.flatMap(({ candidate, parsed }) =>
+              parsed.warnings.map(warning => `候选 ${candidate.index + 1}：${warning}`),
+            ),
+          ]
+        : attempts[0]!.parsed.warnings;
     return {
       ok: false,
       raw,
@@ -173,16 +179,14 @@ export function selectBestParsedCandidate<T>(
   }
 
   const selected = successes[0]!;
-  const selectionWarning = candidates.length > 1
-    ? `检测到 ${candidates.length} 个${candidateLabel}候选，已选择第 ${selected.candidate.index + 1} 个（有效内容 ${selected.contentLength} 字）`
-    : '';
+  const selectionWarning =
+    candidates.length > 1
+      ? `检测到 ${candidates.length} 个${candidateLabel}候选，已选择第 ${selected.candidate.index + 1} 个（有效内容 ${selected.contentLength} 字）`
+      : '';
   return {
     ...selected.parsed,
     raw,
-    warnings: uniqueWarnings([
-      selectionWarning,
-      ...selected.parsed.warnings,
-    ]),
+    warnings: uniqueWarnings([selectionWarning, ...selected.parsed.warnings]),
   };
 }
 
@@ -192,20 +196,12 @@ export function parseTaggedOutputCandidates<T>(
   parse: (candidateRaw: string) => XmlParseResult<T>,
 ): XmlParseResult<T> {
   const candidates = extractTaggedOutputCandidates(raw, rootName);
-  const selected = selectBestParsedCandidate(
-    raw,
-    candidates,
-    candidate => parse(candidate.raw),
-    ` <${rootName}> `,
-  );
+  const selected = selectBestParsedCandidate(raw, candidates, candidate => parse(candidate.raw), ` <${rootName}> `);
   if (selected) {
     const incompleteWarning = getIncompleteTaggedRootWarning(raw, rootName, candidates.length);
     return {
       ...selected,
-      warnings: [...new Set([
-        ...selected.warnings,
-        incompleteWarning,
-      ].filter(Boolean))],
+      warnings: [...new Set([...selected.warnings, incompleteWarning].filter(Boolean))],
     };
   }
   return {

@@ -1955,5 +1955,4 @@ onMounted(() => {
 .pc-icon-btn.danger {
   color: var(--pc-danger);
 }
-
 </style>

@@ -11,12 +11,15 @@
 </template>
 
 <script setup lang="ts">
-withDefaults(defineProps<{
-  compact?: boolean;
-  title: string;
-}>(), {
-  compact: false,
-});
+withDefaults(
+  defineProps<{
+    compact?: boolean;
+    title: string;
+  }>(),
+  {
+    compact: false,
+  },
+);
 </script>
 
 <style scoped>

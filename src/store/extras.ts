@@ -34,7 +34,8 @@ export const useExtrasStore = defineStore('extras', () => {
   });
 
   const books = computed(() => data.value.books);
-  const { createFailedDraft, deleteFailedDraft, failedDrafts, getFailedDraft, updateFailedDraft } = createFailedDraftCollection(data, 'extra_failed');
+  const { createFailedDraft, deleteFailedDraft, failedDrafts, getFailedDraft, updateFailedDraft } =
+    createFailedDraftCollection(data, 'extra_failed');
 
   function getBook(bookId: string) {
     return books.value.find(book => book.id === bookId) ?? null;
@@ -64,7 +65,10 @@ export const useExtrasStore = defineStore('extras', () => {
     return book;
   }
 
-  function updateBook(bookId: string, input: Pick<ExtraBook, 'title' | 'typeName'> & Partial<Pick<ExtraBook, 'typeId'>>) {
+  function updateBook(
+    bookId: string,
+    input: Pick<ExtraBook, 'title' | 'typeName'> & Partial<Pick<ExtraBook, 'typeId'>>,
+  ) {
     const book = getBook(bookId);
     if (!book) return null;
     book.typeId = input.typeId?.trim() || undefined;
@@ -156,7 +160,11 @@ export const useExtrasStore = defineStore('extras', () => {
     return summary;
   }
 
-  function updateSummary(bookId: string, summaryId: string, input: Pick<ExtraSummary, 'content' | 'coveredChapterIds' | 'enabled'>) {
+  function updateSummary(
+    bookId: string,
+    summaryId: string,
+    input: Pick<ExtraSummary, 'content' | 'coveredChapterIds' | 'enabled'>,
+  ) {
     const book = getBook(bookId);
     const summary = getSummary(bookId, summaryId);
     if (!book || !summary) return null;

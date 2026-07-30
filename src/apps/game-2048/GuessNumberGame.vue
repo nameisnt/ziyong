@@ -1,9 +1,18 @@
 <template>
   <section class="pc-minigame-panel">
     <section class="pc-minigame-stats">
-      <article><span>{{ t`次数` }}</span><strong>{{ state.guesses.length }}</strong></article>
-      <article><span>{{ t`最佳` }}</span><strong>{{ state.best || '-' }}</strong></article>
-      <article><span>{{ t`状态` }}</span><strong>{{ state.status === 'won' ? t`猜中` : t`进行中` }}</strong></article>
+      <article>
+        <span>{{ t`次数` }}</span
+        ><strong>{{ state.guesses.length }}</strong>
+      </article>
+      <article>
+        <span>{{ t`最佳` }}</span
+        ><strong>{{ state.best || '-' }}</strong>
+      </article>
+      <article>
+        <span>{{ t`状态` }}</span
+        ><strong>{{ state.status === 'won' ? t`猜中` : t`进行中` }}</strong>
+      </article>
     </section>
 
     <form class="pc-guess-form" @submit.prevent="submitGuess">
@@ -36,7 +45,10 @@
       <button class="pc-primary-btn" type="button" @click="newGame">
         <i class="fa-solid fa-rotate-right"></i><span>{{ t`新一局` }}</span>
       </button>
-      <InfoHint :label="t`猜数字说明`" :text="t`答案由四个不重复数字组成，首位不会是 0。A 表示数字和位置都正确，B 表示数字正确但位置不对。`" />
+      <InfoHint
+        :label="t`猜数字说明`"
+        :text="t`答案由四个不重复数字组成，首位不会是 0。A 表示数字和位置都正确，B 表示数字正确但位置不对。`"
+      />
     </div>
   </section>
 </template>
@@ -75,7 +87,9 @@ function createState(best = 0): GuessNumberState {
 }
 
 const phone = usePhoneStore();
-const state = ref<GuessNumberState>(readMiniGameSettings(miniGameFields.guessNumber, GuessNumberSchema, () => createState()));
+const state = ref<GuessNumberState>(
+  readMiniGameSettings(miniGameFields.guessNumber, GuessNumberSchema, () => createState()),
+);
 const draft = ref('');
 const reversedGuesses = computed(() => [...state.value.guesses].reverse());
 

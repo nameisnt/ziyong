@@ -12,14 +12,17 @@ export default definePhoneApp({
   accent: '#2d9cdb',
   defaultRoute: 'root',
   defaultOrder: 130,
-  backupDomains: [{
-    key: 'timekeeper',
-    exportData: currentScopeKey => readChatScopedEnvelope(timekeeperField, currentScopeKey || getCurrentChatScopeKey()),
-    importData: data => {
-      _.set(extension_settings, timekeeperField, data);
+  backupDomains: [
+    {
+      key: 'timekeeper',
+      exportData: currentScopeKey =>
+        readChatScopedEnvelope(timekeeperField, currentScopeKey || getCurrentChatScopeKey()),
+      importData: data => {
+        _.set(extension_settings, timekeeperField, data);
+      },
+      rehydrateFromSettings: () => useTimekeeperStore().rehydrateFromSettings(),
     },
-    rehydrateFromSettings: () => useTimekeeperStore().rehydrateFromSettings(),
-  }],
+  ],
   component: TimekeeperApp,
   resetCurrentScope: () => useTimekeeperStore().resetCurrentScope(),
   scopeSwitchHandler: scopeKey => useTimekeeperStore().switchScope(scopeKey),

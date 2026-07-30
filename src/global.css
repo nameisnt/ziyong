@@ -1,7 +1,6 @@
 :root {
   --pc-font-sans-default:
-    -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial,
-    'Noto Sans SC', sans-serif;
+    -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, 'Noto Sans SC', sans-serif;
   --pc-font-sans: var(--pc-font-sans-default);
 }
 
@@ -69,7 +68,11 @@
   min-inline-size: 92px;
   cursor: pointer;
   font-weight: 800;
-  transition: background 0.16s ease, color 0.16s ease, opacity 0.16s ease, transform 0.16s ease;
+  transition:
+    background 0.16s ease,
+    color 0.16s ease,
+    opacity 0.16s ease,
+    transform 0.16s ease;
 }
 
 .pc-phone-root .pc-soft-btn.compact,
@@ -86,7 +89,11 @@
   border-radius: var(--pc-control-radius);
   padding: 0;
   cursor: pointer;
-  transition: background 0.16s ease, color 0.16s ease, opacity 0.16s ease, transform 0.16s ease;
+  transition:
+    background 0.16s ease,
+    color 0.16s ease,
+    opacity 0.16s ease,
+    transform 0.16s ease;
 }
 
 .pc-phone-root .pc-icon-btn {
@@ -155,11 +162,14 @@
   outline: none;
 }
 
-.pc-phone-root[data-theme='dark'] :is(
-  input:not([type='checkbox']):not([type='radio']):not([type='range']):not([type='color']):not([type='button']):not([type='submit']):not([type='reset']):not([type='image']):not([type='hidden']),
-  select,
-  textarea
-) {
+.pc-phone-root[data-theme='dark']
+  :is(
+    input:not([type='checkbox']):not([type='radio']):not([type='range']):not([type='color']):not([type='button']):not(
+        [type='submit']
+      ):not([type='reset']):not([type='image']):not([type='hidden']),
+    select,
+    textarea
+  ) {
   color-scheme: dark;
   background-color: var(--pc-form-control-bg) !important;
   color: var(--pc-form-control-text) !important;
@@ -173,10 +183,8 @@
   color: var(--pc-form-control-text);
 }
 
-.pc-phone-root[data-theme='dark'] :is(
-  input:not([type='checkbox']):not([type='radio']):not([type='range']):not([type='color']),
-  textarea
-)::placeholder {
+.pc-phone-root[data-theme='dark']
+  :is(input:not([type='checkbox']):not([type='radio']):not([type='range']):not([type='color']), textarea)::placeholder {
   color: color-mix(in srgb, var(--pc-form-control-text) 58%, transparent 42%);
   opacity: 1;
   -webkit-text-fill-color: color-mix(in srgb, var(--pc-form-control-text) 58%, transparent 42%);
@@ -189,10 +197,7 @@
   -webkit-text-fill-color: var(--pc-form-control-text);
 }
 
-.pc-phone-root[data-theme='dark'] :is(
-  .pc-combobox-menu,
-  .pc-combobox-option:not(.active):not(.selected)
-) {
+.pc-phone-root[data-theme='dark'] :is(.pc-combobox-menu, .pc-combobox-option:not(.active):not(.selected)) {
   background-color: var(--pc-form-control-bg) !important;
   color: var(--pc-form-control-text) !important;
 }
@@ -344,7 +349,10 @@
   border: 1px solid var(--pc-border);
   border-radius: 999px;
   background: color-mix(in srgb, var(--pc-text) 12%, var(--pc-surface-strong) 88%);
-  transition: background 0.16s ease, border-color 0.16s ease, opacity 0.16s ease;
+  transition:
+    background 0.16s ease,
+    border-color 0.16s ease,
+    opacity 0.16s ease;
 }
 
 .pc-phone-root .pc-toggle > span::after {
@@ -466,16 +474,17 @@
   overflow: hidden;
 }
 
-.pc-phone-root :is(
-  .pc-summary-app,
-  .pc-theater-app,
-  .pc-forum-app,
-  .pc-digest-app,
-  .pc-profiles-app,
-  .pc-media-generate-app,
-  .pc-storylines-app,
-  .pc-scene-planner-app
-) {
+.pc-phone-root
+  :is(
+    .pc-summary-app,
+    .pc-theater-app,
+    .pc-forum-app,
+    .pc-digest-app,
+    .pc-profiles-app,
+    .pc-media-generate-app,
+    .pc-storylines-app,
+    .pc-scene-planner-app
+  ) {
   height: 100%;
   min-height: 0;
 }
@@ -536,10 +545,13 @@
 .pc-phone-root.pc-phone-root.pc-phone-root.pc-phone-root.pc-phone-root.pc-phone-root.pc-phone-root.pc-phone-root button,
 .pc-phone-root.pc-phone-root.pc-phone-root.pc-phone-root.pc-phone-root.pc-phone-root.pc-phone-root.pc-phone-root input,
 .pc-phone-root.pc-phone-root.pc-phone-root.pc-phone-root.pc-phone-root.pc-phone-root.pc-phone-root.pc-phone-root select,
-.pc-phone-root.pc-phone-root.pc-phone-root.pc-phone-root.pc-phone-root.pc-phone-root.pc-phone-root.pc-phone-root textarea,
+.pc-phone-root.pc-phone-root.pc-phone-root.pc-phone-root.pc-phone-root.pc-phone-root.pc-phone-root.pc-phone-root
+  textarea,
 .pc-phone-root.pc-phone-root.pc-phone-root.pc-phone-root.pc-phone-root.pc-phone-root.pc-phone-root.pc-phone-root main,
-.pc-phone-root.pc-phone-root.pc-phone-root.pc-phone-root.pc-phone-root.pc-phone-root.pc-phone-root.pc-phone-root section,
-.pc-phone-root.pc-phone-root.pc-phone-root.pc-phone-root.pc-phone-root.pc-phone-root.pc-phone-root.pc-phone-root article,
+.pc-phone-root.pc-phone-root.pc-phone-root.pc-phone-root.pc-phone-root.pc-phone-root.pc-phone-root.pc-phone-root
+  section,
+.pc-phone-root.pc-phone-root.pc-phone-root.pc-phone-root.pc-phone-root.pc-phone-root.pc-phone-root.pc-phone-root
+  article,
 .pc-phone-root.pc-phone-root.pc-phone-root.pc-phone-root.pc-phone-root.pc-phone-root.pc-phone-root.pc-phone-root header,
 .pc-phone-root.pc-phone-root.pc-phone-root.pc-phone-root.pc-phone-root.pc-phone-root.pc-phone-root.pc-phone-root footer,
 .pc-phone-root.pc-phone-root.pc-phone-root.pc-phone-root.pc-phone-root.pc-phone-root.pc-phone-root.pc-phone-root nav,
@@ -558,7 +570,8 @@
 .pc-phone-root.pc-phone-root.pc-phone-root.pc-phone-root.pc-phone-root.pc-phone-root.pc-phone-root.pc-phone-root ul,
 .pc-phone-root.pc-phone-root.pc-phone-root.pc-phone-root.pc-phone-root.pc-phone-root.pc-phone-root.pc-phone-root ol,
 .pc-phone-root.pc-phone-root.pc-phone-root.pc-phone-root.pc-phone-root.pc-phone-root.pc-phone-root.pc-phone-root li,
-.pc-phone-root.pc-phone-root.pc-phone-root.pc-phone-root.pc-phone-root.pc-phone-root.pc-phone-root.pc-phone-root blockquote {
+.pc-phone-root.pc-phone-root.pc-phone-root.pc-phone-root.pc-phone-root.pc-phone-root.pc-phone-root.pc-phone-root
+  blockquote {
   font-family: var(--pc-font-sans) !important;
 }
 
@@ -650,17 +663,27 @@
   font-family: var(--pc-reader-font-family);
 }
 
-.pc-phone-root.pc-phone-root.pc-phone-root.pc-phone-root.pc-phone-root.pc-phone-root.pc-phone-root.pc-phone-root .pc-message-body.pc-message-body.pc-rendered-markdown,
-.pc-phone-root.pc-phone-root.pc-phone-root.pc-phone-root.pc-phone-root.pc-phone-root.pc-phone-root.pc-phone-root .pc-detail-content.pc-detail-content.pc-rendered-markdown {
+.pc-phone-root.pc-phone-root.pc-phone-root.pc-phone-root.pc-phone-root.pc-phone-root.pc-phone-root.pc-phone-root
+  .pc-message-body.pc-message-body.pc-rendered-markdown,
+.pc-phone-root.pc-phone-root.pc-phone-root.pc-phone-root.pc-phone-root.pc-phone-root.pc-phone-root.pc-phone-root
+  .pc-detail-content.pc-detail-content.pc-rendered-markdown {
   font-family: var(--pc-reader-font-family) !important;
   font-size: var(--pc-reader-font-size);
   line-height: var(--pc-reader-line-height);
 }
 
-.pc-phone-root.pc-phone-root.pc-phone-root.pc-phone-root.pc-phone-root.pc-phone-root.pc-phone-root.pc-phone-root .pc-message-body.pc-message-body.pc-rendered-markdown > *,
-.pc-phone-root.pc-phone-root.pc-phone-root.pc-phone-root.pc-phone-root.pc-phone-root.pc-phone-root.pc-phone-root .pc-message-body.pc-message-body.pc-rendered-markdown :where(strong, em, span, li, blockquote),
-.pc-phone-root.pc-phone-root.pc-phone-root.pc-phone-root.pc-phone-root.pc-phone-root.pc-phone-root.pc-phone-root .pc-detail-content.pc-detail-content.pc-rendered-markdown > *,
-.pc-phone-root.pc-phone-root.pc-phone-root.pc-phone-root.pc-phone-root.pc-phone-root.pc-phone-root.pc-phone-root .pc-detail-content.pc-detail-content.pc-rendered-markdown :where(strong, em, span, li, blockquote) {
+.pc-phone-root.pc-phone-root.pc-phone-root.pc-phone-root.pc-phone-root.pc-phone-root.pc-phone-root.pc-phone-root
+  .pc-message-body.pc-message-body.pc-rendered-markdown
+  > *,
+.pc-phone-root.pc-phone-root.pc-phone-root.pc-phone-root.pc-phone-root.pc-phone-root.pc-phone-root.pc-phone-root
+  .pc-message-body.pc-message-body.pc-rendered-markdown
+  :where(strong, em, span, li, blockquote),
+.pc-phone-root.pc-phone-root.pc-phone-root.pc-phone-root.pc-phone-root.pc-phone-root.pc-phone-root.pc-phone-root
+  .pc-detail-content.pc-detail-content.pc-rendered-markdown
+  > *,
+.pc-phone-root.pc-phone-root.pc-phone-root.pc-phone-root.pc-phone-root.pc-phone-root.pc-phone-root.pc-phone-root
+  .pc-detail-content.pc-detail-content.pc-rendered-markdown
+  :where(strong, em, span, li, blockquote) {
   font-family: inherit !important;
 }
 

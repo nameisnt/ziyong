@@ -11,15 +11,17 @@ import { SummaryScopeDataSchema } from '@/type/summary';
 import { TheaterScopeDataSchema } from '@/type/theater';
 
 function createEnvelopeSchema<T extends z.ZodTypeAny>(scopeSchema: T) {
-  return z.object({
-    __chatScoped: z.literal(true).default(true),
-    legacyScopeMigrations: z.record(z.string(), z.string()).default({}),
-    scopes: z.record(z.string(), scopeSchema).default({}),
-  }).default({
-    __chatScoped: true,
-    legacyScopeMigrations: {},
-    scopes: {},
-  });
+  return z
+    .object({
+      __chatScoped: z.literal(true).default(true),
+      legacyScopeMigrations: z.record(z.string(), z.string()).default({}),
+      scopes: z.record(z.string(), scopeSchema).default({}),
+    })
+    .default({
+      __chatScoped: true,
+      legacyScopeMigrations: {},
+      scopes: {},
+    });
 }
 
 const SummaryEnvelopeSchema = createEnvelopeSchema(SummaryScopeDataSchema);

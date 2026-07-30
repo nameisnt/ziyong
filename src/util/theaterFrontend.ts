@@ -7,9 +7,9 @@ export interface TheaterFrontendBuildOptions {
 const FRONTEND_FRAME_SOURCE = 'st-phone-theater';
 const FRONTEND_IFRAME_CSP = [
   "default-src 'none'",
-  "img-src https: data: blob:",
-  "media-src https: data: blob:",
-  "font-src https: data:",
+  'img-src https: data: blob:',
+  'media-src https: data: blob:',
+  'font-src https: data:',
   "style-src 'unsafe-inline' https:",
   "script-src 'unsafe-inline' https:",
   "connect-src 'none'",
@@ -34,19 +34,20 @@ function stripDangerousNodes(document: Document) {
 }
 
 function createBaseStyle(theme: 'dark' | 'light') {
-  const palette = theme === 'dark'
-    ? {
-      background: '#111827',
-      border: 'rgba(255, 255, 255, 0.08)',
-      muted: '#9ca3af',
-      text: '#f9fafb',
-    }
-    : {
-      background: '#ffffff',
-      border: 'rgba(15, 23, 42, 0.08)',
-      muted: '#475569',
-      text: '#0f172a',
-    };
+  const palette =
+    theme === 'dark'
+      ? {
+          background: '#111827',
+          border: 'rgba(255, 255, 255, 0.08)',
+          muted: '#9ca3af',
+          text: '#f9fafb',
+        }
+      : {
+          background: '#ffffff',
+          border: 'rgba(15, 23, 42, 0.08)',
+          muted: '#475569',
+          text: '#0f172a',
+        };
 
   return [
     ':root {',
@@ -96,10 +97,7 @@ function createBaseStyle(theme: 'dark' | 'light') {
 }
 
 function escapeHtmlText(value: string) {
-  return value
-    .replaceAll('&', '&amp;')
-    .replaceAll('<', '&lt;')
-    .replaceAll('>', '&gt;');
+  return value.replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('>', '&gt;');
 }
 
 function createResizeBridgeScript(channelId: string) {
@@ -180,7 +178,9 @@ export function buildFrontendDocument(rawHtml: string, options: TheaterFrontendB
     `  <script>${createResizeBridgeScript(options.channelId)}</script>`,
     '</body>',
     '</html>',
-  ].filter(Boolean).join('\n');
+  ]
+    .filter(Boolean)
+    .join('\n');
 }
 
 export function getFrontendFrameSource() {

@@ -4,7 +4,12 @@
   </Teleport>
 
   <Teleport v-if="menuTargetReady" to="#extensionsMenu">
-    <button id="pc-menu-entry" class="list-group-item flex-container flexGap5 pc-menu-entry" type="button" @click="phone.openPhone()">
+    <button
+      id="pc-menu-entry"
+      class="list-group-item flex-container flexGap5 pc-menu-entry"
+      type="button"
+      @click="phone.openPhone()"
+    >
       <span class="extensionsMenuExtensionButton">
         <i class="fa-solid fa-mobile-screen-button"></i>
       </span>

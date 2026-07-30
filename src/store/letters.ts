@@ -55,7 +55,8 @@ export const useLettersStore = defineStore('letters', () => {
   });
 
   const books = computed(() => data.value.books);
-  const { createFailedDraft, deleteFailedDraft, failedDrafts, getFailedDraft, updateFailedDraft } = createFailedDraftCollection(data, 'letters_failed');
+  const { createFailedDraft, deleteFailedDraft, failedDrafts, getFailedDraft, updateFailedDraft } =
+    createFailedDraftCollection(data, 'letters_failed');
 
   function getBook(bookId: string) {
     return books.value.find(book => book.id === bookId) ?? null;

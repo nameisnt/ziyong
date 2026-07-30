@@ -336,7 +336,11 @@
                     </label>
                     <label class="pc-field-group">
                       <span>{{ t`番外类型` }}</span>
-                      <select v-model="step.config.extrasTypeId" class="pc-select" @change="applyExtrasTypeDefaults(step)">
+                      <select
+                        v-model="step.config.extrasTypeId"
+                        class="pc-select"
+                        @change="applyExtrasTypeDefaults(step)"
+                      >
                         <option value="">{{ t`自定义或跟随番外` }}</option>
                         <option v-for="prompt in extrasTypePrompts" :key="prompt.id" :value="prompt.id">
                           {{ prompt.name }}
@@ -380,7 +384,11 @@
                   <div class="pc-form-grid">
                     <label class="pc-field-group">
                       <span>{{ t`小剧场类型` }}</span>
-                      <select v-model="step.config.theaterTypeId" class="pc-select" @change="applyTheaterTypeDefaults(step)">
+                      <select
+                        v-model="step.config.theaterTypeId"
+                        class="pc-select"
+                        @change="applyTheaterTypeDefaults(step)"
+                      >
                         <option value="">{{ t`自定义类型` }}</option>
                         <option v-for="prompt in theaterTypePrompts" :key="prompt.id" :value="prompt.id">
                           {{ prompt.name }}
@@ -472,7 +480,11 @@
                   <div class="pc-form-grid">
                     <label class="pc-field-group">
                       <span>{{ t`目标资料表` }}</span>
-                      <select v-model="step.config.profileTableId" class="pc-select" @change="syncProfileStepKind(step)">
+                      <select
+                        v-model="step.config.profileTableId"
+                        class="pc-select"
+                        @change="syncProfileStepKind(step)"
+                      >
                         <option value="">{{ t`按资料类型` }}</option>
                         <option v-for="table in profileTables" :key="table.id" :value="table.id">
                           {{ table.name }}
@@ -671,9 +683,7 @@ function toggleStep(stepId: string) {
 }
 
 function applyTheaterTypeDefaults(step: WorkbenchStep) {
-  const typePrompt = step.config.theaterTypeId
-    ? promptStore.getTypePrompt(step.config.theaterTypeId)
-    : null;
+  const typePrompt = step.config.theaterTypeId ? promptStore.getTypePrompt(step.config.theaterTypeId) : null;
   if (!typePrompt) {
     step.config.theaterTypePrompt = '';
     return;
@@ -684,9 +694,7 @@ function applyTheaterTypeDefaults(step: WorkbenchStep) {
 }
 
 function applyExtrasTypeDefaults(step: WorkbenchStep) {
-  const typePrompt = step.config.extrasTypeId
-    ? promptStore.getTypePrompt(step.config.extrasTypeId)
-    : null;
+  const typePrompt = step.config.extrasTypeId ? promptStore.getTypePrompt(step.config.extrasTypeId) : null;
   if (!typePrompt) {
     step.config.extrasTypePrompt = '';
     return;

@@ -11,14 +11,16 @@ export default definePhoneApp({
   accent: '#2a9d8f',
   defaultRoute: 'root',
   defaultOrder: 116,
-  backupDomains: [{
-    key: 'worldbook-link',
-    exportData: () => _.get(extension_settings, worldbookLinkField, {}),
-    importData: data => {
-      _.set(extension_settings, worldbookLinkField, data);
+  backupDomains: [
+    {
+      key: 'worldbook-link',
+      exportData: () => _.get(extension_settings, worldbookLinkField, {}),
+      importData: data => {
+        _.set(extension_settings, worldbookLinkField, data);
+      },
+      rehydrateFromSettings: () => useWorldbookLinkStore().rehydrateFromSettings(),
     },
-    rehydrateFromSettings: () => useWorldbookLinkStore().rehydrateFromSettings(),
-  }],
+  ],
   component: WorldbookLinkApp,
   resetCurrentScope: () => useWorldbookLinkStore().resetCurrentScope(),
   scopeSwitchHandler: scopeKey => useWorldbookLinkStore().switchScope(scopeKey),
