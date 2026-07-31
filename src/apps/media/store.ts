@@ -13,7 +13,7 @@ export const MediaEntrySchema = z.object({
   kind: MediaKindSchema.default('image'),
   title: z.string(),
   url: z.string(),
-  source: z.enum(['comfy', 'link', 'upload']).default('link'),
+  source: z.enum(['api', 'comfy', 'link', 'upload']).default('link'),
   note: z.string().default(''),
   createdAt: z.string(),
   updatedAt: z.string(),

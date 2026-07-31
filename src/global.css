@@ -340,41 +340,52 @@
   display: none;
 }
 
-.pc-phone-root .pc-toggle {
+.pc-phone-root.pc-phone-root .pc-toggle {
+  --pc-toggle-width: 52px;
+  --pc-toggle-height: 30px;
+  --pc-toggle-thumb-size: 24px;
+  --pc-toggle-gap: 3px;
+
   position: relative;
-  display: inline-flex;
-  flex: 0 0 auto;
-  width: 46px;
-  min-width: 46px;
-  max-width: 46px;
-  height: 28px;
-  min-height: 28px;
-  max-height: 28px;
-  overflow: hidden;
+  display: inline-block;
+  flex: 0 0 var(--pc-toggle-width);
+  box-sizing: border-box;
+  width: var(--pc-toggle-width);
+  min-width: var(--pc-toggle-width);
+  max-width: var(--pc-toggle-width);
+  height: var(--pc-toggle-height);
+  min-height: var(--pc-toggle-height);
+  max-height: var(--pc-toggle-height);
+  overflow: visible;
   border-radius: 999px;
+  margin: 0;
   padding: 0;
   cursor: pointer;
   isolation: isolate;
+  line-height: 0;
+  vertical-align: middle;
 }
 
-.pc-phone-root .pc-toggle > input {
+.pc-phone-root.pc-phone-root .pc-toggle > input {
   position: absolute;
   width: 1px;
   height: 1px;
+  margin: 0;
   opacity: 0;
   pointer-events: none;
 }
 
-.pc-phone-root .pc-toggle > span {
-  position: relative;
+.pc-phone-root.pc-phone-root .pc-toggle > span {
+  position: absolute;
+  inset: 0;
   display: block;
-  flex: 0 0 100%;
-  width: 100%;
-  min-width: 100%;
-  max-width: 100%;
-  height: 100%;
-  min-height: 100%;
-  max-height: 100%;
+  box-sizing: border-box;
+  width: auto;
+  min-width: 0;
+  max-width: none;
+  height: auto;
+  min-height: 0;
+  max-height: none;
   overflow: hidden;
   border: 1px solid var(--pc-border);
   border-radius: 999px;
@@ -387,12 +398,13 @@
     opacity 0.16s ease;
 }
 
-.pc-phone-root .pc-toggle > span::after {
+.pc-phone-root.pc-phone-root .pc-toggle > span::after {
   position: absolute;
-  top: 4px;
-  left: 4px;
-  width: 20px;
-  height: 20px;
+  top: var(--pc-toggle-gap);
+  left: var(--pc-toggle-gap);
+  box-sizing: border-box;
+  width: var(--pc-toggle-thumb-size);
+  height: var(--pc-toggle-thumb-size);
   border-radius: 50%;
   background: var(--pc-primary-text, #fff);
   box-shadow: 0 1px 3px color-mix(in srgb, var(--pc-text) 24%, transparent);
@@ -400,20 +412,24 @@
   transition: transform 0.16s ease;
 }
 
-.pc-phone-root .pc-toggle > input:checked + span {
+.pc-phone-root.pc-phone-root .pc-toggle > input:checked + span {
   border-color: var(--pc-theme-accent);
   background: var(--pc-theme-accent);
 }
 
-.pc-phone-root .pc-toggle > input:checked + span::after {
-  transform: translateX(18px);
+.pc-phone-root.pc-phone-root .pc-toggle > input:checked + span::after {
+  transform: translateX(
+    calc(
+      var(--pc-toggle-width) - var(--pc-toggle-thumb-size) - var(--pc-toggle-gap) - var(--pc-toggle-gap)
+    )
+  );
 }
 
-.pc-phone-root .pc-toggle > input:focus-visible + span {
+.pc-phone-root.pc-phone-root .pc-toggle > input:focus-visible + span {
   box-shadow: 0 0 0 3px color-mix(in srgb, var(--pc-theme-accent) 16%, transparent);
 }
 
-.pc-phone-root .pc-toggle > input:disabled + span {
+.pc-phone-root.pc-phone-root .pc-toggle > input:disabled + span {
   cursor: default;
   opacity: 0.48;
 }

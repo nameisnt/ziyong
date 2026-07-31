@@ -219,6 +219,7 @@ import { useReaderStore } from '@/store/reader';
 import { useSettingsStore } from '@/store/settings';
 import { useDigestStore } from '@/apps/digest/store';
 import { useWorldbookLinkStore } from '@/apps/worldbook-link/store';
+import { usePresetLinkStore } from '@/apps/preset-link/store';
 import { normalizeChatArchiveId, parseChatScopeKey } from '@/util/chatArchive';
 import { canOpenBaguScan } from '@/util/baguScanGate';
 import { useDetailScroll } from '@/util/detailScroll';
@@ -239,6 +240,7 @@ const phone = usePhoneStore();
 const reader = useReaderStore();
 const digest = useDigestStore();
 const worldbookLinks = useWorldbookLinkStore();
+const presetLinks = usePresetLinkStore();
 const regexDisplay = useRegexDisplayStore();
 const settingsStore = useSettingsStore();
 const { settings } = storeToRefs(settingsStore);
@@ -498,8 +500,13 @@ function applyPendingBranchInheritance() {
   if (isPlaceholderChatScopeKey(targetScopeKey) || targetScopeKey === pendingBranchSourceScopeKey) return;
 
   const inheritedCount = worldbookLinks.inheritProfiles(pendingBranchSourceScopeKey, targetScopeKey);
+  const inheritedPreset = presetLinks.inheritBinding(pendingBranchSourceScopeKey, targetScopeKey);
   clearPendingBranch();
-  toastr.success(inheritedCount ? `已创建分支，并继承 ${inheritedCount} 本世界书的条目开关` : '已创建分支');
+  const inheritedLabels = [
+    inheritedCount ? `${inheritedCount} 本世界书的条目开关` : '',
+    inheritedPreset ? '预设绑定' : '',
+  ].filter(Boolean);
+  toastr.success(inheritedLabels.length ? `已创建分支，并继承${inheritedLabels.join('、')}` : '已创建分支');
 }
 
 async function createReaderBranch() {

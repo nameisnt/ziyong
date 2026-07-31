@@ -3,6 +3,7 @@ import { getLoadedPresetNameSafe, getOptionalGlobalFunction, getPresetNamesSafe 
 export type TavernPresetPrompt = {
   content?: string;
   enabled: boolean;
+  extra?: Record<string, unknown>;
   id: string;
   name: string;
   position?: {

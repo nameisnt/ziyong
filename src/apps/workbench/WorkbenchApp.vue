@@ -112,19 +112,15 @@
           </div>
 
           <label class="pc-field-group">
-            <span>{{ t`工作流 API` }}</span>
+            <span>{{ t`工作流默认 API` }}</span>
             <div class="pc-workflow-api-row">
               <select
                 class="pc-select"
-                :value="getWorkflowApiValue(workflow)"
-                @change="updateWorkflowApi(workflow.id, ($event.target as HTMLSelectElement).value)"
+                :value="getWorkflowProviderValue(workflow)"
+                @change="updateWorkflowProvider(workflow.id, ($event.target as HTMLSelectElement).value)"
               >
                 <option value="">{{ t`跟随全局 API` }}</option>
-                <optgroup v-if="tavernPresetNames.length" :label="t`酒馆预设`">
-                  <option v-for="presetName in tavernPresetNames" :key="presetName" :value="`tavern:${presetName}`">
-                    {{ presetName }}
-                  </option>
-                </optgroup>
+                <option value="tavern">{{ t`酒馆当前 API` }}</option>
                 <optgroup v-if="settings.textProvider.externalProfiles.length" :label="t`外部 API`">
                   <option
                     v-for="profile in settings.textProvider.externalProfiles"
@@ -148,6 +144,24 @@
                 <i class="fa-solid fa-rotate"></i>
               </button>
             </div>
+          </label>
+
+          <label class="pc-field-group">
+            <span>{{ t`工作流默认预设` }}</span>
+            <select
+              class="pc-select"
+              :value="workflow.tavernPresetName"
+              @change="
+                workbench.updateWorkflow(workflow.id, {
+                  tavernPresetName: ($event.target as HTMLSelectElement).value,
+                })
+              "
+            >
+              <option value="">{{ t`跟随全局生成预设` }}</option>
+              <option v-for="presetName in tavernPresetNames" :key="presetName" :value="presetName">
+                {{ presetName }}
+              </option>
+            </select>
           </label>
 
           <label v-if="workflow.sourceMode === 'recent'" class="pc-field-group">
@@ -267,6 +281,57 @@
                     <option value="previous">{{ t`上一步结果` }}</option>
                   </select>
                 </label>
+
+                <section class="pc-step-config pc-step-generation-config">
+                  <label class="pc-field-group">
+                    <span>{{ t`生成配置` }}</span>
+                    <select v-model="step.generationMode" class="pc-select">
+                      <option value="workflow">{{ t`跟随工作流默认` }}</option>
+                      <option value="global">{{ t`跟随全局生成模式` }}</option>
+                      <option value="custom">{{ t`本步骤自定义` }}</option>
+                    </select>
+                  </label>
+                  <template v-if="step.generationMode === 'custom'">
+                    <label class="pc-field-group">
+                      <span>{{ t`本步骤 API` }}</span>
+                      <select v-model="step.apiMode" class="pc-select">
+                        <option value="tavern">{{ t`酒馆当前 API` }}</option>
+                        <option value="external">{{ t`外部 API` }}</option>
+                      </select>
+                    </label>
+                    <label v-if="step.apiMode === 'external'" class="pc-field-group">
+                      <span>{{ t`连接配置` }}</span>
+                      <select v-model="step.externalProfileId" class="pc-select">
+                        <option value="">{{ t`请选择外部 API 配置` }}</option>
+                        <option
+                          v-for="profile in settings.textProvider.externalProfiles"
+                          :key="profile.id"
+                          :value="profile.id"
+                        >
+                          {{ profile.name }}
+                        </option>
+                        <option
+                          v-if="
+                            step.externalProfileId &&
+                            !settings.textProvider.externalProfiles.some(profile => profile.id === step.externalProfileId)
+                          "
+                          :value="step.externalProfileId"
+                        >
+                          {{ t`连接配置已失效` }}
+                        </option>
+                      </select>
+                    </label>
+                    <label class="pc-field-group">
+                      <span>{{ t`本步骤预设` }}</span>
+                      <select v-model="step.tavernPresetName" class="pc-select">
+                        <option value="">{{ t`跟随全局生成预设` }}</option>
+                        <option v-for="presetName in tavernPresetNames" :key="presetName" :value="presetName">
+                          {{ presetName }}
+                        </option>
+                      </select>
+                    </label>
+                  </template>
+                </section>
 
                 <div v-if="step.appId === 'summary'" class="pc-step-config">
                   <label class="pc-field-group">
@@ -735,18 +800,17 @@ function updateDelay(workflowId: string, value: string) {
   workbench.updateWorkflow(workflowId, { delayAiReplies: Number(value) || 0 });
 }
 
-function getWorkflowApiValue(workflow: WorkbenchWorkflow) {
-  if (workflow.apiMode === 'tavern') return `tavern:${workflow.tavernPresetName}`;
+function getWorkflowProviderValue(workflow: WorkbenchWorkflow) {
+  if (workflow.apiMode === 'tavern') return 'tavern';
   if (workflow.apiMode === 'external') return `external:${workflow.externalProfileId}`;
   return '';
 }
 
-function updateWorkflowApi(workflowId: string, value: string) {
-  if (value.startsWith('tavern:')) {
+function updateWorkflowProvider(workflowId: string, value: string) {
+  if (value === 'tavern') {
     workbench.updateWorkflow(workflowId, {
       apiMode: 'tavern',
       externalProfileId: '',
-      tavernPresetName: value.slice('tavern:'.length),
     });
     return;
   }
@@ -754,23 +818,24 @@ function updateWorkflowApi(workflowId: string, value: string) {
     workbench.updateWorkflow(workflowId, {
       apiMode: 'external',
       externalProfileId: value.slice('external:'.length),
-      tavernPresetName: '',
     });
     return;
   }
   workbench.updateWorkflow(workflowId, {
     apiMode: 'inherit',
     externalProfileId: '',
-    tavernPresetName: '',
   });
 }
 
 function refreshTavernPresetNames() {
   const names = getPresetNamesSafe();
   workflows.value.forEach(workflow => {
-    if (workflow.apiMode === 'tavern' && workflow.tavernPresetName && !names.includes(workflow.tavernPresetName)) {
+    if (workflow.tavernPresetName && !names.includes(workflow.tavernPresetName)) {
       names.push(workflow.tavernPresetName);
     }
+    workflow.steps.forEach(step => {
+      if (step.tavernPresetName && !names.includes(step.tavernPresetName)) names.push(step.tavernPresetName);
+    });
   });
   tavernPresetNames.value = names;
 }

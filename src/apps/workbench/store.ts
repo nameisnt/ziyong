@@ -46,11 +46,15 @@ export const WorkbenchStepSchema = z.object({
   id: z.string(),
   appId: z.string(),
   actionId: z.string(),
+  apiMode: z.enum(['tavern', 'external']).default('tavern'),
   config: WorkbenchStepConfigSchema.default(() => WorkbenchStepConfigSchema.parse({})),
   enabled: z.boolean().default(true),
+  externalProfileId: z.string().default(''),
   formatTemplate: z.string().default(''),
+  generationMode: z.enum(['workflow', 'global', 'custom']).default('workflow'),
   includeInInsert: z.boolean().default(true),
   inputMode: z.enum(['chat', 'previous']).default('chat'),
+  tavernPresetName: z.string().default(''),
   userRequirement: z.string().default(''),
 });
 export type WorkbenchStep = z.infer<typeof WorkbenchStepSchema>;
@@ -316,12 +320,16 @@ export const useWorkbenchStore = defineStore('workbench', () => {
     const step: WorkbenchStep = {
       actionId: input.actionId,
       appId: input.appId,
+      apiMode: 'tavern',
       config: validateInplace(WorkbenchStepConfigSchema, {}),
       enabled: true,
+      externalProfileId: '',
       formatTemplate: '',
+      generationMode: 'workflow',
       id: createId('workbench_step'),
       includeInInsert: true,
       inputMode: 'chat',
+      tavernPresetName: '',
       userRequirement: '',
     };
     settings.value.workflows = settings.value.workflows.map(workflow =>
@@ -335,6 +343,7 @@ export const useWorkbenchStore = defineStore('workbench', () => {
     stepId: string,
     patch: Partial<
       Pick<WorkbenchStep, 'config' | 'enabled' | 'formatTemplate' | 'includeInInsert' | 'inputMode' | 'userRequirement'>
+      & Pick<WorkbenchStep, 'apiMode' | 'externalProfileId' | 'generationMode' | 'tavernPresetName'>
     >,
   ) {
     settings.value.workflows = settings.value.workflows.map(workflow => {
@@ -347,7 +356,13 @@ export const useWorkbenchStore = defineStore('workbench', () => {
                 ...step,
                 ...patch,
                 config: patch.config ? validateInplace(WorkbenchStepConfigSchema, patch.config) : step.config,
+                externalProfileId:
+                  typeof patch.externalProfileId === 'string'
+                    ? patch.externalProfileId.trim()
+                    : step.externalProfileId,
                 formatTemplate: typeof patch.formatTemplate === 'string' ? patch.formatTemplate : step.formatTemplate,
+                tavernPresetName:
+                  typeof patch.tavernPresetName === 'string' ? patch.tavernPresetName.trim() : step.tavernPresetName,
                 userRequirement:
                   typeof patch.userRequirement === 'string' ? patch.userRequirement : step.userRequirement,
               }

@@ -380,22 +380,38 @@ function buildGenerationOptions(
   onSaved?: (result: unknown) => void,
 ): GenerateContentOptions {
   const settings = useSettingsStore();
+  const generationMode = step.generationMode;
+  const apiMode =
+    generationMode === 'custom'
+      ? step.apiMode
+      : generationMode === 'workflow'
+        ? workflow.apiMode
+        : 'inherit';
+  const externalProfileId =
+    generationMode === 'custom'
+      ? step.externalProfileId
+      : generationMode === 'workflow'
+        ? workflow.externalProfileId
+        : '';
+  const configuredPresetName =
+    generationMode === 'custom'
+      ? step.tavernPresetName
+      : generationMode === 'workflow'
+        ? workflow.tavernPresetName
+        : settings.settings.generation.tavernPresetName;
   const textProvider = (() => {
-    if (workflow.apiMode === 'inherit') return settings.settings.textProvider;
-    if (workflow.apiMode === 'tavern') {
-      if (!workflow.tavernPresetName.trim()) {
-        throw new Error('工作流选择了酒馆预设模式，但没有指定预设');
-      }
+    if (apiMode === 'inherit') return settings.settings.textProvider;
+    if (apiMode === 'tavern') {
       return {
         ...settings.settings.textProvider,
         mode: 'tavern' as const,
       };
     }
     const profile = settings.settings.textProvider.externalProfiles.find(
-      item => item.id === workflow.externalProfileId,
+      item => item.id === externalProfileId,
     );
     if (!profile) {
-      throw new Error('工作流选择的外部 API 配置已不存在');
+      throw new Error('当前步骤选择的外部 API 配置已不存在');
     }
     return {
       ...settings.settings.textProvider,
@@ -403,18 +419,12 @@ function buildGenerationOptions(
       mode: 'external' as const,
     };
   })();
-  const tavernPresetName =
-    workflow.apiMode === 'tavern'
-      ? workflow.tavernPresetName
-      : workflow.apiMode === 'inherit'
-        ? settings.settings.generation.tavernPresetName
-        : '';
   return {
     createFailedDraft: createFailedDraft(step, workflow, logId),
     generationDefaults: {
       resultMode: 'save',
       stream: false,
-      tavernPresetName,
+      tavernPresetName: configuredPresetName,
     },
     lifecycle: {
       onFinish() {

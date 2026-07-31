@@ -76,7 +76,15 @@
         <span>{{ errorMessage }}</span>
       </div>
 
-      <div v-else-if="activePreset" class="pc-preset-nodes">
+      <div v-else-if="activePreset" class="pc-preset-filter-row">
+        <span>只看当前已启用条目</span>
+        <label class="pc-toggle" title="只显示当前实际启用的预设条目">
+          <input v-model="enabledOnly" type="checkbox" aria-label="只看当前已启用条目" />
+          <span aria-hidden="true"></span>
+        </label>
+      </div>
+
+      <div v-if="!errorMessage && activePreset" class="pc-preset-nodes">
         <template
           v-for="node in displayNodes"
           :key="node.type === 'group' ? `group:${node.group.id}` : `prompt:${node.prompt.id}`"
@@ -113,7 +121,10 @@
             </div>
           </section>
         </template>
-        <EmptyState v-if="!displayNodes.length" title="这个预设没有条目" />
+        <EmptyState
+          v-if="!displayNodes.length"
+          :title="enabledOnly ? '这个预设没有当前已启用的条目' : '这个预设没有条目'"
+        />
       </div>
       <EmptyState v-else-if="loading" title="正在读取预设" />
     </section>
@@ -165,13 +176,24 @@ const switchingPreset = ref('');
 const busyPromptIds = ref(new Set<string>());
 const collapsedGroupIds = ref(new Set<string>());
 const editorDraft = ref('');
+const enabledOnly = ref(false);
 
 const detailPresetName = computed(() => route.value.params?.presetName || '');
 const activePromptId = computed(() => route.value.params?.promptId || '');
 const activePrompt = computed(
   () => activePreset.value?.prompts.find(prompt => prompt.id === activePromptId.value) ?? null,
 );
-const displayNodes = computed(() => (activePreset.value ? buildPresetDisplayNodes(activePreset.value) : []));
+const displayNodes = computed(() => {
+  if (!activePreset.value) return [];
+  const nodes = buildPresetDisplayNodes(activePreset.value);
+  if (!enabledOnly.value) return nodes;
+  return nodes.flatMap(node => {
+    if (node.type === 'prompt') return node.prompt.enabled ? [node] : [];
+    if (!node.group.enabled) return [];
+    const prompts = node.prompts.filter(prompt => prompt.enabled);
+    return prompts.length ? [{ ...node, prompts }] : [];
+  });
+});
 const visiblePresetNames = computed(() => {
   const keyword = presetQuery.value.trim().toLocaleLowerCase();
   if (!keyword) return presetNames.value;
@@ -391,6 +413,17 @@ watch(
 .pc-preset-group-body {
   display: grid;
   gap: 10px;
+}
+
+.pc-preset-filter-row {
+  display: flex;
+  min-height: 42px;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  color: var(--pc-text);
+  font-size: 13px;
+  font-weight: 700;
 }
 
 .pc-preset-search {
