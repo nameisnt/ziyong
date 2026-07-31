@@ -132,7 +132,9 @@ function setupVisualGlobals() {
       settings: {},
     },
     简洁写作: {
-      extensions: {},
+      extensions: {
+        regex_scripts: [{ enabled: true, name: '视觉正则' }],
+      },
       prompts: [
         {
           id: 'main',
@@ -172,6 +174,7 @@ function setupVisualGlobals() {
     getRequestHeaders: () => ({}),
     getTokenCountAsync: (content: string) => Math.ceil(String(content || '').length / 2),
     groupId: '',
+    reloadCurrentChat: async () => {},
     SillyTavern: {
       chat: visualMessages,
       chatId: 'visual-chat',
@@ -194,10 +197,27 @@ function setupVisualGlobals() {
       getLoadedPresetName: () => visualLoadedPresetName,
       getPreset: (presetName: string) => structuredClone(visualPresetStore[presetName]),
       getPresetNames: () => Object.keys(visualPresetStore).filter(name => name !== 'in_use'),
+      getWorldbook: async () =>
+        Array.from({ length: 12 }, (_, index) => ({
+          content: `第 ${index + 1} 条视觉世界书内容，用于检查收藏列表、批量选择和独立滚动区域。`,
+          enabled: true,
+          name: `世界书条目 ${index + 1}`,
+          uid: index + 1,
+        })),
+      getWorldbookNames: () => ['视觉世界书'],
       loadPreset: (presetName: string) => {
         if (!visualPresetStore[presetName] || presetName === 'in_use') return false;
         visualLoadedPresetName = presetName;
         visualPresetStore.in_use = structuredClone(visualPresetStore[presetName]);
+        const regexes = (
+          visualPresetStore[presetName].extensions as { regex_scripts?: Array<{ enabled?: boolean }> }
+        ).regex_scripts;
+        if (regexes?.some(regex => regex.enabled !== false)) {
+          const toast = document.createElement('div');
+          toast.className = 'toast toast-info';
+          toast.textContent = `预设“${presetName}”包含被启用的正则，重新加载聊天以使正则生效`;
+          document.body.append(toast);
+        }
         return true;
       },
       updatePresetWith: async (
@@ -262,6 +282,9 @@ const { useSummaryStore } = await import('@/store/summary');
 const { useTheaterStore } = await import('@/store/theater');
 const { useWorkbenchStore } = await import('@/apps/workbench/store');
 const { useProfilesStore } = await import('@/apps/profiles/store');
+const { usePresetLinkStore } = await import('@/apps/preset-link/store');
+const { ENTRY_LIBRARY_CONTENT_PLACEHOLDER, useEntryLibraryStore } = await import('@/apps/entry-library/store');
+const { readTavernPreset } = await import('@/apps/preset-manager/api');
 
 initPhoneLifecycle();
 
@@ -277,6 +300,14 @@ const scenarios: VisualScenarioName[] = [
   'settings-interface',
   'settings-connection',
   'settings-advanced',
+  'cloud-media-generate',
+  'cloud-media-settings',
+  'entry-library-bindings',
+  'entry-library-collect-manual-dedupe',
+  'entry-library-collect-worldbook',
+  'entry-library-scroll-return',
+  'preset-link-auto-reload',
+  'preset-link-history',
   'forum-generate-thread',
   'forum-board',
   'forum-thread',
@@ -297,6 +328,7 @@ const scenarios: VisualScenarioName[] = [
   'prompts-type-detail',
   'prompts-type-editor',
   'theater-generate',
+  'theater-generate-dark-inputs',
   'theater-editor',
   'theater-history',
   'tutorial-article',
@@ -621,6 +653,211 @@ async function applyScenario(name: VisualScenarioName, options: { height?: numbe
     resetPhoneToRoute('settings', 'root', '设置', { tab: 'connection' });
   } else if (name === 'settings-advanced') {
     resetPhoneToRoute('settings', 'root', '设置', { tab: 'advanced' });
+  } else if (name === 'cloud-media-generate') {
+    resetPhoneToRoute('cloud-media', 'generate', 'AI 云媒体');
+  } else if (name === 'cloud-media-settings') {
+    resetPhoneToRoute('cloud-media', 'settings', '云媒体配置');
+  } else if (name === 'entry-library-collect-worldbook') {
+    useSettingsStore().setTheme('light');
+    const library = useEntryLibraryStore();
+    library.importBackup({
+      bindings: [],
+      groups: [
+        {
+          createdAt: '2026-07-31T00:00:10.000Z',
+          enabled: true,
+          id: 'visual-entry-group-10',
+          name: '分组 10',
+        },
+        {
+          createdAt: '2026-07-31T00:00:02.000Z',
+          enabled: true,
+          id: 'visual-entry-group-2',
+          name: '分组 2',
+        },
+      ],
+      items: [],
+      version: 1,
+    });
+    resetPhoneToRoute('entry-library', 'collect', '收藏条目');
+    await waitForPaint();
+    document.querySelectorAll<HTMLButtonElement>('.pc-entry-library-page .pc-segment-btn')[1]?.click();
+    await waitForPaint();
+    const selects = document.querySelectorAll<HTMLSelectElement>('.pc-entry-library-page .pc-select');
+    const sourceSelect = selects[0];
+    const groupSelect = selects[1];
+    sourceSelect.value = '视觉世界书';
+    sourceSelect.dispatchEvent(new Event('change', { bubbles: true }));
+    await waitForPaint();
+    const groupNames = [...groupSelect.options]
+      .map(option => option.textContent?.trim() ?? '')
+      .filter(name => name.startsWith('分组'));
+    if (groupNames.join('|') !== '分组 2|分组 10') {
+      throw new Error(`Entry library groups are not naturally sorted: ${groupNames.join('|')}`);
+    }
+    const actionButtons = [...document.querySelectorAll<HTMLButtonElement>('.pc-entry-library-select-actions button')];
+    actionButtons.find(button => button.textContent?.trim() === '全选')?.click();
+    await waitForPaint();
+    actionButtons.find(button => button.textContent?.trim() === '反选')?.click();
+    await waitForPaint();
+    if (document.querySelectorAll<HTMLInputElement>('.pc-entry-source-row input:checked').length) {
+      throw new Error('Entry library invert selection did not clear fully selected visible entries');
+    }
+    document.querySelector<HTMLInputElement>('.pc-entry-source-row input')?.click();
+    await waitForPaint();
+    const collectScroll = document.querySelector<HTMLElement>('.pc-entry-library-collect-scroll');
+    const collectFooter = document.querySelector<HTMLElement>('.pc-entry-library-collect-footer');
+    if (!collectScroll || !collectFooter) throw new Error('Entry library fixed collect footer is missing');
+    const footerTop = collectFooter.getBoundingClientRect().top;
+    collectScroll.scrollTop = 320;
+    await waitForPaint();
+    if (collectScroll.scrollTop < 100 || Math.abs(collectFooter.getBoundingClientRect().top - footerTop) > 1) {
+      throw new Error('Entry library collect footer moved with the entry list');
+    }
+  } else if (name === 'entry-library-collect-manual-dedupe') {
+    useSettingsStore().setTheme('light');
+    const library = useEntryLibraryStore();
+    library.importBackup({
+      bindings: [],
+      groups: [
+        {
+          createdAt: '2026-07-31T00:00:02.000Z',
+          enabled: true,
+          id: 'visual-entry-group-manual-dedupe',
+          name: '手动查重分组',
+        },
+      ],
+      items: [],
+      version: 1,
+    });
+    resetPhoneToRoute('entry-library', 'root', '条目库');
+    await waitForPaint();
+    document.querySelector<HTMLButtonElement>('.pc-entry-library-head .pc-primary-btn')?.click();
+    await waitForPaint();
+    document.querySelectorAll<HTMLButtonElement>('.pc-entry-library-page .pc-segment-btn')[1]?.click();
+    await waitForPaint();
+    const sourceSelect = document.querySelector<HTMLSelectElement>('.pc-entry-library-collect-scroll .pc-select');
+    if (!sourceSelect) throw new Error('Entry library source selector is missing');
+    sourceSelect.value = '视觉世界书';
+    sourceSelect.dispatchEvent(new Event('change', { bubbles: true }));
+    await waitForPaint();
+    document.querySelector<HTMLInputElement>('.pc-entry-source-row input')?.click();
+    await waitForPaint();
+    document.querySelector<HTMLButtonElement>('.pc-entry-library-collect-footer .pc-primary-btn')?.click();
+    await waitForPaint();
+    if (usePhoneStore().currentRoute.page !== 'root') {
+      throw new Error(`Entry library collection opened ${usePhoneStore().currentRoute.page} instead of returning to root`);
+    }
+  } else if (name === 'entry-library-scroll-return') {
+    useSettingsStore().setTheme('light');
+    const library = useEntryLibraryStore();
+    library.importBackup({
+      bindings: [],
+      groups: [
+        {
+          createdAt: '2026-07-31T00:00:02.000Z',
+          enabled: true,
+          id: 'visual-entry-group-scroll',
+          name: '长列表分组',
+        },
+      ],
+      items: Array.from({ length: 20 }, (_, index) => ({
+        content: `用于验证滚动位置恢复的收藏正文 ${index + 1}`,
+        createdAt: '2026-07-31T00:00:02.000Z',
+        enabled: true,
+        groupId: 'visual-entry-group-scroll',
+        id: `visual-entry-scroll-item-${index + 1}`,
+        sourceEntryId: String(index + 1),
+        sourceName: '视觉世界书',
+        sourceType: 'worldbook' as const,
+        title: `滚动测试收藏 ${index + 1}`,
+        updatedAt: '2026-07-31T00:00:02.000Z',
+      })),
+      version: 1,
+    });
+    resetPhoneToRoute('entry-library', 'root', '条目库');
+    await waitForPaint();
+    const screen = document.querySelector<HTMLElement>('.pc-screen');
+    if (!screen) throw new Error('Phone screen is missing');
+    screen.scrollTop = 280;
+    await waitForPaint();
+    const rootScrollTop = screen.scrollTop;
+    if (rootScrollTop < 100) throw new Error('Entry library root fixture is not scrollable');
+    document.querySelector<HTMLButtonElement>('.pc-entry-library-head .pc-primary-btn')?.click();
+    await waitForPaint();
+    if (screen.scrollTop !== 0) throw new Error('New entry library route did not start at the top');
+    await usePhoneStore().goBack();
+    await waitForPaint();
+    if (Math.abs(screen.scrollTop - rootScrollTop) > 1) {
+      throw new Error(`Entry library root scroll was not restored: ${screen.scrollTop} !== ${rootScrollTop}`);
+    }
+  } else if (name === 'entry-library-bindings') {
+    useSettingsStore().setTheme('light');
+    const library = useEntryLibraryStore();
+    library.importBackup({
+      bindings: [],
+      groups: [
+        {
+          createdAt: '2026-07-31T00:00:02.000Z',
+          enabled: true,
+          id: 'visual-entry-group-2',
+          name: '分组 2',
+        },
+      ],
+      items: [
+        {
+          content: '视觉收藏正文',
+          createdAt: '2026-07-31T00:00:02.000Z',
+          enabled: true,
+          groupId: 'visual-entry-group-2',
+          id: 'visual-entry-item-1',
+          sourceEntryId: '1',
+          sourceName: '视觉世界书',
+          sourceType: 'worldbook',
+          title: '视觉收藏',
+          updatedAt: '2026-07-31T00:00:02.000Z',
+        },
+      ],
+      version: 1,
+    });
+    await library.createBinding({
+      contentTemplate: `<a>${ENTRY_LIBRARY_CONTENT_PLACEHOLDER}</a>`,
+      groupId: 'visual-entry-group-2',
+      presetName: '视觉预设',
+      targetPromptId: 'main',
+      targetPromptName: '系统提示词',
+      targetPromptSource: 'prompts',
+    });
+    const mainPrompt = readTavernPreset('视觉预设').prompts.find(prompt => prompt.id === 'main');
+    if (mainPrompt?.content !== '<a>视觉收藏正文</a>') {
+      throw new Error('Entry library binding placeholder was not rendered into the preset prompt');
+    }
+    resetPhoneToRoute('entry-library', 'bindings', '分组绑定');
+  } else if (name === 'preset-link-auto-reload') {
+    resetPhoneToRoute('preset-link', 'root', '预设绑定');
+    const result = await usePresetLinkStore().applySelection(
+      phone.viewingScopeKey,
+      {
+        presetName: '简洁写作',
+        reloadRegex: true,
+      },
+      true,
+    );
+    await waitForPaint();
+    if (!result.reloaded || document.querySelector('.toast')) {
+      throw new Error('Preset regex auto-reload notice was not suppressed');
+    }
+  } else if (name === 'preset-link-history') {
+    const historyScopeKey = 'char:0:chat:visual-history';
+    usePresetLinkStore().saveBinding(historyScopeKey, {
+      presetName: '简洁写作',
+      reloadRegex: true,
+    });
+    await phone.setViewingScope(historyScopeKey, {
+      chatTitle: '旧章节讨论',
+      ownerName: '测试角色',
+    });
+    resetPhoneToRoute('preset-link', 'root', '预设绑定');
   } else if (name === 'prompts-app-detail') {
     resetPhoneToRoute('prompts', 'root', '提示词');
     await waitForPaint();
@@ -733,6 +970,25 @@ async function applyScenario(name: VisualScenarioName, options: { height?: numbe
     document.querySelector<HTMLButtonElement>('.pc-detail-nav .catalog')?.click();
   } else if (name === 'theater-generate') {
     resetPhoneToRoute('theater', 'generate', '小剧场配置');
+  } else if (name === 'theater-generate-dark-inputs') {
+    const settingsStore = useSettingsStore();
+    settingsStore.setTheme('dark');
+    settingsStore.settings.visualTheme.backgroundColor = '#242129';
+    settingsStore.settings.visualTheme.surfaceColor = 'rgba(255, 255, 255, 0.08)';
+    settingsStore.settings.visualTheme.surfaceStrongColor = '#ffffff';
+    settingsStore.settings.visualTheme.textColor = '#f5f5f7';
+    resetPhoneToRoute('theater', 'generate', '小剧场配置');
+    await waitForPaint();
+    const textareas = document.querySelectorAll<HTMLTextAreaElement>('.pc-theater-page textarea.pc-area');
+    if (textareas.length < 2) throw new Error('Theater dark input fixture is incomplete');
+    textareas.forEach(textarea => {
+      const style = getComputedStyle(textarea);
+      const background = style.backgroundColor.replace(/\s+/g, '');
+      const color = style.color.replace(/\s+/g, '');
+      if (background !== 'rgb(44,44,46)' || color !== 'rgb(245,245,247)') {
+        throw new Error(`Theater dark input colors are invalid: ${background} / ${color}`);
+      }
+    });
   } else if (name === 'theater-editor') {
     const entry = createTheaterFixture();
     resetPhoneToRoute('theater', 'editor', '编辑小剧场', { entryId: entry.id });

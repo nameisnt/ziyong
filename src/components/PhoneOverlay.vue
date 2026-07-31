@@ -74,7 +74,7 @@
         </article>
       </div>
 
-      <main class="pc-screen">
+      <main ref="screenEl" class="pc-screen">
         <section v-if="currentRoute.appId === 'home'" class="pc-home">
           <div class="pc-home-main">
             <section class="pc-home-context">
@@ -200,7 +200,7 @@ import { PHONE_APPS, normalizeHomeLayout } from '@/data/apps';
 import { getWallpaperPreset } from '@/data/wallpapers';
 import { useBaguStore } from '@/store/bagu';
 import { useGenerationTaskStore } from '@/store/generationTasks';
-import { usePhoneStore } from '@/store/phone';
+import { usePhoneStore, type PhoneRoute } from '@/store/phone';
 import { usePromptStore } from '@/store/prompts';
 import { useReaderStore } from '@/store/reader';
 import { useRecoveryStore } from '@/store/recovery';
@@ -232,6 +232,7 @@ const {
 } = storeToRefs(phone);
 const currentAppComponent = computed(() => getRegisteredPhoneAppComponent(currentRoute.value.appId));
 const shellEl = ref<HTMLElement | null>(null);
+const screenEl = ref<HTMLElement | null>(null);
 const topbarEl = ref<HTMLElement | null>(null);
 const homeGridEl = ref<HTMLElement | null>(null);
 const refreshingPhoneData = ref(false);
@@ -239,7 +240,9 @@ type ToastrKind = 'error' | 'info' | 'success' | 'warning';
 type ToastrMethod = (message?: unknown, title?: unknown, options?: unknown) => unknown;
 
 const toastrOriginals = new Map<ToastrKind, ToastrMethod>();
+const routeScrollPositions = new WeakMap<PhoneRoute, number>();
 let toastrBridgeInstalled = false;
+let routeScrollRestoreSequence = 0;
 const positionX = ref(0);
 const positionY = ref(0);
 const pointerId = ref<number | null>(null);
@@ -366,6 +369,7 @@ function cssColor(value: string) {
 
 const rootStyle = computed(() => {
   const visualTheme = settings.value.visualTheme;
+  const dark = settings.value.theme === 'dark';
   return {
     '--pc-bg': cssColor(visualTheme.backgroundColor),
     '--pc-surface': cssColor(visualTheme.surfaceColor),
@@ -379,6 +383,8 @@ const rootStyle = computed(() => {
     '--pc-danger': cssColor(visualTheme.dangerColor),
     '--pc-dock-bg': cssColor(visualTheme.dockColor),
     '--pc-dock-active': cssColor(visualTheme.dockActiveColor),
+    '--pc-form-control-bg': dark ? '#2c2c2e' : '#ffffff',
+    '--pc-form-control-text': dark ? '#f5f5f7' : '#1c1c1e',
     '--pc-hint': cssColor(visualTheme.hintColor),
     '--pc-icon-radius': `${visualTheme.iconRadius}px`,
     '--pc-primary-text': cssColor(visualTheme.primaryTextColor),
@@ -927,6 +933,15 @@ watch(
 );
 
 watch(viewingScopeKey, refreshHomeArchiveDomains);
+
+watch(currentRoute, async (nextRoute, previousRoute) => {
+  const sequence = ++routeScrollRestoreSequence;
+  const screen = screenEl.value;
+  if (screen && previousRoute) routeScrollPositions.set(previousRoute, screen.scrollTop);
+  await nextTick();
+  if (sequence !== routeScrollRestoreSequence || !screenEl.value) return;
+  screenEl.value.scrollTop = routeScrollPositions.get(nextRoute) ?? 0;
+});
 
 watch(
   () => currentRoute.value.appId,
