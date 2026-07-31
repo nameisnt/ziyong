@@ -217,9 +217,7 @@ export const useWorldbookLinkStore = defineStore('worldbook-link', () => {
     }
 
     if (failures.size) {
-      throw new Error(
-        [...failures.entries()].map(([bookName, message]) => `${bookName}（${message}）`).join('、'),
-      );
+      throw new Error([...failures.entries()].map(([bookName, message]) => `${bookName}（${message}）`).join('、'));
     }
   }
 
