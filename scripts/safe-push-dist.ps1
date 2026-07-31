@@ -73,7 +73,7 @@ Set-Location -LiteralPath $repoRoot
 Write-Host ''
 Write-Host 'Safe push tracked changes to GitHub' -ForegroundColor Cyan
 Write-Host 'All tracked changes will be published. Untracked files are ignored.' -ForegroundColor Cyan
-Write-Host 'A temporary Git index is used. Your working tree and normal staging area are not touched.' -ForegroundColor Cyan
+Write-Host 'A temporary Git index is used. Existing staged changes are never overwritten.' -ForegroundColor Cyan
 Write-Host ''
 
 $expectedRemotes = @(
@@ -107,11 +107,69 @@ if ($branch -ne 'main') {
   throw "Current branch is '$branch', expected 'main'. Stop to avoid pushing the wrong branch."
 }
 
-if (-not $SkipBuild) {
-  $buildAnswer = Read-Host 'Run pnpm build first? Press Enter = yes, type n = skip'
-  if ($buildAnswer.Trim().ToLowerInvariant() -notin @('n', 'no')) {
-    Invoke-Checked -Command pnpm -Arguments @('build')
+& git diff --cached --quiet --exit-code
+$stagedDiffExitCode = $LASTEXITCODE
+if ($stagedDiffExitCode -eq 1) {
+  throw 'The normal staging area contains changes. Commit or unstage them before publishing.'
+}
+if ($stagedDiffExitCode -ne 0) {
+  throw 'Failed to inspect the normal staging area.'
+}
+
+$runBuild = -not $SkipBuild
+if ($runBuild) {
+  $buildAnswer = Read-Host 'Run pnpm build after syncing main? Press Enter = yes, type n = skip'
+  $runBuild = $buildAnswer.Trim().ToLowerInvariant() -notin @('n', 'no')
+}
+
+Invoke-CheckedWithRetry -Command git -Arguments @('fetch', 'origin', 'main')
+
+$parent = Invoke-Capture -Command git -Arguments @('rev-parse', 'origin/main')
+$head = Invoke-Capture -Command git -Arguments @('rev-parse', 'HEAD')
+if ($head -ne $parent) {
+  & git merge-base --is-ancestor $head $parent
+  $ancestorExitCode = $LASTEXITCODE
+  if ($ancestorExitCode -eq 1) {
+    throw "Local main ($head) has diverged from origin/main ($parent). Resolve the branch before publishing."
   }
+  if ($ancestorExitCode -ne 0) {
+    throw 'Failed to compare local main with origin/main.'
+  }
+
+  $localChangedFiles = @(& git -c core.safecrlf=false diff --name-only HEAD --)
+  if ($LASTEXITCODE -ne 0) {
+    throw 'Failed to inspect local tracked changes.'
+  }
+  $remoteChangedFiles = @(& git -c core.safecrlf=false diff --name-only $head $parent --)
+  if ($LASTEXITCODE -ne 0) {
+    throw 'Failed to inspect remote tracked changes.'
+  }
+  $overlappingFiles = @($localChangedFiles | Where-Object { $remoteChangedFiles -contains $_ })
+  $sourceOverlaps = @($overlappingFiles | Where-Object { -not $_.StartsWith('dist/') })
+  if ($sourceOverlaps.Count) {
+    $overlapList = $sourceOverlaps -join ', '
+    throw "Local and remote changes overlap outside dist/: $overlapList"
+  }
+  if ($overlappingFiles.Count) {
+    if (-not $runBuild) {
+      throw 'Local and remote dist changes overlap. Allow the script to rebuild before publishing.'
+    }
+    Write-Host ''
+    Write-Host 'Remote bundle changes overlap local dist/. Resetting generated files before the fast-forward.' -ForegroundColor Yellow
+    Invoke-Checked -Command git -Arguments @('restore', '--worktree', "--source=$head", '--', 'dist')
+  }
+
+  Write-Host ''
+  Write-Host 'Local main is behind origin/main. Fast-forwarding before the build...' -ForegroundColor Yellow
+  Invoke-Checked -Command git -Arguments @('merge', '--ff-only', 'origin/main')
+  $head = Invoke-Capture -Command git -Arguments @('rev-parse', 'HEAD')
+  if ($head -ne $parent) {
+    throw "Fast-forward finished at $head instead of expected origin/main $parent."
+  }
+}
+
+if ($runBuild) {
+  Invoke-Checked -Command pnpm -Arguments @('build')
 }
 
 if (-not (Test-Path -LiteralPath 'dist')) {
@@ -153,14 +211,6 @@ $originalIndex = $env:GIT_INDEX_FILE
 $tmpIndex = Join-Path $env:TEMP ('ziyong-publish-index-' + [guid]::NewGuid().ToString())
 
 try {
-  Invoke-CheckedWithRetry -Command git -Arguments @('fetch', 'origin', 'main')
-
-  $parent = Invoke-Capture -Command git -Arguments @('rev-parse', 'origin/main')
-  $head = Invoke-Capture -Command git -Arguments @('rev-parse', 'HEAD')
-  if ($head -ne $parent) {
-    throw "Local HEAD ($head) is not the latest origin/main ($parent). Update main before publishing."
-  }
-
   $untrackedFiles = @(& git ls-files --others --exclude-standard)
   if ($LASTEXITCODE -ne 0) {
     throw 'Failed to inspect untracked files.'
@@ -173,7 +223,7 @@ try {
 
   $env:GIT_INDEX_FILE = $tmpIndex
   Invoke-Checked -Command git -Arguments @('read-tree', $parent)
-  Invoke-Checked -Command git -Arguments @('add', '--update', '--', '.')
+  Invoke-Checked -Command git -Arguments @('-c', 'core.safecrlf=false', 'add', '--update', '--', '.')
 
   $trackedExclusions = @()
   foreach ($path in $excludedTrackedPaths) {
@@ -243,8 +293,18 @@ try {
 
   Invoke-CheckedWithRetry -Command git -Arguments @('push', 'origin', "$commit`:refs/heads/main")
 
+  $env:GIT_INDEX_FILE = $originalIndex
+  Invoke-Checked -Command git -Arguments @('read-tree', $commit)
+  try {
+    Invoke-Checked -Command git -Arguments @('update-ref', 'refs/heads/main', $commit, $parent)
+  } catch {
+    Invoke-Checked -Command git -Arguments @('read-tree', $parent)
+    throw
+  }
+
   Write-Host ''
   Write-Host "Push succeeded: $commit" -ForegroundColor Green
+  Write-Host 'Local main and the normal index were synchronized to the pushed commit.' -ForegroundColor Green
   Invoke-CheckedWithRetry -Command git -Arguments @('ls-remote', '--heads', 'origin', 'main')
 }
 finally {

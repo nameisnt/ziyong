@@ -344,9 +344,17 @@
   position: relative;
   display: inline-flex;
   flex: 0 0 auto;
-  width: 42px;
-  height: 24px;
+  width: 46px;
+  min-width: 46px;
+  max-width: 46px;
+  height: 28px;
+  min-height: 28px;
+  max-height: 28px;
+  overflow: hidden;
+  border-radius: 999px;
+  padding: 0;
   cursor: pointer;
+  isolation: isolate;
 }
 
 .pc-phone-root .pc-toggle > input {
@@ -359,11 +367,20 @@
 
 .pc-phone-root .pc-toggle > span {
   position: relative;
+  display: block;
+  flex: 0 0 100%;
   width: 100%;
+  min-width: 100%;
+  max-width: 100%;
   height: 100%;
+  min-height: 100%;
+  max-height: 100%;
+  overflow: hidden;
   border: 1px solid var(--pc-border);
   border-radius: 999px;
   background: color-mix(in srgb, var(--pc-text) 12%, var(--pc-surface-strong) 88%);
+  margin: 0;
+  padding: 0;
   transition:
     background 0.16s ease,
     border-color 0.16s ease,
@@ -372,12 +389,12 @@
 
 .pc-phone-root .pc-toggle > span::after {
   position: absolute;
-  top: 3px;
-  left: 3px;
-  width: 16px;
-  height: 16px;
+  top: 4px;
+  left: 4px;
+  width: 20px;
+  height: 20px;
   border-radius: 50%;
-  background: var(--pc-surface-strong);
+  background: var(--pc-primary-text, #fff);
   box-shadow: 0 1px 3px color-mix(in srgb, var(--pc-text) 24%, transparent);
   content: '';
   transition: transform 0.16s ease;
