@@ -1373,8 +1373,8 @@ function handleFrameNavigateBlocked() {
   align-content: flex-start;
   gap: 8px;
   flex-wrap: wrap;
-  max-height: min(32vh, 208px);
-  overflow-y: auto;
+  max-height: none;
+  overflow-y: visible;
   overscroll-behavior: contain;
   padding: 10px;
   border: 0.5px solid var(--pc-border);

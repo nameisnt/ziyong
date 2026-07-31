@@ -171,6 +171,7 @@
     textarea
   ) {
   color-scheme: dark;
+  background: var(--pc-form-control-bg) !important;
   background-color: var(--pc-form-control-bg) !important;
   color: var(--pc-form-control-text) !important;
   caret-color: var(--pc-form-control-text);
@@ -195,6 +196,20 @@
 .pc-phone-root[data-theme='dark'] input:-webkit-autofill:focus {
   box-shadow: 0 0 0 1000px var(--pc-form-control-bg) inset;
   -webkit-text-fill-color: var(--pc-form-control-text);
+}
+
+.pc-phone-root.pc-phone-root.pc-phone-root.pc-phone-root[data-theme='dark']
+  :is(
+    input:not([type='checkbox']):not([type='radio']):not([type='range']):not([type='color']):not([type='button']):not(
+        [type='submit']
+      ):not([type='reset']):not([type='image']):not([type='hidden']),
+    textarea
+  ) {
+  background: var(--pc-form-control-bg) !important;
+  background-color: var(--pc-form-control-bg) !important;
+  color: var(--pc-form-control-text) !important;
+  caret-color: var(--pc-form-control-text) !important;
+  -webkit-text-fill-color: var(--pc-form-control-text) !important;
 }
 
 .pc-phone-root[data-theme='dark'] :is(.pc-combobox-menu, .pc-combobox-option:not(.active):not(.selected)) {

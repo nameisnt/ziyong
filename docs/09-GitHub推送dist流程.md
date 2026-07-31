@@ -1,19 +1,21 @@
-# GitHub 推送 dist 流程
+# GitHub 安全推送流程
 
-本文档用于让其他助手或人工只负责把当前构建产物推送到 GitHub。
+本文档用于让其他助手或人工把当前源码、脚本、文档和构建产物安全推送到 GitHub。
 
 目标仓库：
 
 - `https://github.com/nameisnt/ziyong.git`
 - 分支：`main`
-- 只推送：`dist/`
+- 推送范围：当前所有有实际差异的已跟踪文件
+- 不推送：未跟踪文件和被 `.gitignore` 排除的文件
 
 重要原则：
 
 - 不要执行 `git add -A`。
 - 不要普通提交整个工作区。
-- 本项目本地工作区通常有很多未跟踪源码、文档、临时文件，只允许把当前 `dist` 发布到远端。
-- 使用临时 Git index 基于 `origin/main` 生成一个只包含 `dist` 的提交。
+- 本项目本地工作区可能有缓存和临时文件，未跟踪文件不允许自动进入提交。
+- 使用临时 Git index 基于最新 `origin/main` 生成提交，不影响普通暂存区。
+- 本地 `HEAD` 必须与最新 `origin/main` 一致，避免覆盖远端的新提交。
 
 ## 0. 推荐：直接运行安全脚本
 
@@ -34,10 +36,12 @@ scripts/safe-push-dist.ps1
 - 会确认远端必须是 `nameisnt/ziyong`。
 - 会确认当前分支是 `main`。
 - 默认先询问是否执行 `pnpm build`。
-- 只把 `dist/` 写入临时 Git index。
+- 把所有有实际差异的已跟踪文件写入临时 Git index。
 - 不会 `git add -A`。
-- 不会提交源码、文档、参考拓展或临时文件。
+- 会提交已跟踪的源码、脚本、文档和构建产物。
+- 不会自动提交未跟踪文件、参考拓展或临时文件。
 - 不会删除本地工作区文件。
+- 如果本地 `HEAD` 落后或偏离最新 `origin/main`，会停止发布。
 - 最后必须输入 `YES` 才会推送。
 
 如果只想演练不推送，可在 PowerShell 中执行：
@@ -92,7 +96,7 @@ Get-ChildItem -LiteralPath dist -Force | Select-Object Name,Length,LastWriteTime
 
 确认 `dist` 存在且文件时间是刚构建后的时间。
 
-## 5. 只推送 dist
+## 5. 安全推送已跟踪改动
 
 把下面脚本整段复制到 PowerShell 执行。
 
@@ -102,21 +106,27 @@ Get-ChildItem -LiteralPath dist -Force | Select-Object Name,Length,LastWriteTime
 cd E:\tavern_extension_template-main
 
 $ErrorActionPreference = 'Stop'
-$commitMessage = 'update dist'
+$commitMessage = 'update source and dist'
 $originalIndex = $env:GIT_INDEX_FILE
 $tmpIndex = Join-Path $env:TEMP ("ziyong-index-" + [guid]::NewGuid().ToString())
 
 try {
   git fetch origin main
 
-  $env:GIT_INDEX_FILE = $tmpIndex
-  git read-tree origin/main
+  $parent = git rev-parse origin/main
+  $head = git rev-parse HEAD
+  if ($head -ne $parent) {
+    throw 'Local HEAD is not the latest origin/main. Update main before publishing.'
+  }
 
-  git rm -r -f --cached --ignore-unmatch dist
-  git add -- dist
+  $env:GIT_INDEX_FILE = $tmpIndex
+  git read-tree $parent
+  git add --update -- .
+
+  git diff --cached --name-status $parent
+  git diff --cached --stat $parent
 
   $tree = git write-tree
-  $parent = git rev-parse origin/main
   $commit = git commit-tree $tree -p $parent -m $commitMessage
 
   git push origin "$commit`:refs/heads/main"

@@ -71,8 +71,8 @@ $repoRoot = Resolve-Path (Join-Path $scriptDir '..')
 Set-Location -LiteralPath $repoRoot
 
 Write-Host ''
-Write-Host 'Safe push dist to GitHub' -ForegroundColor Cyan
-Write-Host 'Only dist/ will be published. Source/docs/reference/temp files are ignored.' -ForegroundColor Cyan
+Write-Host 'Safe push tracked changes to GitHub' -ForegroundColor Cyan
+Write-Host 'All tracked changes will be published. Untracked files are ignored.' -ForegroundColor Cyan
 Write-Host 'A temporary Git index is used. Your working tree and normal staging area are not touched.' -ForegroundColor Cyan
 Write-Host ''
 
@@ -80,6 +80,21 @@ $expectedRemotes = @(
   'https://github.com/nameisnt/ziyong.git',
   'https://github.com/nameisnt/ziyong',
   'git@github.com:nameisnt/ziyong.git'
+)
+$excludedTrackedPaths = @(
+  foreach ($line in Get-Content -LiteralPath '.gitignore' -Encoding UTF8) {
+    $path = $line.Trim()
+    if (
+      $path -and
+      -not $path.StartsWith('#') -and
+      -not $path.StartsWith('!') -and
+      -not $path.Contains('*') -and
+      -not $path.Contains('?') -and
+      -not $path.Contains('[')
+    ) {
+      $path -replace '/$', ''
+    }
+  }
 )
 
 $remoteUrl = Normalize-RemoteUrl (Invoke-Capture -Command git -Arguments @('remote', 'get-url', '--push', 'origin'))
@@ -118,11 +133,11 @@ foreach ($fileName in $requiredFiles) {
 }
 
 Write-Host ''
-Write-Host 'Only these dist files will be published:' -ForegroundColor Yellow
+Write-Host 'Current build artifacts:' -ForegroundColor Yellow
 $distFiles | Select-Object Name, Length, LastWriteTime | Format-Table -AutoSize
 
 if ([string]::IsNullOrWhiteSpace($CommitMessage)) {
-  $CommitMessage = 'update dist ' + (Get-Date -Format 'yyyy-MM-dd HH:mm')
+  $CommitMessage = 'update source and dist ' + (Get-Date -Format 'yyyy-MM-dd HH:mm')
 }
 $messageInput = Read-Host "Commit message. Press Enter to use default: $CommitMessage"
 if (-not [string]::IsNullOrWhiteSpace($messageInput)) {
@@ -135,34 +150,71 @@ if (-not [string]::IsNullOrWhiteSpace($messageInput)) {
 }
 
 $originalIndex = $env:GIT_INDEX_FILE
-$tmpIndex = Join-Path $env:TEMP ('ziyong-dist-index-' + [guid]::NewGuid().ToString())
+$tmpIndex = Join-Path $env:TEMP ('ziyong-publish-index-' + [guid]::NewGuid().ToString())
 
 try {
   Invoke-CheckedWithRetry -Command git -Arguments @('fetch', 'origin', 'main')
 
+  $parent = Invoke-Capture -Command git -Arguments @('rev-parse', 'origin/main')
+  $head = Invoke-Capture -Command git -Arguments @('rev-parse', 'HEAD')
+  if ($head -ne $parent) {
+    throw "Local HEAD ($head) is not the latest origin/main ($parent). Update main before publishing."
+  }
+
+  $untrackedFiles = @(& git ls-files --others --exclude-standard)
+  if ($LASTEXITCODE -ne 0) {
+    throw 'Failed to inspect untracked files.'
+  }
+  if ($untrackedFiles.Count) {
+    Write-Host ''
+    Write-Host 'Untracked files will be ignored:' -ForegroundColor DarkGray
+    $untrackedFiles | ForEach-Object { Write-Host "  $_" -ForegroundColor DarkGray }
+  }
+
   $env:GIT_INDEX_FILE = $tmpIndex
-  Invoke-Checked -Command git -Arguments @('read-tree', 'origin/main')
+  Invoke-Checked -Command git -Arguments @('read-tree', $parent)
+  Invoke-Checked -Command git -Arguments @('add', '--update', '--', '.')
 
-  Write-Host ''
-  Write-Host 'Note: git rm below only touches the temporary index. Local files will not be deleted.' -ForegroundColor Yellow
-  Invoke-Checked -Command git -Arguments @('rm', '-r', '-f', '--cached', '--ignore-unmatch', 'dist')
-  Invoke-Checked -Command git -Arguments @('add', '--', 'dist')
+  $trackedExclusions = @()
+  foreach ($path in $excludedTrackedPaths) {
+    $matches = @(& git ls-files -- $path)
+    if ($LASTEXITCODE -ne 0) {
+      throw "Failed to inspect excluded path: $path"
+    }
+    if ($matches.Count) {
+      $trackedExclusions += $path
+    }
+  }
+  if ($trackedExclusions.Count) {
+    $restoreArguments = @('restore', '--staged', "--source=$parent", '--') + $trackedExclusions
+    Invoke-Checked -Command git -Arguments $restoreArguments
+  }
 
-  & git diff --cached --quiet --exit-code origin/main -- dist
-  if ($LASTEXITCODE -eq 0) {
-    Write-Host 'dist has no changes compared with origin/main. Nothing to push.' -ForegroundColor Yellow
+  & git diff --cached --quiet --exit-code $parent
+  $diffExitCode = $LASTEXITCODE
+  if ($diffExitCode -eq 0) {
+    Write-Host 'There are no tracked changes compared with origin/main. Nothing to push.' -ForegroundColor Yellow
     exit 0
+  }
+  if ($diffExitCode -ne 1) {
+    throw 'Failed to compare tracked changes with origin/main.'
   }
 
   Write-Host ''
-  Write-Host 'dist diff that will be pushed:' -ForegroundColor Yellow
-  & git diff --cached --stat origin/main -- dist
+  Write-Host 'Tracked files that will be published:' -ForegroundColor Yellow
+  & git diff --cached --name-status $parent
   if ($LASTEXITCODE -ne 0) {
-    throw 'Failed to show staged dist diff.'
+    throw 'Failed to show the staged file list.'
+  }
+
+  Write-Host ''
+  Write-Host 'Diff summary:' -ForegroundColor Yellow
+  & git diff --cached --stat $parent
+  if ($LASTEXITCODE -ne 0) {
+    throw 'Failed to show the staged diff.'
   }
 
   $tree = Invoke-Capture -Command git -Arguments @('write-tree')
-  $parent = Invoke-Capture -Command git -Arguments @('rev-parse', 'origin/main')
   $parentTree = Invoke-Capture -Command git -Arguments @('rev-parse', "$parent^{tree}")
   if ($tree -eq $parentTree) {
     Write-Host 'The generated tree is identical to origin/main. Nothing to push.' -ForegroundColor Yellow

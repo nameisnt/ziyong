@@ -684,13 +684,6 @@ async function toggleWorldbookEntry(entry: WorldbookEntry, event: Event) {
   margin-top: 8px;
 }
 
-.pc-worldbook-entry-list span {
-  border-radius: 999px;
-  background: var(--pc-surface-strong);
-  color: var(--pc-muted);
-  font-size: 12px;
-}
-
 .pc-worldbook-metrics span {
   color: var(--pc-muted);
   font-size: 13px;

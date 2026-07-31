@@ -2,13 +2,17 @@
   <section class="pc-summary-app">
     <section v-if="route.page === 'root'" class="pc-summary-page">
       <div class="pc-section-card pc-summary-root-actions">
+        <button class="pc-soft-btn" type="button" @click="openSummaryExtract">
+          <i class="fa-solid fa-file-import"></i>
+          <span>{{ t`提取` }}</span>
+        </button>
         <button class="pc-soft-btn" type="button" @click="openCreateBook">
           <i class="fa-solid fa-wand-magic-sparkles"></i>
-          <span>{{ t`单条生成` }}</span>
+          <span>{{ t`单条` }}</span>
         </button>
         <button class="pc-primary-btn" type="button" @click="openBatchGenerate()">
           <i class="fa-solid fa-layer-group"></i>
-          <span>{{ t`批量生成` }}</span>
+          <span>{{ t`批量` }}</span>
         </button>
       </div>
 
@@ -72,6 +76,9 @@
             <i class="fa-solid fa-wand-magic-sparkles"></i>
             <span>{{ t`生成` }}</span>
           </button>
+          <button class="pc-soft-btn" type="button" @click="summaryEntrySortDesc = !summaryEntrySortDesc">
+            <span>{{ summaryEntrySortDesc ? t`倒序` : t`正序` }}</span>
+          </button>
           <button class="pc-icon-btn" type="button" :title="t`重命名总结集`" @click="openRenameBook(activeBook.id)">
             <i class="fa-solid fa-pen"></i>
           </button>
@@ -84,7 +91,7 @@
       <EmptyState v-if="!activeBook.entries.length" :title="t`还没有条目`" />
 
       <div v-else class="pc-entry-list">
-        <article v-for="entry in activeBook.entries" :key="entry.id" class="pc-entry-card">
+        <article v-for="entry in sortedActiveBookEntries" :key="entry.id" class="pc-entry-card">
           <button class="pc-entry-main" type="button" @click="openEntry(activeBook.id, entry.id)">
             <div class="pc-entry-head">
               <strong>{{ entry.title }}</strong>
@@ -177,75 +184,91 @@
       </div>
     </section>
 
-    <section v-else-if="route.page === 'import-chat' && activeBook" class="pc-summary-page">
+    <section v-else-if="route.page === 'import-chat'" class="pc-summary-page">
       <article class="pc-editor-card pc-summary-import-page">
         <span class="pc-kicker">{{ t`当前聊天` }}</span>
-        <h2>{{ t`导入 AI 楼层` }}</h2>
-        <label class="pc-field-group">
-          <span>{{ t`楼层正文提取` }}</span>
-          <select
-            v-model="summaryImport.ruleId"
-            class="pc-field pc-select"
-            :disabled="summaryImport.loading"
-            @change="reloadSummaryImport"
-          >
-            <option value="__default_body__">{{ t`默认楼层正文提取` }}</option>
-            <option v-for="rule in summaryImportRules" :key="rule.id" :value="rule.id">
-              {{ rule.name || t`未命名规则` }}
-            </option>
-          </select>
-        </label>
-        <div class="pc-summary-import-head">
-          <span>{{ t`AI 楼层` }} · {{ summaryImport.items.length }}</span>
-          <div>
-            <button
-              class="pc-icon-btn"
-              type="button"
+        <h2>{{ t`提取 AI 楼层` }}</h2>
+        <EmptyState v-if="!books.length" :title="t`还没有总结集`">
+          <p>{{ t`先新建一个总结集，再把当前聊天里的 AI 楼层提取成总结条目。` }}</p>
+          <button class="pc-primary-btn compact" type="button" @click="openCreateBook">
+            {{ t`新建总结集` }}
+          </button>
+        </EmptyState>
+        <template v-else>
+          <label class="pc-field-group">
+            <span>{{ t`保存到总结集` }}</span>
+            <select v-model="summaryImportTargetBookId" class="pc-field pc-select" :disabled="summaryImport.loading">
+              <option v-for="book in books" :key="book.id" :value="book.id">
+                {{ book.title }}
+              </option>
+            </select>
+          </label>
+          <label class="pc-field-group">
+            <span>{{ t`楼层正文提取` }}</span>
+            <select
+              v-model="summaryImport.ruleId"
+              class="pc-field pc-select"
               :disabled="summaryImport.loading"
-              :title="t`刷新楼层`"
-              @click="reloadSummaryImport"
+              @change="reloadSummaryImport"
             >
-              <i :class="['fa-solid fa-rotate-right', { spinning: summaryImport.loading }]"></i>
-            </button>
+              <option value="__default_body__">{{ t`默认楼层正文提取` }}</option>
+              <option v-for="rule in summaryImportRules" :key="rule.id" :value="rule.id">
+                {{ rule.name || t`未命名规则` }}
+              </option>
+            </select>
+          </label>
+          <div class="pc-summary-import-head">
+            <span>{{ t`AI 楼层` }} · {{ summaryImport.items.length }}</span>
+            <div>
+              <button
+                class="pc-icon-btn"
+                type="button"
+                :disabled="summaryImport.loading"
+                :title="t`刷新楼层`"
+                @click="reloadSummaryImport"
+              >
+                <i :class="['fa-solid fa-rotate-right', { spinning: summaryImport.loading }]"></i>
+              </button>
+              <button
+                class="pc-soft-btn compact"
+                type="button"
+                :disabled="!summaryImport.items.length"
+                @click="toggleAllSummaryImports"
+              >
+                {{ allSummaryImportsSelected ? t`取消全选` : t`全选` }}
+              </button>
+            </div>
+          </div>
+          <div v-if="summaryImport.error" class="pc-status-card warning">
+            <strong>{{ t`无法读取楼层` }}</strong>
+            <p>{{ summaryImport.error }}</p>
+          </div>
+          <div v-else-if="summaryImport.items.length" class="pc-summary-import-list">
+            <label v-for="item in summaryImport.items" :key="item.id" class="pc-summary-import-item">
+              <input
+                :checked="summaryImport.selectedIds.includes(item.id)"
+                type="checkbox"
+                @change="toggleSummaryImport(item.id, ($event.target as HTMLInputElement).checked)"
+              />
+              <span>
+                <strong>{{ t`第 ${item.messageIndex} 楼总结` }}</strong>
+                <small>{{ item.content }}</small>
+              </span>
+            </label>
+          </div>
+          <EmptyState v-else-if="!summaryImport.loading" :title="t`没有可导入的 AI 楼层`" />
+          <div class="pc-form-actions">
+            <button class="pc-soft-btn" type="button" @click="phone.goBack()">{{ t`取消` }}</button>
             <button
-              class="pc-soft-btn compact"
+              class="pc-primary-btn"
               type="button"
-              :disabled="!summaryImport.items.length"
-              @click="toggleAllSummaryImports"
+              :disabled="!summaryImportTargetBook || !summaryImport.selectedIds.length"
+              @click="importSummaryEntries"
             >
-              {{ allSummaryImportsSelected ? t`取消全选` : t`全选` }}
+              {{ t`提取 ${summaryImport.selectedIds.length} 条` }}
             </button>
           </div>
-        </div>
-        <div v-if="summaryImport.error" class="pc-status-card warning">
-          <strong>{{ t`无法读取楼层` }}</strong>
-          <p>{{ summaryImport.error }}</p>
-        </div>
-        <div v-else-if="summaryImport.items.length" class="pc-summary-import-list">
-          <label v-for="item in summaryImport.items" :key="item.id" class="pc-summary-import-item">
-            <input
-              :checked="summaryImport.selectedIds.includes(item.id)"
-              type="checkbox"
-              @change="toggleSummaryImport(item.id, ($event.target as HTMLInputElement).checked)"
-            />
-            <span>
-              <strong>{{ t`第 ${item.messageIndex} 楼总结` }}</strong>
-              <small>{{ item.content }}</small>
-            </span>
-          </label>
-        </div>
-        <EmptyState v-else-if="!summaryImport.loading" :title="t`没有可导入的 AI 楼层`" />
-        <div class="pc-form-actions">
-          <button class="pc-soft-btn" type="button" @click="phone.goBack()">{{ t`取消` }}</button>
-          <button
-            class="pc-primary-btn"
-            type="button"
-            :disabled="!summaryImport.selectedIds.length"
-            @click="importSummaryEntries"
-          >
-            {{ t`导入 ${summaryImport.selectedIds.length} 条` }}
-          </button>
-        </div>
+        </template>
       </article>
     </section>
 
@@ -595,6 +618,8 @@ const batchDraft = reactive({
 const batchFormError = ref('');
 const failedDraftRawOutput = ref('');
 const failedDraftTargetBookId = ref('');
+const summaryEntrySortDesc = ref(true);
+const summaryImportTargetBookId = ref('');
 const selectedReferences = ref<GenerationReferenceItem[]>([]);
 const entryContentEl = ref<HTMLElement | null>(null);
 const { scrollToBottom, scrollToTop } = useDetailScroll(entryContentEl, '.pc-summary-detail-page .pc-detail-content');
@@ -625,6 +650,15 @@ const activeBook = computed(() => {
   const bookId = route.value.params?.bookId;
   return bookId ? summary.getBook(bookId) : null;
 });
+const sortedActiveBookEntries = computed(() =>
+  [...(activeBook.value?.entries || [])].sort((left, right) => {
+    const compare = left.createdAt.localeCompare(right.createdAt);
+    return summaryEntrySortDesc.value ? -compare : compare;
+  }),
+);
+const summaryImportTargetBook = computed(() =>
+  summaryImportTargetBookId.value ? summary.getBook(summaryImportTargetBookId.value) : null,
+);
 
 const shelfBooks = computed(() =>
   books.value.map(book => ({
@@ -649,16 +683,16 @@ const activeEntry = computed(() => {
 });
 const activeEntryIndex = computed(() => {
   if (!activeBook.value || !activeEntry.value) return -1;
-  return activeBook.value.entries.findIndex(entry => entry.id === activeEntry.value?.id);
+  return sortedActiveBookEntries.value.findIndex(entry => entry.id === activeEntry.value?.id);
 });
 const previousEntryId = computed(() =>
-  activeEntryIndex.value > 0 ? activeBook.value?.entries[activeEntryIndex.value - 1]?.id || '' : '',
+  activeEntryIndex.value > 0 ? sortedActiveBookEntries.value[activeEntryIndex.value - 1]?.id || '' : '',
 );
 const nextEntryId = computed(() =>
-  activeBook.value && activeEntryIndex.value >= 0 ? activeBook.value.entries[activeEntryIndex.value + 1]?.id || '' : '',
+  activeEntryIndex.value >= 0 ? sortedActiveBookEntries.value[activeEntryIndex.value + 1]?.id || '' : '',
 );
 const entryCatalogItems = computed(() =>
-  (activeBook.value?.entries || []).map(entry => ({
+  sortedActiveBookEntries.value.map(entry => ({
     id: entry.id,
     title: entry.title,
   })),
@@ -798,6 +832,7 @@ watch(
     }
 
     if (current.page === 'import-chat' && previous?.page !== 'import-chat') {
+      summaryImportTargetBookId.value = current.params?.bookId || books.value[0]?.id || '';
       summaryImport.ruleId = resolveSummaryImportRuleId();
       summaryImport.error = '';
       summaryImport.items = [];
@@ -844,7 +879,7 @@ useInvalidRouteFallback({
   }),
   isInvalid: current =>
     current.appId === 'summary' &&
-    ((['book', 'edit-book', 'generate', 'import-chat'].includes(current.page) && !current.hasBook) ||
+    ((['book', 'edit-book', 'generate'].includes(current.page) && !current.hasBook) ||
       (['entry', 'bagu-scan'].includes(current.page) && (!current.hasBook || !current.hasEntry)) ||
       (current.page === 'editor' && (!current.hasBook || (Boolean(current.entryId) && !current.hasEntry))) ||
       (current.page === 'preview' && (!current.hasBook || !current.hasPreview)) ||
@@ -867,6 +902,10 @@ onScopeDispose(() => {
 
 function openCreateBook() {
   phone.pushPage('create-book', '生成总结');
+}
+
+function openSummaryExtract() {
+  phone.pushPage('import-chat', '提取总结');
 }
 
 function openRenameBook(bookId: string) {
@@ -984,7 +1023,7 @@ function toggleAllSummaryImports() {
 }
 
 function importSummaryEntries() {
-  const book = activeBook.value;
+  const book = summaryImportTargetBook.value;
   if (!book) return;
   const selected = summaryImport.items.filter(item => summaryImport.selectedIds.includes(item.id));
   if (!selected.length) return;
