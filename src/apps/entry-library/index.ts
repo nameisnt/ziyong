@@ -1,9 +1,5 @@
 import EntryLibraryApp from './EntryLibraryApp.vue';
-import {
-  entryLibraryField,
-  EntryLibrarySettingsSchema,
-  useEntryLibraryStore,
-} from './store';
+import { entryLibraryField, EntryLibrarySettingsSchema, useEntryLibraryStore } from './store';
 import { definePhoneApp, type PhoneReferenceTreeNode } from '@/core/appRegistry';
 import { extension_settings } from '@sillytavern/scripts/extensions';
 

@@ -22,8 +22,7 @@ async function resolveMvuRuntime() {
   const current = getOptionalGlobalValue<unknown>('Mvu');
   if (isMvuRuntime(current)) return current;
 
-  const waitForGlobal =
-    getOptionalGlobalFunction<(name: string) => Promise<unknown>>('waitGlobalInitialized');
+  const waitForGlobal = getOptionalGlobalFunction<(name: string) => Promise<unknown>>('waitGlobalInitialized');
   if (waitForGlobal) {
     const initialized = await Promise.race([
       waitForGlobal('Mvu'),

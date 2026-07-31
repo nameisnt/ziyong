@@ -82,7 +82,9 @@ export function createCloudMediaGenerationAdapter() {
           `目标配置：${config.profileName}`,
           `媒体类型：${config.kind}`,
           `模型：${config.model || '未填写'}`,
-          config.kind === 'audio' ? `音乐模式：${config.instrumental ? '纯音乐，不要生成歌词' : '歌曲，可以生成歌词'}` : '',
+          config.kind === 'audio'
+            ? `音乐模式：${config.instrumental ? '纯音乐，不要生成歌词' : '歌曲，可以生成歌词'}`
+            : '',
         ]
           .filter(Boolean)
           .join('\n'),

@@ -382,11 +382,7 @@ function buildGenerationOptions(
   const settings = useSettingsStore();
   const generationMode = step.generationMode;
   const apiMode =
-    generationMode === 'custom'
-      ? step.apiMode
-      : generationMode === 'workflow'
-        ? workflow.apiMode
-        : 'inherit';
+    generationMode === 'custom' ? step.apiMode : generationMode === 'workflow' ? workflow.apiMode : 'inherit';
   const externalProfileId =
     generationMode === 'custom'
       ? step.externalProfileId
@@ -407,9 +403,7 @@ function buildGenerationOptions(
         mode: 'tavern' as const,
       };
     }
-    const profile = settings.settings.textProvider.externalProfiles.find(
-      item => item.id === externalProfileId,
-    );
+    const profile = settings.settings.textProvider.externalProfiles.find(item => item.id === externalProfileId);
     if (!profile) {
       throw new Error('当前步骤选择的外部 API 配置已不存在');
     }

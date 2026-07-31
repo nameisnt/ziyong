@@ -150,12 +150,12 @@ const flatEntries = computed(() => flattenData(draft.value));
 const filteredEntries = computed(() => {
   const keyword = query.value.trim().toLocaleLowerCase();
   if (!keyword) return flatEntries.value;
-  return flatEntries.value.filter(entry =>
-    `${entry.path}\n${entry.preview}`.toLocaleLowerCase().includes(keyword),
-  );
+  return flatEntries.value.filter(entry => `${entry.path}\n${entry.preview}`.toLocaleLowerCase().includes(keyword));
 });
 const visibleEntries = computed(() => filteredEntries.value.slice(0, 300));
-const dirty = computed(() => Boolean(draft.value && original.value && serialize(draft.value) !== serialize(original.value)));
+const dirty = computed(() =>
+  Boolean(draft.value && original.value && serialize(draft.value) !== serialize(original.value)),
+);
 
 function serialize(value: unknown) {
   return JSON.stringify(value, null, 2);

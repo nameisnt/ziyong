@@ -1,11 +1,6 @@
 import CloudMediaApp from './CloudMediaApp.vue';
 import { createCloudMediaGenerationAdapter } from './generation';
-import {
-  cloudMediaField,
-  CloudMediaSettingsSchema,
-  useCloudMediaStore,
-  type CloudMediaSettings,
-} from './store';
+import { cloudMediaField, CloudMediaSettingsSchema, useCloudMediaStore, type CloudMediaSettings } from './store';
 import { definePhoneApp } from '@/core/appRegistry';
 import { textField, xmlParser } from '@/apps/outputDefinitions';
 import { extension_settings } from '@sillytavern/scripts/extensions';

@@ -79,7 +79,8 @@ async function fetchJson(url: string, init: RequestInit, fallback: string) {
 }
 
 function authHeaders(profile: CloudMediaProfile, scheme: 'Bearer' | 'Key') {
-  if (!profile.apiKey.trim()) throw new Error(`请先填写 ${profile.provider === 'novelai' ? 'NovelAI Token' : 'API Key'}`);
+  if (!profile.apiKey.trim())
+    throw new Error(`请先填写 ${profile.provider === 'novelai' ? 'NovelAI Token' : 'API Key'}`);
   return {
     Authorization: `${scheme} ${profile.apiKey.trim()}`,
     'Content-Type': 'application/json',
@@ -207,11 +208,7 @@ async function generateFal(
 
   for (let attempt = 0; attempt < 300; attempt += 1) {
     await wait(2000, signal);
-    const status = await fetchJson(
-      statusUrl,
-      { headers: authHeaders(profile, 'Key'), signal },
-      'fal.ai 状态查询失败',
-    );
+    const status = await fetchJson(statusUrl, { headers: authHeaders(profile, 'Key'), signal }, 'fal.ai 状态查询失败');
     const state = String(status.status || '').toUpperCase();
     const position = Number(status.queue_position);
     onStatus(
@@ -339,11 +336,7 @@ async function generateMiniMax(
     if (!fileId) throw new Error('MiniMax 视频任务完成，但没有文件 ID');
     const retrieveUrl = new URL(`${baseUrl}/v1/files/retrieve`);
     retrieveUrl.searchParams.set('file_id', fileId);
-    const filePayload = await fetchJson(
-      retrieveUrl.toString(),
-      { headers, signal },
-      'MiniMax 视频文件读取失败',
-    );
+    const filePayload = await fetchJson(retrieveUrl.toString(), { headers, signal }, 'MiniMax 视频文件读取失败');
     assertMiniMaxSuccess(filePayload, 'MiniMax 视频文件读取失败');
     const file = filePayload.file as Record<string, unknown> | undefined;
     const url = String(file?.download_url || '').trim();

@@ -342,8 +342,11 @@ export const useWorkbenchStore = defineStore('workbench', () => {
     workflowId: string,
     stepId: string,
     patch: Partial<
-      Pick<WorkbenchStep, 'config' | 'enabled' | 'formatTemplate' | 'includeInInsert' | 'inputMode' | 'userRequirement'>
-      & Pick<WorkbenchStep, 'apiMode' | 'externalProfileId' | 'generationMode' | 'tavernPresetName'>
+      Pick<
+        WorkbenchStep,
+        'config' | 'enabled' | 'formatTemplate' | 'includeInInsert' | 'inputMode' | 'userRequirement'
+      > &
+        Pick<WorkbenchStep, 'apiMode' | 'externalProfileId' | 'generationMode' | 'tavernPresetName'>
     >,
   ) {
     settings.value.workflows = settings.value.workflows.map(workflow => {
@@ -357,9 +360,7 @@ export const useWorkbenchStore = defineStore('workbench', () => {
                 ...patch,
                 config: patch.config ? validateInplace(WorkbenchStepConfigSchema, patch.config) : step.config,
                 externalProfileId:
-                  typeof patch.externalProfileId === 'string'
-                    ? patch.externalProfileId.trim()
-                    : step.externalProfileId,
+                  typeof patch.externalProfileId === 'string' ? patch.externalProfileId.trim() : step.externalProfileId,
                 formatTemplate: typeof patch.formatTemplate === 'string' ? patch.formatTemplate : step.formatTemplate,
                 tavernPresetName:
                   typeof patch.tavernPresetName === 'string' ? patch.tavernPresetName.trim() : step.tavernPresetName,

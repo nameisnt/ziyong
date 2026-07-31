@@ -94,8 +94,8 @@ const busyAction = ref<'apply' | 'remove' | 'save' | ''>('');
 const busy = computed(() => Boolean(busyAction.value) || presetLinks.applying);
 const scopeKey = computed(() => phone.viewingScopeKey);
 const binding = computed(() => presetLinks.getBinding(scopeKey.value));
-const currentMatchesBinding = computed(
-  () => Boolean(binding.value?.presetName && binding.value.presetName === currentPresetName.value),
+const currentMatchesBinding = computed(() =>
+  Boolean(binding.value?.presetName && binding.value.presetName === currentPresetName.value),
 );
 const enabledRegexCount = computed(() =>
   draftPresetName.value ? getEnabledPresetRegexCount(draftPresetName.value) : 0,
@@ -171,11 +171,7 @@ async function removeBinding() {
   }
 }
 
-watch(
-  [() => phone.viewingScopeKey, () => presetLinks.revision],
-  () => refresh(),
-  { immediate: true },
-);
+watch([() => phone.viewingScopeKey, () => presetLinks.revision], () => refresh(), { immediate: true });
 onActivated(refresh);
 </script>
 

@@ -313,7 +313,9 @@
                         <option
                           v-if="
                             step.externalProfileId &&
-                            !settings.textProvider.externalProfiles.some(profile => profile.id === step.externalProfileId)
+                            !settings.textProvider.externalProfiles.some(
+                              profile => profile.id === step.externalProfileId,
+                            )
                           "
                           :value="step.externalProfileId"
                         >

@@ -45,70 +45,65 @@
         <details class="pc-section-card pc-cloud-manual">
           <summary>{{ t`直接输入提示词（备用）` }}</summary>
           <div class="pc-cloud-manual-fields">
-          <label class="pc-field-group">
-            <span>{{ t`标题` }}</span>
-            <input v-model="draft.title" class="pc-field" type="text" :placeholder="t`留空则自动命名`" />
-          </label>
-          <label class="pc-field-group">
-            <span>{{ activeProfile.kind === 'audio' ? t`音乐描述` : t`生成提示词` }}</span>
-            <textarea
-              v-model="draft.prompt"
-              class="pc-area"
-              rows="7"
-              :placeholder="promptPlaceholder"
-            ></textarea>
-          </label>
-          <label v-if="activeProfile.kind === 'image'" class="pc-field-group">
-            <span>{{ t`负面提示词` }}</span>
-            <textarea
-              v-model="draft.negativePrompt"
-              class="pc-area compact"
-              rows="3"
-              :placeholder="t`不希望出现在画面中的内容`"
-            ></textarea>
-          </label>
-          <template v-if="activeProfile.provider === 'minimax' && activeProfile.kind === 'audio'">
-            <div class="pc-cloud-toggle-row">
-              <div>
-                <strong>{{ t`纯音乐` }}</strong>
-                <small>{{ t`关闭后可填写歌词` }}</small>
-              </div>
-              <label class="pc-toggle">
-                <input v-model="activeProfile.instrumental" type="checkbox" />
-                <span></span>
-              </label>
-            </div>
-            <label v-if="!activeProfile.instrumental" class="pc-field-group">
-              <span>{{ t`歌词` }}</span>
+            <label class="pc-field-group">
+              <span>{{ t`标题` }}</span>
+              <input v-model="draft.title" class="pc-field" type="text" :placeholder="t`留空则自动命名`" />
+            </label>
+            <label class="pc-field-group">
+              <span>{{ activeProfile.kind === 'audio' ? t`音乐描述` : t`生成提示词` }}</span>
+              <textarea v-model="draft.prompt" class="pc-area" rows="7" :placeholder="promptPlaceholder"></textarea>
+            </label>
+            <label v-if="activeProfile.kind === 'image'" class="pc-field-group">
+              <span>{{ t`负面提示词` }}</span>
               <textarea
-                v-model="draft.lyrics"
+                v-model="draft.negativePrompt"
                 class="pc-area compact"
-                rows="6"
-                :placeholder="t`可留空让 MiniMax 自动生成歌词`"
+                rows="3"
+                :placeholder="t`不希望出现在画面中的内容`"
               ></textarea>
             </label>
-          </template>
+            <template v-if="activeProfile.provider === 'minimax' && activeProfile.kind === 'audio'">
+              <div class="pc-cloud-toggle-row">
+                <div>
+                  <strong>{{ t`纯音乐` }}</strong>
+                  <small>{{ t`关闭后可填写歌词` }}</small>
+                </div>
+                <label class="pc-toggle">
+                  <input v-model="activeProfile.instrumental" type="checkbox" />
+                  <span></span>
+                </label>
+              </div>
+              <label v-if="!activeProfile.instrumental" class="pc-field-group">
+                <span>{{ t`歌词` }}</span>
+                <textarea
+                  v-model="draft.lyrics"
+                  class="pc-area compact"
+                  rows="6"
+                  :placeholder="t`可留空让 MiniMax 自动生成歌词`"
+                ></textarea>
+              </label>
+            </template>
 
-          <div v-if="statusText || errorMessage" class="pc-cloud-status" :class="{ error: errorMessage }">
-            <i :class="errorMessage ? 'fa-solid fa-circle-exclamation' : 'fa-solid fa-spinner fa-spin'"></i>
-            <span>{{ errorMessage || statusText }}</span>
-          </div>
+            <div v-if="statusText || errorMessage" class="pc-cloud-status" :class="{ error: errorMessage }">
+              <i :class="errorMessage ? 'fa-solid fa-circle-exclamation' : 'fa-solid fa-spinner fa-spin'"></i>
+              <span>{{ errorMessage || statusText }}</span>
+            </div>
 
-          <div class="pc-form-actions">
-            <button v-if="generating" class="pc-soft-btn danger" type="button" @click="stopGeneration">
-              <i class="fa-solid fa-stop"></i>
-              <span>{{ t`停止` }}</span>
-            </button>
-            <button
-              class="pc-primary-btn"
-              type="button"
-              :disabled="generating || !draft.prompt.trim()"
-              @click="runGeneration"
-            >
-              <i class="fa-solid fa-wand-magic-sparkles"></i>
-              <span>{{ generating ? t`生成中` : t`生成并保存` }}</span>
-            </button>
-          </div>
+            <div class="pc-form-actions">
+              <button v-if="generating" class="pc-soft-btn danger" type="button" @click="stopGeneration">
+                <i class="fa-solid fa-stop"></i>
+                <span>{{ t`停止` }}</span>
+              </button>
+              <button
+                class="pc-primary-btn"
+                type="button"
+                :disabled="generating || !draft.prompt.trim()"
+                @click="runGeneration"
+              >
+                <i class="fa-solid fa-wand-magic-sparkles"></i>
+                <span>{{ generating ? t`生成中` : t`生成并保存` }}</span>
+              </button>
+            </div>
           </div>
         </details>
 
@@ -172,11 +167,7 @@
         <template #before-fields>
           <label class="pc-field-group">
             <span>{{ t`云媒体配置` }}</span>
-            <select
-              v-model="settings.activeProfileId"
-              class="pc-field pc-select"
-              :disabled="generationState.running"
-            >
+            <select v-model="settings.activeProfileId" class="pc-field pc-select" :disabled="generationState.running">
               <option v-for="profile in settings.profiles" :key="profile.id" :value="profile.id">
                 {{ profile.name }} · {{ kindLabel(profile.kind) }}
               </option>
@@ -224,7 +215,10 @@
               <span>{{ t`负面提示词` }}</span>
               <textarea v-model="generationState.preview.negativePrompt" class="pc-area compact" rows="4"></textarea>
             </label>
-            <label v-if="generationState.preview.kind === 'audio' && !generationState.preview.instrumental" class="pc-field-group">
+            <label
+              v-if="generationState.preview.kind === 'audio' && !generationState.preview.instrumental"
+              class="pc-field-group"
+            >
               <span>{{ t`歌词` }}</span>
               <textarea v-model="generationState.preview.lyrics" class="pc-area compact" rows="8"></textarea>
             </label>
@@ -376,11 +370,25 @@
           <div v-else class="pc-grid two">
             <label class="pc-field-group">
               <span>{{ t`宽度` }}</span>
-              <input v-model.number="activeProfile.width" class="pc-field" type="number" min="64" max="4096" step="64" />
+              <input
+                v-model.number="activeProfile.width"
+                class="pc-field"
+                type="number"
+                min="64"
+                max="4096"
+                step="64"
+              />
             </label>
             <label class="pc-field-group">
               <span>{{ t`高度` }}</span>
-              <input v-model.number="activeProfile.height" class="pc-field" type="number" min="64" max="4096" step="64" />
+              <input
+                v-model.number="activeProfile.height"
+                class="pc-field"
+                type="number"
+                min="64"
+                max="4096"
+                step="64"
+              />
             </label>
           </div>
         </template>
@@ -451,12 +459,7 @@ import { stopGenerationByIdSafe } from '@/util/runtime';
 import { formatTextProviderSummary } from '@/util/textProvider';
 import { parseCloudMediaPromptXmlResult, type CloudMediaPromptResult } from './generation';
 import { generateCloudMedia } from './providers';
-import {
-  CloudMediaProviderSchema,
-  useCloudMediaStore,
-  type CloudMediaProfile,
-  type CloudMediaProvider,
-} from './store';
+import { CloudMediaProviderSchema, useCloudMediaStore, type CloudMediaProfile, type CloudMediaProvider } from './store';
 import { storeToRefs } from 'pinia';
 
 const phone = usePhoneStore();
@@ -709,12 +712,7 @@ function changeKind(value: string) {
   const profile = activeProfile.value;
   if (!profile || profile.provider === 'novelai' || !['image', 'audio', 'video'].includes(value)) return;
   const kind = value as MediaKind;
-  const knownDefaults = [
-    'fal-ai/flux/schnell',
-    'image-01',
-    'music-2.6',
-    'MiniMax-Hailuo-2.3',
-  ];
+  const knownDefaults = ['fal-ai/flux/schnell', 'image-01', 'music-2.6', 'MiniMax-Hailuo-2.3'];
   const shouldReplaceModel = !profile.model.trim() || knownDefaults.includes(profile.model);
   profile.kind = kind;
   if (shouldReplaceModel) profile.model = defaultModel(profile.provider, kind);

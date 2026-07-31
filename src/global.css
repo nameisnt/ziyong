@@ -406,9 +406,7 @@
 
 .pc-phone-root.pc-phone-root .pc-toggle > input:checked + span::after {
   transform: translateX(
-    calc(
-      var(--pc-toggle-width) - var(--pc-toggle-thumb-size) - var(--pc-toggle-gap) - var(--pc-toggle-gap)
-    )
+    calc(var(--pc-toggle-width) - var(--pc-toggle-thumb-size) - var(--pc-toggle-gap) - var(--pc-toggle-gap))
   );
 }
 

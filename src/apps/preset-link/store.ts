@@ -113,10 +113,7 @@ export const usePresetLinkStore = defineStore('preset-link', () => {
     const reloadKey = `${getCurrentChatScopeKey()}\0${presetName}`;
     const reloadBlocked = recentReloadKey === reloadKey && recentReloadExpiresAt > Date.now();
     const shouldReload =
-      !reloadBlocked &&
-      input.reloadRegex &&
-      (changed || forceReload) &&
-      getEnabledPresetRegexCount(presetName) > 0;
+      !reloadBlocked && input.reloadRegex && (changed || forceReload) && getEnabledPresetRegexCount(presetName) > 0;
     const noticeGuard = changed && shouldReload ? createPresetRegexNoticeGuard(presetName) : null;
     let reloaded = false;
 

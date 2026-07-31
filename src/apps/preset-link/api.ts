@@ -68,9 +68,10 @@ export function createPresetRegexNoticeGuard(presetName: string) {
 }
 
 export function getEnabledPresetRegexCount(presetName: string) {
-  const getRegexes = getOptionalGlobalFunction<
-    (option: { name: string; type: 'preset' }) => Array<{ enabled?: boolean }>
-  >('getTavernRegexes');
+  const getRegexes =
+    getOptionalGlobalFunction<(option: { name: string; type: 'preset' }) => Array<{ enabled?: boolean }>>(
+      'getTavernRegexes',
+    );
   if (getRegexes) {
     try {
       return getRegexes({ name: presetName, type: 'preset' }).filter(regex => regex.enabled !== false).length;
@@ -83,12 +84,11 @@ export function getEnabledPresetRegexCount(presetName: string) {
   try {
     const preset = getPreset?.(presetName);
     const extensions =
-      preset?.extensions && typeof preset.extensions === 'object'
-        ? (preset.extensions as Record<string, unknown>)
-        : {};
+      preset?.extensions && typeof preset.extensions === 'object' ? (preset.extensions as Record<string, unknown>) : {};
     const regexes = Array.isArray(extensions.regex_scripts) ? extensions.regex_scripts : [];
-    return regexes.filter(regex => !regex || typeof regex !== 'object' || (regex as Record<string, unknown>).enabled !== false)
-      .length;
+    return regexes.filter(
+      regex => !regex || typeof regex !== 'object' || (regex as Record<string, unknown>).enabled !== false,
+    ).length;
   } catch {
     return 0;
   }
