@@ -1,6 +1,7 @@
 <template>
   <div
     v-show="isOpen"
+    id="tavern-phone-root"
     class="pc-phone-root"
     :data-reader-blank-lines="settings.reader.blankLineBetweenLines ? 'true' : 'false'"
     :data-reader-indent="settings.reader.firstLineIndent ? 'true' : 'false'"
@@ -189,12 +190,14 @@
           </div>
         </section>
       </main>
+      <SearchableSelectOverlay />
     </section>
   </div>
 </template>
 
 <script setup lang="ts">
 import GenerationTaskCenter from '@/components/GenerationTaskCenter.vue';
+import SearchableSelectOverlay from '@/components/SearchableSelectOverlay.vue';
 import { getRegisteredPhoneAppComponent, getRegisteredPhoneBackupRehydrateHandlers } from '@/core/appRegistry';
 import { PHONE_APPS, normalizeHomeLayout } from '@/data/apps';
 import { getWallpaperPreset } from '@/data/wallpapers';

@@ -42,6 +42,7 @@ declare module 'vue' {
     ReaderDetailShell: typeof import('./src/components/ReaderDetailShell.vue')['default']
     ReferencePicker: typeof import('./src/components/ReferencePicker.vue')['default']
     SearchableCombobox: typeof import('./src/components/SearchableCombobox.vue')['default']
+    SearchableSelectOverlay: typeof import('./src/components/SearchableSelectOverlay.vue')['default']
     SettingsApp: typeof import('./src/components/SettingsApp.vue')['default']
     StatsApp: typeof import('./src/components/StatsApp.vue')['default']
     SummaryApp: typeof import('./src/components/SummaryApp.vue')['default']

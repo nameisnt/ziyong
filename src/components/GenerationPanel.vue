@@ -340,8 +340,7 @@ function appendQuickPhrase(text: string) {
 }
 
 .pc-quick-phrase-list {
-  display: flex;
-  flex-wrap: wrap;
+  display: grid;
   gap: 8px;
   min-width: 0;
   max-width: 100%;
@@ -350,13 +349,15 @@ function appendQuickPhrase(text: string) {
 }
 
 .pc-quick-phrase-chip {
+  width: 100%;
   max-width: 100%;
   background: color-mix(in srgb, var(--pc-theme-accent) 12%, var(--pc-surface) 88%);
+  justify-content: flex-start;
   min-inline-size: 0;
   padding: 7px 10px;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  line-height: 1.4;
+  text-align: left;
+  white-space: normal;
 }
 
 .pc-number-field + .pc-number-field {

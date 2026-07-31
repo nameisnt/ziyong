@@ -209,9 +209,8 @@ function setupVisualGlobals() {
         if (!visualPresetStore[presetName] || presetName === 'in_use') return false;
         visualLoadedPresetName = presetName;
         visualPresetStore.in_use = structuredClone(visualPresetStore[presetName]);
-        const regexes = (
-          visualPresetStore[presetName].extensions as { regex_scripts?: Array<{ enabled?: boolean }> }
-        ).regex_scripts;
+        const regexes = (visualPresetStore[presetName].extensions as { regex_scripts?: Array<{ enabled?: boolean }> })
+          .regex_scripts;
         if (regexes?.some(regex => regex.enabled !== false)) {
           const toast = document.createElement('div');
           toast.className = 'toast toast-info';
@@ -305,6 +304,7 @@ const scenarios: VisualScenarioName[] = [
   'entry-library-bindings',
   'entry-library-collect-manual-dedupe',
   'entry-library-collect-worldbook',
+  'entry-library-ordering',
   'entry-library-scroll-return',
   'preset-link-auto-reload',
   'preset-link-history',
@@ -315,6 +315,7 @@ const scenarios: VisualScenarioName[] = [
   'preset-editor',
   'reader-detail',
   'reader-catalog',
+  'searchable-select',
   'diary-batch',
   'extras-book-generate',
   'extras-chapter-detail',
@@ -624,6 +625,7 @@ async function applyScenario(name: VisualScenarioName, options: { height?: numbe
   }
 
   configurePhoneSize(options.width, options.height);
+  document.querySelector('#visual-host-theme-override')?.remove();
   const phone = usePhoneStore();
   await phone.goHome();
   phone.openPhone();
@@ -746,7 +748,98 @@ async function applyScenario(name: VisualScenarioName, options: { height?: numbe
     document.querySelector<HTMLButtonElement>('.pc-entry-library-collect-footer .pc-primary-btn')?.click();
     await waitForPaint();
     if (usePhoneStore().currentRoute.page !== 'root') {
-      throw new Error(`Entry library collection opened ${usePhoneStore().currentRoute.page} instead of returning to root`);
+      throw new Error(
+        `Entry library collection opened ${usePhoneStore().currentRoute.page} instead of returning to root`,
+      );
+    }
+  } else if (name === 'entry-library-ordering') {
+    useSettingsStore().setTheme('light');
+    const library = useEntryLibraryStore();
+    library.importBackup({
+      bindings: [],
+      groups: [
+        {
+          createdAt: '2026-07-31T00:00:02.000Z',
+          enabled: true,
+          id: 'visual-entry-group-order',
+          name: '顺序测试分组',
+        },
+      ],
+      items: [
+        {
+          content: '第三条正文',
+          createdAt: '2026-07-31T00:00:03.000Z',
+          enabled: true,
+          groupId: 'visual-entry-group-order',
+          id: 'visual-entry-order-3',
+          order: 3,
+          sourceEntryId: '3',
+          sourceName: '视觉世界书',
+          sourceType: 'worldbook',
+          title: '第三条',
+          updatedAt: '2026-07-31T00:00:03.000Z',
+        },
+        {
+          content: '第一条正文',
+          createdAt: '2026-07-31T00:00:01.000Z',
+          enabled: true,
+          groupId: 'visual-entry-group-order',
+          id: 'visual-entry-order-1',
+          order: 1,
+          sourceEntryId: '1',
+          sourceName: '视觉世界书',
+          sourceType: 'worldbook',
+          title: '第一条',
+          updatedAt: '2026-07-31T00:00:01.000Z',
+        },
+        {
+          content: '第二条正文',
+          createdAt: '2026-07-31T00:00:02.000Z',
+          enabled: true,
+          groupId: 'visual-entry-group-order',
+          id: 'visual-entry-order-2',
+          order: 2,
+          sourceEntryId: '2',
+          sourceName: '视觉世界书',
+          sourceType: 'worldbook',
+          title: '第二条',
+          updatedAt: '2026-07-31T00:00:02.000Z',
+        },
+      ],
+      version: 1,
+    });
+    resetPhoneToRoute('entry-library', 'root', '条目库');
+    await waitForPaint();
+    const readTitles = () =>
+      [...document.querySelectorAll<HTMLElement>('.pc-entry-library-item-main strong')].map(
+        element => element.textContent?.trim() || '',
+      );
+    if (readTitles().join('|') !== '第一条|第二条|第三条') {
+      throw new Error(`Entry library order was not rendered numerically: ${readTitles().join('|')}`);
+    }
+    if (
+      document.querySelector(
+        '.pc-entry-library-item-main p, .pc-entry-library-item-main small, .pc-entry-library-item .fa-arrow-up, .pc-entry-library-item .fa-arrow-down',
+      )
+    ) {
+      throw new Error('Entry library compact rows still render content, source, or arrow controls');
+    }
+    library.updateItem('visual-entry-order-3', { order: 1 });
+    await waitForPaint();
+    if (
+      readTitles().join('|') !== '第三条|第一条|第二条' ||
+      library
+        .getGroupItems('visual-entry-group-order')
+        .map(item => item.order)
+        .join('|') !== '1|2|3'
+    ) {
+      throw new Error('Entry library numeric reorder did not shift the surrounding item order');
+    }
+    const groupToggle = document.querySelector<HTMLInputElement>('.pc-entry-library-group-actions .pc-toggle input');
+    groupToggle?.click();
+    await waitForPaint();
+    if (library.getGroupItems('visual-entry-group-order').some(item => item.enabled)) {
+      throw new Error('Entry library group switch did not disable every group item');
     }
   } else if (name === 'entry-library-scroll-return') {
     useSettingsStore().setTheme('light');
@@ -858,6 +951,76 @@ async function applyScenario(name: VisualScenarioName, options: { height?: numbe
       ownerName: '测试角色',
     });
     resetPhoneToRoute('preset-link', 'root', '预设绑定');
+  } else if (name === 'searchable-select') {
+    useSettingsStore().setTheme('light');
+    const library = useEntryLibraryStore();
+    library.importBackup({
+      bindings: [],
+      groups: [
+        {
+          createdAt: '2026-07-31T00:00:01.000Z',
+          enabled: true,
+          id: 'visual-search-group-current',
+          name: '当前分组',
+        },
+        {
+          createdAt: '2026-07-31T00:00:02.000Z',
+          enabled: true,
+          id: 'visual-search-group-target',
+          name: '目标分组',
+        },
+      ],
+      items: [
+        {
+          content: '搜索选择器测试正文',
+          createdAt: '2026-07-31T00:00:01.000Z',
+          enabled: true,
+          groupId: 'visual-search-group-current',
+          id: 'visual-search-item',
+          order: 1,
+          sourceEntryId: '1',
+          sourceName: '视觉世界书',
+          sourceType: 'worldbook',
+          title: '搜索选择器测试',
+          updatedAt: '2026-07-31T00:00:01.000Z',
+        },
+      ],
+      version: 1,
+    });
+    resetPhoneToRoute('entry-library', 'edit', '编辑收藏', { itemId: 'visual-search-item' });
+    await waitForPaint();
+    const select = document.querySelector<HTMLSelectElement>('.pc-entry-item-editor select');
+    if (!select) throw new Error('Searchable select fixture is missing its native select');
+    select.dispatchEvent(
+      new PointerEvent('pointerdown', {
+        bubbles: true,
+        cancelable: true,
+        pointerId: 1,
+      }),
+    );
+    await waitForPaint();
+    const search = document.querySelector<HTMLInputElement>('.pc-select-overlay-search input');
+    if (!search) throw new Error('Native select did not open the shared searchable selector');
+    search.value = '目标';
+    search.dispatchEvent(new Event('input', { bubbles: true }));
+    await waitForPaint();
+    const matchingOptions = document.querySelectorAll<HTMLButtonElement>('.pc-select-overlay-option');
+    if (matchingOptions.length !== 1 || matchingOptions[0]?.textContent?.trim() !== '目标分组') {
+      throw new Error('Shared searchable selector did not filter its options');
+    }
+    matchingOptions[0]?.click();
+    await waitForPaint();
+    if (select.value !== 'visual-search-group-target') {
+      throw new Error('Shared searchable selector did not update the native field value');
+    }
+    select.dispatchEvent(
+      new PointerEvent('pointerdown', {
+        bubbles: true,
+        cancelable: true,
+        pointerId: 2,
+      }),
+    );
+    await waitForPaint();
   } else if (name === 'prompts-app-detail') {
     resetPhoneToRoute('prompts', 'root', '提示词');
     await waitForPaint();
@@ -972,6 +1135,15 @@ async function applyScenario(name: VisualScenarioName, options: { height?: numbe
     resetPhoneToRoute('theater', 'generate', '小剧场配置');
   } else if (name === 'theater-generate-dark-inputs') {
     const settingsStore = useSettingsStore();
+    const hostThemeOverride = document.createElement('style');
+    hostThemeOverride.id = 'visual-host-theme-override';
+    hostThemeOverride.textContent = `
+      textarea:not(#send_textarea) {
+        background-color: rgb(255, 255, 255) !important;
+        color: rgb(60, 60, 70) !important;
+      }
+    `;
+    document.head.append(hostThemeOverride);
     settingsStore.setTheme('dark');
     settingsStore.settings.visualTheme.backgroundColor = '#242129';
     settingsStore.settings.visualTheme.surfaceColor = 'rgba(255, 255, 255, 0.08)';
