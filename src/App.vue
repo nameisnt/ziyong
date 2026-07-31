@@ -29,12 +29,14 @@
 import FloatingBall from '@/components/FloatingBall.vue';
 import PhoneOverlay from '@/components/PhoneOverlay.vue';
 import Panel from '@/Panel.vue';
+import { useWorldSlotsStore } from '@/apps/world-slots/store';
 import { getCurrentChatScopeKey } from '@/store/chatScoped';
 import { usePhoneStore } from '@/store/phone';
 import { ensureCurrentScopeRecovery } from '@/util/generationVisibility';
 import { hasVisibilityTransactionRuntime, onTavernEvent } from '@/util/runtime';
 
 const phone = usePhoneStore();
+const worldSlots = useWorldSlotsStore();
 const settingsTargetReady = ref(false);
 const menuTargetReady = ref(false);
 let stopChatChanged: { stop: () => void } | null = null;
@@ -64,6 +66,7 @@ function syncTeleportTargets() {
 }
 
 onMounted(() => {
+  worldSlots.startAutoSync();
   syncTeleportTargets();
   targetObserver = new MutationObserver(syncTeleportTargets);
   targetObserver.observe(document.body, {

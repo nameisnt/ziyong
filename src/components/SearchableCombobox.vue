@@ -1,5 +1,5 @@
 <template>
-  <div ref="rootEl" class="pc-combobox">
+  <div ref="rootEl" class="pc-combobox" :class="{ 'menu-above': menuPlacement === 'top' }" :style="comboboxStyle">
     <input
       :id="inputId"
       ref="inputEl"
@@ -31,23 +31,26 @@
     </button>
 
     <div v-if="isOpen" :id="listboxId" class="pc-combobox-menu" role="listbox" :aria-labelledby="inputId">
-      <button
-        v-for="(option, index) in filteredOptions"
-        :id="`${listboxId}-option-${index}`"
-        :key="option.value"
-        class="pc-combobox-option"
-        type="button"
-        role="option"
-        :aria-selected="option.value === modelValue"
-        :class="{ active: index === activeIndex, selected: option.value === modelValue }"
-        :disabled="option.disabled"
-        @mousedown.prevent
-        @mouseenter="activeIndex = index"
-        @click="selectOption(option)"
-      >
-        <span>{{ option.label }}</span>
-        <i v-if="option.value === modelValue" class="fa-solid fa-check"></i>
-      </button>
+      <template v-for="(option, index) in filteredOptions" :key="`${option.value}:${index}`">
+        <div v-if="option.group && option.group !== filteredOptions[index - 1]?.group" class="pc-combobox-group">
+          {{ option.group }}
+        </div>
+        <button
+          :id="`${listboxId}-option-${index}`"
+          class="pc-combobox-option"
+          type="button"
+          role="option"
+          :aria-selected="option.value === modelValue"
+          :class="{ active: index === activeIndex, selected: option.value === modelValue }"
+          :disabled="option.disabled"
+          @mousedown.prevent
+          @mouseenter="activeIndex = index"
+          @click="selectOption(option)"
+        >
+          <span>{{ option.label }}</span>
+          <i v-if="option.value === modelValue" class="fa-solid fa-check"></i>
+        </button>
+      </template>
       <div v-if="!filteredOptions.length" class="pc-combobox-empty" role="status">
         {{ emptyLabel }}
       </div>
@@ -58,6 +61,7 @@
 <script setup lang="ts">
 type ComboboxOption = {
   disabled?: boolean;
+  group?: string;
   label: string;
   value: string;
 };
@@ -68,6 +72,8 @@ const props = withDefaults(
     disabled?: boolean;
     emptyLabel?: string;
     inputLabel?: string;
+    menuMaxHeight?: number;
+    menuPlacement?: 'bottom' | 'top';
     modelValue: string;
     options: ComboboxOption[];
     placeholder?: string;
@@ -78,6 +84,8 @@ const props = withDefaults(
     disabled: false,
     emptyLabel: '没有匹配选项',
     inputLabel: '选择选项',
+    menuMaxHeight: 220,
+    menuPlacement: 'bottom',
     placeholder: '',
     toggleTitle: '展开选项',
   },
@@ -85,6 +93,8 @@ const props = withDefaults(
 
 const emit = defineEmits<{
   'update:modelValue': [value: string];
+  close: [];
+  open: [];
   select: [option: ComboboxOption];
 }>();
 
@@ -92,16 +102,21 @@ const rootEl = ref<HTMLElement | null>(null);
 const inputEl = ref<HTMLInputElement | null>(null);
 const isOpen = ref(false);
 const inputText = ref('');
+const queryDirty = ref(false);
 const activeIndex = ref(-1);
 const idSuffix = Math.random().toString(36).slice(2, 9);
 const inputId = `pc-combobox-input-${idSuffix}`;
 const listboxId = `pc-combobox-list-${idSuffix}`;
+const comboboxStyle = computed(() => ({
+  '--pc-combobox-menu-max-height': `${Math.max(80, props.menuMaxHeight)}px`,
+}));
 
 const selectedOption = computed(() => props.options.find(option => option.value === props.modelValue) || null);
 const filteredOptions = computed(() => {
+  if (!queryDirty.value) return props.options;
   const query = inputText.value.trim().toLowerCase();
   if (!query) return props.options;
-  return props.options.filter(option => option.label.toLowerCase().includes(query));
+  return props.options.filter(option => `${option.group || ''} ${option.label}`.toLowerCase().includes(query));
 });
 const activeDescendant = computed(() =>
   isOpen.value && activeIndex.value >= 0 ? `${listboxId}-option-${activeIndex.value}` : undefined,
@@ -148,13 +163,20 @@ function resetActiveIndex() {
 
 function openMenu() {
   if (props.disabled) return;
+  if (!isOpen.value) {
+    queryDirty.value = false;
+    emit('open');
+  }
   isOpen.value = true;
   resetActiveIndex();
 }
 
 function closeMenu() {
+  const wasOpen = isOpen.value;
   isOpen.value = false;
+  queryDirty.value = false;
   syncInputText();
+  if (wasOpen) emit('close');
 }
 
 function toggleMenu() {
@@ -169,6 +191,7 @@ function toggleMenu() {
 
 function handleInput(event: Event) {
   inputText.value = (event.target as HTMLInputElement).value;
+  queryDirty.value = true;
   if (props.allowCustom) emit('update:modelValue', inputText.value);
   isOpen.value = true;
 }
@@ -221,7 +244,10 @@ function selectOption(option: ComboboxOption) {
   emit('update:modelValue', option.value);
   emit('select', option);
   inputText.value = option.label;
+  const wasOpen = isOpen.value;
   isOpen.value = false;
+  queryDirty.value = false;
+  if (wasOpen) emit('close');
 }
 
 function handleOutsidePointerDown(event: PointerEvent) {
@@ -230,6 +256,16 @@ function handleOutsidePointerDown(event: PointerEvent) {
   if (target instanceof Node && rootEl.value?.contains(target)) return;
   closeMenu();
 }
+
+function focusAndOpen(selectText = false) {
+  void nextTick(() => {
+    inputEl.value?.focus();
+    if (selectText) inputEl.value?.select();
+    openMenu();
+  });
+}
+
+defineExpose({ focusAndOpen });
 </script>
 
 <style scoped>
@@ -260,13 +296,25 @@ function handleOutsidePointerDown(event: PointerEvent) {
   right: 0;
   left: 0;
   display: grid;
-  max-height: 220px;
+  max-height: var(--pc-combobox-menu-max-height, 220px);
   overflow-y: auto;
   border: 1px solid var(--pc-border);
   border-radius: 12px;
   background: var(--pc-bg);
   box-shadow: 0 10px 28px rgba(0, 0, 0, 0.16);
   padding: 6px;
+}
+
+.pc-combobox.menu-above .pc-combobox-menu {
+  top: auto;
+  bottom: calc(100% + 6px);
+}
+
+.pc-combobox-group {
+  padding: 8px 10px 3px;
+  color: var(--pc-muted);
+  font-size: 11px;
+  font-weight: 800;
 }
 
 .pc-combobox-option {

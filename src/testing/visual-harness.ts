@@ -999,12 +999,25 @@ async function applyScenario(name: VisualScenarioName, options: { height?: numbe
       }),
     );
     await waitForPaint();
-    const search = document.querySelector<HTMLInputElement>('.pc-select-overlay-search input');
+    const search = document.querySelector<HTMLInputElement>('.pc-native-select-anchor .pc-combobox-input');
     if (!search) throw new Error('Native select did not open the shared searchable selector');
+    const anchor = document.querySelector<HTMLElement>('.pc-native-select-anchor');
+    const anchorRect = anchor?.getBoundingClientRect();
+    const selectRect = select.getBoundingClientRect();
+    if (
+      !anchorRect ||
+      Math.abs(anchorRect.left - selectRect.left) > 2 ||
+      Math.abs(anchorRect.width - selectRect.width) > 2 ||
+      document.querySelector('.pc-select-overlay-panel')
+    ) {
+      throw new Error('Shared searchable selector was not anchored to its native field');
+    }
     search.value = '目标';
     search.dispatchEvent(new Event('input', { bubbles: true }));
     await waitForPaint();
-    const matchingOptions = document.querySelectorAll<HTMLButtonElement>('.pc-select-overlay-option');
+    const matchingOptions = document.querySelectorAll<HTMLButtonElement>(
+      '.pc-native-select-anchor .pc-combobox-option',
+    );
     if (matchingOptions.length !== 1 || matchingOptions[0]?.textContent?.trim() !== '目标分组') {
       throw new Error('Shared searchable selector did not filter its options');
     }
@@ -1021,6 +1034,9 @@ async function applyScenario(name: VisualScenarioName, options: { height?: numbe
       }),
     );
     await waitForPaint();
+    if (document.querySelectorAll('.pc-native-select-anchor .pc-combobox-option').length !== 2) {
+      throw new Error('Reopened searchable selector did not restore the full option list');
+    }
   } else if (name === 'prompts-app-detail') {
     resetPhoneToRoute('prompts', 'root', '提示词');
     await waitForPaint();

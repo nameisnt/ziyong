@@ -71,8 +71,9 @@ $repoRoot = Resolve-Path (Join-Path $scriptDir '..')
 Set-Location -LiteralPath $repoRoot
 
 Write-Host ''
-Write-Host 'Safe push tracked changes to GitHub' -ForegroundColor Cyan
-Write-Host 'All tracked changes will be published. Untracked files are ignored.' -ForegroundColor Cyan
+Write-Host 'Safe push source and tracked changes to GitHub' -ForegroundColor Cyan
+Write-Host 'All tracked changes and new files under src/ will be published.' -ForegroundColor Cyan
+Write-Host 'Untracked files outside src/ are ignored.' -ForegroundColor Cyan
 Write-Host 'A temporary Git index is used. Existing staged changes are never overwritten.' -ForegroundColor Cyan
 Write-Host ''
 
@@ -215,15 +216,23 @@ try {
   if ($LASTEXITCODE -ne 0) {
     throw 'Failed to inspect untracked files.'
   }
-  if ($untrackedFiles.Count) {
+  $untrackedSourceFiles = @($untrackedFiles | Where-Object { $_ -like 'src/*' })
+  $ignoredUntrackedFiles = @($untrackedFiles | Where-Object { $_ -notlike 'src/*' })
+  if ($untrackedSourceFiles.Count) {
     Write-Host ''
-    Write-Host 'Untracked files will be ignored:' -ForegroundColor DarkGray
-    $untrackedFiles | ForEach-Object { Write-Host "  $_" -ForegroundColor DarkGray }
+    Write-Host 'New source files that will be published:' -ForegroundColor Yellow
+    $untrackedSourceFiles | ForEach-Object { Write-Host "  $_" -ForegroundColor Yellow }
+  }
+  if ($ignoredUntrackedFiles.Count) {
+    Write-Host ''
+    Write-Host 'Untracked files outside src/ will be ignored:' -ForegroundColor DarkGray
+    $ignoredUntrackedFiles | ForEach-Object { Write-Host "  $_" -ForegroundColor DarkGray }
   }
 
   $env:GIT_INDEX_FILE = $tmpIndex
   Invoke-Checked -Command git -Arguments @('read-tree', $parent)
   Invoke-Checked -Command git -Arguments @('-c', 'core.safecrlf=false', 'add', '--update', '--', '.')
+  Invoke-Checked -Command git -Arguments @('-c', 'core.safecrlf=false', 'add', '--all', '--', 'src')
 
   $trackedExclusions = @()
   foreach ($path in $excludedTrackedPaths) {
