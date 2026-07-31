@@ -45,6 +45,29 @@ function setByPath(source: Record<string, unknown>, path: string, value: unknown
 }
 
 function setupVisualGlobals() {
+  let visualMvuData = {
+    initialized_lorebooks: { 视觉世界书: [1] },
+    stat_data: {
+      世界: {
+        当前套餐: '基础套餐',
+        套餐详情: '包含基础探索权限',
+      },
+      角色: {
+        艾莉娅: {
+          好感度: 42,
+          是否在队: true,
+          状态: '正在城镇休息',
+        },
+      },
+      任务: {
+        主线: ['查看告示板', '前往北门'],
+      },
+      背包: {
+        金币: 128,
+        道具: ['治疗药水', '旧地图'],
+      },
+    },
+  };
   const visualBriefs = [
     {
       file_name: 'visual-current.json',
@@ -174,6 +197,13 @@ function setupVisualGlobals() {
     getRequestHeaders: () => ({}),
     getTokenCountAsync: (content: string) => Math.ceil(String(content || '').length / 2),
     groupId: '',
+    Mvu: {
+      events: {},
+      getMvuData: () => structuredClone(visualMvuData),
+      replaceMvuData: async (data: typeof visualMvuData) => {
+        visualMvuData = structuredClone(data);
+      },
+    },
     reloadCurrentChat: async () => {},
     SillyTavern: {
       chat: visualMessages,
@@ -265,6 +295,15 @@ async function waitForPaint() {
   await new Promise<void>(resolve => requestAnimationFrame(() => requestAnimationFrame(() => resolve())));
 }
 
+async function waitForVisualCondition(condition: () => boolean, timeout = 1000) {
+  const startedAt = performance.now();
+  while (!condition()) {
+    if (performance.now() - startedAt > timeout) return false;
+    await new Promise<void>(resolve => window.setTimeout(resolve, 20));
+  }
+  return true;
+}
+
 setupVisualGlobals();
 applyIconFallback();
 
@@ -282,7 +321,9 @@ const { useTheaterStore } = await import('@/store/theater');
 const { useWorkbenchStore } = await import('@/apps/workbench/store');
 const { useProfilesStore } = await import('@/apps/profiles/store');
 const { usePresetLinkStore } = await import('@/apps/preset-link/store');
-const { ENTRY_LIBRARY_CONTENT_PLACEHOLDER, useEntryLibraryStore } = await import('@/apps/entry-library/store');
+const { useWorldSlotsStore } = await import('@/apps/world-slots/store');
+const { ENTRY_LIBRARY_CONTENT_PLACEHOLDER, renderEntryLibraryBindingContent, useEntryLibraryStore } =
+  await import('@/apps/entry-library/store');
 const { readTavernPreset } = await import('@/apps/preset-manager/api');
 
 initPhoneLifecycle();
@@ -301,11 +342,14 @@ const scenarios: VisualScenarioName[] = [
   'settings-advanced',
   'cloud-media-generate',
   'cloud-media-settings',
+  'mvu-modifier-tree',
   'entry-library-bindings',
   'entry-library-collect-manual-dedupe',
   'entry-library-collect-worldbook',
   'entry-library-ordering',
   'entry-library-scroll-return',
+  'world-slots-batch-import',
+  'world-slots-entry-library',
   'preset-link-auto-reload',
   'preset-link-history',
   'forum-generate-thread',
@@ -884,6 +928,247 @@ async function applyScenario(name: VisualScenarioName, options: { height?: numbe
     if (Math.abs(screen.scrollTop - rootScrollTop) > 1) {
       throw new Error(`Entry library root scroll was not restored: ${screen.scrollTop} !== ${rootScrollTop}`);
     }
+  } else if (name === 'world-slots-entry-library') {
+    useSettingsStore().setTheme('light');
+    const library = useEntryLibraryStore();
+    library.importBackup({
+      bindings: [],
+      groups: [
+        {
+          createdAt: '2026-07-31T00:00:02.000Z',
+          enabled: true,
+          id: 'visual-world-slot-library',
+          name: '世界书素材',
+        },
+      ],
+      items: [
+        {
+          content: '这是从条目库插入的测试正文。',
+          createdAt: '2026-07-31T00:00:02.000Z',
+          enabled: true,
+          groupId: 'visual-world-slot-library',
+          id: 'visual-world-slot-entry',
+          order: 1,
+          sourceEntryId: '1',
+          sourceName: '视觉世界书',
+          sourceType: 'worldbook',
+          title: '条目库测试条目',
+          updatedAt: '2026-07-31T00:00:02.000Z',
+        },
+      ],
+      version: 1,
+    });
+    resetPhoneToRoute('world-slots', 'editor', '新增槽位');
+    await waitForPaint();
+    const referenceToggle = document.querySelector<HTMLButtonElement>('.pc-reference-toggle');
+    if (!referenceToggle?.textContent?.includes('插入条目库或 App 内容')) {
+      throw new Error('World slot entry library insertion control is missing');
+    }
+    referenceToggle.click();
+    await waitForPaint();
+    const firstRoot = document.querySelector<HTMLElement>('.pc-reference-tree > .pc-reference-branch > .branch');
+    if (!firstRoot?.textContent?.includes('条目库')) {
+      throw new Error('Entry library is not the first world slot reference source');
+    }
+    const libraryGroup = [...document.querySelectorAll<HTMLButtonElement>('.pc-reference-node.branch')].find(button =>
+      button.textContent?.includes('世界书素材'),
+    );
+    if (!libraryGroup) throw new Error('Entry library group is missing from the world slot reference picker');
+    libraryGroup.click();
+    await waitForPaint();
+    const entryOption = [...document.querySelectorAll<HTMLElement>('.pc-reference-node.leaf')].find(option =>
+      option.textContent?.includes('条目库测试条目'),
+    );
+    if (!entryOption) throw new Error('Entry library item is missing from the world slot reference picker');
+    entryOption.click();
+    await waitForPaint();
+    const selectedList = document.querySelector<HTMLElement>('.pc-reference-selected-list.compact');
+    if (
+      !selectedList ||
+      selectedList.querySelector('textarea') ||
+      !selectedList.querySelector('.pc-reference-drag-handle')
+    ) {
+      throw new Error('World slot selected references are not compact and reorderable');
+    }
+    const mergeButton = document.querySelector<HTMLButtonElement>('.pc-world-import-controls .pc-primary-btn');
+    if (!mergeButton?.textContent?.includes('合并所选')) throw new Error('World slot merge action is missing');
+    mergeButton.click();
+    await waitForPaint();
+    const contentArea = document.querySelector<HTMLTextAreaElement>('.pc-world-area');
+    if (!contentArea?.value.includes('这是从条目库插入的测试正文。')) {
+      throw new Error('Entry library item content was not inserted into the world slot');
+    }
+    const titleField = document.querySelector<HTMLInputElement>('input[placeholder="槽位名称"]');
+    if (titleField?.value !== '条目库测试条目') {
+      throw new Error('Single merged reference did not populate the empty world slot title');
+    }
+  } else if (name === 'world-slots-batch-import') {
+    useSettingsStore().setTheme('light');
+    const worldSlots = useWorldSlotsStore();
+    worldSlots.resetCurrentScope();
+    const library = useEntryLibraryStore();
+    library.importBackup({
+      bindings: [],
+      groups: [
+        {
+          createdAt: '2026-07-31T00:00:02.000Z',
+          enabled: true,
+          id: 'visual-world-slot-batch-library',
+          name: '批量素材',
+        },
+      ],
+      items: [
+        {
+          content: '条目库批量正文。',
+          createdAt: '2026-07-31T00:00:02.000Z',
+          enabled: true,
+          groupId: 'visual-world-slot-batch-library',
+          id: 'visual-world-slot-batch-entry',
+          order: 1,
+          sourceEntryId: '1',
+          sourceName: '视觉世界书',
+          sourceType: 'worldbook',
+          title: '条目库批量条目',
+          updatedAt: '2026-07-31T00:00:02.000Z',
+        },
+      ],
+      version: 1,
+    });
+    const theater = useTheaterStore();
+    theater.resetCurrentScope();
+    theater.createEntry({
+      content: '小剧场批量正文。',
+      participants: [],
+      renderMode: 'markdown',
+      title: '小剧场批量条目',
+      typeName: '批量素材',
+    });
+    resetPhoneToRoute('world-slots', 'editor', '新增槽位');
+    await waitForPaint();
+    document.querySelector<HTMLButtonElement>('.pc-reference-toggle')?.click();
+    await waitForPaint();
+    const openReferenceGroup = (rootLabel: string, groupLabel: string) => {
+      const root = [...document.querySelectorAll<HTMLElement>('.pc-reference-tree > .pc-reference-branch')].find(
+        branch =>
+          branch.querySelector<HTMLElement>(':scope > .pc-reference-node.branch .pc-reference-node-title')
+            ?.textContent === rootLabel,
+      );
+      const group = root
+        ? [...root.querySelectorAll<HTMLButtonElement>('.pc-reference-node.branch')].find(
+            button => button.querySelector('.pc-reference-node-title')?.textContent === groupLabel,
+          )
+        : null;
+      if (!group) throw new Error(`World slot reference group is missing: ${rootLabel} / ${groupLabel}`);
+      group.click();
+    };
+    openReferenceGroup('条目库', '批量素材');
+    openReferenceGroup('小剧场', '批量素材');
+    await waitForPaint();
+    const selectReference = (title: string) => {
+      const option = [...document.querySelectorAll<HTMLElement>('.pc-reference-node.leaf')].find(element =>
+        element.textContent?.includes(title),
+      );
+      if (!option) throw new Error(`World slot batch reference is missing: ${title}`);
+      option.click();
+    };
+    selectReference('条目库批量条目');
+    await waitForPaint();
+    selectReference('小剧场批量条目');
+    await waitForPaint();
+    const orderField = document.querySelector<HTMLInputElement>('.pc-world-basic-grid input[type="number"]');
+    if (!orderField) throw new Error('World slot insertion order field is missing');
+    orderField.value = '240';
+    orderField.dispatchEvent(new Event('input', { bubbles: true }));
+    const separateMode = [
+      ...document.querySelectorAll<HTMLButtonElement>('.pc-world-import-controls .pc-segment-btn'),
+    ].find(button => button.textContent?.includes('每项一条'));
+    separateMode?.click();
+    await waitForPaint();
+    const createButton = document.querySelector<HTMLButtonElement>('.pc-world-import-controls .pc-primary-btn');
+    if (!createButton?.textContent?.includes('创建 2 条')) {
+      throw new Error('World slot separate batch action is missing');
+    }
+    createButton.click();
+    await waitForPaint();
+    const created = worldSlots.slots.slice(0, 2);
+    if (
+      created.map(slot => slot.title).join('|') !== '条目库批量条目|小剧场批量条目' ||
+      created.map(slot => slot.insertionOrder).join('|') !== '240|241' ||
+      created.map(slot => slot.content).join('|') !== '条目库批量正文。|小剧场批量正文。'
+    ) {
+      throw new Error('World slot separate batch import did not preserve selection order, content, and numeric order');
+    }
+    resetPhoneToRoute('world-slots', 'editor', '新增槽位');
+    await waitForPaint();
+    document.querySelector<HTMLButtonElement>('.pc-reference-toggle')?.click();
+    await waitForPaint();
+    openReferenceGroup('条目库', '批量素材');
+    openReferenceGroup('小剧场', '批量素材');
+    await waitForPaint();
+    selectReference('条目库批量条目');
+    await waitForPaint();
+    selectReference('小剧场批量条目');
+    await waitForPaint();
+    [...document.querySelectorAll<HTMLButtonElement>('.pc-world-import-controls .pc-segment-btn')]
+      .find(button => button.textContent?.includes('每项一条'))
+      ?.click();
+    await waitForPaint();
+  } else if (name === 'mvu-modifier-tree') {
+    useSettingsStore().setTheme('light');
+    resetPhoneToRoute('mvu-modifier', 'root', 'MVU 修改器');
+    await waitForPaint();
+    const worldRow = [...document.querySelectorAll<HTMLButtonElement>('.pc-mvu-tree-main')].find(button =>
+      button.textContent?.includes('世界'),
+    );
+    if (!worldRow) throw new Error('MVU variable tree did not render stat_data root objects');
+    worldRow.click();
+    await waitForPaint();
+    const packageRow = [...document.querySelectorAll<HTMLButtonElement>('.pc-mvu-tree-main.leaf')].find(button =>
+      button.textContent?.includes('当前套餐'),
+    );
+    if (!packageRow) throw new Error('MVU variable tree did not expand nested values');
+    packageRow.click();
+    await waitForPaint();
+    const editor = document.querySelector<HTMLTextAreaElement>('.pc-mvu-inline-editor textarea');
+    if (!editor || editor.value !== '基础套餐') throw new Error('MVU string editor did not load the current value');
+    editor.value = '豪华套餐';
+    editor.dispatchEvent(new Event('input', { bubbles: true }));
+    await waitForPaint();
+    const applyButton = [...document.querySelectorAll<HTMLButtonElement>('.pc-mvu-editor-actions button')].find(
+      button => button.textContent?.includes('应用'),
+    );
+    if (!applyButton) throw new Error('MVU inline editor apply button is missing');
+    if (applyButton.disabled) throw new Error('MVU inline editor apply button remained disabled after loading');
+    applyButton.click();
+    const editPersisted = await waitForVisualCondition(
+      () => _.get(Mvu.getMvuData({ type: 'message', message_id: 'latest' }), 'stat_data.世界.当前套餐') === '豪华套餐',
+    );
+    if (!editPersisted) {
+      const toastText = document.querySelector('.toast')?.textContent?.trim() || 'no toast';
+      const runtimeValue = _.get(Mvu.getMvuData({ type: 'message', message_id: 'latest' }), 'stat_data.世界.当前套餐');
+      const editorState = document.querySelector<HTMLTextAreaElement>('.pc-mvu-inline-editor textarea');
+      const treeText = [...document.querySelectorAll<HTMLButtonElement>('.pc-mvu-tree-main.leaf')]
+        .find(button => button.textContent?.includes('当前套餐'))
+        ?.textContent?.trim();
+      throw new Error(
+        `MVU inline edit was not persisted: value=${String(runtimeValue)}, editor=${editorState?.value ?? 'closed'}, tree=${treeText ?? 'missing'}, ${toastText}`,
+      );
+    }
+    const toolbarButtons = [...document.querySelectorAll<HTMLButtonElement>('.pc-mvu-toolbar button')];
+    toolbarButtons.find(button => button.textContent?.includes('撤销'))?.click();
+    const undoPersisted = await waitForVisualCondition(
+      () => _.get(Mvu.getMvuData({ type: 'message', message_id: 'latest' }), 'stat_data.世界.当前套餐') === '基础套餐',
+    );
+    if (!undoPersisted) {
+      throw new Error('MVU undo did not restore the previous value');
+    }
+    toolbarButtons.find(button => button.textContent?.includes('重做'))?.click();
+    const redoPersisted = await waitForVisualCondition(
+      () => _.get(Mvu.getMvuData({ type: 'message', message_id: 'latest' }), 'stat_data.世界.当前套餐') === '豪华套餐',
+    );
+    if (!redoPersisted) {
+      throw new Error('MVU redo did not restore the edited value');
+    }
   } else if (name === 'entry-library-bindings') {
     useSettingsStore().setTheme('light');
     const library = useEntryLibraryStore();
@@ -925,7 +1210,59 @@ async function applyScenario(name: VisualScenarioName, options: { height?: numbe
     if (mainPrompt?.content !== '<a>视觉收藏正文</a>') {
       throw new Error('Entry library binding placeholder was not rendered into the preset prompt');
     }
+    const originalChatId = globalThis.chatId;
+    const originalTavernChatId = globalThis.SillyTavern.chatId;
+    try {
+      globalThis.chatId = 'visual-chat-switched';
+      globalThis.SillyTavern.chatId = 'visual-chat-switched';
+      library.rehydrateFromSettings();
+      const retainedBinding = library.bindings.find(binding => binding.targetPromptId === 'main');
+      if (retainedBinding?.presetName !== '视觉预设' || retainedBinding.groupId !== 'visual-entry-group-2') {
+        throw new Error('Entry library binding changed after switching chats');
+      }
+    } finally {
+      globalThis.chatId = originalChatId;
+      globalThis.SillyTavern.chatId = originalTavernChatId;
+    }
+    if (
+      renderEntryLibraryBindingContent(`保留前文${ENTRY_LIBRARY_CONTENT_PLACEHOLDER}保留后文`, '') !==
+      '保留前文保留后文'
+    ) {
+      throw new Error('Entry library empty group rendering removed static preset content');
+    }
     resetPhoneToRoute('entry-library', 'bindings', '分组绑定');
+    await waitForPaint();
+    const bindingSelects = document.querySelectorAll<HTMLSelectElement>('.pc-entry-binding-editor select');
+    const presetSelect = bindingSelects[0];
+    const promptSelect = bindingSelects[1];
+    if (!presetSelect || !promptSelect) throw new Error('Entry library binding selectors are missing');
+    presetSelect.value = '视觉预设';
+    presetSelect.dispatchEvent(new Event('change', { bubbles: true }));
+    await waitForPaint();
+    const boundOption = [...promptSelect.options].find(option => option.textContent?.includes('系统提示词'));
+    if (!boundOption?.disabled || !boundOption.textContent?.includes('已绑定')) {
+      throw new Error('Already bound preset prompt is not disabled in the entry library binding form');
+    }
+    promptSelect.value = 'prompts:1';
+    promptSelect.dispatchEvent(new Event('change', { bubbles: true }));
+    await waitForPaint();
+    const templateField = document.querySelector<HTMLTextAreaElement>('.pc-entry-binding-template textarea');
+    const originalContent = '保持人物语言与原聊天一致。';
+    if (templateField?.value !== originalContent) {
+      throw new Error('Selected preset prompt content was not loaded into the entry library binding template');
+    }
+    templateField.focus();
+    templateField.setSelectionRange(2, 4);
+    document.querySelector<HTMLButtonElement>('.pc-entry-binding-template .pc-soft-btn')?.click();
+    await waitForPaint();
+    const expectedTemplate = `${originalContent.slice(0, 4)}${ENTRY_LIBRARY_CONTENT_PLACEHOLDER}${originalContent.slice(4)}`;
+    if (
+      templateField.value !== expectedTemplate ||
+      templateField.selectionStart !== 4 + ENTRY_LIBRARY_CONTENT_PLACEHOLDER.length ||
+      templateField.selectionEnd !== templateField.selectionStart
+    ) {
+      throw new Error('Entry library placeholder insertion removed selected text or restored the caret incorrectly');
+    }
   } else if (name === 'preset-link-auto-reload') {
     resetPhoneToRoute('preset-link', 'root', '预设绑定');
     const result = await usePresetLinkStore().applySelection(

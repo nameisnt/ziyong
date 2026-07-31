@@ -35,6 +35,40 @@ function Invoke-Capture {
   return (($output | Out-String).Trim())
 }
 
+function Invoke-CaptureAllowFailure {
+  param(
+    [Parameter(Mandatory = $true)]
+    [string]$Command,
+    [string[]]$Arguments
+  )
+
+  $savedErrorActionPreference = $ErrorActionPreference
+  $nativePreferenceVariable = Get-Variable -Name PSNativeCommandUseErrorActionPreference -ErrorAction SilentlyContinue
+  if ($nativePreferenceVariable) {
+    $savedNativePreference = $nativePreferenceVariable.Value
+  }
+
+  try {
+    $ErrorActionPreference = 'Continue'
+    if ($nativePreferenceVariable) {
+      Set-Variable -Name PSNativeCommandUseErrorActionPreference -Value $false
+    }
+    $output = @(& $Command @Arguments 2>&1)
+    $exitCode = $LASTEXITCODE
+  }
+  finally {
+    $ErrorActionPreference = $savedErrorActionPreference
+    if ($nativePreferenceVariable) {
+      Set-Variable -Name PSNativeCommandUseErrorActionPreference -Value $savedNativePreference
+    }
+  }
+
+  return [pscustomobject]@{
+    ExitCode = $exitCode
+    Output = $output
+  }
+}
+
 function Invoke-CheckedWithRetry {
   param(
     [Parameter(Mandatory = $true)]
@@ -64,6 +98,73 @@ function Invoke-CheckedWithRetry {
 function Normalize-RemoteUrl {
   param([string]$Url)
   return ($Url.Trim() -replace '/$', '')
+}
+
+function Get-ThreeWayConflictPaths {
+  param(
+    [Parameter(Mandatory = $true)]
+    [string]$BaseCommit,
+    [Parameter(Mandatory = $true)]
+    [string]$TargetCommit
+  )
+
+  $savedIndex = $env:GIT_INDEX_FILE
+  $checkIndex = Join-Path $env:TEMP ('ziyong-merge-check-index-' + [guid]::NewGuid().ToString())
+  $checkPatch = Join-Path $env:TEMP ('ziyong-merge-check-' + [guid]::NewGuid().ToString() + '.patch')
+
+  try {
+    & git -c core.safecrlf=false diff --binary "--output=$checkPatch" $BaseCommit --
+    if ($LASTEXITCODE -ne 0) {
+      throw 'Failed to create the local tracked-change merge patch.'
+    }
+    if (-not (Test-Path -LiteralPath $checkPatch) -or (Get-Item -LiteralPath $checkPatch).Length -eq 0) {
+      return @()
+    }
+
+    $env:GIT_INDEX_FILE = $checkIndex
+    & git read-tree $TargetCommit
+    if ($LASTEXITCODE -ne 0) {
+      throw 'Failed to initialize the temporary merge index.'
+    }
+
+    $applyResult = Invoke-CaptureAllowFailure -Command git -Arguments @(
+      'apply',
+      '--cached',
+      '--3way',
+      '--whitespace=nowarn',
+      $checkPatch
+    )
+    $applyExitCode = $applyResult.ExitCode
+    $applyResult.Output | ForEach-Object { Write-Host $_ -ForegroundColor DarkGray }
+    if ($applyExitCode -eq 0) {
+      return @()
+    }
+
+    $unmergedEntries = @(& git ls-files -u)
+    if ($LASTEXITCODE -ne 0) {
+      throw 'Failed to inspect the temporary merge conflicts.'
+    }
+    $conflictPaths = @(
+      $unmergedEntries | ForEach-Object {
+        if ($_ -match '^\d+ [0-9a-f]+ [123]\t(.+)$') {
+          $Matches[1]
+        }
+      } | Sort-Object -Unique
+    )
+    if (-not $conflictPaths.Count) {
+      throw 'Three-way merge preflight failed without reporting conflict paths.'
+    }
+    return $conflictPaths
+  }
+  finally {
+    $env:GIT_INDEX_FILE = $savedIndex
+    if (Test-Path -LiteralPath $checkIndex) {
+      Remove-Item -LiteralPath $checkIndex -Force
+    }
+    if (Test-Path -LiteralPath $checkPatch) {
+      Remove-Item -LiteralPath $checkPatch -Force
+    }
+  }
 }
 
 $scriptDir = Split-Path -Parent $MyInvocation.MyCommand.Path
@@ -141,28 +242,108 @@ if ($head -ne $parent) {
   if ($LASTEXITCODE -ne 0) {
     throw 'Failed to inspect local tracked changes.'
   }
+  $localDeletedFiles = @(& git -c core.safecrlf=false diff --name-only --diff-filter=D HEAD --)
+  if ($LASTEXITCODE -ne 0) {
+    throw 'Failed to inspect locally deleted files.'
+  }
   $remoteChangedFiles = @(& git -c core.safecrlf=false diff --name-only $head $parent --)
   if ($LASTEXITCODE -ne 0) {
     throw 'Failed to inspect remote tracked changes.'
   }
   $overlappingFiles = @($localChangedFiles | Where-Object { $remoteChangedFiles -contains $_ })
-  $sourceOverlaps = @($overlappingFiles | Where-Object { -not $_.StartsWith('dist/') })
-  if ($sourceOverlaps.Count) {
-    $overlapList = $sourceOverlaps -join ', '
-    throw "Local and remote changes overlap outside dist/: $overlapList"
+  $distOverlaps = @($overlappingFiles | Where-Object { $_.StartsWith('dist/') })
+  if ($distOverlaps.Count -and -not $runBuild) {
+    throw 'Local and remote dist changes overlap. Allow the script to rebuild before publishing.'
   }
-  if ($overlappingFiles.Count) {
-    if (-not $runBuild) {
-      throw 'Local and remote dist changes overlap. Allow the script to rebuild before publishing.'
-    }
-    Write-Host ''
-    Write-Host 'Remote bundle changes overlap local dist/. Resetting generated files before the fast-forward.' -ForegroundColor Yellow
-    Invoke-Checked -Command git -Arguments @('restore', '--worktree', "--source=$head", '--', 'dist')
+
+  $remoteAddedFiles = @(& git -c core.safecrlf=false diff --name-only --diff-filter=A $head $parent --)
+  if ($LASTEXITCODE -ne 0) {
+    throw 'Failed to inspect files added by the remote branch.'
+  }
+  $untrackedBeforeSync = @(& git ls-files --others --exclude-standard)
+  if ($LASTEXITCODE -ne 0) {
+    throw 'Failed to inspect untracked files before syncing main.'
+  }
+  $untrackedCollisions = @($untrackedBeforeSync | Where-Object { $remoteAddedFiles -contains $_ })
+  if ($untrackedCollisions.Count) {
+    throw "Remote main added paths that already exist as local untracked files: $($untrackedCollisions -join ', ')"
   }
 
   Write-Host ''
-  Write-Host 'Local main is behind origin/main. Fast-forwarding before the build...' -ForegroundColor Yellow
-  Invoke-Checked -Command git -Arguments @('merge', '--ff-only', 'origin/main')
+  Write-Host 'Preflighting local tracked changes against origin/main with a temporary index...' -ForegroundColor Yellow
+  $preflightConflicts = @(Get-ThreeWayConflictPaths -BaseCommit $head -TargetCommit $parent)
+  $sourceConflicts = @($preflightConflicts | Where-Object { -not $_.StartsWith('dist/') })
+  if ($sourceConflicts.Count) {
+    Write-Host ''
+    Write-Host 'True line-level conflicts were found:' -ForegroundColor Yellow
+    $sourceConflicts | ForEach-Object { Write-Host "  $_" -ForegroundColor Yellow }
+    Write-Host 'The current local versions of these files will be kept automatically.' -ForegroundColor Yellow
+  }
+
+  Write-Host ''
+  Write-Host 'Local main is behind origin/main. Stashing tracked changes and fast-forwarding...' -ForegroundColor Yellow
+  $stashCommit = ''
+  & git diff --quiet --exit-code HEAD --
+  $trackedDiffExitCode = $LASTEXITCODE
+  if ($trackedDiffExitCode -eq 1) {
+    Invoke-Checked -Command git -Arguments @('stash', 'push', '--keep-index', '-m', 'safe-push-dist automatic sync')
+    $stashCommit = Invoke-Capture -Command git -Arguments @('rev-parse', 'refs/stash')
+  } elseif ($trackedDiffExitCode -ne 0) {
+    throw 'Failed to inspect tracked changes before syncing main.'
+  }
+
+  try {
+    Invoke-Checked -Command git -Arguments @('merge', '--ff-only', 'origin/main')
+  } catch {
+    if ($stashCommit) {
+      Write-Host 'Fast-forward failed. Your tracked changes remain stored in the automatic stash.' -ForegroundColor Red
+      Write-Host "Automatic stash commit: $stashCommit" -ForegroundColor DarkGray
+    }
+    throw
+  }
+
+  if ($stashCommit) {
+    Write-Host 'Reapplying local tracked changes...' -ForegroundColor Yellow
+    $stashApplyResult = Invoke-CaptureAllowFailure -Command git -Arguments @('stash', 'apply', $stashCommit)
+    $stashApplyExitCode = $stashApplyResult.ExitCode
+    $stashApplyResult.Output | ForEach-Object { Write-Host $_ }
+    $actualConflicts = @(& git diff --name-only --diff-filter=U)
+    if ($LASTEXITCODE -ne 0) {
+      throw 'Failed to inspect conflicts after applying the automatic stash.'
+    }
+
+    if ($actualConflicts.Count) {
+      $unexpectedConflicts = @($actualConflicts | Where-Object { $preflightConflicts -notcontains $_ })
+      if ($unexpectedConflicts.Count) {
+        throw "Unexpected conflicts appeared while restoring local changes: $($unexpectedConflicts -join ', '). The automatic stash was kept."
+      }
+
+      foreach ($path in $actualConflicts) {
+        if ($localDeletedFiles -contains $path) {
+          Invoke-Checked -Command git -Arguments @('rm', '--', $path)
+        } else {
+          Invoke-Checked -Command git -Arguments @('checkout', '--theirs', '--', $path)
+          Invoke-Checked -Command git -Arguments @('add', '--', $path)
+        }
+      }
+    } elseif ($stashApplyExitCode -ne 0) {
+      throw "Automatic stash apply failed without merge conflicts. The stash was kept at $stashCommit."
+    }
+
+    $remainingConflicts = @(& git diff --name-only --diff-filter=U)
+    if ($LASTEXITCODE -ne 0 -or $remainingConflicts.Count) {
+      throw "Conflicts remain after restoring local changes. The automatic stash was kept at $stashCommit."
+    }
+
+    Invoke-Checked -Command git -Arguments @('restore', '--staged', '--source=HEAD', '--', '.')
+
+    $topStash = Invoke-Capture -Command git -Arguments @('rev-parse', 'refs/stash')
+    if ($topStash -ne $stashCommit) {
+      throw "The automatic stash is no longer at the top of the stash list. It was kept at $stashCommit."
+    }
+    Invoke-Checked -Command git -Arguments @('stash', 'drop', 'stash@{0}')
+  }
+
   $head = Invoke-Capture -Command git -Arguments @('rev-parse', 'HEAD')
   if ($head -ne $parent) {
     throw "Fast-forward finished at $head instead of expected origin/main $parent."

@@ -196,17 +196,48 @@
           :placeholder="t`写入世界书的内容`"
         ></textarea>
         <ReferencePicker
-          v-model="insertedReferences"
-          insert-mode
+          v-model="selectedReferences"
+          compact-selected
           :excluded-root-ids="['app:world-slots']"
-          @insert="insertReference"
-        />
+          :preferred-root-ids="['app:entry-library']"
+          reorderable
+          :toggle-label="t`插入条目库或 App 内容`"
+        >
+          <template #actions>
+            <div v-if="selectedReferences.length" class="pc-world-import-controls">
+              <div class="pc-segment" :aria-label="t`导入方式`">
+                <button
+                  :class="['pc-segment-btn', { active: referenceImportMode === 'merge' }]"
+                  type="button"
+                  @click="referenceImportMode = 'merge'"
+                >
+                  {{ t`合并为一条` }}
+                </button>
+                <button
+                  :class="['pc-segment-btn', { active: referenceImportMode === 'separate' }]"
+                  type="button"
+                  @click="referenceImportMode = 'separate'"
+                >
+                  {{ t`每项一条` }}
+                </button>
+              </div>
+              <button class="pc-primary-btn compact" type="button" @click="applySelectedReferences">
+                <i :class="referenceImportMode === 'merge' ? 'fa-solid fa-object-group' : 'fa-solid fa-list'"></i>
+                <span>
+                  {{ referenceImportMode === 'merge' ? t`合并所选` : t`创建 ${selectedReferences.length} 条` }}
+                </span>
+              </button>
+            </div>
+          </template>
+        </ReferencePicker>
         <div class="pc-form-actions">
           <button v-if="editingSlot" class="pc-soft-btn danger" type="button" @click="deleteCurrent">
             {{ t`删除` }}
           </button>
           <button class="pc-soft-btn" type="button" @click="phone.goBack()">{{ t`取消` }}</button>
-          <button class="pc-primary-btn" type="button" @click="saveDraft">{{ t`保存` }}</button>
+          <button v-if="!selectedReferences.length" class="pc-primary-btn" type="button" @click="saveDraft">
+            {{ t`保存` }}
+          </button>
         </div>
       </article>
     </section>
@@ -246,7 +277,8 @@ const route = computed(() => phone.currentRoute);
 const query = ref('');
 const typeFilter = ref('');
 const syncing = ref(false);
-const insertedReferences = ref<GenerationReferenceItem[]>([]);
+const referenceImportMode = ref<'merge' | 'separate'>('merge');
+const selectedReferences = ref<GenerationReferenceItem[]>([]);
 const draft = reactive({
   content: '',
   cooldownText: '',
@@ -342,7 +374,8 @@ function fillDraft(slot: WorldSlot | null) {
     .map(buildProfileText);
   draft.content = [slot?.content.trim() || '', ...legacyProfiles].filter(Boolean).join('\n\n');
   draft.enabled = slot?.enabled ?? true;
-  insertedReferences.value = [];
+  referenceImportMode.value = 'merge';
+  selectedReferences.value = [];
 }
 
 function openEditor(slotId?: string) {
@@ -354,6 +387,20 @@ function saveDraft() {
     toastr.warning('请先填写槽位名称');
     return;
   }
+  const settings = readDraftSettings();
+  if (!settings) return;
+  const input = {
+    ...settings,
+    content: draft.content,
+    title: draft.title,
+  };
+  const slot = editingSlot.value ? worldSlots.updateSlot(editingSlot.value.id, input) : worldSlots.createSlot(input);
+  if (!slot) return;
+  phone.goBack();
+  toastr.success('已保存槽位');
+}
+
+function readDraftSettings() {
   const insertionOrder = parseRequiredInteger(draft.insertionOrderText, '插入顺序');
   const depth = parseRequiredInteger(draft.depthText, '插入深度', 0, 10000);
   const probability = parseRequiredInteger(draft.probabilityText, '激活概率', 0, 100);
@@ -368,10 +415,9 @@ function saveDraft() {
     cooldown === undefined ||
     delay === undefined
   ) {
-    return;
+    return null;
   }
-  const input = {
-    content: draft.content,
+  return {
     cooldown,
     delay,
     depth,
@@ -387,13 +433,8 @@ function saveDraft() {
     secondaryKeys: splitKeys(draft.secondaryKeysText),
     selectiveLogic: draft.selectiveLogic,
     sticky,
-    title: draft.title,
     type: draft.type,
   };
-  const slot = editingSlot.value ? worldSlots.updateSlot(editingSlot.value.id, input) : worldSlots.createSlot(input);
-  if (!slot) return;
-  phone.goBack();
-  toastr.success('已保存槽位');
 }
 
 function parseRequiredInteger(value: string, label: string, min?: number, max?: number) {
@@ -428,11 +469,46 @@ function buildProfileText(entry: ProfileEntry) {
     .join('\n');
 }
 
-function insertReference(reference: GenerationReferenceItem) {
-  const content = reference.content.trim();
-  if (!content) return;
-  draft.content = [draft.content.trimEnd(), content].filter(Boolean).join('\n\n');
-  toastr.success(`已插入“${reference.title}”`);
+function applySelectedReferences() {
+  if (referenceImportMode.value === 'separate') {
+    createSeparateReferenceSlots();
+  } else {
+    mergeSelectedReferences();
+  }
+}
+
+function mergeSelectedReferences() {
+  const references = selectedReferences.value.filter(reference => reference.content.trim());
+  if (!references.length) return;
+  draft.content = [draft.content.trimEnd(), ...references.map(reference => reference.content.trim())]
+    .filter(Boolean)
+    .join('\n\n');
+  if (references.length === 1 && !draft.title.trim()) {
+    draft.title = references[0]!.title.trim();
+  }
+  selectedReferences.value = [];
+  referenceImportMode.value = 'merge';
+  toastr.success(`已合并 ${references.length} 条内容`);
+}
+
+function createSeparateReferenceSlots() {
+  const references = selectedReferences.value.filter(reference => reference.content.trim());
+  if (!references.length) return;
+  const settings = readDraftSettings();
+  if (!settings) return;
+  const createdSlots = worldSlots.createSlots(
+    references.map((reference, index) => ({
+      ...settings,
+      content: reference.content,
+      insertionOrder: settings.insertionOrder + index,
+      title: reference.title.trim() || `导入条目 ${index + 1}`,
+    })),
+  );
+  if (!createdSlots.length) return;
+  selectedReferences.value = [];
+  referenceImportMode.value = 'merge';
+  phone.goBack();
+  toastr.success(`已创建 ${createdSlots.length} 个槽位`);
 }
 
 async function deleteCurrent() {
@@ -650,6 +726,22 @@ async function syncSlots() {
 
 .pc-world-area {
   min-height: 260px;
+}
+
+.pc-world-import-controls {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 10px;
+  padding-top: 2px;
+}
+
+.pc-world-import-controls .pc-segment {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.pc-world-import-controls > .pc-primary-btn {
+  width: 100%;
 }
 
 @media (max-width: 460px) {

@@ -1,9 +1,9 @@
 <template>
-  <section class="pc-reference-picker">
+  <section ref="pickerRoot" class="pc-reference-picker">
     <button class="pc-reference-toggle" type="button" @click="open = !open">
       <span>
         <i class="fa-solid fa-link"></i>
-        {{ insertMode ? t`插入引用内容` : t`引用内容` }}
+        {{ toggleLabel || (insertMode ? t`插入引用内容` : t`引用内容`) }}
       </span>
       <b v-if="!insertMode">{{ modelValue.length }}</b>
       <i :class="open ? 'fa-solid fa-chevron-up' : 'fa-solid fa-chevron-down'"></i>
@@ -11,6 +11,7 @@
 
     <div v-if="open" class="pc-reference-body">
       <input v-model="query" class="pc-reference-search" type="text" :placeholder="t`搜索标题或内容`" />
+      <slot name="actions"></slot>
 
       <div v-if="!filteredTree.length" class="pc-reference-empty">
         {{ t`没有可引用的内容` }}
@@ -42,9 +43,39 @@
           </button>
         </div>
 
-        <div v-if="selectedOpen" class="pc-reference-selected-list">
-          <article v-for="item in modelValue" :key="item.id" class="pc-reference-card">
+        <div
+          v-if="selectedOpen"
+          class="pc-reference-selected-list"
+          :class="{
+            compact: compactSelected,
+            'drop-at-end': referenceDrag.isDragging && !referenceDrag.insertBeforeId,
+          }"
+        >
+          <article
+            v-for="item in modelValue"
+            :key="item.id"
+            class="pc-reference-card"
+            :class="{
+              dragging: referenceDrag.isDragging && referenceDrag.itemId === item.id,
+              'drop-before': referenceDrag.isDragging && referenceDrag.insertBeforeId === item.id,
+            }"
+            :data-reference-id="item.id"
+          >
             <div class="pc-reference-card-head">
+              <button
+                v-if="reorderable"
+                class="pc-reference-icon pc-reference-drag-handle"
+                type="button"
+                :disabled="disabled"
+                :title="t`拖拽排序`"
+                @click.prevent
+                @pointerdown.stop="startReferenceDrag($event, item.id)"
+                @pointermove.stop="moveReferenceDrag"
+                @pointerup.stop="finishReferenceDrag"
+                @pointercancel.stop="cancelReferenceDrag"
+              >
+                <i class="fa-solid fa-grip-lines"></i>
+              </button>
               <div>
                 <strong>{{ item.title }}</strong>
                 <small>{{ item.sourcePath.join(' / ') }}</small>
@@ -60,6 +91,7 @@
               </button>
             </div>
             <textarea
+              v-if="!compactSelected"
               :value="item.content"
               class="pc-reference-area"
               :disabled="disabled"
@@ -166,15 +198,23 @@ const ReferenceTreeNode = defineComponent({
 
 const props = withDefaults(
   defineProps<{
+    compactSelected?: boolean;
     disabled?: boolean;
     excludedRootIds?: string[];
     insertMode?: boolean;
     modelValue: GenerationReferenceItem[];
+    preferredRootIds?: string[];
+    reorderable?: boolean;
+    toggleLabel?: string;
   }>(),
   {
+    compactSelected: false,
     disabled: false,
     excludedRootIds: () => [],
     insertMode: false,
+    preferredRootIds: () => [],
+    reorderable: false,
+    toggleLabel: '',
   },
 );
 
@@ -184,19 +224,34 @@ const emit = defineEmits<{
 }>();
 
 const open = ref(false);
+const pickerRoot = ref<HTMLElement | null>(null);
 const selectedOpen = ref(false);
 const query = ref('');
 const expanded = ref(new Set<string>());
+const referenceDrag = reactive({
+  insertBeforeId: '',
+  isDragging: false,
+  itemId: '',
+  pointerId: -1,
+  startY: 0,
+});
 
 const selectedIds = computed(() => new Set(props.modelValue.map(item => item.id)));
 
-const tree = computed(() =>
-  getRegisteredPhoneAppReferenceTrees().filter(
-    item =>
-      !props.excludedRootIds.includes(item.id) &&
-      (item.kind === 'branch' ? item.children.length > 0 : Boolean(item.item.content.trim())),
-  ),
-);
+const tree = computed(() => {
+  const preferredOrder = new Map(props.preferredRootIds.map((id, index) => [id, index]));
+  return getRegisteredPhoneAppReferenceTrees()
+    .filter(
+      item =>
+        !props.excludedRootIds.includes(item.id) &&
+        (item.kind === 'branch' ? item.children.length > 0 : Boolean(item.item.content.trim())),
+    )
+    .sort((left, right) => {
+      const leftOrder = preferredOrder.get(left.id) ?? Number.MAX_SAFE_INTEGER;
+      const rightOrder = preferredOrder.get(right.id) ?? Number.MAX_SAFE_INTEGER;
+      return leftOrder - rightOrder;
+    });
+});
 
 function filterNode(node: PhoneReferenceTreeNode, normalizedQuery: string): PhoneReferenceTreeNode | null {
   if (!normalizedQuery) return node;
@@ -284,6 +339,81 @@ function updateItemContent(itemId: string, content: string) {
     'update:modelValue',
     props.modelValue.map(item => (item.id === itemId ? { ...item, content } : item)),
   );
+}
+
+function resetReferenceDrag() {
+  referenceDrag.insertBeforeId = '';
+  referenceDrag.isDragging = false;
+  referenceDrag.itemId = '';
+  referenceDrag.pointerId = -1;
+  referenceDrag.startY = 0;
+}
+
+function startReferenceDrag(event: PointerEvent, itemId: string) {
+  if (props.disabled || !props.reorderable || event.button !== 0) return;
+  resetReferenceDrag();
+  referenceDrag.itemId = itemId;
+  referenceDrag.pointerId = event.pointerId;
+  referenceDrag.startY = event.clientY;
+  (event.currentTarget as HTMLElement).setPointerCapture?.(event.pointerId);
+}
+
+function updateReferenceDragInsertion(clientY: number) {
+  const rows = [...(pickerRoot.value?.querySelectorAll<HTMLElement>('.pc-reference-card') ?? [])].filter(
+    row => row.dataset.referenceId !== referenceDrag.itemId,
+  );
+  const beforeRow = rows.find(row => {
+    const rect = row.getBoundingClientRect();
+    return clientY < rect.top + rect.height / 2;
+  });
+  referenceDrag.insertBeforeId = beforeRow?.dataset.referenceId || '';
+}
+
+function autoScrollReferenceList(clientY: number) {
+  const list = pickerRoot.value?.querySelector<HTMLElement>('.pc-reference-selected-list');
+  const scrollTarget =
+    list && list.scrollHeight > list.clientHeight ? list : pickerRoot.value?.closest<HTMLElement>('.pc-screen');
+  if (!scrollTarget) return;
+  const rect = scrollTarget.getBoundingClientRect();
+  const edge = 44;
+  if (clientY < rect.top + edge) scrollTarget.scrollTop -= 12;
+  else if (clientY > rect.bottom - edge) scrollTarget.scrollTop += 12;
+}
+
+function moveReferenceDrag(event: PointerEvent) {
+  if (event.pointerId !== referenceDrag.pointerId || !referenceDrag.itemId) return;
+  if (!referenceDrag.isDragging && Math.abs(event.clientY - referenceDrag.startY) > 4) {
+    referenceDrag.isDragging = true;
+  }
+  if (!referenceDrag.isDragging) return;
+  event.preventDefault();
+  autoScrollReferenceList(event.clientY);
+  updateReferenceDragInsertion(event.clientY);
+}
+
+function commitReferenceDrag() {
+  if (!referenceDrag.isDragging || !referenceDrag.itemId) return;
+  const draggedItem = props.modelValue.find(item => item.id === referenceDrag.itemId);
+  if (!draggedItem) return;
+  const next = props.modelValue.filter(item => item.id !== referenceDrag.itemId);
+  const beforeIndex = referenceDrag.insertBeforeId
+    ? next.findIndex(item => item.id === referenceDrag.insertBeforeId)
+    : next.length;
+  next.splice(beforeIndex < 0 ? next.length : beforeIndex, 0, draggedItem);
+  emit('update:modelValue', next);
+}
+
+function finishReferenceDrag(event: PointerEvent) {
+  if (event.pointerId !== referenceDrag.pointerId) return;
+  (event.currentTarget as HTMLElement).releasePointerCapture?.(event.pointerId);
+  commitReferenceDrag();
+  resetReferenceDrag();
+}
+
+function cancelReferenceDrag(event: PointerEvent) {
+  if (event.pointerId !== referenceDrag.pointerId) return;
+  (event.currentTarget as HTMLElement).releasePointerCapture?.(event.pointerId);
+  resetReferenceDrag();
 }
 </script>
 
@@ -446,6 +576,12 @@ function updateItemContent(itemId: string, content: string) {
   max-width: 100%;
 }
 
+.pc-reference-selected-list.compact {
+  max-height: 280px;
+  overflow-y: auto;
+  padding-block: 2px;
+}
+
 .pc-reference-head,
 .pc-reference-card-head {
   display: flex;
@@ -504,6 +640,7 @@ function updateItemContent(itemId: string, content: string) {
 }
 
 .pc-reference-card {
+  position: relative;
   display: flex;
   flex-direction: column;
   gap: 8px;
@@ -517,10 +654,51 @@ function updateItemContent(itemId: string, content: string) {
   background: color-mix(in srgb, var(--pc-surface-strong) 76%, transparent 24%);
 }
 
+.pc-reference-card.dragging {
+  border-color: color-mix(in srgb, var(--pc-theme-accent) 52%, var(--pc-border) 48%);
+  opacity: 0.68;
+  transform: scale(0.985);
+}
+
+.pc-reference-card.drop-before::before,
+.pc-reference-selected-list.drop-at-end::after {
+  position: absolute;
+  right: 8px;
+  left: 8px;
+  z-index: 2;
+  height: 3px;
+  border-radius: 999px;
+  background: var(--pc-theme-accent);
+  content: '';
+}
+
+.pc-reference-card.drop-before::before {
+  top: -7px;
+}
+
+.pc-reference-selected-list.drop-at-end {
+  position: relative;
+}
+
+.pc-reference-selected-list.drop-at-end::after {
+  bottom: 0;
+}
+
 .pc-reference-card-head > div {
+  flex: 1 1 auto;
   min-width: 0;
   max-width: 100%;
   overflow: hidden;
+}
+
+.pc-reference-drag-handle {
+  color: var(--pc-muted);
+  cursor: grab;
+  touch-action: none;
+}
+
+.pc-reference-drag-handle:active {
+  cursor: grabbing;
 }
 
 .pc-reference-card strong,

@@ -251,9 +251,9 @@
         </label>
         <label class="pc-field-group">
           <span>{{ t`目标预设条目` }}</span>
-          <select v-model="bindingPromptKey" class="pc-select">
+          <select v-model="bindingPromptKey" class="pc-select" @change="loadBindingPromptContent">
             <option value="">{{ t`请选择条目` }}</option>
-            <option v-for="prompt in bindingPrompts" :key="prompt.key" :value="prompt.key">
+            <option v-for="prompt in bindingPrompts" :key="prompt.key" :value="prompt.key" :disabled="prompt.bound">
               {{ prompt.title }}
             </option>
           </select>
@@ -370,6 +370,8 @@ type SourceEntry = {
 };
 
 type BindingPromptOption = {
+  bound: boolean;
+  content: string;
   id: string;
   key: string;
   source: 'prompts' | 'prompts_unused';
@@ -396,7 +398,7 @@ const presetNames = ref<string[]>([]);
 const bindingPresetName = ref('');
 const bindingPromptKey = ref('');
 const bindingGroupId = ref('');
-const bindingContentTemplate = ref(ENTRY_LIBRARY_CONTENT_PLACEHOLDER);
+const bindingContentTemplate = ref('');
 const bindingPrompts = ref<BindingPromptOption[]>([]);
 const bindingSaving = ref(false);
 const bindingTemplateField = ref<HTMLTextAreaElement | null>(null);
@@ -737,6 +739,7 @@ function deleteDuplicate(itemId: string) {
 
 function loadBindingPrompts() {
   bindingPromptKey.value = '';
+  bindingContentTemplate.value = '';
   bindingPrompts.value = [];
   if (!bindingPresetName.value) return;
   try {
@@ -744,11 +747,19 @@ function loadBindingPrompts() {
     const options: BindingPromptOption[] = [];
     const append = (source: 'prompts' | 'prompts_unused', prompt: TavernPresetPrompt, index: number) => {
       if (!isCollectablePresetPrompt(prompt)) return;
+      const bound = bindings.value.some(
+        binding =>
+          binding.presetName === bindingPresetName.value &&
+          binding.targetPromptSource === source &&
+          binding.targetPromptId === prompt.id,
+      );
       options.push({
+        bound,
+        content: prompt.content ?? '',
         id: prompt.id,
         key: `${source}:${index}`,
         source,
-        title: `${source === 'prompts' ? '已使用' : '未使用'} · ${prompt.name || prompt.id}`,
+        title: `${source === 'prompts' ? '已使用' : '未使用'} · ${prompt.name || prompt.id}${bound ? ' · 已绑定' : ''}`,
       });
     };
     preset.prompts.forEach((prompt, index) => append('prompts', prompt, index));
@@ -759,14 +770,18 @@ function loadBindingPrompts() {
   }
 }
 
+function loadBindingPromptContent() {
+  const prompt = bindingPrompts.value.find(item => item.key === bindingPromptKey.value);
+  bindingContentTemplate.value = prompt && !prompt.bound ? prompt.content : '';
+}
+
 async function insertBindingPlaceholder() {
   const field = bindingTemplateField.value;
-  const start = field?.selectionStart ?? bindingContentTemplate.value.length;
-  const end = field?.selectionEnd ?? start;
-  bindingContentTemplate.value = `${bindingContentTemplate.value.slice(0, start)}${ENTRY_LIBRARY_CONTENT_PLACEHOLDER}${bindingContentTemplate.value.slice(end)}`;
+  const cursor = field?.selectionEnd ?? bindingContentTemplate.value.length;
+  bindingContentTemplate.value = `${bindingContentTemplate.value.slice(0, cursor)}${ENTRY_LIBRARY_CONTENT_PLACEHOLDER}${bindingContentTemplate.value.slice(cursor)}`;
   await nextTick();
   field?.focus();
-  const caret = start + ENTRY_LIBRARY_CONTENT_PLACEHOLDER.length;
+  const caret = cursor + ENTRY_LIBRARY_CONTENT_PLACEHOLDER.length;
   field?.setSelectionRange(caret, caret);
 }
 
@@ -784,8 +799,7 @@ async function createBinding() {
       contentTemplate: bindingContentTemplate.value,
     });
     toastr.success('已创建绑定并同步预设条目');
-    bindingPromptKey.value = '';
-    bindingContentTemplate.value = ENTRY_LIBRARY_CONTENT_PLACEHOLDER;
+    loadBindingPrompts();
   } catch (error) {
     toastr.error(error instanceof Error ? error.message : String(error));
   } finally {
@@ -808,7 +822,10 @@ async function deleteBinding(bindingId: string) {
     kind: 'warning',
     title: '删除分组绑定',
   });
-  if (confirmed) library.deleteBinding(bindingId);
+  if (confirmed) {
+    library.deleteBinding(bindingId);
+    loadBindingPrompts();
+  }
 }
 
 function saveEditor() {

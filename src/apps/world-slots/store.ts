@@ -49,6 +49,31 @@ export const WorldSlotSchema = z.object({
 });
 export type WorldSlot = z.infer<typeof WorldSlotSchema>;
 
+type WorldSlotEditableFields = Pick<
+  WorldSlot,
+  | 'content'
+  | 'cooldown'
+  | 'delay'
+  | 'depth'
+  | 'enabled'
+  | 'excludeRecursion'
+  | 'insertionOrder'
+  | 'keys'
+  | 'position'
+  | 'preventRecursion'
+  | 'probability'
+  | 'profileEntryIds'
+  | 'role'
+  | 'secondaryKeys'
+  | 'selectiveLogic'
+  | 'sticky'
+  | 'title'
+  | 'type'
+>;
+
+export type WorldSlotCreateInput = Partial<WorldSlotEditableFields>;
+export type WorldSlotUpdateInput = WorldSlotEditableFields;
+
 export const WorldSlotsScopeDataSchema = z.object({
   bookName: z.string().default(''),
   slots: z.array(WorldSlotSchema).default([]),
@@ -266,33 +291,8 @@ export const useWorldSlotsStore = defineStore('world-slots', () => {
     return data.value.slots.find(slot => slot.id === slotId) ?? null;
   }
 
-  function createSlot(
-    input: Partial<
-      Pick<
-        WorldSlot,
-        | 'content'
-        | 'cooldown'
-        | 'delay'
-        | 'depth'
-        | 'enabled'
-        | 'excludeRecursion'
-        | 'insertionOrder'
-        | 'keys'
-        | 'position'
-        | 'preventRecursion'
-        | 'probability'
-        | 'profileEntryIds'
-        | 'role'
-        | 'secondaryKeys'
-        | 'selectiveLogic'
-        | 'sticky'
-        | 'title'
-        | 'type'
-      >
-    >,
-  ) {
-    const timestamp = nowIso();
-    const slot: WorldSlot = {
+  function buildSlot(input: WorldSlotCreateInput, timestamp: string): WorldSlot {
+    return {
       id: createId('world_slot'),
       title: input.title?.trim() || '未命名槽位',
       type: input.type ?? 'note',
@@ -316,35 +316,22 @@ export const useWorldSlotsStore = defineStore('world-slots', () => {
       createdAt: timestamp,
       updatedAt: timestamp,
     };
-    data.value.slots = [slot, ...data.value.slots];
-    queueAutoSync();
-    return slot;
   }
 
-  function updateSlot(
-    slotId: string,
-    input: Pick<
-      WorldSlot,
-      | 'content'
-      | 'cooldown'
-      | 'delay'
-      | 'depth'
-      | 'enabled'
-      | 'excludeRecursion'
-      | 'insertionOrder'
-      | 'keys'
-      | 'position'
-      | 'preventRecursion'
-      | 'probability'
-      | 'profileEntryIds'
-      | 'role'
-      | 'secondaryKeys'
-      | 'selectiveLogic'
-      | 'sticky'
-      | 'title'
-      | 'type'
-    >,
-  ) {
+  function createSlots(inputs: WorldSlotCreateInput[]) {
+    if (!inputs.length) return [];
+    const timestamp = nowIso();
+    const createdSlots = inputs.map(input => buildSlot(input, timestamp));
+    data.value.slots = [...createdSlots, ...data.value.slots];
+    queueAutoSync();
+    return createdSlots;
+  }
+
+  function createSlot(input: WorldSlotCreateInput) {
+    return createSlots([input])[0]!;
+  }
+
+  function updateSlot(slotId: string, input: WorldSlotUpdateInput) {
     const slot = getSlot(slotId);
     if (!slot) return null;
     slot.title = input.title.trim() || slot.title;
@@ -556,6 +543,7 @@ export const useWorldSlotsStore = defineStore('world-slots', () => {
   return {
     autoSyncToWorldBook,
     createSlot,
+    createSlots,
     data,
     deleteSlot,
     getSlot,

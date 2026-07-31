@@ -103,7 +103,6 @@ function compareGroups(left: EntryLibraryGroup, right: EntryLibraryGroup) {
 }
 
 export function renderEntryLibraryBindingContent(template: string, groupContent: string) {
-  if (!groupContent) return '';
   return template.split(ENTRY_LIBRARY_CONTENT_PLACEHOLDER).join(groupContent);
 }
 
