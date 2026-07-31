@@ -110,9 +110,7 @@ import { miniGameFields } from './fields';
 import { readMiniGameSettings, writeMiniGameSettings } from './miniGameStorage';
 
 type Selection =
-  | { from: 'foundation'; suit: TSuit }
-  | { from: 'tableau'; pile: number; start: number }
-  | { from: 'waste' };
+  { from: 'foundation'; suit: TSuit } | { from: 'tableau'; pile: number; start: number } | { from: 'waste' };
 
 const CardSchema = z.object({
   rank: z.enum(['2', '3', '4', '5', '6', '7', '8', '9', '10', 'Ace', 'King', 'Queen', 'Jack']),

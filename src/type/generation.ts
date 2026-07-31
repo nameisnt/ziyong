@@ -127,6 +127,4 @@ export type GenerationExecutionSaved<TResult, TSaveResult> = {
 };
 
 export type GenerationExecutionResult<TResult, TSaveResult = { entityId: string }> =
-  | GenerationExecutionFailure
-  | GenerationExecutionPreview<TResult>
-  | GenerationExecutionSaved<TResult, TSaveResult>;
+  GenerationExecutionFailure | GenerationExecutionPreview<TResult> | GenerationExecutionSaved<TResult, TSaveResult>;

@@ -16,8 +16,7 @@ import {
 import type { ZodType } from 'zod';
 
 type DeclarativeParseResult =
-  | { data: Record<string, unknown>; ok: true; warnings: string[] }
-  | { ok: false; warnings: string[] };
+  { data: Record<string, unknown>; ok: true; warnings: string[] } | { ok: false; warnings: string[] };
 
 function escapeRegExp(value: string) {
   return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
