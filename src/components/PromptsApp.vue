@@ -110,13 +110,31 @@
 
         <EmptyState v-if="!quickPhraseGroups.length" :title="t`还没有短语分组`" />
 
-        <article v-for="group in quickPhraseGroups" :key="group.id" class="pc-card">
+        <article v-for="(group, groupIndex) in quickPhraseGroups" :key="group.id" class="pc-card">
           <div class="pc-card-head">
             <button class="pc-accordion-title-button" type="button" @click="togglePhraseGroup(group.id)">
               <strong>{{ group.name }}</strong>
               <i :class="isPhraseGroupOpen(group.id) ? 'fa-solid fa-chevron-up' : 'fa-solid fa-chevron-down'"></i>
             </button>
-            <div class="pc-inline-actions">
+            <div class="pc-inline-actions pc-group-actions">
+              <button
+                class="pc-icon-btn"
+                type="button"
+                :disabled="groupIndex === 0"
+                :title="t`上移分组`"
+                @click="prompts.moveQuickPhraseGroup(group.id, -1)"
+              >
+                <i class="fa-solid fa-arrow-up"></i>
+              </button>
+              <button
+                class="pc-icon-btn"
+                type="button"
+                :disabled="groupIndex === quickPhraseGroups.length - 1"
+                :title="t`下移分组`"
+                @click="prompts.moveQuickPhraseGroup(group.id, 1)"
+              >
+                <i class="fa-solid fa-arrow-down"></i>
+              </button>
               <button class="pc-icon-btn" type="button" @click="openRenameGroup(group.id)">
                 <i class="fa-solid fa-pen"></i>
               </button>
@@ -165,13 +183,31 @@
 
         <EmptyState v-if="!quickTemplateGroups.length" :title="t`还没有模板分组`" />
 
-        <article v-for="group in quickTemplateGroups" :key="group.id" class="pc-card">
+        <article v-for="(group, groupIndex) in quickTemplateGroups" :key="group.id" class="pc-card">
           <div class="pc-card-head">
             <button class="pc-accordion-title-button" type="button" @click="toggleTemplateGroup(group.id)">
               <strong>{{ group.name }}</strong>
               <i :class="isTemplateGroupOpen(group.id) ? 'fa-solid fa-chevron-up' : 'fa-solid fa-chevron-down'"></i>
             </button>
-            <div class="pc-inline-actions">
+            <div class="pc-inline-actions pc-group-actions">
+              <button
+                class="pc-icon-btn"
+                type="button"
+                :disabled="groupIndex === 0"
+                :title="t`上移分组`"
+                @click="prompts.moveQuickTemplateGroup(group.id, -1)"
+              >
+                <i class="fa-solid fa-arrow-up"></i>
+              </button>
+              <button
+                class="pc-icon-btn"
+                type="button"
+                :disabled="groupIndex === quickTemplateGroups.length - 1"
+                :title="t`下移分组`"
+                @click="prompts.moveQuickTemplateGroup(group.id, 1)"
+              >
+                <i class="fa-solid fa-arrow-down"></i>
+              </button>
               <button class="pc-icon-btn" type="button" @click="openRenameTemplateGroup(group.id)">
                 <i class="fa-solid fa-pen"></i>
               </button>
@@ -1344,6 +1380,16 @@ async function copyText(text: string, successMessage: string) {
 .pc-chip-row {
   flex-wrap: wrap;
   justify-content: flex-start;
+}
+
+.pc-group-actions {
+  flex: 0 0 auto;
+  gap: 6px;
+}
+
+.pc-group-actions .pc-icon-btn {
+  width: 34px;
+  height: 34px;
 }
 
 .pc-tab-btn,

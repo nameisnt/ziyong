@@ -3,9 +3,9 @@
     <button class="pc-reference-toggle" type="button" @click="open = !open">
       <span>
         <i class="fa-solid fa-link"></i>
-        {{ t`引用内容` }}
+        {{ insertMode ? t`插入引用内容` : t`引用内容` }}
       </span>
-      <b>{{ modelValue.length }}</b>
+      <b v-if="!insertMode">{{ modelValue.length }}</b>
       <i :class="open ? 'fa-solid fa-chevron-up' : 'fa-solid fa-chevron-down'"></i>
     </button>
 
@@ -20,6 +20,7 @@
         <template v-for="treeNode in filteredTree" :key="treeNode.id">
           <ReferenceTreeNode
             :disabled="disabled"
+            :insert-mode="insertMode"
             :level="0"
             :node="treeNode"
             :selected-ids="selectedIds"
@@ -29,7 +30,7 @@
         </template>
       </div>
 
-      <div v-if="modelValue.length" class="pc-reference-selected">
+      <div v-if="!insertMode && modelValue.length" class="pc-reference-selected">
         <div class="pc-reference-head">
           <button class="pc-reference-selected-toggle" type="button" @click="selectedOpen = !selectedOpen">
             <strong>{{ t`已选引用` }}</strong>
@@ -80,6 +81,7 @@ import { defineComponent, h, type PropType } from 'vue';
 const ReferenceTreeNode = defineComponent({
   props: {
     disabled: { default: false, type: Boolean },
+    insertMode: { default: false, type: Boolean },
     level: { required: true, type: Number },
     node: { required: true, type: Object as PropType<PhoneReferenceTreeNode> },
     selectedIds: { required: true, type: Object as PropType<Set<string>> },
@@ -90,6 +92,22 @@ const ReferenceTreeNode = defineComponent({
       const paddingLeft = `${props.level * 14 + 10}px`;
       if (props.node.kind === 'leaf') {
         const selected = props.selectedIds.has(props.node.item.id);
+        if (props.insertMode) {
+          return h(
+            'button',
+            {
+              class: ['pc-reference-node', 'leaf', 'insert'],
+              disabled: props.disabled,
+              onClick: () => emit('toggle-leaf', props.node.item),
+              style: { paddingLeft },
+              type: 'button',
+            },
+            [
+              h('i', { class: 'fa-solid fa-plus' }),
+              h('span', { class: 'pc-reference-node-title' }, props.node.item.title),
+            ],
+          );
+        }
         return h(
           'label',
           {
@@ -131,6 +149,7 @@ const ReferenceTreeNode = defineComponent({
           ? props.node.children.map(child =>
               h(ReferenceTreeNode, {
                 disabled: props.disabled,
+                insertMode: props.insertMode,
                 key: child.id,
                 level: props.level + 1,
                 node: child,
@@ -148,14 +167,19 @@ const ReferenceTreeNode = defineComponent({
 const props = withDefaults(
   defineProps<{
     disabled?: boolean;
+    excludedRootIds?: string[];
+    insertMode?: boolean;
     modelValue: GenerationReferenceItem[];
   }>(),
   {
     disabled: false,
+    excludedRootIds: () => [],
+    insertMode: false,
   },
 );
 
 const emit = defineEmits<{
+  insert: [value: GenerationReferenceItem];
   'update:modelValue': [value: GenerationReferenceItem[]];
 }>();
 
@@ -167,8 +191,10 @@ const expanded = ref(new Set<string>());
 const selectedIds = computed(() => new Set(props.modelValue.map(item => item.id)));
 
 const tree = computed(() =>
-  getRegisteredPhoneAppReferenceTrees().filter(item =>
-    item.kind === 'branch' ? item.children.length > 0 : Boolean(item.item.content.trim()),
+  getRegisteredPhoneAppReferenceTrees().filter(
+    item =>
+      !props.excludedRootIds.includes(item.id) &&
+      (item.kind === 'branch' ? item.children.length > 0 : Boolean(item.item.content.trim())),
   ),
 );
 
@@ -237,6 +263,10 @@ function toggleBranch(id: string) {
 
 function toggleLeaf(item: GenerationReferenceItem) {
   if (props.disabled) return;
+  if (props.insertMode) {
+    emit('insert', item);
+    return;
+  }
   const exists = selectedIds.value.has(item.id);
   const next = exists ? props.modelValue.filter(current => current.id !== item.id) : [...props.modelValue, item];
   emit('update:modelValue', next);
@@ -367,6 +397,10 @@ function updateItemContent(itemId: string, content: string) {
 .pc-reference-node.leaf {
   grid-template-columns: auto minmax(0, 1fr);
   cursor: pointer;
+}
+
+.pc-reference-node.leaf.insert i {
+  color: var(--pc-theme-accent);
 }
 
 .pc-reference-node.leaf.selected {

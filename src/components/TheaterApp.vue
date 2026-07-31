@@ -169,7 +169,7 @@
 
     <section v-else-if="route.page === 'entry' && activeEntry" class="pc-theater-page pc-theater-detail-page">
       <ReaderDetailShell
-        actions-class="five"
+        actions-class="six"
         :content="activeEntry.content"
         :custom-content="activeEntry.renderMode === 'frontend'"
         :favorite-active="activeEntry.favorite"
@@ -207,6 +207,9 @@
           />
         </template>
         <template #actions>
+          <button class="pc-soft-btn" type="button" :title="t`转为番外`" @click="openConvertToExtra(activeEntry.id)">
+            <i class="fa-solid fa-book-open"></i>
+          </button>
           <button
             class="pc-soft-btn"
             type="button"
@@ -229,6 +232,60 @@
           />
         </template>
       </ReaderDetailShell>
+    </section>
+
+    <section v-else-if="route.page === 'convert-extra' && activeEntry" class="pc-theater-page">
+      <div class="pc-editor-card">
+        <span class="pc-kicker">{{ t`转为番外` }}</span>
+        <h2>{{ activeEntry.title }}</h2>
+
+        <label class="pc-field-group">
+          <span class="pc-field-label">{{ t`番外书名` }}</span>
+          <input v-model="conversionDraft.bookTitle" class="pc-field" type="text" :placeholder="t`番外书名`" />
+        </label>
+
+        <label class="pc-field-group">
+          <span class="pc-field-label">{{ t`番外类型` }}</span>
+          <SearchableCombobox
+            :allow-custom="true"
+            :empty-label="t`没有匹配的番外类型`"
+            :input-label="t`选择或输入番外类型`"
+            :model-value="conversionTypeValue"
+            :options="extraTypeOptions"
+            :placeholder="t`选择或输入番外类型`"
+            :toggle-title="t`展开番外类型`"
+            @update:model-value="selectConversionType"
+          />
+        </label>
+
+        <label class="pc-field-group">
+          <span class="pc-field-label">{{ t`第一章标题` }}</span>
+          <input v-model="conversionDraft.chapterTitle" class="pc-field" type="text" :placeholder="t`第一章标题`" />
+        </label>
+
+        <label class="pc-field-group">
+          <span class="pc-field-label">
+            {{ t`第一章正文` }}
+            <InfoHint
+              v-if="activeEntry.renderMode === 'frontend'"
+              :text="t`网页渲染内容已提取为可编辑文本，原小剧场不会改变。`"
+            />
+          </span>
+          <textarea
+            v-model="conversionDraft.content"
+            class="pc-area pc-saved-content-area"
+            :placeholder="t`第一章正文`"
+          ></textarea>
+        </label>
+
+        <div class="pc-form-actions">
+          <button class="pc-soft-btn" type="button" @click="phone.goBack()">{{ t`取消` }}</button>
+          <button class="pc-primary-btn" type="button" @click="convertToExtra">
+            <i class="fa-solid fa-book-open"></i>
+            <span>{{ t`新建番外` }}</span>
+          </button>
+        </div>
+      </div>
     </section>
 
     <section v-else-if="route.page === 'bagu-scan' && activeEntry" class="pc-theater-page">
@@ -441,6 +498,7 @@ import SearchableCombobox from '@/components/SearchableCombobox.vue';
 import { getRegisteredPhoneGenerationAdapter } from '@/core/appRegistry';
 import { buildGenerationPreview, captureGenerationPrompt, generateContent } from '@/core/generationService';
 import { useGenerationAliasesStore } from '@/store/generationAliases';
+import { useExtrasStore } from '@/store/extras';
 import { usePhoneStore } from '@/store/phone';
 import { usePromptStore } from '@/store/prompts';
 import { useSettingsStore } from '@/store/settings';
@@ -463,6 +521,7 @@ const phone = usePhoneStore();
 const prompts = usePromptStore();
 const settingsStore = useSettingsStore();
 const theater = useTheaterStore();
+const extras = useExtrasStore();
 const generationAliases = useGenerationAliasesStore();
 const theaterGenerationAdapter = getRegisteredPhoneGenerationAdapter('theater', 'generate');
 const CUSTOM_THEATER_TYPE_VALUE = '__custom_theater_type__';
@@ -495,6 +554,13 @@ const generationDraft = reactive({
   typeName: '',
   typePrompt: '',
   userRequirement: '',
+});
+const conversionDraft = reactive({
+  bookTitle: '',
+  chapterTitle: '',
+  content: '',
+  typeId: '',
+  typeName: '',
 });
 
 function swapGenerationAliases() {
@@ -552,6 +618,13 @@ const { scrollToBottom, scrollToTop } = useDetailScroll(entryContentEl, '.pc-the
 const showCatalogModal = ref(false);
 
 const theaterTypePrompts = computed(() => typePrompts.value.filter(item => item.domain === 'theater'));
+const extraTypePrompts = computed(() => typePrompts.value.filter(item => item.domain === 'extras'));
+const extraTypeOptions = computed(() =>
+  [...extraTypePrompts.value]
+    .sort((left, right) => right.usageCount - left.usageCount || left.name.localeCompare(right.name, 'zh-CN'))
+    .map(item => ({ label: item.name, value: item.id })),
+);
+const conversionTypeValue = computed(() => conversionDraft.typeId || conversionDraft.typeName);
 const activeEntry = computed(() => {
   const entryId = route.value.params?.entryId;
   return entryId ? theater.getEntry(entryId) : null;
@@ -782,6 +855,10 @@ watch(
       generationState.rawOutput = '';
     }
 
+    if (current.page === 'convert-extra') {
+      fillConversionDraft();
+    }
+
     if (current.page === 'failed-draft') {
       failedDraftRawOutput.value = activeFailedDraft.value?.rawOutput || '';
       failedDraftRenderMode.value =
@@ -802,7 +879,7 @@ useInvalidRouteFallback({
   isInvalid: current =>
     current.appId === 'theater' &&
     ((current.page === 'preview' && !current.hasPreview) ||
-      (['entry', 'bagu-scan'].includes(current.page) && !current.hasEntry) ||
+      (['entry', 'bagu-scan', 'convert-extra'].includes(current.page) && !current.hasEntry) ||
       (current.page === 'failed-draft' && !current.hasFailedDraft)),
   fallback: () => {
     if (route.value.appId !== 'theater') return;
@@ -864,6 +941,73 @@ function startCustomGenerationType() {
 
 function openEditEntry(entryId: string) {
   phone.pushPage('editor', '编辑小剧场', { entryId });
+}
+
+function openConvertToExtra(entryId: string) {
+  phone.pushPage('convert-extra', '转为番外', { entryId });
+}
+
+function extractFrontendText(content: string) {
+  const document = new DOMParser().parseFromString(content, 'text/html');
+  document.querySelectorAll('script, style, noscript').forEach(node => node.remove());
+  document.querySelectorAll('br').forEach(node => node.replaceWith('\n'));
+  document
+    .querySelectorAll(
+      'address, article, aside, blockquote, div, footer, h1, h2, h3, h4, h5, h6, header, li, main, p, section',
+    )
+    .forEach(node => node.append('\n'));
+  return (document.body.textContent || '')
+    .replace(/\r/g, '')
+    .replace(/[ \t]+\n/g, '\n')
+    .replace(/\n{3,}/g, '\n\n')
+    .trim();
+}
+
+function fillConversionDraft() {
+  const entry = activeEntry.value;
+  if (!entry) return;
+  const matchedExtraType = extraTypePrompts.value.find(item => item.name === entry.typeName);
+  conversionDraft.bookTitle = entry.title;
+  conversionDraft.chapterTitle = entry.title;
+  conversionDraft.content = entry.renderMode === 'frontend' ? extractFrontendText(entry.content) : entry.content;
+  conversionDraft.typeId = matchedExtraType?.id || '';
+  conversionDraft.typeName = matchedExtraType?.name || entry.typeName || '未分类番外';
+}
+
+function selectConversionType(value: string) {
+  const typePrompt = prompts.getTypePrompt(value);
+  conversionDraft.typeId = typePrompt?.domain === 'extras' ? typePrompt.id : '';
+  conversionDraft.typeName = typePrompt?.domain === 'extras' ? typePrompt.name : value.trim();
+}
+
+function convertToExtra() {
+  if (!activeEntry.value) return;
+  if (!conversionDraft.bookTitle.trim()) {
+    toastr.warning('请先填写番外书名');
+    return;
+  }
+  if (!conversionDraft.content.trim()) {
+    toastr.warning('第一章正文不能为空');
+    return;
+  }
+
+  const book = extras.createBook({
+    title: conversionDraft.bookTitle,
+    typeId: conversionDraft.typeId || undefined,
+    typeName: conversionDraft.typeName,
+  });
+  const chapter = extras.createChapter(book.id, {
+    content: conversionDraft.content,
+    title: conversionDraft.chapterTitle,
+  });
+  if (!chapter) {
+    extras.deleteBook(book.id);
+    toastr.warning('创建番外章节失败');
+    return;
+  }
+
+  toastr.success('已新建番外，原小剧场已保留');
+  phone.pushRoute('extras', 'chapter', chapter.title, { bookId: book.id, chapterId: chapter.id });
 }
 
 function openEntry(entryId: string) {

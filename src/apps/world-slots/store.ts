@@ -75,13 +75,14 @@ function getEntrySlotId(entry: WorldBookEntry) {
 }
 
 function createWorldEntry(slot: WorldSlot, entryId: number): WorldBookEntry {
+  const usesKeys = slot.keys.length > 0;
   return {
     keys: slot.keys,
     secondary_keys: [],
     comment: `[${getSlotMarker(slot.id)}] ${slot.title}`,
     content: buildWorldEntryContent(slot),
-    constant: true,
-    selective: false,
+    constant: !usesKeys,
+    selective: usesKeys,
     insertion_order: 100,
     enabled: slot.enabled,
     position: 'before',
@@ -119,9 +120,7 @@ function buildWorldEntryContent(slot: WorldSlot) {
     .map(entryId => profiles.getEntry(entryId))
     .filter((entry): entry is ProfileEntry => Boolean(entry))
     .map(buildProfileContent);
-  return [slot.content.trim(), profileBlocks.length ? ['[引用资料卡片]', ...profileBlocks].join('\n\n') : '']
-    .filter(Boolean)
-    .join('\n\n');
+  return [slot.content.trim(), ...profileBlocks].filter(Boolean).join('\n\n');
 }
 
 function nextEntryId(entries: Record<string, WorldBookEntry>) {
@@ -220,7 +219,7 @@ export const useWorldSlotsStore = defineStore('world-slots', () => {
     let created = 0;
     let updated = 0;
     data.value.slots.forEach(slot => {
-      const existingId = slot.worldEntryId ?? entryIdBySlot.get(slot.id);
+      const existingId = entryIdBySlot.get(slot.id);
       const entryId = typeof existingId === 'number' ? existingId : nextEntryId(entries);
       if (typeof existingId === 'number') updated += 1;
       else created += 1;

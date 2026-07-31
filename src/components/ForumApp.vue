@@ -55,11 +55,20 @@
       <div class="pc-editor-card">
         <span class="pc-kicker">{{ editingBoard ? t`编辑板块` : t`新建板块` }}</span>
         <h2>{{ editingBoard ? editingBoard.name : t`建立一个新的板块` }}</h2>
+        <SearchableCombobox
+          :empty-label="t`没有匹配的板块类型`"
+          :input-label="t`选择论坛板块类型`"
+          :model-value="boardEditorTypeId"
+          :options="boardTypeOptions"
+          :placeholder="t`选择论坛板块类型`"
+          :toggle-title="t`展开论坛板块类型`"
+          @update:model-value="selectBoardEditorType"
+        />
         <input v-model="boardDraft.name" class="pc-field" type="text" :placeholder="t`板块名称`" />
         <textarea
           v-model="boardDraft.description"
           class="pc-area compact"
-          :placeholder="t`板块说明（可留空）`"
+          :placeholder="t`板块类型提示词（可编辑）`"
         ></textarea>
         <div class="pc-form-actions">
           <button class="pc-soft-btn" type="button" @click="phone.goBack()">{{ t`取消` }}</button>
@@ -330,14 +339,50 @@
               <option value="">{{ t`选择现有板块（可不选）` }}</option>
               <option v-for="board in boards" :key="board.id" :value="board.id">{{ board.name }}</option>
             </select>
-            <input
-              v-if="!activeBoard && !threadGenerationDraft.boardId"
-              v-model="threadGenerationDraft.boardName"
-              class="pc-field"
-              type="text"
-              :disabled="generationState.running"
-              :placeholder="t`新板块名称（可留空，由 AI 生成）`"
-            />
+            <div v-if="!activeBoard && !threadGenerationDraft.boardId" class="pc-forum-type-fields">
+              <SearchableCombobox
+                :disabled="generationState.running"
+                :empty-label="t`没有匹配的板块类型`"
+                :input-label="t`选择论坛板块类型`"
+                :model-value="threadGenerationDraft.boardTypeId"
+                :options="boardTypeOptions"
+                :placeholder="t`选择论坛板块类型`"
+                :toggle-title="t`展开论坛板块类型`"
+                @update:model-value="selectThreadBoardType"
+              />
+              <textarea
+                v-model="threadGenerationDraft.boardDescription"
+                class="pc-area compact"
+                :disabled="generationState.running"
+                :placeholder="t`板块类型提示词（可编辑）`"
+              ></textarea>
+              <div class="pc-segment pc-forum-name-mode" :aria-label="t`板块命名方式`">
+                <button
+                  :class="['pc-segment-btn', { active: threadGenerationDraft.boardNameMode === 'fixed' }]"
+                  type="button"
+                  :disabled="generationState.running"
+                  @click="threadGenerationDraft.boardNameMode = 'fixed'"
+                >
+                  {{ t`固定名称` }}
+                </button>
+                <button
+                  :class="['pc-segment-btn', { active: threadGenerationDraft.boardNameMode === 'ai' }]"
+                  type="button"
+                  :disabled="generationState.running"
+                  @click="threadGenerationDraft.boardNameMode = 'ai'"
+                >
+                  {{ t`AI 生成` }}
+                </button>
+              </div>
+              <input
+                v-if="threadGenerationDraft.boardNameMode === 'fixed'"
+                v-model="threadGenerationDraft.boardName"
+                class="pc-field"
+                type="text"
+                :disabled="generationState.running"
+                :placeholder="t`固定板块名称`"
+              />
+            </div>
           </template>
         </GenerationPanel>
       </div>
@@ -481,6 +526,7 @@ import GenerationPreviewPanel from '@/components/GenerationPreviewPanel.vue';
 import PreviewDraftNotice from '@/components/PreviewDraftNotice.vue';
 import RawOutputEditor from '@/components/RawOutputEditor.vue';
 import ReaderContent from '@/components/ReaderContent.vue';
+import SearchableCombobox from '@/components/SearchableCombobox.vue';
 import { materializeForumReplies, persistForumReplyDrafts } from '@/core/forumGeneration';
 import { getRegisteredPhoneGenerationAdapter } from '@/core/appRegistry';
 import { buildGenerationPreview, captureGenerationPrompt, generateContent } from '@/core/generationService';
@@ -499,6 +545,7 @@ import { stopGenerationByIdSafe } from '@/util/runtime';
 import { storeToRefs } from 'pinia';
 
 type ThreadSortMode = 'favorite' | 'heat' | 'latestPublish' | 'latestReply';
+type BoardNameMode = 'ai' | 'fixed';
 type PreviewReplyDraft = ReturnType<typeof materializeForumReplies>['replies'][number];
 
 const forum = useForumStore();
@@ -509,10 +556,12 @@ const forumThreadGenerationAdapter = getRegisteredPhoneGenerationAdapter('forum'
 const forumReplyGenerationAdapter = getRegisteredPhoneGenerationAdapter('forum', 'generate-replies');
 const { boards, failedDrafts } = storeToRefs(forum);
 const { currentRoute: route } = storeToRefs(phone);
+const { typePrompts } = storeToRefs(prompts);
 const { settings } = storeToRefs(settingsStore);
 
 const query = ref('');
 const sortMode = ref<ThreadSortMode>('latestReply');
+const boardEditorTypeId = ref('');
 const boardDraft = reactive({
   description: '',
   name: '',
@@ -526,8 +575,11 @@ const threadDraft = reactive({
   title: '',
 });
 const threadGenerationDraft = reactive({
+  boardDescription: '',
   boardId: '',
   boardName: '',
+  boardNameMode: 'fixed' as BoardNameMode,
+  boardTypeId: '',
   fromStartEnd: 20,
   rangeText: '',
   recentCount: 20,
@@ -611,6 +663,12 @@ const sortOptions = [
   { label: '热度', title: '热度', value: 'heat' as const },
   { label: '收藏', title: '收藏', value: 'favorite' as const },
 ];
+const forumBoardTypePrompts = computed(() => typePrompts.value.filter(item => item.domain === 'forum-board'));
+const boardTypeOptions = computed(() =>
+  [...forumBoardTypePrompts.value]
+    .sort((left, right) => right.usageCount - left.usageCount || left.name.localeCompare(right.name, 'zh-CN'))
+    .map(item => ({ label: item.name, value: item.id })),
+);
 
 const activeBoard = computed(() => {
   const boardId = route.value.params?.boardId;
@@ -801,6 +859,8 @@ watch(
     if (current.page === 'board-editor') {
       boardDraft.description = editingBoard.value?.description || '';
       boardDraft.name = editingBoard.value?.name || '';
+      boardEditorTypeId.value =
+        forumBoardTypePrompts.value.find(item => item.prompt.trim() === boardDraft.description.trim())?.id || '';
     }
 
     if (current.page === 'thread-editor') {
@@ -825,6 +885,9 @@ watch(
       selectedReferences.value = [];
       threadGenerationDraft.boardId = activeBoard.value?.id || '';
       threadGenerationDraft.boardName = activeBoard.value?.name || '';
+      threadGenerationDraft.boardDescription = activeBoard.value?.description || '';
+      threadGenerationDraft.boardNameMode = 'fixed';
+      threadGenerationDraft.boardTypeId = '';
       threadGenerationDraft.fromStartEnd = 20;
       threadGenerationDraft.rangeText = '';
       threadGenerationDraft.recentCount = 20;
@@ -940,6 +1003,28 @@ function submitBoard() {
   phone.replacePage('board', board.name, { boardId: board.id });
 }
 
+function selectBoardEditorType(promptId: string) {
+  const prompt = prompts.getTypePrompt(promptId);
+  if (!prompt || prompt.domain !== 'forum-board') {
+    boardEditorTypeId.value = '';
+    return;
+  }
+  boardEditorTypeId.value = prompt.id;
+  boardDraft.description = prompt.prompt;
+  if (!boardDraft.name.trim()) boardDraft.name = prompt.name;
+}
+
+function selectThreadBoardType(promptId: string) {
+  const prompt = prompts.getTypePrompt(promptId);
+  if (!prompt || prompt.domain !== 'forum-board') {
+    threadGenerationDraft.boardTypeId = '';
+    return;
+  }
+  threadGenerationDraft.boardTypeId = prompt.id;
+  threadGenerationDraft.boardDescription = prompt.prompt;
+  threadGenerationDraft.boardName = prompt.name;
+}
+
 function resolveThreadTargetBoard() {
   if (activeBoard.value) return activeBoard.value;
   if (threadDraft.boardId) {
@@ -1031,11 +1116,15 @@ function buildThreadOutputFormat() {
 
 function buildThreadGenerationConfig() {
   const board = threadGenerationBoard.value;
+  if (!board && threadGenerationDraft.boardNameMode === 'fixed' && !threadGenerationDraft.boardName.trim()) {
+    throw new Error('请填写固定板块名称，或切换为 AI 生成');
+  }
   return {
     appPrompt: prompts.appPrompts.forum,
-    boardDescription: board?.description || '',
+    boardDescription: board?.description || threadGenerationDraft.boardDescription,
     boardId: board?.id || '',
-    boardName: board?.name || threadGenerationDraft.boardName.trim(),
+    boardName:
+      board?.name || (threadGenerationDraft.boardNameMode === 'fixed' ? threadGenerationDraft.boardName.trim() : ''),
     outputFormat: buildThreadOutputFormat(),
     userRequirement: threadGenerationDraft.userRequirement,
   };
@@ -1052,6 +1141,7 @@ function buildReplyThreadContext(thread: ForumThread) {
 
   return [
     `板块：${activeBoard.value?.name || ''}`,
+    activeBoard.value?.description ? `板块说明：${activeBoard.value.description}` : '',
     `帖子标题：${thread.title}`,
     `主楼作者：${thread.author}`,
     `主楼正文：\n${thread.content}`,
@@ -1657,6 +1747,26 @@ function reparseFailedDraft() {
 .pc-forum-app .pc-area {
   min-height: 220px;
   resize: vertical;
+}
+
+.pc-forum-type-fields {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  min-width: 0;
+  margin-top: 14px;
+}
+
+.pc-forum-type-fields :is(.pc-field, .pc-area) {
+  margin-top: 0;
+}
+
+.pc-forum-type-fields .pc-area {
+  min-height: 120px;
+}
+
+.pc-forum-name-mode {
+  align-self: flex-start;
 }
 
 .pc-forum-app .pc-area.compact {

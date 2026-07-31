@@ -149,7 +149,7 @@ export const usePhoneStore = defineStore('phone', () => {
     await Promise.all(getRegisteredPhoneAppScopeSwitchHandlers().map(item => item.switchScope(scopeKey)));
   }
 
-  async function setViewingScope(scopeKey: string, meta?: Partial<PhoneViewingScopeMeta>) {
+  async function setViewingScope(scopeKey: string, meta?: Partial<PhoneViewingScopeMeta>, forceApply = false) {
     const normalizedScopeKey = areChatScopeKeysEquivalent(scopeKey, currentTavernScopeKey.value)
       ? currentTavernScopeKey.value
       : scopeKey;
@@ -160,11 +160,11 @@ export const usePhoneStore = defineStore('phone', () => {
     };
     viewingScopeKey.value = normalizedScopeKey;
     viewingScopeMeta.value = nextMeta;
-    if (!scopeChanged) return;
+    if (!scopeChanged && !forceApply) return;
     await applyViewingScope(normalizedScopeKey);
   }
 
-  async function syncCurrentTavernScope(forceViewCurrent = false) {
+  async function syncCurrentTavernScope(forceViewCurrent = false, forceApply = false) {
     const previousScopeKey = currentTavernScopeKey.value;
     const wasViewingCurrent =
       areChatScopeKeysEquivalent(viewingScopeKey.value, previousScopeKey) ||
@@ -172,7 +172,7 @@ export const usePhoneStore = defineStore('phone', () => {
     const nextScopeKey = getCurrentChatScopeKey();
     currentTavernScopeKey.value = nextScopeKey;
     if (forceViewCurrent || wasViewingCurrent) {
-      await setViewingScope(nextScopeKey);
+      await setViewingScope(nextScopeKey, undefined, forceApply);
     }
   }
 
@@ -472,11 +472,17 @@ export const usePhoneStore = defineStore('phone', () => {
     });
   }
 
+  let chatChangedSyncTimer: number | null = null;
   const stopChatChanged = onTavernEvent('CHAT_CHANGED', () => {
-    void syncCurrentTavernScope(true);
+    if (chatChangedSyncTimer !== null) window.clearTimeout(chatChangedSyncTimer);
+    chatChangedSyncTimer = window.setTimeout(() => {
+      chatChangedSyncTimer = null;
+      void syncCurrentTavernScope(true, true);
+    }, 0);
     void goHome({ skipConfirm: true });
   });
   onScopeDispose(() => {
+    if (chatChangedSyncTimer !== null) window.clearTimeout(chatChangedSyncTimer);
     stopChatChanged.stop();
   });
 

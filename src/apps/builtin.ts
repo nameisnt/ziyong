@@ -57,6 +57,7 @@ import {
   createExtrasRewritePromptDefinition,
   createExtrasTypePromptDomain,
   createExtraSummaryPromptDefinition,
+  createForumBoardTypePromptDomain,
   createForumPromptDefinition,
   createForumReplyPromptDefinition,
   createLettersPromptDefinition,
@@ -159,6 +160,7 @@ export const BUILTIN_PHONE_APP_MODULES: PhoneAppModule[] = [
     scopeSwitchHandler: scopeKey =>
       import('@/store/forum').then(({ useForumStore }) => useForumStore().switchScope(scopeKey)),
     specialPromptDefinitions: [createForumReplyPromptDefinition()],
+    typePromptDomains: [createForumBoardTypePromptDomain()],
   }),
   definePhoneApp({
     id: 'theater',

@@ -53,15 +53,23 @@
           type="button"
           :disabled="controlsDisabled || !quickPhraseGroups.length"
           :title="quickPhraseGroups.length ? t`添加快速短语` : t`还没有快速短语`"
-          @click="quickPhraseOpen = !quickPhraseOpen"
+          @click="toggleQuickPhrasePanel"
         >
           <i class="fa-solid fa-plus"></i>
         </button>
       </div>
       <div v-if="quickPhraseOpen" class="pc-quick-phrase-panel">
         <article v-for="group in quickPhraseGroups" :key="group.id" class="pc-quick-phrase-group">
-          <strong>{{ group.name }}</strong>
-          <div class="pc-quick-phrase-list">
+          <button
+            class="pc-quick-phrase-group-toggle"
+            type="button"
+            :aria-expanded="openQuickPhraseGroupId === group.id"
+            @click="toggleQuickPhraseGroup(group.id)"
+          >
+            <strong>{{ group.name }}</strong>
+            <i :class="openQuickPhraseGroupId === group.id ? 'fa-solid fa-chevron-up' : 'fa-solid fa-chevron-down'"></i>
+          </button>
+          <div v-if="openQuickPhraseGroupId === group.id" class="pc-quick-phrase-list">
             <button
               v-for="phrase in group.phrases"
               :key="phrase.id"
@@ -177,6 +185,7 @@ const settingsStore = useSettingsStore();
 const { quickPhraseGroups } = storeToRefs(prompts);
 const { settings } = storeToRefs(settingsStore);
 const quickPhraseOpen = ref(false);
+const openQuickPhraseGroupId = ref('');
 const tavernPresetNames = ref<string[]>([]);
 const generationBlocked = computed(() => !phone.isViewingCurrentChat);
 const controlsDisabled = computed(() => props.running || generationBlocked.value);
@@ -198,6 +207,16 @@ watch(controlsDisabled, disabled => {
   if (disabled) quickPhraseOpen.value = false;
 });
 
+watch(quickPhraseGroups, groups => {
+  if (!groups.length) {
+    openQuickPhraseGroupId.value = '';
+    return;
+  }
+  if (!groups.some(group => group.id === openQuickPhraseGroupId.value)) {
+    openQuickPhraseGroupId.value = groups[0].id;
+  }
+});
+
 onMounted(() => {
   refreshTavernPresetNames();
 });
@@ -210,13 +229,24 @@ function refreshTavernPresetNames() {
   }
 }
 
+function toggleQuickPhrasePanel() {
+  quickPhraseOpen.value = !quickPhraseOpen.value;
+  if (!quickPhraseOpen.value) return;
+  if (!quickPhraseGroups.value.some(group => group.id === openQuickPhraseGroupId.value)) {
+    openQuickPhraseGroupId.value = quickPhraseGroups.value[0]?.id || '';
+  }
+}
+
+function toggleQuickPhraseGroup(groupId: string) {
+  openQuickPhraseGroupId.value = openQuickPhraseGroupId.value === groupId ? '' : groupId;
+}
+
 function appendQuickPhrase(text: string) {
   const phrase = text.trim();
   if (!phrase) return;
   const current = props.userRequirement.trimEnd();
   const separator = current ? '\n' : '';
   emit('update:userRequirement', `${current}${separator}${phrase}`);
-  quickPhraseOpen.value = false;
 }
 </script>
 
@@ -282,10 +312,31 @@ function appendQuickPhrase(text: string) {
   background: var(--pc-surface-strong);
 }
 
-.pc-quick-phrase-group strong {
-  display: block;
-  margin-bottom: 8px;
+.pc-quick-phrase-group-toggle {
+  /* ui-reuse-allow: collapsible group heading uses a full-width hierarchy control. */
+  appearance: none;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  width: 100%;
+  min-height: 36px;
+  border: 0;
+  background: transparent;
+  color: var(--pc-text);
+  cursor: pointer;
+  padding: 0;
+  text-align: left;
+}
+
+.pc-quick-phrase-group-toggle strong {
   font-size: 13px;
+}
+
+.pc-quick-phrase-group-toggle i {
+  flex: 0 0 auto;
+  color: var(--pc-muted);
+  font-size: 12px;
 }
 
 .pc-quick-phrase-list {
@@ -295,6 +346,7 @@ function appendQuickPhrase(text: string) {
   min-width: 0;
   max-width: 100%;
   overflow-x: hidden;
+  padding-top: 8px;
 }
 
 .pc-quick-phrase-chip {

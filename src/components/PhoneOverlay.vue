@@ -289,8 +289,13 @@ const homePages = computed(() => {
 const currentHomePageApps = computed(() => homePages.value[homePageIndex.value] ?? homePages.value[0] ?? []);
 const currentPageStartIndex = computed(() => homePageIndex.value * homePageSize.value);
 const currentPageLastAppId = computed(() => currentHomePageApps.value[currentHomePageApps.value.length - 1]?.id || '');
-const homeArchiveDomains = computed(() => getChatArchiveDomains(viewingScopeKey.value));
+const homeArchiveDomains = ref(getChatArchiveDomains(viewingScopeKey.value));
 const homeArchiveDomainByApp = computed(() => new Map(homeArchiveDomains.value.map(domain => [domain.appId, domain])));
+
+function refreshHomeArchiveDomains() {
+  homeArchiveDomains.value = getChatArchiveDomains(viewingScopeKey.value);
+}
+
 const insertBeforeAppId = computed(() => {
   if (!appDrag.isDragging || !appDrag.appId) return '';
   const order = gridApps.value.map(app => app.id).filter(id => id !== appDrag.appId);
@@ -856,6 +861,7 @@ async function refreshPhoneData() {
     getRegisteredPhoneBackupRehydrateHandlers().forEach(handler => handler());
     stats.refresh();
     await nextTick();
+    refreshHomeArchiveDomains();
     phone.noticeSuccess('插件数据已刷新');
   } catch (caughtError) {
     phone.noticeError(caughtError instanceof Error ? caughtError.message : '刷新插件数据失败');
@@ -920,10 +926,22 @@ watch(
   },
 );
 
+watch(viewingScopeKey, refreshHomeArchiveDomains);
+
+watch(
+  () => currentRoute.value.appId,
+  async appId => {
+    if (appId !== 'home') return;
+    await nextTick();
+    refreshHomeArchiveDomains();
+  },
+);
+
 watch(isOpen, async nextIsOpen => {
   window.__sillytavernPhoneSyncNativeLauncher__?.();
   if (!nextIsOpen) return;
   await nextTick();
+  refreshHomeArchiveDomains();
   syncPositionFromSettings();
   window.__sillytavernPhoneSyncNativeLauncher__?.();
 });

@@ -327,6 +327,17 @@ watch(
 );
 
 watch(
+  () => worldbookLinks.scopeApplyRevision,
+  () => {
+    if (worldbookLinks.lastAppliedScopeKey !== currentScopeKey.value) return;
+    if (route.value.appId !== 'worldbook-link') return;
+    if (!phone.isViewingCurrentChat) return;
+    if (route.value.page === 'root') void refresh();
+    if (route.value.page === 'detail') void loadDetail();
+  },
+);
+
+watch(
   () => [route.value.appId, route.value.page, route.value.params?.bookName] as const,
   ([appId, page]) => {
     if (appId !== 'worldbook-link') return;

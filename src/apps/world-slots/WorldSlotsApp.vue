@@ -63,37 +63,6 @@
           <option v-for="option in worldSlotTypeOptions" :key="option.id" :value="option.id">{{ option.label }}</option>
         </select>
         <input v-model="draft.keysText" class="pc-field" type="text" :placeholder="t`关键词，用逗号分隔，可留空`" />
-        <section class="pc-profile-ref-card">
-          <div class="pc-section-head">
-            <strong>{{ t`引用资料卡片` }}</strong>
-            <span>{{ draft.profileEntryIds.length }} {{ t`个` }}</span>
-          </div>
-          <select v-model="draft.profileEntryIds" class="pc-field pc-select pc-profile-ref-select" multiple>
-            <option v-for="entry in profileEntries" :key="entry.id" :value="entry.id">
-              {{ entry.title }} · {{ getProfileKindLabel(entry.kind) }}
-            </option>
-          </select>
-          <div class="pc-profile-ref-actions">
-            <button
-              class="pc-soft-btn"
-              type="button"
-              :disabled="!selectedProfileEntries.length"
-              @click="appendSelectedProfiles"
-            >
-              <i class="fa-solid fa-plus"></i>
-              <span>{{ t`追加到正文` }}</span>
-            </button>
-            <button
-              class="pc-soft-btn"
-              type="button"
-              :disabled="!selectedProfileEntries.length"
-              @click="fillFromSelectedProfiles"
-            >
-              <i class="fa-solid fa-file-lines"></i>
-              <span>{{ t`填入正文` }}</span>
-            </button>
-          </div>
-        </section>
         <label class="pc-check-row">
           <span>{{ t`启用条目` }}</span>
           <input v-model="draft.enabled" type="checkbox" />
@@ -103,6 +72,12 @@
           class="pc-area pc-world-area pc-saved-content-area"
           :placeholder="t`写入世界书的内容`"
         ></textarea>
+        <ReferencePicker
+          v-model="insertedReferences"
+          insert-mode
+          :excluded-root-ids="['app:world-slots']"
+          @insert="insertReference"
+        />
         <div class="pc-form-actions">
           <button v-if="editingSlot" class="pc-soft-btn danger" type="button" @click="deleteCurrent">
             {{ t`删除` }}
@@ -117,8 +92,10 @@
 
 <script setup lang="ts">
 import EmptyState from '@/components/EmptyState.vue';
+import ReferencePicker from '@/components/ReferencePicker.vue';
 import { usePhoneStore } from '@/store/phone';
 import { getProfileKindLabel, type ProfileEntry, useProfilesStore } from '@/apps/profiles/store';
+import type { GenerationReferenceItem } from '@/util/references';
 import {
   getWorldSlotTypeLabel,
   type WorldSlot,
@@ -137,21 +114,16 @@ const route = computed(() => phone.currentRoute);
 const query = ref('');
 const typeFilter = ref<'' | WorldSlotType>('');
 const syncing = ref(false);
+const insertedReferences = ref<GenerationReferenceItem[]>([]);
 const draft = reactive({
   content: '',
   enabled: true,
   keysText: '',
-  profileEntryIds: [] as string[],
   title: '',
   type: 'note' as WorldSlotType,
 });
 
 const editingSlot = computed(() => (route.value.params?.slotId ? worldSlots.getSlot(route.value.params.slotId) : null));
-const selectedProfileEntries = computed(() =>
-  draft.profileEntryIds
-    .map(entryId => profiles.getEntry(entryId))
-    .filter((entry): entry is ProfileEntry => Boolean(entry)),
-);
 const normalizedQuery = computed(() => query.value.trim().toLowerCase());
 const filteredSlots = computed(() =>
   slots.value.filter(slot => {
@@ -185,9 +157,13 @@ function fillDraft(slot: WorldSlot | null) {
   draft.title = slot?.title || '';
   draft.type = slot?.type || 'note';
   draft.keysText = slot?.keys.join('、') || '';
-  draft.profileEntryIds = [...(slot?.profileEntryIds ?? [])];
-  draft.content = slot?.content || '';
+  const legacyProfiles = (slot?.profileEntryIds ?? [])
+    .map(entryId => profiles.getEntry(entryId))
+    .filter((entry): entry is ProfileEntry => Boolean(entry))
+    .map(buildProfileText);
+  draft.content = [slot?.content.trim() || '', ...legacyProfiles].filter(Boolean).join('\n\n');
   draft.enabled = slot?.enabled ?? true;
+  insertedReferences.value = [];
 }
 
 function openEditor(slotId?: string) {
@@ -203,7 +179,7 @@ function saveDraft() {
     content: draft.content,
     enabled: draft.enabled,
     keys: splitKeys(draft.keysText),
-    profileEntryIds: [...draft.profileEntryIds],
+    profileEntryIds: [],
     title: draft.title,
     type: draft.type,
   };
@@ -225,35 +201,11 @@ function buildProfileText(entry: ProfileEntry) {
     .join('\n');
 }
 
-function buildSelectedProfilesText() {
-  return selectedProfileEntries.value.map(buildProfileText).join('\n\n');
-}
-
-function syncTitleAndKeysFromProfiles() {
-  if (!draft.title.trim() && selectedProfileEntries.value.length === 1) {
-    draft.title = selectedProfileEntries.value[0].title;
-  }
-  const existingKeys = splitKeys(draft.keysText);
-  const nextKeys = new Set(existingKeys);
-  selectedProfileEntries.value.forEach(entry => {
-    nextKeys.add(entry.title);
-    entry.tags.forEach(tag => nextKeys.add(tag));
-  });
-  draft.keysText = Array.from(nextKeys).join('、');
-}
-
-function appendSelectedProfiles() {
-  const text = buildSelectedProfilesText();
-  if (!text) return;
-  draft.content = [draft.content.trim(), text].filter(Boolean).join('\n\n');
-  syncTitleAndKeysFromProfiles();
-}
-
-function fillFromSelectedProfiles() {
-  const text = buildSelectedProfilesText();
-  if (!text) return;
-  draft.content = text;
-  syncTitleAndKeysFromProfiles();
+function insertReference(reference: GenerationReferenceItem) {
+  const content = reference.content.trim();
+  if (!content) return;
+  draft.content = [draft.content.trimEnd(), content].filter(Boolean).join('\n\n');
+  toastr.success(`已插入“${reference.title}”`);
 }
 
 async function deleteCurrent() {
@@ -391,30 +343,6 @@ async function syncSlots() {
   width: 18px;
   height: 18px;
   accent-color: var(--pc-theme-accent);
-}
-
-.pc-profile-ref-card {
-  display: grid;
-  gap: 10px;
-  border-radius: var(--pc-control-radius);
-  background: var(--pc-surface-strong);
-  padding: 12px;
-}
-
-.pc-profile-ref-actions {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 10px;
-}
-
-.pc-profile-ref-select {
-  min-height: 116px;
-}
-
-.pc-profile-ref-actions {
-  justify-content: flex-end;
-  flex-wrap: wrap;
 }
 
 .pc-world-area {

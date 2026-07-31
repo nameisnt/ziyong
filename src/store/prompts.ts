@@ -585,6 +585,23 @@ export const usePromptStore = defineStore('prompts', () => {
     return group;
   }
 
+  function moveGroup(groups: QuickPhraseGroup[], groupId: string, direction: -1 | 1) {
+    const currentIndex = groups.findIndex(group => group.id === groupId);
+    const targetIndex = currentIndex + direction;
+    if (currentIndex < 0 || targetIndex < 0 || targetIndex >= groups.length) return groups;
+    const next = [...groups];
+    [next[currentIndex], next[targetIndex]] = [next[targetIndex], next[currentIndex]];
+    return next;
+  }
+
+  function moveQuickPhraseGroup(groupId: string, direction: -1 | 1) {
+    data.value.quickPhraseGroups = moveGroup(data.value.quickPhraseGroups, groupId, direction);
+  }
+
+  function moveQuickTemplateGroup(groupId: string, direction: -1 | 1) {
+    data.value.quickTemplateGroups = moveGroup(data.value.quickTemplateGroups, groupId, direction);
+  }
+
   function deleteQuickPhraseGroup(groupId: string) {
     data.value.quickPhraseGroups = data.value.quickPhraseGroups.filter(group => group.id !== groupId);
   }
@@ -674,6 +691,8 @@ export const usePromptStore = defineStore('prompts', () => {
     getQuickTemplateGroup,
     getOutputFormatDefinition,
     getTypePrompt,
+    moveQuickPhraseGroup,
+    moveQuickTemplateGroup,
     outputFormatDefinitions,
     outputRules,
     parseTransfer,

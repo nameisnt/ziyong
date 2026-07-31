@@ -73,6 +73,8 @@ function assertUsableChatScope(scopeKey: string) {
 
 export const useWorldbookLinkStore = defineStore('worldbook-link', () => {
   const settings = ref<WorldbookLinkSettings>(readSettings(_.get(extension_settings, worldbookLinkField, {})));
+  const lastAppliedScopeKey = ref('');
+  const scopeApplyRevision = ref(0);
   let scopeSequence = 0;
 
   watch(
@@ -194,14 +196,14 @@ export const useWorldbookLinkStore = defineStore('worldbook-link', () => {
     const boundBooks = currentBoundBookNames();
     const targetProfiles = settings.value.profiles[scopeKey] ?? {};
     const previousBooks = Object.keys(settings.value.activeScopes);
-    const failures: string[] = [];
+    const failures = new Map<string, string>();
 
     for (const bookName of previousBooks) {
       if (boundBooks.has(bookName) && targetProfiles[bookName]) continue;
       try {
         await restoreBaseline(bookName);
-      } catch {
-        failures.push(bookName);
+      } catch (error) {
+        failures.set(bookName, error instanceof Error ? error.message : '恢复原始状态失败');
       }
     }
 
@@ -209,13 +211,15 @@ export const useWorldbookLinkStore = defineStore('worldbook-link', () => {
       if (!targetProfiles[bookName]) continue;
       try {
         await applyProfile(scopeKey, bookName);
-      } catch {
-        failures.push(bookName);
+      } catch (error) {
+        failures.set(bookName, error instanceof Error ? error.message : '应用聊天配置失败');
       }
     }
 
-    if (failures.length) {
-      toastr.warning(`世界书联动未能更新：${[...new Set(failures)].join('、')}`);
+    if (failures.size) {
+      throw new Error(
+        [...failures.entries()].map(([bookName, message]) => `${bookName}（${message}）`).join('、'),
+      );
     }
   }
 
@@ -227,6 +231,8 @@ export const useWorldbookLinkStore = defineStore('worldbook-link', () => {
       if (sequence !== scopeSequence || scopeKey !== getCurrentChatScopeKey()) return;
       try {
         await applyScope(scopeKey);
+        lastAppliedScopeKey.value = scopeKey;
+        scopeApplyRevision.value += 1;
         return;
       } catch (error) {
         if (attempt < 2) continue;
@@ -260,10 +266,12 @@ export const useWorldbookLinkStore = defineStore('worldbook-link', () => {
     getStatus,
     inheritProfiles,
     importBackup,
+    lastAppliedScopeKey,
     rehydrateFromSettings,
     removeProfile,
     resetCurrentScope,
     restoreBaseline,
+    scopeApplyRevision,
     settings,
     switchScope,
   };

@@ -231,6 +231,41 @@ export function createForumReplyPromptDefinition(): PhonePromptDefinition {
   };
 }
 
+export function createForumBoardTypePromptDomain(): PhoneTypePromptDomain {
+  return {
+    key: 'forum-board',
+    label: '论坛板块',
+    emptyLabel: '还没有论坛板块类型提示词',
+    defaultOpen: true,
+    defaultPrompts: [
+      {
+        id: 'prompt_type_forum_board_discussion',
+        domain: 'forum-board',
+        name: '剧情讨论',
+        prompt: '讨论当前剧情进展、人物动机和后续走向。发言可以分析、质疑和补充线索，但不要脱离已发生的事实。',
+      },
+      {
+        id: 'prompt_type_forum_board_relationship',
+        domain: 'forum-board',
+        name: '角色关系',
+        prompt: '围绕角色关系、情感变化和互动细节展开讨论。允许不同立场争论，但保持论坛用户之间明显的语气差异。',
+      },
+      {
+        id: 'prompt_type_forum_board_gossip',
+        domain: 'forum-board',
+        name: '八卦闲聊',
+        prompt: '以轻松八卦和日常闲聊为主，允许吐槽、玩梗和自然歪楼，但不要凭空捏造会改变剧情事实的重大信息。',
+      },
+      {
+        id: 'prompt_type_forum_board_analysis',
+        domain: 'forum-board',
+        name: '设定考据',
+        prompt: '集中讨论世界观、背景设定和细节线索。发言应有推理过程，区分已有事实、合理猜测和个人观点。',
+      },
+    ],
+  };
+}
+
 export function createTheaterPromptDefinition(): PhonePromptDefinition {
   return {
     key: 'theater',
