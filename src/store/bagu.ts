@@ -319,9 +319,7 @@ export const useBaguStore = defineStore('bagu', () => {
       replacements: cleanList(input.replacements || []),
       sources: cleanList(input.sources || []),
       suggestion:
-        input.type === 'replacement'
-          ? cleanList(input.replacements || []).join(' / ')
-          : input.suggestion?.trim() || '',
+        input.type === 'replacement' ? cleanList(input.replacements || []).join(' / ') : input.suggestion?.trim() || '',
       template: input.type === 'template' ? input.template?.trim() || '' : '',
       targets: cleanList(input.targets || []),
       note: input.note.trim(),
@@ -350,9 +348,7 @@ export const useBaguStore = defineStore('bagu', () => {
       replacements: cleanList(input.replacements || []),
       sources: cleanList(input.sources || []),
       suggestion:
-        input.type === 'replacement'
-          ? cleanList(input.replacements || []).join(' / ')
-          : input.suggestion?.trim() || '',
+        input.type === 'replacement' ? cleanList(input.replacements || []).join(' / ') : input.suggestion?.trim() || '',
       template: input.type === 'template' ? input.template?.trim() || '' : '',
       targets: cleanList(input.targets || []),
       note: input.note.trim(),
