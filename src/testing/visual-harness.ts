@@ -304,6 +304,18 @@ async function waitForVisualCondition(condition: () => boolean, timeout = 1000) 
   return true;
 }
 
+async function openReaderCatalog() {
+  const revealButton = document.querySelector<HTMLButtonElement>('.pc-reader-footer-reveal');
+  if (!revealButton) throw new Error('Reader footer reveal button is missing');
+  revealButton.click();
+  await waitForPaint();
+  const catalogButton = document.querySelector<HTMLButtonElement>('.pc-detail-nav .catalog');
+  if (!catalogButton) throw new Error('Reader catalog button is missing after revealing the footer');
+  catalogButton.click();
+  await waitForPaint();
+  if (!document.querySelector('.pc-catalog-mask')) throw new Error('Reader catalog modal did not open');
+}
+
 setupVisualGlobals();
 applyIconFallback();
 
@@ -317,6 +329,8 @@ const { useGenerationTaskStore } = await import('@/store/generationTasks');
 const { useReaderStore } = await import('@/store/reader');
 const { useSettingsStore } = await import('@/store/settings');
 const { useSummaryStore } = await import('@/store/summary');
+const { useDiaryStore } = await import('@/store/diary');
+const { useLettersStore } = await import('@/store/letters');
 const { useTheaterStore } = await import('@/store/theater');
 const { useWorkbenchStore } = await import('@/apps/workbench/store');
 const { useProfilesStore } = await import('@/apps/profiles/store');
@@ -333,6 +347,7 @@ const scenarios: VisualScenarioName[] = [
   'home',
   'home-tasks',
   'home-tasks-dark',
+  'app-deferred-mount-order',
   ...rootAppScenarios,
   'bagu-scan-actions',
   'bagu-scan-applied',
@@ -367,6 +382,7 @@ const scenarios: VisualScenarioName[] = [
   'extras-legacy-continuation',
   'summary-create',
   'summary-book',
+  'summary-entry-detail',
   'summary-import',
   'summary-batch',
   'prompts-app-detail',
@@ -376,7 +392,13 @@ const scenarios: VisualScenarioName[] = [
   'theater-generate-dark-inputs',
   'theater-editor',
   'theater-history',
+  'diary-entry-detail',
+  'letters-entry-detail',
   'tutorial-article',
+  'tutorial-app-directory',
+  'tutorial-missing-article',
+  'tutorial-scroll-return',
+  'tutorial-search-results',
   'video-viewer',
   'workbench-logs',
   'profiles-table',
@@ -475,6 +497,54 @@ function createSummaryFixture() {
     content: '两人的关系因一次隐瞒出现裂痕，重要物品暂时由配角保管。',
     rangeLabel: '第 13-24 楼',
     title: '关系转折',
+  });
+  return book;
+}
+
+function createDiaryFixture() {
+  const diary = useDiaryStore();
+  diary.resetCurrentScope();
+  const book = diary.ensureBook({ name: '林见夏' }, '林见夏的日记');
+  diary.createEntry({
+    bookId: book.id,
+    content: '雨停以后，我终于把那封信从抽屉里拿了出来。',
+    kind: 'normal',
+    occurredAt: '第三日 · 夜晚',
+    perspective: { name: '林见夏' },
+    readers: [],
+    title: '雨后的信',
+  });
+  diary.createEntry({
+    bookId: book.id,
+    content: '港口的灯一盏一盏熄灭，我仍然没有等到约定的人。',
+    kind: 'normal',
+    occurredAt: '第四日 · 凌晨',
+    perspective: { name: '林见夏' },
+    readers: [],
+    title: '没有赴约的人',
+  });
+  return book;
+}
+
+function createLettersFixture() {
+  const letters = useLettersStore();
+  letters.resetCurrentScope();
+  const book = letters.ensureBook([{ name: '林见夏' }, { name: '周临川' }], '未寄出的往来信');
+  letters.createEntry({
+    bookId: book.id,
+    content: '你说雨停后会回来，所以我一直把窗边那盏灯留着。',
+    format: 'formal',
+    receiver: { name: '周临川' },
+    sender: { name: '林见夏' },
+    title: '第一封信',
+  });
+  letters.createEntry({
+    bookId: book.id,
+    content: '港口的事已经办完。等我回去，再告诉你那晚没有说完的话。',
+    format: 'formal',
+    receiver: { name: '林见夏' },
+    sender: { name: '周临川' },
+    title: '迟来的回信',
   });
   return book;
 }
@@ -1406,8 +1476,71 @@ async function applyScenario(name: VisualScenarioName, options: { height?: numbe
     });
   } else if (name === 'tutorial-article') {
     resetPhoneToRoute('tutorial', 'article', '{{phoneUserInput}} 宏', { articleId: 'phone-user-input' });
+  } else if (name === 'tutorial-app-directory') {
+    resetPhoneToRoute('tutorial', 'article', '全部 App 快速索引', { articleId: 'all-app-directory' });
+    await waitForPaint();
+    const directoryToggles = [...document.querySelectorAll<HTMLButtonElement>('.pc-tutorial-directory-toggle')];
+    if (directoryToggles[0]?.getAttribute('aria-expanded') !== 'true') {
+      throw new Error('Tutorial App directory did not expand the first group by default');
+    }
+    if (directoryToggles.slice(1).some(toggle => toggle.getAttribute('aria-expanded') !== 'false')) {
+      throw new Error('Tutorial App directory expanded more than the first group by default');
+    }
+  } else if (name === 'tutorial-missing-article') {
+    resetPhoneToRoute('tutorial', 'article', '不存在的教程', { articleId: 'missing-article' });
+  } else if (name === 'tutorial-scroll-return') {
+    resetPhoneToRoute('tutorial', 'root', '教程');
+    await waitForPaint();
+    const screen = document.querySelector<HTMLElement>('.pc-screen');
+    if (!screen) throw new Error('Tutorial scroll fixture could not find the phone screen');
+    screen.scrollTop = Math.min(360, screen.scrollHeight - screen.clientHeight);
+    const expectedScrollTop = screen.scrollTop;
+    if (expectedScrollTop < 100) throw new Error('Tutorial root was not tall enough to verify scroll restoration');
+    phone.pushRoute('tutorial', 'article', '全部 App 快速索引', { articleId: 'all-app-directory' });
+    await waitForPaint();
+    await phone.goBack();
+    await waitForPaint();
+    if (Math.abs(screen.scrollTop - expectedScrollTop) > 2) {
+      throw new Error(`Tutorial scroll was not restored: ${screen.scrollTop} !== ${expectedScrollTop}`);
+    }
+  } else if (name === 'tutorial-search-results') {
+    resetPhoneToRoute('tutorial', 'root', '教程');
+    await waitForPaint();
+    const search = document.querySelector<HTMLInputElement>('.pc-tutorial-search input');
+    if (!search) throw new Error('Tutorial search fixture could not find the search input');
+    search.value = '中间内容';
+    search.dispatchEvent(new Event('input', { bubbles: true }));
+    await waitForPaint();
+    const snippet = document.querySelector<HTMLElement>('.pc-tutorial-match');
+    if (!snippet?.textContent?.includes('中间内容')) {
+      throw new Error('Tutorial search did not expose a matching body snippet');
+    }
   } else if (name === 'forum-generate-thread') {
     resetPhoneToRoute('forum', 'generate-thread', '生成帖子');
+  } else if (name === 'app-deferred-mount-order') {
+    const phone = usePhoneStore();
+    phone.isOpen = false;
+    phone.stack = [{ appId: 'home', page: 'home', title: '酒馆手机' }];
+    await waitForPaint();
+
+    resetPhoneToRoute('summary', 'root', '总结');
+    resetPhoneToRoute('theater', 'root', '小剧场');
+    await waitForPaint();
+    if (!document.querySelector('.pc-theater-app') || document.querySelector('.pc-summary-app')) {
+      throw new Error('Deferred app mount rendered a stale app after a rapid route switch');
+    }
+
+    phone.isOpen = false;
+    await waitForPaint();
+    if (document.querySelector('.pc-theater-app')) {
+      throw new Error('Deferred app mount kept the active app DOM rendered while the phone was closed');
+    }
+
+    phone.isOpen = true;
+    await waitForPaint();
+    if (!document.querySelector('.pc-theater-app')) {
+      throw new Error('Deferred app mount did not reactivate the cached app when the phone reopened');
+    }
   } else if (name === 'forum-board') {
     const { board } = createForumFixture();
     resetPhoneToRoute('forum', 'board', board.name, { boardId: board.id });
@@ -1426,6 +1559,13 @@ async function applyScenario(name: VisualScenarioName, options: { height?: numbe
   } else if (name === 'summary-book') {
     const book = createSummaryFixture();
     resetPhoneToRoute('summary', 'book', book.title, { bookId: book.id });
+  } else if (name === 'summary-entry-detail') {
+    const book = createSummaryFixture();
+    const entry = book.entries[0];
+    if (!entry) throw new Error('Summary detail fixture did not create an entry');
+    resetPhoneToRoute('summary', 'entry', entry.title, { bookId: book.id, entryId: entry.id });
+    await waitForPaint();
+    await openReaderCatalog();
   } else if (name === 'summary-import') {
     const book = createSummaryFixture();
     resetPhoneToRoute('summary', 'import-chat', '导入 AI 楼层', { bookId: book.id });
@@ -1436,14 +1576,28 @@ async function applyScenario(name: VisualScenarioName, options: { height?: numbe
     resetPhoneToRoute('summary', 'batch-generate', '批量生成总结', { bookId: book.id });
   } else if (name === 'diary-batch') {
     resetPhoneToRoute('diary', 'batch-generate', '批量生成日记');
+  } else if (name === 'diary-entry-detail') {
+    const book = createDiaryFixture();
+    const entry = book.entries[0];
+    if (!entry) throw new Error('Diary detail fixture did not create an entry');
+    resetPhoneToRoute('diary', 'entry', entry.title, { bookId: book.id, entryId: entry.id });
+    await waitForPaint();
+    await openReaderCatalog();
+  } else if (name === 'letters-entry-detail') {
+    const book = createLettersFixture();
+    const entry = book.entries[0];
+    if (!entry) throw new Error('Letters detail fixture did not create an entry');
+    resetPhoneToRoute('letters', 'entry', entry.title, { bookId: book.id, entryId: entry.id });
+    await waitForPaint();
+    await openReaderCatalog();
   } else if (name === 'extras-book-generate') {
-    resetPhoneToRoute('extras', 'book-editor', '生成番外');
+    resetPhoneToRoute('extras', 'book-editor', '新建番外');
     await waitForPaint();
     const screen = document.querySelector<HTMLElement>('.pc-screen');
     screen?.scrollTo({ top: screen.scrollHeight });
   } else if (name === 'extras-legacy-continuation') {
     const book = createLegacyExtrasFixture();
-    resetPhoneToRoute('extras', 'chapter-generate', 'AI 生成章节', { bookId: book.id });
+    resetPhoneToRoute('extras', 'chapter-generate', '生成章节', { bookId: book.id });
   } else if (name === 'extras-chapter-detail') {
     const { book } = createExtrasGenerationRecordFixture();
     resetPhoneToRoute('extras', 'book', book.title, { bookId: book.id });
@@ -1483,7 +1637,7 @@ async function applyScenario(name: VisualScenarioName, options: { height?: numbe
     if (!message) throw new Error('Reader visual fixture did not create a message');
     resetPhoneToRoute('reader', 'detail', message.title, { messageId: message.id });
     await waitForPaint();
-    document.querySelector<HTMLButtonElement>('.pc-detail-nav .catalog')?.click();
+    await openReaderCatalog();
   } else if (name === 'theater-generate') {
     resetPhoneToRoute('theater', 'generate', '小剧场配置');
   } else if (name === 'theater-generate-dark-inputs') {

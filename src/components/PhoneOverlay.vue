@@ -181,10 +181,10 @@
         </section>
 
         <KeepAlive>
-          <component :is="currentAppComponent" v-if="currentAppComponent" :key="currentRoute.appId" />
+          <component :is="currentAppComponent" v-if="isOpen && currentAppComponent" :key="currentRoute.appId" />
         </KeepAlive>
 
-        <section v-if="!currentAppComponent && currentApp" class="pc-app-view">
+        <section v-if="appMountReady && !currentAppComponent && currentApp" class="pc-app-view">
           <div class="pc-app-banner" :style="getDisplayAppStyle(currentApp)">
             <h2>{{ currentApp.name }}</h2>
           </div>
@@ -198,6 +198,7 @@
 <script setup lang="ts">
 import GenerationTaskCenter from '@/components/GenerationTaskCenter.vue';
 import SearchableSelectOverlay from '@/components/SearchableSelectOverlay.vue';
+import { useDeferredAppMount } from '@/composables/useDeferredAppMount';
 import { getRegisteredPhoneAppComponent, getRegisteredPhoneBackupRehydrateHandlers } from '@/core/appRegistry';
 import { PHONE_APPS, normalizeHomeLayout } from '@/data/apps';
 import { getWallpaperPreset } from '@/data/wallpapers';
@@ -233,7 +234,16 @@ const {
   viewingScopeKey,
   viewingScopeMeta,
 } = storeToRefs(phone);
-const currentAppComponent = computed(() => getRegisteredPhoneAppComponent(currentRoute.value.appId));
+const currentAppId = computed(() => currentRoute.value.appId);
+const { mountedAppId } = useDeferredAppMount(isOpen, currentAppId);
+const appMountReady = computed(
+  () => currentRoute.value.appId === 'home' || mountedAppId.value === currentRoute.value.appId,
+);
+const currentAppComponent = computed(() =>
+  appMountReady.value && currentRoute.value.appId !== 'home'
+    ? getRegisteredPhoneAppComponent(currentRoute.value.appId)
+    : null,
+);
 const shellEl = ref<HTMLElement | null>(null);
 const screenEl = ref<HTMLElement | null>(null);
 const topbarEl = ref<HTMLElement | null>(null);
@@ -937,10 +947,13 @@ watch(
 
 watch(viewingScopeKey, refreshHomeArchiveDomains);
 
-watch(currentRoute, async (nextRoute, previousRoute) => {
+watch([currentRoute, mountedAppId], async ([nextRoute, readyAppId], [previousRoute]) => {
   const sequence = ++routeScrollRestoreSequence;
   const screen = screenEl.value;
-  if (screen && previousRoute) routeScrollPositions.set(previousRoute, screen.scrollTop);
+  if (screen && previousRoute && previousRoute !== nextRoute) {
+    routeScrollPositions.set(previousRoute, screen.scrollTop);
+  }
+  if (nextRoute.appId !== 'home' && readyAppId !== nextRoute.appId) return;
   await nextTick();
   if (sequence !== routeScrollRestoreSequence || !screenEl.value) return;
   screenEl.value.scrollTop = routeScrollPositions.get(nextRoute) ?? 0;

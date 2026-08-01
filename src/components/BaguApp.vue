@@ -113,7 +113,14 @@
               :value="rule.template"
               type="text"
               :placeholder="t`句式模板`"
-              @input="updateTemplateRule(rule, String(($event.target as HTMLInputElement).value))"
+              @input="updateTemplateRule(rule, String(($event.target as HTMLInputElement).value), rule.suggestion)"
+            />
+            <input
+              class="pc-rule-input"
+              :value="rule.suggestion"
+              type="text"
+              :placeholder="templateReplacementPlaceholder"
+              @input="updateTemplateRule(rule, rule.template, String(($event.target as HTMLInputElement).value))"
             />
             <button class="pc-delete-btn" type="button" :title="t`删除`" @click="removeRule(rule.id)">
               <i class="fa-solid fa-xmark"></i>
@@ -141,6 +148,7 @@ const templateOpen = ref(true);
 const ruleQuery = ref('');
 const replacementSourceDrafts = ref<Record<string, string>>({});
 const replacementCandidateDrafts = ref<Record<string, string>>({});
+const templateReplacementPlaceholder = '替换句式，可用 {{中间内容}}，留空删除';
 
 const replacementRules = computed(() => rules.value.filter(rule => rule.type === 'replacement'));
 const templateRules = computed(() => rules.value.filter(rule => rule.type === 'template'));
@@ -291,12 +299,13 @@ function commitAllReplacementDrafts() {
   });
 }
 
-function updateTemplateRule(rule: BaguRule, template: string) {
+function updateTemplateRule(rule: BaguRule, template: string, suggestion: string) {
   bagu.updateRule(rule.id, {
     enabled: rule.enabled,
     note: rule.note,
     replacements: [],
     sources: [],
+    suggestion,
     template,
     title: buildTemplateTitle(template),
     type: 'template',
@@ -505,7 +514,7 @@ onBeforeUnmount(commitAllReplacementDrafts);
 }
 
 .pc-rule-row.template {
-  grid-template-columns: 24px minmax(0, 1fr) 42px 42px;
+  grid-template-columns: 24px minmax(0, 1fr) minmax(0, 1fr) 42px;
 }
 
 .pc-rule-row.regex {

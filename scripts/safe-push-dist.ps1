@@ -442,14 +442,14 @@ try {
 
   Write-Host ''
   Write-Host 'Tracked files that will be published:' -ForegroundColor Yellow
-  & git diff --cached --name-status $parent
+  & git --no-pager diff --cached --name-status $parent
   if ($LASTEXITCODE -ne 0) {
     throw 'Failed to show the staged file list.'
   }
 
   Write-Host ''
   Write-Host 'Diff summary:' -ForegroundColor Yellow
-  & git diff --cached --stat $parent
+  & git --no-pager diff --cached --stat $parent
   if ($LASTEXITCODE -ne 0) {
     throw 'Failed to show the staged diff.'
   }

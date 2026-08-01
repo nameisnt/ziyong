@@ -111,49 +111,23 @@
       />
     </section>
 
-    <section
+    <SummaryEntryDetailPage
       v-else-if="route.page === 'entry' && activeBook && activeEntry"
-      class="pc-summary-page pc-summary-detail-page"
-    >
-      <ReaderDetailShell
-        :content="activeEntry.content"
-        :favorite-active="activeEntry.favorite"
-        :next-disabled="!nextEntryId"
-        :previous-disabled="!previousEntryId"
-        :title="activeEntry.title"
-        @bagu="openSummaryBaguScan"
-        @bottom="scrollToBottom"
-        @catalog="showCatalogModal = true"
-        @edit="openEditEntry(activeBook.id, activeEntry.id)"
-        @favorite="summary.toggleFavorite(activeBook.id, activeEntry.id)"
-        @next="openEntry(activeBook.id, nextEntryId || '')"
-        @previous="openEntry(activeBook.id, previousEntryId || '')"
-        @top="scrollToTop"
-      >
-        <template #kicker>
-          <span class="pc-kicker">{{ activeEntry.rangeLabel }}</span>
-        </template>
-        <template #actions>
-          <button
-            class="pc-soft-btn danger"
-            type="button"
-            :title="t`删除`"
-            @click="removeEntry(activeBook.id, activeEntry.id)"
-          >
-            <i class="fa-solid fa-trash"></i>
-          </button>
-        </template>
-        <template #overlays>
-          <CatalogModal
-            :active-id="activeEntry.id"
-            :items="entryCatalogItems"
-            :open="showCatalogModal"
-            @close="showCatalogModal = false"
-            @select="selectCatalogEntry"
-          />
-        </template>
-      </ReaderDetailShell>
-    </section>
+      v-model:catalog-open="showCatalogModal"
+      :catalog-items="entryCatalogItems"
+      :entry="activeEntry"
+      :next-id="nextEntryId"
+      :previous-id="previousEntryId"
+      @bagu="openSummaryBaguScan"
+      @bottom="scrollToBottom"
+      @delete="removeEntry(activeBook.id, activeEntry.id)"
+      @edit="openEditEntry(activeBook.id, activeEntry.id)"
+      @favorite="summary.toggleFavorite(activeBook.id, activeEntry.id)"
+      @next="openEntry(activeBook.id, nextEntryId)"
+      @previous="openEntry(activeBook.id, previousEntryId)"
+      @select-catalog="selectCatalogEntry"
+      @top="scrollToTop"
+    />
 
     <section v-else-if="route.page === 'bagu-scan' && activeBook && activeEntry" class="pc-summary-page">
       <div class="pc-detail-card">
@@ -509,7 +483,6 @@
 </template>
 
 <script setup lang="ts">
-import CatalogModal from '@/components/CatalogModal.vue';
 import BaguScanPanel from '@/components/BaguScanPanel.vue';
 import BookShelf from '@/components/BookShelf.vue';
 import EmptyState from '@/components/EmptyState.vue';
@@ -518,8 +491,9 @@ import GenerationPanel from '@/components/GenerationPanel.vue';
 import GenerationPreviewPanel from '@/components/GenerationPreviewPanel.vue';
 import PreviewDraftNotice from '@/components/PreviewDraftNotice.vue';
 import RawOutputEditor from '@/components/RawOutputEditor.vue';
-import ReaderDetailShell from '@/components/ReaderDetailShell.vue';
 import ReferencePicker from '@/components/ReferencePicker.vue';
+import SummaryEntryDetailPage from '@/components/summary/SummaryEntryDetailPage.vue';
+import { useCatalogDetailNavigation } from '@/composables/useCatalogDetailNavigation';
 import { getRegisteredPhoneGenerationAdapter } from '@/core/appRegistry';
 import { buildGenerationPreview, captureGenerationPrompt, generateContent } from '@/core/generationService';
 import {
@@ -681,22 +655,11 @@ const activeEntry = computed(() => {
   const entryId = route.value.params?.entryId;
   return bookId && entryId ? summary.getEntry(bookId, entryId) : null;
 });
-const activeEntryIndex = computed(() => {
-  if (!activeBook.value || !activeEntry.value) return -1;
-  return sortedActiveBookEntries.value.findIndex(entry => entry.id === activeEntry.value?.id);
-});
-const previousEntryId = computed(() =>
-  activeEntryIndex.value > 0 ? sortedActiveBookEntries.value[activeEntryIndex.value - 1]?.id || '' : '',
-);
-const nextEntryId = computed(() =>
-  activeEntryIndex.value >= 0 ? sortedActiveBookEntries.value[activeEntryIndex.value + 1]?.id || '' : '',
-);
-const entryCatalogItems = computed(() =>
-  sortedActiveBookEntries.value.map(entry => ({
-    id: entry.id,
-    title: entry.title,
-  })),
-);
+const {
+  catalogItems: entryCatalogItems,
+  nextId: nextEntryId,
+  previousId: previousEntryId,
+} = useCatalogDetailNavigation(sortedActiveBookEntries, activeEntry, entry => entry.title);
 const editingEntry = computed(() => (route.value.params?.entryId && activeEntry.value ? activeEntry.value : null));
 const activeFailedDraft = computed(() => {
   const draftId = route.value.params?.draftId;

@@ -157,6 +157,7 @@ function bindStreamOutput(enabled: boolean, generationId: string, onRawOutput?: 
 }
 
 let phoneMacroCaptureTail = Promise.resolve();
+const PHONE_USER_INPUT_MACRO_PATTERN = /\{\{\s*phoneUserInput\s*\}\}/gi;
 
 function waitForCaptureTurn(previousCapture: Promise<void>, signal?: AbortSignal) {
   signal?.throwIfAborted();
@@ -198,8 +199,10 @@ async function captureWithPhoneUserInput(
   let macroRegistration: { stop: () => void } | null = null;
   try {
     signal?.throwIfAborted();
-    macroRegistration = registerMacroLikeSafe(/\{\{\s*phoneUserInput\s*\}\}/gi, () => phoneUserInput);
-    return await captureTavernPromptPreview(generateConfig, 15000, signal);
+    macroRegistration = registerMacroLikeSafe(PHONE_USER_INPUT_MACRO_PATTERN, () => phoneUserInput);
+    return await captureTavernPromptPreview(generateConfig, 15000, signal, content =>
+      content.replace(PHONE_USER_INPUT_MACRO_PATTERN, phoneUserInput),
+    );
   } finally {
     macroRegistration?.stop();
     releaseQueue();

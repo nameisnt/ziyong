@@ -1,7 +1,10 @@
 <template>
   <div
     :class="['pc-reader-detail-shell', { 'footer-visible': footerVisible }]"
-    @click="hideFooter"
+    @pointercancel="resetReaderTap"
+    @pointerdown="startReaderTap"
+    @pointermove="trackReaderTap"
+    @pointerup="finishReaderTap"
     @touchmove.passive="hideFooter"
     @wheel.passive="hideFooter"
   >
@@ -28,7 +31,7 @@
     <div class="pc-reader-footer-layer">
       <button
         v-if="!footerVisible"
-        class="pc-reader-footer-reveal"
+        class="pc-icon-btn pc-reader-footer-reveal"
         type="button"
         aria-label="显示阅读工具"
         title="显示阅读工具"
@@ -163,6 +166,77 @@ const emit = defineEmits<{
 
 const footerVisible = ref(false);
 
+const readerTap = {
+  pointerId: -1,
+  startX: 0,
+  startY: 0,
+  startedAt: 0,
+  moved: false,
+  selectionActive: false,
+};
+
+const interactiveTargetSelector = [
+  'a',
+  'button',
+  'input',
+  'textarea',
+  'select',
+  'label',
+  'summary',
+  'audio',
+  'video',
+  'iframe',
+  '[contenteditable="true"]',
+  '[role="button"]',
+].join(',');
+
+function hasTextSelection() {
+  return Boolean(window.getSelection()?.toString().trim());
+}
+
+function resetReaderTap() {
+  readerTap.pointerId = -1;
+  readerTap.moved = false;
+  readerTap.selectionActive = false;
+}
+
+function startReaderTap(event: PointerEvent) {
+  if (!event.isPrimary || event.button !== 0) return;
+  const target = event.target;
+  if (target instanceof Element && target.closest(interactiveTargetSelector)) return;
+
+  readerTap.pointerId = event.pointerId;
+  readerTap.startX = event.clientX;
+  readerTap.startY = event.clientY;
+  readerTap.startedAt = performance.now();
+  readerTap.moved = false;
+  readerTap.selectionActive = hasTextSelection();
+}
+
+function trackReaderTap(event: PointerEvent) {
+  if (event.pointerId !== readerTap.pointerId || readerTap.moved) return;
+  readerTap.moved = Math.hypot(event.clientX - readerTap.startX, event.clientY - readerTap.startY) > 10;
+}
+
+function finishReaderTap(event: PointerEvent) {
+  if (event.pointerId !== readerTap.pointerId) return;
+
+  const shell = event.currentTarget as HTMLElement;
+  const rect = shell.getBoundingClientRect();
+  const elapsed = performance.now() - readerTap.startedAt;
+  const relativeY = rect.height > 0 ? (event.clientY - rect.top) / rect.height : -1;
+  const shouldToggle =
+    !readerTap.moved &&
+    !readerTap.selectionActive &&
+    !hasTextSelection() &&
+    elapsed <= 500 &&
+    relativeY >= 0.2 &&
+    relativeY <= 0.8;
+
+  resetReaderTap();
+  if (shouldToggle) footerVisible.value = !footerVisible.value;
+}
+
 function hideFooter() {
   footerVisible.value = false;
 }
@@ -193,7 +267,7 @@ function runFooterAction(event: 'bottom' | 'catalog' | 'next' | 'previous' | 'to
   flex: 1 1 auto;
   margin: 8px 0 0;
   min-height: 0;
-  padding: 10px 0 48px;
+  padding: 10px 0 112px;
   border-radius: 0;
   background: transparent;
   color: var(--pc-text);
@@ -218,8 +292,8 @@ function runFooterAction(event: 'bottom' | 'catalog' | 'next' | 'previous' | 'to
 
 .pc-reader-footer-reveal {
   display: grid;
-  width: 48px;
-  height: 30px;
+  width: 72px;
+  height: 32px;
   place-items: center;
   border: 0;
   border-radius: 14px 14px 0 0;
@@ -236,7 +310,7 @@ function runFooterAction(event: 'bottom' | 'catalog' | 'next' | 'previous' | 'to
   border-radius: 18px 18px 0 0;
 }
 
-.pc-reader-detail-shell.footer-visible :deep(.pc-reader-content) {
+.pc-reader-detail-shell :deep(.pc-reader-content) {
   padding-bottom: 112px;
 }
 </style>

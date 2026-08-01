@@ -35,9 +35,14 @@
 
     <section v-else-if="route.page === 'book-editor'" class="pc-extras-page">
       <div class="pc-editor-card">
-        <span class="pc-kicker">{{ editingBook ? t`编辑番外信息` : t`新建番外` }}</span>
-        <h2>{{ editingBook ? editingBook.title : t`生成第一章` }}</h2>
-        <input v-model="bookDraft.title" class="pc-field" type="text" :placeholder="t`番外标题`" />
+        <template v-if="editingBook">
+          <span class="pc-kicker">{{ t`编辑番外信息` }}</span>
+          <h2>{{ editingBook.title }}</h2>
+        </template>
+        <label class="pc-field-group">
+          <span>{{ t`番外标题` }}</span>
+          <input v-model="bookDraft.title" class="pc-field" type="text" :placeholder="t`输入番外标题`" />
+        </label>
 
         <GenerationPanel
           v-if="!editingBook"
@@ -225,90 +230,27 @@
       </div>
     </section>
 
-    <section
+    <ExtrasChapterDetailPage
       v-else-if="route.page === 'chapter' && activeBook && activeChapter"
-      class="pc-extras-page pc-extras-detail-page"
-    >
-      <ReaderDetailShell
-        actions-class="six"
-        :content="activeChapter.content"
-        :favorite-active="activeChapter.favorite"
-        :next-disabled="!chapterNextId"
-        :previous-disabled="!chapterPrevId"
-        :title="`第 ${activeChapter.chapterNumber} 章 · ${activeChapter.title}`"
-        @bagu="openExtrasBaguScan"
-        @bottom="scrollToBottom"
-        @catalog="showCatalogModal = true"
-        @edit="openEditChapter(activeBook.id, activeChapter.id)"
-        @favorite="extras.toggleFavorite(activeBook.id, activeChapter.id)"
-        @next="openChapter(activeBook.id, chapterNextId || '')"
-        @previous="openChapter(activeBook.id, chapterPrevId || '')"
-        @top="scrollToTop"
-      >
-        <template #before-content>
-          <details v-if="activeChapterGenerationRecords.length" class="pc-section-card pc-generation-history">
-            <summary>
-              <span>{{ t`生成记录` }}</span>
-              <span class="pc-generation-history-count">{{ activeChapterGenerationRecords.length }}</span>
-            </summary>
-            <div class="pc-generation-history-list">
-              <article
-                v-for="record in activeChapterGenerationRecords"
-                :key="record.id"
-                class="pc-generation-history-item"
-              >
-                <div class="pc-generation-history-head">
-                  <strong>{{ formatGenerationRecordDate(record.createdAt) }}</strong>
-                  <button class="pc-soft-btn" type="button" @click="rewriteWithGenerationRecord(record.id)">
-                    <i class="fa-solid fa-rotate-left"></i>
-                    <span>{{ t`用于重写` }}</span>
-                  </button>
-                </div>
-                <p>{{ record.userRequirement || t`未填写追加要求` }}</p>
-                <div class="pc-generation-history-meta">
-                  <span>{{ record.typeName || t`未指定类型` }}</span>
-                  <span>{{ formatGenerationRecordSource(record) }}</span>
-                  <span v-if="record.references.length">{{ `引用 ${record.references.length} 项` }}</span>
-                </div>
-              </article>
-            </div>
-          </details>
-        </template>
-        <template #actions>
-          <button class="pc-soft-btn" type="button" :title="t`续写`" @click="openGenerateChapter(activeBook.id)">
-            <i class="fa-solid fa-wand-magic-sparkles"></i>
-            <span>{{ t`续写` }}</span>
-          </button>
-          <button
-            class="pc-soft-btn"
-            type="button"
-            :title="t`重写本章`"
-            @click="openGenerateChapter(activeBook.id, activeChapter.id)"
-          >
-            <i class="fa-solid fa-rotate"></i>
-            <span>{{ t`重写` }}</span>
-          </button>
-          <button
-            class="pc-soft-btn danger"
-            type="button"
-            :title="t`删除`"
-            @click="removeChapter(activeBook.id, activeChapter.id)"
-          >
-            <i class="fa-solid fa-trash"></i>
-            <span>{{ t`删除` }}</span>
-          </button>
-        </template>
-        <template #overlays>
-          <CatalogModal
-            :active-id="activeChapter.id"
-            :items="chapterCatalogItems"
-            :open="showCatalogModal"
-            @close="showCatalogModal = false"
-            @select="selectCatalogChapter"
-          />
-        </template>
-      </ReaderDetailShell>
-    </section>
+      v-model:catalog-open="showCatalogModal"
+      :catalog-items="chapterCatalogItems"
+      :chapter="activeChapter"
+      :generation-records="activeChapterGenerationRecords"
+      :next-id="chapterNextId || ''"
+      :previous-id="chapterPrevId || ''"
+      @bagu="openExtrasBaguScan"
+      @bottom="scrollToBottom"
+      @continue="openGenerateChapter(activeBook.id)"
+      @delete="removeChapter(activeBook.id, activeChapter.id)"
+      @edit="openEditChapter(activeBook.id, activeChapter.id)"
+      @favorite="extras.toggleFavorite(activeBook.id, activeChapter.id)"
+      @next="openChapter(activeBook.id, chapterNextId || '')"
+      @previous="openChapter(activeBook.id, chapterPrevId || '')"
+      @rewrite="openGenerateChapter(activeBook.id, activeChapter.id)"
+      @rewrite-record="rewriteWithGenerationRecord"
+      @select-catalog="selectCatalogChapter"
+      @top="scrollToTop"
+    />
 
     <section v-else-if="route.page === 'bagu-scan' && activeBook && activeChapter" class="pc-extras-page">
       <div class="pc-detail-card">
@@ -326,10 +268,8 @@
 
     <section v-else-if="route.page === 'chapter-generate' && activeBook" class="pc-extras-page">
       <div class="pc-editor-card">
-        <span class="pc-kicker">{{ t`AI 生成` }}</span>
-        <h2>{{ t`生成番外章节` }}</h2>
-
         <GenerationPanel
+          class="pc-extras-generation-panel"
           :capture="captureChapterPrompt"
           :capture-reset-key="chapterPromptPreview"
           :error="chapterGenerationState.error"
@@ -432,10 +372,8 @@
 
     <section v-else-if="route.page === 'summary-generate' && activeBook" class="pc-extras-page">
       <div class="pc-editor-card">
-        <span class="pc-kicker">{{ t`AI 生成` }}</span>
-        <h2>{{ t`生成章节总结` }}</h2>
-
         <GenerationPanel
+          class="pc-extras-generation-panel"
           :capture="captureExtraSummaryPrompt"
           :capture-reset-key="generationPromptPreview"
           :error="generationState.error"
@@ -559,7 +497,8 @@
 
 <script setup lang="ts">
 import BookShelf from '@/components/BookShelf.vue';
-import CatalogModal from '@/components/CatalogModal.vue';
+import ExtrasChapterDetailPage from '@/components/extras/ExtrasChapterDetailPage.vue';
+import { useExtrasChapterView } from '@/components/extras/useExtrasChapterView';
 import BaguScanPanel from '@/components/BaguScanPanel.vue';
 import EmptyState from '@/components/EmptyState.vue';
 import FailedDraftList from '@/components/FailedDraftList.vue';
@@ -567,7 +506,6 @@ import GenerationPanel from '@/components/GenerationPanel.vue';
 import GenerationPreviewPanel from '@/components/GenerationPreviewPanel.vue';
 import RawOutputEditor from '@/components/RawOutputEditor.vue';
 import PreviewDraftNotice from '@/components/PreviewDraftNotice.vue';
-import ReaderDetailShell from '@/components/ReaderDetailShell.vue';
 import SearchableCombobox from '@/components/SearchableCombobox.vue';
 import { getRegisteredPhoneGenerationAdapter } from '@/core/appRegistry';
 import {
@@ -994,29 +932,13 @@ function captureChapterPrompt() {
   );
 }
 
-const orderedChapters = computed(() =>
-  [...(activeBook.value?.chapters || [])].sort((left, right) => left.chapterNumber - right.chapterNumber),
-);
-const activeChapterGenerationRecords = computed(() =>
-  [...(activeChapter.value?.generationRecords || [])].sort((left, right) =>
-    right.createdAt.localeCompare(left.createdAt),
-  ),
-);
-const activeChapterIndex = computed(() =>
-  orderedChapters.value.findIndex(chapter => chapter.id === activeChapter.value?.id),
-);
-const chapterPrevId = computed(() =>
-  activeChapterIndex.value > 0 ? orderedChapters.value[activeChapterIndex.value - 1]?.id || '' : '',
-);
-const chapterNextId = computed(() =>
-  activeChapterIndex.value >= 0 ? orderedChapters.value[activeChapterIndex.value + 1]?.id || '' : '',
-);
-const chapterCatalogItems = computed(() =>
-  orderedChapters.value.map(chapter => ({
-    id: chapter.id,
-    title: `第 ${chapter.chapterNumber} 章 · ${chapter.title}`,
-  })),
-);
+const {
+  catalogItems: chapterCatalogItems,
+  generationRecords: activeChapterGenerationRecords,
+  nextId: chapterNextId,
+  orderedChapters,
+  previousId: chapterPrevId,
+} = useExtrasChapterView(activeBook, activeChapter);
 
 const filteredChapters = computed(() => {
   const chapters = [...(activeBook.value?.chapters || [])];
@@ -1248,7 +1170,7 @@ function saveChapterTypePrompt() {
 }
 
 function openCreateBook() {
-  phone.pushPage('book-editor', '生成番外');
+  phone.pushPage('book-editor', '新建番外');
 }
 
 function openEditBook(bookId: string) {
@@ -1315,7 +1237,7 @@ async function removeBook(bookId: string) {
 function openGenerateChapter(bookId: string, chapterId?: string, generationRecordId?: string) {
   phone.pushPage(
     'chapter-generate',
-    chapterId ? 'AI 重写章节' : 'AI 生成章节',
+    chapterId ? '重写章节' : '生成章节',
     chapterId ? { bookId, chapterId, ...(generationRecordId ? { generationRecordId } : {}) } : { bookId },
   );
 }
@@ -1523,7 +1445,7 @@ function returnToChapterGenerate() {
   if (!bookId) return;
   phone.replacePage(
     'chapter-generate',
-    chapterGenerationDraft.mode === '重写当前章节' ? 'AI 重写章节' : 'AI 生成章节',
+    chapterGenerationDraft.mode === '重写当前章节' ? '重写章节' : '生成章节',
     route.value.params?.chapterId ? { bookId, chapterId: route.value.params.chapterId } : { bookId },
   );
 }
@@ -1971,29 +1893,6 @@ function formatCoveredChaptersForBook(book: typeof activeBook.value, ids: string
     .map(chapter => `第 ${chapter.chapterNumber} 章`);
   return titles.join('、') || '未关联章节';
 }
-
-function formatGenerationRecordDate(value: string) {
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return '生成记录';
-  return date.toLocaleString('zh-CN', {
-    day: '2-digit',
-    hour: '2-digit',
-    minute: '2-digit',
-    month: '2-digit',
-  });
-}
-
-function formatGenerationRecordSource(record: ExtraChapterGenerationRecord) {
-  if (record.sourceLabel.trim()) return record.sourceLabel;
-  return {
-    all: '全部楼层',
-    fromStart: `开头至 ${record.fromStartEnd} 楼`,
-    latest: '最新楼层',
-    range: record.rangeText.trim() ? `楼层 ${record.rangeText.trim()}` : '指定范围',
-    recent: `最近 ${record.recentCount} 楼`,
-    single: `第 ${record.singleMessageId} 楼`,
-  }[record.sourceMode];
-}
 </script>
 
 <style scoped>
@@ -2011,82 +1910,6 @@ function formatGenerationRecordSource(record: ExtraChapterGenerationRecord) {
   display: flex;
   flex-direction: column;
   gap: 14px;
-}
-
-.pc-extras-detail-page {
-  height: 100%;
-  gap: 10px;
-  min-height: 0;
-}
-
-.pc-generation-history {
-  display: block;
-  margin-top: 12px;
-  padding: 12px;
-}
-
-.pc-generation-history summary {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 10px;
-  cursor: pointer;
-  font-weight: 800;
-  list-style: none;
-}
-
-.pc-generation-history summary::-webkit-details-marker {
-  display: none;
-}
-
-.pc-generation-history-count {
-  color: var(--pc-muted);
-  font-size: 12px;
-}
-
-.pc-generation-history-list {
-  display: grid;
-  gap: 8px;
-  max-height: 220px;
-  margin-top: 10px;
-  overflow-y: auto;
-}
-
-.pc-generation-history-item {
-  display: grid;
-  gap: 8px;
-  padding: 10px;
-  border: 1px solid var(--pc-border);
-  border-radius: 8px;
-  background: var(--pc-surface-strong);
-}
-
-.pc-generation-history-head,
-.pc-generation-history-meta {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
-.pc-generation-history-head {
-  justify-content: space-between;
-}
-
-.pc-generation-history-head .pc-soft-btn {
-  min-height: 34px;
-  padding: 0 10px;
-}
-
-.pc-generation-history-item p {
-  margin: 0;
-  color: var(--pc-text);
-  white-space: pre-wrap;
-}
-
-.pc-generation-history-meta {
-  flex-wrap: wrap;
-  color: var(--pc-muted);
-  font-size: 12px;
 }
 
 .pc-extras-hero,
@@ -2129,6 +1952,10 @@ function formatGenerationRecordSource(record: ExtraChapterGenerationRecord) {
   margin: 0;
   font-size: 20px;
   line-height: 1.25;
+}
+
+.pc-extras-generation-panel {
+  margin-top: 0;
 }
 
 .pc-extras-hero p,

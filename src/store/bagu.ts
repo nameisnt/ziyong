@@ -114,7 +114,7 @@ function normalizeRule(rule: BaguRule): BaguRule {
     pattern: template,
     replacements: [],
     sources: [],
-    suggestion: '',
+    suggestion: base.suggestion.trim(),
     targets: [],
     template,
     title: base.title || template || '未命名句式规则',
@@ -319,7 +319,9 @@ export const useBaguStore = defineStore('bagu', () => {
       replacements: cleanList(input.replacements || []),
       sources: cleanList(input.sources || []),
       suggestion:
-        input.type === 'regex' ? input.suggestion?.trim() || '' : cleanList(input.replacements || []).join(' / '),
+        input.type === 'replacement'
+          ? cleanList(input.replacements || []).join(' / ')
+          : input.suggestion?.trim() || '',
       template: input.type === 'template' ? input.template?.trim() || '' : '',
       targets: cleanList(input.targets || []),
       note: input.note.trim(),
@@ -348,7 +350,9 @@ export const useBaguStore = defineStore('bagu', () => {
       replacements: cleanList(input.replacements || []),
       sources: cleanList(input.sources || []),
       suggestion:
-        input.type === 'regex' ? input.suggestion?.trim() || '' : cleanList(input.replacements || []).join(' / '),
+        input.type === 'replacement'
+          ? cleanList(input.replacements || []).join(' / ')
+          : input.suggestion?.trim() || '',
       template: input.type === 'template' ? input.template?.trim() || '' : '',
       targets: cleanList(input.targets || []),
       note: input.note.trim(),

@@ -181,7 +181,7 @@ function getTavernHelperRuntime() {
 function getTavernHelperMethod<T extends (...args: never[]) => unknown>(name: string): T | null {
   const helper = getTavernHelperRuntime();
   const value = helper?.[name];
-  return typeof value === 'function' ? (value as T) : null;
+  return typeof value === 'function' ? (value.bind(helper) as T) : null;
 }
 
 export function getOptionalGlobalFunction<T extends (...args: never[]) => unknown>(name: string): T | null {
@@ -201,7 +201,7 @@ export function getOptionalGlobalFunction<T extends (...args: never[]) => unknow
   const helper = getTavernHelperRuntime();
   const helperValue = helper?.[name];
   if (typeof helperValue === 'function') {
-    return helperValue as T;
+    return helperValue.bind(helper) as T;
   }
 
   return null;
@@ -606,6 +606,7 @@ export function captureTavernPromptPreview(
   generateConfig: Record<string, unknown>,
   timeoutMs = 15000,
   signal?: AbortSignal,
+  transformContent: (content: string) => string = content => content,
 ): Promise<CapturedTavernPromptPreview> {
   if (signal?.aborted) {
     return Promise.reject(
@@ -695,7 +696,7 @@ export function captureTavernPromptPreview(
         const messages = await Promise.all(
           messageRecords.map(async (message, index) => {
             const record = message && typeof message === 'object' ? (message as Record<string, unknown>) : {};
-            const content = normalizePromptContent(record.content);
+            const content = transformContent(normalizePromptContent(record.content));
             return {
               content,
               id: index,
@@ -727,9 +728,9 @@ export function captureTavernPromptPreview(
       max_chat_history: generateConfig.max_chat_history,
       quiet: true,
     };
-    const capturePromise = sillyTavernGenerateFn
-      ? sillyTavernGenerateFn(userInput, captureOptions)
-      : helperGenerateFn?.(generateConfig);
+    const capturePromise = helperGenerateFn
+      ? helperGenerateFn(generateConfig)
+      : sillyTavernGenerateFn?.(userInput, captureOptions);
 
     Promise.resolve(capturePromise).catch(error => {
       if (settled) return;

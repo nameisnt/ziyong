@@ -92,63 +92,24 @@
       </div>
     </section>
 
-    <section v-else-if="route.page === 'entry' && activeBook && activeEntry" class="pc-diary-page pc-diary-detail-page">
-      <ReaderDetailShell
-        actions-class="five"
-        :content="activeEntry.content"
-        :favorite-active="activeEntry.favorite"
-        :next-disabled="!nextEntryId"
-        :previous-disabled="!previousEntryId"
-        :title="activeEntry.kind === 'read-reaction' ? `📖 ${activeEntry.title}` : activeEntry.title"
-        @bagu="openDiaryBaguScan"
-        @bottom="scrollToBottom"
-        @catalog="showCatalogModal = true"
-        @edit="openEditEntry(activeBook.id, activeEntry.id)"
-        @favorite="diary.toggleFavorite(activeBook.id, activeEntry.id)"
-        @next="openEntry(activeBook.id, nextEntryId || '')"
-        @previous="openEntry(activeBook.id, previousEntryId || '')"
-        @top="scrollToTop"
-      >
-        <template v-if="activeEntry.occurredAt" #meta>
-          <div class="pc-detail-meta">
-            <span>{{ activeEntry.occurredAt }}</span>
-          </div>
-        </template>
-        <template #after-content>
-          <div v-if="activeEntry.readers?.length" class="pc-reader-row">
-            <strong>{{ t`阅读者` }}</strong>
-            <span>{{ activeEntry.readers.map(reader => reader.name).join('、') }}</span>
-          </div>
-        </template>
-        <template #actions>
-          <button
-            class="pc-soft-btn"
-            type="button"
-            :title="t`让他人阅读`"
-            @click="openReadReaction(activeBook.id, activeEntry.id)"
-          >
-            <i class="fa-solid fa-book-open-reader"></i>
-          </button>
-          <button
-            class="pc-soft-btn danger"
-            type="button"
-            :title="t`删除`"
-            @click="removeEntry(activeBook.id, activeEntry.id)"
-          >
-            <i class="fa-solid fa-trash"></i>
-          </button>
-        </template>
-        <template #overlays>
-          <CatalogModal
-            :active-id="activeEntry.id"
-            :items="entryCatalogItems"
-            :open="showCatalogModal"
-            @close="showCatalogModal = false"
-            @select="selectCatalogEntry"
-          />
-        </template>
-      </ReaderDetailShell>
-    </section>
+    <DiaryEntryDetailPage
+      v-else-if="route.page === 'entry' && activeBook && activeEntry"
+      v-model:catalog-open="showCatalogModal"
+      :catalog-items="entryCatalogItems"
+      :entry="activeEntry"
+      :next-id="nextEntryId"
+      :previous-id="previousEntryId"
+      @bagu="openDiaryBaguScan"
+      @bottom="scrollToBottom"
+      @delete="removeEntry(activeBook.id, activeEntry.id)"
+      @edit="openEditEntry(activeBook.id, activeEntry.id)"
+      @favorite="diary.toggleFavorite(activeBook.id, activeEntry.id)"
+      @next="openEntry(activeBook.id, nextEntryId)"
+      @previous="openEntry(activeBook.id, previousEntryId)"
+      @read-reaction="openReadReaction(activeBook.id, activeEntry.id)"
+      @select-catalog="selectCatalogEntry"
+      @top="scrollToTop"
+    />
 
     <section v-else-if="route.page === 'bagu-scan' && activeBook && activeEntry" class="pc-diary-page">
       <div class="pc-detail-card">
@@ -507,7 +468,7 @@
 
 <script setup lang="ts">
 import BookShelf from '@/components/BookShelf.vue';
-import CatalogModal from '@/components/CatalogModal.vue';
+import DiaryEntryDetailPage from '@/components/diary/DiaryEntryDetailPage.vue';
 import EmptyState from '@/components/EmptyState.vue';
 import BaguScanPanel from '@/components/BaguScanPanel.vue';
 import FailedDraftList from '@/components/FailedDraftList.vue';
@@ -515,8 +476,8 @@ import GenerationPanel from '@/components/GenerationPanel.vue';
 import GenerationPreviewPanel from '@/components/GenerationPreviewPanel.vue';
 import PreviewDraftNotice from '@/components/PreviewDraftNotice.vue';
 import RawOutputEditor from '@/components/RawOutputEditor.vue';
-import ReaderDetailShell from '@/components/ReaderDetailShell.vue';
 import ReferencePicker from '@/components/ReferencePicker.vue';
+import { useCatalogDetailNavigation } from '@/composables/useCatalogDetailNavigation';
 import { getRegisteredPhoneGenerationAdapter } from '@/core/appRegistry';
 import { parseDiaryGeneratedResult } from '@/core/diaryGeneration';
 import { buildGenerationPreview, captureGenerationPrompt, generateContent } from '@/core/generationService';
@@ -874,18 +835,12 @@ const filteredEntries = computed(() => {
   });
   return result;
 });
-const activeEntryIndex = computed(() => filteredEntries.value.findIndex(entry => entry.id === activeEntry.value?.id));
-const previousEntryId = computed(() =>
-  activeEntryIndex.value > 0 ? filteredEntries.value[activeEntryIndex.value - 1]?.id || '' : '',
-);
-const nextEntryId = computed(() =>
-  activeEntryIndex.value >= 0 ? filteredEntries.value[activeEntryIndex.value + 1]?.id || '' : '',
-);
-const entryCatalogItems = computed(() =>
-  filteredEntries.value.map(entry => ({
-    id: entry.id,
-    title: entry.kind === 'read-reaction' ? `📖 ${entry.title}` : entry.title,
-  })),
+const {
+  catalogItems: entryCatalogItems,
+  nextId: nextEntryId,
+  previousId: previousEntryId,
+} = useCatalogDetailNavigation(filteredEntries, activeEntry, entry =>
+  entry.kind === 'read-reaction' ? `📖 ${entry.title}` : entry.title,
 );
 const shelfBooks = computed(() =>
   books.value.map(book => ({

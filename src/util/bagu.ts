@@ -64,12 +64,21 @@ function compileTemplate(template: string) {
       continue;
     }
     if (char === '…') {
-      source += '[^。！？；!?;\\n]*?';
+      source += '([^。！？；!?;\\n]*?)';
       continue;
     }
     source += escapeRegex(char);
   }
   return source;
+}
+
+function resolveTemplateReplacement(suggestion: string, middleContents: string[]) {
+  const replacement = suggestion.trim();
+  if (!replacement) return '';
+  return replacement.replace(/\{\{\s*中间内容\s*(\d+)?\s*\}\}/g, (_placeholder, rawIndex: string | undefined) => {
+    const index = rawIndex ? Number(rawIndex) - 1 : 0;
+    return Number.isInteger(index) && index >= 0 ? (middleContents[index] ?? '') : '';
+  });
 }
 
 function sentenceRanges(text: string) {
@@ -142,7 +151,7 @@ export function scanTextWithBaguRules(text: string, rules: BaguRule[]) {
                 {
                   end,
                   match: rawMatch,
-                  replacement: sentence,
+                  replacement: resolveTemplateReplacement(rule.suggestion, match.slice(1)),
                   ruleId: rule.id,
                   ruleLabel: rule.template,
                   ruleTitle: rule.title,

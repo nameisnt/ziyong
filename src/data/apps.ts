@@ -1,4 +1,6 @@
 import { BUILTIN_PHONE_APP_MODULES } from '@/apps/builtin';
+import { tutorialArticles, tutorialCategories } from '@/apps/tutorial/data';
+import { assertTutorialRegistry } from '@/apps/tutorial/validation';
 import { buildDefaultHomeLayout, getPhoneApp, getPhoneAppDefinitions, normalizeHomeLayout } from '@/core/appLayout';
 import { registerPhoneApp, registerPhoneApps, type PhoneAppDefinition, type PhoneAppModule } from '@/core/appRegistry';
 
@@ -18,6 +20,7 @@ export function ensurePhoneAppsRegistered() {
     if (builtinIds.has(module.default.id)) return;
     registerPhoneApp(module.default);
   });
+  assertTutorialRegistry(getPhoneAppDefinitions(), tutorialArticles, tutorialCategories);
   registered = true;
 }
 

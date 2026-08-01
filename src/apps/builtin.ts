@@ -73,6 +73,13 @@ import {
   createSummaryReferenceTree,
   createTheaterReferenceTree,
 } from '@/apps/builtinReferences';
+import { useDiaryStore } from '@/store/diary';
+import { useExtrasStore } from '@/store/extras';
+import { useForumStore } from '@/store/forum';
+import { useGenerationAliasesStore } from '@/store/generationAliases';
+import { useLettersStore } from '@/store/letters';
+import { useSummaryStore } from '@/store/summary';
+import { useTheaterStore } from '@/store/theater';
 
 export const BUILTIN_PHONE_APP_MODULES: PhoneAppModule[] = [
   definePhoneApp({
@@ -90,10 +97,8 @@ export const BUILTIN_PHONE_APP_MODULES: PhoneAppModule[] = [
     generationProvider: createSummaryGenerationActions,
     promptDefinitions: [createSummaryPromptDefinition()],
     referenceProvider: createSummaryReferenceTree,
-    resetCurrentScope: () =>
-      import('@/store/summary').then(({ useSummaryStore }) => useSummaryStore().resetCurrentScope()),
-    scopeSwitchHandler: scopeKey =>
-      import('@/store/summary').then(({ useSummaryStore }) => useSummaryStore().switchScope(scopeKey)),
+    resetCurrentScope: () => useSummaryStore().resetCurrentScope(),
+    scopeSwitchHandler: scopeKey => useSummaryStore().switchScope(scopeKey),
   }),
   definePhoneApp({
     id: 'diary',
@@ -110,9 +115,8 @@ export const BUILTIN_PHONE_APP_MODULES: PhoneAppModule[] = [
     generationProvider: createDiaryGenerationActions,
     promptDefinitions: [createDiaryPromptDefinition()],
     referenceProvider: createDiaryReferenceTree,
-    resetCurrentScope: () => import('@/store/diary').then(({ useDiaryStore }) => useDiaryStore().resetCurrentScope()),
-    scopeSwitchHandler: scopeKey =>
-      import('@/store/diary').then(({ useDiaryStore }) => useDiaryStore().switchScope(scopeKey)),
+    resetCurrentScope: () => useDiaryStore().resetCurrentScope(),
+    scopeSwitchHandler: scopeKey => useDiaryStore().switchScope(scopeKey),
     specialPromptDefinitions: [createDiaryReactionPromptDefinition()],
   }),
   definePhoneApp({
@@ -134,10 +138,8 @@ export const BUILTIN_PHONE_APP_MODULES: PhoneAppModule[] = [
       createExtrasRewritePromptDefinition(),
     ],
     referenceProvider: createExtrasReferenceTree,
-    resetCurrentScope: () =>
-      import('@/store/extras').then(({ useExtrasStore }) => useExtrasStore().resetCurrentScope()),
-    scopeSwitchHandler: scopeKey =>
-      import('@/store/extras').then(({ useExtrasStore }) => useExtrasStore().switchScope(scopeKey)),
+    resetCurrentScope: () => useExtrasStore().resetCurrentScope(),
+    scopeSwitchHandler: scopeKey => useExtrasStore().switchScope(scopeKey),
     specialPromptDefinitions: [createExtraSummaryPromptDefinition()],
     typePromptDomains: [createExtrasTypePromptDomain()],
   }),
@@ -156,9 +158,8 @@ export const BUILTIN_PHONE_APP_MODULES: PhoneAppModule[] = [
     generationProvider: createForumGenerationActions,
     promptDefinitions: [createForumPromptDefinition()],
     referenceProvider: createForumReferenceTree,
-    resetCurrentScope: () => import('@/store/forum').then(({ useForumStore }) => useForumStore().resetCurrentScope()),
-    scopeSwitchHandler: scopeKey =>
-      import('@/store/forum').then(({ useForumStore }) => useForumStore().switchScope(scopeKey)),
+    resetCurrentScope: () => useForumStore().resetCurrentScope(),
+    scopeSwitchHandler: scopeKey => useForumStore().switchScope(scopeKey),
     specialPromptDefinitions: [createForumReplyPromptDefinition()],
     typePromptDomains: [createForumBoardTypePromptDomain()],
   }),
@@ -177,21 +178,13 @@ export const BUILTIN_PHONE_APP_MODULES: PhoneAppModule[] = [
     generationProvider: createTheaterGenerationActions,
     promptDefinitions: [createTheaterPromptDefinition()],
     referenceProvider: createTheaterReferenceTree,
-    resetCurrentScope: async () => {
-      await Promise.all([
-        import('@/store/theater').then(({ useTheaterStore }) => useTheaterStore().resetCurrentScope()),
-        import('@/store/generationAliases').then(({ useGenerationAliasesStore }) =>
-          useGenerationAliasesStore().resetCurrentScope(),
-        ),
-      ]);
+    resetCurrentScope: () => {
+      useTheaterStore().resetCurrentScope();
+      useGenerationAliasesStore().resetCurrentScope();
     },
-    scopeSwitchHandler: async scopeKey => {
-      await Promise.all([
-        import('@/store/theater').then(({ useTheaterStore }) => useTheaterStore().switchScope(scopeKey)),
-        import('@/store/generationAliases').then(({ useGenerationAliasesStore }) =>
-          useGenerationAliasesStore().switchScope(scopeKey),
-        ),
-      ]);
+    scopeSwitchHandler: scopeKey => {
+      useTheaterStore().switchScope(scopeKey);
+      useGenerationAliasesStore().switchScope(scopeKey);
     },
     typePromptDomains: [createTheaterTypePromptDomain()],
   }),
@@ -210,10 +203,8 @@ export const BUILTIN_PHONE_APP_MODULES: PhoneAppModule[] = [
     generationProvider: createLettersGenerationActions,
     promptDefinitions: [createLettersPromptDefinition()],
     referenceProvider: createLettersReferenceTree,
-    resetCurrentScope: () =>
-      import('@/store/letters').then(({ useLettersStore }) => useLettersStore().resetCurrentScope()),
-    scopeSwitchHandler: scopeKey =>
-      import('@/store/letters').then(({ useLettersStore }) => useLettersStore().switchScope(scopeKey)),
+    resetCurrentScope: () => useLettersStore().resetCurrentScope(),
+    scopeSwitchHandler: scopeKey => useLettersStore().switchScope(scopeKey),
   }),
   WorkbenchModule,
   definePhoneApp({

@@ -68,50 +68,24 @@
       </div>
     </section>
 
-    <section
+    <LettersEntryDetailPage
       v-else-if="route.page === 'entry' && activeBook && activeEntry"
-      class="pc-letters-page pc-letters-detail-page"
-    >
-      <ReaderDetailShell
-        actions-class="five"
-        :content="activeEntry.content"
-        :favorite-active="activeEntry.favorite"
-        :next-disabled="!nextEntryId"
-        :previous-disabled="!previousEntryId"
-        :title="activeEntry.title"
-        @bagu="openLettersBaguScan"
-        @bottom="scrollToBottom"
-        @catalog="showCatalogModal = true"
-        @edit="openEditEntry(activeBook.id, activeEntry.id)"
-        @favorite="letters.toggleFavorite(activeBook.id, activeEntry.id)"
-        @next="openEntry(activeBook.id, nextEntryId || '')"
-        @previous="openEntry(activeBook.id, previousEntryId || '')"
-        @top="scrollToTop"
-      >
-        <template #actions>
-          <button class="pc-soft-btn" type="button" :title="t`回信`" @click="openReply(activeBook.id, activeEntry.id)">
-            <i class="fa-solid fa-reply"></i>
-          </button>
-          <button
-            class="pc-soft-btn danger"
-            type="button"
-            :title="t`删除`"
-            @click="removeEntry(activeBook.id, activeEntry.id)"
-          >
-            <i class="fa-solid fa-trash"></i>
-          </button>
-        </template>
-        <template #overlays>
-          <CatalogModal
-            :active-id="activeEntry.id"
-            :items="entryCatalogItems"
-            :open="showCatalogModal"
-            @close="showCatalogModal = false"
-            @select="selectCatalogEntry"
-          />
-        </template>
-      </ReaderDetailShell>
-    </section>
+      v-model:catalog-open="showCatalogModal"
+      :catalog-items="entryCatalogItems"
+      :entry="activeEntry"
+      :next-id="nextEntryId"
+      :previous-id="previousEntryId"
+      @bagu="openLettersBaguScan"
+      @bottom="scrollToBottom"
+      @delete="removeEntry(activeBook.id, activeEntry.id)"
+      @edit="openEditEntry(activeBook.id, activeEntry.id)"
+      @favorite="letters.toggleFavorite(activeBook.id, activeEntry.id)"
+      @next="openEntry(activeBook.id, nextEntryId)"
+      @previous="openEntry(activeBook.id, previousEntryId)"
+      @reply="openReply(activeBook.id, activeEntry.id)"
+      @select-catalog="selectCatalogEntry"
+      @top="scrollToTop"
+    />
 
     <section v-else-if="route.page === 'bagu-scan' && activeBook && activeEntry" class="pc-letters-page">
       <div class="pc-detail-card">
@@ -300,7 +274,6 @@
 
 <script setup lang="ts">
 import BookShelf from '@/components/BookShelf.vue';
-import CatalogModal from '@/components/CatalogModal.vue';
 import EmptyState from '@/components/EmptyState.vue';
 import BaguScanPanel from '@/components/BaguScanPanel.vue';
 import FailedDraftList from '@/components/FailedDraftList.vue';
@@ -308,7 +281,8 @@ import GenerationPanel from '@/components/GenerationPanel.vue';
 import GenerationPreviewPanel from '@/components/GenerationPreviewPanel.vue';
 import PreviewDraftNotice from '@/components/PreviewDraftNotice.vue';
 import RawOutputEditor from '@/components/RawOutputEditor.vue';
-import ReaderDetailShell from '@/components/ReaderDetailShell.vue';
+import LettersEntryDetailPage from '@/components/letters/LettersEntryDetailPage.vue';
+import { useCatalogDetailNavigation } from '@/composables/useCatalogDetailNavigation';
 import { getRegisteredPhoneGenerationAdapter } from '@/core/appRegistry';
 import { buildGenerationPreview, captureGenerationPrompt, generateContent } from '@/core/generationService';
 import { useLettersStore } from '@/store/letters';
@@ -460,19 +434,11 @@ const filteredEntries = computed(() => {
     return sortDesc.value ? -compare : compare;
   });
 });
-const activeEntryIndex = computed(() => filteredEntries.value.findIndex(entry => entry.id === activeEntry.value?.id));
-const previousEntryId = computed(() =>
-  activeEntryIndex.value > 0 ? filteredEntries.value[activeEntryIndex.value - 1]?.id || '' : '',
-);
-const nextEntryId = computed(() =>
-  activeEntryIndex.value >= 0 ? filteredEntries.value[activeEntryIndex.value + 1]?.id || '' : '',
-);
-const entryCatalogItems = computed(() =>
-  filteredEntries.value.map(entry => ({
-    id: entry.id,
-    title: entry.title,
-  })),
-);
+const {
+  catalogItems: entryCatalogItems,
+  nextId: nextEntryId,
+  previousId: previousEntryId,
+} = useCatalogDetailNavigation(filteredEntries, activeEntry, entry => entry.title);
 
 const letterPromptPreview = computed(() => {
   try {

@@ -3,7 +3,7 @@
     <section v-if="route.page === 'root'" class="pc-tutorial-page">
       <label class="pc-tutorial-search">
         <i class="fa-solid fa-magnifying-glass"></i>
-        <input v-model="searchQuery" class="pc-field" type="search" placeholder="搜索宏、生成、依赖或问题" />
+        <input v-model="searchQuery" class="pc-field" type="search" placeholder="搜索功能、操作或问题" />
       </label>
 
       <nav class="pc-tutorial-categories" aria-label="教程分类">
@@ -19,22 +19,22 @@
         </button>
       </nav>
 
-      <div v-if="visibleArticles.length" class="pc-tutorial-list">
+      <div v-if="visibleArticleResults.length" class="pc-tutorial-list">
         <button
-          v-for="article in visibleArticles"
-          :key="article.id"
+          v-for="result in visibleArticleResults"
+          :key="result.article.id"
           class="pc-section-card pc-tutorial-row"
           type="button"
-          @click="openArticle(article)"
+          @click="openArticle(result.article)"
         >
           <span class="pc-tutorial-row-icon">
-            <i :class="articleIcon(article.category)"></i>
+            <i :class="articleIcon(result.article.category)"></i>
           </span>
           <span class="pc-tutorial-row-copy">
-            <strong>{{ article.title }}</strong>
-            <small>{{ article.summary }}</small>
-            <span v-if="article.requirements?.length" class="pc-tutorial-requirement">
-              {{ article.requirements.join(' · ') }}
+            <strong>{{ result.article.title }}</strong>
+            <small :class="{ 'pc-tutorial-match': normalizedSearchQuery }">{{ result.snippet }}</small>
+            <span v-if="result.article.requirements?.length" class="pc-tutorial-requirement">
+              {{ result.article.requirements.join(' · ') }}
             </span>
           </span>
           <i class="fa-solid fa-chevron-right"></i>
@@ -76,7 +76,9 @@
             </ol>
           </section>
 
-          <section v-else class="pc-tutorial-code">
+          <TutorialAppDirectory v-else-if="block.type === 'app-directory'" />
+
+          <section v-else-if="block.type === 'code'" class="pc-tutorial-code">
             <header>
               <span>{{ block.label || '示例' }}</span>
               <button class="pc-icon-btn" type="button" title="复制" @click="copyCode(block.code)">
@@ -88,34 +90,73 @@
         </template>
       </div>
     </section>
+
+    <section v-else class="pc-tutorial-page pc-tutorial-missing-page">
+      <EmptyState :title="route.page === 'article' ? '这篇教程不存在' : '教程页面不存在'">
+        <p>教程内容可能已经更新，请返回教程首页重新选择。</p>
+        <button class="pc-primary-btn" type="button" @click="phone.openApp('tutorial')">
+          <i class="fa-solid fa-book-open"></i>
+          <span>返回教程首页</span>
+        </button>
+      </EmptyState>
+    </section>
   </section>
 </template>
 
 <script setup lang="ts">
 import EmptyState from '@/components/EmptyState.vue';
+import { getPhoneAppDefinitions } from '@/core/appLayout';
 import { usePhoneStore } from '@/store/phone';
+import TutorialAppDirectory from './TutorialAppDirectory.vue';
+import { getTutorialAppDirectorySearchText } from './appCatalog';
 import { tutorialArticles, tutorialCategories, type TutorialArticle, type TutorialCategoryId } from './data';
 
 const phone = usePhoneStore();
 const route = computed(() => phone.currentRoute);
 const activeCategory = ref<'all' | TutorialCategoryId>('all');
 const searchQuery = ref('');
+const appDefinitions = getPhoneAppDefinitions();
+const appDirectorySearchText = getTutorialAppDirectorySearchText(appDefinitions);
+const normalizedSearchQuery = computed(() => searchQuery.value.trim().toLocaleLowerCase());
 
 const activeArticle = computed(() => {
   const articleId = route.value.params?.articleId || '';
   return tutorialArticles.find(article => article.id === articleId) ?? null;
 });
 
-const visibleArticles = computed(() => {
-  const keyword = searchQuery.value.trim().toLocaleLowerCase();
-  return tutorialArticles.filter(article => {
-    if (activeCategory.value !== 'all' && article.category !== activeCategory.value) return false;
-    if (!keyword) return true;
-    return [article.title, article.summary, ...article.keywords, ...(article.requirements || [])].some(text =>
-      text.toLocaleLowerCase().includes(keyword),
-    );
+const visibleArticleResults = computed(() => {
+  const keyword = normalizedSearchQuery.value;
+  return tutorialArticles.flatMap(article => {
+    if (activeCategory.value !== 'all' && article.category !== activeCategory.value) return [];
+    if (!keyword) return [{ article, snippet: article.summary }];
+    if (!articleSearchText(article).includes(keyword)) return [];
+    return [{ article, snippet: findArticleSnippet(article, keyword) }];
   });
 });
+
+function articleTextSegments(article: TutorialArticle) {
+  const blockText = article.blocks.flatMap(block => {
+    if (block.type === 'app-directory') return [appDirectorySearchText];
+    if (block.type === 'steps') return [block.title || '', ...block.items];
+    if (block.type === 'code') return [block.label || '', block.code];
+    return [block.title || '', block.text];
+  });
+  return [article.title, article.summary, ...article.keywords, ...(article.requirements || []), ...blockText];
+}
+
+function articleSearchText(article: TutorialArticle) {
+  return articleTextSegments(article).join('\n').toLocaleLowerCase();
+}
+
+function findArticleSnippet(article: TutorialArticle, keyword: string) {
+  const segments = articleTextSegments(article);
+  const matched = segments.find(segment => segment.toLocaleLowerCase().includes(keyword));
+  if (!matched || matched === article.title || article.keywords.includes(matched)) return article.summary;
+  const matchedIndex = matched.toLocaleLowerCase().indexOf(keyword);
+  const start = Math.max(0, matchedIndex - 24);
+  const end = Math.min(matched.length, matchedIndex + keyword.length + 54);
+  return `${start > 0 ? '…' : ''}${matched.slice(start, end)}${end < matched.length ? '…' : ''}`;
+}
 
 function categoryLabel(categoryId: TutorialCategoryId) {
   return tutorialCategories.find(category => category.id === categoryId)?.label || '教程';
@@ -123,6 +164,7 @@ function categoryLabel(categoryId: TutorialCategoryId) {
 
 function articleIcon(categoryId: TutorialCategoryId) {
   return {
+    apps: 'fa-solid fa-table-cells-large',
     data: 'fa-solid fa-database',
     dependency: 'fa-solid fa-puzzle-piece',
     generation: 'fa-solid fa-wand-magic-sparkles',
@@ -148,18 +190,19 @@ async function copyCode(code: string) {
 
 <style scoped>
 .pc-tutorial-app {
-  height: 100%;
-  min-height: 0;
+  min-height: 100%;
 }
 
 .pc-tutorial-page {
   display: flex;
-  height: 100%;
-  min-height: 0;
+  min-height: 100%;
   flex-direction: column;
   gap: 14px;
-  overflow-y: auto;
   padding: 14px;
+}
+
+.pc-tutorial-missing-page {
+  justify-content: center;
 }
 
 .pc-tutorial-search {
@@ -238,6 +281,10 @@ async function copyCode(code: string) {
   -webkit-box-orient: vertical;
   -webkit-line-clamp: 2;
   line-height: 1.45;
+}
+
+.pc-tutorial-row-copy small.pc-tutorial-match {
+  color: var(--pc-text);
 }
 
 .pc-tutorial-row-copy small,

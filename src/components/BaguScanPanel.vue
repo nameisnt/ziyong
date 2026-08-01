@@ -103,8 +103,6 @@
         <button class="pc-mini-btn" type="button" :disabled="!visibleHits.length" @click="toggleVisible(false)">
           {{ t`取消可见` }}
         </button>
-        <button class="pc-mini-btn" type="button" @click="toggleAll(true)">{{ t`全选` }}</button>
-        <button class="pc-mini-btn" type="button" @click="toggleAll(false)">{{ t`全不选` }}</button>
       </div>
 
       <div v-if="!visibleHits.length" class="pc-bagu-empty compact">
@@ -227,12 +225,6 @@ watch(
 function runScan() {
   hasScanned.value = true;
   hits.value = scanTextWithBaguRules(draftContent.value, scanRules.value);
-}
-
-function toggleAll(selected: boolean) {
-  hits.value.forEach(hit => {
-    hit.selected = selected;
-  });
 }
 
 function toggleVisible(selected: boolean) {
