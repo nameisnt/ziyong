@@ -320,11 +320,7 @@ function setConnectionSelection(selection: string) {
 }
 
 function setTavernPresetName(tavernPresetName: string) {
-  generationOverrides.setTavernPresetName(
-    overrideRoute.value.appId,
-    overrideRoute.value.page,
-    tavernPresetName,
-  );
+  generationOverrides.setTavernPresetName(overrideRoute.value.appId, overrideRoute.value.page, tavernPresetName);
 }
 
 function toggleQuickPhrasePanel() {

@@ -44,7 +44,12 @@
               >
                 {{ summaryItem.enabled ? t`已启用` : t`已停用` }}
               </button>
-              <button class="pc-icon-btn" type="button" :title="t`编辑总结`" @click="emit('editSummary', summaryItem.id)">
+              <button
+                class="pc-icon-btn"
+                type="button"
+                :title="t`编辑总结`"
+                @click="emit('editSummary', summaryItem.id)"
+              >
                 <i class="fa-solid fa-pen"></i>
               </button>
               <button

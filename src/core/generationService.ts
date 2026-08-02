@@ -75,10 +75,9 @@ export type GenerateContentOptions = {
   textProvider: TextProviderSettings;
 };
 
-function applyInteractiveGenerationOverride<TOptions extends Pick<GenerateContentOptions, 'generationDefaults' | 'textProvider'>>(
-  adapterAppId: string,
-  options: TOptions,
-): TOptions {
+function applyInteractiveGenerationOverride<
+  TOptions extends Pick<GenerateContentOptions, 'generationDefaults' | 'textProvider'>,
+>(adapterAppId: string, options: TOptions): TOptions {
   const phone = usePhoneStore();
   const route = phone.currentRoute;
   if (route.appId !== adapterAppId) return options;

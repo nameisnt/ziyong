@@ -93,16 +93,18 @@ function rawEntryPosition(value: unknown): WorldbookEntry['position']['type'] {
     }
   }
   return (
-    {
-      0: 'before_character_definition',
-      1: 'after_character_definition',
-      2: 'before_author_note',
-      3: 'after_author_note',
-      4: 'at_depth',
-      5: 'before_example_messages',
-      6: 'after_example_messages',
-    } as const
-  )[numberOr(value, 0)] || 'before_character_definition';
+    (
+      {
+        0: 'before_character_definition',
+        1: 'after_character_definition',
+        2: 'before_author_note',
+        3: 'after_author_note',
+        4: 'at_depth',
+        5: 'before_example_messages',
+        6: 'after_example_messages',
+      } as const
+    )[numberOr(value, 0)] || 'before_character_definition'
+  );
 }
 
 function rawEntryRole(value: unknown): WorldbookEntry['position']['role'] {
@@ -394,9 +396,8 @@ export async function setWorldbookEntryStates(bookName: string, states: Map<numb
     }
   }
 
-  const saveWorldInfo = getOptionalGlobalFunction<
-    (name: string, data: unknown, immediately?: boolean) => Promise<void>
-  >('saveWorldInfo');
+  const saveWorldInfo =
+    getOptionalGlobalFunction<(name: string, data: unknown, immediately?: boolean) => Promise<void>>('saveWorldInfo');
   if (!saveWorldInfo) throw new Error('当前酒馆环境没有开放 saveWorldInfo 接口');
   const { book, entries } = await loadRawWorldbook(bookName);
   const rawEntries = (book as RawWorldbook).entries;

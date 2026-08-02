@@ -1695,9 +1695,7 @@ async function applyScenario(name: VisualScenarioName, options: { height?: numbe
     document.querySelector<HTMLDetailsElement>('.pc-generation-advanced')?.setAttribute('open', '');
     await waitForPaint();
 
-    const connectionCombobox = document.querySelector<HTMLElement>(
-      '.pc-generation-advanced-body .pc-combobox',
-    );
+    const connectionCombobox = document.querySelector<HTMLElement>('.pc-generation-advanced-body .pc-combobox');
     if (!connectionCombobox) throw new Error('Generation connection selector is missing');
     connectionCombobox.querySelector<HTMLButtonElement>('.pc-combobox-toggle')?.click();
     await waitForPaint();
@@ -1732,10 +1730,7 @@ async function applyScenario(name: VisualScenarioName, options: { height?: numbe
       settingsStore.settings.textProvider,
       override.connectionSelection,
     );
-    if (
-      resolvedProvider.mode !== 'external' ||
-      resolvedProvider.activeExternalProfileId !== externalProfile.id
-    ) {
+    if (resolvedProvider.mode !== 'external' || resolvedProvider.activeExternalProfileId !== externalProfile.id) {
       throw new Error('Generation request did not resolve the selected external connection profile');
     }
   } else if (name === 'preview-draft-deferred-save') {
@@ -1792,9 +1787,7 @@ async function applyScenario(name: VisualScenarioName, options: { height?: numbe
       title: '番外预览',
     });
     await waitForPaint();
-    const openDraftButton = document.querySelector<HTMLButtonElement>(
-      '.pc-preview-draft-notice .pc-primary-btn',
-    );
+    const openDraftButton = document.querySelector<HTMLButtonElement>('.pc-preview-draft-notice .pc-primary-btn');
     if (!openDraftButton) throw new Error('Deferred preview draft notice did not appear');
     openDraftButton.click();
     await waitForPaint();

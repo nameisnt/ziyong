@@ -434,17 +434,7 @@ export const tutorialArticles: TutorialArticle[] = [
     category: 'generation',
     title: '生成页为什么只先显示追加要求',
     summary: '常用输入放在首屏，连接、预设、来源楼层和引用收进默认折叠的高级区域。',
-    keywords: [
-      '生成页',
-      '追加要求',
-      '来源与预设',
-      '本次连接',
-      '本次预设',
-      '来源楼层',
-      '引用内容',
-      '快捷短语',
-      '折叠',
-    ],
+    keywords: ['生成页', '追加要求', '来源与预设', '本次连接', '本次预设', '来源楼层', '引用内容', '快捷短语', '折叠'],
     blocks: [
       {
         type: 'paragraph',
