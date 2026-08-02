@@ -1220,13 +1220,15 @@ async function runGeneration() {
       generationState.error = result.warnings.join('；') || '模型没有返回可解析的小剧场 XML';
       failedDraftRawOutput.value = result.rawOutput;
       toastr.warning('XML 解析失败，已保存到失败草稿');
-      phone.replacePage('failed-draft', '解析失败草稿', { draftId: result.draft.id });
+      void phone.presentGeneratedPage('theater', 'failed-draft', '解析失败草稿', { draftId: result.draft.id });
       return;
     }
 
     if (result.status === 'saved') {
       toastr.success('已生成并保存小剧场');
-      phone.replacePage('entry', result.saved.entry.title, { entryId: result.saved.entry.id });
+      void phone.presentGeneratedPage('theater', 'entry', result.saved.entry.title, {
+        entryId: result.saved.entry.id,
+      });
       return;
     }
 
@@ -1244,7 +1246,7 @@ async function runGeneration() {
       warnings: result.warnings,
     };
     persistTheaterPreviewDraft();
-    phone.replacePage('preview', '生成预览');
+    void phone.presentGeneratedPage('theater', 'preview', '生成预览');
   } catch (error) {
     generationState.error = error instanceof Error ? error.message : '生成失败，请稍后再试';
   }

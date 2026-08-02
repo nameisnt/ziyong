@@ -1534,14 +1534,20 @@ async function runChapterGenerationForBook(bookId: string, book: ExtraBook, chap
       failedDraftRawOutput.value = result.rawOutput;
       chapterGenerationState.error = result.warnings.join('；') || '模型没有返回可解析的番外 XML';
       toastr.warning('XML 解析失败，已保存到失败草稿');
-      phone.replacePage('failed-draft', '解析失败草稿', { draftId: result.draft.id, bookId });
+      void phone.presentGeneratedPage('extras', 'failed-draft', '解析失败草稿', {
+        draftId: result.draft.id,
+        bookId,
+      });
       return;
     }
 
     if (result.status === 'saved') {
       const savedChapter = result.saved.chapter;
       toastr.success(chapterGenerationDraft.mode === '重写当前章节' ? '已重写并保存章节' : '已生成并保存章节');
-      phone.replacePage('chapter', savedChapter.title, { bookId, chapterId: savedChapter.id });
+      void phone.presentGeneratedPage('extras', 'chapter', savedChapter.title, {
+        bookId,
+        chapterId: savedChapter.id,
+      });
       return;
     }
 
@@ -1555,7 +1561,12 @@ async function runChapterGenerationForBook(bookId: string, book: ExtraBook, chap
       warnings: result.warnings,
     };
     persistExtraChapterPreviewDraft(chapterId ? { bookId, chapterId } : { bookId });
-    phone.replacePage('chapter-preview', '番外预览', chapterId ? { bookId, chapterId } : { bookId });
+    void phone.presentGeneratedPage(
+      'extras',
+      'chapter-preview',
+      '番外预览',
+      chapterId ? { bookId, chapterId } : { bookId },
+    );
   } catch (error) {
     chapterGenerationState.error = error instanceof Error ? error.message : '生成失败，请稍后再试';
   }
@@ -1680,7 +1691,7 @@ async function runSummaryGeneration() {
       failedDraftRawOutput.value = result.rawOutput;
       generationState.error = result.warnings.join('；') || '模型没有返回可解析的章节总结 XML';
       toastr.warning('XML 解析失败，已保存到失败草稿');
-      phone.replacePage('failed-draft', '解析失败草稿', { draftId: result.draft.id });
+      void phone.presentGeneratedPage('extras', 'failed-draft', '解析失败草稿', { draftId: result.draft.id });
       return;
     }
 
@@ -1688,7 +1699,7 @@ async function runSummaryGeneration() {
       const nextBook = extras.getBook(bookId);
       toastr.success('已生成并保存章节总结');
       if (nextBook) {
-        phone.replacePage('book', nextBook.title, { bookId });
+        void phone.presentGeneratedPage('extras', 'book', nextBook.title, { bookId });
       }
       return;
     }
@@ -1703,7 +1714,7 @@ async function runSummaryGeneration() {
       warnings: result.warnings,
     };
     persistExtraSummaryPreviewDraft({ bookId });
-    phone.replacePage('summary-preview', '章节总结预览', { bookId });
+    void phone.presentGeneratedPage('extras', 'summary-preview', '章节总结预览', { bookId });
   } catch (error) {
     generationState.error = error instanceof Error ? error.message : '生成失败，请稍后再试';
   }

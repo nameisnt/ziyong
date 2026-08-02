@@ -608,13 +608,13 @@ async function runComfyGeneration() {
     if (result.status === 'failed') {
       generationState.error = result.warnings.join('；') || '模型没有返回可解析的 ComfyUI XML';
       toastr.warning('XML 解析失败，已保存失败草稿');
-      phone.replacePage('failed-draft', '解析失败草稿', { draftId: result.draft.id });
+      void phone.presentGeneratedPage('media', 'failed-draft', '解析失败草稿', { draftId: result.draft.id });
       return;
     }
 
     if (result.status === 'saved') {
       toastr.success(`已生成并保存 ${result.saved.entries.length} 个媒体`);
-      phone.replacePage('root', '媒体生成');
+      void phone.presentGeneratedPage('media', 'root', '媒体生成');
       return;
     }
 
@@ -631,7 +631,7 @@ async function runComfyGeneration() {
       workflowId: activeWorkflow.value.id,
     };
     persistMediaPreviewDraft();
-    phone.replacePage('preview', '媒体预览');
+    void phone.presentGeneratedPage('media', 'preview', '媒体预览');
   } catch (caughtError) {
     generationState.error = caughtError instanceof Error ? caughtError.message : '生成 ComfyUI 输入失败';
   }

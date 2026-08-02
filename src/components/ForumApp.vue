@@ -1238,13 +1238,13 @@ async function runThreadGeneration() {
       generationState.error = result.warnings.join('；') || '模型没有返回可解析的论坛 XML';
       failedDraftRawOutput.value = result.rawOutput;
       toastr.warning('XML 解析失败，已保存到失败草稿');
-      phone.replacePage('failed-draft', '解析失败草稿', { draftId: result.draft.id });
+      void phone.presentGeneratedPage('forum', 'failed-draft', '解析失败草稿', { draftId: result.draft.id });
       return;
     }
 
     if (result.status === 'saved') {
       toastr.success('已生成并保存帖子');
-      phone.replacePage('thread', result.saved.thread.title, {
+      void phone.presentGeneratedPage('forum', 'thread', result.saved.thread.title, {
         boardId: result.saved.board.id,
         threadId: result.saved.thread.id,
       });
@@ -1266,7 +1266,8 @@ async function runThreadGeneration() {
       warnings: [...result.warnings, ...materialized.warnings],
     };
     persistForumPreviewDraft(generationState.preview.boardId ? { boardId: generationState.preview.boardId } : {});
-    phone.replacePage(
+    void phone.presentGeneratedPage(
+      'forum',
       'preview',
       '生成预览',
       generationState.preview.boardId ? { boardId: generationState.preview.boardId } : undefined,
@@ -1334,13 +1335,13 @@ async function runReplyGeneration() {
       generationState.error = result.warnings.join('；') || '模型没有返回可解析的论坛回复 XML';
       failedDraftRawOutput.value = result.rawOutput;
       toastr.warning('XML 解析失败，已保存到失败草稿');
-      phone.replacePage('failed-draft', '解析失败草稿', { draftId: result.draft.id });
+      void phone.presentGeneratedPage('forum', 'failed-draft', '解析失败草稿', { draftId: result.draft.id });
       return;
     }
 
     if (result.status === 'saved') {
       toastr.success('已生成并保存回复');
-      phone.replacePage('thread', thread.title, { boardId, threadId });
+      void phone.presentGeneratedPage('forum', 'thread', thread.title, { boardId, threadId });
       return;
     }
 
@@ -1357,7 +1358,7 @@ async function runReplyGeneration() {
       warnings: [...result.warnings, ...materialized.warnings],
     };
     persistForumPreviewDraft({ boardId, threadId });
-    phone.replacePage('preview', '生成预览', { boardId, threadId });
+    void phone.presentGeneratedPage('forum', 'preview', '生成预览', { boardId, threadId });
   } catch (error) {
     generationState.error = error instanceof Error ? error.message : '生成失败，请稍后再试';
   }

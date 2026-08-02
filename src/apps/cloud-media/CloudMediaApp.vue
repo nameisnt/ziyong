@@ -789,13 +789,15 @@ async function runAiGeneration() {
     if (result.status === 'failed') {
       generationState.error = result.warnings.join('；') || '模型没有返回可解析的云媒体 XML';
       toastr.warning('XML 解析失败，已保存失败草稿');
-      phone.replacePage('failed-draft', '解析失败草稿', { draftId: result.draft.id });
+      void phone.presentGeneratedPage('cloud-media', 'failed-draft', '解析失败草稿', {
+        draftId: result.draft.id,
+      });
       return;
     }
     if (result.status === 'saved') {
       latestOutput.value = result.saved.entries[0] ?? null;
       toastr.success(`已生成并保存 ${result.saved.entries.length} 个媒体`);
-      phone.replacePage('root', '云媒体');
+      void phone.presentGeneratedPage('cloud-media', 'root', '云媒体');
       return;
     }
 
@@ -808,7 +810,7 @@ async function runAiGeneration() {
       warnings: result.warnings,
     });
     persistCloudPreviewDraft();
-    phone.replacePage('preview', '云媒体预览');
+    void phone.presentGeneratedPage('cloud-media', 'preview', '云媒体预览');
   } catch (error) {
     generationState.error = error instanceof Error ? error.message : '生成云媒体提示词失败';
   }

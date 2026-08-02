@@ -29,17 +29,7 @@
     </article>
 
     <div class="pc-reader-footer-layer">
-      <button
-        v-if="!footerVisible"
-        class="pc-icon-btn pc-reader-footer-reveal"
-        type="button"
-        aria-label="显示阅读工具"
-        title="显示阅读工具"
-        @click.stop="footerVisible = true"
-      >
-        <i class="fa-solid fa-ellipsis"></i>
-      </button>
-      <div v-else class="pc-reader-footer-popover" @click.stop>
+      <div v-if="footerVisible" class="pc-reader-footer-popover" @click.stop>
         <DetailFooter
           :actions-class="actionsClass"
           :catalog-label="catalogLabel"
@@ -285,21 +275,8 @@ function runFooterAction(event: 'bottom' | 'catalog' | 'next' | 'previous' | 'to
   pointer-events: none;
 }
 
-.pc-reader-footer-reveal,
 .pc-reader-footer-popover {
   pointer-events: auto;
-}
-
-.pc-reader-footer-reveal {
-  display: grid;
-  width: 72px;
-  height: 32px;
-  place-items: center;
-  border: 0;
-  border-radius: 14px 14px 0 0;
-  background: color-mix(in srgb, var(--pc-surface) 72%, transparent 28%);
-  color: var(--pc-muted);
-  cursor: pointer;
 }
 
 .pc-reader-footer-popover {

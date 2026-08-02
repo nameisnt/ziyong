@@ -890,13 +890,13 @@ async function runGeneration() {
       generationState.error = result.warnings.join('；') || '模型没有返回可解析的书信 XML';
       failedDraftRawOutput.value = result.rawOutput;
       toastr.warning('XML 解析失败，已保存到失败草稿');
-      phone.replacePage('failed-draft', '解析失败草稿', { draftId: result.draft.id });
+      void phone.presentGeneratedPage('letters', 'failed-draft', '解析失败草稿', { draftId: result.draft.id });
       return;
     }
 
     if (result.status === 'saved') {
       toastr.success('已生成并保存信件');
-      phone.replacePage('entry', result.saved.entry.title, {
+      void phone.presentGeneratedPage('letters', 'entry', result.saved.entry.title, {
         bookId: result.saved.book.id,
         entryId: result.saved.entry.id,
       });
@@ -919,7 +919,7 @@ async function runGeneration() {
       ...(activeBook.value?.id ? { bookId: activeBook.value.id } : {}),
       ...(route.value.params?.replyToEntryId ? { replyToEntryId: route.value.params.replyToEntryId } : {}),
     });
-    phone.replacePage('preview', '生成预览', {
+    void phone.presentGeneratedPage('letters', 'preview', '生成预览', {
       ...(activeBook.value?.id ? { bookId: activeBook.value.id } : {}),
       ...(route.value.params?.replyToEntryId ? { replyToEntryId: route.value.params.replyToEntryId } : {}),
     });

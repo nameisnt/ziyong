@@ -1338,13 +1338,19 @@ async function runGeneration() {
       failedDraftRawOutput.value = result.rawOutput;
       failedDraftTargetBookId.value = bookId;
       toastr.warning('XML 解析失败，已保存到失败草稿');
-      phone.replacePage('failed-draft', '解析失败草稿', { bookId, draftId: result.draft.id });
+      void phone.presentGeneratedPage('summary', 'failed-draft', '解析失败草稿', {
+        bookId,
+        draftId: result.draft.id,
+      });
       return;
     }
 
     if (result.status === 'saved') {
       toastr.success('已生成并保存总结');
-      phone.replacePage('entry', result.saved.entry.title, { bookId, entryId: result.saved.entry.id });
+      void phone.presentGeneratedPage('summary', 'entry', result.saved.entry.title, {
+        bookId,
+        entryId: result.saved.entry.id,
+      });
       return;
     }
 
@@ -1359,7 +1365,7 @@ async function runGeneration() {
       warnings: result.warnings,
     };
     persistSummaryPreviewDraft({ bookId });
-    phone.replacePage('preview', '生成预览', { bookId });
+    void phone.presentGeneratedPage('summary', 'preview', '生成预览', { bookId });
   } catch (error) {
     generationState.error = error instanceof Error ? error.message : '生成失败，请稍后再试';
   }

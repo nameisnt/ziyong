@@ -813,13 +813,15 @@ async function runGeneration() {
     if (result.status === 'failed') {
       generationState.error = result.warnings.join('；') || '模型没有返回可解析的关系 XML';
       toastr.warning('XML 解析失败，已保存失败草稿');
-      phone.replacePage('failed-draft', '解析失败草稿', { draftId: result.draft.id });
+      void phone.presentGeneratedPage('relationship', 'failed-draft', '解析失败草稿', {
+        draftId: result.draft.id,
+      });
       return;
     }
 
     if (result.status === 'saved') {
       toastr.success('已合并关系网');
-      phone.replacePage('root', '关系网');
+      void phone.presentGeneratedPage('relationship', 'root', '关系网');
       return;
     }
 
@@ -831,7 +833,7 @@ async function runGeneration() {
       warnings: result.warnings,
     };
     persistRelationshipPreviewDraft();
-    phone.replacePage('preview', '关系预览');
+    void phone.presentGeneratedPage('relationship', 'preview', '关系预览');
   } catch (caughtError) {
     generationState.error = caughtError instanceof Error ? caughtError.message : '生成关系失败';
   }

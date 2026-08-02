@@ -485,7 +485,7 @@
         <div class="pc-number-field">
           <label class="pc-field-label">
             {{ t`RPM 请求限制` }}
-            <InfoHint :text="t`限制每分钟生成请求数，0 表示不限制。批量任务会共享请求间隔。`" />
+            <InfoHint :text="t`限制任意连续 60 秒内的生成请求数，0 表示不限制。重试和批量任务共享计数。`" />
           </label>
           <input v-model.number="settings.generation.rpmLimit" class="pc-field" type="number" min="0" max="120" />
         </div>

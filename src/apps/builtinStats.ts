@@ -213,7 +213,7 @@ export const createForumContentStats = createContentStatsProvider<ForumScopeData
   id: 'forum',
   label: '论坛',
   collectionLabel: '板块',
-  itemLabel: '主楼/回复',
+  itemLabel: '主题帖',
   field: forumField,
   schema: ForumScopeDataSchema,
   collectScope(scopeData) {
@@ -222,7 +222,6 @@ export const createForumContentStats = createContentStatsProvider<ForumScopeData
       addCollection(accumulator, board.updatedAt);
       board.threads.forEach(thread => {
         addContentItem(accumulator, thread.content, thread.updatedAt);
-        thread.replies.forEach(reply => addContentItem(accumulator, reply.content, reply.updatedAt));
       });
     });
     return accumulator;

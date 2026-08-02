@@ -83,9 +83,11 @@ defineEmits<{
   gap: 7px;
   margin-top: 0;
   padding: 6px;
+  border: 1px solid var(--pc-border);
+  border-bottom: 0;
   border-radius: 18px;
-  background: color-mix(in srgb, var(--pc-surface) 66%, transparent 34%);
-  backdrop-filter: blur(12px);
+  background: var(--pc-form-control-bg);
+  box-shadow: 0 -8px 18px color-mix(in srgb, var(--pc-text) 10%, transparent 90%);
 }
 
 .pc-detail-nav,

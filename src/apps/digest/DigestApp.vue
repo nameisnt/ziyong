@@ -522,13 +522,15 @@ async function runGeneration() {
     if (result.status === 'failed') {
       generationState.error = result.warnings.join('；') || '模型没有返回可解析的摘抄 XML';
       toastr.warning('XML 解析失败，已保存失败草稿');
-      phone.replacePage('failed-draft', '解析失败草稿', { draftId: result.draft.id });
+      void phone.presentGeneratedPage('digest', 'failed-draft', '解析失败草稿', { draftId: result.draft.id });
       return;
     }
 
     if (result.status === 'saved') {
       toastr.success('已生成并保存摘抄');
-      phone.replacePage('entry', result.saved.entry.title, { entryId: result.saved.entry.id });
+      void phone.presentGeneratedPage('digest', 'entry', result.saved.entry.title, {
+        entryId: result.saved.entry.id,
+      });
       return;
     }
 
@@ -541,7 +543,7 @@ async function runGeneration() {
       warnings: result.warnings,
     };
     persistDigestPreviewDraft();
-    phone.replacePage('preview', '摘抄预览');
+    void phone.presentGeneratedPage('digest', 'preview', '摘抄预览');
   } catch (caughtError) {
     generationState.error = caughtError instanceof Error ? caughtError.message : '生成摘抄失败';
   }

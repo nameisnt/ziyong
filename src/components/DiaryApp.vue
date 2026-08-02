@@ -1249,13 +1249,13 @@ async function runGeneration() {
       failedDraftRawOutput.value = result.rawOutput;
       generationState.error = result.warnings.join('；') || '模型没有返回可解析的日记 XML';
       toastr.warning('XML 解析失败，已保存到失败草稿');
-      phone.replacePage('failed-draft', '解析失败草稿', { draftId: result.draft.id });
+      void phone.presentGeneratedPage('diary', 'failed-draft', '解析失败草稿', { draftId: result.draft.id });
       return;
     }
 
     if (result.status === 'saved') {
       toastr.success('已生成并保存日记');
-      phone.replacePage('entry', result.saved.entry.title, {
+      void phone.presentGeneratedPage('diary', 'entry', result.saved.entry.title, {
         bookId: result.saved.bookId,
         entryId: result.saved.entry.id,
       });
@@ -1277,7 +1277,12 @@ async function runGeneration() {
       warnings: result.warnings,
     };
     persistDiaryPreviewDraft(activeBook.value?.id ? { bookId: activeBook.value.id } : {});
-    phone.replacePage('preview', '日记预览', activeBook.value?.id ? { bookId: activeBook.value.id } : undefined);
+    void phone.presentGeneratedPage(
+      'diary',
+      'preview',
+      '日记预览',
+      activeBook.value?.id ? { bookId: activeBook.value.id } : undefined,
+    );
   } catch (error) {
     generationState.error = error instanceof Error ? error.message : '生成失败，请稍后再试';
   }
@@ -1422,13 +1427,13 @@ async function runReadReactionGeneration() {
       failedDraftRawOutput.value = result.rawOutput;
       generationState.error = result.warnings.join('；') || '模型没有返回可解析的阅读反应 XML';
       toastr.warning('XML 解析失败，已保存到失败草稿');
-      phone.replacePage('failed-draft', '解析失败草稿', { draftId: result.draft.id });
+      void phone.presentGeneratedPage('diary', 'failed-draft', '解析失败草稿', { draftId: result.draft.id });
       return;
     }
 
     if (result.status === 'saved') {
       toastr.success('已生成并保存阅读反应');
-      phone.replacePage('entry', result.saved.entry.title, {
+      void phone.presentGeneratedPage('diary', 'entry', result.saved.entry.title, {
         bookId: result.saved.bookId,
         entryId: result.saved.entry.id,
       });
@@ -1450,7 +1455,10 @@ async function runReadReactionGeneration() {
       warnings: result.warnings,
     };
     persistDiaryPreviewDraft({ bookId: sourceBook.id, entryId: sourceEntry.id });
-    phone.replacePage('preview', '阅读反应预览', { bookId: sourceBook.id, entryId: sourceEntry.id });
+    void phone.presentGeneratedPage('diary', 'preview', '阅读反应预览', {
+      bookId: sourceBook.id,
+      entryId: sourceEntry.id,
+    });
   } catch (error) {
     generationState.error = error instanceof Error ? error.message : '生成失败，请稍后再试';
   }

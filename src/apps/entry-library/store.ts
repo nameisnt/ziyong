@@ -62,6 +62,13 @@ export interface DuplicateEntryPair {
   score: number;
 }
 
+export interface EntryLibraryImportResult {
+  bindings: number;
+  groups: number;
+  items: number;
+  skippedBindings: number;
+}
+
 function nowIso() {
   return new Date().toISOString();
 }
@@ -92,6 +99,16 @@ function readSettings(raw: unknown) {
     });
   });
   return settings;
+}
+
+function readImportSettings(raw: unknown) {
+  if (!raw || typeof raw !== 'object') throw new Error('导入文件不是有效的条目库对象');
+  const record = raw as Record<string, unknown>;
+  if (!Array.isArray(record.groups) || !Array.isArray(record.items) || !Array.isArray(record.bindings)) {
+    throw new Error('导入文件缺少分组、收藏或绑定数据');
+  }
+  if (record.version !== 1) throw new Error('暂不支持这个条目库文件版本');
+  return readSettings(raw);
 }
 
 function compareGroups(left: EntryLibraryGroup, right: EntryLibraryGroup) {
@@ -395,7 +412,66 @@ export const useEntryLibraryStore = defineStore('entry-library', () => {
   }
 
   function importBackup(data: unknown) {
-    settings.value = readSettings(data);
+    settings.value = readImportSettings(data);
+  }
+
+  function exportBackup() {
+    return klona(settings.value);
+  }
+
+  function mergeBackup(data: unknown): EntryLibraryImportResult {
+    const incoming = readImportSettings(data);
+    const groupIds = new Set(settings.value.groups.map(group => group.id));
+    const itemIds = new Set(settings.value.items.map(item => item.id));
+    const bindingIds = new Set(settings.value.bindings.map(binding => binding.id));
+    const bindingTargets = new Set(
+      settings.value.bindings.map(
+        binding => `${binding.presetName}\n${binding.targetPromptSource}\n${binding.targetPromptId}`,
+      ),
+    );
+    const groupIdMap = new Map<string, string>();
+
+    const importedGroups = incoming.groups.map(group => {
+      const id = groupIds.has(group.id) ? createId('entry_group') : group.id;
+      groupIds.add(id);
+      groupIdMap.set(group.id, id);
+      return { ...group, id };
+    });
+    const importedItems = incoming.items.flatMap(item => {
+      const groupId = groupIdMap.get(item.groupId);
+      if (!groupId) return [];
+      const id = itemIds.has(item.id) ? createId('entry_item') : item.id;
+      itemIds.add(id);
+      return [{ ...item, groupId, id }];
+    });
+
+    let skippedBindings = 0;
+    const importedBindings = incoming.bindings.flatMap(binding => {
+      const groupId = groupIdMap.get(binding.groupId);
+      const targetKey = `${binding.presetName}\n${binding.targetPromptSource}\n${binding.targetPromptId}`;
+      const conflict = bindingTargets.has(targetKey);
+      if (!groupId || conflict) {
+        skippedBindings += 1;
+        return [];
+      }
+      const id = bindingIds.has(binding.id) ? createId('entry_binding') : binding.id;
+      bindingIds.add(id);
+      bindingTargets.add(targetKey);
+      return [{ ...binding, groupId, id }];
+    });
+
+    settings.value = readSettings({
+      bindings: [...settings.value.bindings, ...importedBindings],
+      groups: [...settings.value.groups, ...importedGroups],
+      items: [...settings.value.items, ...importedItems],
+      version: 1,
+    });
+    return {
+      bindings: importedBindings.length,
+      groups: importedGroups.length,
+      items: importedItems.length,
+      skippedBindings,
+    };
   }
 
   function rehydrateFromSettings() {
@@ -416,12 +492,14 @@ export const useEntryLibraryStore = defineStore('entry-library', () => {
     deleteGroup,
     deleteItem,
     findDuplicates,
+    exportBackup,
     getGroup,
     getGroupItems,
     getItem,
     groups,
     importBackup,
     items,
+    mergeBackup,
     moveItem,
     rehydrateFromSettings,
     reorderGroupItems,

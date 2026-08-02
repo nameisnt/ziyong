@@ -305,9 +305,19 @@ async function waitForVisualCondition(condition: () => boolean, timeout = 1000) 
 }
 
 async function openReaderCatalog() {
-  const revealButton = document.querySelector<HTMLButtonElement>('.pc-reader-footer-reveal');
-  if (!revealButton) throw new Error('Reader footer reveal button is missing');
-  revealButton.click();
+  const readerShell = document.querySelector<HTMLElement>('.pc-reader-detail-shell');
+  if (!readerShell) throw new Error('Reader detail shell is missing');
+  const rect = readerShell.getBoundingClientRect();
+  const pointerInit: PointerEventInit = {
+    bubbles: true,
+    button: 0,
+    clientX: rect.left + rect.width / 2,
+    clientY: rect.top + rect.height / 2,
+    isPrimary: true,
+    pointerId: 1,
+  };
+  readerShell.dispatchEvent(new PointerEvent('pointerdown', pointerInit));
+  readerShell.dispatchEvent(new PointerEvent('pointerup', pointerInit));
   await waitForPaint();
   const catalogButton = document.querySelector<HTMLButtonElement>('.pc-detail-nav .catalog');
   if (!catalogButton) throw new Error('Reader catalog button is missing after revealing the footer');

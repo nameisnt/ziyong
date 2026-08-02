@@ -1,6 +1,11 @@
 <template>
   <section class="pc-storylines-app">
     <section v-if="route.page === 'root'" class="pc-storylines-page">
+      <PreviewDraftNotice
+        :draft="storylinePreviewDraft"
+        @discard="discardStorylinePreviewDraft"
+        @open="openStorylinePreviewDraft"
+      />
       <article class="pc-editor-card">
         <div class="pc-section-head">
           <strong>
@@ -185,6 +190,7 @@ import EmptyState from '@/components/EmptyState.vue';
 import GenerationPanel from '@/components/GenerationPanel.vue';
 import GenerationPreviewPanel from '@/components/GenerationPreviewPanel.vue';
 import InfoHint from '@/components/InfoHint.vue';
+import PreviewDraftNotice from '@/components/PreviewDraftNotice.vue';
 import { getRegisteredPhoneGenerationAdapter } from '@/core/appRegistry';
 import { captureGenerationPrompt, generateContent } from '@/core/generationService';
 import { usePhoneStore } from '@/store/phone';
@@ -195,6 +201,7 @@ import type { GenerationExecutionPreview, SourceSelection } from '@/type/generat
 import { formatGenerationReferences, type GenerationReferenceItem } from '@/util/references';
 import { stopGenerationByIdSafe } from '@/util/runtime';
 import { formatTextProviderSummary } from '@/util/textProvider';
+import { usePreviewDraftPersistence } from '@/util/previewDrafts';
 import { createStorylineGenerationAdapter, formatStorylineResult, type StorylineGeneratedResult } from './generation';
 import {
   getBeatStatusLabel,
@@ -241,6 +248,22 @@ const generationState = reactive({
   preview: null as StorylinePreview | null,
   rawOutput: '',
   running: false,
+});
+const {
+  clearPreviewDraft: clearStorylinePreviewDraft,
+  discardPreviewDraft: discardStorylinePreviewDraft,
+  draft: storylinePreviewDraft,
+  openPreviewDraft: openStorylinePreviewDraft,
+  persistPreviewDraft: persistStorylinePreviewDraft,
+} = usePreviewDraftPersistence<StorylinePreview>({
+  appId: 'storylines',
+  getPreview: () => generationState.preview,
+  page: 'preview',
+  route,
+  setPreview: preview => {
+    generationState.preview = preview;
+  },
+  title: '剧情梳理预览',
 });
 
 onScopeDispose(() => {
@@ -324,6 +347,7 @@ function capturePrompt() {
 
 async function runGeneration() {
   generationState.error = '';
+  clearStorylinePreviewDraft();
   generationState.preview = null;
   generationState.rawOutput = '';
   try {
@@ -351,7 +375,7 @@ async function runGeneration() {
     }
     if (result.status === 'saved') {
       toastr.success(`已梳理 ${result.saved.lineCount} 条剧情线`);
-      phone.replacePage('root', '剧情梳理');
+      void phone.presentGeneratedPage('storylines', 'root', '剧情梳理');
       return;
     }
     openPreview(result);
@@ -368,7 +392,8 @@ function openPreview(result: GenerationExecutionPreview<StorylineGeneratedResult
     source: result.source,
     warnings: result.warnings,
   };
-  phone.replacePage('preview', '剧情梳理预览');
+  persistStorylinePreviewDraft();
+  void phone.presentGeneratedPage('storylines', 'preview', '剧情梳理预览');
 }
 
 function reparsePreviewRaw() {
@@ -398,6 +423,7 @@ async function savePreview() {
     warnings: preview.warnings,
   });
   generationState.preview = null;
+  clearStorylinePreviewDraft();
   toastr.success(`已合并 ${saved.lineCount} 条剧情线`);
   phone.replacePage('root', '剧情梳理');
 }

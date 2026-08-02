@@ -32,6 +32,37 @@ function uniqueNames(names: Array<null | string | undefined>) {
   return [...new Set(names.map(name => name?.trim()).filter((name): name is string => Boolean(name)))];
 }
 
+function normalizedWorldbookName(name: string) {
+  return name.trim().normalize('NFC');
+}
+
+function describeError(caughtError: unknown) {
+  return caughtError instanceof Error ? caughtError.message : String(caughtError);
+}
+
+function normalizeWorldbookEntries(value: unknown, bookName: string): WorldbookEntry[] {
+  if (!Array.isArray(value)) {
+    throw new Error(`世界书“${bookName}”返回的条目列表格式无效`);
+  }
+
+  return value.map((rawEntry, index) => {
+    if (!rawEntry || typeof rawEntry !== 'object') {
+      throw new Error(`世界书“${bookName}”的第 ${index + 1} 个条目格式无效`);
+    }
+    const entry = rawEntry as WorldbookEntry;
+    const uid = Number(entry.uid);
+    if (!Number.isFinite(uid)) {
+      throw new Error(`世界书“${bookName}”的第 ${index + 1} 个条目缺少有效 uid`);
+    }
+    return {
+      ...entry,
+      content: String(entry.content ?? ''),
+      name: String(entry.name ?? ''),
+      uid,
+    };
+  });
+}
+
 function normalizeCharacterId(value: null | string | undefined) {
   return String(value || '')
     .replace(/^.*[\\/]/, '')
@@ -126,7 +157,32 @@ export function getCurrentWorldbookGroups(): CurrentWorldbookGroups {
 
 export async function getWorldbookEntries(bookName: string) {
   const getWorldbook = requiredFunction<(worldbookName: string) => Promise<WorldbookEntry[]>>('getWorldbook');
-  return getWorldbook(bookName);
+  try {
+    return normalizeWorldbookEntries(await getWorldbook(bookName), bookName);
+  } catch (firstError) {
+    const getWorldbookNames = getOptionalGlobalFunction<() => string[]>('getWorldbookNames');
+    const normalizedTarget = normalizedWorldbookName(bookName);
+    let matches: string[] = [];
+    try {
+      matches = uniqueNames(getWorldbookNames?.() ?? []).filter(
+        candidate => normalizedWorldbookName(candidate) === normalizedTarget,
+      );
+    } catch {
+      // Keep the original read error when the name-list fallback is also unavailable.
+    }
+    const fallbackName = matches.length === 1 && matches[0] !== bookName ? matches[0] : '';
+    if (!fallbackName) {
+      throw new Error(`无法读取世界书“${bookName}”：${describeError(firstError)}`);
+    }
+
+    try {
+      return normalizeWorldbookEntries(await getWorldbook(fallbackName), fallbackName);
+    } catch (fallbackError) {
+      throw new Error(
+        `无法读取世界书“${bookName}”（已尝试匹配“${fallbackName}”）：${describeError(fallbackError)}`,
+      );
+    }
+  }
 }
 
 export async function setGlobalWorldbookEnabled(bookName: string, enabled: boolean) {

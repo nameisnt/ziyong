@@ -64,6 +64,7 @@ export interface PhoneNoticeInputField {
 export interface PhoneConfirmOptions {
   cancelLabel?: string;
   confirmLabel?: string;
+  dedupeKey?: string;
   kind?: PhoneNoticeKind;
   title?: string;
 }
@@ -87,6 +88,7 @@ export const usePhoneStore = defineStore('phone', () => {
   const noticeTimers = new Map<string, number>();
   const noticeResolvers = new Map<string, (value: boolean) => void>();
   const noticePromptResolvers = new Map<string, (value: null | string) => void>();
+  const pendingConfirmKeys = new Set<string>();
 
   const currentRoute = computed<PhoneRoute>(
     () => stack.value[stack.value.length - 1] ?? { appId: 'home', page: 'home', title: '酒馆手机' },
@@ -314,6 +316,42 @@ export const usePhoneStore = defineStore('phone', () => {
     stack.value = [...stack.value.slice(0, -1), { appId: currentRoute.value.appId, page, title, params, origin }];
   }
 
+  function replaceRoute(appId: string, page: string, title: string, params?: Record<string, string>) {
+    const app = getPhoneApp(appId);
+    if (!app) return;
+    isOpen.value = true;
+    stack.value = [...stack.value.slice(0, -1), { appId, page, title, params }];
+  }
+
+  async function presentGeneratedPage(appId: string, page: string, title: string, params?: Record<string, string>) {
+    const current = currentRoute.value;
+    const stillGenerating = current.appId === appId && current.page.toLocaleLowerCase().includes('generate');
+    if (stillGenerating) {
+      replaceRoute(appId, page, title, params);
+      return true;
+    }
+
+    const isFailedDraft = page === 'failed-draft';
+    const isPreview = page === 'preview' || page.endsWith('-preview');
+    const shouldOpen = await confirmNotice(
+      isFailedDraft
+        ? '生成内容已保存为失败草稿，可以立即前往修复。'
+        : isPreview
+          ? '生成已经完成，结果已保存到预览草稿。'
+          : '生成已经完成并保存，可以立即查看结果。',
+      {
+        cancelLabel: '稍后处理',
+        confirmLabel: isFailedDraft ? '修复草稿' : isPreview ? '查看预览' : '查看结果',
+        dedupeKey: `generation:${appId}:${page}:${JSON.stringify(params ?? {})}`,
+        kind: isFailedDraft ? 'warning' : 'success',
+        title: isFailedDraft ? '生成需要处理' : '生成完成',
+      },
+    );
+    if (!shouldOpen) return false;
+    pushRoute(appId, page, title, params);
+    return true;
+  }
+
   function resetPhoneState() {
     closePhoneNow();
     clearNotices();
@@ -351,6 +389,7 @@ export const usePhoneStore = defineStore('phone', () => {
     noticeTimers.clear();
     noticeResolvers.clear();
     noticePromptResolvers.clear();
+    pendingConfirmKeys.clear();
     notices.value = [];
   }
 
@@ -417,7 +456,10 @@ export const usePhoneStore = defineStore('phone', () => {
   }
 
   function confirmNotice(message: string, options: PhoneConfirmOptions = {}) {
-    return new Promise<boolean>(resolve => {
+    const dedupeKey = options.dedupeKey || `${options.title || '确认操作'}\n${message}`;
+    if (pendingConfirmKeys.has(dedupeKey)) return Promise.resolve(false);
+    pendingConfirmKeys.add(dedupeKey);
+    const confirmation = new Promise<boolean>(resolve => {
       const noticeId = showNotice({
         actions: [
           {
@@ -440,6 +482,8 @@ export const usePhoneStore = defineStore('phone', () => {
       });
       noticeResolvers.set(noticeId, resolve);
     });
+    void confirmation.finally(() => pendingConfirmKeys.delete(dedupeKey));
+    return confirmation;
   }
 
   function promptNotice(message: string, options: PhonePromptOptions = {}) {
@@ -510,11 +554,13 @@ export const usePhoneStore = defineStore('phone', () => {
     openApp,
     openPhone,
     promptNotice,
+    presentGeneratedPage,
     pushPage,
     pushRoute,
     registerNavigationGuard,
     registerSavedPreviewCheck,
     replacePage,
+    replaceRoute,
     resetPhoneState,
     returnToCurrentScope,
     setViewingScope,

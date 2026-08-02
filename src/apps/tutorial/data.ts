@@ -731,7 +731,7 @@ export const tutorialArticles: TutorialArticle[] = [
       {
         type: 'paragraph',
         title: '全局 RPM',
-        text: '设置 App 中的“RPM 请求限制”是全局默认值。填写 3 表示生成请求之间至少间隔约 20 秒，填写 5 表示至少间隔约 12 秒；全局值为 0 表示不限制。',
+        text: '设置 App 中的“RPM 请求限制”是全局默认值。填写 5 表示任意连续 60 秒最多发起 5 次生成请求；重试也计入次数，填写 0 表示不限制。',
       },
       {
         type: 'paragraph',

@@ -7,6 +7,9 @@
           <h2>{{ t`条目库` }}</h2>
         </div>
         <div class="pc-entry-library-head-actions">
+          <button class="pc-icon-btn" type="button" :title="t`导入导出`" @click="openTransfer">
+            <i class="fa-solid fa-arrow-right-arrow-left"></i>
+          </button>
           <button class="pc-icon-btn" type="button" :title="t`查重`" @click="openDedupe">
             <i class="fa-solid fa-clone"></i>
           </button>
@@ -123,6 +126,47 @@
       <EmptyState v-else :title="libraryQuery.trim() ? t`没有找到匹配的收藏` : t`还没有收藏条目`">
         <p>{{ t`可以从预设或世界书中批量复制条目到独立收藏库。` }}</p>
       </EmptyState>
+    </section>
+
+    <section v-else-if="route.page === 'transfer'" class="pc-entry-library-page">
+      <article class="pc-editor-card pc-entry-transfer-card">
+        <div>
+          <strong>{{ t`导出条目库` }}</strong>
+          <small>{{ groups.length }} 个分组 · {{ items.length }} 条收藏 · {{ bindings.length }} 条绑定</small>
+        </div>
+        <button class="pc-primary-btn" type="button" @click="exportLibrary">
+          <i class="fa-solid fa-download"></i>
+          {{ t`导出 JSON` }}
+        </button>
+      </article>
+
+      <article class="pc-editor-card pc-entry-transfer-card">
+        <div>
+          <strong>{{ t`导入条目库` }}</strong>
+          <small>{{ t`合并会保留当前内容，覆盖会替换整个条目库。` }}</small>
+        </div>
+        <div class="pc-segment">
+          <button
+            :class="['pc-segment-btn', { active: importMode === 'merge' }]"
+            type="button"
+            @click="importMode = 'merge'"
+          >
+            {{ t`合并` }}
+          </button>
+          <button
+            :class="['pc-segment-btn', { active: importMode === 'replace' }]"
+            type="button"
+            @click="importMode = 'replace'"
+          >
+            {{ t`覆盖` }}
+          </button>
+        </div>
+        <input ref="importFileField" class="pc-hidden-input" type="file" accept="application/json,.json" @change="importLibrary" />
+        <button class="pc-soft-btn" type="button" @click="importFileField?.click()">
+          <i class="fa-solid fa-upload"></i>
+          {{ t`选择 JSON 文件` }}
+        </button>
+      </article>
     </section>
 
     <section v-else-if="route.page === 'collect'" class="pc-entry-library-page pc-entry-library-collect-page">
@@ -406,6 +450,8 @@ const editTitle = ref('');
 const editContent = ref('');
 const editGroupId = ref('');
 const editOrder = ref(1);
+const importMode = ref<'merge' | 'replace'>('merge');
+const importFileField = ref<HTMLInputElement | null>(null);
 const suppressItemOpenUntil = ref(0);
 const itemDrag = reactive({
   groupId: '',
@@ -512,6 +558,57 @@ function openDedupe() {
 
 function openBindings() {
   phone.pushPage('bindings', '分组绑定');
+}
+
+function openTransfer() {
+  phone.pushPage('transfer', '导入导出');
+}
+
+function exportLibrary() {
+  const payload = {
+    data: library.exportBackup(),
+    exportedAt: new Date().toISOString(),
+    kind: 'tavern-phone-entry-library',
+    version: 1,
+  };
+  const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json;charset=utf-8' });
+  const url = URL.createObjectURL(blob);
+  const anchor = document.createElement('a');
+  anchor.href = url;
+  anchor.download = `条目库-${new Date().toISOString().slice(0, 10)}.json`;
+  document.body.append(anchor);
+  anchor.click();
+  anchor.remove();
+  window.setTimeout(() => URL.revokeObjectURL(url), 0);
+}
+
+async function importLibrary(event: Event) {
+  const input = event.target as HTMLInputElement;
+  const file = input.files?.[0];
+  input.value = '';
+  if (!file) return;
+  try {
+    const parsed = JSON.parse(await file.text()) as unknown;
+    const record = parsed && typeof parsed === 'object' ? (parsed as Record<string, unknown>) : null;
+    const data = record?.kind === 'tavern-phone-entry-library' ? record.data : parsed;
+    if (importMode.value === 'replace') {
+      const confirmed = await phone.confirmNotice('覆盖导入会替换当前所有条目库分组、收藏和绑定，确定继续？', {
+        confirmLabel: '覆盖导入',
+        kind: 'warning',
+        title: '覆盖条目库',
+      });
+      if (!confirmed) return;
+      library.importBackup(data);
+      toastr.success('已覆盖导入条目库');
+    } else {
+      const result = library.mergeBackup(data);
+      const skipped = result.skippedBindings ? `，跳过 ${result.skippedBindings} 条重复绑定` : '';
+      toastr.success(`已导入 ${result.groups} 个分组、${result.items} 条收藏、${result.bindings} 条绑定${skipped}`);
+    }
+    openGroupIds.value = groups.value[0] ? [groups.value[0].id] : [];
+  } catch (error) {
+    toastr.error(`导入失败：${error instanceof Error ? error.message : String(error)}`);
+  }
 }
 
 function openEditor(itemId: string) {
@@ -968,6 +1065,20 @@ onBeforeUnmount(() => {
 .pc-entry-library-head h2 {
   margin: 3px 0 0;
   font-size: 19px;
+}
+
+.pc-entry-transfer-card {
+  display: grid;
+  gap: 14px;
+}
+
+.pc-entry-transfer-card > div:first-child {
+  display: grid;
+  gap: 4px;
+}
+
+.pc-entry-transfer-card small {
+  color: var(--pc-muted);
 }
 
 .pc-entry-library-create .pc-field {

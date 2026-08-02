@@ -162,6 +162,48 @@
   outline: none;
 }
 
+#tavern-phone-root.pc-phone-root[data-theme='light']
+  :is(
+    input:not([type='checkbox']):not([type='radio']):not([type='range']):not([type='color']):not([type='button']):not(
+        [type='submit']
+      ):not([type='reset']):not([type='image']):not([type='hidden']),
+    select,
+    textarea
+  ) {
+  color-scheme: light;
+  background: var(--pc-form-control-bg) !important;
+  background-color: var(--pc-form-control-bg) !important;
+  color: var(--pc-form-control-text) !important;
+  caret-color: var(--pc-form-control-text);
+  -webkit-text-fill-color: var(--pc-form-control-text);
+}
+
+#tavern-phone-root.pc-phone-root[data-theme='light'] :is(select option, select optgroup) {
+  color-scheme: light;
+  background-color: var(--pc-form-control-bg) !important;
+  color: var(--pc-form-control-text) !important;
+}
+
+#tavern-phone-root.pc-phone-root[data-theme='light']
+  :is(input:not([type='checkbox']):not([type='radio']):not([type='range']):not([type='color']), textarea)::placeholder {
+  color: color-mix(in srgb, var(--pc-form-control-text) 58%, transparent 42%);
+  opacity: 1;
+  -webkit-text-fill-color: color-mix(in srgb, var(--pc-form-control-text) 58%, transparent 42%);
+}
+
+#tavern-phone-root.pc-phone-root[data-theme='light'] input:-webkit-autofill,
+#tavern-phone-root.pc-phone-root[data-theme='light'] input:-webkit-autofill:hover,
+#tavern-phone-root.pc-phone-root[data-theme='light'] input:-webkit-autofill:focus {
+  box-shadow: 0 0 0 1000px var(--pc-form-control-bg) inset;
+  -webkit-text-fill-color: var(--pc-form-control-text);
+}
+
+#tavern-phone-root.pc-phone-root[data-theme='light']
+  :is(.pc-combobox-menu, .pc-combobox-option:not(.active):not(.selected)) {
+  background-color: var(--pc-form-control-bg) !important;
+  color: var(--pc-form-control-text) !important;
+}
+
 #tavern-phone-root.pc-phone-root[data-theme='dark']
   :is(
     input:not([type='checkbox']):not([type='radio']):not([type='range']):not([type='color']):not([type='button']):not(
@@ -749,9 +791,11 @@
   gap: 7px;
   margin-top: 0;
   padding: 6px;
+  border: 1px solid var(--pc-border);
+  border-bottom: 0;
   border-radius: var(--pc-card-radius);
-  background: color-mix(in srgb, var(--pc-surface) 66%, transparent 34%);
-  backdrop-filter: blur(12px);
+  background: var(--pc-form-control-bg);
+  box-shadow: 0 -8px 18px color-mix(in srgb, var(--pc-text) 10%, transparent 90%);
 }
 
 .pc-phone-root .pc-detail-nav,

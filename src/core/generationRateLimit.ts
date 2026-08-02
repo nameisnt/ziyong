@@ -1,5 +1,6 @@
 let queueTail = Promise.resolve();
-let nextRequestAt = 0;
+const requestStartedAt: number[] = [];
+const RATE_LIMIT_WINDOW_MS = 60_000;
 
 function normalizeRpm(value: unknown) {
   const parsed = typeof value === 'number' ? value : Number(value);
@@ -37,10 +38,18 @@ export async function waitForGenerationRateLimit(rpmLimit: number, signal?: Abor
   if (!rpm) return;
 
   const scheduled = queueTail.then(async () => {
-    throwIfAborted(signal);
-    await wait(Math.max(0, nextRequestAt - Date.now()), signal);
-    throwIfAborted(signal);
-    nextRequestAt = Date.now() + Math.ceil(60_000 / rpm);
+    while (true) {
+      throwIfAborted(signal);
+      const now = Date.now();
+      while (requestStartedAt.length && requestStartedAt[0] <= now - RATE_LIMIT_WINDOW_MS) {
+        requestStartedAt.shift();
+      }
+      if (requestStartedAt.length < rpm) {
+        requestStartedAt.push(now);
+        return;
+      }
+      await wait(Math.max(1, requestStartedAt[0] + RATE_LIMIT_WINDOW_MS - now), signal);
+    }
   });
   queueTail = scheduled.catch(() => undefined);
   await scheduled;

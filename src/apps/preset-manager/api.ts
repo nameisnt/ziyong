@@ -76,6 +76,30 @@ function assertPreset(value: unknown): TavernPreset {
   return preset;
 }
 
+function readPresetFromManager(presetName: string) {
+  const getManager = getOptionalGlobalFunction<(apiId?: string) => unknown>('getPresetManager');
+  if (!getManager) return undefined;
+  const manager = getManager('openai') as
+    | {
+        findPreset?: (name: string) => unknown;
+        getCompletionPresetByName?: (name: string) => unknown;
+        getPreset?: (name: string) => unknown;
+        getSelectedPresetName?: () => unknown;
+        selected_preset?: unknown;
+        selectedPreset?: unknown;
+      }
+    | null
+    | undefined;
+  const selectedName = manager?.getSelectedPresetName?.();
+  const selectedFallback = selectedName === presetName ? (manager?.selectedPreset ?? manager?.selected_preset) : undefined;
+  return (
+    manager?.getCompletionPresetByName?.(presetName) ??
+    manager?.findPreset?.(presetName) ??
+    manager?.getPreset?.(presetName) ??
+    selectedFallback
+  );
+}
+
 export function listTavernPresets() {
   return getPresetNamesSafe();
 }
@@ -85,8 +109,25 @@ export function getCurrentTavernPresetName() {
 }
 
 export function readTavernPreset(presetName: string) {
-  const getPreset = requirePresetFunction<GetPresetFn>('getPreset');
-  return assertPreset(getPreset(presetName));
+  const getPreset = getOptionalGlobalFunction<GetPresetFn>('getPreset');
+  let directError: unknown = null;
+  if (getPreset) {
+    try {
+      return assertPreset(getPreset(presetName));
+    } catch (caughtError) {
+      directError = caughtError;
+    }
+  }
+
+  try {
+    const fallback = readPresetFromManager(presetName);
+    if (fallback !== undefined) return assertPreset(fallback);
+  } catch (caughtError) {
+    directError ??= caughtError;
+  }
+
+  if (directError instanceof Error) throw directError;
+  throw new Error(`无法读取预设“${presetName}”：当前环境只提供了预设名称，没有提供完整预设内容`);
 }
 
 export async function loadTavernPreset(presetName: string) {

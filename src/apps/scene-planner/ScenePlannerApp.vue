@@ -1,6 +1,11 @@
 <template>
   <section class="pc-scene-planner-app">
     <section v-if="route.page === 'root'" class="pc-scene-planner-page">
+      <PreviewDraftNotice
+        :draft="scenePreviewDraft"
+        @discard="discardScenePreviewDraft"
+        @open="openScenePreviewDraft"
+      />
       <article class="pc-editor-card">
         <div class="pc-section-head">
           <strong>{{ activePlan ? '继续编排' : '说出下一章剧情' }}</strong>
@@ -132,6 +137,7 @@
 import EmptyState from '@/components/EmptyState.vue';
 import GenerationPanel from '@/components/GenerationPanel.vue';
 import GenerationPreviewPanel from '@/components/GenerationPreviewPanel.vue';
+import PreviewDraftNotice from '@/components/PreviewDraftNotice.vue';
 import { getRegisteredPhoneGenerationAdapter } from '@/core/appRegistry';
 import { captureGenerationPrompt, generateContent } from '@/core/generationService';
 import { usePhoneStore } from '@/store/phone';
@@ -142,6 +148,7 @@ import type { GenerationReferenceItem } from '@/util/references';
 import { formatGenerationReferences } from '@/util/references';
 import { stopGenerationByIdSafe } from '@/util/runtime';
 import { formatTextProviderSummary } from '@/util/textProvider';
+import { usePreviewDraftPersistence } from '@/util/previewDrafts';
 import {
   createScenePlannerGenerationAdapter,
   formatScenePlannerResult,
@@ -192,6 +199,22 @@ const generationState = reactive({
   preview: null as ScenePreview | null,
   rawOutput: '',
   running: false,
+});
+const {
+  clearPreviewDraft: clearScenePreviewDraft,
+  discardPreviewDraft: discardScenePreviewDraft,
+  draft: scenePreviewDraft,
+  openPreviewDraft: openScenePreviewDraft,
+  persistPreviewDraft: persistScenePreviewDraft,
+} = usePreviewDraftPersistence<ScenePreview>({
+  appId: 'scene-planner',
+  getPreview: () => generationState.preview,
+  page: 'preview',
+  route,
+  setPreview: preview => {
+    generationState.preview = preview;
+  },
+  title: '下一章提示词',
 });
 
 const stopSavedPreviewCheck = phone.registerSavedPreviewCheck(
@@ -296,6 +319,7 @@ async function runGeneration() {
     return;
   }
   generationState.error = '';
+  clearScenePreviewDraft();
   generationState.preview = null;
   generationState.rawOutput = '';
   try {
@@ -330,7 +354,8 @@ async function runGeneration() {
       warnings: result.warnings,
     };
     if (result.status === 'saved') activePlanId.value = result.saved.id;
-    phone.replacePage('preview', '下一章提示词');
+    persistScenePreviewDraft();
+    void phone.presentGeneratedPage('scene-planner', 'preview', '下一章提示词');
   } catch (error) {
     generationState.error = error instanceof Error ? error.message : '场景编排失败';
   }
@@ -374,6 +399,7 @@ async function savePreview() {
     activePlanId.value = saved.id;
   }
   generationState.preview = null;
+  clearScenePreviewDraft();
   generationDraft.userRequirement = '';
   toastr.success('场景方案已保存');
   phone.replacePage('root', '场景编排');
