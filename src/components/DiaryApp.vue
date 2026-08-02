@@ -104,8 +104,8 @@
       @delete="removeEntry(activeBook.id, activeEntry.id)"
       @edit="openEditEntry(activeBook.id, activeEntry.id)"
       @favorite="diary.toggleFavorite(activeBook.id, activeEntry.id)"
-      @next="openEntry(activeBook.id, nextEntryId)"
-      @previous="openEntry(activeBook.id, previousEntryId)"
+      @next="openEntry(activeBook.id, nextEntryId, true)"
+      @previous="openEntry(activeBook.id, previousEntryId, true)"
       @read-reaction="openReadReaction(activeBook.id, activeEntry.id)"
       @select-catalog="selectCatalogEntry"
       @top="scrollToTop"
@@ -985,10 +985,11 @@ function submitRenameBook() {
   phone.replacePage('book', book.title, { bookId: book.id });
 }
 
-function openEntry(bookId: string, entryId: string) {
+function openEntry(bookId: string, entryId: string, replaceCurrent = false) {
   const entry = diary.getEntry(bookId, entryId);
   if (!entry) return;
-  phone.pushPage('entry', entry.title, { bookId, entryId });
+  if (replaceCurrent) phone.replacePage('entry', entry.title, { bookId, entryId });
+  else phone.pushPage('entry', entry.title, { bookId, entryId });
   void nextTick(() => scrollToTop('auto'));
 }
 
@@ -1004,7 +1005,7 @@ function openDiaryBaguScan() {
 function selectCatalogEntry(entryId: string) {
   if (!activeBook.value) return;
   showCatalogModal.value = false;
-  openEntry(activeBook.value.id, entryId);
+  openEntry(activeBook.value.id, entryId, true);
 }
 
 function failedDraftBookTitle(draft: FailedGenerationDraft) {

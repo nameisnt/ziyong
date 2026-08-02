@@ -233,7 +233,6 @@ function hideFooter() {
 
 function runFooterAction(event: 'bottom' | 'catalog' | 'next' | 'previous' | 'top') {
   emit(event);
-  hideFooter();
 }
 </script>
 

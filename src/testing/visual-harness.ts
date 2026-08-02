@@ -1,5 +1,7 @@
+import '@fortawesome/fontawesome-free/css/all.min.css';
 import '@/global.css';
 import type { PhoneRoute } from '@/store/phone';
+import { computed, effectScope, nextTick, ref } from 'vue';
 
 type VisualScenarioName = string;
 
@@ -99,6 +101,19 @@ function setupVisualGlobals() {
     },
   ];
   let visualLoadedPresetName = '视觉预设';
+  let visualLegacyWorldbook = {
+    entries: {
+      1: {
+        comment: '缺少关键词数组的旧条目',
+        content: '这个条目用于验证原始世界书兼容读取与开关写入。',
+        disable: false,
+        enabled: true,
+        order: 10,
+        uid: 1,
+      },
+    },
+    name: '【视觉】旧格式世界书',
+  };
   const visualPresetStore: Record<string, Record<string, unknown>> = {
     视觉预设: {
       extensions: {
@@ -193,10 +208,16 @@ function setupVisualGlobals() {
     getCurrentCharacterId: () => 0,
     getCurrentCharacterName: () => '测试角色',
     getCurrentChatId: () => 'visual-chat',
+    getCharWorldbookNames: () => ({ additional: [], primary: null }),
+    getChatWorldbookName: () => null,
+    getGlobalWorldbookNames: () => ['视觉世界书'],
     getLastMessageId: () => 3,
     getRequestHeaders: () => ({}),
     getTokenCountAsync: (content: string) => Math.ceil(String(content || '').length / 2),
+    getWorldbookNames: () => ['视觉世界书', '【视觉】旧格式世界书'],
     groupId: '',
+    loadWorldInfo: async (name: string) =>
+      name === '【视觉】旧格式世界书' ? structuredClone(visualLegacyWorldbook) : null,
     Mvu: {
       events: {},
       getMvuData: () => structuredClone(visualMvuData),
@@ -205,6 +226,11 @@ function setupVisualGlobals() {
       },
     },
     reloadCurrentChat: async () => {},
+    reloadWorldInfoEditor: () => {},
+    rebindGlobalWorldbooks: async () => {},
+    saveWorldInfo: async (name: string, data: typeof visualLegacyWorldbook) => {
+      if (name === '【视觉】旧格式世界书') visualLegacyWorldbook = structuredClone(data);
+    },
     SillyTavern: {
       chat: visualMessages,
       chatId: 'visual-chat',
@@ -227,14 +253,18 @@ function setupVisualGlobals() {
       getLoadedPresetName: () => visualLoadedPresetName,
       getPreset: (presetName: string) => structuredClone(visualPresetStore[presetName]),
       getPresetNames: () => Object.keys(visualPresetStore).filter(name => name !== 'in_use'),
-      getWorldbook: async () =>
-        Array.from({ length: 12 }, (_, index) => ({
+      getWorldbook: async (name: string) => {
+        if (name === '【视觉】旧格式世界书') {
+          throw new TypeError("Cannot read properties of undefined (reading 'map')");
+        }
+        return Array.from({ length: 12 }, (_, index) => ({
           content: `第 ${index + 1} 条视觉世界书内容，用于检查收藏列表、批量选择和独立滚动区域。`,
           enabled: true,
           name: `世界书条目 ${index + 1}`,
           uid: index + 1,
-        })),
-      getWorldbookNames: () => ['视觉世界书'],
+        }));
+      },
+      getWorldbookNames: () => ['视觉世界书', '【视觉】旧格式世界书'],
       loadPreset: (presetName: string) => {
         if (!visualPresetStore[presetName] || presetName === 'in_use') return false;
         visualLoadedPresetName = presetName;
@@ -271,26 +301,6 @@ function setupVisualGlobals() {
   });
 }
 
-function applyIconFallback() {
-  const style = document.createElement('style');
-  style.textContent = `
-    .fa-solid,
-    .fa-regular {
-      display: inline-block;
-      width: 1em;
-      min-width: 1em;
-      text-align: center;
-    }
-
-    .fa-solid::before,
-    .fa-regular::before {
-      content: "◆";
-      font-size: 0.72em;
-    }
-  `;
-  document.head.appendChild(style);
-}
-
 async function waitForPaint() {
   await new Promise<void>(resolve => requestAnimationFrame(() => requestAnimationFrame(() => resolve())));
 }
@@ -304,7 +314,7 @@ async function waitForVisualCondition(condition: () => boolean, timeout = 1000) 
   return true;
 }
 
-async function openReaderCatalog() {
+async function toggleReaderFooter() {
   const readerShell = document.querySelector<HTMLElement>('.pc-reader-detail-shell');
   if (!readerShell) throw new Error('Reader detail shell is missing');
   const rect = readerShell.getBoundingClientRect();
@@ -319,6 +329,10 @@ async function openReaderCatalog() {
   readerShell.dispatchEvent(new PointerEvent('pointerdown', pointerInit));
   readerShell.dispatchEvent(new PointerEvent('pointerup', pointerInit));
   await waitForPaint();
+}
+
+async function openReaderCatalog() {
+  await toggleReaderFooter();
   const catalogButton = document.querySelector<HTMLButtonElement>('.pc-detail-nav .catalog');
   if (!catalogButton) throw new Error('Reader catalog button is missing after revealing the footer');
   catalogButton.click();
@@ -327,7 +341,6 @@ async function openReaderCatalog() {
 }
 
 setupVisualGlobals();
-applyIconFallback();
 
 const { initPhoneLifecycle } = await import('@/core/phoneLifecycle');
 const { PHONE_APPS } = await import('@/data/apps');
@@ -336,9 +349,12 @@ const { useExtrasStore } = await import('@/store/extras');
 const { useMediaStore } = await import('@/apps/media/store');
 const { usePhoneStore } = await import('@/store/phone');
 const { useGenerationTaskStore } = await import('@/store/generationTasks');
+const { useGenerationOverrideStore } = await import('@/store/generationOverrides');
 const { useReaderStore } = await import('@/store/reader');
 const { useSettingsStore } = await import('@/store/settings');
 const { useSummaryStore } = await import('@/store/summary');
+const { usePreviewDraftStore } = await import('@/store/previewDrafts');
+const { usePreviewDraftPersistence } = await import('@/util/previewDrafts');
 const { useDiaryStore } = await import('@/store/diary');
 const { useLettersStore } = await import('@/store/letters');
 const { useTheaterStore } = await import('@/store/theater');
@@ -346,9 +362,11 @@ const { useWorkbenchStore } = await import('@/apps/workbench/store');
 const { useProfilesStore } = await import('@/apps/profiles/store');
 const { usePresetLinkStore } = await import('@/apps/preset-link/store');
 const { useWorldSlotsStore } = await import('@/apps/world-slots/store');
+const { resolveGeneratedExtraBookTitle } = await import('@/core/extrasGeneration');
 const { ENTRY_LIBRARY_CONTENT_PLACEHOLDER, renderEntryLibraryBindingContent, useEntryLibraryStore } =
   await import('@/apps/entry-library/store');
 const { readTavernPreset } = await import('@/apps/preset-manager/api');
+const { applyTextProviderSelection } = await import('@/util/textProvider');
 
 initPhoneLifecycle();
 
@@ -375,6 +393,7 @@ const scenarios: VisualScenarioName[] = [
   'entry-library-scroll-return',
   'world-slots-batch-import',
   'world-slots-entry-library',
+  'worldbook-link-legacy-entry',
   'preset-link-auto-reload',
   'preset-link-history',
   'forum-generate-thread',
@@ -384,9 +403,13 @@ const scenarios: VisualScenarioName[] = [
   'preset-editor',
   'reader-detail',
   'reader-catalog',
+  'reader-footer-persistence',
   'searchable-select',
   'diary-batch',
   'extras-book-generate',
+  'extras-book-name-fallback',
+  'generation-connection-override',
+  'preview-draft-deferred-save',
   'extras-chapter-detail',
   'extras-chapter-editor',
   'extras-legacy-continuation',
@@ -1557,6 +1580,18 @@ async function applyScenario(name: VisualScenarioName, options: { height?: numbe
   } else if (name === 'forum-thread') {
     const { board, thread } = createForumFixture();
     resetPhoneToRoute('forum', 'thread', thread.title, { boardId: board.id, threadId: thread.id });
+  } else if (name === 'worldbook-link-legacy-entry') {
+    resetPhoneToRoute('worldbook-link', 'detail', '世界书联动', { bookName: '【视觉】旧格式世界书' });
+    const loaded = await waitForVisualCondition(() => Boolean(document.querySelector('.pc-worldbook-entry')));
+    if (!loaded) throw new Error('Legacy worldbook entry did not load through the raw fallback');
+    const toggle = document.querySelector<HTMLInputElement>('.pc-worldbook-entry .pc-toggle input');
+    if (!toggle?.checked) throw new Error('Legacy worldbook entry did not preserve its enabled state');
+    toggle.click();
+    const toggled = await waitForVisualCondition(() => {
+      const current = document.querySelector<HTMLInputElement>('.pc-worldbook-entry .pc-toggle input');
+      return Boolean(current && !current.disabled && !current.checked);
+    });
+    if (!toggled) throw new Error('Legacy worldbook enabled/disable fields were not updated together');
   } else if (name === 'reader-detail') {
     const reader = useReaderStore();
     reader.resetAllCaches();
@@ -1566,6 +1601,33 @@ async function applyScenario(name: VisualScenarioName, options: { height?: numbe
     const message = messages[0];
     if (!message) throw new Error('Reader visual fixture did not create a message');
     resetPhoneToRoute('reader', 'detail', message.title, { messageId: message.id });
+  } else if (name === 'reader-footer-persistence') {
+    const reader = useReaderStore();
+    reader.resetAllCaches();
+    const briefs = await reader.loadBriefs(true);
+    const brief = briefs[0];
+    const messages = brief ? await reader.loadChat(brief.fileName, true) : [];
+    const message = messages[0];
+    if (!message) throw new Error('Reader footer fixture did not create a message');
+    resetPhoneToRoute('reader', 'detail', message.title, { messageId: message.id });
+    await waitForPaint();
+    await toggleReaderFooter();
+    const stackLength = phone.stack.length;
+    const nextButton = document.querySelector<HTMLButtonElement>('.pc-detail-nav button:last-child:not(:disabled)');
+    if (!nextButton) throw new Error('Reader next button is missing from the persistent footer');
+    nextButton.click();
+    await waitForPaint();
+    if (!document.querySelector('.pc-reader-footer-popover')) {
+      throw new Error('Reader footer disappeared after an adjacent navigation action');
+    }
+    if (phone.stack.length !== stackLength) {
+      throw new Error('Reader adjacent navigation added an unnecessary history entry');
+    }
+    await toggleReaderFooter();
+    if (document.querySelector('.pc-reader-footer-popover')) {
+      throw new Error('Reader center tap did not hide the persistent footer');
+    }
+    await toggleReaderFooter();
   } else if (name === 'summary-book') {
     const book = createSummaryFixture();
     resetPhoneToRoute('summary', 'book', book.title, { bookId: book.id });
@@ -1605,6 +1667,182 @@ async function applyScenario(name: VisualScenarioName, options: { height?: numbe
     await waitForPaint();
     const screen = document.querySelector<HTMLElement>('.pc-screen');
     screen?.scrollTo({ top: screen.scrollHeight });
+  } else if (name === 'extras-book-name-fallback') {
+    if (resolveGeneratedExtraBookTitle(' ', ' IF线 ') !== 'IF线') {
+      throw new Error('Generated extra book did not use its type as the missing title fallback');
+    }
+    if (resolveGeneratedExtraBookTitle(' ', ' ') !== '未命名番外') {
+      throw new Error('Generated extra book did not preserve the final unnamed fallback');
+    }
+    resetPhoneToRoute('extras', 'book-editor', '新建番外');
+  } else if (name === 'generation-connection-override') {
+    const settingsStore = useSettingsStore();
+    const externalProfile = {
+      apiKey: 'visual-key',
+      apiUrl: 'https://visual.example/v1',
+      id: 'visual-external-profile-3',
+      model: 'visual-model-3',
+      name: '视觉连接配置 3',
+      presetId: 'custom' as const,
+    };
+    settingsStore.settings.textProvider.mode = 'tavern';
+    settingsStore.settings.textProvider.activeExternalProfileId = '';
+    settingsStore.settings.textProvider.externalProfiles = [externalProfile];
+    settingsStore.settings.generation.tavernPresetName = '';
+    const book = createSummaryFixture();
+    resetPhoneToRoute('summary', 'generate', '生成总结', { bookId: book.id });
+    await waitForPaint();
+    document.querySelector<HTMLDetailsElement>('.pc-generation-advanced')?.setAttribute('open', '');
+    await waitForPaint();
+
+    const connectionCombobox = document.querySelector<HTMLElement>(
+      '.pc-generation-advanced-body .pc-combobox',
+    );
+    if (!connectionCombobox) throw new Error('Generation connection selector is missing');
+    connectionCombobox.querySelector<HTMLButtonElement>('.pc-combobox-toggle')?.click();
+    await waitForPaint();
+    const externalOption = [...connectionCombobox.querySelectorAll<HTMLButtonElement>('.pc-combobox-option')].find(
+      option => option.textContent?.includes(externalProfile.name),
+    );
+    if (!externalOption) throw new Error('Generation external connection option is missing');
+    externalOption.click();
+    await waitForPaint();
+
+    const presetSelect = document.querySelector<HTMLSelectElement>('.pc-preset-field select');
+    if (!presetSelect) throw new Error('Generation temporary preset selector is missing');
+    presetSelect.value = '视觉预设';
+    presetSelect.dispatchEvent(new Event('change', { bubbles: true }));
+    await waitForPaint();
+
+    const override = useGenerationOverrideStore().getOverride('summary', 'generate');
+    if (override?.connectionSelection !== `external:${externalProfile.id}`) {
+      throw new Error('Generation connection selection was not stored as a request-level override');
+    }
+    if (override.tavernPresetName !== '视觉预设') {
+      throw new Error('Generation preset selection was not stored as a request-level override');
+    }
+    if (
+      settingsStore.settings.textProvider.mode !== 'tavern' ||
+      settingsStore.settings.textProvider.activeExternalProfileId ||
+      settingsStore.settings.generation.tavernPresetName
+    ) {
+      throw new Error('Temporary generation overrides mutated the global connection or preset defaults');
+    }
+    const resolvedProvider = applyTextProviderSelection(
+      settingsStore.settings.textProvider,
+      override.connectionSelection,
+    );
+    if (
+      resolvedProvider.mode !== 'external' ||
+      resolvedProvider.activeExternalProfileId !== externalProfile.id
+    ) {
+      throw new Error('Generation request did not resolve the selected external connection profile');
+    }
+  } else if (name === 'preview-draft-deferred-save') {
+    const previewDrafts = usePreviewDraftStore();
+    const probePreview = ref({ content: '首次保存的预览内容' });
+    let probeRouteParams: Record<string, string> = { bookId: 'visual_preserved_book' };
+    const scope = effectScope();
+    const persistence = scope.run(() =>
+      usePreviewDraftPersistence({
+        appId: 'visual-preview-probe',
+        getPreview: () => probePreview.value,
+        getRouteParams: () => ({ ...probeRouteParams }),
+        page: 'preview',
+        route: computed(() => usePhoneStore().currentRoute),
+        setPreview: preview => {
+          if (preview) probePreview.value = preview;
+        },
+        title: '草稿参数保留测试',
+      }),
+    );
+    if (!persistence) throw new Error('Preview draft persistence probe did not initialize');
+    persistence.persistPreviewDraft({ bookId: 'visual_preserved_book' });
+    probeRouteParams = {};
+    probePreview.value.content = '离开生成页后自动更新的预览内容';
+    await nextTick();
+    await waitForPaint();
+    const probeDraft = previewDrafts.getPreviewDraft('visual-preview-probe', 'preview');
+    if (probeDraft?.routeParams.bookId !== 'visual_preserved_book') {
+      throw new Error('Preview draft auto-update overwrote its original target route parameters');
+    }
+    scope.stop();
+    previewDrafts.deleteAppPreviewDrafts('visual-preview-probe');
+
+    const extras = useExtrasStore();
+    extras.resetCurrentScope();
+    const book = extras.createBook({ title: '稍后处理测试番外', typeName: '测试' });
+    previewDrafts.deleteAppPreviewDrafts('extras');
+    resetPhoneToRoute('extras', 'root', '番外书架');
+    await waitForPaint();
+    previewDrafts.upsertPreviewDraft({
+      appId: 'extras',
+      page: 'chapter-preview',
+      preview: {
+        bookId: book.id,
+        chapterId: '',
+        content: '这是稍后处理的番外章节正文，用于确认离开生成页后仍然能够保存到原来的番外。',
+        draftId: null,
+        mode: '续写上一章',
+        raw: '<title>稍后处理章节</title><content>这是稍后处理的番外章节正文。</content>',
+        title: '稍后处理章节',
+        warnings: [],
+      },
+      routeParams: { bookId: book.id },
+      title: '番外预览',
+    });
+    await waitForPaint();
+    const openDraftButton = document.querySelector<HTMLButtonElement>(
+      '.pc-preview-draft-notice .pc-primary-btn',
+    );
+    if (!openDraftButton) throw new Error('Deferred preview draft notice did not appear');
+    openDraftButton.click();
+    await waitForPaint();
+    usePhoneStore().replacePage('chapter-preview', '番外预览');
+    await waitForPaint();
+    const saveButton = document.querySelector<HTMLButtonElement>('.pc-preview-actions .pc-primary-btn');
+    if (!saveButton) throw new Error('Deferred preview save button did not appear');
+    saveButton.click();
+    await waitForPaint();
+    if (extras.getBook(book.id)?.chapters.length !== 1) {
+      throw new Error('Deferred preview draft was not saved to its original extras book');
+    }
+
+    const summary = useSummaryStore();
+    const summaryBook = createSummaryFixture();
+    const summaryEntryCount = summaryBook.entries.length;
+    previewDrafts.deleteAppPreviewDrafts('summary');
+    resetPhoneToRoute('summary', 'root', '总结');
+    await waitForPaint();
+    previewDrafts.upsertPreviewDraft({
+      appId: 'summary',
+      page: 'preview',
+      preview: {
+        bookId: summaryBook.id,
+        content: '这是一条稍后处理的总结正文，保存时应使用预览自身记录的目标总结集。',
+        draftId: null,
+        raw: '<title>稍后处理总结</title><content>这是一条稍后处理的总结正文。</content>',
+        source: { label: '视觉测试楼层' },
+        title: '稍后处理总结',
+        warnings: [],
+      },
+      routeParams: {},
+      title: '生成预览',
+    });
+    await waitForPaint();
+    const openSummaryDraftButton = document.querySelector<HTMLButtonElement>(
+      '.pc-preview-draft-notice .pc-primary-btn',
+    );
+    if (!openSummaryDraftButton) throw new Error('Deferred summary draft notice did not appear');
+    openSummaryDraftButton.click();
+    await waitForPaint();
+    const saveSummaryButton = document.querySelector<HTMLButtonElement>('.pc-preview-actions .pc-primary-btn');
+    if (!saveSummaryButton) throw new Error('Deferred summary save button did not appear');
+    saveSummaryButton.click();
+    await waitForPaint();
+    if (summary.getBook(summaryBook.id)?.entries.length !== summaryEntryCount + 1) {
+      throw new Error('Deferred preview draft was not saved to its original summary book');
+    }
   } else if (name === 'extras-legacy-continuation') {
     const book = createLegacyExtrasFixture();
     resetPhoneToRoute('extras', 'chapter-generate', '生成章节', { bookId: book.id });

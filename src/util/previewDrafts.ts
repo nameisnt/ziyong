@@ -27,15 +27,16 @@ export function usePreviewDraftPersistence<TPreview>(options: PreviewDraftPersis
     return saved;
   }
 
-  function persistPreviewDraft(routeParams = options.getRouteParams?.() ?? {}) {
+  function persistPreviewDraft(routeParams?: Record<string, string>) {
     const preview = options.getPreview();
     if (!preview) return null;
     const title = typeof options.title === 'function' ? options.title() : options.title;
+    const resolvedRouteParams = routeParams ?? draft.value?.routeParams ?? options.getRouteParams?.() ?? {};
     return previewDrafts.upsertPreviewDraft({
       appId: options.appId,
       page: options.page,
       preview,
-      routeParams,
+      routeParams: resolvedRouteParams,
       title,
     });
   }

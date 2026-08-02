@@ -141,94 +141,30 @@
       </div>
     </section>
 
-    <section v-else-if="route.page === 'book' && activeBook" class="pc-extras-page">
-      <div class="pc-extras-hero pc-extras-actions-hero">
-        <div class="pc-book-actions">
-          <button class="pc-soft-btn" type="button" @click="openGenerateChapter(activeBook.id)">
-            <i class="fa-solid fa-wand-magic-sparkles"></i>
-            <span>{{ t`生成章节` }}</span>
-          </button>
-          <button class="pc-icon-btn" type="button" :title="t`编辑番外信息`" @click="openEditBook(activeBook.id)">
-            <i class="fa-solid fa-pen"></i>
-          </button>
-          <button class="pc-icon-btn danger" type="button" :title="t`删除番外`" @click="removeBook(activeBook.id)">
-            <i class="fa-solid fa-trash"></i>
-          </button>
-        </div>
-      </div>
+    <ExtrasBookOverviewPage
+      v-else-if="route.page === 'book' && activeBook"
+      v-model:query="query"
+      v-model:sort-desc="sortDesc"
+      :book="activeBook"
+      :chapters="filteredChapters"
+      @delete-book="removeBook(activeBook.id)"
+      @delete-summary="removeSummary(activeBook.id, $event)"
+      @edit-book="openEditBook(activeBook.id)"
+      @edit-summary="openEditSummary(activeBook.id, $event)"
+      @generate-chapter="openGenerateChapter(activeBook.id)"
+      @generate-summary="openGenerateSummary(activeBook.id)"
+      @open-chapter="openChapter(activeBook.id, $event)"
+      @toggle-summary="extras.toggleSummary(activeBook.id, $event)"
+    />
 
-      <div class="pc-toolbar">
-        <input v-model="query" class="pc-search" type="text" :placeholder="t`搜索章节标题`" />
-        <button class="pc-soft-btn" type="button" @click="sortDesc = !sortDesc">
-          {{ sortDesc ? t`倒序` : t`正序` }}
-        </button>
-      </div>
-
-      <section class="pc-summary-section">
-        <div class="pc-section-head">
-          <strong>{{ t`章节总结` }}</strong>
-          <div class="pc-book-actions">
-            <button class="pc-soft-btn" type="button" @click="openGenerateSummary(activeBook.id)">
-              {{ t`生成总结` }}
-            </button>
-          </div>
-        </div>
-
-        <EmptyState v-if="!activeBook.summaries.length" compact :title="t`还没有章节总结。`" />
-
-        <div v-else class="pc-summary-list">
-          <article v-for="summaryItem in activeBook.summaries" :key="summaryItem.id" class="pc-summary-card">
-            <div class="pc-summary-head">
-              <strong>{{ formatCoveredChapters(summaryItem.coveredChapterIds) }}</strong>
-              <div class="pc-book-actions">
-                <button
-                  :class="['pc-toggle-chip', { active: summaryItem.enabled }]"
-                  type="button"
-                  @click="extras.toggleSummary(activeBook.id, summaryItem.id)"
-                >
-                  {{ summaryItem.enabled ? t`已启用` : t`已停用` }}
-                </button>
-                <button class="pc-icon-btn" type="button" @click="openEditSummary(activeBook.id, summaryItem.id)">
-                  <i class="fa-solid fa-pen"></i>
-                </button>
-                <button class="pc-icon-btn danger" type="button" @click="removeSummary(activeBook.id, summaryItem.id)">
-                  <i class="fa-solid fa-trash"></i>
-                </button>
-              </div>
-            </div>
-          </article>
-        </div>
-      </section>
-
-      <EmptyState v-if="!filteredChapters.length" :title="t`没有匹配的章节`" />
-
-      <div v-else class="pc-entry-list">
-        <article v-for="chapter in filteredChapters" :key="chapter.id" class="pc-entry-card">
-          <button class="pc-entry-main" type="button" @click="openChapter(activeBook.id, chapter.id)">
-            <div class="pc-entry-head">
-              <strong>{{ `第 ${chapter.chapterNumber} 章 · ${chapter.title}` }}</strong>
-            </div>
-          </button>
-        </article>
-      </div>
-    </section>
-
-    <section v-else-if="route.page === 'chapter-editor' && activeBook" class="pc-extras-page">
-      <div class="pc-editor-card">
-        <span class="pc-kicker">{{ t`编辑章节` }}</span>
-        <h2>{{ editingChapter ? editingChapter.title : t`调整当前章节` }}</h2>
-        <input v-model="chapterDraft.title" class="pc-field" type="text" :placeholder="t`章节标题`" />
-        <textarea
-          v-model="chapterDraft.content"
-          class="pc-area pc-saved-content-area"
-          :placeholder="t`章节正文`"
-        ></textarea>
-        <div class="pc-form-actions">
-          <button class="pc-soft-btn" type="button" @click="phone.goBack()">{{ t`取消` }}</button>
-          <button class="pc-primary-btn" type="button" @click="submitChapter">{{ t`保存` }}</button>
-        </div>
-      </div>
-    </section>
+    <ExtrasChapterEditorPage
+      v-else-if="route.page === 'chapter-editor' && activeBook"
+      v-model:content="chapterDraft.content"
+      v-model:title="chapterDraft.title"
+      :heading="editingChapter ? editingChapter.title : t`调整当前章节`"
+      @cancel="phone.goBack()"
+      @save="submitChapter"
+    />
 
     <ExtrasChapterDetailPage
       v-else-if="route.page === 'chapter' && activeBook && activeChapter"
@@ -244,8 +180,8 @@
       @delete="removeChapter(activeBook.id, activeChapter.id)"
       @edit="openEditChapter(activeBook.id, activeChapter.id)"
       @favorite="extras.toggleFavorite(activeBook.id, activeChapter.id)"
-      @next="openChapter(activeBook.id, chapterNextId || '')"
-      @previous="openChapter(activeBook.id, chapterPrevId || '')"
+      @next="openChapter(activeBook.id, chapterNextId || '', true)"
+      @previous="openChapter(activeBook.id, chapterPrevId || '', true)"
       @rewrite="openGenerateChapter(activeBook.id, activeChapter.id)"
       @rewrite-record="rewriteWithGenerationRecord"
       @select-catalog="selectCatalogChapter"
@@ -339,36 +275,17 @@
       </div>
     </section>
 
-    <section v-else-if="route.page === 'summary-editor' && activeBook" class="pc-extras-page">
-      <div class="pc-editor-card">
-        <span class="pc-kicker">{{ editingSummary ? t`编辑章节总结` : t`新增章节总结` }}</span>
-        <h2>{{ activeBook.title }}</h2>
-        <textarea
-          v-model="summaryDraft.content"
-          class="pc-area pc-saved-content-area"
-          :placeholder="t`总结正文`"
-        ></textarea>
-        <div class="pc-chapter-picks">
-          <label v-for="chapter in orderedChapters" :key="chapter.id" class="pc-check-item">
-            <input v-model="summaryDraft.coveredChapterIds" type="checkbox" :value="chapter.id" />
-            <span>{{ `第 ${chapter.chapterNumber} 章 · ${chapter.title}` }}</span>
-          </label>
-        </div>
-        <label class="pc-switch-row">
-          <div>
-            <strong>{{ t`启用这条总结` }}</strong>
-            <p>{{ t`后续续写时可优先引用启用中的章节总结。` }}</p>
-          </div>
-          <span class="pc-checkbox">
-            <input v-model="summaryDraft.enabled" type="checkbox" />
-          </span>
-        </label>
-        <div class="pc-form-actions">
-          <button class="pc-soft-btn" type="button" @click="phone.goBack()">{{ t`取消` }}</button>
-          <button class="pc-primary-btn" type="button" @click="submitSummary">{{ t`保存` }}</button>
-        </div>
-      </div>
-    </section>
+    <ExtrasSummaryEditorPage
+      v-else-if="route.page === 'summary-editor' && activeBook"
+      v-model:content="summaryDraft.content"
+      v-model:covered-chapter-ids="summaryDraft.coveredChapterIds"
+      v-model:enabled="summaryDraft.enabled"
+      :book-title="activeBook.title"
+      :chapters="orderedChapters"
+      :editing="Boolean(editingSummary)"
+      @cancel="phone.goBack()"
+      @save="submitSummary"
+    />
 
     <section v-else-if="route.page === 'summary-generate' && activeBook" class="pc-extras-page">
       <div class="pc-editor-card">
@@ -497,10 +414,13 @@
 
 <script setup lang="ts">
 import BookShelf from '@/components/BookShelf.vue';
+import ExtrasBookOverviewPage from '@/components/extras/ExtrasBookOverviewPage.vue';
+import ExtrasChapterEditorPage from '@/components/extras/ExtrasChapterEditorPage.vue';
 import ExtrasChapterDetailPage from '@/components/extras/ExtrasChapterDetailPage.vue';
+import ExtrasSummaryEditorPage from '@/components/extras/ExtrasSummaryEditorPage.vue';
 import { useExtrasChapterView } from '@/components/extras/useExtrasChapterView';
+import { useExtrasGenerationState } from '@/components/extras/useExtrasGenerationState';
 import BaguScanPanel from '@/components/BaguScanPanel.vue';
-import EmptyState from '@/components/EmptyState.vue';
 import FailedDraftList from '@/components/FailedDraftList.vue';
 import GenerationPanel from '@/components/GenerationPanel.vue';
 import GenerationPreviewPanel from '@/components/GenerationPreviewPanel.vue';
@@ -511,6 +431,7 @@ import { getRegisteredPhoneGenerationAdapter } from '@/core/appRegistry';
 import {
   createExtraChapterGenerationRecord,
   ExtraChapterGenerateConfigSchema,
+  resolveGeneratedExtraBookTitle,
   type ExtraChapterGenerateConfig,
   type ExtraChapterGenerationMode,
 } from '@/core/extrasGeneration';
@@ -519,7 +440,7 @@ import { useExtrasStore } from '@/store/extras';
 import { usePhoneStore } from '@/store/phone';
 import { usePromptStore } from '@/store/prompts';
 import { useSettingsStore } from '@/store/settings';
-import type { ExtraBook, ExtraChapterGenerationRecord } from '@/type/extra';
+import type { ExtraBook } from '@/type/extra';
 import type { FailedGenerationDraft } from '@/type/generation';
 import { canOpenBaguScan } from '@/util/baguScanGate';
 import { useDetailScroll } from '@/util/detailScroll';
@@ -554,61 +475,17 @@ const chapterDraft = reactive({
   title: '',
   content: '',
 });
-const chapterGenerationDraft = reactive({
-  fromStartEnd: 20,
-  mode: '续写上一章' as ExtraChapterGenerationMode,
-  rangeText: '',
-  recentCount: 20,
-  singleMessageId: 0,
-  typeId: '',
-  typeName: '',
-  typePrompt: '',
-  userRequirement: '',
-});
-const chapterGenerationState = reactive({
-  error: '',
-  generationId: '',
-  preview: null as null | {
-    content: string;
-    draftId: string | null;
-    generationRecord?: ExtraChapterGenerationRecord;
-    mode: ExtraChapterGenerationMode;
-    raw: string;
-    title: string;
-    warnings: string[];
-  },
-  rawOutput: '',
-  running: false,
-});
 const summaryDraft = reactive({
   content: '',
   coveredChapterIds: [] as string[],
   enabled: true,
 });
-const generationDraft = reactive({
-  coveredChapterIds: [] as string[],
-  enabled: true,
-  fromStartEnd: 20,
-  rangeText: '',
-  recentCount: 20,
-  singleMessageId: 0,
-  userRequirement: '',
-});
-const generationState = reactive({
-  error: '',
-  generationId: '',
-  preview: null as null | {
-    bookId: string;
-    content: string;
-    coveredChapterIds: string[];
-    draftId: string | null;
-    enabled: boolean;
-    raw: string;
-    warnings: string[];
-  },
-  rawOutput: '',
-  running: false,
-});
+const {
+  chapterGenerationDraft,
+  chapterGenerationState,
+  summaryGenerationDraft: generationDraft,
+  summaryGenerationState: generationState,
+} = useExtrasGenerationState();
 const failedDraftRawOutput = ref('');
 const selectedReferences = ref<GenerationReferenceItem[]>([]);
 type ExtraChapterPreview = NonNullable<typeof chapterGenerationState.preview>;
@@ -624,15 +501,22 @@ const {
   appId: 'extras',
   consumeFailedDraft: draftId => extras.deleteFailedDraft(draftId),
   getPreview: () => chapterGenerationState.preview,
-  getRouteParams: () => ({
-    ...(route.value.params?.bookId ? { bookId: route.value.params.bookId } : {}),
-    ...(route.value.params?.chapterId ? { chapterId: route.value.params.chapterId } : {}),
-  }),
+  getRouteParams: () => {
+    const preview = chapterGenerationState.preview;
+    const bookId = preview?.bookId || route.value.params?.bookId || '';
+    const chapterId = preview?.chapterId || route.value.params?.chapterId || '';
+    return {
+      ...(bookId ? { bookId } : {}),
+      ...(chapterId ? { chapterId } : {}),
+    };
+  },
   page: 'chapter-preview',
   route,
   setPreview: preview => {
     chapterGenerationState.preview = {
       ...preview,
+      bookId: preview.bookId || route.value.params?.bookId || '',
+      chapterId: preview.chapterId || route.value.params?.chapterId || '',
       mode: normalizeChapterGenerationMode(preview.mode),
     };
   },
@@ -656,15 +540,6 @@ const {
     generationState.preview = preview;
   },
   title: '章节总结预览',
-});
-
-onScopeDispose(() => {
-  if (chapterGenerationState.running && chapterGenerationState.generationId) {
-    stopGenerationByIdSafe(chapterGenerationState.generationId);
-  }
-  if (generationState.running && generationState.generationId) {
-    stopGenerationByIdSafe(generationState.generationId);
-  }
 });
 
 const customChapterTypeValue = '__custom_chapter_type__';
@@ -1195,10 +1070,11 @@ function submitBook() {
 }
 
 async function submitBookAndGenerate() {
+  const typeName = bookDraft.typeName.trim() || chapterGenerationDraft.typeName.trim();
   const payload = {
-    title: bookDraft.title,
+    title: resolveGeneratedExtraBookTitle(bookDraft.title, typeName),
     typeId: chapterGenerationDraft.typeId || undefined,
-    typeName: bookDraft.typeName.trim() || chapterGenerationDraft.typeName.trim() || '未分类番外',
+    typeName: typeName || '未分类番外',
   };
   if (editingBook.value && route.value.params?.bookId) {
     const book = extras.updateBook(route.value.params.bookId, payload);
@@ -1276,11 +1152,12 @@ function applyExtrasBaguContent(content: string) {
   return Boolean(chapter);
 }
 
-function openChapter(bookId: string, chapterId: string) {
+function openChapter(bookId: string, chapterId: string, replaceCurrent = false) {
   if (!chapterId) return;
   const chapter = extras.getChapter(bookId, chapterId);
   if (!chapter) return;
-  phone.pushPage('chapter', chapter.title, { bookId, chapterId });
+  if (replaceCurrent) phone.replacePage('chapter', chapter.title, { bookId, chapterId });
+  else phone.pushPage('chapter', chapter.title, { bookId, chapterId });
   void nextTick(() => scrollToTop('auto'));
 }
 
@@ -1296,7 +1173,7 @@ function openExtrasBaguScan() {
 function selectCatalogChapter(chapterId: string) {
   if (!activeBook.value) return;
   showCatalogModal.value = false;
-  openChapter(activeBook.value.id, chapterId);
+  openChapter(activeBook.value.id, chapterId, true);
 }
 
 async function removeChapter(bookId: string, chapterId: string) {
@@ -1390,7 +1267,10 @@ function buildPreviousChapterContext(book = activeBook.value) {
   );
   const summaryBlocks = (book.summaries || [])
     .filter(summaryItem => summaryItem.enabled)
-    .map(summaryItem => `${formatCoveredChapters(summaryItem.coveredChapterIds)} 总结\n${summaryItem.content}`);
+    .map(
+      summaryItem =>
+        `${formatCoveredChaptersForBook(book, summaryItem.coveredChapterIds)} 总结\n${summaryItem.content}`,
+    );
 
   return [
     `番外书名：${book.title}`,
@@ -1552,6 +1432,8 @@ async function runChapterGenerationForBook(bookId: string, book: ExtraBook, chap
     }
 
     chapterGenerationState.preview = {
+      bookId,
+      chapterId,
       content: result.data.content,
       draftId: null,
       generationRecord: createExtraChapterGenerationRecord(generationConfig, result.source),
@@ -1574,12 +1456,18 @@ async function runChapterGenerationForBook(bookId: string, book: ExtraBook, chap
 
 function saveChapterPreview() {
   const preview = chapterGenerationState.preview;
-  const bookId = route.value.params?.bookId;
-  if (!preview || !bookId) return;
+  if (!preview) return;
+  const bookId = preview.bookId || route.value.params?.bookId || extraChapterPreviewDraft.value?.routeParams.bookId;
+  if (!bookId) {
+    toastr.warning('草稿缺少目标番外信息，无法保存章节');
+    return;
+  }
+  const chapterId =
+    preview.chapterId || route.value.params?.chapterId || extraChapterPreviewDraft.value?.routeParams.chapterId;
 
   const chapter =
-    preview.mode === '重写当前章节' && route.value.params?.chapterId
-      ? extras.updateChapter(bookId, route.value.params.chapterId, {
+    preview.mode === '重写当前章节' && chapterId
+      ? extras.updateChapter(bookId, chapterId, {
           content: preview.content,
           generationRecord: preview.generationRecord,
           title: preview.title,
@@ -1823,7 +1711,11 @@ function reparseFailedDraft() {
       rawOutput: parsed.raw,
       warnings: parsed.warnings,
     });
+    const bookId = getDraftContextValue(draft, 'bookId', '');
+    const chapterId = getDraftContextValue(draft, 'chapterId', '');
     chapterGenerationState.preview = {
+      bookId,
+      chapterId,
       content: parsed.data.content,
       draftId: null,
       generationRecord: (() => {
@@ -1835,12 +1727,10 @@ function reparseFailedDraft() {
       title: parsed.data.title,
       warnings: parsed.warnings,
     };
-    const bookId = getDraftContextValue(draft, 'bookId', '');
     if (!extras.getBook(bookId)) {
       toastr.warning('原番外已经不存在，暂时不能恢复这条章节草稿');
       return;
     }
-    const chapterId = getDraftContextValue(draft, 'chapterId', '');
     persistExtraChapterPreviewDraft({
       bookId,
       ...(chapterId ? { chapterId } : {}),
@@ -1892,10 +1782,6 @@ function reparseFailedDraft() {
   phone.replacePage('summary-preview', '章节总结预览', { bookId });
 }
 
-function formatCoveredChapters(ids: string[]) {
-  return formatCoveredChaptersForBook(activeBook.value, ids);
-}
-
 function formatCoveredChaptersForBook(book: typeof activeBook.value, ids: string[]) {
   if (!book) return '未关联章节';
   if (!ids.length) return '未关联章节';
@@ -1923,41 +1809,19 @@ function formatCoveredChaptersForBook(book: typeof activeBook.value, ids: string
   gap: 14px;
 }
 
-.pc-extras-hero,
-.pc-book-card,
-.pc-entry-card,
 .pc-editor-card,
-.pc-detail-card,
-.pc-toolbar,
-.pc-summary-card,
-.pc-preview-card {
+.pc-detail-card {
   border: 1px solid var(--pc-border);
   background: color-mix(in srgb, var(--pc-surface) 72%, transparent 28%);
   border-radius: 20px;
   backdrop-filter: blur(12px);
 }
 
-.pc-extras-hero,
 .pc-editor-card,
-.pc-detail-card,
-.pc-toolbar,
-.pc-preview-card {
+.pc-detail-card {
   padding: 18px;
 }
 
-.pc-extras-hero {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
-  gap: 12px;
-}
-
-.pc-extras-actions-hero {
-  display: flex;
-  justify-content: flex-end;
-  padding: 14px;
-}
-
-.pc-extras-hero h2,
 .pc-editor-card h2,
 .pc-detail-card h2 {
   margin: 0;
@@ -1969,80 +1833,12 @@ function formatCoveredChaptersForBook(book: typeof activeBook.value, ids: string
   margin-top: 0;
 }
 
-.pc-extras-hero p,
-.pc-book-card p,
-.pc-entry-card p,
-.pc-summary-card p,
-.pc-preview-card p,
-.pc-detail-meta,
 .pc-copy,
-.pc-status-card p,
-.pc-raw-head span {
+.pc-status-card p {
   color: var(--pc-muted);
 }
 
-.pc-book-list,
-.pc-entry-list,
-.pc-summary-list,
-.pc-shelf-manage {
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-}
-
-.pc-shelf-manage-item {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 10px;
-  padding: 12px 14px;
-  border: 1px solid var(--pc-border);
-  border-radius: 18px;
-  background: var(--pc-surface);
-}
-
-.pc-book-card,
-.pc-entry-card {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
-  gap: 10px;
-  padding: 14px;
-}
-
-.pc-book-main,
-.pc-entry-main {
-  text-align: left;
-  border: 0;
-  background: transparent;
-  color: var(--pc-text);
-  cursor: pointer;
-}
-
-.pc-book-main strong,
-.pc-entry-main strong,
-.pc-summary-head strong {
-  display: block;
-  font-size: 16px;
-}
-
-.pc-type-chip {
-  display: inline-block;
-  margin-bottom: 8px;
-  padding: 4px 8px;
-  border-radius: 999px;
-  background: color-mix(in srgb, var(--pc-theme-accent) 18%, var(--pc-surface-strong) 82%);
-  color: var(--pc-theme-accent);
-  font-size: 11px;
-}
-
-.pc-toolbar,
 .pc-section-head,
-.pc-summary-head,
-.pc-book-actions,
-.pc-entry-head,
-.pc-detail-meta,
-.pc-type-selector,
-.pc-type-option,
 .pc-switch-row {
   display: flex;
   align-items: center;
@@ -2050,22 +1846,7 @@ function formatCoveredChaptersForBook(book: typeof activeBook.value, ids: string
   gap: 10px;
 }
 
-.pc-toolbar {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
-}
-
-.pc-search {
-  width: 100%;
-  border: 1px solid var(--pc-border);
-  border-radius: 16px;
-  background: var(--pc-surface-strong);
-  color: var(--pc-text);
-  padding: 12px 14px;
-}
-
-.pc-extras-app :is(.pc-field, .pc-area),
-.pc-preview-card {
+.pc-extras-app :is(.pc-field, .pc-area) {
   margin-top: 14px;
 }
 
@@ -2078,110 +1859,22 @@ function formatCoveredChaptersForBook(book: typeof activeBook.value, ids: string
   min-height: 120px;
 }
 
-.pc-type-selector {
-  flex-wrap: wrap;
-  justify-content: flex-start;
-  margin-top: 14px;
-}
-
 .pc-type-prompt-card {
   display: flex;
   flex-direction: column;
   margin-top: 14px;
 }
 
-.pc-mini-grid {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 10px;
-}
-
-.pc-mini-grid .pc-field {
-  margin-top: 14px;
-}
-
-.pc-favorite-chip,
-.pc-toggle-chip {
-  border: 0;
-  cursor: pointer;
-  color: var(--pc-text);
-}
-
-.pc-toggle-chip {
-  min-width: 92px;
-  height: 40px;
-  border-radius: 999px;
-  padding: 0 14px;
-}
-
-.pc-type-option,
-.pc-toggle-chip,
-.pc-favorite-chip,
 .pc-checkbox {
   background: var(--pc-surface-strong);
-}
-
-.pc-type-option.active,
-.pc-toggle-chip.active {
-  background: color-mix(in srgb, var(--pc-theme-accent) 18%, var(--pc-surface-strong) 82%);
-}
-
-.pc-favorite-chip {
-  width: 40px;
-  height: 40px;
-  border-radius: 12px;
-}
-
-.pc-favorite-chip i[data-active='true'] {
-  color: var(--pc-danger);
 }
 
 .pc-icon-btn.danger {
   color: var(--pc-danger);
 }
 
-.pc-entry-main p.preview {
-  display: -webkit-box;
-  -webkit-line-clamp: 2;
-  -webkit-box-orient: vertical;
-  overflow: hidden;
-}
-
-.pc-prewrap,
 .pc-detail-content {
   white-space: pre-wrap;
-}
-
-.pc-raw-output {
-  margin-top: 14px;
-}
-
-.pc-raw-head {
-  display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-  gap: 10px;
-}
-
-.pc-raw-area {
-  min-height: 180px;
-  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
-  font-size: 12px;
-}
-
-.pc-prewrap {
-  font-size: var(--pc-reader-font-size);
-  line-height: var(--pc-reader-line-height);
-}
-
-.pc-summary-section {
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-}
-
-.pc-summary-card {
-  padding: 14px;
 }
 
 .pc-status-card {

@@ -1,5 +1,7 @@
 import type { ExternalApiPresetId, ExternalApiProfile, TextProviderSettings } from '@/type/settings';
 
+export type TextProviderSelection = 'inherit' | 'tavern' | `external:${string}`;
+
 export type ExternalApiPreset = {
   apiUrl: string;
   id: ExternalApiPresetId;
@@ -91,4 +93,34 @@ export function formatTextProviderSummary(settings: TextProviderSettings) {
   const resolved = resolveTextProviderSettings(settings);
   if (resolved.mode === 'tavern') return '跟随酒馆当前 API / 模型';
   return `${resolved.profileName} · ${resolved.model || '未选择模型'}`;
+}
+
+export function applyTextProviderSelection(
+  settings: TextProviderSettings,
+  selection: TextProviderSelection,
+): TextProviderSettings {
+  if (selection === 'inherit') return settings;
+  if (selection === 'tavern') {
+    return {
+      ...settings,
+      mode: 'tavern',
+    };
+  }
+
+  const profileId = selection.slice('external:'.length);
+  const profile = settings.externalProfiles.find(item => item.id === profileId);
+  if (!profile) throw new Error('本次选择的外部 API 连接配置已不存在');
+  return {
+    ...settings,
+    activeExternalProfileId: profile.id,
+    mode: 'external',
+  };
+}
+
+export function formatTextProviderSelection(settings: TextProviderSettings, selection: TextProviderSelection) {
+  if (selection === 'inherit') return `跟随：${formatTextProviderSummary(settings)}`;
+  if (selection === 'tavern') return '酒馆当前 API';
+  const profileId = selection.slice('external:'.length);
+  const profile = settings.externalProfiles.find(item => item.id === profileId);
+  return profile?.name.trim() || '连接配置已失效';
 }

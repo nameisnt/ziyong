@@ -181,8 +181,8 @@
         @catalog="showCatalogModal = true"
         @edit="openEditEntry(activeEntry.id)"
         @favorite="theater.toggleFavorite(activeEntry.id)"
-        @next="openEntry(nextEntryId || '')"
-        @previous="openEntry(previousEntryId || '')"
+        @next="openEntry(nextEntryId || '', true)"
+        @previous="openEntry(previousEntryId || '', true)"
         @top="scrollToTop"
       >
         <template #before-content>
@@ -1010,11 +1010,12 @@ function convertToExtra() {
   phone.pushRoute('extras', 'chapter', chapter.title, { bookId: book.id, chapterId: chapter.id });
 }
 
-function openEntry(entryId: string) {
+function openEntry(entryId: string, replaceCurrent = false) {
   if (!entryId) return;
   const entry = theater.getEntry(entryId);
   if (!entry) return;
-  phone.pushPage('entry', entry.title, { entryId });
+  if (replaceCurrent) phone.replacePage('entry', entry.title, { entryId });
+  else phone.pushPage('entry', entry.title, { entryId });
   void nextTick(() => scrollToTop('auto'));
 }
 
@@ -1028,7 +1029,7 @@ function openTheaterBaguScan() {
 
 function selectCatalogEntry(entryId: string) {
   showCatalogModal.value = false;
-  openEntry(entryId);
+  openEntry(entryId, true);
 }
 
 function openGenerate(typeId?: string, entryId?: string) {

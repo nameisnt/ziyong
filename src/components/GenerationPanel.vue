@@ -60,10 +60,29 @@
         <i class="fa-solid fa-chevron-down pc-generation-advanced-chevron"></i>
       </summary>
       <div class="pc-generation-advanced-body">
+        <div class="pc-select-field">
+          <label class="pc-field-label">{{ t`本次连接` }}</label>
+          <SearchableCombobox
+            :disabled="controlsDisabled"
+            :empty-label="t`没有可用的连接配置`"
+            :input-label="t`选择本次连接`"
+            :model-value="generationOverride.connectionSelection"
+            :options="connectionOptions"
+            :placeholder="t`选择本次连接`"
+            :toggle-title="t`展开连接配置`"
+            @update:model-value="setConnectionSelection"
+          />
+        </div>
+
         <div class="pc-select-field pc-preset-field">
           <label class="pc-field-label">{{ t`本次预设` }}</label>
           <div class="pc-preset-select-row">
-            <select v-model="settings.generation.tavernPresetName" class="pc-select" :disabled="controlsDisabled">
+            <select
+              class="pc-select"
+              :disabled="controlsDisabled"
+              :value="generationOverride.tavernPresetName"
+              @change="setTavernPresetName(($event.target as HTMLSelectElement).value)"
+            >
               <option value="">{{ t`跟随酒馆当前预设` }}</option>
               <option v-for="presetName in tavernPresetNames" :key="presetName" :value="presetName">
                 {{ presetName }}
@@ -142,13 +161,20 @@
 <script setup lang="ts">
 import GenerationSourceFields from '@/components/GenerationSourceFields.vue';
 import ReferencePicker from '@/components/ReferencePicker.vue';
+import SearchableCombobox from '@/components/SearchableCombobox.vue';
 import TavernPromptCapture from '@/components/TavernPromptCapture.vue';
+import { useGenerationOverrideStore } from '@/store/generationOverrides';
 import { usePhoneStore } from '@/store/phone';
 import { usePromptStore } from '@/store/prompts';
 import { useSettingsStore } from '@/store/settings';
 import type { SummaryGenerationSourceMode } from '@/util/generationSource';
 import type { GenerationReferenceItem } from '@/util/references';
 import { getPresetNamesSafe, type CapturedTavernPromptPreview } from '@/util/runtime';
+import {
+  formatTextProviderSelection,
+  formatTextProviderSummary,
+  type TextProviderSelection,
+} from '@/util/textProvider';
 import { storeToRefs } from 'pinia';
 
 const props = withDefaults(
@@ -196,11 +222,37 @@ const props = withDefaults(
 const phone = usePhoneStore();
 const prompts = usePromptStore();
 const settingsStore = useSettingsStore();
+const generationOverrides = useGenerationOverrideStore();
 const { quickPhraseGroups } = storeToRefs(prompts);
 const { settings } = storeToRefs(settingsStore);
 const quickPhraseOpen = ref(false);
 const openQuickPhraseGroupId = ref('');
 const tavernPresetNames = ref<string[]>([]);
+const overrideRoute = computed(() => ({ appId: phone.currentRoute.appId, page: phone.currentRoute.page }));
+const generationOverride = computed(() =>
+  generationOverrides.ensureOverride(
+    overrideRoute.value.appId,
+    overrideRoute.value.page,
+    settings.value.generation.tavernPresetName,
+  ),
+);
+const connectionOptions = computed(() => [
+  {
+    label: `跟随连接设置（${formatTextProviderSummary(settings.value.textProvider)}）`,
+    value: 'inherit',
+  },
+  { label: '酒馆当前 API', value: 'tavern' },
+  ...settings.value.textProvider.externalProfiles.map(profile => ({
+    label: profile.name,
+    value: `external:${profile.id}`,
+  })),
+  ...(generationOverride.value.connectionSelection.startsWith('external:') &&
+  !settings.value.textProvider.externalProfiles.some(
+    profile => `external:${profile.id}` === generationOverride.value.connectionSelection,
+  )
+    ? [{ label: '连接配置已失效', value: generationOverride.value.connectionSelection }]
+    : []),
+]);
 const generationBlocked = computed(() => !phone.isViewingCurrentChat);
 const controlsDisabled = computed(() => props.running || generationBlocked.value);
 const sourceModeLabel = computed(() => {
@@ -212,8 +264,12 @@ const sourceModeLabel = computed(() => {
   return '最新楼层';
 });
 const advancedSummary = computed(() => {
-  const presetName = settings.value.generation.tavernPresetName.trim() || '当前预设';
-  return `${presetName} · ${sourceModeLabel.value} · ${props.references.length} 项引用`;
+  const connection = formatTextProviderSelection(
+    settings.value.textProvider,
+    generationOverride.value.connectionSelection,
+  );
+  const presetName = generationOverride.value.tavernPresetName.trim() || '当前预设';
+  return `${connection} · ${presetName} · ${sourceModeLabel.value} · ${props.references.length} 项引用`;
 });
 
 const emit = defineEmits<{
@@ -249,10 +305,26 @@ onMounted(() => {
 
 function refreshTavernPresetNames() {
   tavernPresetNames.value = getPresetNamesSafe();
-  const selectedPresetName = settings.value.generation.tavernPresetName.trim();
+  const selectedPresetName = generationOverride.value.tavernPresetName.trim();
   if (selectedPresetName && !tavernPresetNames.value.includes(selectedPresetName)) {
     tavernPresetNames.value = [selectedPresetName, ...tavernPresetNames.value];
   }
+}
+
+function setConnectionSelection(selection: string) {
+  generationOverrides.setConnectionSelection(
+    overrideRoute.value.appId,
+    overrideRoute.value.page,
+    selection as TextProviderSelection,
+  );
+}
+
+function setTavernPresetName(tavernPresetName: string) {
+  generationOverrides.setTavernPresetName(
+    overrideRoute.value.appId,
+    overrideRoute.value.page,
+    tavernPresetName,
+  );
 }
 
 function toggleQuickPhrasePanel() {

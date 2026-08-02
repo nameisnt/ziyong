@@ -1,5 +1,6 @@
 import { getCurrentChatScopeKey } from '@/store/chatScoped';
 import { useGenerationAliasesStore } from '@/store/generationAliases';
+import { useGenerationOverrideStore } from '@/store/generationOverrides';
 import { usePhoneStore } from '@/store/phone';
 import type { TextProviderSettings } from '@/type/settings';
 import type {
@@ -12,7 +13,11 @@ import { buildGenerationUserInput, buildPhoneUserInput } from '@/util/generation
 import { applyGenerationAliases, replaceGenerationAliases } from '@/util/generationAliases';
 import { buildSourceSelection, type SummaryGenerationSourceMode } from '@/util/generationSource';
 import { ensureCurrentScopeRecovery, runWithVisibilityTransaction } from '@/util/generationVisibility';
-import { resolveTextProviderSettings, type ResolvedTextProviderSettings } from '@/util/textProvider';
+import {
+  applyTextProviderSelection,
+  resolveTextProviderSettings,
+  type ResolvedTextProviderSettings,
+} from '@/util/textProvider';
 import {
   captureTavernPromptPreview,
   generateRawSafe,
@@ -69,6 +74,25 @@ export type GenerateContentOptions = {
   source: GenerationSourceInput;
   textProvider: TextProviderSettings;
 };
+
+function applyInteractiveGenerationOverride<TOptions extends Pick<GenerateContentOptions, 'generationDefaults' | 'textProvider'>>(
+  adapterAppId: string,
+  options: TOptions,
+): TOptions {
+  const phone = usePhoneStore();
+  const route = phone.currentRoute;
+  if (route.appId !== adapterAppId) return options;
+  const override = useGenerationOverrideStore().getOverride(route.appId, route.page);
+  if (!override) return options;
+  return {
+    ...options,
+    generationDefaults: {
+      ...options.generationDefaults,
+      tavernPresetName: override.tavernPresetName,
+    },
+    textProvider: applyTextProviderSelection(options.textProvider, override.connectionSelection),
+  };
+}
 
 function buildCustomApiConfig(textProvider: ResolvedTextProviderSettings) {
   if (textProvider.mode !== 'external') return undefined;
@@ -563,8 +587,9 @@ async function generateFromCapturedOrderedPrompts(
 export async function generateContent<TConfig, TResult, TSaveResult = { entityId: string }>(
   adapter: GenerationAdapter<TConfig, TResult, TSaveResult>,
   config: TConfig,
-  options: GenerateContentOptions,
+  requestedOptions: GenerateContentOptions,
 ): Promise<GenerationExecutionResult<TResult, TSaveResult>> {
+  const options = applyInteractiveGenerationOverride(adapter.appId, requestedOptions);
   assertViewingCurrentChatForGeneration();
   const scopeId = getCurrentChatScopeKey();
   const recoveryResult = await ensureCurrentScopeRecovery(scopeId);
@@ -684,8 +709,9 @@ export async function generateContent<TConfig, TResult, TSaveResult = { entityId
 export function buildGenerationPreview<TConfig, TResult, TSaveResult = { entityId: string }>(
   adapter: GenerationAdapter<TConfig, TResult, TSaveResult>,
   config: TConfig,
-  options: Pick<GenerateContentOptions, 'generationDefaults' | 'references' | 'source' | 'textProvider'>,
+  requestedOptions: Pick<GenerateContentOptions, 'generationDefaults' | 'references' | 'source' | 'textProvider'>,
 ) {
+  const options = applyInteractiveGenerationOverride(adapter.appId, requestedOptions);
   assertViewingCurrentChatForGeneration();
   const textProvider = resolveTextProviderSettings(options.textProvider);
   const prepared = prepareGenerationRequest(adapter, config, options, createGenerationId(adapter.appId), textProvider);
@@ -743,8 +769,9 @@ export function buildGenerationPreview<TConfig, TResult, TSaveResult = { entityI
 export async function captureGenerationPrompt<TConfig, TResult, TSaveResult = { entityId: string }>(
   adapter: GenerationAdapter<TConfig, TResult, TSaveResult>,
   config: TConfig,
-  options: Pick<GenerateContentOptions, 'generationDefaults' | 'references' | 'source' | 'textProvider'>,
+  requestedOptions: Pick<GenerateContentOptions, 'generationDefaults' | 'references' | 'source' | 'textProvider'>,
 ) {
+  const options = applyInteractiveGenerationOverride(adapter.appId, requestedOptions);
   assertViewingCurrentChatForGeneration();
   const scopeId = getCurrentChatScopeKey();
   const recoveryResult = await ensureCurrentScopeRecovery(scopeId);

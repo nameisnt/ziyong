@@ -40,6 +40,158 @@ function describeError(caughtError: unknown) {
   return caughtError instanceof Error ? caughtError.message : String(caughtError);
 }
 
+type RawWorldbookEntry = Record<string, unknown> & {
+  comment?: unknown;
+  content?: unknown;
+  disable?: unknown;
+  id?: unknown;
+  uid?: unknown;
+};
+
+type RawWorldbook = Record<string, unknown> & {
+  entries?: unknown;
+};
+
+function numberOr(value: unknown, fallback: number) {
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? parsed : fallback;
+}
+
+function nullablePositiveNumber(value: unknown) {
+  const parsed = Number(value);
+  return Number.isFinite(parsed) && parsed > 0 ? parsed : null;
+}
+
+function stringList(value: unknown) {
+  if (!Array.isArray(value)) return [];
+  return value.map(item => String(item ?? '').trim()).filter(Boolean);
+}
+
+function rawEntryUid(entry: RawWorldbookEntry, fallbackKey: string) {
+  const candidates = [entry.uid, entry.id, fallbackKey];
+  for (const candidate of candidates) {
+    const uid = Number(candidate);
+    if (Number.isFinite(uid)) return uid;
+  }
+  return null;
+}
+
+function rawEntryPosition(value: unknown): WorldbookEntry['position']['type'] {
+  if (typeof value === 'string') {
+    const validPositions: WorldbookEntry['position']['type'][] = [
+      'before_character_definition',
+      'after_character_definition',
+      'before_example_messages',
+      'after_example_messages',
+      'before_author_note',
+      'after_author_note',
+      'at_depth',
+      'outlet',
+    ];
+    if (validPositions.includes(value as WorldbookEntry['position']['type'])) {
+      return value as WorldbookEntry['position']['type'];
+    }
+  }
+  return (
+    {
+      0: 'before_character_definition',
+      1: 'after_character_definition',
+      2: 'before_author_note',
+      3: 'after_author_note',
+      4: 'at_depth',
+      5: 'before_example_messages',
+      6: 'after_example_messages',
+    } as const
+  )[numberOr(value, 0)] || 'before_character_definition';
+}
+
+function rawEntryRole(value: unknown): WorldbookEntry['position']['role'] {
+  if (value === 'user' || value === 'assistant' || value === 'system') return value;
+  return ({ 0: 'system', 1: 'user', 2: 'assistant' } as const)[numberOr(value, 0)] || 'system';
+}
+
+function rawEntryLogic(value: unknown): WorldbookEntry['strategy']['keys_secondary']['logic'] {
+  if (value === 'and_any' || value === 'and_all' || value === 'not_all' || value === 'not_any') return value;
+  return ({ 0: 'and_any', 1: 'not_all', 2: 'not_any', 3: 'and_all' } as const)[numberOr(value, 0)] || 'and_any';
+}
+
+function rawEntryStrategy(entry: RawWorldbookEntry): WorldbookEntry['strategy']['type'] {
+  if (entry.constant === true) return 'constant';
+  if (entry.vectorized === true) return 'vectorized';
+  return 'selective';
+}
+
+function rawEntryEnabled(entry: RawWorldbookEntry) {
+  if (typeof entry.disable === 'boolean') return !entry.disable;
+  if (typeof entry.enabled === 'boolean') return entry.enabled;
+  return true;
+}
+
+function convertRawWorldbookEntries(book: unknown, bookName: string): WorldbookEntry[] {
+  if (!book || typeof book !== 'object') {
+    throw new Error(`酒馆原始接口没有返回世界书“${bookName}”`);
+  }
+  const rawEntries = (book as RawWorldbook).entries;
+  if (!rawEntries || typeof rawEntries !== 'object') {
+    throw new Error(`世界书“${bookName}”的原始 entries 字段格式无效`);
+  }
+  const pairs = Array.isArray(rawEntries)
+    ? rawEntries.map((entry, index) => [String(index), entry] as const)
+    : Object.entries(rawEntries);
+
+  return pairs
+    .filter((pair): pair is readonly [string, RawWorldbookEntry] => Boolean(pair[1] && typeof pair[1] === 'object'))
+    .map(([key, entry]) => {
+      const uid = rawEntryUid(entry, key);
+      if (uid === null) return null;
+      const primaryKeys = stringList(entry.key);
+      const secondaryKeys = stringList(entry.keysecondary);
+      const scanDepth = numberOr(entry.scanDepth, 0);
+      return {
+        uid,
+        name: String(entry.comment ?? entry.name ?? ''),
+        enabled: rawEntryEnabled(entry),
+        strategy: {
+          type: rawEntryStrategy(entry),
+          keys: primaryKeys,
+          keys_secondary: {
+            logic: rawEntryLogic(entry.selectiveLogic),
+            keys: secondaryKeys,
+          },
+          scan_depth: scanDepth > 0 ? scanDepth : 'same_as_global',
+        },
+        position: {
+          type: rawEntryPosition(entry.position),
+          role: rawEntryRole(entry.role),
+          depth: numberOr(entry.depth, 4),
+          order: numberOr(entry.order, 100),
+        },
+        content: String(entry.content ?? ''),
+        probability: numberOr(entry.probability, 100),
+        recursion: {
+          prevent_incoming: entry.excludeRecursion === true,
+          prevent_outgoing: entry.preventRecursion === true,
+          delay_until: nullablePositiveNumber(entry.delayUntilRecursion),
+        },
+        effect: {
+          sticky: nullablePositiveNumber(entry.sticky),
+          cooldown: nullablePositiveNumber(entry.cooldown),
+          delay: nullablePositiveNumber(entry.delay),
+        },
+        extra: { rawWorldbookEntry: entry },
+      } satisfies WorldbookEntry;
+    })
+    .filter((entry): entry is WorldbookEntry => entry !== null)
+    .sort((left, right) => left.position.order - right.position.order || left.uid - right.uid);
+}
+
+async function loadRawWorldbook(bookName: string) {
+  const loadWorldInfo = getOptionalGlobalFunction<(name: string) => Promise<unknown>>('loadWorldInfo');
+  if (!loadWorldInfo) throw new Error('当前酒馆环境没有开放 loadWorldInfo 接口');
+  const book = await loadWorldInfo(bookName);
+  return { book, entries: convertRawWorldbookEntries(book, bookName) };
+}
+
 function normalizeWorldbookEntries(value: unknown, bookName: string): WorldbookEntry[] {
   if (!Array.isArray(value)) {
     throw new Error(`世界书“${bookName}”返回的条目列表格式无效`);
@@ -156,30 +308,50 @@ export function getCurrentWorldbookGroups(): CurrentWorldbookGroups {
 }
 
 export async function getWorldbookEntries(bookName: string) {
-  const getWorldbook = requiredFunction<(worldbookName: string) => Promise<WorldbookEntry[]>>('getWorldbook');
+  const getWorldbook = getOptionalGlobalFunction<(worldbookName: string) => Promise<WorldbookEntry[]>>('getWorldbook');
+  let firstError: unknown = new Error('当前酒馆环境没有开放 getWorldbook 接口');
+  let rawReadError: unknown = null;
   try {
-    return normalizeWorldbookEntries(await getWorldbook(bookName), bookName);
-  } catch (firstError) {
-    const getWorldbookNames = getOptionalGlobalFunction<() => string[]>('getWorldbookNames');
-    const normalizedTarget = normalizedWorldbookName(bookName);
-    let matches: string[] = [];
-    try {
-      matches = uniqueNames(getWorldbookNames?.() ?? []).filter(
-        candidate => normalizedWorldbookName(candidate) === normalizedTarget,
-      );
-    } catch {
-      // Keep the original read error when the name-list fallback is also unavailable.
-    }
-    const fallbackName = matches.length === 1 && matches[0] !== bookName ? matches[0] : '';
-    if (!fallbackName) {
-      throw new Error(`无法读取世界书“${bookName}”：${describeError(firstError)}`);
-    }
+    if (getWorldbook) return normalizeWorldbookEntries(await getWorldbook(bookName), bookName);
+  } catch (error) {
+    firstError = error;
+  }
 
+  try {
+    return (await loadRawWorldbook(bookName)).entries;
+  } catch (error) {
+    rawReadError = error;
+    // Try a canonically equivalent name next. Some imported books preserve a
+    // different Unicode normalization form than the name shown by the picker.
+  }
+
+  const getWorldbookNames = getOptionalGlobalFunction<() => string[]>('getWorldbookNames');
+  const normalizedTarget = normalizedWorldbookName(bookName);
+  let matches: string[] = [];
+  try {
+    matches = uniqueNames(getWorldbookNames?.() ?? []).filter(
+      candidate => normalizedWorldbookName(candidate) === normalizedTarget,
+    );
+  } catch {
+    // Keep the original read error when the name-list fallback is also unavailable.
+  }
+  const fallbackName = matches.length === 1 && matches[0] !== bookName ? matches[0] : '';
+  if (!fallbackName) {
+    const rawDetail = rawReadError ? `；原始读取失败：${describeError(rawReadError)}` : '';
+    throw new Error(`无法读取世界书“${bookName}”：${describeError(firstError)}${rawDetail}`);
+  }
+
+  if (getWorldbook) {
     try {
       return normalizeWorldbookEntries(await getWorldbook(fallbackName), fallbackName);
-    } catch (fallbackError) {
-      throw new Error(`无法读取世界书“${bookName}”（已尝试匹配“${fallbackName}”）：${describeError(fallbackError)}`);
+    } catch {
+      // The helper conversion can fail on legacy entries with missing arrays.
     }
+  }
+  try {
+    return (await loadRawWorldbook(fallbackName)).entries;
+  } catch (fallbackError) {
+    throw new Error(`无法读取世界书“${bookName}”（已尝试匹配“${fallbackName}”）：${describeError(fallbackError)}`);
   }
 }
 
@@ -195,7 +367,7 @@ export async function setGlobalWorldbookEnabled(bookName: string, enabled: boole
 
 export async function setWorldbookEntryStates(bookName: string, states: Map<number, boolean>, disableUnknown: boolean) {
   const updateWorldbook =
-    requiredFunction<
+    getOptionalGlobalFunction<
       (
         worldbookName: string,
         updater: (entries: WorldbookEntry[]) => WorldbookEntry[],
@@ -203,18 +375,64 @@ export async function setWorldbookEntryStates(bookName: string, states: Map<numb
       ) => Promise<WorldbookEntry[]>
     >('updateWorldbookWith');
   let changed = 0;
-  const entries = await updateWorldbook(
+  if (updateWorldbook) {
+    try {
+      const entries = await updateWorldbook(
+        bookName,
+        currentEntries =>
+          currentEntries.map(entry => {
+            const target = states.has(entry.uid) ? states.get(entry.uid) : disableUnknown ? false : entry.enabled;
+            if (target === undefined || target === entry.enabled) return entry;
+            changed += 1;
+            return { ...entry, enabled: target };
+          }),
+        { render: 'immediate' },
+      );
+      return { changed, entries };
+    } catch {
+      changed = 0;
+    }
+  }
+
+  const saveWorldInfo = getOptionalGlobalFunction<
+    (name: string, data: unknown, immediately?: boolean) => Promise<void>
+  >('saveWorldInfo');
+  if (!saveWorldInfo) throw new Error('当前酒馆环境没有开放 saveWorldInfo 接口');
+  const { book, entries } = await loadRawWorldbook(bookName);
+  const rawEntries = (book as RawWorldbook).entries;
+  const pairs = Array.isArray(rawEntries)
+    ? rawEntries.map((entry, index) => [String(index), entry] as const)
+    : Object.entries(rawEntries as object);
+  pairs.forEach(([key, value]) => {
+    if (!value || typeof value !== 'object') return;
+    const entry = value as RawWorldbookEntry;
+    const uid = rawEntryUid(entry, key);
+    if (uid === null) return;
+    const currentEnabled = rawEntryEnabled(entry);
+    const target = states.has(uid) ? states.get(uid) : disableUnknown ? false : currentEnabled;
+    if (target === undefined || target === currentEnabled) return;
+    entry.disable = !target;
+    if (typeof entry.enabled === 'boolean') entry.enabled = target;
+    changed += 1;
+  });
+  await saveWorldInfo(bookName, book, true);
+  await getOptionalGlobalFunction<() => Promise<void>>('updateWorldInfoList')?.();
+  getOptionalGlobalFunction<(file: string, loadIfNotSelected?: boolean) => void>('reloadWorldInfoEditor')?.(
     bookName,
-    currentEntries =>
-      currentEntries.map(entry => {
-        const target = states.has(entry.uid) ? states.get(entry.uid) : disableUnknown ? false : entry.enabled;
-        if (target === undefined || target === entry.enabled) return entry;
-        changed += 1;
-        return { ...entry, enabled: target };
-      }),
-    { render: 'immediate' },
+    false,
   );
-  return { changed, entries };
+  const enabledByUid = new Map(
+    pairs.flatMap(([key, value]) => {
+      if (!value || typeof value !== 'object') return [];
+      const entry = value as RawWorldbookEntry;
+      const uid = rawEntryUid(entry, key);
+      return uid === null ? [] : ([[uid, rawEntryEnabled(entry)]] as const);
+    }),
+  );
+  return {
+    changed,
+    entries: entries.map(entry => ({ ...entry, enabled: enabledByUid.get(entry.uid) ?? entry.enabled })),
+  };
 }
 
 export function setWorldbookEntryEnabled(bookName: string, uid: number, enabled: boolean) {

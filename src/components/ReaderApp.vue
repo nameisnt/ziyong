@@ -448,20 +448,20 @@ onScopeDispose(() => {
   stopChatChanged.stop();
 });
 
-function openMessage(messageId: string) {
+function openMessage(messageId: string, replaceCurrent = false) {
   if (!messageId) return;
   const message = activeMessages.value.find(item => item.id === messageId);
   if (!message) return;
   showCatalogModal.value = false;
-  phone.pushPage('detail', message.title, {
-    messageId,
-  });
+  const params = { messageId };
+  if (replaceCurrent) phone.replacePage('detail', message.title, params);
+  else phone.pushPage('detail', message.title, params);
   void nextTick(() => scrollToTop('auto'));
 }
 
 function openAdjacentMessage(messageId: string) {
   if (!messageId) return;
-  openMessage(messageId);
+  openMessage(messageId, true);
 }
 
 function openReaderBaguScan() {
@@ -544,7 +544,7 @@ async function createReaderBranch() {
 
 function selectCatalogMessage(messageId: string) {
   showCatalogModal.value = false;
-  openMessage(messageId);
+  openMessage(messageId, true);
 }
 
 function getActiveMessageSourceLabel() {

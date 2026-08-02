@@ -1,5 +1,7 @@
 import { getRegisteredPhoneGenerationAdapter } from '@/core/appRegistry';
 import { generateContent } from '@/core/generationService';
+import { resumeWorkbenchTask } from '@/apps/workbench/runner';
+import { useWorkbenchStore } from '@/apps/workbench/store';
 import { getCurrentChatScopeKey } from '@/store/chatScoped';
 import { useDiaryStore } from '@/store/diary';
 import { useGenerationTaskStore } from '@/store/generationTasks';
@@ -180,7 +182,6 @@ export async function resumeGenerationTask(taskId: string) {
   const task = useGenerationTaskStore().getTask(taskId);
   if (!task) return;
   if (task.kind === 'workbench') {
-    const { resumeWorkbenchTask } = await import('@/apps/workbench/runner');
     await resumeWorkbenchTask(taskId);
     return;
   }
@@ -193,7 +194,6 @@ export async function discardGenerationTask(taskId: string) {
   if (!task) return;
   if (task.kind === 'workbench') {
     const workflowId = typeof task.config.workflowId === 'string' ? task.config.workflowId : '';
-    const { useWorkbenchStore } = await import('@/apps/workbench/store');
     const workbench = useWorkbenchStore();
     const workflow = workbench.getWorkflow(workflowId);
     const pendingRun = workflow?.pendingRuns[task.scopeKey];

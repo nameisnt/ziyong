@@ -10,6 +10,13 @@ const defaultSizes = [
   { height: 844, label: 'phone-tall', width: 390 },
   { height: 900, label: 'wide-tall', width: 430 },
 ];
+let stopActiveCheck = null;
+
+for (const signal of ['SIGINT', 'SIGTERM']) {
+  process.once(signal, () => {
+    void stopActiveCheck?.().finally(() => process.exit(signal === 'SIGINT' ? 130 : 143));
+  });
+}
 
 function parseArgs(argv) {
   const options = {
@@ -211,10 +218,19 @@ async function main() {
   const results = [];
   let browser = null;
 
+  const stop = async () => {
+    await browser?.close();
+    browser = null;
+    await vite.stop();
+  };
+  stopActiveCheck = stop;
+
   try {
     await vite.ready;
     browser = await playwright.chromium.launch();
     const page = await browser.newPage();
+    page.setDefaultTimeout(10_000);
+    page.setDefaultNavigationTimeout(15_000);
     await page.setViewportSize({ height: 780, width: 520 });
     const harnessScenarios = await loadHarnessScenarios(page, options.port);
     const scenarios = !options.scenarios?.length || options.scenarios.includes('all')
@@ -226,9 +242,12 @@ async function main() {
       return;
     }
 
+    const totalRuns = options.sizes.length * scenarios.length;
+    let completedRuns = 0;
     for (const size of options.sizes) {
       await page.setViewportSize({ height: size.height + 80, width: Math.max(size.width + 120, 520) });
       for (const scenario of scenarios) {
+        console.log(`[UI ${completedRuns + 1}/${totalRuns}] ${scenario} / ${size.width}x${size.height}`);
         const url = `http://127.0.0.1:${options.port}/visual-harness.html?manual=1`;
         await page.goto(url, { waitUntil: 'networkidle' });
         await page.waitForFunction(() => Boolean(window.__phoneVisualTest__));
@@ -247,11 +266,12 @@ async function main() {
           screenshot: screenshotName,
           size: `${size.width}x${size.height}`,
         });
+        completedRuns += 1;
       }
     }
   } finally {
-    await browser?.close();
-    await vite.stop();
+    await stop();
+    stopActiveCheck = null;
   }
 
   await writeFile(resolve(options.outDir, 'report.json'), `${JSON.stringify(results, null, 2)}\n`, 'utf8');

@@ -123,8 +123,8 @@
       @delete="removeEntry(activeBook.id, activeEntry.id)"
       @edit="openEditEntry(activeBook.id, activeEntry.id)"
       @favorite="summary.toggleFavorite(activeBook.id, activeEntry.id)"
-      @next="openEntry(activeBook.id, nextEntryId)"
-      @previous="openEntry(activeBook.id, previousEntryId)"
+      @next="openEntry(activeBook.id, nextEntryId, true)"
+      @previous="openEntry(activeBook.id, previousEntryId, true)"
       @select-catalog="selectCatalogEntry"
       @top="scrollToTop"
     />
@@ -422,7 +422,7 @@
     </section>
 
     <section
-      v-else-if="route.page === 'preview' && activeBook && generationState.preview"
+      v-else-if="route.page === 'preview' && previewBook && generationState.preview"
       class="pc-summary-page pc-generation-preview-page"
     >
       <div class="pc-detail-card pc-generation-preview-card">
@@ -566,6 +566,7 @@ const generationState = reactive({
   error: '',
   generationId: '',
   preview: null as null | {
+    bookId: string;
     content: string;
     draftId: null | string;
     raw: string;
@@ -611,17 +612,27 @@ const {
   appId: 'summary',
   consumeFailedDraft: draftId => summary.deleteFailedDraft(draftId),
   getPreview: () => generationState.preview,
-  getRouteParams: () => (route.value.params?.bookId ? { bookId: route.value.params.bookId } : {}),
+  getRouteParams: () => {
+    const bookId = generationState.preview?.bookId || route.value.params?.bookId || '';
+    return bookId ? { bookId } : {};
+  },
   page: 'preview',
   route,
   setPreview: preview => {
-    generationState.preview = preview;
+    generationState.preview = {
+      ...preview,
+      bookId: preview.bookId || route.value.params?.bookId || '',
+    };
   },
   title: '生成预览',
 });
 
 const activeBook = computed(() => {
   const bookId = route.value.params?.bookId;
+  return bookId ? summary.getBook(bookId) : null;
+});
+const previewBook = computed(() => {
+  const bookId = generationState.preview?.bookId;
   return bookId ? summary.getBook(bookId) : null;
 });
 const sortedActiveBookEntries = computed(() =>
@@ -838,6 +849,7 @@ useInvalidRouteFallback({
     hasEntry: Boolean(activeEntry.value),
     hasFailedDraft: Boolean(activeFailedDraft.value),
     hasPreview: Boolean(generationState.preview),
+    hasPreviewBook: Boolean(previewBook.value),
     page: route.value.page,
   }),
   isInvalid: current =>
@@ -845,7 +857,7 @@ useInvalidRouteFallback({
     ((['book', 'edit-book', 'generate'].includes(current.page) && !current.hasBook) ||
       (['entry', 'bagu-scan'].includes(current.page) && (!current.hasBook || !current.hasEntry)) ||
       (current.page === 'editor' && (!current.hasBook || (Boolean(current.entryId) && !current.hasEntry))) ||
-      (current.page === 'preview' && (!current.hasBook || !current.hasPreview)) ||
+      (current.page === 'preview' && (!current.hasPreviewBook || !current.hasPreview)) ||
       (current.page === 'failed-draft' && !current.hasFailedDraft)),
   fallback: () => {
     if (route.value.appId !== 'summary') return;
@@ -1009,11 +1021,12 @@ function openBatchGenerate(bookId?: string) {
   phone.pushPage('batch-generate', '批量生成总结', bookId ? { bookId } : undefined);
 }
 
-function openEntry(bookId: string, entryId: string) {
+function openEntry(bookId: string, entryId: string, replaceCurrent = false) {
   if (!entryId) return;
   const entry = summary.getEntry(bookId, entryId);
   if (!entry) return;
-  phone.pushPage('entry', entry.title, { bookId, entryId });
+  if (replaceCurrent) phone.replacePage('entry', entry.title, { bookId, entryId });
+  else phone.pushPage('entry', entry.title, { bookId, entryId });
   void nextTick(() => scrollToTop('auto'));
 }
 
@@ -1029,7 +1042,7 @@ function openSummaryBaguScan() {
 function selectCatalogEntry(entryId: string) {
   if (!activeBook.value) return;
   showCatalogModal.value = false;
-  openEntry(activeBook.value.id, entryId);
+  openEntry(activeBook.value.id, entryId, true);
 }
 
 function openFailedDraft(draftId: string) {
@@ -1280,8 +1293,12 @@ function returnToGenerate() {
     });
     return;
   }
-  if (!route.value.params?.bookId) return;
-  phone.replacePage('generate', '生成总结', { bookId: route.value.params.bookId });
+  const bookId = generationState.preview?.bookId || route.value.params?.bookId;
+  if (!bookId) {
+    toastr.warning('草稿缺少目标总结集信息，无法返回生成设置');
+    return;
+  }
+  phone.replacePage('generate', '生成总结', { bookId });
 }
 
 async function runGeneration() {
@@ -1355,6 +1372,7 @@ async function runGeneration() {
     }
 
     generationState.preview = {
+      bookId,
       content: result.data.content,
       draftId: null,
       raw: result.rawOutput,
@@ -1372,9 +1390,13 @@ async function runGeneration() {
 }
 
 function savePreview() {
-  const bookId = route.value.params?.bookId;
   const preview = generationState.preview;
-  if (!bookId || !preview) return;
+  if (!preview) return;
+  const bookId = preview.bookId || route.value.params?.bookId || summaryPreviewDraft.value?.routeParams.bookId;
+  if (!bookId) {
+    toastr.warning('草稿缺少目标总结集信息，无法保存条目');
+    return;
+  }
 
   const entry = summary.createEntry(bookId, {
     content: preview.content,
@@ -1476,6 +1498,7 @@ function reparseFailedDraft() {
     warnings: parsed.warnings,
   });
   generationState.preview = {
+    bookId,
     content: parsed.data.content,
     draftId: null,
     raw: parsed.raw,

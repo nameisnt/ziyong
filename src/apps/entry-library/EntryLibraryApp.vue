@@ -16,9 +16,8 @@
           <button class="pc-icon-btn" type="button" :title="t`分组绑定`" @click="openBindings">
             <i class="fa-solid fa-link"></i>
           </button>
-          <button class="pc-primary-btn compact" type="button" @click="openCollect">
+          <button class="pc-icon-btn active" type="button" :title="t`收藏条目`" @click="openCollect">
             <i class="fa-solid fa-plus"></i>
-            <span>{{ t`收藏` }}</span>
           </button>
         </div>
       </header>

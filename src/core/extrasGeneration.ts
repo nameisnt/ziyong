@@ -54,6 +54,10 @@ export const ExtraChapterGenerateConfigSchema = z.object({
 });
 export type ExtraChapterGenerateConfig = z.infer<typeof ExtraChapterGenerateConfigSchema>;
 
+export function resolveGeneratedExtraBookTitle(explicitTitle: string, typeName: string) {
+  return explicitTitle.trim() || typeName.trim() || '未命名番外';
+}
+
 export function createExtraChapterGenerationRecord(
   config: ExtraChapterGenerateConfig,
   source?: SourceSelection,
