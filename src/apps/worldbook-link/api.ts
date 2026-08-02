@@ -178,9 +178,7 @@ export async function getWorldbookEntries(bookName: string) {
     try {
       return normalizeWorldbookEntries(await getWorldbook(fallbackName), fallbackName);
     } catch (fallbackError) {
-      throw new Error(
-        `无法读取世界书“${bookName}”（已尝试匹配“${fallbackName}”）：${describeError(fallbackError)}`,
-      );
+      throw new Error(`无法读取世界书“${bookName}”（已尝试匹配“${fallbackName}”）：${describeError(fallbackError)}`);
     }
   }
 }

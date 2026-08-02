@@ -161,7 +161,13 @@
             {{ t`覆盖` }}
           </button>
         </div>
-        <input ref="importFileField" class="pc-hidden-input" type="file" accept="application/json,.json" @change="importLibrary" />
+        <input
+          ref="importFileField"
+          class="pc-hidden-input"
+          type="file"
+          accept="application/json,.json"
+          @change="importLibrary"
+        />
         <button class="pc-soft-btn" type="button" @click="importFileField?.click()">
           <i class="fa-solid fa-upload"></i>
           {{ t`选择 JSON 文件` }}

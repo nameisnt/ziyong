@@ -91,7 +91,8 @@ function readPresetFromManager(presetName: string) {
     | null
     | undefined;
   const selectedName = manager?.getSelectedPresetName?.();
-  const selectedFallback = selectedName === presetName ? (manager?.selectedPreset ?? manager?.selected_preset) : undefined;
+  const selectedFallback =
+    selectedName === presetName ? (manager?.selectedPreset ?? manager?.selected_preset) : undefined;
   return (
     manager?.getCompletionPresetByName?.(presetName) ??
     manager?.findPreset?.(presetName) ??
