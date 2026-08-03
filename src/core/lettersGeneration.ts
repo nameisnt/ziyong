@@ -20,6 +20,7 @@ export const LetterGenerateConfigSchema = z.object({
   existingContent: z.string().default(''),
   mode: z.enum(['create', 'rewrite']).default('create'),
   outputFormat: z.string(),
+  replayRequest: GenerationRequestPartsSchema.optional(),
   recentLettersContext: z.string().default(''),
   receiver: CharacterRefSchema,
   sender: CharacterRefSchema,
@@ -43,28 +44,30 @@ export function createLettersGenerationAdapter(lettersStore: {
     input: Pick<LetterEntry, 'title' | 'content' | 'format' | 'sender' | 'receiver'> & {
       bookId?: string;
       bookTitle?: string;
+      generationReplay?: LetterEntry['generationReplay'];
     },
   ) => { book: LetterBook; entry: LetterEntry } | null;
   appendEntryVersion: (
     bookId: string,
     entryId: string,
-    input: Pick<LetterEntry, 'title' | 'content' | 'format'>,
+    input: Pick<LetterEntry, 'title' | 'content' | 'format'> & Partial<Pick<LetterEntry, 'generationReplay'>>,
   ) => { book: LetterBook; entry: LetterEntry; version: { id: string } } | null;
 }) {
   return {
     actionId: 'generate',
     appId: 'letters',
     buildRequest(config) {
+      if (config.mode === 'rewrite' && config.replayRequest) {
+        return parsePrettified(GenerationRequestPartsSchema, {
+          ...config.replayRequest,
+          userRequirement: config.userRequirement,
+        });
+      }
       return parsePrettified(GenerationRequestPartsSchema, {
         appPrompt: config.appPrompt,
-        context: [config.recentLettersContext, config.mode === 'rewrite' ? config.existingContent : '']
-          .filter(Boolean)
-          .join('\n\n'),
+        context: config.recentLettersContext,
         outputFormat: config.outputFormat,
-        taskInstruction:
-          config.mode === 'rewrite'
-            ? `${buildTaskInstruction(config)} 请将上述目标信件重写为完整替代版本，不要写成回信或续写。`
-            : buildTaskInstruction(config),
+        taskInstruction: buildTaskInstruction(config),
         userRequirement: config.userRequirement,
       });
     },
@@ -77,6 +80,7 @@ export function createLettersGenerationAdapter(lettersStore: {
         const saved = lettersStore.appendEntryVersion(context.config.bookId, context.config.entryId, {
           content: result.content,
           format: context.config.format,
+          generationReplay: context.replay,
           title: result.title,
         });
         if (!saved) throw new Error('目标书信不存在，无法保存重写版本');
@@ -92,6 +96,7 @@ export function createLettersGenerationAdapter(lettersStore: {
         bookTitle: context.config.bookTitle || undefined,
         content: result.content,
         format: context.config.format,
+        generationReplay: context.replay,
         receiver: context.config.receiver,
         sender: context.config.sender,
         title: result.title,

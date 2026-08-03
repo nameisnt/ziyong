@@ -1,4 +1,4 @@
-import { FailedGenerationDraftSchema } from '@/type/generation';
+import { FailedGenerationDraftSchema, GenerationReplaySnapshotSchema } from '@/type/generation';
 import { GenerationSourceModeSchema } from '@/type/settings';
 import { ContentVersionBaseSchema } from '@/type/contentVersion';
 
@@ -29,6 +29,7 @@ export const ExtraChapterGenerationRecordSchema = z.object({
   typeName: z.string().default(''),
   typePrompt: z.string().default(''),
   userRequirement: z.string().default(''),
+  replay: GenerationReplaySnapshotSchema.optional(),
 });
 export type ExtraChapterGenerationRecord = z.infer<typeof ExtraChapterGenerationRecordSchema>;
 

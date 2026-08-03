@@ -25,6 +25,7 @@ export const ForumThreadGenerateConfigSchema = z.object({
   existingThreadContent: z.string().default(''),
   mode: z.enum(['create', 'rewrite']).default('create'),
   outputFormat: z.string(),
+  replayRequest: GenerationRequestPartsSchema.optional(),
   threadId: z.string().default(''),
   userRequirement: z.string().default(''),
 });
@@ -37,6 +38,7 @@ export const ForumReplyGenerateConfigSchema = z.object({
   threadContext: z.string(),
   threadId: z.string(),
   userRequirement: z.string().default(''),
+  versionId: z.string().default(''),
 });
 export type ForumReplyGenerateConfig = z.infer<typeof ForumReplyGenerateConfigSchema>;
 
@@ -62,20 +64,43 @@ export function materializeForumReplies(
   };
 }
 
+export function createForumReplySnapshots(parsedReplies: ForumXmlReply[], source?: SourceSelection) {
+  const timestamp = new Date().toISOString();
+  return parsedReplies.map((reply, index): ForumReply => ({
+    author: reply.author.trim() || '匿名',
+    content: reply.content.trim(),
+    createdAt: timestamp,
+    id: `forum_reply_${Date.now()}_${index}_${Math.random().toString(36).slice(2, 8)}`,
+    source,
+    updatedAt: timestamp,
+  }));
+}
+
 export function persistForumReplyDrafts(
-  createReply: (boardId: string, threadId: string, input: ForumReplyDraftInput) => ForumReply | null,
+  createReply: (
+    boardId: string,
+    threadId: string,
+    input: ForumReplyDraftInput,
+    versionId?: string,
+  ) => ForumReply | null,
   boardId: string,
   threadId: string,
   replyInputs: ForumReplyDraftInput[],
+  versionId = '',
 ) {
   const createdReplies: ForumReply[] = [];
 
   replyInputs.forEach(reply => {
-    const created = createReply(boardId, threadId, {
-      author: reply.author,
-      content: reply.content,
-      source: reply.source,
-    });
+    const created = createReply(
+      boardId,
+      threadId,
+      {
+        author: reply.author,
+        content: reply.content,
+        source: reply.source,
+      },
+      versionId,
+    );
     if (created) createdReplies.push(created);
   });
 
@@ -83,10 +108,7 @@ export function persistForumReplyDrafts(
 }
 
 function buildThreadRequestContext(config: ForumThreadGenerateConfig) {
-  return [
-    config.boardTypePrompt.trim() ? `板块类型提示词：${config.boardTypePrompt.trim()}` : '',
-    config.mode === 'rewrite' ? config.existingThreadContent.trim() : '',
-  ]
+  return [config.boardTypePrompt.trim() ? `板块类型提示词：${config.boardTypePrompt.trim()}` : '']
     .filter(Boolean)
     .join('\n\n');
 }
@@ -94,7 +116,7 @@ function buildThreadRequestContext(config: ForumThreadGenerateConfig) {
 function buildThreadTaskInstruction(config: ForumThreadGenerateConfig) {
   const boardName = config.boardName.trim();
   if (config.mode === 'rewrite') {
-    return `请重写上述当前论坛主帖，并在 <board> 中原样输出板块名称“${boardName}”。只输出替代主帖，不要生成或改写回复。`;
+    return `请根据相同来源重新生成一篇完整论坛主题及其回复，并在 <board> 中原样输出板块名称“${boardName}”。不要参考或复述旧版本。`;
   }
   if (boardName) {
     return `请为“${boardName}”板块生成一篇新帖，并在 <board> 中原样输出板块名称“${boardName}”。`;
@@ -105,7 +127,8 @@ function buildThreadTaskInstruction(config: ForumThreadGenerateConfig) {
 export function createForumThreadGenerationAdapter(forumStore: {
   createThread: (
     boardId: string,
-    input: Pick<ForumThread, 'title' | 'author' | 'content'>,
+    input: Pick<ForumThread, 'title' | 'author' | 'content'> &
+      Partial<Pick<ForumThread, 'generationReplay' | 'replies'>>,
   ) => { board: ForumBoard; thread: ForumThread } | null;
   createReply: (boardId: string, threadId: string, input: ForumReplyDraftInput) => ForumReply | null;
   ensureBoard: (
@@ -117,13 +140,20 @@ export function createForumThreadGenerationAdapter(forumStore: {
   appendThreadVersion: (
     boardId: string,
     threadId: string,
-    input: Pick<ForumThread, 'title' | 'author' | 'content'>,
+    input: Pick<ForumThread, 'title' | 'author' | 'content' | 'replies'> &
+      Partial<Pick<ForumThread, 'generationReplay'>>,
   ) => { board: ForumBoard; thread: ForumThread; version: { id: string } } | null;
 }) {
   return {
     actionId: 'generate-thread',
     appId: 'forum',
     buildRequest(config) {
+      if (config.mode === 'rewrite' && config.replayRequest) {
+        return parsePrettified(GenerationRequestPartsSchema, {
+          ...config.replayRequest,
+          userRequirement: config.userRequirement,
+        });
+      }
       return parsePrettified(GenerationRequestPartsSchema, {
         appPrompt: config.appPrompt,
         context: buildThreadRequestContext(config),
@@ -138,9 +168,12 @@ export function createForumThreadGenerationAdapter(forumStore: {
     },
     async save(result, context) {
       if (context.config.mode === 'rewrite' && context.config.boardId && context.config.threadId) {
+        const replies = createForumReplySnapshots(result.replies, context.source);
         const saved = forumStore.appendThreadVersion(context.config.boardId, context.config.threadId, {
           author: result.author,
           content: result.content,
+          generationReplay: context.replay,
+          replies,
           title: result.title,
         });
         if (!saved) throw new Error('目标论坛主帖不存在，无法保存重写版本');
@@ -165,6 +198,7 @@ export function createForumThreadGenerationAdapter(forumStore: {
       const created = forumStore.createThread(board.id, {
         author: result.author,
         content: result.content,
+        generationReplay: context.replay,
         title: result.title,
       });
       if (!created) {
@@ -202,7 +236,12 @@ export function createForumThreadGenerationAdapter(forumStore: {
 }
 
 export function createForumReplyGenerationAdapter(forumStore: {
-  createReply: (boardId: string, threadId: string, input: ForumReplyDraftInput) => ForumReply | null;
+  createReply: (
+    boardId: string,
+    threadId: string,
+    input: ForumReplyDraftInput,
+    versionId?: string,
+  ) => ForumReply | null;
   getThread: (boardId: string, threadId: string) => ForumThread | null;
 }) {
   return {
@@ -229,12 +268,15 @@ export function createForumReplyGenerationAdapter(forumStore: {
         throw new Error('目标帖子不存在，无法保存论坛回复');
       }
 
-      const materialized = materializeForumReplies(thread.replies, result.replies, context.source);
+      const targetReplies =
+        thread.versions.find(version => version.id === context.config.versionId)?.replies || thread.replies;
+      const materialized = materializeForumReplies(targetReplies, result.replies, context.source);
       const createdReplies = persistForumReplyDrafts(
         forumStore.createReply,
         context.config.boardId,
         context.config.threadId,
         materialized.replies,
+        context.config.versionId,
       );
 
       return {

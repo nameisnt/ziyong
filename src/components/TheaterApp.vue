@@ -191,6 +191,7 @@
             :versions="activeEntry.versions"
             :viewed-version-id="viewedEntryVersionId"
             @adopt="adoptTheaterVersion"
+            @delete="removeTheaterVersion"
             @select="selectTheaterVersion"
           />
           <div class="pc-entry-tags">
@@ -230,10 +231,15 @@
           >
             <i class="fa-solid fa-wand-magic-sparkles"></i>
           </button>
-          <button class="pc-soft-btn" type="button" :title="t`重写`" @click="openRewrite(activeEntry.id)">
+          <button class="pc-soft-btn" type="button" :title="t`重新生成`" @click="openRewrite(activeEntry.id)">
             <i class="fa-solid fa-rotate"></i>
           </button>
-          <button class="pc-soft-btn danger" type="button" :title="t`删除`" @click="removeEntry(activeEntry.id)">
+          <button
+            class="pc-soft-btn danger"
+            type="button"
+            :title="t`删除整个小剧场（全部版本）`"
+            @click="removeEntry(activeEntry.id)"
+          >
             <i class="fa-solid fa-trash"></i>
           </button>
         </template>
@@ -514,17 +520,19 @@ import SearchableCombobox from '@/components/SearchableCombobox.vue';
 import { getRegisteredPhoneGenerationAdapter } from '@/core/appRegistry';
 import { buildGenerationPreview, captureGenerationPrompt, generateContent } from '@/core/generationService';
 import { useGenerationAliasesStore } from '@/store/generationAliases';
+import { useGenerationOverrideStore } from '@/store/generationOverrides';
 import { useExtrasStore } from '@/store/extras';
 import { usePhoneStore } from '@/store/phone';
 import { usePromptStore } from '@/store/prompts';
 import { useSettingsStore } from '@/store/settings';
 import { useTheaterStore } from '@/store/theater';
 import type { CharacterRef } from '@/type/diary';
-import type { FailedGenerationDraft } from '@/type/generation';
+import type { FailedGenerationDraft, GenerationReplaySnapshot } from '@/type/generation';
 import type { TheaterRenderMode } from '@/type/theater';
 import { canOpenBaguScan } from '@/util/baguScanGate';
 import { useDetailScroll } from '@/util/detailScroll';
 import { parseTheaterXmlResult } from '@/util/generation';
+import { cloneReplayReferences, restoreGenerationReplayDraft } from '@/util/generationReplay';
 import { renderMarkdown } from '@/util/markdown';
 import { formatReaderContent } from '@/util/readerContent';
 import { formatGenerationReferences, type GenerationReferenceItem } from '@/util/references';
@@ -532,6 +540,7 @@ import { resolveContentVersion } from '@/util/contentVersions';
 import { usePreviewDraftPersistence } from '@/util/previewDrafts';
 import { useInvalidRouteFallback } from '@/util/routeFallback';
 import { stopGenerationByIdSafe } from '@/util/runtime';
+import type { TextProviderSelection } from '@/util/textProvider';
 import { storeToRefs } from 'pinia';
 
 const phone = usePhoneStore();
@@ -540,6 +549,7 @@ const settingsStore = useSettingsStore();
 const theater = useTheaterStore();
 const extras = useExtrasStore();
 const generationAliases = useGenerationAliasesStore();
+const generationOverrides = useGenerationOverrideStore();
 const theaterGenerationAdapter = getRegisteredPhoneGenerationAdapter('theater', 'generate');
 const CUSTOM_THEATER_TYPE_VALUE = '__custom_theater_type__';
 const { currentRoute: route, isOpen } = storeToRefs(phone);
@@ -598,7 +608,9 @@ const generationState = reactive({
     };
     title: string;
     mode: 'create' | 'rewrite';
+    replay?: GenerationReplaySnapshot;
     targetEntryId: string;
+    targetVersionId: string;
     typeId?: string;
     typeName: string;
     warnings: string[];
@@ -658,7 +670,13 @@ const viewedEntry = computed(() => {
   const entry = activeEntry.value;
   const version = viewedEntryVersion.value;
   return entry && version
-    ? { ...entry, content: version.content, renderMode: version.renderMode, title: version.title }
+    ? {
+        ...entry,
+        content: version.content,
+        generationReplay: version.generationReplay,
+        renderMode: version.renderMode,
+        title: version.title,
+      }
     : entry;
 });
 const rewriteTargetEntry = computed(() => {
@@ -674,12 +692,9 @@ const theaterGenerationMode = computed<'create' | 'rewrite'>(() => (rewriteTarge
 const theaterGenerationAppPrompt = computed(() =>
   theaterGenerationMode.value === 'rewrite' ? appPrompts.value.theaterRewrite : appPrompts.value.theater,
 );
-const theaterExistingContent = computed(() => {
-  const entry = rewriteTargetEntry.value;
-  const version = rewriteTargetVersion.value;
-  if (!entry) return '';
-  return [`当前小剧场：${version?.title || entry.title}`, version?.content || entry.content].join('\n\n');
-});
+const rewriteGenerationReplay = computed(
+  () => rewriteTargetVersion.value?.generationReplay || rewriteTargetEntry.value?.generationReplay,
+);
 const detailEntries = computed(() =>
   [...entries.value].sort((left, right) => {
     const compare = left.createdAt.localeCompare(right.createdAt);
@@ -813,9 +828,10 @@ const generationPromptPreview = computed(() => {
       {
         appPrompt: theaterGenerationAppPrompt.value,
         entryId: rewriteTargetEntry.value?.id || '',
-        existingContent: theaterExistingContent.value,
+        existingContent: '',
         mode: theaterGenerationMode.value,
         outputFormat: buildOutputFormat(generationDraft.renderMode),
+        replayRequest: theaterGenerationMode.value === 'rewrite' ? rewriteGenerationReplay.value?.request : undefined,
         renderMode: generationDraft.renderMode,
         typeId: generationDraft.typeId,
         typeName: generationDraft.typeName,
@@ -850,9 +866,10 @@ function captureTheaterPrompt() {
     {
       appPrompt: theaterGenerationAppPrompt.value,
       entryId: rewriteTargetEntry.value?.id || '',
-      existingContent: theaterExistingContent.value,
+      existingContent: '',
       mode: theaterGenerationMode.value,
       outputFormat: buildOutputFormat(generationDraft.renderMode),
+      replayRequest: theaterGenerationMode.value === 'rewrite' ? rewriteGenerationReplay.value?.request : undefined,
       renderMode: generationDraft.renderMode,
       typeId: generationDraft.typeId,
       typeName: generationDraft.typeName,
@@ -914,6 +931,28 @@ watch(
       generationState.error = '';
       generationState.preview = null;
       generationState.rawOutput = '';
+
+      const replay = rewriteGenerationReplay.value;
+      if (replay) {
+        selectedReferences.value = cloneReplayReferences(replay);
+        settings.value.generation.sourceMode = restoreGenerationReplayDraft(replay, generationDraft);
+        const replayRenderMode = replay.config.renderMode;
+        if (replayRenderMode === 'markdown' || replayRenderMode === 'frontend') {
+          generationDraft.renderMode = replayRenderMode;
+        }
+        generationDraft.typeId =
+          typeof replay.config.typeId === 'string' ? replay.config.typeId : generationDraft.typeId;
+        generationDraft.typeName =
+          typeof replay.config.typeName === 'string' ? replay.config.typeName : generationDraft.typeName;
+        generationDraft.typePrompt =
+          typeof replay.config.typePrompt === 'string' ? replay.config.typePrompt : generationDraft.typePrompt;
+        generationOverrides.setTavernPresetName('theater', 'generate', replay.tavernPresetName);
+        generationOverrides.setConnectionSelection(
+          'theater',
+          'generate',
+          replay.connectionSelection as TextProviderSelection,
+        );
+      }
     }
 
     if (current.page === 'convert-extra') {
@@ -1104,7 +1143,7 @@ function openGenerate(typeId?: string, entryId?: string) {
 function openRewrite(entryId: string) {
   const entry = theater.getEntry(entryId);
   if (!entry) return;
-  phone.pushPage('generate', '重写小剧场', {
+  phone.pushPage('generate', '重新生成小剧场', {
     rewriteEntryId: entryId,
     typeId: entry.typeId || '',
     ...(viewedEntryVersionId.value ? { versionId: viewedEntryVersionId.value } : {}),
@@ -1124,6 +1163,24 @@ function adoptTheaterVersion(versionId: string) {
   if (!entry) return;
   phone.replacePage('entry', entry.title, { entryId: entry.id, versionId });
   toastr.success('已采用这个小剧场版本');
+}
+
+async function removeTheaterVersion(versionId: string) {
+  if (!activeEntry.value || activeEntry.value.versions.length <= 1) return;
+  const versionIndex = activeEntry.value.versions.findIndex(version => version.id === versionId);
+  if (versionIndex < 0) return;
+  const shouldDelete = await phone.confirmNotice(
+    `要删除当前查看的版本 ${versionIndex + 1}/${activeEntry.value.versions.length} 吗？只会删除这个版本。`,
+    { confirmLabel: '删除此版本', kind: 'warning' },
+  );
+  if (!shouldDelete || !activeEntry.value) return;
+  const result = theater.deleteEntryVersion(activeEntry.value.id, versionId);
+  if (!result) return;
+  phone.replacePage('entry', result.activeVersion.title, {
+    entryId: result.entry.id,
+    versionId: result.activeVersion.id,
+  });
+  toastr.success('已删除当前小剧场版本');
 }
 
 function openCustomGenerate() {
@@ -1237,11 +1294,12 @@ function returnToGenerate() {
     phone.replacePage('failed-draft', '解析失败草稿', { draftId: generationState.preview.draftId });
     return;
   }
-  phone.replacePage(
-    'generate',
-    '小剧场配置',
-    generationState.preview?.typeId ? { typeId: generationState.preview.typeId } : undefined,
-  );
+  const preview = generationState.preview;
+  phone.replacePage('generate', preview?.mode === 'rewrite' ? '重新生成小剧场' : '小剧场配置', {
+    ...(preview?.typeId ? { typeId: preview.typeId } : {}),
+    ...(preview?.targetEntryId ? { rewriteEntryId: preview.targetEntryId } : {}),
+    ...(preview?.targetVersionId ? { versionId: preview.targetVersionId } : {}),
+  });
 }
 
 function saveGenerationTypePrompt() {
@@ -1287,9 +1345,10 @@ async function runGeneration() {
       {
         appPrompt: theaterGenerationAppPrompt.value,
         entryId: rewriteTargetEntry.value?.id || '',
-        existingContent: theaterExistingContent.value,
+        existingContent: '',
         mode: theaterGenerationMode.value,
         outputFormat: buildOutputFormat(generationDraft.renderMode),
+        replayRequest: theaterGenerationMode.value === 'rewrite' ? rewriteGenerationReplay.value?.request : undefined,
         renderMode: generationDraft.renderMode,
         typeId: savedTypePrompt?.id || generationDraft.typeId,
         typeName: generationDraft.typeName,
@@ -1304,6 +1363,7 @@ async function runGeneration() {
           tavernPresetName: settings.value.generation.tavernPresetName,
         },
         references: formattedReferences.value,
+        referenceItems: selectedReferences.value,
         lifecycle: {
           onFinish() {
             generationState.running = false;
@@ -1355,7 +1415,9 @@ async function runGeneration() {
       },
       title: result.data.title,
       mode: theaterGenerationMode.value,
+      replay: result.replay,
       targetEntryId: rewriteTargetEntry.value?.id || '',
+      targetVersionId: rewriteTargetVersion.value?.id || '',
       typeId: generationDraft.typeId || undefined,
       typeName: generationDraft.typeName.trim() || '未分类小剧场',
       warnings: result.warnings,
@@ -1375,11 +1437,13 @@ function savePreview() {
     preview.mode === 'rewrite' && preview.targetEntryId
       ? theater.appendEntryVersion(preview.targetEntryId, {
           content: preview.content,
+          generationReplay: preview.replay,
           renderMode: preview.renderMode,
           title: preview.title,
         })
       : theater.createEntry({
           content: preview.content,
+          generationReplay: preview.replay,
           participants: [],
           renderMode: preview.renderMode,
           title: preview.title,
@@ -1455,10 +1519,13 @@ function stopGeneration() {
 
 async function removeEntry(entryId: string) {
   const entry = theater.getEntry(entryId);
-  const shouldDelete = await phone.confirmNotice(`要删除小剧场“${entry?.title || '未命名条目'}”吗？`, {
-    confirmLabel: '删除',
-    kind: 'warning',
-  });
+  const shouldDelete = await phone.confirmNotice(
+    `要删除整个小剧场“${entry?.title || '未命名条目'}”吗？它的全部版本都会一起删除。`,
+    {
+      confirmLabel: '全部删除',
+      kind: 'warning',
+    },
+  );
   if (!shouldDelete) return;
   theater.deleteEntry(entryId);
   if (route.value.page === 'entry' || route.value.page === 'editor') {
@@ -1521,6 +1588,7 @@ function reparseFailedDraft() {
     },
     title: parsed.data.title,
     targetEntryId: typeof failedDraft.context.entryId === 'string' ? failedDraft.context.entryId : '',
+    targetVersionId: '',
     typeId: typeof failedDraft.context.typeId === 'string' ? failedDraft.context.typeId : undefined,
     typeName:
       typeof failedDraft.context.typeName === 'string' && failedDraft.context.typeName.trim()

@@ -7,12 +7,14 @@ import type {
   FailedGenerationDraft,
   GenerationAdapter,
   GenerationExecutionResult,
+  GenerationReplaySnapshot,
   GenerationRequestParts,
 } from '@/type/generation';
 import { buildGenerationUserInput, buildPhoneUserInput } from '@/util/generation';
 import { applyGenerationAliases, replaceGenerationAliases } from '@/util/generationAliases';
 import { buildSourceSelection, type SummaryGenerationSourceMode } from '@/util/generationSource';
 import { ensureCurrentScopeRecovery, runWithVisibilityTransaction } from '@/util/generationVisibility';
+import type { GenerationReferenceItem } from '@/util/references';
 import {
   applyTextProviderSelection,
   resolveTextProviderSettings,
@@ -70,10 +72,40 @@ export type GenerateContentOptions = {
   };
   lifecycle?: GenerationLifecycle;
   rateLimitRpm?: number;
+  referenceItems?: GenerationReferenceItem[];
   references?: string;
   source: GenerationSourceInput;
   textProvider: TextProviderSettings;
 };
+
+function createGenerationReplaySnapshot(
+  config: unknown,
+  request: GenerationRequestParts,
+  source: GenerationReplaySnapshot['source'],
+  options: Pick<GenerateContentOptions, 'generationDefaults' | 'referenceItems'>,
+  textProvider: ResolvedTextProviderSettings,
+): GenerationReplaySnapshot {
+  const normalizedConfig = isRecord(config) ? { ...config } : {};
+  delete normalizedConfig.replayRequest;
+  return {
+    config: normalizedConfig,
+    connectionSelection:
+      textProvider.mode === 'external' && textProvider.profileId
+        ? `external:${textProvider.profileId}`
+        : ('tavern' as const),
+    references: (options.referenceItems || []).map(reference => ({
+      ...reference,
+      sourcePath: [...reference.sourcePath],
+    })),
+    request: { ...request },
+    source: {
+      ...source,
+      messageIds: [...source.messageIds],
+      ranges: source.ranges.map(range => ({ ...range })),
+    },
+    tavernPresetName: resolveGenerationPresetName(options) || '',
+  };
+}
 
 function applyInteractiveGenerationOverride<
   TOptions extends Pick<GenerateContentOptions, 'generationDefaults' | 'textProvider'>,
@@ -608,6 +640,13 @@ export async function generateContent<TConfig, TResult, TSaveResult = { entityId
   try {
     options.lifecycle?.onStart?.(generationId);
     const prepared = prepareGenerationRequest(adapter, config, options, generationId, textProvider);
+    const replay = createGenerationReplaySnapshot(
+      prepared.parsedConfig,
+      prepared.request,
+      prepared.source.selection,
+      options,
+      textProvider,
+    );
     const rpmLimit = options.rateLimitRpm ?? useSettingsStore().settings.generation.rpmLimit;
     await waitForGenerationRateLimit(rpmLimit, abortController.signal);
 
@@ -669,6 +708,7 @@ export async function generateContent<TConfig, TResult, TSaveResult = { entityId
       const saved = await adapter.save(parsed.data, {
         config: prepared.parsedConfig,
         rawOutput: parsed.raw,
+        replay,
         scopeId: prepared.scopeId,
         source: prepared.source.selection,
         warnings: parsed.warnings,
@@ -678,6 +718,7 @@ export async function generateContent<TConfig, TResult, TSaveResult = { entityId
       return {
         data: parsed.data,
         rawOutput: parsed.raw,
+        replay,
         saved,
         source: prepared.source.selection,
         status: 'saved',
@@ -688,6 +729,7 @@ export async function generateContent<TConfig, TResult, TSaveResult = { entityId
     return {
       data: parsed.data,
       rawOutput: parsed.raw,
+      replay,
       source: prepared.source.selection,
       status: 'preview',
       warnings: parsed.warnings,

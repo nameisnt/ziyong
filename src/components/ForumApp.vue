@@ -200,6 +200,7 @@
           :versions="activeThread.versions"
           :viewed-version-id="viewedForumVersionId"
           @adopt="adoptForumVersion"
+          @delete="removeForumVersion"
           @select="selectForumVersion"
         />
         <ReaderContent :content="viewedForumThread.content" />
@@ -233,13 +234,13 @@
           >
             <i class="fa-solid fa-pen"></i>
           </button>
-          <button class="pc-soft-btn" type="button" :title="t`重写主帖`" @click="openRewriteThread">
+          <button class="pc-soft-btn" type="button" :title="t`重新生成主题`" @click="openRewriteThread">
             <i class="fa-solid fa-rotate"></i>
           </button>
           <button
             class="pc-soft-btn danger"
             type="button"
-            :title="t`删帖`"
+            :title="t`删除主题帖（全部版本和回复）`"
             @click="removeThread(activeBoard.id, activeThread.id)"
           >
             <i class="fa-solid fa-trash"></i>
@@ -250,10 +251,10 @@
       <section class="pc-reply-section">
         <div class="pc-section-head">
           <strong>{{ t`回复` }}</strong>
-          <p>{{ `${activeThread.replies.length} 条` }}</p>
+          <p>{{ `${viewedForumThread.replies.length} 条` }}</p>
         </div>
 
-        <EmptyState v-if="!activeThread.replies.length" compact :title="t`还没有回复。`" />
+        <EmptyState v-if="!viewedForumThread.replies.length" compact :title="t`还没有回复。`" />
 
         <div v-else class="pc-reply-list">
           <article v-for="reply in displayedReplies" :key="reply.id" class="pc-reply-card">
@@ -294,7 +295,7 @@
             >
               <i class="fa-solid fa-pen"></i>
             </button>
-            <button class="pc-soft-btn" type="button" :title="t`重写主帖`" @click="openRewriteThread">
+            <button class="pc-soft-btn" type="button" :title="t`重新生成主题`" @click="openRewriteThread">
               <i class="fa-solid fa-rotate"></i>
             </button>
             <button
@@ -332,7 +333,7 @@
     <section v-else-if="route.page === 'generate-thread'" class="pc-forum-page">
       <div class="pc-editor-card">
         <span class="pc-kicker">{{ t`AI 生成` }}</span>
-        <h2>{{ forumThreadGenerationMode === 'rewrite' ? t`重写当前主帖` : t`生成一个新帖子` }}</h2>
+        <h2>{{ forumThreadGenerationMode === 'rewrite' ? t`重新生成整个主题` : t`生成一个新帖子` }}</h2>
 
         <GenerationPanel
           :capture="captureForumThreadPrompt"
@@ -566,22 +567,25 @@ import RawOutputEditor from '@/components/RawOutputEditor.vue';
 import ReaderContent from '@/components/ReaderContent.vue';
 import SearchableCombobox from '@/components/SearchableCombobox.vue';
 import VersionNavigator from '@/components/VersionNavigator.vue';
-import { materializeForumReplies, persistForumReplyDrafts } from '@/core/forumGeneration';
+import { createForumReplySnapshots, materializeForumReplies, persistForumReplyDrafts } from '@/core/forumGeneration';
 import { getRegisteredPhoneGenerationAdapter } from '@/core/appRegistry';
 import { buildGenerationPreview, captureGenerationPrompt, generateContent } from '@/core/generationService';
 import { useForumStore } from '@/store/forum';
+import { useGenerationOverrideStore } from '@/store/generationOverrides';
 import { usePhoneStore } from '@/store/phone';
 import { usePromptStore } from '@/store/prompts';
 import { useSettingsStore } from '@/store/settings';
-import type { FailedGenerationDraft } from '@/type/generation';
+import type { FailedGenerationDraft, GenerationReplaySnapshot } from '@/type/generation';
 import { type ForumThread, resolveForumBoardTypeName, resolveForumBoardTypePrompt } from '@/type/forum';
 import { canOpenBaguScan } from '@/util/baguScanGate';
 import { parseForumRepliesXmlResult, parseForumXmlResult } from '@/util/generation';
+import { cloneReplayReferences, restoreGenerationReplayDraft } from '@/util/generationReplay';
 import { usePreviewDraftPersistence } from '@/util/previewDrafts';
 import { formatGenerationReferences, type GenerationReferenceItem } from '@/util/references';
 import { resolveContentVersion } from '@/util/contentVersions';
 import { useInvalidRouteFallback } from '@/util/routeFallback';
 import { stopGenerationByIdSafe } from '@/util/runtime';
+import type { TextProviderSelection } from '@/util/textProvider';
 import { storeToRefs } from 'pinia';
 
 type ThreadSortMode = 'favorite' | 'heat' | 'latestPublish' | 'latestReply';
@@ -592,6 +596,7 @@ const CUSTOM_BOARD_ID = '__custom_forum_board__';
 const CUSTOM_BOARD_TYPE_ID = '__custom_forum_board_type__';
 
 const forum = useForumStore();
+const generationOverrides = useGenerationOverrideStore();
 const phone = usePhoneStore();
 const prompts = usePromptStore();
 const settingsStore = useSettingsStore();
@@ -655,8 +660,10 @@ const generationState = reactive({
             draftId: string | null;
             raw: string;
             replies: PreviewReplyDraft[];
+            replay?: GenerationReplaySnapshot;
             mode: 'create' | 'rewrite';
             targetThreadId: string;
+            targetVersionId: string;
             title: string;
             warnings: string[];
           }
@@ -667,6 +674,7 @@ const generationState = reactive({
             draftId: string | null;
             raw: string;
             replies: PreviewReplyDraft[];
+            versionId: string;
             threadId: string;
             threadTitle: string;
             warnings: string[];
@@ -693,7 +701,11 @@ const {
     const preview = generationState.preview;
     if (!preview) return {};
     if (preview.action === 'replies') {
-      return { boardId: preview.boardId, threadId: preview.threadId };
+      return {
+        boardId: preview.boardId,
+        threadId: preview.threadId,
+        ...(preview.versionId ? { versionId: preview.versionId } : {}),
+      };
     }
     return {
       ...(preview.boardId ? { boardId: preview.boardId } : {}),
@@ -755,7 +767,14 @@ const viewedForumThread = computed(() => {
   const thread = activeThread.value;
   const version = viewedForumVersion.value;
   return thread && version
-    ? { ...thread, author: version.author, content: version.content, title: version.title }
+    ? {
+        ...thread,
+        author: version.author,
+        content: version.content,
+        generationReplay: version.generationReplay,
+        replies: version.replies,
+        title: version.title,
+      }
     : thread;
 });
 const rewriteForumThread = computed(() => {
@@ -797,9 +816,10 @@ const forumPromptPreview = computed(() => {
           appPrompt: prompts.specialPrompts.forumReplies,
           boardId,
           outputFormat: buildRepliesOutputFormat(),
-          threadContext: buildReplyThreadContext(activeThread.value),
+          threadContext: buildReplyThreadContext(viewedForumThread.value || activeThread.value),
           threadId,
           userRequirement: replyGenerationDraft.userRequirement,
+          versionId: viewedForumVersionId.value,
         },
         {
           generationDefaults: {
@@ -851,9 +871,10 @@ function captureForumReplyPrompt() {
       appPrompt: prompts.specialPrompts.forumReplies,
       boardId,
       outputFormat: buildRepliesOutputFormat(),
-      threadContext: buildReplyThreadContext(activeThread.value),
+      threadContext: buildReplyThreadContext(viewedForumThread.value || activeThread.value),
       threadId,
       userRequirement: replyGenerationDraft.userRequirement,
+      versionId: viewedForumVersionId.value,
     },
     {
       generationDefaults: {
@@ -924,15 +945,22 @@ const sortedThreads = computed(() => {
   });
 });
 const displayedReplies = computed(() =>
-  (activeThread.value?.replies || []).map((reply, index) => ({
+  (viewedForumThread.value?.replies || []).map((reply, index) => ({
     ...reply,
     floor: index + 1,
   })),
 );
 const previewReplies = computed(() => {
+  const preview = generationState.preview;
+  const previewThread =
+    preview?.action === 'replies' && preview.threadId && preview.boardId
+      ? forum.getThread(preview.boardId, preview.threadId)
+      : null;
   const existingCount =
-    generationState.preview?.action === 'replies' && generationState.preview.threadId && generationState.preview.boardId
-      ? forum.getThread(generationState.preview.boardId, generationState.preview.threadId)?.replies.length || 0
+    preview?.action === 'replies'
+      ? previewThread?.versions.find(version => version.id === preview.versionId)?.replies.length ||
+        previewThread?.replies.length ||
+        0
       : 0;
   return (generationState.preview?.replies || []).map((reply, index) => ({
     ...reply,
@@ -988,6 +1016,18 @@ watch(
       generationState.error = '';
       generationState.preview = null;
       generationState.rawOutput = '';
+
+      const replay = rewriteForumVersion.value?.generationReplay || rewriteForumThread.value?.generationReplay;
+      if (replay) {
+        selectedReferences.value = cloneReplayReferences(replay);
+        settings.value.generation.sourceMode = restoreGenerationReplayDraft(replay, threadGenerationDraft);
+        generationOverrides.setTavernPresetName('forum', 'generate-thread', replay.tavernPresetName);
+        generationOverrides.setConnectionSelection(
+          'forum',
+          'generate-thread',
+          replay.connectionSelection as TextProviderSelection,
+        );
+      }
     }
 
     if (current.page === 'generate-replies' && previous?.page !== 'preview') {
@@ -1073,7 +1113,7 @@ function openGenerateThread(boardId?: string) {
 
 function openRewriteThread() {
   if (!activeBoard.value || !activeThread.value) return;
-  phone.pushPage('generate-thread', '重写论坛主帖', {
+  phone.pushPage('generate-thread', '重新生成论坛主题', {
     boardId: activeBoard.value.id,
     rewriteThreadId: activeThread.value.id,
     ...(viewedForumVersionId.value ? { versionId: viewedForumVersionId.value } : {}),
@@ -1102,10 +1142,30 @@ function adoptForumVersion(versionId: string) {
   toastr.success('已采用这个论坛主帖版本');
 }
 
+async function removeForumVersion(versionId: string) {
+  if (!activeBoard.value || !activeThread.value || activeThread.value.versions.length <= 1) return;
+  const versionIndex = activeThread.value.versions.findIndex(version => version.id === versionId);
+  if (versionIndex < 0) return;
+  const shouldDelete = await phone.confirmNotice(
+    `要删除当前查看的主题版本 ${versionIndex + 1}/${activeThread.value.versions.length} 吗？该版本的主楼和回复会一起删除。`,
+    { confirmLabel: '删除此版本', kind: 'warning' },
+  );
+  if (!shouldDelete || !activeBoard.value || !activeThread.value) return;
+  const result = forum.deleteThreadVersion(activeBoard.value.id, activeThread.value.id, versionId);
+  if (!result) return;
+  phone.replacePage('thread', result.activeVersion.title, {
+    boardId: activeBoard.value.id,
+    threadId: result.thread.id,
+    versionId: result.activeVersion.id,
+  });
+  toastr.success('已删除当前论坛主题版本');
+}
+
 function openGenerateReplies(boardId: string, threadId: string) {
   phone.pushPage('generate-replies', '生成回复', {
     boardId,
     threadId,
+    ...(viewedForumVersionId.value ? { versionId: viewedForumVersionId.value } : {}),
   });
 }
 
@@ -1274,9 +1334,9 @@ async function removeBoard(boardId: string) {
 async function removeThread(boardId: string, threadId: string) {
   const thread = forum.getThread(boardId, threadId);
   const shouldDelete = await phone.confirmNotice(
-    `要删除帖子“${thread?.title || '未命名帖子'}”吗？下面的回复也会一起删除。`,
+    `要删除整个帖子“${thread?.title || '未命名帖子'}”吗？全部主帖版本和回复都会一起删除。`,
     {
-      confirmLabel: '删除',
+      confirmLabel: '全部删除',
       kind: 'warning',
     },
   );
@@ -1312,15 +1372,13 @@ function buildThreadGenerationConfig() {
     boardTypeId: board?.typeId || selectedType?.id || '',
     boardTypeName:
       board?.typeName || selectedType?.name || (threadGenerationDraft.boardTypePrompt.trim() ? '自定义' : ''),
-    existingThreadContent: rewriteForumThread.value
-      ? [
-          `当前主帖：${rewriteForumVersion.value?.title || rewriteForumThread.value.title}`,
-          `作者：${rewriteForumVersion.value?.author || rewriteForumThread.value.author}`,
-          rewriteForumVersion.value?.content || rewriteForumThread.value.content,
-        ].join('\n\n')
-      : '',
+    existingThreadContent: '',
     mode: forumThreadGenerationMode.value,
     outputFormat: buildThreadOutputFormat(),
+    replayRequest:
+      forumThreadGenerationMode.value === 'rewrite'
+        ? rewriteForumVersion.value?.generationReplay?.request || rewriteForumThread.value?.generationReplay?.request
+        : undefined,
     threadId: rewriteForumThread.value?.id || '',
     userRequirement: threadGenerationDraft.userRequirement,
   };
@@ -1378,15 +1436,17 @@ function returnToGenerate() {
     return;
   }
   if (preview.action === 'thread') {
-    phone.replacePage('generate-thread', preview.mode === 'rewrite' ? '重写论坛主帖' : '生成帖子', {
+    phone.replacePage('generate-thread', preview.mode === 'rewrite' ? '重新生成论坛主题' : '生成帖子', {
       ...(preview.boardId ? { boardId: preview.boardId } : {}),
       ...(preview.targetThreadId ? { rewriteThreadId: preview.targetThreadId } : {}),
+      ...(preview.targetVersionId ? { versionId: preview.targetVersionId } : {}),
     });
     return;
   }
   phone.replacePage('generate-replies', '生成回复', {
     boardId: preview.boardId,
     threadId: preview.threadId,
+    ...(preview.versionId ? { versionId: preview.versionId } : {}),
   });
 }
 
@@ -1412,6 +1472,7 @@ async function runThreadGeneration() {
         tavernPresetName: settings.value.generation.tavernPresetName,
       },
       references: formattedReferences.value,
+      referenceItems: selectedReferences.value,
       lifecycle: {
         onFinish() {
           generationState.running = false;
@@ -1453,10 +1514,7 @@ async function runThreadGeneration() {
       return;
     }
 
-    const materialized =
-      forumThreadGenerationMode.value === 'rewrite'
-        ? { replies: [], warnings: [] }
-        : materializeForumReplies([], result.data.replies);
+    const materialized = materializeForumReplies([], result.data.replies, result.source);
     generationState.preview = {
       action: 'thread',
       author: result.data.author,
@@ -1469,18 +1527,22 @@ async function runThreadGeneration() {
       draftId: null,
       raw: result.rawOutput,
       replies: materialized.replies,
+      replay: result.replay,
       mode: forumThreadGenerationMode.value,
       targetThreadId: rewriteForumThread.value?.id || '',
+      targetVersionId: rewriteForumVersion.value?.id || '',
       title: result.data.title,
       warnings: [...result.warnings, ...materialized.warnings],
     };
     persistForumPreviewDraft({
       ...(generationState.preview.boardId ? { boardId: generationState.preview.boardId } : {}),
       ...(generationState.preview.targetThreadId ? { rewriteThreadId: generationState.preview.targetThreadId } : {}),
+      ...(generationState.preview.targetVersionId ? { versionId: generationState.preview.targetVersionId } : {}),
     });
     void phone.presentGeneratedPage('forum', 'preview', '生成预览', {
       ...(generationState.preview.boardId ? { boardId: generationState.preview.boardId } : {}),
       ...(generationState.preview.targetThreadId ? { rewriteThreadId: generationState.preview.targetThreadId } : {}),
+      ...(generationState.preview.targetVersionId ? { versionId: generationState.preview.targetVersionId } : {}),
     });
   } catch (error) {
     generationState.error = error instanceof Error ? error.message : '生成失败，请稍后再试';
@@ -1490,7 +1552,7 @@ async function runThreadGeneration() {
 async function runReplyGeneration() {
   const boardId = route.value.params?.boardId;
   const threadId = route.value.params?.threadId;
-  const thread = activeThread.value;
+  const thread = viewedForumThread.value;
   if (!boardId || !threadId || !thread) return;
 
   generationState.error = '';
@@ -1508,6 +1570,7 @@ async function runReplyGeneration() {
         threadContext: buildReplyThreadContext(thread),
         threadId,
         userRequirement: replyGenerationDraft.userRequirement,
+        versionId: viewedForumVersionId.value,
       },
       {
         createFailedDraft: input => forum.createFailedDraft(input),
@@ -1517,6 +1580,7 @@ async function runReplyGeneration() {
           tavernPresetName: settings.value.generation.tavernPresetName,
         },
         references: formattedReferences.value,
+        referenceItems: selectedReferences.value,
         lifecycle: {
           onFinish() {
             generationState.running = false;
@@ -1551,7 +1615,11 @@ async function runReplyGeneration() {
 
     if (result.status === 'saved') {
       toastr.success('已生成并保存回复');
-      void phone.presentGeneratedPage('forum', 'thread', thread.title, { boardId, threadId });
+      void phone.presentGeneratedPage('forum', 'thread', thread.title, {
+        boardId,
+        threadId,
+        ...(viewedForumVersionId.value ? { versionId: viewedForumVersionId.value } : {}),
+      });
       return;
     }
 
@@ -1565,10 +1633,19 @@ async function runReplyGeneration() {
       replies: materialized.replies,
       threadId,
       threadTitle: thread.title,
+      versionId: viewedForumVersionId.value,
       warnings: [...result.warnings, ...materialized.warnings],
     };
-    persistForumPreviewDraft({ boardId, threadId });
-    void phone.presentGeneratedPage('forum', 'preview', '生成预览', { boardId, threadId });
+    persistForumPreviewDraft({
+      boardId,
+      threadId,
+      ...(viewedForumVersionId.value ? { versionId: viewedForumVersionId.value } : {}),
+    });
+    void phone.presentGeneratedPage('forum', 'preview', '生成预览', {
+      boardId,
+      threadId,
+      ...(viewedForumVersionId.value ? { versionId: viewedForumVersionId.value } : {}),
+    });
   } catch (error) {
     generationState.error = error instanceof Error ? error.message : '生成失败，请稍后再试';
   }
@@ -1589,24 +1666,26 @@ function savePreview() {
           typeId: preview.boardTypeId,
           typeName: preview.boardTypeName,
         });
+    const replySnapshots = createForumReplySnapshots(preview.replies, preview.replay?.source);
     const saved =
       preview.mode === 'rewrite' && preview.targetThreadId
         ? forum.appendThreadVersion(board.id, preview.targetThreadId, {
             author: preview.author,
             content: preview.content,
+            generationReplay: preview.replay,
+            replies: replySnapshots,
             title: preview.title,
           })
         : forum.createThread(board.id, {
             author: preview.author,
             content: preview.content,
+            generationReplay: preview.replay,
+            replies: replySnapshots,
             title: preview.title,
           });
     if (!saved) {
       toastr.warning('目标板块不存在，无法保存帖子');
       return;
-    }
-    if (preview.mode !== 'rewrite') {
-      persistForumReplyDrafts(forum.createReply, board.id, saved.thread.id, preview.replies);
     }
     if (preview.draftId) {
       forum.deleteFailedDraft(preview.draftId);
@@ -1623,7 +1702,7 @@ function savePreview() {
     return;
   }
 
-  persistForumReplyDrafts(forum.createReply, preview.boardId, preview.threadId, preview.replies);
+  persistForumReplyDrafts(forum.createReply, preview.boardId, preview.threadId, preview.replies, preview.versionId);
   if (preview.draftId) {
     forum.deleteFailedDraft(preview.draftId);
   }
@@ -1632,7 +1711,11 @@ function savePreview() {
   generationState.preview = null;
   toastr.success('已保存回复');
   if (thread) {
-    phone.replacePage('thread', thread.title, { boardId: preview.boardId, threadId: preview.threadId });
+    phone.replacePage('thread', thread.title, {
+      boardId: preview.boardId,
+      threadId: preview.threadId,
+      ...(preview.versionId ? { versionId: preview.versionId } : {}),
+    });
   }
 }
 
@@ -1755,6 +1838,7 @@ function reparseFailedDraft() {
       replies: materialized.replies,
       mode: draft.context.mode === 'rewrite' ? 'rewrite' : 'create',
       targetThreadId: typeof draft.context.threadId === 'string' ? draft.context.threadId : '',
+      targetVersionId: '',
       title: parsed.data.title,
       warnings: [...parsed.warnings, ...materialized.warnings],
     };
@@ -1772,6 +1856,7 @@ function reparseFailedDraft() {
   const boardId = typeof draft.context.boardId === 'string' ? draft.context.boardId : '';
   const threadId = typeof draft.context.threadId === 'string' ? draft.context.threadId : '';
   const thread = boardId && threadId ? forum.getThread(boardId, threadId) : null;
+  const versionId = typeof draft.context.versionId === 'string' ? draft.context.versionId : '';
   if (!thread) {
     toastr.warning('原帖子已经不存在，暂时不能恢复这条回复草稿');
     return;
@@ -1788,7 +1873,8 @@ function reparseFailedDraft() {
     return;
   }
 
-  const materialized = materializeForumReplies(thread.replies, parsed.data.replies);
+  const targetReplies = thread.versions.find(version => version.id === versionId)?.replies || thread.replies;
+  const materialized = materializeForumReplies(targetReplies, parsed.data.replies);
   forum.updateFailedDraft(draft.id, {
     rawOutput: parsed.raw,
     warnings: [...parsed.warnings, ...materialized.warnings],
@@ -1802,12 +1888,13 @@ function reparseFailedDraft() {
     replies: materialized.replies,
     threadId,
     threadTitle: thread.title,
+    versionId,
     warnings: [...parsed.warnings, ...materialized.warnings],
   };
-  persistForumPreviewDraft({ boardId, threadId });
+  persistForumPreviewDraft({ boardId, threadId, ...(versionId ? { versionId } : {}) });
   forum.deleteFailedDraft(draft.id);
   failedDraftRawOutput.value = '';
-  phone.replacePage('preview', '生成预览', { boardId, threadId });
+  phone.replacePage('preview', '生成预览', { boardId, threadId, ...(versionId ? { versionId } : {}) });
 }
 </script>
 

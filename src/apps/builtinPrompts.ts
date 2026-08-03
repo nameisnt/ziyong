@@ -115,8 +115,9 @@ export function createExtrasContinuePromptDefinition(): PhonePromptDefinition {
 export function createExtrasRewritePromptDefinition(): PhonePromptDefinition {
   return {
     key: 'extrasRewrite',
-    label: '重写章节',
-    defaultPrompt: '请重写当前番外章节。保留章节在整体故事中的作用和前后衔接，重新组织场景、节奏与表达。',
+    label: '重新生成章节',
+    defaultPrompt:
+      '请根据本次来源和类型提示词重新生成一个完整番外章节候选版本。保持来源中的角色设定与剧情事实，不要参考、复述或续写已保存的旧版本。',
   };
 }
 
@@ -234,9 +235,9 @@ export function createForumReplyPromptDefinition(): PhonePromptDefinition {
 export function createForumRewritePromptDefinition(): PhonePromptDefinition {
   return {
     key: 'forumRewrite',
-    label: '重写论坛主帖',
+    label: '重新生成论坛主题',
     defaultPrompt:
-      '请重写当前论坛主帖，保留帖子讨论的核心事实和板块风格，重新组织标题、主楼表达与节奏。不要生成或改写任何回复。',
+      '请根据本次来源重新生成一篇完整论坛主题候选版本，包括标题、主楼和若干回复。保持来源中的事实与板块风格，不要参考或复述已保存的旧版本。',
     outputFormats: createForumPromptDefinition().outputFormats?.filter(item => item.label === '论坛帖子') ?? [],
   };
 }
@@ -314,9 +315,9 @@ export function createTheaterPromptDefinition(): PhonePromptDefinition {
 export function createTheaterRewritePromptDefinition(): PhonePromptDefinition {
   return {
     key: 'theaterRewrite',
-    label: '重写小剧场',
+    label: '重新生成小剧场',
     defaultPrompt:
-      '请将当前小剧场重写为一份完整替代版本。保留人物核心性格、既定关系和本段主题，重新组织场景、节奏与表达，不要续写原文。',
+      '请根据本次来源和类型提示词重新生成一个完整小剧场候选版本。保持来源中的人物性格、关系与事实，不要参考、复述或续写已保存的旧版本。',
     outputFormats: createTheaterPromptDefinition().outputFormats,
   };
 }
@@ -419,9 +420,9 @@ export function createLettersPromptDefinition(): PhonePromptDefinition {
 export function createLettersRewritePromptDefinition(): PhonePromptDefinition {
   return {
     key: 'lettersRewrite',
-    label: '重写书信',
+    label: '重新生成书信',
     defaultPrompt:
-      '请将当前信件重写为一份完整替代版本。保持发信人、收信人、事实背景和角色语气不变，重新组织措辞与情绪递进，不要写成回信或续写。',
+      '请根据本次来源重新生成一封完整书信候选版本。保持指定发信人、收信人、来源事实与角色语气，不要参考已保存的旧版本，也不要写成续写。',
     outputFormats: createLettersPromptDefinition().outputFormats,
   };
 }

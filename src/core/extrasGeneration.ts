@@ -45,6 +45,7 @@ export const ExtraChapterGenerateConfigSchema = z.object({
   recentCount: z.number().int().positive().default(20),
   references: z.array(ExtraChapterGenerationReferenceSchema).default([]),
   singleMessageId: z.number().int().nonnegative().default(0),
+  replayRequest: GenerationRequestPartsSchema.optional(),
   sourceMode: GenerationSourceModeSchema.default('latest'),
   tavernPresetName: z.string().default(''),
   typeId: z.string().default(''),
@@ -61,6 +62,7 @@ export function resolveGeneratedExtraBookTitle(explicitTitle: string, typeName: 
 export function createExtraChapterGenerationRecord(
   config: ExtraChapterGenerateConfig,
   source?: SourceSelection,
+  replay?: ExtraChapterGenerationRecord['replay'],
 ): ExtraChapterGenerationRecord {
   return {
     id: `extra_generation_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
@@ -82,6 +84,7 @@ export function createExtraChapterGenerationRecord(
     typeName: config.typeName,
     typePrompt: config.typePrompt,
     userRequirement: config.userRequirement,
+    replay,
   };
 }
 
@@ -89,7 +92,7 @@ function buildChapterTaskInstruction(config: ExtraChapterGenerateConfig) {
   const modeInstruction = {
     新开一本书: '请创作本书第一章，不要续接来源内容中的旧章节。',
     续写上一章: '请紧接上述最后一章续写，不要复述或重写已有章节，并延续上一章的语气与悬念。',
-    重写当前章节: '请重写上述目标章节，保留整体前后文方向，但重新组织表达。',
+    重写当前章节: '请根据相同来源重新生成一个完整章节，作为当前章节的候选版本。不要参考或复述旧版本。',
   }[config.chapterMode];
   const typeFallback =
     !config.typePrompt.trim() && config.typeName.trim() ? `本次番外类型为“${config.typeName.trim()}”。` : '';
@@ -155,6 +158,12 @@ export function createExtraChapterGenerationAdapter(extrasStore: {
     actionId: 'chapter-generate',
     appId: 'extras',
     buildRequest(config) {
+      if (config.chapterMode === '重写当前章节' && config.replayRequest) {
+        return parsePrettified(GenerationRequestPartsSchema, {
+          ...config.replayRequest,
+          userRequirement: config.userRequirement,
+        });
+      }
       return parsePrettified(GenerationRequestPartsSchema, {
         appPrompt: config.appPrompt,
         context: config.previousChapterContext,
@@ -169,7 +178,7 @@ export function createExtraChapterGenerationAdapter(extrasStore: {
       return parseConfiguredOutput('extras.chapter', raw, SimpleXmlResultSchema, () => parseSimpleXmlResult(raw));
     },
     async save(result, context) {
-      const generationRecord = createExtraChapterGenerationRecord(context.config, context.source);
+      const generationRecord = createExtraChapterGenerationRecord(context.config, context.source, context.replay);
       if (context.config.chapterMode === '重写当前章节' && context.config.chapterId) {
         const saved = extrasStore.appendChapterVersion(context.config.bookId, context.config.chapterId, {
           content: result.content,

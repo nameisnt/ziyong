@@ -22,6 +22,7 @@
           :versions="versions"
           :viewed-version-id="viewedVersionId"
           @adopt="emit('adoptVersion', $event)"
+          @delete="emit('deleteVersion', $event)"
           @select="emit('selectVersion', $event)"
         />
       </template>
@@ -32,7 +33,7 @@
         <button class="pc-soft-btn" type="button" :title="t`重写`" @click="emit('rewrite')">
           <i class="fa-solid fa-rotate"></i>
         </button>
-        <button class="pc-soft-btn danger" type="button" :title="t`删除`" @click="emit('delete')">
+        <button class="pc-soft-btn danger" type="button" :title="t`删除整封信（全部版本）`" @click="emit('delete')">
           <i class="fa-solid fa-trash"></i>
         </button>
       </template>
@@ -72,6 +73,7 @@ const emit = defineEmits<{
   adoptVersion: [versionId: string];
   bottom: [];
   delete: [];
+  deleteVersion: [versionId: string];
   edit: [];
   favorite: [];
   next: [];

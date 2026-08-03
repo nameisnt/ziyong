@@ -1,4 +1,4 @@
-import { FailedGenerationDraftSchema, SourceSelectionSchema } from '@/type/generation';
+import { FailedGenerationDraftSchema, GenerationReplaySnapshotSchema, SourceSelectionSchema } from '@/type/generation';
 import { ContentVersionBaseSchema } from '@/type/contentVersion';
 
 export const ForumReplySchema = z.object({
@@ -12,12 +12,17 @@ export const ForumReplySchema = z.object({
 });
 export type ForumReply = z.infer<typeof ForumReplySchema>;
 
-export const ForumThreadVersionSchema = ContentVersionBaseSchema.extend({
+const ForumThreadVersionPersistedSchema = ContentVersionBaseSchema.extend({
   author: z.string(),
+  generationReplay: GenerationReplaySnapshotSchema.optional(),
+  replies: z.array(ForumReplySchema).optional(),
+});
+export const ForumThreadVersionSchema = ForumThreadVersionPersistedSchema.extend({
+  replies: z.array(ForumReplySchema).default([]),
 });
 export type ForumThreadVersion = z.infer<typeof ForumThreadVersionSchema>;
 
-export const ForumThreadSchema = z.object({
+const ForumThreadPersistedSchema = z.object({
   id: z.string(),
   boardId: z.string(),
   title: z.string(),
@@ -26,10 +31,18 @@ export const ForumThreadSchema = z.object({
   favorite: z.boolean().default(false),
   replies: z.array(ForumReplySchema).default([]),
   activeVersionId: z.string().default(''),
-  versions: z.array(ForumThreadVersionSchema).default([]),
+  generationReplay: GenerationReplaySnapshotSchema.optional(),
+  versions: z.array(ForumThreadVersionPersistedSchema).default([]),
   createdAt: z.string(),
   updatedAt: z.string(),
 });
+export const ForumThreadSchema = ForumThreadPersistedSchema.transform(thread => ({
+  ...thread,
+  versions: thread.versions.map(version => ({
+    ...version,
+    replies: (version.replies || thread.replies).map(reply => ({ ...reply })),
+  })),
+}));
 export type ForumThread = z.infer<typeof ForumThreadSchema>;
 
 const ForumBoardPersistedSchema = z.object({

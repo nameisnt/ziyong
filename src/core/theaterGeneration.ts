@@ -16,6 +16,7 @@ export const TheaterGenerateConfigSchema = z.object({
   existingContent: z.string().default(''),
   mode: z.enum(['create', 'rewrite']).default('create'),
   outputFormat: z.string(),
+  replayRequest: GenerationRequestPartsSchema.optional(),
   participants: z.array(CharacterRefSchema).default([]),
   renderMode: z.enum(['markdown', 'frontend']).default('markdown'),
   typeId: z.string().default(''),
@@ -28,23 +29,28 @@ export type TheaterGenerateConfig = z.infer<typeof TheaterGenerateConfigSchema>;
 export function createTheaterGenerationAdapter(theaterStore: {
   createEntry: (
     input: Pick<TheaterEntry, 'title' | 'content' | 'participants' | 'renderMode' | 'typeName'> &
-      Partial<Pick<TheaterEntry, 'typeId'>>,
+      Partial<Pick<TheaterEntry, 'generationReplay' | 'typeId'>>,
   ) => TheaterEntry;
   appendEntryVersion: (
     entryId: string,
-    input: Pick<TheaterEntry, 'title' | 'content' | 'renderMode'>,
+    input: Pick<TheaterEntry, 'title' | 'content' | 'renderMode'> & Partial<Pick<TheaterEntry, 'generationReplay'>>,
   ) => { entry: TheaterEntry; version: { id: string } } | null;
 }) {
   return {
     actionId: 'generate',
     appId: 'theater',
     buildRequest(config) {
+      if (config.mode === 'rewrite' && config.replayRequest) {
+        return parsePrettified(GenerationRequestPartsSchema, {
+          ...config.replayRequest,
+          userRequirement: config.userRequirement,
+        });
+      }
       return parsePrettified(GenerationRequestPartsSchema, {
         appPrompt: config.appPrompt,
-        context: config.mode === 'rewrite' ? config.existingContent : '',
+        context: '',
         outputFormat: config.outputFormat,
-        taskInstruction:
-          config.mode === 'rewrite' ? '请将上述当前小剧场重写为完整替代版本，不要续写，也不要解释修改过程。' : '',
+        taskInstruction: '',
         typePrompt:
           config.typePrompt.trim() || (config.typeName.trim() ? `本次小剧场类型为“${config.typeName.trim()}”。` : ''),
         userRequirement: config.userRequirement,
@@ -64,6 +70,7 @@ export function createTheaterGenerationAdapter(theaterStore: {
       if (context.config.mode === 'rewrite' && context.config.entryId) {
         const saved = theaterStore.appendEntryVersion(context.config.entryId, {
           content: result.content,
+          generationReplay: context.replay,
           renderMode: context.config.renderMode as TheaterRenderMode,
           title: result.title,
         });
@@ -76,6 +83,7 @@ export function createTheaterGenerationAdapter(theaterStore: {
       }
       const entry = theaterStore.createEntry({
         content: result.content,
+        generationReplay: context.replay,
         participants: context.config.participants,
         renderMode: context.config.renderMode as TheaterRenderMode,
         title: result.title,

@@ -8,7 +8,12 @@ import {
   type ExtraChapterVersion,
   type ExtraSummary,
 } from '@/type/extra';
-import { createContentVersion, ensureContentVersions, resolveContentVersion } from '@/util/contentVersions';
+import {
+  createContentVersion,
+  ensureContentVersions,
+  removeContentVersion,
+  resolveContentVersion,
+} from '@/util/contentVersions';
 import { validateInplace } from '@/util/zod';
 
 export const extrasField = 'sillytavern_phone_extras';
@@ -143,7 +148,12 @@ export const useExtrasStore = defineStore('extras', () => {
     const state = ensureContentVersions<ExtraChapterVersion>(
       chapter.versions,
       chapter.activeVersionId,
-      () => ({ content: chapter.content, createdAt: chapter.createdAt, title: chapter.title }),
+      () => ({
+        content: chapter.content,
+        createdAt: chapter.createdAt,
+        generationRecord: chapter.generationRecords.at(-1),
+        title: chapter.title,
+      }),
       'extra_version',
     );
     const version = createContentVersion<ExtraChapterVersion>('extra_version', {
@@ -193,6 +203,22 @@ export const useExtrasStore = defineStore('extras', () => {
       book.updatedAt = timestamp;
     }
     return chapter;
+  }
+
+  function deleteChapterVersion(bookId: string, chapterId: string, versionId: string) {
+    const book = getBook(bookId);
+    const chapter = getChapter(bookId, chapterId);
+    if (!book || !chapter) return null;
+    const state = removeContentVersion(chapter.versions, chapter.activeVersionId, versionId);
+    if (!state) return null;
+    const timestamp = nowIso();
+    chapter.versions = state.versions;
+    chapter.activeVersionId = state.activeVersionId;
+    chapter.title = state.activeVersion.title;
+    chapter.content = state.activeVersion.content;
+    chapter.updatedAt = timestamp;
+    book.updatedAt = timestamp;
+    return { activeVersion: state.activeVersion, chapter };
   }
 
   function deleteChapter(bookId: string, chapterId: string) {
@@ -277,6 +303,7 @@ export const useExtrasStore = defineStore('extras', () => {
     deleteFailedDraft,
     deleteBook,
     deleteChapter,
+    deleteChapterVersion,
     deleteSummary,
     failedDrafts,
     getFailedDraft,

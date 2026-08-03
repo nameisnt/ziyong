@@ -182,6 +182,7 @@
       @bottom="scrollToBottom"
       @continue="openGenerateChapter(activeBook.id)"
       @delete="removeChapter(activeBook.id, activeChapter.id)"
+      @delete-version="removeChapterVersion"
       @edit="openEditChapter(activeBook.id, activeChapter.id, viewedChapterVersionId)"
       @favorite="extras.toggleFavorite(activeBook.id, activeChapter.id)"
       @next="openChapter(activeBook.id, chapterNextId || '', true)"
@@ -442,6 +443,7 @@ import {
 } from '@/core/extrasGeneration';
 import { buildGenerationPreview, captureGenerationPrompt, generateContent } from '@/core/generationService';
 import { useExtrasStore } from '@/store/extras';
+import { useGenerationOverrideStore } from '@/store/generationOverrides';
 import { usePhoneStore } from '@/store/phone';
 import { usePromptStore } from '@/store/prompts';
 import { useSettingsStore } from '@/store/settings';
@@ -450,14 +452,17 @@ import type { FailedGenerationDraft } from '@/type/generation';
 import { canOpenBaguScan } from '@/util/baguScanGate';
 import { useDetailScroll } from '@/util/detailScroll';
 import { parseContentXmlResult, parseSimpleXmlResult } from '@/util/generation';
+import { cloneReplayReferences, restoreGenerationReplayDraft } from '@/util/generationReplay';
 import { usePreviewDraftPersistence } from '@/util/previewDrafts';
 import { formatGenerationReferences, type GenerationReferenceItem } from '@/util/references';
 import { resolveContentVersion } from '@/util/contentVersions';
 import { useInvalidRouteFallback } from '@/util/routeFallback';
 import { stopGenerationByIdSafe } from '@/util/runtime';
+import type { TextProviderSelection } from '@/util/textProvider';
 import { storeToRefs } from 'pinia';
 
 const extras = useExtrasStore();
+const generationOverrides = useGenerationOverrideStore();
 const phone = usePhoneStore();
 const prompts = usePromptStore();
 const settingsStore = useSettingsStore();
@@ -511,9 +516,11 @@ const {
     const preview = chapterGenerationState.preview;
     const bookId = preview?.bookId || route.value.params?.bookId || '';
     const chapterId = preview?.chapterId || route.value.params?.chapterId || '';
+    const versionId = preview?.targetVersionId || route.value.params?.versionId || '';
     return {
       ...(bookId ? { bookId } : {}),
       ...(chapterId ? { chapterId } : {}),
+      ...(versionId ? { versionId } : {}),
     };
   },
   page: 'chapter-preview',
@@ -524,6 +531,7 @@ const {
       bookId: preview.bookId || route.value.params?.bookId || '',
       chapterId: preview.chapterId || route.value.params?.chapterId || '',
       mode: normalizeChapterGenerationMode(preview.mode),
+      targetVersionId: preview.targetVersionId || route.value.params?.versionId || '',
     };
   },
   title: '番外预览',
@@ -599,8 +607,13 @@ const viewedChapterVersionId = computed(
 const viewedChapter = computed(() => {
   const chapter = activeChapter.value;
   const version = viewedChapterVersion.value;
-  return chapter && version ? { ...chapter, content: version.content, title: version.title } : chapter;
+  return chapter && version
+    ? { ...chapter, content: version.content, generationRecord: version.generationRecord, title: version.title }
+    : chapter;
 });
+const rewriteChapterReplay = computed(
+  () => viewedChapterVersion.value?.generationRecord?.replay || activeChapter.value?.generationRecords.at(-1)?.replay,
+);
 
 const activeSummary = computed(() => {
   const bookId = route.value.params?.bookId;
@@ -702,6 +715,7 @@ const chapterPromptPreview = computed(() => {
         chapterMode: chapterGenerationDraft.mode,
         outputFormat: buildChapterOutputFormat(),
         previousChapterContext: buildPreviousChapterContext(activeBook.value),
+        replayRequest: chapterGenerationDraft.mode === '重写当前章节' ? rewriteChapterReplay.value?.request : undefined,
         typeName: chapterGenerationDraft.typeName,
         typePrompt: currentChapterTypePrompt.value,
         userRequirement: chapterGenerationDraft.userRequirement,
@@ -748,6 +762,7 @@ function captureNewBookPrompt() {
         tavernPresetName: settings.value.generation.tavernPresetName,
       },
       references: formattedReferences.value,
+      referenceItems: selectedReferences.value,
       source: {
         fromStartEnd: chapterGenerationDraft.fromStartEnd,
         mode: settings.value.generation.sourceMode,
@@ -985,9 +1000,9 @@ function resetChapterGenerationDraft(mode: typeof chapterGenerationDraft.mode, g
   chapterGenerationDraft.userRequirement = '';
   const generationRecord =
     mode === '重写当前章节'
-      ? [...(activeChapter.value?.generationRecords || [])]
-          .reverse()
-          .find(record => !generationRecordId || record.id === generationRecordId)
+      ? generationRecordId
+        ? [...(activeChapter.value?.generationRecords || [])].reverse().find(record => record.id === generationRecordId)
+        : viewedChapterVersion.value?.generationRecord || activeChapter.value?.generationRecords.at(-1)
       : null;
   if (generationRecord) {
     chapterGenerationDraft.fromStartEnd = generationRecord.fromStartEnd;
@@ -1003,7 +1018,24 @@ function resetChapterGenerationDraft(mode: typeof chapterGenerationDraft.mode, g
       sourcePath: [...reference.sourcePath],
     }));
     settings.value.generation.sourceMode = generationRecord.sourceMode;
-    settings.value.generation.tavernPresetName = generationRecord.tavernPresetName;
+    generationOverrides.setTavernPresetName(
+      'extras',
+      'chapter-generate',
+      generationRecord.replay?.tavernPresetName || generationRecord.tavernPresetName,
+    );
+  }
+  if (generationRecord?.replay) {
+    selectedReferences.value = cloneReplayReferences(generationRecord.replay);
+    settings.value.generation.sourceMode = restoreGenerationReplayDraft(
+      generationRecord.replay,
+      chapterGenerationDraft,
+    );
+    generationOverrides.setTavernPresetName('extras', 'chapter-generate', generationRecord.replay.tavernPresetName);
+    generationOverrides.setConnectionSelection(
+      'extras',
+      'chapter-generate',
+      generationRecord.replay.connectionSelection as TextProviderSelection,
+    );
   }
   chapterCustomTypeSelected.value = !chapterGenerationDraft.typeId && Boolean(chapterGenerationDraft.typeName.trim());
   chapterGenerationState.error = '';
@@ -1133,7 +1165,7 @@ async function removeBook(bookId: string) {
 function openGenerateChapter(bookId: string, chapterId?: string, generationRecordId?: string, versionId?: string) {
   phone.pushPage(
     'chapter-generate',
-    chapterId ? '重写章节' : '生成章节',
+    chapterId ? '重新生成章节' : '生成章节',
     chapterId
       ? {
           bookId,
@@ -1167,6 +1199,25 @@ function adoptChapterVersion(versionId: string) {
   if (!chapter) return;
   phone.replacePage('chapter', chapter.title, { bookId: activeBook.value.id, chapterId: chapter.id, versionId });
   toastr.success('已采用这个章节版本');
+}
+
+async function removeChapterVersion(versionId: string) {
+  if (!activeBook.value || !activeChapter.value || activeChapter.value.versions.length <= 1) return;
+  const versionIndex = activeChapter.value.versions.findIndex(version => version.id === versionId);
+  if (versionIndex < 0) return;
+  const shouldDelete = await phone.confirmNotice(
+    `要删除当前查看的版本 ${versionIndex + 1}/${activeChapter.value.versions.length} 吗？只会删除这个版本。`,
+    { confirmLabel: '删除此版本', kind: 'warning' },
+  );
+  if (!shouldDelete || !activeBook.value || !activeChapter.value) return;
+  const result = extras.deleteChapterVersion(activeBook.value.id, activeChapter.value.id, versionId);
+  if (!result) return;
+  phone.replacePage('chapter', result.activeVersion.title, {
+    bookId: activeBook.value.id,
+    chapterId: result.chapter.id,
+    versionId: result.activeVersion.id,
+  });
+  toastr.success('已删除当前章节版本');
 }
 
 function openEditChapter(bookId: string, chapterId: string, versionId?: string) {
@@ -1238,10 +1289,13 @@ function selectCatalogChapter(chapterId: string) {
 
 async function removeChapter(bookId: string, chapterId: string) {
   const chapter = extras.getChapter(bookId, chapterId);
-  const shouldDelete = await phone.confirmNotice(`要删除章节“${chapter?.title || '未命名章节'}”吗？`, {
-    confirmLabel: '删除',
-    kind: 'warning',
-  });
+  const shouldDelete = await phone.confirmNotice(
+    `要删除整个章节“${chapter?.title || '未命名章节'}”吗？该章节的全部版本都会一起删除。`,
+    {
+      confirmLabel: '删除整章',
+      kind: 'warning',
+    },
+  );
   if (!shouldDelete) return;
   extras.deleteChapter(bookId, chapterId);
   const book = extras.getBook(bookId);
@@ -1313,14 +1367,7 @@ function buildPreviousChapterContext(book = activeBook.value) {
   }
 
   if (chapterGenerationDraft.mode === '重写当前章节' && activeChapter.value) {
-    const targetChapter = viewedChapter.value || activeChapter.value;
-    return [
-      `番外书名：${book.title}`,
-      `需要重写的章节：第 ${targetChapter.chapterNumber} 章 · ${targetChapter.title}`,
-      targetChapter.content,
-    ]
-      .filter(Boolean)
-      .join('\n\n');
+    return `番外书名：${book.title}`;
   }
 
   const chapterBlocks = orderedChapters.value.map(chapter =>
@@ -1386,8 +1433,18 @@ function returnToChapterGenerate() {
   if (!bookId) return;
   phone.replacePage(
     'chapter-generate',
-    chapterGenerationDraft.mode === '重写当前章节' ? '重写章节' : '生成章节',
-    route.value.params?.chapterId ? { bookId, chapterId: route.value.params.chapterId } : { bookId },
+    chapterGenerationDraft.mode === '重写当前章节' ? '重新生成章节' : '生成章节',
+    route.value.params?.chapterId
+      ? {
+          bookId,
+          chapterId: route.value.params.chapterId,
+          ...(chapterGenerationState.preview?.targetVersionId
+            ? { versionId: chapterGenerationState.preview.targetVersionId }
+            : route.value.params?.versionId
+              ? { versionId: route.value.params.versionId }
+              : {}),
+        }
+      : { bookId },
   );
 }
 
@@ -1426,6 +1483,7 @@ async function runChapterGenerationForBook(bookId: string, book: ExtraBook, chap
       fromStartEnd: chapterGenerationDraft.fromStartEnd,
       outputFormat: buildChapterOutputFormat(),
       previousChapterContext: buildPreviousChapterContext(book),
+      replayRequest: chapterGenerationDraft.mode === '重写当前章节' ? rewriteChapterReplay.value?.request : undefined,
       rangeText: chapterGenerationDraft.rangeText,
       recentCount: chapterGenerationDraft.recentCount,
       references: selectedReferences.value.map(reference => ({
@@ -1448,6 +1506,7 @@ async function runChapterGenerationForBook(bookId: string, book: ExtraBook, chap
         tavernPresetName: settings.value.generation.tavernPresetName,
       },
       references: formattedReferences.value,
+      referenceItems: selectedReferences.value,
       lifecycle: {
         onFinish() {
           chapterGenerationState.running = false;
@@ -1498,18 +1557,25 @@ async function runChapterGenerationForBook(bookId: string, book: ExtraBook, chap
       chapterId,
       content: result.data.content,
       draftId: null,
-      generationRecord: createExtraChapterGenerationRecord(generationConfig, result.source),
+      generationRecord: createExtraChapterGenerationRecord(generationConfig, result.source, result.replay),
       mode: chapterGenerationDraft.mode,
       raw: result.rawOutput,
+      targetVersionId: viewedChapterVersion.value?.id || '',
       title: result.data.title,
       warnings: result.warnings,
     };
-    persistExtraChapterPreviewDraft(chapterId ? { bookId, chapterId } : { bookId });
+    persistExtraChapterPreviewDraft(
+      chapterId
+        ? { bookId, chapterId, ...(viewedChapterVersion.value?.id ? { versionId: viewedChapterVersion.value.id } : {}) }
+        : { bookId },
+    );
     void phone.presentGeneratedPage(
       'extras',
       'chapter-preview',
       '番外预览',
-      chapterId ? { bookId, chapterId } : { bookId },
+      chapterId
+        ? { bookId, chapterId, ...(viewedChapterVersion.value?.id ? { versionId: viewedChapterVersion.value.id } : {}) }
+        : { bookId },
     );
   } catch (error) {
     chapterGenerationState.error = error instanceof Error ? error.message : '生成失败，请稍后再试';
@@ -1792,6 +1858,7 @@ function reparseFailedDraft() {
       })(),
       mode: normalizeChapterGenerationMode(draft.context.chapterMode),
       raw: parsed.raw,
+      targetVersionId: '',
       title: parsed.data.title,
       warnings: parsed.warnings,
     };

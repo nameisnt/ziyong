@@ -26,6 +26,28 @@ export const GenerationRequestPartsSchema = z.object({
 });
 export type GenerationRequestParts = z.infer<typeof GenerationRequestPartsSchema>;
 
+export const GenerationReplayReferenceSchema = z.object({
+  content: z.string(),
+  id: z.string(),
+  sourcePath: z.array(z.string()).default([]),
+  timeLabel: z.string().optional(),
+  title: z.string(),
+  updatedAt: z.string().optional(),
+});
+
+export const GenerationReplaySnapshotSchema = z.object({
+  config: z.record(z.string(), z.unknown()).default({}),
+  connectionSelection: z
+    .string()
+    .refine(value => value === 'inherit' || value === 'tavern' || value.startsWith('external:'))
+    .default('inherit'),
+  references: z.array(GenerationReplayReferenceSchema).default([]),
+  request: GenerationRequestPartsSchema,
+  source: SourceSelectionSchema,
+  tavernPresetName: z.string().default(''),
+});
+export type GenerationReplaySnapshot = z.infer<typeof GenerationReplaySnapshotSchema>;
+
 export type GenerationAdapter<TConfig, TResult, TSaveResult = { entityId: string }> = {
   actionId: string;
   appId: string;
@@ -38,6 +60,7 @@ export type GenerationAdapter<TConfig, TResult, TSaveResult = { entityId: string
 export type GenerationSaveContext<TConfig = unknown> = {
   config: TConfig;
   rawOutput: string;
+  replay: GenerationReplaySnapshot;
   scopeId: string;
   source: SourceSelection;
   warnings: string[];
@@ -112,6 +135,7 @@ export type GenerationExecutionFailure = {
 export type GenerationExecutionPreview<TResult> = {
   data: TResult;
   rawOutput: string;
+  replay: GenerationReplaySnapshot;
   source: SourceSelection;
   status: 'preview';
   warnings: string[];
@@ -120,6 +144,7 @@ export type GenerationExecutionPreview<TResult> = {
 export type GenerationExecutionSaved<TResult, TSaveResult> = {
   data: TResult;
   rawOutput: string;
+  replay: GenerationReplaySnapshot;
   saved: TSaveResult;
   source: SourceSelection;
   status: 'saved';

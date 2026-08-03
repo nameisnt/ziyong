@@ -82,6 +82,7 @@
       @bagu="openLettersBaguScan"
       @bottom="scrollToBottom"
       @delete="removeEntry(activeBook.id, activeEntry.id)"
+      @delete-version="removeLetterVersion"
       @edit="openEditEntry(activeBook.id, activeEntry.id, viewedLetterVersionId)"
       @favorite="letters.toggleFavorite(activeBook.id, activeEntry.id)"
       @next="openEntry(activeBook.id, nextEntryId, true)"
@@ -155,7 +156,7 @@
         <h2>
           {{
             route.params?.rewriteEntryId
-              ? t`重写当前信件`
+              ? t`重新生成当前信件`
               : route.params?.replyToEntryId
                 ? t`生成回信`
                 : t`生成一封新的信件`
@@ -300,23 +301,27 @@ import { useCatalogDetailNavigation } from '@/composables/useCatalogDetailNaviga
 import { getRegisteredPhoneGenerationAdapter } from '@/core/appRegistry';
 import { buildGenerationPreview, captureGenerationPrompt, generateContent } from '@/core/generationService';
 import { useLettersStore } from '@/store/letters';
+import { useGenerationOverrideStore } from '@/store/generationOverrides';
 import { usePhoneStore } from '@/store/phone';
 import { usePromptStore } from '@/store/prompts';
 import { useSettingsStore } from '@/store/settings';
 import type { CharacterRef } from '@/type/diary';
-import type { FailedGenerationDraft } from '@/type/generation';
+import type { FailedGenerationDraft, GenerationReplaySnapshot } from '@/type/generation';
 import type { LetterFormat } from '@/type/letter';
 import { canOpenBaguScan } from '@/util/baguScanGate';
 import { useDetailScroll } from '@/util/detailScroll';
 import { parseSimpleXmlResult } from '@/util/generation';
+import { cloneReplayReferences, restoreGenerationReplayDraft } from '@/util/generationReplay';
 import { usePreviewDraftPersistence } from '@/util/previewDrafts';
 import { formatGenerationReferences, type GenerationReferenceItem } from '@/util/references';
 import { resolveContentVersion } from '@/util/contentVersions';
 import { useInvalidRouteFallback } from '@/util/routeFallback';
 import { stopGenerationByIdSafe } from '@/util/runtime';
+import type { TextProviderSelection } from '@/util/textProvider';
 import { storeToRefs } from 'pinia';
 
 const letters = useLettersStore();
+const generationOverrides = useGenerationOverrideStore();
 const phone = usePhoneStore();
 const prompts = usePromptStore();
 const settingsStore = useSettingsStore();
@@ -362,10 +367,12 @@ const generationState = reactive({
     format: LetterFormat;
     mode: 'create' | 'rewrite';
     raw: string;
+    replay?: GenerationReplaySnapshot;
     receiver: CharacterRef;
     sender: CharacterRef;
     title: string;
     targetEntryId: string;
+    targetVersionId: string;
     warnings: string[];
   },
   rawOutput: '',
@@ -437,7 +444,13 @@ const viewedLetterEntry = computed(() => {
   const entry = activeEntry.value;
   const version = viewedLetterVersion.value;
   return entry && version
-    ? { ...entry, content: version.content, format: version.format, title: version.title }
+    ? {
+        ...entry,
+        content: version.content,
+        format: version.format,
+        generationReplay: version.generationReplay,
+        title: version.title,
+      }
     : entry;
 });
 const rewriteLetterEntry = computed(() => {
@@ -454,12 +467,9 @@ const letterGenerationMode = computed<'create' | 'rewrite'>(() => (rewriteLetter
 const letterGenerationAppPrompt = computed(() =>
   letterGenerationMode.value === 'rewrite' ? prompts.appPrompts.lettersRewrite : prompts.appPrompts.letters,
 );
-const letterExistingContent = computed(() => {
-  const entry = rewriteLetterEntry.value;
-  const version = rewriteLetterVersion.value;
-  if (!entry) return '';
-  return [`需要重写的信件：${version?.title || entry.title}`, version?.content || entry.content].join('\n\n');
-});
+const rewriteLetterReplay = computed(
+  () => rewriteLetterVersion.value?.generationReplay || rewriteLetterEntry.value?.generationReplay,
+);
 
 const editingEntry = computed(() => (route.value.params?.entryId && activeEntry.value ? activeEntry.value : null));
 const activeFailedDraft = computed(() => {
@@ -505,9 +515,10 @@ const letterPromptPreview = computed(() => {
         bookTitle: generationDraft.bookTitle || activeBook.value?.title || '',
         format: generationDraft.format,
         entryId: rewriteLetterEntry.value?.id || '',
-        existingContent: letterExistingContent.value,
+        existingContent: '',
         mode: letterGenerationMode.value,
         outputFormat: buildOutputFormat(),
+        replayRequest: letterGenerationMode.value === 'rewrite' ? rewriteLetterReplay.value?.request : undefined,
         recentLettersContext: buildRecentLettersContext(activeBook.value, generationDraft.recentEntryCount),
         receiver,
         sender,
@@ -548,9 +559,10 @@ function captureLetterPrompt() {
       bookTitle: generationDraft.bookTitle || activeBook.value?.title || '',
       format: generationDraft.format,
       entryId: rewriteLetterEntry.value?.id || '',
-      existingContent: letterExistingContent.value,
+      existingContent: '',
       mode: letterGenerationMode.value,
       outputFormat: buildOutputFormat(),
+      replayRequest: letterGenerationMode.value === 'rewrite' ? rewriteLetterReplay.value?.request : undefined,
       recentLettersContext: buildRecentLettersContext(activeBook.value, generationDraft.recentEntryCount),
       receiver,
       sender,
@@ -632,6 +644,38 @@ watch(
       generationState.error = '';
       generationState.preview = null;
       generationState.rawOutput = '';
+
+      const replay = rewriteLetterReplay.value;
+      if (replay) {
+        selectedReferences.value = cloneReplayReferences(replay);
+        settings.value.generation.sourceMode = restoreGenerationReplayDraft(replay, generationDraft);
+        const replayFormat = replay.config.format;
+        if (
+          replayFormat === 'formal' ||
+          replayFormat === 'note' ||
+          replayFormat === 'sms' ||
+          replayFormat === 'email'
+        ) {
+          generationDraft.format = replayFormat;
+        }
+        if (typeof replay.config.recentEntryCount === 'number') {
+          generationDraft.recentEntryCount = replay.config.recentEntryCount;
+        }
+        const replaySender = replay.config.sender;
+        const replayReceiver = replay.config.receiver;
+        if (replaySender && typeof replaySender === 'object' && 'name' in replaySender) {
+          generationDraft.senderName = String(replaySender.name || '');
+        }
+        if (replayReceiver && typeof replayReceiver === 'object' && 'name' in replayReceiver) {
+          generationDraft.receiverName = String(replayReceiver.name || '');
+        }
+        generationOverrides.setTavernPresetName('letters', 'generate', replay.tavernPresetName);
+        generationOverrides.setConnectionSelection(
+          'letters',
+          'generate',
+          replay.connectionSelection as TextProviderSelection,
+        );
+      }
     }
 
     if (current.page === 'failed-draft') {
@@ -714,7 +758,7 @@ function openReply(bookId: string, entryId: string) {
 }
 
 function openRewriteLetter(bookId: string, entryId: string) {
-  phone.pushPage('generate', '重写书信', {
+  phone.pushPage('generate', '重新生成书信', {
     bookId,
     rewriteEntryId: entryId,
     ...(viewedLetterVersionId.value ? { versionId: viewedLetterVersionId.value } : {}),
@@ -738,6 +782,25 @@ function adoptLetterVersion(versionId: string) {
   if (!entry) return;
   phone.replacePage('entry', entry.title, { bookId: activeBook.value.id, entryId: entry.id, versionId });
   toastr.success('已采用这个书信版本');
+}
+
+async function removeLetterVersion(versionId: string) {
+  if (!activeBook.value || !activeEntry.value || activeEntry.value.versions.length <= 1) return;
+  const versionIndex = activeEntry.value.versions.findIndex(version => version.id === versionId);
+  if (versionIndex < 0) return;
+  const shouldDelete = await phone.confirmNotice(
+    `要删除当前查看的书信版本 ${versionIndex + 1}/${activeEntry.value.versions.length} 吗？只会删除这个版本。`,
+    { confirmLabel: '删除此版本', kind: 'warning' },
+  );
+  if (!shouldDelete || !activeBook.value || !activeEntry.value) return;
+  const result = letters.deleteEntryVersion(activeBook.value.id, activeEntry.value.id, versionId);
+  if (!result) return;
+  phone.replacePage('entry', result.activeVersion.title, {
+    bookId: activeBook.value.id,
+    entryId: result.entry.id,
+    versionId: result.activeVersion.id,
+  });
+  toastr.success('已删除当前书信版本');
 }
 
 function openRenameBook(bookId: string) {
@@ -870,10 +933,13 @@ async function removeBook(bookId: string) {
 
 async function removeEntry(bookId: string, entryId: string) {
   const entry = letters.getEntry(bookId, entryId);
-  const shouldDelete = await phone.confirmNotice(`要删除信件“${entry?.title || '未命名信件'}”吗？`, {
-    confirmLabel: '删除',
-    kind: 'warning',
-  });
+  const shouldDelete = await phone.confirmNotice(
+    `要删除整封信“${entry?.title || '未命名信件'}”吗？这封信的全部版本都会一起删除。`,
+    {
+      confirmLabel: '删除整封信',
+      kind: 'warning',
+    },
+  );
   if (!shouldDelete) return;
   letters.deleteEntry(bookId, entryId);
   const book = letters.getBook(bookId);
@@ -926,10 +992,16 @@ function returnToGenerate() {
     return;
   }
   const preview = generationState.preview;
-  phone.replacePage('generate', route.value.params?.replyToEntryId ? '生成回信' : '生成信件', {
-    ...(preview?.bookId ? { bookId: preview.bookId } : {}),
-    ...(route.value.params?.replyToEntryId ? { replyToEntryId: route.value.params.replyToEntryId } : {}),
-  });
+  phone.replacePage(
+    'generate',
+    preview?.mode === 'rewrite' ? '重新生成书信' : route.value.params?.replyToEntryId ? '生成回信' : '生成信件',
+    {
+      ...(preview?.bookId ? { bookId: preview.bookId } : {}),
+      ...(route.value.params?.replyToEntryId ? { replyToEntryId: route.value.params.replyToEntryId } : {}),
+      ...(preview?.targetEntryId ? { rewriteEntryId: preview.targetEntryId } : {}),
+      ...(preview?.targetVersionId ? { versionId: preview.targetVersionId } : {}),
+    },
+  );
 }
 
 async function runGeneration() {
@@ -953,9 +1025,10 @@ async function runGeneration() {
         bookTitle: generationDraft.bookTitle || activeBook.value?.title || '',
         format: generationDraft.format,
         entryId: rewriteLetterEntry.value?.id || '',
-        existingContent: letterExistingContent.value,
+        existingContent: '',
         mode: letterGenerationMode.value,
         outputFormat: buildOutputFormat(),
+        replayRequest: letterGenerationMode.value === 'rewrite' ? rewriteLetterReplay.value?.request : undefined,
         recentLettersContext: buildRecentLettersContext(activeBook.value, generationDraft.recentEntryCount),
         receiver,
         sender,
@@ -969,6 +1042,7 @@ async function runGeneration() {
           tavernPresetName: settings.value.generation.tavernPresetName,
         },
         references: formattedReferences.value,
+        referenceItems: selectedReferences.value,
         lifecycle: {
           onFinish() {
             generationState.running = false;
@@ -1019,21 +1093,25 @@ async function runGeneration() {
       format: generationDraft.format,
       mode: letterGenerationMode.value,
       raw: result.rawOutput,
+      replay: result.replay,
       receiver,
       sender,
       title: result.data.title,
       targetEntryId: rewriteLetterEntry.value?.id || '',
+      targetVersionId: rewriteLetterVersion.value?.id || '',
       warnings: result.warnings,
     };
     persistLettersPreviewDraft({
       ...(activeBook.value?.id ? { bookId: activeBook.value.id } : {}),
       ...(route.value.params?.replyToEntryId ? { replyToEntryId: route.value.params.replyToEntryId } : {}),
       ...(rewriteLetterEntry.value ? { rewriteEntryId: rewriteLetterEntry.value.id } : {}),
+      ...(rewriteLetterVersion.value ? { versionId: rewriteLetterVersion.value.id } : {}),
     });
     void phone.presentGeneratedPage('letters', 'preview', '生成预览', {
       ...(activeBook.value?.id ? { bookId: activeBook.value.id } : {}),
       ...(route.value.params?.replyToEntryId ? { replyToEntryId: route.value.params.replyToEntryId } : {}),
       ...(rewriteLetterEntry.value ? { rewriteEntryId: rewriteLetterEntry.value.id } : {}),
+      ...(rewriteLetterVersion.value ? { versionId: rewriteLetterVersion.value.id } : {}),
     });
   } catch (error) {
     generationState.error = error instanceof Error ? error.message : '生成失败，请稍后再试';
@@ -1048,6 +1126,7 @@ function savePreview() {
       ? letters.appendEntryVersion(preview.bookId, preview.targetEntryId, {
           content: preview.content,
           format: preview.format,
+          generationReplay: preview.replay,
           title: preview.title,
         })
       : letters.createEntry({
@@ -1055,6 +1134,7 @@ function savePreview() {
           bookTitle: preview.bookTitle,
           content: preview.content,
           format: preview.format,
+          generationReplay: preview.replay,
           receiver: preview.receiver,
           sender: preview.sender,
           title: preview.title,
@@ -1185,6 +1265,7 @@ function reparseFailedDraft() {
     sender,
     title: parsed.data.title,
     targetEntryId: typeof draft.context.entryId === 'string' ? draft.context.entryId : '',
+    targetVersionId: '',
     warnings: parsed.warnings,
   };
   persistLettersPreviewDraft(bookId ? { bookId } : {});

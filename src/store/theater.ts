@@ -1,7 +1,12 @@
 import { useChatScopedDomain } from '@/store/chatScoped';
 import { createFailedDraftCollection } from '@/store/failedDrafts';
 import { TheaterScopeDataSchema, type TheaterEntry, type TheaterEntryVersion } from '@/type/theater';
-import { createContentVersion, ensureContentVersions, resolveContentVersion } from '@/util/contentVersions';
+import {
+  createContentVersion,
+  ensureContentVersions,
+  removeContentVersion,
+  resolveContentVersion,
+} from '@/util/contentVersions';
 import { validateInplace } from '@/util/zod';
 
 export const theaterField = 'sillytavern_phone_theater';
@@ -33,7 +38,7 @@ export const useTheaterStore = defineStore('theater', () => {
 
   function createEntry(
     input: Pick<TheaterEntry, 'title' | 'content' | 'participants' | 'renderMode' | 'typeName'> &
-      Partial<Pick<TheaterEntry, 'typeId'>>,
+      Partial<Pick<TheaterEntry, 'generationReplay' | 'typeId'>>,
   ) {
     const timestamp = nowIso();
     const entry: TheaterEntry = {
@@ -47,6 +52,7 @@ export const useTheaterStore = defineStore('theater', () => {
       typeName: input.typeName.trim() || '未分类小剧场',
       participants: [...input.participants],
       renderMode: input.renderMode,
+      generationReplay: input.generationReplay,
       activeVersionId: '',
       versions: [],
     };
@@ -77,7 +83,11 @@ export const useTheaterStore = defineStore('theater', () => {
     return entry;
   }
 
-  function appendEntryVersion(entryId: string, input: Pick<TheaterEntryVersion, 'title' | 'content' | 'renderMode'>) {
+  function appendEntryVersion(
+    entryId: string,
+    input: Pick<TheaterEntryVersion, 'title' | 'content' | 'renderMode'> &
+      Partial<Pick<TheaterEntryVersion, 'generationReplay'>>,
+  ) {
     const entry = getEntry(entryId);
     if (!entry) return null;
     const state = ensureContentVersions<TheaterEntryVersion>(
@@ -86,6 +96,7 @@ export const useTheaterStore = defineStore('theater', () => {
       () => ({
         content: entry.content,
         createdAt: entry.createdAt,
+        generationReplay: entry.generationReplay,
         renderMode: entry.renderMode,
         title: entry.title,
       }),
@@ -93,6 +104,7 @@ export const useTheaterStore = defineStore('theater', () => {
     );
     const version = createContentVersion<TheaterEntryVersion>('theater_version', {
       content: input.content.trim(),
+      generationReplay: input.generationReplay,
       renderMode: input.renderMode,
       title: input.title.trim() || entry.title,
     });
@@ -109,6 +121,7 @@ export const useTheaterStore = defineStore('theater', () => {
     entry.title = version.title;
     entry.content = version.content;
     entry.renderMode = version.renderMode;
+    entry.generationReplay = version.generationReplay;
     entry.updatedAt = nowIso();
     return entry;
   }
@@ -131,6 +144,21 @@ export const useTheaterStore = defineStore('theater', () => {
       entry.updatedAt = nowIso();
     }
     return entry;
+  }
+
+  function deleteEntryVersion(entryId: string, versionId: string) {
+    const entry = getEntry(entryId);
+    if (!entry) return null;
+    const state = removeContentVersion(entry.versions, entry.activeVersionId, versionId);
+    if (!state) return null;
+    entry.versions = state.versions;
+    entry.activeVersionId = state.activeVersionId;
+    entry.title = state.activeVersion.title;
+    entry.content = state.activeVersion.content;
+    entry.renderMode = state.activeVersion.renderMode;
+    entry.generationReplay = state.activeVersion.generationReplay;
+    entry.updatedAt = nowIso();
+    return { activeVersion: state.activeVersion, entry };
   }
 
   function updateEntryMetadata(
@@ -173,6 +201,7 @@ export const useTheaterStore = defineStore('theater', () => {
     createFailedDraft,
     data,
     deleteEntry,
+    deleteEntryVersion,
     deleteFailedDraft,
     entries,
     failedDrafts,

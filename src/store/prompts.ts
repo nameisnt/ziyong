@@ -227,6 +227,16 @@ const migratedSpecialPrompts = {
   },
 } as const;
 
+const migratedRewritePrompts = {
+  extrasRewrite: '请重写当前番外章节。保留章节在整体故事中的作用和前后衔接，重新组织场景、节奏与表达。',
+  forumRewrite:
+    '请重写当前论坛主帖，保留帖子讨论的核心事实和板块风格，重新组织标题、主楼表达与节奏。不要生成或改写任何回复。',
+  lettersRewrite:
+    '请将当前信件重写为一份完整替代版本。保持发信人、收信人、事实背景和角色语气不变，重新组织措辞与情绪递进，不要写成回信或续写。',
+  theaterRewrite:
+    '请将当前小剧场重写为一份完整替代版本。保留人物核心性格、既定关系和本段主题，重新组织场景、节奏与表达，不要续写原文。',
+} as const;
+
 function ensureRegisteredPromptDefaults(settings: PromptSettings) {
   const previousExtrasPrompt = settings.appPrompts.extras?.trim() || '';
   const hadExtrasContinuePrompt = 'extrasContinue' in settings.appPrompts;
@@ -254,6 +264,11 @@ function ensureRegisteredPromptDefaults(settings: PromptSettings) {
   Object.entries(migratedDefaultPrompts).forEach(([key, migration]) => {
     if (settings.appPrompts[key]?.trim() === migration.from) {
       settings.appPrompts[key] = migration.to;
+    }
+  });
+  Object.entries(migratedRewritePrompts).forEach(([key, legacyPrompt]) => {
+    if (settings.appPrompts[key]?.trim() === legacyPrompt) {
+      settings.appPrompts[key] = appDefaults[key] ?? settings.appPrompts[key];
     }
   });
 

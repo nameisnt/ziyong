@@ -22,6 +22,7 @@
           :versions="versions"
           :viewed-version-id="viewedVersionId"
           @adopt="emit('adoptVersion', $event)"
+          @delete="emit('deleteVersion', $event)"
           @select="emit('selectVersion', $event)"
         />
         <details v-if="generationRecords.length" class="pc-section-card pc-generation-history">
@@ -58,9 +59,9 @@
           <i class="fa-solid fa-rotate"></i>
           <span>{{ t`重写` }}</span>
         </button>
-        <button class="pc-soft-btn danger" type="button" :title="t`删除`" @click="emit('delete')">
+        <button class="pc-soft-btn danger" type="button" :title="t`删除整章（全部版本）`" @click="emit('delete')">
           <i class="fa-solid fa-trash"></i>
-          <span>{{ t`删除` }}</span>
+          <span>{{ t`删除整章` }}</span>
         </button>
       </template>
 
@@ -102,6 +103,7 @@ const emit = defineEmits<{
   bottom: [];
   continue: [];
   delete: [];
+  deleteVersion: [versionId: string];
   edit: [];
   favorite: [];
   next: [];

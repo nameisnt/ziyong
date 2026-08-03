@@ -427,6 +427,7 @@ const scenarios: VisualScenarioName[] = [
   'extras-chapter-detail',
   'content-versions',
   'content-version-interactions',
+  'content-version-deletion',
   'extras-chapter-editor',
   'extras-legacy-continuation',
   'summary-create',
@@ -1808,16 +1809,22 @@ async function applyScenario(name: VisualScenarioName, options: { height?: numbe
     resetPhoneToRoute('forum', 'thread', thread.title, { boardId: board.id, threadId: thread.id });
   } else if (name === 'forum-thread-versions') {
     const { board, thread } = createForumFixture();
-    const originalReplyCount = thread.replies.length;
+    const originalReplies = JSON.stringify(thread.replies);
+    const candidateReplies = thread.replies.map((reply, index) => ({
+      ...reply,
+      content: `候选版本回复 ${index + 1}：与旧版本内容不同。`,
+      id: `${reply.id}_candidate`,
+    }));
     thread.updatedAt = '2000-01-01T00:00:00.000Z';
     board.updatedAt = '2000-01-01T00:00:00.000Z';
     const saved = useForumStore().appendThreadVersion(board.id, thread.id, {
       author: '新版楼主',
-      content: '这是重写后的主帖候选版本。回复应当完整保留，并且当前采用版不会自动改变。',
+      content: '这是重新生成后的主题候选版本。主楼和回复属于同一个版本快照。',
+      replies: candidateReplies,
       title: '重写后的论坛主帖',
     });
-    if (!saved || thread.content === saved.version.content || thread.replies.length !== originalReplyCount) {
-      throw new Error('Forum rewrite version overwrote the active thread or changed replies');
+    if (!saved || thread.content === saved.version.content || JSON.stringify(thread.replies) !== originalReplies) {
+      throw new Error('Forum rewrite version overwrote the active thread snapshot');
     }
     if (thread.updatedAt !== '2000-01-01T00:00:00.000Z' || board.updatedAt !== '2000-01-01T00:00:00.000Z') {
       throw new Error('Forum candidate version changed the active thread ordering timestamp');
@@ -1827,12 +1834,22 @@ async function applyScenario(name: VisualScenarioName, options: { height?: numbe
       threadId: thread.id,
       versionId: saved.version.id,
     });
+    await waitForPaint();
+    if (!document.body.textContent?.includes('候选版本回复 1')) {
+      throw new Error('Forum candidate version did not render its own reply snapshot');
+    }
   } else if (name === 'forum-version-interactions') {
     const { board, thread } = createForumFixture();
     const originalReplies = JSON.stringify(thread.replies);
+    const candidateReplies = thread.replies.map((reply, index) => ({
+      ...reply,
+      content: `采用后的候选回复 ${index + 1}`,
+      id: `${reply.id}_adopted`,
+    }));
     const saved = useForumStore().appendThreadVersion(board.id, thread.id, {
       author: '交互测试楼主',
-      content: '采用这个主帖版本后，回复内容和楼层仍应保持原样。',
+      content: '采用这个主题版本后，应同时采用该版本的回复。',
+      replies: candidateReplies,
       title: '论坛主帖交互候选版',
     });
     if (!saved) throw new Error('Forum interaction fixture did not create a candidate version');
@@ -1849,9 +1866,11 @@ async function applyScenario(name: VisualScenarioName, options: { height?: numbe
     if (!adopted || thread.content !== saved.version.content) {
       throw new Error('Forum adoption action did not activate the candidate main post');
     }
-    if (JSON.stringify(thread.replies) !== originalReplies) {
-      throw new Error('Forum main-post adoption changed existing replies');
+    if (JSON.stringify(thread.replies) !== JSON.stringify(candidateReplies)) {
+      throw new Error('Forum theme adoption did not activate the candidate replies');
     }
+    if (JSON.stringify(thread.replies) === originalReplies)
+      throw new Error('Forum candidate replies were not distinct');
     const replyRewriteButton = Array.from(
       document.querySelectorAll<HTMLButtonElement>('.pc-reply-section button'),
     ).find(button => button.title.includes('重写回复'));
@@ -2082,6 +2101,117 @@ async function applyScenario(name: VisualScenarioName, options: { height?: numbe
     if (!adopted || chapter.content !== saved.version.content) {
       throw new Error('Version adoption action did not update the active chapter');
     }
+    const deleteButton = document.querySelector<HTMLButtonElement>('.pc-version-actions .danger');
+    if (!deleteButton) throw new Error('Version navigator did not expose the version deletion action');
+    deleteButton.click();
+    const deleteNoticeOpened = await waitForVisualCondition(() =>
+      Boolean(document.querySelector('.pc-phone-notice-actions button[data-role="danger"]')),
+    );
+    if (!deleteNoticeOpened) throw new Error('Version deletion action did not open its confirmation notice');
+    document.querySelector<HTMLButtonElement>('.pc-phone-notice-actions button[data-role="soft"]')?.click();
+  } else if (name === 'content-version-deletion') {
+    const extras = useExtrasStore();
+    const extraBook = createLegacyExtrasFixture();
+    const chapter = extraBook.chapters[0];
+    if (!chapter) throw new Error('Version deletion fixture did not create an extra chapter');
+    const extraSaved = extras.appendChapterVersion(extraBook.id, chapter.id, {
+      content: '准备删除的番外采用版本。',
+      title: '准备删除的番外版本',
+    });
+    const originalChapterVersion = chapter.versions[0];
+    if (!extraSaved || !originalChapterVersion) throw new Error('Extra deletion fixture did not create two versions');
+    extras.activateChapterVersion(extraBook.id, chapter.id, extraSaved.version.id);
+    const extraResult = extras.deleteChapterVersion(extraBook.id, chapter.id, extraSaved.version.id);
+    if (
+      !extraResult ||
+      chapter.versions.length !== 1 ||
+      chapter.activeVersionId !== originalChapterVersion.id ||
+      chapter.content !== originalChapterVersion.content
+    ) {
+      throw new Error('Deleting the active extra version did not restore and synchronize the adjacent version');
+    }
+
+    const theater = useTheaterStore();
+    const theaterEntry = createTheaterFixture();
+    const theaterSaved = theater.appendEntryVersion(theaterEntry.id, {
+      content: '准备删除的小剧场采用版本。',
+      renderMode: theaterEntry.renderMode === 'markdown' ? 'frontend' : 'markdown',
+      title: '准备删除的小剧场版本',
+    });
+    const originalTheaterVersion = theaterEntry.versions[0];
+    if (!theaterSaved || !originalTheaterVersion)
+      throw new Error('Theater deletion fixture did not create two versions');
+    theater.activateEntryVersion(theaterEntry.id, theaterSaved.version.id);
+    const theaterResult = theater.deleteEntryVersion(theaterEntry.id, theaterSaved.version.id);
+    if (
+      !theaterResult ||
+      theaterEntry.activeVersionId !== originalTheaterVersion.id ||
+      theaterEntry.content !== originalTheaterVersion.content ||
+      theaterEntry.renderMode !== originalTheaterVersion.renderMode
+    ) {
+      throw new Error('Deleting the active theater version did not synchronize its content and render mode');
+    }
+
+    const forum = useForumStore();
+    const { board, thread } = createForumFixture();
+    const originalReplies = JSON.stringify(thread.replies);
+    const forumSaved = forum.appendThreadVersion(board.id, thread.id, {
+      author: '待删除版本楼主',
+      content: '准备删除的论坛候选版本。',
+      replies: thread.replies.map(reply => ({
+        ...reply,
+        content: `待删除：${reply.content}`,
+        id: `${reply.id}_delete`,
+      })),
+      title: '准备删除的论坛版本',
+    });
+    const originalForumVersion = thread.versions[0];
+    if (!forumSaved || !originalForumVersion) throw new Error('Forum deletion fixture did not create two versions');
+    const forumResult = forum.deleteThreadVersion(board.id, thread.id, forumSaved.version.id);
+    if (
+      !forumResult ||
+      thread.activeVersionId !== originalForumVersion.id ||
+      thread.content !== originalForumVersion.content ||
+      JSON.stringify(thread.replies) !== originalReplies
+    ) {
+      throw new Error('Deleting a forum candidate version changed the active post or its replies');
+    }
+
+    const letters = useLettersStore();
+    const letterBook = createLettersFixture();
+    const letter = letterBook.entries[0];
+    if (!letter) throw new Error('Letter deletion fixture did not create a letter');
+    const letterSaved = letters.appendEntryVersion(letterBook.id, letter.id, {
+      content: '准备删除的书信采用版本。',
+      format: letter.format === 'formal' ? 'email' : 'formal',
+      title: '准备删除的书信版本',
+    });
+    const originalLetterVersion = letter.versions[0];
+    if (!letterSaved || !originalLetterVersion) throw new Error('Letter deletion fixture did not create two versions');
+    letters.activateEntryVersion(letterBook.id, letter.id, letterSaved.version.id);
+    const letterResult = letters.deleteEntryVersion(letterBook.id, letter.id, letterSaved.version.id);
+    if (
+      !letterResult ||
+      letter.activeVersionId !== originalLetterVersion.id ||
+      letter.content !== originalLetterVersion.content ||
+      letter.format !== originalLetterVersion.format
+    ) {
+      throw new Error('Deleting the active letter version did not synchronize its content and format');
+    }
+
+    const visualBook = createLegacyExtrasFixture();
+    const visualChapter = visualBook.chapters[0];
+    if (!visualChapter) throw new Error('Version deletion visual fixture did not create a chapter');
+    const visualVersion = extras.appendChapterVersion(visualBook.id, visualChapter.id, {
+      content: '版本栏应同时显示采用与删除当前版本操作。',
+      title: '版本删除操作预览',
+    });
+    if (!visualVersion) throw new Error('Version deletion visual fixture did not create a candidate version');
+    resetPhoneToRoute('extras', 'chapter', visualVersion.version.title, {
+      bookId: visualBook.id,
+      chapterId: visualChapter.id,
+      versionId: visualVersion.version.id,
+    });
   } else if (name === 'extras-book-name-fallback') {
     if (resolveGeneratedExtraBookTitle(' ', ' IF线 ') !== 'IF线') {
       throw new Error('Generated extra book did not use its type as the missing title fallback');

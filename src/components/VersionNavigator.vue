@@ -1,35 +1,42 @@
 <template>
   <div v-if="versions.length > 1" class="pc-version-navigator" aria-label="内容版本">
-    <button
-      class="pc-icon-btn"
-      type="button"
-      :disabled="currentIndex <= 0"
-      :title="t`上一个版本`"
-      @click="selectOffset(-1)"
-    >
-      <span class="pc-version-chevron previous" aria-hidden="true"></span>
-    </button>
-    <div class="pc-version-status">
-      <strong>{{ `版本 ${currentIndex + 1} / ${versions.length}` }}</strong>
-      <small>{{ viewedVersionId === activeVersionId ? t`当前采用` : t`候选版本` }}</small>
+    <div class="pc-version-switcher">
+      <button
+        class="pc-icon-btn"
+        type="button"
+        :disabled="currentIndex <= 0"
+        :title="t`上一个版本`"
+        @click="selectOffset(-1)"
+      >
+        <span class="pc-version-chevron previous" aria-hidden="true"></span>
+      </button>
+      <div class="pc-version-status">
+        <strong>{{ `版本 ${currentIndex + 1} / ${versions.length}` }}</strong>
+        <small>{{ viewedVersionId === activeVersionId ? t`当前采用` : t`候选版本` }}</small>
+      </div>
+      <button
+        class="pc-icon-btn"
+        type="button"
+        :disabled="currentIndex < 0 || currentIndex >= versions.length - 1"
+        :title="t`下一个版本`"
+        @click="selectOffset(1)"
+      >
+        <span class="pc-version-chevron next" aria-hidden="true"></span>
+      </button>
     </div>
-    <button
-      class="pc-icon-btn"
-      type="button"
-      :disabled="currentIndex < 0 || currentIndex >= versions.length - 1"
-      :title="t`下一个版本`"
-      @click="selectOffset(1)"
-    >
-      <span class="pc-version-chevron next" aria-hidden="true"></span>
-    </button>
-    <button
-      v-if="viewedVersionId !== activeVersionId"
-      class="pc-primary-btn compact"
-      type="button"
-      @click="emit('adopt', viewedVersionId)"
-    >
-      {{ t`采用此版本` }}
-    </button>
+    <div class="pc-version-actions">
+      <button
+        v-if="viewedVersionId !== activeVersionId"
+        class="pc-primary-btn compact"
+        type="button"
+        @click="emit('adopt', viewedVersionId)"
+      >
+        {{ t`采用此版本` }}
+      </button>
+      <button class="pc-soft-btn compact danger" type="button" @click="emit('delete', viewedVersionId)">
+        <span>{{ t`删除此版本` }}</span>
+      </button>
+    </div>
   </div>
 </template>
 
@@ -47,6 +54,7 @@ const props = defineProps<{
 
 const emit = defineEmits<{
   adopt: [versionId: string];
+  delete: [versionId: string];
   select: [versionId: string];
 }>();
 
@@ -61,13 +69,18 @@ function selectOffset(offset: number) {
 <style scoped>
 .pc-version-navigator {
   display: grid;
-  align-items: center;
   padding: 8px;
   border: 1px solid var(--pc-border);
   border-radius: 8px;
   margin: 10px 0 14px;
   background: var(--pc-surface-strong);
-  grid-template-columns: 42px minmax(0, 1fr) 42px auto;
+  gap: 8px;
+}
+
+.pc-version-switcher {
+  display: grid;
+  align-items: center;
+  grid-template-columns: 42px minmax(0, 1fr) 42px;
   gap: 6px;
 }
 
@@ -83,6 +96,13 @@ function selectOffset(offset: number) {
 
 .pc-version-status small {
   color: var(--pc-muted);
+}
+
+.pc-version-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 8px;
 }
 
 .pc-version-chevron {
@@ -102,12 +122,13 @@ function selectOffset(offset: number) {
 }
 
 @media (max-width: 380px) {
-  .pc-version-navigator {
+  .pc-version-switcher {
     grid-template-columns: 38px minmax(0, 1fr) 38px;
   }
 
-  .pc-version-navigator > .pc-primary-btn {
-    grid-column: 1 / -1;
+  .pc-version-actions > button {
+    min-inline-size: 0;
+    flex: 1 1 0;
   }
 }
 </style>

@@ -2,7 +2,12 @@ import { useChatScopedDomain } from '@/store/chatScoped';
 import { createFailedDraftCollection } from '@/store/failedDrafts';
 import type { CharacterRef } from '@/type/diary';
 import { type LetterBook, type LetterEntry, type LetterEntryVersion, LettersScopeDataSchema } from '@/type/letter';
-import { createContentVersion, ensureContentVersions, resolveContentVersion } from '@/util/contentVersions';
+import {
+  createContentVersion,
+  ensureContentVersions,
+  removeContentVersion,
+  resolveContentVersion,
+} from '@/util/contentVersions';
 import { validateInplace } from '@/util/zod';
 
 export const lettersField = 'sillytavern_phone_letters';
@@ -108,6 +113,7 @@ export const useLettersStore = defineStore('letters', () => {
     input: Pick<LetterEntry, 'title' | 'content' | 'format' | 'sender' | 'receiver'> & {
       bookId?: string;
       bookTitle?: string;
+      generationReplay?: LetterEntry['generationReplay'];
     },
   ) {
     const participants = [input.sender, input.receiver];
@@ -125,6 +131,7 @@ export const useLettersStore = defineStore('letters', () => {
       sender: normalizeCharacterRef(input.sender),
       receiver: normalizeCharacterRef(input.receiver),
       format: input.format,
+      generationReplay: input.generationReplay,
       activeVersionId: '',
       versions: [],
     };
@@ -155,7 +162,8 @@ export const useLettersStore = defineStore('letters', () => {
   function appendEntryVersion(
     bookId: string,
     entryId: string,
-    input: Pick<LetterEntryVersion, 'title' | 'content' | 'format'>,
+    input: Pick<LetterEntryVersion, 'title' | 'content' | 'format'> &
+      Partial<Pick<LetterEntryVersion, 'generationReplay'>>,
   ) {
     const book = getBook(bookId);
     const entry = getEntry(bookId, entryId);
@@ -163,12 +171,19 @@ export const useLettersStore = defineStore('letters', () => {
     const state = ensureContentVersions<LetterEntryVersion>(
       entry.versions,
       entry.activeVersionId,
-      () => ({ content: entry.content, createdAt: entry.createdAt, format: entry.format, title: entry.title }),
+      () => ({
+        content: entry.content,
+        createdAt: entry.createdAt,
+        format: entry.format,
+        generationReplay: entry.generationReplay,
+        title: entry.title,
+      }),
       'letter_version',
     );
     const version = createContentVersion<LetterEntryVersion>('letter_version', {
       content: input.content.trim(),
       format: input.format,
+      generationReplay: input.generationReplay,
       title: input.title.trim() || entry.title,
     });
     entry.versions = [...state.versions, version];
@@ -186,6 +201,7 @@ export const useLettersStore = defineStore('letters', () => {
     entry.title = version.title;
     entry.content = version.content;
     entry.format = version.format;
+    entry.generationReplay = version.generationReplay;
     entry.updatedAt = timestamp;
     book.updatedAt = timestamp;
     return entry;
@@ -215,6 +231,24 @@ export const useLettersStore = defineStore('letters', () => {
     return entry;
   }
 
+  function deleteEntryVersion(bookId: string, entryId: string, versionId: string) {
+    const book = getBook(bookId);
+    const entry = getEntry(bookId, entryId);
+    if (!book || !entry) return null;
+    const state = removeContentVersion(entry.versions, entry.activeVersionId, versionId);
+    if (!state) return null;
+    const timestamp = nowIso();
+    entry.versions = state.versions;
+    entry.activeVersionId = state.activeVersionId;
+    entry.title = state.activeVersion.title;
+    entry.content = state.activeVersion.content;
+    entry.format = state.activeVersion.format;
+    entry.generationReplay = state.activeVersion.generationReplay;
+    entry.updatedAt = timestamp;
+    book.updatedAt = timestamp;
+    return { activeVersion: state.activeVersion, entry };
+  }
+
   function deleteEntry(bookId: string, entryId: string) {
     const book = getBook(bookId);
     if (!book) return;
@@ -240,6 +274,7 @@ export const useLettersStore = defineStore('letters', () => {
     data,
     deleteBook,
     deleteEntry,
+    deleteEntryVersion,
     deleteFailedDraft,
     ensureBook,
     failedDrafts,

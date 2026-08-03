@@ -7,7 +7,12 @@ import {
   type ForumThreadVersion,
   ForumScopeDataSchema,
 } from '@/type/forum';
-import { createContentVersion, ensureContentVersions, resolveContentVersion } from '@/util/contentVersions';
+import {
+  createContentVersion,
+  ensureContentVersions,
+  removeContentVersion,
+  resolveContentVersion,
+} from '@/util/contentVersions';
 import { validateInplace } from '@/util/zod';
 
 export const forumField = 'sillytavern_phone_forum';
@@ -45,8 +50,10 @@ export const useForumStore = defineStore('forum', () => {
     return getBoard(boardId)?.threads.find(thread => thread.id === threadId) ?? null;
   }
 
-  function getReply(boardId: string, threadId: string, replyId: string) {
-    return getThread(boardId, threadId)?.replies.find(reply => reply.id === replyId) ?? null;
+  function getReply(boardId: string, threadId: string, replyId: string, versionId = '') {
+    const thread = getThread(boardId, threadId);
+    const version = versionId ? thread?.versions.find(item => item.id === versionId) : null;
+    return (version?.replies || thread?.replies || []).find(reply => reply.id === replyId) ?? null;
   }
 
   function findBoardByName(name: string) {
@@ -94,7 +101,8 @@ export const useForumStore = defineStore('forum', () => {
 
   function createThread(
     boardId: string,
-    input: Pick<ForumThread, 'title' | 'author' | 'content'> & Partial<Pick<ForumThread, 'favorite'>>,
+    input: Pick<ForumThread, 'title' | 'author' | 'content'> &
+      Partial<Pick<ForumThread, 'favorite' | 'generationReplay' | 'replies'>>,
   ) {
     const board = getBoard(boardId);
     if (!board) return null;
@@ -106,7 +114,8 @@ export const useForumStore = defineStore('forum', () => {
       author: input.author.trim() || '匿名',
       content: input.content.trim(),
       favorite: Boolean(input.favorite),
-      replies: [],
+      replies: (input.replies || []).map(reply => ({ ...reply })),
+      generationReplay: input.generationReplay,
       activeVersionId: '',
       versions: [],
       createdAt: timestamp,
@@ -139,7 +148,8 @@ export const useForumStore = defineStore('forum', () => {
   function appendThreadVersion(
     boardId: string,
     threadId: string,
-    input: Pick<ForumThreadVersion, 'title' | 'author' | 'content'>,
+    input: Pick<ForumThreadVersion, 'title' | 'author' | 'content'> &
+      Partial<Pick<ForumThreadVersion, 'generationReplay' | 'replies'>>,
   ) {
     const board = getBoard(boardId);
     const thread = getThread(boardId, threadId);
@@ -147,12 +157,21 @@ export const useForumStore = defineStore('forum', () => {
     const state = ensureContentVersions<ForumThreadVersion>(
       thread.versions,
       thread.activeVersionId,
-      () => ({ author: thread.author, content: thread.content, createdAt: thread.createdAt, title: thread.title }),
+      () => ({
+        author: thread.author,
+        content: thread.content,
+        createdAt: thread.createdAt,
+        generationReplay: thread.generationReplay,
+        replies: thread.replies.map(reply => ({ ...reply })),
+        title: thread.title,
+      }),
       'forum_thread_version',
     );
     const version = createContentVersion<ForumThreadVersion>('forum_thread_version', {
       author: input.author.trim() || thread.author,
       content: input.content.trim(),
+      generationReplay: input.generationReplay,
+      replies: (input.replies || thread.replies).map(reply => ({ ...reply })),
       title: input.title.trim() || thread.title,
     });
     thread.versions = [...state.versions, version];
@@ -170,6 +189,8 @@ export const useForumStore = defineStore('forum', () => {
     thread.author = version.author;
     thread.title = version.title;
     thread.content = version.content;
+    thread.generationReplay = version.generationReplay;
+    thread.replies = version.replies.map(reply => ({ ...reply }));
     thread.updatedAt = timestamp;
     board.updatedAt = timestamp;
     return thread;
@@ -199,6 +220,25 @@ export const useForumStore = defineStore('forum', () => {
     return thread;
   }
 
+  function deleteThreadVersion(boardId: string, threadId: string, versionId: string) {
+    const board = getBoard(boardId);
+    const thread = getThread(boardId, threadId);
+    if (!board || !thread) return null;
+    const state = removeContentVersion(thread.versions, thread.activeVersionId, versionId);
+    if (!state) return null;
+    const timestamp = nowIso();
+    thread.versions = state.versions;
+    thread.activeVersionId = state.activeVersionId;
+    thread.author = state.activeVersion.author;
+    thread.title = state.activeVersion.title;
+    thread.content = state.activeVersion.content;
+    thread.generationReplay = state.activeVersion.generationReplay;
+    thread.replies = state.activeVersion.replies.map(reply => ({ ...reply }));
+    thread.updatedAt = timestamp;
+    board.updatedAt = timestamp;
+    return { activeVersion: state.activeVersion, thread };
+  }
+
   function deleteThread(boardId: string, threadId: string) {
     const board = getBoard(boardId);
     if (!board) return;
@@ -219,6 +259,7 @@ export const useForumStore = defineStore('forum', () => {
     boardId: string,
     threadId: string,
     input: Pick<ForumReply, 'author' | 'content'> & Partial<Pick<ForumReply, 'parentReplyId' | 'source'>>,
+    versionId = '',
   ) {
     const board = getBoard(boardId);
     const thread = getThread(boardId, threadId);
@@ -233,9 +274,19 @@ export const useForumStore = defineStore('forum', () => {
       createdAt: timestamp,
       updatedAt: timestamp,
     };
-    thread.replies = [...thread.replies, reply];
-    thread.updatedAt = timestamp;
-    board.updatedAt = timestamp;
+    const version = versionId ? thread.versions.find(item => item.id === versionId) : null;
+    if (version) {
+      version.replies = [...version.replies, reply];
+      if (version.id === thread.activeVersionId) thread.replies = version.replies.map(item => ({ ...item }));
+    } else {
+      thread.replies = [...thread.replies, reply];
+      const activeVersion = thread.versions.find(item => item.id === thread.activeVersionId);
+      if (activeVersion) activeVersion.replies = thread.replies.map(item => ({ ...item }));
+    }
+    if (!version || version.id === thread.activeVersionId) {
+      thread.updatedAt = timestamp;
+      board.updatedAt = timestamp;
+    }
     return reply;
   }
 
@@ -243,10 +294,11 @@ export const useForumStore = defineStore('forum', () => {
     boardId: string,
     threadId: string,
     replies: Array<Pick<ForumReply, 'author' | 'content'> & Partial<Pick<ForumReply, 'parentReplyId' | 'source'>>>,
+    versionId = '',
   ) {
     const createdReplies: ForumReply[] = [];
     replies.forEach(reply => {
-      const created = createReply(boardId, threadId, reply);
+      const created = createReply(boardId, threadId, reply, versionId);
       if (created) createdReplies.push(created);
     });
     return createdReplies;
@@ -257,30 +309,49 @@ export const useForumStore = defineStore('forum', () => {
     threadId: string,
     replyId: string,
     input: Pick<ForumReply, 'author' | 'content'> & Partial<Pick<ForumReply, 'parentReplyId'>>,
+    versionId = '',
   ) {
     const board = getBoard(boardId);
     const thread = getThread(boardId, threadId);
-    const reply = getReply(boardId, threadId, replyId);
+    const reply = getReply(boardId, threadId, replyId, versionId);
     if (!board || !thread || !reply) return null;
     const timestamp = nowIso();
     reply.author = input.author.trim() || reply.author;
     reply.content = input.content.trim();
     reply.parentReplyId = input.parentReplyId?.trim() || undefined;
     reply.updatedAt = timestamp;
-    thread.updatedAt = timestamp;
-    board.updatedAt = timestamp;
+    const version = versionId ? thread.versions.find(item => item.id === versionId) : null;
+    if (version?.id === thread.activeVersionId) thread.replies = version.replies.map(item => ({ ...item }));
+    if (!version || version.id === thread.activeVersionId) {
+      const activeVersion = thread.versions.find(item => item.id === thread.activeVersionId);
+      if (!version && activeVersion) activeVersion.replies = thread.replies.map(item => ({ ...item }));
+      thread.updatedAt = timestamp;
+      board.updatedAt = timestamp;
+    }
     return reply;
   }
 
-  function deleteReply(boardId: string, threadId: string, replyId: string) {
+  function deleteReply(boardId: string, threadId: string, replyId: string, versionId = '') {
     const board = getBoard(boardId);
     const thread = getThread(boardId, threadId);
     if (!board || !thread) return;
-    thread.replies = thread.replies
+    const version = versionId ? thread.versions.find(item => item.id === versionId) : null;
+    const replies = version?.replies || thread.replies;
+    const nextReplies = replies
       .filter(reply => reply.id !== replyId)
       .map(reply => (reply.parentReplyId === replyId ? { ...reply, parentReplyId: undefined } : reply));
-    thread.updatedAt = nowIso();
-    board.updatedAt = thread.updatedAt;
+    if (version) {
+      version.replies = nextReplies;
+      if (version.id === thread.activeVersionId) thread.replies = nextReplies.map(reply => ({ ...reply }));
+    } else {
+      thread.replies = nextReplies;
+      const activeVersion = thread.versions.find(item => item.id === thread.activeVersionId);
+      if (activeVersion) activeVersion.replies = nextReplies.map(reply => ({ ...reply }));
+    }
+    if (!version || version.id === thread.activeVersionId) {
+      thread.updatedAt = nowIso();
+      board.updatedAt = thread.updatedAt;
+    }
   }
 
   return {
@@ -297,6 +368,7 @@ export const useForumStore = defineStore('forum', () => {
     deleteFailedDraft,
     deleteReply,
     deleteThread,
+    deleteThreadVersion,
     ensureBoard,
     failedDrafts,
     findBoardByName,

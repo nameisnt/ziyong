@@ -25,6 +25,7 @@ export function useExtrasGenerationState() {
       generationRecord?: ExtraChapterGenerationRecord;
       mode: ExtraChapterGenerationMode;
       raw: string;
+      targetVersionId: string;
       title: string;
       warnings: string[];
     },
