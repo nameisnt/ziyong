@@ -14,7 +14,7 @@
         </div>
         <button class="pc-primary-btn compact" type="button" @click="openComfyGenerate">
           <i class="fa-solid fa-wand-magic-sparkles"></i>
-          <span>{{ t`AI` }}</span>
+          <span>{{ t`AI 填参` }}</span>
         </button>
       </div>
 

@@ -1670,13 +1670,16 @@ function formatBookMeta(count: number) {
 }
 
 .pc-summary-root-actions {
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-columns: repeat(3, minmax(0, 1fr));
 }
 
 .pc-summary-root-actions .pc-soft-btn,
 .pc-summary-root-actions .pc-primary-btn {
   width: 100%;
+  min-inline-size: 0;
   justify-content: center;
+  padding-inline: 8px;
+  white-space: nowrap;
 }
 
 .pc-hero-actions {

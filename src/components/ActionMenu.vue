@@ -1,0 +1,113 @@
+<template>
+  <details ref="menu" class="pc-action-menu">
+    <summary class="pc-soft-btn compact" :aria-label="label">
+      <i :class="icon"></i>
+      <span>{{ label }}</span>
+      <i class="fa-solid fa-chevron-down pc-action-menu-chevron"></i>
+    </summary>
+    <div class="pc-action-menu-panel" @click="closeAfterAction">
+      <slot />
+    </div>
+  </details>
+</template>
+
+<script setup lang="ts">
+import { onBeforeUnmount, onMounted, ref } from 'vue';
+
+withDefaults(
+  defineProps<{
+    icon?: string;
+    label: string;
+  }>(),
+  {
+    icon: 'fa-solid fa-ellipsis',
+  },
+);
+
+const menu = ref<HTMLDetailsElement>();
+
+function closeAfterAction(event: MouseEvent) {
+  const button = (event.target as HTMLElement).closest('button');
+  if (button && !button.disabled && menu.value) menu.value.open = false;
+}
+
+function closeFromOutside(event: PointerEvent) {
+  const target = event.target;
+  if (menu.value?.open && target instanceof Node && !menu.value.contains(target)) menu.value.open = false;
+}
+
+onMounted(() => document.addEventListener('pointerdown', closeFromOutside));
+onBeforeUnmount(() => document.removeEventListener('pointerdown', closeFromOutside));
+</script>
+
+<style scoped>
+.pc-action-menu {
+  position: relative;
+  z-index: 4;
+  flex: 0 0 auto;
+}
+
+.pc-action-menu > summary {
+  list-style: none;
+  white-space: nowrap;
+}
+
+.pc-action-menu > summary::-webkit-details-marker {
+  display: none;
+}
+
+.pc-action-menu-chevron {
+  font-size: 10px;
+  transition: transform 0.16s ease;
+}
+
+.pc-action-menu[open] .pc-action-menu-chevron {
+  transform: rotate(180deg);
+}
+
+.pc-action-menu-panel {
+  position: absolute;
+  top: calc(100% + 8px);
+  right: 0;
+  z-index: 5;
+  display: grid;
+  width: max-content;
+  min-width: 156px;
+  gap: 4px;
+  padding: 6px;
+  border: 1px solid var(--pc-border);
+  border-radius: var(--pc-control-radius);
+  background: var(--pc-surface);
+  box-shadow: 0 12px 28px color-mix(in srgb, var(--pc-text) 18%, transparent 82%);
+}
+
+.pc-action-menu-panel :deep(button) {
+  /* ui-reuse-allow: menu rows are option items, not standalone action buttons. */
+  display: flex;
+  min-height: 38px;
+  align-items: center;
+  gap: 10px;
+  border: 0;
+  border-radius: calc(var(--pc-control-radius) - 4px);
+  padding: 0 12px;
+  background: transparent;
+  color: var(--pc-text);
+  cursor: pointer;
+  font-weight: 750;
+  text-align: left;
+  white-space: nowrap;
+}
+
+.pc-action-menu-panel :deep(button:hover) {
+  background: var(--pc-soft-button-bg);
+}
+
+.pc-action-menu-panel :deep(button:disabled) {
+  cursor: default;
+  opacity: 0.45;
+}
+
+.pc-action-menu-panel :deep(button.danger) {
+  color: var(--pc-danger);
+}
+</style>

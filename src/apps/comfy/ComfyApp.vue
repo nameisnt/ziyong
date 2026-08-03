@@ -43,32 +43,24 @@
         <div class="pc-section-head">
           <strong>{{ t`工作流库` }}</strong>
           <div class="pc-comfy-actions">
-            <button class="pc-icon-btn" type="button" :title="t`新建`" :aria-label="t`新建`" @click="newWorkflow">
+            <button class="pc-primary-btn compact" type="button" @click="newWorkflow">
               <i class="fa-solid fa-plus"></i>
+              <span>{{ t`新建工作流` }}</span>
             </button>
-            <button class="pc-icon-btn" type="button" :title="t`导入`" :aria-label="t`导入`" @click="triggerImport">
-              <i class="fa-solid fa-file-import"></i>
-            </button>
-            <button
-              class="pc-icon-btn"
-              type="button"
-              :title="t`复制`"
-              :aria-label="t`复制`"
-              :disabled="!activeWorkflow"
-              @click="duplicateWorkflow"
-            >
-              <i class="fa-solid fa-copy"></i>
-            </button>
-            <button
-              class="pc-icon-btn danger"
-              type="button"
-              :title="t`删除`"
-              :aria-label="t`删除`"
-              :disabled="!activeWorkflow"
-              @click="deleteWorkflow"
-            >
-              <i class="fa-solid fa-trash"></i>
-            </button>
+            <ActionMenu :label="t`管理`" icon="fa-solid fa-sliders">
+              <button type="button" @click="triggerImport">
+                <i class="fa-solid fa-file-import"></i>
+                <span>{{ t`导入工作流` }}</span>
+              </button>
+              <button type="button" :disabled="!activeWorkflow" @click="duplicateWorkflow">
+                <i class="fa-solid fa-copy"></i>
+                <span>{{ t`复制当前工作流` }}</span>
+              </button>
+              <button class="danger" type="button" :disabled="!activeWorkflow" @click="deleteWorkflow">
+                <i class="fa-solid fa-trash"></i>
+                <span>{{ t`删除当前工作流` }}</span>
+              </button>
+            </ActionMenu>
           </div>
         </div>
         <label class="pc-field-group pc-inline-field">
@@ -306,6 +298,8 @@
 </template>
 
 <script setup lang="ts">
+import ActionMenu from '@/components/ActionMenu.vue';
+
 import {
   useComfyStore,
   type ComfyWorkflowInput,
@@ -810,8 +804,8 @@ function setParameterMode(item: ComfyWorkflowInput, mode: ParameterMode) {
 .pc-comfy-actions {
   display: flex;
   flex-wrap: wrap;
-  flex: 1 1 auto;
-  justify-content: center;
+  flex: 0 0 auto;
+  justify-content: flex-end;
   gap: 6px;
 }
 

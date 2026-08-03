@@ -2,39 +2,57 @@
   <section class="pc-profiles-app">
     <section v-if="route.page === 'root'" class="pc-profiles-page">
       <section class="pc-profiles-toolbar">
-        <div class="pc-profile-table-switcher">
-          <i :class="['fa-solid', profileKindIcon(selectedTable?.kind || 'note')]"></i>
-          <select v-model="selectedTableId" class="pc-field pc-select" :aria-label="t`当前资料表`">
-            <option v-for="table in tables" :key="table.id" :value="table.id">
-              {{ table.name }} · {{ tableEntryCount(table.id) }}
-            </option>
-          </select>
+        <div class="pc-profile-context-row">
+          <div class="pc-profile-table-switcher">
+            <i :class="['fa-solid', profileKindIcon(selectedTable?.kind || 'note')]"></i>
+            <SearchableCombobox
+              v-model="selectedTableId"
+              :input-label="t`当前资料表`"
+              :menu-max-height="260"
+              :options="profileTableOptions"
+              :placeholder="t`选择或搜索资料表`"
+              :toggle-title="t`展开资料表`"
+            />
+          </div>
+          <button class="pc-icon-btn" type="button" :title="t`管理资料表`" @click="openTableManager">
+            <i class="fa-solid fa-gear"></i>
+          </button>
         </div>
         <label class="pc-search-field">
           <i class="fa-solid fa-magnifying-glass"></i>
           <input v-model="query" type="search" :placeholder="t`搜索当前表`" />
         </label>
-        <div class="pc-profiles-toolbar-actions">
-          <button
-            class="pc-icon-btn"
-            type="button"
-            :title="profileViewMode === 'list' ? t`切换为表格显示` : t`切换为列表显示`"
-            @click="profileViewMode = profileViewMode === 'list' ? 'table' : 'list'"
-          >
-            <i :class="['fa-solid', profileViewMode === 'list' ? 'fa-table-columns' : 'fa-list']"></i>
-          </button>
-          <button class="pc-icon-btn" type="button" :title="t`管理资料表`" @click="openTableManager">
-            <i class="fa-solid fa-table-columns"></i>
-          </button>
-          <button class="pc-icon-btn" type="button" :title="t`新建资料表`" @click="createTable">
-            <i class="fa-solid fa-table-cells-large"></i>
-          </button>
-          <button class="pc-icon-btn" type="button" :title="t`新增条目`" @click="openEditor()">
-            <i class="fa-solid fa-plus"></i>
-          </button>
-          <button class="pc-icon-btn primary" type="button" :title="t`AI 生成资料`" @click="openGenerate">
-            <i class="fa-solid fa-wand-magic-sparkles"></i>
-          </button>
+        <div v-if="tableEntries.length" class="pc-profiles-toolbar-bottom">
+          <span class="pc-segment pc-profile-view-toggle" role="group" :aria-label="t`资料显示方式`">
+            <button
+              :class="['pc-segment-btn', { active: profileViewMode === 'list' }]"
+              type="button"
+              :title="t`列表显示`"
+              :aria-label="t`列表显示`"
+              @click="profileViewMode = 'list'"
+            >
+              <i class="fa-solid fa-list"></i>
+            </button>
+            <button
+              :class="['pc-segment-btn', { active: profileViewMode === 'table' }]"
+              type="button"
+              :title="t`表格显示`"
+              :aria-label="t`表格显示`"
+              @click="profileViewMode = 'table'"
+            >
+              <i class="fa-solid fa-table"></i>
+            </button>
+          </span>
+          <div class="pc-profile-primary-actions">
+            <button class="pc-soft-btn compact" type="button" @click="openEditor()">
+              <i class="fa-solid fa-plus"></i>
+              <span>{{ t`新增` }}</span>
+            </button>
+            <button class="pc-primary-btn compact" type="button" @click="openGenerate">
+              <i class="fa-solid fa-wand-magic-sparkles"></i>
+              <span>{{ t`AI 生成` }}</span>
+            </button>
+          </div>
         </div>
       </section>
 
@@ -63,7 +81,13 @@
       </section>
 
       <section v-else-if="selectedTable" class="pc-profile-table-wrap" :aria-label="selectedTable.name">
-        <div class="pc-profile-table" :style="{ '--pc-profile-column-count': String(visibleTableColumns.length) }">
+        <div
+          class="pc-profile-table"
+          :style="{
+            '--pc-profile-grid-template': profileTableGridTemplate,
+            '--pc-profile-table-min-width': `${profileTableMinWidth}px`,
+          }"
+        >
           <div class="pc-profile-table-header" role="row">
             <span v-for="column in visibleTableColumns" :key="column.id" role="columnheader">{{ column.label }}</span>
           </div>
@@ -97,8 +121,23 @@
       </section>
       <EmptyState
         v-if="!filteredEntries.length"
+        class="pc-profile-empty"
         :title="tableEntries.length ? t`没有匹配的资料` : t`当前表还没有条目`"
-      />
+      >
+        <div v-if="!tableEntries.length" class="pc-profile-empty-actions">
+          <button class="pc-soft-btn compact" type="button" @click="openEditor()">
+            <i class="fa-solid fa-plus"></i>
+            <span>{{ t`新增条目` }}</span>
+          </button>
+          <button class="pc-primary-btn compact" type="button" @click="openGenerate">
+            <i class="fa-solid fa-wand-magic-sparkles"></i>
+            <span>{{ t`AI 生成` }}</span>
+          </button>
+        </div>
+        <button v-else class="pc-soft-btn compact pc-profile-clear-search" type="button" @click="query = ''">
+          {{ t`清除搜索` }}
+        </button>
+      </EmptyState>
 
       <FailedDraftList
         :drafts="failedDrafts"
@@ -511,6 +550,7 @@ import GenerationPanel from '@/components/GenerationPanel.vue';
 import GenerationPreviewPanel from '@/components/GenerationPreviewPanel.vue';
 import PreviewDraftNotice from '@/components/PreviewDraftNotice.vue';
 import RawOutputEditor from '@/components/RawOutputEditor.vue';
+import SearchableCombobox from '@/components/SearchableCombobox.vue';
 import { getRegisteredPhoneGenerationAdapter } from '@/core/appRegistry';
 import { captureGenerationPrompt, generateContent } from '@/core/generationService';
 import { usePhoneStore } from '@/store/phone';
@@ -668,6 +708,20 @@ const visibleTableColumns = computed(() => {
         },
       ];
 });
+const profileTableOptions = computed(() =>
+  tables.value.map(table => ({
+    group: table.builtIn ? '内置资料表' : '自定义资料表',
+    label: `${table.name} · ${tableEntryCount(table.id)} 条`,
+    value: table.id,
+  })),
+);
+const profileTableGridTemplate = computed(() => {
+  const trailingColumns = Math.max(0, visibleTableColumns.value.length - 1);
+  return trailingColumns ? `minmax(128px, 1.25fr) repeat(${trailingColumns}, minmax(110px, 1fr))` : 'minmax(0, 1fr)';
+});
+const profileTableMinWidth = computed(() =>
+  visibleTableColumns.value.length > 1 ? 128 + (visibleTableColumns.value.length - 1) * 110 : 0,
+);
 const editableDraftColumns = computed(() => {
   const table = profiles.getTable(draft.tableId);
   return table?.columns.filter(column => !isCoreColumn(column.id)) ?? [];
@@ -733,6 +787,10 @@ watch(
   },
   { immediate: true },
 );
+
+watch(selectedTableId, (nextTableId, previousTableId) => {
+  if (previousTableId && nextTableId !== previousTableId) query.value = '';
+});
 
 watch(
   () => [route.value.appId, route.value.page, route.value.params?.tableId] as const,
@@ -969,6 +1027,10 @@ function openProfilesBaguScan() {
 }
 
 function openGenerate() {
+  if (selectedTable.value) {
+    generationDraft.tableId = selectedTable.value.id;
+    syncGenerationTable();
+  }
   phone.pushPage('generate', 'AI 资料');
 }
 
@@ -1331,9 +1393,16 @@ function stopGeneration() {
 
 .pc-profiles-toolbar {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
   gap: 10px;
   padding: 10px;
+}
+
+.pc-profile-context-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
 }
 
 .pc-profile-table-switcher {
@@ -1354,21 +1423,43 @@ function stopGeneration() {
   color: var(--pc-theme-accent);
 }
 
-.pc-profiles-toolbar > .pc-search-field {
-  grid-column: 1;
+.pc-profile-table-switcher :deep(.pc-combobox) {
+  min-width: 0;
 }
 
-.pc-profiles-toolbar-actions {
+.pc-profiles-toolbar > .pc-search-field {
+  width: 100%;
+}
+
+.pc-profiles-toolbar-bottom {
   display: flex;
-  gap: 8px;
-  grid-column: 2;
-  grid-row: 1 / span 2;
   align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.pc-profile-view-toggle {
+  flex: 0 0 auto;
+}
+
+.pc-profile-view-toggle .pc-segment-btn {
+  width: 40px;
+  min-width: 40px;
+  padding-inline: 0;
+}
+
+.pc-profile-primary-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+  min-width: 0;
 }
 
 .pc-profile-table-wrap {
   min-width: 0;
-  overflow: hidden;
+  overflow-x: auto;
+  overflow-y: hidden;
 }
 
 .pc-profile-list {
@@ -1453,13 +1544,14 @@ function stopGeneration() {
 
 .pc-profile-table {
   display: grid;
-  min-width: 0;
+  width: max(100%, var(--pc-profile-table-min-width, 0px));
+  min-width: var(--pc-profile-table-min-width, 0px);
 }
 
 .pc-profile-table-header,
 .pc-profile-table-row {
   display: grid;
-  grid-template-columns: repeat(var(--pc-profile-column-count), minmax(0, 1fr));
+  grid-template-columns: var(--pc-profile-grid-template, minmax(0, 1fr));
   min-width: 0;
 }
 
@@ -1549,6 +1641,18 @@ function stopGeneration() {
   text-overflow: ellipsis;
   vertical-align: middle;
   white-space: nowrap;
+}
+
+.pc-profile-empty-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.pc-profile-clear-search {
+  margin-top: 12px;
 }
 
 .pc-profile-table-manager,

@@ -7,17 +7,23 @@
           <h2>{{ t`条目库` }}</h2>
         </div>
         <div class="pc-entry-library-head-actions">
-          <button class="pc-icon-btn" type="button" :title="t`导入导出`" @click="openTransfer">
-            <i class="fa-solid fa-arrow-right-arrow-left"></i>
-          </button>
-          <button class="pc-icon-btn" type="button" :title="t`查重`" @click="openDedupe">
-            <i class="fa-solid fa-clone"></i>
-          </button>
-          <button class="pc-icon-btn" type="button" :title="t`分组绑定`" @click="openBindings">
-            <i class="fa-solid fa-link"></i>
-          </button>
-          <button class="pc-icon-btn active" type="button" :title="t`收藏条目`" @click="openCollect">
+          <ActionMenu :label="t`工具`" icon="fa-solid fa-screwdriver-wrench">
+            <button type="button" @click="openTransfer">
+              <i class="fa-solid fa-arrow-right-arrow-left"></i>
+              <span>{{ t`导入导出` }}</span>
+            </button>
+            <button type="button" @click="openDedupe">
+              <i class="fa-solid fa-clone"></i>
+              <span>{{ t`收藏查重` }}</span>
+            </button>
+            <button type="button" @click="openBindings">
+              <i class="fa-solid fa-link"></i>
+              <span>{{ t`分组绑定` }}</span>
+            </button>
+          </ActionMenu>
+          <button class="pc-primary-btn compact" type="button" @click="openCollect">
             <i class="fa-solid fa-plus"></i>
+            <span>{{ t`收藏` }}</span>
           </button>
         </div>
       </header>
@@ -401,6 +407,7 @@
 </template>
 
 <script setup lang="ts">
+import ActionMenu from '@/components/ActionMenu.vue';
 import EmptyState from '@/components/EmptyState.vue';
 import { isCollectablePresetPrompt } from './api';
 import { ENTRY_LIBRARY_CONTENT_PLACEHOLDER, useEntryLibraryStore, type DuplicateEntryPair } from './store';
@@ -1070,6 +1077,10 @@ onBeforeUnmount(() => {
 .pc-entry-library-head h2 {
   margin: 3px 0 0;
   font-size: 19px;
+}
+
+.pc-entry-library-head-actions {
+  flex: 0 0 auto;
 }
 
 .pc-entry-transfer-card {

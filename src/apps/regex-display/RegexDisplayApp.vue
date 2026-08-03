@@ -12,7 +12,7 @@
           {{ `${rules.length} 条规则，${readerExtractRuleCount} 条正文抽取，${readerCleanupRuleCount} 条正文清理` }}
         </p>
       </div>
-      <button class="pc-soft-btn compact" type="button" @click="addNewRule">
+      <button class="pc-soft-btn compact pc-regex-add-btn" type="button" @click="addNewRule">
         <i class="fa-solid fa-plus"></i>
         <span>{{ t`新增` }}</span>
       </button>
@@ -348,6 +348,11 @@ async function deleteActiveRule() {
 
 .pc-soft-btn.compact {
   margin-top: 0;
+}
+
+.pc-regex-add-btn {
+  flex: 0 0 auto;
+  white-space: nowrap;
 }
 
 .pc-error-list {

@@ -11,6 +11,7 @@ export {}
 /* prettier-ignore */
 declare module 'vue' {
   export interface GlobalComponents {
+    ActionMenu: typeof import('./src/components/ActionMenu.vue')['default']
     BaguApp: typeof import('./src/components/BaguApp.vue')['default']
     BaguScanPanel: typeof import('./src/components/BaguScanPanel.vue')['default']
     BookShelf: typeof import('./src/components/BookShelf.vue')['default']

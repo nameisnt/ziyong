@@ -392,6 +392,7 @@ const scenarios: VisualScenarioName[] = [
   'cloud-media-generate',
   'cloud-media-settings',
   'mvu-modifier-tree',
+  'entry-library-action-menu',
   'entry-library-bindings',
   'entry-library-collect-manual-dedupe',
   'entry-library-collect-worldbook',
@@ -401,6 +402,7 @@ const scenarios: VisualScenarioName[] = [
   'world-slots-entry-library',
   'world-slots-root-cleanup',
   'worldbook-link-legacy-entry',
+  'comfy-action-menu',
   'preset-link-auto-reload',
   'preset-link-history',
   'forum-generate-thread',
@@ -452,6 +454,8 @@ const scenarios: VisualScenarioName[] = [
   'workbench-logs',
   'workbench-forum-step',
   'profiles-table',
+  'profiles-empty-toolbar',
+  'profiles-table-grid',
   'profiles-table-editor',
   'profiles-detail',
   'settings-connection-dark',
@@ -942,6 +946,14 @@ async function applyScenario(name: VisualScenarioName, options: { height?: numbe
     resetPhoneToRoute('cloud-media', 'generate', 'AI 云媒体');
   } else if (name === 'cloud-media-settings') {
     resetPhoneToRoute('cloud-media', 'settings', '云媒体配置');
+  } else if (name === 'entry-library-action-menu') {
+    resetPhoneToRoute('entry-library', 'root', '条目库');
+    await waitForPaint();
+    document.querySelector<HTMLDetailsElement>('.pc-entry-library-head .pc-action-menu')?.setAttribute('open', '');
+  } else if (name === 'comfy-action-menu') {
+    resetPhoneToRoute('comfy', 'root', 'ComfyUI');
+    await waitForPaint();
+    document.querySelector<HTMLDetailsElement>('.pc-comfy-actions .pc-action-menu')?.setAttribute('open', '');
   } else if (name === 'entry-library-collect-worldbook') {
     useSettingsStore().setTheme('light');
     const library = useEntryLibraryStore();
@@ -2276,7 +2288,24 @@ async function applyScenario(name: VisualScenarioName, options: { height?: numbe
     }
     typePromptArea.scrollIntoView({ block: 'center' });
     await waitForPaint();
-  } else if (name === 'profiles-table' || name === 'profiles-table-editor' || name === 'profiles-detail') {
+  } else if (name === 'profiles-empty-toolbar') {
+    const profiles = useProfilesStore();
+    profiles.resetCurrentScope();
+    resetPhoneToRoute('profiles', 'root', '资料表');
+    await waitForPaint();
+    document.querySelector<HTMLInputElement>('.pc-profile-table-switcher .pc-combobox-input')?.click();
+    await waitForPaint();
+    const toolbar = document.querySelector<HTMLElement>('.pc-profiles-toolbar');
+    const menu = document.querySelector<HTMLElement>('.pc-profile-table-switcher .pc-combobox-menu');
+    if (!toolbar || !menu || menu.scrollHeight <= menu.clientHeight) {
+      throw new Error('Profiles searchable table menu is missing or does not keep its own scroll area');
+    }
+  } else if (
+    name === 'profiles-table' ||
+    name === 'profiles-table-grid' ||
+    name === 'profiles-table-editor' ||
+    name === 'profiles-detail'
+  ) {
     const { firstEntry, table } = createProfilesFixture();
     resetPhoneToRoute(
       'profiles',
@@ -2288,6 +2317,14 @@ async function applyScenario(name: VisualScenarioName, options: { height?: numbe
           ? { entryId: firstEntry.id }
           : undefined,
     );
+    if (name === 'profiles-table-grid') {
+      await waitForPaint();
+      document.querySelectorAll<HTMLButtonElement>('.pc-profile-view-toggle .pc-segment-btn')[1]?.click();
+      await waitForPaint();
+      if (!document.querySelector('.pc-profile-table-header')) {
+        throw new Error('Profiles table view did not render after switching modes');
+      }
+    }
   } else if (name === 'reader-catalog') {
     const reader = useReaderStore();
     reader.resetAllCaches();
