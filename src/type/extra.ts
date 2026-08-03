@@ -1,5 +1,6 @@
 import { FailedGenerationDraftSchema } from '@/type/generation';
 import { GenerationSourceModeSchema } from '@/type/settings';
+import { ContentVersionBaseSchema } from '@/type/contentVersion';
 
 export const ExtraChapterGenerationReferenceSchema = z.object({
   content: z.string(),
@@ -31,12 +32,19 @@ export const ExtraChapterGenerationRecordSchema = z.object({
 });
 export type ExtraChapterGenerationRecord = z.infer<typeof ExtraChapterGenerationRecordSchema>;
 
+export const ExtraChapterVersionSchema = ContentVersionBaseSchema.extend({
+  generationRecord: ExtraChapterGenerationRecordSchema.optional(),
+});
+export type ExtraChapterVersion = z.infer<typeof ExtraChapterVersionSchema>;
+
 export const ExtraChapterSchema = z.object({
   id: z.string(),
   title: z.string(),
   content: z.string(),
   favorite: z.boolean().default(false),
   chapterNumber: z.number().int().positive(),
+  activeVersionId: z.string().default(''),
+  versions: z.array(ExtraChapterVersionSchema).default([]),
   generationRecords: z.array(ExtraChapterGenerationRecordSchema).default([]),
   createdAt: z.string(),
   updatedAt: z.string(),

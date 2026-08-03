@@ -231,6 +231,16 @@ export function createForumReplyPromptDefinition(): PhonePromptDefinition {
   };
 }
 
+export function createForumRewritePromptDefinition(): PhonePromptDefinition {
+  return {
+    key: 'forumRewrite',
+    label: '重写论坛主帖',
+    defaultPrompt:
+      '请重写当前论坛主帖，保留帖子讨论的核心事实和板块风格，重新组织标题、主楼表达与节奏。不要生成或改写任何回复。',
+    outputFormats: createForumPromptDefinition().outputFormats?.filter(item => item.label === '论坛帖子') ?? [],
+  };
+}
+
 export function createForumBoardTypePromptDomain(): PhoneTypePromptDomain {
   return {
     key: 'forum-board',
@@ -298,6 +308,16 @@ export function createTheaterPromptDefinition(): PhonePromptDefinition {
         { preserveContentMarkup: true },
       ),
     ],
+  };
+}
+
+export function createTheaterRewritePromptDefinition(): PhonePromptDefinition {
+  return {
+    key: 'theaterRewrite',
+    label: '重写小剧场',
+    defaultPrompt:
+      '请将当前小剧场重写为一份完整替代版本。保留人物核心性格、既定关系和本段主题，重新组织场景、节奏与表达，不要续写原文。',
+    outputFormats: createTheaterPromptDefinition().outputFormats,
   };
 }
 
@@ -393,5 +413,15 @@ export function createLettersPromptDefinition(): PhonePromptDefinition {
         ),
       ),
     ],
+  };
+}
+
+export function createLettersRewritePromptDefinition(): PhonePromptDefinition {
+  return {
+    key: 'lettersRewrite',
+    label: '重写书信',
+    defaultPrompt:
+      '请将当前信件重写为一份完整替代版本。保持发信人、收信人、事实背景和角色语气不变，重新组织措辞与情绪递进，不要写成回信或续写。',
+    outputFormats: createLettersPromptDefinition().outputFormats,
   };
 }

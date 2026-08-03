@@ -169,23 +169,30 @@
 
     <section v-else-if="route.page === 'entry' && activeEntry" class="pc-theater-page pc-theater-detail-page">
       <ReaderDetailShell
-        actions-class="six"
-        :content="activeEntry.content"
-        :custom-content="activeEntry.renderMode === 'frontend'"
+        actions-class="seven"
+        :content="viewedEntry.content"
+        :custom-content="viewedEntry.renderMode === 'frontend'"
         :favorite-active="activeEntry.favorite"
         :next-disabled="!nextEntryId"
         :previous-disabled="!previousEntryId"
-        :title="activeEntry.title"
+        :title="viewedEntry.title"
         @bagu="openTheaterBaguScan"
         @bottom="scrollToBottom"
         @catalog="showCatalogModal = true"
-        @edit="openEditEntry(activeEntry.id)"
+        @edit="openEditEntry(activeEntry.id, viewedEntryVersionId)"
         @favorite="theater.toggleFavorite(activeEntry.id)"
         @next="openEntry(nextEntryId || '', true)"
         @previous="openEntry(previousEntryId || '', true)"
         @top="scrollToTop"
       >
         <template #before-content>
+          <VersionNavigator
+            :active-version-id="activeEntry.activeVersionId"
+            :versions="activeEntry.versions"
+            :viewed-version-id="viewedEntryVersionId"
+            @adopt="adoptTheaterVersion"
+            @select="selectTheaterVersion"
+          />
           <div class="pc-entry-tags">
             <CapsuleTag
               compact
@@ -198,16 +205,21 @@
         </template>
         <template #content>
           <FrontendFrame
-            v-if="activeEntry.renderMode === 'frontend'"
+            v-if="viewedEntry.renderMode === 'frontend'"
             :active="isOpen"
-            :content="activeEntry.content"
+            :content="viewedEntry.content"
             :theme="settings.theme"
-            :title="activeEntry.title"
+            :title="viewedEntry.title"
             @navigate-blocked="handleFrameNavigateBlocked"
           />
         </template>
         <template #actions>
-          <button class="pc-soft-btn" type="button" :title="t`转为番外`" @click="openConvertToExtra(activeEntry.id)">
+          <button
+            class="pc-soft-btn"
+            type="button"
+            :title="t`转为番外`"
+            @click="openConvertToExtra(activeEntry.id, viewedEntryVersionId)"
+          >
             <i class="fa-solid fa-book-open"></i>
           </button>
           <button
@@ -217,6 +229,9 @@
             @click="openGenerate(activeEntry.typeId, activeEntry.id)"
           >
             <i class="fa-solid fa-wand-magic-sparkles"></i>
+          </button>
+          <button class="pc-soft-btn" type="button" :title="t`重写`" @click="openRewrite(activeEntry.id)">
+            <i class="fa-solid fa-rotate"></i>
           </button>
           <button class="pc-soft-btn danger" type="button" :title="t`删除`" @click="removeEntry(activeEntry.id)">
             <i class="fa-solid fa-trash"></i>
@@ -237,7 +252,7 @@
     <section v-else-if="route.page === 'convert-extra' && activeEntry" class="pc-theater-page">
       <div class="pc-editor-card">
         <span class="pc-kicker">{{ t`转为番外` }}</span>
-        <h2>{{ activeEntry.title }}</h2>
+        <h2>{{ viewedEntry.title }}</h2>
 
         <label class="pc-field-group">
           <span class="pc-field-label">{{ t`番外书名` }}</span>
@@ -267,7 +282,7 @@
           <span class="pc-field-label">
             {{ t`第一章正文` }}
             <InfoHint
-              v-if="activeEntry.renderMode === 'frontend'"
+              v-if="viewedEntry.renderMode === 'frontend'"
               :text="t`网页渲染内容已提取为可编辑文本，原小剧场不会改变。`"
             />
           </span>
@@ -291,12 +306,12 @@
     <section v-else-if="route.page === 'bagu-scan' && activeEntry" class="pc-theater-page">
       <div class="pc-detail-card">
         <div class="pc-detail-title-row">
-          <h2>{{ activeEntry.title }}</h2>
+          <h2>{{ viewedEntry.title }}</h2>
         </div>
         <BaguScanPanel
           auto-scan
           class="pc-detail-bagu-panel"
-          :content="activeEntry.content"
+          :content="viewedEntry.content"
           :apply-handler="applyTheaterBaguContent"
         />
       </div>
@@ -389,7 +404,7 @@
           :raw="generationState.preview.raw"
           raw-editable
           :reparse-handler="reparsePreviewRaw"
-          save-label="保存为条目"
+          :save-label="generationState.preview.mode === 'rewrite' ? '保存候选版本' : '保存为条目'"
           :source-label="generationState.preview.source.label"
           :text-provider-summary="generationState.preview.typeName"
           :title="generationState.preview.title"
@@ -494,6 +509,7 @@ import InfoHint from '@/components/InfoHint.vue';
 import PreviewDraftNotice from '@/components/PreviewDraftNotice.vue';
 import RawOutputEditor from '@/components/RawOutputEditor.vue';
 import ReaderDetailShell from '@/components/ReaderDetailShell.vue';
+import VersionNavigator from '@/components/VersionNavigator.vue';
 import SearchableCombobox from '@/components/SearchableCombobox.vue';
 import { getRegisteredPhoneGenerationAdapter } from '@/core/appRegistry';
 import { buildGenerationPreview, captureGenerationPrompt, generateContent } from '@/core/generationService';
@@ -512,6 +528,7 @@ import { parseTheaterXmlResult } from '@/util/generation';
 import { renderMarkdown } from '@/util/markdown';
 import { formatReaderContent } from '@/util/readerContent';
 import { formatGenerationReferences, type GenerationReferenceItem } from '@/util/references';
+import { resolveContentVersion } from '@/util/contentVersions';
 import { usePreviewDraftPersistence } from '@/util/previewDrafts';
 import { useInvalidRouteFallback } from '@/util/routeFallback';
 import { stopGenerationByIdSafe } from '@/util/runtime';
@@ -580,6 +597,8 @@ const generationState = reactive({
       label: string;
     };
     title: string;
+    mode: 'create' | 'rewrite';
+    targetEntryId: string;
     typeId?: string;
     typeName: string;
     warnings: string[];
@@ -628,6 +647,38 @@ const conversionTypeValue = computed(() => conversionDraft.typeId || conversionD
 const activeEntry = computed(() => {
   const entryId = route.value.params?.entryId;
   return entryId ? theater.getEntry(entryId) : null;
+});
+const viewedEntryVersion = computed(() => {
+  const entry = activeEntry.value;
+  if (!entry) return null;
+  return resolveContentVersion(entry.versions, entry.activeVersionId, route.value.params?.versionId);
+});
+const viewedEntryVersionId = computed(() => viewedEntryVersion.value?.id || activeEntry.value?.activeVersionId || '');
+const viewedEntry = computed(() => {
+  const entry = activeEntry.value;
+  const version = viewedEntryVersion.value;
+  return entry && version
+    ? { ...entry, content: version.content, renderMode: version.renderMode, title: version.title }
+    : entry;
+});
+const rewriteTargetEntry = computed(() => {
+  const entryId = route.value.params?.rewriteEntryId;
+  return entryId ? theater.getEntry(entryId) : null;
+});
+const rewriteTargetVersion = computed(() => {
+  const entry = rewriteTargetEntry.value;
+  if (!entry) return null;
+  return resolveContentVersion(entry.versions, entry.activeVersionId, route.value.params?.versionId);
+});
+const theaterGenerationMode = computed<'create' | 'rewrite'>(() => (rewriteTargetEntry.value ? 'rewrite' : 'create'));
+const theaterGenerationAppPrompt = computed(() =>
+  theaterGenerationMode.value === 'rewrite' ? appPrompts.value.theaterRewrite : appPrompts.value.theater,
+);
+const theaterExistingContent = computed(() => {
+  const entry = rewriteTargetEntry.value;
+  const version = rewriteTargetVersion.value;
+  if (!entry) return '';
+  return [`当前小剧场：${version?.title || entry.title}`, version?.content || entry.content].join('\n\n');
 });
 const detailEntries = computed(() =>
   [...entries.value].sort((left, right) => {
@@ -760,7 +811,10 @@ const generationPromptPreview = computed(() => {
     return buildGenerationPreview(
       theaterGenerationAdapter,
       {
-        appPrompt: appPrompts.value.theater,
+        appPrompt: theaterGenerationAppPrompt.value,
+        entryId: rewriteTargetEntry.value?.id || '',
+        existingContent: theaterExistingContent.value,
+        mode: theaterGenerationMode.value,
         outputFormat: buildOutputFormat(generationDraft.renderMode),
         renderMode: generationDraft.renderMode,
         typeId: generationDraft.typeId,
@@ -794,7 +848,10 @@ function captureTheaterPrompt() {
   return captureGenerationPrompt(
     theaterGenerationAdapter,
     {
-      appPrompt: appPrompts.value.theater,
+      appPrompt: theaterGenerationAppPrompt.value,
+      entryId: rewriteTargetEntry.value?.id || '',
+      existingContent: theaterExistingContent.value,
+      mode: theaterGenerationMode.value,
       outputFormat: buildOutputFormat(generationDraft.renderMode),
       renderMode: generationDraft.renderMode,
       typeId: generationDraft.typeId,
@@ -825,17 +882,21 @@ watch(
   (current, previous) => {
     if (current.appId !== 'theater') return;
     if (current.page === 'editor') {
-      draft.content = activeEntry.value?.content || '';
+      draft.content = viewedEntry.value?.content || '';
       draft.participants = participantsToText(activeEntry.value?.participants || []);
-      draft.renderMode = activeEntry.value?.renderMode || 'markdown';
-      draft.title = activeEntry.value?.title || '';
+      draft.renderMode = viewedEntry.value?.renderMode || 'markdown';
+      draft.title = viewedEntry.value?.title || '';
       draft.typeId = activeEntry.value?.typeId || '';
       draft.typeName = activeEntry.value?.typeName || '';
     }
 
     if (current.page === 'generate' && previous?.page !== 'preview') {
       const initialTypePrompt = prompts.getTypePrompt(current.params?.typeId || '');
-      const continuationEntry = current.params?.entryId ? theater.getEntry(current.params.entryId) : null;
+      const continuationEntry = current.params?.entryId
+        ? theater.getEntry(current.params.entryId)
+        : current.params?.rewriteEntryId
+          ? theater.getEntry(current.params.rewriteEntryId)
+          : null;
       const customTypeName =
         typeof current.params?.customTypeName === 'string' ? current.params.customTypeName.trim() : '';
       selectedReferences.value = [];
@@ -939,12 +1000,12 @@ function startCustomGenerationType() {
   generationDraft.renderMode = 'markdown';
 }
 
-function openEditEntry(entryId: string) {
-  phone.pushPage('editor', '编辑小剧场', { entryId });
+function openEditEntry(entryId: string, versionId?: string) {
+  phone.pushPage('editor', '编辑小剧场', { entryId, ...(versionId ? { versionId } : {}) });
 }
 
-function openConvertToExtra(entryId: string) {
-  phone.pushPage('convert-extra', '转为番外', { entryId });
+function openConvertToExtra(entryId: string, versionId?: string) {
+  phone.pushPage('convert-extra', '转为番外', { entryId, ...(versionId ? { versionId } : {}) });
 }
 
 function extractFrontendText(content: string) {
@@ -964,7 +1025,7 @@ function extractFrontendText(content: string) {
 }
 
 function fillConversionDraft() {
-  const entry = activeEntry.value;
+  const entry = viewedEntry.value;
   if (!entry) return;
   const matchedExtraType = extraTypePrompts.value.find(item => item.name === entry.typeName);
   conversionDraft.bookTitle = entry.title;
@@ -1020,10 +1081,11 @@ function openEntry(entryId: string, replaceCurrent = false) {
 }
 
 function openTheaterBaguScan() {
-  if (!activeEntry.value) return;
-  if (!canOpenBaguScan(activeEntry.value.content)) return;
+  if (!activeEntry.value || !viewedEntry.value) return;
+  if (!canOpenBaguScan(viewedEntry.value.content)) return;
   phone.pushPage('bagu-scan', '八股检测', {
     entryId: activeEntry.value.id,
+    ...(viewedEntryVersionId.value ? { versionId: viewedEntryVersionId.value } : {}),
   });
 }
 
@@ -1037,6 +1099,31 @@ function openGenerate(typeId?: string, entryId?: string) {
   if (typeId) params.typeId = typeId;
   if (entryId) params.entryId = entryId;
   phone.pushPage('generate', '小剧场配置', Object.keys(params).length ? params : undefined);
+}
+
+function openRewrite(entryId: string) {
+  const entry = theater.getEntry(entryId);
+  if (!entry) return;
+  phone.pushPage('generate', '重写小剧场', {
+    rewriteEntryId: entryId,
+    typeId: entry.typeId || '',
+    ...(viewedEntryVersionId.value ? { versionId: viewedEntryVersionId.value } : {}),
+  });
+}
+
+function selectTheaterVersion(versionId: string) {
+  if (!activeEntry.value) return;
+  const version = activeEntry.value.versions.find(item => item.id === versionId);
+  phone.replacePage('entry', version?.title || activeEntry.value.title, { entryId: activeEntry.value.id, versionId });
+  void nextTick(() => scrollToTop('auto'));
+}
+
+function adoptTheaterVersion(versionId: string) {
+  if (!activeEntry.value) return;
+  const entry = theater.activateEntryVersion(activeEntry.value.id, versionId);
+  if (!entry) return;
+  phone.replacePage('entry', entry.title, { entryId: entry.id, versionId });
+  toastr.success('已采用这个小剧场版本');
 }
 
 function openCustomGenerate() {
@@ -1097,9 +1184,26 @@ function submitEntry() {
   };
 
   if (editingEntry.value && route.value.params?.entryId) {
-    const entry = theater.updateEntry(route.value.params.entryId, input);
+    const versionId = route.value.params?.versionId;
+    const entry = versionId
+      ? theater.updateEntryVersion(route.value.params.entryId, versionId, {
+          content: input.content,
+          renderMode: input.renderMode,
+          title: input.title,
+        })
+      : theater.updateEntry(route.value.params.entryId, input);
     if (!entry) return;
-    phone.replacePage('entry', entry.title, { entryId: entry.id });
+    if (versionId) {
+      theater.updateEntryMetadata(entry.id, {
+        participants: input.participants,
+        typeId: input.typeId,
+        typeName: input.typeName,
+      });
+    }
+    phone.replacePage('entry', versionId ? draft.title : entry.title, {
+      entryId: entry.id,
+      ...(versionId ? { versionId } : {}),
+    });
     return;
   }
 
@@ -1108,15 +1212,19 @@ function submitEntry() {
 }
 
 function applyTheaterBaguContent(content: string) {
-  if (!activeEntry.value) return false;
-  const entry = theater.updateEntry(activeEntry.value.id, {
+  if (!activeEntry.value || !viewedEntry.value) return false;
+  const input = {
     content,
     participants: [...activeEntry.value.participants],
-    renderMode: activeEntry.value.renderMode,
-    title: activeEntry.value.title,
+    renderMode: viewedEntry.value.renderMode,
+    title: viewedEntry.value.title,
     typeId: activeEntry.value.typeId,
     typeName: activeEntry.value.typeName,
-  });
+  };
+  const versionId = route.value.params?.versionId;
+  const entry = versionId
+    ? theater.updateEntryVersion(activeEntry.value.id, versionId, input)
+    : theater.updateEntry(activeEntry.value.id, input);
   return Boolean(entry);
 }
 
@@ -1177,7 +1285,10 @@ async function runGeneration() {
     const result = await generateContent(
       theaterGenerationAdapter,
       {
-        appPrompt: appPrompts.value.theater,
+        appPrompt: theaterGenerationAppPrompt.value,
+        entryId: rewriteTargetEntry.value?.id || '',
+        existingContent: theaterExistingContent.value,
+        mode: theaterGenerationMode.value,
         outputFormat: buildOutputFormat(generationDraft.renderMode),
         renderMode: generationDraft.renderMode,
         typeId: savedTypePrompt?.id || generationDraft.typeId,
@@ -1226,9 +1337,10 @@ async function runGeneration() {
     }
 
     if (result.status === 'saved') {
-      toastr.success('已生成并保存小剧场');
-      void phone.presentGeneratedPage('theater', 'entry', result.saved.entry.title, {
+      toastr.success(theaterGenerationMode.value === 'rewrite' ? '已保存小剧场候选版本' : '已生成并保存小剧场');
+      void phone.presentGeneratedPage('theater', 'entry', result.data.title, {
         entryId: result.saved.entry.id,
+        ...(result.saved.versionId ? { versionId: result.saved.versionId } : {}),
       });
       return;
     }
@@ -1242,6 +1354,8 @@ async function runGeneration() {
         label: result.source.label,
       },
       title: result.data.title,
+      mode: theaterGenerationMode.value,
+      targetEntryId: rewriteTargetEntry.value?.id || '',
       typeId: generationDraft.typeId || undefined,
       typeName: generationDraft.typeName.trim() || '未分类小剧场',
       warnings: result.warnings,
@@ -1257,21 +1371,37 @@ function savePreview() {
   const preview = generationState.preview;
   if (!preview) return;
 
-  const entry = theater.createEntry({
-    content: preview.content,
-    participants: [],
-    renderMode: preview.renderMode,
-    title: preview.title,
-    typeId: preview.typeId,
-    typeName: preview.typeName,
-  });
+  const saved =
+    preview.mode === 'rewrite' && preview.targetEntryId
+      ? theater.appendEntryVersion(preview.targetEntryId, {
+          content: preview.content,
+          renderMode: preview.renderMode,
+          title: preview.title,
+        })
+      : theater.createEntry({
+          content: preview.content,
+          participants: [],
+          renderMode: preview.renderMode,
+          title: preview.title,
+          typeId: preview.typeId,
+          typeName: preview.typeName,
+        });
+  if (!saved) {
+    toastr.warning('目标小剧场不存在，无法保存重写版本');
+    return;
+  }
   if (preview.draftId) {
     theater.deleteFailedDraft(preview.draftId);
   }
   clearTheaterPreviewDraft();
   generationState.preview = null;
-  toastr.success('已保存小剧场');
-  phone.replacePage('entry', entry.title, { entryId: entry.id });
+  const entry = 'entry' in saved ? saved.entry : saved;
+  const versionId = 'version' in saved ? saved.version.id : '';
+  toastr.success(preview.mode === 'rewrite' ? '已保存小剧场候选版本' : '已保存小剧场');
+  phone.replacePage('entry', versionId ? preview.title : entry.title, {
+    entryId: entry.id,
+    ...(versionId ? { versionId } : {}),
+  });
 }
 
 function reparsePreviewAs(renderMode: TheaterRenderMode, successMessage: string) {
@@ -1385,10 +1515,12 @@ function reparseFailedDraft() {
     draftId: null,
     raw: parsed.raw,
     renderMode,
+    mode: failedDraft.context.mode === 'rewrite' ? 'rewrite' : 'create',
     source: {
       label: failedDraft.source.label,
     },
     title: parsed.data.title,
+    targetEntryId: typeof failedDraft.context.entryId === 'string' ? failedDraft.context.entryId : '',
     typeId: typeof failedDraft.context.typeId === 'string' ? failedDraft.context.typeId : undefined,
     typeName:
       typeof failedDraft.context.typeName === 'string' && failedDraft.context.typeName.trim()

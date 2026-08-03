@@ -17,6 +17,13 @@
       @top="emit('top')"
     >
       <template #before-content>
+        <VersionNavigator
+          :active-version-id="activeVersionId"
+          :versions="versions"
+          :viewed-version-id="viewedVersionId"
+          @adopt="emit('adoptVersion', $event)"
+          @select="emit('selectVersion', $event)"
+        />
         <details v-if="generationRecords.length" class="pc-section-card pc-generation-history">
           <summary>
             <span>{{ t`生成记录` }}</span>
@@ -71,21 +78,27 @@
 </template>
 
 <script setup lang="ts">
-import CatalogModal, { type CatalogModalItem } from '@/components/CatalogModal.vue';
+import CatalogModal from '@/components/CatalogModal.vue';
+import type { CatalogModalItem } from '@/type/catalog';
 import ReaderDetailShell from '@/components/ReaderDetailShell.vue';
-import type { ExtraChapter, ExtraChapterGenerationRecord } from '@/type/extra';
+import VersionNavigator from '@/components/VersionNavigator.vue';
+import type { ExtraChapter, ExtraChapterGenerationRecord, ExtraChapterVersion } from '@/type/extra';
 
 defineProps<{
   catalogItems: CatalogModalItem[];
   catalogOpen: boolean;
   chapter: ExtraChapter;
+  activeVersionId: string;
   generationRecords: ExtraChapterGenerationRecord[];
   nextId: string;
   previousId: string;
+  versions: ExtraChapterVersion[];
+  viewedVersionId: string;
 }>();
 
 const emit = defineEmits<{
   bagu: [];
+  adoptVersion: [versionId: string];
   bottom: [];
   continue: [];
   delete: [];
@@ -95,6 +108,7 @@ const emit = defineEmits<{
   previous: [];
   rewrite: [];
   rewriteRecord: [recordId: string];
+  selectVersion: [versionId: string];
   selectCatalog: [chapterId: string];
   top: [];
   'update:catalogOpen': [open: boolean];

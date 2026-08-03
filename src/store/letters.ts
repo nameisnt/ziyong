@@ -1,7 +1,8 @@
 import { useChatScopedDomain } from '@/store/chatScoped';
 import { createFailedDraftCollection } from '@/store/failedDrafts';
 import type { CharacterRef } from '@/type/diary';
-import { type LetterBook, type LetterEntry, LettersScopeDataSchema } from '@/type/letter';
+import { type LetterBook, type LetterEntry, type LetterEntryVersion, LettersScopeDataSchema } from '@/type/letter';
+import { createContentVersion, ensureContentVersions, resolveContentVersion } from '@/util/contentVersions';
 import { validateInplace } from '@/util/zod';
 
 export const lettersField = 'sillytavern_phone_letters';
@@ -124,6 +125,8 @@ export const useLettersStore = defineStore('letters', () => {
       sender: normalizeCharacterRef(input.sender),
       receiver: normalizeCharacterRef(input.receiver),
       format: input.format,
+      activeVersionId: '',
+      versions: [],
     };
     book.entries = [entry, ...book.entries];
     book.updatedAt = timestamp;
@@ -138,8 +141,77 @@ export const useLettersStore = defineStore('letters', () => {
     entry.title = input.title.trim() || entry.title;
     entry.content = input.content.trim();
     entry.format = input.format;
+    const activeVersion = resolveContentVersion(entry.versions, entry.activeVersionId);
+    if (activeVersion) {
+      activeVersion.title = entry.title;
+      activeVersion.content = entry.content;
+      activeVersion.format = entry.format;
+    }
     entry.updatedAt = timestamp;
     book.updatedAt = timestamp;
+    return entry;
+  }
+
+  function appendEntryVersion(
+    bookId: string,
+    entryId: string,
+    input: Pick<LetterEntryVersion, 'title' | 'content' | 'format'>,
+  ) {
+    const book = getBook(bookId);
+    const entry = getEntry(bookId, entryId);
+    if (!book || !entry) return null;
+    const state = ensureContentVersions<LetterEntryVersion>(
+      entry.versions,
+      entry.activeVersionId,
+      () => ({ content: entry.content, createdAt: entry.createdAt, format: entry.format, title: entry.title }),
+      'letter_version',
+    );
+    const version = createContentVersion<LetterEntryVersion>('letter_version', {
+      content: input.content.trim(),
+      format: input.format,
+      title: input.title.trim() || entry.title,
+    });
+    entry.versions = [...state.versions, version];
+    entry.activeVersionId = state.activeVersionId;
+    return { book, entry, version };
+  }
+
+  function activateEntryVersion(bookId: string, entryId: string, versionId: string) {
+    const book = getBook(bookId);
+    const entry = getEntry(bookId, entryId);
+    const version = entry?.versions.find(item => item.id === versionId);
+    if (!book || !entry || !version) return null;
+    const timestamp = nowIso();
+    entry.activeVersionId = version.id;
+    entry.title = version.title;
+    entry.content = version.content;
+    entry.format = version.format;
+    entry.updatedAt = timestamp;
+    book.updatedAt = timestamp;
+    return entry;
+  }
+
+  function updateEntryVersion(
+    bookId: string,
+    entryId: string,
+    versionId: string,
+    input: Pick<LetterEntryVersion, 'title' | 'content' | 'format'>,
+  ) {
+    const book = getBook(bookId);
+    const entry = getEntry(bookId, entryId);
+    const version = entry?.versions.find(item => item.id === versionId);
+    if (!book || !entry || !version) return null;
+    const timestamp = nowIso();
+    version.title = input.title.trim() || version.title;
+    version.content = input.content.trim();
+    version.format = input.format;
+    if (entry.activeVersionId === version.id) {
+      entry.title = version.title;
+      entry.content = version.content;
+      entry.format = version.format;
+      entry.updatedAt = timestamp;
+      book.updatedAt = timestamp;
+    }
     return entry;
   }
 
@@ -160,6 +232,8 @@ export const useLettersStore = defineStore('letters', () => {
   }
 
   return {
+    activateEntryVersion,
+    appendEntryVersion,
     books,
     createEntry,
     createFailedDraft,
@@ -180,6 +254,7 @@ export const useLettersStore = defineStore('letters', () => {
     switchScope,
     toggleFavorite,
     updateEntry,
+    updateEntryVersion,
     updateFailedDraft,
   };
 });

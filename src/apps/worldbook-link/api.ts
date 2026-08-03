@@ -141,15 +141,16 @@ function convertRawWorldbookEntries(book: unknown, bookName: string): WorldbookE
     ? rawEntries.map((entry, index) => [String(index), entry] as const)
     : Object.entries(rawEntries);
 
-  return pairs
-    .filter((pair): pair is readonly [string, RawWorldbookEntry] => Boolean(pair[1] && typeof pair[1] === 'object'))
-    .map(([key, entry]) => {
-      const uid = rawEntryUid(entry, key);
-      if (uid === null) return null;
-      const primaryKeys = stringList(entry.key);
-      const secondaryKeys = stringList(entry.keysecondary);
-      const scanDepth = numberOr(entry.scanDepth, 0);
-      return {
+  const entries = pairs.flatMap(([key, rawEntry]): WorldbookEntry[] => {
+    if (!rawEntry || typeof rawEntry !== 'object') return [];
+    const entry = rawEntry as RawWorldbookEntry;
+    const uid = rawEntryUid(entry, key);
+    if (uid === null) return [];
+    const primaryKeys = stringList(entry.key);
+    const secondaryKeys = stringList(entry.keysecondary);
+    const scanDepth = numberOr(entry.scanDepth, 0);
+    return [
+      {
         uid,
         name: String(entry.comment ?? entry.name ?? ''),
         enabled: rawEntryEnabled(entry),
@@ -181,10 +182,11 @@ function convertRawWorldbookEntries(book: unknown, bookName: string): WorldbookE
           delay: nullablePositiveNumber(entry.delay),
         },
         extra: { rawWorldbookEntry: entry },
-      } satisfies WorldbookEntry;
-    })
-    .filter((entry): entry is WorldbookEntry => entry !== null)
-    .sort((left, right) => left.position.order - right.position.order || left.uid - right.uid);
+      } satisfies WorldbookEntry,
+    ];
+  });
+
+  return entries.sort((left, right) => left.position.order - right.position.order || left.uid - right.uid);
 }
 
 async function loadRawWorldbook(bookName: string) {

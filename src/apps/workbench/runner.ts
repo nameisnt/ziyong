@@ -21,6 +21,7 @@ import { useSettingsStore } from '@/store/settings';
 import { useSummaryStore } from '@/store/summary';
 import { useTheaterStore } from '@/store/theater';
 import type { CharacterRef } from '@/type/diary';
+import { resolveForumBoardTypePrompt } from '@/type/forum';
 import { getCurrentChatScopeKey } from '@/store/chatScoped';
 import { formatChatInsertTemplate } from '@/util/chatInsert';
 import {
@@ -143,7 +144,8 @@ function getRecentLettersContext(bookId: string, count: number) {
   const book = useLettersStore().getBook(bookId);
   if (!book || count <= 0) return '';
   return book.entries
-    .slice(-count)
+    .slice(0, count)
+    .reverse()
     .map(entry => [`${entry.sender.name} → ${entry.receiver.name} · ${entry.title}`, entry.content].join('\n'))
     .join('\n\n');
 }
@@ -221,9 +223,11 @@ function buildStepConfig(step: WorkbenchStep) {
     const board = step.config.forumBoardId ? forum.getBoard(step.config.forumBoardId) : null;
     return {
       appPrompt: getPrompt('forum'),
-      boardDescription: board?.description || step.config.forumBoardDescription,
+      boardDescription: board ? resolveForumBoardTypePrompt(board) : step.config.forumBoardDescription,
       boardId: board?.id || '',
       boardName: board?.name || step.config.forumBoardName.trim() || '工作台',
+      boardTypeId: board?.typeId || '',
+      boardTypeName: board?.typeName || '',
       outputFormat: getOutputFormat('forum.thread'),
       userRequirement: requirement,
     };
@@ -763,7 +767,10 @@ export async function runWorkbenchWorkflow(
               commitSavedStep,
             ),
           );
-          if (result.status !== 'saved') {
+          if (result.status === 'preview') {
+            throw new Error(`${step.appId}/${step.actionId}：工作台步骤意外返回预览结果`);
+          }
+          if (result.status === 'failed') {
             failures.push(`${step.appId}/${step.actionId}：${result.warnings.join('；') || '未保存'}`);
             const latestTask = tasks.getTask(task.id);
             const firstFailureForStep = !pendingRun.failedStepIds.includes(step.id);

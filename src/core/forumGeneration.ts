@@ -20,7 +20,12 @@ export const ForumThreadGenerateConfigSchema = z.object({
   boardDescription: z.string().default(''),
   boardId: z.string().default(''),
   boardName: z.string().default(''),
+  boardTypeId: z.string().default(''),
+  boardTypeName: z.string().default(''),
+  existingThreadContent: z.string().default(''),
+  mode: z.enum(['create', 'rewrite']).default('create'),
   outputFormat: z.string(),
+  threadId: z.string().default(''),
   userRequirement: z.string().default(''),
 });
 export type ForumThreadGenerateConfig = z.infer<typeof ForumThreadGenerateConfigSchema>;
@@ -78,11 +83,19 @@ export function persistForumReplyDrafts(
 }
 
 function buildThreadRequestContext(config: ForumThreadGenerateConfig) {
-  return config.boardDescription.trim() ? `板块说明：${config.boardDescription.trim()}` : '';
+  return [
+    config.boardDescription.trim() ? `板块类型提示词：${config.boardDescription.trim()}` : '',
+    config.mode === 'rewrite' ? config.existingThreadContent.trim() : '',
+  ]
+    .filter(Boolean)
+    .join('\n\n');
 }
 
 function buildThreadTaskInstruction(config: ForumThreadGenerateConfig) {
   const boardName = config.boardName.trim();
+  if (config.mode === 'rewrite') {
+    return `请重写上述当前论坛主帖，并在 <board> 中原样输出板块名称“${boardName}”。只输出替代主帖，不要生成或改写回复。`;
+  }
   if (boardName) {
     return `请为“${boardName}”板块生成一篇新帖，并在 <board> 中原样输出板块名称“${boardName}”。`;
   }
@@ -95,8 +108,17 @@ export function createForumThreadGenerationAdapter(forumStore: {
     input: Pick<ForumThread, 'title' | 'author' | 'content'>,
   ) => { board: ForumBoard; thread: ForumThread } | null;
   createReply: (boardId: string, threadId: string, input: ForumReplyDraftInput) => ForumReply | null;
-  ensureBoard: (name: string, description?: string) => ForumBoard;
+  ensureBoard: (
+    name: string,
+    typePrompt?: string,
+    type?: Partial<Pick<ForumBoard, 'typeId' | 'typeName'>>,
+  ) => ForumBoard;
   getBoard: (boardId: string) => ForumBoard | null;
+  appendThreadVersion: (
+    boardId: string,
+    threadId: string,
+    input: Pick<ForumThread, 'title' | 'author' | 'content'>,
+  ) => { board: ForumBoard; thread: ForumThread; version: { id: string } } | null;
 }) {
   return {
     actionId: 'generate-thread',
@@ -115,11 +137,31 @@ export function createForumThreadGenerationAdapter(forumStore: {
       return parseConfiguredOutput('forum.thread', raw, ForumXmlResultSchema, () => parseForumXmlResult(raw));
     },
     async save(result, context) {
+      if (context.config.mode === 'rewrite' && context.config.boardId && context.config.threadId) {
+        const saved = forumStore.appendThreadVersion(context.config.boardId, context.config.threadId, {
+          author: result.author,
+          content: result.content,
+          title: result.title,
+        });
+        if (!saved) throw new Error('目标论坛主帖不存在，无法保存重写版本');
+        return {
+          board: saved.board,
+          conversionWarnings: [],
+          entityId: saved.thread.id,
+          replies: [],
+          thread: saved.thread,
+          versionId: saved.version.id,
+        };
+      }
       const targetBoardName = context.config.boardName.trim() || result.board.trim();
+      const boardType = {
+        typeId: context.config.boardTypeId,
+        typeName: context.config.boardTypeName,
+      };
       const board = context.config.boardId
         ? forumStore.getBoard(context.config.boardId) ||
-          forumStore.ensureBoard(targetBoardName, context.config.boardDescription)
-        : forumStore.ensureBoard(targetBoardName, context.config.boardDescription);
+          forumStore.ensureBoard(targetBoardName, context.config.boardDescription, boardType)
+        : forumStore.ensureBoard(targetBoardName, context.config.boardDescription, boardType);
       const created = forumStore.createThread(board.id, {
         author: result.author,
         content: result.content,
@@ -142,12 +184,20 @@ export function createForumThreadGenerationAdapter(forumStore: {
         entityId: created.thread.id,
         replies: createdReplies,
         thread: created.thread,
+        versionId: undefined,
       };
     },
   } satisfies GenerationAdapter<
     ForumThreadGenerateConfig,
     ForumXmlResult,
-    { board: ForumBoard; conversionWarnings: string[]; entityId: string; replies: ForumReply[]; thread: ForumThread }
+    {
+      board: ForumBoard;
+      conversionWarnings: string[];
+      entityId: string;
+      replies: ForumReply[];
+      thread: ForumThread;
+      versionId?: string;
+    }
   >;
 }
 

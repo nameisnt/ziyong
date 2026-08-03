@@ -1,6 +1,7 @@
 import { useChatScopedDomain } from '@/store/chatScoped';
 import { createFailedDraftCollection } from '@/store/failedDrafts';
-import { TheaterScopeDataSchema, type TheaterEntry } from '@/type/theater';
+import { TheaterScopeDataSchema, type TheaterEntry, type TheaterEntryVersion } from '@/type/theater';
+import { createContentVersion, ensureContentVersions, resolveContentVersion } from '@/util/contentVersions';
 import { validateInplace } from '@/util/zod';
 
 export const theaterField = 'sillytavern_phone_theater';
@@ -46,6 +47,8 @@ export const useTheaterStore = defineStore('theater', () => {
       typeName: input.typeName.trim() || '未分类小剧场',
       participants: [...input.participants],
       renderMode: input.renderMode,
+      activeVersionId: '',
+      versions: [],
     };
     data.value.entries = [entry, ...data.value.entries];
     return entry;
@@ -64,6 +67,81 @@ export const useTheaterStore = defineStore('theater', () => {
     entry.typeName = input.typeName.trim() || entry.typeName;
     entry.participants = [...input.participants];
     entry.renderMode = input.renderMode;
+    const activeVersion = resolveContentVersion(entry.versions, entry.activeVersionId);
+    if (activeVersion) {
+      activeVersion.title = entry.title;
+      activeVersion.content = entry.content;
+      activeVersion.renderMode = entry.renderMode;
+    }
+    entry.updatedAt = nowIso();
+    return entry;
+  }
+
+  function appendEntryVersion(entryId: string, input: Pick<TheaterEntryVersion, 'title' | 'content' | 'renderMode'>) {
+    const entry = getEntry(entryId);
+    if (!entry) return null;
+    const state = ensureContentVersions<TheaterEntryVersion>(
+      entry.versions,
+      entry.activeVersionId,
+      () => ({
+        content: entry.content,
+        createdAt: entry.createdAt,
+        renderMode: entry.renderMode,
+        title: entry.title,
+      }),
+      'theater_version',
+    );
+    const version = createContentVersion<TheaterEntryVersion>('theater_version', {
+      content: input.content.trim(),
+      renderMode: input.renderMode,
+      title: input.title.trim() || entry.title,
+    });
+    entry.versions = [...state.versions, version];
+    entry.activeVersionId = state.activeVersionId;
+    return { entry, version };
+  }
+
+  function activateEntryVersion(entryId: string, versionId: string) {
+    const entry = getEntry(entryId);
+    const version = entry?.versions.find(item => item.id === versionId);
+    if (!entry || !version) return null;
+    entry.activeVersionId = version.id;
+    entry.title = version.title;
+    entry.content = version.content;
+    entry.renderMode = version.renderMode;
+    entry.updatedAt = nowIso();
+    return entry;
+  }
+
+  function updateEntryVersion(
+    entryId: string,
+    versionId: string,
+    input: Pick<TheaterEntryVersion, 'title' | 'content' | 'renderMode'>,
+  ) {
+    const entry = getEntry(entryId);
+    const version = entry?.versions.find(item => item.id === versionId);
+    if (!entry || !version) return null;
+    version.title = input.title.trim() || version.title;
+    version.content = input.content.trim();
+    version.renderMode = input.renderMode;
+    if (entry.activeVersionId === version.id) {
+      entry.title = version.title;
+      entry.content = version.content;
+      entry.renderMode = version.renderMode;
+      entry.updatedAt = nowIso();
+    }
+    return entry;
+  }
+
+  function updateEntryMetadata(
+    entryId: string,
+    input: Pick<TheaterEntry, 'participants' | 'typeName'> & Partial<Pick<TheaterEntry, 'typeId'>>,
+  ) {
+    const entry = getEntry(entryId);
+    if (!entry) return null;
+    entry.typeId = input.typeId?.trim() || undefined;
+    entry.typeName = input.typeName.trim() || entry.typeName;
+    entry.participants = [...input.participants];
     entry.updatedAt = nowIso();
     return entry;
   }
@@ -89,6 +167,8 @@ export const useTheaterStore = defineStore('theater', () => {
   }
 
   return {
+    activateEntryVersion,
+    appendEntryVersion,
     createEntry,
     createFailedDraft,
     data,
@@ -104,6 +184,8 @@ export const useTheaterStore = defineStore('theater', () => {
     switchScope,
     toggleFavorite,
     updateEntry,
+    updateEntryMetadata,
+    updateEntryVersion,
     updateFailedDraft,
     updateFailedDraftRenderMode,
   };

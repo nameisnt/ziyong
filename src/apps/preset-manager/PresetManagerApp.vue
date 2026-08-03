@@ -53,7 +53,7 @@
       />
     </section>
 
-    <section v-else-if="route.page === 'detail'" class="pc-preset-page">
+    <section v-else-if="route.page === 'detail'" ref="detailPageEl" class="pc-preset-page">
       <article class="pc-section-card pc-preset-detail-head">
         <div>
           <span class="pc-kicker">{{ detailPresetName === loadedPresetName ? '当前酒馆预设' : '预设条目' }}</span>
@@ -92,7 +92,16 @@
           <PresetPromptRow
             v-if="node.type === 'prompt'"
             :busy="busyPromptIds.has(node.prompt.id)"
+            :dragging="promptDrag.promptId === node.prompt.id && promptDrag.isDragging"
+            :drop-before="promptDrag.insertBeforeId === node.prompt.id"
+            group-id="__ungrouped__"
             :prompt="node.prompt"
+            :reorderable="!enabledOnly"
+            @copy="openPromptCopy"
+            @drag-cancel="cancelPromptDrag"
+            @drag-end="finishPromptDrag"
+            @drag-move="movePromptDrag"
+            @drag-start="startPromptDrag($event, node.prompt, '__ungrouped__')"
             @open="openPromptEditor"
             @toggle="togglePrompt"
           />
@@ -113,8 +122,17 @@
                 v-for="prompt in node.prompts"
                 :key="prompt.id"
                 :busy="busyPromptIds.has(prompt.id)"
+                :dragging="promptDrag.promptId === prompt.id && promptDrag.isDragging"
+                :drop-before="promptDrag.insertBeforeId === prompt.id"
+                :group-id="node.group.id"
                 :group-disabled="!node.group.enabled"
                 :prompt="prompt"
+                :reorderable="!enabledOnly"
+                @copy="openPromptCopy"
+                @drag-cancel="cancelPromptDrag"
+                @drag-end="finishPromptDrag"
+                @drag-move="movePromptDrag"
+                @drag-start="startPromptDrag($event, prompt, node.group.id)"
                 @open="openPromptEditor"
                 @toggle="togglePrompt"
               />
@@ -136,11 +154,73 @@
           <h2 :title="activePrompt.name || activePrompt.id">{{ activePrompt.name || activePrompt.id }}</h2>
           <small>{{ promptRoleLabel(activePrompt.role) }}</small>
         </div>
-        <textarea v-model="editorDraft" class="pc-area" placeholder="预设条目内容"></textarea>
+        <textarea
+          v-if="typeof activePrompt.content === 'string'"
+          v-model="editorDraft"
+          class="pc-area"
+          placeholder="预设条目内容"
+        ></textarea>
+        <div v-else class="pc-section-card pc-preset-placeholder-detail">
+          <strong>占位条目</strong>
+          <span>这个条目用于确定酒馆内容的插入位置，没有独立正文。</span>
+        </div>
+        <div class="pc-form-actions">
+          <button class="pc-soft-btn danger" type="button" :disabled="saving" @click="removePrompt">
+            <i class="fa-solid fa-trash"></i>
+            <span>删除</span>
+          </button>
+          <button class="pc-soft-btn" type="button" :disabled="saving" @click="phone.goBack()">返回</button>
+          <button
+            v-if="typeof activePrompt.content === 'string'"
+            class="pc-primary-btn"
+            type="button"
+            :disabled="saving || !editorDirty"
+            @click="savePromptContent"
+          >
+            {{ saving ? '保存中' : '保存' }}
+          </button>
+        </div>
+      </article>
+    </section>
+
+    <section v-else-if="route.page === 'copy' && copySourcePrompt" class="pc-preset-page pc-preset-editor-page">
+      <article class="pc-editor-card pc-preset-editor">
+        <div class="pc-preset-editor-head">
+          <span class="pc-kicker">复制到原条目下方</span>
+          <h2 :title="copySourcePrompt.name || copySourcePrompt.id">
+            {{ copySourcePrompt.name || copySourcePrompt.id }}
+          </h2>
+          <small>副本保存前不会修改预设</small>
+        </div>
+        <label class="pc-field-group">
+          <span class="pc-field-label">副本名称</span>
+          <input v-model="copyDraft.name" class="pc-field" type="text" placeholder="副本名称" />
+        </label>
+        <label class="pc-field-group">
+          <span class="pc-field-label">消息角色</span>
+          <select v-model="copyDraft.role" class="pc-field pc-select">
+            <option value="system">系统</option>
+            <option value="user">用户</option>
+            <option value="assistant">AI</option>
+          </select>
+        </label>
+        <textarea v-model="copyDraft.content" class="pc-area" placeholder="预设条目内容"></textarea>
+        <label class="pc-preset-filter-row">
+          <span>保存后立即启用副本</span>
+          <span class="pc-toggle" title="保存后立即启用副本">
+            <input v-model="copyDraft.enabled" type="checkbox" aria-label="保存后立即启用副本" />
+            <span aria-hidden="true"></span>
+          </span>
+        </label>
         <div class="pc-form-actions">
           <button class="pc-soft-btn" type="button" :disabled="saving" @click="phone.goBack()">取消</button>
-          <button class="pc-primary-btn" type="button" :disabled="saving || !editorDirty" @click="savePromptContent">
-            {{ saving ? '保存中' : '保存' }}
+          <button
+            class="pc-primary-btn"
+            type="button"
+            :disabled="saving || !copyDraft.name.trim()"
+            @click="savePromptCopy"
+          >
+            {{ saving ? '保存中' : '保存副本' }}
           </button>
         </div>
       </article>
@@ -150,13 +230,17 @@
 
 <script setup lang="ts">
 import EmptyState from '@/components/EmptyState.vue';
+import { useEntryLibraryStore } from '@/apps/entry-library/store';
 import { usePhoneStore } from '@/store/phone';
 import {
   buildPresetDisplayNodes,
+  deleteTavernPresetPrompt,
+  duplicateTavernPresetPrompt,
   getCurrentTavernPresetName,
   listTavernPresets,
   loadTavernPreset,
   readTavernPreset,
+  reorderTavernPresetPrompts,
   updateTavernPresetPrompt,
   type TavernPreset,
   type TavernPresetPrompt,
@@ -164,6 +248,7 @@ import {
 import PresetPromptRow from './PresetPromptRow.vue';
 
 const phone = usePhoneStore();
+const entryLibrary = useEntryLibraryStore();
 const route = computed(() => phone.currentRoute);
 const presetNames = ref<string[]>([]);
 const presetQuery = ref('');
@@ -177,12 +262,40 @@ const busyPromptIds = ref(new Set<string>());
 const collapsedGroupIds = ref(new Set<string>());
 const editorDraft = ref('');
 const enabledOnly = ref(false);
+const detailPageEl = ref<HTMLElement | null>(null);
+const copyDraft = reactive({
+  content: '',
+  enabled: false,
+  name: '',
+  role: 'system' as TavernPresetPrompt['role'],
+});
+const promptDrag = reactive({
+  groupId: '',
+  insertBeforeId: '',
+  isDragging: false,
+  pointerId: -1,
+  promptId: '',
+  startY: 0,
+});
 
 const detailPresetName = computed(() => route.value.params?.presetName || '');
 const activePromptId = computed(() => route.value.params?.promptId || '');
+const copySourcePromptId = computed(() => route.value.params?.sourcePromptId || '');
 const activePrompt = computed(
   () => activePreset.value?.prompts.find(prompt => prompt.id === activePromptId.value) ?? null,
 );
+const copySourcePrompt = computed(
+  () => activePreset.value?.prompts.find(prompt => prompt.id === copySourcePromptId.value) ?? null,
+);
+const promptGroupIds = computed(() => {
+  const result = new Map<string, string>();
+  if (!activePreset.value) return result;
+  for (const node of buildPresetDisplayNodes(activePreset.value)) {
+    if (node.type !== 'group') continue;
+    node.prompts.forEach(prompt => result.set(prompt.id, node.group.id));
+  }
+  return result;
+});
 const displayNodes = computed(() => {
   if (!activePreset.value) return [];
   const nodes = buildPresetDisplayNodes(activePreset.value);
@@ -202,7 +315,7 @@ const visiblePresetNames = computed(() => {
 const editorDirty = computed(() =>
   activePrompt.value ? editorDraft.value !== (activePrompt.value.content || '') : false,
 );
-const mutationBusy = computed(() => saving.value || busyPromptIds.value.size > 0);
+const mutationBusy = computed(() => saving.value || busyPromptIds.value.size > 0 || promptDrag.isDragging);
 
 function setBusyPrompt(promptId: string, busy: boolean) {
   const next = new Set(busyPromptIds.value);
@@ -245,6 +358,12 @@ async function loadDetail() {
     if (route.value.page === 'edit') {
       editorDraft.value = activePrompt.value?.content || '';
     }
+    if (route.value.page === 'copy' && copySourcePrompt.value) {
+      copyDraft.content = copySourcePrompt.value.content || '';
+      copyDraft.enabled = false;
+      copyDraft.name = createCopyName(copySourcePrompt.value);
+      copyDraft.role = copySourcePrompt.value.role;
+    }
   } catch (error) {
     activePreset.value = null;
     errorMessage.value = error instanceof Error ? error.message : String(error);
@@ -258,11 +377,27 @@ function openPreset(presetName: string) {
 }
 
 function openPromptEditor(prompt: TavernPresetPrompt) {
-  if (typeof prompt.content !== 'string') return;
   phone.pushRoute('preset-manager', 'edit', '编辑预设条目', {
     presetName: detailPresetName.value,
     promptId: prompt.id,
   });
+}
+
+function openPromptCopy(prompt: TavernPresetPrompt) {
+  if (typeof prompt.content !== 'string' || mutationBusy.value) return;
+  phone.pushRoute('preset-manager', 'copy', '复制预设条目', {
+    presetName: detailPresetName.value,
+    sourcePromptId: prompt.id,
+  });
+}
+
+function createCopyName(source: TavernPresetPrompt) {
+  const names = new Set(activePreset.value?.prompts.map(prompt => prompt.name.trim()) ?? []);
+  const base = `${source.name.trim() || source.id} - 副本`;
+  if (!names.has(base)) return base;
+  let index = 2;
+  while (names.has(`${base} ${index}`)) index += 1;
+  return `${base} ${index}`;
 }
 
 async function switchPreset(presetName: string) {
@@ -302,6 +437,103 @@ function toggleGroup(groupId: string) {
   collapsedGroupIds.value = next;
 }
 
+function resetPromptDrag() {
+  promptDrag.groupId = '';
+  promptDrag.insertBeforeId = '';
+  promptDrag.isDragging = false;
+  promptDrag.pointerId = -1;
+  promptDrag.promptId = '';
+  promptDrag.startY = 0;
+}
+
+function startPromptDrag(event: PointerEvent, prompt: TavernPresetPrompt, groupId: string) {
+  if (enabledOnly.value || mutationBusy.value || event.button !== 0) return;
+  resetPromptDrag();
+  promptDrag.groupId = groupId;
+  promptDrag.pointerId = event.pointerId;
+  promptDrag.promptId = prompt.id;
+  promptDrag.startY = event.clientY;
+  (event.currentTarget as HTMLElement).setPointerCapture?.(event.pointerId);
+}
+
+function updatePromptDragInsertion(clientY: number) {
+  const rows = [...(detailPageEl.value?.querySelectorAll<HTMLElement>('.pc-preset-prompt-row') ?? [])].filter(
+    row => row.dataset.presetGroupId === promptDrag.groupId && row.dataset.presetPromptId !== promptDrag.promptId,
+  );
+  const beforeRow = rows.find(row => {
+    const rect = row.getBoundingClientRect();
+    return clientY < rect.top + rect.height / 2;
+  });
+  promptDrag.insertBeforeId = beforeRow?.dataset.presetPromptId || '';
+}
+
+function autoScrollPromptList(clientY: number) {
+  const scrollTarget = detailPageEl.value;
+  if (!scrollTarget) return;
+  const rect = scrollTarget.getBoundingClientRect();
+  const edge = 52;
+  if (clientY < rect.top + edge) scrollTarget.scrollTop -= 14;
+  else if (clientY > rect.bottom - edge) scrollTarget.scrollTop += 14;
+}
+
+function movePromptDrag(event: PointerEvent) {
+  if (event.pointerId !== promptDrag.pointerId || !promptDrag.promptId) return;
+  if (!promptDrag.isDragging && Math.abs(event.clientY - promptDrag.startY) > 4) {
+    promptDrag.isDragging = true;
+  }
+  if (!promptDrag.isDragging) return;
+  event.preventDefault();
+  autoScrollPromptList(event.clientY);
+  updatePromptDragInsertion(event.clientY);
+}
+
+async function commitPromptDrag() {
+  if (!activePreset.value || !promptDrag.isDragging || !promptDrag.promptId) return;
+  const groupId = promptDrag.groupId;
+  const isInGroup = (promptId: string) => (promptGroupIds.value.get(promptId) || '__ungrouped__') === groupId;
+  const subsetIds = activePreset.value.prompts.map(prompt => prompt.id).filter(isInGroup);
+  const draggedIndex = subsetIds.indexOf(promptDrag.promptId);
+  if (draggedIndex < 0) return;
+  subsetIds.splice(draggedIndex, 1);
+  const insertIndex = promptDrag.insertBeforeId
+    ? Math.max(0, subsetIds.indexOf(promptDrag.insertBeforeId))
+    : subsetIds.length;
+  subsetIds.splice(insertIndex, 0, promptDrag.promptId);
+
+  let subsetIndex = 0;
+  const orderedIds = activePreset.value.prompts.map(prompt =>
+    isInGroup(prompt.id) ? (subsetIds[subsetIndex++] as string) : prompt.id,
+  );
+  if (orderedIds.every((promptId, index) => promptId === activePreset.value?.prompts[index]?.id)) return;
+
+  saving.value = true;
+  try {
+    const result = await reorderTavernPresetPrompts(detailPresetName.value, orderedIds);
+    activePreset.value = result.preset;
+    if (!result.liveSynced) {
+      toastr.warning('顺序已经保存，但当前生效副本刷新失败；重新切换预设后会生效');
+    }
+  } catch (error) {
+    toastr.error(error instanceof Error ? error.message : String(error));
+  } finally {
+    saving.value = false;
+  }
+}
+
+function finishPromptDrag(event: PointerEvent) {
+  if (event.pointerId !== promptDrag.pointerId) return;
+  (event.currentTarget as HTMLElement).releasePointerCapture?.(event.pointerId);
+  const task = commitPromptDrag();
+  resetPromptDrag();
+  void task;
+}
+
+function cancelPromptDrag(event: PointerEvent) {
+  if (event.pointerId !== promptDrag.pointerId) return;
+  (event.currentTarget as HTMLElement).releasePointerCapture?.(event.pointerId);
+  resetPromptDrag();
+}
+
 function promptRoleLabel(role: TavernPresetPrompt['role']) {
   return (
     {
@@ -333,8 +565,74 @@ async function savePromptContent() {
   }
 }
 
+async function savePromptCopy() {
+  const source = copySourcePrompt.value;
+  if (!source || typeof source.content !== 'string' || saving.value || !copyDraft.name.trim()) return;
+  saving.value = true;
+  try {
+    const result = await duplicateTavernPresetPrompt(detailPresetName.value, source.id, {
+      content: copyDraft.content,
+      enabled: copyDraft.enabled,
+      name: copyDraft.name,
+      role: copyDraft.role,
+    });
+    activePreset.value = result.preset;
+    if (result.liveSynced) {
+      toastr.success('副本已插入原条目下方');
+    } else {
+      toastr.warning('副本已经保存，但当前生效副本刷新失败；重新切换预设后会生效');
+    }
+    await phone.goBack();
+  } catch (error) {
+    toastr.error(error instanceof Error ? error.message : String(error));
+  } finally {
+    saving.value = false;
+  }
+}
+
+async function removePrompt() {
+  const prompt = activePrompt.value;
+  if (!prompt || saving.value) return;
+  const placeholderWarning = typeof prompt.content !== 'string' ? '这是酒馆占位条目，删除后会改变提示词结构。' : '';
+  const matchingBindings = entryLibrary.bindings.filter(
+    binding =>
+      binding.presetName === detailPresetName.value &&
+      binding.targetPromptSource === 'prompts' &&
+      binding.targetPromptId === prompt.id,
+  );
+  const bindingWarning = matchingBindings.length ? `关联的 ${matchingBindings.length} 条条目库绑定也会删除。` : '';
+  const shouldDelete = await phone.confirmNotice(
+    [`要删除预设条目“${prompt.name || prompt.id}”吗？`, placeholderWarning, bindingWarning].filter(Boolean).join('\n'),
+    { confirmLabel: '删除', kind: 'warning' },
+  );
+  if (!shouldDelete || saving.value) return;
+
+  saving.value = true;
+  try {
+    const result = await deleteTavernPresetPrompt(detailPresetName.value, prompt.id);
+    matchingBindings.forEach(binding => entryLibrary.deleteBinding(binding.id));
+    activePreset.value = result.preset;
+    if (result.liveSynced) {
+      toastr.success('预设条目已删除');
+    } else {
+      toastr.warning('条目已经删除，但当前生效副本刷新失败；重新切换预设后会生效');
+    }
+    await phone.goBack();
+  } catch (error) {
+    toastr.error(error instanceof Error ? error.message : String(error));
+  } finally {
+    saving.value = false;
+  }
+}
+
 watch(
-  () => [route.value.appId, route.value.page, route.value.params?.presetName, route.value.params?.promptId],
+  () => [
+    route.value.appId,
+    route.value.page,
+    route.value.params?.presetName,
+    route.value.params?.promptId,
+    route.value.params?.sourcePromptId,
+  ],
   () => {
     if (route.value.appId !== 'preset-manager') return;
     if (route.value.page === 'root') {
@@ -562,7 +860,7 @@ watch(
 }
 
 .pc-preset-editor-page {
-  overflow: hidden;
+  overflow-y: auto;
 }
 
 .pc-preset-editor {
@@ -570,6 +868,7 @@ watch(
   min-height: 0;
   flex: 1;
   flex-direction: column;
+  gap: 12px;
 }
 
 .pc-preset-editor .pc-area {
@@ -579,11 +878,27 @@ watch(
 }
 
 .pc-preset-editor .pc-form-actions {
+  position: sticky;
+  z-index: 2;
+  bottom: 0;
+  padding-top: 8px;
+  background: var(--pc-surface);
   flex-wrap: nowrap;
 }
 
 .pc-preset-editor .pc-form-actions > button {
   min-width: 0;
   flex: 1;
+}
+
+.pc-preset-placeholder-detail {
+  display: grid;
+  gap: 6px;
+}
+
+.pc-preset-placeholder-detail span {
+  color: var(--pc-muted);
+  font-size: 13px;
+  line-height: 1.55;
 }
 </style>

@@ -60,9 +60,12 @@ import {
   createForumBoardTypePromptDomain,
   createForumPromptDefinition,
   createForumReplyPromptDefinition,
+  createForumRewritePromptDefinition,
   createLettersPromptDefinition,
+  createLettersRewritePromptDefinition,
   createSummaryPromptDefinition,
   createTheaterPromptDefinition,
+  createTheaterRewritePromptDefinition,
   createTheaterTypePromptDomain,
 } from '@/apps/builtinPrompts';
 import {
@@ -156,7 +159,7 @@ export const BUILTIN_PHONE_APP_MODULES: PhoneAppModule[] = [
     contentStatsProvider: createForumContentStats,
     favoriteProvider: createForumFavoriteItems,
     generationProvider: createForumGenerationActions,
-    promptDefinitions: [createForumPromptDefinition()],
+    promptDefinitions: [createForumPromptDefinition(), createForumRewritePromptDefinition()],
     referenceProvider: createForumReferenceTree,
     resetCurrentScope: () => useForumStore().resetCurrentScope(),
     scopeSwitchHandler: scopeKey => useForumStore().switchScope(scopeKey),
@@ -176,7 +179,7 @@ export const BUILTIN_PHONE_APP_MODULES: PhoneAppModule[] = [
     contentStatsProvider: createTheaterContentStats,
     favoriteProvider: createTheaterFavoriteItems,
     generationProvider: createTheaterGenerationActions,
-    promptDefinitions: [createTheaterPromptDefinition()],
+    promptDefinitions: [createTheaterPromptDefinition(), createTheaterRewritePromptDefinition()],
     referenceProvider: createTheaterReferenceTree,
     resetCurrentScope: () => {
       useTheaterStore().resetCurrentScope();
@@ -201,7 +204,7 @@ export const BUILTIN_PHONE_APP_MODULES: PhoneAppModule[] = [
     contentStatsProvider: createLettersContentStats,
     favoriteProvider: createLettersFavoriteItems,
     generationProvider: createLettersGenerationActions,
-    promptDefinitions: [createLettersPromptDefinition()],
+    promptDefinitions: [createLettersPromptDefinition(), createLettersRewritePromptDefinition()],
     referenceProvider: createLettersReferenceTree,
     resetCurrentScope: () => useLettersStore().resetCurrentScope(),
     scopeSwitchHandler: scopeKey => useLettersStore().switchScope(scopeKey),

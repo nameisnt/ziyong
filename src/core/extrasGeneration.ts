@@ -145,11 +145,11 @@ export function createExtraChapterGenerationAdapter(extrasStore: {
     bookId: string,
     input: Pick<ExtraChapter, 'title' | 'content'> & { generationRecord?: ExtraChapterGenerationRecord },
   ) => ExtraChapter | null;
-  updateChapter: (
+  appendChapterVersion: (
     bookId: string,
     chapterId: string,
     input: Pick<ExtraChapter, 'title' | 'content'> & { generationRecord?: ExtraChapterGenerationRecord },
-  ) => ExtraChapter | null;
+  ) => { chapter: ExtraChapter; version: { id: string } } | null;
 }) {
   return {
     actionId: 'chapter-generate',
@@ -171,18 +171,19 @@ export function createExtraChapterGenerationAdapter(extrasStore: {
     async save(result, context) {
       const generationRecord = createExtraChapterGenerationRecord(context.config, context.source);
       if (context.config.chapterMode === '重写当前章节' && context.config.chapterId) {
-        const chapter = extrasStore.updateChapter(context.config.bookId, context.config.chapterId, {
+        const saved = extrasStore.appendChapterVersion(context.config.bookId, context.config.chapterId, {
           content: result.content,
           generationRecord,
           title: result.title,
         });
-        if (!chapter) {
-          throw new Error('目标章节不存在，无法覆盖当前章节');
+        if (!saved) {
+          throw new Error('目标章节不存在，无法保存重写版本');
         }
         return {
-          chapter,
-          entityId: chapter.id,
+          chapter: saved.chapter,
+          entityId: saved.chapter.id,
           mode: 'rewrite' as const,
+          versionId: saved.version.id,
         };
       }
 
@@ -203,6 +204,6 @@ export function createExtraChapterGenerationAdapter(extrasStore: {
   } satisfies GenerationAdapter<
     ExtraChapterGenerateConfig,
     SimpleXmlResult,
-    { chapter: ExtraChapter; entityId: string; mode: 'rewrite' | 'create' }
+    { chapter: ExtraChapter; entityId: string; mode: 'rewrite' | 'create'; versionId?: string }
   >;
 }

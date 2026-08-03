@@ -26,10 +26,7 @@
 </template>
 
 <script setup lang="ts">
-export interface CatalogModalItem {
-  id: string;
-  title: string;
-}
+import type { CatalogModalItem } from '@/type/catalog';
 
 const props = withDefaults(
   defineProps<{

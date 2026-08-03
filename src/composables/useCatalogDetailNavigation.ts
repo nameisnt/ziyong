@@ -1,4 +1,4 @@
-import type { CatalogModalItem } from '@/components/CatalogModal.vue';
+import type { CatalogModalItem } from '@/type/catalog';
 import type { ComputedRef } from 'vue';
 
 export function useCatalogDetailNavigation<T extends { id: string }>(

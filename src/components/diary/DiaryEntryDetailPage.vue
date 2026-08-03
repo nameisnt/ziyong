@@ -49,7 +49,8 @@
 </template>
 
 <script setup lang="ts">
-import CatalogModal, { type CatalogModalItem } from '@/components/CatalogModal.vue';
+import CatalogModal from '@/components/CatalogModal.vue';
+import type { CatalogModalItem } from '@/type/catalog';
 import ReaderDetailShell from '@/components/ReaderDetailShell.vue';
 import type { DiaryEntry } from '@/type/diary';
 

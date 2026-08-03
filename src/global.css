@@ -821,6 +821,14 @@
   grid-template-columns: repeat(5, minmax(0, 1fr));
 }
 
+.pc-phone-root .pc-detail-actions.six {
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+}
+
+.pc-phone-root .pc-detail-actions.seven {
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+}
+
 .pc-phone-root .pc-detail-nav .pc-soft-btn,
 .pc-phone-root .pc-detail-actions .pc-soft-btn {
   display: inline-flex;

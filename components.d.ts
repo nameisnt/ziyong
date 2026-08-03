@@ -55,5 +55,6 @@ declare module 'vue' {
     SummaryEntryDetailPage: typeof import('./src/components/summary/SummaryEntryDetailPage.vue')['default']
     TavernPromptCapture: typeof import('./src/components/TavernPromptCapture.vue')['default']
     TheaterApp: typeof import('./src/components/TheaterApp.vue')['default']
+    VersionNavigator: typeof import('./src/components/VersionNavigator.vue')['default']
   }
 }

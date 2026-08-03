@@ -1,10 +1,33 @@
 <template>
-  <article class="pc-section-card pc-preset-prompt-row" :class="{ muted: groupDisabled || !prompt.enabled }">
+  <article
+    class="pc-section-card pc-preset-prompt-row"
+    :class="{
+      'drop-before': dropBefore,
+      dragging,
+      muted: groupDisabled || !prompt.enabled,
+      'without-drag': !reorderable,
+    }"
+    :data-preset-group-id="groupId"
+    :data-preset-prompt-id="prompt.id"
+  >
+    <button
+      v-if="reorderable"
+      class="pc-icon-btn pc-preset-drag-handle"
+      type="button"
+      :disabled="busy"
+      title="拖拽排序"
+      @click.prevent
+      @pointercancel="$emit('drag-cancel', $event)"
+      @pointerdown="$emit('drag-start', $event, prompt)"
+      @pointermove="$emit('drag-move', $event)"
+      @pointerup="$emit('drag-end', $event)"
+    >
+      <i class="fa-solid fa-grip-lines"></i>
+    </button>
     <button
       class="pc-preset-prompt-main"
       type="button"
-      :disabled="!editable"
-      :title="editable ? '编辑条目内容' : '占位条目没有可编辑正文'"
+      :title="editable ? '编辑条目内容' : '查看占位条目'"
       @click="$emit('open', prompt)"
     >
       <span class="pc-preset-prompt-copy">
@@ -15,7 +38,17 @@
           <template v-else-if="!editable"> · 占位条目</template>
         </small>
       </span>
-      <i v-if="editable" class="fa-solid fa-chevron-right"></i>
+      <i class="fa-solid fa-chevron-right"></i>
+    </button>
+    <button
+      v-if="editable"
+      class="pc-icon-btn pc-preset-copy-btn"
+      type="button"
+      :disabled="busy"
+      title="复制到原条目下方"
+      @click="$emit('copy', prompt)"
+    >
+      <i class="fa-solid fa-copy"></i>
     </button>
     <label class="pc-toggle" :title="prompt.enabled ? '停用条目' : '启用条目'">
       <input
@@ -36,16 +69,29 @@ import type { TavernPresetPrompt } from './api';
 const props = withDefaults(
   defineProps<{
     busy?: boolean;
+    dragging?: boolean;
+    dropBefore?: boolean;
+    groupId?: string;
     groupDisabled?: boolean;
     prompt: TavernPresetPrompt;
+    reorderable?: boolean;
   }>(),
   {
     busy: false,
+    dragging: false,
+    dropBefore: false,
+    groupId: '__ungrouped__',
     groupDisabled: false,
+    reorderable: false,
   },
 );
 
 defineEmits<{
+  copy: [prompt: TavernPresetPrompt];
+  'drag-cancel': [event: PointerEvent];
+  'drag-end': [event: PointerEvent];
+  'drag-move': [event: PointerEvent];
+  'drag-start': [event: PointerEvent, prompt: TavernPresetPrompt];
   open: [prompt: TavernPresetPrompt];
   toggle: [prompt: TavernPresetPrompt, enabled: boolean];
 }>();
@@ -63,11 +109,44 @@ const roleLabel = computed(
 
 <style scoped>
 .pc-preset-prompt-row {
-  grid-template-columns: minmax(0, 1fr) auto;
+  position: relative;
+  grid-template-columns: auto minmax(0, 1fr) auto auto;
   align-items: center;
   gap: 10px;
   min-height: 64px;
   padding: 10px 12px;
+}
+
+.pc-preset-prompt-row.without-drag {
+  grid-template-columns: minmax(0, 1fr) auto auto;
+}
+
+.pc-preset-prompt-row.drop-before::before {
+  position: absolute;
+  z-index: 2;
+  top: -6px;
+  right: 8px;
+  left: 8px;
+  height: 3px;
+  border-radius: 2px;
+  background: var(--pc-theme-accent);
+  content: '';
+}
+
+.pc-preset-prompt-row.dragging {
+  opacity: 0.55;
+}
+
+.pc-preset-drag-handle,
+.pc-preset-copy-btn {
+  width: 34px;
+  min-width: 34px;
+  height: 34px;
+}
+
+.pc-preset-drag-handle {
+  color: var(--pc-muted);
+  touch-action: none;
 }
 
 .pc-preset-prompt-row.muted {
@@ -120,5 +199,19 @@ const roleLabel = computed(
   color: var(--pc-muted);
   font-size: 12px;
   font-weight: 700;
+}
+
+@media (max-width: 390px) {
+  .pc-preset-prompt-row {
+    gap: 6px;
+    padding-inline: 8px;
+  }
+
+  .pc-preset-drag-handle,
+  .pc-preset-copy-btn {
+    width: 30px;
+    min-width: 30px;
+    height: 30px;
+  }
 }
 </style>

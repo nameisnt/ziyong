@@ -5,8 +5,10 @@ import {
   type ExtraBook,
   type ExtraChapter,
   type ExtraChapterGenerationRecord,
+  type ExtraChapterVersion,
   type ExtraSummary,
 } from '@/type/extra';
+import { createContentVersion, ensureContentVersions, resolveContentVersion } from '@/util/contentVersions';
 import { validateInplace } from '@/util/zod';
 
 export const extrasField = 'sillytavern_phone_extras';
@@ -95,6 +97,8 @@ export const useExtrasStore = defineStore('extras', () => {
       content: input.content.trim(),
       favorite: false,
       chapterNumber: book.chapters.length + 1,
+      activeVersionId: '',
+      versions: [],
       generationRecords: input.generationRecord ? [input.generationRecord] : [],
       createdAt: timestamp,
       updatedAt: timestamp,
@@ -115,11 +119,79 @@ export const useExtrasStore = defineStore('extras', () => {
     const timestamp = nowIso();
     chapter.title = input.title.trim() || chapter.title;
     chapter.content = input.content.trim();
+    const activeVersion = resolveContentVersion(chapter.versions, chapter.activeVersionId);
+    if (activeVersion) {
+      activeVersion.title = chapter.title;
+      activeVersion.content = chapter.content;
+    }
     if (input.generationRecord) {
       chapter.generationRecords = [...chapter.generationRecords, input.generationRecord].slice(-10);
     }
     chapter.updatedAt = timestamp;
     book.updatedAt = timestamp;
+    return chapter;
+  }
+
+  function appendChapterVersion(
+    bookId: string,
+    chapterId: string,
+    input: Pick<ExtraChapterVersion, 'title' | 'content'> & { generationRecord?: ExtraChapterGenerationRecord },
+  ) {
+    const book = getBook(bookId);
+    const chapter = getChapter(bookId, chapterId);
+    if (!book || !chapter) return null;
+    const state = ensureContentVersions<ExtraChapterVersion>(
+      chapter.versions,
+      chapter.activeVersionId,
+      () => ({ content: chapter.content, createdAt: chapter.createdAt, title: chapter.title }),
+      'extra_version',
+    );
+    const version = createContentVersion<ExtraChapterVersion>('extra_version', {
+      content: input.content.trim(),
+      generationRecord: input.generationRecord,
+      title: input.title.trim() || chapter.title,
+    });
+    chapter.versions = [...state.versions, version];
+    chapter.activeVersionId = state.activeVersionId;
+    if (input.generationRecord) {
+      chapter.generationRecords = [...chapter.generationRecords, input.generationRecord].slice(-10);
+    }
+    return { chapter, version };
+  }
+
+  function activateChapterVersion(bookId: string, chapterId: string, versionId: string) {
+    const book = getBook(bookId);
+    const chapter = getChapter(bookId, chapterId);
+    const version = chapter?.versions.find(item => item.id === versionId);
+    if (!book || !chapter || !version) return null;
+    const timestamp = nowIso();
+    chapter.activeVersionId = version.id;
+    chapter.title = version.title;
+    chapter.content = version.content;
+    chapter.updatedAt = timestamp;
+    book.updatedAt = timestamp;
+    return chapter;
+  }
+
+  function updateChapterVersion(
+    bookId: string,
+    chapterId: string,
+    versionId: string,
+    input: Pick<ExtraChapterVersion, 'title' | 'content'>,
+  ) {
+    const book = getBook(bookId);
+    const chapter = getChapter(bookId, chapterId);
+    const version = chapter?.versions.find(item => item.id === versionId);
+    if (!book || !chapter || !version) return null;
+    const timestamp = nowIso();
+    version.title = input.title.trim() || version.title;
+    version.content = input.content.trim();
+    if (chapter.activeVersionId === version.id) {
+      chapter.title = version.title;
+      chapter.content = version.content;
+      chapter.updatedAt = timestamp;
+      book.updatedAt = timestamp;
+    }
     return chapter;
   }
 
@@ -194,6 +266,8 @@ export const useExtrasStore = defineStore('extras', () => {
   }
 
   return {
+    activateChapterVersion,
+    appendChapterVersion,
     books,
     createBook,
     createChapter,
@@ -218,6 +292,7 @@ export const useExtrasStore = defineStore('extras', () => {
     updateFailedDraft,
     updateBook,
     updateChapter,
+    updateChapterVersion,
     updateSummary,
   };
 });

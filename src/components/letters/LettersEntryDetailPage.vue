@@ -1,7 +1,7 @@
 <template>
   <section class="pc-letters-page pc-letters-detail-page">
     <ReaderDetailShell
-      actions-class="five"
+      actions-class="six"
       :content="entry.content"
       :favorite-active="entry.favorite"
       :next-disabled="!nextId"
@@ -16,9 +16,21 @@
       @previous="emit('previous')"
       @top="emit('top')"
     >
+      <template #before-content>
+        <VersionNavigator
+          :active-version-id="activeVersionId"
+          :versions="versions"
+          :viewed-version-id="viewedVersionId"
+          @adopt="emit('adoptVersion', $event)"
+          @select="emit('selectVersion', $event)"
+        />
+      </template>
       <template #actions>
         <button class="pc-soft-btn" type="button" :title="t`回信`" @click="emit('reply')">
           <i class="fa-solid fa-reply"></i>
+        </button>
+        <button class="pc-soft-btn" type="button" :title="t`重写`" @click="emit('rewrite')">
+          <i class="fa-solid fa-rotate"></i>
         </button>
         <button class="pc-soft-btn danger" type="button" :title="t`删除`" @click="emit('delete')">
           <i class="fa-solid fa-trash"></i>
@@ -38,20 +50,26 @@
 </template>
 
 <script setup lang="ts">
-import CatalogModal, { type CatalogModalItem } from '@/components/CatalogModal.vue';
+import CatalogModal from '@/components/CatalogModal.vue';
+import type { CatalogModalItem } from '@/type/catalog';
 import ReaderDetailShell from '@/components/ReaderDetailShell.vue';
-import type { LetterEntry } from '@/type/letter';
+import VersionNavigator from '@/components/VersionNavigator.vue';
+import type { LetterEntry, LetterEntryVersion } from '@/type/letter';
 
 defineProps<{
   catalogItems: CatalogModalItem[];
   catalogOpen: boolean;
+  activeVersionId: string;
   entry: LetterEntry;
   nextId: string;
   previousId: string;
+  versions: LetterEntryVersion[];
+  viewedVersionId: string;
 }>();
 
 const emit = defineEmits<{
   bagu: [];
+  adoptVersion: [versionId: string];
   bottom: [];
   delete: [];
   edit: [];
@@ -59,6 +77,8 @@ const emit = defineEmits<{
   next: [];
   previous: [];
   reply: [];
+  rewrite: [];
+  selectVersion: [versionId: string];
   selectCatalog: [entryId: string];
   top: [];
   'update:catalogOpen': [open: boolean];

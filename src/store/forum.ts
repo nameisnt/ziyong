@@ -1,6 +1,13 @@
 import { useChatScopedDomain } from '@/store/chatScoped';
 import { createFailedDraftCollection } from '@/store/failedDrafts';
-import { type ForumBoard, type ForumReply, type ForumThread, ForumScopeDataSchema } from '@/type/forum';
+import {
+  type ForumBoard,
+  type ForumReply,
+  type ForumThread,
+  type ForumThreadVersion,
+  ForumScopeDataSchema,
+} from '@/type/forum';
+import { createContentVersion, ensureContentVersions, resolveContentVersion } from '@/util/contentVersions';
 import { validateInplace } from '@/util/zod';
 
 export const forumField = 'sillytavern_phone_forum';
@@ -16,6 +23,9 @@ function createId(prefix: string) {
 function normalizeName(name: string) {
   return name.trim().toLowerCase();
 }
+
+type ForumBoardInput = Pick<ForumBoard, 'name'> &
+  Partial<Pick<ForumBoard, 'description' | 'typeId' | 'typeName' | 'typePrompt'>>;
 
 export const useForumStore = defineStore('forum', () => {
   const { data, rehydrateFromSettings, resetCurrentScope, scopeKey, switchScope } = useChatScopedDomain({
@@ -45,12 +55,16 @@ export const useForumStore = defineStore('forum', () => {
     return boards.value.find(board => normalizeName(board.name) === normalized) ?? null;
   }
 
-  function createBoard(input: Pick<ForumBoard, 'name'> & Partial<Pick<ForumBoard, 'description'>>) {
+  function createBoard(input: ForumBoardInput) {
     const timestamp = nowIso();
+    const typePrompt = input.typePrompt?.trim() || input.description?.trim() || '';
     const board: ForumBoard = {
       id: createId('forum_board'),
       name: input.name.trim() || '未命名板块',
-      description: input.description?.trim() || undefined,
+      description: undefined,
+      typeId: input.typeId?.trim() || '',
+      typeName: input.typeName?.trim() || (typePrompt ? '自定义' : ''),
+      typePrompt,
       threads: [],
       createdAt: timestamp,
       updatedAt: timestamp,
@@ -59,17 +73,20 @@ export const useForumStore = defineStore('forum', () => {
     return board;
   }
 
-  function ensureBoard(name: string, description?: string) {
+  function ensureBoard(name: string, typePrompt?: string, type?: Partial<Pick<ForumBoard, 'typeId' | 'typeName'>>) {
     const existing = findBoardByName(name);
     if (existing) return existing;
-    return createBoard({ description, name });
+    return createBoard({ name, typeId: type?.typeId, typeName: type?.typeName, typePrompt });
   }
 
-  function updateBoard(boardId: string, input: Pick<ForumBoard, 'name'> & Partial<Pick<ForumBoard, 'description'>>) {
+  function updateBoard(boardId: string, input: ForumBoardInput) {
     const board = getBoard(boardId);
     if (!board) return null;
     board.name = input.name.trim() || board.name;
-    board.description = input.description?.trim() || undefined;
+    board.typeId = input.typeId?.trim() || '';
+    board.typePrompt = input.typePrompt?.trim() || input.description?.trim() || '';
+    board.typeName = input.typeName?.trim() || (board.typePrompt ? '自定义' : '');
+    board.description = undefined;
     board.updatedAt = nowIso();
     return board;
   }
@@ -93,6 +110,8 @@ export const useForumStore = defineStore('forum', () => {
       content: input.content.trim(),
       favorite: Boolean(input.favorite),
       replies: [],
+      activeVersionId: '',
+      versions: [],
       createdAt: timestamp,
       updatedAt: timestamp,
     };
@@ -109,8 +128,77 @@ export const useForumStore = defineStore('forum', () => {
     thread.title = input.title.trim() || thread.title;
     thread.author = input.author.trim() || thread.author;
     thread.content = input.content.trim();
+    const activeVersion = resolveContentVersion(thread.versions, thread.activeVersionId);
+    if (activeVersion) {
+      activeVersion.author = thread.author;
+      activeVersion.title = thread.title;
+      activeVersion.content = thread.content;
+    }
     thread.updatedAt = timestamp;
     board.updatedAt = timestamp;
+    return thread;
+  }
+
+  function appendThreadVersion(
+    boardId: string,
+    threadId: string,
+    input: Pick<ForumThreadVersion, 'title' | 'author' | 'content'>,
+  ) {
+    const board = getBoard(boardId);
+    const thread = getThread(boardId, threadId);
+    if (!board || !thread) return null;
+    const state = ensureContentVersions<ForumThreadVersion>(
+      thread.versions,
+      thread.activeVersionId,
+      () => ({ author: thread.author, content: thread.content, createdAt: thread.createdAt, title: thread.title }),
+      'forum_thread_version',
+    );
+    const version = createContentVersion<ForumThreadVersion>('forum_thread_version', {
+      author: input.author.trim() || thread.author,
+      content: input.content.trim(),
+      title: input.title.trim() || thread.title,
+    });
+    thread.versions = [...state.versions, version];
+    thread.activeVersionId = state.activeVersionId;
+    return { board, thread, version };
+  }
+
+  function activateThreadVersion(boardId: string, threadId: string, versionId: string) {
+    const board = getBoard(boardId);
+    const thread = getThread(boardId, threadId);
+    const version = thread?.versions.find(item => item.id === versionId);
+    if (!board || !thread || !version) return null;
+    const timestamp = nowIso();
+    thread.activeVersionId = version.id;
+    thread.author = version.author;
+    thread.title = version.title;
+    thread.content = version.content;
+    thread.updatedAt = timestamp;
+    board.updatedAt = timestamp;
+    return thread;
+  }
+
+  function updateThreadVersion(
+    boardId: string,
+    threadId: string,
+    versionId: string,
+    input: Pick<ForumThreadVersion, 'title' | 'author' | 'content'>,
+  ) {
+    const board = getBoard(boardId);
+    const thread = getThread(boardId, threadId);
+    const version = thread?.versions.find(item => item.id === versionId);
+    if (!board || !thread || !version) return null;
+    const timestamp = nowIso();
+    version.author = input.author.trim() || version.author;
+    version.title = input.title.trim() || version.title;
+    version.content = input.content.trim();
+    if (thread.activeVersionId === version.id) {
+      thread.author = version.author;
+      thread.title = version.title;
+      thread.content = version.content;
+      thread.updatedAt = timestamp;
+      board.updatedAt = timestamp;
+    }
     return thread;
   }
 
@@ -199,6 +287,8 @@ export const useForumStore = defineStore('forum', () => {
   }
 
   return {
+    activateThreadVersion,
+    appendThreadVersion,
     appendReplies,
     boards,
     createBoard,
@@ -226,5 +316,6 @@ export const useForumStore = defineStore('forum', () => {
     updateFailedDraft,
     updateReply,
     updateThread,
+    updateThreadVersion,
   };
 });

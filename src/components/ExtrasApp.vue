@@ -161,7 +161,7 @@
       v-else-if="route.page === 'chapter-editor' && activeBook"
       v-model:content="chapterDraft.content"
       v-model:title="chapterDraft.title"
-      :heading="editingChapter ? editingChapter.title : t`调整当前章节`"
+      :heading="viewedChapter ? viewedChapter.title : t`调整当前章节`"
       @cancel="phone.goBack()"
       @save="submitChapter"
     />
@@ -169,34 +169,39 @@
     <ExtrasChapterDetailPage
       v-else-if="route.page === 'chapter' && activeBook && activeChapter"
       v-model:catalog-open="showCatalogModal"
+      :active-version-id="activeChapter.activeVersionId"
       :catalog-items="chapterCatalogItems"
-      :chapter="activeChapter"
+      :chapter="viewedChapter"
       :generation-records="activeChapterGenerationRecords"
       :next-id="chapterNextId || ''"
       :previous-id="chapterPrevId || ''"
+      :versions="activeChapter.versions"
+      :viewed-version-id="viewedChapterVersionId"
+      @adopt-version="adoptChapterVersion"
       @bagu="openExtrasBaguScan"
       @bottom="scrollToBottom"
       @continue="openGenerateChapter(activeBook.id)"
       @delete="removeChapter(activeBook.id, activeChapter.id)"
-      @edit="openEditChapter(activeBook.id, activeChapter.id)"
+      @edit="openEditChapter(activeBook.id, activeChapter.id, viewedChapterVersionId)"
       @favorite="extras.toggleFavorite(activeBook.id, activeChapter.id)"
       @next="openChapter(activeBook.id, chapterNextId || '', true)"
       @previous="openChapter(activeBook.id, chapterPrevId || '', true)"
-      @rewrite="openGenerateChapter(activeBook.id, activeChapter.id)"
+      @rewrite="openGenerateChapter(activeBook.id, activeChapter.id, undefined, viewedChapterVersionId)"
       @rewrite-record="rewriteWithGenerationRecord"
       @select-catalog="selectCatalogChapter"
+      @select-version="selectChapterVersion"
       @top="scrollToTop"
     />
 
     <section v-else-if="route.page === 'bagu-scan' && activeBook && activeChapter" class="pc-extras-page">
       <div class="pc-detail-card">
         <div class="pc-detail-title-row">
-          <h2>{{ `第 ${activeChapter.chapterNumber} 章 · ${activeChapter.title}` }}</h2>
+          <h2>{{ `第 ${activeChapter.chapterNumber} 章 · ${viewedChapter.title}` }}</h2>
         </div>
         <BaguScanPanel
           auto-scan
           class="pc-detail-bagu-panel"
-          :content="activeChapter.content"
+          :content="viewedChapter.content"
           :apply-handler="applyExtrasBaguContent"
         />
       </div>
@@ -352,7 +357,7 @@
           :raw="chapterGenerationState.preview.raw"
           raw-editable
           :reparse-handler="reparseChapterPreviewRaw"
-          save-label="保存章节"
+          :save-label="chapterGenerationState.preview.mode === '重写当前章节' ? '保存候选版本' : '保存章节'"
           :source-label="activeBook?.title || t`番外预览`"
           :text-provider-summary="chapterGenerationState.preview.mode"
           :title="chapterGenerationState.preview.title"
@@ -447,6 +452,7 @@ import { useDetailScroll } from '@/util/detailScroll';
 import { parseContentXmlResult, parseSimpleXmlResult } from '@/util/generation';
 import { usePreviewDraftPersistence } from '@/util/previewDrafts';
 import { formatGenerationReferences, type GenerationReferenceItem } from '@/util/references';
+import { resolveContentVersion } from '@/util/contentVersions';
 import { useInvalidRouteFallback } from '@/util/routeFallback';
 import { stopGenerationByIdSafe } from '@/util/runtime';
 import { storeToRefs } from 'pinia';
@@ -580,6 +586,20 @@ const activeChapter = computed(() => {
   const bookId = route.value.params?.bookId;
   const chapterId = route.value.params?.chapterId;
   return bookId && chapterId ? extras.getChapter(bookId, chapterId) : null;
+});
+
+const viewedChapterVersion = computed(() => {
+  const chapter = activeChapter.value;
+  if (!chapter) return null;
+  return resolveContentVersion(chapter.versions, chapter.activeVersionId, route.value.params?.versionId);
+});
+const viewedChapterVersionId = computed(
+  () => viewedChapterVersion.value?.id || activeChapter.value?.activeVersionId || '',
+);
+const viewedChapter = computed(() => {
+  const chapter = activeChapter.value;
+  const version = viewedChapterVersion.value;
+  return chapter && version ? { ...chapter, content: version.content, title: version.title } : chapter;
 });
 
 const activeSummary = computed(() => {
@@ -850,8 +870,8 @@ watch(
     }
 
     if (current.page === 'chapter-editor') {
-      chapterDraft.title = editingChapter.value?.title || '';
-      chapterDraft.content = editingChapter.value?.content || '';
+      chapterDraft.title = viewedChapter.value?.title || '';
+      chapterDraft.content = viewedChapter.value?.content || '';
     }
 
     if (current.page === 'chapter-generate' && previous?.page !== 'chapter-preview') {
@@ -1110,21 +1130,47 @@ async function removeBook(bookId: string) {
   toastr.success('已删除番外');
 }
 
-function openGenerateChapter(bookId: string, chapterId?: string, generationRecordId?: string) {
+function openGenerateChapter(bookId: string, chapterId?: string, generationRecordId?: string, versionId?: string) {
   phone.pushPage(
     'chapter-generate',
     chapterId ? '重写章节' : '生成章节',
-    chapterId ? { bookId, chapterId, ...(generationRecordId ? { generationRecordId } : {}) } : { bookId },
+    chapterId
+      ? {
+          bookId,
+          chapterId,
+          ...(generationRecordId ? { generationRecordId } : {}),
+          ...(versionId ? { versionId } : {}),
+        }
+      : { bookId },
   );
 }
 
 function rewriteWithGenerationRecord(generationRecordId: string) {
   if (!activeBook.value || !activeChapter.value) return;
-  openGenerateChapter(activeBook.value.id, activeChapter.value.id, generationRecordId);
+  openGenerateChapter(activeBook.value.id, activeChapter.value.id, generationRecordId, viewedChapterVersionId.value);
 }
 
-function openEditChapter(bookId: string, chapterId: string) {
-  phone.pushPage('chapter-editor', '编辑章节', { bookId, chapterId });
+function selectChapterVersion(versionId: string) {
+  if (!activeBook.value || !activeChapter.value) return;
+  const version = activeChapter.value.versions.find(item => item.id === versionId);
+  phone.replacePage('chapter', version?.title || activeChapter.value.title, {
+    bookId: activeBook.value.id,
+    chapterId: activeChapter.value.id,
+    versionId,
+  });
+  void nextTick(() => scrollToTop('auto'));
+}
+
+function adoptChapterVersion(versionId: string) {
+  if (!activeBook.value || !activeChapter.value) return;
+  const chapter = extras.activateChapterVersion(activeBook.value.id, activeChapter.value.id, versionId);
+  if (!chapter) return;
+  phone.replacePage('chapter', chapter.title, { bookId: activeBook.value.id, chapterId: chapter.id, versionId });
+  toastr.success('已采用这个章节版本');
+}
+
+function openEditChapter(bookId: string, chapterId: string, versionId?: string) {
+  phone.pushPage('chapter-editor', '编辑章节', { bookId, chapterId, ...(versionId ? { versionId } : {}) });
 }
 
 function submitChapter() {
@@ -1132,9 +1178,16 @@ function submitChapter() {
   if (!bookId) return;
 
   if (editingChapter.value && route.value.params?.chapterId) {
-    const chapter = extras.updateChapter(bookId, route.value.params.chapterId, chapterDraft);
+    const versionId = route.value.params?.versionId;
+    const chapter = versionId
+      ? extras.updateChapterVersion(bookId, route.value.params.chapterId, versionId, chapterDraft)
+      : extras.updateChapter(bookId, route.value.params.chapterId, chapterDraft);
     if (!chapter) return;
-    phone.replacePage('chapter', chapter.title, { bookId, chapterId: chapter.id });
+    phone.replacePage('chapter', versionId ? chapterDraft.title : chapter.title, {
+      bookId,
+      chapterId: chapter.id,
+      ...(versionId ? { versionId } : {}),
+    });
     return;
   }
 
@@ -1145,10 +1198,16 @@ function submitChapter() {
 
 function applyExtrasBaguContent(content: string) {
   if (!activeBook.value || !activeChapter.value) return false;
-  const chapter = extras.updateChapter(activeBook.value.id, activeChapter.value.id, {
-    content,
-    title: activeChapter.value.title,
-  });
+  const versionId = route.value.params?.versionId;
+  const chapter = versionId
+    ? extras.updateChapterVersion(activeBook.value.id, activeChapter.value.id, versionId, {
+        content,
+        title: viewedChapter.value?.title || activeChapter.value.title,
+      })
+    : extras.updateChapter(activeBook.value.id, activeChapter.value.id, {
+        content,
+        title: activeChapter.value.title,
+      });
   return Boolean(chapter);
 }
 
@@ -1163,10 +1222,11 @@ function openChapter(bookId: string, chapterId: string, replaceCurrent = false) 
 
 function openExtrasBaguScan() {
   if (!activeBook.value || !activeChapter.value) return;
-  if (!canOpenBaguScan(activeChapter.value.content)) return;
+  if (!canOpenBaguScan(viewedChapter.value?.content || activeChapter.value.content)) return;
   phone.pushPage('bagu-scan', '八股检测', {
     bookId: activeBook.value.id,
     chapterId: activeChapter.value.id,
+    ...(viewedChapterVersionId.value ? { versionId: viewedChapterVersionId.value } : {}),
   });
 }
 
@@ -1253,10 +1313,11 @@ function buildPreviousChapterContext(book = activeBook.value) {
   }
 
   if (chapterGenerationDraft.mode === '重写当前章节' && activeChapter.value) {
+    const targetChapter = viewedChapter.value || activeChapter.value;
     return [
       `番外书名：${book.title}`,
-      `需要重写的章节：第 ${activeChapter.value.chapterNumber} 章 · ${activeChapter.value.title}`,
-      activeChapter.value.content,
+      `需要重写的章节：第 ${targetChapter.chapterNumber} 章 · ${targetChapter.title}`,
+      targetChapter.content,
     ]
       .filter(Boolean)
       .join('\n\n');
@@ -1423,10 +1484,11 @@ async function runChapterGenerationForBook(bookId: string, book: ExtraBook, chap
 
     if (result.status === 'saved') {
       const savedChapter = result.saved.chapter;
-      toastr.success(chapterGenerationDraft.mode === '重写当前章节' ? '已重写并保存章节' : '已生成并保存章节');
-      void phone.presentGeneratedPage('extras', 'chapter', savedChapter.title, {
+      toastr.success(chapterGenerationDraft.mode === '重写当前章节' ? '已保存章节候选版本' : '已生成并保存章节');
+      void phone.presentGeneratedPage('extras', 'chapter', result.data.title, {
         bookId,
         chapterId: savedChapter.id,
+        ...(result.saved.versionId ? { versionId: result.saved.versionId } : {}),
       });
       return;
     }
@@ -1465,9 +1527,9 @@ function saveChapterPreview() {
   const chapterId =
     preview.chapterId || route.value.params?.chapterId || extraChapterPreviewDraft.value?.routeParams.chapterId;
 
-  const chapter =
+  const saved =
     preview.mode === '重写当前章节' && chapterId
-      ? extras.updateChapter(bookId, chapterId, {
+      ? extras.appendChapterVersion(bookId, chapterId, {
           content: preview.content,
           generationRecord: preview.generationRecord,
           title: preview.title,
@@ -1478,7 +1540,7 @@ function saveChapterPreview() {
           title: preview.title,
         });
 
-  if (!chapter) {
+  if (!saved) {
     toastr.warning('目标番外不存在，无法保存章节');
     return;
   }
@@ -1488,7 +1550,13 @@ function saveChapterPreview() {
   clearExtraChapterPreviewDraft();
   chapterGenerationState.preview = null;
   toastr.success(preview.mode === '重写当前章节' ? '已保存重写章节' : '已保存新章节');
-  phone.replacePage('chapter', chapter.title, { bookId, chapterId: chapter.id });
+  const chapter = 'chapter' in saved ? saved.chapter : saved;
+  const versionId = 'version' in saved ? saved.version.id : '';
+  phone.replacePage('chapter', versionId ? preview.title : chapter.title, {
+    bookId,
+    chapterId: chapter.id,
+    ...(versionId ? { versionId } : {}),
+  });
 }
 
 function reparseChapterPreviewRaw() {

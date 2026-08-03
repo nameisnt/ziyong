@@ -12,6 +12,9 @@ import { parsePrettified } from '@/util/zod';
 
 export const TheaterGenerateConfigSchema = z.object({
   appPrompt: z.string(),
+  entryId: z.string().default(''),
+  existingContent: z.string().default(''),
+  mode: z.enum(['create', 'rewrite']).default('create'),
   outputFormat: z.string(),
   participants: z.array(CharacterRefSchema).default([]),
   renderMode: z.enum(['markdown', 'frontend']).default('markdown'),
@@ -27,6 +30,10 @@ export function createTheaterGenerationAdapter(theaterStore: {
     input: Pick<TheaterEntry, 'title' | 'content' | 'participants' | 'renderMode' | 'typeName'> &
       Partial<Pick<TheaterEntry, 'typeId'>>,
   ) => TheaterEntry;
+  appendEntryVersion: (
+    entryId: string,
+    input: Pick<TheaterEntry, 'title' | 'content' | 'renderMode'>,
+  ) => { entry: TheaterEntry; version: { id: string } } | null;
 }) {
   return {
     actionId: 'generate',
@@ -34,7 +41,12 @@ export function createTheaterGenerationAdapter(theaterStore: {
     buildRequest(config) {
       return parsePrettified(GenerationRequestPartsSchema, {
         appPrompt: config.appPrompt,
+        context: config.mode === 'rewrite' ? config.existingContent : '',
         outputFormat: config.outputFormat,
+        taskInstruction:
+          config.mode === 'rewrite'
+            ? '请将上述当前小剧场重写为完整替代版本，不要续写，也不要解释修改过程。'
+            : '',
         typePrompt:
           config.typePrompt.trim() || (config.typeName.trim() ? `本次小剧场类型为“${config.typeName.trim()}”。` : ''),
         userRequirement: config.userRequirement,
@@ -51,6 +63,19 @@ export function createTheaterGenerationAdapter(theaterStore: {
       );
     },
     async save(result, context) {
+      if (context.config.mode === 'rewrite' && context.config.entryId) {
+        const saved = theaterStore.appendEntryVersion(context.config.entryId, {
+          content: result.content,
+          renderMode: context.config.renderMode as TheaterRenderMode,
+          title: result.title,
+        });
+        if (!saved) throw new Error('目标小剧场不存在，无法保存重写版本');
+        return {
+          entityId: saved.entry.id,
+          entry: saved.entry,
+          versionId: saved.version.id,
+        };
+      }
       const entry = theaterStore.createEntry({
         content: result.content,
         participants: context.config.participants,
@@ -62,7 +87,12 @@ export function createTheaterGenerationAdapter(theaterStore: {
       return {
         entityId: entry.id,
         entry,
+        versionId: undefined,
       };
     },
-  } satisfies GenerationAdapter<TheaterGenerateConfig, SimpleXmlResult, { entityId: string; entry: TheaterEntry }>;
+  } satisfies GenerationAdapter<
+    TheaterGenerateConfig,
+    SimpleXmlResult,
+    { entityId: string; entry: TheaterEntry; versionId?: string }
+  >;
 }

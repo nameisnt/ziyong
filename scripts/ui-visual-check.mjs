@@ -32,17 +32,24 @@ function parseArgs(argv) {
     if (arg.startsWith('--out=')) options.outDir = resolve(root, arg.slice('--out='.length));
     if (arg.startsWith('--port=')) options.port = Number(arg.slice('--port='.length)) || options.port;
     if (arg.startsWith('--scenarios=')) {
-      options.scenarios = arg.slice('--scenarios='.length).split(/[,\s]+/).map(item => item.trim()).filter(Boolean);
+      options.scenarios = arg
+        .slice('--scenarios='.length)
+        .split(/[,\s]+/)
+        .map(item => item.trim())
+        .filter(Boolean);
     }
     if (arg.startsWith('--sizes=')) {
-      options.sizes = arg.slice('--sizes='.length).split(',').map(item => {
-        const [width, height] = item.split('x').map(value => Number(value));
-        return {
-          height: Number.isFinite(height) ? height : 700,
-          label: `${width}x${height}`,
-          width: Number.isFinite(width) ? width : 360,
-        };
-      });
+      options.sizes = arg
+        .slice('--sizes='.length)
+        .split(',')
+        .map(item => {
+          const [width, height] = item.split('x').map(value => Number(value));
+          return {
+            height: Number.isFinite(height) ? height : 700,
+            label: `${width}x${height}`,
+            width: Number.isFinite(width) ? width : 360,
+          };
+        });
     }
   });
 
@@ -53,10 +60,12 @@ async function loadPlaywright() {
   try {
     return await import('playwright');
   } catch {
-    console.error([
-      '缺少 Playwright，无法自动截图。',
-      '安装后再运行：pnpm add -D playwright && pnpm exec playwright install chromium',
-    ].join('\n'));
+    console.error(
+      [
+        '缺少 Playwright，无法自动截图。',
+        '安装后再运行：pnpm add -D playwright && pnpm exec playwright install chromium',
+      ].join('\n'),
+    );
     process.exitCode = 1;
     return null;
   }
@@ -88,7 +97,9 @@ function startVite(port) {
 }
 
 function sanitizeName(value) {
-  return String(value).replace(/[^a-zA-Z0-9_-]+/g, '-').replace(/^-+|-+$/g, '');
+  return String(value)
+    .replace(/[^a-zA-Z0-9_-]+/g, '-')
+    .replace(/^-+|-+$/g, '');
 }
 
 async function loadHarnessScenarios(page, port) {
@@ -107,7 +118,12 @@ async function runDomChecks(page) {
     }
 
     const shellRect = shell.getBoundingClientRect();
-    if (shellRect.left < -1 || shellRect.top < -1 || shellRect.right > window.innerWidth + 1 || shellRect.bottom > window.innerHeight + 1) {
+    if (
+      shellRect.left < -1 ||
+      shellRect.top < -1 ||
+      shellRect.right > window.innerWidth + 1 ||
+      shellRect.bottom > window.innerHeight + 1
+    ) {
       findings.push({ severity: 'fail', message: '手机壳超出浏览器视口' });
     }
 
@@ -116,13 +132,24 @@ async function runDomChecks(page) {
     }
 
     const controls = Array.from(shell.querySelectorAll('button,input,select,textarea')).filter(element => {
-      return !element.hidden
-        && getComputedStyle(element).display !== 'none'
-        && getComputedStyle(element).visibility !== 'hidden'
-        && !element.closest('details:not([open])')
-        && !element.classList.contains('pc-hidden-input')
-        && element.getAttribute('type') !== 'hidden';
+      return (
+        !element.hidden &&
+        getComputedStyle(element).display !== 'none' &&
+        getComputedStyle(element).visibility !== 'hidden' &&
+        !element.closest('details:not([open])') &&
+        !element.classList.contains('pc-hidden-input') &&
+        element.getAttribute('type') !== 'hidden'
+      );
     });
+    const hasScrollableAncestor = element => {
+      let current = element.parentElement;
+      while (current && current !== shell) {
+        const style = getComputedStyle(current);
+        if (/(auto|scroll)/.test(style.overflowY) && current.scrollHeight > current.clientHeight + 2) return true;
+        current = current.parentElement;
+      }
+      return false;
+    };
     controls.forEach(element => {
       const rect = element.getBoundingClientRect();
       if (!element.getClientRects().length) return;
@@ -134,14 +161,23 @@ async function runDomChecks(page) {
           severity: 'fail',
         });
       }
+      if ((rect.top < shellRect.top - 2 || rect.bottom > shellRect.bottom + 2) && !hasScrollableAncestor(element)) {
+        findings.push({
+          message: '交互元素纵向超出手机壳且无法通过滚动触达',
+          selector: element.className || element.id || element.textContent?.trim().slice(0, 24) || element.tagName,
+          severity: 'fail',
+        });
+      }
     });
 
-    const overflowing = Array.from(shell.querySelectorAll('*')).filter(element => {
-      const rect = element.getBoundingClientRect();
-      return rect.width > 8
-        && rect.height > 8
-        && (rect.left < shellRect.left - 2 || rect.right > shellRect.right + 2);
-    }).slice(0, 12);
+    const overflowing = Array.from(shell.querySelectorAll('*'))
+      .filter(element => {
+        const rect = element.getBoundingClientRect();
+        return (
+          rect.width > 8 && rect.height > 8 && (rect.left < shellRect.left - 2 || rect.right > shellRect.right + 2)
+        );
+      })
+      .slice(0, 12);
     overflowing.forEach(element => {
       findings.push({
         message: '元素横向超出手机壳',
@@ -150,13 +186,15 @@ async function runDomChecks(page) {
       });
     });
 
-    const textOverflow = Array.from(shell.querySelectorAll('button,strong,p,span,small,label')).filter(element => {
-      if (element.scrollWidth <= element.clientWidth + 3 || element.clientWidth <= 0) return false;
-      const style = getComputedStyle(element);
-      const clipsOverflow = ['clip', 'hidden'].includes(style.overflowX)
-        || ['clip', 'hidden'].includes(style.overflow);
-      return !clipsOverflow && style.textOverflow !== 'ellipsis';
-    }).slice(0, 12);
+    const textOverflow = Array.from(shell.querySelectorAll('button,strong,p,span,small,label'))
+      .filter(element => {
+        if (element.scrollWidth <= element.clientWidth + 3 || element.clientWidth <= 0) return false;
+        const style = getComputedStyle(element);
+        const clipsOverflow =
+          ['clip', 'hidden'].includes(style.overflowX) || ['clip', 'hidden'].includes(style.overflow);
+        return !clipsOverflow && style.textOverflow !== 'ellipsis';
+      })
+      .slice(0, 12);
     textOverflow.forEach(element => {
       findings.push({
         message: '文本可能溢出容器',
@@ -170,19 +208,25 @@ async function runDomChecks(page) {
 }
 
 function renderReport(results) {
-  const rows = results.map(result => {
-    const status = result.findings.some(item => item.severity === 'fail') ? 'fail' : result.findings.length ? 'warning' : 'pass';
-    const findings = result.findings.length
-      ? `<ul>${result.findings.map(item => `<li><strong>${item.severity}</strong> ${item.message}${item.selector ? `：${item.selector}` : ''}</li>`).join('')}</ul>`
-      : '<p>未发现自动检测问题。</p>';
-    return `
+  const rows = results
+    .map(result => {
+      const status = result.findings.some(item => item.severity === 'fail')
+        ? 'fail'
+        : result.findings.length
+          ? 'warning'
+          : 'pass';
+      const findings = result.findings.length
+        ? `<ul>${result.findings.map(item => `<li><strong>${item.severity}</strong> ${item.message}${item.selector ? `：${item.selector}` : ''}</li>`).join('')}</ul>`
+        : '<p>未发现自动检测问题。</p>';
+      return `
       <section class="card ${status}">
         <h2>${result.scenario} / ${result.size}</h2>
         <img src="${result.screenshot}" alt="${result.scenario} ${result.size}" />
         ${findings}
       </section>
     `;
-  }).join('\n');
+    })
+    .join('\n');
 
   return `<!doctype html>
 <html lang="zh-CN">
@@ -233,9 +277,8 @@ async function main() {
     page.setDefaultNavigationTimeout(15_000);
     await page.setViewportSize({ height: 780, width: 520 });
     const harnessScenarios = await loadHarnessScenarios(page, options.port);
-    const scenarios = !options.scenarios?.length || options.scenarios.includes('all')
-      ? harnessScenarios
-      : options.scenarios;
+    const scenarios =
+      !options.scenarios?.length || options.scenarios.includes('all') ? harnessScenarios : options.scenarios;
 
     if (options.listOnly) {
       console.log(scenarios.join('\n'));
@@ -251,11 +294,14 @@ async function main() {
         const url = `http://127.0.0.1:${options.port}/visual-harness.html?manual=1`;
         await page.goto(url, { waitUntil: 'networkidle' });
         await page.waitForFunction(() => Boolean(window.__phoneVisualTest__));
-        await page.evaluate(({ height, scenario, width }) => window.__phoneVisualTest__.applyScenario(scenario, { height, width }), {
-          height: size.height,
-          scenario,
-          width: size.width,
-        });
+        await page.evaluate(
+          ({ height, scenario, width }) => window.__phoneVisualTest__.applyScenario(scenario, { height, width }),
+          {
+            height: size.height,
+            scenario,
+            width: size.width,
+          },
+        );
         const shell = page.locator('.pc-phone-shell');
         await shell.waitFor({ state: 'visible' });
         const screenshotName = `${sanitizeName(scenario)}-${sanitizeName(size.label)}.png`;

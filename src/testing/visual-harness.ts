@@ -365,7 +365,8 @@ const { useWorldSlotsStore } = await import('@/apps/world-slots/store');
 const { resolveGeneratedExtraBookTitle } = await import('@/core/extrasGeneration');
 const { ENTRY_LIBRARY_CONTENT_PLACEHOLDER, renderEntryLibraryBindingContent, useEntryLibraryStore } =
   await import('@/apps/entry-library/store');
-const { readTavernPreset } = await import('@/apps/preset-manager/api');
+const { deleteTavernPresetPrompt, duplicateTavernPresetPrompt, readTavernPreset, reorderTavernPresetPrompts } =
+  await import('@/apps/preset-manager/api');
 const { applyTextProviderSelection } = await import('@/util/textProvider');
 
 initPhoneLifecycle();
@@ -399,7 +400,12 @@ const scenarios: VisualScenarioName[] = [
   'forum-generate-thread',
   'forum-board',
   'forum-thread',
+  'forum-thread-versions',
+  'forum-version-interactions',
+  'forum-rewrite-generate',
   'preset-detail',
+  'preset-copy-reorder',
+  'preset-copy-editor',
   'preset-editor',
   'reader-detail',
   'reader-catalog',
@@ -411,6 +417,8 @@ const scenarios: VisualScenarioName[] = [
   'generation-connection-override',
   'preview-draft-deferred-save',
   'extras-chapter-detail',
+  'content-versions',
+  'content-version-interactions',
   'extras-chapter-editor',
   'extras-legacy-continuation',
   'summary-create',
@@ -422,11 +430,13 @@ const scenarios: VisualScenarioName[] = [
   'prompts-type-detail',
   'prompts-type-editor',
   'theater-generate',
+  'theater-rewrite-generate',
   'theater-generate-dark-inputs',
   'theater-editor',
   'theater-history',
   'diary-entry-detail',
   'letters-entry-detail',
+  'letters-rewrite-generate',
   'tutorial-article',
   'tutorial-app-directory',
   'tutorial-missing-article',
@@ -461,7 +471,13 @@ function resetPhoneToRoute(appId: string, page: string, title: string, params?: 
 function createForumFixture() {
   const forum = useForumStore();
   forum.resetCurrentScope();
-  const board = forum.createBoard({ name: '各个' });
+  const longTypePrompt =
+    '这是只应提供给模型的长板块类型提示词。它故意包含很多详细要求，用来确认论坛板块卡片和板块页头不会因为提示词过长而被持续撑高。';
+  const board = forum.createBoard({
+    name: '各个',
+    typeName: '视觉自定义类型',
+    typePrompt: longTypePrompt,
+  });
   const longThread = forum.createThread(board.id, {
     author: '楼主',
     content: [
@@ -479,6 +495,7 @@ function createForumFixture() {
   ]);
   return {
     board,
+    longTypePrompt,
     thread: longThread.thread,
   };
 }
@@ -1313,19 +1330,23 @@ async function applyScenario(name: VisualScenarioName, options: { height?: numbe
     if (mainPrompt?.content !== '<a>视觉收藏正文</a>') {
       throw new Error('Entry library binding placeholder was not rendered into the preset prompt');
     }
-    const originalChatId = globalThis.chatId;
-    const originalTavernChatId = globalThis.SillyTavern.chatId;
+    const visualGlobal = globalThis as typeof globalThis & {
+      chatId: string;
+      SillyTavern: { chatId: string };
+    };
+    const originalChatId = visualGlobal.chatId;
+    const originalTavernChatId = visualGlobal.SillyTavern.chatId;
     try {
-      globalThis.chatId = 'visual-chat-switched';
-      globalThis.SillyTavern.chatId = 'visual-chat-switched';
+      visualGlobal.chatId = 'visual-chat-switched';
+      visualGlobal.SillyTavern.chatId = 'visual-chat-switched';
       library.rehydrateFromSettings();
       const retainedBinding = library.bindings.find(binding => binding.targetPromptId === 'main');
       if (retainedBinding?.presetName !== '视觉预设' || retainedBinding.groupId !== 'visual-entry-group-2') {
         throw new Error('Entry library binding changed after switching chats');
       }
     } finally {
-      globalThis.chatId = originalChatId;
-      globalThis.SillyTavern.chatId = originalTavernChatId;
+      visualGlobal.chatId = originalChatId;
+      visualGlobal.SillyTavern.chatId = originalTavernChatId;
     }
     if (
       renderEntryLibraryBindingContent(`保留前文${ENTRY_LIBRARY_CONTENT_PLACEHOLDER}保留后文`, '') !==
@@ -1502,6 +1523,49 @@ async function applyScenario(name: VisualScenarioName, options: { height?: numbe
     resetPhoneToRoute(app.id, app.defaultRoute, app.name);
   } else if (name === 'preset-detail') {
     resetPhoneToRoute('preset-manager', 'detail', '预设条目', { presetName: '视觉预设' });
+  } else if (name === 'preset-copy-reorder') {
+    const copied = await duplicateTavernPresetPrompt('视觉预设', 'visual-style', {
+      content: '这是复制后修改过的视觉提示词，保存时应位于原条目下方。',
+      enabled: false,
+      name: '文风与人物一致性 - 副本',
+      role: 'system',
+    });
+    let preset = readTavernPreset('视觉预设');
+    const sourceIndex = preset.prompts.findIndex(prompt => prompt.id === 'visual-style');
+    if (preset.prompts[sourceIndex + 1]?.id !== copied.copiedPromptId) {
+      throw new Error('Copied preset prompt was not inserted below its source');
+    }
+    const groupPrompts = (
+      (preset.extensions.baibaiToolkit as Record<string, unknown>)?.presetPromptGroups as {
+        prompts?: Record<string, { groupId?: string }>;
+      }
+    )?.prompts;
+    if (groupPrompts?.[copied.copiedPromptId]?.groupId !== 'visual-group-writing') {
+      throw new Error('Copied preset prompt did not inherit its source group');
+    }
+    const reorderedIds = preset.prompts.map(prompt => prompt.id);
+    reorderedIds.splice(reorderedIds.indexOf(copied.copiedPromptId), 1);
+    reorderedIds.splice(reorderedIds.indexOf('visual-style'), 0, copied.copiedPromptId);
+    await reorderTavernPresetPrompts('视觉预设', reorderedIds);
+    await deleteTavernPresetPrompt('视觉预设', 'visual-format');
+    preset = readTavernPreset('视觉预设');
+    if (preset.prompts.some(prompt => prompt.id === 'visual-format')) {
+      throw new Error('Deleted preset prompt remained in the prompt list');
+    }
+    const metadataAfterDelete = (
+      (preset.extensions.baibaiToolkit as Record<string, unknown>)?.presetPromptGroups as {
+        prompts?: Record<string, { groupId?: string }>;
+      }
+    )?.prompts;
+    if (metadataAfterDelete?.['visual-format']) {
+      throw new Error('Deleted preset prompt remained in BaiBai group metadata');
+    }
+    resetPhoneToRoute('preset-manager', 'detail', '预设条目', { presetName: '视觉预设' });
+  } else if (name === 'preset-copy-editor') {
+    resetPhoneToRoute('preset-manager', 'copy', '复制预设条目', {
+      presetName: '视觉预设',
+      sourcePromptId: 'visual-style',
+    });
   } else if (name === 'preset-editor') {
     resetPhoneToRoute('preset-manager', 'edit', '编辑预设条目', {
       presetName: '视觉预设',
@@ -1550,6 +1614,14 @@ async function applyScenario(name: VisualScenarioName, options: { height?: numbe
     }
   } else if (name === 'forum-generate-thread') {
     resetPhoneToRoute('forum', 'generate-thread', '生成帖子');
+    await waitForPaint();
+    const boardSelector = document.querySelector<HTMLInputElement>(
+      '.pc-generation-panel > .pc-combobox .pc-combobox-input',
+    );
+    const typeSelector = document.querySelector<HTMLInputElement>('.pc-forum-type-fields .pc-combobox-input');
+    if (!boardSelector?.value.includes('自定义板块') || !typeSelector?.value.includes('自定义')) {
+      throw new Error('Forum generation did not expose explicit custom board selections');
+    }
   } else if (name === 'app-deferred-mount-order') {
     const phone = usePhoneStore();
     phone.isOpen = false;
@@ -1575,11 +1647,75 @@ async function applyScenario(name: VisualScenarioName, options: { height?: numbe
       throw new Error('Deferred app mount did not reactivate the cached app when the phone reopened');
     }
   } else if (name === 'forum-board') {
-    const { board } = createForumFixture();
+    const { board, longTypePrompt } = createForumFixture();
     resetPhoneToRoute('forum', 'board', board.name, { boardId: board.id });
+    await waitForPaint();
+    const hero = document.querySelector<HTMLElement>('.pc-forum-hero');
+    if (hero?.textContent?.includes(longTypePrompt)) {
+      throw new Error('Long forum type prompt leaked into the visible board header');
+    }
+    if (!hero?.textContent?.includes('视觉自定义类型')) {
+      throw new Error('Forum board header did not preserve its compact type label');
+    }
   } else if (name === 'forum-thread') {
     const { board, thread } = createForumFixture();
     resetPhoneToRoute('forum', 'thread', thread.title, { boardId: board.id, threadId: thread.id });
+  } else if (name === 'forum-thread-versions') {
+    const { board, thread } = createForumFixture();
+    const originalReplyCount = thread.replies.length;
+    thread.updatedAt = '2000-01-01T00:00:00.000Z';
+    board.updatedAt = '2000-01-01T00:00:00.000Z';
+    const saved = useForumStore().appendThreadVersion(board.id, thread.id, {
+      author: '新版楼主',
+      content: '这是重写后的主帖候选版本。回复应当完整保留，并且当前采用版不会自动改变。',
+      title: '重写后的论坛主帖',
+    });
+    if (!saved || thread.content === saved.version.content || thread.replies.length !== originalReplyCount) {
+      throw new Error('Forum rewrite version overwrote the active thread or changed replies');
+    }
+    if (thread.updatedAt !== '2000-01-01T00:00:00.000Z' || board.updatedAt !== '2000-01-01T00:00:00.000Z') {
+      throw new Error('Forum candidate version changed the active thread ordering timestamp');
+    }
+    resetPhoneToRoute('forum', 'thread', saved.version.title, {
+      boardId: board.id,
+      threadId: thread.id,
+      versionId: saved.version.id,
+    });
+  } else if (name === 'forum-version-interactions') {
+    const { board, thread } = createForumFixture();
+    const originalReplies = JSON.stringify(thread.replies);
+    const saved = useForumStore().appendThreadVersion(board.id, thread.id, {
+      author: '交互测试楼主',
+      content: '采用这个主帖版本后，回复内容和楼层仍应保持原样。',
+      title: '论坛主帖交互候选版',
+    });
+    if (!saved) throw new Error('Forum interaction fixture did not create a candidate version');
+    resetPhoneToRoute('forum', 'thread', saved.version.title, {
+      boardId: board.id,
+      threadId: thread.id,
+      versionId: saved.version.id,
+    });
+    await waitForPaint();
+    const adoptButton = document.querySelector<HTMLButtonElement>('.pc-version-navigator .pc-primary-btn');
+    if (!adoptButton) throw new Error('Forum candidate version did not expose the adoption action');
+    adoptButton.click();
+    const adopted = await waitForVisualCondition(() => thread.activeVersionId === saved.version.id);
+    if (!adopted || thread.content !== saved.version.content) {
+      throw new Error('Forum adoption action did not activate the candidate main post');
+    }
+    if (JSON.stringify(thread.replies) !== originalReplies) {
+      throw new Error('Forum main-post adoption changed existing replies');
+    }
+    const replyRewriteButton = Array.from(
+      document.querySelectorAll<HTMLButtonElement>('.pc-reply-section button'),
+    ).find(button => button.title.includes('重写回复'));
+    if (replyRewriteButton) throw new Error('Forum replies unexpectedly exposed a rewrite action');
+  } else if (name === 'forum-rewrite-generate') {
+    const { board, thread } = createForumFixture();
+    resetPhoneToRoute('forum', 'generate-thread', '重写论坛主帖', {
+      boardId: board.id,
+      rewriteThreadId: thread.id,
+    });
   } else if (name === 'worldbook-link-legacy-entry') {
     resetPhoneToRoute('worldbook-link', 'detail', '世界书联动', { bookName: '【视觉】旧格式世界书' });
     const loaded = await waitForVisualCondition(() => Boolean(document.querySelector('.pc-worldbook-entry')));
@@ -1662,11 +1798,144 @@ async function applyScenario(name: VisualScenarioName, options: { height?: numbe
     resetPhoneToRoute('letters', 'entry', entry.title, { bookId: book.id, entryId: entry.id });
     await waitForPaint();
     await openReaderCatalog();
+  } else if (name === 'letters-rewrite-generate') {
+    const book = createLettersFixture();
+    const entry = book.entries[0];
+    if (!entry) throw new Error('Letters rewrite fixture did not create an entry');
+    resetPhoneToRoute('letters', 'generate', '重写书信', {
+      bookId: book.id,
+      rewriteEntryId: entry.id,
+    });
   } else if (name === 'extras-book-generate') {
     resetPhoneToRoute('extras', 'book-editor', '新建番外');
     await waitForPaint();
     const screen = document.querySelector<HTMLElement>('.pc-screen');
     screen?.scrollTo({ top: screen.scrollHeight });
+  } else if (name === 'content-versions') {
+    const extras = useExtrasStore();
+    const extraBook = createLegacyExtrasFixture();
+    const chapter = extraBook.chapters[0];
+    if (!chapter) throw new Error('Content version fixture did not create an extra chapter');
+    const originalChapterContent = chapter.content;
+    chapter.updatedAt = '2000-01-01T00:00:00.000Z';
+    extraBook.updatedAt = '2000-01-01T00:00:00.000Z';
+    const extraSaved = extras.appendChapterVersion(extraBook.id, chapter.id, {
+      content: '这是番外章节的重写候选版本，保存后不会立即覆盖旧版。',
+      title: '第一章候选版',
+    });
+    if (!extraSaved || chapter.content !== originalChapterContent || chapter.versions.length !== 2) {
+      throw new Error('Extra rewrite did not preserve the original chapter as version one');
+    }
+    if (chapter.updatedAt !== '2000-01-01T00:00:00.000Z' || extraBook.updatedAt !== '2000-01-01T00:00:00.000Z') {
+      throw new Error('Extra candidate version changed the active chapter ordering timestamp');
+    }
+
+    const theater = useTheaterStore();
+    const theaterEntry = createTheaterFixture();
+    const originalTheaterContent = theaterEntry.content;
+    theaterEntry.updatedAt = '2000-01-01T00:00:00.000Z';
+    const theaterSaved = theater.appendEntryVersion(theaterEntry.id, {
+      content: '小剧场候选版本。',
+      renderMode: 'markdown',
+      title: '小剧场候选版',
+    });
+    if (!theaterSaved || theaterEntry.content !== originalTheaterContent) {
+      throw new Error('Theater rewrite candidate replaced the active version before adoption');
+    }
+    if (theaterEntry.updatedAt !== '2000-01-01T00:00:00.000Z') {
+      throw new Error('Theater candidate version changed the active entry ordering timestamp');
+    }
+    theater.updateEntryMetadata(theaterEntry.id, {
+      participants: [{ name: '候选编辑参与者' }],
+      typeId: 'visual-type-edited',
+      typeName: '候选编辑类型',
+    });
+    if (
+      theaterEntry.typeId !== 'visual-type-edited' ||
+      theaterEntry.typeName !== '候选编辑类型' ||
+      theaterEntry.participants[0]?.name !== '候选编辑参与者'
+    ) {
+      throw new Error('Theater version editor did not preserve shared type and participant fields');
+    }
+    theater.activateEntryVersion(theaterEntry.id, theaterSaved.version.id);
+    if (theaterEntry.content !== theaterSaved.version.content) {
+      throw new Error('Theater version adoption did not update the active content');
+    }
+
+    const letters = useLettersStore();
+    const letterBook = createLettersFixture();
+    const letter = letterBook.entries[0];
+    if (!letter) throw new Error('Content version fixture did not create a letter');
+    letter.updatedAt = '2000-01-01T00:00:00.000Z';
+    letterBook.updatedAt = '2000-01-01T00:00:00.000Z';
+    const letterSaved = letters.appendEntryVersion(letterBook.id, letter.id, {
+      content: '书信重写候选版本。',
+      format: letter.format,
+      title: '第一封信候选版',
+    });
+    if (!letterSaved || letter.content === letterSaved.version.content) {
+      throw new Error('Letter rewrite candidate replaced the active version before adoption');
+    }
+    if (letter.updatedAt !== '2000-01-01T00:00:00.000Z' || letterBook.updatedAt !== '2000-01-01T00:00:00.000Z') {
+      throw new Error('Letter candidate version changed the active entry ordering timestamp');
+    }
+    letters.activateEntryVersion(letterBook.id, letter.id, letterSaved.version.id);
+    if (letter.content !== letterSaved.version.content) {
+      throw new Error('Letter version adoption did not update the active content');
+    }
+
+    resetPhoneToRoute('extras', 'chapter', extraSaved.version.title, {
+      bookId: extraBook.id,
+      chapterId: chapter.id,
+      versionId: extraSaved.version.id,
+    });
+  } else if (name === 'content-version-interactions') {
+    const extras = useExtrasStore();
+    const book = createLegacyExtrasFixture();
+    const chapter = book.chapters[0];
+    if (!chapter) throw new Error('Content interaction fixture did not create an extra chapter');
+    const saved = extras.appendChapterVersion(book.id, chapter.id, {
+      content: '用于验证左右切换和采用操作的候选正文。',
+      title: '番外交互候选版',
+    });
+    const originalVersion = chapter.versions[0];
+    if (!saved || !originalVersion) throw new Error('Content interaction fixture did not create two versions');
+    resetPhoneToRoute('extras', 'chapter', saved.version.title, {
+      bookId: book.id,
+      chapterId: chapter.id,
+      versionId: saved.version.id,
+    });
+    await waitForPaint();
+
+    const previousButton = document.querySelector<HTMLButtonElement>(
+      '.pc-version-navigator button[title="上一个版本"]',
+    );
+    if (!previousButton) throw new Error('Version navigator did not expose the previous-version action');
+    previousButton.click();
+    const selectedOriginal = await waitForVisualCondition(
+      () => usePhoneStore().currentRoute.params?.versionId === originalVersion.id,
+    );
+    if (!selectedOriginal || usePhoneStore().currentRoute.title !== originalVersion.title) {
+      throw new Error('Previous-version action did not update the route and title');
+    }
+
+    const nextButton = document.querySelector<HTMLButtonElement>('.pc-version-navigator button[title="下一个版本"]');
+    if (!nextButton) throw new Error('Version navigator did not expose the next-version action');
+    nextButton.click();
+    const selectedCandidate = await waitForVisualCondition(
+      () => usePhoneStore().currentRoute.params?.versionId === saved.version.id,
+    );
+    if (!selectedCandidate || usePhoneStore().currentRoute.title !== saved.version.title) {
+      throw new Error('Next-version action did not restore the candidate route and title');
+    }
+
+    const adoptButton = document.querySelector<HTMLButtonElement>('.pc-version-navigator .pc-primary-btn');
+    if (!adoptButton) throw new Error('Candidate version did not expose the adoption action');
+    adoptButton.click();
+    const adopted = await waitForVisualCondition(() => chapter.activeVersionId === saved.version.id);
+    if (!adopted || chapter.content !== saved.version.content) {
+      throw new Error('Version adoption action did not update the active chapter');
+    }
   } else if (name === 'extras-book-name-fallback') {
     if (resolveGeneratedExtraBookTitle(' ', ' IF线 ') !== 'IF线') {
       throw new Error('Generated extra book did not use its type as the missing title fallback');
@@ -1881,6 +2150,12 @@ async function applyScenario(name: VisualScenarioName, options: { height?: numbe
     await openReaderCatalog();
   } else if (name === 'theater-generate') {
     resetPhoneToRoute('theater', 'generate', '小剧场配置');
+  } else if (name === 'theater-rewrite-generate') {
+    const entry = createTheaterFixture();
+    resetPhoneToRoute('theater', 'generate', '重写小剧场', {
+      rewriteEntryId: entry.id,
+      typeId: entry.typeId || '',
+    });
   } else if (name === 'theater-generate-dark-inputs') {
     const settingsStore = useSettingsStore();
     const hostThemeOverride = document.createElement('style');

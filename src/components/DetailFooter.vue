@@ -117,10 +117,6 @@ defineEmits<{
   grid-template-columns: repeat(5, minmax(0, 1fr));
 }
 
-.pc-detail-actions.six {
-  grid-template-columns: repeat(6, minmax(0, 1fr));
-}
-
 .pc-detail-nav .pc-soft-btn,
 .pc-detail-actions :deep(.pc-soft-btn) {
   /* ui-reuse-allow: footer normalizes slotted buttons from mixed callers. */

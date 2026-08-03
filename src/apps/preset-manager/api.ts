@@ -41,6 +41,13 @@ export type PresetDisplayNode =
       type: 'group';
     };
 
+export type TavernPresetPromptCopyInput = {
+  content: string;
+  enabled?: boolean;
+  name: string;
+  role: TavernPresetPrompt['role'];
+};
+
 type GetPresetFn = (presetName: string) => unknown;
 type LoadPresetFn = (presetName: string) => boolean | Promise<boolean>;
 type UpdatePresetFn = (
@@ -152,6 +159,96 @@ function patchPrompt(
   return preset;
 }
 
+function getBaibaiPromptGroupMetadata(preset: TavernPreset) {
+  const toolkit = preset.extensions.baibaiToolkit;
+  if (!toolkit || typeof toolkit !== 'object') return null;
+  const state = (toolkit as Record<string, unknown>).presetPromptGroups;
+  if (!state || typeof state !== 'object') return null;
+  const prompts = (state as Record<string, unknown>).prompts;
+  return prompts && typeof prompts === 'object' ? (prompts as Record<string, unknown>) : null;
+}
+
+function normalizeInChatPromptOrder(preset: TavernPreset) {
+  const groupIndexes = new Map<string, number>();
+  for (const prompt of preset.prompts) {
+    if (prompt.position?.type !== 'in_chat') continue;
+    const key = `${prompt.role}:${prompt.position.depth ?? 0}`;
+    const order = groupIndexes.get(key) ?? 0;
+    prompt.position.order = order;
+    groupIndexes.set(key, order + 1);
+  }
+}
+
+function removeEntryLibraryBindingMarker(prompt: TavernPresetPrompt) {
+  const phone = prompt.extra?.tavern_phone;
+  if (!phone || typeof phone !== 'object') return;
+  delete (phone as Record<string, unknown>).entryLibraryBindingId;
+  if (!Object.keys(phone).length) delete prompt.extra?.tavern_phone;
+  if (prompt.extra && !Object.keys(prompt.extra).length) delete prompt.extra;
+}
+
+function createCopiedPrompt(
+  source: TavernPresetPrompt,
+  promptId: string,
+  input: TavernPresetPromptCopyInput,
+): TavernPresetPrompt {
+  const copied = structuredClone(source);
+  copied.id = promptId;
+  copied.name = input.name.trim() || `${source.name || source.id} - 副本`;
+  copied.content = input.content;
+  copied.enabled = input.enabled ?? false;
+  copied.role = input.role;
+  copied.position = copied.position ? structuredClone(copied.position) : { type: 'relative' };
+  removeEntryLibraryBindingMarker(copied);
+  return copied;
+}
+
+function insertCopiedPrompt(
+  preset: TavernPreset,
+  sourcePromptId: string,
+  copiedPrompt: TavernPresetPrompt,
+) {
+  const sourceIndex = preset.prompts.findIndex(prompt => prompt.id === sourcePromptId);
+  if (sourceIndex < 0) throw new Error('原预设条目已经不存在，请刷新后重试');
+  if (preset.prompts.some(prompt => prompt.id === copiedPrompt.id)) {
+    throw new Error('复制条目的标识发生冲突，请重试');
+  }
+  preset.prompts.splice(sourceIndex + 1, 0, structuredClone(copiedPrompt));
+
+  const groupMetadata = getBaibaiPromptGroupMetadata(preset);
+  const sourceMetadata = groupMetadata?.[sourcePromptId];
+  if (groupMetadata && sourceMetadata && typeof sourceMetadata === 'object') {
+    groupMetadata[copiedPrompt.id] = structuredClone(sourceMetadata);
+  }
+  normalizeInChatPromptOrder(preset);
+  return preset;
+}
+
+function removePrompt(preset: TavernPreset, promptId: string) {
+  const promptIndex = preset.prompts.findIndex(prompt => prompt.id === promptId);
+  if (promptIndex < 0) throw new Error('这个预设条目已经不存在，请刷新后重试');
+  preset.prompts.splice(promptIndex, 1);
+  const groupMetadata = getBaibaiPromptGroupMetadata(preset);
+  if (groupMetadata) delete groupMetadata[promptId];
+  normalizeInChatPromptOrder(preset);
+  return preset;
+}
+
+function reorderPrompts(preset: TavernPreset, orderedPromptIds: string[]) {
+  const currentIds = preset.prompts.map(prompt => prompt.id);
+  if (
+    currentIds.length !== orderedPromptIds.length ||
+    new Set(currentIds).size !== currentIds.length ||
+    orderedPromptIds.some(promptId => !currentIds.includes(promptId))
+  ) {
+    throw new Error('预设条目已经发生变化，请刷新后再排序');
+  }
+  const promptById = new Map(preset.prompts.map(prompt => [prompt.id, prompt]));
+  preset.prompts = orderedPromptIds.map(promptId => promptById.get(promptId) as TavernPresetPrompt);
+  normalizeInChatPromptOrder(preset);
+  return preset;
+}
+
 function enqueuePresetMutation<T>(presetName: string, task: () => Promise<T>) {
   const previous = presetMutationQueues.get(presetName) ?? Promise.resolve();
   const current = previous.catch(() => undefined).then(task);
@@ -188,6 +285,84 @@ export async function updateTavernPresetPrompt(
       }
     }
 
+    return { liveSynced, preset: stored };
+  });
+}
+
+export async function duplicateTavernPresetPrompt(
+  presetName: string,
+  sourcePromptId: string,
+  input: TavernPresetPromptCopyInput,
+) {
+  const copiedPromptId = `phone_prompt_${Date.now()}_${Math.random().toString(36).slice(2, 9)}`;
+  return enqueuePresetMutation(presetName, async () => {
+    const updatePresetWith = requirePresetFunction<UpdatePresetFn>('updatePresetWith');
+    let copiedPrompt: TavernPresetPrompt | null = null;
+    const stored = assertPreset(
+      await updatePresetWith(
+        presetName,
+        preset => {
+          const source = preset.prompts.find(prompt => prompt.id === sourcePromptId);
+          if (!source || typeof source.content !== 'string') {
+            throw new Error('这个条目不能复制，或已经不存在');
+          }
+          copiedPrompt = createCopiedPrompt(source, copiedPromptId, input);
+          return insertCopiedPrompt(preset, sourcePromptId, copiedPrompt);
+        },
+        { render: 'none' },
+      ),
+    );
+    if (!copiedPrompt) throw new Error('没有生成可保存的条目副本');
+
+    let liveSynced = true;
+    if (getCurrentTavernPresetName() === presetName) {
+      try {
+        const liveCopy = structuredClone(copiedPrompt);
+        await updatePresetWith('in_use', preset => insertCopiedPrompt(preset, sourcePromptId, liveCopy), {
+          render: 'immediate',
+        });
+      } catch {
+        liveSynced = false;
+      }
+    }
+    return { copiedPromptId, liveSynced, preset: stored };
+  });
+}
+
+export async function deleteTavernPresetPrompt(presetName: string, promptId: string) {
+  return enqueuePresetMutation(presetName, async () => {
+    const updatePresetWith = requirePresetFunction<UpdatePresetFn>('updatePresetWith');
+    const stored = assertPreset(
+      await updatePresetWith(presetName, preset => removePrompt(preset, promptId), { render: 'none' }),
+    );
+    let liveSynced = true;
+    if (getCurrentTavernPresetName() === presetName) {
+      try {
+        await updatePresetWith('in_use', preset => removePrompt(preset, promptId), { render: 'immediate' });
+      } catch {
+        liveSynced = false;
+      }
+    }
+    return { liveSynced, preset: stored };
+  });
+}
+
+export async function reorderTavernPresetPrompts(presetName: string, orderedPromptIds: string[]) {
+  return enqueuePresetMutation(presetName, async () => {
+    const updatePresetWith = requirePresetFunction<UpdatePresetFn>('updatePresetWith');
+    const stored = assertPreset(
+      await updatePresetWith(presetName, preset => reorderPrompts(preset, orderedPromptIds), { render: 'none' }),
+    );
+    let liveSynced = true;
+    if (getCurrentTavernPresetName() === presetName) {
+      try {
+        await updatePresetWith('in_use', preset => reorderPrompts(preset, orderedPromptIds), {
+          render: 'immediate',
+        });
+      } catch {
+        liveSynced = false;
+      }
+    }
     return { liveSynced, preset: stored };
   });
 }

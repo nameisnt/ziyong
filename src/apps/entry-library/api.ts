@@ -32,7 +32,9 @@ function findBoundPrompt(
   const prompts = getPromptList(preset, binding.targetPromptSource);
   const markerMatch = prompts.find(prompt => {
     const phone = prompt.extra?.tavern_phone;
-    return phone && typeof phone === 'object' && phone.entryLibraryBindingId === binding.id;
+    return (
+      phone && typeof phone === 'object' && (phone as Record<string, unknown>).entryLibraryBindingId === binding.id
+    );
   });
   if (markerMatch) return markerMatch;
   const idMatches = prompts.filter(prompt => prompt.id === binding.targetPromptId);

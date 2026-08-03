@@ -71,18 +71,24 @@
     <LettersEntryDetailPage
       v-else-if="route.page === 'entry' && activeBook && activeEntry"
       v-model:catalog-open="showCatalogModal"
+      :active-version-id="activeEntry.activeVersionId"
       :catalog-items="entryCatalogItems"
-      :entry="activeEntry"
+      :entry="viewedLetterEntry"
       :next-id="nextEntryId"
       :previous-id="previousEntryId"
+      :versions="activeEntry.versions"
+      :viewed-version-id="viewedLetterVersionId"
+      @adopt-version="adoptLetterVersion"
       @bagu="openLettersBaguScan"
       @bottom="scrollToBottom"
       @delete="removeEntry(activeBook.id, activeEntry.id)"
-      @edit="openEditEntry(activeBook.id, activeEntry.id)"
+      @edit="openEditEntry(activeBook.id, activeEntry.id, viewedLetterVersionId)"
       @favorite="letters.toggleFavorite(activeBook.id, activeEntry.id)"
       @next="openEntry(activeBook.id, nextEntryId, true)"
       @previous="openEntry(activeBook.id, previousEntryId, true)"
       @reply="openReply(activeBook.id, activeEntry.id)"
+      @rewrite="openRewriteLetter(activeBook.id, activeEntry.id)"
+      @select-version="selectLetterVersion"
       @select-catalog="selectCatalogEntry"
       @top="scrollToTop"
     />
@@ -90,12 +96,12 @@
     <section v-else-if="route.page === 'bagu-scan' && activeBook && activeEntry" class="pc-letters-page">
       <div class="pc-detail-card">
         <div class="pc-detail-title-row">
-          <h2>{{ activeEntry.title }}</h2>
+          <h2>{{ viewedLetterEntry.title }}</h2>
         </div>
         <BaguScanPanel
           auto-scan
           class="pc-detail-bagu-panel"
-          :content="activeEntry.content"
+          :content="viewedLetterEntry.content"
           :apply-handler="applyLettersBaguContent"
         />
       </div>
@@ -146,7 +152,15 @@
     <section v-else-if="route.page === 'generate'" class="pc-letters-page">
       <div class="pc-editor-card">
         <span class="pc-kicker">{{ t`AI 生成` }}</span>
-        <h2>{{ route.params?.replyToEntryId ? t`生成回信` : t`生成一封新的信件` }}</h2>
+        <h2>
+          {{
+            route.params?.rewriteEntryId
+              ? t`重写当前信件`
+              : route.params?.replyToEntryId
+                ? t`生成回信`
+                : t`生成一封新的信件`
+          }}
+        </h2>
 
         <GenerationPanel
           :capture="captureLetterPrompt"
@@ -236,7 +250,7 @@
           :raw="generationState.preview.raw"
           raw-editable
           :reparse-handler="reparsePreviewRaw"
-          save-label="保存信件"
+          :save-label="generationState.preview.mode === 'rewrite' ? '保存候选版本' : '保存信件'"
           :source-label="generationState.preview.bookTitle"
           :text-provider-summary="`${formatDirection(generationState.preview.sender.name, generationState.preview.receiver.name)} · ${formatLabel(generationState.preview.format)}`"
           :title="generationState.preview.title"
@@ -297,6 +311,7 @@ import { useDetailScroll } from '@/util/detailScroll';
 import { parseSimpleXmlResult } from '@/util/generation';
 import { usePreviewDraftPersistence } from '@/util/previewDrafts';
 import { formatGenerationReferences, type GenerationReferenceItem } from '@/util/references';
+import { resolveContentVersion } from '@/util/contentVersions';
 import { useInvalidRouteFallback } from '@/util/routeFallback';
 import { stopGenerationByIdSafe } from '@/util/runtime';
 import { storeToRefs } from 'pinia';
@@ -345,10 +360,12 @@ const generationState = reactive({
     content: string;
     draftId: string | null;
     format: LetterFormat;
+    mode: 'create' | 'rewrite';
     raw: string;
     receiver: CharacterRef;
     sender: CharacterRef;
     title: string;
+    targetEntryId: string;
     warnings: string[];
   },
   rawOutput: '',
@@ -372,6 +389,7 @@ const {
     const params: Record<string, string> = {};
     if (generationState.preview?.bookId) params.bookId = generationState.preview.bookId;
     if (route.value.params?.replyToEntryId) params.replyToEntryId = route.value.params.replyToEntryId;
+    if (generationState.preview?.targetEntryId) params.rewriteEntryId = generationState.preview.targetEntryId;
     return params;
   },
   page: 'preview',
@@ -408,6 +426,39 @@ const activeEntry = computed(() => {
   const bookId = route.value.params?.bookId;
   const entryId = route.value.params?.entryId;
   return bookId && entryId ? letters.getEntry(bookId, entryId) : null;
+});
+const viewedLetterVersion = computed(() => {
+  const entry = activeEntry.value;
+  if (!entry) return null;
+  return resolveContentVersion(entry.versions, entry.activeVersionId, route.value.params?.versionId);
+});
+const viewedLetterVersionId = computed(() => viewedLetterVersion.value?.id || activeEntry.value?.activeVersionId || '');
+const viewedLetterEntry = computed(() => {
+  const entry = activeEntry.value;
+  const version = viewedLetterVersion.value;
+  return entry && version
+    ? { ...entry, content: version.content, format: version.format, title: version.title }
+    : entry;
+});
+const rewriteLetterEntry = computed(() => {
+  const bookId = route.value.params?.bookId;
+  const entryId = route.value.params?.rewriteEntryId;
+  return bookId && entryId ? letters.getEntry(bookId, entryId) : null;
+});
+const rewriteLetterVersion = computed(() => {
+  const entry = rewriteLetterEntry.value;
+  if (!entry) return null;
+  return resolveContentVersion(entry.versions, entry.activeVersionId, route.value.params?.versionId);
+});
+const letterGenerationMode = computed<'create' | 'rewrite'>(() => (rewriteLetterEntry.value ? 'rewrite' : 'create'));
+const letterGenerationAppPrompt = computed(() =>
+  letterGenerationMode.value === 'rewrite' ? prompts.appPrompts.lettersRewrite : prompts.appPrompts.letters,
+);
+const letterExistingContent = computed(() => {
+  const entry = rewriteLetterEntry.value;
+  const version = rewriteLetterVersion.value;
+  if (!entry) return '';
+  return [`需要重写的信件：${version?.title || entry.title}`, version?.content || entry.content].join('\n\n');
 });
 
 const editingEntry = computed(() => (route.value.params?.entryId && activeEntry.value ? activeEntry.value : null));
@@ -449,10 +500,13 @@ const letterPromptPreview = computed(() => {
     return buildGenerationPreview(
       lettersGenerationAdapter,
       {
-        appPrompt: prompts.appPrompts.letters,
+        appPrompt: letterGenerationAppPrompt.value,
         bookId: activeBook.value?.id || '',
         bookTitle: generationDraft.bookTitle || activeBook.value?.title || '',
         format: generationDraft.format,
+        entryId: rewriteLetterEntry.value?.id || '',
+        existingContent: letterExistingContent.value,
+        mode: letterGenerationMode.value,
         outputFormat: buildOutputFormat(),
         recentLettersContext: buildRecentLettersContext(activeBook.value, generationDraft.recentEntryCount),
         receiver,
@@ -489,10 +543,13 @@ function captureLetterPrompt() {
   return captureGenerationPrompt(
     lettersGenerationAdapter,
     {
-      appPrompt: prompts.appPrompts.letters,
+      appPrompt: letterGenerationAppPrompt.value,
       bookId: activeBook.value?.id || '',
       bookTitle: generationDraft.bookTitle || activeBook.value?.title || '',
       format: generationDraft.format,
+      entryId: rewriteLetterEntry.value?.id || '',
+      existingContent: letterExistingContent.value,
+      mode: letterGenerationMode.value,
       outputFormat: buildOutputFormat(),
       recentLettersContext: buildRecentLettersContext(activeBook.value, generationDraft.recentEntryCount),
       receiver,
@@ -527,11 +584,11 @@ watch(
 
     if (current.page === 'editor') {
       if (editingEntry.value) {
-        draft.content = editingEntry.value.content;
-        draft.format = editingEntry.value.format;
+        draft.content = viewedLetterEntry.value?.content || editingEntry.value.content;
+        draft.format = viewedLetterEntry.value?.format || editingEntry.value.format;
         draft.receiverName = editingEntry.value.receiver.name;
         draft.senderName = editingEntry.value.sender.name;
-        draft.title = editingEntry.value.title;
+        draft.title = viewedLetterEntry.value?.title || editingEntry.value.title;
         draft.bookTitle = activeBook.value?.title || '';
       } else if (activeBook.value?.participants.length === 2) {
         draft.content = '';
@@ -555,15 +612,21 @@ watch(
         current.params?.replyToEntryId && current.params?.bookId
           ? letters.getEntry(current.params.bookId, current.params.replyToEntryId)
           : null;
+      const rewriteEntry =
+        current.params?.rewriteEntryId && current.params?.bookId
+          ? letters.getEntry(current.params.bookId, current.params.rewriteEntryId)
+          : null;
       selectedReferences.value = [];
       generationDraft.bookTitle = activeBook.value?.title || '';
-      generationDraft.format = replyEntry?.format || 'formal';
+      generationDraft.format = rewriteEntry?.format || replyEntry?.format || 'formal';
       generationDraft.fromStartEnd = 20;
       generationDraft.rangeText = '';
       generationDraft.recentCount = 20;
       generationDraft.recentEntryCount = 6;
-      generationDraft.receiverName = replyEntry?.sender.name || activeBook.value?.participants[1]?.name || '';
-      generationDraft.senderName = replyEntry?.receiver.name || activeBook.value?.participants[0]?.name || '';
+      generationDraft.receiverName =
+        rewriteEntry?.receiver.name || replyEntry?.sender.name || activeBook.value?.participants[1]?.name || '';
+      generationDraft.senderName =
+        rewriteEntry?.sender.name || replyEntry?.receiver.name || activeBook.value?.participants[0]?.name || '';
       generationDraft.singleMessageId = 0;
       generationDraft.userRequirement = '';
       generationState.error = '';
@@ -650,6 +713,33 @@ function openReply(bookId: string, entryId: string) {
   openGenerate(bookId, entryId);
 }
 
+function openRewriteLetter(bookId: string, entryId: string) {
+  phone.pushPage('generate', '重写书信', {
+    bookId,
+    rewriteEntryId: entryId,
+    ...(viewedLetterVersionId.value ? { versionId: viewedLetterVersionId.value } : {}),
+  });
+}
+
+function selectLetterVersion(versionId: string) {
+  if (!activeBook.value || !activeEntry.value) return;
+  const version = activeEntry.value.versions.find(item => item.id === versionId);
+  phone.replacePage('entry', version?.title || activeEntry.value.title, {
+    bookId: activeBook.value.id,
+    entryId: activeEntry.value.id,
+    versionId,
+  });
+  void nextTick(() => scrollToTop('auto'));
+}
+
+function adoptLetterVersion(versionId: string) {
+  if (!activeBook.value || !activeEntry.value) return;
+  const entry = letters.activateEntryVersion(activeBook.value.id, activeEntry.value.id, versionId);
+  if (!entry) return;
+  phone.replacePage('entry', entry.title, { bookId: activeBook.value.id, entryId: entry.id, versionId });
+  toastr.success('已采用这个书信版本');
+}
+
 function openRenameBook(bookId: string) {
   const book = letters.getBook(bookId);
   if (!book) return;
@@ -673,11 +763,12 @@ function openEntry(bookId: string, entryId: string, replaceCurrent = false) {
 }
 
 function openLettersBaguScan() {
-  if (!activeBook.value || !activeEntry.value) return;
-  if (!canOpenBaguScan(activeEntry.value.content)) return;
+  if (!activeBook.value || !activeEntry.value || !viewedLetterEntry.value) return;
+  if (!canOpenBaguScan(viewedLetterEntry.value.content)) return;
   phone.pushPage('bagu-scan', '八股检测', {
     bookId: activeBook.value.id,
     entryId: activeEntry.value.id,
+    ...(viewedLetterVersionId.value ? { versionId: viewedLetterVersionId.value } : {}),
   });
 }
 
@@ -687,8 +778,8 @@ function selectCatalogEntry(entryId: string) {
   openEntry(activeBook.value.id, entryId, true);
 }
 
-function openEditEntry(bookId: string, entryId: string) {
-  phone.pushPage('editor', '编辑信件', { bookId, entryId });
+function openEditEntry(bookId: string, entryId: string, versionId?: string) {
+  phone.pushPage('editor', '编辑信件', { bookId, entryId, ...(versionId ? { versionId } : {}) });
 }
 
 function openFailedDraft(draftId: string) {
@@ -709,13 +800,21 @@ function submitEntry() {
   const bookId = route.value.params?.bookId;
 
   if (editingEntry.value && bookId && route.value.params?.entryId) {
-    const entry = letters.updateEntry(bookId, route.value.params.entryId, {
+    const input = {
       content: draft.content,
       format: draft.format,
       title: draft.title,
-    });
+    };
+    const versionId = route.value.params?.versionId;
+    const entry = versionId
+      ? letters.updateEntryVersion(bookId, route.value.params.entryId, versionId, input)
+      : letters.updateEntry(bookId, route.value.params.entryId, input);
     if (!entry) return;
-    phone.replacePage('entry', entry.title, { bookId, entryId: entry.id });
+    phone.replacePage('entry', versionId ? draft.title : entry.title, {
+      bookId,
+      entryId: entry.id,
+      ...(versionId ? { versionId } : {}),
+    });
     return;
   }
 
@@ -742,12 +841,16 @@ function submitEntry() {
 }
 
 function applyLettersBaguContent(content: string) {
-  if (!activeBook.value || !activeEntry.value) return false;
-  const entry = letters.updateEntry(activeBook.value.id, activeEntry.value.id, {
+  if (!activeBook.value || !activeEntry.value || !viewedLetterEntry.value) return false;
+  const input = {
     content,
-    format: activeEntry.value.format,
-    title: activeEntry.value.title,
-  });
+    format: viewedLetterEntry.value.format,
+    title: viewedLetterEntry.value.title,
+  };
+  const versionId = route.value.params?.versionId;
+  const entry = versionId
+    ? letters.updateEntryVersion(activeBook.value.id, activeEntry.value.id, versionId, input)
+    : letters.updateEntry(activeBook.value.id, activeEntry.value.id, input);
   return Boolean(entry);
 }
 
@@ -845,10 +948,13 @@ async function runGeneration() {
     const result = await generateContent(
       lettersGenerationAdapter,
       {
-        appPrompt: prompts.appPrompts.letters,
+        appPrompt: letterGenerationAppPrompt.value,
         bookId: activeBook.value?.id || '',
         bookTitle: generationDraft.bookTitle || activeBook.value?.title || '',
         format: generationDraft.format,
+        entryId: rewriteLetterEntry.value?.id || '',
+        existingContent: letterExistingContent.value,
+        mode: letterGenerationMode.value,
         outputFormat: buildOutputFormat(),
         recentLettersContext: buildRecentLettersContext(activeBook.value, generationDraft.recentEntryCount),
         receiver,
@@ -896,10 +1002,11 @@ async function runGeneration() {
     }
 
     if (result.status === 'saved') {
-      toastr.success('已生成并保存信件');
-      void phone.presentGeneratedPage('letters', 'entry', result.saved.entry.title, {
+      toastr.success(letterGenerationMode.value === 'rewrite' ? '已保存书信候选版本' : '已生成并保存信件');
+      void phone.presentGeneratedPage('letters', 'entry', result.data.title, {
         bookId: result.saved.book.id,
         entryId: result.saved.entry.id,
+        ...(result.saved.versionId ? { versionId: result.saved.versionId } : {}),
       });
       return;
     }
@@ -910,19 +1017,23 @@ async function runGeneration() {
       content: result.data.content,
       draftId: null,
       format: generationDraft.format,
+      mode: letterGenerationMode.value,
       raw: result.rawOutput,
       receiver,
       sender,
       title: result.data.title,
+      targetEntryId: rewriteLetterEntry.value?.id || '',
       warnings: result.warnings,
     };
     persistLettersPreviewDraft({
       ...(activeBook.value?.id ? { bookId: activeBook.value.id } : {}),
       ...(route.value.params?.replyToEntryId ? { replyToEntryId: route.value.params.replyToEntryId } : {}),
+      ...(rewriteLetterEntry.value ? { rewriteEntryId: rewriteLetterEntry.value.id } : {}),
     });
     void phone.presentGeneratedPage('letters', 'preview', '生成预览', {
       ...(activeBook.value?.id ? { bookId: activeBook.value.id } : {}),
       ...(route.value.params?.replyToEntryId ? { replyToEntryId: route.value.params.replyToEntryId } : {}),
+      ...(rewriteLetterEntry.value ? { rewriteEntryId: rewriteLetterEntry.value.id } : {}),
     });
   } catch (error) {
     generationState.error = error instanceof Error ? error.message : '生成失败，请稍后再试';
@@ -932,15 +1043,22 @@ async function runGeneration() {
 function savePreview() {
   const preview = generationState.preview;
   if (!preview) return;
-  const saved = letters.createEntry({
-    bookId: preview.bookId || undefined,
-    bookTitle: preview.bookTitle,
-    content: preview.content,
-    format: preview.format,
-    receiver: preview.receiver,
-    sender: preview.sender,
-    title: preview.title,
-  });
+  const saved =
+    preview.mode === 'rewrite' && preview.bookId && preview.targetEntryId
+      ? letters.appendEntryVersion(preview.bookId, preview.targetEntryId, {
+          content: preview.content,
+          format: preview.format,
+          title: preview.title,
+        })
+      : letters.createEntry({
+          bookId: preview.bookId || undefined,
+          bookTitle: preview.bookTitle,
+          content: preview.content,
+          format: preview.format,
+          receiver: preview.receiver,
+          sender: preview.sender,
+          title: preview.title,
+        });
   if (!saved) {
     toastr.warning('保存失败，目标书信分册不存在');
     return;
@@ -950,8 +1068,13 @@ function savePreview() {
   }
   clearLettersPreviewDraft();
   generationState.preview = null;
-  toastr.success('已保存信件');
-  phone.replacePage('entry', saved.entry.title, { bookId: saved.book.id, entryId: saved.entry.id });
+  const versionId = 'version' in saved ? saved.version.id : '';
+  toastr.success(preview.mode === 'rewrite' ? '已保存书信候选版本' : '已保存信件');
+  phone.replacePage('entry', versionId ? preview.title : saved.entry.title, {
+    bookId: saved.book.id,
+    entryId: saved.entry.id,
+    ...(versionId ? { versionId } : {}),
+  });
 }
 
 function reparsePreviewRaw() {
@@ -1056,10 +1179,12 @@ function reparseFailedDraft() {
     content: parsed.data.content,
     draftId: null,
     format,
+    mode: draft.context.mode === 'rewrite' ? 'rewrite' : 'create',
     raw: parsed.raw,
     receiver,
     sender,
     title: parsed.data.title,
+    targetEntryId: typeof draft.context.entryId === 'string' ? draft.context.entryId : '',
     warnings: parsed.warnings,
   };
   persistLettersPreviewDraft(bookId ? { bookId } : {});

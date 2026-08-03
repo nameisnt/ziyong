@@ -16,6 +16,9 @@ export const LetterGenerateConfigSchema = z.object({
   bookId: z.string().default(''),
   bookTitle: z.string().default(''),
   format: LetterFormatSchema,
+  entryId: z.string().default(''),
+  existingContent: z.string().default(''),
+  mode: z.enum(['create', 'rewrite']).default('create'),
   outputFormat: z.string(),
   recentLettersContext: z.string().default(''),
   receiver: CharacterRefSchema,
@@ -42,6 +45,11 @@ export function createLettersGenerationAdapter(lettersStore: {
       bookTitle?: string;
     },
   ) => { book: LetterBook; entry: LetterEntry } | null;
+  appendEntryVersion: (
+    bookId: string,
+    entryId: string,
+    input: Pick<LetterEntry, 'title' | 'content' | 'format'>,
+  ) => { book: LetterBook; entry: LetterEntry; version: { id: string } } | null;
 }) {
   return {
     actionId: 'generate',
@@ -49,9 +57,14 @@ export function createLettersGenerationAdapter(lettersStore: {
     buildRequest(config) {
       return parsePrettified(GenerationRequestPartsSchema, {
         appPrompt: config.appPrompt,
-        context: config.recentLettersContext,
+        context: [config.recentLettersContext, config.mode === 'rewrite' ? config.existingContent : '']
+          .filter(Boolean)
+          .join('\n\n'),
         outputFormat: config.outputFormat,
-        taskInstruction: buildTaskInstruction(config),
+        taskInstruction:
+          config.mode === 'rewrite'
+            ? `${buildTaskInstruction(config)} 请将上述目标信件重写为完整替代版本，不要写成回信或续写。`
+            : buildTaskInstruction(config),
         userRequirement: config.userRequirement,
       });
     },
@@ -60,6 +73,20 @@ export function createLettersGenerationAdapter(lettersStore: {
       return parseConfiguredOutput('letters.generate', raw, SimpleXmlResultSchema, () => parseSimpleXmlResult(raw));
     },
     async save(result, context) {
+      if (context.config.mode === 'rewrite' && context.config.bookId && context.config.entryId) {
+        const saved = lettersStore.appendEntryVersion(context.config.bookId, context.config.entryId, {
+          content: result.content,
+          format: context.config.format,
+          title: result.title,
+        });
+        if (!saved) throw new Error('目标书信不存在，无法保存重写版本');
+        return {
+          book: saved.book,
+          entityId: saved.entry.id,
+          entry: saved.entry,
+          versionId: saved.version.id,
+        };
+      }
       const saved = lettersStore.createEntry({
         bookId: context.config.bookId || undefined,
         bookTitle: context.config.bookTitle || undefined,
@@ -76,11 +103,12 @@ export function createLettersGenerationAdapter(lettersStore: {
         book: saved.book,
         entityId: saved.entry.id,
         entry: saved.entry,
+        versionId: undefined,
       };
     },
   } satisfies GenerationAdapter<
     LetterGenerateConfig,
     SimpleXmlResult,
-    { book: LetterBook; entityId: string; entry: LetterEntry }
+    { book: LetterBook; entityId: string; entry: LetterEntry; versionId?: string }
   >;
 }
