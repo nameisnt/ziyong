@@ -1,11 +1,5 @@
 import WorldSlotsApp from './WorldSlotsApp.vue';
-import {
-  getWorldSlotTypeLabel,
-  worldSlotsField,
-  WorldSlotsScopeDataSchema,
-  useWorldSlotsStore,
-  type WorldSlot,
-} from './store';
+import { worldSlotsField, WorldSlotsScopeDataSchema, useWorldSlotsStore, type WorldSlot } from './store';
 import {
   definePhoneApp,
   type PhoneArchiveDomain,
@@ -35,12 +29,7 @@ function getLatestIso(left: string, right: string) {
 }
 
 function slotContent(slot: WorldSlot) {
-  return [
-    `槽位：${slot.title}`,
-    `类型：${getWorldSlotTypeLabel(slot.type)}`,
-    slot.keys.length ? `关键词：${slot.keys.join('、')}` : '',
-    slot.content,
-  ]
+  return [`槽位：${slot.title}`, slot.keys.length ? `关键词：${slot.keys.join('、')}` : '', slot.content]
     .filter(Boolean)
     .join('\n');
 }
@@ -54,10 +43,10 @@ function createWorldSlotsArchiveDomain(raw: unknown): PhoneArchiveDomain {
     label: '世界书槽位',
     collectionLabel: '世界书',
     itemLabel: '槽位',
-    collections: data.bookName || data.slots.length ? 1 : 0,
+    collections: data.slots.length ? 1 : 0,
     entries: data.slots.map(slot => ({
       id: slot.id,
-      subtitle: `${getWorldSlotTypeLabel(slot.type)} · ${slot.worldEntryId === null ? '未同步' : `#${slot.worldEntryId}`}`,
+      subtitle: slot.worldEntryId === null ? '未同步' : `#${slot.worldEntryId}`,
       title: slot.title,
     })),
     items: data.slots.length,
@@ -128,9 +117,9 @@ function createWorldSlotsReferenceTree(): PhoneReferenceTreeNode {
         id: `world-slots:${slot.id}`,
         title: slot.title,
         content: slotContent(slot),
-        sourcePath: ['世界书槽位', getWorldSlotTypeLabel(slot.type)],
+        sourcePath: ['世界书槽位'],
         updatedAt: slot.updatedAt,
-        timeLabel: getWorldSlotTypeLabel(slot.type),
+        timeLabel: slot.worldEntryId === null ? '未同步' : `#${slot.worldEntryId}`,
       },
     })),
   };

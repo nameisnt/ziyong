@@ -439,10 +439,23 @@
                       type="text"
                       :placeholder="t`板块名称`"
                     />
+                    <label class="pc-field-group">
+                      <span>{{ t`板块类型` }}</span>
+                      <select
+                        v-model="step.config.forumBoardTypeId"
+                        class="pc-select"
+                        @change="applyForumTypeDefaults(step)"
+                      >
+                        <option value="">{{ t`自定义类型` }}</option>
+                        <option v-for="prompt in forumBoardTypePrompts" :key="prompt.id" :value="prompt.id">
+                          {{ prompt.name }}
+                        </option>
+                      </select>
+                    </label>
                     <textarea
-                      v-model="step.config.forumBoardDescription"
+                      v-model="step.config.forumBoardTypePrompt"
                       class="pc-area compact"
-                      :placeholder="t`板块说明，可留空`"
+                      :placeholder="t`板块类型提示词，可编辑`"
                     ></textarea>
                   </template>
                 </div>
@@ -715,6 +728,7 @@ const { tables: profileTables } = storeToRefs(useProfilesStore());
 const promptStore = usePromptStore();
 const { typePrompts } = storeToRefs(promptStore);
 const extrasTypePrompts = computed(() => typePrompts.value.filter(prompt => prompt.domain === 'extras'));
+const forumBoardTypePrompts = computed(() => typePrompts.value.filter(prompt => prompt.domain === 'forum-board'));
 const theaterTypePrompts = computed(() => typePrompts.value.filter(prompt => prompt.domain === 'theater'));
 const openWorkflowIds = ref<string[]>([]);
 const selectedActions = reactive<Record<string, string>>({});
@@ -768,6 +782,17 @@ function applyExtrasTypeDefaults(step: WorkbenchStep) {
   }
   step.config.extrasTypeName = typePrompt.name;
   step.config.extrasTypePrompt = typePrompt.prompt;
+}
+
+function applyForumTypeDefaults(step: WorkbenchStep) {
+  const typePrompt = step.config.forumBoardTypeId ? promptStore.getTypePrompt(step.config.forumBoardTypeId) : null;
+  if (!typePrompt) {
+    step.config.forumBoardTypeName = '';
+    step.config.forumBoardTypePrompt = '';
+    return;
+  }
+  step.config.forumBoardTypeName = typePrompt.name;
+  step.config.forumBoardTypePrompt = typePrompt.prompt;
 }
 
 function createWorkflow() {

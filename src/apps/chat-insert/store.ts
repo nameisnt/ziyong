@@ -6,15 +6,12 @@ import { extension_settings } from '@sillytavern/scripts/extensions';
 export const chatInsertField = 'sillytavern_phone_chat_insert';
 
 const ChatInsertSettingsSchema = z.object({
-  content: z.string().default(''),
   hidden: z.boolean().default(false),
   mode: z.enum(['new-end', 'new-before', 'append-last', 'append-message']).default('new-end'),
   role: z.enum(['assistant', 'system', 'user']).default('assistant'),
   separator: z.string().default('\n\n'),
-  source: z.string().default(''),
   targetMessageId: z.number().int().nonnegative().default(0),
   template: z.string().default('{{references}}'),
-  title: z.string().default(''),
 });
 export type ChatInsertSettings = z.infer<typeof ChatInsertSettingsSchema>;
 
@@ -30,11 +27,6 @@ function readSettings(raw: unknown) {
     if (settings.template.trim() === '{{content}}\n\n{{references}}') {
       settings.template = '{{references}}';
     }
-    if (settings.source === '酒馆手机') {
-      settings.source = '';
-    }
-    settings.content = '';
-    settings.title = '';
     return settings;
   } catch {
     return validateInplace(ChatInsertSettingsSchema, {});
@@ -51,11 +43,6 @@ export const useChatInsertStore = defineStore('chat-insert', () => {
 
   watch(settings, nextSettings => persist(nextSettings), { deep: true });
 
-  function resetDraft() {
-    settings.value.content = '';
-    settings.value.title = '';
-  }
-
   function resetTemplate() {
     settings.value.template = '{{references}}';
   }
@@ -66,7 +53,6 @@ export const useChatInsertStore = defineStore('chat-insert', () => {
 
   return {
     rehydrateFromSettings,
-    resetDraft,
     resetTemplate,
     settings,
   };

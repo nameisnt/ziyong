@@ -198,6 +198,7 @@ function setupVisualGlobals() {
     _: {
       assign: Object.assign,
       get: getByPath,
+      isEqual: (left: unknown, right: unknown) => JSON.stringify(left) === JSON.stringify(right),
       mapValues: (source: Record<string, unknown>, iteratee: (value: unknown, key: string) => unknown) =>
         Object.fromEntries(Object.entries(source || {}).map(([key, value]) => [key, iteratee(value, key)])),
       set: setByPath,
@@ -345,6 +346,7 @@ setupVisualGlobals();
 const { initPhoneLifecycle } = await import('@/core/phoneLifecycle');
 const { PHONE_APPS } = await import('@/data/apps');
 const { useForumStore } = await import('@/store/forum');
+const { ForumBoardSchema } = await import('@/type/forum');
 const { useExtrasStore } = await import('@/store/extras');
 const { useMediaStore } = await import('@/apps/media/store');
 const { usePhoneStore } = await import('@/store/phone');
@@ -358,10 +360,12 @@ const { usePreviewDraftPersistence } = await import('@/util/previewDrafts');
 const { useDiaryStore } = await import('@/store/diary');
 const { useLettersStore } = await import('@/store/letters');
 const { useTheaterStore } = await import('@/store/theater');
-const { useWorkbenchStore } = await import('@/apps/workbench/store');
-const { useProfilesStore } = await import('@/apps/profiles/store');
+const { WorkbenchStepConfigSchema, useWorkbenchStore } = await import('@/apps/workbench/store');
+const { ProfileEntrySchema, profilesField, useProfilesStore } = await import('@/apps/profiles/store');
 const { usePresetLinkStore } = await import('@/apps/preset-link/store');
-const { useWorldSlotsStore } = await import('@/apps/world-slots/store');
+const { useWorldSlotsStore, worldSlotsField } = await import('@/apps/world-slots/store');
+const { getCurrentChatScopeKey } = await import('@/store/chatScoped');
+const { extension_settings } = await import('@sillytavern/scripts/extensions');
 const { resolveGeneratedExtraBookTitle } = await import('@/core/extrasGeneration');
 const { ENTRY_LIBRARY_CONTENT_PLACEHOLDER, renderEntryLibraryBindingContent, useEntryLibraryStore } =
   await import('@/apps/entry-library/store');
@@ -376,6 +380,7 @@ const scenarios: VisualScenarioName[] = [
   'home',
   'home-tasks',
   'home-tasks-dark',
+  'legacy-data-migrations',
   'app-deferred-mount-order',
   ...rootAppScenarios,
   'bagu-scan-actions',
@@ -394,6 +399,7 @@ const scenarios: VisualScenarioName[] = [
   'entry-library-scroll-return',
   'world-slots-batch-import',
   'world-slots-entry-library',
+  'world-slots-root-cleanup',
   'worldbook-link-legacy-entry',
   'preset-link-auto-reload',
   'preset-link-history',
@@ -444,6 +450,7 @@ const scenarios: VisualScenarioName[] = [
   'tutorial-search-results',
   'video-viewer',
   'workbench-logs',
+  'workbench-forum-step',
   'profiles-table',
   'profiles-table-editor',
   'profiles-detail',
@@ -675,6 +682,18 @@ function createWorkbenchFixture() {
   workbench.finishLog(failed.id, 'failed', '资料卡解析失败，已保存失败草稿');
 }
 
+function createWorkbenchForumFixture() {
+  const workbench = useWorkbenchStore();
+  workbench.settings.insertDrafts = [];
+  workbench.settings.logs = [];
+  workbench.settings.workflows = [];
+  const workflow = workbench.createWorkflow('论坛内容整理');
+  const step = workbench.addStep(workflow.id, { actionId: 'generate-thread', appId: 'forum' });
+  step.config.forumBoardName = '夜话';
+  step.config.forumBoardTypeName = '闲聊';
+  step.config.forumBoardTypePrompt = '围绕当前剧情生成轻松但有信息量的主题帖。';
+}
+
 function createProfilesFixture() {
   const profiles = useProfilesStore();
   profiles.resetCurrentScope();
@@ -723,8 +742,11 @@ function createProfilesFixture() {
   const characterTable = profiles.getDefaultTable('character');
   if (!characterTable) throw new Error('Profiles visual fixture did not create the character table');
   const firstEntry = profiles.createEntry({
-    content: '她在雨夜留下了一封没有署名的信，目前仍在城中调查旧案。',
-    fields: { identity: '调查员', status: '在场' },
+    fields: {
+      details: '她在雨夜留下了一封没有署名的信，目前仍在城中调查旧案。',
+      identity: '调查员',
+      status: '在场',
+    },
     kind: 'character',
     summary: '追查旧案的调查员，与主角互相隐瞒关键线索。',
     tableId: characterTable.id,
@@ -732,8 +754,11 @@ function createProfilesFixture() {
     title: '林见夏',
   });
   profiles.createEntry({
-    content: '他掌管港口仓库，知道失踪货物最后一次出现的位置。',
-    fields: { identity: '仓库管理员', status: '未知' },
+    fields: {
+      details: '他掌管港口仓库，知道失踪货物最后一次出现的位置。',
+      identity: '仓库管理员',
+      status: '未知',
+    },
     kind: 'character',
     summary: '寡言的港口管理员。',
     tableId: characterTable.id,
@@ -795,6 +820,100 @@ async function applyScenario(name: VisualScenarioName, options: { height?: numbe
   phone.openPhone();
 
   if (name === 'home') {
+    await phone.goHome();
+  } else if (name === 'legacy-data-migrations') {
+    const timestamp = '2026-07-31T00:00:00.000Z';
+    const scopeKey = getCurrentChatScopeKey();
+    _.set(extension_settings, profilesField, {
+      __chatScoped: true,
+      legacyScopeMigrations: {},
+      scopes: {
+        [scopeKey]: {
+          entries: [
+            {
+              content: '旧版资料正文',
+              createdAt: timestamp,
+              fields: { identity: '调查员' },
+              id: 'legacy-profile',
+              kind: 'character',
+              summary: '旧版摘要',
+              tableId: 'profile_table_character',
+              tags: ['旧数据'],
+              title: '旧版人物',
+              updatedAt: timestamp,
+            },
+          ],
+          tables: [],
+        },
+      },
+    });
+    _.set(extension_settings, worldSlotsField, {
+      __chatScoped: true,
+      legacyScopeMigrations: {},
+      scopes: {
+        [scopeKey]: {
+          bookName: '旧自定义世界书',
+          slots: [
+            {
+              content: '旧槽位正文',
+              createdAt: timestamp,
+              id: 'legacy-slot',
+              profileEntryIds: ['legacy-profile'],
+              title: '旧槽位',
+              type: 'relationship',
+              updatedAt: timestamp,
+            },
+          ],
+        },
+      },
+    });
+
+    const profile = ProfileEntrySchema.parse({
+      content: '旧版资料正文',
+      createdAt: timestamp,
+      fields: {},
+      id: 'legacy-profile-schema',
+      kind: 'character',
+      title: '旧版人物',
+      updatedAt: timestamp,
+    });
+    if (profile.fields.details !== '旧版资料正文' || 'content' in profile) {
+      throw new Error('Legacy profile content was not migrated to the details field');
+    }
+
+    const board = ForumBoardSchema.parse({
+      createdAt: timestamp,
+      description: '旧板块说明',
+      id: 'legacy-board',
+      name: '旧板块',
+      updatedAt: timestamp,
+    });
+    if (board.typePrompt !== '旧板块说明' || 'description' in board) {
+      throw new Error('Legacy forum board description was not migrated to the type prompt');
+    }
+
+    const stepConfig = WorkbenchStepConfigSchema.parse({ forumBoardDescription: '旧工作台板块说明' });
+    if (stepConfig.forumBoardTypePrompt !== '旧工作台板块说明' || 'forumBoardDescription' in stepConfig) {
+      throw new Error('Legacy workbench board description was not migrated to the type prompt');
+    }
+
+    const worldSlots = useWorldSlotsStore();
+    worldSlots.rehydrateFromSettings();
+    const migratedSlot = worldSlots.getSlot('legacy-slot');
+    const rawWorldEnvelope = _.get(extension_settings, worldSlotsField) as
+      { scopes?: Record<string, unknown> } | undefined;
+    const rawWorldScope = rawWorldEnvelope?.scopes?.[scopeKey] as Record<string, unknown> | undefined;
+    const rawSlot = Array.isArray(rawWorldScope?.slots) ? (rawWorldScope.slots[0] as Record<string, unknown>) : null;
+    if (
+      !migratedSlot?.content.includes('旧版人物') ||
+      !migratedSlot.content.includes('旧版资料正文') ||
+      !rawSlot ||
+      'profileEntryIds' in rawSlot ||
+      'type' in rawSlot ||
+      'bookName' in (rawWorldScope ?? {})
+    ) {
+      throw new Error('Legacy world slot fields were not migrated into the current slot content');
+    }
     await phone.goHome();
   } else if (name === 'home-tasks' || name === 'home-tasks-dark') {
     if (name === 'home-tasks-dark') useSettingsStore().setTheme('dark');
@@ -1121,6 +1240,21 @@ async function applyScenario(name: VisualScenarioName, options: { height?: numbe
     const titleField = document.querySelector<HTMLInputElement>('input[placeholder="槽位名称"]');
     if (titleField?.value !== '条目库测试条目') {
       throw new Error('Single merged reference did not populate the empty world slot title');
+    }
+  } else if (name === 'world-slots-root-cleanup') {
+    const worldSlots = useWorldSlotsStore();
+    worldSlots.resetCurrentScope();
+    worldSlots.createSlot({
+      content: '只属于当前聊天的关系变化。',
+      title: '关系变化',
+    });
+    resetPhoneToRoute('world-slots', 'root', '世界书槽位');
+    await waitForPaint();
+    if (!document.querySelector<HTMLInputElement>('.pc-world-toolbar input[type="search"]')) {
+      throw new Error('World slot search field is missing');
+    }
+    if (document.querySelector('.pc-world-toolbar select, .pc-world-toolbar .pc-combobox')) {
+      throw new Error('Legacy world slot type filter is still visible');
     }
   } else if (name === 'world-slots-batch-import') {
     useSettingsStore().setTheme('light');
@@ -2125,6 +2259,23 @@ async function applyScenario(name: VisualScenarioName, options: { height?: numbe
     resetPhoneToRoute('workbench', 'root', '工作台');
     await waitForPaint();
     document.querySelector<HTMLButtonElement>('.pc-workflow-title')?.click();
+  } else if (name === 'workbench-forum-step') {
+    createWorkbenchForumFixture();
+    resetPhoneToRoute('workbench', 'root', '工作台');
+    await waitForPaint();
+    document.querySelector<HTMLButtonElement>('.pc-workflow-title')?.click();
+    await waitForPaint();
+    const forumStep = [...document.querySelectorAll<HTMLElement>('.pc-step-card')].find(card =>
+      card.textContent?.includes('论坛'),
+    );
+    const typePromptArea = forumStep?.querySelector<HTMLTextAreaElement>(
+      'textarea[placeholder="板块类型提示词，可编辑"]',
+    );
+    if (!forumStep || !typePromptArea || forumStep.textContent?.includes('板块说明')) {
+      throw new Error('Workbench forum step still uses the legacy board description design');
+    }
+    typePromptArea.scrollIntoView({ block: 'center' });
+    await waitForPaint();
   } else if (name === 'profiles-table' || name === 'profiles-table-editor' || name === 'profiles-detail') {
     const { firstEntry, table } = createProfilesFixture();
     resetPhoneToRoute(

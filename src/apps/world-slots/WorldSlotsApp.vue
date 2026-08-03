@@ -38,20 +38,14 @@
           <i class="fa-solid fa-magnifying-glass"></i>
           <input v-model="query" type="search" :placeholder="t`搜索槽位、关键词或内容`" />
         </label>
-        <SearchableCombobox
-          v-model="typeFilter"
-          :options="typeFilterComboboxOptions"
-          :placeholder="t`全部类型`"
-          :input-label="t`筛选槽位类型`"
-        />
       </section>
 
       <div v-if="filteredSlots.length" class="pc-slot-list">
         <article v-for="slot in filteredSlots" :key="slot.id" class="pc-slot-row" @click="openEditor(slot.id)">
           <div>
             <span>
-              {{ getWorldSlotTypeLabel(slot.type) }} · {{ getWorldSlotPositionLabel(slot.position) }} ·
-              {{ slot.insertionOrder }} · {{ slot.enabled ? t`启用` : t`停用` }}
+              {{ getWorldSlotPositionLabel(slot.position) }} · {{ slot.insertionOrder }} ·
+              {{ slot.enabled ? t`启用` : t`停用` }}
             </span>
             <h3>{{ slot.title }}</h3>
             <p>{{ slot.content || t`空槽位` }}</p>
@@ -67,10 +61,6 @@
         <span class="pc-kicker">{{ editingSlot ? t`编辑槽位` : t`新增槽位` }}</span>
         <h2>{{ editingSlot?.title || t`世界书条目槽位` }}</h2>
         <input v-model="draft.title" class="pc-field" type="text" :placeholder="t`槽位名称`" />
-        <div class="pc-field-group pc-world-field-group">
-          <span>{{ t`槽位类型` }}</span>
-          <SearchableCombobox v-model="draft.type" :options="typeComboboxOptions" :placeholder="t`选择槽位类型`" />
-        </div>
         <input v-model="draft.keysText" class="pc-field" type="text" :placeholder="t`关键词，用逗号分隔，可留空`" />
 
         <div class="pc-world-basic-grid">
@@ -249,33 +239,26 @@ import EmptyState from '@/components/EmptyState.vue';
 import ReferencePicker from '@/components/ReferencePicker.vue';
 import SearchableCombobox from '@/components/SearchableCombobox.vue';
 import { usePhoneStore } from '@/store/phone';
-import { getProfileKindLabel, type ProfileEntry, useProfilesStore } from '@/apps/profiles/store';
 import type { GenerationReferenceItem } from '@/util/references';
 import {
-  getWorldSlotTypeLabel,
   getWorldSlotPositionLabel,
   WORLD_SLOTS_BOOK_NAME,
   type WorldSlot,
   type WorldSlotLogic,
   type WorldSlotPosition,
   type WorldSlotRole,
-  type WorldSlotType,
   useWorldSlotsStore,
   worldSlotLogicOptions,
   worldSlotPositionOptions,
   worldSlotRoleOptions,
-  worldSlotTypeOptions,
 } from './store';
 import { storeToRefs } from 'pinia';
 
 const phone = usePhoneStore();
 const worldSlots = useWorldSlotsStore();
-const profiles = useProfilesStore();
 const { isCurrentChatScope, slots, syncError, syncStatus } = storeToRefs(worldSlots);
-const { entries: profileEntries } = storeToRefs(profiles);
 const route = computed(() => phone.currentRoute);
 const query = ref('');
-const typeFilter = ref('');
 const syncing = ref(false);
 const referenceImportMode = ref<'merge' | 'separate'>('merge');
 const selectedReferences = ref<GenerationReferenceItem[]>([]);
@@ -296,11 +279,8 @@ const draft = reactive({
   selectiveLogic: 'and_any' as WorldSlotLogic,
   stickyText: '',
   title: '',
-  type: 'note' as WorldSlotType,
 });
 
-const typeComboboxOptions = worldSlotTypeOptions.map(option => ({ label: option.label, value: option.id }));
-const typeFilterComboboxOptions = [{ label: '全部类型', value: '' }, ...typeComboboxOptions];
 const positionComboboxOptions = worldSlotPositionOptions.map(option => ({ label: option.label, value: option.id }));
 const roleComboboxOptions = worldSlotRoleOptions.map(option => ({ label: option.label, value: option.id }));
 const logicComboboxOptions = worldSlotLogicOptions.map(option => ({ label: option.label, value: option.id }));
@@ -309,17 +289,9 @@ const editingSlot = computed(() => (route.value.params?.slotId ? worldSlots.getS
 const normalizedQuery = computed(() => query.value.trim().toLowerCase());
 const filteredSlots = computed(() =>
   slots.value.filter(slot => {
-    if (typeFilter.value && slot.type !== typeFilter.value) return false;
     const search = normalizedQuery.value;
     if (!search) return true;
-    return [
-      slot.title,
-      slot.content,
-      getWorldSlotTypeLabel(slot.type),
-      getWorldSlotPositionLabel(slot.position),
-      ...slot.keys,
-      ...slot.secondaryKeys,
-    ]
+    return [slot.title, slot.content, getWorldSlotPositionLabel(slot.position), ...slot.keys, ...slot.secondaryKeys]
       .join(' ')
       .toLowerCase()
       .includes(search);
@@ -354,7 +326,6 @@ function splitKeys(text: string) {
 
 function fillDraft(slot: WorldSlot | null) {
   draft.title = slot?.title || '';
-  draft.type = slot?.type || 'note';
   draft.keysText = slot?.keys.join('、') || '';
   draft.secondaryKeysText = slot?.secondaryKeys.join('、') || '';
   draft.selectiveLogic = slot?.selectiveLogic || 'and_any';
@@ -368,11 +339,7 @@ function fillDraft(slot: WorldSlot | null) {
   draft.stickyText = slot?.sticky ? String(slot.sticky) : '';
   draft.cooldownText = slot?.cooldown ? String(slot.cooldown) : '';
   draft.delayText = slot?.delay ? String(slot.delay) : '';
-  const legacyProfiles = (slot?.profileEntryIds ?? [])
-    .map(entryId => profiles.getEntry(entryId))
-    .filter((entry): entry is ProfileEntry => Boolean(entry))
-    .map(buildProfileText);
-  draft.content = [slot?.content.trim() || '', ...legacyProfiles].filter(Boolean).join('\n\n');
+  draft.content = slot?.content.trim() || '';
   draft.enabled = slot?.enabled ?? true;
   referenceImportMode.value = 'merge';
   selectedReferences.value = [];
@@ -428,12 +395,10 @@ function readDraftSettings() {
     position: draft.position,
     preventRecursion: draft.preventRecursion,
     probability,
-    profileEntryIds: [],
     role: draft.role,
     secondaryKeys: splitKeys(draft.secondaryKeysText),
     selectiveLogic: draft.selectiveLogic,
     sticky,
-    type: draft.type,
   };
 }
 
@@ -455,18 +420,6 @@ function parseOptionalDuration(value: string, label: string) {
     return undefined;
   }
   return parsed;
-}
-
-function buildProfileText(entry: ProfileEntry) {
-  return [
-    `## ${entry.title}`,
-    `类型：${getProfileKindLabel(entry.kind)}`,
-    entry.summary ? `摘要：${entry.summary}` : '',
-    entry.tags.length ? `标签：${entry.tags.join('、')}` : '',
-    entry.content,
-  ]
-    .filter(Boolean)
-    .join('\n');
 }
 
 function applySelectedReferences() {
@@ -610,7 +563,7 @@ async function syncSlots() {
 
 .pc-world-toolbar {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) 132px;
+  grid-template-columns: minmax(0, 1fr);
   gap: 10px;
   padding: 12px;
 }

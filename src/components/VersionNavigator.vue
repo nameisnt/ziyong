@@ -7,7 +7,7 @@
       :title="t`上一个版本`"
       @click="selectOffset(-1)"
     >
-      <i class="fa-solid fa-chevron-left"></i>
+      <span class="pc-version-chevron previous" aria-hidden="true"></span>
     </button>
     <div class="pc-version-status">
       <strong>{{ `版本 ${currentIndex + 1} / ${versions.length}` }}</strong>
@@ -20,7 +20,7 @@
       :title="t`下一个版本`"
       @click="selectOffset(1)"
     >
-      <i class="fa-solid fa-chevron-right"></i>
+      <span class="pc-version-chevron next" aria-hidden="true"></span>
     </button>
     <button
       v-if="viewedVersionId !== activeVersionId"
@@ -60,9 +60,6 @@ function selectOffset(offset: number) {
 
 <style scoped>
 .pc-version-navigator {
-  position: sticky;
-  z-index: 2;
-  top: 0;
   display: grid;
   align-items: center;
   padding: 8px;
@@ -88,10 +85,20 @@ function selectOffset(offset: number) {
   color: var(--pc-muted);
 }
 
-.pc-version-navigator .fa-solid {
-  /* ReaderContent deliberately inherits its reading font for descendants. */
-  font-family: var(--fa-family-classic, 'Font Awesome 7 Free') !important;
-  font-weight: 900;
+.pc-version-chevron {
+  display: block;
+  width: 10px;
+  height: 10px;
+  border-right: 2px solid currentColor;
+  border-bottom: 2px solid currentColor;
+}
+
+.pc-version-chevron.previous {
+  transform: rotate(135deg);
+}
+
+.pc-version-chevron.next {
+  transform: rotate(-45deg);
 }
 
 @media (max-width: 380px) {

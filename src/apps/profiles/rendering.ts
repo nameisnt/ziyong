@@ -39,7 +39,7 @@ export function getProfileListPreview(entry: ProfileEntry, table: ProfileTable |
     item => !['title', 'summary', 'tags', 'content'].includes(item.id) && getEntryValue(entry, item.id).trim(),
   );
   if (column) return `${column.label}：${getEntryValue(entry, column.id)}`;
-  return entry.content.trim();
+  return '';
 }
 
 export function renderProfileFrontend(entry: ProfileEntry, table: ProfileTable, rules: RegexDisplayRule[]) {

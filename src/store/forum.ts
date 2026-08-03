@@ -24,8 +24,7 @@ function normalizeName(name: string) {
   return name.trim().toLowerCase();
 }
 
-type ForumBoardInput = Pick<ForumBoard, 'name'> &
-  Partial<Pick<ForumBoard, 'description' | 'typeId' | 'typeName' | 'typePrompt'>>;
+type ForumBoardInput = Pick<ForumBoard, 'name'> & Partial<Pick<ForumBoard, 'typeId' | 'typeName' | 'typePrompt'>>;
 
 export const useForumStore = defineStore('forum', () => {
   const { data, rehydrateFromSettings, resetCurrentScope, scopeKey, switchScope } = useChatScopedDomain({
@@ -57,11 +56,10 @@ export const useForumStore = defineStore('forum', () => {
 
   function createBoard(input: ForumBoardInput) {
     const timestamp = nowIso();
-    const typePrompt = input.typePrompt?.trim() || input.description?.trim() || '';
+    const typePrompt = input.typePrompt?.trim() || '';
     const board: ForumBoard = {
       id: createId('forum_board'),
       name: input.name.trim() || '未命名板块',
-      description: undefined,
       typeId: input.typeId?.trim() || '',
       typeName: input.typeName?.trim() || (typePrompt ? '自定义' : ''),
       typePrompt,
@@ -84,9 +82,8 @@ export const useForumStore = defineStore('forum', () => {
     if (!board) return null;
     board.name = input.name.trim() || board.name;
     board.typeId = input.typeId?.trim() || '';
-    board.typePrompt = input.typePrompt?.trim() || input.description?.trim() || '';
+    board.typePrompt = input.typePrompt?.trim() || '';
     board.typeName = input.typeName?.trim() || (board.typePrompt ? '自定义' : '');
-    board.description = undefined;
     board.updatedAt = nowIso();
     return board;
   }

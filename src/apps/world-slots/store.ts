@@ -1,13 +1,17 @@
-import { areChatScopeKeysEquivalent, getCurrentChatScopeKey, useChatScopedDomain } from '@/store/chatScoped';
-import { getProfileKindLabel, useProfilesStore, type ProfileEntry } from '@/apps/profiles/store';
+import {
+  areChatScopeKeysEquivalent,
+  getCurrentChatScopeKey,
+  readChatScopedEnvelope,
+  useChatScopedDomain,
+} from '@/store/chatScoped';
+import { getProfileKindLabel, profilesField, ProfilesScopeDataSchema, type ProfileEntry } from '@/apps/profiles/store';
 import { getOptionalGlobalFunction } from '@/util/runtime';
 import { validateInplace } from '@/util/zod';
+import { extension_settings } from '@sillytavern/scripts/extensions';
 
 export const worldSlotsField = 'sillytavern_phone_world_slots';
 export const WORLD_SLOTS_BOOK_NAME = '当前聊天';
 
-export const WorldSlotTypeSchema = z.enum(['character', 'world', 'plot', 'relationship', 'note']);
-export type WorldSlotType = z.infer<typeof WorldSlotTypeSchema>;
 export const WorldSlotPositionSchema = z.enum([
   'before_character_definition',
   'after_character_definition',
@@ -26,11 +30,9 @@ export type WorldSlotLogic = z.infer<typeof WorldSlotLogicSchema>;
 export const WorldSlotSchema = z.object({
   id: z.string(),
   title: z.string(),
-  type: WorldSlotTypeSchema.default('note'),
   keys: z.array(z.string()).default([]),
   secondaryKeys: z.array(z.string()).default([]),
   selectiveLogic: WorldSlotLogicSchema.default('and_any'),
-  profileEntryIds: z.array(z.string()).default([]),
   content: z.string().default(''),
   enabled: z.boolean().default(true),
   position: WorldSlotPositionSchema.default('before_character_definition'),
@@ -62,31 +64,20 @@ type WorldSlotEditableFields = Pick<
   | 'position'
   | 'preventRecursion'
   | 'probability'
-  | 'profileEntryIds'
   | 'role'
   | 'secondaryKeys'
   | 'selectiveLogic'
   | 'sticky'
   | 'title'
-  | 'type'
 >;
 
 export type WorldSlotCreateInput = Partial<WorldSlotEditableFields>;
 export type WorldSlotUpdateInput = WorldSlotEditableFields;
 
 export const WorldSlotsScopeDataSchema = z.object({
-  bookName: z.string().default(''),
   slots: z.array(WorldSlotSchema).default([]),
 });
 export type WorldSlotsScopeData = z.infer<typeof WorldSlotsScopeDataSchema>;
-
-export const worldSlotTypeOptions: Array<{ id: WorldSlotType; label: string }> = [
-  { id: 'character', label: '角色' },
-  { id: 'world', label: '世界观' },
-  { id: 'plot', label: '剧情' },
-  { id: 'relationship', label: '关系' },
-  { id: 'note', label: '其他' },
-];
 
 export const worldSlotPositionOptions: Array<{ id: WorldSlotPosition; label: string }> = [
   { id: 'before_character_definition', label: '角色定义前' },
@@ -146,10 +137,6 @@ function cleanList(items: string[]) {
   return [...new Set(items.map(item => item.trim()).filter(Boolean))];
 }
 
-export function getWorldSlotTypeLabel(type: WorldSlotType) {
-  return worldSlotTypeOptions.find(option => option.id === type)?.label || '其他';
-}
-
 export function getWorldSlotPositionLabel(position: WorldSlotPosition) {
   return worldSlotPositionOptions.find(option => option.id === position)?.label || '角色定义前';
 }
@@ -199,7 +186,7 @@ function createWorldEntry(slot: WorldSlot, entryId: number): WorldBookEntry {
     key: slot.keys,
     keysecondary: slot.secondaryKeys,
     comment: `[${getSlotMarker(slot.id)}] ${slot.title}`,
-    content: buildWorldEntryContent(slot),
+    content: slot.content.trim(),
     constant: !usesKeys,
     vectorized: false,
     selective: usesKeys,
@@ -231,29 +218,70 @@ function createWorldEntry(slot: WorldSlot, entryId: number): WorldBookEntry {
     delay: slot.delay,
     triggers: [],
     sillytavernPhoneSlotId: slot.id,
-    sillytavernPhoneSlotType: slot.type,
   };
 }
 
-function buildProfileContent(entry: ProfileEntry) {
+function buildProfileContent(entry: ProfileEntry, columns: Array<{ id: string; label: string }>) {
+  const fieldLines = columns
+    .filter(column => !['title', 'summary', 'tags', 'content'].includes(column.id))
+    .map(column => (entry.fields[column.id]?.trim() ? `${column.label}：${entry.fields[column.id].trim()}` : ''))
+    .filter(Boolean);
   return [
     `## ${entry.title}`,
     `类型：${getProfileKindLabel(entry.kind)}`,
     entry.summary ? `摘要：${entry.summary}` : '',
     entry.tags.length ? `标签：${entry.tags.join('、')}` : '',
-    entry.content,
+    ...fieldLines,
   ]
     .filter(Boolean)
     .join('\n');
 }
 
-function buildWorldEntryContent(slot: WorldSlot) {
-  const profiles = useProfilesStore();
-  const profileBlocks = slot.profileEntryIds
-    .map(entryId => profiles.getEntry(entryId))
-    .filter((entry): entry is ProfileEntry => Boolean(entry))
-    .map(buildProfileContent);
-  return [slot.content.trim(), ...profileBlocks].filter(Boolean).join('\n\n');
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return Boolean(value) && typeof value === 'object' && !Array.isArray(value);
+}
+
+function migrateLegacyWorldSlotSettings() {
+  const currentScopeKey = getCurrentChatScopeKey();
+  const envelope = readChatScopedEnvelope(worldSlotsField, currentScopeKey);
+  const profileEnvelope = readChatScopedEnvelope(profilesField, currentScopeKey);
+  let changed = false;
+
+  Object.entries(envelope.scopes).forEach(([scopeKey, rawScope]) => {
+    if (!isRecord(rawScope) || !Array.isArray(rawScope.slots)) return;
+    const profileScope = Object.entries(profileEnvelope.scopes).find(
+      ([candidateScopeKey]) =>
+        candidateScopeKey === scopeKey || areChatScopeKeysEquivalent(candidateScopeKey, scopeKey),
+    )?.[1];
+    const profileResult = ProfilesScopeDataSchema.safeParse(profileScope ?? {});
+    const profileData = profileResult.success ? profileResult.data : null;
+    const profilesById = new Map(profileData?.entries.map(entry => [entry.id, entry]) ?? []);
+    const tablesById = new Map(profileData?.tables.map(table => [table.id, table]) ?? []);
+    const slots = rawScope.slots.map(rawSlot => {
+      if (!isRecord(rawSlot)) return rawSlot;
+      const profileEntryIds = Array.isArray(rawSlot.profileEntryIds)
+        ? rawSlot.profileEntryIds.filter((id): id is string => typeof id === 'string')
+        : [];
+      const profileBlocks = profileEntryIds
+        .map(id => profilesById.get(id))
+        .filter((entry): entry is ProfileEntry => Boolean(entry))
+        .map(entry => buildProfileContent(entry, tablesById.get(entry.tableId)?.columns ?? []));
+      const content = [typeof rawSlot.content === 'string' ? rawSlot.content.trim() : '', ...profileBlocks]
+        .filter(Boolean)
+        .join('\n\n');
+      const slot = { ...rawSlot };
+      delete slot.profileEntryIds;
+      delete slot.type;
+      if ('profileEntryIds' in rawSlot || 'type' in rawSlot) changed = true;
+      return { ...slot, content };
+    });
+    const scope: Record<string, unknown> = { ...rawScope, slots };
+    delete scope.bookName;
+    if ('bookName' in rawScope) changed = true;
+    envelope.scopes[scopeKey] = scope;
+  });
+
+  if (changed) _.set(extension_settings, worldSlotsField, envelope);
 }
 
 function nextEntryId(entries: Record<string, WorldBookEntry>) {
@@ -264,6 +292,7 @@ function nextEntryId(entries: Record<string, WorldBookEntry>) {
 }
 
 export const useWorldSlotsStore = defineStore('world-slots', () => {
+  migrateLegacyWorldSlotSettings();
   const {
     data,
     rehydrateFromSettings: rehydrateScopedData,
@@ -295,11 +324,9 @@ export const useWorldSlotsStore = defineStore('world-slots', () => {
     return {
       id: createId('world_slot'),
       title: input.title?.trim() || '未命名槽位',
-      type: input.type ?? 'note',
       keys: cleanList(input.keys ?? []),
       secondaryKeys: cleanList(input.secondaryKeys ?? []),
       selectiveLogic: input.selectiveLogic ?? 'and_any',
-      profileEntryIds: cleanList(input.profileEntryIds ?? []),
       content: input.content?.trim() || '',
       enabled: input.enabled ?? true,
       position: input.position ?? 'before_character_definition',
@@ -335,11 +362,9 @@ export const useWorldSlotsStore = defineStore('world-slots', () => {
     const slot = getSlot(slotId);
     if (!slot) return null;
     slot.title = input.title.trim() || slot.title;
-    slot.type = input.type;
     slot.keys = cleanList(input.keys);
     slot.secondaryKeys = cleanList(input.secondaryKeys);
     slot.selectiveLogic = input.selectiveLogic;
-    slot.profileEntryIds = cleanList(input.profileEntryIds);
     slot.content = input.content.trim();
     slot.enabled = input.enabled;
     slot.position = input.position;
@@ -525,6 +550,7 @@ export const useWorldSlotsStore = defineStore('world-slots', () => {
   }
 
   function rehydrateFromSettings() {
+    migrateLegacyWorldSlotSettings();
     rehydrateScopedData();
     queueAutoSync();
   }

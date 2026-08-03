@@ -17,7 +17,7 @@ type ForumReplyDraftInput = Pick<ForumReply, 'author' | 'content'> & Partial<Pic
 
 export const ForumThreadGenerateConfigSchema = z.object({
   appPrompt: z.string(),
-  boardDescription: z.string().default(''),
+  boardTypePrompt: z.string().default(''),
   boardId: z.string().default(''),
   boardName: z.string().default(''),
   boardTypeId: z.string().default(''),
@@ -84,7 +84,7 @@ export function persistForumReplyDrafts(
 
 function buildThreadRequestContext(config: ForumThreadGenerateConfig) {
   return [
-    config.boardDescription.trim() ? `板块类型提示词：${config.boardDescription.trim()}` : '',
+    config.boardTypePrompt.trim() ? `板块类型提示词：${config.boardTypePrompt.trim()}` : '',
     config.mode === 'rewrite' ? config.existingThreadContent.trim() : '',
   ]
     .filter(Boolean)
@@ -160,8 +160,8 @@ export function createForumThreadGenerationAdapter(forumStore: {
       };
       const board = context.config.boardId
         ? forumStore.getBoard(context.config.boardId) ||
-          forumStore.ensureBoard(targetBoardName, context.config.boardDescription, boardType)
-        : forumStore.ensureBoard(targetBoardName, context.config.boardDescription, boardType);
+          forumStore.ensureBoard(targetBoardName, context.config.boardTypePrompt, boardType)
+        : forumStore.ensureBoard(targetBoardName, context.config.boardTypePrompt, boardType);
       const created = forumStore.createThread(board.id, {
         author: result.author,
         content: result.content,

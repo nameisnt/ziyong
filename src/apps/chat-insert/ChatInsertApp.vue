@@ -183,7 +183,7 @@ const referenceHelpText = computed(() =>
 const placeholderHelpText = computed(() =>
   [
     '模板会决定最终写入聊天的格式。',
-    '可用占位符：{{references}}。兼容保留 {{title}}、{{content}}，但楼层内容请直接在酒馆编辑。',
+    '可用占位符：{{references}}。',
     referenceTokens.value.length
       ? `当前引用：${placeholderTokens.value.map(token => token.value).join('、')}`
       : '选择引用后还会按来源出现正文、标题、时间占位符。',
@@ -217,7 +217,6 @@ function insertTemplateShortcut(template: string) {
 function clearDraft() {
   selectedReferences.value = [];
   templateShortcutOpen.value = false;
-  chatInsert.resetDraft();
 }
 
 async function confirmInsert() {
@@ -246,7 +245,6 @@ async function confirmInsert() {
       references: referenceContents.value,
       role: settings.value.role,
       separator: settings.value.separator,
-      source: settings.value.source,
       targetMessageId: settings.value.targetMessageId,
       template: settings.value.template,
       title: '',

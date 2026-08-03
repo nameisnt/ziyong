@@ -65,7 +65,7 @@
         />
         <input v-model="boardDraft.name" class="pc-field" type="text" :placeholder="t`板块名称`" />
         <textarea
-          v-model="boardDraft.description"
+          v-model="boardDraft.typePrompt"
           class="pc-area compact"
           :placeholder="t`板块类型提示词（可编辑）`"
           @input="markBoardEditorTypeCustom"
@@ -164,7 +164,7 @@
           />
           <textarea
             v-if="!activeBoard && threadDraft.boardId === CUSTOM_BOARD_ID"
-            v-model="threadDraft.boardDescription"
+            v-model="threadDraft.boardTypePrompt"
             class="pc-area compact"
             :placeholder="t`板块类型提示词（可编辑）`"
             @input="threadDraft.boardTypeId = CUSTOM_BOARD_TYPE_ID"
@@ -382,7 +382,7 @@
                 @update:model-value="selectThreadBoardType"
               />
               <textarea
-                v-model="threadGenerationDraft.boardDescription"
+                v-model="threadGenerationDraft.boardTypePrompt"
                 class="pc-area compact"
                 :disabled="generationState.running"
                 :placeholder="t`板块类型提示词（可编辑）`"
@@ -606,12 +606,12 @@ const query = ref('');
 const sortMode = ref<ThreadSortMode>('latestReply');
 const boardEditorTypeId = ref('');
 const boardDraft = reactive({
-  description: '',
   name: '',
+  typePrompt: '',
 });
 const threadDraft = reactive({
   author: '',
-  boardDescription: '',
+  boardTypePrompt: '',
   boardId: CUSTOM_BOARD_ID,
   boardName: '',
   boardTypeId: CUSTOM_BOARD_TYPE_ID,
@@ -619,7 +619,7 @@ const threadDraft = reactive({
   title: '',
 });
 const threadGenerationDraft = reactive({
-  boardDescription: '',
+  boardTypePrompt: '',
   boardId: CUSTOM_BOARD_ID,
   boardName: '',
   boardNameMode: 'fixed' as BoardNameMode,
@@ -646,7 +646,7 @@ const generationState = reactive({
         | {
             action: 'thread';
             author: string;
-            boardDescription: string;
+            boardTypePrompt: string;
             boardId: string;
             boardName: string;
             boardTypeId: string;
@@ -945,10 +945,10 @@ watch(
   (current, previous) => {
     if (current.appId !== 'forum') return;
     if (current.page === 'board-editor') {
-      boardDraft.description = editingBoard.value ? resolveForumBoardTypePrompt(editingBoard.value) : '';
+      boardDraft.typePrompt = editingBoard.value ? resolveForumBoardTypePrompt(editingBoard.value) : '';
       boardDraft.name = editingBoard.value?.name || '';
       const matchedType = forumBoardTypePrompts.value.find(
-        item => item.id === editingBoard.value?.typeId || item.prompt.trim() === boardDraft.description.trim(),
+        item => item.id === editingBoard.value?.typeId || item.prompt.trim() === boardDraft.typePrompt.trim(),
       );
       boardEditorTypeId.value = matchedType?.id || CUSTOM_BOARD_TYPE_ID;
     }
@@ -956,7 +956,7 @@ watch(
     if (current.page === 'thread-editor') {
       if (editingThread.value) {
         threadDraft.author = viewedForumThread.value?.author || editingThread.value.author;
-        threadDraft.boardDescription = activeBoard.value ? resolveForumBoardTypePrompt(activeBoard.value) : '';
+        threadDraft.boardTypePrompt = activeBoard.value ? resolveForumBoardTypePrompt(activeBoard.value) : '';
         threadDraft.boardId = activeBoard.value?.id || '';
         threadDraft.boardName = activeBoard.value?.name || '';
         threadDraft.boardTypeId = activeBoard.value?.typeId || CUSTOM_BOARD_TYPE_ID;
@@ -964,7 +964,7 @@ watch(
         threadDraft.title = viewedForumThread.value?.title || editingThread.value.title;
       } else {
         threadDraft.author = '';
-        threadDraft.boardDescription = activeBoard.value ? resolveForumBoardTypePrompt(activeBoard.value) : '';
+        threadDraft.boardTypePrompt = activeBoard.value ? resolveForumBoardTypePrompt(activeBoard.value) : '';
         threadDraft.boardId = activeBoard.value?.id || CUSTOM_BOARD_ID;
         threadDraft.boardName = activeBoard.value?.name || '';
         threadDraft.boardTypeId = activeBoard.value?.typeId || CUSTOM_BOARD_TYPE_ID;
@@ -977,7 +977,7 @@ watch(
       selectedReferences.value = [];
       threadGenerationDraft.boardId = activeBoard.value?.id || CUSTOM_BOARD_ID;
       threadGenerationDraft.boardName = activeBoard.value?.name || '';
-      threadGenerationDraft.boardDescription = activeBoard.value ? resolveForumBoardTypePrompt(activeBoard.value) : '';
+      threadGenerationDraft.boardTypePrompt = activeBoard.value ? resolveForumBoardTypePrompt(activeBoard.value) : '';
       threadGenerationDraft.boardNameMode = 'fixed';
       threadGenerationDraft.boardTypeId = activeBoard.value?.typeId || CUSTOM_BOARD_TYPE_ID;
       threadGenerationDraft.fromStartEnd = 20;
@@ -1120,8 +1120,8 @@ function submitBoard() {
   const boardInput = {
     name: boardDraft.name,
     typeId: selectedType?.id || '',
-    typeName: selectedType?.name || (boardDraft.description.trim() ? '自定义' : ''),
-    typePrompt: boardDraft.description,
+    typeName: selectedType?.name || (boardDraft.typePrompt.trim() ? '自定义' : ''),
+    typePrompt: boardDraft.typePrompt,
   };
   if (editingBoard.value && route.value.params?.boardId) {
     const board = forum.updateBoard(route.value.params.boardId, boardInput);
@@ -1136,7 +1136,7 @@ function submitBoard() {
 function selectBoardEditorType(promptId: string) {
   if (promptId === CUSTOM_BOARD_TYPE_ID) {
     boardEditorTypeId.value = CUSTOM_BOARD_TYPE_ID;
-    boardDraft.description = '';
+    boardDraft.typePrompt = '';
     return;
   }
   const prompt = prompts.getTypePrompt(promptId);
@@ -1145,20 +1145,20 @@ function selectBoardEditorType(promptId: string) {
     return;
   }
   boardEditorTypeId.value = prompt.id;
-  boardDraft.description = prompt.prompt;
+  boardDraft.typePrompt = prompt.prompt;
   if (!boardDraft.name.trim()) boardDraft.name = prompt.name;
 }
 
 function markBoardEditorTypeCustom() {
   const selected = forumBoardTypePrompts.value.find(prompt => prompt.id === boardEditorTypeId.value);
-  if (selected?.prompt.trim() === boardDraft.description.trim()) return;
+  if (selected?.prompt.trim() === boardDraft.typePrompt.trim()) return;
   boardEditorTypeId.value = CUSTOM_BOARD_TYPE_ID;
 }
 
 function selectThreadEditorBoardType(promptId: string) {
   if (promptId === CUSTOM_BOARD_TYPE_ID) {
     threadDraft.boardTypeId = CUSTOM_BOARD_TYPE_ID;
-    threadDraft.boardDescription = '';
+    threadDraft.boardTypePrompt = '';
     return;
   }
   const prompt = prompts.getTypePrompt(promptId);
@@ -1167,14 +1167,14 @@ function selectThreadEditorBoardType(promptId: string) {
     return;
   }
   threadDraft.boardTypeId = prompt.id;
-  threadDraft.boardDescription = prompt.prompt;
+  threadDraft.boardTypePrompt = prompt.prompt;
   if (!threadDraft.boardName.trim()) threadDraft.boardName = prompt.name;
 }
 
 function selectThreadBoardType(promptId: string) {
   if (promptId === CUSTOM_BOARD_TYPE_ID) {
     threadGenerationDraft.boardTypeId = CUSTOM_BOARD_TYPE_ID;
-    threadGenerationDraft.boardDescription = '';
+    threadGenerationDraft.boardTypePrompt = '';
     return;
   }
   const prompt = prompts.getTypePrompt(promptId);
@@ -1183,7 +1183,7 @@ function selectThreadBoardType(promptId: string) {
     return;
   }
   threadGenerationDraft.boardTypeId = prompt.id;
-  threadGenerationDraft.boardDescription = prompt.prompt;
+  threadGenerationDraft.boardTypePrompt = prompt.prompt;
   threadGenerationDraft.boardName = prompt.name;
 }
 
@@ -1202,9 +1202,9 @@ function resolveThreadTargetBoard() {
     throw new Error('请先选择一个板块，或填写新板块名称');
   }
   const selectedType = forumBoardTypePrompts.value.find(prompt => prompt.id === threadDraft.boardTypeId);
-  return forum.ensureBoard(boardName, threadDraft.boardDescription, {
+  return forum.ensureBoard(boardName, threadDraft.boardTypePrompt, {
     typeId: selectedType?.id || '',
-    typeName: selectedType?.name || (threadDraft.boardDescription.trim() ? '自定义' : ''),
+    typeName: selectedType?.name || (threadDraft.boardTypePrompt.trim() ? '自定义' : ''),
   });
 }
 
@@ -1305,13 +1305,13 @@ function buildThreadGenerationConfig() {
   return {
     appPrompt:
       forumThreadGenerationMode.value === 'rewrite' ? prompts.appPrompts.forumRewrite : prompts.appPrompts.forum,
-    boardDescription: board ? resolveForumBoardTypePrompt(board) : threadGenerationDraft.boardDescription,
+    boardTypePrompt: board ? resolveForumBoardTypePrompt(board) : threadGenerationDraft.boardTypePrompt,
     boardId: board?.id || '',
     boardName:
       board?.name || (threadGenerationDraft.boardNameMode === 'fixed' ? threadGenerationDraft.boardName.trim() : ''),
     boardTypeId: board?.typeId || selectedType?.id || '',
     boardTypeName:
-      board?.typeName || selectedType?.name || (threadGenerationDraft.boardDescription.trim() ? '自定义' : ''),
+      board?.typeName || selectedType?.name || (threadGenerationDraft.boardTypePrompt.trim() ? '自定义' : ''),
     existingThreadContent: rewriteForumThread.value
       ? [
           `当前主帖：${rewriteForumVersion.value?.title || rewriteForumThread.value.title}`,
@@ -1460,7 +1460,7 @@ async function runThreadGeneration() {
     generationState.preview = {
       action: 'thread',
       author: result.data.author,
-      boardDescription: config.boardDescription,
+      boardTypePrompt: config.boardTypePrompt,
       boardId: config.boardId,
       boardName: config.boardName || result.data.board,
       boardTypeId: config.boardTypeId,
@@ -1581,11 +1581,11 @@ function savePreview() {
   if (preview.action === 'thread') {
     const board = preview.boardId
       ? forum.getBoard(preview.boardId) ||
-        forum.ensureBoard(preview.boardName, preview.boardDescription, {
+        forum.ensureBoard(preview.boardName, preview.boardTypePrompt, {
           typeId: preview.boardTypeId,
           typeName: preview.boardTypeName,
         })
-      : forum.ensureBoard(preview.boardName, preview.boardDescription, {
+      : forum.ensureBoard(preview.boardName, preview.boardTypePrompt, {
           typeId: preview.boardTypeId,
           typeName: preview.boardTypeName,
         });
@@ -1739,7 +1739,12 @@ function reparseFailedDraft() {
     generationState.preview = {
       action: 'thread',
       author: parsed.data.author,
-      boardDescription: typeof draft.context.boardDescription === 'string' ? draft.context.boardDescription : '',
+      boardTypePrompt:
+        typeof draft.context.boardTypePrompt === 'string'
+          ? draft.context.boardTypePrompt
+          : typeof draft.context.boardDescription === 'string'
+            ? draft.context.boardDescription
+            : '',
       boardId: typeof draft.context.boardId === 'string' ? draft.context.boardId : '',
       boardName: (typeof draft.context.boardName === 'string' ? draft.context.boardName : '') || parsed.data.board,
       boardTypeId: typeof draft.context.boardTypeId === 'string' ? draft.context.boardTypeId : '',

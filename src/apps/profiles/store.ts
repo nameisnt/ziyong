@@ -48,7 +48,7 @@ export const ProfileTableSchema = z.object({
 });
 export type ProfileTable = z.infer<typeof ProfileTableSchema>;
 
-export const ProfileEntrySchema = z.object({
+const ProfileEntryPersistedSchema = z.object({
   content: z.string().default(''),
   createdAt: z.string(),
   favorite: z.boolean().default(false),
@@ -60,6 +60,19 @@ export const ProfileEntrySchema = z.object({
   tags: z.array(z.string()).default([]),
   title: z.string(),
   updatedAt: z.string(),
+});
+export const ProfileEntrySchema = ProfileEntryPersistedSchema.transform(({ content, ...entry }) => {
+  const legacyContent = content.trim();
+  const currentDetails = entry.fields.details?.trim() || '';
+  const fields: Record<string, string> = { ...entry.fields };
+  if (legacyContent) {
+    fields.details =
+      currentDetails && currentDetails !== legacyContent ? `${currentDetails}\n\n${legacyContent}` : legacyContent;
+  }
+  return {
+    ...entry,
+    fields,
+  };
 });
 export type ProfileEntry = z.infer<typeof ProfileEntrySchema>;
 
@@ -107,6 +120,15 @@ const coreColumns: ProfileTableColumn[] = [
     options: [],
     required: false,
     type: 'tags',
+    visible: true,
+  },
+  {
+    description: '无法归入其他字段的补充资料与详细说明。',
+    id: 'details',
+    label: '补充内容',
+    options: [],
+    required: false,
+    type: 'textarea',
     visible: true,
   },
 ];
@@ -292,9 +314,14 @@ function builtInTableId(kind: ProfileKind) {
 }
 
 function cloneColumns(columns: ProfileTableColumn[]) {
-  return columns
+  const cloned = columns
     .filter(column => column.id !== 'content')
     .map(column => ({ ...column, description: column.description ?? '', options: [...column.options] }));
+  if (!cloned.some(column => column.id === 'details')) {
+    const details = coreColumns.find(column => column.id === 'details');
+    if (details) cloned.push({ ...details, options: [...details.options] });
+  }
+  return cloned;
 }
 
 export function getProfileKindLabel(kind: ProfileKind) {
@@ -348,10 +375,10 @@ export const ProfilesScopeDataSchema = ProfilesScopeDataBaseSchema.transform(dat
 export type ProfilesScopeData = z.infer<typeof ProfilesScopeDataSchema>;
 
 export type ProfileEntryInput = Partial<
-  Pick<ProfileEntry, 'content' | 'favorite' | 'fields' | 'kind' | 'summary' | 'tableId' | 'tags'>
+  Pick<ProfileEntry, 'favorite' | 'fields' | 'kind' | 'summary' | 'tableId' | 'tags'>
 > &
   Pick<ProfileEntry, 'title'>;
-export type ProfileEntryUpdate = Pick<ProfileEntry, 'content' | 'kind' | 'summary' | 'tags' | 'title'> &
+export type ProfileEntryUpdate = Pick<ProfileEntry, 'kind' | 'summary' | 'tags' | 'title'> &
   Partial<Pick<ProfileEntry, 'fields' | 'tableId'>>;
 
 export const useProfilesStore = defineStore('profiles', () => {
@@ -387,7 +414,6 @@ export const useProfilesStore = defineStore('profiles', () => {
     if (columnId === 'title') return entry.title;
     if (columnId === 'summary') return entry.summary;
     if (columnId === 'tags') return entry.tags.join('、');
-    if (columnId === 'content') return entry.content;
     return entry.fields[columnId] || '';
   }
 
@@ -395,7 +421,6 @@ export const useProfilesStore = defineStore('profiles', () => {
     const timestamp = nowIso();
     const table = getTable(input.tableId || '') ?? getDefaultTable(input.kind ?? 'character');
     const entry: ProfileEntry = {
-      content: input.content?.trim() || '',
       createdAt: timestamp,
       favorite: input.favorite ?? false,
       fields: Object.fromEntries(Object.entries(input.fields ?? {}).map(([key, value]) => [key, String(value).trim()])),
@@ -419,7 +444,6 @@ export const useProfilesStore = defineStore('profiles', () => {
     entry.kind = table?.kind ?? input.kind;
     entry.tableId = table?.id ?? entry.tableId;
     entry.summary = input.summary.trim();
-    entry.content = input.content.trim();
     entry.tags = cleanTags(input.tags);
     entry.fields = Object.fromEntries(
       Object.entries(input.fields ?? entry.fields).map(([key, value]) => [key, String(value).trim()]),

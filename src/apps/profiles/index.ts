@@ -18,6 +18,7 @@ import {
 import { getCurrentChatScopeKey, readChatScopedEnvelope } from '@/store/chatScoped';
 import { usePhoneStore } from '@/store/phone';
 import { parsePrettified } from '@/util/zod';
+import { getProfileListPreview } from './rendering';
 import { extension_settings } from '@sillytavern/scripts/extensions';
 
 function emptyOverview(): PhoneContentOverview {
@@ -48,7 +49,6 @@ function entryContent(entry: ProfileEntry) {
     entry.summary ? `摘要：${entry.summary}` : '',
     entry.tags.length ? `标签：${entry.tags.join('、')}` : '',
     ...fieldLines,
-    entry.content,
   ]
     .filter(Boolean)
     .join('\n');
@@ -75,7 +75,7 @@ function createProfilesArchiveDomain(raw: unknown): PhoneArchiveDomain {
 
 function createOverview(entries: ProfileEntry[], scopeCount: number): PhoneContentOverview {
   const chars = entries.reduce(
-    (sum, entry) => sum + entry.title.length + entry.summary.length + entry.content.length,
+    (sum, entry) => sum + entry.title.length + entry.summary.length + Object.values(entry.fields).join('').length,
     0,
   );
   const latestUpdatedAt = entries
@@ -139,7 +139,7 @@ function createProfilesFavoriteItems() {
       appId: 'profiles',
       entryId: entry.id,
       title: entry.title,
-      preview: entry.summary || entry.content,
+      preview: getProfileListPreview(entry, profiles.getTable(entry.tableId)),
       bookTitle: getProfileKindLabel(entry.kind),
       subtitle: entry.tags.join('、') || getProfileKindLabel(entry.kind),
       updatedAt: entry.updatedAt,
@@ -211,7 +211,7 @@ export default definePhoneApp({
       defaultPrompt: [
         '你负责根据聊天上下文整理可复用的资料卡片。',
         '资料必须来自上下文中能确认的信息；不确定的信息请明确写成“未知”或不要写。',
-        'content 要结构清楚，适合作为后续世界书、角色设定或剧情资料引用。',
+        '各字段要结构清楚，适合作为后续世界书、角色设定或剧情资料引用。',
         '不要输出 XML 之外的解释。',
       ].join('\n'),
       outputFormats: [

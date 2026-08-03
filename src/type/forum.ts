@@ -32,10 +32,9 @@ export const ForumThreadSchema = z.object({
 });
 export type ForumThread = z.infer<typeof ForumThreadSchema>;
 
-export const ForumBoardSchema = z.object({
+const ForumBoardPersistedSchema = z.object({
   id: z.string(),
   name: z.string(),
-  /** Legacy field kept so existing saved boards can migrate their former type prompt. */
   description: z.string().optional(),
   typeId: z.string().default(''),
   typeName: z.string().default(''),
@@ -44,10 +43,15 @@ export const ForumBoardSchema = z.object({
   createdAt: z.string(),
   updatedAt: z.string(),
 });
+export const ForumBoardSchema = ForumBoardPersistedSchema.transform(({ description, ...board }) => ({
+  ...board,
+  typeName: board.typeName.trim() || (board.typePrompt.trim() || description?.trim() ? '自定义' : ''),
+  typePrompt: board.typePrompt.trim() || description?.trim() || '',
+}));
 export type ForumBoard = z.infer<typeof ForumBoardSchema>;
 
-export function resolveForumBoardTypePrompt(board: Pick<ForumBoard, 'description' | 'typePrompt'>) {
-  return board.typePrompt.trim() || board.description?.trim() || '';
+export function resolveForumBoardTypePrompt(board: Pick<ForumBoard, 'typePrompt'>) {
+  return board.typePrompt.trim();
 }
 
 export function resolveForumBoardTypeName(board: Pick<ForumBoard, 'typeName'>) {

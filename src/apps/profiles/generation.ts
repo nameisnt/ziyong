@@ -28,7 +28,6 @@ export const ProfileXmlResultSchema = z.object({
         fields.map(field => [field.id.trim(), field.value.trim()] as const).filter(([id]) => Boolean(id)),
       ),
     ),
-  legacyContent: z.string().default(''),
   title: z.string(),
   summary: z.string().default(''),
   tags: z.array(z.string()).default([]),
@@ -106,6 +105,15 @@ function parseProfileXmlCandidate(raw: string): XmlParseResult<ProfileXmlResult>
       id: field.getAttribute('id')?.trim() || '',
       value: field.textContent?.trim() || '',
     }));
+  if (legacyContent) {
+    const details = fields.find(field => field.id === 'details');
+    if (details) {
+      if (!details.value.includes(legacyContent))
+        details.value = [details.value, legacyContent].filter(Boolean).join('\n\n');
+    } else {
+      fields.push({ id: 'details', value: legacyContent });
+    }
+  }
 
   if (!title) {
     const warnings = [!title ? '缺少必填字段「资料标题」(<title>)' : ''].filter(Boolean);
@@ -122,7 +130,6 @@ function parseProfileXmlCandidate(raw: string): XmlParseResult<ProfileXmlResult>
     warnings: createWarnings(raw),
     data: parsePrettified(ProfileXmlResultSchema, {
       fields,
-      legacyContent,
       summary,
       tags,
       title,
@@ -182,7 +189,6 @@ export function createProfileGenerationAdapter(profilesStore: ReturnType<typeof 
       const entry = profilesStore.createEntry({
         title: result.title,
         kind: context.config.kind,
-        content: result.legacyContent,
         summary: result.summary,
         tableId: context.config.tableId,
         fields: Object.fromEntries(Object.entries(result.fields).filter(([fieldId]) => fieldIds.has(fieldId))),

@@ -209,7 +209,7 @@
               <button
                 class="pc-icon-btn danger"
                 type="button"
-                :disabled="isCoreColumn(column.id)"
+                :disabled="isProtectedColumn(column.id)"
                 :title="t`删除字段`"
                 @click="removeTableColumn(index)"
               >
@@ -220,10 +220,10 @@
               v-model="column.label"
               class="pc-field"
               type="text"
-              :readonly="isCoreColumn(column.id)"
+              :readonly="isProtectedColumn(column.id)"
               :placeholder="t`字段名称`"
             />
-            <select v-model="column.type" class="pc-field pc-select" :disabled="isCoreColumn(column.id)">
+            <select v-model="column.type" class="pc-field pc-select" :disabled="isProtectedColumn(column.id)">
               <option value="text">{{ t`短文本` }}</option>
               <option value="textarea">{{ t`长文本` }}</option>
               <option value="select">{{ t`单选` }}</option>
@@ -300,11 +300,6 @@
           class="pc-detail-content pc-rendered-markdown"
           v-html="renderMarkdown(profileMarkdownContent)"
         ></article>
-        <details v-if="activeEntry.content" class="pc-profile-legacy-content">
-          <summary>{{ t`旧版正文` }}</summary>
-          <!-- eslint-disable-next-line vue/no-v-html -->
-          <article class="pc-rendered-markdown" v-html="renderMarkdown(activeEntry.content)"></article>
-        </details>
       </article>
       <DetailFooter
         catalog-label="列表"
@@ -320,7 +315,7 @@
       >
         <template #actions>
           <button
-            v-if="activeEntry.content"
+            v-if="activeEntry.fields.details"
             class="pc-soft-btn"
             type="button"
             :title="t`八股检测`"
@@ -373,10 +368,6 @@
         </select>
         <input v-model="draft.summary" class="pc-field" type="text" :placeholder="t`一句话摘要，可留空`" />
         <input v-model="draft.tagsText" class="pc-field" type="text" :placeholder="t`标签，用逗号分隔`" />
-        <label v-if="editingEntry?.content" class="pc-field-group">
-          <span>{{ t`旧版正文` }}</span>
-          <textarea v-model="draft.content" class="pc-area pc-profile-area pc-saved-content-area"></textarea>
-        </label>
         <template v-for="column in editableDraftColumns" :key="column.id">
           <label class="pc-field-group">
             <span>{{ column.label }}</span>
@@ -572,7 +563,6 @@ const selectedReferences = ref<GenerationReferenceItem[]>([]);
 const entryContentEl = ref<HTMLElement | null>(null);
 const failedDraftRawOutput = ref('');
 const draft = reactive({
-  content: '',
   fields: {} as Record<string, string>,
   kind: 'character' as ProfileKind,
   summary: '',
@@ -598,7 +588,6 @@ const generationState = reactive({
     draftId: null | string;
     fields: Record<string, string>;
     kind: ProfileKind;
-    legacyContent: string;
     raw: string;
     source: { label: string };
     summary: string;
@@ -687,21 +676,14 @@ const filteredEntries = computed(() =>
   tableEntries.value.filter(entry => {
     const search = normalizedQuery.value;
     if (!search) return true;
-    return [
-      entry.title,
-      entry.summary,
-      entry.content,
-      getProfileKindLabel(entry.kind),
-      ...entry.tags,
-      ...Object.values(entry.fields),
-    ]
+    return [entry.title, entry.summary, getProfileKindLabel(entry.kind), ...entry.tags, ...Object.values(entry.fields)]
       .join(' ')
       .toLowerCase()
       .includes(search);
   }),
 );
 const formattedReferences = computed(() => formatGenerationReferences(selectedReferences.value));
-const profileBaguContent = computed(() => activeEntry.value?.content || '');
+const profileBaguContent = computed(() => activeEntry.value?.fields.details || '');
 const profilePromptPreview = computed(() => buildGenerationConfig());
 const profileMarkdownContent = computed(() =>
   activeEntry.value && activeEntryTable.value ? formatProfileMarkdown(activeEntry.value, activeEntryTable.value) : '',
@@ -801,7 +783,6 @@ function fillDraft(entry: ProfileEntry | null) {
   draft.kind = entry?.kind || selectedTable.value?.kind || 'character';
   draft.tableId = entry?.tableId || selectedTable.value?.id || profiles.getDefaultTable(draft.kind)?.id || '';
   draft.summary = entry?.summary || '';
-  draft.content = entry?.content || '';
   draft.tagsText = entry?.tags.join('、') || '';
   draft.fields = { ...(entry?.fields ?? {}) };
 }
@@ -820,6 +801,10 @@ function fillTableDraft(table: ReturnType<typeof profiles.getTable>) {
 
 function isCoreColumn(columnId: string) {
   return ['title', 'summary', 'tags'].includes(columnId);
+}
+
+function isProtectedColumn(columnId: string) {
+  return ['title', 'summary', 'tags', 'details'].includes(columnId);
 }
 
 function isStatusColumn(column: ProfileTableColumn) {
@@ -922,7 +907,7 @@ function resetTableDisplayFormat() {
 
 function removeTableColumn(index: number) {
   const column = tableDraft.columns[index];
-  if (!column || isCoreColumn(column.id)) return;
+  if (!column || isProtectedColumn(column.id)) return;
   tableDraft.columns.splice(index, 1);
 }
 
@@ -1007,7 +992,6 @@ function saveDraft() {
   }
 
   const input = {
-    content: draft.content,
     fields: draft.fields,
     kind: draft.kind,
     summary: draft.summary,
@@ -1036,7 +1020,7 @@ async function removeEntry(entryId: string) {
 function applyProfilesBaguContent(content: string) {
   if (!activeEntry.value) return false;
   const entry = profiles.updateEntry(activeEntry.value.id, {
-    content,
+    fields: { ...activeEntry.value.fields, details: content },
     kind: activeEntry.value.kind,
     summary: activeEntry.value.summary,
     tags: [...activeEntry.value.tags],
@@ -1157,7 +1141,6 @@ async function runGeneration() {
       draftId: null,
       fields: fieldsForTable(result.data.fields, generationDraft.tableId),
       kind: generationDraft.kind,
-      legacyContent: result.data.legacyContent,
       raw: result.rawOutput,
       source: { label: result.source.label },
       summary: result.data.summary,
@@ -1185,7 +1168,6 @@ function savePreview() {
   const preview = generationState.preview;
   if (!preview) return;
   const entry = profiles.createEntry({
-    content: preview.legacyContent,
     fields: fieldsForTable(preview.fields, preview.tableId),
     kind: preview.kind,
     summary: preview.summary,
@@ -1225,7 +1207,6 @@ function reparsePreviewRaw() {
     preview.tableId,
   );
   preview.fields = fieldsForTable(parsed.data.fields, preview.tableId);
-  preview.legacyContent = parsed.data.legacyContent;
   preview.raw = parsed.raw;
   preview.summary = parsed.data.summary;
   preview.tags = parsed.data.tags;
@@ -1292,7 +1273,6 @@ function reparseFailedDraft() {
     draftId: null,
     fields: fieldsForTable(parsed.data.fields, profileTableIdFromFailedDraft(draft)),
     kind: profileKindFromFailedDraft(draft),
-    legacyContent: parsed.data.legacyContent,
     raw: parsed.raw,
     source: { label: draft.source.label },
     summary: parsed.data.summary,
@@ -1674,22 +1654,6 @@ function stopGeneration() {
   align-items: center;
   justify-content: space-between;
   gap: 10px;
-}
-
-.pc-profile-legacy-content {
-  margin-top: 14px;
-  border-top: 1px solid var(--pc-border);
-  padding-top: 12px;
-}
-
-.pc-profile-legacy-content summary {
-  cursor: pointer;
-  color: var(--pc-muted);
-  font-weight: 800;
-}
-
-.pc-profile-legacy-content article {
-  margin-top: 12px;
 }
 
 .pc-profile-summary {

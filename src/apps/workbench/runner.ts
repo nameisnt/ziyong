@@ -221,13 +221,25 @@ function buildStepConfig(step: WorkbenchStep) {
   if (step.appId === 'forum') {
     const forum = useForumStore();
     const board = step.config.forumBoardId ? forum.getBoard(step.config.forumBoardId) : null;
+    const selectedType = step.config.forumBoardTypeId
+      ? usePromptStore().getTypePrompt(step.config.forumBoardTypeId)
+      : null;
+    if (step.config.forumBoardTypeId && !selectedType && !step.config.forumBoardTypePrompt.trim()) {
+      throw new Error('论坛板块类型提示词已不存在，请在工作台重新选择');
+    }
     return {
       appPrompt: getPrompt('forum'),
-      boardDescription: board ? resolveForumBoardTypePrompt(board) : step.config.forumBoardDescription,
+      boardTypePrompt: board
+        ? resolveForumBoardTypePrompt(board)
+        : selectedType?.prompt || step.config.forumBoardTypePrompt,
       boardId: board?.id || '',
       boardName: board?.name || step.config.forumBoardName.trim() || '工作台',
-      boardTypeId: board?.typeId || '',
-      boardTypeName: board?.typeName || '',
+      boardTypeId: board?.typeId || selectedType?.id || '',
+      boardTypeName:
+        board?.typeName ||
+        selectedType?.name ||
+        step.config.forumBoardTypeName.trim() ||
+        (step.config.forumBoardTypePrompt.trim() ? '自定义' : ''),
       outputFormat: getOutputFormat('forum.thread'),
       userRequirement: requirement,
     };

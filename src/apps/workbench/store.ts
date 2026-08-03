@@ -7,7 +7,7 @@ import { extension_settings } from '@sillytavern/scripts/extensions';
 
 export const workbenchField = 'sillytavern_phone_workbench';
 
-export const WorkbenchStepConfigSchema = z.object({
+const WorkbenchStepConfigPersistedSchema = z.object({
   comfyWorkflowId: z.string().default(''),
   diaryBookId: z.string().default(''),
   diaryBookTitle: z.string().default(''),
@@ -18,9 +18,12 @@ export const WorkbenchStepConfigSchema = z.object({
   extrasTypeId: z.string().default(''),
   extrasTypeName: z.string().default(''),
   extrasTypePrompt: z.string().default(''),
-  forumBoardDescription: z.string().default(''),
+  forumBoardDescription: z.string().optional(),
   forumBoardId: z.string().default(''),
   forumBoardName: z.string().default('工作台'),
+  forumBoardTypeId: z.string().default(''),
+  forumBoardTypeName: z.string().default(''),
+  forumBoardTypePrompt: z.string().default(''),
   letterBookId: z.string().default(''),
   letterBookTitle: z.string().default(''),
   letterFormat: z.enum(['formal', 'sms', 'email', 'note']).default('formal'),
@@ -40,6 +43,12 @@ export const WorkbenchStepConfigSchema = z.object({
   theaterTypeName: z.string().default(''),
   theaterTypePrompt: z.string().default(''),
 });
+export const WorkbenchStepConfigSchema = WorkbenchStepConfigPersistedSchema.transform(
+  ({ forumBoardDescription, ...config }) => ({
+    ...config,
+    forumBoardTypePrompt: config.forumBoardTypePrompt.trim() || forumBoardDescription?.trim() || '',
+  }),
+);
 export type WorkbenchStepConfig = z.infer<typeof WorkbenchStepConfigSchema>;
 
 export const WorkbenchStepSchema = z.object({

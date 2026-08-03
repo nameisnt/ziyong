@@ -327,7 +327,7 @@ export const useTimekeeperStore = defineStore('timekeeper', () => {
   function getProfileBirthDate(profileEntryId: string) {
     const entry = profiles.getEntry(profileEntryId);
     if (!entry || entry.kind !== 'character') return null;
-    return parseProfileBirthDate(entry.content) ?? parseProfileBirthDate(entry.summary);
+    return parseProfileBirthDate([entry.summary, ...Object.values(entry.fields)].join('\n'));
   }
 
   watch(
