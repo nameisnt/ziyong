@@ -203,11 +203,7 @@ function createCopiedPrompt(
   return copied;
 }
 
-function insertCopiedPrompt(
-  preset: TavernPreset,
-  sourcePromptId: string,
-  copiedPrompt: TavernPresetPrompt,
-) {
+function insertCopiedPrompt(preset: TavernPreset, sourcePromptId: string, copiedPrompt: TavernPresetPrompt) {
   const sourceIndex = preset.prompts.findIndex(prompt => prompt.id === sourcePromptId);
   if (sourceIndex < 0) throw new Error('原预设条目已经不存在，请刷新后重试');
   if (preset.prompts.some(prompt => prompt.id === copiedPrompt.id)) {

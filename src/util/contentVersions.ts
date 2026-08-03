@@ -6,8 +6,7 @@ export function createContentVersionId(prefix = 'content_version') {
 
 export function createContentVersion<TVersion extends ContentVersionBase>(
   prefix: string,
-  input: Omit<TVersion, 'createdAt' | 'id' | 'origin'> &
-    Partial<Pick<TVersion, 'createdAt' | 'origin'>>,
+  input: Omit<TVersion, 'createdAt' | 'id' | 'origin'> & Partial<Pick<TVersion, 'createdAt' | 'origin'>>,
 ): TVersion {
   return {
     ...input,
@@ -33,9 +32,7 @@ export function ensureContentVersions<TVersion extends ContentVersionBase>(
     );
   }
   return {
-    activeVersionId: normalized.some(version => version.id === activeVersionId)
-      ? activeVersionId
-      : normalized[0].id,
+    activeVersionId: normalized.some(version => version.id === activeVersionId) ? activeVersionId : normalized[0].id,
     versions: normalized,
   };
 }

@@ -44,9 +44,7 @@ export function createTheaterGenerationAdapter(theaterStore: {
         context: config.mode === 'rewrite' ? config.existingContent : '',
         outputFormat: config.outputFormat,
         taskInstruction:
-          config.mode === 'rewrite'
-            ? '请将上述当前小剧场重写为完整替代版本，不要续写，也不要解释修改过程。'
-            : '',
+          config.mode === 'rewrite' ? '请将上述当前小剧场重写为完整替代版本，不要续写，也不要解释修改过程。' : '',
         typePrompt:
           config.typePrompt.trim() || (config.typeName.trim() ? `本次小剧场类型为“${config.typeName.trim()}”。` : ''),
         userRequirement: config.userRequirement,
