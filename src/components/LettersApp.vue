@@ -298,10 +298,10 @@ import PreviewDraftNotice from '@/components/PreviewDraftNotice.vue';
 import RawOutputEditor from '@/components/RawOutputEditor.vue';
 import LettersEntryDetailPage from '@/components/letters/LettersEntryDetailPage.vue';
 import { useCatalogDetailNavigation } from '@/composables/useCatalogDetailNavigation';
+import { useGenerationReplaySession } from '@/composables/useGenerationReplaySession';
 import { getRegisteredPhoneGenerationAdapter } from '@/core/appRegistry';
 import { buildGenerationPreview, captureGenerationPrompt, generateContent } from '@/core/generationService';
 import { useLettersStore } from '@/store/letters';
-import { useGenerationOverrideStore } from '@/store/generationOverrides';
 import { usePhoneStore } from '@/store/phone';
 import { usePromptStore } from '@/store/prompts';
 import { useSettingsStore } from '@/store/settings';
@@ -311,17 +311,15 @@ import type { LetterFormat } from '@/type/letter';
 import { canOpenBaguScan } from '@/util/baguScanGate';
 import { useDetailScroll } from '@/util/detailScroll';
 import { parseSimpleXmlResult } from '@/util/generation';
-import { cloneReplayReferences, restoreGenerationReplayDraft } from '@/util/generationReplay';
+import { resolveGenerationReplayReferences } from '@/util/generationReplay';
 import { usePreviewDraftPersistence } from '@/util/previewDrafts';
 import { formatGenerationReferences, type GenerationReferenceItem } from '@/util/references';
 import { resolveContentVersion } from '@/util/contentVersions';
 import { useInvalidRouteFallback } from '@/util/routeFallback';
 import { stopGenerationByIdSafe } from '@/util/runtime';
-import type { TextProviderSelection } from '@/util/textProvider';
 import { storeToRefs } from 'pinia';
 
 const letters = useLettersStore();
-const generationOverrides = useGenerationOverrideStore();
 const phone = usePhoneStore();
 const prompts = usePromptStore();
 const settingsStore = useSettingsStore();
@@ -329,6 +327,18 @@ const lettersGenerationAdapter = getRegisteredPhoneGenerationAdapter('letters', 
 const { books, failedDrafts } = storeToRefs(letters);
 const { currentRoute: route } = storeToRefs(phone);
 const { settings } = storeToRefs(settingsStore);
+const generationSourceMode = computed({
+  get: () => settings.value.generation.sourceMode,
+  set: value => {
+    settings.value.generation.sourceMode = value;
+  },
+});
+const replaySession = useGenerationReplaySession({
+  appId: 'letters',
+  defaultPresetName: () => settings.value.generation.tavernPresetName,
+  page: 'generate',
+  sourceMode: generationSourceMode,
+});
 
 const query = ref('');
 const sortDesc = ref(true);
@@ -518,7 +528,6 @@ const letterPromptPreview = computed(() => {
         existingContent: '',
         mode: letterGenerationMode.value,
         outputFormat: buildOutputFormat(),
-        replayRequest: letterGenerationMode.value === 'rewrite' ? rewriteLetterReplay.value?.request : undefined,
         recentLettersContext: buildRecentLettersContext(activeBook.value, generationDraft.recentEntryCount),
         receiver,
         sender,
@@ -562,7 +571,6 @@ function captureLetterPrompt() {
       existingContent: '',
       mode: letterGenerationMode.value,
       outputFormat: buildOutputFormat(),
-      replayRequest: letterGenerationMode.value === 'rewrite' ? rewriteLetterReplay.value?.request : undefined,
       recentLettersContext: buildRecentLettersContext(activeBook.value, generationDraft.recentEntryCount),
       receiver,
       sender,
@@ -589,7 +597,11 @@ function captureLetterPrompt() {
 watch(
   () => route.value,
   (current, previous) => {
-    if (current.appId !== 'letters') return;
+    if (current.appId !== 'letters') {
+      replaySession.release();
+      return;
+    }
+    if (current.page !== 'generate' && current.page !== 'preview') replaySession.release();
     if (current.page === 'rename-book') {
       bookTitle.value = activeBook.value?.title || '';
     }
@@ -620,6 +632,7 @@ watch(
     }
 
     if (current.page === 'generate' && previous?.page !== 'preview') {
+      replaySession.release();
       const replyEntry =
         current.params?.replyToEntryId && current.params?.bookId
           ? letters.getEntry(current.params.bookId, current.params.replyToEntryId)
@@ -647,8 +660,11 @@ watch(
 
       const replay = rewriteLetterReplay.value;
       if (replay) {
-        selectedReferences.value = cloneReplayReferences(replay);
-        settings.value.generation.sourceMode = restoreGenerationReplayDraft(replay, generationDraft);
+        selectedReferences.value = resolveGenerationReplayReferences(replay);
+        replaySession.applyReplay(replay, generationDraft);
+        if (typeof replay.config.bookTitle === 'string') {
+          generationDraft.bookTitle = replay.config.bookTitle;
+        }
         const replayFormat = replay.config.format;
         if (
           replayFormat === 'formal' ||
@@ -669,12 +685,6 @@ watch(
         if (replayReceiver && typeof replayReceiver === 'object' && 'name' in replayReceiver) {
           generationDraft.receiverName = String(replayReceiver.name || '');
         }
-        generationOverrides.setTavernPresetName('letters', 'generate', replay.tavernPresetName);
-        generationOverrides.setConnectionSelection(
-          'letters',
-          'generate',
-          replay.connectionSelection as TextProviderSelection,
-        );
       }
     }
 
@@ -964,7 +974,15 @@ function buildRecentLettersContext(book = activeBook.value, count = generationDr
   if (!book) return '';
   const effectiveCount = clampRecentEntryCount(count);
   if (!effectiveCount) return '';
-  const entries = [...book.entries].slice(0, effectiveCount).reverse();
+  let availableEntries = [...book.entries];
+  if (letterGenerationMode.value === 'rewrite' && rewriteLetterEntry.value) {
+    const targetIndex = availableEntries.findIndex(entry => entry.id === rewriteLetterEntry.value?.id);
+    availableEntries =
+      targetIndex >= 0
+        ? availableEntries.slice(targetIndex + 1)
+        : availableEntries.filter(entry => entry.id !== rewriteLetterEntry.value?.id);
+  }
+  const entries = availableEntries.slice(0, effectiveCount).reverse();
   if (!entries.length) return '';
   const blocks = entries.map(entry =>
     [
@@ -1028,7 +1046,6 @@ async function runGeneration() {
         existingContent: '',
         mode: letterGenerationMode.value,
         outputFormat: buildOutputFormat(),
-        replayRequest: letterGenerationMode.value === 'rewrite' ? rewriteLetterReplay.value?.request : undefined,
         recentLettersContext: buildRecentLettersContext(activeBook.value, generationDraft.recentEntryCount),
         receiver,
         sender,

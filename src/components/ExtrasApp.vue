@@ -426,6 +426,7 @@ import ExtrasChapterDetailPage from '@/components/extras/ExtrasChapterDetailPage
 import ExtrasSummaryEditorPage from '@/components/extras/ExtrasSummaryEditorPage.vue';
 import { useExtrasChapterView } from '@/components/extras/useExtrasChapterView';
 import { useExtrasGenerationState } from '@/components/extras/useExtrasGenerationState';
+import { useGenerationReplaySession } from '@/composables/useGenerationReplaySession';
 import BaguScanPanel from '@/components/BaguScanPanel.vue';
 import FailedDraftList from '@/components/FailedDraftList.vue';
 import GenerationPanel from '@/components/GenerationPanel.vue';
@@ -443,26 +444,27 @@ import {
 } from '@/core/extrasGeneration';
 import { buildGenerationPreview, captureGenerationPrompt, generateContent } from '@/core/generationService';
 import { useExtrasStore } from '@/store/extras';
-import { useGenerationOverrideStore } from '@/store/generationOverrides';
 import { usePhoneStore } from '@/store/phone';
 import { usePromptStore } from '@/store/prompts';
 import { useSettingsStore } from '@/store/settings';
-import type { ExtraBook } from '@/type/extra';
+import type { ExtraBook, ExtraChapter } from '@/type/extra';
 import type { FailedGenerationDraft } from '@/type/generation';
 import { canOpenBaguScan } from '@/util/baguScanGate';
 import { useDetailScroll } from '@/util/detailScroll';
 import { parseContentXmlResult, parseSimpleXmlResult } from '@/util/generation';
-import { cloneReplayReferences, restoreGenerationReplayDraft } from '@/util/generationReplay';
+import {
+  formatMessageIdsAsRanges,
+  resolveGenerationReplayReferences,
+  resolveSavedGenerationReferences,
+} from '@/util/generationReplay';
 import { usePreviewDraftPersistence } from '@/util/previewDrafts';
 import { formatGenerationReferences, type GenerationReferenceItem } from '@/util/references';
 import { resolveContentVersion } from '@/util/contentVersions';
 import { useInvalidRouteFallback } from '@/util/routeFallback';
 import { stopGenerationByIdSafe } from '@/util/runtime';
-import type { TextProviderSelection } from '@/util/textProvider';
 import { storeToRefs } from 'pinia';
 
 const extras = useExtrasStore();
-const generationOverrides = useGenerationOverrideStore();
 const phone = usePhoneStore();
 const prompts = usePromptStore();
 const settingsStore = useSettingsStore();
@@ -472,6 +474,18 @@ const { books, failedDrafts } = storeToRefs(extras);
 const { currentRoute: route } = storeToRefs(phone);
 const { settings } = storeToRefs(settingsStore);
 const { typePrompts } = storeToRefs(prompts);
+const generationSourceMode = computed({
+  get: () => settings.value.generation.sourceMode,
+  set: value => {
+    settings.value.generation.sourceMode = value;
+  },
+});
+const chapterReplaySession = useGenerationReplaySession({
+  appId: 'extras',
+  defaultPresetName: () => settings.value.generation.tavernPresetName,
+  page: 'chapter-generate',
+  sourceMode: generationSourceMode,
+});
 const query = ref('');
 const sortDesc = ref(true);
 const chapterCustomTypeSelected = ref(false);
@@ -611,10 +625,6 @@ const viewedChapter = computed(() => {
     ? { ...chapter, content: version.content, generationRecord: version.generationRecord, title: version.title }
     : chapter;
 });
-const rewriteChapterReplay = computed(
-  () => viewedChapterVersion.value?.generationRecord?.replay || activeChapter.value?.generationRecords.at(-1)?.replay,
-);
-
 const activeSummary = computed(() => {
   const bookId = route.value.params?.bookId;
   const summaryId = route.value.params?.summaryId;
@@ -715,7 +725,6 @@ const chapterPromptPreview = computed(() => {
         chapterMode: chapterGenerationDraft.mode,
         outputFormat: buildChapterOutputFormat(),
         previousChapterContext: buildPreviousChapterContext(activeBook.value),
-        replayRequest: chapterGenerationDraft.mode === '重写当前章节' ? rewriteChapterReplay.value?.request : undefined,
         typeName: chapterGenerationDraft.typeName,
         typePrompt: currentChapterTypePrompt.value,
         userRequirement: chapterGenerationDraft.userRequirement,
@@ -874,7 +883,13 @@ const shelfBooks = computed(() =>
 watch(
   () => route.value,
   (current, previous) => {
-    if (current.appId !== 'extras') return;
+    if (current.appId !== 'extras') {
+      chapterReplaySession.release();
+      return;
+    }
+    if (current.page !== 'chapter-generate' && current.page !== 'chapter-preview') {
+      chapterReplaySession.release();
+    }
     if (current.page === 'book-editor') {
       bookDraft.typeName = editingBook.value?.typeName || '';
       bookDraft.title = editingBook.value?.title || '';
@@ -974,7 +989,15 @@ function normalizeChapterGenerationMode(value: unknown): ExtraChapterGenerationM
   return '续写上一章';
 }
 
+function getAdoptedChapterGenerationRecord(chapter: ExtraChapter) {
+  if (chapter.versions.length) {
+    return resolveContentVersion(chapter.versions, chapter.activeVersionId)?.generationRecord || null;
+  }
+  return chapter.generationRecords.at(-1) || null;
+}
+
 function resetChapterGenerationDraft(mode: typeof chapterGenerationDraft.mode, generationRecordId?: string) {
+  chapterReplaySession.release();
   const book = activeBook.value;
   const promptById = book?.typeId ? prompts.getTypePrompt(book.typeId) : null;
   const normalizedTypeName = book?.typeName.trim().toLocaleLowerCase() || '';
@@ -998,6 +1021,13 @@ function resetChapterGenerationDraft(mode: typeof chapterGenerationDraft.mode, g
   chapterGenerationDraft.typeName = book?.typeName || prompt?.name || '';
   chapterGenerationDraft.typePrompt = prompt?.prompt || '';
   chapterGenerationDraft.userRequirement = '';
+  if (mode === '续写上一章' && book) {
+    const previousChapter = [...book.chapters].sort((left, right) => left.chapterNumber - right.chapterNumber).at(-1);
+    const previousGenerationRecord = previousChapter ? getAdoptedChapterGenerationRecord(previousChapter) : null;
+    if (previousGenerationRecord) {
+      selectedReferences.value = resolveSavedGenerationReferences(previousGenerationRecord.references);
+    }
+  }
   const generationRecord =
     mode === '重写当前章节'
       ? generationRecordId
@@ -1013,29 +1043,19 @@ function resetChapterGenerationDraft(mode: typeof chapterGenerationDraft.mode, g
     chapterGenerationDraft.typeName = generationRecord.typeName;
     chapterGenerationDraft.typePrompt = generationRecord.typePrompt;
     chapterGenerationDraft.userRequirement = generationRecord.userRequirement;
-    selectedReferences.value = generationRecord.references.map(reference => ({
-      ...reference,
-      sourcePath: [...reference.sourcePath],
-    }));
-    settings.value.generation.sourceMode = generationRecord.sourceMode;
-    generationOverrides.setTavernPresetName(
-      'extras',
-      'chapter-generate',
-      generationRecord.replay?.tavernPresetName || generationRecord.tavernPresetName,
-    );
+    selectedReferences.value = resolveSavedGenerationReferences(generationRecord.references);
+    const legacyRangeText = formatMessageIdsAsRanges(generationRecord.sourceMessageIds);
+    if (!generationRecord.replay) {
+      chapterGenerationDraft.rangeText = legacyRangeText;
+      chapterReplaySession.applyLegacy({
+        sourceMode: legacyRangeText ? 'range' : generationRecord.sourceMode,
+        tavernPresetName: generationRecord.tavernPresetName,
+      });
+    }
   }
   if (generationRecord?.replay) {
-    selectedReferences.value = cloneReplayReferences(generationRecord.replay);
-    settings.value.generation.sourceMode = restoreGenerationReplayDraft(
-      generationRecord.replay,
-      chapterGenerationDraft,
-    );
-    generationOverrides.setTavernPresetName('extras', 'chapter-generate', generationRecord.replay.tavernPresetName);
-    generationOverrides.setConnectionSelection(
-      'extras',
-      'chapter-generate',
-      generationRecord.replay.connectionSelection as TextProviderSelection,
-    );
+    selectedReferences.value = resolveGenerationReplayReferences(generationRecord.replay);
+    chapterReplaySession.applyReplay(generationRecord.replay, chapterGenerationDraft);
   }
   chapterCustomTypeSelected.value = !chapterGenerationDraft.typeId && Boolean(chapterGenerationDraft.typeName.trim());
   chapterGenerationState.error = '';
@@ -1366,15 +1386,27 @@ function buildPreviousChapterContext(book = activeBook.value) {
     return book.title.trim() ? `番外书名：${book.title.trim()}` : '';
   }
 
+  let contextChapters = orderedChapters.value;
   if (chapterGenerationDraft.mode === '重写当前章节' && activeChapter.value) {
-    return `番外书名：${book.title}`;
+    const targetIndex = contextChapters.findIndex(chapter => chapter.id === activeChapter.value?.id);
+    contextChapters =
+      targetIndex >= 0
+        ? contextChapters.slice(0, targetIndex)
+        : contextChapters.filter(chapter => chapter.chapterNumber < activeChapter.value!.chapterNumber);
   }
 
-  const chapterBlocks = orderedChapters.value.map(chapter =>
+  const includedChapterIds = new Set(contextChapters.map(chapter => chapter.id));
+  const chapterBlocks = contextChapters.map(chapter =>
     [`第 ${chapter.chapterNumber} 章 · ${chapter.title}`, chapter.content].join('\n'),
   );
   const summaryBlocks = (book.summaries || [])
-    .filter(summaryItem => summaryItem.enabled)
+    .filter(
+      summaryItem =>
+        summaryItem.enabled &&
+        (chapterGenerationDraft.mode !== '重写当前章节' ||
+          (summaryItem.coveredChapterIds.length > 0 &&
+            summaryItem.coveredChapterIds.every(chapterId => includedChapterIds.has(chapterId)))),
+    )
     .map(
       summaryItem =>
         `${formatCoveredChaptersForBook(book, summaryItem.coveredChapterIds)} 总结\n${summaryItem.content}`,
@@ -1483,7 +1515,6 @@ async function runChapterGenerationForBook(bookId: string, book: ExtraBook, chap
       fromStartEnd: chapterGenerationDraft.fromStartEnd,
       outputFormat: buildChapterOutputFormat(),
       previousChapterContext: buildPreviousChapterContext(book),
-      replayRequest: chapterGenerationDraft.mode === '重写当前章节' ? rewriteChapterReplay.value?.request : undefined,
       rangeText: chapterGenerationDraft.rangeText,
       recentCount: chapterGenerationDraft.recentCount,
       references: selectedReferences.value.map(reference => ({

@@ -517,10 +517,10 @@ import RawOutputEditor from '@/components/RawOutputEditor.vue';
 import ReaderDetailShell from '@/components/ReaderDetailShell.vue';
 import VersionNavigator from '@/components/VersionNavigator.vue';
 import SearchableCombobox from '@/components/SearchableCombobox.vue';
+import { useGenerationReplaySession } from '@/composables/useGenerationReplaySession';
 import { getRegisteredPhoneGenerationAdapter } from '@/core/appRegistry';
 import { buildGenerationPreview, captureGenerationPrompt, generateContent } from '@/core/generationService';
 import { useGenerationAliasesStore } from '@/store/generationAliases';
-import { useGenerationOverrideStore } from '@/store/generationOverrides';
 import { useExtrasStore } from '@/store/extras';
 import { usePhoneStore } from '@/store/phone';
 import { usePromptStore } from '@/store/prompts';
@@ -532,7 +532,7 @@ import type { TheaterRenderMode } from '@/type/theater';
 import { canOpenBaguScan } from '@/util/baguScanGate';
 import { useDetailScroll } from '@/util/detailScroll';
 import { parseTheaterXmlResult } from '@/util/generation';
-import { cloneReplayReferences, restoreGenerationReplayDraft } from '@/util/generationReplay';
+import { resolveGenerationReplayReferences } from '@/util/generationReplay';
 import { renderMarkdown } from '@/util/markdown';
 import { formatReaderContent } from '@/util/readerContent';
 import { formatGenerationReferences, type GenerationReferenceItem } from '@/util/references';
@@ -540,7 +540,6 @@ import { resolveContentVersion } from '@/util/contentVersions';
 import { usePreviewDraftPersistence } from '@/util/previewDrafts';
 import { useInvalidRouteFallback } from '@/util/routeFallback';
 import { stopGenerationByIdSafe } from '@/util/runtime';
-import type { TextProviderSelection } from '@/util/textProvider';
 import { storeToRefs } from 'pinia';
 
 const phone = usePhoneStore();
@@ -549,11 +548,22 @@ const settingsStore = useSettingsStore();
 const theater = useTheaterStore();
 const extras = useExtrasStore();
 const generationAliases = useGenerationAliasesStore();
-const generationOverrides = useGenerationOverrideStore();
 const theaterGenerationAdapter = getRegisteredPhoneGenerationAdapter('theater', 'generate');
 const CUSTOM_THEATER_TYPE_VALUE = '__custom_theater_type__';
 const { currentRoute: route, isOpen } = storeToRefs(phone);
 const { settings } = storeToRefs(settingsStore);
+const generationSourceMode = computed({
+  get: () => settings.value.generation.sourceMode,
+  set: value => {
+    settings.value.generation.sourceMode = value;
+  },
+});
+const replaySession = useGenerationReplaySession({
+  appId: 'theater',
+  defaultPresetName: () => settings.value.generation.tavernPresetName,
+  page: 'generate',
+  sourceMode: generationSourceMode,
+});
 const { entries, failedDrafts } = storeToRefs(theater);
 const { charReplacement, userReplacement } = storeToRefs(generationAliases);
 const { appPrompts, typePrompts } = storeToRefs(prompts);
@@ -831,7 +841,6 @@ const generationPromptPreview = computed(() => {
         existingContent: '',
         mode: theaterGenerationMode.value,
         outputFormat: buildOutputFormat(generationDraft.renderMode),
-        replayRequest: theaterGenerationMode.value === 'rewrite' ? rewriteGenerationReplay.value?.request : undefined,
         renderMode: generationDraft.renderMode,
         typeId: generationDraft.typeId,
         typeName: generationDraft.typeName,
@@ -869,7 +878,6 @@ function captureTheaterPrompt() {
       existingContent: '',
       mode: theaterGenerationMode.value,
       outputFormat: buildOutputFormat(generationDraft.renderMode),
-      replayRequest: theaterGenerationMode.value === 'rewrite' ? rewriteGenerationReplay.value?.request : undefined,
       renderMode: generationDraft.renderMode,
       typeId: generationDraft.typeId,
       typeName: generationDraft.typeName,
@@ -897,7 +905,11 @@ function captureTheaterPrompt() {
 watch(
   () => route.value,
   (current, previous) => {
-    if (current.appId !== 'theater') return;
+    if (current.appId !== 'theater') {
+      replaySession.release();
+      return;
+    }
+    if (current.page !== 'generate' && current.page !== 'preview') replaySession.release();
     if (current.page === 'editor') {
       draft.content = viewedEntry.value?.content || '';
       draft.participants = participantsToText(activeEntry.value?.participants || []);
@@ -908,6 +920,7 @@ watch(
     }
 
     if (current.page === 'generate' && previous?.page !== 'preview') {
+      replaySession.release();
       const initialTypePrompt = prompts.getTypePrompt(current.params?.typeId || '');
       const continuationEntry = current.params?.entryId
         ? theater.getEntry(current.params.entryId)
@@ -934,8 +947,8 @@ watch(
 
       const replay = rewriteGenerationReplay.value;
       if (replay) {
-        selectedReferences.value = cloneReplayReferences(replay);
-        settings.value.generation.sourceMode = restoreGenerationReplayDraft(replay, generationDraft);
+        selectedReferences.value = resolveGenerationReplayReferences(replay);
+        replaySession.applyReplay(replay, generationDraft);
         const replayRenderMode = replay.config.renderMode;
         if (replayRenderMode === 'markdown' || replayRenderMode === 'frontend') {
           generationDraft.renderMode = replayRenderMode;
@@ -946,12 +959,6 @@ watch(
           typeof replay.config.typeName === 'string' ? replay.config.typeName : generationDraft.typeName;
         generationDraft.typePrompt =
           typeof replay.config.typePrompt === 'string' ? replay.config.typePrompt : generationDraft.typePrompt;
-        generationOverrides.setTavernPresetName('theater', 'generate', replay.tavernPresetName);
-        generationOverrides.setConnectionSelection(
-          'theater',
-          'generate',
-          replay.connectionSelection as TextProviderSelection,
-        );
       }
     }
 
@@ -1348,7 +1355,6 @@ async function runGeneration() {
         existingContent: '',
         mode: theaterGenerationMode.value,
         outputFormat: buildOutputFormat(generationDraft.renderMode),
-        replayRequest: theaterGenerationMode.value === 'rewrite' ? rewriteGenerationReplay.value?.request : undefined,
         renderMode: generationDraft.renderMode,
         typeId: savedTypePrompt?.id || generationDraft.typeId,
         typeName: generationDraft.typeName,

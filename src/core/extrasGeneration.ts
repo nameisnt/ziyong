@@ -45,7 +45,6 @@ export const ExtraChapterGenerateConfigSchema = z.object({
   recentCount: z.number().int().positive().default(20),
   references: z.array(ExtraChapterGenerationReferenceSchema).default([]),
   singleMessageId: z.number().int().nonnegative().default(0),
-  replayRequest: GenerationRequestPartsSchema.optional(),
   sourceMode: GenerationSourceModeSchema.default('latest'),
   tavernPresetName: z.string().default(''),
   typeId: z.string().default(''),
@@ -158,12 +157,6 @@ export function createExtraChapterGenerationAdapter(extrasStore: {
     actionId: 'chapter-generate',
     appId: 'extras',
     buildRequest(config) {
-      if (config.chapterMode === '重写当前章节' && config.replayRequest) {
-        return parsePrettified(GenerationRequestPartsSchema, {
-          ...config.replayRequest,
-          userRequirement: config.userRequirement,
-        });
-      }
       return parsePrettified(GenerationRequestPartsSchema, {
         appPrompt: config.appPrompt,
         context: config.previousChapterContext,

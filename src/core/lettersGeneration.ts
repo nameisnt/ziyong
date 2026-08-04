@@ -20,7 +20,6 @@ export const LetterGenerateConfigSchema = z.object({
   existingContent: z.string().default(''),
   mode: z.enum(['create', 'rewrite']).default('create'),
   outputFormat: z.string(),
-  replayRequest: GenerationRequestPartsSchema.optional(),
   recentLettersContext: z.string().default(''),
   receiver: CharacterRefSchema,
   sender: CharacterRefSchema,
@@ -57,12 +56,6 @@ export function createLettersGenerationAdapter(lettersStore: {
     actionId: 'generate',
     appId: 'letters',
     buildRequest(config) {
-      if (config.mode === 'rewrite' && config.replayRequest) {
-        return parsePrettified(GenerationRequestPartsSchema, {
-          ...config.replayRequest,
-          userRequirement: config.userRequirement,
-        });
-      }
       return parsePrettified(GenerationRequestPartsSchema, {
         appPrompt: config.appPrompt,
         context: config.recentLettersContext,

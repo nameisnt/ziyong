@@ -1,6 +1,7 @@
 import '@fortawesome/fontawesome-free/css/all.min.css';
 import '@/global.css';
 import type { PhoneRoute } from '@/store/phone';
+import type { ExtraChapterGenerationRecord } from '@/type/extra';
 import { computed, effectScope, nextTick, ref } from 'vue';
 
 type VisualScenarioName = string;
@@ -430,6 +431,7 @@ const scenarios: VisualScenarioName[] = [
   'content-version-deletion',
   'extras-chapter-editor',
   'extras-legacy-continuation',
+  'extras-continuation-references',
   'summary-create',
   'summary-book',
   'summary-entry-detail',
@@ -659,6 +661,68 @@ function createExtrasGenerationRecordFixture() {
   });
   if (!chapter) throw new Error('Extras generation record fixture did not create a chapter');
   return { book, chapter };
+}
+
+function createExtrasContinuationReferencesFixture() {
+  const extras = useExtrasStore();
+  extras.resetCurrentScope();
+  const sourceBook = extras.createBook({ title: '续写引用资料', typeName: '参考资料' });
+  const sourceChapters = [
+    extras.createChapter(sourceBook.id, { content: '实时引用 A：雨声已经停了。', title: '雨停' }),
+    extras.createChapter(sourceBook.id, { content: '实时引用 B：灯仍然亮着。', title: '留灯' }),
+    extras.createChapter(sourceBook.id, { content: '候选版本引用：不应被续写继承。', title: '候选引用' }),
+  ];
+  if (sourceChapters.some(chapter => !chapter)) throw new Error('Continuation source fixture creation failed');
+  const sourceA = sourceChapters[0]!;
+  const sourceB = sourceChapters[1]!;
+  const sourceCandidate = sourceChapters[2]!;
+  const makeReference = (chapter: typeof sourceA, historicalContent: string) => ({
+    content: historicalContent,
+    id: `extras:${sourceBook.id}:chapter:${chapter.id}`,
+    sourcePath: ['番外', sourceBook.title],
+    title: chapter.title,
+  });
+  const missingReference = {
+    content: '历史引用：原条目虽然已经删除，但重写与续写仍可使用这份快照。',
+    id: 'extras:deleted-book:chapter:deleted-chapter',
+    sourcePath: ['番外', '已删除资料'],
+    title: '已删除的引用',
+  };
+  const createRecord = (
+    id: string,
+    references: ExtraChapterGenerationRecord['references'],
+  ): ExtraChapterGenerationRecord => ({
+    chapterMode: '续写上一章',
+    createdAt: new Date().toISOString(),
+    fromStartEnd: 20,
+    id,
+    rangeText: '',
+    recentCount: 20,
+    references,
+    singleMessageId: 0,
+    sourceLabel: '最近 20 楼',
+    sourceMessageIds: [],
+    sourceMode: 'latest',
+    tavernPresetName: '',
+    typeId: '',
+    typeName: '阅读体',
+    typePrompt: '',
+    userRequirement: '',
+  });
+  const targetBook = extras.createBook({ title: '引用继承测试', typeName: '阅读体' });
+  const adoptedReferences = [makeReference(sourceB, '旧快照 B'), missingReference, makeReference(sourceA, '旧快照 A')];
+  const targetChapter = extras.createChapter(targetBook.id, {
+    content: '当前采用的第一版章节。',
+    generationRecord: createRecord('visual_adopted_record', adoptedReferences),
+    title: '当前采用版本',
+  });
+  if (!targetChapter) throw new Error('Continuation target fixture creation failed');
+  extras.appendChapterVersion(targetBook.id, targetChapter.id, {
+    content: '尚未采用的候选版本。',
+    generationRecord: createRecord('visual_candidate_record', [makeReference(sourceCandidate, '候选版本引用旧快照')]),
+    title: '候选版本',
+  });
+  return { adoptedReferences, sourceA, sourceB, targetBook };
 }
 
 function createVideoFixture() {
@@ -2384,6 +2448,34 @@ async function applyScenario(name: VisualScenarioName, options: { height?: numbe
   } else if (name === 'extras-legacy-continuation') {
     const book = createLegacyExtrasFixture();
     resetPhoneToRoute('extras', 'chapter-generate', '生成章节', { bookId: book.id });
+  } else if (name === 'extras-continuation-references') {
+    const { adoptedReferences, sourceA, sourceB, targetBook } = createExtrasContinuationReferencesFixture();
+    resetPhoneToRoute('extras', 'chapter-generate', '生成章节', { bookId: targetBook.id });
+    await waitForPaint();
+    const advanced = document.querySelector<HTMLDetailsElement>('.pc-generation-advanced');
+    if (!advanced) throw new Error('Extras continuation advanced settings are missing');
+    advanced.open = true;
+    await waitForPaint();
+    document.querySelector<HTMLButtonElement>('.pc-reference-toggle')?.click();
+    await waitForPaint();
+    document.querySelector<HTMLButtonElement>('.pc-reference-selected-toggle')?.click();
+    await waitForPaint();
+    const cards = [...document.querySelectorAll<HTMLElement>('.pc-reference-card')];
+    const cardContents = cards.map(card => card.querySelector<HTMLTextAreaElement>('textarea')?.value || '');
+    if (cards.length !== adoptedReferences.length) {
+      throw new Error('Continuation did not inherit all references from the currently adopted version');
+    }
+    if (cardContents[0] !== sourceB.content || cardContents[1] !== adoptedReferences[1]?.content) {
+      throw new Error('Continuation did not preserve reference order or resolve current reference content');
+    }
+    if (cardContents[2] !== sourceA.content || cardContents.some(content => content.includes('候选版本引用'))) {
+      throw new Error('Continuation inherited references from the unadopted candidate version');
+    }
+    if (!cards[1]?.querySelector('.pc-reference-unavailable')) {
+      throw new Error('Missing continuation reference did not show its historical-content status');
+    }
+    cards[1].scrollIntoView({ block: 'center' });
+    await waitForPaint();
   } else if (name === 'extras-chapter-detail') {
     const { book } = createExtrasGenerationRecordFixture();
     resetPhoneToRoute('extras', 'book', book.title, { bookId: book.id });

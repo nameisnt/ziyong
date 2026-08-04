@@ -4,6 +4,7 @@ export type GenerationReferenceItem = {
   sourcePath: string[];
   timeLabel?: string;
   title: string;
+  unavailable?: boolean;
   updatedAt?: string;
 };
 

@@ -25,7 +25,6 @@ export const ForumThreadGenerateConfigSchema = z.object({
   existingThreadContent: z.string().default(''),
   mode: z.enum(['create', 'rewrite']).default('create'),
   outputFormat: z.string(),
-  replayRequest: GenerationRequestPartsSchema.optional(),
   threadId: z.string().default(''),
   userRequirement: z.string().default(''),
 });
@@ -148,12 +147,6 @@ export function createForumThreadGenerationAdapter(forumStore: {
     actionId: 'generate-thread',
     appId: 'forum',
     buildRequest(config) {
-      if (config.mode === 'rewrite' && config.replayRequest) {
-        return parsePrettified(GenerationRequestPartsSchema, {
-          ...config.replayRequest,
-          userRequirement: config.userRequirement,
-        });
-      }
       return parsePrettified(GenerationRequestPartsSchema, {
         appPrompt: config.appPrompt,
         context: buildThreadRequestContext(config),

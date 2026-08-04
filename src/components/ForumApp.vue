@@ -567,11 +567,11 @@ import RawOutputEditor from '@/components/RawOutputEditor.vue';
 import ReaderContent from '@/components/ReaderContent.vue';
 import SearchableCombobox from '@/components/SearchableCombobox.vue';
 import VersionNavigator from '@/components/VersionNavigator.vue';
+import { useGenerationReplaySession } from '@/composables/useGenerationReplaySession';
 import { createForumReplySnapshots, materializeForumReplies, persistForumReplyDrafts } from '@/core/forumGeneration';
 import { getRegisteredPhoneGenerationAdapter } from '@/core/appRegistry';
 import { buildGenerationPreview, captureGenerationPrompt, generateContent } from '@/core/generationService';
 import { useForumStore } from '@/store/forum';
-import { useGenerationOverrideStore } from '@/store/generationOverrides';
 import { usePhoneStore } from '@/store/phone';
 import { usePromptStore } from '@/store/prompts';
 import { useSettingsStore } from '@/store/settings';
@@ -579,13 +579,12 @@ import type { FailedGenerationDraft, GenerationReplaySnapshot } from '@/type/gen
 import { type ForumThread, resolveForumBoardTypeName, resolveForumBoardTypePrompt } from '@/type/forum';
 import { canOpenBaguScan } from '@/util/baguScanGate';
 import { parseForumRepliesXmlResult, parseForumXmlResult } from '@/util/generation';
-import { cloneReplayReferences, restoreGenerationReplayDraft } from '@/util/generationReplay';
+import { resolveGenerationReplayReferences } from '@/util/generationReplay';
 import { usePreviewDraftPersistence } from '@/util/previewDrafts';
 import { formatGenerationReferences, type GenerationReferenceItem } from '@/util/references';
 import { resolveContentVersion } from '@/util/contentVersions';
 import { useInvalidRouteFallback } from '@/util/routeFallback';
 import { stopGenerationByIdSafe } from '@/util/runtime';
-import type { TextProviderSelection } from '@/util/textProvider';
 import { storeToRefs } from 'pinia';
 
 type ThreadSortMode = 'favorite' | 'heat' | 'latestPublish' | 'latestReply';
@@ -596,7 +595,6 @@ const CUSTOM_BOARD_ID = '__custom_forum_board__';
 const CUSTOM_BOARD_TYPE_ID = '__custom_forum_board_type__';
 
 const forum = useForumStore();
-const generationOverrides = useGenerationOverrideStore();
 const phone = usePhoneStore();
 const prompts = usePromptStore();
 const settingsStore = useSettingsStore();
@@ -606,6 +604,18 @@ const { boards, failedDrafts } = storeToRefs(forum);
 const { currentRoute: route } = storeToRefs(phone);
 const { typePrompts } = storeToRefs(prompts);
 const { settings } = storeToRefs(settingsStore);
+const generationSourceMode = computed({
+  get: () => settings.value.generation.sourceMode,
+  set: value => {
+    settings.value.generation.sourceMode = value;
+  },
+});
+const replaySession = useGenerationReplaySession({
+  appId: 'forum',
+  defaultPresetName: () => settings.value.generation.tavernPresetName,
+  page: 'generate-thread',
+  sourceMode: generationSourceMode,
+});
 
 const query = ref('');
 const sortMode = ref<ThreadSortMode>('latestReply');
@@ -971,7 +981,11 @@ const previewReplies = computed(() => {
 watch(
   () => route.value,
   (current, previous) => {
-    if (current.appId !== 'forum') return;
+    if (current.appId !== 'forum') {
+      replaySession.release();
+      return;
+    }
+    if (current.page !== 'generate-thread' && current.page !== 'preview') replaySession.release();
     if (current.page === 'board-editor') {
       boardDraft.typePrompt = editingBoard.value ? resolveForumBoardTypePrompt(editingBoard.value) : '';
       boardDraft.name = editingBoard.value?.name || '';
@@ -1002,6 +1016,7 @@ watch(
     }
 
     if (current.page === 'generate-thread' && previous?.page !== 'preview') {
+      replaySession.release();
       selectedReferences.value = [];
       threadGenerationDraft.boardId = activeBoard.value?.id || CUSTOM_BOARD_ID;
       threadGenerationDraft.boardName = activeBoard.value?.name || '';
@@ -1019,14 +1034,8 @@ watch(
 
       const replay = rewriteForumVersion.value?.generationReplay || rewriteForumThread.value?.generationReplay;
       if (replay) {
-        selectedReferences.value = cloneReplayReferences(replay);
-        settings.value.generation.sourceMode = restoreGenerationReplayDraft(replay, threadGenerationDraft);
-        generationOverrides.setTavernPresetName('forum', 'generate-thread', replay.tavernPresetName);
-        generationOverrides.setConnectionSelection(
-          'forum',
-          'generate-thread',
-          replay.connectionSelection as TextProviderSelection,
-        );
+        selectedReferences.value = resolveGenerationReplayReferences(replay);
+        replaySession.applyReplay(replay, threadGenerationDraft);
       }
     }
 
@@ -1375,10 +1384,6 @@ function buildThreadGenerationConfig() {
     existingThreadContent: '',
     mode: forumThreadGenerationMode.value,
     outputFormat: buildThreadOutputFormat(),
-    replayRequest:
-      forumThreadGenerationMode.value === 'rewrite'
-        ? rewriteForumVersion.value?.generationReplay?.request || rewriteForumThread.value?.generationReplay?.request
-        : undefined,
     threadId: rewriteForumThread.value?.id || '',
     userRequirement: threadGenerationDraft.userRequirement,
   };

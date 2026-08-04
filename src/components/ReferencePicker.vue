@@ -79,6 +79,10 @@
               <div>
                 <strong>{{ item.title }}</strong>
                 <small>{{ item.sourcePath.join(' / ') }}</small>
+                <small v-if="item.unavailable" class="pc-reference-unavailable">
+                  <i class="fa-solid fa-triangle-exclamation"></i>
+                  {{ t`原来源已删除，使用历史内容` }}
+                </small>
               </div>
               <button
                 class="pc-reference-icon"
@@ -556,6 +560,13 @@ function cancelReferenceDrag(event: PointerEvent) {
 .pc-reference-empty,
 .pc-reference-card small {
   color: var(--pc-muted);
+}
+
+.pc-reference-card .pc-reference-unavailable {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  color: var(--pc-danger);
 }
 
 .pc-reference-selected {

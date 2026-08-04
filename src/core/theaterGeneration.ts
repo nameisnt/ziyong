@@ -16,7 +16,6 @@ export const TheaterGenerateConfigSchema = z.object({
   existingContent: z.string().default(''),
   mode: z.enum(['create', 'rewrite']).default('create'),
   outputFormat: z.string(),
-  replayRequest: GenerationRequestPartsSchema.optional(),
   participants: z.array(CharacterRefSchema).default([]),
   renderMode: z.enum(['markdown', 'frontend']).default('markdown'),
   typeId: z.string().default(''),
@@ -40,12 +39,6 @@ export function createTheaterGenerationAdapter(theaterStore: {
     actionId: 'generate',
     appId: 'theater',
     buildRequest(config) {
-      if (config.mode === 'rewrite' && config.replayRequest) {
-        return parsePrettified(GenerationRequestPartsSchema, {
-          ...config.replayRequest,
-          userRequirement: config.userRequirement,
-        });
-      }
       return parsePrettified(GenerationRequestPartsSchema, {
         appPrompt: config.appPrompt,
         context: '',
