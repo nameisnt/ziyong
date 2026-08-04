@@ -10,7 +10,7 @@ function getEntryValue(entry: ProfileEntry, columnId: string) {
 }
 
 function getFormatColumns(table: ProfileTable) {
-  return table.columns.filter(column => column.id !== 'content');
+  return table.columns.filter(column => column.enabled && column.id !== 'content');
 }
 
 export function createDefaultProfileDisplayFormat(table: ProfileTable) {
@@ -20,9 +20,18 @@ export function createDefaultProfileDisplayFormat(table: ProfileTable) {
 
 export function formatProfileRenderSource(entry: ProfileEntry, table: ProfileTable) {
   const template = table.displayFormat.trim() || createDefaultProfileDisplayFormat(table);
-  return template.replace(/\{\{\s*([A-Za-z0-9_-]+)\s*\}\}/g, (_match, columnId: string) =>
-    getEntryValue(entry, columnId),
-  );
+  const enabledColumnIds = new Set(getFormatColumns(table).map(column => column.id));
+  const disabledColumnIds = new Set(table.columns.filter(column => !column.enabled).map(column => column.id));
+  return template
+    .split('\n')
+    .filter(line => {
+      const placeholders = [...line.matchAll(/\{\{\s*([A-Za-z0-9_-]+)\s*\}\}/g)];
+      return !placeholders.some(match => disabledColumnIds.has(match[1] || ''));
+    })
+    .join('\n')
+    .replace(/\{\{\s*([A-Za-z0-9_-]+)\s*\}\}/g, (_match, columnId: string) => {
+      return enabledColumnIds.has(columnId) ? getEntryValue(entry, columnId) : '';
+    });
 }
 
 export function formatProfileMarkdown(entry: ProfileEntry, table: ProfileTable) {
@@ -34,9 +43,14 @@ export function formatProfileMarkdown(entry: ProfileEntry, table: ProfileTable) 
 }
 
 export function getProfileListPreview(entry: ProfileEntry, table: ProfileTable | null) {
-  if (entry.summary.trim()) return entry.summary.trim();
+  if (table?.columns.some(column => column.id === 'summary' && column.enabled) && entry.summary.trim()) {
+    return entry.summary.trim();
+  }
   const column = table?.columns.find(
-    item => !['title', 'summary', 'tags', 'content'].includes(item.id) && getEntryValue(entry, item.id).trim(),
+    item =>
+      item.enabled &&
+      !['title', 'summary', 'tags', 'content'].includes(item.id) &&
+      getEntryValue(entry, item.id).trim(),
   );
   if (column) return `${column.label}：${getEntryValue(entry, column.id)}`;
   return '';

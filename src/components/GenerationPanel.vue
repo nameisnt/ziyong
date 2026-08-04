@@ -256,6 +256,7 @@ const connectionOptions = computed(() => [
 const generationBlocked = computed(() => !phone.isViewingCurrentChat);
 const controlsDisabled = computed(() => props.running || generationBlocked.value);
 const sourceModeLabel = computed(() => {
+  if (props.sourceMode === 'none') return '不使用聊天楼层';
   if (props.sourceMode === 'recent') return `最近 ${props.recentCount} 楼`;
   if (props.sourceMode === 'fromStart') return `0-${props.fromStartEnd} 楼`;
   if (props.sourceMode === 'single') return `第 ${props.singleMessageId} 楼`;

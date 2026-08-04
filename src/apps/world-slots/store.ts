@@ -221,16 +221,17 @@ function createWorldEntry(slot: WorldSlot, entryId: number): WorldBookEntry {
   };
 }
 
-function buildProfileContent(entry: ProfileEntry, columns: Array<{ id: string; label: string }>) {
+function buildProfileContent(entry: ProfileEntry, columns: Array<{ enabled: boolean; id: string; label: string }>) {
+  const enabledColumnIds = new Set(columns.filter(column => column.enabled).map(column => column.id));
   const fieldLines = columns
-    .filter(column => !['title', 'summary', 'tags', 'content'].includes(column.id))
+    .filter(column => column.enabled && !['title', 'summary', 'tags', 'content'].includes(column.id))
     .map(column => (entry.fields[column.id]?.trim() ? `${column.label}：${entry.fields[column.id].trim()}` : ''))
     .filter(Boolean);
   return [
     `## ${entry.title}`,
     `类型：${getProfileKindLabel(entry.kind)}`,
-    entry.summary ? `摘要：${entry.summary}` : '',
-    entry.tags.length ? `标签：${entry.tags.join('、')}` : '',
+    enabledColumnIds.has('summary') && entry.summary ? `摘要：${entry.summary}` : '',
+    enabledColumnIds.has('tags') && entry.tags.length ? `标签：${entry.tags.join('、')}` : '',
     ...fieldLines,
   ]
     .filter(Boolean)

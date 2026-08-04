@@ -32,12 +32,15 @@ export type ExtraSummaryGenerateConfig = z.infer<typeof ExtraSummaryGenerateConf
 
 export const ExtraChapterGenerationModeSchema = z.enum(['续写上一章', '新开一本书', '重写当前章节']);
 export type ExtraChapterGenerationMode = z.infer<typeof ExtraChapterGenerationModeSchema>;
+export const ExtraChapterGenerationIntentSchema = z.enum(['续写上一章', '新开一本书']);
+export type ExtraChapterGenerationIntent = z.infer<typeof ExtraChapterGenerationIntentSchema>;
 
 export const ExtraChapterGenerateConfigSchema = z.object({
   appPrompt: z.string(),
   bookId: z.string(),
   chapterId: z.string().default(''),
   chapterMode: ExtraChapterGenerationModeSchema.default('续写上一章'),
+  generationIntent: ExtraChapterGenerationIntentSchema.optional(),
   outputFormat: z.string(),
   previousChapterContext: z.string().default(''),
   fromStartEnd: z.number().int().nonnegative().default(20),
@@ -66,6 +69,7 @@ export function createExtraChapterGenerationRecord(
   return {
     id: `extra_generation_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
     chapterMode: config.chapterMode,
+    generationIntent: resolveChapterGenerationIntent(config),
     createdAt: new Date().toISOString(),
     fromStartEnd: config.fromStartEnd,
     rangeText: config.rangeText,
@@ -87,12 +91,17 @@ export function createExtraChapterGenerationRecord(
   };
 }
 
+function resolveChapterGenerationIntent(config: ExtraChapterGenerateConfig): ExtraChapterGenerationIntent {
+  if (config.generationIntent) return config.generationIntent;
+  return config.chapterMode === '新开一本书' ? '新开一本书' : '续写上一章';
+}
+
 function buildChapterTaskInstruction(config: ExtraChapterGenerateConfig) {
+  const generationIntent = resolveChapterGenerationIntent(config);
   const modeInstruction = {
     新开一本书: '请创作本书第一章，不要续接来源内容中的旧章节。',
     续写上一章: '请紧接上述最后一章续写，不要复述或重写已有章节，并延续上一章的语气与悬念。',
-    重写当前章节: '请根据相同来源重新生成一个完整章节，作为当前章节的候选版本。不要参考或复述旧版本。',
-  }[config.chapterMode];
+  }[generationIntent];
   const typeFallback =
     !config.typePrompt.trim() && config.typeName.trim() ? `本次番外类型为“${config.typeName.trim()}”。` : '';
   return [modeInstruction, typeFallback].filter(Boolean).join('\n');

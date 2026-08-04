@@ -433,15 +433,28 @@ function applySelectedReferences() {
 function mergeSelectedReferences() {
   const references = selectedReferences.value.filter(reference => reference.content.trim());
   if (!references.length) return;
-  draft.content = [draft.content.trimEnd(), ...references.map(reference => reference.content.trim())]
+  draft.content = [draft.content.trimEnd(), ...references.map(formatReferenceForSlotContent)]
     .filter(Boolean)
     .join('\n\n');
-  if (references.length === 1 && !draft.title.trim()) {
-    draft.title = references[0]!.title.trim();
+  if (!draft.title.trim()) {
+    const firstTitle = references[0]!.title.trim() || '导入内容';
+    draft.title = references.length === 1 ? firstTitle : `${firstTitle}等 ${references.length} 项`;
   }
   selectedReferences.value = [];
   referenceImportMode.value = 'merge';
   toastr.success(`已合并 ${references.length} 条内容`);
+}
+
+function formatReferenceForSlotContent(reference: GenerationReferenceItem) {
+  const title = reference.title.trim();
+  const content = reference.content.trim();
+  if (!title) return content;
+  const firstLine =
+    content
+      .split(/\r?\n/, 1)[0]
+      ?.trim()
+      .replace(/^#+\s*/, '') || '';
+  return firstLine === title ? content : [`## ${title}`, content].filter(Boolean).join('\n');
 }
 
 function createSeparateReferenceSlots() {

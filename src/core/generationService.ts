@@ -82,7 +82,7 @@ function createGenerationReplaySnapshot(
   config: unknown,
   request: GenerationRequestParts,
   source: GenerationReplaySnapshot['source'],
-  options: Pick<GenerateContentOptions, 'generationDefaults' | 'referenceItems'>,
+  options: Pick<GenerateContentOptions, 'generationDefaults' | 'referenceItems' | 'source'>,
   textProvider: ResolvedTextProviderSettings,
 ): GenerationReplaySnapshot {
   const normalizedConfig = isRecord(config) ? { ...config } : {};
@@ -102,6 +102,12 @@ function createGenerationReplaySnapshot(
       ...source,
       messageIds: [...source.messageIds],
       ranges: source.ranges.map(range => ({ ...range })),
+    },
+    sourceInput: {
+      fromStartEnd: options.source.fromStartEnd,
+      rangeText: options.source.rangeText,
+      recentCount: options.source.recentCount,
+      singleMessageId: options.source.singleMessageId,
     },
     tavernPresetName: resolveGenerationPresetName(options) || '',
   };
@@ -335,7 +341,7 @@ function prepareGenerationRequest<TConfig, TResult, TSaveResult = { entityId: st
   const parsedConfig = parsePrettified(adapter.configSchema, config);
   const scopeId = getCurrentChatScopeKey();
   const visibleMessages = getChatMessagesSafe('0-{{lastMessageId}}', { hide_state: 'unhidden' });
-  if (!visibleMessages.length) {
+  if (!visibleMessages.length && options.source.mode !== 'none') {
     throw new Error('当前聊天里没有可见楼层，暂时不能生成内容');
   }
 

@@ -150,19 +150,21 @@ export function createProfileGenerationAdapter(profilesStore: ReturnType<typeof 
       const table = profilesStore.getTable(config.tableId) ?? profilesStore.getDefaultTable(config.kind);
       const editableColumns =
         table?.columns
-          .filter(column => !['title', 'summary', 'tags', 'content'].includes(column.id))
+          .filter(column => column.enabled && !['title', 'summary', 'tags', 'content'].includes(column.id))
           .map(column => {
             const options = column.options.length ? ` 可选值：${column.options.join('、')}。` : '';
             const description = column.description.trim() ? ` 说明：${column.description.trim()}。` : '';
             return `- ${column.label}（id=${column.id}，${column.type}）${description}${options}`;
           })
           .join('\n') || '';
+      const kindLabel = getProfileKindLabel(table?.kind ?? config.kind);
+      const tableName = table?.name || kindLabel;
       return {
         appPrompt: config.appPrompt,
-        outputFormat: config.outputFormat,
+        outputFormat: filterDisabledCoreFieldsFromOutputFormat(config.outputFormat, table),
         taskInstruction: [
-          `目标资料表：${table?.name || getProfileKindLabel(config.kind)}`,
-          `资料类型：${getProfileKindLabel(table?.kind ?? config.kind)}`,
+          `目标资料表：${tableName}`,
+          tableName !== kindLabel ? `资料类型：${kindLabel}` : '',
           editableColumns
             ? `请按以下字段填写 <fields> 中的 <field id="字段id">字段值</field>；只填写上下文可确认的信息，未知可留空：\n${editableColumns}`
             : '',
@@ -183,16 +185,19 @@ export function createProfileGenerationAdapter(profilesStore: ReturnType<typeof 
         profilesStore.getTable(context.config.tableId) ?? profilesStore.getDefaultTable(context.config.kind);
       const fieldIds = new Set(
         (table?.columns ?? [])
-          .filter(column => !['title', 'summary', 'tags', 'content'].includes(column.id))
+          .filter(column => column.enabled && !['title', 'summary', 'tags', 'content'].includes(column.id))
           .map(column => column.id),
+      );
+      const enabledColumnIds = new Set(
+        (table?.columns ?? []).filter(column => column.enabled).map(column => column.id),
       );
       const entry = profilesStore.createEntry({
         title: result.title,
         kind: context.config.kind,
-        summary: result.summary,
+        summary: enabledColumnIds.has('summary') ? result.summary : '',
         tableId: context.config.tableId,
         fields: Object.fromEntries(Object.entries(result.fields).filter(([fieldId]) => fieldIds.has(fieldId))),
-        tags: result.tags,
+        tags: enabledColumnIds.has('tags') ? result.tags : [],
       });
       return {
         entityId: entry.id,
@@ -200,4 +205,20 @@ export function createProfileGenerationAdapter(profilesStore: ReturnType<typeof 
       };
     },
   } satisfies GenerationAdapter<ProfileGenerateConfig, ProfileXmlResult, { entityId: string; entry: ProfileEntry }>;
+}
+
+function filterDisabledCoreFieldsFromOutputFormat(
+  outputFormat: string,
+  table: ReturnType<ReturnType<typeof useProfilesStore>['getTable']>,
+) {
+  if (!table) return outputFormat;
+  const enabledColumnIds = new Set(table.columns.filter(column => column.enabled).map(column => column.id));
+  return outputFormat
+    .split('\n')
+    .filter(line => {
+      if (!enabledColumnIds.has('summary') && /<\/?summary\b/i.test(line)) return false;
+      if (!enabledColumnIds.has('tags') && /<\/?tags\b/i.test(line)) return false;
+      return true;
+    })
+    .join('\n');
 }

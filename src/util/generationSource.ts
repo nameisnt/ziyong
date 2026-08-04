@@ -93,6 +93,7 @@ function buildLabel(
   },
 ) {
   const lastMessageId = selectedMessages[selectedMessages.length - 1]?.message_id ?? 0;
+  if (mode === 'none') return '不使用聊天楼层';
   if (mode === 'latest') return `最新楼层 · 第 ${lastMessageId} 楼`;
   if (mode === 'all') return `全部可见楼层 · ${selectedMessages.length} 楼`;
   if (mode === 'recent') return `最近 ${selectedMessages.length} 楼`;
@@ -115,33 +116,37 @@ export function buildSourceSelection(options: {
   visibleMessages: ChatMessage[];
 }) {
   const { chatIdAtGeneration, mode, scopeId, visibleMessages } = options;
-  if (!visibleMessages.length) {
+  if (!visibleMessages.length && mode !== 'none') {
     throw new Error('当前聊天里没有可用的可见楼层');
   }
 
   const selectedMessages =
-    mode === 'latest'
-      ? visibleMessages.slice(-1)
-      : mode === 'recent'
-        ? visibleMessages.slice(-getRecentCount(options.recentCount ?? 20))
-        : mode === 'all'
-          ? visibleMessages
-          : mode === 'single'
-            ? visibleMessages.filter(
-                message => message.message_id === normalizeFloorNumber(options.singleMessageId ?? -1, -1),
-              )
-            : mode === 'fromStart'
+    mode === 'none'
+      ? []
+      : mode === 'latest'
+        ? visibleMessages.slice(-1)
+        : mode === 'recent'
+          ? visibleMessages.slice(-getRecentCount(options.recentCount ?? 20))
+          : mode === 'all'
+            ? visibleMessages
+            : mode === 'single'
               ? visibleMessages.filter(
-                  message => message.message_id <= normalizeFloorNumber(options.fromStartEnd ?? -1, -1),
+                  message => message.message_id === normalizeFloorNumber(options.singleMessageId ?? -1, -1),
                 )
-              : (() => {
-                  const requestedRanges = parseRangeText(options.rangeText || '');
-                  return visibleMessages.filter(message =>
-                    requestedRanges.some(range => message.message_id >= range.start && message.message_id <= range.end),
-                  );
-                })();
+              : mode === 'fromStart'
+                ? visibleMessages.filter(
+                    message => message.message_id <= normalizeFloorNumber(options.fromStartEnd ?? -1, -1),
+                  )
+                : (() => {
+                    const requestedRanges = parseRangeText(options.rangeText || '');
+                    return visibleMessages.filter(message =>
+                      requestedRanges.some(
+                        range => message.message_id >= range.start && message.message_id <= range.end,
+                      ),
+                    );
+                  })();
 
-  if (!selectedMessages.length) {
+  if (!selectedMessages.length && mode !== 'none') {
     if (mode === 'single') {
       throw new Error(`第 ${normalizeFloorNumber(options.singleMessageId ?? -1, -1)} 楼当前不可见或不存在`);
     }
@@ -170,8 +175,8 @@ export function buildSourceSelection(options: {
   };
 
   return {
-    maxChatHistory: 'all',
-    requiresVisibilityTransaction: selectedMessages.length !== visibleMessages.length,
+    maxChatHistory: mode === 'none' ? 0 : 'all',
+    requiresVisibilityTransaction: mode !== 'none' && selectedMessages.length !== visibleMessages.length,
     selection,
   } satisfies {
     maxChatHistory: 'all' | number;

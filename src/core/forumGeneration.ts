@@ -114,9 +114,6 @@ function buildThreadRequestContext(config: ForumThreadGenerateConfig) {
 
 function buildThreadTaskInstruction(config: ForumThreadGenerateConfig) {
   const boardName = config.boardName.trim();
-  if (config.mode === 'rewrite') {
-    return `请根据相同来源重新生成一篇完整论坛主题及其回复，并在 <board> 中原样输出板块名称“${boardName}”。不要参考或复述旧版本。`;
-  }
   if (boardName) {
     return `请为“${boardName}”板块生成一篇新帖，并在 <board> 中原样输出板块名称“${boardName}”。`;
   }

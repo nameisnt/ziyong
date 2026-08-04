@@ -195,9 +195,15 @@
             <option v-for="option in profileKindOptions" :key="option.id" :value="option.id">{{ option.label }}</option>
           </select>
         </label>
-        <section class="pc-profile-display-format">
-          <div class="pc-profile-display-format-head">
-            <span class="pc-field-label">{{ t`资料展示` }}</span>
+        <details class="pc-profile-display-format">
+          <summary>
+            <span>
+              <strong>{{ t`资料展示` }}</strong>
+              <small>{{ tableDraft.renderMode === 'frontend' ? t`网页渲染` : 'Markdown' }}</small>
+            </span>
+            <i class="fa-solid fa-chevron-down"></i>
+          </summary>
+          <div class="pc-profile-display-format-body">
             <span class="pc-segment">
               <button
                 :class="['pc-segment-btn', { active: tableDraft.renderMode === 'markdown' }]"
@@ -214,85 +220,62 @@
                 {{ t`网页渲染` }}
               </button>
             </span>
-          </div>
-          <textarea
-            v-model="tableDraft.displayFormat"
-            class="pc-area compact mono"
-            :placeholder="t`<character>\n身份：{{identity}}\n</character>`"
-          ></textarea>
-          <button class="pc-soft-btn compact" type="button" @click="resetTableDisplayFormat">
-            <i class="fa-solid fa-rotate-left"></i>{{ t`重置格式` }}
-          </button>
-        </section>
-        <div class="pc-profile-column-list">
-          <div v-for="(column, index) in tableDraft.columns" :key="column.id" class="pc-profile-column-row">
-            <div class="pc-profile-column-actions">
-              <button
-                class="pc-icon-btn"
-                type="button"
-                :disabled="index === 0"
-                :title="t`上移字段`"
-                @click="moveTableColumn(index, -1)"
-              >
-                <i class="fa-solid fa-arrow-up"></i>
-              </button>
-              <button
-                class="pc-icon-btn"
-                type="button"
-                :disabled="index === tableDraft.columns.length - 1"
-                :title="t`下移字段`"
-                @click="moveTableColumn(index, 1)"
-              >
-                <i class="fa-solid fa-arrow-down"></i>
-              </button>
-              <button
-                class="pc-icon-btn danger"
-                type="button"
-                :disabled="isProtectedColumn(column.id)"
-                :title="t`删除字段`"
-                @click="removeTableColumn(index)"
-              >
-                <i class="fa-solid fa-trash"></i>
-              </button>
-            </div>
-            <input
-              v-model="column.label"
-              class="pc-field"
-              type="text"
-              :readonly="isProtectedColumn(column.id)"
-              :placeholder="t`字段名称`"
-            />
-            <select v-model="column.type" class="pc-field pc-select" :disabled="isProtectedColumn(column.id)">
-              <option value="text">{{ t`短文本` }}</option>
-              <option value="textarea">{{ t`长文本` }}</option>
-              <option value="select">{{ t`单选` }}</option>
-              <option value="tags">{{ t`标签` }}</option>
-              <option value="boolean">{{ t`是或否` }}</option>
-            </select>
             <textarea
-              v-model="column.description"
-              class="pc-area compact pc-profile-column-description"
-              :placeholder="t`字段说明，会发送给 AI`"
+              v-model="tableDraft.displayFormat"
+              class="pc-area compact mono"
+              :placeholder="t`<character>\n身份：{{identity}}\n</character>`"
             ></textarea>
-            <div class="pc-profile-column-toggle">
-              <span>{{ t`列表显示` }}</span>
-              <label class="pc-toggle" :title="column.visible ? t`在列表中显示字段` : t`不在列表中显示字段`">
-                <input v-model="column.visible" type="checkbox" />
-                <span></span>
-              </label>
-            </div>
-            <input
-              v-if="column.type === 'select'"
-              v-model="column.optionsText"
-              class="pc-field pc-profile-column-options"
-              type="text"
-              :placeholder="t`选项，用逗号分隔`"
-            />
+            <button class="pc-soft-btn compact" type="button" @click="resetTableDisplayFormat">
+              <i class="fa-solid fa-rotate-left"></i>{{ t`重置格式` }}
+            </button>
           </div>
-        </div>
-        <button class="pc-soft-btn" type="button" @click="addTableColumn">
-          <i class="fa-solid fa-plus"></i>{{ t`添加字段` }}
-        </button>
+        </details>
+
+        <section class="pc-profile-fields-editor">
+          <div class="pc-profile-fields-head">
+            <span>
+              <strong>{{ t`字段` }}</strong>
+              <small>{{ tableDraft.columns.length }}</small>
+            </span>
+            <button class="pc-icon-btn" type="button" :title="t`添加字段`" @click="openNewTableColumn">
+              <i class="fa-solid fa-plus"></i>
+            </button>
+          </div>
+          <div class="pc-profile-column-list">
+            <article
+              v-for="column in tableDraft.columns"
+              :key="column.id"
+              class="pc-profile-column-row"
+              :class="{
+                disabled: !column.enabled,
+                dragging: tableColumnDrag.isDragging && tableColumnDrag.columnId === column.id,
+                'drop-before': tableColumnDrag.isDragging && tableColumnDrag.insertBeforeId === column.id,
+              }"
+              :data-profile-column-id="column.id"
+            >
+              <button
+                class="pc-icon-btn pc-profile-column-drag-handle"
+                type="button"
+                :title="t`拖拽排序`"
+                @click.prevent
+                @pointercancel="cancelTableColumnDrag"
+                @pointerdown="startTableColumnDrag($event, column.id)"
+                @pointermove="moveTableColumnDrag"
+                @pointerup="finishTableColumnDrag"
+              >
+                <i class="fa-solid fa-grip-lines"></i>
+              </button>
+              <button class="pc-profile-column-main" type="button" @click="openTableColumn(column.id)">
+                <strong>{{ column.label }}</strong>
+                <span>
+                  <i v-if="isProtectedColumn(column.id)" class="fa-solid fa-lock" :title="t`固定字段`"></i>
+                  <i v-if="!column.enabled" class="fa-solid fa-eye-slash" :title="t`字段已停用`"></i>
+                  <i class="fa-solid fa-chevron-right"></i>
+                </span>
+              </button>
+            </article>
+          </div>
+        </section>
         <div class="pc-form-actions">
           <button
             v-if="!editingTable.builtIn"
@@ -307,6 +290,16 @@
         </div>
       </article>
     </section>
+
+    <ProfileFieldEditorPage
+      v-else-if="route.page === 'table-column-editor' && editingTable"
+      :column="editingTableColumn"
+      :new-field="route.params?.columnId === newTableColumnRouteId"
+      :protected-field="Boolean(editingTableColumn && isProtectedColumn(editingTableColumn.id))"
+      @cancel="phone.goBack()"
+      @remove="removeEditingTableColumn"
+      @save="saveEditingTableColumn"
+    />
 
     <section v-else-if="route.page === 'entry' && activeEntry" class="pc-profiles-page pc-profiles-detail-page">
       <article class="pc-detail-card pc-profile-detail-archive">
@@ -354,7 +347,7 @@
       >
         <template #actions>
           <button
-            v-if="activeEntry.fields.details"
+            v-if="profileBaguContent"
             class="pc-soft-btn"
             type="button"
             :title="t`八股检测`"
@@ -405,8 +398,20 @@
         <select v-model="draft.tableId" class="pc-field pc-select" @change="syncDraftTable">
           <option v-for="table in tables" :key="table.id" :value="table.id">{{ table.name }}</option>
         </select>
-        <input v-model="draft.summary" class="pc-field" type="text" :placeholder="t`一句话摘要，可留空`" />
-        <input v-model="draft.tagsText" class="pc-field" type="text" :placeholder="t`标签，用逗号分隔`" />
+        <input
+          v-if="isDraftColumnEnabled('summary')"
+          v-model="draft.summary"
+          class="pc-field"
+          type="text"
+          :placeholder="t`一句话摘要，可留空`"
+        />
+        <input
+          v-if="isDraftColumnEnabled('tags')"
+          v-model="draft.tagsText"
+          class="pc-field"
+          type="text"
+          :placeholder="t`标签，用逗号分隔`"
+        />
         <template v-for="column in editableDraftColumns" :key="column.id">
           <label class="pc-field-group">
             <span>{{ column.label }}</span>
@@ -551,6 +556,7 @@ import GenerationPreviewPanel from '@/components/GenerationPreviewPanel.vue';
 import PreviewDraftNotice from '@/components/PreviewDraftNotice.vue';
 import RawOutputEditor from '@/components/RawOutputEditor.vue';
 import SearchableCombobox from '@/components/SearchableCombobox.vue';
+import ProfileFieldEditorPage from './ProfileFieldEditorPage.vue';
 import { getRegisteredPhoneGenerationAdapter } from '@/core/appRegistry';
 import { captureGenerationPrompt, generateContent } from '@/core/generationService';
 import { usePhoneStore } from '@/store/phone';
@@ -641,13 +647,21 @@ const generationState = reactive({
 });
 type ProfilesPreview = NonNullable<typeof generationState.preview>;
 
-type TableColumnDraft = ProfileTableColumn & { optionsText: string };
 const tableDraft = reactive({
-  columns: [] as TableColumnDraft[],
+  columns: [] as ProfileTableColumn[],
   displayFormat: '',
   kind: 'note' as ProfileKind,
   name: '',
   renderMode: 'markdown' as ProfileRenderMode,
+});
+const newTableColumnRouteId = '__new__';
+const tableDraftTableId = ref('');
+const tableColumnDrag = reactive({
+  columnId: '',
+  insertBeforeId: '',
+  isDragging: false,
+  pointerId: -1,
+  startY: 0,
 });
 const booleanOptions = ['否', '是'];
 
@@ -678,6 +692,11 @@ const editingEntry = computed(() =>
 const editingTable = computed(() =>
   route.value.params?.tableId ? profiles.getTable(route.value.params.tableId) : null,
 );
+const editingTableColumn = computed(() => {
+  const columnId = route.value.params?.columnId;
+  if (!columnId || columnId === newTableColumnRouteId) return null;
+  return tableDraft.columns.find(column => column.id === columnId) ?? null;
+});
 const activeFailedDraft = computed(() =>
   route.value.params?.draftId ? profiles.getFailedDraft(route.value.params.draftId) : null,
 );
@@ -693,18 +712,18 @@ const selectedTable = computed(() => profiles.getTable(selectedTableId.value) ??
 const tableEntries = computed(() => (selectedTable.value ? profiles.getEntriesForTable(selectedTable.value.id) : []));
 const activeEntryTable = computed(() => (activeEntry.value ? profiles.getTable(activeEntry.value.tableId) : null));
 const visibleTableColumns = computed(() => {
-  const columns = selectedTable.value?.columns.filter(column => column.visible) ?? [];
+  const columns = selectedTable.value?.columns.filter(column => column.enabled) ?? [];
   return columns.length
     ? columns.slice(0, 3)
     : [
         {
           description: '',
+          enabled: true,
           id: 'title',
           label: '名称',
           options: [],
           required: true,
           type: 'text' as const,
-          visible: true,
         },
       ];
 });
@@ -724,20 +743,34 @@ const profileTableMinWidth = computed(() =>
 );
 const editableDraftColumns = computed(() => {
   const table = profiles.getTable(draft.tableId);
-  return table?.columns.filter(column => !isCoreColumn(column.id)) ?? [];
+  return table?.columns.filter(column => column.enabled && !isCoreColumn(column.id)) ?? [];
 });
 const filteredEntries = computed(() =>
   tableEntries.value.filter(entry => {
     const search = normalizedQuery.value;
     if (!search) return true;
-    return [entry.title, entry.summary, getProfileKindLabel(entry.kind), ...entry.tags, ...Object.values(entry.fields)]
+    const enabledColumnIds = new Set(
+      (selectedTable.value?.columns ?? []).filter(column => column.enabled).map(column => column.id),
+    );
+    return [
+      entry.title,
+      enabledColumnIds.has('summary') ? entry.summary : '',
+      getProfileKindLabel(entry.kind),
+      ...(enabledColumnIds.has('tags') ? entry.tags : []),
+      ...Object.entries(entry.fields)
+        .filter(([columnId]) => enabledColumnIds.has(columnId))
+        .map(([, value]) => value),
+    ]
       .join(' ')
       .toLowerCase()
       .includes(search);
   }),
 );
 const formattedReferences = computed(() => formatGenerationReferences(selectedReferences.value));
-const profileBaguContent = computed(() => activeEntry.value?.fields.details || '');
+const profileBaguContent = computed(() => {
+  const detailsEnabled = activeEntryTable.value?.columns.some(column => column.id === 'details' && column.enabled);
+  return detailsEnabled ? activeEntry.value?.fields.details || '' : '';
+});
 const profilePromptPreview = computed(() => buildGenerationConfig());
 const profileMarkdownContent = computed(() =>
   activeEntry.value && activeEntryTable.value ? formatProfileMarkdown(activeEntry.value, activeEntryTable.value) : '',
@@ -794,8 +827,9 @@ watch(selectedTableId, (nextTableId, previousTableId) => {
 
 watch(
   () => [route.value.appId, route.value.page, route.value.params?.tableId] as const,
-  ([appId, page]) => {
+  ([appId, page, tableId]) => {
     if (appId !== 'profiles' || page !== 'table-editor') return;
+    if (!tableId || tableDraftTableId.value === tableId) return;
     fillTableDraft(editingTable.value);
   },
   { immediate: true },
@@ -853,8 +887,8 @@ function fillTableDraft(table: ReturnType<typeof profiles.getTable>) {
   tableDraft.columns = (table?.columns ?? []).map(column => ({
     ...column,
     options: [...column.options],
-    optionsText: column.options.join('、'),
   }));
+  tableDraftTableId.value = table?.id || '';
 }
 
 function isCoreColumn(columnId: string) {
@@ -904,6 +938,10 @@ function syncDraftTable() {
   draft.fields = Object.fromEntries(Object.entries(draft.fields).filter(([key]) => allowed.has(key)));
 }
 
+function isDraftColumnEnabled(columnId: string) {
+  return Boolean(profiles.getTable(draft.tableId)?.columns.some(column => column.id === columnId && column.enabled));
+}
+
 function syncGenerationTable() {
   const table = profiles.getTable(generationDraft.tableId);
   if (table) generationDraft.kind = table.kind;
@@ -916,6 +954,7 @@ function openTableManager() {
 function openTableEditor(tableId: string) {
   const table = profiles.getTable(tableId);
   if (!table) return;
+  tableDraftTableId.value = '';
   phone.pushPage('table-editor', table.name, { tableId });
 }
 
@@ -924,7 +963,7 @@ function createTable() {
   openTableEditor(table.id);
 }
 
-function addTableColumn() {
+function createTableColumnId() {
   const base = 'field';
   let index = tableDraft.columns.length + 1;
   let id = `${base}_${index}`;
@@ -933,24 +972,63 @@ function addTableColumn() {
     index += 1;
     id = `${base}_${index}`;
   }
-  tableDraft.columns.push({
-    description: '',
-    id,
-    label: '新字段',
-    options: [],
-    optionsText: '',
-    required: false,
-    type: 'text',
-    visible: true,
-  });
+  return id;
 }
 
-function moveTableColumn(index: number, offset: number) {
-  const target = index + offset;
-  if (target < 0 || target >= tableDraft.columns.length) return;
-  const [column] = tableDraft.columns.splice(index, 1);
-  if (!column) return;
-  tableDraft.columns.splice(target, 0, column);
+function openNewTableColumn() {
+  const tableId = editingTable.value?.id;
+  if (!tableId) return;
+  phone.pushPage('table-column-editor', '新增字段', { columnId: newTableColumnRouteId, tableId });
+}
+
+function openTableColumn(columnId: string) {
+  const tableId = editingTable.value?.id;
+  const column = tableDraft.columns.find(item => item.id === columnId);
+  if (!tableId || !column) return;
+  phone.pushPage('table-column-editor', column.label, { columnId, tableId });
+}
+
+function saveEditingTableColumn(column: ProfileTableColumn) {
+  const columnId = route.value.params?.columnId;
+  if (columnId === newTableColumnRouteId) {
+    tableDraft.columns.push({ ...column, id: createTableColumnId(), options: [...column.options] });
+  } else {
+    const index = tableDraft.columns.findIndex(item => item.id === columnId);
+    if (index < 0) return;
+    tableDraft.columns.splice(index, 1, {
+      ...column,
+      id: columnId || column.id,
+      options: [...column.options],
+    });
+  }
+  phone.goBack();
+}
+
+async function removeEditingTableColumn() {
+  const columnId = route.value.params?.columnId;
+  const column = tableDraft.columns.find(item => item.id === columnId);
+  const table = editingTable.value;
+  if (!column || !table || isProtectedColumn(column.id)) return;
+  const valueCount = profiles
+    .getEntriesForTable(table.id)
+    .filter(entry => Boolean(entry.fields[column.id]?.trim())).length;
+  const shouldDelete = await phone.confirmNotice(
+    valueCount
+      ? `要删除字段“${column.label}”吗？保存资料表后，${valueCount} 条资料中的已有字段值也会被删除。`
+      : `要删除字段“${column.label}”吗？`,
+    {
+      confirmLabel: '删除字段',
+      dedupeKey: `profiles-delete-column:${table.id}:${column.id}`,
+      kind: 'warning',
+    },
+  );
+  if (!shouldDelete) return;
+  tableDraft.columns = tableDraft.columns.filter(item => item.id !== column.id);
+  const escapedColumnId = column.id.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  if (new RegExp(`\\{\\{\\s*${escapedColumnId}\\s*\\}\\}`).test(tableDraft.displayFormat)) {
+    toastr.warning(`资料展示格式仍包含 {{${column.id}}}，保存前可以在“资料展示”中调整`);
+  }
+  await phone.goBack();
 }
 
 function resetTableDisplayFormat() {
@@ -963,10 +1041,71 @@ function resetTableDisplayFormat() {
   });
 }
 
-function removeTableColumn(index: number) {
-  const column = tableDraft.columns[index];
-  if (!column || isProtectedColumn(column.id)) return;
-  tableDraft.columns.splice(index, 1);
+function resetTableColumnDrag() {
+  tableColumnDrag.columnId = '';
+  tableColumnDrag.insertBeforeId = '';
+  tableColumnDrag.isDragging = false;
+  tableColumnDrag.pointerId = -1;
+  tableColumnDrag.startY = 0;
+}
+
+function startTableColumnDrag(event: PointerEvent, columnId: string) {
+  if (event.button !== 0) return;
+  resetTableColumnDrag();
+  tableColumnDrag.columnId = columnId;
+  tableColumnDrag.pointerId = event.pointerId;
+  tableColumnDrag.startY = event.clientY;
+  (event.currentTarget as HTMLElement).setPointerCapture?.(event.pointerId);
+}
+
+function updateTableColumnInsertion(clientY: number) {
+  const rows = [...document.querySelectorAll<HTMLElement>('.pc-profile-column-row')].filter(
+    row => row.dataset.profileColumnId !== tableColumnDrag.columnId,
+  );
+  const beforeRow = rows.find(row => {
+    const rect = row.getBoundingClientRect();
+    return clientY < rect.top + rect.height / 2;
+  });
+  tableColumnDrag.insertBeforeId = beforeRow?.dataset.profileColumnId || '';
+}
+
+function autoScrollTableColumnList(clientY: number) {
+  const screen = document.querySelector<HTMLElement>('#tavern-phone-root .pc-screen');
+  if (!screen) return;
+  const rect = screen.getBoundingClientRect();
+  const edge = 52;
+  if (clientY < rect.top + edge) screen.scrollTop -= 14;
+  else if (clientY > rect.bottom - edge) screen.scrollTop += 14;
+}
+
+function moveTableColumnDrag(event: PointerEvent) {
+  if (event.pointerId !== tableColumnDrag.pointerId || !tableColumnDrag.columnId) return;
+  if (!tableColumnDrag.isDragging && Math.abs(event.clientY - tableColumnDrag.startY) > 4) {
+    tableColumnDrag.isDragging = true;
+  }
+  if (!tableColumnDrag.isDragging) return;
+  event.preventDefault();
+  autoScrollTableColumnList(event.clientY);
+  updateTableColumnInsertion(event.clientY);
+}
+
+function finishTableColumnDrag(event: PointerEvent) {
+  if (event.pointerId !== tableColumnDrag.pointerId) return;
+  if (tableColumnDrag.isDragging && tableColumnDrag.columnId) {
+    const dragged = tableDraft.columns.find(column => column.id === tableColumnDrag.columnId);
+    if (dragged) {
+      const next = tableDraft.columns.filter(column => column.id !== dragged.id);
+      const beforeIndex = next.findIndex(column => column.id === tableColumnDrag.insertBeforeId);
+      next.splice(beforeIndex < 0 ? next.length : beforeIndex, 0, dragged);
+      tableDraft.columns = next;
+    }
+  }
+  resetTableColumnDrag();
+}
+
+function cancelTableColumnDrag(event: PointerEvent) {
+  if (event.pointerId !== tableColumnDrag.pointerId) return;
+  resetTableColumnDrag();
 }
 
 function saveTableDraft() {
@@ -981,7 +1120,7 @@ function saveTableDraft() {
     ...column,
     description: column.description.trim(),
     label: column.label.trim() || '未命名字段',
-    options: column.type === 'select' ? splitTags(column.optionsText) : [],
+    options: column.type === 'select' ? [...column.options] : [],
   }));
   profiles.updateTable(table.id, {
     columns,
@@ -990,6 +1129,7 @@ function saveTableDraft() {
     name,
     renderMode: tableDraft.renderMode,
   });
+  tableDraftTableId.value = '';
   toastr.success('已保存资料表');
   phone.goBack();
 }
@@ -1133,12 +1273,13 @@ function formatGeneratedFieldsPreview(
   tableId: string,
 ) {
   const table = profiles.getTable(tableId);
+  const enabledColumnIds = new Set((table?.columns ?? []).filter(column => column.enabled).map(column => column.id));
   const lines = [
     `# ${title}`,
-    summary ? `摘要：${summary}` : '',
-    tags.length ? `标签：${tags.join('、')}` : '',
+    enabledColumnIds.has('summary') && summary ? `摘要：${summary}` : '',
+    enabledColumnIds.has('tags') && tags.length ? `标签：${tags.join('、')}` : '',
     ...(table?.columns ?? [])
-      .filter(column => !['title', 'summary', 'tags', 'content'].includes(column.id))
+      .filter(column => column.enabled && !['title', 'summary', 'tags', 'content'].includes(column.id))
       .map(column => (fields[column.id]?.trim() ? `${column.label}：${fields[column.id]}` : '')),
   ].filter(Boolean);
   return lines.join('\n\n');
@@ -1147,7 +1288,7 @@ function formatGeneratedFieldsPreview(
 function fieldsForTable(fields: Record<string, string>, tableId: string) {
   const ids = new Set(
     (profiles.getTable(tableId)?.columns ?? [])
-      .filter(column => !['title', 'summary', 'tags', 'content'].includes(column.id))
+      .filter(column => column.enabled && !['title', 'summary', 'tags', 'content'].includes(column.id))
       .map(column => column.id),
   );
   return Object.fromEntries(Object.entries(fields).filter(([fieldId]) => ids.has(fieldId)));
@@ -1658,7 +1799,8 @@ function stopGeneration() {
 .pc-profile-table-manager,
 .pc-profile-table-editor,
 .pc-profile-column-list,
-.pc-profile-display-format {
+.pc-profile-display-format,
+.pc-profile-fields-editor {
   display: grid;
   gap: 10px;
 }
@@ -1711,53 +1853,138 @@ function stopGeneration() {
 }
 
 .pc-profile-column-row {
+  position: relative;
   display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
+  grid-template-columns: 36px minmax(0, 1fr);
+  min-height: 56px;
+  align-items: center;
+  gap: 10px;
+  border: 1px solid var(--pc-border);
+  border-radius: var(--pc-card-radius);
+  background: var(--pc-surface-strong);
+  padding: 9px 10px;
+}
+
+.pc-profile-column-row.drop-before::before {
+  position: absolute;
+  z-index: 2;
+  top: -7px;
+  right: 8px;
+  left: 8px;
+  height: 3px;
+  border-radius: 2px;
+  background: var(--pc-theme-accent);
+  content: '';
+}
+
+.pc-profile-column-row.dragging {
+  opacity: 0.55;
+}
+
+.pc-profile-column-row.disabled {
+  color: var(--pc-muted);
+}
+
+.pc-profile-column-drag-handle {
+  width: 34px;
+  min-width: 34px;
+  height: 34px;
+  color: var(--pc-muted);
+  touch-action: none;
+}
+
+.pc-profile-column-main {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+  font: inherit;
+  padding: 8px 0;
+  text-align: left;
+}
+
+.pc-profile-column-main strong {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.pc-profile-column-main span {
+  display: inline-flex;
   align-items: center;
   gap: 8px;
-  padding: 10px;
+  color: var(--pc-muted);
+}
+
+.pc-profile-fields-editor {
   border: 1px solid var(--pc-border);
   border-radius: var(--pc-card-radius);
   background: var(--pc-surface);
+  padding: 10px;
 }
 
-.pc-profile-column-actions {
-  grid-column: 1 / -1;
+.pc-profile-fields-head {
   display: flex;
-  justify-content: flex-end;
-  gap: 6px;
-}
-
-.pc-profile-column-options {
-  grid-column: 1 / -1;
-}
-
-.pc-profile-column-description {
-  grid-column: 1 / -1;
-}
-
-.pc-profile-column-row > .pc-select {
-  grid-column: 1;
-}
-
-.pc-profile-column-toggle {
-  display: inline-flex;
   align-items: center;
-  gap: 5px;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.pc-profile-fields-head > span {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 7px;
+}
+
+.pc-profile-fields-head small {
   color: var(--pc-muted);
-  font-size: 12px;
-  white-space: nowrap;
 }
 
 .pc-profile-display-format {
   padding: 12px;
 }
 
-.pc-profile-display-format-head {
+.pc-profile-display-format > summary {
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 10px;
+  cursor: pointer;
+  list-style: none;
+}
+
+.pc-profile-display-format > summary::-webkit-details-marker {
+  display: none;
+}
+
+.pc-profile-display-format > summary > span {
+  display: grid;
+  gap: 3px;
+}
+
+.pc-profile-display-format > summary small {
+  color: var(--pc-muted);
+}
+
+.pc-profile-display-format > summary > i {
+  color: var(--pc-muted);
+  transition: transform 160ms ease;
+}
+
+.pc-profile-display-format[open] > summary > i {
+  transform: rotate(180deg);
+}
+
+.pc-profile-display-format-body {
+  display: grid;
+  gap: 10px;
+  padding-top: 12px;
 }
 
 .pc-profile-summary {

@@ -362,12 +362,17 @@ const { useDiaryStore } = await import('@/store/diary');
 const { useLettersStore } = await import('@/store/letters');
 const { useTheaterStore } = await import('@/store/theater');
 const { WorkbenchStepConfigSchema, useWorkbenchStore } = await import('@/apps/workbench/store');
-const { ProfileEntrySchema, profilesField, useProfilesStore } = await import('@/apps/profiles/store');
+const { ProfileEntrySchema, ProfileTableColumnSchema, profilesField, useProfilesStore } =
+  await import('@/apps/profiles/store');
 const { usePresetLinkStore } = await import('@/apps/preset-link/store');
 const { useWorldSlotsStore, worldSlotsField } = await import('@/apps/world-slots/store');
 const { getCurrentChatScopeKey } = await import('@/store/chatScoped');
 const { extension_settings } = await import('@sillytavern/scripts/extensions');
-const { resolveGeneratedExtraBookTitle } = await import('@/core/extrasGeneration');
+const { createExtraChapterGenerationAdapter, resolveGeneratedExtraBookTitle } = await import('@/core/extrasGeneration');
+const { GenerationReplaySnapshotSchema } = await import('@/type/generation');
+const { restoreGenerationReplayDraft } = await import('@/util/generationReplay');
+const { buildSourceSelection } = await import('@/util/generationSource');
+const { getRegisteredPhoneAppReferenceTrees } = await import('@/core/appRegistry');
 const { ENTRY_LIBRARY_CONTENT_PLACEHOLDER, renderEntryLibraryBindingContent, useEntryLibraryStore } =
   await import('@/apps/entry-library/store');
 const { deleteTavernPresetPrompt, duplicateTavernPresetPrompt, readTavernPreset, reorderTavernPresetPrompts } =
@@ -381,6 +386,7 @@ const scenarios: VisualScenarioName[] = [
   'home',
   'home-tasks',
   'home-tasks-dark',
+  'generation-rewrite-replay',
   'legacy-data-migrations',
   'app-deferred-mount-order',
   ...rootAppScenarios,
@@ -460,6 +466,8 @@ const scenarios: VisualScenarioName[] = [
   'profiles-empty-toolbar',
   'profiles-table-grid',
   'profiles-table-editor',
+  'profiles-field-management',
+  'profiles-field-detail',
   'profiles-detail',
   'settings-connection-dark',
 ];
@@ -777,7 +785,7 @@ function createProfilesFixture() {
         options: [],
         required: true,
         type: 'text',
-        visible: true,
+        enabled: true,
       },
       {
         description: '人物身份。',
@@ -786,7 +794,7 @@ function createProfilesFixture() {
         options: [],
         required: false,
         type: 'text',
-        visible: true,
+        enabled: true,
       },
       {
         description: '人物当前状态。',
@@ -795,7 +803,7 @@ function createProfilesFixture() {
         options: ['在场', '失联', '未知'],
         required: false,
         type: 'select',
-        visible: true,
+        enabled: true,
       },
       {
         description: '一句话摘要。',
@@ -804,7 +812,7 @@ function createProfilesFixture() {
         options: [],
         required: false,
         type: 'text',
-        visible: true,
+        enabled: true,
       },
     ],
   });
@@ -889,6 +897,85 @@ async function applyScenario(name: VisualScenarioName, options: { height?: numbe
   phone.openPhone();
 
   if (name === 'home') {
+    await phone.goHome();
+  } else if (name === 'generation-rewrite-replay') {
+    const adapter = createExtraChapterGenerationAdapter({
+      appendChapterVersion: () => null,
+      createChapter: () => null,
+    });
+    const baseConfig = {
+      appPrompt: '原章节提示词',
+      bookId: 'visual-rewrite-book',
+      chapterId: 'visual-rewrite-chapter',
+      chapterMode: '重写当前章节' as const,
+      fromStartEnd: 20,
+      outputFormat: '<title>标题</title><content>正文</content>',
+      previousChapterContext: '',
+      rangeText: '',
+      recentCount: 20,
+      references: [],
+      singleMessageId: 0,
+      sourceMode: 'recent' as const,
+      tavernPresetName: '',
+      typeId: '',
+      typeName: '',
+      typePrompt: '',
+      userRequirement: '',
+    };
+    const newBookRequest = adapter.buildRequest({ ...baseConfig, generationIntent: '新开一本书' });
+    const continuationRequest = adapter.buildRequest({
+      ...baseConfig,
+      generationIntent: '续写上一章',
+      previousChapterContext: '上一章正文',
+    });
+    if (
+      !newBookRequest.taskInstruction?.includes('本书第一章') ||
+      !continuationRequest.taskInstruction?.includes('紧接上述最后一章续写') ||
+      [newBookRequest, continuationRequest].some(request => /候选版本|重新生成/.test(request.taskInstruction || ''))
+    ) {
+      throw new Error('Extras rewrite no longer reuses the original new-book/continuation task');
+    }
+
+    const replay = GenerationReplaySnapshotSchema.parse({
+      config: {},
+      request: { outputFormat: '<content>正文</content>' },
+      source: {
+        chatIdAtGeneration: 'visual-chat',
+        label: '最近 7 楼',
+        messageIds: [14, 15, 16, 17, 18, 19, 20],
+        mode: 'recent',
+        ranges: [{ end: 20, start: 14 }],
+        scopeId: 'visual-scope',
+        sortKey: 20,
+      },
+      sourceInput: { recentCount: 7 },
+    });
+    const replayDraft = {
+      fromStartEnd: 20,
+      rangeText: '1-2',
+      recentCount: 20,
+      singleMessageId: 0,
+      userRequirement: '',
+    };
+    const restoredMode = restoreGenerationReplayDraft(replay, replayDraft);
+    if (restoredMode !== 'recent' || replayDraft.recentCount !== 7 || replayDraft.rangeText) {
+      throw new Error('Generation replay changed the saved source mode into a custom range');
+    }
+
+    const emptySource = buildSourceSelection({
+      chatIdAtGeneration: 'visual-chat',
+      mode: 'none',
+      scopeId: 'visual-scope',
+      visibleMessages: [],
+    });
+    if (
+      emptySource.maxChatHistory !== 0 ||
+      emptySource.requiresVisibilityTransaction ||
+      emptySource.selection.messageIds.length ||
+      emptySource.selection.label !== '不使用聊天楼层'
+    ) {
+      throw new Error('No-chat source mode still depends on visible chat messages');
+    }
     await phone.goHome();
   } else if (name === 'legacy-data-migrations') {
     const timestamp = '2026-07-31T00:00:00.000Z';
@@ -1246,6 +1333,18 @@ async function applyScenario(name: VisualScenarioName, options: { height?: numbe
     }
   } else if (name === 'world-slots-entry-library') {
     useSettingsStore().setTheme('light');
+    const { firstEntry } = createProfilesFixture();
+    const profileReference = getRegisteredPhoneAppReferenceTrees()
+      .flatMap(root => (root.kind === 'branch' ? root.children : [root]))
+      .find(node => node.kind === 'leaf' && node.item.id === `profiles:${firstEntry.id}`);
+    if (
+      !profileReference ||
+      profileReference.kind !== 'leaf' ||
+      profileReference.item.content.includes('分类：人物') ||
+      profileReference.item.timeLabel === '人物'
+    ) {
+      throw new Error('Profile reference still duplicates its type metadata');
+    }
     const library = useEntryLibraryStore();
     library.importBackup({
       bindings: [],
@@ -1280,8 +1379,10 @@ async function applyScenario(name: VisualScenarioName, options: { height?: numbe
     if (!referenceToggle?.textContent?.includes('插入条目库或 App 内容')) {
       throw new Error('World slot entry library insertion control is missing');
     }
-    referenceToggle.click();
-    await waitForPaint();
+    if (!document.querySelector('.pc-reference-body')) {
+      referenceToggle.click();
+      await waitForPaint();
+    }
     const firstRoot = document.querySelector<HTMLElement>('.pc-reference-tree > .pc-reference-branch > .branch');
     if (!firstRoot?.textContent?.includes('条目库')) {
       throw new Error('Entry library is not the first world slot reference source');
@@ -1317,6 +1418,37 @@ async function applyScenario(name: VisualScenarioName, options: { height?: numbe
     const titleField = document.querySelector<HTMLInputElement>('input[placeholder="槽位名称"]');
     if (titleField?.value !== '条目库测试条目') {
       throw new Error('Single merged reference did not populate the empty world slot title');
+    }
+    if (!titleField || !contentArea) throw new Error('World slot editor fields are missing');
+    titleField.value = '';
+    titleField.dispatchEvent(new Event('input', { bubbles: true }));
+    contentArea.value = '';
+    contentArea.dispatchEvent(new Event('input', { bubbles: true }));
+    if (!document.querySelector('.pc-reference-body')) {
+      referenceToggle.click();
+      await waitForPaint();
+    }
+    const profilesRoot = [
+      ...document.querySelectorAll<HTMLButtonElement>('.pc-reference-tree > .pc-reference-branch > button.branch'),
+    ].find(button => button.textContent?.includes('资料表'));
+    if (!profilesRoot) throw new Error('Profiles source is missing from the world slot reference picker');
+    let profileOption = [...document.querySelectorAll<HTMLElement>('.pc-reference-node.leaf')].find(option =>
+      option.textContent?.includes(firstEntry.title),
+    );
+    if (!profileOption) {
+      profilesRoot.click();
+      await waitForPaint();
+      profileOption = [...document.querySelectorAll<HTMLElement>('.pc-reference-node.leaf')].find(option =>
+        option.textContent?.includes(firstEntry.title),
+      );
+    }
+    if (!profileOption) throw new Error('Profile entry is missing from the world slot reference picker');
+    profileOption.click();
+    await waitForPaint();
+    document.querySelector<HTMLButtonElement>('.pc-world-import-controls .pc-primary-btn')?.click();
+    await waitForPaint();
+    if (titleField.value !== firstEntry.title || !contentArea.value.includes(`## ${firstEntry.title}`)) {
+      throw new Error('Merged profile reference did not preserve its name in the world slot');
     }
   } else if (name === 'world-slots-root-cleanup') {
     const worldSlots = useWorldSlotsStore();
@@ -2546,6 +2678,123 @@ async function applyScenario(name: VisualScenarioName, options: { height?: numbe
       if (!document.querySelector('.pc-profile-table-header')) {
         throw new Error('Profiles table view did not render after switching modes');
       }
+    }
+  } else if (name === 'profiles-field-detail') {
+    const { table } = createProfilesFixture();
+    resetPhoneToRoute('profiles', 'table-editor', table.name, { tableId: table.id });
+    await waitForPaint();
+    document.querySelector<HTMLElement>('[data-profile-column-id="identity"] .pc-profile-column-main')?.click();
+    await waitForPaint();
+    if (!document.querySelector('.pc-profile-field-editor')) {
+      throw new Error('Profile field detail page did not open from the compact field list');
+    }
+  } else if (name === 'profiles-field-management') {
+    const migratedColumn = ProfileTableColumnSchema.parse({
+      description: '旧字段',
+      id: 'legacy_hidden',
+      label: '旧隐藏字段',
+      options: [],
+      required: false,
+      type: 'text',
+      visible: false,
+    });
+    if (migratedColumn.enabled || 'visible' in migratedColumn) {
+      throw new Error('Legacy profile column visibility did not migrate to enabled state');
+    }
+
+    const profiles = useProfilesStore();
+    const { table } = createProfilesFixture();
+    const entry = profiles.createEntry({
+      fields: { identity: '不会进入停用后的引用', status: '在场' },
+      kind: table.kind,
+      summary: '字段管理测试资料',
+      tableId: table.id,
+      tags: ['字段管理'],
+      title: '字段管理对象',
+    });
+    resetPhoneToRoute('profiles', 'table-editor', table.name, { tableId: table.id });
+    await waitForPaint();
+
+    const initialRows = [...document.querySelectorAll<HTMLElement>('.pc-profile-column-row')];
+    if (!initialRows.length || initialRows.some(row => row.querySelector('input, textarea, select'))) {
+      throw new Error('Profile field list still renders expanded field forms');
+    }
+
+    const dragHandle = initialRows[0]?.querySelector<HTMLButtonElement>('.pc-profile-column-drag-handle');
+    const targetRow = initialRows.at(-1);
+    if (!dragHandle || !targetRow) throw new Error('Profile field drag fixture is incomplete');
+    const dragRect = dragHandle.getBoundingClientRect();
+    const targetRect = targetRow.getBoundingClientRect();
+    const pointerId = 91;
+    dragHandle.dispatchEvent(
+      new PointerEvent('pointerdown', {
+        bubbles: true,
+        button: 0,
+        clientY: dragRect.top + dragRect.height / 2,
+        pointerId,
+      }),
+    );
+    dragHandle.dispatchEvent(
+      new PointerEvent('pointermove', {
+        bubbles: true,
+        button: 0,
+        clientY: targetRect.bottom + 8,
+        pointerId,
+      }),
+    );
+    dragHandle.dispatchEvent(
+      new PointerEvent('pointerup', {
+        bubbles: true,
+        button: 0,
+        clientY: targetRect.bottom + 8,
+        pointerId,
+      }),
+    );
+    await waitForPaint();
+    const reorderedRows = [...document.querySelectorAll<HTMLElement>('.pc-profile-column-row')];
+    if (reorderedRows.at(-1)?.dataset.profileColumnId !== initialRows[0]?.dataset.profileColumnId) {
+      throw new Error('Profile field drag did not move the field to the selected position');
+    }
+
+    document.querySelector<HTMLButtonElement>('.pc-profile-fields-head .pc-icon-btn')?.click();
+    await waitForPaint();
+    const newFieldName = document.querySelector<HTMLInputElement>('input[placeholder="例如：身份"]');
+    if (!newFieldName) throw new Error('Profile new field detail page did not open');
+    newFieldName.value = '临时字段';
+    newFieldName.dispatchEvent(new Event('input', { bubbles: true }));
+    document.querySelector<HTMLButtonElement>('.pc-profile-field-editor .pc-primary-btn')?.click();
+    await waitForPaint();
+    if (![...document.querySelectorAll('.pc-profile-column-main')].some(row => row.textContent?.includes('临时字段'))) {
+      throw new Error('Profile new field was not added after saving its detail page');
+    }
+
+    const identityRow = [...document.querySelectorAll<HTMLElement>('.pc-profile-column-row')].find(
+      row => row.dataset.profileColumnId === 'identity',
+    );
+    identityRow?.querySelector<HTMLButtonElement>('.pc-profile-column-main')?.click();
+    await waitForPaint();
+    const enabledToggle = document.querySelector<HTMLInputElement>('.pc-profile-field-toggle .pc-toggle input');
+    if (!enabledToggle?.checked) throw new Error('Profile field enabled toggle did not restore the saved state');
+    enabledToggle.click();
+    document.querySelector<HTMLButtonElement>('.pc-profile-field-editor .pc-primary-btn')?.click();
+    await waitForPaint();
+    if (!document.querySelector<HTMLElement>('[data-profile-column-id="identity"]')?.classList.contains('disabled')) {
+      throw new Error('Profile field list did not reflect the disabled field state');
+    }
+
+    document.querySelector<HTMLButtonElement>('.pc-profile-table-editor > .pc-form-actions .pc-primary-btn')?.click();
+    await waitForPaint();
+    const savedIdentity = profiles.getTable(table.id)?.columns.find(column => column.id === 'identity');
+    const profileReference = getRegisteredPhoneAppReferenceTrees()
+      .flatMap(root => (root.kind === 'branch' ? root.children : [root]))
+      .find(node => node.kind === 'leaf' && node.item.id === `profiles:${entry.id}`);
+    if (
+      savedIdentity?.enabled ||
+      !profileReference ||
+      profileReference.kind !== 'leaf' ||
+      profileReference.item.content.includes('不会进入停用后的引用')
+    ) {
+      throw new Error('Disabled profile field still participates in saved references');
     }
   } else if (name === 'reader-catalog') {
     const reader = useReaderStore();

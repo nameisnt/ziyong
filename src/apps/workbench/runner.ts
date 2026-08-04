@@ -159,10 +159,31 @@ function getOutputFormat(outputId: string) {
   return usePromptStore().resolveOutputFormat(outputId);
 }
 
-function getExtrasPromptKey(mode: WorkbenchStep['config']['extrasChapterMode']) {
-  if (mode === '新开一本书') return 'extras';
-  if (mode === '重写当前章节') return 'extrasRewrite';
+function getExtrasPromptKey(intent: '续写上一章' | '新开一本书') {
+  if (intent === '新开一本书') return 'extras';
   return 'extrasContinue';
+}
+
+function resolveWorkbenchExtrasIntent(
+  mode: WorkbenchStep['config']['extrasChapterMode'],
+  chapter: ReturnType<ReturnType<typeof useExtrasStore>['getChapter']>,
+) {
+  if (mode === '新开一本书' || mode === '续写上一章') return mode;
+  const activeVersionRecord = chapter?.versions.find(
+    version => version.id === chapter.activeVersionId,
+  )?.generationRecord;
+  const records = [
+    activeVersionRecord,
+    ...(chapter?.versions.map(version => version.generationRecord) || []),
+    ...(chapter?.generationRecords || []),
+  ].filter(Boolean);
+  const recordedIntent = records.find(record => record?.generationIntent)?.generationIntent;
+  if (recordedIntent) return recordedIntent;
+  const originalMode = records.find(
+    record => record?.chapterMode === '新开一本书' || record?.chapterMode === '续写上一章',
+  )?.chapterMode;
+  if (originalMode === '新开一本书' || originalMode === '续写上一章') return originalMode;
+  return chapter?.chapterNumber === 1 ? '新开一本书' : '续写上一章';
 }
 
 function buildStepConfig(step: WorkbenchStep) {
@@ -200,18 +221,25 @@ function buildStepConfig(step: WorkbenchStep) {
       ? extras.getBook(step.config.extrasBookId) || ensureExtrasBook()
       : ensureExtrasBook();
     const targetChapter = book.chapters.at(-1) || null;
+    const generationIntent = resolveWorkbenchExtrasIntent(step.config.extrasChapterMode, targetChapter);
+    const previousChapter =
+      step.config.extrasChapterMode === '重写当前章节' ? book.chapters.at(-2) || null : targetChapter;
     const selectedType = step.config.extrasTypeId ? usePromptStore().getTypePrompt(step.config.extrasTypeId) : null;
     if (step.config.extrasTypeId && !selectedType && !step.config.extrasTypePrompt.trim()) {
       throw new Error('番外类型提示词已不存在，请在工作台重新选择');
     }
     const typeName = selectedType?.name || step.config.extrasTypeName.trim() || book.typeName;
     return {
-      appPrompt: getPrompt(getExtrasPromptKey(step.config.extrasChapterMode)),
+      appPrompt: getPrompt(getExtrasPromptKey(generationIntent)),
       bookId: book.id,
       chapterId: step.config.extrasChapterMode === '重写当前章节' ? targetChapter?.id || '' : '',
       chapterMode: step.config.extrasChapterMode,
+      generationIntent,
       outputFormat: getOutputFormat('extras.chapter'),
-      previousChapterContext: targetChapter ? [`上一章：${targetChapter.title}`, targetChapter.content].join('\n') : '',
+      previousChapterContext:
+        generationIntent === '续写上一章' && previousChapter
+          ? [`上一章：${previousChapter.title}`, previousChapter.content].join('\n')
+          : '',
       typeName,
       typePrompt: selectedType?.prompt || step.config.extrasTypePrompt,
       userRequirement: requirement,

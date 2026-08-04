@@ -7,7 +7,7 @@ export type GenerationRange = z.infer<typeof GenerationRangeSchema>;
 export const SourceSelectionSchema = z.object({
   scopeId: z.string(),
   chatIdAtGeneration: z.string(),
-  mode: z.enum(['latest', 'fromStart', 'all', 'single', 'recent', 'range']),
+  mode: z.enum(['none', 'latest', 'fromStart', 'all', 'single', 'recent', 'range']),
   ranges: z.array(GenerationRangeSchema).default([]),
   messageIds: z.array(z.number().int().nonnegative()).default([]),
   label: z.string(),
@@ -44,6 +44,14 @@ export const GenerationReplaySnapshotSchema = z.object({
   references: z.array(GenerationReplayReferenceSchema).default([]),
   request: GenerationRequestPartsSchema,
   source: SourceSelectionSchema,
+  sourceInput: z
+    .object({
+      fromStartEnd: z.number().int().nonnegative().optional(),
+      rangeText: z.string().optional(),
+      recentCount: z.number().int().positive().optional(),
+      singleMessageId: z.number().int().nonnegative().optional(),
+    })
+    .optional(),
   tavernPresetName: z.string().default(''),
 });
 export type GenerationReplaySnapshot = z.infer<typeof GenerationReplaySnapshotSchema>;

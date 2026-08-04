@@ -1,10 +1,11 @@
 import type { ExtraChapterGenerationRecord } from '@/type/extra';
-import type { ExtraChapterGenerationMode } from '@/core/extrasGeneration';
+import type { ExtraChapterGenerationIntent, ExtraChapterGenerationMode } from '@/core/extrasGeneration';
 import { stopGenerationByIdSafe } from '@/util/runtime';
 
 export function useExtrasGenerationState() {
   const chapterGenerationDraft = reactive({
     fromStartEnd: 20,
+    generationIntent: '续写上一章' as ExtraChapterGenerationIntent,
     mode: '续写上一章' as ExtraChapterGenerationMode,
     rangeText: '',
     recentCount: 20,

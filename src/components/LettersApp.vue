@@ -474,9 +474,7 @@ const rewriteLetterVersion = computed(() => {
   return resolveContentVersion(entry.versions, entry.activeVersionId, route.value.params?.versionId);
 });
 const letterGenerationMode = computed<'create' | 'rewrite'>(() => (rewriteLetterEntry.value ? 'rewrite' : 'create'));
-const letterGenerationAppPrompt = computed(() =>
-  letterGenerationMode.value === 'rewrite' ? prompts.appPrompts.lettersRewrite : prompts.appPrompts.letters,
-);
+const letterGenerationAppPrompt = computed(() => prompts.appPrompts.letters);
 const rewriteLetterReplay = computed(
   () => rewriteLetterVersion.value?.generationReplay || rewriteLetterEntry.value?.generationReplay,
 );

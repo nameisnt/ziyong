@@ -33,7 +33,9 @@ export function formatGenerationReferences(items: GenerationReferenceItem[]) {
         `引用 ${index + 1}`,
         `来源：${item.sourcePath.join(' / ') || '未标注来源'}`,
         item.title ? `标题：${item.title}` : '',
-        item.timeLabel ? `时间：${item.timeLabel}` : '',
+        item.timeLabel && !item.sourcePath.some(pathItem => pathItem.trim() === item.timeLabel)
+          ? `时间：${item.timeLabel}`
+          : '',
         '内容：',
         item.content,
       ]

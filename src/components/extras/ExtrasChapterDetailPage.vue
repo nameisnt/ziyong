@@ -130,6 +130,7 @@ function formatGenerationRecordDate(value: string) {
 function formatGenerationRecordSource(record: ExtraChapterGenerationRecord) {
   if (record.sourceLabel.trim()) return record.sourceLabel;
   return {
+    none: '未使用聊天楼层',
     all: '全部楼层',
     fromStart: `开头至 ${record.fromStartEnd} 楼`,
     latest: '最新楼层',

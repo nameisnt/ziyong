@@ -457,6 +457,7 @@
         <div class="pc-select-field">
           <label class="pc-field-label">{{ t`来源楼层模式` }}</label>
           <select v-model="settings.generation.sourceMode" class="pc-select">
+            <option value="none">{{ t`不使用聊天楼层` }}</option>
             <option value="latest">{{ t`最新楼层` }}</option>
             <option value="fromStart">{{ t`从 0 到指定楼层` }}</option>
             <option value="all">{{ t`全部楼层` }}</option>
@@ -883,6 +884,7 @@ const currentContentCards = computed<CurrentContentCard[]>(() =>
 );
 const generationSummary = computed(() => {
   const sourceLabelMap = {
+    none: '不使用聊天楼层',
     latest: '最新楼层',
     fromStart: '从头到指定楼层',
     all: '全部楼层',

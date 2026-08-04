@@ -1036,6 +1036,16 @@ watch(
       if (replay) {
         selectedReferences.value = resolveGenerationReplayReferences(replay);
         replaySession.applyReplay(replay, threadGenerationDraft);
+        const replayBoardId = typeof replay.config.boardId === 'string' ? replay.config.boardId : '';
+        const replayBoardName = typeof replay.config.boardName === 'string' ? replay.config.boardName : '';
+        const replayBoardTypeId = typeof replay.config.boardTypeId === 'string' ? replay.config.boardTypeId : '';
+        const replayBoardTypePrompt =
+          typeof replay.config.boardTypePrompt === 'string' ? replay.config.boardTypePrompt : '';
+        threadGenerationDraft.boardId = forum.getBoard(replayBoardId)?.id || CUSTOM_BOARD_ID;
+        threadGenerationDraft.boardName = replayBoardName;
+        threadGenerationDraft.boardNameMode = replayBoardName ? 'fixed' : 'ai';
+        threadGenerationDraft.boardTypeId = replayBoardTypeId || CUSTOM_BOARD_TYPE_ID;
+        threadGenerationDraft.boardTypePrompt = replayBoardTypePrompt;
       }
     }
 
@@ -1372,8 +1382,7 @@ function buildThreadGenerationConfig() {
   }
   const selectedType = forumBoardTypePrompts.value.find(prompt => prompt.id === threadGenerationDraft.boardTypeId);
   return {
-    appPrompt:
-      forumThreadGenerationMode.value === 'rewrite' ? prompts.appPrompts.forumRewrite : prompts.appPrompts.forum,
+    appPrompt: prompts.appPrompts.forum,
     boardTypePrompt: board ? resolveForumBoardTypePrompt(board) : threadGenerationDraft.boardTypePrompt,
     boardId: board?.id || '',
     boardName:

@@ -40,14 +40,14 @@ function getLatestIso(left: string, right: string) {
 
 function entryContent(entry: ProfileEntry) {
   const table = useProfilesStore().getTable(entry.tableId);
+  const enabledColumnIds = new Set((table?.columns ?? []).filter(column => column.enabled).map(column => column.id));
   const fieldLines = (table?.columns ?? [])
-    .filter(column => !['title', 'summary', 'tags', 'content'].includes(column.id))
+    .filter(column => column.enabled && !['title', 'summary', 'tags', 'content'].includes(column.id))
     .map(column => (entry.fields[column.id] ? `${column.label}：${entry.fields[column.id]}` : ''))
     .filter(Boolean);
   return [
-    `分类：${getProfileKindLabel(entry.kind)}`,
-    entry.summary ? `摘要：${entry.summary}` : '',
-    entry.tags.length ? `标签：${entry.tags.join('、')}` : '',
+    enabledColumnIds.has('summary') && entry.summary ? `摘要：${entry.summary}` : '',
+    enabledColumnIds.has('tags') && entry.tags.length ? `标签：${entry.tags.join('、')}` : '',
     ...fieldLines,
   ]
     .filter(Boolean)
@@ -166,7 +166,6 @@ function createProfilesReferenceTree(): PhoneReferenceTreeNode {
         content: entryContent(entry),
         sourcePath: ['资料表', getProfileKindLabel(entry.kind)],
         updatedAt: entry.updatedAt,
-        timeLabel: getProfileKindLabel(entry.kind),
       },
     })),
   };

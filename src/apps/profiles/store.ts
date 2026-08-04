@@ -24,14 +24,21 @@ export type ProfileColumnType = z.infer<typeof ProfileColumnTypeSchema>;
 export const ProfileRenderModeSchema = z.enum(['markdown', 'frontend']);
 export type ProfileRenderMode = z.infer<typeof ProfileRenderModeSchema>;
 
-export const ProfileTableColumnSchema = z.object({
+const ProfileTableColumnPersistedSchema = z.object({
   description: z.string().default(''),
+  enabled: z.boolean().optional(),
   id: z.string(),
   label: z.string(),
   options: z.array(z.string()).default([]),
   required: z.boolean().default(false),
   type: ProfileColumnTypeSchema.default('text'),
-  visible: z.boolean().default(true),
+  visible: z.boolean().optional(),
+});
+export const ProfileTableColumnSchema = ProfileTableColumnPersistedSchema.transform(({ visible, ...column }) => {
+  return {
+    ...column,
+    enabled: column.id === 'title' ? true : (column.enabled ?? visible ?? true),
+  };
 });
 export type ProfileTableColumn = z.infer<typeof ProfileTableColumnSchema>;
 
@@ -97,39 +104,39 @@ export const profileKindOptions: Array<{ id: ProfileKind; label: string }> = [
 const coreColumns: ProfileTableColumn[] = [
   {
     description: '资料的唯一名称或对象名。',
+    enabled: true,
     id: 'title',
     label: '名称',
     options: [],
     required: true,
     type: 'text',
-    visible: true,
   },
   {
     description: '用一句话概括资料最重要的身份、状态或作用。',
+    enabled: true,
     id: 'summary',
     label: '摘要',
     options: [],
     required: false,
     type: 'text',
-    visible: true,
   },
   {
     description: '用于检索与归类的关键词，使用顿号或逗号分隔。',
+    enabled: true,
     id: 'tags',
     label: '标签',
     options: [],
     required: false,
     type: 'tags',
-    visible: true,
   },
   {
     description: '无法归入其他字段的补充资料与详细说明。',
+    enabled: true,
     id: 'details',
     label: '补充内容',
     options: [],
     required: false,
     type: 'textarea',
-    visible: true,
   },
 ];
 
@@ -142,7 +149,7 @@ const tableExtras: Record<ProfileKind, ProfileTableColumn[]> = {
       options: [],
       required: false,
       type: 'text',
-      visible: true,
+      enabled: true,
     },
     {
       description: '人物目前已确认的处境、行动或状态。',
@@ -151,7 +158,7 @@ const tableExtras: Record<ProfileKind, ProfileTableColumn[]> = {
       options: [],
       required: false,
       type: 'text',
-      visible: true,
+      enabled: true,
     },
   ],
   event: [
@@ -162,7 +169,7 @@ const tableExtras: Record<ProfileKind, ProfileTableColumn[]> = {
       options: [],
       required: false,
       type: 'text',
-      visible: true,
+      enabled: true,
     },
     {
       description: '事件已经确认的结果与影响。',
@@ -171,7 +178,7 @@ const tableExtras: Record<ProfileKind, ProfileTableColumn[]> = {
       options: [],
       required: false,
       type: 'text',
-      visible: true,
+      enabled: true,
     },
   ],
   item: [
@@ -182,7 +189,7 @@ const tableExtras: Record<ProfileKind, ProfileTableColumn[]> = {
       options: [],
       required: false,
       type: 'text',
-      visible: true,
+      enabled: true,
     },
     {
       description: '物品目前的可用、损坏、遗失等状态。',
@@ -191,7 +198,7 @@ const tableExtras: Record<ProfileKind, ProfileTableColumn[]> = {
       options: [],
       required: false,
       type: 'text',
-      visible: true,
+      enabled: true,
     },
   ],
   location: [
@@ -202,7 +209,7 @@ const tableExtras: Record<ProfileKind, ProfileTableColumn[]> = {
       options: [],
       required: false,
       type: 'text',
-      visible: true,
+      enabled: true,
     },
     {
       description: '地点当前开放、封锁、毁坏等状态。',
@@ -211,7 +218,7 @@ const tableExtras: Record<ProfileKind, ProfileTableColumn[]> = {
       options: [],
       required: false,
       type: 'text',
-      visible: true,
+      enabled: true,
     },
   ],
   note: [],
@@ -223,7 +230,7 @@ const tableExtras: Record<ProfileKind, ProfileTableColumn[]> = {
       options: [],
       required: false,
       type: 'text',
-      visible: true,
+      enabled: true,
     },
     {
       description: '组织目前的活动、存续或立场状态。',
@@ -232,7 +239,7 @@ const tableExtras: Record<ProfileKind, ProfileTableColumn[]> = {
       options: [],
       required: false,
       type: 'text',
-      visible: true,
+      enabled: true,
     },
   ],
   rule: [
@@ -243,7 +250,7 @@ const tableExtras: Record<ProfileKind, ProfileTableColumn[]> = {
       options: [],
       required: false,
       type: 'text',
-      visible: true,
+      enabled: true,
     },
     {
       description: '规则是否已被剧情明确确认。',
@@ -252,7 +259,7 @@ const tableExtras: Record<ProfileKind, ProfileTableColumn[]> = {
       options: ['已确认', '待确认'],
       required: false,
       type: 'select',
-      visible: true,
+      enabled: true,
     },
   ],
   timeline: [
@@ -263,7 +270,7 @@ const tableExtras: Record<ProfileKind, ProfileTableColumn[]> = {
       options: [],
       required: false,
       type: 'text',
-      visible: true,
+      enabled: true,
     },
     {
       description: '事件是否发生、是否完成或当前进展。',
@@ -272,7 +279,7 @@ const tableExtras: Record<ProfileKind, ProfileTableColumn[]> = {
       options: [],
       required: false,
       type: 'text',
-      visible: true,
+      enabled: true,
     },
   ],
   world: [
@@ -283,7 +290,7 @@ const tableExtras: Record<ProfileKind, ProfileTableColumn[]> = {
       options: [],
       required: false,
       type: 'text',
-      visible: true,
+      enabled: true,
     },
     {
       description: '设定是否已经在剧情中明确确认。',
@@ -292,7 +299,7 @@ const tableExtras: Record<ProfileKind, ProfileTableColumn[]> = {
       options: ['已确认', '待确认'],
       required: false,
       type: 'select',
-      visible: true,
+      enabled: true,
     },
   ],
 };
@@ -316,7 +323,12 @@ function builtInTableId(kind: ProfileKind) {
 function cloneColumns(columns: ProfileTableColumn[]) {
   const cloned = columns
     .filter(column => column.id !== 'content')
-    .map(column => ({ ...column, description: column.description ?? '', options: [...column.options] }));
+    .map(column => ({
+      ...column,
+      description: column.description ?? '',
+      enabled: column.id === 'title' ? true : column.enabled,
+      options: [...column.options],
+    }));
   if (!cloned.some(column => column.id === 'details')) {
     const details = coreColumns.find(column => column.id === 'details');
     if (details) cloned.push({ ...details, options: [...details.options] });
@@ -475,6 +487,10 @@ export const useProfilesStore = defineStore('profiles', () => {
   ) {
     const table = getTable(tableId);
     if (!table) return null;
+    const nextColumnIds = new Set(input.columns.map(column => column.id));
+    const removedColumnIds = new Set(
+      table.columns.map(column => column.id).filter(columnId => !nextColumnIds.has(columnId)),
+    );
     table.name = input.name.trim() || table.name;
     table.kind = input.kind;
     table.columns = cloneColumns(input.columns);
@@ -485,6 +501,11 @@ export const useProfilesStore = defineStore('profiles', () => {
       .filter(entry => entry.tableId === tableId)
       .forEach(entry => {
         entry.kind = table.kind;
+        if (removedColumnIds.size) {
+          entry.fields = Object.fromEntries(
+            Object.entries(entry.fields).filter(([columnId]) => !removedColumnIds.has(columnId)),
+          );
+        }
       });
     return table;
   }

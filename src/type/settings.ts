@@ -49,7 +49,7 @@ export const VisualThemeSettingsSchema = z.object({
 });
 export type VisualThemeSettings = z.infer<typeof VisualThemeSettingsSchema>;
 
-export const GenerationSourceModeSchema = z.enum(['latest', 'fromStart', 'all', 'single', 'recent', 'range']);
+export const GenerationSourceModeSchema = z.enum(['none', 'latest', 'fromStart', 'all', 'single', 'recent', 'range']);
 export type GenerationSourceMode = z.infer<typeof GenerationSourceModeSchema>;
 
 export const GenerationResultModeSchema = z.enum(['preview', 'save']);

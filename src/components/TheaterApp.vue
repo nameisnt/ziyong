@@ -699,9 +699,7 @@ const rewriteTargetVersion = computed(() => {
   return resolveContentVersion(entry.versions, entry.activeVersionId, route.value.params?.versionId);
 });
 const theaterGenerationMode = computed<'create' | 'rewrite'>(() => (rewriteTargetEntry.value ? 'rewrite' : 'create'));
-const theaterGenerationAppPrompt = computed(() =>
-  theaterGenerationMode.value === 'rewrite' ? appPrompts.value.theaterRewrite : appPrompts.value.theater,
-);
+const theaterGenerationAppPrompt = computed(() => appPrompts.value.theater);
 const rewriteGenerationReplay = computed(
   () => rewriteTargetVersion.value?.generationReplay || rewriteTargetEntry.value?.generationReplay,
 );

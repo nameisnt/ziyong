@@ -47,14 +47,27 @@ export function formatMessageIdsAsRanges(messageIds: number[]) {
 }
 
 export function restoreGenerationReplayDraft(replay: GenerationReplaySnapshot, draft: ReplayGenerationDraft) {
-  const rangeText = formatReplayRanges(replay);
-  draft.fromStartEnd = numberFromConfig(replay.config, 'fromStartEnd', draft.fromStartEnd);
-  draft.rangeText = rangeText;
-  draft.recentCount = numberFromConfig(replay.config, 'recentCount', draft.recentCount);
-  draft.singleMessageId = numberFromConfig(replay.config, 'singleMessageId', draft.singleMessageId);
+  const sourceMode = replay.source.mode;
+  const lastMessageId = replay.source.messageIds.at(-1);
+  draft.fromStartEnd = numberFromConfig(
+    replay.sourceInput || replay.config,
+    'fromStartEnd',
+    sourceMode === 'fromStart' && typeof lastMessageId === 'number' ? lastMessageId : draft.fromStartEnd,
+  );
+  draft.rangeText = sourceMode === 'range' ? replay.sourceInput?.rangeText?.trim() || formatReplayRanges(replay) : '';
+  draft.recentCount = numberFromConfig(
+    replay.sourceInput || replay.config,
+    'recentCount',
+    sourceMode === 'recent' && replay.source.messageIds.length ? replay.source.messageIds.length : draft.recentCount,
+  );
+  draft.singleMessageId = numberFromConfig(
+    replay.sourceInput || replay.config,
+    'singleMessageId',
+    sourceMode === 'single' ? (replay.source.messageIds[0] ?? draft.singleMessageId) : draft.singleMessageId,
+  );
   draft.userRequirement = replay.request.userRequirement || '';
 
-  return (rangeText ? 'range' : replay.source.mode) as GenerationSourceMode;
+  return sourceMode as GenerationSourceMode;
 }
 
 function collectReferenceItems(nodes: PhoneReferenceTreeNode[], target: Map<string, GenerationReferenceItem>) {

@@ -15,6 +15,7 @@ export type ExtraChapterGenerationReference = z.infer<typeof ExtraChapterGenerat
 export const ExtraChapterGenerationRecordSchema = z.object({
   id: z.string(),
   chapterMode: z.enum(['续写上一章', '新开一本书', '重写当前章节']),
+  generationIntent: z.enum(['续写上一章', '新开一本书']).optional(),
   createdAt: z.string(),
   fromStartEnd: z.number().int().nonnegative().default(20),
   rangeText: z.string().default(''),

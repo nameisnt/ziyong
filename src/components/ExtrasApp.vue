@@ -239,12 +239,16 @@
           <template #before-fields>
             <div class="pc-number-field">
               <label class="pc-field-label">
-                {{ t`生成模式` }}
+                {{ chapterGenerationDraft.mode === '重写当前章节' ? t`原生成方式` : t`生成方式` }}
               </label>
-              <select v-model="chapterGenerationDraft.mode" class="pc-field" :disabled="chapterGenerationState.running">
+              <select
+                v-model="chapterGenerationDraft.generationIntent"
+                class="pc-select"
+                :disabled="chapterGenerationState.running"
+                @change="syncChapterGenerationMode"
+              >
                 <option value="续写上一章">{{ t`续写上一章` }}</option>
                 <option value="新开一本书">{{ t`新开一本书` }}</option>
-                <option value="重写当前章节">{{ t`重写当前章节` }}</option>
               </select>
             </div>
 
@@ -440,6 +444,7 @@ import {
   ExtraChapterGenerateConfigSchema,
   resolveGeneratedExtraBookTitle,
   type ExtraChapterGenerateConfig,
+  type ExtraChapterGenerationIntent,
   type ExtraChapterGenerationMode,
 } from '@/core/extrasGeneration';
 import { buildGenerationPreview, captureGenerationPrompt, generateContent } from '@/core/generationService';
@@ -593,9 +598,8 @@ const selectedChapterTypeValue = computed(() => {
 const currentChapterTypePrompt = computed(() => chapterGenerationDraft.typePrompt.trim());
 const formattedReferences = computed(() => formatGenerationReferences(selectedReferences.value));
 
-function getChapterAppPrompt(mode: ExtraChapterGenerationMode) {
-  if (mode === '新开一本书') return prompts.appPrompts.extras;
-  if (mode === '重写当前章节') return prompts.appPrompts.extrasRewrite;
+function getChapterAppPrompt(intent: ExtraChapterGenerationIntent) {
+  if (intent === '新开一本书') return prompts.appPrompts.extras;
   return prompts.appPrompts.extrasContinue;
 }
 
@@ -646,10 +650,11 @@ const newBookPromptPreview = computed(() => {
     return buildGenerationPreview(
       extraChapterGenerationAdapter,
       {
-        appPrompt: getChapterAppPrompt(chapterGenerationDraft.mode),
+        appPrompt: getChapterAppPrompt(chapterGenerationDraft.generationIntent),
         bookId: '__new_extra_book__',
         chapterId: '',
         chapterMode: chapterGenerationDraft.mode,
+        generationIntent: chapterGenerationDraft.generationIntent,
         outputFormat: buildChapterOutputFormat(),
         previousChapterContext: buildNewBookGenerationContext(),
         typeName: chapterGenerationDraft.typeName,
@@ -719,10 +724,11 @@ const chapterPromptPreview = computed(() => {
     return buildGenerationPreview(
       extraChapterGenerationAdapter,
       {
-        appPrompt: getChapterAppPrompt(chapterGenerationDraft.mode),
+        appPrompt: getChapterAppPrompt(chapterGenerationDraft.generationIntent),
         bookId: activeBook.value.id,
         chapterId: route.value.params?.chapterId || '',
         chapterMode: chapterGenerationDraft.mode,
+        generationIntent: chapterGenerationDraft.generationIntent,
         outputFormat: buildChapterOutputFormat(),
         previousChapterContext: buildPreviousChapterContext(activeBook.value),
         typeName: chapterGenerationDraft.typeName,
@@ -754,10 +760,11 @@ function captureNewBookPrompt() {
   return captureGenerationPrompt(
     extraChapterGenerationAdapter,
     {
-      appPrompt: getChapterAppPrompt(chapterGenerationDraft.mode),
+      appPrompt: getChapterAppPrompt(chapterGenerationDraft.generationIntent),
       bookId: '__new_extra_book__',
       chapterId: '',
       chapterMode: chapterGenerationDraft.mode,
+      generationIntent: chapterGenerationDraft.generationIntent,
       outputFormat: buildChapterOutputFormat(),
       previousChapterContext: buildNewBookGenerationContext(),
       typeName: chapterGenerationDraft.typeName,
@@ -822,10 +829,11 @@ function captureChapterPrompt() {
   return captureGenerationPrompt(
     extraChapterGenerationAdapter,
     {
-      appPrompt: getChapterAppPrompt(chapterGenerationDraft.mode),
+      appPrompt: getChapterAppPrompt(chapterGenerationDraft.generationIntent),
       bookId: activeBook.value.id,
       chapterId: route.value.params?.chapterId || '',
       chapterMode: chapterGenerationDraft.mode,
+      generationIntent: chapterGenerationDraft.generationIntent,
       outputFormat: buildChapterOutputFormat(),
       previousChapterContext: buildPreviousChapterContext(activeBook.value),
       typeName: chapterGenerationDraft.typeName,
@@ -989,6 +997,30 @@ function normalizeChapterGenerationMode(value: unknown): ExtraChapterGenerationM
   return '续写上一章';
 }
 
+function resolveStoredChapterGenerationIntent(
+  generationRecord = viewedChapterVersion.value?.generationRecord || activeChapter.value?.generationRecords.at(-1),
+): ExtraChapterGenerationIntent {
+  if (generationRecord?.generationIntent) return generationRecord.generationIntent;
+  if (generationRecord?.chapterMode === '新开一本书' || generationRecord?.chapterMode === '续写上一章') {
+    return generationRecord.chapterMode;
+  }
+  const chapter = activeChapter.value;
+  const historicalRecord = [
+    ...(chapter?.versions.map(version => version.generationRecord).filter(Boolean) || []),
+    ...(chapter?.generationRecords || []),
+  ].find(record => record?.chapterMode === '新开一本书' || record?.chapterMode === '续写上一章');
+  if (historicalRecord?.chapterMode === '新开一本书' || historicalRecord?.chapterMode === '续写上一章') {
+    return historicalRecord.chapterMode;
+  }
+  return chapter?.chapterNumber === 1 ? '新开一本书' : '续写上一章';
+}
+
+function syncChapterGenerationMode() {
+  if (chapterGenerationDraft.mode !== '重写当前章节') {
+    chapterGenerationDraft.mode = chapterGenerationDraft.generationIntent;
+  }
+}
+
 function getAdoptedChapterGenerationRecord(chapter: ExtraChapter) {
   if (chapter.versions.length) {
     return resolveContentVersion(chapter.versions, chapter.activeVersionId)?.generationRecord || null;
@@ -1014,6 +1046,7 @@ function resetChapterGenerationDraft(mode: typeof chapterGenerationDraft.mode, g
   }
   chapterGenerationDraft.fromStartEnd = 20;
   chapterGenerationDraft.mode = mode;
+  chapterGenerationDraft.generationIntent = mode === '新开一本书' ? '新开一本书' : '续写上一章';
   chapterGenerationDraft.rangeText = '';
   chapterGenerationDraft.recentCount = 20;
   chapterGenerationDraft.singleMessageId = 0;
@@ -1035,6 +1068,7 @@ function resetChapterGenerationDraft(mode: typeof chapterGenerationDraft.mode, g
         : viewedChapterVersion.value?.generationRecord || activeChapter.value?.generationRecords.at(-1)
       : null;
   if (generationRecord) {
+    chapterGenerationDraft.generationIntent = resolveStoredChapterGenerationIntent(generationRecord);
     chapterGenerationDraft.fromStartEnd = generationRecord.fromStartEnd;
     chapterGenerationDraft.rangeText = generationRecord.rangeText;
     chapterGenerationDraft.recentCount = generationRecord.recentCount;
@@ -1046,12 +1080,16 @@ function resetChapterGenerationDraft(mode: typeof chapterGenerationDraft.mode, g
     selectedReferences.value = resolveSavedGenerationReferences(generationRecord.references);
     const legacyRangeText = formatMessageIdsAsRanges(generationRecord.sourceMessageIds);
     if (!generationRecord.replay) {
-      chapterGenerationDraft.rangeText = legacyRangeText;
+      chapterGenerationDraft.rangeText =
+        generationRecord.sourceMode === 'range' ? generationRecord.rangeText || legacyRangeText : '';
       chapterReplaySession.applyLegacy({
-        sourceMode: legacyRangeText ? 'range' : generationRecord.sourceMode,
+        sourceMode: generationRecord.sourceMode,
         tavernPresetName: generationRecord.tavernPresetName,
       });
     }
+  }
+  if (mode === '重写当前章节' && !generationRecord) {
+    chapterGenerationDraft.generationIntent = resolveStoredChapterGenerationIntent();
   }
   if (generationRecord?.replay) {
     selectedReferences.value = resolveGenerationReplayReferences(generationRecord.replay);
@@ -1382,7 +1420,7 @@ function buildChapterOutputFormat() {
 function buildPreviousChapterContext(book = activeBook.value) {
   if (!book) return '';
 
-  if (chapterGenerationDraft.mode === '新开一本书') {
+  if (chapterGenerationDraft.generationIntent === '新开一本书') {
     return book.title.trim() ? `番外书名：${book.title.trim()}` : '';
   }
 
@@ -1508,10 +1546,11 @@ async function runChapterGenerationForBook(bookId: string, book: ExtraBook, chap
 
   try {
     const generationConfig = {
-      appPrompt: getChapterAppPrompt(chapterGenerationDraft.mode),
+      appPrompt: getChapterAppPrompt(chapterGenerationDraft.generationIntent),
       bookId,
       chapterId,
       chapterMode: chapterGenerationDraft.mode,
+      generationIntent: chapterGenerationDraft.generationIntent,
       fromStartEnd: chapterGenerationDraft.fromStartEnd,
       outputFormat: buildChapterOutputFormat(),
       previousChapterContext: buildPreviousChapterContext(book),

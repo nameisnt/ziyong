@@ -112,15 +112,6 @@ export function createExtrasContinuePromptDefinition(): PhonePromptDefinition {
   };
 }
 
-export function createExtrasRewritePromptDefinition(): PhonePromptDefinition {
-  return {
-    key: 'extrasRewrite',
-    label: '重新生成章节',
-    defaultPrompt:
-      '请根据本次来源和类型提示词重新生成一个完整番外章节候选版本。保持来源中的角色设定与剧情事实，不要参考、复述或续写已保存的旧版本。',
-  };
-}
-
 export function createExtraSummaryPromptDefinition(): PhonePromptDefinition {
   return {
     key: 'extraSummary',
@@ -232,16 +223,6 @@ export function createForumReplyPromptDefinition(): PhonePromptDefinition {
   };
 }
 
-export function createForumRewritePromptDefinition(): PhonePromptDefinition {
-  return {
-    key: 'forumRewrite',
-    label: '重新生成论坛主题',
-    defaultPrompt:
-      '请根据本次来源重新生成一篇完整论坛主题候选版本，包括标题、主楼和若干回复。保持来源中的事实与板块风格，不要参考或复述已保存的旧版本。',
-    outputFormats: createForumPromptDefinition().outputFormats?.filter(item => item.label === '论坛帖子') ?? [],
-  };
-}
-
 export function createForumBoardTypePromptDomain(): PhoneTypePromptDomain {
   return {
     key: 'forum-board',
@@ -309,16 +290,6 @@ export function createTheaterPromptDefinition(): PhonePromptDefinition {
         { preserveContentMarkup: true },
       ),
     ],
-  };
-}
-
-export function createTheaterRewritePromptDefinition(): PhonePromptDefinition {
-  return {
-    key: 'theaterRewrite',
-    label: '重新生成小剧场',
-    defaultPrompt:
-      '请根据本次来源和类型提示词重新生成一个完整小剧场候选版本。保持来源中的人物性格、关系与事实，不要参考、复述或续写已保存的旧版本。',
-    outputFormats: createTheaterPromptDefinition().outputFormats,
   };
 }
 
@@ -414,15 +385,5 @@ export function createLettersPromptDefinition(): PhonePromptDefinition {
         ),
       ),
     ],
-  };
-}
-
-export function createLettersRewritePromptDefinition(): PhonePromptDefinition {
-  return {
-    key: 'lettersRewrite',
-    label: '重新生成书信',
-    defaultPrompt:
-      '请根据本次来源重新生成一封完整书信候选版本。保持指定发信人、收信人、来源事实与角色语气，不要参考已保存的旧版本，也不要写成续写。',
-    outputFormats: createLettersPromptDefinition().outputFormats,
   };
 }

@@ -3,6 +3,7 @@
     <div class="pc-number-field">
       <label class="pc-field-label">{{ labelText }}</label>
       <select :value="mode" class="pc-select" :disabled="disabled" @change="onModeChange">
+        <option value="none">{{ t`不使用聊天楼层` }}</option>
         <option value="latest">{{ t`最新楼层` }}</option>
         <option value="fromStart">{{ t`从 0 到指定楼层` }}</option>
         <option value="all">{{ t`全部楼层` }}</option>
@@ -63,7 +64,7 @@
 </template>
 
 <script setup lang="ts">
-type SourceMode = 'latest' | 'fromStart' | 'all' | 'single' | 'recent' | 'range';
+type SourceMode = 'none' | 'latest' | 'fromStart' | 'all' | 'single' | 'recent' | 'range';
 
 const props = withDefaults(
   defineProps<{
