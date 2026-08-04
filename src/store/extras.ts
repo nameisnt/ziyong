@@ -14,6 +14,7 @@ import {
   removeContentVersion,
   resolveContentVersion,
 } from '@/util/contentVersions';
+import { resolveExtraChapterGenerationRecords } from '@/util/extraGenerationRecords';
 import { validateInplace } from '@/util/zod';
 
 export const extrasField = 'sillytavern_phone_extras';
@@ -163,9 +164,7 @@ export const useExtrasStore = defineStore('extras', () => {
     });
     chapter.versions = [...state.versions, version];
     chapter.activeVersionId = state.activeVersionId;
-    if (input.generationRecord) {
-      chapter.generationRecords = [...chapter.generationRecords, input.generationRecord].slice(-10);
-    }
+    chapter.generationRecords = resolveExtraChapterGenerationRecords(chapter).slice(-10);
     return { chapter, version };
   }
 
@@ -213,6 +212,7 @@ export const useExtrasStore = defineStore('extras', () => {
     if (!state) return null;
     const timestamp = nowIso();
     chapter.versions = state.versions;
+    chapter.generationRecords = resolveExtraChapterGenerationRecords(chapter).slice(-10);
     chapter.activeVersionId = state.activeVersionId;
     chapter.title = state.activeVersion.title;
     chapter.content = state.activeVersion.content;

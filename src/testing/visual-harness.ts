@@ -368,7 +368,8 @@ const { usePresetLinkStore } = await import('@/apps/preset-link/store');
 const { useWorldSlotsStore, worldSlotsField } = await import('@/apps/world-slots/store');
 const { getCurrentChatScopeKey } = await import('@/store/chatScoped');
 const { extension_settings } = await import('@sillytavern/scripts/extensions');
-const { createExtraChapterGenerationAdapter, resolveGeneratedExtraBookTitle } = await import('@/core/extrasGeneration');
+const { createExtraChapterGenerationAdapter, createExtraChapterGenerationRecord, resolveGeneratedExtraBookTitle } =
+  await import('@/core/extrasGeneration');
 const { GenerationReplaySnapshotSchema } = await import('@/type/generation');
 const { restoreGenerationReplayDraft } = await import('@/util/generationReplay');
 const { buildSourceSelection } = await import('@/util/generationSource');
@@ -2389,8 +2390,28 @@ async function applyScenario(name: VisualScenarioName, options: { height?: numbe
     const extraBook = createLegacyExtrasFixture();
     const chapter = extraBook.chapters[0];
     if (!chapter) throw new Error('Version deletion fixture did not create an extra chapter');
+    const deletedGenerationRecord = createExtraChapterGenerationRecord({
+      appPrompt: '',
+      bookId: extraBook.id,
+      chapterId: chapter.id,
+      chapterMode: '重写当前章节',
+      fromStartEnd: 20,
+      outputFormat: '',
+      previousChapterContext: '',
+      rangeText: '',
+      recentCount: 20,
+      references: [],
+      singleMessageId: 0,
+      sourceMode: 'latest',
+      tavernPresetName: '',
+      typeId: '',
+      typeName: extraBook.typeName,
+      typePrompt: '',
+      userRequirement: '',
+    });
     const extraSaved = extras.appendChapterVersion(extraBook.id, chapter.id, {
       content: '准备删除的番外采用版本。',
+      generationRecord: deletedGenerationRecord,
       title: '准备删除的番外版本',
     });
     const originalChapterVersion = chapter.versions[0];
@@ -2401,9 +2422,10 @@ async function applyScenario(name: VisualScenarioName, options: { height?: numbe
       !extraResult ||
       chapter.versions.length !== 1 ||
       chapter.activeVersionId !== originalChapterVersion.id ||
-      chapter.content !== originalChapterVersion.content
+      chapter.content !== originalChapterVersion.content ||
+      chapter.generationRecords.some(record => record.id === deletedGenerationRecord.id)
     ) {
-      throw new Error('Deleting the active extra version did not restore and synchronize the adjacent version');
+      throw new Error('Deleting an extra version did not restore its neighbor or remove its generation record');
     }
 
     const theater = useTheaterStore();

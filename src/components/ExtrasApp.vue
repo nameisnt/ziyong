@@ -468,6 +468,7 @@ import { usePreviewDraftPersistence } from '@/util/previewDrafts';
 import { formatGenerationReferences, type GenerationReferenceItem } from '@/util/references';
 import { resolveContentVersion } from '@/util/contentVersions';
 import { buildExtraHistoryContext, getSummarizableChapters } from '@/util/extrasSummary';
+import { resolveExtraChapterGenerationRecords } from '@/util/extraGenerationRecords';
 import { useInvalidRouteFallback } from '@/util/routeFallback';
 import { stopGenerationByIdSafe } from '@/util/runtime';
 import { storeToRefs } from 'pinia';
@@ -1017,10 +1018,9 @@ function resolveStoredChapterGenerationIntent(
     return generationRecord.chapterMode;
   }
   const chapter = activeChapter.value;
-  const historicalRecord = [
-    ...(chapter?.versions.map(version => version.generationRecord).filter(Boolean) || []),
-    ...(chapter?.generationRecords || []),
-  ].find(record => record?.chapterMode === '新开一本书' || record?.chapterMode === '续写上一章');
+  const historicalRecord = [...(chapter ? resolveExtraChapterGenerationRecords(chapter) : [])].find(
+    record => record.chapterMode === '新开一本书' || record.chapterMode === '续写上一章',
+  );
   if (historicalRecord?.chapterMode === '新开一本书' || historicalRecord?.chapterMode === '续写上一章') {
     return historicalRecord.chapterMode;
   }
@@ -1076,7 +1076,9 @@ function resetChapterGenerationDraft(mode: typeof chapterGenerationDraft.mode, g
   const generationRecord =
     mode === '重写当前章节'
       ? generationRecordId
-        ? [...(activeChapter.value?.generationRecords || [])].reverse().find(record => record.id === generationRecordId)
+        ? [...(activeChapter.value ? resolveExtraChapterGenerationRecords(activeChapter.value) : [])]
+            .reverse()
+            .find(record => record.id === generationRecordId)
         : viewedChapterVersion.value?.generationRecord || activeChapter.value?.generationRecords.at(-1)
       : null;
   if (generationRecord) {
@@ -1276,7 +1278,7 @@ async function removeChapterVersion(versionId: string) {
   const versionIndex = activeChapter.value.versions.findIndex(version => version.id === versionId);
   if (versionIndex < 0) return;
   const shouldDelete = await phone.confirmNotice(
-    `要删除当前查看的版本 ${versionIndex + 1}/${activeChapter.value.versions.length} 吗？只会删除这个版本。`,
+    `要删除当前查看的版本 ${versionIndex + 1}/${activeChapter.value.versions.length} 吗？对应的生成记录也会一起删除。`,
     { confirmLabel: '删除此版本', kind: 'warning' },
   );
   if (!shouldDelete || !activeBook.value || !activeChapter.value) return;

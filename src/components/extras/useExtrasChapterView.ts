@@ -1,4 +1,5 @@
 import type { ExtraBook, ExtraChapter } from '@/type/extra';
+import { resolveExtraChapterGenerationRecords } from '@/util/extraGenerationRecords';
 import type { ComputedRef } from 'vue';
 
 export function useExtrasChapterView(
@@ -9,9 +10,11 @@ export function useExtrasChapterView(
     [...(activeBook.value?.chapters || [])].sort((left, right) => left.chapterNumber - right.chapterNumber),
   );
   const generationRecords = computed(() =>
-    [...(activeChapter.value?.generationRecords || [])].sort((left, right) =>
-      right.createdAt.localeCompare(left.createdAt),
-    ),
+    activeChapter.value
+      ? resolveExtraChapterGenerationRecords(activeChapter.value).sort((left, right) =>
+          right.createdAt.localeCompare(left.createdAt),
+        )
+      : [],
   );
   const activeChapterIndex = computed(() =>
     orderedChapters.value.findIndex(chapter => chapter.id === activeChapter.value?.id),
