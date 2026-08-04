@@ -15,6 +15,7 @@ const externals = {
   '@popperjs/core': 'Popper',
 } as const;
 
+<<<<<<< HEAD
 const publicPathIndex = __dirname.lastIndexOf('public');
 const relative_sillytavern_path = publicPathIndex >= 0
   ? path.relative(
@@ -28,6 +29,14 @@ export default defineConfig(({ mode }) => {
 
   return {
     base: './',
+=======
+const relative_sillytavern_path = path.relative(
+  path.join(__dirname, 'dist'),
+  __dirname.substring(0, __dirname.lastIndexOf('public') + 6),
+);
+
+export default defineConfig(({ mode }) => ({
+>>>>>>> 8ebf7b943adddbb972ccd0163fdf8a3ff94673c9
     plugins: [
     vue({
       features: {
@@ -56,7 +65,11 @@ export default defineConfig(({ mode }) => {
       // globs: ['src/panel/component/*.vue'],
       resolvers: [VueUseComponentsResolver(), VueUseDirectiveResolver()],
     }),
+<<<<<<< HEAD
     !visualMode && {
+=======
+    {
+>>>>>>> 8ebf7b943adddbb972ccd0163fdf8a3ff94673c9
       name: 'sillytavern_resolver',
       enforce: 'pre',
       resolveId(id) {
@@ -75,11 +88,16 @@ export default defineConfig(({ mode }) => {
         }
       },
     }),
+<<<<<<< HEAD
   ].filter(Boolean),
+=======
+  ],
+>>>>>>> 8ebf7b943adddbb972ccd0163fdf8a3ff94673c9
 
   resolve: {
     alias: {
       '@': path.resolve(__dirname, 'src'),
+<<<<<<< HEAD
       ...(visualMode
         ? {
             '@sillytavern/script': path.resolve(__dirname, 'src/testing/sillytavern-script.ts'),
@@ -87,6 +105,8 @@ export default defineConfig(({ mode }) => {
             '@sillytavern/scripts/i18n': path.resolve(__dirname, 'src/testing/sillytavern-i18n.ts'),
           }
         : {}),
+=======
+>>>>>>> 8ebf7b943adddbb972ccd0163fdf8a3ff94673c9
     },
   },
 
@@ -103,9 +123,15 @@ export default defineConfig(({ mode }) => {
     },
 
     outDir: 'dist',
+<<<<<<< HEAD
     emptyOutDir: true,
 
     sourcemap: false,
+=======
+    emptyOutDir: false,
+
+    sourcemap: mode === 'production' ? true : 'inline',
+>>>>>>> 8ebf7b943adddbb972ccd0163fdf8a3ff94673c9
 
     minify: mode === 'production' ? 'terser' : false,
     terserOptions:
@@ -122,5 +148,9 @@ export default defineConfig(({ mode }) => {
 
     target: 'esnext',
   },
+<<<<<<< HEAD
   };
 });
+=======
+}));
+>>>>>>> 8ebf7b943adddbb972ccd0163fdf8a3ff94673c9

@@ -1,12 +1,19 @@
 {
+<<<<<<< HEAD
   "name": "sillytavern-phone-extension",
+=======
+  "name": "<插件名称>",
+>>>>>>> 8ebf7b943adddbb972ccd0163fdf8a3ff94673c9
   "version": "1.0.0",
   "scripts": {
     "build": "vite build",
     "watch": "vite build --watch --mode development",
     "format": "prettier --write \"src/**/*.{ts,tsx,js,jsx,css,scss,html,vue}\"",
     "lint": "eslint",
+<<<<<<< HEAD
     "ui:check": "node scripts/ui-visual-check.mjs",
+=======
+>>>>>>> 8ebf7b943adddbb972ccd0163fdf8a3ff94673c9
     "lint:fix": "eslint --fix"
   },
   "browserslist": [
@@ -14,7 +21,10 @@
   ],
   "devDependencies": {
     "@eslint/js": "^9.39.5",
+<<<<<<< HEAD
     "@fortawesome/fontawesome-free": "^7.3.1",
+=======
+>>>>>>> 8ebf7b943adddbb972ccd0163fdf8a3ff94673c9
     "@popperjs/core": "^2.11.8",
     "@tailwindcss/postcss": "^4.3.3",
     "@types/jquery": "^3.5.34",
@@ -36,11 +46,18 @@
     "eslint-plugin-vue": "^10.10.0",
     "globals": "^16.5.0",
     "highlight.js": "^11.11.1",
+<<<<<<< HEAD
     "playwright": "^1.62.1",
+=======
+>>>>>>> 8ebf7b943adddbb972ccd0163fdf8a3ff94673c9
     "postcss-load-config": "^6.0.1",
     "postcss-loader": "^8.2.1",
     "postcss-minify": "^1.2.0",
     "prettier": "^3.9.6",
+<<<<<<< HEAD
+=======
+    "ts-node": "^10.9.2",
+>>>>>>> 8ebf7b943adddbb972ccd0163fdf8a3ff94673c9
     "tslib": "^2.8.1",
     "typescript": "6.0.0-dev.20250807",
     "typescript-eslint": "^8.66.0",
@@ -54,13 +71,19 @@
     "yaml": "^2.9.0"
   },
   "dependencies": {
+<<<<<<< HEAD
     "@korziee/klondike": "0.0.5",
+=======
+>>>>>>> 8ebf7b943adddbb972ccd0163fdf8a3ff94673c9
     "@vueuse/components": "^13.9.0",
     "@vueuse/core": "^13.9.0",
     "@vueuse/integrations": "^13.9.0",
     "@vueuse/shared": "^13.9.0",
     "klona": "^2.0.6",
+<<<<<<< HEAD
     "lodash": "4.17.21",
+=======
+>>>>>>> 8ebf7b943adddbb972ccd0163fdf8a3ff94673c9
     "pinia": "^3.0.4",
     "tailwindcss": "^4.3.3",
     "type-fest": "^4.41.0",
