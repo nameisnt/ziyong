@@ -291,7 +291,7 @@
       v-model:covered-chapter-ids="summaryDraft.coveredChapterIds"
       v-model:enabled="summaryDraft.enabled"
       :book-title="activeBook.title"
-      :chapters="orderedChapters"
+      :chapters="summaryEditorChapters"
       :editing="Boolean(editingSummary)"
       @cancel="phone.goBack()"
       @save="submitSummary"
@@ -326,8 +326,8 @@
           @update:user-requirement="generationDraft.userRequirement = $event"
         >
           <template #before-fields>
-            <div class="pc-chapter-picks">
-              <label v-for="chapter in orderedChapters" :key="chapter.id" class="pc-check-item">
+            <div v-if="summarizableChapters.length" class="pc-chapter-picks">
+              <label v-for="chapter in summarizableChapters" :key="chapter.id" class="pc-check-item">
                 <input
                   v-model="generationDraft.coveredChapterIds"
                   type="checkbox"
@@ -337,11 +337,12 @@
                 <span>{{ `第 ${chapter.chapterNumber} 章 · ${chapter.title}` }}</span>
               </label>
             </div>
+            <EmptyState v-else compact :title="t`当前没有待总结章节`" />
 
             <label class="pc-switch-row">
               <div>
                 <strong>{{ t`保存后直接启用` }}</strong>
-                <p>{{ t`后续续写时可优先引用这条新总结。` }}</p>
+                <p>{{ t`后续续写时会用这条总结替换对应章节正文。` }}</p>
               </div>
               <span class="pc-checkbox">
                 <input v-model="generationDraft.enabled" type="checkbox" :disabled="generationState.running" />
@@ -424,6 +425,7 @@
 
 <script setup lang="ts">
 import BookShelf from '@/components/BookShelf.vue';
+import EmptyState from '@/components/EmptyState.vue';
 import ExtrasBookOverviewPage from '@/components/extras/ExtrasBookOverviewPage.vue';
 import ExtrasChapterEditorPage from '@/components/extras/ExtrasChapterEditorPage.vue';
 import ExtrasChapterDetailPage from '@/components/extras/ExtrasChapterDetailPage.vue';
@@ -465,6 +467,7 @@ import {
 import { usePreviewDraftPersistence } from '@/util/previewDrafts';
 import { formatGenerationReferences, type GenerationReferenceItem } from '@/util/references';
 import { resolveContentVersion } from '@/util/contentVersions';
+import { buildExtraHistoryContext, getSummarizableChapters } from '@/util/extrasSummary';
 import { useInvalidRouteFallback } from '@/util/routeFallback';
 import { stopGenerationByIdSafe } from '@/util/runtime';
 import { storeToRefs } from 'pinia';
@@ -877,6 +880,15 @@ const filteredChapters = computed(() => {
   });
   return result;
 });
+const summarizableChapters = computed(() => (activeBook.value ? getSummarizableChapters(activeBook.value) : []));
+const summaryEditorChapters = computed(() => {
+  const book = activeBook.value;
+  const summary = editingSummary.value;
+  if (!book) return [];
+  const selectableChapterIds = new Set(getSummarizableChapters(book, summary?.id).map(chapter => chapter.id));
+  const ownChapterIds = new Set(summary?.coveredChapterIds || []);
+  return orderedChapters.value.filter(chapter => ownChapterIds.has(chapter.id) || selectableChapterIds.has(chapter.id));
+});
 const shelfBooks = computed(() =>
   books.value.map(book => ({
     count: book.chapters.length,
@@ -928,7 +940,7 @@ watch(
 
     if (current.page === 'summary-generate' && previous?.page !== 'summary-preview') {
       selectedReferences.value = [];
-      generationDraft.coveredChapterIds = activeBook.value?.chapters.map(chapter => chapter.id) || [];
+      generationDraft.coveredChapterIds = [];
       generationDraft.enabled = true;
       generationDraft.fromStartEnd = 20;
       generationDraft.rangeText = '';
@@ -1433,27 +1445,11 @@ function buildPreviousChapterContext(book = activeBook.value) {
         : contextChapters.filter(chapter => chapter.chapterNumber < activeChapter.value!.chapterNumber);
   }
 
-  const includedChapterIds = new Set(contextChapters.map(chapter => chapter.id));
-  const chapterBlocks = contextChapters.map(chapter =>
-    [`第 ${chapter.chapterNumber} 章 · ${chapter.title}`, chapter.content].join('\n'),
-  );
-  const summaryBlocks = (book.summaries || [])
-    .filter(
-      summaryItem =>
-        summaryItem.enabled &&
-        (chapterGenerationDraft.mode !== '重写当前章节' ||
-          (summaryItem.coveredChapterIds.length > 0 &&
-            summaryItem.coveredChapterIds.every(chapterId => includedChapterIds.has(chapterId)))),
-    )
-    .map(
-      summaryItem =>
-        `${formatCoveredChaptersForBook(book, summaryItem.coveredChapterIds)} 总结\n${summaryItem.content}`,
-    );
+  const historyContext = buildExtraHistoryContext(book, contextChapters);
 
   return [
     `番外书名：${book.title}`,
-    chapterBlocks.length ? `已保存章节：\n${chapterBlocks.join('\n\n')}` : '当前还没有已保存章节。',
-    summaryBlocks.length ? `已启用总结：\n${summaryBlocks.join('\n\n')}` : '',
+    historyContext ? `番外前文（按章节顺序）：\n${historyContext}` : '当前还没有已保存章节。',
   ]
     .filter(Boolean)
     .join('\n\n');
@@ -1726,6 +1722,14 @@ async function runSummaryGeneration() {
   if (!bookId || !book) return;
   if (!generationDraft.coveredChapterIds.length) {
     generationState.error = '请至少选择一章后再生成总结';
+    return;
+  }
+  const selectableChapterIds = new Set(summarizableChapters.value.map(chapter => chapter.id));
+  if (generationDraft.coveredChapterIds.some(chapterId => !selectableChapterIds.has(chapterId))) {
+    generationState.error = '所选章节已经被其他启用总结覆盖，请重新选择';
+    generationDraft.coveredChapterIds = generationDraft.coveredChapterIds.filter(chapterId =>
+      selectableChapterIds.has(chapterId),
+    );
     return;
   }
 

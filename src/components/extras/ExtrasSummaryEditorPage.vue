@@ -4,16 +4,17 @@
       <span class="pc-kicker">{{ editing ? t`编辑章节总结` : t`新增章节总结` }}</span>
       <h2>{{ bookTitle }}</h2>
       <textarea v-model="content" class="pc-area pc-saved-content-area" :placeholder="t`总结正文`"></textarea>
-      <div class="pc-chapter-picks">
+      <div v-if="chapters.length" class="pc-chapter-picks">
         <label v-for="chapter in chapters" :key="chapter.id" class="pc-check-item">
           <input v-model="coveredChapterIds" type="checkbox" :value="chapter.id" />
           <span>{{ `第 ${chapter.chapterNumber} 章 · ${chapter.title}` }}</span>
         </label>
       </div>
+      <EmptyState v-if="!chapters.length" compact :title="t`当前没有可关联章节`" />
       <label class="pc-switch-row">
         <div>
           <strong>{{ t`启用这条总结` }}</strong>
-          <p>{{ t`后续续写时可优先引用启用中的章节总结。` }}</p>
+          <p>{{ t`后续续写时会用这条总结替换对应章节正文。` }}</p>
         </div>
         <span class="pc-checkbox">
           <input v-model="enabled" type="checkbox" />
@@ -28,6 +29,7 @@
 </template>
 
 <script setup lang="ts">
+import EmptyState from '@/components/EmptyState.vue';
 import type { ExtraChapter } from '@/type/extra';
 
 defineProps<{

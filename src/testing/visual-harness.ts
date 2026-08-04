@@ -378,6 +378,7 @@ const { ENTRY_LIBRARY_CONTENT_PLACEHOLDER, renderEntryLibraryBindingContent, use
 const { deleteTavernPresetPrompt, duplicateTavernPresetPrompt, readTavernPreset, reorderTavernPresetPrompts } =
   await import('@/apps/preset-manager/api');
 const { applyTextProviderSelection } = await import('@/util/textProvider');
+const { buildExtraHistoryContext, getSummarizableChapters } = await import('@/util/extrasSummary');
 
 initPhoneLifecycle();
 
@@ -429,6 +430,8 @@ const scenarios: VisualScenarioName[] = [
   'diary-batch',
   'extras-book-generate',
   'extras-book-name-fallback',
+  'extras-summary-overview',
+  'extras-summary-generate',
   'generation-connection-override',
   'preview-draft-deferred-save',
   'extras-chapter-detail',
@@ -633,6 +636,31 @@ function createLegacyExtrasFixture() {
     title: '第一章',
   });
   return book;
+}
+
+function createExtrasSummaryFixture() {
+  const extras = useExtrasStore();
+  extras.resetCurrentScope();
+  const book = extras.createBook({ title: '章节总结顺序测试', typeName: 'IF线' });
+  const chapters = Array.from({ length: 5 }, (_, index) =>
+    extras.createChapter(book.id, {
+      content: `第 ${index + 1} 章原文，不应在目录中消失。`,
+      title: `章节 ${index + 1}`,
+    }),
+  );
+  if (chapters.some(chapter => !chapter)) throw new Error('Extras summary fixture creation failed');
+  const completeChapters = chapters.filter((chapter): chapter is NonNullable<typeof chapter> => Boolean(chapter));
+  extras.createSummary(book.id, {
+    content: '第 1-2 章压缩总结。',
+    coveredChapterIds: completeChapters.slice(0, 2).map(chapter => chapter.id),
+    enabled: true,
+  });
+  extras.createSummary(book.id, {
+    content: '第 4-5 章压缩总结。',
+    coveredChapterIds: completeChapters.slice(3, 5).map(chapter => chapter.id),
+    enabled: true,
+  });
+  return { book, chapters: completeChapters };
 }
 
 function createExtrasGenerationRecordFixture() {
@@ -2172,6 +2200,57 @@ async function applyScenario(name: VisualScenarioName, options: { height?: numbe
     await waitForPaint();
     const screen = document.querySelector<HTMLElement>('.pc-screen');
     screen?.scrollTo({ top: screen.scrollHeight });
+  } else if (name === 'extras-summary-overview') {
+    const { book, chapters } = createExtrasSummaryFixture();
+    const historyContext = buildExtraHistoryContext(book, chapters);
+    const expectedOrder = ['第 1-2 章压缩总结。', '第 3 章原文', '第 4-5 章压缩总结。'];
+    if (
+      expectedOrder.some((fragment, index) => {
+        const position = historyContext.indexOf(fragment);
+        const previousPosition = index > 0 ? historyContext.indexOf(expectedOrder[index - 1]!) : -1;
+        return position < 0 || position <= previousPosition;
+      }) ||
+      historyContext.includes('第 1 章原文') ||
+      historyContext.includes('第 2 章原文') ||
+      historyContext.includes('第 4 章原文') ||
+      historyContext.includes('第 5 章原文')
+    ) {
+      throw new Error('Enabled extra summaries did not replace covered chapters in chronological order');
+    }
+    const summarizable = getSummarizableChapters(book);
+    if (summarizable.length !== 1 || summarizable[0]?.id !== chapters[2]?.id) {
+      throw new Error('Previously summarized extra chapters were not hidden from summary selection');
+    }
+
+    resetPhoneToRoute('extras', 'book', book.title, { bookId: book.id });
+    await waitForPaint();
+    const summarySection = document.querySelector<HTMLDetailsElement>('.pc-summary-section');
+    if (!summarySection || summarySection.open) throw new Error('Extra summary management did not start collapsed');
+    if (document.querySelectorAll('.pc-entry-main').length !== chapters.length) {
+      throw new Error('Extra summary compression removed chapters from the book directory');
+    }
+
+    document.querySelector<HTMLButtonElement>('.pc-entry-main')?.click();
+    await waitForPaint();
+    await openReaderCatalog();
+    const catalogItems = [...document.querySelectorAll<HTMLElement>('.pc-catalog-item')];
+    if (catalogItems.length !== chapters.length || catalogItems.some(item => item.textContent?.includes('总结'))) {
+      throw new Error('Extra chapter navigation included summaries or omitted original chapters');
+    }
+    resetPhoneToRoute('extras', 'book', book.title, { bookId: book.id });
+  } else if (name === 'extras-summary-generate') {
+    const { book, chapters } = createExtrasSummaryFixture();
+    resetPhoneToRoute('extras', 'summary-generate', '生成章节总结', { bookId: book.id });
+    await waitForPaint();
+    const chapterOptions = [...document.querySelectorAll<HTMLElement>('.pc-chapter-picks .pc-check-item')];
+    const selectedOptions = document.querySelectorAll<HTMLInputElement>('.pc-chapter-picks input:checked');
+    if (
+      chapterOptions.length !== 1 ||
+      !chapterOptions[0]?.textContent?.includes(`第 ${chapters[2]?.chapterNumber} 章`) ||
+      selectedOptions.length > 0
+    ) {
+      throw new Error('Extra summary generation did not show only unprocessed chapters with an empty selection');
+    }
   } else if (name === 'content-versions') {
     const extras = useExtrasStore();
     const extraBook = createLegacyExtrasFixture();
