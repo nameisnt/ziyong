@@ -380,6 +380,7 @@ const { deleteTavernPresetPrompt, duplicateTavernPresetPrompt, readTavernPreset,
   await import('@/apps/preset-manager/api');
 const { applyTextProviderSelection } = await import('@/util/textProvider');
 const { buildExtraHistoryContext, getSummarizableChapters } = await import('@/util/extrasSummary');
+const { resolveExtraChapterGenerationRecords } = await import('@/util/extraGenerationRecords');
 
 initPhoneLifecycle();
 
@@ -2390,6 +2391,26 @@ async function applyScenario(name: VisualScenarioName, options: { height?: numbe
     const extraBook = createLegacyExtrasFixture();
     const chapter = extraBook.chapters[0];
     if (!chapter) throw new Error('Version deletion fixture did not create an extra chapter');
+    const originalGenerationRecord = createExtraChapterGenerationRecord({
+      appPrompt: '',
+      bookId: extraBook.id,
+      chapterId: chapter.id,
+      chapterMode: '新开一本书',
+      fromStartEnd: 20,
+      outputFormat: '',
+      previousChapterContext: '',
+      rangeText: '',
+      recentCount: 20,
+      references: [],
+      singleMessageId: 0,
+      sourceMode: 'latest',
+      tavernPresetName: '',
+      typeId: '',
+      typeName: extraBook.typeName,
+      typePrompt: '',
+      userRequirement: '原版生成要求，应在删除重写版后保留。',
+    });
+    chapter.generationRecords = [originalGenerationRecord];
     const deletedGenerationRecord = createExtraChapterGenerationRecord({
       appPrompt: '',
       bookId: extraBook.id,
@@ -2407,7 +2428,7 @@ async function applyScenario(name: VisualScenarioName, options: { height?: numbe
       typeId: '',
       typeName: extraBook.typeName,
       typePrompt: '',
-      userRequirement: '',
+      userRequirement: '重写版本要求，删除该版本后必须消失。',
     });
     const extraSaved = extras.appendChapterVersion(extraBook.id, chapter.id, {
       content: '准备删除的番外采用版本。',
@@ -2415,7 +2436,14 @@ async function applyScenario(name: VisualScenarioName, options: { height?: numbe
       title: '准备删除的番外版本',
     });
     const originalChapterVersion = chapter.versions[0];
-    if (!extraSaved || !originalChapterVersion) throw new Error('Extra deletion fixture did not create two versions');
+    if (
+      !extraSaved ||
+      !originalChapterVersion ||
+      resolveExtraChapterGenerationRecords(chapter).length !== 2 ||
+      originalChapterVersion.generationRecord?.id !== originalGenerationRecord.id
+    ) {
+      throw new Error('Extra deletion fixture did not preserve distinct original and rewrite records');
+    }
     extras.activateChapterVersion(extraBook.id, chapter.id, extraSaved.version.id);
     const extraResult = extras.deleteChapterVersion(extraBook.id, chapter.id, extraSaved.version.id);
     if (
@@ -2423,7 +2451,9 @@ async function applyScenario(name: VisualScenarioName, options: { height?: numbe
       chapter.versions.length !== 1 ||
       chapter.activeVersionId !== originalChapterVersion.id ||
       chapter.content !== originalChapterVersion.content ||
-      chapter.generationRecords.some(record => record.id === deletedGenerationRecord.id)
+      chapter.generationRecords.some(record => record.id === deletedGenerationRecord.id) ||
+      resolveExtraChapterGenerationRecords(chapter).length !== 1 ||
+      resolveExtraChapterGenerationRecords(chapter)[0]?.id !== originalGenerationRecord.id
     ) {
       throw new Error('Deleting an extra version did not restore its neighbor or remove its generation record');
     }
@@ -2496,19 +2526,24 @@ async function applyScenario(name: VisualScenarioName, options: { height?: numbe
       throw new Error('Deleting the active letter version did not synchronize its content and format');
     }
 
-    const visualBook = createLegacyExtrasFixture();
-    const visualChapter = visualBook.chapters[0];
-    if (!visualChapter) throw new Error('Version deletion visual fixture did not create a chapter');
-    const visualVersion = extras.appendChapterVersion(visualBook.id, visualChapter.id, {
-      content: '版本栏应同时显示采用与删除当前版本操作。',
-      title: '版本删除操作预览',
+    resetPhoneToRoute('extras', 'chapter', originalChapterVersion.title, {
+      bookId: extraBook.id,
+      chapterId: chapter.id,
+      versionId: originalChapterVersion.id,
     });
-    if (!visualVersion) throw new Error('Version deletion visual fixture did not create a candidate version');
-    resetPhoneToRoute('extras', 'chapter', visualVersion.version.title, {
-      bookId: visualBook.id,
-      chapterId: visualChapter.id,
-      versionId: visualVersion.version.id,
-    });
+    await waitForPaint();
+    document.querySelector<HTMLDetailsElement>('.pc-generation-history')?.setAttribute('open', '');
+    await waitForPaint();
+    const generationHistoryText = document.querySelector('.pc-generation-history')?.textContent || '';
+    if (
+      !generationHistoryText.includes('版本 1 · 当前采用') ||
+      !generationHistoryText.includes(originalGenerationRecord.userRequirement) ||
+      generationHistoryText.includes(deletedGenerationRecord.userRequirement)
+    ) {
+      throw new Error(
+        'Extra generation history did not distinguish the surviving original record from the deleted rewrite',
+      );
+    }
   } else if (name === 'extras-book-name-fallback') {
     if (resolveGeneratedExtraBookTitle(' ', ' IF线 ') !== 'IF线') {
       throw new Error('Generated extra book did not use its type as the missing title fallback');
