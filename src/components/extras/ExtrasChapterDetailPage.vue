@@ -18,11 +18,8 @@
     >
       <template #before-content>
         <VersionNavigator
-          :active-version-id="activeVersionId"
           :versions="versions"
           :viewed-version-id="viewedVersionId"
-          @adopt="emit('adoptVersion', $event)"
-          @delete="emit('deleteVersion', $event)"
           @select="emit('selectVersion', $event)"
         />
         <details v-if="generationRecords.length" class="pc-section-card pc-generation-history">
@@ -62,9 +59,14 @@
           <i class="fa-solid fa-rotate"></i>
           <span>{{ t`重写` }}</span>
         </button>
-        <button class="pc-soft-btn danger" type="button" :title="t`删除整章（全部版本）`" @click="emit('delete')">
+        <button
+          class="pc-soft-btn danger"
+          type="button"
+          :title="versions.length > 1 ? t`删除当前版本` : t`删除章节`"
+          @click="emit('delete')"
+        >
           <i class="fa-solid fa-trash"></i>
-          <span>{{ t`删除整章` }}</span>
+          <span>{{ t`删除` }}</span>
         </button>
       </template>
 
@@ -102,11 +104,9 @@ const props = defineProps<{
 
 const emit = defineEmits<{
   bagu: [];
-  adoptVersion: [versionId: string];
   bottom: [];
   continue: [];
   delete: [];
-  deleteVersion: [versionId: string];
   edit: [];
   favorite: [];
   next: [];
@@ -134,7 +134,7 @@ function formatGenerationRecordVersion(recordId: string) {
   const versionIndex = props.versions.findIndex(version => version.generationRecord?.id === recordId);
   if (versionIndex < 0) return '';
   const version = props.versions[versionIndex];
-  return `版本 ${versionIndex + 1} · ${version?.id === props.activeVersionId ? '当前采用' : '候选版本'}`;
+  return `版本 ${versionIndex + 1} · ${version?.id === props.activeVersionId ? '当前版本' : '历史版本'}`;
 }
 
 function formatGenerationRecordSource(record: ExtraChapterGenerationRecord) {

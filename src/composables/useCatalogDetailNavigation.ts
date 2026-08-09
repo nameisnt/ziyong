@@ -5,6 +5,7 @@ export function useCatalogDetailNavigation<T extends { id: string }>(
   items: ComputedRef<T[]>,
   activeItem: ComputedRef<T | null>,
   getTitle: (item: T) => string,
+  getVersionCount?: (item: T) => number,
 ) {
   const activeIndex = computed(() => items.value.findIndex(item => item.id === activeItem.value?.id));
   const previousId = computed(() => (activeIndex.value > 0 ? items.value[activeIndex.value - 1]?.id || '' : ''));
@@ -13,6 +14,7 @@ export function useCatalogDetailNavigation<T extends { id: string }>(
     items.value.map(item => ({
       id: item.id,
       title: getTitle(item),
+      versionCount: getVersionCount?.(item),
     })),
   );
 

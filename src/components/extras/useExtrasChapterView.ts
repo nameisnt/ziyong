@@ -29,6 +29,7 @@ export function useExtrasChapterView(
     orderedChapters.value.map(chapter => ({
       id: chapter.id,
       title: `第 ${chapter.chapterNumber} 章 · ${chapter.title}`,
+      versionCount: Math.max(1, chapter.versions.length),
     })),
   );
 

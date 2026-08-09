@@ -187,7 +187,14 @@ export const useLettersStore = defineStore('letters', () => {
       title: input.title.trim() || entry.title,
     });
     entry.versions = [...state.versions, version];
-    entry.activeVersionId = state.activeVersionId;
+    const timestamp = nowIso();
+    entry.activeVersionId = version.id;
+    entry.title = version.title;
+    entry.content = version.content;
+    entry.format = version.format;
+    entry.generationReplay = version.generationReplay;
+    entry.updatedAt = timestamp;
+    book.updatedAt = timestamp;
     return { book, entry, version };
   }
 

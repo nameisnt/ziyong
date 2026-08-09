@@ -425,6 +425,7 @@ function cancelReferenceDrag(event: PointerEvent) {
 .pc-reference-picker {
   display: flex;
   flex-direction: column;
+  width: 100%;
   gap: 8px;
   min-width: 0;
   max-width: 100%;
@@ -450,6 +451,8 @@ function cancelReferenceDrag(event: PointerEvent) {
   align-items: center;
   gap: 10px;
   min-height: 44px;
+  width: 100%;
+  min-width: 0;
   padding: 0 14px;
   border: 1px solid var(--pc-border);
   border-radius: 16px;

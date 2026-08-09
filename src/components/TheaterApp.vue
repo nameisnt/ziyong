@@ -101,25 +101,35 @@
       <div class="pc-toolbar">
         <input v-model="query" class="pc-search" type="text" :placeholder="t`搜索标题或类型...`" />
       </div>
-      <div v-if="historyTypeTabs.length" class="pc-theater-filter-tabs" aria-label="小剧场类型筛选">
-        <CapsuleTag
-          :active="!selectedHistoryTypeKeys.size"
-          compact
-          icon="fa-solid fa-layer-group"
-          :label="t`全部`"
-          @click="clearHistoryTypeFilters"
-        />
-        <CapsuleTag
-          v-for="tab in historyTypeTabs"
-          :key="tab.key"
-          :active="selectedHistoryTypeKeys.has(tab.key)"
-          compact
-          :count="tab.count"
-          icon="fa-solid fa-masks-theater"
-          :label="tab.label"
-          @click="toggleHistoryTypeFilter(tab.key)"
-        />
+      <div v-if="historyTypeTabs.length" class="pc-theater-filter-control">
+        <button class="pc-soft-btn" type="button" @click="historyFilterOpen = !historyFilterOpen">
+          <i class="fa-solid fa-tags"></i>
+          <span>{{ selectedHistoryTypeKeys.size ? `标签筛选（${selectedHistoryTypeKeys.size}）` : t`标签筛选` }}</span>
+          <i :class="['fa-solid fa-chevron-down', { expanded: historyFilterOpen }]"></i>
+        </button>
       </div>
+      <section v-if="historyFilterOpen && historyTypeTabs.length" class="pc-section-card pc-history-tag-panel">
+        <input v-model="historyTagQuery" class="pc-field" type="search" :placeholder="t`搜索小剧场标签`" />
+        <div class="pc-history-tag-actions">
+          <span>{{ `已选 ${selectedHistoryTypeKeys.size} / ${historyTypeTabs.length}` }}</span>
+          <button class="pc-soft-btn compact" type="button" @click="invertVisibleHistoryTypeFilters">
+            {{ t`反选可见` }}
+          </button>
+          <button class="pc-soft-btn compact" type="button" @click="clearHistoryTypeFilters">{{ t`清空` }}</button>
+        </div>
+        <div class="pc-history-tag-list" aria-label="小剧场类型筛选">
+          <CapsuleTag
+            v-for="tab in filteredHistoryTypeTabs"
+            :key="tab.key"
+            :active="selectedHistoryTypeKeys.has(tab.key)"
+            compact
+            :count="tab.count"
+            icon="fa-solid fa-masks-theater"
+            :label="tab.label"
+            @click="toggleHistoryTypeFilter(tab.key)"
+          />
+        </div>
+      </section>
 
       <EmptyState
         v-if="!filteredEntries.length"
@@ -131,6 +141,7 @@
           <button class="pc-entry-main" type="button" @click="openEntry(entry.id)">
             <div class="pc-entry-head">
               <strong>{{ entry.title }}</strong>
+              <ContentVersionBadge :count="Math.max(1, entry.versions.length)" />
             </div>
           </button>
         </article>
@@ -173,6 +184,7 @@
         :content="viewedEntry.content"
         :custom-content="viewedEntry.renderMode === 'frontend'"
         :favorite-active="activeEntry.favorite"
+        :footer-always-visible="viewedEntry.renderMode === 'frontend'"
         :next-disabled="!nextEntryId"
         :previous-disabled="!previousEntryId"
         :title="viewedEntry.title"
@@ -187,11 +199,8 @@
       >
         <template #before-content>
           <VersionNavigator
-            :active-version-id="activeEntry.activeVersionId"
             :versions="activeEntry.versions"
             :viewed-version-id="viewedEntryVersionId"
-            @adopt="adoptTheaterVersion"
-            @delete="removeTheaterVersion"
             @select="selectTheaterVersion"
           />
           <div class="pc-entry-tags">
@@ -237,7 +246,7 @@
           <button
             class="pc-soft-btn danger"
             type="button"
-            :title="t`删除整个小剧场（全部版本）`"
+            :title="activeEntry.versions.length > 1 ? t`删除当前版本` : t`删除小剧场`"
             @click="removeEntry(activeEntry.id)"
           >
             <i class="fa-solid fa-trash"></i>
@@ -410,7 +419,7 @@
           :raw="generationState.preview.raw"
           raw-editable
           :reparse-handler="reparsePreviewRaw"
-          :save-label="generationState.preview.mode === 'rewrite' ? '保存候选版本' : '保存为条目'"
+          :save-label="generationState.preview.mode === 'rewrite' ? '保存新版本' : '保存为条目'"
           :source-label="generationState.preview.source.label"
           :text-provider-summary="generationState.preview.typeName"
           :title="generationState.preview.title"
@@ -506,6 +515,7 @@
 import CatalogModal from '@/components/CatalogModal.vue';
 import BaguScanPanel from '@/components/BaguScanPanel.vue';
 import CapsuleTag from '@/components/CapsuleTag.vue';
+import ContentVersionBadge from '@/components/ContentVersionBadge.vue';
 import EmptyState from '@/components/EmptyState.vue';
 import FailedDraftList from '@/components/FailedDraftList.vue';
 import FrontendFrame from '@/components/FrontendFrame.vue';
@@ -571,6 +581,8 @@ const { appPrompts, typePrompts } = storeToRefs(prompts);
 const query = ref('');
 const sortDesc = ref(true);
 const selectedHistoryTypeKeys = ref(new Set<string>());
+const historyFilterOpen = ref(false);
+const historyTagQuery = ref('');
 const customTypeOpen = ref(false);
 const customTypeName = ref('');
 const draft = reactive({
@@ -700,8 +712,10 @@ const rewriteTargetVersion = computed(() => {
 });
 const theaterGenerationMode = computed<'create' | 'rewrite'>(() => (rewriteTargetEntry.value ? 'rewrite' : 'create'));
 const theaterGenerationAppPrompt = computed(() => appPrompts.value.theater);
-const rewriteGenerationReplay = computed(
-  () => rewriteTargetVersion.value?.generationReplay || rewriteTargetEntry.value?.generationReplay,
+const rewriteGenerationReplay = computed(() =>
+  rewriteTargetEntry.value?.versions.length
+    ? rewriteTargetVersion.value?.generationReplay
+    : rewriteTargetEntry.value?.generationReplay,
 );
 const detailEntries = computed(() =>
   [...entries.value].sort((left, right) => {
@@ -722,6 +736,7 @@ const entryCatalogItems = computed(() =>
   detailEntries.value.map(entry => ({
     id: entry.id,
     title: entry.title,
+    versionCount: Math.max(1, entry.versions.length),
   })),
 );
 const editingEntry = computed(() => (route.value.params?.entryId && activeEntry.value ? activeEntry.value : null));
@@ -777,6 +792,16 @@ const historyTypeTabs = computed(() => {
       right.latest.localeCompare(left.latest) ||
       left.label.localeCompare(right.label, 'zh-CN'),
   );
+});
+const filteredHistoryTypeTabs = computed(() => {
+  const keyword = historyTagQuery.value.trim().toLocaleLowerCase();
+  return historyTypeTabs.value
+    .filter(tab => !keyword || tab.label.toLocaleLowerCase().includes(keyword))
+    .sort((left, right) => {
+      const selectedDifference =
+        Number(selectedHistoryTypeKeys.value.has(right.key)) - Number(selectedHistoryTypeKeys.value.has(left.key));
+      return selectedDifference || right.count - left.count || left.label.localeCompare(right.label, 'zh-CN');
+    });
 });
 const generationTypeChoice = computed({
   get() {
@@ -1157,17 +1182,10 @@ function openRewrite(entryId: string) {
 
 function selectTheaterVersion(versionId: string) {
   if (!activeEntry.value) return;
-  const version = activeEntry.value.versions.find(item => item.id === versionId);
-  phone.replacePage('entry', version?.title || activeEntry.value.title, { entryId: activeEntry.value.id, versionId });
-  void nextTick(() => scrollToTop('auto'));
-}
-
-function adoptTheaterVersion(versionId: string) {
-  if (!activeEntry.value) return;
   const entry = theater.activateEntryVersion(activeEntry.value.id, versionId);
   if (!entry) return;
   phone.replacePage('entry', entry.title, { entryId: entry.id, versionId });
-  toastr.success('已采用这个小剧场版本');
+  void nextTick(() => scrollToTop('auto'));
 }
 
 async function removeTheaterVersion(versionId: string) {
@@ -1179,11 +1197,14 @@ async function removeTheaterVersion(versionId: string) {
     { confirmLabel: '删除此版本', kind: 'warning' },
   );
   if (!shouldDelete || !activeEntry.value) return;
+  const versions = [...activeEntry.value.versions];
+  const previousVersion = versions[(versionIndex - 1 + versions.length) % versions.length];
   const result = theater.deleteEntryVersion(activeEntry.value.id, versionId);
   if (!result) return;
-  phone.replacePage('entry', result.activeVersion.title, {
+  const entry = previousVersion ? theater.activateEntryVersion(result.entry.id, previousVersion.id) : result.entry;
+  phone.replacePage('entry', entry?.title || result.activeVersion.title, {
     entryId: result.entry.id,
-    versionId: result.activeVersion.id,
+    versionId: previousVersion?.id || result.activeVersion.id,
   });
   toastr.success('已删除当前小剧场版本');
 }
@@ -1211,6 +1232,15 @@ function filterTheaterRecords(label: string) {
 
 function clearHistoryTypeFilters() {
   selectedHistoryTypeKeys.value = new Set();
+}
+
+function invertVisibleHistoryTypeFilters() {
+  const next = new Set(selectedHistoryTypeKeys.value);
+  filteredHistoryTypeTabs.value.forEach(tab => {
+    if (next.has(tab.key)) next.delete(tab.key);
+    else next.add(tab.key);
+  });
+  selectedHistoryTypeKeys.value = next;
 }
 
 function toggleHistoryTypeFilter(key: string) {
@@ -1401,7 +1431,7 @@ async function runGeneration() {
     }
 
     if (result.status === 'saved') {
-      toastr.success(theaterGenerationMode.value === 'rewrite' ? '已保存小剧场候选版本' : '已生成并保存小剧场');
+      toastr.success(theaterGenerationMode.value === 'rewrite' ? '已保存并切换到小剧场新版本' : '已生成并保存小剧场');
       void phone.presentGeneratedPage('theater', 'entry', result.data.title, {
         entryId: result.saved.entry.id,
         ...(result.saved.versionId ? { versionId: result.saved.versionId } : {}),
@@ -1465,7 +1495,7 @@ function savePreview() {
   generationState.preview = null;
   const entry = 'entry' in saved ? saved.entry : saved;
   const versionId = 'version' in saved ? saved.version.id : '';
-  toastr.success(preview.mode === 'rewrite' ? '已保存小剧场候选版本' : '已保存小剧场');
+  toastr.success(preview.mode === 'rewrite' ? '已保存并切换到小剧场新版本' : '已保存小剧场');
   phone.replacePage('entry', versionId ? preview.title : entry.title, {
     entryId: entry.id,
     ...(versionId ? { versionId } : {}),
@@ -1523,10 +1553,14 @@ function stopGeneration() {
 
 async function removeEntry(entryId: string) {
   const entry = theater.getEntry(entryId);
+  if (entry && entry.versions.length > 1) {
+    await removeTheaterVersion(viewedEntryVersionId.value);
+    return;
+  }
   const shouldDelete = await phone.confirmNotice(
-    `要删除整个小剧场“${entry?.title || '未命名条目'}”吗？它的全部版本都会一起删除。`,
+    `要删除小剧场“${entry?.title || '未命名条目'}”的最后一个版本吗？删除后这条记录也会移除。`,
     {
-      confirmLabel: '全部删除',
+      confirmLabel: '删除',
       kind: 'warning',
     },
   );
@@ -1724,8 +1758,8 @@ function handleFrameNavigateBlocked() {
   align-content: flex-start;
   gap: 8px;
   flex-wrap: wrap;
-  max-height: none;
-  overflow-y: visible;
+  max-height: clamp(180px, 30vh, 240px);
+  overflow-y: auto;
   overscroll-behavior: contain;
   padding: 10px;
   border: 0.5px solid var(--pc-border);
@@ -1733,21 +1767,50 @@ function handleFrameNavigateBlocked() {
   background: var(--pc-bg);
 }
 
-.pc-theater-filter-tabs {
+.pc-theater-filter-control {
   display: flex;
+}
+
+.pc-theater-filter-control .pc-soft-btn {
+  width: auto;
+}
+
+.pc-theater-filter-control .fa-chevron-down {
+  transition: transform 160ms ease;
+}
+
+.pc-theater-filter-control .fa-chevron-down.expanded {
+  transform: rotate(180deg);
+}
+
+.pc-history-tag-panel {
+  display: grid;
+  gap: 10px;
+  padding: 12px;
+}
+
+.pc-history-tag-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
   gap: 8px;
+}
+
+.pc-history-tag-actions > span {
   min-width: 0;
-  overflow-x: auto;
-  padding: 2px 0 6px;
-  scrollbar-width: none;
+  margin-right: auto;
+  color: var(--pc-muted);
+  font-size: 12px;
 }
 
-.pc-theater-filter-tabs::-webkit-scrollbar {
-  display: none;
-}
-
-.pc-theater-filter-tabs :deep(.pc-capsule-tag) {
-  flex: 0 0 auto;
+.pc-history-tag-list {
+  display: flex;
+  align-content: flex-start;
+  flex-wrap: wrap;
+  gap: 8px;
+  max-height: 220px;
+  overflow-y: auto;
+  overscroll-behavior: contain;
 }
 
 .pc-custom-type-row {

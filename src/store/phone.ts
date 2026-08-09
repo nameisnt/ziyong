@@ -313,7 +313,19 @@ export const usePhoneStore = defineStore('phone', () => {
 
   function replacePage(page: string, title: string, params?: Record<string, string>, origin?: 'home' | 'favorites') {
     if (currentRoute.value.appId === 'home') return;
-    stack.value = [...stack.value.slice(0, -1), { appId: currentRoute.value.appId, page, title, params, origin }];
+    const nextRoute: PhoneRoute = { appId: currentRoute.value.appId, page, title, params, origin };
+    const previousRoute = stack.value.at(-2);
+    const comparableParams = (route: PhoneRoute) =>
+      Object.entries(route.params ?? {})
+        .filter(([key]) => key !== 'versionId')
+        .sort(([left], [right]) => left.localeCompare(right));
+    const replacesSameLogicalRoute =
+      previousRoute?.appId === nextRoute.appId &&
+      previousRoute.page === nextRoute.page &&
+      JSON.stringify(comparableParams(previousRoute)) === JSON.stringify(comparableParams(nextRoute));
+    stack.value = replacesSameLogicalRoute
+      ? [...stack.value.slice(0, -2), nextRoute]
+      : [...stack.value.slice(0, -1), nextRoute];
   }
 
   function replaceRoute(appId: string, page: string, title: string, params?: Record<string, string>) {

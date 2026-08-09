@@ -175,7 +175,15 @@ export const useForumStore = defineStore('forum', () => {
       title: input.title.trim() || thread.title,
     });
     thread.versions = [...state.versions, version];
-    thread.activeVersionId = state.activeVersionId;
+    const timestamp = nowIso();
+    thread.activeVersionId = version.id;
+    thread.author = version.author;
+    thread.title = version.title;
+    thread.content = version.content;
+    thread.generationReplay = version.generationReplay;
+    thread.replies = version.replies.map(reply => ({ ...reply }));
+    thread.updatedAt = timestamp;
+    board.updatedAt = timestamp;
     return { board, thread, version };
   }
 

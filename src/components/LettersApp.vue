@@ -49,6 +49,7 @@
           <button class="pc-entry-main" type="button" @click="openEntry(activeBook.id, entry.id)">
             <div class="pc-entry-head">
               <strong>{{ entry.title }}</strong>
+              <ContentVersionBadge :count="Math.max(1, entry.versions.length)" />
             </div>
             <p>{{ formatDirection(entry.sender.name, entry.receiver.name) }} · {{ formatLabel(entry.format) }}</p>
           </button>
@@ -71,18 +72,15 @@
     <LettersEntryDetailPage
       v-else-if="route.page === 'entry' && activeBook && activeEntry"
       v-model:catalog-open="showCatalogModal"
-      :active-version-id="activeEntry.activeVersionId"
       :catalog-items="entryCatalogItems"
       :entry="viewedLetterEntry"
       :next-id="nextEntryId"
       :previous-id="previousEntryId"
       :versions="activeEntry.versions"
       :viewed-version-id="viewedLetterVersionId"
-      @adopt-version="adoptLetterVersion"
       @bagu="openLettersBaguScan"
       @bottom="scrollToBottom"
       @delete="removeEntry(activeBook.id, activeEntry.id)"
-      @delete-version="removeLetterVersion"
       @edit="openEditEntry(activeBook.id, activeEntry.id, viewedLetterVersionId)"
       @favorite="letters.toggleFavorite(activeBook.id, activeEntry.id)"
       @next="openEntry(activeBook.id, nextEntryId, true)"
@@ -251,7 +249,7 @@
           :raw="generationState.preview.raw"
           raw-editable
           :reparse-handler="reparsePreviewRaw"
-          :save-label="generationState.preview.mode === 'rewrite' ? '保存候选版本' : '保存信件'"
+          :save-label="generationState.preview.mode === 'rewrite' ? '保存新版本' : '保存信件'"
           :source-label="generationState.preview.bookTitle"
           :text-provider-summary="`${formatDirection(generationState.preview.sender.name, generationState.preview.receiver.name)} · ${formatLabel(generationState.preview.format)}`"
           :title="generationState.preview.title"
@@ -289,8 +287,9 @@
 
 <script setup lang="ts">
 import BookShelf from '@/components/BookShelf.vue';
-import EmptyState from '@/components/EmptyState.vue';
 import BaguScanPanel from '@/components/BaguScanPanel.vue';
+import ContentVersionBadge from '@/components/ContentVersionBadge.vue';
+import EmptyState from '@/components/EmptyState.vue';
 import FailedDraftList from '@/components/FailedDraftList.vue';
 import GenerationPanel from '@/components/GenerationPanel.vue';
 import GenerationPreviewPanel from '@/components/GenerationPreviewPanel.vue';
@@ -475,8 +474,10 @@ const rewriteLetterVersion = computed(() => {
 });
 const letterGenerationMode = computed<'create' | 'rewrite'>(() => (rewriteLetterEntry.value ? 'rewrite' : 'create'));
 const letterGenerationAppPrompt = computed(() => prompts.appPrompts.letters);
-const rewriteLetterReplay = computed(
-  () => rewriteLetterVersion.value?.generationReplay || rewriteLetterEntry.value?.generationReplay,
+const rewriteLetterReplay = computed(() =>
+  rewriteLetterEntry.value?.versions.length
+    ? rewriteLetterVersion.value?.generationReplay
+    : rewriteLetterEntry.value?.generationReplay,
 );
 
 const editingEntry = computed(() => (route.value.params?.entryId && activeEntry.value ? activeEntry.value : null));
@@ -507,7 +508,12 @@ const {
   catalogItems: entryCatalogItems,
   nextId: nextEntryId,
   previousId: previousEntryId,
-} = useCatalogDetailNavigation(filteredEntries, activeEntry, entry => entry.title);
+} = useCatalogDetailNavigation(
+  filteredEntries,
+  activeEntry,
+  entry => entry.title,
+  entry => Math.max(1, entry.versions.length),
+);
 
 const letterPromptPreview = computed(() => {
   try {
@@ -775,21 +781,14 @@ function openRewriteLetter(bookId: string, entryId: string) {
 
 function selectLetterVersion(versionId: string) {
   if (!activeBook.value || !activeEntry.value) return;
-  const version = activeEntry.value.versions.find(item => item.id === versionId);
-  phone.replacePage('entry', version?.title || activeEntry.value.title, {
+  const entry = letters.activateEntryVersion(activeBook.value.id, activeEntry.value.id, versionId);
+  if (!entry) return;
+  phone.replacePage('entry', entry.title, {
     bookId: activeBook.value.id,
-    entryId: activeEntry.value.id,
+    entryId: entry.id,
     versionId,
   });
   void nextTick(() => scrollToTop('auto'));
-}
-
-function adoptLetterVersion(versionId: string) {
-  if (!activeBook.value || !activeEntry.value) return;
-  const entry = letters.activateEntryVersion(activeBook.value.id, activeEntry.value.id, versionId);
-  if (!entry) return;
-  phone.replacePage('entry', entry.title, { bookId: activeBook.value.id, entryId: entry.id, versionId });
-  toastr.success('已采用这个书信版本');
 }
 
 async function removeLetterVersion(versionId: string) {
@@ -801,12 +800,17 @@ async function removeLetterVersion(versionId: string) {
     { confirmLabel: '删除此版本', kind: 'warning' },
   );
   if (!shouldDelete || !activeBook.value || !activeEntry.value) return;
+  const versions = [...activeEntry.value.versions];
+  const previousVersion = versions[(versionIndex - 1 + versions.length) % versions.length];
   const result = letters.deleteEntryVersion(activeBook.value.id, activeEntry.value.id, versionId);
   if (!result) return;
-  phone.replacePage('entry', result.activeVersion.title, {
+  const entry = previousVersion
+    ? letters.activateEntryVersion(activeBook.value.id, result.entry.id, previousVersion.id)
+    : result.entry;
+  phone.replacePage('entry', entry?.title || result.activeVersion.title, {
     bookId: activeBook.value.id,
     entryId: result.entry.id,
-    versionId: result.activeVersion.id,
+    versionId: previousVersion?.id || result.activeVersion.id,
   });
   toastr.success('已删除当前书信版本');
 }
@@ -941,10 +945,14 @@ async function removeBook(bookId: string) {
 
 async function removeEntry(bookId: string, entryId: string) {
   const entry = letters.getEntry(bookId, entryId);
+  if (entry && entry.versions.length > 1) {
+    await removeLetterVersion(viewedLetterVersionId.value);
+    return;
+  }
   const shouldDelete = await phone.confirmNotice(
-    `要删除整封信“${entry?.title || '未命名信件'}”吗？这封信的全部版本都会一起删除。`,
+    `要删除信件“${entry?.title || '未命名信件'}”的最后一个版本吗？删除后这封信也会移除。`,
     {
-      confirmLabel: '删除整封信',
+      confirmLabel: '删除',
       kind: 'warning',
     },
   );
@@ -1091,7 +1099,7 @@ async function runGeneration() {
     }
 
     if (result.status === 'saved') {
-      toastr.success(letterGenerationMode.value === 'rewrite' ? '已保存书信候选版本' : '已生成并保存信件');
+      toastr.success(letterGenerationMode.value === 'rewrite' ? '已保存并切换到书信新版本' : '已生成并保存信件');
       void phone.presentGeneratedPage('letters', 'entry', result.data.title, {
         bookId: result.saved.book.id,
         entryId: result.saved.entry.id,
@@ -1164,7 +1172,7 @@ function savePreview() {
   clearLettersPreviewDraft();
   generationState.preview = null;
   const versionId = 'version' in saved ? saved.version.id : '';
-  toastr.success(preview.mode === 'rewrite' ? '已保存书信候选版本' : '已保存信件');
+  toastr.success(preview.mode === 'rewrite' ? '已保存并切换到书信新版本' : '已保存信件');
   phone.replacePage('entry', versionId ? preview.title : saved.entry.title, {
     bookId: saved.book.id,
     entryId: saved.entry.id,

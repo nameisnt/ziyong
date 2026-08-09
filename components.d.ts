@@ -18,6 +18,7 @@ declare module 'vue' {
     CapsuleTag: typeof import('./src/components/CapsuleTag.vue')['default']
     CatalogModal: typeof import('./src/components/CatalogModal.vue')['default']
     ChatArchiveApp: typeof import('./src/components/ChatArchiveApp.vue')['default']
+    ContentVersionBadge: typeof import('./src/components/ContentVersionBadge.vue')['default']
     DetailFooter: typeof import('./src/components/DetailFooter.vue')['default']
     DiaryApp: typeof import('./src/components/DiaryApp.vue')['default']
     DiaryEntryDetailPage: typeof import('./src/components/diary/DiaryEntryDetailPage.vue')['default']

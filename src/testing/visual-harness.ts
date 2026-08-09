@@ -380,7 +380,8 @@ const { deleteTavernPresetPrompt, duplicateTavernPresetPrompt, readTavernPreset,
   await import('@/apps/preset-manager/api');
 const { applyTextProviderSelection } = await import('@/util/textProvider');
 const { buildExtraHistoryContext, getSummarizableChapters } = await import('@/util/extrasSummary');
-const { resolveExtraChapterGenerationRecords } = await import('@/util/extraGenerationRecords');
+const { resolveExtraChapterGenerationRecords, synchronizeExtraChapterGenerationRecords } =
+  await import('@/util/extraGenerationRecords');
 
 initPhoneLifecycle();
 
@@ -403,6 +404,7 @@ const scenarios: VisualScenarioName[] = [
   'cloud-media-settings',
   'mvu-modifier-tree',
   'entry-library-action-menu',
+  'entry-library-manual-create',
   'entry-library-bindings',
   'entry-library-collect-manual-dedupe',
   'entry-library-collect-worldbook',
@@ -455,6 +457,7 @@ const scenarios: VisualScenarioName[] = [
   'theater-rewrite-generate',
   'theater-generate-dark-inputs',
   'theater-editor',
+  'theater-frontend-footer',
   'theater-history',
   'diary-entry-detail',
   'letters-entry-detail',
@@ -755,11 +758,13 @@ function createExtrasContinuationReferencesFixture() {
     title: '当前采用版本',
   });
   if (!targetChapter) throw new Error('Continuation target fixture creation failed');
+  const adoptedVersionId = targetChapter.activeVersionId;
   extras.appendChapterVersion(targetBook.id, targetChapter.id, {
     content: '尚未采用的候选版本。',
     generationRecord: createRecord('visual_candidate_record', [makeReference(sourceCandidate, '候选版本引用旧快照')]),
     title: '候选版本',
   });
+  extras.activateChapterVersion(targetBook.id, targetChapter.id, adoptedVersionId);
   return { adoptedReferences, sourceA, sourceB, targetBook };
 }
 
@@ -1132,6 +1137,32 @@ async function applyScenario(name: VisualScenarioName, options: { height?: numbe
     resetPhoneToRoute('entry-library', 'root', '条目库');
     await waitForPaint();
     document.querySelector<HTMLDetailsElement>('.pc-entry-library-head .pc-action-menu')?.setAttribute('open', '');
+  } else if (name === 'entry-library-manual-create') {
+    const library = useEntryLibraryStore();
+    library.importBackup({ bindings: [], groups: [], items: [], version: 1 });
+    resetPhoneToRoute('entry-library', 'root', '条目库');
+    await waitForPaint();
+    const addMenu = document.querySelectorAll<HTMLDetailsElement>('.pc-entry-library-head .pc-action-menu')[1];
+    addMenu?.setAttribute('open', '');
+    await waitForPaint();
+    [...(addMenu?.querySelectorAll<HTMLButtonElement>('button') ?? [])]
+      .find(button => button.textContent?.includes('手动新建'))
+      ?.click();
+    await waitForPaint();
+    const titleField = document.querySelector<HTMLInputElement>('.pc-entry-item-editor .pc-field');
+    const contentField = document.querySelector<HTMLTextAreaElement>('.pc-entry-item-editor .pc-area');
+    if (!titleField || !contentField) throw new Error('Entry library manual editor did not open');
+    titleField.value = '手动建立的文风条目';
+    titleField.dispatchEvent(new Event('input', { bubbles: true }));
+    contentField.value = '这是不依赖预设或世界书来源的手动条目内容。';
+    contentField.dispatchEvent(new Event('input', { bubbles: true }));
+    document.querySelector<HTMLButtonElement>('.pc-entry-item-editor .pc-primary-btn')?.click();
+    const saved = await waitForVisualCondition(
+      () => library.items.some(item => item.sourceType === 'manual') && usePhoneStore().currentRoute.page === 'root',
+    );
+    if (!saved) {
+      throw new Error('Entry library manual item was not saved back to the directory');
+    }
   } else if (name === 'comfy-action-menu') {
     resetPhoneToRoute('comfy', 'root', 'ComfyUI');
     await waitForPaint();
@@ -1211,7 +1242,12 @@ async function applyScenario(name: VisualScenarioName, options: { height?: numbe
     });
     resetPhoneToRoute('entry-library', 'root', '条目库');
     await waitForPaint();
-    document.querySelector<HTMLButtonElement>('.pc-entry-library-head .pc-primary-btn')?.click();
+    const addMenu = document.querySelectorAll<HTMLDetailsElement>('.pc-entry-library-head .pc-action-menu')[1];
+    addMenu?.setAttribute('open', '');
+    await waitForPaint();
+    [...(addMenu?.querySelectorAll<HTMLButtonElement>('button') ?? [])]
+      .find(button => button.textContent?.includes('预设或世界书'))
+      ?.click();
     await waitForPaint();
     document.querySelectorAll<HTMLButtonElement>('.pc-entry-library-page .pc-segment-btn')[1]?.click();
     await waitForPaint();
@@ -1484,8 +1520,8 @@ async function applyScenario(name: VisualScenarioName, options: { height?: numbe
     const worldSlots = useWorldSlotsStore();
     worldSlots.resetCurrentScope();
     worldSlots.createSlot({
-      content: '只属于当前聊天的关系变化。',
-      title: '关系变化',
+      content: 'LONG_UNBROKEN_WORLD_SLOT_CONTENT_'.repeat(20),
+      title: '关系变化'.repeat(20),
     });
     resetPhoneToRoute('world-slots', 'root', '世界书槽位');
     await waitForPaint();
@@ -1494,6 +1530,10 @@ async function applyScenario(name: VisualScenarioName, options: { height?: numbe
     }
     if (document.querySelector('.pc-world-toolbar select, .pc-world-toolbar .pc-combobox')) {
       throw new Error('Legacy world slot type filter is still visible');
+    }
+    const slotsApp = document.querySelector<HTMLElement>('.pc-world-slots-app');
+    if (!slotsApp || slotsApp.scrollWidth > slotsApp.clientWidth + 1) {
+      throw new Error('Long world slot content expanded the App width');
     }
   } else if (name === 'world-slots-batch-import') {
     useSettingsStore().setTheme('light');
@@ -2049,12 +2089,17 @@ async function applyScenario(name: VisualScenarioName, options: { height?: numbe
       replies: candidateReplies,
       title: '重写后的论坛主帖',
     });
-    if (!saved || thread.content === saved.version.content || JSON.stringify(thread.replies) !== originalReplies) {
-      throw new Error('Forum rewrite version overwrote the active thread snapshot');
+    if (
+      !saved ||
+      thread.content !== saved.version.content ||
+      JSON.stringify(thread.replies) !== JSON.stringify(candidateReplies)
+    ) {
+      throw new Error('Forum rewrite version did not become the active thread snapshot');
     }
-    if (thread.updatedAt !== '2000-01-01T00:00:00.000Z' || board.updatedAt !== '2000-01-01T00:00:00.000Z') {
-      throw new Error('Forum candidate version changed the active thread ordering timestamp');
+    if (thread.updatedAt === '2000-01-01T00:00:00.000Z' || board.updatedAt === '2000-01-01T00:00:00.000Z') {
+      throw new Error('Forum active rewrite version did not update ordering timestamps');
     }
+    if (JSON.stringify(thread.replies) === originalReplies) throw new Error('Forum rewrite replies were not distinct');
     resetPhoneToRoute('forum', 'thread', saved.version.title, {
       boardId: board.id,
       threadId: thread.id,
@@ -2085,15 +2130,14 @@ async function applyScenario(name: VisualScenarioName, options: { height?: numbe
       versionId: saved.version.id,
     });
     await waitForPaint();
-    const adoptButton = document.querySelector<HTMLButtonElement>('.pc-version-navigator .pc-primary-btn');
-    if (!adoptButton) throw new Error('Forum candidate version did not expose the adoption action');
-    adoptButton.click();
-    const adopted = await waitForVisualCondition(() => thread.activeVersionId === saved.version.id);
-    if (!adopted || thread.content !== saved.version.content) {
-      throw new Error('Forum adoption action did not activate the candidate main post');
+    if (document.querySelector('.pc-version-navigator .pc-primary-btn')) {
+      throw new Error('Forum version navigator still exposed a separate adoption action');
+    }
+    if (thread.activeVersionId !== saved.version.id || thread.content !== saved.version.content) {
+      throw new Error('Forum rewrite version was not activated when saved');
     }
     if (JSON.stringify(thread.replies) !== JSON.stringify(candidateReplies)) {
-      throw new Error('Forum theme adoption did not activate the candidate replies');
+      throw new Error('Forum active version did not include its reply snapshot');
     }
     if (JSON.stringify(thread.replies) === originalReplies)
       throw new Error('Forum candidate replies were not distinct');
@@ -2258,34 +2302,32 @@ async function applyScenario(name: VisualScenarioName, options: { height?: numbe
     const extraBook = createLegacyExtrasFixture();
     const chapter = extraBook.chapters[0];
     if (!chapter) throw new Error('Content version fixture did not create an extra chapter');
-    const originalChapterContent = chapter.content;
     chapter.updatedAt = '2000-01-01T00:00:00.000Z';
     extraBook.updatedAt = '2000-01-01T00:00:00.000Z';
     const extraSaved = extras.appendChapterVersion(extraBook.id, chapter.id, {
-      content: '这是番外章节的重写候选版本，保存后不会立即覆盖旧版。',
+      content: '这是番外章节的重写版本，保存后立即成为当前版本。',
       title: '第一章候选版',
     });
-    if (!extraSaved || chapter.content !== originalChapterContent || chapter.versions.length !== 2) {
-      throw new Error('Extra rewrite did not preserve the original chapter as version one');
+    if (!extraSaved || chapter.content !== extraSaved.version.content || chapter.versions.length !== 2) {
+      throw new Error('Extra rewrite did not activate the saved version');
     }
-    if (chapter.updatedAt !== '2000-01-01T00:00:00.000Z' || extraBook.updatedAt !== '2000-01-01T00:00:00.000Z') {
-      throw new Error('Extra candidate version changed the active chapter ordering timestamp');
+    if (chapter.updatedAt === '2000-01-01T00:00:00.000Z' || extraBook.updatedAt === '2000-01-01T00:00:00.000Z') {
+      throw new Error('Extra active rewrite version did not update ordering timestamps');
     }
 
     const theater = useTheaterStore();
     const theaterEntry = createTheaterFixture();
-    const originalTheaterContent = theaterEntry.content;
     theaterEntry.updatedAt = '2000-01-01T00:00:00.000Z';
     const theaterSaved = theater.appendEntryVersion(theaterEntry.id, {
       content: '小剧场候选版本。',
       renderMode: 'markdown',
       title: '小剧场候选版',
     });
-    if (!theaterSaved || theaterEntry.content !== originalTheaterContent) {
-      throw new Error('Theater rewrite candidate replaced the active version before adoption');
+    if (!theaterSaved || theaterEntry.content !== theaterSaved.version.content) {
+      throw new Error('Theater rewrite did not activate the saved version');
     }
-    if (theaterEntry.updatedAt !== '2000-01-01T00:00:00.000Z') {
-      throw new Error('Theater candidate version changed the active entry ordering timestamp');
+    if (theaterEntry.updatedAt === '2000-01-01T00:00:00.000Z') {
+      throw new Error('Theater active rewrite version did not update the ordering timestamp');
     }
     theater.updateEntryMetadata(theaterEntry.id, {
       participants: [{ name: '候选编辑参与者' }],
@@ -2299,10 +2341,6 @@ async function applyScenario(name: VisualScenarioName, options: { height?: numbe
     ) {
       throw new Error('Theater version editor did not preserve shared type and participant fields');
     }
-    theater.activateEntryVersion(theaterEntry.id, theaterSaved.version.id);
-    if (theaterEntry.content !== theaterSaved.version.content) {
-      throw new Error('Theater version adoption did not update the active content');
-    }
 
     const letters = useLettersStore();
     const letterBook = createLettersFixture();
@@ -2315,15 +2353,11 @@ async function applyScenario(name: VisualScenarioName, options: { height?: numbe
       format: letter.format,
       title: '第一封信候选版',
     });
-    if (!letterSaved || letter.content === letterSaved.version.content) {
-      throw new Error('Letter rewrite candidate replaced the active version before adoption');
+    if (!letterSaved || letter.content !== letterSaved.version.content) {
+      throw new Error('Letter rewrite did not activate the saved version');
     }
-    if (letter.updatedAt !== '2000-01-01T00:00:00.000Z' || letterBook.updatedAt !== '2000-01-01T00:00:00.000Z') {
-      throw new Error('Letter candidate version changed the active entry ordering timestamp');
-    }
-    letters.activateEntryVersion(letterBook.id, letter.id, letterSaved.version.id);
-    if (letter.content !== letterSaved.version.content) {
-      throw new Error('Letter version adoption did not update the active content');
+    if (letter.updatedAt === '2000-01-01T00:00:00.000Z' || letterBook.updatedAt === '2000-01-01T00:00:00.000Z') {
+      throw new Error('Letter active rewrite version did not update ordering timestamps');
     }
 
     resetPhoneToRoute('extras', 'chapter', extraSaved.version.title, {
@@ -2371,21 +2405,70 @@ async function applyScenario(name: VisualScenarioName, options: { height?: numbe
       throw new Error('Next-version action did not restore the candidate route and title');
     }
 
-    const adoptButton = document.querySelector<HTMLButtonElement>('.pc-version-navigator .pc-primary-btn');
-    if (!adoptButton) throw new Error('Candidate version did not expose the adoption action');
-    adoptButton.click();
-    const adopted = await waitForVisualCondition(() => chapter.activeVersionId === saved.version.id);
-    if (!adopted || chapter.content !== saved.version.content) {
-      throw new Error('Version adoption action did not update the active chapter');
+    nextButton.click();
+    const wrappedToOriginal = await waitForVisualCondition(
+      () => usePhoneStore().currentRoute.params?.versionId === originalVersion.id,
+    );
+    if (!wrappedToOriginal) throw new Error('Last version did not cycle back to the first version');
+
+    const versionInput = document.querySelector<HTMLInputElement>('.pc-version-navigator input[type="number"]');
+    if (!versionInput) throw new Error('Version navigator did not expose numeric jump input');
+    versionInput.value = '2';
+    versionInput.dispatchEvent(new Event('input', { bubbles: true }));
+    versionInput.dispatchEvent(new Event('blur'));
+    const jumpedToCandidate = await waitForVisualCondition(
+      () => usePhoneStore().currentRoute.params?.versionId === saved.version.id,
+    );
+    if (!jumpedToCandidate) throw new Error('Numeric version jump did not select the requested version');
+
+    if (chapter.activeVersionId !== saved.version.id || chapter.content !== saved.version.content) {
+      throw new Error('Version selection did not immediately activate the viewed chapter');
     }
-    const deleteButton = document.querySelector<HTMLButtonElement>('.pc-version-actions .danger');
-    if (!deleteButton) throw new Error('Version navigator did not expose the version deletion action');
+    if (document.querySelector('.pc-version-navigator .pc-primary-btn, .pc-version-actions')) {
+      throw new Error('Version navigator still exposed separate adoption or deletion actions');
+    }
+    await toggleReaderFooter();
+    const deleteButton = document.querySelector<HTMLButtonElement>('.pc-reader-footer-popover .danger');
+    if (!deleteButton) throw new Error('Detail footer did not expose contextual version deletion');
     deleteButton.click();
     const deleteNoticeOpened = await waitForVisualCondition(() =>
       Boolean(document.querySelector('.pc-phone-notice-actions button[data-role="danger"]')),
     );
-    if (!deleteNoticeOpened) throw new Error('Version deletion action did not open its confirmation notice');
-    document.querySelector<HTMLButtonElement>('.pc-phone-notice-actions button[data-role="soft"]')?.click();
+    if (!deleteNoticeOpened) throw new Error('Contextual version deletion did not request confirmation');
+    document.querySelector<HTMLButtonElement>('.pc-phone-notice-actions button[data-role="danger"]')?.click();
+    const deletedCurrentVersion = await waitForVisualCondition(
+      () =>
+        chapter.versions.length === 1 &&
+        chapter.activeVersionId === originalVersion.id &&
+        usePhoneStore().currentRoute.params?.versionId === originalVersion.id,
+    );
+    if (!deletedCurrentVersion)
+      throw new Error('Deleting the viewed version did not show and activate its predecessor');
+    phone.stack = [
+      { appId: 'home', page: 'home', title: '酒馆手机' },
+      { appId: 'extras', page: 'book', params: { bookId: book.id }, title: book.title },
+      {
+        appId: 'extras',
+        page: 'chapter',
+        params: { bookId: book.id, chapterId: chapter.id, versionId: originalVersion.id },
+        title: originalVersion.title,
+      },
+      {
+        appId: 'extras',
+        page: 'chapter-generate',
+        params: { bookId: book.id, chapterId: chapter.id },
+        title: '重写章节',
+      },
+    ];
+    phone.replacePage('chapter', originalVersion.title, {
+      bookId: book.id,
+      chapterId: chapter.id,
+      versionId: originalVersion.id,
+    });
+    if (phone.stack.length !== 3) throw new Error('Returning from rewrite kept a duplicate detail route');
+    await phone.goBack();
+    if (phone.currentRoute.page !== 'book')
+      throw new Error('Detail back navigation did not return directly to the catalog');
   } else if (name === 'content-version-deletion') {
     const extras = useExtrasStore();
     const extraBook = createLegacyExtrasFixture();
@@ -2456,6 +2539,14 @@ async function applyScenario(name: VisualScenarioName, options: { height?: numbe
       resolveExtraChapterGenerationRecords(chapter)[0]?.id !== originalGenerationRecord.id
     ) {
       throw new Error('Deleting an extra version did not restore its neighbor or remove its generation record');
+    }
+    chapter.generationRecords = [originalGenerationRecord, deletedGenerationRecord];
+    if (
+      !synchronizeExtraChapterGenerationRecords(chapter) ||
+      chapter.generationRecords.length !== 1 ||
+      chapter.generationRecords[0]?.id !== originalGenerationRecord.id
+    ) {
+      throw new Error('Extra startup migration did not remove an orphaned generation record');
     }
 
     const theater = useTheaterStore();
@@ -2536,7 +2627,7 @@ async function applyScenario(name: VisualScenarioName, options: { height?: numbe
     await waitForPaint();
     const generationHistoryText = document.querySelector('.pc-generation-history')?.textContent || '';
     if (
-      !generationHistoryText.includes('版本 1 · 当前采用') ||
+      !generationHistoryText.includes('版本 1 · 当前版本') ||
       !generationHistoryText.includes(originalGenerationRecord.userRequirement) ||
       generationHistoryText.includes(deletedGenerationRecord.userRequirement)
     ) {
@@ -2982,9 +3073,41 @@ async function applyScenario(name: VisualScenarioName, options: { height?: numbe
   } else if (name === 'theater-editor') {
     const entry = createTheaterFixture();
     resetPhoneToRoute('theater', 'editor', '编辑小剧场', { entryId: entry.id });
+  } else if (name === 'theater-frontend-footer') {
+    const theater = useTheaterStore();
+    theater.resetCurrentScope();
+    const entry = theater.createEntry({
+      content: '<main><button type="button">网页内部按钮</button><p>网页渲染正文</p></main>',
+      participants: [],
+      renderMode: 'frontend',
+      title: '网页渲染底栏测试',
+      typeName: '网页测试',
+    });
+    resetPhoneToRoute('theater', 'entry', entry.title, { entryId: entry.id });
+    await waitForPaint();
+    if (!document.querySelector('.pc-reader-footer-popover')) {
+      throw new Error('Frontend theater detail did not keep its footer visible');
+    }
   } else if (name === 'theater-history') {
     createTheaterFixture();
+    const theater = useTheaterStore();
+    Array.from({ length: 18 }, (_, index) =>
+      theater.createEntry({
+        content: `标签筛选测试正文 ${index + 1}`,
+        participants: [],
+        renderMode: 'markdown',
+        title: `标签筛选测试 ${index + 1}`,
+        typeName: `类型 ${index + 1}`,
+      }),
+    );
     resetPhoneToRoute('theater', 'history', '小剧场记录');
+    await waitForPaint();
+    document.querySelector<HTMLButtonElement>('.pc-theater-filter-control .pc-soft-btn')?.click();
+    await waitForPaint();
+    const tagList = document.querySelector<HTMLElement>('.pc-history-tag-list');
+    if (!tagList || tagList.scrollHeight <= tagList.clientHeight) {
+      throw new Error('Theater history tag panel did not constrain a long tag list');
+    }
   } else if (name === 'video-viewer') {
     const video = createVideoFixture();
     resetPhoneToRoute('video', 'viewer', video.title, { entryId: video.id });

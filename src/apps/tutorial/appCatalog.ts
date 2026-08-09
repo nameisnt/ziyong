@@ -31,7 +31,7 @@ export const tutorialAppGuides: TutorialAppGuide[] = [
   { appId: 'diary', groupId: 'creative', firstAction: '选择或新建日记本，再决定写日记还是生成角色反应。' },
   { appId: 'extras', groupId: 'creative', firstAction: '新开一本或进入目标章节，再选择续写、重写或章节总结。' },
   { appId: 'forum', groupId: 'creative', firstAction: '先确定板块名和板块类型提示词，再生成帖子或继续回帖。' },
-  { appId: 'theater', groupId: 'creative', firstAction: '选择类型和参与角色，保存后可续写或复制成新番外。' },
+  { appId: 'theater', groupId: 'creative', firstAction: '选择类型和参与角色，保存后可续写、重写版本或复制成新番外。' },
   { appId: 'letters', groupId: 'creative', firstAction: '选择发信人与收信人，已有往来可以直接继续回信。' },
 
   { appId: 'digest', groupId: 'planning', firstAction: '手动新建摘抄，或在阅读聊天中选中文字后加入。' },
@@ -46,7 +46,7 @@ export const tutorialAppGuides: TutorialAppGuide[] = [
   { appId: 'prompts', groupId: 'tavern', firstAction: '选择主提示词、类型提示词、解析规则或快捷短语进行编辑。' },
   { appId: 'preset-manager', groupId: 'tavern', firstAction: '选择酒馆预设，查看、筛选或编辑其中条目。' },
   { appId: 'preset-link', groupId: 'tavern', firstAction: '选择预设后保存聊天绑定，需要时再单独立即应用。' },
-  { appId: 'entry-library', groupId: 'tavern', firstAction: '选择预设或世界书来源和分组，再搜索并收藏条目。' },
+  { appId: 'entry-library', groupId: 'tavern', firstAction: '手动新建条目，或选择预设、世界书来源和分组批量收藏。' },
   { appId: 'worldbook-link', groupId: 'tavern', firstAction: '选择世界书并保存当前聊天需要启用的条目状态。' },
   { appId: 'world-slots', groupId: 'tavern', firstAction: '新建当前聊天专用槽位，再同步到固定世界书。' },
   { appId: 'mvu-modifier', groupId: 'tavern', firstAction: '展开变量树，编辑字段并点击该字段的保存。' },

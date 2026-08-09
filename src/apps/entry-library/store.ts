@@ -27,7 +27,7 @@ export const EntryLibraryItemSchema = z.object({
   title: z.string().default('未命名条目'),
   content: z.string().default(''),
   enabled: z.boolean().default(true),
-  sourceType: z.enum(['preset', 'worldbook']),
+  sourceType: z.enum(['manual', 'preset', 'worldbook']),
   sourceName: z.string().default(''),
   sourceEntryId: z.string().default(''),
   sourceRole: z.enum(['assistant', 'system', 'user']).optional(),
@@ -311,6 +311,27 @@ export const useEntryLibraryStore = defineStore('entry-library', () => {
     return collected;
   }
 
+  function createItem(input: Pick<EntryLibraryItem, 'content' | 'groupId' | 'title'> & { order?: number }) {
+    if (!getGroup(input.groupId)) throw new Error('请选择有效的收藏分组');
+    const timestamp = nowIso();
+    const item: EntryLibraryItem = {
+      content: input.content,
+      createdAt: timestamp,
+      enabled: true,
+      groupId: input.groupId,
+      id: createId('entry_item'),
+      order: getGroupItems(input.groupId).length + 1,
+      sourceEntryId: '',
+      sourceName: '手动新建',
+      sourceType: 'manual',
+      title: input.title.trim() || '未命名条目',
+      updatedAt: timestamp,
+    };
+    settings.value.items.push(item);
+    updateItem(item.id, { order: input.order ?? item.order });
+    return item;
+  }
+
   function updateItem(
     itemId: string,
     patch: Partial<Pick<EntryLibraryItem, 'content' | 'enabled' | 'groupId' | 'order' | 'title'>>,
@@ -488,6 +509,7 @@ export const useEntryLibraryStore = defineStore('entry-library', () => {
     collectItems,
     createBinding,
     createGroup,
+    createItem,
     deleteBinding,
     deleteGroup,
     deleteItem,

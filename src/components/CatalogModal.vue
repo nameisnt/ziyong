@@ -19,6 +19,7 @@
           @click="emit('select', item.id)"
         >
           <span>{{ item.title }}</span>
+          <small v-if="item.versionCount">{{ `${item.versionCount} 版` }}</small>
         </button>
       </div>
     </section>
@@ -149,7 +150,10 @@ watch(
 }
 
 .pc-catalog-item {
-  display: block;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 10px;
   width: 100%;
   height: 46px;
   min-width: 0;
@@ -171,6 +175,12 @@ watch(
   min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.pc-catalog-item small {
+  color: var(--pc-muted);
+  font-weight: 750;
   white-space: nowrap;
 }
 </style>

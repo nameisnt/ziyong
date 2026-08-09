@@ -177,12 +177,10 @@
       :previous-id="chapterPrevId || ''"
       :versions="activeChapter.versions"
       :viewed-version-id="viewedChapterVersionId"
-      @adopt-version="adoptChapterVersion"
       @bagu="openExtrasBaguScan"
       @bottom="scrollToBottom"
       @continue="openGenerateChapter(activeBook.id)"
       @delete="removeChapter(activeBook.id, activeChapter.id)"
-      @delete-version="removeChapterVersion"
       @edit="openEditChapter(activeBook.id, activeChapter.id, viewedChapterVersionId)"
       @favorite="extras.toggleFavorite(activeBook.id, activeChapter.id)"
       @next="openChapter(activeBook.id, chapterNextId || '', true)"
@@ -363,7 +361,7 @@
           :raw="chapterGenerationState.preview.raw"
           raw-editable
           :reparse-handler="reparseChapterPreviewRaw"
-          :save-label="chapterGenerationState.preview.mode === '重写当前章节' ? '保存候选版本' : '保存章节'"
+          :save-label="chapterGenerationState.preview.mode === '重写当前章节' ? '保存新版本' : '保存章节'"
           :source-label="activeBook?.title || t`番外预览`"
           :text-provider-summary="chapterGenerationState.preview.mode"
           :title="chapterGenerationState.preview.title"
@@ -1256,21 +1254,14 @@ function rewriteWithGenerationRecord(generationRecordId: string) {
 
 function selectChapterVersion(versionId: string) {
   if (!activeBook.value || !activeChapter.value) return;
-  const version = activeChapter.value.versions.find(item => item.id === versionId);
-  phone.replacePage('chapter', version?.title || activeChapter.value.title, {
+  const chapter = extras.activateChapterVersion(activeBook.value.id, activeChapter.value.id, versionId);
+  if (!chapter) return;
+  phone.replacePage('chapter', chapter.title, {
     bookId: activeBook.value.id,
-    chapterId: activeChapter.value.id,
+    chapterId: chapter.id,
     versionId,
   });
   void nextTick(() => scrollToTop('auto'));
-}
-
-function adoptChapterVersion(versionId: string) {
-  if (!activeBook.value || !activeChapter.value) return;
-  const chapter = extras.activateChapterVersion(activeBook.value.id, activeChapter.value.id, versionId);
-  if (!chapter) return;
-  phone.replacePage('chapter', chapter.title, { bookId: activeBook.value.id, chapterId: chapter.id, versionId });
-  toastr.success('已采用这个章节版本');
 }
 
 async function removeChapterVersion(versionId: string) {
@@ -1282,12 +1273,17 @@ async function removeChapterVersion(versionId: string) {
     { confirmLabel: '删除此版本', kind: 'warning' },
   );
   if (!shouldDelete || !activeBook.value || !activeChapter.value) return;
+  const versions = [...activeChapter.value.versions];
+  const previousVersion = versions[(versionIndex - 1 + versions.length) % versions.length];
   const result = extras.deleteChapterVersion(activeBook.value.id, activeChapter.value.id, versionId);
   if (!result) return;
-  phone.replacePage('chapter', result.activeVersion.title, {
+  const chapter = previousVersion
+    ? extras.activateChapterVersion(activeBook.value.id, result.chapter.id, previousVersion.id)
+    : result.chapter;
+  phone.replacePage('chapter', chapter?.title || result.activeVersion.title, {
     bookId: activeBook.value.id,
     chapterId: result.chapter.id,
-    versionId: result.activeVersion.id,
+    versionId: previousVersion?.id || result.activeVersion.id,
   });
   toastr.success('已删除当前章节版本');
 }
@@ -1361,10 +1357,14 @@ function selectCatalogChapter(chapterId: string) {
 
 async function removeChapter(bookId: string, chapterId: string) {
   const chapter = extras.getChapter(bookId, chapterId);
+  if (chapter && chapter.versions.length > 1) {
+    await removeChapterVersion(viewedChapterVersionId.value);
+    return;
+  }
   const shouldDelete = await phone.confirmNotice(
-    `要删除整个章节“${chapter?.title || '未命名章节'}”吗？该章节的全部版本都会一起删除。`,
+    `要删除章节“${chapter?.title || '未命名章节'}”的最后一个版本吗？删除后这条章节记录也会移除。`,
     {
-      confirmLabel: '删除整章',
+      confirmLabel: '删除',
       kind: 'warning',
     },
   );
@@ -1611,7 +1611,7 @@ async function runChapterGenerationForBook(bookId: string, book: ExtraBook, chap
 
     if (result.status === 'saved') {
       const savedChapter = result.saved.chapter;
-      toastr.success(chapterGenerationDraft.mode === '重写当前章节' ? '已保存章节候选版本' : '已生成并保存章节');
+      toastr.success(chapterGenerationDraft.mode === '重写当前章节' ? '已保存并切换到章节新版本' : '已生成并保存章节');
       void phone.presentGeneratedPage('extras', 'chapter', result.data.title, {
         bookId,
         chapterId: savedChapter.id,

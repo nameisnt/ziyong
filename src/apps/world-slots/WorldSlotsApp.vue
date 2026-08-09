@@ -511,6 +511,9 @@ async function syncSlots() {
 <style scoped>
 .pc-world-slots-app,
 .pc-world-slots-page {
+  width: 100%;
+  min-width: 0;
+  max-width: 100%;
   min-height: 100%;
 }
 
@@ -584,6 +587,7 @@ async function syncSlots() {
 .pc-slot-list {
   display: grid;
   gap: 10px;
+  min-width: 0;
 }
 
 .pc-slot-row {
@@ -593,11 +597,20 @@ async function syncSlots() {
   gap: 12px;
   padding: 14px;
   cursor: pointer;
+  min-width: 0;
+  max-width: 100%;
+}
+
+.pc-slot-row > div {
+  flex: 1 1 auto;
+  min-width: 0;
 }
 
 .pc-slot-row h3 {
+  min-width: 0;
   margin: 4px 0;
   font-size: 16px;
+  overflow-wrap: anywhere;
 }
 
 .pc-slot-row p {
@@ -607,6 +620,7 @@ async function syncSlots() {
   -webkit-box-orient: vertical;
   -webkit-line-clamp: 2;
   line-height: 1.45;
+  overflow-wrap: anywhere;
 }
 
 .pc-slot-row strong {
@@ -619,6 +633,10 @@ async function syncSlots() {
   display: grid;
   gap: 7px;
   min-width: 0;
+}
+
+.pc-world-slots-page :deep(.pc-reference-picker) {
+  width: 100%;
 }
 
 .pc-world-basic-grid,

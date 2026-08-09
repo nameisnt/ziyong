@@ -1,6 +1,6 @@
 <template>
   <div
-    :class="['pc-reader-detail-shell', { 'footer-visible': footerVisible }]"
+    :class="['pc-reader-detail-shell', { 'footer-visible': effectiveFooterVisible }]"
     @pointercancel="resetReaderTap"
     @pointerdown="startReaderTap"
     @pointermove="trackReaderTap"
@@ -29,7 +29,7 @@
     </article>
 
     <div class="pc-reader-footer-layer">
-      <div v-if="footerVisible" class="pc-reader-footer-popover" @click.stop>
+      <div v-if="effectiveFooterVisible" class="pc-reader-footer-popover" @click.stop>
         <DetailFooter
           :actions-class="actionsClass"
           :catalog-label="catalogLabel"
@@ -90,7 +90,7 @@
 import DetailFooter from '@/components/DetailFooter.vue';
 import ReaderContent from '@/components/ReaderContent.vue';
 
-withDefaults(
+const props = withDefaults(
   defineProps<{
     actionsClass?: string;
     baguEnabled?: boolean;
@@ -110,6 +110,7 @@ withDefaults(
     favoriteEnabled?: boolean;
     favoriteIcon?: string;
     favoriteLabel?: string;
+    footerAlwaysVisible?: boolean;
     nextDisabled?: boolean;
     nextLabel?: string;
     previousDisabled?: boolean;
@@ -135,6 +136,7 @@ withDefaults(
     favoriteEnabled: true,
     favoriteIcon: 'fa-solid fa-heart',
     favoriteLabel: '收藏',
+    footerAlwaysVisible: false,
     nextDisabled: false,
     nextLabel: '下一章',
     previousDisabled: false,
@@ -155,6 +157,7 @@ const emit = defineEmits<{
 }>();
 
 const footerVisible = ref(false);
+const effectiveFooterVisible = computed(() => props.footerAlwaysVisible || footerVisible.value);
 
 const readerTap = {
   pointerId: -1,
@@ -224,10 +227,11 @@ function finishReaderTap(event: PointerEvent) {
     relativeY <= 0.8;
 
   resetReaderTap();
-  if (shouldToggle) footerVisible.value = !footerVisible.value;
+  if (shouldToggle && !props.footerAlwaysVisible) footerVisible.value = !footerVisible.value;
 }
 
 function hideFooter() {
+  if (props.footerAlwaysVisible) return;
   footerVisible.value = false;
 }
 

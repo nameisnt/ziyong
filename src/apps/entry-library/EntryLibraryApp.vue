@@ -21,10 +21,16 @@
               <span>{{ t`分组绑定` }}</span>
             </button>
           </ActionMenu>
-          <button class="pc-primary-btn compact" type="button" @click="openCollect">
-            <i class="fa-solid fa-plus"></i>
-            <span>{{ t`收藏` }}</span>
-          </button>
+          <ActionMenu :label="t`新增`" icon="fa-solid fa-plus">
+            <button type="button" @click="openManualEditor">
+              <i class="fa-solid fa-pen-to-square"></i>
+              <span>{{ t`手动新建` }}</span>
+            </button>
+            <button type="button" @click="openCollect">
+              <i class="fa-solid fa-bookmark"></i>
+              <span>{{ t`从预设或世界书收藏` }}</span>
+            </button>
+          </ActionMenu>
         </div>
       </header>
 
@@ -129,7 +135,7 @@
         </section>
       </div>
       <EmptyState v-else :title="libraryQuery.trim() ? t`没有找到匹配的收藏` : t`还没有收藏条目`">
-        <p>{{ t`可以从预设或世界书中批量复制条目到独立收藏库。` }}</p>
+        <p>{{ t`可以手动新建，也可以从预设或世界书批量复制到独立条目库。` }}</p>
       </EmptyState>
     </section>
 
@@ -377,7 +383,7 @@
       </div>
     </section>
 
-    <section v-else-if="route.page === 'edit' && editingItem" class="pc-entry-library-page">
+    <section v-else-if="route.page === 'edit' && (editingItem || creatingManualItem)" class="pc-entry-library-page">
       <article class="pc-editor-card pc-entry-item-editor">
         <label class="pc-field-group">
           <span>{{ t`名称` }}</span>
@@ -478,6 +484,7 @@ const itemDrag = reactive({
 let itemDragLongPressTimer: number | null = null;
 
 const editingItem = computed(() => library.getItem(route.value.params?.itemId || ''));
+const creatingManualItem = computed(() => route.value.page === 'edit' && route.value.params?.mode === 'create');
 const editOrderMax = computed(() => {
   const count = library.getGroupItems(editGroupId.value).length;
   const editingInTargetGroup = editingItem.value?.groupId === editGroupId.value;
@@ -561,6 +568,12 @@ async function deleteItem(itemId: string) {
 
 function openCollect() {
   phone.pushPage('collect', '收藏条目');
+}
+
+function openManualEditor() {
+  let targetGroup = groups.value[0];
+  if (!targetGroup) targetGroup = library.createGroup('默认分组');
+  phone.pushPage('edit', '新建条目', { groupId: targetGroup.id, mode: 'create' });
 }
 
 function openDedupe() {
@@ -938,24 +951,36 @@ async function deleteBinding(bindingId: string) {
 }
 
 function saveEditor() {
-  if (!editingItem.value) return;
-  library.updateItem(editingItem.value.id, {
-    content: editContent.value,
-    groupId: editGroupId.value,
-    order: editOrder.value,
-    title: editTitle.value,
-  });
-  toastr.success('已保存收藏条目');
+  if (creatingManualItem.value) {
+    library.createItem({
+      content: editContent.value,
+      groupId: editGroupId.value,
+      order: editOrder.value,
+      title: editTitle.value,
+    });
+    toastr.success('已新建条目');
+  } else if (editingItem.value) {
+    library.updateItem(editingItem.value.id, {
+      content: editContent.value,
+      groupId: editGroupId.value,
+      order: editOrder.value,
+      title: editTitle.value,
+    });
+    toastr.success('已保存收藏条目');
+  } else {
+    return;
+  }
   phone.goBack();
 }
 
 watch(
-  editingItem,
-  item => {
+  () => [editingItem.value, creatingManualItem.value, route.value.params?.groupId] as const,
+  ([item, creating, groupId]) => {
     editTitle.value = item?.title || '';
     editContent.value = item?.content || '';
-    editGroupId.value = item?.groupId || '';
-    editOrder.value = item?.order || 1;
+    editGroupId.value = item?.groupId || (creating ? groupId || groups.value[0]?.id || '' : '');
+    editOrder.value =
+      item?.order || (creating && editGroupId.value ? library.getGroupItems(editGroupId.value).length + 1 : 1);
   },
   { immediate: true },
 );

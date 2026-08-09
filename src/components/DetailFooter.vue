@@ -15,7 +15,7 @@
         <i class="fa-solid fa-arrow-up"></i>
         <span>{{ topLabel }}</span>
       </button>
-      <button class="pc-soft-btn catalog" type="button" @click="$emit('catalog')">
+      <button class="pc-soft-btn icon-only catalog" type="button" :title="catalogLabel" @click="$emit('catalog')">
         <i class="fa-solid fa-list"></i>
         <span>{{ catalogLabel }}</span>
       </button>

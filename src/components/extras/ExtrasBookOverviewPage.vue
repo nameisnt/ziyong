@@ -81,6 +81,7 @@
       <article v-for="chapter in chapters" :key="chapter.id" class="pc-entry-card">
         <button class="pc-entry-main" type="button" @click="emit('openChapter', chapter.id)">
           <strong>{{ `第 ${chapter.chapterNumber} 章 · ${chapter.title}` }}</strong>
+          <ContentVersionBadge :count="Math.max(1, chapter.versions.length)" />
         </button>
       </article>
     </div>
@@ -89,6 +90,7 @@
 
 <script setup lang="ts">
 import EmptyState from '@/components/EmptyState.vue';
+import ContentVersionBadge from '@/components/ContentVersionBadge.vue';
 import type { ExtraBook, ExtraChapter } from '@/type/extra';
 
 const props = defineProps<{
@@ -240,12 +242,20 @@ function formatCoveredChapters(ids: string[]) {
 }
 
 .pc-entry-main {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
   width: 100%;
   border: 0;
   background: transparent;
   color: var(--pc-text);
   text-align: left;
   cursor: pointer;
+}
+
+.pc-entry-main strong {
+  min-width: 0;
 }
 
 .pc-toggle-chip {

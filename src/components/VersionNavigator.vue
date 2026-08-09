@@ -1,40 +1,28 @@
 <template>
   <div v-if="versions.length > 1" class="pc-version-navigator" aria-label="内容版本">
     <div class="pc-version-switcher">
-      <button
-        class="pc-icon-btn"
-        type="button"
-        :disabled="currentIndex <= 0"
-        :title="t`上一个版本`"
-        @click="selectOffset(-1)"
-      >
+      <button class="pc-icon-btn" type="button" :title="t`上一个版本`" @click="selectOffset(-1)">
         <span class="pc-version-chevron previous" aria-hidden="true"></span>
       </button>
       <div class="pc-version-status">
-        <strong>{{ `版本 ${currentIndex + 1} / ${versions.length}` }}</strong>
-        <small>{{ viewedVersionId === activeVersionId ? t`当前采用` : t`候选版本` }}</small>
+        <label>
+          <span>{{ t`版本` }}</span>
+          <input
+            v-model="requestedIndex"
+            class="pc-field"
+            type="number"
+            inputmode="numeric"
+            min="1"
+            :max="versions.length"
+            :aria-label="t`跳转到版本`"
+            @blur="commitRequestedIndex"
+            @keydown.enter.prevent="commitRequestedIndex"
+          />
+          <span>{{ `/ ${versions.length}` }}</span>
+        </label>
       </div>
-      <button
-        class="pc-icon-btn"
-        type="button"
-        :disabled="currentIndex < 0 || currentIndex >= versions.length - 1"
-        :title="t`下一个版本`"
-        @click="selectOffset(1)"
-      >
+      <button class="pc-icon-btn" type="button" :title="t`下一个版本`" @click="selectOffset(1)">
         <span class="pc-version-chevron next" aria-hidden="true"></span>
-      </button>
-    </div>
-    <div class="pc-version-actions">
-      <button
-        v-if="viewedVersionId !== activeVersionId"
-        class="pc-primary-btn compact"
-        type="button"
-        @click="emit('adopt', viewedVersionId)"
-      >
-        {{ t`采用此版本` }}
-      </button>
-      <button class="pc-soft-btn compact danger" type="button" @click="emit('delete', viewedVersionId)">
-        <span>{{ t`删除此版本` }}</span>
       </button>
     </div>
   </div>
@@ -47,34 +35,49 @@ export type VersionNavigatorItem = {
 };
 
 const props = defineProps<{
-  activeVersionId: string;
   versions: VersionNavigatorItem[];
   viewedVersionId: string;
 }>();
 
 const emit = defineEmits<{
-  adopt: [versionId: string];
-  delete: [versionId: string];
   select: [versionId: string];
 }>();
 
 const currentIndex = computed(() => props.versions.findIndex(version => version.id === props.viewedVersionId));
+const requestedIndex = ref(1);
+
+watch(
+  () => [currentIndex.value, props.versions.length] as const,
+  ([index]) => {
+    requestedIndex.value = Math.max(0, index) + 1;
+  },
+  { immediate: true },
+);
 
 function selectOffset(offset: number) {
-  const target = props.versions[currentIndex.value + offset];
+  if (!props.versions.length) return;
+  const normalizedIndex = currentIndex.value >= 0 ? currentIndex.value : 0;
+  const targetIndex = (normalizedIndex + offset + props.versions.length) % props.versions.length;
+  const target = props.versions[targetIndex];
   if (target) emit('select', target.id);
+}
+
+function commitRequestedIndex() {
+  const parsed = Math.round(Number(requestedIndex.value));
+  const targetIndex = Math.max(0, Math.min(props.versions.length - 1, Number.isFinite(parsed) ? parsed - 1 : 0));
+  requestedIndex.value = targetIndex + 1;
+  const target = props.versions[targetIndex];
+  if (target && target.id !== props.viewedVersionId) emit('select', target.id);
 }
 </script>
 
 <style scoped>
 .pc-version-navigator {
-  display: grid;
   padding: 8px;
   border: 1px solid var(--pc-border);
   border-radius: 8px;
   margin: 10px 0 14px;
   background: var(--pc-surface-strong);
-  gap: 8px;
 }
 
 .pc-version-switcher {
@@ -86,23 +89,22 @@ function selectOffset(offset: number) {
 
 .pc-version-status {
   min-width: 0;
-  text-align: center;
 }
 
-.pc-version-status strong,
-.pc-version-status small {
-  display: block;
-}
-
-.pc-version-status small {
-  color: var(--pc-muted);
-}
-
-.pc-version-actions {
+.pc-version-status label {
   display: flex;
-  flex-wrap: wrap;
-  justify-content: flex-end;
+  align-items: center;
+  justify-content: center;
   gap: 8px;
+  color: var(--pc-muted);
+  font-weight: 750;
+}
+
+.pc-version-status .pc-field {
+  width: 62px;
+  min-height: 38px;
+  padding: 6px 8px;
+  text-align: center;
 }
 
 .pc-version-chevron {
@@ -124,11 +126,6 @@ function selectOffset(offset: number) {
 @media (max-width: 380px) {
   .pc-version-switcher {
     grid-template-columns: 38px minmax(0, 1fr) 38px;
-  }
-
-  .pc-version-actions > button {
-    min-inline-size: 0;
-    flex: 1 1 0;
   }
 }
 </style>

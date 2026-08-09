@@ -121,6 +121,7 @@
           <button class="pc-entry-main" type="button" @click="openThread(activeBoard.id, thread.id)">
             <div class="pc-entry-head">
               <strong>{{ thread.title }}</strong>
+              <ContentVersionBadge :count="Math.max(1, thread.versions.length)" />
             </div>
             <p>{{ thread.author }} · {{ thread.replies.length }} {{ t`条回复` }}</p>
           </button>
@@ -196,11 +197,8 @@
           <span>{{ activeThread.favorite ? t`已收藏` : t`未收藏` }}</span>
         </div>
         <VersionNavigator
-          :active-version-id="activeThread.activeVersionId"
           :versions="activeThread.versions"
           :viewed-version-id="viewedForumVersionId"
-          @adopt="adoptForumVersion"
-          @delete="removeForumVersion"
           @select="selectForumVersion"
         />
         <ReaderContent :content="viewedForumThread.content" />
@@ -240,7 +238,7 @@
           <button
             class="pc-soft-btn danger"
             type="button"
-            :title="t`删除主题帖（全部版本和回复）`"
+            :title="activeThread.versions.length > 1 ? t`删除当前版本` : t`删除帖子`"
             @click="removeThread(activeBoard.id, activeThread.id)"
           >
             <i class="fa-solid fa-trash"></i>
@@ -301,7 +299,7 @@
             <button
               class="pc-soft-btn danger"
               type="button"
-              :title="t`删帖`"
+              :title="activeThread.versions.length > 1 ? t`删除当前版本` : t`删除帖子`"
               @click="removeThread(activeBoard.id, activeThread.id)"
             >
               <i class="fa-solid fa-trash"></i>
@@ -478,7 +476,7 @@
           :save-label="
             generationState.preview.action === 'thread'
               ? generationState.preview.mode === 'rewrite'
-                ? '保存候选版本'
+                ? '保存新版本'
                 : '保存帖子'
               : '保存回复'
           "
@@ -558,6 +556,7 @@
 
 <script setup lang="ts">
 import BaguScanPanel from '@/components/BaguScanPanel.vue';
+import ContentVersionBadge from '@/components/ContentVersionBadge.vue';
 import EmptyState from '@/components/EmptyState.vue';
 import FailedDraftList from '@/components/FailedDraftList.vue';
 import GenerationPanel from '@/components/GenerationPanel.vue';
@@ -1032,7 +1031,9 @@ watch(
       generationState.preview = null;
       generationState.rawOutput = '';
 
-      const replay = rewriteForumVersion.value?.generationReplay || rewriteForumThread.value?.generationReplay;
+      const replay = rewriteForumThread.value?.versions.length
+        ? rewriteForumVersion.value?.generationReplay
+        : rewriteForumThread.value?.generationReplay;
       if (replay) {
         selectedReferences.value = resolveGenerationReplayReferences(replay);
         replaySession.applyReplay(replay, threadGenerationDraft);
@@ -1141,16 +1142,6 @@ function openRewriteThread() {
 
 function selectForumVersion(versionId: string) {
   if (!activeBoard.value || !activeThread.value) return;
-  const version = activeThread.value.versions.find(item => item.id === versionId);
-  phone.replacePage('thread', version?.title || activeThread.value.title, {
-    boardId: activeBoard.value.id,
-    threadId: activeThread.value.id,
-    versionId,
-  });
-}
-
-function adoptForumVersion(versionId: string) {
-  if (!activeBoard.value || !activeThread.value) return;
   const thread = forum.activateThreadVersion(activeBoard.value.id, activeThread.value.id, versionId);
   if (!thread) return;
   phone.replacePage('thread', thread.title, {
@@ -1158,7 +1149,6 @@ function adoptForumVersion(versionId: string) {
     threadId: thread.id,
     versionId,
   });
-  toastr.success('已采用这个论坛主帖版本');
 }
 
 async function removeForumVersion(versionId: string) {
@@ -1170,12 +1160,17 @@ async function removeForumVersion(versionId: string) {
     { confirmLabel: '删除此版本', kind: 'warning' },
   );
   if (!shouldDelete || !activeBoard.value || !activeThread.value) return;
+  const versions = [...activeThread.value.versions];
+  const previousVersion = versions[(versionIndex - 1 + versions.length) % versions.length];
   const result = forum.deleteThreadVersion(activeBoard.value.id, activeThread.value.id, versionId);
   if (!result) return;
-  phone.replacePage('thread', result.activeVersion.title, {
+  const thread = previousVersion
+    ? forum.activateThreadVersion(activeBoard.value.id, result.thread.id, previousVersion.id)
+    : result.thread;
+  phone.replacePage('thread', thread?.title || result.activeVersion.title, {
     boardId: activeBoard.value.id,
     threadId: result.thread.id,
-    versionId: result.activeVersion.id,
+    versionId: previousVersion?.id || result.activeVersion.id,
   });
   toastr.success('已删除当前论坛主题版本');
 }
@@ -1352,10 +1347,14 @@ async function removeBoard(boardId: string) {
 
 async function removeThread(boardId: string, threadId: string) {
   const thread = forum.getThread(boardId, threadId);
+  if (thread && thread.versions.length > 1) {
+    await removeForumVersion(viewedForumVersionId.value);
+    return;
+  }
   const shouldDelete = await phone.confirmNotice(
-    `要删除整个帖子“${thread?.title || '未命名帖子'}”吗？全部主帖版本和回复都会一起删除。`,
+    `要删除帖子“${thread?.title || '未命名帖子'}”的最后一个版本吗？主楼、回复和帖子记录会一起移除。`,
     {
-      confirmLabel: '全部删除',
+      confirmLabel: '删除',
       kind: 'warning',
     },
   );
@@ -1519,7 +1518,7 @@ async function runThreadGeneration() {
     }
 
     if (result.status === 'saved') {
-      toastr.success(forumThreadGenerationMode.value === 'rewrite' ? '已保存主帖候选版本' : '已生成并保存帖子');
+      toastr.success(forumThreadGenerationMode.value === 'rewrite' ? '已保存并切换到主帖新版本' : '已生成并保存帖子');
       void phone.presentGeneratedPage('forum', 'thread', result.data.title, {
         boardId: result.saved.board.id,
         threadId: result.saved.thread.id,
@@ -1707,7 +1706,7 @@ function savePreview() {
     clearForumPreviewDraft();
     generationState.preview = null;
     const versionId = 'version' in saved ? saved.version.id : '';
-    toastr.success(preview.mode === 'rewrite' ? '已保存主帖候选版本' : '已保存帖子');
+    toastr.success(preview.mode === 'rewrite' ? '已保存并切换到主帖新版本' : '已保存帖子');
     phone.replacePage('thread', versionId ? preview.title : saved.thread.title, {
       boardId: board.id,
       threadId: saved.thread.id,

@@ -14,7 +14,10 @@ import {
   removeContentVersion,
   resolveContentVersion,
 } from '@/util/contentVersions';
-import { resolveExtraChapterGenerationRecords } from '@/util/extraGenerationRecords';
+import {
+  resolveExtraChapterGenerationRecords,
+  synchronizeExtraChapterGenerationRecords,
+} from '@/util/extraGenerationRecords';
 import { validateInplace } from '@/util/zod';
 
 export const extrasField = 'sillytavern_phone_extras';
@@ -44,6 +47,15 @@ export const useExtrasStore = defineStore('extras', () => {
   const books = computed(() => data.value.books);
   const { createFailedDraft, deleteFailedDraft, failedDrafts, getFailedDraft, updateFailedDraft } =
     createFailedDraftCollection(data, 'extra_failed');
+
+  function synchronizeGenerationRecords() {
+    data.value.books.forEach(book => {
+      book.chapters.forEach(chapter => synchronizeExtraChapterGenerationRecords(chapter));
+    });
+  }
+
+  synchronizeGenerationRecords();
+  watch(data, synchronizeGenerationRecords, { deep: false, flush: 'sync' });
 
   function getBook(bookId: string) {
     return books.value.find(book => book.id === bookId) ?? null;
@@ -163,8 +175,13 @@ export const useExtrasStore = defineStore('extras', () => {
       title: input.title.trim() || chapter.title,
     });
     chapter.versions = [...state.versions, version];
-    chapter.activeVersionId = state.activeVersionId;
+    const timestamp = nowIso();
+    chapter.activeVersionId = version.id;
+    chapter.title = version.title;
+    chapter.content = version.content;
     chapter.generationRecords = resolveExtraChapterGenerationRecords(chapter).slice(-10);
+    chapter.updatedAt = timestamp;
+    book.updatedAt = timestamp;
     return { chapter, version };
   }
 
