@@ -433,7 +433,7 @@ function applySelectedReferences() {
 function mergeSelectedReferences() {
   const references = selectedReferences.value.filter(reference => reference.content.trim());
   if (!references.length) return;
-  draft.content = [draft.content.trimEnd(), ...references.map(formatReferenceForSlotContent)]
+  draft.content = [draft.content.trimEnd(), ...references.map(reference => reference.content.trim())]
     .filter(Boolean)
     .join('\n\n');
   if (!draft.title.trim()) {
@@ -443,18 +443,6 @@ function mergeSelectedReferences() {
   selectedReferences.value = [];
   referenceImportMode.value = 'merge';
   toastr.success(`已合并 ${references.length} 条内容`);
-}
-
-function formatReferenceForSlotContent(reference: GenerationReferenceItem) {
-  const title = reference.title.trim();
-  const content = reference.content.trim();
-  if (!title) return content;
-  const firstLine =
-    content
-      .split(/\r?\n/, 1)[0]
-      ?.trim()
-      .replace(/^#+\s*/, '') || '';
-  return firstLine === title ? content : [`## ${title}`, content].filter(Boolean).join('\n');
 }
 
 function createSeparateReferenceSlots() {
@@ -519,8 +507,15 @@ async function syncSlots() {
 
 .pc-world-slots-page {
   display: grid;
+  grid-template-columns: minmax(0, 1fr);
   align-content: start;
   gap: 14px;
+}
+
+.pc-world-slots-page > *,
+.pc-world-slots-page > .pc-editor-card > * {
+  min-width: 0;
+  max-width: 100%;
 }
 
 .pc-world-hero,
@@ -637,6 +632,8 @@ async function syncSlots() {
 
 .pc-world-slots-page :deep(.pc-reference-picker) {
   width: 100%;
+  min-width: 0;
+  max-width: 100%;
 }
 
 .pc-world-basic-grid,
@@ -729,6 +726,7 @@ async function syncSlots() {
 }
 
 @media (max-width: 460px) {
+  .pc-world-basic-grid,
   .pc-world-timing-grid {
     grid-template-columns: 1fr;
   }

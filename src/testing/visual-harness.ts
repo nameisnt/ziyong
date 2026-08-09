@@ -1424,7 +1424,7 @@ async function applyScenario(name: VisualScenarioName, options: { height?: numbe
       ],
       items: [
         {
-          content: '这是从条目库插入的测试正文。',
+          content: `这是从条目库插入的测试正文。${'LONG_UNBROKEN_REFERENCE_CONTENT_'.repeat(12)}`,
           createdAt: '2026-07-31T00:00:02.000Z',
           enabled: true,
           groupId: 'visual-world-slot-library',
@@ -1473,13 +1473,20 @@ async function applyScenario(name: VisualScenarioName, options: { height?: numbe
     ) {
       throw new Error('World slot selected references are not compact and reorderable');
     }
+    const slotsApp = document.querySelector<HTMLElement>('.pc-world-slots-app');
+    if (!slotsApp || slotsApp.scrollWidth > slotsApp.clientWidth + 1) {
+      throw new Error('Selected reference content expanded the world slot editor width');
+    }
     const mergeButton = document.querySelector<HTMLButtonElement>('.pc-world-import-controls .pc-primary-btn');
     if (!mergeButton?.textContent?.includes('合并所选')) throw new Error('World slot merge action is missing');
     mergeButton.click();
     await waitForPaint();
     const contentArea = document.querySelector<HTMLTextAreaElement>('.pc-world-area');
-    if (!contentArea?.value.includes('这是从条目库插入的测试正文。')) {
-      throw new Error('Entry library item content was not inserted into the world slot');
+    if (
+      !contentArea?.value.startsWith('这是从条目库插入的测试正文。') ||
+      contentArea.value.includes('## 条目库测试条目')
+    ) {
+      throw new Error('Entry library item was not inserted as prefix-free content');
     }
     const titleField = document.querySelector<HTMLInputElement>('input[placeholder="槽位名称"]');
     if (titleField?.value !== '条目库测试条目') {
@@ -1513,8 +1520,8 @@ async function applyScenario(name: VisualScenarioName, options: { height?: numbe
     await waitForPaint();
     document.querySelector<HTMLButtonElement>('.pc-world-import-controls .pc-primary-btn')?.click();
     await waitForPaint();
-    if (titleField.value !== firstEntry.title || !contentArea.value.includes(`## ${firstEntry.title}`)) {
-      throw new Error('Merged profile reference did not preserve its name in the world slot');
+    if (titleField.value !== firstEntry.title || contentArea.value !== profileReference.item.content.trim()) {
+      throw new Error('Merged profile reference did not preserve its title and prefix-free content');
     }
   } else if (name === 'world-slots-root-cleanup') {
     const worldSlots = useWorldSlotsStore();
