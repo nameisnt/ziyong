@@ -373,8 +373,7 @@ const { createExtraChapterGenerationAdapter, createExtraChapterGenerationRecord,
 const { GenerationReplaySnapshotSchema } = await import('@/type/generation');
 const { restoreGenerationReplayDraft } = await import('@/util/generationReplay');
 const { createHiddenGenerationRecord } = await import('@/util/hiddenGenerationRecord');
-const { buildBaguSentenceReplacement, groupBaguHitsBySentence, scanTextWithBaguRules } =
-  await import('@/util/bagu');
+const { buildBaguSentenceReplacement, groupBaguHitsBySentence, scanTextWithBaguRules } = await import('@/util/bagu');
 const { buildSourceSelection } = await import('@/util/generationSource');
 const { getRegisteredPhoneAppReferenceTrees } = await import('@/core/appRegistry');
 const { ENTRY_LIBRARY_CONTENT_PLACEHOLDER, renderEntryLibraryBindingContent, useEntryLibraryStore } =

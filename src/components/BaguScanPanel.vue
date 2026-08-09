@@ -244,13 +244,7 @@ const visibleGroups = computed(() =>
     return [
       group.originalText,
       group.replacement,
-      ...group.hits.flatMap(hit => [
-        hit.match,
-        hit.originalText,
-        hit.replacement,
-        hit.ruleLabel,
-        hit.ruleTitle,
-      ]),
+      ...group.hits.flatMap(hit => [hit.match, hit.originalText, hit.replacement, hit.ruleLabel, hit.ruleTitle]),
     ]
       .join(' ')
       .toLowerCase()
