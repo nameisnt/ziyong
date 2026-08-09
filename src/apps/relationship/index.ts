@@ -198,6 +198,17 @@ export default definePhoneApp({
       createAdapter: () => createRelationshipGenerationAdapter(useRelationshipStore()),
     },
   ],
+  taskTemplateDefinitions: [
+    {
+      actionId: 'generate',
+      label: '生成关系网',
+      defaultTemplate: '{{focusInstruction}}',
+      variables: [
+        { key: 'focusInstruction', label: '指定角色要求' },
+        { key: 'characterNames', label: '指定角色名' },
+      ],
+    },
+  ],
   promptDefinitions: [
     {
       key: 'relationship',

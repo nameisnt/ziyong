@@ -197,12 +197,14 @@
         @previous="openEntry(previousEntryId || '', true)"
         @top="scrollToTop"
       >
-        <template #before-content>
+        <template #version-navigation>
           <VersionNavigator
             :versions="activeEntry.versions"
             :viewed-version-id="viewedEntryVersionId"
             @select="selectTheaterVersion"
           />
+        </template>
+        <template #before-content>
           <div class="pc-entry-tags">
             <CapsuleTag
               compact

@@ -16,15 +16,23 @@
             <h1>{{ title }}</h1>
             <slot name="meta"></slot>
           </header>
+          <slot v-if="versionNavigatorPosition === 'before'" name="version-navigation"></slot>
           <slot name="before-content"></slot>
           <slot name="content"></slot>
+          <slot v-if="versionNavigatorPosition === 'after'" name="version-navigation"></slot>
           <slot name="after-content"></slot>
         </article>
       </template>
       <ReaderContent v-else :content="content" :formatted="contentFormatted" :title="title">
         <template #meta><slot name="meta"></slot></template>
-        <template #before><slot name="before-content"></slot></template>
-        <template #after><slot name="after-content"></slot></template>
+        <template #before>
+          <slot v-if="versionNavigatorPosition === 'before'" name="version-navigation"></slot>
+          <slot name="before-content"></slot>
+        </template>
+        <template #after>
+          <slot v-if="versionNavigatorPosition === 'after'" name="version-navigation"></slot>
+          <slot name="after-content"></slot>
+        </template>
       </ReaderContent>
     </article>
 
@@ -89,6 +97,8 @@
 <script setup lang="ts">
 import DetailFooter from '@/components/DetailFooter.vue';
 import ReaderContent from '@/components/ReaderContent.vue';
+import { useSettingsStore } from '@/store/settings';
+import { storeToRefs } from 'pinia';
 
 const props = withDefaults(
   defineProps<{
@@ -155,6 +165,10 @@ const emit = defineEmits<{
   (event: 'previous'): void;
   (event: 'top'): void;
 }>();
+
+const settingsStore = useSettingsStore();
+const { settings } = storeToRefs(settingsStore);
+const versionNavigatorPosition = computed(() => settings.value.reader.versionNavigatorPosition);
 
 const footerVisible = ref(false);
 const effectiveFooterVisible = computed(() => props.footerAlwaysVisible || footerVisible.value);

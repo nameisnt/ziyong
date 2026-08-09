@@ -63,6 +63,11 @@ export function createLettersGenerationAdapter(lettersStore: {
         context: config.recentLettersContext,
         outputFormat: config.outputFormat,
         taskInstruction: buildTaskInstruction(config),
+        taskTemplateVariables: {
+          formatLabel: formatLabel(config.format),
+          receiverName: config.receiver.name,
+          senderName: config.sender.name,
+        },
         userRequirement: config.userRequirement,
       });
     },

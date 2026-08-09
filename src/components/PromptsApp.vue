@@ -52,6 +52,28 @@
         </div>
       </section>
 
+      <section v-else-if="activePromptTab === 'task'" class="pc-stack">
+        <div class="pc-section-bar">
+          <strong>{{ t`任务模板` }}</strong>
+        </div>
+
+        <div class="pc-app-prompt-grid">
+          <button
+            v-for="group in taskPromptGroups"
+            :key="group.appId"
+            class="pc-app-prompt-tile"
+            :data-task-template-app-id="group.appId"
+            type="button"
+            :style="{ '--pc-prompt-accent': group.accent }"
+            @click="openTaskPromptGroup(group.appId)"
+          >
+            <span class="pc-app-prompt-icon"><i class="fa-solid" :class="group.icon"></i></span>
+            <strong>{{ group.label }}</strong>
+            <small>{{ group.items.length }}</small>
+          </button>
+        </div>
+      </section>
+
       <section v-else-if="activePromptTab === 'output'" class="pc-stack">
         <div class="pc-section-bar">
           <strong>{{ t`输出与解析` }}</strong>
@@ -251,10 +273,26 @@
         <span class="pc-kicker">{{ editingAppPrompt.appLabel }}</span>
         <h2>{{ editingAppPrompt.label }}</h2>
         <textarea
+          ref="appPromptEditorEl"
           v-model="appPromptDraft"
           class="pc-area pc-app-prompt-editor-area"
           :placeholder="editingAppPrompt.placeholder"
         ></textarea>
+        <div v-if="editingAppPrompt.kind === 'task' && editingAppPrompt.variables.length" class="pc-field-group">
+          <span class="pc-field-label">{{ t`可用占位符` }}</span>
+          <div class="pc-chip-row">
+            <button
+              v-for="variable in editingAppPrompt.variables"
+              :key="variable.key"
+              class="pc-soft-btn compact"
+              type="button"
+              :title="variable.label"
+              @click="insertTaskVariable(variable.key)"
+            >
+              {{ formatTaskVariable(variable.key) }}
+            </button>
+          </div>
+        </div>
         <div class="pc-form-actions">
           <button class="pc-soft-btn" type="button" @click="phone.goBack()">{{ t`取消` }}</button>
           <button class="pc-primary-btn" type="button" @click="submitAppPrompt">{{ t`保存` }}</button>
@@ -451,6 +489,13 @@
           </label>
 
           <label class="pc-transfer-item">
+            <input v-model="transferSelection.taskTemplates" type="checkbox" />
+            <div>
+              <strong>{{ t`任务模板` }}</strong>
+            </div>
+          </label>
+
+          <label class="pc-transfer-item">
             <input v-model="transferSelection.outputRules" type="checkbox" />
             <div>
               <strong>{{ t`输出与解析` }}</strong>
@@ -536,10 +581,15 @@
             </button>
           </div>
           <div class="pc-prompt-detail-body">
-            <p class="pc-prewrap">{{ activeAppPrompt.value || t`未填写 App 提示词正文` }}</p>
+            <p class="pc-prewrap">{{ activeAppPrompt.value || activePromptEmptyLabel }}</p>
+            <div v-if="activeAppPrompt.kind === 'task' && activeAppPrompt.variables.length" class="pc-chip-row">
+              <code v-for="variable in activeAppPrompt.variables" :key="variable.key" :title="variable.label">
+                {{ formatTaskVariable(variable.key) }}
+              </code>
+            </div>
           </div>
           <div class="pc-form-actions pc-prompt-detail-actions">
-            <button class="pc-soft-btn" type="button" @click="copyText(activeAppPrompt.value, '已复制 App 提示词')">
+            <button class="pc-soft-btn" type="button" @click="copyText(activeAppPrompt.value, activePromptCopyMessage)">
               <i class="fa-solid fa-copy"></i>
               <span>{{ t`复制` }}</span>
             </button>
@@ -608,6 +658,7 @@ import {
   getRegisteredPhoneApps,
   type PhoneOutputParserDefinition,
   type PhonePromptDefinition,
+  type PhoneTaskTemplateDefinition,
 } from '@/core/appRegistry';
 import { usePhoneStore } from '@/store/phone';
 import { usePromptStore, type PromptTransferSelection, type QuickPhrase } from '@/store/prompts';
@@ -626,13 +677,16 @@ const {
   quickTemplateGroups,
   specialPromptDefinitions,
   specialPrompts,
+  taskTemplateDefinitions,
+  taskTemplates,
   typePromptDomains,
   typePrompts,
 } = storeToRefs(prompts);
 
 const transferInputEl = ref<HTMLInputElement | null>(null);
-type PromptTab = 'app' | 'output' | 'phrase' | 'template' | 'type';
-type AppPromptKind = 'app' | 'special';
+const appPromptEditorEl = ref<HTMLTextAreaElement | null>(null);
+type PromptTab = 'app' | 'output' | 'phrase' | 'task' | 'template' | 'type';
+type AppPromptKind = 'app' | 'special' | 'task';
 type AppPromptCard = {
   appId: string;
   appLabel: string;
@@ -644,6 +698,7 @@ type AppPromptCard = {
   outputFormats: NonNullable<PhonePromptDefinition['outputFormats']>;
   placeholder: string;
   value: string;
+  variables: NonNullable<PhoneTaskTemplateDefinition['variables']>;
 };
 const activePromptTab = ref<PromptTab>('app');
 const activeAppPromptGroupId = ref('');
@@ -687,6 +742,7 @@ const outputDraft = reactive<{
 });
 const transferSelection = reactive<PromptTransferSelection>({
   appPrompts: true,
+  taskTemplates: true,
   outputRules: true,
   typePrompts: true,
   quickPhraseGroups: true,
@@ -710,6 +766,27 @@ function createAppPromptCard(
     outputFormats: definition.outputFormats ?? [],
     placeholder: `填写${definition.label}的默认提示词`,
     value: kind === 'app' ? (appPrompts.value[definition.key] ?? '') : (specialPrompts.value[definition.key] ?? ''),
+    variables: [],
+  };
+}
+
+function createTaskPromptCard(
+  appId: string,
+  appLabel: string,
+  definition: (typeof taskTemplateDefinitions.value)[number],
+): AppPromptCard {
+  return {
+    appId,
+    appLabel,
+    defaultPrompt: definition.defaultTemplate,
+    key: definition.key,
+    kind: 'task',
+    label: definition.label,
+    openKey: `task:${definition.key}`,
+    outputFormats: [],
+    placeholder: `填写${definition.label}的任务模板`,
+    value: taskTemplates.value[definition.key] ?? definition.defaultTemplate,
+    variables: definition.variables ?? [],
   };
 }
 
@@ -730,8 +807,26 @@ const appPromptGroups = computed(() =>
     .filter(group => group.items.length),
 );
 const appPromptCards = computed(() => appPromptGroups.value.flatMap(group => group.items));
+const taskPromptGroups = computed(() =>
+  getRegisteredPhoneApps()
+    .map(app => ({
+      accent: app.accent,
+      appId: app.id,
+      icon: app.icon,
+      items: taskTemplateDefinitions.value
+        .filter(definition => definition.appId === app.id)
+        .map(definition => createTaskPromptCard(app.id, app.name, definition)),
+      label: app.name,
+    }))
+    .filter(group => group.items.length),
+);
+const allPromptCards = computed(() => [
+  ...appPromptCards.value,
+  ...taskPromptGroups.value.flatMap(group => group.items),
+]);
 const promptMenuItems: Array<{ key: PromptTab; label: string }> = [
   { key: 'app', label: 'App 提示词' },
+  { key: 'task', label: '任务模板' },
   { key: 'type', label: '类型提示词' },
   { key: 'output', label: '输出与解析' },
   { key: 'phrase', label: '快捷短语' },
@@ -776,7 +871,10 @@ const activeTypePrompt = computed(() =>
   activeTypePromptId.value ? prompts.getTypePrompt(activeTypePromptId.value) : null,
 );
 const activeAppPromptGroup = computed(
-  () => appPromptGroups.value.find(group => group.appId === activeAppPromptGroupId.value) ?? null,
+  () =>
+    (activePromptTab.value === 'task' ? taskPromptGroups.value : appPromptGroups.value).find(
+      group => group.appId === activeAppPromptGroupId.value,
+    ) ?? null,
 );
 const activeAppPrompt = computed(
   () =>
@@ -790,7 +888,7 @@ const activeTypePromptDomainLabel = computed(
 
 const editingAppPrompt = computed(() =>
   route.value.params?.openKey
-    ? (appPromptCards.value.find(item => item.openKey === route.value.params?.openKey) ?? null)
+    ? (allPromptCards.value.find(item => item.openKey === route.value.params?.openKey) ?? null)
     : null,
 );
 const editingTypePrompt = computed(() =>
@@ -888,11 +986,22 @@ function updateAppPromptValue(item: Pick<AppPromptCard, 'key' | 'kind'>, value: 
     prompts.updateAppPrompt(item.key, value);
     return;
   }
+  if (item.kind === 'task') {
+    prompts.updateTaskTemplate(item.key, value);
+    return;
+  }
   prompts.updateSpecialPrompt(item.key, value);
 }
 
 function openAppPromptGroup(appId: string) {
   const group = appPromptGroups.value.find(item => item.appId === appId);
+  if (!group?.items.length) return;
+  activeAppPromptGroupId.value = group.appId;
+  activeAppPromptOpenKey.value = group.items[0]!.openKey;
+}
+
+function openTaskPromptGroup(appId: string) {
+  const group = taskPromptGroups.value.find(item => item.appId === appId);
   if (!group?.items.length) return;
   activeAppPromptGroupId.value = group.appId;
   activeAppPromptOpenKey.value = group.items[0]!.openKey;
@@ -919,9 +1028,36 @@ function submitAppPrompt() {
   const item = editingAppPrompt.value;
   if (!item) return;
   updateAppPromptValue(item, appPromptDraft.value);
-  toastr.success('已保存 App 提示词');
+  toastr.success(item.kind === 'task' ? '已保存任务模板' : '已保存 App 提示词');
   phone.goBack();
 }
+
+function insertTaskVariable(key: string) {
+  const textarea = appPromptEditorEl.value;
+  const placeholder = `{{${key}}}`;
+  if (!textarea) {
+    appPromptDraft.value += placeholder;
+    return;
+  }
+  const start = textarea.selectionStart ?? appPromptDraft.value.length;
+  const end = textarea.selectionEnd ?? start;
+  appPromptDraft.value = `${appPromptDraft.value.slice(0, start)}${placeholder}${appPromptDraft.value.slice(end)}`;
+  nextTick(() => {
+    textarea.focus();
+    textarea.setSelectionRange(start + placeholder.length, start + placeholder.length);
+  });
+}
+
+function formatTaskVariable(key: string) {
+  return `{{${key}}}`;
+}
+
+const activePromptEmptyLabel = computed(() =>
+  activeAppPrompt.value?.kind === 'task' ? t`任务模板为空，本次不发送任务层` : t`未填写 App 提示词正文`,
+);
+const activePromptCopyMessage = computed(() =>
+  activeAppPrompt.value?.kind === 'task' ? '已复制任务模板' : '已复制 App 提示词',
+);
 
 async function restoreActiveAppPrompt() {
   const item = activeAppPrompt.value;
@@ -1134,6 +1270,7 @@ function submitTemplate() {
 function getTransferSelection() {
   return {
     appPrompts: transferSelection.appPrompts,
+    taskTemplates: transferSelection.taskTemplates,
     outputRules: transferSelection.outputRules,
     typePrompts: transferSelection.typePrompts,
     quickPhraseGroups: transferSelection.quickPhraseGroups,
@@ -1273,7 +1410,7 @@ async function removeQuickTemplate(groupId: string, phraseId: string) {
 
 async function resetDefaults() {
   const shouldReset = await phone.confirmNotice(
-    '要恢复默认提示词配置吗？当前 App 提示词、输出与解析、类型提示词和快速短语都会被默认值覆盖。',
+    '要恢复默认提示词配置吗？当前 App 提示词、任务模板、输出与解析、类型提示词和快速短语都会被默认值覆盖。',
     {
       confirmLabel: '恢复',
       kind: 'warning',

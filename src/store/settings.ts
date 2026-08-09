@@ -6,6 +6,7 @@ import {
   type CustomFontItem,
   type CustomWallpaperSettings,
   type ExternalApiPresetId,
+  type ReaderAppearance,
   type Settings as PhoneSettings,
   type TimekeeperCalendarTemplate,
   type ThemeAppearanceProfile,
@@ -633,6 +634,10 @@ export const useSettingsStore = defineStore('settings', () => {
     settings.value.reader.blankLineBetweenLines = enabled;
   }
 
+  function setReaderVersionNavigatorPosition(position: ReaderAppearance['versionNavigatorPosition']) {
+    settings.value.reader.versionNavigatorPosition = position;
+  }
+
   function resetReaderAppearance() {
     settings.value.reader = {
       blankLineBetweenLines: true,
@@ -640,6 +645,7 @@ export const useSettingsStore = defineStore('settings', () => {
       fontFamily: '',
       fontSize: 16,
       lineHeight: 1.6,
+      versionNavigatorPosition: 'before',
     };
   }
 
@@ -857,6 +863,7 @@ export const useSettingsStore = defineStore('settings', () => {
     setReaderFontFamily,
     setReaderFontSize,
     setReaderLineHeight,
+    setReaderVersionNavigatorPosition,
     setReaderScale,
     setTextProviderApiUrl,
     setActiveExternalApiProfile,

@@ -197,11 +197,18 @@
           <span>{{ activeThread.favorite ? t`已收藏` : t`未收藏` }}</span>
         </div>
         <VersionNavigator
+          v-if="settings.reader.versionNavigatorPosition === 'before'"
           :versions="activeThread.versions"
           :viewed-version-id="viewedForumVersionId"
           @select="selectForumVersion"
         />
         <ReaderContent :content="viewedForumThread.content" />
+        <VersionNavigator
+          v-if="settings.reader.versionNavigatorPosition === 'after'"
+          :versions="activeThread.versions"
+          :viewed-version-id="viewedForumVersionId"
+          @select="selectForumVersion"
+        />
       </div>
       <div class="pc-detail-footer pc-forum-thread-footer">
         <div class="pc-detail-actions six">

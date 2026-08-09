@@ -199,6 +199,10 @@ export function createDiaryGenerationAdapter(diaryStore: {
         appPrompt: config.appPrompt,
         outputFormat: config.outputFormat,
         taskInstruction: buildDiaryTaskInstruction(config),
+        taskTemplateVariables: {
+          perspectiveName: config.perspective.name,
+          timeInstruction: config.occurredAt.trim() ? `日记发生或写作时间：${config.occurredAt.trim()}` : '',
+        },
         userRequirement: config.userRequirement,
       });
     },
@@ -261,6 +265,10 @@ export function createDiaryReadReactionGenerationAdapter(diaryStore: {
         context: buildDiaryReactionContext(config),
         outputFormat: config.outputFormat,
         taskInstruction: buildDiaryReactionTaskInstruction(config),
+        taskTemplateVariables: {
+          perspectiveName: config.perspective.name,
+          timeInstruction: config.occurredAt.trim() ? `反应发生或写作时间：${config.occurredAt.trim()}` : '',
+        },
         userRequirement: config.userRequirement,
       });
     },

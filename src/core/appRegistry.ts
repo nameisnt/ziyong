@@ -123,6 +123,18 @@ export interface PhonePromptDefinition {
   outputFormats?: PhonePromptOutputFormat[];
 }
 
+export interface PhoneTaskTemplateVariable {
+  key: string;
+  label: string;
+}
+
+export interface PhoneTaskTemplateDefinition {
+  actionId: string;
+  defaultTemplate: string;
+  label: string;
+  variables?: PhoneTaskTemplateVariable[];
+}
+
 export interface PhoneTypePromptDefinition {
   id: string;
   domain: string;
@@ -185,6 +197,7 @@ export interface PhoneAppModule extends PhoneAppDefinition {
   resetCurrentScope?: PhoneAppResetHandler;
   scopeSwitchHandler?: PhoneScopeSwitchHandler;
   specialPromptDefinitions?: PhonePromptDefinition[];
+  taskTemplateDefinitions?: PhoneTaskTemplateDefinition[];
   typePromptDomains?: PhoneTypePromptDomain[];
 }
 
@@ -310,6 +323,17 @@ export function getRegisteredPhonePromptDefinitions() {
 
 export function getRegisteredPhoneSpecialPromptDefinitions() {
   return getRegisteredPhoneApps().flatMap(module => module.specialPromptDefinitions ?? []);
+}
+
+export function getRegisteredPhoneTaskTemplateDefinitions() {
+  return getRegisteredPhoneApps().flatMap(module =>
+    (module.taskTemplateDefinitions ?? []).map(definition => ({
+      ...definition,
+      appId: module.id,
+      appLabel: module.name,
+      key: `${module.id}.${definition.actionId}`,
+    })),
+  );
 }
 
 export function getRegisteredPhoneTypePromptDomains() {

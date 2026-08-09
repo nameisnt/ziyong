@@ -174,6 +174,18 @@ export default definePhoneApp({
       createAdapter: () => createScenePlannerGenerationAdapter(useScenePlannerStore()),
     },
   ],
+  taskTemplateDefinitions: [
+    {
+      actionId: 'generate',
+      label: '生成场景方案',
+      defaultTemplate: ['用户剧情想法：', '{{brief}}', '{{styleInstruction}}', '{{avoidInstruction}}'].join('\n\n'),
+      variables: [
+        { key: 'brief', label: '剧情想法' },
+        { key: 'styleInstruction', label: '文风与节奏要求' },
+        { key: 'avoidInstruction', label: '避雷要求' },
+      ],
+    },
+  ],
   promptDefinitions: [
     {
       key: 'scenePlanner',

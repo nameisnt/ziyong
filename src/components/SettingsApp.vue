@@ -288,6 +288,26 @@
           </span>
           <input :checked="settings.reader.blankLineBetweenLines" type="checkbox" @change="onReaderBlankLineChange" />
         </label>
+
+        <div class="pc-reader-version-position">
+          <span class="pc-field-label">{{ t`版本切换位置` }}</span>
+          <div class="pc-segment" role="group" :aria-label="t`版本切换位置`">
+            <button
+              :class="['pc-segment-btn', { active: settings.reader.versionNavigatorPosition === 'before' }]"
+              type="button"
+              @click="settingsStore.setReaderVersionNavigatorPosition('before')"
+            >
+              {{ t`正文上方` }}
+            </button>
+            <button
+              :class="['pc-segment-btn', { active: settings.reader.versionNavigatorPosition === 'after' }]"
+              type="button"
+              @click="settingsStore.setReaderVersionNavigatorPosition('after')"
+            >
+              {{ t`正文下方` }}
+            </button>
+          </div>
+        </div>
       </section>
 
       <section v-if="activeSettingsTab === 'interface'" class="pc-settings-card">
@@ -1807,6 +1827,22 @@ onMounted(() => {
 
 .pc-select-field {
   margin-top: 8px;
+}
+
+.pc-reader-version-position {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-top: 10px;
+}
+
+.pc-reader-version-position .pc-segment {
+  flex: 0 0 auto;
+}
+
+.pc-reader-version-position .pc-segment-btn {
+  min-inline-size: 74px;
 }
 
 .pc-field-note {

@@ -1,6 +1,7 @@
 import {
   getRegisteredPhonePromptDefinitions,
   getRegisteredPhoneSpecialPromptDefinitions,
+  getRegisteredPhoneTaskTemplateDefinitions,
   getRegisteredPhoneTypePromptDomains,
   type PhoneOutputParserDefinition,
   type PhoneOutputParserField,
@@ -77,6 +78,7 @@ export const PromptSettingsSchema = z.object({
   appPrompts: z.record(PromptAppKeySchema, z.string()).default({}),
   outputRules: z.record(z.string(), OutputRuleOverrideSchema).default({}),
   specialPrompts: z.record(SpecialPromptKeySchema, z.string()).default({}),
+  taskTemplates: z.record(z.string(), z.string()).default({}),
   typePrompts: z.array(TypePromptConfigSchema).default([]),
   quickPhraseGroups: z.array(QuickPhraseGroupSchema).default([]),
   quickTemplateGroups: z.array(QuickTemplateGroupSchema).default([]),
@@ -87,6 +89,7 @@ export const promptField = 'sillytavern_phone_prompt_settings';
 
 export const PromptTransferSelectionSchema = z.object({
   appPrompts: z.boolean().default(true),
+  taskTemplates: z.boolean().default(true),
   outputRules: z.boolean().default(true),
   typePrompts: z.boolean().default(true),
   quickPhraseGroups: z.boolean().default(true),
@@ -101,6 +104,7 @@ export const PromptTransferSchema = z.object({
     appPrompts: z.record(PromptAppKeySchema, z.string()).optional(),
     outputRules: z.record(z.string(), OutputRuleOverrideSchema).optional(),
     specialPrompts: z.record(SpecialPromptKeySchema, z.string()).optional(),
+    taskTemplates: z.record(z.string(), z.string()).optional(),
     typePrompts: z.array(TypePromptConfigSchema).optional(),
     quickPhraseGroups: z.array(QuickPhraseGroupSchema).optional(),
     quickTemplateGroups: z.array(QuickTemplateGroupSchema).optional(),
@@ -169,6 +173,12 @@ function buildDefaultAppPrompts() {
 function buildDefaultSpecialPrompts() {
   return Object.fromEntries(
     getRegisteredPhoneSpecialPromptDefinitions().map(definition => [definition.key, definition.defaultPrompt]),
+  );
+}
+
+function buildDefaultTaskTemplates() {
+  return Object.fromEntries(
+    getRegisteredPhoneTaskTemplateDefinitions().map(definition => [definition.key, definition.defaultTemplate]),
   );
 }
 
@@ -266,6 +276,9 @@ function ensureRegisteredPromptDefaults(settings: PromptSettings) {
       settings.specialPrompts[key] = migration.to;
     }
   });
+  Object.entries(buildDefaultTaskTemplates()).forEach(([key, value]) => {
+    if (!(key in settings.taskTemplates)) settings.taskTemplates[key] = value;
+  });
 }
 
 function createDefaultPromptSettings(): PromptSettings {
@@ -274,6 +287,7 @@ function createDefaultPromptSettings(): PromptSettings {
     appPrompts: buildDefaultAppPrompts(),
     outputRules: {},
     specialPrompts: buildDefaultSpecialPrompts(),
+    taskTemplates: buildDefaultTaskTemplates(),
     typePrompts: createDefaultTypePrompts(timestamp),
     quickPhraseGroups: [
       {
@@ -344,6 +358,8 @@ export const usePromptStore = defineStore('prompts', () => {
   const outputRules = computed(() => data.value.outputRules);
   const specialPromptDefinitions = computed(() => getRegisteredPhoneSpecialPromptDefinitions());
   const specialPrompts = computed(() => data.value.specialPrompts);
+  const taskTemplateDefinitions = computed(() => getRegisteredPhoneTaskTemplateDefinitions());
+  const taskTemplates = computed(() => data.value.taskTemplates);
   const typePrompts = computed(() =>
     data.value.typePrompts
       .map((item, index) => ({ item, index }))
@@ -367,6 +383,26 @@ export const usePromptStore = defineStore('prompts', () => {
 
   function updateSpecialPrompt(key: SpecialPromptKey, value: string) {
     data.value.specialPrompts[key] = value;
+  }
+
+  function updateTaskTemplate(key: string, value: string) {
+    data.value.taskTemplates[key] = value;
+  }
+
+  function resolveTaskTemplate(key: string, variables: Record<string, string> = {}, fallback = '') {
+    const definition = getRegisteredPhoneTaskTemplateDefinitions().find(item => item.key === key);
+    if (!definition) return fallback.trim();
+    const template = data.value.taskTemplates[key] ?? definition.defaultTemplate;
+    const values: Record<string, string> = { taskInstruction: fallback, ...variables };
+    return template
+      .replace(/\{\{\s*([A-Za-z][A-Za-z0-9_]*)\s*\}\}/g, (placeholder, variableKey: string) =>
+        variableKey in values ? values[variableKey] || '' : placeholder,
+      )
+      .split('\n')
+      .map(line => line.trimEnd())
+      .filter((line, index, lines) => line || (index > 0 && lines[index - 1]))
+      .join('\n')
+      .trim();
   }
 
   function getOutputFormatDefinition(outputId: string) {
@@ -417,6 +453,9 @@ export const usePromptStore = defineStore('prompts', () => {
       sections.appPrompts = klona(data.value.appPrompts);
       sections.specialPrompts = klona(data.value.specialPrompts);
     }
+    if (parsedSelection.taskTemplates) {
+      sections.taskTemplates = klona(data.value.taskTemplates);
+    }
     if (parsedSelection.outputRules) {
       sections.outputRules = klona(data.value.outputRules);
     }
@@ -462,6 +501,10 @@ export const usePromptStore = defineStore('prompts', () => {
       }
       data.value.appPrompts = klona(transfer.sections.appPrompts);
       data.value.specialPrompts = klona(transfer.sections.specialPrompts);
+      ensureRegisteredPromptDefaults(data.value);
+    }
+    if (parsedSelection.taskTemplates && transfer.sections.taskTemplates) {
+      data.value.taskTemplates = klona(transfer.sections.taskTemplates);
       ensureRegisteredPromptDefaults(data.value);
     }
     if (parsedSelection.outputRules) {
@@ -702,15 +745,19 @@ export const usePromptStore = defineStore('prompts', () => {
     resetOutputRule,
     resolveOutputFormat,
     resolveOutputParser,
+    resolveTaskTemplate,
     saveOutputRule,
     specialPromptDefinitions,
     specialPrompts,
+    taskTemplateDefinitions,
+    taskTemplates,
     typePromptDomains,
     typePrompts,
     updateAppPrompt,
     updateQuickPhrase,
     updateQuickTemplate,
     updateSpecialPrompt,
+    updateTaskTemplate,
     updateTypePrompt,
   };
 });

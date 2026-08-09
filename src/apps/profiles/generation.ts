@@ -172,6 +172,14 @@ export function createProfileGenerationAdapter(profilesStore: ReturnType<typeof 
         ]
           .filter(Boolean)
           .join('\n'),
+        taskTemplateVariables: {
+          fieldInstruction: editableColumns
+            ? `请按以下字段填写 <fields> 中的 <field id="字段id">字段值</field>；只填写上下文可确认的信息，未知可留空：\n${editableColumns}`
+            : '',
+          kindInstruction: tableName !== kindLabel ? `资料类型：${kindLabel}` : '',
+          tableName,
+          titleInstruction: config.titleHint.trim() ? `标题或对象名：${config.titleHint.trim()}` : '',
+        },
         userRequirement: config.userRequirement,
       };
     },

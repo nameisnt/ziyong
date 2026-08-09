@@ -119,7 +119,7 @@ export function createMyAppGenerationAdapter(store: MyStore) {
 
 不要把只用于保存的 ID、渲染模式或默认占位标题发送给模型。
 
-`{{phoneUserInput}}` 保持精简，只包含 `appPrompt`、`typePrompt`、生成页填写内容和 `outputFormat`，不重复长篇上下文。
+`{{phoneUserInput}}` 保持精简，依次包含 `taskInstruction`、`appPrompt`、`typePrompt`、生成页填写内容和 `outputFormat`，不重复长篇上下文、来源楼层和引用内容。空白区段会自动省略。
 
 ## 内置生成 action
 
@@ -141,7 +141,7 @@ export function createMyAppGenerationAdapter(store: MyStore) {
 
 ## 输出格式与提示词
 
-生成 action 本身不保存默认提示词。默认提示词由 `promptDefinitions`、`specialPromptDefinitions` 和 `typePromptDomains` 提供。页面层把这些提示词读出后填入 adapter config。
+生成 action 本身不保存 App 预设。App 预设由 `promptDefinitions`、`specialPromptDefinitions` 和 `typePromptDomains` 提供；动作级任务模板由 `taskTemplateDefinitions` 提供。页面层把 App 预设读入 adapter config，生成服务再按 `App + actionId` 渲染本次任务模板。
 
 这样做的好处是：
 

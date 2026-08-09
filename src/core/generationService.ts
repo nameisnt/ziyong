@@ -2,6 +2,7 @@ import { getCurrentChatScopeKey } from '@/store/chatScoped';
 import { useGenerationAliasesStore } from '@/store/generationAliases';
 import { useGenerationOverrideStore } from '@/store/generationOverrides';
 import { usePhoneStore } from '@/store/phone';
+import { usePromptStore } from '@/store/prompts';
 import type { TextProviderSettings } from '@/type/settings';
 import type {
   FailedGenerationDraft,
@@ -359,6 +360,12 @@ function prepareGenerationRequest<TConfig, TResult, TSaveResult = { entityId: st
 
   const canUseVisibilityTransaction = source.requiresVisibilityTransaction && hasVisibilityTransactionRuntime();
   const baseRequest = adapter.buildRequest(parsedConfig);
+  const prompts = usePromptStore();
+  const taskInstruction = prompts.resolveTaskTemplate(
+    `${adapter.appId}.${adapter.actionId}`,
+    baseRequest.taskTemplateVariables,
+    baseRequest.taskInstruction,
+  );
   const fallbackReferences =
     !canUseVisibilityTransaction && source.requiresVisibilityTransaction
       ? buildSelectedSourceReferences(source.selection, visibleMessages)
@@ -368,6 +375,7 @@ function prepareGenerationRequest<TConfig, TResult, TSaveResult = { entityId: st
   const request = applyGenerationAliases(
     {
       ...baseRequest,
+      taskInstruction,
       references: [baseRequest.references?.trim() || '', explicitReferences, fallbackReferences]
         .filter(Boolean)
         .join('\n\n'),

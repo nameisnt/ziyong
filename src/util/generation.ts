@@ -100,6 +100,7 @@ export function buildGenerationUserInput(parts: GenerationRequestParts) {
 export function buildPhoneUserInput(parts: GenerationRequestParts, formUserInput: string) {
   const parsed = parsePrettified(GenerationRequestPartsSchema, parts);
   return [
+    normalizeSegment(parsed.taskInstruction),
     normalizeSegment(parsed.appPrompt),
     normalizeSegment(parsed.typePrompt),
     normalizeSegment(formUserInput),

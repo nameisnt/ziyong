@@ -351,6 +351,7 @@ const { ForumBoardSchema } = await import('@/type/forum');
 const { useExtrasStore } = await import('@/store/extras');
 const { useMediaStore } = await import('@/apps/media/store');
 const { usePhoneStore } = await import('@/store/phone');
+const { usePromptStore } = await import('@/store/prompts');
 const { useGenerationTaskStore } = await import('@/store/generationTasks');
 const { useGenerationOverrideStore } = await import('@/store/generationOverrides');
 const { useReaderStore } = await import('@/store/reader');
@@ -375,6 +376,7 @@ const { restoreGenerationReplayDraft } = await import('@/util/generationReplay')
 const { createHiddenGenerationRecord } = await import('@/util/hiddenGenerationRecord');
 const { buildBaguSentenceReplacement, groupBaguHitsBySentence, scanTextWithBaguRules } = await import('@/util/bagu');
 const { buildSourceSelection } = await import('@/util/generationSource');
+const { buildPhoneUserInput } = await import('@/util/generation');
 const { getRegisteredPhoneAppReferenceTrees } = await import('@/core/appRegistry');
 const { ENTRY_LIBRARY_CONTENT_PLACEHOLDER, renderEntryLibraryBindingContent, useEntryLibraryStore } =
   await import('@/apps/entry-library/store');
@@ -386,6 +388,37 @@ const { resolveExtraChapterGenerationRecords, synchronizeExtraChapterGenerationR
   await import('@/util/extraGenerationRecords');
 
 initPhoneLifecycle();
+
+const visualTaskInstruction = usePromptStore().resolveTaskTemplate(
+  'diary.generate',
+  { perspectiveName: '林见夏', timeInstruction: '日记发生或写作时间：当晚' },
+  '',
+);
+const visualPhoneUserInput = buildPhoneUserInput(
+  {
+    appPrompt: 'App 预设',
+    outputFormat: '输出格式',
+    references: '不应进入宏的引用',
+    taskInstruction: visualTaskInstruction,
+    typePrompt: '类型预设',
+  },
+  '追加要求',
+);
+if (
+  visualPhoneUserInput !==
+  [
+    '请严格以林见夏的第一人称口吻书写这篇日记，不要写成旁白总结。\n日记发生或写作时间：当晚',
+    'App 预设',
+    '类型预设',
+    '追加要求',
+    '输出格式',
+  ].join('\n\n')
+) {
+  throw new Error('{{phoneUserInput}} 没有按任务、App、类型、追加要求、输出格式的顺序组成');
+}
+if (visualPhoneUserInput.includes('不应进入宏的引用')) {
+  throw new Error('{{phoneUserInput}} 不应包含引用内容');
+}
 
 function createVisualHiddenGenerationRecord(
   actionId: string,
@@ -478,6 +511,7 @@ const scenarios: VisualScenarioName[] = [
   'summary-import',
   'summary-batch',
   'prompts-app-detail',
+  'prompts-task-detail',
   'prompts-type-detail',
   'prompts-type-editor',
   'theater-generate',
@@ -2049,6 +2083,19 @@ async function applyScenario(name: VisualScenarioName, options: { height?: numbe
     resetPhoneToRoute('prompts', 'root', '提示词');
     await waitForPaint();
     document.querySelector<HTMLButtonElement>('[data-prompt-app-id="extras"]')?.click();
+  } else if (name === 'prompts-task-detail') {
+    resetPhoneToRoute('prompts', 'root', '提示词');
+    await waitForPaint();
+    document.querySelector<HTMLButtonElement>('.pc-prompts-menu-anchor > .pc-icon-btn')?.click();
+    await waitForPaint();
+    document.querySelector<HTMLButtonElement>('[data-prompt-tab="task"]')?.click();
+    await waitForPaint();
+    document.querySelector<HTMLButtonElement>('[data-task-template-app-id="diary"]')?.click();
+    await waitForPaint();
+    const taskDialog = document.querySelector<HTMLElement>('.pc-prompt-detail-dialog');
+    if (!taskDialog?.textContent?.includes('{{perspectiveName}}')) {
+      throw new Error('Diary task template did not expose its dynamic perspective placeholder');
+    }
   } else if (name === 'prompts-type-detail') {
     resetPhoneToRoute('prompts', 'root', '提示词');
     await waitForPaint();

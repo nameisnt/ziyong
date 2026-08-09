@@ -143,6 +143,10 @@ export function createRelationshipGenerationAdapter(relationshipStore: ReturnTyp
         appPrompt: config.appPrompt,
         outputFormat: config.outputFormat,
         taskInstruction: characterNames ? `请重点判断这些角色之间的当前单向关系：${characterNames}` : '',
+        taskTemplateVariables: {
+          characterNames,
+          focusInstruction: characterNames ? `请重点判断这些角色之间的当前单向关系：${characterNames}` : '',
+        },
         userRequirement: config.userRequirement,
       };
     },

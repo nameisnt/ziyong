@@ -12,6 +12,7 @@ export const ReaderAppearanceSchema = z.object({
   fontFamily: z.string().default(''),
   fontSize: z.number().min(14).max(24).default(16),
   lineHeight: z.number().min(1.4).max(2.2).default(1.6),
+  versionNavigatorPosition: z.enum(['after', 'before']).default('before'),
 });
 export type ReaderAppearance = z.infer<typeof ReaderAppearanceSchema>;
 
@@ -174,6 +175,7 @@ const DEFAULT_READER_SETTINGS: ReaderAppearance = {
   fontFamily: '',
   fontSize: 16,
   lineHeight: 1.6,
+  versionNavigatorPosition: 'before',
 };
 
 const DEFAULT_INTERFACE_SIZE_SETTINGS: InterfaceSizeSettings = {

@@ -107,6 +107,18 @@ function buildChapterTaskInstruction(config: ExtraChapterGenerateConfig) {
   return [modeInstruction, typeFallback].filter(Boolean).join('\n');
 }
 
+function buildChapterTaskTemplateVariables(config: ExtraChapterGenerateConfig) {
+  const generationIntent = resolveChapterGenerationIntent(config);
+  return {
+    modeInstruction: {
+      新开一本书: '请创作本书第一章，不要续接来源内容中的旧章节。',
+      续写上一章: '请紧接上述最后一章续写，不要复述或重写已有章节，并延续上一章的语气与悬念。',
+    }[generationIntent],
+    typeFallback:
+      !config.typePrompt.trim() && config.typeName.trim() ? `本次番外类型为“${config.typeName.trim()}”。` : '',
+  };
+}
+
 export function createExtraSummaryGenerationAdapter(extrasStore: {
   createSummary: (
     bookId: string,
@@ -171,6 +183,7 @@ export function createExtraChapterGenerationAdapter(extrasStore: {
         context: config.previousChapterContext,
         outputFormat: config.outputFormat,
         taskInstruction: buildChapterTaskInstruction(config),
+        taskTemplateVariables: buildChapterTaskTemplateVariables(config),
         typePrompt: config.typePrompt,
         userRequirement: config.userRequirement,
       });

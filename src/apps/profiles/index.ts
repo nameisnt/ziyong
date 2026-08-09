@@ -203,6 +203,24 @@ export default definePhoneApp({
       createAdapter: () => createProfileGenerationAdapter(useProfilesStore()),
     },
   ],
+  taskTemplateDefinitions: [
+    {
+      actionId: 'generate',
+      label: '生成资料卡片',
+      defaultTemplate: [
+        '目标资料表：{{tableName}}',
+        '{{kindInstruction}}',
+        '{{fieldInstruction}}',
+        '{{titleInstruction}}',
+      ].join('\n'),
+      variables: [
+        { key: 'tableName', label: '资料表名' },
+        { key: 'kindInstruction', label: '资料类型要求' },
+        { key: 'fieldInstruction', label: '启用字段要求' },
+        { key: 'titleInstruction', label: '标题提示' },
+      ],
+    },
+  ],
   promptDefinitions: [
     {
       key: 'profiles',

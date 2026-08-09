@@ -52,17 +52,23 @@ import {
 import {
   createDiaryPromptDefinition,
   createDiaryReactionPromptDefinition,
+  createDiaryTaskTemplateDefinitions,
   createExtrasContinuePromptDefinition,
   createExtrasPromptDefinition,
   createExtrasTypePromptDomain,
+  createExtrasTaskTemplateDefinitions,
   createExtraSummaryPromptDefinition,
   createForumBoardTypePromptDomain,
   createForumPromptDefinition,
   createForumReplyPromptDefinition,
+  createForumTaskTemplateDefinitions,
   createLettersPromptDefinition,
+  createLettersTaskTemplateDefinitions,
   createSummaryPromptDefinition,
+  createSummaryTaskTemplateDefinitions,
   createTheaterPromptDefinition,
   createTheaterTypePromptDomain,
+  createTheaterTaskTemplateDefinitions,
 } from '@/apps/builtinPrompts';
 import {
   createDiaryReferenceTree,
@@ -95,6 +101,7 @@ export const BUILTIN_PHONE_APP_MODULES: PhoneAppModule[] = [
     favoriteProvider: createSummaryFavoriteItems,
     generationProvider: createSummaryGenerationActions,
     promptDefinitions: [createSummaryPromptDefinition()],
+    taskTemplateDefinitions: createSummaryTaskTemplateDefinitions(),
     referenceProvider: createSummaryReferenceTree,
     resetCurrentScope: () => useSummaryStore().resetCurrentScope(),
     scopeSwitchHandler: scopeKey => useSummaryStore().switchScope(scopeKey),
@@ -117,6 +124,7 @@ export const BUILTIN_PHONE_APP_MODULES: PhoneAppModule[] = [
     resetCurrentScope: () => useDiaryStore().resetCurrentScope(),
     scopeSwitchHandler: scopeKey => useDiaryStore().switchScope(scopeKey),
     specialPromptDefinitions: [createDiaryReactionPromptDefinition()],
+    taskTemplateDefinitions: createDiaryTaskTemplateDefinitions(),
   }),
   definePhoneApp({
     id: 'extras',
@@ -137,6 +145,7 @@ export const BUILTIN_PHONE_APP_MODULES: PhoneAppModule[] = [
     scopeSwitchHandler: scopeKey => useExtrasStore().switchScope(scopeKey),
     specialPromptDefinitions: [createExtraSummaryPromptDefinition()],
     typePromptDomains: [createExtrasTypePromptDomain()],
+    taskTemplateDefinitions: createExtrasTaskTemplateDefinitions(),
   }),
   definePhoneApp({
     id: 'forum',
@@ -157,6 +166,7 @@ export const BUILTIN_PHONE_APP_MODULES: PhoneAppModule[] = [
     scopeSwitchHandler: scopeKey => useForumStore().switchScope(scopeKey),
     specialPromptDefinitions: [createForumReplyPromptDefinition()],
     typePromptDomains: [createForumBoardTypePromptDomain()],
+    taskTemplateDefinitions: createForumTaskTemplateDefinitions(),
   }),
   definePhoneApp({
     id: 'theater',
@@ -182,6 +192,7 @@ export const BUILTIN_PHONE_APP_MODULES: PhoneAppModule[] = [
       useGenerationAliasesStore().switchScope(scopeKey);
     },
     typePromptDomains: [createTheaterTypePromptDomain()],
+    taskTemplateDefinitions: createTheaterTaskTemplateDefinitions(),
   }),
   definePhoneApp({
     id: 'letters',
@@ -197,6 +208,7 @@ export const BUILTIN_PHONE_APP_MODULES: PhoneAppModule[] = [
     favoriteProvider: createLettersFavoriteItems,
     generationProvider: createLettersGenerationActions,
     promptDefinitions: [createLettersPromptDefinition()],
+    taskTemplateDefinitions: createLettersTaskTemplateDefinitions(),
     referenceProvider: createLettersReferenceTree,
     resetCurrentScope: () => useLettersStore().resetCurrentScope(),
     scopeSwitchHandler: scopeKey => useLettersStore().switchScope(scopeKey),

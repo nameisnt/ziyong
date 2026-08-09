@@ -239,6 +239,13 @@ export default definePhoneApp({
       createAdapter: () => createStorylineGenerationAdapter(useStorylinesStore()),
     },
   ],
+  taskTemplateDefinitions: [
+    {
+      actionId: 'extract',
+      label: '梳理剧情',
+      defaultTemplate: '从来源楼层与引用的已有总结中提取剧情线、已发生节点和伏笔状态。合并同一事件的不同表述。',
+    },
+  ],
   promptDefinitions: [
     {
       key: 'storylines',

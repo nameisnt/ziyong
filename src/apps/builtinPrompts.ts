@@ -1,8 +1,95 @@
-import type { PhonePromptDefinition, PhoneTypePromptDomain } from '@/core/appRegistry';
+import type { PhonePromptDefinition, PhoneTaskTemplateDefinition, PhoneTypePromptDomain } from '@/core/appRegistry';
 import { cloneOutputFormat, objectListField, simpleXmlOutput, textField, xmlParser } from '@/apps/outputDefinitions';
 
 function lines(...items: string[]) {
   return items.join('\n');
+}
+
+export function createSummaryTaskTemplateDefinitions(): PhoneTaskTemplateDefinition[] {
+  return [{ actionId: 'generate', label: '生成总结', defaultTemplate: '' }];
+}
+
+export function createDiaryTaskTemplateDefinitions(): PhoneTaskTemplateDefinition[] {
+  return [
+    {
+      actionId: 'generate',
+      label: '生成日记',
+      defaultTemplate: lines(
+        '请严格以{{perspectiveName}}的第一人称口吻书写这篇日记，不要写成旁白总结。',
+        '{{timeInstruction}}',
+      ),
+      variables: [
+        { key: 'perspectiveName', label: '视角角色名' },
+        { key: 'timeInstruction', label: '日记时间要求' },
+      ],
+    },
+    {
+      actionId: 'read-reaction',
+      label: '日记阅读反应',
+      defaultTemplate: lines(
+        '请严格以{{perspectiveName}}的第一人称书写读后反应，重点放在阅读后的情绪、判断和联想，不要写成摘要。',
+        '{{timeInstruction}}',
+      ),
+      variables: [
+        { key: 'perspectiveName', label: '阅读者名字' },
+        { key: 'timeInstruction', label: '反应时间要求' },
+      ],
+    },
+  ];
+}
+
+export function createExtrasTaskTemplateDefinitions(): PhoneTaskTemplateDefinition[] {
+  return [
+    {
+      actionId: 'chapter-generate',
+      label: '生成番外章节',
+      defaultTemplate: lines('{{modeInstruction}}', '{{typeFallback}}'),
+      variables: [
+        { key: 'modeInstruction', label: '新开或续写要求' },
+        { key: 'typeFallback', label: '类型名称补充' },
+      ],
+    },
+    {
+      actionId: 'chapter-summary',
+      label: '番外章节总结',
+      defaultTemplate: '请概括上述已选章节，提炼关键事件、人物状态变化和后续续写需要保留的信息。',
+    },
+  ];
+}
+
+export function createForumTaskTemplateDefinitions(): PhoneTaskTemplateDefinition[] {
+  return [
+    {
+      actionId: 'generate-thread',
+      label: '生成论坛帖子',
+      defaultTemplate: '{{boardInstruction}}',
+      variables: [{ key: 'boardInstruction', label: '板块名称要求' }],
+    },
+    {
+      actionId: 'generate-replies',
+      label: '生成论坛回复',
+      defaultTemplate: '请根据上述主楼和已有回复继续生成新的论坛回复，不要重写主楼或重复已有回复。',
+    },
+  ];
+}
+
+export function createTheaterTaskTemplateDefinitions(): PhoneTaskTemplateDefinition[] {
+  return [{ actionId: 'generate', label: '生成小剧场', defaultTemplate: '' }];
+}
+
+export function createLettersTaskTemplateDefinitions(): PhoneTaskTemplateDefinition[] {
+  return [
+    {
+      actionId: 'generate',
+      label: '生成书信',
+      defaultTemplate: '请由{{senderName}}写给{{receiverName}}，采用{{formatLabel}}形式。',
+      variables: [
+        { key: 'senderName', label: '寄件人' },
+        { key: 'receiverName', label: '收件人' },
+        { key: 'formatLabel', label: '书信格式' },
+      ],
+    },
+  ];
 }
 
 export function createSummaryPromptDefinition(): PhonePromptDefinition {

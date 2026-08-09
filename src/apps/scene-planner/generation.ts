@@ -72,6 +72,11 @@ export function createScenePlannerGenerationAdapter(planner: ReturnType<typeof u
         ]
           .filter(Boolean)
           .join('\n\n'),
+        taskTemplateVariables: {
+          avoidInstruction: config.avoidNote ? `必须避免：${config.avoidNote}` : '',
+          brief: config.brief,
+          styleInstruction: config.styleNote ? `文风与节奏要求：${config.styleNote}` : '',
+        },
         userRequirement: config.userRequirement,
       };
     },

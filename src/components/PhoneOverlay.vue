@@ -28,7 +28,7 @@
           </button>
           <span v-else class="pc-top-btn ghost" aria-hidden="true"></span>
         </div>
-        <strong class="pc-top-title">{{ currentTitle }}</strong>
+        <strong ref="topTitleEl" class="pc-top-title">{{ currentTitle }}</strong>
         <div class="pc-top-actions">
           <button class="pc-top-btn" type="button" @click.stop="settingsStore.toggleTheme()">
             <i class="fa-solid" :class="settings.theme === 'light' ? 'fa-moon' : 'fa-sun'"></i>
@@ -247,6 +247,7 @@ const currentAppComponent = computed(() =>
 const shellEl = ref<HTMLElement | null>(null);
 const screenEl = ref<HTMLElement | null>(null);
 const topbarEl = ref<HTMLElement | null>(null);
+const topTitleEl = ref<HTMLElement | null>(null);
 const homeGridEl = ref<HTMLElement | null>(null);
 const refreshingPhoneData = ref(false);
 type ToastrKind = 'error' | 'info' | 'success' | 'warning';
@@ -256,6 +257,8 @@ const toastrOriginals = new Map<ToastrKind, ToastrMethod>();
 const routeScrollPositions = new WeakMap<PhoneRoute, number>();
 let toastrBridgeInstalled = false;
 let routeScrollRestoreSequence = 0;
+let titleFitFrame = 0;
+let titleResizeObserver: ResizeObserver | null = null;
 const positionX = ref(0);
 const positionY = ref(0);
 const pointerId = ref<number | null>(null);
@@ -569,12 +572,43 @@ function restoreToastrBridge() {
   toastrBridgeInstalled = false;
 }
 
+function fitTopTitle() {
+  titleFitFrame = 0;
+  const title = topTitleEl.value;
+  if (!title || !isOpen.value) return;
+
+  const maximumSize = 14;
+  const minimumSize = 11;
+  title.style.fontSize = `${maximumSize}px`;
+  const availableWidth = title.clientWidth;
+  const requiredWidth = title.scrollWidth;
+  if (!availableWidth || requiredWidth <= availableWidth) return;
+
+  const fittedSize = Math.max(minimumSize, Math.floor((maximumSize * availableWidth * 10) / requiredWidth) / 10);
+  title.style.fontSize = `${fittedSize}px`;
+}
+
+function scheduleTopTitleFit() {
+  if (!isOpen.value) return;
+  void nextTick(() => {
+    if (titleFitFrame) cancelAnimationFrame(titleFitFrame);
+    titleFitFrame = requestAnimationFrame(fitTopTitle);
+  });
+}
+
 onMounted(() => {
   installToastrBridge();
+  titleResizeObserver = new ResizeObserver(scheduleTopTitleFit);
+  if (topbarEl.value) titleResizeObserver.observe(topbarEl.value);
+  document.fonts?.addEventListener?.('loadingdone', scheduleTopTitleFit);
+  scheduleTopTitleFit();
 });
 
 onBeforeUnmount(() => {
   restoreToastrBridge();
+  titleResizeObserver?.disconnect();
+  document.fonts?.removeEventListener?.('loadingdone', scheduleTopTitleFit);
+  if (titleFitFrame) cancelAnimationFrame(titleFitFrame);
 });
 
 function getViewportSize() {
@@ -938,6 +972,8 @@ watch(
   },
 );
 
+watch([currentTitle, () => settings.value.fontFamily], scheduleTopTitleFit);
+
 watch(
   () => homePages.value.length,
   pageCount => {
@@ -974,6 +1010,7 @@ watch(isOpen, async nextIsOpen => {
   await nextTick();
   refreshHomeArchiveDomains();
   syncPositionFromSettings();
+  scheduleTopTitleFit();
   window.__sillytavernPhoneSyncNativeLauncher__?.();
 });
 

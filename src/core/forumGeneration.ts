@@ -149,6 +149,9 @@ export function createForumThreadGenerationAdapter(forumStore: {
         context: buildThreadRequestContext(config),
         outputFormat: config.outputFormat,
         taskInstruction: buildThreadTaskInstruction(config),
+        taskTemplateVariables: {
+          boardInstruction: buildThreadTaskInstruction(config),
+        },
         userRequirement: config.userRequirement,
       });
     },

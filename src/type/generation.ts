@@ -19,6 +19,7 @@ export const GenerationRequestPartsSchema = z.object({
   context: z.string().optional(),
   references: z.string().optional(),
   taskInstruction: z.string().optional(),
+  taskTemplateVariables: z.record(z.string(), z.string()).optional(),
   appPrompt: z.string().optional(),
   typePrompt: z.string().optional(),
   userRequirement: z.string().optional(),

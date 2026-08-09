@@ -16,7 +16,7 @@
       @previous="emit('previous')"
       @top="emit('top')"
     >
-      <template #before-content>
+      <template #version-navigation>
         <VersionNavigator
           :versions="versions"
           :viewed-version-id="viewedVersionId"
