@@ -2,6 +2,7 @@ import type { DigestEntry, useDigestStore } from './store';
 import { SimpleXmlResultSchema, type GenerationAdapter, type SimpleXmlResult } from '@/type/generation';
 import { parseSimpleXmlResult } from '@/util/generation';
 import { parseConfiguredOutput } from '@/util/outputParsing';
+import { getSourceLastFloor } from '@/util/sourceFloor';
 
 export const DigestGenerateConfigSchema = z.object({
   appPrompt: z.string(),
@@ -26,11 +27,14 @@ export function createDigestGenerationAdapter(digestStore: ReturnType<typeof use
       return parseConfiguredOutput('digest.generate', raw, SimpleXmlResultSchema, () => parseSimpleXmlResult(raw));
     },
     save(result, context) {
+      const sourceFloorEnd = getSourceLastFloor(context.source);
       const entry = digestStore.createEntry({
         title: result.title,
         content: result.content,
         kind: 'ai',
         sourceLabel: context.source.label,
+        directoryOrder: sourceFloorEnd,
+        sourceFloorEnd,
       });
       return {
         entityId: entry.id,

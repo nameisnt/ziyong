@@ -95,6 +95,7 @@
           <button class="pc-entry-main" type="button" @click="openEntry(activeBook.id, entry.id)">
             <div class="pc-entry-head">
               <strong>{{ entry.title }}</strong>
+              <span class="pc-entry-order">{{ t`顺序` }} {{ entry.directoryOrder }}</span>
             </div>
             <p>{{ entry.rangeLabel }}</p>
           </button>
@@ -150,6 +151,10 @@
         <h2>{{ editingEntry ? editingEntry.title : t`调整当前内容` }}</h2>
         <input v-model="entryDraft.title" class="pc-field" type="text" :placeholder="t`标题`" />
         <input v-model="entryDraft.rangeLabel" class="pc-field" type="text" :placeholder="t`范围，例如 第 1-20 楼`" />
+        <div v-if="editingEntry" class="pc-field-group">
+          <label class="pc-field-label">{{ t`目录顺序` }}</label>
+          <input v-model.number="entryDraft.directoryOrder" class="pc-field" type="number" min="0" step="1" />
+        </div>
         <textarea v-model="entryDraft.content" class="pc-area pc-saved-content-area" :placeholder="t`正文`"></textarea>
         <div class="pc-form-actions">
           <button class="pc-soft-btn" type="button" @click="phone.goBack()">{{ t`取消` }}</button>
@@ -524,6 +529,7 @@ import { formatGenerationReferences, type GenerationReferenceItem } from '@/util
 import { usePreviewDraftPersistence } from '@/util/previewDrafts';
 import { useInvalidRouteFallback } from '@/util/routeFallback';
 import { getChatMessagesSafe, stopGenerationByIdSafe } from '@/util/runtime';
+import { getSourceLastFloor } from '@/util/sourceFloor';
 import { storeToRefs } from 'pinia';
 
 const phone = usePhoneStore();
@@ -547,6 +553,7 @@ const entryDraft = reactive({
   title: '',
   rangeLabel: '',
   content: '',
+  directoryOrder: 0,
 });
 const generationDraft = reactive({
   fromStartEnd: 20,
@@ -571,6 +578,7 @@ const generationState = reactive({
     draftId: null | string;
     raw: string;
     source: {
+      floorEnd?: number;
       label: string;
     };
     title: string;
@@ -642,7 +650,8 @@ const previewBook = computed(() => {
 });
 const sortedActiveBookEntries = computed(() =>
   [...(activeBook.value?.entries || [])].sort((left, right) => {
-    const compare = left.createdAt.localeCompare(right.createdAt);
+    const compare =
+      (left.directoryOrder ?? 0) - (right.directoryOrder ?? 0) || left.createdAt.localeCompare(right.createdAt);
     return summaryEntrySortDesc.value ? -compare : compare;
   }),
 );
@@ -796,6 +805,7 @@ watch(
       entryDraft.title = activeEntry.value?.title || '';
       entryDraft.rangeLabel = activeEntry.value?.rangeLabel || '';
       entryDraft.content = activeEntry.value?.content || '';
+      entryDraft.directoryOrder = activeEntry.value?.directoryOrder ?? 0;
     }
 
     if (current.page === 'generate' && previous?.page !== 'preview') {
@@ -1010,7 +1020,9 @@ function importSummaryEntries() {
   selected.forEach(item => {
     summary.createEntry(book.id, {
       content: item.content,
+      directoryOrder: item.messageIndex,
       rangeLabel: `第 ${item.messageIndex} 楼`,
+      sourceFloorEnd: item.messageIndex,
       title: `第 ${item.messageIndex} 楼总结`,
     });
   });
@@ -1079,7 +1091,11 @@ function submitEntry() {
     return;
   }
 
-  const entry = summary.createEntry(bookId, entryDraft);
+  const entry = summary.createEntry(bookId, {
+    content: entryDraft.content,
+    rangeLabel: entryDraft.rangeLabel,
+    title: entryDraft.title,
+  });
   if (!entry) return;
   phone.replacePage('entry', entry.title, { bookId, entryId: entry.id });
 }
@@ -1382,6 +1398,7 @@ async function runGeneration() {
       draftId: null,
       raw: result.rawOutput,
       source: {
+        floorEnd: getSourceLastFloor(result.source),
         label: result.source.label,
       },
       title: result.data.title,
@@ -1405,7 +1422,9 @@ function savePreview() {
 
   const entry = summary.createEntry(bookId, {
     content: preview.content,
+    directoryOrder: preview.source.floorEnd,
     rangeLabel: preview.source.label,
+    sourceFloorEnd: preview.source.floorEnd,
     title: preview.title,
   });
   if (!entry) {
@@ -1508,6 +1527,7 @@ function reparseFailedDraft() {
     draftId: null,
     raw: parsed.raw,
     source: {
+      floorEnd: getSourceLastFloor(draft.source),
       label: draft.source.label,
     },
     title: parsed.data.title,
@@ -1754,6 +1774,15 @@ function formatBookMeta(count: number) {
 
 .pc-entry-head {
   align-items: baseline;
+}
+
+.pc-entry-head strong {
+  flex: 1 1 auto;
+}
+
+.pc-entry-order {
+  flex: 0 0 auto;
+  white-space: nowrap;
 }
 
 .pc-entry-head span,

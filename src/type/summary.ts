@@ -8,6 +8,8 @@ export const SummaryEntrySchema = z.object({
   favorite: z.boolean().default(false),
   createdAt: z.string(),
   updatedAt: z.string(),
+  directoryOrder: z.number().int().nonnegative().optional(),
+  sourceFloorEnd: z.number().int().nonnegative().optional(),
 });
 export type SummaryEntry = z.infer<typeof SummaryEntrySchema>;
 

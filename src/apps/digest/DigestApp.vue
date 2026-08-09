@@ -7,6 +7,15 @@
           <h2>{{ entries.length }} {{ t`条摘录` }}</h2>
         </div>
         <div class="pc-hero-actions">
+          <button
+            class="pc-icon-btn"
+            type="button"
+            :aria-label="sortDesc ? t`切换为正序` : t`切换为倒序`"
+            :title="sortDesc ? t`当前倒序，点击切换正序` : t`当前正序，点击切换倒序`"
+            @click="sortDesc = !sortDesc"
+          >
+            <i :class="sortDesc ? 'fa-solid fa-arrow-down-wide-short' : 'fa-solid fa-arrow-up-short-wide'"></i>
+          </button>
           <button class="pc-soft-btn" type="button" @click="openEditor()">
             <i class="fa-solid fa-plus"></i>
             <span>{{ t`手动` }}</span>
@@ -21,9 +30,12 @@
       <EmptyState v-if="!entries.length" :title="t`还没有摘抄`" />
 
       <div v-else class="pc-entry-list">
-        <article v-for="entry in entries" :key="entry.id" class="pc-entry-card">
+        <article v-for="entry in sortedEntries" :key="entry.id" class="pc-entry-card">
           <button class="pc-entry-main" type="button" @click="openEntry(entry.id)">
-            <strong>{{ entry.title }}</strong>
+            <div class="pc-entry-head">
+              <strong>{{ entry.title }}</strong>
+              <span class="pc-entry-order">{{ t`顺序` }} {{ entry.directoryOrder }}</span>
+            </div>
             <span>{{ entry.sourceLabel || (entry.kind === 'ai' ? t`AI 摘抄` : t`手动摘抄`) }}</span>
             <p>{{ entry.content }}</p>
           </button>
@@ -105,6 +117,10 @@
         <span class="pc-kicker">{{ editingEntry ? t`编辑摘抄` : t`新增摘抄` }}</span>
         <input v-model="draft.title" class="pc-field" type="text" :placeholder="t`标题`" />
         <input v-model="draft.sourceLabel" class="pc-field" type="text" :placeholder="t`来源，例如 第 12 楼`" />
+        <div v-if="editingEntry" class="pc-field-group">
+          <label class="pc-field-label">{{ t`目录顺序` }}</label>
+          <input v-model.number="draft.directoryOrder" class="pc-field" type="number" min="0" step="1" />
+        </div>
         <textarea
           v-model="draft.content"
           class="pc-area pc-saved-content-area"
@@ -223,6 +239,7 @@ import type { GenerationReferenceItem } from '@/util/references';
 import { formatGenerationReferences } from '@/util/references';
 import { useInvalidRouteFallback } from '@/util/routeFallback';
 import { stopGenerationByIdSafe } from '@/util/runtime';
+import { getSourceLastFloor } from '@/util/sourceFloor';
 import { formatTextProviderSummary } from '@/util/textProvider';
 import type { FailedGenerationDraft } from '@/type/generation';
 import { useDigestStore } from './store';
@@ -245,6 +262,7 @@ const draft = reactive({
   sourceLabel: '',
   sourceText: '',
   tags: [] as string[],
+  directoryOrder: 0,
 });
 const generationDraft = reactive({
   fromStartEnd: 20,
@@ -260,7 +278,7 @@ const generationState = reactive({
     content: string;
     draftId: null | string;
     raw: string;
-    source: { label: string };
+    source: { floorEnd?: number; label: string };
     title: string;
     warnings: string[];
   },
@@ -293,12 +311,23 @@ const activeFailedDraft = computed(() =>
   route.value.params?.draftId ? digest.getFailedDraft(route.value.params.draftId) : null,
 );
 const formattedReferences = computed(() => formatGenerationReferences(selectedReferences.value));
-const activeEntryIndex = computed(() => entries.value.findIndex(entry => entry.id === activeEntry.value?.id));
+const sortDesc = computed({
+  get: () => settings.value.directorySort.digestDesc,
+  set: value => {
+    settings.value.directorySort.digestDesc = value;
+  },
+});
+const sortedEntries = computed(() => {
+  const sorted = [...entries.value];
+  if (sortDesc.value) sorted.reverse();
+  return sorted;
+});
+const activeEntryIndex = computed(() => sortedEntries.value.findIndex(entry => entry.id === activeEntry.value?.id));
 const previousEntryId = computed(() =>
-  activeEntryIndex.value > 0 ? entries.value[activeEntryIndex.value - 1]?.id || '' : '',
+  activeEntryIndex.value > 0 ? sortedEntries.value[activeEntryIndex.value - 1]?.id || '' : '',
 );
 const nextEntryId = computed(() =>
-  activeEntryIndex.value >= 0 ? entries.value[activeEntryIndex.value + 1]?.id || '' : '',
+  activeEntryIndex.value >= 0 ? sortedEntries.value[activeEntryIndex.value + 1]?.id || '' : '',
 );
 const textProviderSummary = computed(() =>
   settings.value.textProvider.mode === 'external'
@@ -332,6 +361,7 @@ watch(
       draft.sourceLabel = editingEntry.value?.sourceLabel || '';
       draft.sourceText = editingEntry.value?.sourceText || '';
       draft.tags = [...(editingEntry.value?.tags || [])];
+      draft.directoryOrder = editingEntry.value?.directoryOrder ?? 0;
     }
     if (current.page === 'generate') {
       selectedReferences.value = [];
@@ -538,7 +568,7 @@ async function runGeneration() {
       content: result.data.content,
       draftId: null,
       raw: result.rawOutput,
-      source: { label: result.source.label },
+      source: { floorEnd: getSourceLastFloor(result.source), label: result.source.label },
       title: result.data.title,
       warnings: result.warnings,
     };
@@ -565,6 +595,8 @@ function savePreview() {
     content: preview.content,
     kind: 'ai',
     sourceLabel: preview.source.label,
+    directoryOrder: preview.source.floorEnd,
+    sourceFloorEnd: preview.source.floorEnd,
   });
   if (preview.draftId) digest.deleteFailedDraft(preview.draftId);
   clearDigestPreviewDraft();
@@ -638,7 +670,7 @@ function reparseFailedDraft() {
     content: parsed.data.content,
     draftId: null,
     raw: parsed.raw,
-    source: { label: draft.source.label },
+    source: { floorEnd: getSourceLastFloor(draft.source), label: draft.source.label },
     title: parsed.data.title,
     warnings: parsed.warnings,
   };
@@ -697,6 +729,23 @@ function stopGeneration() {
   gap: 10px;
 }
 
+.pc-digest-hero {
+  flex-direction: column;
+  align-items: stretch;
+}
+
+.pc-digest-hero .pc-hero-actions {
+  display: grid;
+  grid-template-columns: 44px repeat(2, minmax(0, 1fr));
+  width: 100%;
+}
+
+.pc-digest-hero .pc-hero-actions > button {
+  width: 100%;
+  min-width: 0;
+  justify-content: center;
+}
+
 .pc-digest-hero h2,
 .pc-detail-card h2 {
   margin: 0;
@@ -717,6 +766,24 @@ function stopGeneration() {
   color: var(--pc-text);
   cursor: pointer;
   text-align: left;
+}
+
+.pc-entry-head {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.pc-entry-head strong {
+  flex: 1 1 auto;
+}
+
+.pc-entry-head .pc-entry-order {
+  flex: 0 0 auto;
+  font-size: 12px;
+  white-space: nowrap;
 }
 
 .pc-entry-main strong,
@@ -782,7 +849,8 @@ function stopGeneration() {
 }
 
 .pc-editor-card > .pc-field,
-.pc-editor-card > .pc-area {
+.pc-editor-card > .pc-area,
+.pc-editor-card > .pc-field-group {
   margin-top: 12px;
 }
 

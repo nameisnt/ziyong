@@ -1,4 +1,5 @@
 import type { SummaryEntry } from '@/type/summary';
+import { getSourceLastFloor } from '@/util/sourceFloor';
 import {
   GenerationRequestPartsSchema,
   SimpleXmlResultSchema,
@@ -18,7 +19,13 @@ export const SummaryGenerateConfigSchema = z.object({
 export type SummaryGenerateConfig = z.infer<typeof SummaryGenerateConfigSchema>;
 
 export function createSummaryGenerationAdapter(summaryStore: {
-  createEntry: (bookId: string, input: Pick<SummaryEntry, 'title' | 'content' | 'rangeLabel'>) => SummaryEntry | null;
+  createEntry: (
+    bookId: string,
+    input: Pick<SummaryEntry, 'title' | 'content' | 'rangeLabel'> & {
+      directoryOrder?: number;
+      sourceFloorEnd?: number;
+    },
+  ) => SummaryEntry | null;
 }) {
   return {
     actionId: 'generate',
@@ -35,9 +42,12 @@ export function createSummaryGenerationAdapter(summaryStore: {
       return parseConfiguredOutput('summary.generate', raw, SimpleXmlResultSchema, () => parseSimpleXmlResult(raw));
     },
     async save(result, context) {
+      const sourceFloorEnd = getSourceLastFloor(context.source);
       const entry = summaryStore.createEntry(context.config.bookId, {
         content: result.content,
         rangeLabel: context.source.label,
+        directoryOrder: sourceFloorEnd,
+        sourceFloorEnd,
         title: result.title,
       });
       if (!entry) {

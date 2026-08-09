@@ -17,6 +17,7 @@ export const ReaderAppearanceSchema = z.object({
 export type ReaderAppearance = z.infer<typeof ReaderAppearanceSchema>;
 
 export const DirectorySortSettingsSchema = z.object({
+  digestDesc: z.boolean().default(true),
   diaryDesc: z.boolean().default(true),
   extrasDesc: z.boolean().default(true),
   forumMode: z.enum(['latestReply', 'latestPublish', 'heat', 'favorite']).default('latestReply'),
@@ -189,6 +190,7 @@ const DEFAULT_READER_SETTINGS: ReaderAppearance = {
 };
 
 const DEFAULT_DIRECTORY_SORT_SETTINGS: DirectorySortSettings = {
+  digestDesc: true,
   diaryDesc: true,
   extrasDesc: true,
   forumMode: 'latestReply',

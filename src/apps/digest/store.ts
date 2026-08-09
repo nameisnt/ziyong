@@ -17,6 +17,8 @@ export const DigestEntrySchema = z.object({
   favorite: z.boolean().default(false),
   createdAt: z.string(),
   updatedAt: z.string(),
+  directoryOrder: z.number().int().nonnegative().optional(),
+  sourceFloorEnd: z.number().int().nonnegative().optional(),
 });
 export type DigestEntry = z.infer<typeof DigestEntrySchema>;
 
@@ -41,8 +43,35 @@ export const useDigestStore = defineStore('digest', () => {
     createDefault: () => validateInplace(DigestScopeDataSchema, {}),
   });
 
+  function normalizeDirectoryOrders() {
+    const ordered = [...data.value.entries].sort((left, right) => left.updatedAt.localeCompare(right.updatedAt));
+    for (const entry of ordered) {
+      if (typeof entry.sourceFloorEnd !== 'number' && typeof entry.sourceMessageId === 'number') {
+        entry.sourceFloorEnd = entry.sourceMessageId;
+      }
+    }
+    let nextOrder = ordered.reduce(
+      (maximum, entry) => Math.max(maximum, entry.directoryOrder ?? entry.sourceFloorEnd ?? 0),
+      0,
+    );
+    for (const entry of ordered) {
+      if (typeof entry.directoryOrder === 'number') continue;
+      if (typeof entry.sourceFloorEnd === 'number') {
+        entry.directoryOrder = entry.sourceFloorEnd;
+        continue;
+      }
+      nextOrder += 1;
+      entry.directoryOrder = nextOrder;
+    }
+  }
+
+  watch(data, normalizeDirectoryOrders, { deep: true, immediate: true });
+
   const entries = computed(() =>
-    [...data.value.entries].sort((left, right) => right.updatedAt.localeCompare(left.updatedAt)),
+    [...data.value.entries].sort(
+      (left, right) =>
+        (left.directoryOrder ?? 0) - (right.directoryOrder ?? 0) || left.createdAt.localeCompare(right.createdAt),
+    ),
   );
   const failedDraftCollection = createFailedDraftCollection(data, 'digest_failed');
 
@@ -51,10 +80,18 @@ export const useDigestStore = defineStore('digest', () => {
   }
 
   function createEntry(
-    input: Partial<Pick<DigestEntry, 'kind' | 'sourceLabel' | 'sourceMessageId' | 'sourceText' | 'tags'>> &
+    input: Partial<
+      Pick<
+        DigestEntry,
+        'directoryOrder' | 'kind' | 'sourceFloorEnd' | 'sourceLabel' | 'sourceMessageId' | 'sourceText' | 'tags'
+      >
+    > &
       Pick<DigestEntry, 'content' | 'title'>,
   ) {
     const timestamp = nowIso();
+    const sourceFloorEnd = input.sourceFloorEnd ?? input.sourceMessageId ?? undefined;
+    const nextDirectoryOrder =
+      data.value.entries.reduce((maximum, entry) => Math.max(maximum, entry.directoryOrder ?? 0), 0) + 1;
     const entry: DigestEntry = {
       id: createId('digest_entry'),
       title: input.title.trim() || '未命名摘抄',
@@ -67,6 +104,8 @@ export const useDigestStore = defineStore('digest', () => {
       favorite: false,
       createdAt: timestamp,
       updatedAt: timestamp,
+      directoryOrder: input.directoryOrder ?? sourceFloorEnd ?? nextDirectoryOrder,
+      sourceFloorEnd,
     };
     data.value.entries = [entry, ...data.value.entries];
     return entry;
@@ -74,7 +113,9 @@ export const useDigestStore = defineStore('digest', () => {
 
   function updateEntry(
     entryId: string,
-    input: Pick<DigestEntry, 'content' | 'sourceLabel' | 'sourceText' | 'tags' | 'title'>,
+    input: Pick<DigestEntry, 'content' | 'sourceLabel' | 'sourceText' | 'tags' | 'title'> & {
+      directoryOrder?: number;
+    },
   ) {
     const entry = getEntry(entryId);
     if (!entry) return null;
@@ -83,6 +124,7 @@ export const useDigestStore = defineStore('digest', () => {
     entry.sourceLabel = input.sourceLabel.trim();
     entry.sourceText = input.sourceText.trim();
     entry.tags = input.tags.map(tag => tag.trim()).filter(Boolean);
+    if (typeof input.directoryOrder === 'number') entry.directoryOrder = Math.max(0, Math.round(input.directoryOrder));
     entry.updatedAt = nowIso();
     return entry;
   }

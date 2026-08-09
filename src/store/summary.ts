@@ -32,6 +32,31 @@ export const useSummaryStore = defineStore('summary', () => {
     return getBook(bookId)?.entries.find(entry => entry.id === entryId) ?? null;
   }
 
+  function normalizeDirectoryOrders() {
+    for (const book of data.value.books) {
+      const ordered = [...book.entries].sort((left, right) => left.createdAt.localeCompare(right.createdAt));
+      let nextOrder = ordered.reduce(
+        (maximum, entry) => Math.max(maximum, entry.directoryOrder ?? entry.sourceFloorEnd ?? 0),
+        0,
+      );
+      for (const entry of ordered) {
+        if (typeof entry.directoryOrder === 'number') continue;
+        if (typeof entry.sourceFloorEnd === 'number') {
+          entry.directoryOrder = entry.sourceFloorEnd;
+          continue;
+        }
+        nextOrder += 1;
+        entry.directoryOrder = nextOrder;
+      }
+    }
+  }
+
+  watch(data, normalizeDirectoryOrders, { deep: true, immediate: true });
+
+  function getNextDirectoryOrder(book: SummaryBook) {
+    return book.entries.reduce((maximum, entry) => Math.max(maximum, entry.directoryOrder ?? 0), 0) + 1;
+  }
+
   function createBook(title: string) {
     const timestamp = nowIso();
     const book: SummaryBook = {
@@ -57,7 +82,13 @@ export const useSummaryStore = defineStore('summary', () => {
     data.value.books = data.value.books.filter(book => book.id !== bookId);
   }
 
-  function createEntry(bookId: string, input: Pick<SummaryEntry, 'title' | 'content' | 'rangeLabel'>) {
+  function createEntry(
+    bookId: string,
+    input: Pick<SummaryEntry, 'title' | 'content' | 'rangeLabel'> & {
+      directoryOrder?: number;
+      sourceFloorEnd?: number;
+    },
+  ) {
     const book = getBook(bookId);
     if (!book) return null;
     const timestamp = nowIso();
@@ -69,13 +100,19 @@ export const useSummaryStore = defineStore('summary', () => {
       favorite: false,
       createdAt: timestamp,
       updatedAt: timestamp,
+      directoryOrder: input.directoryOrder ?? input.sourceFloorEnd ?? getNextDirectoryOrder(book),
+      sourceFloorEnd: input.sourceFloorEnd,
     };
     book.entries = [entry, ...book.entries];
     book.updatedAt = timestamp;
     return entry;
   }
 
-  function updateEntry(bookId: string, entryId: string, input: Pick<SummaryEntry, 'title' | 'content' | 'rangeLabel'>) {
+  function updateEntry(
+    bookId: string,
+    entryId: string,
+    input: Pick<SummaryEntry, 'title' | 'content' | 'rangeLabel'> & { directoryOrder?: number },
+  ) {
     const book = getBook(bookId);
     const entry = getEntry(bookId, entryId);
     if (!book || !entry) return null;
@@ -83,6 +120,7 @@ export const useSummaryStore = defineStore('summary', () => {
     entry.title = input.title.trim() || entry.title;
     entry.content = input.content.trim();
     entry.rangeLabel = input.rangeLabel.trim() || entry.rangeLabel;
+    if (typeof input.directoryOrder === 'number') entry.directoryOrder = Math.max(0, Math.round(input.directoryOrder));
     entry.updatedAt = timestamp;
     book.updatedAt = timestamp;
     return entry;
