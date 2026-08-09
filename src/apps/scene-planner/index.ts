@@ -1,4 +1,5 @@
 import ScenePlannerApp from './ScenePlannerApp.vue';
+import { createScenePlannerContentReceiver } from '@/apps/contentReceivers';
 import { createScenePlannerGenerationAdapter, scenePlannerOutputFormat, scenePlannerOutputParser } from './generation';
 import {
   getScenePlanStatusLabel,
@@ -150,6 +151,7 @@ export default definePhoneApp({
   accent: '#9b5de5',
   defaultRoute: 'root',
   defaultOrder: 66,
+  contentReceiver: createScenePlannerContentReceiver(),
   archiveProvider: {
     field: scenePlannerField,
     collect: createScenePlannerArchiveDomain,

@@ -200,7 +200,7 @@ import GenerationTaskCenter from '@/components/GenerationTaskCenter.vue';
 import SearchableSelectOverlay from '@/components/SearchableSelectOverlay.vue';
 import { useDeferredAppMount } from '@/composables/useDeferredAppMount';
 import { getRegisteredPhoneAppComponent, getRegisteredPhoneBackupRehydrateHandlers } from '@/core/appRegistry';
-import { PHONE_APPS, normalizeHomeLayout } from '@/data/apps';
+import { getPhoneApps, normalizeHomeLayout, type PhoneAppDefinition } from '@/data/apps';
 import { getWallpaperPreset } from '@/data/wallpapers';
 import { useBaguStore } from '@/store/bagu';
 import { useGenerationTaskStore } from '@/store/generationTasks';
@@ -291,9 +291,10 @@ let appDragLongPressTimer: ReturnType<typeof window.setTimeout> | null = null;
 
 const homeApps = computed(() => {
   const layout = normalizeHomeLayout(settings.value.layout);
+  const apps = getPhoneApps();
   return layout.appOrder
-    .map(id => PHONE_APPS.find(app => app.id === id))
-    .filter((app): app is (typeof PHONE_APPS)[number] => Boolean(app));
+    .map(id => apps.find(app => app.id === id))
+    .filter((app): app is PhoneAppDefinition => Boolean(app));
 });
 
 const dockApps = computed(() => homeApps.value.filter(app => app.defaultDock));
@@ -343,7 +344,7 @@ function toFontStack(fontFamily: string, fallback: string) {
   return `"${escapeCssString(value)}", ${fallback}`;
 }
 
-function getHomeAppSubtitle(app: (typeof PHONE_APPS)[number]) {
+function getHomeAppSubtitle(app: PhoneAppDefinition) {
   const subtitleAppIds = new Set(['summary', 'diary', 'extras', 'forum', 'theater', 'letters']);
   if (!subtitleAppIds.has(app.id)) return '';
   const domain = homeArchiveDomainByApp.value.get(app.id);
@@ -361,15 +362,15 @@ function getHomeAppSubtitle(app: (typeof PHONE_APPS)[number]) {
   return `${domain.items}${itemLabels[app.id] || domain.itemLabel}`;
 }
 
-function getDisplayAppIcon(app: (typeof PHONE_APPS)[number]) {
+function getDisplayAppIcon(app: PhoneAppDefinition) {
   return settings.value.visualTheme.appIconOverrides[app.id] || app.icon;
 }
 
-function getDisplayAppAccent(app: (typeof PHONE_APPS)[number]) {
+function getDisplayAppAccent(app: PhoneAppDefinition) {
   return settings.value.visualTheme.appAccentOverrides[app.id] || settings.value.visualTheme.appIconColor || app.accent;
 }
 
-function getDisplayAppStyle(app: (typeof PHONE_APPS)[number]) {
+function getDisplayAppStyle(app: PhoneAppDefinition) {
   const accent = getDisplayAppAccent(app);
   return {
     '--pc-accent': accent,

@@ -5,9 +5,9 @@ import { regexDisplayField, useRegexDisplayStore } from './store';
 
 export default definePhoneApp({
   id: 'regex-display',
-  name: '正则显示',
+  name: '正则替换',
   icon: 'fa-code',
-  description: '正则替换后的文字或网页显示规则',
+  description: '集中管理 App 的提取与显示替换规则',
   accent: '#8e44ad',
   defaultRoute: 'root',
   defaultOrder: 125,

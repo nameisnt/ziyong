@@ -1,11 +1,12 @@
 export interface TheaterFrontendBuildOptions {
   channelId: string;
+  securityMode?: 'safe' | 'trusted';
   theme: 'dark' | 'light';
   title?: string;
 }
 
 const FRONTEND_FRAME_SOURCE = 'st-phone-theater';
-const FRONTEND_IFRAME_CSP = [
+const TRUSTED_FRONTEND_IFRAME_CSP = [
   "default-src 'none'",
   'img-src https: data: blob:',
   'media-src https: data: blob:',
@@ -19,6 +20,22 @@ const FRONTEND_IFRAME_CSP = [
   "form-action 'none'",
 ].join('; ');
 
+function createSafeFrontendCsp(nonce: string) {
+  return [
+    "default-src 'none'",
+    'img-src https: data: blob:',
+    'media-src https: data: blob:',
+    'font-src https: data:',
+    "style-src 'unsafe-inline' https:",
+    `script-src 'nonce-${nonce}'`,
+    "connect-src 'none'",
+    "frame-src 'none'",
+    "object-src 'none'",
+    "base-uri 'none'",
+    "form-action 'none'",
+  ].join('; ');
+}
+
 function hasDocumentShell(raw: string) {
   return /<!doctype|<html[\s>]|<head[\s>]|<body[\s>]/i.test(raw);
 }
@@ -30,6 +47,19 @@ function stripDangerousNodes(document: Document) {
     if (value === 'refresh' || value === 'content-security-policy') {
       node.remove();
     }
+  });
+}
+
+function stripUntrustedBehavior(document: Document) {
+  document.querySelectorAll('script, form').forEach(node => node.remove());
+  document.querySelectorAll('*').forEach(node => {
+    [...node.attributes].forEach(attribute => {
+      const name = attribute.name.toLowerCase();
+      const value = attribute.value.trim().toLowerCase();
+      if (name.startsWith('on') || ((name === 'href' || name === 'src' || name === 'action') && value.startsWith('javascript:'))) {
+        node.removeAttribute(attribute.name);
+      }
+    });
   });
 }
 
@@ -140,10 +170,11 @@ function createResizeBridgeScript(channelId: string) {
   ].join('\n');
 }
 
-function sanitizeFrontendHtml(rawHtml: string) {
+function sanitizeFrontendHtml(rawHtml: string, securityMode: 'safe' | 'trusted') {
   const parser = new DOMParser();
   const document = parser.parseFromString(rawHtml, 'text/html');
   stripDangerousNodes(document);
+  if (securityMode === 'safe') stripUntrustedBehavior(document);
 
   if (hasDocumentShell(rawHtml)) {
     return {
@@ -159,8 +190,11 @@ function sanitizeFrontendHtml(rawHtml: string) {
 }
 
 export function buildFrontendDocument(rawHtml: string, options: TheaterFrontendBuildOptions) {
-  const sanitized = sanitizeFrontendHtml(rawHtml);
+  const securityMode = options.securityMode ?? 'trusted';
+  const sanitized = sanitizeFrontendHtml(rawHtml, securityMode);
   const title = options.title?.trim() || '小剧场';
+  const nonce = `pc${options.channelId.replace(/[^A-Za-z0-9]/g, '')}`;
+  const csp = securityMode === 'safe' ? createSafeFrontendCsp(nonce) : TRUSTED_FRONTEND_IFRAME_CSP;
 
   return [
     '<!doctype html>',
@@ -168,14 +202,14 @@ export function buildFrontendDocument(rawHtml: string, options: TheaterFrontendB
     '<head>',
     '  <meta charset="utf-8" />',
     '  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />',
-    `  <meta http-equiv="Content-Security-Policy" content="${FRONTEND_IFRAME_CSP}" />`,
+    `  <meta http-equiv="Content-Security-Policy" content="${csp}" />`,
     `  <title>${escapeHtmlText(title)}</title>`,
     `  <style>${createBaseStyle(options.theme)}</style>`,
     sanitized.headHtml,
     '</head>',
     '<body>',
     sanitized.bodyHtml,
-    `  <script>${createResizeBridgeScript(options.channelId)}</script>`,
+    `  <script${securityMode === 'safe' ? ` nonce="${nonce}"` : ''}>${createResizeBridgeScript(options.channelId)}</script>`,
     '</body>',
     '</html>',
   ]

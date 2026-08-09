@@ -47,6 +47,7 @@ export default definePhoneApp({
 - `contentStatsProvider`：声明统计贡献。
 - `favoriteProvider`：声明收藏贡献。
 - `referenceProvider`：声明生成引用来源。
+- `contentReceiver`：声明内容转换目标、动态表单和写入方法。
 - `resetCurrentScope`：声明当前聊天清理逻辑，可同步返回，也可返回 `Promise<void>`。
 
 ## 首页与导航复用
@@ -107,6 +108,29 @@ referenceProvider: () => ({
 ```
 
 引用树只负责提供可引用内容。生成时由 `ReferencePicker` 和 `formatGenerationReferences` 汇总为提示词片段。
+
+## 内容转换复用
+
+提供 `contentReceiver` 后，`ContentConversionPanel` 会自动把该 App 列为转换目标。接收器声明数据范围、支持的批量方式、目标专属字段和最终写入，不需要让来源 App 依赖目标 Store。
+
+```ts
+contentReceiver: {
+  scope: 'chat',
+  batchModes: ['separate', 'merge'],
+  createDraft: sources => ({ collectionId: '', label: sources[0]?.title || '' }),
+  fields: context => [
+    { key: 'collectionId', kind: 'select', label: '目标分组', options: [], required: true },
+  ],
+  receive: context => ({
+    count: context.sources.length,
+    itemIds: context.sources.map(source => store.createItem(source.content).id),
+    message: `已转换 ${context.sources.length} 条内容`,
+    openRoute: { page: 'root', title: '我的应用' },
+  }),
+}
+```
+
+`scope: 'chat'` 的目标在历史聊天中不可写入；`scope: 'global'` 仍可使用。来源只传标题、正文、标签、来源楼层和显示模式，转换始终复制内容，不负责删除来源。
 
 ## 统计复用
 

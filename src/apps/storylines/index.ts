@@ -1,4 +1,5 @@
 import StorylinesApp from './StorylinesApp.vue';
+import { createStorylinesContentReceiver } from '@/apps/contentReceivers';
 import { createStorylineGenerationAdapter, storylineOutputFormat, storylineOutputParser } from './generation';
 import {
   getBeatStatusLabel,
@@ -215,6 +216,7 @@ export default definePhoneApp({
   accent: '#ff7a59',
   defaultRoute: 'root',
   defaultOrder: 67,
+  contentReceiver: createStorylinesContentReceiver(),
   archiveProvider: {
     field: storylinesField,
     collect: createStorylinesArchiveDomain,

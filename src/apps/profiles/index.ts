@@ -1,4 +1,5 @@
 import ProfilesApp from './ProfilesApp.vue';
+import { createProfilesContentReceiver } from '@/apps/contentReceivers';
 import { createProfileGenerationAdapter } from './generation';
 import { objectListField, textField, textListField, xmlParser } from '@/apps/outputDefinitions';
 import {
@@ -179,6 +180,7 @@ export default definePhoneApp({
   accent: '#4c9aff',
   defaultRoute: 'root',
   defaultOrder: 69,
+  contentReceiver: createProfilesContentReceiver(),
   archiveProvider: {
     field: profilesField,
     collect: createProfilesArchiveDomain,

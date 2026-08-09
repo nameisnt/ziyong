@@ -27,4 +27,7 @@ export function ensurePhoneAppsRegistered() {
 ensurePhoneAppsRegistered();
 
 export const PHONE_APPS: PhoneAppDefinition[] = getPhoneAppDefinitions();
+export function getPhoneApps() {
+  return getPhoneAppDefinitions();
+}
 export { buildDefaultHomeLayout, getPhoneApp, normalizeHomeLayout };

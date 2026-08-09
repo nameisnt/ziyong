@@ -1,4 +1,5 @@
 import EntryLibraryApp from './EntryLibraryApp.vue';
+import { createEntryLibraryContentReceiver } from '@/apps/contentReceivers';
 import { entryLibraryField, EntryLibrarySettingsSchema, useEntryLibraryStore } from './store';
 import { definePhoneApp, type PhoneReferenceTreeNode } from '@/core/appRegistry';
 import { extension_settings } from '@sillytavern/scripts/extensions';
@@ -36,6 +37,7 @@ export default definePhoneApp({
   accent: '#14a06f',
   defaultRoute: 'root',
   defaultOrder: 118,
+  contentReceiver: createEntryLibraryContentReceiver(),
   backupDomains: [
     {
       key: 'entry-library',

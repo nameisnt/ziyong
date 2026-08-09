@@ -2,11 +2,54 @@ export type RegexDisplayRenderMode = 'html' | 'text';
 
 export interface RegexDisplayRuleLike {
   enabled?: boolean;
+  field?: 'content' | 'title';
   flags: string;
   name: string;
+  operation?: 'extract' | 'replace';
+  order?: number;
   pattern: string;
   renderMode: RegexDisplayRenderMode;
   replacement: string;
+  targetId?: string;
+}
+
+export function getRegexRulesForTarget(
+  rules: RegexDisplayRuleLike[],
+  targetId: string,
+  field: 'content' | 'title',
+  operation: 'extract' | 'replace',
+) {
+  return rules
+    .filter(
+      rule =>
+        rule.enabled !== false &&
+        rule.pattern.trim() &&
+        rule.targetId === targetId &&
+        (rule.field ?? 'content') === field &&
+        (rule.operation ?? 'replace') === operation,
+    )
+    .sort((left, right) => (left.order ?? 0) - (right.order ?? 0));
+}
+
+export function extractWithRegexRules(input: string, rules: RegexDisplayRuleLike[]): RegexDisplayApplyResult {
+  const errors: string[] = [];
+  for (const rule of rules) {
+    try {
+      const regex = createDisplayRegex(rule.pattern, rule.flags);
+      if (!regex.test(input)) continue;
+      regex.lastIndex = 0;
+      return {
+        applied: [rule.name.trim() || rule.pattern],
+        content: input.replace(regex, rule.replacement),
+        errors,
+        renderMode: rule.renderMode,
+      };
+    } catch (caughtError) {
+      const message = caughtError instanceof Error ? caughtError.message : '正则无效';
+      errors.push(`${rule.name.trim() || rule.pattern}：${message}`);
+    }
+  }
+  return { applied: [], content: input, errors, renderMode: 'text' };
 }
 
 export interface RegexDisplayApplyResult {

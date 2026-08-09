@@ -245,10 +245,10 @@ export function normalizeArchivedMessage(
 
   const isHidden = pickBoolean(record, ['is_hidden', 'isHidden']) || isSystem;
 
-  const messageIndex = index + 1;
   const sourceMessageId = pickNumber(record, ['message_id']) ?? index;
+  const messageIndex = sourceMessageId;
   return {
-    id: `${sourceMessageId}-${messageIndex}`,
+    id: `${sourceMessageId}-${index + 1}`,
     messageIndex,
     sourceMessageId,
     rawText,

@@ -453,6 +453,9 @@ const scenarios: VisualScenarioName[] = [
   'generation-preview-long-title-raw',
   'legacy-data-migrations',
   'app-deferred-mount-order',
+  'custom-app-conversion',
+  'custom-app-conversion-complete',
+  'custom-app-conversion-merge',
   ...rootAppScenarios,
   'bagu-scan-actions',
   'bagu-scan-applied',
@@ -2110,6 +2113,108 @@ async function applyScenario(name: VisualScenarioName, options: { height?: numbe
     typeTiles[typeTiles.length - 1]?.click();
   } else if (name === 'prompts-type-editor') {
     resetPhoneToRoute('prompts', 'type-editor', '编辑类型提示词', { promptId: 'prompt_type_theater_daily' });
+  } else if (
+    name === 'custom-app-conversion' ||
+    name === 'custom-app-conversion-complete' ||
+    name === 'custom-app-conversion-merge'
+  ) {
+    const {
+      CustomAppContentDataSchema,
+      CustomAppDefinitionsSettingsSchema,
+      customAppDefinitionsField,
+      customAppGlobalDataField,
+    } = await import('@/apps/app-builder/schema');
+    const { useCustomAppsStore } = await import('@/apps/app-builder/store');
+    const timestamp = '2026-08-10T08:00:00.000Z';
+    const appId = 'custom-visual-conversion';
+    _.set(
+      extension_settings,
+      customAppDefinitionsField,
+      CustomAppDefinitionsSettingsSchema.parse({
+        definitions: [
+          {
+            id: appId,
+            name: '灵感片段',
+            icon: 'fa-lightbulb',
+            description: '视觉测试自制 App',
+            dataScope: 'global',
+            creation: { manual: true, extract: true, generate: false },
+            naming: { mode: 'first-line', template: '{{appName}} {{index}}' },
+            extraction: { saveMode: 'separate' },
+            display: { mode: 'markdown', sortDesc: false },
+            referenceEnabled: true,
+            createdAt: timestamp,
+            updatedAt: timestamp,
+          },
+        ],
+      }),
+    );
+    _.set(
+      extension_settings,
+      customAppGlobalDataField,
+      CustomAppContentDataSchema.parse({
+        entries: [
+          {
+            id: 'visual-conversion-entry-1',
+            appId,
+            title: '雨夜重逢',
+            content: '她在雨棚下停住脚步，认出了多年未见的人。',
+            sourceLabel: '第 8 楼',
+            sourceFloorEnd: 8,
+            tags: ['重逢', '雨夜'],
+            directoryOrder: 8,
+            createdAt: timestamp,
+            updatedAt: timestamp,
+          },
+          {
+            id: 'visual-conversion-entry-2',
+            appId,
+            title: '未寄出的信',
+            content: '抽屉里那封信没有署名，却留下了熟悉的墨水气味。',
+            sourceLabel: '第 12 楼',
+            sourceFloorEnd: 12,
+            tags: ['书信', '线索'],
+            directoryOrder: 12,
+            createdAt: timestamp,
+            updatedAt: timestamp,
+          },
+        ],
+      }),
+    );
+    useCustomAppsStore().rehydrateFromSettings();
+    resetPhoneToRoute(appId, 'convert', '转换内容', {
+      entryIds: 'visual-conversion-entry-1,visual-conversion-entry-2',
+    });
+    if (name !== 'custom-app-conversion') {
+      await waitForPaint();
+      if (name === 'custom-app-conversion-merge') {
+        const mergeButton = [...document.querySelectorAll<HTMLButtonElement>('button')].find(button =>
+          button.textContent?.includes('合并为一条'),
+        );
+        if (!mergeButton) throw new Error('Custom app conversion merge mode was not rendered');
+        mergeButton.click();
+        await waitForPaint();
+      }
+      const confirmButton = [...document.querySelectorAll<HTMLButtonElement>('button')].find(button =>
+        button.textContent?.includes('确认转换'),
+      );
+      if (!confirmButton) throw new Error('Custom app conversion submit button was not rendered');
+      confirmButton.click();
+      await waitForPaint();
+      const sourceEntries = useCustomAppsStore().getEntries(appId);
+      if (sourceEntries.some(entry => entry.conversions.length !== 1)) {
+        throw new Error('Custom app conversion records were not saved to every source entry');
+      }
+      const expectedTargetCount = name === 'custom-app-conversion-merge' ? 1 : 2;
+      const targetIds = new Set(sourceEntries.flatMap(entry => entry.conversions[0]?.targetEntryIds ?? []));
+      if (targetIds.size !== expectedTargetCount) {
+        throw new Error('Custom app conversion target mapping did not match the selected batch mode');
+      }
+      const status = document.querySelector<HTMLElement>('.pc-status-card.success');
+      if (!status?.textContent?.includes('转换完成')) {
+        throw new Error('Custom app conversion did not reach its completion state');
+      }
+    }
   } else if (name.startsWith('app:')) {
     const appId = name.slice('app:'.length);
     const app = PHONE_APPS.find(item => item.id === appId);

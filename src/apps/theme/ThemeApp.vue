@@ -416,7 +416,7 @@
 </template>
 
 <script setup lang="ts">
-import { PHONE_APPS } from '@/data/apps';
+import { getPhoneApps, type PhoneAppDefinition } from '@/data/apps';
 import { WALLPAPER_PRESETS, getWallpaperPreset } from '@/data/wallpapers';
 import { usePhoneStore } from '@/store/phone';
 import { useSettingsStore } from '@/store/settings';
@@ -902,7 +902,7 @@ const radiusControls: { key: RadiusKey; label: string; min: number; max: number 
   { key: 'iconRadius', label: '图标圆角', min: 8, max: 24 },
 ];
 
-const visibleApps = computed(() => PHONE_APPS.filter(app => app.id !== 'home'));
+const visibleApps = computed(() => getPhoneApps().filter(app => app.id !== 'home'));
 const previewApps = computed(() => visibleApps.value.slice(0, 6));
 const selectedApp = computed(() => visibleApps.value.find(app => app.id === selectedAppId.value) ?? null);
 const visibleThemePresets = computed(() => themePresets.filter(preset => preset.mode === settings.value.theme));
@@ -1059,15 +1059,15 @@ function applyThemePack(pack: ThemePack) {
   toastr.success(`已应用主题包：${pack.name}`);
 }
 
-function getAppIcon(app: (typeof PHONE_APPS)[number]) {
+function getAppIcon(app: PhoneAppDefinition) {
   return settings.value.visualTheme.appIconOverrides[app.id] || app.icon;
 }
 
-function getAppAccent(app: (typeof PHONE_APPS)[number]) {
+function getAppAccent(app: PhoneAppDefinition) {
   return settings.value.visualTheme.appAccentOverrides[app.id] || settings.value.visualTheme.appIconColor || app.accent;
 }
 
-function getAppPreviewStyle(app: (typeof PHONE_APPS)[number]) {
+function getAppPreviewStyle(app: PhoneAppDefinition) {
   const accent = getAppAccent(app);
   return {
     '--preview-app-accent': accent,

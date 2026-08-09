@@ -166,6 +166,69 @@ export interface PhoneGenerationAction {
 export type PhoneGenerationProvider = () => PhoneGenerationAction[];
 export type PhoneScopeSwitchHandler = (scopeKey: string) => void | Promise<void>;
 
+export type PhoneContentConversionValue = boolean | number | string;
+export type PhoneContentConversionValues = Record<string, PhoneContentConversionValue>;
+export type PhoneContentConversionBatchMode = 'merge' | 'separate';
+
+export interface PhoneContentConversionSource {
+  appId: string;
+  appName: string;
+  content: string;
+  displayMode: 'frontend' | 'markdown' | 'text';
+  entryId: string;
+  sourceFloorEnd?: number;
+  sourceLabel: string;
+  tags: string[];
+  title: string;
+}
+
+export interface PhoneContentConversionOption {
+  disabled?: boolean;
+  group?: string;
+  label: string;
+  value: string;
+}
+
+export interface PhoneContentConversionField {
+  help?: string;
+  key: string;
+  kind: 'number' | 'select' | 'text' | 'textarea' | 'toggle';
+  label: string;
+  min?: number;
+  options?: PhoneContentConversionOption[];
+  placeholder?: string;
+  required?: boolean;
+  rows?: number;
+  step?: number;
+}
+
+export interface PhoneContentConversionContext {
+  batchMode: PhoneContentConversionBatchMode;
+  sources: PhoneContentConversionSource[];
+  values: PhoneContentConversionValues;
+}
+
+export interface PhoneContentConversionRoute {
+  page: string;
+  params?: Record<string, string>;
+  title: string;
+}
+
+export interface PhoneContentConversionResult {
+  count: number;
+  itemIds: string[];
+  message: string;
+  openRoute?: PhoneContentConversionRoute;
+}
+
+export interface PhoneContentReceiver {
+  batchModes?: PhoneContentConversionBatchMode[];
+  createDraft: (sources: PhoneContentConversionSource[]) => PhoneContentConversionValues;
+  fields: (context: PhoneContentConversionContext) => PhoneContentConversionField[];
+  receive: (context: PhoneContentConversionContext) => PhoneContentConversionResult | Promise<PhoneContentConversionResult>;
+  scope: 'chat' | 'global';
+}
+
 export interface PhoneBackupDomain {
   key: string;
   exportData: (currentScopeKey: string) => unknown;
@@ -183,12 +246,14 @@ export interface PhoneAppDefinition {
   defaultOrder: number;
   defaultVisible?: boolean;
   defaultDock?: boolean;
+  tutorialGuideRequired?: boolean;
 }
 
 export interface PhoneAppModule extends PhoneAppDefinition {
   archiveProvider?: PhoneArchiveProvider | PhoneArchiveProvider[];
   backupDomains?: PhoneBackupDomain[];
   component: PhoneAppComponent;
+  contentReceiver?: PhoneContentReceiver;
   contentStatsProvider?: PhoneContentStatsProvider;
   favoriteProvider?: PhoneFavoriteProvider;
   generationProvider?: PhoneGenerationProvider;
@@ -203,6 +268,7 @@ export interface PhoneAppModule extends PhoneAppDefinition {
 
 const appIdPattern = /^[a-z][a-z0-9-]*$/;
 const modules = new Map<string, PhoneAppModule>();
+const moduleProviders = new Set<() => PhoneAppModule[]>();
 
 function assertValidModule(module: PhoneAppModule) {
   if (!appIdPattern.test(module.id)) {
@@ -228,16 +294,36 @@ export function registerPhoneApps(nextModules: PhoneAppModule[]) {
   nextModules.forEach(module => registerPhoneApp(module));
 }
 
+export function registerPhoneAppProvider(provider: () => PhoneAppModule[]) {
+  moduleProviders.add(provider);
+  return () => moduleProviders.delete(provider);
+}
+
+function getProvidedPhoneApps() {
+  const knownIds = new Set(modules.keys());
+  const provided: PhoneAppModule[] = [];
+  moduleProviders.forEach(provider => {
+    provider().forEach(module => {
+      if (!appIdPattern.test(module.id) || knownIds.has(module.id)) return;
+      knownIds.add(module.id);
+      provided.push(module);
+    });
+  });
+  return provided;
+}
+
 export function getRegisteredPhoneApps() {
-  return [...modules.values()].sort((left, right) => left.defaultOrder - right.defaultOrder);
+  return [...modules.values(), ...getProvidedPhoneApps()].sort(
+    (left, right) => left.defaultOrder - right.defaultOrder || left.name.localeCompare(right.name),
+  );
 }
 
 export function getRegisteredPhoneApp(appId: string) {
-  return modules.get(appId) ?? null;
+  return modules.get(appId) ?? getProvidedPhoneApps().find(module => module.id === appId) ?? null;
 }
 
 export function getRegisteredPhoneAppComponent(appId: string) {
-  return modules.get(appId)?.component ?? null;
+  return getRegisteredPhoneApp(appId)?.component ?? null;
 }
 
 export function getRegisteredPhoneAppResetHandlers() {
@@ -289,9 +375,20 @@ export function getRegisteredPhoneContentStats(currentScopeKey: string) {
   );
 }
 
+export function getRegisteredPhoneContentReceivers() {
+  return getRegisteredPhoneApps()
+    .filter((module): module is PhoneAppModule & { contentReceiver: PhoneContentReceiver } =>
+      Boolean(module.contentReceiver),
+    )
+    .map(module => ({
+      app: module,
+      receiver: module.contentReceiver,
+    }));
+}
+
 export function getRegisteredPhoneGenerationActions(appId?: string) {
   const source = appId
-    ? [modules.get(appId)].filter((module): module is PhoneAppModule => Boolean(module))
+    ? [getRegisteredPhoneApp(appId)].filter((module): module is PhoneAppModule => Boolean(module))
     : getRegisteredPhoneApps();
   return source.flatMap(module =>
     (module.generationProvider?.() ?? []).map(action => ({

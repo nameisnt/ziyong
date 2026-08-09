@@ -1,4 +1,5 @@
 import WorldSlotsApp from './WorldSlotsApp.vue';
+import { createWorldSlotsContentReceiver } from '@/apps/contentReceivers';
 import { worldSlotsField, WorldSlotsScopeDataSchema, useWorldSlotsStore, type WorldSlot } from './store';
 import {
   definePhoneApp,
@@ -133,6 +134,7 @@ export default definePhoneApp({
   accent: '#20c997',
   defaultRoute: 'root',
   defaultOrder: 115,
+  contentReceiver: createWorldSlotsContentReceiver(),
   archiveProvider: {
     field: worldSlotsField,
     collect: createWorldSlotsArchiveDomain,

@@ -14,10 +14,14 @@ export const RegexDisplayRuleSchema = z.object({
   enabled: z.boolean().default(true),
   flags: z.string().default('g'),
   id: z.string(),
+  field: z.enum(['title', 'content']).default('content'),
   name: z.string().default('新显示规则'),
+  operation: z.enum(['extract', 'replace']).default('replace'),
+  order: z.number().int().nonnegative().default(0),
   pattern: z.string().default(''),
   renderMode: z.enum(['text', 'html']).default('text'),
   replacement: z.string().default(''),
+  targetId: z.string().default(''),
   targets: z.array(z.string()).default([]),
 });
 export type RegexDisplayRule = z.infer<typeof RegexDisplayRuleSchema>;
@@ -34,6 +38,14 @@ function createRuleId() {
 
 function readSettings(rawSettings: unknown) {
   const settings = validateInplace(RegexDisplaySettingsSchema, rawSettings);
+  settings.rules.forEach((rule, index) => {
+    if (!rule.targetId) {
+      const legacyTarget = rule.targets[0] || '';
+      rule.targetId = legacyTarget === regexDisplayReaderCleanupTarget ? 'reader' : legacyTarget;
+      rule.operation = legacyTarget === regexDisplayReaderTarget ? 'extract' : 'replace';
+    }
+    rule.order = Number.isFinite(rule.order) ? rule.order : index;
+  });
   const hasDefaultBodyRule = settings.rules.some(rule => rule.id === defaultReaderBodyRegexDisplayRuleId);
   if (hasDefaultBodyRule) return settings;
   return {
@@ -45,6 +57,8 @@ function readSettings(rawSettings: unknown) {
         name: '默认正文',
         pattern: '/<content>([\\s\\S]*?)<\\/content>/i',
         replacement: '$1',
+        targetId: 'reader',
+        operation: 'extract',
         targets: [regexDisplayReaderTarget],
       }),
       ...settings.rules,
@@ -57,10 +71,14 @@ export function createRegexDisplayRule(partial: Partial<RegexDisplayRule> = {}):
     enabled: true,
     flags: 'g',
     id: createRuleId(),
+    field: 'content',
     name: '新显示规则',
+    operation: 'replace',
+    order: 0,
     pattern: '',
     renderMode: 'text',
     replacement: '',
+    targetId: 'reader',
     targets: [],
     ...partial,
   });
@@ -81,8 +99,8 @@ export const useRegexDisplayStore = defineStore('regex-display', () => {
   const rules = computed(() => settings.value.rules);
 
   function addRule(partial: Partial<RegexDisplayRule> = {}) {
-    const rule = createRegexDisplayRule(partial);
-    settings.value.rules.unshift(rule);
+    const rule = createRegexDisplayRule({ order: settings.value.rules.length, ...partial });
+    settings.value.rules.push(rule);
     return rule;
   }
 
@@ -92,16 +110,32 @@ export const useRegexDisplayStore = defineStore('regex-display', () => {
     return addRule({
       enabled: source.enabled,
       flags: source.flags,
+      field: source.field,
       name: `${source.name || '显示规则'} 副本`,
+      operation: source.operation,
       pattern: source.pattern,
       renderMode: source.renderMode as RegexDisplayRenderMode,
       replacement: source.replacement,
+      targetId: source.targetId,
       targets: [...source.targets],
     });
   }
 
   function deleteRule(ruleId: string) {
     settings.value.rules = settings.value.rules.filter(rule => rule.id !== ruleId);
+  }
+
+  function moveRule(ruleId: string, offset: -1 | 1) {
+    const index = settings.value.rules.findIndex(rule => rule.id === ruleId);
+    const target = index + offset;
+    if (index < 0 || target < 0 || target >= settings.value.rules.length) return;
+    const next = [...settings.value.rules];
+    const [rule] = next.splice(index, 1);
+    next.splice(target, 0, rule!);
+    next.forEach((item, order) => {
+      item.order = order;
+    });
+    settings.value.rules = next;
   }
 
   function importBackup(data: unknown) {
@@ -119,6 +153,7 @@ export const useRegexDisplayStore = defineStore('regex-display', () => {
     deleteRule,
     duplicateRule,
     importBackup,
+    moveRule,
     rehydrateFromSettings,
   };
 });

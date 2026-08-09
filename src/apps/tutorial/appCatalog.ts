@@ -50,7 +50,8 @@ export const tutorialAppGuides: TutorialAppGuide[] = [
   { appId: 'worldbook-link', groupId: 'tavern', firstAction: '选择世界书并保存当前聊天需要启用的条目状态。' },
   { appId: 'world-slots', groupId: 'tavern', firstAction: '新建当前聊天专用槽位，再同步到固定世界书。' },
   { appId: 'mvu-modifier', groupId: 'tavern', firstAction: '展开变量树，编辑字段并点击该字段的保存。' },
-  { appId: 'regex-display', groupId: 'tavern', firstAction: '新增文字替换或网页渲染规则并先预览效果。' },
+  { appId: 'regex-display', groupId: 'tavern', firstAction: '选择目标 App 和提取或替换，再填写规则并测试效果。' },
+  { appId: 'app-builder', groupId: 'tavern', firstAction: '选择模板创建自制 App，再配置创建方式、命名、显示和内容转换。' },
   { appId: 'bagu', groupId: 'tavern', firstAction: '配置词汇和句式规则，再到正文扫描并选择修复。' },
 
   { appId: 'reader', groupId: 'automation', firstAction: '选择聊天进入连续阅读，轻点正文中部打开导航工具。' },
@@ -104,7 +105,7 @@ export function validateTutorialAppCatalog(apps: PhoneAppDefinition[]) {
     }
   });
 
-  apps.forEach(app => {
+  apps.filter(app => app.tutorialGuideRequired !== false).forEach(app => {
     const count = guideCounts.get(app.id) ?? 0;
     if (count === 0) errors.push(`App 缺少教程目录记录：${app.id}`);
     if (count > 1) errors.push(`App 存在 ${count} 条教程目录记录：${app.id}`);

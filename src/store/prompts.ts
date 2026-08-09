@@ -377,6 +377,16 @@ export const usePromptStore = defineStore('prompts', () => {
   const quickPhraseGroups = computed(() => data.value.quickPhraseGroups);
   const quickTemplateGroups = computed(() => data.value.quickTemplateGroups);
 
+  watch(
+    () => [
+      ...appPromptDefinitions.value.map(definition => definition.key),
+      ...specialPromptDefinitions.value.map(definition => definition.key),
+      ...taskTemplateDefinitions.value.map(definition => definition.key),
+    ],
+    () => ensureRegisteredPromptDefaults(data.value),
+    { immediate: true },
+  );
+
   function updateAppPrompt(key: PromptAppKey, value: string) {
     data.value.appPrompts[key] = value;
   }

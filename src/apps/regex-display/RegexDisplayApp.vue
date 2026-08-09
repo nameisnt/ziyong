@@ -3,10 +3,8 @@
     <section class="pc-regex-card pc-regex-toolbar">
       <div>
         <strong>
-          {{ t`正则显示设置` }}
-          <InfoHint
-            :text="t`只负责把原文经过正则替换后预览成文字或网页；不会改动原始内容。后续资料表等 App 可以复用这些规则。`"
-          />
+          {{ t`正则替换设置` }}
+          <InfoHint :text="t`提取规则用于从楼层创建内容；替换规则只改变显示结果，不会改动已保存原文。`" />
         </strong>
         <p>
           {{ `${rules.length} 条规则，${readerExtractRuleCount} 条正文抽取，${readerCleanupRuleCount} 条正文清理` }}
@@ -21,11 +19,7 @@
     <section v-if="rules.length" class="pc-regex-card">
       <div class="pc-select-field">
         <label class="pc-field-label">{{ t`当前规则` }}</label>
-        <select v-model="activeRuleId" class="pc-select">
-          <option v-for="rule in rules" :key="rule.id" :value="rule.id">
-            {{ rule.name || '未命名规则' }}
-          </option>
-        </select>
+        <SearchableCombobox v-model="activeRuleId" :options="ruleOptions" :placeholder="t`选择或搜索规则`" />
       </div>
 
       <article v-if="activeRule" class="pc-rule-editor">
@@ -34,52 +28,40 @@
           <input v-model="activeRule.name" class="pc-field" type="text" :placeholder="t`例如：资料表头像卡片`" />
         </div>
 
+        <div class="pc-inline-grid two-cols">
+          <div class="pc-select-field">
+            <label class="pc-field-label">{{ t`目标 App` }}</label>
+            <SearchableCombobox v-model="activeRule.targetId" :options="targetOptions" :placeholder="t`选择或搜索 App`" />
+          </div>
+          <div class="pc-select-field">
+            <label class="pc-field-label">{{ t`作用字段` }}</label>
+            <SearchableCombobox v-model="activeRule.field" :options="fieldOptions" :placeholder="t`选择字段`" />
+          </div>
+        </div>
+
         <div class="pc-select-field">
           <label class="pc-field-label">
-            {{ t`应用位置` }}
-            <InfoHint
-              :text="
-                t`楼层正文提取用于阅读聊天和总结集导入；正文清理会在提取后继续替换。资料表格式会按顺序应用全部已启用规则。`
-              "
-            />
+            {{ t`处理方式` }}
+            <InfoHint :text="t`提取用于从聊天楼层创建内容，只采用第一条成功命中的规则；替换按顺序处理显示内容，不修改已保存原文。`" />
           </label>
-          <div class="pc-target-row">
-            <label class="pc-target-pill">
-              <input
-                :checked="activeRule.targets.includes(regexDisplayReaderTarget)"
-                type="checkbox"
-                @change="setActiveRuleTarget(regexDisplayReaderTarget, ($event.target as HTMLInputElement).checked)"
-              />
-              <span>{{ t`楼层正文提取` }}</span>
-            </label>
-            <label class="pc-target-pill">
-              <input
-                :checked="activeRule.targets.includes(regexDisplayReaderCleanupTarget)"
-                type="checkbox"
-                @change="
-                  setActiveRuleTarget(regexDisplayReaderCleanupTarget, ($event.target as HTMLInputElement).checked)
-                "
-              />
-              <span>{{ t`正文清理` }}</span>
-            </label>
-            <label class="pc-target-pill">
-              <input
-                :checked="activeRule.targets.includes(regexDisplayProfilesTarget)"
-                type="checkbox"
-                @change="setActiveRuleTarget(regexDisplayProfilesTarget, ($event.target as HTMLInputElement).checked)"
-              />
-              <span>{{ t`资料表格式` }}</span>
-            </label>
+          <div class="pc-regex-operation-segment">
+            <button
+              v-for="operation in operationOptions"
+              :key="operation.value"
+              :class="['pc-segment-btn', { active: activeRule.operation === operation.value }]"
+              type="button"
+              :disabled="!activeTarget?.operations.includes(operation.value)"
+              @click="activeRule.operation = operation.value"
+            >
+              {{ operation.label }}
+            </button>
           </div>
         </div>
 
         <div class="pc-inline-grid two-cols">
-          <div class="pc-select-field">
+          <div v-if="!activeRule.targetId.startsWith('custom-')" class="pc-select-field">
             <label class="pc-field-label">{{ t`输出显示` }}</label>
-            <select v-model="activeRule.renderMode" class="pc-select">
-              <option value="text">{{ t`文字` }}</option>
-              <option value="html">{{ t`网页` }}</option>
-            </select>
+            <SearchableCombobox v-model="activeRule.renderMode" :options="renderModeOptions" :placeholder="t`选择显示方式`" />
           </div>
           <div class="pc-select-field">
             <label class="pc-field-label">
@@ -101,8 +83,8 @@
 
         <div class="pc-select-field">
           <label class="pc-field-label">
-            {{ t`替换模板` }}
-            <InfoHint :text="t`可使用 $1、$<name> 这类 JS replace 捕获组。选择网页时，替换结果会按 HTML 片段预览。`" />
+            {{ activeRule.operation === 'extract' ? t`提取模板` : t`替换模板` }}
+            <InfoHint :text="t`可使用 $1、$<name> 这类 JS replace 捕获组。`" />
           </label>
           <textarea
             v-model="activeRule.replacement"
@@ -112,6 +94,14 @@
         </div>
 
         <div class="pc-action-grid">
+          <div class="pc-rule-order-actions">
+            <button class="pc-icon-btn" type="button" :title="t`上移`" @click="regexDisplay.moveRule(activeRule.id, -1)">
+              <i class="fa-solid fa-arrow-up"></i>
+            </button>
+            <button class="pc-icon-btn" type="button" :title="t`下移`" @click="regexDisplay.moveRule(activeRule.id, 1)">
+              <i class="fa-solid fa-arrow-down"></i>
+            </button>
+          </div>
           <button class="pc-soft-btn compact" type="button" @click="duplicateActiveRule">
             <i class="fa-solid fa-copy"></i>
             <span>{{ t`复制` }}</span>
@@ -157,6 +147,7 @@
           v-if="previewResult.renderMode === 'html'"
           :active="true"
           :content="previewResult.content"
+          security-mode="safe"
           :theme="settingsStore.settings.theme"
           title="正则显示预览"
         />
@@ -170,9 +161,11 @@
 import EmptyState from '@/components/EmptyState.vue';
 import FrontendFrame from '@/components/FrontendFrame.vue';
 import InfoHint from '@/components/InfoHint.vue';
+import SearchableCombobox from '@/components/SearchableCombobox.vue';
+import { getRegexTargets, type RegexRuleOperation } from '@/core/regexTargetRegistry';
 import { usePhoneStore } from '@/store/phone';
 import { useSettingsStore } from '@/store/settings';
-import { applyRegexDisplayRules } from '@/util/regexDisplay';
+import { applyRegexDisplayRules, extractWithRegexRules, getRegexRulesForTarget } from '@/util/regexDisplay';
 import { storeToRefs } from 'pinia';
 import {
   defaultReaderBodyRegexDisplayRuleId,
@@ -189,12 +182,40 @@ const { rules, settings } = storeToRefs(regexDisplay);
 const activeRuleId = ref('');
 
 const activeRule = computed(() => rules.value.find(rule => rule.id === activeRuleId.value) ?? rules.value[0] ?? null);
-const previewResult = computed(() => applyRegexDisplayRules(settings.value.previewInput, rules.value));
+const regexTargets = computed(() => getRegexTargets());
+const activeTarget = computed(() => regexTargets.value.find(target => target.id === activeRule.value?.targetId) ?? null);
+const targetOptions = computed(() => regexTargets.value.map(target => ({ label: target.label, value: target.id })));
+const ruleOptions = computed(() => rules.value.map(rule => ({
+  group: regexTargets.value.find(target => target.id === rule.targetId)?.label || '其他',
+  label: rule.name || '未命名规则',
+  value: rule.id,
+})));
+const renderModeOptions = [
+  { label: '文字', value: 'text' },
+  { label: '网页', value: 'html' },
+];
+const fieldOptions = computed(() =>
+  (activeTarget.value?.fields ?? ['content']).map(field => ({ label: field === 'title' ? '标题' : '正文', value: field })),
+);
+const operationOptions: Array<{ label: string; value: RegexRuleOperation }> = [
+  { label: '提取', value: 'extract' },
+  { label: '替换', value: 'replace' },
+];
+const previewRules = computed(() =>
+  activeRule.value
+    ? getRegexRulesForTarget(rules.value, activeRule.value.targetId, activeRule.value.field, activeRule.value.operation)
+    : [],
+);
+const previewResult = computed(() =>
+  activeRule.value?.operation === 'extract'
+    ? extractWithRegexRules(settings.value.previewInput, previewRules.value)
+    : applyRegexDisplayRules(settings.value.previewInput, previewRules.value),
+);
 const readerExtractRuleCount = computed(
-  () => rules.value.filter(rule => rule.targets.includes(regexDisplayReaderTarget)).length,
+  () => rules.value.filter(rule => rule.targetId === 'reader' && rule.operation === 'extract').length,
 );
 const readerCleanupRuleCount = computed(
-  () => rules.value.filter(rule => rule.targets.includes(regexDisplayReaderCleanupTarget)).length,
+  () => rules.value.filter(rule => rule.targetId === 'reader' && rule.operation === 'replace').length,
 );
 const previewSummary = computed(() => {
   if (previewResult.value.errors.length) return `有 ${previewResult.value.errors.length} 条规则报错`;
@@ -216,8 +237,54 @@ watch(
   { immediate: true },
 );
 
+watch(
+  () => [phone.currentRoute.appId, phone.currentRoute.params?.targetId, phone.currentRoute.params?.operation] as const,
+  ([appId, targetId, operation]) => {
+    if (appId !== 'regex-display' || !targetId) return;
+    const normalizedOperation = operation === 'extract' ? 'extract' : 'replace';
+    const existing = rules.value.find(rule => rule.targetId === targetId && rule.operation === normalizedOperation);
+    if (existing) {
+      activeRuleId.value = existing.id;
+      return;
+    }
+    const target = regexTargets.value.find(item => item.id === targetId);
+    const rule = regexDisplay.addRule({
+      field: target?.fields[0] || 'content',
+      name: `${target?.label || '目标 App'}${normalizedOperation === 'extract' ? '提取' : '替换'}`,
+      operation: normalizedOperation,
+      targetId,
+    });
+    activeRuleId.value = rule.id;
+  },
+  { immediate: true },
+);
+
+watch(
+  () => [activeRule.value?.targetId, activeRule.value?.operation, activeRule.value?.field] as const,
+  () => {
+    const rule = activeRule.value;
+    if (!rule) return;
+    const target = activeTarget.value;
+    if (target && !target.fields.includes(rule.field)) rule.field = target.fields[0] ?? 'content';
+    if (target && !target.operations.includes(rule.operation)) rule.operation = target.operations[0] ?? 'replace';
+    if (rule.targetId === 'reader') {
+      rule.targets = [rule.operation === 'extract' ? regexDisplayReaderTarget : regexDisplayReaderCleanupTarget];
+    } else if (rule.targetId === 'profiles') {
+      rule.targets = [regexDisplayProfilesTarget];
+    } else {
+      rule.targets = [];
+    }
+  },
+  { immediate: true },
+);
+
 function addNewRule() {
-  const rule = regexDisplay.addRule();
+  const firstTarget = regexTargets.value[0];
+  const rule = regexDisplay.addRule({
+    targetId: firstTarget?.id || 'reader',
+    field: firstTarget?.fields[0] || 'content',
+    operation: firstTarget?.operations.includes('replace') ? 'replace' : firstTarget?.operations[0] || 'extract',
+  });
   activeRuleId.value = rule.id;
 }
 
@@ -225,13 +292,6 @@ function duplicateActiveRule() {
   if (!activeRule.value) return;
   const rule = regexDisplay.duplicateRule(activeRule.value.id);
   activeRuleId.value = rule.id;
-}
-
-function setActiveRuleTarget(target: string, enabled: boolean) {
-  if (!activeRule.value) return;
-  activeRule.value.targets = enabled
-    ? [...new Set([...activeRule.value.targets, target])]
-    : activeRule.value.targets.filter(item => item !== target);
 }
 
 async function deleteActiveRule() {
@@ -344,6 +404,16 @@ async function deleteActiveRule() {
 
 .pc-action-grid {
   margin-top: 14px;
+}
+
+.pc-rule-order-actions,
+.pc-regex-operation-segment {
+  display: flex;
+  gap: 8px;
+}
+
+.pc-regex-operation-segment .pc-segment-btn {
+  flex: 1 1 0;
 }
 
 .pc-soft-btn.compact {

@@ -1,4 +1,5 @@
 import DigestApp from './DigestApp.vue';
+import { createDigestContentReceiver } from '@/apps/contentReceivers';
 import { digestField, DigestScopeDataSchema, useDigestStore, type DigestEntry } from './store';
 import { createDigestGenerationAdapter } from './generation';
 import { simpleXmlOutput } from '@/apps/outputDefinitions';
@@ -131,6 +132,7 @@ export default definePhoneApp({
   accent: '#3d8bfd',
   defaultRoute: 'root',
   defaultOrder: 65,
+  contentReceiver: createDigestContentReceiver(),
   backupDomains: [
     {
       key: 'digests',

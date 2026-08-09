@@ -12,6 +12,14 @@ import StatsApp from '@/components/StatsApp.vue';
 import SummaryApp from '@/components/SummaryApp.vue';
 import TheaterApp from '@/components/TheaterApp.vue';
 import WorkbenchModule from '@/apps/workbench';
+import {
+  createDiaryContentReceiver,
+  createExtrasContentReceiver,
+  createForumContentReceiver,
+  createLettersContentReceiver,
+  createSummaryContentReceiver,
+  createTheaterContentReceiver,
+} from '@/apps/contentReceivers';
 import { definePhoneApp, type PhoneAppModule } from '@/core/appRegistry';
 import {
   createDiaryBackupDomain,
@@ -95,6 +103,7 @@ export const BUILTIN_PHONE_APP_MODULES: PhoneAppModule[] = [
     accent: '#ff6b6b',
     defaultRoute: 'root',
     defaultOrder: 10,
+    contentReceiver: createSummaryContentReceiver(),
     backupDomains: [createSummaryBackupDomain()],
     component: SummaryApp,
     contentStatsProvider: createSummaryContentStats,
@@ -114,6 +123,7 @@ export const BUILTIN_PHONE_APP_MODULES: PhoneAppModule[] = [
     accent: '#ff8f3d',
     defaultRoute: 'root',
     defaultOrder: 20,
+    contentReceiver: createDiaryContentReceiver(),
     backupDomains: [createDiaryBackupDomain()],
     component: DiaryApp,
     contentStatsProvider: createDiaryContentStats,
@@ -134,6 +144,7 @@ export const BUILTIN_PHONE_APP_MODULES: PhoneAppModule[] = [
     accent: '#e35d9a',
     defaultRoute: 'root',
     defaultOrder: 30,
+    contentReceiver: createExtrasContentReceiver(),
     backupDomains: [createExtrasBackupDomain()],
     component: ExtrasApp,
     contentStatsProvider: createExtrasContentStats,
@@ -155,6 +166,7 @@ export const BUILTIN_PHONE_APP_MODULES: PhoneAppModule[] = [
     accent: '#0a84ff',
     defaultRoute: 'root',
     defaultOrder: 40,
+    contentReceiver: createForumContentReceiver(),
     backupDomains: [createForumBackupDomain()],
     component: ForumApp,
     contentStatsProvider: createForumContentStats,
@@ -176,6 +188,7 @@ export const BUILTIN_PHONE_APP_MODULES: PhoneAppModule[] = [
     accent: '#7a5cff',
     defaultRoute: 'root',
     defaultOrder: 50,
+    contentReceiver: createTheaterContentReceiver(),
     backupDomains: [createTheaterBackupDomain(), createGenerationAliasesBackupDomain()],
     component: TheaterApp,
     contentStatsProvider: createTheaterContentStats,
@@ -202,6 +215,7 @@ export const BUILTIN_PHONE_APP_MODULES: PhoneAppModule[] = [
     accent: '#00a896',
     defaultRoute: 'root',
     defaultOrder: 60,
+    contentReceiver: createLettersContentReceiver(),
     backupDomains: [createLettersBackupDomain()],
     component: LettersApp,
     contentStatsProvider: createLettersContentStats,

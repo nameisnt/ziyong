@@ -26,11 +26,13 @@ const props = withDefaults(
   defineProps<{
     active?: boolean;
     content: string;
+    securityMode?: 'safe' | 'trusted';
     theme?: 'dark' | 'light';
     title?: string;
   }>(),
   {
     active: true,
+    securityMode: 'trusted',
     theme: 'light',
     title: '',
   },
@@ -51,6 +53,7 @@ const sandboxFlags = 'allow-scripts';
 const documentHtml = computed(() =>
   buildFrontendDocument(props.content, {
     channelId,
+    securityMode: props.securityMode,
     theme: props.theme,
     title: props.title,
   }),
@@ -62,7 +65,7 @@ const statusCopy = computed(() =>
 );
 
 watch(
-  () => [props.active, props.content, props.theme, props.title] as const,
+  () => [props.active, props.content, props.securityMode, props.theme, props.title] as const,
   ([active], previousValue) => {
     const previousActive = previousValue?.[0];
     frameHeight.value = 320;

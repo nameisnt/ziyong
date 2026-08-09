@@ -105,8 +105,13 @@
               <div>
                 <strong>{{ message.title }}</strong>
               </div>
-              <span v-if="message.isUser" class="pc-hidden-pill">{{ t`用户` }}</span>
-              <span v-if="message.isHidden" class="pc-hidden-pill">{{ t`隐藏` }}</span>
+              <div class="pc-message-meta">
+                <small v-if="hasExtractedReaderTitle(message)" class="pc-reader-floor-label">
+                  {{ readerFloorLabel(message) }}
+                </small>
+                <span v-if="message.isUser" class="pc-hidden-pill">{{ t`用户` }}</span>
+                <span v-if="message.isHidden" class="pc-hidden-pill">{{ t`隐藏` }}</span>
+              </div>
             </div>
           </button>
         </article>
@@ -297,6 +302,7 @@ const readerBaguContent = computed(() => activeMessage.value?.body || '');
 const messageCatalogItems = computed(() =>
   activeMessages.value.map(message => ({
     id: message.id,
+    meta: hasExtractedReaderTitle(message) ? readerFloorLabel(message) : '',
     title: message.title,
   })),
 );
@@ -884,6 +890,14 @@ function normalizeTitle(title: string, messageIndex: number, isUser = false) {
   return trimmed;
 }
 
+function readerFloorLabel(message: Pick<ReaderMessage, 'sourceMessageId'>) {
+  return `第 ${message.sourceMessageId} 楼`;
+}
+
+function hasExtractedReaderTitle(message: Pick<ReaderMessage, 'isUser' | 'sourceMessageId' | 'title'>) {
+  return message.title.trim() !== normalizeTitle('', message.sourceMessageId, message.isUser);
+}
+
 function formatReaderBody(value: string) {
   const lines = value.replace(/\r\n?/g, '\n').split('\n');
   if (settings.value.reader.blankLineBetweenLines) {
@@ -1365,6 +1379,20 @@ function formatReaderBody(value: string) {
 .pc-message-head > div {
   flex: 1 1 auto;
   min-width: 0;
+}
+
+.pc-message-head > .pc-message-meta {
+  display: inline-flex;
+  flex: 0 0 auto;
+  align-items: center;
+  gap: 6px;
+}
+
+.pc-reader-floor-label {
+  color: var(--pc-muted);
+  font-size: 12px;
+  font-weight: 750;
+  white-space: nowrap;
 }
 
 .pc-character-copy strong,

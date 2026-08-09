@@ -19,7 +19,10 @@
           @click="emit('select', item.id)"
         >
           <span>{{ item.title }}</span>
-          <small v-if="item.versionCount">{{ `${item.versionCount} 版` }}</small>
+          <span v-if="item.meta || item.versionCount" class="pc-catalog-item-meta">
+            <small v-if="item.meta">{{ item.meta }}</small>
+            <small v-if="item.versionCount">{{ `${item.versionCount} 版` }}</small>
+          </span>
         </button>
       </div>
     </section>
@@ -181,6 +184,13 @@ watch(
 .pc-catalog-item small {
   color: var(--pc-muted);
   font-weight: 750;
+  white-space: nowrap;
+}
+
+.pc-catalog-item-meta {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
   white-space: nowrap;
 }
 </style>
