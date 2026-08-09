@@ -593,7 +593,12 @@ const batchDraft = reactive({
 const batchFormError = ref('');
 const failedDraftRawOutput = ref('');
 const failedDraftTargetBookId = ref('');
-const summaryEntrySortDesc = ref(true);
+const summaryEntrySortDesc = computed({
+  get: () => settings.value.directorySort.summaryDesc,
+  set: value => {
+    settings.value.directorySort.summaryDesc = value;
+  },
+});
 const summaryImportTargetBookId = ref('');
 const selectedReferences = ref<GenerationReferenceItem[]>([]);
 const entryContentEl = ref<HTMLElement | null>(null);

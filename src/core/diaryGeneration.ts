@@ -3,6 +3,7 @@ import type { CharacterRef, DiaryEntry } from '@/type/diary';
 import { GenerationRequestPartsSchema } from '@/type/generation';
 import { parseSimpleXmlResult } from '@/util/generation';
 import { parseConfiguredOutput } from '@/util/outputParsing';
+import { getSourceLastFloor } from '@/util/sourceFloor';
 import {
   diagnoseTaggedRoot,
   extractTaggedOutputCandidates,
@@ -188,6 +189,8 @@ export function createDiaryGenerationAdapter(diaryStore: {
       perspective: CharacterRef;
       bookId?: string;
       bookTitle?: string;
+      directoryOrder?: number;
+      sourceFloorEnd?: number;
     },
   ) => { book: { id: string }; entry: DiaryEntry } | null;
 }) {
@@ -221,6 +224,7 @@ export function createDiaryGenerationAdapter(diaryStore: {
       };
     },
     async save(result, context) {
+      const sourceFloorEnd = getSourceLastFloor(context.source);
       const created = diaryStore.createEntry({
         bookId: context.config.bookId,
         bookTitle: context.config.bookTitle || undefined,
@@ -230,6 +234,8 @@ export function createDiaryGenerationAdapter(diaryStore: {
         perspective: context.config.perspective,
         readers: undefined,
         title: result.title,
+        directoryOrder: sourceFloorEnd,
+        sourceFloorEnd,
       });
       if (!created) {
         throw new Error('目标日记书架不存在，无法保存生成结果');
@@ -253,6 +259,8 @@ export function createDiaryReadReactionGenerationAdapter(diaryStore: {
       perspective: CharacterRef;
       bookId?: string;
       bookTitle?: string;
+      directoryOrder?: number;
+      sourceFloorEnd?: number;
     },
   ) => { book: { id: string }; entry: DiaryEntry } | null;
 }) {
@@ -287,6 +295,7 @@ export function createDiaryReadReactionGenerationAdapter(diaryStore: {
       };
     },
     async save(result, context) {
+      const sourceFloorEnd = getSourceLastFloor(context.source);
       const created = diaryStore.createEntry({
         bookId: context.config.bookId || undefined,
         bookTitle: context.config.bookTitle || undefined,
@@ -296,6 +305,8 @@ export function createDiaryReadReactionGenerationAdapter(diaryStore: {
         perspective: context.config.perspective,
         readers: [context.config.perspective],
         title: result.title,
+        directoryOrder: sourceFloorEnd,
+        sourceFloorEnd,
       });
       if (!created) {
         throw new Error('目标日记书架不存在，无法保存阅读反应');

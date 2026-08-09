@@ -65,6 +65,7 @@
           <button class="pc-entry-main" type="button" @click="openEntry(activeBook.id, entry.id)">
             <div class="pc-entry-head">
               <strong>{{ entry.kind === 'read-reaction' ? `📖 ${entry.title}` : entry.title }}</strong>
+              <span class="pc-entry-order">{{ t`顺序` }} {{ entry.directoryOrder }}</span>
             </div>
           </button>
         </article>
@@ -148,6 +149,10 @@
         />
         <input v-model="draft.title" class="pc-field" type="text" :placeholder="t`标题`" />
         <input v-model="draft.occurredAt" class="pc-field" type="text" :placeholder="t`发生时间，例如 昨夜 23:10`" />
+        <div v-if="editingEntry" class="pc-field-group">
+          <label class="pc-field-label">{{ t`目录顺序` }}</label>
+          <input v-model.number="draft.directoryOrder" class="pc-field" type="number" min="0" step="1" />
+        </div>
         <div class="pc-kind-row">
           <button
             :class="['pc-kind-btn', { active: draft.kind === 'normal' }]"
@@ -242,13 +247,6 @@
           :disabled="batchInputsLocked"
           :placeholder="t`书架名称（可留空）`"
         />
-        <input
-          v-model="batchDraft.occurredAt"
-          class="pc-field"
-          type="text"
-          :disabled="batchInputsLocked"
-          :placeholder="t`统一时间（可留空）`"
-        />
         <div class="pc-field-group">
           <label class="pc-field-label">{{ t`批量楼层` }}</label>
           <select v-model="batchDraft.floorMode" class="pc-select" :disabled="batchInputsLocked">
@@ -265,7 +263,15 @@
           :placeholder="t`楼层范围，例如 1-30,35,40-45`"
         />
 
-        <div class="pc-kind-row">
+        <div class="pc-batch-mode-label">
+          <span class="pc-field-label">{{ t`生成方式` }}</span>
+          <InfoHint
+            :text="
+              t`逐楼：将每个符合条件的楼层作为截止点，累积读取第 0 楼到该楼层。例如目标楼层为 1、3、5，将分别使用 0-1、0-3、0-5 楼生成三篇日记。AI/用户选项只决定截止楼层，范围内会保留完整可见对话。\n\n按组：按设定数量合并符合条件的楼层。例如目标楼层为 1、3、5，每组 2 层，将使用 1、3 楼生成一篇，再使用第 5 楼生成一篇。`
+            "
+          />
+        </div>
+        <div class="pc-kind-row pc-batch-kind-row">
           <button
             :class="['pc-kind-btn', { active: !batchDraft.groupMode }]"
             type="button"
@@ -474,6 +480,7 @@ import BaguScanPanel from '@/components/BaguScanPanel.vue';
 import FailedDraftList from '@/components/FailedDraftList.vue';
 import GenerationPanel from '@/components/GenerationPanel.vue';
 import GenerationPreviewPanel from '@/components/GenerationPreviewPanel.vue';
+import InfoHint from '@/components/InfoHint.vue';
 import PreviewDraftNotice from '@/components/PreviewDraftNotice.vue';
 import RawOutputEditor from '@/components/RawOutputEditor.vue';
 import ReferencePicker from '@/components/ReferencePicker.vue';
@@ -499,6 +506,7 @@ import { usePreviewDraftPersistence } from '@/util/previewDrafts';
 import { useInvalidRouteFallback } from '@/util/routeFallback';
 import { getChatMessagesSafe, stopGenerationByIdSafe } from '@/util/runtime';
 import { useDetailScroll } from '@/util/detailScroll';
+import { getSourceLastFloor } from '@/util/sourceFloor';
 import type { FailedGenerationDraft } from '@/type/generation';
 import type { CharacterRef } from '@/type/diary';
 import { storeToRefs } from 'pinia';
@@ -516,7 +524,12 @@ const { specialPrompts } = storeToRefs(prompts);
 const { settings } = storeToRefs(settingsStore);
 
 const query = ref('');
-const sortDesc = ref(true);
+const sortDesc = computed({
+  get: () => settings.value.directorySort.diaryDesc,
+  set: value => {
+    settings.value.directorySort.diaryDesc = value;
+  },
+});
 const bookTitle = ref('');
 const entryContentEl = ref<HTMLElement | null>(null);
 const { scrollToBottom, scrollToTop } = useDetailScroll(entryContentEl, '.pc-diary-detail-page .pc-detail-content');
@@ -529,6 +542,7 @@ const draft = reactive({
   kind: 'normal' as 'normal' | 'read-reaction',
   readers: '',
   content: '',
+  directoryOrder: 0,
 });
 const generationDraft = reactive({
   bookTitle: '',
@@ -563,6 +577,7 @@ const generationState = reactive({
     raw: string;
     sourceBookId: string;
     sourceEntryId: string;
+    sourceFloorEnd?: number;
     title: string;
     warnings: string[];
   },
@@ -612,7 +627,6 @@ const batchDraft = reactive({
   groupSize: 5,
   includeAi: true,
   includeUser: true,
-  occurredAt: '',
   perspectiveName: '',
   rpmLimit: 10,
   userRequirement: '',
@@ -830,7 +844,8 @@ const filteredEntries = computed(() => {
   const normalized = query.value.trim().toLowerCase();
   const result = normalized ? entries.filter(entry => entry.title.toLowerCase().includes(normalized)) : entries;
   result.sort((left, right) => {
-    const compare = left.createdAt.localeCompare(right.createdAt);
+    const compare =
+      (left.directoryOrder ?? 0) - (right.directoryOrder ?? 0) || left.createdAt.localeCompare(right.createdAt);
     return sortDesc.value ? -compare : compare;
   });
   return result;
@@ -869,6 +884,7 @@ watch(
       draft.kind = editingEntry.value?.kind || 'normal';
       draft.readers = editingEntry.value?.readers?.map(reader => reader.name).join(', ') || '';
       draft.content = editingEntry.value?.content || '';
+      draft.directoryOrder = editingEntry.value?.directoryOrder ?? 0;
     }
 
     if (current.page === 'generate' && previous?.page !== 'preview') {
@@ -900,7 +916,6 @@ watch(
       batchDraft.groupSize = 5;
       batchDraft.includeAi = true;
       batchDraft.includeUser = true;
-      batchDraft.occurredAt = '';
       batchDraft.perspectiveName = activeBook.value?.perspective.name || '';
       batchDraft.rpmLimit = settings.value.generation.rpmLimit;
       batchDraft.userRequirement = '';
@@ -967,7 +982,6 @@ function openBook(bookId: string) {
   const book = diary.getBook(bookId);
   if (!book) return;
   query.value = '';
-  sortDesc.value = true;
   phone.pushPage('book', book.title, { bookId });
 }
 
@@ -1146,15 +1160,17 @@ function buildBatchJobs() {
   const floors = getBatchVisibleFloors();
   if (!batchDraft.groupMode) {
     return floors.map(floor => ({
-      label: `第 ${floor} 楼`,
-      mode: 'single' as const,
+      fromStartEnd: floor,
+      label: `第 0-${floor} 楼`,
+      mode: 'fromStart' as const,
       rangeText: '',
-      singleMessageId: floor,
+      singleMessageId: 0,
     }));
   }
 
   const groupSize = Math.min(50, Math.max(1, Math.round(batchDraft.groupSize || 1)));
   const jobs: Array<{
+    fromStartEnd: number;
     label: string;
     mode: 'range';
     rangeText: string;
@@ -1164,6 +1180,7 @@ function buildBatchJobs() {
     const group = floors.slice(index, index + groupSize);
     const rangeText = formatBatchRange(group);
     jobs.push({
+      fromStartEnd: 0,
       label: `第 ${rangeText} 楼`,
       mode: 'range',
       rangeText,
@@ -1274,6 +1291,7 @@ async function runGeneration() {
       raw: result.rawOutput,
       sourceBookId: activeBook.value?.id || '',
       sourceEntryId: '',
+      sourceFloorEnd: getSourceLastFloor(result.source),
       title: result.data.title,
       warnings: result.warnings,
     };
@@ -1323,7 +1341,6 @@ async function runBatchGeneration() {
       groupSize: batchDraft.groupSize,
       includeAi: batchDraft.includeAi,
       includeUser: batchDraft.includeUser,
-      occurredAt: batchDraft.occurredAt,
       outputFormat: buildDiaryOutputFormat(),
       perspective,
       references: formattedReferences.value,
@@ -1354,7 +1371,6 @@ function hydrateBatchDraft(config: ManualBatchTaskConfig) {
   batchDraft.groupSize = config.groupSize ?? 5;
   batchDraft.includeAi = config.includeAi ?? true;
   batchDraft.includeUser = config.includeUser ?? true;
-  batchDraft.occurredAt = config.occurredAt || '';
   batchDraft.perspectiveName = config.perspective?.name || '';
   batchDraft.rpmLimit = config.rpmLimit;
   batchDraft.userRequirement = config.userRequirement;
@@ -1452,6 +1468,7 @@ async function runReadReactionGeneration() {
       raw: result.rawOutput,
       sourceBookId: sourceBook.id,
       sourceEntryId: sourceEntry.id,
+      sourceFloorEnd: getSourceLastFloor(result.source),
       title: result.data.title,
       warnings: result.warnings,
     };
@@ -1478,6 +1495,8 @@ function savePreview() {
     perspective: preview.perspective,
     readers: preview.action === 'read-reaction' ? [preview.perspective] : undefined,
     title: preview.title,
+    directoryOrder: preview.sourceFloorEnd,
+    sourceFloorEnd: preview.sourceFloorEnd,
   });
   if (!created) {
     toastr.warning('目标日记书架不存在，无法保存生成结果');
@@ -1602,6 +1621,7 @@ function reparseFailedDraft() {
     raw: parsed.raw,
     sourceBookId: typeof draft.context.sourceBookId === 'string' ? draft.context.sourceBookId : bookId,
     sourceEntryId: typeof draft.context.sourceEntryId === 'string' ? draft.context.sourceEntryId : '',
+    sourceFloorEnd: getSourceLastFloor(draft.source),
     title: parsed.data.title,
     warnings: parsed.warnings,
   };
@@ -1628,6 +1648,7 @@ function submitEntry() {
       occurredAt: draft.occurredAt,
       kind: draft.kind,
       readers,
+      directoryOrder: draft.directoryOrder,
     });
     if (!entry) return;
     phone.replacePage('entry', entry.title, { bookId: route.value.params.bookId, entryId: entry.id });
@@ -1900,8 +1921,38 @@ async function removeEntry(bookId: string, entryId: string) {
   margin-top: 14px;
 }
 
+.pc-batch-mode-label {
+  display: flex;
+  align-items: center;
+  margin-top: 14px;
+}
+
+.pc-batch-kind-row {
+  justify-content: flex-start;
+}
+
 .pc-entry-main {
   align-items: flex-start;
+}
+
+.pc-entry-head {
+  display: flex;
+  width: 100%;
+  min-width: 0;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.pc-entry-head strong {
+  flex: 1 1 auto;
+}
+
+.pc-entry-order {
+  flex: 0 0 auto;
+  color: var(--pc-muted);
+  font-size: 12px;
+  white-space: nowrap;
 }
 
 .pc-entry-main .preview {

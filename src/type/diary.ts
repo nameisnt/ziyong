@@ -17,6 +17,8 @@ export const DiaryEntrySchema = z.object({
   occurredAt: z.string().optional(),
   kind: z.enum(['normal', 'read-reaction']).default('normal'),
   readers: z.array(CharacterRefSchema).optional(),
+  directoryOrder: z.number().int().nonnegative().optional(),
+  sourceFloorEnd: z.number().int().nonnegative().optional(),
 });
 export type DiaryEntry = z.infer<typeof DiaryEntrySchema>;
 

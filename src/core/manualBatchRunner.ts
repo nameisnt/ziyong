@@ -45,7 +45,7 @@ function buildTaskJobs(jobs: CreateManualBatchTaskInput['jobs']): GenerationTask
   return jobs.map((job, index) => ({
     ...job,
     error: '',
-    id: `job_${index}_${job.singleMessageId || job.rangeText}`,
+    id: `job_${index}_${job.fromStartEnd || job.singleMessageId || job.rangeText}`,
     status: 'pending',
   }));
 }
@@ -141,6 +141,7 @@ export async function runManualBatchTask(taskId: string) {
             rateLimitRpm: config.rpmLimit,
             references: config.references,
             source: {
+              fromStartEnd: job.fromStartEnd,
               mode: job.mode ?? 'single',
               rangeText: job.rangeText,
               singleMessageId: job.singleMessageId,

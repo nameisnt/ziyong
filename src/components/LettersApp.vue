@@ -341,7 +341,12 @@ const replaySession = useGenerationReplaySession({
 });
 
 const query = ref('');
-const sortDesc = ref(true);
+const sortDesc = computed({
+  get: () => settings.value.directorySort.lettersDesc,
+  set: value => {
+    settings.value.directorySort.lettersDesc = value;
+  },
+});
 const bookTitle = ref('');
 const entryContentEl = ref<HTMLElement | null>(null);
 const { scrollToBottom, scrollToTop } = useDetailScroll(entryContentEl, '.pc-letters-detail-page .pc-detail-content');
@@ -832,7 +837,6 @@ function openBook(bookId: string) {
   const book = letters.getBook(bookId);
   if (!book) return;
   query.value = '';
-  sortDesc.value = true;
   phone.pushPage('book', book.title, { bookId });
 }
 

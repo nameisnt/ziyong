@@ -36,6 +36,31 @@ export const useDiaryStore = defineStore('diary', () => {
     return getBook(bookId)?.entries.find(entry => entry.id === entryId) ?? null;
   }
 
+  function normalizeDirectoryOrders() {
+    for (const book of data.value.books) {
+      const ordered = [...book.entries].sort((left, right) => left.createdAt.localeCompare(right.createdAt));
+      let nextOrder = ordered.reduce(
+        (maximum, entry) => Math.max(maximum, entry.directoryOrder ?? entry.sourceFloorEnd ?? 0),
+        0,
+      );
+      for (const entry of ordered) {
+        if (typeof entry.directoryOrder === 'number') continue;
+        if (typeof entry.sourceFloorEnd === 'number') {
+          entry.directoryOrder = entry.sourceFloorEnd;
+          continue;
+        }
+        nextOrder += 1;
+        entry.directoryOrder = nextOrder;
+      }
+    }
+  }
+
+  watch(data, normalizeDirectoryOrders, { deep: true, immediate: true });
+
+  function getNextDirectoryOrder(book: DiaryBook) {
+    return book.entries.reduce((maximum, entry) => Math.max(maximum, entry.directoryOrder ?? 0), 0) + 1;
+  }
+
   function findBookByPerspective(perspective: CharacterRef) {
     const key = perspectiveKey(perspective);
     return books.value.find(book => perspectiveKey(book.perspective) === key) ?? null;
@@ -75,6 +100,8 @@ export const useDiaryStore = defineStore('diary', () => {
       perspective: CharacterRef;
       bookId?: string;
       bookTitle?: string;
+      directoryOrder?: number;
+      sourceFloorEnd?: number;
     },
   ) {
     const book = input.bookId ? getBook(input.bookId) : ensureBook(input.perspective, input.bookTitle);
@@ -91,6 +118,8 @@ export const useDiaryStore = defineStore('diary', () => {
       occurredAt: input.occurredAt?.trim() || undefined,
       kind: input.kind,
       readers: input.readers?.length ? input.readers : undefined,
+      directoryOrder: input.directoryOrder ?? input.sourceFloorEnd ?? getNextDirectoryOrder(book),
+      sourceFloorEnd: input.sourceFloorEnd,
     };
     book.entries = [entry, ...book.entries];
     book.updatedAt = timestamp;
@@ -100,7 +129,9 @@ export const useDiaryStore = defineStore('diary', () => {
   function updateEntry(
     bookId: string,
     entryId: string,
-    input: Pick<DiaryEntry, 'title' | 'content' | 'occurredAt' | 'kind' | 'readers'>,
+    input: Pick<DiaryEntry, 'title' | 'content' | 'occurredAt' | 'kind' | 'readers'> & {
+      directoryOrder?: number;
+    },
   ) {
     const book = getBook(bookId);
     const entry = getEntry(bookId, entryId);
@@ -111,6 +142,7 @@ export const useDiaryStore = defineStore('diary', () => {
     entry.occurredAt = input.occurredAt?.trim() || undefined;
     entry.kind = input.kind;
     entry.readers = input.readers?.length ? input.readers : undefined;
+    if (typeof input.directoryOrder === 'number') entry.directoryOrder = Math.max(0, Math.round(input.directoryOrder));
     entry.updatedAt = timestamp;
     book.updatedAt = timestamp;
     return entry;

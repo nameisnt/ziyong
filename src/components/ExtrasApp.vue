@@ -491,7 +491,12 @@ const chapterReplaySession = useGenerationReplaySession({
   sourceMode: generationSourceMode,
 });
 const query = ref('');
-const sortDesc = ref(true);
+const sortDesc = computed({
+  get: () => settings.value.directorySort.extrasDesc,
+  set: value => {
+    settings.value.directorySort.extrasDesc = value;
+  },
+});
 const chapterCustomTypeSelected = ref(false);
 const chapterContentEl = ref<HTMLElement | null>(null);
 const { scrollToBottom, scrollToTop } = useDetailScroll(chapterContentEl, '.pc-extras-detail-page .pc-detail-content');
@@ -1208,7 +1213,6 @@ function openBook(bookId: string) {
   const book = extras.getBook(bookId);
   if (!book) return;
   query.value = '';
-  sortDesc.value = true;
   phone.pushPage('book', book.title, { bookId });
 }
 

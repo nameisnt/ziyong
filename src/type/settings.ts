@@ -16,6 +16,16 @@ export const ReaderAppearanceSchema = z.object({
 });
 export type ReaderAppearance = z.infer<typeof ReaderAppearanceSchema>;
 
+export const DirectorySortSettingsSchema = z.object({
+  diaryDesc: z.boolean().default(true),
+  extrasDesc: z.boolean().default(true),
+  forumMode: z.enum(['latestReply', 'latestPublish', 'heat', 'favorite']).default('latestReply'),
+  lettersDesc: z.boolean().default(true),
+  summaryDesc: z.boolean().default(true),
+  theaterDesc: z.boolean().default(true),
+});
+export type DirectorySortSettings = z.infer<typeof DirectorySortSettingsSchema>;
+
 export const InterfaceSizeSettingsSchema = z.object({
   dockColumns: z.number().int().min(3).max(5).default(4),
   homeColumns: z.number().int().min(3).max(5).default(4),
@@ -178,6 +188,15 @@ const DEFAULT_READER_SETTINGS: ReaderAppearance = {
   versionNavigatorPosition: 'before',
 };
 
+const DEFAULT_DIRECTORY_SORT_SETTINGS: DirectorySortSettings = {
+  diaryDesc: true,
+  extrasDesc: true,
+  forumMode: 'latestReply',
+  lettersDesc: true,
+  summaryDesc: true,
+  theaterDesc: true,
+};
+
 const DEFAULT_INTERFACE_SIZE_SETTINGS: InterfaceSizeSettings = {
   dockColumns: 4,
   homeColumns: 4,
@@ -253,6 +272,7 @@ export const Settings = z
       appIconOverrides: {},
     })),
     reader: ReaderAppearanceSchema.default(() => ({ ...DEFAULT_READER_SETTINGS })),
+    directorySort: DirectorySortSettingsSchema.default(() => ({ ...DEFAULT_DIRECTORY_SORT_SETTINGS })),
     textProvider: TextProviderSettingsSchema.default(() => ({ ...DEFAULT_TEXT_PROVIDER_SETTINGS })),
     timekeeperCalendarTemplates: z.array(TimekeeperCalendarTemplateSchema).default([]),
     floatBallEnabled: z.boolean().default(true),
@@ -284,6 +304,7 @@ export const Settings = z
       appIconOverrides: {},
     },
     reader: { ...DEFAULT_READER_SETTINGS },
+    directorySort: { ...DEFAULT_DIRECTORY_SORT_SETTINGS },
     textProvider: { ...DEFAULT_TEXT_PROVIDER_SETTINGS },
     timekeeperCalendarTemplates: [],
     floatBallEnabled: true,

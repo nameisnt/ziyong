@@ -582,7 +582,12 @@ const { charReplacement, userReplacement } = storeToRefs(generationAliases);
 const { appPrompts, typePrompts } = storeToRefs(prompts);
 
 const query = ref('');
-const sortDesc = ref(true);
+const sortDesc = computed({
+  get: () => settings.value.directorySort.theaterDesc,
+  set: value => {
+    settings.value.directorySort.theaterDesc = value;
+  },
+});
 const selectedHistoryTypeKeys = ref(new Set<string>());
 const historyFilterOpen = ref(false);
 const historyTagQuery = ref('');

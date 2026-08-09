@@ -625,7 +625,12 @@ const replaySession = useGenerationReplaySession({
 });
 
 const query = ref('');
-const sortMode = ref<ThreadSortMode>('latestReply');
+const sortMode = computed<ThreadSortMode>({
+  get: () => settings.value.directorySort.forumMode,
+  set: value => {
+    settings.value.directorySort.forumMode = value;
+  },
+});
 const boardEditorTypeId = ref('');
 const boardDraft = reactive({
   name: '',
@@ -1123,7 +1128,6 @@ function openBoard(boardId: string) {
   const board = forum.getBoard(boardId);
   if (!board) return;
   query.value = '';
-  sortMode.value = 'latestReply';
   phone.pushPage('board', board.name, { boardId });
 }
 
