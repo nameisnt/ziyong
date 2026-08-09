@@ -169,10 +169,8 @@
     <ExtrasChapterDetailPage
       v-else-if="route.page === 'chapter' && activeBook && activeChapter"
       v-model:catalog-open="showCatalogModal"
-      :active-version-id="activeChapter.activeVersionId"
       :catalog-items="chapterCatalogItems"
       :chapter="viewedChapter"
-      :generation-records="activeChapterGenerationRecords"
       :next-id="chapterNextId || ''"
       :previous-id="chapterPrevId || ''"
       :versions="activeChapter.versions"
@@ -185,8 +183,7 @@
       @favorite="extras.toggleFavorite(activeBook.id, activeChapter.id)"
       @next="openChapter(activeBook.id, chapterNextId || '', true)"
       @previous="openChapter(activeBook.id, chapterPrevId || '', true)"
-      @rewrite="openGenerateChapter(activeBook.id, activeChapter.id, undefined, viewedChapterVersionId)"
-      @rewrite-record="rewriteWithGenerationRecord"
+      @rewrite="openGenerateChapter(activeBook.id, activeChapter.id, viewedChapterVersionId)"
       @select-catalog="selectCatalogChapter"
       @select-version="selectChapterVersion"
       @top="scrollToTop"
@@ -863,7 +860,6 @@ function captureChapterPrompt() {
 
 const {
   catalogItems: chapterCatalogItems,
-  generationRecords: activeChapterGenerationRecords,
   nextId: chapterNextId,
   orderedChapters,
   previousId: chapterPrevId,
@@ -927,7 +923,6 @@ watch(
       selectedReferences.value = [];
       resetChapterGenerationDraft(
         current.params?.chapterId ? '重写当前章节' : activeBook.value?.chapters.length ? '续写上一章' : '新开一本书',
-        current.params?.generationRecordId,
       );
     }
 
@@ -1008,8 +1003,15 @@ function normalizeChapterGenerationMode(value: unknown): ExtraChapterGenerationM
   return '续写上一章';
 }
 
+function getViewedChapterGenerationRecord() {
+  const chapter = activeChapter.value;
+  if (!chapter) return null;
+  if (chapter.versions.length) return viewedChapterVersion.value?.generationRecord || null;
+  return chapter.generationRecords.at(-1) || null;
+}
+
 function resolveStoredChapterGenerationIntent(
-  generationRecord = viewedChapterVersion.value?.generationRecord || activeChapter.value?.generationRecords.at(-1),
+  generationRecord = getViewedChapterGenerationRecord(),
 ): ExtraChapterGenerationIntent {
   if (generationRecord?.generationIntent) return generationRecord.generationIntent;
   if (generationRecord?.chapterMode === '新开一本书' || generationRecord?.chapterMode === '续写上一章') {
@@ -1038,7 +1040,7 @@ function getAdoptedChapterGenerationRecord(chapter: ExtraChapter) {
   return chapter.generationRecords.at(-1) || null;
 }
 
-function resetChapterGenerationDraft(mode: typeof chapterGenerationDraft.mode, generationRecordId?: string) {
+function resetChapterGenerationDraft(mode: typeof chapterGenerationDraft.mode) {
   chapterReplaySession.release();
   const book = activeBook.value;
   const promptById = book?.typeId ? prompts.getTypePrompt(book.typeId) : null;
@@ -1071,14 +1073,7 @@ function resetChapterGenerationDraft(mode: typeof chapterGenerationDraft.mode, g
       selectedReferences.value = resolveSavedGenerationReferences(previousGenerationRecord.references);
     }
   }
-  const generationRecord =
-    mode === '重写当前章节'
-      ? generationRecordId
-        ? [...(activeChapter.value ? resolveExtraChapterGenerationRecords(activeChapter.value) : [])]
-            .reverse()
-            .find(record => record.id === generationRecordId)
-        : viewedChapterVersion.value?.generationRecord || activeChapter.value?.generationRecords.at(-1)
-      : null;
+  const generationRecord = mode === '重写当前章节' ? getViewedChapterGenerationRecord() : null;
   if (generationRecord) {
     chapterGenerationDraft.generationIntent = resolveStoredChapterGenerationIntent(generationRecord);
     chapterGenerationDraft.fromStartEnd = generationRecord.fromStartEnd;
@@ -1232,7 +1227,7 @@ async function removeBook(bookId: string) {
   toastr.success('已删除番外');
 }
 
-function openGenerateChapter(bookId: string, chapterId?: string, generationRecordId?: string, versionId?: string) {
+function openGenerateChapter(bookId: string, chapterId?: string, versionId?: string) {
   phone.pushPage(
     'chapter-generate',
     chapterId ? '重新生成章节' : '生成章节',
@@ -1240,16 +1235,10 @@ function openGenerateChapter(bookId: string, chapterId?: string, generationRecor
       ? {
           bookId,
           chapterId,
-          ...(generationRecordId ? { generationRecordId } : {}),
           ...(versionId ? { versionId } : {}),
         }
       : { bookId },
   );
-}
-
-function rewriteWithGenerationRecord(generationRecordId: string) {
-  if (!activeBook.value || !activeChapter.value) return;
-  openGenerateChapter(activeBook.value.id, activeChapter.value.id, generationRecordId, viewedChapterVersionId.value);
 }
 
 function selectChapterVersion(versionId: string) {
@@ -1269,7 +1258,7 @@ async function removeChapterVersion(versionId: string) {
   const versionIndex = activeChapter.value.versions.findIndex(version => version.id === versionId);
   if (versionIndex < 0) return;
   const shouldDelete = await phone.confirmNotice(
-    `要删除当前查看的版本 ${versionIndex + 1}/${activeChapter.value.versions.length} 吗？对应的生成记录也会一起删除。`,
+    `要删除当前查看的版本 ${versionIndex + 1}/${activeChapter.value.versions.length} 吗？`,
     { confirmLabel: '删除此版本', kind: 'warning' },
   );
   if (!shouldDelete || !activeBook.value || !activeChapter.value) return;
@@ -1930,7 +1919,9 @@ function reparseFailedDraft() {
       draftId: null,
       generationRecord: (() => {
         const config = ExtraChapterGenerateConfigSchema.safeParse(draft.context);
-        return config.success ? createExtraChapterGenerationRecord(config.data, draft.source) : undefined;
+        return config.success
+          ? createExtraChapterGenerationRecord(config.data, draft.source, draft.generationRecord?.replay)
+          : undefined;
       })(),
       mode: normalizeChapterGenerationMode(draft.context.chapterMode),
       raw: parsed.raw,

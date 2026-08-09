@@ -124,7 +124,7 @@ export function createForumThreadGenerationAdapter(forumStore: {
   createThread: (
     boardId: string,
     input: Pick<ForumThread, 'title' | 'author' | 'content'> &
-      Partial<Pick<ForumThread, 'generationReplay' | 'replies'>>,
+      Partial<Pick<ForumThread, 'generationRecord' | 'generationReplay' | 'replies'>>,
   ) => { board: ForumBoard; thread: ForumThread } | null;
   createReply: (boardId: string, threadId: string, input: ForumReplyDraftInput) => ForumReply | null;
   ensureBoard: (
@@ -137,7 +137,7 @@ export function createForumThreadGenerationAdapter(forumStore: {
     boardId: string,
     threadId: string,
     input: Pick<ForumThread, 'title' | 'author' | 'content' | 'replies'> &
-      Partial<Pick<ForumThread, 'generationReplay'>>,
+      Partial<Pick<ForumThread, 'generationRecord' | 'generationReplay'>>,
   ) => { board: ForumBoard; thread: ForumThread; version: { id: string } } | null;
 }) {
   return {
@@ -162,7 +162,7 @@ export function createForumThreadGenerationAdapter(forumStore: {
         const saved = forumStore.appendThreadVersion(context.config.boardId, context.config.threadId, {
           author: result.author,
           content: result.content,
-          generationReplay: context.replay,
+          generationRecord: context.generationRecord,
           replies,
           title: result.title,
         });
@@ -188,7 +188,7 @@ export function createForumThreadGenerationAdapter(forumStore: {
       const created = forumStore.createThread(board.id, {
         author: result.author,
         content: result.content,
-        generationReplay: context.replay,
+        generationRecord: context.generationRecord,
         title: result.title,
       });
       if (!created) {

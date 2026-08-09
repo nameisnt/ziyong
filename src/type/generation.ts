@@ -56,6 +56,14 @@ export const GenerationReplaySnapshotSchema = z.object({
 });
 export type GenerationReplaySnapshot = z.infer<typeof GenerationReplaySnapshotSchema>;
 
+export const HiddenGenerationRecordSchema = z.object({
+  id: z.string(),
+  actionId: z.string(),
+  createdAt: z.string(),
+  replay: GenerationReplaySnapshotSchema,
+});
+export type HiddenGenerationRecord = z.infer<typeof HiddenGenerationRecordSchema>;
+
 export type GenerationAdapter<TConfig, TResult, TSaveResult = { entityId: string }> = {
   actionId: string;
   appId: string;
@@ -67,6 +75,7 @@ export type GenerationAdapter<TConfig, TResult, TSaveResult = { entityId: string
 
 export type GenerationSaveContext<TConfig = unknown> = {
   config: TConfig;
+  generationRecord: HiddenGenerationRecord;
   rawOutput: string;
   replay: GenerationReplaySnapshot;
   scopeId: string;
@@ -79,6 +88,7 @@ export const FailedGenerationDraftSchema = z.object({
   appId: z.string(),
   actionId: z.string(),
   context: z.record(z.string(), z.unknown()).default({}),
+  generationRecord: HiddenGenerationRecordSchema.optional(),
   rawOutput: z.string(),
   warnings: z.array(z.string()).default([]),
   createdAt: z.string(),
@@ -142,6 +152,7 @@ export type GenerationExecutionFailure = {
 
 export type GenerationExecutionPreview<TResult> = {
   data: TResult;
+  generationRecord: HiddenGenerationRecord;
   rawOutput: string;
   replay: GenerationReplaySnapshot;
   source: SourceSelection;
@@ -151,6 +162,7 @@ export type GenerationExecutionPreview<TResult> = {
 
 export type GenerationExecutionSaved<TResult, TSaveResult> = {
   data: TResult;
+  generationRecord: HiddenGenerationRecord;
   rawOutput: string;
   replay: GenerationReplaySnapshot;
   saved: TSaveResult;

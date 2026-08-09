@@ -372,6 +372,9 @@ const { createExtraChapterGenerationAdapter, createExtraChapterGenerationRecord,
   await import('@/core/extrasGeneration');
 const { GenerationReplaySnapshotSchema } = await import('@/type/generation');
 const { restoreGenerationReplayDraft } = await import('@/util/generationReplay');
+const { createHiddenGenerationRecord } = await import('@/util/hiddenGenerationRecord');
+const { buildBaguSentenceReplacement, groupBaguHitsBySentence, scanTextWithBaguRules } =
+  await import('@/util/bagu');
 const { buildSourceSelection } = await import('@/util/generationSource');
 const { getRegisteredPhoneAppReferenceTrees } = await import('@/core/appRegistry');
 const { ENTRY_LIBRARY_CONTENT_PLACEHOLDER, renderEntryLibraryBindingContent, useEntryLibraryStore } =
@@ -385,12 +388,37 @@ const { resolveExtraChapterGenerationRecords, synchronizeExtraChapterGenerationR
 
 initPhoneLifecycle();
 
+function createVisualHiddenGenerationRecord(
+  actionId: string,
+  userRequirement: string,
+  config: Record<string, unknown> = {},
+) {
+  const replay = GenerationReplaySnapshotSchema.parse({
+    config: { ...config, userRequirement },
+    request: { outputFormat: '<content>正文</content>', userRequirement },
+    source: {
+      chatIdAtGeneration: 'visual-chat',
+      label: '最近 7 楼',
+      messageIds: [14, 15, 16, 17, 18, 19, 20],
+      mode: 'recent',
+      ranges: [{ end: 20, start: 14 }],
+      scopeId: 'visual-scope',
+      sortKey: 20,
+    },
+    sourceInput: { recentCount: 7 },
+  });
+  return createHiddenGenerationRecord(actionId, replay);
+}
+
 const rootAppScenarios = PHONE_APPS.map(app => `app:${app.id}`);
 const scenarios: VisualScenarioName[] = [
   'home',
   'home-tasks',
   'home-tasks-dark',
   'generation-rewrite-replay',
+  'generation-preview-long-title',
+  'generation-preview-long-title-edit',
+  'generation-preview-long-title-raw',
   'legacy-data-migrations',
   'app-deferred-mount-order',
   ...rootAppScenarios,
@@ -933,6 +961,60 @@ async function applyScenario(name: VisualScenarioName, options: { height?: numbe
 
   if (name === 'home') {
     await phone.goHome();
+  } else if (
+    name === 'generation-preview-long-title' ||
+    name === 'generation-preview-long-title-edit' ||
+    name === 'generation-preview-long-title-raw'
+  ) {
+    const longTitle = '解析异常时误入标题的超长内容'.repeat(28);
+    const raw = `<title>${longTitle}</title><content>这是仍然需要编辑和重新解析的正文内容。</content>`;
+    usePreviewDraftStore().upsertPreviewDraft({
+      appId: 'theater',
+      page: 'preview',
+      preview: {
+        content: '这是仍然需要编辑和重新解析的正文内容。',
+        draftId: null,
+        mode: 'create',
+        raw,
+        renderMode: 'markdown',
+        source: { label: '最近 20 楼' },
+        targetEntryId: '',
+        targetVersionId: '',
+        title: longTitle,
+        typeName: '视觉测试',
+        warnings: ['标题长度异常'],
+      },
+      routeParams: {},
+      title: '生成预览',
+    });
+    resetPhoneToRoute('theater', 'preview', '生成预览');
+    const previewOpened = await waitForVisualCondition(() => Boolean(document.querySelector('.pc-generation-preview')));
+    if (!previewOpened) throw new Error('Long-title generation preview did not open');
+    await waitForPaint();
+
+    if (name === 'generation-preview-long-title-edit') {
+      document.querySelector<HTMLButtonElement>('.pc-preview-toolbar .pc-soft-btn')?.click();
+      await waitForPaint();
+    } else if (name === 'generation-preview-long-title-raw') {
+      const rawButton = [...document.querySelectorAll<HTMLButtonElement>('.pc-preview-actions .pc-soft-btn')].find(
+        button => button.textContent?.includes('原始输出'),
+      );
+      rawButton?.click();
+      await waitForPaint();
+    }
+
+    const previewHeader = document.querySelector('.pc-generation-preview-head');
+    if (name === 'generation-preview-long-title') {
+      const title = previewHeader?.querySelector('h2');
+      if (!title || title.getBoundingClientRect().height > 54) {
+        throw new Error('Long generation title was not clamped in normal preview');
+      }
+    } else {
+      const editor = document.querySelector<HTMLTextAreaElement>('.pc-generation-preview textarea');
+      if (previewHeader || !editor || editor.getBoundingClientRect().height < 180) {
+        throw new Error('Generated title still occupies the input workspace');
+      }
+    }
   } else if (name === 'generation-rewrite-replay') {
     const adapter = createExtraChapterGenerationAdapter({
       appendChapterVersion: () => null,
@@ -972,7 +1054,7 @@ async function applyScenario(name: VisualScenarioName, options: { height?: numbe
     }
 
     const replay = GenerationReplaySnapshotSchema.parse({
-      config: {},
+      config: { userRequirement: '旧格式追加要求' },
       request: { outputFormat: '<content>正文</content>' },
       source: {
         chatIdAtGeneration: 'visual-chat',
@@ -993,7 +1075,12 @@ async function applyScenario(name: VisualScenarioName, options: { height?: numbe
       userRequirement: '',
     };
     const restoredMode = restoreGenerationReplayDraft(replay, replayDraft);
-    if (restoredMode !== 'recent' || replayDraft.recentCount !== 7 || replayDraft.rangeText) {
+    if (
+      restoredMode !== 'recent' ||
+      replayDraft.recentCount !== 7 ||
+      replayDraft.rangeText ||
+      replayDraft.userRequirement !== '旧格式追加要求'
+    ) {
       throw new Error('Generation replay changed the saved source mode into a custom range');
     }
 
@@ -1111,10 +1198,51 @@ async function applyScenario(name: VisualScenarioName, options: { height?: numbe
     createGenerationTaskFixture();
     await phone.goHome();
   } else if (name === 'bagu-scan-actions' || name === 'bagu-scan-applied') {
+    const templateText = '开头，这是一个漫长等待的眼神，结尾。';
+    const createTemplateRule = (suggestion: string) => ({
+      createdAt: '2026-08-09T00:00:00.000Z',
+      enabled: true,
+      flags: '',
+      id: `visual-template-${suggestion || 'empty'}`,
+      note: '',
+      pattern: '{这|那}是{一个|一种|某种}…{动作|姿态|神情|眼神|表情}',
+      replacements: [],
+      sources: [],
+      suggestion,
+      targets: [],
+      template: '{这|那}是{一个|一种|某种}…{动作|姿态|神情|眼神|表情}',
+      title: '视觉句式规则',
+      type: 'template' as const,
+      updatedAt: '2026-08-09T00:00:00.000Z',
+    });
+    const emptyTemplateGroups = groupBaguHitsBySentence(
+      templateText,
+      scanTextWithBaguRules(templateText, [createTemplateRule('')]),
+    );
+    const capturedTemplateGroups = groupBaguHitsBySentence(
+      templateText,
+      scanTextWithBaguRules(templateText, [createTemplateRule('{{中间内容}}')]),
+    );
+    const emptyTemplatePreview = buildBaguSentenceReplacement(emptyTemplateGroups[0]);
+    const capturedTemplatePreview = buildBaguSentenceReplacement(capturedTemplateGroups[0]);
+    if (emptyTemplatePreview !== '开头，，结尾。' || capturedTemplatePreview !== '开头，漫长等待的，结尾。') {
+      throw new Error('Template replacement did not respect the explicit middle-content placeholder');
+    }
+
     const entry = createTheaterBaguFixture();
     resetPhoneToRoute('theater', 'bagu-scan', '八股检测', { entryId: entry.id });
+    await waitForPaint();
+    const sentenceCards = document.querySelectorAll('.pc-bagu-hit-card');
+    const matchRows = document.querySelectorAll('.pc-bagu-match-row');
+    const mergedPreview = document.querySelector<HTMLTextAreaElement>('.pc-bagu-edit textarea')?.value || '';
+    if (
+      sentenceCards.length !== 1 ||
+      matchRows.length !== 4 ||
+      !['犹如', '下意识', '愣住', '目光中透出'].every(replacement => mergedPreview.includes(replacement))
+    ) {
+      throw new Error('Bagu hits in one sentence were not merged into one editable sentence card');
+    }
     if (name === 'bagu-scan-applied') {
-      await waitForPaint();
       document.querySelector<HTMLButtonElement>('.pc-bagu-scan-actions .accent')?.click();
       await waitForPaint();
     }
@@ -2154,10 +2282,22 @@ async function applyScenario(name: VisualScenarioName, options: { height?: numbe
     if (replyRewriteButton) throw new Error('Forum replies unexpectedly exposed a rewrite action');
   } else if (name === 'forum-rewrite-generate') {
     const { board, thread } = createForumFixture();
+    const requirement = '论坛当前版本的隐藏追加要求。';
+    thread.generationRecord = createVisualHiddenGenerationRecord('generate-thread', requirement, {
+      boardId: board.id,
+      boardName: board.name,
+      boardTypeId: board.typeId,
+      boardTypeName: board.typeName,
+      boardTypePrompt: board.typePrompt,
+    });
     resetPhoneToRoute('forum', 'generate-thread', '重写论坛主帖', {
       boardId: board.id,
       rewriteThreadId: thread.id,
     });
+    await waitForPaint();
+    if (document.querySelector<HTMLTextAreaElement>('.pc-requirement-field textarea')?.value !== requirement) {
+      throw new Error('Forum rewrite did not restore the current version hidden generation record');
+    }
   } else if (name === 'worldbook-link-legacy-entry') {
     resetPhoneToRoute('worldbook-link', 'detail', '世界书联动', { bookName: '【视觉】旧格式世界书' });
     const loaded = await waitForVisualCondition(() => Boolean(document.querySelector('.pc-worldbook-entry')));
@@ -2244,10 +2384,22 @@ async function applyScenario(name: VisualScenarioName, options: { height?: numbe
     const book = createLettersFixture();
     const entry = book.entries[0];
     if (!entry) throw new Error('Letters rewrite fixture did not create an entry');
+    const requirement = '书信当前版本的隐藏追加要求。';
+    entry.generationRecord = createVisualHiddenGenerationRecord('generate', requirement, {
+      bookTitle: book.title,
+      format: entry.format,
+      recentEntryCount: 6,
+      receiver: entry.receiver,
+      sender: entry.sender,
+    });
     resetPhoneToRoute('letters', 'generate', '重写书信', {
       bookId: book.id,
       rewriteEntryId: entry.id,
     });
+    await waitForPaint();
+    if (document.querySelector<HTMLTextAreaElement>('.pc-requirement-field textarea')?.value !== requirement) {
+      throw new Error('Letter rewrite did not restore the current version hidden generation record');
+    }
   } else if (name === 'extras-book-generate') {
     resetPhoneToRoute('extras', 'book-editor', '新建番外');
     await waitForPaint();
@@ -2558,8 +2710,12 @@ async function applyScenario(name: VisualScenarioName, options: { height?: numbe
 
     const theater = useTheaterStore();
     const theaterEntry = createTheaterFixture();
+    const originalTheaterRecord = createVisualHiddenGenerationRecord('generate', '原小剧场版本要求');
+    const deletedTheaterRecord = createVisualHiddenGenerationRecord('generate', '待删除小剧场版本要求');
+    theaterEntry.generationRecord = originalTheaterRecord;
     const theaterSaved = theater.appendEntryVersion(theaterEntry.id, {
       content: '准备删除的小剧场采用版本。',
+      generationRecord: deletedTheaterRecord,
       renderMode: theaterEntry.renderMode === 'markdown' ? 'frontend' : 'markdown',
       title: '准备删除的小剧场版本',
     });
@@ -2572,17 +2728,22 @@ async function applyScenario(name: VisualScenarioName, options: { height?: numbe
       !theaterResult ||
       theaterEntry.activeVersionId !== originalTheaterVersion.id ||
       theaterEntry.content !== originalTheaterVersion.content ||
-      theaterEntry.renderMode !== originalTheaterVersion.renderMode
+      theaterEntry.renderMode !== originalTheaterVersion.renderMode ||
+      theaterEntry.generationRecord?.id !== originalTheaterRecord.id
     ) {
       throw new Error('Deleting the active theater version did not synchronize its content and render mode');
     }
 
     const forum = useForumStore();
     const { board, thread } = createForumFixture();
+    const originalForumRecord = createVisualHiddenGenerationRecord('generate-thread', '原论坛版本要求');
+    const deletedForumRecord = createVisualHiddenGenerationRecord('generate-thread', '待删除论坛版本要求');
+    thread.generationRecord = originalForumRecord;
     const originalReplies = JSON.stringify(thread.replies);
     const forumSaved = forum.appendThreadVersion(board.id, thread.id, {
       author: '待删除版本楼主',
       content: '准备删除的论坛候选版本。',
+      generationRecord: deletedForumRecord,
       replies: thread.replies.map(reply => ({
         ...reply,
         content: `待删除：${reply.content}`,
@@ -2597,6 +2758,7 @@ async function applyScenario(name: VisualScenarioName, options: { height?: numbe
       !forumResult ||
       thread.activeVersionId !== originalForumVersion.id ||
       thread.content !== originalForumVersion.content ||
+      thread.generationRecord?.id !== originalForumRecord.id ||
       JSON.stringify(thread.replies) !== originalReplies
     ) {
       throw new Error('Deleting a forum candidate version changed the active post or its replies');
@@ -2606,9 +2768,13 @@ async function applyScenario(name: VisualScenarioName, options: { height?: numbe
     const letterBook = createLettersFixture();
     const letter = letterBook.entries[0];
     if (!letter) throw new Error('Letter deletion fixture did not create a letter');
+    const originalLetterRecord = createVisualHiddenGenerationRecord('generate', '原书信版本要求');
+    const deletedLetterRecord = createVisualHiddenGenerationRecord('generate', '待删除书信版本要求');
+    letter.generationRecord = originalLetterRecord;
     const letterSaved = letters.appendEntryVersion(letterBook.id, letter.id, {
       content: '准备删除的书信采用版本。',
       format: letter.format === 'formal' ? 'email' : 'formal',
+      generationRecord: deletedLetterRecord,
       title: '准备删除的书信版本',
     });
     const originalLetterVersion = letter.versions[0];
@@ -2619,7 +2785,8 @@ async function applyScenario(name: VisualScenarioName, options: { height?: numbe
       !letterResult ||
       letter.activeVersionId !== originalLetterVersion.id ||
       letter.content !== originalLetterVersion.content ||
-      letter.format !== originalLetterVersion.format
+      letter.format !== originalLetterVersion.format ||
+      letter.generationRecord?.id !== originalLetterRecord.id
     ) {
       throw new Error('Deleting the active letter version did not synchronize its content and format');
     }
@@ -2630,17 +2797,8 @@ async function applyScenario(name: VisualScenarioName, options: { height?: numbe
       versionId: originalChapterVersion.id,
     });
     await waitForPaint();
-    document.querySelector<HTMLDetailsElement>('.pc-generation-history')?.setAttribute('open', '');
-    await waitForPaint();
-    const generationHistoryText = document.querySelector('.pc-generation-history')?.textContent || '';
-    if (
-      !generationHistoryText.includes('版本 1 · 当前版本') ||
-      !generationHistoryText.includes(originalGenerationRecord.userRequirement) ||
-      generationHistoryText.includes(deletedGenerationRecord.userRequirement)
-    ) {
-      throw new Error(
-        'Extra generation history did not distinguish the surviving original record from the deleted rewrite',
-      );
+    if (document.querySelector('.pc-generation-history')) {
+      throw new Error('Extra generation records are still visible in the chapter detail UI');
     }
   } else if (name === 'extras-book-name-fallback') {
     if (resolveGeneratedExtraBookTitle(' ', ' IF线 ') !== 'IF线') {
@@ -2848,7 +3006,9 @@ async function applyScenario(name: VisualScenarioName, options: { height?: numbe
     await waitForPaint();
     document.querySelector<HTMLButtonElement>('.pc-entry-main')?.click();
     await waitForPaint();
-    document.querySelector<HTMLElement>('.pc-generation-history summary')?.click();
+    if (document.querySelector('.pc-generation-history')) {
+      throw new Error('Extra chapter detail still exposes hidden generation records');
+    }
   } else if (name === 'extras-chapter-editor') {
     const book = createLegacyExtrasFixture();
     const chapter = book.chapters[0];
@@ -3045,10 +3205,20 @@ async function applyScenario(name: VisualScenarioName, options: { height?: numbe
     resetPhoneToRoute('theater', 'generate', '小剧场配置');
   } else if (name === 'theater-rewrite-generate') {
     const entry = createTheaterFixture();
+    const requirement = '小剧场当前版本的隐藏追加要求。';
+    entry.generationRecord = createVisualHiddenGenerationRecord('generate', requirement, {
+      renderMode: entry.renderMode,
+      typeId: entry.typeId,
+      typeName: entry.typeName,
+    });
     resetPhoneToRoute('theater', 'generate', '重写小剧场', {
       rewriteEntryId: entry.id,
       typeId: entry.typeId || '',
     });
+    await waitForPaint();
+    if (document.querySelector<HTMLTextAreaElement>('.pc-requirement-field textarea')?.value !== requirement) {
+      throw new Error('Theater rewrite did not restore the current version hidden generation record');
+    }
   } else if (name === 'theater-generate-dark-inputs') {
     const settingsStore = useSettingsStore();
     const hostThemeOverride = document.createElement('style');

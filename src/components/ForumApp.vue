@@ -574,11 +574,12 @@ import { useForumStore } from '@/store/forum';
 import { usePhoneStore } from '@/store/phone';
 import { usePromptStore } from '@/store/prompts';
 import { useSettingsStore } from '@/store/settings';
-import type { FailedGenerationDraft, GenerationReplaySnapshot } from '@/type/generation';
+import type { FailedGenerationDraft, GenerationReplaySnapshot, HiddenGenerationRecord } from '@/type/generation';
 import { type ForumThread, resolveForumBoardTypeName, resolveForumBoardTypePrompt } from '@/type/forum';
 import { canOpenBaguScan } from '@/util/baguScanGate';
 import { parseForumRepliesXmlResult, parseForumXmlResult } from '@/util/generation';
 import { resolveGenerationReplayReferences } from '@/util/generationReplay';
+import { createHiddenGenerationRecord, resolveHiddenGenerationReplay } from '@/util/hiddenGenerationRecord';
 import { usePreviewDraftPersistence } from '@/util/previewDrafts';
 import { formatGenerationReferences, type GenerationReferenceItem } from '@/util/references';
 import { resolveContentVersion } from '@/util/contentVersions';
@@ -667,6 +668,7 @@ const generationState = reactive({
             boardTypeName: string;
             content: string;
             draftId: string | null;
+            generationRecord?: HiddenGenerationRecord;
             raw: string;
             replies: PreviewReplyDraft[];
             replay?: GenerationReplaySnapshot;
@@ -780,6 +782,7 @@ const viewedForumThread = computed(() => {
         ...thread,
         author: version.author,
         content: version.content,
+        generationRecord: version.generationRecord,
         generationReplay: version.generationReplay,
         replies: version.replies,
         title: version.title,
@@ -1032,8 +1035,12 @@ watch(
       generationState.rawOutput = '';
 
       const replay = rewriteForumThread.value?.versions.length
-        ? rewriteForumVersion.value?.generationReplay
-        : rewriteForumThread.value?.generationReplay;
+        ? rewriteForumVersion.value
+          ? resolveHiddenGenerationReplay(rewriteForumVersion.value)
+          : undefined
+        : rewriteForumThread.value
+          ? resolveHiddenGenerationReplay(rewriteForumThread.value)
+          : undefined;
       if (replay) {
         selectedReferences.value = resolveGenerationReplayReferences(replay);
         replaySession.applyReplay(replay, threadGenerationDraft);
@@ -1540,7 +1547,7 @@ async function runThreadGeneration() {
       draftId: null,
       raw: result.rawOutput,
       replies: materialized.replies,
-      replay: result.replay,
+      generationRecord: result.generationRecord,
       mode: forumThreadGenerationMode.value,
       targetThreadId: rewriteForumThread.value?.id || '',
       targetVersionId: rewriteForumVersion.value?.id || '',
@@ -1679,20 +1686,25 @@ function savePreview() {
           typeId: preview.boardTypeId,
           typeName: preview.boardTypeName,
         });
-    const replySnapshots = createForumReplySnapshots(preview.replies, preview.replay?.source);
+    const previewReplay = preview.generationRecord?.replay || preview.replay;
+    const replySnapshots = createForumReplySnapshots(preview.replies, previewReplay?.source);
     const saved =
       preview.mode === 'rewrite' && preview.targetThreadId
         ? forum.appendThreadVersion(board.id, preview.targetThreadId, {
             author: preview.author,
             content: preview.content,
-            generationReplay: preview.replay,
+            generationRecord:
+              preview.generationRecord ||
+              (preview.replay ? createHiddenGenerationRecord('generate-thread', preview.replay) : undefined),
             replies: replySnapshots,
             title: preview.title,
           })
         : forum.createThread(board.id, {
             author: preview.author,
             content: preview.content,
-            generationReplay: preview.replay,
+            generationRecord:
+              preview.generationRecord ||
+              (preview.replay ? createHiddenGenerationRecord('generate-thread', preview.replay) : undefined),
             replies: replySnapshots,
             title: preview.title,
           });
@@ -1847,6 +1859,7 @@ function reparseFailedDraft() {
       boardTypeName: typeof draft.context.boardTypeName === 'string' ? draft.context.boardTypeName : '',
       content: parsed.data.content,
       draftId: null,
+      generationRecord: draft.generationRecord,
       raw: parsed.raw,
       replies: materialized.replies,
       mode: draft.context.mode === 'rewrite' ? 'rewrite' : 'create',

@@ -43,13 +43,15 @@ export function createLettersGenerationAdapter(lettersStore: {
     input: Pick<LetterEntry, 'title' | 'content' | 'format' | 'sender' | 'receiver'> & {
       bookId?: string;
       bookTitle?: string;
+      generationRecord?: LetterEntry['generationRecord'];
       generationReplay?: LetterEntry['generationReplay'];
     },
   ) => { book: LetterBook; entry: LetterEntry } | null;
   appendEntryVersion: (
     bookId: string,
     entryId: string,
-    input: Pick<LetterEntry, 'title' | 'content' | 'format'> & Partial<Pick<LetterEntry, 'generationReplay'>>,
+    input: Pick<LetterEntry, 'title' | 'content' | 'format'> &
+      Partial<Pick<LetterEntry, 'generationRecord' | 'generationReplay'>>,
   ) => { book: LetterBook; entry: LetterEntry; version: { id: string } } | null;
 }) {
   return {
@@ -73,7 +75,7 @@ export function createLettersGenerationAdapter(lettersStore: {
         const saved = lettersStore.appendEntryVersion(context.config.bookId, context.config.entryId, {
           content: result.content,
           format: context.config.format,
-          generationReplay: context.replay,
+          generationRecord: context.generationRecord,
           title: result.title,
         });
         if (!saved) throw new Error('目标书信不存在，无法保存重写版本');
@@ -89,7 +91,7 @@ export function createLettersGenerationAdapter(lettersStore: {
         bookTitle: context.config.bookTitle || undefined,
         content: result.content,
         format: context.config.format,
-        generationReplay: context.replay,
+        generationRecord: context.generationRecord,
         receiver: context.config.receiver,
         sender: context.config.sender,
         title: result.title,

@@ -1,5 +1,9 @@
 import { CharacterRefSchema } from '@/type/diary';
-import { FailedGenerationDraftSchema, GenerationReplaySnapshotSchema } from '@/type/generation';
+import {
+  FailedGenerationDraftSchema,
+  GenerationReplaySnapshotSchema,
+  HiddenGenerationRecordSchema,
+} from '@/type/generation';
 import { ContentVersionBaseSchema } from '@/type/contentVersion';
 
 export const LetterFormatSchema = z.enum(['formal', 'note', 'sms', 'email']);
@@ -7,6 +11,7 @@ export type LetterFormat = z.infer<typeof LetterFormatSchema>;
 
 export const LetterEntryVersionSchema = ContentVersionBaseSchema.extend({
   format: LetterFormatSchema,
+  generationRecord: HiddenGenerationRecordSchema.optional(),
   generationReplay: GenerationReplaySnapshotSchema.optional(),
 });
 export type LetterEntryVersion = z.infer<typeof LetterEntryVersionSchema>;
@@ -21,6 +26,7 @@ export const LetterEntrySchema = z.object({
   sender: CharacterRefSchema,
   receiver: CharacterRefSchema,
   format: LetterFormatSchema,
+  generationRecord: HiddenGenerationRecordSchema.optional(),
   generationReplay: GenerationReplaySnapshotSchema.optional(),
   activeVersionId: z.string().default(''),
   versions: z.array(LetterEntryVersionSchema).default([]),

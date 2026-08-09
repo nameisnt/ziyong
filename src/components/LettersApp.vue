@@ -305,12 +305,13 @@ import { usePhoneStore } from '@/store/phone';
 import { usePromptStore } from '@/store/prompts';
 import { useSettingsStore } from '@/store/settings';
 import type { CharacterRef } from '@/type/diary';
-import type { FailedGenerationDraft, GenerationReplaySnapshot } from '@/type/generation';
+import type { FailedGenerationDraft, GenerationReplaySnapshot, HiddenGenerationRecord } from '@/type/generation';
 import type { LetterFormat } from '@/type/letter';
 import { canOpenBaguScan } from '@/util/baguScanGate';
 import { useDetailScroll } from '@/util/detailScroll';
 import { parseSimpleXmlResult } from '@/util/generation';
 import { resolveGenerationReplayReferences } from '@/util/generationReplay';
+import { createHiddenGenerationRecord, resolveHiddenGenerationReplay } from '@/util/hiddenGenerationRecord';
 import { usePreviewDraftPersistence } from '@/util/previewDrafts';
 import { formatGenerationReferences, type GenerationReferenceItem } from '@/util/references';
 import { resolveContentVersion } from '@/util/contentVersions';
@@ -374,6 +375,7 @@ const generationState = reactive({
     content: string;
     draftId: string | null;
     format: LetterFormat;
+    generationRecord?: HiddenGenerationRecord;
     mode: 'create' | 'rewrite';
     raw: string;
     replay?: GenerationReplaySnapshot;
@@ -457,6 +459,7 @@ const viewedLetterEntry = computed(() => {
         ...entry,
         content: version.content,
         format: version.format,
+        generationRecord: version.generationRecord,
         generationReplay: version.generationReplay,
         title: version.title,
       }
@@ -476,8 +479,12 @@ const letterGenerationMode = computed<'create' | 'rewrite'>(() => (rewriteLetter
 const letterGenerationAppPrompt = computed(() => prompts.appPrompts.letters);
 const rewriteLetterReplay = computed(() =>
   rewriteLetterEntry.value?.versions.length
-    ? rewriteLetterVersion.value?.generationReplay
-    : rewriteLetterEntry.value?.generationReplay,
+    ? rewriteLetterVersion.value
+      ? resolveHiddenGenerationReplay(rewriteLetterVersion.value)
+      : undefined
+    : rewriteLetterEntry.value
+      ? resolveHiddenGenerationReplay(rewriteLetterEntry.value)
+      : undefined,
 );
 
 const editingEntry = computed(() => (route.value.params?.entryId && activeEntry.value ? activeEntry.value : null));
@@ -1114,9 +1121,9 @@ async function runGeneration() {
       content: result.data.content,
       draftId: null,
       format: generationDraft.format,
+      generationRecord: result.generationRecord,
       mode: letterGenerationMode.value,
       raw: result.rawOutput,
-      replay: result.replay,
       receiver,
       sender,
       title: result.data.title,
@@ -1149,7 +1156,9 @@ function savePreview() {
       ? letters.appendEntryVersion(preview.bookId, preview.targetEntryId, {
           content: preview.content,
           format: preview.format,
-          generationReplay: preview.replay,
+          generationRecord:
+            preview.generationRecord ||
+            (preview.replay ? createHiddenGenerationRecord('generate', preview.replay) : undefined),
           title: preview.title,
         })
       : letters.createEntry({
@@ -1157,7 +1166,9 @@ function savePreview() {
           bookTitle: preview.bookTitle,
           content: preview.content,
           format: preview.format,
-          generationReplay: preview.replay,
+          generationRecord:
+            preview.generationRecord ||
+            (preview.replay ? createHiddenGenerationRecord('generate', preview.replay) : undefined),
           receiver: preview.receiver,
           sender: preview.sender,
           title: preview.title,
@@ -1282,6 +1293,7 @@ function reparseFailedDraft() {
     content: parsed.data.content,
     draftId: null,
     format,
+    generationRecord: draft.generationRecord,
     mode: draft.context.mode === 'rewrite' ? 'rewrite' : 'create',
     raw: parsed.raw,
     receiver,

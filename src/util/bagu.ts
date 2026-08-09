@@ -13,9 +13,25 @@ export interface BaguHit {
   ruleId: string;
   ruleLabel: string;
   ruleTitle: string;
-  selected: boolean;
+  sentenceEnd: number;
+  sentenceStart: number;
   start: number;
   type: BaguRule['type'];
+}
+
+export interface BaguSentenceGroup {
+  end: number;
+  hits: BaguHit[];
+  id: string;
+  originalText: string;
+  start: number;
+}
+
+export interface BaguSentenceEdit {
+  end: number;
+  originalText: string;
+  replacement: string;
+  start: number;
 }
 
 export interface BaguApplyResult {
@@ -102,23 +118,29 @@ function normalizeReplacement(replacements: string[]) {
 function createHit(
   input: Omit<
     BaguHit,
-    'id' | 'originalText' | 'postContext' | 'preContext' | 'replacementEnd' | 'replacementStart' | 'selected'
+    | 'id'
+    | 'originalText'
+    | 'postContext'
+    | 'preContext'
+    | 'replacementEnd'
+    | 'replacementStart'
+    | 'sentenceEnd'
+    | 'sentenceStart'
   >,
   text: string,
-  replacementRange?: { end: number; start: number },
+  sentenceRange: { end: number; start: number },
 ): BaguHit {
   const { preContext, postContext } = buildContextSlice(text, input.start, input.end);
-  const replacementStart = replacementRange?.start ?? input.start;
-  const replacementEnd = replacementRange?.end ?? input.end;
   return {
     ...input,
     id: `${input.type}-${input.ruleId}-${input.start}-${input.end}-${input.match}`,
-    originalText: text.slice(replacementStart, replacementEnd),
+    originalText: text.slice(input.start, input.end),
     postContext,
     preContext,
-    replacementEnd,
-    replacementStart,
-    selected: false,
+    replacementEnd: input.end,
+    replacementStart: input.start,
+    sentenceEnd: sentenceRange.end,
+    sentenceStart: sentenceRange.start,
   };
 }
 
@@ -192,13 +214,12 @@ export function scanTextWithBaguRules(text: string, rules: BaguRule[]) {
             if (!replacement && text[end] && '的得地'.includes(text[end])) {
               end += 1;
             }
-            const replacementSentence = `${text.slice(range.start, start)}${replacement}${text.slice(end, range.end)}`;
             hits.push(
               createHit(
                 {
                   end,
                   match: text.slice(start, end),
-                  replacement: replacementSentence,
+                  replacement,
                   ruleId: rule.id,
                   ruleLabel: source,
                   ruleTitle: rule.title,
@@ -230,6 +251,43 @@ export function scanTextWithBaguRules(text: string, rules: BaguRule[]) {
   return nonOverlappingHits;
 }
 
+export function groupBaguHitsBySentence(text: string, hits: BaguHit[]): BaguSentenceGroup[] {
+  const groups = new Map<string, BaguSentenceGroup>();
+  hits.forEach(hit => {
+    const id = `${hit.sentenceStart}-${hit.sentenceEnd}`;
+    const group = groups.get(id);
+    if (group) {
+      group.hits.push(hit);
+      return;
+    }
+    groups.set(id, {
+      end: hit.sentenceEnd,
+      hits: [hit],
+      id,
+      originalText: text.slice(hit.sentenceStart, hit.sentenceEnd),
+      start: hit.sentenceStart,
+    });
+  });
+  return [...groups.values()].sort((left, right) => left.start - right.start);
+}
+
+export function buildBaguSentenceReplacement(group: BaguSentenceGroup, hits = group.hits) {
+  const orderedHits = [...hits].sort((left, right) => right.start - left.start || right.end - left.end);
+  let replacement = group.originalText;
+  let reservedStart = group.end;
+
+  orderedHits.forEach(hit => {
+    if (hit.start < group.start || hit.end > group.end || hit.end > reservedStart) return;
+    const localStart = hit.start - group.start;
+    const localEnd = hit.end - group.start;
+    if (replacement.slice(localStart, localEnd) !== hit.originalText) return;
+    replacement = `${replacement.slice(0, localStart)}${hit.replacement}${replacement.slice(localEnd)}`;
+    reservedStart = hit.start;
+  });
+
+  return replacement;
+}
+
 export function applyBaguHits(text: string, hits: BaguHit[]): BaguApplyResult {
   const orderedHits = [...hits]
     .filter(hit => hit.replacementStart >= 0 && hit.replacementEnd > hit.replacementStart)
@@ -245,6 +303,25 @@ export function applyBaguHits(text: string, hits: BaguHit[]): BaguApplyResult {
     if (nextText.slice(hit.replacementStart, hit.replacementEnd) !== hit.originalText) return;
     nextText = `${nextText.slice(0, hit.replacementStart)}${hit.replacement}${nextText.slice(hit.replacementEnd)}`;
     reservedStart = hit.replacementStart;
+    appliedCount += 1;
+  });
+
+  return { appliedCount, text: nextText };
+}
+
+export function applyBaguSentenceEdits(text: string, edits: BaguSentenceEdit[]): BaguApplyResult {
+  const orderedEdits = [...edits]
+    .filter(edit => edit.start >= 0 && edit.end > edit.start && edit.replacement !== edit.originalText)
+    .sort((left, right) => right.start - left.start || right.end - left.end);
+  let nextText = text;
+  let appliedCount = 0;
+  let reservedStart = Number.POSITIVE_INFINITY;
+
+  orderedEdits.forEach(edit => {
+    if (edit.end > reservedStart) return;
+    if (nextText.slice(edit.start, edit.end) !== edit.originalText) return;
+    nextText = `${nextText.slice(0, edit.start)}${edit.replacement}${nextText.slice(edit.end)}`;
+    reservedStart = edit.start;
     appliedCount += 1;
   });
 

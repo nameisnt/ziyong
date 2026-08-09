@@ -12,6 +12,7 @@ import type {
 } from '@/type/generation';
 import { buildGenerationUserInput, buildPhoneUserInput } from '@/util/generation';
 import { applyGenerationAliases, replaceGenerationAliases } from '@/util/generationAliases';
+import { createHiddenGenerationRecord } from '@/util/hiddenGenerationRecord';
 import { buildSourceSelection, type SummaryGenerationSourceMode } from '@/util/generationSource';
 import { ensureCurrentScopeRecovery, runWithVisibilityTransaction } from '@/util/generationVisibility';
 import type { GenerationReferenceItem } from '@/util/references';
@@ -653,6 +654,7 @@ export async function generateContent<TConfig, TResult, TSaveResult = { entityId
       options,
       textProvider,
     );
+    const generationRecord = createHiddenGenerationRecord(adapter.actionId, replay);
     const rpmLimit = options.rateLimitRpm ?? useSettingsStore().settings.generation.rpmLimit;
     await waitForGenerationRateLimit(rpmLimit, abortController.signal);
 
@@ -695,6 +697,7 @@ export async function generateContent<TConfig, TResult, TSaveResult = { entityId
         actionId: adapter.actionId,
         appId: adapter.appId,
         context: isRecord(prepared.parsedConfig) ? { ...prepared.parsedConfig } : {},
+        generationRecord,
         rawOutput,
         source: prepared.source.selection,
         warnings: parsed.warnings,
@@ -713,6 +716,7 @@ export async function generateContent<TConfig, TResult, TSaveResult = { entityId
       abortController.signal.throwIfAborted();
       const saved = await adapter.save(parsed.data, {
         config: prepared.parsedConfig,
+        generationRecord,
         rawOutput: parsed.raw,
         replay,
         scopeId: prepared.scopeId,
@@ -723,6 +727,7 @@ export async function generateContent<TConfig, TResult, TSaveResult = { entityId
 
       return {
         data: parsed.data,
+        generationRecord,
         rawOutput: parsed.raw,
         replay,
         saved,
@@ -734,6 +739,7 @@ export async function generateContent<TConfig, TResult, TSaveResult = { entityId
 
     return {
       data: parsed.data,
+      generationRecord,
       rawOutput: parsed.raw,
       replay,
       source: prepared.source.selection,

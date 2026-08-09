@@ -102,7 +102,7 @@ export const useForumStore = defineStore('forum', () => {
   function createThread(
     boardId: string,
     input: Pick<ForumThread, 'title' | 'author' | 'content'> &
-      Partial<Pick<ForumThread, 'favorite' | 'generationReplay' | 'replies'>>,
+      Partial<Pick<ForumThread, 'favorite' | 'generationRecord' | 'generationReplay' | 'replies'>>,
   ) {
     const board = getBoard(boardId);
     if (!board) return null;
@@ -115,6 +115,7 @@ export const useForumStore = defineStore('forum', () => {
       content: input.content.trim(),
       favorite: Boolean(input.favorite),
       replies: (input.replies || []).map(reply => ({ ...reply })),
+      generationRecord: input.generationRecord,
       generationReplay: input.generationReplay,
       activeVersionId: '',
       versions: [],
@@ -149,7 +150,7 @@ export const useForumStore = defineStore('forum', () => {
     boardId: string,
     threadId: string,
     input: Pick<ForumThreadVersion, 'title' | 'author' | 'content'> &
-      Partial<Pick<ForumThreadVersion, 'generationReplay' | 'replies'>>,
+      Partial<Pick<ForumThreadVersion, 'generationRecord' | 'generationReplay' | 'replies'>>,
   ) {
     const board = getBoard(boardId);
     const thread = getThread(boardId, threadId);
@@ -161,6 +162,7 @@ export const useForumStore = defineStore('forum', () => {
         author: thread.author,
         content: thread.content,
         createdAt: thread.createdAt,
+        generationRecord: thread.generationRecord,
         generationReplay: thread.generationReplay,
         replies: thread.replies.map(reply => ({ ...reply })),
         title: thread.title,
@@ -170,6 +172,7 @@ export const useForumStore = defineStore('forum', () => {
     const version = createContentVersion<ForumThreadVersion>('forum_thread_version', {
       author: input.author.trim() || thread.author,
       content: input.content.trim(),
+      generationRecord: input.generationRecord,
       generationReplay: input.generationReplay,
       replies: (input.replies || thread.replies).map(reply => ({ ...reply })),
       title: input.title.trim() || thread.title,
@@ -180,6 +183,7 @@ export const useForumStore = defineStore('forum', () => {
     thread.author = version.author;
     thread.title = version.title;
     thread.content = version.content;
+    thread.generationRecord = version.generationRecord;
     thread.generationReplay = version.generationReplay;
     thread.replies = version.replies.map(reply => ({ ...reply }));
     thread.updatedAt = timestamp;
@@ -197,6 +201,7 @@ export const useForumStore = defineStore('forum', () => {
     thread.author = version.author;
     thread.title = version.title;
     thread.content = version.content;
+    thread.generationRecord = version.generationRecord;
     thread.generationReplay = version.generationReplay;
     thread.replies = version.replies.map(reply => ({ ...reply }));
     thread.updatedAt = timestamp;
@@ -240,6 +245,7 @@ export const useForumStore = defineStore('forum', () => {
     thread.author = state.activeVersion.author;
     thread.title = state.activeVersion.title;
     thread.content = state.activeVersion.content;
+    thread.generationRecord = state.activeVersion.generationRecord;
     thread.generationReplay = state.activeVersion.generationReplay;
     thread.replies = state.activeVersion.replies.map(reply => ({ ...reply }));
     thread.updatedAt = timestamp;

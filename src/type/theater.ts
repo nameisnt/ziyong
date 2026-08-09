@@ -1,11 +1,16 @@
 import { CharacterRefSchema } from '@/type/diary';
-import { FailedGenerationDraftSchema, GenerationReplaySnapshotSchema } from '@/type/generation';
+import {
+  FailedGenerationDraftSchema,
+  GenerationReplaySnapshotSchema,
+  HiddenGenerationRecordSchema,
+} from '@/type/generation';
 import { ContentVersionBaseSchema } from '@/type/contentVersion';
 
 export const TheaterRenderModeSchema = z.enum(['markdown', 'frontend']);
 export type TheaterRenderMode = z.infer<typeof TheaterRenderModeSchema>;
 
 export const TheaterEntryVersionSchema = ContentVersionBaseSchema.extend({
+  generationRecord: HiddenGenerationRecordSchema.optional(),
   generationReplay: GenerationReplaySnapshotSchema.optional(),
   renderMode: TheaterRenderModeSchema.default('markdown'),
 });
@@ -22,6 +27,7 @@ export const TheaterEntrySchema = z.object({
   typeName: z.string(),
   participants: z.array(CharacterRefSchema).default([]),
   renderMode: TheaterRenderModeSchema.default('markdown'),
+  generationRecord: HiddenGenerationRecordSchema.optional(),
   generationReplay: GenerationReplaySnapshotSchema.optional(),
   activeVersionId: z.string().default(''),
   versions: z.array(TheaterEntryVersionSchema).default([]),

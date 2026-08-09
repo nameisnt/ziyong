@@ -113,6 +113,7 @@ export const useLettersStore = defineStore('letters', () => {
     input: Pick<LetterEntry, 'title' | 'content' | 'format' | 'sender' | 'receiver'> & {
       bookId?: string;
       bookTitle?: string;
+      generationRecord?: LetterEntry['generationRecord'];
       generationReplay?: LetterEntry['generationReplay'];
     },
   ) {
@@ -131,6 +132,7 @@ export const useLettersStore = defineStore('letters', () => {
       sender: normalizeCharacterRef(input.sender),
       receiver: normalizeCharacterRef(input.receiver),
       format: input.format,
+      generationRecord: input.generationRecord,
       generationReplay: input.generationReplay,
       activeVersionId: '',
       versions: [],
@@ -163,7 +165,7 @@ export const useLettersStore = defineStore('letters', () => {
     bookId: string,
     entryId: string,
     input: Pick<LetterEntryVersion, 'title' | 'content' | 'format'> &
-      Partial<Pick<LetterEntryVersion, 'generationReplay'>>,
+      Partial<Pick<LetterEntryVersion, 'generationRecord' | 'generationReplay'>>,
   ) {
     const book = getBook(bookId);
     const entry = getEntry(bookId, entryId);
@@ -175,6 +177,7 @@ export const useLettersStore = defineStore('letters', () => {
         content: entry.content,
         createdAt: entry.createdAt,
         format: entry.format,
+        generationRecord: entry.generationRecord,
         generationReplay: entry.generationReplay,
         title: entry.title,
       }),
@@ -183,6 +186,7 @@ export const useLettersStore = defineStore('letters', () => {
     const version = createContentVersion<LetterEntryVersion>('letter_version', {
       content: input.content.trim(),
       format: input.format,
+      generationRecord: input.generationRecord,
       generationReplay: input.generationReplay,
       title: input.title.trim() || entry.title,
     });
@@ -192,6 +196,7 @@ export const useLettersStore = defineStore('letters', () => {
     entry.title = version.title;
     entry.content = version.content;
     entry.format = version.format;
+    entry.generationRecord = version.generationRecord;
     entry.generationReplay = version.generationReplay;
     entry.updatedAt = timestamp;
     book.updatedAt = timestamp;
@@ -208,6 +213,7 @@ export const useLettersStore = defineStore('letters', () => {
     entry.title = version.title;
     entry.content = version.content;
     entry.format = version.format;
+    entry.generationRecord = version.generationRecord;
     entry.generationReplay = version.generationReplay;
     entry.updatedAt = timestamp;
     book.updatedAt = timestamp;
@@ -250,6 +256,7 @@ export const useLettersStore = defineStore('letters', () => {
     entry.title = state.activeVersion.title;
     entry.content = state.activeVersion.content;
     entry.format = state.activeVersion.format;
+    entry.generationRecord = state.activeVersion.generationRecord;
     entry.generationReplay = state.activeVersion.generationReplay;
     entry.updatedAt = timestamp;
     book.updatedAt = timestamp;

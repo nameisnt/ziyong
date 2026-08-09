@@ -28,11 +28,12 @@ export type TheaterGenerateConfig = z.infer<typeof TheaterGenerateConfigSchema>;
 export function createTheaterGenerationAdapter(theaterStore: {
   createEntry: (
     input: Pick<TheaterEntry, 'title' | 'content' | 'participants' | 'renderMode' | 'typeName'> &
-      Partial<Pick<TheaterEntry, 'generationReplay' | 'typeId'>>,
+      Partial<Pick<TheaterEntry, 'generationRecord' | 'generationReplay' | 'typeId'>>,
   ) => TheaterEntry;
   appendEntryVersion: (
     entryId: string,
-    input: Pick<TheaterEntry, 'title' | 'content' | 'renderMode'> & Partial<Pick<TheaterEntry, 'generationReplay'>>,
+    input: Pick<TheaterEntry, 'title' | 'content' | 'renderMode'> &
+      Partial<Pick<TheaterEntry, 'generationRecord' | 'generationReplay'>>,
   ) => { entry: TheaterEntry; version: { id: string } } | null;
 }) {
   return {
@@ -63,7 +64,7 @@ export function createTheaterGenerationAdapter(theaterStore: {
       if (context.config.mode === 'rewrite' && context.config.entryId) {
         const saved = theaterStore.appendEntryVersion(context.config.entryId, {
           content: result.content,
-          generationReplay: context.replay,
+          generationRecord: context.generationRecord,
           renderMode: context.config.renderMode as TheaterRenderMode,
           title: result.title,
         });
@@ -76,7 +77,7 @@ export function createTheaterGenerationAdapter(theaterStore: {
       }
       const entry = theaterStore.createEntry({
         content: result.content,
-        generationReplay: context.replay,
+        generationRecord: context.generationRecord,
         participants: context.config.participants,
         renderMode: context.config.renderMode as TheaterRenderMode,
         title: result.title,

@@ -1,8 +1,8 @@
 <template>
   <div class="pc-generation-preview">
-    <header class="pc-generation-preview-head">
+    <header v-if="showPreviewHeader" class="pc-generation-preview-head">
       <span class="pc-kicker">{{ sourceLabel }}</span>
-      <h2>{{ title }}</h2>
+      <h2 :title="title">{{ title }}</h2>
       <div class="pc-detail-meta">
         <span>{{ textProviderSummary }}</span>
         <span>{{ warnings.length ? `${warnings.length} 条提示` : successLabel }}</span>
@@ -26,7 +26,7 @@
           <slot v-else name="content" :rendered-content="renderedContent">
             <article class="pc-detail-content pc-rendered-markdown" v-html="renderedContent"></article>
           </slot>
-          <div v-if="warnings.length" class="pc-status-card warning">
+          <div v-if="warnings.length && !editingContent" class="pc-status-card warning">
             <strong>{{ warningTitle }}</strong>
             <p>{{ warnings.join('；') }}</p>
           </div>
@@ -179,6 +179,7 @@ const editableContent = computed({
   set: updateContent,
 });
 
+const showPreviewHeader = computed(() => activeView.value === 'preview' && !editingContent.value);
 const renderedContent = computed(() => renderMarkdown(props.content));
 const contentHasPendingChanges = computed(() => props.content !== acceptedContent.value);
 const rawHasPendingChanges = computed(() => props.raw.trim() !== acceptedRaw.value.trim());
@@ -261,9 +262,14 @@ function goRawFromNotice() {
 }
 
 .pc-generation-preview h2 {
+  display: -webkit-box;
+  overflow: hidden;
   margin: 0;
   font-size: 20px;
   line-height: 1.25;
+  overflow-wrap: anywhere;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
 }
 
 .pc-detail-meta {

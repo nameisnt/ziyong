@@ -537,12 +537,13 @@ import { usePromptStore } from '@/store/prompts';
 import { useSettingsStore } from '@/store/settings';
 import { useTheaterStore } from '@/store/theater';
 import type { CharacterRef } from '@/type/diary';
-import type { FailedGenerationDraft, GenerationReplaySnapshot } from '@/type/generation';
+import type { FailedGenerationDraft, GenerationReplaySnapshot, HiddenGenerationRecord } from '@/type/generation';
 import type { TheaterRenderMode } from '@/type/theater';
 import { canOpenBaguScan } from '@/util/baguScanGate';
 import { useDetailScroll } from '@/util/detailScroll';
 import { parseTheaterXmlResult } from '@/util/generation';
 import { resolveGenerationReplayReferences } from '@/util/generationReplay';
+import { createHiddenGenerationRecord, resolveHiddenGenerationReplay } from '@/util/hiddenGenerationRecord';
 import { renderMarkdown } from '@/util/markdown';
 import { formatReaderContent } from '@/util/readerContent';
 import { formatGenerationReferences, type GenerationReferenceItem } from '@/util/references';
@@ -630,6 +631,7 @@ const generationState = reactive({
     };
     title: string;
     mode: 'create' | 'rewrite';
+    generationRecord?: HiddenGenerationRecord;
     replay?: GenerationReplaySnapshot;
     targetEntryId: string;
     targetVersionId: string;
@@ -695,6 +697,7 @@ const viewedEntry = computed(() => {
     ? {
         ...entry,
         content: version.content,
+        generationRecord: version.generationRecord,
         generationReplay: version.generationReplay,
         renderMode: version.renderMode,
         title: version.title,
@@ -714,8 +717,12 @@ const theaterGenerationMode = computed<'create' | 'rewrite'>(() => (rewriteTarge
 const theaterGenerationAppPrompt = computed(() => appPrompts.value.theater);
 const rewriteGenerationReplay = computed(() =>
   rewriteTargetEntry.value?.versions.length
-    ? rewriteTargetVersion.value?.generationReplay
-    : rewriteTargetEntry.value?.generationReplay,
+    ? rewriteTargetVersion.value
+      ? resolveHiddenGenerationReplay(rewriteTargetVersion.value)
+      : undefined
+    : rewriteTargetEntry.value
+      ? resolveHiddenGenerationReplay(rewriteTargetEntry.value)
+      : undefined,
 );
 const detailEntries = computed(() =>
   [...entries.value].sort((left, right) => {
@@ -1449,7 +1456,7 @@ async function runGeneration() {
       },
       title: result.data.title,
       mode: theaterGenerationMode.value,
-      replay: result.replay,
+      generationRecord: result.generationRecord,
       targetEntryId: rewriteTargetEntry.value?.id || '',
       targetVersionId: rewriteTargetVersion.value?.id || '',
       typeId: generationDraft.typeId || undefined,
@@ -1471,13 +1478,17 @@ function savePreview() {
     preview.mode === 'rewrite' && preview.targetEntryId
       ? theater.appendEntryVersion(preview.targetEntryId, {
           content: preview.content,
-          generationReplay: preview.replay,
+          generationRecord:
+            preview.generationRecord ||
+            (preview.replay ? createHiddenGenerationRecord('generate', preview.replay) : undefined),
           renderMode: preview.renderMode,
           title: preview.title,
         })
       : theater.createEntry({
           content: preview.content,
-          generationReplay: preview.replay,
+          generationRecord:
+            preview.generationRecord ||
+            (preview.replay ? createHiddenGenerationRecord('generate', preview.replay) : undefined),
           participants: [],
           renderMode: preview.renderMode,
           title: preview.title,
@@ -1625,6 +1636,7 @@ function reparseFailedDraft() {
       label: failedDraft.source.label,
     },
     title: parsed.data.title,
+    generationRecord: failedDraft.generationRecord,
     targetEntryId: typeof failedDraft.context.entryId === 'string' ? failedDraft.context.entryId : '',
     targetVersionId: '',
     typeId: typeof failedDraft.context.typeId === 'string' ? failedDraft.context.typeId : undefined,

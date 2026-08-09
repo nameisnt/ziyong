@@ -32,20 +32,26 @@
         >
           {{ showDraftEditor ? t`收起正文` : t`查看正文` }}
         </button>
-        <button v-if="hits.length" class="pc-soft-btn accent" type="button" :disabled="writing" @click="applyAll">
+        <button v-if="groups.length" class="pc-soft-btn accent" type="button" :disabled="writing" @click="applyAll">
           {{ t`全部应用` }}
         </button>
         <button
-          v-if="visibleHits.length && visibleHits.length < hits.length"
+          v-if="visibleGroups.length && visibleGroups.length < groups.length"
           class="pc-soft-btn accent-soft"
           type="button"
           :disabled="writing"
           @click="applyVisible"
         >
-          {{ `应用可见 ${visibleHits.length}` }}
+          {{ `应用可见 ${visibleGroups.length} 句` }}
         </button>
-        <button v-if="selectedHits.length" class="pc-soft-btn" type="button" :disabled="writing" @click="applySelected">
-          {{ `应用选中 ${selectedHits.length}` }}
+        <button
+          v-if="selectedGroups.length"
+          class="pc-soft-btn"
+          type="button"
+          :disabled="writing"
+          @click="applySelected"
+        >
+          {{ `应用选中 ${selectedGroups.length} 句` }}
         </button>
       </div>
     </div>
@@ -94,47 +100,71 @@
       {{ emptyMessage }}
     </div>
 
-    <div v-else-if="hits.length" class="pc-bagu-hit-list">
+    <div v-else-if="groups.length" class="pc-bagu-hit-list">
       <div class="pc-bagu-select-row">
-        <span>{{ `可见 ${visibleHits.length} / ${hits.length}` }}</span>
-        <button class="pc-mini-btn" type="button" :disabled="!visibleHits.length" @click="toggleVisible(true)">
+        <span>{{ `可见 ${visibleGroups.length} / ${groups.length} 句 · 共 ${hits.length} 处` }}</span>
+        <button class="pc-mini-btn" type="button" :disabled="!visibleGroups.length" @click="toggleVisible(true)">
           {{ t`选可见` }}
         </button>
-        <button class="pc-mini-btn" type="button" :disabled="!visibleHits.length" @click="toggleVisible(false)">
+        <button class="pc-mini-btn" type="button" :disabled="!visibleGroups.length" @click="toggleVisible(false)">
           {{ t`取消可见` }}
         </button>
       </div>
 
-      <div v-if="!visibleHits.length" class="pc-bagu-empty compact">
+      <div v-if="!visibleGroups.length" class="pc-bagu-empty compact">
         {{ t`当前筛选没有匹配命中。` }}
       </div>
 
-      <article v-for="hit in visibleHits" :key="hit.id" class="pc-bagu-hit-card">
+      <article v-for="group in visibleGroups" :key="group.id" class="pc-bagu-hit-card">
         <div class="pc-bagu-hit-head">
           <label class="pc-check">
-            <input v-model="hit.selected" type="checkbox" />
+            <input v-model="group.selected" type="checkbox" />
             <span></span>
           </label>
-          <span class="pc-type-pill" :data-type="hit.type">{{
-            hit.type === 'replacement' ? t`词汇替换` : t`句式模板`
-          }}</span>
-          <strong>{{ hit.ruleTitle }}</strong>
-          <small>{{ hit.ruleLabel }}</small>
+          <strong>{{ `本句命中 ${group.hits.length} 处` }}</strong>
+          <small>{{ groupTypeLabel(group) }}</small>
         </div>
         <p class="pc-bagu-context">
-          <span>{{ hit.preContext }}</span>
-          <mark>{{ hit.match }}</mark>
-          <span>{{ hit.postContext }}</span>
+          <template v-for="(segment, index) in sentenceSegments(group)" :key="`${group.id}-${index}`">
+            <mark v-if="segment.highlighted">{{ segment.text }}</mark>
+            <span v-else>{{ segment.text }}</span>
+          </template>
         </p>
+        <div class="pc-bagu-match-list">
+          <div v-for="hit in group.hits" :key="hit.id" class="pc-bagu-match-row">
+            <label class="pc-bagu-match-toggle">
+              <input
+                type="checkbox"
+                :checked="group.includedHitIds.includes(hit.id)"
+                @change="toggleGroupHit(group, hit.id, ($event.target as HTMLInputElement).checked)"
+              />
+              <span class="pc-type-pill" :data-type="hit.type">{{
+                hit.type === 'replacement' ? t`词汇` : t`句式`
+              }}</span>
+              <span class="pc-bagu-match-change">
+                <strong>{{ hit.match }}</strong>
+                <i class="fa-solid fa-arrow-right"></i>
+                <em>{{ hit.replacement || t`删除` }}</em>
+              </span>
+            </label>
+            <button
+              class="pc-icon-btn pc-bagu-disable-btn"
+              type="button"
+              :title="t`停用该规则`"
+              :aria-label="t`停用该规则`"
+              :disabled="writing"
+              @click="disableHitRule(hit)"
+            >
+              <i class="fa-solid fa-ban"></i>
+            </button>
+          </div>
+        </div>
         <label class="pc-bagu-edit">
-          <span>{{ t`替换为整句` }}</span>
-          <textarea v-model="hit.replacement" rows="2" @input="hit.selected = true"></textarea>
+          <span>{{ t`修改后` }}</span>
+          <textarea v-model="group.replacement" rows="3" @input="group.selected = true"></textarea>
         </label>
-        <button class="pc-mini-btn hit-apply" type="button" :disabled="writing" @click="applyOne(hit)">
-          {{ t`应用这条` }}
-        </button>
-        <button class="pc-mini-btn hit-disable" type="button" :disabled="writing" @click="disableHitRule(hit)">
-          {{ t`停用此规则` }}
+        <button class="pc-mini-btn hit-apply" type="button" :disabled="writing" @click="applyOne(group)">
+          {{ t`应用本句` }}
         </button>
       </article>
     </div>
@@ -144,7 +174,14 @@
 <script setup lang="ts">
 import { useBaguStore, type BaguRule } from '@/store/bagu';
 import { usePhoneStore } from '@/store/phone';
-import { applyBaguHits, type BaguHit, scanTextWithBaguRules } from '@/util/bagu';
+import {
+  applyBaguSentenceEdits,
+  buildBaguSentenceReplacement,
+  type BaguHit,
+  type BaguSentenceGroup,
+  groupBaguHitsBySentence,
+  scanTextWithBaguRules,
+} from '@/util/bagu';
 import { storeToRefs } from 'pinia';
 
 const props = defineProps<{
@@ -163,10 +200,15 @@ const phone = usePhoneStore();
 const { enabledRules } = storeToRefs(bagu);
 
 type HitFilter = 'all' | 'replacement' | 'selected' | 'template';
+type BaguSentenceDraft = BaguSentenceGroup & {
+  includedHitIds: string[];
+  replacement: string;
+  selected: boolean;
+};
 
 const hasScanned = ref(false);
 const draftContent = ref(props.content);
-const hits = ref<BaguHit[]>([]);
+const groups = ref<BaguSentenceDraft[]>([]);
 const hitQuery = ref('');
 const hitFilter = ref<HitFilter>('all');
 const showDraftEditor = ref(false);
@@ -186,16 +228,30 @@ const effectiveRuleTypes = computed(() =>
 const scanRules = computed(() => {
   return enabledRules.value.filter(rule => effectiveRuleTypes.value.includes(rule.type));
 });
-const selectedHits = computed(() => hits.value.filter(hit => hit.selected));
+const hits = computed(() => groups.value.flatMap(group => group.hits));
+const selectedGroups = computed(() => groups.value.filter(group => group.selected));
 const normalizedHitQuery = computed(() => hitQuery.value.trim().toLowerCase());
-const visibleHits = computed(() =>
-  hits.value.filter(hit => {
-    if (hitFilter.value === 'selected' && !hit.selected) return false;
-    if ((hitFilter.value === 'replacement' || hitFilter.value === 'template') && hit.type !== hitFilter.value)
+const visibleGroups = computed(() =>
+  groups.value.filter(group => {
+    if (hitFilter.value === 'selected' && !group.selected) return false;
+    if (
+      (hitFilter.value === 'replacement' || hitFilter.value === 'template') &&
+      !group.hits.some(hit => hit.type === hitFilter.value)
+    )
       return false;
     const query = normalizedHitQuery.value;
     if (!query) return true;
-    return [hit.match, hit.originalText, hit.replacement, hit.ruleLabel, hit.ruleTitle, hit.preContext, hit.postContext]
+    return [
+      group.originalText,
+      group.replacement,
+      ...group.hits.flatMap(hit => [
+        hit.match,
+        hit.originalText,
+        hit.replacement,
+        hit.ruleLabel,
+        hit.ruleTitle,
+      ]),
+    ]
       .join(' ')
       .toLowerCase()
       .includes(query);
@@ -217,20 +273,67 @@ watch(
   () => {
     if (!props.autoScan && !hasScanned.value) return;
     hasScanned.value = true;
-    hits.value = scanTextWithBaguRules(draftContent.value, scanRules.value);
+    scanDraft();
   },
   { deep: true, immediate: true },
 );
 
+function scanDraft() {
+  const nextHits = scanTextWithBaguRules(draftContent.value, scanRules.value);
+  groups.value = groupBaguHitsBySentence(draftContent.value, nextHits).map(group => ({
+    ...group,
+    includedHitIds: group.hits.map(hit => hit.id),
+    replacement: buildBaguSentenceReplacement(group),
+    selected: false,
+  }));
+}
+
 function runScan() {
   hasScanned.value = true;
-  hits.value = scanTextWithBaguRules(draftContent.value, scanRules.value);
+  scanDraft();
 }
 
 function toggleVisible(selected: boolean) {
-  visibleHits.value.forEach(hit => {
-    hit.selected = selected;
+  visibleGroups.value.forEach(group => {
+    group.selected = selected;
   });
+}
+
+function toggleGroupHit(group: BaguSentenceDraft, hitId: string, included: boolean) {
+  group.includedHitIds = included
+    ? [...new Set([...group.includedHitIds, hitId])]
+    : group.includedHitIds.filter(id => id !== hitId);
+  group.replacement = buildBaguSentenceReplacement(
+    group,
+    group.hits.filter(hit => group.includedHitIds.includes(hit.id)),
+  );
+  group.selected = true;
+}
+
+function groupTypeLabel(group: BaguSentenceDraft) {
+  const hasReplacement = group.hits.some(hit => hit.type === 'replacement');
+  const hasTemplate = group.hits.some(hit => hit.type === 'template');
+  if (hasReplacement && hasTemplate) return '词汇与句式';
+  return hasTemplate ? '句式' : '词汇';
+}
+
+function sentenceSegments(group: BaguSentenceDraft) {
+  const segments: Array<{ highlighted: boolean; text: string }> = [];
+  let cursor = group.start;
+  [...group.hits]
+    .sort((left, right) => left.start - right.start || right.end - left.end)
+    .forEach(hit => {
+      if (hit.start < cursor) return;
+      if (hit.start > cursor) {
+        segments.push({ highlighted: false, text: draftContent.value.slice(cursor, hit.start) });
+      }
+      segments.push({ highlighted: true, text: draftContent.value.slice(hit.start, hit.end) });
+      cursor = hit.end;
+    });
+  if (cursor < group.end) {
+    segments.push({ highlighted: false, text: draftContent.value.slice(cursor, group.end) });
+  }
+  return segments;
 }
 
 async function commitContent(nextContent: string, successMessage: string, recordUndo = true) {
@@ -249,7 +352,7 @@ async function commitContent(nextContent: string, successMessage: string, record
     }
 
     draftContent.value = nextContent;
-    hits.value = scanTextWithBaguRules(nextContent, scanRules.value);
+    scanDraft();
     lastAppliedContent.value = recordUndo ? previousContent : null;
     phone.noticeSuccess(successMessage);
     return true;
@@ -261,8 +364,16 @@ async function commitContent(nextContent: string, successMessage: string, record
   }
 }
 
-async function applyHits(targetHits: BaguHit[]) {
-  const result = applyBaguHits(draftContent.value, targetHits);
+async function applyGroups(targetGroups: BaguSentenceDraft[]) {
+  const result = applyBaguSentenceEdits(
+    draftContent.value,
+    targetGroups.map(group => ({
+      end: group.end,
+      originalText: group.originalText,
+      replacement: group.replacement,
+      start: group.start,
+    })),
+  );
   if (!result.appliedCount) {
     phone.noticeWarning('没有可应用的改正，正文可能已经变化');
     return;
@@ -270,24 +381,24 @@ async function applyHits(targetHits: BaguHit[]) {
 
   await commitContent(
     result.text,
-    writebackEnabled.value ? `已应用并写回 ${result.appliedCount} 处改正` : `已应用 ${result.appliedCount} 处改正`,
+    writebackEnabled.value ? `已应用并写回 ${result.appliedCount} 句改正` : `已应用 ${result.appliedCount} 句改正`,
   );
 }
 
 function applyAll() {
-  applyHits(hits.value);
+  applyGroups(groups.value);
 }
 
 function applyVisible() {
-  applyHits(visibleHits.value);
+  applyGroups(visibleGroups.value);
 }
 
 function applySelected() {
-  applyHits(selectedHits.value);
+  applyGroups(selectedGroups.value);
 }
 
-function applyOne(hit: BaguHit) {
-  applyHits([hit]);
+function applyOne(group: BaguSentenceDraft) {
+  applyGroups([group]);
 }
 
 async function applyEditedDraft() {
@@ -306,7 +417,7 @@ async function undoLastApply() {
 
 function resetDraft() {
   draftContent.value = props.content;
-  hits.value = scanTextWithBaguRules(draftContent.value, scanRules.value);
+  scanDraft();
   phone.noticeSuccess('已撤销检测草稿');
 }
 
@@ -623,6 +734,67 @@ onScopeDispose(stopNavigationGuard);
   color: var(--pc-text);
 }
 
+.pc-bagu-match-list {
+  display: grid;
+  gap: 7px;
+  margin-top: 10px;
+}
+
+.pc-bagu-match-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 6px;
+  border: 1px solid var(--pc-border);
+  border-radius: 12px;
+  background: var(--pc-surface-strong);
+  padding: 7px 8px;
+}
+
+.pc-bagu-match-toggle {
+  display: grid;
+  grid-template-columns: auto auto minmax(0, 1fr);
+  align-items: center;
+  gap: 7px;
+  min-width: 0;
+  cursor: pointer;
+}
+
+.pc-bagu-match-toggle input {
+  width: 15px;
+  height: 15px;
+  margin: 0;
+  accent-color: var(--pc-theme-accent);
+}
+
+.pc-bagu-match-change {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  font-size: 12px;
+}
+
+.pc-bagu-match-change :is(strong, em) {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.pc-bagu-match-change strong {
+  color: var(--pc-text);
+}
+
+.pc-bagu-match-change em,
+.pc-bagu-match-change i {
+  color: var(--pc-muted);
+  font-style: normal;
+}
+
+.pc-bagu-match-change i {
+  flex: 0 0 auto;
+  font-size: 10px;
+}
+
 .pc-bagu-edit {
   display: grid;
   gap: 6px;
@@ -649,9 +821,9 @@ onScopeDispose(stopNavigationGuard);
   margin-top: 10px;
 }
 
-.hit-disable {
-  margin-top: 10px;
-  margin-left: 6px;
+.pc-bagu-disable-btn {
+  width: 32px;
+  height: 32px;
   color: #c44c3e;
 }
 </style>

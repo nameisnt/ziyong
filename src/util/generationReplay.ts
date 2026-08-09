@@ -65,7 +65,14 @@ export function restoreGenerationReplayDraft(replay: GenerationReplaySnapshot, d
     'singleMessageId',
     sourceMode === 'single' ? (replay.source.messageIds[0] ?? draft.singleMessageId) : draft.singleMessageId,
   );
-  draft.userRequirement = replay.request.userRequirement || '';
+  const replayRequirement = replay.request.userRequirement;
+  const legacyRequirement = replay.config.userRequirement;
+  draft.userRequirement =
+    typeof replayRequirement === 'string'
+      ? replayRequirement
+      : typeof legacyRequirement === 'string'
+        ? legacyRequirement
+        : '';
 
   return sourceMode as GenerationSourceMode;
 }

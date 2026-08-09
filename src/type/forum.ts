@@ -1,4 +1,9 @@
-import { FailedGenerationDraftSchema, GenerationReplaySnapshotSchema, SourceSelectionSchema } from '@/type/generation';
+import {
+  FailedGenerationDraftSchema,
+  GenerationReplaySnapshotSchema,
+  HiddenGenerationRecordSchema,
+  SourceSelectionSchema,
+} from '@/type/generation';
 import { ContentVersionBaseSchema } from '@/type/contentVersion';
 
 export const ForumReplySchema = z.object({
@@ -14,6 +19,7 @@ export type ForumReply = z.infer<typeof ForumReplySchema>;
 
 const ForumThreadVersionPersistedSchema = ContentVersionBaseSchema.extend({
   author: z.string(),
+  generationRecord: HiddenGenerationRecordSchema.optional(),
   generationReplay: GenerationReplaySnapshotSchema.optional(),
   replies: z.array(ForumReplySchema).optional(),
 });
@@ -31,6 +37,7 @@ const ForumThreadPersistedSchema = z.object({
   favorite: z.boolean().default(false),
   replies: z.array(ForumReplySchema).default([]),
   activeVersionId: z.string().default(''),
+  generationRecord: HiddenGenerationRecordSchema.optional(),
   generationReplay: GenerationReplaySnapshotSchema.optional(),
   versions: z.array(ForumThreadVersionPersistedSchema).default([]),
   createdAt: z.string(),
