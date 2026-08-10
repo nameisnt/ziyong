@@ -487,10 +487,7 @@ const characterById = computed(() => new Map(characters.value.map(character => [
 const characterOptions = computed(() =>
   characters.value.map(character => ({ label: character.name, value: character.id })),
 );
-const characterFilterOptions = computed(() => [
-  { label: '全部人物', value: '' },
-  ...characterOptions.value,
-]);
+const characterFilterOptions = computed(() => [{ label: '全部人物', value: '' }, ...characterOptions.value]);
 const activeFailedDraft = computed(() =>
   route.value.params?.draftId ? relationship.getFailedDraft(route.value.params.draftId) : null,
 );
