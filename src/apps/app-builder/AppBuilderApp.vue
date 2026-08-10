@@ -383,7 +383,7 @@ function exportApp(appId: string) {
         appPrompt: prompts.appPrompts[appId] ?? definition.generation.defaultAppPrompt,
         taskTemplate: prompts.taskTemplates[`${appId}.generate`] ?? definition.generation.defaultTaskTemplate,
       },
-      regexRules: regexDisplay.rules.filter(rule => rule.targetId === appId),
+      regexRules: regexDisplay.rules.filter(rule => rule.targetIds.includes(appId)),
       content: customApps.getEntries(appId),
     },
     null,
@@ -430,6 +430,7 @@ async function importApp(event: Event) {
         pattern: typeof source.pattern === 'string' ? source.pattern : '',
         replacement: typeof source.replacement === 'string' ? source.replacement : '',
         targetId: saved.id,
+        targetIds: [saved.id],
       });
     });
     raw.content?.forEach(item => {

@@ -456,6 +456,7 @@ const scenarios: VisualScenarioName[] = [
   'custom-app-conversion',
   'custom-app-conversion-complete',
   'custom-app-conversion-merge',
+  'custom-app-extract-rules',
   'custom-app-save-flow',
   'content-converter-source',
   'content-converter-target',
@@ -1001,6 +1002,127 @@ async function applyScenario(name: VisualScenarioName, options: { height?: numbe
 
   if (name === 'home') {
     await phone.goHome();
+  } else if (name === 'custom-app-extract-rules') {
+    const {
+      CustomAppDefinitionsSettingsSchema,
+      customAppDefinitionsField,
+    } = await import('@/apps/app-builder/schema');
+    const { useCustomAppsStore } = await import('@/apps/app-builder/store');
+    const {
+      createRegexDisplayRule,
+      RegexDisplaySettingsSchema,
+      regexDisplayField,
+      useRegexDisplayStore,
+    } = await import('@/apps/regex-display/store');
+    const timestamp = '2026-08-10T08:00:00.000Z';
+    const appId = 'custom-visual-extract';
+    _.set(
+      extension_settings,
+      customAppDefinitionsField,
+      CustomAppDefinitionsSettingsSchema.parse({
+        definitions: [
+          {
+            id: appId,
+            name: '聊天片段提取',
+            icon: 'fa-highlighter',
+            description: '验证自制 App 独立提取规则',
+            dataScope: 'global',
+            creation: { manual: true, extract: true, generate: false },
+            naming: { mode: 'first-line', template: '{{appName}} {{index}}' },
+            extraction: { saveMode: 'separate' },
+            display: { mode: 'markdown', sortDesc: false },
+            referenceEnabled: true,
+            createdAt: timestamp,
+            updatedAt: timestamp,
+          },
+        ],
+      }),
+    );
+    _.set(
+      extension_settings,
+      regexDisplayField,
+      RegexDisplaySettingsSchema.parse({
+        rules: [
+          createRegexDisplayRule({
+            id: 'visual-custom-content',
+            name: '自制 App 正文',
+            field: 'content',
+            operation: 'extract',
+            order: 0,
+            pattern: '/^[\\s\\S]*?<custom-body>([\\s\\S]*?)<\\/custom-body>[\\s\\S]*$/i',
+            replacement: '$1',
+            targetIds: [appId],
+          }),
+          createRegexDisplayRule({
+            id: 'visual-custom-title',
+            name: '自制 App 标题',
+            field: 'title',
+            operation: 'extract',
+            order: 1,
+            pattern: '/^[\\s\\S]*?<custom-title>([\\s\\S]*?)<\\/custom-title>[\\s\\S]*$/i',
+            replacement: '$1',
+            targetIds: [appId],
+          }),
+          createRegexDisplayRule({
+            id: 'visual-reader-conflict',
+            name: '不应应用的阅读器规则',
+            field: 'content',
+            operation: 'extract',
+            order: 2,
+            pattern: '/^[\\s\\S]+$/',
+            replacement: '错误的阅读器结果',
+            targetIds: ['reader'],
+          }),
+        ],
+      }),
+    );
+    useCustomAppsStore().rehydrateFromSettings();
+    useRegexDisplayStore().rehydrateFromSettings();
+
+    const visualGlobal = globalThis as unknown as {
+      SillyTavern: { chat: Array<Record<string, unknown>> };
+    };
+    const chat = visualGlobal.SillyTavern.chat;
+    const originalLength = chat.length;
+    chat.push(
+      {
+        is_user: false,
+        mes: '<custom-title>可见标题</custom-title><custom-body>可见 AI 正文</custom-body>',
+        name: 'Assistant',
+      },
+      {
+        is_system: true,
+        is_user: false,
+        mes: '<custom-title>隐藏标题</custom-title><custom-body>隐藏 AI 正文</custom-body>',
+        name: 'Assistant',
+      },
+      {
+        is_user: true,
+        mes: '<custom-title>用户标题</custom-title><custom-body>用户正文</custom-body>',
+        name: 'User',
+      },
+    );
+
+    resetPhoneToRoute(appId, 'extract', '提取内容');
+    await waitForPaint();
+    const previewButton = [...document.querySelectorAll<HTMLButtonElement>('button')].find(button =>
+      button.textContent?.includes('预览提取'),
+    );
+    if (!previewButton) throw new Error('Custom app extract preview button was not rendered');
+    previewButton.click();
+    await waitForPaint();
+    chat.splice(originalLength);
+
+    const previewText = document.querySelector<HTMLElement>('.pc-extract-preview-list')?.textContent || '';
+    if (!previewText.includes('待保存 2 / 2')) {
+      throw new Error(`Custom app extraction did not retain both AI floors: ${previewText}`);
+    }
+    for (const expected of ['可见标题', '可见 AI 正文', '隐藏标题', '隐藏 AI 正文']) {
+      if (!previewText.includes(expected)) throw new Error(`Custom app extraction missed ${expected}`);
+    }
+    for (const unexpected of ['用户标题', '用户正文', '错误的阅读器结果']) {
+      if (previewText.includes(unexpected)) throw new Error(`Custom app extraction leaked ${unexpected}`);
+    }
   } else if (name === 'custom-app-save-flow') {
     const { useCustomAppsStore } = await import('@/apps/app-builder/store');
     const { getRegisteredPhoneAppComponent } = await import('@/core/appRegistry');

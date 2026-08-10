@@ -34,10 +34,18 @@ export function getRegexTargets() {
 
 registerRegexTarget({
   appId: 'reader',
-  fields: ['content'],
+  fields: ['title', 'content'],
   id: 'reader',
   label: '阅读聊天',
   operations: ['extract', 'replace'],
+});
+
+registerRegexTarget({
+  appId: 'summary',
+  fields: ['content'],
+  id: 'summary',
+  label: '总结',
+  operations: ['extract'],
 });
 
 registerRegexTarget({

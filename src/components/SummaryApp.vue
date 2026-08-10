@@ -521,10 +521,11 @@ import {
 import { useSettingsStore } from '@/store/settings';
 import { useSummaryStore } from '@/store/summary';
 import type { FailedGenerationDraft } from '@/type/generation';
-import { regexDisplayReaderTarget, useRegexDisplayStore } from '@/apps/regex-display/store';
+import { regexDisplaySummaryTarget, useRegexDisplayStore } from '@/apps/regex-display/store';
 import { canOpenBaguScan } from '@/util/baguScanGate';
 import { useDetailScroll } from '@/util/detailScroll';
 import { transformReaderMessages } from '@/util/readerRegex';
+import { getRegexRulesForTarget } from '@/util/regexDisplay';
 import { formatGenerationReferences, type GenerationReferenceItem } from '@/util/references';
 import { usePreviewDraftPersistence } from '@/util/previewDrafts';
 import { useInvalidRouteFallback } from '@/util/routeFallback';
@@ -691,9 +692,7 @@ const activeFailedDraft = computed(() => {
   return draftId ? summary.getFailedDraft(draftId) : null;
 });
 const summaryImportRules = computed(() =>
-  regexDisplayRules.value.filter(
-    rule => rule.enabled && rule.pattern.trim() && rule.targets.includes(regexDisplayReaderTarget),
-  ),
+  getRegexRulesForTarget(regexDisplayRules.value, regexDisplaySummaryTarget, 'content', 'extract'),
 );
 const allSummaryImportsSelected = computed(
   () =>

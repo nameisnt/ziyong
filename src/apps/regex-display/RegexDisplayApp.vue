@@ -28,21 +28,6 @@
           <input v-model="activeRule.name" class="pc-field" type="text" :placeholder="t`例如：资料表头像卡片`" />
         </div>
 
-        <div class="pc-inline-grid two-cols">
-          <div class="pc-select-field">
-            <label class="pc-field-label">{{ t`目标 App` }}</label>
-            <SearchableCombobox
-              v-model="activeRule.targetId"
-              :options="targetOptions"
-              :placeholder="t`选择或搜索 App`"
-            />
-          </div>
-          <div class="pc-select-field">
-            <label class="pc-field-label">{{ t`作用字段` }}</label>
-            <SearchableCombobox v-model="activeRule.field" :options="fieldOptions" :placeholder="t`选择字段`" />
-          </div>
-        </div>
-
         <div class="pc-select-field">
           <label class="pc-field-label">
             {{ t`处理方式` }}
@@ -58,7 +43,6 @@
               :key="operation.value"
               :class="['pc-segment-btn', { active: activeRule.operation === operation.value }]"
               type="button"
-              :disabled="!activeTarget?.operations.includes(operation.value)"
               @click="activeRule.operation = operation.value"
             >
               {{ operation.label }}
@@ -66,8 +50,32 @@
           </div>
         </div>
 
+        <div class="pc-select-field">
+          <label class="pc-field-label">{{ t`作用字段` }}</label>
+          <SearchableCombobox v-model="activeRule.field" :options="fieldOptions" :placeholder="t`选择字段`" />
+        </div>
+
+        <div class="pc-select-field">
+          <label class="pc-field-label">
+            {{ `应用 App（${activeRule.targetIds.length}）` }}
+            <InfoHint :text="t`同一条规则可以同时用于多个 App；这里只显示支持当前处理方式和字段的 App。`" />
+          </label>
+          <input v-model="targetQuery" class="pc-field" type="search" :placeholder="t`搜索 App`" />
+          <div class="pc-regex-target-list">
+            <label v-for="target in filteredCompatibleTargets" :key="target.id" class="pc-regex-target-option">
+              <input
+                type="checkbox"
+                :checked="activeRule.targetIds.includes(target.id)"
+                @change="toggleRuleTarget(target.id, ($event.target as HTMLInputElement).checked)"
+              />
+              <span>{{ target.label }}</span>
+            </label>
+            <p v-if="!filteredCompatibleTargets.length">{{ t`没有符合当前处理方式和字段的 App` }}</p>
+          </div>
+        </div>
+
         <div class="pc-inline-grid two-cols">
-          <div v-if="!activeRule.targetId.startsWith('custom-')" class="pc-select-field">
+          <div class="pc-select-field">
             <label class="pc-field-label">{{ t`输出显示` }}</label>
             <SearchableCombobox
               v-model="activeRule.renderMode"
@@ -107,15 +115,23 @@
 
         <div class="pc-action-grid">
           <div class="pc-rule-order-actions">
+            <span>{{ `优先级 ${activeRuleIndex + 1} / ${rules.length}` }}</span>
             <button
               class="pc-icon-btn"
               type="button"
-              :title="t`上移`"
+              :disabled="activeRuleIndex <= 0"
+              :title="t`提高优先级`"
               @click="regexDisplay.moveRule(activeRule.id, -1)"
             >
               <i class="fa-solid fa-arrow-up"></i>
             </button>
-            <button class="pc-icon-btn" type="button" :title="t`下移`" @click="regexDisplay.moveRule(activeRule.id, 1)">
+            <button
+              class="pc-icon-btn"
+              type="button"
+              :disabled="activeRuleIndex < 0 || activeRuleIndex >= rules.length - 1"
+              :title="t`降低优先级`"
+              @click="regexDisplay.moveRule(activeRule.id, 1)"
+            >
               <i class="fa-solid fa-arrow-down"></i>
             </button>
           </div>
@@ -184,30 +200,22 @@ import { usePhoneStore } from '@/store/phone';
 import { useSettingsStore } from '@/store/settings';
 import { applyRegexDisplayRules, extractWithRegexRules, getRegexRulesForTarget } from '@/util/regexDisplay';
 import { storeToRefs } from 'pinia';
-import {
-  defaultReaderBodyRegexDisplayRuleId,
-  regexDisplayProfilesTarget,
-  regexDisplayReaderCleanupTarget,
-  regexDisplayReaderTarget,
-  useRegexDisplayStore,
-} from './store';
+import { defaultReaderBodyRegexDisplayRuleId, useRegexDisplayStore } from './store';
 
 const regexDisplay = useRegexDisplayStore();
 const phone = usePhoneStore();
 const settingsStore = useSettingsStore();
 const { rules, settings } = storeToRefs(regexDisplay);
 const activeRuleId = ref('');
+const targetQuery = ref('');
 
 const activeRule = computed(() => rules.value.find(rule => rule.id === activeRuleId.value) ?? rules.value[0] ?? null);
+const activeRuleIndex = computed(() => rules.value.findIndex(rule => rule.id === activeRule.value?.id));
 const regexTargets = computed(() => getRegexTargets());
-const activeTarget = computed(
-  () => regexTargets.value.find(target => target.id === activeRule.value?.targetId) ?? null,
-);
-const targetOptions = computed(() => regexTargets.value.map(target => ({ label: target.label, value: target.id })));
 const ruleOptions = computed(() =>
-  rules.value.map(rule => ({
-    group: regexTargets.value.find(target => target.id === rule.targetId)?.label || '其他',
-    label: rule.name || '未命名规则',
+  rules.value.map((rule, index) => ({
+    group: `${rule.targetIds.length} 个 App`,
+    label: `${String(index + 1).padStart(2, '0')} · ${rule.name || '未命名规则'}`,
     value: rule.id,
   })),
 );
@@ -215,19 +223,34 @@ const renderModeOptions = [
   { label: '文字', value: 'text' },
   { label: '网页', value: 'html' },
 ];
-const fieldOptions = computed(() =>
-  (activeTarget.value?.fields ?? ['content']).map(field => ({
-    label: field === 'title' ? '标题' : '正文',
-    value: field,
-  })),
-);
+const fieldOptions = [
+  { label: '正文', value: 'content' },
+  { label: '标题', value: 'title' },
+];
 const operationOptions: Array<{ label: string; value: RegexRuleOperation }> = [
   { label: '提取', value: 'extract' },
   { label: '替换', value: 'replace' },
 ];
+const compatibleTargets = computed(() => {
+  const rule = activeRule.value;
+  if (!rule) return [];
+  return regexTargets.value.filter(
+    target => target.operations.includes(rule.operation) && target.fields.includes(rule.field),
+  );
+});
+const filteredCompatibleTargets = computed(() => {
+  const normalizedQuery = targetQuery.value.trim().toLowerCase();
+  if (!normalizedQuery) return compatibleTargets.value;
+  return compatibleTargets.value.filter(target => `${target.label} ${target.id}`.toLowerCase().includes(normalizedQuery));
+});
 const previewRules = computed(() =>
-  activeRule.value
-    ? getRegexRulesForTarget(rules.value, activeRule.value.targetId, activeRule.value.field, activeRule.value.operation)
+  activeRule.value?.targetIds[0]
+    ? getRegexRulesForTarget(
+        rules.value,
+        activeRule.value.targetIds[0],
+        activeRule.value.field,
+        activeRule.value.operation,
+      )
     : [],
 );
 const previewResult = computed(() =>
@@ -236,10 +259,10 @@ const previewResult = computed(() =>
     : applyRegexDisplayRules(settings.value.previewInput, previewRules.value),
 );
 const readerExtractRuleCount = computed(
-  () => rules.value.filter(rule => rule.targetId === 'reader' && rule.operation === 'extract').length,
+  () => rules.value.filter(rule => rule.targetIds.includes('reader') && rule.operation === 'extract').length,
 );
 const readerCleanupRuleCount = computed(
-  () => rules.value.filter(rule => rule.targetId === 'reader' && rule.operation === 'replace').length,
+  () => rules.value.filter(rule => rule.targetIds.includes('reader') && rule.operation === 'replace').length,
 );
 const previewSummary = computed(() => {
   if (previewResult.value.errors.length) return `有 ${previewResult.value.errors.length} 条规则报错`;
@@ -266,7 +289,9 @@ watch(
   ([appId, targetId, operation]) => {
     if (appId !== 'regex-display' || !targetId) return;
     const normalizedOperation = operation === 'extract' ? 'extract' : 'replace';
-    const existing = rules.value.find(rule => rule.targetId === targetId && rule.operation === normalizedOperation);
+    const existing = rules.value.find(
+      rule => rule.targetIds.includes(targetId) && rule.operation === normalizedOperation,
+    );
     if (existing) {
       activeRuleId.value = existing.id;
       return;
@@ -277,6 +302,7 @@ watch(
       name: `${target?.label || '目标 App'}${normalizedOperation === 'extract' ? '提取' : '替换'}`,
       operation: normalizedOperation,
       targetId,
+      targetIds: [targetId],
     });
     activeRuleId.value = rule.id;
   },
@@ -284,20 +310,13 @@ watch(
 );
 
 watch(
-  () => [activeRule.value?.targetId, activeRule.value?.operation, activeRule.value?.field] as const,
+  () => [activeRule.value?.operation, activeRule.value?.field] as const,
   () => {
     const rule = activeRule.value;
     if (!rule) return;
-    const target = activeTarget.value;
-    if (target && !target.fields.includes(rule.field)) rule.field = target.fields[0] ?? 'content';
-    if (target && !target.operations.includes(rule.operation)) rule.operation = target.operations[0] ?? 'replace';
-    if (rule.targetId === 'reader') {
-      rule.targets = [rule.operation === 'extract' ? regexDisplayReaderTarget : regexDisplayReaderCleanupTarget];
-    } else if (rule.targetId === 'profiles') {
-      rule.targets = [regexDisplayProfilesTarget];
-    } else {
-      rule.targets = [];
-    }
+    const compatibleIds = new Set(compatibleTargets.value.map(target => target.id));
+    rule.targetIds = rule.targetIds.filter(targetId => compatibleIds.has(targetId));
+    targetQuery.value = '';
   },
   { immediate: true },
 );
@@ -306,10 +325,18 @@ function addNewRule() {
   const firstTarget = regexTargets.value[0];
   const rule = regexDisplay.addRule({
     targetId: firstTarget?.id || 'reader',
+    targetIds: firstTarget ? [firstTarget.id] : ['reader'],
     field: firstTarget?.fields[0] || 'content',
     operation: firstTarget?.operations.includes('replace') ? 'replace' : firstTarget?.operations[0] || 'extract',
   });
   activeRuleId.value = rule.id;
+}
+
+function toggleRuleTarget(targetId: string, enabled: boolean) {
+  if (!activeRule.value) return;
+  activeRule.value.targetIds = enabled
+    ? [...new Set([...activeRule.value.targetIds, targetId])]
+    : activeRule.value.targetIds.filter(item => item !== targetId);
 }
 
 function duplicateActiveRule() {
@@ -433,7 +460,44 @@ async function deleteActiveRule() {
 .pc-rule-order-actions,
 .pc-regex-operation-segment {
   display: flex;
+  align-items: center;
   gap: 8px;
+}
+
+.pc-rule-order-actions > span {
+  color: var(--pc-muted);
+  font-size: 12px;
+  white-space: nowrap;
+}
+
+.pc-regex-target-list {
+  display: grid;
+  max-height: 220px;
+  margin-top: 8px;
+  overflow-y: auto;
+  border: 1px solid var(--pc-border);
+  background: var(--pc-surface-strong);
+}
+
+.pc-regex-target-option {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 42px;
+  padding: 8px 12px;
+}
+
+.pc-regex-target-option + .pc-regex-target-option {
+  border-top: 1px solid var(--pc-border);
+}
+
+.pc-regex-target-option input {
+  margin: 0;
+  accent-color: var(--pc-theme-accent);
+}
+
+.pc-regex-target-list p {
+  padding: 10px 12px;
 }
 
 .pc-regex-operation-segment .pc-segment-btn {

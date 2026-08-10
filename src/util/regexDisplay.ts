@@ -11,6 +11,11 @@ export interface RegexDisplayRuleLike {
   renderMode: RegexDisplayRenderMode;
   replacement: string;
   targetId?: string;
+  targetIds?: string[];
+}
+
+function getRuleTargetIds(rule: RegexDisplayRuleLike) {
+  return rule.targetIds?.length ? rule.targetIds : rule.targetId ? [rule.targetId] : [];
 }
 
 export function getRegexRulesForTarget(
@@ -24,7 +29,7 @@ export function getRegexRulesForTarget(
       rule =>
         rule.enabled !== false &&
         rule.pattern.trim() &&
-        rule.targetId === targetId &&
+        getRuleTargetIds(rule).includes(targetId) &&
         (rule.field ?? 'content') === field &&
         (rule.operation ?? 'replace') === operation,
     )

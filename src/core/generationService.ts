@@ -11,7 +11,7 @@ import type {
   GenerationReplaySnapshot,
   GenerationRequestParts,
 } from '@/type/generation';
-import { buildGenerationUserInput, buildPhoneUserInput } from '@/util/generation';
+import { buildGenerationChatTail, buildGenerationUserInput, buildPhoneUserInput } from '@/util/generation';
 import { applyGenerationAliases, replaceGenerationAliases } from '@/util/generationAliases';
 import { createHiddenGenerationRecord } from '@/util/hiddenGenerationRecord';
 import { buildSourceSelection, type SummaryGenerationSourceMode } from '@/util/generationSource';
@@ -164,16 +164,7 @@ function buildSelectedSourceReferences(
 
   if (!selectedMessages.length) return '';
 
-  return [
-    `本次生成指定来源：${selection.label}`,
-    '以下是本次生成需要重点参考的聊天楼层，请优先依据这些内容完成输出。',
-    '不要照抄原楼层，不要输出“第 X 楼”这类来源标记，也不要把原始聊天记录原封不动返回。',
-    ...selectedMessages.map(message => {
-      const speaker =
-        message.name?.trim() || (message.role === 'user' ? '用户' : message.role === 'assistant' ? 'AI' : '系统');
-      return `第 ${message.message_id} 楼 · ${speaker}：\n${message.message.trim()}`;
-    }),
-  ].join('\n\n');
+  return selectedMessages.map(message => message.message.trim()).filter(Boolean).join('\n\n');
 }
 
 function buildSelectedSourcePreview(
@@ -246,6 +237,8 @@ function waitForCaptureTurn(previousCapture: Promise<void>, signal?: AbortSignal
 async function captureWithPhoneUserInput(
   generateConfig: Record<string, unknown>,
   phoneUserInput: string,
+  userInput: string,
+  chatTail: string,
   signal?: AbortSignal,
 ) {
   let releaseQueue = () => {};
@@ -263,9 +256,10 @@ async function captureWithPhoneUserInput(
   try {
     signal?.throwIfAborted();
     macroRegistration = registerMacroLikeSafe(PHONE_USER_INPUT_MACRO_PATTERN, () => phoneUserInput);
-    return await captureTavernPromptPreview(generateConfig, 15000, signal, content =>
+    const captured = await captureTavernPromptPreview(generateConfig, 15000, signal, content =>
       content.replace(PHONE_USER_INPUT_MACRO_PATTERN, phoneUserInput),
     );
+    return injectChatTailIntoCapturedPrompt(captured, userInput, chatTail);
   } finally {
     macroRegistration?.stop();
     releaseQueue();
@@ -388,6 +382,7 @@ function prepareGenerationRequest<TConfig, TResult, TSaveResult = { entityId: st
       : '';
   const phoneUserInput = buildPhoneUserInput(request, formUserInput);
   const userInput = buildGenerationUserInput(request);
+  const chatTail = buildGenerationChatTail(request);
   const customApi = buildCustomApiConfig(textProvider);
   const presetName = resolveGenerationPresetName(options);
   const generateConfig = cleanGenerateConfig({
@@ -402,6 +397,7 @@ function prepareGenerationRequest<TConfig, TResult, TSaveResult = { entityId: st
 
   return {
     canUseVisibilityTransaction,
+    chatTail,
     generateConfig,
     parsedConfig,
     phoneUserInput,
@@ -435,6 +431,89 @@ type RawOrderedPrompt = {
   role: 'assistant' | 'system' | 'user';
 };
 
+type UserInputRange = {
+  end: number;
+  start: number;
+  wrapped: boolean;
+};
+
+function findCurrentUserInputRange(content: string, userInput: string): UserInputRange | null {
+  const normalizedUserInput = userInput.trim();
+  if (!normalizedUserInput) return null;
+
+  const inputIndex = content.lastIndexOf(normalizedUserInput);
+  if (inputIndex < 0) return null;
+
+  const openingIndex = content.lastIndexOf('<user_input', inputIndex);
+  const previousClosingIndex = content.lastIndexOf('</user_input>', inputIndex);
+  if (openingIndex >= 0 && openingIndex > previousClosingIndex) {
+    const openingEnd = content.indexOf('>', openingIndex);
+    const closingIndex = content.indexOf('</user_input>', inputIndex + normalizedUserInput.length);
+    if (openingEnd >= 0 && openingEnd < inputIndex && closingIndex >= 0) {
+      const lineStart = content.lastIndexOf('\n', openingIndex - 1) + 1;
+      const leadingLabel = content.slice(lineStart, openingIndex);
+      const start = leadingLabel.length <= 120 && !/[<>]/.test(leadingLabel) ? lineStart : openingIndex;
+      return {
+        end: closingIndex + '</user_input>'.length,
+        start,
+        wrapped: true,
+      };
+    }
+  }
+
+  return {
+    end: inputIndex + normalizedUserInput.length,
+    start: inputIndex,
+    wrapped: false,
+  };
+}
+
+function findCapturedUserInputTarget(
+  messages: Array<{ content: string }>,
+  userInput: string,
+): { messageIndex: number; range: UserInputRange } | null {
+  let fallback: { messageIndex: number; range: UserInputRange } | null = null;
+
+  for (let messageIndex = messages.length - 1; messageIndex >= 0; messageIndex -= 1) {
+    const range = findCurrentUserInputRange(messages[messageIndex]!.content, userInput);
+    if (!range) continue;
+    if (range.wrapped) return { messageIndex, range };
+    fallback ||= { messageIndex, range };
+  }
+
+  return fallback;
+}
+
+function insertContentBlock(content: string, index: number, block: string) {
+  const before = content.slice(0, index).trimEnd();
+  const after = content.slice(index).trimStart();
+  return [before, block.trim(), after].filter(Boolean).join('\n\n');
+}
+
+function injectChatTailIntoCapturedPrompt<
+  TCaptured extends {
+    messages: Array<{ content: string }>;
+  },
+>(captured: TCaptured, userInput: string, chatTail: string): TCaptured {
+  const normalizedChatTail = chatTail.trim();
+  if (!normalizedChatTail) return captured;
+
+  const target = findCapturedUserInputTarget(captured.messages, userInput);
+  if (!target) return captured;
+
+  return {
+    ...captured,
+    messages: captured.messages.map((message, messageIndex) =>
+      messageIndex === target.messageIndex
+        ? {
+            ...message,
+            content: insertContentBlock(message.content, target.range.start, normalizedChatTail),
+          }
+        : message,
+    ),
+  };
+}
+
 function normalizeRawPromptRole(role: string): 'assistant' | 'system' | 'user' {
   return role === 'system' || role === 'assistant' || role === 'user' ? role : 'user';
 }
@@ -454,42 +533,28 @@ function buildOrderedPromptsFromCapturedMessages(
     role: string;
   }>,
   userInput: string,
+  chatTail: string,
 ) {
   const prompts: RawOrderedPrompt[] = [];
   const normalizedUserInput = userInput.trim();
-  let insertedUserInput = false;
-  const userInputBlockPattern = /<user_input\b[^>]*>[\s\S]*?<\/user_input>/i;
+  const target = findCapturedUserInputTarget(messages, normalizedUserInput);
 
-  for (const message of messages) {
-    const content = message.content.trim();
-    if (!content) continue;
+  for (const [messageIndex, message] of messages.entries()) {
+    const content = message.content;
+    if (!content.trim()) continue;
 
-    const userInputBlock = content.match(userInputBlockPattern);
-    if (userInputBlock?.[0]) {
-      const userInputIndex = userInputBlock.index ?? content.indexOf(userInputBlock[0]);
-      pushRolePrompt(prompts, message.role, content.slice(0, userInputIndex));
-      pushRolePrompt(prompts, 'user', userInputBlock[0]);
-      insertedUserInput = true;
-      pushRolePrompt(prompts, message.role, content.slice(userInputIndex + userInputBlock[0].length));
+    if (target && messageIndex === target.messageIndex) {
+      pushRolePrompt(prompts, message.role, content.slice(0, target.range.start));
+      pushRolePrompt(prompts, 'user', content.slice(target.range.start, target.range.end));
+      pushRolePrompt(prompts, message.role, content.slice(target.range.end));
       continue;
-    }
-
-    if (normalizedUserInput) {
-      const userInputIndex = content.indexOf(normalizedUserInput);
-      if (userInputIndex >= 0) {
-        pushRolePrompt(prompts, message.role, content.slice(0, userInputIndex));
-        pushRolePrompt(prompts, 'user', normalizedUserInput);
-        insertedUserInput = true;
-        pushRolePrompt(prompts, message.role, content.slice(userInputIndex + normalizedUserInput.length));
-        continue;
-      }
     }
 
     pushRolePrompt(prompts, message.role, content);
   }
 
-  if (!insertedUserInput && normalizedUserInput) {
-    pushRolePrompt(prompts, 'user', normalizedUserInput);
+  if (!target && normalizedUserInput) {
+    pushRolePrompt(prompts, 'user', [chatTail.trim(), normalizedUserInput].filter(Boolean).join('\n\n'));
   }
 
   return prompts;
@@ -588,6 +653,7 @@ async function generateFromCapturedOrderedPrompts(
   textProvider: ResolvedTextProviderSettings,
   phoneUserInput: string,
   userInput: string,
+  chatTail: string,
   abortSignal: AbortSignal,
   onRawOutput?: (rawOutput: string) => void,
 ) {
@@ -599,10 +665,12 @@ async function generateFromCapturedOrderedPrompts(
       should_stream: false,
     },
     phoneUserInput,
+    userInput,
+    chatTail,
     abortSignal,
   );
   abortSignal.throwIfAborted();
-  const orderedPrompts = buildOrderedPromptsFromCapturedMessages(captured.messages, userInput);
+  const orderedPrompts = buildOrderedPromptsFromCapturedMessages(captured.messages, userInput, chatTail);
 
   if (!orderedPrompts.length) {
     throw new Error('捕获到的酒馆最终提示词为空，无法生成');
@@ -675,6 +743,7 @@ export async function generateContent<TConfig, TResult, TSaveResult = { entityId
             textProvider,
             prepared.phoneUserInput,
             prepared.userInput,
+            prepared.chatTail,
             abortController.signal,
             options.lifecycle?.onRawOutput,
           );
@@ -813,6 +882,7 @@ export function buildGenerationPreview<TConfig, TResult, TSaveResult = { entityI
   );
   appendPreviewSection(previewLines, '引用内容', options.references);
   appendPreviewSection(previewLines, 'App 上下文', prepared.request.context);
+  appendPreviewSection(previewLines, '聊天记录结尾内容', prepared.chatTail);
   appendPreviewSection(previewLines, '本次任务', prepared.request.taskInstruction);
   appendPreviewSection(previewLines, 'App 预设', prepared.request.appPrompt);
   appendPreviewSection(previewLines, '类型预设', prepared.request.typePrompt);
@@ -851,6 +921,8 @@ export async function captureGenerationPrompt<TConfig, TResult, TSaveResult = { 
         should_stream: false,
       },
       prepared.phoneUserInput,
+      prepared.userInput,
+      prepared.chatTail,
     );
 
   try {

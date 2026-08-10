@@ -85,8 +85,6 @@ function parseResultCandidates<T>(raw: string, parse: (candidateRaw: string) => 
 export function buildGenerationUserInput(parts: GenerationRequestParts) {
   const parsed = parsePrettified(GenerationRequestPartsSchema, parts);
   return [
-    normalizeSegment(parsed.context),
-    normalizeSegment(parsed.references),
     normalizeSegment(parsed.taskInstruction),
     normalizeSegment(parsed.appPrompt),
     normalizeSegment(parsed.typePrompt),
@@ -95,6 +93,11 @@ export function buildGenerationUserInput(parts: GenerationRequestParts) {
   ]
     .filter(Boolean)
     .join('\n\n');
+}
+
+export function buildGenerationChatTail(parts: GenerationRequestParts) {
+  const parsed = parsePrettified(GenerationRequestPartsSchema, parts);
+  return [normalizeSegment(parsed.context), normalizeSegment(parsed.references)].filter(Boolean).join('\n\n');
 }
 
 export function buildPhoneUserInput(parts: GenerationRequestParts, formUserInput: string) {

@@ -8,6 +8,7 @@ export const regexDisplayField = 'sillytavern_phone_regex_display';
 export const regexDisplayReaderTarget = 'reader';
 export const regexDisplayReaderCleanupTarget = 'reader-cleanup';
 export const regexDisplayProfilesTarget = 'profiles';
+export const regexDisplaySummaryTarget = 'summary';
 export const defaultReaderBodyRegexDisplayRuleId = 'regex_display_reader_body_default';
 
 export const RegexDisplayRuleSchema = z.object({
@@ -22,6 +23,7 @@ export const RegexDisplayRuleSchema = z.object({
   renderMode: z.enum(['text', 'html']).default('text'),
   replacement: z.string().default(''),
   targetId: z.string().default(''),
+  targetIds: z.array(z.string()).default([]),
   targets: z.array(z.string()).default([]),
 });
 export type RegexDisplayRule = z.infer<typeof RegexDisplayRuleSchema>;
@@ -36,15 +38,59 @@ function createRuleId() {
   return `regex_display_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
 }
 
+function asRecord(value: unknown) {
+  return value && typeof value === 'object' && !Array.isArray(value) ? (value as Record<string, unknown>) : null;
+}
+
+function stringList(value: unknown) {
+  return Array.isArray(value)
+    ? value.filter((item): item is string => typeof item === 'string' && Boolean(item.trim())).map(item => item.trim())
+    : [];
+}
+
+function migrateRuleTargetIds(rawRule: Record<string, unknown> | null, rule: RegexDisplayRule) {
+  if (Array.isArray(rawRule?.targetIds)) return [...new Set(stringList(rawRule.targetIds))];
+
+  const directTargetId = typeof rawRule?.targetId === 'string' ? rawRule.targetId.trim() : '';
+  const legacyTargets = stringList(rawRule?.targets);
+  const migrated = [directTargetId].filter(Boolean);
+  legacyTargets.forEach(target => {
+    if (target === regexDisplayReaderCleanupTarget || target === regexDisplayReaderTarget) {
+      migrated.push(regexDisplayReaderTarget);
+      if (target === regexDisplayReaderTarget && rule.operation === 'extract') {
+        migrated.push(regexDisplaySummaryTarget);
+      }
+      return;
+    }
+    migrated.push(target);
+  });
+  return [...new Set(migrated)];
+}
+
+function syncLegacyRuleTargets(rule: RegexDisplayRule) {
+  rule.targetId = rule.targetIds[0] || '';
+  rule.targets = rule.targetIds.flatMap(targetId => {
+    if (targetId === regexDisplayReaderTarget) {
+      return [rule.operation === 'extract' ? regexDisplayReaderTarget : regexDisplayReaderCleanupTarget];
+    }
+    if (targetId === regexDisplayProfilesTarget) return [regexDisplayProfilesTarget];
+    return [];
+  });
+}
+
 function readSettings(rawSettings: unknown) {
+  const rawSettingsRecord = asRecord(rawSettings);
+  const rawRuleList = Array.isArray(rawSettingsRecord?.rules) ? rawSettingsRecord.rules : [];
   const settings = validateInplace(RegexDisplaySettingsSchema, rawSettings);
   settings.rules.forEach((rule, index) => {
-    if (!rule.targetId) {
-      const legacyTarget = rule.targets[0] || '';
-      rule.targetId = legacyTarget === regexDisplayReaderCleanupTarget ? 'reader' : legacyTarget;
-      rule.operation = legacyTarget === regexDisplayReaderTarget ? 'extract' : 'replace';
+    const rawRule = asRecord(rawRuleList[index]);
+    if (rawRule && rawRule.operation !== 'extract' && rawRule.operation !== 'replace') {
+      const legacyTargets = stringList(rawRule.targets);
+      rule.operation = legacyTargets.includes(regexDisplayReaderTarget) ? 'extract' : 'replace';
     }
+    rule.targetIds = migrateRuleTargetIds(rawRule, rule);
     rule.order = Number.isFinite(rule.order) ? rule.order : index;
+    syncLegacyRuleTargets(rule);
   });
   const hasDefaultBodyRule = settings.rules.some(rule => rule.id === defaultReaderBodyRegexDisplayRuleId);
   if (hasDefaultBodyRule) return settings;
@@ -58,6 +104,7 @@ function readSettings(rawSettings: unknown) {
         pattern: '/<content>([\\s\\S]*?)<\\/content>/i',
         replacement: '$1',
         targetId: 'reader',
+        targetIds: [regexDisplayReaderTarget, regexDisplaySummaryTarget],
         operation: 'extract',
         targets: [regexDisplayReaderTarget],
       }),
@@ -79,6 +126,7 @@ export function createRegexDisplayRule(partial: Partial<RegexDisplayRule> = {}):
     renderMode: 'text',
     replacement: '',
     targetId: 'reader',
+    targetIds: [regexDisplayReaderTarget],
     targets: [],
     ...partial,
   });
@@ -117,6 +165,7 @@ export const useRegexDisplayStore = defineStore('regex-display', () => {
       renderMode: source.renderMode as RegexDisplayRenderMode,
       replacement: source.replacement,
       targetId: source.targetId,
+      targetIds: [...source.targetIds],
       targets: [...source.targets],
     });
   }

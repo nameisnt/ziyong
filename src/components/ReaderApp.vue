@@ -38,14 +38,14 @@
             <span class="pc-field-label">{{ t`标题规则` }}</span>
             <select :value="readerSettings.titleRuleId" class="pc-select" @change="onReaderTitleRuleSelect">
               <option value="__default_title__">{{ t`无正则` }}</option>
-              <option v-for="rule in readerRegexRules" :key="rule.id" :value="rule.id">{{ rule.name }}</option>
+              <option v-for="rule in readerTitleRegexRules" :key="rule.id" :value="rule.id">{{ rule.name }}</option>
             </select>
           </label>
           <label class="pc-rule-picker">
             <span class="pc-field-label">{{ t`楼层正文提取` }}</span>
             <select :value="bodyRuleSelectValue" class="pc-select" @change="onReaderBodyRuleSelect">
-              <option v-if="!readerRegexRules.length" value="__default_body__">{{ t`默认楼层正文提取` }}</option>
-              <option v-for="rule in readerRegexRules" :key="rule.id" :value="rule.id">{{ rule.name }}</option>
+              <option v-if="!readerBodyRegexRules.length" value="__default_body__">{{ t`默认楼层正文提取` }}</option>
+              <option v-for="rule in readerBodyRegexRules" :key="rule.id" :value="rule.id">{{ rule.name }}</option>
             </select>
           </label>
           <details class="pc-reader-cleanup">
@@ -85,7 +85,7 @@
               <span aria-hidden="true"></span>
             </label>
           </div>
-          <p v-if="!readerRegexRules.length" class="pc-rule-help">
+          <p v-if="!readerBodyRegexRules.length" class="pc-rule-help">
             {{ t`正则显示 App 中勾选“楼层正文提取”的规则会显示在这里。` }}
           </p>
         </div>
@@ -212,13 +212,7 @@ import {
   type ChatReaderRegexRule,
   type ReaderMessage,
 } from '@/store/reader';
-import {
-  defaultReaderBodyRegexDisplayRuleId,
-  regexDisplayReaderCleanupTarget,
-  regexDisplayReaderTarget,
-  type RegexDisplayRule,
-  useRegexDisplayStore,
-} from '@/apps/regex-display/store';
+import { defaultReaderBodyRegexDisplayRuleId, type RegexDisplayRule, useRegexDisplayStore } from '@/apps/regex-display/store';
 import { usePhoneStore } from '@/store/phone';
 import { useReaderStore } from '@/store/reader';
 import { useSettingsStore } from '@/store/settings';
@@ -228,6 +222,7 @@ import { usePresetLinkStore } from '@/apps/preset-link/store';
 import { normalizeChatArchiveId, parseChatScopeKey } from '@/util/chatArchive';
 import { canOpenBaguScan } from '@/util/baguScanGate';
 import { useDetailScroll } from '@/util/detailScroll';
+import { getRegexRulesForTarget } from '@/util/regexDisplay';
 import {
   executeSlashCommandSafe,
   getChatHistoryDetailSafe,
@@ -314,14 +309,21 @@ const nextMessageId = computed(() =>
   activeMessageIndex.value >= 0 ? activeMessages.value[activeMessageIndex.value + 1]?.id || '' : '',
 );
 const defaultTitleRule: ChatReaderRegexRule = { find: '', flags: '', replace: '' };
-const readerRegexRules = computed(() =>
-  regexDisplayRules.value.filter(rule => rule.targets.includes(regexDisplayReaderTarget) && rule.pattern.trim()),
+const readerTitleRegexRules = computed(() =>
+  getRegexRulesForTarget(regexDisplayRules.value, 'reader', 'title', 'extract'),
+);
+const readerBodyRegexRules = computed(() =>
+  getRegexRulesForTarget(regexDisplayRules.value, 'reader', 'content', 'extract'),
 );
 const readerCleanupRules = computed(() =>
-  regexDisplayRules.value.filter(rule => rule.targets.includes(regexDisplayReaderCleanupTarget) && rule.pattern.trim()),
+  getRegexRulesForTarget(regexDisplayRules.value, 'reader', 'content', 'replace'),
 );
-const selectedTitleRegexRule = computed(() => getSelectedReaderRegexRule(readerSettings.value.titleRuleId));
-const selectedBodyRegexRule = computed(() => getSelectedReaderRegexRule(readerSettings.value.bodyRuleId));
+const selectedTitleRegexRule = computed(() =>
+  getSelectedReaderRegexRule(readerSettings.value.titleRuleId, readerTitleRegexRules.value),
+);
+const selectedBodyRegexRule = computed(() =>
+  getSelectedReaderRegexRule(readerSettings.value.bodyRuleId, readerBodyRegexRules.value),
+);
 const selectedCleanupRules = computed(() =>
   readerCleanupRules.value.filter(rule => readerSettings.value.cleanupRuleIds.includes(rule.id)),
 );
@@ -336,7 +338,7 @@ const readerRuleSummary = computed(
 );
 const bodyRuleSelectValue = computed(() => {
   if (readerSettings.value.bodyRuleId === '__default_body__') {
-    return readerRegexRules.value.some(rule => rule.id === defaultReaderBodyRegexDisplayRuleId)
+    return readerBodyRegexRules.value.some(rule => rule.id === defaultReaderBodyRegexDisplayRuleId)
       ? defaultReaderBodyRegexDisplayRuleId
       : '__default_body__';
   }
@@ -350,12 +352,12 @@ const reloadActiveChatDebounced = useDebounceFn(() => {
 }, 250);
 let readerLoadSerial = 0;
 
-function getSelectedReaderRegexRule(ruleId: string) {
+function getSelectedReaderRegexRule(ruleId: string, availableRules: RegexDisplayRule[]) {
   if (ruleId === '__default_body__') {
-    return readerRegexRules.value.find(rule => rule.id === defaultReaderBodyRegexDisplayRuleId) ?? null;
+    return availableRules.find(rule => rule.id === defaultReaderBodyRegexDisplayRuleId) ?? null;
   }
   if (!ruleId || ruleId.startsWith('__default_')) return null;
-  return readerRegexRules.value.find(rule => rule.id === ruleId) ?? null;
+  return availableRules.find(rule => rule.id === ruleId) ?? null;
 }
 
 function toReaderRegexRule(rule: RegexDisplayRule | null, fallback: ChatReaderRegexRule): ChatReaderRegexRule {
@@ -393,13 +395,13 @@ watch(
       bodyRuleId: readerSettings.value.bodyRuleId,
       cleanupRuleIds: readerSettings.value.cleanupRuleIds,
       hideEmptyAfterCleanup: readerSettings.value.hideEmptyAfterCleanup,
-      rules: [...readerRegexRules.value, ...readerCleanupRules.value].map(rule => [
+      rules: [...readerTitleRegexRules.value, ...readerBodyRegexRules.value, ...readerCleanupRules.value].map(rule => [
         rule.id,
         rule.name,
         rule.pattern,
         rule.replacement,
         rule.flags,
-        rule.targets.join(','),
+        rule.targetIds.join(','),
       ]),
       titleRuleId: readerSettings.value.titleRuleId,
       showUserMessages: readerSettings.value.showUserMessages,
