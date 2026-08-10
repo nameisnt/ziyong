@@ -287,7 +287,8 @@ function runFooterAction(event: 'bottom' | 'catalog' | 'next' | 'previous' | 'to
   padding: 10px 0 112px;
   border-radius: 0;
   background: transparent;
-  color: var(--pc-text);
+  color: var(--pc-reader-text, var(--pc-text));
+  font-family: var(--pc-reader-font-family);
   overflow: auto;
 }
 

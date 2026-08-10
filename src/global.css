@@ -724,6 +724,7 @@
   font-family: var(--pc-reader-font-family);
   font-size: var(--pc-reader-font-size);
   line-height: var(--pc-reader-line-height);
+  color: var(--pc-reader-text, var(--pc-text));
   overflow: auto;
   overflow-x: hidden;
 }
@@ -756,6 +757,7 @@
   font-family: var(--pc-reader-font-family) !important;
   font-size: var(--pc-reader-font-size);
   line-height: var(--pc-reader-line-height);
+  color: var(--pc-reader-text, var(--pc-text));
 }
 
 .pc-phone-root.pc-phone-root.pc-phone-root.pc-phone-root.pc-phone-root.pc-phone-root.pc-phone-root.pc-phone-root

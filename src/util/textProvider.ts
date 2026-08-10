@@ -1,6 +1,7 @@
 import type { ExternalApiPresetId, ExternalApiProfile, TextProviderSettings } from '@/type/settings';
 
 export type TextProviderSelection = 'inherit' | 'tavern' | `external:${string}`;
+export type ConcreteTextProviderSelection = Exclude<TextProviderSelection, 'inherit'>;
 
 export type ExternalApiPreset = {
   apiUrl: string;
@@ -95,6 +96,11 @@ export function formatTextProviderSummary(settings: TextProviderSettings) {
   return `${resolved.profileName} · ${resolved.model || '未选择模型'}`;
 }
 
+export function getCurrentTextProviderSelection(settings: TextProviderSettings): ConcreteTextProviderSelection {
+  const resolved = resolveTextProviderSettings(settings);
+  return resolved.mode === 'external' && resolved.profileId ? `external:${resolved.profileId}` : 'tavern';
+}
+
 export function applyTextProviderSelection(
   settings: TextProviderSettings,
   selection: TextProviderSelection,
@@ -118,9 +124,9 @@ export function applyTextProviderSelection(
 }
 
 export function formatTextProviderSelection(settings: TextProviderSettings, selection: TextProviderSelection) {
-  if (selection === 'inherit') return `跟随：${formatTextProviderSummary(settings)}`;
-  if (selection === 'tavern') return '酒馆当前 API';
-  const profileId = selection.slice('external:'.length);
+  const concreteSelection = selection === 'inherit' ? getCurrentTextProviderSelection(settings) : selection;
+  if (concreteSelection === 'tavern') return '酒馆当前 API';
+  const profileId = concreteSelection.slice('external:'.length);
   const profile = settings.externalProfiles.find(item => item.id === profileId);
   return profile?.name.trim() || '连接配置已失效';
 }

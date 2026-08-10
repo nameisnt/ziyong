@@ -413,6 +413,7 @@ const rootStyle = computed(() => {
     '--pc-reader-font-family': toFontStack(settings.value.reader.fontFamily, 'var(--pc-font-sans)'),
     '--pc-reader-font-size': `${settings.value.reader.fontSize}px`,
     '--pc-reader-line-height': String(settings.value.reader.lineHeight),
+    '--pc-reader-text': cssColor(visualTheme.readerTextColor) || 'var(--pc-text)',
     '--pc-reader-scale': String(settings.value.interfaceSize.readerScale / 100),
     '--pc-reader-body-min-height': `${Math.round(180 * (settings.value.interfaceSize.readerScale / 100))}px`,
     '--pc-reader-body-height': `clamp(${Math.round(260 * (settings.value.interfaceSize.readerScale / 100))}px, calc(${settings.value.interfaceSize.phoneHeight}px - 270px), ${Math.round(520 * (settings.value.interfaceSize.readerScale / 100))}px)`,

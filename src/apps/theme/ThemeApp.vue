@@ -428,14 +428,21 @@ type VisualTheme = Settings['visualTheme'];
 type RadiusKey = 'cardRadius' | 'controlRadius' | 'iconRadius';
 type ColorKey = keyof Pick<
   VisualTheme,
-  'accentColor' | 'appIconBackgroundColor' | 'appIconColor' | 'backgroundColor' | 'dockColor' | 'surfaceColor'
+  | 'accentColor'
+  | 'appIconBackgroundColor'
+  | 'appIconColor'
+  | 'backgroundColor'
+  | 'dockColor'
+  | 'readerTextColor'
+  | 'surfaceColor'
 >;
 type IconStyleId = 'native' | 'soft' | 'unified';
 
-interface ThemePreset extends Omit<VisualTheme, 'appAccentOverrides' | 'appIconOverrides'> {
+interface ThemePreset extends Omit<VisualTheme, 'appAccentOverrides' | 'appIconOverrides' | 'readerTextColor'> {
   id: string;
   mode: Settings['theme'];
   name: string;
+  readerTextColor?: string;
 }
 
 interface ThemePack {
@@ -892,6 +899,7 @@ const colorControls: { key: ColorKey; label: string }[] = [
   { key: 'accentColor', label: '强调色' },
   { key: 'backgroundColor', label: '手机背景' },
   { key: 'surfaceColor', label: '卡片背景' },
+  { key: 'readerTextColor', label: '阅读正文' },
   { key: 'appIconColor', label: '图标颜色' },
   { key: 'appIconBackgroundColor', label: '图标背景' },
   { key: 'dockColor', label: 'Dock 背景' },
@@ -1133,6 +1141,7 @@ function getColorFallback(key: ColorKey) {
     appIconColor: settings.value.visualTheme.accentColor,
     backgroundColor: dark ? '#1c1c1e' : '#f2f2f7',
     dockColor: dark ? '#2c2c2e' : '#ffffff',
+    readerTextColor: settings.value.visualTheme.textColor || (dark ? '#f5f5f7' : '#1c1c1e'),
     surfaceColor: dark ? '#2c2c2e' : '#ffffff',
   };
   return fallbacks[key];

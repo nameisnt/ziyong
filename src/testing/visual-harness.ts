@@ -461,6 +461,7 @@ const scenarios: VisualScenarioName[] = [
   'content-converter-source',
   'content-converter-target',
   'content-converter-complete',
+  'card-writer-saved-preview',
   ...rootAppScenarios,
   'bagu-scan-actions',
   'bagu-scan-applied',
@@ -498,6 +499,7 @@ const scenarios: VisualScenarioName[] = [
   'preset-editor',
   'preset-scroll-return',
   'reader-detail',
+  'reader-theme-appearance',
   'reader-catalog',
   'reader-footer-persistence',
   'searchable-select',
@@ -2453,11 +2455,79 @@ async function applyScenario(name: VisualScenarioName, options: { height?: numbe
         throw new Error('Custom app conversion did not reach its completion state');
       }
     }
+  } else if (name === 'card-writer-saved-preview') {
+    const { useCardWriterStore } = await import('@/apps/card-writer/store');
+    const writer = useCardWriterStore();
+    writer.settings.documents = [];
+    const savedDocument = writer.saveDocument({
+      content: '## 角色基础\n\n这是已经保存的写卡成品。',
+      sourceLabel: '已保存测试成品',
+      targetWorldbookName: '',
+      taskId: 'full-card',
+      taskLabel: '一键写卡',
+      title: '视觉写卡成品',
+      worldbookIncluded: false,
+      worldbookWritten: false,
+    });
+    resetPhoneToRoute('card-writer', 'library', '写卡成品');
+    await waitForPaint();
+    document.querySelector<HTMLButtonElement>('.pc-card-writer-document-open')?.click();
+    const previewOpened = await waitForVisualCondition(
+      () => phone.currentRoute.appId === 'card-writer' && phone.currentRoute.page === 'preview',
+    );
+    if (!previewOpened) throw new Error('Saved card writer document did not open its preview');
+    if (!document.querySelector<HTMLButtonElement>('.pc-preview-toolbar button[title="复制生成内容"]')) {
+      throw new Error('Card writer preview did not expose the copy action');
+    }
+    await phone.goBack();
+    if (phone.currentRoute.page !== 'library') {
+      throw new Error('Unchanged saved card writer preview still required leave confirmation');
+    }
+
+    document.querySelector<HTMLButtonElement>('.pc-card-writer-document-open')?.click();
+    await waitForVisualCondition(() => phone.currentRoute.page === 'preview');
+    const editButton = [...document.querySelectorAll<HTMLButtonElement>('.pc-preview-toolbar button')].find(button =>
+      button.textContent?.includes('编辑输出'),
+    );
+    if (!editButton) throw new Error('Card writer preview edit action is missing');
+    editButton.click();
+    await waitForPaint();
+    const editor = document.querySelector<HTMLTextAreaElement>('.pc-content-edit-area');
+    if (!editor) throw new Error('Card writer preview editor did not open');
+    editor.value = `${savedDocument.content}\n\n已修改但尚未保存。`;
+    editor.dispatchEvent(new Event('input', { bubbles: true }));
+    const leaveAttempt = phone.goBack();
+    const leaveNoticeShown = await waitForVisualCondition(() =>
+      [...document.querySelectorAll<HTMLElement>('.pc-phone-notice strong')].some(item =>
+        item.textContent?.includes('离开预览'),
+      ),
+    );
+    if (!leaveNoticeShown) throw new Error('Modified card writer preview did not require leave confirmation');
+    const continueEditing = [...document.querySelectorAll<HTMLButtonElement>('.pc-phone-notice-action')].find(button =>
+      button.textContent?.includes('继续编辑'),
+    );
+    if (!continueEditing) throw new Error('Card writer leave confirmation did not offer continued editing');
+    continueEditing.click();
+    await leaveAttempt;
+    if (phone.currentRoute.page !== 'preview') throw new Error('Card writer preview left after cancelling confirmation');
   } else if (name.startsWith('app:')) {
     const appId = name.slice('app:'.length);
     const app = PHONE_APPS.find(item => item.id === appId);
     if (!app) throw new Error(`Unknown app visual scenario: ${name}`);
     resetPhoneToRoute(app.id, app.defaultRoute, app.name);
+    if (appId === 'card-writer') {
+      await waitForPaint();
+      const materialToggle = document.querySelector<HTMLInputElement>(
+        '.pc-card-writer-worldbook input[aria-label="使用世界书素材"]',
+      );
+      if (!materialToggle || materialToggle.checked) {
+        throw new Error('Card writer worldbook material toggle is missing or enabled by default');
+      }
+      const targetInput = document.querySelector<HTMLInputElement>('.pc-card-writer-worldbook-select input');
+      if (!targetInput || targetInput.value) {
+        throw new Error('Card writer target worldbook is missing or selected automatically');
+      }
+    }
   } else if (name === 'preset-detail') {
     resetPhoneToRoute('preset-manager', 'detail', '预设条目', { presetName: '视觉预设' });
   } else if (name === 'preset-copy-reorder') {
@@ -2738,6 +2808,28 @@ async function applyScenario(name: VisualScenarioName, options: { height?: numbe
     const message = messages[0];
     if (!message) throw new Error('Reader visual fixture did not create a message');
     resetPhoneToRoute('reader', 'detail', message.title, { messageId: message.id });
+  } else if (name === 'reader-theme-appearance') {
+    const settingsStore = useSettingsStore();
+    settingsStore.settings.reader.fontFamily = 'Courier New, monospace';
+    settingsStore.settings.visualTheme.readerTextColor = '#7b3fe4';
+    const reader = useReaderStore();
+    reader.resetAllCaches();
+    const briefs = await reader.loadBriefs(true);
+    const brief = briefs[0];
+    const messages = brief ? await reader.loadChat(brief.fileName, true) : [];
+    const message = messages[0];
+    if (!message) throw new Error('Reader appearance fixture did not create a message');
+    resetPhoneToRoute('reader', 'detail', message.title, { messageId: message.id });
+    await waitForPaint();
+    const content = document.querySelector<HTMLElement>('.pc-reader-content');
+    if (!content) throw new Error('Reader appearance content is missing');
+    const appearance = getComputedStyle(content);
+    if (!appearance.fontFamily.toLowerCase().includes('courier new')) {
+      throw new Error('Reader font family did not reach the rendered content');
+    }
+    if (appearance.color !== 'rgb(123, 63, 228)') {
+      throw new Error('Reader text color did not reach the rendered content');
+    }
   } else if (name === 'reader-footer-persistence') {
     const reader = useReaderStore();
     reader.resetAllCaches();
@@ -3249,9 +3341,17 @@ async function applyScenario(name: VisualScenarioName, options: { height?: numbe
 
     const connectionCombobox = document.querySelector<HTMLElement>('.pc-generation-advanced-body .pc-combobox');
     if (!connectionCombobox) throw new Error('Generation connection selector is missing');
+    const initialOverride = useGenerationOverrideStore().getOverride('summary', 'generate');
+    if (initialOverride?.connectionSelection !== 'tavern') {
+      throw new Error('Generation connection selector did not resolve the current concrete connection by default');
+    }
     connectionCombobox.querySelector<HTMLButtonElement>('.pc-combobox-toggle')?.click();
     await waitForPaint();
-    const externalOption = [...connectionCombobox.querySelectorAll<HTMLButtonElement>('.pc-combobox-option')].find(
+    const connectionOptions = [...connectionCombobox.querySelectorAll<HTMLButtonElement>('.pc-combobox-option')];
+    if (connectionOptions.some(option => option.textContent?.includes('跟随连接设置'))) {
+      throw new Error('Generation connection selector still exposes the legacy inherit option');
+    }
+    const externalOption = connectionOptions.find(
       option => option.textContent?.includes(externalProfile.name),
     );
     if (!externalOption) throw new Error('Generation external connection option is missing');

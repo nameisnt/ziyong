@@ -74,9 +74,22 @@
             </div>
           </div>
 
+          <div class="pc-card-writer-worldbook">
+            <div>
+              <strong>
+                使用世界书素材
+                <InfoHint text="把当前聊天生效且已启用的世界书条目加入生成上下文；不会决定成品是否写入世界书。" />
+              </strong>
+            </div>
+            <label class="pc-toggle" :title="includeWorldbook ? '不使用世界书素材' : '使用世界书素材'">
+              <input v-model="includeWorldbook" type="checkbox" aria-label="使用世界书素材" />
+              <span aria-hidden="true"></span>
+            </label>
+          </div>
+
           <div class="pc-field-group">
             <label class="pc-field-label">
-              写入世界书
+              写入世界书（可选）
               <InfoHint text="保存成品时直接新增为世界书条目；不选择则只保存到写卡成品库。" />
             </label>
             <div class="pc-card-writer-worldbook-select">
@@ -190,21 +203,6 @@
           </section>
         </template>
 
-        <template #after-references>
-          <div class="pc-card-writer-worldbook">
-            <div>
-              <strong>
-                读取当前世界书作为素材
-                <InfoHint text="把当前聊天生效且已启用的世界书条目加入生成上下文。" />
-              </strong>
-            </div>
-            <label class="pc-toggle" :title="includeWorldbook ? '不加入世界书内容' : '加入世界书内容'">
-              <input v-model="includeWorldbook" type="checkbox" aria-label="读取当前世界书作为素材" />
-              <span aria-hidden="true"></span>
-            </label>
-          </div>
-        </template>
-
         <template v-if="running || stageStates.length" #after-requirement>
           <section class="pc-section-card pc-card-writer-progress">
             <header>
@@ -227,6 +225,7 @@
         v-model:content="preview.content"
         v-model:raw="preview.raw"
         :editable="true"
+        copy-enabled
         :raw-editable="true"
         :save-disabled="savingPreview"
         :scan-enabled="true"
@@ -252,6 +251,9 @@
           <button type="button" class="pc-card-writer-document-open" @click="openDocument(document)">
             <strong :title="document.title">{{ document.title }}</strong>
             <small>{{ document.taskLabel }} · {{ formatDate(document.updatedAt) }}</small>
+          </button>
+          <button class="pc-icon-btn" type="button" title="复制成品" @click="copyDocument(document)">
+            <i class="fa-solid fa-copy"></i>
           </button>
           <button class="pc-icon-btn danger" type="button" title="删除成品" @click="deleteDocument(document)">
             <i class="fa-solid fa-trash"></i>
@@ -348,6 +350,7 @@ const preview = reactive({
   worldbookIncluded: false,
   worldbookWritten: false,
 });
+const savedPreviewBaseline = ref<{ content: string; raw: string } | null>(null);
 
 const experienceOptions = ['温柔陪伴', '欢喜冤家', '危险拉扯', '冒险搭档', '慢热治愈'];
 const worldModeOptions: Array<{ label: string; value: WorldMode }> = [
@@ -368,6 +371,21 @@ const previewSaveLabel = computed(() => {
   if (!preview.targetWorldbookName) return '保存成品';
   return preview.worldbookWritten ? '更新成品' : '保存并写入世界书';
 });
+const stopSavedPreviewCheck = phone.registerSavedPreviewCheck(
+  () =>
+    route.value.appId === 'card-writer' &&
+    route.value.page === 'preview' &&
+    savedPreviewBaseline.value !== null &&
+    savedPreviewBaseline.value.content === preview.content &&
+    savedPreviewBaseline.value.raw === preview.raw,
+);
+
+function markPreviewSaved() {
+  savedPreviewBaseline.value = {
+    content: preview.content,
+    raw: preview.raw,
+  };
+}
 
 function stageIcon(status: StageState['status']) {
   if (status === 'completed') return 'fa-solid fa-check';
@@ -410,7 +428,6 @@ function refreshWorldbooks() {
     addWorldbookOptions(options, seen, groups.other, '其他角色');
     addWorldbookOptions(options, seen, getAllWorldbookNames(), '其他世界书');
     worldbookOptions.value = options;
-    if (!targetWorldbookName.value) targetWorldbookName.value = options[0]?.value || '';
   } catch (error) {
     worldbookOptions.value = getAllWorldbookNames().map(name => ({ label: name, value: name }));
     generationError.value = error instanceof Error ? error.message : '读取世界书列表失败';
@@ -573,6 +590,7 @@ async function runWriter() {
     preview.warnings = [];
     preview.worldbookIncluded = includeWorldbook.value;
     preview.worldbookWritten = false;
+    savedPreviewBaseline.value = null;
     phone.pushPage('preview', '写卡预览');
   } catch (error) {
     generationError.value = error instanceof Error ? error.message : '写卡生成失败';
@@ -610,7 +628,17 @@ function openDocument(document: CardWriterDocument) {
   preview.warnings = [];
   preview.worldbookIncluded = document.worldbookIncluded;
   preview.worldbookWritten = document.worldbookWritten;
+  markPreviewSaved();
   phone.pushPage('preview', '写卡预览', { documentId: document.id });
+}
+
+async function copyDocument(document: CardWriterDocument) {
+  try {
+    await navigator.clipboard.writeText(document.content);
+    toastr.success('已复制写卡成品');
+  } catch {
+    toastr.warning('复制失败，请打开成品后手动选择内容');
+  }
 }
 
 function buildWorldbookDrafts(): WorldbookEntryDraft[] {
@@ -648,6 +676,7 @@ async function savePreview() {
   savingPreview.value = true;
   try {
     persistPreviewDocument();
+    markPreviewSaved();
     if (!preview.targetWorldbookName) {
       toastr.success('写卡成品已保存');
       return;
@@ -691,6 +720,7 @@ function formatDate(value: string) {
 
 onMounted(refreshWorldbooks);
 onBeforeUnmount(stopWriter);
+onScopeDispose(stopSavedPreviewCheck);
 </script>
 
 <style scoped>

@@ -12,13 +12,24 @@ function overrideKey(appId: string, page: string) {
 export const useGenerationOverrideStore = defineStore('generationOverrides', () => {
   const overrides = ref<Record<string, GenerationPageOverride>>({});
 
-  function ensureOverride(appId: string, page: string, tavernPresetName = '') {
+  function ensureOverride(
+    appId: string,
+    page: string,
+    tavernPresetName = '',
+    defaultConnectionSelection: TextProviderSelection = 'inherit',
+  ) {
     const key = overrideKey(appId, page);
     if (!overrides.value[key]) {
       overrides.value[key] = {
-        connectionSelection: 'inherit',
+        connectionSelection: defaultConnectionSelection,
         tavernPresetName,
       };
+    } else if (
+      overrides.value[key].connectionSelection === 'inherit' &&
+      defaultConnectionSelection !== 'inherit'
+    ) {
+      // Older sessions stored a dynamic "inherit" value. Resolve it once when the generation page opens.
+      overrides.value[key].connectionSelection = defaultConnectionSelection;
     }
     return overrides.value[key];
   }

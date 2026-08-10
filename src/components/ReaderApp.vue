@@ -284,20 +284,6 @@ const activeMessage = computed(() => {
   const messageId = route.value.params?.messageId;
   return messageId ? (activeMessages.value.find(item => item.id === messageId) ?? null) : null;
 });
-function escapeCssString(value: string) {
-  return value.replace(/\\/g, '\\\\').replace(/"/g, '\\"');
-}
-
-function toReaderFontStack(fontFamily: string) {
-  const value = fontFamily.trim();
-  if (!value) return 'var(--pc-font-sans)';
-  if (value.includes(',') || value.startsWith('var(')) return value;
-  return `"${escapeCssString(value)}", var(--pc-font-sans)`;
-}
-
-const readerBodyStyle = computed(() => ({
-  fontFamily: toReaderFontStack(settings.value.reader.fontFamily),
-}));
 const activeMessageBody = computed(() => (activeMessage.value ? formatReaderBody(activeMessage.value.body) : ''));
 const readerBaguContent = computed(() => activeMessage.value?.body || '');
 const messageCatalogItems = computed(() =>
@@ -1424,8 +1410,8 @@ function formatReaderBody(value: string) {
   padding: 16px;
   border-radius: 18px;
   background: var(--pc-surface-strong);
-  color: var(--pc-text);
-  font-family: inherit;
+  color: var(--pc-reader-text, var(--pc-text));
+  font-family: var(--pc-reader-font-family);
   font-size: var(--pc-reader-font-size);
   line-height: var(--pc-reader-line-height);
   min-height: 0;

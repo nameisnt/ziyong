@@ -12,9 +12,22 @@
       <div v-if="activeView === 'preview'" class="pc-preview-view">
         <div class="pc-preview-toolbar">
           <strong>{{ contentLabel }}</strong>
-          <button v-if="editable" class="pc-soft-btn compact" type="button" @click="editingContent = !editingContent">
-            {{ editingContent ? previewLabel : editLabel }}
-          </button>
+          <div class="pc-preview-toolbar-actions">
+            <button
+              v-if="copyEnabled"
+              class="pc-icon-btn"
+              type="button"
+              :disabled="!content.trim()"
+              :title="copyLabel"
+              :aria-label="copyLabel"
+              @click="copyContent"
+            >
+              <i class="fa-solid fa-copy"></i>
+            </button>
+            <button v-if="editable" class="pc-soft-btn compact" type="button" @click="editingContent = !editingContent">
+              {{ editingContent ? previewLabel : editLabel }}
+            </button>
+          </div>
         </div>
         <div class="pc-preview-body">
           <textarea
@@ -110,6 +123,8 @@ const props = withDefaults(
     content: string;
     contentLabel?: string;
     contentPlaceholder?: string;
+    copyEnabled?: boolean;
+    copyLabel?: string;
     editable?: boolean;
     editLabel?: string;
     noticeConfirmLabel?: string;
@@ -140,6 +155,8 @@ const props = withDefaults(
     backLabel: '返回生成设置',
     contentLabel: '生成内容',
     contentPlaceholder: '在这里修改收到的 AI 输出内容。',
+    copyEnabled: false,
+    copyLabel: '复制生成内容',
     editable: true,
     editLabel: '编辑输出',
     noticeConfirmLabel: '知道了',
@@ -232,6 +249,16 @@ function updateContent(value: string) {
   emit('update:content', value);
 }
 
+async function copyContent() {
+  if (!props.content.trim()) return;
+  try {
+    await navigator.clipboard.writeText(props.content);
+    toastr.success('已复制生成内容');
+  } catch {
+    toastr.warning('复制失败，请手动选择内容');
+  }
+}
+
 async function handleSave() {
   if (props.saveDisabled || saving.value) return;
   saving.value = true;
@@ -304,7 +331,8 @@ function goRawFromNotice() {
   border-radius: 18px;
   background: var(--pc-surface-strong);
   white-space: pre-wrap;
-  color: var(--pc-text);
+  color: var(--pc-reader-text, var(--pc-text));
+  font-family: var(--pc-reader-font-family, inherit);
   font-size: var(--pc-reader-font-size);
   line-height: var(--pc-reader-line-height);
 }
@@ -314,6 +342,13 @@ function goRawFromNotice() {
   align-items: center;
   justify-content: space-between;
   gap: 10px;
+}
+
+.pc-preview-toolbar-actions {
+  display: flex;
+  align-items: center;
+  flex: 0 0 auto;
+  gap: 8px;
 }
 
 .pc-preview-toolbar strong {
@@ -338,6 +373,7 @@ function goRawFromNotice() {
   min-height: var(--pc-raw-editor-area-height, var(--pc-reader-body-height, 320px));
   height: var(--pc-raw-editor-area-height, var(--pc-reader-body-height, 320px));
   font-family: var(--pc-reader-font-family, inherit);
+  color: var(--pc-reader-text, var(--pc-text));
   font-size: var(--pc-reader-font-size);
   line-height: var(--pc-reader-line-height);
   white-space: pre-wrap;

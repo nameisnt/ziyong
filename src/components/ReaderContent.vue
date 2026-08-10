@@ -51,7 +51,8 @@ const renderedContent = computed(() => renderMarkdown(displayContent.value));
   padding: 10px 0 0;
   border-radius: 0;
   background: transparent;
-  color: var(--pc-text);
+  color: var(--pc-reader-text, var(--pc-text));
+  font-family: var(--pc-reader-font-family);
   overflow: auto;
   white-space: pre-wrap;
 }
@@ -71,7 +72,7 @@ const renderedContent = computed(() => renderMarkdown(displayContent.value));
 .pc-reader-document-head h1 {
   margin: 0;
   overflow-wrap: anywhere;
-  color: var(--pc-text);
+  color: var(--pc-reader-text, var(--pc-text));
   font-family: inherit;
   font-size: 24px;
   line-height: 1.3;

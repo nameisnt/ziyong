@@ -183,7 +183,7 @@ import type { GenerationReferenceItem } from '@/util/references';
 import { getPresetNamesSafe, type CapturedTavernPromptPreview } from '@/util/runtime';
 import {
   formatTextProviderSelection,
-  formatTextProviderSummary,
+  getCurrentTextProviderSelection,
   type TextProviderSelection,
 } from '@/util/textProvider';
 import { storeToRefs } from 'pinia';
@@ -254,13 +254,10 @@ const generationOverride = computed(() =>
     overrideRoute.value.appId,
     overrideRoute.value.page,
     settings.value.generation.tavernPresetName,
+    getCurrentTextProviderSelection(settings.value.textProvider),
   ),
 );
 const connectionOptions = computed(() => [
-  {
-    label: `跟随连接设置（${formatTextProviderSummary(settings.value.textProvider)}）`,
-    value: 'inherit',
-  },
   { label: '酒馆当前 API', value: 'tavern' },
   ...settings.value.textProvider.externalProfiles.map(profile => ({
     label: profile.name,
