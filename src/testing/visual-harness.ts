@@ -456,6 +456,10 @@ const scenarios: VisualScenarioName[] = [
   'custom-app-conversion',
   'custom-app-conversion-complete',
   'custom-app-conversion-merge',
+  'custom-app-save-flow',
+  'content-converter-source',
+  'content-converter-target',
+  'content-converter-complete',
   ...rootAppScenarios,
   'bagu-scan-actions',
   'bagu-scan-applied',
@@ -997,6 +1001,73 @@ async function applyScenario(name: VisualScenarioName, options: { height?: numbe
 
   if (name === 'home') {
     await phone.goHome();
+  } else if (name === 'custom-app-save-flow') {
+    const { useCustomAppsStore } = await import('@/apps/app-builder/store');
+    const { getRegisteredPhoneAppComponent } = await import('@/core/appRegistry');
+    resetPhoneToRoute('app-builder', 'templates', '选择模板');
+    await waitForPaint();
+    const blankTemplate = [...document.querySelectorAll<HTMLButtonElement>('.pc-template-row')].find(button =>
+      button.textContent?.includes('空白 App'),
+    );
+    if (!blankTemplate) throw new Error('Custom app blank template was not rendered');
+    blankTemplate.click();
+    await waitForPaint();
+    const appNameField = document.querySelector<HTMLInputElement>('.pc-app-builder-editor .pc-field-group .pc-field');
+    if (!appNameField) throw new Error('Custom app name field was not rendered');
+    appNameField.value = '视觉保存测试';
+    appNameField.dispatchEvent(new Event('input', { bubbles: true }));
+    await waitForPaint();
+    const saveAppButton = [...document.querySelectorAll<HTMLButtonElement>('button')].find(button =>
+      button.offsetParent !== null && button.textContent?.includes('保存 App'),
+    );
+    if (!saveAppButton) throw new Error('Custom app save button was not rendered');
+    await new Promise<void>(resolve => window.setTimeout(resolve, 50));
+    saveAppButton.click();
+    await waitForPaint();
+    const definition = useCustomAppsStore().definitions.find(item => item.name === '视觉保存测试');
+    if (!definition) {
+      const savedNames = useCustomAppsStore().definitions.map(item => item.name).join(', ');
+      const notices = [...document.querySelectorAll<HTMLElement>('.toast-message')].map(item => item.textContent).join(' | ');
+      throw new Error(
+        `Clicking save App did not create a custom app definition (field=${appNameField.value}; saved=${savedNames}; notices=${notices})`,
+      );
+    }
+    resetPhoneToRoute(definition.id, 'root', definition.name);
+    await waitForPaint();
+    const addButton = [...document.querySelectorAll<HTMLButtonElement>('button')].find(button =>
+      button.textContent?.trim() === '新增',
+    );
+    if (!addButton) throw new Error('Saved custom app did not expose its manual create action');
+    addButton.click();
+    await waitForPaint();
+    const contentArea = document.querySelector<HTMLTextAreaElement>('.pc-saved-content-area');
+    if (!contentArea) throw new Error('Custom app content editor was not rendered');
+    contentArea.value = '这是一条用于验证保存与转换入口的正文。';
+    contentArea.dispatchEvent(new Event('input', { bubbles: true }));
+    const saveEntryButton = [...document.querySelectorAll<HTMLButtonElement>('button')].find(button =>
+      button.textContent?.trim() === '保存',
+    );
+    if (!saveEntryButton) throw new Error('Custom app entry save button was not rendered');
+    await new Promise<void>(resolve => window.setTimeout(resolve, 50));
+    saveEntryButton.click();
+    await waitForPaint();
+    const convertButton = [...document.querySelectorAll<HTMLButtonElement>('button')].find(button =>
+      button.textContent?.includes('转换到其他 App'),
+    );
+    if (!convertButton) {
+      const buttonTitles = [...document.querySelectorAll<HTMLButtonElement>('button')]
+        .map(button => `${button.title}:${button.textContent?.trim()}`)
+        .filter(Boolean)
+        .join(' | ');
+      throw new Error(
+        `Saved custom app entry did not expose its conversion action (route=${usePhoneStore().currentRoute.page}; open=${usePhoneStore().isOpen}; registered=${Boolean(getRegisteredPhoneAppComponent(definition.id))}; entries=${useCustomAppsStore().getEntries(definition.id).length}; buttons=${buttonTitles})`,
+      );
+    }
+    convertButton.click();
+    await waitForPaint();
+    if (!document.querySelector('.pc-conversion-panel')) {
+      throw new Error('Custom app conversion panel did not open from the saved entry');
+    }
   } else if (
     name === 'generation-preview-long-title' ||
     name === 'generation-preview-long-title-edit' ||
@@ -2113,6 +2184,38 @@ async function applyScenario(name: VisualScenarioName, options: { height?: numbe
     typeTiles[typeTiles.length - 1]?.click();
   } else if (name === 'prompts-type-editor') {
     resetPhoneToRoute('prompts', 'type-editor', '编辑类型提示词', { promptId: 'prompt_type_theater_daily' });
+  } else if (
+    name === 'content-converter-source' ||
+    name === 'content-converter-target' ||
+    name === 'content-converter-complete'
+  ) {
+    const book = createSummaryFixture();
+    const entry = book.entries[0];
+    const diaryBook = name === 'content-converter-complete' ? createDiaryFixture() : null;
+    const diaryEntryCount = diaryBook?.entries.length ?? 0;
+    resetPhoneToRoute(
+      'content-converter',
+      'root',
+      '内容转换',
+      name !== 'content-converter-source' && entry
+        ? { sourceAppId: 'summary', sourceIds: entry.id }
+        : undefined,
+    );
+    if (name === 'content-converter-complete') {
+      await waitForPaint();
+      const confirmButton = [...document.querySelectorAll<HTMLButtonElement>('button')].find(button =>
+        button.textContent?.includes('确认转换'),
+      );
+      if (!confirmButton) throw new Error('Cross-app conversion submit button was not rendered');
+      confirmButton.click();
+      await waitForPaint();
+      if (!diaryBook || diaryBook.entries.length !== diaryEntryCount + 1) {
+        throw new Error('Cross-app summary to diary conversion did not create an entry');
+      }
+      if (!document.querySelector<HTMLElement>('.pc-status-card.success')?.textContent?.includes('转换完成')) {
+        throw new Error('Cross-app conversion did not reach its completion state');
+      }
+    }
   } else if (
     name === 'custom-app-conversion' ||
     name === 'custom-app-conversion-complete' ||

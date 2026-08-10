@@ -151,6 +151,19 @@ export default definePhoneApp({
     },
   ],
   component: WorldSlotsApp,
+  contentSourceProvider: () => {
+    const worldSlots = useWorldSlotsStore();
+    return worldSlots.slots.map(slot => ({
+      appId: 'world-slots',
+      appName: '世界书槽位',
+      content: slot.content,
+      displayMode: 'markdown',
+      entryId: slot.id,
+      sourceLabel: '世界书槽位',
+      tags: [...slot.keys],
+      title: slot.title,
+    }));
+  },
   contentStatsProvider: createWorldSlotsContentStats,
   referenceProvider: createWorldSlotsReferenceTree,
   resetCurrentScope: () => useWorldSlotsStore().resetCurrentScope(),

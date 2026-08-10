@@ -19,7 +19,11 @@
       <template v-if="receiverOptions.length && !completed">
         <div class="pc-field-group">
           <label class="pc-field-label">{{ t`转换到` }}</label>
-          <SearchableCombobox v-model="targetAppId" :options="receiverOptions" :placeholder="t`选择或搜索目标 App`" />
+          <SearchableCombobox
+            v-model="targetAppId"
+            :options="receiverOptions"
+            :placeholder="t`选择或搜索目标 App`"
+          />
         </div>
 
         <div v-if="sources.length > 1 && availableBatchModes.length > 1" class="pc-field-group">
@@ -120,7 +124,12 @@
         <button class="pc-soft-btn" type="button" @click="emit('cancel')">
           {{ completed ? t`返回原 App` : t`取消` }}
         </button>
-        <button v-if="completed?.result.openRoute" class="pc-primary-btn" type="button" @click="openConvertedContent">
+        <button
+          v-if="completed?.result.openRoute"
+          class="pc-primary-btn"
+          type="button"
+          @click="openConvertedContent"
+        >
           {{ t`打开目标 App` }}
         </button>
         <button
@@ -158,14 +167,13 @@ const props = defineProps<{
 
 const emit = defineEmits<{
   cancel: [];
-  success: [
-    payload: {
-      result: PhoneContentConversionResult;
-      sourceEntryIds: string[];
-      targetAppId: string;
-      targetAppName: string;
-    },
-  ];
+  success: [payload: {
+    batchMode: PhoneContentConversionBatchMode;
+    result: PhoneContentConversionResult;
+    sourceEntryIds: string[];
+    targetAppId: string;
+    targetAppName: string;
+  }];
 }>();
 
 const phone = usePhoneStore();
@@ -278,6 +286,7 @@ async function convertContent() {
       targetAppName: registration.app.name,
     };
     emit('success', {
+      batchMode: batchMode.value,
       result,
       sourceEntryIds: props.sources.map(source => source.entryId),
       targetAppId: registration.app.id,

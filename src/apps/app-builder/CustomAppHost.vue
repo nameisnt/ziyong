@@ -6,17 +6,8 @@
           <i class="fa-solid fa-magnifying-glass"></i>
           <input v-model="query" class="pc-field" type="search" :placeholder="t`搜索标题或内容`" />
         </div>
-        <button
-          class="pc-icon-btn"
-          type="button"
-          :title="definition.display.sortDesc ? t`当前倒序，切换正序` : t`当前正序，切换倒序`"
-          @click="toggleSort"
-        >
-          <i
-            :class="
-              definition.display.sortDesc ? 'fa-solid fa-arrow-down-wide-short' : 'fa-solid fa-arrow-up-wide-short'
-            "
-          ></i>
+        <button class="pc-icon-btn" type="button" :title="definition.display.sortDesc ? t`当前倒序，切换正序` : t`当前正序，切换倒序`" @click="toggleSort">
+          <i :class="definition.display.sortDesc ? 'fa-solid fa-arrow-down-wide-short' : 'fa-solid fa-arrow-up-wide-short'"></i>
         </button>
         <button class="pc-icon-btn" type="button" :title="t`编辑 App 设置`" @click="openAppSettings">
           <i class="fa-solid fa-gear"></i>
@@ -27,30 +18,19 @@
         <button v-if="definition.creation.manual" class="pc-soft-btn compact" type="button" @click="openEditor()">
           <i class="fa-solid fa-plus"></i><span>{{ t`新增` }}</span>
         </button>
-        <button
-          v-if="definition.creation.extract"
-          class="pc-soft-btn compact"
-          type="button"
-          @click="phone.pushPage('extract', '提取内容')"
-        >
+        <button v-if="definition.creation.extract" class="pc-soft-btn compact" type="button" @click="phone.pushPage('extract', '提取内容')">
           <i class="fa-solid fa-highlighter"></i><span>{{ t`提取` }}</span>
         </button>
-        <button
-          v-if="definition.creation.generate"
-          class="pc-primary-btn compact"
-          type="button"
-          @click="phone.pushPage('generate', 'AI 生成')"
-        >
+        <button v-if="definition.creation.generate" class="pc-primary-btn compact" type="button" @click="phone.pushPage('generate', 'AI 生成')">
           <i class="fa-solid fa-wand-magic-sparkles"></i><span>{{ t`生成` }}</span>
         </button>
         <button
-          v-if="entries.length"
           :class="['pc-soft-btn', 'compact', { active: conversionSelectionMode }]"
           type="button"
-          @click="toggleConversionSelectionMode"
+          @click="startConversionSelection"
         >
           <i class="fa-solid fa-arrow-right-arrow-left"></i>
-          <span>{{ conversionSelectionMode ? t`取消选择` : t`批量转换` }}</span>
+          <span>{{ conversionSelectionMode ? t`取消选择` : t`转换` }}</span>
         </button>
       </div>
 
@@ -95,12 +75,7 @@
       <EmptyState v-else :title="query.trim() ? t`没有匹配的内容` : t`还没有内容`" />
       <div v-if="conversionSelectionMode" class="pc-form-actions pc-custom-selection-actions">
         <button class="pc-soft-btn" type="button" @click="toggleConversionSelectionMode">{{ t`取消` }}</button>
-        <button
-          class="pc-primary-btn"
-          type="button"
-          :disabled="!selectedConversionIds.length"
-          @click="openConversion(selectedConversionIds)"
-        >
+        <button class="pc-primary-btn" type="button" :disabled="!selectedConversionIds.length" @click="openConversion(selectedConversionIds)">
           {{ `转换所选（${selectedConversionIds.length}）` }}
         </button>
       </div>
@@ -125,6 +100,14 @@
       >
         <template #meta>
           <p v-if="activeEntry.sourceLabel" class="pc-detail-meta">{{ activeEntry.sourceLabel }}</p>
+        </template>
+        <template #before-content>
+          <div class="pc-custom-visible-actions">
+            <button class="pc-soft-btn compact" type="button" @click="openConversion([activeEntry.id])">
+              <i class="fa-solid fa-arrow-right-arrow-left"></i>
+              <span>{{ t`转换到其他 App` }}</span>
+            </button>
+          </div>
         </template>
         <template v-if="definition.display.mode !== 'markdown'" #content>
           <FrontendFrame
@@ -168,11 +151,7 @@
         </div>
         <div class="pc-field-group">
           <label class="pc-field-label">{{ t`正文` }}</label>
-          <textarea
-            v-model="entryDraft.content"
-            class="pc-area pc-saved-content-area"
-            :placeholder="t`填写要保存的内容`"
-          ></textarea>
+          <textarea v-model="entryDraft.content" class="pc-area pc-saved-content-area" :placeholder="t`填写要保存的内容`"></textarea>
         </div>
         <div class="pc-field-group">
           <label class="pc-field-label">{{ t`标签` }}</label>
@@ -188,7 +167,9 @@
         </div>
         <div class="pc-form-actions">
           <button class="pc-soft-btn" type="button" @click="phone.goBack()">{{ t`取消` }}</button>
-          <button class="pc-primary-btn" type="button" @click="saveEntry">{{ t`保存` }}</button>
+          <button class="pc-primary-btn" type="button" :disabled="savingEntry" @click="saveEntry">
+            {{ savingEntry ? t`正在保存` : t`保存` }}
+          </button>
         </div>
       </article>
     </section>
@@ -224,18 +205,10 @@
           <div class="pc-field-group">
             <label class="pc-field-label">{{ t`保存方式` }}</label>
             <div class="pc-extract-mode-segment">
-              <button
-                :class="['pc-segment-btn', { active: extractDraft.saveMode === 'separate' }]"
-                type="button"
-                @click="extractDraft.saveMode = 'separate'"
-              >
+              <button :class="['pc-segment-btn', { active: extractDraft.saveMode === 'separate' }]" type="button" @click="extractDraft.saveMode = 'separate'">
                 {{ t`每层一条` }}
               </button>
-              <button
-                :class="['pc-segment-btn', { active: extractDraft.saveMode === 'merge' }]"
-                type="button"
-                @click="extractDraft.saveMode = 'merge'"
-              >
+              <button :class="['pc-segment-btn', { active: extractDraft.saveMode === 'merge' }]" type="button" @click="extractDraft.saveMode = 'merge'">
                 {{ t`合并一条` }}
               </button>
             </div>
@@ -250,10 +223,7 @@
           </div>
         </article>
 
-        <article v-if="extractError" class="pc-status-card danger">
-          <strong>{{ t`无法提取` }}</strong>
-          <p>{{ extractError }}</p>
-        </article>
+        <article v-if="extractError" class="pc-status-card danger"><strong>{{ t`无法提取` }}</strong><p>{{ extractError }}</p></article>
         <section v-if="extractPreview.length" class="pc-extract-preview-list">
           <div class="pc-extract-preview-head">
             <strong>{{ `待保存 ${selectedExtractIds.length} / ${extractPreview.length}` }}</strong>
@@ -263,20 +233,12 @@
           </div>
           <label v-for="item in extractPreview" :key="item.id" class="pc-section-card pc-extract-preview-row">
             <input v-model="selectedExtractIds" type="checkbox" :value="item.id" />
-            <span
-              ><strong>{{ item.title }}</strong
-              ><small>{{ item.content.slice(0, 140) }}</small></span
-            >
+            <span><strong>{{ item.title }}</strong><small>{{ item.content.slice(0, 140) }}</small></span>
             <em v-if="!item.matched">{{ t`未命中，使用完整正文` }}</em>
           </label>
           <div class="pc-form-actions pc-extract-save-actions">
             <button class="pc-soft-btn" type="button" @click="phone.goBack()">{{ t`取消` }}</button>
-            <button
-              class="pc-primary-btn"
-              type="button"
-              :disabled="!selectedExtractIds.length"
-              @click="saveExtractPreview"
-            >
+            <button class="pc-primary-btn" type="button" :disabled="!selectedExtractIds.length" @click="saveExtractPreview">
               {{ t`保存所选` }}
             </button>
           </div>
@@ -349,14 +311,11 @@
         <span class="pc-kicker">{{ activeFailedDraft.source.label }}</span>
         <h2>{{ t`修复解析失败草稿` }}</h2>
         <div v-if="activeFailedDraft.warnings.length" class="pc-status-card warning">
-          <strong>{{ t`解析提示` }}</strong>
-          <p>{{ activeFailedDraft.warnings.join('；') }}</p>
+          <strong>{{ t`解析提示` }}</strong><p>{{ activeFailedDraft.warnings.join('；') }}</p>
         </div>
         <RawOutputEditor v-model="failedDraftRawOutput" @reparse="reparseFailedDraft" />
         <div class="pc-form-actions">
-          <button class="pc-soft-btn danger" type="button" @click="removeFailedDraft(activeFailedDraft.id)">
-            {{ t`删除草稿` }}
-          </button>
+          <button class="pc-soft-btn danger" type="button" @click="removeFailedDraft(activeFailedDraft.id)">{{ t`删除草稿` }}</button>
           <button class="pc-primary-btn" type="button" @click="reparseFailedDraft">{{ t`重新解析` }}</button>
         </div>
       </article>
@@ -415,6 +374,7 @@ const { settings } = storeToRefs(settingsStore);
 const query = ref('');
 const conversionSelectionMode = ref(false);
 const selectedConversionIds = ref<string[]>([]);
+const savingEntry = ref(false);
 const hostAppId = route.value.appId;
 const selectedReferences = ref<GenerationReferenceItem[]>([]);
 const entryDraft = reactive({ title: '', content: '', tags: '', sourceLabel: '', sourceText: '', directoryOrder: 0 });
@@ -427,25 +387,17 @@ const extractDraft = reactive({
   sourceMode: 'recent' as SummaryGenerationSourceMode,
 });
 const extractError = ref('');
-const extractPreview = ref<
-  Array<{
-    content: string;
-    id: string;
-    matched: boolean;
-    sourceFloorEnd?: number;
-    sourceLabel: string;
-    sourceText: string;
-    title: string;
-  }>
->([]);
+const extractPreview = ref<Array<{
+  content: string;
+  id: string;
+  matched: boolean;
+  sourceFloorEnd?: number;
+  sourceLabel: string;
+  sourceText: string;
+  title: string;
+}>>([]);
 const selectedExtractIds = ref<string[]>([]);
-const generationDraft = reactive({
-  fromStartEnd: 20,
-  rangeText: '',
-  recentCount: 20,
-  singleMessageId: 0,
-  userRequirement: '',
-});
+const generationDraft = reactive({ fromStartEnd: 20, rangeText: '', recentCount: 20, singleMessageId: 0, userRequirement: '' });
 const generationState = reactive({
   error: '',
   generationId: '',
@@ -465,12 +417,8 @@ const failedDraftRawOutput = ref('');
 const definition = computed(() => customApps.getDefinition(route.value.appId));
 const entries = computed(() => (definition.value ? customApps.getEntries(definition.value.id) : []));
 const failedDrafts = computed(() => customApps.getFailedDrafts(hostAppId));
-const activeFailedDraft = computed(() =>
-  route.value.params?.draftId ? customApps.getFailedDraft(hostAppId, route.value.params.draftId) : null,
-);
-const adapter = computed(() =>
-  definition.value?.creation.generate ? getRegisteredPhoneGenerationAdapter(hostAppId, 'generate') : null,
-);
+const activeFailedDraft = computed(() => route.value.params?.draftId ? customApps.getFailedDraft(hostAppId, route.value.params.draftId) : null);
+const adapter = computed(() => definition.value?.creation.generate ? getRegisteredPhoneGenerationAdapter(hostAppId, 'generate') : null);
 const formattedReferences = computed(() => formatGenerationReferences(selectedReferences.value));
 const textProviderSummary = computed(() =>
   settings.value.textProvider.mode === 'external'
@@ -490,9 +438,7 @@ const filteredEntries = computed(() => {
     content: applyRegexDisplayRules(entry.content, replacementRules.value.content).content,
   }));
   if (!normalized) return displayed;
-  return displayed.filter(entry =>
-    `${entry.title} ${entry.content} ${entry.tags.join(' ')}`.toLowerCase().includes(normalized),
-  );
+  return displayed.filter(entry => `${entry.title} ${entry.content} ${entry.tags.join(' ')}`.toLowerCase().includes(normalized));
 });
 const activeEntry = computed(() => {
   const entryId = route.value.params?.entryId;
@@ -508,19 +454,17 @@ const conversionSources = computed<PhoneContentConversionSource[]>(() => {
     .flatMap(entryId => {
       const entry = entryById.get(entryId);
       if (!entry) return [];
-      return [
-        {
-          appId: app.id,
-          appName: app.name,
-          content: entry.content,
-          displayMode: app.display.mode,
-          entryId: entry.id,
-          sourceFloorEnd: entry.sourceFloorEnd,
-          sourceLabel: entry.sourceLabel,
-          tags: [...entry.tags],
-          title: entry.title,
-        },
-      ];
+      return [{
+      appId: app.id,
+      appName: app.name,
+      content: entry.content,
+      displayMode: app.display.mode,
+      entryId: entry.id,
+      sourceFloorEnd: entry.sourceFloorEnd,
+      sourceLabel: entry.sourceLabel,
+      tags: [...entry.tags],
+      title: entry.title,
+      }];
     });
 });
 const replacementRules = computed(() =>
@@ -541,12 +485,8 @@ const displayActiveEntry = computed(() => {
 });
 const editingEntry = computed(() => (route.value.page === 'editor' ? activeEntry.value : null));
 const activeEntryIndex = computed(() => orderedEntries.value.findIndex(entry => entry.id === activeEntry.value?.id));
-const previousEntryId = computed(() =>
-  activeEntryIndex.value > 0 ? orderedEntries.value[activeEntryIndex.value - 1]?.id || '' : '',
-);
-const nextEntryId = computed(() =>
-  activeEntryIndex.value >= 0 ? orderedEntries.value[activeEntryIndex.value + 1]?.id || '' : '',
-);
+const previousEntryId = computed(() => activeEntryIndex.value > 0 ? orderedEntries.value[activeEntryIndex.value - 1]?.id || '' : '');
+const nextEntryId = computed(() => activeEntryIndex.value >= 0 ? orderedEntries.value[activeEntryIndex.value + 1]?.id || '' : '');
 const showTitleField = computed(() => definition.value?.naming.mode === 'manual' || Boolean(editingEntry.value));
 const promptPreview = computed(() => {
   if (!adapter.value || !definition.value) return '';
@@ -609,21 +549,15 @@ watch(
 );
 
 function resolveTitle(app: CustomAppDefinition, content: string, index: number, sourceFloor?: number) {
-  const firstLine =
-    content
-      .split(/\r?\n/)
-      .map(line => line.trim())
-      .find(Boolean) || '';
+  const firstLine = content.split(/\r?\n/).map(line => line.trim()).find(Boolean) || '';
   if (app.naming.mode === 'first-line') return firstLine.slice(0, 80) || '未命名条目';
   if (app.naming.mode === 'template') {
-    return (
-      app.naming.template
-        .replaceAll('{{appName}}', app.name)
-        .replaceAll('{{index}}', String(index))
-        .replaceAll('{{date}}', new Date().toLocaleDateString())
-        .replaceAll('{{sourceFloor}}', typeof sourceFloor === 'number' ? String(sourceFloor) : '')
-        .trim() || '未命名条目'
-    );
+    return app.naming.template
+      .replaceAll('{{appName}}', app.name)
+      .replaceAll('{{index}}', String(index))
+      .replaceAll('{{date}}', new Date().toLocaleDateString())
+      .replaceAll('{{sourceFloor}}', typeof sourceFloor === 'number' ? String(sourceFloor) : '')
+      .trim() || '未命名条目';
   }
   return entryDraft.title.trim() || firstLine.slice(0, 80) || '未命名条目';
 }
@@ -639,6 +573,14 @@ function toggleConversionSelectionMode() {
   selectedConversionIds.value = [];
 }
 
+function startConversionSelection() {
+  if (!entries.value.length) {
+    toastr.info('请先新增、提取或生成至少一条内容');
+    return;
+  }
+  toggleConversionSelectionMode();
+}
+
 function toggleConversionSelection(entryId: string) {
   selectedConversionIds.value = selectedConversionIds.value.includes(entryId)
     ? selectedConversionIds.value.filter(id => id !== entryId)
@@ -648,10 +590,9 @@ function toggleConversionSelection(entryId: string) {
 function openConversion(entryIds: string[]) {
   if (!entryIds.length) return;
   const selected = new Set(entryIds);
-  const orderedIds =
-    route.value.page === 'root'
-      ? filteredEntries.value.filter(entry => selected.has(entry.id)).map(entry => entry.id)
-      : entryIds;
+  const orderedIds = route.value.page === 'root'
+    ? filteredEntries.value.filter(entry => selected.has(entry.id)).map(entry => entry.id)
+    : entryIds;
   phone.pushPage('convert', '转换内容', { entryIds: orderedIds.join(',') });
 }
 
@@ -675,39 +616,43 @@ function openEditor(entryId = '') {
   phone.pushPage('editor', entryId ? '编辑内容' : '新增内容', entryId ? { entryId } : undefined);
 }
 
-function saveEntry() {
+async function saveEntry() {
   const app = definition.value;
+  if (savingEntry.value) return;
   if (!app || !entryDraft.content.trim()) {
     toastr.warning('请填写正文');
     return;
   }
-  const tags = entryDraft.tags
-    .split(/[，,]/)
-    .map(tag => tag.trim())
-    .filter(Boolean);
-  const title = resolveTitle(app, entryDraft.content, entries.value.length + 1);
-  let entry: CustomAppEntry | null;
-  if (editingEntry.value) {
-    entry = customApps.updateEntry(app.id, editingEntry.value.id, {
-      title,
-      content: entryDraft.content,
-      tags,
-      sourceLabel: entryDraft.sourceLabel,
-      sourceText: entryDraft.sourceText,
-      directoryOrder: entryDraft.directoryOrder,
-    });
-  } else {
-    entry = customApps.createEntry(app.id, {
-      title,
-      content: entryDraft.content,
-      tags,
-      sourceLabel: entryDraft.sourceLabel,
-      sourceText: entryDraft.sourceText,
-    });
+  savingEntry.value = true;
+  try {
+    const tags = entryDraft.tags.split(/[，,]/).map(tag => tag.trim()).filter(Boolean);
+    const title = resolveTitle(app, entryDraft.content, entries.value.length + 1);
+    const entry: CustomAppEntry | null = editingEntry.value
+      ? customApps.updateEntry(app.id, editingEntry.value.id, {
+          title,
+          content: entryDraft.content,
+          tags,
+          sourceLabel: entryDraft.sourceLabel,
+          sourceText: entryDraft.sourceText,
+          directoryOrder: entryDraft.directoryOrder,
+        })
+      : customApps.createEntry(app.id, {
+          title,
+          content: entryDraft.content,
+          tags,
+          sourceLabel: entryDraft.sourceLabel,
+          sourceText: entryDraft.sourceText,
+        });
+    if (!entry) throw new Error('目标条目不存在');
+    await nextTick();
+    toastr.success('内容已保存');
+    phone.replacePage('entry', entry.title, { entryId: entry.id });
+  } catch (error) {
+    console.error('[Custom App] Failed to save entry', error);
+    toastr.error(error instanceof Error ? `保存失败：${error.message}` : '保存失败，请查看控制台');
+  } finally {
+    savingEntry.value = false;
   }
-  if (!entry) return;
-  toastr.success('内容已保存');
-  phone.replacePage('entry', entry.title, { entryId: entry.id });
 }
 
 function toggleSort() {
@@ -747,41 +692,31 @@ function buildExtractPreview() {
     const selectedMessages = visibleMessages.filter(message => source.messageIds.includes(message.message_id));
     const readerRules = getRegexRulesForTarget(regexDisplay.rules, 'reader', 'content', 'extract');
     const customRules = getRegexRulesForTarget(regexDisplay.rules, app.id, 'content', 'extract');
-    const extracted = selectedMessages
-      .map((message, index) => {
-        const visibleResult = extractWithRegexRules(message.message, readerRules);
-        const customResult = extractWithRegexRules(visibleResult.content, customRules);
-        const content = customResult.content.trim();
-        return {
-          id: `floor-${message.message_id}-${index}`,
-          title: resolveTitle(app, content, entries.value.length + index + 1, message.message_id),
-          content,
-          matched: customRules.length ? customResult.applied.length > 0 : true,
-          sourceFloorEnd: message.message_id,
-          sourceLabel: `第 ${message.message_id} 楼`,
-          sourceText: visibleResult.content,
-        };
-      })
-      .filter(item => item.content);
-    extractPreview.value =
-      extractDraft.saveMode === 'merge' && extracted.length
-        ? [
-            {
-              id: `merged-${Date.now()}`,
-              title: resolveTitle(
-                app,
-                extracted.map(item => item.content).join('\n\n'),
-                entries.value.length + 1,
-                extracted.at(-1)?.sourceFloorEnd,
-              ),
-              content: extracted.map(item => item.content).join('\n\n'),
-              matched: extracted.every(item => item.matched),
-              sourceFloorEnd: extracted.at(-1)?.sourceFloorEnd,
-              sourceLabel: source.label,
-              sourceText: extracted.map(item => item.sourceText).join('\n\n'),
-            },
-          ]
-        : extracted;
+    const extracted = selectedMessages.map((message, index) => {
+      const visibleResult = extractWithRegexRules(message.message, readerRules);
+      const customResult = extractWithRegexRules(visibleResult.content, customRules);
+      const content = customResult.content.trim();
+      return {
+        id: `floor-${message.message_id}-${index}`,
+        title: resolveTitle(app, content, entries.value.length + index + 1, message.message_id),
+        content,
+        matched: customRules.length ? customResult.applied.length > 0 : true,
+        sourceFloorEnd: message.message_id,
+        sourceLabel: `第 ${message.message_id} 楼`,
+        sourceText: visibleResult.content,
+      };
+    }).filter(item => item.content);
+    extractPreview.value = extractDraft.saveMode === 'merge' && extracted.length
+      ? [{
+          id: `merged-${Date.now()}`,
+          title: resolveTitle(app, extracted.map(item => item.content).join('\n\n'), entries.value.length + 1, extracted.at(-1)?.sourceFloorEnd),
+          content: extracted.map(item => item.content).join('\n\n'),
+          matched: extracted.every(item => item.matched),
+          sourceFloorEnd: extracted.at(-1)?.sourceFloorEnd,
+          sourceLabel: source.label,
+          sourceText: extracted.map(item => item.sourceText).join('\n\n'),
+        }]
+      : extracted;
     selectedExtractIds.value = extractPreview.value.map(item => item.id);
     if (!extractPreview.value.length) throw new Error('选中楼层没有可保存的正文');
   } catch (error) {
@@ -792,25 +727,24 @@ function buildExtractPreview() {
 }
 
 function toggleAllExtractPreview() {
-  selectedExtractIds.value =
-    selectedExtractIds.value.length === extractPreview.value.length ? [] : extractPreview.value.map(item => item.id);
+  selectedExtractIds.value = selectedExtractIds.value.length === extractPreview.value.length
+    ? []
+    : extractPreview.value.map(item => item.id);
 }
 
 function saveExtractPreview() {
   const app = definition.value;
   if (!app) return;
   const selected = new Set(selectedExtractIds.value);
-  extractPreview.value
-    .filter(item => selected.has(item.id))
-    .forEach(item => {
-      customApps.createEntry(app.id, {
-        title: item.title,
-        content: item.content,
-        sourceFloorEnd: item.sourceFloorEnd,
-        sourceLabel: item.sourceLabel,
-        sourceText: item.sourceText,
-      });
+  extractPreview.value.filter(item => selected.has(item.id)).forEach(item => {
+    customApps.createEntry(app.id, {
+      title: item.title,
+      content: item.content,
+      sourceFloorEnd: item.sourceFloorEnd,
+      sourceLabel: item.sourceLabel,
+      sourceText: item.sourceText,
     });
+  });
   toastr.success(`已保存 ${selected.size} 条内容`);
   phone.replacePage('root', app.name);
 }
@@ -1123,6 +1057,12 @@ function scrollToBottom() {
   bottom: 0;
   padding: 10px 0;
   background: var(--pc-bg);
+}
+
+.pc-custom-visible-actions {
+  display: flex;
+  justify-content: flex-end;
+  margin: 0 0 12px;
 }
 
 .pc-custom-entry-copy {

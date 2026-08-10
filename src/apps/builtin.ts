@@ -20,6 +20,14 @@ import {
   createSummaryContentReceiver,
   createTheaterContentReceiver,
 } from '@/apps/contentReceivers';
+import {
+  createDiaryContentSources,
+  createExtrasContentSources,
+  createForumContentSources,
+  createLettersContentSources,
+  createSummaryContentSources,
+  createTheaterContentSources,
+} from '@/apps/builtinContentSources';
 import { definePhoneApp, type PhoneAppModule } from '@/core/appRegistry';
 import {
   createDiaryBackupDomain,
@@ -104,6 +112,7 @@ export const BUILTIN_PHONE_APP_MODULES: PhoneAppModule[] = [
     defaultRoute: 'root',
     defaultOrder: 10,
     contentReceiver: createSummaryContentReceiver(),
+    contentSourceProvider: createSummaryContentSources,
     backupDomains: [createSummaryBackupDomain()],
     component: SummaryApp,
     contentStatsProvider: createSummaryContentStats,
@@ -124,6 +133,7 @@ export const BUILTIN_PHONE_APP_MODULES: PhoneAppModule[] = [
     defaultRoute: 'root',
     defaultOrder: 20,
     contentReceiver: createDiaryContentReceiver(),
+    contentSourceProvider: createDiaryContentSources,
     backupDomains: [createDiaryBackupDomain()],
     component: DiaryApp,
     contentStatsProvider: createDiaryContentStats,
@@ -145,6 +155,7 @@ export const BUILTIN_PHONE_APP_MODULES: PhoneAppModule[] = [
     defaultRoute: 'root',
     defaultOrder: 30,
     contentReceiver: createExtrasContentReceiver(),
+    contentSourceProvider: createExtrasContentSources,
     backupDomains: [createExtrasBackupDomain()],
     component: ExtrasApp,
     contentStatsProvider: createExtrasContentStats,
@@ -167,6 +178,7 @@ export const BUILTIN_PHONE_APP_MODULES: PhoneAppModule[] = [
     defaultRoute: 'root',
     defaultOrder: 40,
     contentReceiver: createForumContentReceiver(),
+    contentSourceProvider: createForumContentSources,
     backupDomains: [createForumBackupDomain()],
     component: ForumApp,
     contentStatsProvider: createForumContentStats,
@@ -189,6 +201,7 @@ export const BUILTIN_PHONE_APP_MODULES: PhoneAppModule[] = [
     defaultRoute: 'root',
     defaultOrder: 50,
     contentReceiver: createTheaterContentReceiver(),
+    contentSourceProvider: createTheaterContentSources,
     backupDomains: [createTheaterBackupDomain(), createGenerationAliasesBackupDomain()],
     component: TheaterApp,
     contentStatsProvider: createTheaterContentStats,
@@ -216,6 +229,7 @@ export const BUILTIN_PHONE_APP_MODULES: PhoneAppModule[] = [
     defaultRoute: 'root',
     defaultOrder: 60,
     contentReceiver: createLettersContentReceiver(),
+    contentSourceProvider: createLettersContentSources,
     backupDomains: [createLettersBackupDomain()],
     component: LettersApp,
     contentStatsProvider: createLettersContentStats,

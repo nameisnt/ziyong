@@ -212,9 +212,9 @@
 
       <div class="pc-form-actions pc-app-builder-form-actions">
         <button class="pc-soft-btn" type="button" @click="phone.goBack()">{{ t`取消` }}</button>
-        <button class="pc-primary-btn" type="button" @click="saveApp">
+        <button class="pc-primary-btn" type="button" :disabled="savingApp" @click="saveApp">
           <i class="fa-solid fa-floppy-disk"></i>
-          <span>{{ t`保存 App` }}</span>
+          <span>{{ savingApp ? t`正在保存` : t`保存 App` }}</span>
         </button>
       </div>
     </section>
@@ -248,6 +248,7 @@ const { definitions } = storeToRefs(customApps);
 const query = ref('');
 const draft = ref<CustomAppDefinition | null>(null);
 const importInput = ref<HTMLInputElement | null>(null);
+const savingApp = ref(false);
 
 const templates = [
   { id: 'extract' as const, icon: 'fa-highlighter', name: '提取记录', description: '手动新增，也可以从聊天楼层提取。' },
@@ -335,8 +336,8 @@ function openDefinitionEditor(definitionId: string) {
   phone.pushPage('editor', definition.name, { definitionId });
 }
 
-function saveApp() {
-  if (!draft.value) return;
+async function saveApp() {
+  if (!draft.value || savingApp.value) return;
   if (!draft.value.name.trim()) {
     toastr.warning('请填写 App 名称');
     return;
@@ -349,9 +350,19 @@ function saveApp() {
     toastr.warning('使用 AI 返回标题前需要开启 AI 生成');
     return;
   }
-  customApps.saveDefinition(draft.value);
-  toastr.success('自制 App 已保存');
-  phone.replaceRoute('app-builder', 'root', 'App 工坊');
+  savingApp.value = true;
+  try {
+    const isNewApp = !customApps.getDefinition(draft.value.id);
+    const saved = customApps.saveDefinition(draft.value);
+    await nextTick();
+    toastr.success('自制 App 已保存');
+    phone.replaceRoute(isNewApp ? saved.id : 'app-builder', 'root', isNewApp ? saved.name : 'App 工坊');
+  } catch (error) {
+    console.error('[App Builder] Failed to save custom app', error);
+    toastr.error(error instanceof Error ? `保存失败：${error.message}` : '保存失败，请查看控制台');
+  } finally {
+    savingApp.value = false;
+  }
 }
 
 function duplicateApp(appId: string) {

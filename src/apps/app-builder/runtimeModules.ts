@@ -127,6 +127,20 @@ export function createCustomAppRuntimeModules(): PhoneAppModule[] {
       defaultRoute: 'root',
       defaultOrder: 150 + index,
       component: CustomAppHost,
+      contentSourceProvider: () => {
+        const customApps = useCustomAppsStore();
+        return customApps.getEntries(definition.id).map(entry => ({
+          appId: definition.id,
+          appName: definition.name,
+          content: entry.content,
+          displayMode: definition.display.mode,
+          entryId: entry.id,
+          sourceFloorEnd: entry.sourceFloorEnd,
+          sourceLabel: entry.sourceLabel || definition.name,
+          tags: [...entry.tags],
+          title: entry.title,
+        }));
+      },
       contentReceiver: {
         scope: definition.dataScope,
         batchModes: ['separate', 'merge'],

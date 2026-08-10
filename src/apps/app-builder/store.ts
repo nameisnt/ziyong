@@ -10,6 +10,7 @@ import {
   customAppDefinitionsField,
   customAppGlobalDataField,
   CustomAppContentDataSchema,
+  CustomAppDefinitionSchema,
   CustomAppDefinitionsSettingsSchema,
   touchCustomAppCatalog,
   type CustomAppContentData,
@@ -42,14 +43,20 @@ export const useCustomAppsStore = defineStore('custom-apps', () => {
     createDefault: () => CustomAppContentDataSchema.parse({}),
   });
 
+  function persistDefinitions() {
+    _.set(
+      extension_settings,
+      customAppDefinitionsField,
+      CustomAppDefinitionsSettingsSchema.parse(klona(definitionSettings.value)),
+    );
+    touchCustomAppCatalog();
+    void saveSettingsDebounced();
+  }
+
   watch(
     definitionSettings,
-    value => {
-      _.set(extension_settings, customAppDefinitionsField, CustomAppDefinitionsSettingsSchema.parse(klona(value)));
-      touchCustomAppCatalog();
-      void saveSettingsDebounced();
-    },
-    { deep: true },
+    persistDefinitions,
+    { deep: true, flush: 'sync' },
   );
   watch(
     globalData,
@@ -73,7 +80,7 @@ export const useCustomAppsStore = defineStore('custom-apps', () => {
   }
 
   function saveDefinition(input: CustomAppDefinition) {
-    const parsed = CustomAppDefinitionsSettingsSchema.shape.definitions.element.parse({
+    const parsed = CustomAppDefinitionSchema.parse({
       ...klona(input),
       name: input.name.trim() || '自制 App',
       description: input.description.trim(),

@@ -182,6 +182,8 @@ export interface PhoneContentConversionSource {
   title: string;
 }
 
+export type PhoneContentSourceProvider = () => PhoneContentConversionSource[];
+
 export interface PhoneContentConversionOption {
   disabled?: boolean;
   group?: string;
@@ -256,6 +258,7 @@ export interface PhoneAppModule extends PhoneAppDefinition {
   backupDomains?: PhoneBackupDomain[];
   component: PhoneAppComponent;
   contentReceiver?: PhoneContentReceiver;
+  contentSourceProvider?: PhoneContentSourceProvider;
   contentStatsProvider?: PhoneContentStatsProvider;
   favoriteProvider?: PhoneFavoriteProvider;
   generationProvider?: PhoneGenerationProvider;
@@ -386,6 +389,43 @@ export function getRegisteredPhoneContentReceivers() {
       app: module,
       receiver: module.contentReceiver,
     }));
+}
+
+function flattenReferenceSources(
+  app: PhoneAppModule,
+  nodes: PhoneReferenceTreeNode[],
+): PhoneContentConversionSource[] {
+  return nodes.flatMap(node => {
+    if (node.kind === 'branch') return flattenReferenceSources(app, node.children);
+    const item = node.item;
+    const sourcePath = item.sourcePath.filter(Boolean);
+    const sourceLabel = [...sourcePath.slice(sourcePath[0] === app.name ? 1 : 0), item.timeLabel]
+      .filter(Boolean)
+      .join(' · ');
+    return [{
+      appId: app.id,
+      appName: app.name,
+      content: item.content,
+      displayMode: 'markdown',
+      entryId: item.id,
+      sourceLabel: sourceLabel || app.name,
+      tags: [],
+      title: item.title,
+    }];
+  });
+}
+
+export function getRegisteredPhoneContentSources() {
+  return getRegisteredPhoneApps().flatMap(app => {
+    const explicitSources = app.contentSourceProvider?.();
+    if (explicitSources) {
+      return [{ app, sources: explicitSources }];
+    }
+    const references = app.referenceProvider?.();
+    if (!references) return [];
+    const nodes = Array.isArray(references) ? references : [references];
+    return [{ app, sources: flattenReferenceSources(app, nodes) }];
+  });
 }
 
 export function getRegisteredPhoneGenerationActions(appId?: string) {

@@ -100,8 +100,8 @@ export function createSummaryContentReceiver(): PhoneContentReceiver {
       const summary = useSummaryStore();
       return {
         bookId: summary.books[0]?.id || NEW_COLLECTION,
-        bookName: `${sources[0]?.appName || '自制 App'}转换`,
-        rangeLabel: sources[0]?.sourceLabel || '自制 App 转换',
+        bookName: `${sources[0]?.appName || '来源 App'}转换`,
+        rangeLabel: sources[0]?.sourceLabel || '内容转换',
       };
     },
     fields(context) {
@@ -115,7 +115,7 @@ export function createSummaryContentReceiver(): PhoneContentReceiver {
           summary.books.map(book => ({ label: book.title, value: book.id })),
           context,
         ),
-        { key: 'rangeLabel', kind: 'text', label: '范围说明', placeholder: '例如：自制 App 转换' },
+        { key: 'rangeLabel', kind: 'text', label: '范围说明', placeholder: '例如：内容转换' },
       ];
     },
     receive(context) {
@@ -127,7 +127,7 @@ export function createSummaryContentReceiver(): PhoneContentReceiver {
       const entries = context.sources.map(source =>
         summary.createEntry(book.id, {
           content: stripFrontendMarkup(source),
-          rangeLabel: textValue(context, 'rangeLabel') || source.sourceLabel || '自制 App 转换',
+          rangeLabel: textValue(context, 'rangeLabel') || source.sourceLabel || '内容转换',
           sourceFloorEnd: source.sourceFloorEnd,
           title: sourceTitle(source, '未命名总结'),
         }),
@@ -152,8 +152,8 @@ export function createExtrasContentReceiver(): PhoneContentReceiver {
       const extras = useExtrasStore();
       return {
         bookId: extras.books[0]?.id || NEW_COLLECTION,
-        bookName: `${sources[0]?.appName || '自制 App'}番外`,
-        typeName: '自制 App 转换',
+        bookName: `${sources[0]?.appName || '来源 App'}番外`,
+        typeName: '内容转换',
       };
     },
     fields(context) {
@@ -207,7 +207,7 @@ export function createDiaryContentReceiver(): PhoneContentReceiver {
       const diary = useDiaryStore();
       return {
         bookId: diary.books[0]?.id || NEW_COLLECTION,
-        bookName: `${sources[0]?.appName || '自制 App'}日记`,
+        bookName: `${sources[0]?.appName || '来源 App'}日记`,
         kind: 'normal',
         occurredAt: '',
         perspective: diary.books[0]?.perspective.name || '',
@@ -282,7 +282,7 @@ export function createLettersContentReceiver(): PhoneContentReceiver {
       const book = letters.books[0];
       return {
         bookId: book?.id || NEW_COLLECTION,
-        bookName: `${sources[0]?.appName || '自制 App'}书信`,
+        bookName: `${sources[0]?.appName || '来源 App'}书信`,
         format: 'formal',
         receiver: book?.participants[1]?.name || '',
         sender: book?.participants[0]?.name || '',
@@ -357,7 +357,7 @@ export function createTheaterContentReceiver(): PhoneContentReceiver {
       return {
         participants: '',
         renderMode: sources.some(source => source.displayMode === 'frontend') ? 'frontend' : 'markdown',
-        typeName: '自制 App 转换',
+        typeName: '内容转换',
       };
     },
     fields() {
@@ -409,7 +409,7 @@ export function createForumContentReceiver(): PhoneContentReceiver {
       return {
         author: '匿名',
         boardId: forum.boards[0]?.id || NEW_COLLECTION,
-        boardName: `${sources[0]?.appName || '自制 App'}板块`,
+        boardName: `${sources[0]?.appName || '来源 App'}板块`,
       };
     },
     fields(context) {
@@ -562,7 +562,7 @@ export function createEntryLibraryContentReceiver(): PhoneContentReceiver {
     batchModes: ['separate', 'merge'],
     createDraft(sources) {
       const library = useEntryLibraryStore();
-      return { groupId: library.groups[0]?.id || NEW_COLLECTION, groupName: sources[0]?.appName || '自制 App' };
+      return { groupId: library.groups[0]?.id || NEW_COLLECTION, groupName: sources[0]?.appName || '来源 App' };
     },
     fields(context) {
       const library = useEntryLibraryStore();
