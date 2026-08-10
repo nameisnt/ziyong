@@ -25,6 +25,7 @@ import {
   createExtrasContentSources,
   createForumContentSources,
   createLettersContentSources,
+  createReaderContentSources,
   createSummaryContentSources,
   createTheaterContentSources,
 } from '@/apps/builtinContentSources';
@@ -294,6 +295,7 @@ export const BUILTIN_PHONE_APP_MODULES: PhoneAppModule[] = [
     defaultRoute: 'root',
     defaultOrder: 100,
     component: ReaderApp,
+    contentSourceProvider: createReaderContentSources,
     favoriteProvider: createReaderFavoriteItems,
   }),
   definePhoneApp({

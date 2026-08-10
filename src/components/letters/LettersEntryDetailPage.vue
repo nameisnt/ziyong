@@ -3,6 +3,7 @@
     <ReaderDetailShell
       actions-class="six"
       :content="entry.content"
+      display-app-id="letters"
       :favorite-active="entry.favorite"
       :next-disabled="!nextId"
       :previous-disabled="!previousId"

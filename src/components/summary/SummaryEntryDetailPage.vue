@@ -2,6 +2,7 @@
   <section class="pc-summary-page pc-summary-detail-page">
     <ReaderDetailShell
       :content="entry.content"
+      display-app-id="summary"
       :favorite-active="entry.favorite"
       :next-disabled="!nextId"
       :previous-disabled="!previousId"

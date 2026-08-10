@@ -573,7 +573,7 @@ import { useInvalidRouteFallback } from '@/util/routeFallback';
 import { stopGenerationByIdSafe } from '@/util/runtime';
 import { formatTextProviderSummary } from '@/util/textProvider';
 import { regexDisplayProfilesTarget, useRegexDisplayStore } from '@/apps/regex-display/store';
-import { getRegexRulesForTarget } from '@/util/regexDisplay';
+import { getRegexRulesByIds } from '@/util/regexDisplay';
 import {
   getProfileKindLabel,
   profileKindOptions,
@@ -781,7 +781,11 @@ const profileFrontend = computed(() =>
     ? renderProfileFrontend(
         activeEntry.value,
         activeEntryTable.value,
-        getRegexRulesForTarget(regexDisplayRules.value, regexDisplayProfilesTarget, 'content', 'replace'),
+        getRegexRulesByIds(
+          regexDisplayRules.value,
+          regexDisplay.getUsage(regexDisplayProfilesTarget).displayRuleIds,
+          'replace',
+        ),
       )
     : { applied: [], content: '', errors: [], renderMode: 'html' as const },
 );

@@ -1041,34 +1041,35 @@ async function applyScenario(name: VisualScenarioName, options: { height?: numbe
           createRegexDisplayRule({
             id: 'visual-custom-content',
             name: '自制 App 正文',
-            field: 'content',
             operation: 'extract',
             order: 0,
             pattern: '/^[\\s\\S]*?<custom-body>([\\s\\S]*?)<\\/custom-body>[\\s\\S]*$/i',
             replacement: '$1',
-            targetIds: [appId],
           }),
           createRegexDisplayRule({
             id: 'visual-custom-title',
             name: '自制 App 标题',
-            field: 'title',
             operation: 'extract',
             order: 1,
             pattern: '/^[\\s\\S]*?<custom-title>([\\s\\S]*?)<\\/custom-title>[\\s\\S]*$/i',
             replacement: '$1',
-            targetIds: [appId],
           }),
           createRegexDisplayRule({
             id: 'visual-reader-conflict',
             name: '不应应用的阅读器规则',
-            field: 'content',
             operation: 'extract',
             order: 2,
             pattern: '/^[\\s\\S]+$/',
             replacement: '错误的阅读器结果',
-            targetIds: ['reader'],
           }),
         ],
+        usages: {
+          [appId]: {
+            contentRuleId: 'visual-custom-content',
+            displayRuleIds: [],
+            titleRuleId: 'visual-custom-title',
+          },
+        },
       }),
     );
     useCustomAppsStore().rehydrateFromSettings();
@@ -1745,7 +1746,16 @@ async function applyScenario(name: VisualScenarioName, options: { height?: numbe
     await waitForPaint();
     const rootScrollTop = screen.scrollTop;
     if (rootScrollTop < 100) throw new Error('Entry library root fixture is not scrollable');
-    document.querySelector<HTMLButtonElement>('.pc-entry-library-head .pc-primary-btn')?.click();
+    const addMenu = [...document.querySelectorAll<HTMLElement>('.pc-entry-library-head .pc-action-menu')].find(menu =>
+      menu.querySelector('summary')?.textContent?.includes('新增'),
+    );
+    addMenu?.querySelector<HTMLElement>('summary')?.click();
+    await waitForPaint();
+    const manualCreateButton = [...(addMenu?.querySelectorAll<HTMLButtonElement>('.pc-action-menu-panel button') ?? [])].find(
+      button => button.textContent?.includes('手动新建'),
+    );
+    if (!manualCreateButton) throw new Error('Entry library manual create action is missing');
+    manualCreateButton.click();
     await waitForPaint();
     if (screen.scrollTop !== 0) throw new Error('New entry library route did not start at the top');
     await usePhoneStore().goBack();
@@ -2321,7 +2331,13 @@ async function applyScenario(name: VisualScenarioName, options: { height?: numbe
       name !== 'content-converter-source' && entry ? { sourceAppId: 'summary', sourceIds: entry.id } : undefined,
     );
     if (name === 'content-converter-complete') {
-      await waitForPaint();
+      await waitForVisualCondition(
+        () =>
+          [...document.querySelectorAll<HTMLButtonElement>('button')].some(button =>
+            button.textContent?.includes('确认转换'),
+          ),
+        2000,
+      );
       const confirmButton = [...document.querySelectorAll<HTMLButtonElement>('button')].find(button =>
         button.textContent?.includes('确认转换'),
       );

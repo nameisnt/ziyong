@@ -31,12 +31,18 @@ export function useDetailScroll(targetRef: Ref<HTMLElement | null>, fallbackSele
     scrollContainer('top', behavior);
   }
 
-  function scrollToBottom() {
-    scrollContainer('bottom');
+  function scrollToBottom(behavior: ScrollBehavior = 'smooth') {
+    scrollContainer('bottom', behavior);
+  }
+
+  function scrollToVersionPosition(position: 'after' | 'before') {
+    if (position === 'after') scrollToBottom('auto');
+    else scrollToTop('auto');
   }
 
   return {
     scrollToBottom,
     scrollToTop,
+    scrollToVersionPosition,
   };
 }

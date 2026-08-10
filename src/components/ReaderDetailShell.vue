@@ -18,12 +18,12 @@
           </header>
           <slot v-if="versionNavigatorPosition === 'before'" name="version-navigation"></slot>
           <slot name="before-content"></slot>
-          <slot name="content"></slot>
+          <slot name="content" :display-content="displayContent"></slot>
           <slot v-if="versionNavigatorPosition === 'after'" name="version-navigation"></slot>
           <slot name="after-content"></slot>
         </article>
       </template>
-      <ReaderContent v-else :content="content" :formatted="contentFormatted" :title="title">
+      <ReaderContent v-else :content="displayContent" :formatted="contentFormatted" :title="title">
         <template #meta><slot name="meta"></slot></template>
         <template #before>
           <slot v-if="versionNavigatorPosition === 'before'" name="version-navigation"></slot>
@@ -97,7 +97,9 @@
 <script setup lang="ts">
 import DetailFooter from '@/components/DetailFooter.vue';
 import ReaderContent from '@/components/ReaderContent.vue';
+import { useRegexDisplayStore } from '@/apps/regex-display/store';
 import { useSettingsStore } from '@/store/settings';
+import { applyRegexDisplayRules, getRegexRulesByIds } from '@/util/regexDisplay';
 import { storeToRefs } from 'pinia';
 
 const props = withDefaults(
@@ -112,6 +114,7 @@ const props = withDefaults(
     content?: string;
     contentFormatted?: boolean;
     customContent?: boolean;
+    displayAppId?: string;
     editDisabled?: boolean;
     editEnabled?: boolean;
     editLabel?: string;
@@ -138,6 +141,7 @@ const props = withDefaults(
     content: '',
     contentFormatted: false,
     customContent: false,
+    displayAppId: '',
     editDisabled: false,
     editEnabled: true,
     editLabel: '编辑',
@@ -167,8 +171,18 @@ const emit = defineEmits<{
 }>();
 
 const settingsStore = useSettingsStore();
+const regexDisplay = useRegexDisplayStore();
 const { settings } = storeToRefs(settingsStore);
 const versionNavigatorPosition = computed(() => settings.value.reader.versionNavigatorPosition);
+const displayRules = computed(() => {
+  if (!props.displayAppId) return [];
+  return getRegexRulesByIds(
+    regexDisplay.rules,
+    regexDisplay.getUsage(props.displayAppId).displayRuleIds,
+    'replace',
+  );
+});
+const displayContent = computed(() => applyRegexDisplayRules(props.content, displayRules.value).content);
 
 const footerVisible = ref(false);
 const effectiveFooterVisible = computed(() => props.footerAlwaysVisible || footerVisible.value);

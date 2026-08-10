@@ -1,30 +1,20 @@
 <template>
   <section class="pc-summary-app">
     <section v-if="route.page === 'root'" class="pc-summary-page">
-      <div class="pc-section-card pc-summary-root-actions">
-        <button class="pc-soft-btn" type="button" @click="openSummaryExtract">
-          <i class="fa-solid fa-file-import"></i>
-          <span>{{ t`提取` }}</span>
-        </button>
-        <button class="pc-soft-btn" type="button" @click="openCreateBook">
-          <i class="fa-solid fa-wand-magic-sparkles"></i>
-          <span>{{ t`单条` }}</span>
-        </button>
-        <button class="pc-primary-btn" type="button" @click="openBatchGenerate()">
-          <i class="fa-solid fa-layer-group"></i>
-          <span>{{ t`批量` }}</span>
-        </button>
-      </div>
-
       <PreviewDraftNotice
         :draft="summaryPreviewDraft"
         @discard="discardSummaryPreviewDraft"
         @open="openSummaryPreviewDraft"
       />
 
-      <EmptyState v-if="!books.length" :title="t`还没有总结集`" />
-
-      <BookShelf v-else :books="shelfBooks" :show-create="false" variant="diary" @select="openBook" />
+      <BookShelf
+        :books="shelfBooks"
+        create-label="生成总结"
+        create-subtitle="选择生成方式"
+        variant="diary"
+        @create="openCreationMode"
+        @select="openBook"
+      />
 
       <FailedDraftList
         :delete-title="t`删除`"
@@ -34,6 +24,23 @@
         @open="openFailedDraft"
         @remove="removeFailedDraft"
       />
+    </section>
+
+    <section v-else-if="route.page === 'creation-mode'" class="pc-summary-page">
+      <div class="pc-create-mode-list">
+        <button class="pc-soft-btn" type="button" @click="openSummaryExtract">
+          <i class="fa-solid fa-file-import"></i>
+          <span>{{ t`从聊天提取总结` }}</span>
+        </button>
+        <button class="pc-soft-btn" type="button" @click="openCreateBook">
+          <i class="fa-solid fa-file-lines"></i>
+          <span>{{ t`生成单条总结` }}</span>
+        </button>
+        <button class="pc-primary-btn" type="button" @click="openBatchGenerate()">
+          <i class="fa-solid fa-layer-group"></i>
+          <span>{{ t`批量生成总结` }}</span>
+        </button>
+      </div>
     </section>
 
     <section v-else-if="route.page === 'create-book' || route.page === 'edit-book'" class="pc-summary-page">
@@ -188,7 +195,7 @@
               v-model="summaryImport.ruleId"
               class="pc-field pc-select"
               :disabled="summaryImport.loading"
-              @change="reloadSummaryImport"
+              @change="onSummaryImportRuleChange"
             >
               <option value="__default_body__">{{ t`默认楼层正文提取` }}</option>
               <option v-for="rule in summaryImportRules" :key="rule.id" :value="rule.id">
@@ -525,7 +532,7 @@ import { regexDisplaySummaryTarget, useRegexDisplayStore } from '@/apps/regex-di
 import { canOpenBaguScan } from '@/util/baguScanGate';
 import { useDetailScroll } from '@/util/detailScroll';
 import { transformReaderMessages } from '@/util/readerRegex';
-import { getRegexRulesForTarget } from '@/util/regexDisplay';
+import { getRegexRulesByOperation } from '@/util/regexDisplay';
 import { formatGenerationReferences, type GenerationReferenceItem } from '@/util/references';
 import { usePreviewDraftPersistence } from '@/util/previewDrafts';
 import { useInvalidRouteFallback } from '@/util/routeFallback';
@@ -692,8 +699,9 @@ const activeFailedDraft = computed(() => {
   return draftId ? summary.getFailedDraft(draftId) : null;
 });
 const summaryImportRules = computed(() =>
-  getRegexRulesForTarget(regexDisplayRules.value, regexDisplaySummaryTarget, 'content', 'extract'),
+  getRegexRulesByOperation(regexDisplayRules.value, 'extract'),
 );
+const summaryRegexUsage = computed(() => regexDisplay.getUsage(regexDisplaySummaryTarget));
 const allSummaryImportsSelected = computed(
   () =>
     summaryImport.items.length > 0 && summaryImport.items.every(item => summaryImport.selectedIds.includes(item.id)),
@@ -893,6 +901,10 @@ function openCreateBook() {
   phone.pushPage('create-book', '生成总结');
 }
 
+function openCreationMode() {
+  phone.pushPage('creation-mode', '生成总结');
+}
+
 function openSummaryExtract() {
   phone.pushPage('import-chat', '提取总结');
 }
@@ -949,8 +961,8 @@ function openImportChat(bookId: string) {
 }
 
 function resolveSummaryImportRuleId() {
-  const preferredId = readerSettings.value.bodyRuleId;
-  return summaryImportRules.value.some(rule => rule.id === preferredId) ? preferredId : '__default_body__';
+  const selectedId = summaryRegexUsage.value.contentRuleId;
+  return summaryImportRules.value.some(rule => rule.id === selectedId) ? selectedId : '__default_body__';
 }
 
 function getSummaryImportRule(): ChatReaderRegexRule {
@@ -962,6 +974,15 @@ function getSummaryImportRule(): ChatReaderRegexRule {
     flags: rule.flags,
     replace: rule.replacement,
   };
+}
+
+function onSummaryImportRuleChange() {
+  regexDisplay.setExtractionRule(
+    regexDisplaySummaryTarget,
+    'content',
+    summaryImport.ruleId === '__default_body__' ? '' : summaryImport.ruleId,
+  );
+  void reloadSummaryImport();
 }
 
 async function reloadSummaryImport() {
@@ -1691,19 +1712,6 @@ function formatBookMeta(count: number) {
   line-height: 1.45;
   -webkit-box-orient: vertical;
   -webkit-line-clamp: 2;
-}
-
-.pc-summary-root-actions {
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-}
-
-.pc-summary-root-actions .pc-soft-btn,
-.pc-summary-root-actions .pc-primary-btn {
-  width: 100%;
-  min-inline-size: 0;
-  justify-content: center;
-  padding-inline: 8px;
-  white-space: nowrap;
 }
 
 .pc-hero-actions {

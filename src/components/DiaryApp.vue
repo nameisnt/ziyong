@@ -1,24 +1,20 @@
 <template>
   <section class="pc-diary-app">
     <section v-if="route.page === 'root'" class="pc-diary-page">
-      <div class="pc-toolbar pc-diary-root-actions">
-        <button class="pc-soft-btn" type="button" @click="openGenerate()">
-          <i class="fa-solid fa-wand-magic-sparkles"></i>
-          <span>{{ t`单篇生成` }}</span>
-        </button>
-        <button class="pc-primary-btn" type="button" @click="openBatchGenerate()">
-          <i class="fa-solid fa-layer-group"></i>
-          <span>{{ t`批量生成` }}</span>
-        </button>
-      </div>
-
       <PreviewDraftNotice
         :draft="diaryPreviewDraft"
         @discard="discardDiaryPreviewDraft"
         @open="openDiaryPreviewDraft"
       />
 
-      <BookShelf :books="shelfBooks" :show-create="false" variant="diary" @select="openBook" />
+      <BookShelf
+        :books="shelfBooks"
+        create-label="生成日记"
+        create-subtitle="选择生成方式"
+        variant="diary"
+        @create="openCreationMode"
+        @select="openBook"
+      />
 
       <FailedDraftList
         :drafts="failedDrafts"
@@ -28,6 +24,19 @@
         @open="openFailedDraft"
         @remove="removeFailedDraft"
       />
+    </section>
+
+    <section v-else-if="route.page === 'creation-mode'" class="pc-diary-page">
+      <div class="pc-create-mode-list">
+        <button class="pc-soft-btn" type="button" @click="openGenerate()">
+          <i class="fa-solid fa-file-lines"></i>
+          <span>{{ t`生成单篇日记` }}</span>
+        </button>
+        <button class="pc-primary-btn" type="button" @click="openBatchGenerate()">
+          <i class="fa-solid fa-layer-group"></i>
+          <span>{{ t`批量生成日记` }}</span>
+        </button>
+      </div>
     </section>
 
     <section v-else-if="route.page === 'book' && activeBook" class="pc-diary-page">
@@ -974,6 +983,10 @@ function openGenerate(bookId?: string) {
   phone.pushPage('generate', '生成日记', bookId ? { bookId } : undefined);
 }
 
+function openCreationMode() {
+  phone.pushPage('creation-mode', '生成日记');
+}
+
 function openBatchGenerate(bookId?: string) {
   phone.pushPage('batch-generate', '批量生成日记', bookId ? { bookId } : undefined);
 }
@@ -1894,16 +1907,6 @@ async function removeEntry(bookId: string, entryId: string) {
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto;
   gap: 10px;
-}
-
-.pc-diary-root-actions {
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-}
-
-.pc-diary-root-actions .pc-soft-btn,
-.pc-diary-root-actions .pc-primary-btn {
-  width: 100%;
-  justify-content: center;
 }
 
 .pc-search {

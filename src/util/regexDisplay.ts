@@ -2,38 +2,34 @@ export type RegexDisplayRenderMode = 'html' | 'text';
 
 export interface RegexDisplayRuleLike {
   enabled?: boolean;
-  field?: 'content' | 'title';
   flags: string;
+  id?: string;
   name: string;
   operation?: 'extract' | 'replace';
   order?: number;
   pattern: string;
   renderMode: RegexDisplayRenderMode;
   replacement: string;
-  targetId?: string;
-  targetIds?: string[];
 }
 
-function getRuleTargetIds(rule: RegexDisplayRuleLike) {
-  return rule.targetIds?.length ? rule.targetIds : rule.targetId ? [rule.targetId] : [];
-}
-
-export function getRegexRulesForTarget(
-  rules: RegexDisplayRuleLike[],
-  targetId: string,
-  field: 'content' | 'title',
-  operation: 'extract' | 'replace',
-) {
+export function getRegexRulesByOperation(rules: RegexDisplayRuleLike[], operation: 'extract' | 'replace') {
   return rules
     .filter(
       rule =>
         rule.enabled !== false &&
         rule.pattern.trim() &&
-        getRuleTargetIds(rule).includes(targetId) &&
-        (rule.field ?? 'content') === field &&
         (rule.operation ?? 'replace') === operation,
     )
     .sort((left, right) => (left.order ?? 0) - (right.order ?? 0));
+}
+
+export function getRegexRulesByIds(
+  rules: RegexDisplayRuleLike[],
+  ruleIds: string[],
+  operation: 'extract' | 'replace',
+) {
+  const selected = new Set(ruleIds);
+  return getRegexRulesByOperation(rules, operation).filter(rule => Boolean(rule.id && selected.has(rule.id)));
 }
 
 export function extractWithRegexRules(input: string, rules: RegexDisplayRuleLike[]): RegexDisplayApplyResult {
@@ -41,11 +37,28 @@ export function extractWithRegexRules(input: string, rules: RegexDisplayRuleLike
   for (const rule of rules) {
     try {
       const regex = createDisplayRegex(rule.pattern, rule.flags);
-      if (!regex.test(input)) continue;
-      regex.lastIndex = 0;
+      const matchRegex = regex.global ? new RegExp(regex.source, regex.flags.replace(/g/g, '')) : regex;
+      const firstMatch = input.match(matchRegex);
+      if (!firstMatch) continue;
+      const replacement = String(rule.replacement || '');
+      const usesCapture = /\$(?:\d+|<[^>]+>)/.test(replacement);
+      const hasCapture = firstMatch.length > 1 && firstMatch.slice(1).some(value => value !== undefined);
+      let content = '';
+      if (usesCapture && hasCapture) {
+        const matches = regex.global
+          ? Array.from(input.matchAll(regex))
+          : [firstMatch];
+        content = matches
+          .map(match => match[0].replace(matchRegex, replacement).trim())
+          .filter(Boolean)
+          .join('\n\n');
+      }
+      if (!content) {
+        content = input.replace(regex, replacement).trim();
+      }
       return {
         applied: [rule.name.trim() || rule.pattern],
-        content: input.replace(regex, rule.replacement),
+        content: content || input,
         errors,
         renderMode: rule.renderMode,
       };

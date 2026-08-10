@@ -96,6 +96,9 @@
 <script setup lang="ts">
 import BaguScanPanel from '@/components/BaguScanPanel.vue';
 import RawOutputEditor from '@/components/RawOutputEditor.vue';
+import { useRegexDisplayStore } from '@/apps/regex-display/store';
+import { usePhoneStore } from '@/store/phone';
+import { applyRegexDisplayRules, getRegexRulesByIds } from '@/util/regexDisplay';
 import { renderMarkdown } from '@/util/markdown';
 
 type PreviewView = 'bagu' | 'preview' | 'raw';
@@ -167,6 +170,8 @@ const emit = defineEmits<{
   'update:raw': [value: string];
 }>();
 
+const phone = usePhoneStore();
+const regexDisplay = useRegexDisplayStore();
 const activeView = ref<PreviewView>('preview');
 const acceptedContent = ref(props.content);
 const acceptedRaw = ref(props.raw);
@@ -180,7 +185,12 @@ const editableContent = computed({
 });
 
 const showPreviewHeader = computed(() => activeView.value === 'preview' && !editingContent.value);
-const renderedContent = computed(() => renderMarkdown(props.content));
+const displayContent = computed(() => {
+  const appId = phone.currentRoute.appId;
+  const rules = getRegexRulesByIds(regexDisplay.rules, regexDisplay.getUsage(appId).displayRuleIds, 'replace');
+  return applyRegexDisplayRules(props.content, rules).content;
+});
+const renderedContent = computed(() => renderMarkdown(displayContent.value));
 const contentHasPendingChanges = computed(() => props.content !== acceptedContent.value);
 const rawHasPendingChanges = computed(() => props.raw.trim() !== acceptedRaw.value.trim());
 

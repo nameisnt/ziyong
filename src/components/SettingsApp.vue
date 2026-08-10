@@ -539,6 +539,34 @@
             <input v-model="settings.generation.stream" type="checkbox" />
           </span>
         </label>
+
+        <div class="pc-settings-subsection">
+          <div class="pc-row pc-row-top">
+            <strong>
+              {{ t`当前聊天称呼替换` }}
+              <InfoHint :text="t`仅保存于当前聊天，生成时将 {{char}} 和 {{user}} 替换为指定称呼；不会修改聊天原文或引用内容。`" />
+            </strong>
+            <button
+              class="pc-icon-btn"
+              type="button"
+              :title="t`互换角色与用户称呼`"
+              :aria-label="t`互换角色与用户称呼`"
+              @click="swapGenerationAliases"
+            >
+              <i class="fa-solid fa-right-left"></i>
+            </button>
+          </div>
+          <div class="pc-settings-alias-grid">
+            <label class="pc-field-group">
+              <span class="pc-field-label"><code v-text="'{{char}}'"></code> {{ t`替换` }}</span>
+              <input v-model="charReplacement" class="pc-field" type="text" :placeholder="t`角色称呼`" />
+            </label>
+            <label class="pc-field-group">
+              <span class="pc-field-label"><code v-text="'{{user}}'"></code> {{ t`替换` }}</span>
+              <input v-model="userReplacement" class="pc-field" type="text" :placeholder="t`用户称呼`" />
+            </label>
+          </div>
+        </div>
       </section>
 
       <section v-if="activeSettingsTab === 'connection'" class="pc-settings-card">
@@ -816,6 +844,7 @@ import {
 import { useBaguStore } from '@/store/bagu';
 import { useFavoritesStore } from '@/store/favorites';
 import { useGenerationTaskStore } from '@/store/generationTasks';
+import { useGenerationAliasesStore } from '@/store/generationAliases';
 import { usePhoneStore } from '@/store/phone';
 import { usePreviewDraftStore } from '@/store/previewDrafts';
 import { usePromptStore } from '@/store/prompts';
@@ -847,6 +876,7 @@ import { storeToRefs } from 'pinia';
 const bagu = useBaguStore();
 const favorites = useFavoritesStore();
 const generationTasks = useGenerationTaskStore();
+const generationAliases = useGenerationAliasesStore();
 const phone = usePhoneStore();
 const previewDrafts = usePreviewDraftStore();
 const prompts = usePromptStore();
@@ -865,6 +895,7 @@ const activeSettingsTab = ref<SettingsTabId>('general');
 const apiKeyVisible = ref(false);
 const { settings } = storeToRefs(settingsStore);
 const { entries: recoveryEntries } = storeToRefs(recovery);
+const { charReplacement, userReplacement } = storeToRefs(generationAliases);
 
 const settingsTabs = [
   { icon: 'fa-solid fa-database', id: 'general', label: '常规' },
@@ -873,6 +904,12 @@ const settingsTabs = [
   { icon: 'fa-solid fa-sliders', id: 'advanced', label: '高级' },
 ] as const;
 const settingsTabIds: SettingsTabId[] = settingsTabs.map(tab => tab.id);
+
+function swapGenerationAliases() {
+  const previousChar = charReplacement.value;
+  charReplacement.value = userReplacement.value;
+  userReplacement.value = previousChar;
+}
 
 type CurrentContentCard = PhoneContentStatsContribution & {
   current: PhoneContentStatsContribution['current'];
@@ -1843,6 +1880,19 @@ onMounted(() => {
 
 .pc-reader-version-position .pc-segment-btn {
   min-inline-size: 74px;
+}
+
+.pc-settings-subsection {
+  display: grid;
+  gap: 10px;
+  padding-top: 14px;
+  border-top: 1px solid var(--pc-border);
+}
+
+.pc-settings-alias-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
 }
 
 .pc-field-note {

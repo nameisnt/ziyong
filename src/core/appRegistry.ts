@@ -182,7 +182,7 @@ export interface PhoneContentConversionSource {
   title: string;
 }
 
-export type PhoneContentSourceProvider = () => PhoneContentConversionSource[];
+export type PhoneContentSourceProvider = () => PhoneContentConversionSource[] | Promise<PhoneContentConversionSource[]>;
 
 export interface PhoneContentConversionOption {
   disabled?: boolean;
@@ -414,17 +414,18 @@ function flattenReferenceSources(app: PhoneAppModule, nodes: PhoneReferenceTreeN
   });
 }
 
-export function getRegisteredPhoneContentSources() {
-  return getRegisteredPhoneApps().flatMap(app => {
-    const explicitSources = app.contentSourceProvider?.();
-    if (explicitSources) {
-      return [{ app, sources: explicitSources }];
-    }
-    const references = app.referenceProvider?.();
-    if (!references) return [];
-    const nodes = Array.isArray(references) ? references : [references];
-    return [{ app, sources: flattenReferenceSources(app, nodes) }];
-  });
+export async function getRegisteredPhoneContentSources() {
+  const registrations = await Promise.all(
+    getRegisteredPhoneApps().map(async app => {
+      const explicitSources = await app.contentSourceProvider?.();
+      if (explicitSources) return { app, sources: explicitSources };
+      const references = app.referenceProvider?.();
+      if (!references) return null;
+      const nodes = Array.isArray(references) ? references : [references];
+      return { app, sources: flattenReferenceSources(app, nodes) };
+    }),
+  );
+  return registrations.filter((item): item is NonNullable<typeof item> => Boolean(item));
 }
 
 export function getRegisteredPhoneGenerationActions(appId?: string) {

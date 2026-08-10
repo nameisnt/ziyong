@@ -36,7 +36,7 @@
         <div v-if="rulesOpen" class="pc-rule-body">
           <label class="pc-rule-picker">
             <span class="pc-field-label">{{ t`标题规则` }}</span>
-            <select :value="readerSettings.titleRuleId" class="pc-select" @change="onReaderTitleRuleSelect">
+            <select :value="readerRegexUsage.titleRuleId" class="pc-select" @change="onReaderTitleRuleSelect">
               <option value="__default_title__">{{ t`无正则` }}</option>
               <option v-for="rule in readerTitleRegexRules" :key="rule.id" :value="rule.id">{{ rule.name }}</option>
             </select>
@@ -64,7 +64,7 @@
             <div v-if="readerCleanupRules.length" class="pc-reader-cleanup-list">
               <label v-for="rule in readerCleanupRules" :key="rule.id" class="pc-reader-cleanup-item">
                 <input
-                  :checked="readerSettings.cleanupRuleIds.includes(rule.id)"
+                  :checked="readerRegexUsage.displayRuleIds.includes(rule.id)"
                   type="checkbox"
                   @change="onCleanupRuleChange(rule.id, ($event.target as HTMLInputElement).checked)"
                 />
@@ -126,6 +126,7 @@
         :branch-label="branching ? t`正在创建分支` : t`从此处创建分支`"
         :content="activeMessageBody"
         content-formatted
+        display-app-id="reader"
         :edit-disabled="!phone.isViewingCurrentChat"
         :edit-label="phone.isViewingCurrentChat ? t`编辑正文` : t`历史聊天只读`"
         :favorite-active="Boolean(activeMessageFavorite)"
@@ -226,7 +227,7 @@ import { usePresetLinkStore } from '@/apps/preset-link/store';
 import { normalizeChatArchiveId, parseChatScopeKey } from '@/util/chatArchive';
 import { canOpenBaguScan } from '@/util/baguScanGate';
 import { useDetailScroll } from '@/util/detailScroll';
-import { getRegexRulesForTarget } from '@/util/regexDisplay';
+import { getRegexRulesByOperation } from '@/util/regexDisplay';
 import {
   executeSlashCommandSafe,
   getChatHistoryDetailSafe,
@@ -259,6 +260,7 @@ const fallbackRoute = Object.freeze({
 
 const route = computed(() => phone.currentRoute ?? fallbackRoute);
 const readerSettings = computed(() => reader.settings ?? fallbackSettings);
+const readerRegexUsage = computed(() => regexDisplay.getUsage('reader'));
 const currentMessages = ref<ReaderMessage[]>([]);
 const loadedScopeKey = ref('');
 const error = ref('');
@@ -313,23 +315,17 @@ const nextMessageId = computed(() =>
   activeMessageIndex.value >= 0 ? activeMessages.value[activeMessageIndex.value + 1]?.id || '' : '',
 );
 const defaultTitleRule: ChatReaderRegexRule = { find: '', flags: '', replace: '' };
-const readerTitleRegexRules = computed(() =>
-  getRegexRulesForTarget(regexDisplayRules.value, 'reader', 'title', 'extract'),
-);
-const readerBodyRegexRules = computed(() =>
-  getRegexRulesForTarget(regexDisplayRules.value, 'reader', 'content', 'extract'),
-);
-const readerCleanupRules = computed(() =>
-  getRegexRulesForTarget(regexDisplayRules.value, 'reader', 'content', 'replace'),
-);
+const readerTitleRegexRules = computed(() => getRegexRulesByOperation(regexDisplayRules.value, 'extract'));
+const readerBodyRegexRules = computed(() => getRegexRulesByOperation(regexDisplayRules.value, 'extract'));
+const readerCleanupRules = computed(() => getRegexRulesByOperation(regexDisplayRules.value, 'replace'));
 const selectedTitleRegexRule = computed(() =>
-  getSelectedReaderRegexRule(readerSettings.value.titleRuleId, readerTitleRegexRules.value),
+  getSelectedReaderRegexRule(readerRegexUsage.value.titleRuleId, readerTitleRegexRules.value),
 );
 const selectedBodyRegexRule = computed(() =>
-  getSelectedReaderRegexRule(readerSettings.value.bodyRuleId, readerBodyRegexRules.value),
+  getSelectedReaderRegexRule(readerRegexUsage.value.contentRuleId, readerBodyRegexRules.value),
 );
 const selectedCleanupRules = computed(() =>
-  readerCleanupRules.value.filter(rule => readerSettings.value.cleanupRuleIds.includes(rule.id)),
+  readerCleanupRules.value.filter(rule => readerRegexUsage.value.displayRuleIds.includes(rule.id)),
 );
 const activeTitleRule = computed(() => toReaderRegexRule(selectedTitleRegexRule.value, defaultTitleRule));
 const activeBodyRule = computed(() => toReaderRegexRule(selectedBodyRegexRule.value, defaultReaderBodyRule));
@@ -341,12 +337,12 @@ const readerRuleSummary = computed(
     `${selectedTitleRegexRule.value?.name || '无正则'} / ${selectedBodyRegexRule.value?.name || '默认正文'} / 清理 ${selectedCleanupRules.value.length}`,
 );
 const bodyRuleSelectValue = computed(() => {
-  if (readerSettings.value.bodyRuleId === '__default_body__') {
+  if (!readerRegexUsage.value.contentRuleId || readerRegexUsage.value.contentRuleId === '__default_body__') {
     return readerBodyRegexRules.value.some(rule => rule.id === defaultReaderBodyRegexDisplayRuleId)
       ? defaultReaderBodyRegexDisplayRuleId
       : '__default_body__';
   }
-  return readerSettings.value.bodyRuleId;
+  return readerRegexUsage.value.contentRuleId;
 });
 const activeMessageFavorite = computed(() =>
   activeMessage.value ? reader.getFavorite(phone.viewingScopeKey, activeMessage.value.id) : null,
@@ -374,14 +370,19 @@ function toReaderRegexRule(rule: RegexDisplayRule | null, fallback: ChatReaderRe
 }
 
 function onReaderTitleRuleSelect(event: Event) {
-  reader.setReaderRegexSelection('title', (event.target as HTMLSelectElement).value);
+  const ruleId = (event.target as HTMLSelectElement).value;
+  regexDisplay.setExtractionRule('reader', 'title', ruleId);
+  reader.setReaderRegexSelection('title', ruleId);
 }
 
 function onReaderBodyRuleSelect(event: Event) {
-  reader.setReaderRegexSelection('body', (event.target as HTMLSelectElement).value);
+  const ruleId = (event.target as HTMLSelectElement).value;
+  regexDisplay.setExtractionRule('reader', 'content', ruleId);
+  reader.setReaderRegexSelection('body', ruleId);
 }
 
 function onCleanupRuleChange(ruleId: string, enabled: boolean) {
+  regexDisplay.setDisplayRuleEnabled('reader', ruleId, enabled);
   reader.setCleanupRuleEnabled(ruleId, enabled);
 }
 
@@ -396,8 +397,8 @@ function onShowUserMessagesChange(event: Event) {
 watch(
   () =>
     JSON.stringify({
-      bodyRuleId: readerSettings.value.bodyRuleId,
-      cleanupRuleIds: readerSettings.value.cleanupRuleIds,
+      bodyRuleId: readerRegexUsage.value.contentRuleId,
+      cleanupRuleIds: readerRegexUsage.value.displayRuleIds,
       hideEmptyAfterCleanup: readerSettings.value.hideEmptyAfterCleanup,
       rules: [...readerTitleRegexRules.value, ...readerBodyRegexRules.value, ...readerCleanupRules.value].map(rule => [
         rule.id,
@@ -405,9 +406,9 @@ watch(
         rule.pattern,
         rule.replacement,
         rule.flags,
-        rule.targetIds.join(','),
+        rule.operation,
       ]),
-      titleRuleId: readerSettings.value.titleRuleId,
+      titleRuleId: readerRegexUsage.value.titleRuleId,
       showUserMessages: readerSettings.value.showUserMessages,
     }),
   () => {

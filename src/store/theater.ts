@@ -172,6 +172,41 @@ export const useTheaterStore = defineStore('theater', () => {
     return { activeVersion: state.activeVersion, entry };
   }
 
+  function splitEntryVersion(entryId: string, versionId: string) {
+    const entry = getEntry(entryId);
+    const version = entry?.versions.find(item => item.id === versionId);
+    if (!entry || !version || entry.versions.length <= 1) return null;
+    const remaining = removeContentVersion(entry.versions, entry.activeVersionId, versionId);
+    if (!remaining) return null;
+    const timestamp = nowIso();
+    const splitEntry: TheaterEntry = {
+      id: createId('theater_entry'),
+      title: version.title,
+      content: version.content,
+      favorite: false,
+      createdAt: version.createdAt,
+      updatedAt: timestamp,
+      typeId: entry.typeId,
+      typeName: entry.typeName,
+      participants: [...entry.participants],
+      renderMode: version.renderMode,
+      generationRecord: version.generationRecord,
+      generationReplay: version.generationReplay,
+      activeVersionId: version.id,
+      versions: [{ ...version }],
+    };
+    entry.versions = remaining.versions;
+    entry.activeVersionId = remaining.activeVersionId;
+    entry.title = remaining.activeVersion.title;
+    entry.content = remaining.activeVersion.content;
+    entry.renderMode = remaining.activeVersion.renderMode;
+    entry.generationRecord = remaining.activeVersion.generationRecord;
+    entry.generationReplay = remaining.activeVersion.generationReplay;
+    entry.updatedAt = timestamp;
+    data.value.entries = [splitEntry, ...data.value.entries];
+    return { sourceEntry: entry, splitEntry };
+  }
+
   function updateEntryMetadata(
     entryId: string,
     input: Pick<TheaterEntry, 'participants' | 'typeName'> & Partial<Pick<TheaterEntry, 'typeId'>>,
@@ -220,6 +255,7 @@ export const useTheaterStore = defineStore('theater', () => {
     getFailedDraft,
     rehydrateFromSettings,
     resetCurrentScope,
+    splitEntryVersion,
     scopeKey,
     switchScope,
     toggleFavorite,

@@ -349,7 +349,10 @@ const sortDesc = computed({
 });
 const bookTitle = ref('');
 const entryContentEl = ref<HTMLElement | null>(null);
-const { scrollToBottom, scrollToTop } = useDetailScroll(entryContentEl, '.pc-letters-detail-page .pc-detail-content');
+const { scrollToBottom, scrollToTop, scrollToVersionPosition } = useDetailScroll(
+  entryContentEl,
+  '.pc-letters-detail-page .pc-detail-content',
+);
 const showCatalogModal = ref(false);
 const draft = reactive({
   bookTitle: '',
@@ -800,7 +803,7 @@ function selectLetterVersion(versionId: string) {
     entryId: entry.id,
     versionId,
   });
-  void nextTick(() => scrollToTop('auto'));
+  void nextTick(() => scrollToVersionPosition(settings.value.reader.versionNavigatorPosition));
 }
 
 async function removeLetterVersion(versionId: string) {

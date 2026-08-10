@@ -3,8 +3,49 @@ import { useDiaryStore } from '@/store/diary';
 import { useExtrasStore } from '@/store/extras';
 import { useForumStore } from '@/store/forum';
 import { useLettersStore } from '@/store/letters';
+import { defaultReaderBodyRule, normalizeArchivedMessage, useReaderStore } from '@/store/reader';
+import { useRegexDisplayStore } from '@/apps/regex-display/store';
 import { useSummaryStore } from '@/store/summary';
 import { useTheaterStore } from '@/store/theater';
+import { getRegexRulesByIds } from '@/util/regexDisplay';
+import { transformReaderMessages } from '@/util/readerRegex';
+import { getChatMessagesSafe } from '@/util/runtime';
+
+export async function createReaderContentSources(): Promise<PhoneContentConversionSource[]> {
+  const reader = useReaderStore();
+  const regexDisplay = useRegexDisplayStore();
+  const usage = regexDisplay.getUsage('reader');
+  const titleRule = getRegexRulesByIds(regexDisplay.rules, [usage.titleRuleId], 'extract')[0];
+  const bodyRule = getRegexRulesByIds(regexDisplay.rules, [usage.contentRuleId], 'extract')[0];
+  const sourceMessages = getChatMessagesSafe('0-{{lastMessageId}}', { hide_state: 'all' })
+    .map((item, index) => normalizeArchivedMessage(item, index, reader.settings))
+    .filter(
+      (item): item is NonNullable<ReturnType<typeof normalizeArchivedMessage>> =>
+        Boolean(item) &&
+        (reader.settings.showUserMessages || !item.isUser) &&
+        (item.isUser || reader.settings.showHiddenAssistantMessages || !item.isHidden),
+    );
+  const transformed = await transformReaderMessages(
+    sourceMessages.map(item => ({ messageIndex: item.messageIndex, rawText: item.rawText })),
+    titleRule
+      ? { find: titleRule.pattern, flags: titleRule.flags, replace: titleRule.replacement }
+      : { find: '', flags: '', replace: '' },
+    bodyRule
+      ? { find: bodyRule.pattern, flags: bodyRule.flags, replace: bodyRule.replacement }
+      : defaultReaderBodyRule,
+  );
+  return sourceMessages.map((message, index) => ({
+    appId: 'reader',
+    appName: '阅读聊天',
+    content: transformed[index]?.body || message.rawText,
+    displayMode: 'markdown',
+    entryId: message.id,
+    sourceFloorEnd: message.sourceMessageId,
+    sourceLabel: `第 ${message.sourceMessageId} 楼`,
+    tags: [message.isUser ? '用户' : 'AI'],
+    title: transformed[index]?.title || `第 ${message.sourceMessageId} 楼`,
+  }));
+}
 
 export function createSummaryContentSources(): PhoneContentConversionSource[] {
   const summary = useSummaryStore();

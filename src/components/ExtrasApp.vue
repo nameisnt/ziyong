@@ -499,7 +499,10 @@ const sortDesc = computed({
 });
 const chapterCustomTypeSelected = ref(false);
 const chapterContentEl = ref<HTMLElement | null>(null);
-const { scrollToBottom, scrollToTop } = useDetailScroll(chapterContentEl, '.pc-extras-detail-page .pc-detail-content');
+const { scrollToBottom, scrollToTop, scrollToVersionPosition } = useDetailScroll(
+  chapterContentEl,
+  '.pc-extras-detail-page .pc-detail-content',
+);
 const showCatalogModal = ref(false);
 const bookDraft = reactive({
   typeName: '',
@@ -1254,7 +1257,7 @@ function selectChapterVersion(versionId: string) {
     chapterId: chapter.id,
     versionId,
   });
-  void nextTick(() => scrollToTop('auto'));
+  void nextTick(() => scrollToVersionPosition(settings.value.reader.versionNavigatorPosition));
 }
 
 async function removeChapterVersion(versionId: string) {

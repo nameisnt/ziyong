@@ -3,6 +3,7 @@
     <ReaderDetailShell
       actions-class="six"
       :content="chapter.content"
+      display-app-id="extras"
       :favorite-active="chapter.favorite"
       :next-disabled="!nextId"
       :previous-disabled="!previousId"

@@ -61,6 +61,7 @@
       <ReaderDetailShell
         catalog-label="列表"
         :content="activeEntry.content"
+        display-app-id="digest"
         :favorite-active="activeEntry.favorite"
         next-label="下一条"
         previous-label="上一条"

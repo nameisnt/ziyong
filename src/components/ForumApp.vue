@@ -80,11 +80,7 @@
     <section v-else-if="route.page === 'board' && activeBoard" class="pc-forum-page">
       <div class="pc-forum-hero">
         <div>
-          <span class="pc-kicker">{{ t`帖子列表` }}</span>
           <h2>{{ activeBoard.name }}</h2>
-          <small v-if="activeBoardTypeLabel" class="pc-board-type-label">
-            {{ t`类型` }} · {{ activeBoardTypeLabel }}
-          </small>
         </div>
         <div class="pc-hero-actions">
           <button class="pc-soft-btn compact" type="button" @click="openGenerateThread(activeBoard.id)">
@@ -202,7 +198,7 @@
           :viewed-version-id="viewedForumVersionId"
           @select="selectForumVersion"
         />
-        <ReaderContent :content="viewedForumThread.content" />
+        <ReaderContent :content="displayedForumContent" />
         <VersionNavigator
           v-if="settings.reader.versionNavigatorPosition === 'after'"
           :versions="activeThread.versions"
@@ -581,6 +577,7 @@ import { useForumStore } from '@/store/forum';
 import { usePhoneStore } from '@/store/phone';
 import { usePromptStore } from '@/store/prompts';
 import { useSettingsStore } from '@/store/settings';
+import { useRegexDisplayStore } from '@/apps/regex-display/store';
 import type { FailedGenerationDraft, GenerationReplaySnapshot, HiddenGenerationRecord } from '@/type/generation';
 import { type ForumThread, resolveForumBoardTypeName, resolveForumBoardTypePrompt } from '@/type/forum';
 import { canOpenBaguScan } from '@/util/baguScanGate';
@@ -590,6 +587,7 @@ import { createHiddenGenerationRecord, resolveHiddenGenerationReplay } from '@/u
 import { usePreviewDraftPersistence } from '@/util/previewDrafts';
 import { formatGenerationReferences, type GenerationReferenceItem } from '@/util/references';
 import { resolveContentVersion } from '@/util/contentVersions';
+import { applyRegexDisplayRules, getRegexRulesByIds } from '@/util/regexDisplay';
 import { useInvalidRouteFallback } from '@/util/routeFallback';
 import { stopGenerationByIdSafe } from '@/util/runtime';
 import { storeToRefs } from 'pinia';
@@ -605,6 +603,7 @@ const forum = useForumStore();
 const phone = usePhoneStore();
 const prompts = usePromptStore();
 const settingsStore = useSettingsStore();
+const regexDisplay = useRegexDisplayStore();
 const forumThreadGenerationAdapter = getRegisteredPhoneGenerationAdapter('forum', 'generate-thread');
 const forumReplyGenerationAdapter = getRegisteredPhoneGenerationAdapter('forum', 'generate-replies');
 const { boards, failedDrafts } = storeToRefs(forum);
@@ -771,10 +770,6 @@ const threadGenerationBoard = computed(() => {
     ? forum.getBoard(threadGenerationDraft.boardId)
     : null;
 });
-const activeBoardTypeLabel = computed(() => {
-  if (!activeBoard.value || !resolveForumBoardTypePrompt(activeBoard.value)) return '';
-  return resolveForumBoardTypeName(activeBoard.value);
-});
 const activeThread = computed(() => {
   const boardId = route.value.params?.boardId;
   const threadId = route.value.params?.threadId;
@@ -800,6 +795,15 @@ const viewedForumThread = computed(() => {
         title: version.title,
       }
     : thread;
+});
+const displayedForumContent = computed(() => {
+  const content = viewedForumThread.value?.content || '';
+  const rules = getRegexRulesByIds(
+    regexDisplay.rules,
+    regexDisplay.getUsage('forum').displayRuleIds,
+    'replace',
+  );
+  return applyRegexDisplayRules(content, rules).content;
 });
 const rewriteForumThread = computed(() => {
   const boardId = route.value.params?.boardId;
@@ -1166,6 +1170,12 @@ function selectForumVersion(versionId: string) {
     boardId: activeBoard.value.id,
     threadId: thread.id,
     versionId,
+  });
+  void nextTick(() => {
+    const screen = document.querySelector('.pc-screen');
+    if (!(screen instanceof HTMLElement)) return;
+    const top = settings.value.reader.versionNavigatorPosition === 'after' ? screen.scrollHeight : 0;
+    screen.scrollTo({ behavior: 'auto', top });
   });
 }
 

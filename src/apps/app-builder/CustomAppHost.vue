@@ -418,7 +418,7 @@ import { storeToRefs } from 'pinia';
 import { buildSourceSelection, type SummaryGenerationSourceMode } from '@/util/generationSource';
 import { parseSimpleXmlResult } from '@/util/generation';
 import { usePreviewDraftPersistence } from '@/util/previewDrafts';
-import { applyRegexDisplayRules, extractWithRegexRules, getRegexRulesForTarget } from '@/util/regexDisplay';
+import { applyRegexDisplayRules, extractWithRegexRules, getRegexRulesByIds } from '@/util/regexDisplay';
 import { formatGenerationReferences, type GenerationReferenceItem } from '@/util/references';
 import { getChatMessagesSafe, stopGenerationByIdSafe } from '@/util/runtime';
 import { getSourceLastFloor } from '@/util/sourceFloor';
@@ -547,20 +547,17 @@ const conversionSources = computed<PhoneContentConversionSource[]>(() => {
       ];
     });
 });
+const regexUsage = computed(() => (definition.value ? regexDisplay.getUsage(definition.value.id) : null));
 const replacementRules = computed(() =>
-  definition.value
-    ? {
-        content: getRegexRulesForTarget(regexDisplay.rules, definition.value.id, 'content', 'replace'),
-        title: getRegexRulesForTarget(regexDisplay.rules, definition.value.id, 'title', 'replace'),
-      }
-    : { content: [], title: [] },
+  regexUsage.value
+    ? getRegexRulesByIds(regexDisplay.rules, regexUsage.value.displayRuleIds, 'replace')
+    : [],
 );
 const displayActiveEntry = computed(() => {
   if (!activeEntry.value) return null;
   return {
     ...activeEntry.value,
-    title: applyRegexDisplayRules(activeEntry.value.title, replacementRules.value.title).content,
-    content: applyRegexDisplayRules(activeEntry.value.content, replacementRules.value.content).content,
+    content: applyRegexDisplayRules(activeEntry.value.content, replacementRules.value).content,
   };
 });
 const editingEntry = computed(() => (route.value.page === 'editor' ? activeEntry.value : null));
@@ -786,8 +783,9 @@ function buildExtractPreview() {
       visibleMessages: sourceMessages,
     }).selection;
     const selectedMessages = sourceMessages.filter(message => source.messageIds.includes(message.message_id));
-    const contentRules = getRegexRulesForTarget(regexDisplay.rules, app.id, 'content', 'extract');
-    const titleRules = getRegexRulesForTarget(regexDisplay.rules, app.id, 'title', 'extract');
+    const usage = regexDisplay.getUsage(app.id);
+    const contentRules = getRegexRulesByIds(regexDisplay.rules, [usage.contentRuleId], 'extract');
+    const titleRules = getRegexRulesByIds(regexDisplay.rules, [usage.titleRuleId], 'extract');
     const extracted = selectedMessages.flatMap((message, index) => {
       const contentResult = extractWithRegexRules(message.message, contentRules);
       if (contentRules.length && !contentResult.applied.length) return [];

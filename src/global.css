@@ -358,6 +358,17 @@
   margin-top: 4px;
 }
 
+.pc-phone-root .pc-create-mode-list {
+  display: grid;
+  gap: 10px;
+  padding: 12px 0;
+}
+
+.pc-phone-root .pc-create-mode-list > button {
+  justify-content: flex-start;
+  min-height: 54px;
+}
+
 .pc-phone-root .pc-form-actions .pc-soft-btn,
 .pc-phone-root .pc-form-actions .pc-primary-btn,
 .pc-phone-root .pc-detail-actions .pc-soft-btn,

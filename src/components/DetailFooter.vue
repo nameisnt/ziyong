@@ -106,15 +106,7 @@ defineEmits<{
 }
 
 .pc-detail-actions {
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-}
-
-.pc-detail-actions.three {
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-}
-
-.pc-detail-actions.five {
-  grid-template-columns: repeat(5, minmax(0, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(34px, 1fr));
 }
 
 .pc-detail-nav .pc-soft-btn,

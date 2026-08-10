@@ -3,7 +3,6 @@
     <section v-if="route.page === 'root'" class="pc-card-writer-page">
       <header class="pc-card-writer-head">
         <div>
-          <span class="pc-kicker">秋青子写卡预设</span>
           <h2>写卡工坊</h2>
         </div>
         <button class="pc-icon-btn" type="button" title="查看已保存成品" @click="openLibrary">
@@ -41,7 +40,10 @@
       >
         <template #before-fields>
           <div class="pc-field-group">
-            <label class="pc-field-label">本次任务</label>
+            <label class="pc-field-label">
+              本次任务
+              <InfoHint :text="selectedTask.description" />
+            </label>
             <SearchableCombobox
               :model-value="taskId"
               :options="taskOptions"
@@ -50,7 +52,6 @@
               toggle-title="展开写卡任务"
               @update:model-value="taskId = $event as CardWriterTaskId"
             />
-            <small class="pc-card-writer-task-note">{{ selectedTask.description }}</small>
           </div>
 
           <div v-if="taskId === 'persona'" class="pc-field-group">
@@ -74,7 +75,10 @@
           </div>
 
           <div class="pc-field-group">
-            <label class="pc-field-label">写入世界书</label>
+            <label class="pc-field-label">
+              写入世界书
+              <InfoHint text="保存成品时直接新增为世界书条目；不选择则只保存到写卡成品库。" />
+            </label>
             <div class="pc-card-writer-worldbook-select">
               <SearchableCombobox
                 allow-custom
@@ -90,9 +94,6 @@
                 <i class="fa-solid fa-rotate"></i>
               </button>
             </div>
-            <small class="pc-card-writer-task-note">
-              保存成品时直接新增为世界书条目；不选择则只保存到写卡成品库。
-            </small>
           </div>
         </template>
 
@@ -100,8 +101,10 @@
           <section v-if="taskId === 'full-card'" class="pc-card-writer-brief" aria-label="一键写卡需求">
             <header class="pc-card-writer-brief-head">
               <div>
-                <strong>告诉写卡工坊，你想遇见怎样的人</strong>
-                <small>核心点子必填，其余内容可以留给 AI 补全。</small>
+                <strong>
+                  一键写卡需求
+                  <InfoHint text="核心点子必填，其余内容可以留空交给 AI 补全。" />
+                </strong>
               </div>
               <button class="pc-soft-btn compact" type="button" :disabled="disabled" @click="fillBriefExample">
                 填入示例
@@ -112,7 +115,6 @@
               <span>01</span>
               <label class="pc-field-group">
                 <strong>角色最核心的点子是什么？</strong>
-                <small>身份、气质、矛盾感，一句话也可以。</small>
                 <textarea
                   v-model="brief.concept"
                   class="pc-area compact"
@@ -126,7 +128,6 @@
               <span>02</span>
               <label class="pc-field-group">
                 <strong>角色和玩家是什么关系？</strong>
-                <small>不确定可以留空，系统会安排适合展开剧情的初始关系。</small>
                 <input
                   v-model="brief.relationship"
                   class="pc-field"
@@ -140,7 +141,6 @@
               <span>03</span>
               <div class="pc-field-group">
                 <strong>希望聊天时有什么感觉？</strong>
-                <small>可以点选一种氛围，再继续补充关系变化。</small>
                 <div class="pc-card-writer-experience-options">
                   <button
                     v-for="option in experienceOptions"
@@ -163,8 +163,10 @@
             </div>
 
             <div class="pc-card-writer-world-setting">
-              <strong>故事发生在哪里？</strong>
-              <small>默认由 AI 自动安排，也可以指定已有作品或自定义世界。</small>
+              <strong>
+                故事发生在哪里？
+                <InfoHint text="默认由 AI 自动安排，也可以指定已有作品或自定义世界。" />
+              </strong>
               <div class="pc-card-writer-world-modes">
                 <button
                   v-for="option in worldModeOptions"
@@ -191,8 +193,10 @@
         <template #after-references>
           <div class="pc-card-writer-worldbook">
             <div>
-              <strong>读取当前世界书作为素材</strong>
-              <small>把当前聊天生效且已启用的条目加入生成上下文</small>
+              <strong>
+                读取当前世界书作为素材
+                <InfoHint text="把当前聊天生效且已启用的世界书条目加入生成上下文。" />
+              </strong>
             </div>
             <label class="pc-toggle" :title="includeWorldbook ? '不加入世界书内容' : '加入世界书内容'">
               <input v-model="includeWorldbook" type="checkbox" aria-label="读取当前世界书作为素材" />
@@ -239,7 +243,6 @@
     <section v-else-if="route.page === 'library'" class="pc-card-writer-page">
       <header class="pc-card-writer-head">
         <div>
-          <span class="pc-kicker">写卡工坊</span>
           <h2>已保存成品</h2>
         </div>
         <span class="pc-card-writer-count">{{ documents.length }}</span>
@@ -264,6 +267,7 @@
 import EmptyState from '@/components/EmptyState.vue';
 import GenerationPanel from '@/components/GenerationPanel.vue';
 import GenerationPreviewPanel from '@/components/GenerationPreviewPanel.vue';
+import InfoHint from '@/components/InfoHint.vue';
 import SearchableCombobox from '@/components/SearchableCombobox.vue';
 import { generateOrderedPromptContent, type RawOrderedPrompt } from '@/core/generationService';
 import {
@@ -353,7 +357,7 @@ const worldModeOptions: Array<{ label: string; value: WorldMode }> = [
 ];
 
 const taskOptions = CARD_WRITER_TASKS.map(task => ({
-  label: `${task.label} · ${task.description}`,
+  label: task.label,
   value: task.id,
 }));
 const selectedTask = computed(() => CARD_WRITER_TASKS.find(task => task.id === taskId.value) ?? CARD_WRITER_TASKS[0]);
@@ -799,8 +803,6 @@ onBeforeUnmount(stopWriter);
   font-size: 22px;
 }
 
-.pc-card-writer-task-note,
-.pc-card-writer-worldbook small,
 .pc-card-writer-document small {
   color: var(--pc-muted);
   font-size: 12px;

@@ -374,6 +374,12 @@ function duplicateApp(appId: string) {
 function exportApp(appId: string) {
   const definition = customApps.getDefinition(appId);
   if (!definition) return;
+  const regexUsage = regexDisplay.getUsage(appId);
+  const exportedRuleIds = new Set([
+    regexUsage.titleRuleId,
+    regexUsage.contentRuleId,
+    ...regexUsage.displayRuleIds,
+  ].filter(Boolean));
   const payload = JSON.stringify(
     {
       format: 'sillytavern-phone-custom-app',
@@ -383,7 +389,8 @@ function exportApp(appId: string) {
         appPrompt: prompts.appPrompts[appId] ?? definition.generation.defaultAppPrompt,
         taskTemplate: prompts.taskTemplates[`${appId}.generate`] ?? definition.generation.defaultTaskTemplate,
       },
-      regexRules: regexDisplay.rules.filter(rule => rule.targetIds.includes(appId)),
+      regexRules: regexDisplay.rules.filter(rule => exportedRuleIds.has(rule.id)),
+      regexUsage,
       content: customApps.getEntries(appId),
     },
     null,
@@ -407,6 +414,7 @@ async function importApp(event: Event) {
       definition?: unknown;
       prompt?: { appPrompt?: unknown; taskTemplate?: unknown };
       regexRules?: unknown[];
+      regexUsage?: { contentRuleId?: unknown; displayRuleIds?: unknown; titleRuleId?: unknown };
     };
     const parsed = CustomAppDefinitionSchema.parse(raw.definition ?? raw);
     const existing = customApps.getDefinition(parsed.id);
@@ -418,21 +426,40 @@ async function importApp(event: Event) {
     if (typeof raw.prompt?.taskTemplate === 'string') {
       prompts.updateTaskTemplate(`${saved.id}.generate`, raw.prompt.taskTemplate);
     }
+    const importedRuleIds = new Map<string, string>();
     raw.regexRules?.forEach(item => {
       if (!item || typeof item !== 'object') return;
       const source = item as Record<string, unknown>;
-      regexDisplay.addRule({
+      const rule = regexDisplay.addRule({
         enabled: source.enabled !== false,
-        field: source.field === 'title' ? 'title' : 'content',
         flags: typeof source.flags === 'string' ? source.flags : 'g',
         name: typeof source.name === 'string' ? source.name : `${saved.name}规则`,
         operation: source.operation === 'extract' ? 'extract' : 'replace',
         pattern: typeof source.pattern === 'string' ? source.pattern : '',
         replacement: typeof source.replacement === 'string' ? source.replacement : '',
-        targetId: saved.id,
-        targetIds: [saved.id],
       });
+      if (typeof source.id === 'string') importedRuleIds.set(source.id, rule.id);
+      if (!raw.regexUsage) {
+        if (source.operation === 'extract') {
+          regexDisplay.setExtractionRule(saved.id, source.field === 'title' ? 'title' : 'content', rule.id);
+        } else {
+          regexDisplay.setDisplayRuleEnabled(saved.id, rule.id, true);
+        }
+      }
     });
+    if (raw.regexUsage) {
+      const titleRuleId = typeof raw.regexUsage.titleRuleId === 'string' ? raw.regexUsage.titleRuleId : '';
+      const contentRuleId = typeof raw.regexUsage.contentRuleId === 'string' ? raw.regexUsage.contentRuleId : '';
+      regexDisplay.setExtractionRule(saved.id, 'title', importedRuleIds.get(titleRuleId) || '');
+      regexDisplay.setExtractionRule(saved.id, 'content', importedRuleIds.get(contentRuleId) || '');
+      const displayRuleIds = Array.isArray(raw.regexUsage.displayRuleIds)
+        ? raw.regexUsage.displayRuleIds.filter((id): id is string => typeof id === 'string')
+        : [];
+      displayRuleIds.forEach(id => {
+        const importedId = importedRuleIds.get(id);
+        if (importedId) regexDisplay.setDisplayRuleEnabled(saved.id, importedId, true);
+      });
+    }
     raw.content?.forEach(item => {
       if (!item || typeof item !== 'object') return;
       const source = item as Record<string, unknown>;

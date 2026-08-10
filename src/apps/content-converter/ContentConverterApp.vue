@@ -79,7 +79,7 @@
           </details>
         </template>
 
-        <EmptyState v-else :title="t`没有可用的内容来源`" />
+        <EmptyState v-else :title="sourceLoading ? t`正在读取可转换内容` : t`没有可用的内容来源`" />
       </article>
     </template>
 
@@ -112,11 +112,11 @@ const step = ref<'source' | 'target'>('source');
 const sourceAppId = ref('');
 const selectedIds = ref<string[]>([]);
 const query = ref('');
+const sourceLoading = ref(false);
 let applyingRouteSelection = false;
+let sourceLoadToken = 0;
 
-const sourceRegistrations = computed(() =>
-  getRegisteredPhoneContentSources().filter(registration => registration.sources.some(source => source.content.trim())),
-);
+const sourceRegistrations = ref<Awaited<ReturnType<typeof getRegisteredPhoneContentSources>>>([]);
 const sourceAppOptions = computed(() =>
   sourceRegistrations.value.map(registration => ({
     group: registration.app.contentReceiver?.scope === 'global' ? '全局内容' : '当前聊天内容',
@@ -144,8 +144,18 @@ const selectedSources = computed(() => {
 
 watch(
   route,
-  current => {
-    if (current.appId !== 'content-converter') return;
+  async current => {
+    const loadToken = ++sourceLoadToken;
+    if (current.appId !== 'content-converter') {
+      sourceLoading.value = false;
+      return;
+    }
+    sourceLoading.value = true;
+    const registrations = (await getRegisteredPhoneContentSources()).filter(registration =>
+      registration.sources.some(source => source.content.trim()),
+    );
+    if (loadToken !== sourceLoadToken) return;
+    sourceRegistrations.value = registrations;
     applyingRouteSelection = true;
     const requestedAppId = current.params?.sourceAppId || '';
     sourceAppId.value = sourceRegistrations.value.some(item => item.app.id === requestedAppId)
@@ -155,6 +165,7 @@ watch(
     selectedIds.value = (current.params?.sourceIds || '').split(',').filter(id => availableIds.has(id));
     query.value = '';
     step.value = selectedIds.value.length ? 'target' : 'source';
+    sourceLoading.value = false;
     void nextTick(() => {
       applyingRouteSelection = false;
     });
