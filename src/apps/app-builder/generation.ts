@@ -13,16 +13,27 @@ export const CustomAppGenerateConfigSchema = z.object({
 });
 export type CustomAppGenerateConfig = z.infer<typeof CustomAppGenerateConfigSchema>;
 
-function resolveGeneratedTitle(definition: CustomAppDefinition, result: SimpleXmlResult, index: number, floor?: number) {
-  const firstLine = result.content.split(/\r?\n/).map(line => line.trim()).find(Boolean) || '';
+function resolveGeneratedTitle(
+  definition: CustomAppDefinition,
+  result: SimpleXmlResult,
+  index: number,
+  floor?: number,
+) {
+  const firstLine =
+    result.content
+      .split(/\r?\n/)
+      .map(line => line.trim())
+      .find(Boolean) || '';
   if (definition.naming.mode === 'first-line') return firstLine.slice(0, 80) || '未命名条目';
   if (definition.naming.mode === 'template') {
-    return definition.naming.template
-      .replaceAll('{{appName}}', definition.name)
-      .replaceAll('{{index}}', String(index))
-      .replaceAll('{{date}}', new Date().toLocaleDateString())
-      .replaceAll('{{sourceFloor}}', typeof floor === 'number' ? String(floor) : '')
-      .trim() || '未命名条目';
+    return (
+      definition.naming.template
+        .replaceAll('{{appName}}', definition.name)
+        .replaceAll('{{index}}', String(index))
+        .replaceAll('{{date}}', new Date().toLocaleDateString())
+        .replaceAll('{{sourceFloor}}', typeof floor === 'number' ? String(floor) : '')
+        .trim() || '未命名条目'
+    );
   }
   return result.title.trim() || firstLine.slice(0, 80) || '未命名条目';
 }
@@ -45,11 +56,8 @@ export function createCustomAppGenerationAdapter(
       };
     },
     parse(raw) {
-      return parseConfiguredOutput(
-        `${definition.id}.generate`,
-        raw,
-        SimpleXmlResultSchema,
-        () => parseSimpleXmlResult(raw, definition.display.mode === 'frontend' ? { preserveContentMarkup: true } : undefined),
+      return parseConfiguredOutput(`${definition.id}.generate`, raw, SimpleXmlResultSchema, () =>
+        parseSimpleXmlResult(raw, definition.display.mode === 'frontend' ? { preserveContentMarkup: true } : undefined),
       );
     },
     save(result, context) {

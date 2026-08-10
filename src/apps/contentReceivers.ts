@@ -16,11 +16,7 @@ import {
   type StorylineKind,
   type StorylineStatus,
 } from '@/apps/storylines/store';
-import {
-  scenePlanStatusOptions,
-  useScenePlannerStore,
-  type ScenePlanStatus,
-} from '@/apps/scene-planner/store';
+import { scenePlanStatusOptions, useScenePlannerStore, type ScenePlanStatus } from '@/apps/scene-planner/store';
 import { useSummaryStore } from '@/store/summary';
 import { useDiaryStore } from '@/store/diary';
 import { useExtrasStore } from '@/store/extras';
@@ -45,7 +41,14 @@ function booleanValue(context: PhoneContentConversionContext, key: string, fallb
 }
 
 function splitList(value: string) {
-  return [...new Set(value.split(/[，,、\n]+/).map(item => item.trim()).filter(Boolean))];
+  return [
+    ...new Set(
+      value
+        .split(/[，,、\n]+/)
+        .map(item => item.trim())
+        .filter(Boolean),
+    ),
+  ];
 }
 
 function stripFrontendMarkup(source: PhoneContentConversionSource) {
@@ -118,7 +121,8 @@ export function createSummaryContentReceiver(): PhoneContentReceiver {
     receive(context) {
       const summary = useSummaryStore();
       const bookId = textValue(context, 'bookId');
-      const book = bookId === NEW_COLLECTION ? summary.createBook(textValue(context, 'bookName')) : summary.getBook(bookId);
+      const book =
+        bookId === NEW_COLLECTION ? summary.createBook(textValue(context, 'bookName')) : summary.getBook(bookId);
       if (!book) throw new Error('请选择有效的总结集');
       const entries = context.sources.map(source =>
         summary.createEntry(book.id, {
@@ -574,15 +578,24 @@ export function createEntryLibraryContentReceiver(): PhoneContentReceiver {
     receive(context) {
       const library = useEntryLibraryStore();
       const groupId = textValue(context, 'groupId');
-      const group = groupId === NEW_COLLECTION ? library.createGroup(textValue(context, 'groupName')) : library.getGroup(groupId);
+      const group =
+        groupId === NEW_COLLECTION ? library.createGroup(textValue(context, 'groupName')) : library.getGroup(groupId);
       if (!group) throw new Error('请选择有效的条目库分组');
       const entries = context.sources.map(source =>
-        library.createItem({ content: source.content.trim(), groupId: group.id, title: sourceTitle(source, '未命名条目') }),
+        library.createItem({
+          content: source.content.trim(),
+          groupId: group.id,
+          title: sourceTitle(source, '未命名条目'),
+        }),
       );
-      return result(entries.map(entry => entry.id), `已转换 ${entries.length} 条条目`, {
-        page: 'root',
-        title: '条目库',
-      });
+      return result(
+        entries.map(entry => entry.id),
+        `已转换 ${entries.length} 条条目`,
+        {
+          page: 'root',
+          title: '条目库',
+        },
+      );
     },
   };
 }
@@ -670,18 +683,20 @@ export function createStorylinesContentReceiver(): PhoneContentReceiver {
       const entries = context.sources.map(source =>
         storylines.createLine({
           kind: storylineKindOptions.some(option => option.id === kind) ? (kind as StorylineKind) : 'branch',
-          status: storylineStatusOptions.some(option => option.id === status)
-            ? (status as StorylineStatus)
-            : 'planned',
+          status: storylineStatusOptions.some(option => option.id === status) ? (status as StorylineStatus) : 'planned',
           summary: stripFrontendMarkup(source),
           tags: source.tags,
           title: sourceTitle(source, '未命名剧情线'),
         }),
       );
-      return result(entries.map(entry => entry.id), `已转换 ${entries.length} 条剧情线`, {
-        page: 'root',
-        title: '剧情线',
-      });
+      return result(
+        entries.map(entry => entry.id),
+        `已转换 ${entries.length} 条剧情线`,
+        {
+          page: 'root',
+          title: '剧情线',
+        },
+      );
     },
   };
 }
@@ -723,16 +738,18 @@ export function createScenePlannerContentReceiver(): PhoneContentReceiver {
           analysis: contentField === 'analysis' ? content : '',
           brief: contentField === 'brief' ? content : '',
           prompt: contentField === 'prompt' ? content : '',
-          status: scenePlanStatusOptions.some(option => option.id === status)
-            ? (status as ScenePlanStatus)
-            : 'draft',
+          status: scenePlanStatusOptions.some(option => option.id === status) ? (status as ScenePlanStatus) : 'draft',
           title: sourceTitle(source, '未命名场景'),
         });
       });
-      return result(entries.map(entry => entry.id), `已转换 ${entries.length} 个场景方案`, {
-        page: 'root',
-        title: '场景编排',
-      });
+      return result(
+        entries.map(entry => entry.id),
+        `已转换 ${entries.length} 个场景方案`,
+        {
+          page: 'root',
+          title: '场景编排',
+        },
+      );
     },
   };
 }

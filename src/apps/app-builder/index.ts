@@ -1,10 +1,6 @@
 import AppBuilderApp from './AppBuilderApp.vue';
 import { createCustomAppRuntimeModules } from './runtimeModules';
-import {
-  customAppChatDataField,
-  customAppDefinitionsField,
-  customAppGlobalDataField,
-} from './schema';
+import { customAppChatDataField, customAppDefinitionsField, customAppGlobalDataField } from './schema';
 import { useCustomAppsStore } from './store';
 import { definePhoneApp, registerPhoneAppProvider } from '@/core/appRegistry';
 import { getCurrentChatScopeKey, readChatScopedEnvelope } from '@/store/chatScoped';

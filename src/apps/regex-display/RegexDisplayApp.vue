@@ -31,7 +31,11 @@
         <div class="pc-inline-grid two-cols">
           <div class="pc-select-field">
             <label class="pc-field-label">{{ t`目标 App` }}</label>
-            <SearchableCombobox v-model="activeRule.targetId" :options="targetOptions" :placeholder="t`选择或搜索 App`" />
+            <SearchableCombobox
+              v-model="activeRule.targetId"
+              :options="targetOptions"
+              :placeholder="t`选择或搜索 App`"
+            />
           </div>
           <div class="pc-select-field">
             <label class="pc-field-label">{{ t`作用字段` }}</label>
@@ -42,7 +46,11 @@
         <div class="pc-select-field">
           <label class="pc-field-label">
             {{ t`处理方式` }}
-            <InfoHint :text="t`提取用于从聊天楼层创建内容，只采用第一条成功命中的规则；替换按顺序处理显示内容，不修改已保存原文。`" />
+            <InfoHint
+              :text="
+                t`提取用于从聊天楼层创建内容，只采用第一条成功命中的规则；替换按顺序处理显示内容，不修改已保存原文。`
+              "
+            />
           </label>
           <div class="pc-regex-operation-segment">
             <button
@@ -61,7 +69,11 @@
         <div class="pc-inline-grid two-cols">
           <div v-if="!activeRule.targetId.startsWith('custom-')" class="pc-select-field">
             <label class="pc-field-label">{{ t`输出显示` }}</label>
-            <SearchableCombobox v-model="activeRule.renderMode" :options="renderModeOptions" :placeholder="t`选择显示方式`" />
+            <SearchableCombobox
+              v-model="activeRule.renderMode"
+              :options="renderModeOptions"
+              :placeholder="t`选择显示方式`"
+            />
           </div>
           <div class="pc-select-field">
             <label class="pc-field-label">
@@ -95,7 +107,12 @@
 
         <div class="pc-action-grid">
           <div class="pc-rule-order-actions">
-            <button class="pc-icon-btn" type="button" :title="t`上移`" @click="regexDisplay.moveRule(activeRule.id, -1)">
+            <button
+              class="pc-icon-btn"
+              type="button"
+              :title="t`上移`"
+              @click="regexDisplay.moveRule(activeRule.id, -1)"
+            >
               <i class="fa-solid fa-arrow-up"></i>
             </button>
             <button class="pc-icon-btn" type="button" :title="t`下移`" @click="regexDisplay.moveRule(activeRule.id, 1)">
@@ -183,19 +200,26 @@ const activeRuleId = ref('');
 
 const activeRule = computed(() => rules.value.find(rule => rule.id === activeRuleId.value) ?? rules.value[0] ?? null);
 const regexTargets = computed(() => getRegexTargets());
-const activeTarget = computed(() => regexTargets.value.find(target => target.id === activeRule.value?.targetId) ?? null);
+const activeTarget = computed(
+  () => regexTargets.value.find(target => target.id === activeRule.value?.targetId) ?? null,
+);
 const targetOptions = computed(() => regexTargets.value.map(target => ({ label: target.label, value: target.id })));
-const ruleOptions = computed(() => rules.value.map(rule => ({
-  group: regexTargets.value.find(target => target.id === rule.targetId)?.label || '其他',
-  label: rule.name || '未命名规则',
-  value: rule.id,
-})));
+const ruleOptions = computed(() =>
+  rules.value.map(rule => ({
+    group: regexTargets.value.find(target => target.id === rule.targetId)?.label || '其他',
+    label: rule.name || '未命名规则',
+    value: rule.id,
+  })),
+);
 const renderModeOptions = [
   { label: '文字', value: 'text' },
   { label: '网页', value: 'html' },
 ];
 const fieldOptions = computed(() =>
-  (activeTarget.value?.fields ?? ['content']).map(field => ({ label: field === 'title' ? '标题' : '正文', value: field })),
+  (activeTarget.value?.fields ?? ['content']).map(field => ({
+    label: field === 'title' ? '标题' : '正文',
+    value: field,
+  })),
 );
 const operationOptions: Array<{ label: string; value: RegexRuleOperation }> = [
   { label: '提取', value: 'extract' },

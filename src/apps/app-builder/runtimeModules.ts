@@ -62,7 +62,10 @@ function createOverview(entries: CustomAppEntry[], scopeCount: number): PhoneCon
     chars,
     collections: entries.length ? 1 : 0,
     items: entries.length,
-    latestUpdatedAt: entries.reduce((latest, entry) => entry.updatedAt.localeCompare(latest) > 0 ? entry.updatedAt : latest, ''),
+    latestUpdatedAt: entries.reduce(
+      (latest, entry) => (entry.updatedAt.localeCompare(latest) > 0 ? entry.updatedAt : latest),
+      '',
+    ),
     scopeCount,
   };
 }
@@ -73,7 +76,10 @@ function conversionContent(source: PhoneContentConversionSource, preserveFronten
   return document.body.textContent?.trim() || source.content.trim();
 }
 
-function createContentStats(definition: ReturnType<typeof readCustomAppDefinitionsSnapshot>[number], currentScopeKey: string): PhoneContentStatsContribution {
+function createContentStats(
+  definition: ReturnType<typeof readCustomAppDefinitionsSnapshot>[number],
+  currentScopeKey: string,
+): PhoneContentStatsContribution {
   let currentEntries: CustomAppEntry[] = [];
   const allEntries: CustomAppEntry[] = [];
   const scopeKeys: string[] = [];

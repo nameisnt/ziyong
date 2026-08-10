@@ -251,7 +251,20 @@ export const tutorialArticles: TutorialArticle[] = [
     category: 'apps',
     title: '提示词、预设和世界书工具',
     summary: '认识提示词工坊、自制 App、预设管理、条目库、世界书联动、槽位和 MVU 修改器。',
-    keywords: ['提示词', '自制 App', '内容转换', '批量转换', '正则提取', '正则替换', '预设管理', '预设绑定', '条目库', '世界书联动', '世界书槽位', 'MVU'],
+    keywords: [
+      '提示词',
+      '自制 App',
+      '内容转换',
+      '批量转换',
+      '正则提取',
+      '正则替换',
+      '预设管理',
+      '预设绑定',
+      '条目库',
+      '世界书联动',
+      '世界书槽位',
+      'MVU',
+    ],
     blocks: [
       {
         type: 'paragraph',

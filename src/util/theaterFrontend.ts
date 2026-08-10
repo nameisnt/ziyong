@@ -56,7 +56,10 @@ function stripUntrustedBehavior(document: Document) {
     [...node.attributes].forEach(attribute => {
       const name = attribute.name.toLowerCase();
       const value = attribute.value.trim().toLowerCase();
-      if (name.startsWith('on') || ((name === 'href' || name === 'src' || name === 'action') && value.startsWith('javascript:'))) {
+      if (
+        name.startsWith('on') ||
+        ((name === 'href' || name === 'src' || name === 'action') && value.startsWith('javascript:'))
+      ) {
         node.removeAttribute(attribute.name);
       }
     });

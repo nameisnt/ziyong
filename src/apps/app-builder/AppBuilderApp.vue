@@ -13,11 +13,21 @@
           <i class="fa-solid fa-plus"></i>
           <span>{{ t`新建` }}</span>
         </button>
-        <input ref="importInput" class="pc-visually-hidden" type="file" accept="application/json,.json" @change="importApp" />
+        <input
+          ref="importInput"
+          class="pc-visually-hidden"
+          type="file"
+          accept="application/json,.json"
+          @change="importApp"
+        />
       </div>
 
       <div v-if="filteredDefinitions.length" class="pc-app-builder-list">
-        <article v-for="definition in filteredDefinitions" :key="definition.id" class="pc-section-card pc-app-builder-row">
+        <article
+          v-for="definition in filteredDefinitions"
+          :key="definition.id"
+          class="pc-section-card pc-app-builder-row"
+        >
           <button class="pc-app-builder-main" type="button" @click="openDefinitionEditor(definition.id)">
             <span class="pc-app-builder-icon" :style="{ '--pc-builder-accent': customAppAccent(definition.id) }">
               <i class="fa-solid" :class="definition.icon"></i>
@@ -43,7 +53,12 @@
       </div>
 
       <EmptyState v-else :title="query.trim() ? t`没有匹配的自制 App` : t`还没有自制 App`">
-        <button v-if="!query.trim()" class="pc-primary-btn" type="button" @click="phone.pushPage('templates', '选择模板')">
+        <button
+          v-if="!query.trim()"
+          class="pc-primary-btn"
+          type="button"
+          @click="phone.pushPage('templates', '选择模板')"
+        >
           <i class="fa-solid fa-plus"></i>
           <span>{{ t`创建第一个 App` }}</span>
         </button>
@@ -52,7 +67,13 @@
 
     <section v-else-if="route.page === 'templates'" class="pc-app-builder-page">
       <div class="pc-template-list">
-        <button v-for="template in templates" :key="template.id" class="pc-section-card pc-template-row" type="button" @click="startCreate(template.id)">
+        <button
+          v-for="template in templates"
+          :key="template.id"
+          class="pc-section-card pc-template-row"
+          type="button"
+          @click="startCreate(template.id)"
+        >
           <span class="pc-template-icon"><i class="fa-solid" :class="template.icon"></i></span>
           <span>
             <strong>{{ template.name }}</strong>
@@ -75,7 +96,11 @@
         </div>
         <div class="pc-field-group">
           <label class="pc-field-label">{{ t`说明` }}</label>
-          <textarea v-model="draft.description" class="pc-area compact" :placeholder="t`首页和工坊中显示的简短说明`"></textarea>
+          <textarea
+            v-model="draft.description"
+            class="pc-area compact"
+            :placeholder="t`首页和工坊中显示的简短说明`"
+          ></textarea>
         </div>
       </article>
 
@@ -88,10 +113,18 @@
           <InfoHint :text="t`已有内容时切换范围会把这个 App 的全部内容迁移到新范围。`" />
         </div>
         <div class="pc-app-builder-segment">
-          <button :class="['pc-segment-btn', { active: draft.dataScope === 'chat' }]" type="button" @click="draft.dataScope = 'chat'">
+          <button
+            :class="['pc-segment-btn', { active: draft.dataScope === 'chat' }]"
+            type="button"
+            @click="draft.dataScope = 'chat'"
+          >
             {{ t`当前聊天` }}
           </button>
-          <button :class="['pc-segment-btn', { active: draft.dataScope === 'global' }]" type="button" @click="draft.dataScope = 'global'">
+          <button
+            :class="['pc-segment-btn', { active: draft.dataScope === 'global' }]"
+            type="button"
+            @click="draft.dataScope = 'global'"
+          >
             {{ t`全局` }}
           </button>
         </div>
@@ -106,15 +139,24 @@
         </div>
         <div class="pc-builder-toggle-list">
           <div class="pc-builder-toggle-row">
-            <span><strong>{{ t`手动新增` }}</strong><small>{{ t`直接填写标题和正文` }}</small></span>
+            <span
+              ><strong>{{ t`手动新增` }}</strong
+              ><small>{{ t`直接填写标题和正文` }}</small></span
+            >
             <label class="pc-toggle"><input v-model="draft.creation.manual" type="checkbox" /><span></span></label>
           </div>
           <div class="pc-builder-toggle-row">
-            <span><strong>{{ t`楼层提取` }}</strong><small>{{ t`从聊天楼层创建内容` }}</small></span>
+            <span
+              ><strong>{{ t`楼层提取` }}</strong
+              ><small>{{ t`从聊天楼层创建内容` }}</small></span
+            >
             <label class="pc-toggle"><input v-model="draft.creation.extract" type="checkbox" /><span></span></label>
           </div>
           <div class="pc-builder-toggle-row">
-            <span><strong>{{ t`AI 生成` }}</strong><small>{{ t`复用来源、引用和提示词生成` }}</small></span>
+            <span
+              ><strong>{{ t`AI 生成` }}</strong
+              ><small>{{ t`复用来源、引用和提示词生成` }}</small></span
+            >
             <label class="pc-toggle"><input v-model="draft.creation.generate" type="checkbox" /><span></span></label>
           </div>
         </div>
@@ -133,13 +175,22 @@
         <div class="pc-field-group">
           <label class="pc-field-label">{{ t`显示方式` }}</label>
           <div class="pc-app-builder-segment">
-            <button v-for="mode in displayModes" :key="mode.id" :class="['pc-segment-btn', { active: draft.display.mode === mode.id }]" type="button" @click="draft.display.mode = mode.id">
+            <button
+              v-for="mode in displayModes"
+              :key="mode.id"
+              :class="['pc-segment-btn', { active: draft.display.mode === mode.id }]"
+              type="button"
+              @click="draft.display.mode = mode.id"
+            >
               {{ mode.label }}
             </button>
           </div>
         </div>
         <div class="pc-builder-toggle-row">
-          <span><strong>{{ t`允许引用` }}</strong><small>{{ t`其他 App 可以选择这里保存的正文` }}</small></span>
+          <span
+            ><strong>{{ t`允许引用` }}</strong
+            ><small>{{ t`其他 App 可以选择这里保存的正文` }}</small></span
+          >
           <label class="pc-toggle"><input v-model="draft.referenceEnabled" type="checkbox" /><span></span></label>
         </div>
       </article>
@@ -147,7 +198,11 @@
       <article v-if="draft.creation.generate" class="pc-editor-card">
         <div class="pc-field-group">
           <label class="pc-field-label">{{ t`默认 App 提示词` }}</label>
-          <textarea v-model="draft.generation.defaultAppPrompt" class="pc-area" :placeholder="t`说明这个 App 应生成什么内容`"></textarea>
+          <textarea
+            v-model="draft.generation.defaultAppPrompt"
+            class="pc-area"
+            :placeholder="t`说明这个 App 应生成什么内容`"
+          ></textarea>
         </div>
         <div class="pc-field-group">
           <label class="pc-field-label">{{ t`默认任务模板` }}</label>
@@ -196,15 +251,37 @@ const importInput = ref<HTMLInputElement | null>(null);
 
 const templates = [
   { id: 'extract' as const, icon: 'fa-highlighter', name: '提取记录', description: '手动新增，也可以从聊天楼层提取。' },
-  { id: 'ai' as const, icon: 'fa-wand-magic-sparkles', name: 'AI 内容', description: '使用来源、引用和提示词生成内容。' },
-  { id: 'frontend' as const, icon: 'fa-window-maximize', name: '网页内容', description: '生成并以安全网页模式展示 HTML。' },
+  {
+    id: 'ai' as const,
+    icon: 'fa-wand-magic-sparkles',
+    name: 'AI 内容',
+    description: '使用来源、引用和提示词生成内容。',
+  },
+  {
+    id: 'frontend' as const,
+    icon: 'fa-window-maximize',
+    name: '网页内容',
+    description: '生成并以安全网页模式展示 HTML。',
+  },
   { id: 'blank' as const, icon: 'fa-file', name: '空白 App', description: '只启用手动新增，从最简单的结构开始。' },
 ];
 const iconOptions = [
-  ['fa-shapes', '形状'], ['fa-book', '书本'], ['fa-note-sticky', '便签'], ['fa-feather-pointed', '羽毛笔'],
-  ['fa-comments', '对话'], ['fa-masks-theater', '剧场'], ['fa-envelope-open-text', '书信'], ['fa-highlighter', '摘抄'],
-  ['fa-wand-magic-sparkles', '魔法棒'], ['fa-star', '星标'], ['fa-heart', '爱心'], ['fa-cloud-moon', '梦境'],
-  ['fa-user', '人物'], ['fa-route', '路线'], ['fa-window-maximize', '网页'], ['fa-folder-open', '文件夹'],
+  ['fa-shapes', '形状'],
+  ['fa-book', '书本'],
+  ['fa-note-sticky', '便签'],
+  ['fa-feather-pointed', '羽毛笔'],
+  ['fa-comments', '对话'],
+  ['fa-masks-theater', '剧场'],
+  ['fa-envelope-open-text', '书信'],
+  ['fa-highlighter', '摘抄'],
+  ['fa-wand-magic-sparkles', '魔法棒'],
+  ['fa-star', '星标'],
+  ['fa-heart', '爱心'],
+  ['fa-cloud-moon', '梦境'],
+  ['fa-user', '人物'],
+  ['fa-route', '路线'],
+  ['fa-window-maximize', '网页'],
+  ['fa-folder-open', '文件夹'],
 ].map(([value, label]) => ({ value: value!, label: label! }));
 const namingOptions = [
   { value: 'manual', label: '手动填写' },
@@ -220,7 +297,9 @@ const displayModes: Array<{ id: CustomAppDefinition['display']['mode']; label: s
 const filteredDefinitions = computed(() => {
   const normalized = query.value.trim().toLowerCase();
   if (!normalized) return definitions.value;
-  return definitions.value.filter(definition => `${definition.name} ${definition.description}`.toLowerCase().includes(normalized));
+  return definitions.value.filter(definition =>
+    `${definition.name} ${definition.description}`.toLowerCase().includes(normalized),
+  );
 });
 
 watch(
@@ -284,17 +363,21 @@ function duplicateApp(appId: string) {
 function exportApp(appId: string) {
   const definition = customApps.getDefinition(appId);
   if (!definition) return;
-  const payload = JSON.stringify({
-    format: 'sillytavern-phone-custom-app',
-    version: 1,
-    definition,
-    prompt: {
-      appPrompt: prompts.appPrompts[appId] ?? definition.generation.defaultAppPrompt,
-      taskTemplate: prompts.taskTemplates[`${appId}.generate`] ?? definition.generation.defaultTaskTemplate,
+  const payload = JSON.stringify(
+    {
+      format: 'sillytavern-phone-custom-app',
+      version: 1,
+      definition,
+      prompt: {
+        appPrompt: prompts.appPrompts[appId] ?? definition.generation.defaultAppPrompt,
+        taskTemplate: prompts.taskTemplates[`${appId}.generate`] ?? definition.generation.defaultTaskTemplate,
+      },
+      regexRules: regexDisplay.rules.filter(rule => rule.targetId === appId),
+      content: customApps.getEntries(appId),
     },
-    regexRules: regexDisplay.rules.filter(rule => rule.targetId === appId),
-    content: customApps.getEntries(appId),
-  }, null, 2);
+    null,
+    2,
+  );
   const anchor = document.createElement('a');
   anchor.href = URL.createObjectURL(new Blob([payload], { type: 'application/json' }));
   anchor.download = `${definition.name.replace(/[\\/:*?"<>|]/g, '_') || 'custom-app'}.json`;
@@ -316,7 +399,9 @@ async function importApp(event: Event) {
     };
     const parsed = CustomAppDefinitionSchema.parse(raw.definition ?? raw);
     const existing = customApps.getDefinition(parsed.id);
-    const next = existing ? { ...parsed, id: createCustomAppDefinition('blank').id, name: `${parsed.name} 副本` } : parsed;
+    const next = existing
+      ? { ...parsed, id: createCustomAppDefinition('blank').id, name: `${parsed.name} 副本` }
+      : parsed;
     const saved = customApps.saveDefinition(CustomAppDefinitionSchema.parse(next));
     if (typeof raw.prompt?.appPrompt === 'string') prompts.updateAppPrompt(saved.id, raw.prompt.appPrompt);
     if (typeof raw.prompt?.taskTemplate === 'string') {
@@ -359,7 +444,9 @@ async function deleteApp(appId: string) {
   if (!definition) return;
   const count = customApps.getEntries(appId).length;
   const confirmed = await phone.confirmNotice(`删除“${definition.name}”及其 ${count} 条内容吗？`, {
-    confirmLabel: '删除', kind: 'warning', title: '删除自制 App',
+    confirmLabel: '删除',
+    kind: 'warning',
+    title: '删除自制 App',
   });
   if (!confirmed) return;
   customApps.deleteDefinition(appId);

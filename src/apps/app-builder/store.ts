@@ -120,8 +120,7 @@ export const useCustomAppsStore = defineStore('custom-apps', () => {
     return getData(definition)
       .entries.filter(entry => entry.appId === appId)
       .sort(
-        (left, right) =>
-          left.directoryOrder - right.directoryOrder || left.createdAt.localeCompare(right.createdAt),
+        (left, right) => left.directoryOrder - right.directoryOrder || left.createdAt.localeCompare(right.createdAt),
       );
   }
 
@@ -138,9 +137,10 @@ export const useCustomAppsStore = defineStore('custom-apps', () => {
     if (!definition) throw new Error('自制 App 不存在');
     const data = getData(definition);
     const timestamp = nowIso();
-    const nextOrder = data.entries
-      .filter(entry => entry.appId === appId)
-      .reduce((maximum, entry) => Math.max(maximum, entry.directoryOrder), 0) + 1;
+    const nextOrder =
+      data.entries
+        .filter(entry => entry.appId === appId)
+        .reduce((maximum, entry) => Math.max(maximum, entry.directoryOrder), 0) + 1;
     const entry: CustomAppEntry = {
       id: createEntryId(),
       appId,
@@ -215,8 +215,8 @@ export const useCustomAppsStore = defineStore('custom-apps', () => {
   function getFailedDrafts(appId: string) {
     const definition = getDefinition(appId);
     if (!definition) return [];
-    return getData(definition).failedDrafts
-      .filter(draft => draft.appId === appId)
+    return getData(definition)
+      .failedDrafts.filter(draft => draft.appId === appId)
       .sort((left, right) => right.createdAt.localeCompare(left.createdAt));
   }
 

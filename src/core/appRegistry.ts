@@ -225,7 +225,9 @@ export interface PhoneContentReceiver {
   batchModes?: PhoneContentConversionBatchMode[];
   createDraft: (sources: PhoneContentConversionSource[]) => PhoneContentConversionValues;
   fields: (context: PhoneContentConversionContext) => PhoneContentConversionField[];
-  receive: (context: PhoneContentConversionContext) => PhoneContentConversionResult | Promise<PhoneContentConversionResult>;
+  receive: (
+    context: PhoneContentConversionContext,
+  ) => PhoneContentConversionResult | Promise<PhoneContentConversionResult>;
   scope: 'chat' | 'global';
 }
 
