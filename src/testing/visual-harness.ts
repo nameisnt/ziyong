@@ -2509,7 +2509,8 @@ async function applyScenario(name: VisualScenarioName, options: { height?: numbe
     if (!continueEditing) throw new Error('Card writer leave confirmation did not offer continued editing');
     continueEditing.click();
     await leaveAttempt;
-    if (phone.currentRoute.page !== 'preview') throw new Error('Card writer preview left after cancelling confirmation');
+    if (phone.currentRoute.page !== 'preview')
+      throw new Error('Card writer preview left after cancelling confirmation');
   } else if (name.startsWith('app:')) {
     const appId = name.slice('app:'.length);
     const app = PHONE_APPS.find(item => item.id === appId);
@@ -3351,9 +3352,7 @@ async function applyScenario(name: VisualScenarioName, options: { height?: numbe
     if (connectionOptions.some(option => option.textContent?.includes('跟随连接设置'))) {
       throw new Error('Generation connection selector still exposes the legacy inherit option');
     }
-    const externalOption = connectionOptions.find(
-      option => option.textContent?.includes(externalProfile.name),
-    );
+    const externalOption = connectionOptions.find(option => option.textContent?.includes(externalProfile.name));
     if (!externalOption) throw new Error('Generation external connection option is missing');
     externalOption.click();
     await waitForPaint();

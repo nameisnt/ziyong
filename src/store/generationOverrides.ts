@@ -24,10 +24,7 @@ export const useGenerationOverrideStore = defineStore('generationOverrides', () 
         connectionSelection: defaultConnectionSelection,
         tavernPresetName,
       };
-    } else if (
-      overrides.value[key].connectionSelection === 'inherit' &&
-      defaultConnectionSelection !== 'inherit'
-    ) {
+    } else if (overrides.value[key].connectionSelection === 'inherit' && defaultConnectionSelection !== 'inherit') {
       // Older sessions stored a dynamic "inherit" value. Resolve it once when the generation page opens.
       overrides.value[key].connectionSelection = defaultConnectionSelection;
     }
