@@ -96,13 +96,13 @@ export function isPlaceholderChatScopeKey(scopeKey: string) {
   return scopeKey.includes('__no_chat__') || scopeKey.includes('__no_character__');
 }
 
-interface ParsedChatScopeKey {
+export interface ParsedChatScopeKey {
   chatId: string;
   kind: 'char' | 'group' | 'unknown';
   ownerId: string;
 }
 
-function parseChatScopeKey(scopeKey: string): ParsedChatScopeKey {
+export function parseChatScopeKey(scopeKey: string): ParsedChatScopeKey {
   const marker = ':chat:';
   const index = scopeKey.lastIndexOf(marker);
   if (index < 0) return { chatId: '', kind: 'unknown', ownerId: scopeKey };
@@ -116,11 +116,11 @@ function parseChatScopeKey(scopeKey: string): ParsedChatScopeKey {
   };
 }
 
-function buildChatScopeKey(kind: 'char' | 'group', ownerId: string, chatId: string) {
+export function buildChatScopeKey(kind: 'char' | 'group', ownerId: string, chatId: string) {
   return `${kind}:${ownerId}:chat:${normalizeChatScopeId(chatId)}`;
 }
 
-function getCurrentOwnerAliases(scope: ParsedChatScopeKey) {
+export function getCurrentOwnerAliases(scope: ParsedChatScopeKey) {
   const aliases = new Set([scope.ownerId].filter(Boolean));
   if (scope.kind === 'group') {
     const groupId = getOptionalGlobalValue('groupId');

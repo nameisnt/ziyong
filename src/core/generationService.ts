@@ -708,6 +708,7 @@ export async function generateOrderedPromptContent(options: {
   rateLimitRpm?: number;
   shouldStream?: boolean;
   textProvider: TextProviderSettings;
+  userInput: string;
 }) {
   const phone = usePhoneStore();
   const route = phone.currentRoute;
@@ -732,6 +733,14 @@ export async function generateOrderedPromptContent(options: {
     await waitForGenerationRateLimit(rpmLimit, abortController.signal);
     abortController.signal.throwIfAborted();
 
+    const userInput = options.userInput.trim();
+    if (!userInput) throw new Error('写卡任务为空，无法生成');
+    const taskPromptIndex = options.messages.reduce(
+      (foundIndex, message, index) =>
+        message.role === 'user' && message.content.trim() === userInput ? index : foundIndex,
+      -1,
+    );
+    if (taskPromptIndex < 0) throw new Error('写卡任务没有插入提示词，无法生成');
     const result =
       textProvider.mode === 'external'
         ? await generateFromExternalCompatibleApi(
@@ -743,9 +752,12 @@ export async function generateOrderedPromptContent(options: {
           )
         : await generateRawSafe({
             generation_id: generationId,
-            ordered_prompts: options.messages,
+            ordered_prompts: options.messages.map((message, index) =>
+              index === taskPromptIndex ? 'user_input' : message,
+            ),
             should_silence: true,
             should_stream: shouldStream,
+            user_input: userInput,
           });
 
     abortController.signal.throwIfAborted();

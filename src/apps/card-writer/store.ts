@@ -22,6 +22,7 @@ const CardWriterDocumentSchema = z.object({
 export type CardWriterDocument = z.infer<typeof CardWriterDocumentSchema>;
 
 const CardWriterSettingsSchema = z.object({
+  assistantPrefillEnabled: z.boolean().default(false),
   documents: z.array(CardWriterDocumentSchema).default([]),
   version: z.literal(1).default(1),
 });

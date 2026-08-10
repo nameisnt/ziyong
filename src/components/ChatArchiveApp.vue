@@ -90,15 +90,27 @@
           <strong>{{ t`历史聊天只读` }}</strong>
           <p>{{ t`第一版不会切换酒馆当前聊天，因此此处禁用生成，只用于查看已保存内容。` }}</p>
         </div>
-        <button
-          class="pc-icon-btn"
-          type="button"
-          :disabled="!canJumpSelectedChat"
-          :title="t`跳转酒馆聊天`"
-          @click="jumpSelectedChatToTavern"
-        >
-          <i class="fa-solid fa-arrow-up-right-from-square"></i>
-        </button>
+        <div class="pc-readonly-actions">
+          <button
+            v-if="canMigrateSelectedChat"
+            class="pc-icon-btn"
+            type="button"
+            :disabled="migratingChat"
+            :title="t`迁移到当前聊天`"
+            @click="migrateSelectedChatToCurrent"
+          >
+            <i :class="['fa-solid', migratingChat ? 'fa-spinner spinning' : 'fa-right-left']"></i>
+          </button>
+          <button
+            class="pc-icon-btn"
+            type="button"
+            :disabled="!canJumpSelectedChat"
+            :title="t`跳转酒馆聊天`"
+            @click="jumpSelectedChatToTavern"
+          >
+            <i class="fa-solid fa-arrow-up-right-from-square"></i>
+          </button>
+        </div>
       </div>
 
       <EmptyState v-if="!selectedDomains.length" :title="t`这个聊天还没有手机内容`" />
@@ -125,15 +137,18 @@ import EmptyState from '@/components/EmptyState.vue';
 import { areChatScopeKeysEquivalent } from '@/store/chatScoped';
 import { usePhoneStore } from '@/store/phone';
 import { normalizeBrief, type ChatHistoryBriefItem } from '@/store/reader';
+import { getChatScopeMigrationSourceKeys, migratePhoneChatScopes } from '@/util/chatScopeRename';
 import {
   buildChatScopeKey,
   createChatArchiveDomainReader,
   getUsedChatArchiveScopes,
   normalizeChatArchiveId,
+  parseChatScopeKey as parseArchiveScopeKey,
   type ChatArchiveDomain,
   type ChatScopeRef,
 } from '@/util/chatArchive';
 import { jumpToTavernChat } from '@/util/tavernNavigation';
+// eslint-disable-next-line import-x/no-nodejs-modules
 import { characters, getCharacters, getPastCharacterChats } from '@sillytavern/script';
 import { storeToRefs } from 'pinia';
 
@@ -169,6 +184,7 @@ const selectedDomains = ref<ChatArchiveDomain[]>([]);
 const ownerQuery = ref('');
 const loadingCharacters = ref(false);
 const loadingChats = ref(false);
+const migratingChat = ref(false);
 const error = ref('');
 let characterLoadSequence = 0;
 let chatLoadSequence = 0;
@@ -185,6 +201,12 @@ const canJumpSelectedChat = computed(() =>
     activeOwner.value.characterId !== null,
   ),
 );
+const canMigrateSelectedChat = computed(() => {
+  if (!selectedChat.value?.isUsed || selectedChat.value.isCurrent || !activeOwner.value) return false;
+  const target = parseArchiveScopeKey(currentTavernScopeKey.value);
+  if (target.kind !== activeOwner.value.kind) return false;
+  return activeOwner.value.aliases.has(target.ownerId);
+});
 const visibleOwners = computed(() => {
   const keyword = ownerQuery.value.trim().toLowerCase();
   return owners.value.filter(owner => {
@@ -446,6 +468,51 @@ async function jumpSelectedChatToTavern() {
     toastr.error(message);
   }
 }
+
+async function migrateSelectedChatToCurrent() {
+  const sourceChat = selectedChat.value;
+  const owner = activeOwner.value;
+  if (!sourceChat || !owner || migratingChat.value) return;
+
+  await phone.syncCurrentTavernScope();
+  const targetScopeKey = currentTavernScopeKey.value;
+  const targetDomains = createChatArchiveDomainReader().getDomains(targetScopeKey);
+  if (targetDomains.length) {
+    toastr.error('当前聊天已经有手机内容。为避免覆盖，请先整理或备份当前聊天后再迁移。');
+    return;
+  }
+
+  const sourceScopeKeys = getChatScopeMigrationSourceKeys(sourceChat.scopeKey, targetScopeKey);
+  if (!sourceScopeKeys.length) {
+    toastr.error('旧档案与当前聊天不属于同一角色卡，无法迁移。');
+    return;
+  }
+  if (!window.confirm(`把“${sourceChat.title}”的手机内容迁移到当前聊天？迁移后旧档案将不再保留。`)) return;
+
+  migratingChat.value = true;
+  try {
+    const result = migratePhoneChatScopes(sourceScopeKeys, targetScopeKey);
+    if (!result.migrated) {
+      toastr.warning('没有找到可迁移的旧档案数据。');
+      return;
+    }
+
+    await phone.setViewingScope(targetScopeKey, { chatTitle: '当前聊天', ownerName: owner.name }, true);
+    await loadChatsForActiveOwner(true);
+    const currentChat = chatRows.value.find(chat => chat.isCurrent);
+    if (currentChat) {
+      selectedChat.value = currentChat;
+      selectedDomains.value = currentChat.domains;
+      phone.replacePage('detail', currentChat.title, {
+        chatKey: currentChat.key,
+        ownerKey: owner.key,
+      });
+    }
+    toastr.success('旧档案已迁移到当前聊天。');
+  } finally {
+    migratingChat.value = false;
+  }
+}
 </script>
 
 <style scoped>
@@ -607,6 +674,12 @@ async function jumpSelectedChatToTavern() {
 
 .pc-readonly-copy {
   min-width: 0;
+}
+
+.pc-readonly-actions {
+  display: flex;
+  flex: 0 0 auto;
+  gap: 8px;
 }
 
 .pc-domain-head {

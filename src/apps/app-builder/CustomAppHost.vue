@@ -510,8 +510,8 @@ const filteredEntries = computed(() => {
   const normalized = query.value.trim().toLowerCase();
   const displayed = orderedEntries.value.map(entry => ({
     ...entry,
-    title: applyRegexDisplayRules(entry.title, replacementRules.value.title).content,
-    content: applyRegexDisplayRules(entry.content, replacementRules.value.content).content,
+    title: entry.title,
+    content: applyRegexDisplayRules(entry.content, replacementRules.value).content,
   }));
   if (!normalized) return displayed;
   return displayed.filter(entry =>

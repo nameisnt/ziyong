@@ -1005,6 +1005,17 @@ async function applyScenario(name: VisualScenarioName, options: { height?: numbe
     for (const unexpected of ['用户标题', '用户正文', '错误的阅读器结果']) {
       if (previewText.includes(unexpected)) throw new Error(`Custom app extraction leaked ${unexpected}`);
     }
+    const saveButton = document.querySelector<HTMLButtonElement>('.pc-extract-save-actions .pc-primary-btn');
+    if (!saveButton) throw new Error('Custom app extract save button was not rendered');
+    saveButton.click();
+    const savedListReady = await waitForVisualCondition(() =>
+      Boolean(document.querySelector('.pc-custom-entry-list')),
+    );
+    if (!savedListReady) throw new Error('Custom app became blank after saving extracted entries');
+    const savedListText = document.querySelector<HTMLElement>('.pc-custom-entry-list')?.textContent || '';
+    for (const expected of ['可见标题', '可见 AI 正文', '隐藏标题', '隐藏 AI 正文']) {
+      if (!savedListText.includes(expected)) throw new Error(`Saved custom app list missed ${expected}`);
+    }
   } else if (name === 'custom-app-save-flow') {
     const { useCustomAppsStore } = await import('@/apps/app-builder/store');
     const { getRegisteredPhoneAppComponent } = await import('@/core/appRegistry');
@@ -2952,9 +2963,7 @@ async function applyScenario(name: VisualScenarioName, options: { height?: numbe
       title: '生成预览',
     });
     resetPhoneToRoute('summary', 'preview', '生成预览', { bookId: book.id });
-    const restored = await waitForVisualCondition(() =>
-      Boolean(document.querySelector('.pc-shared-generation-preview-page')),
-    );
+    const restored = await waitForVisualCondition(() => Boolean(document.querySelector('.pc-shared-generation-preview-page')));
     if (!restored) throw new Error('Summary preview page did not restore its persisted preview after extraction');
   } else if (name === 'summary-batch') {
     const book = createSummaryFixture();
@@ -4076,3 +4085,4 @@ if (scenario) {
 } else if (!params.has('manual')) {
   void applyScenario('home');
 }
+

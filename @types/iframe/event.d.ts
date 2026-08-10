@@ -202,6 +202,8 @@ declare const tavern_events: {
   MORE_MESSAGES_LOADED: 'more_messages_loaded';
   IMPERSONATE_READY: 'impersonate_ready';
   CHAT_CHANGED: 'chat_id_changed';
+  /** since SillyTavern v1.14.0 */
+  CHAT_RENAMED: 'chat_renamed';
   GENERATION_AFTER_COMMANDS: 'GENERATION_AFTER_COMMANDS';
   GENERATION_STARTED: 'generation_started';
   GENERATION_STOPPED: 'generation_stopped';
@@ -318,6 +320,12 @@ interface ListenerType {
   [tavern_events.MORE_MESSAGES_LOADED]: () => void;
   [tavern_events.IMPERSONATE_READY]: (message: string) => void;
   [tavern_events.CHAT_CHANGED]: (chat_file_name: string) => void;
+  [tavern_events.CHAT_RENAMED]: (event_data: {
+    avatarId?: string;
+    groupId?: number | string;
+    newFileName: string;
+    oldFileName: string;
+  }) => void;
   [tavern_events.GENERATION_AFTER_COMMANDS]: (
     type: string,
     option: {

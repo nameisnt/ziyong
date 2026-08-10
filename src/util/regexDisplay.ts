@@ -84,7 +84,7 @@ export function createDisplayRegex(pattern: string, flags: string) {
   return new RegExp(literal[1], normalizeRegexFlags(`${literal[2] || ''}${flags}`));
 }
 
-export function applyRegexDisplayRules(input: string, rules: RegexDisplayRuleLike[]): RegexDisplayApplyResult {
+export function applyRegexDisplayRules(input: string, rules: RegexDisplayRuleLike[] = []): RegexDisplayApplyResult {
   let content = input;
   let renderMode: RegexDisplayRenderMode = 'text';
   const applied: string[] = [];

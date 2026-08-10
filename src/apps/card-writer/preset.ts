@@ -144,6 +144,7 @@ function safeThinkingPrompt(id: string, selectedModules: string[]) {
 }
 
 export function buildCardWriterOrderedPrompts(options: {
+  assistantPrefillEnabled: boolean;
   chatMessages: ChatMessage[];
   modules: string[];
   userInput: string;
@@ -153,6 +154,7 @@ export function buildCardWriterOrderedPrompts(options: {
   const ordered: RawOrderedPrompt[] = [];
   const order = preset.prompt_order[0]?.order ?? [];
   let inTaskSection = false;
+  let taskInserted = false;
   let worldbookClosed = false;
 
   for (const orderItem of order) {
@@ -204,6 +206,13 @@ export function buildCardWriterOrderedPrompts(options: {
       continue;
     }
 
+    if (id === '45') continue;
+    if (id === '48') {
+      ordered.push({ role: 'user', content: options.userInput.trim() });
+      taskInserted = true;
+      if (!options.assistantPrefillEnabled) continue;
+    }
+
     const shouldUse = inTaskSection ? selectedModules.has(name) : orderItem.enabled && prompt?.enabled !== false;
     if (!prompt || !shouldUse || !prompt.role || !prompt.content?.trim()) continue;
     if (name === '【worldinfo】' && !options.worldbookContent.trim()) continue;
@@ -212,6 +221,8 @@ export function buildCardWriterOrderedPrompts(options: {
     const content = normalizeMacros(safeThinking ?? prompt.content, options.modules, options.userInput);
     if (content) ordered.push({ role: prompt.role, content });
   }
+
+  if (!taskInserted) ordered.push({ role: 'user', content: options.userInput.trim() });
 
   return ordered;
 }

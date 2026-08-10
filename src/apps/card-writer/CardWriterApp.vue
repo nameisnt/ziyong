@@ -196,6 +196,27 @@
           </section>
         </template>
 
+        <template #after-references="{ disabled }">
+          <div class="pc-card-writer-option-row">
+            <strong>
+              使用助手预填
+              <InfoHint text="在用户任务后追加一条 assistant 开头。默认关闭；仅在确认当前模型需要预填时开启，部分模型可能拒绝预填或误判任务。" />
+            </strong>
+            <label
+              class="pc-toggle"
+              :title="writerSettings.assistantPrefillEnabled ? '关闭助手预填' : '开启助手预填'"
+            >
+              <input
+                v-model="writerSettings.assistantPrefillEnabled"
+                type="checkbox"
+                aria-label="使用助手预填"
+                :disabled="disabled"
+              />
+              <span aria-hidden="true"></span>
+            </label>
+          </div>
+        </template>
+
         <template v-if="running || stageStates.length" #after-requirement>
           <section class="pc-section-card pc-card-writer-progress">
             <header>
@@ -302,7 +323,7 @@ const phone = usePhoneStore();
 const settingsStore = useSettingsStore();
 const writerStore = useCardWriterStore();
 const { settings } = storeToRefs(settingsStore);
-const { documents } = storeToRefs(writerStore);
+const { documents, settings: writerSettings } = storeToRefs(writerStore);
 const route = computed(() => phone.currentRoute);
 const taskId = ref<CardWriterTaskId>('full-card');
 const personaMode = ref<PersonaMode>('normal');
@@ -539,6 +560,7 @@ async function runWriter() {
       stageStates.value[stageIndex].status = 'running';
       const userInput = buildStageUserInput(stage.label, stage.instruction, completed);
       const messagesForStage: RawOrderedPrompt[] = buildCardWriterOrderedPrompts({
+        assistantPrefillEnabled: writerSettings.value.assistantPrefillEnabled,
         chatMessages,
         modules: stage.modules,
         userInput,
@@ -562,6 +584,7 @@ async function runWriter() {
         messages: messagesForStage,
         shouldStream: settings.value.generation.stream,
         textProvider: settings.value.textProvider,
+        userInput,
       });
       const stageRaw = result.rawOutput || liveStageOutput;
       const artifact = parseCardWriterArtifact(stageRaw);
@@ -735,6 +758,7 @@ onBeforeUnmount(stopWriter);
 .pc-card-writer-head,
 .pc-card-writer-task-row,
 .pc-card-writer-worldbook,
+.pc-card-writer-option-row,
 .pc-card-writer-brief-head,
 .pc-card-writer-progress header,
 .pc-card-writer-document {
@@ -856,6 +880,17 @@ onBeforeUnmount(stopWriter);
 
 .pc-card-writer-worldbook {
   padding: 12px 0;
+}
+
+.pc-card-writer-option-row {
+  padding: 10px 0;
+}
+
+.pc-card-writer-option-row > strong {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: 6px;
 }
 
 .pc-card-writer-worldbook > div,

@@ -32,6 +32,7 @@ import Panel from '@/Panel.vue';
 import { useWorldSlotsStore } from '@/apps/world-slots/store';
 import { getCurrentChatScopeKey } from '@/store/chatScoped';
 import { usePhoneStore } from '@/store/phone';
+import { migratePhoneChatRename, type TavernChatRenamedEvent } from '@/util/chatScopeRename';
 import { ensureCurrentScopeRecovery } from '@/util/generationVisibility';
 import { hasVisibilityTransactionRuntime, onTavernEvent } from '@/util/runtime';
 
@@ -40,6 +41,7 @@ const worldSlots = useWorldSlotsStore();
 const settingsTargetReady = ref(false);
 const menuTargetReady = ref(false);
 let stopChatChanged: { stop: () => void } | null = null;
+let stopChatRenamed: { stop: () => void } | null = null;
 let targetObserver: MutationObserver | null = null;
 
 async function tryRecoverCurrentScope() {
@@ -78,11 +80,18 @@ onMounted(() => {
   stopChatChanged = onTavernEvent('CHAT_CHANGED', () => {
     void tryRecoverCurrentScope();
   });
+  stopChatRenamed = onTavernEvent('CHAT_RENAMED', payload => {
+    const result = migratePhoneChatRename((payload ?? {}) as TavernChatRenamedEvent);
+    if (!result.migrated) return;
+    void phone.syncCurrentTavernScope(true, true);
+  });
 });
 
 onUnmounted(() => {
   stopChatChanged?.stop();
   stopChatChanged = null;
+  stopChatRenamed?.stop();
+  stopChatRenamed = null;
   targetObserver?.disconnect();
   targetObserver = null;
 });

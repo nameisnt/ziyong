@@ -126,7 +126,7 @@
           @update:model-value="emit('update:references', $event)"
         />
 
-        <slot name="after-references"></slot>
+        <slot name="after-references" :disabled="controlsDisabled"></slot>
       </div>
     </details>
 
