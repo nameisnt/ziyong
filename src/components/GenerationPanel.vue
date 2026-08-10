@@ -6,51 +6,53 @@
 
     <slot v-if="showRequirementField" name="requirement" :disabled="controlsDisabled">
       <div class="pc-number-field pc-requirement-field">
-      <div class="pc-field-head">
-        <label class="pc-field-label">{{ requirementLabel }}</label>
-        <button
-          class="pc-icon-btn"
-          type="button"
-          :disabled="controlsDisabled || !quickPhraseGroups.length"
-          :title="quickPhraseGroups.length ? t`添加快速短语` : t`还没有快速短语`"
-          @click="toggleQuickPhrasePanel"
-        >
-          <i class="fa-solid fa-plus"></i>
-        </button>
-      </div>
-      <div v-if="quickPhraseOpen" class="pc-quick-phrase-panel">
-        <article v-for="group in quickPhraseGroups" :key="group.id" class="pc-quick-phrase-group">
+        <div class="pc-field-head">
+          <label class="pc-field-label">{{ requirementLabel }}</label>
           <button
-            class="pc-quick-phrase-group-toggle"
+            class="pc-icon-btn"
             type="button"
-            :aria-expanded="openQuickPhraseGroupId === group.id"
-            @click="toggleQuickPhraseGroup(group.id)"
+            :disabled="controlsDisabled || !quickPhraseGroups.length"
+            :title="quickPhraseGroups.length ? t`添加快速短语` : t`还没有快速短语`"
+            @click="toggleQuickPhrasePanel"
           >
-            <strong>{{ group.name }}</strong>
-            <i :class="openQuickPhraseGroupId === group.id ? 'fa-solid fa-chevron-up' : 'fa-solid fa-chevron-down'"></i>
+            <i class="fa-solid fa-plus"></i>
           </button>
-          <div v-if="openQuickPhraseGroupId === group.id" class="pc-quick-phrase-list">
+        </div>
+        <div v-if="quickPhraseOpen" class="pc-quick-phrase-panel">
+          <article v-for="group in quickPhraseGroups" :key="group.id" class="pc-quick-phrase-group">
             <button
-              v-for="phrase in group.phrases"
-              :key="phrase.id"
-              class="pc-soft-btn compact pc-quick-phrase-chip"
+              class="pc-quick-phrase-group-toggle"
               type="button"
-              :aria-label="phrase.text"
-              :title="phrase.text"
-              @click="appendQuickPhrase(phrase.text)"
+              :aria-expanded="openQuickPhraseGroupId === group.id"
+              @click="toggleQuickPhraseGroup(group.id)"
             >
-              {{ quickPhraseLabel(phrase.text) }}
+              <strong>{{ group.name }}</strong>
+              <i
+                :class="openQuickPhraseGroupId === group.id ? 'fa-solid fa-chevron-up' : 'fa-solid fa-chevron-down'"
+              ></i>
             </button>
-          </div>
-        </article>
-      </div>
-      <textarea
-        :value="userRequirement"
-        class="pc-area compact"
-        :disabled="controlsDisabled"
-        :placeholder="requirementPlaceholder"
-        @input="emit('update:userRequirement', ($event.target as HTMLTextAreaElement).value)"
-      ></textarea>
+            <div v-if="openQuickPhraseGroupId === group.id" class="pc-quick-phrase-list">
+              <button
+                v-for="phrase in group.phrases"
+                :key="phrase.id"
+                class="pc-soft-btn compact pc-quick-phrase-chip"
+                type="button"
+                :aria-label="phrase.text"
+                :title="phrase.text"
+                @click="appendQuickPhrase(phrase.text)"
+              >
+                {{ quickPhraseLabel(phrase.text) }}
+              </button>
+            </div>
+          </article>
+        </div>
+        <textarea
+          :value="userRequirement"
+          class="pc-area compact"
+          :disabled="controlsDisabled"
+          :placeholder="requirementPlaceholder"
+          @input="emit('update:userRequirement', ($event.target as HTMLTextAreaElement).value)"
+        ></textarea>
       </div>
     </slot>
 

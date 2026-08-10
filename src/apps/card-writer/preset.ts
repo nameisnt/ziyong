@@ -20,15 +20,7 @@ type WriterPreset = {
 };
 
 export type CardWriterTaskId =
-  | 'full-card'
-  | 'persona'
-  | 'worldview'
-  | 'npc'
-  | 'character-base'
-  | 'palette'
-  | 'quick-view'
-  | 'opening'
-  | 'free';
+  'full-card' | 'persona' | 'worldview' | 'npc' | 'character-base' | 'palette' | 'quick-view' | 'opening' | 'free';
 
 export type CardWriterStage = {
   id: string;
@@ -51,36 +43,11 @@ const singleStage = (id: string, label: string, moduleName: string, instruction:
   modules: [moduleName],
 });
 
-const worldviewStage = singleStage(
-  'worldview',
-  '世界观',
-  '📋 世界观',
-  '整理并生成可直接使用的世界观设定。',
-);
-const characterBaseStage = singleStage(
-  'character-base',
-  '角色基础',
-  '📋 角色基础',
-  '生成主要角色的完整基础信息。',
-);
-const paletteStage = singleStage(
-  'palette',
-  '性格调色盘',
-  '📋 性格调色盘',
-  '根据现有设定生成角色性格调色盘。',
-);
-const quickViewStage = singleStage(
-  'quick-view',
-  '角色速览',
-  '📋 角色速览',
-  '把已有角色资料整理成简洁的角色速览。',
-);
-const openingStage = singleStage(
-  'opening',
-  '开场白',
-  '📋 开场白',
-  '根据已有世界观和角色资料生成可直接使用的开场白。',
-);
+const worldviewStage = singleStage('worldview', '世界观', '📋 世界观', '整理并生成可直接使用的世界观设定。');
+const characterBaseStage = singleStage('character-base', '角色基础', '📋 角色基础', '生成主要角色的完整基础信息。');
+const paletteStage = singleStage('palette', '性格调色盘', '📋 性格调色盘', '根据现有设定生成角色性格调色盘。');
+const quickViewStage = singleStage('quick-view', '角色速览', '📋 角色速览', '把已有角色资料整理成简洁的角色速览。');
+const openingStage = singleStage('opening', '开场白', '📋 开场白', '根据已有世界观和角色资料生成可直接使用的开场白。');
 
 export const CARD_WRITER_TASKS: CardWriterTask[] = [
   {
@@ -212,11 +179,21 @@ export function buildCardWriterOrderedPrompts(options: {
       }
       continue;
     }
-    if (['charDescription', 'personaDescription', 'charPersonality', 'scenario', 'worldInfoAfter', 'dialogueExamples'].includes(id)) {
+    if (
+      [
+        'charDescription',
+        'personaDescription',
+        'charPersonality',
+        'scenario',
+        'worldInfoAfter',
+        'dialogueExamples',
+      ].includes(id)
+    ) {
       continue;
     }
     if (id === 'chatHistory') {
-      if (!worldbookClosed && options.worldbookContent.trim()) ordered.push({ role: 'system', content: '</worldinfo>' });
+      if (!worldbookClosed && options.worldbookContent.trim())
+        ordered.push({ role: 'system', content: '</worldinfo>' });
       options.chatMessages.forEach(message => {
         if (!message.message.trim()) return;
         ordered.push({

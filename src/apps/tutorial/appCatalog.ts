@@ -48,7 +48,11 @@ export const tutorialAppGuides: TutorialAppGuide[] = [
   { appId: 'preset-link', groupId: 'tavern', firstAction: '选择预设后保存聊天绑定，需要时再单独立即应用。' },
   { appId: 'entry-library', groupId: 'tavern', firstAction: '手动新建条目，或选择预设、世界书来源和分组批量收藏。' },
   { appId: 'worldbook-link', groupId: 'tavern', firstAction: '选择世界书并保存当前聊天需要启用的条目状态。' },
-  { appId: 'card-writer', groupId: 'tavern', firstAction: '选择目标世界书和一键写卡、只生成人设或单独模块，再填写需要的角色素材。' },
+  {
+    appId: 'card-writer',
+    groupId: 'tavern',
+    firstAction: '选择目标世界书和一键写卡、只生成人设或单独模块，再填写需要的角色素材。',
+  },
   { appId: 'world-slots', groupId: 'tavern', firstAction: '新建当前聊天专用槽位，再同步到固定世界书。' },
   { appId: 'mvu-modifier', groupId: 'tavern', firstAction: '展开变量树，编辑字段并点击该字段的保存。' },
   { appId: 'regex-display', groupId: 'tavern', firstAction: '选择目标 App 和提取或替换，再填写规则并测试效果。' },

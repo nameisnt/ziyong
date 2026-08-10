@@ -408,22 +408,23 @@ export async function appendWorldbookEntries(bookName: string, drafts: Worldbook
   if (!normalizedName) throw new Error('请先选择要写入的世界书');
   if (!entries.length) throw new Error('没有可以写入世界书的内容');
 
-  const exists = getAllWorldbookNames().some(name => normalizedWorldbookName(name) === normalizedWorldbookName(normalizedName));
+  const exists = getAllWorldbookNames().some(
+    name => normalizedWorldbookName(name) === normalizedWorldbookName(normalizedName),
+  );
   if (!exists) {
-    const createWorldbook = getOptionalGlobalFunction<(name: string, entries?: unknown[]) => Promise<boolean>>(
-      'createWorldbook',
-    );
-    const createOrReplaceWorldbook = getOptionalGlobalFunction<
-      (name: string, entries?: unknown[]) => Promise<boolean>
-    >('createOrReplaceWorldbook');
+    const createWorldbook =
+      getOptionalGlobalFunction<(name: string, entries?: unknown[]) => Promise<boolean>>('createWorldbook');
+    const createOrReplaceWorldbook =
+      getOptionalGlobalFunction<(name: string, entries?: unknown[]) => Promise<boolean>>('createOrReplaceWorldbook');
     if (createWorldbook) await createWorldbook(normalizedName, []);
     else if (createOrReplaceWorldbook) await createOrReplaceWorldbook(normalizedName, []);
     else throw new Error('当前酒馆环境没有开放创建世界书接口');
   }
 
-  const createEntries = getOptionalGlobalFunction<
-    (name: string, entries: unknown[], options?: { render?: 'debounced' | 'immediate' }) => Promise<unknown>
-  >('createWorldbookEntries');
+  const createEntries =
+    getOptionalGlobalFunction<
+      (name: string, entries: unknown[], options?: { render?: 'debounced' | 'immediate' }) => Promise<unknown>
+    >('createWorldbookEntries');
   if (createEntries) {
     try {
       await createEntries(normalizedName, entries.map(createWorldbookEntryPayload), { render: 'immediate' });
