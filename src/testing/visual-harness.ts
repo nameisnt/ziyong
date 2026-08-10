@@ -1017,8 +1017,8 @@ async function applyScenario(name: VisualScenarioName, options: { height?: numbe
     appNameField.value = '视觉保存测试';
     appNameField.dispatchEvent(new Event('input', { bubbles: true }));
     await waitForPaint();
-    const saveAppButton = [...document.querySelectorAll<HTMLButtonElement>('button')].find(button =>
-      button.offsetParent !== null && button.textContent?.includes('保存 App'),
+    const saveAppButton = [...document.querySelectorAll<HTMLButtonElement>('button')].find(
+      button => button.offsetParent !== null && button.textContent?.includes('保存 App'),
     );
     if (!saveAppButton) throw new Error('Custom app save button was not rendered');
     await new Promise<void>(resolve => window.setTimeout(resolve, 50));
@@ -1026,16 +1026,20 @@ async function applyScenario(name: VisualScenarioName, options: { height?: numbe
     await waitForPaint();
     const definition = useCustomAppsStore().definitions.find(item => item.name === '视觉保存测试');
     if (!definition) {
-      const savedNames = useCustomAppsStore().definitions.map(item => item.name).join(', ');
-      const notices = [...document.querySelectorAll<HTMLElement>('.toast-message')].map(item => item.textContent).join(' | ');
+      const savedNames = useCustomAppsStore()
+        .definitions.map(item => item.name)
+        .join(', ');
+      const notices = [...document.querySelectorAll<HTMLElement>('.toast-message')]
+        .map(item => item.textContent)
+        .join(' | ');
       throw new Error(
         `Clicking save App did not create a custom app definition (field=${appNameField.value}; saved=${savedNames}; notices=${notices})`,
       );
     }
     resetPhoneToRoute(definition.id, 'root', definition.name);
     await waitForPaint();
-    const addButton = [...document.querySelectorAll<HTMLButtonElement>('button')].find(button =>
-      button.textContent?.trim() === '新增',
+    const addButton = [...document.querySelectorAll<HTMLButtonElement>('button')].find(
+      button => button.textContent?.trim() === '新增',
     );
     if (!addButton) throw new Error('Saved custom app did not expose its manual create action');
     addButton.click();
@@ -1044,8 +1048,8 @@ async function applyScenario(name: VisualScenarioName, options: { height?: numbe
     if (!contentArea) throw new Error('Custom app content editor was not rendered');
     contentArea.value = '这是一条用于验证保存与转换入口的正文。';
     contentArea.dispatchEvent(new Event('input', { bubbles: true }));
-    const saveEntryButton = [...document.querySelectorAll<HTMLButtonElement>('button')].find(button =>
-      button.textContent?.trim() === '保存',
+    const saveEntryButton = [...document.querySelectorAll<HTMLButtonElement>('button')].find(
+      button => button.textContent?.trim() === '保存',
     );
     if (!saveEntryButton) throw new Error('Custom app entry save button was not rendered');
     await new Promise<void>(resolve => window.setTimeout(resolve, 50));
@@ -2197,9 +2201,7 @@ async function applyScenario(name: VisualScenarioName, options: { height?: numbe
       'content-converter',
       'root',
       '内容转换',
-      name !== 'content-converter-source' && entry
-        ? { sourceAppId: 'summary', sourceIds: entry.id }
-        : undefined,
+      name !== 'content-converter-source' && entry ? { sourceAppId: 'summary', sourceIds: entry.id } : undefined,
     );
     if (name === 'content-converter-complete') {
       await waitForPaint();

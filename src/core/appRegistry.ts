@@ -391,10 +391,7 @@ export function getRegisteredPhoneContentReceivers() {
     }));
 }
 
-function flattenReferenceSources(
-  app: PhoneAppModule,
-  nodes: PhoneReferenceTreeNode[],
-): PhoneContentConversionSource[] {
+function flattenReferenceSources(app: PhoneAppModule, nodes: PhoneReferenceTreeNode[]): PhoneContentConversionSource[] {
   return nodes.flatMap(node => {
     if (node.kind === 'branch') return flattenReferenceSources(app, node.children);
     const item = node.item;
@@ -402,16 +399,18 @@ function flattenReferenceSources(
     const sourceLabel = [...sourcePath.slice(sourcePath[0] === app.name ? 1 : 0), item.timeLabel]
       .filter(Boolean)
       .join(' · ');
-    return [{
-      appId: app.id,
-      appName: app.name,
-      content: item.content,
-      displayMode: 'markdown',
-      entryId: item.id,
-      sourceLabel: sourceLabel || app.name,
-      tags: [],
-      title: item.title,
-    }];
+    return [
+      {
+        appId: app.id,
+        appName: app.name,
+        content: item.content,
+        displayMode: 'markdown',
+        entryId: item.id,
+        sourceLabel: sourceLabel || app.name,
+        tags: [],
+        title: item.title,
+      },
+    ];
   });
 }
 

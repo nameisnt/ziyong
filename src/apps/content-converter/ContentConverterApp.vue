@@ -12,11 +12,7 @@
 
         <div class="pc-field-group">
           <label class="pc-field-label">{{ t`来源 App` }}</label>
-          <SearchableCombobox
-            v-model="sourceAppId"
-            :options="sourceAppOptions"
-            :placeholder="t`选择或搜索来源 App`"
-          />
+          <SearchableCombobox v-model="sourceAppId" :options="sourceAppOptions" :placeholder="t`选择或搜索来源 App`" />
         </div>
 
         <template v-if="activeRegistration">
@@ -38,7 +34,11 @@
             <label
               v-for="source in filteredSources"
               :key="source.entryId"
-              :class="['pc-section-card', 'pc-converter-source-row', { selected: selectedIds.includes(source.entryId) }]"
+              :class="[
+                'pc-section-card',
+                'pc-converter-source-row',
+                { selected: selectedIds.includes(source.entryId) },
+              ]"
             >
               <input
                 type="checkbox"
@@ -70,7 +70,9 @@
               <div v-for="record in history.records.slice(0, 10)" :key="record.id">
                 <strong>{{ `${record.sourceAppName} → ${record.targetAppName}` }}</strong>
                 <small>
-                  {{ `${record.batchMode === 'merge' ? '合并' : '逐条'} ${record.count} 条 · ${new Date(record.createdAt).toLocaleString()}` }}
+                  {{
+                    `${record.batchMode === 'merge' ? '合并' : '逐条'} ${record.count} 条 · ${new Date(record.createdAt).toLocaleString()}`
+                  }}
                 </small>
               </div>
             </div>
@@ -130,7 +132,9 @@ const filteredSources = computed(() => {
   const sources = activeRegistration.value?.sources ?? [];
   if (!normalized) return sources;
   return sources.filter(source =>
-    `${source.title} ${source.sourceLabel} ${source.content} ${source.tags.join(' ')}`.toLowerCase().includes(normalized),
+    `${source.title} ${source.sourceLabel} ${source.content} ${source.tags.join(' ')}`
+      .toLowerCase()
+      .includes(normalized),
   );
 });
 const selectedSources = computed(() => {
@@ -178,7 +182,10 @@ function invertVisible() {
   const visible = new Set(filteredSources.value.map(source => source.entryId));
   const retained = selectedIds.value.filter(id => !visible.has(id));
   const selected = new Set(selectedIds.value);
-  selectedIds.value = [...retained, ...filteredSources.value.filter(source => !selected.has(source.entryId)).map(source => source.entryId)];
+  selectedIds.value = [
+    ...retained,
+    ...filteredSources.value.filter(source => !selected.has(source.entryId)).map(source => source.entryId),
+  ];
 }
 
 function clearSelection() {

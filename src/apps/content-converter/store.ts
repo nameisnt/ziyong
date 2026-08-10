@@ -37,7 +37,11 @@ export const useContentConversionHistoryStore = defineStore('content-conversion-
   watch(
     data,
     value => {
-      _.set(extension_settings, contentConversionHistoryField, ContentConversionHistorySettingsSchema.parse(klona(value)));
+      _.set(
+        extension_settings,
+        contentConversionHistoryField,
+        ContentConversionHistorySettingsSchema.parse(klona(value)),
+      );
       void saveSettingsDebounced();
     },
     { deep: true },

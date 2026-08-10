@@ -53,11 +53,7 @@ export const useCustomAppsStore = defineStore('custom-apps', () => {
     void saveSettingsDebounced();
   }
 
-  watch(
-    definitionSettings,
-    persistDefinitions,
-    { deep: true, flush: 'sync' },
-  );
+  watch(definitionSettings, persistDefinitions, { deep: true, flush: 'sync' });
   watch(
     globalData,
     value => {
