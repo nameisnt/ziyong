@@ -200,12 +200,11 @@
           <div class="pc-card-writer-option-row">
             <strong>
               使用助手预填
-              <InfoHint text="在用户任务后追加一条 assistant 开头。默认关闭；仅在确认当前模型需要预填时开启，部分模型可能拒绝预填或误判任务。" />
+              <InfoHint
+                text="在用户任务后追加一条 assistant 开头。默认关闭；仅在确认当前模型需要预填时开启，部分模型可能拒绝预填或误判任务。"
+              />
             </strong>
-            <label
-              class="pc-toggle"
-              :title="writerSettings.assistantPrefillEnabled ? '关闭助手预填' : '开启助手预填'"
-            >
+            <label class="pc-toggle" :title="writerSettings.assistantPrefillEnabled ? '关闭助手预填' : '开启助手预填'">
               <input
                 v-model="writerSettings.assistantPrefillEnabled"
                 type="checkbox"

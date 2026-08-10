@@ -46,9 +46,7 @@ function rewriteScopeReferences(
 ): RewriteResult {
   const sourceSet = new Set(sourceScopeKeys);
   if (typeof value === 'string') {
-    return sourceSet.has(value)
-      ? { replacements: 1, value: targetScopeKey }
-      : { replacements: 0, value };
+    return sourceSet.has(value) ? { replacements: 1, value: targetScopeKey } : { replacements: 0, value };
   }
   if (!value || typeof value !== 'object') return { replacements: 0, value };
   if (visited.has(value)) return { replacements: 0, value };
