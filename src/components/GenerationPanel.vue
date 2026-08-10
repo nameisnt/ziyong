@@ -2,7 +2,10 @@
   <div class="pc-generation-panel">
     <slot name="before-fields"></slot>
 
-    <div class="pc-number-field pc-requirement-field">
+    <slot name="before-requirement" :disabled="controlsDisabled"></slot>
+
+    <slot v-if="showRequirementField" name="requirement" :disabled="controlsDisabled">
+      <div class="pc-number-field pc-requirement-field">
       <div class="pc-field-head">
         <label class="pc-field-label">{{ requirementLabel }}</label>
         <button
@@ -48,7 +51,8 @@
         :placeholder="requirementPlaceholder"
         @input="emit('update:userRequirement', ($event.target as HTMLTextAreaElement).value)"
       ></textarea>
-    </div>
+      </div>
+    </slot>
 
     <details class="pc-generation-advanced">
       <summary>
@@ -142,7 +146,12 @@
       <div class="pc-form-actions pc-generation-actions">
         <button class="pc-soft-btn" type="button" :disabled="running" @click="emit('cancel')">{{ cancelLabel }}</button>
         <button v-if="running" class="pc-soft-btn danger" type="button" @click="emit('stop')">{{ stopLabel }}</button>
-        <button class="pc-primary-btn" type="button" :disabled="controlsDisabled" @click="emit('generate')">
+        <button
+          class="pc-primary-btn"
+          type="button"
+          :disabled="controlsDisabled || generateDisabled"
+          @click="emit('generate')"
+        >
           <i :class="generateIcon"></i>
           <span>{{ running ? runningLabel : generateLabel }}</span>
         </button>
@@ -186,6 +195,7 @@ const props = withDefaults(
     errorTitle?: string;
     fromStartEnd: number;
     generateIcon?: string;
+    generateDisabled?: boolean;
     generateLabel?: string;
     liveOutputLabel?: string;
     rangeText: string;
@@ -199,6 +209,7 @@ const props = withDefaults(
     runningLabel?: string;
     showPresetSelector?: boolean;
     showPromptCapture?: boolean;
+    showRequirementField?: boolean;
     singleMessageId: number;
     sourceMode: SummaryGenerationSourceMode;
     stopLabel?: string;
@@ -211,6 +222,7 @@ const props = withDefaults(
     error: '',
     errorTitle: '生成失败',
     generateIcon: 'fa-solid fa-sparkles',
+    generateDisabled: false,
     generateLabel: '开始生成',
     liveOutputLabel: '实时输出',
     rawOutput: '',
@@ -220,6 +232,7 @@ const props = withDefaults(
     runningLabel: '生成中',
     showPresetSelector: true,
     showPromptCapture: true,
+    showRequirementField: true,
     stopLabel: '停止',
   },
 );

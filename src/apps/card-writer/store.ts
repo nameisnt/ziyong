@@ -12,9 +12,11 @@ const CardWriterDocumentSchema = z.object({
   sourceLabel: z.string().default(''),
   taskId: z.string(),
   taskLabel: z.string(),
+  targetWorldbookName: z.string().default(''),
   title: z.string(),
   updatedAt: z.string(),
   worldbookIncluded: z.boolean().default(false),
+  worldbookWritten: z.boolean().default(false),
 });
 
 export type CardWriterDocument = z.infer<typeof CardWriterDocumentSchema>;

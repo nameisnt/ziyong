@@ -104,27 +104,20 @@ const legacyArchiveProviders: PhoneArchiveProvider[] = [
     appId: 'forum',
     label: '论坛',
     collectionLabel: '板块',
-    itemLabel: '帖/回复',
+    itemLabel: '主题帖',
     field: forumField,
     collect(raw: unknown): ChatArchiveDomain {
       const data = ForumScopeDataSchema.safeParse(raw).success
         ? ForumScopeDataSchema.parse(raw)
         : ForumScopeDataSchema.parse({});
       const entries = data.boards.flatMap(board =>
-        board.threads.flatMap(thread => [
-          {
-            id: thread.id,
-            title: thread.title,
-            subtitle: `${board.name} · ${thread.author}`,
-          },
-          ...thread.replies.map(reply => ({
-            id: reply.id,
-            title: reply.content.slice(0, 32) || '回复',
-            subtitle: `${board.name} · ${reply.author}`,
-          })),
-        ]),
+        board.threads.map(thread => ({
+          id: thread.id,
+          title: thread.title,
+          subtitle: `${board.name} · ${thread.author}`,
+        })),
       );
-      return makeDomain('forum', '论坛', '板块', '帖/回复', data.boards.length, entries);
+      return makeDomain('forum', '论坛', '板块', '主题帖', data.boards.length, entries);
     },
   },
   {

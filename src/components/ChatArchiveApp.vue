@@ -398,7 +398,7 @@ function findChatScope(
 
 function formatDomainCount(domain: ChatArchiveDomain) {
   if (domain.appId === 'extras') return `${domain.collections}本`;
-  if (domain.appId === 'forum') return `${domain.collections}板块`;
+  if (domain.appId === 'forum') return `${domain.items}主题帖`;
   const labels: Record<string, string> = {
     diary: '篇',
     letters: '封',

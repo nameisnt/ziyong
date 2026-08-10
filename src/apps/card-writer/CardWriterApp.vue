@@ -14,6 +14,7 @@
       <GenerationPanel
         :error="generationError"
         :from-start-end="generationDraft.fromStartEnd"
+        :generate-disabled="generateDisabled"
         :range-text="generationDraft.rangeText"
         :raw-output="rawOutput"
         :recent-count="generationDraft.recentCount"
@@ -23,6 +24,7 @@
         :running="running"
         :show-preset-selector="false"
         :show-prompt-capture="false"
+        :show-requirement-field="taskId !== 'full-card'"
         :single-message-id="generationDraft.singleMessageId"
         :source-mode="settings.generation.sourceMode"
         :user-requirement="generationDraft.userRequirement"
@@ -50,16 +52,150 @@
             />
             <small class="pc-card-writer-task-note">{{ selectedTask.description }}</small>
           </div>
+
+          <div v-if="taskId === 'persona'" class="pc-field-group">
+            <label class="pc-field-label">人设模式</label>
+            <div class="pc-card-writer-persona-modes">
+              <button
+                :class="['pc-segment-btn', { active: personaMode === 'normal' }]"
+                type="button"
+                @click="personaMode = 'normal'"
+              >
+                普通调色盘
+              </button>
+              <button
+                :class="['pc-segment-btn', { active: personaMode === 'multistage' }]"
+                type="button"
+                @click="personaMode = 'multistage'"
+              >
+                多阶段调色盘
+              </button>
+            </div>
+          </div>
+
+          <div class="pc-field-group">
+            <label class="pc-field-label">写入世界书</label>
+            <div class="pc-card-writer-worldbook-select">
+              <SearchableCombobox
+                allow-custom
+                empty-label="没有匹配的世界书，可直接输入新名称"
+                input-label="选择或输入目标世界书"
+                :model-value="targetWorldbookName"
+                :options="worldbookOptions"
+                placeholder="选择或输入世界书名称"
+                toggle-title="展开世界书列表"
+                @update:model-value="targetWorldbookName = $event"
+              />
+              <button class="pc-icon-btn" type="button" title="刷新世界书列表" @click="refreshWorldbooks">
+                <i class="fa-solid fa-rotate"></i>
+              </button>
+            </div>
+            <small class="pc-card-writer-task-note">
+              保存成品时直接新增为世界书条目；不选择则只保存到写卡成品库。
+            </small>
+          </div>
+        </template>
+
+        <template #before-requirement="{ disabled }">
+          <section v-if="taskId === 'full-card'" class="pc-card-writer-brief" aria-label="一键写卡需求">
+            <header class="pc-card-writer-brief-head">
+              <div>
+                <strong>告诉写卡工坊，你想遇见怎样的人</strong>
+                <small>核心点子必填，其余内容可以留给 AI 补全。</small>
+              </div>
+              <button class="pc-soft-btn compact" type="button" :disabled="disabled" @click="fillBriefExample">
+                填入示例
+              </button>
+            </header>
+
+            <div class="pc-card-writer-question">
+              <span>01</span>
+              <label class="pc-field-group">
+                <strong>角色最核心的点子是什么？</strong>
+                <small>身份、气质、矛盾感，一句话也可以。</small>
+                <textarea
+                  v-model="brief.concept"
+                  class="pc-area compact"
+                  :disabled="disabled"
+                  placeholder="例如：表面温柔可靠，实际上很怕被抛下的狐妖医生。"
+                ></textarea>
+              </label>
+            </div>
+
+            <div class="pc-card-writer-question">
+              <span>02</span>
+              <label class="pc-field-group">
+                <strong>角色和玩家是什么关系？</strong>
+                <small>不确定可以留空，系统会安排适合展开剧情的初始关系。</small>
+                <input
+                  v-model="brief.relationship"
+                  class="pc-field"
+                  :disabled="disabled"
+                  placeholder="例如：刚签订契约的御主、重逢旧友"
+                />
+              </label>
+            </div>
+
+            <div class="pc-card-writer-question">
+              <span>03</span>
+              <div class="pc-field-group">
+                <strong>希望聊天时有什么感觉？</strong>
+                <small>可以点选一种氛围，再继续补充关系变化。</small>
+                <div class="pc-card-writer-experience-options">
+                  <button
+                    v-for="option in experienceOptions"
+                    :key="option"
+                    :class="['pc-soft-btn', 'compact', { active: brief.experience === option }]"
+                    type="button"
+                    :disabled="disabled"
+                    @click="brief.experience = option"
+                  >
+                    {{ option }}
+                  </button>
+                </div>
+                <textarea
+                  v-model="brief.experience"
+                  class="pc-area compact"
+                  :disabled="disabled"
+                  placeholder="例如：前期互相试探，熟悉后嘴硬心软。"
+                ></textarea>
+              </div>
+            </div>
+
+            <div class="pc-card-writer-world-setting">
+              <strong>故事发生在哪里？</strong>
+              <small>默认由 AI 自动安排，也可以指定已有作品或自定义世界。</small>
+              <div class="pc-card-writer-world-modes">
+                <button
+                  v-for="option in worldModeOptions"
+                  :key="option.value"
+                  :class="['pc-segment-btn', { active: brief.worldMode === option.value }]"
+                  type="button"
+                  :disabled="disabled"
+                  @click="brief.worldMode = option.value"
+                >
+                  {{ option.label }}
+                </button>
+              </div>
+              <textarea
+                v-if="brief.worldMode !== 'auto'"
+                v-model="brief.worldHint"
+                class="pc-area compact"
+                :disabled="disabled"
+                :placeholder="brief.worldMode === 'existing' ? '例如：FGO 第七特异点' : '写下一句话世界设定'"
+              ></textarea>
+            </div>
+          </section>
         </template>
 
         <template #after-references>
           <div class="pc-card-writer-worldbook">
             <div>
-              <strong>加入当前世界书</strong>
-              <small>自动读取当前聊天生效且已启用的世界书条目</small>
+              <strong>读取当前世界书作为素材</strong>
+              <small>把当前聊天生效且已启用的条目加入生成上下文</small>
             </div>
             <label class="pc-toggle" :title="includeWorldbook ? '不加入世界书内容' : '加入世界书内容'">
-              <input v-model="includeWorldbook" type="checkbox" aria-label="加入当前世界书内容" />
+              <input v-model="includeWorldbook" type="checkbox" aria-label="读取当前世界书作为素材" />
               <span aria-hidden="true"></span>
             </label>
           </div>
@@ -88,13 +224,14 @@
         v-model:raw="preview.raw"
         :editable="true"
         :raw-editable="true"
+        :save-disabled="savingPreview"
         :scan-enabled="true"
         :short-content-guard="false"
         :source-label="preview.sourceLabel"
         :text-provider-summary="preview.providerSummary"
         :title="preview.title"
         :warnings="preview.warnings"
-        save-label="保存成品"
+        :save-label="previewSaveLabel"
         @save="savePreview"
       />
     </section>
@@ -128,8 +265,17 @@ import EmptyState from '@/components/EmptyState.vue';
 import GenerationPanel from '@/components/GenerationPanel.vue';
 import GenerationPreviewPanel from '@/components/GenerationPreviewPanel.vue';
 import SearchableCombobox from '@/components/SearchableCombobox.vue';
-import { generateOrderedPromptContent, type RawOrderedPrompt } from '@/core/generationService';
-import { getWorldbookEntries, getCurrentWorldbookGroups } from '@/apps/worldbook-link/api';
+import {
+  generateOrderedPromptContent,
+  type RawOrderedPrompt,
+} from '@/core/generationService';
+import {
+  appendWorldbookEntries,
+  getAllWorldbookNames,
+  getCurrentWorldbookGroups,
+  getWorldbookEntries,
+  type WorldbookEntryDraft,
+} from '@/apps/worldbook-link/api';
 import { usePhoneStore } from '@/store/phone';
 import { useSettingsStore } from '@/store/settings';
 import { getCurrentChatScopeKey } from '@/store/chatScoped';
@@ -139,6 +285,7 @@ import { getChatMessagesSafe, stopGenerationByIdSafe } from '@/util/runtime';
 import {
   buildCardWriterOrderedPrompts,
   CARD_WRITER_TASKS,
+  getCardWriterTaskStages,
   parseCardWriterArtifact,
   type CardWriterTaskId,
 } from './preset';
@@ -151,6 +298,9 @@ type StageState = {
   status: 'completed' | 'pending' | 'running';
 };
 
+type PersonaMode = 'multistage' | 'normal';
+type WorldMode = 'auto' | 'custom' | 'existing';
+
 const phone = usePhoneStore();
 const settingsStore = useSettingsStore();
 const writerStore = useCardWriterStore();
@@ -158,14 +308,25 @@ const { settings } = storeToRefs(settingsStore);
 const { documents } = storeToRefs(writerStore);
 const route = computed(() => phone.currentRoute);
 const taskId = ref<CardWriterTaskId>('full-card');
+const personaMode = ref<PersonaMode>('normal');
 const includeWorldbook = ref(false);
+const targetWorldbookName = ref('');
+const worldbookOptions = ref<Array<{ group?: string; label: string; value: string }>>([]);
 const references = ref<GenerationReferenceItem[]>([]);
 const running = ref(false);
+const savingPreview = ref(false);
 const rawOutput = ref('');
 const generationError = ref('');
 const activeGenerationId = ref('');
 const stageStates = ref<StageState[]>([]);
 const activeDocumentId = ref('');
+const brief = reactive({
+  concept: '',
+  experience: '',
+  relationship: '',
+  worldHint: '',
+  worldMode: 'auto' as WorldMode,
+});
 const generationDraft = reactive({
   fromStartEnd: 20,
   rangeText: '',
@@ -180,22 +341,79 @@ const preview = reactive({
   sourceLabel: '',
   taskId: 'full-card' as CardWriterTaskId,
   taskLabel: '一键写卡',
+  targetWorldbookName: '',
   title: '',
   warnings: [] as string[],
   worldbookIncluded: false,
+  worldbookWritten: false,
 });
+
+const experienceOptions = ['温柔陪伴', '欢喜冤家', '危险拉扯', '冒险搭档', '慢热治愈'];
+const worldModeOptions: Array<{ label: string; value: WorldMode }> = [
+  { label: '自动安排', value: 'auto' },
+  { label: '已有世界', value: 'existing' },
+  { label: '自定义', value: 'custom' },
+];
 
 const taskOptions = CARD_WRITER_TASKS.map(task => ({
   label: `${task.label} · ${task.description}`,
   value: task.id,
 }));
 const selectedTask = computed(() => CARD_WRITER_TASKS.find(task => task.id === taskId.value) ?? CARD_WRITER_TASKS[0]);
+const selectedStages = computed(() => getCardWriterTaskStages(selectedTask.value, personaMode.value));
 const completedStageCount = computed(() => stageStates.value.filter(stage => stage.status === 'completed').length);
+const generateDisabled = computed(() => taskId.value === 'full-card' && !brief.concept.trim());
+const previewSaveLabel = computed(() => {
+  if (!preview.targetWorldbookName) return '保存成品';
+  return preview.worldbookWritten ? '更新成品' : '保存并写入世界书';
+});
 
 function stageIcon(status: StageState['status']) {
   if (status === 'completed') return 'fa-solid fa-check';
   if (status === 'running') return 'fa-solid fa-spinner fa-spin';
   return 'fa-regular fa-circle';
+}
+
+function fillBriefExample() {
+  brief.concept = '表面温柔从容，实际上很害怕再次失去重要之人的狐妖医生。';
+  brief.relationship = '刚刚签订契约、还在互相观察的搭档';
+  brief.experience = '前期礼貌试探，熟悉后嘴硬心软，亲密后展现明显保护欲。';
+  brief.worldMode = 'auto';
+  brief.worldHint = '';
+}
+
+function addWorldbookOptions(
+  target: Array<{ group?: string; label: string; value: string }>,
+  seen: Set<string>,
+  names: string[],
+  group: string,
+) {
+  names.forEach(name => {
+    const normalized = name.trim();
+    if (!normalized || seen.has(normalized)) return;
+    seen.add(normalized);
+    target.push({ group, label: normalized, value: normalized });
+  });
+}
+
+function refreshWorldbooks() {
+  try {
+    const groups = getCurrentWorldbookGroups();
+    const options: Array<{ group?: string; label: string; value: string }> = [];
+    const seen = new Set<string>();
+    addWorldbookOptions(options, seen, groups.chat, '当前聊天');
+    addWorldbookOptions(options, seen, groups.character, '当前角色');
+    addWorldbookOptions(options, seen, groups.additional, '附加世界书');
+    addWorldbookOptions(options, seen, groups.globalEnabled, '已启用全局');
+    addWorldbookOptions(options, seen, groups.globalDisabled, '其他世界书');
+    addWorldbookOptions(options, seen, groups.other, '其他角色');
+    addWorldbookOptions(options, seen, getAllWorldbookNames(), '其他世界书');
+    worldbookOptions.value = options;
+    if (!targetWorldbookName.value) targetWorldbookName.value = options[0]?.value || '';
+  } catch (error) {
+    worldbookOptions.value = getAllWorldbookNames().map(name => ({ label: name, value: name }));
+    generationError.value = error instanceof Error ? error.message : '读取世界书列表失败';
+  }
 }
 
 function getSelectedChatMessages() {
@@ -224,30 +442,43 @@ function buildReferenceText() {
     .join('\n\n');
 }
 
+function buildRequirementText() {
+  if (taskId.value !== 'full-card') {
+    return generationDraft.userRequirement.trim() || '请根据已选择的聊天、引用与世界书素材完成创作。';
+  }
+  const worldDescription =
+    brief.worldMode === 'auto'
+      ? '由 AI 自动安排适合角色发展的世界。'
+      : brief.worldHint.trim() || (brief.worldMode === 'existing' ? '沿用用户指定的已有世界。' : '补全自定义世界。');
+  return [
+    `角色核心点子：${brief.concept.trim()}`,
+    `与玩家的关系：${brief.relationship.trim() || '未指定，请安排适合展开故事的初始关系。'}`,
+    `期望体验：${brief.experience.trim() || '未指定，请根据角色设定安排自然的互动氛围。'}`,
+    `故事世界：${worldDescription}`,
+  ].join('\n');
+}
+
 async function buildWorldbookText() {
   if (!includeWorldbook.value) return '';
   const groups = getCurrentWorldbookGroups();
-  const bookNames = [...new Set([...groups.globalEnabled, ...groups.character, ...groups.additional, ...groups.chat])];
+  const bookNames = [
+    ...new Set([...groups.globalEnabled, ...groups.character, ...groups.additional, ...groups.chat]),
+  ];
   const sections: string[] = [];
   for (const bookName of bookNames) {
     const entries = (await getWorldbookEntries(bookName)).filter(entry => entry.enabled && entry.content.trim());
     if (!entries.length) continue;
     sections.push(
-      [
-        `【世界书：${bookName}】`,
-        ...entries.map(entry => `【${entry.name || `条目 #${entry.uid}`}】\n${entry.content}`),
-      ].join('\n\n'),
+      [`【世界书：${bookName}】`, ...entries.map(entry => `【${entry.name || `条目 #${entry.uid}`}】\n${entry.content}`)].join(
+        '\n\n',
+      ),
     );
   }
   return sections.join('\n\n');
 }
 
-function buildStageUserInput(
-  stageLabel: string,
-  instruction: string,
-  priorOutputs: Array<{ label: string; content: string }>,
-) {
-  const requirement = generationDraft.userRequirement.trim() || '请根据已选择的聊天、引用与世界书素材完成创作。';
+function buildStageUserInput(stageLabel: string, instruction: string, priorOutputs: Array<{ label: string; content: string }>) {
+  const requirement = buildRequirementText();
   return [
     '【小手机自动写卡任务】',
     `当前阶段：${stageLabel}`,
@@ -276,7 +507,8 @@ async function runWriter() {
   rawOutput.value = '';
   activeDocumentId.value = '';
   const task = selectedTask.value;
-  stageStates.value = task.stages.map(stage => ({ id: stage.id, label: stage.label, status: 'pending' }));
+  const stages = selectedStages.value;
+  stageStates.value = stages.map(stage => ({ id: stage.id, label: stage.label, status: 'pending' }));
 
   try {
     const { messages: chatMessages, sourceLabel } = getSelectedChatMessages();
@@ -285,7 +517,7 @@ async function runWriter() {
     const rawSections: string[] = [];
     let latestProviderSummary = '酒馆当前 API';
 
-    for (const [stageIndex, stage] of task.stages.entries()) {
+    for (const [stageIndex, stage] of stages.entries()) {
       stageStates.value[stageIndex].status = 'running';
       const userInput = buildStageUserInput(stage.label, stage.instruction, completed);
       const messagesForStage: RawOrderedPrompt[] = buildCardWriterOrderedPrompts({
@@ -332,9 +564,11 @@ async function runWriter() {
     preview.sourceLabel = `${sourceLabel}${includeWorldbook.value ? ' · 已加入世界书' : ' · 未加入世界书'}`;
     preview.taskId = task.id;
     preview.taskLabel = task.label;
+    preview.targetWorldbookName = targetWorldbookName.value.trim();
     preview.title = `${task.label}成品`;
     preview.warnings = [];
     preview.worldbookIncluded = includeWorldbook.value;
+    preview.worldbookWritten = false;
     phone.pushPage('preview', '写卡预览');
   } catch (error) {
     generationError.value = error instanceof Error ? error.message : '写卡生成失败';
@@ -367,24 +601,67 @@ function openDocument(document: CardWriterDocument) {
   preview.sourceLabel = document.sourceLabel;
   preview.taskId = document.taskId as CardWriterTaskId;
   preview.taskLabel = document.taskLabel;
+  preview.targetWorldbookName = document.targetWorldbookName;
   preview.title = document.title;
   preview.warnings = [];
   preview.worldbookIncluded = document.worldbookIncluded;
+  preview.worldbookWritten = document.worldbookWritten;
   phone.pushPage('preview', '写卡预览', { documentId: document.id });
 }
 
-function savePreview() {
+function buildWorldbookDrafts(): WorldbookEntryDraft[] {
+  const content = preview.content.trim();
+  if (!content) return [];
+  const headingPattern = /^##\s+(.+)$/gmu;
+  const headings = [...content.matchAll(headingPattern)];
+  if (!headings.length) return [{ content, name: preview.taskLabel }];
+  return headings.flatMap((heading, index) => {
+    const start = (heading.index ?? 0) + heading[0].length;
+    const end = headings[index + 1]?.index ?? content.length;
+    const section = content.slice(start, end).trim();
+    return section ? [{ content: section, name: heading[1].trim() }] : [];
+  });
+}
+
+function persistPreviewDocument(worldbookWritten = preview.worldbookWritten) {
   const document = writerStore.saveDocument({
     content: preview.content,
     id: activeDocumentId.value || undefined,
     sourceLabel: preview.sourceLabel,
+    targetWorldbookName: preview.targetWorldbookName,
     taskId: preview.taskId,
     taskLabel: preview.taskLabel,
     title: preview.title,
     worldbookIncluded: preview.worldbookIncluded,
+    worldbookWritten,
   });
   activeDocumentId.value = document.id;
-  toastr.success('写卡成品已保存');
+  return document;
+}
+
+async function savePreview() {
+  if (savingPreview.value) return;
+  savingPreview.value = true;
+  try {
+    persistPreviewDocument();
+    if (!preview.targetWorldbookName) {
+      toastr.success('写卡成品已保存');
+      return;
+    }
+    if (preview.worldbookWritten) {
+      toastr.success('写卡成品已更新；已写入的世界书条目不会重复新增');
+      return;
+    }
+    const count = await appendWorldbookEntries(preview.targetWorldbookName, buildWorldbookDrafts());
+    preview.worldbookWritten = true;
+    persistPreviewDocument(true);
+    refreshWorldbooks();
+    toastr.success(`已保存，并向世界书“${preview.targetWorldbookName}”写入 ${count} 个条目`);
+  } catch (error) {
+    toastr.error(error instanceof Error ? error.message : '写入世界书失败');
+  } finally {
+    savingPreview.value = false;
+  }
 }
 
 async function deleteDocument(document: CardWriterDocument) {
@@ -400,14 +677,12 @@ async function deleteDocument(document: CardWriterDocument) {
 function formatDate(value: string) {
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) return value;
-  return new Intl.DateTimeFormat('zh-CN', {
-    month: '2-digit',
-    day: '2-digit',
-    hour: '2-digit',
-    minute: '2-digit',
-  }).format(date);
+  return new Intl.DateTimeFormat('zh-CN', { month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' }).format(
+    date,
+  );
 }
 
+onMounted(refreshWorldbooks);
 onBeforeUnmount(stopWriter);
 </script>
 
@@ -426,12 +701,94 @@ onBeforeUnmount(stopWriter);
 
 .pc-card-writer-head,
 .pc-card-writer-worldbook,
+.pc-card-writer-brief-head,
 .pc-card-writer-progress header,
 .pc-card-writer-document {
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 12px;
+}
+
+.pc-card-writer-worldbook-select {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 42px;
+  align-items: center;
+  gap: 8px;
+}
+
+.pc-card-writer-persona-modes,
+.pc-card-writer-world-modes {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.pc-card-writer-world-modes {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.pc-card-writer-brief {
+  display: grid;
+  border-top: 1px solid var(--pc-border);
+  border-bottom: 1px solid var(--pc-border);
+}
+
+.pc-card-writer-brief-head {
+  padding: 14px 0;
+}
+
+.pc-card-writer-brief-head .pc-soft-btn {
+  flex: 0 0 auto;
+  min-width: 76px;
+  white-space: nowrap;
+}
+
+.pc-card-writer-brief-head > div,
+.pc-card-writer-world-setting {
+  display: grid;
+  min-width: 0;
+  gap: 5px;
+}
+
+.pc-card-writer-brief-head small,
+.pc-card-writer-question small,
+.pc-card-writer-world-setting small {
+  color: var(--pc-muted);
+  font-size: 12px;
+  line-height: 1.45;
+}
+
+.pc-card-writer-question {
+  display: grid;
+  grid-template-columns: 30px minmax(0, 1fr);
+  gap: 10px;
+  border-top: 1px solid var(--pc-border);
+  padding: 14px 0;
+}
+
+.pc-card-writer-question > span {
+  color: var(--pc-theme-accent);
+  font-size: 12px;
+  font-weight: 800;
+  padding-top: 2px;
+}
+
+.pc-card-writer-experience-options {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 7px;
+}
+
+.pc-card-writer-experience-options .pc-soft-btn {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.pc-card-writer-world-setting {
+  border-top: 1px solid var(--pc-border);
+  padding: 14px 0;
 }
 
 .pc-card-writer-head h2 {

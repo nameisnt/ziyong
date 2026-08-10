@@ -20,7 +20,15 @@ type WriterPreset = {
 };
 
 export type CardWriterTaskId =
-  'full-card' | 'worldview' | 'npc' | 'character-base' | 'palette' | 'quick-view' | 'opening' | 'free';
+  | 'full-card'
+  | 'persona'
+  | 'worldview'
+  | 'npc'
+  | 'character-base'
+  | 'palette'
+  | 'quick-view'
+  | 'opening'
+  | 'free';
 
 export type CardWriterStage = {
   id: string;
@@ -43,11 +51,36 @@ const singleStage = (id: string, label: string, moduleName: string, instruction:
   modules: [moduleName],
 });
 
-const worldviewStage = singleStage('worldview', '世界观', '📋 世界观', '整理并生成可直接使用的世界观设定。');
-const characterBaseStage = singleStage('character-base', '角色基础', '📋 角色基础', '生成主要角色的完整基础信息。');
-const paletteStage = singleStage('palette', '性格调色盘', '📋 性格调色盘', '根据现有设定生成角色性格调色盘。');
-const quickViewStage = singleStage('quick-view', '角色速览', '📋 角色速览', '把已有角色资料整理成简洁的角色速览。');
-const openingStage = singleStage('opening', '开场白', '📋 开场白', '根据已有世界观和角色资料生成可直接使用的开场白。');
+const worldviewStage = singleStage(
+  'worldview',
+  '世界观',
+  '📋 世界观',
+  '整理并生成可直接使用的世界观设定。',
+);
+const characterBaseStage = singleStage(
+  'character-base',
+  '角色基础',
+  '📋 角色基础',
+  '生成主要角色的完整基础信息。',
+);
+const paletteStage = singleStage(
+  'palette',
+  '性格调色盘',
+  '📋 性格调色盘',
+  '根据现有设定生成角色性格调色盘。',
+);
+const quickViewStage = singleStage(
+  'quick-view',
+  '角色速览',
+  '📋 角色速览',
+  '把已有角色资料整理成简洁的角色速览。',
+);
+const openingStage = singleStage(
+  'opening',
+  '开场白',
+  '📋 开场白',
+  '根据已有世界观和角色资料生成可直接使用的开场白。',
+);
 
 export const CARD_WRITER_TASKS: CardWriterTask[] = [
   {
@@ -55,6 +88,12 @@ export const CARD_WRITER_TASKS: CardWriterTask[] = [
     label: '一键写卡',
     description: '依次生成世界观、角色基础、性格、速览与开场白',
     stages: [worldviewStage, characterBaseStage, paletteStage, quickViewStage, openingStage],
+  },
+  {
+    id: 'persona',
+    label: '只生成人设',
+    description: '生成普通或多阶段性格调色盘，不连带生成整张卡',
+    stages: [paletteStage],
   },
   { id: 'worldview', label: '世界观', description: '从当前素材整理世界设定', stages: [worldviewStage] },
   {
@@ -79,6 +118,20 @@ export const CARD_WRITER_TASKS: CardWriterTask[] = [
     stages: [singleStage('free', '自由创作', '📋 自由创作助手', '严格按用户要求完成本轮自由创作。')],
   },
 ];
+
+export function getCardWriterTaskStages(task: CardWriterTask, personaMode: 'multistage' | 'normal') {
+  if (task.id !== 'persona') return task.stages;
+  return [
+    singleStage(
+      'persona',
+      personaMode === 'multistage' ? '多阶段人设' : '普通人设',
+      personaMode === 'multistage' ? '📋 多阶段调色盘' : '📋 性格调色盘',
+      personaMode === 'multistage'
+        ? '根据用户提供的阶段、关系变化与角色底色，直接生成可用的多阶段调色盘人设。'
+        : '根据用户提供的角色底色、矛盾感、行为逻辑与关系触发，直接生成可用的普通调色盘人设。',
+    ),
+  ];
+}
 
 const preset = JSON.parse(presetRaw) as WriterPreset;
 const promptsById = new Map(preset.prompts.map(prompt => [String(prompt.identifier), prompt]));
@@ -159,21 +212,11 @@ export function buildCardWriterOrderedPrompts(options: {
       }
       continue;
     }
-    if (
-      [
-        'charDescription',
-        'personaDescription',
-        'charPersonality',
-        'scenario',
-        'worldInfoAfter',
-        'dialogueExamples',
-      ].includes(id)
-    ) {
+    if (['charDescription', 'personaDescription', 'charPersonality', 'scenario', 'worldInfoAfter', 'dialogueExamples'].includes(id)) {
       continue;
     }
     if (id === 'chatHistory') {
-      if (!worldbookClosed && options.worldbookContent.trim())
-        ordered.push({ role: 'system', content: '</worldinfo>' });
+      if (!worldbookClosed && options.worldbookContent.trim()) ordered.push({ role: 'system', content: '</worldinfo>' });
       options.chatMessages.forEach(message => {
         if (!message.message.trim()) return;
         ordered.push({

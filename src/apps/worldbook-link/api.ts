@@ -12,6 +12,13 @@ export interface CurrentWorldbookGroups {
   other: string[];
 }
 
+export interface WorldbookEntryDraft {
+  content: string;
+  name: string;
+  order?: number;
+  position?: WorldbookEntry['position']['type'];
+}
+
 interface RuntimeCharacter {
   avatar?: string;
   data?: {
@@ -309,6 +316,124 @@ export function getCurrentWorldbookGroups(): CurrentWorldbookGroups {
     globalEnabled,
     other,
   };
+}
+
+export function getAllWorldbookNames() {
+  const getNames = getOptionalGlobalFunction<() => string[]>('getWorldbookNames');
+  return uniqueNames(getNames?.() ?? []).sort((left, right) => left.localeCompare(right, 'zh-CN', { numeric: true }));
+}
+
+function createWorldbookEntryPayload(entry: WorldbookEntryDraft, index: number) {
+  return {
+    content: entry.content,
+    enabled: true,
+    name: entry.name,
+    position: {
+      depth: 4,
+      order: entry.order ?? 100 + index,
+      role: 'system' as const,
+      type: entry.position ?? ('after_character_definition' as const),
+    },
+    probability: 100,
+    strategy: {
+      keys: [],
+      keys_secondary: { keys: [], logic: 'and_any' as const },
+      scan_depth: 'same_as_global' as const,
+      type: 'constant' as const,
+    },
+  };
+}
+
+async function appendWorldbookEntriesRaw(bookName: string, entries: WorldbookEntryDraft[]) {
+  const loadWorldInfo = getOptionalGlobalFunction<(name: string) => Promise<unknown>>('loadWorldInfo');
+  const saveWorldInfo =
+    getOptionalGlobalFunction<(name: string, data: unknown, immediately?: boolean) => Promise<void>>('saveWorldInfo');
+  if (!loadWorldInfo || !saveWorldInfo) throw new Error('当前酒馆环境没有开放世界书条目写入接口');
+
+  const loaded = await loadWorldInfo(bookName);
+  const book = loaded && typeof loaded === 'object' ? (loaded as RawWorldbook) : ({} as RawWorldbook);
+  const currentEntries = book.entries;
+  const existingPairs = Array.isArray(currentEntries)
+    ? currentEntries.map((entry, index) => [String(index), entry] as const)
+    : currentEntries && typeof currentEntries === 'object'
+      ? Object.entries(currentEntries)
+      : [];
+  let nextUid =
+    existingPairs.reduce((highest, [key, entry]) => {
+      if (!entry || typeof entry !== 'object') return highest;
+      return Math.max(highest, rawEntryUid(entry as RawWorldbookEntry, key) ?? -1);
+    }, -1) + 1;
+
+  const additions = entries.map((entry, index) => {
+    const uid = nextUid++;
+    return {
+      comment: entry.name,
+      constant: true,
+      content: entry.content,
+      depth: 4,
+      disable: false,
+      key: [],
+      keysecondary: [],
+      order: entry.order ?? 100 + index,
+      position: rawPositionValue(entry.position ?? 'after_character_definition'),
+      probability: 100,
+      role: 0,
+      selective: false,
+      uid,
+      useProbability: true,
+      vectorized: false,
+    } satisfies RawWorldbookEntry;
+  });
+
+  if (Array.isArray(currentEntries)) {
+    currentEntries.push(...additions);
+  } else {
+    const target = currentEntries && typeof currentEntries === 'object' ? currentEntries : {};
+    additions.forEach(entry => {
+      (target as Record<string, unknown>)[String(entry.uid)] = entry;
+    });
+    book.entries = target;
+  }
+  await saveWorldInfo(bookName, book, true);
+  await getOptionalGlobalFunction<() => Promise<void>>('updateWorldInfoList')?.();
+  getOptionalGlobalFunction<(file: string, loadIfNotSelected?: boolean) => void>('reloadWorldInfoEditor')?.(
+    bookName,
+    false,
+  );
+}
+
+export async function appendWorldbookEntries(bookName: string, drafts: WorldbookEntryDraft[]) {
+  const normalizedName = bookName.trim();
+  const entries = drafts.filter(entry => entry.content.trim()).map(entry => ({ ...entry, name: entry.name.trim() }));
+  if (!normalizedName) throw new Error('请先选择要写入的世界书');
+  if (!entries.length) throw new Error('没有可以写入世界书的内容');
+
+  const exists = getAllWorldbookNames().some(name => normalizedWorldbookName(name) === normalizedWorldbookName(normalizedName));
+  if (!exists) {
+    const createWorldbook = getOptionalGlobalFunction<(name: string, entries?: unknown[]) => Promise<boolean>>(
+      'createWorldbook',
+    );
+    const createOrReplaceWorldbook = getOptionalGlobalFunction<
+      (name: string, entries?: unknown[]) => Promise<boolean>
+    >('createOrReplaceWorldbook');
+    if (createWorldbook) await createWorldbook(normalizedName, []);
+    else if (createOrReplaceWorldbook) await createOrReplaceWorldbook(normalizedName, []);
+    else throw new Error('当前酒馆环境没有开放创建世界书接口');
+  }
+
+  const createEntries = getOptionalGlobalFunction<
+    (name: string, entries: unknown[], options?: { render?: 'debounced' | 'immediate' }) => Promise<unknown>
+  >('createWorldbookEntries');
+  if (createEntries) {
+    try {
+      await createEntries(normalizedName, entries.map(createWorldbookEntryPayload), { render: 'immediate' });
+      return entries.length;
+    } catch {
+      // Legacy imported books can fail helper normalization; preserve them through the raw API instead.
+    }
+  }
+  await appendWorldbookEntriesRaw(normalizedName, entries);
+  return entries.length;
 }
 
 export async function getWorldbookEntries(bookName: string) {
