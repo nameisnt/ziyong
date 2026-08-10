@@ -1,14 +1,25 @@
 <template>
   <section class="pc-card-writer-app">
     <section v-if="route.page === 'root'" class="pc-card-writer-page">
-      <header class="pc-card-writer-head">
-        <div>
-          <h2>写卡工坊</h2>
+      <div class="pc-card-writer-task-row">
+        <div class="pc-field-group">
+          <label class="pc-field-label">
+            本次任务
+            <InfoHint :text="selectedTask.description" />
+          </label>
+          <SearchableCombobox
+            :model-value="taskId"
+            :options="taskOptions"
+            input-label="选择写卡任务"
+            placeholder="选择写卡任务"
+            toggle-title="展开写卡任务"
+            @update:model-value="taskId = $event as CardWriterTaskId"
+          />
         </div>
         <button class="pc-icon-btn" type="button" title="查看已保存成品" @click="openLibrary">
           <i class="fa-solid fa-box-archive"></i>
         </button>
-      </header>
+      </div>
 
       <GenerationPanel
         :error="generationError"
@@ -39,21 +50,6 @@
         @update:user-requirement="generationDraft.userRequirement = $event"
       >
         <template #before-fields>
-          <div class="pc-field-group">
-            <label class="pc-field-label">
-              本次任务
-              <InfoHint :text="selectedTask.description" />
-            </label>
-            <SearchableCombobox
-              :model-value="taskId"
-              :options="taskOptions"
-              input-label="选择写卡任务"
-              placeholder="选择写卡任务"
-              toggle-title="展开写卡任务"
-              @update:model-value="taskId = $event as CardWriterTaskId"
-            />
-          </div>
-
           <div v-if="taskId === 'persona'" class="pc-field-group">
             <label class="pc-field-label">人设模式</label>
             <div class="pc-card-writer-persona-modes">
@@ -125,9 +121,8 @@
             </header>
 
             <div class="pc-card-writer-question">
-              <span>01</span>
               <label class="pc-field-group">
-                <strong>角色最核心的点子是什么？</strong>
+                <strong><span>01</span>角色最核心的点子是什么？</strong>
                 <textarea
                   v-model="brief.concept"
                   class="pc-area compact"
@@ -138,9 +133,8 @@
             </div>
 
             <div class="pc-card-writer-question">
-              <span>02</span>
               <label class="pc-field-group">
-                <strong>角色和玩家是什么关系？</strong>
+                <strong><span>02</span>角色和玩家是什么关系？</strong>
                 <input
                   v-model="brief.relationship"
                   class="pc-field"
@@ -151,9 +145,8 @@
             </div>
 
             <div class="pc-card-writer-question">
-              <span>03</span>
               <div class="pc-field-group">
-                <strong>希望聊天时有什么感觉？</strong>
+                <strong><span>03</span>希望聊天时有什么感觉？</strong>
                 <div class="pc-card-writer-experience-options">
                   <button
                     v-for="option in experienceOptions"
@@ -737,6 +730,7 @@ onScopeDispose(stopSavedPreviewCheck);
 }
 
 .pc-card-writer-head,
+.pc-card-writer-task-row,
 .pc-card-writer-worldbook,
 .pc-card-writer-brief-head,
 .pc-card-writer-progress header,
@@ -745,6 +739,19 @@ onScopeDispose(stopSavedPreviewCheck);
   align-items: center;
   justify-content: space-between;
   gap: 12px;
+}
+
+.pc-card-writer-task-row {
+  align-items: end;
+}
+
+.pc-card-writer-task-row > .pc-field-group {
+  flex: 1;
+  min-width: 0;
+}
+
+.pc-card-writer-task-row > .pc-icon-btn {
+  flex: 0 0 auto;
 }
 
 .pc-card-writer-worldbook-select {
@@ -798,17 +805,22 @@ onScopeDispose(stopSavedPreviewCheck);
 
 .pc-card-writer-question {
   display: grid;
-  grid-template-columns: 30px minmax(0, 1fr);
-  gap: 10px;
+  gap: 8px;
   border-top: 1px solid var(--pc-border);
   padding: 14px 0;
 }
 
-.pc-card-writer-question > span {
+.pc-card-writer-question strong {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+}
+
+.pc-card-writer-question strong > span {
   color: var(--pc-theme-accent);
   font-size: 12px;
   font-weight: 800;
-  padding-top: 2px;
+  line-height: 1;
 }
 
 .pc-card-writer-experience-options {
