@@ -128,10 +128,7 @@ import EmptyState from '@/components/EmptyState.vue';
 import GenerationPanel from '@/components/GenerationPanel.vue';
 import GenerationPreviewPanel from '@/components/GenerationPreviewPanel.vue';
 import SearchableCombobox from '@/components/SearchableCombobox.vue';
-import {
-  generateOrderedPromptContent,
-  type RawOrderedPrompt,
-} from '@/core/generationService';
+import { generateOrderedPromptContent, type RawOrderedPrompt } from '@/core/generationService';
 import { getWorldbookEntries, getCurrentWorldbookGroups } from '@/apps/worldbook-link/api';
 import { usePhoneStore } from '@/store/phone';
 import { useSettingsStore } from '@/store/settings';
@@ -230,23 +227,26 @@ function buildReferenceText() {
 async function buildWorldbookText() {
   if (!includeWorldbook.value) return '';
   const groups = getCurrentWorldbookGroups();
-  const bookNames = [
-    ...new Set([...groups.globalEnabled, ...groups.character, ...groups.additional, ...groups.chat]),
-  ];
+  const bookNames = [...new Set([...groups.globalEnabled, ...groups.character, ...groups.additional, ...groups.chat])];
   const sections: string[] = [];
   for (const bookName of bookNames) {
     const entries = (await getWorldbookEntries(bookName)).filter(entry => entry.enabled && entry.content.trim());
     if (!entries.length) continue;
     sections.push(
-      [`【世界书：${bookName}】`, ...entries.map(entry => `【${entry.name || `条目 #${entry.uid}`}】\n${entry.content}`)].join(
-        '\n\n',
-      ),
+      [
+        `【世界书：${bookName}】`,
+        ...entries.map(entry => `【${entry.name || `条目 #${entry.uid}`}】\n${entry.content}`),
+      ].join('\n\n'),
     );
   }
   return sections.join('\n\n');
 }
 
-function buildStageUserInput(stageLabel: string, instruction: string, priorOutputs: Array<{ label: string; content: string }>) {
+function buildStageUserInput(
+  stageLabel: string,
+  instruction: string,
+  priorOutputs: Array<{ label: string; content: string }>,
+) {
   const requirement = generationDraft.userRequirement.trim() || '请根据已选择的聊天、引用与世界书素材完成创作。';
   return [
     '【小手机自动写卡任务】',
@@ -400,9 +400,12 @@ async function deleteDocument(document: CardWriterDocument) {
 function formatDate(value: string) {
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) return value;
-  return new Intl.DateTimeFormat('zh-CN', { month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' }).format(
-    date,
-  );
+  return new Intl.DateTimeFormat('zh-CN', {
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+  }).format(date);
 }
 
 onBeforeUnmount(stopWriter);

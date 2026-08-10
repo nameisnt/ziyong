@@ -2709,7 +2709,9 @@ async function applyScenario(name: VisualScenarioName, options: { height?: numbe
     const loaded = await waitForVisualCondition(() => Boolean(document.querySelector('.pc-worldbook-entry-open')));
     if (!loaded) throw new Error('Worldbook entry list did not load');
     document.querySelector<HTMLButtonElement>('.pc-worldbook-entry-open')?.click();
-    const editorLoaded = await waitForVisualCondition(() => Boolean(document.querySelector('.pc-worldbook-entry-editor')));
+    const editorLoaded = await waitForVisualCondition(() =>
+      Boolean(document.querySelector('.pc-worldbook-entry-editor')),
+    );
     if (!editorLoaded) throw new Error('Worldbook entry editor did not open');
   } else if (name === 'reader-detail') {
     const reader = useReaderStore();

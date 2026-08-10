@@ -991,7 +991,8 @@ watch(viewingScopeKey, refreshHomeArchiveDomains);
 
 function getRouteScrollRegions(screen: HTMLElement) {
   return [...screen.querySelectorAll<HTMLElement>('*')].filter(element => {
-    if (element === screen || element.clientHeight <= 0 || element.scrollHeight <= element.clientHeight + 1) return false;
+    if (element === screen || element.clientHeight <= 0 || element.scrollHeight <= element.clientHeight + 1)
+      return false;
     const overflowY = getComputedStyle(element).overflowY;
     return overflowY === 'auto' || overflowY === 'scroll';
   });

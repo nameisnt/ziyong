@@ -126,11 +126,7 @@
 
     <slot name="after-requirement"></slot>
 
-    <TavernPromptCapture
-      v-if="showPromptCapture && capture"
-      :capture="capture"
-      :reset-key="captureResetKey"
-    />
+    <TavernPromptCapture v-if="showPromptCapture && capture" :capture="capture" :reset-key="captureResetKey" />
 
     <div v-if="error" class="pc-status-card danger">
       <strong>{{ errorTitle }}</strong>
