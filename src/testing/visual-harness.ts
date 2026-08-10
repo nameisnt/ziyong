@@ -1003,17 +1003,10 @@ async function applyScenario(name: VisualScenarioName, options: { height?: numbe
   if (name === 'home') {
     await phone.goHome();
   } else if (name === 'custom-app-extract-rules') {
-    const {
-      CustomAppDefinitionsSettingsSchema,
-      customAppDefinitionsField,
-    } = await import('@/apps/app-builder/schema');
+    const { CustomAppDefinitionsSettingsSchema, customAppDefinitionsField } = await import('@/apps/app-builder/schema');
     const { useCustomAppsStore } = await import('@/apps/app-builder/store');
-    const {
-      createRegexDisplayRule,
-      RegexDisplaySettingsSchema,
-      regexDisplayField,
-      useRegexDisplayStore,
-    } = await import('@/apps/regex-display/store');
+    const { createRegexDisplayRule, RegexDisplaySettingsSchema, regexDisplayField, useRegexDisplayStore } =
+      await import('@/apps/regex-display/store');
     const timestamp = '2026-08-10T08:00:00.000Z';
     const appId = 'custom-visual-extract';
     _.set(

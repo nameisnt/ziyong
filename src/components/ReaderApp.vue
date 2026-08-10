@@ -212,7 +212,11 @@ import {
   type ChatReaderRegexRule,
   type ReaderMessage,
 } from '@/store/reader';
-import { defaultReaderBodyRegexDisplayRuleId, type RegexDisplayRule, useRegexDisplayStore } from '@/apps/regex-display/store';
+import {
+  defaultReaderBodyRegexDisplayRuleId,
+  type RegexDisplayRule,
+  useRegexDisplayStore,
+} from '@/apps/regex-display/store';
 import { usePhoneStore } from '@/store/phone';
 import { useReaderStore } from '@/store/reader';
 import { useSettingsStore } from '@/store/settings';

@@ -164,7 +164,10 @@ function buildSelectedSourceReferences(
 
   if (!selectedMessages.length) return '';
 
-  return selectedMessages.map(message => message.message.trim()).filter(Boolean).join('\n\n');
+  return selectedMessages
+    .map(message => message.message.trim())
+    .filter(Boolean)
+    .join('\n\n');
 }
 
 function buildSelectedSourcePreview(

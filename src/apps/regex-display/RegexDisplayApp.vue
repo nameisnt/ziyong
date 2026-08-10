@@ -241,7 +241,9 @@ const compatibleTargets = computed(() => {
 const filteredCompatibleTargets = computed(() => {
   const normalizedQuery = targetQuery.value.trim().toLowerCase();
   if (!normalizedQuery) return compatibleTargets.value;
-  return compatibleTargets.value.filter(target => `${target.label} ${target.id}`.toLowerCase().includes(normalizedQuery));
+  return compatibleTargets.value.filter(target =>
+    `${target.label} ${target.id}`.toLowerCase().includes(normalizedQuery),
+  );
 });
 const previewRules = computed(() =>
   activeRule.value?.targetIds[0]
