@@ -441,3 +441,155 @@ export async function setWorldbookEntryStates(bookName: string, states: Map<numb
 export function setWorldbookEntryEnabled(bookName: string, uid: number, enabled: boolean) {
   return setWorldbookEntryStates(bookName, new Map([[uid, enabled]]), false);
 }
+
+export type WorldbookEntryEditorPatch = Pick<WorldbookEntry, 'content' | 'name' | 'position'>;
+
+function rawPositionValue(type: WorldbookEntry['position']['type']) {
+  return (
+    {
+      after_author_note: 3,
+      after_character_definition: 1,
+      after_example_messages: 6,
+      at_depth: 4,
+      before_author_note: 2,
+      before_character_definition: 0,
+      before_example_messages: 5,
+      outlet: 7,
+    } as const
+  )[type];
+}
+
+function rawRoleValue(role: WorldbookEntry['position']['role']) {
+  return ({ assistant: 2, system: 0, user: 1 } as const)[role];
+}
+
+async function updateWorldbookEntryRaw(bookName: string, uid: number, patch: WorldbookEntryEditorPatch) {
+  const saveWorldInfo =
+    getOptionalGlobalFunction<(name: string, data: unknown, immediately?: boolean) => Promise<void>>('saveWorldInfo');
+  if (!saveWorldInfo) throw new Error('当前酒馆环境没有开放世界书条目写入接口');
+  const { book } = await loadRawWorldbook(bookName);
+  const rawEntries = (book as RawWorldbook).entries;
+  const pairs = Array.isArray(rawEntries)
+    ? rawEntries.map((entry, index) => [String(index), entry] as const)
+    : Object.entries(rawEntries as object);
+  const targetPair = pairs.find(([key, value]) => {
+    if (!value || typeof value !== 'object') return false;
+    return rawEntryUid(value as RawWorldbookEntry, key) === uid;
+  });
+  if (!targetPair) throw new Error(`世界书条目 #${uid} 已不存在`);
+  const target = targetPair[1] as RawWorldbookEntry;
+  target.comment = patch.name;
+  if ('name' in target) target.name = patch.name;
+  target.content = patch.content;
+  target.position = rawPositionValue(patch.position.type);
+  target.role = rawRoleValue(patch.position.role);
+  target.depth = patch.position.depth;
+  target.order = patch.position.order;
+  await saveWorldInfo(bookName, book, true);
+  await getOptionalGlobalFunction<() => Promise<void>>('updateWorldInfoList')?.();
+  getOptionalGlobalFunction<(file: string, loadIfNotSelected?: boolean) => void>('reloadWorldInfoEditor')?.(
+    bookName,
+    false,
+  );
+  return getWorldbookEntries(bookName);
+}
+
+export async function updateWorldbookEntry(bookName: string, uid: number, patch: WorldbookEntryEditorPatch) {
+  const updateWorldbook =
+    getOptionalGlobalFunction<
+      (
+        worldbookName: string,
+        updater: (entries: WorldbookEntry[]) => WorldbookEntry[],
+        options?: { render?: 'debounced' | 'immediate' },
+      ) => Promise<WorldbookEntry[]>
+    >('updateWorldbookWith');
+  if (updateWorldbook) {
+    try {
+      let found = false;
+      const entries = await updateWorldbook(
+        bookName,
+        currentEntries =>
+          currentEntries.map(entry => {
+            if (entry.uid !== uid) return entry;
+            found = true;
+            return {
+              ...entry,
+              content: patch.content,
+              name: patch.name,
+              position: { ...patch.position },
+            };
+          }),
+        { render: 'immediate' },
+      );
+      if (!found) throw new Error(`世界书条目 #${uid} 已不存在`);
+      return entries;
+    } catch (error) {
+      if (error instanceof Error && error.message.includes('已不存在')) throw error;
+    }
+  }
+  return updateWorldbookEntryRaw(bookName, uid, patch);
+}
+
+export async function deleteWorldbookEntry(bookName: string, uid: number) {
+  const updateWorldbook =
+    getOptionalGlobalFunction<
+      (
+        worldbookName: string,
+        updater: (entries: WorldbookEntry[]) => WorldbookEntry[],
+        options?: { render?: 'debounced' | 'immediate' },
+      ) => Promise<WorldbookEntry[]>
+    >('updateWorldbookWith');
+  if (updateWorldbook) {
+    try {
+      let found = false;
+      const entries = await updateWorldbook(
+        bookName,
+        currentEntries =>
+          currentEntries.filter(entry => {
+            if (entry.uid !== uid) return true;
+            found = true;
+            return false;
+          }),
+        { render: 'immediate' },
+      );
+      if (!found) throw new Error(`世界书条目 #${uid} 已不存在`);
+      return entries;
+    } catch (error) {
+      if (error instanceof Error && error.message.includes('已不存在')) throw error;
+    }
+  }
+
+  const saveWorldInfo =
+    getOptionalGlobalFunction<(name: string, data: unknown, immediately?: boolean) => Promise<void>>('saveWorldInfo');
+  if (!saveWorldInfo) throw new Error('当前酒馆环境没有开放世界书条目删除接口');
+  const { book } = await loadRawWorldbook(bookName);
+  const rawEntries = (book as RawWorldbook).entries;
+  let found = false;
+  if (Array.isArray(rawEntries)) {
+    const index = rawEntries.findIndex((value, entryIndex) => {
+      if (!value || typeof value !== 'object') return false;
+      return rawEntryUid(value as RawWorldbookEntry, String(entryIndex)) === uid;
+    });
+    if (index >= 0) {
+      rawEntries.splice(index, 1);
+      found = true;
+    }
+  } else if (rawEntries && typeof rawEntries === 'object') {
+    const targetKey = Object.entries(rawEntries).find(([key, value]) => {
+      if (!value || typeof value !== 'object') return false;
+      return rawEntryUid(value as RawWorldbookEntry, key) === uid;
+    })?.[0];
+    if (targetKey !== undefined) {
+      delete (rawEntries as Record<string, unknown>)[targetKey];
+      found = true;
+    }
+  }
+  if (!found) throw new Error(`世界书条目 #${uid} 已不存在`);
+  await saveWorldInfo(bookName, book, true);
+  await getOptionalGlobalFunction<() => Promise<void>>('updateWorldInfoList')?.();
+  getOptionalGlobalFunction<(file: string, loadIfNotSelected?: boolean) => void>('reloadWorldInfoEditor')?.(
+    bookName,
+    false,
+  );
+  return getWorldbookEntries(bookName);
+}

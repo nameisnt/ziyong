@@ -482,6 +482,7 @@ const scenarios: VisualScenarioName[] = [
   'world-slots-entry-library',
   'world-slots-root-cleanup',
   'worldbook-link-legacy-entry',
+  'worldbook-entry-editor',
   'comfy-action-menu',
   'preset-link-auto-reload',
   'preset-link-history',
@@ -495,6 +496,7 @@ const scenarios: VisualScenarioName[] = [
   'preset-copy-reorder',
   'preset-copy-editor',
   'preset-editor',
+  'preset-scroll-return',
   'reader-detail',
   'reader-catalog',
   'reader-footer-persistence',
@@ -2490,6 +2492,27 @@ async function applyScenario(name: VisualScenarioName, options: { height?: numbe
       presetName: '视觉预设',
       promptId: 'visual-style',
     });
+  } else if (name === 'preset-scroll-return') {
+    resetPhoneToRoute('preset-manager', 'detail', '预设条目', { presetName: '视觉预设' });
+    const loaded = await waitForVisualCondition(() => document.querySelectorAll('.pc-preset-prompt-main').length > 2);
+    if (!loaded) throw new Error('Preset detail did not load for scroll restoration');
+    const page = document.querySelector<HTMLElement>('.pc-preset-page');
+    if (!page) throw new Error('Preset detail scroll container is missing');
+    page.scrollTop = Math.max(80, page.scrollHeight - page.clientHeight - 20);
+    await waitForPaint();
+    const expectedScrollTop = page.scrollTop;
+    const promptButtons = [...document.querySelectorAll<HTMLButtonElement>('.pc-preset-prompt-main')];
+    promptButtons[promptButtons.length - 1]?.click();
+    const editorLoaded = await waitForVisualCondition(() => Boolean(document.querySelector('.pc-preset-editor-page')));
+    if (!editorLoaded) throw new Error('Preset editor did not open for scroll restoration');
+    await usePhoneStore().goBack();
+    const returned = await waitForVisualCondition(() => Boolean(document.querySelector('.pc-preset-nodes')));
+    if (!returned) throw new Error('Preset detail did not return from editor');
+    await new Promise(resolve => window.setTimeout(resolve, 320));
+    const restoredPage = document.querySelector<HTMLElement>('.pc-preset-page');
+    if (!restoredPage || restoredPage.scrollTop < Math.max(0, expectedScrollTop - 8)) {
+      throw new Error(`Preset scroll position was not restored: ${restoredPage?.scrollTop ?? -1}/${expectedScrollTop}`);
+    }
   } else if (name === 'tutorial-article') {
     resetPhoneToRoute('tutorial', 'article', '{{phoneUserInput}} 宏', { articleId: 'phone-user-input' });
   } else if (name === 'tutorial-app-directory') {
@@ -2681,6 +2704,13 @@ async function applyScenario(name: VisualScenarioName, options: { height?: numbe
       return Boolean(current && !current.disabled && !current.checked);
     });
     if (!toggled) throw new Error('Legacy worldbook enabled/disable fields were not updated together');
+  } else if (name === 'worldbook-entry-editor') {
+    resetPhoneToRoute('worldbook-link', 'detail', '世界书联动', { bookName: '【视觉】旧格式世界书' });
+    const loaded = await waitForVisualCondition(() => Boolean(document.querySelector('.pc-worldbook-entry-open')));
+    if (!loaded) throw new Error('Worldbook entry list did not load');
+    document.querySelector<HTMLButtonElement>('.pc-worldbook-entry-open')?.click();
+    const editorLoaded = await waitForVisualCondition(() => Boolean(document.querySelector('.pc-worldbook-entry-editor')));
+    if (!editorLoaded) throw new Error('Worldbook entry editor did not open');
   } else if (name === 'reader-detail') {
     const reader = useReaderStore();
     reader.resetAllCaches();

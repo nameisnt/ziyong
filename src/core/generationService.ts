@@ -429,7 +429,7 @@ function normalizeGenerationResult(rawResult: unknown) {
   return String(rawResult);
 }
 
-type RawOrderedPrompt = {
+export type RawOrderedPrompt = {
   content: string;
   role: 'assistant' | 'system' | 'user';
 };
@@ -699,6 +699,65 @@ async function generateFromCapturedOrderedPrompts(
       should_stream: generateConfig.should_stream === true,
     }),
   );
+}
+
+export async function generateOrderedPromptContent(options: {
+  appId: string;
+  lifecycle?: GenerationLifecycle;
+  messages: RawOrderedPrompt[];
+  rateLimitRpm?: number;
+  shouldStream?: boolean;
+  textProvider: TextProviderSettings;
+}) {
+  const phone = usePhoneStore();
+  const route = phone.currentRoute;
+  const pageOverride =
+    route.appId === options.appId ? useGenerationOverrideStore().getOverride(route.appId, route.page) : null;
+  const selectedProvider = pageOverride
+    ? applyTextProviderSelection(options.textProvider, pageOverride.connectionSelection)
+    : options.textProvider;
+  const textProvider = resolveTextProviderSettings(selectedProvider);
+  const generationId = createGenerationId(options.appId);
+  const abortController = registerGenerationAbortController(generationId);
+  const shouldStream = options.shouldStream ?? false;
+  const streamListener =
+    textProvider.mode === 'tavern'
+      ? bindStreamOutput(shouldStream, generationId, options.lifecycle?.onRawOutput)
+      : null;
+  const releasePhoneGeneration = registerPhoneGeneration(generationId);
+
+  try {
+    options.lifecycle?.onStart?.(generationId);
+    const rpmLimit = options.rateLimitRpm ?? useSettingsStore().settings.generation.rpmLimit;
+    await waitForGenerationRateLimit(rpmLimit, abortController.signal);
+    abortController.signal.throwIfAborted();
+
+    const result =
+      textProvider.mode === 'external'
+        ? await generateFromExternalCompatibleApi(
+            textProvider,
+            options.messages,
+            shouldStream,
+            abortController.signal,
+            options.lifecycle?.onRawOutput,
+          )
+        : await generateRawSafe({
+            generation_id: generationId,
+            ordered_prompts: options.messages,
+            should_silence: true,
+            should_stream: shouldStream,
+          });
+
+    abortController.signal.throwIfAborted();
+    const rawOutput = normalizeGenerationResult(result);
+    options.lifecycle?.onRawOutput?.(rawOutput);
+    return { generationId, rawOutput, textProvider };
+  } finally {
+    streamListener?.stop();
+    releasePhoneGeneration();
+    releaseGenerationAbortController(generationId, abortController);
+    options.lifecycle?.onFinish?.();
+  }
 }
 
 export async function generateContent<TConfig, TResult, TSaveResult = { entityId: string }>(

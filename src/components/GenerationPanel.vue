@@ -74,7 +74,7 @@
           />
         </div>
 
-        <div class="pc-select-field pc-preset-field">
+        <div v-if="showPresetSelector" class="pc-select-field pc-preset-field">
           <label class="pc-field-label">{{ t`本次预设` }}</label>
           <div class="pc-preset-select-row">
             <select
@@ -126,7 +126,11 @@
 
     <slot name="after-requirement"></slot>
 
-    <TavernPromptCapture :capture="capture" :reset-key="captureResetKey" />
+    <TavernPromptCapture
+      v-if="showPromptCapture && capture"
+      :capture="capture"
+      :reset-key="captureResetKey"
+    />
 
     <div v-if="error" class="pc-status-card danger">
       <strong>{{ errorTitle }}</strong>
@@ -180,7 +184,7 @@ import { storeToRefs } from 'pinia';
 const props = withDefaults(
   defineProps<{
     cancelLabel?: string;
-    capture: () => Promise<CapturedTavernPromptPreview>;
+    capture?: () => Promise<CapturedTavernPromptPreview>;
     captureResetKey?: unknown;
     error?: string;
     errorTitle?: string;
@@ -197,6 +201,8 @@ const props = withDefaults(
     requirementPlaceholder?: string;
     running: boolean;
     runningLabel?: string;
+    showPresetSelector?: boolean;
+    showPromptCapture?: boolean;
     singleMessageId: number;
     sourceMode: SummaryGenerationSourceMode;
     stopLabel?: string;
@@ -204,6 +210,7 @@ const props = withDefaults(
   }>(),
   {
     cancelLabel: '取消',
+    capture: undefined,
     captureResetKey: undefined,
     error: '',
     errorTitle: '生成失败',
@@ -215,6 +222,8 @@ const props = withDefaults(
     requirementLabel: '追加要求',
     requirementPlaceholder: '例如：重点概括角色关系变化，并保留后续悬念。',
     runningLabel: '生成中',
+    showPresetSelector: true,
+    showPromptCapture: true,
     stopLabel: '停止',
   },
 );
@@ -270,7 +279,12 @@ const advancedSummary = computed(() => {
     generationOverride.value.connectionSelection,
   );
   const presetName = generationOverride.value.tavernPresetName.trim() || '当前预设';
-  return `${connection} · ${presetName} · ${sourceModeLabel.value} · ${props.references.length} 项引用`;
+  return [
+    connection,
+    ...(props.showPresetSelector ? [presetName] : []),
+    sourceModeLabel.value,
+    `${props.references.length} 项引用`,
+  ].join(' · ');
 });
 
 const emit = defineEmits<{

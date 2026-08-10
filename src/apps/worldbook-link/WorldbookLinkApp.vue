@@ -169,35 +169,27 @@
               class="pc-section-card pc-worldbook-entry"
               :class="{ disabled: !entry.enabled }"
             >
-              <div class="pc-worldbook-entry-head">
-                <button
-                  class="pc-worldbook-entry-open"
-                  type="button"
-                  :aria-expanded="expandedEntryUid === entry.uid"
-                  @click="toggleEntryContent(entry.uid)"
-                >
-                  <i class="fa-solid fa-chevron-right" :class="{ expanded: expandedEntryUid === entry.uid }"></i>
-                  <span class="pc-worldbook-entry-copy">
-                    <strong :title="entry.name || `条目 #${entry.uid}`">{{
-                      entry.name || `条目 #${entry.uid}`
-                    }}</strong>
-                    <small>{{ entry.enabled ? t`已启用` : t`未启用` }}</small>
-                  </span>
-                </button>
-                <label class="pc-toggle pc-worldbook-toggle" :title="entry.enabled ? t`停用条目` : t`启用条目`">
-                  <input
-                    type="checkbox"
-                    :aria-label="entry.enabled ? t`停用条目` : t`启用条目`"
-                    :checked="entry.enabled"
-                    :disabled="entryBusyUids.has(entry.uid)"
-                    @change="toggleWorldbookEntry(entry, $event)"
-                  />
-                  <span aria-hidden="true"></span>
-                </label>
-              </div>
-              <div v-if="expandedEntryUid === entry.uid" class="pc-worldbook-entry-content">
-                {{ entry.content || t`这个条目没有内容` }}
-              </div>
+              <button class="pc-worldbook-entry-open" type="button" @click="openEntryEditor(entry)">
+                <span class="pc-worldbook-entry-copy">
+                  <strong :title="entry.name || `条目 #${entry.uid}`">{{ entry.name || `条目 #${entry.uid}` }}</strong>
+                  <small>{{ entryPositionSummary(entry) }}</small>
+                </span>
+                <i class="fa-solid fa-chevron-right pc-worldbook-chevron"></i>
+              </button>
+              <label
+                class="pc-toggle pc-worldbook-toggle"
+                :title="entry.enabled ? t`停用条目` : t`启用条目`"
+                @click.stop
+              >
+                <input
+                  type="checkbox"
+                  :aria-label="entry.enabled ? t`停用条目` : t`启用条目`"
+                  :checked="entry.enabled"
+                  :disabled="entryBusyUids.has(entry.uid)"
+                  @change="toggleWorldbookEntry(entry, $event)"
+                />
+                <span aria-hidden="true"></span>
+              </label>
             </article>
           </div>
         </section>
@@ -208,16 +200,93 @@
       </template>
       <EmptyState v-else :title="t`正在读取世界书条目`" />
     </section>
+
+    <section v-else-if="route.page === 'entry'" class="pc-worldbook-page pc-worldbook-entry-editor-page">
+      <article v-if="editingEntry" class="pc-editor-card pc-worldbook-entry-editor">
+        <header class="pc-worldbook-entry-editor-head">
+          <span class="pc-kicker">{{ detailBookName }}</span>
+          <h2 :title="editingEntry.name || `条目 #${editingEntry.uid}`">
+            {{ editingEntry.name || `条目 #${editingEntry.uid}` }}
+          </h2>
+          <small>条目 #{{ editingEntry.uid }}</small>
+        </header>
+
+        <label class="pc-field-group">
+          <span class="pc-field-label">条目名称</span>
+          <input v-model="entryDraft.name" class="pc-field" type="text" placeholder="条目名称" />
+        </label>
+
+        <label class="pc-field-group pc-worldbook-content-field">
+          <span class="pc-field-label">条目内容</span>
+          <textarea v-model="entryDraft.content" class="pc-area" placeholder="世界书条目内容"></textarea>
+        </label>
+
+        <div class="pc-field-group">
+          <span class="pc-field-label">插入位置</span>
+          <SearchableCombobox
+            :model-value="entryDraft.positionType"
+            :options="positionOptions"
+            input-label="选择插入位置"
+            placeholder="选择插入位置"
+            toggle-title="展开插入位置"
+            @update:model-value="entryDraft.positionType = $event as WorldbookEntry['position']['type']"
+          />
+        </div>
+
+        <label class="pc-field-group">
+          <span class="pc-field-label">顺序</span>
+          <input v-model.number="entryDraft.order" class="pc-field" type="number" step="1" />
+        </label>
+
+        <template v-if="entryDraft.positionType === 'at_depth'">
+          <div class="pc-field-group">
+            <span class="pc-field-label">消息角色</span>
+            <SearchableCombobox
+              :model-value="entryDraft.role"
+              :options="roleOptions"
+              input-label="选择消息角色"
+              placeholder="选择消息角色"
+              toggle-title="展开消息角色"
+              @update:model-value="entryDraft.role = $event as WorldbookEntry['position']['role']"
+            />
+          </div>
+          <label class="pc-field-group">
+            <span class="pc-field-label">插入深度</span>
+            <input v-model.number="entryDraft.depth" class="pc-field" type="number" min="0" step="1" />
+          </label>
+        </template>
+
+        <div class="pc-form-actions pc-worldbook-entry-editor-actions">
+          <button class="pc-soft-btn danger" type="button" :disabled="entryEditorBusy" @click="removeEditingEntry">
+            <i class="fa-solid fa-trash"></i>
+            <span>删除</span>
+          </button>
+          <button class="pc-soft-btn" type="button" :disabled="entryEditorBusy" @click="phone.goBack()">返回</button>
+          <button
+            class="pc-primary-btn"
+            type="button"
+            :disabled="entryEditorBusy || !entryDraft.name.trim()"
+            @click="saveEditingEntry"
+          >
+            {{ entryEditorBusy ? '处理中' : '保存' }}
+          </button>
+        </div>
+      </article>
+      <EmptyState v-else title="正在读取世界书条目" />
+    </section>
   </section>
 </template>
 
 <script setup lang="ts">
 import EmptyState from '@/components/EmptyState.vue';
+import SearchableCombobox from '@/components/SearchableCombobox.vue';
 import { usePhoneStore } from '@/store/phone';
 import {
+  deleteWorldbookEntry,
   getCurrentWorldbookGroups,
   setGlobalWorldbookEnabled,
   setWorldbookEntryEnabled,
+  updateWorldbookEntry,
   type CurrentWorldbookGroups,
   type WorldbookCategoryId,
 } from './api';
@@ -250,9 +319,18 @@ const loadingError = ref('');
 const detailStatus = ref<WorldbookLinkStatus | null>(null);
 const searchQuery = ref('');
 const entryQuery = ref('');
-const expandedEntryUid = ref<number | null>(null);
 const globalBusyBooks = ref(new Set<string>());
 const entryBusyUids = ref(new Set<number>());
+const editingEntry = ref<WorldbookEntry | null>(null);
+const entryEditorBusy = ref(false);
+const entryDraft = reactive({
+  content: '',
+  depth: 4,
+  name: '',
+  order: 100,
+  positionType: 'before_character_definition' as WorldbookEntry['position']['type'],
+  role: 'system' as WorldbookEntry['position']['role'],
+});
 let globalMutationQueue: Promise<void> = Promise.resolve();
 const entryMutationQueues = new Map<string, Promise<void>>();
 
@@ -261,6 +339,22 @@ const activeCategoryLabel = computed(
   () => categories.find(category => category.id === activeCategory.value)?.label || '世界书',
 );
 const detailBookName = computed(() => route.value.params?.bookName || '未命名世界书');
+const editingEntryUid = computed(() => Number(route.value.params?.entryUid ?? Number.NaN));
+const positionOptions: Array<{ label: string; value: WorldbookEntry['position']['type'] }> = [
+  { label: '角色定义之前', value: 'before_character_definition' },
+  { label: '角色定义之后', value: 'after_character_definition' },
+  { label: '示例消息之前', value: 'before_example_messages' },
+  { label: '示例消息之后', value: 'after_example_messages' },
+  { label: '作者注释之前', value: 'before_author_note' },
+  { label: '作者注释之后', value: 'after_author_note' },
+  { label: '指定深度', value: 'at_depth' },
+  { label: '出口', value: 'outlet' },
+];
+const roleOptions: Array<{ label: string; value: WorldbookEntry['position']['role'] }> = [
+  { label: '系统', value: 'system' },
+  { label: '用户', value: 'user' },
+  { label: 'AI', value: 'assistant' },
+];
 const linkStateLabel = computed(() => {
   if (!detailStatus.value?.profile) return '未关联';
   return detailStatus.value.matchesCurrent ? '已关联' : '状态不同';
@@ -317,12 +411,13 @@ watch(
   (nextScopeKey, previousScopeKey) => {
     if (nextScopeKey === previousScopeKey) return;
     detailStatus.value = null;
-    expandedEntryUid.value = null;
+    editingEntry.value = null;
     entryQuery.value = '';
     searchQuery.value = '';
     if (route.value.appId !== 'worldbook-link') return;
     if (route.value.page === 'root') void refresh();
     if (route.value.page === 'detail') void loadDetail();
+    if (route.value.page === 'entry') void loadEntryEditor();
   },
 );
 
@@ -334,16 +429,18 @@ watch(
     if (!phone.isViewingCurrentChat) return;
     if (route.value.page === 'root') void refresh();
     if (route.value.page === 'detail') void loadDetail();
+    if (route.value.page === 'entry') void loadEntryEditor();
   },
 );
 
 watch(
-  () => [route.value.appId, route.value.page, route.value.params?.bookName] as const,
+  () => [route.value.appId, route.value.page, route.value.params?.bookName, route.value.params?.entryUid] as const,
   ([appId, page]) => {
     if (appId !== 'worldbook-link') return;
     if (!phone.isViewingCurrentChat) return;
     if (page === 'root') void refresh();
     if (page === 'detail') void loadDetail();
+    if (page === 'entry') void loadEntryEditor();
   },
   { immediate: true },
 );
@@ -382,7 +479,6 @@ function bookSubtitle(bookName: string) {
 
 function openBook(bookName: string) {
   entryQuery.value = '';
-  expandedEntryUid.value = null;
   phone.pushPage('detail', '世界书联动', { bookName });
 }
 
@@ -391,7 +487,6 @@ async function loadDetail() {
   const scopeKey = currentScopeKey.value;
   const bookName = detailBookName.value;
   detailStatus.value = null;
-  expandedEntryUid.value = null;
   try {
     const status = await worldbookLinks.getStatus(scopeKey, bookName);
     if (currentScopeKey.value === scopeKey && detailBookName.value === bookName) detailStatus.value = status;
@@ -402,8 +497,9 @@ async function loadDetail() {
 
 async function returnToCurrentChat() {
   await phone.returnToCurrentScope();
-  if (route.value.page === 'detail') {
+  if (route.value.page === 'detail' || route.value.page === 'entry') {
     await loadDetail();
+    if (route.value.page === 'entry') await loadEntryEditor();
     return;
   }
   await refresh();
@@ -479,8 +575,96 @@ async function toggleGlobalWorldbook(bookName: string, event: Event) {
   }
 }
 
-function toggleEntryContent(uid: number) {
-  expandedEntryUid.value = expandedEntryUid.value === uid ? null : uid;
+function positionLabel(type: WorldbookEntry['position']['type']) {
+  return positionOptions.find(option => option.value === type)?.label || '未知位置';
+}
+
+function entryPositionSummary(entry: WorldbookEntry) {
+  if (entry.position.type === 'at_depth') {
+    return `${positionLabel(entry.position.type)} · 深度 ${entry.position.depth} · 顺序 ${entry.position.order}`;
+  }
+  return `${positionLabel(entry.position.type)} · 顺序 ${entry.position.order}`;
+}
+
+function openEntryEditor(entry: WorldbookEntry) {
+  phone.pushPage('entry', '编辑世界书条目', {
+    bookName: detailBookName.value,
+    entryUid: String(entry.uid),
+  });
+}
+
+function setEntryDraft(entry: WorldbookEntry) {
+  entryDraft.content = entry.content;
+  entryDraft.depth = entry.position.depth;
+  entryDraft.name = entry.name || `条目 #${entry.uid}`;
+  entryDraft.order = entry.position.order;
+  entryDraft.positionType = entry.position.type;
+  entryDraft.role = entry.position.role;
+}
+
+async function loadEntryEditor() {
+  if (!phone.isViewingCurrentChat || !Number.isFinite(editingEntryUid.value)) return;
+  editingEntry.value = null;
+  try {
+    const status = await worldbookLinks.getStatus(currentScopeKey.value, detailBookName.value);
+    const entry = status.currentEntries.find(item => item.uid === editingEntryUid.value);
+    if (!entry) throw new Error(`世界书条目 #${editingEntryUid.value} 已不存在`);
+    detailStatus.value = status;
+    editingEntry.value = entry;
+    setEntryDraft(entry);
+  } catch (error) {
+    toastr.error(error instanceof Error ? error.message : '读取世界书条目失败');
+  }
+}
+
+async function saveEditingEntry() {
+  const entry = editingEntry.value;
+  if (!entry || entryEditorBusy.value || !entryDraft.name.trim()) return;
+  entryEditorBusy.value = true;
+  try {
+    const entries = await updateWorldbookEntry(detailBookName.value, entry.uid, {
+      content: entryDraft.content,
+      name: entryDraft.name.trim(),
+      position: {
+        depth: Math.max(0, Math.round(Number(entryDraft.depth) || 0)),
+        order: Math.round(Number(entryDraft.order) || 0),
+        role: entryDraft.role,
+        type: entryDraft.positionType,
+      },
+    });
+    const updated = entries.find(item => item.uid === entry.uid);
+    if (updated) {
+      editingEntry.value = updated;
+      setEntryDraft(updated);
+    }
+    toastr.success('世界书条目已保存');
+  } catch (error) {
+    toastr.error(error instanceof Error ? error.message : '保存世界书条目失败');
+  } finally {
+    entryEditorBusy.value = false;
+  }
+}
+
+async function removeEditingEntry() {
+  const entry = editingEntry.value;
+  if (!entry || entryEditorBusy.value) return;
+  const confirmed = await phone.confirmNotice(
+    `要从世界书“${detailBookName.value}”中删除条目“${entry.name || `条目 #${entry.uid}`}”吗？此操作不可撤销。`,
+    { confirmLabel: '删除', kind: 'warning', title: '删除世界书条目' },
+  );
+  if (!confirmed) return;
+  entryEditorBusy.value = true;
+  try {
+    await deleteWorldbookEntry(detailBookName.value, entry.uid);
+    worldbookLinks.removeEntryReferences(detailBookName.value, entry.uid);
+    editingEntry.value = null;
+    await phone.goBack();
+    toastr.success('世界书条目已删除');
+  } catch (error) {
+    toastr.error(error instanceof Error ? error.message : '删除世界书条目失败');
+  } finally {
+    entryEditorBusy.value = false;
+  }
 }
 
 async function toggleWorldbookEntry(entry: WorldbookEntry, event: Event) {
@@ -760,12 +944,11 @@ async function toggleWorldbookEntry(entry: WorldbookEntry, event: Event) {
 }
 
 .pc-worldbook-entry {
-  overflow: hidden;
-  padding: 0;
-}
-
-.pc-worldbook-entry-head {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
   min-width: 0;
+  padding: 0 12px 0 0;
 }
 
 .pc-worldbook-entry-open {
@@ -786,11 +969,6 @@ async function toggleWorldbookEntry(entry: WorldbookEntry, event: Event) {
   flex: 0 0 auto;
   color: var(--pc-muted);
   font-size: 11px;
-  transition: transform 0.18s ease;
-}
-
-.pc-worldbook-entry-open > i.expanded {
-  transform: rotate(90deg);
 }
 
 .pc-worldbook-entry-copy {
@@ -810,21 +988,52 @@ async function toggleWorldbookEntry(entry: WorldbookEntry, event: Event) {
   font-size: 11px;
 }
 
-.pc-worldbook-entry-head > .pc-worldbook-toggle {
-  margin-right: 12px;
-}
-
 .pc-worldbook-entry.disabled .pc-worldbook-entry-copy strong {
   color: var(--pc-muted);
 }
 
-.pc-worldbook-entry-content {
-  border-top: 1px solid var(--pc-border);
-  background: var(--pc-surface-strong);
-  padding: 12px 14px 14px;
-  color: var(--pc-text);
-  line-height: 1.65;
-  overflow-wrap: anywhere;
-  white-space: pre-wrap;
+.pc-worldbook-entry-editor {
+  display: flex;
+  min-height: calc(100vh - 160px);
+  flex-direction: column;
+  gap: 14px;
+}
+
+.pc-worldbook-entry-editor-head {
+  display: grid;
+  gap: 4px;
+}
+
+.pc-worldbook-entry-editor-head h2 {
+  overflow: hidden;
+  margin: 0;
+  font-size: 20px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.pc-worldbook-entry-editor-head small {
+  color: var(--pc-muted);
+  font-size: 12px;
+}
+
+.pc-worldbook-content-field {
+  min-height: 260px;
+  flex: 1;
+}
+
+.pc-worldbook-content-field .pc-area {
+  min-height: 240px;
+  flex: 1;
+  resize: vertical;
+}
+
+.pc-worldbook-entry-editor-actions {
+  position: sticky;
+  z-index: 2;
+  bottom: 0;
+  margin-top: auto;
+  padding-top: 10px;
+  background: var(--pc-bg);
 }
 </style>
