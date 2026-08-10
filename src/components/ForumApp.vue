@@ -798,11 +798,7 @@ const viewedForumThread = computed(() => {
 });
 const displayedForumContent = computed(() => {
   const content = viewedForumThread.value?.content || '';
-  const rules = getRegexRulesByIds(
-    regexDisplay.rules,
-    regexDisplay.getUsage('forum').displayRuleIds,
-    'replace',
-  );
+  const rules = getRegexRulesByIds(regexDisplay.rules, regexDisplay.getUsage('forum').displayRuleIds, 'replace');
   return applyRegexDisplayRules(content, rules).content;
 });
 const rewriteForumThread = computed(() => {

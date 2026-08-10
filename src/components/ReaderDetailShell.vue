@@ -176,11 +176,7 @@ const { settings } = storeToRefs(settingsStore);
 const versionNavigatorPosition = computed(() => settings.value.reader.versionNavigatorPosition);
 const displayRules = computed(() => {
   if (!props.displayAppId) return [];
-  return getRegexRulesByIds(
-    regexDisplay.rules,
-    regexDisplay.getUsage(props.displayAppId).displayRuleIds,
-    'replace',
-  );
+  return getRegexRulesByIds(regexDisplay.rules, regexDisplay.getUsage(props.displayAppId).displayRuleIds, 'replace');
 });
 const displayContent = computed(() => applyRegexDisplayRules(props.content, displayRules.value).content);
 

@@ -16,10 +16,18 @@
     </section>
 
     <div class="pc-regex-view-tabs">
-      <button :class="['pc-segment-btn', { active: activeView === 'rules' }]" type="button" @click="activeView = 'rules'">
+      <button
+        :class="['pc-segment-btn', { active: activeView === 'rules' }]"
+        type="button"
+        @click="activeView = 'rules'"
+      >
         {{ t`规则库` }}
       </button>
-      <button :class="['pc-segment-btn', { active: activeView === 'usage' }]" type="button" @click="activeView = 'usage'">
+      <button
+        :class="['pc-segment-btn', { active: activeView === 'usage' }]"
+        type="button"
+        @click="activeView = 'usage'"
+      >
         {{ t`使用设置` }}
       </button>
     </div>
@@ -119,10 +127,22 @@
               <i class="fa-solid fa-arrow-down"></i>
             </button>
           </div>
-          <button class="pc-icon-btn" type="button" :title="t`复制规则`" :aria-label="t`复制规则`" @click="duplicateActiveRule">
+          <button
+            class="pc-icon-btn"
+            type="button"
+            :title="t`复制规则`"
+            :aria-label="t`复制规则`"
+            @click="duplicateActiveRule"
+          >
             <i class="fa-solid fa-copy"></i>
           </button>
-          <button class="pc-icon-btn danger" type="button" :title="t`删除规则`" :aria-label="t`删除规则`" @click="deleteActiveRule">
+          <button
+            class="pc-icon-btn danger"
+            type="button"
+            :title="t`删除规则`"
+            :aria-label="t`删除规则`"
+            @click="deleteActiveRule"
+          >
             <i class="fa-solid fa-trash"></i>
           </button>
         </div>
@@ -172,7 +192,9 @@
               <input
                 type="checkbox"
                 :checked="activeUsage.displayRuleIds.includes(rule.id)"
-                @change="regexDisplay.setDisplayRuleEnabled(usageAppId, rule.id, ($event.target as HTMLInputElement).checked)"
+                @change="
+                  regexDisplay.setDisplayRuleEnabled(usageAppId, rule.id, ($event.target as HTMLInputElement).checked)
+                "
               />
               <span>{{ rule.name || t`未命名规则` }}</span>
             </label>
@@ -260,9 +282,7 @@ const operationOptions: Array<{ label: string; value: RegexRuleOperation }> = [
   { label: '提取', value: 'extract' },
   { label: '替换', value: 'replace' },
 ];
-const appOptions = computed(() =>
-  getRegisteredPhoneApps().map(app => ({ label: app.name, value: app.id })),
-);
+const appOptions = computed(() => getRegisteredPhoneApps().map(app => ({ label: app.name, value: app.id })));
 const extractRules = computed(() => getRegexRulesByOperation(rules.value, 'extract'));
 const displayRules = computed(() => getRegexRulesByOperation(rules.value, 'replace'));
 const extractRuleOptions = computed(() => [

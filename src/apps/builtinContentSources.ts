@@ -30,9 +30,7 @@ export async function createReaderContentSources(): Promise<PhoneContentConversi
     titleRule
       ? { find: titleRule.pattern, flags: titleRule.flags, replace: titleRule.replacement }
       : { find: '', flags: '', replace: '' },
-    bodyRule
-      ? { find: bodyRule.pattern, flags: bodyRule.flags, replace: bodyRule.replacement }
-      : defaultReaderBodyRule,
+    bodyRule ? { find: bodyRule.pattern, flags: bodyRule.flags, replace: bodyRule.replacement } : defaultReaderBodyRule,
   );
   return sourceMessages.map((message, index) => ({
     appId: 'reader',

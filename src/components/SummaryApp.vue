@@ -698,9 +698,7 @@ const activeFailedDraft = computed(() => {
   const draftId = route.value.params?.draftId;
   return draftId ? summary.getFailedDraft(draftId) : null;
 });
-const summaryImportRules = computed(() =>
-  getRegexRulesByOperation(regexDisplayRules.value, 'extract'),
-);
+const summaryImportRules = computed(() => getRegexRulesByOperation(regexDisplayRules.value, 'extract'));
 const summaryRegexUsage = computed(() => regexDisplay.getUsage(regexDisplaySummaryTarget));
 const allSummaryImportsSelected = computed(
   () =>

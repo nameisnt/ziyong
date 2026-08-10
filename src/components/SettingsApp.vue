@@ -544,7 +544,9 @@
           <div class="pc-row pc-row-top">
             <strong>
               {{ t`当前聊天称呼替换` }}
-              <InfoHint :text="t`仅保存于当前聊天，生成时将 {{char}} 和 {{user}} 替换为指定称呼；不会修改聊天原文或引用内容。`" />
+              <InfoHint
+                :text="t`仅保存于当前聊天，生成时将 {{char}} 和 {{user}} 替换为指定称呼；不会修改聊天原文或引用内容。`"
+              />
             </strong>
             <button
               class="pc-icon-btn"

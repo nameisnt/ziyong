@@ -14,20 +14,11 @@ export interface RegexDisplayRuleLike {
 
 export function getRegexRulesByOperation(rules: RegexDisplayRuleLike[], operation: 'extract' | 'replace') {
   return rules
-    .filter(
-      rule =>
-        rule.enabled !== false &&
-        rule.pattern.trim() &&
-        (rule.operation ?? 'replace') === operation,
-    )
+    .filter(rule => rule.enabled !== false && rule.pattern.trim() && (rule.operation ?? 'replace') === operation)
     .sort((left, right) => (left.order ?? 0) - (right.order ?? 0));
 }
 
-export function getRegexRulesByIds(
-  rules: RegexDisplayRuleLike[],
-  ruleIds: string[],
-  operation: 'extract' | 'replace',
-) {
+export function getRegexRulesByIds(rules: RegexDisplayRuleLike[], ruleIds: string[], operation: 'extract' | 'replace') {
   const selected = new Set(ruleIds);
   return getRegexRulesByOperation(rules, operation).filter(rule => Boolean(rule.id && selected.has(rule.id)));
 }
@@ -45,9 +36,7 @@ export function extractWithRegexRules(input: string, rules: RegexDisplayRuleLike
       const hasCapture = firstMatch.length > 1 && firstMatch.slice(1).some(value => value !== undefined);
       let content = '';
       if (usesCapture && hasCapture) {
-        const matches = regex.global
-          ? Array.from(input.matchAll(regex))
-          : [firstMatch];
+        const matches = regex.global ? Array.from(input.matchAll(regex)) : [firstMatch];
         content = matches
           .map(match => match[0].replace(matchRegex, replacement).trim())
           .filter(Boolean)

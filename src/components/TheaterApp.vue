@@ -23,11 +23,7 @@
         >
           {{ t`最近使用` }}
         </button>
-        <button
-          :class="['pc-segment-btn', { active: typeView === 'all' }]"
-          type="button"
-          @click="typeView = 'all'"
-        >
+        <button :class="['pc-segment-btn', { active: typeView === 'all' }]" type="button" @click="typeView = 'all'">
           {{ t`全部类型` }}
         </button>
       </div>

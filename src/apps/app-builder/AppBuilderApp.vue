@@ -375,11 +375,9 @@ function exportApp(appId: string) {
   const definition = customApps.getDefinition(appId);
   if (!definition) return;
   const regexUsage = regexDisplay.getUsage(appId);
-  const exportedRuleIds = new Set([
-    regexUsage.titleRuleId,
-    regexUsage.contentRuleId,
-    ...regexUsage.displayRuleIds,
-  ].filter(Boolean));
+  const exportedRuleIds = new Set(
+    [regexUsage.titleRuleId, regexUsage.contentRuleId, ...regexUsage.displayRuleIds].filter(Boolean),
+  );
   const payload = JSON.stringify(
     {
       format: 'sillytavern-phone-custom-app',

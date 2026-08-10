@@ -31,7 +31,11 @@ export const tutorialAppGuides: TutorialAppGuide[] = [
   { appId: 'diary', groupId: 'creative', firstAction: '点击生成书脊选择单篇或批量，已有日记还可生成角色反应。' },
   { appId: 'extras', groupId: 'creative', firstAction: '新开一本或进入目标章节，再选择续写、重写或章节总结。' },
   { appId: 'forum', groupId: 'creative', firstAction: '先确定板块名和板块类型提示词，再生成帖子或继续回帖。' },
-  { appId: 'theater', groupId: 'creative', firstAction: '选择类型和参与角色；保存后可重写版本或把当前版本拆成独立小剧场。' },
+  {
+    appId: 'theater',
+    groupId: 'creative',
+    firstAction: '选择类型和参与角色；保存后可重写版本或把当前版本拆成独立小剧场。',
+  },
   { appId: 'letters', groupId: 'creative', firstAction: '选择发信人与收信人，已有往来可以直接继续回信。' },
 
   { appId: 'digest', groupId: 'planning', firstAction: '手动新建摘抄，或在阅读聊天中选中文字后加入。' },
@@ -55,7 +59,11 @@ export const tutorialAppGuides: TutorialAppGuide[] = [
   },
   { appId: 'world-slots', groupId: 'tavern', firstAction: '新建当前聊天专用槽位，再同步到固定世界书。' },
   { appId: 'mvu-modifier', groupId: 'tavern', firstAction: '展开变量树，编辑字段并点击该字段的保存。' },
-  { appId: 'regex-display', groupId: 'tavern', firstAction: '先维护全局规则库，再到使用设置为各 App 选择提取和正文显示规则。' },
+  {
+    appId: 'regex-display',
+    groupId: 'tavern',
+    firstAction: '先维护全局规则库，再到使用设置为各 App 选择提取和正文显示规则。',
+  },
   {
     appId: 'app-builder',
     groupId: 'tavern',
@@ -80,7 +88,11 @@ export const tutorialAppGuides: TutorialAppGuide[] = [
   { appId: 'music', groupId: 'media', firstAction: '查看生成音频、播放列表和歌词。' },
   { appId: 'video', groupId: 'media', firstAction: '查看并管理已经完成和保存的视频。' },
   { appId: 'theme', groupId: 'media', firstAction: '调整颜色、圆角、图标和阅读外观，并检查明暗模式。' },
-  { appId: 'settings', groupId: 'media', firstAction: '配置首页、生成连接、聊天称呼替换、阅读器、RPM、备份和数据清理。' },
+  {
+    appId: 'settings',
+    groupId: 'media',
+    firstAction: '配置首页、生成连接、聊天称呼替换、阅读器、RPM、备份和数据清理。',
+  },
   { appId: 'games', groupId: 'media', firstAction: '选择一个轻量小游戏，不会读取或修改聊天创作数据。' },
   { appId: 'tutorial', groupId: 'media', firstAction: '按分类浏览，或搜索按钮文字、错误关键词和 App 名。' },
 ];

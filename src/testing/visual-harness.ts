@@ -1751,9 +1751,9 @@ async function applyScenario(name: VisualScenarioName, options: { height?: numbe
     );
     addMenu?.querySelector<HTMLElement>('summary')?.click();
     await waitForPaint();
-    const manualCreateButton = [...(addMenu?.querySelectorAll<HTMLButtonElement>('.pc-action-menu-panel button') ?? [])].find(
-      button => button.textContent?.includes('手动新建'),
-    );
+    const manualCreateButton = [
+      ...(addMenu?.querySelectorAll<HTMLButtonElement>('.pc-action-menu-panel button') ?? []),
+    ].find(button => button.textContent?.includes('手动新建'));
     if (!manualCreateButton) throw new Error('Entry library manual create action is missing');
     manualCreateButton.click();
     await waitForPaint();

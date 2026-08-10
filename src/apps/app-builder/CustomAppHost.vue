@@ -549,9 +549,7 @@ const conversionSources = computed<PhoneContentConversionSource[]>(() => {
 });
 const regexUsage = computed(() => (definition.value ? regexDisplay.getUsage(definition.value.id) : null));
 const replacementRules = computed(() =>
-  regexUsage.value
-    ? getRegexRulesByIds(regexDisplay.rules, regexUsage.value.displayRuleIds, 'replace')
-    : [],
+  regexUsage.value ? getRegexRulesByIds(regexDisplay.rules, regexUsage.value.displayRuleIds, 'replace') : [],
 );
 const displayActiveEntry = computed(() => {
   if (!activeEntry.value) return null;

@@ -127,13 +127,11 @@ function readSettings(rawSettings: unknown) {
       ...settings.usages,
       [regexDisplayReaderTarget]: {
         ...RegexDisplayUsageSchema.parse(settings.usages[regexDisplayReaderTarget] ?? {}),
-        contentRuleId:
-          settings.usages[regexDisplayReaderTarget]?.contentRuleId || defaultReaderBodyRegexDisplayRuleId,
+        contentRuleId: settings.usages[regexDisplayReaderTarget]?.contentRuleId || defaultReaderBodyRegexDisplayRuleId,
       },
       [regexDisplaySummaryTarget]: {
         ...RegexDisplayUsageSchema.parse(settings.usages[regexDisplaySummaryTarget] ?? {}),
-        contentRuleId:
-          settings.usages[regexDisplaySummaryTarget]?.contentRuleId || defaultReaderBodyRegexDisplayRuleId,
+        contentRuleId: settings.usages[regexDisplaySummaryTarget]?.contentRuleId || defaultReaderBodyRegexDisplayRuleId,
       },
     },
   };
