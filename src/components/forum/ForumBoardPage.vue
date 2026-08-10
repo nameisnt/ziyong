@@ -40,7 +40,12 @@
           </div>
           <p>{{ thread.author }} · {{ thread.replies.length }} {{ t`条回复` }}</p>
         </button>
-        <button class="pc-favorite-chip" type="button" :title="thread.favorite ? t`取消收藏` : t`收藏`" @click="$emit('toggle-favorite', thread.id)">
+        <button
+          class="pc-favorite-chip"
+          type="button"
+          :title="thread.favorite ? t`取消收藏` : t`收藏`"
+          @click="$emit('toggle-favorite', thread.id)"
+        >
           <i class="fa-solid fa-bookmark" :data-active="thread.favorite"></i>
         </button>
       </article>

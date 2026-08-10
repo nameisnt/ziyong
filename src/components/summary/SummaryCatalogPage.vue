@@ -1,10 +1,6 @@
 <template>
   <section class="pc-summary-catalog-page">
-    <PreviewDraftNotice
-      :draft="previewDraft"
-      @discard="$emit('discard-preview')"
-      @open="$emit('open-preview')"
-    />
+    <PreviewDraftNotice :draft="previewDraft" @discard="$emit('discard-preview')" @open="$emit('open-preview')" />
 
     <BookShelf
       :books="shelfBooks"

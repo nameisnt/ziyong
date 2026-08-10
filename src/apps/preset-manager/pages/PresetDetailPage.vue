@@ -132,23 +132,106 @@ defineExpose({ getScrollElement: () => pageEl.value });
 </script>
 
 <style scoped>
-.pc-preset-page { display: flex; height: 100%; min-height: 0; flex-direction: column; gap: 12px; overflow-y: auto; padding: 14px; }
-.pc-preset-detail-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
-.pc-preset-detail-head > div { display: grid; min-width: 0; gap: 5px; }
-.pc-preset-detail-head h2 { overflow: hidden; margin: 0; color: var(--pc-text); font-size: 19px; text-overflow: ellipsis; white-space: nowrap; }
-.pc-preset-detail-head small { color: var(--pc-muted); font-size: 12px; font-weight: 700; }
-.pc-preset-filter-row { display: flex; min-height: 42px; align-items: center; justify-content: space-between; gap: 12px; color: var(--pc-text); font-size: 13px; font-weight: 700; }
+.pc-preset-page {
+  display: flex;
+  height: 100%;
+  min-height: 0;
+  flex-direction: column;
+  gap: 12px;
+  overflow-y: auto;
+  padding: 14px;
+}
+.pc-preset-detail-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+.pc-preset-detail-head > div {
+  display: grid;
+  min-width: 0;
+  gap: 5px;
+}
+.pc-preset-detail-head h2 {
+  overflow: hidden;
+  margin: 0;
+  color: var(--pc-text);
+  font-size: 19px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.pc-preset-detail-head small {
+  color: var(--pc-muted);
+  font-size: 12px;
+  font-weight: 700;
+}
+.pc-preset-filter-row {
+  display: flex;
+  min-height: 42px;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  color: var(--pc-text);
+  font-size: 13px;
+  font-weight: 700;
+}
 .pc-preset-nodes,
-.pc-preset-group-body { display: grid; gap: 10px; }
-.pc-preset-error { color: var(--pc-danger); }
-.pc-preset-error span { color: var(--pc-muted); font-size: 13px; }
-.pc-preset-group { display: grid; gap: 8px; }
-.pc-preset-group-head { display: flex; width: 100%; align-items: center; gap: 10px; border: 0; padding: 9px 4px; background: transparent; color: var(--pc-text); text-align: left; cursor: pointer; }
-.pc-preset-group-head > i { color: var(--pc-muted); font-size: 12px; transition: transform 0.16s ease; }
-.pc-preset-group-head > i.expanded { transform: rotate(90deg); }
-.pc-preset-group-head > span { display: flex; min-width: 0; flex: 1; align-items: baseline; justify-content: space-between; gap: 10px; }
+.pc-preset-group-body {
+  display: grid;
+  gap: 10px;
+}
+.pc-preset-error {
+  color: var(--pc-danger);
+}
+.pc-preset-error span {
+  color: var(--pc-muted);
+  font-size: 13px;
+}
+.pc-preset-group {
+  display: grid;
+  gap: 8px;
+}
+.pc-preset-group-head {
+  display: flex;
+  width: 100%;
+  align-items: center;
+  gap: 10px;
+  border: 0;
+  padding: 9px 4px;
+  background: transparent;
+  color: var(--pc-text);
+  text-align: left;
+  cursor: pointer;
+}
+.pc-preset-group-head > i {
+  color: var(--pc-muted);
+  font-size: 12px;
+  transition: transform 0.16s ease;
+}
+.pc-preset-group-head > i.expanded {
+  transform: rotate(90deg);
+}
+.pc-preset-group-head > span {
+  display: flex;
+  min-width: 0;
+  flex: 1;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 10px;
+}
 .pc-preset-group-head strong,
-.pc-preset-group-head small { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.pc-preset-group-head small { color: var(--pc-muted); font-size: 12px; font-weight: 700; }
-.pc-preset-group-body { padding-left: 12px; border-left: 2px solid color-mix(in srgb, var(--pc-theme-accent) 24%, var(--pc-border) 76%); }
+.pc-preset-group-head small {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.pc-preset-group-head small {
+  color: var(--pc-muted);
+  font-size: 12px;
+  font-weight: 700;
+}
+.pc-preset-group-body {
+  padding-left: 12px;
+  border-left: 2px solid color-mix(in srgb, var(--pc-theme-accent) 24%, var(--pc-border) 76%);
+}
 </style>

@@ -40,16 +40,29 @@ export async function applySettingsVisualScenario(name: string, context: Setting
     await context.waitForPaint();
     const control = document.querySelector<HTMLTextAreaElement>('.pc-theater-app textarea.pc-area');
     if (!control) throw new Error('Theme isolation fixture did not render a form control');
-    const channels = (value: string) => value.match(/\d+(?:\.\d+)?/g)?.slice(0, 3).map(Number) ?? [];
+    const channels = (value: string) =>
+      value
+        .match(/\d+(?:\.\d+)?/g)
+        ?.slice(0, 3)
+        .map(Number) ?? [];
     const assertContrast = (theme: 'dark' | 'light') => {
       const style = getComputedStyle(control);
       const background = channels(style.backgroundColor);
       const text = channels(style.color);
-      if (background.length !== 3 || text.length !== 3) throw new Error(`Theme isolation returned unreadable computed colors: ${style.backgroundColor} / ${style.color}`);
+      if (background.length !== 3 || text.length !== 3)
+        throw new Error(
+          `Theme isolation returned unreadable computed colors: ${style.backgroundColor} / ${style.color}`,
+        );
       const backgroundLightness = background.reduce((sum, channel) => sum + channel, 0);
       const textLightness = text.reduce((sum, channel) => sum + channel, 0);
-      const valid = theme === 'light' ? backgroundLightness > 600 && textLightness < 500 : backgroundLightness < 400 && textLightness > 600;
-      if (!valid) throw new Error(`Phone ${theme} form colors leaked from the host theme: ${style.backgroundColor} / ${style.color}`);
+      const valid =
+        theme === 'light'
+          ? backgroundLightness > 600 && textLightness < 500
+          : backgroundLightness < 400 && textLightness > 600;
+      if (!valid)
+        throw new Error(
+          `Phone ${theme} form colors leaked from the host theme: ${style.backgroundColor} / ${style.color}`,
+        );
     };
     assertContrast('light');
     settings.setTheme('dark');

@@ -27,7 +27,13 @@
         </button>
       </div>
 
-      <input v-if="kind === 'read-reaction'" v-model="readers" class="pc-field" type="text" placeholder="阅读者，用逗号分隔" />
+      <input
+        v-if="kind === 'read-reaction'"
+        v-model="readers"
+        class="pc-field"
+        type="text"
+        placeholder="阅读者，用逗号分隔"
+      />
       <textarea v-model="content" class="pc-area pc-diary-entry-content" placeholder="正文"></textarea>
 
       <div class="pc-form-actions">

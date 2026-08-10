@@ -75,23 +75,103 @@ defineEmits<{
 </script>
 
 <style scoped>
-.pc-preset-page { display: flex; height: 100%; min-height: 0; flex-direction: column; gap: 12px; overflow-y: auto; padding: 14px; }
-.pc-preset-current { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
-.pc-preset-current > div { display: grid; min-width: 0; gap: 5px; }
-.pc-preset-current strong { overflow: hidden; color: var(--pc-text); font-size: 17px; text-overflow: ellipsis; white-space: nowrap; }
-.pc-preset-list { display: grid; gap: 10px; }
-.pc-preset-search { position: relative; display: block; }
-.pc-preset-search > i { position: absolute; z-index: 1; top: 50%; left: 14px; color: var(--pc-muted); transform: translateY(-50%); }
-.pc-preset-search .pc-field { padding-left: 40px; }
-.pc-preset-row { grid-template-columns: minmax(0, 1fr) auto; align-items: center; padding: 10px; }
-.pc-preset-row.current { border-color: color-mix(in srgb, var(--pc-theme-accent) 42%, var(--pc-border) 58%); }
-.pc-preset-open { display: grid; min-width: 0; grid-template-columns: 38px minmax(0, 1fr) auto; align-items: center; gap: 10px; border: 0; padding: 0; background: transparent; color: var(--pc-text); text-align: left; cursor: pointer; }
-.pc-preset-icon { display: grid; width: 38px; height: 38px; place-items: center; border-radius: var(--pc-control-radius); background: color-mix(in srgb, var(--pc-theme-accent) 14%, var(--pc-surface-strong) 86%); color: var(--pc-theme-accent); }
-.pc-preset-copy { display: grid; min-width: 0; gap: 4px; }
+.pc-preset-page {
+  display: flex;
+  height: 100%;
+  min-height: 0;
+  flex-direction: column;
+  gap: 12px;
+  overflow-y: auto;
+  padding: 14px;
+}
+.pc-preset-current {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+.pc-preset-current > div {
+  display: grid;
+  min-width: 0;
+  gap: 5px;
+}
+.pc-preset-current strong {
+  overflow: hidden;
+  color: var(--pc-text);
+  font-size: 17px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.pc-preset-list {
+  display: grid;
+  gap: 10px;
+}
+.pc-preset-search {
+  position: relative;
+  display: block;
+}
+.pc-preset-search > i {
+  position: absolute;
+  z-index: 1;
+  top: 50%;
+  left: 14px;
+  color: var(--pc-muted);
+  transform: translateY(-50%);
+}
+.pc-preset-search .pc-field {
+  padding-left: 40px;
+}
+.pc-preset-row {
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  padding: 10px;
+}
+.pc-preset-row.current {
+  border-color: color-mix(in srgb, var(--pc-theme-accent) 42%, var(--pc-border) 58%);
+}
+.pc-preset-open {
+  display: grid;
+  min-width: 0;
+  grid-template-columns: 38px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 10px;
+  border: 0;
+  padding: 0;
+  background: transparent;
+  color: var(--pc-text);
+  text-align: left;
+  cursor: pointer;
+}
+.pc-preset-icon {
+  display: grid;
+  width: 38px;
+  height: 38px;
+  place-items: center;
+  border-radius: var(--pc-control-radius);
+  background: color-mix(in srgb, var(--pc-theme-accent) 14%, var(--pc-surface-strong) 86%);
+  color: var(--pc-theme-accent);
+}
+.pc-preset-copy {
+  display: grid;
+  min-width: 0;
+  gap: 4px;
+}
 .pc-preset-copy strong,
-.pc-preset-copy small { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.pc-preset-copy small {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
 .pc-preset-copy small,
-.pc-preset-open > i { color: var(--pc-muted); font-size: 12px; }
-.pc-preset-error { color: var(--pc-danger); }
-.pc-preset-error span { color: var(--pc-muted); font-size: 13px; }
+.pc-preset-open > i {
+  color: var(--pc-muted);
+  font-size: 12px;
+}
+.pc-preset-error {
+  color: var(--pc-danger);
+}
+.pc-preset-error span {
+  color: var(--pc-muted);
+  font-size: 13px;
+}
 </style>

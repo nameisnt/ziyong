@@ -1140,7 +1140,6 @@ async function removeEntry(bookId: string, entryId: string) {
   phone.replacePage('book', book.title, { bookId });
   toastr.success('已删除总结条目');
 }
-
 </script>
 
 <style scoped>

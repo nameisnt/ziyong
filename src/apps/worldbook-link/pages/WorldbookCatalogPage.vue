@@ -2,7 +2,13 @@
   <section class="pc-worldbook-catalog-page">
     <header class="pc-worldbook-head">
       <span class="pc-kicker">{{ t`当前聊天` }}</span>
-      <button class="pc-icon-btn pc-worldbook-refresh" type="button" :title="t`刷新`" :disabled="refreshing" @click="$emit('refresh')">
+      <button
+        class="pc-icon-btn pc-worldbook-refresh"
+        type="button"
+        :title="t`刷新`"
+        :disabled="refreshing"
+        @click="$emit('refresh')"
+      >
         <i class="fa-solid fa-rotate" :class="{ 'fa-spin': refreshing }"></i>
       </button>
     </header>

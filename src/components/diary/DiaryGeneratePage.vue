@@ -19,7 +19,13 @@
     @stop="$emit('stop')"
   >
     <template v-if="extraFieldVisible" #before-fields>
-      <input v-model="extraField" class="pc-field" type="text" :disabled="running" :placeholder="extraFieldPlaceholder" />
+      <input
+        v-model="extraField"
+        class="pc-field"
+        type="text"
+        :disabled="running"
+        :placeholder="extraFieldPlaceholder"
+      />
     </template>
   </GenerationFormPage>
 </template>

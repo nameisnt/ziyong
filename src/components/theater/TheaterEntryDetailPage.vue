@@ -20,7 +20,11 @@
       @top="$emit('top')"
     >
       <template #version-navigation>
-        <VersionNavigator :versions="entry.versions" :viewed-version-id="viewedVersionId" @select="$emit('select-version', $event)" />
+        <VersionNavigator
+          :versions="entry.versions"
+          :viewed-version-id="viewedVersionId"
+          @select="$emit('select-version', $event)"
+        />
       </template>
       <template #before-content>
         <div class="pc-entry-tags">

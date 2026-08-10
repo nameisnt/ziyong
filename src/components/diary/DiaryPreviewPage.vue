@@ -32,5 +32,7 @@ const content = defineModel<string>('content', { required: true });
 const raw = defineModel<string>('raw', { required: true });
 const displayTitle = computed(() => (props.action === 'read-reaction' ? `📖 ${props.title}` : props.title));
 const saveLabel = computed(() => (props.action === 'read-reaction' ? '保存阅读反应' : '保存日记'));
-const sourceLabel = computed(() => props.occurredAt || (props.action === 'read-reaction' ? '阅读反应预览' : '日记预览'));
+const sourceLabel = computed(
+  () => props.occurredAt || (props.action === 'read-reaction' ? '阅读反应预览' : '日记预览'),
+);
 </script>

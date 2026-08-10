@@ -1,8 +1,4 @@
-import {
-  usePhoneStore,
-  type PhonePreviewSessionRegistration,
-  type PhonePreviewSessionStatus,
-} from '@/store/phone';
+import { usePhoneStore, type PhonePreviewSessionRegistration, type PhonePreviewSessionStatus } from '@/store/phone';
 import { onScopeDispose } from 'vue';
 
 export interface PreviewSessionOptions {

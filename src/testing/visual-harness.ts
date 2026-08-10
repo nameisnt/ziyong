@@ -2952,7 +2952,9 @@ async function applyScenario(name: VisualScenarioName, options: { height?: numbe
       title: '生成预览',
     });
     resetPhoneToRoute('summary', 'preview', '生成预览', { bookId: book.id });
-    const restored = await waitForVisualCondition(() => Boolean(document.querySelector('.pc-shared-generation-preview-page')));
+    const restored = await waitForVisualCondition(() =>
+      Boolean(document.querySelector('.pc-shared-generation-preview-page')),
+    );
     if (!restored) throw new Error('Summary preview page did not restore its persisted preview after extraction');
   } else if (name === 'summary-batch') {
     const book = createSummaryFixture();
@@ -4074,5 +4076,3 @@ if (scenario) {
 } else if (!params.has('manual')) {
   void applyScenario('home');
 }
-
-

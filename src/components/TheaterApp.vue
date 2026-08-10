@@ -101,48 +101,48 @@
       @stop="stopGeneration"
     >
       <template #before-fields>
-            <SearchableCombobox
-              v-model="generationTypeChoice"
-              :disabled="generationState.running"
-              :empty-label="t`没有匹配类型`"
-              :input-label="t`选择小剧场类型`"
-              :options="theaterTypeComboboxOptions"
-              :placeholder="t`选择或搜索小剧场类型`"
-              :toggle-title="t`展开类型列表`"
-            />
+        <SearchableCombobox
+          v-model="generationTypeChoice"
+          :disabled="generationState.running"
+          :empty-label="t`没有匹配类型`"
+          :input-label="t`选择小剧场类型`"
+          :options="theaterTypeComboboxOptions"
+          :placeholder="t`选择或搜索小剧场类型`"
+          :toggle-title="t`展开类型列表`"
+        />
 
-            <input
-              v-if="showGenerationCustomTypeField"
-              v-model="generationDraft.typeName"
-              class="pc-field"
-              type="text"
-              :disabled="generationState.running"
-              :placeholder="t`自定义类型名称`"
-            />
-            <textarea
-              v-model="generationDraft.typePrompt"
-              class="pc-area compact"
-              :disabled="generationState.running"
-              :placeholder="t`小剧场类型提示词`"
-            ></textarea>
-            <div class="pc-segment pc-mode-selector">
-              <button
-                :class="['pc-segment-btn', { active: generationDraft.renderMode === 'markdown' }]"
-                type="button"
-                :disabled="generationState.running"
-                @click="generationDraft.renderMode = 'markdown'"
-              >
-                {{ t`Markdown 文本` }}
-              </button>
-              <button
-                :class="['pc-segment-btn', { active: generationDraft.renderMode === 'frontend' }]"
-                type="button"
-                :disabled="generationState.running"
-                @click="generationDraft.renderMode = 'frontend'"
-              >
-                {{ t`网页渲染` }}
-              </button>
-            </div>
+        <input
+          v-if="showGenerationCustomTypeField"
+          v-model="generationDraft.typeName"
+          class="pc-field"
+          type="text"
+          :disabled="generationState.running"
+          :placeholder="t`自定义类型名称`"
+        />
+        <textarea
+          v-model="generationDraft.typePrompt"
+          class="pc-area compact"
+          :disabled="generationState.running"
+          :placeholder="t`小剧场类型提示词`"
+        ></textarea>
+        <div class="pc-segment pc-mode-selector">
+          <button
+            :class="['pc-segment-btn', { active: generationDraft.renderMode === 'markdown' }]"
+            type="button"
+            :disabled="generationState.running"
+            @click="generationDraft.renderMode = 'markdown'"
+          >
+            {{ t`Markdown 文本` }}
+          </button>
+          <button
+            :class="['pc-segment-btn', { active: generationDraft.renderMode === 'frontend' }]"
+            type="button"
+            :disabled="generationState.running"
+            @click="generationDraft.renderMode = 'frontend'"
+          >
+            {{ t`网页渲染` }}
+          </button>
+        </div>
       </template>
     </GenerationFormPage>
 

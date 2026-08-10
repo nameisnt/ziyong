@@ -22,7 +22,12 @@
           <button class="pc-icon-btn" type="button" :title="t`编辑板块`" @click="$emit('edit-board', board.id)">
             <i class="fa-solid fa-pen"></i>
           </button>
-          <button class="pc-icon-btn danger" type="button" :title="t`删除板块`" @click="$emit('remove-board', board.id)">
+          <button
+            class="pc-icon-btn danger"
+            type="button"
+            :title="t`删除板块`"
+            @click="$emit('remove-board', board.id)"
+          >
             <i class="fa-solid fa-trash"></i>
           </button>
         </div>

@@ -19,34 +19,34 @@
     @stop="$emit('stop')"
   >
     <template #before-fields>
-          <input v-model="senderName" class="pc-field" type="text" :disabled="running" placeholder="发信人" />
-          <input v-model="receiverName" class="pc-field" type="text" :disabled="running" placeholder="收信人" />
-          <input
-            v-if="showBookField"
-            v-model="bookTitle"
-            class="pc-field"
-            type="text"
-            :disabled="running"
-            placeholder="分册名称（可留空）"
-          />
+      <input v-model="senderName" class="pc-field" type="text" :disabled="running" placeholder="发信人" />
+      <input v-model="receiverName" class="pc-field" type="text" :disabled="running" placeholder="收信人" />
+      <input
+        v-if="showBookField"
+        v-model="bookTitle"
+        class="pc-field"
+        type="text"
+        :disabled="running"
+        placeholder="分册名称（可留空）"
+      />
 
-          <div class="pc-segment pc-letters-format-segment">
-            <button
-              v-for="option in formatOptions"
-              :key="option.value"
-              :class="['pc-segment-btn', { active: format === option.value }]"
-              type="button"
-              :disabled="running"
-              @click="format = option.value"
-            >
-              {{ option.label }}
-            </button>
-          </div>
+      <div class="pc-segment pc-letters-format-segment">
+        <button
+          v-for="option in formatOptions"
+          :key="option.value"
+          :class="['pc-segment-btn', { active: format === option.value }]"
+          type="button"
+          :disabled="running"
+          @click="format = option.value"
+        >
+          {{ option.label }}
+        </button>
+      </div>
 
-          <div class="pc-field-group">
-            <label class="pc-field-label">附带最近 N 封相关书信</label>
-            <input v-model.number="recentEntryCount" class="pc-field" type="number" min="0" max="20" :disabled="running" />
-          </div>
+      <div class="pc-field-group">
+        <label class="pc-field-label">附带最近 N 封相关书信</label>
+        <input v-model.number="recentEntryCount" class="pc-field" type="number" min="0" max="20" :disabled="running" />
+      </div>
     </template>
   </GenerationFormPage>
 </template>

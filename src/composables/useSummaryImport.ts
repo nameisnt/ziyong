@@ -101,11 +101,7 @@ export function useSummaryImport() {
 
   function setRule(ruleId: string) {
     state.ruleId = ruleId;
-    regexDisplay.setExtractionRule(
-      regexDisplaySummaryTarget,
-      'content',
-      ruleId === '__default_body__' ? '' : ruleId,
-    );
+    regexDisplay.setExtractionRule(regexDisplaySummaryTarget, 'content', ruleId === '__default_body__' ? '' : ruleId);
     void reload();
   }
 

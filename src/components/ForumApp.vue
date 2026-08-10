@@ -114,62 +114,62 @@
       @generate="runThreadGeneration"
       @stop="stopGeneration"
     >
-          <template #before-fields>
-            <SearchableCombobox
-              v-if="!activeBoard"
+      <template #before-fields>
+        <SearchableCombobox
+          v-if="!activeBoard"
+          :disabled="generationState.running"
+          :input-label="t`选择或搜索论坛板块`"
+          :model-value="threadGenerationDraft.boardId"
+          :options="boardSelectionOptions"
+          :placeholder="t`选择或搜索论坛板块`"
+          :toggle-title="t`展开论坛板块`"
+          @update:model-value="threadGenerationDraft.boardId = $event"
+        />
+        <div v-if="!activeBoard && threadGenerationDraft.boardId === CUSTOM_BOARD_ID" class="pc-forum-type-fields">
+          <SearchableCombobox
+            :disabled="generationState.running"
+            :empty-label="t`没有匹配的板块类型`"
+            :input-label="t`选择论坛板块类型`"
+            :model-value="threadGenerationDraft.boardTypeId"
+            :options="boardTypeOptions"
+            :placeholder="t`选择论坛板块类型`"
+            :toggle-title="t`展开论坛板块类型`"
+            @update:model-value="selectThreadBoardType"
+          />
+          <textarea
+            v-model="threadGenerationDraft.boardTypePrompt"
+            class="pc-area compact"
+            :disabled="generationState.running"
+            :placeholder="t`板块类型提示词（可编辑）`"
+            @input="threadGenerationDraft.boardTypeId = CUSTOM_BOARD_TYPE_ID"
+          ></textarea>
+          <div class="pc-segment pc-forum-name-mode" :aria-label="t`板块命名方式`">
+            <button
+              :class="['pc-segment-btn', { active: threadGenerationDraft.boardNameMode === 'fixed' }]"
+              type="button"
               :disabled="generationState.running"
-              :input-label="t`选择或搜索论坛板块`"
-              :model-value="threadGenerationDraft.boardId"
-              :options="boardSelectionOptions"
-              :placeholder="t`选择或搜索论坛板块`"
-              :toggle-title="t`展开论坛板块`"
-              @update:model-value="threadGenerationDraft.boardId = $event"
-            />
-            <div v-if="!activeBoard && threadGenerationDraft.boardId === CUSTOM_BOARD_ID" class="pc-forum-type-fields">
-              <SearchableCombobox
-                :disabled="generationState.running"
-                :empty-label="t`没有匹配的板块类型`"
-                :input-label="t`选择论坛板块类型`"
-                :model-value="threadGenerationDraft.boardTypeId"
-                :options="boardTypeOptions"
-                :placeholder="t`选择论坛板块类型`"
-                :toggle-title="t`展开论坛板块类型`"
-                @update:model-value="selectThreadBoardType"
-              />
-              <textarea
-                v-model="threadGenerationDraft.boardTypePrompt"
-                class="pc-area compact"
-                :disabled="generationState.running"
-                :placeholder="t`板块类型提示词（可编辑）`"
-                @input="threadGenerationDraft.boardTypeId = CUSTOM_BOARD_TYPE_ID"
-              ></textarea>
-              <div class="pc-segment pc-forum-name-mode" :aria-label="t`板块命名方式`">
-                <button
-                  :class="['pc-segment-btn', { active: threadGenerationDraft.boardNameMode === 'fixed' }]"
-                  type="button"
-                  :disabled="generationState.running"
-                  @click="threadGenerationDraft.boardNameMode = 'fixed'"
-                >
-                  {{ t`固定名称` }}
-                </button>
-                <button
-                  :class="['pc-segment-btn', { active: threadGenerationDraft.boardNameMode === 'ai' }]"
-                  type="button"
-                  :disabled="generationState.running"
-                  @click="threadGenerationDraft.boardNameMode = 'ai'"
-                >
-                  {{ t`AI 生成` }}
-                </button>
-              </div>
-              <input
-                v-if="threadGenerationDraft.boardNameMode === 'fixed'"
-                v-model="threadGenerationDraft.boardName"
-                class="pc-field"
-                type="text"
-                :disabled="generationState.running"
-                :placeholder="t`固定板块名称`"
-              />
-            </div>
+              @click="threadGenerationDraft.boardNameMode = 'fixed'"
+            >
+              {{ t`固定名称` }}
+            </button>
+            <button
+              :class="['pc-segment-btn', { active: threadGenerationDraft.boardNameMode === 'ai' }]"
+              type="button"
+              :disabled="generationState.running"
+              @click="threadGenerationDraft.boardNameMode = 'ai'"
+            >
+              {{ t`AI 生成` }}
+            </button>
+          </div>
+          <input
+            v-if="threadGenerationDraft.boardNameMode === 'fixed'"
+            v-model="threadGenerationDraft.boardName"
+            class="pc-field"
+            type="text"
+            :disabled="generationState.running"
+            :placeholder="t`固定板块名称`"
+          />
+        </div>
       </template>
     </GenerationFormPage>
 

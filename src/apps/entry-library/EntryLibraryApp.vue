@@ -190,9 +190,7 @@ const visibleSelectedSourceCount = computed(
   () => filteredSourceEntries.value.filter(entry => selectedSourceKeys.value.has(entry.key)).length,
 );
 const collectGroupName = computed(() => library.getGroup(collectGroupId.value)?.name ?? '');
-const bindingGroupNames = computed(() =>
-  Object.fromEntries(groups.value.map(group => [group.id, group.name])),
-);
+const bindingGroupNames = computed(() => Object.fromEntries(groups.value.map(group => [group.id, group.name])));
 const duplicatePairs = computed(() =>
   library.findDuplicates(0.8).filter(pair => !dismissedPairKeys.value.includes(pairKey(pair))),
 );

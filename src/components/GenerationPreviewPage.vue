@@ -14,9 +14,9 @@
         :warnings="warnings"
         @back="$emit('back')"
         @reparse="$emit('reparse')"
-      @save="$emit('save')"
-      @update:content="content = $event"
-      @update:raw="raw = $event"
+        @save="$emit('save')"
+        @update:content="content = $event"
+        @update:raw="raw = $event"
       >
         <template v-if="$slots.content" #content="slotProps">
           <slot name="content" v-bind="slotProps"></slot>
