@@ -1,73 +1,39 @@
 <template>
   <section class="pc-letters-app">
-    <section v-if="route.page === 'root'" class="pc-letters-page">
-      <BookShelf
-        :books="shelfBooks"
-        create-label="生成"
-        create-subtitle="生成入口"
-        variant="diary"
-        @create="openGenerate()"
-        @select="openBook"
-      />
+    <LettersCatalogPage
+      v-if="route.page === 'root'"
+      :failed-drafts="failedDrafts"
+      :get-failed-draft-context="failedDraftContextTitle"
+      :preview-draft="lettersPreviewDraft"
+      :shelf-books="shelfBooks"
+      @create="openGenerate()"
+      @discard-preview="discardLettersPreviewDraft"
+      @open-book="openBook"
+      @open-failed-draft="openFailedDraft"
+      @open-preview="openLettersPreviewDraft"
+      @remove-failed-draft="removeFailedDraft"
+    />
 
-      <FailedDraftList
-        :drafts="failedDrafts"
-        :get-context="failedDraftContextTitle"
-        :get-title="() => t`未解析书信`"
-        @open="openFailedDraft"
-        @remove="removeFailedDraft"
-      />
+    <LettersBookPage
+      v-else-if="route.page === 'book' && activeBook"
+      v-model:query="query"
+      :book="activeBook"
+      :entries="filteredEntries"
+      :format-direction="formatDirection"
+      :format-label="formatLabel"
+      :sort-desc="sortDesc"
+      @generate="openGenerate(activeBook.id)"
+      @open-entry="openEntry(activeBook.id, $event)"
+      @toggle-sort="sortDesc = !sortDesc"
+    />
 
-      <PreviewDraftNotice
-        :draft="lettersPreviewDraft"
-        @discard="discardLettersPreviewDraft"
-        @open="openLettersPreviewDraft"
-      />
-    </section>
-
-    <section v-else-if="route.page === 'book' && activeBook" class="pc-letters-page">
-      <div class="pc-letters-hero pc-letters-actions-hero">
-        <div class="pc-hero-actions">
-          <button class="pc-soft-btn" type="button" @click="openGenerate(activeBook.id)">
-            <i class="fa-solid fa-wand-magic-sparkles"></i>
-            <span>{{ t`生成回信` }}</span>
-          </button>
-        </div>
-      </div>
-
-      <div class="pc-toolbar">
-        <input v-model="query" class="pc-search" type="text" :placeholder="t`搜索标题、发信人或收信人`" />
-        <button class="pc-soft-btn" type="button" @click="sortDesc = !sortDesc">
-          {{ sortDesc ? t`倒序` : t`正序` }}
-        </button>
-      </div>
-
-      <EmptyState v-if="!filteredEntries.length" :title="t`没有匹配的信件`" />
-
-      <div v-else class="pc-entry-list">
-        <article v-for="entry in filteredEntries" :key="entry.id" class="pc-entry-card">
-          <button class="pc-entry-main" type="button" @click="openEntry(activeBook.id, entry.id)">
-            <div class="pc-entry-head">
-              <strong>{{ entry.title }}</strong>
-              <ContentVersionBadge :count="Math.max(1, entry.versions.length)" />
-            </div>
-            <p>{{ formatDirection(entry.sender.name, entry.receiver.name) }} · {{ formatLabel(entry.format) }}</p>
-          </button>
-        </article>
-      </div>
-    </section>
-
-    <section v-else-if="route.page === 'rename-book' && activeBook" class="pc-letters-page">
-      <div class="pc-editor-card">
-        <span class="pc-kicker">{{ t`重命名分册` }}</span>
-        <h2>{{ formatParticipants(activeBook.participants) }}</h2>
-        <input v-model="bookTitle" class="pc-field" type="text" :placeholder="t`分册名称`" />
-        <div class="pc-form-actions">
-          <button class="pc-soft-btn" type="button" @click="phone.goBack()">{{ t`取消` }}</button>
-          <button class="pc-primary-btn" type="button" @click="submitRenameBook">{{ t`保存` }}</button>
-        </div>
-      </div>
-    </section>
+    <LettersBookEditorPage
+      v-else-if="route.page === 'rename-book' && activeBook"
+      v-model:title="bookTitle"
+      :participants-label="formatParticipants(activeBook.participants)"
+      @cancel="phone.goBack()"
+      @save="submitRenameBook"
+    />
 
     <LettersEntryDetailPage
       v-else-if="route.page === 'entry' && activeBook && activeEntry"
@@ -92,211 +58,100 @@
       @top="scrollToTop"
     />
 
-    <section v-else-if="route.page === 'bagu-scan' && activeBook && activeEntry" class="pc-letters-page">
-      <div class="pc-detail-card">
-        <div class="pc-detail-title-row">
-          <h2>{{ viewedLetterEntry.title }}</h2>
-        </div>
-        <BaguScanPanel
-          auto-scan
-          class="pc-detail-bagu-panel"
-          :content="viewedLetterEntry.content"
-          :apply-handler="applyLettersBaguContent"
-        />
-      </div>
-    </section>
+    <LettersBaguPage
+      v-else-if="route.page === 'bagu-scan' && activeBook && activeEntry"
+      :apply-handler="applyLettersBaguContent"
+      :entry="viewedLetterEntry"
+    />
 
-    <section v-else-if="route.page === 'editor'" class="pc-letters-page">
-      <div class="pc-editor-card">
-        <span class="pc-kicker">{{ t`编辑信件` }}</span>
-        <h2>{{ editingEntry ? editingEntry.title : t`调整当前内容` }}</h2>
+    <LettersEntryEditorPage
+      v-else-if="route.page === 'editor'"
+      v-model:book-title="draft.bookTitle"
+      v-model:content="draft.content"
+      v-model:format="draft.format"
+      v-model:receiver-name="draft.receiverName"
+      v-model:sender-name="draft.senderName"
+      v-model:title="draft.title"
+      :book-title-label="activeBook?.title || ''"
+      :direction-label="editingEntry ? formatDirection(editingEntry.sender.name, editingEntry.receiver.name) : ''"
+      :editing-title="editingEntry?.title || ''"
+      :format-label="editingEntry ? formatLabel(editingEntry.format) : ''"
+      :format-options="formatOptions"
+      :show-book-field="!activeBook"
+      @cancel="phone.goBack()"
+      @save="submitEntry"
+    />
 
-        <div v-if="editingEntry" class="pc-preview-card">
-          <strong>{{ formatDirection(editingEntry.sender.name, editingEntry.receiver.name) }}</strong>
-          <p>{{ formatLabel(editingEntry.format) }} · {{ activeBook?.title || t`当前分册` }}</p>
-        </div>
+    <LettersGeneratePage
+      v-else-if="route.page === 'generate'"
+      v-model:book-title="generationDraft.bookTitle"
+      v-model:format="generationDraft.format"
+      v-model:from-start-end="generationDraft.fromStartEnd"
+      v-model:range-text="generationDraft.rangeText"
+      v-model:receiver-name="generationDraft.receiverName"
+      v-model:recent-count="generationDraft.recentCount"
+      v-model:recent-entry-count="generationDraft.recentEntryCount"
+      v-model:references="selectedReferences"
+      v-model:sender-name="generationDraft.senderName"
+      v-model:single-message-id="generationDraft.singleMessageId"
+      v-model:source-mode="settings.generation.sourceMode"
+      v-model:user-requirement="generationDraft.userRequirement"
+      :capture="captureLetterPrompt"
+      :capture-reset-key="letterPromptPreview"
+      :error="generationState.error"
+      :format-options="formatOptions"
+      :raw-output="generationState.rawOutput"
+      :running="generationState.running"
+      :show-book-field="!activeBook"
+      :title="
+        route.params?.rewriteEntryId
+          ? '重新生成当前信件'
+          : route.params?.replyToEntryId
+            ? '生成回信'
+            : '生成一封新的信件'
+      "
+      @cancel="phone.goBack()"
+      @generate="runGeneration"
+      @stop="stopGeneration"
+    />
 
-        <template v-else>
-          <input v-model="draft.senderName" class="pc-field" type="text" :placeholder="t`发信人`" />
-          <input v-model="draft.receiverName" class="pc-field" type="text" :placeholder="t`收信人`" />
-          <input
-            v-if="!activeBook"
-            v-model="draft.bookTitle"
-            class="pc-field"
-            type="text"
-            :placeholder="t`分册名称（可留空）`"
-          />
-        </template>
-
-        <input v-model="draft.title" class="pc-field" type="text" :placeholder="t`标题`" />
-        <div class="pc-format-row">
-          <button
-            v-for="option in formatOptions"
-            :key="option.value"
-            :class="['pc-format-btn', { active: draft.format === option.value }]"
-            type="button"
-            @click="draft.format = option.value"
-          >
-            {{ option.label }}
-          </button>
-        </div>
-        <textarea v-model="draft.content" class="pc-area pc-saved-content-area" :placeholder="t`正文`"></textarea>
-        <div class="pc-form-actions">
-          <button class="pc-soft-btn" type="button" @click="phone.goBack()">{{ t`取消` }}</button>
-          <button class="pc-primary-btn" type="button" @click="submitEntry">{{ t`保存` }}</button>
-        </div>
-      </div>
-    </section>
-
-    <section v-else-if="route.page === 'generate'" class="pc-letters-page">
-      <div class="pc-editor-card">
-        <span class="pc-kicker">{{ t`AI 生成` }}</span>
-        <h2>
-          {{
-            route.params?.rewriteEntryId
-              ? t`重新生成当前信件`
-              : route.params?.replyToEntryId
-                ? t`生成回信`
-                : t`生成一封新的信件`
-          }}
-        </h2>
-
-        <GenerationPanel
-          :capture="captureLetterPrompt"
-          :capture-reset-key="letterPromptPreview"
-          :error="generationState.error"
-          :from-start-end="generationDraft.fromStartEnd"
-          :range-text="generationDraft.rangeText"
-          :raw-output="generationState.rawOutput"
-          :recent-count="generationDraft.recentCount"
-          :references="selectedReferences"
-          requirement-placeholder="例如：语气更像压抑已久的回信，少解释，多留余味。"
-          :running="generationState.running"
-          :single-message-id="generationDraft.singleMessageId"
-          :source-mode="settings.generation.sourceMode"
-          :user-requirement="generationDraft.userRequirement"
-          @cancel="phone.goBack()"
-          @generate="runGeneration"
-          @stop="stopGeneration"
-          @update:from-start-end="generationDraft.fromStartEnd = $event"
-          @update:range-text="generationDraft.rangeText = $event"
-          @update:recent-count="generationDraft.recentCount = $event"
-          @update:references="selectedReferences = $event"
-          @update:single-message-id="generationDraft.singleMessageId = $event"
-          @update:source-mode="settings.generation.sourceMode = $event"
-          @update:user-requirement="generationDraft.userRequirement = $event"
-        >
-          <template #before-fields>
-            <input
-              v-model="generationDraft.senderName"
-              class="pc-field"
-              type="text"
-              :disabled="generationState.running"
-              :placeholder="t`发信人`"
-            />
-            <input
-              v-model="generationDraft.receiverName"
-              class="pc-field"
-              type="text"
-              :disabled="generationState.running"
-              :placeholder="t`收信人`"
-            />
-            <input
-              v-if="!activeBook"
-              v-model="generationDraft.bookTitle"
-              class="pc-field"
-              type="text"
-              :disabled="generationState.running"
-              :placeholder="t`分册名称（可留空）`"
-            />
-
-            <div class="pc-format-row">
-              <button
-                v-for="option in formatOptions"
-                :key="option.value"
-                :class="['pc-format-btn', { active: generationDraft.format === option.value }]"
-                type="button"
-                :disabled="generationState.running"
-                @click="generationDraft.format = option.value"
-              >
-                {{ option.label }}
-              </button>
-            </div>
-
-            <div class="pc-number-field">
-              <label class="pc-field-label">{{ t`附带最近 N 封相关书信` }}</label>
-              <input
-                v-model.number="generationDraft.recentEntryCount"
-                class="pc-field"
-                type="number"
-                min="0"
-                max="20"
-                :disabled="generationState.running"
-              />
-            </div>
-          </template>
-        </GenerationPanel>
-      </div>
-    </section>
-
-    <section
+    <LettersPreviewPage
       v-else-if="route.page === 'preview' && generationState.preview"
-      class="pc-letters-page pc-generation-preview-page"
-    >
-      <div class="pc-detail-card pc-generation-preview-card">
-        <GenerationPreviewPanel
-          :content="generationState.preview.content"
-          :raw="generationState.preview.raw"
-          raw-editable
-          :reparse-handler="reparsePreviewRaw"
-          :save-label="generationState.preview.mode === 'rewrite' ? '保存新版本' : '保存信件'"
-          :source-label="generationState.preview.bookTitle"
-          :text-provider-summary="`${formatDirection(generationState.preview.sender.name, generationState.preview.receiver.name)} · ${formatLabel(generationState.preview.format)}`"
-          :title="generationState.preview.title"
-          :warnings="generationState.preview.warnings"
-          @back="returnToGenerate"
-          @reparse="reparsePreviewRaw"
-          @save="savePreview"
-          @update:content="generationState.preview.content = $event"
-          @update:raw="generationState.preview.raw = $event"
-        />
-      </div>
-    </section>
+      v-model:content="generationState.preview.content"
+      v-model:raw="generationState.preview.raw"
+      :book-title="generationState.preview.bookTitle"
+      :meta-label="`${formatDirection(generationState.preview.sender.name, generationState.preview.receiver.name)} · ${formatLabel(generationState.preview.format)}`"
+      :mode="generationState.preview.mode"
+      :reparse-handler="reparsePreviewRaw"
+      :title="generationState.preview.title"
+      :warnings="generationState.preview.warnings"
+      @back="returnToGenerate"
+      @reparse="reparsePreviewRaw"
+      @save="savePreview"
+    />
 
-    <section v-else-if="route.page === 'failed-draft' && activeFailedDraft" class="pc-letters-page pc-repair-page">
-      <div class="pc-editor-card pc-repair-card">
-        <span class="pc-kicker">{{ activeFailedDraft.source.label }}</span>
-        <h2>{{ t`修复解析失败草稿` }}</h2>
-
-        <RawOutputEditor
-          v-model="failedDraftRawOutput"
-          :placeholder="t`在这里修 XML 结构或补 title / content。`"
-          @reparse="reparseFailedDraft"
-        />
-
-        <div class="pc-form-actions">
-          <button class="pc-soft-btn danger" type="button" @click="removeFailedDraft(activeFailedDraft.id)">
-            {{ t`删除草稿` }}
-          </button>
-          <button class="pc-soft-btn" type="button" @click="reparseFailedDraft">{{ t`重新解析` }}</button>
-        </div>
-      </div>
-    </section>
+    <LettersFailedDraftPage
+      v-else-if="route.page === 'failed-draft' && activeFailedDraft"
+      v-model:raw-output="failedDraftRawOutput"
+      :source-label="activeFailedDraft.source.label"
+      @delete="removeFailedDraft(activeFailedDraft.id)"
+      @reparse="reparseFailedDraft"
+    />
   </section>
 </template>
 
 <script setup lang="ts">
-import BookShelf from '@/components/BookShelf.vue';
-import BaguScanPanel from '@/components/BaguScanPanel.vue';
-import ContentVersionBadge from '@/components/ContentVersionBadge.vue';
-import EmptyState from '@/components/EmptyState.vue';
-import FailedDraftList from '@/components/FailedDraftList.vue';
-import GenerationPanel from '@/components/GenerationPanel.vue';
-import GenerationPreviewPanel from '@/components/GenerationPreviewPanel.vue';
-import PreviewDraftNotice from '@/components/PreviewDraftNotice.vue';
-import RawOutputEditor from '@/components/RawOutputEditor.vue';
+import LettersBookPage from '@/components/letters/LettersBookPage.vue';
+import LettersBookEditorPage from '@/components/letters/LettersBookEditorPage.vue';
+import LettersBaguPage from '@/components/letters/LettersBaguPage.vue';
+import LettersCatalogPage from '@/components/letters/LettersCatalogPage.vue';
+import LettersEntryEditorPage from '@/components/letters/LettersEntryEditorPage.vue';
+import LettersFailedDraftPage from '@/components/letters/LettersFailedDraftPage.vue';
+import LettersGeneratePage from '@/components/letters/LettersGeneratePage.vue';
+import LettersPreviewPage from '@/components/letters/LettersPreviewPage.vue';
 import LettersEntryDetailPage from '@/components/letters/LettersEntryDetailPage.vue';
 import { useCatalogDetailNavigation } from '@/composables/useCatalogDetailNavigation';
+import { useDirectorySort } from '@/composables/useDirectorySort';
 import { useGenerationReplaySession } from '@/composables/useGenerationReplaySession';
 import { getRegisteredPhoneGenerationAdapter } from '@/core/appRegistry';
 import { buildGenerationPreview, captureGenerationPrompt, generateContent } from '@/core/generationService';
@@ -341,12 +196,7 @@ const replaySession = useGenerationReplaySession({
 });
 
 const query = ref('');
-const sortDesc = computed({
-  get: () => settings.value.directorySort.lettersDesc,
-  set: value => {
-    settings.value.directorySort.lettersDesc = value;
-  },
-});
+const sortDesc = useDirectorySort('lettersDesc');
 const bookTitle = ref('');
 const entryContentEl = ref<HTMLElement | null>(null);
 const { scrollToBottom, scrollToTop, scrollToVersionPosition } = useDetailScroll(
@@ -1333,302 +1183,7 @@ function formatLabel(format: LetterFormat) {
 </script>
 
 <style scoped>
-.pc-letters-app,
-.pc-letters-page {
-  min-height: 100%;
-}
-
 .pc-letters-app {
-  height: 100%;
-  min-height: 0;
-}
-
-.pc-letters-page {
-  display: flex;
-  flex-direction: column;
-  gap: 14px;
-}
-
-.pc-letters-detail-page {
-  height: 100%;
-  gap: 10px;
-  min-height: 0;
-}
-
-.pc-letters-hero,
-.pc-book-card,
-.pc-entry-card,
-.pc-editor-card,
-.pc-detail-card,
-.pc-preview-card,
-.pc-toolbar {
-  border: 1px solid var(--pc-border);
-  background: color-mix(in srgb, var(--pc-surface) 72%, transparent 28%);
-  border-radius: 20px;
-  backdrop-filter: blur(12px);
-}
-
-.pc-letters-hero,
-.pc-editor-card,
-.pc-detail-card,
-.pc-preview-card,
-.pc-toolbar {
-  padding: 14px;
-}
-
-.pc-letters-hero {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
-  gap: 12px;
-}
-
-.pc-letters-actions-hero {
-  grid-template-columns: minmax(0, 1fr);
-}
-
-.pc-hero-actions {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-  justify-content: flex-end;
-}
-
-.pc-letters-actions-hero .pc-hero-actions {
-  justify-content: flex-start;
-}
-
-.pc-letters-hero h2,
-.pc-editor-card h2,
-.pc-detail-card h2 {
-  margin: 0;
-  font-size: 20px;
-  line-height: 1.25;
-}
-
-.pc-letters-hero p,
-.pc-book-card p,
-.pc-entry-card p,
-.pc-detail-meta,
-.pc-copy,
-.pc-status-card p,
-.pc-raw-head span,
-.pc-preview-card p {
-  color: var(--pc-muted);
-}
-
-.pc-book-list,
-.pc-entry-list,
-.pc-shelf-manage {
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-}
-
-.pc-shelf-manage-item {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 10px;
-  padding: 12px 14px;
-  border: 1px solid var(--pc-border);
-  border-radius: 16px;
-  background: color-mix(in srgb, var(--pc-surface) 62%, transparent 38%);
-}
-
-.pc-book-card,
-.pc-entry-card {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
-  gap: 10px;
-  padding: 14px;
-}
-
-.pc-book-main,
-.pc-entry-main {
-  text-align: left;
-  border: 0;
-  background: transparent;
-  color: var(--pc-text);
-  cursor: pointer;
-}
-
-.pc-book-main {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-}
-
-.pc-book-main strong,
-.pc-entry-main strong,
-.pc-preview-card strong {
-  display: block;
-  font-size: 16px;
-}
-
-.pc-avatar {
-  width: 42px;
-  height: 42px;
-  border-radius: 14px;
-  display: grid;
-  place-items: center;
-  background: color-mix(in srgb, var(--pc-theme-accent) 18%, var(--pc-surface-strong) 82%);
-  color: var(--pc-theme-accent);
-  font-weight: 700;
-}
-
-.pc-book-actions,
-.pc-detail-meta,
-.pc-entry-head,
-.pc-section-head,
-.pc-raw-head,
-.pc-format-row {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 10px;
-}
-
-.pc-format-row {
-  justify-content: flex-start;
-  flex-wrap: wrap;
-  margin-top: 14px;
-}
-
-.pc-entry-main p.preview {
-  display: -webkit-box;
-  -webkit-line-clamp: 2;
-  -webkit-box-orient: vertical;
-  overflow: hidden;
-}
-
-.pc-favorite-chip,
-.pc-format-btn {
-  border: 0;
-  cursor: pointer;
-  color: var(--pc-text);
-}
-
-.pc-format-btn {
-  min-width: 92px;
-  height: 40px;
-  border-radius: 999px;
-  padding: 0 14px;
-}
-
-.pc-favorite-chip,
-.pc-format-btn,
-.pc-status-card {
-  background: var(--pc-surface-strong);
-}
-
-.pc-soft-btn.danger,
-.pc-icon-btn.danger {
-  color: var(--pc-danger);
-}
-
-.pc-favorite-chip {
-  width: 40px;
-  height: 40px;
-  border-radius: 12px;
-}
-
-.pc-favorite-chip i[data-active='true'] {
-  color: var(--pc-danger);
-}
-
-.pc-format-btn.active {
-  background: color-mix(in srgb, var(--pc-theme-accent) 18%, var(--pc-surface-strong) 82%);
-}
-
-.pc-search {
-  width: 100%;
-  border: 1px solid var(--pc-border);
-  border-radius: 16px;
-  background: var(--pc-surface-strong);
-  color: var(--pc-text);
-  padding: 12px 14px;
-}
-
-.pc-letters-app :is(.pc-field, .pc-area),
-.pc-preview-card {
-  margin-top: 14px;
-}
-
-.pc-letters-app .pc-area {
-  min-height: 220px;
-  resize: vertical;
-}
-
-.pc-letters-app .pc-area.compact {
-  min-height: 120px;
-}
-
-.pc-detail-content {
-  flex: 1 1 auto;
-  margin-top: 16px;
-  min-height: 0;
-  overflow: auto;
-  padding: 16px;
-  border-radius: 18px;
-  background: var(--pc-surface-strong);
-  white-space: pre-wrap;
-  color: var(--pc-text);
-  font-size: var(--pc-reader-font-size);
-  line-height: var(--pc-reader-line-height);
-}
-
-.pc-letters-detail-page .pc-detail-card {
-  flex: 1 1 auto;
-  min-height: 0;
-  display: flex;
-  flex-direction: column;
-}
-
-.pc-letters-app .pc-form-actions {
-  margin-top: 16px;
-  justify-content: flex-end;
-  flex-wrap: wrap;
-}
-
-.pc-toolbar,
-.pc-raw-output,
-.pc-meta-grid {
-  margin-top: 14px;
-}
-
-.pc-toolbar {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
-  gap: 10px;
-}
-
-.pc-meta-grid {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 10px;
-}
-
-.pc-status-card {
-  border: 1px solid var(--pc-border);
-  border-radius: 18px;
-  padding: 14px;
-}
-
-.pc-status-card.warning {
-  border-color: color-mix(in srgb, #f5a623 42%, var(--pc-border) 58%);
-}
-
-.pc-status-card.danger {
-  border-color: color-mix(in srgb, var(--pc-danger) 42%, var(--pc-border) 58%);
-}
-
-.pc-number-field + .pc-number-field {
-  margin-top: 14px;
-}
-
-.pc-raw-area {
-  min-height: 180px;
-  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
-  font-size: 12px;
+  min-height: 100%;
 }
 </style>

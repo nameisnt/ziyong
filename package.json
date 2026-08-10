@@ -6,6 +6,7 @@
     "watch": "vite build --watch --mode development",
     "format": "prettier --write \"src/**/*.{ts,tsx,js,jsx,css,scss,html,vue}\"",
     "lint": "eslint",
+    "style:check": "powershell -ExecutionPolicy Bypass -File scripts/check-style-guard.ps1",
     "ui:check": "node scripts/ui-visual-check.mjs",
     "lint:fix": "eslint --fix"
   },

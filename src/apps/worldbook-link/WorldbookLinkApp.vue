@@ -7,279 +7,66 @@
       </button>
     </EmptyState>
 
-    <section v-else-if="route.page === 'root'" class="pc-worldbook-page">
-      <header class="pc-worldbook-head">
-        <span class="pc-kicker">{{ t`当前聊天` }}</span>
-        <button
-          class="pc-icon-btn pc-worldbook-refresh"
-          type="button"
-          :title="t`刷新`"
-          :disabled="refreshing"
-          @click="refresh"
-        >
-          <i class="fa-solid fa-rotate" :class="{ 'fa-spin': refreshing }"></i>
-        </button>
-      </header>
+    <WorldbookCatalogPage
+      v-else-if="route.page === 'root'"
+      v-model:active-category="activeCategory"
+      v-model:query="searchQuery"
+      :book-subtitle="bookSubtitle"
+      :categories="categories"
+      :empty-title="emptyCategoryTitle"
+      :global-busy-books="globalBusyBooks"
+      :groups="groups"
+      :is-global-enabled="isGlobalEnabled"
+      :loading-error="loadingError"
+      :refreshing="refreshing"
+      :sections="visibleBookSections"
+      :visible-book-count="visibleBookCount"
+      @open-book="openBook"
+      @refresh="refresh"
+      @toggle-global="toggleGlobalWorldbook"
+    />
 
-      <nav class="pc-segment pc-worldbook-tabs" aria-label="世界书分类">
-        <button
-          v-for="category in categories"
-          :key="category.id"
-          class="pc-segment-btn"
-          :class="{ active: activeCategory === category.id }"
-          type="button"
-          @click="activeCategory = category.id"
-        >
-          {{ category.label }}
-          <small>{{ groups[category.id].length }}</small>
-        </button>
-      </nav>
+    <WorldbookDetailPage
+      v-else-if="route.page === 'detail'"
+      v-model:query="entryQuery"
+      :book-name="detailBookName"
+      :busy="busy"
+      :category-label="activeCategoryLabel"
+      :entry-busy-uids="entryBusyUids"
+      :entry-position-summary="entryPositionSummary"
+      :link-state-label="linkStateLabel"
+      :sections="visibleEntrySections"
+      :status="detailStatus"
+      :visible-entry-count="visibleEntryCount"
+      @apply-profile="applySavedProfile"
+      @capture-profile="captureCurrentProfile"
+      @open-entry="openEntryEditor"
+      @toggle-entry="toggleWorldbookEntry"
+      @unlink="unlinkCurrentBook"
+    />
 
-      <label class="pc-worldbook-search">
-        <i class="fa-solid fa-magnifying-glass"></i>
-        <input v-model="searchQuery" class="pc-field" type="search" :placeholder="t`搜索当前分类的世界书`" />
-      </label>
-
-      <div v-if="loadingError" class="pc-section-card pc-worldbook-error">
-        <strong>{{ t`无法读取世界书` }}</strong>
-        <span>{{ loadingError }}</span>
-      </div>
-
-      <div v-else class="pc-worldbook-catalog">
-        <section v-for="section in visibleBookSections" :key="section.id" class="pc-worldbook-group">
-          <header v-if="section.label" class="pc-worldbook-group-head">
-            <strong>{{ section.label }}</strong>
-            <span>{{ section.books.length }}</span>
-          </header>
-
-          <div v-if="section.books.length" class="pc-worldbook-list">
-            <article v-for="bookName in section.books" :key="bookName" class="pc-section-card pc-worldbook-row">
-              <button class="pc-worldbook-open" type="button" @click="openBook(bookName)">
-                <span class="pc-worldbook-icon"><i class="fa-solid fa-book"></i></span>
-                <span class="pc-worldbook-copy">
-                  <strong>{{ bookName }}</strong>
-                  <small>{{ bookSubtitle(bookName) }}</small>
-                </span>
-              </button>
-              <label
-                v-if="activeCategory === 'global'"
-                class="pc-toggle pc-worldbook-toggle"
-                :title="isGlobalEnabled(bookName) ? t`停用全局世界书` : t`启用全局世界书`"
-              >
-                <input
-                  type="checkbox"
-                  :aria-label="isGlobalEnabled(bookName) ? t`停用全局世界书` : t`启用全局世界书`"
-                  :checked="isGlobalEnabled(bookName)"
-                  :disabled="globalBusyBooks.has(bookName)"
-                  @change="toggleGlobalWorldbook(bookName, $event)"
-                />
-                <span aria-hidden="true"></span>
-              </label>
-              <i v-else class="fa-solid fa-chevron-right pc-worldbook-chevron"></i>
-            </article>
-          </div>
-        </section>
-        <EmptyState
-          v-if="!visibleBookCount"
-          :title="searchQuery.trim() ? t`没有找到匹配的世界书` : emptyCategoryTitle"
-        />
-      </div>
-    </section>
-
-    <section v-else-if="route.page === 'detail'" class="pc-worldbook-page">
-      <article class="pc-section-card pc-worldbook-detail-head">
-        <h2 :title="detailBookName">{{ detailBookName }}</h2>
-        <div v-if="detailStatus" class="pc-worldbook-metrics">
-          <span class="category">{{ activeCategoryLabel }}</span>
-          <span>{{ detailStatus.currentEntries.length }} {{ t`个条目` }}</span>
-          <span>{{ detailStatus.enabledCount }} {{ t`个启用` }}</span>
-          <span>{{
-            detailStatus.profile
-              ? `${detailStatus.profile.entries.filter(entry => entry.enabled).length} 个关联`
-              : t`未关联`
-          }}</span>
-        </div>
-      </article>
-
-      <label class="pc-worldbook-search">
-        <i class="fa-solid fa-magnifying-glass"></i>
-        <input v-model="entryQuery" class="pc-field" type="search" :placeholder="t`搜索条目名称`" />
-      </label>
-
-      <article v-if="detailStatus" class="pc-section-card pc-worldbook-link-bar">
-        <div class="pc-worldbook-link-main">
-          <strong>{{ t`聊天联动` }}</strong>
-          <span :class="{ linked: detailStatus.profile }">{{ linkStateLabel }}</span>
-        </div>
-        <div class="pc-worldbook-link-actions">
-          <template v-if="detailStatus.profile">
-            <button
-              class="pc-icon-btn"
-              type="button"
-              :disabled="busy"
-              :title="t`应用聊天配置`"
-              @click="applySavedProfile"
-            >
-              <i class="fa-solid fa-play"></i>
-            </button>
-            <button
-              class="pc-icon-btn"
-              type="button"
-              :disabled="busy"
-              :title="t`以当前状态更新配置`"
-              @click="captureCurrentProfile"
-            >
-              <i class="fa-solid fa-floppy-disk"></i>
-            </button>
-            <button
-              class="pc-icon-btn danger"
-              type="button"
-              :disabled="busy"
-              :title="t`停止联动`"
-              @click="unlinkCurrentBook"
-            >
-              <i class="fa-solid fa-link-slash"></i>
-            </button>
-          </template>
-          <button
-            v-else
-            class="pc-soft-btn pc-worldbook-link-create"
-            type="button"
-            :disabled="busy"
-            @click="captureCurrentProfile"
-          >
-            <i class="fa-solid fa-link"></i>
-            <span>{{ t`关联` }}</span>
-          </button>
-        </div>
-        <small v-if="detailStatus.profile && !detailStatus.matchesCurrent">{{ t`当前状态与配置不同` }}</small>
-        <small v-if="detailStatus.missingCount">{{ detailStatus.missingCount }} {{ t`个配置条目已不存在` }}</small>
-      </article>
-
-      <template v-if="detailStatus">
-        <section v-for="section in visibleEntrySections" :key="section.id" class="pc-worldbook-group">
-          <header class="pc-worldbook-group-head">
-            <strong>{{ section.label }}</strong>
-            <span>{{ section.entries.length }}</span>
-          </header>
-          <div v-if="section.entries.length" class="pc-worldbook-entry-list">
-            <article
-              v-for="entry in section.entries"
-              :key="entry.uid"
-              class="pc-section-card pc-worldbook-entry"
-              :class="{ disabled: !entry.enabled }"
-            >
-              <button class="pc-worldbook-entry-open" type="button" @click="openEntryEditor(entry)">
-                <span class="pc-worldbook-entry-copy">
-                  <strong :title="entry.name || `条目 #${entry.uid}`">{{ entry.name || `条目 #${entry.uid}` }}</strong>
-                  <small>{{ entryPositionSummary(entry) }}</small>
-                </span>
-                <i class="fa-solid fa-chevron-right pc-worldbook-chevron"></i>
-              </button>
-              <label
-                class="pc-toggle pc-worldbook-toggle"
-                :title="entry.enabled ? t`停用条目` : t`启用条目`"
-                @click.stop
-              >
-                <input
-                  type="checkbox"
-                  :aria-label="entry.enabled ? t`停用条目` : t`启用条目`"
-                  :checked="entry.enabled"
-                  :disabled="entryBusyUids.has(entry.uid)"
-                  @change="toggleWorldbookEntry(entry, $event)"
-                />
-                <span aria-hidden="true"></span>
-              </label>
-            </article>
-          </div>
-        </section>
-        <EmptyState
-          v-if="!visibleEntryCount"
-          :title="entryQuery.trim() ? t`没有找到匹配的条目` : t`这本世界书没有条目`"
-        />
-      </template>
-      <EmptyState v-else :title="t`正在读取世界书条目`" />
-    </section>
-
-    <section v-else-if="route.page === 'entry'" class="pc-worldbook-page pc-worldbook-entry-editor-page">
-      <article v-if="editingEntry" class="pc-editor-card pc-worldbook-entry-editor">
-        <header class="pc-worldbook-entry-editor-head">
-          <span class="pc-kicker">{{ detailBookName }}</span>
-          <h2 :title="editingEntry.name || `条目 #${editingEntry.uid}`">
-            {{ editingEntry.name || `条目 #${editingEntry.uid}` }}
-          </h2>
-          <small>条目 #{{ editingEntry.uid }}</small>
-        </header>
-
-        <label class="pc-field-group">
-          <span class="pc-field-label">条目名称</span>
-          <input v-model="entryDraft.name" class="pc-field" type="text" placeholder="条目名称" />
-        </label>
-
-        <label class="pc-field-group pc-worldbook-content-field">
-          <span class="pc-field-label">条目内容</span>
-          <textarea v-model="entryDraft.content" class="pc-area" placeholder="世界书条目内容"></textarea>
-        </label>
-
-        <div class="pc-field-group">
-          <span class="pc-field-label">插入位置</span>
-          <SearchableCombobox
-            :model-value="entryDraft.positionType"
-            :options="positionOptions"
-            input-label="选择插入位置"
-            placeholder="选择插入位置"
-            toggle-title="展开插入位置"
-            @update:model-value="entryDraft.positionType = $event as WorldbookEntry['position']['type']"
-          />
-        </div>
-
-        <label class="pc-field-group">
-          <span class="pc-field-label">顺序</span>
-          <input v-model.number="entryDraft.order" class="pc-field" type="number" step="1" />
-        </label>
-
-        <template v-if="entryDraft.positionType === 'at_depth'">
-          <div class="pc-field-group">
-            <span class="pc-field-label">消息角色</span>
-            <SearchableCombobox
-              :model-value="entryDraft.role"
-              :options="roleOptions"
-              input-label="选择消息角色"
-              placeholder="选择消息角色"
-              toggle-title="展开消息角色"
-              @update:model-value="entryDraft.role = $event as WorldbookEntry['position']['role']"
-            />
-          </div>
-          <label class="pc-field-group">
-            <span class="pc-field-label">插入深度</span>
-            <input v-model.number="entryDraft.depth" class="pc-field" type="number" min="0" step="1" />
-          </label>
-        </template>
-
-        <div class="pc-form-actions pc-worldbook-entry-editor-actions">
-          <button class="pc-soft-btn danger" type="button" :disabled="entryEditorBusy" @click="removeEditingEntry">
-            <i class="fa-solid fa-trash"></i>
-            <span>删除</span>
-          </button>
-          <button class="pc-soft-btn" type="button" :disabled="entryEditorBusy" @click="phone.goBack()">返回</button>
-          <button
-            class="pc-primary-btn"
-            type="button"
-            :disabled="entryEditorBusy || !entryDraft.name.trim()"
-            @click="saveEditingEntry"
-          >
-            {{ entryEditorBusy ? '处理中' : '保存' }}
-          </button>
-        </div>
-      </article>
-      <EmptyState v-else title="正在读取世界书条目" />
-    </section>
+    <WorldbookEntryEditorPage
+      v-else-if="route.page === 'entry'"
+      v-model:content="entryDraft.content"
+      v-model:depth="entryDraft.depth"
+      v-model:name="entryDraft.name"
+      v-model:order="entryDraft.order"
+      v-model:position-type="entryDraft.positionType"
+      v-model:role="entryDraft.role"
+      :book-name="detailBookName"
+      :busy="entryEditorBusy"
+      :entry="editingEntry"
+      :position-options="positionOptions"
+      :role-options="roleOptions"
+      @back="phone.goBack()"
+      @remove="removeEditingEntry"
+      @save="saveEditingEntry"
+    />
   </section>
 </template>
 
 <script setup lang="ts">
 import EmptyState from '@/components/EmptyState.vue';
-import SearchableCombobox from '@/components/SearchableCombobox.vue';
 import { usePhoneStore } from '@/store/phone';
 import {
   deleteWorldbookEntry,
@@ -290,6 +77,9 @@ import {
   type CurrentWorldbookGroups,
   type WorldbookCategoryId,
 } from './api';
+import WorldbookCatalogPage from './pages/WorldbookCatalogPage.vue';
+import WorldbookDetailPage from './pages/WorldbookDetailPage.vue';
+import WorldbookEntryEditorPage from './pages/WorldbookEntryEditorPage.vue';
 import { type WorldbookLinkStatus, useWorldbookLinkStore } from './store';
 
 const phone = usePhoneStore();
@@ -700,340 +490,7 @@ async function toggleWorldbookEntry(entry: WorldbookEntry, event: Event) {
 </script>
 
 <style scoped>
-.pc-worldbook-link-app,
-.pc-worldbook-page {
+.pc-worldbook-link-app {
   min-height: 100%;
-}
-
-.pc-worldbook-page {
-  display: grid;
-  align-content: start;
-  gap: 12px;
-}
-
-.pc-worldbook-head,
-.pc-worldbook-metrics,
-.pc-worldbook-group-head,
-.pc-worldbook-link-main,
-.pc-worldbook-link-actions,
-.pc-worldbook-entry-head {
-  display: flex;
-  align-items: center;
-}
-
-.pc-worldbook-head {
-  min-height: 32px;
-  justify-content: space-between;
-  gap: 10px;
-}
-
-.pc-worldbook-refresh {
-  width: 32px;
-  min-width: 32px;
-  height: 32px;
-  min-height: 32px;
-  padding: 0;
-}
-
-.pc-worldbook-detail-head {
-  min-width: 0;
-  padding: 15px 16px;
-}
-
-.pc-worldbook-detail-head h2 {
-  margin: 0;
-  overflow: hidden;
-  font-size: 22px;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.pc-worldbook-tabs {
-  display: grid;
-  grid-template-columns: repeat(5, minmax(0, 1fr));
-  width: 100%;
-}
-
-.pc-worldbook-tabs .pc-segment-btn {
-  min-width: 0;
-  padding-inline: 6px;
-}
-
-.pc-worldbook-tabs small {
-  font-size: 10px;
-  opacity: 0.68;
-}
-
-.pc-worldbook-search {
-  position: relative;
-  display: block;
-}
-
-.pc-worldbook-search > i {
-  position: absolute;
-  z-index: 1;
-  top: 50%;
-  left: 13px;
-  color: var(--pc-muted);
-  pointer-events: none;
-  transform: translateY(-50%);
-}
-
-.pc-worldbook-search .pc-field {
-  height: 42px;
-  padding-left: 38px;
-}
-
-.pc-worldbook-catalog,
-.pc-worldbook-group,
-.pc-worldbook-list,
-.pc-worldbook-entry-list {
-  display: grid;
-  gap: 10px;
-}
-
-.pc-worldbook-catalog,
-.pc-worldbook-group {
-  gap: 8px;
-}
-
-.pc-worldbook-group + .pc-worldbook-group {
-  margin-top: 4px;
-}
-
-.pc-worldbook-group-head {
-  min-height: 28px;
-  justify-content: space-between;
-  padding: 0 4px;
-}
-
-.pc-worldbook-group-head strong {
-  font-size: 15px;
-}
-
-.pc-worldbook-group-head span {
-  color: var(--pc-muted);
-  font-size: 12px;
-}
-
-.pc-worldbook-row {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
-  align-items: center;
-  width: 100%;
-  min-width: 0;
-  padding: 10px 12px;
-  color: var(--pc-text);
-  text-align: left;
-}
-
-.pc-worldbook-open {
-  display: grid;
-  grid-template-columns: 38px minmax(0, 1fr);
-  align-items: center;
-  min-width: 0;
-  gap: 10px;
-  border: 0;
-  background: transparent;
-  color: inherit;
-  cursor: pointer;
-  text-align: left;
-}
-
-.pc-worldbook-icon {
-  display: grid;
-  width: 38px;
-  height: 38px;
-  place-items: center;
-  border-radius: var(--pc-control-radius);
-  background: color-mix(in srgb, var(--pc-theme-accent) 14%, var(--pc-surface-strong) 86%);
-  color: var(--pc-theme-accent);
-}
-
-.pc-worldbook-copy {
-  display: grid;
-  min-width: 0;
-  gap: 5px;
-}
-
-.pc-worldbook-copy strong {
-  display: block;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.pc-worldbook-copy small,
-.pc-worldbook-chevron,
-.pc-worldbook-error span {
-  color: var(--pc-muted);
-}
-
-.pc-worldbook-error {
-  color: var(--pc-danger);
-}
-
-.pc-worldbook-metrics {
-  flex-wrap: wrap;
-  gap: 0;
-  margin-top: 8px;
-}
-
-.pc-worldbook-metrics span {
-  color: var(--pc-muted);
-  font-size: 13px;
-  white-space: nowrap;
-}
-
-.pc-worldbook-metrics span + span::before {
-  margin: 0 7px;
-  color: var(--pc-muted);
-  content: '·';
-}
-
-.pc-worldbook-metrics .category {
-  color: var(--pc-theme-accent);
-  font-weight: 700;
-}
-
-.pc-worldbook-link-bar {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
-  align-items: center;
-  gap: 7px 10px;
-  padding: 10px 12px;
-}
-
-.pc-worldbook-link-main {
-  min-width: 0;
-  gap: 9px;
-}
-
-.pc-worldbook-link-main > span {
-  color: var(--pc-muted);
-  font-size: 13px;
-}
-
-.pc-worldbook-link-main > span.linked {
-  color: var(--pc-theme-accent);
-}
-
-.pc-worldbook-link-actions {
-  justify-content: flex-end;
-  gap: 6px;
-}
-
-.pc-worldbook-link-actions .pc-icon-btn {
-  width: 32px;
-  min-width: 32px;
-  height: 32px;
-  min-height: 32px;
-  padding: 0;
-}
-
-.pc-worldbook-link-create {
-  min-height: 32px;
-  padding: 6px 10px;
-  font-size: 12px;
-}
-
-.pc-worldbook-link-bar > small {
-  grid-column: 1 / -1;
-  color: var(--pc-danger);
-  font-size: 12px;
-}
-
-.pc-worldbook-entry {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
-  align-items: center;
-  min-width: 0;
-  padding: 0 12px 0 0;
-}
-
-.pc-worldbook-entry-open {
-  display: flex;
-  align-items: center;
-  min-width: 0;
-  flex: 1 1 auto;
-  gap: 9px;
-  border: 0;
-  background: transparent;
-  padding: 11px 10px 11px 12px;
-  color: var(--pc-text);
-  cursor: pointer;
-  text-align: left;
-}
-
-.pc-worldbook-entry-open > i {
-  flex: 0 0 auto;
-  color: var(--pc-muted);
-  font-size: 11px;
-}
-
-.pc-worldbook-entry-copy {
-  display: grid;
-  min-width: 0;
-  gap: 3px;
-}
-
-.pc-worldbook-entry-copy strong {
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.pc-worldbook-entry-copy small {
-  color: var(--pc-muted);
-  font-size: 11px;
-}
-
-.pc-worldbook-entry.disabled .pc-worldbook-entry-copy strong {
-  color: var(--pc-muted);
-}
-
-.pc-worldbook-entry-editor {
-  display: flex;
-  min-height: calc(100vh - 160px);
-  flex-direction: column;
-  gap: 14px;
-}
-
-.pc-worldbook-entry-editor-head {
-  display: grid;
-  gap: 4px;
-}
-
-.pc-worldbook-entry-editor-head h2 {
-  overflow: hidden;
-  margin: 0;
-  font-size: 20px;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.pc-worldbook-entry-editor-head small {
-  color: var(--pc-muted);
-  font-size: 12px;
-}
-
-.pc-worldbook-content-field {
-  min-height: 260px;
-  flex: 1;
-}
-
-.pc-worldbook-content-field .pc-area {
-  min-height: 240px;
-  flex: 1;
-  resize: vertical;
-}
-
-.pc-worldbook-entry-editor-actions {
-  position: sticky;
-  z-index: 2;
-  bottom: 0;
-  margin-top: auto;
-  padding-top: 10px;
-  background: var(--pc-bg);
 }
 </style>

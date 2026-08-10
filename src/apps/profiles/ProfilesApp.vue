@@ -1,295 +1,66 @@
 <template>
   <section class="pc-profiles-app">
-    <section v-if="route.page === 'root'" class="pc-profiles-page">
-      <section class="pc-profiles-toolbar">
-        <div class="pc-profile-context-row">
-          <div class="pc-profile-table-switcher">
-            <i :class="['fa-solid', profileKindIcon(selectedTable?.kind || 'note')]"></i>
-            <SearchableCombobox
-              v-model="selectedTableId"
-              :input-label="t`当前资料表`"
-              :menu-max-height="260"
-              :options="profileTableOptions"
-              :placeholder="t`选择或搜索资料表`"
-              :toggle-title="t`展开资料表`"
-            />
-          </div>
-          <button class="pc-icon-btn" type="button" :title="t`管理资料表`" @click="openTableManager">
-            <i class="fa-solid fa-gear"></i>
-          </button>
-        </div>
-        <label class="pc-search-field">
-          <i class="fa-solid fa-magnifying-glass"></i>
-          <input v-model="query" type="search" :placeholder="t`搜索当前表`" />
-        </label>
-        <div v-if="tableEntries.length" class="pc-profiles-toolbar-bottom">
-          <span class="pc-segment pc-profile-view-toggle" role="group" :aria-label="t`资料显示方式`">
-            <button
-              :class="['pc-segment-btn', { active: profileViewMode === 'list' }]"
-              type="button"
-              :title="t`列表显示`"
-              :aria-label="t`列表显示`"
-              @click="profileViewMode = 'list'"
-            >
-              <i class="fa-solid fa-list"></i>
-            </button>
-            <button
-              :class="['pc-segment-btn', { active: profileViewMode === 'table' }]"
-              type="button"
-              :title="t`表格显示`"
-              :aria-label="t`表格显示`"
-              @click="profileViewMode = 'table'"
-            >
-              <i class="fa-solid fa-table"></i>
-            </button>
-          </span>
-          <div class="pc-profile-primary-actions">
-            <button class="pc-soft-btn compact" type="button" @click="openEditor()">
-              <i class="fa-solid fa-plus"></i>
-              <span>{{ t`新增` }}</span>
-            </button>
-            <button class="pc-primary-btn compact" type="button" @click="openGenerate">
-              <i class="fa-solid fa-wand-magic-sparkles"></i>
-              <span>{{ t`AI 生成` }}</span>
-            </button>
-          </div>
-        </div>
-      </section>
+    <ProfilesCatalogPage
+      v-if="route.page === 'root'"
+      v-model:query="query"
+      v-model:table-id="selectedTableId"
+      v-model:view-mode="profileViewMode"
+      :columns="visibleTableColumns"
+      :entry-field="profiles.getEntryField"
+      :entry-preview="entryListPreview"
+      :failed-draft-context="failedDraftSourceLabel"
+      :failed-drafts="failedDrafts"
+      :failed-draft-title="failedDraftTitle"
+      :filtered-entries="filteredEntries"
+      :grid-template="profileTableGridTemplate"
+      :is-status-column="isStatusColumn"
+      :kind-icon="profileKindIcon"
+      :preview-draft="profilesPreviewDraft"
+      :selected-table="selectedTable"
+      :table-entries="tableEntries"
+      :table-min-width="profileTableMinWidth"
+      :table-options="profileTableOptions"
+      @create="openEditor()"
+      @discard-preview="discardProfilesPreviewDraft"
+      @generate="openGenerate"
+      @open-entry="openEntry"
+      @open-failed="openFailedDraft"
+      @open-preview="openProfilesPreviewDraft"
+      @open-tables="openTableManager"
+      @remove-failed="removeFailedDraft"
+    />
 
-      <section
-        v-if="selectedTable && profileViewMode === 'list'"
-        class="pc-profile-list"
-        :aria-label="selectedTable.name"
-      >
-        <button
-          v-for="entry in filteredEntries"
-          :key="entry.id"
-          class="pc-profile-list-row"
-          type="button"
-          @click="openEntry(entry.id)"
-        >
-          <i :class="['fa-solid', 'pc-profile-list-icon', profileKindIcon(entry.kind)]"></i>
-          <span class="pc-profile-list-main">
-            <strong>{{ entry.title }}</strong>
-            <small>{{ entryListPreview(entry) || t`未填写资料` }}</small>
-            <span v-if="entry.tags.length" class="pc-profile-list-tags">
-              <em v-for="tag in entry.tags.slice(0, 3)" :key="tag">{{ tag }}</em>
-            </span>
-          </span>
-          <i class="fa-solid fa-chevron-right pc-profile-list-arrow"></i>
-        </button>
-      </section>
+    <ProfilesTableManagerPage
+      v-else-if="route.page === 'tables'"
+      :entry-count="tableEntryCount"
+      :kind-icon="profileKindIcon"
+      :tables="tables"
+      @create="createTable"
+      @open="openTableEditor"
+    />
 
-      <section v-else-if="selectedTable" class="pc-profile-table-wrap" :aria-label="selectedTable.name">
-        <div
-          class="pc-profile-table"
-          :style="{
-            '--pc-profile-grid-template': profileTableGridTemplate,
-            '--pc-profile-table-min-width': `${profileTableMinWidth}px`,
-          }"
-        >
-          <div class="pc-profile-table-header" role="row">
-            <span v-for="column in visibleTableColumns" :key="column.id" role="columnheader">{{ column.label }}</span>
-          </div>
-          <button
-            v-for="entry in filteredEntries"
-            :key="entry.id"
-            class="pc-profile-table-row"
-            type="button"
-            @click="openEntry(entry.id)"
-          >
-            <span
-              v-for="column in visibleTableColumns"
-              :key="column.id"
-              :class="['pc-profile-table-cell', { 'is-status': isStatusColumn(column) }]"
-              :title="profiles.getEntryField(entry, column.id)"
-            >
-              <template v-if="column.id === 'tags' && profiles.getEntryField(entry, column.id)">
-                <em v-for="tag in entry.tags.slice(0, 2)" :key="tag">{{ tag }}</em>
-              </template>
-              <template v-else>
-                <i
-                  v-if="isStatusColumn(column) && profiles.getEntryField(entry, column.id)"
-                  class="pc-profile-status-dot"
-                ></i>
-                {{ profiles.getEntryField(entry, column.id) || t`未填写` }}
-              </template>
-            </span>
-            <i v-if="entry.favorite" class="fa-solid fa-heart pc-profile-table-favorite"></i>
-          </button>
-        </div>
-      </section>
-      <EmptyState
-        v-if="!filteredEntries.length"
-        class="pc-profile-empty"
-        :title="tableEntries.length ? t`没有匹配的资料` : t`当前表还没有条目`"
-      >
-        <div v-if="!tableEntries.length" class="pc-profile-empty-actions">
-          <button class="pc-soft-btn compact" type="button" @click="openEditor()">
-            <i class="fa-solid fa-plus"></i>
-            <span>{{ t`新增条目` }}</span>
-          </button>
-          <button class="pc-primary-btn compact" type="button" @click="openGenerate">
-            <i class="fa-solid fa-wand-magic-sparkles"></i>
-            <span>{{ t`AI 生成` }}</span>
-          </button>
-        </div>
-        <button v-else class="pc-soft-btn compact pc-profile-clear-search" type="button" @click="query = ''">
-          {{ t`清除搜索` }}
-        </button>
-      </EmptyState>
-
-      <FailedDraftList
-        :drafts="failedDrafts"
-        :get-context="failedDraftSourceLabel"
-        :get-title="failedDraftTitle"
-        @open="openFailedDraft"
-        @remove="removeFailedDraft"
-      />
-
-      <PreviewDraftNotice
-        :draft="profilesPreviewDraft"
-        @discard="discardProfilesPreviewDraft"
-        @open="openProfilesPreviewDraft"
-      />
-    </section>
-
-    <section v-else-if="route.page === 'tables'" class="pc-profiles-page">
-      <section class="pc-section-card pc-profile-table-manager">
-        <div class="pc-profile-table-manager-head">
-          <div>
-            <span class="pc-kicker">{{ t`资料表` }}</span>
-            <h2>{{ t`表格类型` }}</h2>
-          </div>
-          <button class="pc-icon-btn primary" type="button" :title="t`新建资料表`" @click="createTable">
-            <i class="fa-solid fa-plus"></i>
-          </button>
-        </div>
-        <button
-          v-for="table in tables"
-          :key="table.id"
-          class="pc-profile-table-manager-row"
-          type="button"
-          @click="openTableEditor(table.id)"
-        >
-          <i :class="['fa-solid', 'pc-profile-table-manager-icon', profileKindIcon(table.kind)]"></i>
-          <span>
-            <strong>{{ table.name }}</strong>
-            <small
-              >{{ table.builtIn ? t`内置` : t`自定义` }} · {{ table.columns.length }} {{ t`个字段` }} ·
-              {{ tableEntryCount(table.id) }} {{ t`条` }}</small
-            >
-          </span>
-          <i class="fa-solid fa-chevron-right"></i>
-        </button>
-      </section>
-    </section>
-
-    <section v-else-if="route.page === 'table-editor' && editingTable" class="pc-profiles-page">
-      <article class="pc-editor-card pc-profile-table-editor">
-        <span class="pc-kicker">{{ editingTable.builtIn ? t`内置资料表` : t`自定义资料表` }}</span>
-        <input v-model="tableDraft.name" class="pc-field" type="text" :placeholder="t`表格名称`" />
-        <label class="pc-field-group">
-          <span>{{ t`关联资料类型` }}</span>
-          <select v-model="tableDraft.kind" class="pc-field pc-select">
-            <option v-for="option in profileKindOptions" :key="option.id" :value="option.id">{{ option.label }}</option>
-          </select>
-        </label>
-        <details class="pc-profile-display-format">
-          <summary>
-            <span>
-              <strong>{{ t`资料展示` }}</strong>
-              <small>{{ tableDraft.renderMode === 'frontend' ? t`网页渲染` : 'Markdown' }}</small>
-            </span>
-            <i class="fa-solid fa-chevron-down"></i>
-          </summary>
-          <div class="pc-profile-display-format-body">
-            <span class="pc-segment">
-              <button
-                :class="['pc-segment-btn', { active: tableDraft.renderMode === 'markdown' }]"
-                type="button"
-                @click="tableDraft.renderMode = 'markdown'"
-              >
-                Markdown
-              </button>
-              <button
-                :class="['pc-segment-btn', { active: tableDraft.renderMode === 'frontend' }]"
-                type="button"
-                @click="tableDraft.renderMode = 'frontend'"
-              >
-                {{ t`网页渲染` }}
-              </button>
-            </span>
-            <textarea
-              v-model="tableDraft.displayFormat"
-              class="pc-area compact mono"
-              :placeholder="t`<character>\n身份：{{identity}}\n</character>`"
-            ></textarea>
-            <button class="pc-soft-btn compact" type="button" @click="resetTableDisplayFormat">
-              <i class="fa-solid fa-rotate-left"></i>{{ t`重置格式` }}
-            </button>
-          </div>
-        </details>
-
-        <section class="pc-profile-fields-editor">
-          <div class="pc-profile-fields-head">
-            <span>
-              <strong>{{ t`字段` }}</strong>
-              <small>{{ tableDraft.columns.length }}</small>
-            </span>
-            <button class="pc-icon-btn" type="button" :title="t`添加字段`" @click="openNewTableColumn">
-              <i class="fa-solid fa-plus"></i>
-            </button>
-          </div>
-          <div class="pc-profile-column-list">
-            <article
-              v-for="column in tableDraft.columns"
-              :key="column.id"
-              class="pc-profile-column-row"
-              :class="{
-                disabled: !column.enabled,
-                dragging: tableColumnDrag.isDragging && tableColumnDrag.columnId === column.id,
-                'drop-before': tableColumnDrag.isDragging && tableColumnDrag.insertBeforeId === column.id,
-              }"
-              :data-profile-column-id="column.id"
-            >
-              <button
-                class="pc-icon-btn pc-profile-column-drag-handle"
-                type="button"
-                :title="t`拖拽排序`"
-                @click.prevent
-                @pointercancel="cancelTableColumnDrag"
-                @pointerdown="startTableColumnDrag($event, column.id)"
-                @pointermove="moveTableColumnDrag"
-                @pointerup="finishTableColumnDrag"
-              >
-                <i class="fa-solid fa-grip-lines"></i>
-              </button>
-              <button class="pc-profile-column-main" type="button" @click="openTableColumn(column.id)">
-                <strong>{{ column.label }}</strong>
-                <span>
-                  <i v-if="isProtectedColumn(column.id)" class="fa-solid fa-lock" :title="t`固定字段`"></i>
-                  <i v-if="!column.enabled" class="fa-solid fa-eye-slash" :title="t`字段已停用`"></i>
-                  <i class="fa-solid fa-chevron-right"></i>
-                </span>
-              </button>
-            </article>
-          </div>
-        </section>
-        <div class="pc-form-actions">
-          <button
-            v-if="!editingTable.builtIn"
-            class="pc-soft-btn danger"
-            type="button"
-            @click="removeTable(editingTable.id)"
-          >
-            {{ t`删除表格` }}
-          </button>
-          <button class="pc-soft-btn" type="button" @click="phone.goBack()">{{ t`取消` }}</button>
-          <button class="pc-primary-btn" type="button" @click="saveTableDraft">{{ t`保存` }}</button>
-        </div>
-      </article>
-    </section>
+    <ProfilesTableEditorPage
+      v-else-if="route.page === 'table-editor' && editingTable"
+      v-model:display-format="tableDraft.displayFormat"
+      v-model:kind="tableDraft.kind"
+      v-model:name="tableDraft.name"
+      v-model:render-mode="tableDraft.renderMode"
+      :columns="tableDraft.columns"
+      :drag="tableColumnDrag"
+      :is-protected="isProtectedColumn"
+      :kind-options="profileKindOptions"
+      :table="editingTable"
+      @add-column="openNewTableColumn"
+      @back="phone.goBack()"
+      @drag-cancel="cancelTableColumnDrag"
+      @drag-end="finishTableColumnDrag"
+      @drag-move="moveTableColumnDrag"
+      @drag-start="startTableColumnDrag"
+      @open-column="openTableColumn"
+      @remove="removeTable(editingTable.id)"
+      @reset-format="resetTableDisplayFormat"
+      @save="saveTableDraft"
+    />
 
     <ProfileFieldEditorPage
       v-else-if="route.page === 'table-column-editor' && editingTable"
@@ -301,262 +72,131 @@
       @save="saveEditingTableColumn"
     />
 
-    <section v-else-if="route.page === 'entry' && activeEntry" class="pc-profiles-page pc-profiles-detail-page">
-      <article class="pc-detail-card pc-profile-detail-archive">
-        <div class="pc-detail-title-row">
-          <div>
-            <span class="pc-kicker"
-              ><i :class="['fa-solid', profileKindIcon(activeEntry.kind)]"></i>{{ entryTableName(activeEntry) }}</span
-            >
-            <h2>{{ activeEntry.title }}</h2>
-          </div>
-          <button class="pc-detail-mini-btn" type="button" :title="t`编辑`" @click="openEditor(activeEntry.id)">
-            <i class="fa-solid fa-pen"></i>
-          </button>
-        </div>
-        <FrontendFrame
-          v-if="activeEntryTable?.renderMode === 'frontend'"
-          :active="route.page === 'entry'"
-          :content="profileFrontend.content"
-          :theme="settings.theme"
-          :title="activeEntry.title"
-        />
-        <div v-if="profileFrontend.errors.length" class="pc-status-card warning">
-          <strong>{{ t`资料表格式提示` }}</strong>
-          <p>{{ profileFrontend.errors.join('；') }}</p>
-        </div>
-        <!-- eslint-disable-next-line vue/no-v-html -->
-        <article
-          v-else
-          ref="entryContentEl"
-          class="pc-detail-content pc-rendered-markdown"
-          v-html="renderMarkdown(profileMarkdownContent)"
-        ></article>
-      </article>
-      <DetailFooter
-        catalog-label="列表"
-        next-label="下一条"
-        previous-label="上一条"
-        :next-disabled="!nextEntryId"
-        :previous-disabled="!previousEntryId"
-        @bottom="scrollToBottom"
-        @catalog="phone.replacePage('root', '资料表')"
-        @next="openEntry(nextEntryId)"
-        @previous="openEntry(previousEntryId)"
-        @top="scrollToTop"
-      >
-        <template #actions>
-          <button
-            v-if="profileBaguContent"
-            class="pc-soft-btn"
-            type="button"
-            :title="t`八股检测`"
-            @click="openProfilesBaguScan"
-          >
-            <i class="fa-solid fa-filter-circle-xmark"></i>
-          </button>
-          <button
-            :class="['pc-soft-btn', { active: activeEntry.favorite }]"
-            type="button"
-            :title="activeEntry.favorite ? t`取消收藏` : t`收藏`"
-            @click="profiles.toggleFavorite(activeEntry.id)"
-          >
-            <i class="fa-solid fa-heart"></i>
-          </button>
-          <button class="pc-soft-btn" type="button" :title="t`编辑`" @click="openEditor(activeEntry.id)">
-            <i class="fa-solid fa-pen"></i>
-          </button>
-          <button class="pc-soft-btn danger" type="button" :title="t`删除`" @click="removeEntry(activeEntry.id)">
-            <i class="fa-solid fa-trash"></i>
-          </button>
-        </template>
-      </DetailFooter>
-    </section>
+    <ProfilesEntryDetailPage
+      v-else-if="route.page === 'entry' && activeEntry"
+      :bagu-content="profileBaguContent"
+      :entry="activeEntry"
+      :frontend-content="profileFrontend.content"
+      :frontend-errors="profileFrontend.errors"
+      :kind-icon="profileKindIcon(activeEntry.kind)"
+      :markdown-html="renderMarkdown(profileMarkdownContent)"
+      :next-entry-id="nextEntryId"
+      :previous-entry-id="previousEntryId"
+      :render-mode="activeEntryTable?.renderMode || 'markdown'"
+      :table-name="entryTableName(activeEntry)"
+      :theme="settings.theme"
+      @bagu="openProfilesBaguScan"
+      @catalog="phone.replacePage('root', '资料表')"
+      @edit="openEditor(activeEntry.id)"
+      @favorite="profiles.toggleFavorite(activeEntry.id)"
+      @open-entry="openEntry"
+      @remove="removeEntry(activeEntry.id)"
+    />
 
-    <section v-else-if="route.page === 'bagu-scan' && activeEntry" class="pc-profiles-page">
-      <article class="pc-detail-card">
-        <div class="pc-detail-title-row">
-          <div>
-            <span class="pc-kicker">{{ getProfileKindLabel(activeEntry.kind) }}</span>
-            <h2>{{ activeEntry.title }}</h2>
-          </div>
-        </div>
-        <BaguScanPanel
-          auto-scan
-          class="pc-detail-bagu-panel"
-          :content="profileBaguContent"
-          :apply-handler="applyProfilesBaguContent"
-        />
-      </article>
-    </section>
+    <BaguDetailPage
+      v-else-if="route.page === 'bagu-scan' && activeEntry"
+      :apply-handler="applyProfilesBaguContent"
+      :content="profileBaguContent"
+      :meta="getProfileKindLabel(activeEntry.kind)"
+      :title="activeEntry.title"
+    />
 
-    <section v-else-if="route.page === 'editor'" class="pc-profiles-page">
-      <article class="pc-editor-card">
-        <span class="pc-kicker">{{ editingEntry ? t`编辑资料` : t`新增资料` }}</span>
-        <h2>{{ editingEntry?.title || t`资料卡片` }}</h2>
-        <input v-model="draft.title" class="pc-field" type="text" :placeholder="t`标题`" />
-        <select v-model="draft.tableId" class="pc-field pc-select" @change="syncDraftTable">
-          <option v-for="table in tables" :key="table.id" :value="table.id">{{ table.name }}</option>
-        </select>
-        <input
-          v-if="isDraftColumnEnabled('summary')"
-          v-model="draft.summary"
-          class="pc-field"
-          type="text"
-          :placeholder="t`一句话摘要，可留空`"
-        />
-        <input
-          v-if="isDraftColumnEnabled('tags')"
-          v-model="draft.tagsText"
-          class="pc-field"
-          type="text"
-          :placeholder="t`标签，用逗号分隔`"
-        />
-        <template v-for="column in editableDraftColumns" :key="column.id">
-          <label class="pc-field-group">
-            <span>{{ column.label }}</span>
-            <textarea
-              v-if="column.type === 'textarea'"
-              v-model="draft.fields[column.id]"
-              class="pc-area compact"
-            ></textarea>
-            <select
-              v-else-if="column.type === 'select' || column.type === 'boolean'"
-              v-model="draft.fields[column.id]"
-              class="pc-field pc-select"
-            >
-              <option value="">{{ t`未填写` }}</option>
-              <option
-                v-for="option in column.type === 'boolean' ? booleanOptions : column.options"
-                :key="option"
-                :value="option"
-              >
-                {{ option }}
-              </option>
-            </select>
-            <input
-              v-else
-              v-model="draft.fields[column.id]"
-              class="pc-field"
-              type="text"
-              :placeholder="column.type === 'tags' ? t`用逗号分隔` : t`可留空`"
-            />
-          </label>
-        </template>
-        <div class="pc-form-actions">
-          <button class="pc-soft-btn" type="button" @click="phone.goBack()">{{ t`取消` }}</button>
-          <button class="pc-primary-btn" type="button" @click="saveDraft">{{ t`保存` }}</button>
-        </div>
-      </article>
-    </section>
+    <ProfilesEntryEditorPage
+      v-else-if="route.page === 'editor'"
+      v-model:fields="draft.fields"
+      v-model:summary="draft.summary"
+      v-model:table-id="draft.tableId"
+      v-model:tags-text="draft.tagsText"
+      v-model:title="draft.title"
+      :boolean-options="booleanOptions"
+      :columns="editableDraftColumns"
+      :current-title="editingEntry?.title || ''"
+      :editing="Boolean(editingEntry)"
+      :summary-enabled="isDraftColumnEnabled('summary')"
+      :tables="tables"
+      :tags-enabled="isDraftColumnEnabled('tags')"
+      @back="phone.goBack()"
+      @change-table="syncDraftTable"
+      @save="saveDraft"
+    />
 
-    <section v-else-if="route.page === 'generate'" class="pc-profiles-page">
-      <article class="pc-editor-card">
-        <span class="pc-kicker">{{ t`AI 资料` }}</span>
-        <h2>{{ t`生成资料卡片` }}</h2>
+    <GenerationFormPage
+      v-else-if="route.page === 'generate'"
+      v-model:from-start-end="generationDraft.fromStartEnd"
+      v-model:range-text="generationDraft.rangeText"
+      v-model:recent-count="generationDraft.recentCount"
+      v-model:references="selectedReferences"
+      v-model:single-message-id="generationDraft.singleMessageId"
+      v-model:source-mode="settings.generation.sourceMode"
+      v-model:user-requirement="generationDraft.userRequirement"
+      :capture="captureProfilePrompt"
+      :capture-reset-key="profilePromptPreview"
+      :error="generationState.error"
+      kicker="AI 资料"
+      :raw-output="generationState.rawOutput"
+      requirement-placeholder="例如：整理沐辞的人物资料，只保留已发生和已确认的信息。"
+      :running="generationState.running"
+      title="生成资料卡片"
+      @cancel="phone.goBack()"
+      @generate="runGeneration"
+      @stop="stopGeneration"
+    >
+      <template #before-fields>
         <label class="pc-field-group">
-          <span>{{ t`目标资料表` }}</span>
+          <span>目标资料表</span>
           <select v-model="generationDraft.tableId" class="pc-field pc-select" @change="syncGenerationTable">
             <option v-for="table in tables" :key="table.id" :value="table.id">{{ table.name }}</option>
           </select>
         </label>
-        <input
-          v-model="generationDraft.titleHint"
-          class="pc-field"
-          type="text"
-          :placeholder="t`标题或对象名，可留空`"
-        />
-        <GenerationPanel
-          :capture="captureProfilePrompt"
-          :capture-reset-key="profilePromptPreview"
-          :error="generationState.error"
-          :from-start-end="generationDraft.fromStartEnd"
-          :range-text="generationDraft.rangeText"
-          :raw-output="generationState.rawOutput"
-          :recent-count="generationDraft.recentCount"
-          :references="selectedReferences"
-          :running="generationState.running"
-          :single-message-id="generationDraft.singleMessageId"
-          :source-mode="settings.generation.sourceMode"
-          :user-requirement="generationDraft.userRequirement"
-          requirement-placeholder="例如：整理沐辞的人物资料，只保留已发生和已确认的信息。"
-          @cancel="phone.goBack()"
-          @generate="runGeneration"
-          @stop="stopGeneration"
-          @update:from-start-end="generationDraft.fromStartEnd = $event"
-          @update:range-text="generationDraft.rangeText = $event"
-          @update:recent-count="generationDraft.recentCount = $event"
-          @update:references="selectedReferences = $event"
-          @update:single-message-id="generationDraft.singleMessageId = $event"
-          @update:source-mode="settings.generation.sourceMode = $event"
-          @update:user-requirement="generationDraft.userRequirement = $event"
-        />
-      </article>
-    </section>
-
-    <section
+        <input v-model="generationDraft.titleHint" class="pc-field" type="text" placeholder="标题或对象名，可留空" />
+      </template>
+    </GenerationFormPage>
+    <GenerationPreviewPage
       v-else-if="route.page === 'preview' && generationState.preview"
-      class="pc-profiles-page pc-generation-preview-page"
-    >
-      <article class="pc-detail-card pc-generation-preview-card">
-        <GenerationPreviewPanel
-          :content="generationState.preview.content"
-          :raw="generationState.preview.raw"
-          raw-editable
-          :reparse-handler="reparsePreviewRaw"
-          :scan-enabled="false"
-          :source-label="generationState.preview.source.label"
-          :text-provider-summary="textProviderSummary"
-          :title="generationState.preview.title"
-          :warnings="generationState.preview.warnings"
-          save-label="保存资料"
-          @back="returnToGenerate"
-          @reparse="reparsePreviewRaw"
-          @save="savePreview"
-          @update:raw="generationState.preview.raw = $event"
-        />
-      </article>
-    </section>
+      v-model:content="generationState.preview.content"
+      v-model:raw="generationState.preview.raw"
+      :reparse-handler="reparsePreviewRaw"
+      save-label="保存资料"
+      :scan-enabled="false"
+      :source-label="generationState.preview.source.label"
+      :text-provider-summary="textProviderSummary"
+      :title="generationState.preview.title"
+      :warnings="generationState.preview.warnings"
+      @back="returnToGenerate"
+      @reparse="reparsePreviewRaw"
+      @save="savePreview"
+    />
 
-    <section v-else-if="route.page === 'failed-draft' && activeFailedDraft" class="pc-profiles-page pc-repair-page">
-      <article class="pc-editor-card pc-repair-card">
-        <span class="pc-kicker">{{ activeFailedDraft.source.label }}</span>
-        <h2>{{ t`修复解析失败草稿` }}</h2>
-        <div v-if="activeFailedDraft.warnings.length" class="pc-status-card warning">
-          <strong>{{ t`上次解析提示` }}</strong>
+    <FailedDraftRepairPage
+      v-else-if="route.page === 'failed-draft' && activeFailedDraft"
+      v-model:raw-output="failedDraftRawOutput"
+      raw-label="原始输出"
+      :source-label="activeFailedDraft.source.label"
+      title="修复解析失败草稿"
+      @delete="removeFailedDraft(activeFailedDraft.id)"
+      @reparse="reparseFailedDraft"
+    >
+      <template v-if="activeFailedDraft.warnings.length" #before-editor>
+        <div class="pc-status-card warning">
+          <strong>上次解析提示</strong>
           <p>{{ activeFailedDraft.warnings.join('；') }}</p>
         </div>
-        <label class="pc-number-field pc-repair-raw-field">
-          <span class="pc-field-label">{{ t`原始输出` }}</span>
-          <RawOutputEditor
-            v-model="failedDraftRawOutput"
-            :placeholder="t`在这里修 XML 结构或补 title / content。`"
-            @reparse="reparseFailedDraft"
-          />
-        </label>
-        <div class="pc-form-actions">
-          <button class="pc-soft-btn danger" type="button" @click="removeFailedDraft(activeFailedDraft.id)">
-            {{ t`删除草稿` }}
-          </button>
-          <button class="pc-soft-btn" type="button" @click="reparseFailedDraft">{{ t`重新解析` }}</button>
-        </div>
-      </article>
-    </section>
+      </template>
+    </FailedDraftRepairPage>
   </section>
 </template>
 
 <script setup lang="ts">
-import BaguScanPanel from '@/components/BaguScanPanel.vue';
-import DetailFooter from '@/components/DetailFooter.vue';
-import EmptyState from '@/components/EmptyState.vue';
-import FailedDraftList from '@/components/FailedDraftList.vue';
-import FrontendFrame from '@/components/FrontendFrame.vue';
-import GenerationPanel from '@/components/GenerationPanel.vue';
-import GenerationPreviewPanel from '@/components/GenerationPreviewPanel.vue';
-import PreviewDraftNotice from '@/components/PreviewDraftNotice.vue';
-import RawOutputEditor from '@/components/RawOutputEditor.vue';
-import SearchableCombobox from '@/components/SearchableCombobox.vue';
+import BaguDetailPage from '@/components/BaguDetailPage.vue';
+import FailedDraftRepairPage from '@/components/FailedDraftRepairPage.vue';
+import GenerationFormPage from '@/components/GenerationFormPage.vue';
+import GenerationPreviewPage from '@/components/GenerationPreviewPage.vue';
 import ProfileFieldEditorPage from './ProfileFieldEditorPage.vue';
+import ProfilesCatalogPage from './pages/ProfilesCatalogPage.vue';
+import ProfilesEntryDetailPage from './pages/ProfilesEntryDetailPage.vue';
+import ProfilesEntryEditorPage from './pages/ProfilesEntryEditorPage.vue';
+import ProfilesTableEditorPage from './pages/ProfilesTableEditorPage.vue';
+import ProfilesTableManagerPage from './pages/ProfilesTableManagerPage.vue';
 import { getRegisteredPhoneGenerationAdapter } from '@/core/appRegistry';
 import { captureGenerationPrompt, generateContent } from '@/core/generationService';
 import { usePhoneStore } from '@/store/phone';
@@ -564,7 +204,6 @@ import { usePromptStore } from '@/store/prompts';
 import { useSettingsStore } from '@/store/settings';
 import type { FailedGenerationDraft } from '@/type/generation';
 import { canOpenBaguScan } from '@/util/baguScanGate';
-import { useDetailScroll } from '@/util/detailScroll';
 import { renderMarkdown } from '@/util/markdown';
 import { usePreviewDraftPersistence } from '@/util/previewDrafts';
 import type { GenerationReferenceItem } from '@/util/references';
@@ -607,7 +246,6 @@ const query = ref('');
 const selectedTableId = ref('');
 const profileViewMode = ref<'list' | 'table'>('list');
 const selectedReferences = ref<GenerationReferenceItem[]>([]);
-const entryContentEl = ref<HTMLElement | null>(null);
 const failedDraftRawOutput = ref('');
 const draft = reactive({
   fields: {} as Record<string, string>,
@@ -794,7 +432,6 @@ const textProviderSummary = computed(() =>
     ? formatTextProviderSummary(settings.value.textProvider)
     : `酒馆当前 API · ${settings.value.generation.tavernPresetName.trim() || '跟随当前预设'}`,
 );
-const { scrollToBottom, scrollToTop } = useDetailScroll(entryContentEl, '.pc-profiles-detail-page .pc-detail-content');
 
 onScopeDispose(() => {
   if (generationState.running && generationState.generationId) {
@@ -1504,566 +1141,8 @@ function stopGeneration() {
 </script>
 
 <style scoped>
-.pc-profiles-app,
-.pc-profiles-page {
-  min-height: 100%;
-}
-
 .pc-profiles-app {
   height: 100%;
   min-height: 0;
-}
-
-.pc-profiles-page {
-  display: grid;
-  align-content: start;
-  gap: 14px;
-}
-
-.pc-profiles-detail-page {
-  display: flex;
-  height: 100%;
-  min-height: 0;
-  flex-direction: column;
-  overflow: hidden;
-}
-
-.pc-profiles-toolbar,
-.pc-profile-table-wrap,
-.pc-profile-list,
-.pc-profile-display-format {
-  border: 1px solid var(--pc-border);
-  border-radius: var(--pc-card-radius);
-  background: var(--pc-surface);
-}
-
-.pc-profiles-toolbar {
-  display: grid;
-  gap: 10px;
-  padding: 10px;
-}
-
-.pc-profile-context-row {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
-  align-items: center;
-  gap: 8px;
-  min-width: 0;
-}
-
-.pc-profile-table-switcher {
-  display: grid;
-  grid-template-columns: auto minmax(0, 1fr);
-  align-items: center;
-  gap: 9px;
-  min-width: 0;
-}
-
-.pc-profile-table-switcher > i {
-  display: grid;
-  width: 30px;
-  height: 30px;
-  place-items: center;
-  border-radius: 50%;
-  background: color-mix(in srgb, var(--pc-theme-accent) 14%, var(--pc-surface) 86%);
-  color: var(--pc-theme-accent);
-}
-
-.pc-profile-table-switcher :deep(.pc-combobox) {
-  min-width: 0;
-}
-
-.pc-profiles-toolbar > .pc-search-field {
-  width: 100%;
-}
-
-.pc-profiles-toolbar-bottom {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 10px;
-}
-
-.pc-profile-view-toggle {
-  flex: 0 0 auto;
-}
-
-.pc-profile-view-toggle .pc-segment-btn {
-  width: 40px;
-  min-width: 40px;
-  padding-inline: 0;
-}
-
-.pc-profile-primary-actions {
-  display: flex;
-  align-items: center;
-  justify-content: flex-end;
-  gap: 8px;
-  min-width: 0;
-}
-
-.pc-profile-table-wrap {
-  min-width: 0;
-  overflow-x: auto;
-  overflow-y: hidden;
-}
-
-.pc-profile-list {
-  display: grid;
-  overflow: hidden;
-}
-
-.pc-profile-list-row {
-  display: grid;
-  grid-template-columns: 36px minmax(0, 1fr) auto;
-  align-items: center;
-  gap: 10px;
-  border: 0;
-  border-bottom: 1px solid var(--pc-border);
-  background: transparent;
-  color: var(--pc-text);
-  cursor: pointer;
-  font: inherit;
-  padding: 12px;
-  text-align: left;
-}
-
-.pc-profile-list-row:last-child {
-  border-bottom: 0;
-}
-
-.pc-profile-list-row:hover {
-  background: color-mix(in srgb, var(--pc-theme-accent) 8%, transparent);
-}
-
-.pc-profile-list-icon {
-  display: grid;
-  width: 34px;
-  height: 34px;
-  place-items: center;
-  border-radius: 50%;
-  background: color-mix(in srgb, var(--pc-theme-accent) 12%, var(--pc-surface) 88%);
-  color: var(--pc-theme-accent);
-}
-
-.pc-profile-list-main {
-  display: grid;
-  min-width: 0;
-  gap: 3px;
-}
-
-.pc-profile-list-main strong,
-.pc-profile-list-main small {
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.pc-profile-list-main small,
-.pc-profile-list-arrow {
-  color: var(--pc-muted);
-}
-
-.pc-profile-list-tags {
-  display: flex;
-  gap: 4px;
-  min-width: 0;
-  overflow: hidden;
-}
-
-.pc-profile-list-main em {
-  display: inline-block;
-  width: max-content;
-  max-width: 96px;
-  overflow: hidden;
-  border-radius: 999px;
-  background: color-mix(in srgb, var(--pc-theme-accent) 13%, var(--pc-surface) 87%);
-  color: var(--pc-theme-accent);
-  font-size: 11px;
-  font-style: normal;
-  font-weight: 800;
-  line-height: 20px;
-  padding: 0 7px;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.pc-profile-table {
-  display: grid;
-  width: max(100%, var(--pc-profile-table-min-width, 0px));
-  min-width: var(--pc-profile-table-min-width, 0px);
-}
-
-.pc-profile-table-header,
-.pc-profile-table-row {
-  display: grid;
-  grid-template-columns: var(--pc-profile-grid-template, minmax(0, 1fr));
-  min-width: 0;
-}
-
-.pc-profile-table-header {
-  position: sticky;
-  top: 0;
-  z-index: 1;
-  border-bottom: 1px solid var(--pc-border);
-  background: color-mix(in srgb, var(--pc-surface-strong) 88%, var(--pc-theme-accent) 12%);
-  overflow: hidden;
-  color: var(--pc-muted);
-  font-size: 12px;
-  font-weight: 800;
-}
-
-.pc-profile-table-header span,
-.pc-profile-table-row span {
-  min-width: 0;
-  padding: 12px;
-  overflow: hidden;
-  text-align: left;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.pc-profile-table-row {
-  position: relative;
-  border: 0;
-  border-bottom: 1px solid var(--pc-border);
-  background: transparent;
-  color: var(--pc-text);
-  cursor: pointer;
-  font: inherit;
-}
-
-.pc-profile-table-row:last-child {
-  border-bottom: 0;
-}
-
-.pc-profile-table-row:hover {
-  background: color-mix(in srgb, var(--pc-theme-accent) 8%, transparent);
-}
-
-.pc-profile-table-row:active {
-  background: color-mix(in srgb, var(--pc-theme-accent) 14%, transparent);
-}
-
-.pc-profile-table-row span:first-child {
-  font-weight: 800;
-}
-
-.pc-profile-table-favorite {
-  position: absolute;
-  top: 50%;
-  right: 8px;
-  color: var(--pc-danger);
-  transform: translateY(-50%);
-}
-
-.pc-profile-table-cell.is-status {
-  color: var(--pc-muted);
-}
-
-.pc-profile-status-dot {
-  display: inline-block;
-  width: 7px;
-  height: 7px;
-  margin: 0 5px 1px 0;
-  border-radius: 50%;
-  background: var(--pc-theme-accent);
-}
-
-.pc-profile-table-cell em,
-.pc-profile-detail-fields em {
-  display: inline-block;
-  max-width: 92px;
-  margin: -2px 4px -2px 0;
-  overflow: hidden;
-  border-radius: 999px;
-  background: color-mix(in srgb, var(--pc-theme-accent) 13%, var(--pc-surface) 87%);
-  color: var(--pc-theme-accent);
-  font-size: 11px;
-  font-style: normal;
-  font-weight: 800;
-  line-height: 20px;
-  padding: 0 7px;
-  text-overflow: ellipsis;
-  vertical-align: middle;
-  white-space: nowrap;
-}
-
-.pc-profile-empty-actions {
-  display: flex;
-  flex-wrap: wrap;
-  justify-content: center;
-  gap: 8px;
-  margin-top: 12px;
-}
-
-.pc-profile-clear-search {
-  margin-top: 12px;
-}
-
-.pc-profile-table-manager,
-.pc-profile-table-editor,
-.pc-profile-column-list,
-.pc-profile-display-format,
-.pc-profile-fields-editor {
-  display: grid;
-  gap: 10px;
-}
-
-.pc-profile-table-manager-head {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-}
-
-.pc-profile-table-manager-head h2 {
-  margin: 4px 0 0;
-  font-size: 18px;
-}
-
-.pc-profile-table-manager-row {
-  display: grid;
-  grid-template-columns: 34px minmax(0, 1fr) auto;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  border: 1px solid var(--pc-border);
-  border-radius: var(--pc-card-radius);
-  background: var(--pc-surface-strong);
-  color: var(--pc-text);
-  cursor: pointer;
-  padding: 12px;
-  text-align: left;
-}
-
-.pc-profile-table-manager-icon {
-  display: grid;
-  width: 32px;
-  height: 32px;
-  place-items: center;
-  border-radius: 50%;
-  background: color-mix(in srgb, var(--pc-theme-accent) 12%, var(--pc-surface) 88%);
-  color: var(--pc-theme-accent);
-}
-
-.pc-profile-table-manager-row span {
-  display: grid;
-  gap: 4px;
-  min-width: 0;
-}
-
-.pc-profile-table-manager-row small {
-  color: var(--pc-muted);
-}
-
-.pc-profile-column-row {
-  position: relative;
-  display: grid;
-  grid-template-columns: 36px minmax(0, 1fr);
-  min-height: 56px;
-  align-items: center;
-  gap: 10px;
-  border: 1px solid var(--pc-border);
-  border-radius: var(--pc-card-radius);
-  background: var(--pc-surface-strong);
-  padding: 9px 10px;
-}
-
-.pc-profile-column-row.drop-before::before {
-  position: absolute;
-  z-index: 2;
-  top: -7px;
-  right: 8px;
-  left: 8px;
-  height: 3px;
-  border-radius: 2px;
-  background: var(--pc-theme-accent);
-  content: '';
-}
-
-.pc-profile-column-row.dragging {
-  opacity: 0.55;
-}
-
-.pc-profile-column-row.disabled {
-  color: var(--pc-muted);
-}
-
-.pc-profile-column-drag-handle {
-  width: 34px;
-  min-width: 34px;
-  height: 34px;
-  color: var(--pc-muted);
-  touch-action: none;
-}
-
-.pc-profile-column-main {
-  display: flex;
-  min-width: 0;
-  align-items: center;
-  justify-content: space-between;
-  gap: 10px;
-  border: 0;
-  background: transparent;
-  color: inherit;
-  cursor: pointer;
-  font: inherit;
-  padding: 8px 0;
-  text-align: left;
-}
-
-.pc-profile-column-main strong {
-  min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.pc-profile-column-main span {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  color: var(--pc-muted);
-}
-
-.pc-profile-fields-editor {
-  border: 1px solid var(--pc-border);
-  border-radius: var(--pc-card-radius);
-  background: var(--pc-surface);
-  padding: 10px;
-}
-
-.pc-profile-fields-head {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-}
-
-.pc-profile-fields-head > span {
-  display: inline-flex;
-  align-items: baseline;
-  gap: 7px;
-}
-
-.pc-profile-fields-head small {
-  color: var(--pc-muted);
-}
-
-.pc-profile-display-format {
-  padding: 12px;
-}
-
-.pc-profile-display-format > summary {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 10px;
-  cursor: pointer;
-  list-style: none;
-}
-
-.pc-profile-display-format > summary::-webkit-details-marker {
-  display: none;
-}
-
-.pc-profile-display-format > summary > span {
-  display: grid;
-  gap: 3px;
-}
-
-.pc-profile-display-format > summary small {
-  color: var(--pc-muted);
-}
-
-.pc-profile-display-format > summary > i {
-  color: var(--pc-muted);
-  transition: transform 160ms ease;
-}
-
-.pc-profile-display-format[open] > summary > i {
-  transform: rotate(180deg);
-}
-
-.pc-profile-display-format-body {
-  display: grid;
-  gap: 10px;
-  padding-top: 12px;
-}
-
-.pc-profile-summary {
-  color: var(--pc-muted);
-  margin: 0 0 14px;
-  line-height: 1.65;
-}
-
-.pc-profile-detail-archive .pc-detail-title-row {
-  padding-bottom: 12px;
-  border-bottom: 1px solid var(--pc-border);
-}
-
-.pc-profile-detail-archive .pc-kicker {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-}
-
-.pc-profile-detail-fields {
-  display: grid;
-  grid-template-columns: minmax(84px, 0.55fr) minmax(0, 1fr);
-  gap: 0;
-  margin: 0 0 14px;
-  border-top: 1px solid var(--pc-border);
-  border-left: 1px solid var(--pc-border);
-}
-
-.pc-profile-detail-fields dt,
-.pc-profile-detail-fields dd {
-  min-width: 0;
-  margin: 0;
-  border-right: 1px solid var(--pc-border);
-  border-bottom: 1px solid var(--pc-border);
-  padding: 10px;
-}
-
-.pc-profile-detail-fields dt {
-  color: var(--pc-muted);
-  font-size: 12px;
-  font-weight: 800;
-}
-
-.pc-profile-detail-fields dd {
-  overflow-wrap: anywhere;
-}
-
-.pc-profile-detail-fields dd.is-tags {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 4px;
-}
-
-.pc-profiles-detail-page .pc-detail-card {
-  display: flex;
-  flex: 1 1 auto;
-  min-height: 0;
-  flex-direction: column;
-}
-
-.pc-profiles-detail-page .pc-detail-content {
-  flex: 1 1 auto;
-  min-height: 0;
-  overflow: auto;
-}
-
-.pc-profile-area {
-  min-height: 260px;
-}
-
-.pc-raw-area {
-  min-height: 180px;
-  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
-  font-size: 12px;
 }
 </style>

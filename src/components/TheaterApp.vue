@@ -1,300 +1,106 @@
 <template>
   <section class="pc-theater-app">
-    <section v-if="route.page === 'root'" class="pc-theater-page">
-      <div class="pc-toolbar">
-        <input v-model="query" class="pc-search" type="text" :placeholder="t`搜索类型或历史内容...`" />
-        <button v-if="entries.length" class="pc-soft-btn compact" type="button" @click="openHistory">
-          <i class="fa-solid fa-clock-rotate-left"></i>
-          <span>{{ `小剧场记录（${entries.length}）` }}</span>
-        </button>
-      </div>
+    <TheaterCatalogPage
+      v-if="route.page === 'root'"
+      v-model:custom-type-name="customTypeName"
+      v-model:custom-type-open="customTypeOpen"
+      v-model:query="query"
+      v-model:type-view="typeView"
+      :entry-count="entries.length"
+      :failed-drafts="failedDrafts"
+      :get-failed-draft-context="failedDraftContextSummary"
+      :get-failed-draft-title="() => '未解析小剧场'"
+      :preview-draft="theaterPreviewDraft"
+      :type-usage-counts="typeUsageCounts"
+      :visible-type-prompts="visibleTypePrompts"
+      @discard-preview="discardTheaterPreviewDraft"
+      @open-custom-generate="openCustomGenerate"
+      @open-failed-draft="openFailedDraft"
+      @open-generate="openGenerate"
+      @open-history="openHistory"
+      @open-preview="openTheaterPreviewDraft"
+      @remove-failed-draft="removeFailedDraft"
+    />
 
-      <PreviewDraftNotice
-        :draft="theaterPreviewDraft"
-        @discard="discardTheaterPreviewDraft"
-        @open="openTheaterPreviewDraft"
-      />
+    <TheaterHistoryPage
+      v-else-if="route.page === 'history'"
+      v-model:filter-open="historyFilterOpen"
+      v-model:query="query"
+      v-model:sort-desc="sortDesc"
+      :entries="filteredEntries"
+      :filtered-history-type-tabs="filteredHistoryTypeTabs"
+      :history-type-tabs="historyTypeTabs"
+      :selected-type-keys="selectedHistoryTypeKeys"
+      @clear-filters="clearHistoryTypeFilters"
+      @invert-visible="invertVisibleHistoryTypeFilters"
+      @open-entry="openEntry"
+      @toggle-filter="toggleHistoryTypeFilter"
+    />
 
-      <div class="pc-segment pc-theater-type-view" role="group" aria-label="小剧场类型范围">
-        <button
-          :class="['pc-segment-btn', { active: typeView === 'recent' }]"
-          type="button"
-          @click="typeView = 'recent'"
-        >
-          {{ t`最近使用` }}
-        </button>
-        <button :class="['pc-segment-btn', { active: typeView === 'all' }]" type="button" @click="typeView = 'all'">
-          {{ t`全部类型` }}
-        </button>
-      </div>
+    <TheaterEntryEditorPage
+      v-else-if="route.page === 'editor'"
+      v-model:content="draft.content"
+      v-model:render-mode="draft.renderMode"
+      :title="editingEntry?.title"
+      @cancel="phone.goBack()"
+      @save="submitEntry"
+    />
 
-      <div class="pc-tag-cloud">
-        <CapsuleTag
-          :active="customTypeOpen"
-          icon="fa-solid fa-plus"
-          :label="t`自定义`"
-          @click="customTypeOpen = !customTypeOpen"
-        />
-        <CapsuleTag
-          v-for="typePrompt in visibleTypePrompts"
-          :key="typePrompt.id"
-          :active="query.trim() === typePrompt.name"
-          :count="typeUsageCounts.get(typePrompt.id) || typeUsageCounts.get(typePrompt.name)"
-          icon="fa-solid fa-masks-theater"
-          :label="typePrompt.name"
-          @click="openGenerate(typePrompt.id)"
-        />
-      </div>
+    <TheaterEntryDetailPage
+      v-else-if="route.page === 'entry' && activeEntry"
+      v-model:catalog-open="showCatalogModal"
+      :catalog-items="entryCatalogItems"
+      :entry="activeEntry"
+      :next-entry-id="nextEntryId"
+      :phone-open="isOpen"
+      :previous-entry-id="previousEntryId"
+      :theme="settings.theme"
+      :viewed-entry="viewedEntry"
+      :viewed-version-id="viewedEntryVersionId"
+      @bagu="openTheaterBaguScan"
+      @bottom="scrollToBottom"
+      @edit="openEditEntry(activeEntry.id, viewedEntryVersionId)"
+      @favorite="theater.toggleFavorite(activeEntry.id)"
+      @filter-type="filterTheaterRecords"
+      @navigate-blocked="handleFrameNavigateBlocked"
+      @next="openEntry(nextEntryId, true)"
+      @previous="openEntry(previousEntryId, true)"
+      @remove="removeEntry(activeEntry.id)"
+      @rewrite="openRewrite(activeEntry.id)"
+      @select-catalog="selectCatalogEntry"
+      @select-version="selectTheaterVersion"
+      @split-version="splitCurrentTheaterVersion"
+      @top="scrollToTop"
+    />
 
-      <div v-if="customTypeOpen" class="pc-custom-type-row">
-        <input
-          v-model="customTypeName"
-          class="pc-field"
-          type="text"
-          :placeholder="t`输入新类型名`"
-          @keydown.enter="openCustomGenerate"
-        />
-        <button
-          class="pc-primary-btn compact"
-          type="button"
-          :disabled="!customTypeName.trim()"
-          @click="openCustomGenerate"
-        >
-          {{ t`添加` }}
-        </button>
-      </div>
+    <BaguDetailPage
+      v-else-if="route.page === 'bagu-scan' && activeEntry"
+      :apply-handler="applyTheaterBaguContent"
+      :content="viewedEntry.content"
+      :title="viewedEntry.title"
+    />
 
-      <FailedDraftList
-        :drafts="failedDrafts"
-        :get-context="failedDraftContextSummary"
-        :get-title="() => t`未解析小剧场`"
-        @open="openFailedDraft"
-        @remove="removeFailedDraft"
-      />
-    </section>
-
-    <section v-else-if="route.page === 'history'" class="pc-theater-page">
-      <div class="pc-theater-hero">
-        <div>
-          <h2>{{ t`小剧场记录` }}</h2>
-        </div>
-        <div class="pc-hero-actions">
-          <button class="pc-soft-btn" type="button" @click="sortDesc = !sortDesc">
-            {{ sortDesc ? t`倒序` : t`正序` }}
-          </button>
-        </div>
-      </div>
-
-      <div class="pc-toolbar">
-        <input
-          v-model="query"
-          class="pc-search"
-          type="text"
-          :placeholder="historyFilterOpen ? t`搜索记录或标签...` : t`搜索标题或类型...`"
-        />
-      </div>
-      <div v-if="historyTypeTabs.length" class="pc-theater-filter-control">
-        <button class="pc-soft-btn" type="button" @click="historyFilterOpen = !historyFilterOpen">
-          <i class="fa-solid fa-tags"></i>
-          <span>{{ selectedHistoryTypeKeys.size ? `标签筛选（${selectedHistoryTypeKeys.size}）` : t`标签筛选` }}</span>
-          <i :class="['fa-solid fa-chevron-down', { expanded: historyFilterOpen }]"></i>
-        </button>
-      </div>
-      <section v-if="historyFilterOpen && historyTypeTabs.length" class="pc-section-card pc-history-tag-panel">
-        <div class="pc-history-tag-actions">
-          <span>{{ `已选 ${selectedHistoryTypeKeys.size} / ${historyTypeTabs.length}` }}</span>
-          <button class="pc-soft-btn compact" type="button" @click="invertVisibleHistoryTypeFilters">
-            {{ t`反选可见` }}
-          </button>
-          <button class="pc-soft-btn compact" type="button" @click="clearHistoryTypeFilters">{{ t`清空` }}</button>
-        </div>
-        <div class="pc-history-tag-list" aria-label="小剧场类型筛选">
-          <CapsuleTag
-            v-for="tab in filteredHistoryTypeTabs"
-            :key="tab.key"
-            :active="selectedHistoryTypeKeys.has(tab.key)"
-            compact
-            :count="tab.count"
-            icon="fa-solid fa-masks-theater"
-            :label="tab.label"
-            @click="toggleHistoryTypeFilter(tab.key)"
-          />
-        </div>
-      </section>
-
-      <EmptyState
-        v-if="!filteredEntries.length"
-        :title="query || selectedHistoryTypeKeys.size ? t`暂无匹配记录` : t`还没有小剧场条目`"
-      />
-
-      <div v-else class="pc-entry-list">
-        <article v-for="entry in filteredEntries" :key="entry.id" class="pc-entry-card">
-          <button class="pc-entry-main" type="button" @click="openEntry(entry.id)">
-            <div class="pc-entry-head">
-              <strong>{{ entry.title }}</strong>
-              <ContentVersionBadge :count="Math.max(1, entry.versions.length)" />
-            </div>
-          </button>
-        </article>
-      </div>
-    </section>
-
-    <section v-else-if="route.page === 'editor'" class="pc-theater-page">
-      <div class="pc-editor-card">
-        <span class="pc-kicker">{{ t`编辑小剧场` }}</span>
-        <h2>{{ editingEntry ? editingEntry.title : t`调整当前条目` }}</h2>
-
-        <div class="pc-segment pc-mode-selector">
-          <button
-            :class="['pc-segment-btn', { active: draft.renderMode === 'markdown' }]"
-            type="button"
-            @click="draft.renderMode = 'markdown'"
-          >
-            {{ t`Markdown 文本` }}
-          </button>
-          <button
-            :class="['pc-segment-btn', { active: draft.renderMode === 'frontend' }]"
-            type="button"
-            @click="draft.renderMode = 'frontend'"
-          >
-            {{ t`网页渲染` }}
-          </button>
-        </div>
-        <textarea v-model="draft.content" class="pc-area pc-saved-content-area" :placeholder="t`正文`"></textarea>
-
-        <div class="pc-form-actions">
-          <button class="pc-soft-btn" type="button" @click="phone.goBack()">{{ t`取消` }}</button>
-          <button class="pc-primary-btn" type="button" @click="submitEntry">{{ t`保存` }}</button>
-        </div>
-      </div>
-    </section>
-
-    <section v-else-if="route.page === 'entry' && activeEntry" class="pc-theater-page pc-theater-detail-page">
-      <ReaderDetailShell
-        actions-class="six"
-        :content="viewedEntry.content"
-        :custom-content="viewedEntry.renderMode === 'frontend'"
-        display-app-id="theater"
-        :favorite-active="activeEntry.favorite"
-        :footer-always-visible="viewedEntry.renderMode === 'frontend'"
-        :next-disabled="!nextEntryId"
-        :previous-disabled="!previousEntryId"
-        :title="viewedEntry.title"
-        @bagu="openTheaterBaguScan"
-        @bottom="scrollToBottom"
-        @catalog="showCatalogModal = true"
-        @edit="openEditEntry(activeEntry.id, viewedEntryVersionId)"
-        @favorite="theater.toggleFavorite(activeEntry.id)"
-        @next="openEntry(nextEntryId || '', true)"
-        @previous="openEntry(previousEntryId || '', true)"
-        @top="scrollToTop"
-      >
-        <template #version-navigation>
-          <VersionNavigator
-            :versions="activeEntry.versions"
-            :viewed-version-id="viewedEntryVersionId"
-            @select="selectTheaterVersion"
-          />
-        </template>
-        <template #before-content>
-          <div class="pc-entry-tags">
-            <CapsuleTag
-              compact
-              active
-              icon="fa-solid fa-masks-theater"
-              :label="activeEntry.typeName || t`未分类小剧场`"
-              @click="filterTheaterRecords(activeEntry.typeName || t`未分类小剧场`)"
-            />
-          </div>
-        </template>
-        <template #content="{ displayContent }">
-          <FrontendFrame
-            v-if="viewedEntry.renderMode === 'frontend'"
-            :active="isOpen"
-            :content="displayContent"
-            :theme="settings.theme"
-            :title="viewedEntry.title"
-            @navigate-blocked="handleFrameNavigateBlocked"
-          />
-        </template>
-        <template #actions>
-          <button
-            class="pc-soft-btn"
-            type="button"
-            :disabled="activeEntry.versions.length <= 1"
-            :title="activeEntry.versions.length > 1 ? t`拆分为独立小剧场` : t`只有一个版本，无需拆分`"
-            @click="splitCurrentTheaterVersion"
-          >
-            <i class="fa-solid fa-code-branch"></i>
-          </button>
-          <button class="pc-soft-btn" type="button" :title="t`重新生成`" @click="openRewrite(activeEntry.id)">
-            <i class="fa-solid fa-rotate"></i>
-          </button>
-          <button
-            class="pc-soft-btn danger"
-            type="button"
-            :title="activeEntry.versions.length > 1 ? t`删除当前版本` : t`删除小剧场`"
-            @click="removeEntry(activeEntry.id)"
-          >
-            <i class="fa-solid fa-trash"></i>
-          </button>
-        </template>
-        <template #overlays>
-          <CatalogModal
-            :active-id="activeEntry.id"
-            :items="entryCatalogItems"
-            :open="showCatalogModal"
-            @close="showCatalogModal = false"
-            @select="selectCatalogEntry"
-          />
-        </template>
-      </ReaderDetailShell>
-    </section>
-
-    <section v-else-if="route.page === 'bagu-scan' && activeEntry" class="pc-theater-page">
-      <div class="pc-detail-card">
-        <div class="pc-detail-title-row">
-          <h2>{{ viewedEntry.title }}</h2>
-        </div>
-        <BaguScanPanel
-          auto-scan
-          class="pc-detail-bagu-panel"
-          :content="viewedEntry.content"
-          :apply-handler="applyTheaterBaguContent"
-        />
-      </div>
-    </section>
-
-    <section v-else-if="route.page === 'generate'" class="pc-theater-page">
-      <div class="pc-editor-card">
-        <span class="pc-kicker">{{ t`类型配置` }}</span>
-
-        <GenerationPanel
-          :capture="captureTheaterPrompt"
-          :capture-reset-key="generationPromptPreview"
-          :error="generationState.error"
-          :from-start-end="generationDraft.fromStartEnd"
-          :range-text="generationDraft.rangeText"
-          :raw-output="generationState.rawOutput"
-          :recent-count="generationDraft.recentCount"
-          :references="selectedReferences"
-          requirement-placeholder="例如：更强调舞台调度、停顿和角色对视。"
-          :running="generationState.running"
-          :single-message-id="generationDraft.singleMessageId"
-          :source-mode="settings.generation.sourceMode"
-          :user-requirement="generationDraft.userRequirement"
-          @cancel="phone.goBack()"
-          @generate="runGeneration"
-          @stop="stopGeneration"
-          @update:from-start-end="generationDraft.fromStartEnd = $event"
-          @update:range-text="generationDraft.rangeText = $event"
-          @update:recent-count="generationDraft.recentCount = $event"
-          @update:references="selectedReferences = $event"
-          @update:single-message-id="generationDraft.singleMessageId = $event"
-          @update:source-mode="settings.generation.sourceMode = $event"
-          @update:user-requirement="generationDraft.userRequirement = $event"
-        >
-          <template #before-fields>
+    <GenerationFormPage
+      v-else-if="route.page === 'generate'"
+      v-model:from-start-end="generationDraft.fromStartEnd"
+      v-model:range-text="generationDraft.rangeText"
+      v-model:recent-count="generationDraft.recentCount"
+      v-model:references="selectedReferences"
+      v-model:single-message-id="generationDraft.singleMessageId"
+      v-model:source-mode="generationSourceMode"
+      v-model:user-requirement="generationDraft.userRequirement"
+      :capture="captureTheaterPrompt"
+      :capture-reset-key="generationPromptPreview"
+      :error="generationState.error"
+      kicker="类型配置"
+      :raw-output="generationState.rawOutput"
+      requirement-placeholder="例如：更强调舞台调度、停顿和角色对视。"
+      :running="generationState.running"
+      @cancel="phone.goBack()"
+      @generate="runGeneration"
+      @stop="stopGeneration"
+    >
+      <template #before-fields>
             <SearchableCombobox
               v-model="generationTypeChoice"
               :disabled="generationState.running"
@@ -337,75 +143,69 @@
                 {{ t`网页渲染` }}
               </button>
             </div>
-          </template>
-        </GenerationPanel>
-      </div>
-    </section>
+      </template>
+    </GenerationFormPage>
 
-    <section
+    <GenerationPreviewPage
       v-else-if="route.page === 'preview' && generationState.preview"
-      class="pc-theater-page pc-generation-preview-page"
+      v-model:content="generationState.preview.content"
+      v-model:raw="generationState.preview.raw"
+      :reparse-handler="reparsePreviewRaw"
+      :save-label="generationState.preview.mode === 'rewrite' ? '保存新版本' : '保存为条目'"
+      :source-label="generationState.preview.source.label"
+      :text-provider-summary="generationState.preview.typeName"
+      :title="generationState.preview.title"
+      :warnings="generationState.preview.warnings"
+      @back="returnToGenerate"
+      @reparse="reparsePreviewRaw"
+      @save="savePreview"
     >
-      <div class="pc-detail-card pc-generation-preview-card">
-        <GenerationPreviewPanel
+      <template #content>
+        <div class="pc-preview-render-toolbar">
+          <span class="pc-field-label">{{ t`解析与预览方式` }}</span>
+          <span class="pc-segment">
+            <button
+              :class="['pc-segment-btn', { active: generationState.preview.renderMode === 'markdown' }]"
+              type="button"
+              @click="switchPreviewRenderMode('markdown')"
+            >
+              Markdown
+            </button>
+            <button
+              :class="['pc-segment-btn', { active: generationState.preview.renderMode === 'frontend' }]"
+              type="button"
+              @click="switchPreviewRenderMode('frontend')"
+            >
+              {{ t`网页渲染` }}
+            </button>
+          </span>
+        </div>
+        <FrontendFrame
+          v-if="generationState.preview.renderMode === 'frontend'"
+          :active="isOpen"
           :content="generationState.preview.content"
-          :raw="generationState.preview.raw"
-          raw-editable
-          :reparse-handler="reparsePreviewRaw"
-          :save-label="generationState.preview.mode === 'rewrite' ? '保存新版本' : '保存为条目'"
-          :source-label="generationState.preview.source.label"
-          :text-provider-summary="generationState.preview.typeName"
+          :theme="settings.theme"
           :title="generationState.preview.title"
-          :warnings="generationState.preview.warnings"
-          @back="returnToGenerate"
-          @reparse="reparsePreviewRaw"
-          @save="savePreview"
-          @update:content="generationState.preview.content = $event"
-          @update:raw="generationState.preview.raw = $event"
-        >
-          <template #content>
-            <div class="pc-preview-render-toolbar">
-              <span class="pc-field-label">{{ t`解析与预览方式` }}</span>
-              <span class="pc-segment">
-                <button
-                  :class="['pc-segment-btn', { active: generationState.preview.renderMode === 'markdown' }]"
-                  type="button"
-                  @click="switchPreviewRenderMode('markdown')"
-                >
-                  Markdown
-                </button>
-                <button
-                  :class="['pc-segment-btn', { active: generationState.preview.renderMode === 'frontend' }]"
-                  type="button"
-                  @click="switchPreviewRenderMode('frontend')"
-                >
-                  {{ t`网页渲染` }}
-                </button>
-              </span>
-            </div>
-            <FrontendFrame
-              v-if="generationState.preview.renderMode === 'frontend'"
-              :active="isOpen"
-              :content="generationState.preview.content"
-              :theme="settings.theme"
-              :title="generationState.preview.title"
-              @navigate-blocked="handleFrameNavigateBlocked"
-            />
-            <!-- eslint-disable-next-line vue/no-v-html -->
-            <article
-              v-else
-              class="pc-detail-content pc-rendered-markdown"
-              v-html="renderMarkdown(formatReaderContent(generationState.preview.content, settings.reader))"
-            ></article>
-          </template>
-        </GenerationPreviewPanel>
-      </div>
-    </section>
+          @navigate-blocked="handleFrameNavigateBlocked"
+        />
+        <!-- eslint-disable-next-line vue/no-v-html -->
+        <article
+          v-else
+          class="pc-detail-content pc-rendered-markdown"
+          v-html="renderMarkdown(formatReaderContent(generationState.preview.content, settings.reader))"
+        ></article>
+      </template>
+    </GenerationPreviewPage>
 
-    <section v-else-if="route.page === 'failed-draft' && activeFailedDraft" class="pc-theater-page pc-repair-page">
-      <div class="pc-editor-card pc-repair-card">
-        <span class="pc-kicker">{{ activeFailedDraft.source.label }}</span>
-
+    <FailedDraftRepairPage
+      v-else-if="route.page === 'failed-draft' && activeFailedDraft"
+      v-model:raw-output="failedDraftRawOutput"
+      :source-label="activeFailedDraft.source.label"
+      title="修复小剧场草稿"
+      @delete="removeFailedDraft(activeFailedDraft.id)"
+      @reparse="reparseFailedDraft"
+    >
+      <template #before-editor>
         <div class="pc-segment pc-mode-selector" aria-label="小剧场解析方式">
           <button
             :class="['pc-segment-btn', { active: failedDraftRenderMode === 'markdown' }]"
@@ -422,21 +222,8 @@
             {{ t`网页渲染` }}
           </button>
         </div>
-
-        <RawOutputEditor
-          v-model="failedDraftRawOutput"
-          :placeholder="t`在这里修 XML 结构或补 title / content。`"
-          @reparse="reparseFailedDraft"
-        />
-
-        <div class="pc-form-actions">
-          <button class="pc-soft-btn danger" type="button" @click="removeFailedDraft(activeFailedDraft.id)">
-            {{ t`删除草稿` }}
-          </button>
-          <button class="pc-soft-btn" type="button" @click="reparseFailedDraft">{{ t`重新解析` }}</button>
-        </div>
-      </div>
-    </section>
+      </template>
+    </FailedDraftRepairPage>
 
     <section v-else class="pc-theater-page">
       <EmptyState :title="t`小剧场页面已刷新`" />
@@ -445,20 +232,17 @@
 </template>
 
 <script setup lang="ts">
-import CatalogModal from '@/components/CatalogModal.vue';
-import BaguScanPanel from '@/components/BaguScanPanel.vue';
-import CapsuleTag from '@/components/CapsuleTag.vue';
-import ContentVersionBadge from '@/components/ContentVersionBadge.vue';
+import BaguDetailPage from '@/components/BaguDetailPage.vue';
 import EmptyState from '@/components/EmptyState.vue';
-import FailedDraftList from '@/components/FailedDraftList.vue';
+import FailedDraftRepairPage from '@/components/FailedDraftRepairPage.vue';
 import FrontendFrame from '@/components/FrontendFrame.vue';
-import GenerationPanel from '@/components/GenerationPanel.vue';
-import GenerationPreviewPanel from '@/components/GenerationPreviewPanel.vue';
-import PreviewDraftNotice from '@/components/PreviewDraftNotice.vue';
-import RawOutputEditor from '@/components/RawOutputEditor.vue';
-import ReaderDetailShell from '@/components/ReaderDetailShell.vue';
-import VersionNavigator from '@/components/VersionNavigator.vue';
+import GenerationFormPage from '@/components/GenerationFormPage.vue';
+import GenerationPreviewPage from '@/components/GenerationPreviewPage.vue';
 import SearchableCombobox from '@/components/SearchableCombobox.vue';
+import TheaterCatalogPage from '@/components/theater/TheaterCatalogPage.vue';
+import TheaterEntryDetailPage from '@/components/theater/TheaterEntryDetailPage.vue';
+import TheaterEntryEditorPage from '@/components/theater/TheaterEntryEditorPage.vue';
+import TheaterHistoryPage from '@/components/theater/TheaterHistoryPage.vue';
 import { useGenerationReplaySession } from '@/composables/useGenerationReplaySession';
 import { getRegisteredPhoneGenerationAdapter } from '@/core/appRegistry';
 import { buildGenerationPreview, captureGenerationPrompt, generateContent } from '@/core/generationService';
@@ -1561,216 +1345,6 @@ function handleFrameNavigateBlocked() {
   gap: 14px;
 }
 
-.pc-theater-detail-page {
-  display: flex;
-  flex-direction: column;
-  height: 100%;
-  min-height: 0;
-  gap: 10px;
-}
-
-.pc-editor-card,
-.pc-detail-card {
-  display: grid;
-  align-content: start;
-  gap: 14px;
-}
-
-.pc-theater-detail-page .pc-detail-card {
-  flex: 1 1 auto;
-  display: flex;
-  flex-direction: column;
-  min-height: 0;
-  font-family: var(--pc-reader-font-family);
-}
-
-.pc-theater-detail-page .pc-detail-content,
-.pc-theater-detail-page :deep(.pc-frame-shell) {
-  flex: 1 1 auto;
-  min-height: 0;
-}
-
-.pc-theater-hero {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 10px;
-}
-
-.pc-theater-hero h2,
-.pc-editor-card h2,
-.pc-detail-card h2 {
-  margin: 0;
-  font-size: 20px;
-  line-height: 1.25;
-}
-
-.pc-kicker,
-.pc-entry-card p,
-.pc-detail-meta,
-.pc-status-card p,
-.pc-raw-head span,
-.pc-preview-card p,
-.pc-field-label,
-.pc-entry-head span {
-  color: var(--pc-muted);
-}
-
-.pc-toolbar {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr);
-  gap: 8px;
-}
-
-.pc-toolbar .pc-soft-btn {
-  justify-self: start;
-  width: auto;
-  margin-bottom: 4px;
-}
-
-.pc-tag-cloud {
-  display: flex;
-  align-items: center;
-  align-content: flex-start;
-  gap: 8px;
-  flex-wrap: wrap;
-  max-height: clamp(180px, 30vh, 240px);
-  overflow-y: auto;
-  overscroll-behavior: contain;
-  padding: 10px;
-  border: 0.5px solid var(--pc-border);
-  border-radius: 12px;
-  background: var(--pc-bg);
-}
-
-.pc-theater-filter-control {
-  display: flex;
-}
-
-.pc-theater-filter-control .pc-soft-btn {
-  width: auto;
-}
-
-.pc-theater-filter-control .fa-chevron-down {
-  transition: transform 160ms ease;
-}
-
-.pc-theater-filter-control .fa-chevron-down.expanded {
-  transform: rotate(180deg);
-}
-
-.pc-history-tag-panel {
-  display: grid;
-  gap: 10px;
-  padding: 12px;
-}
-
-.pc-history-tag-actions {
-  display: flex;
-  align-items: center;
-  justify-content: flex-end;
-  gap: 8px;
-}
-
-.pc-history-tag-actions > span {
-  min-width: 0;
-  margin-right: auto;
-  color: var(--pc-muted);
-  font-size: 12px;
-}
-
-.pc-history-tag-list {
-  display: flex;
-  align-content: flex-start;
-  flex-wrap: wrap;
-  gap: 8px;
-  max-height: 220px;
-  overflow-y: auto;
-  overscroll-behavior: contain;
-}
-
-.pc-custom-type-row {
-  display: flex;
-  gap: 8px;
-}
-
-.pc-custom-type-row .pc-field {
-  flex: 1;
-}
-
-.pc-entry-list {
-  display: grid;
-  gap: 10px;
-}
-
-.pc-entry-card,
-.pc-status-card,
-.pc-detail-content,
-.pc-preview-card {
-  border: 0.5px solid var(--pc-border);
-  border-radius: 12px;
-  background: var(--pc-bg);
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
-}
-
-.pc-entry-card,
-.pc-status-card,
-.pc-preview-card,
-.pc-detail-content {
-  padding: 13px;
-}
-
-.pc-entry-card {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr);
-  align-items: center;
-  gap: 8px;
-}
-
-.pc-entry-main {
-  min-width: 0;
-  text-align: left;
-  border: 0;
-  background: transparent;
-  color: var(--pc-text);
-  cursor: pointer;
-}
-
-.pc-entry-head,
-.pc-detail-meta,
-.pc-section-head,
-.pc-raw-head,
-.pc-hero-actions,
-.pc-entry-tags {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
-.pc-entry-main strong {
-  display: block;
-  min-width: 0;
-  overflow: hidden;
-  font-size: 16px;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.pc-entry-head,
-.pc-detail-meta,
-.pc-section-head,
-.pc-raw-head {
-  justify-content: space-between;
-}
-
-.pc-entry-head {
-  align-items: flex-start;
-}
-
-.pc-entry-tags {
-  flex-wrap: wrap;
-}
-
 .pc-mode-selector {
   max-width: 100%;
 }
@@ -1783,103 +1357,17 @@ function handleFrameNavigateBlocked() {
   margin-bottom: 12px;
 }
 
-.pc-entry-main p {
-  margin: 6px 0 0;
-  font-size: 12px;
-  line-height: 1.5;
-}
-
-.pc-entry-main p.preview {
-  display: -webkit-box;
-  -webkit-line-clamp: 2;
-  -webkit-box-orient: vertical;
-  overflow: hidden;
-}
-
-.pc-search {
-  width: 100%;
-  border: 0.5px solid var(--pc-border);
-  border-radius: 10px;
-  outline: none;
-  background: var(--pc-bg);
-  color: var(--pc-text);
-  padding: 11px 12px;
-  font-size: 14px;
-}
-
-.pc-search {
-  height: 40px;
-  min-height: 40px;
-  line-height: normal;
-}
-
-.pc-theater-app .pc-area {
-  min-height: 96px;
-  resize: vertical;
-}
-
-.pc-theater-app .pc-area.compact {
-  min-height: 96px;
-}
-
-.pc-theater-app :is(.pc-primary-btn.compact, .pc-soft-btn.compact) {
-  min-width: 0;
-  width: auto;
-}
-
-.pc-soft-btn.danger,
-.pc-icon-btn.danger {
-  color: var(--pc-danger);
-}
-
 .pc-detail-content {
   margin: 0;
-  white-space: pre-wrap;
+  overflow: auto;
   color: var(--pc-text);
   font-family: var(--pc-reader-font-family);
   font-size: var(--pc-reader-font-size);
   line-height: var(--pc-reader-line-height);
-  overflow: auto;
+  white-space: pre-wrap;
 }
 
 .pc-detail-content :deep(*) {
   font-family: inherit;
-}
-
-.pc-theater-app .pc-form-actions {
-  justify-content: flex-start;
-  margin-top: 0;
-}
-
-.pc-raw-output,
-.pc-number-field {
-  display: grid;
-  gap: 8px;
-}
-
-.pc-mini-grid,
-.pc-meta-grid {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 8px;
-}
-
-.pc-status-card.warning {
-  border-color: color-mix(in srgb, #f5a623 42%, var(--pc-border) 58%);
-}
-
-.pc-status-card.danger {
-  border-color: color-mix(in srgb, var(--pc-danger) 42%, var(--pc-border) 58%);
-}
-
-.pc-status-card p {
-  margin: 6px 0 0;
-  line-height: 1.5;
-}
-
-.pc-raw-area {
-  min-height: 180px;
-  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
-  font-size: 12px;
 }
 </style>

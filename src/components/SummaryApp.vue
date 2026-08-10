@@ -1,123 +1,52 @@
 <template>
   <section class="pc-summary-app">
-    <section v-if="route.page === 'root'" class="pc-summary-page">
-      <PreviewDraftNotice
-        :draft="summaryPreviewDraft"
-        @discard="discardSummaryPreviewDraft"
-        @open="openSummaryPreviewDraft"
-      />
+    <SummaryCatalogPage
+      v-if="route.page === 'root'"
+      :failed-drafts="failedDrafts"
+      :get-failed-draft-context="failedDraftSourceLabel"
+      :preview-draft="summaryPreviewDraft"
+      :shelf-books="shelfBooks"
+      @create="openCreationMode"
+      @discard-preview="discardSummaryPreviewDraft"
+      @open-book="openBook"
+      @open-failed-draft="openFailedDraft"
+      @open-preview="openSummaryPreviewDraft"
+      @remove-failed-draft="removeFailedDraft"
+    />
 
-      <BookShelf
-        :books="shelfBooks"
-        create-label="生成总结"
-        create-subtitle="选择生成方式"
-        variant="diary"
-        @create="openCreationMode"
-        @select="openBook"
-      />
+    <SummaryCreationModePage
+      v-else-if="route.page === 'creation-mode'"
+      @batch="openBatchGenerate()"
+      @create="openCreateBook"
+      @extract="openSummaryExtract"
+    />
 
-      <FailedDraftList
-        :delete-title="t`删除`"
-        :drafts="failedDrafts"
-        :get-context="failedDraftSourceLabel"
-        :get-title="() => t`未解析输出`"
-        @open="openFailedDraft"
-        @remove="removeFailedDraft"
-      />
-    </section>
+    <SummaryBookEditorPage
+      v-else-if="route.page === 'create-book' || route.page === 'edit-book'"
+      v-model:title="bookTitle"
+      :creating="route.page === 'create-book'"
+      @cancel="phone.goBack()"
+      @create-empty="submitBook"
+      @submit="route.page === 'create-book' ? submitBookAndGenerate() : submitBook()"
+    />
 
-    <section v-else-if="route.page === 'creation-mode'" class="pc-summary-page">
-      <div class="pc-create-mode-list">
-        <button class="pc-soft-btn" type="button" @click="openSummaryExtract">
-          <i class="fa-solid fa-file-import"></i>
-          <span>{{ t`从聊天提取总结` }}</span>
-        </button>
-        <button class="pc-soft-btn" type="button" @click="openCreateBook">
-          <i class="fa-solid fa-file-lines"></i>
-          <span>{{ t`生成单条总结` }}</span>
-        </button>
-        <button class="pc-primary-btn" type="button" @click="openBatchGenerate()">
-          <i class="fa-solid fa-layer-group"></i>
-          <span>{{ t`批量生成总结` }}</span>
-        </button>
-      </div>
-    </section>
-
-    <section v-else-if="route.page === 'create-book' || route.page === 'edit-book'" class="pc-summary-page">
-      <div class="pc-editor-card">
-        <span class="pc-kicker">{{ route.page === 'create-book' ? t`生成总结` : t`重命名总结集` }}</span>
-        <h2>{{ route.page === 'create-book' ? t`先设置总结集，再生成第一条` : t`更新标题` }}</h2>
-        <input v-model="bookTitle" class="pc-field" type="text" :placeholder="t`例如 第一卷总结`" />
-        <div :class="['pc-form-actions', { 'pc-summary-create-actions': route.page === 'create-book' }]">
-          <button class="pc-soft-btn" type="button" @click="phone.goBack()">{{ t`取消` }}</button>
-          <button v-if="route.page === 'create-book'" class="pc-soft-btn" type="button" @click="submitBook">
-            {{ t`先建空白` }}
-          </button>
-          <button
-            class="pc-primary-btn"
-            type="button"
-            @click="route.page === 'create-book' ? submitBookAndGenerate() : submitBook()"
-          >
-            {{ route.page === 'create-book' ? t`开始生成` : t`保存` }}
-          </button>
-        </div>
-      </div>
-    </section>
-
-    <section v-else-if="route.page === 'book' && activeBook" class="pc-summary-page">
-      <div class="pc-summary-hero pc-summary-actions-hero">
-        <div>
-          <span class="pc-kicker">{{ t`总结条目` }}</span>
-          <p>{{ formatBookMeta(activeBook.entries.length) }}</p>
-        </div>
-        <div class="pc-hero-actions">
-          <button class="pc-soft-btn" type="button" @click="openImportChat(activeBook.id)">
-            <i class="fa-solid fa-file-import"></i>
-            <span>{{ t`导入` }}</span>
-          </button>
-          <button class="pc-soft-btn" type="button" @click="openBatchGenerate(activeBook.id)">
-            <i class="fa-solid fa-layer-group"></i>
-            <span>{{ t`批量` }}</span>
-          </button>
-          <button class="pc-soft-btn" type="button" @click="openGenerate(activeBook.id)">
-            <i class="fa-solid fa-wand-magic-sparkles"></i>
-            <span>{{ t`生成` }}</span>
-          </button>
-          <button class="pc-soft-btn" type="button" @click="summaryEntrySortDesc = !summaryEntrySortDesc">
-            <span>{{ summaryEntrySortDesc ? t`倒序` : t`正序` }}</span>
-          </button>
-          <button class="pc-icon-btn" type="button" :title="t`重命名总结集`" @click="openRenameBook(activeBook.id)">
-            <i class="fa-solid fa-pen"></i>
-          </button>
-          <button class="pc-icon-btn danger" type="button" :title="t`删除总结集`" @click="removeBook(activeBook.id)">
-            <i class="fa-solid fa-trash"></i>
-          </button>
-        </div>
-      </div>
-
-      <EmptyState v-if="!activeBook.entries.length" :title="t`还没有条目`" />
-
-      <div v-else class="pc-entry-list">
-        <article v-for="entry in sortedActiveBookEntries" :key="entry.id" class="pc-entry-card">
-          <button class="pc-entry-main" type="button" @click="openEntry(activeBook.id, entry.id)">
-            <div class="pc-entry-head">
-              <strong>{{ entry.title }}</strong>
-              <span class="pc-entry-order">{{ t`顺序` }} {{ entry.directoryOrder }}</span>
-            </div>
-            <p>{{ entry.rangeLabel }}</p>
-          </button>
-        </article>
-      </div>
-
-      <FailedDraftList
-        :delete-title="t`删除`"
-        :drafts="activeBookFailedDrafts"
-        :get-context="failedDraftSourceLabel"
-        :get-title="() => t`未解析输出`"
-        @open="openFailedDraft"
-        @remove="removeFailedDraft"
-      />
-    </section>
+    <SummaryBookPage
+      v-else-if="route.page === 'book' && activeBook"
+      :book="activeBook"
+      :entries="sortedActiveBookEntries"
+      :failed-drafts="activeBookFailedDrafts"
+      :get-failed-draft-context="failedDraftSourceLabel"
+      :sort-desc="summaryEntrySortDesc"
+      @batch="openBatchGenerate(activeBook.id)"
+      @generate="openGenerate(activeBook.id)"
+      @import="openImportChat(activeBook.id)"
+      @open-entry="openEntry(activeBook.id, $event)"
+      @open-failed-draft="openFailedDraft"
+      @remove-book="removeBook(activeBook.id)"
+      @remove-failed-draft="removeFailedDraft"
+      @rename="openRenameBook(activeBook.id)"
+      @toggle-sort="summaryEntrySortDesc = !summaryEntrySortDesc"
+    />
 
     <SummaryEntryDetailPage
       v-else-if="route.page === 'entry' && activeBook && activeEntry"
@@ -137,375 +66,129 @@
       @top="scrollToTop"
     />
 
-    <section v-else-if="route.page === 'bagu-scan' && activeBook && activeEntry" class="pc-summary-page">
-      <div class="pc-detail-card">
-        <span class="pc-kicker">{{ activeEntry.rangeLabel }}</span>
-        <div class="pc-detail-title-row">
-          <h2>{{ activeEntry.title }}</h2>
-        </div>
-        <BaguScanPanel
-          auto-scan
-          class="pc-detail-bagu-panel"
-          :content="activeEntry.content"
-          :apply-handler="applySummaryBaguContent"
-        />
-      </div>
-    </section>
+    <SummaryBaguPage
+      v-else-if="route.page === 'bagu-scan' && activeBook && activeEntry"
+      :apply-handler="applySummaryBaguContent"
+      :content="activeEntry.content"
+      :range-label="activeEntry.rangeLabel"
+      :title="activeEntry.title"
+    />
 
-    <section v-else-if="route.page === 'editor' && activeBook" class="pc-summary-page">
-      <div class="pc-editor-card">
-        <span class="pc-kicker">{{ t`编辑条目` }}</span>
-        <h2>{{ editingEntry ? editingEntry.title : t`调整当前内容` }}</h2>
-        <input v-model="entryDraft.title" class="pc-field" type="text" :placeholder="t`标题`" />
-        <input v-model="entryDraft.rangeLabel" class="pc-field" type="text" :placeholder="t`范围，例如 第 1-20 楼`" />
-        <div v-if="editingEntry" class="pc-field-group">
-          <label class="pc-field-label">{{ t`目录顺序` }}</label>
-          <input v-model.number="entryDraft.directoryOrder" class="pc-field" type="number" min="0" step="1" />
-        </div>
-        <textarea v-model="entryDraft.content" class="pc-area pc-saved-content-area" :placeholder="t`正文`"></textarea>
-        <div class="pc-form-actions">
-          <button class="pc-soft-btn" type="button" @click="phone.goBack()">{{ t`取消` }}</button>
-          <button class="pc-primary-btn" type="button" @click="submitEntry">{{ t`保存` }}</button>
-        </div>
-      </div>
-    </section>
+    <SummaryEntryEditorPage
+      v-else-if="route.page === 'editor' && activeBook"
+      v-model:content="entryDraft.content"
+      v-model:directory-order="entryDraft.directoryOrder"
+      v-model:range-label="entryDraft.rangeLabel"
+      v-model:title="entryDraft.title"
+      :editing-title="editingEntry?.title || ''"
+      :show-order="Boolean(editingEntry)"
+      @cancel="phone.goBack()"
+      @save="submitEntry"
+    />
 
-    <section v-else-if="route.page === 'import-chat'" class="pc-summary-page">
-      <article class="pc-editor-card pc-summary-import-page">
-        <span class="pc-kicker">{{ t`当前聊天` }}</span>
-        <h2>{{ t`提取 AI 楼层` }}</h2>
-        <EmptyState v-if="!books.length" :title="t`还没有总结集`">
-          <p>{{ t`先新建一个总结集，再把当前聊天里的 AI 楼层提取成总结条目。` }}</p>
-          <button class="pc-primary-btn compact" type="button" @click="openCreateBook">
-            {{ t`新建总结集` }}
-          </button>
-        </EmptyState>
-        <template v-else>
-          <label class="pc-field-group">
-            <span>{{ t`保存到总结集` }}</span>
-            <select v-model="summaryImportTargetBookId" class="pc-field pc-select" :disabled="summaryImport.loading">
-              <option v-for="book in books" :key="book.id" :value="book.id">
-                {{ book.title }}
-              </option>
-            </select>
-          </label>
-          <label class="pc-field-group">
-            <span>{{ t`楼层正文提取` }}</span>
-            <select
-              v-model="summaryImport.ruleId"
-              class="pc-field pc-select"
-              :disabled="summaryImport.loading"
-              @change="onSummaryImportRuleChange"
-            >
-              <option value="__default_body__">{{ t`默认楼层正文提取` }}</option>
-              <option v-for="rule in summaryImportRules" :key="rule.id" :value="rule.id">
-                {{ rule.name || t`未命名规则` }}
-              </option>
-            </select>
-          </label>
-          <div class="pc-summary-import-head">
-            <span>{{ t`AI 楼层` }} · {{ summaryImport.items.length }}</span>
-            <div>
-              <button
-                class="pc-icon-btn"
-                type="button"
-                :disabled="summaryImport.loading"
-                :title="t`刷新楼层`"
-                @click="reloadSummaryImport"
-              >
-                <i :class="['fa-solid fa-rotate-right', { spinning: summaryImport.loading }]"></i>
-              </button>
-              <button
-                class="pc-soft-btn compact"
-                type="button"
-                :disabled="!summaryImport.items.length"
-                @click="toggleAllSummaryImports"
-              >
-                {{ allSummaryImportsSelected ? t`取消全选` : t`全选` }}
-              </button>
-            </div>
-          </div>
-          <div v-if="summaryImport.error" class="pc-status-card warning">
-            <strong>{{ t`无法读取楼层` }}</strong>
-            <p>{{ summaryImport.error }}</p>
-          </div>
-          <div v-else-if="summaryImport.items.length" class="pc-summary-import-list">
-            <label v-for="item in summaryImport.items" :key="item.id" class="pc-summary-import-item">
-              <input
-                :checked="summaryImport.selectedIds.includes(item.id)"
-                type="checkbox"
-                @change="toggleSummaryImport(item.id, ($event.target as HTMLInputElement).checked)"
-              />
-              <span>
-                <strong>{{ t`第 ${item.messageIndex} 楼总结` }}</strong>
-                <small>{{ item.content }}</small>
-              </span>
-            </label>
-          </div>
-          <EmptyState v-else-if="!summaryImport.loading" :title="t`没有可导入的 AI 楼层`" />
-          <div class="pc-form-actions">
-            <button class="pc-soft-btn" type="button" @click="phone.goBack()">{{ t`取消` }}</button>
-            <button
-              class="pc-primary-btn"
-              type="button"
-              :disabled="!summaryImportTargetBook || !summaryImport.selectedIds.length"
-              @click="importSummaryEntries"
-            >
-              {{ t`提取 ${summaryImport.selectedIds.length} 条` }}
-            </button>
-          </div>
-        </template>
-      </article>
-    </section>
+    <SummaryImportPage
+      v-else-if="route.page === 'import-chat'"
+      v-model:rule-id="summaryImport.ruleId"
+      v-model:target-book-id="summaryImportTargetBookId"
+      :all-selected="allSummaryImportsSelected"
+      :books="books"
+      :error="summaryImport.error"
+      :items="summaryImport.items"
+      :loading="summaryImport.loading"
+      :rules="summaryImportRules"
+      :selected-ids="summaryImport.selectedIds"
+      :target-book-exists="Boolean(summaryImportTargetBook)"
+      @cancel="phone.goBack()"
+      @create-book="openCreateBook"
+      @import="importSummaryEntries"
+      @refresh="reloadSummaryImport"
+      @rule-change="onSummaryImportRuleChange"
+      @toggle-all="toggleAllSummaryImports"
+      @toggle-item="toggleSummaryImport"
+    />
 
-    <section v-else-if="route.page === 'generate' && activeBook" class="pc-summary-page">
-      <div class="pc-editor-card">
-        <span class="pc-kicker">{{ t`AI 生成` }}</span>
-        <h2>{{ t`生成一条新的总结` }}</h2>
+    <SummaryGeneratePage
+      v-else-if="route.page === 'generate' && activeBook"
+      v-model:from-start-end="generationDraft.fromStartEnd"
+      v-model:range-text="generationDraft.rangeText"
+      v-model:recent-count="generationDraft.recentCount"
+      v-model:references="selectedReferences"
+      v-model:single-message-id="generationDraft.singleMessageId"
+      v-model:source-mode="settings.generation.sourceMode"
+      v-model:user-requirement="generationDraft.userRequirement"
+      :capture="captureSummaryPrompt"
+      :capture-reset-key="summaryPromptPreview"
+      :error="generationState.error"
+      :raw-output="generationState.rawOutput"
+      :running="generationState.running"
+      @cancel="phone.goBack()"
+      @generate="runGeneration"
+      @stop="stopGeneration"
+    />
 
-        <GenerationPanel
-          :capture="captureSummaryPrompt"
-          :capture-reset-key="summaryPromptPreview"
-          :error="generationState.error"
-          :from-start-end="generationDraft.fromStartEnd"
-          :range-text="generationDraft.rangeText"
-          :raw-output="generationState.rawOutput"
-          :recent-count="generationDraft.recentCount"
-          :references="selectedReferences"
-          :running="generationState.running"
-          :single-message-id="generationDraft.singleMessageId"
-          :source-mode="settings.generation.sourceMode"
-          :user-requirement="generationDraft.userRequirement"
-          @cancel="phone.goBack()"
-          @generate="runGeneration"
-          @stop="stopGeneration"
-          @update:from-start-end="generationDraft.fromStartEnd = $event"
-          @update:range-text="generationDraft.rangeText = $event"
-          @update:recent-count="generationDraft.recentCount = $event"
-          @update:references="selectedReferences = $event"
-          @update:single-message-id="generationDraft.singleMessageId = $event"
-          @update:source-mode="settings.generation.sourceMode = $event"
-          @update:user-requirement="generationDraft.userRequirement = $event"
-        />
-      </div>
-    </section>
+    <SummaryBatchPage
+      v-else-if="route.page === 'batch-generate'"
+      v-model:book-id="batchDraft.bookId"
+      v-model:floor-mode="batchDraft.floorMode"
+      v-model:floor-text="batchDraft.floorText"
+      v-model:group-mode="batchDraft.groupMode"
+      v-model:group-size="batchDraft.groupSize"
+      v-model:include-ai="batchDraft.includeAi"
+      v-model:include-user="batchDraft.includeUser"
+      v-model:references="selectedReferences"
+      v-model:rpm-limit="batchDraft.rpmLimit"
+      v-model:user-requirement="batchDraft.userRequirement"
+      :books="books"
+      :inputs-locked="batchInputsLocked"
+      :state="batchState"
+      @cancel="phone.goBack()"
+      @generate="runBatchGeneration"
+      @reset="resetBatchProgress"
+      @stop="stopBatchGeneration"
+    />
 
-    <section v-else-if="route.page === 'batch-generate'" class="pc-summary-page">
-      <div class="pc-editor-card">
-        <span class="pc-kicker">{{ t`AI 批量` }}</span>
-        <h2>{{ t`批量生成总结` }}</h2>
-
-        <div class="pc-field-group">
-          <label class="pc-field-label">{{ t`保存到总结集` }}</label>
-          <select v-model="batchDraft.bookId" class="pc-select" :disabled="batchInputsLocked">
-            <option value="">{{ t`选择总结集` }}</option>
-            <option v-for="book in books" :key="book.id" :value="book.id">{{ book.title }}</option>
-          </select>
-        </div>
-
-        <div class="pc-field-group">
-          <label class="pc-field-label">{{ t`批量楼层` }}</label>
-          <select v-model="batchDraft.floorMode" class="pc-select" :disabled="batchInputsLocked">
-            <option value="all">{{ t`全部楼层` }}</option>
-            <option value="custom">{{ t`自定义楼层` }}</option>
-          </select>
-        </div>
-
-        <input
-          v-if="batchDraft.floorMode === 'custom'"
-          v-model="batchDraft.floorText"
-          class="pc-field"
-          type="text"
-          :disabled="batchInputsLocked"
-          :placeholder="t`楼层范围，例如 1-30,35,40-45`"
-        />
-
-        <div class="pc-segment pc-summary-batch-mode">
-          <button
-            :class="['pc-segment-btn', { active: !batchDraft.groupMode }]"
-            type="button"
-            :disabled="batchInputsLocked"
-            @click="batchDraft.groupMode = false"
-          >
-            {{ t`逐楼` }}
-          </button>
-          <button
-            :class="['pc-segment-btn', { active: batchDraft.groupMode }]"
-            type="button"
-            :disabled="batchInputsLocked"
-            @click="batchDraft.groupMode = true"
-          >
-            {{ t`按组` }}
-          </button>
-        </div>
-
-        <div v-if="batchDraft.groupMode" class="pc-number-field">
-          <label class="pc-field-label">{{ t`每组楼数` }}</label>
-          <input
-            v-model.number="batchDraft.groupSize"
-            class="pc-field"
-            type="number"
-            min="1"
-            max="50"
-            :disabled="batchInputsLocked"
-          />
-        </div>
-
-        <div class="pc-number-field">
-          <label class="pc-field-label">{{ t`RPM 请求限制` }}</label>
-          <input
-            v-model.number="batchDraft.rpmLimit"
-            class="pc-field"
-            type="number"
-            min="0"
-            max="120"
-            :disabled="batchState.running"
-          />
-        </div>
-
-        <div class="pc-summary-batch-roles">
-          <div>
-            <span>{{ t`AI 楼层` }}</span>
-            <label class="pc-toggle">
-              <input v-model="batchDraft.includeAi" type="checkbox" :disabled="batchInputsLocked" />
-              <span></span>
-            </label>
-          </div>
-          <div>
-            <span>{{ t`用户楼层` }}</span>
-            <label class="pc-toggle">
-              <input v-model="batchDraft.includeUser" type="checkbox" :disabled="batchInputsLocked" />
-              <span></span>
-            </label>
-          </div>
-        </div>
-
-        <ReferencePicker v-model="selectedReferences" :disabled="batchInputsLocked" />
-
-        <textarea
-          v-model="batchDraft.userRequirement"
-          class="pc-area compact"
-          :disabled="batchInputsLocked"
-          :placeholder="t`例如：每条总结保留关键事件、人物状态变化和未解决问题。`"
-        ></textarea>
-
-        <div v-if="batchState.running || batchState.total" class="pc-status-card">
-          <strong>
-            {{ batchState.running ? t`批量生成中` : batchState.resumeAvailable ? t`批量已暂停` : t`批量生成完成` }}
-          </strong>
-          <p>
-            {{
-              `${batchState.done + batchState.failed}/${batchState.total} · 成功 ${batchState.done}${batchState.failed ? ` · 草稿 ${batchState.failed}` : ''}${batchState.currentLabel ? ` · ${batchState.currentLabel}` : ''}`
-            }}
-          </p>
-        </div>
-
-        <div v-if="batchState.error" class="pc-status-card danger">
-          <strong>{{ batchState.stopRequested ? t`批量已停止` : t`生成失败` }}</strong>
-          <p>{{ batchState.error }}</p>
-        </div>
-
-        <div
-          :class="['pc-form-actions', { 'pc-batch-actions-three': batchState.running || batchState.resumeAvailable }]"
-        >
-          <button class="pc-soft-btn" type="button" :disabled="batchState.running" @click="phone.goBack()">
-            {{ t`取消` }}
-          </button>
-          <button v-if="batchState.running" class="pc-soft-btn danger" type="button" @click="stopBatchGeneration">
-            {{ t`停止` }}
-          </button>
-          <button v-else-if="batchState.resumeAvailable" class="pc-soft-btn" type="button" @click="resetBatchProgress">
-            <i class="fa-solid fa-rotate-left"></i>
-            <span>{{ t`重新设置` }}</span>
-          </button>
-          <button class="pc-primary-btn" type="button" :disabled="batchState.running" @click="runBatchGeneration">
-            <i class="fa-solid fa-layer-group"></i>
-            <span>{{ batchState.running ? t`生成中` : batchState.resumeAvailable ? t`继续批量` : t`开始批量` }}</span>
-          </button>
-        </div>
-
-        <div v-if="batchState.rawOutput" class="pc-raw-output">
-          <div class="pc-raw-head">
-            <strong>{{ t`最近一次输出` }}</strong>
-          </div>
-          <textarea :value="batchState.rawOutput" class="pc-area pc-raw-area" readonly></textarea>
-        </div>
-      </div>
-    </section>
-
-    <section
+    <SummaryPreviewPage
       v-else-if="route.page === 'preview' && previewBook && generationState.preview"
-      class="pc-summary-page pc-generation-preview-page"
-    >
-      <div class="pc-detail-card pc-generation-preview-card">
-        <GenerationPreviewPanel
-          :content="generationState.preview.content"
-          :raw="generationState.preview.raw"
-          raw-editable
-          :reparse-handler="reparsePreviewRaw"
-          save-label="保存为条目"
-          :source-label="generationState.preview.source.label"
-          :text-provider-summary="textProviderSummary"
-          :title="generationState.preview.title"
-          :warnings="generationState.preview.warnings"
-          @back="returnToGenerate"
-          @reparse="reparsePreviewRaw"
-          @save="savePreview"
-          @update:content="generationState.preview.content = $event"
-          @update:raw="generationState.preview.raw = $event"
-        />
-      </div>
-    </section>
+      v-model:content="generationState.preview.content"
+      v-model:raw="generationState.preview.raw"
+      :reparse-handler="reparsePreviewRaw"
+      :source-label="generationState.preview.source.label"
+      :text-provider-summary="textProviderSummary"
+      :title="generationState.preview.title"
+      :warnings="generationState.preview.warnings"
+      @back="returnToGenerate"
+      @reparse="reparsePreviewRaw"
+      @save="savePreview"
+    />
 
-    <section v-else-if="route.page === 'failed-draft' && activeFailedDraft" class="pc-summary-page pc-repair-page">
-      <div class="pc-editor-card pc-repair-card">
-        <span class="pc-kicker">{{ activeFailedDraft.source.label }}</span>
-        <h2>{{ t`修复解析失败草稿` }}</h2>
-
-        <div class="pc-number-field">
-          <label class="pc-field-label">{{ t`保存到总结集` }}</label>
-          <select v-model="failedDraftTargetBookId" class="pc-field">
-            <option v-for="book in books" :key="book.id" :value="book.id">{{ book.title }}</option>
-          </select>
-        </div>
-
-        <div v-if="!books.length" class="pc-status-card danger">
-          <strong>{{ t`还没有总结集` }}</strong>
-          <p>{{ t`先建一个总结集，修好的内容才能保存进去。` }}</p>
-        </div>
-
-        <div class="pc-number-field pc-repair-raw-field">
-          <label class="pc-field-label">{{ t`原始输出` }}</label>
-          <RawOutputEditor
-            v-model="failedDraftRawOutput"
-            :placeholder="t`在这里修 XML 结构或补 title / content。`"
-            @reparse="reparseFailedDraft"
-          />
-        </div>
-
-        <div class="pc-form-actions">
-          <button class="pc-soft-btn danger" type="button" @click="removeFailedDraft(activeFailedDraft.id)">
-            {{ t`删除草稿` }}
-          </button>
-          <button class="pc-soft-btn" type="button" @click="reparseFailedDraft">{{ t`重新解析` }}</button>
-        </div>
-      </div>
-    </section>
+    <SummaryFailedDraftPage
+      v-else-if="route.page === 'failed-draft' && activeFailedDraft"
+      v-model:raw-output="failedDraftRawOutput"
+      v-model:target-book-id="failedDraftTargetBookId"
+      :books="books"
+      :draft="activeFailedDraft"
+      @delete="removeFailedDraft(activeFailedDraft.id)"
+      @reparse="reparseFailedDraft"
+    />
   </section>
 </template>
 
 <script setup lang="ts">
-import BaguScanPanel from '@/components/BaguScanPanel.vue';
-import BookShelf from '@/components/BookShelf.vue';
-import EmptyState from '@/components/EmptyState.vue';
-import FailedDraftList from '@/components/FailedDraftList.vue';
-import GenerationPanel from '@/components/GenerationPanel.vue';
-import GenerationPreviewPanel from '@/components/GenerationPreviewPanel.vue';
-import PreviewDraftNotice from '@/components/PreviewDraftNotice.vue';
-import RawOutputEditor from '@/components/RawOutputEditor.vue';
-import ReferencePicker from '@/components/ReferencePicker.vue';
+import SummaryBatchPage from '@/components/summary/SummaryBatchPage.vue';
+import SummaryBookPage from '@/components/summary/SummaryBookPage.vue';
+import SummaryBookEditorPage from '@/components/summary/SummaryBookEditorPage.vue';
+import SummaryBaguPage from '@/components/summary/SummaryBaguPage.vue';
+import SummaryCatalogPage from '@/components/summary/SummaryCatalogPage.vue';
+import SummaryCreationModePage from '@/components/summary/SummaryCreationModePage.vue';
 import SummaryEntryDetailPage from '@/components/summary/SummaryEntryDetailPage.vue';
+import SummaryEntryEditorPage from '@/components/summary/SummaryEntryEditorPage.vue';
+import SummaryFailedDraftPage from '@/components/summary/SummaryFailedDraftPage.vue';
+import SummaryGeneratePage from '@/components/summary/SummaryGeneratePage.vue';
+import SummaryImportPage from '@/components/summary/SummaryImportPage.vue';
+import SummaryPreviewPage from '@/components/summary/SummaryPreviewPage.vue';
 import { useCatalogDetailNavigation } from '@/composables/useCatalogDetailNavigation';
+import { useDirectorySort } from '@/composables/useDirectorySort';
+import { useSummaryImport } from '@/composables/useSummaryImport';
 import { getRegisteredPhoneGenerationAdapter } from '@/core/appRegistry';
 import { buildGenerationPreview, captureGenerationPrompt, generateContent } from '@/core/generationService';
 import {
@@ -519,32 +202,21 @@ import { useGenerationTaskStore } from '@/store/generationTasks';
 import { usePhoneStore } from '@/store/phone';
 import { usePromptStore } from '@/store/prompts';
 import { useRecoveryStore } from '@/store/recovery';
-import {
-  defaultReaderBodyRule,
-  normalizeArchivedMessage,
-  type ChatReaderRegexRule,
-  useReaderStore,
-} from '@/store/reader';
 import { useSettingsStore } from '@/store/settings';
 import { useSummaryStore } from '@/store/summary';
 import type { FailedGenerationDraft } from '@/type/generation';
-import { regexDisplaySummaryTarget, useRegexDisplayStore } from '@/apps/regex-display/store';
 import { canOpenBaguScan } from '@/util/baguScanGate';
 import { useDetailScroll } from '@/util/detailScroll';
-import { transformReaderMessages } from '@/util/readerRegex';
-import { getRegexRulesByOperation } from '@/util/regexDisplay';
 import { formatGenerationReferences, type GenerationReferenceItem } from '@/util/references';
 import { usePreviewDraftPersistence } from '@/util/previewDrafts';
 import { useInvalidRouteFallback } from '@/util/routeFallback';
-import { getChatMessagesSafe, stopGenerationByIdSafe } from '@/util/runtime';
+import { stopGenerationByIdSafe } from '@/util/runtime';
 import { getSourceLastFloor } from '@/util/sourceFloor';
 import { storeToRefs } from 'pinia';
 
 const phone = usePhoneStore();
 const prompts = usePromptStore();
 const recovery = useRecoveryStore();
-const reader = useReaderStore();
-const regexDisplay = useRegexDisplayStore();
 const settingsStore = useSettingsStore();
 const summary = useSummaryStore();
 const generationTasks = useGenerationTaskStore();
@@ -552,8 +224,6 @@ const summaryGenerationAdapter = getRegisteredPhoneGenerationAdapter('summary', 
 const { books, failedDrafts } = storeToRefs(summary);
 const { currentRoute: route } = storeToRefs(phone);
 const { entries: recoveryEntries } = storeToRefs(recovery);
-const { settings: readerSettings } = storeToRefs(reader);
-const { rules: regexDisplayRules } = storeToRefs(regexDisplay);
 const { settings } = storeToRefs(settingsStore);
 
 const bookTitle = ref('');
@@ -569,13 +239,6 @@ const generationDraft = reactive({
   rangeText: '',
   singleMessageId: 0,
   userRequirement: '',
-});
-const summaryImport = reactive({
-  error: '',
-  items: [] as Array<{ content: string; id: string; messageIndex: number }>,
-  loading: false,
-  ruleId: '__default_body__',
-  selectedIds: [] as string[],
 });
 const generationState = reactive({
   error: '',
@@ -609,17 +272,24 @@ const batchDraft = reactive({
 const batchFormError = ref('');
 const failedDraftRawOutput = ref('');
 const failedDraftTargetBookId = ref('');
-const summaryEntrySortDesc = computed({
-  get: () => settings.value.directorySort.summaryDesc,
-  set: value => {
-    settings.value.directorySort.summaryDesc = value;
-  },
-});
-const summaryImportTargetBookId = ref('');
+const summaryEntrySortDesc = useDirectorySort('summaryDesc');
 const selectedReferences = ref<GenerationReferenceItem[]>([]);
 const entryContentEl = ref<HTMLElement | null>(null);
 const { scrollToBottom, scrollToTop } = useDetailScroll(entryContentEl, '.pc-summary-detail-page .pc-detail-content');
 const showCatalogModal = ref(false);
+const {
+  allSelected: allSummaryImportsSelected,
+  importEntries: importSummaryEntries,
+  reload: reloadSummaryImport,
+  reset: resetSummaryImport,
+  rules: summaryImportRules,
+  setRule: onSummaryImportRuleChange,
+  state: summaryImport,
+  targetBook: summaryImportTargetBook,
+  targetBookId: summaryImportTargetBookId,
+  toggleAll: toggleAllSummaryImports,
+  toggleItem: toggleSummaryImport,
+} = useSummaryImport();
 
 type SummaryPreview = NonNullable<typeof generationState.preview>;
 
@@ -663,9 +333,6 @@ const sortedActiveBookEntries = computed(() =>
     return summaryEntrySortDesc.value ? -compare : compare;
   }),
 );
-const summaryImportTargetBook = computed(() =>
-  summaryImportTargetBookId.value ? summary.getBook(summaryImportTargetBookId.value) : null,
-);
 
 const shelfBooks = computed(() =>
   books.value.map(book => ({
@@ -698,12 +365,6 @@ const activeFailedDraft = computed(() => {
   const draftId = route.value.params?.draftId;
   return draftId ? summary.getFailedDraft(draftId) : null;
 });
-const summaryImportRules = computed(() => getRegexRulesByOperation(regexDisplayRules.value, 'extract'));
-const summaryRegexUsage = computed(() => regexDisplay.getUsage(regexDisplaySummaryTarget));
-const allSummaryImportsSelected = computed(
-  () =>
-    summaryImport.items.length > 0 && summaryImport.items.every(item => summaryImport.selectedIds.includes(item.id)),
-);
 const formattedReferences = computed(() => formatGenerationReferences(selectedReferences.value));
 const batchTask = computed(
   () =>
@@ -826,12 +487,7 @@ watch(
     }
 
     if (current.page === 'import-chat' && previous?.page !== 'import-chat') {
-      summaryImportTargetBookId.value = current.params?.bookId || books.value[0]?.id || '';
-      summaryImport.ruleId = resolveSummaryImportRuleId();
-      summaryImport.error = '';
-      summaryImport.items = [];
-      summaryImport.selectedIds = [];
-      void reloadSummaryImport();
+      resetSummaryImport(current.params?.bookId || '');
     }
 
     if (current.page === 'batch-generate') {
@@ -956,96 +612,6 @@ function openGenerate(bookId: string) {
 
 function openImportChat(bookId: string) {
   phone.pushPage('import-chat', '导入 AI 楼层', { bookId });
-}
-
-function resolveSummaryImportRuleId() {
-  const selectedId = summaryRegexUsage.value.contentRuleId;
-  return summaryImportRules.value.some(rule => rule.id === selectedId) ? selectedId : '__default_body__';
-}
-
-function getSummaryImportRule(): ChatReaderRegexRule {
-  if (summaryImport.ruleId === '__default_body__') return defaultReaderBodyRule;
-  const rule = summaryImportRules.value.find(item => item.id === summaryImport.ruleId);
-  if (!rule) return defaultReaderBodyRule;
-  return {
-    find: rule.pattern,
-    flags: rule.flags,
-    replace: rule.replacement,
-  };
-}
-
-function onSummaryImportRuleChange() {
-  regexDisplay.setExtractionRule(
-    regexDisplaySummaryTarget,
-    'content',
-    summaryImport.ruleId === '__default_body__' ? '' : summaryImport.ruleId,
-  );
-  void reloadSummaryImport();
-}
-
-async function reloadSummaryImport() {
-  summaryImport.error = '';
-  summaryImport.loading = true;
-  try {
-    const sourceMessages = getChatMessagesSafe('0-{{lastMessageId}}')
-      .map((item, index) =>
-        normalizeArchivedMessage(item, index, {
-          ...readerSettings.value,
-          showUserMessages: true,
-        }),
-      )
-      .filter(
-        (item): item is NonNullable<ReturnType<typeof normalizeArchivedMessage>> =>
-          Boolean(item) && !item.isUser && (readerSettings.value.showHiddenAssistantMessages || !item.isHidden),
-      );
-    const transformed = await transformReaderMessages(
-      sourceMessages.map(item => ({ messageIndex: item.messageIndex, rawText: item.rawText })),
-      { find: '', flags: '', replace: '' },
-      getSummaryImportRule(),
-    );
-    summaryImport.items = sourceMessages
-      .map((item, index) => ({
-        content: transformed[index]?.body.trim() || '',
-        id: item.id,
-        messageIndex: item.messageIndex,
-      }))
-      .filter(item => Boolean(item.content));
-    summaryImport.selectedIds = summaryImport.items.map(item => item.id);
-  } catch (caughtError) {
-    summaryImport.items = [];
-    summaryImport.selectedIds = [];
-    summaryImport.error = caughtError instanceof Error ? caughtError.message : '读取当前聊天失败';
-  } finally {
-    summaryImport.loading = false;
-  }
-}
-
-function toggleSummaryImport(itemId: string, checked: boolean) {
-  summaryImport.selectedIds = checked
-    ? [...new Set([...summaryImport.selectedIds, itemId])]
-    : summaryImport.selectedIds.filter(id => id !== itemId);
-}
-
-function toggleAllSummaryImports() {
-  summaryImport.selectedIds = allSummaryImportsSelected.value ? [] : summaryImport.items.map(item => item.id);
-}
-
-function importSummaryEntries() {
-  const book = summaryImportTargetBook.value;
-  if (!book) return;
-  const selected = summaryImport.items.filter(item => summaryImport.selectedIds.includes(item.id));
-  if (!selected.length) return;
-  selected.forEach(item => {
-    summary.createEntry(book.id, {
-      content: item.content,
-      directoryOrder: item.messageIndex,
-      rangeLabel: `第 ${item.messageIndex} 楼`,
-      sourceFloorEnd: item.messageIndex,
-      title: `第 ${item.messageIndex} 楼总结`,
-    });
-  });
-  toastr.success(`已导入 ${selected.length} 条总结`);
-  phone.replacePage('book', book.title, { bookId: book.id });
 }
 
 function openBatchGenerate(bookId?: string) {
@@ -1575,384 +1141,10 @@ async function removeEntry(bookId: string, entryId: string) {
   toastr.success('已删除总结条目');
 }
 
-function formatBookMeta(count: number) {
-  return `${count} 条`;
-}
 </script>
 
 <style scoped>
-.pc-summary-app,
-.pc-summary-page {
+.pc-summary-app {
   min-height: 100%;
-}
-
-.pc-summary-page {
-  display: flex;
-  flex-direction: column;
-  gap: 14px;
-}
-
-.pc-summary-hero,
-.pc-entry-card,
-.pc-editor-card,
-.pc-detail-card {
-  border: 1px solid var(--pc-border);
-  background: color-mix(in srgb, var(--pc-surface) 72%, transparent 28%);
-  border-radius: 20px;
-  backdrop-filter: blur(12px);
-}
-
-.pc-summary-hero,
-.pc-editor-card,
-.pc-detail-card {
-  padding: 14px;
-}
-
-.pc-summary-hero {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
-  gap: 12px;
-  align-items: center;
-}
-
-.pc-summary-actions-hero {
-  grid-template-columns: minmax(0, 1fr);
-}
-
-.pc-summary-actions-hero .pc-hero-actions {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  align-items: center;
-  width: 100%;
-}
-
-.pc-summary-actions-hero .pc-primary-btn,
-.pc-summary-actions-hero .pc-soft-btn,
-.pc-summary-actions-hero .pc-icon-btn {
-  width: 100%;
-  min-width: 0;
-}
-
-.pc-summary-actions-hero .pc-icon-btn:nth-last-child(2) {
-  grid-column: 2;
-}
-
-.pc-summary-import-page {
-  min-height: 0;
-}
-
-.pc-summary-import-head {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 10px;
-  margin-top: 14px;
-}
-
-.pc-summary-import-head > span {
-  color: var(--pc-muted);
-  font-size: 13px;
-  font-weight: 800;
-}
-
-.pc-summary-import-head > div {
-  display: flex;
-  flex: 0 0 auto;
-  align-items: center;
-  gap: 8px;
-}
-
-.pc-summary-import-list {
-  display: grid;
-  max-height: min(46vh, 420px);
-  gap: 8px;
-  margin-top: 12px;
-  overflow-y: auto;
-  overscroll-behavior: contain;
-  padding-right: 2px;
-}
-
-.pc-summary-import-item {
-  display: grid;
-  grid-template-columns: auto minmax(0, 1fr);
-  align-items: start;
-  gap: 10px;
-  padding: 11px;
-  border: 1px solid var(--pc-border);
-  border-radius: var(--pc-control-radius);
-  background: var(--pc-surface-strong);
-  cursor: pointer;
-}
-
-.pc-summary-import-item input {
-  width: 18px;
-  height: 18px;
-  margin: 1px 0 0;
-  accent-color: var(--pc-theme-accent);
-}
-
-.pc-summary-import-item span {
-  display: grid;
-  min-width: 0;
-  gap: 4px;
-}
-
-.pc-summary-import-item strong {
-  color: var(--pc-text);
-  font-size: 14px;
-}
-
-.pc-summary-import-item small {
-  display: -webkit-box;
-  overflow: hidden;
-  color: var(--pc-muted);
-  font-size: 12px;
-  line-height: 1.45;
-  -webkit-box-orient: vertical;
-  -webkit-line-clamp: 2;
-}
-
-.pc-hero-actions {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-  justify-content: flex-end;
-}
-
-.pc-summary-hero h2,
-.pc-editor-card h2,
-.pc-detail-card h2 {
-  margin: 0;
-  font-size: 20px;
-  line-height: 1.25;
-}
-
-.pc-summary-hero p,
-.pc-entry-card p,
-.pc-detail-meta {
-  color: var(--pc-muted);
-}
-
-.pc-entry-list {
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-}
-
-.pc-entry-card {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
-  gap: 10px;
-  padding: 14px;
-}
-
-.pc-entry-main {
-  text-align: left;
-  border: 0;
-  background: transparent;
-  color: var(--pc-text);
-  cursor: pointer;
-}
-
-.pc-detail-meta,
-.pc-entry-head,
-.pc-section-head,
-.pc-raw-head {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 10px;
-}
-
-.pc-entry-main strong {
-  display: block;
-  min-width: 0;
-  overflow: hidden;
-  font-size: 16px;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.pc-section-head {
-  align-items: baseline;
-}
-
-.pc-entry-head {
-  align-items: baseline;
-}
-
-.pc-entry-head strong {
-  flex: 1 1 auto;
-}
-
-.pc-entry-order {
-  flex: 0 0 auto;
-  white-space: nowrap;
-}
-
-.pc-entry-head span,
-.pc-detail-meta span {
-  font-size: 12px;
-  color: var(--pc-muted);
-}
-
-.pc-entry-main p.preview {
-  display: -webkit-box;
-  -webkit-line-clamp: 2;
-  -webkit-box-orient: vertical;
-  overflow: hidden;
-}
-
-.pc-favorite-chip {
-  border: 0;
-  cursor: pointer;
-  color: var(--pc-text);
-}
-
-.pc-primary-btn.compact {
-  min-width: 74px;
-}
-
-.pc-soft-btn.danger,
-.pc-icon-btn.danger {
-  color: var(--pc-danger);
-}
-
-.pc-favorite-chip {
-  width: 40px;
-  height: 40px;
-  border-radius: 12px;
-  background: var(--pc-surface-strong);
-}
-
-.pc-favorite-chip i[data-active='true'] {
-  color: var(--pc-danger);
-}
-
-.pc-summary-app :is(.pc-field, .pc-area) {
-  margin-top: 14px;
-}
-
-.pc-summary-app .pc-area {
-  min-height: 220px;
-  resize: vertical;
-}
-
-.pc-summary-app .pc-area.compact {
-  min-height: 120px;
-}
-
-.pc-summary-app .pc-form-actions {
-  margin-top: 16px;
-  justify-content: flex-end;
-  flex-wrap: wrap;
-}
-
-.pc-summary-create-actions,
-.pc-batch-actions-three {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 8px;
-}
-
-.pc-summary-create-actions > button,
-.pc-batch-actions-three > button {
-  width: 100%;
-  min-width: 0;
-  padding-inline: 6px;
-  white-space: nowrap;
-}
-
-.pc-batch-actions-three > button {
-  gap: 5px;
-  font-size: 13px;
-}
-
-.pc-detail-content {
-  margin-top: 16px;
-  padding: 16px;
-  border-radius: 18px;
-  background: var(--pc-surface-strong);
-  white-space: pre-wrap;
-  color: var(--pc-text);
-  font-size: var(--pc-reader-font-size);
-  line-height: var(--pc-reader-line-height);
-}
-
-.pc-copy,
-.pc-status-card p,
-.pc-raw-head span {
-  color: var(--pc-muted);
-}
-
-.pc-generate-form,
-.pc-raw-output {
-  margin-top: 14px;
-}
-
-.pc-meta-grid {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 10px;
-  margin-top: 14px;
-}
-
-.pc-status-card {
-  border: 1px solid var(--pc-border);
-  border-radius: 18px;
-  background: var(--pc-surface-strong);
-  padding: 14px;
-}
-
-.pc-status-card.warning {
-  border-color: color-mix(in srgb, #f5a623 42%, var(--pc-border) 58%);
-}
-
-.pc-status-card.danger {
-  border-color: color-mix(in srgb, var(--pc-danger) 42%, var(--pc-border) 58%);
-}
-
-.pc-number-field + .pc-number-field {
-  margin-top: 14px;
-}
-
-.pc-summary-batch-mode {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  width: 100%;
-  margin-top: 14px;
-}
-
-.pc-summary-batch-roles {
-  display: grid;
-  gap: 8px;
-  margin-top: 14px;
-}
-
-.pc-summary-batch-roles > div {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  min-height: 44px;
-  padding: 8px 10px;
-  border-radius: var(--pc-control-radius);
-  background: var(--pc-surface-strong);
-}
-
-.pc-summary-batch-roles > div > span {
-  color: var(--pc-text);
-  font-size: 13px;
-  font-weight: 800;
-}
-
-.pc-raw-head {
-  align-items: baseline;
-}
-
-.pc-raw-area {
-  min-height: 180px;
-  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
-  font-size: 12px;
 }
 </style>

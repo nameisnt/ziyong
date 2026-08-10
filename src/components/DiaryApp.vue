@@ -1,106 +1,50 @@
 <template>
   <section class="pc-diary-app">
-    <section v-if="route.page === 'root'" class="pc-diary-page">
-      <PreviewDraftNotice
-        :draft="diaryPreviewDraft"
-        @discard="discardDiaryPreviewDraft"
-        @open="openDiaryPreviewDraft"
-      />
+    <DiaryCatalogPage
+      v-if="route.page === 'root'"
+      :failed-drafts="failedDrafts"
+      :get-failed-draft-context="failedDraftBookTitle"
+      :preview-draft="diaryPreviewDraft"
+      :shelf-books="shelfBooks"
+      @create="openCreationMode"
+      @discard-preview="discardDiaryPreviewDraft"
+      @open-book="openBook"
+      @open-failed-draft="openFailedDraft"
+      @open-preview="openDiaryPreviewDraft"
+      @remove-failed-draft="removeFailedDraft"
+    />
 
-      <BookShelf
-        :books="shelfBooks"
-        create-label="生成日记"
-        create-subtitle="选择生成方式"
-        variant="diary"
-        @create="openCreationMode"
-        @select="openBook"
-      />
+    <DiaryCreationModePage
+      v-else-if="route.page === 'creation-mode'"
+      @batch="openBatchGenerate()"
+      @single="openGenerate()"
+    />
 
-      <FailedDraftList
-        :drafts="failedDrafts"
-        :get-context="failedDraftBookTitle"
-        :get-title="() => t`未解析日记`"
-        :show-header="false"
-        @open="openFailedDraft"
-        @remove="removeFailedDraft"
-      />
-    </section>
+    <DiaryBookPage
+      v-else-if="route.page === 'book' && activeBook"
+      v-model:query="query"
+      :book="activeBook"
+      :entries="filteredEntries"
+      :failed-drafts="activeBookFailedDrafts"
+      :get-failed-draft-context="failedDraftBookTitle"
+      :sort-desc="sortDesc"
+      @batch="openBatchGenerate(activeBook.id)"
+      @generate="openGenerate(activeBook.id)"
+      @open-entry="openEntry(activeBook.id, $event)"
+      @open-failed-draft="openFailedDraft"
+      @remove-book="removeBook(activeBook.id)"
+      @remove-failed-draft="removeFailedDraft"
+      @rename="openRenameBook(activeBook.id)"
+      @toggle-sort="sortDesc = !sortDesc"
+    />
 
-    <section v-else-if="route.page === 'creation-mode'" class="pc-diary-page">
-      <div class="pc-create-mode-list">
-        <button class="pc-soft-btn" type="button" @click="openGenerate()">
-          <i class="fa-solid fa-file-lines"></i>
-          <span>{{ t`生成单篇日记` }}</span>
-        </button>
-        <button class="pc-primary-btn" type="button" @click="openBatchGenerate()">
-          <i class="fa-solid fa-layer-group"></i>
-          <span>{{ t`批量生成日记` }}</span>
-        </button>
-      </div>
-    </section>
-
-    <section v-else-if="route.page === 'book' && activeBook" class="pc-diary-page">
-      <div class="pc-diary-hero pc-diary-actions-hero">
-        <div class="pc-hero-actions">
-          <button class="pc-soft-btn" type="button" @click="openGenerate(activeBook.id)">
-            <i class="fa-solid fa-wand-magic-sparkles"></i>
-            <span>{{ t`生成` }}</span>
-          </button>
-          <button class="pc-soft-btn" type="button" @click="openBatchGenerate(activeBook.id)">
-            <i class="fa-solid fa-layer-group"></i>
-            <span>{{ t`批量` }}</span>
-          </button>
-          <button class="pc-icon-btn" type="button" :title="t`重命名书架`" @click="openRenameBook(activeBook.id)">
-            <i class="fa-solid fa-pen"></i>
-          </button>
-          <button class="pc-icon-btn danger" type="button" :title="t`删除书架`" @click="removeBook(activeBook.id)">
-            <i class="fa-solid fa-trash"></i>
-          </button>
-        </div>
-      </div>
-
-      <div class="pc-toolbar">
-        <input v-model="query" class="pc-search" type="text" :placeholder="t`搜索标题`" />
-        <button class="pc-soft-btn" type="button" @click="sortDesc = !sortDesc">
-          {{ sortDesc ? t`倒序` : t`正序` }}
-        </button>
-      </div>
-      <p class="pc-list-count">{{ `${filteredEntries.length} 篇` }}</p>
-
-      <EmptyState v-if="!filteredEntries.length" :title="t`没有匹配的日记`" />
-
-      <div v-else class="pc-entry-list">
-        <article v-for="entry in filteredEntries" :key="entry.id" class="pc-entry-card">
-          <button class="pc-entry-main" type="button" @click="openEntry(activeBook.id, entry.id)">
-            <div class="pc-entry-head">
-              <strong>{{ entry.kind === 'read-reaction' ? `📖 ${entry.title}` : entry.title }}</strong>
-              <span class="pc-entry-order">{{ t`顺序` }} {{ entry.directoryOrder }}</span>
-            </div>
-          </button>
-        </article>
-      </div>
-
-      <FailedDraftList
-        :drafts="activeBookFailedDrafts"
-        :get-context="failedDraftBookTitle"
-        :get-title="() => t`未解析日记`"
-        :show-header="false"
-        @open="openFailedDraft"
-        @remove="removeFailedDraft"
-      />
-    </section>
-
-    <section v-else-if="route.page === 'rename-book' && activeBook" class="pc-diary-page">
-      <div class="pc-editor-card">
-        <span class="pc-kicker">{{ t`重命名书架` }}</span>
-        <h2>{{ activeBook.perspective.name }}</h2>
-        <input v-model="bookTitle" class="pc-field" type="text" :placeholder="t`书架名称`" />
-        <div class="pc-form-actions">
-          <button class="pc-soft-btn" type="button" @click="phone.goBack()">{{ t`取消` }}</button>
-          <button class="pc-primary-btn" type="button" @click="submitRenameBook">{{ t`保存` }}</button>
-        </div>
-      </div>
-    </section>
+    <DiaryBookEditorPage
+      v-else-if="route.page === 'rename-book' && activeBook"
+      v-model:title="bookTitle"
+      :perspective-name="activeBook.perspective.name"
+      @cancel="phone.goBack()"
+      @save="submitRenameBook"
+    />
 
     <DiaryEntryDetailPage
       v-else-if="route.page === 'entry' && activeBook && activeEntry"
@@ -121,379 +65,138 @@
       @top="scrollToTop"
     />
 
-    <section v-else-if="route.page === 'bagu-scan' && activeBook && activeEntry" class="pc-diary-page">
-      <div class="pc-detail-card">
-        <div class="pc-detail-title-row">
-          <h2>{{ activeEntry.kind === 'read-reaction' ? `📖 ${activeEntry.title}` : activeEntry.title }}</h2>
-        </div>
-        <div v-if="activeEntry.occurredAt" class="pc-detail-meta">
-          <span>{{ activeEntry.occurredAt }}</span>
-        </div>
-        <BaguScanPanel
-          auto-scan
-          class="pc-detail-bagu-panel"
-          :content="activeEntry.content"
-          :apply-handler="applyDiaryBaguContent"
-        />
-      </div>
-    </section>
+    <DiaryBaguPage
+      v-else-if="route.page === 'bagu-scan' && activeBook && activeEntry"
+      :apply-handler="applyDiaryBaguContent"
+      :entry="activeEntry"
+    />
 
-    <section v-else-if="route.page === 'editor'" class="pc-diary-page">
-      <div class="pc-editor-card">
-        <span class="pc-kicker">{{ t`编辑日记` }}</span>
-        <h2>{{ editingEntry ? editingEntry.title : t`调整当前内容` }}</h2>
-        <input
-          v-if="!activeBook"
-          v-model="draft.perspectiveName"
-          class="pc-field"
-          type="text"
-          :placeholder="t`视角角色名`"
-        />
-        <input
-          v-if="!activeBook"
-          v-model="draft.bookTitle"
-          class="pc-field"
-          type="text"
-          :placeholder="t`书架名称（可留空）`"
-        />
-        <input v-model="draft.title" class="pc-field" type="text" :placeholder="t`标题`" />
-        <input v-model="draft.occurredAt" class="pc-field" type="text" :placeholder="t`发生时间，例如 昨夜 23:10`" />
-        <div v-if="editingEntry" class="pc-field-group">
-          <label class="pc-field-label">{{ t`目录顺序` }}</label>
-          <input v-model.number="draft.directoryOrder" class="pc-field" type="number" min="0" step="1" />
-        </div>
-        <div class="pc-kind-row">
-          <button
-            :class="['pc-kind-btn', { active: draft.kind === 'normal' }]"
-            type="button"
-            @click="draft.kind = 'normal'"
-          >
-            {{ t`普通日记` }}
-          </button>
-          <button
-            :class="['pc-kind-btn', { active: draft.kind === 'read-reaction' }]"
-            type="button"
-            @click="draft.kind = 'read-reaction'"
-          >
-            {{ t`阅读反应` }}
-          </button>
-        </div>
-        <input
-          v-if="draft.kind === 'read-reaction'"
-          v-model="draft.readers"
-          class="pc-field"
-          type="text"
-          :placeholder="t`阅读者，用逗号分隔`"
-        />
-        <textarea v-model="draft.content" class="pc-area pc-saved-content-area" :placeholder="t`正文`"></textarea>
-        <div class="pc-form-actions">
-          <button class="pc-soft-btn" type="button" @click="phone.goBack()">{{ t`取消` }}</button>
-          <button class="pc-primary-btn" type="button" @click="submitEntry">{{ t`保存` }}</button>
-        </div>
-      </div>
-    </section>
+    <DiaryEntryEditorPage
+      v-else-if="route.page === 'editor'"
+      v-model:book-title="draft.bookTitle"
+      v-model:content="draft.content"
+      v-model:directory-order="draft.directoryOrder"
+      v-model:kind="draft.kind"
+      v-model:occurred-at="draft.occurredAt"
+      v-model:perspective-name="draft.perspectiveName"
+      v-model:readers="draft.readers"
+      v-model:title="draft.title"
+      :editing-title="editingEntry?.title || ''"
+      :show-book-fields="!activeBook"
+      :show-order="Boolean(editingEntry)"
+      @cancel="phone.goBack()"
+      @save="submitEntry"
+    />
 
-    <section v-else-if="route.page === 'generate'" class="pc-diary-page">
-      <div class="pc-editor-card">
-        <span class="pc-kicker">{{ t`AI 生成` }}</span>
-        <h2>{{ t`生成一篇新的日记` }}</h2>
-        <GenerationPanel
-          :capture="captureDiaryPrompt"
-          :capture-reset-key="generationPromptPreview"
-          :error="generationState.error"
-          :from-start-end="generationDraft.fromStartEnd"
-          :range-text="generationDraft.rangeText"
-          :raw-output="generationState.rawOutput"
-          :recent-count="generationDraft.recentCount"
-          :references="selectedReferences"
-          :requirement-placeholder="t`例如：更克制、更私密一点，少写结论，多写当下情绪。`"
-          :running="generationState.running"
-          :single-message-id="generationDraft.singleMessageId"
-          :source-mode="settings.generation.sourceMode"
-          :user-requirement="generationDraft.userRequirement"
-          @cancel="phone.goBack()"
-          @generate="runGeneration"
-          @stop="stopGeneration"
-          @update:from-start-end="generationDraft.fromStartEnd = $event"
-          @update:range-text="generationDraft.rangeText = $event"
-          @update:recent-count="generationDraft.recentCount = $event"
-          @update:references="selectedReferences = $event"
-          @update:single-message-id="generationDraft.singleMessageId = $event"
-          @update:source-mode="settings.generation.sourceMode = $event"
-          @update:user-requirement="generationDraft.userRequirement = $event"
-        >
-          <template #before-fields>
-            <input
-              v-if="!activeBook"
-              v-model="generationDraft.perspectiveName"
-              class="pc-field"
-              type="text"
-              :disabled="generationState.running"
-              :placeholder="t`视角角色名`"
-            />
-          </template>
-        </GenerationPanel>
-      </div>
-    </section>
+    <DiaryGeneratePage
+      v-else-if="route.page === 'generate'"
+      v-model:extra-field="generationDraft.perspectiveName"
+      v-model:from-start-end="generationDraft.fromStartEnd"
+      v-model:range-text="generationDraft.rangeText"
+      v-model:recent-count="generationDraft.recentCount"
+      v-model:references="selectedReferences"
+      v-model:single-message-id="generationDraft.singleMessageId"
+      v-model:source-mode="settings.generation.sourceMode"
+      v-model:user-requirement="generationDraft.userRequirement"
+      :capture="captureDiaryPrompt"
+      :capture-reset-key="generationPromptPreview"
+      :error="generationState.error"
+      extra-field-placeholder="视角角色名"
+      :extra-field-visible="!activeBook"
+      :raw-output="generationState.rawOutput"
+      requirement-placeholder="例如：更克制、更私密一点，少写结论，多写当下情绪。"
+      :running="generationState.running"
+      title="生成一篇新的日记"
+      @cancel="phone.goBack()"
+      @generate="runGeneration"
+      @stop="stopGeneration"
+    />
 
-    <section v-else-if="route.page === 'batch-generate'" class="pc-diary-page">
-      <div class="pc-editor-card">
-        <span class="pc-kicker">{{ t`AI 批量` }}</span>
-        <h2>{{ t`批量生成日记` }}</h2>
-        <input
-          v-if="!activeBook"
-          v-model="batchDraft.perspectiveName"
-          class="pc-field"
-          type="text"
-          :disabled="batchInputsLocked"
-          :placeholder="t`视角角色名`"
-        />
-        <input
-          v-if="!activeBook"
-          v-model="batchDraft.bookTitle"
-          class="pc-field"
-          type="text"
-          :disabled="batchInputsLocked"
-          :placeholder="t`书架名称（可留空）`"
-        />
-        <div class="pc-field-group">
-          <label class="pc-field-label">{{ t`批量楼层` }}</label>
-          <select v-model="batchDraft.floorMode" class="pc-select" :disabled="batchInputsLocked">
-            <option value="all">{{ t`全部楼层` }}</option>
-            <option value="custom">{{ t`自定义楼层` }}</option>
-          </select>
-        </div>
-        <input
-          v-if="batchDraft.floorMode === 'custom'"
-          v-model="batchDraft.floorText"
-          class="pc-field"
-          type="text"
-          :disabled="batchInputsLocked"
-          :placeholder="t`楼层范围，例如 1-30,35,40-45`"
-        />
+    <DiaryBatchPage
+      v-else-if="route.page === 'batch-generate'"
+      v-model:book-title="batchDraft.bookTitle"
+      v-model:floor-mode="batchDraft.floorMode"
+      v-model:floor-text="batchDraft.floorText"
+      v-model:group-mode="batchDraft.groupMode"
+      v-model:group-size="batchDraft.groupSize"
+      v-model:include-ai="batchDraft.includeAi"
+      v-model:include-user="batchDraft.includeUser"
+      v-model:perspective-name="batchDraft.perspectiveName"
+      v-model:references="selectedReferences"
+      v-model:rpm-limit="batchDraft.rpmLimit"
+      v-model:user-requirement="batchDraft.userRequirement"
+      :inputs-locked="batchInputsLocked"
+      :show-book-fields="!activeBook"
+      :state="batchState"
+      @cancel="phone.goBack()"
+      @generate="runBatchGeneration"
+      @reset="resetBatchProgress"
+      @stop="stopBatchGeneration"
+    />
 
-        <div class="pc-batch-mode-label">
-          <span class="pc-field-label">{{ t`生成方式` }}</span>
-          <InfoHint
-            :text="
-              t`逐楼：将每个符合条件的楼层作为截止点，累积读取第 0 楼到该楼层。例如目标楼层为 1、3、5，将分别使用 0-1、0-3、0-5 楼生成三篇日记。AI/用户选项只决定截止楼层，范围内会保留完整可见对话。\n\n按组：按设定数量合并符合条件的楼层。例如目标楼层为 1、3、5，每组 2 层，将使用 1、3 楼生成一篇，再使用第 5 楼生成一篇。`
-            "
-          />
-        </div>
-        <div class="pc-kind-row pc-batch-kind-row">
-          <button
-            :class="['pc-kind-btn', { active: !batchDraft.groupMode }]"
-            type="button"
-            :disabled="batchInputsLocked"
-            @click="batchDraft.groupMode = false"
-          >
-            {{ t`逐楼生成` }}
-          </button>
-          <button
-            :class="['pc-kind-btn', { active: batchDraft.groupMode }]"
-            type="button"
-            :disabled="batchInputsLocked"
-            @click="batchDraft.groupMode = true"
-          >
-            {{ t`按组生成` }}
-          </button>
-        </div>
+    <DiaryGeneratePage
+      v-else-if="route.page === 'reaction-generate' && activeBook && activeEntry"
+      v-model:extra-field="reactionDraft.readerName"
+      v-model:from-start-end="reactionDraft.fromStartEnd"
+      v-model:range-text="reactionDraft.rangeText"
+      v-model:recent-count="reactionDraft.recentCount"
+      v-model:references="selectedReferences"
+      v-model:single-message-id="reactionDraft.singleMessageId"
+      v-model:source-mode="settings.generation.sourceMode"
+      v-model:user-requirement="reactionDraft.userRequirement"
+      :capture="captureReactionPrompt"
+      :capture-reset-key="reactionPromptPreview"
+      :error="generationState.error"
+      extra-field-placeholder="阅读者名字"
+      extra-field-visible
+      :raw-output="generationState.rawOutput"
+      requirement-placeholder="例如：更像读完以后压在心里的私密独白。"
+      :running="generationState.running"
+      title="生成阅读反应"
+      @cancel="phone.goBack()"
+      @generate="runReadReactionGeneration"
+      @stop="stopGeneration"
+    />
 
-        <div v-if="batchDraft.groupMode" class="pc-number-field">
-          <label class="pc-field-label">{{ t`每组楼数` }}</label>
-          <input
-            v-model.number="batchDraft.groupSize"
-            class="pc-field"
-            type="number"
-            min="1"
-            max="50"
-            :disabled="batchInputsLocked"
-          />
-        </div>
-
-        <div class="pc-number-field">
-          <label class="pc-field-label">{{ t`RPM 请求限制` }}</label>
-          <input
-            v-model.number="batchDraft.rpmLimit"
-            class="pc-field"
-            type="number"
-            min="0"
-            max="120"
-            :disabled="batchState.running"
-          />
-        </div>
-
-        <div class="pc-kind-row pc-check-row">
-          <label class="pc-check-pill">
-            <input v-model="batchDraft.includeAi" type="checkbox" :disabled="batchInputsLocked" />
-            <span>{{ t`AI 楼层` }}</span>
-          </label>
-          <label class="pc-check-pill">
-            <input v-model="batchDraft.includeUser" type="checkbox" :disabled="batchInputsLocked" />
-            <span>{{ t`用户楼层` }}</span>
-          </label>
-        </div>
-        <ReferencePicker v-model="selectedReferences" :disabled="batchInputsLocked" />
-
-        <textarea
-          v-model="batchDraft.userRequirement"
-          class="pc-area compact"
-          :disabled="batchInputsLocked"
-          :placeholder="t`例如：每篇都更私密，按对应楼层情绪独立成篇。`"
-        ></textarea>
-
-        <div v-if="batchState.running || batchState.total" class="pc-status-card">
-          <strong>
-            {{ batchState.running ? t`批量生成中` : batchState.resumeAvailable ? t`批量已暂停` : t`批量生成完成` }}
-          </strong>
-          <p>
-            {{
-              `${batchState.done + batchState.failed}/${batchState.total} · 成功 ${batchState.done}${batchState.failed ? ` · 草稿 ${batchState.failed}` : ''}${batchState.currentLabel ? ` · ${batchState.currentLabel}` : ''}`
-            }}
-          </p>
-        </div>
-
-        <div v-if="batchState.error" class="pc-status-card danger">
-          <strong>{{ batchState.stopRequested ? t`批量已停止` : t`生成失败` }}</strong>
-          <p>{{ batchState.error }}</p>
-        </div>
-
-        <div
-          :class="['pc-form-actions', { 'pc-batch-actions-three': batchState.running || batchState.resumeAvailable }]"
-        >
-          <button class="pc-soft-btn" type="button" :disabled="batchState.running" @click="phone.goBack()">
-            {{ t`取消` }}
-          </button>
-          <button v-if="batchState.running" class="pc-soft-btn danger" type="button" @click="stopBatchGeneration">
-            {{ t`停止` }}
-          </button>
-          <button v-else-if="batchState.resumeAvailable" class="pc-soft-btn" type="button" @click="resetBatchProgress">
-            <i class="fa-solid fa-rotate-left"></i>
-            <span>{{ t`重新设置` }}</span>
-          </button>
-          <button class="pc-primary-btn" type="button" :disabled="batchState.running" @click="runBatchGeneration">
-            <i class="fa-solid fa-layer-group"></i>
-            <span>{{ batchState.running ? t`生成中` : batchState.resumeAvailable ? t`继续批量` : t`开始批量` }}</span>
-          </button>
-        </div>
-
-        <div v-if="batchState.rawOutput" class="pc-raw-output">
-          <div class="pc-raw-head">
-            <strong>{{ t`最近一次输出` }}</strong>
-          </div>
-          <textarea :value="batchState.rawOutput" class="pc-area pc-raw-area" readonly></textarea>
-        </div>
-      </div>
-    </section>
-
-    <section v-else-if="route.page === 'reaction-generate' && activeBook && activeEntry" class="pc-diary-page">
-      <div class="pc-editor-card">
-        <span class="pc-kicker">{{ t`AI 生成` }}</span>
-        <h2>{{ t`生成阅读反应` }}</h2>
-        <GenerationPanel
-          :capture="captureReactionPrompt"
-          :capture-reset-key="reactionPromptPreview"
-          :error="generationState.error"
-          :from-start-end="reactionDraft.fromStartEnd"
-          :range-text="reactionDraft.rangeText"
-          :raw-output="generationState.rawOutput"
-          :recent-count="reactionDraft.recentCount"
-          :references="selectedReferences"
-          :requirement-placeholder="t`例如：更像读完以后压在心里的私密独白。`"
-          :running="generationState.running"
-          :single-message-id="reactionDraft.singleMessageId"
-          :source-mode="settings.generation.sourceMode"
-          :user-requirement="reactionDraft.userRequirement"
-          @cancel="phone.goBack()"
-          @generate="runReadReactionGeneration"
-          @stop="stopGeneration"
-          @update:from-start-end="reactionDraft.fromStartEnd = $event"
-          @update:range-text="reactionDraft.rangeText = $event"
-          @update:recent-count="reactionDraft.recentCount = $event"
-          @update:references="selectedReferences = $event"
-          @update:single-message-id="reactionDraft.singleMessageId = $event"
-          @update:source-mode="settings.generation.sourceMode = $event"
-          @update:user-requirement="reactionDraft.userRequirement = $event"
-        >
-          <template #before-fields>
-            <input
-              v-model="reactionDraft.readerName"
-              class="pc-field"
-              type="text"
-              :disabled="generationState.running"
-              :placeholder="t`阅读者名字`"
-            />
-          </template>
-        </GenerationPanel>
-      </div>
-    </section>
-
-    <section
+    <DiaryPreviewPage
       v-else-if="route.page === 'preview' && generationState.preview"
-      class="pc-diary-page pc-generation-preview-page"
-    >
-      <div class="pc-detail-card pc-generation-preview-card">
-        <GenerationPreviewPanel
-          :content="generationState.preview.content"
-          :raw="generationState.preview.raw"
-          raw-editable
-          :reparse-handler="reparsePreviewRaw"
-          :save-label="generationState.preview.action === 'read-reaction' ? t`保存阅读反应` : t`保存日记`"
-          :source-label="
-            generationState.preview.occurredAt ||
-            (generationState.preview.action === 'read-reaction' ? t`阅读反应预览` : t`日记预览`)
-          "
-          :text-provider-summary="generationState.preview.perspective.name"
-          :title="
-            generationState.preview.action === 'read-reaction'
-              ? `📖 ${generationState.preview.title}`
-              : generationState.preview.title
-          "
-          :warnings="generationState.preview.warnings"
-          @back="returnToGenerate"
-          @reparse="reparsePreviewRaw"
-          @save="savePreview"
-          @update:content="generationState.preview.content = $event"
-          @update:raw="generationState.preview.raw = $event"
-        />
-      </div>
-    </section>
+      v-model:content="generationState.preview.content"
+      v-model:raw="generationState.preview.raw"
+      :action="generationState.preview.action"
+      :occurred-at="generationState.preview.occurredAt || ''"
+      :perspective-name="generationState.preview.perspective.name"
+      :reparse-handler="reparsePreviewRaw"
+      :title="generationState.preview.title"
+      :warnings="generationState.preview.warnings"
+      @back="returnToGenerate"
+      @reparse="reparsePreviewRaw"
+      @save="savePreview"
+    />
 
-    <section v-else-if="route.page === 'failed-draft' && activeFailedDraft" class="pc-diary-page pc-repair-page">
-      <div class="pc-editor-card pc-repair-card">
-        <span class="pc-kicker">{{ activeFailedDraft.source.label }}</span>
-        <h2>{{ t`修复日记草稿` }}</h2>
-
-        <RawOutputEditor
-          v-model="failedDraftRawOutput"
-          :placeholder="t`在这里修 XML 结构或补 title / content。`"
-          @reparse="reparseFailedDraft"
-        />
-
-        <div class="pc-form-actions">
-          <button class="pc-soft-btn danger" type="button" @click="removeFailedDraft(activeFailedDraft.id)">
-            {{ t`删除草稿` }}
-          </button>
-          <button class="pc-soft-btn" type="button" @click="reparseFailedDraft">{{ t`重新解析` }}</button>
-        </div>
-      </div>
-    </section>
+    <DiaryFailedDraftPage
+      v-else-if="route.page === 'failed-draft' && activeFailedDraft"
+      v-model:raw-output="failedDraftRawOutput"
+      :source-label="activeFailedDraft.source.label"
+      @delete="removeFailedDraft(activeFailedDraft.id)"
+      @reparse="reparseFailedDraft"
+    />
   </section>
 </template>
 
 <script setup lang="ts">
-import BookShelf from '@/components/BookShelf.vue';
+import DiaryBookPage from '@/components/diary/DiaryBookPage.vue';
+import DiaryBookEditorPage from '@/components/diary/DiaryBookEditorPage.vue';
+import DiaryBaguPage from '@/components/diary/DiaryBaguPage.vue';
+import DiaryBatchPage from '@/components/diary/DiaryBatchPage.vue';
+import DiaryCatalogPage from '@/components/diary/DiaryCatalogPage.vue';
+import DiaryCreationModePage from '@/components/diary/DiaryCreationModePage.vue';
 import DiaryEntryDetailPage from '@/components/diary/DiaryEntryDetailPage.vue';
-import EmptyState from '@/components/EmptyState.vue';
-import BaguScanPanel from '@/components/BaguScanPanel.vue';
-import FailedDraftList from '@/components/FailedDraftList.vue';
-import GenerationPanel from '@/components/GenerationPanel.vue';
-import GenerationPreviewPanel from '@/components/GenerationPreviewPanel.vue';
-import InfoHint from '@/components/InfoHint.vue';
-import PreviewDraftNotice from '@/components/PreviewDraftNotice.vue';
-import RawOutputEditor from '@/components/RawOutputEditor.vue';
-import ReferencePicker from '@/components/ReferencePicker.vue';
+import DiaryEntryEditorPage from '@/components/diary/DiaryEntryEditorPage.vue';
+import DiaryFailedDraftPage from '@/components/diary/DiaryFailedDraftPage.vue';
+import DiaryGeneratePage from '@/components/diary/DiaryGeneratePage.vue';
+import DiaryPreviewPage from '@/components/diary/DiaryPreviewPage.vue';
 import { useCatalogDetailNavigation } from '@/composables/useCatalogDetailNavigation';
+import { useDirectorySort } from '@/composables/useDirectorySort';
 import { getRegisteredPhoneGenerationAdapter } from '@/core/appRegistry';
 import { parseDiaryGeneratedResult } from '@/core/diaryGeneration';
 import { buildGenerationPreview, captureGenerationPrompt, generateContent } from '@/core/generationService';
@@ -533,12 +236,7 @@ const { specialPrompts } = storeToRefs(prompts);
 const { settings } = storeToRefs(settingsStore);
 
 const query = ref('');
-const sortDesc = computed({
-  get: () => settings.value.directorySort.diaryDesc,
-  set: value => {
-    settings.value.directorySort.diaryDesc = value;
-  },
-});
+const sortDesc = useDirectorySort('diaryDesc');
 const bookTitle = ref('');
 const entryContentEl = ref<HTMLElement | null>(null);
 const { scrollToBottom, scrollToTop } = useDetailScroll(entryContentEl, '.pc-diary-detail-page .pc-detail-content');
@@ -1715,409 +1413,7 @@ async function removeEntry(bookId: string, entryId: string) {
 </script>
 
 <style scoped>
-.pc-diary-app,
-.pc-diary-page {
-  min-height: 100%;
-}
-
 .pc-diary-app {
-  height: 100%;
-  min-height: 0;
-}
-
-.pc-diary-page {
-  display: flex;
-  flex-direction: column;
-  gap: 14px;
-}
-
-.pc-diary-detail-page {
-  height: 100%;
-  gap: 10px;
-  min-height: 0;
-}
-
-.pc-diary-hero,
-.pc-book-card,
-.pc-entry-card,
-.pc-editor-card,
-.pc-detail-card,
-.pc-toolbar {
-  border: 1px solid var(--pc-border);
-  background: color-mix(in srgb, var(--pc-surface) 72%, transparent 28%);
-  border-radius: 20px;
-  backdrop-filter: blur(12px);
-}
-
-.pc-diary-hero,
-.pc-editor-card,
-.pc-detail-card,
-.pc-toolbar {
-  padding: 14px;
-}
-
-.pc-diary-hero {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
-  gap: 12px;
-}
-
-.pc-diary-actions-hero {
-  grid-template-columns: minmax(0, 1fr);
-}
-
-.pc-diary-hero h2,
-.pc-editor-card h2,
-.pc-detail-card h2 {
-  margin: 0;
-  font-size: 20px;
-  line-height: 1.25;
-}
-
-.pc-diary-hero p,
-.pc-book-card p,
-.pc-entry-card p,
-.pc-detail-meta,
-.pc-reader-row span {
-  color: var(--pc-muted);
-}
-
-.pc-copy,
-.pc-status-card p,
-.pc-raw-head span,
-.pc-preview-card p {
-  color: var(--pc-muted);
-}
-
-.pc-book-list,
-.pc-entry-list,
-.pc-shelf-manage {
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-}
-
-.pc-shelf-manage-item {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 10px;
-  padding: 12px 14px;
-  border: 1px solid var(--pc-border);
-  border-radius: 16px;
-  background: color-mix(in srgb, var(--pc-surface) 62%, transparent 38%);
-}
-
-.pc-book-card,
-.pc-entry-card {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
-  gap: 10px;
-  padding: 14px;
-}
-
-.pc-book-main,
-.pc-entry-main {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  text-align: left;
-  border: 0;
-  background: transparent;
-  color: var(--pc-text);
-  cursor: pointer;
-}
-
-.pc-avatar {
-  width: 42px;
-  height: 42px;
-  border-radius: 14px;
-  flex: 0 0 auto;
-  display: grid;
-  place-items: center;
-  background: color-mix(in srgb, var(--pc-theme-accent) 18%, var(--pc-surface-strong) 82%);
-  color: var(--pc-theme-accent);
-  font-weight: 700;
-}
-
-.pc-book-main strong,
-.pc-entry-main strong {
-  display: block;
-  min-width: 0;
-  overflow: hidden;
-  font-size: 16px;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.pc-book-actions,
-.pc-form-actions,
-.pc-detail-meta,
-.pc-kind-row,
-.pc-raw-head {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 10px;
-}
-
-.pc-hero-actions {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-  justify-content: flex-end;
-}
-
-.pc-diary-actions-hero .pc-hero-actions {
-  display: grid;
-  grid-template-columns: minmax(84px, 1fr) minmax(84px, 1fr) 44px 44px;
-  align-items: center;
-  justify-content: stretch;
-  width: 100%;
-}
-
-.pc-diary-actions-hero .pc-primary-btn,
-.pc-diary-actions-hero .pc-soft-btn,
-.pc-diary-actions-hero .pc-icon-btn {
-  width: 100%;
-  min-width: 0;
-}
-
-.pc-diary-actions-hero .pc-primary-btn,
-.pc-diary-actions-hero .pc-soft-btn {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.pc-diary-actions-hero .pc-primary-btn span,
-.pc-diary-actions-hero .pc-soft-btn span {
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.pc-list-count {
-  margin: -8px 4px 0;
-  color: var(--pc-muted);
-  font-size: 12px;
-}
-
-.pc-toolbar {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
-  gap: 10px;
-}
-
-.pc-search {
-  width: 100%;
-  border: 1px solid var(--pc-border);
-  border-radius: 16px;
-  background: var(--pc-surface-strong);
-  color: var(--pc-text);
-  padding: 12px 14px;
-}
-
-.pc-diary-app :is(.pc-field, .pc-area),
-.pc-kind-row,
-.pc-preview-card {
-  margin-top: 14px;
-}
-
-.pc-batch-mode-label {
-  display: flex;
-  align-items: center;
-  margin-top: 14px;
-}
-
-.pc-batch-kind-row {
-  justify-content: flex-start;
-}
-
-.pc-entry-main {
-  align-items: flex-start;
-}
-
-.pc-entry-head {
-  display: flex;
-  width: 100%;
-  min-width: 0;
-  align-items: center;
-  justify-content: space-between;
-  gap: 10px;
-}
-
-.pc-entry-head strong {
-  flex: 1 1 auto;
-}
-
-.pc-entry-order {
-  flex: 0 0 auto;
-  color: var(--pc-muted);
-  font-size: 12px;
-  white-space: nowrap;
-}
-
-.pc-entry-main .preview {
-  display: -webkit-box;
-  -webkit-line-clamp: 2;
-  -webkit-box-orient: vertical;
-  overflow: hidden;
-}
-
-.pc-favorite-chip,
-.pc-kind-btn {
-  border: 0;
-  cursor: pointer;
-  color: var(--pc-text);
-}
-
-.pc-kind-btn {
-  min-width: 92px;
-  height: 40px;
-  border-radius: 999px;
-  padding: 0 14px;
-}
-
-.pc-kind-btn {
-  background: var(--pc-surface-strong);
-}
-
-.pc-kind-btn.active {
-  background: color-mix(in srgb, var(--pc-theme-accent) 22%, var(--pc-surface-strong) 78%);
-}
-
-.pc-number-field {
-  display: grid;
-  gap: 8px;
-  margin-top: 14px;
-}
-
-.pc-check-row {
-  justify-content: flex-start;
-  flex-wrap: wrap;
-}
-
-.pc-check-pill {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  min-height: 40px;
-  padding: 0 14px;
-  border-radius: 999px;
-  background: var(--pc-surface-strong);
-  color: var(--pc-text);
-}
-
-.pc-soft-btn.danger,
-.pc-icon-btn.danger {
-  color: var(--pc-danger);
-}
-
-.pc-favorite-chip {
-  width: 40px;
-  height: 40px;
-  border-radius: 12px;
-  background: var(--pc-surface-strong);
-}
-
-.pc-favorite-chip i[data-active='true'] {
-  color: var(--pc-danger);
-}
-
-.pc-diary-app .pc-area {
-  min-height: 220px;
-  resize: vertical;
-}
-
-.pc-diary-app .pc-area.compact {
-  min-height: 120px;
-}
-
-.pc-diary-app .pc-form-actions {
-  margin-top: 16px;
-  justify-content: flex-end;
-  flex-wrap: wrap;
-}
-
-.pc-batch-actions-three {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 8px;
-}
-
-.pc-batch-actions-three > button {
-  width: 100%;
-  min-width: 0;
-  gap: 5px;
-  padding-inline: 6px;
-  font-size: 13px;
-  white-space: nowrap;
-}
-
-.pc-diary-detail-page .pc-detail-card {
-  flex: 1 1 auto;
-  min-height: 0;
-  display: flex;
-  flex-direction: column;
-}
-
-.pc-detail-content {
-  flex: 1 1 auto;
-  margin-top: 16px;
-  min-height: 0;
-  overflow: auto;
-  padding: 16px;
-  border-radius: 18px;
-  background: var(--pc-surface-strong);
-  white-space: pre-wrap;
-  color: var(--pc-text);
-  font-size: var(--pc-reader-font-size);
-  line-height: var(--pc-reader-line-height);
-}
-
-.pc-reader-row {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  margin-top: 16px;
-}
-
-.pc-preview-card,
-.pc-status-card {
-  border: 1px solid var(--pc-border);
-  border-radius: 18px;
-  background: var(--pc-surface-strong);
-  padding: 14px;
-}
-
-.pc-status-card {
-  margin-top: 14px;
-}
-
-.pc-status-card.warning {
-  border-color: color-mix(in srgb, #f5a623 42%, var(--pc-border) 58%);
-}
-
-.pc-status-card.danger {
-  border-color: color-mix(in srgb, var(--pc-danger) 42%, var(--pc-border) 58%);
-}
-
-.pc-raw-output {
-  margin-top: 14px;
-}
-
-.pc-raw-head {
-  align-items: baseline;
-}
-
-.pc-raw-area {
-  min-height: 180px;
-  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
-  font-size: 12px;
-}
-
-.pc-entry-main.draft {
-  display: block;
+  min-height: 100%;
 }
 </style>

@@ -1,5 +1,5 @@
-import type { PhoneRoute } from '@/store/phone';
-import { usePhoneStore } from '@/store/phone';
+import { usePreviewSession } from '@/composables/usePreviewSession';
+import { usePhoneStore, type PhonePreviewSessionStatus, type PhoneRoute } from '@/store/phone';
 import { usePreviewDraftStore } from '@/store/previewDrafts';
 import { computed, watch, type Ref } from 'vue';
 
@@ -8,6 +8,7 @@ export interface PreviewDraftPersistenceOptions<TPreview> {
   consumeFailedDraft?: (draftId: string) => void;
   getPreview: () => null | TPreview;
   getRouteParams?: () => Record<string, string>;
+  getSessionStatus?: () => PhonePreviewSessionStatus;
   page: string;
   route: Ref<PhoneRoute>;
   setPreview: (preview: null | TPreview) => void;
@@ -17,6 +18,15 @@ export interface PreviewDraftPersistenceOptions<TPreview> {
 export function usePreviewDraftPersistence<TPreview>(options: PreviewDraftPersistenceOptions<TPreview>) {
   const phone = usePhoneStore();
   const previewDrafts = usePreviewDraftStore();
+
+  usePreviewSession({
+    appId: options.appId,
+    getStatus: () => {
+      if (!options.getPreview()) return null;
+      return options.getSessionStatus?.() ?? 'unsaved';
+    },
+    page: options.page,
+  });
 
   const draft = computed(() => previewDrafts.getPreviewDraft(options.appId, options.page));
 

@@ -264,6 +264,7 @@ import GenerationPanel from '@/components/GenerationPanel.vue';
 import GenerationPreviewPanel from '@/components/GenerationPreviewPanel.vue';
 import InfoHint from '@/components/InfoHint.vue';
 import SearchableCombobox from '@/components/SearchableCombobox.vue';
+import { usePreviewSession } from '@/composables/usePreviewSession';
 import { generateOrderedPromptContent, type RawOrderedPrompt } from '@/core/generationService';
 import {
   appendWorldbookEntries,
@@ -364,14 +365,17 @@ const previewSaveLabel = computed(() => {
   if (!preview.targetWorldbookName) return '保存成品';
   return preview.worldbookWritten ? '更新成品' : '保存并写入世界书';
 });
-const stopSavedPreviewCheck = phone.registerSavedPreviewCheck(
-  () =>
-    route.value.appId === 'card-writer' &&
-    route.value.page === 'preview' &&
-    savedPreviewBaseline.value !== null &&
-    savedPreviewBaseline.value.content === preview.content &&
-    savedPreviewBaseline.value.raw === preview.raw,
-);
+usePreviewSession({
+  appId: 'card-writer',
+  getStatus: () => {
+    if (!preview.content.trim() && !preview.raw.trim()) return null;
+    if (!savedPreviewBaseline.value) return 'unsaved';
+    return savedPreviewBaseline.value.content === preview.content && savedPreviewBaseline.value.raw === preview.raw
+      ? 'saved'
+      : 'dirty';
+  },
+  page: 'preview',
+});
 
 function markPreviewSaved() {
   savedPreviewBaseline.value = {
@@ -713,7 +717,6 @@ function formatDate(value: string) {
 
 onMounted(refreshWorldbooks);
 onBeforeUnmount(stopWriter);
-onScopeDispose(stopSavedPreviewCheck);
 </script>
 
 <style scoped>

@@ -1,366 +1,119 @@
 <template>
   <section class="pc-forum-app">
-    <section v-if="route.page === 'root'" class="pc-forum-page">
-      <div class="pc-forum-hero actions-only">
-        <div class="pc-hero-actions">
-          <button class="pc-soft-btn" type="button" @click="openGenerateThread()">
-            <i class="fa-solid fa-wand-magic-sparkles"></i>
-            <span>{{ t`生成帖子` }}</span>
-          </button>
-          <button class="pc-primary-btn" type="button" @click="openCreateBoard()">
-            <i class="fa-solid fa-plus"></i>
-            <span>{{ t`新建板块` }}</span>
-          </button>
-        </div>
-      </div>
+    <ForumCatalogPage
+      v-if="route.page === 'root'"
+      :boards="boards"
+      :failed-drafts="failedDrafts"
+      :format-board-meta="formatBoardMeta"
+      :get-failed-draft-context="failedDraftContextSummary"
+      :get-failed-draft-title="failedDraftTitle"
+      :preview-draft="forumPreviewDraft"
+      @create-board="openCreateBoard"
+      @discard-preview="discardForumPreviewDraft"
+      @edit-board="openEditBoard"
+      @generate-thread="openGenerateThread()"
+      @open-board="openBoard"
+      @open-failed-draft="openFailedDraft"
+      @open-preview="openForumPreviewDraft"
+      @remove-board="removeBoard"
+      @remove-failed-draft="removeFailedDraft"
+    />
 
-      <EmptyState v-if="!boards.length" :title="t`还没有论坛板块`" />
+    <ForumBoardEditorPage
+      v-else-if="route.page === 'board-editor'"
+      v-model:name="boardDraft.name"
+      v-model:type-prompt="boardDraft.typePrompt"
+      :editing="Boolean(editingBoard)"
+      :title="editingBoard?.name"
+      :type-id="boardEditorTypeId"
+      :type-options="boardTypeOptions"
+      @cancel="phone.goBack()"
+      @customize-type="markBoardEditorTypeCustom"
+      @save="submitBoard"
+      @select-type="selectBoardEditorType"
+    />
 
-      <div v-else class="pc-board-list">
-        <article v-for="board in boards" :key="board.id" class="pc-board-card">
-          <button class="pc-board-main" type="button" @click="openBoard(board.id)">
-            <div>
-              <strong>{{ board.name }}</strong>
-              <p>{{ formatBoardMeta(board.threads.length) }}</p>
-            </div>
-          </button>
-          <div class="pc-board-actions">
-            <button class="pc-icon-btn" type="button" @click="openEditBoard(board.id)">
-              <i class="fa-solid fa-pen"></i>
-            </button>
-            <button class="pc-icon-btn danger" type="button" @click="removeBoard(board.id)">
-              <i class="fa-solid fa-trash"></i>
-            </button>
-          </div>
-        </article>
-      </div>
+    <ForumBoardPage
+      v-else-if="route.page === 'board' && activeBoard"
+      v-model:query="query"
+      v-model:sort-mode="sortMode"
+      :board="activeBoard"
+      :sort-options="sortOptions"
+      :threads="sortedThreads"
+      @create-thread="openCreateThread(activeBoard.id)"
+      @generate-thread="openGenerateThread(activeBoard.id)"
+      @open-thread="openThread(activeBoard.id, $event)"
+      @toggle-favorite="forum.toggleFavorite(activeBoard.id, $event)"
+    />
 
-      <FailedDraftList
-        :drafts="failedDrafts"
-        :get-context="failedDraftContextSummary"
-        :get-title="failedDraftTitle"
-        @open="openFailedDraft"
-        @remove="removeFailedDraft"
-      />
+    <ForumThreadEditorPage
+      v-else-if="route.page === 'thread-editor'"
+      v-model:author="threadDraft.author"
+      v-model:board-id="threadDraft.boardId"
+      v-model:board-name="threadDraft.boardName"
+      v-model:board-type-id="threadDraft.boardTypeId"
+      v-model:board-type-prompt="threadDraft.boardTypePrompt"
+      v-model:content="threadDraft.content"
+      v-model:thread-title="threadDraft.title"
+      :board-options="boardSelectionOptions"
+      :board-type-options="boardTypeOptions"
+      :custom-board-id="CUSTOM_BOARD_ID"
+      :editing="Boolean(editingThread)"
+      :inside-board="Boolean(activeBoard)"
+      :title="editingThread?.title"
+      @cancel="phone.goBack()"
+      @customize-board-type="threadDraft.boardTypeId = CUSTOM_BOARD_TYPE_ID"
+      @save="submitThread"
+      @select-board-type="selectThreadEditorBoardType"
+    />
 
-      <PreviewDraftNotice
-        :draft="forumPreviewDraft"
-        @discard="discardForumPreviewDraft"
-        @open="openForumPreviewDraft"
-      />
-    </section>
+    <ForumThreadDetailPage
+      v-else-if="route.page === 'thread' && activeBoard && activeThread && viewedForumThread"
+      :board-name="activeBoard.name"
+      :displayed-content="displayedForumContent"
+      :favorite="activeThread.favorite"
+      :replies="displayedReplies"
+      :thread="viewedForumThread"
+      :version-navigator-position="settings.reader.versionNavigatorPosition"
+      :versions="activeThread.versions"
+      :viewed-version-id="viewedForumVersionId"
+      @bagu="openForumBaguScan"
+      @edit="openEditThread(activeBoard.id, activeThread.id, viewedForumVersionId)"
+      @favorite="forum.toggleFavorite(activeBoard.id, activeThread.id)"
+      @generate-replies="openGenerateReplies(activeBoard.id, activeThread.id)"
+      @remove="removeThread(activeBoard.id, activeThread.id)"
+      @rewrite="openRewriteThread"
+      @select-version="selectForumVersion"
+    />
 
-    <section v-else-if="route.page === 'board-editor'" class="pc-forum-page">
-      <div class="pc-editor-card">
-        <span class="pc-kicker">{{ editingBoard ? t`编辑板块` : t`新建板块` }}</span>
-        <h2>{{ editingBoard ? editingBoard.name : t`建立一个新的板块` }}</h2>
-        <SearchableCombobox
-          :empty-label="t`没有匹配的板块类型`"
-          :input-label="t`选择论坛板块类型`"
-          :model-value="boardEditorTypeId"
-          :options="boardTypeOptions"
-          :placeholder="t`选择论坛板块类型`"
-          :toggle-title="t`展开论坛板块类型`"
-          @update:model-value="selectBoardEditorType"
-        />
-        <input v-model="boardDraft.name" class="pc-field" type="text" :placeholder="t`板块名称`" />
-        <textarea
-          v-model="boardDraft.typePrompt"
-          class="pc-area compact"
-          :placeholder="t`板块类型提示词（可编辑）`"
-          @input="markBoardEditorTypeCustom"
-        ></textarea>
-        <div class="pc-form-actions">
-          <button class="pc-soft-btn" type="button" @click="phone.goBack()">{{ t`取消` }}</button>
-          <button class="pc-primary-btn" type="button" @click="submitBoard">{{ t`保存` }}</button>
-        </div>
-      </div>
-    </section>
+    <BaguDetailPage
+      v-else-if="route.page === 'bagu-scan' && activeBoard && activeThread"
+      :apply-handler="applyForumBaguContent"
+      :content="viewedForumThread.content"
+      :meta="`${activeBoard.name} · ${viewedForumThread.author}`"
+      :title="viewedForumThread.title"
+    />
 
-    <section v-else-if="route.page === 'board' && activeBoard" class="pc-forum-page">
-      <div class="pc-forum-hero">
-        <div>
-          <h2>{{ activeBoard.name }}</h2>
-        </div>
-        <div class="pc-hero-actions">
-          <button class="pc-soft-btn compact" type="button" @click="openGenerateThread(activeBoard.id)">
-            <i class="fa-solid fa-wand-magic-sparkles"></i>
-            <span>{{ t`生成帖子` }}</span>
-          </button>
-          <button class="pc-primary-btn compact" type="button" @click="openCreateThread(activeBoard.id)">
-            <i class="fa-solid fa-file-circle-plus"></i>
-            <span>{{ t`发帖` }}</span>
-          </button>
-        </div>
-      </div>
-
-      <div class="pc-toolbar">
-        <input v-model="query" class="pc-search" type="text" :placeholder="t`搜索标题、作者或正文`" />
-        <div class="pc-sort-group">
-          <button
-            v-for="option in sortOptions"
-            :key="option.value"
-            :class="['pc-sort-btn', { active: sortMode === option.value }]"
-            type="button"
-            :title="option.title"
-            @click="sortMode = option.value"
-          >
-            {{ option.label }}
-          </button>
-        </div>
-      </div>
-
-      <EmptyState v-if="!sortedThreads.length" :title="t`还没有匹配的帖子`" />
-
-      <div v-else class="pc-entry-list">
-        <article v-for="thread in sortedThreads" :key="thread.id" class="pc-entry-card">
-          <button class="pc-entry-main" type="button" @click="openThread(activeBoard.id, thread.id)">
-            <div class="pc-entry-head">
-              <strong>{{ thread.title }}</strong>
-              <ContentVersionBadge :count="Math.max(1, thread.versions.length)" />
-            </div>
-            <p>{{ thread.author }} · {{ thread.replies.length }} {{ t`条回复` }}</p>
-          </button>
-          <button class="pc-favorite-chip" type="button" @click="forum.toggleFavorite(activeBoard.id, thread.id)">
-            <i class="fa-solid fa-bookmark" :data-active="thread.favorite"></i>
-          </button>
-        </article>
-      </div>
-    </section>
-
-    <section v-else-if="route.page === 'thread-editor'" class="pc-forum-page">
-      <div class="pc-editor-card">
-        <span class="pc-kicker">{{ editingThread ? t`编辑帖子` : t`发布帖子` }}</span>
-        <h2>{{ editingThread ? editingThread.title : t`写一篇新的主楼` }}</h2>
-
-        <template v-if="!editingThread">
-          <SearchableCombobox
-            v-if="!activeBoard"
-            :input-label="t`选择或搜索论坛板块`"
-            :model-value="threadDraft.boardId"
-            :options="boardSelectionOptions"
-            :placeholder="t`选择或搜索论坛板块`"
-            :toggle-title="t`展开论坛板块`"
-            @update:model-value="threadDraft.boardId = $event"
-          />
-          <SearchableCombobox
-            v-if="!activeBoard && threadDraft.boardId === CUSTOM_BOARD_ID"
-            :input-label="t`选择论坛板块类型`"
-            :model-value="threadDraft.boardTypeId"
-            :options="boardTypeOptions"
-            :placeholder="t`选择论坛板块类型`"
-            :toggle-title="t`展开论坛板块类型`"
-            @update:model-value="selectThreadEditorBoardType"
-          />
-          <input
-            v-if="!activeBoard && threadDraft.boardId === CUSTOM_BOARD_ID"
-            v-model="threadDraft.boardName"
-            class="pc-field"
-            type="text"
-            :placeholder="t`新板块名称`"
-          />
-          <textarea
-            v-if="!activeBoard && threadDraft.boardId === CUSTOM_BOARD_ID"
-            v-model="threadDraft.boardTypePrompt"
-            class="pc-area compact"
-            :placeholder="t`板块类型提示词（可编辑）`"
-            @input="threadDraft.boardTypeId = CUSTOM_BOARD_TYPE_ID"
-          ></textarea>
-        </template>
-
-        <input v-model="threadDraft.author" class="pc-field" type="text" :placeholder="t`主楼作者`" />
-        <input v-model="threadDraft.title" class="pc-field" type="text" :placeholder="t`帖子标题`" />
-        <textarea
-          v-model="threadDraft.content"
-          class="pc-area pc-saved-content-area"
-          :placeholder="t`主楼正文`"
-        ></textarea>
-        <div class="pc-form-actions">
-          <button class="pc-soft-btn" type="button" @click="phone.goBack()">{{ t`取消` }}</button>
-          <button class="pc-primary-btn" type="button" @click="submitThread">{{ t`保存` }}</button>
-        </div>
-      </div>
-    </section>
-
-    <section v-else-if="route.page === 'thread' && activeBoard && activeThread" class="pc-forum-page">
-      <div class="pc-detail-card">
-        <span class="pc-kicker">{{ activeBoard.name }}</span>
-        <div class="pc-detail-title-row">
-          <h2>{{ viewedForumThread.title }}</h2>
-        </div>
-        <div class="pc-detail-meta">
-          <span>{{ viewedForumThread.author }}</span>
-          <span>{{ activeThread.favorite ? t`已收藏` : t`未收藏` }}</span>
-        </div>
-        <VersionNavigator
-          v-if="settings.reader.versionNavigatorPosition === 'before'"
-          :versions="activeThread.versions"
-          :viewed-version-id="viewedForumVersionId"
-          @select="selectForumVersion"
-        />
-        <ReaderContent :content="displayedForumContent" />
-        <VersionNavigator
-          v-if="settings.reader.versionNavigatorPosition === 'after'"
-          :versions="activeThread.versions"
-          :viewed-version-id="viewedForumVersionId"
-          @select="selectForumVersion"
-        />
-      </div>
-      <div class="pc-detail-footer pc-forum-thread-footer">
-        <div class="pc-detail-actions six">
-          <button class="pc-soft-btn" type="button" :title="t`八股检测`" @click="openForumBaguScan">
-            <i class="fa-solid fa-filter-circle-xmark"></i>
-          </button>
-          <button
-            class="pc-soft-btn"
-            type="button"
-            :title="t`生成回复`"
-            @click="openGenerateReplies(activeBoard.id, activeThread.id)"
-          >
-            <i class="fa-solid fa-wand-magic-sparkles"></i>
-          </button>
-          <button
-            :class="['pc-soft-btn', { active: activeThread.favorite }]"
-            type="button"
-            :title="activeThread.favorite ? t`取消收藏` : t`收藏`"
-            @click="forum.toggleFavorite(activeBoard.id, activeThread.id)"
-          >
-            <i class="fa-solid fa-bookmark"></i>
-          </button>
-          <button
-            class="pc-soft-btn"
-            type="button"
-            :title="t`编辑主楼`"
-            @click="openEditThread(activeBoard.id, activeThread.id, viewedForumVersionId)"
-          >
-            <i class="fa-solid fa-pen"></i>
-          </button>
-          <button class="pc-soft-btn" type="button" :title="t`重新生成主题`" @click="openRewriteThread">
-            <i class="fa-solid fa-rotate"></i>
-          </button>
-          <button
-            class="pc-soft-btn danger"
-            type="button"
-            :title="activeThread.versions.length > 1 ? t`删除当前版本` : t`删除帖子`"
-            @click="removeThread(activeBoard.id, activeThread.id)"
-          >
-            <i class="fa-solid fa-trash"></i>
-          </button>
-        </div>
-      </div>
-
-      <section class="pc-reply-section">
-        <div class="pc-section-head">
-          <strong>{{ t`回复` }}</strong>
-          <p>{{ `${viewedForumThread.replies.length} 条` }}</p>
-        </div>
-
-        <EmptyState v-if="!viewedForumThread.replies.length" compact :title="t`还没有回复。`" />
-
-        <div v-else class="pc-reply-list">
-          <article v-for="reply in displayedReplies" :key="reply.id" class="pc-reply-card">
-            <div class="pc-reply-head">
-              <strong>{{ reply.author }}</strong>
-              <span>{{ `第 ${reply.floor} 层` }}</span>
-            </div>
-            <p class="pc-reply-content">{{ reply.content }}</p>
-          </article>
-        </div>
-
-        <div class="pc-detail-footer pc-forum-thread-footer">
-          <div class="pc-detail-actions six">
-            <button class="pc-soft-btn" type="button" :title="t`八股检测`" @click="openForumBaguScan">
-              <i class="fa-solid fa-filter-circle-xmark"></i>
-            </button>
-            <button
-              class="pc-soft-btn"
-              type="button"
-              :title="t`生成回复`"
-              @click="openGenerateReplies(activeBoard.id, activeThread.id)"
-            >
-              <i class="fa-solid fa-wand-magic-sparkles"></i>
-            </button>
-            <button
-              :class="['pc-soft-btn', { active: activeThread.favorite }]"
-              type="button"
-              :title="activeThread.favorite ? t`取消收藏` : t`收藏`"
-              @click="forum.toggleFavorite(activeBoard.id, activeThread.id)"
-            >
-              <i class="fa-solid fa-bookmark"></i>
-            </button>
-            <button
-              class="pc-soft-btn"
-              type="button"
-              :title="t`编辑主楼`"
-              @click="openEditThread(activeBoard.id, activeThread.id, viewedForumVersionId)"
-            >
-              <i class="fa-solid fa-pen"></i>
-            </button>
-            <button class="pc-soft-btn" type="button" :title="t`重新生成主题`" @click="openRewriteThread">
-              <i class="fa-solid fa-rotate"></i>
-            </button>
-            <button
-              class="pc-soft-btn danger"
-              type="button"
-              :title="activeThread.versions.length > 1 ? t`删除当前版本` : t`删除帖子`"
-              @click="removeThread(activeBoard.id, activeThread.id)"
-            >
-              <i class="fa-solid fa-trash"></i>
-            </button>
-          </div>
-        </div>
-      </section>
-    </section>
-
-    <section v-else-if="route.page === 'bagu-scan' && activeBoard && activeThread" class="pc-forum-page">
-      <div class="pc-detail-card">
-        <span class="pc-kicker">{{ activeBoard.name }}</span>
-        <div class="pc-detail-title-row">
-          <h2>{{ viewedForumThread.title }}</h2>
-        </div>
-        <div class="pc-detail-meta">
-          <span>{{ viewedForumThread.author }}</span>
-          <span>{{ activeThread.favorite ? t`已收藏` : t`未收藏` }}</span>
-        </div>
-        <BaguScanPanel
-          auto-scan
-          class="pc-detail-bagu-panel"
-          :content="viewedForumThread.content"
-          :apply-handler="applyForumBaguContent"
-        />
-      </div>
-    </section>
-
-    <section v-else-if="route.page === 'generate-thread'" class="pc-forum-page">
-      <div class="pc-editor-card">
-        <span class="pc-kicker">{{ t`AI 生成` }}</span>
-        <h2>{{ forumThreadGenerationMode === 'rewrite' ? t`重新生成整个主题` : t`生成一个新帖子` }}</h2>
-
-        <GenerationPanel
-          :capture="captureForumThreadPrompt"
-          :capture-reset-key="forumPromptPreview"
-          :error="generationState.error"
-          :from-start-end="threadGenerationDraft.fromStartEnd"
-          :range-text="threadGenerationDraft.rangeText"
-          :raw-output="generationState.rawOutput"
-          :recent-count="threadGenerationDraft.recentCount"
-          :references="selectedReferences"
-          requirement-placeholder="例如：主楼更像资深版友发的长帖，回复风格分化明显。"
-          :running="generationState.running"
-          :single-message-id="threadGenerationDraft.singleMessageId"
-          :source-mode="settings.generation.sourceMode"
-          :user-requirement="threadGenerationDraft.userRequirement"
-          @cancel="phone.goBack()"
-          @generate="runThreadGeneration"
-          @stop="stopGeneration"
-          @update:from-start-end="threadGenerationDraft.fromStartEnd = $event"
-          @update:range-text="threadGenerationDraft.rangeText = $event"
-          @update:recent-count="threadGenerationDraft.recentCount = $event"
-          @update:references="selectedReferences = $event"
-          @update:single-message-id="threadGenerationDraft.singleMessageId = $event"
-          @update:source-mode="settings.generation.sourceMode = $event"
-          @update:user-requirement="threadGenerationDraft.userRequirement = $event"
-        >
+    <GenerationFormPage
+      v-else-if="route.page === 'generate-thread'"
+      v-model:from-start-end="threadGenerationDraft.fromStartEnd"
+      v-model:range-text="threadGenerationDraft.rangeText"
+      v-model:recent-count="threadGenerationDraft.recentCount"
+      v-model:references="selectedReferences"
+      v-model:single-message-id="threadGenerationDraft.singleMessageId"
+      v-model:source-mode="generationSourceMode"
+      v-model:user-requirement="threadGenerationDraft.userRequirement"
+      :capture="captureForumThreadPrompt"
+      :capture-reset-key="forumPromptPreview"
+      :error="generationState.error"
+      :raw-output="generationState.rawOutput"
+      requirement-placeholder="例如：主楼更像资深版友发的长帖，回复风格分化明显。"
+      :running="generationState.running"
+      :title="forumThreadGenerationMode === 'rewrite' ? '重新生成整个主题' : '生成一个新帖子'"
+      @cancel="phone.goBack()"
+      @generate="runThreadGeneration"
+      @stop="stopGeneration"
+    >
           <template #before-fields>
             <SearchableCombobox
               v-if="!activeBoard"
@@ -417,158 +170,89 @@
                 :placeholder="t`固定板块名称`"
               />
             </div>
-          </template>
-        </GenerationPanel>
-      </div>
-    </section>
+      </template>
+    </GenerationFormPage>
 
-    <section v-else-if="route.page === 'generate-replies' && activeBoard && activeThread" class="pc-forum-page">
-      <div class="pc-editor-card">
-        <span class="pc-kicker">{{ t`AI 续回` }}</span>
-        <h2>{{ t`生成新的回复` }}</h2>
-
-        <GenerationPanel
-          :capture="captureForumReplyPrompt"
-          :capture-reset-key="forumPromptPreview"
-          :error="generationState.error"
-          :from-start-end="replyGenerationDraft.fromStartEnd"
-          :range-text="replyGenerationDraft.rangeText"
-          :raw-output="generationState.rawOutput"
-          :recent-count="replyGenerationDraft.recentCount"
-          :references="selectedReferences"
-          requirement-placeholder="例如：让不同楼层意见更分裂。"
-          :running="generationState.running"
-          :single-message-id="replyGenerationDraft.singleMessageId"
-          :source-mode="settings.generation.sourceMode"
-          :user-requirement="replyGenerationDraft.userRequirement"
-          @cancel="phone.goBack()"
-          @generate="runReplyGeneration"
-          @stop="stopGeneration"
-          @update:from-start-end="replyGenerationDraft.fromStartEnd = $event"
-          @update:range-text="replyGenerationDraft.rangeText = $event"
-          @update:recent-count="replyGenerationDraft.recentCount = $event"
-          @update:references="selectedReferences = $event"
-          @update:single-message-id="replyGenerationDraft.singleMessageId = $event"
-          @update:source-mode="settings.generation.sourceMode = $event"
-          @update:user-requirement="replyGenerationDraft.userRequirement = $event"
-        >
-          <template #before-fields>
-            <div class="pc-preview-card">
-              <strong>{{ t`上下文` }}</strong>
-              <p>{{ t`基于主楼和已有回复继续生成` }}</p>
-            </div>
-          </template>
-        </GenerationPanel>
-      </div>
-    </section>
-
-    <section
-      v-else-if="route.page === 'preview' && generationState.preview"
-      class="pc-forum-page pc-generation-preview-page"
+    <GenerationFormPage
+      v-else-if="route.page === 'generate-replies' && activeBoard && activeThread"
+      v-model:from-start-end="replyGenerationDraft.fromStartEnd"
+      v-model:range-text="replyGenerationDraft.rangeText"
+      v-model:recent-count="replyGenerationDraft.recentCount"
+      v-model:references="selectedReferences"
+      v-model:single-message-id="replyGenerationDraft.singleMessageId"
+      v-model:source-mode="generationSourceMode"
+      v-model:user-requirement="replyGenerationDraft.userRequirement"
+      :capture="captureForumReplyPrompt"
+      :capture-reset-key="forumPromptPreview"
+      :error="generationState.error"
+      kicker="AI 续回"
+      :raw-output="generationState.rawOutput"
+      requirement-placeholder="例如：让不同楼层意见更分裂。"
+      :running="generationState.running"
+      title="生成新的回复"
+      @cancel="phone.goBack()"
+      @generate="runReplyGeneration"
+      @stop="stopGeneration"
     >
-      <div class="pc-detail-card pc-generation-preview-card">
-        <GenerationPreviewPanel
-          :content="
-            generationState.preview.action === 'thread'
-              ? generationState.preview.content
-              : generationState.preview.replies.map(reply => reply.content).join('\n')
-          "
-          :raw="generationState.preview.raw"
-          raw-editable
-          :reparse-handler="reparsePreviewRaw"
-          :save-label="
-            generationState.preview.action === 'thread'
-              ? generationState.preview.mode === 'rewrite'
-                ? '保存新版本'
-                : '保存帖子'
-              : '保存回复'
-          "
-          :scan-enabled="false"
-          :source-label="generationState.preview.boardName"
-          :text-provider-summary="
-            generationState.preview.action === 'thread'
-              ? generationState.preview.author
-              : `${generationState.preview.replies.length} ${t`条回复`}`
-          "
-          :title="
-            generationState.preview.action === 'thread'
-              ? generationState.preview.title
-              : generationState.preview.threadTitle
-          "
-          :warnings="generationState.preview.warnings"
-          @back="returnToGenerate"
-          @reparse="reparsePreviewRaw"
-          @save="savePreview"
-          @update:raw="generationState.preview.raw = $event"
-        >
-          <template #content="{ renderedContent }">
-            <article
-              v-if="generationState.preview?.action === 'thread'"
-              class="pc-detail-content pc-rendered-markdown"
-              v-html="renderedContent"
-            ></article>
-            <BaguScanPanel
-              v-if="generationState.preview?.action === 'thread'"
-              auto-scan
-              :content="generationState.preview.content"
-              @apply="updatePreviewThreadContent"
-            />
-
-            <section class="pc-reply-section">
-              <div class="pc-section-head">
-                <strong>{{ generationState.preview?.action === 'thread' ? t`预览回复` : t`回复预览` }}</strong>
-                <p>{{ `${generationState.preview?.replies.length || 0} 条` }}</p>
-              </div>
-              <EmptyState v-if="!generationState.preview?.replies.length" compact :title="t`没有回复内容。`" />
-              <div v-else class="pc-reply-list">
-                <article v-for="reply in previewReplies" :key="reply.key" class="pc-reply-card">
-                  <div class="pc-reply-head">
-                    <strong>{{ reply.author }}</strong>
-                    <span>{{ `第 ${reply.floor} 层` }}</span>
-                  </div>
-                  <p class="pc-reply-content">{{ reply.content }}</p>
-                </article>
-              </div>
-            </section>
-          </template>
-        </GenerationPreviewPanel>
-      </div>
-    </section>
-
-    <section v-else-if="route.page === 'failed-draft' && activeFailedDraft" class="pc-forum-page pc-repair-page">
-      <div class="pc-editor-card pc-repair-card">
-        <span class="pc-kicker">{{ activeFailedDraft.source.label }}</span>
-        <h2>{{ t`修复解析失败草稿` }}</h2>
-
-        <RawOutputEditor
-          v-model="failedDraftRawOutput"
-          :placeholder="t`在这里修 XML 结构或补字段。`"
-          @reparse="reparseFailedDraft"
-        />
-
-        <div class="pc-form-actions">
-          <button class="pc-soft-btn danger" type="button" @click="removeFailedDraft(activeFailedDraft.id)">
-            {{ t`删除草稿` }}
-          </button>
-          <button class="pc-soft-btn" type="button" @click="reparseFailedDraft">{{ t`重新解析` }}</button>
+      <template #before-fields>
+        <div class="pc-preview-card">
+          <strong>{{ t`上下文` }}</strong>
+          <p>{{ t`基于主楼和已有回复继续生成` }}</p>
         </div>
-      </div>
-    </section>
+      </template>
+    </GenerationFormPage>
+
+    <ForumPreviewPage
+      v-else-if="route.page === 'preview' && generationState.preview"
+      v-model:raw="generationState.preview.raw"
+      :action="generationState.preview.action"
+      :author="generationState.preview.action === 'thread' ? generationState.preview.author : ''"
+      :board-name="generationState.preview.boardName"
+      :reparse-handler="reparsePreviewRaw"
+      :replies="previewReplies"
+      :save-label="
+        generationState.preview.action === 'thread'
+          ? generationState.preview.mode === 'rewrite'
+            ? '保存新版本'
+            : '保存帖子'
+          : '保存回复'
+      "
+      :thread-content="generationState.preview.action === 'thread' ? generationState.preview.content : ''"
+      :title="
+        generationState.preview.action === 'thread'
+          ? generationState.preview.title
+          : generationState.preview.threadTitle
+      "
+      :warnings="generationState.preview.warnings"
+      @apply-thread-content="updatePreviewThreadContent"
+      @back="returnToGenerate"
+      @reparse="reparsePreviewRaw"
+      @save="savePreview"
+    />
+
+    <FailedDraftRepairPage
+      v-else-if="route.page === 'failed-draft' && activeFailedDraft"
+      v-model:raw-output="failedDraftRawOutput"
+      placeholder="在这里修 XML 结构或补字段。"
+      :source-label="activeFailedDraft.source.label"
+      title="修复解析失败草稿"
+      @delete="removeFailedDraft(activeFailedDraft.id)"
+      @reparse="reparseFailedDraft"
+    />
   </section>
 </template>
 
 <script setup lang="ts">
-import BaguScanPanel from '@/components/BaguScanPanel.vue';
-import ContentVersionBadge from '@/components/ContentVersionBadge.vue';
-import EmptyState from '@/components/EmptyState.vue';
-import FailedDraftList from '@/components/FailedDraftList.vue';
-import GenerationPanel from '@/components/GenerationPanel.vue';
-import GenerationPreviewPanel from '@/components/GenerationPreviewPanel.vue';
-import PreviewDraftNotice from '@/components/PreviewDraftNotice.vue';
-import RawOutputEditor from '@/components/RawOutputEditor.vue';
-import ReaderContent from '@/components/ReaderContent.vue';
+import BaguDetailPage from '@/components/BaguDetailPage.vue';
+import FailedDraftRepairPage from '@/components/FailedDraftRepairPage.vue';
+import ForumBoardPage from '@/components/forum/ForumBoardPage.vue';
+import ForumBoardEditorPage from '@/components/forum/ForumBoardEditorPage.vue';
+import ForumCatalogPage from '@/components/forum/ForumCatalogPage.vue';
+import ForumThreadDetailPage from '@/components/forum/ForumThreadDetailPage.vue';
+import ForumThreadEditorPage from '@/components/forum/ForumThreadEditorPage.vue';
+import ForumPreviewPage from '@/components/forum/ForumPreviewPage.vue';
+import GenerationFormPage from '@/components/GenerationFormPage.vue';
 import SearchableCombobox from '@/components/SearchableCombobox.vue';
-import VersionNavigator from '@/components/VersionNavigator.vue';
 import { useGenerationReplaySession } from '@/composables/useGenerationReplaySession';
 import { createForumReplySnapshots, materializeForumReplies, persistForumReplyDrafts } from '@/core/forumGeneration';
 import { getRegisteredPhoneGenerationAdapter } from '@/core/appRegistry';
@@ -1942,200 +1626,15 @@ function reparseFailedDraft() {
 </script>
 
 <style scoped>
-.pc-forum-app,
-.pc-forum-page {
+.pc-forum-app {
   min-height: 100%;
-}
-
-.pc-forum-page {
-  display: flex;
-  flex-direction: column;
-  gap: 14px;
-}
-
-.pc-reply-section {
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-}
-
-.pc-forum-hero,
-.pc-board-card,
-.pc-entry-card,
-.pc-editor-card,
-.pc-detail-card,
-.pc-toolbar,
-.pc-preview-card,
-.pc-reply-card {
-  border: 1px solid var(--pc-border);
-  background: color-mix(in srgb, var(--pc-surface) 72%, transparent 28%);
-  border-radius: 20px;
-  backdrop-filter: blur(12px);
-}
-
-.pc-forum-hero,
-.pc-editor-card,
-.pc-detail-card,
-.pc-toolbar,
-.pc-preview-card {
-  padding: 14px;
-}
-
-.pc-forum-hero {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
-  gap: 12px;
-}
-
-.pc-forum-hero.actions-only {
-  display: flex;
-  justify-content: flex-end;
-  align-items: center;
-  padding: 10px 14px;
-}
-
-.pc-hero-actions {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-  justify-content: flex-end;
-}
-
-.pc-forum-hero .pc-hero-actions {
-  align-content: start;
-  align-items: flex-start;
-}
-
-.pc-forum-hero h2,
-.pc-editor-card h2,
-.pc-detail-card h2 {
-  margin: 0;
-  font-size: 20px;
-  line-height: 1.25;
-}
-
-.pc-board-type-label {
-  display: block;
-  overflow: hidden;
-  margin-top: 6px;
-  color: var(--pc-muted);
-  font-size: 12px;
-  font-weight: 700;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.pc-forum-hero p,
-.pc-board-card p,
-.pc-entry-card p,
-.pc-detail-meta,
-.pc-copy,
-.pc-status-card p,
-.pc-raw-head span,
-.pc-preview-card p {
-  color: var(--pc-muted);
-}
-
-.pc-board-list,
-.pc-entry-list,
-.pc-reply-list {
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-}
-
-.pc-board-card,
-.pc-entry-card {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
-  gap: 10px;
-  padding: 14px;
-}
-
-.pc-board-main,
-.pc-entry-main {
-  text-align: left;
-  border: 0;
-  background: transparent;
-  color: var(--pc-text);
-  cursor: pointer;
-}
-
-.pc-board-main strong,
-.pc-entry-main strong,
-.pc-preview-card strong,
-.pc-reply-head strong {
-  display: block;
-  font-size: 16px;
-}
-
-.pc-board-actions,
-.pc-form-actions,
-.pc-detail-meta,
-.pc-entry-head,
-.pc-section-head,
-.pc-raw-head,
-.pc-sort-group,
-.pc-reply-head {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-}
-
-.pc-form-actions,
-.pc-detail-meta,
-.pc-entry-head,
-.pc-section-head,
-.pc-raw-head {
-  justify-content: space-between;
-}
-
-.pc-toolbar {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr);
-  gap: 10px;
-  min-width: 0;
-}
-
-.pc-toolbar .pc-sort-group {
-  display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-  width: 100%;
-  min-width: 0;
-}
-
-.pc-entry-main p.preview,
-.pc-board-main p {
-  display: -webkit-box;
-  -webkit-line-clamp: 2;
-  -webkit-box-orient: vertical;
-  overflow: hidden;
-}
-
-.pc-search {
-  width: 100%;
-  border: 1px solid var(--pc-border);
-  border-radius: 16px;
-  background: var(--pc-surface-strong);
-  color: var(--pc-text);
-  padding: 12px 14px;
-}
-
-.pc-forum-app :is(.pc-field, .pc-area),
-.pc-preview-card {
-  margin-top: 14px;
-}
-
-.pc-forum-app .pc-area {
-  min-height: 220px;
-  resize: vertical;
 }
 
 .pc-forum-type-fields {
   display: flex;
+  min-width: 0;
   flex-direction: column;
   gap: 12px;
-  min-width: 0;
   margin-top: 14px;
 }
 
@@ -2151,100 +1650,17 @@ function reparseFailedDraft() {
   align-self: flex-start;
 }
 
-.pc-forum-app .pc-area.compact {
-  min-height: 120px;
-}
-
-.pc-favorite-chip,
-.pc-sort-btn {
-  border: 0;
-  cursor: pointer;
-  color: var(--pc-text);
-}
-
-.pc-sort-btn {
-  min-width: 0;
-  height: 40px;
-  border-radius: 999px;
-  padding: 0 14px;
-}
-
-.pc-favorite-chip,
-.pc-sort-btn,
-.pc-status-card,
-.pc-reply-card {
-  background: var(--pc-surface-strong);
-}
-
-.pc-sort-btn.active {
-  background: color-mix(in srgb, var(--pc-theme-accent) 18%, var(--pc-surface-strong) 82%);
-}
-
-.pc-soft-btn.danger,
-.pc-icon-btn.danger {
-  color: var(--pc-danger);
-}
-
-.pc-favorite-chip {
-  width: 40px;
-  height: 40px;
-  border-radius: 12px;
-}
-
-.pc-detail-content {
-  margin-top: 16px;
-  padding: 16px;
-  border-radius: 18px;
-  background: var(--pc-surface-strong);
-  white-space: pre-wrap;
-  color: var(--pc-text);
-  font-size: var(--pc-reader-font-size);
-  line-height: var(--pc-reader-line-height);
-}
-
-.pc-reply-card {
-  padding: 14px;
-  border-radius: 18px;
-}
-
-.pc-reply-content {
-  margin: 8px 0 0;
-  white-space: pre-wrap;
-  color: var(--pc-text);
-}
-
-.pc-forum-app .pc-form-actions {
-  margin-top: 16px;
-  justify-content: flex-end;
-  flex-wrap: wrap;
-}
-
-.pc-raw-output,
-.pc-meta-grid {
+.pc-preview-card {
   margin-top: 14px;
-}
-
-.pc-status-card {
+  padding: 14px;
   border: 1px solid var(--pc-border);
-  border-radius: 18px;
-  padding: 14px;
+  border-radius: 20px;
+  background: color-mix(in srgb, var(--pc-surface) 72%, transparent 28%);
+  backdrop-filter: blur(12px);
 }
 
-.pc-status-card.warning {
-  border-color: color-mix(in srgb, #f5a623 42%, var(--pc-border) 58%);
-}
-
-.pc-status-card.danger {
-  border-color: color-mix(in srgb, var(--pc-danger) 42%, var(--pc-border) 58%);
-}
-
-.pc-number-field + .pc-number-field {
-  margin-top: 14px;
-}
-
-.pc-raw-area {
-  min-height: 180px;
-  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
-  font-size: 12px;
+.pc-preview-card p {
+  margin: 6px 0 0;
+  color: var(--pc-muted);
 }
 </style>

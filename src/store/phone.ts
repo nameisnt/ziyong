@@ -20,6 +20,14 @@ interface PhoneNavigationOptions {
   skipConfirm?: boolean;
 }
 
+export type PhonePreviewSessionStatus = 'dirty' | 'generating' | 'saved' | 'unsaved';
+
+export interface PhonePreviewSessionRegistration {
+  appId: string;
+  getStatus: () => null | PhonePreviewSessionStatus;
+  page: string;
+}
+
 type PhoneNavigationGuardResult =
   | boolean
   | {
@@ -84,7 +92,7 @@ export const usePhoneStore = defineStore('phone', () => {
   const previewLeaveConfirming = ref(false);
   const navigationLeaveConfirming = ref(false);
   const navigationGuards = new Map<string, PhoneNavigationGuard>();
-  const savedPreviewChecks = new Map<string, () => boolean>();
+  const previewSessions = new Map<string, PhonePreviewSessionRegistration>();
   const noticeTimers = new Map<string, number>();
   const noticeResolvers = new Map<string, (value: boolean) => void>();
   const noticePromptResolvers = new Map<string, (value: null | string) => void>();
@@ -216,19 +224,19 @@ export const usePhoneStore = defineStore('phone', () => {
     return () => navigationGuards.delete(id);
   }
 
-  function registerSavedPreviewCheck(check: () => boolean) {
-    const id = `phone_saved_preview_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
-    savedPreviewChecks.set(id, check);
-    return () => savedPreviewChecks.delete(id);
-  }
-
-  function isGenerationPreviewRoute(route: PhoneRoute) {
-    return route.appId !== 'home' && (route.page === 'preview' || route.page.endsWith('-preview'));
+  function registerPreviewSession(session: PhonePreviewSessionRegistration) {
+    const id = `phone_preview_session_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+    previewSessions.set(id, session);
+    return () => previewSessions.delete(id);
   }
 
   async function confirmPreviewLeave(options: PhoneNavigationOptions = {}) {
-    if (options.skipConfirm || !isGenerationPreviewRoute(currentRoute.value)) return true;
-    if ([...savedPreviewChecks.values()].some(check => check())) return true;
+    if (options.skipConfirm) return true;
+    const statuses = [...previewSessions.values()]
+      .filter(session => session.appId === currentRoute.value.appId && session.page === currentRoute.value.page)
+      .map(session => session.getStatus())
+      .filter((status): status is PhonePreviewSessionStatus => status !== null);
+    if (!statuses.length || statuses.every(status => status === 'saved')) return true;
     if (previewLeaveConfirming.value) return false;
     previewLeaveConfirming.value = true;
     try {
@@ -570,7 +578,7 @@ export const usePhoneStore = defineStore('phone', () => {
     pushPage,
     pushRoute,
     registerNavigationGuard,
-    registerSavedPreviewCheck,
+    registerPreviewSession,
     replacePage,
     replaceRoute,
     resetPhoneState,

@@ -211,19 +211,13 @@ const {
   getPreview: () => generationState.preview,
   page: 'preview',
   route,
+  getSessionStatus: () => (generationState.preview?.savedPlanId ? 'saved' : 'unsaved'),
   setPreview: preview => {
     generationState.preview = preview;
   },
   title: '下一章提示词',
 });
 
-const stopSavedPreviewCheck = phone.registerSavedPreviewCheck(
-  () =>
-    route.value.appId === 'scene-planner' &&
-    route.value.page === 'preview' &&
-    Boolean(generationState.preview?.savedPlanId),
-);
-onScopeDispose(stopSavedPreviewCheck);
 onScopeDispose(() => {
   if (generationState.running && generationState.generationId) {
     stopGenerationByIdSafe(generationState.generationId);

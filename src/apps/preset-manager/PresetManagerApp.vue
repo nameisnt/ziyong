@@ -1,235 +1,72 @@
 <template>
   <section class="pc-preset-manager">
-    <section v-if="route.page === 'root'" class="pc-preset-page">
-      <header class="pc-preset-current">
-        <div>
-          <span class="pc-kicker">当前酒馆预设</span>
-          <strong :title="loadedPresetName">{{ loadedPresetName || '未读取到当前预设' }}</strong>
-        </div>
-        <button class="pc-icon-btn" type="button" :disabled="loading" title="刷新预设" @click="refreshRoot">
-          <i class="fa-solid fa-rotate" :class="{ 'fa-spin': loading }"></i>
-        </button>
-      </header>
+    <PresetCatalogPage
+      v-if="route.page === 'root'"
+      v-model:query="presetQuery"
+      :error-message="errorMessage"
+      :loaded-preset-name="loadedPresetName"
+      :loading="loading"
+      :preset-names="presetNames"
+      :switching-preset="switchingPreset"
+      :visible-preset-names="visiblePresetNames"
+      @open="openPreset"
+      @refresh="refreshRoot"
+      @switch-preset="switchPreset"
+    />
 
-      <div v-if="errorMessage" class="pc-section-card pc-preset-error">
-        <strong>无法读取预设</strong>
-        <span>{{ errorMessage }}</span>
-      </div>
+    <PresetDetailPage
+      v-else-if="route.page === 'detail'"
+      v-model:enabled-only="enabledOnly"
+      :busy-prompt-ids="busyPromptIds"
+      :collapsed-group-ids="collapsedGroupIds"
+      :display-nodes="displayNodes"
+      :error-message="errorMessage"
+      :loaded-preset-name="loadedPresetName"
+      :loading="loading"
+      :mutation-busy="mutationBusy"
+      :preset="activePreset"
+      :preset-name="detailPresetName"
+      :prompt-drag="promptDrag"
+      :switching-preset="switchingPreset"
+      @copy-prompt="openPromptCopy"
+      @drag-cancel="cancelPromptDrag"
+      @drag-end="finishPromptDrag"
+      @drag-move="movePromptDrag"
+      @drag-start="startPromptDrag"
+      @open-prompt="openPromptEditor"
+      @switch-preset="switchPreset"
+      @toggle-group="toggleGroup"
+      @toggle-prompt="togglePrompt"
+    />
 
-      <label v-else-if="presetNames.length" class="pc-preset-search">
-        <i class="fa-solid fa-magnifying-glass"></i>
-        <input v-model="presetQuery" class="pc-field" type="search" placeholder="搜索预设名称" />
-      </label>
+    <PresetPromptEditorPage
+      v-else-if="route.page === 'edit' && activePrompt"
+      v-model:draft="editorDraft"
+      :dirty="editorDirty"
+      :preset-name="detailPresetName"
+      :prompt="activePrompt"
+      :role-label="promptRoleLabel(activePrompt.role)"
+      :saving="saving"
+      @back="phone.goBack()"
+      @remove="removePrompt"
+      @save="savePromptContent"
+    />
 
-      <div v-if="!errorMessage && visiblePresetNames.length" class="pc-preset-list">
-        <article
-          v-for="presetName in visiblePresetNames"
-          :key="presetName"
-          class="pc-section-card pc-preset-row"
-          :class="{ current: presetName === loadedPresetName }"
-        >
-          <button class="pc-preset-open" type="button" @click="openPreset(presetName)">
-            <span class="pc-preset-icon"><i class="fa-solid fa-file-lines"></i></span>
-            <span class="pc-preset-copy">
-              <strong :title="presetName">{{ presetName }}</strong>
-              <small>{{ presetName === loadedPresetName ? '当前使用' : '点击管理条目' }}</small>
-            </span>
-            <i class="fa-solid fa-chevron-right"></i>
-          </button>
-          <button
-            class="pc-soft-btn compact"
-            type="button"
-            :class="{ active: presetName === loadedPresetName }"
-            :disabled="switchingPreset === presetName || presetName === loadedPresetName"
-            @click="switchPreset(presetName)"
-          >
-            {{ presetName === loadedPresetName ? '当前' : '使用' }}
-          </button>
-        </article>
-      </div>
-      <EmptyState
-        v-else-if="!loading && !errorMessage"
-        :title="presetNames.length && presetQuery.trim() ? '没有找到匹配的预设' : '没有可用的酒馆预设'"
-      />
-    </section>
-
-    <section v-else-if="route.page === 'detail'" ref="detailPageEl" class="pc-preset-page">
-      <article class="pc-section-card pc-preset-detail-head">
-        <div>
-          <span class="pc-kicker">{{ detailPresetName === loadedPresetName ? '当前酒馆预设' : '预设条目' }}</span>
-          <h2 :title="detailPresetName">{{ detailPresetName }}</h2>
-          <small v-if="activePreset">{{ activePreset.prompts.length }} 个条目</small>
-        </div>
-        <button
-          v-if="detailPresetName !== loadedPresetName"
-          class="pc-soft-btn compact"
-          type="button"
-          :disabled="mutationBusy || switchingPreset === detailPresetName"
-          @click="switchPreset(detailPresetName)"
-        >
-          使用
-        </button>
-      </article>
-
-      <div v-if="errorMessage" class="pc-section-card pc-preset-error">
-        <strong>无法读取预设</strong>
-        <span>{{ errorMessage }}</span>
-      </div>
-
-      <div v-else-if="activePreset" class="pc-preset-filter-row">
-        <span>只看当前已启用条目</span>
-        <label class="pc-toggle" title="只显示当前实际启用的预设条目">
-          <input v-model="enabledOnly" type="checkbox" aria-label="只看当前已启用条目" />
-          <span aria-hidden="true"></span>
-        </label>
-      </div>
-
-      <div v-if="!errorMessage && activePreset" class="pc-preset-nodes">
-        <template
-          v-for="node in displayNodes"
-          :key="node.type === 'group' ? `group:${node.group.id}` : `prompt:${node.prompt.id}`"
-        >
-          <PresetPromptRow
-            v-if="node.type === 'prompt'"
-            :busy="busyPromptIds.has(node.prompt.id)"
-            :dragging="promptDrag.promptId === node.prompt.id && promptDrag.isDragging"
-            :drop-before="promptDrag.insertBeforeId === node.prompt.id"
-            group-id="__ungrouped__"
-            :prompt="node.prompt"
-            :reorderable="!enabledOnly"
-            @copy="openPromptCopy"
-            @drag-cancel="cancelPromptDrag"
-            @drag-end="finishPromptDrag"
-            @drag-move="movePromptDrag"
-            @drag-start="startPromptDrag($event, node.prompt, '__ungrouped__')"
-            @open="openPromptEditor"
-            @toggle="togglePrompt"
-          />
-
-          <section v-else class="pc-preset-group">
-            <button class="pc-preset-group-head" type="button" @click="toggleGroup(node.group.id)">
-              <i class="fa-solid fa-chevron-right" :class="{ expanded: !collapsedGroupIds.has(node.group.id) }"></i>
-              <span>
-                <strong>{{ node.group.name }}</strong>
-                <small>
-                  {{ node.prompts.filter(prompt => prompt.enabled).length }}/{{ node.prompts.length }} 启用
-                  <template v-if="!node.group.enabled"> · 组已停用</template>
-                </small>
-              </span>
-            </button>
-            <div v-if="!collapsedGroupIds.has(node.group.id)" class="pc-preset-group-body">
-              <PresetPromptRow
-                v-for="prompt in node.prompts"
-                :key="prompt.id"
-                :busy="busyPromptIds.has(prompt.id)"
-                :dragging="promptDrag.promptId === prompt.id && promptDrag.isDragging"
-                :drop-before="promptDrag.insertBeforeId === prompt.id"
-                :group-id="node.group.id"
-                :group-disabled="!node.group.enabled"
-                :prompt="prompt"
-                :reorderable="!enabledOnly"
-                @copy="openPromptCopy"
-                @drag-cancel="cancelPromptDrag"
-                @drag-end="finishPromptDrag"
-                @drag-move="movePromptDrag"
-                @drag-start="startPromptDrag($event, prompt, node.group.id)"
-                @open="openPromptEditor"
-                @toggle="togglePrompt"
-              />
-            </div>
-          </section>
-        </template>
-        <EmptyState
-          v-if="!displayNodes.length"
-          :title="enabledOnly ? '这个预设没有当前已启用的条目' : '这个预设没有条目'"
-        />
-      </div>
-      <EmptyState v-else-if="loading" title="正在读取预设" />
-    </section>
-
-    <section v-else-if="route.page === 'edit' && activePrompt" class="pc-preset-page pc-preset-editor-page">
-      <article class="pc-editor-card pc-preset-editor">
-        <div class="pc-preset-editor-head">
-          <span class="pc-kicker">{{ detailPresetName }}</span>
-          <h2 :title="activePrompt.name || activePrompt.id">{{ activePrompt.name || activePrompt.id }}</h2>
-          <small>{{ promptRoleLabel(activePrompt.role) }}</small>
-        </div>
-        <textarea
-          v-if="typeof activePrompt.content === 'string'"
-          v-model="editorDraft"
-          class="pc-area"
-          placeholder="预设条目内容"
-        ></textarea>
-        <div v-else class="pc-section-card pc-preset-placeholder-detail">
-          <strong>占位条目</strong>
-          <span>这个条目用于确定酒馆内容的插入位置，没有独立正文。</span>
-        </div>
-        <div class="pc-form-actions">
-          <button class="pc-soft-btn danger" type="button" :disabled="saving" @click="removePrompt">
-            <i class="fa-solid fa-trash"></i>
-            <span>删除</span>
-          </button>
-          <button class="pc-soft-btn" type="button" :disabled="saving" @click="phone.goBack()">返回</button>
-          <button
-            v-if="typeof activePrompt.content === 'string'"
-            class="pc-primary-btn"
-            type="button"
-            :disabled="saving || !editorDirty"
-            @click="savePromptContent"
-          >
-            {{ saving ? '保存中' : '保存' }}
-          </button>
-        </div>
-      </article>
-    </section>
-
-    <section v-else-if="route.page === 'copy' && copySourcePrompt" class="pc-preset-page pc-preset-editor-page">
-      <article class="pc-editor-card pc-preset-editor">
-        <div class="pc-preset-editor-head">
-          <span class="pc-kicker">复制到原条目下方</span>
-          <h2 :title="copySourcePrompt.name || copySourcePrompt.id">
-            {{ copySourcePrompt.name || copySourcePrompt.id }}
-          </h2>
-          <small>副本保存前不会修改预设</small>
-        </div>
-        <label class="pc-field-group">
-          <span class="pc-field-label">副本名称</span>
-          <input v-model="copyDraft.name" class="pc-field" type="text" placeholder="副本名称" />
-        </label>
-        <label class="pc-field-group">
-          <span class="pc-field-label">消息角色</span>
-          <select v-model="copyDraft.role" class="pc-field pc-select">
-            <option value="system">系统</option>
-            <option value="user">用户</option>
-            <option value="assistant">AI</option>
-          </select>
-        </label>
-        <textarea v-model="copyDraft.content" class="pc-area" placeholder="预设条目内容"></textarea>
-        <label class="pc-preset-filter-row">
-          <span>保存后立即启用副本</span>
-          <span class="pc-toggle" title="保存后立即启用副本">
-            <input v-model="copyDraft.enabled" type="checkbox" aria-label="保存后立即启用副本" />
-            <span aria-hidden="true"></span>
-          </span>
-        </label>
-        <div class="pc-form-actions">
-          <button class="pc-soft-btn" type="button" :disabled="saving" @click="phone.goBack()">取消</button>
-          <button
-            class="pc-primary-btn"
-            type="button"
-            :disabled="saving || !copyDraft.name.trim()"
-            @click="savePromptCopy"
-          >
-            {{ saving ? '保存中' : '保存副本' }}
-          </button>
-        </div>
-      </article>
-    </section>
+    <PresetPromptCopyPage
+      v-else-if="route.page === 'copy' && copySourcePrompt"
+      v-model:content="copyDraft.content"
+      v-model:enabled="copyDraft.enabled"
+      v-model:name="copyDraft.name"
+      v-model:role="copyDraft.role"
+      :saving="saving"
+      :source-prompt="copySourcePrompt"
+      @back="phone.goBack()"
+      @save="savePromptCopy"
+    />
   </section>
 </template>
 
 <script setup lang="ts">
-import EmptyState from '@/components/EmptyState.vue';
 import { useEntryLibraryStore } from '@/apps/entry-library/store';
 import { usePhoneStore } from '@/store/phone';
 import {
@@ -245,7 +82,10 @@ import {
   type TavernPreset,
   type TavernPresetPrompt,
 } from './api';
-import PresetPromptRow from './PresetPromptRow.vue';
+import PresetCatalogPage from './pages/PresetCatalogPage.vue';
+import PresetDetailPage from './pages/PresetDetailPage.vue';
+import PresetPromptCopyPage from './pages/PresetPromptCopyPage.vue';
+import PresetPromptEditorPage from './pages/PresetPromptEditorPage.vue';
 
 const phone = usePhoneStore();
 const entryLibrary = useEntryLibraryStore();
@@ -262,7 +102,6 @@ const busyPromptIds = ref(new Set<string>());
 const collapsedGroupIds = ref(new Set<string>());
 const editorDraft = ref('');
 const enabledOnly = ref(false);
-const detailPageEl = ref<HTMLElement | null>(null);
 const copyDraft = reactive({
   content: '',
   enabled: false,
@@ -277,6 +116,7 @@ const promptDrag = reactive({
   promptId: '',
   startY: 0,
 });
+let promptDragRoot: HTMLElement | null = null;
 
 const detailPresetName = computed(() => route.value.params?.presetName || '');
 const activePromptId = computed(() => route.value.params?.promptId || '');
@@ -444,6 +284,7 @@ function resetPromptDrag() {
   promptDrag.pointerId = -1;
   promptDrag.promptId = '';
   promptDrag.startY = 0;
+  promptDragRoot = null;
 }
 
 function startPromptDrag(event: PointerEvent, prompt: TavernPresetPrompt, groupId: string) {
@@ -453,11 +294,12 @@ function startPromptDrag(event: PointerEvent, prompt: TavernPresetPrompt, groupI
   promptDrag.pointerId = event.pointerId;
   promptDrag.promptId = prompt.id;
   promptDrag.startY = event.clientY;
+  promptDragRoot = (event.currentTarget as HTMLElement).closest<HTMLElement>('.pc-preset-page');
   (event.currentTarget as HTMLElement).setPointerCapture?.(event.pointerId);
 }
 
 function updatePromptDragInsertion(clientY: number) {
-  const rows = [...(detailPageEl.value?.querySelectorAll<HTMLElement>('.pc-preset-prompt-row') ?? [])].filter(
+  const rows = [...(promptDragRoot?.querySelectorAll<HTMLElement>('.pc-preset-prompt-row') ?? [])].filter(
     row => row.dataset.presetGroupId === promptDrag.groupId && row.dataset.presetPromptId !== promptDrag.promptId,
   );
   const beforeRow = rows.find(row => {
@@ -468,7 +310,7 @@ function updatePromptDragInsertion(clientY: number) {
 }
 
 function autoScrollPromptList(clientY: number) {
-  const scrollTarget = detailPageEl.value;
+  const scrollTarget = promptDragRoot;
   if (!scrollTarget) return;
   const rect = scrollTarget.getBoundingClientRect();
   const edge = 52;
@@ -646,259 +488,8 @@ watch(
 </script>
 
 <style scoped>
-.pc-preset-manager,
-.pc-preset-page {
-  min-height: 0;
-}
-
 .pc-preset-manager {
   height: 100%;
-}
-
-.pc-preset-page {
-  display: flex;
-  height: 100%;
-  flex-direction: column;
-  gap: 12px;
-  overflow-y: auto;
-  padding: 14px;
-}
-
-.pc-preset-current,
-.pc-preset-detail-head {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-}
-
-.pc-preset-current > div,
-.pc-preset-detail-head > div,
-.pc-preset-editor-head {
-  display: grid;
-  min-width: 0;
-  gap: 5px;
-}
-
-.pc-preset-current strong,
-.pc-preset-detail-head h2,
-.pc-preset-editor-head h2 {
-  overflow: hidden;
-  margin: 0;
-  color: var(--pc-text);
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.pc-preset-current strong {
-  font-size: 17px;
-}
-
-.pc-preset-detail-head h2,
-.pc-preset-editor-head h2 {
-  font-size: 19px;
-}
-
-.pc-preset-detail-head small,
-.pc-preset-editor-head small {
-  color: var(--pc-muted);
-  font-size: 12px;
-  font-weight: 700;
-}
-
-.pc-preset-list,
-.pc-preset-nodes,
-.pc-preset-group-body {
-  display: grid;
-  gap: 10px;
-}
-
-.pc-preset-filter-row {
-  display: flex;
-  min-height: 42px;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  color: var(--pc-text);
-  font-size: 13px;
-  font-weight: 700;
-}
-
-.pc-preset-search {
-  position: relative;
-  display: block;
-}
-
-.pc-preset-search > i {
-  position: absolute;
-  z-index: 1;
-  top: 50%;
-  left: 14px;
-  color: var(--pc-muted);
-  transform: translateY(-50%);
-}
-
-.pc-preset-search .pc-field {
-  padding-left: 40px;
-}
-
-.pc-preset-row {
-  grid-template-columns: minmax(0, 1fr) auto;
-  align-items: center;
-  padding: 10px;
-}
-
-.pc-preset-row.current {
-  border-color: color-mix(in srgb, var(--pc-theme-accent) 42%, var(--pc-border) 58%);
-}
-
-.pc-preset-open {
-  display: grid;
-  min-width: 0;
-  grid-template-columns: 38px minmax(0, 1fr) auto;
-  align-items: center;
-  gap: 10px;
-  border: 0;
-  padding: 0;
-  background: transparent;
-  color: var(--pc-text);
-  text-align: left;
-  cursor: pointer;
-}
-
-.pc-preset-icon {
-  display: grid;
-  width: 38px;
-  height: 38px;
-  place-items: center;
-  border-radius: var(--pc-control-radius);
-  background: color-mix(in srgb, var(--pc-theme-accent) 14%, var(--pc-surface-strong) 86%);
-  color: var(--pc-theme-accent);
-}
-
-.pc-preset-copy {
-  display: grid;
-  min-width: 0;
-  gap: 4px;
-}
-
-.pc-preset-copy strong,
-.pc-preset-copy small {
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.pc-preset-copy small,
-.pc-preset-open > i {
-  color: var(--pc-muted);
-  font-size: 12px;
-}
-
-.pc-preset-error {
-  color: var(--pc-danger);
-}
-
-.pc-preset-error span {
-  color: var(--pc-muted);
-  font-size: 13px;
-}
-
-.pc-preset-group {
-  display: grid;
-  gap: 8px;
-}
-
-.pc-preset-group-head {
-  display: flex;
-  width: 100%;
-  align-items: center;
-  gap: 10px;
-  border: 0;
-  padding: 9px 4px;
-  background: transparent;
-  color: var(--pc-text);
-  text-align: left;
-  cursor: pointer;
-}
-
-.pc-preset-group-head > i {
-  color: var(--pc-muted);
-  font-size: 12px;
-  transition: transform 0.16s ease;
-}
-
-.pc-preset-group-head > i.expanded {
-  transform: rotate(90deg);
-}
-
-.pc-preset-group-head > span {
-  display: flex;
-  min-width: 0;
-  flex: 1;
-  align-items: baseline;
-  justify-content: space-between;
-  gap: 10px;
-}
-
-.pc-preset-group-head strong,
-.pc-preset-group-head small {
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.pc-preset-group-head small {
-  color: var(--pc-muted);
-  font-size: 12px;
-  font-weight: 700;
-}
-
-.pc-preset-group-body {
-  padding-left: 12px;
-  border-left: 2px solid color-mix(in srgb, var(--pc-theme-accent) 24%, var(--pc-border) 76%);
-}
-
-.pc-preset-editor-page {
-  overflow-y: auto;
-}
-
-.pc-preset-editor {
-  display: flex;
   min-height: 0;
-  flex: 1;
-  flex-direction: column;
-  gap: 12px;
-}
-
-.pc-preset-editor .pc-area {
-  min-height: 0;
-  flex: 1;
-  resize: none;
-}
-
-.pc-preset-editor .pc-form-actions {
-  position: sticky;
-  z-index: 2;
-  bottom: 0;
-  padding-top: 8px;
-  background: var(--pc-surface);
-  flex-wrap: nowrap;
-}
-
-.pc-preset-editor .pc-form-actions > button {
-  min-width: 0;
-  flex: 1;
-}
-
-.pc-preset-placeholder-detail {
-  display: grid;
-  gap: 6px;
-}
-
-.pc-preset-placeholder-detail span {
-  color: var(--pc-muted);
-  font-size: 13px;
-  line-height: 1.55;
 }
 </style>

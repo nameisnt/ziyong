@@ -1,37 +1,22 @@
 <template>
   <section class="pc-extras-app">
-    <section v-if="route.page === 'root'" class="pc-extras-page">
-      <BookShelf
-        :books="shelfBooks"
-        create-label="生成"
-        create-subtitle="生成入口"
-        variant="extras"
-        @create="openCreateBook"
-        @select="openBook"
-      />
-
-      <FailedDraftList
-        :drafts="failedDrafts"
-        :get-context="failedDraftContextTitle"
-        :get-title="failedDraftTitle"
-        @open="openFailedDraft"
-        @remove="removeFailedDraft"
-      />
-
-      <PreviewDraftNotice
-        :draft="extraChapterPreviewDraft"
-        label="未保存章节预览"
-        @discard="discardExtraChapterPreviewDraft"
-        @open="openExtraChapterPreviewDraft"
-      />
-
-      <PreviewDraftNotice
-        :draft="extraSummaryPreviewDraft"
-        label="未保存总结预览"
-        @discard="discardExtraSummaryPreviewDraft"
-        @open="openExtraSummaryPreviewDraft"
-      />
-    </section>
+    <ExtrasCatalogPage
+      v-if="route.page === 'root'"
+      :chapter-preview-draft="extraChapterPreviewDraft"
+      :failed-drafts="failedDrafts"
+      :get-failed-draft-context="failedDraftContextTitle"
+      :get-failed-draft-title="failedDraftTitle"
+      :shelf-books="shelfBooks"
+      :summary-preview-draft="extraSummaryPreviewDraft"
+      @create="openCreateBook"
+      @discard-chapter-preview="discardExtraChapterPreviewDraft"
+      @discard-summary-preview="discardExtraSummaryPreviewDraft"
+      @open-book="openBook"
+      @open-chapter-preview="openExtraChapterPreviewDraft"
+      @open-failed-draft="openFailedDraft"
+      @open-summary-preview="openExtraSummaryPreviewDraft"
+      @remove-failed-draft="removeFailedDraft"
+    />
 
     <section v-else-if="route.page === 'book-editor'" class="pc-extras-page">
       <div class="pc-editor-card">
@@ -189,19 +174,12 @@
       @top="scrollToTop"
     />
 
-    <section v-else-if="route.page === 'bagu-scan' && activeBook && activeChapter" class="pc-extras-page">
-      <div class="pc-detail-card">
-        <div class="pc-detail-title-row">
-          <h2>{{ `第 ${activeChapter.chapterNumber} 章 · ${viewedChapter.title}` }}</h2>
-        </div>
-        <BaguScanPanel
-          auto-scan
-          class="pc-detail-bagu-panel"
-          :content="viewedChapter.content"
-          :apply-handler="applyExtrasBaguContent"
-        />
-      </div>
-    </section>
+    <BaguDetailPage
+      v-else-if="route.page === 'bagu-scan' && activeBook && activeChapter"
+      :apply-handler="applyExtrasBaguContent"
+      :content="viewedChapter.content"
+      :title="`第 ${activeChapter.chapterNumber} 章 · ${viewedChapter.title}`"
+    />
 
     <section v-else-if="route.page === 'chapter-generate' && activeBook" class="pc-extras-page">
       <div class="pc-editor-card">
@@ -348,92 +326,62 @@
       </div>
     </section>
 
-    <section
+    <GenerationPreviewPage
       v-else-if="route.page === 'chapter-preview' && chapterGenerationState.preview"
-      class="pc-extras-page pc-generation-preview-page"
-    >
-      <div class="pc-detail-card pc-generation-preview-card">
-        <GenerationPreviewPanel
-          :content="chapterGenerationState.preview.content"
-          :raw="chapterGenerationState.preview.raw"
-          raw-editable
-          :reparse-handler="reparseChapterPreviewRaw"
-          :save-label="chapterGenerationState.preview.mode === '重写当前章节' ? '保存新版本' : '保存章节'"
-          :source-label="activeBook?.title || t`番外预览`"
-          :text-provider-summary="chapterGenerationState.preview.mode"
-          :title="chapterGenerationState.preview.title"
-          :warnings="chapterGenerationState.preview.warnings"
-          @back="returnToChapterGenerate"
-          @reparse="reparseChapterPreviewRaw"
-          @save="saveChapterPreview"
-          @update:content="chapterGenerationState.preview.content = $event"
-          @update:raw="chapterGenerationState.preview.raw = $event"
-        />
-      </div>
-    </section>
+      v-model:content="chapterGenerationState.preview.content"
+      v-model:raw="chapterGenerationState.preview.raw"
+      :reparse-handler="reparseChapterPreviewRaw"
+      :save-label="chapterGenerationState.preview.mode === '重写当前章节' ? '保存新版本' : '保存章节'"
+      :source-label="activeBook?.title || '番外预览'"
+      :text-provider-summary="chapterGenerationState.preview.mode"
+      :title="chapterGenerationState.preview.title"
+      :warnings="chapterGenerationState.preview.warnings"
+      @back="returnToChapterGenerate"
+      @reparse="reparseChapterPreviewRaw"
+      @save="saveChapterPreview"
+    />
 
-    <section
+    <GenerationPreviewPage
       v-else-if="route.page === 'summary-preview' && generationState.preview"
-      class="pc-extras-page pc-generation-preview-page"
-    >
-      <div class="pc-detail-card pc-generation-preview-card">
-        <GenerationPreviewPanel
-          :content="generationState.preview.content"
-          :raw="generationState.preview.raw"
-          raw-editable
-          :reparse-handler="reparseSummaryPreviewRaw"
-          save-label="保存章节总结"
-          :source-label="previewBook?.title || t`章节总结预览`"
-          :text-provider-summary="generationState.preview.enabled ? t`保存后启用` : t`保存后停用`"
-          :title="formatCoveredChaptersForBook(previewBook, generationState.preview.coveredChapterIds)"
-          :warnings="generationState.preview.warnings"
-          @back="returnToGenerate"
-          @reparse="reparseSummaryPreviewRaw"
-          @save="saveSummaryPreview"
-          @update:content="generationState.preview.content = $event"
-          @update:raw="generationState.preview.raw = $event"
-        />
-      </div>
-    </section>
+      v-model:content="generationState.preview.content"
+      v-model:raw="generationState.preview.raw"
+      :reparse-handler="reparseSummaryPreviewRaw"
+      save-label="保存章节总结"
+      :source-label="previewBook?.title || '章节总结预览'"
+      :text-provider-summary="generationState.preview.enabled ? '保存后启用' : '保存后停用'"
+      :title="formatCoveredChaptersForBook(previewBook, generationState.preview.coveredChapterIds)"
+      :warnings="generationState.preview.warnings"
+      @back="returnToGenerate"
+      @reparse="reparseSummaryPreviewRaw"
+      @save="saveSummaryPreview"
+    />
 
-    <section v-else-if="route.page === 'failed-draft' && activeFailedDraft" class="pc-extras-page pc-repair-page">
-      <div class="pc-editor-card pc-repair-card">
-        <span class="pc-kicker">{{ activeFailedDraft.source.label }}</span>
-        <h2>{{ activeFailedDraft.actionId === 'chapter-generate' ? t`修复番外章节草稿` : t`修复章节总结草稿` }}</h2>
-
-        <RawOutputEditor
-          v-model="failedDraftRawOutput"
-          :placeholder="t`在这里修 XML 结构或补 content。`"
-          @reparse="reparseFailedDraft"
-        />
-
-        <div class="pc-form-actions">
-          <button class="pc-soft-btn danger" type="button" @click="removeFailedDraft(activeFailedDraft.id)">
-            {{ t`删除草稿` }}
-          </button>
-          <button class="pc-soft-btn" type="button" @click="reparseFailedDraft">{{ t`重新解析` }}</button>
-        </div>
-      </div>
-    </section>
+    <FailedDraftRepairPage
+      v-else-if="route.page === 'failed-draft' && activeFailedDraft"
+      v-model:raw-output="failedDraftRawOutput"
+      placeholder="在这里修 XML 结构或补 content。"
+      :source-label="activeFailedDraft.source.label"
+      :title="activeFailedDraft.actionId === 'chapter-generate' ? '修复番外章节草稿' : '修复章节总结草稿'"
+      @delete="removeFailedDraft(activeFailedDraft.id)"
+      @reparse="reparseFailedDraft"
+    />
   </section>
 </template>
 
 <script setup lang="ts">
-import BookShelf from '@/components/BookShelf.vue';
+import BaguDetailPage from '@/components/BaguDetailPage.vue';
 import EmptyState from '@/components/EmptyState.vue';
+import FailedDraftRepairPage from '@/components/FailedDraftRepairPage.vue';
+import GenerationPreviewPage from '@/components/GenerationPreviewPage.vue';
 import ExtrasBookOverviewPage from '@/components/extras/ExtrasBookOverviewPage.vue';
+import ExtrasCatalogPage from '@/components/extras/ExtrasCatalogPage.vue';
 import ExtrasChapterEditorPage from '@/components/extras/ExtrasChapterEditorPage.vue';
 import ExtrasChapterDetailPage from '@/components/extras/ExtrasChapterDetailPage.vue';
 import ExtrasSummaryEditorPage from '@/components/extras/ExtrasSummaryEditorPage.vue';
 import { useExtrasChapterView } from '@/components/extras/useExtrasChapterView';
 import { useExtrasGenerationState } from '@/components/extras/useExtrasGenerationState';
 import { useGenerationReplaySession } from '@/composables/useGenerationReplaySession';
-import BaguScanPanel from '@/components/BaguScanPanel.vue';
-import FailedDraftList from '@/components/FailedDraftList.vue';
 import GenerationPanel from '@/components/GenerationPanel.vue';
-import GenerationPreviewPanel from '@/components/GenerationPreviewPanel.vue';
-import RawOutputEditor from '@/components/RawOutputEditor.vue';
-import PreviewDraftNotice from '@/components/PreviewDraftNotice.vue';
 import SearchableCombobox from '@/components/SearchableCombobox.vue';
 import { getRegisteredPhoneGenerationAdapter } from '@/core/appRegistry';
 import {
