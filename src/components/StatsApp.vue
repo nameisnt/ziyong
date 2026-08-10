@@ -1,11 +1,8 @@
 <template>
   <section class="pc-stats-app">
     <section class="pc-stats-page">
-      <header class="pc-stats-hero">
-        <div>
-          <span>{{ t`统计范围` }}</span>
-          <strong>{{ contentScopeTitle }}</strong>
-        </div>
+      <header class="pc-compact-toolbar pc-directory-toolbar pc-stats-hero">
+        <span class="pc-directory-count">{{ contentScopeTitle }}</span>
         <button
           class="pc-icon-btn pc-refresh-btn"
           type="button"
@@ -27,7 +24,7 @@
         <p>{{ error }}</p>
       </div>
 
-      <article class="pc-panel">
+      <article class="pc-page-section pc-panel">
         <div class="pc-panel-head">
           <div>
             <strong>{{ t`创作内容` }}</strong>
@@ -69,10 +66,11 @@
 
         <EmptyState
           v-if="domainExpanded && !contentOverview.items && !contentOverview.collections"
+          compact
           :title="t`还没有可统计内容`"
         />
         <div v-else-if="domainExpanded" class="pc-domain-list">
-          <article v-for="domain in contentDomainStats" :key="domain.id" class="pc-domain-row">
+          <article v-for="domain in contentDomainStats" :key="domain.id" class="pc-list-row pc-domain-row">
             <div>
               <strong>{{ domain.label }}</strong>
               <p v-if="hasDomainMeta(domain)">{{ formatDomainMeta(domain) }}</p>
@@ -82,7 +80,7 @@
         </div>
       </article>
 
-      <article class="pc-panel">
+      <article class="pc-page-section pc-panel">
         <div class="pc-panel-head">
           <div>
             <strong>{{ t`当前聊天内容` }}</strong>
@@ -105,7 +103,7 @@
         </div>
       </article>
 
-      <article class="pc-panel">
+      <article class="pc-page-section pc-panel">
         <div class="pc-panel-head">
           <div>
             <strong>{{ t`当前聊天楼层` }}</strong>
@@ -227,20 +225,12 @@ function getBarWidth(value: number) {
   gap: 12px;
 }
 
-.pc-stats-hero,
 .pc-error-card,
-.pc-warning-card,
-.pc-panel,
-.pc-domain-row {
+.pc-warning-card {
   border: 1px solid var(--pc-border);
-  border-radius: 18px;
+  border-radius: var(--pc-card-radius);
   background: color-mix(in srgb, var(--pc-surface) 72%, transparent 28%);
   backdrop-filter: blur(12px);
-}
-
-.pc-stats-hero,
-.pc-panel {
-  padding: 14px;
 }
 
 .pc-stats-hero,
@@ -255,7 +245,7 @@ function getBarWidth(value: number) {
 }
 
 .pc-stats-hero {
-  min-height: 78px;
+  min-height: 44px;
 }
 
 .pc-stats-hero span,
@@ -314,7 +304,7 @@ function getBarWidth(value: number) {
 .pc-metric-card {
   min-width: 0;
   min-height: 48px;
-  border-radius: 16px;
+  border-radius: var(--pc-control-radius);
   padding: 9px 11px;
   background: var(--pc-surface-strong);
 }
@@ -353,7 +343,6 @@ function getBarWidth(value: number) {
 
 .pc-domain-row {
   min-height: 60px;
-  padding: 11px 12px;
 }
 
 .pc-domain-row strong:first-child {

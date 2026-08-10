@@ -1,7 +1,6 @@
 <template>
   <section class="pc-mvu-app">
-    <header class="pc-mvu-head">
-      <h2>{{ t`MVU 变量管理器` }}</h2>
+    <div class="pc-mvu-top-actions">
       <button
         class="pc-icon-btn"
         type="button"
@@ -11,7 +10,7 @@
       >
         <i class="fa-solid fa-sliders"></i>
       </button>
-    </header>
+    </div>
 
     <div v-if="showSourceSettings && phone.isViewingCurrentChat" class="pc-mvu-source-settings">
       <span class="pc-field-label">{{ t`变量作用域` }}</span>
@@ -45,35 +44,65 @@
 
     <template v-else>
       <div class="pc-mvu-toolbar">
-        <button class="pc-soft-btn" type="button" :disabled="busy || !rootEntries.length" @click="expandAll">
+        <button
+          class="pc-icon-btn pc-mvu-expand-all"
+          type="button"
+          :disabled="busy || !rootEntries.length"
+          :title="t`全部展开`"
+          @click="expandAll"
+        >
           <i class="fa-solid fa-chevron-down"></i>
-          <span>{{ t`全部展开` }}</span>
         </button>
-        <button class="pc-soft-btn" type="button" :disabled="busy || !expandedKeys.length" @click="collapseAll">
+        <button
+          class="pc-icon-btn pc-mvu-collapse-all"
+          type="button"
+          :disabled="busy || !expandedKeys.length"
+          :title="t`全部折叠`"
+          @click="collapseAll"
+        >
           <i class="fa-solid fa-chevron-up"></i>
-          <span>{{ t`全部折叠` }}</span>
         </button>
-        <button class="pc-soft-btn" type="button" :disabled="busy || !undoStack.length" @click="undo">
+        <button
+          class="pc-icon-btn pc-mvu-undo"
+          type="button"
+          :disabled="busy || !undoStack.length"
+          :title="t`撤销`"
+          @click="undo"
+        >
           <i class="fa-solid fa-arrow-rotate-left"></i>
-          <span>{{ t`撤销` }}</span>
         </button>
-        <button class="pc-soft-btn" type="button" :disabled="busy || !redoStack.length" @click="redo">
+        <button
+          class="pc-icon-btn pc-mvu-redo"
+          type="button"
+          :disabled="busy || !redoStack.length"
+          :title="t`重做`"
+          @click="redo"
+        >
           <i class="fa-solid fa-arrow-rotate-right"></i>
-          <span>{{ t`重做` }}</span>
         </button>
-        <button class="pc-soft-btn" type="button" :disabled="busy" @click="loadData(true)">
+        <button
+          class="pc-icon-btn pc-mvu-refresh"
+          type="button"
+          :disabled="busy"
+          :title="t`刷新`"
+          @click="loadData(true)"
+        >
           <i class="fa-solid fa-rotate" :class="{ 'fa-spin': busy }"></i>
-          <span>{{ t`刷新` }}</span>
         </button>
-        <button class="pc-soft-btn" type="button" :class="{ active: showHistory }" @click="showHistory = !showHistory">
+        <button
+          class="pc-icon-btn pc-mvu-history-toggle"
+          type="button"
+          :class="{ active: showHistory }"
+          :title="t`修改记录`"
+          @click="showHistory = !showHistory"
+        >
           <i class="fa-solid fa-clock-rotate-left"></i>
-          <span>{{ t`修改记录` }}</span>
         </button>
       </div>
 
-      <label class="pc-mvu-search">
+      <label class="pc-search-field">
         <i class="fa-solid fa-magnifying-glass"></i>
-        <input v-model="query" class="pc-field" type="search" :placeholder="t`搜索变量...`" />
+        <input v-model="query" type="search" :placeholder="t`搜索变量...`" />
       </label>
 
       <section v-if="favoriteEntries.length" class="pc-mvu-favorites">
@@ -561,7 +590,6 @@ onUnmounted(() => {
   gap: 14px;
 }
 
-.pc-mvu-head,
 .pc-mvu-section-head,
 .pc-mvu-favorite-row,
 .pc-mvu-history-row > div,
@@ -572,19 +600,13 @@ onUnmounted(() => {
   gap: 10px;
 }
 
-.pc-mvu-head {
-  min-height: 44px;
-  padding-bottom: 8px;
-  border-bottom: 1px solid var(--pc-border);
+.pc-mvu-top-actions {
+  display: flex;
+  justify-content: flex-end;
 }
 
-.pc-mvu-head h2 {
-  margin: 0;
-  font-size: 20px;
-}
-
-.pc-mvu-head .pc-icon-btn.active,
-.pc-mvu-toolbar .pc-soft-btn.active {
+.pc-mvu-top-actions .pc-icon-btn.active,
+.pc-mvu-toolbar .pc-icon-btn.active {
   color: var(--pc-theme-accent);
 }
 
@@ -609,33 +631,9 @@ onUnmounted(() => {
 
 .pc-mvu-toolbar {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 4px 16px;
-}
-
-.pc-mvu-toolbar .pc-soft-btn {
-  min-height: 42px;
-  justify-content: flex-start;
-  border-color: transparent;
-  background: transparent;
-}
-
-.pc-mvu-search {
-  position: relative;
-  display: block;
-}
-
-.pc-mvu-search > i {
-  position: absolute;
-  z-index: 1;
-  top: 50%;
-  left: 14px;
-  color: var(--pc-muted);
-  transform: translateY(-50%);
-}
-
-.pc-mvu-search .pc-field {
-  padding-left: 42px;
+  grid-template-columns: repeat(6, 40px);
+  justify-content: space-between;
+  gap: 8px;
 }
 
 .pc-mvu-favorites,
@@ -744,7 +742,7 @@ onUnmounted(() => {
 
 @media (max-width: 390px) {
   .pc-mvu-toolbar {
-    column-gap: 8px;
+    gap: 4px;
   }
 
   .pc-mvu-scope {

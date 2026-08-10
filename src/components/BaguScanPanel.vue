@@ -462,7 +462,7 @@ onScopeDispose(stopNavigationGuard);
 .pc-bagu-empty {
   border: 1px solid var(--pc-border);
   background: var(--pc-surface);
-  border-radius: 20px;
+  border-radius: min(var(--pc-card-radius), 8px);
 }
 
 .pc-bagu-scan {
@@ -518,7 +518,7 @@ onScopeDispose(stopNavigationGuard);
   gap: 10px;
   margin-top: 12px;
   border: 1px solid var(--pc-border);
-  border-radius: 16px;
+  border-radius: min(var(--pc-card-radius), 8px);
   background: color-mix(in srgb, var(--pc-surface-strong) 82%, transparent 18%);
   padding: 12px;
 }

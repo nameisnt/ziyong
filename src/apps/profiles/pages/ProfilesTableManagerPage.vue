@@ -1,11 +1,8 @@
 <template>
   <section class="pc-profiles-page">
-    <section class="pc-section-card pc-profile-table-manager">
-      <div class="pc-profile-table-manager-head">
-        <div>
-          <span class="pc-kicker">资料表</span>
-          <h2>表格类型</h2>
-        </div>
+    <section class="pc-profile-table-manager">
+      <div class="pc-compact-toolbar pc-directory-toolbar pc-profile-table-manager-head">
+        <span class="pc-directory-count">{{ tables.length }} 个资料表</span>
         <button class="pc-icon-btn primary" type="button" title="新建资料表" @click="$emit('create')">
           <i class="fa-solid fa-plus"></i>
         </button>
@@ -13,7 +10,7 @@
       <button
         v-for="table in tables"
         :key="table.id"
-        class="pc-profile-table-manager-row"
+        class="pc-list-row pc-profile-table-manager-row"
         type="button"
         @click="$emit('open', table.id)"
       >
@@ -49,27 +46,8 @@ defineEmits<{ create: []; open: [tableId: string] }>();
   display: grid;
   gap: 10px;
 }
-.pc-profile-table-manager-head {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-}
-.pc-profile-table-manager-head h2 {
-  margin: 4px 0 0;
-  font-size: 18px;
-}
 .pc-profile-table-manager-row {
-  display: grid;
   grid-template-columns: 34px minmax(0, 1fr) auto;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  border: 1px solid var(--pc-border);
-  border-radius: var(--pc-card-radius);
-  padding: 12px;
-  background: var(--pc-surface-strong);
-  color: var(--pc-text);
   cursor: pointer;
   text-align: left;
 }

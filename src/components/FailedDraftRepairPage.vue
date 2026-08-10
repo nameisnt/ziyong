@@ -1,8 +1,7 @@
 <template>
   <section class="pc-failed-draft-page">
-    <article class="pc-editor-card">
-      <span class="pc-kicker">{{ sourceLabel }}</span>
-      <h2>{{ title }}</h2>
+    <article class="pc-page-section pc-failed-draft-editor">
+      <div class="pc-compact-toolbar">{{ sourceLabel }}</div>
       <slot name="before-editor"></slot>
       <div class="pc-field-group">
         <label v-if="rawLabel" class="pc-field-label">{{ rawLabel }}</label>
@@ -49,9 +48,8 @@ const rawOutput = defineModel<string>('rawOutput', { required: true });
   min-height: 100%;
 }
 
-.pc-editor-card h2 {
-  margin: 0;
-  font-size: 20px;
-  line-height: 1.25;
+.pc-failed-draft-editor {
+  display: grid;
+  gap: 14px;
 }
 </style>

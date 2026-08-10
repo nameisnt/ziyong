@@ -109,7 +109,7 @@ async function capturePrompt() {
   min-width: 0;
   box-sizing: border-box;
   border: 1px solid var(--pc-border);
-  border-radius: 18px;
+  border-radius: min(var(--pc-card-radius), 8px);
   background: var(--pc-surface-strong);
   padding: 14px;
 }

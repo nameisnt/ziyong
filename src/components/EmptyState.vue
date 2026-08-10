@@ -29,7 +29,7 @@ withDefaults(
   min-height: 96px;
   padding: 16px;
   border: 1px solid var(--pc-border);
-  border-radius: 18px;
+  border-radius: min(var(--pc-card-radius), 8px);
   background: color-mix(in srgb, var(--pc-surface) 72%, transparent 28%);
   color: var(--pc-muted);
   text-align: center;

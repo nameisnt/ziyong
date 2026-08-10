@@ -1,9 +1,6 @@
 <template>
   <section class="pc-diary-entry-editor-page">
-    <article class="pc-editor-card">
-      <span class="pc-kicker">编辑日记</span>
-      <h2>{{ editingTitle || '调整当前内容' }}</h2>
-
+    <article class="pc-page-section">
       <input v-if="showBookFields" v-model="perspectiveName" class="pc-field" type="text" placeholder="视角角色名" />
       <input v-if="showBookFields" v-model="bookTitle" class="pc-field" type="text" placeholder="书架名称（可留空）" />
       <input v-model="title" class="pc-field" type="text" placeholder="标题" />
@@ -66,12 +63,6 @@ const title = defineModel<string>('title', { required: true });
 <style scoped>
 .pc-diary-entry-editor-page {
   min-height: 100%;
-}
-
-.pc-editor-card h2 {
-  margin: 0;
-  font-size: 20px;
-  line-height: 1.25;
 }
 
 .pc-diary-kind-segment {

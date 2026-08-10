@@ -1,6 +1,6 @@
 <template>
   <section class="pc-preset-link-app">
-    <article class="pc-section-card pc-preset-link-status">
+    <article class="pc-page-section pc-preset-link-status">
       <div class="pc-preset-link-status-head">
         <div class="pc-preset-link-scope">
           <span class="pc-kicker">{{ phone.isViewingCurrentChat ? t`当前聊天` : t`历史聊天` }}</span>
@@ -33,13 +33,18 @@
       </div>
     </article>
 
-    <article class="pc-editor-card pc-preset-link-editor">
+    <article class="pc-page-section pc-preset-link-editor">
       <label class="pc-field-group">
         <span>{{ t`选择预设` }}</span>
-        <select v-model="draftPresetName" class="pc-select">
-          <option value="">{{ t`请选择预设` }}</option>
-          <option v-for="presetName in presetNames" :key="presetName" :value="presetName">{{ presetName }}</option>
-        </select>
+        <SearchableCombobox
+          v-model="draftPresetName"
+          :disabled="busy"
+          :empty-label="t`没有匹配的预设`"
+          :input-label="t`选择绑定预设`"
+          :options="presetOptions"
+          :placeholder="t`请选择预设`"
+          :toggle-title="t`展开预设列表`"
+        />
       </label>
 
       <div class="pc-preset-link-option">
@@ -100,6 +105,7 @@ const currentMatchesBinding = computed(() =>
 const enabledRegexCount = computed(() =>
   draftPresetName.value ? getEnabledPresetRegexCount(draftPresetName.value) : 0,
 );
+const presetOptions = computed(() => presetNames.value.map(name => ({ label: name, value: name })));
 
 function refresh() {
   presetNames.value = listTavernPresets();

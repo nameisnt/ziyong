@@ -1,7 +1,7 @@
 <template>
   <section class="pc-chat-insert-app">
     <section class="pc-chat-insert-page">
-      <article class="pc-section-card">
+      <article class="pc-page-section">
         <div class="pc-section-head">
           <strong>{{ t`插入方式` }}</strong>
         </div>
@@ -31,7 +31,7 @@
         </label>
       </article>
 
-      <article class="pc-section-card">
+      <article class="pc-page-section">
         <div class="pc-section-head">
           <strong>{{ t`引用内容` }}</strong>
           <InfoHint :text="referenceHelpText" />
@@ -57,7 +57,7 @@
         </div>
       </article>
 
-      <article class="pc-section-card">
+      <article class="pc-page-section">
         <div class="pc-section-head">
           <strong>{{ t`格式模板` }}</strong>
           <div class="pc-head-actions">
@@ -93,7 +93,7 @@
         <textarea v-model="settings.template" class="pc-area compact"></textarea>
       </article>
 
-      <article class="pc-section-card">
+      <article class="pc-page-section">
         <div class="pc-section-head">
           <strong>{{ t`预览` }}</strong>
         </div>
@@ -312,7 +312,7 @@ async function confirmInsert() {
   min-height: 120px;
   margin: 12px 0 0;
   white-space: pre-wrap;
-  border-radius: 16px;
+  border-radius: var(--pc-control-radius);
   background: var(--pc-surface-strong);
   color: var(--pc-text);
   padding: 12px;
@@ -328,7 +328,7 @@ async function confirmInsert() {
   margin-top: 10px;
   padding: 12px;
   border: 1px solid var(--pc-border);
-  border-radius: 16px;
+  border-radius: var(--pc-control-radius);
   background: var(--pc-surface-strong);
 }
 

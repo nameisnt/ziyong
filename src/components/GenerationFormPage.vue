@@ -1,38 +1,34 @@
 <template>
   <section class="pc-generation-form-page">
-    <article class="pc-editor-card">
-      <span class="pc-kicker">{{ kicker }}</span>
-      <h2 v-if="title">{{ title }}</h2>
-      <GenerationPanel
-        :capture="capture"
-        :capture-reset-key="captureResetKey"
-        :error="error"
-        :from-start-end="fromStartEnd"
-        :range-text="rangeText"
-        :raw-output="rawOutput"
-        :recent-count="recentCount"
-        :references="references"
-        :requirement-placeholder="requirementPlaceholder"
-        :running="running"
-        :single-message-id="singleMessageId"
-        :source-mode="sourceMode"
-        :user-requirement="userRequirement"
-        @cancel="$emit('cancel')"
-        @generate="$emit('generate')"
-        @stop="$emit('stop')"
-        @update:from-start-end="fromStartEnd = $event"
-        @update:range-text="rangeText = $event"
-        @update:recent-count="recentCount = $event"
-        @update:references="references = $event"
-        @update:single-message-id="singleMessageId = $event"
-        @update:source-mode="sourceMode = $event"
-        @update:user-requirement="userRequirement = $event"
-      >
-        <template v-if="$slots['before-fields']" #before-fields>
-          <slot name="before-fields"></slot>
-        </template>
-      </GenerationPanel>
-    </article>
+    <GenerationPanel
+      :capture="capture"
+      :capture-reset-key="captureResetKey"
+      :error="error"
+      :from-start-end="fromStartEnd"
+      :range-text="rangeText"
+      :raw-output="rawOutput"
+      :recent-count="recentCount"
+      :references="references"
+      :requirement-placeholder="requirementPlaceholder"
+      :running="running"
+      :single-message-id="singleMessageId"
+      :source-mode="sourceMode"
+      :user-requirement="userRequirement"
+      @cancel="$emit('cancel')"
+      @generate="$emit('generate')"
+      @stop="$emit('stop')"
+      @update:from-start-end="fromStartEnd = $event"
+      @update:range-text="rangeText = $event"
+      @update:recent-count="recentCount = $event"
+      @update:references="references = $event"
+      @update:single-message-id="singleMessageId = $event"
+      @update:source-mode="sourceMode = $event"
+      @update:user-requirement="userRequirement = $event"
+    >
+      <template v-if="$slots['before-fields']" #before-fields>
+        <slot name="before-fields"></slot>
+      </template>
+    </GenerationPanel>
   </section>
 </template>
 
@@ -54,7 +50,7 @@ withDefaults(
     title?: string;
   }>(),
   {
-    kicker: 'AI 生成',
+    kicker: '',
     requirementPlaceholder: '',
     title: '',
   },
@@ -73,12 +69,8 @@ const userRequirement = defineModel<string>('userRequirement', { required: true 
 
 <style scoped>
 .pc-generation-form-page {
+  display: grid;
+  gap: 14px;
   min-height: 100%;
-}
-
-.pc-editor-card h2 {
-  margin: 0;
-  font-size: 20px;
-  line-height: 1.25;
 }
 </style>

@@ -128,7 +128,7 @@ onBeforeUnmount(() => {
 .pc-frame-shell {
   margin-top: 16px;
   border: 1px solid var(--pc-border);
-  border-radius: 18px;
+  border-radius: min(var(--pc-card-radius), 8px);
   overflow: hidden;
   background: var(--pc-surface-strong);
 }

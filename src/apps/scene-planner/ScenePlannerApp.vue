@@ -6,7 +6,7 @@
         @discard="discardScenePreviewDraft"
         @open="openScenePreviewDraft"
       />
-      <article class="pc-editor-card">
+      <article class="pc-scene-editor">
         <div class="pc-section-head">
           <strong>{{ activePlan ? '继续编排' : '说出下一章剧情' }}</strong>
           <button class="pc-icon-btn" type="button" title="新方案" @click="newPlan">
@@ -61,17 +61,17 @@
         />
       </article>
 
-      <article class="pc-section-card pc-scene-history">
+      <article class="pc-page-section pc-scene-history">
         <div class="pc-section-head">
           <strong>历史方案</strong>
           <span>{{ planner.plans.length }}</span>
         </div>
         <EmptyState v-if="!planner.plans.length" compact title="还没有场景方案" />
-        <div v-else class="pc-scene-history-list">
+        <div v-else class="pc-directory-list pc-scene-history-list">
           <article
             v-for="plan in planner.plans"
             :key="plan.id"
-            :class="['pc-scene-history-item', { active: activePlanId === plan.id }]"
+            :class="['pc-list-row', 'pc-scene-history-item', { active: activePlanId === plan.id }]"
           >
             <button class="pc-scene-history-main" type="button" @click="openPlan(plan.id)">
               <strong>{{ plan.title }}</strong>
@@ -447,14 +447,17 @@ async function removePlan(planId: string) {
   gap: 12px;
 }
 
-.pc-scene-history-item {
+.pc-scene-editor {
   display: grid;
+  gap: 12px;
+}
+
+.pc-scene-history-list {
+  gap: 0;
+}
+
+.pc-scene-history-item {
   grid-template-columns: minmax(0, 1fr) auto;
-  align-items: center;
-  gap: 8px;
-  padding: 8px;
-  border-radius: var(--pc-control-radius);
-  background: var(--pc-surface-strong);
 }
 
 .pc-scene-brief {
@@ -462,7 +465,7 @@ async function removePlan(planId: string) {
 }
 
 .pc-scene-history-item.active {
-  background: color-mix(in srgb, var(--pc-theme-accent) 16%, var(--pc-surface-strong) 84%);
+  color: var(--pc-theme-accent);
 }
 
 .pc-scene-history-main {

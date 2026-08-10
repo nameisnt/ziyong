@@ -1,14 +1,10 @@
 <template>
   <section class="pc-video-app">
     <section class="pc-video-page">
-      <div class="pc-video-hero">
-        <div>
-          <span class="pc-kicker">{{ t`视频` }}</span>
-          <h2>{{ videoEntries.length }} {{ t`个视频` }}</h2>
-        </div>
-        <button class="pc-primary-btn compact" type="button" @click="openEditor()">
+      <div v-if="route.page === 'root'" class="pc-compact-toolbar pc-directory-toolbar pc-video-toolbar">
+        <span class="pc-directory-count">{{ videoEntries.length }} {{ t`个视频` }}</span>
+        <button class="pc-icon-btn primary" type="button" :title="t`新增视频`" @click="openEditor()">
           <i class="fa-solid fa-plus"></i>
-          <span>{{ t`新增` }}</span>
         </button>
       </div>
 
@@ -37,7 +33,7 @@
 
       <article v-else-if="route.page === 'viewer' && activeEntry" class="pc-video-viewer">
         <video :src="activeEntry.url" controls autoplay></video>
-        <div class="pc-section-card pc-video-detail">
+        <div class="pc-video-detail">
           <div class="pc-video-viewer-bar">
             <button
               class="pc-icon-btn"
@@ -63,18 +59,15 @@
             </button>
           </div>
           <p v-if="activeEntry.note">{{ activeEntry.note }}</p>
-          <div class="pc-form-actions pc-video-detail-actions">
-            <button class="pc-soft-btn" type="button" @click="openEditor(activeEntry.id)">
+          <div class="pc-directory-actions pc-video-detail-actions">
+            <button class="pc-icon-btn" type="button" :title="t`编辑`" @click="openEditor(activeEntry.id)">
               <i class="fa-solid fa-pen"></i>
-              <span>{{ t`编辑` }}</span>
             </button>
-            <button class="pc-soft-btn" type="button" @click="downloadEntry(activeEntry)">
+            <button class="pc-icon-btn" type="button" :title="t`下载`" @click="downloadEntry(activeEntry)">
               <i class="fa-solid fa-download"></i>
-              <span>{{ t`下载` }}</span>
             </button>
-            <button class="pc-soft-btn danger" type="button" @click="deleteEntry(activeEntry)">
+            <button class="pc-icon-btn danger" type="button" :title="t`删除`" @click="deleteEntry(activeEntry)">
               <i class="fa-solid fa-trash"></i>
-              <span>{{ t`删除` }}</span>
             </button>
           </div>
         </div>
@@ -85,9 +78,7 @@
         </button>
       </EmptyState>
 
-      <article v-else-if="route.page === 'editor'" class="pc-editor-card">
-        <span class="pc-kicker">{{ editingEntry ? t`编辑视频` : t`新增视频` }}</span>
-        <h2>{{ editingEntry?.title || t`视频条目` }}</h2>
+      <article v-else-if="route.page === 'editor'" class="pc-video-editor">
         <input v-model="draft.title" class="pc-field" type="text" :placeholder="t`标题`" />
         <input v-model="draft.url" class="pc-field" type="text" :placeholder="t`视频 URL 或上传后的 data 地址`" />
         <input class="pc-field" type="file" accept="video/*" @change="loadFile" />
@@ -145,7 +136,8 @@ function fillDraft(entry: MediaEntry | null) {
 }
 
 function openViewer(entryId: string) {
-  phone.replacePage('viewer', '视频预览', { entryId });
+  const entry = media.getEntry(entryId);
+  phone.replacePage('viewer', entry?.title || '视频预览', { entryId });
 }
 
 function openEditor(entryId?: string) {
@@ -185,7 +177,7 @@ function saveDraft() {
   };
   const entry = editingEntry.value ? media.updateEntry(editingEntry.value.id, input) : media.createEntry(input);
   if (!entry) return;
-  phone.replacePage('viewer', '视频预览', { entryId: entry.id });
+  phone.replacePage('viewer', entry.title, { entryId: entry.id });
   toastr.success('已保存视频');
 }
 
@@ -223,22 +215,6 @@ async function deleteEntry(entry: MediaEntry) {
   display: grid;
   align-content: start;
   gap: 14px;
-}
-
-.pc-video-hero {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  padding: 16px;
-  border: 1px solid var(--pc-border);
-  border-radius: var(--pc-card-radius);
-  background: var(--pc-surface);
-}
-
-.pc-video-hero h2 {
-  margin: 4px 0 0;
-  font-size: 20px;
 }
 
 .pc-video-grid {
@@ -345,16 +321,13 @@ async function deleteEntry(entry: MediaEntry) {
 }
 
 .pc-video-detail-actions {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 8px;
+  justify-content: center;
   margin-top: 12px;
 }
 
-.pc-video-detail-actions > button {
-  width: 100%;
-  min-width: 0;
-  padding-inline: 8px;
+.pc-video-editor {
+  display: grid;
+  gap: 12px;
 }
 
 .pc-area.compact {

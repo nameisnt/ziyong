@@ -1,7 +1,6 @@
 <template>
   <section class="pc-profiles-page">
-    <article class="pc-editor-card pc-profile-table-editor">
-      <span class="pc-kicker">{{ table.builtIn ? '内置资料表' : '自定义资料表' }}</span>
+    <div class="pc-profile-table-editor">
       <input v-model="name" class="pc-field" type="text" placeholder="表格名称" />
       <label class="pc-field-group"
         ><span>关联资料类型</span
@@ -9,7 +8,7 @@
           <option v-for="option in kindOptions" :key="option.id" :value="option.id">{{ option.label }}</option>
         </select></label
       >
-      <details class="pc-profile-display-format">
+      <details class="pc-page-section pc-profile-display-format">
         <summary>
           <span
             ><strong>资料展示</strong><small>{{ renderMode === 'frontend' ? '网页渲染' : 'Markdown' }}</small></span
@@ -40,7 +39,7 @@
           </button>
         </div>
       </details>
-      <section class="pc-profile-fields-editor">
+      <section class="pc-page-section pc-profile-fields-editor">
         <div class="pc-profile-fields-head">
           <span
             ><strong>字段</strong><small>{{ columns.length }}</small></span
@@ -52,7 +51,7 @@
           <article
             v-for="column in columns"
             :key="column.id"
-            class="pc-profile-column-row"
+            class="pc-list-row pc-profile-column-row"
             :class="{
               disabled: !column.enabled,
               dragging: drag.isDragging && drag.columnId === column.id,
@@ -87,7 +86,7 @@
         ><button class="pc-soft-btn" type="button" @click="$emit('back')">取消</button
         ><button class="pc-primary-btn" type="button" @click="$emit('save')">保存</button>
       </div>
-    </article>
+    </div>
   </section>
 </template>
 <script setup lang="ts">
@@ -132,10 +131,6 @@ defineEmits<{
 .pc-profile-display-format {
   display: grid;
   gap: 10px;
-  border: 1px solid var(--pc-border);
-  border-radius: var(--pc-card-radius);
-  padding: 12px;
-  background: var(--pc-surface);
 }
 .pc-profile-display-format > summary {
   display: flex;
@@ -165,10 +160,7 @@ defineEmits<{
   padding-top: 12px;
 }
 .pc-profile-fields-editor {
-  border: 1px solid var(--pc-border);
-  border-radius: var(--pc-card-radius);
-  padding: 10px;
-  background: var(--pc-surface);
+  padding-inline: 0;
 }
 .pc-profile-fields-head {
   display: flex;
@@ -186,15 +178,7 @@ defineEmits<{
 }
 .pc-profile-column-row {
   position: relative;
-  display: grid;
   grid-template-columns: 36px minmax(0, 1fr);
-  min-height: 56px;
-  align-items: center;
-  gap: 10px;
-  border: 1px solid var(--pc-border);
-  border-radius: var(--pc-card-radius);
-  padding: 9px 10px;
-  background: var(--pc-surface-strong);
 }
 .pc-profile-column-row.drop-before::before {
   position: absolute;

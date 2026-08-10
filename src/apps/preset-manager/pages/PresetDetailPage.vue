@@ -1,21 +1,20 @@
 <template>
   <section ref="pageEl" class="pc-preset-page">
-    <article class="pc-section-card pc-preset-detail-head">
-      <div>
-        <span class="pc-kicker">{{ presetName === loadedPresetName ? '当前酒馆预设' : '预设条目' }}</span>
-        <h2 :title="presetName">{{ presetName }}</h2>
-        <small v-if="preset">{{ preset.prompts.length }} 个条目</small>
-      </div>
+    <header class="pc-compact-toolbar pc-directory-toolbar pc-preset-detail-head">
+      <span class="pc-directory-count">
+        {{ preset ? `${preset.prompts.length} 个条目` : '正在读取条目' }}
+      </span>
       <button
         v-if="presetName !== loadedPresetName"
-        class="pc-soft-btn compact"
+        class="pc-icon-btn primary"
         type="button"
         :disabled="mutationBusy || switchingPreset === presetName"
+        title="使用这个预设"
         @click="$emit('switch-preset', presetName)"
       >
-        使用
+        <i class="fa-solid fa-play"></i>
       </button>
-    </article>
+    </header>
 
     <div v-if="errorMessage" class="pc-section-card pc-preset-error">
       <strong>无法读取预设</strong>
@@ -139,31 +138,6 @@ defineExpose({ getScrollElement: () => pageEl.value });
   flex-direction: column;
   gap: 12px;
   overflow-y: auto;
-  padding: 14px;
-}
-.pc-preset-detail-head {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-}
-.pc-preset-detail-head > div {
-  display: grid;
-  min-width: 0;
-  gap: 5px;
-}
-.pc-preset-detail-head h2 {
-  overflow: hidden;
-  margin: 0;
-  color: var(--pc-text);
-  font-size: 19px;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-.pc-preset-detail-head small {
-  color: var(--pc-muted);
-  font-size: 12px;
-  font-weight: 700;
 }
 .pc-preset-filter-row {
   display: flex;
@@ -178,7 +152,7 @@ defineExpose({ getScrollElement: () => pageEl.value });
 .pc-preset-nodes,
 .pc-preset-group-body {
   display: grid;
-  gap: 10px;
+  gap: 0;
 }
 .pc-preset-error {
   color: var(--pc-danger);
@@ -189,7 +163,7 @@ defineExpose({ getScrollElement: () => pageEl.value });
 }
 .pc-preset-group {
   display: grid;
-  gap: 8px;
+  gap: 0;
 }
 .pc-preset-group-head {
   display: flex;

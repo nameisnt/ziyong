@@ -1,7 +1,7 @@
 <template>
   <section class="pc-timekeeper-app">
     <section class="pc-timekeeper-page">
-      <article class="pc-time-card pc-time-hero">
+      <article class="pc-page-section pc-time-hero">
         <div>
           <span class="pc-kicker">{{ t`当前世界时间` }}</span>
           <h2>{{ timekeeper.formatDate(settings.current) }}</h2>
@@ -12,7 +12,7 @@
         </button>
       </article>
 
-      <details class="pc-time-card pc-calendar-card">
+      <details class="pc-page-section pc-calendar-card">
         <summary class="pc-section-head">
           <strong>{{ t`历法` }}</strong>
           <span class="pc-head-actions">
@@ -87,7 +87,7 @@
         </template>
       </details>
 
-      <article class="pc-time-card">
+      <article class="pc-page-section">
         <div class="pc-section-head">
           <strong>{{ t`当前日期` }}</strong>
         </div>
@@ -134,14 +134,13 @@
         </div>
       </article>
 
-      <article class="pc-time-card">
+      <article class="pc-page-section">
         <div class="pc-section-head">
           <strong>{{ t`人物` }}</strong>
           <span class="pc-head-actions">
             <InfoHint :text="peopleHelpText" />
-            <button class="pc-primary-btn compact" type="button" @click="timekeeper.createPerson()">
+            <button class="pc-icon-btn primary" type="button" :title="t`新增人物`" @click="timekeeper.createPerson()">
               <i class="fa-solid fa-plus"></i>
-              <span>{{ t`新增` }}</span>
             </button>
           </span>
         </div>
@@ -224,7 +223,7 @@
         </div>
       </article>
 
-      <article class="pc-time-card">
+      <article class="pc-page-section">
         <div class="pc-section-head">
           <strong>{{ t`时间流逝` }}</strong>
           <span class="pc-head-actions">
@@ -252,7 +251,7 @@
         </button>
       </article>
 
-      <article class="pc-time-card">
+      <article class="pc-page-section">
         <div class="pc-section-head">
           <strong>{{ t`写入预览` }}</strong>
           <InfoHint :text="previewHelpText" />
@@ -441,14 +440,6 @@ async function copyPrompt() {
   gap: 14px;
 }
 
-.pc-time-card {
-  border: 1px solid var(--pc-border);
-  border-radius: 20px;
-  background: color-mix(in srgb, var(--pc-surface) 72%, transparent 28%);
-  backdrop-filter: blur(12px);
-  padding: 14px;
-}
-
 .pc-calendar-card summary {
   cursor: pointer;
   list-style: none;
@@ -544,7 +535,8 @@ async function copyPrompt() {
 .pc-person-card {
   display: grid;
   gap: 10px;
-  border-radius: 18px;
+  border: 1px solid var(--pc-border);
+  border-radius: var(--pc-control-radius);
   background: var(--pc-surface-strong);
   padding: 12px;
 }
@@ -568,7 +560,7 @@ async function copyPrompt() {
 .pc-preview {
   margin: 12px 0 0;
   white-space: pre-wrap;
-  border-radius: 16px;
+  border-radius: min(var(--pc-control-radius), 8px);
   background: var(--pc-surface-strong);
   color: var(--pc-text);
   padding: 12px;

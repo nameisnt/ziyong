@@ -1,8 +1,6 @@
 <template>
   <section class="pc-summary-entry-editor-page">
-    <div class="pc-editor-card">
-      <span class="pc-kicker">编辑条目</span>
-      <h2>{{ editingTitle || '调整当前内容' }}</h2>
+    <div class="pc-page-section">
       <input v-model="title" class="pc-field" type="text" placeholder="标题" />
       <input v-model="rangeLabel" class="pc-field" type="text" placeholder="范围，例如 第 1-20 楼" />
       <div v-if="showOrder" class="pc-field-group">
@@ -42,12 +40,6 @@ const title = defineModel<string>('title', { required: true });
 <style scoped>
 .pc-summary-entry-editor-page {
   min-height: 100%;
-}
-
-.pc-editor-card h2 {
-  margin: 0;
-  font-size: 20px;
-  line-height: 1.25;
 }
 
 .pc-summary-entry-content {

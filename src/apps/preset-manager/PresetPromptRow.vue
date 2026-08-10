@@ -1,6 +1,6 @@
 <template>
   <article
-    class="pc-section-card pc-preset-prompt-row"
+    class="pc-list-row pc-preset-prompt-row"
     :class="{
       'drop-before': dropBefore,
       dragging,

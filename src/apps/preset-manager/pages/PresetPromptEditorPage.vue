@@ -1,8 +1,8 @@
 <template>
   <section class="pc-preset-page pc-preset-editor-page">
-    <article class="pc-editor-card pc-preset-editor">
-      <div class="pc-preset-editor-head">
-        <span class="pc-kicker">{{ presetName }}</span>
+    <article class="pc-page-section pc-preset-editor">
+      <div class="pc-compact-toolbar pc-preset-editor-head">
+        <span :title="presetName">{{ presetName }}</span>
         <h2 :title="prompt.name || prompt.id">{{ prompt.name || prompt.id }}</h2>
         <small>{{ roleLabel }}</small>
       </div>
@@ -17,8 +17,8 @@
         <span>这个条目用于确定酒馆内容的插入位置，没有独立正文。</span>
       </div>
       <div class="pc-form-actions">
-        <button class="pc-soft-btn danger" type="button" :disabled="saving" @click="$emit('remove')">
-          <i class="fa-solid fa-trash"></i><span>删除</span>
+        <button class="pc-icon-btn danger" type="button" :disabled="saving" title="删除条目" @click="$emit('remove')">
+          <i class="fa-solid fa-trash"></i>
         </button>
         <button class="pc-soft-btn" type="button" :disabled="saving" @click="$emit('back')">返回</button>
         <button
@@ -69,14 +69,23 @@ defineEmits<{ back: []; remove: []; save: [] }>();
 }
 .pc-preset-editor-head {
   display: grid;
+  grid-template-columns: minmax(0, 0.7fr) minmax(0, 1fr) auto;
+  align-items: center;
   min-width: 0;
-  gap: 5px;
+  gap: 8px;
 }
 .pc-preset-editor-head h2 {
   overflow: hidden;
   margin: 0;
   color: var(--pc-text);
-  font-size: 19px;
+  font-size: 15px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.pc-preset-editor-head > span {
+  overflow: hidden;
+  color: var(--pc-muted);
+  font-size: 12px;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
@@ -97,6 +106,9 @@ defineEmits<{ back: []; remove: []; save: [] }>();
 .pc-preset-editor .pc-form-actions > button {
   min-width: 0;
   flex: 1;
+}
+.pc-preset-editor .pc-form-actions > .pc-icon-btn {
+  flex: 0 0 44px;
 }
 .pc-preset-placeholder-detail {
   display: grid;

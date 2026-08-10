@@ -1,9 +1,6 @@
 <template>
   <section class="pc-profiles-page pc-profile-field-editor-page">
-    <article class="pc-editor-card pc-profile-field-editor">
-      <span class="pc-kicker">{{ newField ? t`新增字段` : protectedField ? t`固定字段` : t`自定义字段` }}</span>
-      <h2>{{ form.label.trim() || t`未命名字段` }}</h2>
-
+    <div class="pc-profile-field-editor">
       <label class="pc-field-group">
         <span>{{ t`字段名称` }}</span>
         <input
@@ -44,10 +41,10 @@
         ></textarea>
       </label>
 
-      <div class="pc-profile-field-toggle">
-        <span>
+      <div class="pc-page-section pc-profile-field-toggle">
+        <span class="pc-profile-field-toggle-label">
           <strong>{{ t`启用字段` }}</strong>
-          <small>{{ t`关闭后不参与编辑、AI 生成、展示和引用，但会保留已有值` }}</small>
+          <InfoHint :text="t`关闭后不参与编辑、AI 生成、展示和引用，但会保留已有值`" :label="t`启用字段说明`" />
         </span>
         <label class="pc-toggle" :title="form.enabled ? t`停用字段` : t`启用字段`">
           <input v-model="form.enabled" type="checkbox" :disabled="column?.id === 'title'" />
@@ -62,11 +59,12 @@
         <button class="pc-soft-btn" type="button" @click="emit('cancel')">{{ t`取消` }}</button>
         <button class="pc-primary-btn" type="button" @click="save">{{ t`保存` }}</button>
       </div>
-    </article>
+    </div>
   </section>
 </template>
 
 <script setup lang="ts">
+import InfoHint from '@/components/InfoHint.vue';
 import SearchableCombobox from '@/components/SearchableCombobox.vue';
 import type { ProfileColumnType, ProfileTableColumn } from './store';
 
@@ -145,32 +143,19 @@ function save() {
   gap: 14px;
 }
 
-.pc-profile-field-editor h2 {
-  margin: 0;
-  font-size: 20px;
-}
-
 .pc-profile-field-toggle {
   display: flex;
-  min-height: 64px;
+  min-height: 56px;
   align-items: center;
   justify-content: space-between;
   gap: 14px;
-  border: 1px solid var(--pc-border);
-  border-radius: var(--pc-card-radius);
-  background: var(--pc-surface);
-  padding: 10px 12px;
+  padding-inline: 0;
 }
 
-.pc-profile-field-toggle > span {
-  display: grid;
+.pc-profile-field-toggle-label {
+  display: inline-flex;
   min-width: 0;
-  gap: 4px;
-}
-
-.pc-profile-field-toggle small {
-  color: var(--pc-muted);
-  line-height: 1.45;
+  align-items: center;
 }
 
 .pc-profile-field-toggle .pc-toggle {

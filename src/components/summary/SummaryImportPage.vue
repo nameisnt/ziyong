@@ -1,8 +1,6 @@
 <template>
   <section class="pc-summary-import-page">
-    <article class="pc-editor-card">
-      <span class="pc-kicker">当前聊天</span>
-      <h2>提取 AI 楼层</h2>
+    <article class="pc-page-section">
       <EmptyState v-if="!books.length" title="还没有总结集">
         <p>先新建一个总结集，再把当前聊天里的 AI 楼层提取成总结条目。</p>
         <button class="pc-primary-btn compact" type="button" @click="$emit('create-book')">新建总结集</button>
@@ -128,12 +126,6 @@ function updateRule(value: string) {
 <style scoped>
 .pc-summary-import-page {
   min-height: 100%;
-}
-
-.pc-editor-card h2 {
-  margin: 0;
-  font-size: 20px;
-  line-height: 1.25;
 }
 
 .pc-summary-import-head {

@@ -1,7 +1,7 @@
 <template>
   <section class="pc-worldbook-catalog-page">
-    <header class="pc-worldbook-head">
-      <span class="pc-kicker">{{ t`当前聊天` }}</span>
+    <header class="pc-compact-toolbar pc-directory-toolbar pc-worldbook-head">
+      <span class="pc-directory-count">{{ visibleBookCount }} {{ t`本世界书` }}</span>
       <button
         class="pc-icon-btn pc-worldbook-refresh"
         type="button"
@@ -27,9 +27,9 @@
       </button>
     </nav>
 
-    <label class="pc-worldbook-search">
+    <label class="pc-search-field pc-worldbook-search">
       <i class="fa-solid fa-magnifying-glass"></i>
-      <input v-model="query" class="pc-field" type="search" :placeholder="t`搜索当前分类的世界书`" />
+      <input v-model="query" type="search" :placeholder="t`搜索当前分类的世界书`" />
     </label>
 
     <div v-if="loadingError" class="pc-section-card pc-worldbook-error">
@@ -42,10 +42,9 @@
           <strong>{{ section.label }}</strong>
           <span>{{ section.books.length }}</span>
         </header>
-        <div v-if="section.books.length" class="pc-worldbook-list">
-          <article v-for="bookName in section.books" :key="bookName" class="pc-section-card pc-worldbook-row">
+        <div v-if="section.books.length" class="pc-directory-list pc-worldbook-list">
+          <article v-for="bookName in section.books" :key="bookName" class="pc-list-row pc-worldbook-row">
             <button class="pc-worldbook-open" type="button" @click="$emit('open-book', bookName)">
-              <span class="pc-worldbook-icon"><i class="fa-solid fa-book"></i></span>
               <span class="pc-worldbook-copy">
                 <strong>{{ bookName }}</strong>
                 <small>{{ bookSubtitle(bookName) }}</small>
@@ -115,8 +114,7 @@ defineEmits<{
 <style scoped>
 .pc-worldbook-catalog-page,
 .pc-worldbook-catalog,
-.pc-worldbook-group,
-.pc-worldbook-list {
+.pc-worldbook-group {
   display: grid;
   align-content: start;
   gap: 10px;
@@ -125,14 +123,6 @@ defineEmits<{
 .pc-worldbook-catalog-page {
   min-height: 100%;
   gap: 12px;
-}
-
-.pc-worldbook-head {
-  display: flex;
-  min-height: 32px;
-  align-items: center;
-  justify-content: space-between;
-  gap: 10px;
 }
 
 .pc-worldbook-refresh {
@@ -157,26 +147,6 @@ defineEmits<{
 .pc-worldbook-tabs small {
   font-size: 10px;
   opacity: 0.68;
-}
-
-.pc-worldbook-search {
-  position: relative;
-  display: block;
-}
-
-.pc-worldbook-search > i {
-  position: absolute;
-  z-index: 1;
-  top: 50%;
-  left: 13px;
-  color: var(--pc-muted);
-  pointer-events: none;
-  transform: translateY(-50%);
-}
-
-.pc-worldbook-search .pc-field {
-  height: 42px;
-  padding-left: 38px;
 }
 
 .pc-worldbook-catalog,
@@ -206,36 +176,18 @@ defineEmits<{
 }
 
 .pc-worldbook-row {
-  display: grid;
   grid-template-columns: minmax(0, 1fr) auto;
-  align-items: center;
-  width: 100%;
-  min-width: 0;
-  padding: 10px 12px;
-  color: var(--pc-text);
 }
 
 .pc-worldbook-open {
-  display: grid;
-  grid-template-columns: 38px minmax(0, 1fr);
-  align-items: center;
+  display: flex;
+  width: 100%;
   min-width: 0;
-  gap: 10px;
   border: 0;
   background: transparent;
   color: inherit;
   text-align: left;
   cursor: pointer;
-}
-
-.pc-worldbook-icon {
-  display: grid;
-  width: 38px;
-  height: 38px;
-  place-items: center;
-  border-radius: var(--pc-control-radius);
-  background: color-mix(in srgb, var(--pc-theme-accent) 14%, var(--pc-surface-strong) 86%);
-  color: var(--pc-theme-accent);
 }
 
 .pc-worldbook-copy {

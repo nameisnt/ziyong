@@ -1,29 +1,28 @@
 <template>
   <section class="pc-entry-library-page">
-    <article class="pc-editor-card pc-entry-binding-editor">
-      <label class="pc-field-group"
-        ><span>目标预设</span
-        ><select v-model="presetName" class="pc-select" @change="$emit('load-prompts')">
-          <option value="">请选择预设</option>
-          <option v-for="name in presetNames" :key="name" :value="name">{{ name }}</option>
-        </select></label
-      >
-      <label class="pc-field-group"
-        ><span>目标预设条目</span
-        ><select v-model="promptKey" class="pc-select" @change="$emit('load-content')">
-          <option value="">请选择条目</option>
-          <option v-for="prompt in prompts" :key="prompt.key" :value="prompt.key" :disabled="prompt.bound">
-            {{ prompt.title }}
-          </option>
-        </select></label
-      >
-      <label class="pc-field-group"
-        ><span>收藏分组</span
-        ><select v-model="groupId" class="pc-select">
-          <option value="">请选择分组</option>
-          <option v-for="group in groups" :key="group.id" :value="group.id">{{ group.name }}</option>
-        </select></label
-      >
+    <article class="pc-page-section pc-entry-binding-editor">
+      <div class="pc-field-group">
+        <span>目标预设</span>
+        <SearchableCombobox
+          :model-value="presetName"
+          :options="presetOptions"
+          placeholder="选择或搜索预设"
+          @update:model-value="selectPreset"
+        />
+      </div>
+      <div class="pc-field-group">
+        <span>目标预设条目</span>
+        <SearchableCombobox
+          :model-value="promptKey"
+          :options="promptOptions"
+          placeholder="选择或搜索条目"
+          @update:model-value="selectPrompt"
+        />
+      </div>
+      <div class="pc-field-group">
+        <span>收藏分组</span>
+        <SearchableCombobox v-model="groupId" :options="groupOptions" placeholder="选择或搜索分组" />
+      </div>
       <label class="pc-field-group pc-entry-binding-template"
         ><span
           ><span>绑定内容</span
@@ -50,7 +49,7 @@
       </div>
     </article>
     <div class="pc-entry-binding-list">
-      <article v-for="binding in bindings" :key="binding.id" class="pc-section-card pc-entry-binding-row">
+      <article v-for="binding in bindings" :key="binding.id" class="pc-list-row pc-entry-binding-row">
         <div>
           <strong>{{ binding.targetPromptName }}</strong
           ><small>{{ binding.presetName }} · {{ groupNames[binding.groupId] || '分组已删除' }}</small
@@ -74,6 +73,7 @@
 </template>
 <script setup lang="ts">
 import EmptyState from '@/components/EmptyState.vue';
+import SearchableCombobox from '@/components/SearchableCombobox.vue';
 import type { EntryLibraryBinding, EntryLibraryGroup } from '../store';
 import type { EntryLibraryBindingPromptOption } from '../types';
 const props = defineProps<{
@@ -90,14 +90,27 @@ const contentTemplate = defineModel<string>('contentTemplate', { required: true 
 const groupId = defineModel<string>('groupId', { required: true });
 const presetName = defineModel<string>('presetName', { required: true });
 const promptKey = defineModel<string>('promptKey', { required: true });
-defineEmits<{
+const emit = defineEmits<{
   create: [];
   'delete-binding': [bindingId: string];
   'load-content': [];
   'load-prompts': [];
   sync: [bindingId: string];
 }>();
+const presetOptions = computed(() => props.presetNames.map(name => ({ label: name, value: name })));
+const promptOptions = computed(() =>
+  props.prompts.map(prompt => ({ disabled: prompt.bound, label: prompt.title, value: prompt.key })),
+);
+const groupOptions = computed(() => props.groups.map(group => ({ label: group.name, value: group.id })));
 const templateField = ref<HTMLTextAreaElement | null>(null);
+function selectPreset(value: string) {
+  presetName.value = value;
+  emit('load-prompts');
+}
+function selectPrompt(value: string) {
+  promptKey.value = value;
+  emit('load-content');
+}
 function insertPlaceholder() {
   const field = templateField.value;
   const value = contentTemplate.value;

@@ -1,10 +1,10 @@
 <template>
   <section class="pc-extras-page">
-    <div class="pc-extras-actions-hero">
-      <div class="pc-book-actions">
-        <button class="pc-soft-btn" type="button" @click="emit('generateChapter')">
+    <div class="pc-compact-toolbar pc-directory-toolbar">
+      <span class="pc-directory-count">{{ chapters.length }} 章</span>
+      <div class="pc-directory-actions pc-book-actions">
+        <button class="pc-icon-btn primary" type="button" :title="t`生成章节`" @click="emit('generateChapter')">
           <i class="fa-solid fa-wand-magic-sparkles"></i>
-          <span>{{ t`生成章节` }}</span>
         </button>
         <button class="pc-icon-btn" type="button" :title="t`编辑番外信息`" @click="emit('editBook')">
           <i class="fa-solid fa-pen"></i>
@@ -15,10 +15,18 @@
       </div>
     </div>
 
-    <div class="pc-toolbar">
-      <input v-model="query" class="pc-search" type="text" :placeholder="t`搜索章节标题`" />
-      <button class="pc-soft-btn" type="button" @click="sortDesc = !sortDesc">
-        {{ sortDesc ? t`倒序` : t`正序` }}
+    <div class="pc-compact-toolbar pc-extras-filter">
+      <label class="pc-search-field">
+        <i class="fa-solid fa-magnifying-glass"></i>
+        <input v-model="query" type="search" :placeholder="t`搜索章节标题`" />
+      </label>
+      <button
+        class="pc-icon-btn pc-directory-sort"
+        type="button"
+        :title="sortDesc ? t`当前倒序，切换正序` : t`当前正序，切换倒序`"
+        @click="sortDesc = !sortDesc"
+      >
+        <i :class="sortDesc ? 'fa-solid fa-arrow-down-wide-short' : 'fa-solid fa-arrow-up-short-wide'"></i>
       </button>
     </div>
 
@@ -40,35 +48,30 @@
 
         <EmptyState v-if="!book.summaries.length" compact :title="t`还没有章节总结。`" />
 
-        <div v-else class="pc-summary-list">
-          <article v-for="summaryItem in book.summaries" :key="summaryItem.id" class="pc-summary-card">
-            <div class="pc-summary-head">
-              <strong>{{ formatCoveredChapters(summaryItem.coveredChapterIds) }}</strong>
-              <div class="pc-book-actions">
-                <button
-                  :class="['pc-toggle-chip', { active: summaryItem.enabled }]"
-                  type="button"
-                  @click="emit('toggleSummary', summaryItem.id)"
-                >
-                  {{ summaryItem.enabled ? t`已启用` : t`已停用` }}
-                </button>
-                <button
-                  class="pc-icon-btn"
-                  type="button"
-                  :title="t`编辑总结`"
-                  @click="emit('editSummary', summaryItem.id)"
-                >
-                  <i class="fa-solid fa-pen"></i>
-                </button>
-                <button
-                  class="pc-icon-btn danger"
-                  type="button"
-                  :title="t`删除总结`"
-                  @click="emit('deleteSummary', summaryItem.id)"
-                >
-                  <i class="fa-solid fa-trash"></i>
-                </button>
-              </div>
+        <div v-else class="pc-directory-list pc-summary-list">
+          <article v-for="summaryItem in book.summaries" :key="summaryItem.id" class="pc-list-row">
+            <strong>{{ formatCoveredChapters(summaryItem.coveredChapterIds) }}</strong>
+            <div class="pc-directory-actions pc-book-actions">
+              <label class="pc-toggle" :title="summaryItem.enabled ? t`停用总结` : t`启用总结`">
+                <input type="checkbox" :checked="summaryItem.enabled" @change="emit('toggleSummary', summaryItem.id)" />
+                <span aria-hidden="true"></span>
+              </label>
+              <button
+                class="pc-icon-btn"
+                type="button"
+                :title="t`编辑总结`"
+                @click="emit('editSummary', summaryItem.id)"
+              >
+                <i class="fa-solid fa-pen"></i>
+              </button>
+              <button
+                class="pc-icon-btn danger"
+                type="button"
+                :title="t`删除总结`"
+                @click="emit('deleteSummary', summaryItem.id)"
+              >
+                <i class="fa-solid fa-trash"></i>
+              </button>
             </div>
           </article>
         </div>
@@ -77,13 +80,17 @@
 
     <EmptyState v-if="!chapters.length" :title="t`没有匹配的章节`" />
 
-    <div v-else class="pc-entry-list">
-      <article v-for="chapter in chapters" :key="chapter.id" class="pc-entry-card">
-        <button class="pc-entry-main" type="button" @click="emit('openChapter', chapter.id)">
-          <strong>{{ `第 ${chapter.chapterNumber} 章 · ${chapter.title}` }}</strong>
-          <ContentVersionBadge :count="Math.max(1, chapter.versions.length)" />
-        </button>
-      </article>
+    <div v-else class="pc-directory-list pc-entry-list">
+      <button
+        v-for="chapter in chapters"
+        :key="chapter.id"
+        class="pc-list-row pc-entry-main"
+        type="button"
+        @click="emit('openChapter', chapter.id)"
+      >
+        <strong>{{ `第 ${chapter.chapterNumber} 章 · ${chapter.title}` }}</strong>
+        <ContentVersionBadge :count="Math.max(1, chapter.versions.length)" />
+      </button>
     </div>
   </section>
 </template>
@@ -122,27 +129,21 @@ function formatCoveredChapters(ids: string[]) {
 </script>
 
 <style scoped>
-.pc-extras-page,
-.pc-summary-list,
-.pc-entry-list {
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-}
-
 .pc-extras-page {
+  display: flex;
   min-height: 100%;
+  flex-direction: column;
   gap: 14px;
 }
 
 .pc-summary-section {
-  border-block: 1px solid var(--pc-border);
   padding-block: 4px 12px;
+  border-block: 1px solid var(--pc-border);
 }
 
 .pc-summary-toggle {
-  min-height: 52px;
   display: flex;
+  min-height: 52px;
   align-items: center;
   justify-content: space-between;
   gap: 10px;
@@ -157,11 +158,13 @@ function formatCoveredChapters(ids: string[]) {
 
 .pc-summary-toggle > span,
 .pc-summary-body,
-.pc-summary-actions {
+.pc-summary-actions,
+.pc-book-actions {
   display: flex;
 }
 
-.pc-summary-toggle > span {
+.pc-summary-toggle > span,
+.pc-book-actions {
   align-items: center;
   gap: 10px;
 }
@@ -190,90 +193,11 @@ function formatCoveredChapters(ids: string[]) {
   justify-content: flex-end;
 }
 
-.pc-extras-actions-hero,
-.pc-toolbar,
-.pc-summary-card,
-.pc-entry-card {
-  border: 1px solid var(--pc-border);
-  border-radius: 20px;
-  background: color-mix(in srgb, var(--pc-surface) 72%, transparent 28%);
-  backdrop-filter: blur(12px);
-}
-
-.pc-extras-actions-hero {
-  display: flex;
-  justify-content: flex-end;
-  padding: 14px;
-}
-
-.pc-toolbar {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
-  gap: 10px;
-  padding: 18px;
-}
-
-.pc-search {
-  width: 100%;
-  border: 1px solid var(--pc-border);
-  border-radius: 16px;
-  background: var(--pc-surface-strong);
-  color: var(--pc-text);
-  padding: 12px 14px;
-}
-
-.pc-summary-head,
-.pc-book-actions {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 10px;
-}
-
-.pc-summary-card,
-.pc-entry-card {
-  padding: 14px;
-}
-
-.pc-summary-head strong,
-.pc-entry-main strong {
-  display: block;
-  font-size: 16px;
-}
-
-.pc-entry-main {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 10px;
-  width: 100%;
-  border: 0;
-  background: transparent;
-  color: var(--pc-text);
-  text-align: left;
-  cursor: pointer;
-}
-
 .pc-entry-main strong {
   min-width: 0;
-}
-
-.pc-toggle-chip {
-  min-width: 92px;
-  height: 40px;
-  border: 0;
-  border-radius: 999px;
-  background: var(--pc-surface-strong);
-  color: var(--pc-text);
-  padding: 0 14px;
-  cursor: pointer;
-}
-
-.pc-toggle-chip.active {
-  background: color-mix(in srgb, var(--pc-theme-accent) 18%, var(--pc-surface-strong) 82%);
-}
-
-.pc-icon-btn.danger {
-  color: var(--pc-danger);
+  overflow: hidden;
+  font-size: 16px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 </style>

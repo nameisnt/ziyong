@@ -1,6 +1,6 @@
 <template>
   <section class="pc-profiles-page">
-    <section class="pc-profiles-toolbar">
+    <section class="pc-page-section pc-profiles-toolbar">
       <div class="pc-profile-context-row">
         <div class="pc-profile-table-switcher">
           <i :class="['fa-solid', kindIcon(selectedTable?.kind || 'note')]"></i>
@@ -42,20 +42,24 @@
           </button>
         </span>
         <div class="pc-profile-primary-actions">
-          <button class="pc-soft-btn compact" type="button" @click="$emit('create')">
-            <i class="fa-solid fa-plus"></i><span>新增</span></button
-          ><button class="pc-primary-btn compact" type="button" @click="$emit('generate')">
-            <i class="fa-solid fa-wand-magic-sparkles"></i><span>AI 生成</span>
+          <button class="pc-icon-btn" type="button" title="新增条目" @click="$emit('create')">
+            <i class="fa-solid fa-plus"></i></button
+          ><button class="pc-icon-btn primary" type="button" title="AI 生成资料" @click="$emit('generate')">
+            <i class="fa-solid fa-wand-magic-sparkles"></i>
           </button>
         </div>
       </div>
     </section>
 
-    <section v-if="selectedTable && viewMode === 'list'" class="pc-profile-list" :aria-label="selectedTable.name">
+    <section
+      v-if="selectedTable && viewMode === 'list'"
+      class="pc-directory-list pc-profile-list"
+      :aria-label="selectedTable.name"
+    >
       <button
         v-for="entry in filteredEntries"
         :key="entry.id"
-        class="pc-profile-list-row"
+        class="pc-list-row pc-profile-list-row"
         type="button"
         @click="$emit('open-entry', entry.id)"
       >
@@ -181,9 +185,7 @@ defineEmits<{
   align-content: start;
   gap: 14px;
 }
-.pc-profiles-toolbar,
-.pc-profile-table-wrap,
-.pc-profile-list {
+.pc-profile-table-wrap {
   border: 1px solid var(--pc-border);
   border-radius: var(--pc-card-radius);
   background: var(--pc-surface);
@@ -191,7 +193,7 @@ defineEmits<{
 .pc-profiles-toolbar {
   display: grid;
   gap: 10px;
-  padding: 10px;
+  padding-top: 0;
 }
 .pc-profile-context-row {
   display: grid;
@@ -249,25 +251,10 @@ defineEmits<{
   overflow-y: hidden;
 }
 .pc-profile-list {
-  display: grid;
   overflow: hidden;
 }
 .pc-profile-list-row {
-  display: grid;
   grid-template-columns: 36px minmax(0, 1fr) auto;
-  align-items: center;
-  gap: 10px;
-  border: 0;
-  border-bottom: 1px solid var(--pc-border);
-  padding: 12px;
-  background: transparent;
-  color: var(--pc-text);
-  cursor: pointer;
-  font: inherit;
-  text-align: left;
-}
-.pc-profile-list-row:last-child {
-  border-bottom: 0;
 }
 .pc-profile-list-icon {
   display: grid;

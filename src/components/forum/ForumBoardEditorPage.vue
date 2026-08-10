@@ -1,8 +1,6 @@
 <template>
   <section class="pc-forum-board-editor-page">
-    <article class="pc-editor-card">
-      <span class="pc-kicker">{{ editing ? t`编辑板块` : t`新建板块` }}</span>
-      <h2>{{ title || t`建立一个新的板块` }}</h2>
+    <article class="pc-page-section">
       <SearchableCombobox
         :empty-label="t`没有匹配的板块类型`"
         :input-label="t`选择论坛板块类型`"
@@ -57,11 +55,5 @@ defineEmits<{
 <style scoped>
 .pc-forum-board-editor-page {
   min-height: 100%;
-}
-
-.pc-forum-board-editor-page h2 {
-  margin: 0;
-  font-size: 20px;
-  line-height: 1.25;
 }
 </style>

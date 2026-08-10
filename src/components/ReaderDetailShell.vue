@@ -312,7 +312,7 @@ function runFooterAction(event: 'bottom' | 'catalog' | 'next' | 'previous' | 'to
 }
 
 .pc-reader-footer-popover :deep(.pc-detail-footer) {
-  border-radius: 18px 18px 0 0;
+  border-radius: min(var(--pc-card-radius), 8px) min(var(--pc-card-radius), 8px) 0 0;
 }
 
 .pc-reader-detail-shell :deep(.pc-reader-content) {

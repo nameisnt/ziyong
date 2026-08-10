@@ -1,18 +1,20 @@
 <template>
   <section class="pc-comfy-app">
     <section class="pc-comfy-page">
-      <div class="pc-comfy-hero">
-        <div>
-          <span class="pc-kicker">{{ t`ComfyUI` }}</span>
-          <h2>{{ settings.lastCheckedAt ? t`已读取配置` : t`未连接` }}</h2>
-        </div>
-        <button class="pc-primary-btn" type="button" :disabled="loading" @click="refresh">
+      <div class="pc-compact-toolbar pc-directory-toolbar pc-comfy-toolbar">
+        <span class="pc-directory-count">{{ settings.lastCheckedAt ? t`已读取配置` : t`未连接` }}</span>
+        <button
+          class="pc-icon-btn primary"
+          type="button"
+          :disabled="loading"
+          :title="loading ? t`正在读取模型` : t`读取模型`"
+          @click="refresh"
+        >
           <i class="fa-solid fa-cloud-arrow-down"></i>
-          <span>{{ loading ? t`读取中` : t`读取模型` }}</span>
         </button>
       </div>
 
-      <article class="pc-section-card">
+      <article class="pc-page-section">
         <label class="pc-field-group pc-inline-field">
           <span>{{ t`接口地址` }}</span>
           <input v-model="settings.baseUrl" class="pc-field" type="text" placeholder="http://127.0.0.1:8188" />
@@ -26,11 +28,11 @@
         </label>
       </article>
 
-      <nav class="pc-comfy-tabs" aria-label="ComfyUI 工作流类型">
+      <nav class="pc-segment pc-comfy-tabs" aria-label="ComfyUI 工作流类型">
         <button
           v-for="option in workflowKindOptions"
           :key="option.id"
-          :class="['pc-comfy-tab', { active: activeKind === option.id }]"
+          :class="['pc-segment-btn', 'pc-comfy-tab', { active: activeKind === option.id }]"
           type="button"
           @click="selectKind(option.id)"
         >
@@ -39,13 +41,12 @@
         </button>
       </nav>
 
-      <article class="pc-section-card">
+      <article class="pc-page-section">
         <div class="pc-section-head">
           <strong>{{ t`工作流库` }}</strong>
           <div class="pc-comfy-actions">
-            <button class="pc-primary-btn compact" type="button" @click="newWorkflow">
+            <button class="pc-icon-btn primary" type="button" :title="t`新建工作流`" @click="newWorkflow">
               <i class="fa-solid fa-plus"></i>
-              <span>{{ t`新建工作流` }}</span>
             </button>
             <ActionMenu :label="t`管理`" icon="fa-solid fa-sliders">
               <button type="button" @click="triggerImport">
@@ -100,7 +101,7 @@
         />
       </article>
 
-      <article class="pc-section-card">
+      <article class="pc-page-section">
         <div class="pc-section-head pc-param-section-head">
           <strong>{{ t`基础运行参数` }}</strong>
           <div class="pc-param-section-actions">
@@ -172,7 +173,7 @@
         </div>
       </article>
 
-      <article v-if="workflowParameterGroups.length" class="pc-section-card">
+      <article v-if="workflowParameterGroups.length" class="pc-page-section">
         <div class="pc-section-head pc-param-section-head">
           <strong>{{ t`工作流参数` }}</strong>
           <div class="pc-param-section-actions">
@@ -198,7 +199,7 @@
               <span>#{{ group.nodeId }} · {{ group.inputs.length }}</span>
             </summary>
             <div class="pc-param-list">
-              <section v-for="item in group.inputs" :key="item.key" class="pc-param-row">
+              <section v-for="item in group.inputs" :key="item.key" class="pc-list-row pc-param-row">
                 <div class="pc-param-head">
                   <strong>{{ getMappingLabel(item) }}</strong>
                   <div class="pc-param-mode" role="group" :aria-label="`${item.inputName} 参数来源`">
@@ -282,7 +283,7 @@
         </div>
       </article>
 
-      <article class="pc-section-card">
+      <article class="pc-page-section">
         <div class="pc-section-head">
           <strong>{{ t`工作流 JSON` }}</strong>
           <span>{{ activeWorkflow ? workflowKindLabel(activeWorkflow.kind) : t`先新建或导入` }}</span>
@@ -594,25 +595,6 @@ function setParameterMode(item: ComfyWorkflowInput, mode: ParameterMode) {
   gap: 14px;
 }
 
-.pc-comfy-hero {
-  border: 1px solid var(--pc-border);
-  border-radius: var(--pc-card-radius);
-  background: var(--pc-surface);
-}
-
-.pc-comfy-hero {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  padding: 16px;
-}
-
-.pc-comfy-hero h2 {
-  margin: 4px 0 0;
-  font-size: 20px;
-}
-
 .pc-grid {
   display: grid;
   gap: 10px;
@@ -631,7 +613,7 @@ function setParameterMode(item: ComfyWorkflowInput, mode: ParameterMode) {
 .pc-comfy-tabs {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 8px;
+  gap: 0;
 }
 
 .pc-comfy-tab {
@@ -641,12 +623,6 @@ function setParameterMode(item: ComfyWorkflowInput, mode: ParameterMode) {
   align-items: center;
   justify-content: center;
   gap: 6px;
-  border: 1px solid transparent;
-  border-radius: 999px;
-  background: var(--pc-surface);
-  color: var(--pc-text);
-  cursor: pointer;
-  font-weight: 900;
 }
 
 .pc-comfy-tab small {
@@ -658,12 +634,6 @@ function setParameterMode(item: ComfyWorkflowInput, mode: ParameterMode) {
   background: var(--pc-surface-strong);
   color: var(--pc-muted);
   font-size: 11px;
-}
-
-.pc-comfy-tab.active {
-  border-color: color-mix(in srgb, var(--pc-theme-accent) 42%, transparent);
-  background: color-mix(in srgb, var(--pc-theme-accent) 16%, var(--pc-surface) 84%);
-  color: var(--pc-theme-accent);
 }
 
 .pc-workflow-json-area {
@@ -753,10 +723,6 @@ function setParameterMode(item: ComfyWorkflowInput, mode: ParameterMode) {
   display: grid;
   grid-template-columns: minmax(0, 1fr);
   gap: 8px;
-  padding: 10px;
-  border: 1px solid var(--pc-border);
-  border-radius: var(--pc-control-radius);
-  background: var(--pc-surface);
 }
 
 .pc-param-head {

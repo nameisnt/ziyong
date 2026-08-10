@@ -1,9 +1,6 @@
 <template>
   <section class="pc-diary-batch-page">
-    <article class="pc-editor-card">
-      <span class="pc-kicker">AI 批量</span>
-      <h2>批量生成日记</h2>
-
+    <article class="pc-page-section">
       <input
         v-if="showBookFields"
         v-model="perspectiveName"
@@ -186,12 +183,6 @@ const progressLabel = computed(
 <style scoped>
 .pc-diary-batch-page {
   min-height: 100%;
-}
-
-.pc-editor-card h2 {
-  margin: 0;
-  font-size: 20px;
-  line-height: 1.25;
 }
 
 .pc-diary-batch-segment {

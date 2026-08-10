@@ -1,15 +1,17 @@
 <template>
   <section class="pc-cloud-media-app">
     <template v-if="route.page === 'root'">
-      <header class="pc-cloud-media-head">
-        <div>
-          <span class="pc-kicker">{{ t`云端生成` }}</span>
-          <h2>{{ t`图片、音乐与视频` }}</h2>
-        </div>
+      <header class="pc-compact-toolbar pc-directory-toolbar pc-cloud-media-head">
+        <span class="pc-directory-count">{{ settings.profiles.length }} {{ t`个服务配置` }}</span>
         <div class="pc-cloud-head-actions">
-          <button class="pc-primary-btn compact" type="button" :disabled="!activeProfile" @click="openAiGenerate">
+          <button
+            class="pc-icon-btn primary"
+            type="button"
+            :disabled="!activeProfile"
+            :title="t`AI 生成媒体提示词`"
+            @click="openAiGenerate"
+          >
             <i class="fa-solid fa-wand-magic-sparkles"></i>
-            <span>{{ t`AI` }}</span>
           </button>
           <button class="pc-icon-btn" type="button" :title="t`配置服务`" @click="openSettings">
             <i class="fa-solid fa-gear"></i>
@@ -27,7 +29,7 @@
       </EmptyState>
 
       <template v-else>
-        <article class="pc-section-card pc-cloud-profile-card">
+        <article class="pc-page-section pc-cloud-profile-card">
           <label class="pc-field-group">
             <span>{{ t`生成配置` }}</span>
             <select v-model="settings.activeProfileId" class="pc-field pc-select" :disabled="generating">
@@ -42,7 +44,7 @@
           </div>
         </article>
 
-        <details class="pc-section-card pc-cloud-manual">
+        <details class="pc-page-section pc-cloud-manual">
           <summary>{{ t`直接输入提示词（备用）` }}</summary>
           <div class="pc-cloud-manual-fields">
             <label class="pc-field-group">
@@ -134,9 +136,7 @@
       </template>
     </template>
 
-    <article v-else-if="route.page === 'generate' && activeProfile" class="pc-editor-card">
-      <span class="pc-kicker">{{ providerLabel(activeProfile.provider) }} · {{ kindLabel(activeProfile.kind) }}</span>
-      <h2 class="pc-cloud-route-title">{{ t`根据聊天生成提示词` }}</h2>
+    <article v-else-if="route.page === 'generate' && activeProfile" class="pc-cloud-generate-form">
       <GenerationPanel
         :capture="captureCloudPrompt"
         :capture-reset-key="cloudPromptPreview"
@@ -177,10 +177,7 @@
       </GenerationPanel>
     </article>
 
-    <article
-      v-else-if="route.page === 'preview' && generationState.preview"
-      class="pc-editor-card pc-generation-preview-card"
-    >
+    <article v-else-if="route.page === 'preview' && generationState.preview" class="pc-generation-preview-card">
       <GenerationPreviewPanel
         :content="previewContent"
         :raw="generationState.preview.raw"
@@ -235,9 +232,7 @@
       </GenerationPreviewPanel>
     </article>
 
-    <article v-else-if="route.page === 'failed-draft' && activeFailedDraft" class="pc-editor-card pc-repair-card">
-      <span class="pc-kicker">{{ activeFailedDraft.source.label }}</span>
-      <h2 class="pc-cloud-route-title">{{ t`修复解析失败草稿` }}</h2>
+    <article v-else-if="route.page === 'failed-draft' && activeFailedDraft" class="pc-repair-card">
       <div v-if="activeFailedDraft.warnings.length" class="pc-status-card warning">
         <strong>{{ t`上次解析提示` }}</strong>
         <p>{{ activeFailedDraft.warnings.join('；') }}</p>
@@ -256,11 +251,8 @@
     </article>
 
     <template v-else-if="route.page === 'settings'">
-      <header class="pc-cloud-media-head">
-        <div>
-          <span class="pc-kicker">{{ t`服务配置` }}</span>
-          <h2>{{ t`云媒体连接` }}</h2>
-        </div>
+      <header class="pc-compact-toolbar pc-directory-toolbar pc-cloud-media-head">
+        <span class="pc-directory-count">{{ settings.profiles.length }} {{ t`个配置` }}</span>
         <button class="pc-icon-btn" type="button" :title="t`新增配置`" @click="addProfile">
           <i class="fa-solid fa-plus"></i>
         </button>
@@ -283,7 +275,7 @@
         </button>
       </div>
 
-      <article v-if="activeProfile" class="pc-editor-card pc-cloud-settings-card">
+      <article v-if="activeProfile" class="pc-cloud-settings-card">
         <label class="pc-field-group">
           <span>{{ t`配置名称` }}</span>
           <input v-model="activeProfile.name" class="pc-field" type="text" />
@@ -1049,23 +1041,14 @@ onBeforeUnmount(stopGeneration);
   justify-content: space-between;
 }
 
-.pc-cloud-media-head h2 {
-  margin: 2px 0 0;
-  font-size: 21px;
-}
-
 .pc-cloud-head-actions {
   flex: 0 0 auto;
 }
 
-.pc-cloud-route-title {
-  margin: 0;
-  font-size: 20px;
-}
-
 .pc-cloud-profile-card,
 .pc-cloud-settings-card,
-.pc-cloud-preview-fields {
+.pc-cloud-preview-fields,
+.pc-cloud-generate-form {
   display: grid;
   gap: 12px;
 }

@@ -1,8 +1,6 @@
 <template>
   <section class="pc-extras-page">
-    <div class="pc-editor-card">
-      <span class="pc-kicker">{{ editing ? t`编辑章节总结` : t`新增章节总结` }}</span>
-      <h2>{{ bookTitle }}</h2>
+    <div class="pc-page-section pc-extras-summary-editor">
       <textarea v-model="content" class="pc-area pc-saved-content-area" :placeholder="t`总结正文`"></textarea>
       <div v-if="chapters.length" class="pc-chapter-picks">
         <label v-for="chapter in chapters" :key="chapter.id" class="pc-check-item">
@@ -49,15 +47,8 @@ const emit = defineEmits<{ cancel: []; save: [] }>();
   min-height: 100%;
 }
 
-.pc-editor-card h2 {
-  margin: 0;
-  font-size: 20px;
-  line-height: 1.25;
-}
-
-.pc-editor-card .pc-area {
+.pc-extras-summary-editor .pc-area {
   min-height: 220px;
-  margin-top: 14px;
   resize: vertical;
 }
 
@@ -73,7 +64,7 @@ const emit = defineEmits<{ cancel: []; save: [] }>();
   align-items: center;
   gap: 10px;
   padding: 10px 12px;
-  border-radius: 16px;
+  border-radius: min(var(--pc-control-radius), 8px);
   background: var(--pc-surface-strong);
 }
 
@@ -102,7 +93,7 @@ const emit = defineEmits<{ cancel: []; save: [] }>();
   opacity: 0;
 }
 
-.pc-editor-card > .pc-form-actions {
+.pc-extras-summary-editor > .pc-form-actions {
   margin-top: 18px;
   justify-content: flex-end;
 }

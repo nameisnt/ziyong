@@ -103,7 +103,7 @@ watch(
   max-height: calc(100% - 36px);
   overflow: hidden;
   border: 1px solid var(--pc-border);
-  border-radius: 20px;
+  border-radius: min(var(--pc-card-radius), 8px);
   background: var(--pc-bg);
   box-shadow: 0 18px 44px rgba(15, 23, 42, 0.2);
 }

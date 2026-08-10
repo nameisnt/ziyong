@@ -1,8 +1,6 @@
 <template>
   <section class="pc-summary-book-editor-page">
-    <div class="pc-editor-card">
-      <span class="pc-kicker">{{ creating ? '生成总结' : '重命名总结集' }}</span>
-      <h2>{{ creating ? '先设置总结集，再生成第一条' : '更新标题' }}</h2>
+    <div class="pc-page-section">
       <input v-model="title" class="pc-field" type="text" placeholder="例如 第一卷总结" />
       <div :class="['pc-form-actions', { 'pc-summary-create-actions': creating }]">
         <button class="pc-soft-btn" type="button" @click="$emit('cancel')">取消</button>
@@ -30,12 +28,6 @@ const title = defineModel<string>('title', { required: true });
 <style scoped>
 .pc-summary-book-editor-page {
   min-height: 100%;
-}
-
-.pc-editor-card h2 {
-  margin: 0;
-  font-size: 20px;
-  line-height: 1.25;
 }
 
 .pc-summary-create-actions {

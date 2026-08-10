@@ -1,6 +1,6 @@
 <template>
   <section class="pc-bagu-detail-page">
-    <article class="pc-section-card pc-detail-card">
+    <article class="pc-page-section pc-detail-card">
       <span v-if="meta" class="pc-kicker">{{ meta }}</span>
       <h2>{{ title }}</h2>
       <BaguScanPanel auto-scan :content="content" :apply-handler="applyHandler" />

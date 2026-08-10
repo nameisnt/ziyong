@@ -1,8 +1,6 @@
 <template>
   <section class="pc-extras-page">
-    <div class="pc-editor-card">
-      <span class="pc-kicker">{{ t`编辑章节` }}</span>
-      <h2>{{ heading }}</h2>
+    <div class="pc-page-section pc-extras-editor-section">
       <input v-model="title" class="pc-field" type="text" :placeholder="t`章节标题`" />
       <textarea v-model="content" class="pc-area pc-saved-content-area" :placeholder="t`章节正文`"></textarea>
       <div class="pc-form-actions">
@@ -26,22 +24,12 @@ const emit = defineEmits<{ cancel: []; save: [] }>();
   min-height: 100%;
 }
 
-.pc-editor-card h2 {
-  margin: 0;
-  font-size: 20px;
-  line-height: 1.25;
-}
-
-.pc-editor-card :is(.pc-field, .pc-area) {
-  margin-top: 14px;
-}
-
-.pc-editor-card .pc-area {
+.pc-extras-editor-section .pc-area {
   min-height: 220px;
   resize: vertical;
 }
 
-.pc-editor-card > .pc-form-actions {
+.pc-extras-editor-section > .pc-form-actions {
   margin-top: 18px;
   justify-content: flex-end;
 }

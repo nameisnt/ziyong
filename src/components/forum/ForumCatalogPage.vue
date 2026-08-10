@@ -1,19 +1,20 @@
 <template>
   <section class="pc-forum-catalog-page">
-    <div class="pc-forum-actions">
-      <button class="pc-soft-btn" type="button" @click="$emit('generate-thread')">
-        <i class="fa-solid fa-wand-magic-sparkles"></i>
-        <span>{{ t`生成帖子` }}</span>
-      </button>
-      <button class="pc-primary-btn" type="button" @click="$emit('create-board')">
-        <i class="fa-solid fa-plus"></i>
-        <span>{{ t`新建板块` }}</span>
-      </button>
+    <div class="pc-compact-toolbar pc-directory-toolbar">
+      <span class="pc-directory-count">{{ boards.length }} 个板块</span>
+      <div class="pc-directory-actions pc-forum-actions">
+        <button class="pc-icon-btn" type="button" :title="t`生成帖子`" @click="$emit('generate-thread')">
+          <i class="fa-solid fa-wand-magic-sparkles"></i>
+        </button>
+        <button class="pc-icon-btn primary" type="button" :title="t`新建板块`" @click="$emit('create-board')">
+          <i class="fa-solid fa-plus"></i>
+        </button>
+      </div>
     </div>
 
     <EmptyState v-if="!boards.length" :title="t`还没有论坛板块`" />
-    <div v-else class="pc-board-list">
-      <article v-for="board in boards" :key="board.id" class="pc-board-card">
+    <div v-else class="pc-directory-list pc-board-list">
+      <article v-for="board in boards" :key="board.id" class="pc-list-row pc-board-row">
         <button class="pc-board-main" type="button" @click="$emit('open-board', board.id)">
           <strong>{{ board.name }}</strong>
           <p>{{ formatBoardMeta(board.threads.length) }}</p>
@@ -83,37 +84,8 @@ defineEmits<{
   gap: 14px;
 }
 
-.pc-forum-actions {
-  display: flex;
-  align-items: center;
-  justify-content: flex-end;
-  flex-wrap: wrap;
-  gap: 8px;
-  padding: 10px 14px;
-  border: 1px solid var(--pc-border);
-  border-radius: 20px;
-  background: color-mix(in srgb, var(--pc-surface) 72%, transparent 28%);
-  backdrop-filter: blur(12px);
-}
-
-.pc-board-list {
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-}
-
-.pc-board-card {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
-  gap: 10px;
-  padding: 14px;
-  border: 1px solid var(--pc-border);
-  border-radius: 20px;
-  background: color-mix(in srgb, var(--pc-surface) 72%, transparent 28%);
-  backdrop-filter: blur(12px);
-}
-
 .pc-board-main {
+  width: 100%;
   min-width: 0;
   border: 0;
   background: transparent;
@@ -140,9 +112,5 @@ defineEmits<{
   display: flex;
   align-items: center;
   gap: 8px;
-}
-
-.pc-icon-btn.danger {
-  color: var(--pc-danger);
 }
 </style>

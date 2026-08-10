@@ -1,9 +1,6 @@
 <template>
   <section class="pc-forum-thread-editor-page">
-    <article class="pc-editor-card">
-      <span class="pc-kicker">{{ editing ? t`编辑帖子` : t`发布帖子` }}</span>
-      <h2>{{ title || t`写一篇新的主楼` }}</h2>
-
+    <article class="pc-page-section">
       <template v-if="!editing">
         <SearchableCombobox
           v-if="!insideBoard"
@@ -87,12 +84,6 @@ defineEmits<{
 <style scoped>
 .pc-forum-thread-editor-page {
   min-height: 100%;
-}
-
-.pc-forum-thread-editor-page h2 {
-  margin: 0;
-  font-size: 20px;
-  line-height: 1.25;
 }
 
 .pc-saved-content-area {

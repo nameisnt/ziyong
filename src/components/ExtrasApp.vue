@@ -19,11 +19,7 @@
     />
 
     <section v-else-if="route.page === 'book-editor'" class="pc-extras-page">
-      <div class="pc-editor-card">
-        <template v-if="editingBook">
-          <span class="pc-kicker">{{ t`编辑番外信息` }}</span>
-          <h2>{{ editingBook.title }}</h2>
-        </template>
+      <div class="pc-page-section pc-extras-editor-section">
         <label class="pc-field-group">
           <span>{{ t`番外标题` }}</span>
           <input v-model="bookDraft.title" class="pc-field" type="text" :placeholder="t`输入番外标题`" />
@@ -182,7 +178,7 @@
     />
 
     <section v-else-if="route.page === 'chapter-generate' && activeBook" class="pc-extras-page">
-      <div class="pc-editor-card">
+      <div class="pc-page-section pc-extras-editor-section">
         <GenerationPanel
           class="pc-extras-generation-panel"
           :capture="captureChapterPrompt"
@@ -271,7 +267,7 @@
     />
 
     <section v-else-if="route.page === 'summary-generate' && activeBook" class="pc-extras-page">
-      <div class="pc-editor-card">
+      <div class="pc-page-section pc-extras-editor-section">
         <GenerationPanel
           class="pc-extras-generation-panel"
           :capture="captureExtraSummaryPrompt"
@@ -1966,20 +1962,17 @@ function formatCoveredChaptersForBook(book: typeof activeBook.value, ids: string
   gap: 14px;
 }
 
-.pc-editor-card,
 .pc-detail-card {
   border: 1px solid var(--pc-border);
   background: color-mix(in srgb, var(--pc-surface) 72%, transparent 28%);
-  border-radius: 20px;
+  border-radius: min(var(--pc-card-radius), 8px);
   backdrop-filter: blur(12px);
 }
 
-.pc-editor-card,
 .pc-detail-card {
   padding: 18px;
 }
 
-.pc-editor-card h2,
 .pc-detail-card h2 {
   margin: 0;
   font-size: 20px;
@@ -2037,7 +2030,7 @@ function formatCoveredChaptersForBook(book: typeof activeBook.value, ids: string
 .pc-status-card {
   margin-top: 14px;
   border: 1px solid var(--pc-border);
-  border-radius: 18px;
+  border-radius: min(var(--pc-control-radius), 8px);
   background: var(--pc-surface-strong);
   padding: 14px;
 }
@@ -2063,7 +2056,7 @@ function formatCoveredChaptersForBook(book: typeof activeBook.value, ids: string
   min-height: 0;
   overflow: auto;
   padding: 16px;
-  border-radius: 18px;
+  border-radius: min(var(--pc-card-radius), 8px);
   background: var(--pc-surface-strong);
   color: var(--pc-text);
   font-size: var(--pc-reader-font-size);
@@ -2082,7 +2075,7 @@ function formatCoveredChaptersForBook(book: typeof activeBook.value, ids: string
   align-items: center;
   gap: 10px;
   padding: 10px 12px;
-  border-radius: 16px;
+  border-radius: min(var(--pc-control-radius), 8px);
   background: var(--pc-surface-strong);
 }
 

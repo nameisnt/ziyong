@@ -1,9 +1,6 @@
 <template>
   <section class="pc-summary-batch-page">
-    <article class="pc-editor-card">
-      <span class="pc-kicker">AI 批量</span>
-      <h2>批量生成总结</h2>
-
+    <article class="pc-page-section">
       <div class="pc-field-group">
         <label class="pc-field-label">保存到总结集</label>
         <SearchableCombobox
@@ -186,12 +183,6 @@ const progressLabel = computed(
 <style scoped>
 .pc-summary-batch-page {
   min-height: 100%;
-}
-
-.pc-editor-card h2 {
-  margin: 0;
-  font-size: 20px;
-  line-height: 1.25;
 }
 
 .pc-summary-batch-mode {

@@ -1,25 +1,24 @@
 <template>
   <section class="pc-summary-book-page">
-    <div class="pc-section-card pc-summary-book-actions">
-      <div>
-        <span class="pc-kicker">总结条目</span>
-        <p>{{ book.entries.length }} 条</p>
-      </div>
-      <div class="pc-summary-book-toolbar">
-        <button class="pc-soft-btn" type="button" @click="$emit('import')">
+    <div class="pc-compact-toolbar pc-directory-toolbar">
+      <span class="pc-directory-count">{{ book.entries.length }} 条总结</span>
+      <div class="pc-directory-actions pc-summary-book-toolbar">
+        <button class="pc-icon-btn" type="button" title="导入总结" @click="$emit('import')">
           <i class="fa-solid fa-file-import"></i>
-          <span>导入</span>
         </button>
-        <button class="pc-soft-btn" type="button" @click="$emit('batch')">
+        <button class="pc-icon-btn" type="button" title="批量生成" @click="$emit('batch')">
           <i class="fa-solid fa-layer-group"></i>
-          <span>批量</span>
         </button>
-        <button class="pc-soft-btn" type="button" @click="$emit('generate')">
+        <button class="pc-icon-btn primary" type="button" title="生成总结" @click="$emit('generate')">
           <i class="fa-solid fa-wand-magic-sparkles"></i>
-          <span>生成</span>
         </button>
-        <button class="pc-soft-btn" type="button" @click="$emit('toggle-sort')">
-          <span>{{ sortDesc ? '倒序' : '正序' }}</span>
+        <button
+          class="pc-icon-btn pc-directory-sort"
+          type="button"
+          :title="sortDesc ? '当前倒序，切换正序' : '当前正序，切换倒序'"
+          @click="$emit('toggle-sort')"
+        >
+          <i :class="sortDesc ? 'fa-solid fa-arrow-down-wide-short' : 'fa-solid fa-arrow-up-short-wide'"></i>
         </button>
         <button class="pc-icon-btn" type="button" title="重命名总结集" @click="$emit('rename')">
           <i class="fa-solid fa-pen"></i>
@@ -32,16 +31,20 @@
 
     <EmptyState v-if="!entries.length" title="还没有条目" />
 
-    <div v-else class="pc-summary-entry-list">
-      <article v-for="entry in entries" :key="entry.id" class="pc-section-card pc-summary-entry-card">
-        <button type="button" @click="$emit('open-entry', entry.id)">
-          <span>
-            <strong>{{ entry.title }}</strong>
-            <small>顺序 {{ entry.directoryOrder }}</small>
-          </span>
-          <p>{{ entry.rangeLabel }}</p>
-        </button>
-      </article>
+    <div v-else class="pc-directory-list pc-summary-entry-list">
+      <button
+        v-for="entry in entries"
+        :key="entry.id"
+        class="pc-list-row"
+        type="button"
+        @click="$emit('open-entry', entry.id)"
+      >
+        <span class="pc-list-row-copy">
+          <strong>{{ entry.title }}</strong>
+          <small>{{ entry.rangeLabel }}</small>
+        </span>
+        <small class="pc-list-row-meta">顺序 {{ entry.directoryOrder }}</small>
+      </button>
     </div>
 
     <FailedDraftList
@@ -83,85 +86,10 @@ defineEmits<{
 </script>
 
 <style scoped>
-.pc-summary-book-page,
-.pc-summary-entry-list {
-  display: flex;
-  min-height: 0;
-  flex-direction: column;
-  gap: 10px;
-}
-
 .pc-summary-book-page {
-  min-height: 100%;
-  gap: 14px;
-}
-
-.pc-summary-book-actions {
-  display: grid;
-  gap: 12px;
-}
-
-.pc-summary-book-actions p,
-.pc-summary-entry-card p {
-  margin: 4px 0 0;
-  color: var(--pc-muted);
-  font-size: 13px;
-}
-
-.pc-summary-book-toolbar {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 8px;
-}
-
-.pc-summary-book-toolbar > button {
-  width: 100%;
-  min-width: 0;
-}
-
-.pc-summary-book-toolbar > .pc-icon-btn:first-of-type {
-  grid-column: 2;
-}
-
-.pc-summary-entry-card {
-  padding: 0;
-}
-
-.pc-summary-entry-card > button {
-  display: grid;
-  width: 100%;
-  min-width: 0;
-  gap: 6px;
-  border: 0;
-  padding: 13px 14px;
-  background: transparent;
-  color: var(--pc-text);
-  text-align: left;
-  cursor: pointer;
-}
-
-.pc-summary-entry-card > button > span {
   display: flex;
-  min-width: 0;
-  align-items: baseline;
-  justify-content: space-between;
-  gap: 10px;
-}
-
-.pc-summary-entry-card strong {
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.pc-summary-entry-card small {
-  flex: 0 0 auto;
-  color: var(--pc-muted);
-  font-size: 12px;
-  white-space: nowrap;
-}
-
-.pc-icon-btn.danger {
-  color: var(--pc-danger);
+  min-height: 100%;
+  flex-direction: column;
+  gap: 14px;
 }
 </style>

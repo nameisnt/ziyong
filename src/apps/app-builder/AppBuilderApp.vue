@@ -23,11 +23,7 @@
       </div>
 
       <div v-if="filteredDefinitions.length" class="pc-app-builder-list">
-        <article
-          v-for="definition in filteredDefinitions"
-          :key="definition.id"
-          class="pc-section-card pc-app-builder-row"
-        >
+        <article v-for="definition in filteredDefinitions" :key="definition.id" class="pc-list-row pc-app-builder-row">
           <button class="pc-app-builder-main" type="button" @click="openDefinitionEditor(definition.id)">
             <span class="pc-app-builder-icon" :style="{ '--pc-builder-accent': customAppAccent(definition.id) }">
               <i class="fa-solid" :class="definition.icon"></i>
@@ -52,17 +48,7 @@
         </article>
       </div>
 
-      <EmptyState v-else :title="query.trim() ? t`没有匹配的自制 App` : t`还没有自制 App`">
-        <button
-          v-if="!query.trim()"
-          class="pc-primary-btn"
-          type="button"
-          @click="phone.pushPage('templates', '选择模板')"
-        >
-          <i class="fa-solid fa-plus"></i>
-          <span>{{ t`创建第一个 App` }}</span>
-        </button>
-      </EmptyState>
+      <EmptyState v-else :title="query.trim() ? t`没有匹配的自制 App` : t`还没有自制 App`" />
     </section>
 
     <section v-else-if="route.page === 'templates'" class="pc-app-builder-page">
@@ -70,7 +56,7 @@
         <button
           v-for="template in templates"
           :key="template.id"
-          class="pc-section-card pc-template-row"
+          class="pc-list-row pc-template-row"
           type="button"
           @click="startCreate(template.id)"
         >
@@ -85,7 +71,7 @@
     </section>
 
     <section v-else-if="route.page === 'editor' && draft" class="pc-app-builder-page pc-app-builder-editor">
-      <article class="pc-editor-card">
+      <article class="pc-page-section">
         <div class="pc-field-group">
           <label class="pc-field-label">{{ t`App 名称` }}</label>
           <input v-model="draft.name" class="pc-field" type="text" :placeholder="t`例如：梦境记录`" />
@@ -104,7 +90,7 @@
         </div>
       </article>
 
-      <article class="pc-editor-card">
+      <article class="pc-page-section">
         <div class="pc-app-builder-section-head">
           <div>
             <strong>{{ t`数据范围` }}</strong>
@@ -130,7 +116,7 @@
         </div>
       </article>
 
-      <article class="pc-editor-card">
+      <article class="pc-page-section">
         <div class="pc-app-builder-section-head">
           <div>
             <strong>{{ t`创建方式` }}</strong>
@@ -162,7 +148,7 @@
         </div>
       </article>
 
-      <article class="pc-editor-card">
+      <article class="pc-page-section">
         <div class="pc-field-group">
           <label class="pc-field-label">{{ t`内容命名` }}</label>
           <SearchableCombobox v-model="draft.naming.mode" :options="namingOptions" :placeholder="t`选择标题规则`" />
@@ -195,7 +181,7 @@
         </div>
       </article>
 
-      <article v-if="draft.creation.generate" class="pc-editor-card">
+      <article v-if="draft.creation.generate" class="pc-page-section">
         <div class="pc-field-group">
           <label class="pc-field-label">{{ t`默认 App 提示词` }}</label>
           <textarea

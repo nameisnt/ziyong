@@ -1654,7 +1654,7 @@ function reparseFailedDraft() {
   margin-top: 14px;
   padding: 14px;
   border: 1px solid var(--pc-border);
-  border-radius: 20px;
+  border-radius: min(var(--pc-card-radius), 8px);
   background: color-mix(in srgb, var(--pc-surface) 72%, transparent 28%);
   backdrop-filter: blur(12px);
 }

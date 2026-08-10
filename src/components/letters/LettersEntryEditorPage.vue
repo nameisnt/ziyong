@@ -1,12 +1,9 @@
 <template>
   <section class="pc-letters-entry-editor-page">
-    <article class="pc-editor-card">
-      <span class="pc-kicker">编辑信件</span>
-      <h2>{{ editingTitle || '调整当前内容' }}</h2>
-
-      <div v-if="editingTitle" class="pc-section-card pc-letters-edit-context">
+    <article class="pc-page-section">
+      <div v-if="editingTitle" class="pc-compact-toolbar pc-letters-edit-context">
         <strong>{{ directionLabel }}</strong>
-        <p>{{ formatLabel }} · {{ bookTitleLabel || '当前分册' }}</p>
+        <small>{{ formatLabel }} · {{ bookTitleLabel || '当前分册' }}</small>
       </div>
       <template v-else>
         <input v-model="senderName" class="pc-field" type="text" placeholder="发信人" />
@@ -63,20 +60,14 @@ const title = defineModel<string>('title', { required: true });
   min-height: 100%;
 }
 
-.pc-editor-card h2 {
-  margin: 0;
-  font-size: 20px;
-  line-height: 1.25;
-}
-
 .pc-letters-edit-context {
-  margin-top: 14px;
+  align-items: flex-start;
 }
 
-.pc-letters-edit-context p {
-  margin: 4px 0 0;
+.pc-letters-edit-context small {
   color: var(--pc-muted);
   font-size: 13px;
+  text-align: right;
 }
 
 .pc-letters-format-segment {

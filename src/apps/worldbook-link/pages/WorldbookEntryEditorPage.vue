@@ -1,10 +1,9 @@
 <template>
   <section class="pc-worldbook-entry-editor-page">
-    <article v-if="entry" class="pc-editor-card pc-worldbook-entry-editor">
-      <header class="pc-worldbook-entry-editor-head">
-        <span class="pc-kicker">{{ bookName }}</span>
-        <h2 :title="entry.name || `条目 #${entry.uid}`">{{ entry.name || `条目 #${entry.uid}` }}</h2>
-        <small>条目 #{{ entry.uid }}</small>
+    <article v-if="entry" class="pc-page-section pc-worldbook-entry-editor">
+      <header class="pc-compact-toolbar pc-worldbook-entry-editor-head">
+        <span :title="bookName">{{ bookName }}</span>
+        <strong>条目 #{{ entry.uid }}</strong>
       </header>
       <label class="pc-field-group"
         ><span class="pc-field-label">条目名称</span
@@ -46,8 +45,8 @@
         /></label>
       </template>
       <div class="pc-form-actions pc-worldbook-entry-editor-actions">
-        <button class="pc-soft-btn danger" type="button" :disabled="busy" @click="$emit('remove')">
-          <i class="fa-solid fa-trash"></i><span>删除</span>
+        <button class="pc-icon-btn danger" type="button" :disabled="busy" title="删除条目" @click="$emit('remove')">
+          <i class="fa-solid fa-trash"></i>
         </button>
         <button class="pc-soft-btn" type="button" :disabled="busy" @click="$emit('back')">返回</button>
         <button class="pc-primary-btn" type="button" :disabled="busy || !name.trim()" @click="$emit('save')">
@@ -92,19 +91,16 @@ defineEmits<{ back: []; remove: []; save: [] }>();
   gap: 14px;
 }
 .pc-worldbook-entry-editor-head {
-  display: grid;
-  gap: 4px;
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
 }
-.pc-worldbook-entry-editor-head h2 {
+.pc-worldbook-entry-editor-head span {
   overflow: hidden;
-  margin: 0;
-  font-size: 20px;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-.pc-worldbook-entry-editor-head small {
   color: var(--pc-muted);
   font-size: 12px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 .pc-worldbook-content-field {
   min-height: 260px;

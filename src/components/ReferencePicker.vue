@@ -10,7 +10,7 @@
     </button>
 
     <div v-if="open" class="pc-reference-body">
-      <input v-model="query" class="pc-reference-search" type="text" :placeholder="t`搜索标题或内容`" />
+      <input v-model="query" class="pc-field" type="text" :placeholder="t`搜索标题或内容`" />
       <slot name="actions"></slot>
 
       <div v-if="!filteredTree.length" class="pc-reference-empty">
@@ -453,10 +453,10 @@ function cancelReferenceDrag(event: PointerEvent) {
   min-height: 44px;
   width: 100%;
   min-width: 0;
-  padding: 0 14px;
-  border: 1px solid var(--pc-border);
-  border-radius: 16px;
-  background: color-mix(in srgb, var(--pc-surface-strong) 86%, transparent 14%);
+  padding: 0 2px;
+  border-bottom: 1px solid var(--pc-border);
+  border-radius: 0;
+  background: transparent;
 }
 
 .pc-reference-toggle span {
@@ -484,17 +484,13 @@ function cancelReferenceDrag(event: PointerEvent) {
   min-width: 0;
   max-width: 100%;
   overflow-x: hidden;
-  padding: 12px;
-  border: 1px solid var(--pc-border);
-  border-radius: 16px;
-  background: color-mix(in srgb, var(--pc-surface) 36%, transparent 64%);
+  padding: 8px 0 0;
 }
 
-.pc-reference-search,
 .pc-reference-area {
   width: 100%;
   border: 1px solid var(--pc-border);
-  border-radius: 16px;
+  border-radius: var(--pc-control-radius);
   background: var(--pc-surface-strong);
   color: var(--pc-text);
   padding: 10px 12px;
@@ -664,7 +660,7 @@ function cancelReferenceDrag(event: PointerEvent) {
   overflow: hidden;
   padding: 9px 10px;
   border: 1px solid color-mix(in srgb, var(--pc-border) 72%, transparent 28%);
-  border-radius: 14px;
+  border-radius: min(var(--pc-control-radius), 8px);
   background: color-mix(in srgb, var(--pc-surface-strong) 76%, transparent 24%);
 }
 

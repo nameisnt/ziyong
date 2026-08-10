@@ -96,14 +96,14 @@ defineEmits<{
 .pc-reply-card {
   padding: 14px;
   border: 1px solid var(--pc-border);
-  border-radius: 20px;
+  border-radius: min(var(--pc-card-radius), 8px);
   background: color-mix(in srgb, var(--pc-surface) 72%, transparent 28%);
   backdrop-filter: blur(12px);
 }
 
 .pc-detail-content {
   padding: 16px;
-  border-radius: 18px;
+  border-radius: min(var(--pc-card-radius), 8px);
   background: var(--pc-surface-strong);
   color: var(--pc-text);
   font-size: var(--pc-reader-font-size);
@@ -133,7 +133,7 @@ defineEmits<{
 }
 
 .pc-reply-card {
-  border-radius: 18px;
+  border-radius: min(var(--pc-card-radius), 8px);
   background: var(--pc-surface-strong);
 }
 

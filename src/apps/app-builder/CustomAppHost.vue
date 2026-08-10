@@ -1,11 +1,11 @@
 <template>
   <section v-if="definition" class="pc-custom-app">
     <section v-if="route.page === 'root'" class="pc-custom-page">
-      <div class="pc-custom-toolbar">
-        <div class="pc-custom-search">
+      <div class="pc-compact-toolbar">
+        <label class="pc-search-field">
           <i class="fa-solid fa-magnifying-glass"></i>
-          <input v-model="query" class="pc-field" type="search" :placeholder="t`搜索标题或内容`" />
-        </div>
+          <input v-model="query" type="search" :placeholder="t`搜索标题或内容`" />
+        </label>
         <button
           class="pc-icon-btn"
           type="button"
@@ -25,7 +25,7 @@
 
       <div class="pc-custom-create-actions">
         <button v-if="definition.creation.manual" class="pc-soft-btn compact" type="button" @click="openEditor()">
-          <i class="fa-solid fa-plus"></i><span>{{ t`新增` }}</span>
+          <span>{{ t`新增` }}</span>
         </button>
         <button
           v-if="definition.creation.extract"
@@ -33,7 +33,7 @@
           type="button"
           @click="phone.pushPage('extract', '提取内容')"
         >
-          <i class="fa-solid fa-highlighter"></i><span>{{ t`提取` }}</span>
+          <span>{{ t`提取` }}</span>
         </button>
         <button
           v-if="definition.creation.generate"
@@ -41,15 +41,15 @@
           type="button"
           @click="phone.pushPage('generate', 'AI 生成')"
         >
-          <i class="fa-solid fa-wand-magic-sparkles"></i><span>{{ t`生成` }}</span>
+          <span>{{ t`生成` }}</span>
         </button>
         <button
-          :class="['pc-soft-btn', 'compact', { active: conversionSelectionMode }]"
+          :class="['pc-icon-btn', { active: conversionSelectionMode }]"
           type="button"
+          :title="conversionSelectionMode ? t`取消转换选择` : t`选择内容进行转换`"
           @click="startConversionSelection"
         >
           <i class="fa-solid fa-arrow-right-arrow-left"></i>
-          <span>{{ conversionSelectionMode ? t`取消选择` : t`转换` }}</span>
         </button>
       </div>
 
@@ -72,7 +72,7 @@
         <button
           v-for="entry in filteredEntries"
           :key="entry.id"
-          :class="['pc-section-card', 'pc-custom-entry-row', { selected: selectedConversionIds.includes(entry.id) }]"
+          :class="['pc-list-row', 'pc-custom-entry-row', { selected: selectedConversionIds.includes(entry.id) }]"
           type="button"
           @click="conversionSelectionMode ? toggleConversionSelection(entry.id) : openEntry(entry.id)"
         >
@@ -168,7 +168,7 @@
     </section>
 
     <section v-else-if="route.page === 'editor'" class="pc-custom-page">
-      <article class="pc-editor-card">
+      <div class="pc-custom-form">
         <div v-if="showTitleField" class="pc-field-group">
           <label class="pc-field-label">{{ t`标题` }}</label>
           <input v-model="entryDraft.title" class="pc-field" type="text" :placeholder="t`条目标题`" />
@@ -199,7 +199,7 @@
             {{ savingEntry ? t`正在保存` : t`保存` }}
           </button>
         </div>
-      </article>
+      </div>
     </section>
 
     <section v-else-if="route.page === 'convert'" class="pc-custom-page">
@@ -217,7 +217,7 @@
     <section v-else-if="route.page === 'extract'" class="pc-custom-page">
       <EmptyState v-if="!phone.isViewingCurrentChat" :title="t`历史聊天不能重新提取`" />
       <template v-else>
-        <article class="pc-editor-card">
+        <div class="pc-custom-form">
           <GenerationSourceFields
             :from-start-end="extractDraft.fromStartEnd"
             :mode="extractDraft.sourceMode"
@@ -270,7 +270,7 @@
               <i class="fa-solid fa-eye"></i><span>{{ t`预览提取` }}</span>
             </button>
           </div>
-        </article>
+        </div>
 
         <article v-if="extractError" class="pc-status-card danger">
           <strong>{{ t`无法提取` }}</strong>
@@ -283,7 +283,7 @@
               {{ selectedExtractIds.length === extractPreview.length ? t`取消全选` : t`全选` }}
             </button>
           </div>
-          <label v-for="item in extractPreview" :key="item.id" class="pc-section-card pc-extract-preview-row">
+          <label v-for="item in extractPreview" :key="item.id" class="pc-list-row pc-extract-preview-row">
             <input v-model="selectedExtractIds" type="checkbox" :value="item.id" />
             <span
               ><strong>{{ item.title }}</strong
@@ -307,69 +307,64 @@
     </section>
 
     <section v-else-if="route.page === 'generate'" class="pc-custom-page">
-      <article class="pc-editor-card">
-        <GenerationPanel
-          :capture="captureCustomPrompt"
-          :capture-reset-key="promptPreview"
-          :error="generationState.error"
-          :from-start-end="generationDraft.fromStartEnd"
-          :range-text="generationDraft.rangeText"
-          :raw-output="generationState.rawOutput"
-          :recent-count="generationDraft.recentCount"
-          :references="selectedReferences"
-          :running="generationState.running"
-          :single-message-id="generationDraft.singleMessageId"
-          :source-mode="settings.generation.sourceMode"
-          :user-requirement="generationDraft.userRequirement"
-          :requirement-placeholder="t`补充这次内容的重点、风格或限制`"
-          @cancel="phone.goBack()"
-          @generate="runGeneration"
-          @stop="stopGeneration"
-          @update:from-start-end="generationDraft.fromStartEnd = $event"
-          @update:range-text="generationDraft.rangeText = $event"
-          @update:recent-count="generationDraft.recentCount = $event"
-          @update:references="selectedReferences = $event"
-          @update:single-message-id="generationDraft.singleMessageId = $event"
-          @update:source-mode="settings.generation.sourceMode = $event"
-          @update:user-requirement="generationDraft.userRequirement = $event"
-        />
-      </article>
+      <GenerationPanel
+        :capture="captureCustomPrompt"
+        :capture-reset-key="promptPreview"
+        :error="generationState.error"
+        :from-start-end="generationDraft.fromStartEnd"
+        :range-text="generationDraft.rangeText"
+        :raw-output="generationState.rawOutput"
+        :recent-count="generationDraft.recentCount"
+        :references="selectedReferences"
+        :running="generationState.running"
+        :single-message-id="generationDraft.singleMessageId"
+        :source-mode="settings.generation.sourceMode"
+        :user-requirement="generationDraft.userRequirement"
+        :requirement-placeholder="t`补充这次内容的重点、风格或限制`"
+        @cancel="phone.goBack()"
+        @generate="runGeneration"
+        @stop="stopGeneration"
+        @update:from-start-end="generationDraft.fromStartEnd = $event"
+        @update:range-text="generationDraft.rangeText = $event"
+        @update:recent-count="generationDraft.recentCount = $event"
+        @update:references="selectedReferences = $event"
+        @update:single-message-id="generationDraft.singleMessageId = $event"
+        @update:source-mode="settings.generation.sourceMode = $event"
+        @update:user-requirement="generationDraft.userRequirement = $event"
+      />
     </section>
 
     <section v-else-if="route.page === 'preview' && generationState.preview" class="pc-custom-page">
-      <article class="pc-detail-card pc-generation-preview-card">
-        <GenerationPreviewPanel
-          :content="generationState.preview.content"
-          :raw="generationState.preview.raw"
-          raw-editable
-          :source-label="generationState.preview.source.label"
-          :text-provider-summary="textProviderSummary"
-          :title="generationState.preview.title"
-          :warnings="generationState.preview.warnings"
-          :save-label="t`保存内容`"
-          @back="phone.replacePage('generate', 'AI 生成')"
-          @reparse="reparsePreviewRaw"
-          @save="saveGenerationPreview"
-          @update:content="generationState.preview.content = $event"
-          @update:raw="generationState.preview.raw = $event"
-        >
-          <template v-if="definition.display.mode === 'frontend'" #content>
-            <FrontendFrame
-              :active="true"
-              :content="generationState.preview.content"
-              security-mode="safe"
-              :theme="settings.theme"
-              :title="generationState.preview.title"
-            />
-          </template>
-        </GenerationPreviewPanel>
-      </article>
+      <GenerationPreviewPanel
+        :content="generationState.preview.content"
+        :raw="generationState.preview.raw"
+        raw-editable
+        :source-label="generationState.preview.source.label"
+        :text-provider-summary="textProviderSummary"
+        :title="generationState.preview.title"
+        :warnings="generationState.preview.warnings"
+        :save-label="t`保存内容`"
+        @back="phone.replacePage('generate', 'AI 生成')"
+        @reparse="reparsePreviewRaw"
+        @save="saveGenerationPreview"
+        @update:content="generationState.preview.content = $event"
+        @update:raw="generationState.preview.raw = $event"
+      >
+        <template v-if="definition.display.mode === 'frontend'" #content>
+          <FrontendFrame
+            :active="true"
+            :content="generationState.preview.content"
+            security-mode="safe"
+            :theme="settings.theme"
+            :title="generationState.preview.title"
+          />
+        </template>
+      </GenerationPreviewPanel>
     </section>
 
     <section v-else-if="route.page === 'failed-draft' && activeFailedDraft" class="pc-custom-page">
-      <article class="pc-editor-card pc-repair-card">
-        <span class="pc-kicker">{{ activeFailedDraft.source.label }}</span>
-        <h2>{{ t`修复解析失败草稿` }}</h2>
+      <div class="pc-custom-form pc-repair-form">
+        <span class="pc-context-meta">{{ activeFailedDraft.source.label }}</span>
         <div v-if="activeFailedDraft.warnings.length" class="pc-status-card warning">
           <strong>{{ t`解析提示` }}</strong>
           <p>{{ activeFailedDraft.warnings.join('；') }}</p>
@@ -381,7 +376,7 @@
           </button>
           <button class="pc-primary-btn" type="button" @click="reparseFailedDraft">{{ t`重新解析` }}</button>
         </div>
-      </article>
+      </div>
     </section>
 
     <EmptyState v-else :title="t`内容不存在`" />
@@ -1048,34 +1043,10 @@ function scrollToBottom() {
   gap: 12px;
 }
 
-.pc-custom-toolbar {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) auto auto;
-  gap: 8px;
-}
-
-.pc-custom-search {
-  position: relative;
-  min-width: 0;
-}
-
-.pc-custom-search > i {
-  position: absolute;
-  z-index: 1;
-  top: 50%;
-  left: 14px;
-  color: var(--pc-muted);
-  transform: translateY(-50%);
-}
-
-.pc-custom-search .pc-field {
-  padding-left: 40px;
-}
-
 .pc-custom-create-actions {
   display: flex;
   gap: 8px;
-  flex-wrap: wrap;
+  align-items: center;
 }
 
 .pc-custom-create-actions .pc-soft-btn.active,
@@ -1137,7 +1108,7 @@ function scrollToBottom() {
   min-width: 0;
   grid-template-columns: auto minmax(0, 1fr);
   gap: 10px;
-  padding: 12px;
+  padding: 10px 0;
 }
 
 .pc-extract-preview-row > span {
@@ -1175,8 +1146,11 @@ function scrollToBottom() {
   grid-template-columns: minmax(0, 1fr) auto;
   gap: 10px;
   align-items: center;
-  padding: 14px;
-  border-color: var(--pc-border);
+  padding: 10px 0;
+  border: 0;
+  border-bottom: 1px solid var(--pc-border);
+  border-radius: 0;
+  background: transparent;
   color: var(--pc-text);
   text-align: left;
 }
@@ -1188,6 +1162,22 @@ function scrollToBottom() {
 
 .pc-custom-entry-row.selected .pc-custom-entry-copy {
   color: var(--pc-text);
+}
+
+.pc-custom-entry-row.selected {
+  background: color-mix(in srgb, var(--pc-theme-accent) 9%, transparent);
+  box-shadow: inset 3px 0 0 var(--pc-theme-accent);
+}
+
+.pc-custom-form {
+  display: grid;
+  gap: 14px;
+  min-width: 0;
+}
+
+.pc-context-meta {
+  color: var(--pc-muted);
+  font-size: 12px;
 }
 
 .pc-custom-selection-actions {
@@ -1240,10 +1230,6 @@ function scrollToBottom() {
   background: var(--pc-surface-strong);
   color: var(--pc-muted);
   font-size: 11px;
-}
-
-.pc-field-group + .pc-field-group {
-  margin-top: 14px;
 }
 
 .pc-custom-plain-text {

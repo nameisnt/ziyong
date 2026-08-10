@@ -1,9 +1,6 @@
 <template>
   <section class="pc-theater-entry-editor-page">
-    <div class="pc-editor-card">
-      <span class="pc-kicker">{{ t`编辑小剧场` }}</span>
-      <h2>{{ title || t`调整当前条目` }}</h2>
-
+    <div class="pc-page-section">
       <div class="pc-segment pc-mode-selector">
         <button
           :class="['pc-segment-btn', { active: renderMode === 'markdown' }]"
@@ -50,12 +47,6 @@ defineEmits<{
   min-height: 100%;
   align-content: start;
   gap: 14px;
-}
-
-.pc-theater-entry-editor-page h2 {
-  margin: 0;
-  font-size: 20px;
-  line-height: 1.25;
 }
 
 .pc-mode-selector {

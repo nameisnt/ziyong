@@ -1,6 +1,6 @@
 <template>
   <section class="pc-entry-library-page">
-    <article class="pc-editor-card pc-entry-transfer-card">
+    <article class="pc-page-section pc-entry-transfer-card">
       <div>
         <strong>导出条目库</strong
         ><small>{{ groupCount }} 个分组 · {{ itemCount }} 条收藏 · {{ bindingCount }} 条绑定</small>
@@ -9,7 +9,7 @@
         <i class="fa-solid fa-download"></i>导出 JSON
       </button>
     </article>
-    <article class="pc-editor-card pc-entry-transfer-card">
+    <article class="pc-page-section pc-entry-transfer-card">
       <div><strong>导入条目库</strong><small>合并会保留当前内容，覆盖会替换整个条目库。</small></div>
       <div class="pc-segment">
         <button :class="['pc-segment-btn', { active: mode === 'merge' }]" type="button" @click="mode = 'merge'">

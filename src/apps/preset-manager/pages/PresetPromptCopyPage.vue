@@ -1,10 +1,9 @@
 <template>
   <section class="pc-preset-page pc-preset-editor-page">
-    <article class="pc-editor-card pc-preset-editor">
-      <div class="pc-preset-editor-head">
-        <span class="pc-kicker">复制到原条目下方</span>
+    <article class="pc-page-section pc-preset-editor">
+      <div class="pc-compact-toolbar pc-preset-editor-head">
+        <span>原条目</span>
         <h2 :title="sourcePrompt.name || sourcePrompt.id">{{ sourcePrompt.name || sourcePrompt.id }}</h2>
-        <small>副本保存前不会修改预设</small>
       </div>
       <label class="pc-field-group"
         ><span class="pc-field-label">副本名称</span
@@ -65,18 +64,20 @@ defineEmits<{ back: []; save: [] }>();
 }
 .pc-preset-editor-head {
   display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: center;
   min-width: 0;
-  gap: 5px;
+  gap: 8px;
 }
 .pc-preset-editor-head h2 {
   overflow: hidden;
   margin: 0;
   color: var(--pc-text);
-  font-size: 19px;
+  font-size: 15px;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
-.pc-preset-editor-head small {
+.pc-preset-editor-head > span {
   color: var(--pc-muted);
   font-size: 12px;
   font-weight: 700;

@@ -7,18 +7,14 @@
         'pc-repair-page': route.page === 'failed-draft',
       }"
     >
-      <div v-if="route.page === 'root' || route.page === 'generate'" class="pc-media-generate-hero">
-        <div>
-          <span class="pc-kicker">{{ t`媒体生成` }}</span>
-          <h2>{{ activeWorkflowLabel }}</h2>
-        </div>
-        <button class="pc-primary-btn compact" type="button" @click="openComfyGenerate">
+      <div v-if="route.page === 'root'" class="pc-compact-toolbar pc-directory-toolbar pc-media-generate-toolbar">
+        <span class="pc-directory-count">{{ activeWorkflowLabel }}</span>
+        <button class="pc-icon-btn primary" type="button" :title="t`AI 填写参数`" @click="openComfyGenerate">
           <i class="fa-solid fa-wand-magic-sparkles"></i>
-          <span>{{ t`AI 填参` }}</span>
         </button>
       </div>
 
-      <article v-if="route.page === 'root'" class="pc-section-card">
+      <article v-if="route.page === 'root'" class="pc-media-generate-root">
         <div class="pc-section-head">
           <strong>{{ t`ComfyUI 生成` }}</strong>
           <span>{{ t`保存到相册/音乐/视频` }}</span>
@@ -83,9 +79,7 @@
         />
       </article>
 
-      <article v-else-if="route.page === 'generate'" class="pc-editor-card">
-        <span class="pc-kicker">{{ t`AI 媒体` }}</span>
-        <h2>{{ t`生成 ComfyUI 输入` }}</h2>
+      <article v-else-if="route.page === 'generate'" class="pc-media-generate-form">
         <GenerationPanel
           :capture="captureComfyPrompt"
           :capture-reset-key="comfyPromptPreview"
@@ -139,10 +133,7 @@
         </GenerationPanel>
       </article>
 
-      <article
-        v-else-if="route.page === 'preview' && generationState.preview"
-        class="pc-editor-card pc-generation-preview-card"
-      >
+      <article v-else-if="route.page === 'preview' && generationState.preview" class="pc-generation-preview-card">
         <GenerationPreviewPanel
           :content="previewParamsText"
           :raw="generationState.preview.raw"
@@ -182,9 +173,7 @@
         </GenerationPreviewPanel>
       </article>
 
-      <article v-else-if="route.page === 'failed-draft' && activeFailedDraft" class="pc-editor-card pc-repair-card">
-        <span class="pc-kicker">{{ activeFailedDraft.source.label }}</span>
-        <h2>{{ t`修复解析失败草稿` }}</h2>
+      <article v-else-if="route.page === 'failed-draft' && activeFailedDraft" class="pc-repair-card">
         <div v-if="activeFailedDraft.warnings.length" class="pc-status-card warning">
           <strong>{{ t`上次解析提示` }}</strong>
           <p>{{ activeFailedDraft.warnings.join('；') }}</p>
@@ -762,20 +751,11 @@ function stopGeneration() {
   gap: 14px;
 }
 
-.pc-media-generate-hero {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
+.pc-media-generate-root,
+.pc-media-generate-form,
+.pc-repair-card {
+  display: grid;
   gap: 12px;
-  padding: 16px;
-  border: 1px solid var(--pc-border);
-  border-radius: var(--pc-card-radius);
-  background: var(--pc-surface);
-}
-
-.pc-media-generate-hero h2 {
-  margin: 4px 0 0;
-  font-size: 18px;
 }
 
 .pc-section-head.compact {

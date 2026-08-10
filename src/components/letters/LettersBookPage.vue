@@ -1,34 +1,42 @@
 <template>
   <section class="pc-letters-book-page">
-    <div class="pc-section-card pc-letters-book-actions">
-      <div>
-        <span class="pc-kicker">书信分册</span>
-        <p>{{ entries.length }} 封</p>
-      </div>
-      <button class="pc-primary-btn" type="button" @click="$emit('generate')">
+    <div class="pc-compact-toolbar pc-directory-toolbar">
+      <span class="pc-directory-count">{{ entries.length }} 封书信</span>
+      <button class="pc-icon-btn primary" type="button" title="生成回信" @click="$emit('generate')">
         <i class="fa-solid fa-wand-magic-sparkles"></i>
-        <span>生成回信</span>
       </button>
     </div>
 
-    <div class="pc-letters-book-filter">
-      <input v-model="query" class="pc-field" type="search" placeholder="搜索标题、发信人或收信人" />
-      <button class="pc-soft-btn" type="button" @click="$emit('toggle-sort')">
-        {{ sortDesc ? '倒序' : '正序' }}
+    <div class="pc-compact-toolbar pc-letters-book-filter">
+      <label class="pc-search-field">
+        <i class="fa-solid fa-magnifying-glass"></i>
+        <input v-model="query" type="search" placeholder="搜索标题、发信人或收信人" />
+      </label>
+      <button
+        class="pc-icon-btn pc-directory-sort"
+        type="button"
+        :title="sortDesc ? '当前倒序，切换正序' : '当前正序，切换倒序'"
+        @click="$emit('toggle-sort')"
+      >
+        <i :class="sortDesc ? 'fa-solid fa-arrow-down-wide-short' : 'fa-solid fa-arrow-up-short-wide'"></i>
       </button>
     </div>
 
     <EmptyState v-if="!entries.length" title="没有匹配的信件" />
-    <div v-else class="pc-letters-entry-list">
-      <article v-for="entry in entries" :key="entry.id" class="pc-section-card pc-letters-entry-card">
-        <button type="button" @click="$emit('open-entry', entry.id)">
-          <span>
-            <strong>{{ entry.title }}</strong>
-            <ContentVersionBadge :count="Math.max(1, entry.versions.length)" />
-          </span>
-          <p>{{ formatDirection(entry.sender.name, entry.receiver.name) }} · {{ formatLabel(entry.format) }}</p>
-        </button>
-      </article>
+    <div v-else class="pc-directory-list pc-letters-entry-list">
+      <button
+        v-for="entry in entries"
+        :key="entry.id"
+        class="pc-list-row"
+        type="button"
+        @click="$emit('open-entry', entry.id)"
+      >
+        <span class="pc-list-row-copy">
+          <strong>{{ entry.title }}</strong>
+          <small>{{ formatDirection(entry.sender.name, entry.receiver.name) }} · {{ formatLabel(entry.format) }}</small>
+        </span>
+        <ContentVersionBadge :count="Math.max(1, entry.versions.length)" />
+      </button>
     </div>
   </section>
 </template>
@@ -56,67 +64,10 @@ const query = defineModel<string>('query', { required: true });
 </script>
 
 <style scoped>
-.pc-letters-book-page,
-.pc-letters-entry-list {
-  display: flex;
-  min-height: 0;
-  flex-direction: column;
-  gap: 10px;
-}
-
 .pc-letters-book-page {
+  display: flex;
   min-height: 100%;
+  flex-direction: column;
   gap: 14px;
-}
-
-.pc-letters-book-actions {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-}
-
-.pc-letters-book-actions p,
-.pc-letters-entry-card p {
-  margin: 4px 0 0;
-  color: var(--pc-muted);
-  font-size: 13px;
-}
-
-.pc-letters-book-filter {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
-  gap: 10px;
-}
-
-.pc-letters-entry-card {
-  padding: 0;
-}
-
-.pc-letters-entry-card > button {
-  display: grid;
-  width: 100%;
-  min-width: 0;
-  gap: 6px;
-  border: 0;
-  padding: 13px 14px;
-  background: transparent;
-  color: var(--pc-text);
-  text-align: left;
-  cursor: pointer;
-}
-
-.pc-letters-entry-card > button > span {
-  display: flex;
-  min-width: 0;
-  align-items: center;
-  justify-content: space-between;
-  gap: 10px;
-}
-
-.pc-letters-entry-card strong {
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
 }
 </style>

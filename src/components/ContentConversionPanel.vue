@@ -1,11 +1,8 @@
 <template>
   <section class="pc-conversion-panel">
-    <article class="pc-editor-card pc-conversion-editor">
-      <header class="pc-conversion-heading">
-        <span>
-          <span class="pc-kicker">{{ sourceAppName }}</span>
-          <h2>{{ t`转换内容` }}</h2>
-        </span>
+    <article class="pc-page-section pc-conversion-editor">
+      <header class="pc-compact-toolbar pc-conversion-heading">
+        <span>{{ sourceAppName }}</span>
         <strong>{{ `${sources.length} 条` }}</strong>
       </header>
 
@@ -317,11 +314,6 @@ function openConvertedContent() {
   align-items: center;
   justify-content: space-between;
   gap: 12px;
-}
-
-.pc-conversion-heading h2 {
-  margin: 2px 0 0;
-  font-size: 20px;
 }
 
 .pc-conversion-heading > strong {

@@ -328,7 +328,7 @@ function goRawFromNotice() {
 .pc-detail-content {
   min-height: 100%;
   padding: 16px;
-  border-radius: 18px;
+  border-radius: min(var(--pc-card-radius), 8px);
   background: var(--pc-surface-strong);
   white-space: pre-wrap;
   color: var(--pc-reader-text, var(--pc-text));
@@ -381,7 +381,7 @@ function goRawFromNotice() {
 
 .pc-status-card {
   border: 1px solid var(--pc-border);
-  border-radius: 18px;
+  border-radius: min(var(--pc-card-radius), 8px);
   background: var(--pc-surface-strong);
   padding: 14px;
 }

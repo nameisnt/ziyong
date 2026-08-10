@@ -1,15 +1,8 @@
 <template>
   <section class="pc-regex-display-app">
-    <section class="pc-regex-card pc-regex-toolbar">
-      <div>
-        <strong>
-          {{ t`正则替换设置` }}
-          <InfoHint :text="t`提取规则用于从楼层创建内容；替换规则只改变显示结果，不会改动已保存原文。`" />
-        </strong>
-        <p>
-          {{ `${extractRuleCount} 条提取规则，${displayRuleCount} 条显示规则` }}
-        </p>
-      </div>
+    <section class="pc-compact-toolbar pc-regex-toolbar">
+      <span>{{ `${extractRuleCount} 条提取 · ${displayRuleCount} 条显示` }}</span>
+      <InfoHint :text="t`提取规则用于从楼层创建内容；替换规则只改变显示结果，不会改动已保存原文。`" />
       <button v-if="activeView === 'rules'" class="pc-icon-btn" type="button" :title="t`新增规则`" @click="addNewRule">
         <i class="fa-solid fa-plus"></i>
       </button>
@@ -32,7 +25,7 @@
       </button>
     </div>
 
-    <section v-if="activeView === 'rules' && rules.length" class="pc-regex-card">
+    <section v-if="activeView === 'rules' && rules.length" class="pc-page-section">
       <div class="pc-select-field">
         <label class="pc-field-label">{{ t`当前规则` }}</label>
         <SearchableCombobox v-model="activeRuleId" :options="ruleOptions" :placeholder="t`选择或搜索规则`" />
@@ -153,7 +146,7 @@
       <p>{{ t`新增一条规则后，可以在下方用示例文本测试替换效果。` }}</p>
     </EmptyState>
 
-    <section v-else class="pc-regex-card pc-regex-usage-panel">
+    <section v-else class="pc-page-section pc-regex-usage-panel">
       <label class="pc-field-group">
         <span class="pc-field-label">{{ t`选择 App` }}</span>
         <SearchableCombobox v-model="usageAppId" :options="appOptions" :placeholder="t`选择或搜索 App`" />
@@ -204,7 +197,7 @@
       </template>
     </section>
 
-    <section v-if="activeView === 'rules'" class="pc-regex-card">
+    <section v-if="activeView === 'rules'" class="pc-page-section pc-regex-preview-section">
       <div class="pc-row pc-row-top">
         <div>
           <strong>
@@ -366,13 +359,6 @@ async function deleteActiveRule() {
   gap: 14px;
 }
 
-.pc-regex-card {
-  padding: 14px;
-  border: 1px solid var(--pc-border);
-  border-radius: 20px;
-  background: color-mix(in srgb, var(--pc-surface) 72%, transparent 28%);
-}
-
 .pc-regex-view-tabs {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -392,7 +378,7 @@ async function deleteActiveRule() {
   align-items: flex-start;
 }
 
-.pc-regex-card p {
+.pc-regex-display-app p {
   margin: 6px 0 0;
   color: var(--pc-muted);
   font-size: 12px;
@@ -423,7 +409,7 @@ async function deleteActiveRule() {
   gap: 12px;
   margin-top: 14px;
   padding: 12px 14px;
-  border-radius: 18px;
+  border-radius: min(var(--pc-control-radius), 8px);
   background: var(--pc-surface-strong);
 }
 
@@ -544,7 +530,7 @@ async function deleteActiveRule() {
   white-space: pre-wrap;
   word-break: break-word;
   border: 1px solid var(--pc-border);
-  border-radius: 18px;
+  border-radius: min(var(--pc-card-radius), 8px);
   background: var(--pc-surface-strong);
   color: var(--pc-text);
   padding: 14px;

@@ -16,20 +16,19 @@
           世界书
         </button>
       </div>
-      <label class="pc-field-group"
-        ><span>{{ sourceType === 'preset' ? '选择预设' : '选择世界书' }}</span
-        ><select v-model="sourceName" class="pc-select" @change="$emit('load-source')">
-          <option value="">请选择来源</option>
-          <option v-for="name in sourceNames" :key="name" :value="name">{{ name }}</option>
-        </select></label
-      >
-      <label class="pc-field-group"
-        ><span>收藏到分组</span
-        ><select v-model="groupId" class="pc-select">
-          <option value="">请选择分组</option>
-          <option v-for="group in groups" :key="group.id" :value="group.id">{{ group.name }}</option>
-        </select></label
-      >
+      <div class="pc-field-group">
+        <span>{{ sourceType === 'preset' ? '选择预设' : '选择世界书' }}</span>
+        <SearchableCombobox
+          :model-value="sourceName"
+          :options="sourceOptions"
+          placeholder="选择或搜索来源"
+          @update:model-value="selectSource"
+        />
+      </div>
+      <div class="pc-field-group">
+        <span>收藏到分组</span>
+        <SearchableCombobox v-model="groupId" :options="groupOptions" placeholder="选择或搜索分组" />
+      </div>
       <label class="pc-entry-library-search"
         ><i class="fa-solid fa-magnifying-glass"></i
         ><input v-model="query" class="pc-field" type="search" placeholder="搜索条目名称或内容"
@@ -43,7 +42,7 @@
         </div>
       </div>
       <div class="pc-entry-library-source-list">
-        <label v-for="entry in entries" :key="entry.key" class="pc-section-card pc-entry-source-row"
+        <label v-for="entry in entries" :key="entry.key" class="pc-list-row pc-entry-source-row"
           ><input
             type="checkbox"
             :checked="selectedKeys.has(entry.key)"
@@ -70,9 +69,10 @@
 </template>
 <script setup lang="ts">
 import EmptyState from '@/components/EmptyState.vue';
+import SearchableCombobox from '@/components/SearchableCombobox.vue';
 import type { EntryLibraryGroup } from '../store';
 import type { EntryLibrarySourceEntry } from '../types';
-defineProps<{
+const props = defineProps<{
   entries: EntryLibrarySourceEntry[];
   groupName: string;
   groups: EntryLibraryGroup[];
@@ -85,7 +85,7 @@ defineProps<{
 const groupId = defineModel<string>('groupId', { required: true });
 const query = defineModel<string>('query', { required: true });
 const sourceName = defineModel<string>('sourceName', { required: true });
-defineEmits<{
+const emit = defineEmits<{
   'change-source-type': [type: 'preset' | 'worldbook'];
   clear: [];
   collect: [];
@@ -94,6 +94,12 @@ defineEmits<{
   'select-all': [];
   'toggle-entry': [key: string];
 }>();
+const sourceOptions = computed(() => props.sourceNames.map(name => ({ label: name, value: name })));
+const groupOptions = computed(() => props.groups.map(group => ({ label: group.name, value: group.id })));
+function selectSource(value: string) {
+  sourceName.value = value;
+  emit('load-source');
+}
 function compact(content: string) {
   const text = content.replace(/\s+/g, ' ').trim();
   return text.length > 96 ? `${text.slice(0, 96)}...` : text;

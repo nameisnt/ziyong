@@ -1,7 +1,6 @@
 <template>
   <section class="pc-worldbook-detail-page">
-    <article class="pc-section-card pc-worldbook-detail-head">
-      <h2 :title="bookName">{{ bookName }}</h2>
+    <header class="pc-directory-toolbar pc-worldbook-detail-head">
       <div v-if="status" class="pc-worldbook-metrics">
         <span class="category">{{ categoryLabel }}</span>
         <span>{{ status.currentEntries.length }} {{ t`个条目` }}</span>
@@ -10,14 +9,14 @@
           status.profile ? `${status.profile.entries.filter(entry => entry.enabled).length} 个关联` : t`未关联`
         }}</span>
       </div>
-    </article>
+    </header>
 
-    <label class="pc-worldbook-search">
+    <label class="pc-search-field pc-worldbook-search">
       <i class="fa-solid fa-magnifying-glass"></i>
-      <input v-model="query" class="pc-field" type="search" :placeholder="t`搜索条目名称`" />
+      <input v-model="query" type="search" :placeholder="t`搜索条目名称`" />
     </label>
 
-    <article v-if="status" class="pc-section-card pc-worldbook-link-bar">
+    <article v-if="status" class="pc-page-section pc-worldbook-link-bar">
       <div class="pc-worldbook-link-main">
         <strong>{{ t`聊天联动` }}</strong>
         <span :class="{ linked: status.profile }">{{ linkStateLabel }}</span>
@@ -72,11 +71,11 @@
           <strong>{{ section.label }}</strong
           ><span>{{ section.entries.length }}</span>
         </header>
-        <div v-if="section.entries.length" class="pc-worldbook-entry-list">
+        <div v-if="section.entries.length" class="pc-directory-list pc-worldbook-entry-list">
           <article
             v-for="entry in section.entries"
             :key="entry.uid"
-            class="pc-section-card pc-worldbook-entry"
+            class="pc-list-row pc-worldbook-entry"
             :class="{ disabled: !entry.enabled }"
           >
             <button class="pc-worldbook-entry-open" type="button" @click="$emit('open-entry', entry)">
@@ -140,8 +139,7 @@ defineEmits<{
 
 <style scoped>
 .pc-worldbook-detail-page,
-.pc-worldbook-group,
-.pc-worldbook-entry-list {
+.pc-worldbook-group {
   display: grid;
   min-height: 0;
   align-content: start;
@@ -154,21 +152,13 @@ defineEmits<{
 }
 .pc-worldbook-detail-head {
   min-width: 0;
-  padding: 15px 16px;
-}
-.pc-worldbook-detail-head h2 {
-  margin: 0;
-  overflow: hidden;
-  font-size: 22px;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  padding-bottom: 10px;
 }
 .pc-worldbook-metrics {
   display: flex;
   align-items: center;
   flex-wrap: wrap;
   gap: 0;
-  margin-top: 8px;
 }
 .pc-worldbook-metrics span {
   color: var(--pc-muted);
@@ -184,29 +174,12 @@ defineEmits<{
   color: var(--pc-theme-accent);
   font-weight: 700;
 }
-.pc-worldbook-search {
-  position: relative;
-  display: block;
-}
-.pc-worldbook-search > i {
-  position: absolute;
-  z-index: 1;
-  top: 50%;
-  left: 13px;
-  color: var(--pc-muted);
-  pointer-events: none;
-  transform: translateY(-50%);
-}
-.pc-worldbook-search .pc-field {
-  height: 42px;
-  padding-left: 38px;
-}
 .pc-worldbook-link-bar {
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto;
   align-items: center;
   gap: 7px 10px;
-  padding: 10px 12px;
+  padding: 10px 0;
 }
 .pc-worldbook-link-main,
 .pc-worldbook-link-actions,
@@ -265,11 +238,7 @@ defineEmits<{
   font-size: 12px;
 }
 .pc-worldbook-entry {
-  display: grid;
   grid-template-columns: minmax(0, 1fr) auto;
-  align-items: center;
-  min-width: 0;
-  padding: 0 12px 0 0;
 }
 .pc-worldbook-entry-open {
   display: flex;
@@ -277,7 +246,7 @@ defineEmits<{
   min-width: 0;
   flex: 1 1 auto;
   gap: 9px;
-  padding: 11px 10px 11px 12px;
+  padding: 0;
   border: 0;
   background: transparent;
   color: var(--pc-text);
@@ -306,8 +275,5 @@ defineEmits<{
 }
 .pc-worldbook-entry.disabled .pc-worldbook-entry-copy strong {
   color: var(--pc-muted);
-}
-.pc-icon-btn.danger {
-  color: var(--pc-danger);
 }
 </style>

@@ -1,13 +1,11 @@
 <template>
   <section class="pc-entry-library-page">
-    <article class="pc-editor-card pc-entry-item-editor">
+    <article class="pc-page-section pc-entry-item-editor">
       <label class="pc-field-group"><span>名称</span><input v-model="title" class="pc-field" type="text" /></label>
-      <label class="pc-field-group"
-        ><span>分组</span
-        ><select v-model="groupId" class="pc-select">
-          <option v-for="group in groups" :key="group.id" :value="group.id">{{ group.name }}</option>
-        </select></label
-      >
+      <div class="pc-field-group">
+        <span>分组</span>
+        <SearchableCombobox v-model="groupId" :options="groupOptions" placeholder="选择或搜索分组" />
+      </div>
       <label class="pc-field-group"
         ><span>顺序</span><input v-model.number="order" class="pc-field" type="number" min="1" :max="orderMax"
       /></label>
@@ -22,13 +20,15 @@
   </section>
 </template>
 <script setup lang="ts">
+import SearchableCombobox from '@/components/SearchableCombobox.vue';
 import type { EntryLibraryGroup } from '../store';
-defineProps<{ groups: EntryLibraryGroup[]; orderMax: number }>();
+const props = defineProps<{ groups: EntryLibraryGroup[]; orderMax: number }>();
 const content = defineModel<string>('content', { required: true });
 const groupId = defineModel<string>('groupId', { required: true });
 const order = defineModel<number>('order', { required: true });
 const title = defineModel<string>('title', { required: true });
 defineEmits<{ back: []; save: [] }>();
+const groupOptions = computed(() => props.groups.map(group => ({ label: group.name, value: group.id })));
 </script>
 <style scoped>
 .pc-entry-library-page {

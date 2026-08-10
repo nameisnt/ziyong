@@ -548,6 +548,10 @@ export const useSettingsStore = defineStore('settings', () => {
     settings.value.fontFamily = getCustomFontFamily(item.id);
   }
 
+  function selectCustomFontAsset(fontId: string) {
+    syncSelectedFont(getCustomFont(fontId));
+  }
+
   function renameCustomFont(fontId: string, name: string) {
     const item = getCustomFont(fontId);
     if (!item) return;
@@ -570,7 +574,8 @@ export const useSettingsStore = defineStore('settings', () => {
     };
 
     settings.value.customFont.fonts.push(item);
-    selectCustomFont(item.id);
+    syncSelectedFont(item);
+    return item;
   }
 
   async function clearCustomFont() {
@@ -583,23 +588,17 @@ export const useSettingsStore = defineStore('settings', () => {
     const item = getCustomFont(fontId);
     if (!item) return;
 
+    const wasSelectedAsset = settings.value.customFont.selectedFontId === fontId;
+    const wasPhoneFont = settings.value.fontFamily === getCustomFontFamily(fontId);
     settings.value.customFont.fonts = settings.value.customFont.fonts.filter(font => font.id !== fontId);
     if (settings.value.reader.fontFamily === getCustomFontFamily(fontId)) {
       settings.value.reader.fontFamily = '';
     }
-    if (
-      settings.value.customFont.selectedFontId === fontId ||
-      settings.value.fontFamily === getCustomFontFamily(fontId)
-    ) {
+    if (wasSelectedAsset) {
       const nextItem = settings.value.customFont.fonts[0] ?? null;
-      if (nextItem) {
-        syncSelectedFont(nextItem);
-        settings.value.fontFamily = getCustomFontFamily(nextItem.id);
-      } else {
-        syncSelectedFont(null);
-        settings.value.fontFamily = '';
-      }
+      syncSelectedFont(nextItem);
     }
+    if (wasPhoneFont) settings.value.fontFamily = '';
 
     await deleteUserFile(item.path);
   }
@@ -848,6 +847,7 @@ export const useSettingsStore = defineStore('settings', () => {
     renameCustomWallpaper,
     renameExternalApiProfile,
     selectCustomFont,
+    selectCustomFontAsset,
     selectCustomWallpaper,
     selectWallpaperPreset,
     setFloatBallPosition,

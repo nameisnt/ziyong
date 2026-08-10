@@ -1,7 +1,7 @@
 <template>
   <section class="pc-archive-app">
     <section v-if="route.page === 'root'" class="pc-archive-page">
-      <div class="pc-archive-search-row">
+      <div class="pc-compact-toolbar pc-archive-search-row">
         <label class="pc-search-field">
           <i class="fa-solid fa-magnifying-glass"></i>
           <input v-model="ownerQuery" type="search" :placeholder="t`搜索角色卡`" />
@@ -17,11 +17,15 @@
         </button>
       </div>
 
-      <div class="pc-tab-row">
-        <button :class="['pc-tab-btn', { active: activeTab === 'used' }]" type="button" @click="activeTab = 'used'">
+      <div class="pc-segment pc-tab-row">
+        <button :class="['pc-segment-btn', { active: activeTab === 'used' }]" type="button" @click="activeTab = 'used'">
           {{ t`已用过` }}
         </button>
-        <button :class="['pc-tab-btn', { active: activeTab === 'unused' }]" type="button" @click="activeTab = 'unused'">
+        <button
+          :class="['pc-segment-btn', { active: activeTab === 'unused' }]"
+          type="button"
+          @click="activeTab = 'unused'"
+        >
           {{ t`未使用` }}
         </button>
       </div>
@@ -36,11 +40,11 @@
         :title="activeTab === 'used' ? t`还没有用过手机创作的角色` : t`没有未使用角色`"
       />
 
-      <div v-else class="pc-owner-list">
+      <div v-else class="pc-directory-list pc-owner-list">
         <button
           v-for="owner in visibleOwners"
           :key="owner.key"
-          class="pc-owner-row"
+          class="pc-list-row pc-owner-row"
           type="button"
           @click="openOwner(owner)"
         >
@@ -55,11 +59,8 @@
     </section>
 
     <section v-else-if="route.page === 'chats' && activeOwner" class="pc-archive-page">
-      <div class="pc-archive-hero">
-        <div>
-          <span class="pc-kicker">{{ activeOwner.usedChatIds.size ? t`已使用` : t`未使用` }}</span>
-          <h2>{{ activeOwner.name }}</h2>
-        </div>
+      <div class="pc-compact-toolbar pc-directory-toolbar pc-archive-toolbar">
+        <span class="pc-directory-count">{{ chatRows.length }} {{ t`个聊天` }}</span>
         <button
           class="pc-icon-btn"
           type="button"
@@ -73,8 +74,14 @@
 
       <EmptyState v-if="!chatRows.length && !loadingChats" :title="t`暂无聊天`" />
 
-      <div v-else class="pc-chat-list">
-        <button v-for="chat in chatRows" :key="chat.key" class="pc-chat-row" type="button" @click="openChat(chat)">
+      <div v-else class="pc-directory-list pc-chat-list">
+        <button
+          v-for="chat in chatRows"
+          :key="chat.key"
+          class="pc-list-row pc-chat-row"
+          type="button"
+          @click="openChat(chat)"
+        >
           <span class="pc-chat-main">
             <strong>{{ chat.title }}</strong>
             <small>{{ chat.isUsed ? '有手机内容' : '无手机内容' }}{{ chat.isCurrent ? ' · 当前聊天' : '' }}</small>
@@ -85,7 +92,7 @@
     </section>
 
     <section v-else-if="route.page === 'detail' && activeOwner && selectedChat" class="pc-archive-page">
-      <div v-if="!isSelectedCurrentChat" class="pc-readonly-card">
+      <div v-if="!isSelectedCurrentChat" class="pc-page-section pc-readonly-card">
         <div class="pc-readonly-copy">
           <strong>{{ t`历史聊天只读` }}</strong>
           <p>{{ t`第一版不会切换酒馆当前聊天，因此此处禁用生成，只用于查看已保存内容。` }}</p>
@@ -115,13 +122,13 @@
 
       <EmptyState v-if="!selectedDomains.length" :title="t`这个聊天还没有手机内容`" />
 
-      <article v-for="domain in selectedDomains" :key="domain.appId" class="pc-domain-card">
+      <article v-for="domain in selectedDomains" :key="domain.appId" class="pc-page-section pc-domain-card">
         <div class="pc-domain-head">
           <strong>{{ domain.label }}</strong>
           <span>{{ formatDomainCount(domain) }}</span>
         </div>
-        <div class="pc-domain-items">
-          <div v-for="item in domain.entries.slice(0, 8)" :key="item.id" class="pc-domain-item">
+        <div class="pc-directory-list pc-domain-items">
+          <div v-for="item in domain.entries.slice(0, 8)" :key="item.id" class="pc-list-row pc-domain-item">
             <strong>{{ item.title }}</strong>
             <small>{{ item.subtitle }}</small>
           </div>
@@ -522,39 +529,24 @@ async function migrateSelectedChatToCurrent() {
 }
 
 .pc-archive-page,
-.pc-owner-list,
-.pc-chat-list,
 .pc-domain-items {
   display: flex;
   flex-direction: column;
   gap: 12px;
 }
 
-.pc-archive-search-row,
-.pc-archive-hero,
-.pc-status-card,
-.pc-owner-row,
-.pc-chat-row,
-.pc-readonly-card,
-.pc-domain-card {
+.pc-status-card {
   border: 1px solid var(--pc-border);
-  border-radius: 20px;
-  background: color-mix(in srgb, var(--pc-surface) 72%, transparent 28%);
-  backdrop-filter: blur(12px);
+  border-radius: var(--pc-card-radius);
+  background: var(--pc-surface);
 }
 
 .pc-archive-search-row,
-.pc-archive-hero,
-.pc-status-card,
-.pc-readonly-card,
-.pc-domain-card {
-  padding: 14px;
+.pc-archive-toolbar {
+  min-width: 0;
 }
 
 .pc-archive-search-row,
-.pc-archive-hero,
-.pc-owner-row,
-.pc-chat-row,
 .pc-domain-head {
   display: flex;
   align-items: center;
@@ -562,13 +554,11 @@ async function migrateSelectedChatToCurrent() {
   gap: 12px;
 }
 
-.pc-archive-hero h2 {
-  margin: 0;
-  font-size: 20px;
-  line-height: 1.25;
+.pc-archive-search-row .pc-search-field {
+  min-width: 0;
+  flex: 1 1 auto;
 }
 
-.pc-kicker,
 .pc-status-card p,
 .pc-owner-main small,
 .pc-chat-main small,
@@ -579,32 +569,7 @@ async function migrateSelectedChatToCurrent() {
 }
 
 .pc-tab-row {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 8px;
-  padding: 10px;
-  border: 1px solid var(--pc-border);
-  border-radius: 20px;
-  background: color-mix(in srgb, var(--pc-surface) 70%, transparent 30%);
-}
-
-.pc-tab-btn,
-.pc-owner-row,
-.pc-chat-row {
-  border: 0;
-  color: var(--pc-text);
-  cursor: pointer;
-}
-
-.pc-tab-btn {
-  min-height: 38px;
-  border-radius: 999px;
-  padding: 8px 12px;
-  background: var(--pc-surface-strong);
-}
-
-.pc-tab-btn.active {
-  background: color-mix(in srgb, var(--pc-theme-accent) 18%, var(--pc-surface-strong) 82%);
+  width: 100%;
 }
 
 .pc-icon-btn .spinning {
@@ -619,10 +584,7 @@ async function migrateSelectedChatToCurrent() {
 
 .pc-owner-row,
 .pc-chat-row {
-  width: 100%;
   min-height: 64px;
-  padding: 12px 14px;
-  text-align: left;
 }
 
 .pc-owner-avatar {
@@ -665,11 +627,11 @@ async function migrateSelectedChatToCurrent() {
 }
 
 .pc-readonly-card {
-  border-color: color-mix(in srgb, #f5a623 40%, var(--pc-border) 60%);
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 12px;
+  border-bottom-color: color-mix(in srgb, #f5a623 55%, var(--pc-border) 45%);
 }
 
 .pc-readonly-copy {
@@ -687,8 +649,6 @@ async function migrateSelectedChatToCurrent() {
 }
 
 .pc-domain-item {
-  padding: 10px 12px;
-  border-radius: 14px;
-  background: var(--pc-surface-strong);
+  display: block;
 }
 </style>

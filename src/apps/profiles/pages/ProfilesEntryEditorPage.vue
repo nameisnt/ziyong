@@ -1,8 +1,6 @@
 <template>
   <section class="pc-profiles-page">
-    <article class="pc-editor-card">
-      <span class="pc-kicker">{{ editing ? '编辑资料' : '新增资料' }}</span>
-      <h2>{{ currentTitle || '资料卡片' }}</h2>
+    <article class="pc-page-section">
       <input v-model="title" class="pc-field" type="text" placeholder="标题" /><select
         v-model="tableId"
         class="pc-field pc-select"

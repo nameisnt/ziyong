@@ -1,30 +1,29 @@
 <template>
   <section ref="rootEl" class="pc-favorites-app">
     <section class="pc-favorites-page">
-      <input
-        :value="query"
-        class="pc-search favorites-search"
-        type="text"
-        :placeholder="t`搜索标题/来源`"
-        @input="onQueryInput"
-      />
+      <label class="pc-search-field favorites-search">
+        <i class="fa-solid fa-magnifying-glass"></i>
+        <input :value="query" type="search" :placeholder="t`搜索标题或来源`" @input="onQueryInput" />
+      </label>
 
-      <div class="favorites-toolbar">
-        <select :value="filter" class="favorite-select" @change="onFilterSelect">
-          <option v-for="option in filterOptions" :key="option.value" :value="option.value">
-            {{ option.label }}
-          </option>
-        </select>
-        <span>{{ `${visibleItems.length} 项` }}</span>
+      <div class="pc-compact-toolbar pc-directory-toolbar favorites-toolbar">
+        <SearchableCombobox
+          class="favorite-select"
+          :model-value="filter"
+          :options="filterOptions"
+          :placeholder="t`选择或搜索类型`"
+          @update:model-value="favorites.setFilter($event as FavoriteFilter)"
+        />
+        <span class="pc-list-row-meta">{{ `${visibleItems.length} 项` }}</span>
       </div>
 
       <section class="favorites-content">
         <div class="favorites-scroll">
-          <div v-if="visibleItems.length" class="ios-list">
+          <div v-if="visibleItems.length" class="pc-directory-list ios-list">
             <button
               v-for="item in visibleItems"
               :key="item.key"
-              class="ios-item"
+              class="pc-list-row ios-item"
               type="button"
               @click="handleCardClick(item)"
             >
@@ -48,6 +47,7 @@
 
 <script setup lang="ts">
 import EmptyState from '@/components/EmptyState.vue';
+import SearchableCombobox from '@/components/SearchableCombobox.vue';
 import { getRegisteredPhoneApps, getRegisteredPhoneApp } from '@/core/appRegistry';
 import { useFavoritesStore, type FavoriteFilter, type FavoriteItem } from '@/store/favorites';
 import { storeToRefs } from 'pinia';
@@ -81,10 +81,6 @@ function rememberCurrentScroll() {
 
 function onQueryInput(event: Event) {
   favorites.setQuery((event.target as HTMLInputElement).value);
-}
-
-function onFilterSelect(event: Event) {
-  favorites.setFilter((event.target as HTMLSelectElement).value as FavoriteFilter);
 }
 
 function handleCardClick(item: FavoriteItem) {
@@ -193,30 +189,8 @@ function getTypeAccent(appId: FavoriteItem['appId']) {
   scrollbar-width: thin;
 }
 
-.ios-list {
-  overflow: hidden;
-  border: 0.5px solid var(--pc-border);
-  border-radius: 12px;
-  background: var(--pc-bg);
-}
-
 .ios-item {
-  display: grid;
   grid-template-columns: auto 1fr auto auto;
-  align-items: center;
-  width: 100%;
-  gap: 8px;
-  border: 0;
-  border-bottom: 0.5px solid var(--pc-border);
-  background: transparent;
-  color: var(--pc-text);
-  cursor: pointer;
-  padding: 9px 12px;
-  text-align: left;
-}
-
-.ios-item:last-child {
-  border-bottom: 0;
 }
 
 .item-icon {

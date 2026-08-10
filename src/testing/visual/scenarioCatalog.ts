@@ -153,7 +153,15 @@ export function createVisualScenarioGroups(rootAppScenarios: string[]): VisualSc
     },
     {
       id: 'prompts',
-      scenarios: ['prompts-app-detail', 'prompts-task-detail', 'prompts-type-detail', 'prompts-type-editor'],
+      scenarios: [
+        'prompts-app-detail',
+        'prompts-task-detail',
+        'prompts-type-detail',
+        'prompts-type-editor',
+        'prompts-output-list',
+        'prompts-phrase-list',
+        'prompts-template-list',
+      ],
     },
     {
       id: 'theater',

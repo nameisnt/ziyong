@@ -1,10 +1,10 @@
 <template>
   <section class="pc-reader-app">
     <section v-if="route.page === 'root'" class="pc-reader-page">
-      <div class="pc-reader-hero pc-chat-hero">
-        <div class="pc-hero-copy">
-          <span class="pc-kicker">{{ readerScopeLabel }}</span>
-          <h2>{{ currentChatTitle }}</h2>
+      <div class="pc-compact-toolbar pc-reader-hero pc-chat-hero">
+        <div class="pc-list-row-copy">
+          <strong>{{ currentChatTitle }}</strong>
+          <small>{{ readerScopeLabel }}</small>
         </div>
         <button
           class="pc-icon-btn pc-refresh-icon"
@@ -34,20 +34,24 @@
         </div>
 
         <div v-if="rulesOpen" class="pc-rule-body">
-          <label class="pc-rule-picker">
+          <div class="pc-rule-picker">
             <span class="pc-field-label">{{ t`标题规则` }}</span>
-            <select :value="readerRegexUsage.titleRuleId" class="pc-select" @change="onReaderTitleRuleSelect">
-              <option value="__default_title__">{{ t`无正则` }}</option>
-              <option v-for="rule in readerTitleRegexRules" :key="rule.id" :value="rule.id">{{ rule.name }}</option>
-            </select>
-          </label>
-          <label class="pc-rule-picker">
+            <SearchableCombobox
+              :model-value="readerRegexUsage.titleRuleId || '__default_title__'"
+              :options="readerTitleRuleOptions"
+              :placeholder="t`选择或搜索标题规则`"
+              @update:model-value="onReaderTitleRuleSelect"
+            />
+          </div>
+          <div class="pc-rule-picker">
             <span class="pc-field-label">{{ t`楼层正文提取` }}</span>
-            <select :value="bodyRuleSelectValue" class="pc-select" @change="onReaderBodyRuleSelect">
-              <option v-if="!readerBodyRegexRules.length" value="__default_body__">{{ t`默认楼层正文提取` }}</option>
-              <option v-for="rule in readerBodyRegexRules" :key="rule.id" :value="rule.id">{{ rule.name }}</option>
-            </select>
-          </label>
+            <SearchableCombobox
+              :model-value="bodyRuleSelectValue"
+              :options="readerBodyRuleOptions"
+              :placeholder="t`选择或搜索正文规则`"
+              @update:model-value="onReaderBodyRuleSelect"
+            />
+          </div>
           <details class="pc-reader-cleanup">
             <summary>
               <span>{{ t`正文清理` }}</span>
@@ -182,9 +186,8 @@
     </section>
 
     <section v-else-if="route.page === 'edit' && activeMessage" class="pc-reader-page pc-reader-edit-page">
-      <article class="pc-editor-card pc-reader-edit-card">
-        <span class="pc-kicker">{{ getActiveMessageSourceLabel() }}</span>
-        <h2>{{ t`编辑正文` }}</h2>
+      <article class="pc-page-section pc-reader-edit-card">
+        <div class="pc-compact-toolbar">{{ getActiveMessageSourceLabel() }}</div>
         <textarea
           v-model="readerEditDraft"
           class="pc-area pc-reader-edit-area"
@@ -205,6 +208,7 @@ import CatalogModal from '@/components/CatalogModal.vue';
 import BaguScanPanel from '@/components/BaguScanPanel.vue';
 import EmptyState from '@/components/EmptyState.vue';
 import ReaderDetailShell from '@/components/ReaderDetailShell.vue';
+import SearchableCombobox from '@/components/SearchableCombobox.vue';
 import {
   defaultReaderBodyRule,
   defaultReaderSettings,
@@ -303,6 +307,17 @@ const nextMessageId = computed(() =>
 const defaultTitleRule: ChatReaderRegexRule = { find: '', flags: '', replace: '' };
 const readerTitleRegexRules = computed(() => getRegexRulesByOperation(regexDisplayRules.value, 'extract'));
 const readerBodyRegexRules = computed(() => getRegexRulesByOperation(regexDisplayRules.value, 'extract'));
+const readerTitleRuleOptions = computed(() => [
+  { label: '无正则', value: '__default_title__' },
+  ...readerTitleRegexRules.value.map(rule => ({ label: rule.name || '未命名规则', value: rule.id })),
+]);
+const readerBodyRuleOptions = computed(() => {
+  const options = readerBodyRegexRules.value.map(rule => ({ label: rule.name || '未命名规则', value: rule.id }));
+  if (!options.some(option => option.value === defaultReaderBodyRegexDisplayRuleId)) {
+    options.unshift({ label: '默认楼层正文提取', value: '__default_body__' });
+  }
+  return options;
+});
 const readerCleanupRules = computed(() => getRegexRulesByOperation(regexDisplayRules.value, 'replace'));
 const selectedTitleRegexRule = computed(() =>
   getSelectedReaderRegexRule(readerRegexUsage.value.titleRuleId, readerTitleRegexRules.value),
@@ -355,14 +370,12 @@ function toReaderRegexRule(rule: RegexDisplayRule | null, fallback: ChatReaderRe
   };
 }
 
-function onReaderTitleRuleSelect(event: Event) {
-  const ruleId = (event.target as HTMLSelectElement).value;
+function onReaderTitleRuleSelect(ruleId: string) {
   regexDisplay.setExtractionRule('reader', 'title', ruleId);
   reader.setReaderRegexSelection('title', ruleId);
 }
 
-function onReaderBodyRuleSelect(event: Event) {
-  const ruleId = (event.target as HTMLSelectElement).value;
+function onReaderBodyRuleSelect(ruleId: string) {
   regexDisplay.setExtractionRule('reader', 'content', ruleId);
   reader.setReaderRegexSelection('body', ruleId);
 }
@@ -941,15 +954,10 @@ function formatReaderBody(value: string) {
 
 .pc-reader-edit-card {
   display: grid;
-  grid-template-rows: auto auto minmax(0, 1fr) auto;
+  grid-template-rows: auto minmax(0, 1fr) auto;
   gap: 12px;
   min-height: 0;
   height: 100%;
-}
-
-.pc-reader-edit-card h2 {
-  margin: 0;
-  font-size: 20px;
 }
 
 .pc-reader-edit-area {
@@ -973,7 +981,6 @@ function formatReaderBody(value: string) {
   white-space: nowrap;
 }
 
-.pc-reader-hero,
 .pc-settings-card,
 .pc-error-card,
 .pc-accordion-item,
@@ -983,14 +990,12 @@ function formatReaderBody(value: string) {
 .pc-rule-panel {
   border: 1px solid var(--pc-border);
   background: color-mix(in srgb, var(--pc-surface) 72%, transparent 28%);
-  border-radius: 20px;
+  border-radius: min(var(--pc-card-radius), 8px);
   backdrop-filter: blur(12px);
 }
 
-.pc-reader-hero,
 .pc-settings-card,
 .pc-error-card,
-.pc-reader-hero,
 .pc-settings-head,
 .pc-toolbar-actions,
 .pc-inline-actions,
@@ -1005,7 +1010,6 @@ function formatReaderBody(value: string) {
   gap: 10px;
 }
 
-.pc-reader-hero,
 .pc-settings-head,
 .pc-message-head,
 .pc-rule-head,
@@ -1019,28 +1023,6 @@ function formatReaderBody(value: string) {
 
 .pc-chat-hero {
   align-items: center;
-}
-
-.pc-hero-copy {
-  flex: 1 1 auto;
-  min-width: 0;
-}
-
-.pc-kicker,
-.pc-reader-hero h2 {
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.pc-kicker {
-  display: block;
-}
-
-.pc-reader-hero h2 {
-  margin: 0;
-  font-size: 20px;
-  line-height: 1.25;
 }
 
 .pc-error-card p {
@@ -1141,7 +1123,7 @@ function formatReaderBody(value: string) {
 }
 
 .pc-reader-cleanup {
-  border-radius: 16px;
+  border-radius: min(var(--pc-control-radius), 8px);
   background: var(--pc-surface-strong);
   padding: 10px;
 }
@@ -1216,7 +1198,7 @@ function formatReaderBody(value: string) {
 }
 
 .pc-rule-section {
-  border-radius: 16px;
+  border-radius: min(var(--pc-control-radius), 8px);
   background: var(--pc-surface-strong);
   padding: 12px;
 }
@@ -1285,7 +1267,7 @@ function formatReaderBody(value: string) {
 .pc-picker-panel {
   overflow: hidden;
   border: 1px solid var(--pc-border);
-  border-radius: 22px;
+  border-radius: min(var(--pc-card-radius), 8px);
   background: color-mix(in srgb, var(--pc-surface) 86%, transparent 14%);
 }
 
@@ -1329,7 +1311,7 @@ function formatReaderBody(value: string) {
   width: 100%;
   min-height: 58px;
   border: 1px solid transparent;
-  border-radius: 18px;
+  border-radius: min(var(--pc-card-radius), 8px);
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -1408,7 +1390,7 @@ function formatReaderBody(value: string) {
   flex: 1 1 auto;
   margin-top: 14px;
   padding: 16px;
-  border-radius: 18px;
+  border-radius: min(var(--pc-card-radius), 8px);
   background: var(--pc-surface-strong);
   color: var(--pc-reader-text, var(--pc-text));
   font-family: var(--pc-reader-font-family);

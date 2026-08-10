@@ -1,28 +1,30 @@
 <template>
   <section class="pc-theater-history-page">
-    <div class="pc-theater-hero">
-      <h2>{{ t`小剧场记录` }}</h2>
-      <button class="pc-soft-btn" type="button" @click="sortDesc = !sortDesc">
-        {{ sortDesc ? t`倒序` : t`正序` }}
+    <div class="pc-compact-toolbar">
+      <label class="pc-search-field">
+        <i class="fa-solid fa-magnifying-glass"></i>
+        <input v-model="query" type="search" :placeholder="filterOpen ? t`搜索记录或标签...` : t`搜索标题或类型...`" />
+      </label>
+      <button
+        class="pc-icon-btn"
+        type="button"
+        :title="sortDesc ? t`当前倒序，切换正序` : t`当前正序，切换倒序`"
+        @click="sortDesc = !sortDesc"
+      >
+        <i :class="sortDesc ? 'fa-solid fa-arrow-down-wide-short' : 'fa-solid fa-arrow-up-wide-short'"></i>
       </button>
-    </div>
-
-    <input
-      v-model="query"
-      class="pc-search"
-      type="text"
-      :placeholder="filterOpen ? t`搜索记录或标签...` : t`搜索标题或类型...`"
-    />
-
-    <div v-if="historyTypeTabs.length" class="pc-theater-filter-control">
-      <button class="pc-soft-btn" type="button" @click="filterOpen = !filterOpen">
+      <button
+        v-if="historyTypeTabs.length"
+        :class="['pc-icon-btn', 'pc-theater-filter-toggle', { active: filterOpen || selectedTypeKeys.size }]"
+        type="button"
+        :title="selectedTypeKeys.size ? `标签筛选，已选 ${selectedTypeKeys.size} 项` : t`标签筛选`"
+        @click="filterOpen = !filterOpen"
+      >
         <i class="fa-solid fa-tags"></i>
-        <span>{{ selectedTypeKeys.size ? `标签筛选（${selectedTypeKeys.size}）` : t`标签筛选` }}</span>
-        <i :class="['fa-solid fa-chevron-down', { expanded: filterOpen }]"></i>
       </button>
     </div>
 
-    <section v-if="filterOpen && historyTypeTabs.length" class="pc-section-card pc-history-tag-panel">
+    <section v-if="filterOpen && historyTypeTabs.length" class="pc-page-section pc-history-tag-panel">
       <div class="pc-history-tag-actions">
         <span>{{ `已选 ${selectedTypeKeys.size} / ${historyTypeTabs.length}` }}</span>
         <button class="pc-soft-btn compact" type="button" @click="$emit('invert-visible')">{{ t`反选可见` }}</button>
@@ -47,14 +49,16 @@
       :title="query || selectedTypeKeys.size ? t`暂无匹配记录` : t`还没有小剧场条目`"
     />
     <div v-else class="pc-entry-list">
-      <article v-for="entry in entries" :key="entry.id" class="pc-entry-card">
-        <button class="pc-entry-main" type="button" @click="$emit('open-entry', entry.id)">
-          <div class="pc-entry-head">
-            <strong>{{ entry.title }}</strong>
-            <ContentVersionBadge :count="Math.max(1, entry.versions.length)" />
-          </div>
-        </button>
-      </article>
+      <button
+        v-for="entry in entries"
+        :key="entry.id"
+        class="pc-list-row pc-entry-main"
+        type="button"
+        @click="$emit('open-entry', entry.id)"
+      >
+        <strong>{{ entry.title }}</strong>
+        <ContentVersionBadge :count="Math.max(1, entry.versions.length)" />
+      </button>
     </div>
   </section>
 </template>
@@ -99,53 +103,9 @@ defineEmits<{
   gap: 14px;
 }
 
-.pc-theater-hero {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 10px;
-}
-
-.pc-theater-hero h2 {
-  margin: 0;
-  font-size: 20px;
-  line-height: 1.25;
-}
-
-.pc-search {
-  width: 100%;
-  height: 40px;
-  min-height: 40px;
-  padding: 11px 12px;
-  border: 0.5px solid var(--pc-border);
-  border-radius: 10px;
-  outline: none;
-  background: var(--pc-bg);
-  color: var(--pc-text);
-  font-size: 14px;
-  line-height: normal;
-}
-
-.pc-theater-filter-control {
-  display: flex;
-}
-
-.pc-theater-filter-control .pc-soft-btn {
-  width: auto;
-}
-
-.pc-theater-filter-control .fa-chevron-down {
-  transition: transform 160ms ease;
-}
-
-.pc-theater-filter-control .fa-chevron-down.expanded {
-  transform: rotate(180deg);
-}
-
 .pc-history-tag-panel {
   display: grid;
   gap: 10px;
-  padding: 12px;
 }
 
 .pc-history-tag-actions {
@@ -164,7 +124,7 @@ defineEmits<{
 
 .pc-history-tag-list {
   display: flex;
-  max-height: 220px;
+  max-height: 160px;
   align-content: flex-start;
   flex-wrap: wrap;
   gap: 8px;
@@ -174,34 +134,11 @@ defineEmits<{
 
 .pc-entry-list {
   display: grid;
-  gap: 10px;
-}
-
-.pc-entry-card {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr);
-  align-items: center;
-  gap: 8px;
-  padding: 13px;
-  border: 0.5px solid var(--pc-border);
-  border-radius: 12px;
-  background: var(--pc-bg);
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+  gap: 0;
 }
 
 .pc-entry-main {
-  min-width: 0;
-  border: 0;
-  background: transparent;
-  color: var(--pc-text);
-  text-align: left;
-  cursor: pointer;
-}
-
-.pc-entry-head {
-  display: flex;
-  align-items: flex-start;
-  gap: 8px;
+  grid-template-columns: minmax(0, 1fr) auto;
 }
 
 .pc-entry-main strong {

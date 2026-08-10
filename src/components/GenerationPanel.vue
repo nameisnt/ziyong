@@ -83,17 +83,16 @@
         <div v-if="showPresetSelector" class="pc-select-field pc-preset-field">
           <label class="pc-field-label">{{ t`本次预设` }}</label>
           <div class="pc-preset-select-row">
-            <select
-              class="pc-select"
+            <SearchableCombobox
               :disabled="controlsDisabled"
-              :value="generationOverride.tavernPresetName"
-              @change="setTavernPresetName(($event.target as HTMLSelectElement).value)"
-            >
-              <option value="">{{ t`跟随酒馆当前预设` }}</option>
-              <option v-for="presetName in tavernPresetNames" :key="presetName" :value="presetName">
-                {{ presetName }}
-              </option>
-            </select>
+              :empty-label="t`没有匹配的预设`"
+              :input-label="t`选择本次预设`"
+              :model-value="generationOverride.tavernPresetName"
+              :options="tavernPresetOptions"
+              :placeholder="t`跟随酒馆当前预设`"
+              :toggle-title="t`展开预设列表`"
+              @update:model-value="setTavernPresetName"
+            />
             <button
               class="pc-icon-btn"
               type="button"
@@ -270,6 +269,10 @@ const connectionOptions = computed(() => [
     ? [{ label: '连接配置已失效', value: generationOverride.value.connectionSelection }]
     : []),
 ]);
+const tavernPresetOptions = computed(() => [
+  { label: '跟随酒馆当前预设', value: '' },
+  ...tavernPresetNames.value.map(presetName => ({ label: presetName, value: presetName })),
+]);
 const generationBlocked = computed(() => !phone.isViewingCurrentChat);
 const controlsDisabled = computed(() => props.running || generationBlocked.value);
 const sourceModeLabel = computed(() => {
@@ -378,12 +381,15 @@ function quickPhraseLabel(text: string) {
   min-width: 0;
   max-width: 100%;
   overflow-x: hidden;
+}
+
+.pc-raw-output {
   margin-top: 14px;
 }
 
 .pc-status-card {
   border: 1px solid var(--pc-border);
-  border-radius: 18px;
+  border-radius: min(var(--pc-control-radius), 8px);
   background: var(--pc-surface-strong);
   padding: 14px;
 }
@@ -428,10 +434,14 @@ function quickPhraseLabel(text: string) {
   flex-direction: column;
   gap: 10px;
   margin-top: 10px;
-  padding: 12px;
-  border: 1px solid var(--pc-border);
-  border-radius: 16px;
-  background: var(--pc-surface-strong);
+  padding: 8px 0;
+  border-top: 1px solid var(--pc-border);
+  border-bottom: 1px solid var(--pc-border);
+}
+
+.pc-quick-phrase-group + .pc-quick-phrase-group {
+  padding-top: 8px;
+  border-top: 1px solid color-mix(in srgb, var(--pc-border) 64%, transparent);
 }
 
 .pc-quick-phrase-group-toggle {

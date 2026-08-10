@@ -1,7 +1,8 @@
 <template>
   <section class="pc-prompts-app">
     <section v-if="route.page === 'root'" class="pc-prompts-page">
-      <div class="pc-prompts-hero">
+      <header class="pc-compact-toolbar pc-directory-toolbar pc-prompts-hero">
+        <span class="pc-directory-count">{{ activePromptTabLabel }}</span>
         <div class="pc-hero-actions">
           <div ref="promptMenuRoot" class="pc-prompts-menu-anchor">
             <button class="pc-icon-btn" type="button" :title="t`切换分类`" @click="promptMenuOpen = !promptMenuOpen">
@@ -21,20 +22,16 @@
               </button>
             </div>
           </div>
-          <button class="pc-soft-btn" type="button" @click="openTransferCenter">
-            {{ t`导入 / 导出` }}
+          <button class="pc-icon-btn" type="button" :title="t`导入或导出`" @click="openTransferCenter">
+            <i class="fa-solid fa-arrow-right-arrow-left"></i>
           </button>
           <button class="pc-icon-btn pc-prompts-reset-btn" type="button" :title="t`恢复默认`" @click="resetDefaults">
             <i class="fa-solid fa-arrow-rotate-left"></i>
           </button>
         </div>
-      </div>
+      </header>
 
       <section v-if="activePromptTab === 'app'" class="pc-stack">
-        <div class="pc-section-bar">
-          <strong>{{ t`App 提示词` }}</strong>
-        </div>
-
         <div class="pc-app-prompt-grid">
           <button
             v-for="group in appPromptGroups"
@@ -53,10 +50,6 @@
       </section>
 
       <section v-else-if="activePromptTab === 'task'" class="pc-stack">
-        <div class="pc-section-bar">
-          <strong>{{ t`任务模板` }}</strong>
-        </div>
-
         <div class="pc-app-prompt-grid">
           <button
             v-for="group in taskPromptGroups"
@@ -74,12 +67,8 @@
         </div>
       </section>
 
-      <section v-else-if="activePromptTab === 'output'" class="pc-stack">
-        <div class="pc-section-bar">
-          <strong>{{ t`输出与解析` }}</strong>
-        </div>
-
-        <article v-for="item in outputRuleCards" :key="item.id" class="pc-card pc-output-rule-card">
+      <section v-else-if="activePromptTab === 'output'" class="pc-stack pc-directory-list">
+        <article v-for="item in outputRuleCards" :key="item.id" class="pc-list-row pc-output-rule-card">
           <button type="button" @click="openOutputRule(item.id)">
             <span>
               <strong>{{ item.label }}</strong>
@@ -91,11 +80,10 @@
       </section>
 
       <section v-else-if="activePromptTab === 'type'" class="pc-stack">
-        <div class="pc-section-bar">
-          <strong>{{ t`类型提示词` }}</strong>
-          <button class="pc-primary-btn" type="button" @click="openCreateTypePrompt">
+        <div class="pc-compact-toolbar pc-directory-toolbar pc-prompt-section-toolbar">
+          <span class="pc-directory-count">{{ typePrompts.length }} {{ t`个类型` }}</span>
+          <button class="pc-icon-btn primary" type="button" :title="t`新增类型`" @click="openCreateTypePrompt">
             <i class="fa-solid fa-plus"></i>
-            <span>{{ t`新增类型` }}</span>
           </button>
         </div>
 
@@ -122,17 +110,16 @@
       </section>
 
       <section v-else-if="activePromptTab === 'phrase'" class="pc-stack">
-        <div class="pc-section-bar">
-          <strong>{{ t`快速短语` }}</strong>
-          <button class="pc-primary-btn" type="button" @click="openCreateGroup">
+        <div class="pc-compact-toolbar pc-directory-toolbar pc-prompt-section-toolbar">
+          <span class="pc-directory-count">{{ quickPhraseGroups.length }} {{ t`个分组` }}</span>
+          <button class="pc-icon-btn primary" type="button" :title="t`新增分组`" @click="openCreateGroup">
             <i class="fa-solid fa-folder-plus"></i>
-            <span>{{ t`新增分组` }}</span>
           </button>
         </div>
 
         <EmptyState v-if="!quickPhraseGroups.length" :title="t`还没有短语分组`" />
 
-        <article v-for="(group, groupIndex) in quickPhraseGroups" :key="group.id" class="pc-card">
+        <article v-for="(group, groupIndex) in quickPhraseGroups" :key="group.id" class="pc-page-section">
           <div class="pc-card-head">
             <button class="pc-accordion-title-button" type="button" @click="togglePhraseGroup(group.id)">
               <strong>{{ group.name }}</strong>
@@ -175,8 +162,8 @@
             :title="t`这个分组还没有短语。`"
           />
 
-          <div v-else-if="isPhraseGroupOpen(group.id)" class="pc-phrase-list">
-            <article v-for="phrase in group.phrases" :key="phrase.id" class="pc-phrase-card">
+          <div v-else-if="isPhraseGroupOpen(group.id)" class="pc-directory-list pc-phrase-list">
+            <article v-for="phrase in group.phrases" :key="phrase.id" class="pc-list-row pc-phrase-card">
               <p>{{ phrase.text }}</p>
               <div class="pc-inline-actions">
                 <button class="pc-icon-btn" type="button" @click="copyText(phrase.text, '已复制快速短语')">
@@ -195,17 +182,16 @@
       </section>
 
       <section v-else-if="activePromptTab === 'template'" class="pc-stack">
-        <div class="pc-section-bar">
-          <strong>{{ t`模板快捷` }}</strong>
-          <button class="pc-primary-btn" type="button" @click="openCreateTemplateGroup">
+        <div class="pc-compact-toolbar pc-directory-toolbar pc-prompt-section-toolbar">
+          <span class="pc-directory-count">{{ quickTemplateGroups.length }} {{ t`个分组` }}</span>
+          <button class="pc-icon-btn primary" type="button" :title="t`新增分组`" @click="openCreateTemplateGroup">
             <i class="fa-solid fa-folder-plus"></i>
-            <span>{{ t`新增分组` }}</span>
           </button>
         </div>
 
         <EmptyState v-if="!quickTemplateGroups.length" :title="t`还没有模板分组`" />
 
-        <article v-for="(group, groupIndex) in quickTemplateGroups" :key="group.id" class="pc-card">
+        <article v-for="(group, groupIndex) in quickTemplateGroups" :key="group.id" class="pc-page-section">
           <div class="pc-card-head">
             <button class="pc-accordion-title-button" type="button" @click="toggleTemplateGroup(group.id)">
               <strong>{{ group.name }}</strong>
@@ -248,8 +234,8 @@
             :title="t`这个分组还没有模板。`"
           />
 
-          <div v-else-if="isTemplateGroupOpen(group.id)" class="pc-phrase-list">
-            <article v-for="template in group.phrases" :key="template.id" class="pc-phrase-card">
+          <div v-else-if="isTemplateGroupOpen(group.id)" class="pc-directory-list pc-phrase-list">
+            <article v-for="template in group.phrases" :key="template.id" class="pc-list-row pc-phrase-card">
               <p>{{ template.text }}</p>
               <div class="pc-inline-actions">
                 <button class="pc-icon-btn" type="button" @click="copyText(template.text, '已复制模板')">
@@ -269,9 +255,7 @@
     </section>
 
     <section v-else-if="route.page === 'app-prompt-editor' && editingAppPrompt" class="pc-prompts-page">
-      <div class="pc-editor-card">
-        <span class="pc-kicker">{{ editingAppPrompt.appLabel }}</span>
-        <h2>{{ editingAppPrompt.label }}</h2>
+      <div class="pc-prompts-editor">
         <textarea
           ref="appPromptEditorEl"
           v-model="appPromptDraft"
@@ -301,10 +285,7 @@
     </section>
 
     <section v-else-if="route.page === 'output-editor' && editingOutputDefinition" class="pc-prompts-page">
-      <div class="pc-editor-card pc-output-editor">
-        <span class="pc-kicker">{{ t`输出与解析` }}</span>
-        <h2>{{ editingOutputDefinition.label }}</h2>
-
+      <div class="pc-prompts-editor pc-output-editor">
         <label class="pc-field-group">
           <span>{{ t`输出格式` }}</span>
           <textarea v-model="outputDraft.outputFormat" class="pc-area"></textarea>
@@ -382,10 +363,7 @@
     </section>
 
     <section v-else-if="route.page === 'type-editor'" class="pc-prompts-page">
-      <div class="pc-editor-card">
-        <span class="pc-kicker">{{ editingTypePrompt ? t`编辑类型提示词` : t`新增类型提示词` }}</span>
-        <h2>{{ editingTypePrompt ? editingTypePrompt.name : t`建立一个可复用类型` }}</h2>
-
+      <div class="pc-prompts-editor">
         <div class="pc-chip-row">
           <button
             v-for="domain in typePromptDomains"
@@ -428,9 +406,7 @@
     </section>
 
     <section v-else-if="route.page === 'group-editor'" class="pc-prompts-page">
-      <div class="pc-editor-card">
-        <span class="pc-kicker">{{ editingGroup ? t`重命名分组` : t`新增分组` }}</span>
-        <h2>{{ editingGroup ? editingGroup.name : t`给短语分个类` }}</h2>
+      <div class="pc-prompts-editor">
         <input v-model="groupDraft.name" class="pc-field" type="text" :placeholder="t`分组名称`" />
         <div class="pc-form-actions">
           <button class="pc-soft-btn" type="button" @click="phone.goBack()">{{ t`取消` }}</button>
@@ -440,9 +416,7 @@
     </section>
 
     <section v-else-if="route.page === 'template-group-editor'" class="pc-prompts-page">
-      <div class="pc-editor-card">
-        <span class="pc-kicker">{{ editingTemplateGroup ? t`重命名模板分组` : t`新增模板分组` }}</span>
-        <h2>{{ editingTemplateGroup ? editingTemplateGroup.name : t`给模板分个类` }}</h2>
+      <div class="pc-prompts-editor">
         <input v-model="groupDraft.name" class="pc-field" type="text" :placeholder="t`分组名称`" />
         <div class="pc-form-actions">
           <button class="pc-soft-btn" type="button" @click="phone.goBack()">{{ t`取消` }}</button>
@@ -452,9 +426,7 @@
     </section>
 
     <section v-else-if="route.page === 'phrase-editor' && phraseGroup" class="pc-prompts-page">
-      <div class="pc-editor-card">
-        <span class="pc-kicker">{{ editingPhrase ? t`编辑短语` : t`新增短语` }}</span>
-        <h2>{{ phraseGroup.name }}</h2>
+      <div class="pc-prompts-editor">
         <textarea v-model="phraseDraft.text" class="pc-area compact" :placeholder="t`输入这条快速短语`"></textarea>
         <div class="pc-form-actions">
           <button class="pc-soft-btn" type="button" @click="phone.goBack()">{{ t`取消` }}</button>
@@ -464,9 +436,7 @@
     </section>
 
     <section v-else-if="route.page === 'template-editor' && templateGroup" class="pc-prompts-page">
-      <div class="pc-editor-card">
-        <span class="pc-kicker">{{ editingTemplate ? t`编辑模板` : t`新增模板` }}</span>
-        <h2>{{ templateGroup.name }}</h2>
+      <div class="pc-prompts-editor">
         <textarea v-model="phraseDraft.text" class="pc-area compact" :placeholder="t`输入格式模板`"></textarea>
         <div class="pc-form-actions">
           <button class="pc-soft-btn" type="button" @click="phone.goBack()">{{ t`取消` }}</button>
@@ -476,10 +446,7 @@
     </section>
 
     <section v-else-if="route.page === 'transfer'" class="pc-prompts-page">
-      <div class="pc-editor-card">
-        <span class="pc-kicker">{{ t`选择性导入 / 导出` }}</span>
-        <h2>{{ t`选择区段` }}</h2>
-
+      <div class="pc-prompts-editor">
         <div class="pc-transfer-list">
           <label class="pc-transfer-item">
             <input v-model="transferSelection.appPrompts" type="checkbox" />
@@ -832,6 +799,9 @@ const promptMenuItems: Array<{ key: PromptTab; label: string }> = [
   { key: 'phrase', label: '快捷短语' },
   { key: 'template', label: '模板快捷' },
 ];
+const activePromptTabLabel = computed(
+  () => promptMenuItems.find(item => item.key === activePromptTab.value)?.label || '提示词',
+);
 const outputRuleCards = computed(() => {
   const owners = new Map<string, string>();
   [...appPromptDefinitions.value, ...specialPromptDefinitions.value].forEach(definition => {
@@ -1079,7 +1049,7 @@ function selectPromptTab(tab: PromptTab) {
 }
 
 function isPhraseGroupOpen(groupId: string) {
-  return phraseGroupOpen[groupId] ?? false;
+  return phraseGroupOpen[groupId] ?? quickPhraseGroups.value[0]?.id === groupId;
 }
 
 function togglePhraseGroup(groupId: string) {
@@ -1087,7 +1057,7 @@ function togglePhraseGroup(groupId: string) {
 }
 
 function isTemplateGroupOpen(groupId: string) {
-  return templateGroupOpen[groupId] ?? false;
+  return templateGroupOpen[groupId] ?? quickTemplateGroups.value[0]?.id === groupId;
 }
 
 function toggleTemplateGroup(groupId: string) {
@@ -1444,37 +1414,15 @@ async function copyText(text: string, successMessage: string) {
   gap: 14px;
 }
 
-.pc-prompts-hero,
-.pc-card,
-.pc-nested-card,
-.pc-editor-card,
-.pc-tab-row,
-.pc-section-bar {
-  border: 1px solid var(--pc-border);
-  background: color-mix(in srgb, var(--pc-surface) 70%, transparent 30%);
-  border-radius: 20px;
-  backdrop-filter: blur(12px);
-}
-
-.pc-prompts-hero,
-.pc-editor-card,
-.pc-tab-row,
-.pc-section-bar {
-  padding: 18px;
-}
-
-.pc-prompts-hero,
-.pc-section-bar {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-}
-
 .pc-prompts-hero {
   position: relative;
   z-index: 10;
   overflow: visible;
+}
+
+.pc-prompts-editor {
+  display: grid;
+  gap: 14px;
 }
 
 .pc-stack {
@@ -1482,16 +1430,6 @@ async function copyText(text: string, successMessage: string) {
   z-index: 1;
 }
 
-.pc-prompts-hero h2,
-.pc-editor-card h2 {
-  margin: 0;
-  font-size: 20px;
-  line-height: 1.25;
-}
-
-.pc-prompts-hero p,
-.pc-card p,
-.pc-section-bar p,
 .pc-card-head span,
 .pc-transfer-item p {
   color: var(--pc-muted);
@@ -1546,23 +1484,12 @@ async function copyText(text: string, successMessage: string) {
 }
 
 .pc-tab-btn,
-.pc-type-pill,
-.pc-phrase-card,
-.pc-nested-card {
+.pc-type-pill {
   background: var(--pc-surface-strong);
 }
 
 .pc-tab-btn.active {
   background: color-mix(in srgb, var(--pc-theme-accent) 18%, var(--pc-surface-strong) 82%);
-}
-
-.pc-card {
-  padding: 14px;
-}
-
-.pc-nested-card {
-  padding: 12px;
-  border-radius: 18px;
 }
 
 .pc-app-prompt-grid {
@@ -1886,7 +1813,7 @@ async function copyText(text: string, successMessage: string) {
   align-items: center;
   justify-content: space-between;
   gap: 12px;
-  padding: 12px 14px;
+  padding: 0;
   border: 0;
   background: transparent;
   color: var(--pc-text);
@@ -1983,7 +1910,7 @@ async function copyText(text: string, successMessage: string) {
 
 .pc-output-panel {
   margin-top: 12px;
-  border-radius: 16px;
+  border-radius: min(var(--pc-card-radius), 8px);
   background: var(--pc-surface-strong);
   overflow: hidden;
 }
@@ -2069,13 +1996,12 @@ async function copyText(text: string, successMessage: string) {
 .pc-phrase-list {
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: 0;
   margin-top: 12px;
 }
 
 .pc-phrase-card {
-  padding: 12px 14px;
-  border-radius: 18px;
+  grid-template-columns: minmax(0, 1fr) auto;
 }
 
 .pc-transfer-list {
@@ -2092,7 +2018,7 @@ async function copyText(text: string, successMessage: string) {
   align-items: flex-start;
   padding: 14px;
   border: 1px solid var(--pc-border);
-  border-radius: 18px;
+  border-radius: min(var(--pc-card-radius), 8px);
   background: var(--pc-surface-strong);
 }
 

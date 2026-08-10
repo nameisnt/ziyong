@@ -1,10 +1,6 @@
 <template>
   <section class="pc-entry-library-page">
     <header class="pc-entry-library-head">
-      <div>
-        <span class="pc-kicker">独立提示词副本</span>
-        <h2>条目库</h2>
-      </div>
       <div class="pc-entry-library-head-actions">
         <ActionMenu label="工具" icon="fa-solid fa-screwdriver-wrench">
           <button type="button" @click="$emit('open-transfer')">
@@ -36,15 +32,21 @@
         placeholder="新分组名称"
         @keyup.enter="$emit('create-group')"
       />
-      <button class="pc-primary-btn" type="button" :disabled="!groupName.trim()" @click="$emit('create-group')">
-        新建
+      <button
+        class="pc-icon-btn active"
+        type="button"
+        :disabled="!groupName.trim()"
+        title="新建分组"
+        @click="$emit('create-group')"
+      >
+        <i class="fa-solid fa-plus"></i>
       </button>
     </div>
 
-    <label v-if="itemCount" class="pc-entry-library-search"
-      ><i class="fa-solid fa-magnifying-glass"></i
-      ><input v-model="query" class="pc-field" type="search" placeholder="搜索收藏名称或内容"
-    /></label>
+    <label v-if="itemCount" class="pc-search-field">
+      <i class="fa-solid fa-magnifying-glass"></i>
+      <input v-model="query" type="search" placeholder="搜索收藏名称或内容" />
+    </label>
 
     <div v-if="sections.length" class="pc-entry-library-groups">
       <section v-for="section in sections" :key="section.group.id" class="pc-entry-library-group">
@@ -88,7 +90,7 @@
           <article
             v-for="item in section.items"
             :key="item.id"
-            class="pc-section-card pc-entry-library-item"
+            class="pc-list-row pc-entry-library-item"
             :class="{
               disabled: !item.enabled,
               dragging: itemDrag.isDragging && itemDrag.itemId === item.id,
@@ -132,9 +134,7 @@
         </div>
       </section>
     </div>
-    <EmptyState v-else :title="query.trim() ? '没有找到匹配的收藏' : '还没有收藏条目'"
-      ><p>可以手动新建，也可以从预设或世界书批量复制到独立条目库。</p></EmptyState
-    >
+    <EmptyState v-else :title="query.trim() ? '没有找到匹配的收藏' : '还没有收藏条目'" />
   </section>
 </template>
 
@@ -200,31 +200,13 @@ defineEmits<{
 .pc-entry-library-group-head {
   justify-content: space-between;
 }
-.pc-entry-library-head h2 {
-  margin: 3px 0 0;
-  font-size: 19px;
-}
 .pc-entry-library-head-actions {
+  margin-left: auto;
   flex: 0 0 auto;
 }
 .pc-entry-library-create .pc-field {
   min-width: 0;
   flex: 1;
-}
-.pc-entry-library-search {
-  position: relative;
-  display: block;
-}
-.pc-entry-library-search > i {
-  position: absolute;
-  z-index: 1;
-  top: 50%;
-  left: 14px;
-  color: var(--pc-muted);
-  transform: translateY(-50%);
-}
-.pc-entry-library-search .pc-field {
-  padding-left: 40px;
 }
 .pc-entry-library-group {
   display: grid;
@@ -270,6 +252,8 @@ defineEmits<{
   gap: 8px;
   min-height: 58px;
   padding: 8px;
+  border-radius: 0;
+  background: transparent;
   touch-action: pan-y;
   transition:
     border-color 0.16s ease,

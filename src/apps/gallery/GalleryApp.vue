@@ -1,14 +1,10 @@
 <template>
   <section class="pc-gallery-app">
     <section class="pc-gallery-page">
-      <div class="pc-gallery-hero">
-        <div>
-          <span class="pc-kicker">{{ t`相册` }}</span>
-          <h2>{{ imageEntries.length }} {{ t`张图片` }}</h2>
-        </div>
-        <button class="pc-primary-btn compact" type="button" @click="openEditor()">
+      <div v-if="route.page === 'root'" class="pc-compact-toolbar pc-directory-toolbar pc-gallery-toolbar">
+        <span class="pc-directory-count">{{ imageEntries.length }} {{ t`张图片` }}</span>
+        <button class="pc-icon-btn primary" type="button" :title="t`新增图片`" @click="openEditor()">
           <i class="fa-solid fa-plus"></i>
-          <span>{{ t`新增` }}</span>
         </button>
       </div>
 
@@ -55,10 +51,16 @@
           </button>
         </div>
         <p v-if="activeEntry.note">{{ activeEntry.note }}</p>
-        <div class="pc-form-actions">
-          <button class="pc-soft-btn" type="button" @click="openEditor(activeEntry.id)">{{ t`编辑` }}</button>
-          <button class="pc-soft-btn" type="button" @click="downloadEntry(activeEntry)">{{ t`下载` }}</button>
-          <button class="pc-soft-btn danger" type="button" @click="deleteEntry(activeEntry)">{{ t`删除` }}</button>
+        <div class="pc-directory-actions pc-gallery-viewer-actions">
+          <button class="pc-icon-btn" type="button" :title="t`编辑`" @click="openEditor(activeEntry.id)">
+            <i class="fa-solid fa-pen"></i>
+          </button>
+          <button class="pc-icon-btn" type="button" :title="t`下载`" @click="downloadEntry(activeEntry)">
+            <i class="fa-solid fa-download"></i>
+          </button>
+          <button class="pc-icon-btn danger" type="button" :title="t`删除`" @click="deleteEntry(activeEntry)">
+            <i class="fa-solid fa-trash"></i>
+          </button>
         </div>
       </article>
       <EmptyState v-else-if="route.page === 'viewer'" :title="t`图片不存在`">
@@ -67,9 +69,7 @@
         </button>
       </EmptyState>
 
-      <article v-else-if="route.page === 'editor'" class="pc-editor-card">
-        <span class="pc-kicker">{{ editingEntry ? t`编辑图片` : t`新增图片` }}</span>
-        <h2>{{ editingEntry?.title || t`图片条目` }}</h2>
+      <article v-else-if="route.page === 'editor'" class="pc-gallery-editor">
         <input v-model="draft.title" class="pc-field" type="text" :placeholder="t`标题`" />
         <input v-model="draft.url" class="pc-field" type="text" :placeholder="t`图片 URL 或上传后的 data 地址`" />
         <input class="pc-field" type="file" accept="image/*" @change="loadFile" />
@@ -127,7 +127,8 @@ function fillDraft(entry: MediaEntry | null) {
 }
 
 function openViewer(entryId: string) {
-  phone.replacePage('viewer', '图片预览', { entryId });
+  const entry = media.getEntry(entryId);
+  phone.replacePage('viewer', entry?.title || '图片预览', { entryId });
 }
 
 function openEditor(entryId?: string) {
@@ -167,7 +168,7 @@ function saveDraft() {
   };
   const entry = editingEntry.value ? media.updateEntry(editingEntry.value.id, input) : media.createEntry(input);
   if (!entry) return;
-  phone.replacePage('viewer', '图片预览', { entryId: entry.id });
+  phone.replacePage('viewer', entry.title, { entryId: entry.id });
   toastr.success('已保存图片');
 }
 
@@ -205,22 +206,6 @@ async function deleteEntry(entry: MediaEntry) {
   display: grid;
   align-content: start;
   gap: 14px;
-}
-
-.pc-gallery-hero {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  padding: 16px;
-  border: 1px solid var(--pc-border);
-  border-radius: var(--pc-card-radius);
-  background: var(--pc-surface);
-}
-
-.pc-gallery-hero h2 {
-  margin: 4px 0 0;
-  font-size: 20px;
 }
 
 .pc-gallery-grid {
@@ -302,6 +287,15 @@ async function deleteEntry(entry: MediaEntry) {
 .pc-gallery-viewer p {
   margin: 0;
   white-space: pre-wrap;
+}
+
+.pc-gallery-viewer-actions {
+  justify-content: center;
+}
+
+.pc-gallery-editor {
+  display: grid;
+  gap: 12px;
 }
 
 .pc-area.compact {

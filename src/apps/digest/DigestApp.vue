@@ -1,12 +1,9 @@
 <template>
   <section class="pc-digest-app">
     <section v-if="route.page === 'root'" class="pc-digest-page">
-      <div class="pc-digest-hero">
-        <div>
-          <span class="pc-kicker">{{ t`摘抄库` }}</span>
-          <h2>{{ entries.length }} {{ t`条摘录` }}</h2>
-        </div>
-        <div class="pc-hero-actions">
+      <div class="pc-compact-toolbar pc-directory-toolbar pc-digest-toolbar">
+        <span class="pc-directory-count">{{ entries.length }} {{ t`条摘录` }}</span>
+        <div class="pc-directory-actions pc-hero-actions">
           <button
             class="pc-icon-btn"
             type="button"
@@ -16,30 +13,31 @@
           >
             <i :class="sortDesc ? 'fa-solid fa-arrow-down-wide-short' : 'fa-solid fa-arrow-up-short-wide'"></i>
           </button>
-          <button class="pc-soft-btn" type="button" @click="openEditor()">
+          <button class="pc-icon-btn" type="button" :title="t`手动新增`" @click="openEditor()">
             <i class="fa-solid fa-plus"></i>
-            <span>{{ t`手动` }}</span>
           </button>
-          <button class="pc-primary-btn" type="button" @click="openGenerate">
+          <button class="pc-icon-btn primary" type="button" :title="t`AI 摘抄`" @click="openGenerate">
             <i class="fa-solid fa-wand-magic-sparkles"></i>
-            <span>{{ t`AI` }}</span>
           </button>
         </div>
       </div>
 
       <EmptyState v-if="!entries.length" :title="t`还没有摘抄`" />
 
-      <div v-else class="pc-entry-list">
-        <article v-for="entry in sortedEntries" :key="entry.id" class="pc-entry-card">
-          <button class="pc-entry-main" type="button" @click="openEntry(entry.id)">
-            <div class="pc-entry-head">
-              <strong>{{ entry.title }}</strong>
-              <span class="pc-entry-order">{{ t`顺序` }} {{ entry.directoryOrder }}</span>
-            </div>
-            <span>{{ entry.sourceLabel || (entry.kind === 'ai' ? t`AI 摘抄` : t`手动摘抄`) }}</span>
-            <p>{{ entry.content }}</p>
-          </button>
-        </article>
+      <div v-else class="pc-directory-list pc-entry-list">
+        <button
+          v-for="entry in sortedEntries"
+          :key="entry.id"
+          class="pc-list-row"
+          type="button"
+          @click="openEntry(entry.id)"
+        >
+          <span class="pc-list-row-copy">
+            <strong>{{ entry.title }}</strong>
+            <small>{{ entry.sourceLabel || (entry.kind === 'ai' ? t`AI 摘抄` : t`手动摘抄`) }}</small>
+          </span>
+          <span class="pc-list-row-meta">{{ t`顺序` }} {{ entry.directoryOrder }}</span>
+        </button>
       </div>
 
       <FailedDraftList
@@ -114,8 +112,7 @@
     </section>
 
     <section v-else-if="route.page === 'editor'" class="pc-digest-page">
-      <article class="pc-editor-card">
-        <span class="pc-kicker">{{ editingEntry ? t`编辑摘抄` : t`新增摘抄` }}</span>
+      <article class="pc-page-section pc-digest-editor-section">
         <input v-model="draft.title" class="pc-field" type="text" :placeholder="t`标题`" />
         <input v-model="draft.sourceLabel" class="pc-field" type="text" :placeholder="t`来源，例如 第 12 楼`" />
         <div v-if="editingEntry" class="pc-field-group">
@@ -136,9 +133,7 @@
     </section>
 
     <section v-else-if="route.page === 'generate'" class="pc-digest-page">
-      <article class="pc-editor-card">
-        <span class="pc-kicker">{{ t`AI 摘抄` }}</span>
-        <h2>{{ t`生成原文摘抄` }}</h2>
+      <article class="pc-page-section pc-digest-editor-section">
         <GenerationPanel
           :capture="captureDigestPrompt"
           :capture-reset-key="digestPromptPreview"
@@ -192,9 +187,8 @@
     </section>
 
     <section v-else-if="route.page === 'failed-draft' && activeFailedDraft" class="pc-digest-page pc-repair-page">
-      <article class="pc-editor-card pc-repair-card">
-        <span class="pc-kicker">{{ activeFailedDraft.source.label }}</span>
-        <h2>{{ t`修复解析失败草稿` }}</h2>
+      <article class="pc-page-section pc-repair-card">
+        <div class="pc-compact-toolbar">{{ activeFailedDraft.source.label }}</div>
         <div v-if="activeFailedDraft.warnings.length" class="pc-status-card warning">
           <strong>{{ t`上次解析提示` }}</strong>
           <p>{{ activeFailedDraft.warnings.join('；') }}</p>
@@ -712,17 +706,14 @@ function stopGeneration() {
   overflow: hidden;
 }
 
-.pc-digest-hero,
-.pc-entry-card,
 .pc-detail-card {
   border: 1px solid var(--pc-border);
-  border-radius: 20px;
+  border-radius: min(var(--pc-card-radius), 8px);
   background: color-mix(in srgb, var(--pc-surface) 72%, transparent 28%);
   backdrop-filter: blur(12px);
   padding: 14px;
 }
 
-.pc-digest-hero,
 .pc-hero-actions {
   display: flex;
   align-items: center;
@@ -730,34 +721,10 @@ function stopGeneration() {
   gap: 10px;
 }
 
-.pc-digest-hero {
-  flex-direction: column;
-  align-items: stretch;
-}
-
-.pc-digest-hero .pc-hero-actions {
-  display: grid;
-  grid-template-columns: 44px repeat(2, minmax(0, 1fr));
-  width: 100%;
-}
-
-.pc-digest-hero .pc-hero-actions > button {
-  width: 100%;
-  min-width: 0;
-  justify-content: center;
-}
-
-.pc-digest-hero h2,
 .pc-detail-card h2 {
   margin: 0;
   font-size: 20px;
   line-height: 1.25;
-}
-
-.pc-entry-list {
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
 }
 
 .pc-entry-main {
@@ -814,7 +781,7 @@ function stopGeneration() {
 .pc-detail-content,
 .pc-source-box {
   margin-top: 14px;
-  border-radius: 18px;
+  border-radius: min(var(--pc-control-radius), 8px);
   background: var(--pc-surface-strong);
   padding: 14px;
   white-space: pre-wrap;
@@ -849,9 +816,9 @@ function stopGeneration() {
   white-space: pre-wrap;
 }
 
-.pc-editor-card > .pc-field,
-.pc-editor-card > .pc-area,
-.pc-editor-card > .pc-field-group {
+.pc-digest-editor-section > .pc-field,
+.pc-digest-editor-section > .pc-area,
+.pc-digest-editor-section > .pc-field-group {
   margin-top: 12px;
 }
 

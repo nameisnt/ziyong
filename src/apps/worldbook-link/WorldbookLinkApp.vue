@@ -269,7 +269,7 @@ function bookSubtitle(bookName: string) {
 
 function openBook(bookName: string) {
   entryQuery.value = '';
-  phone.pushPage('detail', '世界书联动', { bookName });
+  phone.pushPage('detail', bookName, { bookName });
 }
 
 async function loadDetail() {

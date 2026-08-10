@@ -1,28 +1,16 @@
 <template>
   <div class="pc-settings-panel-stack">
-    <section class="pc-settings-card">
+    <section class="pc-page-section pc-settings-section">
       <div class="pc-row pc-row-top">
-        <div>
-          <strong>阅读器</strong>
-          <p>影响日记、番外、总结、书信、论坛、小剧场和阅读聊天的详情正文。</p>
-        </div>
-        <button class="pc-soft-btn compact" type="button" @click="settingsStore.resetReaderAppearance()">
-          <i class="fa-solid fa-rotate-left"></i><span>默认</span>
+        <strong>阅读器</strong>
+        <button
+          class="pc-icon-btn"
+          type="button"
+          title="恢复阅读器默认设置"
+          @click="settingsStore.resetReaderAppearance()"
+        >
+          <i class="fa-solid fa-rotate-left"></i>
         </button>
-      </div>
-      <div class="pc-select-field">
-        <label class="pc-field-label">使用字体</label
-        ><select :value="readerFontSelectionValue" class="pc-select" @change="onReaderFontSelect">
-          <option value="">跟随手机字体</option>
-          <option v-for="option in builtinFontOptions" :key="option.value" :value="option.value">
-            {{ option.label }}
-          </option>
-          <optgroup v-if="settings.customFont.fonts.length" label="自定义字体">
-            <option v-for="font in settings.customFont.fonts" :key="font.id" :value="`custom:${font.id}`">
-              {{ font.name }}
-            </option>
-          </optgroup>
-        </select>
       </div>
       <div class="pc-control-row">
         <div>
@@ -86,17 +74,19 @@
       </div>
     </section>
 
-    <section class="pc-settings-card">
+    <section class="pc-page-section pc-settings-section">
       <div class="pc-row pc-row-top">
-        <div>
-          <strong>界面尺寸</strong>
-          <p>调整手机窗口固定宽高，阅读器比例会影响详情正文宽度。</p>
-        </div>
+        <strong>界面尺寸</strong>
         <div class="pc-settings-actions">
-          <button class="pc-soft-btn compact" type="button" @click="fitViewport">
-            <i class="fa-solid fa-expand"></i><span>适配</span></button
-          ><button class="pc-soft-btn compact" type="button" @click="settingsStore.resetInterfaceSize()">
-            <i class="fa-solid fa-rotate-left"></i><span>默认</span>
+          <button class="pc-icon-btn" type="button" title="适配当前窗口" @click="fitViewport">
+            <i class="fa-solid fa-expand"></i></button
+          ><button
+            class="pc-icon-btn"
+            type="button"
+            title="恢复默认界面尺寸"
+            @click="settingsStore.resetInterfaceSize()"
+          >
+            <i class="fa-solid fa-rotate-left"></i>
           </button>
         </div>
       </div>
@@ -125,15 +115,11 @@
         </div>
       </div>
       <div class="pc-layout-summary">
-        <strong>主界面布局</strong
-        ><span
-          >{{ settings.interfaceSize.homeColumns }} 列 × {{ settings.interfaceSize.homeRows }} 行，每页
-          {{ homePageCapacity }} 个 App</span
-        >
+        <strong>主界面布局</strong><span>{{ `每页 ${homePageCapacity} 个 App` }}</span>
       </div>
-      <div class="pc-inline-grid three-cols">
-        <label v-for="control in layoutControls" :key="control.id" class="pc-select-field"
-          ><span class="pc-field-label">{{ control.label }}</span
+      <div class="pc-inline-control-grid">
+        <label v-for="control in layoutControls" :key="control.id" class="pc-inline-control"
+          ><span>{{ control.label }}</span
           ><input
             :value="control.value"
             class="pc-field pc-number-control"
@@ -149,12 +135,9 @@
       </button>
     </section>
 
-    <section class="pc-settings-card">
+    <section class="pc-page-section pc-settings-section">
       <div class="pc-row pc-row-top">
-        <div>
-          <strong>悬浮球</strong>
-          <p>关闭手机后显示在页面右下角，可拖拽打开。</p>
-        </div>
+        <strong>悬浮球<InfoHint text="关闭手机后显示在页面右下角，可拖拽打开。" /></strong>
         <label class="pc-toggle"><input v-model="settings.floatBallEnabled" type="checkbox" /><span></span></label>
       </div>
       <div class="pc-control-row">
@@ -179,23 +162,12 @@
 </template>
 
 <script setup lang="ts">
+import InfoHint from '@/components/InfoHint.vue';
 import { useSettingsStore } from '@/store/settings';
 import { storeToRefs } from 'pinia';
 
 const settingsStore = useSettingsStore();
 const { settings } = storeToRefs(settingsStore);
-const builtinFontOptions = [
-  { label: '思源黑体 / Noto Sans SC', value: 'Noto Sans SC, Microsoft YaHei, sans-serif' },
-  { label: '宋体阅读', value: 'SimSun, Songti SC, serif' },
-  { label: '楷体阅读', value: 'KaiTi, STKaiti, serif' },
-  { label: '等宽字体', value: 'SFMono-Regular, Consolas, Liberation Mono, monospace' },
-];
-const readerFontSelectionValue = computed(() => {
-  const custom = settings.value.customFont.fonts.find(
-    item => settings.value.reader.fontFamily === settingsStore.getCustomFontFamily(item.id),
-  );
-  return custom ? `custom:${custom.id}` : settings.value.reader.fontFamily;
-});
 const homePageCapacity = computed(
   () => settings.value.interfaceSize.homeColumns * settings.value.interfaceSize.homeRows,
 );
@@ -229,9 +201,9 @@ const sizeControls = computed(() => [
   },
 ]);
 const layoutControls = computed(() => [
-  { id: 'columns' as const, label: '主界面列数', min: 3, value: settings.value.interfaceSize.homeColumns },
-  { id: 'rows' as const, label: '主界面行数', min: 2, value: settings.value.interfaceSize.homeRows },
-  { id: 'dock' as const, label: 'Dock 列数', min: 3, value: settings.value.interfaceSize.dockColumns },
+  { id: 'columns' as const, label: '列', min: 3, value: settings.value.interfaceSize.homeColumns },
+  { id: 'rows' as const, label: '行', min: 2, value: settings.value.interfaceSize.homeRows },
+  { id: 'dock' as const, label: 'Dock', min: 3, value: settings.value.interfaceSize.dockColumns },
 ]);
 
 function numberValue(event: Event) {
@@ -239,12 +211,6 @@ function numberValue(event: Event) {
 }
 function checkedValue(event: Event) {
   return (event.target as HTMLInputElement).checked;
-}
-function onReaderFontSelect(event: Event) {
-  const value = (event.target as HTMLSelectElement).value;
-  settingsStore.setReaderFontFamily(
-    value.startsWith('custom:') ? settingsStore.getCustomFontFamily(value.slice(7)) : value,
-  );
 }
 function fitViewport() {
   settingsStore.setPhoneWindowWidth(window.innerWidth);
@@ -267,16 +233,7 @@ function updateLayout(id: 'columns' | 'dock' | 'rows', value: number) {
 <style scoped>
 .pc-settings-panel-stack {
   display: grid;
-  gap: 14px;
-}
-.pc-settings-card {
-  display: flex;
-  flex-direction: column;
-  gap: 14px;
-  border: 1px solid var(--pc-border);
-  border-radius: var(--pc-card-radius);
-  padding: 16px;
-  background: color-mix(in srgb, var(--pc-surface) 82%, transparent 18%);
+  gap: 0;
 }
 .pc-row,
 .pc-control-row,
@@ -296,7 +253,6 @@ function updateLayout(id: 'columns' | 'dock' | 'rows', value: number) {
 .pc-control-row > div:first-child {
   min-width: 0;
 }
-.pc-row p,
 .pc-control-row p {
   margin: 4px 0 0;
   color: var(--pc-muted);
@@ -346,16 +302,6 @@ function updateLayout(id: 'columns' | 'dock' | 'rows', value: number) {
   font-size: 12px;
   text-align: right;
 }
-.pc-inline-grid {
-  display: grid;
-}
-.pc-inline-grid.three-cols {
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-}
-.pc-select-field {
-  display: grid;
-  gap: 7px;
-}
 .pc-reader-version-position {
   display: grid;
   gap: 8px;
@@ -374,9 +320,6 @@ function updateLayout(id: 'columns' | 'dock' | 'rows', value: number) {
   background: transparent;
 }
 @media (max-width: 420px) {
-  .pc-inline-grid.three-cols {
-    grid-template-columns: 1fr;
-  }
   .pc-range-with-number {
     min-width: 55%;
   }

@@ -6,7 +6,7 @@
         @discard="discardStorylinePreviewDraft"
         @open="openStorylinePreviewDraft"
       />
-      <article class="pc-editor-card">
+      <article class="pc-page-section pc-storylines-source">
         <div class="pc-section-head">
           <strong>
             从总结梳理剧情
@@ -18,12 +18,14 @@
           <span>{{ selectedSummaryBook?.entries.length || 0 }} 篇</span>
         </div>
         <div class="pc-storylines-generate-row">
-          <select v-model="summaryBookId" class="pc-field pc-select">
-            <option value="">选择总结集</option>
-            <option v-for="book in summaryBooks" :key="book.id" :value="book.id">
-              {{ book.title }} · {{ book.entries.length }} 篇
-            </option>
-          </select>
+          <SearchableCombobox
+            v-model="summaryBookId"
+            empty-label="没有匹配的总结集"
+            input-label="选择总结集"
+            :options="summaryBookOptions"
+            placeholder="选择总结集"
+            toggle-title="展开总结集列表"
+          />
           <button
             class="pc-primary-btn"
             type="button"
@@ -60,9 +62,9 @@
         </button>
       </nav>
 
-      <section v-if="activeTab === 'lines'" class="pc-storylines-list">
+      <section v-if="activeTab === 'lines'" class="pc-directory-list pc-storylines-list">
         <EmptyState v-if="!storylines.lines.length" title="还没有梳理结果" />
-        <article v-for="line in storylines.lines" v-else :key="line.id" class="pc-section-card pc-storyline-item">
+        <article v-for="line in storylines.lines" v-else :key="line.id" class="pc-list-row pc-storyline-item">
           <div class="pc-detail-title-row">
             <div>
               <span class="pc-storyline-meta">
@@ -82,9 +84,9 @@
         </article>
       </section>
 
-      <section v-else-if="activeTab === 'beats'" class="pc-storylines-list">
+      <section v-else-if="activeTab === 'beats'" class="pc-directory-list pc-storylines-list">
         <EmptyState v-if="!storylines.beats.length" title="还没有剧情节点" />
-        <article v-for="beat in storylines.beats" v-else :key="beat.id" class="pc-section-card pc-storyline-item">
+        <article v-for="beat in storylines.beats" v-else :key="beat.id" class="pc-list-row pc-storyline-item">
           <div class="pc-detail-title-row">
             <div>
               <span class="pc-storyline-meta">
@@ -100,9 +102,9 @@
         </article>
       </section>
 
-      <section v-else class="pc-storylines-list">
+      <section v-else class="pc-directory-list pc-storylines-list">
         <EmptyState v-if="!storylines.hooks.length" title="还没有识别到伏笔" />
-        <article v-for="hook in storylines.hooks" v-else :key="hook.id" class="pc-section-card pc-storyline-item">
+        <article v-for="hook in storylines.hooks" v-else :key="hook.id" class="pc-list-row pc-storyline-item">
           <div class="pc-detail-title-row">
             <div>
               <span class="pc-storyline-meta">
@@ -120,16 +122,20 @@
     </section>
 
     <section v-else-if="route.page === 'generate'" class="pc-storylines-page">
-      <article class="pc-editor-card">
+      <article class="pc-storylines-generate-form">
         <div class="pc-section-head">
           <strong>梳理已有剧情</strong>
           <span>{{ selectedReferences.length }} 条引用</span>
         </div>
-        <select v-model="summaryBookId" class="pc-field pc-select" @change="selectSummaryBook">
-          <option v-for="book in summaryBooks" :key="book.id" :value="book.id">
-            {{ book.title }} · {{ book.entries.length }} 篇
-          </option>
-        </select>
+        <SearchableCombobox
+          :model-value="summaryBookId"
+          empty-label="没有匹配的总结集"
+          input-label="选择总结集"
+          :options="summaryBookOptions"
+          placeholder="选择总结集"
+          toggle-title="展开总结集列表"
+          @update:model-value="selectSummaryBookById"
+        />
         <GenerationPanel
           :capture="capturePrompt"
           :error="generationState.error"
@@ -273,6 +279,12 @@ onScopeDispose(() => {
 });
 
 const selectedSummaryBook = computed(() => summary.getBook(summaryBookId.value));
+const summaryBookOptions = computed(() =>
+  summaryBooks.value.map(book => ({
+    label: `${book.title} · ${book.entries.length} 篇`,
+    value: book.id,
+  })),
+);
 const formattedReferences = computed(() => formatGenerationReferences(selectedReferences.value));
 const textProviderSummary = computed(() => formatTextProviderSummary(settings.value.textProvider));
 
@@ -303,6 +315,11 @@ function referencesForBook(bookId: string) {
 
 function selectSummaryBook() {
   selectedReferences.value = referencesForBook(summaryBookId.value);
+}
+
+function selectSummaryBookById(bookId: string) {
+  summaryBookId.value = bookId;
+  selectSummaryBook();
 }
 
 function openGeneration() {
@@ -494,6 +511,19 @@ async function removeHook(hookId: string) {
 .pc-storylines-list {
   display: flex;
   flex-direction: column;
+  gap: 12px;
+}
+
+.pc-storylines-list {
+  gap: 0;
+}
+
+.pc-storyline-item {
+  display: block;
+}
+
+.pc-storylines-generate-form {
+  display: grid;
   gap: 12px;
 }
 

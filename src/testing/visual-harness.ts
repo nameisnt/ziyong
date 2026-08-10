@@ -1434,18 +1434,25 @@ async function applyScenario(name: VisualScenarioName, options: { height?: numbe
     await waitForPaint();
     document.querySelectorAll<HTMLButtonElement>('.pc-entry-library-page .pc-segment-btn')[1]?.click();
     await waitForPaint();
-    const selects = document.querySelectorAll<HTMLSelectElement>('.pc-entry-library-page .pc-select');
-    const sourceSelect = selects[0];
-    const groupSelect = selects[1];
-    sourceSelect.value = '视觉世界书';
-    sourceSelect.dispatchEvent(new Event('change', { bubbles: true }));
+    const collectComboboxes = document.querySelectorAll<HTMLElement>('.pc-entry-library-collect-scroll .pc-combobox');
+    const sourceCombobox = collectComboboxes[0];
+    const groupCombobox = collectComboboxes[1];
+    if (!sourceCombobox || !groupCombobox) throw new Error('Entry library collect selectors are missing');
+    sourceCombobox.querySelector<HTMLInputElement>('.pc-combobox-input')?.click();
     await waitForPaint();
-    const groupNames = [...groupSelect.options]
+    [...sourceCombobox.querySelectorAll<HTMLButtonElement>('.pc-combobox-option')]
+      .find(option => option.textContent?.includes('视觉世界书'))
+      ?.click();
+    await waitForPaint();
+    groupCombobox.querySelector<HTMLInputElement>('.pc-combobox-input')?.click();
+    await waitForPaint();
+    const groupNames = [...groupCombobox.querySelectorAll<HTMLButtonElement>('.pc-combobox-option')]
       .map(option => option.textContent?.trim() ?? '')
       .filter(name => name.startsWith('分组'));
     if (groupNames.join('|') !== '分组 2|分组 10') {
       throw new Error(`Entry library groups are not naturally sorted: ${groupNames.join('|')}`);
     }
+    groupCombobox.querySelector<HTMLButtonElement>('.pc-combobox-toggle')?.click();
     const actionButtons = [...document.querySelectorAll<HTMLButtonElement>('.pc-entry-library-select-actions button')];
     actionButtons.find(button => button.textContent?.trim() === '全选')?.click();
     await waitForPaint();
@@ -1492,10 +1499,13 @@ async function applyScenario(name: VisualScenarioName, options: { height?: numbe
     await waitForPaint();
     document.querySelectorAll<HTMLButtonElement>('.pc-entry-library-page .pc-segment-btn')[1]?.click();
     await waitForPaint();
-    const sourceSelect = document.querySelector<HTMLSelectElement>('.pc-entry-library-collect-scroll .pc-select');
-    if (!sourceSelect) throw new Error('Entry library source selector is missing');
-    sourceSelect.value = '视觉世界书';
-    sourceSelect.dispatchEvent(new Event('change', { bubbles: true }));
+    const sourceCombobox = document.querySelector<HTMLElement>('.pc-entry-library-collect-scroll .pc-combobox');
+    if (!sourceCombobox) throw new Error('Entry library source selector is missing');
+    sourceCombobox.querySelector<HTMLInputElement>('.pc-combobox-input')?.click();
+    await waitForPaint();
+    [...sourceCombobox.querySelectorAll<HTMLButtonElement>('.pc-combobox-option')]
+      .find(option => option.textContent?.includes('视觉世界书'))
+      ?.click();
     await waitForPaint();
     document.querySelector<HTMLInputElement>('.pc-entry-source-row input')?.click();
     await waitForPaint();
@@ -1782,10 +1792,10 @@ async function applyScenario(name: VisualScenarioName, options: { height?: numbe
     });
     resetPhoneToRoute('world-slots', 'root', '世界书槽位');
     await waitForPaint();
-    if (!document.querySelector<HTMLInputElement>('.pc-world-toolbar input[type="search"]')) {
+    if (!document.querySelector<HTMLInputElement>('.pc-world-search-toolbar input[type="search"]')) {
       throw new Error('World slot search field is missing');
     }
-    if (document.querySelector('.pc-world-toolbar select, .pc-world-toolbar .pc-combobox')) {
+    if (document.querySelector('.pc-world-search-toolbar select, .pc-world-search-toolbar .pc-combobox')) {
       throw new Error('Legacy world slot type filter is still visible');
     }
     const slotsApp = document.querySelector<HTMLElement>('.pc-world-slots-app');
@@ -1944,15 +1954,14 @@ async function applyScenario(name: VisualScenarioName, options: { height?: numbe
         `MVU inline edit was not persisted: value=${String(runtimeValue)}, editor=${editorState?.value ?? 'closed'}, tree=${treeText ?? 'missing'}, ${toastText}`,
       );
     }
-    const toolbarButtons = [...document.querySelectorAll<HTMLButtonElement>('.pc-mvu-toolbar button')];
-    toolbarButtons.find(button => button.textContent?.includes('撤销'))?.click();
+    document.querySelector<HTMLButtonElement>('.pc-mvu-undo')?.click();
     const undoPersisted = await waitForVisualCondition(
       () => _.get(Mvu.getMvuData({ type: 'message', message_id: 'latest' }), 'stat_data.世界.当前套餐') === '基础套餐',
     );
     if (!undoPersisted) {
       throw new Error('MVU undo did not restore the previous value');
     }
-    toolbarButtons.find(button => button.textContent?.includes('重做'))?.click();
+    document.querySelector<HTMLButtonElement>('.pc-mvu-redo')?.click();
     const redoPersisted = await waitForVisualCondition(
       () => _.get(Mvu.getMvuData({ type: 'message', message_id: 'latest' }), 'stat_data.世界.当前套餐') === '豪华套餐',
     );
@@ -2026,20 +2035,31 @@ async function applyScenario(name: VisualScenarioName, options: { height?: numbe
     }
     resetPhoneToRoute('entry-library', 'bindings', '分组绑定');
     await waitForPaint();
-    const bindingSelects = document.querySelectorAll<HTMLSelectElement>('.pc-entry-binding-editor select');
-    const presetSelect = bindingSelects[0];
-    const promptSelect = bindingSelects[1];
-    if (!presetSelect || !promptSelect) throw new Error('Entry library binding selectors are missing');
-    presetSelect.value = '视觉预设';
-    presetSelect.dispatchEvent(new Event('change', { bubbles: true }));
+    const bindingComboboxes = document.querySelectorAll<HTMLElement>('.pc-entry-binding-editor .pc-combobox');
+    const presetCombobox = bindingComboboxes[0];
+    const promptCombobox = bindingComboboxes[1];
+    if (!presetCombobox || !promptCombobox) throw new Error('Entry library binding selectors are missing');
+    const selectComboboxOption = async (combobox: HTMLElement, label: string) => {
+      combobox.querySelector<HTMLInputElement>('.pc-combobox-input')?.click();
+      await waitForPaint();
+      const option = [...combobox.querySelectorAll<HTMLButtonElement>('.pc-combobox-option')].find(button =>
+        button.textContent?.includes(label),
+      );
+      if (!option) throw new Error(`Entry library binding option is missing: ${label}`);
+      option.click();
+      await waitForPaint();
+    };
+    await selectComboboxOption(presetCombobox, '视觉预设');
     await waitForPaint();
-    const boundOption = [...promptSelect.options].find(option => option.textContent?.includes('系统提示词'));
+    promptCombobox.querySelector<HTMLInputElement>('.pc-combobox-input')?.click();
+    await waitForPaint();
+    const boundOption = [...promptCombobox.querySelectorAll<HTMLButtonElement>('.pc-combobox-option')].find(option =>
+      option.textContent?.includes('系统提示词'),
+    );
     if (!boundOption?.disabled || !boundOption.textContent?.includes('已绑定')) {
       throw new Error('Already bound preset prompt is not disabled in the entry library binding form');
     }
-    promptSelect.value = 'prompts:1';
-    promptSelect.dispatchEvent(new Event('change', { bubbles: true }));
-    await waitForPaint();
+    await selectComboboxOption(promptCombobox, '文风与人物一致性');
     const templateField = document.querySelector<HTMLTextAreaElement>('.pc-entry-binding-template textarea');
     const originalContent = '保持人物语言与原聊天一致。';
     if (templateField?.value !== originalContent) {
@@ -2120,53 +2140,46 @@ async function applyScenario(name: VisualScenarioName, options: { height?: numbe
     });
     resetPhoneToRoute('entry-library', 'edit', '编辑收藏', { itemId: 'visual-search-item' });
     await waitForPaint();
-    const select = document.querySelector<HTMLSelectElement>('.pc-entry-item-editor select');
-    if (!select) throw new Error('Searchable select fixture is missing its native select');
-    select.dispatchEvent(
-      new PointerEvent('pointerdown', {
-        bubbles: true,
-        cancelable: true,
-        pointerId: 1,
-      }),
-    );
+    const combobox = document.querySelector<HTMLElement>('.pc-entry-item-editor .pc-combobox');
+    if (!combobox) throw new Error('Searchable select fixture is missing its combobox');
+    combobox.querySelector<HTMLInputElement>('.pc-combobox-input')?.click();
     await waitForPaint();
-    const search = document.querySelector<HTMLInputElement>('.pc-native-select-anchor .pc-combobox-input');
-    if (!search) throw new Error('Native select did not open the shared searchable selector');
-    const anchor = document.querySelector<HTMLElement>('.pc-native-select-anchor');
-    const anchorRect = anchor?.getBoundingClientRect();
-    const selectRect = select.getBoundingClientRect();
-    if (
-      !anchorRect ||
-      Math.abs(anchorRect.left - selectRect.left) > 2 ||
-      Math.abs(anchorRect.width - selectRect.width) > 2 ||
-      document.querySelector('.pc-select-overlay-panel')
-    ) {
-      throw new Error('Shared searchable selector was not anchored to its native field');
+    const search = combobox.querySelector<HTMLInputElement>('.pc-combobox-input');
+    if (!search || !combobox.querySelector('.pc-combobox-menu')) {
+      throw new Error('Shared searchable selector did not open in place');
     }
     search.value = '目标';
     search.dispatchEvent(new Event('input', { bubbles: true }));
     await waitForPaint();
-    const matchingOptions = document.querySelectorAll<HTMLButtonElement>(
-      '.pc-native-select-anchor .pc-combobox-option',
-    );
+    const matchingOptions = combobox.querySelectorAll<HTMLButtonElement>('.pc-combobox-option');
     if (matchingOptions.length !== 1 || matchingOptions[0]?.textContent?.trim() !== '目标分组') {
       throw new Error('Shared searchable selector did not filter its options');
     }
     matchingOptions[0]?.click();
     await waitForPaint();
-    if (select.value !== 'visual-search-group-target') {
-      throw new Error('Shared searchable selector did not update the native field value');
+    if (search.value !== '目标分组') {
+      throw new Error('Shared searchable selector did not update the selected value');
     }
-    select.dispatchEvent(
-      new PointerEvent('pointerdown', {
-        bubbles: true,
-        cancelable: true,
-        pointerId: 2,
-      }),
-    );
+    search.click();
     await waitForPaint();
-    if (document.querySelectorAll('.pc-native-select-anchor .pc-combobox-option').length !== 2) {
+    if (combobox.querySelectorAll('.pc-combobox-option').length !== 2) {
       throw new Error('Reopened searchable selector did not restore the full option list');
+    }
+  } else if (['prompts-output-list', 'prompts-phrase-list', 'prompts-template-list'].includes(name)) {
+    const tabByScenario: Record<string, string> = {
+      'prompts-output-list': 'output',
+      'prompts-phrase-list': 'phrase',
+      'prompts-template-list': 'template',
+    };
+    resetPhoneToRoute('prompts', 'root', '提示词');
+    await waitForPaint();
+    document.querySelector<HTMLButtonElement>('.pc-prompts-menu-anchor > .pc-icon-btn')?.click();
+    await waitForPaint();
+    document.querySelector<HTMLButtonElement>(`[data-prompt-tab="${tabByScenario[name]}"]`)?.click();
+    await waitForPaint();
+    const expectedSelector = name === 'prompts-output-list' ? '.pc-output-rule-card' : '.pc-phrase-card';
+    if (!document.querySelector(expectedSelector)) {
+      throw new Error(`${name} did not render its migrated prompt list`);
     }
   } else if (name === 'prompts-app-detail') {
     resetPhoneToRoute('prompts', 'root', '提示词');
@@ -2605,14 +2618,15 @@ async function applyScenario(name: VisualScenarioName, options: { height?: numbe
     const { board, longTypePrompt } = createForumFixture();
     resetPhoneToRoute('forum', 'board', board.name, { boardId: board.id });
     await waitForPaint();
-    const hero = document.querySelector<HTMLElement>('.pc-forum-hero');
-    if (hero?.textContent?.includes(longTypePrompt)) {
+    const toolbar = document.querySelector<HTMLElement>('.pc-forum-board-toolbar');
+    const topTitle = document.querySelector<HTMLElement>('.pc-top-title');
+    if (toolbar?.textContent?.includes(longTypePrompt)) {
       throw new Error('Long forum type prompt leaked into the visible board header');
     }
-    if (!hero?.textContent?.includes(board.name)) {
+    if (topTitle?.textContent?.trim() !== board.name) {
       throw new Error('Forum board header did not preserve the board name');
     }
-    if (hero?.textContent?.includes('视觉自定义类型')) {
+    if (toolbar?.textContent?.includes('视觉自定义类型')) {
       throw new Error('Forum board header still exposes the removed type label');
     }
   } else if (name === 'forum-board-editor') {
@@ -2771,7 +2785,7 @@ async function applyScenario(name: VisualScenarioName, options: { height?: numbe
       throw new Error('Forum rewrite did not restore the current version hidden generation record');
     }
   } else if (name === 'worldbook-link-legacy-entry') {
-    resetPhoneToRoute('worldbook-link', 'detail', '世界书联动', { bookName: '【视觉】旧格式世界书' });
+    resetPhoneToRoute('worldbook-link', 'detail', '【视觉】旧格式世界书', { bookName: '【视觉】旧格式世界书' });
     const loaded = await waitForVisualCondition(() => Boolean(document.querySelector('.pc-worldbook-entry')));
     if (!loaded) throw new Error('Legacy worldbook entry did not load through the raw fallback');
     const toggle = document.querySelector<HTMLInputElement>('.pc-worldbook-entry .pc-toggle input');
@@ -2783,7 +2797,7 @@ async function applyScenario(name: VisualScenarioName, options: { height?: numbe
     });
     if (!toggled) throw new Error('Legacy worldbook enabled/disable fields were not updated together');
   } else if (name === 'worldbook-entry-editor') {
-    resetPhoneToRoute('worldbook-link', 'detail', '世界书联动', { bookName: '【视觉】旧格式世界书' });
+    resetPhoneToRoute('worldbook-link', 'detail', '【视觉】旧格式世界书', { bookName: '【视觉】旧格式世界书' });
     const loaded = await waitForVisualCondition(() => Boolean(document.querySelector('.pc-worldbook-entry-open')));
     if (!loaded) throw new Error('Worldbook entry list did not load');
     document.querySelector<HTMLButtonElement>('.pc-worldbook-entry-open')?.click();
@@ -2858,9 +2872,7 @@ async function applyScenario(name: VisualScenarioName, options: { height?: numbe
     const summaryBook = createSummaryFixture();
     resetPhoneToRoute('summary', 'book', summaryBook.title, { bookId: summaryBook.id });
     await waitForPaint();
-    const summarySortButton = [...document.querySelectorAll<HTMLButtonElement>('.pc-summary-book-toolbar button')].find(
-      button => button.textContent?.trim() === '正序',
-    );
+    const summarySortButton = document.querySelector<HTMLButtonElement>('.pc-summary-book-toolbar .pc-directory-sort');
     summarySortButton?.click();
     await waitForPaint();
     phone.pushPage('root', '总结集');
@@ -2869,9 +2881,8 @@ async function applyScenario(name: VisualScenarioName, options: { height?: numbe
     await waitForPaint();
     if (
       !settings.settings.directorySort.summaryDesc ||
-      ![...document.querySelectorAll<HTMLButtonElement>('.pc-summary-book-toolbar button')].some(
-        button => button.textContent?.trim() === '倒序',
-      )
+      document.querySelector<HTMLButtonElement>('.pc-summary-book-toolbar .pc-directory-sort')?.title !==
+        '当前倒序，切换正序'
     ) {
       throw new Error('Summary directory sort did not survive navigation');
     }
@@ -2879,9 +2890,7 @@ async function applyScenario(name: VisualScenarioName, options: { height?: numbe
     const diaryBook = createDiaryFixture();
     resetPhoneToRoute('diary', 'book', diaryBook.title, { bookId: diaryBook.id });
     await waitForPaint();
-    [...document.querySelectorAll<HTMLButtonElement>('.pc-diary-book-toolbar button')]
-      .find(button => button.textContent?.trim() === '正序')
-      ?.click();
+    document.querySelector<HTMLButtonElement>('.pc-diary-book-toolbar .pc-directory-sort')?.click();
     await waitForPaint();
     phone.pushPage('root', '日记');
     await waitForPaint();
@@ -2889,9 +2898,8 @@ async function applyScenario(name: VisualScenarioName, options: { height?: numbe
     await waitForPaint();
     if (
       !settings.settings.directorySort.diaryDesc ||
-      ![...document.querySelectorAll<HTMLButtonElement>('.pc-diary-book-toolbar button')].some(
-        button => button.textContent?.trim() === '倒序',
-      )
+      document.querySelector<HTMLButtonElement>('.pc-diary-book-toolbar .pc-directory-sort')?.title !==
+        '当前倒序，切换正序'
     ) {
       throw new Error('Diary directory sort did not survive navigation');
     }
@@ -2899,7 +2907,7 @@ async function applyScenario(name: VisualScenarioName, options: { height?: numbe
     const lettersBook = createLettersFixture();
     resetPhoneToRoute('letters', 'book', lettersBook.title, { bookId: lettersBook.id });
     await waitForPaint();
-    document.querySelector<HTMLButtonElement>('.pc-letters-book-filter .pc-soft-btn')?.click();
+    document.querySelector<HTMLButtonElement>('.pc-letters-book-filter .pc-directory-sort')?.click();
     await waitForPaint();
     phone.pushPage('root', '书信');
     await waitForPaint();
@@ -2907,7 +2915,8 @@ async function applyScenario(name: VisualScenarioName, options: { height?: numbe
     await waitForPaint();
     if (
       !settings.settings.directorySort.lettersDesc ||
-      document.querySelector<HTMLButtonElement>('.pc-letters-book-filter .pc-soft-btn')?.textContent?.trim() !== '倒序'
+      document.querySelector<HTMLButtonElement>('.pc-letters-book-filter .pc-directory-sort')?.title !==
+        '当前倒序，切换正序'
     ) {
       throw new Error('Letters directory sort did not survive navigation');
     }
@@ -3589,10 +3598,15 @@ async function applyScenario(name: VisualScenarioName, options: { height?: numbe
     externalOption.click();
     await waitForPaint();
 
-    const presetSelect = document.querySelector<HTMLSelectElement>('.pc-preset-field select');
-    if (!presetSelect) throw new Error('Generation temporary preset selector is missing');
-    presetSelect.value = '视觉预设';
-    presetSelect.dispatchEvent(new Event('change', { bubbles: true }));
+    const presetCombobox = document.querySelector<HTMLElement>('.pc-preset-field .pc-combobox');
+    if (!presetCombobox) throw new Error('Generation temporary preset selector is missing');
+    presetCombobox.querySelector<HTMLButtonElement>('.pc-combobox-toggle')?.click();
+    await waitForPaint();
+    const presetOption = [...presetCombobox.querySelectorAll<HTMLButtonElement>('.pc-combobox-option')].find(option =>
+      option.textContent?.includes('视觉预设'),
+    );
+    if (!presetOption) throw new Error('Generation temporary preset option is missing');
+    presetOption.click();
     await waitForPaint();
 
     const override = useGenerationOverrideStore().getOverride('summary', 'generate');
@@ -4032,7 +4046,7 @@ async function applyScenario(name: VisualScenarioName, options: { height?: numbe
     );
     resetPhoneToRoute('theater', 'history', '小剧场记录');
     await waitForPaint();
-    document.querySelector<HTMLButtonElement>('.pc-theater-filter-control .pc-soft-btn')?.click();
+    document.querySelector<HTMLButtonElement>('.pc-theater-filter-toggle')?.click();
     await waitForPaint();
     const tagList = document.querySelector<HTMLElement>('.pc-history-tag-list');
     if (!tagList || tagList.scrollHeight <= tagList.clientHeight) {

@@ -1,13 +1,9 @@
 <template>
   <section class="pc-content-converter">
     <template v-if="step === 'source'">
-      <article class="pc-editor-card pc-converter-source-panel">
-        <header class="pc-converter-heading">
-          <div>
-            <span class="pc-kicker">{{ t`内容来源` }}</span>
-            <h2>{{ t`选择要转换的内容` }}</h2>
-          </div>
-          <strong>{{ `${selectedIds.length} 条` }}</strong>
+      <article class="pc-converter-source-panel">
+        <header class="pc-directory-toolbar pc-converter-heading">
+          <span class="pc-directory-count">{{ `${selectedIds.length} 条已选` }}</span>
         </header>
 
         <div class="pc-field-group">
@@ -16,9 +12,9 @@
         </div>
 
         <template v-if="activeRegistration">
-          <label class="pc-converter-search">
+          <label class="pc-search-field pc-converter-search">
             <i class="fa-solid fa-magnifying-glass"></i>
-            <input v-model="query" class="pc-field" type="search" :placeholder="t`搜索标题、来源或内容`" />
+            <input v-model="query" type="search" :placeholder="t`搜索标题、来源或内容`" />
           </label>
 
           <div class="pc-converter-selection-bar">
@@ -30,15 +26,11 @@
             </div>
           </div>
 
-          <div v-if="filteredSources.length" class="pc-converter-source-list">
+          <div v-if="filteredSources.length" class="pc-directory-list pc-converter-source-list">
             <label
               v-for="source in filteredSources"
               :key="source.entryId"
-              :class="[
-                'pc-section-card',
-                'pc-converter-source-row',
-                { selected: selectedIds.includes(source.entryId) },
-              ]"
+              :class="['pc-list-row', 'pc-converter-source-row', { selected: selectedIds.includes(source.entryId) }]"
             >
               <input
                 type="checkbox"
@@ -61,7 +53,7 @@
             </button>
           </div>
 
-          <details v-if="history.records.length" class="pc-section-card pc-converter-history">
+          <details v-if="history.records.length" class="pc-page-section pc-converter-history">
             <summary>
               <span>{{ t`最近转换` }}</span>
               <small>{{ `${history.records.length} 条` }}</small>
@@ -248,34 +240,10 @@ function recordConversion(payload: {
   gap: 10px;
 }
 
-.pc-converter-heading h2 {
-  margin: 2px 0 0;
-  font-size: 20px;
-}
-
-.pc-converter-heading > strong,
 .pc-converter-selection-bar,
 .pc-converter-source-copy small,
 .pc-converter-source-copy p {
   color: var(--pc-muted);
-}
-
-.pc-converter-search {
-  position: relative;
-  display: block;
-}
-
-.pc-converter-search i {
-  position: absolute;
-  z-index: 1;
-  top: 50%;
-  left: 14px;
-  color: var(--pc-muted);
-  transform: translateY(-50%);
-}
-
-.pc-converter-search .pc-field {
-  padding-left: 40px;
 }
 
 .pc-converter-selection-bar {
@@ -284,8 +252,7 @@ function recordConversion(payload: {
 }
 
 .pc-converter-source-list {
-  display: grid;
-  gap: 10px;
+  min-height: 0;
 }
 
 .pc-converter-source-row {
@@ -294,13 +261,11 @@ function recordConversion(payload: {
   grid-template-columns: 22px minmax(0, 1fr);
   align-items: center;
   gap: 10px;
-  padding: 12px;
   cursor: pointer;
 }
 
 .pc-converter-source-row.selected {
-  border-color: var(--pc-theme-accent);
-  background: color-mix(in srgb, var(--pc-theme-accent) 8%, var(--pc-surface));
+  color: var(--pc-theme-accent);
 }
 
 .pc-converter-source-row input {

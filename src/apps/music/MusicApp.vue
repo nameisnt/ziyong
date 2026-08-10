@@ -1,14 +1,10 @@
 <template>
   <section class="pc-music-app">
     <section class="pc-music-page">
-      <div class="pc-music-hero">
-        <div>
-          <span class="pc-kicker">{{ t`音乐` }}</span>
-          <h2>{{ audioEntries.length }} {{ t`首音频` }}</h2>
-        </div>
-        <button class="pc-primary-btn compact" type="button" @click="openEditor()">
+      <div v-if="route.page === 'root'" class="pc-compact-toolbar pc-directory-toolbar pc-music-toolbar">
+        <span class="pc-directory-count">{{ audioEntries.length }} {{ t`首音频` }}</span>
+        <button class="pc-icon-btn primary" type="button" :title="t`新增音乐`" @click="openEditor()">
           <i class="fa-solid fa-plus"></i>
-          <span>{{ t`新增` }}</span>
         </button>
       </div>
 
@@ -59,11 +55,11 @@
           </div>
         </article>
 
-        <div v-if="audioEntries.length" class="pc-playlist">
+        <div v-if="audioEntries.length" class="pc-directory-list pc-playlist">
           <article
             v-for="entry in audioEntries"
             :key="entry.id"
-            :class="['pc-track-row', { active: activeAudioId === entry.id }]"
+            :class="['pc-list-row', 'pc-track-row', { active: activeAudioId === entry.id }]"
           >
             <button
               class="pc-icon-btn"
@@ -92,9 +88,7 @@
         <EmptyState v-else :title="t`还没有音乐`" />
       </template>
 
-      <article v-else-if="route.page === 'editor'" class="pc-editor-card">
-        <span class="pc-kicker">{{ editingEntry ? t`编辑音乐` : t`新增音乐` }}</span>
-        <h2>{{ editingEntry?.title || t`音乐条目` }}</h2>
+      <article v-else-if="route.page === 'editor'" class="pc-music-editor">
         <input v-model="draft.title" class="pc-field" type="text" :placeholder="t`标题`" />
         <input v-model="draft.url" class="pc-field" type="text" :placeholder="t`音频 URL 或上传后的 data 地址`" />
         <input class="pc-field" type="file" accept="audio/*" @change="loadFile" />
@@ -302,22 +296,6 @@ async function deleteEntry(entry: MediaEntry) {
   gap: 14px;
 }
 
-.pc-music-hero {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  padding: 16px;
-  border: 1px solid var(--pc-border);
-  border-radius: var(--pc-card-radius);
-  background: var(--pc-surface);
-}
-
-.pc-music-hero h2 {
-  margin: 4px 0 0;
-  font-size: 20px;
-}
-
 .pc-now-playing {
   gap: 14px;
 }
@@ -365,23 +343,15 @@ async function deleteEntry(entry: MediaEntry) {
 }
 
 .pc-playlist {
-  display: grid;
-  gap: 8px;
+  min-height: 0;
 }
 
 .pc-track-row {
-  display: grid;
   grid-template-columns: 40px minmax(0, 1fr) 40px;
-  gap: 10px;
-  align-items: center;
-  padding: 10px;
-  border: 1px solid var(--pc-border);
-  border-radius: var(--pc-card-radius);
-  background: var(--pc-surface);
 }
 
 .pc-track-row.active {
-  border-color: color-mix(in srgb, var(--pc-theme-accent) 46%, var(--pc-border) 54%);
+  color: var(--pc-theme-accent);
 }
 
 .pc-track-main {
@@ -410,5 +380,10 @@ async function deleteEntry(entry: MediaEntry) {
 
 .pc-lyrics-area {
   min-height: 180px;
+}
+
+.pc-music-editor {
+  display: grid;
+  gap: 12px;
 }
 </style>

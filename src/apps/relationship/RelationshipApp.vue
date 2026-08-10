@@ -1,26 +1,25 @@
 <template>
   <section class="pc-relationship-app">
     <section v-if="route.page === 'root'" class="pc-relationship-page">
-      <div class="pc-relationship-hero">
-        <div>
-          <span class="pc-kicker">{{ t`关系网` }}</span>
-          <h2>{{ characters.length }} {{ t`人物` }} · {{ links.length }} {{ t`关系` }}</h2>
-        </div>
-        <button class="pc-primary-btn" type="button" @click="openGenerate">
+      <div class="pc-compact-toolbar pc-directory-toolbar pc-relationship-toolbar">
+        <span class="pc-directory-count">{{ characters.length }} {{ t`人物` }} · {{ links.length }} {{ t`关系` }}</span>
+        <button class="pc-icon-btn primary" type="button" :title="t`AI 识别关系`" @click="openGenerate">
           <i class="fa-solid fa-wand-magic-sparkles"></i>
-          <span>{{ t`AI` }}</span>
         </button>
       </div>
 
       <article class="pc-graph-card">
-        <EmptyState v-if="!characters.length" :title="t`还没有人物`" />
+        <EmptyState v-if="!characters.length" compact :title="t`还没有人物`" />
         <template v-else>
           <div class="pc-relationship-viewbar">
-            <select v-model="perspectiveCharacterId" class="pc-field">
-              <option v-for="character in characters" :key="character.id" :value="character.id">
-                {{ character.name }}
-              </option>
-            </select>
+            <SearchableCombobox
+              v-model="perspectiveCharacterId"
+              :empty-label="t`没有匹配的人物`"
+              :input-label="t`选择关系视角人物`"
+              :options="characterOptions"
+              :placeholder="t`选择人物`"
+              :toggle-title="t`展开人物列表`"
+            />
             <div class="pc-view-segment">
               <button
                 :class="['pc-view-btn', { active: relationViewMode === 'all' }]"
@@ -92,7 +91,7 @@
         </template>
       </article>
 
-      <article class="pc-editor-card">
+      <article class="pc-page-section pc-relationship-editor-section">
         <button class="pc-section-toggle" type="button" @click="charactersExpanded = !charactersExpanded">
           <strong>{{ t`人物` }}</strong>
           <span class="pc-section-meta">
@@ -163,7 +162,7 @@
         </div>
       </article>
 
-      <article class="pc-editor-card">
+      <article class="pc-page-section pc-relationship-editor-section">
         <button class="pc-section-toggle" type="button" @click="linksExpanded = !linksExpanded">
           <strong>{{ t`单向关系` }}</strong>
           <span class="pc-section-meta">
@@ -173,19 +172,23 @@
         </button>
         <div v-if="linksExpanded">
           <div class="pc-relation-form">
-            <select v-model="linkDraft.fromId" class="pc-field">
-              <option value="">{{ t`谁` }}</option>
-              <option v-for="character in characters" :key="character.id" :value="character.id">
-                {{ character.name }}
-              </option>
-            </select>
+            <SearchableCombobox
+              v-model="linkDraft.fromId"
+              :empty-label="t`没有匹配的人物`"
+              :input-label="t`选择关系起点人物`"
+              :options="characterOptions"
+              :placeholder="t`谁`"
+              :toggle-title="t`展开人物列表`"
+            />
             <span class="pc-relation-word">{{ t`是` }}</span>
-            <select v-model="linkDraft.toId" class="pc-field">
-              <option value="">{{ t`谁的` }}</option>
-              <option v-for="character in characters" :key="character.id" :value="character.id">
-                {{ character.name }}
-              </option>
-            </select>
+            <SearchableCombobox
+              v-model="linkDraft.toId"
+              :empty-label="t`没有匹配的人物`"
+              :input-label="t`选择关系目标人物`"
+              :options="characterOptions"
+              :placeholder="t`谁的`"
+              :toggle-title="t`展开人物列表`"
+            />
             <input
               v-model="linkDraft.label"
               class="pc-field"
@@ -199,12 +202,14 @@
           </div>
 
           <div v-if="links.length" class="pc-list-filter">
-            <select v-model="linkFilterCharacterId" class="pc-field">
-              <option value="">{{ t`全部人物` }}</option>
-              <option v-for="character in characters" :key="character.id" :value="character.id">
-                {{ character.name }}
-              </option>
-            </select>
+            <SearchableCombobox
+              v-model="linkFilterCharacterId"
+              :empty-label="t`没有匹配的人物`"
+              :input-label="t`筛选人物`"
+              :options="characterFilterOptions"
+              :placeholder="t`全部人物`"
+              :toggle-title="t`展开人物列表`"
+            />
             <div class="pc-view-segment compact">
               <button
                 :class="['pc-view-btn', { active: linkFilterMode === 'all' }]"
@@ -232,25 +237,23 @@
 
           <div v-if="filteredLinks.length" class="pc-compact-list">
             <article v-for="link in filteredLinks" :key="link.id" class="pc-relation-row">
-              <select
-                class="pc-field"
-                :value="link.fromId"
-                @change="relationship.updateLink(link.id, { fromId: ($event.target as HTMLSelectElement).value })"
-              >
-                <option v-for="character in characters" :key="character.id" :value="character.id">
-                  {{ character.name }}
-                </option>
-              </select>
+              <SearchableCombobox
+                :empty-label="t`没有匹配的人物`"
+                :input-label="t`修改关系起点人物`"
+                :model-value="link.fromId"
+                :options="characterOptions"
+                :toggle-title="t`展开人物列表`"
+                @update:model-value="relationship.updateLink(link.id, { fromId: $event })"
+              />
               <span class="pc-relation-word">{{ t`是` }}</span>
-              <select
-                class="pc-field"
-                :value="link.toId"
-                @change="relationship.updateLink(link.id, { toId: ($event.target as HTMLSelectElement).value })"
-              >
-                <option v-for="character in characters" :key="character.id" :value="character.id">
-                  {{ character.name }}
-                </option>
-              </select>
+              <SearchableCombobox
+                :empty-label="t`没有匹配的人物`"
+                :input-label="t`修改关系目标人物`"
+                :model-value="link.toId"
+                :options="characterOptions"
+                :toggle-title="t`展开人物列表`"
+                @update:model-value="relationship.updateLink(link.id, { toId: $event })"
+              />
               <input
                 class="pc-field"
                 type="text"
@@ -287,9 +290,7 @@
     </section>
 
     <section v-else-if="route.page === 'generate'" class="pc-relationship-page">
-      <article class="pc-editor-card">
-        <span class="pc-kicker">{{ t`AI 关系识别` }}</span>
-        <h2>{{ t`读取上下文生成当前关系` }}</h2>
+      <article class="pc-relationship-generate-form">
         <input
           v-model="generationDraft.characterNames"
           class="pc-field"
@@ -362,9 +363,7 @@
     </section>
 
     <section v-else-if="route.page === 'failed-draft' && activeFailedDraft" class="pc-relationship-page pc-repair-page">
-      <article class="pc-editor-card pc-repair-card">
-        <span class="pc-kicker">{{ activeFailedDraft.source.label }}</span>
-        <h2>{{ t`修复解析失败草稿` }}</h2>
+      <article class="pc-repair-card">
         <div v-if="activeFailedDraft.warnings.length" class="pc-status-card warning">
           <strong>{{ t`上次解析提示` }}</strong>
           <p>{{ activeFailedDraft.warnings.join('；') }}</p>
@@ -485,6 +484,13 @@ const {
 });
 
 const characterById = computed(() => new Map(characters.value.map(character => [character.id, character])));
+const characterOptions = computed(() =>
+  characters.value.map(character => ({ label: character.name, value: character.id })),
+);
+const characterFilterOptions = computed(() => [
+  { label: '全部人物', value: '' },
+  ...characterOptions.value,
+]);
 const activeFailedDraft = computed(() =>
   route.value.params?.draftId ? relationship.getFailedDraft(route.value.params.draftId) : null,
 );
@@ -951,17 +957,15 @@ function stopGeneration() {
   gap: 14px;
 }
 
-.pc-relationship-hero,
 .pc-graph-card,
 .pc-detail-card {
   border: 1px solid var(--pc-border);
-  border-radius: 20px;
+  border-radius: var(--pc-card-radius);
   background: color-mix(in srgb, var(--pc-surface) 72%, transparent 28%);
   backdrop-filter: blur(12px);
   padding: 14px;
 }
 
-.pc-relationship-hero,
 .pc-form-actions,
 .pc-inline-form,
 .pc-compact-row,
@@ -972,9 +976,7 @@ function stopGeneration() {
   gap: 10px;
 }
 
-.pc-relationship-hero h2,
-.pc-detail-card h2,
-.pc-editor-card h2 {
+.pc-detail-card h2 {
   margin: 0;
   font-size: 20px;
   line-height: 1.25;
@@ -991,7 +993,8 @@ function stopGeneration() {
   align-items: center;
 }
 
-.pc-relationship-viewbar .pc-field {
+.pc-relationship-viewbar .pc-field,
+.pc-relationship-viewbar .pc-combobox {
   min-width: 0;
 }
 
@@ -1104,7 +1107,7 @@ function stopGeneration() {
   display: block;
   width: 100%;
   aspect-ratio: 16 / 13;
-  border-radius: 16px;
+  border-radius: min(var(--pc-card-radius), 8px);
   background: color-mix(in srgb, var(--pc-surface-strong) 72%, transparent 28%);
   touch-action: none;
 }
@@ -1158,8 +1161,9 @@ function stopGeneration() {
   text-anchor: middle;
 }
 
-.pc-editor-card > .pc-field {
-  margin-top: 12px;
+.pc-relationship-generate-form {
+  display: grid;
+  gap: 12px;
 }
 
 .pc-raw-output .pc-area {
@@ -1199,7 +1203,7 @@ function stopGeneration() {
   gap: 10px;
 }
 
-.pc-relation-form input {
+.pc-relation-form > input {
   grid-column: 1 / 3;
 }
 
@@ -1236,7 +1240,7 @@ function stopGeneration() {
 .pc-preview-box,
 .pc-status-card {
   border: 1px solid var(--pc-border);
-  border-radius: 18px;
+  border-radius: min(var(--pc-card-radius), 8px);
   background: var(--pc-surface-strong);
   padding: 14px;
 }

@@ -1,10 +1,10 @@
 <template>
   <div class="pc-settings-panel-stack">
-    <section class="pc-settings-card">
+    <section class="pc-page-section">
       <div class="pc-row pc-row-top">
         <div>
           <strong>当前聊天数据</strong>
-          <p>{{ `${currentChatLabel}。可导出或导入当前聊天 / 全部数据。` }}</p>
+          <span class="pc-context-meta">{{ currentChatLabel }}</span>
         </div>
         <span class="pc-tag">{{ formatSize(approxBytes) }}</span>
       </div>
@@ -18,17 +18,17 @@
         </article>
       </div>
       <div class="pc-action-grid">
-        <button class="pc-soft-btn compact" type="button" @click="downloadBackup">
-          <i class="fa-solid fa-file-export"></i><span>导出全部</span>
+        <button class="pc-icon-btn" type="button" title="导出全部数据" @click="downloadBackup">
+          <i class="fa-solid fa-file-export"></i>
         </button>
-        <button class="pc-soft-btn compact" type="button" @click="downloadCurrentBackup">
-          <i class="fa-solid fa-file-arrow-up"></i><span>导出当前</span>
+        <button class="pc-icon-btn" type="button" title="导出当前聊天数据" @click="downloadCurrentBackup">
+          <i class="fa-solid fa-file-arrow-up"></i>
         </button>
-        <button class="pc-soft-btn compact" type="button" @click="openBackupImport('scope')">
-          <i class="fa-solid fa-file-import"></i><span>导入当前</span>
+        <button class="pc-icon-btn" type="button" title="导入到当前聊天" @click="openBackupImport('scope')">
+          <i class="fa-solid fa-file-import"></i>
         </button>
-        <button class="pc-soft-btn compact" type="button" @click="openBackupImport('full')">
-          <i class="fa-solid fa-rotate-left"></i><span>导入全部</span>
+        <button class="pc-icon-btn" type="button" title="完整恢复全部数据" @click="openBackupImport('full')">
+          <i class="fa-solid fa-rotate-left"></i>
         </button>
       </div>
       <input
@@ -40,14 +40,14 @@
       />
     </section>
 
-    <section class="pc-settings-card">
+    <section class="pc-page-section">
       <div class="pc-row pc-row-top">
         <div>
           <strong>壁纸</strong>
-          <p>{{ `${wallpaperSummary}。支持 PNG / JPEG / WebP / GIF。` }}</p>
+          <span class="pc-context-meta">{{ wallpaperSummary }}</span>
         </div>
-        <button class="pc-soft-btn compact" type="button" @click="settingsStore.clearWallpaperSelection()">
-          <i class="fa-solid fa-ban"></i><span>关闭</span>
+        <button class="pc-icon-btn" type="button" title="关闭壁纸" @click="settingsStore.clearWallpaperSelection()">
+          <i class="fa-solid fa-ban"></i>
         </button>
       </div>
       <div class="pc-asset-field">
@@ -111,26 +111,16 @@
       />
     </section>
 
-    <section class="pc-settings-card">
+    <section class="pc-page-section">
       <div class="pc-row pc-row-top">
-        <div>
-          <strong>字体</strong>
-          <p>支持 TTF / OTF / WOFF / WOFF2。</p>
-        </div>
-        <button class="pc-soft-btn compact" type="button" @click="settingsStore.resetFontFamily()">
-          <i class="fa-solid fa-rotate-left"></i><span>默认</span>
-        </button>
+        <strong>字体资源</strong>
       </div>
       <div class="pc-asset-field">
-        <select :value="fontSelectionValue" class="pc-select" @change="onFontSelect">
-          <option v-for="option in builtinFontOptions" :key="option.value" :value="option.value">
-            {{ option.label }}
+        <select :value="fontAssetSelectionValue" class="pc-select" @change="onFontAssetSelect">
+          <option value="">{{ settings.customFont.fonts.length ? '选择已导入字体' : '尚未导入字体' }}</option>
+          <option v-for="font in settings.customFont.fonts" :key="font.id" :value="font.id">
+            {{ font.name }}
           </option>
-          <optgroup v-if="settings.customFont.fonts.length" label="自定义字体">
-            <option v-for="font in settings.customFont.fonts" :key="font.id" :value="`custom:${font.id}`">
-              {{ font.name }}
-            </option>
-          </optgroup>
         </select>
         <div class="pc-asset-actions">
           <button class="pc-icon-btn" type="button" title="导入字体" @click="fontInputEl?.click()">
@@ -257,13 +247,6 @@ const approxBytes = computed(
       ),
     ]).size,
 );
-const builtinFontOptions = [
-  { label: '系统默认', value: '' },
-  { label: '思源黑体 / Noto Sans SC', value: 'Noto Sans SC, Microsoft YaHei, sans-serif' },
-  { label: '宋体阅读', value: 'SimSun, Songti SC, serif' },
-  { label: '楷体阅读', value: 'KaiTi, STKaiti, serif' },
-  { label: '等宽字体', value: 'SFMono-Regular, Consolas, Liberation Mono, monospace' },
-];
 const selectedCustomWallpaper = computed(() =>
   settings.value.wallpaper.mode === 'custom'
     ? (settings.value.wallpaper.customWallpapers.find(item => item.id === settings.value.wallpaper.selectedCustomId) ??
@@ -280,17 +263,9 @@ const wallpaperSelectionValue = computed(() =>
       : 'none',
 );
 const selectedCustomFont = computed(
-  () =>
-    settings.value.customFont.fonts.find(
-      item => settings.value.fontFamily === settingsStore.getCustomFontFamily(item.id),
-    ) ??
-    (settings.value.fontFamily.startsWith('TavernPhoneImportedFont')
-      ? (settings.value.customFont.fonts.find(item => item.id === settings.value.customFont.selectedFontId) ?? null)
-      : null),
+  () => settings.value.customFont.fonts.find(item => item.id === settings.value.customFont.selectedFontId) ?? null,
 );
-const fontSelectionValue = computed(() =>
-  selectedCustomFont.value ? `custom:${selectedCustomFont.value.id}` : settings.value.fontFamily,
-);
+const fontAssetSelectionValue = computed(() => selectedCustomFont.value?.id ?? '');
 const wallpaperSummary = computed(() =>
   settings.value.wallpaper.mode === 'custom'
     ? `自定义壁纸${selectedCustomWallpaper.value?.name.trim() ? ` · ${selectedCustomWallpaper.value.name}` : ''}`
@@ -310,10 +285,8 @@ function formatScopeOwner(ownerId: string) {
   const name = character && typeof character === 'object' ? (character as Record<string, unknown>).name : null;
   return typeof name === 'string' && name.trim() ? name.trim() : ownerId;
 }
-function onFontSelect(event: Event) {
-  const value = (event.target as HTMLSelectElement).value;
-  if (value.startsWith('custom:')) settingsStore.selectCustomFont(value.slice(7));
-  else settingsStore.setFontFamily(value);
+function onFontAssetSelect(event: Event) {
+  settingsStore.selectCustomFontAsset((event.target as HTMLSelectElement).value);
 }
 async function onWallpaperSelect(event: Event) {
   const value = (event.target as HTMLSelectElement).value;
@@ -510,16 +483,7 @@ async function onBackupSelected(event: Event) {
 <style scoped>
 .pc-settings-panel-stack {
   display: grid;
-  gap: 14px;
-}
-.pc-settings-card {
-  display: flex;
-  flex-direction: column;
-  gap: 14px;
-  border: 1px solid var(--pc-border);
-  border-radius: var(--pc-card-radius);
-  padding: 16px;
-  background: color-mix(in srgb, var(--pc-surface) 82%, transparent 18%);
+  gap: 0;
 }
 .pc-row {
   display: flex;
@@ -533,7 +497,8 @@ async function onBackupSelected(event: Event) {
 .pc-row > div {
   min-width: 0;
 }
-.pc-row p {
+.pc-context-meta {
+  display: block;
   margin: 4px 0 0;
   color: var(--pc-muted);
   font-size: 12px;
@@ -567,7 +532,8 @@ async function onBackupSelected(event: Event) {
 }
 .pc-action-grid {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-columns: repeat(4, 40px);
+  justify-content: end;
   gap: 8px;
 }
 .pc-asset-field {
@@ -578,7 +544,7 @@ async function onBackupSelected(event: Event) {
 }
 .pc-asset-actions {
   display: grid;
-  grid-template-columns: repeat(4, 36px);
+  grid-template-columns: repeat(4, 40px);
   gap: 6px;
 }
 .pc-tag {

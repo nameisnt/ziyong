@@ -24,34 +24,31 @@
         </button>
       </div>
 
-      <section class="pc-section-card pc-theme-preview-card">
-        <div class="pc-theme-preview" :style="previewStyle">
-          <div class="pc-preview-status">
-            <strong>10:08</strong>
-            <span>{{ settings.theme === 'light' ? t`日间方案` : t`夜间方案` }}</span>
-          </div>
-          <div class="pc-preview-copy">
-            <strong>{{ t`主题预览` }}</strong>
-            <span>{{ activePresetLabel }}</span>
-          </div>
-          <div class="pc-preview-icons">
-            <span
-              v-for="app in previewApps"
-              :key="app.id"
-              class="pc-preview-app-icon"
-              :style="getAppPreviewStyle(app)"
-              :title="app.name"
-            >
-              <i class="fa-solid" :class="getAppIcon(app)"></i>
-            </span>
-          </div>
+      <section class="pc-theme-preview" :style="previewStyle">
+        <div class="pc-preview-status">
+          <strong>10:08</strong>
+          <span>{{ settings.theme === 'light' ? t`日间方案` : t`夜间方案` }}</span>
+        </div>
+        <div class="pc-preview-copy">
+          <strong>{{ t`主题预览` }}</strong>
+          <span>{{ activePresetLabel }}</span>
+        </div>
+        <div class="pc-preview-icons">
+          <span
+            v-for="app in previewApps"
+            :key="app.id"
+            class="pc-preview-app-icon"
+            :style="getAppPreviewStyle(app)"
+            :title="app.name"
+          >
+            <i class="fa-solid" :class="getAppIcon(app)"></i>
+          </span>
         </div>
       </section>
 
-      <section class="pc-theme-packs">
+      <section class="pc-theme-packs pc-page-section">
         <div class="pc-section-head">
-          <strong>{{ t`内置主题包` }}</strong>
-          <span>{{ t`同时应用日间与夜间` }}</span>
+          <strong>{{ t`内置主题包` }}<InfoHint text="主题包会同时设置日间与夜间方案。" /></strong>
         </div>
         <div class="pc-theme-pack-grid">
           <button
@@ -73,16 +70,14 @@
             </span>
             <span class="pc-theme-pack-copy">
               <strong>{{ pack.name }}</strong>
-              <small>{{ pack.description }}</small>
             </span>
           </button>
         </div>
       </section>
 
-      <section class="pc-theme-presets">
+      <section class="pc-theme-presets pc-page-section">
         <div class="pc-section-head">
           <strong>{{ t`单个方案` }}</strong>
-          <span>{{ settings.theme === 'light' ? t`仅修改日间` : t`仅修改夜间` }}</span>
         </div>
         <div class="pc-preset-grid">
           <button
@@ -106,7 +101,7 @@
         </div>
       </section>
 
-      <button class="pc-section-card pc-theme-entry" type="button" @click="openView('icons')">
+      <button class="pc-list-row pc-theme-entry" type="button" @click="openView('icons')">
         <span class="pc-entry-icon-stack" aria-hidden="true">
           <i
             v-for="app in previewApps.slice(0, 4)"
@@ -125,7 +120,7 @@
         <i class="fa-solid fa-chevron-right pc-entry-chevron"></i>
       </button>
 
-      <button class="pc-section-card pc-theme-entry" type="button" @click="openView('advanced')">
+      <button class="pc-list-row pc-theme-entry" type="button" @click="openView('advanced')">
         <span class="pc-entry-symbol"><i class="fa-solid fa-sliders"></i></span>
         <span class="pc-entry-copy">
           <strong>{{ t`高级外观` }}</strong>
@@ -146,10 +141,9 @@
         </div>
       </div>
 
-      <section class="pc-section-card">
+      <section class="pc-page-section">
         <div class="pc-section-head">
-          <strong>{{ t`内置图标包` }}</strong>
-          <span>{{ t`日间与夜间同步` }}</span>
+          <strong>{{ t`内置图标包` }}<InfoHint text="图标包会同步应用到日间与夜间方案。" /></strong>
         </div>
         <div class="pc-icon-pack-grid">
           <button
@@ -170,10 +164,9 @@
         </div>
       </section>
 
-      <section class="pc-section-card">
+      <section class="pc-page-section">
         <div class="pc-section-head">
           <strong>{{ t`整套风格` }}</strong>
-          <span>{{ t`统一调整所有 App` }}</span>
         </div>
         <div class="pc-icon-style-grid">
           <button
@@ -193,7 +186,7 @@
         </div>
       </section>
 
-      <section class="pc-section-card">
+      <section class="pc-page-section">
         <div class="pc-section-head">
           <strong>{{ t`单独调整` }}</strong>
           <span>{{ selectedApp ? selectedApp.name : t`选择一个 App` }}</span>
@@ -262,10 +255,9 @@
         </div>
       </section>
 
-      <section class="pc-section-card">
+      <section class="pc-page-section">
         <div class="pc-section-head">
-          <strong>{{ t`图标包` }}</strong>
-          <span>{{ t`JSON 批量覆盖` }}</span>
+          <strong>{{ t`图标包` }}<InfoHint text="导入 JSON 文件可批量覆盖 App 图标。" /></strong>
         </div>
         <button class="pc-soft-btn" type="button" @click="iconInputEl?.click()">
           <i class="fa-solid fa-file-import"></i>
@@ -285,10 +277,9 @@
         </div>
       </div>
 
-      <section class="pc-section-card">
+      <section class="pc-page-section">
         <div class="pc-section-head">
           <strong>{{ t`颜色` }}</strong>
-          <span>{{ t`当前方案独立保存` }}</span>
         </div>
         <label v-for="control in colorControls" :key="control.key" class="pc-color-row">
           <span>
@@ -303,10 +294,9 @@
         </label>
       </section>
 
-      <section class="pc-section-card">
+      <section class="pc-page-section">
         <div class="pc-section-head">
           <strong>{{ t`圆角` }}</strong>
-          <span>{{ t`卡片、控件与图标` }}</span>
         </div>
         <div v-for="control in radiusControls" :key="control.key" class="pc-control-row">
           <div>
@@ -324,10 +314,12 @@
         </div>
       </section>
 
-      <section class="pc-section-card">
+      <section class="pc-page-section">
         <div class="pc-section-head">
           <strong>{{ t`字体与背景` }}</strong>
-          <span>{{ t`两个模式可分别选择` }}</span>
+          <button class="pc-icon-btn" type="button" :title="t`导入字体`" @click="fontInputEl?.click()">
+            <i class="fa-solid fa-file-import"></i>
+          </button>
         </div>
         <label class="pc-select-field">
           <span class="pc-field-label">{{ t`壁纸` }}</span>
@@ -376,10 +368,9 @@
         </label>
       </section>
 
-      <section class="pc-section-card">
+      <section class="pc-page-section">
         <div class="pc-section-head">
           <strong>{{ t`导入与导出` }}</strong>
-          <span>{{ t`仅当前日间或夜间方案` }}</span>
         </div>
         <div class="pc-action-grid">
           <button class="pc-soft-btn" type="button" @click="exportTheme">
@@ -412,10 +403,18 @@
       accept="application/json,.json"
       @change="onThemeSelected"
     />
+    <input
+      ref="fontInputEl"
+      class="pc-hidden-input"
+      type="file"
+      accept=".ttf,.otf,.woff,.woff2,font/ttf,font/otf,font/woff,font/woff2"
+      @change="onThemeFontSelected"
+    />
   </section>
 </template>
 
 <script setup lang="ts">
+import InfoHint from '@/components/InfoHint.vue';
 import { getPhoneApps, type PhoneAppDefinition } from '@/data/apps';
 import { WALLPAPER_PRESETS, getWallpaperPreset } from '@/data/wallpapers';
 import { usePhoneStore } from '@/store/phone';
@@ -716,6 +715,7 @@ const view = ref<ThemeView>('root');
 const selectedAppId = ref('');
 const themeInputEl = ref<HTMLInputElement | null>(null);
 const iconInputEl = ref<HTMLInputElement | null>(null);
+const fontInputEl = ref<HTMLInputElement | null>(null);
 
 const fontOptions = [
   { label: '系统默认', value: '' },
@@ -1179,6 +1179,20 @@ function onReaderFontSelect(event: Event) {
   else settingsStore.setReaderFontFamily(value);
 }
 
+async function onThemeFontSelected(event: Event) {
+  const input = event.target as HTMLInputElement;
+  const file = input.files?.[0];
+  input.value = '';
+  if (!file) return;
+  try {
+    const font = await settingsStore.uploadCustomFont(file);
+    settingsStore.selectCustomFont(font.id);
+    toastr.success(`已导入并使用字体：${font.name}`);
+  } catch (caughtError) {
+    toastr.error(caughtError instanceof Error ? caughtError.message : '导入字体失败');
+  }
+}
+
 async function onWallpaperSelect(event: Event) {
   const value = (event.target as HTMLSelectElement).value;
   if (value === 'none') await settingsStore.clearWallpaperSelection();
@@ -1298,7 +1312,7 @@ async function onThemeSelected(event: Event) {
 .pc-theme-app {
   display: flex;
   flex-direction: column;
-  gap: 14px;
+  gap: 0;
   padding-bottom: 8px;
 }
 
@@ -1306,14 +1320,11 @@ async function onThemeSelected(event: Event) {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   width: 100%;
+  margin-bottom: 14px;
 }
 
 .pc-theme-mode .pc-segment-btn {
   min-width: 0;
-}
-
-.pc-theme-preview-card {
-  padding: 10px;
 }
 
 .pc-theme-preview {
@@ -1323,6 +1334,7 @@ async function onThemeSelected(event: Event) {
   gap: 14px;
   overflow: hidden;
   padding: 18px;
+  border: 1px solid var(--pc-border);
   border-radius: max(8px, calc(var(--pc-card-radius) - 6px));
   background-position: center;
   background-size: cover;
@@ -1547,8 +1559,8 @@ async function onThemeSelected(event: Event) {
 
 .pc-entry-symbol {
   display: grid;
-  width: 52px;
-  height: 52px;
+  width: 40px;
+  height: 40px;
   place-items: center;
   border-radius: var(--pc-icon-radius);
   background: color-mix(in srgb, var(--pc-theme-accent) 14%, var(--pc-surface-strong) 86%);

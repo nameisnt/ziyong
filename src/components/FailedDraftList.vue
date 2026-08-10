@@ -7,8 +7,8 @@
       </div>
     </div>
 
-    <div class="pc-entry-list">
-      <article v-for="draft in drafts" :key="draft.id" class="pc-entry-card">
+    <div class="pc-directory-list pc-entry-list">
+      <article v-for="draft in drafts" :key="draft.id" class="pc-list-row pc-failed-draft-row">
         <button class="pc-entry-main" type="button" @click="$emit('open', draft.id)">
           <div class="pc-entry-head">
             <strong>{{ getTitle(draft) }}</strong>
@@ -77,23 +77,6 @@ defineEmits<{
   font-size: 13px;
 }
 
-.pc-entry-list {
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-}
-
-.pc-entry-card {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
-  align-items: center;
-  gap: 10px;
-  padding: 12px;
-  border: 1px solid var(--pc-border);
-  border-radius: 18px;
-  background: color-mix(in srgb, var(--pc-surface) 72%, transparent 28%);
-}
-
 .pc-entry-main {
   display: flex;
   min-width: 0;
@@ -137,9 +120,5 @@ defineEmits<{
 
 .pc-entry-main p.preview {
   color: color-mix(in srgb, var(--pc-muted) 84%, var(--pc-text) 16%);
-}
-
-.pc-icon-btn.danger {
-  color: var(--pc-danger);
 }
 </style>

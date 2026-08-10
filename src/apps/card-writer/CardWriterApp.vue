@@ -253,14 +253,11 @@
     </section>
 
     <section v-else-if="route.page === 'library'" class="pc-card-writer-page">
-      <header class="pc-card-writer-head">
-        <div>
-          <h2>已保存成品</h2>
-        </div>
-        <span class="pc-card-writer-count">{{ documents.length }}</span>
+      <header class="pc-directory-toolbar pc-card-writer-head">
+        <span class="pc-directory-count">{{ documents.length }} 个成品</span>
       </header>
-      <div v-if="documents.length" class="pc-card-writer-library">
-        <article v-for="document in documents" :key="document.id" class="pc-section-card pc-card-writer-document">
+      <div v-if="documents.length" class="pc-directory-list pc-card-writer-library">
+        <article v-for="document in documents" :key="document.id" class="pc-list-row pc-card-writer-document">
           <button type="button" class="pc-card-writer-document-open" @click="openDocument(document)">
             <strong :title="document.title">{{ document.title }}</strong>
             <small>{{ document.taskLabel }} · {{ formatDate(document.updatedAt) }}</small>
@@ -866,11 +863,6 @@ onBeforeUnmount(stopWriter);
   padding: 14px 0;
 }
 
-.pc-card-writer-head h2 {
-  margin: 4px 0 0;
-  font-size: 22px;
-}
-
 .pc-card-writer-document small {
   color: var(--pc-muted);
   font-size: 12px;
@@ -914,7 +906,7 @@ onBeforeUnmount(stopWriter);
 .pc-card-writer-stage-list,
 .pc-card-writer-library {
   display: grid;
-  gap: 8px;
+  gap: 0;
 }
 
 .pc-card-writer-stage {

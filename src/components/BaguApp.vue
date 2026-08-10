@@ -1,7 +1,7 @@
 <template>
   <section class="pc-bagu-app">
     <section class="pc-bagu-page">
-      <section class="pc-bagu-panel pc-rule-manager">
+      <section class="pc-page-section pc-bagu-panel pc-rule-manager">
         <div class="pc-panel-head">
           <div>
             <strong>{{ t`规则管理` }}</strong>
@@ -9,7 +9,7 @@
           </div>
           <div class="pc-panel-actions">
             <button
-              class="pc-outline-btn"
+              class="pc-soft-btn compact"
               type="button"
               :disabled="!visibleRules.length"
               @click="setVisibleRulesEnabled(true)"
@@ -17,7 +17,7 @@
               {{ t`启用可见` }}
             </button>
             <button
-              class="pc-outline-btn"
+              class="pc-soft-btn compact"
               type="button"
               :disabled="!visibleRules.length"
               @click="setVisibleRulesEnabled(false)"
@@ -26,13 +26,13 @@
             </button>
           </div>
         </div>
-        <label class="pc-rule-search">
+        <label class="pc-search-field pc-rule-search">
           <i class="fa-solid fa-magnifying-glass"></i>
           <input v-model="ruleQuery" type="search" :placeholder="t`搜索命中词、替换词或句式`" />
         </label>
       </section>
 
-      <section class="pc-bagu-panel">
+      <section class="pc-page-section pc-bagu-panel">
         <div class="pc-panel-head">
           <button class="pc-section-toggle" type="button" @click="lexicalOpen = !lexicalOpen">
             <span>{{ t`词汇` }}</span>
@@ -40,8 +40,12 @@
             <i class="fa-solid fa-chevron-down" :data-open="lexicalOpen"></i>
           </button>
           <div class="pc-panel-actions">
-            <button class="pc-outline-btn" type="button" @click="addReplacementRule">{{ t`新增` }}</button>
-            <button class="pc-outline-btn" type="button" @click="resetRules('replacement')">{{ t`恢复默认` }}</button>
+            <button class="pc-icon-btn" type="button" :title="t`新增词汇规则`" @click="addReplacementRule">
+              <i class="fa-solid fa-plus"></i>
+            </button>
+            <button class="pc-icon-btn" type="button" :title="t`恢复默认词汇规则`" @click="resetRules('replacement')">
+              <i class="fa-solid fa-rotate-left"></i>
+            </button>
           </div>
         </div>
 
@@ -55,7 +59,7 @@
               />
             </label>
             <input
-              class="pc-rule-input"
+              class="pc-field pc-rule-input"
               :value="getReplacementSourcesDraft(rule)"
               type="text"
               autocomplete="off"
@@ -64,7 +68,7 @@
               @blur="commitReplacementSourcesDraft(rule)"
             />
             <input
-              class="pc-rule-input"
+              class="pc-field pc-rule-input"
               :value="getReplacementCandidatesDraft(rule)"
               type="text"
               autocomplete="off"
@@ -72,7 +76,7 @@
               @input="updateReplacementCandidatesDraft(rule.id, $event)"
               @blur="commitReplacementCandidatesDraft(rule)"
             />
-            <button class="pc-delete-btn" type="button" :title="t`删除`" @click="removeRule(rule.id)">
+            <button class="pc-icon-btn danger" type="button" :title="t`删除`" @click="removeRule(rule.id)">
               <i class="fa-solid fa-xmark"></i>
             </button>
           </div>
@@ -83,7 +87,7 @@
         </div>
       </section>
 
-      <section class="pc-bagu-panel">
+      <section class="pc-page-section pc-bagu-panel">
         <div class="pc-panel-head">
           <button class="pc-section-toggle" type="button" @click="templateOpen = !templateOpen">
             <span>{{ t`句式` }}</span>
@@ -91,8 +95,12 @@
             <i class="fa-solid fa-chevron-down" :data-open="templateOpen"></i>
           </button>
           <div class="pc-panel-actions">
-            <button class="pc-outline-btn" type="button" @click="addTemplateRule">{{ t`新增` }}</button>
-            <button class="pc-outline-btn" type="button" @click="resetRules('template')">{{ t`恢复默认` }}</button>
+            <button class="pc-icon-btn" type="button" :title="t`新增句式规则`" @click="addTemplateRule">
+              <i class="fa-solid fa-plus"></i>
+            </button>
+            <button class="pc-icon-btn" type="button" :title="t`恢复默认句式规则`" @click="resetRules('template')">
+              <i class="fa-solid fa-rotate-left"></i>
+            </button>
           </div>
         </div>
 
@@ -109,20 +117,20 @@
               />
             </label>
             <input
-              class="pc-rule-input"
+              class="pc-field pc-rule-input"
               :value="rule.template"
               type="text"
               :placeholder="t`句式模板`"
               @input="updateTemplateRule(rule, String(($event.target as HTMLInputElement).value), rule.suggestion)"
             />
             <input
-              class="pc-rule-input"
+              class="pc-field pc-rule-input"
               :value="rule.suggestion"
               type="text"
               :placeholder="templateReplacementPlaceholder"
               @input="updateTemplateRule(rule, rule.template, String(($event.target as HTMLInputElement).value))"
             />
-            <button class="pc-delete-btn" type="button" :title="t`删除`" @click="removeRule(rule.id)">
+            <button class="pc-icon-btn danger" type="button" :title="t`删除`" @click="removeRule(rule.id)">
               <i class="fa-solid fa-xmark"></i>
             </button>
           </div>
@@ -389,9 +397,6 @@ onBeforeUnmount(commitAllReplacementDrafts);
 
 .pc-bagu-panel {
   overflow: hidden;
-  border: 1px solid color-mix(in srgb, #d6b98f 58%, var(--pc-border) 42%);
-  border-radius: 24px;
-  background: color-mix(in srgb, var(--pc-bg) 84%, #fff7eb 16%);
 }
 
 .pc-rule-manager p {
@@ -406,24 +411,14 @@ onBeforeUnmount(commitAllReplacementDrafts);
   align-items: center;
   justify-content: space-between;
   gap: 10px;
-  padding: 14px 14px 12px;
-  border-bottom: 1px solid color-mix(in srgb, #d6b98f 42%, transparent 58%);
-}
-
-.pc-outline-btn:disabled {
-  cursor: not-allowed;
-  opacity: 0.45;
+  padding-bottom: 12px;
 }
 
 .pc-rule-search {
   display: flex;
   align-items: center;
   gap: 10px;
-  margin: 0 14px 14px;
-  border: 1px solid color-mix(in srgb, #d6b98f 42%, var(--pc-border) 58%);
-  border-radius: 18px;
-  background: color-mix(in srgb, var(--pc-text) 7%, transparent 93%);
-  padding: 0 12px;
+  margin-bottom: 4px;
 }
 
 .pc-rule-search i {
@@ -446,9 +441,7 @@ onBeforeUnmount(commitAllReplacementDrafts);
   color: var(--pc-muted);
 }
 
-.pc-section-toggle,
-.pc-outline-btn,
-.pc-delete-btn {
+.pc-section-toggle {
   border: 0;
   color: var(--pc-text);
   cursor: pointer;
@@ -488,19 +481,10 @@ onBeforeUnmount(commitAllReplacementDrafts);
   justify-content: flex-end;
 }
 
-.pc-outline-btn {
-  min-height: 34px;
-  border: 1px solid color-mix(in srgb, #c9a26e 64%, var(--pc-border) 36%);
-  border-radius: 18px;
-  background: color-mix(in srgb, var(--pc-bg) 78%, #fff3dc 22%);
-  padding: 6px 12px;
-  white-space: nowrap;
-}
-
 .pc-rule-table {
   display: grid;
   gap: 10px;
-  padding: 14px;
+  padding-top: 14px;
 }
 
 .pc-rule-row {
@@ -533,75 +517,17 @@ onBeforeUnmount(commitAllReplacementDrafts);
   width: 16px;
   height: 16px;
   margin: 0;
-  accent-color: #5f7fb2;
+  accent-color: var(--pc-theme-accent);
 }
 
 .pc-rule-input {
-  width: 100%;
   min-width: 0;
-  height: 42px;
-  border: 0;
-  border-radius: 16px;
-  background: color-mix(in srgb, var(--pc-text) 10%, transparent 90%);
-  color: var(--pc-text);
-  padding: 0 14px;
-  font-size: 14px;
-  outline: none;
-}
-
-.pc-rule-input:focus {
-  box-shadow: inset 0 0 0 1px color-mix(in srgb, #c9a26e 72%, var(--pc-border) 28%);
-}
-
-.pc-rule-input.mono {
-  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
-  font-size: 12px;
-}
-
-.pc-rule-input.flags {
-  text-align: center;
-}
-
-.pc-target-check {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 6px;
-  height: 42px;
-  border-radius: 16px;
-  background: color-mix(in srgb, var(--pc-text) 7%, transparent 93%);
-  color: var(--pc-muted);
-  font-size: 12px;
-  font-weight: 700;
-  white-space: nowrap;
-}
-
-.pc-target-check input {
-  accent-color: #5f7fb2;
-  margin: 0;
-}
-
-.pc-delete-btn {
-  display: inline-grid;
-  width: 42px;
-  height: 42px;
-  place-items: center;
-  border: 1px solid color-mix(in srgb, #c9a26e 64%, var(--pc-border) 36%);
-  border-radius: 16px;
-  background: color-mix(in srgb, var(--pc-bg) 78%, #fff3dc 22%);
-  font-size: 16px;
-}
-
-.pc-delete-btn {
-  color: #c44c3e;
-  font-size: 18px;
 }
 
 .pc-template-help {
-  border: 1px dashed color-mix(in srgb, #d6b98f 60%, var(--pc-border) 40%);
-  border-radius: 16px;
+  border-left: 2px solid var(--pc-border);
   color: var(--pc-muted);
-  padding: 10px 12px;
+  padding: 6px 10px;
   line-height: 1.55;
 }
 

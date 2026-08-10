@@ -1,8 +1,8 @@
 <template>
   <section class="pc-workbench-app">
     <section class="pc-workbench-page">
-      <div class="pc-section-head">
-        <strong>{{ t`工作流程` }}</strong>
+      <div class="pc-compact-toolbar pc-directory-toolbar pc-workbench-toolbar">
+        <span class="pc-directory-count">{{ workflows.length }} {{ t`个工作流` }}</span>
         <button class="pc-icon-btn" type="button" :title="t`新建流程`" @click="createWorkflow">
           <i class="fa-solid fa-plus"></i>
         </button>
@@ -10,7 +10,7 @@
 
       <EmptyState v-if="!workflows.length" :title="t`还没有工作流`" />
 
-      <article v-if="insertDrafts.length" class="pc-section-card pc-log-card">
+      <article v-if="insertDrafts.length" class="pc-page-section pc-log-card">
         <button class="pc-log-toggle" type="button" @click="insertDraftsOpen = !insertDraftsOpen">
           <span>
             <strong>{{ t`待插入草稿` }}</strong>
@@ -36,7 +36,7 @@
         </div>
       </article>
 
-      <article v-for="workflow in workflows" :key="workflow.id" class="pc-section-card pc-workflow-card">
+      <article v-for="workflow in workflows" :key="workflow.id" class="pc-page-section pc-workflow-card">
         <div class="pc-workflow-head">
           <button class="pc-workflow-title" type="button" @click="toggleWorkflow(workflow.id)">
             <span>
@@ -662,7 +662,7 @@
         </div>
       </article>
 
-      <article class="pc-section-card pc-log-card">
+      <article class="pc-page-section pc-log-card">
         <div class="pc-log-head">
           <button class="pc-log-toggle" type="button" @click="logsOpen = !logsOpen">
             <span>
@@ -997,7 +997,7 @@ onMounted(refreshTavernPresetNames);
 .pc-workflow-card,
 .pc-log-card {
   overflow: hidden;
-  padding: 0;
+  padding-inline: 0;
 }
 
 .pc-workflow-title,
@@ -1012,7 +1012,7 @@ onMounted(refreshTavernPresetNames);
   align-items: center;
   justify-content: space-between;
   gap: 12px;
-  padding: 14px;
+  padding: 0 0 10px;
   text-align: left;
 }
 
@@ -1020,7 +1020,6 @@ onMounted(refreshTavernPresetNames);
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto;
   align-items: center;
-  padding-right: 14px;
 }
 
 .pc-log-head .pc-log-toggle {
@@ -1055,7 +1054,7 @@ onMounted(refreshTavernPresetNames);
   display: flex;
   flex-direction: column;
   gap: 10px;
-  padding: 0 14px 14px;
+  padding: 0;
 }
 
 .pc-form-grid,
@@ -1117,9 +1116,16 @@ onMounted(refreshTavernPresetNames);
 .pc-step-card,
 .pc-log-row,
 .pc-insert-draft-row {
-  border-radius: 16px;
+  border: 1px solid var(--pc-border);
+  border-radius: var(--pc-control-radius);
   background: var(--pc-surface-strong);
   padding: 12px;
+}
+
+.pc-log-row {
+  border-width: 0 0 1px;
+  border-radius: 0;
+  background: transparent;
 }
 
 .pc-step-config {

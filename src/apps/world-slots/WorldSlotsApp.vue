@@ -1,18 +1,14 @@
 <template>
   <section class="pc-world-slots-app">
     <section v-if="route.page === 'root'" class="pc-world-slots-page">
-      <div class="pc-world-hero">
-        <div>
-          <span class="pc-kicker">{{ t`世界书槽位` }}</span>
-          <h2>{{ slots.length }} {{ t`个槽位` }}</h2>
-        </div>
-        <button class="pc-primary-btn" type="button" @click="openEditor()">
+      <div class="pc-compact-toolbar pc-world-root-toolbar">
+        <span>{{ slots.length }} {{ t`个槽位` }}</span>
+        <button class="pc-icon-btn active" type="button" :title="t`新增槽位`" @click="openEditor()">
           <i class="fa-solid fa-plus"></i>
-          <span>{{ t`新增` }}</span>
         </button>
       </div>
 
-      <section class="pc-world-card">
+      <section class="pc-page-section pc-world-card">
         <div class="pc-book-heading">
           <div>
             <span class="pc-field-label">{{ t`固定世界书` }}</span>
@@ -33,7 +29,7 @@
         <p v-else>{{ syncHint }}</p>
       </section>
 
-      <section class="pc-world-toolbar">
+      <section class="pc-compact-toolbar pc-world-search-toolbar">
         <label class="pc-search-field">
           <i class="fa-solid fa-magnifying-glass"></i>
           <input v-model="query" type="search" :placeholder="t`搜索槽位、关键词或内容`" />
@@ -41,7 +37,12 @@
       </section>
 
       <div v-if="filteredSlots.length" class="pc-slot-list">
-        <article v-for="slot in filteredSlots" :key="slot.id" class="pc-slot-row" @click="openEditor(slot.id)">
+        <article
+          v-for="slot in filteredSlots"
+          :key="slot.id"
+          class="pc-list-row pc-slot-row"
+          @click="openEditor(slot.id)"
+        >
           <div>
             <span>
               {{ getWorldSlotPositionLabel(slot.position) }} · {{ slot.insertionOrder }} ·
@@ -57,9 +58,7 @@
     </section>
 
     <section v-else-if="route.page === 'editor'" class="pc-world-slots-page">
-      <article class="pc-editor-card">
-        <span class="pc-kicker">{{ editingSlot ? t`编辑槽位` : t`新增槽位` }}</span>
-        <h2>{{ editingSlot?.title || t`世界书条目槽位` }}</h2>
+      <article class="pc-page-section pc-world-slot-editor">
         <input v-model="draft.title" class="pc-field" type="text" :placeholder="t`槽位名称`" />
         <input v-model="draft.keysText" class="pc-field" type="text" :placeholder="t`关键词，用逗号分隔，可留空`" />
 
@@ -513,37 +512,25 @@ async function syncSlots() {
 }
 
 .pc-world-slots-page > *,
-.pc-world-slots-page > .pc-editor-card > * {
+.pc-world-slot-editor > * {
   min-width: 0;
   max-width: 100%;
 }
 
-.pc-world-hero,
-.pc-world-card,
-.pc-world-toolbar,
-.pc-slot-row {
-  border: 1px solid var(--pc-border);
-  border-radius: var(--pc-card-radius);
-  background: var(--pc-surface);
-}
-
-.pc-world-hero {
+.pc-world-root-toolbar {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 12px;
-  padding: 16px;
 }
 
-.pc-world-hero h2 {
-  margin: 4px 0 0;
-  font-size: 20px;
+.pc-world-root-toolbar > span {
+  color: var(--pc-muted);
+  font-size: 12px;
 }
 
 .pc-world-card {
   display: grid;
   gap: 8px;
-  padding: 14px;
 }
 
 .pc-world-card p,
@@ -572,16 +559,9 @@ async function syncSlots() {
   color: var(--pc-danger);
 }
 
-.pc-world-toolbar {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr);
-  gap: 10px;
-  padding: 12px;
-}
-
 .pc-slot-list {
   display: grid;
-  gap: 10px;
+  gap: 0;
   min-width: 0;
 }
 
@@ -590,7 +570,7 @@ async function syncSlots() {
   align-items: center;
   justify-content: space-between;
   gap: 12px;
-  padding: 14px;
+  padding: 10px 0;
   cursor: pointer;
   min-width: 0;
   max-width: 100%;
