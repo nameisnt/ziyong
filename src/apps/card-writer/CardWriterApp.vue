@@ -254,13 +254,22 @@
 
     <section v-else-if="route.page === 'library'" class="pc-card-writer-page">
       <header class="pc-directory-toolbar pc-card-writer-head">
-        <span class="pc-directory-count">{{ documents.length }} 个成品</span>
+        <span class="pc-directory-count">{{ filteredDocuments.length }}/{{ documents.length }} 个成品</span>
+        <SearchableCombobox
+          class="pc-card-writer-chat-filter"
+          input-label="筛选来源聊天"
+          :model-value="libraryChatFilter"
+          :options="libraryChatOptions"
+          placeholder="全部聊天"
+          toggle-title="展开来源聊天筛选"
+          @update:model-value="libraryChatFilter = $event"
+        />
       </header>
-      <div v-if="documents.length" class="pc-directory-list pc-card-writer-library">
-        <article v-for="document in documents" :key="document.id" class="pc-list-row pc-card-writer-document">
+      <div v-if="filteredDocuments.length" class="pc-directory-list pc-card-writer-library">
+        <article v-for="document in filteredDocuments" :key="document.id" class="pc-list-row pc-card-writer-document">
           <button type="button" class="pc-card-writer-document-open" @click="openDocument(document)">
             <strong :title="document.title">{{ document.title }}</strong>
-            <small>{{ document.taskLabel }} · {{ formatDate(document.updatedAt) }}</small>
+            <small :title="formatDocumentMeta(document)">{{ formatDocumentMeta(document) }}</small>
           </button>
           <button class="pc-icon-btn" type="button" title="复制成品" @click="copyDocument(document)">
             <i class="fa-solid fa-copy"></i>
@@ -270,7 +279,7 @@
           </button>
         </article>
       </div>
-      <EmptyState v-else title="还没有保存写卡成品" />
+      <EmptyState v-else :title="documents.length ? '当前筛选下没有写卡成品' : '还没有保存写卡成品'" />
     </section>
   </section>
 </template>
@@ -292,10 +301,17 @@ import {
 } from '@/apps/worldbook-link/api';
 import { usePhoneStore } from '@/store/phone';
 import { useSettingsStore } from '@/store/settings';
-import { getCurrentChatScopeKey } from '@/store/chatScoped';
+import { useGenerationAliasesStore } from '@/store/generationAliases';
+import { getCurrentChatScopeKey, parseChatScopeKey } from '@/store/chatScoped';
+import { replaceGenerationAliases } from '@/util/generationAliases';
 import { buildSourceSelection } from '@/util/generationSource';
 import type { GenerationReferenceItem } from '@/util/references';
-import { getChatMessagesSafe, stopGenerationByIdSafe } from '@/util/runtime';
+import {
+  getChatMessagesSafe,
+  getOptionalGlobalFunction,
+  getOptionalGlobalValue,
+  stopGenerationByIdSafe,
+} from '@/util/runtime';
 import {
   buildCardWriterOrderedPrompts,
   CARD_WRITER_TASKS,
@@ -303,6 +319,7 @@ import {
   parseCardWriterArtifact,
   type CardWriterTaskId,
 } from './preset';
+import { formatCardWriterDocumentChat, isCardWriterDocumentFromScope } from './references';
 import { useCardWriterStore, type CardWriterDocument } from './store';
 import { storeToRefs } from 'pinia';
 
@@ -317,10 +334,12 @@ type WorldMode = 'auto' | 'custom' | 'existing';
 
 const phone = usePhoneStore();
 const settingsStore = useSettingsStore();
+const generationAliases = useGenerationAliasesStore();
 const writerStore = useCardWriterStore();
 const { settings } = storeToRefs(settingsStore);
 const { documents, settings: writerSettings } = storeToRefs(writerStore);
 const route = computed(() => phone.currentRoute);
+const currentChatScopeKey = computed(() => phone.currentTavernScopeKey || getCurrentChatScopeKey());
 const taskId = ref<CardWriterTaskId>('full-card');
 const personaMode = ref<PersonaMode>('normal');
 const includeWorldbook = ref(false);
@@ -334,6 +353,7 @@ const generationError = ref('');
 const activeGenerationId = ref('');
 const stageStates = ref<StageState[]>([]);
 const activeDocumentId = ref('');
+const libraryChatFilter = ref('__all__');
 const brief = reactive({
   concept: '',
   experience: '',
@@ -353,6 +373,8 @@ const preview = reactive({
   providerSummary: '酒馆当前 API',
   raw: '',
   sourceLabel: '',
+  sourceOwnerLabel: '',
+  sourceScopeKey: '',
   taskId: 'full-card' as CardWriterTaskId,
   taskLabel: '一键写卡',
   targetWorldbookName: '',
@@ -376,6 +398,30 @@ const taskOptions = CARD_WRITER_TASKS.map(task => ({
 }));
 const selectedTask = computed(() => CARD_WRITER_TASKS.find(task => task.id === taskId.value) ?? CARD_WRITER_TASKS[0]);
 const selectedStages = computed(() => getCardWriterTaskStages(selectedTask.value, personaMode.value));
+const libraryChatOptions = computed(() => {
+  const options: Array<{ group?: string; label: string; value: string }> = [
+    { group: '范围', label: '全部聊天', value: '__all__' },
+    { group: '范围', label: '当前聊天', value: '__current__' },
+  ];
+  const seen = new Set<string>();
+  documents.value.forEach(document => {
+    if (!document.sourceScopeKey || seen.has(document.sourceScopeKey)) return;
+    seen.add(document.sourceScopeKey);
+    options.push({
+      group: '来源聊天',
+      label: formatCardWriterDocumentChat(document),
+      value: document.sourceScopeKey,
+    });
+  });
+  return options;
+});
+const filteredDocuments = computed(() => {
+  if (libraryChatFilter.value === '__all__') return documents.value;
+  if (libraryChatFilter.value === '__current__') {
+    return documents.value.filter(document => isCurrentChatDocument(document));
+  }
+  return documents.value.filter(document => document.sourceScopeKey === libraryChatFilter.value);
+});
 const completedStageCount = computed(() => stageStates.value.filter(stage => stage.status === 'completed').length);
 const generateDisabled = computed(() => taskId.value === 'full-card' && !brief.concept.trim());
 const previewSaveLabel = computed(() => {
@@ -512,8 +558,8 @@ function buildStageUserInput(
   stageLabel: string,
   instruction: string,
   priorOutputs: Array<{ label: string; content: string }>,
+  requirement: string,
 ) {
-  const requirement = buildRequirementText();
   return [
     '【小手机自动写卡任务】',
     `当前阶段：${stageLabel}`,
@@ -543,6 +589,13 @@ async function runWriter() {
   activeDocumentId.value = '';
   const task = selectedTask.value;
   const stages = selectedStages.value;
+  const sourceScopeKey = currentChatScopeKey.value || getCurrentChatScopeKey();
+  const sourceOwnerLabel = getCurrentOwnerLabel(sourceScopeKey);
+  const requirement =
+    replaceGenerationAliases(buildRequirementText(), {
+      charReplacement: generationAliases.charReplacement,
+      userReplacement: generationAliases.userReplacement,
+    }) || '';
   stageStates.value = stages.map(stage => ({ id: stage.id, label: stage.label, status: 'pending' }));
 
   try {
@@ -554,7 +607,7 @@ async function runWriter() {
 
     for (const [stageIndex, stage] of stages.entries()) {
       stageStates.value[stageIndex].status = 'running';
-      const userInput = buildStageUserInput(stage.label, stage.instruction, completed);
+      const userInput = buildStageUserInput(stage.label, stage.instruction, completed, requirement);
       const messagesForStage: RawOrderedPrompt[] = buildCardWriterOrderedPrompts({
         assistantPrefillEnabled: writerSettings.value.assistantPrefillEnabled,
         chatMessages,
@@ -599,6 +652,8 @@ async function runWriter() {
     preview.raw = rawOutput.value;
     preview.providerSummary = latestProviderSummary;
     preview.sourceLabel = `${sourceLabel}${includeWorldbook.value ? ' · 已加入世界书' : ' · 未加入世界书'}`;
+    preview.sourceOwnerLabel = sourceOwnerLabel;
+    preview.sourceScopeKey = sourceScopeKey;
     preview.taskId = task.id;
     preview.taskLabel = task.label;
     preview.targetWorldbookName = targetWorldbookName.value.trim();
@@ -637,6 +692,8 @@ function openDocument(document: CardWriterDocument) {
   preview.raw = document.content;
   preview.providerSummary = '已保存成品';
   preview.sourceLabel = document.sourceLabel;
+  preview.sourceOwnerLabel = document.sourceOwnerLabel;
+  preview.sourceScopeKey = document.sourceScopeKey;
   preview.taskId = document.taskId as CardWriterTaskId;
   preview.taskLabel = document.taskLabel;
   preview.targetWorldbookName = document.targetWorldbookName;
@@ -676,6 +733,8 @@ function persistPreviewDocument(worldbookWritten = preview.worldbookWritten) {
     content: preview.content,
     id: activeDocumentId.value || undefined,
     sourceLabel: preview.sourceLabel,
+    sourceOwnerLabel: preview.sourceOwnerLabel,
+    sourceScopeKey: preview.sourceScopeKey,
     targetWorldbookName: preview.targetWorldbookName,
     taskId: preview.taskId,
     taskLabel: preview.taskLabel,
@@ -734,6 +793,39 @@ function formatDate(value: string) {
   }).format(date);
 }
 
+function getCurrentOwnerLabel(scopeKey: string) {
+  const scope = parseChatScopeKey(scopeKey);
+  if (scope.kind === 'group') {
+    const groups = getOptionalGlobalValue<unknown[]>('groups');
+    const group = Array.isArray(groups)
+      ? groups.find(item => {
+          if (!item || typeof item !== 'object') return false;
+          const record = item as Record<string, unknown>;
+          return String(record.id ?? record.group_id ?? '') === scope.ownerId;
+        })
+      : null;
+    if (group && typeof group === 'object') {
+      const record = group as Record<string, unknown>;
+      const label = String(record.name ?? record.group_name ?? '').trim();
+      if (label) return label;
+    }
+    return '群聊';
+  }
+  return (
+    getOptionalGlobalFunction<() => string | null | undefined>('getCurrentCharacterName')?.()?.trim() ||
+    String(getOptionalGlobalValue('name1') || '').trim() ||
+    (scope.ownerId === '__no_character__' ? '未知角色' : scope.ownerId)
+  );
+}
+
+function isCurrentChatDocument(document: CardWriterDocument) {
+  return isCardWriterDocumentFromScope(document, currentChatScopeKey.value);
+}
+
+function formatDocumentMeta(document: CardWriterDocument) {
+  return `${isCurrentChatDocument(document) ? '当前 · ' : ''}${formatCardWriterDocumentChat(document)} · ${document.taskLabel} · ${formatDate(document.updatedAt)}`;
+}
+
 onMounted(refreshWorldbooks);
 onBeforeUnmount(stopWriter);
 </script>
@@ -762,6 +854,15 @@ onBeforeUnmount(stopWriter);
   align-items: center;
   justify-content: space-between;
   gap: 12px;
+}
+
+.pc-card-writer-head .pc-directory-count {
+  flex: 0 0 auto;
+}
+
+.pc-card-writer-chat-filter {
+  min-width: 0;
+  flex: 0 1 230px;
 }
 
 .pc-card-writer-task-row {

@@ -1,4 +1,5 @@
 import CardWriterApp from './CardWriterApp.vue';
+import { createCardWriterReferenceTree } from './references';
 import { cardWriterField, useCardWriterStore } from './store';
 import { definePhoneApp } from '@/core/appRegistry';
 import { extension_settings } from '@sillytavern/scripts/extensions';
@@ -20,4 +21,5 @@ export default definePhoneApp({
     },
   ],
   component: CardWriterApp,
+  referenceProvider: () => createCardWriterReferenceTree(useCardWriterStore().documents),
 });

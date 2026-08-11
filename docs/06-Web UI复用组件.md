@@ -1,5 +1,8 @@
 # Web UI 复用组件
 
+本文档只记录组件用途和接口。UI 设计取舍、代码复用现状、问题优先级与验收要求统一以 `07-当前代码与UI复用审计及设计要求.md`
+为准。
+
 当前 UI 复用分两层：基础业务组件和生成流程组合组件。新增 App 优先复用这些组件，只有业务形态明显不同才单独实现。
 
 ## 生成流程组件
@@ -239,7 +242,7 @@
 <FailedDraftList
   :drafts="failedDrafts"
   :format-time="formatTime"
-  :get-title="draft => draft.actionId === 'generate-thread' ? '未解析帖子' : '未解析回复'"
+  :get-title="draft => (draft.actionId === 'generate-thread' ? '未解析帖子' : '未解析回复')"
   :get-context="draft => failedDraftContextLabel(draft.context)"
   @open="openFailedDraft"
   @remove="removeFailedDraft"
@@ -252,7 +255,8 @@
 
 位置：`src/components/EmptyState.vue`
 
-用途：统一普通空状态和小型空状态。普通模式用于列表、面板、统计区为空；`compact` 模式用于折叠区、内嵌列表、提示词分组等小占位。
+用途：统一普通空状态和小型空状态。普通模式用于列表、面板、统计区为空；`compact`
+模式用于折叠区、内嵌列表、提示词分组等小占位。
 
 输入：
 
@@ -286,7 +290,8 @@
 - `open-home`：回到手机首页查看当前选择的聊天内容。
 - `back-current`：回到酒馆当前聊天。
 
-说明：该组件必须保持为独立 SFC。不要再用 `defineComponent + h()` 内联实现，否则父组件的 scoped CSS 无法稳定作用到按钮内部节点。
+说明：该组件必须保持为独立 SFC。不要再用 `defineComponent + h()` 内联实现，否则父组件的 scoped
+CSS 无法稳定作用到按钮内部节点。
 
 ## 样式约定
 
@@ -333,7 +338,7 @@
 - `StatsApp`
 - `SettingsApp`
 
-番外迁移时保留了“只生成大纲”模式，生成页可选择大纲，预览页会显示“保存大纲”。
-论坛迁移时保留了帖子预览、回复树和主楼八股扫描，预览正文区域通过 `GenerationPreviewPanel` 的 `content` 插槽承载。
-日记迁移时复用了普通日记生成、阅读反应生成和预览面板；批量生成仍保留专用面板，因为它包含分组、进度和停止状态。
-聊天档案导航条已抽成独立组件，避免 scoped CSS 穿透问题导致按钮退回浏览器默认风格。
+番外迁移时保留了“只生成大纲”模式，生成页可选择大纲，预览页会显示“保存大纲”。论坛迁移时保留了帖子预览、回复树和主楼八股扫描，预览正文区域通过
+`GenerationPreviewPanel` 的 `content`
+插槽承载。日记迁移时复用了普通日记生成、阅读反应生成和预览面板；批量生成仍保留专用面板，因为它包含分组、进度和停止状态。聊天档案导航条已抽成独立组件，避免 scoped
+CSS 穿透问题导致按钮退回浏览器默认风格。

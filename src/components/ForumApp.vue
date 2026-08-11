@@ -169,6 +169,15 @@
             :disabled="generationState.running"
             :placeholder="t`固定板块名称`"
           />
+          <button
+            v-if="threadGenerationDraft.boardNameMode === 'fixed'"
+            class="pc-primary-btn pc-forum-create-board-btn"
+            type="button"
+            :disabled="generationState.running || !threadGenerationDraft.boardName.trim()"
+            @click="createAndSelectThreadBoard"
+          >
+            创建并选择
+          </button>
         </div>
       </template>
     </GenerationFormPage>
@@ -967,6 +976,30 @@ function selectThreadBoardType(promptId: string) {
   threadGenerationDraft.boardTypeId = prompt.id;
   threadGenerationDraft.boardTypePrompt = prompt.prompt;
   threadGenerationDraft.boardName = prompt.name;
+}
+
+function createAndSelectThreadBoard() {
+  const boardName = threadGenerationDraft.boardName.trim();
+  if (!boardName) return;
+  const existing = forum.findBoardByName(boardName);
+  if (existing) {
+    threadGenerationDraft.boardId = existing.id;
+    threadGenerationDraft.boardName = existing.name;
+    threadGenerationDraft.boardTypeId = existing.typeId || CUSTOM_BOARD_TYPE_ID;
+    threadGenerationDraft.boardTypePrompt = resolveForumBoardTypePrompt(existing);
+    toastr.info(`已选择已有板块“${existing.name}”`);
+    return;
+  }
+  const selectedType = forumBoardTypePrompts.value.find(prompt => prompt.id === threadGenerationDraft.boardTypeId);
+  const board = forum.createBoard({
+    name: boardName,
+    typeId: selectedType?.id || '',
+    typeName: selectedType?.name || (threadGenerationDraft.boardTypePrompt.trim() ? '自定义' : ''),
+    typePrompt: threadGenerationDraft.boardTypePrompt,
+  });
+  threadGenerationDraft.boardId = board.id;
+  threadGenerationDraft.boardName = board.name;
+  toastr.success(`已创建并选择板块“${board.name}”`);
 }
 
 function resolveThreadTargetBoard() {

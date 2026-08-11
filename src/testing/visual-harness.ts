@@ -2398,7 +2398,9 @@ async function applyScenario(name: VisualScenarioName, options: { height?: numbe
     writer.settings.documents = [];
     const savedDocument = writer.saveDocument({
       content: '## 角色基础\n\n这是已经保存的写卡成品。',
+      sourceOwnerLabel: '测试角色',
       sourceLabel: '已保存测试成品',
+      sourceScopeKey: 'char:0:chat:visual-current',
       targetWorldbookName: '',
       taskId: 'full-card',
       taskLabel: '一键写卡',
@@ -2408,6 +2410,19 @@ async function applyScenario(name: VisualScenarioName, options: { height?: numbe
     });
     resetPhoneToRoute('card-writer', 'library', '写卡成品');
     await waitForPaint();
+    const documentMeta = document.querySelector<HTMLElement>('.pc-card-writer-document small');
+    if (!documentMeta?.textContent?.includes('测试角色 / visual-current')) {
+      throw new Error('Saved card writer document did not expose its source chat');
+    }
+    const cardWriterReferences = getRegisteredPhoneAppReferenceTrees().find(node => node.id === 'app:card-writer');
+    if (
+      cardWriterReferences?.kind !== 'branch' ||
+      cardWriterReferences.children[0]?.kind !== 'branch' ||
+      cardWriterReferences.children[0].children[0]?.kind !== 'leaf' ||
+      cardWriterReferences.children[0].children[0].item.content !== savedDocument.content
+    ) {
+      throw new Error('Saved card writer document was not exposed as final-content reference data');
+    }
     document.querySelector<HTMLButtonElement>('.pc-card-writer-document-open')?.click();
     const previewOpened = await waitForVisualCondition(
       () => phone.currentRoute.appId === 'card-writer' && phone.currentRoute.page === 'preview',
@@ -2602,6 +2617,8 @@ async function applyScenario(name: VisualScenarioName, options: { height?: numbe
       throw new Error('Tutorial search did not expose a matching body snippet');
     }
   } else if (name === 'forum-generate-thread') {
+    const forum = useForumStore();
+    forum.resetCurrentScope();
     resetPhoneToRoute('forum', 'generate-thread', '生成帖子');
     await waitForPaint();
     const boardSelector = document.querySelector<HTMLInputElement>(
@@ -2610,6 +2627,22 @@ async function applyScenario(name: VisualScenarioName, options: { height?: numbe
     const typeSelector = document.querySelector<HTMLInputElement>('.pc-forum-type-fields .pc-combobox-input');
     if (!boardSelector?.value.includes('自定义板块') || !typeSelector?.value.includes('自定义')) {
       throw new Error('Forum generation did not expose explicit custom board selections');
+    }
+    const boardNameInput = document.querySelector<HTMLInputElement>(
+      '.pc-forum-type-fields input[placeholder="固定板块名称"]',
+    );
+    if (!boardNameInput) throw new Error('Forum custom board name input is missing');
+    boardNameInput.value = '视觉即时保存板块';
+    boardNameInput.dispatchEvent(new Event('input', { bubbles: true }));
+    await waitForPaint();
+    const createBoardButton = document.querySelector<HTMLButtonElement>('.pc-forum-create-board-btn');
+    if (!createBoardButton || createBoardButton.disabled) {
+      throw new Error('Forum custom board create action is unavailable');
+    }
+    createBoardButton.click();
+    await waitForPaint();
+    if (!forum.findBoardByName('视觉即时保存板块')) {
+      throw new Error('Forum custom board was not persisted immediately');
     }
   } else if (name === 'app-deferred-mount-order') {
     const phone = usePhoneStore();
