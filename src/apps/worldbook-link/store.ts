@@ -20,7 +20,7 @@ const WorldbookStateSnapshotSchema = z.object({
 });
 export type WorldbookStateSnapshot = z.infer<typeof WorldbookStateSnapshotSchema>;
 
-const WorldbookLinkSettingsSchema = z.object({
+export const WorldbookLinkSettingsSchema = z.object({
   activeScopes: z.record(z.string(), z.string()).default({}),
   baselines: z.record(z.string(), WorldbookStateSnapshotSchema).default({}),
   profiles: z.record(z.string(), z.record(z.string(), WorldbookStateSnapshotSchema)).default({}),

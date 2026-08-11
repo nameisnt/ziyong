@@ -1,5 +1,5 @@
 import PresetLinkApp from './PresetLinkApp.vue';
-import { presetLinkField, usePresetLinkStore } from './store';
+import { PresetLinkSettingsSchema, presetLinkField, usePresetLinkStore } from './store';
 import { definePhoneApp } from '@/core/appRegistry';
 import { extension_settings } from '@sillytavern/scripts/extensions';
 
@@ -13,12 +13,16 @@ export default definePhoneApp({
   defaultOrder: 116,
   backupDomains: [
     {
+      category: 'configuration',
       key: 'preset-link',
       exportData: () => _.get(extension_settings, presetLinkField, {}),
       importData: data => {
         _.set(extension_settings, presetLinkField, data);
       },
       rehydrateFromSettings: () => usePresetLinkStore().rehydrateFromSettings(),
+      schema: PresetLinkSettingsSchema,
+      schemaVersion: 1,
+      scope: 'global',
     },
   ],
   component: PresetLinkApp,

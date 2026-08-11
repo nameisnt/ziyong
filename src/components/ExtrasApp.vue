@@ -18,109 +18,25 @@
       @remove-failed-draft="removeFailedDraft"
     />
 
-    <section v-else-if="route.page === 'book-editor'" class="pc-extras-page">
-      <div class="pc-page-section pc-extras-editor-section">
-        <label class="pc-field-group">
-          <span>{{ t`番外标题` }}</span>
-          <input v-model="bookDraft.title" class="pc-field" type="text" :placeholder="t`输入番外标题`" />
-        </label>
-
-        <GenerationPanel
-          v-if="!editingBook"
-          :capture="captureNewBookPrompt"
-          :capture-reset-key="newBookPromptPreview"
-          :error="chapterGenerationState.error"
-          :from-start-end="chapterGenerationDraft.fromStartEnd"
-          :range-text="chapterGenerationDraft.rangeText"
-          :raw-output="chapterGenerationState.rawOutput"
-          :recent-count="chapterGenerationDraft.recentCount"
-          :references="selectedReferences"
-          requirement-placeholder="例如：加强情绪推进，少写说明，多写现场。"
-          :running="chapterGenerationState.running"
-          :single-message-id="chapterGenerationDraft.singleMessageId"
-          :source-mode="settings.generation.sourceMode"
-          :user-requirement="chapterGenerationDraft.userRequirement"
-          @update:from-start-end="chapterGenerationDraft.fromStartEnd = $event"
-          @update:range-text="chapterGenerationDraft.rangeText = $event"
-          @update:recent-count="chapterGenerationDraft.recentCount = $event"
-          @update:references="selectedReferences = $event"
-          @update:single-message-id="chapterGenerationDraft.singleMessageId = $event"
-          @update:source-mode="settings.generation.sourceMode = $event"
-          @update:user-requirement="chapterGenerationDraft.userRequirement = $event"
-        >
-          <template #before-fields>
-            <div class="pc-number-field">
-              <label class="pc-field-label">
-                {{ t`生成模式` }}
-              </label>
-              <select v-model="chapterGenerationDraft.mode" class="pc-field" :disabled="chapterGenerationState.running">
-                <option value="新开一本书">{{ t`新开一本书` }}</option>
-                <option value="续写上一章">{{ t`续写上一章` }}</option>
-              </select>
-            </div>
-
-            <section class="pc-type-prompt-card">
-              <div class="pc-section-head">
-                <strong>{{ t`本次类型提示词` }}</strong>
-              </div>
-              <SearchableCombobox
-                :disabled="chapterGenerationState.running"
-                :empty-label="t`没有匹配的类型`"
-                :input-label="t`选择番外类型`"
-                :model-value="selectedChapterTypeValue"
-                :options="chapterTypeOptions"
-                :placeholder="t`选择番外类型`"
-                :toggle-title="t`展开番外类型`"
-                @update:model-value="selectChapterTypeValue"
-              />
-              <input
-                v-if="showChapterCustomTypeField"
-                v-model="chapterGenerationDraft.typeName"
-                class="pc-field"
-                type="text"
-                :placeholder="t`自定义类型名称`"
-              />
-              <textarea
-                v-model="chapterGenerationDraft.typePrompt"
-                class="pc-area compact"
-                :disabled="chapterGenerationState.running"
-                :placeholder="t`本次生成使用的番外类型提示词`"
-              ></textarea>
-            </section>
-          </template>
-
-          <template #actions>
-            <div class="pc-form-actions pc-extras-generate-actions">
-              <button
-                v-if="chapterGenerationState.running"
-                class="pc-soft-btn danger"
-                type="button"
-                @click="stopChapterGeneration"
-              >
-                {{ t`停止` }}
-              </button>
-              <button v-else class="pc-soft-btn" type="button" @click="phone.goBack()">{{ t`取消` }}</button>
-              <button
-                class="pc-primary-btn"
-                type="button"
-                :disabled="chapterGenerationState.running"
-                @click="submitBookAndGenerate"
-              >
-                <i class="fa-solid fa-sparkles"></i>
-                <span>{{ chapterGenerationState.running ? t`生成中` : t`开始生成` }}</span>
-              </button>
-            </div>
-          </template>
-        </GenerationPanel>
-
-        <div v-else class="pc-form-actions">
-          <button class="pc-soft-btn" type="button" :disabled="chapterGenerationState.running" @click="phone.goBack()">
-            {{ t`取消` }}
-          </button>
-          <button class="pc-primary-btn" type="button" @click="submitBook">{{ t`保存` }}</button>
-        </div>
-      </div>
-    </section>
+    <ExtrasBookEditorPage
+      v-else-if="route.page === 'book-editor'"
+      v-model:book-title="bookDraft.title"
+      v-model:chapter-draft="chapterGenerationDraft"
+      v-model:references="selectedReferences"
+      v-model:source-mode="settings.generation.sourceMode"
+      :capture="captureNewBookPrompt"
+      :capture-reset-key="newBookPromptPreview"
+      :editing="Boolean(editingBook)"
+      :generation-state="chapterGenerationState"
+      :selected-type-value="selectedChapterTypeValue"
+      :show-custom-type-field="showChapterCustomTypeField"
+      :type-options="chapterTypeOptions"
+      @cancel="phone.goBack()"
+      @generate="submitBookAndGenerate"
+      @save="submitBook"
+      @select-type="selectChapterTypeValue"
+      @stop="stopChapterGeneration"
+    />
 
     <ExtrasBookOverviewPage
       v-else-if="route.page === 'book' && activeBook"
@@ -177,82 +93,23 @@
       :title="`第 ${activeChapter.chapterNumber} 章 · ${viewedChapter.title}`"
     />
 
-    <section v-else-if="route.page === 'chapter-generate' && activeBook" class="pc-extras-page">
-      <div class="pc-page-section pc-extras-editor-section">
-        <GenerationPanel
-          class="pc-extras-generation-panel"
-          :capture="captureChapterPrompt"
-          :capture-reset-key="chapterPromptPreview"
-          :error="chapterGenerationState.error"
-          :from-start-end="chapterGenerationDraft.fromStartEnd"
-          :range-text="chapterGenerationDraft.rangeText"
-          :raw-output="chapterGenerationState.rawOutput"
-          :recent-count="chapterGenerationDraft.recentCount"
-          :references="selectedReferences"
-          requirement-placeholder="例如：加强情绪推进，少写说明，多写现场。"
-          :running="chapterGenerationState.running"
-          :single-message-id="chapterGenerationDraft.singleMessageId"
-          :source-mode="settings.generation.sourceMode"
-          :user-requirement="chapterGenerationDraft.userRequirement"
-          @cancel="phone.goBack()"
-          @generate="runChapterGeneration"
-          @stop="stopChapterGeneration"
-          @update:from-start-end="chapterGenerationDraft.fromStartEnd = $event"
-          @update:range-text="chapterGenerationDraft.rangeText = $event"
-          @update:recent-count="chapterGenerationDraft.recentCount = $event"
-          @update:references="selectedReferences = $event"
-          @update:single-message-id="chapterGenerationDraft.singleMessageId = $event"
-          @update:source-mode="settings.generation.sourceMode = $event"
-          @update:user-requirement="chapterGenerationDraft.userRequirement = $event"
-        >
-          <template #before-fields>
-            <div class="pc-number-field">
-              <label class="pc-field-label">
-                {{ chapterGenerationDraft.mode === '重写当前章节' ? t`原生成方式` : t`生成方式` }}
-              </label>
-              <select
-                v-model="chapterGenerationDraft.generationIntent"
-                class="pc-select"
-                :disabled="chapterGenerationState.running"
-                @change="syncChapterGenerationMode"
-              >
-                <option value="续写上一章">{{ t`续写上一章` }}</option>
-                <option value="新开一本书">{{ t`新开一本书` }}</option>
-              </select>
-            </div>
-
-            <section class="pc-type-prompt-card">
-              <div class="pc-section-head">
-                <strong>{{ t`本次类型提示词` }}</strong>
-              </div>
-              <SearchableCombobox
-                :disabled="chapterGenerationState.running"
-                :empty-label="t`没有匹配的类型`"
-                :input-label="t`选择番外类型`"
-                :model-value="selectedChapterTypeValue"
-                :options="chapterTypeOptions"
-                :placeholder="t`选择番外类型`"
-                :toggle-title="t`展开番外类型`"
-                @update:model-value="selectChapterTypeValue"
-              />
-              <input
-                v-if="showChapterCustomTypeField"
-                v-model="chapterGenerationDraft.typeName"
-                class="pc-field"
-                type="text"
-                :placeholder="t`自定义类型名称`"
-              />
-              <textarea
-                v-model="chapterGenerationDraft.typePrompt"
-                class="pc-area compact"
-                :disabled="chapterGenerationState.running"
-                :placeholder="t`本次生成使用的番外类型提示词`"
-              ></textarea>
-            </section>
-          </template>
-        </GenerationPanel>
-      </div>
-    </section>
+    <ExtrasChapterGeneratePage
+      v-else-if="route.page === 'chapter-generate' && activeBook"
+      v-model:chapter-draft="chapterGenerationDraft"
+      v-model:references="selectedReferences"
+      v-model:source-mode="settings.generation.sourceMode"
+      :capture="captureChapterPrompt"
+      :capture-reset-key="chapterPromptPreview"
+      :generation-state="chapterGenerationState"
+      :selected-type-value="selectedChapterTypeValue"
+      :show-custom-type-field="showChapterCustomTypeField"
+      :type-options="chapterTypeOptions"
+      @cancel="phone.goBack()"
+      @generate="runChapterGeneration"
+      @select-type="selectChapterTypeValue"
+      @stop="stopChapterGeneration"
+      @sync-intent="syncChapterGenerationMode"
+    />
 
     <ExtrasSummaryEditorPage
       v-else-if="route.page === 'summary-editor' && activeBook"
@@ -266,61 +123,19 @@
       @save="submitSummary"
     />
 
-    <section v-else-if="route.page === 'summary-generate' && activeBook" class="pc-extras-page">
-      <div class="pc-page-section pc-extras-editor-section">
-        <GenerationPanel
-          class="pc-extras-generation-panel"
-          :capture="captureExtraSummaryPrompt"
-          :capture-reset-key="generationPromptPreview"
-          :error="generationState.error"
-          :from-start-end="generationDraft.fromStartEnd"
-          :range-text="generationDraft.rangeText"
-          :raw-output="generationState.rawOutput"
-          :recent-count="generationDraft.recentCount"
-          :references="selectedReferences"
-          requirement-placeholder="例如：更强调角色关系推进，少写情节流水账。"
-          :running="generationState.running"
-          :single-message-id="generationDraft.singleMessageId"
-          :source-mode="settings.generation.sourceMode"
-          :user-requirement="generationDraft.userRequirement"
-          @cancel="phone.goBack()"
-          @generate="runSummaryGeneration"
-          @stop="stopGeneration"
-          @update:from-start-end="generationDraft.fromStartEnd = $event"
-          @update:range-text="generationDraft.rangeText = $event"
-          @update:recent-count="generationDraft.recentCount = $event"
-          @update:references="selectedReferences = $event"
-          @update:single-message-id="generationDraft.singleMessageId = $event"
-          @update:source-mode="settings.generation.sourceMode = $event"
-          @update:user-requirement="generationDraft.userRequirement = $event"
-        >
-          <template #before-fields>
-            <div v-if="summarizableChapters.length" class="pc-chapter-picks">
-              <label v-for="chapter in summarizableChapters" :key="chapter.id" class="pc-check-item">
-                <input
-                  v-model="generationDraft.coveredChapterIds"
-                  type="checkbox"
-                  :value="chapter.id"
-                  :disabled="generationState.running"
-                />
-                <span>{{ `第 ${chapter.chapterNumber} 章 · ${chapter.title}` }}</span>
-              </label>
-            </div>
-            <EmptyState v-else compact :title="t`当前没有待总结章节`" />
-
-            <label class="pc-switch-row">
-              <div>
-                <strong>{{ t`保存后直接启用` }}</strong>
-                <p>{{ t`后续续写时会用这条总结替换对应章节正文。` }}</p>
-              </div>
-              <span class="pc-checkbox">
-                <input v-model="generationDraft.enabled" type="checkbox" :disabled="generationState.running" />
-              </span>
-            </label>
-          </template>
-        </GenerationPanel>
-      </div>
-    </section>
+    <ExtrasSummaryGeneratePage
+      v-else-if="route.page === 'summary-generate' && activeBook"
+      v-model:references="selectedReferences"
+      v-model:source-mode="settings.generation.sourceMode"
+      v-model:summary-draft="generationDraft"
+      :capture="captureExtraSummaryPrompt"
+      :capture-reset-key="generationPromptPreview"
+      :chapters="summarizableChapters"
+      :generation-state="generationState"
+      @cancel="phone.goBack()"
+      @generate="runSummaryGeneration"
+      @stop="stopGeneration"
+    />
 
     <GenerationPreviewPage
       v-else-if="route.page === 'chapter-preview' && chapterGenerationState.preview"
@@ -366,29 +181,31 @@
 
 <script setup lang="ts">
 import BaguDetailPage from '@/components/BaguDetailPage.vue';
-import EmptyState from '@/components/EmptyState.vue';
 import FailedDraftRepairPage from '@/components/FailedDraftRepairPage.vue';
 import GenerationPreviewPage from '@/components/GenerationPreviewPage.vue';
+import ExtrasBookEditorPage from '@/components/extras/ExtrasBookEditorPage.vue';
 import ExtrasBookOverviewPage from '@/components/extras/ExtrasBookOverviewPage.vue';
 import ExtrasCatalogPage from '@/components/extras/ExtrasCatalogPage.vue';
+import ExtrasChapterGeneratePage from '@/components/extras/ExtrasChapterGeneratePage.vue';
 import ExtrasChapterEditorPage from '@/components/extras/ExtrasChapterEditorPage.vue';
 import ExtrasChapterDetailPage from '@/components/extras/ExtrasChapterDetailPage.vue';
+import ExtrasSummaryGeneratePage from '@/components/extras/ExtrasSummaryGeneratePage.vue';
 import ExtrasSummaryEditorPage from '@/components/extras/ExtrasSummaryEditorPage.vue';
+import { useExtrasChapterPreviewSession } from '@/components/extras/useExtrasChapterPreviewSession';
+import { useExtrasChapterEditorSession } from '@/components/extras/useExtrasChapterEditorSession';
+import { useExtrasBookEditorSession } from '@/components/extras/useExtrasBookEditorSession';
+import { useExtrasDeletionSession } from '@/components/extras/useExtrasDeletionSession';
+import { useExtrasSummaryEditorSession } from '@/components/extras/useExtrasSummaryEditorSession';
+import { useExtrasSummaryPreviewSession } from '@/components/extras/useExtrasSummaryPreviewSession';
+import { useExtrasChapterTypePromptSession } from '@/components/extras/useExtrasChapterTypePromptSession';
 import { useExtrasChapterView } from '@/components/extras/useExtrasChapterView';
 import { useExtrasGenerationState } from '@/components/extras/useExtrasGenerationState';
+import { useExtrasGenerationActions } from '@/components/extras/useExtrasGenerationActions';
+import { useExtrasFailedDraftRepair } from '@/composables/useExtrasFailedDraftRepair';
 import { useGenerationReplaySession } from '@/composables/useGenerationReplaySession';
-import GenerationPanel from '@/components/GenerationPanel.vue';
-import SearchableCombobox from '@/components/SearchableCombobox.vue';
 import { getRegisteredPhoneGenerationAdapter } from '@/core/appRegistry';
-import {
-  createExtraChapterGenerationRecord,
-  ExtraChapterGenerateConfigSchema,
-  resolveGeneratedExtraBookTitle,
-  type ExtraChapterGenerateConfig,
-  type ExtraChapterGenerationIntent,
-  type ExtraChapterGenerationMode,
-} from '@/core/extrasGeneration';
-import { buildGenerationPreview, captureGenerationPrompt, generateContent } from '@/core/generationService';
+import { type ExtraChapterGenerationIntent, type ExtraChapterGenerationMode } from '@/core/extrasGeneration';
+import { buildGenerationPreview, captureGenerationPrompt } from '@/core/generationService';
 import { useExtrasStore } from '@/store/extras';
 import { usePhoneStore } from '@/store/phone';
 import { usePromptStore } from '@/store/prompts';
@@ -397,7 +214,7 @@ import type { ExtraBook, ExtraChapter } from '@/type/extra';
 import type { FailedGenerationDraft } from '@/type/generation';
 import { canOpenBaguScan } from '@/util/baguScanGate';
 import { useDetailScroll } from '@/util/detailScroll';
-import { parseContentXmlResult, parseSimpleXmlResult } from '@/util/generation';
+import { parseContentXmlResult } from '@/util/generation';
 import {
   formatMessageIdsAsRanges,
   resolveGenerationReplayReferences,
@@ -409,7 +226,6 @@ import { resolveContentVersion } from '@/util/contentVersions';
 import { buildExtraHistoryContext, getSummarizableChapters } from '@/util/extrasSummary';
 import { resolveExtraChapterGenerationRecords } from '@/util/extraGenerationRecords';
 import { useInvalidRouteFallback } from '@/util/routeFallback';
-import { stopGenerationByIdSafe } from '@/util/runtime';
 import { storeToRefs } from 'pinia';
 
 const extras = useExtrasStore();
@@ -421,7 +237,6 @@ const extraSummaryGenerationAdapter = getRegisteredPhoneGenerationAdapter('extra
 const { books, failedDrafts } = storeToRefs(extras);
 const { currentRoute: route } = storeToRefs(phone);
 const { settings } = storeToRefs(settingsStore);
-const { typePrompts } = storeToRefs(prompts);
 const generationSourceMode = computed({
   get: () => settings.value.generation.sourceMode,
   set: value => {
@@ -441,7 +256,6 @@ const sortDesc = computed({
     settings.value.directorySort.extrasDesc = value;
   },
 });
-const chapterCustomTypeSelected = ref(false);
 const chapterContentEl = ref<HTMLElement | null>(null);
 const { scrollToBottom, scrollToTop, scrollToVersionPosition } = useDetailScroll(
   chapterContentEl,
@@ -526,27 +340,42 @@ const {
   title: '章节总结预览',
 });
 
-const customChapterTypeValue = '__custom_chapter_type__';
-const extraTypePrompts = computed(() => typePrompts.value.filter(item => item.domain === 'extras'));
-const chapterTypeOptions = computed(() => [
-  { label: '自定义', value: customChapterTypeValue },
-  ...[...extraTypePrompts.value]
-    .sort((left, right) => right.usageCount - left.usageCount || left.name.localeCompare(right.name, 'zh-CN'))
-    .map(item => ({ label: item.name, value: item.id })),
-]);
-const selectedChapterTypePrompt = computed(() =>
-  chapterGenerationDraft.typeId ? prompts.getTypePrompt(chapterGenerationDraft.typeId) : null,
-);
-const showChapterCustomTypeField = computed(
-  () =>
-    chapterCustomTypeSelected.value ||
-    (!chapterGenerationDraft.typeId && Boolean(chapterGenerationDraft.typeName.trim())),
-);
-const selectedChapterTypeValue = computed(() => {
-  if (chapterCustomTypeSelected.value) return customChapterTypeValue;
-  return chapterGenerationDraft.typeId;
+const { reparseRaw: reparseChapterPreviewRaw, savePreview: saveChapterPreview } = useExtrasChapterPreviewSession({
+  clearPreviewDraft: clearExtraChapterPreviewDraft,
+  deleteFailedDraft: draftId => extras.deleteFailedDraft(draftId),
+  getFallbackRouteParams: () => ({
+    bookId: route.value.params?.bookId || extraChapterPreviewDraft.value?.routeParams.bookId,
+    chapterId: route.value.params?.chapterId || extraChapterPreviewDraft.value?.routeParams.chapterId,
+  }),
+  getPreview: () => chapterGenerationState.preview,
+  navigateToChapter: (title, params) => phone.replacePage('chapter', title, params),
+  notify: toastr,
+  setPreview: preview => {
+    chapterGenerationState.preview = preview;
+  },
+  store: extras,
 });
-const currentChapterTypePrompt = computed(() => chapterGenerationDraft.typePrompt.trim());
+const { reparseRaw: reparseSummaryPreviewRaw, savePreview: saveSummaryPreview } = useExtrasSummaryPreviewSession({
+  clearPreviewDraft: clearExtraSummaryPreviewDraft,
+  deleteFailedDraft: draftId => extras.deleteFailedDraft(draftId),
+  getPreview: () => generationState.preview,
+  navigateToBook: (title, bookId) => phone.replacePage('book', title, { bookId }),
+  notify: toastr,
+  setPreview: preview => {
+    generationState.preview = preview;
+  },
+});
+
+const {
+  currentTypePrompt: currentChapterTypePrompt,
+  findExtraTypePromptByName,
+  saveTypePrompt: saveChapterTypePrompt,
+  selectedTypeValue: selectedChapterTypeValue,
+  selectTypeValue: selectChapterTypeValue,
+  showCustomTypeField: showChapterCustomTypeField,
+  syncCustomSelectionFromDraft,
+  typeOptions: chapterTypeOptions,
+} = useExtrasChapterTypePromptSession(chapterGenerationDraft);
 const formattedReferences = computed(() => formatGenerationReferences(selectedReferences.value));
 
 function getChapterAppPrompt(intent: ExtraChapterGenerationIntent) {
@@ -589,10 +418,94 @@ const activeFailedDraft = computed(() => {
   const draftId = route.value.params?.draftId;
   return draftId ? extras.getFailedDraft(draftId) : null;
 });
+const { removeFailedDraft, reparseFailedDraft } = useExtrasFailedDraftRepair({
+  activeDraft: activeFailedDraft,
+  normalizeChapterMode: normalizeChapterGenerationMode,
+  persistChapterPreviewDraft: persistExtraChapterPreviewDraft,
+  persistSummaryPreviewDraft: persistExtraSummaryPreviewDraft,
+  rawOutput: failedDraftRawOutput,
+  setChapterPreview: preview => {
+    chapterGenerationState.preview = preview;
+  },
+  setSummaryPreview: preview => {
+    generationState.preview = preview;
+  },
+});
+
+const {
+  runChapterGeneration,
+  runChapterGenerationForBook,
+  runSummaryGeneration,
+  stopChapterGeneration,
+  stopSummaryGeneration: stopGeneration,
+} = useExtrasGenerationActions({
+  activeBook,
+  buildChapterOutputFormat,
+  buildChaptersContext,
+  buildPreviousChapterContext,
+  buildSummaryOutputFormat,
+  chapterGenerationDraft,
+  chapterGenerationState,
+  clearChapterPreviewDraft: clearExtraChapterPreviewDraft,
+  clearSummaryPreviewDraft: clearExtraSummaryPreviewDraft,
+  currentChapterTypePrompt,
+  failedDraftRawOutput,
+  formattedReferences,
+  getChapterAppPrompt,
+  getSummarizableChapters: () => summarizableChapters.value,
+  persistChapterPreviewDraft: persistExtraChapterPreviewDraft,
+  persistSummaryPreviewDraft: persistExtraSummaryPreviewDraft,
+  route,
+  saveChapterTypePrompt,
+  selectedReferences,
+  summaryGenerationDraft: generationDraft,
+  summaryGenerationState: generationState,
+  viewedChapterVersion,
+});
 
 const editingBook = computed(() => (route.value.params?.bookId ? activeBook.value : null));
+const {
+  saveBook: submitBook,
+  saveBookAndGenerate: submitBookAndGenerate,
+} = useExtrasBookEditorSession(bookDraft, chapterGenerationDraft, {
+  generateForBook: runChapterGenerationForBook,
+  getBookId: () => route.value.params?.bookId,
+  getChapterId: () => route.value.params?.chapterId,
+  getEditingBook: () => editingBook.value,
+  navigateToBook: book => phone.replacePage('book', book.title, { bookId: book.id }),
+});
 const editingChapter = computed(() => (route.value.params?.chapterId ? activeChapter.value : null));
+const { saveChapter: submitChapter } = useExtrasChapterEditorSession(chapterDraft, {
+  getBookId: () => route.value.params?.bookId,
+  getChapterId: () => route.value.params?.chapterId,
+  getEditingChapter: () => editingChapter.value,
+  getVersionId: () => route.value.params?.versionId,
+  navigateToChapter: (title, params) => phone.replacePage('chapter', title, params),
+});
 const editingSummary = computed(() => (route.value.params?.summaryId ? activeSummary.value : null));
+const { removeSummary, saveSummary: submitSummary } = useExtrasSummaryEditorSession(summaryDraft, {
+  confirmDelete: message =>
+    phone.confirmNotice(message, {
+      confirmLabel: '删除',
+      kind: 'warning',
+    }),
+  getBookId: () => route.value.params?.bookId,
+  getEditingSummary: () => editingSummary.value,
+  getSummaryId: () => route.value.params?.summaryId,
+  navigateToBook: book => phone.replacePage('book', book.title, { bookId: book.id }),
+  notifySuccess: message => toastr.success(message),
+});
+const { removeBook, removeChapter, removeChapterVersion } = useExtrasDeletionSession({
+  confirmDelete: (message, confirmLabel) => phone.confirmNotice(message, { confirmLabel, kind: 'warning' }),
+  getActiveBook: () => activeBook.value,
+  getActiveChapter: () => activeChapter.value,
+  getViewedVersionId: () => viewedChapterVersionId.value,
+  goHome: () => phone.goHome(),
+  navigateToBook: book => phone.replacePage('book', book.title, { bookId: book.id }),
+  navigateToChapter: (title, params) => phone.replacePage('chapter', title, params),
+  navigateToRoot: () => phone.replacePage('root', '番外书架'),
+  notifySuccess: message => toastr.success(message),
+});
 const previewBook = computed(() =>
   generationState.preview?.bookId ? extras.getBook(generationState.preview.bookId) : null,
 );
@@ -1000,7 +913,7 @@ function resetChapterGenerationDraft(mode: typeof chapterGenerationDraft.mode) {
   const prompt =
     promptById?.domain === 'extras'
       ? promptById
-      : (extraTypePrompts.value.find(item => item.name.trim().toLocaleLowerCase() === normalizedTypeName) ?? null);
+      : findExtraTypePromptByName(normalizedTypeName);
   if (book && prompt && book.typeId !== prompt.id) {
     extras.updateBook(book.id, {
       title: book.title,
@@ -1054,63 +967,10 @@ function resetChapterGenerationDraft(mode: typeof chapterGenerationDraft.mode) {
     selectedReferences.value = resolveGenerationReplayReferences(generationRecord.replay);
     chapterReplaySession.applyReplay(generationRecord.replay, chapterGenerationDraft);
   }
-  chapterCustomTypeSelected.value = !chapterGenerationDraft.typeId && Boolean(chapterGenerationDraft.typeName.trim());
+  syncCustomSelectionFromDraft();
   chapterGenerationState.error = '';
   chapterGenerationState.preview = null;
   chapterGenerationState.rawOutput = '';
-}
-
-function selectChapterTypePrompt(promptId: string) {
-  const prompt = prompts.getTypePrompt(promptId);
-  chapterGenerationDraft.typeId = promptId;
-  chapterCustomTypeSelected.value = false;
-  if (prompt) {
-    chapterGenerationDraft.typeName = prompt.name;
-    chapterGenerationDraft.typePrompt = prompt.prompt;
-  }
-}
-
-function selectCustomChapterType() {
-  chapterGenerationDraft.typeId = '';
-  chapterCustomTypeSelected.value = true;
-  chapterGenerationDraft.typeName = '';
-  chapterGenerationDraft.typePrompt = '';
-}
-
-function selectChapterTypeValue(value: string) {
-  if (value === customChapterTypeValue) {
-    selectCustomChapterType();
-    return;
-  }
-  if (value) selectChapterTypePrompt(value);
-}
-
-function saveChapterTypePrompt() {
-  const name = chapterGenerationDraft.typeName.trim();
-  const promptText = chapterGenerationDraft.typePrompt.trim();
-  if (!name && !promptText) return null;
-  if (chapterGenerationDraft.typeId) {
-    const updated = prompts.updateTypePrompt(chapterGenerationDraft.typeId, {
-      domain: 'extras',
-      name: name || selectedChapterTypePrompt.value?.name || '未分类番外',
-      prompt: promptText,
-    });
-    if (!updated) return null;
-    chapterGenerationDraft.typeName = updated.name;
-    chapterGenerationDraft.typePrompt = updated.prompt;
-    chapterCustomTypeSelected.value = false;
-    return updated;
-  }
-  const created = prompts.createTypePrompt({
-    domain: 'extras',
-    name: name || '未分类番外',
-    prompt: promptText,
-  });
-  chapterGenerationDraft.typeId = created.id;
-  chapterGenerationDraft.typeName = created.name;
-  chapterGenerationDraft.typePrompt = created.prompt;
-  chapterCustomTypeSelected.value = false;
-  return created;
 }
 
 function openCreateBook() {
@@ -1121,61 +981,11 @@ function openEditBook(bookId: string) {
   phone.pushPage('book-editor', '编辑番外', { bookId });
 }
 
-function submitBook() {
-  const payload = {
-    title: bookDraft.title,
-    typeId: editingBook.value?.typeId || chapterGenerationDraft.typeId || undefined,
-    typeName: bookDraft.typeName.trim() || chapterGenerationDraft.typeName.trim() || '未分类番外',
-  };
-  if (editingBook.value && route.value.params?.bookId) {
-    const book = extras.updateBook(route.value.params.bookId, payload);
-    if (!book) return;
-    phone.replacePage('book', book.title, { bookId: book.id });
-    return;
-  }
-
-  const book = extras.createBook(payload);
-  phone.replacePage('book', book.title, { bookId: book.id });
-}
-
-async function submitBookAndGenerate() {
-  const typeName = bookDraft.typeName.trim() || chapterGenerationDraft.typeName.trim();
-  const payload = {
-    title: resolveGeneratedExtraBookTitle(bookDraft.title, typeName),
-    typeId: chapterGenerationDraft.typeId || undefined,
-    typeName: typeName || '未分类番外',
-  };
-  if (editingBook.value && route.value.params?.bookId) {
-    const book = extras.updateBook(route.value.params.bookId, payload);
-    if (!book) return;
-    await runChapterGenerationForBook(book.id, book, route.value.params?.chapterId || '');
-    return;
-  }
-
-  const book = extras.createBook(payload);
-  await runChapterGenerationForBook(book.id, book);
-}
-
 function openBook(bookId: string) {
   const book = extras.getBook(bookId);
   if (!book) return;
   query.value = '';
   phone.pushPage('book', book.title, { bookId });
-}
-
-async function removeBook(bookId: string) {
-  const book = extras.getBook(bookId);
-  const shouldDelete = await phone.confirmNotice(
-    `要删除番外“${book?.title || '未命名番外'}”吗？章节、大纲和章节总结都会一起删除。`,
-    {
-      confirmLabel: '删除',
-      kind: 'warning',
-    },
-  );
-  if (!shouldDelete) return;
-  extras.deleteBook(bookId);
-  phone.replacePage('root', '番外书架');
-  toastr.success('已删除番外');
 }
 
 function openGenerateChapter(bookId: string, chapterId?: string, versionId?: string) {
@@ -1204,55 +1014,8 @@ function selectChapterVersion(versionId: string) {
   void nextTick(() => scrollToVersionPosition(settings.value.reader.versionNavigatorPosition));
 }
 
-async function removeChapterVersion(versionId: string) {
-  if (!activeBook.value || !activeChapter.value || activeChapter.value.versions.length <= 1) return;
-  const versionIndex = activeChapter.value.versions.findIndex(version => version.id === versionId);
-  if (versionIndex < 0) return;
-  const shouldDelete = await phone.confirmNotice(
-    `要删除当前查看的版本 ${versionIndex + 1}/${activeChapter.value.versions.length} 吗？`,
-    { confirmLabel: '删除此版本', kind: 'warning' },
-  );
-  if (!shouldDelete || !activeBook.value || !activeChapter.value) return;
-  const versions = [...activeChapter.value.versions];
-  const previousVersion = versions[(versionIndex - 1 + versions.length) % versions.length];
-  const result = extras.deleteChapterVersion(activeBook.value.id, activeChapter.value.id, versionId);
-  if (!result) return;
-  const chapter = previousVersion
-    ? extras.activateChapterVersion(activeBook.value.id, result.chapter.id, previousVersion.id)
-    : result.chapter;
-  phone.replacePage('chapter', chapter?.title || result.activeVersion.title, {
-    bookId: activeBook.value.id,
-    chapterId: result.chapter.id,
-    versionId: previousVersion?.id || result.activeVersion.id,
-  });
-  toastr.success('已删除当前章节版本');
-}
-
 function openEditChapter(bookId: string, chapterId: string, versionId?: string) {
   phone.pushPage('chapter-editor', '编辑章节', { bookId, chapterId, ...(versionId ? { versionId } : {}) });
-}
-
-function submitChapter() {
-  const bookId = route.value.params?.bookId;
-  if (!bookId) return;
-
-  if (editingChapter.value && route.value.params?.chapterId) {
-    const versionId = route.value.params?.versionId;
-    const chapter = versionId
-      ? extras.updateChapterVersion(bookId, route.value.params.chapterId, versionId, chapterDraft)
-      : extras.updateChapter(bookId, route.value.params.chapterId, chapterDraft);
-    if (!chapter) return;
-    phone.replacePage('chapter', versionId ? chapterDraft.title : chapter.title, {
-      bookId,
-      chapterId: chapter.id,
-      ...(versionId ? { versionId } : {}),
-    });
-    return;
-  }
-
-  const chapter = extras.createChapter(bookId, chapterDraft);
-  if (!chapter) return;
-  phone.replacePage('chapter', chapter.title, { bookId, chapterId: chapter.id });
 }
 
 function applyExtrasBaguContent(content: string) {
@@ -1295,31 +1058,6 @@ function selectCatalogChapter(chapterId: string) {
   openChapter(activeBook.value.id, chapterId, true);
 }
 
-async function removeChapter(bookId: string, chapterId: string) {
-  const chapter = extras.getChapter(bookId, chapterId);
-  if (chapter && chapter.versions.length > 1) {
-    await removeChapterVersion(viewedChapterVersionId.value);
-    return;
-  }
-  const shouldDelete = await phone.confirmNotice(
-    `要删除章节“${chapter?.title || '未命名章节'}”的最后一个版本吗？删除后这条章节记录也会移除。`,
-    {
-      confirmLabel: '删除',
-      kind: 'warning',
-    },
-  );
-  if (!shouldDelete) return;
-  extras.deleteChapter(bookId, chapterId);
-  const book = extras.getBook(bookId);
-  if (!book) {
-    phone.goHome();
-    toastr.success('已删除章节');
-    return;
-  }
-  phone.replacePage('book', book.title, { bookId });
-  toastr.success('已删除章节');
-}
-
 function openGenerateSummary(bookId: string) {
   phone.pushPage('summary-generate', '生成章节总结', { bookId });
 }
@@ -1333,34 +1071,6 @@ function openFailedDraft(draftId: string) {
   if (!draft) return;
   const bookId = typeof draft.context.bookId === 'string' ? draft.context.bookId : '';
   phone.pushPage('failed-draft', '解析失败草稿', bookId ? { draftId, bookId } : { draftId });
-}
-
-function submitSummary() {
-  const bookId = route.value.params?.bookId;
-  if (!bookId || !summaryDraft.content.trim()) return;
-
-  if (editingSummary.value && route.value.params?.summaryId) {
-    extras.updateSummary(bookId, route.value.params.summaryId, summaryDraft);
-  } else {
-    extras.createSummary(bookId, summaryDraft);
-  }
-  const book = extras.getBook(bookId);
-  if (!book) return;
-  phone.replacePage('book', book.title, { bookId });
-}
-
-async function removeSummary(bookId: string, summaryId: string) {
-  const summaryItem = extras.getSummary(bookId, summaryId);
-  const shouldDelete = await phone.confirmNotice(
-    `要删除这条章节总结吗？${summaryItem?.enabled ? '当前启用状态也会一并移除。' : ''}`,
-    {
-      confirmLabel: '删除',
-      kind: 'warning',
-    },
-  );
-  if (!shouldDelete) return;
-  extras.deleteSummary(bookId, summaryId);
-  toastr.success('已删除章节总结');
 }
 
 function buildSummaryOutputFormat() {
@@ -1409,10 +1119,6 @@ function buildChaptersContext(book = activeBook.value, coveredChapterIds = gener
   return [`番外书名：${book.title}`, chapterBlocks.join('\n\n')].filter(Boolean).join('\n\n');
 }
 
-function getDraftContextValue<T>(draft: NonNullable<typeof activeFailedDraft.value>, key: string, fallback: T) {
-  return (draft.context[key] as T | undefined) ?? fallback;
-}
-
 function draftContextBookTitle(context: Record<string, unknown>) {
   const bookId = typeof context.bookId === 'string' ? context.bookId : '';
   return extras.getBook(bookId)?.title || '未知番外';
@@ -1454,485 +1160,6 @@ function returnToChapterGenerate() {
         }
       : { bookId },
   );
-}
-
-async function runChapterGeneration() {
-  const bookId = route.value.params?.bookId;
-  const book = activeBook.value;
-  if (!bookId || !book) return;
-  await runChapterGenerationForBook(bookId, book, route.value.params?.chapterId || '');
-}
-
-async function runChapterGenerationForBook(bookId: string, book: ExtraBook, chapterId = '') {
-  if (chapterGenerationDraft.mode === '重写当前章节' && !chapterId) {
-    chapterGenerationState.error = '当前没有可重写的章节';
-    return;
-  }
-
-  chapterGenerationState.error = '';
-  clearExtraChapterPreviewDraft();
-  chapterGenerationState.preview = null;
-  chapterGenerationState.rawOutput = '';
-  const savedTypePrompt = saveChapterTypePrompt();
-  if (savedTypePrompt) {
-    extras.updateBook(bookId, {
-      title: book.title,
-      typeId: savedTypePrompt.id,
-      typeName: savedTypePrompt.name,
-    });
-  }
-
-  try {
-    const generationConfig = {
-      appPrompt: getChapterAppPrompt(chapterGenerationDraft.generationIntent),
-      bookId,
-      chapterId,
-      chapterMode: chapterGenerationDraft.mode,
-      generationIntent: chapterGenerationDraft.generationIntent,
-      fromStartEnd: chapterGenerationDraft.fromStartEnd,
-      outputFormat: buildChapterOutputFormat(),
-      previousChapterContext: buildPreviousChapterContext(book),
-      rangeText: chapterGenerationDraft.rangeText,
-      recentCount: chapterGenerationDraft.recentCount,
-      references: selectedReferences.value.map(reference => ({
-        ...reference,
-        sourcePath: [...reference.sourcePath],
-      })),
-      singleMessageId: chapterGenerationDraft.singleMessageId,
-      sourceMode: settings.value.generation.sourceMode,
-      tavernPresetName: settings.value.generation.tavernPresetName,
-      typeId: chapterGenerationDraft.typeId,
-      typeName: chapterGenerationDraft.typeName,
-      typePrompt: currentChapterTypePrompt.value,
-      userRequirement: chapterGenerationDraft.userRequirement,
-    } satisfies ExtraChapterGenerateConfig;
-    const result = await generateContent(extraChapterGenerationAdapter, generationConfig, {
-      createFailedDraft: input => extras.createFailedDraft(input),
-      generationDefaults: {
-        resultMode: settings.value.generation.resultMode,
-        stream: settings.value.generation.stream,
-        tavernPresetName: settings.value.generation.tavernPresetName,
-      },
-      references: formattedReferences.value,
-      referenceItems: selectedReferences.value,
-      lifecycle: {
-        onFinish() {
-          chapterGenerationState.running = false;
-          chapterGenerationState.generationId = '';
-        },
-        onRawOutput(rawOutput) {
-          chapterGenerationState.rawOutput = rawOutput;
-        },
-        onStart(generationId) {
-          chapterGenerationState.running = true;
-          chapterGenerationState.generationId = generationId;
-        },
-      },
-      source: {
-        fromStartEnd: chapterGenerationDraft.fromStartEnd,
-        mode: settings.value.generation.sourceMode,
-        rangeText: chapterGenerationDraft.rangeText,
-        recentCount: chapterGenerationDraft.recentCount,
-        singleMessageId: chapterGenerationDraft.singleMessageId,
-      },
-      textProvider: settings.value.textProvider,
-    });
-
-    if (result.status === 'failed') {
-      failedDraftRawOutput.value = result.rawOutput;
-      chapterGenerationState.error = result.warnings.join('；') || '模型没有返回可解析的番外 XML';
-      toastr.warning('XML 解析失败，已保存到失败草稿');
-      void phone.presentGeneratedPage('extras', 'failed-draft', '解析失败草稿', {
-        draftId: result.draft.id,
-        bookId,
-      });
-      return;
-    }
-
-    if (result.status === 'saved') {
-      const savedChapter = result.saved.chapter;
-      toastr.success(chapterGenerationDraft.mode === '重写当前章节' ? '已保存并切换到章节新版本' : '已生成并保存章节');
-      void phone.presentGeneratedPage('extras', 'chapter', result.data.title, {
-        bookId,
-        chapterId: savedChapter.id,
-        ...(result.saved.versionId ? { versionId: result.saved.versionId } : {}),
-      });
-      return;
-    }
-
-    chapterGenerationState.preview = {
-      bookId,
-      chapterId,
-      content: result.data.content,
-      draftId: null,
-      generationRecord: createExtraChapterGenerationRecord(generationConfig, result.source, result.replay),
-      mode: chapterGenerationDraft.mode,
-      raw: result.rawOutput,
-      targetVersionId: viewedChapterVersion.value?.id || '',
-      title: result.data.title,
-      warnings: result.warnings,
-    };
-    persistExtraChapterPreviewDraft(
-      chapterId
-        ? { bookId, chapterId, ...(viewedChapterVersion.value?.id ? { versionId: viewedChapterVersion.value.id } : {}) }
-        : { bookId },
-    );
-    void phone.presentGeneratedPage(
-      'extras',
-      'chapter-preview',
-      '番外预览',
-      chapterId
-        ? { bookId, chapterId, ...(viewedChapterVersion.value?.id ? { versionId: viewedChapterVersion.value.id } : {}) }
-        : { bookId },
-    );
-  } catch (error) {
-    chapterGenerationState.error = error instanceof Error ? error.message : '生成失败，请稍后再试';
-  }
-}
-
-function saveChapterPreview() {
-  const preview = chapterGenerationState.preview;
-  if (!preview) return;
-  const bookId = preview.bookId || route.value.params?.bookId || extraChapterPreviewDraft.value?.routeParams.bookId;
-  if (!bookId) {
-    toastr.warning('草稿缺少目标番外信息，无法保存章节');
-    return;
-  }
-  const chapterId =
-    preview.chapterId || route.value.params?.chapterId || extraChapterPreviewDraft.value?.routeParams.chapterId;
-
-  const saved =
-    preview.mode === '重写当前章节' && chapterId
-      ? extras.appendChapterVersion(bookId, chapterId, {
-          content: preview.content,
-          generationRecord: preview.generationRecord,
-          title: preview.title,
-        })
-      : extras.createChapter(bookId, {
-          content: preview.content,
-          generationRecord: preview.generationRecord,
-          title: preview.title,
-        });
-
-  if (!saved) {
-    toastr.warning('目标番外不存在，无法保存章节');
-    return;
-  }
-  if (preview.draftId) {
-    extras.deleteFailedDraft(preview.draftId);
-  }
-  clearExtraChapterPreviewDraft();
-  chapterGenerationState.preview = null;
-  toastr.success(preview.mode === '重写当前章节' ? '已保存重写章节' : '已保存新章节');
-  const chapter = 'chapter' in saved ? saved.chapter : saved;
-  const versionId = 'version' in saved ? saved.version.id : '';
-  phone.replacePage('chapter', versionId ? preview.title : chapter.title, {
-    bookId,
-    chapterId: chapter.id,
-    ...(versionId ? { versionId } : {}),
-  });
-}
-
-function reparseChapterPreviewRaw() {
-  const preview = chapterGenerationState.preview;
-  if (!preview) return false;
-  const rawOutput = preview.raw.trim();
-  if (!rawOutput) {
-    toastr.warning('先补一点可解析的 XML 内容');
-    return false;
-  }
-
-  const parsed = parseSimpleXmlResult(rawOutput);
-  if (!parsed.ok) {
-    preview.raw = rawOutput;
-    preview.warnings = parsed.warnings;
-    toastr.warning(parsed.warnings.join('；') || '还是没能解析成功');
-    return false;
-  }
-
-  preview.content = parsed.data.content;
-  preview.raw = parsed.raw;
-  preview.title = parsed.data.title;
-  preview.warnings = parsed.warnings;
-  toastr.success('已按原始输出重新解析');
-  return true;
-}
-
-async function runSummaryGeneration() {
-  const bookId = route.value.params?.bookId;
-  const book = activeBook.value;
-  if (!bookId || !book) return;
-  if (!generationDraft.coveredChapterIds.length) {
-    generationState.error = '请至少选择一章后再生成总结';
-    return;
-  }
-  const selectableChapterIds = new Set(summarizableChapters.value.map(chapter => chapter.id));
-  if (generationDraft.coveredChapterIds.some(chapterId => !selectableChapterIds.has(chapterId))) {
-    generationState.error = '所选章节已经被其他启用总结覆盖，请重新选择';
-    generationDraft.coveredChapterIds = generationDraft.coveredChapterIds.filter(chapterId =>
-      selectableChapterIds.has(chapterId),
-    );
-    return;
-  }
-
-  generationState.error = '';
-  clearExtraSummaryPreviewDraft();
-  generationState.preview = null;
-  generationState.rawOutput = '';
-
-  try {
-    const result = await generateContent(
-      extraSummaryGenerationAdapter,
-      {
-        appPrompt: prompts.specialPrompts.extraSummary,
-        bookId,
-        chaptersContext: buildChaptersContext(book, generationDraft.coveredChapterIds),
-        coveredChapterIds: [...generationDraft.coveredChapterIds],
-        enabled: generationDraft.enabled,
-        outputFormat: buildSummaryOutputFormat(),
-        typePrompt: '',
-        userRequirement: generationDraft.userRequirement,
-      },
-      {
-        createFailedDraft: input => extras.createFailedDraft(input),
-        generationDefaults: {
-          resultMode: settings.value.generation.resultMode,
-          stream: settings.value.generation.stream,
-          tavernPresetName: settings.value.generation.tavernPresetName,
-        },
-        references: formattedReferences.value,
-        lifecycle: {
-          onFinish() {
-            generationState.running = false;
-            generationState.generationId = '';
-          },
-          onRawOutput(rawOutput) {
-            generationState.rawOutput = rawOutput;
-          },
-          onStart(generationId) {
-            generationState.running = true;
-            generationState.generationId = generationId;
-          },
-        },
-        source: {
-          fromStartEnd: generationDraft.fromStartEnd,
-          mode: settings.value.generation.sourceMode,
-          rangeText: generationDraft.rangeText,
-          recentCount: generationDraft.recentCount,
-          singleMessageId: generationDraft.singleMessageId,
-        },
-        textProvider: settings.value.textProvider,
-      },
-    );
-
-    if (result.status === 'failed') {
-      failedDraftRawOutput.value = result.rawOutput;
-      generationState.error = result.warnings.join('；') || '模型没有返回可解析的章节总结 XML';
-      toastr.warning('XML 解析失败，已保存到失败草稿');
-      void phone.presentGeneratedPage('extras', 'failed-draft', '解析失败草稿', { draftId: result.draft.id });
-      return;
-    }
-
-    if (result.status === 'saved') {
-      const nextBook = extras.getBook(bookId);
-      toastr.success('已生成并保存章节总结');
-      if (nextBook) {
-        void phone.presentGeneratedPage('extras', 'book', nextBook.title, { bookId });
-      }
-      return;
-    }
-
-    generationState.preview = {
-      bookId,
-      content: result.data.content,
-      coveredChapterIds: [...generationDraft.coveredChapterIds],
-      draftId: null,
-      enabled: generationDraft.enabled,
-      raw: result.rawOutput,
-      warnings: result.warnings,
-    };
-    persistExtraSummaryPreviewDraft({ bookId });
-    void phone.presentGeneratedPage('extras', 'summary-preview', '章节总结预览', { bookId });
-  } catch (error) {
-    generationState.error = error instanceof Error ? error.message : '生成失败，请稍后再试';
-  }
-}
-
-function saveSummaryPreview() {
-  const preview = generationState.preview;
-  if (!preview) return;
-
-  const summary = extras.createSummary(preview.bookId, {
-    content: preview.content,
-    coveredChapterIds: [...preview.coveredChapterIds],
-    enabled: preview.enabled,
-  });
-  if (!summary) {
-    toastr.warning('目标番外不存在，无法保存章节总结');
-    return;
-  }
-  if (preview.draftId) {
-    extras.deleteFailedDraft(preview.draftId);
-  }
-  clearExtraSummaryPreviewDraft();
-  generationState.preview = null;
-  const book = extras.getBook(preview.bookId);
-  toastr.success('已保存章节总结');
-  if (book) {
-    phone.replacePage('book', book.title, { bookId: book.id });
-  }
-}
-
-function reparseSummaryPreviewRaw() {
-  const preview = generationState.preview;
-  if (!preview) return false;
-  const rawOutput = preview.raw.trim();
-  if (!rawOutput) {
-    toastr.warning('先补一点可解析的 XML 内容');
-    return false;
-  }
-
-  const parsed = parseContentXmlResult(rawOutput);
-  if (!parsed.ok) {
-    preview.raw = rawOutput;
-    preview.warnings = parsed.warnings;
-    toastr.warning(parsed.warnings.join('；') || '还是没能解析成功');
-    return false;
-  }
-
-  preview.content = parsed.data.content;
-  preview.raw = parsed.raw;
-  preview.warnings = parsed.warnings;
-  toastr.success('已按原始输出重新解析');
-  return true;
-}
-
-function stopGeneration() {
-  if (!generationState.generationId) return;
-  stopGenerationByIdSafe(generationState.generationId);
-  generationState.running = false;
-  generationState.error = '生成已停止';
-}
-
-function stopChapterGeneration() {
-  if (!chapterGenerationState.generationId) return;
-  stopGenerationByIdSafe(chapterGenerationState.generationId);
-  chapterGenerationState.running = false;
-  chapterGenerationState.error = '生成已停止';
-}
-
-async function removeFailedDraft(draftId: string) {
-  const shouldDelete = await phone.confirmNotice('要删除这条解析失败草稿吗？原始输出也会一并移除。', {
-    confirmLabel: '删除',
-    kind: 'warning',
-  });
-  if (!shouldDelete) return;
-  extras.deleteFailedDraft(draftId);
-  failedDraftRawOutput.value = '';
-  if (route.value.page === 'failed-draft') {
-    phone.replacePage('root', '番外书架');
-  }
-  toastr.success('已删除失败草稿');
-}
-
-function reparseFailedDraft() {
-  const draft = activeFailedDraft.value;
-  if (!draft) return;
-
-  const rawOutput = failedDraftRawOutput.value.trim();
-  if (!rawOutput) {
-    toastr.warning('先补一点可解析的 XML 内容');
-    return;
-  }
-
-  if (draft.actionId === 'chapter-generate') {
-    const parsed = parseSimpleXmlResult(rawOutput);
-    if (!parsed.ok) {
-      extras.updateFailedDraft(draft.id, {
-        rawOutput,
-        warnings: parsed.warnings,
-      });
-      failedDraftRawOutput.value = rawOutput;
-      toastr.warning(parsed.warnings.join('；') || '还是没能解析成功');
-      return;
-    }
-
-    extras.updateFailedDraft(draft.id, {
-      rawOutput: parsed.raw,
-      warnings: parsed.warnings,
-    });
-    const bookId = getDraftContextValue(draft, 'bookId', '');
-    const chapterId = getDraftContextValue(draft, 'chapterId', '');
-    chapterGenerationState.preview = {
-      bookId,
-      chapterId,
-      content: parsed.data.content,
-      draftId: null,
-      generationRecord: (() => {
-        const config = ExtraChapterGenerateConfigSchema.safeParse(draft.context);
-        return config.success
-          ? createExtraChapterGenerationRecord(config.data, draft.source, draft.generationRecord?.replay)
-          : undefined;
-      })(),
-      mode: normalizeChapterGenerationMode(draft.context.chapterMode),
-      raw: parsed.raw,
-      targetVersionId: '',
-      title: parsed.data.title,
-      warnings: parsed.warnings,
-    };
-    if (!extras.getBook(bookId)) {
-      toastr.warning('原番外已经不存在，暂时不能恢复这条章节草稿');
-      return;
-    }
-    persistExtraChapterPreviewDraft({
-      bookId,
-      ...(chapterId ? { chapterId } : {}),
-    });
-    extras.deleteFailedDraft(draft.id);
-    failedDraftRawOutput.value = '';
-    phone.replacePage('chapter-preview', '番外预览', {
-      bookId,
-      ...(chapterId ? { chapterId } : {}),
-    });
-    return;
-  }
-
-  const parsed = parseContentXmlResult(rawOutput);
-  if (!parsed.ok) {
-    extras.updateFailedDraft(draft.id, {
-      rawOutput,
-      warnings: parsed.warnings,
-    });
-    failedDraftRawOutput.value = rawOutput;
-    toastr.warning(parsed.warnings.join('；') || '还是没能解析成功');
-    return;
-  }
-
-  const bookId = getDraftContextValue(draft, 'bookId', '');
-  const coveredChapterIds = getDraftContextValue(draft, 'coveredChapterIds', [] as string[]);
-  const enabled = Boolean(getDraftContextValue(draft, 'enabled', true));
-  if (!extras.getBook(bookId)) {
-    toastr.warning('原番外已经不存在，暂时不能恢复这条章节总结');
-    return;
-  }
-
-  extras.updateFailedDraft(draft.id, {
-    rawOutput: parsed.raw,
-    warnings: parsed.warnings,
-  });
-  generationState.preview = {
-    bookId,
-    content: parsed.data.content,
-    coveredChapterIds: [...coveredChapterIds],
-    draftId: null,
-    enabled,
-    raw: parsed.raw,
-    warnings: parsed.warnings,
-  };
-  persistExtraSummaryPreviewDraft({ bookId });
-  extras.deleteFailedDraft(draft.id);
-  failedDraftRawOutput.value = '';
-  phone.replacePage('summary-preview', '章节总结预览', { bookId });
 }
 
 function formatCoveredChaptersForBook(book: typeof activeBook.value, ids: string[]) {

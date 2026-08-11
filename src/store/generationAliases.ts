@@ -3,7 +3,7 @@ import { validateInplace } from '@/util/zod';
 
 export const generationAliasesField = 'sillytavern_phone_generation_aliases';
 
-const GenerationAliasesSchema = z.object({
+export const GenerationAliasesSchema = z.object({
   charReplacement: z.string().default(''),
   userReplacement: z.string().default(''),
 });

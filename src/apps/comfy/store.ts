@@ -1,4 +1,3 @@
-import { validateInplace } from '@/util/zod';
 // eslint-disable-next-line import-x/no-nodejs-modules
 import { getRequestHeaders, saveSettingsDebounced } from '@sillytavern/script';
 import { extension_settings } from '@sillytavern/scripts/extensions';
@@ -29,7 +28,7 @@ const ComfyWorkflowSchema = z.object({
 });
 export type ComfyWorkflow = z.infer<typeof ComfyWorkflowSchema>;
 
-const ComfySettingsSchema = z.object({
+export const ComfySettingsSchema = z.object({
   activeWorkflowId: z.string().default(''),
   baseUrl: z.string().default('http://127.0.0.1:8188'),
   checkpoint: z.string().default(''),
@@ -69,15 +68,32 @@ export interface ComfyGeneratedMedia {
   url: string;
 }
 
-function readSettings(raw: unknown): ComfySettings {
+type SettingsReadResult = { data: ComfySettings; error: string; rawData: unknown };
+
+function readSettings(raw: unknown): SettingsReadResult {
+  const rawData = klona(raw);
+  const parsed = ComfySettingsSchema.safeParse(typeof raw === 'undefined' ? {} : raw);
+  if (!parsed.success) {
+    const settings = ComfySettingsSchema.parse({});
+    migrateWorkflowSettings(settings);
+    return {
+      data: settings,
+      error: `ComfyUI 配置校验失败：${parsed.error.issues[0]?.message ?? '数据格式无效'}`,
+      rawData,
+    };
+  }
   try {
-    const settings = validateInplace(ComfySettingsSchema, raw && typeof raw === 'object' ? raw : {});
+    const settings = parsed.data;
     migrateWorkflowSettings(settings);
-    return settings;
-  } catch {
-    const settings = validateInplace(ComfySettingsSchema, {});
+    return { data: settings, error: '', rawData };
+  } catch (error) {
+    const settings = ComfySettingsSchema.parse({});
     migrateWorkflowSettings(settings);
-    return settings;
+    return {
+      data: settings,
+      error: `ComfyUI 配置迁移失败：${error instanceof Error ? error.message : '数据格式无效'}`,
+      rawData,
+    };
   }
 }
 
@@ -508,21 +524,38 @@ function wait(ms: number) {
 }
 
 export const useComfyStore = defineStore('comfy', () => {
-  const settings = ref<ComfySettings>(readSettings(_.get(extension_settings, comfyField, {})));
+  const initial = readSettings(_.get(extension_settings, comfyField));
+  const settings = ref<ComfySettings>(initial.data);
+  const configError = ref(initial.error);
+  const rawConfig = shallowRef(initial.rawData);
   const objectInfo = shallowRef<unknown>(null);
   const workflowInputs = computed(() => collectWorkflowInputs(settings.value, objectInfo.value));
   const activeWorkflow = computed(() => getActiveWorkflowFromSettings(settings.value));
   const activeWorkflowJson = computed(() => getActiveWorkflowJson(settings.value));
 
   function persist() {
-    _.set(extension_settings, comfyField, readSettings(klona(settings.value)));
+    if (configError.value) return;
+    const parsed = readSettings(klona(settings.value));
+    if (parsed.error) throw new Error(parsed.error);
+    _.set(extension_settings, comfyField, parsed.data);
     void saveSettingsDebounced();
   }
 
   watch(settings, persist, { deep: true });
 
   function rehydrateFromSettings() {
-    settings.value = readSettings(_.get(extension_settings, comfyField, {}));
+    const next = readSettings(_.get(extension_settings, comfyField));
+    configError.value = next.error;
+    rawConfig.value = next.rawData;
+    settings.value = next.data;
+  }
+
+  function resetCorruptedSettings() {
+    configError.value = '';
+    rawConfig.value = undefined;
+    settings.value = ComfySettingsSchema.parse({});
+    migrateWorkflowSettings(settings.value);
+    persist();
   }
 
   function syncLegacyWorkflowFields() {
@@ -800,6 +833,7 @@ export const useComfyStore = defineStore('comfy', () => {
   }
 
   return {
+    configError,
     activeWorkflow,
     activeWorkflowJson,
     createWorkflow,
@@ -808,6 +842,8 @@ export const useComfyStore = defineStore('comfy', () => {
     generateMedia,
     refreshObjectInfo,
     rehydrateFromSettings,
+    resetCorruptedSettings,
+    rawConfig,
     setActiveWorkflow,
     setWorkflowParameterMapping,
     setWorkflowNodeSelection,

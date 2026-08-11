@@ -144,9 +144,13 @@
       <template #before-fields>
         <label class="pc-field-group">
           <span>目标资料表</span>
-          <select v-model="generationDraft.tableId" class="pc-field pc-select" @change="syncGenerationTable">
-            <option v-for="table in tables" :key="table.id" :value="table.id">{{ table.name }}</option>
-          </select>
+          <SearchableCombobox
+            input-label="选择目标资料表"
+            :model-value="generationDraft.tableId"
+            :options="profileTableOptions"
+            placeholder="选择目标资料表"
+            @update:model-value="setGenerationTable"
+          />
         </label>
         <input v-model="generationDraft.titleHint" class="pc-field" type="text" placeholder="标题或对象名，可留空" />
       </template>
@@ -191,6 +195,7 @@ import BaguDetailPage from '@/components/BaguDetailPage.vue';
 import FailedDraftRepairPage from '@/components/FailedDraftRepairPage.vue';
 import GenerationFormPage from '@/components/GenerationFormPage.vue';
 import GenerationPreviewPage from '@/components/GenerationPreviewPage.vue';
+import SearchableCombobox from '@/components/SearchableCombobox.vue';
 import ProfileFieldEditorPage from './ProfileFieldEditorPage.vue';
 import ProfilesCatalogPage from './pages/ProfilesCatalogPage.vue';
 import ProfilesEntryDetailPage from './pages/ProfilesEntryDetailPage.vue';
@@ -587,6 +592,11 @@ function isDraftColumnEnabled(columnId: string) {
 function syncGenerationTable() {
   const table = profiles.getTable(generationDraft.tableId);
   if (table) generationDraft.kind = table.kind;
+}
+
+function setGenerationTable(tableId: string) {
+  generationDraft.tableId = tableId;
+  syncGenerationTable();
 }
 
 function openTableManager() {

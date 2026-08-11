@@ -19,7 +19,7 @@ const ContentConversionHistoryRecordSchema = z.object({
   createdAt: z.string(),
 });
 
-const ContentConversionHistorySettingsSchema = z.object({
+export const ContentConversionHistorySettingsSchema = z.object({
   records: z.array(ContentConversionHistoryRecordSchema).default([]),
 });
 

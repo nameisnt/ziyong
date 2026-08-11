@@ -22,13 +22,18 @@ declare module '*.vue' {
 
 declare module '@sillytavern/script' {
   export const chat: unknown[];
+  export const characters: unknown[];
   export const event_types: Record<string, string>;
   export const eventSource: {
     makeFirst: (event: string, listener: (...args: unknown[]) => void) => () => void;
     on: (event: string, listener: (...args: unknown[]) => void) => () => void;
     removeListener: (event: string, listener: (...args: unknown[]) => void) => void;
   };
+  export const name1: string;
+  export function getCharacters(): Promise<void>;
+  export function getPastCharacterChats(characterId: number): Promise<unknown[]>;
   export function getRequestHeaders(): Record<string, string>;
+  export function importCharacterChat(formData: FormData, options?: { refresh?: boolean }): Promise<string[]>;
   export function messageFormatting(...args: unknown[]): string;
   export function reloadCurrentChat(): Promise<void> | void;
   export function saveChat(): Promise<void> | void;

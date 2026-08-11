@@ -10,6 +10,7 @@ import {
 import { getCurrentChatScopeKey, readChatScopedEnvelope } from '@/store/chatScoped';
 import { parsePrettified } from '@/util/zod';
 import { extension_settings } from '@sillytavern/scripts/extensions';
+import { createChatScopedBackupSchema } from '@/type/backup';
 
 function emptyOverview(): PhoneContentOverview {
   return { averageChars: 0, chars: 0, collections: 0, items: 0, latestUpdatedAt: '', scopeCount: 0 };
@@ -111,12 +112,16 @@ export default definePhoneApp({
   archiveProvider: { field: mediaField, collect: createMediaArchiveDomain },
   backupDomains: [
     {
+      category: 'content',
       key: 'media',
       exportData: currentScopeKey => readChatScopedEnvelope(mediaField, currentScopeKey || getCurrentChatScopeKey()),
       importData: data => {
         _.set(extension_settings, mediaField, data);
       },
       rehydrateFromSettings: () => useMediaStore().rehydrateFromSettings(),
+      schema: createChatScopedBackupSchema(MediaScopeDataSchema),
+      schemaVersion: 1,
+      scope: 'chat',
     },
   ],
   component: MediaGenerateApp,

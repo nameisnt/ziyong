@@ -1,8 +1,9 @@
 import TimekeeperApp from './TimekeeperApp.vue';
-import { timekeeperField, useTimekeeperStore } from './store';
+import { TimekeeperSettingsSchema, timekeeperField, useTimekeeperStore } from './store';
 import { definePhoneApp } from '@/core/appRegistry';
 import { getCurrentChatScopeKey, readChatScopedEnvelope } from '@/store/chatScoped';
 import { extension_settings } from '@sillytavern/scripts/extensions';
+import { createChatScopedBackupSchema } from '@/type/backup';
 
 export default definePhoneApp({
   id: 'timekeeper',
@@ -14,6 +15,7 @@ export default definePhoneApp({
   defaultOrder: 130,
   backupDomains: [
     {
+      category: 'configuration',
       key: 'timekeeper',
       exportData: currentScopeKey =>
         readChatScopedEnvelope(timekeeperField, currentScopeKey || getCurrentChatScopeKey()),
@@ -21,6 +23,9 @@ export default definePhoneApp({
         _.set(extension_settings, timekeeperField, data);
       },
       rehydrateFromSettings: () => useTimekeeperStore().rehydrateFromSettings(),
+      schema: createChatScopedBackupSchema(TimekeeperSettingsSchema),
+      schemaVersion: 1,
+      scope: 'chat',
     },
   ],
   component: TimekeeperApp,

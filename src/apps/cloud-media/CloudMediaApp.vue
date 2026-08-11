@@ -32,11 +32,13 @@
         <article class="pc-page-section pc-cloud-profile-card">
           <label class="pc-field-group">
             <span>{{ t`生成配置` }}</span>
-            <select v-model="settings.activeProfileId" class="pc-field pc-select" :disabled="generating">
-              <option v-for="profile in settings.profiles" :key="profile.id" :value="profile.id">
-                {{ profile.name }}
-              </option>
-            </select>
+            <SearchableCombobox
+              v-model="settings.activeProfileId"
+              input-label="选择生成配置"
+              :options="profileOptions"
+              placeholder="选择生成配置"
+              :disabled="generating"
+            />
           </label>
           <div class="pc-cloud-profile-meta">
             <strong>{{ providerLabel(activeProfile.provider) }}</strong>
@@ -167,11 +169,13 @@
         <template #before-fields>
           <label class="pc-field-group">
             <span>{{ t`云媒体配置` }}</span>
-            <select v-model="settings.activeProfileId" class="pc-field pc-select" :disabled="generationState.running">
-              <option v-for="profile in settings.profiles" :key="profile.id" :value="profile.id">
-                {{ profile.name }} · {{ kindLabel(profile.kind) }}
-              </option>
-            </select>
+            <SearchableCombobox
+              v-model="settings.activeProfileId"
+              input-label="选择云媒体配置"
+              :options="profileOptions"
+              placeholder="选择云媒体配置"
+              :disabled="generationState.running"
+            />
           </label>
         </template>
       </GenerationPanel>
@@ -259,11 +263,12 @@
       </header>
 
       <div class="pc-cloud-profile-picker">
-        <select v-model="settings.activeProfileId" class="pc-field pc-select">
-          <option v-for="profile in settings.profiles" :key="profile.id" :value="profile.id">
-            {{ profile.name }}
-          </option>
-        </select>
+        <SearchableCombobox
+          v-model="settings.activeProfileId"
+          input-label="选择要编辑的配置"
+          :options="profileOptions"
+          placeholder="选择要编辑的配置"
+        />
         <button
           class="pc-icon-btn danger"
           type="button"
@@ -436,6 +441,7 @@ import GenerationPanel from '@/components/GenerationPanel.vue';
 import GenerationPreviewPanel from '@/components/GenerationPreviewPanel.vue';
 import PreviewDraftNotice from '@/components/PreviewDraftNotice.vue';
 import RawOutputEditor from '@/components/RawOutputEditor.vue';
+import SearchableCombobox from '@/components/SearchableCombobox.vue';
 import { useMediaStore, type MediaEntry, type MediaKind } from '@/apps/media/store';
 import { getRegisteredPhoneGenerationAdapter } from '@/core/appRegistry';
 import { buildGenerationPreview, captureGenerationPrompt, generateContent } from '@/core/generationService';
@@ -464,6 +470,16 @@ const { activeProfile, settings } = storeToRefs(cloudMedia);
 const { failedDrafts } = storeToRefs(media);
 const { settings: generationSettings } = storeToRefs(settingsStore);
 const route = computed(() => phone.currentRoute);
+const profileOptions = computed(() => {
+  const options = settings.value.profiles.map(profile => ({
+    label: `${profile.name} · ${kindLabel(profile.kind)}`,
+    value: profile.id,
+  }));
+  if (settings.value.activeProfileId && !options.some(option => option.value === settings.value.activeProfileId)) {
+    options.unshift({ label: '当前配置已失效', value: settings.value.activeProfileId });
+  }
+  return options;
+});
 const imageRatios = ['1:1', '16:9', '4:3', '3:2', '2:3', '3:4', '9:16'];
 const showApiKey = ref(false);
 const generating = ref(false);

@@ -177,7 +177,6 @@
   ) {
   color-scheme: light;
   background: var(--pc-form-control-bg) !important;
-  background-color: var(--pc-form-control-bg) !important;
   color: var(--pc-form-control-text) !important;
   caret-color: var(--pc-form-control-text);
   -webkit-text-fill-color: var(--pc-form-control-text);
@@ -185,7 +184,6 @@
 
 #tavern-phone-root.pc-phone-root[data-theme='light'] :is(select option, select optgroup) {
   color-scheme: light;
-  background-color: var(--pc-form-control-bg) !important;
   color: var(--pc-form-control-text) !important;
 }
 
@@ -759,37 +757,8 @@
   display: none !important;
 }
 
-.pc-phone-root.pc-phone-root.pc-phone-root.pc-phone-root.pc-phone-root.pc-phone-root.pc-phone-root.pc-phone-root,
-.pc-phone-root.pc-phone-root.pc-phone-root.pc-phone-root.pc-phone-root.pc-phone-root.pc-phone-root.pc-phone-root button,
-.pc-phone-root.pc-phone-root.pc-phone-root.pc-phone-root.pc-phone-root.pc-phone-root.pc-phone-root.pc-phone-root input,
-.pc-phone-root.pc-phone-root.pc-phone-root.pc-phone-root.pc-phone-root.pc-phone-root.pc-phone-root.pc-phone-root select,
-.pc-phone-root.pc-phone-root.pc-phone-root.pc-phone-root.pc-phone-root.pc-phone-root.pc-phone-root.pc-phone-root
-  textarea,
-.pc-phone-root.pc-phone-root.pc-phone-root.pc-phone-root.pc-phone-root.pc-phone-root.pc-phone-root.pc-phone-root main,
-.pc-phone-root.pc-phone-root.pc-phone-root.pc-phone-root.pc-phone-root.pc-phone-root.pc-phone-root.pc-phone-root
-  section,
-.pc-phone-root.pc-phone-root.pc-phone-root.pc-phone-root.pc-phone-root.pc-phone-root.pc-phone-root.pc-phone-root
-  article,
-.pc-phone-root.pc-phone-root.pc-phone-root.pc-phone-root.pc-phone-root.pc-phone-root.pc-phone-root.pc-phone-root header,
-.pc-phone-root.pc-phone-root.pc-phone-root.pc-phone-root.pc-phone-root.pc-phone-root.pc-phone-root.pc-phone-root footer,
-.pc-phone-root.pc-phone-root.pc-phone-root.pc-phone-root.pc-phone-root.pc-phone-root.pc-phone-root.pc-phone-root nav,
-.pc-phone-root.pc-phone-root.pc-phone-root.pc-phone-root.pc-phone-root.pc-phone-root.pc-phone-root.pc-phone-root div,
-.pc-phone-root.pc-phone-root.pc-phone-root.pc-phone-root.pc-phone-root.pc-phone-root.pc-phone-root.pc-phone-root label,
-.pc-phone-root.pc-phone-root.pc-phone-root.pc-phone-root.pc-phone-root.pc-phone-root.pc-phone-root.pc-phone-root strong,
-.pc-phone-root.pc-phone-root.pc-phone-root.pc-phone-root.pc-phone-root.pc-phone-root.pc-phone-root.pc-phone-root small,
-.pc-phone-root.pc-phone-root.pc-phone-root.pc-phone-root.pc-phone-root.pc-phone-root.pc-phone-root.pc-phone-root span,
-.pc-phone-root.pc-phone-root.pc-phone-root.pc-phone-root.pc-phone-root.pc-phone-root.pc-phone-root.pc-phone-root p,
-.pc-phone-root.pc-phone-root.pc-phone-root.pc-phone-root.pc-phone-root.pc-phone-root.pc-phone-root.pc-phone-root h1,
-.pc-phone-root.pc-phone-root.pc-phone-root.pc-phone-root.pc-phone-root.pc-phone-root.pc-phone-root.pc-phone-root h2,
-.pc-phone-root.pc-phone-root.pc-phone-root.pc-phone-root.pc-phone-root.pc-phone-root.pc-phone-root.pc-phone-root h3,
-.pc-phone-root.pc-phone-root.pc-phone-root.pc-phone-root.pc-phone-root.pc-phone-root.pc-phone-root.pc-phone-root h4,
-.pc-phone-root.pc-phone-root.pc-phone-root.pc-phone-root.pc-phone-root.pc-phone-root.pc-phone-root.pc-phone-root h5,
-.pc-phone-root.pc-phone-root.pc-phone-root.pc-phone-root.pc-phone-root.pc-phone-root.pc-phone-root.pc-phone-root h6,
-.pc-phone-root.pc-phone-root.pc-phone-root.pc-phone-root.pc-phone-root.pc-phone-root.pc-phone-root.pc-phone-root ul,
-.pc-phone-root.pc-phone-root.pc-phone-root.pc-phone-root.pc-phone-root.pc-phone-root.pc-phone-root.pc-phone-root ol,
-.pc-phone-root.pc-phone-root.pc-phone-root.pc-phone-root.pc-phone-root.pc-phone-root.pc-phone-root.pc-phone-root li,
-.pc-phone-root.pc-phone-root.pc-phone-root.pc-phone-root.pc-phone-root.pc-phone-root.pc-phone-root.pc-phone-root
-  blockquote {
+#tavern-phone-root,
+#tavern-phone-root :is(button, input, select, textarea, main, section, article, header, footer, nav, div, label, strong, small, span, p, h1, h2, h3, h4, h5, h6, ul, ol, li, blockquote) {
   font-family: var(--pc-font-sans) !important;
 }
 
@@ -882,24 +851,17 @@
   font-family: var(--pc-reader-font-family);
 }
 
-.pc-phone-root.pc-phone-root.pc-phone-root.pc-phone-root.pc-phone-root.pc-phone-root.pc-phone-root.pc-phone-root
-  .pc-message-body.pc-message-body.pc-rendered-markdown,
-.pc-phone-root.pc-phone-root.pc-phone-root.pc-phone-root.pc-phone-root.pc-phone-root.pc-phone-root.pc-phone-root
-  .pc-detail-content.pc-detail-content.pc-rendered-markdown {
+#tavern-phone-root .pc-message-body.pc-message-body.pc-rendered-markdown,
+#tavern-phone-root .pc-detail-content.pc-detail-content.pc-rendered-markdown {
   font-family: var(--pc-reader-font-family) !important;
   font-size: var(--pc-reader-font-size);
   line-height: var(--pc-reader-line-height);
   color: var(--pc-reader-text, var(--pc-text));
 }
 
-.pc-phone-root.pc-phone-root.pc-phone-root.pc-phone-root.pc-phone-root.pc-phone-root.pc-phone-root.pc-phone-root
-  .pc-message-body.pc-message-body.pc-rendered-markdown
-  *,
-.pc-phone-root.pc-phone-root.pc-phone-root.pc-phone-root.pc-phone-root.pc-phone-root.pc-phone-root.pc-phone-root
-  .pc-detail-content.pc-reader-content
-  *,
-.pc-phone-root.pc-phone-root.pc-phone-root.pc-phone-root.pc-phone-root.pc-phone-root.pc-phone-root.pc-phone-root
-  .pc-detail-content.pc-reader-content {
+#tavern-phone-root .pc-message-body.pc-message-body.pc-rendered-markdown *,
+#tavern-phone-root .pc-detail-content.pc-reader-content *,
+#tavern-phone-root .pc-detail-content.pc-reader-content {
   font-family: var(--pc-reader-font-family) !important;
 }
 

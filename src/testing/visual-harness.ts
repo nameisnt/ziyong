@@ -4,7 +4,19 @@ import type { PhoneRoute } from '@/store/phone';
 import type { ExtraChapterGenerationRecord } from '@/type/extra';
 import { createVisualScenarioGroups, flattenVisualScenarioGroups } from '@/testing/visual/scenarioCatalog';
 import { applySettingsVisualScenario } from '@/testing/visual/settingsScenarios';
+import { applyForumGenerationVisualScenario, createForumFixture } from '@/testing/visual/forumGenerationScenarios';
+import { applyExtrasGenerationVisualScenario, createExtrasSummaryFixture } from '@/testing/visual/extrasGenerationScenarios';
+import { applyPromptsVisualScenario } from '@/testing/visual/promptsScenarios';
+import {
+  applyContentBookVisualScenario,
+  createDiaryFixture,
+  createLettersFixture,
+  createSummaryFixture,
+} from '@/testing/visual/contentBookScenarios';
+import { applyTheaterVisualScenario, createTheaterFixture } from '@/testing/visual/theaterScenarios';
+import { applyRecoveryVisualScenario } from '@/testing/visual/recoveryScenarios';
 import { configureVisualPhoneSize, resetVisualPhoneRoute, waitForVisualPaint } from '@/testing/visual/context';
+import { createGenerationTaskFixture } from '@/testing/visual/generationTaskFixtures';
 import { computed, effectScope, nextTick, ref } from 'vue';
 
 type VisualScenarioName = string;
@@ -353,7 +365,6 @@ const { useExtrasStore } = await import('@/store/extras');
 const { useMediaStore } = await import('@/apps/media/store');
 const { usePhoneStore } = await import('@/store/phone');
 const { usePromptStore } = await import('@/store/prompts');
-const { useGenerationTaskStore } = await import('@/store/generationTasks');
 const { useGenerationAliasesStore } = await import('@/store/generationAliases');
 const { useGenerationOverrideStore } = await import('@/store/generationOverrides');
 const { useReaderStore } = await import('@/store/reader');
@@ -361,7 +372,6 @@ const { useSettingsStore } = await import('@/store/settings');
 const { useSummaryStore } = await import('@/store/summary');
 const { usePreviewDraftStore } = await import('@/store/previewDrafts');
 const { usePreviewDraftPersistence } = await import('@/util/previewDrafts');
-const { useDiaryStore } = await import('@/store/diary');
 const { useLettersStore } = await import('@/store/letters');
 const { useTheaterStore } = await import('@/store/theater');
 const { WorkbenchStepConfigSchema, useWorkbenchStore } = await import('@/apps/workbench/store');
@@ -451,60 +461,6 @@ const scenarios: VisualScenarioName[] = flattenVisualScenarioGroups(scenarioGrou
 const configurePhoneSize = configureVisualPhoneSize;
 const resetPhoneToRoute = resetVisualPhoneRoute;
 
-function createForumFixture() {
-  const forum = useForumStore();
-  forum.resetCurrentScope();
-  const longTypePrompt =
-    '这是只应提供给模型的长板块类型提示词。它故意包含很多详细要求，用来确认论坛板块卡片和板块页头不会因为提示词过长而被持续撑高。';
-  const board = forum.createBoard({
-    name: '各个',
-    typeName: '视觉自定义类型',
-    typePrompt: longTypePrompt,
-  });
-  const longThread = forum.createThread(board.id, {
-    author: '楼主',
-    content: [
-      '这是一个用于 UI 检查的主楼。',
-      '正文故意写长一点，方便观察卡片、详情页和底部按钮会不会挤压或遮挡。',
-      '如果这里出现横向滚动、按钮变形或内容压住底部，就应该被截图报告标出来。',
-    ].join('\n\n'),
-    title: '视觉测试帖子：按钮不应该被拉高，正文也不应该横向溢出',
-  });
-  if (!longThread) throw new Error('Forum visual fixture did not create a thread');
-  forum.appendReplies(board.id, longThread.thread.id, [
-    { author: '一楼', content: '第一条回复，只显示楼层，不显示现实时间。' },
-    { author: '二楼', content: '第二条回复，文字稍微长一点，用来检测回复卡片换行和底部按钮。' },
-    { author: '三楼', content: '第三条回复。' },
-  ]);
-  return {
-    board,
-    longTypePrompt,
-    thread: longThread.thread,
-  };
-}
-
-function createTheaterFixture() {
-  const theater = useTheaterStore();
-  theater.resetCurrentScope();
-  const firstEntry = theater.createEntry({
-    content: '后台灯光还没有完全亮起，角色们在幕布后完成一场短暂而轻快的对话。',
-    participants: [{ name: 'Nova' }, { name: 'Zod' }],
-    renderMode: 'markdown',
-    title: '【直播】问心台满月宴：全仙门都在等一个笑点',
-    typeId: 'prompt_type_theater_funny',
-    typeName: '搞笑',
-  });
-  theater.createEntry({
-    content: '两人把争执藏进一句普通的问候里，直到雨声替他们把停顿说出口。',
-    participants: [{ name: 'Kaios' }, { name: 'Mira' }],
-    renderMode: 'markdown',
-    title: '雨夜后台，谢幕之后',
-    typeId: 'prompt_type_theater_dialogue',
-    typeName: '对话体',
-  });
-  return firstEntry;
-}
-
 function createTheaterBaguFixture() {
   const theater = useTheaterStore();
   theater.resetCurrentScope();
@@ -515,71 +471,6 @@ function createTheaterBaguFixture() {
     title: '八股检测布局测试',
     typeName: '对话体',
   });
-}
-
-function createSummaryFixture() {
-  const summary = useSummaryStore();
-  summary.resetCurrentScope();
-  const book = summary.createBook('第一卷剧情总结');
-  summary.createEntry(book.id, {
-    content: '主角在雨夜确认了新的线索，但尚未知道线索来自谁。',
-    rangeLabel: '第 1-12 楼',
-    title: '雨夜线索',
-  });
-  summary.createEntry(book.id, {
-    content: '两人的关系因一次隐瞒出现裂痕，重要物品暂时由配角保管。',
-    rangeLabel: '第 13-24 楼',
-    title: '关系转折',
-  });
-  return book;
-}
-
-function createDiaryFixture() {
-  const diary = useDiaryStore();
-  diary.resetCurrentScope();
-  const book = diary.ensureBook({ name: '林见夏' }, '林见夏的日记');
-  diary.createEntry({
-    bookId: book.id,
-    content: '雨停以后，我终于把那封信从抽屉里拿了出来。',
-    kind: 'normal',
-    occurredAt: '第三日 · 夜晚',
-    perspective: { name: '林见夏' },
-    readers: [],
-    title: '雨后的信',
-  });
-  diary.createEntry({
-    bookId: book.id,
-    content: '港口的灯一盏一盏熄灭，我仍然没有等到约定的人。',
-    kind: 'normal',
-    occurredAt: '第四日 · 凌晨',
-    perspective: { name: '林见夏' },
-    readers: [],
-    title: '没有赴约的人',
-  });
-  return book;
-}
-
-function createLettersFixture() {
-  const letters = useLettersStore();
-  letters.resetCurrentScope();
-  const book = letters.ensureBook([{ name: '林见夏' }, { name: '周临川' }], '未寄出的往来信');
-  letters.createEntry({
-    bookId: book.id,
-    content: '你说雨停后会回来，所以我一直把窗边那盏灯留着。',
-    format: 'formal',
-    receiver: { name: '周临川' },
-    sender: { name: '林见夏' },
-    title: '第一封信',
-  });
-  letters.createEntry({
-    bookId: book.id,
-    content: '港口的事已经办完。等我回去，再告诉你那晚没有说完的话。',
-    format: 'formal',
-    receiver: { name: '林见夏' },
-    sender: { name: '周临川' },
-    title: '迟来的回信',
-  });
-  return book;
 }
 
 function createLegacyExtrasFixture() {
@@ -594,31 +485,6 @@ function createLegacyExtrasFixture() {
     title: '第一章',
   });
   return book;
-}
-
-function createExtrasSummaryFixture() {
-  const extras = useExtrasStore();
-  extras.resetCurrentScope();
-  const book = extras.createBook({ title: '章节总结顺序测试', typeName: 'IF线' });
-  const chapters = Array.from({ length: 5 }, (_, index) =>
-    extras.createChapter(book.id, {
-      content: `第 ${index + 1} 章原文，不应在目录中消失。`,
-      title: `章节 ${index + 1}`,
-    }),
-  );
-  if (chapters.some(chapter => !chapter)) throw new Error('Extras summary fixture creation failed');
-  const completeChapters = chapters.filter((chapter): chapter is NonNullable<typeof chapter> => Boolean(chapter));
-  extras.createSummary(book.id, {
-    content: '第 1-2 章压缩总结。',
-    coveredChapterIds: completeChapters.slice(0, 2).map(chapter => chapter.id),
-    enabled: true,
-  });
-  extras.createSummary(book.id, {
-    content: '第 4-5 章压缩总结。',
-    coveredChapterIds: completeChapters.slice(3, 5).map(chapter => chapter.id),
-    enabled: true,
-  });
-  return { book, chapters: completeChapters };
 }
 
 function createExtrasGenerationRecordFixture() {
@@ -833,46 +699,6 @@ function createProfilesFixture() {
   return { firstEntry, table };
 }
 
-function createGenerationTaskFixture() {
-  const tasks = useGenerationTaskStore();
-  tasks.tasks.slice().forEach(task => tasks.removeTask(task.id));
-  const running = tasks.createTask({
-    appId: 'summary',
-    jobs: Array.from({ length: 8 }, (_, index) => ({
-      error: '',
-      id: `visual_job_${index}`,
-      label: `第 ${index * 5 + 1}-${index * 5 + 5} 楼`,
-      mode: 'range' as const,
-      rangeText: `${index * 5 + 1}-${index * 5 + 5}`,
-      singleMessageId: 0,
-      status: index < 3 ? ('saved' as const) : ('pending' as const),
-    })),
-    kind: 'summary-batch',
-    routePage: 'batch-generate',
-    title: '批量总结 · 第一卷剧情总结',
-  });
-  tasks.patchTask(running.id, {
-    currentJobIndex: 3,
-    currentLabel: '第 16-20 楼',
-    savedCount: 3,
-    status: 'running',
-  });
-  const paused = tasks.createTask({
-    appId: 'workbench',
-    config: { workflowId: 'visual_workflow' },
-    kind: 'workbench',
-    title: '工作台 · 章节收尾整理',
-    total: 6,
-  });
-  tasks.patchTask(paused.id, {
-    currentJobIndex: 2,
-    currentLabel: '第 1 批 · 日记',
-    error: 'API 暂时不可用，进度已保留',
-    savedCount: 2,
-    status: 'paused',
-  });
-}
-
 async function applyScenario(name: VisualScenarioName, options: { height?: number; width?: number } = {}) {
   if (!scenarios.includes(name)) {
     throw new Error(`Unknown visual scenario: ${name}`);
@@ -885,6 +711,56 @@ async function applyScenario(name: VisualScenarioName, options: { height?: numbe
   phone.openPhone();
 
   if (await applySettingsVisualScenario(name, { resetPhoneToRoute, waitForPaint })) {
+    await waitForPaint();
+    return { name, route: usePhoneStore().currentRoute };
+  }
+
+  if (
+    await applyForumGenerationVisualScenario(name, {
+      createHiddenGenerationRecord: createVisualHiddenGenerationRecord,
+      resetPhoneToRoute,
+      waitForPaint,
+    })
+  ) {
+    await waitForPaint();
+    return { name, route: usePhoneStore().currentRoute };
+  }
+
+  if (await applyExtrasGenerationVisualScenario(name, { resetPhoneToRoute, waitForPaint })) {
+    await waitForPaint();
+    return { name, route: usePhoneStore().currentRoute };
+  }
+
+  if (await applyPromptsVisualScenario(name, { resetPhoneToRoute, waitForPaint })) {
+    await waitForPaint();
+    return { name, route: usePhoneStore().currentRoute };
+  }
+
+  if (
+    await applyContentBookVisualScenario(name, {
+      createHiddenGenerationRecord: createVisualHiddenGenerationRecord,
+      openReaderCatalog,
+      resetPhoneToRoute,
+      waitForCondition: waitForVisualCondition,
+      waitForPaint,
+    })
+  ) {
+    await waitForPaint();
+    return { name, route: usePhoneStore().currentRoute };
+  }
+
+  if (
+    await applyTheaterVisualScenario(name, {
+      createHiddenGenerationRecord: createVisualHiddenGenerationRecord,
+      resetPhoneToRoute,
+      waitForPaint,
+    })
+  ) {
+    await waitForPaint();
+    return { name, route: usePhoneStore().currentRoute };
+  }
+
+  if (applyRecoveryVisualScenario(name, { resetPhoneToRoute })) {
     await waitForPaint();
     return { name, route: usePhoneStore().currentRoute };
   }
@@ -2166,53 +2042,6 @@ async function applyScenario(name: VisualScenarioName, options: { height?: numbe
     if (combobox.querySelectorAll('.pc-combobox-option').length !== 2) {
       throw new Error('Reopened searchable selector did not restore the full option list');
     }
-  } else if (['prompts-output-list', 'prompts-phrase-list', 'prompts-template-list'].includes(name)) {
-    const tabByScenario: Record<string, string> = {
-      'prompts-output-list': 'output',
-      'prompts-phrase-list': 'phrase',
-      'prompts-template-list': 'template',
-    };
-    resetPhoneToRoute('prompts', 'root', '提示词');
-    await waitForPaint();
-    document.querySelector<HTMLButtonElement>('.pc-prompts-menu-anchor > .pc-icon-btn')?.click();
-    await waitForPaint();
-    document.querySelector<HTMLButtonElement>(`[data-prompt-tab="${tabByScenario[name]}"]`)?.click();
-    await waitForPaint();
-    const expectedSelector = name === 'prompts-output-list' ? '.pc-output-rule-card' : '.pc-phrase-card';
-    if (!document.querySelector(expectedSelector)) {
-      throw new Error(`${name} did not render its migrated prompt list`);
-    }
-  } else if (name === 'prompts-app-detail') {
-    resetPhoneToRoute('prompts', 'root', '提示词');
-    await waitForPaint();
-    document.querySelector<HTMLButtonElement>('[data-prompt-app-id="extras"]')?.click();
-  } else if (name === 'prompts-task-detail') {
-    resetPhoneToRoute('prompts', 'root', '提示词');
-    await waitForPaint();
-    document.querySelector<HTMLButtonElement>('.pc-prompts-menu-anchor > .pc-icon-btn')?.click();
-    await waitForPaint();
-    document.querySelector<HTMLButtonElement>('[data-prompt-tab="task"]')?.click();
-    await waitForPaint();
-    document.querySelector<HTMLButtonElement>('[data-task-template-app-id="diary"]')?.click();
-    await waitForPaint();
-    const taskDialog = document.querySelector<HTMLElement>('.pc-prompt-detail-dialog');
-    if (!taskDialog?.textContent?.includes('{{perspectiveName}}')) {
-      throw new Error('Diary task template did not expose its dynamic perspective placeholder');
-    }
-  } else if (name === 'prompts-type-detail') {
-    resetPhoneToRoute('prompts', 'root', '提示词');
-    await waitForPaint();
-    document.querySelector<HTMLButtonElement>('.pc-prompts-menu-anchor > .pc-icon-btn')?.click();
-    await waitForPaint();
-    document.querySelector<HTMLButtonElement>('[data-prompt-tab="type"]')?.click();
-    await waitForPaint();
-    const screen = document.querySelector<HTMLElement>('.pc-screen');
-    screen?.scrollTo({ top: screen.scrollHeight });
-    await waitForPaint();
-    const typeTiles = document.querySelectorAll<HTMLButtonElement>('.pc-type-prompt-tile');
-    typeTiles[typeTiles.length - 1]?.click();
-  } else if (name === 'prompts-type-editor') {
-    resetPhoneToRoute('prompts', 'type-editor', '编辑类型提示词', { promptId: 'prompt_type_theater_daily' });
   } else if (
     name === 'content-converter-source' ||
     name === 'content-converter-target' ||
@@ -2380,13 +2209,13 @@ async function applyScenario(name: VisualScenarioName, options: { height?: numbe
       if (!continueEditing) throw new Error('Explicit preview session confirmation did not offer continued editing');
       continueEditing.click();
       await leaveAttempt;
-      if (phone.currentRoute.page !== 'preview') {
+      if (String(phone.currentRoute.page) !== 'preview') {
         throw new Error('Explicit preview session left after cancelling confirmation');
       }
 
       status.value = 'saved';
       await phone.goBack();
-      if (phone.currentRoute.page !== 'root') {
+      if (String(phone.currentRoute.page) !== 'root') {
         throw new Error('A saved explicit preview session still blocked navigation');
       }
     } finally {
@@ -2461,7 +2290,7 @@ async function applyScenario(name: VisualScenarioName, options: { height?: numbe
     if (!continueEditing) throw new Error('Card writer leave confirmation did not offer continued editing');
     continueEditing.click();
     await leaveAttempt;
-    if (phone.currentRoute.page !== 'preview')
+    if (String(phone.currentRoute.page) !== 'preview')
       throw new Error('Card writer preview left after cancelling confirmation');
   } else if (name.startsWith('app:')) {
     const appId = name.slice('app:'.length);
@@ -2616,34 +2445,6 @@ async function applyScenario(name: VisualScenarioName, options: { height?: numbe
     if (!snippet?.textContent?.includes('中间内容')) {
       throw new Error('Tutorial search did not expose a matching body snippet');
     }
-  } else if (name === 'forum-generate-thread') {
-    const forum = useForumStore();
-    forum.resetCurrentScope();
-    resetPhoneToRoute('forum', 'generate-thread', '生成帖子');
-    await waitForPaint();
-    const boardSelector = document.querySelector<HTMLInputElement>(
-      '.pc-generation-panel > .pc-combobox .pc-combobox-input',
-    );
-    const typeSelector = document.querySelector<HTMLInputElement>('.pc-forum-type-fields .pc-combobox-input');
-    if (!boardSelector?.value.includes('自定义板块') || !typeSelector?.value.includes('自定义')) {
-      throw new Error('Forum generation did not expose explicit custom board selections');
-    }
-    const boardNameInput = document.querySelector<HTMLInputElement>(
-      '.pc-forum-type-fields input[placeholder="固定板块名称"]',
-    );
-    if (!boardNameInput) throw new Error('Forum custom board name input is missing');
-    boardNameInput.value = '视觉即时保存板块';
-    boardNameInput.dispatchEvent(new Event('input', { bubbles: true }));
-    await waitForPaint();
-    const createBoardButton = document.querySelector<HTMLButtonElement>('.pc-forum-create-board-btn');
-    if (!createBoardButton || createBoardButton.disabled) {
-      throw new Error('Forum custom board create action is unavailable');
-    }
-    createBoardButton.click();
-    await waitForPaint();
-    if (!forum.findBoardByName('视觉即时保存板块')) {
-      throw new Error('Forum custom board was not persisted immediately');
-    }
   } else if (name === 'app-deferred-mount-order') {
     const phone = usePhoneStore();
     phone.isOpen = false;
@@ -2667,179 +2468,6 @@ async function applyScenario(name: VisualScenarioName, options: { height?: numbe
     await waitForPaint();
     if (!document.querySelector('.pc-theater-app')) {
       throw new Error('Deferred app mount did not reactivate the cached app when the phone reopened');
-    }
-  } else if (name === 'forum-catalog') {
-    createForumFixture();
-    resetPhoneToRoute('forum', 'root', '论坛');
-  } else if (name === 'forum-board') {
-    const { board, longTypePrompt } = createForumFixture();
-    resetPhoneToRoute('forum', 'board', board.name, { boardId: board.id });
-    await waitForPaint();
-    const toolbar = document.querySelector<HTMLElement>('.pc-forum-board-toolbar');
-    const topTitle = document.querySelector<HTMLElement>('.pc-top-title');
-    if (toolbar?.textContent?.includes(longTypePrompt)) {
-      throw new Error('Long forum type prompt leaked into the visible board header');
-    }
-    if (topTitle?.textContent?.trim() !== board.name) {
-      throw new Error('Forum board header did not preserve the board name');
-    }
-    if (toolbar?.textContent?.includes('视觉自定义类型')) {
-      throw new Error('Forum board header still exposes the removed type label');
-    }
-  } else if (name === 'forum-board-editor') {
-    const { board } = createForumFixture();
-    resetPhoneToRoute('forum', 'board-editor', '编辑板块', { boardId: board.id });
-  } else if (name === 'forum-bagu') {
-    const { board, thread } = createForumFixture();
-    resetPhoneToRoute('forum', 'bagu-scan', '八股检测', { boardId: board.id, threadId: thread.id });
-  } else if (name === 'forum-failed-draft') {
-    const forum = useForumStore();
-    forum.resetCurrentScope();
-    const draft = forum.createFailedDraft({
-      actionId: 'generate-thread',
-      appId: 'forum',
-      context: {},
-      rawOutput: '<forum><title>未闭合</title><content>等待修复的主题帖',
-      source: {
-        chatIdAtGeneration: 'visual-forum-chat',
-        label: '第 3-15 楼',
-        messageIds: [],
-        mode: 'range',
-        ranges: [{ end: 15, start: 3 }],
-        scopeId: 'visual-forum-scope',
-        sortKey: 15,
-      },
-      warnings: ['缺少结束标签'],
-    });
-    resetPhoneToRoute('forum', 'failed-draft', '解析失败草稿', { draftId: draft.id });
-  } else if (name === 'forum-thread') {
-    const { board, thread } = createForumFixture();
-    resetPhoneToRoute('forum', 'thread', thread.title, { boardId: board.id, threadId: thread.id });
-  } else if (name === 'forum-thread-editor') {
-    const { board, thread } = createForumFixture();
-    resetPhoneToRoute('forum', 'thread-editor', '编辑帖子', { boardId: board.id, threadId: thread.id });
-  } else if (name === 'forum-generate-replies') {
-    const { board, thread } = createForumFixture();
-    resetPhoneToRoute('forum', 'generate-replies', '生成回复', { boardId: board.id, threadId: thread.id });
-  } else if (name === 'forum-preview') {
-    const { board } = createForumFixture();
-    usePreviewDraftStore().upsertPreviewDraft({
-      appId: 'forum',
-      page: 'preview',
-      preview: {
-        action: 'thread',
-        author: '视觉楼主',
-        boardId: board.id,
-        boardName: board.name,
-        boardTypeId: board.typeId,
-        boardTypeName: board.typeName,
-        boardTypePrompt: board.typePrompt,
-        content: '这是论坛主楼预览正文，用于检查主楼与回复能在同一预览页显示。',
-        draftId: null,
-        mode: 'create',
-        raw: '<forum><title>预览主题</title><content>这是论坛主楼预览正文。</content></forum>',
-        replies: [
-          { author: '一楼', content: '第一条预览回复。' },
-          { author: '二楼', content: '第二条预览回复。' },
-        ],
-        targetThreadId: '',
-        targetVersionId: '',
-        title: '论坛生成预览',
-        warnings: [],
-      },
-      routeParams: { boardId: board.id },
-      title: '生成预览',
-    });
-    resetPhoneToRoute('forum', 'preview', '生成预览', { boardId: board.id });
-  } else if (name === 'forum-thread-versions') {
-    const { board, thread } = createForumFixture();
-    const originalReplies = JSON.stringify(thread.replies);
-    const candidateReplies = thread.replies.map((reply, index) => ({
-      ...reply,
-      content: `候选版本回复 ${index + 1}：与旧版本内容不同。`,
-      id: `${reply.id}_candidate`,
-    }));
-    thread.updatedAt = '2000-01-01T00:00:00.000Z';
-    board.updatedAt = '2000-01-01T00:00:00.000Z';
-    const saved = useForumStore().appendThreadVersion(board.id, thread.id, {
-      author: '新版楼主',
-      content: '这是重新生成后的主题候选版本。主楼和回复属于同一个版本快照。',
-      replies: candidateReplies,
-      title: '重写后的论坛主帖',
-    });
-    if (
-      !saved ||
-      thread.content !== saved.version.content ||
-      JSON.stringify(thread.replies) !== JSON.stringify(candidateReplies)
-    ) {
-      throw new Error('Forum rewrite version did not become the active thread snapshot');
-    }
-    if (thread.updatedAt === '2000-01-01T00:00:00.000Z' || board.updatedAt === '2000-01-01T00:00:00.000Z') {
-      throw new Error('Forum active rewrite version did not update ordering timestamps');
-    }
-    if (JSON.stringify(thread.replies) === originalReplies) throw new Error('Forum rewrite replies were not distinct');
-    resetPhoneToRoute('forum', 'thread', saved.version.title, {
-      boardId: board.id,
-      threadId: thread.id,
-      versionId: saved.version.id,
-    });
-    await waitForPaint();
-    if (!document.body.textContent?.includes('候选版本回复 1')) {
-      throw new Error('Forum candidate version did not render its own reply snapshot');
-    }
-  } else if (name === 'forum-version-interactions') {
-    const { board, thread } = createForumFixture();
-    const originalReplies = JSON.stringify(thread.replies);
-    const candidateReplies = thread.replies.map((reply, index) => ({
-      ...reply,
-      content: `采用后的候选回复 ${index + 1}`,
-      id: `${reply.id}_adopted`,
-    }));
-    const saved = useForumStore().appendThreadVersion(board.id, thread.id, {
-      author: '交互测试楼主',
-      content: '采用这个主题版本后，应同时采用该版本的回复。',
-      replies: candidateReplies,
-      title: '论坛主帖交互候选版',
-    });
-    if (!saved) throw new Error('Forum interaction fixture did not create a candidate version');
-    resetPhoneToRoute('forum', 'thread', saved.version.title, {
-      boardId: board.id,
-      threadId: thread.id,
-      versionId: saved.version.id,
-    });
-    await waitForPaint();
-    if (document.querySelector('.pc-version-navigator .pc-primary-btn')) {
-      throw new Error('Forum version navigator still exposed a separate adoption action');
-    }
-    if (thread.activeVersionId !== saved.version.id || thread.content !== saved.version.content) {
-      throw new Error('Forum rewrite version was not activated when saved');
-    }
-    if (JSON.stringify(thread.replies) !== JSON.stringify(candidateReplies)) {
-      throw new Error('Forum active version did not include its reply snapshot');
-    }
-    if (JSON.stringify(thread.replies) === originalReplies)
-      throw new Error('Forum candidate replies were not distinct');
-    const replyRewriteButton = Array.from(
-      document.querySelectorAll<HTMLButtonElement>('.pc-reply-section button'),
-    ).find(button => button.title.includes('重写回复'));
-    if (replyRewriteButton) throw new Error('Forum replies unexpectedly exposed a rewrite action');
-  } else if (name === 'forum-rewrite-generate') {
-    const { board, thread } = createForumFixture();
-    const requirement = '论坛当前版本的隐藏追加要求。';
-    thread.generationRecord = createVisualHiddenGenerationRecord('generate-thread', requirement, {
-      boardId: board.id,
-      boardName: board.name,
-      boardTypeId: board.typeId,
-      boardTypeName: board.typeName,
-      boardTypePrompt: board.typePrompt,
-    });
-    resetPhoneToRoute('forum', 'generate-thread', '重写论坛主帖', {
-      boardId: board.id,
-      rewriteThreadId: thread.id,
-    });
-    await waitForPaint();
-    if (document.querySelector<HTMLTextAreaElement>('.pc-requirement-field textarea')?.value !== requirement) {
-      throw new Error('Forum rewrite did not restore the current version hidden generation record');
     }
   } else if (name === 'worldbook-link-legacy-entry') {
     resetPhoneToRoute('worldbook-link', 'detail', '【视觉】旧格式世界书', { bookName: '【视觉】旧格式世界书' });
@@ -2883,7 +2511,8 @@ async function applyScenario(name: VisualScenarioName, options: { height?: numbe
     const message = messages[0];
     if (!message) throw new Error('Reader appearance fixture did not create a message');
     resetPhoneToRoute('reader', 'detail', message.title, { messageId: message.id });
-    await waitForPaint();
+    const contentLoaded = await waitForVisualCondition(() => Boolean(document.querySelector('.pc-reader-content')), 2_000);
+    if (!contentLoaded) throw new Error('Reader appearance content did not finish loading');
     const content = document.querySelector<HTMLElement>('.pc-reader-content');
     if (!content) throw new Error('Reader appearance content is missing');
     const appearance = getComputedStyle(content);
@@ -2981,244 +2610,6 @@ async function applyScenario(name: VisualScenarioName, options: { height?: numbe
     ) {
       throw new Error('Letters directory sort did not survive navigation');
     }
-  } else if (name === 'summary-book') {
-    const book = createSummaryFixture();
-    resetPhoneToRoute('summary', 'book', book.title, { bookId: book.id });
-  } else if (name === 'summary-entry-detail') {
-    const book = createSummaryFixture();
-    const entry = book.entries[0];
-    if (!entry) throw new Error('Summary detail fixture did not create an entry');
-    resetPhoneToRoute('summary', 'entry', entry.title, { bookId: book.id, entryId: entry.id });
-    await waitForPaint();
-    await openReaderCatalog();
-  } else if (name === 'summary-entry-editor') {
-    const book = createSummaryFixture();
-    const entry = book.entries[0];
-    if (!entry) throw new Error('Summary editor fixture did not create an entry');
-    resetPhoneToRoute('summary', 'editor', '编辑总结', { bookId: book.id, entryId: entry.id });
-  } else if (name === 'summary-bagu') {
-    const book = createSummaryFixture();
-    const entry = book.entries[0];
-    if (!entry) throw new Error('Summary bagu fixture did not create an entry');
-    resetPhoneToRoute('summary', 'bagu-scan', '八股检测', { bookId: book.id, entryId: entry.id });
-  } else if (name === 'summary-import') {
-    const book = createSummaryFixture();
-    resetPhoneToRoute('summary', 'import-chat', '导入 AI 楼层', { bookId: book.id });
-  } else if (name === 'summary-create') {
-    resetPhoneToRoute('summary', 'create-book', '生成总结');
-  } else if (name === 'summary-generate') {
-    const book = createSummaryFixture();
-    resetPhoneToRoute('summary', 'generate', '生成总结', { bookId: book.id });
-    await waitForPaint();
-    if (!document.querySelector('.pc-generation-form-page .pc-generation-panel')) {
-      throw new Error('Summary generate page did not render the shared generation panel after extraction');
-    }
-  } else if (name === 'summary-preview') {
-    const book = createSummaryFixture();
-    usePreviewDraftStore().upsertPreviewDraft({
-      appId: 'summary',
-      page: 'preview',
-      preview: {
-        bookId: book.id,
-        content: '雨夜之后，角色关系发生了明确转折。',
-        draftId: null,
-        raw: '<summary><title>雨夜转折</title><content>雨夜之后，角色关系发生了明确转折。</content></summary>',
-        source: { floorEnd: 24, label: '第 13-24 楼' },
-        title: '雨夜转折',
-        warnings: [],
-      },
-      routeParams: { bookId: book.id },
-      title: '生成预览',
-    });
-    resetPhoneToRoute('summary', 'preview', '生成预览', { bookId: book.id });
-    const restored = await waitForVisualCondition(() =>
-      Boolean(document.querySelector('.pc-shared-generation-preview-page')),
-    );
-    if (!restored) throw new Error('Summary preview page did not restore its persisted preview after extraction');
-  } else if (name === 'summary-batch') {
-    const book = createSummaryFixture();
-    resetPhoneToRoute('summary', 'batch-generate', '批量生成总结', { bookId: book.id });
-  } else if (name === 'summary-failed-draft') {
-    const book = createSummaryFixture();
-    const draft = useSummaryStore().createFailedDraft({
-      actionId: 'generate',
-      appId: 'summary',
-      context: { bookId: book.id },
-      rawOutput: '<summary><title>未闭合标题</title><content>等待修复的正文',
-      source: {
-        chatIdAtGeneration: 'visual-summary-chat',
-        label: '第 5-12 楼',
-        messageIds: [],
-        mode: 'range',
-        ranges: [{ end: 12, start: 5 }],
-        scopeId: 'visual-summary-scope',
-        sortKey: 12,
-      },
-      warnings: ['缺少结束标签'],
-    });
-    resetPhoneToRoute('summary', 'failed-draft', '解析失败草稿', { bookId: book.id, draftId: draft.id });
-  } else if (name === 'diary-creation-mode') {
-    resetPhoneToRoute('diary', 'creation-mode', '生成日记');
-  } else if (name === 'diary-book') {
-    const book = createDiaryFixture();
-    resetPhoneToRoute('diary', 'book', book.title, { bookId: book.id });
-  } else if (name === 'diary-entry-editor') {
-    const book = createDiaryFixture();
-    const entry = book.entries[0];
-    if (!entry) throw new Error('Diary editor fixture did not create an entry');
-    resetPhoneToRoute('diary', 'editor', '编辑日记', { bookId: book.id, entryId: entry.id });
-  } else if (name === 'diary-bagu') {
-    const book = createDiaryFixture();
-    const entry = book.entries[0];
-    if (!entry) throw new Error('Diary bagu fixture did not create an entry');
-    resetPhoneToRoute('diary', 'bagu-scan', '八股检测', { bookId: book.id, entryId: entry.id });
-  } else if (name === 'diary-generate') {
-    const book = createDiaryFixture();
-    resetPhoneToRoute('diary', 'generate', '生成日记', { bookId: book.id });
-  } else if (name === 'diary-preview') {
-    const book = createDiaryFixture();
-    usePreviewDraftStore().upsertPreviewDraft({
-      appId: 'diary',
-      page: 'preview',
-      preview: {
-        action: 'generate',
-        bookId: book.id,
-        bookTitle: book.title,
-        content: '雨停以后，她终于写下了没有说出口的话。',
-        draftId: null,
-        occurredAt: '昨夜 23:10',
-        perspective: book.perspective,
-        raw: '<diary><title>雨停以后</title><content>雨停以后，她终于写下了没有说出口的话。</content></diary>',
-        sourceBookId: '',
-        sourceEntryId: '',
-        sourceFloorEnd: 18,
-        title: '雨停以后',
-        warnings: [],
-      },
-      routeParams: { bookId: book.id },
-      title: '日记预览',
-    });
-    resetPhoneToRoute('diary', 'preview', '日记预览', { bookId: book.id });
-  } else if (name === 'diary-failed-draft') {
-    const book = createDiaryFixture();
-    const draft = useDiaryStore().createFailedDraft({
-      actionId: 'generate',
-      appId: 'diary',
-      context: { bookId: book.id },
-      rawOutput: '<diary><title>未闭合</title><content>等待修复的日记',
-      source: {
-        chatIdAtGeneration: 'visual-diary-chat',
-        label: '第 8-18 楼',
-        messageIds: [],
-        mode: 'range',
-        ranges: [{ end: 18, start: 8 }],
-        scopeId: 'visual-diary-scope',
-        sortKey: 18,
-      },
-      warnings: ['缺少结束标签'],
-    });
-    resetPhoneToRoute('diary', 'failed-draft', '解析失败草稿', { bookId: book.id, draftId: draft.id });
-  } else if (name === 'diary-batch') {
-    resetPhoneToRoute('diary', 'batch-generate', '批量生成日记');
-  } else if (name === 'diary-entry-detail') {
-    const book = createDiaryFixture();
-    const entry = book.entries[0];
-    if (!entry) throw new Error('Diary detail fixture did not create an entry');
-    resetPhoneToRoute('diary', 'entry', entry.title, { bookId: book.id, entryId: entry.id });
-    await waitForPaint();
-    await openReaderCatalog();
-  } else if (name === 'letters-book') {
-    const book = createLettersFixture();
-    resetPhoneToRoute('letters', 'book', book.title, { bookId: book.id });
-  } else if (name === 'letters-entry-editor') {
-    const book = createLettersFixture();
-    const entry = book.entries[0];
-    if (!entry) throw new Error('Letters editor fixture did not create an entry');
-    resetPhoneToRoute('letters', 'editor', '编辑信件', { bookId: book.id, entryId: entry.id });
-  } else if (name === 'letters-bagu') {
-    const book = createLettersFixture();
-    const entry = book.entries[0];
-    if (!entry) throw new Error('Letters bagu fixture did not create an entry');
-    resetPhoneToRoute('letters', 'bagu-scan', '八股检测', { bookId: book.id, entryId: entry.id });
-  } else if (name === 'letters-generate') {
-    resetPhoneToRoute('letters', 'generate', '生成书信');
-  } else if (name === 'letters-preview') {
-    const book = createLettersFixture();
-    const entry = book.entries[0];
-    if (!entry) throw new Error('Letters preview fixture did not create an entry');
-    usePreviewDraftStore().upsertPreviewDraft({
-      appId: 'letters',
-      page: 'preview',
-      preview: {
-        bookId: book.id,
-        bookTitle: book.title,
-        content: '这封信写在雨停以后，也许永远不会寄出。',
-        draftId: null,
-        format: entry.format,
-        mode: 'create',
-        raw: '<letter><title>雨停以后</title><content>这封信写在雨停以后，也许永远不会寄出。</content></letter>',
-        receiver: entry.receiver,
-        sender: entry.sender,
-        targetEntryId: '',
-        targetVersionId: '',
-        title: '雨停以后',
-        warnings: [],
-      },
-      routeParams: { bookId: book.id },
-      title: '生成预览',
-    });
-    resetPhoneToRoute('letters', 'preview', '生成预览', { bookId: book.id });
-  } else if (name === 'letters-failed-draft') {
-    const book = createLettersFixture();
-    const draft = useLettersStore().createFailedDraft({
-      actionId: 'generate',
-      appId: 'letters',
-      context: { bookId: book.id },
-      rawOutput: '<letter><title>未闭合</title><content>等待修复的书信',
-      source: {
-        chatIdAtGeneration: 'visual-letters-chat',
-        label: '第 4-16 楼',
-        messageIds: [],
-        mode: 'range',
-        ranges: [{ end: 16, start: 4 }],
-        scopeId: 'visual-letters-scope',
-        sortKey: 16,
-      },
-      warnings: ['缺少结束标签'],
-    });
-    resetPhoneToRoute('letters', 'failed-draft', '解析失败草稿', { bookId: book.id, draftId: draft.id });
-  } else if (name === 'letters-entry-detail') {
-    const book = createLettersFixture();
-    const entry = book.entries[0];
-    if (!entry) throw new Error('Letters detail fixture did not create an entry');
-    resetPhoneToRoute('letters', 'entry', entry.title, { bookId: book.id, entryId: entry.id });
-    await waitForPaint();
-    await openReaderCatalog();
-  } else if (name === 'letters-rewrite-generate') {
-    const book = createLettersFixture();
-    const entry = book.entries[0];
-    if (!entry) throw new Error('Letters rewrite fixture did not create an entry');
-    const requirement = '书信当前版本的隐藏追加要求。';
-    entry.generationRecord = createVisualHiddenGenerationRecord('generate', requirement, {
-      bookTitle: book.title,
-      format: entry.format,
-      recentEntryCount: 6,
-      receiver: entry.receiver,
-      sender: entry.sender,
-    });
-    resetPhoneToRoute('letters', 'generate', '重写书信', {
-      bookId: book.id,
-      rewriteEntryId: entry.id,
-    });
-    await waitForPaint();
-    if (document.querySelector<HTMLTextAreaElement>('.pc-requirement-field textarea')?.value !== requirement) {
-      throw new Error('Letter rewrite did not restore the current version hidden generation record');
-    }
-  } else if (name === 'extras-book-generate') {
-    resetPhoneToRoute('extras', 'book-editor', '新建番外');
-    await waitForPaint();
-    const screen = document.querySelector<HTMLElement>('.pc-screen');
-    screen?.scrollTo({ top: screen.scrollHeight });
   } else if (name === 'extras-summary-overview') {
     const { book, chapters } = createExtrasSummaryFixture();
     const historyContext = buildExtraHistoryContext(book, chapters);
@@ -3257,19 +2648,6 @@ async function applyScenario(name: VisualScenarioName, options: { height?: numbe
       throw new Error('Extra chapter navigation included summaries or omitted original chapters');
     }
     resetPhoneToRoute('extras', 'book', book.title, { bookId: book.id });
-  } else if (name === 'extras-summary-generate') {
-    const { book, chapters } = createExtrasSummaryFixture();
-    resetPhoneToRoute('extras', 'summary-generate', '生成章节总结', { bookId: book.id });
-    await waitForPaint();
-    const chapterOptions = [...document.querySelectorAll<HTMLElement>('.pc-chapter-picks .pc-check-item')];
-    const selectedOptions = document.querySelectorAll<HTMLInputElement>('.pc-chapter-picks input:checked');
-    if (
-      chapterOptions.length !== 1 ||
-      !chapterOptions[0]?.textContent?.includes(`第 ${chapters[2]?.chapterNumber} 章`) ||
-      selectedOptions.length > 0
-    ) {
-      throw new Error('Extra summary generation did not show only unprocessed chapters with an empty selection');
-    }
   } else if (name === 'content-versions') {
     const extras = useExtrasStore();
     const extraBook = createLegacyExtrasFixture();
@@ -3680,7 +3058,7 @@ async function applyScenario(name: VisualScenarioName, options: { height?: numbe
     aliasInputs[1].value = '藤丸立香';
     aliasInputs[1].dispatchEvent(new Event('input', { bubbles: true }));
     await waitForPaint();
-    if (generationAliases.charReplacement !== '玛修' || generationAliases.userReplacement !== '藤丸立香') {
+    if (String(generationAliases.charReplacement) !== '玛修' || String(generationAliases.userReplacement) !== '藤丸立香') {
       throw new Error('Generation alias inputs did not update the chat-scoped alias store');
     }
     const swapAliasButton = document.querySelector<HTMLButtonElement>(
@@ -3689,7 +3067,7 @@ async function applyScenario(name: VisualScenarioName, options: { height?: numbe
     if (!swapAliasButton) throw new Error('Generation alias swap action is missing');
     swapAliasButton.click();
     await waitForPaint();
-    if (generationAliases.charReplacement !== '藤丸立香' || generationAliases.userReplacement !== '玛修') {
+    if (String(generationAliases.charReplacement) !== '藤丸立香' || String(generationAliases.userReplacement) !== '玛修') {
       throw new Error('Generation alias swap action did not update both values');
     }
     swapAliasButton.click();
@@ -4058,110 +3436,6 @@ async function applyScenario(name: VisualScenarioName, options: { height?: numbe
     resetPhoneToRoute('reader', 'detail', message.title, { messageId: message.id });
     await waitForPaint();
     await openReaderCatalog();
-  } else if (name === 'theater-generate') {
-    resetPhoneToRoute('theater', 'generate', '小剧场配置');
-  } else if (name === 'theater-rewrite-generate') {
-    const entry = createTheaterFixture();
-    const requirement = '小剧场当前版本的隐藏追加要求。';
-    entry.generationRecord = createVisualHiddenGenerationRecord('generate', requirement, {
-      renderMode: entry.renderMode,
-      typeId: entry.typeId,
-      typeName: entry.typeName,
-    });
-    resetPhoneToRoute('theater', 'generate', '重写小剧场', {
-      rewriteEntryId: entry.id,
-      typeId: entry.typeId || '',
-    });
-    await waitForPaint();
-    if (document.querySelector<HTMLTextAreaElement>('.pc-requirement-field textarea')?.value !== requirement) {
-      throw new Error('Theater rewrite did not restore the current version hidden generation record');
-    }
-  } else if (name === 'theater-generate-dark-inputs') {
-    const settingsStore = useSettingsStore();
-    const hostThemeOverride = document.createElement('style');
-    hostThemeOverride.id = 'visual-host-theme-override';
-    hostThemeOverride.textContent = `
-      textarea:not(#send_textarea) {
-        background-color: rgb(255, 255, 255) !important;
-        color: rgb(60, 60, 70) !important;
-      }
-    `;
-    document.head.append(hostThemeOverride);
-    settingsStore.setTheme('dark');
-    settingsStore.settings.visualTheme.backgroundColor = '#242129';
-    settingsStore.settings.visualTheme.surfaceColor = 'rgba(255, 255, 255, 0.08)';
-    settingsStore.settings.visualTheme.surfaceStrongColor = '#ffffff';
-    settingsStore.settings.visualTheme.textColor = '#f5f5f7';
-    resetPhoneToRoute('theater', 'generate', '小剧场配置');
-    await waitForPaint();
-    const textareas = document.querySelectorAll<HTMLTextAreaElement>('.pc-theater-app textarea.pc-area');
-    if (textareas.length < 2) throw new Error('Theater dark input fixture is incomplete');
-    textareas.forEach(textarea => {
-      const style = getComputedStyle(textarea);
-      const background = style.backgroundColor.replace(/\s+/g, '');
-      const color = style.color.replace(/\s+/g, '');
-      if (background !== 'rgb(44,44,46)' || color !== 'rgb(245,245,247)') {
-        throw new Error(`Theater dark input colors are invalid: ${background} / ${color}`);
-      }
-    });
-  } else if (name === 'theater-editor') {
-    const entry = createTheaterFixture();
-    resetPhoneToRoute('theater', 'editor', '编辑小剧场', { entryId: entry.id });
-  } else if (name === 'theater-frontend-footer') {
-    const theater = useTheaterStore();
-    theater.resetCurrentScope();
-    const entry = theater.createEntry({
-      content: '<main><button type="button">网页内部按钮</button><p>网页渲染正文</p></main>',
-      participants: [],
-      renderMode: 'frontend',
-      title: '网页渲染底栏测试',
-      typeName: '网页测试',
-    });
-    resetPhoneToRoute('theater', 'entry', entry.title, { entryId: entry.id });
-    await waitForPaint();
-    if (!document.querySelector('.pc-reader-footer-popover')) {
-      throw new Error('Frontend theater detail did not keep its footer visible');
-    }
-  } else if (name === 'theater-history') {
-    createTheaterFixture();
-    const theater = useTheaterStore();
-    Array.from({ length: 18 }, (_, index) =>
-      theater.createEntry({
-        content: `标签筛选测试正文 ${index + 1}`,
-        participants: [],
-        renderMode: 'markdown',
-        title: `标签筛选测试 ${index + 1}`,
-        typeName: `类型 ${index + 1}`,
-      }),
-    );
-    resetPhoneToRoute('theater', 'history', '小剧场记录');
-    await waitForPaint();
-    document.querySelector<HTMLButtonElement>('.pc-theater-filter-toggle')?.click();
-    await waitForPaint();
-    const tagList = document.querySelector<HTMLElement>('.pc-history-tag-list');
-    if (!tagList || tagList.scrollHeight <= tagList.clientHeight) {
-      throw new Error('Theater history tag panel did not constrain a long tag list');
-    }
-  } else if (name === 'theater-failed-draft') {
-    const theater = useTheaterStore();
-    theater.resetCurrentScope();
-    const draft = theater.createFailedDraft({
-      actionId: 'generate',
-      appId: 'theater',
-      context: { renderMode: 'frontend' },
-      rawOutput: '<theater><title>未闭合</title><content>等待修复的小剧场',
-      source: {
-        chatIdAtGeneration: 'visual-theater-chat',
-        label: '第 6-18 楼',
-        messageIds: [],
-        mode: 'range',
-        ranges: [{ end: 18, start: 6 }],
-        scopeId: 'visual-theater-scope',
-        sortKey: 18,
-      },
-      warnings: ['缺少结束标签'],
-    });
-    resetPhoneToRoute('theater', 'failed-draft', '解析失败草稿', { draftId: draft.id });
   } else if (name === 'video-viewer') {
     const video = createVideoFixture();
     resetPhoneToRoute('video', 'viewer', video.title, { entryId: video.id });

@@ -234,10 +234,15 @@ export interface PhoneContentReceiver {
 }
 
 export interface PhoneBackupDomain {
+  category: 'configuration' | 'content' | 'draft';
   key: string;
   exportData: (currentScopeKey: string) => unknown;
   importData: (data: unknown) => void;
+  migrateImport?: (data: unknown, fromVersion: number) => unknown;
   rehydrateFromSettings?: () => void;
+  schema: z.ZodType;
+  schemaVersion: number;
+  scope: 'global' | 'chat';
 }
 
 export interface PhoneAppDefinition {
@@ -283,6 +288,16 @@ function assertValidModule(module: PhoneAppModule) {
   if (modules.has(module.id)) {
     throw new Error(`Duplicate phone app id: ${module.id}`);
   }
+
+  const keys = new Set<string>();
+  (module.backupDomains ?? []).forEach(domain => {
+    if (!domain.key.trim()) throw new Error(`Phone app ${module.id} has an empty backup domain key`);
+    if (keys.has(domain.key)) throw new Error(`Phone app ${module.id} has duplicate backup domain key: ${domain.key}`);
+    if (!Number.isInteger(domain.schemaVersion) || domain.schemaVersion < 1) {
+      throw new Error(`Phone app ${module.id} has invalid backup domain version: ${domain.key}`);
+    }
+    keys.add(domain.key);
+  });
 }
 
 export function definePhoneApp(module: PhoneAppModule) {
@@ -480,7 +495,13 @@ export function getRegisteredPhoneTypePromptDomains() {
 }
 
 export function getRegisteredPhoneBackupDomains() {
-  return getRegisteredPhoneApps().flatMap(module => module.backupDomains ?? []);
+  const domains = getRegisteredPhoneApps().flatMap(module => module.backupDomains ?? []);
+  const keys = new Set<string>();
+  domains.forEach(domain => {
+    if (keys.has(domain.key)) throw new Error(`Duplicate phone backup domain key: ${domain.key}`);
+    keys.add(domain.key);
+  });
+  return domains;
 }
 
 export function getRegisteredPhoneBackupRehydrateHandlers() {

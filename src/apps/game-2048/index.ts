@@ -1,10 +1,12 @@
 import Game2048App from './Game2048App.vue';
 import { miniGameFields } from './fields';
+import { MiniGamesBackupSchema } from './backupSchemas';
 import { useGame2048Store } from './store';
 import { definePhoneApp, type PhoneBackupDomain } from '@/core/appRegistry';
 import { extension_settings } from '@sillytavern/scripts/extensions';
 
 const backupDomain: PhoneBackupDomain = {
+  category: 'configuration',
   key: 'mini-games',
   exportData: () => _.mapValues(miniGameFields, field => _.get(extension_settings, field, {})),
   importData: data => {
@@ -14,6 +16,9 @@ const backupDomain: PhoneBackupDomain = {
     });
   },
   rehydrateFromSettings: () => useGame2048Store().rehydrateFromSettings(),
+  schema: MiniGamesBackupSchema,
+  schemaVersion: 1,
+  scope: 'global',
 };
 
 export default definePhoneApp({

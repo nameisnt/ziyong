@@ -35,6 +35,7 @@ export function createVisualScenarioGroups(rootAppScenarios: string[]): VisualSc
     },
     { id: 'card-writer', scenarios: ['card-writer-saved-preview'] },
     { id: 'archive', scenarios: ['archive-owner-list'] },
+    { id: 'recovery', scenarios: ['recovery-shelf', 'recovery-reader', 'recovery-confirm', 'recovery-result'] },
     { id: 'bagu', scenarios: ['bagu-scan-actions', 'bagu-scan-applied'] },
     {
       id: 'settings',
@@ -157,9 +158,13 @@ export function createVisualScenarioGroups(rootAppScenarios: string[]): VisualSc
       scenarios: [
         'prompts-app-detail',
         'prompts-task-detail',
+        'prompts-task-editor',
         'prompts-type-detail',
         'prompts-type-editor',
         'prompts-output-list',
+        'prompts-output-editor',
+        'prompts-group-editor',
+        'prompts-phrase-editor',
         'prompts-phrase-list',
         'prompts-template-list',
       ],

@@ -327,6 +327,7 @@ export const useSettingsStore = defineStore('settings', () => {
       iconRadius: 14,
       mutedTextColor: '',
       primaryTextColor: '#ffffff',
+      readerTextColor: '',
       softButtonColor: '',
       surfaceColor: '',
       surfaceStrongColor: '',

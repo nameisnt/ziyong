@@ -73,19 +73,35 @@ async function loadPlaywright() {
 
 function startVite(port) {
   let server = null;
+  const outDir = resolve(root, 'tmp/ui-check/server');
   const ready = (async () => {
-    const { createServer } = await import('vite');
-    server = await createServer({
+    const { build, preview } = await import('vite');
+    await build({
       clearScreen: false,
       mode: 'visual',
       root,
-      server: {
+      build: {
+        emptyOutDir: true,
+        outDir,
+        rollupOptions: {
+          input: resolve(root, 'visual-harness.html'),
+          output: {
+            inlineDynamicImports: true,
+          },
+        },
+      },
+    });
+    server = await preview({
+      clearScreen: false,
+      mode: 'visual',
+      root,
+      build: { outDir },
+      preview: {
         host: '127.0.0.1',
         port,
         strictPort: true,
       },
     });
-    await server.listen();
   })();
 
   return {
@@ -103,9 +119,19 @@ function sanitizeName(value) {
 }
 
 async function loadHarnessScenarios(page, port) {
-  await page.goto(`http://127.0.0.1:${port}/visual-harness.html?manual=1`, { waitUntil: 'networkidle' });
-  await page.waitForFunction(() => Boolean(window.__phoneVisualTest__));
-  return await page.evaluate(() => window.__phoneVisualTest__?.scenarios ?? []);
+  const pageErrors = [];
+  const handlePageError = error => pageErrors.push(error.message);
+  page.on('pageerror', handlePageError);
+  try {
+    await page.goto(`http://127.0.0.1:${port}/visual-harness.html?manual=1`, { waitUntil: 'networkidle' });
+    await page.waitForFunction(() => Boolean(window.__phoneVisualTest__));
+    return await page.evaluate(() => window.__phoneVisualTest__?.scenarios ?? []);
+  } catch (error) {
+    const detail = pageErrors.length ? `\n浏览器异常：${pageErrors.join('\n')}` : '';
+    throw new Error(`${error instanceof Error ? error.message : String(error)}${detail}`);
+  } finally {
+    page.off('pageerror', handlePageError);
+  }
 }
 
 async function runDomChecks(page) {

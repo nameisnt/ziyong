@@ -54,23 +54,11 @@
 import InfoHint from '@/components/InfoHint.vue';
 import { miniGameFields } from './fields';
 import { readMiniGameSettings, writeMiniGameSettings } from './miniGameStorage';
+import { ReversiSchema } from './backupSchemas';
 
 type Cell = 0 | 1 | 2;
 type Player = 1 | 2;
 
-const BoardSchema = z.array(z.union([z.literal(0), z.literal(1), z.literal(2)])).length(64);
-const SnapshotSchema = z.object({
-  board: BoardSchema,
-  draws: z.number().int().nonnegative().default(0),
-  losses: z.number().int().nonnegative().default(0),
-  moves: z.number().int().nonnegative(),
-  status: z.enum(['done', 'playing']),
-  turn: z.union([z.literal(1), z.literal(2)]),
-  wins: z.number().int().nonnegative().default(0),
-});
-const ReversiSchema = SnapshotSchema.extend({
-  previous: SnapshotSchema.nullable().default(null),
-});
 type ReversiState = z.infer<typeof ReversiSchema>;
 
 const directions = [-1, 0, 1].flatMap(dx => [-1, 0, 1].map(dy => ({ dx, dy }))).filter(item => item.dx || item.dy);

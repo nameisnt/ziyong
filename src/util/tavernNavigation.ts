@@ -1,5 +1,8 @@
 import { getOptionalGlobalFunction, getOptionalGlobalValue } from '@/util/runtime';
 
+const CHAT_SWITCH_TIMEOUT_MS = 12_000;
+const CHAT_SWITCH_POLL_MS = 80;
+
 function getTavernWindow() {
   try {
     return window.parent && window.parent !== window ? window.parent : window;
@@ -56,56 +59,87 @@ function resolveCharacterIndex(input: { avatar?: string; characterId?: number | 
   return -1;
 }
 
+function normalizeChatFileName(value: unknown) {
+  return typeof value === 'string' ? value.trim().replace(/\.jsonl$/i, '') : '';
+}
+
+function getCurrentCharacterId(tavernWindow = getTavernWindow()) {
+  const record = tavernWindow as Window & Record<string, unknown>;
+  const context = getTavernContext(tavernWindow);
+  return record.this_chid ?? context?.characterId ?? getOptionalGlobalValue('this_chid');
+}
+
+function getCurrentChatId(tavernWindow = getTavernWindow()) {
+  const record = tavernWindow as Window & Record<string, unknown>;
+  const context = getTavernContext(tavernWindow);
+  const candidates: Array<{ receiver: Record<string, unknown> | null; value: unknown }> = [
+    { receiver: context, value: context?.getCurrentChatId },
+    { receiver: record, value: record.getCurrentChatId },
+  ];
+  for (const candidate of candidates) {
+    if (typeof candidate.value !== 'function') continue;
+    try {
+      return normalizeChatFileName(candidate.value.call(candidate.receiver));
+    } catch {
+      // Continue with the exposed state fields.
+    }
+  }
+  return normalizeChatFileName(context?.chatId ?? record.chatId ?? getOptionalGlobalValue('chatId'));
+}
+
+async function waitForTavernState(predicate: () => boolean, failureMessage: string) {
+  const deadline = Date.now() + CHAT_SWITCH_TIMEOUT_MS;
+  while (Date.now() < deadline) {
+    if (predicate()) return;
+    await new Promise<void>(resolve => window.setTimeout(resolve, CHAT_SWITCH_POLL_MS));
+  }
+  throw new Error(failureMessage);
+}
+
 async function selectTavernCharacter(targetId: number) {
   const tavernWindow = getTavernWindow();
   const record = tavernWindow as Window & Record<string, unknown>;
   const context = getTavernContext(tavernWindow);
-  const currentId = record.this_chid ?? context?.characterId ?? getOptionalGlobalValue('this_chid');
-  if (String(currentId) === String(targetId)) return true;
-
-  const characterEl = tavernWindow.document.getElementById(`CharID${targetId}`);
-  if (characterEl instanceof HTMLElement) {
-    characterEl.click();
-    return false;
-  }
+  if (String(getCurrentCharacterId(tavernWindow)) === String(targetId)) return;
 
   const selectCharacterById = context?.selectCharacterById;
   if (typeof selectCharacterById === 'function') {
-    await selectCharacterById(String(targetId));
-    return false;
+    await selectCharacterById.call(context, targetId);
+  } else {
+    const runtimeSelectCharacterById = record.selectCharacterById ?? getOptionalGlobalFunction('selectCharacterById');
+    if (typeof runtimeSelectCharacterById === 'function') {
+      await runtimeSelectCharacterById.call(record, targetId);
+    } else {
+      const characterEl = tavernWindow.document.getElementById(`CharID${targetId}`);
+      if (characterEl instanceof HTMLElement) {
+        characterEl.click();
+      } else {
+        const loadCharacter = record.loadCharacter ?? getOptionalGlobalFunction('loadCharacter');
+        if (typeof loadCharacter !== 'function') throw new Error('无法调用酒馆角色切换接口');
+        await loadCharacter.call(record, targetId);
+      }
+    }
   }
 
-  const loadCharacter = record.loadCharacter ?? getOptionalGlobalFunction('loadCharacter');
-  if (typeof loadCharacter === 'function') {
-    await loadCharacter(targetId);
-    return false;
-  }
-
-  throw new Error('无法调用酒馆角色切换接口');
+  await waitForTavernState(
+    () => String(getCurrentCharacterId(tavernWindow)) === String(targetId),
+    '酒馆角色切换超时，已停止打开目标聊天',
+  );
 }
 
-function triggerTavernChatLoad(chatFile: string) {
+async function openTavernCharacterChat(chatFile: string) {
   const tavernWindow = getTavernWindow();
   const record = tavernWindow as Window & Record<string, unknown>;
-  const button = tavernWindow.document.createElement('div');
-  button.className = 'select_chat_block';
-  button.setAttribute('file_name', chatFile);
-  button.style.display = 'none';
-  tavernWindow.document.body.appendChild(button);
+  const context = getTavernContext(tavernWindow);
+  const openCharacterChat = context?.openCharacterChat ?? record.openCharacterChat ?? getOptionalGlobalFunction('openCharacterChat');
+  if (typeof openCharacterChat !== 'function') throw new Error('无法调用酒馆原生聊天打开接口');
 
-  const jquery = record.jQuery;
-  if (typeof jquery === 'function') {
-    const wrapped = jquery(button) as unknown;
-    if (wrapped && typeof wrapped === 'object' && typeof (wrapped as Record<string, unknown>).trigger === 'function') {
-      ((wrapped as Record<string, unknown>).trigger as (eventName: string) => void)('click');
-    } else {
-      button.click();
-    }
-  } else {
-    button.click();
-  }
-
-  window.setTimeout(() => button.remove(), 1000);
+  const normalizedChatFile = normalizeChatFileName(chatFile);
+  await openCharacterChat.call(context ?? record, normalizedChatFile);
+  await waitForTavernState(
+    () => getCurrentChatId(tavernWindow) === normalizedChatFile,
+    '酒馆未确认目标聊天已打开，请检查聊天文件是否仍然存在',
+  );
 }
 
 export async function jumpToTavernChat(input: {
@@ -123,17 +157,6 @@ export async function jumpToTavernChat(input: {
     throw new Error('无法在酒馆角色列表中找到这个角色卡');
   }
 
-  const isSameCharacter = await selectTavernCharacter(targetId);
-  const loadChat = () => triggerTavernChatLoad(input.chatFile);
-  if (isSameCharacter) {
-    const closeButton = getTavernWindow().document.getElementById('option_close_chat');
-    if (closeButton instanceof HTMLElement && closeButton.offsetParent !== null) {
-      closeButton.click();
-      window.setTimeout(loadChat, 500);
-    } else {
-      loadChat();
-    }
-  } else {
-    window.setTimeout(loadChat, 2000);
-  }
+  await selectTavernCharacter(targetId);
+  await openTavernCharacterChat(input.chatFile);
 }

@@ -21,6 +21,7 @@ import { usePhoneStore } from '@/store/phone';
 import { parsePrettified } from '@/util/zod';
 import { getProfileListPreview } from './rendering';
 import { extension_settings } from '@sillytavern/scripts/extensions';
+import { createChatScopedBackupSchema } from '@/type/backup';
 
 function emptyOverview(): PhoneContentOverview {
   return {
@@ -187,12 +188,16 @@ export default definePhoneApp({
   },
   backupDomains: [
     {
+      category: 'content',
       key: 'profiles',
       exportData: currentScopeKey => readChatScopedEnvelope(profilesField, currentScopeKey || getCurrentChatScopeKey()),
       importData: data => {
         _.set(extension_settings, profilesField, data);
       },
       rehydrateFromSettings: () => useProfilesStore().rehydrateFromSettings(),
+      schema: createChatScopedBackupSchema(ProfilesScopeDataSchema),
+      schemaVersion: 1,
+      scope: 'chat',
     },
   ],
   component: ProfilesApp,

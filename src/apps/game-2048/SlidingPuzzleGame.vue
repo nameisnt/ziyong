@@ -67,6 +67,7 @@
 import InfoHint from '@/components/InfoHint.vue';
 import { miniGameFields } from './fields';
 import { readMiniGameSettings, writeMiniGameSettings } from './miniGameStorage';
+import { SlidingPuzzleSchema } from './backupSchemas';
 
 type BoardSize = 'large' | 'medium' | 'small';
 
@@ -75,19 +76,6 @@ const sizeOptions: Array<{ dimension: number; id: BoardSize; label: string }> = 
   { dimension: 4, id: 'medium', label: '中 4×4' },
   { dimension: 5, id: 'large', label: '大 5×5' },
 ];
-const BestSchema = z.object({
-  large: z.number().int().nonnegative().default(0),
-  medium: z.number().int().nonnegative().default(0),
-  small: z.number().int().nonnegative().default(0),
-});
-const SlidingPuzzleSchema = z.object({
-  best: BestSchema.default({ large: 0, medium: 0, small: 0 }),
-  board: z.array(z.number().int().min(0).max(24)).max(25),
-  initial: z.array(z.number().int().min(0).max(24)).max(25),
-  moves: z.number().int().nonnegative().default(0),
-  size: z.enum(['large', 'medium', 'small']).default('small'),
-  status: z.enum(['done', 'playing']).default('playing'),
-});
 type SlidingPuzzleState = z.infer<typeof SlidingPuzzleSchema>;
 
 function dimensionFor(boardSize: BoardSize) {

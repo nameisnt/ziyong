@@ -108,30 +108,11 @@ import type { ISerializedKlondikeGame } from '@korziee/klondike/lib/classes/Klon
 import type { TSuit } from '@korziee/klondike/lib/types/TSuit';
 import { miniGameFields } from './fields';
 import { readMiniGameSettings, writeMiniGameSettings } from './miniGameStorage';
+import { SolitaireSchema } from './backupSchemas';
 
 type Selection =
   { from: 'foundation'; suit: TSuit } | { from: 'tableau'; pile: number; start: number } | { from: 'waste' };
 
-const CardSchema = z.object({
-  rank: z.enum(['2', '3', '4', '5', '6', '7', '8', '9', '10', 'Ace', 'King', 'Queen', 'Jack']),
-  suit: z.enum(['Spades', 'Hearts', 'Clubs', 'Diamonds']),
-  upturned: z.boolean(),
-});
-const PileSchema = z.object({ cards: z.array(CardSchema).max(52) });
-const SerializedGameSchema = z.object({
-  foundation: z.object({ clubs: PileSchema, diamonds: PileSchema, hearts: PileSchema, spades: PileSchema }),
-  history: z.array(z.unknown()).default([]),
-  stock: PileSchema,
-  tableau: z.object({ piles: z.array(PileSchema).length(7) }),
-  waste: PileSchema,
-});
-const SolitaireSchema = z.object({
-  completed: z.boolean().default(false),
-  game: SerializedGameSchema,
-  moves: z.number().int().nonnegative().default(0),
-  previous: SerializedGameSchema.nullable().default(null),
-  wins: z.number().int().nonnegative().default(0),
-});
 type SolitaireState = z.infer<typeof SolitaireSchema>;
 
 function stripHistory(serialized: ISerializedKlondikeGame): ISerializedKlondikeGame {

@@ -18,10 +18,20 @@
         </article>
       </div>
       <div class="pc-action-grid">
-        <button class="pc-icon-btn" type="button" title="导出全部数据" @click="downloadBackup">
+        <button
+          class="pc-icon-btn"
+          type="button"
+          title="导出手机配置与内容（不含密钥和本地资源）"
+          @click="downloadBackup"
+        >
           <i class="fa-solid fa-file-export"></i>
         </button>
-        <button class="pc-icon-btn" type="button" title="导出当前聊天数据" @click="downloadCurrentBackup">
+        <button
+          class="pc-icon-btn"
+          type="button"
+          title="导出当前聊天创作内容（不含全局配置）"
+          @click="downloadCurrentBackup"
+        >
           <i class="fa-solid fa-file-arrow-up"></i>
         </button>
         <button class="pc-icon-btn" type="button" title="导入到当前聊天" @click="openBackupImport('scope')">
@@ -51,23 +61,13 @@
         </button>
       </div>
       <div class="pc-asset-field">
-        <select :value="wallpaperSelectionValue" class="pc-select" @change="onWallpaperSelect">
-          <option value="none">默认渐变背景</option>
-          <optgroup label="预设壁纸">
-            <option v-for="preset in WALLPAPER_PRESETS" :key="preset.id" :value="`preset:${preset.id}`">
-              {{ preset.name }}
-            </option>
-          </optgroup>
-          <optgroup v-if="settings.wallpaper.customWallpapers.length" label="自定义壁纸">
-            <option
-              v-for="wallpaper in settings.wallpaper.customWallpapers"
-              :key="wallpaper.id"
-              :value="`custom:${wallpaper.id}`"
-            >
-              {{ wallpaper.name }}
-            </option>
-          </optgroup>
-        </select>
+        <SearchableCombobox
+          :model-value="wallpaperSelectionValue"
+          input-label="选择壁纸"
+          :options="wallpaperSelectionOptions"
+          placeholder="默认渐变背景"
+          @update:model-value="onWallpaperSelect"
+        />
         <div class="pc-asset-actions">
           <button class="pc-icon-btn" type="button" title="导入壁纸" @click="wallpaperInputEl?.click()">
             <i class="fa-solid fa-file-import"></i>
@@ -116,12 +116,13 @@
         <strong>字体资源</strong>
       </div>
       <div class="pc-asset-field">
-        <select :value="fontAssetSelectionValue" class="pc-select" @change="onFontAssetSelect">
-          <option value="">{{ settings.customFont.fonts.length ? '选择已导入字体' : '尚未导入字体' }}</option>
-          <option v-for="font in settings.customFont.fonts" :key="font.id" :value="font.id">
-            {{ font.name }}
-          </option>
-        </select>
+        <SearchableCombobox
+          :model-value="fontAssetSelectionValue"
+          input-label="选择已导入字体"
+          :options="fontAssetSelectionOptions"
+          :placeholder="settings.customFont.fonts.length ? '选择已导入字体' : '尚未导入字体'"
+          @update:model-value="onFontAssetSelect"
+        />
         <div class="pc-asset-actions">
           <button class="pc-icon-btn" type="button" title="导入字体" @click="fontInputEl?.click()">
             <i class="fa-solid fa-file-import"></i>
@@ -168,10 +169,10 @@
 </template>
 
 <script setup lang="ts">
+import SearchableCombobox from '@/components/SearchableCombobox.vue';
 import { WALLPAPER_PRESETS } from '@/data/wallpapers';
 import {
   getRegisteredPhoneBackupDomains,
-  getRegisteredPhoneBackupRehydrateHandlers,
   getRegisteredPhoneContentStats,
   type PhoneContentStatsContribution,
 } from '@/core/appRegistry';
@@ -184,6 +185,7 @@ import { usePromptStore } from '@/store/prompts';
 import { useReaderStore } from '@/store/reader';
 import { useRecoveryStore } from '@/store/recovery';
 import { useSettingsStore } from '@/store/settings';
+import { getPhoneBackupKind } from '@/type/backup';
 import { parseChatScopeKey } from '@/util/chatArchive';
 import {
   applyPhoneBackup,
@@ -192,6 +194,9 @@ import {
   importPhoneBackupScopeToCurrentChat,
   listPhoneBackupScopeOptions,
   parsePhoneBackupFile,
+  planPhoneBackupScopeImport,
+  planPhoneFullBackupImport,
+  type PhoneBackupImportPlan,
   type PhoneBackupScopeOption,
 } from '@/util/backup';
 import { getOptionalGlobalValue } from '@/util/runtime';
@@ -266,6 +271,30 @@ const selectedCustomFont = computed(
   () => settings.value.customFont.fonts.find(item => item.id === settings.value.customFont.selectedFontId) ?? null,
 );
 const fontAssetSelectionValue = computed(() => selectedCustomFont.value?.id ?? '');
+const wallpaperSelectionOptions = computed(() => {
+  const selected = wallpaperSelectionValue.value;
+  const options = [
+    { label: '默认渐变背景', value: 'none' },
+    ...WALLPAPER_PRESETS.map(preset => ({ group: '预设壁纸', label: preset.name, value: `preset:${preset.id}` })),
+    ...settings.value.wallpaper.customWallpapers.map(wallpaper => ({
+      group: '自定义壁纸',
+      label: wallpaper.name,
+      value: `custom:${wallpaper.id}`,
+    })),
+  ];
+  if (!options.some(option => option.value === selected)) {
+    options.unshift({ label: '当前壁纸资源已失效', value: selected });
+  }
+  return options;
+});
+const fontAssetSelectionOptions = computed(() => {
+  const selected = fontAssetSelectionValue.value;
+  const options = settings.value.customFont.fonts.map(font => ({ label: font.name, value: font.id }));
+  if (selected && !options.some(option => option.value === selected)) {
+    options.unshift({ label: '当前字体资源已失效', value: selected });
+  }
+  return [{ label: settings.value.customFont.fonts.length ? '选择已导入字体' : '尚未导入字体', value: '' }, ...options];
+});
 const wallpaperSummary = computed(() =>
   settings.value.wallpaper.mode === 'custom'
     ? `自定义壁纸${selectedCustomWallpaper.value?.name.trim() ? ` · ${selectedCustomWallpaper.value.name}` : ''}`
@@ -285,11 +314,10 @@ function formatScopeOwner(ownerId: string) {
   const name = character && typeof character === 'object' ? (character as Record<string, unknown>).name : null;
   return typeof name === 'string' && name.trim() ? name.trim() : ownerId;
 }
-function onFontAssetSelect(event: Event) {
-  settingsStore.selectCustomFontAsset((event.target as HTMLSelectElement).value);
+function onFontAssetSelect(fontId: string) {
+  settingsStore.selectCustomFontAsset(fontId);
 }
-async function onWallpaperSelect(event: Event) {
-  const value = (event.target as HTMLSelectElement).value;
+async function onWallpaperSelect(value: string) {
   try {
     if (value === 'none') await settingsStore.clearWallpaperSelection();
     else if (value.startsWith('preset:')) await settingsStore.selectWallpaperPreset(value.slice(7));
@@ -420,11 +448,21 @@ function rehydrateImportedData() {
   bagu.rehydrateFromSettings();
   recovery.rehydrateFromSettings();
   reader.rehydrateFromSettings();
-  getRegisteredPhoneBackupRehydrateHandlers().forEach(handler => handler());
   favorites.clearSelection();
 }
 function formatBackupScopeOption(option: PhoneBackupScopeOption, index: number) {
   return `${index + 1}. ${option.label}｜${option.domainLabels.join('、') || '创作内容'}｜${option.items} 项`;
+}
+
+function formatBackupImportPlan(plan: PhoneBackupImportPlan) {
+  const lines = [`将覆盖：${plan.domainsToReplace.join('、') || '手机基础设置'}`];
+  if (plan.missingDomainLabels.length) {
+    lines.push(`备份缺少、将保留当前数据：${plan.missingDomainLabels.join('、')}`);
+  }
+  if (plan.unknownDomainKeys.length) {
+    lines.push(`未识别、将跳过：${plan.unknownDomainKeys.join('、')}`);
+  }
+  return lines.join('\n');
 }
 async function selectBackupScopeOption(options: PhoneBackupScopeOption[]) {
   const selected = await phone.promptNotice(
@@ -448,14 +486,31 @@ async function onBackupSelected(event: Event) {
     const backup = await parsePhoneBackupFile(file);
     if (generationTasks.hasRunningTasks) return void toastr.warning('请先暂停正在运行的生成任务，再恢复备份');
     if (backupImportMode.value === 'full') {
+      const backupKind = getPhoneBackupKind(backup);
+      if (backupKind === 'current-chat') {
+        throw new Error('这是一份当前聊天备份，只能使用“导入到当前聊天”');
+      }
       if (
-        !(await phone.confirmNotice('要完整恢复这份手机备份吗？这会覆盖当前手机插件中的设置和全部已保存数据。', {
-          confirmLabel: '恢复',
-          kind: 'warning',
-        }))
+        backupKind === 'legacy' &&
+        !(await phone.confirmNotice(
+          '这是一份旧版备份，文件未标注“完整”或“当前聊天”。请仅在确认它包含完整设置和所有数据时继续恢复。',
+          { confirmLabel: '确认按完整备份恢复', kind: 'warning' },
+        ))
       )
         return;
-      await applyPhoneBackup(backup);
+      if (
+        !(await phone.confirmNotice(
+          `要完整恢复这份手机备份吗？\n${formatBackupImportPlan(
+            planPhoneFullBackupImport(backup, { allowLegacy: backupKind === 'legacy' }),
+          )}`,
+          {
+            confirmLabel: '恢复',
+            kind: 'warning',
+          },
+        ))
+      )
+        return;
+      await applyPhoneBackup(backup, { allowLegacy: backupKind === 'legacy' });
       rehydrateImportedData();
       toastr.success('已完整恢复手机备份');
       return;
@@ -464,9 +519,10 @@ async function onBackupSelected(event: Event) {
     if (!options.length) return void toastr.warning('这份备份里没有可导入的聊天创作内容');
     const option = await selectBackupScopeOption(options);
     if (!option) return void toastr.warning('没有选择有效的备份来源');
+    const plan = planPhoneBackupScopeImport(backup, option.scopeKey);
     if (
       !(await phone.confirmNotice(
-        `要把“${option.label}”导入到当前聊天吗？这只会覆盖当前聊天中对应 App 的内容，不会影响其他聊天。`,
+        `要把“${option.label}”导入到当前聊天吗？这只会覆盖当前聊天中对应 App 的内容，不会影响其他聊天。\n${formatBackupImportPlan(plan)}`,
         { confirmLabel: '导入', kind: 'warning' },
       ))
     )

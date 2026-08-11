@@ -29,7 +29,7 @@ const TimekeeperDeltaSchema = z.object({
 });
 export type TimekeeperDelta = z.infer<typeof TimekeeperDeltaSchema>;
 
-const TimekeeperSettingsSchema = z.object({
+export const TimekeeperSettingsSchema = z.object({
   calendar: TimekeeperCalendarTemplateSchema.default(() => createManualCalendar()),
   current: TimekeeperDateSchema.default(() => TimekeeperDateSchema.parse({})),
   delta: TimekeeperDeltaSchema.default(() => TimekeeperDeltaSchema.parse({})),
@@ -147,40 +147,34 @@ function normalizeDate(date: TimekeeperDate, calendar: TimekeeperCalendarTemplat
 }
 
 function normalizeSettings(raw: unknown): TimekeeperSettings {
-  try {
-    const source = raw && typeof raw === 'object' ? (klona(raw) as Record<string, unknown>) : {};
-    if (!source.calendar || typeof source.calendar !== 'object') {
-      source.calendar = {
-        eraName: typeof source.eraName === 'string' ? source.eraName : '世界历',
-        id: 'manual',
-        kind: 'fixed',
-        monthDaysText:
-          typeof source.monthDaysText === 'string' ? source.monthDaysText : String(source.daysPerMonth || 30),
-        monthsPerYear: Number(source.monthsPerYear) || 12,
-        name: '手动历法',
-      };
-    }
-    const parsed = validateInplace(TimekeeperSettingsSchema, source);
-    parsed.calendar = normalizeCalendar(parsed.calendar);
-    parsed.current = normalizeDate(parsed.current, parsed.calendar);
-    parsed.delta = {
-      years: Math.max(0, Math.round(parsed.delta.years || 0)),
-      months: Math.max(0, Math.round(parsed.delta.months || 0)),
-      days: Math.max(0, Math.round(parsed.delta.days || 0)),
-    };
-    parsed.people = parsed.people.map(person => ({
-      ...person,
-      name: person.name.trim() || '未命名人物',
-      birth: normalizeDate(person.birth, parsed.calendar),
-    }));
-    return parsed;
-  } catch {
-    return validateInplace(TimekeeperSettingsSchema, {
-      calendar: createManualCalendar(),
-      current: getTodayDefaultDate(),
-      people: [],
-    });
+  if (typeof raw !== 'undefined' && (!raw || typeof raw !== 'object' || Array.isArray(raw))) {
+    throw new Error('时间确认数据必须是对象');
   }
+  const source = raw && typeof raw === 'object' ? (klona(raw) as Record<string, unknown>) : {};
+  if (!source.calendar || typeof source.calendar !== 'object') {
+    source.calendar = {
+      eraName: typeof source.eraName === 'string' ? source.eraName : '世界历',
+      id: 'manual',
+      kind: 'fixed',
+      monthDaysText: typeof source.monthDaysText === 'string' ? source.monthDaysText : String(source.daysPerMonth || 30),
+      monthsPerYear: Number(source.monthsPerYear) || 12,
+      name: '手动历法',
+    };
+  }
+  const parsed = validateInplace(TimekeeperSettingsSchema, source);
+  parsed.calendar = normalizeCalendar(parsed.calendar);
+  parsed.current = normalizeDate(parsed.current, parsed.calendar);
+  parsed.delta = {
+    years: Math.max(0, Math.round(parsed.delta.years || 0)),
+    months: Math.max(0, Math.round(parsed.delta.months || 0)),
+    days: Math.max(0, Math.round(parsed.delta.days || 0)),
+  };
+  parsed.people = parsed.people.map(person => ({
+    ...person,
+    name: person.name.trim() || '未命名人物',
+    birth: normalizeDate(person.birth, parsed.calendar),
+  }));
+  return parsed;
 }
 
 const TimekeeperStorageSchema = z.unknown().transform((value): TimekeeperSettings => normalizeSettings(value));

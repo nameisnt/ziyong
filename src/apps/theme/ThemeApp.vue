@@ -323,48 +323,33 @@
         </div>
         <label class="pc-select-field">
           <span class="pc-field-label">{{ t`壁纸` }}</span>
-          <select :value="wallpaperSelectionValue" class="pc-select" @change="onWallpaperSelect">
-            <option value="none">{{ t`默认背景` }}</option>
-            <optgroup :label="t`预设壁纸`">
-              <option v-for="preset in WALLPAPER_PRESETS" :key="preset.id" :value="`preset:${preset.id}`">
-                {{ preset.name }}
-              </option>
-            </optgroup>
-            <optgroup v-if="settings.wallpaper.customWallpapers.length" :label="t`自定义壁纸`">
-              <option
-                v-for="wallpaper in settings.wallpaper.customWallpapers"
-                :key="wallpaper.id"
-                :value="`custom:${wallpaper.id}`"
-              >
-                {{ wallpaper.name }}
-              </option>
-            </optgroup>
-          </select>
+          <SearchableCombobox
+            :model-value="wallpaperSelectionValue"
+            input-label="选择壁纸"
+            :options="wallpaperSelectionOptions"
+            placeholder="默认背景"
+            @update:model-value="onWallpaperSelect"
+          />
         </label>
         <label class="pc-select-field">
           <span class="pc-field-label">{{ t`手机字体` }}</span>
-          <select :value="fontSelectionValue" class="pc-select" @change="onFontSelect">
-            <option v-for="option in fontOptions" :key="option.value" :value="option.value">{{ option.label }}</option>
-            <optgroup v-if="settings.customFont.fonts.length" :label="t`自定义字体`">
-              <option v-for="font in settings.customFont.fonts" :key="font.id" :value="`custom:${font.id}`">
-                {{ font.name }}
-              </option>
-            </optgroup>
-          </select>
+          <SearchableCombobox
+            :model-value="fontSelectionValue"
+            input-label="选择手机字体"
+            :options="fontSelectionOptions"
+            placeholder="系统默认"
+            @update:model-value="onFontSelect"
+          />
         </label>
         <label class="pc-select-field">
           <span class="pc-field-label">{{ t`阅读器字体` }}</span>
-          <select :value="readerFontSelectionValue" class="pc-select" @change="onReaderFontSelect">
-            <option value="">{{ t`跟随手机字体` }}</option>
-            <option v-for="option in fontOptions.filter(item => item.value)" :key="option.value" :value="option.value">
-              {{ option.label }}
-            </option>
-            <optgroup v-if="settings.customFont.fonts.length" :label="t`自定义字体`">
-              <option v-for="font in settings.customFont.fonts" :key="font.id" :value="`custom:${font.id}`">
-                {{ font.name }}
-              </option>
-            </optgroup>
-          </select>
+          <SearchableCombobox
+            :model-value="readerFontSelectionValue"
+            input-label="选择阅读器字体"
+            :options="readerFontSelectionOptions"
+            placeholder="跟随手机字体"
+            @update:model-value="onReaderFontSelect"
+          />
         </label>
       </section>
 
@@ -415,6 +400,7 @@
 
 <script setup lang="ts">
 import InfoHint from '@/components/InfoHint.vue';
+import SearchableCombobox from '@/components/SearchableCombobox.vue';
 import { getPhoneApps, type PhoneAppDefinition } from '@/data/apps';
 import { WALLPAPER_PRESETS, getWallpaperPreset } from '@/data/wallpapers';
 import { usePhoneStore } from '@/store/phone';
@@ -953,6 +939,40 @@ const wallpaperSelectionValue = computed(() => {
     return `custom:${selectedCustomWallpaper.value?.id || settings.value.wallpaper.selectedCustomId}`;
   return 'none';
 });
+const wallpaperSelectionOptions = computed(() => {
+  const selected = wallpaperSelectionValue.value;
+  const options = [
+    { label: '默认背景', value: 'none' },
+    ...WALLPAPER_PRESETS.map(preset => ({ group: '预设壁纸', label: preset.name, value: `preset:${preset.id}` })),
+    ...settings.value.wallpaper.customWallpapers.map(wallpaper => ({
+      group: '自定义壁纸',
+      label: wallpaper.name,
+      value: `custom:${wallpaper.id}`,
+    })),
+  ];
+  if (!options.some(option => option.value === selected)) {
+    options.unshift({ label: '当前壁纸资源已失效', value: selected });
+  }
+  return options;
+});
+function createFontSelectionOptions(selected: string, includeSystemDefault: boolean) {
+  const options = [
+    ...(includeSystemDefault
+      ? fontOptions
+      : [{ label: '跟随手机字体', value: '' }, ...fontOptions.filter(option => option.value)]),
+    ...settings.value.customFont.fonts.map(font => ({
+      group: '自定义字体',
+      label: font.name,
+      value: `custom:${font.id}`,
+    })),
+  ];
+  if (selected && !options.some(option => option.value === selected)) {
+    options.unshift({ label: '当前字体资源已失效', value: selected });
+  }
+  return options;
+}
+const fontSelectionOptions = computed(() => createFontSelectionOptions(fontSelectionValue.value, true));
+const readerFontSelectionOptions = computed(() => createFontSelectionOptions(readerFontSelectionValue.value, false));
 const activePresetLabel = computed(() => {
   const matched = visibleThemePresets.value.find(
     preset =>
@@ -1166,14 +1186,12 @@ function onRadiusInput(kind: RadiusKey, event: Event) {
   settingsStore.setVisualRadius(kind, Number((event.target as HTMLInputElement).value));
 }
 
-function onFontSelect(event: Event) {
-  const value = (event.target as HTMLSelectElement).value;
+function onFontSelect(value: string) {
   if (value.startsWith('custom:')) settingsStore.selectCustomFont(value.slice('custom:'.length));
   else settingsStore.setFontFamily(value);
 }
 
-function onReaderFontSelect(event: Event) {
-  const value = (event.target as HTMLSelectElement).value;
+function onReaderFontSelect(value: string) {
   if (value.startsWith('custom:'))
     settingsStore.setReaderFontFamily(settingsStore.getCustomFontFamily(value.slice('custom:'.length)));
   else settingsStore.setReaderFontFamily(value);
@@ -1193,8 +1211,7 @@ async function onThemeFontSelected(event: Event) {
   }
 }
 
-async function onWallpaperSelect(event: Event) {
-  const value = (event.target as HTMLSelectElement).value;
+async function onWallpaperSelect(value: string) {
   if (value === 'none') await settingsStore.clearWallpaperSelection();
   else if (value.startsWith('preset:')) await settingsStore.selectWallpaperPreset(value.slice('preset:'.length));
   else if (value.startsWith('custom:')) settingsStore.selectCustomWallpaper(value.slice('custom:'.length));

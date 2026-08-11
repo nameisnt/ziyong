@@ -132,11 +132,13 @@ export function createSummaryContentReceiver(): PhoneContentReceiver {
           title: sourceTitle(source, '未命名总结'),
         }),
       );
-      const first = entries[0];
+      if (entries.some(entry => !entry)) throw new Error('总结写入失败');
+      const savedEntries = entries as NonNullable<(typeof entries)[number]>[];
+      const first = savedEntries[0];
       return result(
-        entries.map(entry => entry.id),
-        `已转换 ${entries.length} 条总结`,
-        first && entries.length === 1
+        savedEntries.map(entry => entry.id),
+        `已转换 ${savedEntries.length} 条总结`,
+        first && savedEntries.length === 1
           ? { page: 'entry', params: { bookId: book.id, entryId: first.id }, title: first.title }
           : { page: 'book', params: { bookId: book.id }, title: book.title },
       );
@@ -259,13 +261,15 @@ export function createDiaryContentReceiver(): PhoneContentReceiver {
           title: sourceTitle(source, '未命名日记'),
         }),
       );
-      const first = created[0];
+      if (created.some(item => !item)) throw new Error('日记写入失败');
+      const savedEntries = created as NonNullable<(typeof created)[number]>[];
+      const first = savedEntries[0];
       const book = first?.book;
       if (!first || !book) throw new Error('日记写入失败');
       return result(
-        created.map(item => item.entry.id),
-        `已转换 ${created.length} 篇日记`,
-        created.length === 1
+        savedEntries.map(item => item.entry.id),
+        `已转换 ${savedEntries.length} 篇日记`,
+        savedEntries.length === 1
           ? { page: 'entry', params: { bookId: book.id, entryId: first.entry.id }, title: first.entry.title }
           : { page: 'book', params: { bookId: book.id }, title: book.title },
       );
@@ -332,12 +336,14 @@ export function createLettersContentReceiver(): PhoneContentReceiver {
           title: sourceTitle(source, '未命名书信'),
         }),
       );
-      const first = created[0];
+      if (created.some(item => !item)) throw new Error('书信写入失败');
+      const savedEntries = created as NonNullable<(typeof created)[number]>[];
+      const first = savedEntries[0];
       if (!first) throw new Error('书信写入失败');
       return result(
-        created.map(item => item.entry.id),
-        `已转换 ${created.length} 封书信`,
-        created.length === 1
+        savedEntries.map(item => item.entry.id),
+        `已转换 ${savedEntries.length} 封书信`,
+        savedEntries.length === 1
           ? {
               page: 'entry',
               params: { bookId: first.book.id, entryId: first.entry.id },

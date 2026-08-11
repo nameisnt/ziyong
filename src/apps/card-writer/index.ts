@@ -1,6 +1,6 @@
 import CardWriterApp from './CardWriterApp.vue';
 import { createCardWriterReferenceTree } from './references';
-import { cardWriterField, useCardWriterStore } from './store';
+import { CardWriterSettingsSchema, cardWriterField, useCardWriterStore } from './store';
 import { definePhoneApp } from '@/core/appRegistry';
 import { extension_settings } from '@sillytavern/scripts/extensions';
 
@@ -14,10 +14,14 @@ export default definePhoneApp({
   defaultOrder: 117,
   backupDomains: [
     {
+      category: 'configuration',
       key: 'card-writer',
       exportData: () => _.get(extension_settings, cardWriterField, {}),
       importData: data => _.set(extension_settings, cardWriterField, data),
       rehydrateFromSettings: () => useCardWriterStore().rehydrateFromSettings(),
+      schema: CardWriterSettingsSchema,
+      schemaVersion: 1,
+      scope: 'global',
     },
   ],
   component: CardWriterApp,

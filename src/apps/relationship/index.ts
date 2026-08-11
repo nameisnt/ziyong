@@ -18,6 +18,7 @@ import {
 import { getCurrentChatScopeKey, readChatScopedEnvelope } from '@/store/chatScoped';
 import { parsePrettified } from '@/util/zod';
 import { extension_settings } from '@sillytavern/scripts/extensions';
+import { createChatScopedBackupSchema } from '@/type/backup';
 
 function emptyOverview(): PhoneContentOverview {
   return {
@@ -180,6 +181,7 @@ export default definePhoneApp({
   },
   backupDomains: [
     {
+      category: 'content',
       key: 'relationships',
       exportData: currentScopeKey =>
         readChatScopedEnvelope(relationshipField, currentScopeKey || getCurrentChatScopeKey()),
@@ -187,6 +189,9 @@ export default definePhoneApp({
         _.set(extension_settings, relationshipField, data);
       },
       rehydrateFromSettings: () => useRelationshipStore().rehydrateFromSettings(),
+      schema: createChatScopedBackupSchema(RelationshipScopeDataSchema),
+      schemaVersion: 1,
+      scope: 'chat',
     },
   ],
   component: RelationshipApp,

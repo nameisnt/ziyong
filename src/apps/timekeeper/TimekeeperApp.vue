@@ -1,6 +1,15 @@
 <template>
   <section class="pc-timekeeper-app">
     <section class="pc-timekeeper-page">
+      <ConfigurationRecoveryNotice
+        v-if="configError"
+        :error="configError"
+        filename="sillytavern-phone-timekeeper-corrupted-data.json"
+        :raw-data="rawConfig"
+        @reset="resetCorruptedSettings"
+        @retry="timekeeper.rehydrateFromSettings"
+      />
+
       <article class="pc-page-section pc-time-hero">
         <div>
           <span class="pc-kicker">{{ t`当前世界时间` }}</span>
@@ -21,11 +30,13 @@
           </span>
         </summary>
         <div class="pc-asset-field pc-calendar-select">
-          <select class="pc-select" :value="settings.calendar.id" @change="onCalendarSelect">
-            <option v-for="option in calendarOptions" :key="option.value" :value="option.value">
-              {{ option.label }}
-            </option>
-          </select>
+          <SearchableCombobox
+            input-label="选择历法"
+            :model-value="settings.calendar.id"
+            :options="calendarOptions"
+            placeholder="选择历法"
+            @update:model-value="onCalendarSelect"
+          />
           <div class="pc-asset-actions">
             <button
               v-if="settings.calendar.kind !== 'gregorian'"
@@ -274,8 +285,10 @@
 
 <script setup lang="ts">
 import EmptyState from '@/components/EmptyState.vue';
+import ConfigurationRecoveryNotice from '@/components/ConfigurationRecoveryNotice.vue';
 import InfoHint from '@/components/InfoHint.vue';
 import ProfileEntryPicker from '@/components/ProfileEntryPicker.vue';
+import SearchableCombobox from '@/components/SearchableCombobox.vue';
 import { useProfilesStore } from '@/apps/profiles/store';
 import { usePhoneStore } from '@/store/phone';
 import { useSettingsStore } from '@/store/settings';
@@ -287,7 +300,7 @@ const timekeeper = useTimekeeperStore();
 const phone = usePhoneStore();
 const profiles = useProfilesStore();
 const settingsStore = useSettingsStore();
-const { nextDate, settings } = storeToRefs(timekeeper);
+const { configError, nextDate, rawConfig, settings } = storeToRefs(timekeeper);
 const promptText = computed(() => timekeeper.buildPromptText());
 const calendarHelpText =
   '公历会自动计算大小月和闰年；手动历法可以填写统一天数或用逗号分开每个月。保存后的历法模板可在所有聊天中选择。';
@@ -315,6 +328,18 @@ const isCurrentGlobalTemplate = computed(() =>
   settingsStore.settings.timekeeperCalendarTemplates.some(template => template.id === settings.value.calendar.id),
 );
 
+async function resetCorruptedSettings() {
+  if (
+    !(await phone.confirmNotice('要重置当前聊天的时间确认数据吗？这会替换无法读取的原始数据。', {
+      confirmLabel: '重置',
+      kind: 'warning',
+    }))
+  )
+    return;
+  timekeeper.resetCurrentScope();
+  toastr.success('已重置当前聊天的时间确认数据');
+}
+
 function formatDateInput(date: TimekeeperDate) {
   const year = String(Math.max(1, Math.round(date.year))).padStart(4, '0');
   const month = String(Math.max(1, Math.round(date.month))).padStart(2, '0');
@@ -332,8 +357,8 @@ function parseDateInput(value: string) {
   };
 }
 
-function onCalendarSelect(event: Event) {
-  timekeeper.selectCalendar((event.target as HTMLSelectElement).value);
+function onCalendarSelect(calendarId: string) {
+  timekeeper.selectCalendar(calendarId);
 }
 
 function setCurrentDate(event: Event) {

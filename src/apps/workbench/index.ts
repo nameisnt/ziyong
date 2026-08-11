@@ -1,5 +1,5 @@
 import WorkbenchApp from './WorkbenchApp.vue';
-import { useWorkbenchStore } from './store';
+import { useWorkbenchStore, WorkbenchSettingsSchema } from './store';
 import { definePhoneApp } from '@/core/appRegistry';
 import { extension_settings } from '@sillytavern/scripts/extensions';
 
@@ -15,12 +15,16 @@ export default definePhoneApp({
   resetCurrentScope: () => useWorkbenchStore().resetCurrentScope(),
   backupDomains: [
     {
+      category: 'configuration',
       key: 'workbench',
       exportData: () => _.get(extension_settings, 'sillytavern_phone_workbench', {}),
       importData: data => {
         _.set(extension_settings, 'sillytavern_phone_workbench', data);
       },
       rehydrateFromSettings: () => useWorkbenchStore().rehydrateFromSettings(),
+      schema: WorkbenchSettingsSchema,
+      schemaVersion: 1,
+      scope: 'global',
     },
   ],
 });

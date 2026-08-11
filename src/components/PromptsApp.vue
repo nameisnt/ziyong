@@ -254,260 +254,56 @@
       </section>
     </section>
 
-    <section v-else-if="route.page === 'app-prompt-editor' && editingAppPrompt" class="pc-prompts-page">
-      <div class="pc-prompts-editor">
-        <textarea
-          ref="appPromptEditorEl"
-          v-model="appPromptDraft"
-          class="pc-area pc-app-prompt-editor-area"
-          :placeholder="editingAppPrompt.placeholder"
-        ></textarea>
-        <div v-if="editingAppPrompt.kind === 'task' && editingAppPrompt.variables.length" class="pc-field-group">
-          <span class="pc-field-label">{{ t`可用占位符` }}</span>
-          <div class="pc-chip-row">
-            <button
-              v-for="variable in editingAppPrompt.variables"
-              :key="variable.key"
-              class="pc-soft-btn compact"
-              type="button"
-              :title="variable.label"
-              @click="insertTaskVariable(variable.key)"
-            >
-              {{ formatTaskVariable(variable.key) }}
-            </button>
-          </div>
-        </div>
-        <div class="pc-form-actions">
-          <button class="pc-soft-btn" type="button" @click="phone.goBack()">{{ t`取消` }}</button>
-          <button class="pc-primary-btn" type="button" @click="submitAppPrompt">{{ t`保存` }}</button>
-        </div>
-      </div>
-    </section>
+    <PromptAppEditorPage
+      v-else-if="route.page === 'app-prompt-editor' && editingAppPrompt"
+      :definition="editingAppPrompt"
+      @back="phone.goBack()"
+    />
 
-    <section v-else-if="route.page === 'output-editor' && editingOutputDefinition" class="pc-prompts-page">
-      <div class="pc-prompts-editor pc-output-editor">
-        <label class="pc-field-group">
-          <span>{{ t`输出格式` }}</span>
-          <textarea v-model="outputDraft.outputFormat" class="pc-area"></textarea>
-        </label>
+    <PromptOutputEditorPage
+      v-else-if="route.page === 'output-editor' && editingOutputDefinition"
+      :definition="editingOutputDefinition"
+      @back="phone.goBack()"
+    />
 
-        <label class="pc-output-parser-toggle">
-          <input v-model="outputDraft.parserEnabled" type="checkbox" />
-          <span>{{ t`使用自定义解析` }}</span>
-        </label>
+    <PromptTypeEditorPage
+      v-else-if="route.page === 'type-editor'"
+      :domains="typePromptDomains"
+      :prompt="editingTypePrompt"
+      @back="phone.goBack()"
+    />
 
-        <template v-if="outputDraft.parserEnabled">
-          <div class="pc-output-parser-grid">
-            <label class="pc-field-group">
-              <span>{{ t`解析类型` }}</span>
-              <select v-model="outputDraft.parser.kind" class="pc-select">
-                <option value="xml">XML</option>
-                <option value="json">JSON</option>
-                <option value="labels" :disabled="!canUseLabelParser">{{ t`标签文本` }}</option>
-                <option value="text" :disabled="!canUsePlainTextParser">{{ t`纯文本` }}</option>
-              </select>
-            </label>
-            <label v-if="outputDraft.parser.kind !== 'text'" class="pc-field-group">
-              <span>{{ outputDraft.parser.kind === 'labels' ? t`外层标签` : t`根路径` }}</span>
-              <input v-model="outputDraft.parser.rootPath" class="pc-field" type="text" />
-            </label>
-          </div>
+    <PromptGroupEditorPage
+      v-else-if="route.page === 'group-editor'"
+      :group="editingGroup"
+      kind="phrase"
+      @back="phone.goBack()"
+    />
 
-          <section class="pc-output-field-list">
-            <strong>{{ t`字段映射` }}</strong>
-            <article v-for="field in outputDraft.parser.fields" :key="field.key" class="pc-output-field">
-              <div class="pc-output-field-head">
-                <strong>{{ field.label }}</strong>
-                <small>{{ field.required ? t`必填` : field.kind === 'object-list' ? t`列表` : t`可选` }}</small>
-              </div>
-              <input v-model="field.defaultPath" class="pc-field" type="text" :placeholder="t`字段路径`" />
-              <div v-if="field.kind === 'text'" class="pc-output-field-options">
-                <select v-model="field.extraction" class="pc-select">
-                  <option value="text">{{ t`纯文本` }}</option>
-                  <option value="markup">{{ t`保留标记` }}</option>
-                </select>
-              </div>
-              <div v-else-if="field.kind === 'text-list'" class="pc-output-field-options">
-                <input v-model="field.separator" class="pc-field" type="text" :placeholder="t`分隔正则，可留空`" />
-              </div>
-              <div v-if="field.kind === 'object-list'" class="pc-output-child-fields">
-                <label v-for="child in field.children" :key="child.key" class="pc-field-group">
-                  <span>{{ child.label }}</span>
-                  <input v-model="child.defaultPath" class="pc-field" type="text" />
-                </label>
-              </div>
-            </article>
-          </section>
+    <PromptGroupEditorPage
+      v-else-if="route.page === 'template-group-editor'"
+      :group="editingTemplateGroup"
+      kind="template"
+      @back="phone.goBack()"
+    />
 
-          <label class="pc-field-group">
-            <span>{{ t`测试输出` }}</span>
-            <textarea
-              v-model="outputDraft.sample"
-              class="pc-area compact"
-              :placeholder="t`粘贴一段 AI 输出`"
-            ></textarea>
-          </label>
-          <button class="pc-soft-btn" type="button" @click="testOutputParser">
-            {{ t`测试解析` }}
-          </button>
-          <pre v-if="outputDraft.testResult" class="pc-output-test-result">{{ outputDraft.testResult }}</pre>
-          <p v-if="outputDraft.testError" class="pc-output-test-error">{{ outputDraft.testError }}</p>
-        </template>
+    <PromptPhraseEditorPage
+      v-else-if="route.page === 'phrase-editor' && phraseGroup"
+      :group="phraseGroup"
+      :item="editingPhrase"
+      kind="phrase"
+      @back="phone.goBack()"
+    />
 
-        <div class="pc-form-actions">
-          <button class="pc-soft-btn danger" type="button" @click="restoreOutputRule">{{ t`恢复默认` }}</button>
-          <button class="pc-soft-btn" type="button" @click="phone.goBack()">{{ t`取消` }}</button>
-          <button class="pc-primary-btn" type="button" @click="submitOutputRule">{{ t`保存` }}</button>
-        </div>
-      </div>
-    </section>
+    <PromptPhraseEditorPage
+      v-else-if="route.page === 'template-editor' && templateGroup"
+      :group="templateGroup"
+      :item="editingTemplate"
+      kind="template"
+      @back="phone.goBack()"
+    />
 
-    <section v-else-if="route.page === 'type-editor'" class="pc-prompts-page">
-      <div class="pc-prompts-editor">
-        <div class="pc-chip-row">
-          <button
-            v-for="domain in typePromptDomains"
-            :key="domain.key"
-            :class="['pc-tab-btn', { active: typeDraft.domain === domain.key }]"
-            type="button"
-            @click="typeDraft.domain = domain.key"
-          >
-            {{ domain.label }}
-          </button>
-        </div>
-
-        <input v-model="typeDraft.name" class="pc-field" type="text" :placeholder="t`类型名称`" />
-        <textarea v-model="typeDraft.prompt" class="pc-area" :placeholder="t`类型提示词正文`"></textarea>
-        <div v-if="typeDraft.domain === 'theater'" class="pc-field-group">
-          <span class="pc-field-label">{{ t`默认渲染方式` }}</span>
-          <span class="pc-segment">
-            <button
-              :class="['pc-segment-btn', { active: typeDraft.renderMode === 'markdown' }]"
-              type="button"
-              @click="typeDraft.renderMode = 'markdown'"
-            >
-              Markdown
-            </button>
-            <button
-              :class="['pc-segment-btn', { active: typeDraft.renderMode === 'frontend' }]"
-              type="button"
-              @click="typeDraft.renderMode = 'frontend'"
-            >
-              {{ t`网页渲染` }}
-            </button>
-          </span>
-        </div>
-
-        <div class="pc-form-actions">
-          <button class="pc-soft-btn" type="button" @click="phone.goBack()">{{ t`取消` }}</button>
-          <button class="pc-primary-btn" type="button" @click="submitTypePrompt">{{ t`保存` }}</button>
-        </div>
-      </div>
-    </section>
-
-    <section v-else-if="route.page === 'group-editor'" class="pc-prompts-page">
-      <div class="pc-prompts-editor">
-        <input v-model="groupDraft.name" class="pc-field" type="text" :placeholder="t`分组名称`" />
-        <div class="pc-form-actions">
-          <button class="pc-soft-btn" type="button" @click="phone.goBack()">{{ t`取消` }}</button>
-          <button class="pc-primary-btn" type="button" @click="submitGroup">{{ t`保存` }}</button>
-        </div>
-      </div>
-    </section>
-
-    <section v-else-if="route.page === 'template-group-editor'" class="pc-prompts-page">
-      <div class="pc-prompts-editor">
-        <input v-model="groupDraft.name" class="pc-field" type="text" :placeholder="t`分组名称`" />
-        <div class="pc-form-actions">
-          <button class="pc-soft-btn" type="button" @click="phone.goBack()">{{ t`取消` }}</button>
-          <button class="pc-primary-btn" type="button" @click="submitTemplateGroup">{{ t`保存` }}</button>
-        </div>
-      </div>
-    </section>
-
-    <section v-else-if="route.page === 'phrase-editor' && phraseGroup" class="pc-prompts-page">
-      <div class="pc-prompts-editor">
-        <textarea v-model="phraseDraft.text" class="pc-area compact" :placeholder="t`输入这条快速短语`"></textarea>
-        <div class="pc-form-actions">
-          <button class="pc-soft-btn" type="button" @click="phone.goBack()">{{ t`取消` }}</button>
-          <button class="pc-primary-btn" type="button" @click="submitPhrase">{{ t`保存` }}</button>
-        </div>
-      </div>
-    </section>
-
-    <section v-else-if="route.page === 'template-editor' && templateGroup" class="pc-prompts-page">
-      <div class="pc-prompts-editor">
-        <textarea v-model="phraseDraft.text" class="pc-area compact" :placeholder="t`输入格式模板`"></textarea>
-        <div class="pc-form-actions">
-          <button class="pc-soft-btn" type="button" @click="phone.goBack()">{{ t`取消` }}</button>
-          <button class="pc-primary-btn" type="button" @click="submitTemplate">{{ t`保存` }}</button>
-        </div>
-      </div>
-    </section>
-
-    <section v-else-if="route.page === 'transfer'" class="pc-prompts-page">
-      <div class="pc-prompts-editor">
-        <div class="pc-transfer-list">
-          <label class="pc-transfer-item">
-            <input v-model="transferSelection.appPrompts" type="checkbox" />
-            <div>
-              <strong>{{ t`App 提示词` }}</strong>
-            </div>
-          </label>
-
-          <label class="pc-transfer-item">
-            <input v-model="transferSelection.taskTemplates" type="checkbox" />
-            <div>
-              <strong>{{ t`任务模板` }}</strong>
-            </div>
-          </label>
-
-          <label class="pc-transfer-item">
-            <input v-model="transferSelection.outputRules" type="checkbox" />
-            <div>
-              <strong>{{ t`输出与解析` }}</strong>
-            </div>
-          </label>
-
-          <label class="pc-transfer-item">
-            <input v-model="transferSelection.typePrompts" type="checkbox" />
-            <div>
-              <strong>{{ t`类型提示词` }}</strong>
-            </div>
-          </label>
-
-          <label class="pc-transfer-item">
-            <input v-model="transferSelection.quickPhraseGroups" type="checkbox" />
-            <div>
-              <strong>{{ t`快速短语` }}</strong>
-            </div>
-          </label>
-          <label class="pc-transfer-item">
-            <input v-model="transferSelection.quickTemplateGroups" type="checkbox" />
-            <div>
-              <strong>{{ t`模板快捷` }}</strong>
-            </div>
-          </label>
-        </div>
-
-        <div class="pc-form-actions pc-transfer-actions">
-          <button class="pc-soft-btn" type="button" @click="phone.goBack()">{{ t`返回` }}</button>
-          <button class="pc-soft-btn" type="button" @click="openTransferImport">
-            {{ t`导入所选` }}
-          </button>
-          <button class="pc-primary-btn" type="button" @click="exportSelected">
-            {{ t`导出所选` }}
-          </button>
-        </div>
-        <input
-          ref="transferInputEl"
-          class="pc-hidden-input"
-          type="file"
-          accept="application/json,.json"
-          @change="onTransferSelected"
-        />
-      </div>
-    </section>
+    <PromptTransferPage v-else-if="route.page === 'transfer'" />
 
     <Teleport to=".pc-phone-shell">
       <div
@@ -621,15 +417,21 @@
 
 <script setup lang="ts">
 import EmptyState from '@/components/EmptyState.vue';
+import PromptAppEditorPage from '@/components/prompts/PromptAppEditorPage.vue';
+import PromptGroupEditorPage from '@/components/prompts/PromptGroupEditorPage.vue';
+import PromptOutputEditorPage from '@/components/prompts/PromptOutputEditorPage.vue';
+import PromptPhraseEditorPage from '@/components/prompts/PromptPhraseEditorPage.vue';
+import PromptTransferPage from '@/components/prompts/PromptTransferPage.vue';
+import PromptTypeEditorPage from '@/components/prompts/PromptTypeEditorPage.vue';
+import { usePromptLibraryActions } from '@/components/prompts/usePromptLibraryActions';
+import { usePromptDefaultsSession, type PromptValueKind } from '@/components/prompts/usePromptDefaultsSession';
 import {
   getRegisteredPhoneApps,
-  type PhoneOutputParserDefinition,
   type PhonePromptDefinition,
   type PhoneTaskTemplateDefinition,
 } from '@/core/appRegistry';
 import { usePhoneStore } from '@/store/phone';
-import { usePromptStore, type PromptTransferSelection, type QuickPhrase } from '@/store/prompts';
-import { parseOutputWithConfig } from '@/util/outputParsing';
+import { usePromptStore, type QuickPhrase } from '@/store/prompts';
 import { storeToRefs } from 'pinia';
 
 const phone = usePhoneStore();
@@ -650,16 +452,13 @@ const {
   typePrompts,
 } = storeToRefs(prompts);
 
-const transferInputEl = ref<HTMLInputElement | null>(null);
-const appPromptEditorEl = ref<HTMLTextAreaElement | null>(null);
 type PromptTab = 'app' | 'output' | 'phrase' | 'task' | 'template' | 'type';
-type AppPromptKind = 'app' | 'special' | 'task';
 type AppPromptCard = {
   appId: string;
   appLabel: string;
   defaultPrompt: string;
   key: string;
-  kind: AppPromptKind;
+  kind: PromptValueKind;
   label: string;
   openKey: string;
   outputFormats: NonNullable<PhonePromptDefinition['outputFormats']>;
@@ -671,55 +470,36 @@ const activePromptTab = ref<PromptTab>('app');
 const activeAppPromptGroupId = ref('');
 const activeAppPromptOpenKey = ref('');
 const activeTypePromptId = ref('');
+const {
+  removeQuickPhrase,
+  removeQuickPhraseGroup,
+  removeQuickTemplate,
+  removeQuickTemplateGroup,
+  removeTypePrompt,
+} = usePromptLibraryActions({
+  confirmNotice: phone.confirmNotice,
+  notify: toastr,
+  onTypePromptDeleted: promptId => {
+    if (activeTypePromptId.value === promptId) closeTypePromptDetail();
+  },
+});
+const {
+  resetDefaults,
+  restoreDefaultPrompt,
+  updatePromptValue: updateAppPromptValue,
+} = usePromptDefaultsSession({
+  confirmNotice: phone.confirmNotice,
+  notify: toastr,
+});
 const promptMenuOpen = ref(false);
 const promptMenuRoot = ref<HTMLElement | null>(null);
 const phraseGroupOpen = reactive<Record<string, boolean>>({});
 const templateGroupOpen = reactive<Record<string, boolean>>({});
-const appPromptDraft = ref('');
-const typeDraft = reactive({
-  domain: '',
-  name: '',
-  prompt: '',
-  renderMode: 'markdown' as 'frontend' | 'markdown',
-});
-const groupDraft = reactive({
-  name: '',
-});
-const phraseDraft = reactive({
-  text: '',
-});
-const outputDraft = reactive<{
-  outputFormat: string;
-  parser: PhoneOutputParserDefinition;
-  parserEnabled: boolean;
-  sample: string;
-  testError: string;
-  testResult: string;
-}>({
-  outputFormat: '',
-  parser: {
-    fields: [],
-    kind: 'xml',
-    rootPath: 'result',
-  },
-  parserEnabled: false,
-  sample: '',
-  testError: '',
-  testResult: '',
-});
-const transferSelection = reactive<PromptTransferSelection>({
-  appPrompts: true,
-  taskTemplates: true,
-  outputRules: true,
-  typePrompts: true,
-  quickPhraseGroups: true,
-  quickTemplateGroups: true,
-});
 
 function createAppPromptCard(
   appId: string,
   appLabel: string,
-  kind: AppPromptKind,
+  kind: PromptValueKind,
   definition: PhonePromptDefinition,
 ): AppPromptCard {
   return {
@@ -829,7 +609,6 @@ const outputRuleCards = computed(() => {
     };
   });
 });
-const fallbackTypeDomain = computed(() => typePromptDomains.value[0]?.key ?? '');
 const typePromptDomainCards = computed(() =>
   typePromptDomains.value.map(domain => ({
     ...domain,
@@ -885,59 +664,12 @@ const editingTemplate = computed<QuickPhrase | null>(
 const editingOutputDefinition = computed(() =>
   route.value.params?.outputId ? prompts.getOutputFormatDefinition(route.value.params.outputId) : null,
 );
-const canUseLabelParser = computed(() => outputDraft.parser.fields.every(field => field.kind === 'text'));
-const canUsePlainTextParser = computed(
-  () => outputDraft.parser.fields.length === 1 && outputDraft.parser.fields[0]?.kind === 'text',
-);
-
-function cloneParser(parser: PhoneOutputParserDefinition) {
-  return structuredClone(parser);
-}
-
-function loadOutputDraft() {
-  const definition = editingOutputDefinition.value;
-  if (!definition) return;
-  const override = outputRules.value[definition.id];
-  outputDraft.outputFormat = prompts.resolveOutputFormat(definition.id);
-  outputDraft.parser = cloneParser(override?.parser ?? definition.parser);
-  outputDraft.parserEnabled = override?.parserEnabled ?? false;
-  outputDraft.sample = '';
-  outputDraft.testError = '';
-  outputDraft.testResult = '';
-}
-
 watch(
   () => route.value,
   current => {
     if (current.appId !== 'prompts' || current.page !== 'root') {
       closeAppPromptDetail();
       closeTypePromptDetail();
-    }
-    if (current.page === 'app-prompt-editor') {
-      appPromptDraft.value = editingAppPrompt.value?.value || '';
-    }
-    if (current.page === 'type-editor') {
-      typeDraft.domain = editingTypePrompt.value?.domain || fallbackTypeDomain.value;
-      typeDraft.name = editingTypePrompt.value?.name || '';
-      typeDraft.prompt = editingTypePrompt.value?.prompt || '';
-      typeDraft.renderMode = editingTypePrompt.value?.renderMode === 'frontend' ? 'frontend' : 'markdown';
-    }
-
-    if (current.page === 'group-editor') {
-      groupDraft.name = editingGroup.value?.name || '';
-    }
-    if (current.page === 'template-group-editor') {
-      groupDraft.name = editingTemplateGroup.value?.name || '';
-    }
-
-    if (current.page === 'phrase-editor') {
-      phraseDraft.text = editingPhrase.value?.text || '';
-    }
-    if (current.page === 'template-editor') {
-      phraseDraft.text = editingTemplate.value?.text || '';
-    }
-    if (current.page === 'output-editor') {
-      loadOutputDraft();
     }
   },
   { deep: true, immediate: true },
@@ -950,18 +682,6 @@ function onDocumentPointerDown(event: PointerEvent) {
 
 onMounted(() => document.addEventListener('pointerdown', onDocumentPointerDown));
 onBeforeUnmount(() => document.removeEventListener('pointerdown', onDocumentPointerDown));
-
-function updateAppPromptValue(item: Pick<AppPromptCard, 'key' | 'kind'>, value: string) {
-  if (item.kind === 'app') {
-    prompts.updateAppPrompt(item.key, value);
-    return;
-  }
-  if (item.kind === 'task') {
-    prompts.updateTaskTemplate(item.key, value);
-    return;
-  }
-  prompts.updateSpecialPrompt(item.key, value);
-}
 
 function openAppPromptGroup(appId: string) {
   const group = appPromptGroups.value.find(item => item.appId === appId);
@@ -994,30 +714,6 @@ function editActiveAppPrompt() {
   phone.pushPage('app-prompt-editor', `编辑${item.label}`, { openKey: item.openKey });
 }
 
-function submitAppPrompt() {
-  const item = editingAppPrompt.value;
-  if (!item) return;
-  updateAppPromptValue(item, appPromptDraft.value);
-  toastr.success(item.kind === 'task' ? '已保存任务模板' : '已保存 App 提示词');
-  phone.goBack();
-}
-
-function insertTaskVariable(key: string) {
-  const textarea = appPromptEditorEl.value;
-  const placeholder = `{{${key}}}`;
-  if (!textarea) {
-    appPromptDraft.value += placeholder;
-    return;
-  }
-  const start = textarea.selectionStart ?? appPromptDraft.value.length;
-  const end = textarea.selectionEnd ?? start;
-  appPromptDraft.value = `${appPromptDraft.value.slice(0, start)}${placeholder}${appPromptDraft.value.slice(end)}`;
-  nextTick(() => {
-    textarea.focus();
-    textarea.setSelectionRange(start + placeholder.length, start + placeholder.length);
-  });
-}
-
 function formatTaskVariable(key: string) {
   return `{{${key}}}`;
 }
@@ -1032,13 +728,7 @@ const activePromptCopyMessage = computed(() =>
 async function restoreActiveAppPrompt() {
   const item = activeAppPrompt.value;
   if (!item) return;
-  const shouldRestore = await phone.confirmNotice(`要恢复“${item.label}”的默认提示词吗？`, {
-    confirmLabel: '恢复',
-    kind: 'warning',
-  });
-  if (!shouldRestore) return;
-  updateAppPromptValue(item, item.defaultPrompt);
-  toastr.success('已恢复默认提示词');
+  await restoreDefaultPrompt(item);
 }
 
 function selectPromptTab(tab: PromptTab) {
@@ -1065,10 +755,6 @@ function toggleTemplateGroup(groupId: string) {
 }
 
 function openCreateTypePrompt() {
-  typeDraft.domain = fallbackTypeDomain.value;
-  typeDraft.name = '';
-  typeDraft.prompt = '';
-  typeDraft.renderMode = 'markdown';
   phone.pushPage('type-editor', '新增类型提示词');
 }
 
@@ -1095,74 +781,8 @@ function openOutputRule(outputId: string) {
   phone.pushPage('output-editor', '输出与解析', { outputId });
 }
 
-function testOutputParser() {
-  outputDraft.testError = '';
-  outputDraft.testResult = '';
-  if (!outputDraft.sample.trim()) {
-    outputDraft.testError = '请先填写测试输出';
-    return;
-  }
-  const result = parseOutputWithConfig(outputDraft.sample, outputDraft.parser);
-  if (!result.ok) {
-    outputDraft.testError = result.warnings.join('\n');
-    return;
-  }
-  outputDraft.testResult = JSON.stringify(result.data, null, 2);
-}
-
-function submitOutputRule() {
-  const definition = editingOutputDefinition.value;
-  if (!definition || !outputDraft.outputFormat.trim()) return;
-  if (outputDraft.parserEnabled) {
-    const missingPath = outputDraft.parser.fields.some(
-      field => !field.defaultPath.trim() || field.children?.some(child => !child.defaultPath.trim()),
-    );
-    if (missingPath) {
-      toastr.warning('解析字段路径不能为空');
-      return;
-    }
-    if (
-      outputDraft.parser.kind === 'text' &&
-      outputDraft.parser.fields.filter(field => field.kind === 'text').length !== 1
-    ) {
-      toastr.warning('纯文本解析只支持一个文本字段');
-      return;
-    }
-  }
-  prompts.saveOutputRule(definition.id, {
-    outputFormat: outputDraft.outputFormat,
-    parser: outputDraft.parser,
-    parserEnabled: outputDraft.parserEnabled,
-  });
-  toastr.success('已保存输出与解析规则');
-  phone.goBack();
-}
-
-async function restoreOutputRule() {
-  const definition = editingOutputDefinition.value;
-  if (!definition) return;
-  const shouldRestore = await phone.confirmNotice(`要恢复“${definition.label}”的默认输出与解析规则吗？`, {
-    confirmLabel: '恢复',
-    kind: 'warning',
-  });
-  if (!shouldRestore) return;
-  prompts.resetOutputRule(definition.id);
-  loadOutputDraft();
-  toastr.success('已恢复默认规则');
-}
-
 function openEditTypePrompt(promptId: string) {
   phone.pushPage('type-editor', '编辑类型提示词', { promptId });
-}
-
-function submitTypePrompt() {
-  if (!typeDraft.prompt.trim()) return;
-  if (editingTypePrompt.value) {
-    prompts.updateTypePrompt(editingTypePrompt.value.id, typeDraft);
-  } else {
-    prompts.createTypePrompt(typeDraft);
-  }
-  phone.goBack();
 }
 
 function openCreateGroup() {
@@ -1173,30 +793,12 @@ function openRenameGroup(groupId: string) {
   phone.pushPage('group-editor', '重命名短语分组', { groupId });
 }
 
-function submitGroup() {
-  if (editingGroup.value) {
-    prompts.renameQuickPhraseGroup(editingGroup.value.id, groupDraft.name);
-  } else {
-    prompts.createQuickPhraseGroup(groupDraft.name);
-  }
-  phone.goBack();
-}
-
 function openCreateTemplateGroup() {
   phone.pushPage('template-group-editor', '新增模板分组');
 }
 
 function openRenameTemplateGroup(groupId: string) {
   phone.pushPage('template-group-editor', '重命名模板分组', { groupId });
-}
-
-function submitTemplateGroup() {
-  if (editingTemplateGroup.value) {
-    prompts.renameQuickTemplateGroup(editingTemplateGroup.value.id, groupDraft.name);
-  } else {
-    prompts.createQuickTemplateGroup(groupDraft.name);
-  }
-  phone.goBack();
 }
 
 function openCreatePhrase(groupId: string) {
@@ -1207,17 +809,6 @@ function openEditPhrase(groupId: string, phraseId: string) {
   phone.pushPage('phrase-editor', '编辑快速短语', { groupId, phraseId });
 }
 
-function submitPhrase() {
-  const groupId = route.value.params?.groupId;
-  if (!groupId || !phraseDraft.text.trim()) return;
-  if (editingPhrase.value) {
-    prompts.updateQuickPhrase(groupId, editingPhrase.value.id, phraseDraft.text);
-  } else {
-    prompts.createQuickPhrase(groupId, phraseDraft.text);
-  }
-  phone.goBack();
-}
-
 function openCreateTemplate(groupId: string) {
   phone.pushPage('template-editor', '新增模板', { groupId });
 }
@@ -1225,172 +816,6 @@ function openCreateTemplate(groupId: string) {
 function openEditTemplate(groupId: string, phraseId: string) {
   phone.pushPage('template-editor', '编辑模板', { groupId, phraseId });
 }
-
-function submitTemplate() {
-  const groupId = route.value.params?.groupId;
-  if (!groupId || !phraseDraft.text.trim()) return;
-  if (editingTemplate.value) {
-    prompts.updateQuickTemplate(groupId, editingTemplate.value.id, phraseDraft.text);
-  } else {
-    prompts.createQuickTemplate(groupId, phraseDraft.text);
-  }
-  phone.goBack();
-}
-
-function getTransferSelection() {
-  return {
-    appPrompts: transferSelection.appPrompts,
-    taskTemplates: transferSelection.taskTemplates,
-    outputRules: transferSelection.outputRules,
-    typePrompts: transferSelection.typePrompts,
-    quickPhraseGroups: transferSelection.quickPhraseGroups,
-    quickTemplateGroups: transferSelection.quickTemplateGroups,
-  };
-}
-
-function ensureTransferSelection() {
-  const selection = getTransferSelection();
-  if (Object.values(selection).some(Boolean)) return selection;
-  throw new Error('请至少勾选一类提示词');
-}
-
-function exportSelected() {
-  try {
-    const transfer = prompts.buildTransfer(ensureTransferSelection());
-    const blob = new Blob([JSON.stringify(transfer, null, 2)], { type: 'application/json' });
-    const url = URL.createObjectURL(blob);
-    const anchor = document.createElement('a');
-    anchor.href = url;
-    anchor.download = `sillytavern-phone-prompts-${Date.now()}.json`;
-    document.body.appendChild(anchor);
-    anchor.click();
-    anchor.remove();
-    window.setTimeout(() => URL.revokeObjectURL(url), 5000);
-    toastr.success('已导出所选提示词配置');
-  } catch (caughtError) {
-    const message = caughtError instanceof Error ? caughtError.message : '导出提示词失败';
-    toastr.error(message);
-  }
-}
-
-function openTransferImport() {
-  try {
-    ensureTransferSelection();
-    transferInputEl.value?.click();
-  } catch (caughtError) {
-    const message = caughtError instanceof Error ? caughtError.message : '请选择要导入的区段';
-    toastr.error(message);
-  }
-}
-
-async function onTransferSelected(event: Event) {
-  const input = event.target as HTMLInputElement;
-  const file = input.files?.[0];
-  input.value = '';
-  if (!file) return;
-
-  try {
-    const selection = ensureTransferSelection();
-    const transfer = prompts.parseTransfer(await file.text());
-    const shouldImport = await phone.confirmNotice('要用这份文件覆盖当前勾选的提示词区段吗？未勾选的内容会保持不变。', {
-      confirmLabel: '导入',
-      kind: 'warning',
-    });
-    if (!shouldImport) return;
-
-    prompts.applyTransfer(transfer, selection);
-    toastr.success('已导入所选提示词配置');
-  } catch (caughtError) {
-    const message = caughtError instanceof Error ? caughtError.message : '导入提示词失败';
-    toastr.error(message);
-  }
-}
-
-async function removeTypePrompt(promptId: string) {
-  const item = prompts.getTypePrompt(promptId);
-  const shouldDelete = await phone.confirmNotice(`要删除类型提示词“${item?.name || '未命名类型'}”吗？`, {
-    confirmLabel: '删除',
-    kind: 'warning',
-  });
-  if (!shouldDelete) return;
-  prompts.deleteTypePrompt(promptId);
-  if (activeTypePromptId.value === promptId) closeTypePromptDetail();
-  toastr.success('已删除类型提示词');
-}
-
-async function removeQuickPhraseGroup(groupId: string) {
-  const group = prompts.getQuickPhraseGroup(groupId);
-  const shouldDelete = await phone.confirmNotice(
-    `要删除短语分组“${group?.name || '未命名分组'}”吗？组内短语也会一起删除。`,
-    {
-      confirmLabel: '删除',
-      kind: 'warning',
-    },
-  );
-  if (!shouldDelete) return;
-  prompts.deleteQuickPhraseGroup(groupId);
-  toastr.success('已删除短语分组');
-}
-
-async function removeQuickPhrase(groupId: string, phraseId: string) {
-  const group = prompts.getQuickPhraseGroup(groupId);
-  const phrase = group?.phrases.find(item => item.id === phraseId) ?? null;
-  const preview = phrase?.text.trim().slice(0, 18) || '这条短语';
-  const shouldDelete = await phone.confirmNotice(
-    `要删除短语“${preview}${phrase?.text.length && phrase.text.length > 18 ? '...' : ''}”吗？`,
-    {
-      confirmLabel: '删除',
-      kind: 'warning',
-    },
-  );
-  if (!shouldDelete) return;
-  prompts.deleteQuickPhrase(groupId, phraseId);
-  toastr.success('已删除快速短语');
-}
-
-async function removeQuickTemplateGroup(groupId: string) {
-  const group = prompts.getQuickTemplateGroup(groupId);
-  const shouldDelete = await phone.confirmNotice(
-    `要删除模板分组“${group?.name || '未命名分组'}”吗？组内模板也会一起删除。`,
-    {
-      confirmLabel: '删除',
-      kind: 'warning',
-    },
-  );
-  if (!shouldDelete) return;
-  prompts.deleteQuickTemplateGroup(groupId);
-  toastr.success('已删除模板分组');
-}
-
-async function removeQuickTemplate(groupId: string, phraseId: string) {
-  const group = prompts.getQuickTemplateGroup(groupId);
-  const template = group?.phrases.find(item => item.id === phraseId) ?? null;
-  const preview = template?.text.trim().slice(0, 18) || '这个模板';
-  const shouldDelete = await phone.confirmNotice(
-    `要删除模板“${preview}${template?.text.length && template.text.length > 18 ? '...' : ''}”吗？`,
-    {
-      confirmLabel: '删除',
-      kind: 'warning',
-    },
-  );
-  if (!shouldDelete) return;
-  prompts.deleteQuickTemplate(groupId, phraseId);
-  toastr.success('已删除模板');
-}
-
-async function resetDefaults() {
-  const shouldReset = await phone.confirmNotice(
-    '要恢复默认提示词配置吗？当前 App 提示词、任务模板、输出与解析、类型提示词和快速短语都会被默认值覆盖。',
-    {
-      confirmLabel: '恢复',
-      kind: 'warning',
-    },
-  );
-  if (!shouldReset) return;
-  prompts.resetDefaults();
-  toastr.success('已恢复默认提示词配置');
-}
-
 async function copyText(text: string, successMessage: string) {
   try {
     await navigator.clipboard.writeText(text);
@@ -1430,8 +855,7 @@ async function copyText(text: string, successMessage: string) {
   z-index: 1;
 }
 
-.pc-card-head span,
-.pc-transfer-item p {
+.pc-card-head span {
   color: var(--pc-muted);
 }
 
@@ -1706,10 +1130,6 @@ async function copyText(text: string, successMessage: string) {
   padding-inline: 10px;
 }
 
-.pc-app-prompt-editor-area {
-  min-height: 320px;
-}
-
 .pc-card-head strong,
 .pc-accordion-head,
 .pc-accordion-title-button {
@@ -1832,82 +1252,6 @@ async function copyText(text: string, successMessage: string) {
   color: var(--pc-muted);
 }
 
-.pc-output-parser-toggle {
-  min-height: 44px;
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  font-weight: 800;
-}
-
-.pc-output-parser-grid,
-.pc-output-field-options,
-.pc-output-child-fields {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 10px;
-}
-
-.pc-output-field-list {
-  display: grid;
-  gap: 0;
-  border-block: 1px solid var(--pc-border);
-}
-
-.pc-output-field-list > strong {
-  padding-block: 12px;
-}
-
-.pc-output-field {
-  display: grid;
-  gap: 10px;
-  padding: 12px 0;
-  border-top: 1px solid var(--pc-border);
-}
-
-.pc-output-field-head {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 10px;
-}
-
-.pc-output-field-head small {
-  color: var(--pc-muted);
-}
-
-.pc-output-editor :is(.pc-field, .pc-select, .pc-area) {
-  margin-top: 0;
-}
-
-.pc-output-editor .pc-form-actions {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-}
-
-.pc-output-editor .pc-form-actions :is(.pc-soft-btn, .pc-primary-btn) {
-  min-width: 0;
-  padding-inline: 8px;
-}
-
-.pc-output-test-result {
-  max-height: 220px;
-  overflow: auto;
-  margin: 0;
-  padding: 12px;
-  border: 1px solid var(--pc-border);
-  border-radius: 8px;
-  background: var(--pc-surface-strong);
-  color: var(--pc-text);
-  white-space: pre-wrap;
-}
-
-.pc-output-test-error {
-  margin: 0;
-  color: var(--pc-danger);
-  white-space: pre-wrap;
-}
-
 .pc-output-panel {
   margin-top: 12px;
   border-radius: min(var(--pc-card-radius), 8px);
@@ -2004,33 +1348,6 @@ async function copyText(text: string, successMessage: string) {
   grid-template-columns: minmax(0, 1fr) auto;
 }
 
-.pc-transfer-list {
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-  margin-top: 14px;
-}
-
-.pc-transfer-item {
-  display: grid;
-  grid-template-columns: 18px minmax(0, 1fr);
-  gap: 12px;
-  align-items: flex-start;
-  padding: 14px;
-  border: 1px solid var(--pc-border);
-  border-radius: min(var(--pc-card-radius), 8px);
-  background: var(--pc-surface-strong);
-}
-
-.pc-transfer-item input {
-  margin-top: 3px;
-}
-
-.pc-transfer-item strong {
-  display: block;
-  font-size: 14px;
-}
-
 .pc-icon-btn.danger {
   color: var(--pc-danger);
 }
@@ -2040,16 +1357,4 @@ async function copyText(text: string, successMessage: string) {
   justify-content: flex-end;
 }
 
-.pc-transfer-actions {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 8px;
-}
-
-.pc-transfer-actions .pc-soft-btn,
-.pc-transfer-actions .pc-primary-btn {
-  width: 100%;
-  min-width: 0;
-  padding: 0 8px;
-}
 </style>

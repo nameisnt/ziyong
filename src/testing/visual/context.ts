@@ -2,7 +2,7 @@ import { usePhoneStore } from '@/store/phone';
 import { useSettingsStore } from '@/store/settings';
 
 export async function waitForVisualPaint() {
-  await new Promise<void>(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)));
+  await new Promise<void>(resolve => requestAnimationFrame(() => requestAnimationFrame(() => resolve())));
 }
 
 export function configureVisualPhoneSize(width = 360, height = 700) {

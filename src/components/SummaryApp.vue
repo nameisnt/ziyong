@@ -186,19 +186,15 @@ import SummaryFailedDraftPage from '@/components/summary/SummaryFailedDraftPage.
 import SummaryGeneratePage from '@/components/summary/SummaryGeneratePage.vue';
 import SummaryImportPage from '@/components/summary/SummaryImportPage.vue';
 import SummaryPreviewPage from '@/components/summary/SummaryPreviewPage.vue';
+import { useSummaryBookSession } from '@/components/summary/useSummaryBookSession';
+import { useSummaryBatchSession } from '@/components/summary/useSummaryBatchSession';
+import { useSummaryGenerationActions } from '@/components/summary/useSummaryGenerationActions';
 import { useCatalogDetailNavigation } from '@/composables/useCatalogDetailNavigation';
 import { useDirectorySort } from '@/composables/useDirectorySort';
 import { useSummaryImport } from '@/composables/useSummaryImport';
 import { getRegisteredPhoneGenerationAdapter } from '@/core/appRegistry';
-import { buildGenerationPreview, captureGenerationPrompt, generateContent } from '@/core/generationService';
-import {
-  createManualBatchTask,
-  resumeGenerationTask,
-  runManualBatchTask,
-  type ManualBatchTaskConfig,
-} from '@/core/manualBatchRunner';
-import { getCurrentChatScopeKey } from '@/store/chatScoped';
-import { useGenerationTaskStore } from '@/store/generationTasks';
+import { buildGenerationPreview, captureGenerationPrompt } from '@/core/generationService';
+import type { ManualBatchTaskConfig } from '@/core/manualBatchRunner';
 import { usePhoneStore } from '@/store/phone';
 import { usePromptStore } from '@/store/prompts';
 import { useRecoveryStore } from '@/store/recovery';
@@ -210,7 +206,6 @@ import { useDetailScroll } from '@/util/detailScroll';
 import { formatGenerationReferences, type GenerationReferenceItem } from '@/util/references';
 import { usePreviewDraftPersistence } from '@/util/previewDrafts';
 import { useInvalidRouteFallback } from '@/util/routeFallback';
-import { stopGenerationByIdSafe } from '@/util/runtime';
 import { getSourceLastFloor } from '@/util/sourceFloor';
 import { storeToRefs } from 'pinia';
 
@@ -219,7 +214,6 @@ const prompts = usePromptStore();
 const recovery = useRecoveryStore();
 const settingsStore = useSettingsStore();
 const summary = useSummaryStore();
-const generationTasks = useGenerationTaskStore();
 const summaryGenerationAdapter = getRegisteredPhoneGenerationAdapter('summary', 'generate');
 const { books, failedDrafts } = storeToRefs(summary);
 const { currentRoute: route } = storeToRefs(phone);
@@ -258,18 +252,6 @@ const generationState = reactive({
   rawOutput: '',
   running: false,
 });
-const batchDraft = reactive({
-  bookId: '',
-  floorMode: 'custom' as 'all' | 'custom',
-  floorText: '',
-  groupMode: false,
-  groupSize: 5,
-  includeAi: true,
-  includeUser: true,
-  rpmLimit: 10,
-  userRequirement: '',
-});
-const batchFormError = ref('');
 const failedDraftRawOutput = ref('');
 const failedDraftTargetBookId = ref('');
 const summaryEntrySortDesc = useDirectorySort('summaryDesc');
@@ -366,34 +348,34 @@ const activeFailedDraft = computed(() => {
   return draftId ? summary.getFailedDraft(draftId) : null;
 });
 const formattedReferences = computed(() => formatGenerationReferences(selectedReferences.value));
-const batchTask = computed(
-  () =>
-    generationTasks.tasks.find(
-      task =>
-        task.kind === 'summary-batch' &&
-        task.scopeKey === getCurrentChatScopeKey() &&
-        (!route.value.params?.bookId || task.routeParams.bookId === route.value.params.bookId),
-    ) ?? null,
-);
-const batchState = computed(() => {
-  const task = batchTask.value;
-  const running = task?.status === 'running' || task?.status === 'pause-requested';
-  const resumeAvailable = Boolean(task && ['paused', 'interrupted'].includes(task.status));
-  return {
-    currentLabel: task?.currentLabel || '',
-    done: task?.savedCount || 0,
-    error: task?.error || batchFormError.value,
-    failed: task?.draftCount || 0,
-    generationId: task?.activeGenerationId || '',
-    nextJobIndex: task?.currentJobIndex || 0,
-    rawOutput: task?.rawOutput || '',
-    resumeAvailable,
-    running,
-    stopRequested: task?.status === 'paused',
-    total: task?.total || 0,
-  };
+const {
+  draft: batchDraft,
+  hydrate: hydrateBatchDraft,
+  initialize: initializeBatchDraft,
+  inputsLocked: batchInputsLocked,
+  resetProgress: resetBatchProgress,
+  run: runBatchGeneration,
+  state: batchState,
+  stop: stopBatchGeneration,
+  task: batchTask,
+} = useSummaryBatchSession({
+  buildOutputFormat: buildSummaryOutputFormat,
+  formattedReferences,
+  getRouteBookId: () => route.value.params?.bookId || '',
 });
-const batchInputsLocked = computed(() => batchState.value.running || batchState.value.resumeAvailable);
+
+const { runGeneration, stopGeneration } = useSummaryGenerationActions({
+  buildOutputFormat: buildSummaryOutputFormat,
+  clearPreviewDraft: clearSummaryPreviewDraft,
+  draft: generationDraft,
+  failedDraftRawOutput,
+  failedDraftTargetBookId,
+  formattedReferences,
+  persistPreviewDraft: persistSummaryPreviewDraft,
+  route,
+  selectedReferences,
+  state: generationState,
+});
 const summaryPromptPreview = computed(() => {
   const bookId = route.value.params?.bookId || activeBook.value?.id;
   if (!bookId) return '未选择总结集';
@@ -426,6 +408,20 @@ const summaryPromptPreview = computed(() => {
   } catch (error) {
     return error instanceof Error ? error.message : '无法生成提示词预览';
   }
+});
+const {
+  removeBook,
+  saveBook: submitBook,
+  saveBookAndGenerate: submitBookAndGenerate,
+} = useSummaryBookSession({
+  confirmDelete: message => phone.confirmNotice(message, { confirmLabel: '删除', kind: 'warning' }),
+  getBookId: () => route.value.params?.bookId,
+  getPage: () => route.value.page,
+  getTitle: () => bookTitle.value,
+  navigateToBook: book => phone.replacePage('book', book.title, { bookId: book.id }),
+  navigateToGenerate: bookId => phone.replacePage('generate', '生成总结', { bookId }),
+  navigateToRoot: () => phone.replacePage('root', '总结集'),
+  notifySuccess: message => toastr.success(message),
 });
 
 function captureSummaryPrompt() {
@@ -497,16 +493,7 @@ watch(
         return;
       }
       selectedReferences.value = [];
-      batchDraft.bookId = current.params?.bookId || '';
-      batchDraft.floorMode = 'custom';
-      batchDraft.floorText = '';
-      batchDraft.groupMode = false;
-      batchDraft.groupSize = 5;
-      batchDraft.includeAi = true;
-      batchDraft.includeUser = true;
-      batchDraft.rpmLimit = settings.value.generation.rpmLimit;
-      batchDraft.userRequirement = '';
-      batchFormError.value = '';
+      initializeBatchDraft(current.params?.bookId || '');
     }
 
     if (current.page === 'failed-draft') {
@@ -545,12 +532,6 @@ useInvalidRouteFallback({
   },
 });
 
-onScopeDispose(() => {
-  if (generationState.running && generationState.generationId) {
-    stopGenerationByIdSafe(generationState.generationId);
-  }
-});
-
 function openCreateBook() {
   phone.pushPage('create-book', '生成总结');
 }
@@ -569,41 +550,10 @@ function openRenameBook(bookId: string) {
   phone.pushPage('edit-book', '重命名总结集', { bookId });
 }
 
-function submitBook() {
-  if (route.value.page === 'create-book') {
-    const book = summary.createBook(bookTitle.value);
-    phone.replacePage('book', book.title, { bookId: book.id });
-    return;
-  }
-
-  if (route.value.page === 'edit-book' && route.value.params?.bookId) {
-    const book = summary.renameBook(route.value.params.bookId, bookTitle.value);
-    if (!book) return;
-    phone.replacePage('book', book.title, { bookId: book.id });
-  }
-}
-
 function openBook(bookId: string) {
   const book = summary.getBook(bookId);
   if (!book) return;
   phone.pushPage('book', book.title, { bookId });
-}
-
-async function removeBook(bookId: string) {
-  const book = summary.getBook(bookId);
-  const shouldDelete = await phone.confirmNotice(
-    `要删除总结集“${book?.title || '未命名总结集'}”吗？里面的条目也会一起删除。`,
-    {
-      confirmLabel: '删除',
-      kind: 'warning',
-    },
-  );
-  if (!shouldDelete) return;
-  summary.deleteBook(bookId);
-  if (route.value.params?.bookId === bookId) {
-    phone.replacePage('root', '总结集');
-  }
-  toastr.success('已删除总结集');
 }
 
 function openGenerate(bookId: string) {
@@ -694,199 +644,8 @@ function applySummaryBaguContent(content: string) {
   return Boolean(entry);
 }
 
-function submitBookAndGenerate() {
-  if (route.value.page !== 'create-book') return;
-  const book = summary.createBook(bookTitle.value);
-  phone.replacePage('generate', '生成总结', { bookId: book.id });
-}
-
 function buildSummaryOutputFormat() {
   return prompts.resolveOutputFormat('summary.generate');
-}
-
-function parseBatchFloorText(rawValue: string) {
-  const normalized = rawValue.trim();
-  if (!normalized) {
-    throw new Error('请先填写楼层范围，例如 1-30,35,40-45');
-  }
-
-  const segments = normalized
-    .split(/[\s,，;；\n]+/)
-    .map(item => item.trim())
-    .filter(Boolean);
-  const floorSet = new Set<number>();
-
-  for (const segment of segments) {
-    const singleMatch = segment.match(/^(\d+)$/);
-    if (singleMatch) {
-      floorSet.add(Number(singleMatch[1]));
-      continue;
-    }
-
-    const rangeMatch = segment.match(/^(\d+)\s*-\s*(\d+)$/);
-    if (!rangeMatch) {
-      throw new Error(`无法识别楼层片段：${segment}`);
-    }
-
-    const left = Number(rangeMatch[1]);
-    const right = Number(rangeMatch[2]);
-    const start = Math.min(left, right);
-    const end = Math.max(left, right);
-    for (let floor = start; floor <= end; floor += 1) {
-      floorSet.add(floor);
-    }
-  }
-
-  return [...floorSet].sort((left, right) => left - right);
-}
-
-function formatBatchRange(floors: number[]) {
-  if (!floors.length) return '';
-  const sorted = [...floors].sort((left, right) => left - right);
-  const ranges: Array<{ end: number; start: number }> = [];
-  let start = sorted[0];
-  let end = sorted[0];
-
-  for (let index = 1; index < sorted.length; index += 1) {
-    const current = sorted[index];
-    if (current === end + 1) {
-      end = current;
-      continue;
-    }
-    ranges.push({ end, start });
-    start = current;
-    end = current;
-  }
-  ranges.push({ end, start });
-  return ranges.map(range => (range.start === range.end ? `${range.start}` : `${range.start}-${range.end}`)).join(', ');
-}
-
-function getBatchVisibleFloors() {
-  if (!batchDraft.includeAi && !batchDraft.includeUser) {
-    throw new Error('请至少选择 AI 楼层或用户楼层');
-  }
-
-  const visibleMessages = getChatMessagesSafe('0-{{lastMessageId}}', { hide_state: 'unhidden' });
-  const visibleById = new Map(visibleMessages.map(message => [message.message_id, message]));
-  const requestedFloors =
-    batchDraft.floorMode === 'all'
-      ? visibleMessages.map(message => message.message_id)
-      : parseBatchFloorText(batchDraft.floorText);
-  const floors = requestedFloors
-    .filter(floor => {
-      const message = visibleById.get(floor);
-      if (!message) return false;
-      if (message.role === 'assistant') return batchDraft.includeAi;
-      if (message.role === 'user') return batchDraft.includeUser;
-      return false;
-    })
-    .sort((left, right) => left - right);
-
-  if (!floors.length) {
-    throw new Error(
-      batchDraft.floorMode === 'all'
-        ? '当前聊天没有符合条件的可见 AI/用户楼层'
-        : '给定范围内没有符合条件的可见 AI/用户楼层',
-    );
-  }
-  return floors;
-}
-
-function buildBatchJobs() {
-  const floors = getBatchVisibleFloors();
-  if (!batchDraft.groupMode) {
-    return floors.map(floor => ({
-      label: `第 ${floor} 楼`,
-      mode: 'single' as const,
-      rangeText: '',
-      singleMessageId: floor,
-    }));
-  }
-
-  const groupSize = Math.min(50, Math.max(1, Math.round(batchDraft.groupSize || 1)));
-  const jobs: Array<{
-    label: string;
-    mode: 'range';
-    rangeText: string;
-    singleMessageId: number;
-  }> = [];
-  for (let index = 0; index < floors.length; index += groupSize) {
-    const group = floors.slice(index, index + groupSize);
-    const rangeText = formatBatchRange(group);
-    jobs.push({
-      label: `第 ${rangeText} 楼`,
-      mode: 'range',
-      rangeText,
-      singleMessageId: 0,
-    });
-  }
-  return jobs;
-}
-
-async function runBatchGeneration() {
-  const existingTask = batchTask.value;
-  if (existingTask && ['paused', 'interrupted'].includes(existingTask.status)) {
-    await resumeGenerationTask(existingTask.id);
-    return;
-  }
-  if (existingTask && ['running', 'pause-requested'].includes(existingTask.status)) return;
-
-  const book = summary.getBook(batchDraft.bookId);
-  if (!book) {
-    batchFormError.value = '请先选择要保存到的总结集';
-    return;
-  }
-
-  let jobs: ReturnType<typeof buildBatchJobs>;
-  try {
-    jobs = buildBatchJobs();
-  } catch (error) {
-    batchFormError.value = error instanceof Error ? error.message : '无法解析批量楼层';
-    return;
-  }
-
-  batchFormError.value = '';
-  const task = createManualBatchTask({
-    config: {
-      appPrompt: prompts.appPrompts.summaries,
-      bookId: book.id,
-      floorMode: batchDraft.floorMode,
-      floorText: batchDraft.floorText,
-      groupMode: batchDraft.groupMode,
-      groupSize: batchDraft.groupSize,
-      includeAi: batchDraft.includeAi,
-      includeUser: batchDraft.includeUser,
-      outputFormat: buildSummaryOutputFormat(),
-      references: formattedReferences.value,
-      rpmLimit: batchDraft.rpmLimit,
-      stream: settings.value.generation.stream,
-      tavernPresetName: settings.value.generation.tavernPresetName,
-      textProvider: klona(settings.value.textProvider),
-      userRequirement: batchDraft.userRequirement,
-    },
-    jobs,
-    kind: 'summary-batch',
-    routeParams: { bookId: book.id },
-    title: `批量总结 · ${book.title}`,
-  });
-  await runManualBatchTask(task.id);
-}
-
-function resetBatchProgress() {
-  if (batchTask.value) generationTasks.removeTask(batchTask.value.id);
-  batchFormError.value = '';
-}
-
-function hydrateBatchDraft(config: ManualBatchTaskConfig) {
-  batchDraft.bookId = config.bookId;
-  batchDraft.floorMode = config.floorMode || 'custom';
-  batchDraft.floorText = config.floorText || '';
-  batchDraft.groupMode = config.groupMode ?? false;
-  batchDraft.groupSize = config.groupSize ?? 5;
-  batchDraft.includeAi = config.includeAi ?? true;
-  batchDraft.includeUser = config.includeUser ?? true;
-  batchDraft.rpmLimit = config.rpmLimit;
-  batchDraft.userRequirement = config.userRequirement;
 }
 
 function returnToGenerate() {
@@ -904,95 +663,6 @@ function returnToGenerate() {
     return;
   }
   phone.replacePage('generate', '生成总结', { bookId });
-}
-
-async function runGeneration() {
-  const bookId = route.value.params?.bookId;
-  if (!bookId) return;
-  generationState.error = '';
-  clearSummaryPreviewDraft();
-  generationState.preview = null;
-  generationState.rawOutput = '';
-
-  try {
-    const result = await generateContent(
-      summaryGenerationAdapter,
-      {
-        appPrompt: prompts.appPrompts.summaries,
-        bookId,
-        outputFormat: buildSummaryOutputFormat(),
-        userRequirement: generationDraft.userRequirement,
-      },
-      {
-        createFailedDraft: input => summary.createFailedDraft(input),
-        generationDefaults: {
-          resultMode: settings.value.generation.resultMode,
-          stream: settings.value.generation.stream,
-          tavernPresetName: settings.value.generation.tavernPresetName,
-        },
-        references: formattedReferences.value,
-        lifecycle: {
-          onFinish() {
-            generationState.running = false;
-            generationState.generationId = '';
-          },
-          onRawOutput(rawOutput) {
-            generationState.rawOutput = rawOutput;
-          },
-          onStart(generationId) {
-            generationState.running = true;
-            generationState.generationId = generationId;
-          },
-        },
-        source: {
-          fromStartEnd: generationDraft.fromStartEnd,
-          mode: settings.value.generation.sourceMode,
-          rangeText: generationDraft.rangeText,
-          recentCount: generationDraft.recentCount,
-          singleMessageId: generationDraft.singleMessageId,
-        },
-        textProvider: settings.value.textProvider,
-      },
-    );
-
-    if (result.status === 'failed') {
-      generationState.error = result.warnings.join('；') || '模型没有返回可解析的总结 XML';
-      failedDraftRawOutput.value = result.rawOutput;
-      failedDraftTargetBookId.value = bookId;
-      toastr.warning('XML 解析失败，已保存到失败草稿');
-      void phone.presentGeneratedPage('summary', 'failed-draft', '解析失败草稿', {
-        bookId,
-        draftId: result.draft.id,
-      });
-      return;
-    }
-
-    if (result.status === 'saved') {
-      toastr.success('已生成并保存总结');
-      void phone.presentGeneratedPage('summary', 'entry', result.saved.entry.title, {
-        bookId,
-        entryId: result.saved.entry.id,
-      });
-      return;
-    }
-
-    generationState.preview = {
-      bookId,
-      content: result.data.content,
-      draftId: null,
-      raw: result.rawOutput,
-      source: {
-        floorEnd: getSourceLastFloor(result.source),
-        label: result.source.label,
-      },
-      title: result.data.title,
-      warnings: result.warnings,
-    };
-    persistSummaryPreviewDraft({ bookId });
-    void phone.presentGeneratedPage('summary', 'preview', '生成预览', { bookId });
-  } catch (error) {
-    generationState.error = error instanceof Error ? error.message : '生成失败，请稍后再试';
-  }
 }
 
 function savePreview() {
@@ -1047,17 +717,6 @@ function reparsePreviewRaw() {
   preview.warnings = parsed.warnings;
   toastr.success('已按原始输出重新解析');
   return true;
-}
-
-function stopGeneration() {
-  if (!generationState.generationId) return;
-  stopGenerationByIdSafe(generationState.generationId);
-  generationState.running = false;
-  generationState.error = '生成已停止';
-}
-
-function stopBatchGeneration() {
-  if (batchTask.value) generationTasks.stopNow(batchTask.value.id);
 }
 
 async function removeFailedDraft(draftId: string) {

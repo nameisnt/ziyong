@@ -87,6 +87,7 @@
 import InfoHint from '@/components/InfoHint.vue';
 import { miniGameFields } from './fields';
 import { readMiniGameSettings, writeMiniGameSettings } from './miniGameStorage';
+import { NonogramSchema } from './backupSchemas';
 
 type BoardSize = 'large' | 'medium' | 'small';
 type MarkMode = 'fill' | 'mark';
@@ -96,13 +97,6 @@ const sizeOptions: Array<{ dimension: number; id: BoardSize; label: string }> = 
   { dimension: 10, id: 'medium', label: '中 10×10' },
   { dimension: 15, id: 'large', label: '大 15×15' },
 ];
-const NonogramSchema = z.object({
-  marks: z.array(z.number().int().min(0).max(2)).max(225),
-  moves: z.number().int().nonnegative().default(0),
-  size: z.enum(['large', 'medium', 'small']).default('small'),
-  solution: z.array(z.boolean()).max(225),
-  status: z.enum(['done', 'playing']).default('playing'),
-});
 type NonogramState = z.infer<typeof NonogramSchema>;
 
 function dimensionFor(boardSize: BoardSize) {

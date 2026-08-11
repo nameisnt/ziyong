@@ -69,6 +69,7 @@
 import InfoHint from '@/components/InfoHint.vue';
 import { miniGameFields } from './fields';
 import { readMiniGameSettings, writeMiniGameSettings } from './miniGameStorage';
+import { GomokuSchema } from './backupSchemas';
 
 type Cell = 0 | 1 | 2;
 type BoardSize = 'large' | 'medium' | 'small';
@@ -79,24 +80,6 @@ const boardSizeOptions: Array<{ dimension: number; id: BoardSize; label: string 
   { dimension: 13, id: 'medium', label: '中 13×13' },
   { dimension: 15, id: 'large', label: '大 15×15' },
 ];
-const BoardSchema = z.array(z.union([z.literal(0), z.literal(1), z.literal(2)])).max(225);
-const GomokuSnapshotSchema = z.object({
-  blackWins: z.number().int().nonnegative().default(0),
-  board: BoardSchema,
-  lastMove: z.number().int().min(0).max(224).nullable().default(null),
-  status: z.enum(['blackWin', 'draw', 'playing', 'whiteWin']).default('playing'),
-  whiteWins: z.number().int().nonnegative().default(0),
-});
-const GomokuSchema = z.object({
-  blackWins: z.number().int().nonnegative().default(0),
-  board: BoardSchema,
-  boardSize: z.enum(['large', 'medium', 'small']).default('medium'),
-  lastMove: z.number().int().min(0).max(224).nullable().default(null),
-  previous: GomokuSnapshotSchema.nullable().default(null),
-  status: z.enum(['blackWin', 'draw', 'playing', 'whiteWin']).default('playing'),
-  whiteWins: z.number().int().nonnegative().default(0),
-});
-
 type GomokuState = z.infer<typeof GomokuSchema>;
 
 function createState(blackWins = 0, whiteWins = 0, boardSize: BoardSize = 'medium'): GomokuState {

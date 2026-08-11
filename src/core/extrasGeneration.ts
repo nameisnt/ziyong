@@ -91,6 +91,44 @@ export function createExtraChapterGenerationRecord(
   };
 }
 
+export function saveExtraChapterPreview(
+  extrasStore: {
+    appendChapterVersion: (
+      bookId: string,
+      chapterId: string,
+      input: Pick<ExtraChapter, 'title' | 'content'> & { generationRecord?: ExtraChapterGenerationRecord },
+    ) => { chapter: ExtraChapter; version: { id: string } } | null;
+    createChapter: (
+      bookId: string,
+      input: Pick<ExtraChapter, 'title' | 'content'> & { generationRecord?: ExtraChapterGenerationRecord },
+    ) => ExtraChapter | null;
+  },
+  input: {
+    bookId: string;
+    chapterId?: string;
+    content: string;
+    generationRecord?: ExtraChapterGenerationRecord;
+    mode: ExtraChapterGenerationMode;
+    title: string;
+  },
+) {
+  if (input.mode === '重写当前章节' && input.chapterId) {
+    const saved = extrasStore.appendChapterVersion(input.bookId, input.chapterId, {
+      content: input.content,
+      generationRecord: input.generationRecord,
+      title: input.title,
+    });
+    if (!saved) return null;
+    return { chapter: saved.chapter, versionId: saved.version.id };
+  }
+  const chapter = extrasStore.createChapter(input.bookId, {
+    content: input.content,
+    generationRecord: input.generationRecord,
+    title: input.title,
+  });
+  return chapter ? { chapter, versionId: '' } : null;
+}
+
 function resolveChapterGenerationIntent(config: ExtraChapterGenerateConfig): ExtraChapterGenerationIntent {
   if (config.generationIntent) return config.generationIntent;
   return config.chapterMode === '新开一本书' ? '新开一本书' : '续写上一章';

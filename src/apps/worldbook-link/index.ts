@@ -1,5 +1,5 @@
 import WorldbookLinkApp from './WorldbookLinkApp.vue';
-import { useWorldbookLinkStore, worldbookLinkField } from './store';
+import { useWorldbookLinkStore, WorldbookLinkSettingsSchema, worldbookLinkField } from './store';
 import { definePhoneApp } from '@/core/appRegistry';
 import { extension_settings } from '@sillytavern/scripts/extensions';
 
@@ -13,12 +13,16 @@ export default definePhoneApp({
   defaultOrder: 116,
   backupDomains: [
     {
+      category: 'configuration',
       key: 'worldbook-link',
       exportData: () => _.get(extension_settings, worldbookLinkField, {}),
       importData: data => {
         _.set(extension_settings, worldbookLinkField, data);
       },
       rehydrateFromSettings: () => useWorldbookLinkStore().rehydrateFromSettings(),
+      schema: WorldbookLinkSettingsSchema,
+      schemaVersion: 1,
+      scope: 'global',
     },
   ],
   component: WorldbookLinkApp,

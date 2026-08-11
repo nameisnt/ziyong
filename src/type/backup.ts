@@ -24,29 +24,79 @@ function createEnvelopeSchema<T extends z.ZodTypeAny>(scopeSchema: T) {
     });
 }
 
-const SummaryEnvelopeSchema = createEnvelopeSchema(SummaryScopeDataSchema);
-const DiaryEnvelopeSchema = createEnvelopeSchema(DiaryScopeDataSchema);
-const ExtrasEnvelopeSchema = createEnvelopeSchema(ExtraScopeDataSchema);
-const ForumEnvelopeSchema = createEnvelopeSchema(ForumScopeDataSchema);
-const LettersEnvelopeSchema = createEnvelopeSchema(LettersScopeDataSchema);
-const TheaterEnvelopeSchema = createEnvelopeSchema(TheaterScopeDataSchema);
+export function createChatScopedBackupSchema<T extends z.ZodTypeAny>(scopeSchema: T) {
+  return createEnvelopeSchema(scopeSchema);
+}
 
-export const PhoneBackupSchema = z.object({
+export const SummaryEnvelopeSchema = createEnvelopeSchema(SummaryScopeDataSchema);
+export const DiaryEnvelopeSchema = createEnvelopeSchema(DiaryScopeDataSchema);
+export const ExtrasEnvelopeSchema = createEnvelopeSchema(ExtraScopeDataSchema);
+export const ForumEnvelopeSchema = createEnvelopeSchema(ForumScopeDataSchema);
+export const LettersEnvelopeSchema = createEnvelopeSchema(LettersScopeDataSchema);
+export const TheaterEnvelopeSchema = createEnvelopeSchema(TheaterScopeDataSchema);
+
+const PhoneBackupBaseSchema = z.object({
   schemaVersion: z.literal(1),
   exportedAt: z.string(),
-  data: z.object({
-    settings: Settings,
-    prompts: PromptSettingsSchema,
-    bagu: BaguSettingsSchema,
-    reader: ChatReaderSettingsSchema,
-    recoveries: PendingVisibilityRecoveryMapSchema,
-    domains: z.record(z.string(), z.unknown()).default({}),
-    summaries: SummaryEnvelopeSchema.optional(),
-    diaries: DiaryEnvelopeSchema.optional(),
-    extras: ExtrasEnvelopeSchema.optional(),
-    forum: ForumEnvelopeSchema.optional(),
-    letters: LettersEnvelopeSchema.optional(),
-    theater: TheaterEnvelopeSchema.optional(),
-  }),
 });
+
+export const PhoneBackupFullDataSchema = z.object({
+  settings: Settings,
+  prompts: PromptSettingsSchema,
+  bagu: BaguSettingsSchema,
+  reader: ChatReaderSettingsSchema,
+  recoveries: PendingVisibilityRecoveryMapSchema,
+  domains: z.record(z.string(), z.unknown()).default({}),
+  domainVersions: z.record(z.string(), z.number().int().positive()).default({}),
+  summaries: SummaryEnvelopeSchema.optional(),
+  diaries: DiaryEnvelopeSchema.optional(),
+  extras: ExtrasEnvelopeSchema.optional(),
+  forum: ForumEnvelopeSchema.optional(),
+  letters: LettersEnvelopeSchema.optional(),
+  theater: TheaterEnvelopeSchema.optional(),
+});
+
+const PhoneBackupCurrentChatDataSchema = z.object({
+  domains: z.record(z.string(), z.unknown()).default({}),
+  domainVersions: z.record(z.string(), z.number().int().positive()).default({}),
+});
+
+const PhoneBackupLegacyDataSchema = PhoneBackupCurrentChatDataSchema.extend({
+  bagu: BaguSettingsSchema.optional(),
+  prompts: PromptSettingsSchema.optional(),
+  reader: ChatReaderSettingsSchema.optional(),
+  recoveries: PendingVisibilityRecoveryMapSchema.optional(),
+  settings: Settings.optional(),
+  summaries: SummaryEnvelopeSchema.optional(),
+  diaries: DiaryEnvelopeSchema.optional(),
+  extras: ExtrasEnvelopeSchema.optional(),
+  forum: ForumEnvelopeSchema.optional(),
+  letters: LettersEnvelopeSchema.optional(),
+  theater: TheaterEnvelopeSchema.optional(),
+});
+
+export const PhoneBackupSchema = z.union([
+  PhoneBackupBaseSchema.extend({
+    backupKind: z.literal('full'),
+    data: PhoneBackupFullDataSchema,
+  }),
+  PhoneBackupBaseSchema.extend({
+    backupKind: z.literal('current-chat'),
+    data: PhoneBackupCurrentChatDataSchema,
+  }),
+  PhoneBackupBaseSchema.extend({
+    backupKind: z.undefined().optional(),
+    data: PhoneBackupLegacyDataSchema,
+  }),
+]);
 export type PhoneBackup = z.infer<typeof PhoneBackupSchema>;
+export type PhoneBackupKind = Exclude<PhoneBackup['backupKind'], undefined>;
+export type PhoneFullBackup = Extract<PhoneBackup, { backupKind: 'full' }>;
+
+export function getPhoneBackupKind(backup: PhoneBackup): PhoneBackupKind | 'legacy' {
+  return backup.backupKind ?? 'legacy';
+}
+
+export function isFullPhoneBackup(backup: PhoneBackup): backup is PhoneFullBackup {
+  return backup.backupKind === 'full';
+}

@@ -57,17 +57,16 @@ export function useSummaryImport() {
     state.error = '';
     state.loading = true;
     try {
-      const sourceMessages = getChatMessagesSafe('0-{{lastMessageId}}')
-        .map((item, index) =>
-          normalizeArchivedMessage(item, index, {
-            ...readerSettings.value,
-            showUserMessages: true,
-          }),
-        )
-        .filter(
-          (item): item is NonNullable<ReturnType<typeof normalizeArchivedMessage>> =>
-            Boolean(item) && !item.isUser && (readerSettings.value.showHiddenAssistantMessages || !item.isHidden),
-        );
+      const sourceMessages = getChatMessagesSafe('0-{{lastMessageId}}').flatMap((item, index) => {
+        const normalized = normalizeArchivedMessage(item, index, {
+          ...readerSettings.value,
+          showUserMessages: true,
+        });
+        if (!normalized || normalized.isUser || (!readerSettings.value.showHiddenAssistantMessages && normalized.isHidden)) {
+          return [];
+        }
+        return [normalized];
+      });
       const transformed = await transformReaderMessages(
         sourceMessages.map(item => ({ messageIndex: item.messageIndex, rawText: item.rawText })),
         { find: '', flags: '', replace: '' },

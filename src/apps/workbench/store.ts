@@ -158,13 +158,24 @@ function createId(prefix: string) {
   return `${prefix}_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
 }
 
-function readSettings(raw: unknown): WorkbenchSettings {
+type SettingsReadResult = { data: WorkbenchSettings; error: string; rawData: unknown };
+
+function readSettings(raw: unknown): SettingsReadResult {
+  const rawData = klona(raw);
+  const parsedResult = WorkbenchSettingsSchema.safeParse(typeof raw === 'undefined' ? {} : raw);
+  if (!parsedResult.success) {
+    return {
+      data: WorkbenchSettingsSchema.parse({}),
+      error: `工作台配置校验失败：${parsedResult.error.issues[0]?.message ?? '数据格式无效'}`,
+      rawData,
+    };
+  }
   try {
     const source = raw && typeof raw === 'object' ? raw : {};
     const rawWorkflows = Array.isArray((source as Record<string, unknown>).workflows)
       ? ((source as Record<string, unknown>).workflows as Array<Record<string, unknown>>)
       : [];
-    const parsed = validateInplace(WorkbenchSettingsSchema, source);
+    const parsed = parsedResult.data;
     const scopeKey = getCurrentChatScopeKey();
     parsed.workflows.forEach(workflow => {
       const rawWorkflow = rawWorkflows.find(item => item.id === workflow.id);
@@ -185,9 +196,13 @@ function readSettings(raw: unknown): WorkbenchSettings {
         );
       }
     });
-    return parsed;
-  } catch {
-    return validateInplace(WorkbenchSettingsSchema, {});
+    return { data: parsed, error: '', rawData };
+  } catch (error) {
+    return {
+      data: WorkbenchSettingsSchema.parse({}),
+      error: `工作台配置迁移失败：${error instanceof Error ? error.message : '数据格式无效'}`,
+      rawData,
+    };
   }
 }
 
@@ -231,7 +246,10 @@ export function captureDelayedWorkbenchCheckpoint(delayAiReplies: number): Workb
 }
 
 export const useWorkbenchStore = defineStore('workbench', () => {
-  const settings = ref<WorkbenchSettings>(readSettings(_.get(extension_settings, workbenchField, {})));
+  const initial = readSettings(_.get(extension_settings, workbenchField));
+  const settings = ref<WorkbenchSettings>(initial.data);
+  const configError = ref(initial.error);
+  const rawConfig = shallowRef(initial.rawData);
   const runningWorkflowIds = ref<string[]>([]);
 
   const workflows = computed(() => settings.value.workflows);
@@ -240,8 +258,10 @@ export const useWorkbenchStore = defineStore('workbench', () => {
   const isRunning = computed(() => runningWorkflowIds.value.length > 0);
 
   function persist() {
+    if (configError.value) return;
     const parsed = readSettings(klona(settings.value));
-    _.set(extension_settings, workbenchField, parsed);
+    if (parsed.error) throw new Error(parsed.error);
+    _.set(extension_settings, workbenchField, parsed.data);
     void saveSettingsDebounced();
   }
 
@@ -535,8 +555,18 @@ export const useWorkbenchStore = defineStore('workbench', () => {
   }
 
   function rehydrateFromSettings() {
-    settings.value = readSettings(_.get(extension_settings, workbenchField, {}));
+    const next = readSettings(_.get(extension_settings, workbenchField));
+    configError.value = next.error;
+    rawConfig.value = next.rawData;
+    settings.value = next.data;
     runningWorkflowIds.value = [];
+  }
+
+  function resetCorruptedSettings() {
+    configError.value = '';
+    rawConfig.value = undefined;
+    settings.value = WorkbenchSettingsSchema.parse({});
+    persist();
   }
 
   function resetCurrentScope(scopeKey = getCurrentChatScopeKey()) {
@@ -564,6 +594,7 @@ export const useWorkbenchStore = defineStore('workbench', () => {
   });
 
   return {
+    configError,
     addStep,
     clearLogs,
     clearPendingRun,
@@ -582,6 +613,8 @@ export const useWorkbenchStore = defineStore('workbench', () => {
     markCurrentCheckpoint,
     moveStep,
     rehydrateFromSettings,
+    resetCorruptedSettings,
+    rawConfig,
     resetCurrentScope,
     settings,
     shouldRunWorkflow,

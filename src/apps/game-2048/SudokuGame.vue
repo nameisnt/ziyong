@@ -70,19 +70,9 @@
 import InfoHint from '@/components/InfoHint.vue';
 import { miniGameFields } from './fields';
 import { readMiniGameSettings, writeMiniGameSettings } from './miniGameStorage';
+import { SudokuSchema } from './backupSchemas';
 
 type SudokuStatus = 'done' | 'playing';
-
-const BoardSchema = z.array(z.number().int().min(0).max(9)).length(81);
-const SudokuSchema = z.object({
-  board: BoardSchema,
-  hints: z.number().int().nonnegative().default(0),
-  mistakes: z.number().int().nonnegative().default(0),
-  puzzle: BoardSchema,
-  puzzleNumber: z.number().int().positive().default(1),
-  solution: BoardSchema,
-  status: z.enum(['done', 'playing']).default('playing'),
-});
 
 type SudokuState = z.infer<typeof SudokuSchema>;
 

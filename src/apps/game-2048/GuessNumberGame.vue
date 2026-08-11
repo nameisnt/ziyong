@@ -58,18 +58,8 @@ import InfoHint from '@/components/InfoHint.vue';
 import { usePhoneStore } from '@/store/phone';
 import { miniGameFields } from './fields';
 import { readMiniGameSettings, writeMiniGameSettings } from './miniGameStorage';
+import { GuessNumberSchema } from './backupSchemas';
 
-const GuessSchema = z.object({
-  bulls: z.number().int().min(0).max(4),
-  cows: z.number().int().min(0).max(4),
-  value: z.string().regex(/^\d{4}$/),
-});
-const GuessNumberSchema = z.object({
-  answer: z.string().regex(/^[1-9]\d{3}$/),
-  best: z.number().int().nonnegative().default(0),
-  guesses: z.array(GuessSchema).max(100),
-  status: z.enum(['playing', 'won']).default('playing'),
-});
 type GuessNumberState = z.infer<typeof GuessNumberSchema>;
 
 function createAnswer() {

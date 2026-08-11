@@ -210,6 +210,18 @@ export function useChatScopedDomain<T>(options: { field: string; schema: ZodType
   const scopeKey = ref(getCurrentChatScopeKey());
   const envelope = ref<ChatScopedEnvelope>(readChatScopedEnvelope(options.field, scopeKey.value));
   const hydrating = ref(false);
+  const configError = ref('');
+  const rawConfig = shallowRef<unknown>(undefined);
+
+  function parseScopeData(raw: unknown, targetScopeKey: string, defaultData: T) {
+    try {
+      return parsePrettified(options.schema, klona(raw));
+    } catch (error) {
+      configError.value = `聊天数据“${targetScopeKey}”校验失败：${error instanceof Error ? error.message : '数据格式无效'}`;
+      rawConfig.value = klona(raw);
+      return defaultData;
+    }
+  }
 
   function markLegacyScopesMigrated(targetScopeKey: string) {
     getLegacyNoChatScopeKeys(targetScopeKey).forEach(legacyScopeKey => {
@@ -222,7 +234,8 @@ export function useChatScopedDomain<T>(options: { field: string; schema: ZodType
     const defaultData = options.createDefault();
     const raw = envelope.value.scopes[targetScopeKey];
     if (typeof raw !== 'undefined') {
-      const parsed = parsePrettified(options.schema, klona(raw));
+      const parsed = parseScopeData(raw, targetScopeKey, defaultData);
+      if (configError.value) return defaultData;
       if (!_.isEqual(parsed, defaultData)) {
         markLegacyScopesMigrated(targetScopeKey);
         return parsed;
@@ -237,13 +250,14 @@ export function useChatScopedDomain<T>(options: { field: string; schema: ZodType
     for (const compatibilityKey of compatibilityKeys) {
       const compatibilityRaw = envelope.value.scopes[compatibilityKey];
       if (typeof compatibilityRaw === 'undefined') continue;
-      const compatibilityData = parsePrettified(options.schema, klona(compatibilityRaw));
+      const compatibilityData = parseScopeData(compatibilityRaw, compatibilityKey, defaultData);
+      if (configError.value) return defaultData;
       if (!_.isEqual(compatibilityData, defaultData)) {
         markLegacyScopesMigrated(targetScopeKey);
         return compatibilityData;
       }
     }
-    return typeof raw === 'undefined' ? defaultData : parsePrettified(options.schema, klona(raw));
+    return typeof raw === 'undefined' ? defaultData : parseScopeData(raw, targetScopeKey, defaultData);
   }
 
   const data = ref<T>(loadScopeData(scopeKey.value));
@@ -258,6 +272,7 @@ export function useChatScopedDomain<T>(options: { field: string; schema: ZodType
   }
 
   function persistCurrentScope() {
+    if (configError.value) return;
     const parsed = parsePrettified(options.schema, klona(data.value));
     envelope.value.scopes = {
       ...envelope.value.scopes,
@@ -272,6 +287,8 @@ export function useChatScopedDomain<T>(options: { field: string; schema: ZodType
     persistCurrentScope();
 
     hydrating.value = true;
+    configError.value = '';
+    rawConfig.value = undefined;
     scopeKey.value = nextScopeKey;
     data.value = loadScopeData(nextScopeKey);
     hydrating.value = false;
@@ -280,6 +297,8 @@ export function useChatScopedDomain<T>(options: { field: string; schema: ZodType
 
   function resetCurrentScope() {
     hydrating.value = true;
+    configError.value = '';
+    rawConfig.value = undefined;
     data.value = options.createDefault();
     hydrating.value = false;
     persistCurrentScope();
@@ -287,6 +306,8 @@ export function useChatScopedDomain<T>(options: { field: string; schema: ZodType
 
   function rehydrateFromSettings() {
     hydrating.value = true;
+    configError.value = '';
+    rawConfig.value = undefined;
     envelope.value = readChatScopedEnvelope(options.field, scopeKey.value);
     data.value = loadScopeData(scopeKey.value);
     hydrating.value = false;
@@ -312,7 +333,9 @@ export function useChatScopedDomain<T>(options: { field: string; schema: ZodType
   persistCurrentScope();
 
   return {
+    configError,
     data,
+    rawConfig,
     rehydrateFromSettings,
     resetCurrentScope,
     scopeKey,

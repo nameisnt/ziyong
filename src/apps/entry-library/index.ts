@@ -40,12 +40,16 @@ export default definePhoneApp({
   contentReceiver: createEntryLibraryContentReceiver(),
   backupDomains: [
     {
+      category: 'configuration',
       key: 'entry-library',
       exportData: () => _.get(extension_settings, entryLibraryField, EntryLibrarySettingsSchema.parse({})),
       importData: data => {
         _.set(extension_settings, entryLibraryField, data);
       },
       rehydrateFromSettings: () => useEntryLibraryStore().rehydrateFromSettings(),
+      schema: EntryLibrarySettingsSchema,
+      schemaVersion: 1,
+      scope: 'global',
     },
   ],
   component: EntryLibraryApp,

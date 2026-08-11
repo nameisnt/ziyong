@@ -11,6 +11,7 @@ import {
 import { getCurrentChatScopeKey, readChatScopedEnvelope } from '@/store/chatScoped';
 import { parsePrettified } from '@/util/zod';
 import { extension_settings } from '@sillytavern/scripts/extensions';
+import { createChatScopedBackupSchema } from '@/type/backup';
 
 function emptyOverview(): PhoneContentOverview {
   return {
@@ -141,6 +142,7 @@ export default definePhoneApp({
   },
   backupDomains: [
     {
+      category: 'content',
       key: 'world-slots',
       exportData: currentScopeKey =>
         readChatScopedEnvelope(worldSlotsField, currentScopeKey || getCurrentChatScopeKey()),
@@ -148,6 +150,9 @@ export default definePhoneApp({
         _.set(extension_settings, worldSlotsField, data);
       },
       rehydrateFromSettings: () => useWorldSlotsStore().rehydrateFromSettings(),
+      schema: createChatScopedBackupSchema(WorldSlotsScopeDataSchema),
+      schemaVersion: 1,
+      scope: 'chat',
     },
   ],
   component: WorldSlotsApp,

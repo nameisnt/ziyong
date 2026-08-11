@@ -63,6 +63,7 @@
 import InfoHint from '@/components/InfoHint.vue';
 import { miniGameFields } from './fields';
 import { readMiniGameSettings, writeMiniGameSettings } from './miniGameStorage';
+import { SnakeSchema } from './backupSchemas';
 
 type Direction = 'down' | 'left' | 'right' | 'up';
 type SnakeSpeed = 'fast' | 'normal' | 'slow';
@@ -70,27 +71,6 @@ type SnakeStatus = 'idle' | 'lost' | 'paused' | 'running';
 type Point = { x: number; y: number };
 
 const size = 12;
-const PointSchema = z.object({
-  x: z
-    .number()
-    .int()
-    .min(0)
-    .max(size - 1),
-  y: z
-    .number()
-    .int()
-    .min(0)
-    .max(size - 1),
-});
-const SnakeSchema = z.object({
-  best: z.number().int().nonnegative().default(0),
-  direction: z.enum(['down', 'left', 'right', 'up']).default('right'),
-  food: PointSchema,
-  score: z.number().int().nonnegative().default(0),
-  snake: z.array(PointSchema).min(1),
-  speed: z.enum(['fast', 'normal', 'slow']).default('normal'),
-  status: z.enum(['idle', 'lost', 'paused', 'running']).default('idle'),
-});
 
 type SnakeState = z.infer<typeof SnakeSchema>;
 

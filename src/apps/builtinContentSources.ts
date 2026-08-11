@@ -17,14 +17,17 @@ export async function createReaderContentSources(): Promise<PhoneContentConversi
   const usage = regexDisplay.getUsage('reader');
   const titleRule = getRegexRulesByIds(regexDisplay.rules, [usage.titleRuleId], 'extract')[0];
   const bodyRule = getRegexRulesByIds(regexDisplay.rules, [usage.contentRuleId], 'extract')[0];
-  const sourceMessages = getChatMessagesSafe('0-{{lastMessageId}}', { hide_state: 'all' })
-    .map((item, index) => normalizeArchivedMessage(item, index, reader.settings))
-    .filter(
-      (item): item is NonNullable<ReturnType<typeof normalizeArchivedMessage>> =>
-        Boolean(item) &&
-        (reader.settings.showUserMessages || !item.isUser) &&
-        (item.isUser || reader.settings.showHiddenAssistantMessages || !item.isHidden),
-    );
+  const sourceMessages = getChatMessagesSafe('0-{{lastMessageId}}', { hide_state: 'all' }).flatMap((item, index) => {
+    const normalized = normalizeArchivedMessage(item, index, reader.settings);
+    if (
+      !normalized ||
+      (!reader.settings.showUserMessages && normalized.isUser) ||
+      (!normalized.isUser && !reader.settings.showHiddenAssistantMessages && normalized.isHidden)
+    ) {
+      return [];
+    }
+    return [normalized];
+  });
   const transformed = await transformReaderMessages(
     sourceMessages.map(item => ({ messageIndex: item.messageIndex, rawText: item.rawText })),
     titleRule

@@ -25,15 +25,14 @@
           </div>
           <label v-for="item in exposedComfyInputs" :key="item.key" class="pc-field-group pc-inline-field">
             <span>{{ comfyInputLabel(item) }}</span>
-            <select
+            <SearchableCombobox
               v-if="item.options.length"
-              :value="getComfyParamValue(item)"
-              class="pc-field pc-select"
-              @change="setComfyParamValue(item, ($event.target as HTMLSelectElement).value)"
-            >
-              <option value="">{{ t`跟随工作流原值` }}</option>
-              <option v-for="option in item.options" :key="option" :value="option">{{ option }}</option>
-            </select>
+              :input-label="`${comfyInputLabel(item)} 参数值`"
+              :model-value="getComfyParamValue(item)"
+              :options="comfyParameterOptions(item)"
+              :placeholder="t`跟随工作流原值`"
+              @update:model-value="setComfyParamValue(item, $event)"
+            />
             <select
               v-else-if="item.fieldKind === 'boolean'"
               :value="getComfyParamValue(item)"
@@ -109,16 +108,13 @@
           <template #before-fields>
             <label class="pc-field-group">
               <span>{{ t`工作流` }}</span>
-              <select
-                :value="comfy.settings.activeWorkflowId"
-                class="pc-field pc-select"
-                @change="comfy.setActiveWorkflow(($event.target as HTMLSelectElement).value)"
-              >
-                <option value="">{{ t`未选择` }}</option>
-                <option v-for="workflow in comfy.settings.workflows" :key="workflow.id" :value="workflow.id">
-                  {{ workflow.name }}
-                </option>
-              </select>
+              <SearchableCombobox
+                input-label="选择 ComfyUI 工作流"
+                :model-value="comfy.settings.activeWorkflowId"
+                :options="comfyWorkflowOptions"
+                :placeholder="t`未选择`"
+                @update:model-value="comfy.setActiveWorkflow($event)"
+              />
             </label>
           </template>
           <template #after-requirement>
@@ -204,6 +200,7 @@ import GenerationPanel from '@/components/GenerationPanel.vue';
 import GenerationPreviewPanel from '@/components/GenerationPreviewPanel.vue';
 import PreviewDraftNotice from '@/components/PreviewDraftNotice.vue';
 import RawOutputEditor from '@/components/RawOutputEditor.vue';
+import SearchableCombobox from '@/components/SearchableCombobox.vue';
 import { parseComfyPromptXmlResult, type ComfyPromptResult } from '@/apps/comfy/generation';
 import { useComfyStore, type ComfyWorkflowInput } from '@/apps/comfy/store';
 import { getRegisteredPhoneGenerationAdapter } from '@/core/appRegistry';
@@ -306,6 +303,17 @@ const activeWorkflowLabel = computed(() => {
   const workflow = activeWorkflow.value;
   if (!workflow) return '未选择工作流';
   return `${workflow.name} · ${getMediaKindLabel(workflow.kind === 'other' ? 'image' : workflow.kind)}`;
+});
+const comfyWorkflowOptions = computed(() => {
+  const options = comfy.settings.workflows.map(workflow => ({
+    label: `${workflow.name} · ${getMediaKindLabel(workflow.kind === 'other' ? 'image' : workflow.kind)}`,
+    value: workflow.id,
+  }));
+  const selected = comfy.settings.activeWorkflowId;
+  if (selected && !options.some(option => option.value === selected)) {
+    options.unshift({ label: '当前工作流已失效', value: selected });
+  }
+  return [{ label: '未选择', value: '' }, ...options];
 });
 const formattedReferences = computed(() => formatGenerationReferences(selectedReferences.value));
 const activeFailedDraft = computed(() =>
@@ -416,6 +424,15 @@ function getComfyParamValue(item: ComfyWorkflowInput) {
   const mapping = activeWorkflow.value?.paramMappings[item.key];
   const mappedValue = mapping?.value ?? '';
   return comfyParams[key] ?? (mappedValue === item.currentValue ? '' : mappedValue);
+}
+
+function comfyParameterOptions(item: ComfyWorkflowInput) {
+  const selected = getComfyParamValue(item);
+  const options = item.options.map(option => ({ label: option, value: option }));
+  if (selected && !options.some(option => option.value === selected)) {
+    options.unshift({ label: `当前值：${selected}`, value: selected });
+  }
+  return [{ label: '跟随工作流原值', value: '' }, ...options];
 }
 
 function setComfyParamValue(item: ComfyWorkflowInput, value: string) {

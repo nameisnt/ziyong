@@ -3,10 +3,18 @@
   "version": "1.0.0",
   "scripts": {
     "build": "vite build",
+    "backup:check": "node scripts/backup-contract-check.mjs",
+    "config:check": "node scripts/config-recovery-contract-check.mjs",
+    "recovery:check": "node scripts/recovery-contract-check.mjs",
+    "structure:check": "node scripts/structure-contract-check.mjs",
+    "test:contracts": "pnpm backup:check && pnpm config:check && pnpm recovery:check && pnpm structure:check",
+    "verify": "pnpm lint && pnpm typecheck && pnpm test:unit && pnpm test:contracts && pnpm style:check && powershell -ExecutionPolicy Bypass -File scripts/check-ui-reuse.ps1",
     "watch": "vite build --watch --mode development",
     "format": "prettier --write \"src/**/*.{ts,tsx,js,jsx,css,scss,html,vue}\"",
     "lint": "eslint",
+    "typecheck": "tsc --noEmit",
     "style:check": "powershell -ExecutionPolicy Bypass -File scripts/check-style-guard.ps1",
+    "test:unit": "node --test scripts/unit/*.test.mjs",
     "ui:check": "node scripts/ui-visual-check.mjs",
     "lint:fix": "eslint --fix"
   },

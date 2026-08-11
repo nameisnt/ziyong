@@ -77,6 +77,11 @@ export const tutorialAppGuides: TutorialAppGuide[] = [
   { appId: 'bagu', groupId: 'tavern', firstAction: '配置词汇和句式规则，再到正文扫描并选择修复。' },
 
   { appId: 'reader', groupId: 'automation', firstAction: '选择聊天进入连续阅读，轻点正文中部打开导航工具。' },
+  {
+    appId: 'recovery',
+    groupId: 'automation',
+    firstAction: '先阅读备份并确认楼层，再选择目标角色卡；导入会新建聊天，不会覆盖原聊天。',
+  },
   { appId: 'chat-insert', groupId: 'automation', firstAction: '选择其他 App 内容作为引用，再写入酒馆当前聊天。' },
   { appId: 'favorites', groupId: 'automation', firstAction: '按类型筛选当前聊天中已经标记收藏的成品。' },
   { appId: 'workbench', groupId: 'automation', firstAction: '新建工作流并配置步骤，每一步可单独选择 API 与预设。' },

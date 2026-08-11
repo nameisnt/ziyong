@@ -12,6 +12,7 @@ import StatsApp from '@/components/StatsApp.vue';
 import SummaryApp from '@/components/SummaryApp.vue';
 import TheaterApp from '@/components/TheaterApp.vue';
 import WorkbenchModule from '@/apps/workbench';
+import RecoveryModule from '@/apps/recovery';
 import {
   createDiaryContentReceiver,
   createExtrasContentReceiver,
@@ -298,6 +299,7 @@ export const BUILTIN_PHONE_APP_MODULES: PhoneAppModule[] = [
     contentSourceProvider: createReaderContentSources,
     favoriteProvider: createReaderFavoriteItems,
   }),
+  RecoveryModule,
   definePhoneApp({
     id: 'bagu',
     name: '八股去除',

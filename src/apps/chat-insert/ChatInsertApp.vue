@@ -1,6 +1,15 @@
 <template>
   <section class="pc-chat-insert-app">
     <section class="pc-chat-insert-page">
+      <ConfigurationRecoveryNotice
+        v-if="configError"
+        :error="configError"
+        filename="sillytavern-phone-chat-insert-corrupted-data.json"
+        :raw-data="rawConfig"
+        @reset="resetCorruptedSettings"
+        @retry="chatInsert.rehydrateFromSettings"
+      />
+
       <article class="pc-page-section">
         <div class="pc-section-head">
           <strong>{{ t`插入方式` }}</strong>
@@ -112,6 +121,7 @@
 
 <script setup lang="ts">
 import { applyChatInsert, formatChatInsertTemplate } from '@/util/chatInsert';
+import ConfigurationRecoveryNotice from '@/components/ConfigurationRecoveryNotice.vue';
 import InfoHint from '@/components/InfoHint.vue';
 import ReferencePicker from '@/components/ReferencePicker.vue';
 import { usePhoneStore } from '@/store/phone';
@@ -123,7 +133,7 @@ import { storeToRefs } from 'pinia';
 const chatInsert = useChatInsertStore();
 const phone = usePhoneStore();
 const prompts = usePromptStore();
-const { settings } = storeToRefs(chatInsert);
+const { configError, rawConfig, settings } = storeToRefs(chatInsert);
 const { quickTemplateGroups } = storeToRefs(prompts);
 const selectedReferences = ref<GenerationReferenceItem[]>([]);
 const templateShortcutOpen = ref(false);
@@ -146,6 +156,18 @@ const referenceSourceLabels: Record<string, string> = {
   summary: '总结',
   theater: '小剧场',
 };
+
+async function resetCorruptedSettings() {
+  if (
+    !(await phone.confirmNotice('要重置插入工具配置吗？这会替换无法读取的原始数据。', {
+      confirmLabel: '重置',
+      kind: 'warning',
+    }))
+  )
+    return;
+  chatInsert.resetCorruptedSettings();
+  toastr.success('已重置插入工具配置');
+}
 
 const needsTarget = computed(() => settings.value.mode === 'new-before' || settings.value.mode === 'append-message');
 const referenceTokens = computed(() => {

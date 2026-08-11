@@ -39,15 +39,11 @@ import {
 } from '@/util/runtime';
 import { parsePrettified } from '@/util/zod';
 import { waitForGenerationRateLimit, waitForGenerationRetry } from '@/core/generationRateLimit';
+import { runGenerationTaskWithRateLimitRetries } from '@/core/generationRetry';
 import { useSettingsStore } from '@/store/settings';
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return Boolean(value) && typeof value === 'object' && !Array.isArray(value);
-}
-
-function isRateLimitError(error: unknown) {
-  const message = error instanceof Error ? error.message : String(error ?? '');
-  return /(?:http\s*)?429|rate[\s_-]*limit|too many requests|请求过于频繁/i.test(message);
 }
 
 type GenerationLifecycle = {
@@ -64,6 +60,46 @@ type GenerationSourceInput = {
   recentCount?: number;
   singleMessageId?: number;
 };
+
+type SharedGenerationExecutionOptions<TResult> = {
+  appId: string;
+  lifecycle?: GenerationLifecycle;
+  rateLimitRpm?: number;
+  shouldStream: boolean;
+  task: (context: { abortSignal: AbortSignal; generationId: string }) => Promise<TResult>;
+  textProvider: ResolvedTextProviderSettings;
+};
+
+async function executeGenerationLifecycle<TResult>(options: SharedGenerationExecutionOptions<TResult>): Promise<TResult> {
+  const generationId = createGenerationId(options.appId);
+  const abortController = registerGenerationAbortController(generationId);
+  const streamListener =
+    options.textProvider.mode === 'tavern'
+      ? bindStreamOutput(options.shouldStream, generationId, options.lifecycle?.onRawOutput)
+      : null;
+  const releasePhoneGeneration = registerPhoneGeneration(generationId);
+  const rpmLimit = options.rateLimitRpm ?? useSettingsStore().settings.generation.rpmLimit;
+
+  try {
+    options.lifecycle?.onStart?.(generationId);
+    abortController.signal.throwIfAborted();
+    return await runGenerationTaskWithRateLimitRetries({
+      task: () => options.task({ abortSignal: abortController.signal, generationId }),
+      waitForRateLimit: () => waitForGenerationRateLimit(rpmLimit, abortController.signal),
+      waitForRetry: delayMs => waitForGenerationRetry(delayMs, abortController.signal),
+    });
+  } catch (error) {
+    if (error instanceof DOMException && error.name === 'AbortError') {
+      throw new Error('生成已停止');
+    }
+    throw error;
+  } finally {
+    streamListener?.stop();
+    releasePhoneGeneration();
+    releaseGenerationAbortController(generationId, abortController);
+    options.lifecycle?.onFinish?.();
+  }
+}
 
 export type GenerateContentOptions = {
   createFailedDraft: (input: Omit<FailedGenerationDraft, 'createdAt' | 'id'>) => FailedGenerationDraft;
@@ -710,6 +746,13 @@ export async function generateOrderedPromptContent(options: {
   textProvider: TextProviderSettings;
   userInput: string;
 }) {
+  assertViewingCurrentChatForGeneration();
+  const scopeId = getCurrentChatScopeKey();
+  const recoveryResult = await ensureCurrentScopeRecovery(scopeId);
+  if (recoveryResult.status !== 'none' && recoveryResult.status !== 'restored') {
+    throw new Error(recoveryResult.message);
+  }
+
   const phone = usePhoneStore();
   const route = phone.currentRoute;
   const pageOverride =
@@ -718,58 +761,47 @@ export async function generateOrderedPromptContent(options: {
     ? applyTextProviderSelection(options.textProvider, pageOverride.connectionSelection)
     : options.textProvider;
   const textProvider = resolveTextProviderSettings(selectedProvider);
-  const generationId = createGenerationId(options.appId);
-  const abortController = registerGenerationAbortController(generationId);
   const shouldStream = options.shouldStream ?? false;
-  const streamListener =
-    textProvider.mode === 'tavern'
-      ? bindStreamOutput(shouldStream, generationId, options.lifecycle?.onRawOutput)
-      : null;
-  const releasePhoneGeneration = registerPhoneGeneration(generationId);
+  return executeGenerationLifecycle({
+    appId: options.appId,
+    lifecycle: options.lifecycle,
+    rateLimitRpm: options.rateLimitRpm,
+    shouldStream,
+    task: async ({ abortSignal, generationId }) => {
+      const userInput = options.userInput.trim();
+      if (!userInput) throw new Error('写卡任务为空，无法生成');
+      const taskPromptIndex = options.messages.reduce(
+        (foundIndex, message, index) =>
+          message.role === 'user' && message.content.trim() === userInput ? index : foundIndex,
+        -1,
+      );
+      if (taskPromptIndex < 0) throw new Error('写卡任务没有插入提示词，无法生成');
+      const result =
+        textProvider.mode === 'external'
+          ? await generateFromExternalCompatibleApi(
+              textProvider,
+              options.messages,
+              shouldStream,
+              abortSignal,
+              options.lifecycle?.onRawOutput,
+            )
+          : await generateRawSafe({
+              generation_id: generationId,
+              ordered_prompts: options.messages.map((message, index) =>
+                index === taskPromptIndex ? 'user_input' : message,
+              ),
+              should_silence: true,
+              should_stream: shouldStream,
+              user_input: userInput,
+            });
 
-  try {
-    options.lifecycle?.onStart?.(generationId);
-    const rpmLimit = options.rateLimitRpm ?? useSettingsStore().settings.generation.rpmLimit;
-    await waitForGenerationRateLimit(rpmLimit, abortController.signal);
-    abortController.signal.throwIfAborted();
-
-    const userInput = options.userInput.trim();
-    if (!userInput) throw new Error('写卡任务为空，无法生成');
-    const taskPromptIndex = options.messages.reduce(
-      (foundIndex, message, index) =>
-        message.role === 'user' && message.content.trim() === userInput ? index : foundIndex,
-      -1,
-    );
-    if (taskPromptIndex < 0) throw new Error('写卡任务没有插入提示词，无法生成');
-    const result =
-      textProvider.mode === 'external'
-        ? await generateFromExternalCompatibleApi(
-            textProvider,
-            options.messages,
-            shouldStream,
-            abortController.signal,
-            options.lifecycle?.onRawOutput,
-          )
-        : await generateRawSafe({
-            generation_id: generationId,
-            ordered_prompts: options.messages.map((message, index) =>
-              index === taskPromptIndex ? 'user_input' : message,
-            ),
-            should_silence: true,
-            should_stream: shouldStream,
-            user_input: userInput,
-          });
-
-    abortController.signal.throwIfAborted();
-    const rawOutput = normalizeGenerationResult(result);
-    options.lifecycle?.onRawOutput?.(rawOutput);
-    return { generationId, rawOutput, textProvider };
-  } finally {
-    streamListener?.stop();
-    releasePhoneGeneration();
-    releaseGenerationAbortController(generationId, abortController);
-    options.lifecycle?.onFinish?.();
-  }
+      abortSignal.throwIfAborted();
+      const rawOutput = normalizeGenerationResult(result);
+      options.lifecycle?.onRawOutput?.(rawOutput);
+      return { generationId, rawOutput, textProvider };
+    },
+    textProvider,
+  });
 }
 
 export async function generateContent<TConfig, TResult, TSaveResult = { entityId: string }>(
@@ -785,17 +817,13 @@ export async function generateContent<TConfig, TResult, TSaveResult = { entityId
     throw new Error(recoveryResult.message);
   }
 
-  const generationId = createGenerationId(adapter.appId);
   const textProvider = resolveTextProviderSettings(options.textProvider);
-  const abortController = registerGenerationAbortController(generationId);
-  const streamListener =
-    textProvider.mode === 'tavern'
-      ? bindStreamOutput(options.generationDefaults.stream, generationId, options.lifecycle?.onRawOutput)
-      : null;
-  const releasePhoneGeneration = registerPhoneGeneration(generationId);
-
-  try {
-    options.lifecycle?.onStart?.(generationId);
+  return executeGenerationLifecycle({
+    appId: adapter.appId,
+    lifecycle: options.lifecycle,
+    rateLimitRpm: options.rateLimitRpm,
+    shouldStream: options.generationDefaults.stream,
+    task: async ({ abortSignal, generationId }) => {
     const prepared = prepareGenerationRequest(adapter, config, options, generationId, textProvider);
     const replay = createGenerationReplaySnapshot(
       prepared.parsedConfig,
@@ -805,29 +833,16 @@ export async function generateContent<TConfig, TResult, TSaveResult = { entityId
       textProvider,
     );
     const generationRecord = createHiddenGenerationRecord(adapter.actionId, replay);
-    const rpmLimit = options.rateLimitRpm ?? useSettingsStore().settings.generation.rpmLimit;
-    await waitForGenerationRateLimit(rpmLimit, abortController.signal);
-
-    const runGenerationTask = async () => {
-      const maxRateLimitRetries = 2;
-      for (let attempt = 0; ; attempt += 1) {
-        try {
-          return await generateFromCapturedOrderedPrompts(
-            prepared.generateConfig,
-            textProvider,
-            prepared.phoneUserInput,
-            prepared.userInput,
-            prepared.chatTail,
-            abortController.signal,
-            options.lifecycle?.onRawOutput,
-          );
-        } catch (error) {
-          if (!isRateLimitError(error) || attempt >= maxRateLimitRetries) throw error;
-          await waitForGenerationRetry(2_000 * 2 ** attempt, abortController.signal);
-          await waitForGenerationRateLimit(rpmLimit, abortController.signal);
-        }
-      }
-    };
+    const runGenerationTask = () =>
+      generateFromCapturedOrderedPrompts(
+        prepared.generateConfig,
+        textProvider,
+        prepared.phoneUserInput,
+        prepared.userInput,
+        prepared.chatTail,
+        abortSignal,
+        options.lifecycle?.onRawOutput,
+      );
     const result = prepared.canUseVisibilityTransaction
       ? await runWithVisibilityTransaction({
           generationId,
@@ -837,12 +852,12 @@ export async function generateContent<TConfig, TResult, TSaveResult = { entityId
         })
       : await runGenerationTask();
 
-    abortController.signal.throwIfAborted();
+    abortSignal.throwIfAborted();
     const rawOutput = normalizeGenerationResult(result);
     options.lifecycle?.onRawOutput?.(rawOutput);
 
     const parsed = adapter.parse(rawOutput, prepared.parsedConfig);
-    abortController.signal.throwIfAborted();
+    abortSignal.throwIfAborted();
     if (!parsed.ok) {
       const draft = options.createFailedDraft({
         actionId: adapter.actionId,
@@ -864,7 +879,7 @@ export async function generateContent<TConfig, TResult, TSaveResult = { entityId
     }
 
     if (options.generationDefaults.resultMode === 'save') {
-      abortController.signal.throwIfAborted();
+      abortSignal.throwIfAborted();
       const saved = await adapter.save(parsed.data, {
         config: prepared.parsedConfig,
         generationRecord,
@@ -897,17 +912,9 @@ export async function generateContent<TConfig, TResult, TSaveResult = { entityId
       status: 'preview',
       warnings: parsed.warnings,
     };
-  } catch (error) {
-    if (error instanceof DOMException && error.name === 'AbortError') {
-      throw new Error('生成已停止');
-    }
-    throw error;
-  } finally {
-    releaseGenerationAbortController(generationId, abortController);
-    streamListener?.stop();
-    releasePhoneGeneration();
-    options.lifecycle?.onFinish?.();
-  }
+    },
+    textProvider,
+  });
 }
 
 export function buildGenerationPreview<TConfig, TResult, TSaveResult = { entityId: string }>(

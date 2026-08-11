@@ -16,7 +16,7 @@ export const GenerationPreviewDraftSchema = z.object({
 
 export type GenerationPreviewDraft = z.infer<typeof GenerationPreviewDraftSchema>;
 
-const PreviewDraftScopeDataSchema = z.object({
+export const PreviewDraftScopeDataSchema = z.object({
   drafts: z.array(GenerationPreviewDraftSchema).default([]),
 });
 

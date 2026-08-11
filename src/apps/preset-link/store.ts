@@ -15,7 +15,7 @@ const PresetChatBindingSchema = z.object({
 });
 export type PresetChatBinding = z.infer<typeof PresetChatBindingSchema>;
 
-const PresetLinkSettingsSchema = z.object({
+export const PresetLinkSettingsSchema = z.object({
   bindings: z.record(z.string(), PresetChatBindingSchema).default({}),
   version: z.literal(1).default(1),
 });

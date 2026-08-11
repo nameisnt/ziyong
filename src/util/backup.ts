@@ -1,11 +1,18 @@
-import { getRegisteredPhoneBackupDomains } from '@/core/appRegistry';
+import { getRegisteredPhoneBackupDomains, getRegisteredPhoneBackupRehydrateHandlers } from '@/core/appRegistry';
 import { baguField } from '@/store/bagu';
 import { promptField } from '@/store/prompts';
 import { recoveryField } from '@/store/recovery';
 import { readerSettingsField } from '@/store/reader';
 import { getCurrentChatScopeKey } from '@/store/chatScoped';
-import { PhoneBackupSchema, type PhoneBackup } from '@/type/backup';
+import { isFullPhoneBackup, PhoneBackupFullDataSchema, PhoneBackupSchema, type PhoneBackup } from '@/type/backup';
 import { parsePrettified } from '@/util/zod';
+import { executeBackupImportTransaction } from '@/util/backupTransaction';
+import {
+  analyzeBackupDomainCoverage,
+  assertFullBackupImportAllowed,
+  selectCurrentChatBackupDomains,
+  selectGeneratedContentDomains,
+} from '@/util/backupPolicy';
 // eslint-disable-next-line import-x/no-nodejs-modules
 import { saveSettingsDebounced } from '@sillytavern/script';
 import { extension_settings } from '@sillytavern/scripts/extensions';
@@ -17,6 +24,13 @@ export interface PhoneBackupScopeOption {
   items: number;
   label: string;
   scopeKey: string;
+}
+
+export interface PhoneBackupImportPlan {
+  domainsToReplace: string[];
+  missingDomainLabels: string[];
+  target: 'full' | 'current-chat';
+  unknownDomainKeys: string[];
 }
 
 const backupDomainLabels: Record<string, string> = {
@@ -74,6 +88,25 @@ type ChatScopedBackupEnvelope = {
   scopes: Record<string, unknown>;
 };
 
+type StagedPhoneBackupDomainImport = {
+  data: unknown;
+  domain: ReturnType<typeof getRegisteredPhoneBackupDomains>[number];
+};
+
+type PreparedFullPhoneBackupImport = {
+  plan: PhoneBackupImportPlan;
+  stagedDomains: StagedPhoneBackupDomainImport[];
+  stagedSettings: Settings;
+  data: z.infer<typeof PhoneBackupFullDataSchema>;
+};
+
+type PreparedChatPhoneBackupImport = {
+  plan: PhoneBackupImportPlan;
+  stagedDomains: StagedPhoneBackupDomainImport[];
+  sourceScopeKey: string;
+  targetScopeKey: string;
+};
+
 function getBackupDomainData(backup: PhoneBackup, key: string) {
   return backup.data.domains[key] ?? _.get(backup.data, key);
 }
@@ -100,6 +133,71 @@ function cloneChatScopedEnvelope(raw: unknown): ChatScopedBackupEnvelope {
     legacyScopeMigrations,
     scopes: klona(raw.scopes),
   };
+}
+
+function stageDomainImports(
+  entries: Array<{ data: unknown; domain: StagedPhoneBackupDomainImport['domain'] }>,
+  domainVersions: Record<string, number> = {},
+): StagedPhoneBackupDomainImport[] {
+  return entries.map(entry => {
+    const sourceVersion = domainVersions[entry.domain.key] ?? 1;
+    if (sourceVersion > entry.domain.schemaVersion) {
+      throw new Error(`备份域“${entry.domain.key}”版本 ${sourceVersion} 高于当前支持的 ${entry.domain.schemaVersion}`);
+    }
+    if (sourceVersion < entry.domain.schemaVersion && !entry.domain.migrateImport) {
+      throw new Error(`备份域“${entry.domain.key}”缺少从版本 ${sourceVersion} 的迁移`);
+    }
+    const sourceData =
+      sourceVersion < entry.domain.schemaVersion ? entry.domain.migrateImport!(entry.data, sourceVersion) : entry.data;
+    const parsed = entry.domain.schema.safeParse(sourceData);
+    if (!parsed.success) {
+      throw new Error(`备份域“${entry.domain.key}”校验失败：${parsed.error.issues[0]?.message ?? '数据格式无效'}`);
+    }
+    return {
+      data: klona(parsed.data),
+      domain: entry.domain,
+    };
+  });
+}
+
+function getBackupDomainVersions() {
+  return Object.fromEntries(getRegisteredPhoneBackupDomains().map(domain => [domain.key, domain.schemaVersion]));
+}
+
+function buildImportPlan(
+  target: PhoneBackupImportPlan['target'],
+  stagedDomains: StagedPhoneBackupDomainImport[],
+  missingDomains: StagedPhoneBackupDomainImport['domain'][],
+  unknownDomainKeys: string[],
+): PhoneBackupImportPlan {
+  return {
+    domainsToReplace: stagedDomains.map(({ domain }) => backupDomainLabels[domain.key] ?? domain.key),
+    missingDomainLabels: missingDomains.map(domain => backupDomainLabels[domain.key] ?? domain.key),
+    target,
+    unknownDomainKeys,
+  };
+}
+
+function restoreExtensionSettings(snapshot: typeof extension_settings) {
+  Object.keys(extension_settings).forEach(key => delete extension_settings[key]);
+  Object.assign(extension_settings, snapshot);
+}
+
+async function commitBackupImport(commit: () => void, rehydrateHandlers: Array<() => void>) {
+  const handlers = [...new Set(rehydrateHandlers)];
+  await executeBackupImportTransaction({
+    captureSnapshot: () => klona(extension_settings),
+    commit,
+    persist: () => saveSettingsDebounced(),
+    rehydrate: () => handlers.forEach(handler => handler()),
+    restoreSnapshot: restoreExtensionSettings,
+  });
+}
+
+function getDomainRehydrateHandlers(stagedDomains: StagedPhoneBackupDomainImport[]) {
+  return stagedDomains
+    .map(({ domain }) => domain.rehydrateFromSettings)
+    .filter((handler): handler is () => void => Boolean(handler));
 }
 
 function countBackupScopeData(domainKey: string, raw: unknown) {
@@ -268,11 +366,11 @@ function sanitizeSettingsForJsonBackup(rawSettings: unknown) {
 
 export function buildPhoneBackup(): PhoneBackup {
   const scopeKey = getCurrentChatScopeKey();
-  const domains = Object.fromEntries(
-    getRegisteredPhoneBackupDomains().map(domain => [domain.key, domain.exportData(scopeKey)]),
-  );
+  const registeredDomains = getRegisteredPhoneBackupDomains();
+  const domains = Object.fromEntries(registeredDomains.map(domain => [domain.key, domain.exportData(scopeKey)]));
 
   return parsePrettified(PhoneBackupSchema, {
+    backupKind: 'full',
     schemaVersion: 1,
     exportedAt: new Date().toISOString(),
     data: {
@@ -282,6 +380,7 @@ export function buildPhoneBackup(): PhoneBackup {
       reader: _.get(extension_settings, readerSettingsField, {}),
       recoveries: _.get(extension_settings, recoveryField, {}),
       domains,
+      domainVersions: Object.fromEntries(registeredDomains.map(domain => [domain.key, domain.schemaVersion])),
     },
   });
 }
@@ -293,31 +392,32 @@ export function downloadPhoneBackup() {
 
 export function buildCurrentChatPhoneBackup(): PhoneBackup {
   const scopeKey = getCurrentChatScopeKey();
+  const registeredDomains = getRegisteredPhoneBackupDomains();
+  const chatDomains = selectCurrentChatBackupDomains(registeredDomains);
   const domains = Object.fromEntries(
-    getRegisteredPhoneBackupDomains().map(domain => {
-      const envelope = cloneChatScopedEnvelope(domain.exportData(scopeKey));
-      const currentScopeData = envelope.scopes[scopeKey];
-      return [
-        domain.key,
-        {
-          __chatScoped: true,
-          legacyScopeMigrations: {},
-          scopes: typeof currentScopeData === 'undefined' ? {} : { [scopeKey]: currentScopeData },
-        },
-      ];
-    }),
+    chatDomains.map(domain => {
+        const envelope = cloneChatScopedEnvelope(domain.exportData(scopeKey));
+        const currentScopeData = envelope.scopes[scopeKey];
+        return [
+          domain.key,
+          {
+            __chatScoped: true,
+            legacyScopeMigrations: {},
+            scopes: typeof currentScopeData === 'undefined' ? {} : { [scopeKey]: currentScopeData },
+          },
+        ];
+      }),
   );
 
   return parsePrettified(PhoneBackupSchema, {
+    backupKind: 'current-chat',
     schemaVersion: 1,
     exportedAt: new Date().toISOString(),
     data: {
-      settings: sanitizeSettingsForJsonBackup(_.get(extension_settings, setting_field, {})),
-      prompts: _.get(extension_settings, promptField, {}),
-      bagu: _.get(extension_settings, baguField, {}),
-      reader: _.get(extension_settings, readerSettingsField, {}),
-      recoveries: {},
       domains,
+      domainVersions: Object.fromEntries(
+        chatDomains.map(domain => [domain.key, domain.schemaVersion]),
+      ),
     },
   });
 }
@@ -347,79 +447,150 @@ export async function parsePhoneBackupFile(file: File) {
 export function listPhoneBackupScopeOptions(backup: PhoneBackup): PhoneBackupScopeOption[] {
   const scopes = new Map<string, PhoneBackupScopeOption>();
 
-  getRegisteredPhoneBackupDomains().forEach(domain => {
-    const envelope = cloneChatScopedEnvelope(getBackupDomainData(backup, domain.key));
-    Object.entries(envelope.scopes).forEach(([scopeKey, rawScopeData]) => {
-      const count = countBackupScopeData(domain.key, rawScopeData);
-      if (!count.collections && !count.items) return;
+  getRegisteredPhoneBackupDomains()
+    .filter(domain => domain.scope === 'chat')
+    .forEach(domain => {
+      const envelope = cloneChatScopedEnvelope(getBackupDomainData(backup, domain.key));
+      Object.entries(envelope.scopes).forEach(([scopeKey, rawScopeData]) => {
+        const count = countBackupScopeData(domain.key, rawScopeData);
+        if (!count.collections && !count.items) return;
 
-      const previous = scopes.get(scopeKey) ?? {
-        collections: 0,
-        domainLabels: [],
-        items: 0,
-        label: formatScopeLabel(scopeKey),
-        scopeKey,
-      };
-      previous.collections += count.collections;
-      previous.items += count.items;
-      previous.domainLabels = [...new Set([...previous.domainLabels, backupDomainLabels[domain.key] ?? domain.key])];
-      scopes.set(scopeKey, previous);
+        const previous = scopes.get(scopeKey) ?? {
+          collections: 0,
+          domainLabels: [],
+          items: 0,
+          label: formatScopeLabel(scopeKey),
+          scopeKey,
+        };
+        previous.collections += count.collections;
+        previous.items += count.items;
+        previous.domainLabels = [...new Set([...previous.domainLabels, backupDomainLabels[domain.key] ?? domain.key])];
+        scopes.set(scopeKey, previous);
+      });
     });
-  });
 
   return [...scopes.values()].sort(
     (left, right) => right.items - left.items || left.label.localeCompare(right.label, 'zh-CN'),
   );
 }
 
-export async function importPhoneBackupScopeToCurrentChat(backup: PhoneBackup, sourceScopeKey: string) {
+function preparePhoneBackupScopeImport(backup: PhoneBackup, sourceScopeKey: string): PreparedChatPhoneBackupImport {
   const targetScopeKey = getCurrentChatScopeKey();
-  let importedDomains = 0;
-
-  getRegisteredPhoneBackupDomains().forEach(domain => {
+  const registeredDomains = getRegisteredPhoneBackupDomains().filter(domain => domain.scope === 'chat');
+  const entries = registeredDomains.flatMap(domain => {
     const sourceEnvelope = cloneChatScopedEnvelope(getBackupDomainData(backup, domain.key));
     const sourceScopeData = sourceEnvelope.scopes[sourceScopeKey];
-    if (typeof sourceScopeData === 'undefined') return;
+    if (typeof sourceScopeData === 'undefined') return [];
 
     const currentEnvelope = cloneChatScopedEnvelope(domain.exportData(targetScopeKey));
     currentEnvelope.scopes = {
       ...currentEnvelope.scopes,
       [targetScopeKey]: klona(sourceScopeData),
     };
-    domain.importData(currentEnvelope);
-    importedDomains += 1;
+    return [{ data: currentEnvelope, domain }];
   });
-
-  if (!importedDomains) {
+  const stagedDomains = stageDomainImports(entries, backup.data.domainVersions);
+  if (!stagedDomains.length) {
     throw new Error('这份备份里没有可导入到当前聊天的创作内容');
   }
-
-  await saveSettingsDebounced();
+  const coverage = analyzeBackupDomainCoverage(
+    registeredDomains,
+    stagedDomains.map(({ domain }) => domain.key),
+    Object.keys(backup.data.domains),
+  );
   return {
-    importedDomains,
+    plan: buildImportPlan(
+      'current-chat',
+      stagedDomains,
+      coverage.missingDomains,
+      coverage.unknownDomainKeys,
+    ),
+    stagedDomains,
+    sourceScopeKey,
+    targetScopeKey,
+  };
+}
+
+export function planPhoneBackupScopeImport(backup: PhoneBackup, sourceScopeKey: string): PhoneBackupImportPlan {
+  return preparePhoneBackupScopeImport(backup, sourceScopeKey).plan;
+}
+
+export async function importPhoneBackupScopeToCurrentChat(backup: PhoneBackup, sourceScopeKey: string) {
+  const { stagedDomains, targetScopeKey } = preparePhoneBackupScopeImport(backup, sourceScopeKey);
+
+  await commitBackupImport(() => {
+    stagedDomains.forEach(({ data, domain }) => domain.importData(data));
+  }, getDomainRehydrateHandlers(stagedDomains));
+  return {
+    importedDomains: stagedDomains.length,
     sourceScopeKey,
     targetScopeKey,
   };
 }
 
 export async function clearAllPhoneGeneratedContent() {
-  getRegisteredPhoneBackupDomains().forEach(domain => {
-    domain.importData(createEmptyEnvelope());
-  });
-  await saveSettingsDebounced();
+  const stagedDomains = stageDomainImports(
+    selectGeneratedContentDomains(getRegisteredPhoneBackupDomains())
+      .map(domain => ({ data: createEmptyEnvelope(), domain })),
+    getBackupDomainVersions(),
+  );
+  await commitBackupImport(() => {
+    stagedDomains.forEach(({ data, domain }) => {
+      domain.importData(data);
+    });
+  }, getDomainRehydrateHandlers(stagedDomains));
 }
 
-export async function applyPhoneBackup(backup: PhoneBackup) {
-  _.set(extension_settings, setting_field, sanitizeSettingsForJsonBackup(backup.data.settings));
-  _.set(extension_settings, promptField, backup.data.prompts);
-  _.set(extension_settings, baguField, backup.data.bagu);
-  _.set(extension_settings, readerSettingsField, backup.data.reader);
-  _.set(extension_settings, recoveryField, backup.data.recoveries);
-  getRegisteredPhoneBackupDomains().forEach(domain => {
-    const data = backup.data.domains[domain.key] ?? _.get(backup.data, domain.key);
-    if (typeof data !== 'undefined') {
-      domain.importData(data);
-    }
+function prepareFullPhoneBackupImport(
+  backup: PhoneBackup,
+  options: { allowLegacy?: boolean } = {},
+): PreparedFullPhoneBackupImport {
+  assertFullBackupImportAllowed(backup.backupKind ?? 'legacy', options.allowLegacy);
+
+  const data = isFullPhoneBackup(backup) ? backup.data : parsePrettified(PhoneBackupFullDataSchema, backup.data);
+  const registeredDomains = getRegisteredPhoneBackupDomains();
+  const entries = registeredDomains.flatMap(domain => {
+    const domainData = getBackupDomainData(backup, domain.key);
+    return typeof domainData === 'undefined' ? [] : [{ data: domainData, domain }];
   });
-  await saveSettingsDebounced();
+  const stagedDomains = stageDomainImports(entries, data.domainVersions);
+  const stagedSettings = sanitizeSettingsForJsonBackup(data.settings);
+  const coverage = analyzeBackupDomainCoverage(
+    registeredDomains,
+    stagedDomains.map(({ domain }) => domain.key),
+    Object.keys(backup.data.domains),
+  );
+  return {
+    data,
+    plan: buildImportPlan(
+      'full',
+      stagedDomains,
+      coverage.missingDomains,
+      coverage.unknownDomainKeys,
+    ),
+    stagedDomains,
+    stagedSettings,
+  };
+}
+
+export function planPhoneFullBackupImport(
+  backup: PhoneBackup,
+  options: { allowLegacy?: boolean } = {},
+): PhoneBackupImportPlan {
+  return prepareFullPhoneBackupImport(backup, options).plan;
+}
+
+export async function applyPhoneBackup(backup: PhoneBackup, options: { allowLegacy?: boolean } = {}) {
+  const { data, stagedDomains, stagedSettings } = prepareFullPhoneBackupImport(backup, options);
+
+  await commitBackupImport(() => {
+    _.set(extension_settings, setting_field, stagedSettings);
+    _.set(extension_settings, promptField, klona(data.prompts));
+    _.set(extension_settings, baguField, klona(data.bagu));
+    _.set(extension_settings, readerSettingsField, klona(data.reader));
+    _.set(extension_settings, recoveryField, klona(data.recoveries));
+    stagedDomains.forEach(({ data: domainData, domain }) => {
+      domain.importData(domainData);
+    });
+  }, getRegisteredPhoneBackupRehydrateHandlers());
 }

@@ -13,6 +13,7 @@ import { getCurrentChatScopeKey, readChatScopedEnvelope } from '@/store/chatScop
 import { usePhoneStore } from '@/store/phone';
 import { parsePrettified } from '@/util/zod';
 import { extension_settings } from '@sillytavern/scripts/extensions';
+import { createChatScopedBackupSchema } from '@/type/backup';
 
 function emptyOverview(): PhoneContentOverview {
   return {
@@ -135,12 +136,16 @@ export default definePhoneApp({
   contentReceiver: createDigestContentReceiver(),
   backupDomains: [
     {
+      category: 'content',
       key: 'digests',
       exportData: currentScopeKey => readChatScopedEnvelope(digestField, currentScopeKey || getCurrentChatScopeKey()),
       importData: data => {
         _.set(extension_settings, digestField, data);
       },
       rehydrateFromSettings: () => useDigestStore().rehydrateFromSettings(),
+      schema: createChatScopedBackupSchema(DigestScopeDataSchema),
+      schemaVersion: 1,
+      scope: 'chat',
     },
   ],
   component: DigestApp,

@@ -1,6 +1,6 @@
 import ComfyApp from './ComfyApp.vue';
 import { createComfyGenerationAdapter } from './generation';
-import { comfyField, useComfyStore } from './store';
+import { ComfySettingsSchema, comfyField, useComfyStore } from './store';
 import { objectListField, textField, xmlParser } from '@/apps/outputDefinitions';
 import { definePhoneApp } from '@/core/appRegistry';
 import { extension_settings } from '@sillytavern/scripts/extensions';
@@ -15,12 +15,16 @@ export default definePhoneApp({
   defaultOrder: 130,
   backupDomains: [
     {
+      category: 'configuration',
       key: 'comfy',
       exportData: () => _.get(extension_settings, comfyField, {}),
       importData: data => {
         _.set(extension_settings, comfyField, data);
       },
       rehydrateFromSettings: () => useComfyStore().rehydrateFromSettings(),
+      schema: ComfySettingsSchema,
+      schemaVersion: 1,
+      scope: 'global',
     },
   ],
   component: ComfyApp,

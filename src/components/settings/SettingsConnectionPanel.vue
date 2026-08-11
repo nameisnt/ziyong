@@ -28,9 +28,12 @@
       <label class="pc-field-group"
         ><span class="pc-field-label">酒馆预设</span>
         <div class="pc-preset-select-row">
-          <select v-model="settings.generation.tavernPresetName" class="pc-select">
-            <option value="">跟随酒馆当前预设</option>
-            <option v-for="name in tavernPresetNames" :key="name" :value="name">{{ name }}</option></select
+          <SearchableCombobox
+            v-model="settings.generation.tavernPresetName"
+            input-label="选择酒馆预设"
+            :options="tavernPresetOptions"
+            placeholder="跟随酒馆当前预设"
+          />
           ><button
             class="pc-icon-btn"
             type="button"
@@ -129,15 +132,13 @@
         <label class="pc-field-group"
           ><span class="pc-field-label">外部 API 配置</span>
           <div class="pc-asset-field">
-            <select
-              class="pc-select"
-              :value="settings.textProvider.activeExternalProfileId"
-              @change="onExternalProfileSelect"
-            >
-              <option value="">请选择配置</option>
-              <option v-for="profile in settings.textProvider.externalProfiles" :key="profile.id" :value="profile.id">
-                {{ profile.name }}
-              </option></select
+            <SearchableCombobox
+              :model-value="settings.textProvider.activeExternalProfileId"
+              input-label="选择外部 API 配置"
+              :options="externalProfileOptions"
+              placeholder="请选择配置"
+              @update:model-value="settingsStore.setActiveExternalApiProfile"
+            />
             ><button class="pc-icon-btn" type="button" title="新建外部 API 配置" @click="createExternalProfile">
               <i class="fa-solid fa-plus"></i>
             </button></div
@@ -239,9 +240,22 @@ const apiKeyVisible = ref(false);
 const externalModelLoading = ref(false);
 const externalModelOptions = ref<Record<string, string[]>>({});
 const activeExternalProfile = computed(() => getActiveExternalApiProfile(settings.value.textProvider));
+const externalProfileOptions = computed(() => [
+  { label: '请选择配置', value: '' },
+  ...settings.value.textProvider.externalProfiles.map(profile => ({ label: profile.name, value: profile.id })),
+]);
 const resolvedExternalApiUrl = computed(() =>
   activeExternalProfile.value ? resolveExternalApiProfileUrl(activeExternalProfile.value) : '',
 );
+const tavernPresetOptions = computed(() => {
+  const selected = settings.value.generation.tavernPresetName.trim();
+  const names = new Set(tavernPresetNames.value);
+  if (selected) names.add(selected);
+  return [
+    { label: '跟随酒馆当前预设', value: '' },
+    ...[...names].filter(Boolean).map(name => ({ label: name, value: name })),
+  ];
+});
 const externalModelSelectOptions = computed(() => {
   const profile = activeExternalProfile.value;
   if (!profile) return [];
@@ -279,9 +293,6 @@ function enableExternalMode() {
 }
 function createExternalProfile() {
   settingsStore.createExternalApiProfile('custom');
-}
-function onExternalProfileSelect(event: Event) {
-  settingsStore.setActiveExternalApiProfile((event.target as HTMLSelectElement).value);
 }
 function onExternalProfileNameChange(event: Event) {
   const input = event.target as HTMLInputElement;

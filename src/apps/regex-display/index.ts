@@ -1,7 +1,7 @@
 import { definePhoneApp } from '@/core/appRegistry';
 import { extension_settings } from '@sillytavern/scripts/extensions';
 import RegexDisplayApp from './RegexDisplayApp.vue';
-import { regexDisplayField, useRegexDisplayStore } from './store';
+import { RegexDisplaySettingsSchema, regexDisplayField, useRegexDisplayStore } from './store';
 
 export default definePhoneApp({
   id: 'regex-display',
@@ -13,12 +13,16 @@ export default definePhoneApp({
   defaultOrder: 125,
   backupDomains: [
     {
+      category: 'configuration',
       key: 'regex-display',
       exportData: () => _.get(extension_settings, regexDisplayField, {}),
       importData: data => {
         _.set(extension_settings, regexDisplayField, data);
       },
       rehydrateFromSettings: () => useRegexDisplayStore().rehydrateFromSettings(),
+      schema: RegexDisplaySettingsSchema,
+      schemaVersion: 1,
+      scope: 'global',
     },
   ],
   component: RegexDisplayApp,

@@ -23,12 +23,16 @@ export default definePhoneApp({
   defaultOrder: 134,
   backupDomains: [
     {
+      category: 'configuration',
       key: 'cloud-media',
       exportData: exportSettingsWithoutKeys,
       importData: data => {
         _.set(extension_settings, cloudMediaField, CloudMediaSettingsSchema.parse(data));
       },
       rehydrateFromSettings: () => useCloudMediaStore().rehydrateFromSettings(),
+      schema: CloudMediaSettingsSchema,
+      schemaVersion: 1,
+      scope: 'global',
     },
   ],
   component: CloudMediaApp,

@@ -15,7 +15,7 @@ import {
 import { parsePrettified } from '@/util/zod';
 import { extension_settings } from '@sillytavern/scripts/extensions';
 
-const ThemeBackupSchema = z.object({
+export const ThemeBackupSchema = z.object({
   customFont: CustomFontSettingsSchema.optional(),
   fontFamily: z.string().optional(),
   interfaceSize: InterfaceSizeSettingsSchema.optional(),
@@ -50,6 +50,7 @@ export default definePhoneApp({
   defaultOrder: 128,
   backupDomains: [
     {
+      category: 'configuration',
       key: 'theme',
       exportData: readThemeBackupData,
       importData: data => {
@@ -61,6 +62,9 @@ export default definePhoneApp({
         });
       },
       rehydrateFromSettings: () => useSettingsStore().rehydrateFromSettings(),
+      schema: ThemeBackupSchema,
+      schemaVersion: 1,
+      scope: 'global',
     },
   ],
   component: ThemeApp,

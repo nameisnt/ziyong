@@ -92,6 +92,7 @@
 import InfoHint from '@/components/InfoHint.vue';
 import { miniGameFields } from './fields';
 import { readMiniGameSettings, writeMiniGameSettings } from './miniGameStorage';
+import { MinesweeperSchema } from './backupSchemas';
 
 type Cell = { flag: boolean; id: number; mine: boolean; near: number; open: boolean };
 type BoardSize = 'large' | 'medium' | 'small';
@@ -108,21 +109,6 @@ const boardSizeOptions: Array<{ dimension: number; id: BoardSize; label: string 
   { dimension: 8, id: 'medium', label: '中 8×8' },
   { dimension: 10, id: 'large', label: '大 10×10' },
 ];
-
-const CellSchema = z.object({
-  flag: z.boolean().default(false),
-  id: z.number().int().min(0).max(99),
-  mine: z.boolean().default(false),
-  near: z.number().int().min(0).max(8).default(0),
-  open: z.boolean().default(false),
-});
-const MinesweeperSchema = z.object({
-  boardSize: z.enum(['large', 'medium', 'small']).default('medium'),
-  cells: z.array(CellSchema).max(100),
-  difficulty: z.enum(['easy', 'hard', 'normal']).default('normal'),
-  status: z.enum(['lost', 'playing', 'ready', 'won']).default('ready'),
-  wins: z.number().int().nonnegative().default(0),
-});
 
 type MinesweeperState = z.infer<typeof MinesweeperSchema>;
 

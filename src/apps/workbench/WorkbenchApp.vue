@@ -1,6 +1,15 @@
 <template>
   <section class="pc-workbench-app">
     <section class="pc-workbench-page">
+      <ConfigurationRecoveryNotice
+        v-if="configError"
+        :error="configError"
+        filename="sillytavern-phone-workbench-corrupted-data.json"
+        :raw-data="rawConfig"
+        @reset="resetCorruptedSettings"
+        @retry="workbench.rehydrateFromSettings"
+      />
+
       <div class="pc-compact-toolbar pc-directory-toolbar pc-workbench-toolbar">
         <span class="pc-directory-count">{{ workflows.length }} {{ t`个工作流` }}</span>
         <button class="pc-icon-btn" type="button" :title="t`新建流程`" @click="createWorkflow">
@@ -114,32 +123,13 @@
           <label class="pc-field-group">
             <span>{{ t`工作流默认 API` }}</span>
             <div class="pc-workflow-api-row">
-              <select
-                class="pc-select"
-                :value="getWorkflowProviderValue(workflow)"
-                @change="updateWorkflowProvider(workflow.id, ($event.target as HTMLSelectElement).value)"
-              >
-                <option value="">{{ t`跟随全局 API` }}</option>
-                <option value="tavern">{{ t`酒馆当前 API` }}</option>
-                <optgroup v-if="settings.textProvider.externalProfiles.length" :label="t`外部 API`">
-                  <option
-                    v-for="profile in settings.textProvider.externalProfiles"
-                    :key="profile.id"
-                    :value="`external:${profile.id}`"
-                  >
-                    {{ profile.name }}
-                  </option>
-                </optgroup>
-                <option
-                  v-if="
-                    workflow.apiMode === 'external' &&
-                    !settings.textProvider.externalProfiles.some(profile => profile.id === workflow.externalProfileId)
-                  "
-                  :value="`external:${workflow.externalProfileId}`"
-                >
-                  {{ t`外部 API 配置已失效` }}
-                </option>
-              </select>
+              <SearchableCombobox
+                :model-value="getWorkflowProviderValue(workflow)"
+                input-label="选择工作流默认 API"
+                :options="workflowProviderOptions(workflow)"
+                placeholder="跟随全局 API"
+                @update:model-value="updateWorkflowProvider(workflow.id, $event)"
+              />
               <button class="pc-icon-btn" type="button" :title="t`刷新酒馆预设`" @click="refreshTavernPresetNames">
                 <i class="fa-solid fa-rotate"></i>
               </button>
@@ -148,20 +138,13 @@
 
           <label class="pc-field-group">
             <span>{{ t`工作流默认预设` }}</span>
-            <select
-              class="pc-select"
-              :value="workflow.tavernPresetName"
-              @change="
-                workbench.updateWorkflow(workflow.id, {
-                  tavernPresetName: ($event.target as HTMLSelectElement).value,
-                })
-              "
-            >
-              <option value="">{{ t`跟随全局生成预设` }}</option>
-              <option v-for="presetName in tavernPresetNames" :key="presetName" :value="presetName">
-                {{ presetName }}
-              </option>
-            </select>
+            <SearchableCombobox
+              :model-value="workflow.tavernPresetName"
+              input-label="选择工作流默认预设"
+              :options="tavernPresetOptions(workflow.tavernPresetName)"
+              placeholder="跟随全局生成预设"
+              @update:model-value="workbench.updateWorkflow(workflow.id, { tavernPresetName: $event })"
+            />
           </label>
 
           <label v-if="workflow.sourceMode === 'recent'" class="pc-field-group">
@@ -200,20 +183,12 @@
           ></textarea>
 
           <section class="pc-step-picker">
-            <select
-              class="pc-field"
-              :value="selectedActions[workflow.id] || ''"
-              @change="selectedActions[workflow.id] = ($event.target as HTMLSelectElement).value"
-            >
-              <option value="">{{ t`选择要添加的生成步骤` }}</option>
-              <option
-                v-for="action in supportedWorkbenchActions"
-                :key="`${action.appId}/${action.actionId}`"
-                :value="`${action.appId}/${action.actionId}`"
-              >
-                {{ action.label }}
-              </option>
-            </select>
+            <SearchableCombobox
+              :model-value="selectedActions[workflow.id] || ''"
+              :options="workbenchActionOptions"
+              :placeholder="t`选择要添加的生成步骤`"
+              @update:model-value="selectedActions[workflow.id] = $event"
+            />
             <button class="pc-icon-btn" type="button" :title="t`新增步骤`" @click="addStep(workflow.id)">
               <i class="fa-solid fa-plus"></i>
             </button>
@@ -301,36 +276,21 @@
                     </label>
                     <label v-if="step.apiMode === 'external'" class="pc-field-group">
                       <span>{{ t`连接配置` }}</span>
-                      <select v-model="step.externalProfileId" class="pc-select">
-                        <option value="">{{ t`请选择外部 API 配置` }}</option>
-                        <option
-                          v-for="profile in settings.textProvider.externalProfiles"
-                          :key="profile.id"
-                          :value="profile.id"
-                        >
-                          {{ profile.name }}
-                        </option>
-                        <option
-                          v-if="
-                            step.externalProfileId &&
-                            !settings.textProvider.externalProfiles.some(
-                              profile => profile.id === step.externalProfileId,
-                            )
-                          "
-                          :value="step.externalProfileId"
-                        >
-                          {{ t`连接配置已失效` }}
-                        </option>
-                      </select>
+                      <SearchableCombobox
+                        v-model="step.externalProfileId"
+                        input-label="选择外部 API 配置"
+                        :options="externalProfileOptions(step.externalProfileId)"
+                        placeholder="请选择外部 API 配置"
+                      />
                     </label>
                     <label class="pc-field-group">
                       <span>{{ t`本步骤预设` }}</span>
-                      <select v-model="step.tavernPresetName" class="pc-select">
-                        <option value="">{{ t`跟随全局生成预设` }}</option>
-                        <option v-for="presetName in tavernPresetNames" :key="presetName" :value="presetName">
-                          {{ presetName }}
-                        </option>
-                      </select>
+                      <SearchableCombobox
+                        v-model="step.tavernPresetName"
+                        input-label="选择步骤预设"
+                        :options="tavernPresetOptions(step.tavernPresetName)"
+                        placeholder="跟随全局生成预设"
+                      />
                     </label>
                   </template>
                 </section>
@@ -338,20 +298,24 @@
                 <div v-if="step.appId === 'summary'" class="pc-step-config">
                   <label class="pc-field-group">
                     <span>{{ t`目标总结集` }}</span>
-                    <select v-model="step.config.summaryBookId" class="pc-select">
-                      <option value="">{{ t`工作台自动生成` }}</option>
-                      <option v-for="book in summaryBooks" :key="book.id" :value="book.id">{{ book.title }}</option>
-                    </select>
+                    <SearchableCombobox
+                      v-model="step.config.summaryBookId"
+                      input-label="选择目标总结集"
+                      :options="resourceOptions(summaryBooks, step.config.summaryBookId, '工作台自动生成', book => book.title)"
+                      placeholder="工作台自动生成"
+                    />
                   </label>
                 </div>
 
                 <div v-else-if="step.appId === 'diary'" class="pc-step-config">
                   <label class="pc-field-group">
                     <span>{{ t`目标日记书架` }}</span>
-                    <select v-model="step.config.diaryBookId" class="pc-select">
-                      <option value="">{{ t`按视角自动创建` }}</option>
-                      <option v-for="book in diaryBooks" :key="book.id" :value="book.id">{{ book.title }}</option>
-                    </select>
+                    <SearchableCombobox
+                      v-model="step.config.diaryBookId"
+                      input-label="选择目标日记书架"
+                      :options="resourceOptions(diaryBooks, step.config.diaryBookId, '按视角自动创建', book => book.title)"
+                      placeholder="按视角自动创建"
+                    />
                   </label>
                   <div v-if="!step.config.diaryBookId" class="pc-form-grid">
                     <label class="pc-field-group">
@@ -387,10 +351,12 @@
                 <div v-else-if="step.appId === 'extras'" class="pc-step-config">
                   <label class="pc-field-group">
                     <span>{{ t`目标番外` }}</span>
-                    <select v-model="step.config.extrasBookId" class="pc-select">
-                      <option value="">{{ t`工作台自动生成` }}</option>
-                      <option v-for="book in extrasBooks" :key="book.id" :value="book.id">{{ book.title }}</option>
-                    </select>
+                    <SearchableCombobox
+                      v-model="step.config.extrasBookId"
+                      input-label="选择目标番外"
+                      :options="resourceOptions(extrasBooks, step.config.extrasBookId, '工作台自动生成', book => book.title)"
+                      placeholder="工作台自动生成"
+                    />
                   </label>
                   <div class="pc-form-grid">
                     <label class="pc-field-group">
@@ -403,16 +369,13 @@
                     </label>
                     <label class="pc-field-group">
                       <span>{{ t`番外类型` }}</span>
-                      <select
-                        v-model="step.config.extrasTypeId"
-                        class="pc-select"
-                        @change="applyExtrasTypeDefaults(step)"
-                      >
-                        <option value="">{{ t`自定义或跟随番外` }}</option>
-                        <option v-for="prompt in extrasTypePrompts" :key="prompt.id" :value="prompt.id">
-                          {{ prompt.name }}
-                        </option>
-                      </select>
+                      <SearchableCombobox
+                        :model-value="step.config.extrasTypeId"
+                        input-label="选择番外类型"
+                        :options="resourceOptions(extrasTypePrompts, step.config.extrasTypeId, '自定义或跟随番外', prompt => prompt.name)"
+                        placeholder="自定义或跟随番外"
+                        @update:model-value="step.config.extrasTypeId = $event; applyExtrasTypeDefaults(step)"
+                      />
                     </label>
                   </div>
                   <input
@@ -427,10 +390,12 @@
                 <div v-else-if="step.appId === 'forum'" class="pc-step-config">
                   <label class="pc-field-group">
                     <span>{{ t`目标板块` }}</span>
-                    <select v-model="step.config.forumBoardId" class="pc-select">
-                      <option value="">{{ t`按名称创建或复用` }}</option>
-                      <option v-for="board in forumBoards" :key="board.id" :value="board.id">{{ board.name }}</option>
-                    </select>
+                    <SearchableCombobox
+                      v-model="step.config.forumBoardId"
+                      input-label="选择目标板块"
+                      :options="resourceOptions(forumBoards, step.config.forumBoardId, '按名称创建或复用', board => board.name)"
+                      placeholder="按名称创建或复用"
+                    />
                   </label>
                   <template v-if="!step.config.forumBoardId">
                     <input
@@ -441,16 +406,13 @@
                     />
                     <label class="pc-field-group">
                       <span>{{ t`板块类型` }}</span>
-                      <select
-                        v-model="step.config.forumBoardTypeId"
-                        class="pc-select"
-                        @change="applyForumTypeDefaults(step)"
-                      >
-                        <option value="">{{ t`自定义类型` }}</option>
-                        <option v-for="prompt in forumBoardTypePrompts" :key="prompt.id" :value="prompt.id">
-                          {{ prompt.name }}
-                        </option>
-                      </select>
+                      <SearchableCombobox
+                        :model-value="step.config.forumBoardTypeId"
+                        input-label="选择板块类型"
+                        :options="resourceOptions(forumBoardTypePrompts, step.config.forumBoardTypeId, '自定义类型', prompt => prompt.name)"
+                        placeholder="自定义类型"
+                        @update:model-value="step.config.forumBoardTypeId = $event; applyForumTypeDefaults(step)"
+                      />
                     </label>
                     <textarea
                       v-model="step.config.forumBoardTypePrompt"
@@ -464,16 +426,13 @@
                   <div class="pc-form-grid">
                     <label class="pc-field-group">
                       <span>{{ t`小剧场类型` }}</span>
-                      <select
-                        v-model="step.config.theaterTypeId"
-                        class="pc-select"
-                        @change="applyTheaterTypeDefaults(step)"
-                      >
-                        <option value="">{{ t`自定义类型` }}</option>
-                        <option v-for="prompt in theaterTypePrompts" :key="prompt.id" :value="prompt.id">
-                          {{ prompt.name }}
-                        </option>
-                      </select>
+                      <SearchableCombobox
+                        :model-value="step.config.theaterTypeId"
+                        input-label="选择小剧场类型"
+                        :options="resourceOptions(theaterTypePrompts, step.config.theaterTypeId, '自定义类型', prompt => prompt.name)"
+                        placeholder="自定义类型"
+                        @update:model-value="step.config.theaterTypeId = $event; applyTheaterTypeDefaults(step)"
+                      />
                     </label>
                     <label class="pc-field-group">
                       <span>{{ t`渲染方式` }}</span>
@@ -501,10 +460,12 @@
                 <div v-else-if="step.appId === 'letters'" class="pc-step-config">
                   <label class="pc-field-group">
                     <span>{{ t`目标书信分册` }}</span>
-                    <select v-model="step.config.letterBookId" class="pc-select">
-                      <option value="">{{ t`按双方自动创建` }}</option>
-                      <option v-for="book in letterBooks" :key="book.id" :value="book.id">{{ book.title }}</option>
-                    </select>
+                    <SearchableCombobox
+                      v-model="step.config.letterBookId"
+                      input-label="选择目标书信分册"
+                      :options="resourceOptions(letterBooks, step.config.letterBookId, '按双方自动创建', book => book.title)"
+                      placeholder="按双方自动创建"
+                    />
                   </label>
                   <div class="pc-form-grid">
                     <label class="pc-field-group">
@@ -560,16 +521,13 @@
                   <div class="pc-form-grid">
                     <label class="pc-field-group">
                       <span>{{ t`目标资料表` }}</span>
-                      <select
-                        v-model="step.config.profileTableId"
-                        class="pc-select"
-                        @change="syncProfileStepKind(step)"
-                      >
-                        <option value="">{{ t`按资料类型` }}</option>
-                        <option v-for="table in profileTables" :key="table.id" :value="table.id">
-                          {{ table.name }}
-                        </option>
-                      </select>
+                      <SearchableCombobox
+                        :model-value="step.config.profileTableId"
+                        input-label="选择目标资料表"
+                        :options="resourceOptions(profileTables, step.config.profileTableId, '按资料类型', table => table.name)"
+                        placeholder="按资料类型"
+                        @update:model-value="step.config.profileTableId = $event; syncProfileStepKind(step)"
+                      />
                     </label>
                     <label class="pc-field-group">
                       <span>{{ t`资料类型` }}</span>
@@ -594,25 +552,12 @@
                 <div v-else-if="step.appId === 'comfy'" class="pc-step-config">
                   <label class="pc-field-group">
                     <span>{{ t`ComfyUI 工作流` }}</span>
-                    <select v-model="step.config.comfyWorkflowId" class="pc-select">
-                      <option value="">{{ t`请选择工作流` }}</option>
-                      <option
-                        v-for="comfyWorkflow in comfySettings.workflows"
-                        :key="comfyWorkflow.id"
-                        :value="comfyWorkflow.id"
-                      >
-                        {{ comfyWorkflow.name }}
-                      </option>
-                      <option
-                        v-if="
-                          step.config.comfyWorkflowId &&
-                          !comfySettings.workflows.some(item => item.id === step.config.comfyWorkflowId)
-                        "
-                        :value="step.config.comfyWorkflowId"
-                      >
-                        {{ t`工作流已不存在` }}
-                      </option>
-                    </select>
+                    <SearchableCombobox
+                      v-model="step.config.comfyWorkflowId"
+                      input-label="选择 ComfyUI 工作流"
+                      :options="resourceOptions(comfySettings.workflows, step.config.comfyWorkflowId, '请选择工作流', item => item.name)"
+                      placeholder="请选择工作流"
+                    />
                   </label>
                 </div>
 
@@ -694,6 +639,8 @@
 
 <script setup lang="ts">
 import EmptyState from '@/components/EmptyState.vue';
+import ConfigurationRecoveryNotice from '@/components/ConfigurationRecoveryNotice.vue';
+import SearchableCombobox from '@/components/SearchableCombobox.vue';
 import { useComfyStore } from '@/apps/comfy/store';
 import { profileKindOptions, useProfilesStore } from '@/apps/profiles/store';
 import { usePhoneStore } from '@/store/phone';
@@ -716,7 +663,7 @@ const phone = usePhoneStore();
 const generationTasks = useGenerationTaskStore();
 const comfy = useComfyStore();
 const settingsStore = useSettingsStore();
-const { insertDrafts, logs, workflows } = storeToRefs(workbench);
+const { configError, insertDrafts, logs, rawConfig, workflows } = storeToRefs(workbench);
 const { settings } = storeToRefs(settingsStore);
 const { activeWorkflow: activeComfyWorkflow, settings: comfySettings } = storeToRefs(comfy);
 const { books: summaryBooks } = storeToRefs(useSummaryStore());
@@ -730,6 +677,12 @@ const { typePrompts } = storeToRefs(promptStore);
 const extrasTypePrompts = computed(() => typePrompts.value.filter(prompt => prompt.domain === 'extras'));
 const forumBoardTypePrompts = computed(() => typePrompts.value.filter(prompt => prompt.domain === 'forum-board'));
 const theaterTypePrompts = computed(() => typePrompts.value.filter(prompt => prompt.domain === 'theater'));
+const workbenchActionOptions = computed(() =>
+  supportedWorkbenchActions.map(action => ({
+    label: action.label,
+    value: `${action.appId}/${action.actionId}`,
+  })),
+);
 const openWorkflowIds = ref<string[]>([]);
 const selectedActions = reactive<Record<string, string>>({});
 const customTriggerWorkflowIds = ref<string[]>([]);
@@ -737,6 +690,31 @@ const collapsedStepIds = ref<string[]>([]);
 const insertDraftsOpen = ref(true);
 const logsOpen = ref(true);
 const tavernPresetNames = ref<string[]>([]);
+
+function resourceOptions<T extends { id: string }>(
+  resources: T[],
+  selected: string,
+  emptyLabel: string,
+  getLabel: (resource: T) => string,
+) {
+  const options = resources.map(resource => ({ label: getLabel(resource), value: resource.id }));
+  if (selected && !options.some(option => option.value === selected)) {
+    options.unshift({ label: '当前已选项已失效', value: selected });
+  }
+  return [{ label: emptyLabel, value: '' }, ...options];
+}
+
+async function resetCorruptedSettings() {
+  if (
+    !(await phone.confirmNotice('要重置工作台配置吗？这会替换无法读取的原始数据。', {
+      confirmLabel: '重置',
+      kind: 'warning',
+    }))
+  )
+    return;
+  workbench.resetCorruptedSettings();
+  toastr.success('已重置工作台配置');
+}
 
 function syncProfileStepKind(step: WorkbenchStep) {
   const table = profileTables.value.find(item => item.id === step.config.profileTableId);
@@ -852,6 +830,40 @@ function updateWorkflowProvider(workflowId: string, value: string) {
     apiMode: 'inherit',
     externalProfileId: '',
   });
+}
+
+function externalProfileOptions(selected: string) {
+  const profiles = settings.value.textProvider.externalProfiles;
+  const hasSelected = selected && profiles.some(profile => profile.id === selected);
+  return [
+    { label: '请选择外部 API 配置', value: '' },
+    ...(selected && !hasSelected ? [{ label: '连接配置已失效', value: selected }] : []),
+    ...profiles.map(profile => ({ label: profile.name, value: profile.id })),
+  ];
+}
+
+function tavernPresetOptions(selected: string) {
+  const names = new Set(tavernPresetNames.value);
+  if (selected) names.add(selected);
+  return [
+    { label: '跟随全局生成预设', value: '' },
+    ...[...names].filter(Boolean).map(name => ({ label: name, value: name })),
+  ];
+}
+
+function workflowProviderOptions(workflow: WorkbenchWorkflow) {
+  const selected = getWorkflowProviderValue(workflow);
+  const externalProfileId = workflow.externalProfileId;
+  const profiles = settings.value.textProvider.externalProfiles;
+  const hasSelectedProfile = externalProfileId && profiles.some(profile => profile.id === externalProfileId);
+  return [
+    { label: '跟随全局 API', value: '' },
+    { label: '酒馆当前 API', value: 'tavern' },
+    ...(selected.startsWith('external:') && !hasSelectedProfile
+      ? [{ label: '外部 API 配置已失效', value: selected }]
+      : []),
+    ...profiles.map(profile => ({ group: '外部 API', label: profile.name, value: `external:${profile.id}` })),
+  ];
 }
 
 function refreshTavernPresetNames() {

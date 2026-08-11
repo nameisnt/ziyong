@@ -16,7 +16,7 @@ const SnapshotSchema = z.object({
   status: z.enum(['lost', 'playing', 'won']).default('playing'),
 });
 
-const Game2048SettingsSchema = SnapshotSchema.extend({
+export const Game2048SettingsSchema = SnapshotSchema.extend({
   bestScore: z.number().int().nonnegative().default(0),
   keepPlaying: z.boolean().default(false),
   previous: SnapshotSchema.nullable().default(null),

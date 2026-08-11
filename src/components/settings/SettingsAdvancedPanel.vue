@@ -121,6 +121,7 @@ async function clearCurrentChatData() {
 async function clearAllGeneratedContent() {
   if (generationTasks.hasRunningTasks) return void toastr.warning('请先暂停正在运行的生成任务，再清空全部数据');
   const domains = getRegisteredPhoneBackupDomains()
+    .filter(domain => domain.scope === 'chat' && (domain.category === 'content' || domain.category === 'draft'))
     .map(domain => domain.key)
     .join('、');
   if (

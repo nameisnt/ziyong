@@ -1,6 +1,15 @@
 <template>
   <section class="pc-comfy-app">
     <section class="pc-comfy-page">
+      <ConfigurationRecoveryNotice
+        v-if="configError"
+        :error="configError"
+        filename="sillytavern-phone-comfy-corrupted-data.json"
+        :raw-data="rawConfig"
+        @reset="resetCorruptedSettings"
+        @retry="comfy.rehydrateFromSettings"
+      />
+
       <div class="pc-compact-toolbar pc-directory-toolbar pc-comfy-toolbar">
         <span class="pc-directory-count">{{ settings.lastCheckedAt ? t`已读取配置` : t`未连接` }}</span>
         <button
@@ -66,12 +75,13 @@
         </div>
         <label class="pc-field-group pc-inline-field">
           <span>{{ t`当前工作流` }}</span>
-          <select :value="settings.activeWorkflowId" class="pc-field pc-select" @change="selectWorkflow">
-            <option value="">{{ t`未选择` }}</option>
-            <option v-for="workflow in filteredWorkflows" :key="workflow.id" :value="workflow.id">
-              {{ workflow.name }} · {{ workflowKindLabel(workflow.kind) }}
-            </option>
-          </select>
+          <SearchableCombobox
+            :model-value="settings.activeWorkflowId"
+            input-label="选择当前工作流"
+            :options="workflowSelectOptions"
+            placeholder="未选择"
+            @update:model-value="selectWorkflow"
+          />
         </label>
         <div class="pc-grid two pc-workflow-meta-grid">
           <label class="pc-field-group pc-inline-field">
@@ -120,10 +130,13 @@
         <div v-show="runtimeParametersOpen" class="pc-runtime-grid">
           <label class="pc-field-group pc-inline-field">
             <span>{{ t`模型` }}</span>
-            <select v-if="settings.modelOptions.length" v-model="settings.checkpoint" class="pc-field pc-select">
-              <option value="">{{ t`跟随工作流` }}</option>
-              <option v-for="option in settings.modelOptions" :key="option" :value="option">{{ option }}</option>
-            </select>
+            <SearchableCombobox
+              v-if="settings.modelOptions.length"
+              v-model="settings.checkpoint"
+              input-label="选择模型"
+              :options="checkpointSelectOptions"
+              placeholder="跟随工作流"
+            />
             <input
               v-else
               v-model="settings.checkpoint"
@@ -134,10 +147,13 @@
           </label>
           <label class="pc-field-group pc-inline-field">
             <span>{{ t`采样器` }}</span>
-            <select v-if="settings.samplerOptions.length" v-model="settings.sampler" class="pc-field pc-select">
-              <option value="">{{ t`跟随工作流` }}</option>
-              <option v-for="option in settings.samplerOptions" :key="option" :value="option">{{ option }}</option>
-            </select>
+            <SearchableCombobox
+              v-if="settings.samplerOptions.length"
+              v-model="settings.sampler"
+              input-label="选择采样器"
+              :options="samplerSelectOptions"
+              placeholder="跟随工作流"
+            />
             <input
               v-else
               v-model="settings.sampler"
@@ -148,10 +164,13 @@
           </label>
           <label class="pc-field-group pc-inline-field">
             <span>{{ t`调度器` }}</span>
-            <select v-if="settings.schedulerOptions.length" v-model="settings.scheduler" class="pc-field pc-select">
-              <option value="">{{ t`跟随工作流` }}</option>
-              <option v-for="option in settings.schedulerOptions" :key="option" :value="option">{{ option }}</option>
-            </select>
+            <SearchableCombobox
+              v-if="settings.schedulerOptions.length"
+              v-model="settings.scheduler"
+              input-label="选择调度器"
+              :options="schedulerSelectOptions"
+              placeholder="跟随工作流"
+            />
             <input v-else v-model="settings.scheduler" class="pc-field" type="text" placeholder="normal" />
           </label>
           <label class="pc-field-group pc-inline-field">
@@ -228,15 +247,14 @@
                 </div>
                 <label v-if="getParameterMode(item) === 'user'" class="pc-field-group pc-inline-field">
                   <span>{{ t`参数值` }}</span>
-                  <select
+                  <SearchableCombobox
                     v-if="item.options.length"
-                    :value="getMappingValue(item)"
-                    class="pc-field pc-select"
-                    @change="updateMapping(item, { value: ($event.target as HTMLSelectElement).value })"
-                  >
-                    <option value="">{{ t`跟随工作流原值` }}</option>
-                    <option v-for="option in item.options" :key="option" :value="option">{{ option }}</option>
-                  </select>
+                    :model-value="getMappingValue(item)"
+                    :input-label="`${item.inputName} 参数值`"
+                    :options="workflowParameterSelectOptions(item)"
+                    placeholder="跟随工作流原值"
+                    @update:model-value="updateMapping(item, { value: $event })"
+                  />
                   <select
                     v-else-if="item.fieldKind === 'boolean'"
                     :value="getMappingValue(item)"
@@ -300,6 +318,8 @@
 
 <script setup lang="ts">
 import ActionMenu from '@/components/ActionMenu.vue';
+import ConfigurationRecoveryNotice from '@/components/ConfigurationRecoveryNotice.vue';
+import SearchableCombobox from '@/components/SearchableCombobox.vue';
 
 import {
   useComfyStore,
@@ -312,7 +332,7 @@ import { storeToRefs } from 'pinia';
 
 const comfy = useComfyStore();
 const phone = usePhoneStore();
-const { activeWorkflow, settings, workflowInputs } = storeToRefs(comfy);
+const { activeWorkflow, configError, rawConfig, settings, workflowInputs } = storeToRefs(comfy);
 const loading = ref(false);
 const importInputEl = ref<HTMLInputElement | null>(null);
 const activeKind = ref<ComfyWorkflowKind>('image');
@@ -338,6 +358,18 @@ const runtimeInputNames = new Set([
   'unet_name',
   'width',
 ]);
+
+async function resetCorruptedSettings() {
+  if (
+    !(await phone.confirmNotice('要重置 ComfyUI 配置吗？这会替换无法读取的原始数据。', {
+      confirmLabel: '重置',
+      kind: 'warning',
+    }))
+  )
+    return;
+  comfy.resetCorruptedSettings();
+  toastr.success('已重置 ComfyUI 配置');
+}
 const workflowParameterInputs = computed(() => workflowInputs.value.filter(item => !isRuntimeInput(item)));
 const workflowParameterGroups = computed(() => {
   const groups = new Map<string, { inputs: typeof workflowInputs.value; nodeId: string; nodeTitle: string }>();
@@ -357,6 +389,39 @@ const workflowParameterGroups = computed(() => {
 });
 const filteredWorkflows = computed(() =>
   settings.value.workflows.filter(workflow => workflow.kind === activeKind.value),
+);
+function createDynamicSelectOptions(values: string[], selected: string, emptyLabel: string) {
+  const uniqueValues = [...new Set(values.filter(Boolean))];
+  if (selected && !uniqueValues.includes(selected)) uniqueValues.unshift(selected);
+  return [
+    { label: emptyLabel, value: '' },
+    ...uniqueValues.map(value => ({ label: value, value })),
+  ];
+}
+const workflowSelectOptions = computed(() => {
+  const selected = settings.value.activeWorkflowId;
+  const workflows = filteredWorkflows.value;
+  const selectedWorkflow = settings.value.workflows.find(workflow => workflow.id === selected);
+  const availableWorkflows =
+    selectedWorkflow && !workflows.some(workflow => workflow.id === selectedWorkflow.id)
+      ? [selectedWorkflow, ...workflows]
+      : workflows;
+  return [
+    { label: '未选择', value: '' },
+    ...availableWorkflows.map(workflow => ({
+      label: `${workflow.name} · ${workflowKindLabel(workflow.kind)}`,
+      value: workflow.id,
+    })),
+  ];
+});
+const checkpointSelectOptions = computed(() =>
+  createDynamicSelectOptions(settings.value.modelOptions, settings.value.checkpoint, '跟随工作流'),
+);
+const samplerSelectOptions = computed(() =>
+  createDynamicSelectOptions(settings.value.samplerOptions, settings.value.sampler, '跟随工作流'),
+);
+const schedulerSelectOptions = computed(() =>
+  createDynamicSelectOptions(settings.value.schedulerOptions, settings.value.scheduler, '跟随工作流'),
 );
 const parameterModeSummary = computed(() => {
   const mappings = activeWorkflow.value?.paramMappings ?? {};
@@ -406,8 +471,8 @@ function selectKind(kind: ComfyWorkflowKind) {
   if (firstWorkflow) comfy.setActiveWorkflow(firstWorkflow.id);
 }
 
-function selectWorkflow(event: Event) {
-  comfy.setActiveWorkflow((event.target as HTMLSelectElement).value);
+function selectWorkflow(workflowId: string) {
+  comfy.setActiveWorkflow(workflowId);
 }
 
 function newWorkflow() {
@@ -503,6 +568,10 @@ function getMappingDescription(item: ComfyWorkflowInput) {
 function getMappingValue(item: ComfyWorkflowInput) {
   const value = getMapping(item).value;
   return value === item.currentValue ? '' : value;
+}
+
+function workflowParameterSelectOptions(item: ComfyWorkflowInput) {
+  return createDynamicSelectOptions(item.options, getMappingValue(item), '跟随工作流原值');
 }
 
 function isRuntimeInput(item: ComfyWorkflowInput) {
