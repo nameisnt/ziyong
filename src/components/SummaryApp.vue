@@ -1144,6 +1144,7 @@ async function removeEntry(bookId: string, entryId: string) {
 
 <style scoped>
 .pc-summary-app {
-  min-height: 100%;
+  height: 100%;
+  min-height: 0;
 }
 </style>

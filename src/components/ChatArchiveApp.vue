@@ -587,10 +587,17 @@ async function migrateSelectedChatToCurrent() {
   min-height: 64px;
 }
 
+.pc-owner-row {
+  grid-template-columns: 40px minmax(0, 1fr) 18px;
+  min-height: 56px;
+  gap: 10px;
+  padding: 8px 0;
+}
+
 .pc-owner-avatar {
-  width: 42px;
-  height: 42px;
-  border-radius: 15px;
+  width: 40px;
+  height: 40px;
+  border-radius: min(var(--pc-control-radius), 8px);
   display: grid;
   place-items: center;
   background: color-mix(in srgb, #2d9cdb 16%, var(--pc-surface) 84%);
@@ -602,6 +609,27 @@ async function migrateSelectedChatToCurrent() {
 .pc-chat-main {
   min-width: 0;
   flex: 1 1 auto;
+}
+
+.pc-owner-main {
+  display: grid;
+  gap: 2px;
+}
+
+.pc-owner-main strong {
+  font-size: 15px;
+  line-height: 1.35;
+}
+
+.pc-owner-main small {
+  font-size: 12px;
+  line-height: 1.3;
+}
+
+.pc-owner-row > i {
+  justify-self: end;
+  color: var(--pc-muted);
+  font-size: 13px;
 }
 
 .pc-owner-main strong,

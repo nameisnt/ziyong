@@ -72,4 +72,10 @@ const emit = defineEmits<{
   flex-direction: column;
   gap: 14px;
 }
+
+.pc-summary-detail-page {
+  height: 100%;
+  min-height: 0;
+  gap: 10px;
+}
 </style>

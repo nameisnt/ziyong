@@ -1,13 +1,16 @@
 <template>
   <div class="pc-settings-panel-stack">
-    <section class="pc-settings-card">
+    <section class="pc-page-section pc-settings-card">
       <div class="pc-row pc-row-top">
-        <div>
-          <strong>生成默认值</strong>
-          <p>{{ generationSummary }}</p>
-        </div>
-        <button class="pc-soft-btn compact" type="button" @click="settingsStore.resetGenerationDefaults()">
-          <i class="fa-solid fa-rotate-left"></i><span>默认</span>
+        <strong>生成默认值</strong>
+        <button
+          class="pc-icon-btn"
+          type="button"
+          title="恢复生成默认值"
+          aria-label="恢复生成默认值"
+          @click="settingsStore.resetGenerationDefaults()"
+        >
+          <i class="fa-solid fa-rotate-left"></i>
         </button>
       </div>
       <label class="pc-field-group"
@@ -28,19 +31,24 @@
           <select v-model="settings.generation.tavernPresetName" class="pc-select">
             <option value="">跟随酒馆当前预设</option>
             <option v-for="name in tavernPresetNames" :key="name" :value="name">{{ name }}</option></select
-          ><button class="pc-soft-btn compact" type="button" @click="refreshTavernPresetNames">
-            <i class="fa-solid fa-rotate"></i><span>刷新</span>
-          </button>
-        </div></label
-      >
+          ><button
+            class="pc-icon-btn"
+            type="button"
+            title="刷新酒馆预设列表"
+            aria-label="刷新酒馆预设列表"
+            @click="refreshTavernPresetNames"
+          >
+            <i class="fa-solid fa-rotate"></i>
+          </button></div
+      ></label>
       <label class="pc-field-group"
         ><span class="pc-field-label"
           >RPM 请求限制
           <InfoHint text="限制任意连续 60 秒内的生成请求数，0 表示不限制。重试和批量任务共享计数。" /></span
         ><input v-model.number="settings.generation.rpmLimit" class="pc-field" type="number" min="0" max="120"
       /></label>
-      <div class="pc-field-group">
-        <span class="pc-field-label">结果去向</span>
+      <div class="pc-connection-setting-row">
+        <strong>结果去向</strong>
         <div class="pc-segment">
           <button
             :class="['pc-segment-btn', { active: settings.generation.resultMode === 'preview' }]"
@@ -57,10 +65,10 @@
           </button>
         </div>
       </div>
-      <label class="pc-switch-row"
-        ><div><strong>默认开启流式</strong></div>
-        <span class="pc-checkbox"><input v-model="settings.generation.stream" type="checkbox" /></span
-      ></label>
+      <label class="pc-connection-setting-row">
+        <strong>默认开启流式</strong>
+        <span class="pc-toggle"><input v-model="settings.generation.stream" type="checkbox" /><span></span></span>
+      </label>
       <div class="pc-settings-subsection">
         <div class="pc-row pc-row-top">
           <strong
@@ -89,14 +97,17 @@
       </div>
     </section>
 
-    <section class="pc-settings-card">
+    <section class="pc-page-section pc-settings-card">
       <div class="pc-row pc-row-top">
-        <div>
-          <strong>文本通道</strong>
-          <p>{{ textProviderSummary }}</p>
-        </div>
-        <button class="pc-soft-btn compact" type="button" @click="settingsStore.resetTextProvider()">
-          <i class="fa-solid fa-rotate-left"></i><span>默认</span>
+        <strong>文本通道</strong>
+        <button
+          class="pc-icon-btn"
+          type="button"
+          title="恢复文本通道默认值"
+          aria-label="恢复文本通道默认值"
+          @click="settingsStore.resetTextProvider()"
+        >
+          <i class="fa-solid fa-rotate-left"></i>
         </button>
       </div>
       <div class="pc-segment">
@@ -214,13 +225,8 @@ import { useGenerationAliasesStore } from '@/store/generationAliases';
 import { usePhoneStore } from '@/store/phone';
 import { useSettingsStore } from '@/store/settings';
 import type { ExternalApiPresetId } from '@/type/settings';
-import { getLoadedPresetNameSafe, getPresetNamesSafe } from '@/util/runtime';
-import {
-  EXTERNAL_API_PRESETS,
-  formatTextProviderSummary,
-  getActiveExternalApiProfile,
-  resolveExternalApiProfileUrl,
-} from '@/util/textProvider';
+import { getPresetNamesSafe } from '@/util/runtime';
+import { EXTERNAL_API_PRESETS, getActiveExternalApiProfile, resolveExternalApiProfileUrl } from '@/util/textProvider';
 import { storeToRefs } from 'pinia';
 
 const aliases = useGenerationAliasesStore();
@@ -232,20 +238,6 @@ const tavernPresetNames = ref<string[]>([]);
 const apiKeyVisible = ref(false);
 const externalModelLoading = ref(false);
 const externalModelOptions = ref<Record<string, string[]>>({});
-const generationSummary = computed(() => {
-  const labels = {
-    none: '不使用聊天楼层',
-    latest: '最新楼层',
-    fromStart: '从头到指定楼层',
-    all: '全部楼层',
-    single: '指定单层',
-    recent: '最近 N 楼',
-    range: '自定义范围',
-  } as const;
-  const generation = settings.value.generation;
-  return `${labels[generation.sourceMode]} · 预设：${generation.tavernPresetName.trim() || getLoadedPresetNameSafe() || '当前'} · ${generation.resultMode === 'preview' ? '预览' : '直接保存'} · ${generation.stream ? '流式开' : '流式关'} · ${generation.rpmLimit ? `RPM ${generation.rpmLimit}` : 'RPM 不限'}`;
-});
-const textProviderSummary = computed(() => formatTextProviderSummary(settings.value.textProvider));
 const activeExternalProfile = computed(() => getActiveExternalApiProfile(settings.value.textProvider));
 const resolvedExternalApiUrl = computed(() =>
   activeExternalProfile.value ? resolveExternalApiProfileUrl(activeExternalProfile.value) : '',
@@ -376,16 +368,12 @@ onMounted(refreshTavernPresetNames);
 <style scoped>
 .pc-settings-panel-stack {
   display: grid;
-  gap: 14px;
+  gap: 0;
 }
 .pc-settings-card {
   display: flex;
   flex-direction: column;
   gap: 14px;
-  border: 1px solid var(--pc-border);
-  border-radius: var(--pc-card-radius);
-  padding: 16px;
-  background: color-mix(in srgb, var(--pc-surface) 82%, transparent 18%);
 }
 .pc-row {
   display: flex;
@@ -399,11 +387,19 @@ onMounted(refreshTavernPresetNames);
 .pc-row > div {
   min-width: 0;
 }
-.pc-row p {
-  margin: 4px 0 0;
-  color: var(--pc-muted);
-  font-size: 12px;
-  line-height: 1.45;
+.pc-connection-setting-row {
+  display: flex;
+  min-height: 42px;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+}
+.pc-connection-setting-row .pc-segment {
+  flex: 0 1 230px;
+  min-width: 0;
+}
+.pc-connection-setting-row .pc-segment-btn {
+  flex: 1;
 }
 .pc-preset-select-row {
   display: grid;

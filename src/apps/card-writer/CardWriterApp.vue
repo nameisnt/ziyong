@@ -848,11 +848,15 @@ onBeforeUnmount(stopWriter);
 
 .pc-card-writer-experience-options {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 7px;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 4px;
 }
 
 .pc-card-writer-experience-options .pc-soft-btn {
+  min-width: 0;
+  min-height: 32px;
+  padding: 0 2px;
+  font-size: 11px;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;

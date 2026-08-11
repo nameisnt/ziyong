@@ -1184,6 +1184,7 @@ function formatLabel(format: LetterFormat) {
 
 <style scoped>
 .pc-letters-app {
-  min-height: 100%;
+  height: 100%;
+  min-height: 0;
 }
 </style>

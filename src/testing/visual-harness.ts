@@ -2466,6 +2466,29 @@ async function applyScenario(name: VisualScenarioName, options: { height?: numbe
         throw new Error('Card writer target worldbook is missing or selected automatically');
       }
     }
+  } else if (name === 'archive-owner-list') {
+    resetPhoneToRoute('archive', 'root', '聊天档案');
+    await waitForPaint();
+    const unusedTab = [...document.querySelectorAll<HTMLButtonElement>('.pc-tab-row .pc-segment-btn')].find(button =>
+      button.textContent?.includes('未使用'),
+    );
+    if (!unusedTab) throw new Error('Archive unused-character tab is missing');
+    unusedTab.click();
+    await waitForPaint();
+    const ownerRow = document.querySelector<HTMLElement>('.pc-owner-row');
+    const avatar = ownerRow?.querySelector<HTMLElement>('.pc-owner-avatar');
+    const copy = ownerRow?.querySelector<HTMLElement>('.pc-owner-main');
+    const arrow = ownerRow?.querySelector<HTMLElement>('.fa-chevron-right');
+    if (!ownerRow || !avatar || !copy || !arrow) throw new Error('Archive character row is incomplete');
+    const rowRect = ownerRow.getBoundingClientRect();
+    const centers = [avatar, copy, arrow].map(element => {
+      const rect = element.getBoundingClientRect();
+      return rect.top + rect.height / 2;
+    });
+    if (rowRect.height > 64) throw new Error(`Archive character row is too tall: ${rowRect.height}px`);
+    if (Math.max(...centers) - Math.min(...centers) > 6) {
+      throw new Error('Archive character row content wrapped onto multiple lines');
+    }
   } else if (name === 'preset-detail') {
     resetPhoneToRoute('preset-manager', 'detail', '预设条目', { presetName: '视觉预设' });
   } else if (name === 'preset-copy-reorder') {
@@ -2836,6 +2859,10 @@ async function applyScenario(name: VisualScenarioName, options: { height?: numbe
     }
     if (appearance.color !== 'rgb(123, 63, 228)') {
       throw new Error('Reader text color did not reach the rendered content');
+    }
+    const renderedText = content.querySelector<HTMLElement>('h1, h2, h3, p, li, blockquote');
+    if (!renderedText || !getComputedStyle(renderedText).fontFamily.toLowerCase().includes('courier new')) {
+      throw new Error('Reader font family did not reach nested rendered text');
     }
   } else if (name === 'reader-footer-persistence') {
     const reader = useReaderStore();

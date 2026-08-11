@@ -894,17 +894,13 @@
 
 .pc-phone-root.pc-phone-root.pc-phone-root.pc-phone-root.pc-phone-root.pc-phone-root.pc-phone-root.pc-phone-root
   .pc-message-body.pc-message-body.pc-rendered-markdown
-  > *,
+  *,
 .pc-phone-root.pc-phone-root.pc-phone-root.pc-phone-root.pc-phone-root.pc-phone-root.pc-phone-root.pc-phone-root
-  .pc-message-body.pc-message-body.pc-rendered-markdown
-  :where(strong, em, span, li, blockquote),
+  .pc-detail-content.pc-reader-content
+  *,
 .pc-phone-root.pc-phone-root.pc-phone-root.pc-phone-root.pc-phone-root.pc-phone-root.pc-phone-root.pc-phone-root
-  .pc-detail-content.pc-detail-content.pc-rendered-markdown
-  > *,
-.pc-phone-root.pc-phone-root.pc-phone-root.pc-phone-root.pc-phone-root.pc-phone-root.pc-phone-root.pc-phone-root
-  .pc-detail-content.pc-detail-content.pc-rendered-markdown
-  :where(strong, em, span, li, blockquote) {
-  font-family: inherit !important;
+  .pc-detail-content.pc-reader-content {
+  font-family: var(--pc-reader-font-family) !important;
 }
 
 .pc-phone-root[data-reader-indent='true'] .pc-message-body.pc-rendered-markdown p,

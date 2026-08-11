@@ -270,7 +270,9 @@ function runFooterAction(event: 'bottom' | 'catalog' | 'next' | 'previous' | 'to
   display: flex;
   flex: 1 1 auto;
   flex-direction: column;
+  height: 100%;
   min-height: 0;
+  overflow: hidden;
 }
 
 .pc-reader-detail-card {

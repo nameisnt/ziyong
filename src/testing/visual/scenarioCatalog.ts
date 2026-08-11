@@ -34,6 +34,7 @@ export function createVisualScenarioGroups(rootAppScenarios: string[]): VisualSc
       scenarios: ['content-converter-source', 'content-converter-target', 'content-converter-complete'],
     },
     { id: 'card-writer', scenarios: ['card-writer-saved-preview'] },
+    { id: 'archive', scenarios: ['archive-owner-list'] },
     { id: 'bagu', scenarios: ['bagu-scan-actions', 'bagu-scan-applied'] },
     {
       id: 'settings',

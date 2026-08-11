@@ -40,22 +40,28 @@
           @input="settingsStore.setReaderLineHeight(numberValue($event))"
         />
       </div>
-      <label class="pc-toggle-row"
-        ><span><strong>首行缩进</strong></span
-        ><input
-          :checked="settings.reader.firstLineIndent"
-          type="checkbox"
-          @change="settingsStore.setReaderFirstLineIndent(checkedValue($event))"
-      /></label>
-      <label class="pc-toggle-row"
-        ><span><strong>每行空行</strong></span
-        ><input
-          :checked="settings.reader.blankLineBetweenLines"
-          type="checkbox"
-          @change="settingsStore.setReaderBlankLineBetweenLines(checkedValue($event))"
-      /></label>
-      <div class="pc-reader-version-position">
-        <span class="pc-field-label">版本切换位置</span>
+      <label class="pc-reader-setting-row">
+        <strong>首行缩进</strong>
+        <span class="pc-toggle">
+          <input
+            :checked="settings.reader.firstLineIndent"
+            type="checkbox"
+            @change="settingsStore.setReaderFirstLineIndent(checkedValue($event))"
+          /><span></span>
+        </span>
+      </label>
+      <label class="pc-reader-setting-row">
+        <strong>每行空行</strong>
+        <span class="pc-toggle">
+          <input
+            :checked="settings.reader.blankLineBetweenLines"
+            type="checkbox"
+            @change="settingsStore.setReaderBlankLineBetweenLines(checkedValue($event))"
+          /><span></span>
+        </span>
+      </label>
+      <div class="pc-reader-setting-row">
+        <strong>版本切换位置</strong>
         <div class="pc-segment" role="group" aria-label="版本切换位置">
           <button
             :class="['pc-segment-btn', { active: settings.reader.versionNavigatorPosition === 'before' }]"
@@ -237,7 +243,6 @@ function updateLayout(id: 'columns' | 'dock' | 'rows', value: number) {
 }
 .pc-row,
 .pc-control-row,
-.pc-toggle-row,
 .pc-inline-grid,
 .pc-settings-actions {
   display: flex;
@@ -245,8 +250,7 @@ function updateLayout(id: 'columns' | 'dock' | 'rows', value: number) {
   gap: 12px;
 }
 .pc-row-top,
-.pc-control-row,
-.pc-toggle-row {
+.pc-control-row {
   justify-content: space-between;
 }
 .pc-row > div,
@@ -259,12 +263,12 @@ function updateLayout(id: 'columns' | 'dock' | 'rows', value: number) {
   font-size: 12px;
   line-height: 1.45;
 }
-.pc-toggle-row {
-  min-height: 40px;
-}
-.pc-toggle-row input {
-  width: 20px;
-  height: 20px;
+.pc-reader-setting-row {
+  display: flex;
+  min-height: 42px;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
 }
 .pc-control-row input[type='range'] {
   min-width: 120px;
@@ -302,14 +306,11 @@ function updateLayout(id: 'columns' | 'dock' | 'rows', value: number) {
   font-size: 12px;
   text-align: right;
 }
-.pc-reader-version-position {
-  display: grid;
-  gap: 8px;
+.pc-reader-setting-row .pc-segment {
+  flex: 0 1 230px;
+  min-width: 0;
 }
-.pc-reader-version-position .pc-segment {
-  width: 100%;
-}
-.pc-reader-version-position .pc-segment-btn {
+.pc-reader-setting-row .pc-segment-btn {
   flex: 1;
 }
 .pc-control-row input[type='color'] {
