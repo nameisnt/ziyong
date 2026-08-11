@@ -269,13 +269,11 @@ const threadGenerationDraft = reactive({
   singleMessageId: 0,
   userRequirement: '',
 });
-const {
-  createAndSelectBoard: createAndSelectThreadBoard,
-  selectBoardType: selectThreadBoardType,
-} = useForumThreadGenerationBoardSession(threadGenerationDraft, {
-  customBoardTypeId: CUSTOM_BOARD_TYPE_ID,
-  notify: toastr,
-});
+const { createAndSelectBoard: createAndSelectThreadBoard, selectBoardType: selectThreadBoardType } =
+  useForumThreadGenerationBoardSession(threadGenerationDraft, {
+    customBoardTypeId: CUSTOM_BOARD_TYPE_ID,
+    notify: toastr,
+  });
 const replyGenerationDraft = reactive({
   fromStartEnd: 20,
   rangeText: '',
@@ -429,19 +427,19 @@ const editingThread = computed(() => {
   const threadId = route.value.params?.threadId;
   return route.value.page === 'thread-editor' && boardId && threadId ? forum.getThread(boardId, threadId) : null;
 });
-const {
-  selectBoardType: selectThreadEditorBoardType,
-  submit: submitThread,
-} = useForumThreadEditorSession(threadDraft, {
-  customBoardId: CUSTOM_BOARD_ID,
-  customBoardTypeId: CUSTOM_BOARD_TYPE_ID,
-  getActiveBoard: () => activeBoard.value,
-  getEditingThread: () => editingThread.value,
-  getThreadId: () => route.value.params?.threadId,
-  getVersionId: () => route.value.params?.versionId,
-  navigateToThread: (title, params) => phone.replacePage('thread', title, params),
-  notify: toastr,
-});
+const { selectBoardType: selectThreadEditorBoardType, submit: submitThread } = useForumThreadEditorSession(
+  threadDraft,
+  {
+    customBoardId: CUSTOM_BOARD_ID,
+    customBoardTypeId: CUSTOM_BOARD_TYPE_ID,
+    getActiveBoard: () => activeBoard.value,
+    getEditingThread: () => editingThread.value,
+    getThreadId: () => route.value.params?.threadId,
+    getVersionId: () => route.value.params?.versionId,
+    navigateToThread: (title, params) => phone.replacePage('thread', title, params),
+    notify: toastr,
+  },
+);
 const { removeBoard, removeForumVersion, removeThread } = useForumDeletionSession({
   confirmDelete: (message, confirmLabel) => phone.confirmNotice(message, { confirmLabel, kind: 'warning' }),
   getActiveBoard: () => activeBoard.value,
@@ -963,12 +961,10 @@ const { runReplyGeneration, runThreadGeneration, stopGeneration } = useForumGene
   viewedForumThread,
   viewedForumVersionId,
 });
-
 </script>
 
 <style scoped>
 .pc-forum-app {
   min-height: 100%;
 }
-
 </style>

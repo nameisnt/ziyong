@@ -470,19 +470,14 @@ const activePromptTab = ref<PromptTab>('app');
 const activeAppPromptGroupId = ref('');
 const activeAppPromptOpenKey = ref('');
 const activeTypePromptId = ref('');
-const {
-  removeQuickPhrase,
-  removeQuickPhraseGroup,
-  removeQuickTemplate,
-  removeQuickTemplateGroup,
-  removeTypePrompt,
-} = usePromptLibraryActions({
-  confirmNotice: phone.confirmNotice,
-  notify: toastr,
-  onTypePromptDeleted: promptId => {
-    if (activeTypePromptId.value === promptId) closeTypePromptDetail();
-  },
-});
+const { removeQuickPhrase, removeQuickPhraseGroup, removeQuickTemplate, removeQuickTemplateGroup, removeTypePrompt } =
+  usePromptLibraryActions({
+    confirmNotice: phone.confirmNotice,
+    notify: toastr,
+    onTypePromptDeleted: promptId => {
+      if (activeTypePromptId.value === promptId) closeTypePromptDetail();
+    },
+  });
 const {
   resetDefaults,
   restoreDefaultPrompt,
@@ -1356,5 +1351,4 @@ async function copyText(text: string, successMessage: string) {
   margin-top: 18px;
   justify-content: flex-end;
 }
-
 </style>

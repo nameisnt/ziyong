@@ -125,7 +125,9 @@ export function useForumGenerationActions(options: ForumGenerationActionsOptions
       }
 
       if (result.status === 'saved') {
-        toastr.success(options.threadGenerationMode.value === 'rewrite' ? '已保存并切换到主帖新版本' : '已生成并保存帖子');
+        toastr.success(
+          options.threadGenerationMode.value === 'rewrite' ? '已保存并切换到主帖新版本' : '已生成并保存帖子',
+        );
         void phone.presentGeneratedPage('forum', 'thread', result.data.title, {
           boardId: result.saved.board.id,
           threadId: result.saved.thread.id,

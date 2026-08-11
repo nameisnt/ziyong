@@ -62,7 +62,11 @@ export function useSummaryImport() {
           ...readerSettings.value,
           showUserMessages: true,
         });
-        if (!normalized || normalized.isUser || (!readerSettings.value.showHiddenAssistantMessages && normalized.isHidden)) {
+        if (
+          !normalized ||
+          normalized.isUser ||
+          (!readerSettings.value.showHiddenAssistantMessages && normalized.isHidden)
+        ) {
           return [];
         }
         return [normalized];

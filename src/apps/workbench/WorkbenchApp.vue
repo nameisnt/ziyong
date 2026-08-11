@@ -301,7 +301,9 @@
                     <SearchableCombobox
                       v-model="step.config.summaryBookId"
                       input-label="选择目标总结集"
-                      :options="resourceOptions(summaryBooks, step.config.summaryBookId, '工作台自动生成', book => book.title)"
+                      :options="
+                        resourceOptions(summaryBooks, step.config.summaryBookId, '工作台自动生成', book => book.title)
+                      "
                       placeholder="工作台自动生成"
                     />
                   </label>
@@ -313,7 +315,9 @@
                     <SearchableCombobox
                       v-model="step.config.diaryBookId"
                       input-label="选择目标日记书架"
-                      :options="resourceOptions(diaryBooks, step.config.diaryBookId, '按视角自动创建', book => book.title)"
+                      :options="
+                        resourceOptions(diaryBooks, step.config.diaryBookId, '按视角自动创建', book => book.title)
+                      "
                       placeholder="按视角自动创建"
                     />
                   </label>
@@ -354,7 +358,9 @@
                     <SearchableCombobox
                       v-model="step.config.extrasBookId"
                       input-label="选择目标番外"
-                      :options="resourceOptions(extrasBooks, step.config.extrasBookId, '工作台自动生成', book => book.title)"
+                      :options="
+                        resourceOptions(extrasBooks, step.config.extrasBookId, '工作台自动生成', book => book.title)
+                      "
                       placeholder="工作台自动生成"
                     />
                   </label>
@@ -372,9 +378,19 @@
                       <SearchableCombobox
                         :model-value="step.config.extrasTypeId"
                         input-label="选择番外类型"
-                        :options="resourceOptions(extrasTypePrompts, step.config.extrasTypeId, '自定义或跟随番外', prompt => prompt.name)"
+                        :options="
+                          resourceOptions(
+                            extrasTypePrompts,
+                            step.config.extrasTypeId,
+                            '自定义或跟随番外',
+                            prompt => prompt.name,
+                          )
+                        "
                         placeholder="自定义或跟随番外"
-                        @update:model-value="step.config.extrasTypeId = $event; applyExtrasTypeDefaults(step)"
+                        @update:model-value="
+                          step.config.extrasTypeId = $event;
+                          applyExtrasTypeDefaults(step);
+                        "
                       />
                     </label>
                   </div>
@@ -393,7 +409,9 @@
                     <SearchableCombobox
                       v-model="step.config.forumBoardId"
                       input-label="选择目标板块"
-                      :options="resourceOptions(forumBoards, step.config.forumBoardId, '按名称创建或复用', board => board.name)"
+                      :options="
+                        resourceOptions(forumBoards, step.config.forumBoardId, '按名称创建或复用', board => board.name)
+                      "
                       placeholder="按名称创建或复用"
                     />
                   </label>
@@ -409,9 +427,19 @@
                       <SearchableCombobox
                         :model-value="step.config.forumBoardTypeId"
                         input-label="选择板块类型"
-                        :options="resourceOptions(forumBoardTypePrompts, step.config.forumBoardTypeId, '自定义类型', prompt => prompt.name)"
+                        :options="
+                          resourceOptions(
+                            forumBoardTypePrompts,
+                            step.config.forumBoardTypeId,
+                            '自定义类型',
+                            prompt => prompt.name,
+                          )
+                        "
                         placeholder="自定义类型"
-                        @update:model-value="step.config.forumBoardTypeId = $event; applyForumTypeDefaults(step)"
+                        @update:model-value="
+                          step.config.forumBoardTypeId = $event;
+                          applyForumTypeDefaults(step);
+                        "
                       />
                     </label>
                     <textarea
@@ -429,9 +457,19 @@
                       <SearchableCombobox
                         :model-value="step.config.theaterTypeId"
                         input-label="选择小剧场类型"
-                        :options="resourceOptions(theaterTypePrompts, step.config.theaterTypeId, '自定义类型', prompt => prompt.name)"
+                        :options="
+                          resourceOptions(
+                            theaterTypePrompts,
+                            step.config.theaterTypeId,
+                            '自定义类型',
+                            prompt => prompt.name,
+                          )
+                        "
                         placeholder="自定义类型"
-                        @update:model-value="step.config.theaterTypeId = $event; applyTheaterTypeDefaults(step)"
+                        @update:model-value="
+                          step.config.theaterTypeId = $event;
+                          applyTheaterTypeDefaults(step);
+                        "
                       />
                     </label>
                     <label class="pc-field-group">
@@ -463,7 +501,9 @@
                     <SearchableCombobox
                       v-model="step.config.letterBookId"
                       input-label="选择目标书信分册"
-                      :options="resourceOptions(letterBooks, step.config.letterBookId, '按双方自动创建', book => book.title)"
+                      :options="
+                        resourceOptions(letterBooks, step.config.letterBookId, '按双方自动创建', book => book.title)
+                      "
                       placeholder="按双方自动创建"
                     />
                   </label>
@@ -524,9 +564,14 @@
                       <SearchableCombobox
                         :model-value="step.config.profileTableId"
                         input-label="选择目标资料表"
-                        :options="resourceOptions(profileTables, step.config.profileTableId, '按资料类型', table => table.name)"
+                        :options="
+                          resourceOptions(profileTables, step.config.profileTableId, '按资料类型', table => table.name)
+                        "
                         placeholder="按资料类型"
-                        @update:model-value="step.config.profileTableId = $event; syncProfileStepKind(step)"
+                        @update:model-value="
+                          step.config.profileTableId = $event;
+                          syncProfileStepKind(step);
+                        "
                       />
                     </label>
                     <label class="pc-field-group">
@@ -555,7 +600,14 @@
                     <SearchableCombobox
                       v-model="step.config.comfyWorkflowId"
                       input-label="选择 ComfyUI 工作流"
-                      :options="resourceOptions(comfySettings.workflows, step.config.comfyWorkflowId, '请选择工作流', item => item.name)"
+                      :options="
+                        resourceOptions(
+                          comfySettings.workflows,
+                          step.config.comfyWorkflowId,
+                          '请选择工作流',
+                          item => item.name,
+                        )
+                      "
                       placeholder="请选择工作流"
                     />
                   </label>

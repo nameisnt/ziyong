@@ -758,7 +758,35 @@
 }
 
 #tavern-phone-root,
-#tavern-phone-root :is(button, input, select, textarea, main, section, article, header, footer, nav, div, label, strong, small, span, p, h1, h2, h3, h4, h5, h6, ul, ol, li, blockquote) {
+#tavern-phone-root
+  :is(
+    button,
+    input,
+    select,
+    textarea,
+    main,
+    section,
+    article,
+    header,
+    footer,
+    nav,
+    div,
+    label,
+    strong,
+    small,
+    span,
+    p,
+    h1,
+    h2,
+    h3,
+    h4,
+    h5,
+    h6,
+    ul,
+    ol,
+    li,
+    blockquote
+  ) {
   font-family: var(--pc-font-sans) !important;
 }
 

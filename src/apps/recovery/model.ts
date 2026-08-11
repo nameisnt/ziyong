@@ -102,10 +102,7 @@ export function createRecoveryCharacters(characters: unknown[]): RecoveryCharact
   });
 }
 
-export function groupChatBackups(
-  backups: ChatBackupSummary[],
-  characters: RecoveryCharacter[],
-): ChatBackupGroup[] {
+export function groupChatBackups(backups: ChatBackupSummary[], characters: RecoveryCharacter[]): ChatBackupGroup[] {
   const characterByOwnerKey = new Map<string, RecoveryCharacter[]>();
   characters.forEach(character => {
     const matches = characterByOwnerKey.get(character.ownerKey) ?? [];
@@ -117,17 +114,30 @@ export function groupChatBackups(
     const candidates = characterByOwnerKey.get(backup.ownerKey) ?? [];
     const kind = candidates.length === 1 ? 'character' : candidates.length > 1 ? 'conflict' : 'unknown';
     const id = kind === 'character' ? `character:${candidates[0]!.id}` : `${kind}:${backup.ownerKey || 'unparsed'}`;
-    const label = kind === 'character' ? candidates[0]!.name : kind === 'conflict' ? '角色卡匹配冲突' : '已删除或未识别的角色卡';
+    const label =
+      kind === 'character' ? candidates[0]!.name : kind === 'conflict' ? '角色卡匹配冲突' : '已删除或未识别的角色卡';
     const existing = groups.get(id) ?? {
-      backups: [], character: kind === 'character' ? candidates[0]! : null,
-      conflictCharacters: kind === 'conflict' ? candidates : [], id, kind, label,
+      backups: [],
+      character: kind === 'character' ? candidates[0]! : null,
+      conflictCharacters: kind === 'conflict' ? candidates : [],
+      id,
+      kind,
+      label,
     };
     existing.backups.push(backup);
     groups.set(id, existing);
   });
   return [...groups.values()]
-    .map(group => ({ ...group, backups: [...group.backups].sort((a, b) => b.lastMessageAt - a.lastMessageAt || a.fileName.localeCompare(b.fileName)) }))
-    .sort((a, b) => Number(b.kind === 'character') - Number(a.kind === 'character') || a.label.localeCompare(b.label, 'zh-CN'));
+    .map(group => ({
+      ...group,
+      backups: [...group.backups].sort(
+        (a, b) => b.lastMessageAt - a.lastMessageAt || a.fileName.localeCompare(b.fileName),
+      ),
+    }))
+    .sort(
+      (a, b) =>
+        Number(b.kind === 'character') - Number(a.kind === 'character') || a.label.localeCompare(b.label, 'zh-CN'),
+    );
 }
 
 export function parseChatBackupJsonl(text: string): ParsedChatBackup {
@@ -151,7 +161,8 @@ export function parseChatBackupJsonl(text: string): ParsedChatBackup {
   }
   const messages = parsed.slice(1).map((message, index) => {
     const extra = isRecord(message.extra) ? message.extra : null;
-    const name = textValue(message.name) || (message.is_user ? textValue(header.user_name) : textValue(header.character_name));
+    const name =
+      textValue(message.name) || (message.is_user ? textValue(header.user_name) : textValue(header.character_name));
     return {
       content: textValue(extra?.display_text) || textValue(message.mes),
       id: `backup-message-${index}`,

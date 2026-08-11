@@ -28,7 +28,8 @@ function readSettings(raw: unknown): SettingsReadResult {
   }
   const settings = parsed.data;
   if (
-    settings.template.trim() === '<phone-entry data-title="{{title}}" data-source="{{source}}">\n{{content}}\n</phone-entry>' ||
+    settings.template.trim() ===
+      '<phone-entry data-title="{{title}}" data-source="{{source}}">\n{{content}}\n</phone-entry>' ||
     settings.template.trim() === '{{content}}\n\n{{references}}'
   ) {
     settings.template = '{{references}}';

@@ -5,7 +5,10 @@ import type { ExtraChapterGenerationRecord } from '@/type/extra';
 import { createVisualScenarioGroups, flattenVisualScenarioGroups } from '@/testing/visual/scenarioCatalog';
 import { applySettingsVisualScenario } from '@/testing/visual/settingsScenarios';
 import { applyForumGenerationVisualScenario, createForumFixture } from '@/testing/visual/forumGenerationScenarios';
-import { applyExtrasGenerationVisualScenario, createExtrasSummaryFixture } from '@/testing/visual/extrasGenerationScenarios';
+import {
+  applyExtrasGenerationVisualScenario,
+  createExtrasSummaryFixture,
+} from '@/testing/visual/extrasGenerationScenarios';
 import { applyPromptsVisualScenario } from '@/testing/visual/promptsScenarios';
 import {
   applyContentBookVisualScenario,
@@ -2511,7 +2514,10 @@ async function applyScenario(name: VisualScenarioName, options: { height?: numbe
     const message = messages[0];
     if (!message) throw new Error('Reader appearance fixture did not create a message');
     resetPhoneToRoute('reader', 'detail', message.title, { messageId: message.id });
-    const contentLoaded = await waitForVisualCondition(() => Boolean(document.querySelector('.pc-reader-content')), 2_000);
+    const contentLoaded = await waitForVisualCondition(
+      () => Boolean(document.querySelector('.pc-reader-content')),
+      2_000,
+    );
     if (!contentLoaded) throw new Error('Reader appearance content did not finish loading');
     const content = document.querySelector<HTMLElement>('.pc-reader-content');
     if (!content) throw new Error('Reader appearance content is missing');
@@ -3058,7 +3064,10 @@ async function applyScenario(name: VisualScenarioName, options: { height?: numbe
     aliasInputs[1].value = '藤丸立香';
     aliasInputs[1].dispatchEvent(new Event('input', { bubbles: true }));
     await waitForPaint();
-    if (String(generationAliases.charReplacement) !== '玛修' || String(generationAliases.userReplacement) !== '藤丸立香') {
+    if (
+      String(generationAliases.charReplacement) !== '玛修' ||
+      String(generationAliases.userReplacement) !== '藤丸立香'
+    ) {
       throw new Error('Generation alias inputs did not update the chat-scoped alias store');
     }
     const swapAliasButton = document.querySelector<HTMLButtonElement>(
@@ -3067,7 +3076,10 @@ async function applyScenario(name: VisualScenarioName, options: { height?: numbe
     if (!swapAliasButton) throw new Error('Generation alias swap action is missing');
     swapAliasButton.click();
     await waitForPaint();
-    if (String(generationAliases.charReplacement) !== '藤丸立香' || String(generationAliases.userReplacement) !== '玛修') {
+    if (
+      String(generationAliases.charReplacement) !== '藤丸立香' ||
+      String(generationAliases.userReplacement) !== '玛修'
+    ) {
       throw new Error('Generation alias swap action did not update both values');
     }
     swapAliasButton.click();

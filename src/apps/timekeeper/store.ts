@@ -156,7 +156,8 @@ function normalizeSettings(raw: unknown): TimekeeperSettings {
       eraName: typeof source.eraName === 'string' ? source.eraName : '世界历',
       id: 'manual',
       kind: 'fixed',
-      monthDaysText: typeof source.monthDaysText === 'string' ? source.monthDaysText : String(source.daysPerMonth || 30),
+      monthDaysText:
+        typeof source.monthDaysText === 'string' ? source.monthDaysText : String(source.daysPerMonth || 30),
       monthsPerYear: Number(source.monthsPerYear) || 12,
       name: '手动历法',
     };

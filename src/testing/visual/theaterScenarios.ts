@@ -43,7 +43,9 @@ export async function applyTheaterVisualScenario(name: string, context: TheaterS
     const entry = createTheaterFixture();
     const requirement = '小剧场当前版本的隐藏追加要求。';
     entry.generationRecord = context.createHiddenGenerationRecord('generate', requirement, {
-      renderMode: entry.renderMode, typeId: entry.typeId, typeName: entry.typeName,
+      renderMode: entry.renderMode,
+      typeId: entry.typeId,
+      typeName: entry.typeName,
     });
     resetPhoneToRoute('theater', 'generate', '重写小剧场', { rewriteEntryId: entry.id, typeId: entry.typeId || '' });
     await waitForPaint();
@@ -54,7 +56,8 @@ export async function applyTheaterVisualScenario(name: string, context: TheaterS
     const settingsStore = useSettingsStore();
     const hostThemeOverride = document.createElement('style');
     hostThemeOverride.id = 'visual-host-theme-override';
-    hostThemeOverride.textContent = 'textarea:not(#send_textarea) { background-color: rgb(255, 255, 255) !important; color: rgb(60, 60, 70) !important; }';
+    hostThemeOverride.textContent =
+      'textarea:not(#send_textarea) { background-color: rgb(255, 255, 255) !important; color: rgb(60, 60, 70) !important; }';
     document.head.append(hostThemeOverride);
     settingsStore.setTheme('dark');
     settingsStore.settings.visualTheme.backgroundColor = '#242129';
@@ -69,7 +72,8 @@ export async function applyTheaterVisualScenario(name: string, context: TheaterS
       const style = getComputedStyle(textarea);
       const background = style.backgroundColor.replace(/\s+/g, '');
       const color = style.color.replace(/\s+/g, '');
-      if (background !== 'rgb(44,44,46)' || color !== 'rgb(245,245,247)') throw new Error(`Theater dark input colors are invalid: ${background} / ${color}`);
+      if (background !== 'rgb(44,44,46)' || color !== 'rgb(245,245,247)')
+        throw new Error(`Theater dark input colors are invalid: ${background} / ${color}`);
     });
   } else if (name === 'theater-editor') {
     const entry = createTheaterFixture();
@@ -77,24 +81,47 @@ export async function applyTheaterVisualScenario(name: string, context: TheaterS
   } else if (name === 'theater-frontend-footer') {
     const theater = useTheaterStore();
     theater.resetCurrentScope();
-    const entry = theater.createEntry({ content: '<main><button type="button">网页内部按钮</button><p>网页渲染正文</p></main>', participants: [], renderMode: 'frontend', title: '网页渲染底栏测试', typeName: '网页测试' });
+    const entry = theater.createEntry({
+      content: '<main><button type="button">网页内部按钮</button><p>网页渲染正文</p></main>',
+      participants: [],
+      renderMode: 'frontend',
+      title: '网页渲染底栏测试',
+      typeName: '网页测试',
+    });
     resetPhoneToRoute('theater', 'entry', entry.title, { entryId: entry.id });
     await waitForPaint();
-    if (!document.querySelector('.pc-reader-footer-popover')) throw new Error('Frontend theater detail did not keep its footer visible');
+    if (!document.querySelector('.pc-reader-footer-popover'))
+      throw new Error('Frontend theater detail did not keep its footer visible');
   } else if (name === 'theater-history') {
     createTheaterFixture();
     const theater = useTheaterStore();
-    Array.from({ length: 18 }, (_, index) => theater.createEntry({ content: `标签筛选测试正文 ${index + 1}`, participants: [], renderMode: 'markdown', title: `标签筛选测试 ${index + 1}`, typeName: `类型 ${index + 1}` }));
+    Array.from({ length: 18 }, (_, index) =>
+      theater.createEntry({
+        content: `标签筛选测试正文 ${index + 1}`,
+        participants: [],
+        renderMode: 'markdown',
+        title: `标签筛选测试 ${index + 1}`,
+        typeName: `类型 ${index + 1}`,
+      }),
+    );
     resetPhoneToRoute('theater', 'history', '小剧场记录');
     await waitForPaint();
     document.querySelector<HTMLButtonElement>('.pc-theater-filter-toggle')?.click();
     await waitForPaint();
     const tagList = document.querySelector<HTMLElement>('.pc-history-tag-list');
-    if (!tagList || tagList.scrollHeight <= tagList.clientHeight) throw new Error('Theater history tag panel did not constrain a long tag list');
+    if (!tagList || tagList.scrollHeight <= tagList.clientHeight)
+      throw new Error('Theater history tag panel did not constrain a long tag list');
   } else if (name === 'theater-failed-draft') {
     const theater = useTheaterStore();
     theater.resetCurrentScope();
-    const draft = theater.createFailedDraft({ actionId: 'generate', appId: 'theater', context: { renderMode: 'frontend' }, rawOutput: '<theater><title>未闭合</title><content>等待修复的小剧场', source: visualSource(), warnings: ['缺少结束标签'] });
+    const draft = theater.createFailedDraft({
+      actionId: 'generate',
+      appId: 'theater',
+      context: { renderMode: 'frontend' },
+      rawOutput: '<theater><title>未闭合</title><content>等待修复的小剧场',
+      source: visualSource(),
+      warnings: ['缺少结束标签'],
+    });
     resetPhoneToRoute('theater', 'failed-draft', '解析失败草稿', { draftId: draft.id });
   } else {
     return false;
@@ -103,5 +130,13 @@ export async function applyTheaterVisualScenario(name: string, context: TheaterS
 }
 
 function visualSource() {
-  return { chatIdAtGeneration: 'visual-theater-chat', label: '第 6-18 楼', messageIds: [], mode: 'range' as const, ranges: [{ end: 18, start: 6 }], scopeId: 'visual-theater-scope', sortKey: 18 };
+  return {
+    chatIdAtGeneration: 'visual-theater-chat',
+    label: '第 6-18 楼',
+    messageIds: [],
+    mode: 'range' as const,
+    ranges: [{ end: 18, start: 6 }],
+    scopeId: 'visual-theater-scope',
+    sortKey: 18,
+  };
 }

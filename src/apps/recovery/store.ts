@@ -54,7 +54,8 @@ export const useChatRecoveryStore = defineStore('chat-recovery', () => {
       status.value = 'ready';
     } catch (caughtError) {
       error.value = caughtError instanceof Error ? caughtError.message : '读取聊天备份失败';
-      status.value = caughtError instanceof Error && caughtError.name === 'RecoveryApiUnavailableError' ? 'unsupported' : 'ready';
+      status.value =
+        caughtError instanceof Error && caughtError.name === 'RecoveryApiUnavailableError' ? 'unsupported' : 'ready';
     } finally {
       loading.value = false;
     }
@@ -105,7 +106,8 @@ export const useChatRecoveryStore = defineStore('chat-recovery', () => {
         const currentCharacters = createRecoveryCharacters(rawCharacters);
         const expected = resolveCurrentTarget(targetId);
         const target = currentCharacters.find(
-          character => character.id === expected.id && character.avatar === expected.avatar && character.name === expected.name,
+          character =>
+            character.id === expected.id && character.avatar === expected.avatar && character.name === expected.name,
         );
         if (!target) throw new Error('目标角色卡在确认后发生变化，已停止导入');
         const fileName = await importNativeCharacterBackup(loaded.blob, loaded.summary, target);

@@ -101,7 +101,9 @@ const draft = reactive<{
 });
 
 const canUseLabelParser = computed(() => draft.parser.fields.every(field => field.kind === 'text'));
-const canUsePlainTextParser = computed(() => draft.parser.fields.length === 1 && draft.parser.fields[0]?.kind === 'text');
+const canUsePlainTextParser = computed(
+  () => draft.parser.fields.length === 1 && draft.parser.fields[0]?.kind === 'text',
+);
 
 function loadDraft() {
   const override = outputRules.value[props.definition.id];

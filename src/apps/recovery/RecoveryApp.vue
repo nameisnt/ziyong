@@ -3,13 +3,31 @@
     <section v-if="route.page === 'root'" class="pc-recovery-page">
       <div class="pc-compact-toolbar pc-recovery-toolbar">
         <input v-model="query" class="pc-field" type="search" placeholder="搜索角色或备份文件" />
-        <button class="pc-icon-btn" type="button" :disabled="recovery.loading" title="刷新备份书架" @click="recovery.refresh">
+        <button
+          class="pc-icon-btn"
+          type="button"
+          :disabled="recovery.loading"
+          title="刷新备份书架"
+          @click="recovery.refresh"
+        >
           <i :class="['fa-solid fa-rotate', { spinning: recovery.loading }]"></i>
         </button>
       </div>
       <div class="pc-segment pc-recovery-sort" aria-label="备份排序">
-        <button :class="['pc-segment-btn', { active: sortMode === 'recent' }]" type="button" @click="sortMode = 'recent'">最近备份</button>
-        <button :class="['pc-segment-btn', { active: sortMode === 'character' }]" type="button" @click="sortMode = 'character'">角色名称</button>
+        <button
+          :class="['pc-segment-btn', { active: sortMode === 'recent' }]"
+          type="button"
+          @click="sortMode = 'recent'"
+        >
+          最近备份
+        </button>
+        <button
+          :class="['pc-segment-btn', { active: sortMode === 'character' }]"
+          type="button"
+          @click="sortMode = 'character'"
+        >
+          角色名称
+        </button>
       </div>
 
       <article v-if="recovery.error" class="pc-section-card pc-recovery-error">
@@ -27,7 +45,9 @@
             <span class="pc-recovery-shelf-copy">
               <strong>{{ group.label }}</strong>
               <small>{{ group.backups.length }} 份备份 · 最近 {{ formatDate(group.backups[0]?.lastMessageAt) }}</small>
-              <small v-if="group.kind === 'conflict'">匹配到：{{ group.conflictCharacters.map(item => item.name).join('、') }}</small>
+              <small v-if="group.kind === 'conflict'"
+                >匹配到：{{ group.conflictCharacters.map(item => item.name).join('、') }}</small
+              >
             </span>
           </header>
           <div class="pc-recovery-books">
@@ -77,8 +97,13 @@
           <div class="pc-recovery-readonly-banner">
             <strong><i class="fa-solid fa-lock"></i> 备份只读视图</strong>
             <small>{{ loaded.summary.fileName }}</small>
-            <small>{{ loaded.summary.fileSize }} · {{ loaded.parsed.messages.length }} 层 · {{ formatDate(loaded.summary.lastMessageAt) }}</small>
-            <small v-if="loaded.messageCountMismatch" class="pc-recovery-count-warning">{{ loaded.messageCountMismatch }}</small>
+            <small
+              >{{ loaded.summary.fileSize }} · {{ loaded.parsed.messages.length }} 层 ·
+              {{ formatDate(loaded.summary.lastMessageAt) }}</small
+            >
+            <small v-if="loaded.messageCountMismatch" class="pc-recovery-count-warning">{{
+              loaded.messageCountMismatch
+            }}</small>
           </div>
         </template>
         <template #meta>
@@ -86,11 +111,22 @@
           <span v-if="activeMessage.isHidden" class="pc-hidden-pill">隐藏</span>
         </template>
         <template #actions>
-          <button class="pc-soft-btn" type="button" title="返回备份书架" @click="returnToShelf"><i class="fa-solid fa-arrow-left"></i></button>
-          <button class="pc-primary-btn" type="button" title="导入此备份" @click="openImportConfirm"><i class="fa-solid fa-file-import"></i></button>
+          <button class="pc-soft-btn" type="button" title="返回备份书架" @click="returnToShelf">
+            <i class="fa-solid fa-arrow-left"></i>
+          </button>
+          <button class="pc-primary-btn" type="button" title="导入此备份" @click="openImportConfirm">
+            <i class="fa-solid fa-file-import"></i>
+          </button>
         </template>
         <template #overlays>
-          <CatalogModal :active-id="activeMessage.id" :items="catalogItems" :open="catalogOpen" title="备份楼层" @close="catalogOpen = false" @select="selectCatalogMessage" />
+          <CatalogModal
+            :active-id="activeMessage.id"
+            :items="catalogItems"
+            :open="catalogOpen"
+            title="备份楼层"
+            @close="catalogOpen = false"
+            @select="selectCatalogMessage"
+          />
         </template>
       </ReaderDetailShell>
       <EmptyState v-else title="这份备份只有 metadata，没有聊天楼层">
@@ -103,20 +139,44 @@
       <article class="pc-section-card pc-recovery-confirm-card">
         <strong>确认原生导入</strong>
         <dl class="pc-recovery-details">
-          <div><dt>来源</dt><dd>{{ loaded.summary.fileName }}</dd></div>
-          <div><dt>备份</dt><dd>{{ loaded.parsed.messages.length }} 层 · {{ formatDate(loaded.summary.lastMessageAt) }}</dd></div>
-          <div><dt>识别角色</dt><dd>{{ loaded.parsed.characterName || 'metadata 未记录' }}</dd></div>
+          <div>
+            <dt>来源</dt>
+            <dd>{{ loaded.summary.fileName }}</dd>
+          </div>
+          <div>
+            <dt>备份</dt>
+            <dd>{{ loaded.parsed.messages.length }} 层 · {{ formatDate(loaded.summary.lastMessageAt) }}</dd>
+          </div>
+          <div>
+            <dt>识别角色</dt>
+            <dd>{{ loaded.parsed.characterName || 'metadata 未记录' }}</dd>
+          </div>
         </dl>
         <label class="pc-field-group">
           <span class="pc-field-label">目标角色卡</span>
-          <SearchableCombobox v-model="selectedTargetId" input-label="选择导入目标角色卡" :options="targetOptions" placeholder="必须选择角色卡" />
+          <SearchableCombobox
+            v-model="selectedTargetId"
+            input-label="选择导入目标角色卡"
+            :options="targetOptions"
+            placeholder="必须选择角色卡"
+          />
         </label>
-        <p class="pc-recovery-safety-note"><i class="fa-solid fa-shield-halved"></i> 将作为一份新聊天导入，不覆盖当前聊天，不删除原备份，也不复制插件 scope 数据。</p>
+        <p class="pc-recovery-safety-note">
+          <i class="fa-solid fa-shield-halved"></i> 将作为一份新聊天导入，不覆盖当前聊天，不删除原备份，也不复制插件
+          scope 数据。
+        </p>
         <p v-if="loaded.messageCountMismatch" class="pc-recovery-warning">{{ loaded.messageCountMismatch }}</p>
       </article>
       <div class="pc-form-actions">
-        <button class="pc-soft-btn" type="button" :disabled="recovery.importing" @click="phone.goBack()">返回阅读</button>
-        <button class="pc-primary-btn" type="button" :disabled="!selectedTargetId || Boolean(loaded.messageCountMismatch) || recovery.importing" @click="confirmImport">
+        <button class="pc-soft-btn" type="button" :disabled="recovery.importing" @click="phone.goBack()">
+          返回阅读
+        </button>
+        <button
+          class="pc-primary-btn"
+          type="button"
+          :disabled="!selectedTargetId || Boolean(loaded.messageCountMismatch) || recovery.importing"
+          @click="confirmImport"
+        >
           {{ recovery.importing ? '正在导入…' : '确认导入为新聊天' }}
         </button>
       </div>
@@ -128,11 +188,20 @@
         <strong>酒馆已创建新的导入聊天</strong>
         <p>{{ recovery.importResult.fileName }}</p>
         <small>目标角色：{{ recovery.importResult.target.name }}</small>
-        <p v-if="!recovery.importResult.verified" class="pc-recovery-warning">聊天列表暂未确认到新文件，请勿重复导入；可返回书架刷新后检查。</p>
+        <p v-if="!recovery.importResult.verified" class="pc-recovery-warning">
+          聊天列表暂未确认到新文件，请勿重复导入；可返回书架刷新后检查。
+        </p>
       </article>
       <div class="pc-form-actions">
         <button class="pc-soft-btn" type="button" @click="returnToShelf">返回书架</button>
-        <button class="pc-primary-btn" type="button" :disabled="!recovery.importResult.verified" @click="openImportedChat">打开导入后的聊天</button>
+        <button
+          class="pc-primary-btn"
+          type="button"
+          :disabled="!recovery.importResult.verified"
+          @click="openImportedChat"
+        >
+          打开导入后的聊天
+        </button>
       </div>
     </section>
 
@@ -165,19 +234,34 @@ const selectedTargetId = ref('');
 const localError = ref('');
 
 const activeMessage = computed(() => loaded.value?.parsed.messages[messageIndex.value] ?? null);
-const catalogItems = computed(() =>
-  loaded.value?.parsed.messages.map(message => ({ id: message.id, meta: message.name, title: message.title })) ?? [],
+const catalogItems = computed(
+  () =>
+    loaded.value?.parsed.messages.map(message => ({ id: message.id, meta: message.name, title: message.title })) ?? [],
 );
-const targetOptions = computed(() => recovery.characters.map(character => ({ label: character.name, value: String(character.id) })));
+const targetOptions = computed(() =>
+  recovery.characters.map(character => ({ label: character.name, value: String(character.id) })),
+);
 const filteredGroups = computed(() => {
   const needle = query.value.trim().toLocaleLowerCase();
   const groups = recovery.groups
-    .map(group => ({ ...group, backups: group.backups.filter(backup => !needle || `${group.label} ${backup.fileName} ${backup.lastMessage}`.toLocaleLowerCase().includes(needle)) }))
+    .map(group => ({
+      ...group,
+      backups: group.backups.filter(
+        backup =>
+          !needle || `${group.label} ${backup.fileName} ${backup.lastMessage}`.toLocaleLowerCase().includes(needle),
+      ),
+    }))
     .filter(group => group.backups.length);
   if (sortMode.value === 'character') return groups.sort((a, b) => a.label.localeCompare(b.label, 'zh-CN'));
   return groups.sort((a, b) => (b.backups[0]?.lastMessageAt ?? 0) - (a.backups[0]?.lastMessageAt ?? 0));
 });
-const emptyTitle = computed(() => recovery.status === 'unsupported' ? '当前版本不支持备份书架' : query.value.trim() ? '没有匹配的聊天备份' : '还没有聊天备份');
+const emptyTitle = computed(() =>
+  recovery.status === 'unsupported'
+    ? '当前版本不支持备份书架'
+    : query.value.trim()
+      ? '没有匹配的聊天备份'
+      : '还没有聊天备份',
+);
 
 onMounted(() => {
   if (recovery.status === 'idle') void recovery.refresh();
@@ -225,7 +309,9 @@ function selectCatalogMessage(messageId: string) {
 }
 
 function scrollReader(edge: 'bottom' | 'top') {
-  document.querySelector('.pc-recovery-reader-page .pc-reader-content')?.scrollTo({ behavior: 'smooth', top: edge === 'top' ? 0 : Number.MAX_SAFE_INTEGER });
+  document
+    .querySelector('.pc-recovery-reader-page .pc-reader-content')
+    ?.scrollTo({ behavior: 'smooth', top: edge === 'top' ? 0 : Number.MAX_SAFE_INTEGER });
 }
 
 function returnToShelf() {
@@ -261,7 +347,12 @@ async function openImportedChat() {
   const result = recovery.importResult;
   if (!result?.verified) return;
   try {
-    await jumpToTavernChat({ avatar: result.target.avatar, characterId: result.target.id, chatFile: result.fileName, ownerName: result.target.name });
+    await jumpToTavernChat({
+      avatar: result.target.avatar,
+      characterId: result.target.id,
+      chatFile: result.fileName,
+      ownerName: result.target.name,
+    });
   } catch (error) {
     toastr.error(error instanceof Error ? error.message : '无法打开导入后的聊天');
   }

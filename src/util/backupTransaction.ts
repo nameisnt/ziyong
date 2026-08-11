@@ -25,10 +25,7 @@ export async function executeBackupImportTransaction<TSnapshot>(
       options.rehydrate();
       await options.persist();
     } catch (rollbackError) {
-      throw new AggregateError(
-        [primaryError, rollbackError],
-        '备份导入失败，且恢复导入前数据时发生错误',
-      );
+      throw new AggregateError([primaryError, rollbackError], '备份导入失败，且恢复导入前数据时发生错误');
     }
     throw primaryError;
   }

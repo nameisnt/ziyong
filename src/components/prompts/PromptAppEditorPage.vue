@@ -1,7 +1,12 @@
 <template>
   <section class="pc-prompts-page">
     <div class="pc-prompts-editor">
-      <textarea ref="editorEl" v-model="draft" class="pc-area pc-app-prompt-editor-area" :placeholder="definition.placeholder" />
+      <textarea
+        ref="editorEl"
+        v-model="draft"
+        class="pc-area pc-app-prompt-editor-area"
+        :placeholder="definition.placeholder"
+      />
       <div v-if="definition.kind === 'task' && definition.variables.length" class="pc-field-group">
         <span class="pc-field-label">{{ t`可用占位符` }}</span>
         <div class="pc-chip-row">

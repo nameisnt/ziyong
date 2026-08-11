@@ -95,7 +95,8 @@ export async function applyPromptsVisualScenario(name: string, context: PromptsS
     await context.waitForPaint();
     const editor = document.querySelector<HTMLElement>('.pc-output-editor');
     const outputFormat = editor?.querySelector<HTMLTextAreaElement>('textarea');
-    if (!editor || !outputFormat?.value.trim()) throw new Error('Prompt output editor did not load its output format draft');
+    if (!editor || !outputFormat?.value.trim())
+      throw new Error('Prompt output editor did not load its output format draft');
     editor.querySelector<HTMLInputElement>('.pc-output-parser-toggle input')?.click();
     await context.waitForPaint();
     if (!editor.querySelector('.pc-output-field-list')) {

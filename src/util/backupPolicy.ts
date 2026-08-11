@@ -4,10 +4,7 @@ export interface BackupPolicyDomain {
   scope: 'chat' | 'global';
 }
 
-export function assertFullBackupImportAllowed(
-  backupKind: 'current-chat' | 'full' | 'legacy',
-  allowLegacy = false,
-) {
+export function assertFullBackupImportAllowed(backupKind: 'current-chat' | 'full' | 'legacy', allowLegacy = false) {
   if (backupKind === 'current-chat') {
     throw new Error('当前聊天备份不能执行完整恢复，请使用“导入到当前聊天”');
   }

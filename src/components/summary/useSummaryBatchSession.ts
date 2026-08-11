@@ -72,7 +72,10 @@ export function useSummaryBatchSession(options: SummaryBatchSessionOptions) {
     const normalized = rawValue.trim();
     if (!normalized) throw new Error('请先填写楼层范围，例如 1-30,35,40-45');
     const floorSet = new Set<number>();
-    for (const segment of normalized.split(/[\s,，;；\n]+/).map(item => item.trim()).filter(Boolean)) {
+    for (const segment of normalized
+      .split(/[\s,，;；\n]+/)
+      .map(item => item.trim())
+      .filter(Boolean)) {
       const singleMatch = segment.match(/^(\d+)$/);
       if (singleMatch) {
         floorSet.add(Number(singleMatch[1]));
@@ -104,7 +107,9 @@ export function useSummaryBatchSession(options: SummaryBatchSessionOptions) {
       end = current;
     }
     ranges.push({ end, start });
-    return ranges.map(range => (range.start === range.end ? `${range.start}` : `${range.start}-${range.end}`)).join(', ');
+    return ranges
+      .map(range => (range.start === range.end ? `${range.start}` : `${range.start}-${range.end}`))
+      .join(', ');
   }
 
   function getVisibleFloors() {

@@ -464,16 +464,17 @@ const {
 });
 
 const editingBook = computed(() => (route.value.params?.bookId ? activeBook.value : null));
-const {
-  saveBook: submitBook,
-  saveBookAndGenerate: submitBookAndGenerate,
-} = useExtrasBookEditorSession(bookDraft, chapterGenerationDraft, {
-  generateForBook: runChapterGenerationForBook,
-  getBookId: () => route.value.params?.bookId,
-  getChapterId: () => route.value.params?.chapterId,
-  getEditingBook: () => editingBook.value,
-  navigateToBook: book => phone.replacePage('book', book.title, { bookId: book.id }),
-});
+const { saveBook: submitBook, saveBookAndGenerate: submitBookAndGenerate } = useExtrasBookEditorSession(
+  bookDraft,
+  chapterGenerationDraft,
+  {
+    generateForBook: runChapterGenerationForBook,
+    getBookId: () => route.value.params?.bookId,
+    getChapterId: () => route.value.params?.chapterId,
+    getEditingBook: () => editingBook.value,
+    navigateToBook: book => phone.replacePage('book', book.title, { bookId: book.id }),
+  },
+);
 const editingChapter = computed(() => (route.value.params?.chapterId ? activeChapter.value : null));
 const { saveChapter: submitChapter } = useExtrasChapterEditorSession(chapterDraft, {
   getBookId: () => route.value.params?.bookId,
@@ -910,10 +911,7 @@ function resetChapterGenerationDraft(mode: typeof chapterGenerationDraft.mode) {
   const book = activeBook.value;
   const promptById = book?.typeId ? prompts.getTypePrompt(book.typeId) : null;
   const normalizedTypeName = book?.typeName.trim().toLocaleLowerCase() || '';
-  const prompt =
-    promptById?.domain === 'extras'
-      ? promptById
-      : findExtraTypePromptByName(normalizedTypeName);
+  const prompt = promptById?.domain === 'extras' ? promptById : findExtraTypePromptByName(normalizedTypeName);
   if (book && prompt && book.typeId !== prompt.id) {
     extras.updateBook(book.id, {
       title: book.title,

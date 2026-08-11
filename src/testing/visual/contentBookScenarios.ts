@@ -81,10 +81,7 @@ export function createLettersFixture() {
   return book;
 }
 
-export async function applyContentBookVisualScenario(
-  name: string,
-  dependencies: ContentBookScenarioDependencies,
-) {
+export async function applyContentBookVisualScenario(name: string, dependencies: ContentBookScenarioDependencies) {
   const { openReaderCatalog, resetPhoneToRoute, waitForCondition, waitForPaint } = dependencies;
   if (!/^(summary|diary|letters)-/.test(name)) return false;
 
@@ -98,7 +95,8 @@ export async function applyContentBookVisualScenario(
     const entry = book.entries[0];
     if (!entry) throw new Error('Summary fixture did not create an entry');
     const page = name === 'summary-entry-detail' ? 'entry' : name === 'summary-entry-editor' ? 'editor' : 'bagu-scan';
-    const title = name === 'summary-entry-detail' ? entry.title : name === 'summary-entry-editor' ? '编辑总结' : '八股检测';
+    const title =
+      name === 'summary-entry-detail' ? entry.title : name === 'summary-entry-editor' ? '编辑总结' : '八股检测';
     resetPhoneToRoute('summary', page, title, { bookId: book.id, entryId: entry.id });
     if (name === 'summary-entry-detail') {
       await waitForPaint();
@@ -106,8 +104,10 @@ export async function applyContentBookVisualScenario(
     }
   } else if (name === 'summary-import' || name === 'summary-generate' || name === 'summary-batch') {
     const book = createSummaryFixture();
-    const page = name === 'summary-import' ? 'import-chat' : name === 'summary-generate' ? 'generate' : 'batch-generate';
-    const title = name === 'summary-import' ? '导入 AI 楼层' : name === 'summary-generate' ? '生成总结' : '批量生成总结';
+    const page =
+      name === 'summary-import' ? 'import-chat' : name === 'summary-generate' ? 'generate' : 'batch-generate';
+    const title =
+      name === 'summary-import' ? '导入 AI 楼层' : name === 'summary-generate' ? '生成总结' : '批量生成总结';
     resetPhoneToRoute('summary', page, title, { bookId: book.id });
     if (name === 'summary-generate') {
       await waitForPaint();
@@ -148,13 +148,46 @@ export async function applyContentBookVisualScenario(
     });
     resetPhoneToRoute('summary', 'failed-draft', '解析失败草稿', { bookId: book.id, draftId: draft.id });
   } else if (name === 'diary-creation-mode' || name === 'diary-batch') {
-    resetPhoneToRoute('diary', name === 'diary-batch' ? 'batch-generate' : 'creation-mode', name === 'diary-batch' ? '批量生成日记' : '生成日记');
-  } else if (name === 'diary-book' || name === 'diary-entry-editor' || name === 'diary-bagu' || name === 'diary-generate' || name === 'diary-entry-detail') {
+    resetPhoneToRoute(
+      'diary',
+      name === 'diary-batch' ? 'batch-generate' : 'creation-mode',
+      name === 'diary-batch' ? '批量生成日记' : '生成日记',
+    );
+  } else if (
+    name === 'diary-book' ||
+    name === 'diary-entry-editor' ||
+    name === 'diary-bagu' ||
+    name === 'diary-generate' ||
+    name === 'diary-entry-detail'
+  ) {
     const book = createDiaryFixture();
     const entry = book.entries[0];
-    const page = name === 'diary-book' ? 'book' : name === 'diary-entry-editor' ? 'editor' : name === 'diary-bagu' ? 'bagu-scan' : name === 'diary-generate' ? 'generate' : 'entry';
-    const title = name === 'diary-book' ? book.title : name === 'diary-entry-editor' ? '编辑日记' : name === 'diary-bagu' ? '八股检测' : name === 'diary-generate' ? '生成日记' : entry?.title || '日记';
-    resetPhoneToRoute('diary', page, title, page === 'book' || page === 'generate' ? { bookId: book.id } : { bookId: book.id, entryId: entry?.id || '' });
+    const page =
+      name === 'diary-book'
+        ? 'book'
+        : name === 'diary-entry-editor'
+          ? 'editor'
+          : name === 'diary-bagu'
+            ? 'bagu-scan'
+            : name === 'diary-generate'
+              ? 'generate'
+              : 'entry';
+    const title =
+      name === 'diary-book'
+        ? book.title
+        : name === 'diary-entry-editor'
+          ? '编辑日记'
+          : name === 'diary-bagu'
+            ? '八股检测'
+            : name === 'diary-generate'
+              ? '生成日记'
+              : entry?.title || '日记';
+    resetPhoneToRoute(
+      'diary',
+      page,
+      title,
+      page === 'book' || page === 'generate' ? { bookId: book.id } : { bookId: book.id, entryId: entry?.id || '' },
+    );
     if (name === 'diary-entry-detail') {
       await waitForPaint();
       await openReaderCatalog();
@@ -162,14 +195,37 @@ export async function applyContentBookVisualScenario(
   } else if (name === 'diary-preview') {
     const book = createDiaryFixture();
     usePreviewDraftStore().upsertPreviewDraft({
-      appId: 'diary', page: 'preview',
-      preview: { action: 'generate', bookId: book.id, bookTitle: book.title, content: '雨停以后，她终于写下了没有说出口的话。', draftId: null, occurredAt: '昨夜 23:10', perspective: book.perspective, raw: '<diary><title>雨停以后</title><content>雨停以后，她终于写下了没有说出口的话。</content></diary>', sourceBookId: '', sourceEntryId: '', sourceFloorEnd: 18, title: '雨停以后', warnings: [] },
-      routeParams: { bookId: book.id }, title: '日记预览',
+      appId: 'diary',
+      page: 'preview',
+      preview: {
+        action: 'generate',
+        bookId: book.id,
+        bookTitle: book.title,
+        content: '雨停以后，她终于写下了没有说出口的话。',
+        draftId: null,
+        occurredAt: '昨夜 23:10',
+        perspective: book.perspective,
+        raw: '<diary><title>雨停以后</title><content>雨停以后，她终于写下了没有说出口的话。</content></diary>',
+        sourceBookId: '',
+        sourceEntryId: '',
+        sourceFloorEnd: 18,
+        title: '雨停以后',
+        warnings: [],
+      },
+      routeParams: { bookId: book.id },
+      title: '日记预览',
     });
     resetPhoneToRoute('diary', 'preview', '日记预览', { bookId: book.id });
   } else if (name === 'diary-failed-draft') {
     const book = createDiaryFixture();
-    const draft = useDiaryStore().createFailedDraft({ actionId: 'generate', appId: 'diary', context: { bookId: book.id }, rawOutput: '<diary><title>未闭合</title><content>等待修复的日记', source: visualSource('visual-diary-chat', 8, 18), warnings: ['缺少结束标签'] });
+    const draft = useDiaryStore().createFailedDraft({
+      actionId: 'generate',
+      appId: 'diary',
+      context: { bookId: book.id },
+      rawOutput: '<diary><title>未闭合</title><content>等待修复的日记',
+      source: visualSource('visual-diary-chat', 8, 18),
+      warnings: ['缺少结束标签'],
+    });
     resetPhoneToRoute('diary', 'failed-draft', '解析失败草稿', { bookId: book.id, draftId: draft.id });
   } else if (name === 'letters-generate') {
     resetPhoneToRoute('letters', 'generate', '生成书信');
@@ -187,29 +243,78 @@ async function applyLettersScenario(name: string, dependencies: ContentBookScena
   if (!entry) throw new Error('Letters fixture did not create an entry');
   if (name === 'letters-preview') {
     usePreviewDraftStore().upsertPreviewDraft({
-      appId: 'letters', page: 'preview',
-      preview: { bookId: book.id, bookTitle: book.title, content: '这封信写在雨停以后，也许永远不会寄出。', draftId: null, format: entry.format, mode: 'create', raw: '<letter><title>雨停以后</title><content>这封信写在雨停以后，也许永远不会寄出。</content></letter>', receiver: entry.receiver, sender: entry.sender, targetEntryId: '', targetVersionId: '', title: '雨停以后', warnings: [] },
-      routeParams: { bookId: book.id }, title: '生成预览',
+      appId: 'letters',
+      page: 'preview',
+      preview: {
+        bookId: book.id,
+        bookTitle: book.title,
+        content: '这封信写在雨停以后，也许永远不会寄出。',
+        draftId: null,
+        format: entry.format,
+        mode: 'create',
+        raw: '<letter><title>雨停以后</title><content>这封信写在雨停以后，也许永远不会寄出。</content></letter>',
+        receiver: entry.receiver,
+        sender: entry.sender,
+        targetEntryId: '',
+        targetVersionId: '',
+        title: '雨停以后',
+        warnings: [],
+      },
+      routeParams: { bookId: book.id },
+      title: '生成预览',
     });
     dependencies.resetPhoneToRoute('letters', 'preview', '生成预览', { bookId: book.id });
     return;
   }
   if (name === 'letters-failed-draft') {
-    const draft = useLettersStore().createFailedDraft({ actionId: 'generate', appId: 'letters', context: { bookId: book.id }, rawOutput: '<letter><title>未闭合</title><content>等待修复的书信', source: visualSource('visual-letters-chat', 4, 16), warnings: ['缺少结束标签'] });
+    const draft = useLettersStore().createFailedDraft({
+      actionId: 'generate',
+      appId: 'letters',
+      context: { bookId: book.id },
+      rawOutput: '<letter><title>未闭合</title><content>等待修复的书信',
+      source: visualSource('visual-letters-chat', 4, 16),
+      warnings: ['缺少结束标签'],
+    });
     dependencies.resetPhoneToRoute('letters', 'failed-draft', '解析失败草稿', { bookId: book.id, draftId: draft.id });
     return;
   }
   if (name === 'letters-rewrite-generate') {
     const requirement = '书信当前版本的隐藏追加要求。';
-    entry.generationRecord = dependencies.createHiddenGenerationRecord('generate', requirement, { bookTitle: book.title, format: entry.format, recentEntryCount: 6, receiver: entry.receiver, sender: entry.sender });
+    entry.generationRecord = dependencies.createHiddenGenerationRecord('generate', requirement, {
+      bookTitle: book.title,
+      format: entry.format,
+      recentEntryCount: 6,
+      receiver: entry.receiver,
+      sender: entry.sender,
+    });
     dependencies.resetPhoneToRoute('letters', 'generate', '重写书信', { bookId: book.id, rewriteEntryId: entry.id });
     await dependencies.waitForPaint();
-    if (document.querySelector<HTMLTextAreaElement>('.pc-requirement-field textarea')?.value !== requirement) throw new Error('Letter rewrite did not restore the current version hidden generation record');
+    if (document.querySelector<HTMLTextAreaElement>('.pc-requirement-field textarea')?.value !== requirement)
+      throw new Error('Letter rewrite did not restore the current version hidden generation record');
     return;
   }
-  const page = name === 'letters-book' ? 'book' : name === 'letters-entry-editor' ? 'editor' : name === 'letters-bagu' ? 'bagu-scan' : 'entry';
-  const title = name === 'letters-book' ? book.title : name === 'letters-entry-editor' ? '编辑信件' : name === 'letters-bagu' ? '八股检测' : entry.title;
-  dependencies.resetPhoneToRoute('letters', page, title, page === 'book' ? { bookId: book.id } : { bookId: book.id, entryId: entry.id });
+  const page =
+    name === 'letters-book'
+      ? 'book'
+      : name === 'letters-entry-editor'
+        ? 'editor'
+        : name === 'letters-bagu'
+          ? 'bagu-scan'
+          : 'entry';
+  const title =
+    name === 'letters-book'
+      ? book.title
+      : name === 'letters-entry-editor'
+        ? '编辑信件'
+        : name === 'letters-bagu'
+          ? '八股检测'
+          : entry.title;
+  dependencies.resetPhoneToRoute(
+    'letters',
+    page,
+    title,
+    page === 'book' ? { bookId: book.id } : { bookId: book.id, entryId: entry.id },
+  );
   if (name === 'letters-entry-detail') {
     await dependencies.waitForPaint();
     await dependencies.openReaderCatalog();
@@ -217,5 +322,13 @@ async function applyLettersScenario(name: string, dependencies: ContentBookScena
 }
 
 function visualSource(chatIdAtGeneration: string, start: number, end: number) {
-  return { chatIdAtGeneration, label: `第 ${start}-${end} 楼`, messageIds: [], mode: 'range' as const, ranges: [{ end, start }], scopeId: `${chatIdAtGeneration}-scope`, sortKey: end };
+  return {
+    chatIdAtGeneration,
+    label: `第 ${start}-${end} 楼`,
+    messageIds: [],
+    mode: 'range' as const,
+    ranges: [{ end, start }],
+    scopeId: `${chatIdAtGeneration}-scope`,
+    sortKey: end,
+  };
 }

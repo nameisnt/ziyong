@@ -1,9 +1,6 @@
 import { usePromptStore } from '@/store/prompts';
 
-type ConfirmNotice = (
-  message: string,
-  options: { confirmLabel: string; kind: 'warning' },
-) => Promise<boolean>;
+type ConfirmNotice = (message: string, options: { confirmLabel: string; kind: 'warning' }) => Promise<boolean>;
 
 type Notice = Pick<typeof toastr, 'success'>;
 

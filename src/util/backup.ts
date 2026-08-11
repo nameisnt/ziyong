@@ -396,17 +396,17 @@ export function buildCurrentChatPhoneBackup(): PhoneBackup {
   const chatDomains = selectCurrentChatBackupDomains(registeredDomains);
   const domains = Object.fromEntries(
     chatDomains.map(domain => {
-        const envelope = cloneChatScopedEnvelope(domain.exportData(scopeKey));
-        const currentScopeData = envelope.scopes[scopeKey];
-        return [
-          domain.key,
-          {
-            __chatScoped: true,
-            legacyScopeMigrations: {},
-            scopes: typeof currentScopeData === 'undefined' ? {} : { [scopeKey]: currentScopeData },
-          },
-        ];
-      }),
+      const envelope = cloneChatScopedEnvelope(domain.exportData(scopeKey));
+      const currentScopeData = envelope.scopes[scopeKey];
+      return [
+        domain.key,
+        {
+          __chatScoped: true,
+          legacyScopeMigrations: {},
+          scopes: typeof currentScopeData === 'undefined' ? {} : { [scopeKey]: currentScopeData },
+        },
+      ];
+    }),
   );
 
   return parsePrettified(PhoneBackupSchema, {
@@ -415,9 +415,7 @@ export function buildCurrentChatPhoneBackup(): PhoneBackup {
     exportedAt: new Date().toISOString(),
     data: {
       domains,
-      domainVersions: Object.fromEntries(
-        chatDomains.map(domain => [domain.key, domain.schemaVersion]),
-      ),
+      domainVersions: Object.fromEntries(chatDomains.map(domain => [domain.key, domain.schemaVersion])),
     },
   });
 }
@@ -499,12 +497,7 @@ function preparePhoneBackupScopeImport(backup: PhoneBackup, sourceScopeKey: stri
     Object.keys(backup.data.domains),
   );
   return {
-    plan: buildImportPlan(
-      'current-chat',
-      stagedDomains,
-      coverage.missingDomains,
-      coverage.unknownDomainKeys,
-    ),
+    plan: buildImportPlan('current-chat', stagedDomains, coverage.missingDomains, coverage.unknownDomainKeys),
     stagedDomains,
     sourceScopeKey,
     targetScopeKey,
@@ -530,8 +523,10 @@ export async function importPhoneBackupScopeToCurrentChat(backup: PhoneBackup, s
 
 export async function clearAllPhoneGeneratedContent() {
   const stagedDomains = stageDomainImports(
-    selectGeneratedContentDomains(getRegisteredPhoneBackupDomains())
-      .map(domain => ({ data: createEmptyEnvelope(), domain })),
+    selectGeneratedContentDomains(getRegisteredPhoneBackupDomains()).map(domain => ({
+      data: createEmptyEnvelope(),
+      domain,
+    })),
     getBackupDomainVersions(),
   );
   await commitBackupImport(() => {
@@ -562,12 +557,7 @@ function prepareFullPhoneBackupImport(
   );
   return {
     data,
-    plan: buildImportPlan(
-      'full',
-      stagedDomains,
-      coverage.missingDomains,
-      coverage.unknownDomainKeys,
-    ),
+    plan: buildImportPlan('full', stagedDomains, coverage.missingDomains, coverage.unknownDomainKeys),
     stagedDomains,
     stagedSettings,
   };

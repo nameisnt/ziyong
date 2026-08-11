@@ -36,7 +36,10 @@ export function useExtrasBookEditorSession(
   function saveBook() {
     const bookId = options.getBookId();
     const editingBook = options.getEditingBook();
-    const book = editingBook && bookId ? extras.updateBook(bookId, buildPayload(bookDraft.title)) : extras.createBook(buildPayload(bookDraft.title));
+    const book =
+      editingBook && bookId
+        ? extras.updateBook(bookId, buildPayload(bookDraft.title))
+        : extras.createBook(buildPayload(bookDraft.title));
     if (book) options.navigateToBook(book);
   }
 
@@ -45,7 +48,8 @@ export function useExtrasBookEditorSession(
     const title = resolveGeneratedExtraBookTitle(bookDraft.title, typeName);
     const bookId = options.getBookId();
     const editingBook = options.getEditingBook();
-    const book = editingBook && bookId ? extras.updateBook(bookId, buildPayload(title)) : extras.createBook(buildPayload(title));
+    const book =
+      editingBook && bookId ? extras.updateBook(bookId, buildPayload(title)) : extras.createBook(buildPayload(title));
     if (!book) return;
     await options.generateForBook(book.id, book, options.getChapterId());
   }

@@ -9,20 +9,8 @@
         placeholder="选择资料表"
         @update:model-value="setTableId"
       />
-      <input
-        v-if="summaryEnabled"
-        v-model="summary"
-        class="pc-field"
-        type="text"
-        placeholder="一句话摘要，可留空"
-      />
-      <input
-        v-if="tagsEnabled"
-        v-model="tagsText"
-        class="pc-field"
-        type="text"
-        placeholder="标签，用逗号分隔"
-      />
+      <input v-if="summaryEnabled" v-model="summary" class="pc-field" type="text" placeholder="一句话摘要，可留空" />
+      <input v-if="tagsEnabled" v-model="tagsText" class="pc-field" type="text" placeholder="标签，用逗号分隔" />
       <template v-for="column in columns" :key="column.id">
         <label class="pc-field-group">
           <span>{{ column.label }}</span>

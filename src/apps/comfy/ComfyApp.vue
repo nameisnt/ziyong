@@ -393,10 +393,7 @@ const filteredWorkflows = computed(() =>
 function createDynamicSelectOptions(values: string[], selected: string, emptyLabel: string) {
   const uniqueValues = [...new Set(values.filter(Boolean))];
   if (selected && !uniqueValues.includes(selected)) uniqueValues.unshift(selected);
-  return [
-    { label: emptyLabel, value: '' },
-    ...uniqueValues.map(value => ({ label: value, value })),
-  ];
+  return [{ label: emptyLabel, value: '' }, ...uniqueValues.map(value => ({ label: value, value }))];
 }
 const workflowSelectOptions = computed(() => {
   const selected = settings.value.activeWorkflowId;

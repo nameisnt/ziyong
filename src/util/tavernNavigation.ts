@@ -131,7 +131,8 @@ async function openTavernCharacterChat(chatFile: string) {
   const tavernWindow = getTavernWindow();
   const record = tavernWindow as Window & Record<string, unknown>;
   const context = getTavernContext(tavernWindow);
-  const openCharacterChat = context?.openCharacterChat ?? record.openCharacterChat ?? getOptionalGlobalFunction('openCharacterChat');
+  const openCharacterChat =
+    context?.openCharacterChat ?? record.openCharacterChat ?? getOptionalGlobalFunction('openCharacterChat');
   if (typeof openCharacterChat !== 'function') throw new Error('无法调用酒馆原生聊天打开接口');
 
   const normalizedChatFile = normalizeChatFileName(chatFile);

@@ -13,7 +13,13 @@
         <button class="pc-soft-btn" type="button" @click="openImport">导入所选</button>
         <button class="pc-primary-btn" type="button" @click="exportSelected">导出所选</button>
       </div>
-      <input ref="inputEl" class="pc-hidden-input" type="file" accept="application/json,.json" @change="importSelected" />
+      <input
+        ref="inputEl"
+        class="pc-hidden-input"
+        type="file"
+        accept="application/json,.json"
+        @change="importSelected"
+      />
     </div>
   </section>
 </template>
