@@ -60,7 +60,7 @@
       <summary>
         <span class="pc-generation-advanced-title">
           <i class="fa-solid fa-sliders"></i>
-          {{ t`来源与预设` }}
+          {{ t`生成设置` }}
         </span>
         <small>{{ advancedSummary }}</small>
         <i class="fa-solid fa-chevron-down pc-generation-advanced-chevron"></i>
@@ -102,6 +102,48 @@
             >
               <i class="fa-solid fa-rotate"></i>
             </button>
+          </div>
+        </div>
+
+        <div class="pc-generation-aliases">
+          <div class="pc-field-head">
+            <span class="pc-field-label">
+              {{ t`当前聊天称呼` }}
+              <InfoHint :text="t`保存于当前聊天，并供这个聊天下的生成 App 共用；不会修改聊天原文或引用内容。`" />
+            </span>
+            <button
+              class="pc-icon-btn"
+              type="button"
+              :disabled="controlsDisabled"
+              :title="t`互换角色与用户称呼`"
+              @click="swapGenerationAliases"
+            >
+              <i class="fa-solid fa-right-left"></i>
+            </button>
+          </div>
+          <div class="pc-generation-alias-grid">
+            <label class="pc-field-group">
+              <span class="pc-field-label"><code v-text="'{{char}}'"></code> {{ t`替换` }}</span>
+              <input
+                v-model="charReplacement"
+                class="pc-field"
+                type="text"
+                autocomplete="off"
+                :disabled="controlsDisabled"
+                :placeholder="t`角色称呼`"
+              />
+            </label>
+            <label class="pc-field-group">
+              <span class="pc-field-label"><code v-text="'{{user}}'"></code> {{ t`替换` }}</span>
+              <input
+                v-model="userReplacement"
+                class="pc-field"
+                type="text"
+                autocomplete="off"
+                :disabled="controlsDisabled"
+                :placeholder="t`用户称呼`"
+              />
+            </label>
           </div>
         </div>
 
@@ -170,9 +212,11 @@
 
 <script setup lang="ts">
 import GenerationSourceFields from '@/components/GenerationSourceFields.vue';
+import InfoHint from '@/components/InfoHint.vue';
 import ReferencePicker from '@/components/ReferencePicker.vue';
 import SearchableCombobox from '@/components/SearchableCombobox.vue';
 import TavernPromptCapture from '@/components/TavernPromptCapture.vue';
+import { useGenerationAliasesStore } from '@/store/generationAliases';
 import { useGenerationOverrideStore } from '@/store/generationOverrides';
 import { usePhoneStore } from '@/store/phone';
 import { usePromptStore } from '@/store/prompts';
@@ -241,9 +285,11 @@ const props = withDefaults(
 const phone = usePhoneStore();
 const prompts = usePromptStore();
 const settingsStore = useSettingsStore();
+const generationAliases = useGenerationAliasesStore();
 const generationOverrides = useGenerationOverrideStore();
 const { quickPhraseGroups } = storeToRefs(prompts);
 const { settings } = storeToRefs(settingsStore);
+const { charReplacement, userReplacement } = storeToRefs(generationAliases);
 const quickPhraseOpen = ref(false);
 const openQuickPhraseGroupId = ref('');
 const tavernPresetNames = ref<string[]>([]);
@@ -290,7 +336,11 @@ const advancedSummary = computed(() => {
     generationOverride.value.connectionSelection,
   );
   const presetName = generationOverride.value.tavernPresetName.trim() || '当前预设';
+  const charName = charReplacement.value.trim();
+  const userName = userReplacement.value.trim();
+  const aliasSummary = charName || userName ? `称呼：${charName || '默认'} / ${userName || '默认'}` : '称呼：默认';
   return [
+    aliasSummary,
     connection,
     ...(props.showPresetSelector ? [presetName] : []),
     sourceModeLabel.value,
@@ -347,6 +397,12 @@ function setConnectionSelection(selection: string) {
 
 function setTavernPresetName(tavernPresetName: string) {
   generationOverrides.setTavernPresetName(overrideRoute.value.appId, overrideRoute.value.page, tavernPresetName);
+}
+
+function swapGenerationAliases() {
+  const value = charReplacement.value;
+  charReplacement.value = userReplacement.value;
+  userReplacement.value = value;
 }
 
 function toggleQuickPhrasePanel() {
@@ -419,6 +475,30 @@ function quickPhraseLabel(text: string) {
   grid-template-columns: minmax(0, 1fr) 42px;
   gap: 10px;
   align-items: center;
+}
+
+.pc-generation-aliases {
+  display: grid;
+  gap: 8px;
+  min-width: 0;
+}
+
+.pc-generation-alias-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+  min-width: 0;
+}
+
+.pc-generation-alias-grid .pc-field-group,
+.pc-generation-alias-grid .pc-field {
+  min-width: 0;
+}
+
+@media (max-width: 360px) {
+  .pc-generation-alias-grid {
+    grid-template-columns: 1fr;
+  }
 }
 
 .pc-field-head {

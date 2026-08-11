@@ -354,6 +354,7 @@ const { useMediaStore } = await import('@/apps/media/store');
 const { usePhoneStore } = await import('@/store/phone');
 const { usePromptStore } = await import('@/store/prompts');
 const { useGenerationTaskStore } = await import('@/store/generationTasks');
+const { useGenerationAliasesStore } = await import('@/store/generationAliases');
 const { useGenerationOverrideStore } = await import('@/store/generationOverrides');
 const { useReaderStore } = await import('@/store/reader');
 const { useSettingsStore } = await import('@/store/settings');
@@ -3563,6 +3564,7 @@ async function applyScenario(name: VisualScenarioName, options: { height?: numbe
     resetPhoneToRoute('extras', 'book-editor', '新建番外');
   } else if (name === 'generation-connection-override') {
     const settingsStore = useSettingsStore();
+    const generationAliases = useGenerationAliasesStore();
     const externalProfile = {
       apiKey: 'visual-key',
       apiUrl: 'https://visual.example/v1',
@@ -3575,6 +3577,8 @@ async function applyScenario(name: VisualScenarioName, options: { height?: numbe
     settingsStore.settings.textProvider.activeExternalProfileId = '';
     settingsStore.settings.textProvider.externalProfiles = [externalProfile];
     settingsStore.settings.generation.tavernPresetName = '';
+    generationAliases.charReplacement = '';
+    generationAliases.userReplacement = '';
     const book = createSummaryFixture();
     resetPhoneToRoute('summary', 'generate', '生成总结', { bookId: book.id });
     await waitForPaint();
@@ -3608,6 +3612,32 @@ async function applyScenario(name: VisualScenarioName, options: { height?: numbe
     if (!presetOption) throw new Error('Generation temporary preset option is missing');
     presetOption.click();
     await waitForPaint();
+
+    const aliasInputs = [...document.querySelectorAll<HTMLInputElement>('.pc-generation-alias-grid input')];
+    if (aliasInputs.length !== 2) throw new Error('Generation alias inputs are missing');
+    aliasInputs[0].value = '玛修';
+    aliasInputs[0].dispatchEvent(new Event('input', { bubbles: true }));
+    aliasInputs[1].value = '藤丸立香';
+    aliasInputs[1].dispatchEvent(new Event('input', { bubbles: true }));
+    await waitForPaint();
+    if (generationAliases.charReplacement !== '玛修' || generationAliases.userReplacement !== '藤丸立香') {
+      throw new Error('Generation alias inputs did not update the chat-scoped alias store');
+    }
+    const swapAliasButton = document.querySelector<HTMLButtonElement>(
+      '.pc-generation-aliases button[title="互换角色与用户称呼"]',
+    );
+    if (!swapAliasButton) throw new Error('Generation alias swap action is missing');
+    swapAliasButton.click();
+    await waitForPaint();
+    if (generationAliases.charReplacement !== '藤丸立香' || generationAliases.userReplacement !== '玛修') {
+      throw new Error('Generation alias swap action did not update both values');
+    }
+    swapAliasButton.click();
+    await waitForPaint();
+    const advancedSummary = document.querySelector('.pc-generation-advanced summary small')?.textContent || '';
+    if (!advancedSummary.includes('玛修') || !advancedSummary.includes('藤丸立香')) {
+      throw new Error('Generation advanced summary did not expose the active aliases');
+    }
 
     const override = useGenerationOverrideStore().getOverride('summary', 'generate');
     if (override?.connectionSelection !== `external:${externalProfile.id}`) {
