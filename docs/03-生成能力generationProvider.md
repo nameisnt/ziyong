@@ -107,19 +107,49 @@ export function createMyAppGenerationAdapter(store: MyStore) {
 - `userRequirement`：用户在生成页填写的追加要求。
 - `outputFormat`：模型输出协议。
 
-最终 `user_input` 按以下顺序拼接：
+酒馆生成不再把所有字段拼成一段 `user_input`。当前组装分为两部分：
 
-1. `context`
-2. `references`
-3. `taskInstruction`
-4. `appPrompt`
-5. `typePrompt`
-6. `userRequirement`
-7. `outputFormat`
+1. 覆盖聊天历史：所选可见聊天楼层保持原角色；其后追加一个用户角色的历史尾部，内容依次为 `context`、`references`。
+2. 本轮原生 `user_input`：依次为 `taskInstruction`、`appPrompt`、`typePrompt`、`userRequirement`、`outputFormat`。
+
+酒馆随后按本次选择的预设、角色信息、世界书、宏和原生注入位置完成整体组装。因此世界书或按深度插入的预设条目不保证全部位于覆盖历史之前。
 
 不要把只用于保存的 ID、渲染模式或默认占位标题发送给模型。
 
 `{{phoneUserInput}}` 保持精简，依次包含 `taskInstruction`、`appPrompt`、`typePrompt`、生成页填写内容和 `outputFormat`，不重复长篇上下文、来源楼层和引用内容。空白区段会自动省略。
+
+`{{phoneUserInput}}` 不是本轮输入的定位锚点。本轮 `user_input` 会由生成接口原生追加；宏只供预设在其他位置额外展开相同内容，并允许出现多次。
+
+## 生成模式与酒馆组装
+
+两种文本提供方式共用同一个酒馆组装入口：
+
+- 酒馆当前 API：调用酒馆助手 `generate()`，由本次选择的 `preset_name` 组装并使用酒馆当前 API / 模型生成。
+- 外部兼容 API：先捕获酒馆组装后的有序 `system`、`user`、`assistant` 消息，再把该消息数组发送到外部 `/chat/completions`。它保留预设正文、世界书和宏展开结果，但当前不会转发酒馆预设里的温度等采样参数；请求只显式发送模型、消息、流式开关和可选 `max_tokens`。
+
+本次选择的生成预设不会修改酒馆界面当前预设。需要特别区分两类“预设”：
+
+- 生成页的“本次预设”负责这次请求的提示词条目和参数组装。
+- 来源楼层预处理所用的预设正则来自酒馆当前正在使用的预设，而不是插件本次另选的生成预设。
+
+## 来源楼层与正则
+
+来源选择只读取当前聊天的可见楼层。写入覆盖历史前，每层会调用酒馆原生 `prompt` 正则管线：
+
+- 用户楼层使用 `user_input` 来源，AI / system 楼层使用 `ai_output` 来源。
+- 正则集合来自当前酒馆环境中的全局、当前角色卡和当前正在使用的预设，并继续服从酒馆自身的启用开关。
+- 深度按最终选中的楼层集合重新编号：所选最新楼为 `depth: 0`，向旧楼递增，而不是使用原聊天绝对楼层号。
+- 正则调用失败时保留原楼层文本，避免因为单条正则异常丢失整个来源。
+
+AI 返回后，原始输出先用于结构化解析和保存。生成预览再应用酒馆原生 `display` 正则，随后应用插件自己的显示规则；显示正则不得反向污染 XML 解析或保存原文。
+
+## 实现注意事项
+
+- “不使用聊天楼层”只代表覆盖历史中没有聊天楼层；`context`、`references` 和本轮 `user_input` 仍可能存在。
+- 不要重新通过隐藏、删除或临时改写聊天楼层来控制生成历史；使用 `overrides.chat_history.prompts`。
+- 不要把 App 上下文和引用伪装成原聊天楼层；它们统一放在覆盖历史末尾。
+- 普通提示词预览只展示插件组织的区段。需要验证预设、世界书、宏和最终角色顺序时，应使用酒馆最终提示词捕获。
+- 外部 API 必须兼容 OpenAI `chat/completions` 消息格式，并允许当前浏览器环境访问。
 
 ## 内置生成 action
 
