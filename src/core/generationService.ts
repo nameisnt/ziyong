@@ -70,7 +70,9 @@ type SharedGenerationExecutionOptions<TResult> = {
   textProvider: ResolvedTextProviderSettings;
 };
 
-async function executeGenerationLifecycle<TResult>(options: SharedGenerationExecutionOptions<TResult>): Promise<TResult> {
+async function executeGenerationLifecycle<TResult>(
+  options: SharedGenerationExecutionOptions<TResult>,
+): Promise<TResult> {
   const generationId = createGenerationId(options.appId);
   const abortController = registerGenerationAbortController(generationId);
   const streamListener =
@@ -743,86 +745,86 @@ export async function generateContent<TConfig, TResult, TSaveResult = { entityId
     rateLimitRpm: options.rateLimitRpm,
     shouldStream: options.generationDefaults.stream,
     task: async ({ abortSignal, generationId }) => {
-    const prepared = prepareGenerationRequest(adapter, config, options, generationId, textProvider);
-    const replay = createGenerationReplaySnapshot(
-      prepared.parsedConfig,
-      prepared.request,
-      prepared.source.selection,
-      options,
-      textProvider,
-    );
-    const generationRecord = createHiddenGenerationRecord(adapter.actionId, replay);
-    const result =
-      textProvider.mode === 'tavern'
-        ? await generateWithPhoneUserInput(prepared.generateConfig, prepared.phoneUserInput, abortSignal)
-        : await generateFromCapturedOrderedPrompts(
-            prepared.generateConfig,
-            textProvider,
-            prepared.phoneUserInput,
-            abortSignal,
-            options.lifecycle?.onRawOutput,
-          );
+      const prepared = prepareGenerationRequest(adapter, config, options, generationId, textProvider);
+      const replay = createGenerationReplaySnapshot(
+        prepared.parsedConfig,
+        prepared.request,
+        prepared.source.selection,
+        options,
+        textProvider,
+      );
+      const generationRecord = createHiddenGenerationRecord(adapter.actionId, replay);
+      const result =
+        textProvider.mode === 'tavern'
+          ? await generateWithPhoneUserInput(prepared.generateConfig, prepared.phoneUserInput, abortSignal)
+          : await generateFromCapturedOrderedPrompts(
+              prepared.generateConfig,
+              textProvider,
+              prepared.phoneUserInput,
+              abortSignal,
+              options.lifecycle?.onRawOutput,
+            );
 
-    abortSignal.throwIfAborted();
-    const rawOutput = normalizeGenerationResult(result);
-    options.lifecycle?.onRawOutput?.(rawOutput);
-
-    const parsed = adapter.parse(rawOutput, prepared.parsedConfig);
-    abortSignal.throwIfAborted();
-    if (!parsed.ok) {
-      const draft = options.createFailedDraft({
-        actionId: adapter.actionId,
-        appId: adapter.appId,
-        context: isRecord(prepared.parsedConfig) ? { ...prepared.parsedConfig } : {},
-        generationRecord,
-        rawOutput,
-        source: prepared.source.selection,
-        warnings: parsed.warnings,
-      });
-
-      return {
-        draft,
-        rawOutput,
-        source: prepared.source.selection,
-        status: 'failed',
-        warnings: parsed.warnings,
-      };
-    }
-
-    if (options.generationDefaults.resultMode === 'save') {
       abortSignal.throwIfAborted();
-      const saved = await adapter.save(parsed.data, {
-        config: prepared.parsedConfig,
-        generationRecord,
-        rawOutput: parsed.raw,
-        replay,
-        scopeId: prepared.scopeId,
-        source: prepared.source.selection,
-        warnings: parsed.warnings,
-      });
-      await options.lifecycle?.onSaved?.(parsed.data, saved);
+      const rawOutput = normalizeGenerationResult(result);
+      options.lifecycle?.onRawOutput?.(rawOutput);
+
+      const parsed = adapter.parse(rawOutput, prepared.parsedConfig);
+      abortSignal.throwIfAborted();
+      if (!parsed.ok) {
+        const draft = options.createFailedDraft({
+          actionId: adapter.actionId,
+          appId: adapter.appId,
+          context: isRecord(prepared.parsedConfig) ? { ...prepared.parsedConfig } : {},
+          generationRecord,
+          rawOutput,
+          source: prepared.source.selection,
+          warnings: parsed.warnings,
+        });
+
+        return {
+          draft,
+          rawOutput,
+          source: prepared.source.selection,
+          status: 'failed',
+          warnings: parsed.warnings,
+        };
+      }
+
+      if (options.generationDefaults.resultMode === 'save') {
+        abortSignal.throwIfAborted();
+        const saved = await adapter.save(parsed.data, {
+          config: prepared.parsedConfig,
+          generationRecord,
+          rawOutput: parsed.raw,
+          replay,
+          scopeId: prepared.scopeId,
+          source: prepared.source.selection,
+          warnings: parsed.warnings,
+        });
+        await options.lifecycle?.onSaved?.(parsed.data, saved);
+
+        return {
+          data: parsed.data,
+          generationRecord,
+          rawOutput: parsed.raw,
+          replay,
+          saved,
+          source: prepared.source.selection,
+          status: 'saved',
+          warnings: parsed.warnings,
+        };
+      }
 
       return {
         data: parsed.data,
         generationRecord,
         rawOutput: parsed.raw,
         replay,
-        saved,
         source: prepared.source.selection,
-        status: 'saved',
+        status: 'preview',
         warnings: parsed.warnings,
       };
-    }
-
-    return {
-      data: parsed.data,
-      generationRecord,
-      rawOutput: parsed.raw,
-      replay,
-      source: prepared.source.selection,
-      status: 'preview',
-      warnings: parsed.warnings,
-    };
     },
     textProvider,
   });
