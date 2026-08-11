@@ -359,7 +359,15 @@ export function getChatMessagesSafe(range: string, options?: Record<string, unkn
   const fn =
     getOptionalGlobalFunction<(range: string, options?: Record<string, unknown>) => ChatMessage[]>('getChatMessages');
   if (fn) {
-    return fn(range, options).map((message, index) => normalizeChatMessage(message, index));
+    const hideState = options?.hide_state;
+    const runtimeOptions =
+      hideState === 'hidden' || hideState === 'unhidden' ? { ...options, hide_state: 'all' } : options;
+    const normalized = fn(range, runtimeOptions).map((message, index) => normalizeChatMessage(message, index));
+    return normalized.filter(message => {
+      if (hideState === 'hidden') return message.is_hidden;
+      if (hideState === 'unhidden') return !message.is_hidden;
+      return true;
+    });
   }
   return getChatMessagesFromSillyTavern(range, options);
 }

@@ -15,7 +15,7 @@ import { buildGenerationChatTail, buildGenerationUserInput, buildPhoneUserInput 
 import { applyGenerationAliases, replaceGenerationAliases } from '@/util/generationAliases';
 import { createHiddenGenerationRecord } from '@/util/hiddenGenerationRecord';
 import { buildSourceSelection, type SummaryGenerationSourceMode } from '@/util/generationSource';
-import { ensureCurrentScopeRecovery, runWithVisibilityTransaction } from '@/util/generationVisibility';
+import { ensureCurrentScopeRecovery } from '@/util/generationVisibility';
 import type { GenerationReferenceItem } from '@/util/references';
 import {
   applyTextProviderSelection,
@@ -24,6 +24,7 @@ import {
 } from '@/util/textProvider';
 import {
   captureTavernPromptPreview,
+  generateSafe,
   generateRawSafe,
   getChatMessagesSafe,
   getGenerationIdFromEventArgs,
@@ -31,7 +32,6 @@ import {
   getLoadedPresetNameSafe,
   getSelectedPresetNameSafe,
   getSelectedPresetPreviewSafe,
-  hasVisibilityTransactionRuntime,
   onRuntimeEvent,
   registerGenerationAbortController,
   registerMacroLikeSafe,
@@ -70,9 +70,7 @@ type SharedGenerationExecutionOptions<TResult> = {
   textProvider: ResolvedTextProviderSettings;
 };
 
-async function executeGenerationLifecycle<TResult>(
-  options: SharedGenerationExecutionOptions<TResult>,
-): Promise<TResult> {
+async function executeGenerationLifecycle<TResult>(options: SharedGenerationExecutionOptions<TResult>): Promise<TResult> {
   const generationId = createGenerationId(options.appId);
   const abortController = registerGenerationAbortController(generationId);
   const streamListener =
@@ -189,23 +187,31 @@ function buildCustomApiConfig(textProvider: ResolvedTextProviderSettings) {
   };
 }
 
-function buildSelectedSourceReferences(
+function buildSelectedChatHistoryPrompts(
   selection: {
-    label: string;
     messageIds: number[];
   },
   visibleMessages: ChatMessage[],
+  chatTail: string,
 ) {
   const selectedMessages = selection.messageIds
     .map(messageId => visibleMessages.find(message => message.message_id === messageId))
     .filter((message): message is ChatMessage => Boolean(message));
 
-  if (!selectedMessages.length) return '';
-
-  return selectedMessages
-    .map(message => message.message.trim())
-    .filter(Boolean)
-    .join('\n\n');
+  const prompts: RawOrderedPrompt[] = selectedMessages
+    .map(message => ({
+      content: message.message.trim(),
+      role: normalizeRawPromptRole(message.role),
+    }))
+    .filter(message => Boolean(message.content));
+  const normalizedChatTail = chatTail.trim();
+  if (normalizedChatTail) {
+    prompts.push({
+      content: normalizedChatTail,
+      role: 'user',
+    });
+  }
+  return prompts;
 }
 
 function buildSelectedSourcePreview(
@@ -251,7 +257,7 @@ function bindStreamOutput(enabled: boolean, generationId: string, onRawOutput?: 
   });
 }
 
-let phoneMacroCaptureTail = Promise.resolve();
+let phoneMacroUsageTail = Promise.resolve();
 const PHONE_USER_INPUT_MACRO_PATTERN = /\{\{\s*phoneUserInput\s*\}\}/gi;
 
 function waitForCaptureTurn(previousCapture: Promise<void>, signal?: AbortSignal) {
@@ -275,36 +281,54 @@ function waitForCaptureTurn(previousCapture: Promise<void>, signal?: AbortSignal
   });
 }
 
-async function captureWithPhoneUserInput(
-  generateConfig: Record<string, unknown>,
+async function runWithPhoneUserInputMacro<TResult>(
   phoneUserInput: string,
-  userInput: string,
-  chatTail: string,
+  task: () => Promise<TResult>,
   signal?: AbortSignal,
-) {
+): Promise<TResult> {
   let releaseQueue = () => {};
-  const previousCapture = phoneMacroCaptureTail;
-  phoneMacroCaptureTail = new Promise<void>(resolve => {
+  const previousUsage = phoneMacroUsageTail;
+  phoneMacroUsageTail = new Promise<void>(resolve => {
     releaseQueue = resolve;
   });
   try {
-    await waitForCaptureTurn(previousCapture, signal);
+    await waitForCaptureTurn(previousUsage, signal);
   } catch (error) {
-    void previousCapture.then(releaseQueue, releaseQueue);
+    void previousUsage.then(releaseQueue, releaseQueue);
     throw error;
   }
   let macroRegistration: { stop: () => void } | null = null;
   try {
     signal?.throwIfAborted();
     macroRegistration = registerMacroLikeSafe(PHONE_USER_INPUT_MACRO_PATTERN, () => phoneUserInput);
-    const captured = await captureTavernPromptPreview(generateConfig, 15000, signal, content =>
-      content.replace(PHONE_USER_INPUT_MACRO_PATTERN, phoneUserInput),
-    );
-    return injectChatTailIntoCapturedPrompt(captured, userInput, chatTail);
+    return await task();
   } finally {
     macroRegistration?.stop();
     releaseQueue();
   }
+}
+
+function captureWithPhoneUserInput(
+  generateConfig: Record<string, unknown>,
+  phoneUserInput: string,
+  signal?: AbortSignal,
+) {
+  return runWithPhoneUserInputMacro(
+    phoneUserInput,
+    () =>
+      captureTavernPromptPreview(generateConfig, 15000, signal, content =>
+        content.replace(PHONE_USER_INPUT_MACRO_PATTERN, phoneUserInput),
+      ),
+    signal,
+  );
+}
+
+function generateWithPhoneUserInput(
+  generateConfig: Record<string, unknown>,
+  phoneUserInput: string,
+  signal?: AbortSignal,
+) {
+  return runWithPhoneUserInputMacro(phoneUserInput, () => generateSafe(generateConfig), signal);
 }
 
 function createGenerationId(appId: string) {
@@ -393,7 +417,6 @@ function prepareGenerationRequest<TConfig, TResult, TSaveResult = { entityId: st
     visibleMessages,
   });
 
-  const canUseVisibilityTransaction = source.requiresVisibilityTransaction && hasVisibilityTransactionRuntime();
   const baseRequest = adapter.buildRequest(parsedConfig);
   const prompts = usePromptStore();
   const taskInstruction = prompts.resolveTaskTemplate(
@@ -401,19 +424,13 @@ function prepareGenerationRequest<TConfig, TResult, TSaveResult = { entityId: st
     baseRequest.taskTemplateVariables,
     baseRequest.taskInstruction,
   );
-  const fallbackReferences =
-    !canUseVisibilityTransaction && source.requiresVisibilityTransaction
-      ? buildSelectedSourceReferences(source.selection, visibleMessages)
-      : '';
   const explicitReferences = options.references?.trim() || '';
   const generationAliases = useGenerationAliasesStore();
   const request = applyGenerationAliases(
     {
       ...baseRequest,
       taskInstruction,
-      references: [baseRequest.references?.trim() || '', explicitReferences, fallbackReferences]
-        .filter(Boolean)
-        .join('\n\n'),
+      references: [baseRequest.references?.trim() || '', explicitReferences].filter(Boolean).join('\n\n'),
     } satisfies GenerationRequestParts,
     generationAliases,
   );
@@ -424,12 +441,19 @@ function prepareGenerationRequest<TConfig, TResult, TSaveResult = { entityId: st
   const phoneUserInput = buildPhoneUserInput(request, formUserInput);
   const userInput = buildGenerationUserInput(request);
   const chatTail = buildGenerationChatTail(request);
+  const chatHistoryPrompts = buildSelectedChatHistoryPrompts(source.selection, visibleMessages, chatTail);
   const customApi = buildCustomApiConfig(textProvider);
   const presetName = resolveGenerationPresetName(options);
   const generateConfig = cleanGenerateConfig({
     custom_api: customApi,
     generation_id: generationId,
-    max_chat_history: source.maxChatHistory,
+    max_chat_history: 'all',
+    overrides: {
+      chat_history: {
+        prompts: chatHistoryPrompts,
+        with_depth_entries: true,
+      },
+    },
     preset_name: presetName,
     should_silence: true,
     should_stream: options.generationDefaults.stream,
@@ -437,7 +461,6 @@ function prepareGenerationRequest<TConfig, TResult, TSaveResult = { entityId: st
   });
 
   return {
-    canUseVisibilityTransaction,
     chatTail,
     generateConfig,
     parsedConfig,
@@ -472,89 +495,6 @@ export type RawOrderedPrompt = {
   role: 'assistant' | 'system' | 'user';
 };
 
-type UserInputRange = {
-  end: number;
-  start: number;
-  wrapped: boolean;
-};
-
-function findCurrentUserInputRange(content: string, userInput: string): UserInputRange | null {
-  const normalizedUserInput = userInput.trim();
-  if (!normalizedUserInput) return null;
-
-  const inputIndex = content.lastIndexOf(normalizedUserInput);
-  if (inputIndex < 0) return null;
-
-  const openingIndex = content.lastIndexOf('<user_input', inputIndex);
-  const previousClosingIndex = content.lastIndexOf('</user_input>', inputIndex);
-  if (openingIndex >= 0 && openingIndex > previousClosingIndex) {
-    const openingEnd = content.indexOf('>', openingIndex);
-    const closingIndex = content.indexOf('</user_input>', inputIndex + normalizedUserInput.length);
-    if (openingEnd >= 0 && openingEnd < inputIndex && closingIndex >= 0) {
-      const lineStart = content.lastIndexOf('\n', openingIndex - 1) + 1;
-      const leadingLabel = content.slice(lineStart, openingIndex);
-      const start = leadingLabel.length <= 120 && !/[<>]/.test(leadingLabel) ? lineStart : openingIndex;
-      return {
-        end: closingIndex + '</user_input>'.length,
-        start,
-        wrapped: true,
-      };
-    }
-  }
-
-  return {
-    end: inputIndex + normalizedUserInput.length,
-    start: inputIndex,
-    wrapped: false,
-  };
-}
-
-function findCapturedUserInputTarget(
-  messages: Array<{ content: string }>,
-  userInput: string,
-): { messageIndex: number; range: UserInputRange } | null {
-  let fallback: { messageIndex: number; range: UserInputRange } | null = null;
-
-  for (let messageIndex = messages.length - 1; messageIndex >= 0; messageIndex -= 1) {
-    const range = findCurrentUserInputRange(messages[messageIndex]!.content, userInput);
-    if (!range) continue;
-    if (range.wrapped) return { messageIndex, range };
-    fallback ||= { messageIndex, range };
-  }
-
-  return fallback;
-}
-
-function insertContentBlock(content: string, index: number, block: string) {
-  const before = content.slice(0, index).trimEnd();
-  const after = content.slice(index).trimStart();
-  return [before, block.trim(), after].filter(Boolean).join('\n\n');
-}
-
-function injectChatTailIntoCapturedPrompt<
-  TCaptured extends {
-    messages: Array<{ content: string }>;
-  },
->(captured: TCaptured, userInput: string, chatTail: string): TCaptured {
-  const normalizedChatTail = chatTail.trim();
-  if (!normalizedChatTail) return captured;
-
-  const target = findCapturedUserInputTarget(captured.messages, userInput);
-  if (!target) return captured;
-
-  return {
-    ...captured,
-    messages: captured.messages.map((message, messageIndex) =>
-      messageIndex === target.messageIndex
-        ? {
-            ...message,
-            content: insertContentBlock(message.content, target.range.start, normalizedChatTail),
-          }
-        : message,
-    ),
-  };
-}
-
 function normalizeRawPromptRole(role: string): 'assistant' | 'system' | 'user' {
   return role === 'system' || role === 'assistant' || role === 'user' ? role : 'user';
 }
@@ -573,29 +513,10 @@ function buildOrderedPromptsFromCapturedMessages(
     content: string;
     role: string;
   }>,
-  userInput: string,
-  chatTail: string,
 ) {
   const prompts: RawOrderedPrompt[] = [];
-  const normalizedUserInput = userInput.trim();
-  const target = findCapturedUserInputTarget(messages, normalizedUserInput);
-
-  for (const [messageIndex, message] of messages.entries()) {
-    const content = message.content;
-    if (!content.trim()) continue;
-
-    if (target && messageIndex === target.messageIndex) {
-      pushRolePrompt(prompts, message.role, content.slice(0, target.range.start));
-      pushRolePrompt(prompts, 'user', content.slice(target.range.start, target.range.end));
-      pushRolePrompt(prompts, message.role, content.slice(target.range.end));
-      continue;
-    }
-
-    pushRolePrompt(prompts, message.role, content);
-  }
-
-  if (!target && normalizedUserInput) {
-    pushRolePrompt(prompts, 'user', [chatTail.trim(), normalizedUserInput].filter(Boolean).join('\n\n'));
+  for (const message of messages) {
+    pushRolePrompt(prompts, message.role, message.content);
   }
 
   return prompts;
@@ -693,8 +614,6 @@ async function generateFromCapturedOrderedPrompts(
   generateConfig: Record<string, unknown>,
   textProvider: ResolvedTextProviderSettings,
   phoneUserInput: string,
-  userInput: string,
-  chatTail: string,
   abortSignal: AbortSignal,
   onRawOutput?: (rawOutput: string) => void,
 ) {
@@ -706,12 +625,10 @@ async function generateFromCapturedOrderedPrompts(
       should_stream: false,
     },
     phoneUserInput,
-    userInput,
-    chatTail,
     abortSignal,
   );
   abortSignal.throwIfAborted();
-  const orderedPrompts = buildOrderedPromptsFromCapturedMessages(captured.messages, userInput, chatTail);
+  const orderedPrompts = buildOrderedPromptsFromCapturedMessages(captured.messages);
 
   if (!orderedPrompts.length) {
     throw new Error('捕获到的酒馆最终提示词为空，无法生成');
@@ -826,94 +743,86 @@ export async function generateContent<TConfig, TResult, TSaveResult = { entityId
     rateLimitRpm: options.rateLimitRpm,
     shouldStream: options.generationDefaults.stream,
     task: async ({ abortSignal, generationId }) => {
-      const prepared = prepareGenerationRequest(adapter, config, options, generationId, textProvider);
-      const replay = createGenerationReplaySnapshot(
-        prepared.parsedConfig,
-        prepared.request,
-        prepared.source.selection,
-        options,
-        textProvider,
-      );
-      const generationRecord = createHiddenGenerationRecord(adapter.actionId, replay);
-      const runGenerationTask = () =>
-        generateFromCapturedOrderedPrompts(
-          prepared.generateConfig,
-          textProvider,
-          prepared.phoneUserInput,
-          prepared.userInput,
-          prepared.chatTail,
-          abortSignal,
-          options.lifecycle?.onRawOutput,
-        );
-      const result = prepared.canUseVisibilityTransaction
-        ? await runWithVisibilityTransaction({
-            generationId,
-            scopeId: prepared.source.selection.scopeId,
-            selectedMessageIds: prepared.source.selection.messageIds,
-            task: runGenerationTask,
-          })
-        : await runGenerationTask();
+    const prepared = prepareGenerationRequest(adapter, config, options, generationId, textProvider);
+    const replay = createGenerationReplaySnapshot(
+      prepared.parsedConfig,
+      prepared.request,
+      prepared.source.selection,
+      options,
+      textProvider,
+    );
+    const generationRecord = createHiddenGenerationRecord(adapter.actionId, replay);
+    const result =
+      textProvider.mode === 'tavern'
+        ? await generateWithPhoneUserInput(prepared.generateConfig, prepared.phoneUserInput, abortSignal)
+        : await generateFromCapturedOrderedPrompts(
+            prepared.generateConfig,
+            textProvider,
+            prepared.phoneUserInput,
+            abortSignal,
+            options.lifecycle?.onRawOutput,
+          );
 
+    abortSignal.throwIfAborted();
+    const rawOutput = normalizeGenerationResult(result);
+    options.lifecycle?.onRawOutput?.(rawOutput);
+
+    const parsed = adapter.parse(rawOutput, prepared.parsedConfig);
+    abortSignal.throwIfAborted();
+    if (!parsed.ok) {
+      const draft = options.createFailedDraft({
+        actionId: adapter.actionId,
+        appId: adapter.appId,
+        context: isRecord(prepared.parsedConfig) ? { ...prepared.parsedConfig } : {},
+        generationRecord,
+        rawOutput,
+        source: prepared.source.selection,
+        warnings: parsed.warnings,
+      });
+
+      return {
+        draft,
+        rawOutput,
+        source: prepared.source.selection,
+        status: 'failed',
+        warnings: parsed.warnings,
+      };
+    }
+
+    if (options.generationDefaults.resultMode === 'save') {
       abortSignal.throwIfAborted();
-      const rawOutput = normalizeGenerationResult(result);
-      options.lifecycle?.onRawOutput?.(rawOutput);
-
-      const parsed = adapter.parse(rawOutput, prepared.parsedConfig);
-      abortSignal.throwIfAborted();
-      if (!parsed.ok) {
-        const draft = options.createFailedDraft({
-          actionId: adapter.actionId,
-          appId: adapter.appId,
-          context: isRecord(prepared.parsedConfig) ? { ...prepared.parsedConfig } : {},
-          generationRecord,
-          rawOutput,
-          source: prepared.source.selection,
-          warnings: parsed.warnings,
-        });
-
-        return {
-          draft,
-          rawOutput,
-          source: prepared.source.selection,
-          status: 'failed',
-          warnings: parsed.warnings,
-        };
-      }
-
-      if (options.generationDefaults.resultMode === 'save') {
-        abortSignal.throwIfAborted();
-        const saved = await adapter.save(parsed.data, {
-          config: prepared.parsedConfig,
-          generationRecord,
-          rawOutput: parsed.raw,
-          replay,
-          scopeId: prepared.scopeId,
-          source: prepared.source.selection,
-          warnings: parsed.warnings,
-        });
-        await options.lifecycle?.onSaved?.(parsed.data, saved);
-
-        return {
-          data: parsed.data,
-          generationRecord,
-          rawOutput: parsed.raw,
-          replay,
-          saved,
-          source: prepared.source.selection,
-          status: 'saved',
-          warnings: parsed.warnings,
-        };
-      }
+      const saved = await adapter.save(parsed.data, {
+        config: prepared.parsedConfig,
+        generationRecord,
+        rawOutput: parsed.raw,
+        replay,
+        scopeId: prepared.scopeId,
+        source: prepared.source.selection,
+        warnings: parsed.warnings,
+      });
+      await options.lifecycle?.onSaved?.(parsed.data, saved);
 
       return {
         data: parsed.data,
         generationRecord,
         rawOutput: parsed.raw,
         replay,
+        saved,
         source: prepared.source.selection,
-        status: 'preview',
+        status: 'saved',
         warnings: parsed.warnings,
       };
+    }
+
+    return {
+      data: parsed.data,
+      generationRecord,
+      rawOutput: parsed.raw,
+      replay,
+      source: prepared.source.selection,
+      status: 'preview',
+      warnings: parsed.warnings,
+    };
     },
     textProvider,
   });
@@ -1004,19 +913,10 @@ export async function captureGenerationPrompt<TConfig, TResult, TSaveResult = { 
         should_stream: false,
       },
       prepared.phoneUserInput,
-      prepared.userInput,
-      prepared.chatTail,
     );
 
   try {
-    return await (prepared.canUseVisibilityTransaction
-      ? runWithVisibilityTransaction({
-          generationId,
-          scopeId: prepared.source.selection.scopeId,
-          selectedMessageIds: prepared.source.selection.messageIds,
-          task: captureTask,
-        })
-      : captureTask());
+    return await captureTask();
   } finally {
     releasePhoneGeneration();
   }
