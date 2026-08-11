@@ -21,8 +21,17 @@ const rawJsonl = [
   }),
 ].join('\n');
 
+const recoveryScenarioNames = [
+  'recovery-shelf',
+  'recovery-group',
+  'recovery-cleanup',
+  'recovery-reader',
+  'recovery-confirm',
+  'recovery-result',
+] as const;
+
 export function applyRecoveryVisualScenario(name: string, context: RecoveryScenarioContext) {
-  if (!name.startsWith('recovery-')) return false;
+  if (!recoveryScenarioNames.includes(name as (typeof recoveryScenarioNames)[number])) return false;
   const recovery = useChatRecoveryStore();
   const characters = createRecoveryCharacters([{ avatar: 'visual-user.png', name: '测试角色' }]);
   const summary = normalizeBackupSummary({
@@ -49,32 +58,55 @@ export function applyRecoveryVisualScenario(name: string, context: RecoveryScena
       lastMessage: '更早的一份备份。',
       lastMessageAt: Date.parse('2026-08-11T08:30:00.000Z'),
     },
+    {
+      ...summary,
+      chatItems: 0,
+      fileId: 'chat_visual_user_20260811-070000',
+      fileName: 'chat_visual_user_20260811-070000.jsonl',
+      lastMessage: '只有 metadata',
+      lastMessageAt: Date.parse('2026-08-11T07:00:00.000Z'),
+    },
   ];
+  const cleanupSummary = backups[2]!;
   recovery.setVisualFixture({
     backups,
     characters,
-    loaded: name === 'recovery-shelf' ? null : loaded,
+    cleanupScan:
+      name === 'recovery-cleanup'
+        ? {
+            candidates: [{ actualChatItems: 0, summary: cleanupSummary }],
+            groupId: '',
+            maxChatItems: 0,
+            rejected: [],
+          }
+        : null,
+    loaded: ['recovery-reader', 'recovery-confirm', 'recovery-result'].includes(name) ? loaded : null,
     result:
       name === 'recovery-result'
         ? { fileName: '测试角色 - 2026-08-11 imported.jsonl', target: characters[0], verified: true }
         : null,
   });
-  const page =
-    name === 'recovery-reader'
-      ? 'reader'
-      : name === 'recovery-confirm'
-        ? 'confirm'
-        : name === 'recovery-result'
-          ? 'result'
-          : 'root';
-  const title =
-    page === 'reader'
-      ? '阅读聊天备份'
-      : page === 'confirm'
-        ? '确认导入备份'
-        : page === 'result'
-          ? '导入完成'
-          : '聊天备份恢复';
-  context.resetPhoneToRoute('recovery', page, title, { fileName: summary.fileName });
+  const pageByScenario: Record<string, string> = {
+    'recovery-cleanup': 'cleanup',
+    'recovery-confirm': 'confirm',
+    'recovery-group': 'group',
+    'recovery-reader': 'reader',
+    'recovery-result': 'result',
+    'recovery-shelf': 'root',
+  };
+  const titleByPage: Record<string, string> = {
+    cleanup: '快速清理备份',
+    confirm: '确认导入备份',
+    group: '测试角色',
+    reader: '阅读聊天备份',
+    result: '导入完成',
+    root: '聊天备份恢复',
+  };
+  const page = pageByScenario[name] ?? 'root';
+  const title = titleByPage[page] ?? '聊天备份恢复';
+  context.resetPhoneToRoute('recovery', page, title, {
+    fileName: summary.fileName,
+    groupId: page === 'group' ? 'character:0' : '',
+  });
   return true;
 }

@@ -28,6 +28,13 @@ type RuntimeSillyTavernContext = {
 
 type TavernHelperRuntime = Record<string, unknown>;
 
+export type TavernRegexSource = 'ai_output' | 'reasoning' | 'slash_command' | 'user_input' | 'world_info';
+export type TavernRegexDestination = 'display' | 'prompt';
+export type TavernRegexFormatOptions = {
+  character_name?: string;
+  depth?: number;
+};
+
 const generationAbortControllers = new Map<string, AbortController>();
 
 function getRuntimeRecords() {
@@ -241,6 +248,30 @@ function requiredGlobalFunction<T extends (...args: never[]) => unknown>(name: s
     throw new Error(`${name} is not defined`);
   }
   return fn;
+}
+
+export function formatAsTavernRegexedStringSafe(
+  text: string,
+  source: TavernRegexSource,
+  destination: TavernRegexDestination,
+  options?: TavernRegexFormatOptions,
+) {
+  const format = getTavernHelperMethod<
+    (
+      text: string,
+      source: TavernRegexSource,
+      destination: TavernRegexDestination,
+      options?: TavernRegexFormatOptions,
+    ) => string
+  >('formatAsTavernRegexedString');
+  if (!format) return text;
+
+  try {
+    return format(text, source, destination, options);
+  } catch (error) {
+    console.warn('[Phone] 酒馆正则处理失败，已保留原文本', error);
+    return text;
+  }
 }
 
 function getSillyTavernContext() {

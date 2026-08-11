@@ -24,6 +24,7 @@ import {
 } from '@/util/textProvider';
 import {
   captureTavernPromptPreview,
+  formatAsTavernRegexedStringSafe,
   generateSafe,
   generateRawSafe,
   getChatMessagesSafe,
@@ -201,8 +202,13 @@ function buildSelectedChatHistoryPrompts(
     .filter((message): message is ChatMessage => Boolean(message));
 
   const prompts: RawOrderedPrompt[] = selectedMessages
-    .map(message => ({
-      content: message.message.trim(),
+    .map((message, index) => ({
+      content: formatAsTavernRegexedStringSafe(
+        message.message,
+        message.role === 'user' ? 'user_input' : 'ai_output',
+        'prompt',
+        { depth: selectedMessages.length - index - 1 },
+      ).trim(),
       role: normalizeRawPromptRole(message.role),
     }))
     .filter(message => Boolean(message.content));

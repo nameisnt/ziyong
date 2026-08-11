@@ -36,7 +36,7 @@
             class="pc-area pc-content-edit-area"
             :placeholder="contentPlaceholder"
           ></textarea>
-          <slot v-else name="content" :rendered-content="renderedContent">
+          <slot v-else name="content" :display-content="displayContent" :rendered-content="renderedContent">
             <article class="pc-detail-content pc-rendered-markdown" v-html="renderedContent"></article>
           </slot>
           <div v-if="warnings.length && !editingContent" class="pc-status-card warning">
@@ -113,6 +113,7 @@ import { useRegexDisplayStore } from '@/apps/regex-display/store';
 import { usePhoneStore } from '@/store/phone';
 import { applyRegexDisplayRules, getRegexRulesByIds } from '@/util/regexDisplay';
 import { renderMarkdown } from '@/util/markdown';
+import { formatAsTavernRegexedStringSafe } from '@/util/runtime';
 
 type PreviewView = 'bagu' | 'preview' | 'raw';
 
@@ -205,7 +206,8 @@ const showPreviewHeader = computed(() => activeView.value === 'preview' && !edit
 const displayContent = computed(() => {
   const appId = phone.currentRoute.appId;
   const rules = getRegexRulesByIds(regexDisplay.rules, regexDisplay.getUsage(appId).displayRuleIds, 'replace');
-  return applyRegexDisplayRules(props.content, rules).content;
+  const tavernRegexedContent = formatAsTavernRegexedStringSafe(props.content, 'ai_output', 'display', { depth: 0 });
+  return applyRegexDisplayRules(tavernRegexedContent, rules).content;
 });
 const renderedContent = computed(() => renderMarkdown(displayContent.value));
 const contentHasPendingChanges = computed(() => props.content !== acceptedContent.value);

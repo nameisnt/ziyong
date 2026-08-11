@@ -41,6 +41,28 @@ export interface ParsedChatBackup {
   userName: string;
 }
 
+export interface CleanupCandidate {
+  actualChatItems: number;
+  summary: ChatBackupSummary;
+}
+
+export interface CleanupRejectedBackup {
+  reason: string;
+  summary: ChatBackupSummary;
+}
+
+export interface CleanupScanResult {
+  candidates: CleanupCandidate[];
+  groupId: string;
+  maxChatItems: number;
+  rejected: CleanupRejectedBackup[];
+}
+
+export interface CleanupDeleteResult {
+  deleted: ChatBackupSummary[];
+  failed: CleanupRejectedBackup[];
+}
+
 export function describeBackupMessageCountMismatch(listedCount: number, parsedCount: number) {
   if (listedCount === parsedCount) return '';
   return `备份列表记录 ${listedCount} 层，但实际解析到 ${parsedCount} 层；请刷新书架后重新读取，当前文件禁止导入。`;
@@ -80,8 +102,10 @@ export function normalizeBackupSummary(raw: unknown): ChatBackupSummary | null {
   if (!/^chat_.+\.jsonl$/i.test(fileName)) return null;
   const lastMessageRaw = raw.last_mes;
   const parsedDate = typeof lastMessageRaw === 'number' ? lastMessageRaw : Date.parse(textValue(lastMessageRaw));
+  const chatItems = Number(raw.chat_items);
+  if (!Number.isInteger(chatItems) || chatItems < 0) return null;
   return {
-    chatItems: Math.max(0, Number(raw.chat_items) || 0),
+    chatItems,
     fileId: textValue(raw.file_id) || fileName.replace(/\.jsonl$/i, ''),
     fileName,
     fileSize: textValue(raw.file_size) || '未知大小',
@@ -89,6 +113,15 @@ export function normalizeBackupSummary(raw: unknown): ChatBackupSummary | null {
     lastMessageAt: Number.isFinite(parsedDate) ? parsedDate : 0,
     ownerKey: extractBackupOwnerKey(fileName),
   };
+}
+
+export function assertCleanupThreshold(value: number) {
+  if (!Number.isInteger(value) || value < 0) throw new Error('最大楼层数必须是大于等于 0 的整数');
+  return value;
+}
+
+export function isCleanupCandidate(summary: ChatBackupSummary, actualChatItems: number, maxChatItems: number) {
+  return summary.chatItems === actualChatItems && actualChatItems <= assertCleanupThreshold(maxChatItems);
 }
 
 export function createRecoveryCharacters(characters: unknown[]): RecoveryCharacter[] {

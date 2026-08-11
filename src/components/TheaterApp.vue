@@ -160,7 +160,7 @@
       @reparse="reparsePreviewRaw"
       @save="savePreview"
     >
-      <template #content>
+      <template #content="{ displayContent }">
         <div class="pc-preview-render-toolbar">
           <span class="pc-field-label">{{ t`解析与预览方式` }}</span>
           <span class="pc-segment">
@@ -183,7 +183,7 @@
         <FrontendFrame
           v-if="generationState.preview.renderMode === 'frontend'"
           :active="isOpen"
-          :content="generationState.preview.content"
+          :content="displayContent"
           :theme="settings.theme"
           :title="generationState.preview.title"
           @navigate-blocked="handleFrameNavigateBlocked"
@@ -192,7 +192,7 @@
         <article
           v-else
           class="pc-detail-content pc-rendered-markdown"
-          v-html="renderMarkdown(formatReaderContent(generationState.preview.content, settings.reader))"
+          v-html="renderMarkdown(formatReaderContent(displayContent, settings.reader))"
         ></article>
       </template>
     </GenerationPreviewPage>

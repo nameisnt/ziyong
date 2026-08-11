@@ -35,7 +35,17 @@ export function createVisualScenarioGroups(rootAppScenarios: string[]): VisualSc
     },
     { id: 'card-writer', scenarios: ['card-writer-saved-preview'] },
     { id: 'archive', scenarios: ['archive-owner-list'] },
-    { id: 'recovery', scenarios: ['recovery-shelf', 'recovery-reader', 'recovery-confirm', 'recovery-result'] },
+    {
+      id: 'recovery',
+      scenarios: [
+        'recovery-shelf',
+        'recovery-group',
+        'recovery-cleanup',
+        'recovery-reader',
+        'recovery-confirm',
+        'recovery-result',
+      ],
+    },
     { id: 'bagu', scenarios: ['bagu-scan-actions', 'bagu-scan-applied'] },
     {
       id: 'settings',

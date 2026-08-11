@@ -45,6 +45,19 @@ export async function downloadNativeChatBackup(summary: ChatBackupSummary) {
   return blob;
 }
 
+export async function deleteNativeChatBackup(summary: ChatBackupSummary) {
+  if (!/^chat_.+\.jsonl$/i.test(summary.fileName)) throw new Error('选择的文件不是可删除的聊天备份');
+  const response = await fetch('/api/backups/chat/delete', {
+    body: JSON.stringify({ name: summary.fileName }),
+    cache: 'no-cache',
+    headers: getRequestHeaders(),
+    method: 'POST',
+  });
+  if (response.status === 405) throw new RecoveryApiUnavailableError();
+  if (response.status === 404) throw new Error('这份备份已经不存在，请刷新书架');
+  if (!response.ok) throw new Error(`删除聊天备份失败（HTTP ${response.status}）`);
+}
+
 export async function refreshRecoveryCharacters() {
   await getCharacters();
   return characters as unknown[];
