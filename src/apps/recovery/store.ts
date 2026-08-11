@@ -124,9 +124,7 @@ export const useChatRecoveryStore = defineStore('chat-recovery', () => {
     try {
       await refresh();
       if (error.value) throw new Error(error.value);
-      const scopedBackups = groupId
-        ? groups.value.find(group => group.id === groupId)?.backups ?? []
-        : backups.value;
+      const scopedBackups = groupId ? (groups.value.find(group => group.id === groupId)?.backups ?? []) : backups.value;
       const coarseCandidates = scopedBackups.filter(summary => summary.chatItems <= maxChatItems);
       const result: CleanupScanResult = { candidates: [], groupId, maxChatItems, rejected: [] };
       for (const summary of coarseCandidates) {

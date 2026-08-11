@@ -84,7 +84,9 @@
           </button>
         </div>
       </div>
-      <p class="pc-recovery-group-note">{{ activeGroup.label }} · 最近 {{ formatDate(activeGroup.backups[0]?.lastMessageAt) }}</p>
+      <p class="pc-recovery-group-note">
+        {{ activeGroup.label }} · 最近 {{ formatDate(activeGroup.backups[0]?.lastMessageAt) }}
+      </p>
       <EmptyState v-if="!activeGroup.backups.length" title="这个角色没有聊天备份" />
       <div v-else class="pc-directory-list">
         <div v-for="backup in activeGroup.backups" :key="backup.fileName" class="pc-recovery-backup-row">
@@ -98,7 +100,9 @@
             <span class="pc-list-row-copy">
               <strong>{{ formatDate(backup.lastMessageAt) }}</strong>
               <small>{{ backup.fileName }}</small>
-              <small>{{ backup.fileSize }} · {{ backup.chatItems }} 层 · {{ backup.lastMessage || '没有消息摘要' }}</small>
+              <small
+                >{{ backup.fileSize }} · {{ backup.chatItems }} 层 · {{ backup.lastMessage || '没有消息摘要' }}</small
+              >
             </span>
             <i class="fa-solid fa-chevron-right"></i>
           </button>
@@ -109,7 +113,12 @@
             :title="`永久删除 ${backup.fileName}`"
             @click="confirmDeleteBackup(backup)"
           >
-            <i :class="['fa-solid', recovery.deletingFileName === backup.fileName ? 'fa-spinner spinning' : 'fa-trash-can']"></i>
+            <i
+              :class="[
+                'fa-solid',
+                recovery.deletingFileName === backup.fileName ? 'fa-spinner spinning' : 'fa-trash-can',
+              ]"
+            ></i>
           </button>
         </div>
       </div>
@@ -151,7 +160,11 @@
               <strong>{{ group.label }}</strong>
               <span>{{ group.candidates.length }} 份</span>
             </div>
-            <label v-for="candidate in group.candidates" :key="candidate.summary.fileName" class="pc-recovery-cleanup-item">
+            <label
+              v-for="candidate in group.candidates"
+              :key="candidate.summary.fileName"
+              class="pc-recovery-cleanup-item"
+            >
               <input
                 type="checkbox"
                 :checked="cleanupSelectedNames.includes(candidate.summary.fileName)"
@@ -180,7 +193,10 @@
 
       <article v-if="recovery.cleanupDeleteResult" class="pc-section-card pc-recovery-cleanup-summary">
         <strong>清理完成</strong>
-        <p>成功 {{ recovery.cleanupDeleteResult.deleted.length }} 份，失败 {{ recovery.cleanupDeleteResult.failed.length }} 份。</p>
+        <p>
+          成功 {{ recovery.cleanupDeleteResult.deleted.length }} 份，失败
+          {{ recovery.cleanupDeleteResult.failed.length }} 份。
+        </p>
         <p v-if="recovery.cleanupDeleteResult.failed.length" class="pc-recovery-warning">
           失败项仍保留在备份书架中，可刷新后逐份检查。
         </p>
@@ -252,9 +268,18 @@
       <article class="pc-section-card pc-recovery-confirm-card">
         <strong>确认原生导入</strong>
         <dl class="pc-recovery-details">
-          <div><dt>来源</dt><dd>{{ loaded.summary.fileName }}</dd></div>
-          <div><dt>备份</dt><dd>{{ loaded.parsed.messages.length }} 层 · {{ formatDate(loaded.summary.lastMessageAt) }}</dd></div>
-          <div><dt>识别角色</dt><dd>{{ loaded.parsed.characterName || 'metadata 未记录' }}</dd></div>
+          <div>
+            <dt>来源</dt>
+            <dd>{{ loaded.summary.fileName }}</dd>
+          </div>
+          <div>
+            <dt>备份</dt>
+            <dd>{{ loaded.parsed.messages.length }} 层 · {{ formatDate(loaded.summary.lastMessageAt) }}</dd>
+          </div>
+          <div>
+            <dt>识别角色</dt>
+            <dd>{{ loaded.parsed.characterName || 'metadata 未记录' }}</dd>
+          </div>
         </dl>
         <label class="pc-field-group">
           <span class="pc-field-label">目标角色卡</span>
@@ -266,7 +291,8 @@
           />
         </label>
         <p class="pc-recovery-safety-note">
-          <i class="fa-solid fa-shield-halved"></i> 将作为一份新聊天导入，不覆盖当前聊天，不删除原备份，也不复制插件 scope 数据。
+          <i class="fa-solid fa-shield-halved"></i> 将作为一份新聊天导入，不覆盖当前聊天，不删除原备份，也不复制插件
+          scope 数据。
         </p>
         <p v-if="loaded.messageCountMismatch" class="pc-recovery-warning">{{ loaded.messageCountMismatch }}</p>
       </article>
@@ -293,7 +319,12 @@
         </p>
       </article>
       <div class="pc-form-actions pc-recovery-single-action">
-        <button class="pc-primary-btn" type="button" :disabled="!recovery.importResult.verified" @click="openImportedChat">
+        <button
+          class="pc-primary-btn"
+          type="button"
+          :disabled="!recovery.importResult.verified"
+          @click="openImportedChat"
+        >
           打开导入后的聊天
         </button>
       </div>
@@ -329,7 +360,8 @@ const cleanupSelectedNames = ref<string[]>([]);
 const activeGroup = computed(() => recovery.groups.find(group => group.id === route.value.params?.groupId) ?? null);
 const activeMessage = computed(() => loaded.value?.parsed.messages[messageIndex.value] ?? null);
 const catalogItems = computed(
-  () => loaded.value?.parsed.messages.map(message => ({ id: message.id, meta: message.name, title: message.title })) ?? [],
+  () =>
+    loaded.value?.parsed.messages.map(message => ({ id: message.id, meta: message.name, title: message.title })) ?? [],
 );
 const targetOptions = computed(() =>
   recovery.characters.map(character => ({ label: character.name, value: String(character.id) })),
@@ -346,8 +378,8 @@ const filteredGroups = computed(() => {
   if (sortMode.value === 'character') return [...groups].sort((a, b) => a.label.localeCompare(b.label, 'zh-CN'));
   return [...groups].sort((a, b) => (b.backups[0]?.lastMessageAt ?? 0) - (a.backups[0]?.lastMessageAt ?? 0));
 });
-const cleanupScopeGroup = computed(() =>
-  recovery.groups.find(group => group.id === route.value.params?.groupId) ?? null,
+const cleanupScopeGroup = computed(
+  () => recovery.groups.find(group => group.id === route.value.params?.groupId) ?? null,
 );
 const cleanupScopeLabel = computed(() => cleanupScopeGroup.value?.label ?? '全部角色');
 const cleanupCandidateGroups = computed(() => {
@@ -418,7 +450,10 @@ async function openBackup(summary: ChatBackupSummary) {
 }
 
 function backupGroupLabel(summary: ChatBackupSummary) {
-  return recovery.groups.find(group => group.backups.some(backup => backup.fileName === summary.fileName))?.label ?? '未知角色';
+  return (
+    recovery.groups.find(group => group.backups.some(backup => backup.fileName === summary.fileName))?.label ??
+    '未知角色'
+  );
 }
 
 async function confirmDeleteBackup(summary: ChatBackupSummary, navigateWhenGroupEmpty = true) {

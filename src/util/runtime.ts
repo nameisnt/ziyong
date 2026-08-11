@@ -256,14 +256,15 @@ export function formatAsTavernRegexedStringSafe(
   destination: TavernRegexDestination,
   options?: TavernRegexFormatOptions,
 ) {
-  const format = getTavernHelperMethod<
-    (
-      text: string,
-      source: TavernRegexSource,
-      destination: TavernRegexDestination,
-      options?: TavernRegexFormatOptions,
-    ) => string
-  >('formatAsTavernRegexedString');
+  const format =
+    getTavernHelperMethod<
+      (
+        text: string,
+        source: TavernRegexSource,
+        destination: TavernRegexDestination,
+        options?: TavernRegexFormatOptions,
+      ) => string
+    >('formatAsTavernRegexedString');
   if (!format) return text;
 
   try {
