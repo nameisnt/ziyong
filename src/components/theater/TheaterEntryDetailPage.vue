@@ -3,11 +3,10 @@
     <ReaderDetailShell
       actions-class="six"
       :content="viewedEntry.content"
-      :custom-content="viewedEntry.renderMode === 'frontend'"
+      custom-content
       display-app-id="theater"
-      :eraser-enabled="viewedEntry.renderMode !== 'frontend'"
+      eraser-enabled
       :favorite-active="entry.favorite"
-      :footer-always-visible="viewedEntry.renderMode === 'frontend'"
       :next-disabled="!nextEntryId"
       :previous-disabled="!previousEntryId"
       :title="viewedEntry.title"
@@ -40,8 +39,7 @@
         </div>
       </template>
       <template #content="{ displayContent }">
-        <FrontendFrame
-          v-if="viewedEntry.renderMode === 'frontend'"
+        <TheaterMixedContent
           :active="phoneOpen"
           :content="displayContent"
           :theme="theme"
@@ -58,9 +56,11 @@
           @click="$emit('split-version')"
         >
           <i class="fa-solid fa-code-branch"></i>
+          <span>{{ t`拆分版本` }}</span>
         </button>
         <button class="pc-soft-btn" type="button" :title="t`重新生成`" @click="$emit('rewrite')">
           <i class="fa-solid fa-rotate"></i>
+          <span>{{ t`重新生成` }}</span>
         </button>
         <button
           class="pc-soft-btn danger"
@@ -69,6 +69,7 @@
           @click="$emit('remove')"
         >
           <i class="fa-solid fa-trash"></i>
+          <span>{{ t`删除` }}</span>
         </button>
       </template>
       <template #overlays>
@@ -87,7 +88,7 @@
 <script setup lang="ts">
 import CapsuleTag from '@/components/CapsuleTag.vue';
 import CatalogModal from '@/components/CatalogModal.vue';
-import FrontendFrame from '@/components/FrontendFrame.vue';
+import TheaterMixedContent from '@/components/theater/TheaterMixedContent.vue';
 import ReaderDetailShell from '@/components/ReaderDetailShell.vue';
 import VersionNavigator from '@/components/VersionNavigator.vue';
 import type { CatalogModalItem } from '@/type/catalog';

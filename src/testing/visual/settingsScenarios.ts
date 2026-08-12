@@ -35,6 +35,11 @@ export async function applySettingsVisualScenario(name: string, context: Setting
   } else if (name === 'settings-connection-dark') {
     settings.setTheme('dark');
     context.resetPhoneToRoute('settings', 'root', '设置', { tab: 'connection' });
+    await context.waitForPaint();
+    const tabs = [...document.querySelectorAll<HTMLButtonElement>('.pc-settings-tabs .pc-segment-btn')];
+    if (!tabs.length || tabs.some(tab => tab.scrollWidth > tab.clientWidth + 1)) {
+      throw new Error('Settings tabs overflow or wrap in the narrow phone layout');
+    }
   } else if (name === 'settings-advanced') context.resetPhoneToRoute('settings', 'root', '设置', { tab: 'advanced' });
   else {
     const hostThemeOverride = document.createElement('style');

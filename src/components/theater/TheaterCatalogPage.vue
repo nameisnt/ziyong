@@ -26,8 +26,24 @@
         :label="t`自定义`"
         @click="customTypeOpen = !customTypeOpen"
       />
+      <template v-if="typeView === 'all' && !query.trim()">
+        <section v-for="group in groupedTypePrompts" :key="group.id" class="pc-theater-type-group">
+          <strong>{{ group.name }}</strong>
+          <div>
+            <CapsuleTag
+              v-for="typePrompt in group.items"
+              :key="typePrompt.id"
+              :count="typeUsageCounts.get(typePrompt.id) || typeUsageCounts.get(typePrompt.name)"
+              icon="fa-solid fa-masks-theater"
+              :label="typePrompt.name"
+              @click="$emit('open-generate', typePrompt.id)"
+            />
+          </div>
+        </section>
+      </template>
       <CapsuleTag
         v-for="typePrompt in visibleTypePrompts"
+        v-else
         :key="typePrompt.id"
         :active="query.trim() === typePrompt.name"
         :count="typeUsageCounts.get(typePrompt.id) || typeUsageCounts.get(typePrompt.name)"
@@ -69,17 +85,18 @@
 import CapsuleTag from '@/components/CapsuleTag.vue';
 import FailedDraftList from '@/components/FailedDraftList.vue';
 import PreviewDraftNotice from '@/components/PreviewDraftNotice.vue';
-import type { TypePromptConfig } from '@/store/prompts';
+import type { TypePromptConfig, TypePromptGroup } from '@/store/prompts';
 import type { GenerationPreviewDraft } from '@/store/previewDrafts';
 import type { FailedGenerationDraft } from '@/type/generation';
 
-defineProps<{
+const props = defineProps<{
   entryCount: number;
   failedDrafts: FailedGenerationDraft[];
   getFailedDraftContext: (draft: FailedGenerationDraft) => string;
   getFailedDraftTitle: (draft: FailedGenerationDraft) => string;
   previewDraft: GenerationPreviewDraft | null;
   typeUsageCounts: Map<string, number>;
+  typePromptGroups: TypePromptGroup[];
   visibleTypePrompts: TypePromptConfig[];
 }>();
 
@@ -87,6 +104,14 @@ const customTypeName = defineModel<string>('customTypeName', { required: true })
 const customTypeOpen = defineModel<boolean>('customTypeOpen', { required: true });
 const query = defineModel<string>('query', { required: true });
 const typeView = defineModel<'all' | 'recent'>('typeView', { required: true });
+const groupedTypePrompts = computed(() => {
+  const groups = props.typePromptGroups
+    .map(group => ({ ...group, items: props.visibleTypePrompts.filter(item => item.groupId === group.id) }))
+    .filter(group => group.items.length);
+  const ungrouped = props.visibleTypePrompts.filter(item => !groups.some(group => group.id === item.groupId));
+  if (ungrouped.length) groups.push({ domain: 'theater', id: '', items: ungrouped, name: '未分组' });
+  return groups;
+});
 
 defineEmits<{
   'discard-preview': [];
@@ -146,6 +171,23 @@ defineEmits<{
   border: 0.5px solid var(--pc-border);
   border-radius: 12px;
   background: var(--pc-bg);
+}
+
+.pc-theater-type-group {
+  display: grid;
+  width: 100%;
+  gap: 7px;
+}
+
+.pc-theater-type-group > strong {
+  color: var(--pc-muted);
+  font-size: 12px;
+}
+
+.pc-theater-type-group > div {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
 }
 
 .pc-custom-type-row {

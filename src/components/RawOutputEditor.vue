@@ -5,7 +5,7 @@
         <strong>{{ title }}</strong>
         <p v-if="description">{{ description }}</p>
       </div>
-      <button v-if="editable" class="pc-soft-btn compact" type="button" @click="emit('reparse')">
+      <button v-if="editable" class="pc-soft-btn compact" type="button" @click="requestReparse">
         {{ reparseLabel }}
       </button>
     </header>
@@ -20,7 +20,7 @@
       @input="emit('update:modelValue', ($event.target as HTMLTextAreaElement).value)"
     ></textarea>
     <div v-if="keyboardActionVisible" class="pc-raw-keyboard-action" :style="keyboardActionStyle">
-      <button class="pc-primary-btn compact" type="button" @pointerdown.prevent @click="emit('reparse')">
+      <button class="pc-primary-btn compact" type="button" @pointerdown.prevent @click="requestReparse">
         {{ reparseLabel }}
       </button>
     </div>
@@ -28,6 +28,9 @@
 </template>
 
 <script setup lang="ts">
+import { useSettingsStore } from '@/store/settings';
+import { cleanGenerationOutput } from '@/util/generationOutputCleaning';
+
 withDefaults(
   defineProps<{
     description?: string;
@@ -51,11 +54,24 @@ const emit = defineEmits<{
   'update:modelValue': [value: string];
 }>();
 
+const settingsStore = useSettingsStore();
+
 const rootEl = ref<HTMLElement | null>(null);
 const editorEl = ref<HTMLTextAreaElement | null>(null);
 const keyboardActionVisible = ref(false);
 const keyboardActionStyle = ref<Record<string, string>>({});
 const keyboardSyncTimers = new Set<number>();
+
+async function requestReparse() {
+  const generation = settingsStore.settings.generation;
+  const cleaned = cleanGenerationOutput(props.modelValue, {
+    enabled: generation.outputCleaningEnabled,
+    endTags: generation.outputCleaningEndTags,
+  });
+  if (cleaned.removedLength) emit('update:modelValue', cleaned.content);
+  await nextTick();
+  emit('reparse');
+}
 
 function syncKeyboardAction() {
   const viewport = window.visualViewport;

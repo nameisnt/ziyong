@@ -457,27 +457,13 @@
                       <SearchableCombobox
                         :model-value="step.config.theaterTypeId"
                         input-label="选择小剧场类型"
-                        :options="
-                          resourceOptions(
-                            theaterTypePrompts,
-                            step.config.theaterTypeId,
-                            '自定义类型',
-                            prompt => prompt.name,
-                          )
-                        "
+                        :options="theaterTypeOptions(step.config.theaterTypeId)"
                         placeholder="自定义类型"
                         @update:model-value="
                           step.config.theaterTypeId = $event;
                           applyTheaterTypeDefaults(step);
                         "
                       />
-                    </label>
-                    <label class="pc-field-group">
-                      <span>{{ t`渲染方式` }}</span>
-                      <select v-model="step.config.theaterRenderMode" class="pc-select">
-                        <option value="markdown">Markdown</option>
-                        <option value="frontend">{{ t`网页渲染` }}</option>
-                      </select>
                     </label>
                   </div>
                   <input
@@ -725,7 +711,7 @@ const { boards: forumBoards } = storeToRefs(useForumStore());
 const { books: letterBooks } = storeToRefs(useLettersStore());
 const { tables: profileTables } = storeToRefs(useProfilesStore());
 const promptStore = usePromptStore();
-const { typePrompts } = storeToRefs(promptStore);
+const { typePromptGroups, typePrompts } = storeToRefs(promptStore);
 const extrasTypePrompts = computed(() => typePrompts.value.filter(prompt => prompt.domain === 'extras'));
 const forumBoardTypePrompts = computed(() => typePrompts.value.filter(prompt => prompt.domain === 'forum-board'));
 const theaterTypePrompts = computed(() => typePrompts.value.filter(prompt => prompt.domain === 'theater'));
@@ -754,6 +740,18 @@ function resourceOptions<T extends { id: string }>(
     options.unshift({ label: '当前已选项已失效', value: selected });
   }
   return [{ label: emptyLabel, value: '' }, ...options];
+}
+
+function theaterTypeOptions(selected: string) {
+  const options = theaterTypePrompts.value.map(prompt => ({
+    group: typePromptGroups.value.find(group => group.id === prompt.groupId)?.name || '未分组',
+    label: prompt.name,
+    value: prompt.id,
+  }));
+  if (selected && !options.some(option => option.value === selected)) {
+    options.unshift({ group: '状态', label: '当前已选项已失效', value: selected });
+  }
+  return [{ group: '范围', label: '自定义类型', value: '' }, ...options];
 }
 
 async function resetCorruptedSettings() {
@@ -801,7 +799,6 @@ function applyTheaterTypeDefaults(step: WorkbenchStep) {
   }
   step.config.theaterTypeName = typePrompt.name;
   step.config.theaterTypePrompt = typePrompt.prompt;
-  step.config.theaterRenderMode = typePrompt.renderMode === 'frontend' ? 'frontend' : 'markdown';
 }
 
 function applyExtrasTypeDefaults(step: WorkbenchStep) {

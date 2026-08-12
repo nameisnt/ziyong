@@ -5,6 +5,7 @@ import type {
   PhoneContentConversionSource,
   PhoneContentReceiver,
 } from '@/core/appRegistry';
+import { wrapLegacyTheaterFrontend } from '@/util/theaterMixedContent';
 import { useProfilesStore } from '@/apps/profiles/store';
 import { useDigestStore } from '@/apps/digest/store';
 import { useEntryLibraryStore } from '@/apps/entry-library/store';
@@ -359,10 +360,9 @@ export function createTheaterContentReceiver(): PhoneContentReceiver {
   return {
     scope: 'chat',
     batchModes: ['separate', 'merge'],
-    createDraft(sources) {
+    createDraft() {
       return {
         participants: '',
-        renderMode: sources.some(source => source.displayMode === 'frontend') ? 'frontend' : 'markdown',
         typeName: '内容转换',
       };
     },
@@ -370,26 +370,19 @@ export function createTheaterContentReceiver(): PhoneContentReceiver {
       return [
         { key: 'typeName', kind: 'text', label: '小剧场类型', placeholder: '可留空' },
         { key: 'participants', kind: 'text', label: '参与角色', placeholder: '使用逗号分隔' },
-        {
-          key: 'renderMode',
-          kind: 'select',
-          label: '显示方式',
-          options: [
-            { label: 'Markdown 文本', value: 'markdown' },
-            { label: '网页渲染', value: 'frontend' },
-          ],
-        },
       ];
     },
     receive(context) {
       const theater = useTheaterStore();
-      const renderMode = textValue(context, 'renderMode') === 'frontend' ? 'frontend' : 'markdown';
       const participants = splitList(textValue(context, 'participants')).map(name => ({ name }));
       const entries = context.sources.map(source =>
         theater.createEntry({
-          content: renderMode === 'frontend' ? source.content : stripFrontendMarkup(source),
+          content:
+            source.displayMode === 'frontend'
+              ? wrapLegacyTheaterFrontend(source.content)
+              : stripFrontendMarkup(source),
           participants,
-          renderMode,
+          renderMode: 'markdown',
           title: sourceTitle(source, '未命名小剧场'),
           typeName: textValue(context, 'typeName') || '未分类小剧场',
         }),

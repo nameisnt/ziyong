@@ -24,6 +24,7 @@
       <template #actions>
         <button class="pc-soft-btn danger" type="button" :title="t`删除`" @click="emit('delete')">
           <i class="fa-solid fa-trash"></i>
+          <span>{{ t`删除` }}</span>
         </button>
       </template>
       <template #overlays>

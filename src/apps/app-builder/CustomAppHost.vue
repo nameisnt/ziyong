@@ -159,9 +159,11 @@
         <template #actions>
           <button class="pc-soft-btn" type="button" :title="t`转换内容`" @click="openConversion([activeEntry.id])">
             <i class="fa-solid fa-arrow-right-arrow-left"></i>
+            <span>{{ t`内容转换` }}</span>
           </button>
           <button class="pc-soft-btn danger" type="button" :title="t`删除`" @click="removeEntry(activeEntry.id)">
             <i class="fa-solid fa-trash"></i>
+            <span>{{ t`删除` }}</span>
           </button>
         </template>
       </ReaderDetailShell>

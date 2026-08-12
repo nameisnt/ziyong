@@ -127,7 +127,7 @@ export function createTheaterContentSources(): PhoneContentConversionSource[] {
     appId: 'theater',
     appName: '小剧场',
     content: entry.content,
-    displayMode: entry.renderMode,
+    displayMode: 'markdown',
     entryId: entry.id,
     sourceLabel: entry.typeName,
     tags: [...entry.participants.map(participant => participant.name), entry.typeName].filter(Boolean),

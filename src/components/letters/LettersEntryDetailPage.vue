@@ -29,9 +29,11 @@
       <template #actions>
         <button class="pc-soft-btn" type="button" :title="t`回信`" @click="emit('reply')">
           <i class="fa-solid fa-reply"></i>
+          <span>{{ t`回信` }}</span>
         </button>
         <button class="pc-soft-btn" type="button" :title="t`重写`" @click="emit('rewrite')">
           <i class="fa-solid fa-rotate"></i>
+          <span>{{ t`重写` }}</span>
         </button>
         <button
           class="pc-soft-btn danger"
@@ -40,6 +42,7 @@
           @click="emit('delete')"
         >
           <i class="fa-solid fa-trash"></i>
+          <span>{{ t`删除` }}</span>
         </button>
       </template>
       <template #overlays>

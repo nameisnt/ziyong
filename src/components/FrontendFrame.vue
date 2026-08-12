@@ -1,5 +1,5 @@
 <template>
-  <div class="pc-frame-shell">
+  <div :class="['pc-frame-shell', { embedded }]">
     <iframe
       v-if="shouldRender"
       ref="iframeEl"
@@ -26,12 +26,14 @@ const props = withDefaults(
   defineProps<{
     active?: boolean;
     content: string;
+    embedded?: boolean;
     securityMode?: 'safe' | 'trusted';
     theme?: 'dark' | 'light';
     title?: string;
   }>(),
   {
     active: true,
+    embedded: false,
     securityMode: 'trusted',
     theme: 'light',
     title: '',
@@ -86,7 +88,7 @@ watch(
 );
 
 function clampHeight(height: number) {
-  return Math.max(220, Math.min(560, Math.round(height)));
+  return Math.max(props.embedded ? 80 : 220, Math.min(560, Math.round(height)));
 }
 
 function handleLoad(event: Event) {
@@ -131,6 +133,10 @@ onBeforeUnmount(() => {
   border-radius: min(var(--pc-card-radius), 8px);
   overflow: hidden;
   background: var(--pc-surface-strong);
+}
+
+.pc-frame-shell.embedded {
+  margin-top: 0;
 }
 
 .pc-frame {

@@ -4,7 +4,7 @@ import {
   type GenerationAdapter,
   type SimpleXmlResult,
 } from '@/type/generation';
-import type { TheaterEntry, TheaterRenderMode } from '@/type/theater';
+import type { TheaterEntry } from '@/type/theater';
 import { CharacterRefSchema } from '@/type/diary';
 import { parseTheaterXmlResult } from '@/util/generation';
 import { parseConfiguredOutput } from '@/util/outputParsing';
@@ -51,13 +51,13 @@ export function createTheaterGenerationAdapter(theaterStore: {
       });
     },
     configSchema: TheaterGenerateConfigSchema,
-    parse(raw, config) {
+    parse(raw) {
       return parseConfiguredOutput(
-        config.renderMode === 'frontend' ? 'theater.frontend' : 'theater.markdown',
+        'theater.generate',
         raw,
         SimpleXmlResultSchema,
         () =>
-          parseTheaterXmlResult(raw, config.renderMode === 'frontend' ? { preserveContentMarkup: true } : undefined),
+          parseTheaterXmlResult(raw, { preserveContentMarkup: true }),
       );
     },
     async save(result, context) {
@@ -65,7 +65,7 @@ export function createTheaterGenerationAdapter(theaterStore: {
         const saved = theaterStore.appendEntryVersion(context.config.entryId, {
           content: result.content,
           generationRecord: context.generationRecord,
-          renderMode: context.config.renderMode as TheaterRenderMode,
+          renderMode: 'markdown',
           title: result.title,
         });
         if (!saved) throw new Error('目标小剧场不存在，无法保存重写版本');
@@ -79,7 +79,7 @@ export function createTheaterGenerationAdapter(theaterStore: {
         content: result.content,
         generationRecord: context.generationRecord,
         participants: context.config.participants,
-        renderMode: context.config.renderMode as TheaterRenderMode,
+        renderMode: 'markdown',
         title: result.title,
         typeId: context.config.typeId,
         typeName: context.config.typeName,

@@ -12,6 +12,7 @@
       :get-failed-draft-title="() => '未解析小剧场'"
       :preview-draft="theaterPreviewDraft"
       :type-usage-counts="typeUsageCounts"
+      :type-prompt-groups="theaterTypePromptGroups"
       :visible-type-prompts="visibleTypePrompts"
       @discard-preview="discardTheaterPreviewDraft"
       @open-custom-generate="openCustomGenerate"
@@ -40,7 +41,6 @@
     <TheaterEntryEditorPage
       v-else-if="route.page === 'editor'"
       v-model:content="draft.content"
-      v-model:render-mode="draft.renderMode"
       :title="editingEntry?.title"
       @cancel="phone.goBack()"
       @save="submitEntry"
@@ -126,24 +126,6 @@
           :disabled="generationState.running"
           :placeholder="t`小剧场类型提示词`"
         ></textarea>
-        <div class="pc-segment pc-mode-selector">
-          <button
-            :class="['pc-segment-btn', { active: generationDraft.renderMode === 'markdown' }]"
-            type="button"
-            :disabled="generationState.running"
-            @click="generationDraft.renderMode = 'markdown'"
-          >
-            {{ t`Markdown 文本` }}
-          </button>
-          <button
-            :class="['pc-segment-btn', { active: generationDraft.renderMode === 'frontend' }]"
-            type="button"
-            :disabled="generationState.running"
-            @click="generationDraft.renderMode = 'frontend'"
-          >
-            {{ t`网页渲染` }}
-          </button>
-        </div>
       </template>
     </GenerationFormPage>
 
@@ -162,39 +144,13 @@
       @save="savePreview"
     >
       <template #content="{ displayContent }">
-        <div class="pc-preview-render-toolbar">
-          <span class="pc-field-label">{{ t`解析与预览方式` }}</span>
-          <span class="pc-segment">
-            <button
-              :class="['pc-segment-btn', { active: generationState.preview.renderMode === 'markdown' }]"
-              type="button"
-              @click="switchPreviewRenderMode('markdown')"
-            >
-              Markdown
-            </button>
-            <button
-              :class="['pc-segment-btn', { active: generationState.preview.renderMode === 'frontend' }]"
-              type="button"
-              @click="switchPreviewRenderMode('frontend')"
-            >
-              {{ t`网页渲染` }}
-            </button>
-          </span>
-        </div>
-        <FrontendFrame
-          v-if="generationState.preview.renderMode === 'frontend'"
+        <TheaterMixedContent
           :active="isOpen"
           :content="displayContent"
           :theme="settings.theme"
           :title="generationState.preview.title"
           @navigate-blocked="handleFrameNavigateBlocked"
         />
-        <!-- eslint-disable-next-line vue/no-v-html -->
-        <article
-          v-else
-          class="pc-detail-content pc-rendered-markdown"
-          v-html="renderMarkdown(formatReaderContent(displayContent, settings.reader))"
-        ></article>
       </template>
     </GenerationPreviewPage>
 
@@ -205,26 +161,7 @@
       title="修复小剧场草稿"
       @delete="removeFailedDraft(activeFailedDraft.id)"
       @reparse="reparseFailedDraft"
-    >
-      <template #before-editor>
-        <div class="pc-segment pc-mode-selector" aria-label="小剧场解析方式">
-          <button
-            :class="['pc-segment-btn', { active: failedDraftRenderMode === 'markdown' }]"
-            type="button"
-            @click="selectFailedDraftRenderMode('markdown')"
-          >
-            {{ t`Markdown 文本` }}
-          </button>
-          <button
-            :class="['pc-segment-btn', { active: failedDraftRenderMode === 'frontend' }]"
-            type="button"
-            @click="selectFailedDraftRenderMode('frontend')"
-          >
-            {{ t`网页渲染` }}
-          </button>
-        </div>
-      </template>
-    </FailedDraftRepairPage>
+    />
 
     <section v-else class="pc-theater-page">
       <EmptyState :title="t`小剧场页面已刷新`" />
@@ -236,7 +173,6 @@
 import BaguDetailPage from '@/components/BaguDetailPage.vue';
 import EmptyState from '@/components/EmptyState.vue';
 import FailedDraftRepairPage from '@/components/FailedDraftRepairPage.vue';
-import FrontendFrame from '@/components/FrontendFrame.vue';
 import GenerationFormPage from '@/components/GenerationFormPage.vue';
 import GenerationPreviewPage from '@/components/GenerationPreviewPage.vue';
 import SearchableCombobox from '@/components/SearchableCombobox.vue';
@@ -244,6 +180,7 @@ import TheaterCatalogPage from '@/components/theater/TheaterCatalogPage.vue';
 import TheaterEntryDetailPage from '@/components/theater/TheaterEntryDetailPage.vue';
 import TheaterEntryEditorPage from '@/components/theater/TheaterEntryEditorPage.vue';
 import TheaterHistoryPage from '@/components/theater/TheaterHistoryPage.vue';
+import TheaterMixedContent from '@/components/theater/TheaterMixedContent.vue';
 import { useGenerationReplaySession } from '@/composables/useGenerationReplaySession';
 import { getRegisteredPhoneGenerationAdapter } from '@/core/appRegistry';
 import { buildGenerationPreview, captureGenerationPrompt, generateContent } from '@/core/generationService';
@@ -259,8 +196,6 @@ import { useDetailScroll } from '@/util/detailScroll';
 import { parseTheaterXmlResult } from '@/util/generation';
 import { resolveGenerationReplayReferences } from '@/util/generationReplay';
 import { createHiddenGenerationRecord, resolveHiddenGenerationReplay } from '@/util/hiddenGenerationRecord';
-import { renderMarkdown } from '@/util/markdown';
-import { formatReaderContent } from '@/util/readerContent';
 import { formatGenerationReferences, type GenerationReferenceItem } from '@/util/references';
 import { resolveContentVersion } from '@/util/contentVersions';
 import { usePreviewDraftPersistence } from '@/util/previewDrafts';
@@ -289,7 +224,7 @@ const replaySession = useGenerationReplaySession({
   sourceMode: generationSourceMode,
 });
 const { entries, failedDrafts } = storeToRefs(theater);
-const { appPrompts, typePrompts } = storeToRefs(prompts);
+const { appPrompts, typePromptGroups, typePrompts } = storeToRefs(prompts);
 
 const query = ref('');
 const typeView = ref<'all' | 'recent'>('recent');
@@ -370,7 +305,6 @@ const {
 });
 
 const failedDraftRawOutput = ref('');
-const failedDraftRenderMode = ref<TheaterRenderMode>('markdown');
 const generationCustomTypeSelected = ref(false);
 const selectedReferences = ref<GenerationReferenceItem[]>([]);
 const entryContentEl = ref<HTMLElement | null>(null);
@@ -378,6 +312,7 @@ const { scrollToBottom, scrollToTop } = useDetailScroll(entryContentEl, '.pc-the
 const showCatalogModal = ref(false);
 
 const theaterTypePrompts = computed(() => typePrompts.value.filter(item => item.domain === 'theater'));
+const theaterTypePromptGroups = computed(() => typePromptGroups.value.filter(group => group.domain === 'theater'));
 const activeEntry = computed(() => {
   const entryId = route.value.params?.entryId;
   return entryId ? theater.getEntry(entryId) : null;
@@ -456,7 +391,11 @@ const selectedGenerationTypePrompt = computed(() =>
 );
 const theaterTypeComboboxOptions = computed(() => [
   { label: '+ 自定义', value: CUSTOM_THEATER_TYPE_VALUE },
-  ...theaterTypePrompts.value.map(typePrompt => ({ label: typePrompt.name, value: typePrompt.id })),
+  ...theaterTypePrompts.value.map(typePrompt => ({
+    group: theaterTypePromptGroups.value.find(group => group.id === typePrompt.groupId)?.name || '未分组',
+    label: typePrompt.name,
+    value: typePrompt.id,
+  })),
 ]);
 const typeUsageCounts = computed(() => {
   const counts = new Map<string, number>();
@@ -591,8 +530,8 @@ const generationPromptPreview = computed(() => {
         entryId: rewriteTargetEntry.value?.id || '',
         existingContent: '',
         mode: theaterGenerationMode.value,
-        outputFormat: buildOutputFormat(generationDraft.renderMode),
-        renderMode: generationDraft.renderMode,
+        outputFormat: buildOutputFormat(),
+        renderMode: 'markdown',
         typeId: generationDraft.typeId,
         typeName: generationDraft.typeName,
         typePrompt: generationDraft.typePrompt,
@@ -628,8 +567,8 @@ function captureTheaterPrompt() {
       entryId: rewriteTargetEntry.value?.id || '',
       existingContent: '',
       mode: theaterGenerationMode.value,
-      outputFormat: buildOutputFormat(generationDraft.renderMode),
-      renderMode: generationDraft.renderMode,
+      outputFormat: buildOutputFormat(),
+      renderMode: 'markdown',
       typeId: generationDraft.typeId,
       typeName: generationDraft.typeName,
       typePrompt: generationDraft.typePrompt,
@@ -673,17 +612,11 @@ watch(
     if (current.page === 'generate' && previous?.page !== 'preview') {
       replaySession.release();
       const initialTypePrompt = prompts.getTypePrompt(current.params?.typeId || '');
-      const continuationEntry = current.params?.entryId
-        ? theater.getEntry(current.params.entryId)
-        : current.params?.rewriteEntryId
-          ? theater.getEntry(current.params.rewriteEntryId)
-          : null;
       const customTypeName =
         typeof current.params?.customTypeName === 'string' ? current.params.customTypeName.trim() : '';
       selectedReferences.value = [];
       generationDraft.rangeText = '';
-      generationDraft.renderMode =
-        continuationEntry?.renderMode || (initialTypePrompt?.renderMode === 'frontend' ? 'frontend' : 'markdown');
+      generationDraft.renderMode = 'markdown';
       generationDraft.singleMessageId = 0;
       generationDraft.typeId = current.params?.typeId || '';
       generationDraft.typeName = initialTypePrompt?.name || customTypeName;
@@ -698,10 +631,6 @@ watch(
       if (replay) {
         selectedReferences.value = resolveGenerationReplayReferences(replay);
         replaySession.applyReplay(replay, generationDraft);
-        const replayRenderMode = replay.config.renderMode;
-        if (replayRenderMode === 'markdown' || replayRenderMode === 'frontend') {
-          generationDraft.renderMode = replayRenderMode;
-        }
         generationDraft.typeId =
           typeof replay.config.typeId === 'string' ? replay.config.typeId : generationDraft.typeId;
         generationDraft.typeName =
@@ -713,8 +642,6 @@ watch(
 
     if (current.page === 'failed-draft') {
       failedDraftRawOutput.value = activeFailedDraft.value?.rawOutput || '';
-      failedDraftRenderMode.value =
-        activeFailedDraft.value?.context.renderMode === 'frontend' ? 'frontend' : 'markdown';
     }
   },
   { immediate: true, deep: true },
@@ -779,7 +706,7 @@ function selectGenerationTypePrompt(promptId: string) {
   if (prompt) {
     generationDraft.typeName = prompt.name;
     generationDraft.typePrompt = prompt.prompt;
-    generationDraft.renderMode = prompt.renderMode === 'frontend' ? 'frontend' : 'markdown';
+    generationDraft.renderMode = 'markdown';
   }
 }
 
@@ -951,17 +878,11 @@ function openFailedDraft(draftId: string) {
   phone.pushPage('failed-draft', '解析失败草稿', { draftId });
 }
 
-function selectFailedDraftRenderMode(renderMode: TheaterRenderMode) {
-  failedDraftRenderMode.value = renderMode;
-  if (!activeFailedDraft.value) return;
-  theater.updateFailedDraftRenderMode(activeFailedDraft.value.id, renderMode);
-}
-
 function submitEntry() {
   const input = {
     content: draft.content,
     participants: parseParticipants(draft.participants),
-    renderMode: draft.renderMode,
+    renderMode: 'markdown' as const,
     title: draft.title,
     typeId: draft.typeId,
     typeName: draft.typeName,
@@ -1012,8 +933,8 @@ function applyTheaterBaguContent(content: string) {
   return Boolean(entry);
 }
 
-function buildOutputFormat(renderMode: TheaterRenderMode) {
-  return prompts.resolveOutputFormat(renderMode === 'frontend' ? 'theater.frontend' : 'theater.markdown');
+function buildOutputFormat() {
+  return prompts.resolveOutputFormat('theater.generate');
 }
 
 function returnToGenerate() {
@@ -1038,7 +959,7 @@ function saveGenerationTypePrompt() {
       domain: 'theater',
       name: name || selectedGenerationTypePrompt.value?.name || '未分类小剧场',
       prompt: promptText,
-      renderMode: selectedGenerationTypePrompt.value?.renderMode === 'frontend' ? 'frontend' : 'markdown',
+      groupId: selectedGenerationTypePrompt.value?.groupId || '',
     });
     if (!updated) return null;
     generationDraft.typeName = updated.name;
@@ -1050,7 +971,7 @@ function saveGenerationTypePrompt() {
     domain: 'theater',
     name: name || '未分类小剧场',
     prompt: promptText,
-    renderMode: generationDraft.renderMode,
+    renderMode: 'markdown',
   });
   generationDraft.typeId = created.id;
   generationDraft.typeName = created.name;
@@ -1074,8 +995,8 @@ async function runGeneration() {
         entryId: rewriteTargetEntry.value?.id || '',
         existingContent: '',
         mode: theaterGenerationMode.value,
-        outputFormat: buildOutputFormat(generationDraft.renderMode),
-        renderMode: generationDraft.renderMode,
+        outputFormat: buildOutputFormat(),
+        renderMode: 'markdown',
         typeId: savedTypePrompt?.id || generationDraft.typeId,
         typeName: generationDraft.typeName,
         typePrompt: generationDraft.typePrompt,
@@ -1135,7 +1056,7 @@ async function runGeneration() {
       content: result.data.content,
       draftId: null,
       raw: result.rawOutput,
-      renderMode: generationDraft.renderMode,
+      renderMode: 'markdown',
       source: {
         label: result.source.label,
       },
@@ -1166,7 +1087,7 @@ function savePreview() {
           generationRecord:
             preview.generationRecord ||
             (preview.replay ? createHiddenGenerationRecord('generate', preview.replay) : undefined),
-          renderMode: preview.renderMode,
+          renderMode: 'markdown',
           title: preview.title,
         })
       : theater.createEntry({
@@ -1175,7 +1096,7 @@ function savePreview() {
             preview.generationRecord ||
             (preview.replay ? createHiddenGenerationRecord('generate', preview.replay) : undefined),
           participants: [],
-          renderMode: preview.renderMode,
+          renderMode: 'markdown',
           title: preview.title,
           typeId: preview.typeId,
           typeName: preview.typeName,
@@ -1198,7 +1119,7 @@ function savePreview() {
   });
 }
 
-function reparsePreviewAs(renderMode: TheaterRenderMode, successMessage: string) {
+function reparsePreviewRaw() {
   const preview = generationState.preview;
   if (!preview) return false;
   const rawOutput = preview.raw.trim();
@@ -1207,10 +1128,7 @@ function reparsePreviewAs(renderMode: TheaterRenderMode, successMessage: string)
     return false;
   }
 
-  const parsed = parseTheaterXmlResult(
-    rawOutput,
-    renderMode === 'frontend' ? { preserveContentMarkup: true } : undefined,
-  );
+  const parsed = parseTheaterXmlResult(rawOutput, { preserveContentMarkup: true });
   if (!parsed.ok) {
     preview.raw = rawOutput;
     preview.warnings = parsed.warnings;
@@ -1220,24 +1138,12 @@ function reparsePreviewAs(renderMode: TheaterRenderMode, successMessage: string)
 
   preview.content = parsed.data.content;
   preview.raw = parsed.raw;
-  preview.renderMode = renderMode;
+  preview.renderMode = 'markdown';
   preview.title = parsed.data.title;
   preview.warnings = parsed.warnings;
   persistTheaterPreviewDraft();
-  toastr.success(successMessage);
+  toastr.success('已按原始输出重新解析');
   return true;
-}
-
-function reparsePreviewRaw() {
-  const preview = generationState.preview;
-  if (!preview) return false;
-  return reparsePreviewAs(preview.renderMode, '已按原始输出重新解析');
-}
-
-function switchPreviewRenderMode(renderMode: TheaterRenderMode) {
-  const preview = generationState.preview;
-  if (!preview || preview.renderMode === renderMode) return;
-  reparsePreviewAs(renderMode, renderMode === 'frontend' ? '已切换为网页渲染' : '已切换为 Markdown');
 }
 
 function stopGeneration() {
@@ -1292,11 +1198,7 @@ function reparseFailedDraft() {
     return;
   }
 
-  const renderMode = failedDraftRenderMode.value;
-  const parsed = parseTheaterXmlResult(
-    rawOutput,
-    renderMode === 'frontend' ? { preserveContentMarkup: true } : undefined,
-  );
+  const parsed = parseTheaterXmlResult(rawOutput, { preserveContentMarkup: true });
   if (!parsed.ok) {
     theater.updateFailedDraft(failedDraft.id, {
       rawOutput,
@@ -1315,7 +1217,7 @@ function reparseFailedDraft() {
     content: parsed.data.content,
     draftId: null,
     raw: parsed.raw,
-    renderMode,
+    renderMode: 'markdown',
     mode: failedDraft.context.mode === 'rewrite' ? 'rewrite' : 'create',
     source: {
       label: failedDraft.source.label,

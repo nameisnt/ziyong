@@ -76,6 +76,8 @@
 import type { PhoneOutputParserDefinition, PhonePromptOutputFormat } from '@/core/appRegistry';
 import { usePhoneStore } from '@/store/phone';
 import { usePromptStore } from '@/store/prompts';
+import { useSettingsStore } from '@/store/settings';
+import { cleanGenerationOutput } from '@/util/generationOutputCleaning';
 import { parseOutputWithConfig } from '@/util/outputParsing';
 import { storeToRefs } from 'pinia';
 
@@ -83,6 +85,7 @@ const props = defineProps<{ definition: PhonePromptOutputFormat }>();
 const emit = defineEmits<{ back: [] }>();
 const phone = usePhoneStore();
 const prompts = usePromptStore();
+const settingsStore = useSettingsStore();
 const { outputRules } = storeToRefs(prompts);
 const draft = reactive<{
   outputFormat: string;
@@ -122,12 +125,17 @@ function testParser() {
     draft.testError = '请先填写测试输出';
     return;
   }
-  const result = parseOutputWithConfig(draft.sample, draft.parser);
+  const generation = settingsStore.settings.generation;
+  const cleaned = cleanGenerationOutput(draft.sample, {
+    enabled: generation.outputCleaningEnabled,
+    endTags: generation.outputCleaningEndTags,
+  });
+  const result = parseOutputWithConfig(cleaned.content, draft.parser);
   if (!result.ok) {
     draft.testError = result.warnings.join('\n');
     return;
   }
-  draft.testResult = JSON.stringify(result.data, null, 2);
+  draft.testResult = `${cleaned.removedLength ? `已清理 ${cleaned.removedLength} 个字符\n\n` : ''}${JSON.stringify(result.data, null, 2)}`;
 }
 
 function save() {

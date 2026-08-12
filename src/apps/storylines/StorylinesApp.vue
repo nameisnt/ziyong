@@ -6,6 +6,13 @@
         @discard="discardStorylinePreviewDraft"
         @open="openStorylinePreviewDraft"
       />
+      <FailedDraftList
+        :drafts="failedDrafts"
+        :get-context="draft => draft.source.label"
+        :get-title="() => '未解析剧情梳理'"
+        @open="openFailedDraft"
+        @remove="removeFailedDraft"
+      />
       <article class="pc-page-section pc-storylines-source">
         <div class="pc-section-head">
           <strong>
@@ -188,11 +195,22 @@
         />
       </article>
     </section>
+
+    <FailedDraftRepairPage
+      v-else-if="route.page === 'failed-draft' && activeFailedDraft"
+      v-model:raw-output="failedDraftRawOutput"
+      :source-label="activeFailedDraft.source.label"
+      title="修复剧情梳理草稿"
+      @delete="removeFailedDraft(activeFailedDraft.id)"
+      @reparse="reparseFailedDraft"
+    />
   </section>
 </template>
 
 <script setup lang="ts">
 import EmptyState from '@/components/EmptyState.vue';
+import FailedDraftList from '@/components/FailedDraftList.vue';
+import FailedDraftRepairPage from '@/components/FailedDraftRepairPage.vue';
 import GenerationPanel from '@/components/GenerationPanel.vue';
 import GenerationPreviewPanel from '@/components/GenerationPreviewPanel.vue';
 import InfoHint from '@/components/InfoHint.vue';
@@ -237,6 +255,7 @@ const adapter = getRegisteredPhoneGenerationAdapter<ReturnType<typeof createStor
 );
 const { settings } = storeToRefs(settingsStore);
 const { books: summaryBooks } = storeToRefs(summary);
+const { failedDrafts } = storeToRefs(storylines);
 const route = computed(() => phone.currentRoute);
 const activeTab = ref<'beats' | 'hooks' | 'lines'>('lines');
 const summaryBookId = ref('');
@@ -254,6 +273,11 @@ const generationState = reactive({
   preview: null as StorylinePreview | null,
   rawOutput: '',
   running: false,
+});
+const failedDraftRawOutput = ref('');
+const activeFailedDraft = computed(() => {
+  const draftId = route.value.params?.draftId;
+  return draftId ? storylines.getFailedDraft(draftId) : null;
 });
 const {
   clearPreviewDraft: clearStorylinePreviewDraft,
@@ -294,6 +318,14 @@ watch(
     if (!books.some(book => book.id === summaryBookId.value)) {
       summaryBookId.value = books.find(book => book.entries.length)?.id || books[0]?.id || '';
     }
+  },
+  { immediate: true },
+);
+
+watch(
+  () => [route.value.page, route.value.params?.draftId] as const,
+  ([page]) => {
+    if (page === 'failed-draft') failedDraftRawOutput.value = activeFailedDraft.value?.rawOutput || '';
   },
   { immediate: true },
 );
@@ -387,7 +419,9 @@ async function runGeneration() {
     });
     if (result.status === 'failed') {
       generationState.error = result.warnings.join('；') || '没有返回可解析的剧情梳理结果';
-      toastr.warning('解析失败，原始输出已保留');
+      failedDraftRawOutput.value = result.rawOutput;
+      toastr.warning('解析失败，已保存到失败草稿');
+      void phone.presentGeneratedPage('storylines', 'failed-draft', '解析失败草稿', { draftId: result.draft.id });
       return;
     }
     if (result.status === 'saved') {
@@ -399,6 +433,48 @@ async function runGeneration() {
   } catch (error) {
     generationState.error = error instanceof Error ? error.message : '剧情梳理失败';
   }
+}
+
+function openFailedDraft(draftId: string) {
+  if (!storylines.getFailedDraft(draftId)) return;
+  phone.pushPage('failed-draft', '解析失败草稿', { draftId });
+}
+
+async function removeFailedDraft(draftId: string) {
+  const confirmed = await phone.confirmNotice('要删除这条剧情梳理失败草稿吗？', {
+    confirmLabel: '删除',
+    kind: 'warning',
+  });
+  if (!confirmed) return;
+  storylines.deleteFailedDraft(draftId);
+  failedDraftRawOutput.value = '';
+  if (route.value.page === 'failed-draft') phone.replacePage('root', '剧情梳理');
+  toastr.success('已删除失败草稿');
+}
+
+function reparseFailedDraft() {
+  const failedDraft = activeFailedDraft.value;
+  if (!failedDraft) return;
+  const rawOutput = failedDraftRawOutput.value.trim();
+  if (!rawOutput) return void toastr.warning('先补一点可解析的输出');
+  const parsed = adapter.parse(rawOutput, buildGenerationConfig());
+  if (!parsed.ok) {
+    storylines.updateFailedDraft(failedDraft.id, { rawOutput, warnings: parsed.warnings });
+    toastr.warning(parsed.warnings.join('；') || '仍然无法解析');
+    return;
+  }
+  generationState.preview = {
+    content: formatStorylineResult(parsed.data),
+    data: parsed.data,
+    raw: parsed.raw,
+    source: failedDraft.source,
+    warnings: parsed.warnings,
+  };
+  persistStorylinePreviewDraft();
+  storylines.deleteFailedDraft(failedDraft.id);
+  failedDraftRawOutput.value = '';
+  phone.replacePage('preview', '剧情梳理预览');
+  toastr.success('已重新解析');
 }
 
 function openPreview(result: GenerationExecutionPreview<StorylineGeneratedResult>) {

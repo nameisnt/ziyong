@@ -77,7 +77,8 @@ onBeforeUnmount(() => document.removeEventListener('pointerdown', closeFromOutsi
   padding: 6px;
   border: 1px solid var(--pc-border);
   border-radius: var(--pc-control-radius);
-  background: var(--pc-surface);
+  background: var(--pc-form-control-bg);
+  color: var(--pc-form-control-text);
   box-shadow: 0 12px 28px color-mix(in srgb, var(--pc-text) 18%, transparent 82%);
 }
 
@@ -91,7 +92,7 @@ onBeforeUnmount(() => document.removeEventListener('pointerdown', closeFromOutsi
   border-radius: calc(var(--pc-control-radius) - 4px);
   padding: 0 12px;
   background: transparent;
-  color: var(--pc-text);
+  color: var(--pc-form-control-text);
   cursor: pointer;
   font-weight: 750;
   text-align: left;
@@ -99,7 +100,7 @@ onBeforeUnmount(() => document.removeEventListener('pointerdown', closeFromOutsi
 }
 
 .pc-action-menu-panel :deep(button:hover) {
-  background: var(--pc-soft-button-bg);
+  background: color-mix(in srgb, var(--pc-form-control-text) 10%, var(--pc-form-control-bg) 90%);
 }
 
 .pc-action-menu-panel :deep(button:disabled) {

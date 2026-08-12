@@ -141,6 +141,7 @@ export interface PhoneTypePromptDefinition {
   name: string;
   prompt: string;
   charReplacement?: string;
+  groupId?: string;
   renderMode?: 'frontend' | 'markdown';
   userReplacement?: string;
 }
@@ -150,6 +151,7 @@ export interface PhoneTypePromptDomain {
   label: string;
   emptyLabel?: string;
   defaultOpen?: boolean;
+  defaultGroups?: Array<{ id: string; name: string }>;
   defaultPrompts?: PhoneTypePromptDefinition[];
 }
 

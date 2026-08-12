@@ -14,10 +14,11 @@
       ref="shellEl"
       class="pc-phone-shell"
       :style="shellStyle"
-      @pointercancel.capture="onEdgeBackPointerCancel"
-      @pointerdown.capture="onEdgeBackPointerDown"
-      @pointermove.capture="onEdgeBackPointerMove"
-      @pointerup.capture="onEdgeBackPointerUp"
+      @click.capture="onSideBackClick"
+      @pointercancel.capture="onSideBackPointerCancel"
+      @pointerdown.capture="onSideBackPointerDown"
+      @pointermove.capture="onSideBackPointerMove"
+      @pointerup.capture="onSideBackPointerUp"
     >
       <header
         ref="topbarEl"
@@ -380,14 +381,16 @@ const homeSwipe = reactive({
   swiping: false,
   tracking: false,
 });
-const edgeBack = reactive({
+const sideBack = reactive({
   direction: 0 as -1 | 0 | 1,
   pointerId: null as number | null,
+  shellWidth: 0,
   startX: 0,
   startY: 0,
   swiping: false,
   tracking: false,
 });
+const suppressSideBackClickUntil = ref(0);
 const suppressHomeClickUntil = ref(0);
 const homePageIndex = ref(0);
 const homePageSize = computed(() => settings.value.interfaceSize.homeColumns * settings.value.interfaceSize.homeRows);
@@ -1032,74 +1035,109 @@ function onHomeSwipePointerCancel(event: PointerEvent) {
   resetHomeSwipe();
 }
 
-function resetEdgeBack() {
-  edgeBack.direction = 0;
-  edgeBack.pointerId = null;
-  edgeBack.startX = 0;
-  edgeBack.startY = 0;
-  edgeBack.swiping = false;
-  edgeBack.tracking = false;
+const SIDE_BACK_ZONE_RATIO = 0.2;
+const SIDE_BACK_SAFE_INSET = 12;
+const SIDE_BACK_LOCK_DISTANCE = 16;
+const SIDE_BACK_AXIS_RATIO = 1.5;
+const SIDE_BACK_DISTANCE_RATIO = 0.15;
+const SIDE_BACK_MIN_DISTANCE = 52;
+const SIDE_BACK_MAX_DISTANCE = 72;
+
+function resetSideBack() {
+  sideBack.direction = 0;
+  sideBack.pointerId = null;
+  sideBack.shellWidth = 0;
+  sideBack.startX = 0;
+  sideBack.startY = 0;
+  sideBack.swiping = false;
+  sideBack.tracking = false;
 }
 
-function edgeBackTargetBlocked(target: EventTarget | null) {
+function sideBackTargetBlocked(target: EventTarget | null) {
   return (
     target instanceof Element &&
     Boolean(
       target.closest(
-        'input, textarea, select, [contenteditable="true"], .pc-dialog-backdrop, .pc-content-transfer-backdrop, .pc-home-folder-backdrop, .pc-reader-tool, .pc-action-menu, [data-horizontal-scroll]',
+        'input, textarea, select, [contenteditable="true"], .pc-topbar, .pc-dialog-backdrop, .pc-content-transfer-backdrop, .pc-home-folder-backdrop, .pc-reader-tool, .pc-action-menu, [data-horizontal-scroll], [data-side-back-block]',
       ),
     )
   );
 }
 
-function onEdgeBackPointerDown(event: PointerEvent) {
-  if (!canGoBack.value || currentRoute.value.appId === 'home' || event.button !== 0 || appDrag.isDragging) return;
-  const shellRect = shellEl.value?.getBoundingClientRect();
-  if (!shellRect || edgeBackTargetBlocked(event.target)) return;
-  const leftDistance = event.clientX - shellRect.left;
-  const rightDistance = shellRect.right - event.clientX;
-  if (leftDistance > 20 && rightDistance > 20) return;
-  edgeBack.direction = leftDistance <= 20 ? 1 : -1;
-  edgeBack.pointerId = event.pointerId;
-  edgeBack.startX = event.clientX;
-  edgeBack.startY = event.clientY;
-  edgeBack.swiping = false;
-  edgeBack.tracking = true;
+function getSideBackDirection(clientX: number, shellRect: DOMRect) {
+  const leftDistance = clientX - shellRect.left;
+  const rightDistance = shellRect.right - clientX;
+  const sideZoneWidth = shellRect.width * SIDE_BACK_ZONE_RATIO;
+  if (leftDistance >= SIDE_BACK_SAFE_INSET && leftDistance <= sideZoneWidth) return 1 as const;
+  if (rightDistance >= SIDE_BACK_SAFE_INSET && rightDistance <= sideZoneWidth) return -1 as const;
+  return 0 as const;
 }
 
-function onEdgeBackPointerMove(event: PointerEvent) {
-  if (!edgeBack.tracking || edgeBack.pointerId !== event.pointerId) return;
-  const deltaX = event.clientX - edgeBack.startX;
-  const deltaY = event.clientY - edgeBack.startY;
-  if (!edgeBack.swiping && Math.abs(deltaX) > 12 && Math.abs(deltaX) > Math.abs(deltaY) * 1.25) {
-    if (Math.sign(deltaX) !== edgeBack.direction) return resetEdgeBack();
-    edgeBack.swiping = true;
+function onSideBackPointerDown(event: PointerEvent) {
+  if (!canGoBack.value || currentRoute.value.appId === 'home' || event.button !== 0 || appDrag.isDragging) return;
+  const shellRect = shellEl.value?.getBoundingClientRect();
+  if (!shellRect || sideBackTargetBlocked(event.target)) return;
+  const direction = getSideBackDirection(event.clientX, shellRect);
+  if (!direction) return;
+  sideBack.direction = direction;
+  sideBack.pointerId = event.pointerId;
+  sideBack.shellWidth = shellRect.width;
+  sideBack.startX = event.clientX;
+  sideBack.startY = event.clientY;
+  sideBack.swiping = false;
+  sideBack.tracking = true;
+}
+
+function onSideBackPointerMove(event: PointerEvent) {
+  if (!sideBack.tracking || sideBack.pointerId !== event.pointerId) return;
+  const deltaX = event.clientX - sideBack.startX;
+  const deltaY = event.clientY - sideBack.startY;
+  const distanceX = Math.abs(deltaX);
+  const distanceY = Math.abs(deltaY);
+  if (!sideBack.swiping) {
+    if (distanceX < SIDE_BACK_LOCK_DISTANCE && distanceY < SIDE_BACK_LOCK_DISTANCE) return;
+    if (Math.sign(deltaX) !== sideBack.direction || distanceX <= distanceY * SIDE_BACK_AXIS_RATIO) {
+      resetSideBack();
+      return;
+    }
+    sideBack.swiping = true;
   }
-  if (!edgeBack.swiping) return;
   event.preventDefault();
   event.stopPropagation();
 }
 
-function onEdgeBackPointerUp(event: PointerEvent) {
-  if (!edgeBack.tracking || edgeBack.pointerId !== event.pointerId) return;
-  const deltaX = event.clientX - edgeBack.startX;
-  const deltaY = event.clientY - edgeBack.startY;
+function onSideBackPointerUp(event: PointerEvent) {
+  if (!sideBack.tracking || sideBack.pointerId !== event.pointerId) return;
+  const deltaX = event.clientX - sideBack.startX;
+  const deltaY = event.clientY - sideBack.startY;
+  const completeDistance = Math.min(
+    SIDE_BACK_MAX_DISTANCE,
+    Math.max(SIDE_BACK_MIN_DISTANCE, sideBack.shellWidth * SIDE_BACK_DISTANCE_RATIO),
+  );
   const shouldBack =
-    edgeBack.swiping &&
-    Math.sign(deltaX) === edgeBack.direction &&
-    Math.abs(deltaX) >= 48 &&
-    Math.abs(deltaX) > Math.abs(deltaY) * 1.25;
-  if (edgeBack.swiping) {
+    sideBack.swiping &&
+    Math.sign(deltaX) === sideBack.direction &&
+    Math.abs(deltaX) >= completeDistance &&
+    Math.abs(deltaX) > Math.abs(deltaY) * SIDE_BACK_AXIS_RATIO;
+  if (sideBack.swiping) {
     event.preventDefault();
     event.stopPropagation();
+    suppressSideBackClickUntil.value = performance.now() + 350;
   }
-  resetEdgeBack();
+  resetSideBack();
   if (shouldBack) requestPhoneBack();
 }
 
-function onEdgeBackPointerCancel(event: PointerEvent) {
-  if (edgeBack.pointerId !== event.pointerId) return;
-  resetEdgeBack();
+function onSideBackPointerCancel(event: PointerEvent) {
+  if (sideBack.pointerId !== event.pointerId) return;
+  resetSideBack();
+}
+
+function onSideBackClick(event: MouseEvent) {
+  if (performance.now() >= suppressSideBackClickUntil.value) return;
+  suppressSideBackClickUntil.value = 0;
+  event.preventDefault();
+  event.stopImmediatePropagation();
 }
 
 function openHomeApp(appId: string) {
@@ -1551,8 +1589,8 @@ useEventListener(window, 'orientationchange', async () => {
   border: 1px solid var(--pc-border);
   border-radius: 14px;
   padding: 9px 11px;
-  background: color-mix(in srgb, var(--pc-surface) 94%, transparent 6%);
-  color: var(--pc-text);
+  background: var(--pc-form-control-bg);
+  color: var(--pc-form-control-text);
   box-shadow: 0 12px 28px rgba(15, 23, 42, 0.18);
   cursor: pointer;
   font: inherit;
@@ -1609,8 +1647,8 @@ useEventListener(window, 'orientationchange', async () => {
   height: 32px;
   border: 1px solid var(--pc-border);
   border-radius: 10px;
-  background: var(--pc-surface-strong);
-  color: var(--pc-text);
+  background: color-mix(in srgb, var(--pc-form-control-text) 7%, var(--pc-form-control-bg) 93%);
+  color: var(--pc-form-control-text);
   font: inherit;
   font-size: 12px;
   outline: none;
@@ -1630,8 +1668,8 @@ useEventListener(window, 'orientationchange', async () => {
   height: 30px;
   border: 0;
   border-radius: 10px;
-  background: var(--pc-surface-strong);
-  color: var(--pc-text);
+  background: color-mix(in srgb, var(--pc-form-control-text) 10%, var(--pc-form-control-bg) 90%);
+  color: var(--pc-form-control-text);
   cursor: pointer;
   font: inherit;
   font-size: 12px;
@@ -1644,7 +1682,7 @@ useEventListener(window, 'orientationchange', async () => {
 }
 
 .pc-phone-notice-action[data-role='danger'] {
-  background: color-mix(in srgb, var(--pc-danger) 14%, var(--pc-surface-strong) 86%);
+  background: color-mix(in srgb, var(--pc-danger) 14%, var(--pc-form-control-bg) 86%);
   color: var(--pc-danger);
 }
 

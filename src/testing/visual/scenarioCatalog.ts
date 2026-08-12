@@ -5,7 +5,10 @@ export type VisualScenarioGroup = {
 
 export function createVisualScenarioGroups(rootAppScenarios: string[]): VisualScenarioGroup[] {
   return [
-    { id: 'shell', scenarios: ['home', 'home-five-columns', 'home-tasks', 'home-tasks-dark', ...rootAppScenarios] },
+    {
+      id: 'shell',
+      scenarios: ['home', 'home-five-columns', 'side-swipe-back', 'home-tasks', 'home-tasks-dark', ...rootAppScenarios],
+    },
     {
       id: 'generation',
       scenarios: [

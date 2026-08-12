@@ -65,10 +65,10 @@ watch(
   display: grid;
   flex: 0 0 auto;
   grid-template-columns: repeat(5, minmax(0, 1fr));
-  gap: 6px;
+  gap: 3px;
   border: 1px solid var(--pc-border);
   border-radius: var(--pc-card-radius);
-  padding: 6px;
+  padding: 5px;
   background: color-mix(in srgb, var(--pc-surface) 88%, transparent);
   backdrop-filter: blur(10px);
 }
@@ -76,9 +76,20 @@ watch(
   min-width: 0;
   min-inline-size: 0;
   min-height: 32px;
-  gap: 4px;
-  padding: 6px 7px;
+  gap: 3px;
+  padding: 6px 3px;
   font-size: 12px;
+  white-space: nowrap;
+}
+.pc-settings-tabs .pc-segment-btn span {
+  white-space: nowrap;
+}
+@media (max-width: 380px) {
+  .pc-settings-tabs .pc-segment-btn {
+    gap: 2px;
+    padding-inline: 2px;
+    font-size: 11px;
+  }
 }
 .pc-settings-panels {
   display: flex;

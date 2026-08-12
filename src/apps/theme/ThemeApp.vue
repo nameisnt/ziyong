@@ -1309,11 +1309,11 @@ async function onThemeSelected(event: Event) {
 
 .pc-theme-pack-btn {
   display: grid;
-  grid-template-columns: 68px minmax(0, 1fr);
+  grid-template-columns: 52px minmax(0, 1fr);
   align-items: center;
-  gap: 10px;
+  gap: 8px;
   min-width: 0;
-  padding: 8px;
+  padding: 7px;
   border: 1px solid var(--pc-border);
   border-radius: var(--pc-control-radius);
   background: var(--pc-surface-strong);
@@ -1330,7 +1330,7 @@ async function onThemeSelected(event: Event) {
 .pc-theme-pack-sample {
   position: relative;
   display: block;
-  height: 52px;
+  height: 46px;
   overflow: hidden;
   border-radius: max(8px, calc(var(--pc-control-radius) - 5px));
   background: linear-gradient(135deg, var(--pack-light) 0 50%, var(--pack-dark) 50% 100%);
@@ -1379,6 +1379,10 @@ async function onThemeSelected(event: Event) {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.pc-theme-pack-copy strong {
+  font-size: 13px;
 }
 
 .pc-theme-pack-copy small {

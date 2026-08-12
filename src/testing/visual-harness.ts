@@ -810,6 +810,57 @@ async function applyScenario(name: VisualScenarioName, options: { height?: numbe
     if (gridGap > 4 || tilePadding > 1 || labelFontSize > 10 || label.clientWidth < 50) {
       throw new Error('Five-column App label does not reserve enough width for five Chinese characters');
     }
+  } else if (name === 'side-swipe-back') {
+    const dispatchSwipe = async (startRatio: number, deltaX: number, deltaY = 0) => {
+      const shell = document.querySelector<HTMLElement>('.pc-phone-shell');
+      if (!shell) throw new Error('Phone shell is missing from the side-swipe fixture');
+      const rect = shell.getBoundingClientRect();
+      const pointerId = Math.round(startRatio * 1000) + Math.round(Math.abs(deltaX)) + Math.round(Math.abs(deltaY));
+      const startX = rect.left + rect.width * startRatio;
+      const startY = rect.top + rect.height * 0.55;
+      const pointer = (type: string, clientX: number, clientY: number) =>
+        shell.dispatchEvent(
+          new PointerEvent(type, {
+            bubbles: true,
+            button: 0,
+            cancelable: true,
+            clientX,
+            clientY,
+            isPrimary: true,
+            pointerId,
+            pointerType: 'touch',
+          }),
+        );
+      pointer('pointerdown', startX, startY);
+      pointer('pointermove', startX + deltaX, startY + deltaY);
+      pointer('pointerup', startX + deltaX, startY + deltaY);
+      await waitForPaint();
+    };
+    const prepareChildPage = () => {
+      resetPhoneToRoute('settings', 'root', '设置');
+      phone.pushPage('gesture-child', '手势测试');
+    };
+    const stackDepth = () => Number(phone.stack.length);
+
+    prepareChildPage();
+    await dispatchSwipe(0.1, 80);
+    if (stackDepth() !== 2) throw new Error('Left-side inward swipe did not navigate back');
+
+    prepareChildPage();
+    await dispatchSwipe(0.9, -80);
+    if (stackDepth() !== 2) throw new Error('Right-side inward swipe did not navigate back');
+
+    prepareChildPage();
+    await dispatchSwipe(0.5, 72);
+    if (stackDepth() !== 3) throw new Error('Center swipe unexpectedly navigated back');
+
+    prepareChildPage();
+    await dispatchSwipe(0.015, 72);
+    if (stackDepth() !== 3) throw new Error('System-safe outer strip unexpectedly navigated back');
+
+    prepareChildPage();
+    await dispatchSwipe(0.1, 18, 80);
+    if (stackDepth() !== 3) throw new Error('Vertical scroll from a side zone unexpectedly navigated back');
   } else if (name === 'custom-app-extract-rules') {
     const { CustomAppDefinitionsSettingsSchema, customAppDefinitionsField } = await import('@/apps/app-builder/schema');
     const { useCustomAppsStore } = await import('@/apps/app-builder/store');
@@ -1337,9 +1388,18 @@ async function applyScenario(name: VisualScenarioName, options: { height?: numbe
   } else if (name === 'cloud-media-settings') {
     resetPhoneToRoute('cloud-media', 'settings', '云媒体配置');
   } else if (name === 'entry-library-action-menu') {
+    useSettingsStore().setTheme('dark');
     resetPhoneToRoute('entry-library', 'root', '条目库');
     await waitForPaint();
-    document.querySelector<HTMLDetailsElement>('.pc-entry-library-head .pc-action-menu')?.setAttribute('open', '');
+    const actionMenu = document.querySelector<HTMLDetailsElement>('.pc-entry-library-head .pc-action-menu');
+    actionMenu?.setAttribute('open', '');
+    await waitForPaint();
+    const panel = actionMenu?.querySelector<HTMLElement>('.pc-action-menu-panel');
+    const panelBackground = panel ? getComputedStyle(panel).backgroundColor : '';
+    const panelAlpha = Number(panelBackground.match(/rgba\([^,]+,[^,]+,[^,]+,\s*([\d.]+)\)/)?.[1] ?? 1);
+    if (!panel || panelAlpha < 0.99) {
+      throw new Error(`Action menu panel is transparent in dark mode: ${panelBackground || 'missing'}`);
+    }
   } else if (name === 'entry-library-manual-create') {
     const library = useEntryLibraryStore();
     library.importBackup({ bindings: [], groups: [], items: [], version: 1 });
@@ -2268,6 +2328,7 @@ async function applyScenario(name: VisualScenarioName, options: { height?: numbe
       }
     }
   } else if (name === 'preview-session-navigation') {
+    useSettingsStore().setTheme('dark');
     resetPhoneToRoute('settings', 'root', '设置');
     phone.pushPage('preview', '无会话预览');
     await phone.goBack();
@@ -2290,6 +2351,12 @@ async function applyScenario(name: VisualScenarioName, options: { height?: numbe
         ),
       );
       if (!leaveNoticeShown) throw new Error('An unsaved explicit preview session did not block navigation');
+      const leaveNotice = document.querySelector<HTMLElement>('.pc-phone-notice');
+      const noticeBackground = leaveNotice ? getComputedStyle(leaveNotice).backgroundColor : '';
+      const noticeAlpha = Number(noticeBackground.match(/rgba\([^,]+,[^,]+,[^,]+,\s*([\d.]+)\)/)?.[1] ?? 1);
+      if (!leaveNotice || noticeAlpha < 0.99) {
+        throw new Error(`Phone notice is transparent in dark mode: ${noticeBackground || 'missing'}`);
+      }
       const continueEditing = [...document.querySelectorAll<HTMLButtonElement>('.pc-phone-notice-action')].find(
         button => button.textContent?.includes('继续编辑'),
       );
@@ -2404,6 +2471,12 @@ async function applyScenario(name: VisualScenarioName, options: { height?: numbe
       const targetInput = document.querySelector<HTMLInputElement>('.pc-card-writer-worldbook-select input');
       if (!targetInput || targetInput.value) {
         throw new Error('Card writer target worldbook is missing or selected automatically');
+      }
+    } else if (appId === 'theme') {
+      await waitForPaint();
+      const packNames = [...document.querySelectorAll<HTMLElement>('.pc-theme-pack-copy strong')];
+      if (!packNames.length || packNames.some(name => name.scrollWidth > name.clientWidth + 1)) {
+        throw new Error('Theme pack names are truncated in the narrow phone layout');
       }
     }
   } else if (name === 'archive-owner-list') {
@@ -2635,6 +2708,8 @@ async function applyScenario(name: VisualScenarioName, options: { height?: numbe
     );
     if (!editorLoaded) throw new Error('Worldbook entry editor did not open');
   } else if (name === 'reader-detail') {
+    const settingsStore = useSettingsStore();
+    settingsStore.settings.theme = 'dark';
     const reader = useReaderStore();
     reader.resetAllCaches();
     const briefs = await reader.loadBriefs(true);
@@ -2643,6 +2718,29 @@ async function applyScenario(name: VisualScenarioName, options: { height?: numbe
     const message = messages[0];
     if (!message) throw new Error('Reader visual fixture did not create a message');
     resetPhoneToRoute('reader', 'detail', message.title, { messageId: message.id });
+    const detailLoaded = await waitForVisualCondition(() => Boolean(document.querySelector('.pc-reader-tool-trigger')));
+    if (!detailLoaded) throw new Error('Reader tool trigger did not render');
+    await openReaderTools();
+    const trigger = document.querySelector<HTMLElement>('.pc-reader-tool-trigger');
+    const menu = document.querySelector<HTMLElement>('.pc-reader-tool-menu');
+    if (!trigger || !menu) throw new Error('Reader tool menu did not stay open');
+    if (getComputedStyle(trigger).backgroundColor !== 'rgb(44, 44, 46)') {
+      throw new Error('Reader tool trigger is not opaque in dark mode');
+    }
+    const menuStyle = getComputedStyle(menu);
+    if (menuStyle.backgroundColor !== 'rgb(44, 44, 46)' || menuStyle.gridTemplateColumns.split(' ').length !== 2) {
+      throw new Error('Reader tool menu is not an opaque two-column panel in dark mode');
+    }
+    const actionButtons = [...menu.querySelectorAll<HTMLButtonElement>(':scope > button')];
+    if (
+      !actionButtons.length ||
+      actionButtons.some(button => {
+        const label = button.textContent?.trim() || '';
+        return label.length < 2 || label.length > 4;
+      })
+    ) {
+      throw new Error('Reader tool actions must all expose a two-to-four-character label');
+    }
   } else if (name === 'reader-theme-appearance') {
     const settingsStore = useSettingsStore();
     settingsStore.settings.reader.fontFamily = 'Courier New, monospace';
@@ -2863,6 +2961,8 @@ async function applyScenario(name: VisualScenarioName, options: { height?: numbe
       chapterId: chapter.id,
       versionId: extraSaved.version.id,
     });
+    await waitForPaint();
+    await openReaderTools();
   } else if (name === 'content-version-interactions') {
     const extras = useExtrasStore();
     const book = createLegacyExtrasFixture();

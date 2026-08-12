@@ -8,6 +8,7 @@ import {
   resolveContentVersion,
 } from '@/util/contentVersions';
 import { validateInplace } from '@/util/zod';
+import { wrapLegacyTheaterFrontend } from '@/util/theaterMixedContent';
 
 export const theaterField = 'sillytavern_phone_theater';
 
@@ -20,11 +21,43 @@ function createId(prefix: string) {
 }
 
 export const useTheaterStore = defineStore('theater', () => {
-  const { data, rehydrateFromSettings, resetCurrentScope, scopeKey, switchScope } = useChatScopedDomain({
+  const {
+    data,
+    rehydrateFromSettings: rehydrateScopeFromSettings,
+    resetCurrentScope,
+    scopeKey,
+    switchScope: switchChatScope,
+  } = useChatScopedDomain({
     field: theaterField,
     schema: TheaterScopeDataSchema,
     createDefault: () => validateInplace(TheaterScopeDataSchema, {}),
   });
+
+  function migrateLegacyFrontendEntries() {
+    data.value.entries.forEach(entry => {
+      if (entry.renderMode === 'frontend') {
+        entry.content = wrapLegacyTheaterFrontend(entry.content);
+        entry.renderMode = 'markdown';
+      }
+      entry.versions.forEach(version => {
+        if (version.renderMode !== 'frontend') return;
+        version.content = wrapLegacyTheaterFrontend(version.content);
+        version.renderMode = 'markdown';
+      });
+    });
+  }
+
+  function rehydrateFromSettings() {
+    rehydrateScopeFromSettings();
+    migrateLegacyFrontendEntries();
+  }
+
+  async function switchScope(nextScopeKey: string) {
+    await switchChatScope(nextScopeKey);
+    migrateLegacyFrontendEntries();
+  }
+
+  migrateLegacyFrontendEntries();
 
   const entries = computed(() =>
     [...data.value.entries].sort((left, right) => right.updatedAt.localeCompare(left.updatedAt)),

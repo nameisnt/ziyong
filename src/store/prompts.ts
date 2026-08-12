@@ -25,6 +25,7 @@ export const TypePromptConfigSchema = z.object({
   name: z.string(),
   prompt: z.string(),
   charReplacement: z.string().default(''),
+  groupId: z.string().default(''),
   renderMode: z.enum(['markdown', 'frontend']).optional(),
   userReplacement: z.string().default(''),
   usageCount: z.number().int().nonnegative().default(0),
@@ -32,6 +33,13 @@ export const TypePromptConfigSchema = z.object({
   updatedAt: z.string(),
 });
 export type TypePromptConfig = z.infer<typeof TypePromptConfigSchema>;
+
+export const TypePromptGroupSchema = z.object({
+  domain: z.string(),
+  id: z.string(),
+  name: z.string(),
+});
+export type TypePromptGroup = z.infer<typeof TypePromptGroupSchema>;
 
 export const QuickPhraseSchema = z.object({
   id: z.string(),
@@ -80,6 +88,7 @@ export const PromptSettingsSchema = z.object({
   specialPrompts: z.record(SpecialPromptKeySchema, z.string()).default({}),
   taskTemplates: z.record(z.string(), z.string()).default({}),
   typePrompts: z.array(TypePromptConfigSchema).default([]),
+  typePromptGroups: z.array(TypePromptGroupSchema).default([]),
   quickPhraseGroups: z.array(QuickPhraseGroupSchema).default([]),
   quickTemplateGroups: z.array(QuickTemplateGroupSchema).default([]),
 });
@@ -106,6 +115,7 @@ export const PromptTransferSchema = z.object({
     specialPrompts: z.record(SpecialPromptKeySchema, z.string()).optional(),
     taskTemplates: z.record(z.string(), z.string()).optional(),
     typePrompts: z.array(TypePromptConfigSchema).optional(),
+    typePromptGroups: z.array(TypePromptGroupSchema).optional(),
     quickPhraseGroups: z.array(QuickPhraseGroupSchema).optional(),
     quickTemplateGroups: z.array(QuickTemplateGroupSchema).optional(),
   }),
@@ -130,9 +140,16 @@ function getDefaultTypePromptDefinitions() {
     }));
 }
 
+function getDefaultTypePromptGroups(): TypePromptGroup[] {
+  return getRegisteredPhoneTypePromptDomains().flatMap(domain =>
+    (domain.defaultGroups ?? []).map(group => ({ ...group, domain: domain.key })),
+  );
+}
+
 function createDefaultTypePrompts(timestamp = nowIso()): TypePromptConfig[] {
   return getDefaultTypePromptDefinitions().map(item => ({
     ...item,
+    groupId: item.groupId || '',
     usageCount: 0,
     createdAt: timestamp,
     updatedAt: timestamp,
@@ -158,10 +175,43 @@ function ensureDefaultTypePrompts(settings: PromptSettings) {
   }
 }
 
+function ensureDefaultTypePromptGroups(settings: PromptSettings) {
+  const existingIds = new Set(settings.typePromptGroups.map(group => group.id));
+  getDefaultTypePromptGroups().forEach(group => {
+    if (!existingIds.has(group.id)) settings.typePromptGroups.push(group);
+  });
+  const defaultPrompts = new Map(getDefaultTypePromptDefinitions().map(prompt => [prompt.id, prompt]));
+  settings.typePrompts.forEach(prompt => {
+    const defaultPrompt = defaultPrompts.get(prompt.id);
+    if (!prompt.groupId && defaultPrompt?.groupId) prompt.groupId = defaultPrompt.groupId;
+  });
+}
+
 function ensureTheaterTypePromptRenderModes(settings: PromptSettings) {
   settings.typePrompts.forEach(item => {
-    if (item.domain === 'theater' && !item.renderMode) item.renderMode = 'markdown';
+    if (item.domain !== 'theater') return;
+    if (item.renderMode === 'frontend' && !item.prompt.includes('```html')) {
+      item.prompt = `${item.prompt.trim()}\n\n需要网页渲染的部分必须严格使用 \`\`\`html 前缀和 \`\`\` 后缀包裹。`;
+    }
+    item.renderMode = undefined;
   });
+}
+
+function ensureUnifiedTheaterOutputRule(settings: PromptSettings) {
+  if (settings.outputRules['theater.generate']) return;
+  const legacy = settings.outputRules['theater.markdown'] ?? settings.outputRules['theater.frontend'];
+  if (!legacy) return;
+  const fenceInstruction = [
+    '网页渲染前缀必须严格使用：```html',
+    '网页渲染后缀必须严格使用：```',
+    '只有前缀与后缀中间的内容会作为网页渲染，围栏前后按普通正文显示。',
+  ].join('\n');
+  settings.outputRules['theater.generate'] = {
+    ...klona(legacy),
+    ...(legacy.outputFormat
+      ? { outputFormat: `${legacy.outputFormat.trim()}\n\n${fenceInstruction}` }
+      : {}),
+  };
 }
 
 function buildDefaultAppPrompts() {
@@ -289,6 +339,7 @@ function createDefaultPromptSettings(): PromptSettings {
     specialPrompts: buildDefaultSpecialPrompts(),
     taskTemplates: buildDefaultTaskTemplates(),
     typePrompts: createDefaultTypePrompts(timestamp),
+    typePromptGroups: getDefaultTypePromptGroups(),
     quickPhraseGroups: [
       {
         id: 'prompt_group_emotion',
@@ -350,7 +401,10 @@ export const usePromptStore = defineStore('prompts', () => {
     data.value = createDefaultPromptSettings();
   }
   ensureRegisteredPromptDefaults(data.value);
+  ensureDefaultTypePromptGroups(data.value);
   ensureDefaultTypePrompts(data.value);
+  ensureTheaterTypePromptRenderModes(data.value);
+  ensureUnifiedTheaterOutputRule(data.value);
 
   const appPromptDefinitions = computed(() => getRegisteredPhonePromptDefinitions());
   const appPrompts = computed(() => data.value.appPrompts);
@@ -374,6 +428,7 @@ export const usePromptStore = defineStore('prompts', () => {
       .map(({ item }) => item),
   );
   const typePromptDomains = computed(() => getRegisteredPhoneTypePromptDomains());
+  const typePromptGroups = computed(() => data.value.typePromptGroups);
   const quickPhraseGroups = computed(() => data.value.quickPhraseGroups);
   const quickTemplateGroups = computed(() => data.value.quickTemplateGroups);
 
@@ -472,6 +527,7 @@ export const usePromptStore = defineStore('prompts', () => {
 
     if (parsedSelection.typePrompts) {
       sections.typePrompts = klona(data.value.typePrompts);
+      sections.typePromptGroups = klona(data.value.typePromptGroups);
     }
 
     if (parsedSelection.quickPhraseGroups) {
@@ -522,6 +578,7 @@ export const usePromptStore = defineStore('prompts', () => {
         throw new Error('导入文件里缺少输出与解析区段');
       }
       data.value.outputRules = klona(transfer.sections.outputRules);
+      ensureUnifiedTheaterOutputRule(data.value);
     }
 
     if (parsedSelection.typePrompts) {
@@ -529,6 +586,8 @@ export const usePromptStore = defineStore('prompts', () => {
         throw new Error('导入文件里缺少类型提示词区段');
       }
       data.value.typePrompts = klona(transfer.sections.typePrompts);
+      data.value.typePromptGroups = klona(transfer.sections.typePromptGroups ?? []);
+      ensureDefaultTypePromptGroups(data.value);
       ensureTheaterTypePromptRenderModes(data.value);
     }
 
@@ -552,7 +611,7 @@ export const usePromptStore = defineStore('prompts', () => {
 
   function createTypePrompt(
     input: Pick<TypePromptConfig, 'domain' | 'name' | 'prompt'> &
-      Partial<Pick<TypePromptConfig, 'charReplacement' | 'renderMode' | 'userReplacement'>>,
+      Partial<Pick<TypePromptConfig, 'charReplacement' | 'groupId' | 'renderMode' | 'userReplacement'>>,
   ) {
     const timestamp = nowIso();
     const item: TypePromptConfig = {
@@ -561,7 +620,8 @@ export const usePromptStore = defineStore('prompts', () => {
       name: input.name.trim() || '未命名类型提示词',
       prompt: input.prompt.trim(),
       charReplacement: input.charReplacement?.trim() || '',
-      renderMode: input.domain === 'theater' ? (input.renderMode ?? 'markdown') : undefined,
+      groupId: input.groupId?.trim() || '',
+      renderMode: undefined,
       userReplacement: input.userReplacement?.trim() || '',
       usageCount: 0,
       createdAt: timestamp,
@@ -574,16 +634,16 @@ export const usePromptStore = defineStore('prompts', () => {
   function updateTypePrompt(
     promptId: string,
     input: Pick<TypePromptConfig, 'domain' | 'name' | 'prompt'> &
-      Partial<Pick<TypePromptConfig, 'charReplacement' | 'renderMode' | 'userReplacement'>>,
+      Partial<Pick<TypePromptConfig, 'charReplacement' | 'groupId' | 'renderMode' | 'userReplacement'>>,
   ) {
     const item = getTypePrompt(promptId);
     if (!item) return null;
-    const previousRenderMode = item.renderMode;
     item.domain = input.domain;
     item.name = input.name.trim() || item.name;
     item.prompt = input.prompt.trim();
     item.charReplacement = input.charReplacement?.trim() || '';
-    item.renderMode = input.domain === 'theater' ? (input.renderMode ?? previousRenderMode ?? 'markdown') : undefined;
+    item.groupId = input.groupId?.trim() || '';
+    item.renderMode = undefined;
     item.userReplacement = input.userReplacement?.trim() || '';
     item.updatedAt = nowIso();
     return item;
@@ -591,6 +651,30 @@ export const usePromptStore = defineStore('prompts', () => {
 
   function deleteTypePrompt(promptId: string) {
     data.value.typePrompts = data.value.typePrompts.filter(item => item.id !== promptId);
+  }
+
+  function createTypePromptGroup(domain: string, name: string) {
+    const group: TypePromptGroup = {
+      domain,
+      id: createId('type_group'),
+      name: name.trim() || '未命名分组',
+    };
+    data.value.typePromptGroups.push(group);
+    return group;
+  }
+
+  function renameTypePromptGroup(groupId: string, name: string) {
+    const group = data.value.typePromptGroups.find(item => item.id === groupId);
+    if (!group) return null;
+    group.name = name.trim() || group.name;
+    return group;
+  }
+
+  function deleteTypePromptGroup(groupId: string) {
+    data.value.typePromptGroups = data.value.typePromptGroups.filter(group => group.id !== groupId);
+    data.value.typePrompts.forEach(prompt => {
+      if (prompt.groupId === groupId) prompt.groupId = '';
+    });
   }
 
   function getQuickPhraseGroup(groupId: string) {
@@ -717,8 +801,10 @@ export const usePromptStore = defineStore('prompts', () => {
   function rehydrateFromSettings() {
     data.value = validateInplace(PromptSettingsSchema, _.get(extension_settings, promptField, {}));
     ensureRegisteredPromptDefaults(data.value);
+    ensureDefaultTypePromptGroups(data.value);
     ensureDefaultTypePrompts(data.value);
     ensureTheaterTypePromptRenderModes(data.value);
+    ensureUnifiedTheaterOutputRule(data.value);
   }
 
   return {
@@ -731,12 +817,14 @@ export const usePromptStore = defineStore('prompts', () => {
     createQuickTemplate,
     createQuickTemplateGroup,
     createTypePrompt,
+    createTypePromptGroup,
     data,
     deleteQuickPhrase,
     deleteQuickPhraseGroup,
     deleteQuickTemplate,
     deleteQuickTemplateGroup,
     deleteTypePrompt,
+    deleteTypePromptGroup,
     getQuickPhraseGroup,
     getQuickTemplateGroup,
     getOutputFormatDefinition,
@@ -751,6 +839,7 @@ export const usePromptStore = defineStore('prompts', () => {
     rehydrateFromSettings,
     renameQuickPhraseGroup,
     renameQuickTemplateGroup,
+    renameTypePromptGroup,
     resetDefaults,
     resetOutputRule,
     resolveOutputFormat,
@@ -762,6 +851,7 @@ export const usePromptStore = defineStore('prompts', () => {
     taskTemplateDefinitions,
     taskTemplates,
     typePromptDomains,
+    typePromptGroups,
     typePrompts,
     updateAppPrompt,
     updateQuickPhrase,

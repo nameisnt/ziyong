@@ -606,6 +606,8 @@ export const useSettingsStore = defineStore('settings', () => {
   function resetGenerationDefaults() {
     settings.value.generation = {
       fromStartEnd: 20,
+      outputCleaningEnabled: false,
+      outputCleaningEndTags: '</think>',
       rpmLimit: 10,
       sourceMode: 'latest',
       tavernPresetName: '',

@@ -6,6 +6,13 @@
         @discard="discardScenePreviewDraft"
         @open="openScenePreviewDraft"
       />
+      <FailedDraftList
+        :drafts="failedDrafts"
+        :get-context="draft => draft.source.label"
+        :get-title="() => '未解析场景方案'"
+        @open="openFailedDraft"
+        @remove="removeFailedDraft"
+      />
       <article class="pc-scene-editor">
         <div class="pc-section-head">
           <strong>{{ activePlan ? '继续编排' : '说出下一章剧情' }}</strong>
@@ -130,11 +137,22 @@
         </GenerationPreviewPanel>
       </article>
     </section>
+
+    <FailedDraftRepairPage
+      v-else-if="route.page === 'failed-draft' && activeFailedDraft"
+      v-model:raw-output="failedDraftRawOutput"
+      :source-label="activeFailedDraft.source.label"
+      title="修复场景编排草稿"
+      @delete="removeFailedDraft(activeFailedDraft.id)"
+      @reparse="reparseFailedDraft"
+    />
   </section>
 </template>
 
 <script setup lang="ts">
 import EmptyState from '@/components/EmptyState.vue';
+import FailedDraftList from '@/components/FailedDraftList.vue';
+import FailedDraftRepairPage from '@/components/FailedDraftRepairPage.vue';
 import GenerationPanel from '@/components/GenerationPanel.vue';
 import GenerationPreviewPanel from '@/components/GenerationPreviewPanel.vue';
 import PreviewDraftNotice from '@/components/PreviewDraftNotice.vue';
@@ -178,6 +196,7 @@ const adapter = getRegisteredPhoneGenerationAdapter<ReturnType<typeof createScen
 );
 const { settings } = storeToRefs(settingsStore);
 const route = computed(() => phone.currentRoute);
+const { failedDrafts } = storeToRefs(planner);
 const activePlanId = ref('');
 const selectedReferences = ref<GenerationReferenceItem[]>([]);
 const draft = reactive({
@@ -199,6 +218,11 @@ const generationState = reactive({
   preview: null as ScenePreview | null,
   rawOutput: '',
   running: false,
+});
+const failedDraftRawOutput = ref('');
+const activeFailedDraft = computed(() => {
+  const draftId = route.value.params?.draftId;
+  return draftId ? planner.getFailedDraft(draftId) : null;
 });
 const {
   clearPreviewDraft: clearScenePreviewDraft,
@@ -231,6 +255,25 @@ const textProviderSummary = computed(() => formatTextProviderSummary(settings.va
 onMounted(() => {
   selectRecentSummaries();
 });
+
+watch(
+  () => [route.value.page, route.value.params?.draftId] as const,
+  ([page]) => {
+    if (page !== 'failed-draft') return;
+    const failedDraft = activeFailedDraft.value;
+    failedDraftRawOutput.value = failedDraft?.rawOutput || '';
+    if (!failedDraft) return;
+    if (typeof failedDraft.context.title === 'string') draft.title = failedDraft.context.title;
+    if (typeof failedDraft.context.brief === 'string') draft.brief = failedDraft.context.brief;
+    if (typeof failedDraft.context.styleNote === 'string') draft.styleNote = failedDraft.context.styleNote;
+    if (typeof failedDraft.context.avoidNote === 'string') draft.avoidNote = failedDraft.context.avoidNote;
+    if (typeof failedDraft.context.planId === 'string') activePlanId.value = failedDraft.context.planId;
+    if (typeof failedDraft.context.userRequirement === 'string') {
+      generationDraft.userRequirement = failedDraft.context.userRequirement;
+    }
+  },
+  { immediate: true },
+);
 
 function selectRecentSummaries() {
   if (selectedReferences.value.length) return;
@@ -336,7 +379,11 @@ async function runGeneration() {
     });
     if (result.status === 'failed') {
       generationState.error = result.warnings.join('；') || '没有返回可解析的场景提示词';
-      toastr.warning('解析失败，原始输出已保留');
+      failedDraftRawOutput.value = result.rawOutput;
+      toastr.warning('解析失败，已保存到失败草稿');
+      void phone.presentGeneratedPage('scene-planner', 'failed-draft', '解析失败草稿', {
+        draftId: result.draft.id,
+      });
       return;
     }
     generationState.preview = {
@@ -353,6 +400,49 @@ async function runGeneration() {
   } catch (error) {
     generationState.error = error instanceof Error ? error.message : '场景编排失败';
   }
+}
+
+function openFailedDraft(draftId: string) {
+  if (!planner.getFailedDraft(draftId)) return;
+  phone.pushPage('failed-draft', '解析失败草稿', { draftId });
+}
+
+async function removeFailedDraft(draftId: string) {
+  const confirmed = await phone.confirmNotice('要删除这条场景编排失败草稿吗？', {
+    confirmLabel: '删除',
+    kind: 'warning',
+  });
+  if (!confirmed) return;
+  planner.deleteFailedDraft(draftId);
+  failedDraftRawOutput.value = '';
+  if (route.value.page === 'failed-draft') phone.replacePage('root', '场景编排');
+  toastr.success('已删除失败草稿');
+}
+
+function reparseFailedDraft() {
+  const failedDraft = activeFailedDraft.value;
+  if (!failedDraft) return;
+  const rawOutput = failedDraftRawOutput.value.trim();
+  if (!rawOutput) return void toastr.warning('先补一点可解析的输出');
+  const parsed = adapter.parse(rawOutput, buildGenerationConfig());
+  if (!parsed.ok) {
+    planner.updateFailedDraft(failedDraft.id, { rawOutput, warnings: parsed.warnings });
+    toastr.warning(parsed.warnings.join('；') || '仍然无法解析');
+    return;
+  }
+  generationState.preview = {
+    content: formatScenePlannerResult(parsed.data),
+    data: parsed.data,
+    raw: parsed.raw,
+    savedPlanId: '',
+    source: failedDraft.source,
+    warnings: parsed.warnings,
+  };
+  persistScenePreviewDraft();
+  planner.deleteFailedDraft(failedDraft.id);
+  failedDraftRawOutput.value = '';
+  phone.replacePage('preview', '下一章提示词');
+  toastr.success('已重新解析');
 }
 
 function reparsePreviewRaw() {

@@ -176,7 +176,7 @@ const props = withDefaults(
     baguLabel: '八股检测',
     branchDisabled: false,
     branchEnabled: false,
-    branchLabel: '从此处创建分支',
+    branchLabel: '创建分支',
     catalogLabel: '目录',
     content: '',
     contentFormatted: false,
@@ -184,7 +184,7 @@ const props = withDefaults(
     displayAppId: '',
     eraserDisabled: false,
     eraserEnabled: false,
-    eraserLabel: '橡皮擦',
+    eraserLabel: '修改句子',
     editDisabled: false,
     editEnabled: true,
     editLabel: '编辑',
@@ -350,8 +350,8 @@ function clampToolPosition(x = toolPosition.x, y = toolPosition.y) {
   const shell = shellEl.value;
   const tool = toolEl.value;
   if (!shell) return;
-  const width = tool?.offsetWidth || 42;
-  const height = tool?.offsetHeight || 42;
+  const width = tool?.offsetWidth || 46;
+  const height = tool?.offsetHeight || 46;
   toolPosition.x = Math.min(Math.max(6, x), Math.max(6, shell.clientWidth - width - 6));
   toolPosition.y = Math.min(Math.max(6, y), Math.max(6, shell.clientHeight - height - 6));
 }
@@ -528,17 +528,19 @@ onBeforeUnmount(() => toolResizeObserver?.disconnect());
 .pc-reader-tool {
   position: absolute;
   z-index: 7;
-  width: 42px;
-  height: 42px;
+  width: 46px;
+  height: 46px;
 }
 
 .pc-reader-tool-trigger {
-  width: 42px;
-  height: 42px;
-  border-color: color-mix(in srgb, var(--pc-theme-accent) 35%, var(--pc-border) 65%);
-  background: color-mix(in srgb, var(--pc-surface-strong) 72%, transparent 28%);
-  box-shadow: 0 6px 18px color-mix(in srgb, var(--pc-text) 16%, transparent 84%);
-  backdrop-filter: blur(8px);
+  width: 46px;
+  height: 46px;
+  border: 2px solid var(--pc-theme-accent);
+  background: var(--pc-form-control-bg);
+  color: var(--pc-form-control-text);
+  box-shadow:
+    0 0 0 2px var(--pc-form-control-bg),
+    0 7px 20px color-mix(in srgb, var(--pc-text) 26%, transparent 74%);
   touch-action: none;
 }
 
@@ -552,16 +554,17 @@ onBeforeUnmount(() => toolResizeObserver?.disconnect());
   top: calc(100% + 7px);
   left: 0;
   display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 7px;
-  width: min(230px, calc(100vw - 38px));
+  width: min(250px, calc(100vw - 38px));
   max-height: min(58vh, 420px);
   padding: 9px;
   overflow: auto;
-  border: 1px solid var(--pc-border);
+  border: 1px solid color-mix(in srgb, var(--pc-form-control-text) 20%, var(--pc-form-control-bg) 80%);
   border-radius: var(--pc-control-radius);
-  background: color-mix(in srgb, var(--pc-surface-strong) 94%, transparent 6%);
-  box-shadow: 0 10px 28px color-mix(in srgb, var(--pc-text) 20%, transparent 80%);
-  backdrop-filter: blur(12px);
+  background: var(--pc-form-control-bg);
+  color: var(--pc-form-control-text);
+  box-shadow: 0 10px 28px color-mix(in srgb, var(--pc-text) 28%, transparent 72%);
 }
 
 .pc-reader-tool-menu.open-left {
@@ -575,14 +578,49 @@ onBeforeUnmount(() => toolResizeObserver?.disconnect());
 }
 
 .pc-reader-tool-menu > .pc-soft-btn,
-.pc-reader-tool-menu :deep(.pc-soft-btn) {
-  justify-content: flex-start;
+.pc-reader-tool-menu :deep(.pc-soft-btn),
+.pc-reader-tool-menu :deep(.pc-primary-btn) {
+  justify-content: center;
   width: 100%;
   min-width: 0;
+  min-height: 42px;
+  padding-inline: 8px;
+  border: 1px solid color-mix(in srgb, var(--pc-form-control-text) 14%, var(--pc-form-control-bg) 86%);
+  background: color-mix(in srgb, var(--pc-form-control-text) 10%, var(--pc-form-control-bg) 90%);
+  color: var(--pc-form-control-text);
+  font-size: 13px;
+  white-space: nowrap;
+}
+
+.pc-reader-tool-menu :deep(.pc-primary-btn) {
+  border-color: var(--pc-theme-accent);
+  background: var(--pc-theme-accent);
+  color: var(--pc-primary-text);
+}
+
+.pc-reader-tool-menu :deep(.pc-soft-btn.active) {
+  border-color: color-mix(in srgb, var(--pc-theme-accent) 52%, var(--pc-form-control-bg) 48%);
+  background: color-mix(in srgb, var(--pc-theme-accent) 22%, var(--pc-form-control-bg) 78%);
+  color: var(--pc-theme-accent);
+}
+
+.pc-reader-tool-menu :deep(.pc-soft-btn.danger) {
+  color: var(--pc-danger);
+}
+
+.pc-reader-tool-menu :deep(.pc-soft-btn i),
+.pc-reader-tool-menu :deep(.pc-primary-btn i) {
+  flex: 0 0 16px;
+  width: 16px;
+  text-align: center;
 }
 
 .pc-reader-tool-menu :deep(.pc-version-navigator) {
+  grid-column: 1 / -1;
   width: 100%;
   margin: 0;
+  padding: 0;
+  border: 0;
+  background: var(--pc-form-control-bg);
 }
 </style>

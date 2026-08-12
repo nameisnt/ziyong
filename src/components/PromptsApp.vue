@@ -94,8 +94,47 @@
             <strong>{{ domain.label }}</strong>
             <small>{{ domain.items.length }} {{ t`项` }}</small>
           </header>
-          <div class="pc-type-prompt-grid">
-            <EmptyState v-if="!domain.items.length" compact :title="domain.emptyLabel" />
+          <EmptyState v-if="!domain.items.length" compact :title="domain.emptyLabel" />
+          <template v-else-if="domain.key === 'theater'">
+            <section v-for="group in domain.groups" :key="group.id" class="pc-type-group-section">
+              <header class="pc-type-group-head">
+                <strong>{{ group.name }}</strong>
+                <div class="pc-inline-actions">
+                  <small>{{ group.items.length }} {{ t`项` }}</small>
+                  <button
+                    v-if="!group.builtIn"
+                    class="pc-icon-btn"
+                    type="button"
+                    title="重命名分组"
+                    @click="renameTypeGroup(group.id, group.name)"
+                  >
+                    <i class="fa-solid fa-pen"></i>
+                  </button>
+                  <button
+                    v-if="!group.builtIn"
+                    class="pc-icon-btn danger"
+                    type="button"
+                    title="删除分组"
+                    @click="removeTypeGroup(group.id, group.name)"
+                  >
+                    <i class="fa-solid fa-trash"></i>
+                  </button>
+                </div>
+              </header>
+              <div class="pc-type-prompt-grid">
+                <button
+                  v-for="item in group.items"
+                  :key="item.id"
+                  class="pc-type-prompt-tile"
+                  type="button"
+                  @click="openTypePromptDetail(item.id)"
+                >
+                  <strong>{{ item.name }}</strong>
+                </button>
+              </div>
+            </section>
+          </template>
+          <div v-else class="pc-type-prompt-grid">
             <button
               v-for="item in domain.items"
               :key="item.id"
@@ -391,7 +430,7 @@
           </header>
           <div class="pc-prompt-detail-body">
             <p v-if="activeTypePrompt.domain === 'theater'" class="pc-prompt-render-mode">
-              {{ activeTypePrompt.renderMode === 'frontend' ? t`默认网页渲染` : t`默认 Markdown` }}
+              {{ activeTypePromptGroupName }}
             </p>
             <p class="pc-prewrap">{{ activeTypePrompt.prompt || t`未填写类型提示词正文` }}</p>
           </div>
@@ -449,6 +488,7 @@ const {
   taskTemplateDefinitions,
   taskTemplates,
   typePromptDomains,
+  typePromptGroups,
   typePrompts,
 } = storeToRefs(prompts);
 
@@ -605,11 +645,25 @@ const outputRuleCards = computed(() => {
   });
 });
 const typePromptDomainCards = computed(() =>
-  typePromptDomains.value.map(domain => ({
-    ...domain,
-    emptyLabel: domain.emptyLabel || `还没有${domain.label}类型提示词`,
-    items: typePrompts.value.filter(item => item.domain === domain.key),
-  })),
+  typePromptDomains.value.map(domain => {
+    const items = typePrompts.value.filter(item => item.domain === domain.key);
+    const groups = typePromptGroups.value
+      .filter(group => group.domain === domain.key)
+      .map(group => ({
+        ...group,
+        builtIn: group.id.startsWith(`${domain.key}_group_`),
+        items: items.filter(item => item.groupId === group.id),
+      }))
+      .filter(group => group.items.length);
+    const ungrouped = items.filter(item => !groups.some(group => group.id === item.groupId));
+    if (ungrouped.length) groups.push({ builtIn: true, domain: domain.key, id: '', items: ungrouped, name: '未分组' });
+    return {
+      ...domain,
+      emptyLabel: domain.emptyLabel || `还没有${domain.label}类型提示词`,
+      groups,
+      items,
+    };
+  }),
 );
 const activeTypePrompt = computed(() =>
   activeTypePromptId.value ? prompts.getTypePrompt(activeTypePromptId.value) : null,
@@ -629,6 +683,10 @@ const activeAppPrompt = computed(
 const activeTypePromptDomainLabel = computed(
   () => typePromptDomains.value.find(domain => domain.key === activeTypePrompt.value?.domain)?.label || '类型提示词',
 );
+const activeTypePromptGroupName = computed(() => {
+  const groupId = activeTypePrompt.value?.groupId || '';
+  return typePromptGroups.value.find(group => group.id === groupId)?.name || '未分组';
+});
 
 const editingAppPrompt = computed(() =>
   route.value.params?.openKey
@@ -778,6 +836,25 @@ function openOutputRule(outputId: string) {
 
 function openEditTypePrompt(promptId: string) {
   phone.pushPage('type-editor', '编辑类型提示词', { promptId });
+}
+
+async function renameTypeGroup(groupId: string, currentName: string) {
+  const name = await phone.promptNotice('输入新的小剧场类型分组名称。', {
+    confirmLabel: '保存',
+    initialValue: currentName,
+    title: '重命名分组',
+  });
+  if (!name?.trim()) return;
+  prompts.renameTypePromptGroup(groupId, name);
+}
+
+async function removeTypeGroup(groupId: string, name: string) {
+  const confirmed = await phone.confirmNotice(`删除分组“${name}”后，其中的提示词会移入“未分组”。`, {
+    confirmLabel: '删除',
+    kind: 'warning',
+  });
+  if (!confirmed) return;
+  prompts.deleteTypePromptGroup(groupId);
 }
 
 function openCreateGroup() {
@@ -1000,6 +1077,23 @@ async function copyText(text: string, successMessage: string) {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 8px;
+}
+
+.pc-type-group-section {
+  display: grid;
+  gap: 7px;
+}
+
+.pc-type-group-head {
+  display: flex;
+  min-height: 32px;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.pc-type-group-head > strong {
+  font-size: 13px;
 }
 
 .pc-type-prompt-grid > .pc-empty-state {

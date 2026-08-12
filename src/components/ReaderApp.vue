@@ -127,12 +127,12 @@
         :actions-class="phone.isViewingCurrentChat ? 'six' : 'five'"
         :branch-disabled="branching"
         :branch-enabled="phone.isViewingCurrentChat"
-        :branch-label="branching ? t`正在创建分支` : t`从此处创建分支`"
+        :branch-label="branching ? t`创建中` : t`创建分支`"
         :content="activeMessageBody"
         content-formatted
         display-app-id="reader"
         :edit-disabled="!phone.isViewingCurrentChat"
-        :edit-label="phone.isViewingCurrentChat ? t`编辑正文` : t`历史聊天只读`"
+        :edit-label="t`编辑正文`"
         :favorite-active="Boolean(activeMessageFavorite)"
         :next-disabled="!nextMessageId"
         :previous-disabled="!previousMessageId"
@@ -154,6 +154,7 @@
         <template #actions>
           <button class="pc-soft-btn" type="button" :title="t`选中文字加入摘抄`" @click="saveSelectionToDigest">
             <i class="fa-solid fa-highlighter"></i>
+            <span>{{ t`摘抄` }}</span>
           </button>
           <button
             class="pc-soft-btn danger"
@@ -163,6 +164,7 @@
             @click="deleteSelectedReaderText"
           >
             <i class="fa-solid fa-eraser"></i>
+            <span>{{ t`删除文字` }}</span>
           </button>
         </template>
         <template #overlays>

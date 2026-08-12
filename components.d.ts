@@ -124,6 +124,7 @@ declare module 'vue' {
     TheaterEntryDetailPage: typeof import('./src/components/theater/TheaterEntryDetailPage.vue')['default']
     TheaterEntryEditorPage: typeof import('./src/components/theater/TheaterEntryEditorPage.vue')['default']
     TheaterHistoryPage: typeof import('./src/components/theater/TheaterHistoryPage.vue')['default']
+    TheaterMixedContent: typeof import('./src/components/theater/TheaterMixedContent.vue')['default']
     VersionNavigator: typeof import('./src/components/VersionNavigator.vue')['default']
   }
 }

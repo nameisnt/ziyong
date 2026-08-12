@@ -33,9 +33,11 @@
       <template #actions>
         <button class="pc-soft-btn" type="button" :title="t`让他人阅读`" @click="emit('readReaction')">
           <i class="fa-solid fa-book-open-reader"></i>
+          <span>{{ t`他人阅读` }}</span>
         </button>
         <button class="pc-soft-btn danger" type="button" :title="t`删除`" @click="emit('delete')">
           <i class="fa-solid fa-trash"></i>
+          <span>{{ t`删除` }}</span>
         </button>
       </template>
       <template #overlays>

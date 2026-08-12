@@ -1,8 +1,13 @@
 <template>
   <div v-if="versions.length > 1" class="pc-version-navigator" aria-label="内容版本">
     <div class="pc-version-switcher">
-      <button class="pc-icon-btn" type="button" :title="t`上一个版本`" @click="selectOffset(-1)">
-        <span class="pc-version-chevron previous" aria-hidden="true"></span>
+      <button
+        class="pc-soft-btn compact pc-version-step"
+        type="button"
+        :title="t`上一个版本`"
+        @click="selectOffset(-1)"
+      >
+        <span>{{ t`上版` }}</span>
       </button>
       <div class="pc-version-status">
         <label>
@@ -21,8 +26,8 @@
           <span>{{ `/ ${versions.length}` }}</span>
         </label>
       </div>
-      <button class="pc-icon-btn" type="button" :title="t`下一个版本`" @click="selectOffset(1)">
-        <span class="pc-version-chevron next" aria-hidden="true"></span>
+      <button class="pc-soft-btn compact pc-version-step" type="button" :title="t`下一个版本`" @click="selectOffset(1)">
+        <span>{{ t`下版` }}</span>
       </button>
     </div>
   </div>
@@ -83,8 +88,14 @@ function commitRequestedIndex() {
 .pc-version-switcher {
   display: grid;
   align-items: center;
-  grid-template-columns: 42px minmax(0, 1fr) 42px;
+  grid-template-columns: 56px minmax(0, 1fr) 56px;
   gap: 6px;
+}
+
+.pc-version-step {
+  min-width: 0;
+  padding-inline: 8px;
+  white-space: nowrap;
 }
 
 .pc-version-status {
@@ -95,37 +106,23 @@ function commitRequestedIndex() {
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 8px;
+  gap: 4px;
   color: var(--pc-muted);
   font-weight: 750;
 }
 
 .pc-version-status .pc-field {
-  width: 62px;
-  min-height: 38px;
-  padding: 6px 8px;
+  width: 42px;
+  height: 42px;
+  min-height: 42px;
+  padding: 0 8px;
+  line-height: 40px;
   text-align: center;
-}
-
-.pc-version-chevron {
-  display: block;
-  width: 10px;
-  height: 10px;
-  border-right: 2px solid currentColor;
-  border-bottom: 2px solid currentColor;
-}
-
-.pc-version-chevron.previous {
-  transform: rotate(135deg);
-}
-
-.pc-version-chevron.next {
-  transform: rotate(-45deg);
 }
 
 @media (max-width: 380px) {
   .pc-version-switcher {
-    grid-template-columns: 38px minmax(0, 1fr) 38px;
+    grid-template-columns: 52px minmax(0, 1fr) 52px;
   }
 }
 </style>

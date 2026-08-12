@@ -665,9 +665,11 @@
             @click="deleteLoadedBackup"
           >
             <i class="fa-solid fa-trash-can"></i>
+            <span>删除备份</span>
           </button>
           <button class="pc-primary-btn" type="button" title="导入此备份" @click="openImportConfirm">
             <i class="fa-solid fa-file-import"></i>
+            <span>导入备份</span>
           </button>
         </template>
         <template #overlays>

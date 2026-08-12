@@ -14,26 +14,19 @@
       </div>
 
       <input v-model="draft.name" class="pc-field" type="text" :placeholder="t`类型名称`" />
-      <textarea v-model="draft.prompt" class="pc-area" :placeholder="t`类型提示词正文`" />
       <div v-if="draft.domain === 'theater'" class="pc-field-group">
-        <span class="pc-field-label">{{ t`默认渲染方式` }}</span>
-        <span class="pc-segment">
-          <button
-            :class="['pc-segment-btn', { active: draft.renderMode === 'markdown' }]"
-            type="button"
-            @click="draft.renderMode = 'markdown'"
-          >
-            Markdown
+        <span class="pc-field-label">所属分组</span>
+        <div class="pc-type-group-row">
+          <select v-model="draft.groupId" class="pc-select">
+            <option value="">未分组</option>
+            <option v-for="group in theaterGroups" :key="group.id" :value="group.id">{{ group.name }}</option>
+          </select>
+          <button class="pc-icon-btn" type="button" title="新建分组" @click="createGroup">
+            <i class="fa-solid fa-folder-plus"></i>
           </button>
-          <button
-            :class="['pc-segment-btn', { active: draft.renderMode === 'frontend' }]"
-            type="button"
-            @click="draft.renderMode = 'frontend'"
-          >
-            {{ t`网页渲染` }}
-          </button>
-        </span>
+        </div>
       </div>
+      <textarea v-model="draft.prompt" class="pc-area" :placeholder="t`类型提示词正文`" />
 
       <div class="pc-form-actions">
         <button class="pc-soft-btn" type="button" @click="$emit('back')">{{ t`取消` }}</button>
@@ -46,6 +39,7 @@
 <script setup lang="ts">
 import type { PhoneTypePromptDomain } from '@/core/appRegistry';
 import { usePromptStore, type TypePromptConfig } from '@/store/prompts';
+import { usePhoneStore } from '@/store/phone';
 
 const props = defineProps<{
   domains: PhoneTypePromptDomain[];
@@ -53,18 +47,30 @@ const props = defineProps<{
 }>();
 const emit = defineEmits<{ back: [] }>();
 const prompts = usePromptStore();
+const phone = usePhoneStore();
 const draft = reactive({
   domain: '',
+  groupId: '',
   name: '',
   prompt: '',
-  renderMode: 'markdown' as 'frontend' | 'markdown',
 });
+const theaterGroups = computed(() => prompts.typePromptGroups.filter(group => group.domain === 'theater'));
 
 function loadDraft() {
   draft.domain = props.prompt?.domain || props.domains[0]?.key || '';
+  draft.groupId = props.prompt?.groupId || '';
   draft.name = props.prompt?.name || '';
   draft.prompt = props.prompt?.prompt || '';
-  draft.renderMode = props.prompt?.renderMode === 'frontend' ? 'frontend' : 'markdown';
+}
+
+async function createGroup() {
+  const name = await phone.promptNotice('输入新的小剧场类型分组名称。', {
+    confirmLabel: '创建',
+    placeholder: '例如：论坛与社交媒体',
+    title: '新建分组',
+  });
+  if (!name?.trim()) return;
+  draft.groupId = prompts.createTypePromptGroup('theater', name).id;
 }
 
 function save() {
@@ -88,5 +94,11 @@ watch([() => props.domains, () => props.prompt], loadDraft, { immediate: true })
 .pc-prompts-editor {
   display: grid;
   gap: 14px;
+}
+
+.pc-type-group-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 8px;
 }
 </style>

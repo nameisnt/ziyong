@@ -82,16 +82,17 @@ export async function applyTheaterVisualScenario(name: string, context: TheaterS
     const theater = useTheaterStore();
     theater.resetCurrentScope();
     const entry = theater.createEntry({
-      content: '<main><button type="button">网页内部按钮</button><p>网页渲染正文</p></main>',
+      content:
+        '围栏前普通文字\n```html\n<main><button type="button">网页内部按钮</button><p>网页渲染正文</p></main>\n```\n围栏后普通文字',
       participants: [],
-      renderMode: 'frontend',
-      title: '网页渲染底栏测试',
+      renderMode: 'markdown',
+      title: '混合网页渲染测试',
       typeName: '网页测试',
     });
     resetPhoneToRoute('theater', 'entry', entry.title, { entryId: entry.id });
     await waitForPaint();
-    if (!document.querySelector('.pc-reader-footer-popover'))
-      throw new Error('Frontend theater detail did not keep its footer visible');
+    if (!document.querySelector('.pc-frame-shell') || !document.querySelector('.pc-theater-text-segment'))
+      throw new Error('Mixed theater detail did not render both text and HTML segments');
   } else if (name === 'theater-history') {
     createTheaterFixture();
     const theater = useTheaterStore();
@@ -117,7 +118,7 @@ export async function applyTheaterVisualScenario(name: string, context: TheaterS
     const draft = theater.createFailedDraft({
       actionId: 'generate',
       appId: 'theater',
-      context: { renderMode: 'frontend' },
+      context: {},
       rawOutput: '<theater><title>未闭合</title><content>等待修复的小剧场',
       source: visualSource(),
       warnings: ['缺少结束标签'],

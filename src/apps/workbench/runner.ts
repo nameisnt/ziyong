@@ -280,11 +280,9 @@ function buildStepConfig(step: WorkbenchStep) {
     }
     return {
       appPrompt: getPrompt('theater'),
-      outputFormat: getOutputFormat(
-        step.config.theaterRenderMode === 'frontend' ? 'theater.frontend' : 'theater.markdown',
-      ),
+      outputFormat: getOutputFormat('theater.generate'),
       participants: parseNameList(step.config.theaterParticipants).map(name => ({ name })),
-      renderMode: step.config.theaterRenderMode,
+      renderMode: 'markdown',
       typeId: selectedType?.id || '',
       typeName: selectedType?.name || step.config.theaterTypeName,
       typePrompt: selectedType?.prompt || step.config.theaterTypePrompt,

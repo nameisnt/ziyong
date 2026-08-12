@@ -78,6 +78,25 @@
         <span class="pc-toggle"><input v-model="settings.generation.stream" type="checkbox" /><span></span></span>
       </label>
       <div class="pc-settings-subsection">
+        <label class="pc-connection-setting-row">
+          <strong
+            >解析前清理思维链
+            <InfoHint text="找到配置的 XML 结束标签后，删除该标签及其之前的全部内容，再交给 App 解析。找不到标签时不会修改输出。" /></strong
+          >
+          <span class="pc-toggle"
+            ><input v-model="settings.generation.outputCleaningEnabled" type="checkbox" /><span></span
+          ></span>
+        </label>
+        <label v-if="settings.generation.outputCleaningEnabled" class="pc-field-group">
+          <span class="pc-field-label">思维链结束标签（每行一个）</span>
+          <textarea
+            v-model="settings.generation.outputCleaningEndTags"
+            class="pc-area compact"
+            placeholder="</think>"
+          ></textarea>
+        </label>
+      </div>
+      <div class="pc-settings-subsection">
         <div class="pc-row pc-row-top">
           <strong
             >当前聊天称呼替换

@@ -16,6 +16,7 @@ import { applyGenerationAliases, replaceGenerationAliases } from '@/util/generat
 import { createHiddenGenerationRecord } from '@/util/hiddenGenerationRecord';
 import { buildSourceSelection, type SummaryGenerationSourceMode } from '@/util/generationSource';
 import { ensureCurrentScopeRecovery } from '@/util/generationVisibility';
+import { cleanGenerationOutput } from '@/util/generationOutputCleaning';
 import type { GenerationReferenceItem } from '@/util/references';
 import {
   applyTextProviderSelection,
@@ -498,6 +499,14 @@ function normalizeGenerationResult(rawResult: unknown) {
   return String(rawResult);
 }
 
+function normalizeAndCleanGenerationResult(rawResult: unknown) {
+  const generation = useSettingsStore().settings.generation;
+  return cleanGenerationOutput(normalizeGenerationResult(rawResult), {
+    enabled: generation.outputCleaningEnabled,
+    endTags: generation.outputCleaningEndTags,
+  }).content;
+}
+
 export type RawOrderedPrompt = {
   content: string;
   role: 'assistant' | 'system' | 'user';
@@ -723,7 +732,7 @@ export async function generateOrderedPromptContent(options: {
             });
 
       abortSignal.throwIfAborted();
-      const rawOutput = normalizeGenerationResult(result);
+      const rawOutput = normalizeAndCleanGenerationResult(result);
       options.lifecycle?.onRawOutput?.(rawOutput);
       return { generationId, rawOutput, textProvider };
     },
@@ -772,7 +781,7 @@ export async function generateContent<TConfig, TResult, TSaveResult = { entityId
             );
 
       abortSignal.throwIfAborted();
-      const rawOutput = normalizeGenerationResult(result);
+      const rawOutput = normalizeAndCleanGenerationResult(result);
       options.lifecycle?.onRawOutput?.(rawOutput);
 
       const parsed = adapter.parse(rawOutput, prepared.parsedConfig);
