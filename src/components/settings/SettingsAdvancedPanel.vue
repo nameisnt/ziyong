@@ -27,7 +27,12 @@
             <strong>{{ entry.scopeId }}</strong>
             <p>{{ `${entry.messages.length} 条楼层快照 · ${entry.generationId}` }}</p>
           </div>
-          <button class="pc-soft-btn danger compact" type="button" title="删除恢复日志" @click="deleteRecovery(entry.scopeId)">
+          <button
+            class="pc-soft-btn danger compact"
+            type="button"
+            title="删除恢复日志"
+            @click="deleteRecovery(entry.scopeId)"
+          >
             删除
           </button>
         </article>

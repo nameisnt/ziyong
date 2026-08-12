@@ -56,7 +56,12 @@
           <strong>壁纸</strong>
           <span class="pc-context-meta">{{ wallpaperSummary }}</span>
         </div>
-        <button class="pc-soft-btn compact" type="button" title="关闭壁纸" @click="settingsStore.clearWallpaperSelection()">
+        <button
+          class="pc-soft-btn compact"
+          type="button"
+          title="关闭壁纸"
+          @click="settingsStore.clearWallpaperSelection()"
+        >
           关闭壁纸
         </button>
       </div>
@@ -124,9 +129,7 @@
           @update:model-value="onFontAssetSelect"
         />
         <div class="pc-asset-actions">
-          <button class="pc-soft-btn compact" type="button" title="导入字体" @click="fontInputEl?.click()">
-            导入
-          </button>
+          <button class="pc-soft-btn compact" type="button" title="导入字体" @click="fontInputEl?.click()">导入</button>
           <button
             class="pc-soft-btn compact"
             type="button"

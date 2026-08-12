@@ -125,7 +125,10 @@ function removeSingleSummaryBlock(content: string, config: ExtraChapterGenerateC
   try {
     const configured = createDisplayRegex(config.summaryRulePattern, config.summaryRuleFlags || '');
     const single = new RegExp(configured.source, configured.flags.replace(/g/g, ''));
-    const global = new RegExp(configured.source, configured.flags.includes('g') ? configured.flags : `${configured.flags}g`);
+    const global = new RegExp(
+      configured.source,
+      configured.flags.includes('g') ? configured.flags : `${configured.flags}g`,
+    );
     const matches = Array.from(content.matchAll(global));
     if (matches.length !== 1 || !matches[0]?.[0].trim()) {
       return {
@@ -175,7 +178,9 @@ export function parseExtraChapterOutput(raw: string, config: ExtraChapterGenerat
   }
   if (!summary) summaryWarning ||= '未匹配到番外摘要，正文仍可正常保存';
 
-  const removed = summary ? removeSingleSummaryBlock(parsed.data.content, config) : { content: parsed.data.content, warning: '' };
+  const removed = summary
+    ? removeSingleSummaryBlock(parsed.data.content, config)
+    : { content: parsed.data.content, warning: '' };
   return {
     ...parsed,
     data: { ...parsed.data, content: removed.content, summary },

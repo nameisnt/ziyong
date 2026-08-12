@@ -263,18 +263,22 @@ async function switchPreset(presetName: string) {
 async function renamePreset() {
   const oldName = detailPresetName.value;
   if (!oldName || mutationBusy.value) return;
-  const requested = await phone.promptNotice('输入新的预设名称。改名后，聊天预设绑定、阅读规则绑定和收藏条目绑定会一起迁移。', {
-    confirmLabel: '继续',
-    initialValue: oldName,
-    title: '预设改名',
-  });
+  const requested = await phone.promptNotice(
+    '输入新的预设名称。改名后，聊天预设绑定、阅读规则绑定和收藏条目绑定会一起迁移。',
+    {
+      confirmLabel: '继续',
+      initialValue: oldName,
+      title: '预设改名',
+    },
+  );
   const newName = requested?.trim() || '';
   if (!newName || newName === oldName) return;
   if (!(await phone.confirmNotice(`确认把预设“${oldName}”改名为“${newName}”吗？`, { confirmLabel: '改名' }))) return;
   saving.value = true;
   try {
     const result = await renameTavernPreset(oldName, newName);
-    const migrated = presetLinks.migratePresetReferences(oldName, newName) + entryLibrary.migratePresetReferences(oldName, newName);
+    const migrated =
+      presetLinks.migratePresetReferences(oldName, newName) + entryLibrary.migratePresetReferences(oldName, newName);
     if (result.current) loadedPresetName.value = newName;
     await refreshRoot();
     phone.replaceRoute('preset-manager', 'detail', '预设条目', { presetName: newName });

@@ -4,8 +4,7 @@
       <div class="pc-row pc-row-top">
         <strong>界面尺寸</strong>
         <div class="pc-settings-actions">
-          <button class="pc-soft-btn compact" type="button" title="适配当前窗口" @click="fitViewport">
-            适配窗口</button
+          <button class="pc-soft-btn compact" type="button" title="适配当前窗口" @click="fitViewport">适配窗口</button
           ><button
             class="pc-soft-btn compact"
             type="button"
