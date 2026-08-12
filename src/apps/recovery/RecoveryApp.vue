@@ -173,7 +173,11 @@
           <p>相似、前缀包含或 metadata 不同的备份不会被列入。</p>
         </EmptyState>
         <div v-else class="pc-recovery-duplicate-list">
-          <section v-for="group in recovery.duplicateScanResult.groups" :key="group.id" class="pc-recovery-duplicate-group">
+          <section
+            v-for="group in recovery.duplicateScanResult.groups"
+            :key="group.id"
+            class="pc-recovery-duplicate-group"
+          >
             <div class="pc-section-head">
               <strong>{{ duplicateGroupLabel(group) }}</strong>
               <span>可释放 {{ formatBytes(group.reclaimBytes) }}</span>
@@ -208,7 +212,9 @@
           :disabled="!duplicateSelectedNames.length || recovery.duplicateDeleting"
           @click="confirmDuplicateDelete"
         >
-          {{ recovery.duplicateDeleting ? '正在逐份复核并删除…' : `删除选中的 ${duplicateSelectedNames.length} 份旧副本` }}
+          {{
+            recovery.duplicateDeleting ? '正在逐份复核并删除…' : `删除选中的 ${duplicateSelectedNames.length} 份旧副本`
+          }}
         </button>
       </article>
 
@@ -642,9 +648,7 @@ function openDuplicates(groupId = '') {
 async function scanDuplicates() {
   try {
     const result = await recovery.scanDuplicateBackups(route.value.params?.groupId ?? '');
-    duplicateSelectedNames.value = result.groups.flatMap(group =>
-      group.duplicates.map(item => item.summary.fileName),
-    );
+    duplicateSelectedNames.value = result.groups.flatMap(group => group.duplicates.map(item => item.summary.fileName));
   } catch (error) {
     toastr.error(error instanceof Error ? error.message : '扫描重复备份失败');
   }

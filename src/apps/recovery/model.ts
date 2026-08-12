@@ -192,8 +192,7 @@ export function createDuplicateBackupGroups(fingerprints: DuplicateBackupFingerp
       if (items.length < 2) return [];
       const ordered = [...items].sort(
         (a, b) =>
-          b.summary.backupCreatedAt - a.summary.backupCreatedAt ||
-          b.summary.fileName.localeCompare(a.summary.fileName),
+          b.summary.backupCreatedAt - a.summary.backupCreatedAt || b.summary.fileName.localeCompare(a.summary.fileName),
       );
       const [keeper, ...duplicates] = ordered;
       if (!keeper || !duplicates.length) return [];
