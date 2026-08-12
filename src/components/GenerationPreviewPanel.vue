@@ -39,6 +39,7 @@
           <slot v-else name="content" :display-content="displayContent" :rendered-content="renderedContent">
             <article class="pc-detail-content pc-rendered-markdown" v-html="renderedContent"></article>
           </slot>
+          <slot v-if="!editingContent" name="after-content"></slot>
           <div v-if="warnings.length && !editingContent" class="pc-status-card warning">
             <strong>{{ warningTitle }}</strong>
             <p>{{ warnings.join('；') }}</p>

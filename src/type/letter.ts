@@ -6,11 +6,13 @@ import {
 } from '@/type/generation';
 import { ContentVersionBaseSchema } from '@/type/contentVersion';
 
-export const LetterFormatSchema = z.enum(['formal', 'note', 'sms', 'email']);
+export const LetterFormatSchema = z.string().trim().min(1).default('formal');
 export type LetterFormat = z.infer<typeof LetterFormatSchema>;
 
 export const LetterEntryVersionSchema = ContentVersionBaseSchema.extend({
   format: LetterFormatSchema,
+  formatName: z.string().default(''),
+  formatPrompt: z.string().default(''),
   generationRecord: HiddenGenerationRecordSchema.optional(),
   generationReplay: GenerationReplaySnapshotSchema.optional(),
 });
@@ -26,6 +28,8 @@ export const LetterEntrySchema = z.object({
   sender: CharacterRefSchema,
   receiver: CharacterRefSchema,
   format: LetterFormatSchema,
+  formatName: z.string().default(''),
+  formatPrompt: z.string().default(''),
   generationRecord: HiddenGenerationRecordSchema.optional(),
   generationReplay: GenerationReplaySnapshotSchema.optional(),
   activeVersionId: z.string().default(''),

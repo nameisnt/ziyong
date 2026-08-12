@@ -33,7 +33,9 @@
       @drag-end="finishPromptDrag"
       @drag-move="movePromptDrag"
       @drag-start="startPromptDrag"
+      @delete-preset="removePreset"
       @open-prompt="openPromptEditor"
+      @rename-preset="renamePreset"
       @switch-preset="switchPreset"
       @toggle-group="toggleGroup"
       @toggle-prompt="togglePrompt"
@@ -68,15 +70,18 @@
 
 <script setup lang="ts">
 import { useEntryLibraryStore } from '@/apps/entry-library/store';
+import { usePresetLinkStore } from '@/apps/preset-link/store';
 import { usePhoneStore } from '@/store/phone';
 import {
   buildPresetDisplayNodes,
+  deleteTavernPreset,
   deleteTavernPresetPrompt,
   duplicateTavernPresetPrompt,
   getCurrentTavernPresetName,
   listTavernPresets,
   loadTavernPreset,
   readTavernPreset,
+  renameTavernPreset,
   reorderTavernPresetPrompts,
   updateTavernPresetPrompt,
   type TavernPreset,
@@ -89,6 +94,7 @@ import PresetPromptEditorPage from './pages/PresetPromptEditorPage.vue';
 
 const phone = usePhoneStore();
 const entryLibrary = useEntryLibraryStore();
+const presetLinks = usePresetLinkStore();
 const route = computed(() => phone.currentRoute);
 const presetNames = ref<string[]>([]);
 const presetQuery = ref('');
@@ -251,6 +257,55 @@ async function switchPreset(presetName: string) {
     toastr.error(error instanceof Error ? error.message : String(error));
   } finally {
     switchingPreset.value = '';
+  }
+}
+
+async function renamePreset() {
+  const oldName = detailPresetName.value;
+  if (!oldName || mutationBusy.value) return;
+  const requested = await phone.promptNotice('输入新的预设名称。改名后，聊天预设绑定、阅读规则绑定和收藏条目绑定会一起迁移。', {
+    confirmLabel: '继续',
+    initialValue: oldName,
+    title: '预设改名',
+  });
+  const newName = requested?.trim() || '';
+  if (!newName || newName === oldName) return;
+  if (!(await phone.confirmNotice(`确认把预设“${oldName}”改名为“${newName}”吗？`, { confirmLabel: '改名' }))) return;
+  saving.value = true;
+  try {
+    const result = await renameTavernPreset(oldName, newName);
+    const migrated = presetLinks.migratePresetReferences(oldName, newName) + entryLibrary.migratePresetReferences(oldName, newName);
+    if (result.current) loadedPresetName.value = newName;
+    await refreshRoot();
+    phone.replaceRoute('preset-manager', 'detail', '预设条目', { presetName: newName });
+    toastr.success(`预设已改名，并迁移 ${migrated} 处手机引用`);
+  } catch (error) {
+    toastr.error(error instanceof Error ? error.message : String(error));
+  } finally {
+    saving.value = false;
+  }
+}
+
+async function removePreset() {
+  const presetName = detailPresetName.value;
+  if (!presetName || mutationBusy.value) return;
+  const confirmed = await phone.confirmNotice(
+    `确认删除预设“${presetName}”吗？相关聊天绑定、阅读规则绑定和收藏条目绑定也会移除。当前正在使用的预设不能删除。`,
+    { confirmLabel: '删除', kind: 'warning' },
+  );
+  if (!confirmed) return;
+  saving.value = true;
+  try {
+    await deleteTavernPreset(presetName);
+    const removed = presetLinks.removePresetReferences(presetName) + entryLibrary.removePresetReferences(presetName);
+    activePreset.value = null;
+    await refreshRoot();
+    phone.replaceRoute('preset-manager', 'root', '预设管理');
+    toastr.success(`预设已删除，并清理 ${removed} 处手机引用`);
+  } catch (error) {
+    toastr.error(error instanceof Error ? error.message : String(error));
+  } finally {
+    saving.value = false;
   }
 }
 

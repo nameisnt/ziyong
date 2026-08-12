@@ -1,5 +1,6 @@
 <template>
   <div
+    ref="shellEl"
     :class="['pc-reader-detail-shell', { 'footer-visible': effectiveFooterVisible }]"
     @pointercancel="resetReaderTap"
     @pointerdown="startReaderTap"
@@ -16,21 +17,17 @@
             <h1>{{ title }}</h1>
             <slot name="meta"></slot>
           </header>
-          <slot v-if="versionNavigatorPosition === 'before'" name="version-navigation"></slot>
           <slot name="before-content"></slot>
           <slot name="content" :display-content="displayContent"></slot>
-          <slot v-if="versionNavigatorPosition === 'after'" name="version-navigation"></slot>
           <slot name="after-content"></slot>
         </article>
       </template>
       <ReaderContent v-else :content="displayContent" :formatted="contentFormatted" :title="title">
         <template #meta><slot name="meta"></slot></template>
         <template #before>
-          <slot v-if="versionNavigatorPosition === 'before'" name="version-navigation"></slot>
           <slot name="before-content"></slot>
         </template>
         <template #after>
-          <slot v-if="versionNavigatorPosition === 'after'" name="version-navigation"></slot>
           <slot name="after-content"></slot>
         </template>
       </ReaderContent>
@@ -50,45 +47,85 @@
           @next="runFooterAction('next')"
           @previous="runFooterAction('previous')"
           @top="runFooterAction('top')"
-        >
-          <template #actions>
-            <button v-if="baguEnabled" class="pc-soft-btn" type="button" :title="baguLabel" @click="emit('bagu')">
-              <i class="fa-solid fa-filter-circle-xmark"></i>
-            </button>
-            <button
-              v-if="favoriteEnabled"
-              :class="['pc-soft-btn', { active: favoriteActive }]"
-              type="button"
-              :title="favoriteActive ? favoriteActiveLabel : favoriteLabel"
-              @click="emit('favorite')"
-            >
-              <i :class="favoriteIcon"></i>
-            </button>
-            <button
-              v-if="branchEnabled"
-              class="pc-soft-btn"
-              type="button"
-              :disabled="branchDisabled"
-              :title="branchLabel"
-              @click="emit('branch')"
-            >
-              <i class="fa-solid fa-code-branch"></i>
-            </button>
-            <button
-              v-if="editEnabled"
-              class="pc-soft-btn"
-              type="button"
-              :disabled="editDisabled"
-              :title="editLabel"
-              @click="emit('edit')"
-            >
-              <i class="fa-solid fa-pen"></i>
-            </button>
-            <slot name="actions"></slot>
-          </template>
-        </DetailFooter>
+        />
       </div>
     </div>
+
+    <div
+      v-if="toolVisible"
+      ref="toolEl"
+      :class="['pc-reader-tool', { dragging: toolDrag.moved }]"
+      :style="toolPositionStyle"
+    >
+      <button
+        class="pc-icon-btn pc-reader-tool-trigger"
+        type="button"
+        :aria-expanded="toolMenuOpen"
+        title="阅读工具"
+        @click.stop="toggleToolMenu"
+        @pointercancel.stop="finishToolDrag"
+        @pointerdown.stop="startToolDrag"
+        @pointermove.stop="moveToolDrag"
+        @pointerup.stop="finishToolDrag"
+      >
+        <i class="fa-solid fa-bars"></i>
+      </button>
+      <div
+        v-if="toolMenuOpen"
+        :class="['pc-reader-tool-menu', { 'open-left': toolOpenLeft, 'open-up': toolOpenUp }]"
+        @click.stop
+        @pointerdown.stop
+      >
+        <slot name="version-navigation"></slot>
+        <button v-if="baguEnabled" class="pc-soft-btn" type="button" @click="runToolAction('bagu')">
+          <i class="fa-solid fa-filter-circle-xmark"></i><span>{{ baguLabel }}</span>
+        </button>
+        <button
+          v-if="favoriteEnabled"
+          :class="['pc-soft-btn', { active: favoriteActive }]"
+          type="button"
+          @click="runToolAction('favorite')"
+        >
+          <i :class="favoriteIcon"></i><span>{{ favoriteActive ? favoriteActiveLabel : favoriteLabel }}</span>
+        </button>
+        <button
+          v-if="branchEnabled"
+          class="pc-soft-btn"
+          type="button"
+          :disabled="branchDisabled"
+          @click="runToolAction('branch')"
+        >
+          <i class="fa-solid fa-code-branch"></i><span>{{ branchLabel }}</span>
+        </button>
+        <button
+          v-if="eraserEnabled"
+          class="pc-soft-btn"
+          type="button"
+          :disabled="eraserDisabled"
+          @click="openTextEditor"
+        >
+          <i class="fa-solid fa-eraser"></i><span>{{ eraserLabel }}</span>
+        </button>
+        <button
+          v-if="editEnabled"
+          class="pc-soft-btn"
+          type="button"
+          :disabled="editDisabled"
+          @click="runToolAction('edit')"
+        >
+          <i class="fa-solid fa-pen"></i><span>{{ editLabel }}</span>
+        </button>
+        <slot name="actions"></slot>
+      </div>
+    </div>
+
+    <ReaderTextEditModal
+      :occurrences="textOccurrences"
+      :open="textEditOpen"
+      :selected-text="selectedText"
+      @close="textEditOpen = false"
+      @save="saveTextEdit"
+    />
 
     <slot name="overlays"></slot>
   </div>
@@ -97,10 +134,10 @@
 <script setup lang="ts">
 import DetailFooter from '@/components/DetailFooter.vue';
 import ReaderContent from '@/components/ReaderContent.vue';
+import ReaderTextEditModal from '@/components/ReaderTextEditModal.vue';
 import { useRegexDisplayStore } from '@/apps/regex-display/store';
-import { useSettingsStore } from '@/store/settings';
 import { applyRegexDisplayRules, getRegexRulesByIds } from '@/util/regexDisplay';
-import { storeToRefs } from 'pinia';
+import { findReaderTextOccurrences, type ReaderTextOccurrence } from '@/util/readerTextEdit';
 
 const props = withDefaults(
   defineProps<{
@@ -115,6 +152,9 @@ const props = withDefaults(
     contentFormatted?: boolean;
     customContent?: boolean;
     displayAppId?: string;
+    eraserDisabled?: boolean;
+    eraserEnabled?: boolean;
+    eraserLabel?: string;
     editDisabled?: boolean;
     editEnabled?: boolean;
     editLabel?: string;
@@ -142,6 +182,9 @@ const props = withDefaults(
     contentFormatted: false,
     customContent: false,
     displayAppId: '',
+    eraserDisabled: false,
+    eraserEnabled: false,
+    eraserLabel: '橡皮擦',
     editDisabled: false,
     editEnabled: true,
     editLabel: '编辑',
@@ -164,24 +207,64 @@ const emit = defineEmits<{
   (event: 'branch'): void;
   (event: 'catalog'): void;
   (event: 'edit'): void;
+  (event: 'erase', content: string): void;
   (event: 'favorite'): void;
   (event: 'next'): void;
   (event: 'previous'): void;
   (event: 'top'): void;
 }>();
 
-const settingsStore = useSettingsStore();
 const regexDisplay = useRegexDisplayStore();
-const { settings } = storeToRefs(settingsStore);
-const versionNavigatorPosition = computed(() => settings.value.reader.versionNavigatorPosition);
+const slots = useSlots();
 const displayRules = computed(() => {
   if (!props.displayAppId) return [];
   return getRegexRulesByIds(regexDisplay.rules, regexDisplay.getUsage(props.displayAppId).displayRuleIds, 'replace');
 });
 const displayContent = computed(() => applyRegexDisplayRules(props.content, displayRules.value).content);
 
+watch(
+  () => props.content,
+  async () => {
+    const scroller = shellEl.value?.querySelector<HTMLElement>('.pc-reader-content');
+    if (!scroller) return;
+    const scrollTop = scroller.scrollTop;
+    await nextTick();
+    scroller.scrollTop = Math.min(scrollTop, Math.max(0, scroller.scrollHeight - scroller.clientHeight));
+  },
+);
+
 const footerVisible = ref(false);
 const effectiveFooterVisible = computed(() => props.footerAlwaysVisible || footerVisible.value);
+const toolVisible = computed(
+  () =>
+    props.baguEnabled ||
+    props.favoriteEnabled ||
+    props.branchEnabled ||
+    props.eraserEnabled ||
+    props.editEnabled ||
+    Boolean(slots.actions || slots['version-navigation']),
+);
+const toolMenuOpen = ref(false);
+const textEditOpen = ref(false);
+const selectedText = ref('');
+const textOccurrences = ref<ReaderTextOccurrence[]>([]);
+const shellEl = ref<HTMLElement | null>(null);
+const toolEl = ref<HTMLElement | null>(null);
+const toolPosition = reactive({ x: -1, y: -1 });
+const toolDrag = reactive({ moved: false, offsetX: 0, offsetY: 0, pointerId: -1, startX: 0, startY: 0 });
+let suppressToolClick = false;
+const toolPositionStyle = computed(() => ({
+  left: `${Math.max(0, toolPosition.x)}px`,
+  top: `${Math.max(0, toolPosition.y)}px`,
+}));
+const toolOpenLeft = computed(() => {
+  const shellWidth = toolEl.value?.parentElement?.clientWidth ?? 0;
+  return shellWidth > 0 && toolPosition.x > shellWidth / 2;
+});
+const toolOpenUp = computed(() => {
+  const shellHeight = toolEl.value?.parentElement?.clientHeight ?? 0;
+  return shellHeight > 0 && toolPosition.y > shellHeight / 2;
+});
 
 const readerTap = {
   pointerId: -1,
@@ -262,6 +345,130 @@ function hideFooter() {
 function runFooterAction(event: 'bottom' | 'catalog' | 'next' | 'previous' | 'top') {
   emit(event);
 }
+
+function clampToolPosition(x = toolPosition.x, y = toolPosition.y) {
+  const shell = shellEl.value;
+  const tool = toolEl.value;
+  if (!shell) return;
+  const width = tool?.offsetWidth || 42;
+  const height = tool?.offsetHeight || 42;
+  toolPosition.x = Math.min(Math.max(6, x), Math.max(6, shell.clientWidth - width - 6));
+  toolPosition.y = Math.min(Math.max(6, y), Math.max(6, shell.clientHeight - height - 6));
+}
+
+function initializeToolPosition() {
+  const shell = shellEl.value;
+  const tool = toolEl.value;
+  if (!shell || !tool) return;
+  if (toolPosition.x < 0 || toolPosition.y < 0) {
+    toolPosition.x = shell.clientWidth - tool.offsetWidth - 10;
+    toolPosition.y = Math.round((shell.clientHeight - tool.offsetHeight) * 0.46);
+  }
+  clampToolPosition();
+}
+
+function startToolDrag(event: PointerEvent) {
+  if (!event.isPrimary || event.button !== 0) return;
+  const shell = shellEl.value;
+  if (!shell) return;
+  const rect = shell.getBoundingClientRect();
+  toolDrag.pointerId = event.pointerId;
+  toolDrag.startX = event.clientX;
+  toolDrag.startY = event.clientY;
+  toolDrag.offsetX = event.clientX - rect.left - toolPosition.x;
+  toolDrag.offsetY = event.clientY - rect.top - toolPosition.y;
+  toolDrag.moved = false;
+  (event.currentTarget as HTMLElement).setPointerCapture?.(event.pointerId);
+}
+
+function moveToolDrag(event: PointerEvent) {
+  if (event.pointerId !== toolDrag.pointerId) return;
+  if (!toolDrag.moved && Math.hypot(event.clientX - toolDrag.startX, event.clientY - toolDrag.startY) > 6) {
+    toolDrag.moved = true;
+    toolMenuOpen.value = false;
+  }
+  if (!toolDrag.moved) return;
+  const rect = shellEl.value?.getBoundingClientRect();
+  if (!rect) return;
+  clampToolPosition(event.clientX - rect.left - toolDrag.offsetX, event.clientY - rect.top - toolDrag.offsetY);
+}
+
+function finishToolDrag(event?: PointerEvent) {
+  if (event && event.pointerId !== toolDrag.pointerId) return;
+  const moved = toolDrag.moved;
+  if (event) (event.currentTarget as HTMLElement).releasePointerCapture?.(event.pointerId);
+  toolDrag.pointerId = -1;
+  toolDrag.moved = false;
+  if (moved) {
+    suppressToolClick = true;
+    window.setTimeout(() => {
+      suppressToolClick = false;
+    });
+  }
+}
+
+function toggleToolMenu() {
+  if (suppressToolClick) {
+    suppressToolClick = false;
+    return;
+  }
+  toolMenuOpen.value = !toolMenuOpen.value;
+}
+
+function runToolAction(event: 'bagu' | 'branch' | 'edit' | 'favorite') {
+  emit(event);
+}
+
+function openTextEditor() {
+  const selection = window.getSelection();
+  if (!selection || selection.rangeCount !== 1 || selection.isCollapsed) {
+    toastr.warning('请先在当前正文里选中要修改的文字');
+    return;
+  }
+  const range = selection.getRangeAt(0);
+  const ancestor = range.commonAncestorContainer;
+  const element = ancestor.nodeType === Node.ELEMENT_NODE ? (ancestor as Element) : ancestor.parentElement;
+  const content = shellEl.value?.querySelector('.pc-reader-content');
+  if (!element || !content?.contains(element)) {
+    toastr.warning('请只选择当前正文中的文字');
+    return;
+  }
+  const text = selection.toString();
+  const occurrences = findReaderTextOccurrences(props.content, text);
+  if (!occurrences.length) {
+    toastr.error('这是显示替换结果，无法安全写回原文');
+    return;
+  }
+  selectedText.value = text;
+  textOccurrences.value = occurrences;
+  textEditOpen.value = true;
+}
+
+function saveTextEdit(payload: { occurrence: ReaderTextOccurrence; replacement: string }) {
+  const occurrence = payload.occurrence;
+  if (props.content.slice(occurrence.offset, occurrence.offset + selectedText.value.length) !== selectedText.value) {
+    toastr.warning('正文在编辑期间已经变化，已停止保存');
+    textEditOpen.value = false;
+    return;
+  }
+  const content = `${props.content.slice(0, occurrence.sentenceStart)}${payload.replacement}${props.content.slice(
+    occurrence.sentenceEnd,
+  )}`;
+  emit('erase', content);
+  textEditOpen.value = false;
+  window.getSelection()?.removeAllRanges();
+}
+
+let toolResizeObserver: ResizeObserver | null = null;
+onMounted(() => {
+  nextTick(initializeToolPosition);
+  if (typeof ResizeObserver === 'function' && shellEl.value) {
+    toolResizeObserver = new ResizeObserver(() => clampToolPosition());
+    toolResizeObserver.observe(shellEl.value);
+  }
+});
+
+onBeforeUnmount(() => toolResizeObserver?.disconnect());
 </script>
 
 <style scoped>
@@ -286,7 +493,7 @@ function runFooterAction(event: 'bottom' | 'catalog' | 'next' | 'previous' | 'to
   flex: 1 1 auto;
   margin: 8px 0 0;
   min-height: 0;
-  padding: 10px 0 112px;
+  padding: 10px 0 64px;
   border-radius: 0;
   background: transparent;
   color: var(--pc-reader-text, var(--pc-text));
@@ -307,9 +514,6 @@ function runFooterAction(event: 'bottom' | 'catalog' | 'next' | 'previous' | 'to
 
 .pc-reader-footer-popover {
   pointer-events: auto;
-}
-
-.pc-reader-footer-popover {
   width: 100%;
 }
 
@@ -318,6 +522,67 @@ function runFooterAction(event: 'bottom' | 'catalog' | 'next' | 'previous' | 'to
 }
 
 .pc-reader-detail-shell :deep(.pc-reader-content) {
-  padding-bottom: 112px;
+  padding-bottom: 64px;
+}
+
+.pc-reader-tool {
+  position: absolute;
+  z-index: 7;
+  width: 42px;
+  height: 42px;
+}
+
+.pc-reader-tool-trigger {
+  width: 42px;
+  height: 42px;
+  border-color: color-mix(in srgb, var(--pc-theme-accent) 35%, var(--pc-border) 65%);
+  background: color-mix(in srgb, var(--pc-surface-strong) 72%, transparent 28%);
+  box-shadow: 0 6px 18px color-mix(in srgb, var(--pc-text) 16%, transparent 84%);
+  backdrop-filter: blur(8px);
+  touch-action: none;
+}
+
+.pc-reader-tool.dragging .pc-reader-tool-trigger {
+  cursor: grabbing;
+  opacity: 0.82;
+}
+
+.pc-reader-tool-menu {
+  position: absolute;
+  top: calc(100% + 7px);
+  left: 0;
+  display: grid;
+  gap: 7px;
+  width: min(230px, calc(100vw - 38px));
+  max-height: min(58vh, 420px);
+  padding: 9px;
+  overflow: auto;
+  border: 1px solid var(--pc-border);
+  border-radius: var(--pc-control-radius);
+  background: color-mix(in srgb, var(--pc-surface-strong) 94%, transparent 6%);
+  box-shadow: 0 10px 28px color-mix(in srgb, var(--pc-text) 20%, transparent 80%);
+  backdrop-filter: blur(12px);
+}
+
+.pc-reader-tool-menu.open-left {
+  right: 0;
+  left: auto;
+}
+
+.pc-reader-tool-menu.open-up {
+  top: auto;
+  bottom: calc(100% + 7px);
+}
+
+.pc-reader-tool-menu > .pc-soft-btn,
+.pc-reader-tool-menu :deep(.pc-soft-btn) {
+  justify-content: flex-start;
+  width: 100%;
+  min-width: 0;
+}
+
+.pc-reader-tool-menu :deep(.pc-version-navigator) {
+  width: 100%;
+  margin: 0;
 }
 </style>

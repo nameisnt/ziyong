@@ -43,15 +43,9 @@
           class="pc-list-row pc-slot-row"
           @click="openEditor(slot.id)"
         >
-          <div>
-            <span>
-              {{ getWorldSlotPositionLabel(slot.position) }} · {{ slot.insertionOrder }} ·
-              {{ slot.enabled ? t`启用` : t`停用` }}
-            </span>
-            <h3>{{ slot.title }}</h3>
-            <p>{{ slot.content || t`空槽位` }}</p>
-          </div>
-          <strong>{{ slot.worldEntryId === null ? t`未同步` : `#${slot.worldEntryId}` }}</strong>
+          <span :class="['pc-world-entry-lamp', slot.keys.length ? 'blue' : 'green']" aria-hidden="true"></span>
+          <h3>{{ slot.title }}</h3>
+          <strong :class="{ disabled: !slot.enabled }">{{ slot.enabled ? t`启用` : t`关闭` }}</strong>
         </article>
       </div>
       <EmptyState v-else :title="slots.length ? t`没有匹配的槽位` : t`还没有槽位`" />
@@ -528,6 +522,45 @@ async function syncSlots() {
   font-size: 12px;
 }
 
+.pc-slot-row {
+  align-items: center;
+}
+
+.pc-slot-row h3 {
+  min-width: 0;
+  margin: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.pc-slot-row > strong {
+  color: var(--pc-theme-accent);
+  font-size: 12px;
+}
+
+.pc-slot-row > strong.disabled {
+  color: var(--pc-muted);
+}
+
+.pc-world-entry-lamp {
+  width: 10px;
+  height: 10px;
+  border-radius: 999px;
+  box-shadow: 0 0 0 3px color-mix(in srgb, currentColor 16%, transparent);
+}
+
+/* 业务状态色：对应酒馆世界书的绿灯（常驻）与蓝灯（关键词触发）。 */
+.pc-world-entry-lamp.green {
+  color: #27ae60;
+  background: #27ae60;
+}
+
+.pc-world-entry-lamp.blue {
+  color: #2d9cdb;
+  background: #2d9cdb;
+}
+
 .pc-world-card {
   display: grid;
   gap: 8px;
@@ -583,9 +616,10 @@ async function syncSlots() {
 
 .pc-slot-row h3 {
   min-width: 0;
-  margin: 4px 0;
+  margin: 0;
+  flex: 1 1 auto;
   font-size: 16px;
-  overflow-wrap: anywhere;
+  overflow-wrap: normal;
 }
 
 .pc-slot-row p {
@@ -600,8 +634,12 @@ async function syncSlots() {
 
 .pc-slot-row strong {
   flex: 0 0 auto;
-  color: var(--pc-muted);
+  color: var(--pc-theme-accent);
   font-size: 12px;
+}
+
+.pc-slot-row strong.disabled {
+  color: var(--pc-muted);
 }
 
 .pc-world-field-group {

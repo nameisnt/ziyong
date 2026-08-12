@@ -74,16 +74,19 @@
       :favorite="activeThread.favorite"
       :replies="displayedReplies"
       :thread="viewedForumThread"
-      :version-navigator-position="settings.reader.versionNavigatorPosition"
       :versions="activeThread.versions"
       :viewed-version-id="viewedForumVersionId"
       @bagu="openForumBaguScan"
+      @bottom="scrollForumDetail('bottom')"
+      @catalog="phone.goBack()"
       @edit="openEditThread(activeBoard.id, activeThread.id, viewedForumVersionId)"
+      @erase="overwriteForumContent"
       @favorite="forum.toggleFavorite(activeBoard.id, activeThread.id)"
       @generate-replies="openGenerateReplies(activeBoard.id, activeThread.id)"
       @remove="removeThread(activeBoard.id, activeThread.id)"
       @rewrite="openRewriteThread"
       @select-version="selectForumVersion"
+      @top="scrollForumDetail('top')"
     />
 
     <BaguDetailPage
@@ -671,9 +674,7 @@ watch(
       threadGenerationDraft.boardTypePrompt = activeBoard.value ? resolveForumBoardTypePrompt(activeBoard.value) : '';
       threadGenerationDraft.boardNameMode = 'fixed';
       threadGenerationDraft.boardTypeId = activeBoard.value?.typeId || CUSTOM_BOARD_TYPE_ID;
-      threadGenerationDraft.fromStartEnd = 20;
       threadGenerationDraft.rangeText = '';
-      threadGenerationDraft.recentCount = 20;
       threadGenerationDraft.singleMessageId = 0;
       threadGenerationDraft.userRequirement = '';
       generationState.error = '';
@@ -705,9 +706,7 @@ watch(
 
     if (current.page === 'generate-replies' && previous?.page !== 'preview') {
       selectedReferences.value = [];
-      replyGenerationDraft.fromStartEnd = 20;
       replyGenerationDraft.rangeText = '';
-      replyGenerationDraft.recentCount = 20;
       replyGenerationDraft.singleMessageId = 0;
       replyGenerationDraft.userRequirement = '';
       generationState.error = '';
@@ -795,12 +794,31 @@ function selectForumVersion(versionId: string) {
     threadId: thread.id,
     versionId,
   });
-  void nextTick(() => {
-    const screen = document.querySelector('.pc-screen');
-    if (!(screen instanceof HTMLElement)) return;
-    const top = settings.value.reader.versionNavigatorPosition === 'after' ? screen.scrollHeight : 0;
-    screen.scrollTo({ behavior: 'auto', top });
-  });
+}
+
+function scrollForumDetail(position: 'bottom' | 'top') {
+  const content = document.querySelector('.pc-forum-thread-detail-page .pc-reader-content');
+  if (!(content instanceof HTMLElement)) return;
+  content.scrollTo({ behavior: 'smooth', top: position === 'top' ? 0 : content.scrollHeight });
+}
+
+function overwriteForumContent(content: string) {
+  const board = activeBoard.value;
+  const thread = activeThread.value;
+  if (!board || !thread) return;
+  const versionId = viewedForumVersionId.value;
+  const result = versionId
+    ? forum.updateThreadVersion(board.id, thread.id, versionId, {
+        author: viewedForumThread.value.author,
+        content,
+        title: viewedForumThread.value.title,
+      })
+    : forum.updateThread(board.id, thread.id, {
+        author: viewedForumThread.value.author,
+        content,
+        title: viewedForumThread.value.title,
+      });
+  if (result) toastr.success(versionId ? '已覆盖当前论坛版本' : '已覆盖当前论坛正文');
 }
 
 function openGenerateReplies(boardId: string, threadId: string) {

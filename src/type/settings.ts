@@ -1,18 +1,29 @@
 export const ThemeMode = z.enum(['light', 'dark']);
 export type ThemeMode = z.infer<typeof ThemeMode>;
 
+export const HomeFolderSchema = z.object({
+  appIds: z.array(z.string()).default([]),
+  id: z.string(),
+  name: z.string().default('文件夹'),
+});
+export type HomeFolder = z.infer<typeof HomeFolderSchema>;
+
 export const HomeScreenLayoutSchema = z.object({
   appOrder: z.array(z.string()).default([]),
+  dockOrder: z.array(z.string()).default([]),
+  folders: z.array(HomeFolderSchema).default([]),
+  version: z.number().int().nonnegative().default(1),
 });
 export type HomeScreenLayout = z.infer<typeof HomeScreenLayoutSchema>;
 
 export const ReaderAppearanceSchema = z.object({
+  backgroundColor: z.string().default(''),
+  backgroundImage: z.string().default(''),
   blankLineBetweenLines: z.boolean().default(true),
   firstLineIndent: z.boolean().default(false),
   fontFamily: z.string().default(''),
   fontSize: z.number().min(14).max(24).default(16),
   lineHeight: z.number().min(1.4).max(2.2).default(1.6),
-  versionNavigatorPosition: z.enum(['after', 'before']).default('before'),
 });
 export type ReaderAppearance = z.infer<typeof ReaderAppearanceSchema>;
 
@@ -184,12 +195,13 @@ const DEFAULT_GENERATION_SETTINGS: GenerationDefaults = {
 };
 
 const DEFAULT_READER_SETTINGS: ReaderAppearance = {
+  backgroundColor: '',
+  backgroundImage: '',
   blankLineBetweenLines: true,
   firstLineIndent: false,
   fontFamily: '',
   fontSize: 16,
   lineHeight: 1.6,
-  versionNavigatorPosition: 'before',
 };
 
 const DEFAULT_DIRECTORY_SORT_SETTINGS: DirectorySortSettings = {
@@ -290,6 +302,9 @@ export const Settings = z
     phoneWindowY: z.number().nullable().default(null),
     layout: HomeScreenLayoutSchema.default(() => ({
       appOrder: [],
+      dockOrder: [],
+      folders: [],
+      version: 1,
     })),
   })
   .default(() => ({
@@ -320,7 +335,7 @@ export const Settings = z
     floatBallY: null,
     phoneWindowX: null,
     phoneWindowY: null,
-    layout: { appOrder: [] },
+    layout: { appOrder: [], dockOrder: [], folders: [], version: 1 },
   }));
 
 export const setting_field = 'sillytavern_phone';

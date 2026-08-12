@@ -14,6 +14,7 @@
     <div class="pc-settings-panels">
       <SettingsGeneralPanel v-if="activeSettingsTab === 'general'" />
       <SettingsInterfacePanel v-else-if="activeSettingsTab === 'interface'" />
+      <SettingsReaderPanel v-else-if="activeSettingsTab === 'reader'" />
       <SettingsConnectionPanel v-else-if="activeSettingsTab === 'connection'" />
       <SettingsAdvancedPanel v-else />
     </div>
@@ -25,14 +26,16 @@ import SettingsAdvancedPanel from './settings/SettingsAdvancedPanel.vue';
 import SettingsConnectionPanel from './settings/SettingsConnectionPanel.vue';
 import SettingsGeneralPanel from './settings/SettingsGeneralPanel.vue';
 import SettingsInterfacePanel from './settings/SettingsInterfacePanel.vue';
+import SettingsReaderPanel from './settings/SettingsReaderPanel.vue';
 import { usePhoneStore } from '@/store/phone';
 
-type SettingsTabId = 'advanced' | 'connection' | 'general' | 'interface';
+type SettingsTabId = 'advanced' | 'connection' | 'general' | 'interface' | 'reader';
 const phone = usePhoneStore();
 const activeSettingsTab = ref<SettingsTabId>('general');
 const settingsTabs = [
   { icon: 'fa-solid fa-database', id: 'general', label: '常规' },
   { icon: 'fa-solid fa-mobile-screen', id: 'interface', label: '界面' },
+  { icon: 'fa-solid fa-book-open', id: 'reader', label: '阅读' },
   { icon: 'fa-solid fa-plug', id: 'connection', label: '连接' },
   { icon: 'fa-solid fa-sliders', id: 'advanced', label: '高级' },
 ] as const;
@@ -61,7 +64,7 @@ watch(
   z-index: 2;
   display: grid;
   flex: 0 0 auto;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-template-columns: repeat(5, minmax(0, 1fr));
   gap: 6px;
   border: 1px solid var(--pc-border);
   border-radius: var(--pc-card-radius);

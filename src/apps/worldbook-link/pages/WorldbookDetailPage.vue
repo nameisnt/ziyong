@@ -9,6 +9,9 @@
           status.profile ? `${status.profile.entries.filter(entry => entry.enabled).length} 个关联` : t`未关联`
         }}</span>
       </div>
+      <button class="pc-soft-btn compact" type="button" :disabled="busy" @click="$emit('rename-book')">
+        {{ t`修改书名` }}
+      </button>
     </header>
 
     <label class="pc-search-field pc-worldbook-search">
@@ -79,6 +82,10 @@
             :class="{ disabled: !entry.enabled }"
           >
             <button class="pc-worldbook-entry-open" type="button" @click="$emit('open-entry', entry)">
+              <span
+                :class="['pc-worldbook-entry-lamp', entry.strategy.type === 'constant' ? 'green' : 'blue']"
+                aria-hidden="true"
+              ></span>
               <span class="pc-worldbook-entry-copy">
                 <strong :title="entry.name || `条目 #${entry.uid}`">{{ entry.name || `条目 #${entry.uid}` }}</strong>
                 <small>{{ entryPositionSummary(entry) }}</small>
@@ -132,6 +139,7 @@ defineEmits<{
   'apply-profile': [];
   'capture-profile': [];
   'open-entry': [entry: WorldbookEntry];
+  'rename-book': [];
   'toggle-entry': [entry: WorldbookEntry, event: Event];
   unlink: [];
 }>();
@@ -149,6 +157,25 @@ defineEmits<{
 .pc-worldbook-detail-page {
   min-height: 100%;
   gap: 12px;
+}
+
+.pc-worldbook-entry-lamp {
+  width: 10px;
+  height: 10px;
+  flex: 0 0 auto;
+  border-radius: 999px;
+  box-shadow: 0 0 0 3px color-mix(in srgb, currentColor 16%, transparent);
+}
+
+/* 业务状态色：对应酒馆世界书的绿灯（常驻）与蓝灯（触发）。 */
+.pc-worldbook-entry-lamp.green {
+  color: #27ae60;
+  background: #27ae60;
+}
+
+.pc-worldbook-entry-lamp.blue {
+  color: #2d9cdb;
+  background: #2d9cdb;
 }
 .pc-worldbook-detail-head {
   min-width: 0;

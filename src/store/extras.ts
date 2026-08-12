@@ -242,10 +242,12 @@ export const useExtrasStore = defineStore('extras', () => {
     const book = getBook(bookId);
     if (!book) return;
     book.chapters = normalizeChapterNumbers(book.chapters.filter(chapter => chapter.id !== chapterId));
-    book.summaries = book.summaries.map(summary => ({
-      ...summary,
-      coveredChapterIds: summary.coveredChapterIds.filter(id => id !== chapterId),
-    }));
+    book.summaries = book.summaries
+      .filter(summary => summary.autoChapterId !== chapterId)
+      .map(summary => ({
+        ...summary,
+        coveredChapterIds: summary.coveredChapterIds.filter(id => id !== chapterId),
+      }));
     book.updatedAt = nowIso();
   }
 
@@ -267,6 +269,35 @@ export const useExtrasStore = defineStore('extras', () => {
       content: input.content.trim(),
       coveredChapterIds: [...input.coveredChapterIds],
       enabled: input.enabled,
+      autoChapterId: '',
+      createdAt: timestamp,
+      updatedAt: timestamp,
+    };
+    book.summaries = [summary, ...book.summaries];
+    book.updatedAt = timestamp;
+    return summary;
+  }
+
+  function upsertAutoChapterSummary(bookId: string, chapterId: string, content: string) {
+    const book = getBook(bookId);
+    const normalized = content.trim();
+    if (!book || !normalized) return null;
+    const timestamp = nowIso();
+    const existing = book.summaries.find(summary => summary.autoChapterId === chapterId);
+    if (existing) {
+      existing.content = normalized;
+      existing.coveredChapterIds = [chapterId];
+      existing.enabled = true;
+      existing.updatedAt = timestamp;
+      book.updatedAt = timestamp;
+      return existing;
+    }
+    const summary: ExtraSummary = {
+      id: createId('extra_summary'),
+      content: normalized,
+      coveredChapterIds: [chapterId],
+      enabled: true,
+      autoChapterId: chapterId,
       createdAt: timestamp,
       updatedAt: timestamp,
     };
@@ -333,6 +364,7 @@ export const useExtrasStore = defineStore('extras', () => {
     switchScope,
     toggleFavorite,
     toggleSummary,
+    upsertAutoChapterSummary,
     updateFailedDraft,
     updateBook,
     updateChapter,

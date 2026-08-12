@@ -35,14 +35,8 @@ export function useDetailScroll(targetRef: Ref<HTMLElement | null>, fallbackSele
     scrollContainer('bottom', behavior);
   }
 
-  function scrollToVersionPosition(position: 'after' | 'before') {
-    if (position === 'after') scrollToBottom('auto');
-    else scrollToTop('auto');
-  }
-
   return {
     scrollToBottom,
     scrollToTop,
-    scrollToVersionPosition,
   };
 }

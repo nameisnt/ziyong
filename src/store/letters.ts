@@ -110,12 +110,13 @@ export const useLettersStore = defineStore('letters', () => {
   }
 
   function createEntry(
-    input: Pick<LetterEntry, 'title' | 'content' | 'format' | 'sender' | 'receiver'> & {
-      bookId?: string;
-      bookTitle?: string;
-      generationRecord?: LetterEntry['generationRecord'];
-      generationReplay?: LetterEntry['generationReplay'];
-    },
+    input: Pick<LetterEntry, 'title' | 'content' | 'format' | 'sender' | 'receiver'> &
+      Partial<Pick<LetterEntry, 'formatName' | 'formatPrompt'>> & {
+        bookId?: string;
+        bookTitle?: string;
+        generationRecord?: LetterEntry['generationRecord'];
+        generationReplay?: LetterEntry['generationReplay'];
+      },
   ) {
     const participants = [input.sender, input.receiver];
     const book = input.bookId ? getBook(input.bookId) : ensureBook(participants, input.bookTitle);
@@ -132,6 +133,8 @@ export const useLettersStore = defineStore('letters', () => {
       sender: normalizeCharacterRef(input.sender),
       receiver: normalizeCharacterRef(input.receiver),
       format: input.format,
+      formatName: input.formatName?.trim() || '',
+      formatPrompt: input.formatPrompt?.trim() || '',
       generationRecord: input.generationRecord,
       generationReplay: input.generationReplay,
       activeVersionId: '',
@@ -142,7 +145,12 @@ export const useLettersStore = defineStore('letters', () => {
     return { book, entry };
   }
 
-  function updateEntry(bookId: string, entryId: string, input: Pick<LetterEntry, 'title' | 'content' | 'format'>) {
+  function updateEntry(
+    bookId: string,
+    entryId: string,
+    input: Pick<LetterEntry, 'title' | 'content' | 'format'> &
+      Partial<Pick<LetterEntry, 'formatName' | 'formatPrompt'>>,
+  ) {
     const book = getBook(bookId);
     const entry = getEntry(bookId, entryId);
     if (!book || !entry) return null;
@@ -150,11 +158,15 @@ export const useLettersStore = defineStore('letters', () => {
     entry.title = input.title.trim() || entry.title;
     entry.content = input.content.trim();
     entry.format = input.format;
+    entry.formatName = input.formatName?.trim() || entry.formatName;
+    entry.formatPrompt = input.formatPrompt?.trim() || entry.formatPrompt;
     const activeVersion = resolveContentVersion(entry.versions, entry.activeVersionId);
     if (activeVersion) {
       activeVersion.title = entry.title;
       activeVersion.content = entry.content;
       activeVersion.format = entry.format;
+      activeVersion.formatName = entry.formatName;
+      activeVersion.formatPrompt = entry.formatPrompt;
     }
     entry.updatedAt = timestamp;
     book.updatedAt = timestamp;
@@ -165,6 +177,7 @@ export const useLettersStore = defineStore('letters', () => {
     bookId: string,
     entryId: string,
     input: Pick<LetterEntryVersion, 'title' | 'content' | 'format'> &
+      Partial<Pick<LetterEntryVersion, 'formatName' | 'formatPrompt'>> &
       Partial<Pick<LetterEntryVersion, 'generationRecord' | 'generationReplay'>>,
   ) {
     const book = getBook(bookId);
@@ -177,6 +190,8 @@ export const useLettersStore = defineStore('letters', () => {
         content: entry.content,
         createdAt: entry.createdAt,
         format: entry.format,
+        formatName: entry.formatName,
+        formatPrompt: entry.formatPrompt,
         generationRecord: entry.generationRecord,
         generationReplay: entry.generationReplay,
         title: entry.title,
@@ -186,6 +201,8 @@ export const useLettersStore = defineStore('letters', () => {
     const version = createContentVersion<LetterEntryVersion>('letter_version', {
       content: input.content.trim(),
       format: input.format,
+      formatName: input.formatName?.trim() || entry.formatName,
+      formatPrompt: input.formatPrompt?.trim() || entry.formatPrompt,
       generationRecord: input.generationRecord,
       generationReplay: input.generationReplay,
       title: input.title.trim() || entry.title,
@@ -196,6 +213,8 @@ export const useLettersStore = defineStore('letters', () => {
     entry.title = version.title;
     entry.content = version.content;
     entry.format = version.format;
+    entry.formatName = version.formatName;
+    entry.formatPrompt = version.formatPrompt;
     entry.generationRecord = version.generationRecord;
     entry.generationReplay = version.generationReplay;
     entry.updatedAt = timestamp;
@@ -213,6 +232,8 @@ export const useLettersStore = defineStore('letters', () => {
     entry.title = version.title;
     entry.content = version.content;
     entry.format = version.format;
+    entry.formatName = version.formatName;
+    entry.formatPrompt = version.formatPrompt;
     entry.generationRecord = version.generationRecord;
     entry.generationReplay = version.generationReplay;
     entry.updatedAt = timestamp;
@@ -224,7 +245,8 @@ export const useLettersStore = defineStore('letters', () => {
     bookId: string,
     entryId: string,
     versionId: string,
-    input: Pick<LetterEntryVersion, 'title' | 'content' | 'format'>,
+    input: Pick<LetterEntryVersion, 'title' | 'content' | 'format'> &
+      Partial<Pick<LetterEntryVersion, 'formatName' | 'formatPrompt'>>,
   ) {
     const book = getBook(bookId);
     const entry = getEntry(bookId, entryId);
@@ -234,10 +256,14 @@ export const useLettersStore = defineStore('letters', () => {
     version.title = input.title.trim() || version.title;
     version.content = input.content.trim();
     version.format = input.format;
+    version.formatName = input.formatName?.trim() || version.formatName;
+    version.formatPrompt = input.formatPrompt?.trim() || version.formatPrompt;
     if (entry.activeVersionId === version.id) {
       entry.title = version.title;
       entry.content = version.content;
       entry.format = version.format;
+      entry.formatName = version.formatName;
+      entry.formatPrompt = version.formatPrompt;
       entry.updatedAt = timestamp;
       book.updatedAt = timestamp;
     }

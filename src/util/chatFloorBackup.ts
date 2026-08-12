@@ -194,6 +194,10 @@ function readCurrentMessages(): ChatFloorBackupMessage[] {
     }));
 }
 
+export function getCurrentChatFloorMessageCount() {
+  return readCurrentMessages().length;
+}
+
 function sameMessages(left: ChatFloorBackupMessage[], right: ChatFloorBackupMessage[]) {
   return JSON.stringify(left) === JSON.stringify(right);
 }
@@ -221,7 +225,7 @@ export async function saveChatFloorBackup(backup: ChatFloorBackup) {
   return parsed;
 }
 
-async function deleteChatFloorBackup(key: string) {
+export async function deleteChatFloorBackup(key: string) {
   await runStore<undefined>('readwrite', store => store.delete(key));
 }
 

@@ -321,6 +321,48 @@ export const usePresetLinkStore = defineStore('preset-link', () => {
     removeBinding(getCurrentChatScopeKey());
   }
 
+  function migratePresetReferences(oldName: string, newName: string) {
+    const source = oldName.trim();
+    const target = newName.trim();
+    if (!source || !target || source === target) return 0;
+    let changed = 0;
+    Object.values(settings.value.bindings).forEach(binding => {
+      if (binding.presetName !== source) return;
+      binding.presetName = target;
+      binding.updatedAt = new Date().toISOString();
+      changed += 1;
+    });
+    if (settings.value.readerProfiles[source]) {
+      settings.value.readerProfiles[target] = settings.value.readerProfiles[source];
+      delete settings.value.readerProfiles[source];
+      changed += 1;
+    }
+    settings.value.readerMigrationConflicts.forEach(conflict => {
+      if (conflict.presetName === source) conflict.presetName = target;
+    });
+    revision.value += 1;
+    return changed;
+  }
+
+  function removePresetReferences(presetName: string) {
+    const name = presetName.trim();
+    let changed = 0;
+    Object.entries(settings.value.bindings).forEach(([scopeKey, binding]) => {
+      if (binding.presetName !== name) return;
+      delete settings.value.bindings[scopeKey];
+      changed += 1;
+    });
+    if (settings.value.readerProfiles[name]) {
+      delete settings.value.readerProfiles[name];
+      changed += 1;
+    }
+    settings.value.readerMigrationConflicts = settings.value.readerMigrationConflicts.filter(
+      conflict => conflict.presetName !== name,
+    );
+    revision.value += 1;
+    return changed;
+  }
+
   function importBackup(data: unknown) {
     settings.value = readSettings(data);
     revision.value += 1;
@@ -342,7 +384,9 @@ export const usePresetLinkStore = defineStore('preset-link', () => {
     inheritBinding,
     lastAppliedScopeKey,
     rehydrateFromSettings,
+    migratePresetReferences,
     removeBinding,
+    removePresetReferences,
     resetCurrentScope,
     revision,
     saveBinding,

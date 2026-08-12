@@ -432,6 +432,26 @@ export const useEntryLibraryStore = defineStore('entry-library', () => {
     settings.value.bindings = bindings.value.filter(binding => binding.id !== bindingId);
   }
 
+  function migratePresetReferences(oldName: string, newName: string) {
+    const source = oldName.trim();
+    const target = newName.trim();
+    let changed = 0;
+    settings.value.bindings.forEach(binding => {
+      if (binding.presetName !== source) return;
+      binding.presetName = target;
+      binding.updatedAt = new Date().toISOString();
+      changed += 1;
+    });
+    return changed;
+  }
+
+  function removePresetReferences(presetName: string) {
+    const name = presetName.trim();
+    const before = settings.value.bindings.length;
+    settings.value.bindings = settings.value.bindings.filter(binding => binding.presetName !== name);
+    return before - settings.value.bindings.length;
+  }
+
   function importBackup(data: unknown) {
     settings.value = readImportSettings(data);
   }
@@ -523,7 +543,9 @@ export const useEntryLibraryStore = defineStore('entry-library', () => {
     items,
     mergeBackup,
     moveItem,
+    migratePresetReferences,
     rehydrateFromSettings,
+    removePresetReferences,
     reorderGroupItems,
     setGroupItemsEnabled,
     settings,

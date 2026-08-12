@@ -2,97 +2,17 @@
   <div class="pc-settings-panel-stack">
     <section class="pc-page-section pc-settings-section">
       <div class="pc-row pc-row-top">
-        <strong>阅读器</strong>
-        <button
-          class="pc-icon-btn"
-          type="button"
-          title="恢复阅读器默认设置"
-          @click="settingsStore.resetReaderAppearance()"
-        >
-          <i class="fa-solid fa-rotate-left"></i>
-        </button>
-      </div>
-      <div class="pc-control-row">
-        <div>
-          <strong>字号</strong>
-          <p>{{ settings.reader.fontSize }}px</p>
-        </div>
-        <input
-          :value="settings.reader.fontSize"
-          type="range"
-          min="14"
-          max="24"
-          step="1"
-          @input="settingsStore.setReaderFontSize(numberValue($event))"
-        />
-      </div>
-      <div class="pc-control-row">
-        <div>
-          <strong>行高</strong>
-          <p>{{ settings.reader.lineHeight.toFixed(1) }}</p>
-        </div>
-        <input
-          :value="settings.reader.lineHeight"
-          type="range"
-          min="1.4"
-          max="2.2"
-          step="0.1"
-          @input="settingsStore.setReaderLineHeight(numberValue($event))"
-        />
-      </div>
-      <label class="pc-reader-setting-row">
-        <strong>首行缩进</strong>
-        <span class="pc-toggle">
-          <input
-            :checked="settings.reader.firstLineIndent"
-            type="checkbox"
-            @change="settingsStore.setReaderFirstLineIndent(checkedValue($event))"
-          /><span></span>
-        </span>
-      </label>
-      <label class="pc-reader-setting-row">
-        <strong>每行空行</strong>
-        <span class="pc-toggle">
-          <input
-            :checked="settings.reader.blankLineBetweenLines"
-            type="checkbox"
-            @change="settingsStore.setReaderBlankLineBetweenLines(checkedValue($event))"
-          /><span></span>
-        </span>
-      </label>
-      <div class="pc-reader-setting-row">
-        <strong>版本切换位置</strong>
-        <div class="pc-segment" role="group" aria-label="版本切换位置">
-          <button
-            :class="['pc-segment-btn', { active: settings.reader.versionNavigatorPosition === 'before' }]"
-            type="button"
-            @click="settingsStore.setReaderVersionNavigatorPosition('before')"
-          >
-            正文上方</button
-          ><button
-            :class="['pc-segment-btn', { active: settings.reader.versionNavigatorPosition === 'after' }]"
-            type="button"
-            @click="settingsStore.setReaderVersionNavigatorPosition('after')"
-          >
-            正文下方
-          </button>
-        </div>
-      </div>
-    </section>
-
-    <section class="pc-page-section pc-settings-section">
-      <div class="pc-row pc-row-top">
         <strong>界面尺寸</strong>
         <div class="pc-settings-actions">
-          <button class="pc-icon-btn" type="button" title="适配当前窗口" @click="fitViewport">
-            <i class="fa-solid fa-expand"></i></button
+          <button class="pc-soft-btn compact" type="button" title="适配当前窗口" @click="fitViewport">
+            适配窗口</button
           ><button
-            class="pc-icon-btn"
+            class="pc-soft-btn compact"
             type="button"
             title="恢复默认界面尺寸"
             @click="settingsStore.resetInterfaceSize()"
           >
-            <i class="fa-solid fa-rotate-left"></i>
+            恢复默认
           </button>
         </div>
       </div>

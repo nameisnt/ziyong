@@ -21,6 +21,9 @@
         <template v-if="$slots.content" #content="slotProps">
           <slot name="content" v-bind="slotProps"></slot>
         </template>
+        <template v-if="$slots.afterContent" #after-content>
+          <slot name="afterContent"></slot>
+        </template>
       </GenerationPreviewPanel>
     </article>
   </section>

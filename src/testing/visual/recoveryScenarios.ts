@@ -29,6 +29,7 @@ const recoveryScenarioNames = [
   'recovery-reader',
   'recovery-confirm',
   'recovery-result',
+  'recovery-settings',
 ] as const;
 
 export function applyRecoveryVisualScenario(name: string, context: RecoveryScenarioContext) {
@@ -124,6 +125,13 @@ export function applyRecoveryVisualScenario(name: string, context: RecoveryScena
       name === 'recovery-result'
         ? { fileName: '测试角色 - 2026-08-11 imported.jsonl', target: characters[0], verified: true }
         : null,
+    settingsSnapshots:
+      name === 'recovery-settings'
+        ? [
+            { date: Date.parse('2026-08-11T10:00:00.000Z'), name: 'settings_20260811-100000.json', size: 245760 },
+            { date: Date.parse('2026-08-10T22:00:00.000Z'), name: 'settings_20260810-220000.json', size: 238400 },
+          ]
+        : [],
   });
   const pageByScenario: Record<string, string> = {
     'recovery-cleanup': 'cleanup',
@@ -133,6 +141,7 @@ export function applyRecoveryVisualScenario(name: string, context: RecoveryScena
     'recovery-reader': 'reader',
     'recovery-result': 'result',
     'recovery-shelf': 'chats',
+    'recovery-settings': 'settings-snapshots',
   };
   const titleByPage: Record<string, string> = {
     cleanup: '快速清理备份',
@@ -143,6 +152,7 @@ export function applyRecoveryVisualScenario(name: string, context: RecoveryScena
     reader: '阅读聊天备份',
     result: '导入完成',
     root: '酒馆备份管理',
+    'settings-snapshots': '设置快照',
   };
   const page = pageByScenario[name] ?? 'root';
   const title = titleByPage[page] ?? '酒馆备份管理';

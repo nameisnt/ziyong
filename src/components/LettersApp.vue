@@ -48,6 +48,7 @@
       @bottom="scrollToBottom"
       @delete="removeEntry(activeBook.id, activeEntry.id)"
       @edit="openEditEntry(activeBook.id, activeEntry.id, viewedLetterVersionId)"
+      @erase="overwriteLetterContent"
       @favorite="letters.toggleFavorite(activeBook.id, activeEntry.id)"
       @next="openEntry(activeBook.id, nextEntryId, true)"
       @previous="openEntry(activeBook.id, previousEntryId, true)"
@@ -69,6 +70,7 @@
       v-model:book-title="draft.bookTitle"
       v-model:content="draft.content"
       v-model:format="draft.format"
+      v-model:format-prompt="draft.formatPrompt"
       v-model:receiver-name="draft.receiverName"
       v-model:sender-name="draft.senderName"
       v-model:title="draft.title"
@@ -86,11 +88,13 @@
       v-else-if="route.page === 'generate'"
       v-model:book-title="generationDraft.bookTitle"
       v-model:format="generationDraft.format"
+      v-model:format-prompt="generationDraft.formatPrompt"
       v-model:from-start-end="generationDraft.fromStartEnd"
       v-model:range-text="generationDraft.rangeText"
       v-model:receiver-name="generationDraft.receiverName"
       v-model:recent-count="generationDraft.recentCount"
       v-model:recent-entry-count="generationDraft.recentEntryCount"
+      v-model:include-recent-entries="generationDraft.includeRecentEntries"
       v-model:references="selectedReferences"
       v-model:sender-name="generationDraft.senderName"
       v-model:single-message-id="generationDraft.singleMessageId"
@@ -102,6 +106,7 @@
       :format-options="formatOptions"
       :raw-output="generationState.rawOutput"
       :running="generationState.running"
+      :show-recent-entries="Boolean(activeBook)"
       :show-book-field="!activeBook"
       :title="
         route.params?.rewriteEntryId
@@ -199,15 +204,13 @@ const query = ref('');
 const sortDesc = useDirectorySort('lettersDesc');
 const bookTitle = ref('');
 const entryContentEl = ref<HTMLElement | null>(null);
-const { scrollToBottom, scrollToTop, scrollToVersionPosition } = useDetailScroll(
-  entryContentEl,
-  '.pc-letters-detail-page .pc-detail-content',
-);
+const { scrollToBottom, scrollToTop } = useDetailScroll(entryContentEl, '.pc-letters-detail-page .pc-detail-content');
 const showCatalogModal = ref(false);
 const draft = reactive({
   bookTitle: '',
   content: '',
   format: 'formal' as LetterFormat,
+  formatPrompt: '',
   receiverName: '',
   senderName: '',
   title: '',
@@ -215,11 +218,13 @@ const draft = reactive({
 const generationDraft = reactive({
   bookTitle: '',
   format: 'formal' as LetterFormat,
+  formatPrompt: '',
   fromStartEnd: 20,
   rangeText: '',
   receiverName: '',
   recentCount: 20,
   recentEntryCount: 6,
+  includeRecentEntries: false,
   senderName: '',
   singleMessageId: 0,
   userRequirement: '',
@@ -233,6 +238,7 @@ const generationState = reactive({
     content: string;
     draftId: string | null;
     format: LetterFormat;
+    formatPrompt: string;
     generationRecord?: HiddenGenerationRecord;
     mode: 'create' | 'rewrite';
     raw: string;
@@ -277,11 +283,16 @@ const {
 });
 
 const formatOptions = [
-  { label: '正式信', value: 'formal' as const },
-  { label: '便签', value: 'note' as const },
-  { label: '短信', value: 'sms' as const },
-  { label: '邮件', value: 'email' as const },
+  { label: '正式信', value: 'formal' },
+  { label: '便签', value: 'note' },
+  { label: '短信', value: 'sms' },
+  { label: '邮件', value: 'email' },
 ];
+const generationFormatDescription = computed(() => {
+  const name = formatLabel(generationDraft.format);
+  const prompt = generationDraft.formatPrompt.trim();
+  return prompt ? `${name}\n类型要求：${prompt}` : name;
+});
 
 const activeBook = computed(() => {
   const bookId = route.value.params?.bookId;
@@ -392,12 +403,12 @@ const letterPromptPreview = computed(() => {
         appPrompt: letterGenerationAppPrompt.value,
         bookId: activeBook.value?.id || '',
         bookTitle: generationDraft.bookTitle || activeBook.value?.title || '',
-        format: generationDraft.format,
+        format: generationFormatDescription.value,
         entryId: rewriteLetterEntry.value?.id || '',
         existingContent: '',
         mode: letterGenerationMode.value,
         outputFormat: buildOutputFormat(),
-        recentLettersContext: buildRecentLettersContext(activeBook.value, generationDraft.recentEntryCount),
+        recentLettersContext: buildSelectedRecentLettersContext(),
         receiver,
         sender,
         userRequirement: generationDraft.userRequirement,
@@ -435,12 +446,12 @@ function captureLetterPrompt() {
       appPrompt: letterGenerationAppPrompt.value,
       bookId: activeBook.value?.id || '',
       bookTitle: generationDraft.bookTitle || activeBook.value?.title || '',
-      format: generationDraft.format,
+      format: generationFormatDescription.value,
       entryId: rewriteLetterEntry.value?.id || '',
       existingContent: '',
       mode: letterGenerationMode.value,
       outputFormat: buildOutputFormat(),
-      recentLettersContext: buildRecentLettersContext(activeBook.value, generationDraft.recentEntryCount),
+      recentLettersContext: buildSelectedRecentLettersContext(),
       receiver,
       sender,
       userRequirement: generationDraft.userRequirement,
@@ -479,6 +490,7 @@ watch(
       if (editingEntry.value) {
         draft.content = viewedLetterEntry.value?.content || editingEntry.value.content;
         draft.format = viewedLetterEntry.value?.format || editingEntry.value.format;
+        draft.formatPrompt = viewedLetterEntry.value?.formatPrompt || editingEntry.value.formatPrompt;
         draft.receiverName = editingEntry.value.receiver.name;
         draft.senderName = editingEntry.value.sender.name;
         draft.title = viewedLetterEntry.value?.title || editingEntry.value.title;
@@ -486,6 +498,7 @@ watch(
       } else if (activeBook.value?.participants.length === 2) {
         draft.content = '';
         draft.format = 'formal';
+        draft.formatPrompt = '';
         draft.receiverName = activeBook.value.participants[1]?.name || '';
         draft.senderName = activeBook.value.participants[0]?.name || '';
         draft.title = '';
@@ -494,6 +507,7 @@ watch(
         draft.bookTitle = '';
         draft.content = '';
         draft.format = 'formal';
+        draft.formatPrompt = '';
         draft.receiverName = '';
         draft.senderName = '';
         draft.title = '';
@@ -513,9 +527,9 @@ watch(
       selectedReferences.value = [];
       generationDraft.bookTitle = activeBook.value?.title || '';
       generationDraft.format = rewriteEntry?.format || replyEntry?.format || 'formal';
-      generationDraft.fromStartEnd = 20;
+      generationDraft.formatPrompt = rewriteEntry?.formatPrompt || replyEntry?.formatPrompt || '';
+      generationDraft.includeRecentEntries = false;
       generationDraft.rangeText = '';
-      generationDraft.recentCount = 20;
       generationDraft.recentEntryCount = 6;
       generationDraft.receiverName =
         rewriteEntry?.receiver.name || replyEntry?.sender.name || activeBook.value?.participants[1]?.name || '';
@@ -653,7 +667,6 @@ function selectLetterVersion(versionId: string) {
     entryId: entry.id,
     versionId,
   });
-  void nextTick(() => scrollToVersionPosition(settings.value.reader.versionNavigatorPosition));
 }
 
 async function removeLetterVersion(versionId: string) {
@@ -711,6 +724,26 @@ function openLettersBaguScan() {
   });
 }
 
+function overwriteLetterContent(content: string) {
+  const book = activeBook.value;
+  const entry = activeEntry.value;
+  if (!book || !entry) return;
+  const versionId = viewedLetterVersionId.value;
+  const result = versionId
+    ? letters.updateEntryVersion(book.id, entry.id, versionId, {
+        content,
+        format: viewedLetterEntry.value.format,
+        title: viewedLetterEntry.value.title,
+      })
+    : letters.updateEntry(book.id, entry.id, {
+        content,
+        format: viewedLetterEntry.value.format,
+        title: viewedLetterEntry.value.title,
+      });
+  if (!result) return;
+  toastr.success(versionId ? '已覆盖当前书信版本' : '已覆盖当前书信正文');
+}
+
 function selectCatalogEntry(entryId: string) {
   if (!activeBook.value) return;
   showCatalogModal.value = false;
@@ -742,6 +775,8 @@ function submitEntry() {
     const input = {
       content: draft.content,
       format: draft.format,
+      formatName: formatLabel(draft.format),
+      formatPrompt: draft.formatPrompt,
       title: draft.title,
     };
     const versionId = route.value.params?.versionId;
@@ -768,6 +803,8 @@ function submitEntry() {
       bookTitle: draft.bookTitle,
       content: draft.content,
       format: draft.format,
+      formatName: formatLabel(draft.format),
+      formatPrompt: draft.formatPrompt,
       receiver,
       sender,
       title: draft.title,
@@ -864,6 +901,11 @@ function buildRecentLettersContext(book = activeBook.value, count = generationDr
   return ['最近相关书信：', blocks.join('\n\n')].join('\n\n');
 }
 
+function buildSelectedRecentLettersContext() {
+  if (!activeBook.value || !generationDraft.includeRecentEntries) return '';
+  return buildRecentLettersContext(activeBook.value, generationDraft.recentEntryCount);
+}
+
 function failedDraftBookTitle(context: Record<string, unknown>) {
   const bookId = typeof context.bookId === 'string' ? context.bookId : '';
   const fallback = typeof context.bookTitle === 'string' ? context.bookTitle : '未知分册';
@@ -911,12 +953,12 @@ async function runGeneration() {
         appPrompt: letterGenerationAppPrompt.value,
         bookId: activeBook.value?.id || '',
         bookTitle: generationDraft.bookTitle || activeBook.value?.title || '',
-        format: generationDraft.format,
+        format: generationFormatDescription.value,
         entryId: rewriteLetterEntry.value?.id || '',
         existingContent: '',
         mode: letterGenerationMode.value,
         outputFormat: buildOutputFormat(),
-        recentLettersContext: buildRecentLettersContext(activeBook.value, generationDraft.recentEntryCount),
+        recentLettersContext: buildSelectedRecentLettersContext(),
         receiver,
         sender,
         userRequirement: generationDraft.userRequirement,
@@ -978,6 +1020,7 @@ async function runGeneration() {
       content: result.data.content,
       draftId: null,
       format: generationDraft.format,
+      formatPrompt: generationDraft.formatPrompt,
       generationRecord: result.generationRecord,
       mode: letterGenerationMode.value,
       raw: result.rawOutput,
@@ -1013,6 +1056,8 @@ function savePreview() {
       ? letters.appendEntryVersion(preview.bookId, preview.targetEntryId, {
           content: preview.content,
           format: preview.format,
+          formatName: formatLabel(preview.format),
+          formatPrompt: preview.formatPrompt,
           generationRecord:
             preview.generationRecord ||
             (preview.replay ? createHiddenGenerationRecord('generate', preview.replay) : undefined),
@@ -1023,6 +1068,8 @@ function savePreview() {
           bookTitle: preview.bookTitle,
           content: preview.content,
           format: preview.format,
+          formatName: formatLabel(preview.format),
+          formatPrompt: preview.formatPrompt,
           generationRecord:
             preview.generationRecord ||
             (preview.replay ? createHiddenGenerationRecord('generate', preview.replay) : undefined),
@@ -1178,7 +1225,8 @@ function formatLabel(format: LetterFormat) {
   if (format === 'sms') return '短信';
   if (format === 'email') return '邮件';
   if (format === 'note') return '便签';
-  return '正式信';
+  if (format === 'formal') return '正式信';
+  return format.replace(/^custom:/, '') || '自定义书信';
 }
 </script>
 

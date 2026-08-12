@@ -60,6 +60,7 @@
       @bagu="openTheaterBaguScan"
       @bottom="scrollToBottom"
       @edit="openEditEntry(activeEntry.id, viewedEntryVersionId)"
+      @erase="overwriteTheaterContent"
       @favorite="theater.toggleFavorite(activeEntry.id)"
       @filter-type="filterTheaterRecords"
       @navigate-blocked="handleFrameNavigateBlocked"
@@ -373,10 +374,7 @@ const failedDraftRenderMode = ref<TheaterRenderMode>('markdown');
 const generationCustomTypeSelected = ref(false);
 const selectedReferences = ref<GenerationReferenceItem[]>([]);
 const entryContentEl = ref<HTMLElement | null>(null);
-const { scrollToBottom, scrollToTop, scrollToVersionPosition } = useDetailScroll(
-  entryContentEl,
-  '.pc-theater-detail-page .pc-detail-content',
-);
+const { scrollToBottom, scrollToTop } = useDetailScroll(entryContentEl, '.pc-theater-detail-page .pc-detail-content');
 const showCatalogModal = ref(false);
 
 const theaterTypePrompts = computed(() => typePrompts.value.filter(item => item.domain === 'theater'));
@@ -683,9 +681,7 @@ watch(
       const customTypeName =
         typeof current.params?.customTypeName === 'string' ? current.params.customTypeName.trim() : '';
       selectedReferences.value = [];
-      generationDraft.fromStartEnd = 20;
       generationDraft.rangeText = '';
-      generationDraft.recentCount = 20;
       generationDraft.renderMode =
         continuationEntry?.renderMode || (initialTypePrompt?.renderMode === 'frontend' ? 'frontend' : 'markdown');
       generationDraft.singleMessageId = 0;
@@ -836,6 +832,25 @@ function openTheaterBaguScan() {
   });
 }
 
+function overwriteTheaterContent(content: string) {
+  const entry = activeEntry.value;
+  if (!entry) return;
+  const versionId = viewedEntryVersionId.value;
+  const result = versionId
+    ? theater.updateEntryVersion(entry.id, versionId, {
+        content,
+        renderMode: viewedEntry.value.renderMode,
+        title: viewedEntry.value.title,
+      })
+    : theater.updateEntry(entry.id, {
+        content,
+        renderMode: viewedEntry.value.renderMode,
+        title: viewedEntry.value.title,
+      });
+  if (!result) return;
+  toastr.success(versionId ? '已覆盖当前小剧场版本' : '已覆盖当前小剧场正文');
+}
+
 function selectCatalogEntry(entryId: string) {
   showCatalogModal.value = false;
   openEntry(entryId, true);
@@ -863,7 +878,6 @@ function selectTheaterVersion(versionId: string) {
   const entry = theater.activateEntryVersion(activeEntry.value.id, versionId);
   if (!entry) return;
   phone.replacePage('entry', entry.title, { entryId: entry.id, versionId });
-  void nextTick(() => scrollToVersionPosition(settings.value.reader.versionNavigatorPosition));
 }
 
 async function removeTheaterVersion(versionId: string) {

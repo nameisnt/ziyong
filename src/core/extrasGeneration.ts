@@ -3,7 +3,6 @@ import {
   SimpleXmlResultSchema,
   type ContentXmlResult,
   type GenerationAdapter,
-  type SimpleXmlResult,
   type SourceSelection,
 } from '@/type/generation';
 import {
@@ -16,7 +15,13 @@ import { GenerationRequestPartsSchema } from '@/type/generation';
 import { GenerationSourceModeSchema } from '@/type/settings';
 import { parseContentXmlResult, parseSimpleXmlResult } from '@/util/generation';
 import { parseConfiguredOutput } from '@/util/outputParsing';
+import { createDisplayRegex, extractWithRegexRules } from '@/util/regexDisplay';
 import { parsePrettified } from '@/util/zod';
+
+const ExtraChapterParsedResultSchema = SimpleXmlResultSchema.extend({
+  summary: z.string().default(''),
+});
+type ExtraChapterParsedResult = z.infer<typeof ExtraChapterParsedResultSchema>;
 
 export const ExtraSummaryGenerateConfigSchema = z.object({
   appPrompt: z.string(),
@@ -54,6 +59,14 @@ export const ExtraChapterGenerateConfigSchema = z.object({
   typeName: z.string().default(''),
   typePrompt: z.string().default(''),
   userRequirement: z.string().default(''),
+  parseSummary: z.boolean().optional(),
+  removeSummaryBlock: z.boolean().optional(),
+  summaryFormatHint: z.string().optional(),
+  summaryRuleFlags: z.string().optional(),
+  summaryRuleId: z.string().optional(),
+  summaryRuleName: z.string().optional(),
+  summaryRulePattern: z.string().optional(),
+  summaryRuleReplacement: z.string().optional(),
 });
 export type ExtraChapterGenerateConfig = z.infer<typeof ExtraChapterGenerateConfigSchema>;
 
@@ -87,7 +100,86 @@ export function createExtraChapterGenerationRecord(
     typeName: config.typeName,
     typePrompt: config.typePrompt,
     userRequirement: config.userRequirement,
+    parseSummary: config.parseSummary,
+    removeSummaryBlock: config.removeSummaryBlock,
+    summaryFormatHint: config.summaryFormatHint,
+    summaryRuleFlags: config.summaryRuleFlags,
+    summaryRuleId: config.summaryRuleId,
+    summaryRuleName: config.summaryRuleName,
+    summaryRulePattern: config.summaryRulePattern,
+    summaryRuleReplacement: config.summaryRuleReplacement,
     replay,
+  };
+}
+
+function extractStructuredSummary(raw: string) {
+  const match = raw.match(/<summary(?:\s[^>]*)?>([\s\S]*?)<\/summary>/i);
+  if (!match?.[1]) return '';
+  const parser = new DOMParser();
+  const document = parser.parseFromString(match[1], 'text/html');
+  return document.body.textContent?.trim() || '';
+}
+
+function removeSingleSummaryBlock(content: string, config: ExtraChapterGenerateConfig) {
+  if (!config.removeSummaryBlock || !config.summaryRulePattern?.trim()) return { content, warning: '' };
+  try {
+    const configured = createDisplayRegex(config.summaryRulePattern, config.summaryRuleFlags || '');
+    const single = new RegExp(configured.source, configured.flags.replace(/g/g, ''));
+    const global = new RegExp(configured.source, configured.flags.includes('g') ? configured.flags : `${configured.flags}g`);
+    const matches = Array.from(content.matchAll(global));
+    if (matches.length !== 1 || !matches[0]?.[0].trim()) {
+      return {
+        content,
+        warning: matches.length > 1 ? '正文内摘要块不唯一，已保留正文' : '正文内未定位到完整摘要块，已保留正文',
+      };
+    }
+    return { content: content.replace(single, '').trim(), warning: '' };
+  } catch (error) {
+    return {
+      content,
+      warning: `摘要移除规则无效，已保留正文：${error instanceof Error ? error.message : '正则无效'}`,
+    };
+  }
+}
+
+export function parseExtraChapterOutput(raw: string, config: ExtraChapterGenerateConfig) {
+  const parsed = parseConfiguredOutput('extras.chapter', raw, ExtraChapterParsedResultSchema, () => {
+    const fallback = parseSimpleXmlResult(raw);
+    if (!fallback.ok) return fallback;
+    return {
+      ...fallback,
+      data: { ...fallback.data, summary: extractStructuredSummary(fallback.raw) },
+    };
+  });
+  if (!parsed.ok || !config.parseSummary) return parsed;
+
+  const structuredSummary = parsed.data.summary.trim() || extractStructuredSummary(parsed.raw);
+  let summary = structuredSummary;
+  let summaryWarning = '';
+  if (!summary && config.summaryRulePattern?.trim()) {
+    const extracted = extractWithRegexRules(parsed.raw, [
+      {
+        enabled: true,
+        flags: config.summaryRuleFlags || '',
+        id: config.summaryRuleId || '',
+        name: config.summaryRuleName || '番外摘要',
+        operation: 'extract',
+        order: 0,
+        pattern: config.summaryRulePattern,
+        renderMode: 'text',
+        replacement: config.summaryRuleReplacement || '',
+      },
+    ]);
+    summary = extracted.applied.length ? extracted.content.trim() : '';
+    summaryWarning = extracted.errors.join('；');
+  }
+  if (!summary) summaryWarning ||= '未匹配到番外摘要，正文仍可正常保存';
+
+  const removed = summary ? removeSingleSummaryBlock(parsed.data.content, config) : { content: parsed.data.content, warning: '' };
+  return {
+    ...parsed,
+    data: { ...parsed.data, content: removed.content, summary },
+    warnings: [...new Set([...parsed.warnings, summaryWarning, removed.warning].filter(Boolean))],
   };
 }
 
@@ -102,6 +194,7 @@ export function saveExtraChapterPreview(
       bookId: string,
       input: Pick<ExtraChapter, 'title' | 'content'> & { generationRecord?: ExtraChapterGenerationRecord },
     ) => ExtraChapter | null;
+    upsertAutoChapterSummary?: (bookId: string, chapterId: string, content: string) => ExtraSummary | null;
   },
   input: {
     bookId: string;
@@ -109,6 +202,7 @@ export function saveExtraChapterPreview(
     content: string;
     generationRecord?: ExtraChapterGenerationRecord;
     mode: ExtraChapterGenerationMode;
+    summary?: string;
     title: string;
   },
 ) {
@@ -119,6 +213,9 @@ export function saveExtraChapterPreview(
       title: input.title,
     });
     if (!saved) return null;
+    if (input.summary?.trim()) {
+      extrasStore.upsertAutoChapterSummary?.(input.bookId, saved.chapter.id, input.summary);
+    }
     return { chapter: saved.chapter, versionId: saved.version.id };
   }
   const chapter = extrasStore.createChapter(input.bookId, {
@@ -126,6 +223,9 @@ export function saveExtraChapterPreview(
     generationRecord: input.generationRecord,
     title: input.title,
   });
+  if (chapter && input.summary?.trim()) {
+    extrasStore.upsertAutoChapterSummary?.(input.bookId, chapter.id, input.summary);
+  }
   return chapter ? { chapter, versionId: '' } : null;
 }
 
@@ -142,7 +242,10 @@ function buildChapterTaskInstruction(config: ExtraChapterGenerateConfig) {
   }[generationIntent];
   const typeFallback =
     !config.typePrompt.trim() && config.typeName.trim() ? `本次番外类型为“${config.typeName.trim()}”。` : '';
-  return [modeInstruction, typeFallback].filter(Boolean).join('\n');
+  const summaryInstruction = config.parseSummary
+    ? config.summaryFormatHint?.trim() || '请同时输出简洁的 <summary>番外摘要</summary>。'
+    : '';
+  return [modeInstruction, typeFallback, summaryInstruction].filter(Boolean).join('\n');
 }
 
 function buildChapterTaskTemplateVariables(config: ExtraChapterGenerateConfig) {
@@ -211,6 +314,7 @@ export function createExtraChapterGenerationAdapter(extrasStore: {
     chapterId: string,
     input: Pick<ExtraChapter, 'title' | 'content'> & { generationRecord?: ExtraChapterGenerationRecord },
   ) => { chapter: ExtraChapter; version: { id: string } } | null;
+  upsertAutoChapterSummary?: (bookId: string, chapterId: string, content: string) => ExtraSummary | null;
 }) {
   return {
     actionId: 'chapter-generate',
@@ -227,8 +331,8 @@ export function createExtraChapterGenerationAdapter(extrasStore: {
       });
     },
     configSchema: ExtraChapterGenerateConfigSchema,
-    parse(raw) {
-      return parseConfiguredOutput('extras.chapter', raw, SimpleXmlResultSchema, () => parseSimpleXmlResult(raw));
+    parse(raw, config) {
+      return parseExtraChapterOutput(raw, config);
     },
     async save(result, context) {
       const generationRecord = createExtraChapterGenerationRecord(context.config, context.source, context.replay);
@@ -240,6 +344,9 @@ export function createExtraChapterGenerationAdapter(extrasStore: {
         });
         if (!saved) {
           throw new Error('目标章节不存在，无法保存重写版本');
+        }
+        if (result.summary.trim()) {
+          extrasStore.upsertAutoChapterSummary?.(context.config.bookId, saved.chapter.id, result.summary);
         }
         return {
           chapter: saved.chapter,
@@ -257,6 +364,9 @@ export function createExtraChapterGenerationAdapter(extrasStore: {
       if (!chapter) {
         throw new Error('目标番外不存在，无法保存章节');
       }
+      if (result.summary.trim()) {
+        extrasStore.upsertAutoChapterSummary?.(context.config.bookId, chapter.id, result.summary);
+      }
       return {
         chapter,
         entityId: chapter.id,
@@ -265,7 +375,7 @@ export function createExtraChapterGenerationAdapter(extrasStore: {
     },
   } satisfies GenerationAdapter<
     ExtraChapterGenerateConfig,
-    SimpleXmlResult,
+    ExtraChapterParsedResult,
     { chapter: ExtraChapter; entityId: string; mode: 'rewrite' | 'create'; versionId?: string }
   >;
 }

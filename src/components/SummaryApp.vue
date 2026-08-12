@@ -14,13 +14,6 @@
       @remove-failed-draft="removeFailedDraft"
     />
 
-    <SummaryCreationModePage
-      v-else-if="route.page === 'creation-mode'"
-      @batch="openBatchGenerate()"
-      @create="openCreateBook"
-      @extract="openSummaryExtract"
-    />
-
     <SummaryBookEditorPage
       v-else-if="route.page === 'create-book' || route.page === 'edit-book'"
       v-model:title="bookTitle"
@@ -59,6 +52,7 @@
       @bottom="scrollToBottom"
       @delete="removeEntry(activeBook.id, activeEntry.id)"
       @edit="openEditEntry(activeBook.id, activeEntry.id)"
+      @erase="overwriteSummaryContent"
       @favorite="summary.toggleFavorite(activeBook.id, activeEntry.id)"
       @next="openEntry(activeBook.id, nextEntryId, true)"
       @previous="openEntry(activeBook.id, previousEntryId, true)"
@@ -170,6 +164,14 @@
       @delete="removeFailedDraft(activeFailedDraft.id)"
       @reparse="reparseFailedDraft"
     />
+    <CreationModeModal
+      :open="creationModeOpen"
+      :options="summaryCreationOptions"
+      subtitle="选择后才进入具体页面"
+      title="添加总结"
+      @close="creationModeOpen = false"
+      @select="selectSummaryCreationMode"
+    />
   </section>
 </template>
 
@@ -179,7 +181,7 @@ import SummaryBookPage from '@/components/summary/SummaryBookPage.vue';
 import SummaryBookEditorPage from '@/components/summary/SummaryBookEditorPage.vue';
 import SummaryBaguPage from '@/components/summary/SummaryBaguPage.vue';
 import SummaryCatalogPage from '@/components/summary/SummaryCatalogPage.vue';
-import SummaryCreationModePage from '@/components/summary/SummaryCreationModePage.vue';
+import CreationModeModal, { type CreationModeOption } from '@/components/CreationModeModal.vue';
 import SummaryEntryDetailPage from '@/components/summary/SummaryEntryDetailPage.vue';
 import SummaryEntryEditorPage from '@/components/summary/SummaryEntryEditorPage.vue';
 import SummaryFailedDraftPage from '@/components/summary/SummaryFailedDraftPage.vue';
@@ -210,6 +212,12 @@ import { getSourceLastFloor } from '@/util/sourceFloor';
 import { storeToRefs } from 'pinia';
 
 const phone = usePhoneStore();
+const creationModeOpen = ref(false);
+const summaryCreationOptions: CreationModeOption[] = [
+  { description: '从已有 AI 楼层提取', icon: 'fa-solid fa-file-import', id: 'extract', label: '提取总结' },
+  { description: '创建新的总结集并生成', icon: 'fa-solid fa-wand-magic-sparkles', id: 'create', label: '新建总结' },
+  { description: '按多个范围依次总结', icon: 'fa-solid fa-layer-group', id: 'batch', label: '批量总结' },
+];
 const prompts = usePromptStore();
 const recovery = useRecoveryStore();
 const settingsStore = useSettingsStore();
@@ -472,8 +480,6 @@ watch(
 
     if (current.page === 'generate' && previous?.page !== 'preview') {
       selectedReferences.value = [];
-      generationDraft.fromStartEnd = 20;
-      generationDraft.recentCount = 20;
       generationDraft.rangeText = '';
       generationDraft.singleMessageId = 0;
       generationDraft.userRequirement = '';
@@ -537,7 +543,13 @@ function openCreateBook() {
 }
 
 function openCreationMode() {
-  phone.pushPage('creation-mode', '生成总结');
+  creationModeOpen.value = true;
+}
+
+function selectSummaryCreationMode(mode: string) {
+  if (mode === 'extract') openSummaryExtract();
+  else if (mode === 'batch') openBatchGenerate();
+  else openCreateBook();
 }
 
 function openSummaryExtract() {
@@ -588,6 +600,19 @@ function openSummaryBaguScan() {
     bookId: activeBook.value.id,
     entryId: activeEntry.value.id,
   });
+}
+
+function overwriteSummaryContent(content: string) {
+  const book = activeBook.value;
+  const entry = activeEntry.value;
+  if (!book || !entry) return;
+  summary.updateEntry(book.id, entry.id, {
+    content,
+    directoryOrder: entry.directoryOrder,
+    rangeLabel: entry.rangeLabel,
+    title: entry.title,
+  });
+  toastr.success('已覆盖当前总结正文');
 }
 
 function selectCatalogEntry(entryId: string) {

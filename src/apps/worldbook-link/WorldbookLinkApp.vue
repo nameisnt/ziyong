@@ -41,6 +41,7 @@
       @apply-profile="applySavedProfile"
       @capture-profile="captureCurrentProfile"
       @open-entry="openEntryEditor"
+      @rename-book="renameCurrentBook"
       @toggle-entry="toggleWorldbookEntry"
       @unlink="unlinkCurrentBook"
     />
@@ -71,6 +72,7 @@ import { usePhoneStore } from '@/store/phone';
 import {
   deleteWorldbookEntry,
   getCurrentWorldbookGroups,
+  renameWorldbookSafely,
   setGlobalWorldbookEnabled,
   setWorldbookEntryEnabled,
   updateWorldbookEntry,
@@ -337,6 +339,32 @@ async function unlinkCurrentBook() {
     toastr.success('已停止联动并恢复原状态');
   } catch (error) {
     toastr.error(error instanceof Error ? error.message : '停止联动失败');
+  } finally {
+    busy.value = false;
+  }
+}
+
+async function renameCurrentBook() {
+  const oldName = detailBookName.value;
+  if (!oldName || busy.value) return;
+  const requested = await phone.promptNotice(
+    '输入新的世界书名称。只有酒馆提供能同时迁移角色、聊天和全局绑定的安全接口时才会执行。',
+    { confirmLabel: '继续', initialValue: oldName, title: '修改世界书名称' },
+  );
+  const newName = requested?.trim() || '';
+  if (!newName || newName === oldName) return;
+  if (!(await phone.confirmNotice(`确认把世界书“${oldName}”改名为“${newName}”吗？`, { confirmLabel: '改名' }))) return;
+  busy.value = true;
+  try {
+    await renameWorldbookSafely(oldName, newName);
+    const migrated = worldbookLinks.migrateWorldbookName(oldName, newName);
+    entryQuery.value = '';
+    phone.replacePage('detail', newName, { bookName: newName });
+    await refresh();
+    await loadDetail();
+    toastr.success(`世界书已改名，并迁移 ${migrated} 处联动配置`);
+  } catch (error) {
+    toastr.error(error instanceof Error ? error.message : '世界书改名失败');
   } finally {
     busy.value = false;
   }

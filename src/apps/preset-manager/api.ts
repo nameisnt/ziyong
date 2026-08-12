@@ -58,6 +58,17 @@ type UpdatePresetFn = (
 
 const presetMutationQueues = new Map<string, Promise<void>>();
 
+type PresetManagerMutationApi = {
+  deletePreset?: (name: string) => unknown;
+  renamePreset?: (name: string) => unknown;
+  savePreset?: (name: string, preset: TavernPreset, options?: { triggerUi?: boolean }) => unknown;
+};
+
+function getPresetMutationManager() {
+  const getManager = getOptionalGlobalFunction<(apiId?: string) => unknown>('getPresetManager');
+  return getManager?.('openai') as PresetManagerMutationApi | null | undefined;
+}
+
 function requirePresetFunction<T extends (...args: never[]) => unknown>(name: string) {
   const fn = getOptionalGlobalFunction<T>(name);
   if (!fn) {
@@ -144,6 +155,47 @@ export async function loadTavernPreset(presetName: string) {
   if (!loaded) {
     throw new Error(`无法切换到预设“${presetName}”`);
   }
+}
+
+export async function renameTavernPreset(oldName: string, newName: string) {
+  const sourceName = oldName.trim();
+  const targetName = newName.trim();
+  if (!sourceName || !targetName) throw new Error('预设名称不能为空');
+  if (sourceName === targetName) return { current: getCurrentTavernPresetName() === sourceName };
+  if (listTavernPresets().includes(targetName)) throw new Error(`已经存在名为“${targetName}”的预设`);
+  const manager = getPresetMutationManager();
+  if (!manager) throw new Error('当前酒馆没有提供预设改名接口');
+  const current = getCurrentTavernPresetName() === sourceName;
+  if (current && manager.renamePreset) {
+    await manager.renamePreset(targetName);
+  } else {
+    if (!manager.savePreset || !manager.deletePreset) {
+      throw new Error('当前酒馆缺少安全改名所需的保存或删除接口');
+    }
+    const source = structuredClone(readTavernPreset(sourceName));
+    await manager.savePreset(targetName, source, { triggerUi: false });
+    if (!listTavernPresets().includes(targetName)) {
+      throw new Error('新名称保存后未能验证，已保留原预设');
+    }
+    await manager.deletePreset(sourceName);
+  }
+  const names = listTavernPresets();
+  if (!names.includes(targetName) || names.includes(sourceName)) {
+    throw new Error('酒馆未能确认预设改名结果，请刷新列表检查');
+  }
+  return { current };
+}
+
+export async function deleteTavernPreset(presetName: string) {
+  const name = presetName.trim();
+  if (!name) throw new Error('预设名称不能为空');
+  if (getCurrentTavernPresetName() === name) {
+    throw new Error('不能直接删除当前正在使用的预设，请先切换到其他预设');
+  }
+  const manager = getPresetMutationManager();
+  if (!manager?.deletePreset) throw new Error('当前酒馆没有提供预设删除接口');
+  await manager.deletePreset(name);
+  if (listTavernPresets().includes(name)) throw new Error('酒馆未能确认预设已删除，请刷新后重试');
 }
 
 function patchPrompt(

@@ -173,6 +173,13 @@
             @close="showCatalogModal = false"
             @select="selectCatalogMessage"
           />
+          <ReaderTextEditModal
+            :occurrences="readerTextOccurrences"
+            :open="readerTextEditOpen"
+            :selected-text="readerSelectedText"
+            @close="readerTextEditOpen = false"
+            @save="saveReaderSentenceEdit"
+          />
         </template>
       </ReaderDetailShell>
     </section>
@@ -217,6 +224,7 @@ import CatalogModal from '@/components/CatalogModal.vue';
 import BaguScanPanel from '@/components/BaguScanPanel.vue';
 import EmptyState from '@/components/EmptyState.vue';
 import ReaderDetailShell from '@/components/ReaderDetailShell.vue';
+import ReaderTextEditModal from '@/components/ReaderTextEditModal.vue';
 import SearchableCombobox from '@/components/SearchableCombobox.vue';
 import {
   defaultReaderBodyRule,
@@ -251,7 +259,8 @@ import {
   setChatMessagesSafe,
 } from '@/util/runtime';
 import { getCurrentChatScopeKey, isPlaceholderChatScopeKey } from '@/store/chatScoped';
-import { transformReaderMessages } from '@/util/readerRegex';
+import { resolveReaderBodySourceRange, transformReaderMessages, type ReaderBodySourceRange } from '@/util/readerRegex';
+import { findReaderTextOccurrences, type ReaderTextOccurrence } from '@/util/readerTextEdit';
 import { characters, getCharacters, getPastCharacterChats } from '@sillytavern/script';
 import { storeToRefs } from 'pinia';
 
@@ -291,6 +300,9 @@ const loadedScopeKey = ref('');
 const error = ref('');
 const loadingDetail = ref(false);
 const showCatalogModal = ref(false);
+const readerTextEditOpen = ref(false);
+const readerSelectedText = ref('');
+const readerTextOccurrences = ref<ReaderTextOccurrence[]>([]);
 const rulesOpen = ref(true);
 const messageBodyEl = ref<HTMLElement | null>(null);
 const readerEditDraft = ref('');
@@ -657,7 +669,7 @@ function getReaderSelectionText() {
   return selection.toString();
 }
 
-async function deleteSelectedReaderText() {
+function deleteSelectedReaderText() {
   if (!activeMessage.value) return;
   if (!phone.isViewingCurrentChat) {
     toastr.warning('历史聊天只读，请先切回酒馆当前聊天再删除文字');
@@ -665,35 +677,47 @@ async function deleteSelectedReaderText() {
   }
 
   const message = activeMessage.value;
-  const scopeKey = phone.viewingScopeKey;
   const selectedText = getReaderSelectionText();
   if (!selectedText.trim()) {
     toastr.warning('请先在当前正文里选中要删除的文字');
     return;
   }
 
-  const body = message.body;
-  const firstIndex = body.indexOf(selectedText);
-  if (firstIndex < 0 || body.indexOf(selectedText, firstIndex + selectedText.length) >= 0) {
-    toastr.error('选中文字无法唯一对应到原正文，请改用“编辑正文”修改');
+  const occurrences = findReaderTextOccurrences(message.sourceBody, selectedText);
+  if (!occurrences.length) {
+    toastr.error('这是显示替换结果，无法安全写回原文');
     return;
   }
+  if (!message.bodySourceRange) {
+    toastr.error('当前正文规则没有提供可验证的正文捕获范围，无法安全写回原楼层');
+    return;
+  }
+  readerSelectedText.value = selectedText;
+  readerTextOccurrences.value = occurrences;
+  readerTextEditOpen.value = true;
+}
 
-  const nextBody = `${body.slice(0, firstIndex)}${body.slice(firstIndex + selectedText.length)}`;
-  const nextRawText = replaceReaderBodyInRaw(message.rawText, body, nextBody);
+async function saveReaderSentenceEdit(payload: { occurrence: ReaderTextOccurrence; replacement: string }) {
+  const message = activeMessage.value;
+  if (!message || !phone.isViewingCurrentChat) return;
+  const scopeKey = phone.viewingScopeKey;
+  const selectedText = readerSelectedText.value;
+  const occurrence = payload.occurrence;
+  if (message.sourceBody.slice(occurrence.offset, occurrence.offset + selectedText.length) !== selectedText) {
+    toastr.warning('正文在编辑期间已经变化，已停止写回');
+    readerTextEditOpen.value = false;
+    return;
+  }
+  const nextBody = `${message.sourceBody.slice(0, occurrence.sentenceStart)}${payload.replacement}${message.sourceBody.slice(
+    occurrence.sentenceEnd,
+  )}`;
+  const nextRawText = replaceReaderBodyInRaw(message.rawText, message.sourceBody, nextBody, message.bodySourceRange);
   if (nextRawText === null) {
-    toastr.error('当前正文规则无法安全写回原楼层，请改用“编辑正文”修改');
+    toastr.error('正文捕获范围已经变化，无法安全写回原楼层');
     return;
   }
-
-  const previewText = selectedText.trim().replace(/\s+/gu, ' ').slice(0, 80);
-  const confirmed = await phone.confirmNotice(
-    `确定从第 ${message.sourceMessageId} 楼删除“${previewText}${selectedText.trim().length > 80 ? '…' : ''}”吗？`,
-    { confirmLabel: '删除文字', kind: 'warning', title: '删除选中文字' },
-  );
-  if (!confirmed) return;
   if (!phone.isViewingCurrentChat || phone.viewingScopeKey !== scopeKey || activeMessage.value?.id !== message.id) {
-    toastr.warning('当前聊天或楼层已经变化，已取消删除');
+    toastr.warning('当前聊天或楼层已经变化，已取消写回');
     return;
   }
 
@@ -702,11 +726,12 @@ async function deleteSelectedReaderText() {
     refresh: 'affected',
   });
   await saveChatIfAvailable();
+  readerTextEditOpen.value = false;
   window.getSelection()?.removeAllRanges();
   await loadCurrentChat(true);
   const updatedMessage = activeMessages.value.find(item => item.id === messageId);
   if (updatedMessage) phone.replacePage('detail', updatedMessage.title, { messageId });
-  toastr.success('已从原聊天楼层删除选中文字');
+  toastr.success('已精确更新原聊天楼层正文');
 }
 
 function toggleActiveMessageFavorite() {
@@ -743,33 +768,20 @@ function parseReaderRegexPattern(find: string, flags: string) {
   return { flags: normalizeFlags(`${literal[2] || ''}${flags}`), pattern: literal[1] };
 }
 
-function replaceReaderBodyInRaw(rawText: string, currentBody: string, nextBody: string) {
+function replaceReaderBodyInRaw(
+  rawText: string,
+  currentBody: string,
+  nextBody: string,
+  sourceRange: ReaderBodySourceRange | null = resolveReaderBodySourceRange(
+    rawText,
+    currentBody,
+    activeBodyRule.value,
+    readerRegexUsage.value.contentRuleId,
+  ),
+) {
   if (rawText === currentBody) return nextBody;
-
-  const directIndex = rawText.indexOf(currentBody);
-  if (directIndex >= 0 && rawText.indexOf(currentBody, directIndex + currentBody.length) === -1) {
-    return `${rawText.slice(0, directIndex)}${nextBody}${rawText.slice(directIndex + currentBody.length)}`;
-  }
-
-  const bodyRule = activeBodyRule.value;
-  if (!bodyRule.find.trim()) return null;
-
-  try {
-    const parsed = parseReaderRegexPattern(bodyRule.find, bodyRule.flags);
-    const flags = parsed.flags.includes('g') ? parsed.flags.replace(/g/g, '') : parsed.flags;
-    const expression = new RegExp(parsed.pattern, flags);
-    const match = rawText.match(expression);
-    if (!match || match.index === undefined || match.length <= 1) return null;
-    const captured = match.slice(1).find(value => value !== undefined && value !== '');
-    if (!captured) return null;
-    const captureOffset = match[0].indexOf(captured);
-    if (captureOffset < 0) return null;
-    const start = match.index + captureOffset;
-    const end = start + captured.length;
-    return `${rawText.slice(0, start)}${nextBody}${rawText.slice(end)}`;
-  } catch {
-    return null;
-  }
+  if (!sourceRange || rawText.slice(sourceRange.start, sourceRange.end) !== currentBody) return null;
+  return `${rawText.slice(0, sourceRange.start)}${nextBody}${rawText.slice(sourceRange.end)}`;
 }
 
 function applyReaderCleanupRules(body: string) {
@@ -790,7 +802,12 @@ async function applyReaderBaguContent(content: string) {
     throw new Error('历史聊天只读，请先切回当前聊天再应用检测结果');
   }
 
-  const nextRawText = replaceReaderBodyInRaw(activeMessage.value.rawText, activeMessage.value.body, content);
+  const nextRawText = replaceReaderBodyInRaw(
+    activeMessage.value.rawText,
+    activeMessage.value.sourceBody,
+    content,
+    activeMessage.value.bodySourceRange,
+  );
   if (nextRawText === null) {
     throw new Error('当前正文规则无法安全写回原楼层，请先在酒馆楼层编辑中手动修改');
   }
@@ -830,8 +847,9 @@ async function saveReaderEdit() {
   const messageId = activeMessage.value.id;
   const nextRawText = replaceReaderBodyInRaw(
     activeMessage.value.rawText,
-    activeMessage.value.body,
+    activeMessage.value.sourceBody,
     readerEditDraft.value,
+    activeMessage.value.bodySourceRange,
   );
   if (nextRawText === null) {
     toastr.error('当前正文规则无法安全写回原楼层，请改用酒馆楼层编辑或调整阅读正文规则');
@@ -884,11 +902,19 @@ async function loadCurrentChat(force = false) {
 
     const normalized = sourceMessages
       .map((item, index) => {
-        const body = applyReaderCleanupRules(transformed[index]?.body || item.rawText);
+        const sourceBody = transformed[index]?.body || item.rawText;
+        const body = applyReaderCleanupRules(sourceBody);
         return {
           ...item,
+          bodySourceRange: resolveReaderBodySourceRange(
+            item.rawText,
+            sourceBody,
+            activeBodyRule.value,
+            readerRegexUsage.value.contentRuleId,
+          ),
           title: normalizeTitle(transformed[index]?.title || '', item.messageIndex, item.isUser),
           body,
+          sourceBody,
         };
       })
       .filter(

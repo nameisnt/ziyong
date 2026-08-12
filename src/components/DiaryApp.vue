@@ -14,12 +14,6 @@
       @remove-failed-draft="removeFailedDraft"
     />
 
-    <DiaryCreationModePage
-      v-else-if="route.page === 'creation-mode'"
-      @batch="openBatchGenerate()"
-      @single="openGenerate()"
-    />
-
     <DiaryBookPage
       v-else-if="route.page === 'book' && activeBook"
       v-model:query="query"
@@ -57,6 +51,7 @@
       @bottom="scrollToBottom"
       @delete="removeEntry(activeBook.id, activeEntry.id)"
       @edit="openEditEntry(activeBook.id, activeEntry.id)"
+      @erase="overwriteDiaryContent"
       @favorite="diary.toggleFavorite(activeBook.id, activeEntry.id)"
       @next="openEntry(activeBook.id, nextEntryId, true)"
       @previous="openEntry(activeBook.id, previousEntryId, true)"
@@ -180,6 +175,14 @@
       @delete="removeFailedDraft(activeFailedDraft.id)"
       @reparse="reparseFailedDraft"
     />
+    <CreationModeModal
+      :open="creationModeOpen"
+      :options="diaryCreationOptions"
+      subtitle="选择后才进入具体生成页面"
+      title="添加日记"
+      @close="creationModeOpen = false"
+      @select="selectDiaryCreationMode"
+    />
   </section>
 </template>
 
@@ -189,7 +192,7 @@ import DiaryBookEditorPage from '@/components/diary/DiaryBookEditorPage.vue';
 import DiaryBaguPage from '@/components/diary/DiaryBaguPage.vue';
 import DiaryBatchPage from '@/components/diary/DiaryBatchPage.vue';
 import DiaryCatalogPage from '@/components/diary/DiaryCatalogPage.vue';
-import DiaryCreationModePage from '@/components/diary/DiaryCreationModePage.vue';
+import CreationModeModal, { type CreationModeOption } from '@/components/CreationModeModal.vue';
 import DiaryEntryDetailPage from '@/components/diary/DiaryEntryDetailPage.vue';
 import DiaryEntryEditorPage from '@/components/diary/DiaryEntryEditorPage.vue';
 import DiaryFailedDraftPage from '@/components/diary/DiaryFailedDraftPage.vue';
@@ -228,6 +231,11 @@ const diaryGenerationAdapter = getRegisteredPhoneGenerationAdapter('diary', 'gen
 const diaryReadReactionAdapter = getRegisteredPhoneGenerationAdapter('diary', 'read-reaction');
 const generationTasks = useGenerationTaskStore();
 const phone = usePhoneStore();
+const creationModeOpen = ref(false);
+const diaryCreationOptions: CreationModeOption[] = [
+  { description: '生成一篇日记', icon: 'fa-solid fa-wand-magic-sparkles', id: 'single', label: '单篇生成' },
+  { description: '按多个楼层范围依次生成', icon: 'fa-solid fa-layer-group', id: 'batch', label: '批量生成' },
+];
 const prompts = usePromptStore();
 const settingsStore = useSettingsStore();
 const { books, failedDrafts } = storeToRefs(diary);
@@ -597,11 +605,9 @@ watch(
     if (current.page === 'generate' && previous?.page !== 'preview') {
       selectedReferences.value = [];
       generationDraft.bookTitle = activeBook.value?.title || '';
-      generationDraft.fromStartEnd = 20;
       generationDraft.occurredAt = '';
       generationDraft.perspectiveName = activeBook.value?.perspective.name || '';
       generationDraft.rangeText = '';
-      generationDraft.recentCount = 20;
       generationDraft.singleMessageId = 0;
       generationDraft.userRequirement = '';
       generationState.error = '';
@@ -631,10 +637,8 @@ watch(
 
     if (current.page === 'reaction-generate' && previous?.page !== 'preview') {
       selectedReferences.value = [];
-      reactionDraft.fromStartEnd = 20;
       reactionDraft.occurredAt = activeEntry.value?.occurredAt || '';
       reactionDraft.rangeText = '';
-      reactionDraft.recentCount = 20;
       reactionDraft.readerName = '';
       reactionDraft.singleMessageId = 0;
       reactionDraft.userRequirement = '';
@@ -682,7 +686,12 @@ function openGenerate(bookId?: string) {
 }
 
 function openCreationMode() {
-  phone.pushPage('creation-mode', '生成日记');
+  creationModeOpen.value = true;
+}
+
+function selectDiaryCreationMode(mode: string) {
+  if (mode === 'batch') openBatchGenerate();
+  else openGenerate();
 }
 
 function openBatchGenerate(bookId?: string) {
@@ -725,6 +734,21 @@ function openDiaryBaguScan() {
     bookId: activeBook.value.id,
     entryId: activeEntry.value.id,
   });
+}
+
+function overwriteDiaryContent(content: string) {
+  const book = activeBook.value;
+  const entry = activeEntry.value;
+  if (!book || !entry) return;
+  diary.updateEntry(book.id, entry.id, {
+    content,
+    directoryOrder: entry.directoryOrder,
+    kind: entry.kind,
+    occurredAt: entry.occurredAt,
+    readers: entry.readers,
+    title: entry.title,
+  });
+  toastr.success('已覆盖当前日记正文');
 }
 
 function selectCatalogEntry(entryId: string) {

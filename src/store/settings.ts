@@ -6,7 +6,6 @@ import {
   type CustomFontItem,
   type CustomWallpaperSettings,
   type ExternalApiPresetId,
-  type ReaderAppearance,
   type Settings as PhoneSettings,
   type TimekeeperCalendarTemplate,
   type ThemeAppearanceProfile,
@@ -619,6 +618,14 @@ export const useSettingsStore = defineStore('settings', () => {
     settings.value.reader.fontSize = Math.min(24, Math.max(14, Math.round(fontSize)));
   }
 
+  function setReaderBackgroundColor(color: string) {
+    settings.value.reader.backgroundColor = color.trim();
+  }
+
+  function setReaderBackgroundImage(image: string) {
+    settings.value.reader.backgroundImage = image.trim();
+  }
+
   function setReaderFontFamily(fontFamily: string) {
     settings.value.reader.fontFamily = fontFamily.trim();
   }
@@ -635,18 +642,15 @@ export const useSettingsStore = defineStore('settings', () => {
     settings.value.reader.blankLineBetweenLines = enabled;
   }
 
-  function setReaderVersionNavigatorPosition(position: ReaderAppearance['versionNavigatorPosition']) {
-    settings.value.reader.versionNavigatorPosition = position;
-  }
-
   function resetReaderAppearance() {
     settings.value.reader = {
+      backgroundColor: '',
+      backgroundImage: '',
       blankLineBetweenLines: true,
       firstLineIndent: false,
       fontFamily: '',
       fontSize: 16,
       lineHeight: 1.6,
-      versionNavigatorPosition: 'before',
     };
   }
 
@@ -819,6 +823,10 @@ export const useSettingsStore = defineStore('settings', () => {
     };
   }
 
+  function setHomeLayout(layout: PhoneSettings['layout']) {
+    settings.value.layout = normalizeHomeLayout(layout);
+  }
+
   function rehydrateFromSettings() {
     settings.value = normalizeSettings(_.get(extension_settings, setting_field));
   }
@@ -838,6 +846,7 @@ export const useSettingsStore = defineStore('settings', () => {
     resetPhoneWindowPosition,
     resetGenerationDefaults,
     resetHomeLayout,
+    setHomeLayout,
     resetInterfaceSize,
     resetReaderAppearance,
     resetTextProvider,
@@ -861,11 +870,12 @@ export const useSettingsStore = defineStore('settings', () => {
     setPhoneWindowHeight,
     setPhoneWindowWidth,
     setReaderBlankLineBetweenLines,
+    setReaderBackgroundColor,
+    setReaderBackgroundImage,
     setReaderFirstLineIndent,
     setReaderFontFamily,
     setReaderFontSize,
     setReaderLineHeight,
-    setReaderVersionNavigatorPosition,
     setReaderScale,
     setTextProviderApiUrl,
     setActiveExternalApiProfile,

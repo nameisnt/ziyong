@@ -1,5 +1,5 @@
 import { validateInplace } from '@/util/zod';
-import { transformReaderMessages } from '@/util/readerRegex';
+import { resolveReaderBodySourceRange, transformReaderMessages, type ReaderBodySourceRange } from '@/util/readerRegex';
 import { getChatHistoryBriefSafe, getChatHistoryDetailSafe, onTavernEvent } from '@/util/runtime';
 // eslint-disable-next-line import-x/no-nodejs-modules
 import { saveSettingsDebounced } from '@sillytavern/script';
@@ -81,12 +81,14 @@ export interface ChatHistoryBriefItem {
 }
 
 export interface ReaderMessage {
+  bodySourceRange: ReaderBodySourceRange | null;
   id: string;
   messageIndex: number;
   sourceMessageId: number;
   title: string;
   body: string;
   rawText: string;
+  sourceBody: string;
   name: string;
   isHidden: boolean;
   isUser: boolean;
@@ -331,11 +333,17 @@ export const useReaderStore = defineStore('reader', () => {
         presets.value[0]?.title ?? defaultReaderSettings.presets[0].title,
         presets.value[0]?.body ?? defaultReaderSettings.presets[0].body,
       );
-      const normalized = baseMessages.map((item, index) => ({
-        ...item,
-        title: transformed[index]?.title || `第 ${item.messageIndex} 楼`,
-        body: transformed[index]?.body || item.rawText,
-      }));
+      const bodyRule = presets.value[0]?.body ?? defaultReaderSettings.presets[0].body;
+      const normalized = baseMessages.map((item, index) => {
+        const sourceBody = transformed[index]?.body || item.rawText;
+        return {
+          ...item,
+          bodySourceRange: resolveReaderBodySourceRange(item.rawText, sourceBody, bodyRule),
+          title: transformed[index]?.title || `第 ${item.messageIndex} 楼`,
+          body: sourceBody,
+          sourceBody,
+        };
+      });
       detailCache.value = {
         ...detailCache.value,
         [fileName]: normalized,

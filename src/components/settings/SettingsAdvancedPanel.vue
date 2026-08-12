@@ -12,13 +12,13 @@
             "
         /></strong>
         <button
-          class="pc-icon-btn"
+          class="pc-soft-btn compact"
           type="button"
           :disabled="!recoveryEntries.length"
           title="导出日志"
           @click="exportRecoveries"
         >
-          <i class="fa-solid fa-file-export"></i>
+          导出日志
         </button>
       </div>
       <div v-if="recoveryEntries.length" class="pc-recovery-list">
@@ -27,8 +27,8 @@
             <strong>{{ entry.scopeId }}</strong>
             <p>{{ `${entry.messages.length} 条楼层快照 · ${entry.generationId}` }}</p>
           </div>
-          <button class="pc-icon-btn danger" type="button" title="删除恢复日志" @click="deleteRecovery(entry.scopeId)">
-            <i class="fa-solid fa-trash"></i>
+          <button class="pc-soft-btn danger compact" type="button" title="删除恢复日志" @click="deleteRecovery(entry.scopeId)">
+            删除
           </button>
         </article>
       </div>

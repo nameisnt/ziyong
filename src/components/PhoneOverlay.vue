@@ -10,7 +10,15 @@
     :style="rootStyle"
     aria-label="酒馆手机创作助手"
   >
-    <section ref="shellEl" class="pc-phone-shell" :style="shellStyle">
+    <section
+      ref="shellEl"
+      class="pc-phone-shell"
+      :style="shellStyle"
+      @pointercancel.capture="onEdgeBackPointerCancel"
+      @pointerdown.capture="onEdgeBackPointerDown"
+      @pointermove.capture="onEdgeBackPointerMove"
+      @pointerup.capture="onEdgeBackPointerUp"
+    >
       <header
         ref="topbarEl"
         class="pc-topbar"
@@ -20,7 +28,7 @@
         @pointercancel="onPointerUp"
       >
         <div class="pc-top-left">
-          <button v-if="canGoBack" class="pc-top-btn" type="button" @click.stop="phone.goBack()">
+          <button v-if="canGoBack" class="pc-top-btn" type="button" @click.stop="requestPhoneBack">
             <i class="fa-solid fa-arrow-left"></i>
           </button>
           <span v-else class="pc-top-btn ghost" aria-hidden="true"></span>
@@ -31,6 +39,16 @@
         </div>
         <strong ref="topTitleEl" class="pc-top-title">{{ currentTitle }}</strong>
         <div class="pc-top-actions">
+          <button
+            v-if="contentTransferDomains.length"
+            class="pc-top-btn"
+            type="button"
+            title="导入或导出当前 App 内容"
+            aria-label="内容迁移"
+            @click.stop="contentTransferOpen = true"
+          >
+            <i class="fa-solid fa-right-left"></i>
+          </button>
           <button class="pc-top-btn" type="button" @click.stop="settingsStore.toggleTheme()">
             <i class="fa-solid" :class="settings.theme === 'light' ? 'fa-moon' : 'fa-sun'"></i>
           </button>
@@ -127,30 +145,36 @@
             >
               <section :class="['pc-grid', { sorting: appDrag.isDragging }]">
                 <button
-                  v-for="app in currentHomePageApps"
-                  :key="app.id"
+                  v-for="item in currentHomePageItems"
+                  :key="item.token"
                   type="button"
                   :class="[
                     'pc-app-tile',
                     {
-                      dragging: appDrag.appId === app.id && appDrag.isDragging,
-                      'insert-before': insertBeforeAppId === app.id,
-                      'insert-end': insertBeforeAppId === '__end__' && currentPageLastAppId === app.id,
+                      dragging: appDrag.itemToken === item.token && appDrag.isDragging,
+                      'folder-target': appDrag.folderTargetToken === item.token,
+                      'insert-before': insertBeforeItemToken === item.token,
+                      'insert-end': insertBeforeItemToken === '__end__' && currentPageLastItemToken === item.token,
                     },
                   ]"
-                  :data-app-id="app.id"
-                  :style="getDisplayAppStyle(app)"
-                  @click="openHomeApp(app.id)"
+                  :data-home-token="item.token"
+                  :style="item.app ? getDisplayAppStyle(item.app) : getFolderStyle(item)"
+                  @click="openHomeItem(item)"
                   @pointercancel="onAppPointerCancel"
-                  @pointerdown="onAppPointerDown($event, app.id)"
+                  @pointerdown="onAppPointerDown($event, item.token)"
                   @pointermove="onAppPointerMove"
                   @pointerup="onAppPointerUp"
                 >
                   <span class="pc-app-icon">
-                    <i class="fa-solid" :class="getDisplayAppIcon(app)"></i>
-                    <span v-if="getHomeAppCount(app)" class="pc-app-count-badge">{{ formatHomeAppCount(app) }}</span>
+                    <i class="fa-solid" :class="item.app ? getDisplayAppIcon(item.app) : 'fa-folder'"></i>
+                    <span v-if="item.folder" class="pc-app-count-badge">{{ item.folder.appIds.length }}</span>
+                    <span v-else-if="item.app && getHomeAppCount(item.app)" class="pc-app-count-badge">
+                      {{ formatHomeAppCount(item.app) }}
+                    </span>
                   </span>
-                  <strong :title="app.name">{{ app.name }}</strong>
+                  <strong :title="item.app?.name || item.folder?.name">{{
+                    item.app?.name || item.folder?.name
+                  }}</strong>
                 </button>
               </section>
 
@@ -168,19 +192,56 @@
             </section>
           </div>
 
-          <nav v-if="dockApps.length" class="pc-home-dock" aria-label="底部 Dock">
+          <nav ref="homeDockEl" class="pc-home-dock" aria-label="底部 Dock" data-home-zone="dock">
             <button
-              v-for="app in dockApps"
-              :key="app.id"
-              class="pc-dock-tile"
+              v-for="item in dockItems"
+              :key="item.token"
+              :class="['pc-dock-tile', { dragging: appDrag.itemToken === item.token && appDrag.isDragging }]"
               type="button"
-              :style="getDisplayAppStyle(app)"
-              @click="openHomeApp(app.id)"
+              :data-home-token="item.token"
+              :style="item.app ? getDisplayAppStyle(item.app) : getFolderStyle(item)"
+              @click="openHomeItem(item)"
+              @pointercancel="onAppPointerCancel"
+              @pointerdown="onAppPointerDown($event, item.token)"
+              @pointermove="onAppPointerMove"
+              @pointerup="onAppPointerUp"
             >
-              <span class="pc-app-icon"><i class="fa-solid" :class="getDisplayAppIcon(app)"></i></span>
-              <strong>{{ app.name }}</strong>
+              <span class="pc-app-icon">
+                <i class="fa-solid" :class="item.app ? getDisplayAppIcon(item.app) : 'fa-folder'"></i>
+                <span v-if="item.folder" class="pc-app-count-badge">{{ item.folder.appIds.length }}</span>
+              </span>
+              <strong>{{ item.app?.name || item.folder?.name }}</strong>
             </button>
           </nav>
+
+          <section v-if="activeHomeFolder" class="pc-home-folder-backdrop" @click.self="closeHomeFolder">
+            <article class="pc-section-card pc-home-folder-dialog" role="dialog" aria-modal="true">
+              <header class="pc-section-head">
+                <input
+                  :value="activeHomeFolder.name"
+                  class="pc-field pc-home-folder-name"
+                  maxlength="24"
+                  @change="renameActiveHomeFolder(($event.target as HTMLInputElement).value)"
+                />
+                <button class="pc-soft-btn compact" type="button" @click="dissolveActiveHomeFolder">解散</button>
+              </header>
+              <div class="pc-home-folder-grid">
+                <article v-for="(app, index) in activeHomeFolderApps" :key="app.id" class="pc-home-folder-app">
+                  <button type="button" :style="getDisplayAppStyle(app)" @click="openFolderApp(app.id)">
+                    <span class="pc-app-icon"><i class="fa-solid" :class="getDisplayAppIcon(app)"></i></span>
+                    <strong>{{ app.name }}</strong>
+                  </button>
+                  <div class="pc-home-folder-controls">
+                    <button class="pc-icon-btn" type="button" title="前移" @click="moveFolderApp(index, -1)">‹</button>
+                    <button class="pc-icon-btn" type="button" title="移出到主界面" @click="removeFolderApp(app.id)">
+                      ↗
+                    </button>
+                    <button class="pc-icon-btn" type="button" title="后移" @click="moveFolderApp(index, 1)">›</button>
+                  </div>
+                </article>
+              </div>
+            </article>
+          </section>
         </section>
 
         <KeepAlive>
@@ -193,17 +254,33 @@
           </div>
         </section>
       </main>
+      <ContentTransferOverlay
+        v-if="contentTransferDomains.length"
+        :app-name="currentApp?.name || currentTitle"
+        :domains="contentTransferDomains"
+        :open="contentTransferOpen"
+        @close="contentTransferOpen = false"
+      />
       <SearchableSelectOverlay />
     </section>
   </div>
 </template>
 
 <script setup lang="ts">
+import ContentTransferOverlay from '@/components/ContentTransferOverlay.vue';
 import GenerationTaskCenter from '@/components/GenerationTaskCenter.vue';
 import SearchableSelectOverlay from '@/components/SearchableSelectOverlay.vue';
 import { useDeferredAppMount } from '@/composables/useDeferredAppMount';
 import { getRegisteredPhoneAppComponent, getRegisteredPhoneBackupRehydrateHandlers } from '@/core/appRegistry';
-import { getPhoneApps, normalizeHomeLayout, type PhoneAppDefinition } from '@/data/apps';
+import {
+  homeFolderToken,
+  moveHomeLayoutItem,
+  normalizeHomeLayout as normalizeDesktopLayout,
+  putHomeAppInFolder,
+  readHomeFolderToken,
+  removeHomeAppFromFolder,
+} from '@/core/appLayout';
+import { getPhoneApps, type PhoneAppDefinition } from '@/data/apps';
 import { getWallpaperPreset } from '@/data/wallpapers';
 import { useBaguStore } from '@/store/bagu';
 import { useGenerationTaskStore } from '@/store/generationTasks';
@@ -214,12 +291,19 @@ import { useRecoveryStore } from '@/store/recovery';
 import { getCustomFontFamily, useSettingsStore } from '@/store/settings';
 import { useStatsStore } from '@/store/stats';
 import { getChatArchiveDomains } from '@/util/chatArchive';
+import { getAppContentTransferDomains } from '@/util/contentTransfer';
 import { jumpToTavernChat } from '@/util/tavernNavigation';
 import { storeToRefs } from 'pinia';
 
 const bagu = useBaguStore();
 const generationTasks = useGenerationTaskStore();
 const phone = usePhoneStore();
+
+function requestPhoneBack() {
+  const event = new CustomEvent('phone-before-back', { cancelable: true });
+  if (!window.dispatchEvent(event)) return;
+  void phone.goBack();
+}
 const prompts = usePromptStore();
 const reader = useReaderStore();
 const recovery = useRecoveryStore();
@@ -238,6 +322,8 @@ const {
   viewingScopeMeta,
 } = storeToRefs(phone);
 const currentAppId = computed(() => currentRoute.value.appId);
+const contentTransferDomains = computed(() => getAppContentTransferDomains(currentAppId.value));
+const contentTransferOpen = ref(false);
 const { mountedAppId } = useDeferredAppMount(isOpen, currentAppId);
 const appMountReady = computed(
   () => currentRoute.value.appId === 'home' || mountedAppId.value === currentRoute.value.appId,
@@ -252,6 +338,7 @@ const screenEl = ref<HTMLElement | null>(null);
 const topbarEl = ref<HTMLElement | null>(null);
 const topTitleEl = ref<HTMLElement | null>(null);
 const homeGridEl = ref<HTMLElement | null>(null);
+const homeDockEl = ref<HTMLElement | null>(null);
 const refreshingPhoneData = ref(false);
 type ToastrKind = 'error' | 'info' | 'success' | 'warning';
 type ToastrMethod = (message?: unknown, title?: unknown, options?: unknown) => unknown;
@@ -276,7 +363,9 @@ const originX = ref(0);
 const originY = ref(0);
 const dragging = ref(false);
 const appDrag = reactive({
-  appId: '',
+  itemToken: '',
+  destination: 'home' as 'dock' | 'home',
+  folderTargetToken: '',
   insertIndex: -1,
   isDragging: false,
   longPressReady: false,
@@ -291,32 +380,62 @@ const homeSwipe = reactive({
   swiping: false,
   tracking: false,
 });
+const edgeBack = reactive({
+  direction: 0 as -1 | 0 | 1,
+  pointerId: null as number | null,
+  startX: 0,
+  startY: 0,
+  swiping: false,
+  tracking: false,
+});
 const suppressHomeClickUntil = ref(0);
 const homePageIndex = ref(0);
 const homePageSize = computed(() => settings.value.interfaceSize.homeColumns * settings.value.interfaceSize.homeRows);
+const activeHomeFolderId = ref('');
 let dragPageTimer: ReturnType<typeof window.setTimeout> | null = null;
 let appDragLongPressTimer: ReturnType<typeof window.setTimeout> | null = null;
 
-const homeApps = computed(() => {
-  const layout = normalizeHomeLayout(settings.value.layout);
-  const apps = getPhoneApps();
-  return layout.appOrder
-    .map(id => apps.find(app => app.id === id))
-    .filter((app): app is PhoneAppDefinition => Boolean(app));
-});
-
-const dockApps = computed(() => homeApps.value.filter(app => app.defaultDock));
-const gridApps = computed(() => homeApps.value.filter(app => !app.defaultDock));
+type HomeDisplayItem = {
+  app: PhoneAppDefinition | null;
+  folder: ReturnType<typeof normalizeDesktopLayout>['folders'][number] | null;
+  token: string;
+};
+const homeLayout = computed(() => normalizeDesktopLayout(settings.value.layout));
+const phoneAppById = computed(() => new Map(getPhoneApps().map(app => [app.id, app])));
+function resolveHomeDisplayItem(token: string): HomeDisplayItem | null {
+  const folderId = readHomeFolderToken(token);
+  if (folderId) {
+    const folder = homeLayout.value.folders.find(item => item.id === folderId);
+    return folder ? { app: null, folder, token } : null;
+  }
+  const app = phoneAppById.value.get(token);
+  return app ? { app, folder: null, token } : null;
+}
+const gridItems = computed(
+  () => homeLayout.value.appOrder.map(resolveHomeDisplayItem).filter(Boolean) as HomeDisplayItem[],
+);
+const dockItems = computed(
+  () => homeLayout.value.dockOrder.map(resolveHomeDisplayItem).filter(Boolean) as HomeDisplayItem[],
+);
 const homePages = computed(() => {
-  const pages: (typeof gridApps.value)[] = [];
-  for (let index = 0; index < gridApps.value.length; index += homePageSize.value) {
-    pages.push(gridApps.value.slice(index, index + homePageSize.value));
+  const pages: HomeDisplayItem[][] = [];
+  for (let index = 0; index < gridItems.value.length; index += homePageSize.value) {
+    pages.push(gridItems.value.slice(index, index + homePageSize.value));
   }
   return pages.length ? pages : [[]];
 });
-const currentHomePageApps = computed(() => homePages.value[homePageIndex.value] ?? homePages.value[0] ?? []);
+const currentHomePageItems = computed(() => homePages.value[homePageIndex.value] ?? homePages.value[0] ?? []);
 const currentPageStartIndex = computed(() => homePageIndex.value * homePageSize.value);
-const currentPageLastAppId = computed(() => currentHomePageApps.value[currentHomePageApps.value.length - 1]?.id || '');
+const currentPageLastItemToken = computed(() => currentHomePageItems.value.at(-1)?.token || '');
+const activeHomeFolder = computed(
+  () => homeLayout.value.folders.find(folder => folder.id === activeHomeFolderId.value) ?? null,
+);
+const activeHomeFolderApps = computed(() =>
+  (activeHomeFolder.value?.appIds ?? []).flatMap(appId => {
+    const app = phoneAppById.value.get(appId);
+    return app ? [app] : [];
+  }),
+);
 const homeArchiveDomains = ref(getChatArchiveDomains(viewingScopeKey.value));
 const homeArchiveDomainByApp = computed(() => new Map(homeArchiveDomains.value.map(domain => [domain.appId, domain])));
 
@@ -324,11 +443,11 @@ function refreshHomeArchiveDomains() {
   homeArchiveDomains.value = getChatArchiveDomains(viewingScopeKey.value);
 }
 
-const insertBeforeAppId = computed(() => {
-  if (!appDrag.isDragging || !appDrag.appId) return '';
-  const order = gridApps.value.map(app => app.id).filter(id => id !== appDrag.appId);
+const insertBeforeItemToken = computed(() => {
+  if (!appDrag.isDragging || !appDrag.itemToken || appDrag.destination === 'dock') return '';
+  const order = homeLayout.value.appOrder.filter(id => id !== appDrag.itemToken);
   if (appDrag.insertIndex < 0) return '';
-  const currentPageIds = currentHomePageApps.value.map(app => app.id).filter(id => id !== appDrag.appId);
+  const currentPageIds = currentHomePageItems.value.map(item => item.token).filter(id => id !== appDrag.itemToken);
   const currentPageEnd = currentPageStartIndex.value + currentPageIds.length;
   if (
     currentPageIds.length &&
@@ -409,6 +528,7 @@ const rootStyle = computed(() => {
     '--pc-icon-radius': `${visualTheme.iconRadius}px`,
     '--pc-primary-text': cssColor(visualTheme.primaryTextColor),
     '--pc-reader-font-family': toFontStack(settings.value.reader.fontFamily, 'var(--pc-font-sans)'),
+    '--pc-reader-background': cssColor(settings.value.reader.backgroundColor) || 'transparent',
     '--pc-reader-font-size': `${settings.value.reader.fontSize}px`,
     '--pc-reader-line-height': String(settings.value.reader.lineHeight),
     '--pc-reader-text': cssColor(visualTheme.readerTextColor) || 'var(--pc-text)',
@@ -665,7 +785,7 @@ function persistPosition() {
 }
 
 function getHomeOrder() {
-  return gridApps.value.map(app => app.id);
+  return homeLayout.value.appOrder;
 }
 
 function clampHomePageIndex(pageIndex: number) {
@@ -684,7 +804,9 @@ function clearAppDragLongPressTimer() {
 
 function resetAppDrag() {
   clearAppDragLongPressTimer();
-  appDrag.appId = '';
+  appDrag.itemToken = '';
+  appDrag.destination = 'home';
+  appDrag.folderTargetToken = '';
   appDrag.insertIndex = -1;
   appDrag.isDragging = false;
   appDrag.longPressReady = false;
@@ -706,9 +828,9 @@ function resetHomeSwipe() {
 }
 
 function resolveInsertIndex(clientX: number, clientY: number) {
-  const tiles = Array.from(homeGridEl.value?.querySelectorAll<HTMLElement>('.pc-app-tile[data-app-id]') ?? []).filter(
-    tile => tile.dataset.appId && tile.dataset.appId !== appDrag.appId,
-  );
+  const tiles = Array.from(
+    homeGridEl.value?.querySelectorAll<HTMLElement>('.pc-app-tile[data-home-token]') ?? [],
+  ).filter(tile => tile.dataset.homeToken && tile.dataset.homeToken !== appDrag.itemToken);
 
   for (let index = 0; index < tiles.length; index += 1) {
     const rect = tiles[index].getBoundingClientRect();
@@ -761,7 +883,8 @@ function updateDragPageSwitch(clientX: number) {
 
 function onAppPointerDown(event: PointerEvent, appId: string) {
   if (event.button !== 0) return;
-  appDrag.appId = appId;
+  appDrag.itemToken = appId;
+  appDrag.destination = homeLayout.value.dockOrder.includes(appId) ? 'dock' : 'home';
   appDrag.pointerId = event.pointerId;
   appDrag.startX = event.clientX;
   appDrag.startY = event.clientY;
@@ -770,7 +893,7 @@ function onAppPointerDown(event: PointerEvent, appId: string) {
   appDrag.longPressReady = false;
   clearAppDragLongPressTimer();
   appDragLongPressTimer = window.setTimeout(() => {
-    if (appDrag.pointerId !== event.pointerId || appDrag.appId !== appId) return;
+    if (appDrag.pointerId !== event.pointerId || appDrag.itemToken !== appId) return;
     appDrag.longPressReady = true;
     appDragLongPressTimer = null;
   }, 360);
@@ -778,7 +901,7 @@ function onAppPointerDown(event: PointerEvent, appId: string) {
 }
 
 function onAppPointerMove(event: PointerEvent) {
-  if (appDrag.pointerId !== event.pointerId || !appDrag.appId) return;
+  if (appDrag.pointerId !== event.pointerId || !appDrag.itemToken) return;
   const distance = Math.hypot(event.clientX - appDrag.startX, event.clientY - appDrag.startY);
   if (!appDrag.longPressReady) {
     if (distance > 8) clearAppDragLongPressTimer();
@@ -790,16 +913,53 @@ function onAppPointerMove(event: PointerEvent) {
   if (!appDrag.isDragging) return;
 
   event.preventDefault();
+  const dockRect = homeDockEl.value?.getBoundingClientRect();
+  const inDock = Boolean(
+    dockRect &&
+    event.clientX >= dockRect.left &&
+    event.clientX <= dockRect.right &&
+    event.clientY >= dockRect.top &&
+    event.clientY <= dockRect.bottom,
+  );
+  appDrag.destination = inDock ? 'dock' : 'home';
+  appDrag.folderTargetToken = '';
+  if (!readHomeFolderToken(appDrag.itemToken)) {
+    const target = document.elementFromPoint(event.clientX, event.clientY)?.closest<HTMLElement>('[data-home-token]');
+    const targetToken = target?.dataset.homeToken || '';
+    if (targetToken && targetToken !== appDrag.itemToken) {
+      const rect = target.getBoundingClientRect();
+      const centered =
+        Math.abs(event.clientX - (rect.left + rect.width / 2)) < rect.width * 0.28 &&
+        Math.abs(event.clientY - (rect.top + rect.height / 2)) < rect.height * 0.28;
+      if (centered) appDrag.folderTargetToken = targetToken;
+    }
+  }
+  if (inDock && !appDrag.folderTargetToken) {
+    const dockTiles = Array.from(homeDockEl.value?.querySelectorAll<HTMLElement>('[data-home-token]') ?? []).filter(
+      tile => tile.dataset.homeToken !== appDrag.itemToken,
+    );
+    appDrag.insertIndex = dockTiles.findIndex(
+      tile => event.clientX < tile.getBoundingClientRect().left + tile.offsetWidth / 2,
+    );
+    if (appDrag.insertIndex < 0) appDrag.insertIndex = dockTiles.length;
+    return;
+  }
   updateDragPageSwitch(event.clientX);
   appDrag.insertIndex = resolveInsertIndex(event.clientX, event.clientY);
 }
 
 function commitAppDrag() {
-  if (!appDrag.appId || !appDrag.isDragging) return;
-  const nextOrder = getHomeOrder().filter(id => id !== appDrag.appId);
-  const insertIndex = Math.max(0, Math.min(appDrag.insertIndex, nextOrder.length));
-  nextOrder.splice(insertIndex, 0, appDrag.appId);
-  settingsStore.reorderHomeApps([...nextOrder, ...dockApps.value.map(app => app.id)]);
+  if (!appDrag.itemToken || !appDrag.isDragging) return;
+  const layout = appDrag.folderTargetToken
+    ? putHomeAppInFolder(homeLayout.value, appDrag.itemToken, appDrag.folderTargetToken)
+    : moveHomeLayoutItem(
+        homeLayout.value,
+        appDrag.itemToken,
+        appDrag.destination,
+        appDrag.insertIndex,
+        settings.value.interfaceSize.dockColumns,
+      );
+  settingsStore.setHomeLayout(layout);
   suppressHomeClickUntil.value = Date.now() + 250;
 }
 
@@ -872,9 +1032,168 @@ function onHomeSwipePointerCancel(event: PointerEvent) {
   resetHomeSwipe();
 }
 
+function resetEdgeBack() {
+  edgeBack.direction = 0;
+  edgeBack.pointerId = null;
+  edgeBack.startX = 0;
+  edgeBack.startY = 0;
+  edgeBack.swiping = false;
+  edgeBack.tracking = false;
+}
+
+function edgeBackTargetBlocked(target: EventTarget | null) {
+  return (
+    target instanceof Element &&
+    Boolean(
+      target.closest(
+        'input, textarea, select, [contenteditable="true"], .pc-dialog-backdrop, .pc-content-transfer-backdrop, .pc-home-folder-backdrop, .pc-reader-tool, .pc-action-menu, [data-horizontal-scroll]',
+      ),
+    )
+  );
+}
+
+function onEdgeBackPointerDown(event: PointerEvent) {
+  if (!canGoBack.value || currentRoute.value.appId === 'home' || event.button !== 0 || appDrag.isDragging) return;
+  const shellRect = shellEl.value?.getBoundingClientRect();
+  if (!shellRect || edgeBackTargetBlocked(event.target)) return;
+  const leftDistance = event.clientX - shellRect.left;
+  const rightDistance = shellRect.right - event.clientX;
+  if (leftDistance > 20 && rightDistance > 20) return;
+  edgeBack.direction = leftDistance <= 20 ? 1 : -1;
+  edgeBack.pointerId = event.pointerId;
+  edgeBack.startX = event.clientX;
+  edgeBack.startY = event.clientY;
+  edgeBack.swiping = false;
+  edgeBack.tracking = true;
+}
+
+function onEdgeBackPointerMove(event: PointerEvent) {
+  if (!edgeBack.tracking || edgeBack.pointerId !== event.pointerId) return;
+  const deltaX = event.clientX - edgeBack.startX;
+  const deltaY = event.clientY - edgeBack.startY;
+  if (!edgeBack.swiping && Math.abs(deltaX) > 12 && Math.abs(deltaX) > Math.abs(deltaY) * 1.25) {
+    if (Math.sign(deltaX) !== edgeBack.direction) return resetEdgeBack();
+    edgeBack.swiping = true;
+  }
+  if (!edgeBack.swiping) return;
+  event.preventDefault();
+  event.stopPropagation();
+}
+
+function onEdgeBackPointerUp(event: PointerEvent) {
+  if (!edgeBack.tracking || edgeBack.pointerId !== event.pointerId) return;
+  const deltaX = event.clientX - edgeBack.startX;
+  const deltaY = event.clientY - edgeBack.startY;
+  const shouldBack =
+    edgeBack.swiping &&
+    Math.sign(deltaX) === edgeBack.direction &&
+    Math.abs(deltaX) >= 48 &&
+    Math.abs(deltaX) > Math.abs(deltaY) * 1.25;
+  if (edgeBack.swiping) {
+    event.preventDefault();
+    event.stopPropagation();
+  }
+  resetEdgeBack();
+  if (shouldBack) requestPhoneBack();
+}
+
+function onEdgeBackPointerCancel(event: PointerEvent) {
+  if (edgeBack.pointerId !== event.pointerId) return;
+  resetEdgeBack();
+}
+
 function openHomeApp(appId: string) {
   if (Date.now() < suppressHomeClickUntil.value) return;
   phone.openApp(appId);
+}
+
+function getFolderStyle(item: HomeDisplayItem) {
+  const firstApp = item.folder?.appIds.map(appId => phoneAppById.value.get(appId)).find(Boolean);
+  return firstApp ? getDisplayAppStyle(firstApp) : { '--app-accent': 'var(--pc-theme-accent)' };
+}
+
+function openHomeItem(item: HomeDisplayItem) {
+  if (Date.now() < suppressHomeClickUntil.value) return;
+  if (item.folder) {
+    activeHomeFolderId.value = item.folder.id;
+    return;
+  }
+  if (item.app) openHomeApp(item.app.id);
+}
+
+function closeHomeFolder() {
+  activeHomeFolderId.value = '';
+}
+
+function renameActiveHomeFolder(name: string) {
+  const folder = activeHomeFolder.value;
+  if (!folder) return;
+  settingsStore.setHomeLayout({
+    ...homeLayout.value,
+    folders: homeLayout.value.folders.map(item =>
+      item.id === folder.id ? { ...item, name: name.trim() || '文件夹' } : item,
+    ),
+  });
+}
+
+function openFolderApp(appId: string) {
+  closeHomeFolder();
+  openHomeApp(appId);
+}
+
+function moveFolderApp(index: number, offset: -1 | 1) {
+  const folder = activeHomeFolder.value;
+  if (!folder) return;
+  const target = index + offset;
+  if (target < 0 || target >= folder.appIds.length) return;
+  const folders = homeLayout.value.folders.map(item => {
+    if (item.id !== folder.id) return item;
+    const appIds = [...item.appIds];
+    const [appId] = appIds.splice(index, 1);
+    if (appId) appIds.splice(target, 0, appId);
+    return { ...item, appIds };
+  });
+  settingsStore.setHomeLayout({ ...homeLayout.value, folders });
+}
+
+function removeFolderApp(appId: string) {
+  const folder = activeHomeFolder.value;
+  if (!folder) return;
+  settingsStore.setHomeLayout(
+    removeHomeAppFromFolder(
+      homeLayout.value,
+      folder.id,
+      appId,
+      currentPageStartIndex.value + currentHomePageItems.value.length,
+    ),
+  );
+  if (!settings.value.layout.folders.some(item => item.id === folder.id)) closeHomeFolder();
+}
+
+function dissolveActiveHomeFolder() {
+  const folder = activeHomeFolder.value;
+  if (!folder) return;
+  const token = homeFolderToken(folder.id);
+  const appOrder = homeLayout.value.appOrder.filter(item => item !== token);
+  const dockOrder = homeLayout.value.dockOrder.filter(item => item !== token);
+  const wasDocked = homeLayout.value.dockOrder.includes(token);
+  const target = wasDocked ? dockOrder : appOrder;
+  const sourceOrder = wasDocked ? homeLayout.value.dockOrder : homeLayout.value.appOrder;
+  const index = Math.max(0, sourceOrder.indexOf(token));
+  if (wasDocked) {
+    const [firstAppId, ...remainingAppIds] = folder.appIds;
+    if (firstAppId) dockOrder.splice(index, 0, firstAppId);
+    appOrder.unshift(...remainingAppIds);
+  } else {
+    target.splice(index, 0, ...folder.appIds);
+  }
+  settingsStore.setHomeLayout({
+    ...homeLayout.value,
+    appOrder,
+    dockOrder,
+    folders: homeLayout.value.folders.filter(item => item.id !== folder.id),
+  });
+  closeHomeFolder();
 }
 
 async function jumpViewingChatToTavern() {
@@ -978,6 +1297,13 @@ watch(
 );
 
 watch([currentTitle, () => settings.value.fontFamily], scheduleTopTitleFit);
+
+watch(
+  () => currentRoute.value.appId,
+  () => {
+    contentTransferOpen.value = false;
+  },
+);
 
 watch(
   () => homePages.value.length,
@@ -1619,6 +1945,77 @@ useEventListener(window, 'orientationchange', async () => {
 .pc-app-tile.dragging {
   opacity: 0.55;
   transform: scale(0.94);
+}
+
+.pc-app-tile.folder-target {
+  transform: scale(1.06);
+  filter: brightness(1.08);
+}
+
+.pc-home-folder-backdrop {
+  position: absolute;
+  z-index: 30;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  padding: 20px;
+  background: color-mix(in srgb, var(--pc-text) 24%, transparent);
+  backdrop-filter: blur(8px);
+}
+
+.pc-home-folder-dialog {
+  width: min(100%, 310px);
+  max-height: 72%;
+  overflow: auto;
+  display: grid;
+  gap: 14px;
+}
+
+.pc-home-folder-name {
+  min-width: 0;
+  flex: 1;
+}
+
+.pc-home-folder-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 14px 8px;
+}
+
+.pc-home-folder-app,
+.pc-home-folder-app > button {
+  min-width: 0;
+}
+
+.pc-home-folder-app > button {
+  width: 100%;
+  border: 0;
+  background: transparent;
+  color: var(--pc-text);
+  display: grid;
+  justify-items: center;
+  gap: 6px;
+}
+
+.pc-home-folder-app strong {
+  width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 11px;
+}
+
+.pc-home-folder-controls {
+  display: flex;
+  justify-content: center;
+  gap: 2px;
+  margin-top: 4px;
+}
+
+.pc-home-folder-controls .pc-icon-btn {
+  width: 24px;
+  height: 24px;
+  font-size: 12px;
 }
 
 .pc-app-tile.insert-before,

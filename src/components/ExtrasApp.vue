@@ -77,6 +77,7 @@
       @continue="openGenerateChapter(activeBook.id)"
       @delete="removeChapter(activeBook.id, activeChapter.id)"
       @edit="openEditChapter(activeBook.id, activeChapter.id, viewedChapterVersionId)"
+      @erase="overwriteExtrasContent"
       @favorite="extras.toggleFavorite(activeBook.id, activeChapter.id)"
       @next="openChapter(activeBook.id, chapterNextId || '', true)"
       @previous="openChapter(activeBook.id, chapterPrevId || '', true)"
@@ -103,6 +104,7 @@
       :generation-state="chapterGenerationState"
       :selected-type-value="selectedChapterTypeValue"
       :show-custom-type-field="showChapterCustomTypeField"
+      :summary-rule-options="summaryRuleOptions"
       :type-options="chapterTypeOptions"
       @cancel="phone.goBack()"
       @generate="runChapterGeneration"
@@ -150,7 +152,16 @@
       @back="returnToChapterGenerate"
       @reparse="reparseChapterPreviewRaw"
       @save="saveChapterPreview"
-    />
+    >
+      <template v-if="chapterGenerationState.preview.summary" #afterContent>
+        <section class="pc-section-card pc-extras-preview-summary">
+          <label class="pc-field-group">
+            <span class="pc-field-label">自动章节摘要</span>
+            <textarea v-model="chapterGenerationState.preview.summary" class="pc-area compact"></textarea>
+          </label>
+        </section>
+      </template>
+    </GenerationPreviewPage>
 
     <GenerationPreviewPage
       v-else-if="route.page === 'summary-preview' && generationState.preview"
@@ -207,6 +218,7 @@ import { getRegisteredPhoneGenerationAdapter } from '@/core/appRegistry';
 import { type ExtraChapterGenerationIntent, type ExtraChapterGenerationMode } from '@/core/extrasGeneration';
 import { buildGenerationPreview, captureGenerationPrompt } from '@/core/generationService';
 import { useExtrasStore } from '@/store/extras';
+import { useRegexDisplayStore } from '@/apps/regex-display/store';
 import { usePhoneStore } from '@/store/phone';
 import { usePromptStore } from '@/store/prompts';
 import { useSettingsStore } from '@/store/settings';
@@ -222,6 +234,7 @@ import {
 } from '@/util/generationReplay';
 import { usePreviewDraftPersistence } from '@/util/previewDrafts';
 import { formatGenerationReferences, type GenerationReferenceItem } from '@/util/references';
+import { getRegexRulesByOperation } from '@/util/regexDisplay';
 import { resolveContentVersion } from '@/util/contentVersions';
 import { buildExtraHistoryContext, getSummarizableChapters } from '@/util/extrasSummary';
 import { resolveExtraChapterGenerationRecords } from '@/util/extraGenerationRecords';
@@ -229,6 +242,7 @@ import { useInvalidRouteFallback } from '@/util/routeFallback';
 import { storeToRefs } from 'pinia';
 
 const extras = useExtrasStore();
+const regexDisplay = useRegexDisplayStore();
 const phone = usePhoneStore();
 const prompts = usePromptStore();
 const settingsStore = useSettingsStore();
@@ -237,6 +251,10 @@ const extraSummaryGenerationAdapter = getRegisteredPhoneGenerationAdapter('extra
 const { books, failedDrafts } = storeToRefs(extras);
 const { currentRoute: route } = storeToRefs(phone);
 const { settings } = storeToRefs(settingsStore);
+const summaryExtractionRules = computed(() => getRegexRulesByOperation(regexDisplay.rules, 'extract'));
+const summaryRuleOptions = computed(() =>
+  summaryExtractionRules.value.map(rule => ({ label: rule.name || '未命名规则', value: rule.id })),
+);
 const generationSourceMode = computed({
   get: () => settings.value.generation.sourceMode,
   set: value => {
@@ -257,10 +275,7 @@ const sortDesc = computed({
   },
 });
 const chapterContentEl = ref<HTMLElement | null>(null);
-const { scrollToBottom, scrollToTop, scrollToVersionPosition } = useDetailScroll(
-  chapterContentEl,
-  '.pc-extras-detail-page .pc-detail-content',
-);
+const { scrollToBottom, scrollToTop } = useDetailScroll(chapterContentEl, '.pc-extras-detail-page .pc-detail-content');
 const showCatalogModal = ref(false);
 const bookDraft = reactive({
   typeName: '',
@@ -315,6 +330,7 @@ const {
       bookId: preview.bookId || route.value.params?.bookId || '',
       chapterId: preview.chapterId || route.value.params?.chapterId || '',
       mode: normalizeChapterGenerationMode(preview.mode),
+      summary: preview.summary || '',
       targetVersionId: preview.targetVersionId || route.value.params?.versionId || '',
     };
   },
@@ -802,9 +818,7 @@ watch(
       selectedReferences.value = [];
       generationDraft.coveredChapterIds = [];
       generationDraft.enabled = true;
-      generationDraft.fromStartEnd = 20;
       generationDraft.rangeText = '';
-      generationDraft.recentCount = 20;
       generationDraft.singleMessageId = 0;
       generationDraft.userRequirement = '';
       generationState.error = '';
@@ -919,11 +933,9 @@ function resetChapterGenerationDraft(mode: typeof chapterGenerationDraft.mode) {
       typeName: book.typeName || prompt.name,
     });
   }
-  chapterGenerationDraft.fromStartEnd = 20;
   chapterGenerationDraft.mode = mode;
   chapterGenerationDraft.generationIntent = mode === '新开一本书' ? '新开一本书' : '续写上一章';
   chapterGenerationDraft.rangeText = '';
-  chapterGenerationDraft.recentCount = 20;
   chapterGenerationDraft.singleMessageId = 0;
   chapterGenerationDraft.typeId = prompt?.id || '';
   chapterGenerationDraft.typeName = book?.typeName || prompt?.name || '';
@@ -943,6 +955,11 @@ function resetChapterGenerationDraft(mode: typeof chapterGenerationDraft.mode) {
     chapterGenerationDraft.rangeText = generationRecord.rangeText;
     chapterGenerationDraft.recentCount = generationRecord.recentCount;
     chapterGenerationDraft.singleMessageId = generationRecord.singleMessageId;
+    chapterGenerationDraft.parseSummary = generationRecord.parseSummary ?? false;
+    chapterGenerationDraft.removeSummaryBlock = generationRecord.removeSummaryBlock ?? false;
+    chapterGenerationDraft.summaryFormatHint =
+      generationRecord.summaryFormatHint || chapterGenerationDraft.summaryFormatHint;
+    chapterGenerationDraft.summaryRuleId = generationRecord.summaryRuleId || '';
     chapterGenerationDraft.typeId = generationRecord.typeId;
     chapterGenerationDraft.typeName = generationRecord.typeName;
     chapterGenerationDraft.typePrompt = generationRecord.typePrompt;
@@ -1009,7 +1026,6 @@ function selectChapterVersion(versionId: string) {
     chapterId: chapter.id,
     versionId,
   });
-  void nextTick(() => scrollToVersionPosition(settings.value.reader.versionNavigatorPosition));
 }
 
 function openEditChapter(bookId: string, chapterId: string, versionId?: string) {
@@ -1048,6 +1064,18 @@ function openExtrasBaguScan() {
     chapterId: activeChapter.value.id,
     ...(viewedChapterVersionId.value ? { versionId: viewedChapterVersionId.value } : {}),
   });
+}
+
+function overwriteExtrasContent(content: string) {
+  const book = activeBook.value;
+  const chapter = activeChapter.value;
+  if (!book || !chapter) return;
+  const versionId = viewedChapterVersionId.value;
+  const result = versionId
+    ? extras.updateChapterVersion(book.id, chapter.id, versionId, { content, title: viewedChapter.value.title })
+    : extras.updateChapter(book.id, chapter.id, { content, title: viewedChapter.value.title });
+  if (!result) return;
+  toastr.success(versionId ? '已覆盖当前番外版本' : '已覆盖当前番外正文');
 }
 
 function selectCatalogChapter(chapterId: string) {

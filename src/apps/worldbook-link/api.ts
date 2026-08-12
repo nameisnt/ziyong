@@ -323,6 +323,28 @@ export function getAllWorldbookNames() {
   return uniqueNames(getNames?.() ?? []).sort((left, right) => left.localeCompare(right, 'zh-CN', { numeric: true }));
 }
 
+export async function renameWorldbookSafely(oldName: string, newName: string) {
+  const source = normalizedWorldbookName(oldName);
+  const target = normalizedWorldbookName(newName);
+  if (!source || !target) throw new Error('世界书名称不能为空');
+  if (source === target) return;
+  const names = getAllWorldbookNames();
+  if (!names.includes(source)) throw new Error(`世界书“${source}”已不存在`);
+  if (names.includes(target)) throw new Error(`已经存在名为“${target}”的世界书`);
+  const renameWorldbook =
+    getOptionalGlobalFunction<(oldName: string, newName: string) => unknown>('renameWorldbook') ??
+    getOptionalGlobalFunction<(oldName: string, newName: string) => unknown>('renameWorldInfo');
+  if (!renameWorldbook) {
+    throw new Error('当前酒馆没有开放能同时迁移绑定引用的世界书改名接口；为避免断开角色或聊天绑定，本次未修改');
+  }
+  await renameWorldbook(source, target);
+  await getOptionalGlobalFunction<() => Promise<void>>('updateWorldInfoList')?.();
+  const after = getAllWorldbookNames();
+  if (!after.includes(target) || after.includes(source)) {
+    throw new Error('酒馆未能确认世界书改名结果，请刷新后检查');
+  }
+}
+
 function createWorldbookEntryPayload(entry: WorldbookEntryDraft, index: number) {
   return {
     content: entry.content,

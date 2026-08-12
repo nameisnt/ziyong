@@ -349,6 +349,14 @@ async function toggleReaderFooter() {
   await waitForPaint();
 }
 
+async function openReaderTools() {
+  const trigger = document.querySelector<HTMLButtonElement>('.pc-reader-tool-trigger');
+  if (!trigger) throw new Error('Reader tool trigger is missing');
+  if (!document.querySelector('.pc-reader-tool-menu')) trigger.click();
+  await waitForPaint();
+  if (!document.querySelector('.pc-reader-tool-menu')) throw new Error('Reader tool menu did not open');
+}
+
 async function openReaderCatalog() {
   await toggleReaderFooter();
   const catalogButton = document.querySelector<HTMLButtonElement>('.pc-detail-nav .catalog');
@@ -983,6 +991,41 @@ async function applyScenario(name: VisualScenarioName, options: { height?: numbe
     await waitForPaint();
     if (!document.querySelector('.pc-conversion-panel')) {
       throw new Error('Custom app conversion panel did not open from the saved entry');
+    }
+  } else if (name === 'content-transfer-dialog') {
+    resetPhoneToRoute('app-builder', 'root', '一键生成 App');
+    await waitForPaint();
+    const transferButton = document.querySelector<HTMLButtonElement>('.pc-top-actions [aria-label="内容迁移"]');
+    if (!transferButton) throw new Error('App content transfer action is missing');
+    transferButton.click();
+    await waitForPaint();
+    const dialog = document.querySelector<HTMLElement>('.pc-content-transfer-dialog');
+    if (!dialog) throw new Error('App content transfer dialog did not open');
+    const domainSelect = dialog.querySelector<HTMLSelectElement>('.pc-select');
+    if (!domainSelect || domainSelect.options.length !== 3) {
+      throw new Error('Multi-domain App transfer selector is incomplete');
+    }
+    const { buildContentTransfer } = await import('@/util/contentTransfer');
+    const input = dialog.querySelector<HTMLInputElement>('input[type="file"]');
+    if (!input) throw new Error('App content transfer file input is missing');
+    const file = new File([JSON.stringify(buildContentTransfer('custom-app-definitions'))], 'app-transfer.json', {
+      type: 'application/json',
+    });
+    Object.defineProperty(input, 'files', { configurable: true, value: [file] });
+    input.dispatchEvent(new Event('change', { bubbles: true }));
+    const modesVisible = await waitForVisualCondition(
+      () => dialog.querySelectorAll<HTMLButtonElement>('.pc-segment-btn').length === 3,
+    );
+    if (!modesVisible) throw new Error('App content transfer conflict modes did not appear after file preview');
+    const modes = [...dialog.querySelectorAll<HTMLButtonElement>('.pc-segment-btn')].map(button =>
+      button.textContent?.trim(),
+    );
+    if (!['创建副本', '合并', '覆盖'].every(label => modes.includes(label))) {
+      throw new Error('App content transfer conflict modes are incomplete');
+    }
+    const actions = [...dialog.querySelectorAll<HTMLButtonElement>('button')].map(button => button.textContent?.trim());
+    if (!['导出内容', '选择文件'].every(label => actions.includes(label))) {
+      throw new Error('App content transfer actions are incomplete');
     }
   } else if (
     name === 'generation-preview-long-title' ||
@@ -2372,12 +2415,15 @@ async function applyScenario(name: VisualScenarioName, options: { height?: numbe
     await waitForPaint();
     let ownerRow = document.querySelector<HTMLButtonElement>('.pc-owner-row');
     if (!ownerRow) {
-      const alternateTab = [...document.querySelectorAll<HTMLButtonElement>('.pc-tab-row .pc-segment-btn')].find(
-        button => !button.classList.contains('active'),
+      const archiveTabs = [...document.querySelectorAll<HTMLButtonElement>('.pc-tab-row .pc-segment-btn')].filter(
+        button => !button.textContent?.includes('当前聊天'),
       );
-      alternateTab?.click();
-      await waitForPaint();
-      ownerRow = document.querySelector<HTMLButtonElement>('.pc-owner-row');
+      for (const archiveTab of archiveTabs) {
+        archiveTab.click();
+        await waitForPaint();
+        ownerRow = document.querySelector<HTMLButtonElement>('.pc-owner-row');
+        if (ownerRow) break;
+      }
     }
     if (!ownerRow) throw new Error('Archive floor backup owner is missing');
     ownerRow.click();
@@ -2804,6 +2850,7 @@ async function applyScenario(name: VisualScenarioName, options: { height?: numbe
       versionId: saved.version.id,
     });
     await waitForPaint();
+    await openReaderTools();
 
     const previousButton = document.querySelector<HTMLButtonElement>(
       '.pc-version-navigator button[title="上一个版本"]',
@@ -2849,9 +2896,8 @@ async function applyScenario(name: VisualScenarioName, options: { height?: numbe
     if (document.querySelector('.pc-version-navigator .pc-primary-btn, .pc-version-actions')) {
       throw new Error('Version navigator still exposed separate adoption or deletion actions');
     }
-    await toggleReaderFooter();
-    const deleteButton = document.querySelector<HTMLButtonElement>('.pc-reader-footer-popover .danger');
-    if (!deleteButton) throw new Error('Detail footer did not expose contextual version deletion');
+    const deleteButton = document.querySelector<HTMLButtonElement>('.pc-reader-tool-menu .danger');
+    if (!deleteButton) throw new Error('Reader tool menu did not expose contextual version deletion');
     deleteButton.click();
     const deleteNoticeOpened = await waitForVisualCondition(() =>
       Boolean(document.querySelector('.pc-phone-notice-actions button[data-role="danger"]')),

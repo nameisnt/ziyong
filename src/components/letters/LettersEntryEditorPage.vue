@@ -12,17 +12,25 @@
       </template>
 
       <input v-model="title" class="pc-field" type="text" placeholder="标题" />
-      <div class="pc-segment pc-letters-format-segment">
-        <button
-          v-for="option in formatOptions"
-          :key="option.value"
-          :class="['pc-segment-btn', { active: format === option.value }]"
-          type="button"
-          @click="format = option.value"
-        >
-          {{ option.label }}
-        </button>
-      </div>
+      <label class="pc-field-group">
+        <span class="pc-field-label">书信类型</span>
+        <SearchableCombobox
+          v-model="format"
+          allow-custom
+          input-label="选择或输入书信类型"
+          :options="formatOptions"
+          placeholder="选择类型或输入自定义名称"
+        />
+      </label>
+      <label v-if="isCustomFormat" class="pc-field-group">
+        <span class="pc-field-label">自定义类型提示词</span>
+        <textarea
+          v-model="formatPrompt"
+          class="pc-area"
+          rows="3"
+          placeholder="说明这种书信的结构、口吻和格式"
+        ></textarea>
+      </label>
       <textarea v-model="content" class="pc-area pc-letters-entry-content" placeholder="正文"></textarea>
 
       <div class="pc-form-actions">
@@ -35,6 +43,7 @@
 
 <script setup lang="ts">
 import type { LetterFormat } from '@/type/letter';
+import SearchableCombobox from '@/components/SearchableCombobox.vue';
 
 defineProps<{
   bookTitleLabel: string;
@@ -50,9 +59,11 @@ defineEmits<{ cancel: []; save: [] }>();
 const bookTitle = defineModel<string>('bookTitle', { required: true });
 const content = defineModel<string>('content', { required: true });
 const format = defineModel<LetterFormat>('format', { required: true });
+const formatPrompt = defineModel<string>('formatPrompt', { required: true });
 const receiverName = defineModel<string>('receiverName', { required: true });
 const senderName = defineModel<string>('senderName', { required: true });
 const title = defineModel<string>('title', { required: true });
+const isCustomFormat = computed(() => !['email', 'formal', 'note', 'sms'].includes(format.value));
 </script>
 
 <style scoped>
@@ -68,12 +79,6 @@ const title = defineModel<string>('title', { required: true });
   color: var(--pc-muted);
   font-size: 13px;
   text-align: right;
-}
-
-.pc-letters-format-segment {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  margin-top: 14px;
 }
 
 .pc-letters-entry-content {

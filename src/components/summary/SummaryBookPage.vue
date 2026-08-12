@@ -3,12 +3,6 @@
     <div class="pc-compact-toolbar pc-directory-toolbar">
       <span class="pc-directory-count">{{ book.entries.length }} 条总结</span>
       <div class="pc-directory-actions pc-summary-book-toolbar">
-        <button class="pc-icon-btn" type="button" title="导入总结" @click="$emit('import')">
-          <i class="fa-solid fa-file-import"></i>
-        </button>
-        <button class="pc-icon-btn" type="button" title="批量生成" @click="$emit('batch')">
-          <i class="fa-solid fa-layer-group"></i>
-        </button>
         <button class="pc-icon-btn primary" type="button" title="生成总结" @click="$emit('generate')">
           <i class="fa-solid fa-wand-magic-sparkles"></i>
         </button>
@@ -20,12 +14,14 @@
         >
           <i :class="sortDesc ? 'fa-solid fa-arrow-down-wide-short' : 'fa-solid fa-arrow-up-short-wide'"></i>
         </button>
-        <button class="pc-icon-btn" type="button" title="重命名总结集" @click="$emit('rename')">
-          <i class="fa-solid fa-pen"></i>
-        </button>
-        <button class="pc-icon-btn danger" type="button" title="删除总结集" @click="$emit('remove-book')">
-          <i class="fa-solid fa-trash"></i>
-        </button>
+        <ActionMenu label="管理" icon="fa-solid fa-bars">
+          <button type="button" @click="$emit('import')"><i class="fa-solid fa-file-import"></i>导入总结</button>
+          <button type="button" @click="$emit('batch')"><i class="fa-solid fa-layer-group"></i>批量生成</button>
+          <button type="button" @click="$emit('rename')"><i class="fa-solid fa-pen"></i>重命名总结集</button>
+          <button class="danger" type="button" @click="$emit('remove-book')">
+            <i class="fa-solid fa-trash"></i>删除总结集
+          </button>
+        </ActionMenu>
       </div>
     </div>
 
@@ -60,6 +56,7 @@
 
 <script setup lang="ts">
 import EmptyState from '@/components/EmptyState.vue';
+import ActionMenu from '@/components/ActionMenu.vue';
 import FailedDraftList from '@/components/FailedDraftList.vue';
 import type { FailedGenerationDraft } from '@/type/generation';
 import type { SummaryBook, SummaryEntry } from '@/type/summary';

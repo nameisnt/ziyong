@@ -27,6 +27,7 @@ export function createVisualScenarioGroups(rootAppScenarios: string[]): VisualSc
         'custom-app-conversion-merge',
         'custom-app-extract-rules',
         'custom-app-save-flow',
+        'content-transfer-dialog',
       ],
     },
     {
@@ -45,6 +46,7 @@ export function createVisualScenarioGroups(rootAppScenarios: string[]): VisualSc
         'recovery-reader',
         'recovery-confirm',
         'recovery-result',
+        'recovery-settings',
       ],
     },
     { id: 'bagu', scenarios: ['bagu-scan-actions', 'bagu-hit-details', 'bagu-scan-applied'] },

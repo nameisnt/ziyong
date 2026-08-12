@@ -10,6 +10,10 @@ export function useExtrasGenerationState() {
     rangeText: '',
     recentCount: 20,
     singleMessageId: 0,
+    parseSummary: false,
+    removeSummaryBlock: false,
+    summaryFormatHint: '请在章节结果中额外输出 <summary>番外摘要</summary>，摘要应概括关键事件和人物状态。',
+    summaryRuleId: '',
     typeId: '',
     typeName: '',
     typePrompt: '',
@@ -26,6 +30,7 @@ export function useExtrasGenerationState() {
       generationRecord?: ExtraChapterGenerationRecord;
       mode: ExtraChapterGenerationMode;
       raw: string;
+      summary: string;
       targetVersionId: string;
       title: string;
       warnings: string[];

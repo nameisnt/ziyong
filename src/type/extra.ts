@@ -30,6 +30,14 @@ export const ExtraChapterGenerationRecordSchema = z.object({
   typeName: z.string().default(''),
   typePrompt: z.string().default(''),
   userRequirement: z.string().default(''),
+  parseSummary: z.boolean().optional(),
+  removeSummaryBlock: z.boolean().optional(),
+  summaryFormatHint: z.string().optional(),
+  summaryRuleFlags: z.string().optional(),
+  summaryRuleId: z.string().optional(),
+  summaryRuleName: z.string().optional(),
+  summaryRulePattern: z.string().optional(),
+  summaryRuleReplacement: z.string().optional(),
   replay: GenerationReplaySnapshotSchema.optional(),
 });
 export type ExtraChapterGenerationRecord = z.infer<typeof ExtraChapterGenerationRecordSchema>;
@@ -58,6 +66,7 @@ export const ExtraSummarySchema = z.object({
   content: z.string(),
   coveredChapterIds: z.array(z.string()).default([]),
   enabled: z.boolean().default(true),
+  autoChapterId: z.string().default(''),
   createdAt: z.string(),
   updatedAt: z.string(),
 });

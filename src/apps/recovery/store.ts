@@ -34,7 +34,6 @@ import {
   type DuplicateScanResult,
   type ParsedChatBackup,
   type RecoveryCharacter,
-  type LoadedSettingsSnapshot,
   type SettingsDeleteResult,
   type SettingsDuplicateScanResult,
   type SettingsSnapshotFingerprint,
@@ -76,9 +75,7 @@ export const useChatRecoveryStore = defineStore('chat-recovery', () => {
   const duplicateScanResult = shallowRef<DuplicateScanResult | null>(null);
   const duplicateDeleteResult = shallowRef<DuplicateDeleteResult | null>(null);
   const settingsSnapshots = ref<SettingsSnapshotSummary[]>([]);
-  const activeSettingsSnapshot = shallowRef<LoadedSettingsSnapshot | null>(null);
   const settingsLoading = ref(false);
-  const settingsReading = ref(false);
   const settingsMaking = ref(false);
   const settingsRestoring = ref(false);
   const settingsDeleting = ref(false);
@@ -129,23 +126,6 @@ export const useChatRecoveryStore = defineStore('chat-recovery', () => {
     }
   }
 
-  async function readSettingsSnapshot(summary: SettingsSnapshotSummary) {
-    settingsReading.value = true;
-    settingsError.value = '';
-    try {
-      const raw = await loadNativeSettingsSnapshot(summary.name);
-      const loaded = { formatted: formatSettingsSnapshotJson(raw), raw, summary };
-      activeSettingsSnapshot.value = loaded;
-      return loaded;
-    } finally {
-      settingsReading.value = false;
-    }
-  }
-
-  function releaseActiveSettingsSnapshot() {
-    activeSettingsSnapshot.value = null;
-  }
-
   async function makeSettingsSnapshot() {
     if (managementBusy.value) throw new Error('已有备份任务正在执行');
     settingsMaking.value = true;
@@ -167,6 +147,38 @@ export const useChatRecoveryStore = defineStore('chat-recovery', () => {
       await refreshSettingsSnapshots();
     } finally {
       settingsRestoring.value = false;
+    }
+  }
+
+  async function deleteSettingsSnapshot(summary: SettingsSnapshotSummary) {
+    if (managementBusy.value) throw new Error('已有备份任务正在执行');
+    const current = settingsSnapshots.value.find(item => item.name === summary.name);
+    if (!current) throw new Error('这份设置快照已经不存在，请刷新后重试');
+    settingsDeleting.value = true;
+    let cleanupToken = '';
+    try {
+      const cleanup = await requestSettingsCleanupToken();
+      cleanupToken = cleanup.token;
+      const matched = cleanup.settingsBackups.find(item => item.name === current.name);
+      if (!matched) throw new Error('酒馆清理报告中没有这份设置快照，已停止删除');
+      if (typeof matched.size === 'number' && matched.size !== current.size) {
+        throw new Error('设置快照大小在确认后发生变化，已停止删除');
+      }
+      await deleteSettingsSnapshotsByHashes(cleanupToken, [matched.hash]);
+      await refreshSettingsSnapshots();
+      if (settingsSnapshots.value.some(item => item.name === current.name)) {
+        throw new Error('酒馆没有删除这份设置快照');
+      }
+      return current;
+    } finally {
+      if (cleanupToken) {
+        try {
+          await finalizeSettingsCleanupToken(cleanupToken);
+        } catch {
+          // 删除后的列表复核结果更权威；令牌由酒馆侧限制为当前用户与本次报告。
+        }
+      }
+      settingsDeleting.value = false;
     }
   }
 
@@ -748,6 +760,7 @@ export const useChatRecoveryStore = defineStore('chat-recovery', () => {
     duplicateScan?: DuplicateScanResult | null;
     loaded?: LoadedChatBackup | null;
     result?: RecoveryImportResult | null;
+    settingsSnapshots?: SettingsSnapshotSummary[];
   }) {
     backups.value = input.backups;
     characters.value = input.characters;
@@ -757,13 +770,13 @@ export const useChatRecoveryStore = defineStore('chat-recovery', () => {
     cleanupDeleteResult.value = input.cleanupResult ?? null;
     duplicateScanResult.value = input.duplicateScan ?? null;
     duplicateDeleteResult.value = input.duplicateResult ?? null;
+    settingsSnapshots.value = input.settingsSnapshots ?? [];
     error.value = '';
     status.value = 'ready';
   }
 
   return {
     activeBackup,
-    activeSettingsSnapshot,
     backups,
     characters,
     cleanupDeleteResult,
@@ -776,6 +789,7 @@ export const useChatRecoveryStore = defineStore('chat-recovery', () => {
     deleteCleanupCandidates,
     deleteContainedBackups,
     deleteDuplicateBackups,
+    deleteSettingsSnapshot,
     deleteSettingsSnapshots,
     deletingFileName,
     duplicateDeleteResult,
@@ -794,11 +808,9 @@ export const useChatRecoveryStore = defineStore('chat-recovery', () => {
     makeSettingsSnapshot,
     readBackup,
     reading,
-    readSettingsSnapshot,
     refresh,
     refreshSettingsSnapshots,
     releaseActiveBackup,
-    releaseActiveSettingsSnapshot,
     resetCleanup,
     resetDuplicates,
     resetSettingsDuplicates,
@@ -815,7 +827,6 @@ export const useChatRecoveryStore = defineStore('chat-recovery', () => {
     settingsError,
     settingsLoading,
     settingsMaking,
-    settingsReading,
     settingsRestoring,
     settingsSnapshots,
     setVisualFixture,

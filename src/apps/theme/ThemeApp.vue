@@ -341,16 +341,6 @@
             @update:model-value="onFontSelect"
           />
         </label>
-        <label class="pc-select-field">
-          <span class="pc-field-label">{{ t`阅读器字体` }}</span>
-          <SearchableCombobox
-            :model-value="readerFontSelectionValue"
-            input-label="选择阅读器字体"
-            :options="readerFontSelectionOptions"
-            placeholder="跟随手机字体"
-            @update:model-value="onReaderFontSelect"
-          />
-        </label>
       </section>
 
       <section class="pc-page-section">
@@ -885,7 +875,6 @@ const colorControls: { key: ColorKey; label: string }[] = [
   { key: 'accentColor', label: '强调色' },
   { key: 'backgroundColor', label: '手机背景' },
   { key: 'surfaceColor', label: '卡片背景' },
-  { key: 'readerTextColor', label: '阅读正文' },
   { key: 'appIconColor', label: '图标颜色' },
   { key: 'appIconBackgroundColor', label: '图标背景' },
   { key: 'dockColor', label: 'Dock 背景' },

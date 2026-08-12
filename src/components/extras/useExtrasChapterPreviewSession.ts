@@ -1,4 +1,9 @@
-import { saveExtraChapterPreview, type ExtraChapterGenerationMode } from '@/core/extrasGeneration';
+import {
+  parseExtraChapterOutput,
+  saveExtraChapterPreview,
+  type ExtraChapterGenerateConfig,
+  type ExtraChapterGenerationMode,
+} from '@/core/extrasGeneration';
 import type { ExtraChapterGenerationRecord } from '@/type/extra';
 import { parseSimpleXmlResult } from '@/util/generation';
 
@@ -10,6 +15,7 @@ export interface ExtraChapterPreviewSessionPreview {
   generationRecord?: ExtraChapterGenerationRecord;
   mode: ExtraChapterGenerationMode;
   raw: string;
+  summary: string;
   targetVersionId: string;
   title: string;
   warnings: string[];
@@ -48,6 +54,7 @@ export function useExtrasChapterPreviewSession(options: ExtraChapterPreviewSessi
       content: preview.content,
       generationRecord: preview.generationRecord,
       mode: preview.mode,
+      summary: preview.summary,
       title: preview.title,
     });
 
@@ -78,7 +85,36 @@ export function useExtrasChapterPreviewSession(options: ExtraChapterPreviewSessi
       return false;
     }
 
-    const parsed = parseSimpleXmlResult(rawOutput);
+    const record = preview.generationRecord;
+    const parsed = record
+      ? parseExtraChapterOutput(rawOutput, {
+          appPrompt: '',
+          bookId: preview.bookId,
+          chapterId: preview.chapterId,
+          chapterMode: preview.mode,
+          fromStartEnd: record.fromStartEnd,
+          outputFormat: '',
+          previousChapterContext: '',
+          rangeText: record.rangeText,
+          recentCount: record.recentCount,
+          references: record.references,
+          singleMessageId: record.singleMessageId,
+          sourceMode: record.sourceMode,
+          tavernPresetName: record.tavernPresetName,
+          typeId: record.typeId,
+          typeName: record.typeName,
+          typePrompt: record.typePrompt,
+          userRequirement: record.userRequirement,
+          parseSummary: record.parseSummary ?? false,
+          removeSummaryBlock: record.removeSummaryBlock ?? false,
+          summaryFormatHint: record.summaryFormatHint || '',
+          summaryRuleFlags: record.summaryRuleFlags || '',
+          summaryRuleId: record.summaryRuleId || '',
+          summaryRuleName: record.summaryRuleName || '',
+          summaryRulePattern: record.summaryRulePattern || '',
+          summaryRuleReplacement: record.summaryRuleReplacement || '',
+        } satisfies ExtraChapterGenerateConfig)
+      : parseSimpleXmlResult(rawOutput);
     if (!parsed.ok) {
       preview.raw = rawOutput;
       preview.warnings = parsed.warnings;
@@ -89,6 +125,7 @@ export function useExtrasChapterPreviewSession(options: ExtraChapterPreviewSessi
     preview.content = parsed.data.content;
     preview.raw = parsed.raw;
     preview.title = parsed.data.title;
+    preview.summary = 'summary' in parsed.data && typeof parsed.data.summary === 'string' ? parsed.data.summary : '';
     preview.warnings = parsed.warnings;
     options.notify.success('已按原始输出重新解析');
     return true;

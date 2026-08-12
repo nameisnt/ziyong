@@ -2,6 +2,7 @@ import { getRegisteredPhoneGenerationAdapter } from '@/core/appRegistry';
 import { createExtraChapterGenerationRecord, type ExtraChapterGenerateConfig } from '@/core/extrasGeneration';
 import { generateContent } from '@/core/generationService';
 import { useExtrasStore } from '@/store/extras';
+import { useRegexDisplayStore } from '@/apps/regex-display/store';
 import { usePhoneStore, type PhoneRoute } from '@/store/phone';
 import { usePromptStore } from '@/store/prompts';
 import { useSettingsStore } from '@/store/settings';
@@ -42,6 +43,7 @@ interface ExtrasGenerationActionsOptions {
 /** Owns the complete chapter and summary generation transactions for Extras. */
 export function useExtrasGenerationActions(options: ExtrasGenerationActionsOptions) {
   const extras = useExtrasStore();
+  const regexDisplay = useRegexDisplayStore();
   const phone = usePhoneStore();
   const prompts = usePromptStore();
   const settingsStore = useSettingsStore();
@@ -78,6 +80,9 @@ export function useExtrasGenerationActions(options: ExtrasGenerationActionsOptio
     }
 
     try {
+      const summaryRule = draft.summaryRuleId
+        ? regexDisplay.rules.find(rule => rule.id === draft.summaryRuleId && rule.operation === 'extract')
+        : null;
       const generationConfig = {
         appPrompt: options.getChapterAppPrompt(draft.generationIntent),
         bookId,
@@ -94,6 +99,14 @@ export function useExtrasGenerationActions(options: ExtrasGenerationActionsOptio
           sourcePath: [...reference.sourcePath],
         })),
         singleMessageId: draft.singleMessageId,
+        parseSummary: draft.parseSummary,
+        removeSummaryBlock: draft.removeSummaryBlock,
+        summaryFormatHint: draft.summaryFormatHint,
+        summaryRuleFlags: summaryRule?.flags || '',
+        summaryRuleId: summaryRule?.id || '',
+        summaryRuleName: summaryRule?.name || '',
+        summaryRulePattern: summaryRule?.pattern || '',
+        summaryRuleReplacement: summaryRule?.replacement || '',
         sourceMode: settings.value.generation.sourceMode,
         tavernPresetName: settings.value.generation.tavernPresetName,
         typeId: draft.typeId,
@@ -164,6 +177,7 @@ export function useExtrasGenerationActions(options: ExtrasGenerationActionsOptio
         generationRecord: createExtraChapterGenerationRecord(generationConfig, result.source, result.replay),
         mode: draft.mode,
         raw: result.rawOutput,
+        summary: result.data.summary,
         targetVersionId,
         title: result.data.title,
         warnings: result.warnings,

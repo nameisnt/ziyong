@@ -5,6 +5,7 @@
       :content="viewedEntry.content"
       :custom-content="viewedEntry.renderMode === 'frontend'"
       display-app-id="theater"
+      :eraser-enabled="viewedEntry.renderMode !== 'frontend'"
       :favorite-active="entry.favorite"
       :footer-always-visible="viewedEntry.renderMode === 'frontend'"
       :next-disabled="!nextEntryId"
@@ -14,6 +15,7 @@
       @bottom="$emit('bottom')"
       @catalog="catalogOpen = true"
       @edit="$emit('edit')"
+      @erase="$emit('erase', $event)"
       @favorite="$emit('favorite')"
       @next="$emit('next')"
       @previous="$emit('previous')"
@@ -108,6 +110,7 @@ defineEmits<{
   bagu: [];
   bottom: [];
   edit: [];
+  erase: [content: string];
   favorite: [];
   'filter-type': [label: string];
   'navigate-blocked': [];

@@ -4,6 +4,7 @@
       actions-class="six"
       :content="chapter.content"
       display-app-id="extras"
+      eraser-enabled
       :favorite-active="chapter.favorite"
       :next-disabled="!nextId"
       :previous-disabled="!previousId"
@@ -12,6 +13,7 @@
       @bottom="emit('bottom')"
       @catalog="emit('update:catalogOpen', true)"
       @edit="emit('edit')"
+      @erase="emit('erase', $event)"
       @favorite="emit('favorite')"
       @next="emit('next')"
       @previous="emit('previous')"
@@ -81,6 +83,7 @@ const emit = defineEmits<{
   continue: [];
   delete: [];
   edit: [];
+  erase: [content: string];
   favorite: [];
   next: [];
   previous: [];

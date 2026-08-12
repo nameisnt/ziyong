@@ -1,6 +1,7 @@
 import {
   createExtraChapterGenerationRecord,
   ExtraChapterGenerateConfigSchema,
+  parseExtraChapterOutput,
   type ExtraChapterGenerationMode,
 } from '@/core/extrasGeneration';
 import { useExtrasStore } from '@/store/extras';
@@ -18,6 +19,7 @@ export interface ExtraChapterGenerationPreview {
   generationRecord?: ExtraChapterGenerationRecord;
   mode: ExtraChapterGenerationMode;
   raw: string;
+  summary: string;
   targetVersionId: string;
   title: string;
   warnings: string[];
@@ -80,13 +82,13 @@ export function useExtrasFailedDraftRepair(options: {
     }
 
     if (draft.actionId === 'chapter-generate') {
-      const parsed = parseSimpleXmlResult(rawOutput);
+      const config = ExtraChapterGenerateConfigSchema.safeParse(draft.context);
+      const parsed = config.success ? parseExtraChapterOutput(rawOutput, config.data) : parseSimpleXmlResult(rawOutput);
       if (!parsed.ok) return updateUnparsedDraft(draft, rawOutput, parsed.warnings);
 
       extras.updateFailedDraft(draft.id, { rawOutput: parsed.raw, warnings: parsed.warnings });
       const bookId = getDraftContextValue<string>(draft, 'bookId', '');
       const chapterId = getDraftContextValue<string>(draft, 'chapterId', '');
-      const config = ExtraChapterGenerateConfigSchema.safeParse(draft.context);
       options.setChapterPreview({
         bookId,
         chapterId,
@@ -97,6 +99,7 @@ export function useExtrasFailedDraftRepair(options: {
           : undefined,
         mode: options.normalizeChapterMode(draft.context.chapterMode),
         raw: parsed.raw,
+        summary: 'summary' in parsed.data && typeof parsed.data.summary === 'string' ? parsed.data.summary : '',
         targetVersionId: '',
         title: parsed.data.title,
         warnings: parsed.warnings,

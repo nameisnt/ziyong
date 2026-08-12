@@ -19,26 +19,26 @@
       </div>
       <div class="pc-action-grid">
         <button
-          class="pc-icon-btn"
+          class="pc-soft-btn compact"
           type="button"
           title="导出手机配置与内容（不含密钥和本地资源）"
           @click="downloadBackup"
         >
-          <i class="fa-solid fa-file-export"></i>
+          导出全部
         </button>
         <button
-          class="pc-icon-btn"
+          class="pc-soft-btn compact"
           type="button"
           title="导出当前聊天创作内容（不含全局配置）"
           @click="downloadCurrentBackup"
         >
-          <i class="fa-solid fa-file-arrow-up"></i>
+          导出当前
         </button>
-        <button class="pc-icon-btn" type="button" title="导入到当前聊天" @click="openBackupImport('scope')">
-          <i class="fa-solid fa-file-import"></i>
+        <button class="pc-soft-btn compact" type="button" title="导入到当前聊天" @click="openBackupImport('scope')">
+          导入当前
         </button>
-        <button class="pc-icon-btn" type="button" title="完整恢复全部数据" @click="openBackupImport('full')">
-          <i class="fa-solid fa-rotate-left"></i>
+        <button class="pc-soft-btn compact" type="button" title="完整恢复全部数据" @click="openBackupImport('full')">
+          完整恢复
         </button>
       </div>
       <input
@@ -56,8 +56,8 @@
           <strong>壁纸</strong>
           <span class="pc-context-meta">{{ wallpaperSummary }}</span>
         </div>
-        <button class="pc-icon-btn" type="button" title="关闭壁纸" @click="settingsStore.clearWallpaperSelection()">
-          <i class="fa-solid fa-ban"></i>
+        <button class="pc-soft-btn compact" type="button" title="关闭壁纸" @click="settingsStore.clearWallpaperSelection()">
+          关闭壁纸
         </button>
       </div>
       <div class="pc-asset-field">
@@ -69,35 +69,35 @@
           @update:model-value="onWallpaperSelect"
         />
         <div class="pc-asset-actions">
-          <button class="pc-icon-btn" type="button" title="导入壁纸" @click="wallpaperInputEl?.click()">
-            <i class="fa-solid fa-file-import"></i>
+          <button class="pc-soft-btn compact" type="button" title="导入壁纸" @click="wallpaperInputEl?.click()">
+            导入
           </button>
           <button
-            class="pc-icon-btn"
+            class="pc-soft-btn compact"
             type="button"
             :disabled="!selectedCustomWallpaper"
             title="导出壁纸"
             @click="exportSelectedWallpaper"
           >
-            <i class="fa-solid fa-file-export"></i>
+            导出
           </button>
           <button
-            class="pc-icon-btn"
+            class="pc-soft-btn compact"
             type="button"
             :disabled="!selectedCustomWallpaper"
             title="编辑壁纸名字"
             @click="renameSelectedWallpaper"
           >
-            <i class="fa-solid fa-pen"></i>
+            改名
           </button>
           <button
-            class="pc-icon-btn danger"
+            class="pc-soft-btn danger compact"
             type="button"
             :disabled="!selectedCustomWallpaper"
             title="删除壁纸"
             @click="deleteSelectedWallpaper"
           >
-            <i class="fa-solid fa-trash"></i>
+            删除
           </button>
         </div>
       </div>
@@ -124,35 +124,35 @@
           @update:model-value="onFontAssetSelect"
         />
         <div class="pc-asset-actions">
-          <button class="pc-icon-btn" type="button" title="导入字体" @click="fontInputEl?.click()">
-            <i class="fa-solid fa-file-import"></i>
+          <button class="pc-soft-btn compact" type="button" title="导入字体" @click="fontInputEl?.click()">
+            导入
           </button>
           <button
-            class="pc-icon-btn"
+            class="pc-soft-btn compact"
             type="button"
             :disabled="!selectedCustomFont"
             title="导出字体"
             @click="exportSelectedFont"
           >
-            <i class="fa-solid fa-file-export"></i>
+            导出
           </button>
           <button
-            class="pc-icon-btn"
+            class="pc-soft-btn compact"
             type="button"
             :disabled="!selectedCustomFont"
             title="编辑字体名字"
             @click="renameSelectedFont"
           >
-            <i class="fa-solid fa-pen"></i>
+            改名
           </button>
           <button
-            class="pc-icon-btn danger"
+            class="pc-soft-btn danger compact"
             type="button"
             :disabled="!selectedCustomFont"
             title="删除字体"
             @click="deleteSelectedFont"
           >
-            <i class="fa-solid fa-trash"></i>
+            删除
           </button>
         </div>
       </div>

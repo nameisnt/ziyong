@@ -181,6 +181,30 @@ export const useWorldbookLinkStore = defineStore('worldbook-link', () => {
     });
   }
 
+  function migrateWorldbookName(oldName: string, newName: string) {
+    const source = oldName.trim();
+    const target = newName.trim();
+    if (!source || !target || source === target) return 0;
+    let changed = 0;
+    if (settings.value.baselines[source]) {
+      settings.value.baselines[target] = settings.value.baselines[source];
+      delete settings.value.baselines[source];
+      changed += 1;
+    }
+    if (settings.value.activeScopes[source]) {
+      settings.value.activeScopes[target] = settings.value.activeScopes[source];
+      delete settings.value.activeScopes[source];
+      changed += 1;
+    }
+    Object.values(settings.value.profiles).forEach(scopeProfiles => {
+      if (!scopeProfiles[source]) return;
+      scopeProfiles[target] = scopeProfiles[source];
+      delete scopeProfiles[source];
+      changed += 1;
+    });
+    return changed;
+  }
+
   function getStatus(
     scopeKey: string,
     bookName: string,
@@ -279,6 +303,7 @@ export const useWorldbookLinkStore = defineStore('worldbook-link', () => {
     inheritProfiles,
     importBackup,
     lastAppliedScopeKey,
+    migrateWorldbookName,
     rehydrateFromSettings,
     removeEntryReferences,
     removeProfile,

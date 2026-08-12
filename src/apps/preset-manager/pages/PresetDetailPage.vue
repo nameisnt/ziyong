@@ -4,6 +4,14 @@
       <span class="pc-directory-count">
         {{ preset ? `${preset.prompts.length} 个条目` : '正在读取条目' }}
       </span>
+      <ActionMenu label="管理" icon="fa-solid fa-bars">
+        <button type="button" :disabled="mutationBusy" @click="$emit('rename-preset')">
+          <i class="fa-solid fa-pen"></i><span>预设改名</span>
+        </button>
+        <button class="danger" type="button" :disabled="mutationBusy" @click="$emit('delete-preset')">
+          <i class="fa-solid fa-trash"></i><span>删除预设</span>
+        </button>
+      </ActionMenu>
       <button
         v-if="presetName !== loadedPresetName"
         class="pc-icon-btn primary"
@@ -95,6 +103,7 @@
 
 <script setup lang="ts">
 import EmptyState from '@/components/EmptyState.vue';
+import ActionMenu from '@/components/ActionMenu.vue';
 import type { PresetDisplayNode, TavernPreset, TavernPresetPrompt } from '../api';
 import PresetPromptRow from '../PresetPromptRow.vue';
 
@@ -120,7 +129,9 @@ defineEmits<{
   'drag-end': [event: PointerEvent];
   'drag-move': [event: PointerEvent];
   'drag-start': [event: PointerEvent, prompt: TavernPresetPrompt, groupId: string];
+  'delete-preset': [];
   'open-prompt': [prompt: TavernPresetPrompt];
+  'rename-preset': [];
   'switch-preset': [presetName: string];
   'toggle-group': [groupId: string];
   'toggle-prompt': [prompt: TavernPresetPrompt, enabled: boolean];

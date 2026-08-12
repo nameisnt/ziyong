@@ -10,6 +10,52 @@ export interface ReaderRegexOutput {
   title: string;
 }
 
+export interface ReaderBodySourceRange {
+  end: number;
+  ruleId: string;
+  start: number;
+}
+
+export function resolveReaderBodySourceRange(
+  rawText: string,
+  body: string,
+  rule: ChatReaderRegexRule,
+  ruleId = '__default_body__',
+): ReaderBodySourceRange | null {
+  if (rawText === body) return { end: rawText.length, ruleId, start: 0 };
+  if (!rule.find.trim()) return null;
+  try {
+    const source = rule.find.trim();
+    const literal = source.match(/^\/([\s\S]*)\/([gimsuy]*)$/);
+    const pattern = literal?.[1] ?? source;
+    const baseFlags = `${literal?.[2] ?? ''}${rule.flags ?? ''}`;
+    const flags = [
+      ...new Set(
+        baseFlags
+          .replace(/g/g, '')
+          .split('')
+          .filter(flag => 'imsuy'.includes(flag)),
+      ),
+    ].join('');
+    const expression = new RegExp(pattern, `${flags}d`);
+    const match = expression.exec(rawText) as
+      (RegExpExecArray & { indices?: Array<[number, number] | undefined> }) | null;
+    if (!match?.indices) return null;
+    const candidates = match.slice(1).flatMap((captured, index) => {
+      const range = match.indices?.[index + 1];
+      if (captured === undefined || !range) return [];
+      const leading = captured.length - captured.trimStart().length;
+      const trailing = captured.length - captured.trimEnd().length;
+      const start = range[0] + leading;
+      const end = range[1] - trailing;
+      return rawText.slice(start, end) === body ? [{ end, ruleId, start }] : [];
+    });
+    return candidates.length === 1 ? candidates[0] : null;
+  } catch {
+    return null;
+  }
+}
+
 const READER_REGEX_WORKER_SOURCE = `
 function normalizeFlags(flags) {
   const allowed = new Set(['g', 'i', 'm', 's', 'u', 'y']);
