@@ -2364,6 +2364,39 @@ async function applyScenario(name: VisualScenarioName, options: { height?: numbe
     if (Math.max(...centers) - Math.min(...centers) > 6) {
       throw new Error('Archive character row content wrapped onto multiple lines');
     }
+  } else if (name === 'archive-floor-backup') {
+    resetPhoneToRoute('archive', 'root', '聊天档案');
+    await new Promise(resolve => window.setTimeout(resolve, 1100));
+    await waitForPaint();
+    document.querySelector<HTMLButtonElement>('.pc-archive-search-row .pc-icon-btn')?.click();
+    await waitForPaint();
+    let ownerRow = document.querySelector<HTMLButtonElement>('.pc-owner-row');
+    if (!ownerRow) {
+      const alternateTab = [...document.querySelectorAll<HTMLButtonElement>('.pc-tab-row .pc-segment-btn')].find(
+        button => !button.classList.contains('active'),
+      );
+      alternateTab?.click();
+      await waitForPaint();
+      ownerRow = document.querySelector<HTMLButtonElement>('.pc-owner-row');
+    }
+    if (!ownerRow) throw new Error('Archive floor backup owner is missing');
+    ownerRow.click();
+    await waitForPaint();
+    const backupChat = [...document.querySelectorAll<HTMLButtonElement>('.pc-chat-row')].find(button =>
+      button.textContent?.includes('已备份'),
+    );
+    if (!backupChat) throw new Error('Archive floor backup chat is missing');
+    backupChat.click();
+    await waitForPaint();
+    const actions = [...document.querySelectorAll<HTMLButtonElement>('.pc-archive-backup-actions button')];
+    if (!['阅读备份', '导出备份', '导入备份', '立即备份'].every(label => actions.some(button => button.textContent?.includes(label)))) {
+      throw new Error('Archive floor backup actions are incomplete');
+    }
+    actions.find(button => button.textContent?.includes('阅读备份'))?.click();
+    await waitForPaint();
+    if (!document.querySelector('.pc-floor-message') || !document.querySelector('.pc-floor-backup-footer')) {
+      throw new Error('Archive floor backup reader is incomplete');
+    }
   } else if (name === 'preset-detail') {
     resetPhoneToRoute('preset-manager', 'detail', '预设条目', { presetName: '视觉预设' });
   } else if (name === 'preset-copy-reorder') {

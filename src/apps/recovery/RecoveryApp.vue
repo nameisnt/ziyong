@@ -1,6 +1,31 @@
 <template>
   <section class="pc-recovery-app">
     <section v-if="route.page === 'root'" class="pc-recovery-page">
+      <article class="pc-section-card pc-recovery-category-intro">
+        <strong>选择备份类型</strong>
+        <p>聊天备份用于阅读和导入历史聊天；设置快照用于检查或恢复酒馆 settings.json。</p>
+      </article>
+      <div class="pc-directory-list">
+        <button class="pc-list-row pc-recovery-category-row" type="button" @click="openChatBackups">
+          <span class="pc-recovery-category-icon"><i class="fa-solid fa-comments"></i></span>
+          <span class="pc-list-row-copy">
+            <strong>聊天备份</strong>
+            <small>按角色查看、阅读、导入、查层和查重</small>
+          </span>
+          <i class="fa-solid fa-chevron-right"></i>
+        </button>
+        <button class="pc-list-row pc-recovery-category-row" type="button" @click="openSettingsSnapshots">
+          <span class="pc-recovery-category-icon"><i class="fa-solid fa-sliders"></i></span>
+          <span class="pc-list-row-copy">
+            <strong>设置快照</strong>
+            <small>查看、创建、恢复和查重酒馆设置</small>
+          </span>
+          <i class="fa-solid fa-chevron-right"></i>
+        </button>
+      </div>
+    </section>
+
+    <section v-else-if="route.page === 'chats'" class="pc-recovery-page">
       <div class="pc-compact-toolbar pc-recovery-toolbar">
         <label class="pc-search-field">
           <i class="fa-solid fa-magnifying-glass"></i>
@@ -41,6 +66,11 @@
         </button>
       </div>
 
+      <article v-if="recovery.loading" class="pc-section-card pc-recovery-scan-status" aria-live="polite">
+        <i class="fa-solid fa-spinner fa-spin"></i>
+        <span>{{ recovery.groups.length ? '正在重新扫描聊天备份……' : '正在读取酒馆聊天备份……' }}</span>
+      </article>
+
       <article v-if="recovery.error" class="pc-section-card pc-recovery-error">
         <strong>{{ recovery.status === 'unsupported' ? '版本不支持' : '读取失败' }}</strong>
         <p>{{ recovery.error }}</p>
@@ -66,6 +96,72 @@
             </small>
           </span>
           <span class="pc-recovery-count">{{ group.backups.length }}</span>
+          <i class="fa-solid fa-chevron-right"></i>
+        </button>
+      </div>
+    </section>
+
+    <section v-else-if="route.page === 'settings-snapshots'" class="pc-recovery-page">
+      <div class="pc-compact-toolbar pc-recovery-settings-toolbar">
+        <span class="pc-directory-count">{{ recovery.settingsSnapshots.length }} 份设置快照</span>
+        <div class="pc-directory-actions">
+          <button
+            class="pc-soft-btn"
+            type="button"
+            :disabled="recovery.managementBusy"
+            @click="openSettingsDuplicates"
+          >
+            <i class="fa-solid fa-clone"></i><span>查重</span>
+          </button>
+          <button
+            class="pc-soft-btn"
+            type="button"
+            :disabled="recovery.managementBusy"
+            @click="confirmMakeSettingsSnapshot"
+          >
+            <i :class="['fa-solid', recovery.settingsMaking ? 'fa-spinner fa-spin' : 'fa-camera']"></i>
+            <span>{{ recovery.settingsMaking ? '创建中' : '新建' }}</span>
+          </button>
+          <button
+            class="pc-icon-btn"
+            type="button"
+            :disabled="recovery.managementBusy"
+            title="刷新设置快照"
+            @click="refreshSettingsSnapshots"
+          >
+            <i :class="['fa-solid fa-rotate', { spinning: recovery.settingsLoading }]"></i>
+          </button>
+        </div>
+      </div>
+      <article v-if="recovery.settingsLoading" class="pc-section-card pc-recovery-scan-status" aria-live="polite">
+        <i class="fa-solid fa-spinner fa-spin"></i>
+        <span>正在读取酒馆设置快照……</span>
+      </article>
+      <article v-if="recovery.settingsError" class="pc-section-card pc-recovery-error">
+        <strong>读取失败</strong>
+        <p>{{ recovery.settingsError }}</p>
+      </article>
+      <EmptyState
+        v-if="!recovery.settingsLoading && !recovery.settingsSnapshots.length"
+        title="还没有设置快照"
+      >
+        <p>可以点击“新建”保存当前酒馆设置。</p>
+      </EmptyState>
+      <div v-else class="pc-directory-list">
+        <button
+          v-for="snapshot in recovery.settingsSnapshots"
+          :key="snapshot.name"
+          class="pc-list-row pc-recovery-settings-row"
+          type="button"
+          :disabled="recovery.settingsReading || recovery.managementBusy"
+          @click="openSettingsSnapshot(snapshot)"
+        >
+          <span class="pc-recovery-book-icon"><i class="fa-solid fa-file-code"></i></span>
+          <span class="pc-list-row-copy">
+            <strong>{{ formatDate(snapshot.date) }}</strong>
+            <small>{{ snapshot.name }}</small>
+            <small>{{ formatBytes(snapshot.size) }}</small>
+          </span>
           <i class="fa-solid fa-chevron-right"></i>
         </button>
       </div>
@@ -164,13 +260,23 @@
         </button>
       </article>
 
+      <article v-if="recovery.duplicateScanning" class="pc-section-card pc-recovery-scan-status" aria-live="polite">
+        <i class="fa-solid fa-spinner fa-spin"></i>
+        <span>{{ duplicateScanButtonLabel }}</span>
+        <progress
+          v-if="recovery.duplicateScanTotal"
+          :max="recovery.duplicateScanTotal"
+          :value="recovery.duplicateScanCompleted"
+        ></progress>
+      </article>
+
       <article v-if="recovery.duplicateScanResult" class="pc-section-card pc-recovery-duplicate-results">
         <div class="pc-section-head">
           <strong>重复候选</strong>
           <span>{{ duplicateSelectedNames.length }}/{{ duplicateCandidateCount }} 份已选</span>
         </div>
         <EmptyState v-if="!recovery.duplicateScanResult.groups.length" compact title="没有完全相同的重复备份">
-          <p>相似、前缀包含或 metadata 不同的备份不会被列入。</p>
+          <p>原始文件没有完全一致的副本；严格续长包含候选会单独显示在下方。</p>
         </EmptyState>
         <div v-else class="pc-recovery-duplicate-list">
           <section
@@ -182,24 +288,36 @@
               <strong>{{ duplicateGroupLabel(group) }}</strong>
               <span>可释放 {{ formatBytes(group.reclaimBytes) }}</span>
             </div>
-            <div class="pc-recovery-duplicate-keeper">
+            <button
+              class="pc-recovery-duplicate-keeper"
+              type="button"
+              :disabled="recovery.managementBusy"
+              @click="openBackup(group.keeper.summary)"
+            >
               <i class="fa-solid fa-shield"></i>
               <span class="pc-list-row-copy">
                 <strong>保留 · {{ formatBackupCreatedAt(group.keeper.summary) }}</strong>
                 <small>{{ group.keeper.summary.fileName }}</small>
               </span>
-            </div>
-            <label v-for="item in group.duplicates" :key="item.summary.fileName" class="pc-recovery-cleanup-item">
+              <i class="fa-solid fa-chevron-right"></i>
+            </button>
+            <div v-for="item in group.duplicates" :key="item.summary.fileName" class="pc-recovery-cleanup-item">
               <input
                 type="checkbox"
                 :checked="duplicateSelectedNames.includes(item.summary.fileName)"
                 @change="toggleDuplicateCandidate(item.summary.fileName)"
               />
-              <span class="pc-list-row-copy">
+              <button
+                class="pc-list-row-copy pc-recovery-candidate-open"
+                type="button"
+                :disabled="recovery.managementBusy"
+                @click.stop="openBackup(item.summary)"
+              >
                 <strong>删除 · {{ formatBackupCreatedAt(item.summary) }}</strong>
                 <small>{{ item.summary.fileName }} · {{ item.actualChatItems }} 层</small>
-              </span>
-            </label>
+              </button>
+              <i class="fa-solid fa-chevron-right"></i>
+            </div>
           </section>
         </div>
         <p v-if="recovery.duplicateScanResult.rejected.length" class="pc-recovery-warning">
@@ -229,6 +347,77 @@
           失败或复核变化的文件仍保留，可重新扫描后检查。
         </p>
       </article>
+
+      <article
+        v-if="recovery.duplicateScanResult?.containedGroups.length"
+        class="pc-section-card pc-recovery-duplicate-results"
+      >
+        <div class="pc-section-head">
+          <strong>续长包含候选</strong>
+          <span>{{ containedSelectedNames.length }}/{{ containedCandidateCount }} 份已选</span>
+        </div>
+        <p class="pc-recovery-safety-note">
+          <i class="fa-solid fa-code-branch"></i>
+          较长备份的开头逐条完整等于较短备份，并在末尾新增了楼层。此类默认不勾选，请分别阅读确认。
+        </p>
+        <div class="pc-recovery-duplicate-list">
+          <section
+            v-for="group in recovery.duplicateScanResult.containedGroups"
+            :key="group.id"
+            class="pc-recovery-duplicate-group"
+          >
+            <div class="pc-section-head">
+              <strong>保留 {{ group.keeper.actualChatItems }} 层续长版</strong>
+              <span>可释放 {{ formatBytes(group.reclaimBytes) }}</span>
+            </div>
+            <button
+              class="pc-recovery-duplicate-keeper"
+              type="button"
+              :disabled="recovery.managementBusy"
+              @click="openBackup(group.keeper.summary)"
+            >
+              <i class="fa-solid fa-shield"></i>
+              <span class="pc-list-row-copy">
+                <strong>保留 · {{ formatBackupCreatedAt(group.keeper.summary) }}</strong>
+                <small>{{ group.keeper.summary.fileName }} · {{ group.keeper.actualChatItems }} 层</small>
+              </span>
+              <i class="fa-solid fa-chevron-right"></i>
+            </button>
+            <div v-for="item in group.contained" :key="item.summary.fileName" class="pc-recovery-cleanup-item">
+              <input
+                type="checkbox"
+                :checked="containedSelectedNames.includes(item.summary.fileName)"
+                @change="toggleContainedCandidate(item.summary.fileName)"
+              />
+              <button
+                class="pc-list-row-copy pc-recovery-candidate-open"
+                type="button"
+                :disabled="recovery.managementBusy"
+                @click.stop="openBackup(item.summary)"
+              >
+                <strong>较短版 · {{ item.actualChatItems }} 层</strong>
+                <small>
+                  {{ item.summary.fileName }} · 续长版新增
+                  {{ group.keeper.actualChatItems - item.actualChatItems }} 层
+                </small>
+              </button>
+              <i class="fa-solid fa-chevron-right"></i>
+            </div>
+          </section>
+        </div>
+        <button
+          class="pc-soft-btn danger"
+          type="button"
+          :disabled="!containedSelectedNames.length || recovery.duplicateDeleting"
+          @click="confirmContainedDelete"
+        >
+          {{
+            recovery.duplicateDeleting
+              ? '正在逐份复核并删除…'
+              : `删除选中的 ${containedSelectedNames.length} 份较短备份`
+          }}
+        </button>
+      </article>
     </section>
 
     <section v-else-if="route.page === 'cleanup'" class="pc-recovery-page">
@@ -251,8 +440,18 @@
           :disabled="recovery.cleanupScanning || recovery.cleanupDeleting"
           @click="scanCleanup"
         >
-          {{ recovery.cleanupScanning ? '正在逐份安全检查…' : '扫描可清理备份' }}
+          {{ cleanupScanButtonLabel }}
         </button>
+      </article>
+
+      <article v-if="recovery.cleanupScanning" class="pc-section-card pc-recovery-scan-status" aria-live="polite">
+        <i class="fa-solid fa-spinner fa-spin"></i>
+        <span>{{ cleanupScanButtonLabel }}</span>
+        <progress
+          v-if="recovery.cleanupScanTotal"
+          :max="recovery.cleanupScanTotal"
+          :value="recovery.cleanupScanCompleted"
+        ></progress>
       </article>
 
       <article v-if="recovery.cleanupScanResult" class="pc-section-card pc-recovery-cleanup-results">
@@ -267,7 +466,7 @@
               <strong>{{ group.label }}</strong>
               <span>{{ group.candidates.length }} 份</span>
             </div>
-            <label
+            <div
               v-for="candidate in group.candidates"
               :key="candidate.summary.fileName"
               class="pc-recovery-cleanup-item"
@@ -277,11 +476,17 @@
                 :checked="cleanupSelectedNames.includes(candidate.summary.fileName)"
                 @change="toggleCleanupCandidate(candidate.summary.fileName)"
               />
-              <span class="pc-list-row-copy">
+              <button
+                class="pc-list-row-copy pc-recovery-candidate-open"
+                type="button"
+                :disabled="recovery.managementBusy"
+                @click.stop="openBackup(candidate.summary)"
+              >
                 <strong>{{ candidate.summary.fileName }}</strong>
                 <small>{{ candidate.actualChatItems }} 层 · {{ formatDate(candidate.summary.lastMessageAt) }}</small>
-              </span>
-            </label>
+              </button>
+              <i class="fa-solid fa-chevron-right"></i>
+            </div>
           </section>
         </div>
         <p v-if="recovery.cleanupScanResult.rejected.length" class="pc-recovery-warning">
@@ -308,6 +513,149 @@
           失败项仍保留在备份书架中，可刷新后逐份检查。
         </p>
       </article>
+    </section>
+
+    <section v-else-if="route.page === 'settings-duplicates'" class="pc-recovery-page">
+      <article class="pc-section-card pc-recovery-duplicate-config">
+        <div class="pc-section-head">
+          <strong>设置快照完全查重</strong>
+          <span>{{ recovery.settingsSnapshots.length }} 份</span>
+        </div>
+        <p class="pc-recovery-safety-note">
+          <i class="fa-solid fa-shield-halved"></i>
+          只把原始 JSON 内容 SHA-256 完全一致的快照归为一组，每组固定保留时间最新的一份。
+        </p>
+        <button
+          class="pc-primary-btn"
+          type="button"
+          :disabled="recovery.settingsDuplicateScanning || recovery.settingsDeleting"
+          @click="scanSettingsDuplicates"
+        >
+          {{ settingsDuplicateScanButtonLabel }}
+        </button>
+      </article>
+
+      <article
+        v-if="recovery.settingsDuplicateScanning"
+        class="pc-section-card pc-recovery-scan-status"
+        aria-live="polite"
+      >
+        <i class="fa-solid fa-spinner fa-spin"></i>
+        <span>{{ settingsDuplicateScanButtonLabel }}</span>
+        <progress
+          v-if="recovery.settingsDuplicateScanTotal"
+          :max="recovery.settingsDuplicateScanTotal"
+          :value="recovery.settingsDuplicateScanCompleted"
+        ></progress>
+      </article>
+
+      <article v-if="recovery.settingsDuplicateScanResult" class="pc-section-card pc-recovery-duplicate-results">
+        <div class="pc-section-head">
+          <strong>重复候选</strong>
+          <span>{{ settingsDuplicateSelectedNames.length }}/{{ settingsDuplicateCandidateCount }} 份已选</span>
+        </div>
+        <EmptyState
+          v-if="!recovery.settingsDuplicateScanResult.groups.length"
+          compact
+          title="没有完全相同的设置快照"
+        />
+        <div v-else class="pc-recovery-duplicate-list">
+          <section
+            v-for="group in recovery.settingsDuplicateScanResult.groups"
+            :key="group.id"
+            class="pc-recovery-duplicate-group"
+          >
+            <div class="pc-section-head">
+              <strong>{{ group.duplicates.length + 1 }} 份完全相同</strong>
+              <span>可释放 {{ formatBytes(group.reclaimBytes) }}</span>
+            </div>
+            <button
+              class="pc-recovery-duplicate-keeper"
+              type="button"
+              :disabled="recovery.managementBusy"
+              @click="openSettingsSnapshot(group.keeper.summary)"
+            >
+              <i class="fa-solid fa-shield"></i>
+              <span class="pc-list-row-copy">
+                <strong>保留 · {{ formatDate(group.keeper.summary.date) }}</strong>
+                <small>{{ group.keeper.summary.name }}</small>
+              </span>
+              <i class="fa-solid fa-chevron-right"></i>
+            </button>
+            <div
+              v-for="item in group.duplicates"
+              :key="item.summary.name"
+              class="pc-recovery-cleanup-item"
+            >
+              <input
+                type="checkbox"
+                :checked="settingsDuplicateSelectedNames.includes(item.summary.name)"
+                @change="toggleSettingsDuplicateCandidate(item.summary.name)"
+              />
+              <button
+                class="pc-list-row-copy pc-recovery-candidate-open"
+                type="button"
+                :disabled="recovery.managementBusy"
+                @click.stop="openSettingsSnapshot(item.summary)"
+              >
+                <strong>删除 · {{ formatDate(item.summary.date) }}</strong>
+                <small>{{ item.summary.name }} · {{ formatBytes(item.summary.size) }}</small>
+              </button>
+              <i class="fa-solid fa-chevron-right"></i>
+            </div>
+          </section>
+        </div>
+        <p v-if="recovery.settingsDuplicateScanResult.rejected.length" class="pc-recovery-warning">
+          已安全排除 {{ recovery.settingsDuplicateScanResult.rejected.length }} 份无法读取或解析的设置快照。
+        </p>
+        <button
+          v-if="settingsDuplicateCandidateCount"
+          class="pc-soft-btn danger"
+          type="button"
+          :disabled="!settingsDuplicateSelectedNames.length || recovery.settingsDeleting"
+          @click="confirmSettingsDuplicateDelete"
+        >
+          {{
+            recovery.settingsDeleting
+              ? '正在逐份复核并删除…'
+              : `删除选中的 ${settingsDuplicateSelectedNames.length} 份旧副本`
+          }}
+        </button>
+      </article>
+
+      <article v-if="recovery.settingsDeleteResult" class="pc-section-card pc-recovery-cleanup-summary">
+        <strong>设置快照查重完成</strong>
+        <p>
+          成功 {{ recovery.settingsDeleteResult.deleted.length }} 份，释放
+          {{ formatBytes(recovery.settingsDeleteResult.reclaimedBytes) }}；失败或跳过
+          {{ recovery.settingsDeleteResult.failed.length }} 份。
+        </p>
+      </article>
+    </section>
+
+    <section
+      v-else-if="route.page === 'settings-reader' && activeSettingsSnapshot"
+      class="pc-recovery-page pc-recovery-settings-reader"
+    >
+      <article class="pc-section-card pc-recovery-settings-reader-head">
+        <strong>设置快照只读预览</strong>
+        <small>{{ activeSettingsSnapshot.summary.name }}</small>
+        <small>
+          {{ formatDate(activeSettingsSnapshot.summary.date) }} · {{ formatBytes(activeSettingsSnapshot.summary.size) }}
+        </small>
+      </article>
+      <pre class="pc-recovery-settings-json">{{ activeSettingsSnapshot.formatted }}</pre>
+      <div class="pc-form-actions">
+        <button
+          class="pc-primary-btn"
+          type="button"
+          :disabled="recovery.managementBusy"
+          @click="confirmRestoreSettingsSnapshot"
+        >
+          <i :class="['fa-solid', recovery.settingsRestoring ? 'fa-spinner fa-spin' : 'fa-clock-rotate-left']"></i>
+          <span>{{ recovery.settingsRestoring ? '恢复中…' : '恢复这份设置' }}</span>
+        </button>
+      </div>
     </section>
 
     <section v-else-if="route.page === 'reader' && loaded" class="pc-recovery-page pc-recovery-reader-page">
@@ -452,7 +800,12 @@ import CatalogModal from '@/components/CatalogModal.vue';
 import EmptyState from '@/components/EmptyState.vue';
 import ReaderDetailShell from '@/components/ReaderDetailShell.vue';
 import SearchableCombobox from '@/components/SearchableCombobox.vue';
-import type { ChatBackupGroup, ChatBackupSummary, DuplicateBackupGroup } from '@/apps/recovery/model';
+import type {
+  ChatBackupGroup,
+  ChatBackupSummary,
+  DuplicateBackupGroup,
+  SettingsSnapshotSummary,
+} from '@/apps/recovery/model';
 import { useChatRecoveryStore } from '@/apps/recovery/store';
 import { usePhoneStore } from '@/store/phone';
 import { jumpToTavernChat } from '@/util/tavernNavigation';
@@ -461,6 +814,7 @@ import { storeToRefs } from 'pinia';
 const phone = usePhoneStore();
 const recovery = useChatRecoveryStore();
 const { activeBackup: loaded } = storeToRefs(recovery);
+const { activeSettingsSnapshot } = storeToRefs(recovery);
 const route = computed(() => phone.currentRoute);
 const query = ref('');
 const sortMode = ref<'character' | 'recent'>('recent');
@@ -470,6 +824,8 @@ const selectedTargetId = ref('');
 const cleanupThreshold = ref(0);
 const cleanupSelectedNames = ref<string[]>([]);
 const duplicateSelectedNames = ref<string[]>([]);
+const containedSelectedNames = ref<string[]>([]);
+const settingsDuplicateSelectedNames = ref<string[]>([]);
 
 const activeGroup = computed(() => recovery.groups.find(group => group.id === route.value.params?.groupId) ?? null);
 const activeMessage = computed(() => loaded.value?.parsed.messages[messageIndex.value] ?? null);
@@ -503,10 +859,32 @@ const duplicateScopeLabel = computed(() => duplicateScopeGroup.value?.label ?? '
 const duplicateCandidateCount = computed(() =>
   (recovery.duplicateScanResult?.groups ?? []).reduce((total, group) => total + group.duplicates.length, 0),
 );
+const containedCandidateCount = computed(() =>
+  (recovery.duplicateScanResult?.containedGroups ?? []).reduce(
+    (total, group) => total + group.contained.length,
+    0,
+  ),
+);
 const duplicateScanButtonLabel = computed(() => {
   if (!recovery.duplicateScanning) return '扫描完全相同的备份';
   if (!recovery.duplicateScanTotal) return '正在准备扫描…';
   return `正在校验 ${recovery.duplicateScanCompleted}/${recovery.duplicateScanTotal}`;
+});
+const cleanupScanButtonLabel = computed(() => {
+  if (!recovery.cleanupScanning) return '扫描可清理备份';
+  if (!recovery.cleanupScanTotal) return '正在准备扫描…';
+  return `正在检查 ${recovery.cleanupScanCompleted}/${recovery.cleanupScanTotal}`;
+});
+const settingsDuplicateCandidateCount = computed(() =>
+  (recovery.settingsDuplicateScanResult?.groups ?? []).reduce(
+    (total, group) => total + group.duplicates.length,
+    0,
+  ),
+);
+const settingsDuplicateScanButtonLabel = computed(() => {
+  if (!recovery.settingsDuplicateScanning) return '扫描完全相同的设置快照';
+  if (!recovery.settingsDuplicateScanTotal) return '正在准备扫描…';
+  return `正在校验 ${recovery.settingsDuplicateScanCompleted}/${recovery.settingsDuplicateScanTotal}`;
 });
 const cleanupCandidateGroups = computed(() => {
   const candidates = recovery.cleanupScanResult?.candidates ?? [];
@@ -530,15 +908,27 @@ const emptyTitle = computed(() =>
       : '还没有聊天备份',
 );
 
-onMounted(() => {
-  if (recovery.status === 'idle') void recovery.refresh();
+onBeforeUnmount(() => {
+  recovery.releaseActiveBackup();
+  recovery.releaseActiveSettingsSnapshot();
 });
-onBeforeUnmount(recovery.releaseActiveBackup);
 watch(
   () => route.value.page,
   page => {
-    if (page === 'root' || page === 'group') recovery.releaseActiveBackup();
+    if (!['reader', 'confirm', 'result'].includes(page)) recovery.releaseActiveBackup();
+    if (page !== 'settings-reader') recovery.releaseActiveSettingsSnapshot();
     if (page === 'confirm' && !selectedTargetId.value) selectedTargetId.value = suggestedTargetId();
+  },
+  { immediate: true },
+);
+watch(
+  () => recovery.settingsDuplicateScanResult,
+  result => {
+    if (result && !recovery.settingsDeleteResult) {
+      settingsDuplicateSelectedNames.value = result.groups.flatMap(group =>
+        group.duplicates.map(item => item.summary.name),
+      );
+    }
   },
   { immediate: true },
 );
@@ -587,11 +977,137 @@ function openGroup(group: ChatBackupGroup) {
   phone.pushPage('group', group.label, { groupId: group.id });
 }
 
+async function openChatBackups() {
+  phone.pushPage('chats', '聊天备份');
+  if (recovery.status === 'idle') {
+    try {
+      await recovery.refresh();
+    } catch {
+      // The page renders the store error with a retry action.
+    }
+  }
+}
+
+async function openSettingsSnapshots() {
+  phone.pushPage('settings-snapshots', '设置快照');
+  if (!recovery.settingsSnapshots.length) await refreshSettingsSnapshots();
+}
+
+async function refreshSettingsSnapshots() {
+  try {
+    await recovery.refreshSettingsSnapshots();
+  } catch (error) {
+    toastr.error(error instanceof Error ? error.message : '读取设置快照失败');
+  }
+}
+
+async function openSettingsSnapshot(summary: SettingsSnapshotSummary) {
+  try {
+    await recovery.readSettingsSnapshot(summary);
+    phone.pushPage('settings-reader', '阅读设置快照', { fileName: summary.name, from: route.value.page });
+  } catch (error) {
+    toastr.error(error instanceof Error ? error.message : '读取设置快照失败');
+  }
+}
+
+async function confirmMakeSettingsSnapshot() {
+  const confirmed = await phone.confirmNotice('立即复制当前酒馆 settings.json，创建一份新的设置快照？', {
+    confirmLabel: '创建设置快照',
+    title: '新建设置快照',
+  });
+  if (!confirmed) return;
+  try {
+    await recovery.makeSettingsSnapshot();
+    toastr.success('设置快照已创建');
+  } catch (error) {
+    toastr.error(error instanceof Error ? error.message : '创建设置快照失败');
+  }
+}
+
+async function confirmRestoreSettingsSnapshot() {
+  const snapshot = activeSettingsSnapshot.value?.summary;
+  if (!snapshot) return;
+  const confirmed = await phone.confirmNotice(
+    `文件：${snapshot.name}\n时间：${formatDate(snapshot.date)}\n\n恢复会用这份快照覆盖酒馆当前 settings.json。聊天、角色卡和世界书文件不会被覆盖；恢复后需要刷新酒馆页面才能完整生效。若要保留当前设置，请先返回列表点击“新建”。`,
+    { confirmLabel: '覆盖当前设置', kind: 'warning', title: '确认恢复设置快照' },
+  );
+  if (!confirmed) return;
+  try {
+    await recovery.restoreSettingsSnapshot(snapshot);
+    phone.noticeInfo('设置快照已经恢复。请刷新整个 SillyTavern 页面，让酒馆和扩展重新读取 settings.json。', {
+      timeoutMs: 0,
+      title: '设置恢复完成',
+    });
+  } catch (error) {
+    toastr.error(error instanceof Error ? error.message : '恢复设置快照失败');
+  }
+}
+
+function openSettingsDuplicates() {
+  recovery.resetSettingsDuplicates();
+  settingsDuplicateSelectedNames.value = [];
+  phone.pushPage('settings-duplicates', '设置快照查重');
+}
+
+async function scanSettingsDuplicates() {
+  try {
+    const result = await recovery.scanDuplicateSettingsSnapshots();
+    settingsDuplicateSelectedNames.value = result.groups.flatMap(group =>
+      group.duplicates.map(item => item.summary.name),
+    );
+  } catch (error) {
+    toastr.error(error instanceof Error ? error.message : '扫描设置快照失败');
+  }
+}
+
+function toggleSettingsDuplicateCandidate(name: string) {
+  settingsDuplicateSelectedNames.value = settingsDuplicateSelectedNames.value.includes(name)
+    ? settingsDuplicateSelectedNames.value.filter(item => item !== name)
+    : [...settingsDuplicateSelectedNames.value, name];
+}
+
+async function confirmSettingsDuplicateDelete() {
+  const scan = recovery.settingsDuplicateScanResult;
+  if (!scan || !settingsDuplicateSelectedNames.value.length) return;
+  const selectedBytes = scan.groups.reduce(
+    (total, group) =>
+      total +
+      group.duplicates
+        .filter(item => settingsDuplicateSelectedNames.value.includes(item.summary.name))
+        .reduce((sum, item) => sum + item.summary.size, 0),
+    0,
+  );
+  const confirmed = await phone.confirmNotice(
+    `将永久删除：${settingsDuplicateSelectedNames.value.length} 份完全相同的旧设置快照\n预计释放：${formatBytes(selectedBytes)}\n\n每组最新快照会保留；删除前还会重新读取并复核 SHA-256。`,
+    {
+      confirmLabel: `删除 ${settingsDuplicateSelectedNames.value.length} 份旧副本`,
+      kind: 'warning',
+      title: '确认设置快照查重删除',
+    },
+  );
+  if (!confirmed) return;
+  try {
+    const result = await recovery.deleteSettingsSnapshots(settingsDuplicateSelectedNames.value);
+    settingsDuplicateSelectedNames.value = result.failed.map(item => item.name);
+    if (result.failed.length) {
+      toastr.warning(`已删除 ${result.deleted.length} 份，${result.failed.length} 份失败或跳过`);
+    } else {
+      toastr.success(`已删除 ${result.deleted.length} 份完全相同的旧设置快照`);
+    }
+  } catch (error) {
+    toastr.error(error instanceof Error ? error.message : '删除重复设置快照失败');
+  }
+}
+
 async function openBackup(summary: ChatBackupSummary) {
   try {
     await recovery.readBackup(summary);
     messageIndex.value = 0;
-    phone.pushPage('reader', '阅读聊天备份', { fileName: summary.fileName, groupId: activeGroup.value?.id ?? '' });
+    phone.pushPage('reader', '阅读聊天备份', {
+      fileName: summary.fileName,
+      groupId: activeGroup.value?.id ?? '',
+      from: route.value.page,
+    });
   } catch (error) {
     toastr.error(error instanceof Error ? error.message : '读取聊天备份失败');
   }
@@ -628,8 +1144,12 @@ async function deleteLoadedBackup() {
   if (!summary) return;
   const groupId = route.value.params?.groupId ?? '';
   if (!(await confirmDeleteBackup(summary, false))) return;
+  if (route.value.params?.from === 'cleanup' || route.value.params?.from === 'duplicates') {
+    await phone.goBack({ skipConfirm: true });
+    return;
+  }
   if (groupId && recovery.groups.some(group => group.id === groupId)) phone.goBack({ skipConfirm: true });
-  else phone.replacePage('root', '酒馆备份管理');
+  else phone.replacePage('chats', '聊天备份');
 }
 
 function openCleanup(groupId = '') {
@@ -642,7 +1162,38 @@ function openCleanup(groupId = '') {
 function openDuplicates(groupId = '') {
   recovery.resetDuplicates();
   duplicateSelectedNames.value = [];
+  containedSelectedNames.value = [];
   phone.pushPage('duplicates', groupId ? '当前角色备份查重' : '重复备份查找', groupId ? { groupId } : {});
+}
+
+function toggleContainedCandidate(fileName: string) {
+  containedSelectedNames.value = containedSelectedNames.value.includes(fileName)
+    ? containedSelectedNames.value.filter(name => name !== fileName)
+    : [...containedSelectedNames.value, fileName];
+}
+
+async function confirmContainedDelete() {
+  if (!recovery.duplicateScanResult || !containedSelectedNames.value.length) return;
+  const confirmed = await phone.confirmNotice(
+    `将永久删除：${containedSelectedNames.value.length} 份较短聊天备份\n\n只有当较短备份的全部原始消息仍严格等于保留备份的开头时才会删除；删除前会重新下载双方复核。现有聊天不会被删除。`,
+    {
+      confirmLabel: `删除 ${containedSelectedNames.value.length} 份较短备份`,
+      kind: 'warning',
+      title: '确认删除续长包含备份',
+    },
+  );
+  if (!confirmed) return;
+  try {
+    const result = await recovery.deleteContainedBackups(containedSelectedNames.value);
+    containedSelectedNames.value = result.failed.map(item => item.summary.fileName);
+    if (result.failed.length) {
+      toastr.warning(`已删除 ${result.deleted.length} 份，${result.failed.length} 份失败或跳过`);
+    } else {
+      toastr.success(`已删除 ${result.deleted.length} 份较短聊天备份`);
+    }
+  } catch (error) {
+    toastr.error(error instanceof Error ? error.message : '删除较短聊天备份失败');
+  }
 }
 
 async function scanDuplicates() {
@@ -811,6 +1362,66 @@ async function openImportedChat() {
   grid-template-columns: minmax(0, 1fr) auto;
 }
 
+.pc-recovery-category-intro {
+  display: grid;
+  gap: 6px;
+}
+
+.pc-recovery-category-intro p {
+  margin: 0;
+  color: var(--pc-muted);
+  line-height: 1.5;
+}
+
+.pc-recovery-category-row {
+  grid-template-columns: 42px minmax(0, 1fr) 14px;
+}
+
+.pc-recovery-category-icon {
+  display: grid;
+  width: 38px;
+  height: 38px;
+  place-items: center;
+  border-radius: var(--pc-control-radius);
+  background: color-mix(in srgb, var(--pc-theme-accent) 15%, var(--pc-surface-strong) 85%);
+  color: var(--pc-theme-accent);
+}
+
+.pc-recovery-settings-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.pc-recovery-settings-toolbar .pc-directory-actions {
+  display: flex;
+  gap: 6px;
+}
+
+.pc-recovery-settings-toolbar .pc-soft-btn {
+  min-width: 0;
+  padding-inline: 9px;
+}
+
+.pc-recovery-settings-row {
+  grid-template-columns: 38px minmax(0, 1fr) 14px;
+}
+
+.pc-recovery-scan-status {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: center;
+  gap: 8px;
+  color: var(--pc-theme-accent);
+}
+
+.pc-recovery-scan-status progress {
+  grid-column: 1 / -1;
+  width: 100%;
+  accent-color: var(--pc-theme-accent);
+}
+
 .pc-recovery-management-actions {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -969,12 +1580,19 @@ async function openImportedChat() {
 
 .pc-recovery-duplicate-keeper {
   display: grid;
-  grid-template-columns: auto minmax(0, 1fr);
+  grid-template-columns: auto minmax(0, 1fr) auto;
   align-items: center;
   gap: 10px;
   padding: 9px 0;
   border-bottom: 1px solid var(--pc-border);
   color: var(--pc-theme-accent);
+  /* ui-reuse-allow: row itself is a read-only preview trigger, not a general action button. */
+  border-top: 0;
+  border-right: 0;
+  border-left: 0;
+  background: transparent;
+  text-align: left;
+  cursor: pointer;
 }
 
 .pc-recovery-duplicate-keeper small,
@@ -995,11 +1613,53 @@ async function openImportedChat() {
 
 .pc-recovery-cleanup-item {
   display: grid;
-  grid-template-columns: auto minmax(0, 1fr);
+  grid-template-columns: auto minmax(0, 1fr) auto;
   align-items: center;
   gap: 10px;
   padding: 9px 0;
   border-bottom: 1px solid var(--pc-border);
+}
+
+.pc-recovery-candidate-open {
+  /* ui-reuse-allow: nested row preview trigger keeps the checkbox as a separate destructive selection control. */
+  min-width: 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.pc-recovery-settings-reader {
+  height: 100%;
+}
+
+.pc-recovery-settings-reader-head {
+  display: grid;
+  gap: 3px;
+}
+
+.pc-recovery-settings-reader-head small {
+  overflow-wrap: anywhere;
+  color: var(--pc-muted);
+}
+
+.pc-recovery-settings-json {
+  flex: 1 1 auto;
+  min-height: 0;
+  margin: 0;
+  padding: 12px;
+  overflow: auto;
+  border: 1px solid var(--pc-border);
+  border-radius: var(--pc-card-radius);
+  background: var(--pc-surface-strong);
+  color: var(--pc-text);
+  font-family: var(--pc-font-mono, ui-monospace, SFMono-Regular, Consolas, monospace);
+  font-size: 12px;
+  line-height: 1.55;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
 }
 
 .pc-recovery-cleanup-item:last-child {

@@ -1,20 +1,31 @@
 import {
   confirmCharacterChatVisible,
   deleteNativeChatBackup,
+  deleteSettingsSnapshotsByHashes,
   downloadNativeChatBackup,
+  finalizeSettingsCleanupToken,
   importNativeCharacterBackup,
   listNativeChatBackups,
+  listNativeSettingsSnapshots,
+  loadNativeSettingsSnapshot,
+  makeNativeSettingsSnapshot,
   refreshRecoveryCharacters,
+  requestSettingsCleanupToken,
+  restoreNativeSettingsSnapshot,
 } from '@/apps/recovery/api';
 import {
+  createSettingsDuplicateGroups,
   createRecoveryCharacters,
   createSingleFlight,
   describeBackupMessageCountMismatch,
   groupChatBackups,
   assertCleanupThreshold,
+  createContainedBackupGroups,
   createDuplicateBackupGroups,
   isCleanupCandidate,
+  isStrictMessagePrefix,
   parseChatBackupJsonl,
+  formatSettingsSnapshotJson,
   type CleanupDeleteResult,
   type CleanupScanResult,
   type ChatBackupSummary,
@@ -23,6 +34,11 @@ import {
   type DuplicateScanResult,
   type ParsedChatBackup,
   type RecoveryCharacter,
+  type LoadedSettingsSnapshot,
+  type SettingsDeleteResult,
+  type SettingsDuplicateScanResult,
+  type SettingsSnapshotFingerprint,
+  type SettingsSnapshotSummary,
 } from '@/apps/recovery/model';
 
 export interface LoadedChatBackup {
@@ -48,6 +64,8 @@ export const useChatRecoveryStore = defineStore('chat-recovery', () => {
   const importing = ref(false);
   const deletingFileName = ref('');
   const cleanupScanning = ref(false);
+  const cleanupScanCompleted = ref(0);
+  const cleanupScanTotal = ref(0);
   const cleanupDeleting = ref(false);
   const cleanupScanResult = shallowRef<CleanupScanResult | null>(null);
   const cleanupDeleteResult = shallowRef<CleanupDeleteResult | null>(null);
@@ -57,6 +75,19 @@ export const useChatRecoveryStore = defineStore('chat-recovery', () => {
   const duplicateScanTotal = ref(0);
   const duplicateScanResult = shallowRef<DuplicateScanResult | null>(null);
   const duplicateDeleteResult = shallowRef<DuplicateDeleteResult | null>(null);
+  const settingsSnapshots = ref<SettingsSnapshotSummary[]>([]);
+  const activeSettingsSnapshot = shallowRef<LoadedSettingsSnapshot | null>(null);
+  const settingsLoading = ref(false);
+  const settingsReading = ref(false);
+  const settingsMaking = ref(false);
+  const settingsRestoring = ref(false);
+  const settingsDeleting = ref(false);
+  const settingsDuplicateScanning = ref(false);
+  const settingsDuplicateScanCompleted = ref(0);
+  const settingsDuplicateScanTotal = ref(0);
+  const settingsDuplicateScanResult = shallowRef<SettingsDuplicateScanResult | null>(null);
+  const settingsDeleteResult = shallowRef<SettingsDeleteResult | null>(null);
+  const settingsError = ref('');
   const importResult = ref<RecoveryImportResult | null>(null);
   const status = ref<'idle' | 'ready' | 'unsupported'>('idle');
   const importedSources = new Map<string, RecoveryImportResult>();
@@ -69,8 +100,213 @@ export const useChatRecoveryStore = defineStore('chat-recovery', () => {
       cleanupScanning.value ||
       cleanupDeleting.value ||
       duplicateScanning.value ||
-      duplicateDeleting.value,
+      duplicateDeleting.value ||
+      settingsLoading.value ||
+      settingsMaking.value ||
+      settingsRestoring.value ||
+      settingsDeleting.value ||
+      settingsDuplicateScanning.value,
   );
+
+  async function hashText(value: string) {
+    const digest = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(value));
+    return Array.from(new Uint8Array(digest))
+      .map(item => item.toString(16).padStart(2, '0'))
+      .join('');
+  }
+
+  async function refreshSettingsSnapshots() {
+    settingsLoading.value = true;
+    settingsError.value = '';
+    try {
+      settingsSnapshots.value = await listNativeSettingsSnapshots();
+      return settingsSnapshots.value;
+    } catch (caughtError) {
+      settingsError.value = caughtError instanceof Error ? caughtError.message : '读取设置快照失败';
+      throw caughtError;
+    } finally {
+      settingsLoading.value = false;
+    }
+  }
+
+  async function readSettingsSnapshot(summary: SettingsSnapshotSummary) {
+    settingsReading.value = true;
+    settingsError.value = '';
+    try {
+      const raw = await loadNativeSettingsSnapshot(summary.name);
+      const loaded = { formatted: formatSettingsSnapshotJson(raw), raw, summary };
+      activeSettingsSnapshot.value = loaded;
+      return loaded;
+    } finally {
+      settingsReading.value = false;
+    }
+  }
+
+  function releaseActiveSettingsSnapshot() {
+    activeSettingsSnapshot.value = null;
+  }
+
+  async function makeSettingsSnapshot() {
+    if (managementBusy.value) throw new Error('已有备份任务正在执行');
+    settingsMaking.value = true;
+    try {
+      await makeNativeSettingsSnapshot();
+      await refreshSettingsSnapshots();
+    } finally {
+      settingsMaking.value = false;
+    }
+  }
+
+  async function restoreSettingsSnapshot(summary: SettingsSnapshotSummary) {
+    if (managementBusy.value) throw new Error('已有备份任务正在执行');
+    const current = settingsSnapshots.value.find(item => item.name === summary.name);
+    if (!current) throw new Error('这份设置快照已经不存在，请刷新后重试');
+    settingsRestoring.value = true;
+    try {
+      await restoreNativeSettingsSnapshot(current.name);
+      await refreshSettingsSnapshots();
+    } finally {
+      settingsRestoring.value = false;
+    }
+  }
+
+  async function fingerprintSettingsSnapshot(summary: SettingsSnapshotSummary): Promise<SettingsSnapshotFingerprint> {
+    const raw = await loadNativeSettingsSnapshot(summary.name);
+    formatSettingsSnapshotJson(raw);
+    return { contentHash: await hashText(raw), summary };
+  }
+
+  async function scanDuplicateSettingsSnapshots() {
+    if (managementBusy.value) throw new Error('已有备份任务正在执行');
+    settingsDuplicateScanning.value = true;
+    settingsDuplicateScanCompleted.value = 0;
+    settingsDuplicateScanTotal.value = 0;
+    settingsDuplicateScanResult.value = null;
+    settingsDeleteResult.value = null;
+    try {
+      await refreshSettingsSnapshots();
+      const snapshots = [...settingsSnapshots.value];
+      settingsDuplicateScanTotal.value = snapshots.length;
+      const fingerprints: SettingsSnapshotFingerprint[] = [];
+      const rejected: SettingsDuplicateScanResult['rejected'] = [];
+      let nextIndex = 0;
+      const worker = async () => {
+        while (nextIndex < snapshots.length) {
+          const index = nextIndex++;
+          const summary = snapshots[index];
+          if (!summary) continue;
+          try {
+            fingerprints.push(await fingerprintSettingsSnapshot(summary));
+          } catch (caughtError) {
+            rejected.push({
+              name: summary.name,
+              reason: caughtError instanceof Error ? caughtError.message : '设置快照校验失败',
+            });
+          } finally {
+            settingsDuplicateScanCompleted.value += 1;
+          }
+        }
+      };
+      await Promise.all(Array.from({ length: Math.min(4, snapshots.length) }, () => worker()));
+      const result = {
+        groups: createSettingsDuplicateGroups(fingerprints),
+        rejected,
+        scannedFiles: snapshots.length,
+      };
+      settingsDuplicateScanResult.value = result;
+      return result;
+    } finally {
+      settingsDuplicateScanning.value = false;
+    }
+  }
+
+  function resetSettingsDuplicates() {
+    settingsDuplicateScanCompleted.value = 0;
+    settingsDuplicateScanTotal.value = 0;
+    settingsDuplicateScanResult.value = null;
+    settingsDeleteResult.value = null;
+  }
+
+  async function deleteSettingsSnapshots(names: string[]) {
+    if (managementBusy.value) throw new Error('已有备份任务正在执行');
+    const scan = settingsDuplicateScanResult.value;
+    if (!scan) throw new Error('请先扫描完全相同的设置快照');
+    const selected = new Set(names);
+    if (!selected.size) throw new Error('没有选择要删除的设置快照');
+    settingsDeleting.value = true;
+    const result: SettingsDeleteResult = { deleted: [], failed: [], reclaimedBytes: 0 };
+    let cleanupToken = '';
+    try {
+      const verifiedNames = new Set<string>();
+      for (const group of scan.groups) {
+        const candidates = group.duplicates.filter(item => selected.has(item.summary.name));
+        if (!candidates.length) continue;
+        try {
+          const keeper = settingsSnapshots.value.find(item => item.name === group.keeper.summary.name);
+          if (!keeper) throw new Error('预定保留的设置快照已经不存在，整组未删除');
+          const keeperFingerprint = await fingerprintSettingsSnapshot(keeper);
+          if (keeperFingerprint.contentHash !== group.contentHash) {
+            throw new Error('预定保留的设置快照内容已经变化，整组未删除');
+          }
+          for (const candidate of candidates) {
+            const current = settingsSnapshots.value.find(item => item.name === candidate.summary.name);
+            if (!current) {
+              result.failed.push({ name: candidate.summary.name, reason: '设置快照已经不存在' });
+              continue;
+            }
+            const fingerprint = await fingerprintSettingsSnapshot(current);
+            if (fingerprint.contentHash !== group.contentHash) {
+              result.failed.push({ name: current.name, reason: '设置快照内容在确认后发生变化' });
+              continue;
+            }
+            verifiedNames.add(current.name);
+          }
+        } catch (caughtError) {
+          const reason = caughtError instanceof Error ? caughtError.message : '无法复核保留快照';
+          candidates.forEach(item => result.failed.push({ name: item.summary.name, reason }));
+        }
+      }
+      if (!verifiedNames.size) {
+        settingsDeleteResult.value = result;
+        return result;
+      }
+      const cleanup = await requestSettingsCleanupToken();
+      cleanupToken = cleanup.token;
+      const cleanupByName = new Map(cleanup.settingsBackups.map(item => [item.name, item]));
+      const deletable = [...verifiedNames].flatMap(name => {
+        const item = cleanupByName.get(name);
+        if (!item) {
+          result.failed.push({ name, reason: '酒馆清理报告中没有这份快照' });
+          return [];
+        }
+        return [item];
+      });
+      if (deletable.length) await deleteSettingsSnapshotsByHashes(cleanupToken, deletable.map(item => item.hash));
+      const before = new Map(settingsSnapshots.value.map(item => [item.name, item]));
+      await refreshSettingsSnapshots();
+      const remaining = new Set(settingsSnapshots.value.map(item => item.name));
+      deletable.forEach(item => {
+        const summary = before.get(item.name);
+        if (!summary) return;
+        if (remaining.has(item.name)) result.failed.push({ name: item.name, reason: '酒馆未删除这份设置快照' });
+        else {
+          result.deleted.push(summary);
+          result.reclaimedBytes += summary.size;
+        }
+      });
+      settingsDeleteResult.value = result;
+      return result;
+    } finally {
+      if (cleanupToken) {
+        try {
+          await finalizeSettingsCleanupToken(cleanupToken);
+        } catch {
+          // The token is single-use and server-scoped. Deletion result remains authoritative.
+        }
+      }
+      settingsDeleting.value = false;
+    }
+  }
 
   async function refresh() {
     loading.value = true;
@@ -137,6 +373,8 @@ export const useChatRecoveryStore = defineStore('chat-recovery', () => {
     }
     const maxChatItems = assertCleanupThreshold(maxChatItemsInput);
     cleanupScanning.value = true;
+    cleanupScanCompleted.value = 0;
+    cleanupScanTotal.value = 0;
     cleanupScanResult.value = null;
     cleanupDeleteResult.value = null;
     try {
@@ -144,6 +382,7 @@ export const useChatRecoveryStore = defineStore('chat-recovery', () => {
       if (error.value) throw new Error(error.value);
       const scopedBackups = groupId ? (groups.value.find(group => group.id === groupId)?.backups ?? []) : backups.value;
       const coarseCandidates = scopedBackups.filter(summary => summary.chatItems <= maxChatItems);
+      cleanupScanTotal.value = coarseCandidates.length;
       const result: CleanupScanResult = { candidates: [], groupId, maxChatItems, rejected: [] };
       for (const summary of coarseCandidates) {
         try {
@@ -160,6 +399,8 @@ export const useChatRecoveryStore = defineStore('chat-recovery', () => {
             reason: caughtError instanceof Error ? caughtError.message : '备份预检失败',
             summary,
           });
+        } finally {
+          cleanupScanCompleted.value += 1;
         }
       }
       cleanupScanResult.value = result;
@@ -209,6 +450,8 @@ export const useChatRecoveryStore = defineStore('chat-recovery', () => {
   }
 
   function resetCleanup() {
+    cleanupScanCompleted.value = 0;
+    cleanupScanTotal.value = 0;
     cleanupScanResult.value = null;
     cleanupDeleteResult.value = null;
   }
@@ -222,13 +465,19 @@ export const useChatRecoveryStore = defineStore('chat-recovery', () => {
 
   async function fingerprintBackup(summary: ChatBackupSummary): Promise<DuplicateBackupFingerprint> {
     const blob = await downloadNativeChatBackup(summary);
-    const parsed = parseChatBackupJsonl(await blob.text());
+    const raw = await blob.text();
+    const parsed = parseChatBackupJsonl(raw);
     const mismatch = describeBackupMessageCountMismatch(summary.chatItems, parsed.messages.length);
     if (mismatch) throw new Error(mismatch);
+    const lines = raw.split(/\r?\n/);
+    while (lines.length && !lines.at(-1)?.trim()) lines.pop();
+    const messageHashes = await Promise.all(lines.slice(1).map(hashText));
     return {
       actualChatItems: parsed.messages.length,
       byteLength: blob.size,
       contentHash: await hashBackupBlob(blob),
+      headerHash: await hashText(lines[0] ?? ''),
+      messageHashes,
       summary,
     };
   }
@@ -237,15 +486,15 @@ export const useChatRecoveryStore = defineStore('chat-recovery', () => {
     return groupId ? (groups.value.find(group => group.id === groupId)?.backups ?? []) : backups.value;
   }
 
-  function getDuplicateCoarseCandidates(scopedBackups: ChatBackupSummary[]) {
-    const coarseGroups = new Map<string, ChatBackupSummary[]>();
+  function getDuplicateCandidates(scopedBackups: ChatBackupSummary[]) {
+    const ownerGroups = new Map<string, ChatBackupSummary[]>();
     scopedBackups.forEach(summary => {
-      const key = `${summary.ownerKey}\u0000${summary.chatItems}\u0000${summary.fileSize}`;
-      const items = coarseGroups.get(key) ?? [];
+      if (!summary.ownerKey) return;
+      const items = ownerGroups.get(summary.ownerKey) ?? [];
       items.push(summary);
-      coarseGroups.set(key, items);
+      ownerGroups.set(summary.ownerKey, items);
     });
-    return [...coarseGroups.values()].filter(items => items.length > 1).flat();
+    return [...ownerGroups.values()].filter(items => items.length > 1).flat();
   }
 
   async function scanDuplicateBackups(groupId = '') {
@@ -258,7 +507,7 @@ export const useChatRecoveryStore = defineStore('chat-recovery', () => {
     try {
       await refresh();
       if (error.value) throw new Error(error.value);
-      const candidates = getDuplicateCoarseCandidates(getScopedBackups(groupId));
+      const candidates = getDuplicateCandidates(getScopedBackups(groupId));
       duplicateScanTotal.value = candidates.length;
       const fingerprints: DuplicateBackupFingerprint[] = [];
       const rejected: DuplicateScanResult['rejected'] = [];
@@ -282,8 +531,10 @@ export const useChatRecoveryStore = defineStore('chat-recovery', () => {
         }
       };
       await Promise.all(Array.from({ length: Math.min(4, candidates.length) }, () => worker()));
+      const groups = createDuplicateBackupGroups(fingerprints);
       const result: DuplicateScanResult = {
-        groups: createDuplicateBackupGroups(fingerprints),
+        containedGroups: createContainedBackupGroups(fingerprints, groups),
+        groups,
         groupId,
         rejected,
         scannedFiles: candidates.length,
@@ -292,6 +543,67 @@ export const useChatRecoveryStore = defineStore('chat-recovery', () => {
       return result;
     } finally {
       duplicateScanning.value = false;
+    }
+  }
+
+  function findContainedCandidate(fileName: string) {
+    for (const group of duplicateScanResult.value?.containedGroups ?? []) {
+      const fingerprint = group.contained.find(item => item.summary.fileName === fileName);
+      if (fingerprint) return { fingerprint, group };
+    }
+    return null;
+  }
+
+  async function deleteContainedBackups(fileNames: string[]) {
+    if (managementBusy.value) throw new Error('已有备份扫描或删除任务正在执行');
+    const scan = duplicateScanResult.value;
+    if (!scan) throw new Error('请先扫描续长包含的备份');
+    const selected = [...new Set(fileNames)].map(findContainedCandidate).filter(item => Boolean(item));
+    if (!selected.length) throw new Error('没有选择要删除的较短备份');
+    duplicateDeleting.value = true;
+    const result: DuplicateDeleteResult = { deleted: [], failed: [], reclaimedBytes: 0 };
+    try {
+      for (const group of scan.containedGroups) {
+        const candidates = selected.filter(item => item?.group.id === group.id);
+        if (!candidates.length) continue;
+        let keeper: DuplicateBackupFingerprint;
+        try {
+          const current = backups.value.find(item => item.fileName === group.keeper.summary.fileName);
+          if (!current) throw new Error('预定保留的续长备份已经不存在，整组未删除');
+          keeper = await fingerprintBackup(current);
+        } catch (caughtError) {
+          const reason = caughtError instanceof Error ? caughtError.message : '无法复核续长备份';
+          candidates.forEach(item => {
+            if (item) result.failed.push({ reason, summary: item.fingerprint.summary });
+          });
+          continue;
+        }
+        for (const item of candidates) {
+          if (!item) continue;
+          try {
+            const current = backups.value.find(backup => backup.fileName === item.fingerprint.summary.fileName);
+            if (!current) throw new Error('较短备份已经不存在，未执行删除');
+            const latest = await fingerprintBackup(current);
+            if (latest.summary.ownerKey !== keeper.summary.ownerKey || !isStrictMessagePrefix(latest, keeper)) {
+              throw new Error('备份不再满足严格前缀包含关系，未执行删除');
+            }
+            await deleteNativeChatBackup(current);
+            result.deleted.push(current);
+            result.reclaimedBytes += latest.byteLength;
+            removeBackupSummary(current.fileName);
+          } catch (caughtError) {
+            result.failed.push({
+              reason: caughtError instanceof Error ? caughtError.message : '删除较短备份失败',
+              summary: item.fingerprint.summary,
+            });
+          }
+        }
+      }
+      duplicateDeleteResult.value = result;
+      await refresh();
+      return result;
+    } finally {
+      duplicateDeleting.value = false;
     }
   }
 
@@ -447,15 +759,20 @@ export const useChatRecoveryStore = defineStore('chat-recovery', () => {
 
   return {
     activeBackup,
+    activeSettingsSnapshot,
     backups,
     characters,
     cleanupDeleteResult,
     cleanupDeleting,
     cleanupScanning,
+    cleanupScanCompleted,
+    cleanupScanTotal,
     cleanupScanResult,
     deleteBackup,
     deleteCleanupCandidates,
+    deleteContainedBackups,
     deleteDuplicateBackups,
+    deleteSettingsSnapshots,
     deletingFileName,
     duplicateDeleteResult,
     duplicateDeleting,
@@ -470,14 +787,33 @@ export const useChatRecoveryStore = defineStore('chat-recovery', () => {
     importing,
     loading,
     managementBusy,
+    makeSettingsSnapshot,
     readBackup,
     reading,
+    readSettingsSnapshot,
     refresh,
+    refreshSettingsSnapshots,
     releaseActiveBackup,
+    releaseActiveSettingsSnapshot,
     resetCleanup,
     resetDuplicates,
+    resetSettingsDuplicates,
+    restoreSettingsSnapshot,
     scanCleanup,
     scanDuplicateBackups,
+    scanDuplicateSettingsSnapshots,
+    settingsDeleteResult,
+    settingsDeleting,
+    settingsDuplicateScanCompleted,
+    settingsDuplicateScanning,
+    settingsDuplicateScanResult,
+    settingsDuplicateScanTotal,
+    settingsError,
+    settingsLoading,
+    settingsMaking,
+    settingsReading,
+    settingsRestoring,
+    settingsSnapshots,
     setVisualFixture,
     status,
   };

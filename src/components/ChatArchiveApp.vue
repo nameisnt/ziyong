@@ -34,6 +34,10 @@
         <strong>{{ t`读取失败` }}</strong>
         <p>{{ error }}</p>
       </div>
+      <div v-if="floorBackupError" class="pc-status-card">
+        <strong>{{ t`楼层备份暂不可用` }}</strong>
+        <p>{{ floorBackupError }}</p>
+      </div>
 
       <EmptyState
         v-if="!visibleOwners.length && !loadingCharacters"
@@ -48,10 +52,18 @@
           type="button"
           @click="openOwner(owner)"
         >
-          <span class="pc-owner-avatar">{{ owner.initial }}</span>
+          <span class="pc-owner-avatar">
+            <img
+              v-if="owner.avatarUrl && !failedAvatars.has(owner.key)"
+              :src="owner.avatarUrl"
+              :alt="owner.name"
+              @error="markAvatarFailed(owner.key)"
+            />
+            <span v-else>{{ owner.initial }}</span>
+          </span>
           <span class="pc-owner-main">
             <strong>{{ owner.name }}</strong>
-            <small>{{ owner.usedChatIds.size ? `${owner.usedChatIds.size} 个聊天有手机内容` : '暂无手机内容' }}</small>
+            <small>{{ formatOwnerSummary(owner) }}</small>
           </span>
           <i class="fa-solid fa-chevron-right"></i>
         </button>
@@ -84,7 +96,10 @@
         >
           <span class="pc-chat-main">
             <strong>{{ chat.title }}</strong>
-            <small>{{ chat.isUsed ? '有手机内容' : '无手机内容' }}{{ chat.isCurrent ? ' · 当前聊天' : '' }}</small>
+            <small>
+              {{ chat.isUsed ? '有手机内容' : '无手机内容' }}{{ chat.floorBackup ? ` · 已备份 ${chat.floorBackup.messages.length} 层` : ''
+              }}{{ chat.isCurrent ? ' · 当前聊天' : '' }}
+            </small>
           </span>
           <span v-if="chat.isUsed" class="pc-count-pill">{{ chat.contentCount }}</span>
         </button>
@@ -92,6 +107,52 @@
     </section>
 
     <section v-else-if="route.page === 'detail' && activeOwner && selectedChat" class="pc-archive-page">
+      <article class="pc-page-section pc-floor-backup-card">
+        <div class="pc-domain-head">
+          <div>
+            <strong>{{ t`聊天楼层备份` }}</strong>
+            <small>{{ floorBackupSummary }}</small>
+          </div>
+          <i class="fa-solid fa-shield-halved"></i>
+        </div>
+        <div class="pc-archive-backup-actions">
+          <button
+            class="pc-soft-btn"
+            type="button"
+            :disabled="!selectedFloorBackup"
+            @click="openFloorBackup"
+          >
+            {{ t`阅读备份` }}
+          </button>
+          <button
+            class="pc-soft-btn"
+            type="button"
+            :disabled="!selectedFloorBackup"
+            @click="exportSelectedFloorBackup"
+          >
+            {{ t`导出备份` }}
+          </button>
+          <button class="pc-soft-btn" type="button" @click="floorBackupInputEl?.click()">
+            {{ t`导入备份` }}
+          </button>
+          <button
+            class="pc-primary-btn"
+            type="button"
+            :disabled="!isSelectedCurrentChat || savingFloorBackup"
+            @click="saveCurrentFloorBackup"
+          >
+            {{ savingFloorBackup ? t`保存中…` : t`立即备份` }}
+          </button>
+        </div>
+        <input
+          ref="floorBackupInputEl"
+          class="pc-hidden-input"
+          type="file"
+          accept="application/json,.json"
+          @change="onFloorBackupSelected"
+        />
+      </article>
+
       <div v-if="!isSelectedCurrentChat" class="pc-page-section pc-readonly-card">
         <div class="pc-readonly-copy">
           <strong>{{ t`历史聊天只读` }}</strong>
@@ -136,12 +197,53 @@
         </div>
       </article>
     </section>
+
+    <section v-else-if="route.page === 'floor-backup' && selectedFloorBackup" class="pc-archive-page">
+      <article class="pc-page-section pc-floor-backup-overview">
+        <div class="pc-domain-head">
+          <strong>{{ selectedFloorBackup.owner.displayName }} / {{ selectedFloorBackup.chat.title }}</strong>
+          <span>{{ selectedFloorBackup.messages.length }} 层</span>
+        </div>
+        <small>保存于 {{ formatBackupTime(selectedFloorBackup.updatedAt) }}；导入文件只进入备份库，不会自动写入聊天。</small>
+      </article>
+
+      <div class="pc-floor-message-list">
+        <article
+          v-for="message in selectedFloorBackup.messages"
+          :key="`${message.messageId}-${message.role}`"
+          class="pc-page-section pc-floor-message"
+        >
+          <header>
+            <strong>第 {{ message.messageId }} 楼 · {{ message.role === 'user' ? '用户' : 'AI' }}</strong>
+            <span v-if="message.isHidden">已隐藏</span>
+          </header>
+          <p>{{ message.message || '（空正文）' }}</p>
+          <details v-if="getBackupReasoning(message)">
+            <summary>查看思维链</summary>
+            <pre>{{ getBackupReasoning(message) }}</pre>
+          </details>
+        </article>
+      </div>
+
+      <div class="pc-form-actions pc-floor-backup-footer">
+        <button class="pc-soft-btn" type="button" @click="exportSelectedFloorBackup">{{ t`导出备份` }}</button>
+        <button
+          class="pc-primary-btn"
+          type="button"
+          :disabled="!isSelectedCurrentChat || restoringFloorBackup"
+          @click="restoreSelectedFloorBackup"
+        >
+          {{ restoringFloorBackup ? t`插入中…` : t`插入空聊天` }}
+        </button>
+      </div>
+    </section>
   </section>
 </template>
 
 <script setup lang="ts">
 import EmptyState from '@/components/EmptyState.vue';
 import { areChatScopeKeysEquivalent } from '@/store/chatScoped';
+import { useGenerationTaskStore } from '@/store/generationTasks';
 import { usePhoneStore } from '@/store/phone';
 import { normalizeBrief, type ChatHistoryBriefItem } from '@/store/reader';
 import { getChatScopeMigrationSourceKeys, migratePhoneChatScopes } from '@/util/chatScopeRename';
@@ -155,6 +257,18 @@ import {
   type ChatScopeRef,
 } from '@/util/chatArchive';
 import { jumpToTavernChat } from '@/util/tavernNavigation';
+import {
+  captureCurrentChatFloorBackup,
+  downloadChatFloorBackup,
+  isChatFloorBackupForTarget,
+  listChatFloorBackups,
+  parseChatFloorBackupFile,
+  restoreChatFloorBackupToCurrent,
+  saveChatFloorBackup,
+  type ChatFloorBackup,
+  type ChatFloorBackupMessage,
+} from '@/util/chatFloorBackup';
+import { getOptionalGlobalFunction } from '@/util/runtime';
 // eslint-disable-next-line import-x/no-nodejs-modules
 import { characters, getCharacters, getPastCharacterChats } from '@sillytavern/script';
 import { storeToRefs } from 'pinia';
@@ -162,6 +276,8 @@ import { storeToRefs } from 'pinia';
 interface ArchiveOwner {
   aliases: Set<string>;
   avatar: string;
+  avatarUrl: string;
+  backupChatIds: Set<string>;
   characterId: number | null;
   initial: string;
   key: string;
@@ -174,6 +290,7 @@ interface ArchiveOwner {
 interface ArchiveChatRow {
   contentCount: number;
   domains: ChatArchiveDomain[];
+  floorBackup: ChatFloorBackup | null;
   isCurrent: boolean;
   isUsed: boolean;
   key: string;
@@ -182,21 +299,34 @@ interface ArchiveChatRow {
 }
 
 const phone = usePhoneStore();
+const generationTasks = useGenerationTaskStore();
 const { currentRoute: route, currentTavernScopeKey } = storeToRefs(phone);
 const activeTab = ref<'used' | 'unused'>('used');
 const owners = ref<ArchiveOwner[]>([]);
 const chatRows = ref<ArchiveChatRow[]>([]);
 const selectedChat = ref<ArchiveChatRow | null>(null);
 const selectedDomains = ref<ChatArchiveDomain[]>([]);
+const floorBackups = ref<ChatFloorBackup[]>([]);
 const ownerQuery = ref('');
 const loadingCharacters = ref(false);
 const loadingChats = ref(false);
 const migratingChat = ref(false);
+const restoringFloorBackup = ref(false);
+const savingFloorBackup = ref(false);
 const error = ref('');
+const floorBackupError = ref('');
+const floorBackupInputEl = ref<HTMLInputElement | null>(null);
+const failedAvatars = reactive(new Set<string>());
 let characterLoadSequence = 0;
 let chatLoadSequence = 0;
 
 const activeOwner = computed(() => owners.value.find(owner => owner.key === route.value.params?.ownerKey) ?? null);
+const selectedFloorBackup = computed(() => selectedChat.value?.floorBackup ?? null);
+const floorBackupSummary = computed(() => {
+  const backup = selectedFloorBackup.value;
+  if (!backup) return isSelectedCurrentChat.value ? '尚无备份，可立即保存当前楼层' : '尚无备份；需先在酒馆打开该聊天才能建立';
+  return `${backup.messages.length} 层 · ${formatBackupTime(backup.updatedAt)}`;
+});
 const isSelectedCurrentChat = computed(() =>
   Boolean(selectedChat.value && areChatScopeKeysEquivalent(selectedChat.value.scopeKey, currentTavernScopeKey.value)),
 );
@@ -237,7 +367,7 @@ watch(
       await loadChatsForActiveOwner(true);
       return;
     }
-    if (current.page === 'detail') {
+    if (current.page === 'detail' || current.page === 'floor-backup') {
       await loadChatsForActiveOwner();
       const chat = chatRows.value.find(item => item.key === current.params?.chatKey) ?? null;
       selectedChat.value = chat;
@@ -253,13 +383,19 @@ async function loadCharacters(force = false) {
   loadingCharacters.value = true;
   error.value = '';
   try {
-    await getCharacters();
+    const [, loadedBackups] = await Promise.all([getCharacters(), loadFloorBackupsSafe()]);
     if (requestSequence !== characterLoadSequence) return;
+    floorBackups.value = loadedBackups;
     const usedScopes = getUsedChatArchiveScopes();
     const usedByOwner = groupUsedScopesByOwner(usedScopes);
     const characterOwners = (Array.isArray(characters) ? characters : []).map((character, index) =>
       createCharacterOwner(character, index, usedByOwner),
     );
+    characterOwners.forEach(owner => {
+      floorBackups.value
+        .filter(backup => isBackupOwnedBy(backup, owner))
+        .forEach(backup => owner.backupChatIds.add(normalizeChatArchiveId(backup.chat.id)));
+    });
     const matched = new Set(characterOwners.flatMap(owner => [...owner.aliases]));
     const orphanOwners = [...usedByOwner.entries()]
       .filter(([ownerId]) => !matched.has(ownerId))
@@ -278,6 +414,17 @@ async function loadCharacters(force = false) {
   }
 }
 
+async function loadFloorBackupsSafe() {
+  try {
+    const backups = await listChatFloorBackups();
+    floorBackupError.value = '';
+    return backups;
+  } catch (caughtError) {
+    floorBackupError.value = caughtError instanceof Error ? caughtError.message : '无法读取浏览器本地备份库';
+    return [];
+  }
+}
+
 function groupUsedScopesByOwner(scopes: ChatScopeRef[]) {
   const result = new Map<string, ChatScopeRef[]>();
   scopes.forEach(scope => {
@@ -286,6 +433,68 @@ function groupUsedScopesByOwner(scopes: ChatScopeRef[]) {
     result.set(scope.ownerId, list);
   });
   return result;
+}
+
+function firstDisplayCharacter(value: string, fallback: string) {
+  const normalized = value.trim();
+  if (!normalized) return fallback;
+  if (typeof Intl.Segmenter === 'function') {
+    const first = new Intl.Segmenter('zh-CN', { granularity: 'grapheme' }).segment(normalized)[Symbol.iterator]().next();
+    if (!first.done) return first.value.segment;
+  }
+  return Array.from(normalized)[0] || fallback;
+}
+
+function resolveCharacterAvatarUrl(avatar: string) {
+  const normalized = avatar.trim();
+  const fileName = normalized.split(/[\\/]/).pop()?.toLowerCase() ?? '';
+  if (!normalized || ['none', 'default', 'default.png', 'default_avatar.png', 'ai4.png'].includes(fileName)) return '';
+  const getThumbnailUrl = getOptionalGlobalFunction<(type: string, file: string) => string>('getThumbnailUrl');
+  if (getThumbnailUrl) {
+    try {
+      const thumbnail = getThumbnailUrl('avatar', normalized);
+      if (thumbnail) return thumbnail;
+    } catch {
+      // Fall through to SillyTavern's character image route.
+    }
+  }
+  return `/characters/${normalized.split('/').map(encodeURIComponent).join('/')}`;
+}
+
+function markAvatarFailed(ownerKey: string) {
+  failedAvatars.add(ownerKey);
+}
+
+function formatOwnerSummary(owner: ArchiveOwner) {
+  const phoneChats = owner.usedChatIds.size;
+  const backupChats = owner.backupChatIds.size;
+  if (!phoneChats && !backupChats) return '暂无手机内容或楼层备份';
+  const parts = [];
+  if (phoneChats) parts.push(`${phoneChats} 个聊天有手机内容`);
+  if (backupChats) parts.push(`${backupChats} 个聊天有楼层备份`);
+  return parts.join(' · ');
+}
+
+function normalizeOwnerAlias(value: string) {
+  return value.trim().toLowerCase().replace(/\.[^/.]+$/, '');
+}
+
+function isBackupOwnedBy(backup: ChatFloorBackup, owner: ArchiveOwner) {
+  if (backup.owner.kind !== owner.kind) return false;
+  const candidates = new Set(
+    [...owner.aliases, owner.avatar].filter(Boolean).flatMap(alias => [alias.trim().toLowerCase(), normalizeOwnerAlias(alias)]),
+  );
+  const stableId = backup.owner.stableId.trim().toLowerCase();
+  return candidates.has(stableId) || candidates.has(normalizeOwnerAlias(stableId));
+}
+
+function findFloorBackup(owner: ArchiveOwner, chatId: string) {
+  const normalizedChatId = normalizeChatArchiveId(chatId).toLowerCase();
+  return (
+    floorBackups.value.find(
+      backup => isBackupOwnedBy(backup, owner) && normalizeChatArchiveId(backup.chat.id).toLowerCase() === normalizedChatId,
+    ) ?? null
+  );
 }
 
 function createCharacterOwner(
@@ -304,8 +513,10 @@ function createCharacterOwner(
   return {
     aliases,
     avatar,
+    avatarUrl: resolveCharacterAvatarUrl(avatar),
+    backupChatIds: new Set(),
     characterId: index,
-    initial: name.slice(0, 1) || '角',
+    initial: firstDisplayCharacter(name, '角'),
     key: `char:${index}`,
     kind: 'char',
     name,
@@ -319,8 +530,10 @@ function createOrphanOwner(ownerId: string, scopes: ChatScopeRef[]): ArchiveOwne
   return {
     aliases: new Set([ownerId]),
     avatar: '',
+    avatarUrl: '',
+    backupChatIds: new Set(),
     characterId: null,
-    initial: name.slice(0, 1) || '档',
+    initial: firstDisplayCharacter(name, '档'),
     key: `char:${ownerId}`,
     kind: 'char',
     name,
@@ -354,7 +567,14 @@ async function loadChatsForActiveOwner(force = false) {
   loadingChats.value = true;
   error.value = '';
   try {
-    const briefs = owner.characterId === null ? [] : await getPastCharacterChats(owner.characterId);
+    const [briefs, loadedBackups] = await Promise.all([
+      owner.characterId === null ? Promise.resolve([]) : getPastCharacterChats(owner.characterId),
+      loadFloorBackupsSafe(),
+    ]);
+    floorBackups.value = loadedBackups;
+    owner.backupChatIds = new Set(
+      loadedBackups.filter(backup => isBackupOwnedBy(backup, owner)).map(backup => normalizeChatArchiveId(backup.chat.id)),
+    );
     if (
       requestSequence !== chatLoadSequence ||
       route.value.appId !== 'archive' ||
@@ -374,6 +594,12 @@ async function loadChatsForActiveOwner(force = false) {
     owner.usedChatIds.forEach(chatId => {
       if (!rows.has(chatId)) {
         rows.set(chatId, createChatRow(owner, chatId, formatArchiveChatTitle(chatId), domainReader));
+      }
+    });
+    owner.backupChatIds.forEach(chatId => {
+      if (!rows.has(chatId)) {
+        const backup = findFloorBackup(owner, chatId);
+        rows.set(chatId, createChatRow(owner, chatId, backup?.chat.title || formatArchiveChatTitle(chatId), domainReader));
       }
     });
     chatRows.value = [...rows.values()].sort(
@@ -400,6 +626,7 @@ function createChatRow(
   return {
     contentCount: domains.reduce((sum, domain) => sum + domain.items, 0),
     domains,
+    floorBackup: findFloorBackup(owner, chatId),
     isCurrent: areChatScopeKeysEquivalent(scopeKey, currentTavernScopeKey.value),
     isUsed: domains.length > 0,
     key: chatId,
@@ -453,6 +680,146 @@ async function openChat(chat: ArchiveChatRow) {
     chatKey: chat.key,
     ownerKey: activeOwner.value?.key || '',
   });
+}
+
+function formatBackupTime(value: string) {
+  const timestamp = Date.parse(value);
+  if (!Number.isFinite(timestamp)) return '时间未知';
+  return new Date(timestamp).toLocaleString('zh-CN', { hour12: false });
+}
+
+async function refreshSelectedChatRow() {
+  const chatKey = selectedChat.value?.key ?? route.value.params?.chatKey;
+  await loadChatsForActiveOwner(true);
+  const next = chatRows.value.find(chat => chat.key === chatKey) ?? null;
+  selectedChat.value = next;
+  selectedDomains.value = next?.domains ?? [];
+}
+
+function openFloorBackup() {
+  if (!selectedChat.value || !selectedFloorBackup.value) return;
+  phone.pushPage('floor-backup', '阅读楼层备份', {
+    chatKey: selectedChat.value.key,
+    ownerKey: activeOwner.value?.key || '',
+  });
+}
+
+function exportSelectedFloorBackup() {
+  const backup = selectedFloorBackup.value;
+  if (!backup) return;
+  downloadChatFloorBackup(backup);
+  toastr.success('已开始导出聊天楼层备份');
+}
+
+async function saveCurrentFloorBackup() {
+  if (!isSelectedCurrentChat.value || savingFloorBackup.value) return;
+  savingFloorBackup.value = true;
+  try {
+    let result = await captureCurrentChatFloorBackup();
+    if (result.status === 'protected-smaller') {
+      const confirmed = await phone.confirmNotice(
+        `现有备份有 ${result.backup.messages.length} 层，当前聊天只有 ${result.currentMessageCount} 层。要确认用较短的当前聊天替换备份吗？`,
+        { confirmLabel: '替换备份', kind: 'warning' },
+      );
+      if (!confirmed) return;
+      result = await captureCurrentChatFloorBackup({ force: true });
+    }
+    if (result.status === 'empty' || result.status === 'unavailable') {
+      toastr.warning(result.status === 'empty' ? '当前聊天没有可备份的用户或 AI 楼层' : '当前聊天身份无法识别');
+      return;
+    }
+    await refreshSelectedChatRow();
+    toastr.success(result.status === 'unchanged' ? '楼层备份已经是最新内容' : '已保存当前聊天楼层备份');
+  } catch (caughtError) {
+    toastr.error(caughtError instanceof Error ? caughtError.message : '保存聊天楼层备份失败');
+  } finally {
+    savingFloorBackup.value = false;
+  }
+}
+
+async function onFloorBackupSelected(event: Event) {
+  const input = event.target as HTMLInputElement;
+  const file = input.files?.[0];
+  input.value = '';
+  const owner = activeOwner.value;
+  const chat = selectedChat.value;
+  if (!file || !owner || !chat) return;
+  try {
+    const backup = await parseChatFloorBackupFile(file);
+    if (
+      !isChatFloorBackupForTarget(backup, {
+        aliases: owner.aliases,
+        avatar: owner.avatar,
+        chatId: chat.key,
+        kind: owner.kind,
+      })
+    ) {
+      throw new Error('备份中的角色卡或聊天名与当前档案不一致，已停止导入');
+    }
+    const existing = selectedFloorBackup.value;
+    if (
+      existing &&
+      !(await phone.confirmNotice(
+        `当前已有 ${existing.messages.length} 层的备份。要用导入文件中的 ${backup.messages.length} 层替换吗？`,
+        { confirmLabel: '导入并替换', kind: 'warning' },
+      ))
+    )
+      return;
+    await saveChatFloorBackup(backup);
+    await refreshSelectedChatRow();
+    toastr.success(`已导入 ${backup.messages.length} 层到本地备份库，尚未写入聊天`);
+  } catch (caughtError) {
+    toastr.error(caughtError instanceof Error ? caughtError.message : '导入聊天楼层备份失败');
+  }
+}
+
+function findReasoningValue(value: unknown, depth = 0): string {
+  if (depth > 3 || !value || typeof value !== 'object') return '';
+  const record = value as Record<string, unknown>;
+  const keys = ['reasoning', 'reasoning_content', 'reasoningContent', 'mes_reasoning', 'thinking', 'thoughts'];
+  for (const key of keys) {
+    const candidate = record[key];
+    if (typeof candidate === 'string' && candidate.trim()) return candidate.trim();
+  }
+  for (const candidate of Object.values(record)) {
+    const nested = findReasoningValue(candidate, depth + 1);
+    if (nested) return nested;
+  }
+  return '';
+}
+
+function getBackupReasoning(message: ChatFloorBackupMessage) {
+  return findReasoningValue(message.extra) || findReasoningValue(message.data);
+}
+
+async function restoreSelectedFloorBackup() {
+  const backup = selectedFloorBackup.value;
+  if (!backup || restoringFloorBackup.value) return;
+  if (generationTasks.hasRunningTasks) {
+    toastr.warning('请先暂停正在运行的生成任务，再插入聊天楼层');
+    return;
+  }
+  await phone.syncCurrentTavernScope(true);
+  if (!isSelectedCurrentChat.value) {
+    toastr.error('酒馆当前打开的不是这份档案对应的聊天，不能插入');
+    return;
+  }
+  const confirmed = await phone.confirmNotice(
+    `确认把备份中的 ${backup.messages.length} 个用户/AI 楼层插入当前空聊天吗？程序会再次检查聊天确实为空。`,
+    { confirmLabel: '插入空聊天', kind: 'warning' },
+  );
+  if (!confirmed) return;
+
+  restoringFloorBackup.value = true;
+  try {
+    await restoreChatFloorBackupToCurrent(backup);
+    await phone.syncCurrentTavernScope(true);
+    toastr.success(`已插入 ${backup.messages.length} 个聊天楼层`);
+  } catch (caughtError) {
+    toastr.error(caughtError instanceof Error ? caughtError.message : '插入聊天楼层失败');
+  } finally {
+    restoringFloorBackup.value = false;
+  }
 }
 
 async function jumpSelectedChatToTavern() {
@@ -603,6 +970,14 @@ async function migrateSelectedChatToCurrent() {
   background: color-mix(in srgb, #2d9cdb 16%, var(--pc-surface) 84%);
   color: #2d9cdb;
   font-weight: 700;
+  overflow: hidden;
+}
+
+.pc-owner-avatar img {
+  width: 100%;
+  height: 100%;
+  display: block;
+  object-fit: cover;
 }
 
 .pc-owner-main,
@@ -674,6 +1049,83 @@ async function migrateSelectedChatToCurrent() {
 
 .pc-domain-head {
   align-items: baseline;
+}
+
+.pc-domain-head > div {
+  min-width: 0;
+  display: grid;
+  gap: 3px;
+}
+
+.pc-domain-head small,
+.pc-floor-backup-overview > small,
+.pc-floor-message header span {
+  color: var(--pc-muted);
+}
+
+.pc-floor-backup-card .pc-domain-head > i {
+  color: var(--pc-theme-accent);
+}
+
+.pc-archive-backup-actions {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.pc-archive-backup-actions > button {
+  min-width: 0;
+}
+
+.pc-floor-message-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.pc-floor-message {
+  display: grid;
+  gap: 8px;
+}
+
+.pc-floor-message header {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.pc-floor-message p,
+.pc-floor-message pre {
+  margin: 0;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.pc-floor-message p {
+  max-height: 14em;
+  overflow: auto;
+  line-height: 1.6;
+}
+
+.pc-floor-message details {
+  color: var(--pc-muted);
+}
+
+.pc-floor-message pre {
+  margin-top: 8px;
+  max-height: 12em;
+  overflow: auto;
+  color: var(--pc-text);
+  font: inherit;
+}
+
+.pc-floor-backup-footer {
+  position: sticky;
+  bottom: 0;
+  z-index: 2;
+  padding-block: 8px;
+  background: var(--pc-surface);
 }
 
 .pc-domain-item {

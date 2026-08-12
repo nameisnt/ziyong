@@ -87,6 +87,7 @@ export function applyRecoveryVisualScenario(name: string, context: RecoveryScena
     duplicateScan:
       name === 'recovery-duplicates'
         ? {
+            containedGroups: [],
             groupId: '',
             groups: [
               {
@@ -97,6 +98,8 @@ export function applyRecoveryVisualScenario(name: string, context: RecoveryScena
                     actualChatItems: 2,
                     byteLength: rawJsonl.length,
                     contentHash: 'visual-exact-hash',
+                    headerHash: 'visual-header-hash',
+                    messageHashes: ['visual-1', 'visual-2'],
                     summary: duplicateSummary,
                   },
                 ],
@@ -105,6 +108,8 @@ export function applyRecoveryVisualScenario(name: string, context: RecoveryScena
                   actualChatItems: 2,
                   byteLength: rawJsonl.length,
                   contentHash: 'visual-exact-hash',
+                  headerHash: 'visual-header-hash',
+                  messageHashes: ['visual-1', 'visual-2'],
                   summary,
                 },
                 reclaimBytes: rawJsonl.length,
@@ -127,10 +132,11 @@ export function applyRecoveryVisualScenario(name: string, context: RecoveryScena
     'recovery-group': 'group',
     'recovery-reader': 'reader',
     'recovery-result': 'result',
-    'recovery-shelf': 'root',
+    'recovery-shelf': 'chats',
   };
   const titleByPage: Record<string, string> = {
     cleanup: '快速清理备份',
+    chats: '聊天备份',
     confirm: '确认导入备份',
     duplicates: '重复备份查找',
     group: '测试角色',

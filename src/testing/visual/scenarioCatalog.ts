@@ -34,7 +34,7 @@ export function createVisualScenarioGroups(rootAppScenarios: string[]): VisualSc
       scenarios: ['content-converter-source', 'content-converter-target', 'content-converter-complete'],
     },
     { id: 'card-writer', scenarios: ['card-writer-saved-preview'] },
-    { id: 'archive', scenarios: ['archive-owner-list'] },
+    { id: 'archive', scenarios: ['archive-owner-list', 'archive-floor-backup'] },
     {
       id: 'recovery',
       scenarios: [

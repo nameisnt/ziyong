@@ -68,6 +68,8 @@ export interface DuplicateBackupFingerprint {
   actualChatItems: number;
   byteLength: number;
   contentHash: string;
+  headerHash: string;
+  messageHashes: string[];
   summary: ChatBackupSummary;
 }
 
@@ -81,15 +83,60 @@ export interface DuplicateBackupGroup {
 }
 
 export interface DuplicateScanResult {
+  containedGroups: ContainedBackupGroup[];
   groups: DuplicateBackupGroup[];
   groupId: string;
   rejected: CleanupRejectedBackup[];
   scannedFiles: number;
 }
 
+export interface ContainedBackupGroup {
+  contained: DuplicateBackupFingerprint[];
+  id: string;
+  keeper: DuplicateBackupFingerprint;
+  reclaimBytes: number;
+}
+
 export interface DuplicateDeleteResult {
   deleted: ChatBackupSummary[];
   failed: CleanupRejectedBackup[];
+  reclaimedBytes: number;
+}
+
+export interface SettingsSnapshotSummary {
+  date: number;
+  name: string;
+  size: number;
+}
+
+export interface LoadedSettingsSnapshot {
+  formatted: string;
+  raw: string;
+  summary: SettingsSnapshotSummary;
+}
+
+export interface SettingsSnapshotFingerprint {
+  contentHash: string;
+  summary: SettingsSnapshotSummary;
+}
+
+export interface SettingsDuplicateGroup {
+  contentHash: string;
+  duplicates: SettingsSnapshotFingerprint[];
+  id: string;
+  keeper: SettingsSnapshotFingerprint;
+  reclaimBytes: number;
+}
+
+export interface SettingsDuplicateScanResult {
+  groups: SettingsDuplicateGroup[];
+  rejected: Array<{ name: string; reason: string }>;
+  scannedFiles: number;
+}
+
+export interface SettingsDeleteResult {
+  deleted: SettingsSnapshotSummary[];
+  failed: Array<{ name: string; reason: string }>;
   reclaimedBytes: number;
 }
 
@@ -212,6 +259,118 @@ export function createDuplicateBackupGroups(fingerprints: DuplicateBackupFingerp
         b.keeper.summary.backupCreatedAt - a.keeper.summary.backupCreatedAt ||
         a.keeper.summary.fileName.localeCompare(b.keeper.summary.fileName),
     );
+}
+
+export function isStrictMessagePrefix(shorter: DuplicateBackupFingerprint, longer: DuplicateBackupFingerprint) {
+  if (
+    !shorter.headerHash ||
+    shorter.headerHash !== longer.headerHash ||
+    !shorter.messageHashes.length ||
+    shorter.messageHashes.length >= longer.messageHashes.length
+  )
+    return false;
+  return shorter.messageHashes.every((hash, index) => hash === longer.messageHashes[index]);
+}
+
+export function createContainedBackupGroups(
+  fingerprints: DuplicateBackupFingerprint[],
+  exactGroups: DuplicateBackupGroup[] = createDuplicateBackupGroups(fingerprints),
+) {
+  const exactDuplicates = new Set(exactGroups.flatMap(group => group.duplicates.map(item => item.summary.fileName)));
+  const eligible = fingerprints.filter(
+    item =>
+      item.summary.ownerKey &&
+      item.actualChatItems === item.summary.chatItems &&
+      item.messageHashes.length === item.actualChatItems &&
+      item.actualChatItems > 0 &&
+      !exactDuplicates.has(item.summary.fileName),
+  );
+  const byOwner = new Map<string, DuplicateBackupFingerprint[]>();
+  eligible.forEach(item => {
+    const ownerItems = byOwner.get(item.summary.ownerKey) ?? [];
+    ownerItems.push(item);
+    byOwner.set(item.summary.ownerKey, ownerItems);
+  });
+
+  const groups: ContainedBackupGroup[] = [];
+  byOwner.forEach(ownerItems => {
+    const ordered = [...ownerItems].sort(
+      (a, b) =>
+        b.actualChatItems - a.actualChatItems ||
+        b.summary.backupCreatedAt - a.summary.backupCreatedAt ||
+        b.summary.fileName.localeCompare(a.summary.fileName),
+    );
+    const assignments = new Map<string, { contained: DuplicateBackupFingerprint[]; keeper: DuplicateBackupFingerprint }>();
+    ordered.forEach(candidate => {
+      const keeper = ordered.find(item => isStrictMessagePrefix(candidate, item));
+      if (!keeper) return;
+      const group = assignments.get(keeper.summary.fileName) ?? { contained: [], keeper };
+      group.contained.push(candidate);
+      assignments.set(keeper.summary.fileName, group);
+    });
+    assignments.forEach(group => {
+      const contained = group.contained.sort(
+        (a, b) => b.actualChatItems - a.actualChatItems || b.summary.backupCreatedAt - a.summary.backupCreatedAt,
+      );
+      groups.push({
+        contained,
+        id: `${group.keeper.summary.ownerKey}\u0000${group.keeper.summary.fileName}`,
+        keeper: group.keeper,
+        reclaimBytes: contained.reduce((total, item) => total + item.byteLength, 0),
+      });
+    });
+  });
+  return groups.sort(
+    (a, b) =>
+      b.keeper.actualChatItems - a.keeper.actualChatItems ||
+      b.keeper.summary.backupCreatedAt - a.keeper.summary.backupCreatedAt,
+  );
+}
+
+export function normalizeSettingsSnapshotSummary(raw: unknown): SettingsSnapshotSummary | null {
+  if (!isRecord(raw)) return null;
+  const name = textValue(raw.name);
+  const date = Number(raw.date);
+  const size = Number(raw.size);
+  if (!/^settings_.+_\d{8}-\d{6}\.json$/i.test(name)) return null;
+  if (!Number.isFinite(date) || date <= 0 || !Number.isFinite(size) || size <= 0) return null;
+  return { date, name, size };
+}
+
+export function formatSettingsSnapshotJson(raw: string) {
+  const parsed: unknown = JSON.parse(raw);
+  if (!isRecord(parsed)) throw new Error('设置快照根节点不是 JSON 对象');
+  return JSON.stringify(parsed, null, 2);
+}
+
+export function createSettingsDuplicateGroups(fingerprints: SettingsSnapshotFingerprint[]) {
+  const grouped = new Map<string, SettingsSnapshotFingerprint[]>();
+  fingerprints.forEach(fingerprint => {
+    if (!fingerprint.contentHash || fingerprint.summary.size <= 0) return;
+    const items = grouped.get(fingerprint.contentHash) ?? [];
+    items.push(fingerprint);
+    grouped.set(fingerprint.contentHash, items);
+  });
+
+  return [...grouped.entries()]
+    .flatMap(([contentHash, items]): SettingsDuplicateGroup[] => {
+      if (items.length < 2) return [];
+      const ordered = [...items].sort(
+        (a, b) => b.summary.date - a.summary.date || b.summary.name.localeCompare(a.summary.name),
+      );
+      const [keeper, ...duplicates] = ordered;
+      if (!keeper || !duplicates.length) return [];
+      return [
+        {
+          contentHash,
+          duplicates,
+          id: contentHash,
+          keeper,
+          reclaimBytes: duplicates.reduce((total, item) => total + item.summary.size, 0),
+        },
+      ];
+    })
+    .sort((a, b) => b.keeper.summary.date - a.keeper.summary.date);
 }
 
 export function createRecoveryCharacters(characters: unknown[]): RecoveryCharacter[] {

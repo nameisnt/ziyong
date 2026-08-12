@@ -33,6 +33,7 @@ import { useWorldSlotsStore } from '@/apps/world-slots/store';
 import { getCurrentChatScopeKey } from '@/store/chatScoped';
 import { usePhoneStore } from '@/store/phone';
 import { migratePhoneChatRename, type TavernChatRenamedEvent } from '@/util/chatScopeRename';
+import { startChatFloorBackupService } from '@/util/chatFloorBackup';
 import { ensureCurrentScopeRecovery } from '@/util/generationVisibility';
 import { hasVisibilityTransactionRuntime, onTavernEvent } from '@/util/runtime';
 
@@ -42,6 +43,7 @@ const settingsTargetReady = ref(false);
 const menuTargetReady = ref(false);
 let stopChatChanged: { stop: () => void } | null = null;
 let stopChatRenamed: { stop: () => void } | null = null;
+let stopChatFloorBackup: { stop: () => void } | null = null;
 let targetObserver: MutationObserver | null = null;
 
 async function tryRecoverCurrentScope() {
@@ -69,6 +71,7 @@ function syncTeleportTargets() {
 
 onMounted(() => {
   worldSlots.startAutoSync();
+  stopChatFloorBackup = startChatFloorBackupService();
   syncTeleportTargets();
   targetObserver = new MutationObserver(syncTeleportTargets);
   targetObserver.observe(document.body, {
@@ -88,6 +91,8 @@ onMounted(() => {
 });
 
 onUnmounted(() => {
+  stopChatFloorBackup?.stop();
+  stopChatFloorBackup = null;
   stopChatChanged?.stop();
   stopChatChanged = null;
   stopChatRenamed?.stop();
