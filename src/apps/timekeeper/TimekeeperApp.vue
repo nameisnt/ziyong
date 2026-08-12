@@ -191,8 +191,8 @@
                   v-model.number="person.birth.year"
                   class="pc-field"
                   type="number"
-                min="1"
-                @change="syncPersonBirth(person.id)"
+                  min="1"
+                  @change="syncPersonBirth(person.id)"
                 />
               </label>
               <label class="pc-number-field">
@@ -202,8 +202,8 @@
                   class="pc-field"
                   type="number"
                   min="1"
-                :max="settings.calendar.monthsPerYear"
-                @change="syncPersonBirth(person.id)"
+                  :max="settings.calendar.monthsPerYear"
+                  @change="syncPersonBirth(person.id)"
                 />
               </label>
               <label class="pc-number-field">
@@ -213,20 +213,15 @@
                   class="pc-field"
                   type="number"
                   min="1"
-                :max="timekeeper.getDaysInMonth(person.birth.month, person.birth.year)"
-                @change="syncPersonBirth(person.id)"
+                  :max="timekeeper.getDaysInMonth(person.birth.month, person.birth.year)"
+                  @change="syncPersonBirth(person.id)"
                 />
               </label>
             </div>
             <div class="pc-person-foot">
               <span>{{ t`当前` }} {{ timekeeper.formatAge(timekeeper.getAgeAt(person, settings.current)) }}</span>
               <span>{{ t`推进后` }} {{ timekeeper.formatAge(timekeeper.getAgeAt(person, nextDate)) }}</span>
-              <button
-                class="pc-icon-btn danger"
-                type="button"
-                :title="t`删除`"
-                @click="deletePerson(person.id)"
-              >
+              <button class="pc-icon-btn danger" type="button" :title="t`删除`" @click="deletePerson(person.id)">
                 <i class="fa-solid fa-trash"></i>
               </button>
             </div>
@@ -398,9 +393,7 @@ async function deletePerson(personId: string) {
   const person = settings.value.people.find(item => item.id === personId);
   if (!person) return;
   const confirmed = await phone.confirmNotice(
-    person.profileEntryId
-      ? `删除“${person.name}”吗？对应的人物资料也会一起删除。`
-      : `删除“${person.name}”吗？`,
+    person.profileEntryId ? `删除“${person.name}”吗？对应的人物资料也会一起删除。` : `删除“${person.name}”吗？`,
     { confirmLabel: '删除人物及资料', kind: 'warning', title: '删除人物' },
   );
   if (!confirmed) return;

@@ -410,7 +410,11 @@
           <span v-if="findImportConflict(item.candidate)" class="pc-card-writer-import-conflict">同名</span>
         </label>
       </div>
-      <EmptyState v-else title="没有识别到可导入的 XML 标签" description="请在成品中使用世界观、角色基础、性格或 NPC 标签。" />
+      <EmptyState
+        v-else
+        title="没有识别到可导入的 XML 标签"
+        description="请在成品中使用世界观、角色基础、性格或 NPC 标签。"
+      />
 
       <div class="pc-form-actions">
         <button class="pc-soft-btn" type="button" :disabled="!profileImportItems.length" @click="toggleAllImportItems">
@@ -1143,15 +1147,21 @@ async function importSelectedProfiles() {
   const conflictCount = selected.filter(item => findImportConflict(item.candidate)).length;
   const confirmed = await phone.confirmNotice(
     `把 ${selected.length} 项成品导入“${phone.viewingScopeMeta.ownerName} / ${phone.viewingScopeMeta.chatTitle}”的资料表吗？${
-      conflictCount ? `其中 ${conflictCount} 项存在同名资料，将按“${importConflictOptions.find(item => item.value === importConflictMode)?.label}”处理。` : ''
+      conflictCount
+        ? `其中 ${conflictCount} 项存在同名资料，将按“${importConflictOptions.find(item => item.value === importConflictMode)?.label}”处理。`
+        : ''
     }`,
-    { confirmLabel: '确认导入', kind: conflictCount && importConflictMode.value === 'update' ? 'warning' : 'info', title: '确认导入目标' },
+    {
+      confirmLabel: '确认导入',
+      kind: conflictCount && importConflictMode.value === 'update' ? 'warning' : 'info',
+      title: '确认导入目标',
+    },
   );
   if (!confirmed) return;
   const counts = { created: 0, skipped: 0, updated: 0 };
   selected.forEach(item => {
-      const result = importCandidate(item.candidate, findImportConflict(item.candidate));
-      counts[result] += 1;
+    const result = importCandidate(item.candidate, findImportConflict(item.candidate));
+    counts[result] += 1;
   });
   const segments = [
     counts.created ? `新增 ${counts.created}` : '',

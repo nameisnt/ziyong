@@ -428,9 +428,7 @@ function normalizeTables(data: z.infer<typeof ProfilesScopeDataBaseSchema>) {
     const addedBuiltInColumns = table.columns
       .filter(column => requiredNewColumnIds.has(column.id) && !savedColumnIds.has(column.id))
       .map(column => ({ ...column, options: [...column.options] }));
-    return saved
-      ? { ...saved, builtIn: true, columns: [...savedColumns, ...addedBuiltInColumns] }
-      : table;
+    return saved ? { ...saved, builtIn: true, columns: [...savedColumns, ...addedBuiltInColumns] } : table;
   });
   data.tables.forEach(table => {
     if (!tables.some(item => item.id === table.id)) tables.push({ ...table, columns: cloneColumns(table.columns) });

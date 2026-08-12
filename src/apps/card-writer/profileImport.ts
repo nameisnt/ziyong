@@ -70,7 +70,11 @@ function candidateFromTag(stage: ImportStage, tagName: string, attributes: strin
 
   if (normalizedTag === 'sample_basic' || normalizedTag === 'character' || normalizedTag.startsWith('npc')) {
     kind = 'character';
-    title = attributeName || explicitName || stageName || (normalizedTag.startsWith('npc') ? `NPC ${index + 1}` : '未命名人物');
+    title =
+      attributeName ||
+      explicitName ||
+      stageName ||
+      (normalizedTag.startsWith('npc') ? `NPC ${index + 1}` : '未命名人物');
     fields = characterFields(content);
   } else if (normalizedTag === 'sample_palette') {
     kind = 'character';
