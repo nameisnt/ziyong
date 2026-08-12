@@ -6,8 +6,8 @@ export default definePhoneApp({
   component: RecoveryApp,
   defaultOrder: 97,
   defaultRoute: 'root',
-  description: '阅读聊天备份并原生导入为新聊天',
-  icon: 'fa-clock-rotate-left',
+  description: '查看、导入、清理和查重删除酒馆聊天备份',
+  icon: 'fa-box-archive',
   id: 'recovery',
-  name: '恢复',
+  name: '酒馆备份管理',
 });

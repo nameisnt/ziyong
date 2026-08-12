@@ -329,14 +329,25 @@ function parseForumXmlCandidate(raw: string): XmlParseResult<ForumXmlResult> {
   const replies = replyElements.map(reply => ({
     author: getDirectChildText(reply, 'author'),
     content: getDirectChildText(reply, 'content'),
+    isOriginalPoster: getDirectChildText(reply, 'is_op'),
   }));
 
-  if (!board || !title || !author || !content) {
+  const incompleteReplyIndex = replies.findIndex(reply => !reply.author || !reply.content || !reply.isOriginalPoster);
+  if (!board || !title || !author || !content || incompleteReplyIndex >= 0) {
     const warnings = [
       !board ? '缺少必填字段「板块名称」(<board>)' : '',
       !title ? '缺少必填字段「帖子标题」(<title>)' : '',
       !author ? '缺少必填字段「主楼作者」(<author>)' : '',
       !content ? '缺少必填字段「主楼正文」(<content>)' : '',
+      incompleteReplyIndex >= 0 && !replies[incompleteReplyIndex]!.author
+        ? `第 ${incompleteReplyIndex + 1} 条回复缺少 <author>`
+        : '',
+      incompleteReplyIndex >= 0 && !replies[incompleteReplyIndex]!.content
+        ? `第 ${incompleteReplyIndex + 1} 条回复缺少 <content>`
+        : '',
+      incompleteReplyIndex >= 0 && !replies[incompleteReplyIndex]!.isOriginalPoster
+        ? `第 ${incompleteReplyIndex + 1} 条回复缺少 <is_op>`
+        : '',
     ].filter(Boolean);
     return {
       ok: false,
@@ -390,15 +401,17 @@ function parseForumRepliesXmlCandidate(raw: string): XmlParseResult<ForumReplies
   const replies = replyElements.map(reply => ({
     author: getDirectChildText(reply, 'author'),
     content: getDirectChildText(reply, 'content'),
+    isOriginalPoster: getDirectChildText(reply, 'is_op'),
   }));
 
-  if (!replies.length || replies.some(reply => !reply.author || !reply.content)) {
-    const incompleteIndex = replies.findIndex(reply => !reply.author || !reply.content);
+  if (!replies.length || replies.some(reply => !reply.author || !reply.content || !reply.isOriginalPoster)) {
+    const incompleteIndex = replies.findIndex(reply => !reply.author || !reply.content || !reply.isOriginalPoster);
     const warnings = !replies.length
       ? ['缺少必填字段「回复列表」(<reply>)']
       : [
           !replies[incompleteIndex]!.author ? `第 ${incompleteIndex + 1} 条回复缺少 <author>` : '',
           !replies[incompleteIndex]!.content ? `第 ${incompleteIndex + 1} 条回复缺少 <content>` : '',
+          !replies[incompleteIndex]!.isOriginalPoster ? `第 ${incompleteIndex + 1} 条回复缺少 <is_op>` : '',
         ].filter(Boolean);
     return {
       ok: false,

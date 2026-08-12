@@ -12,11 +12,15 @@ import {
   describeBackupMessageCountMismatch,
   groupChatBackups,
   assertCleanupThreshold,
+  createDuplicateBackupGroups,
   isCleanupCandidate,
   parseChatBackupJsonl,
   type CleanupDeleteResult,
   type CleanupScanResult,
   type ChatBackupSummary,
+  type DuplicateBackupFingerprint,
+  type DuplicateDeleteResult,
+  type DuplicateScanResult,
   type ParsedChatBackup,
   type RecoveryCharacter,
 } from '@/apps/recovery/model';
@@ -47,12 +51,26 @@ export const useChatRecoveryStore = defineStore('chat-recovery', () => {
   const cleanupDeleting = ref(false);
   const cleanupScanResult = shallowRef<CleanupScanResult | null>(null);
   const cleanupDeleteResult = shallowRef<CleanupDeleteResult | null>(null);
+  const duplicateScanning = ref(false);
+  const duplicateDeleting = ref(false);
+  const duplicateScanCompleted = ref(0);
+  const duplicateScanTotal = ref(0);
+  const duplicateScanResult = shallowRef<DuplicateScanResult | null>(null);
+  const duplicateDeleteResult = shallowRef<DuplicateDeleteResult | null>(null);
   const importResult = ref<RecoveryImportResult | null>(null);
   const status = ref<'idle' | 'ready' | 'unsupported'>('idle');
   const importedSources = new Map<string, RecoveryImportResult>();
   const runImportSingleFlight = createSingleFlight();
 
   const groups = computed(() => groupChatBackups(backups.value, characters.value));
+  const managementBusy = computed(
+    () =>
+      Boolean(deletingFileName.value) ||
+      cleanupScanning.value ||
+      cleanupDeleting.value ||
+      duplicateScanning.value ||
+      duplicateDeleting.value,
+  );
 
   async function refresh() {
     loading.value = true;
@@ -101,7 +119,7 @@ export const useChatRecoveryStore = defineStore('chat-recovery', () => {
   }
 
   async function deleteBackup(summary: ChatBackupSummary) {
-    if (deletingFileName.value || cleanupDeleting.value) throw new Error('已有备份删除任务正在执行');
+    if (managementBusy.value) throw new Error('已有备份扫描或删除任务正在执行');
     const current = backups.value.find(backup => backup.fileName === summary.fileName);
     if (!current) throw new Error('这份备份已经不在当前书架中，请刷新后重试');
     deletingFileName.value = summary.fileName;
@@ -114,7 +132,7 @@ export const useChatRecoveryStore = defineStore('chat-recovery', () => {
   }
 
   async function scanCleanup(maxChatItemsInput: number, groupId = '') {
-    if (cleanupScanning.value || cleanupDeleting.value || deletingFileName.value) {
+    if (managementBusy.value) {
       throw new Error('已有备份清理任务正在执行');
     }
     const maxChatItems = assertCleanupThreshold(maxChatItemsInput);
@@ -152,7 +170,7 @@ export const useChatRecoveryStore = defineStore('chat-recovery', () => {
   }
 
   async function deleteCleanupCandidates(fileNames: string[]) {
-    if (cleanupDeleting.value || deletingFileName.value) throw new Error('已有备份删除任务正在执行');
+    if (managementBusy.value) throw new Error('已有备份扫描或删除任务正在执行');
     const scan = cleanupScanResult.value;
     if (!scan) throw new Error('请先扫描要快速清理的备份');
     const selected = new Set(fileNames);
@@ -193,6 +211,169 @@ export const useChatRecoveryStore = defineStore('chat-recovery', () => {
   function resetCleanup() {
     cleanupScanResult.value = null;
     cleanupDeleteResult.value = null;
+  }
+
+  async function hashBackupBlob(blob: Blob) {
+    const digest = await crypto.subtle.digest('SHA-256', await blob.arrayBuffer());
+    return Array.from(new Uint8Array(digest))
+      .map(item => item.toString(16).padStart(2, '0'))
+      .join('');
+  }
+
+  async function fingerprintBackup(summary: ChatBackupSummary): Promise<DuplicateBackupFingerprint> {
+    const blob = await downloadNativeChatBackup(summary);
+    const parsed = parseChatBackupJsonl(await blob.text());
+    const mismatch = describeBackupMessageCountMismatch(summary.chatItems, parsed.messages.length);
+    if (mismatch) throw new Error(mismatch);
+    return {
+      actualChatItems: parsed.messages.length,
+      byteLength: blob.size,
+      contentHash: await hashBackupBlob(blob),
+      summary,
+    };
+  }
+
+  function getScopedBackups(groupId: string) {
+    return groupId ? (groups.value.find(group => group.id === groupId)?.backups ?? []) : backups.value;
+  }
+
+  function getDuplicateCoarseCandidates(scopedBackups: ChatBackupSummary[]) {
+    const coarseGroups = new Map<string, ChatBackupSummary[]>();
+    scopedBackups.forEach(summary => {
+      const key = `${summary.ownerKey}\u0000${summary.chatItems}\u0000${summary.fileSize}`;
+      const items = coarseGroups.get(key) ?? [];
+      items.push(summary);
+      coarseGroups.set(key, items);
+    });
+    return [...coarseGroups.values()].filter(items => items.length > 1).flat();
+  }
+
+  async function scanDuplicateBackups(groupId = '') {
+    if (managementBusy.value) throw new Error('已有备份扫描或删除任务正在执行');
+    duplicateScanning.value = true;
+    duplicateScanCompleted.value = 0;
+    duplicateScanTotal.value = 0;
+    duplicateScanResult.value = null;
+    duplicateDeleteResult.value = null;
+    try {
+      await refresh();
+      if (error.value) throw new Error(error.value);
+      const candidates = getDuplicateCoarseCandidates(getScopedBackups(groupId));
+      duplicateScanTotal.value = candidates.length;
+      const fingerprints: DuplicateBackupFingerprint[] = [];
+      const rejected: DuplicateScanResult['rejected'] = [];
+      let nextIndex = 0;
+      const worker = async () => {
+        while (nextIndex < candidates.length) {
+          const index = nextIndex;
+          nextIndex += 1;
+          const summary = candidates[index];
+          if (!summary) continue;
+          try {
+            fingerprints.push(await fingerprintBackup(summary));
+          } catch (caughtError) {
+            rejected.push({
+              reason: caughtError instanceof Error ? caughtError.message : '重复备份预检失败',
+              summary,
+            });
+          } finally {
+            duplicateScanCompleted.value += 1;
+          }
+        }
+      };
+      await Promise.all(Array.from({ length: Math.min(4, candidates.length) }, () => worker()));
+      const result: DuplicateScanResult = {
+        groups: createDuplicateBackupGroups(fingerprints),
+        groupId,
+        rejected,
+        scannedFiles: candidates.length,
+      };
+      duplicateScanResult.value = result;
+      return result;
+    } finally {
+      duplicateScanning.value = false;
+    }
+  }
+
+  function findDuplicateCandidate(fileName: string) {
+    for (const group of duplicateScanResult.value?.groups ?? []) {
+      const fingerprint = group.duplicates.find(item => item.summary.fileName === fileName);
+      if (fingerprint) return { fingerprint, group };
+    }
+    return null;
+  }
+
+  async function deleteDuplicateBackups(fileNames: string[]) {
+    if (managementBusy.value) throw new Error('已有备份扫描或删除任务正在执行');
+    const scan = duplicateScanResult.value;
+    if (!scan) throw new Error('请先扫描完全相同的重复备份');
+    const selected = [...new Set(fileNames)].map(findDuplicateCandidate).filter(item => Boolean(item));
+    if (!selected.length) throw new Error('没有选择要删除的重复备份');
+    duplicateDeleting.value = true;
+    const result: DuplicateDeleteResult = { deleted: [], failed: [], reclaimedBytes: 0 };
+    try {
+      for (const group of scan.groups) {
+        const groupCandidates = selected.filter(item => item?.group.id === group.id);
+        if (!groupCandidates.length) continue;
+        let currentKeeper: DuplicateBackupFingerprint;
+        try {
+          const keeperSummary = backups.value.find(item => item.fileName === group.keeper.summary.fileName);
+          if (!keeperSummary) throw new Error('预定保留的备份已经不存在，整组未删除');
+          currentKeeper = await fingerprintBackup(keeperSummary);
+          if (
+            currentKeeper.contentHash !== group.contentHash ||
+            currentKeeper.byteLength !== group.byteLength ||
+            currentKeeper.summary.ownerKey !== group.keeper.summary.ownerKey
+          ) {
+            throw new Error('预定保留的备份内容已经变化，整组未删除');
+          }
+        } catch (caughtError) {
+          const reason = caughtError instanceof Error ? caughtError.message : '无法复核预定保留的备份';
+          groupCandidates.forEach(item => {
+            if (item) result.failed.push({ reason, summary: item.fingerprint.summary });
+          });
+          continue;
+        }
+
+        for (const item of groupCandidates) {
+          if (!item) continue;
+          try {
+            const current = backups.value.find(backup => backup.fileName === item.fingerprint.summary.fileName);
+            if (!current) throw new Error('重复备份已经不存在，未执行删除');
+            const latest = await fingerprintBackup(current);
+            if (
+              latest.contentHash !== currentKeeper.contentHash ||
+              latest.byteLength !== currentKeeper.byteLength ||
+              latest.actualChatItems !== currentKeeper.actualChatItems ||
+              latest.summary.ownerKey !== currentKeeper.summary.ownerKey
+            ) {
+              throw new Error('备份内容在确认后发生变化，未执行删除');
+            }
+            await deleteNativeChatBackup(current);
+            result.deleted.push(current);
+            result.reclaimedBytes += latest.byteLength;
+            removeBackupSummary(current.fileName);
+          } catch (caughtError) {
+            result.failed.push({
+              reason: caughtError instanceof Error ? caughtError.message : '删除重复备份失败',
+              summary: item.fingerprint.summary,
+            });
+          }
+        }
+      }
+      duplicateDeleteResult.value = result;
+      await refresh();
+      return result;
+    } finally {
+      duplicateDeleting.value = false;
+    }
+  }
+
+  function resetDuplicates() {
+    duplicateScanCompleted.value = 0;
+    duplicateScanTotal.value = 0;
+    duplicateScanResult.value = null;
+    duplicateDeleteResult.value = null;
   }
 
   function resolveCurrentTarget(targetId: number) {
@@ -247,6 +428,8 @@ export const useChatRecoveryStore = defineStore('chat-recovery', () => {
     characters: RecoveryCharacter[];
     cleanupResult?: CleanupDeleteResult | null;
     cleanupScan?: CleanupScanResult | null;
+    duplicateResult?: DuplicateDeleteResult | null;
+    duplicateScan?: DuplicateScanResult | null;
     loaded?: LoadedChatBackup | null;
     result?: RecoveryImportResult | null;
   }) {
@@ -256,6 +439,8 @@ export const useChatRecoveryStore = defineStore('chat-recovery', () => {
     importResult.value = input.result ?? null;
     cleanupScanResult.value = input.cleanupScan ?? null;
     cleanupDeleteResult.value = input.cleanupResult ?? null;
+    duplicateScanResult.value = input.duplicateScan ?? null;
+    duplicateDeleteResult.value = input.duplicateResult ?? null;
     error.value = '';
     status.value = 'ready';
   }
@@ -270,19 +455,29 @@ export const useChatRecoveryStore = defineStore('chat-recovery', () => {
     cleanupScanResult,
     deleteBackup,
     deleteCleanupCandidates,
+    deleteDuplicateBackups,
     deletingFileName,
+    duplicateDeleteResult,
+    duplicateDeleting,
+    duplicateScanCompleted,
+    duplicateScanning,
+    duplicateScanResult,
+    duplicateScanTotal,
     error,
     groups,
     importActiveBackup,
     importResult,
     importing,
     loading,
+    managementBusy,
     readBackup,
     reading,
     refresh,
     releaseActiveBackup,
     resetCleanup,
+    resetDuplicates,
     scanCleanup,
+    scanDuplicateBackups,
     setVisualFixture,
     status,
   };

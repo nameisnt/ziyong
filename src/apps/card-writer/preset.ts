@@ -23,11 +23,14 @@ export type CardWriterTaskId =
   'full-card' | 'persona' | 'worldview' | 'npc' | 'character-base' | 'palette' | 'quick-view' | 'opening' | 'free';
 
 export type CardWriterStage = {
+  dependencyIds?: string[];
   id: string;
   instruction: string;
   label: string;
   modules: string[];
 };
+
+export type FullCardMode = 'blank' | 'plot';
 
 export type CardWriterTask = {
   description: string;
@@ -48,6 +51,77 @@ const characterBaseStage = singleStage('character-base', '角色基础', '📋 �
 const paletteStage = singleStage('palette', '性格调色盘', '📋 性格调色盘', '根据现有设定生成角色性格调色盘。');
 const quickViewStage = singleStage('quick-view', '角色速览', '📋 角色速览', '把已有角色资料整理成简洁的角色速览。');
 const openingStage = singleStage('opening', '开场白', '📋 开场白', '根据已有世界观和角色资料生成可直接使用的开场白。');
+
+function targetedStage(
+  stage: CardWriterStage,
+  id: string,
+  label: string,
+  instruction: string,
+  dependencyIds: string[],
+): CardWriterStage {
+  return { ...stage, dependencyIds, id, instruction, label };
+}
+
+export function buildFullCardStages(mode: FullCardMode, protagonists: string[], npcs: string[]): CardWriterStage[] {
+  if (mode === 'blank') {
+    return [
+      { ...worldviewStage, dependencyIds: [] },
+      { ...characterBaseStage, dependencyIds: ['worldview'] },
+      { ...paletteStage, dependencyIds: ['worldview', 'character-base'] },
+      { ...quickViewStage, dependencyIds: ['worldview', 'character-base', 'palette'] },
+      { ...openingStage, dependencyIds: ['worldview', 'quick-view'] },
+    ];
+  }
+
+  const stages: CardWriterStage[] = [{ ...worldviewStage, dependencyIds: [] }];
+  const protagonistOutputIds: string[] = [];
+  protagonists.forEach((name, index) => {
+    const suffix = index + 1;
+    const baseId = `character-base-${suffix}`;
+    const paletteId = `palette-${suffix}`;
+    stages.push(
+      targetedStage(
+        characterBaseStage,
+        baseId,
+        `角色基础（${name}）`,
+        `只为主角“${name}”生成完整基础信息，不要混入其他角色的人设。`,
+        ['worldview'],
+      ),
+      targetedStage(
+        paletteStage,
+        paletteId,
+        `性格调色盘（${name}）`,
+        `只为主角“${name}”生成性格调色盘，并保持与其角色基础一致。`,
+        ['worldview', baseId],
+      ),
+    );
+    protagonistOutputIds.push(baseId, paletteId);
+  });
+  npcs.forEach((name, index) => {
+    const npcId = `npc-${index + 1}`;
+    stages.push(
+      targetedStage(
+        singleStage(npcId, `NPC 人物（${name}）`, '📋 NPC设计', ''),
+        npcId,
+        `NPC 人物（${name}）`,
+        `只生成 NPC“${name}”，明确其剧情功能、与主角的关系及可推动的冲突。`,
+        ['worldview', ...protagonistOutputIds],
+      ),
+    );
+  });
+  const allRoleOutputIds = [...protagonistOutputIds, ...npcs.map((_name, index) => `npc-${index + 1}`)];
+  stages.push(
+    targetedStage(quickViewStage, 'quick-view', '角色速览', '汇总全部主角与 NPC，生成简洁角色速览。', [
+      'worldview',
+      ...allRoleOutputIds,
+    ]),
+    targetedStage(openingStage, 'opening', '开场白', '根据世界观与角色速览生成可直接使用的开场白。', [
+      'worldview',
+      'quick-view',
+    ]),
+  );
+  return stages;
+}
 
 export const CARD_WRITER_TASKS: CardWriterTask[] = [
   {
@@ -227,12 +301,19 @@ export function buildCardWriterOrderedPrompts(options: {
   return ordered;
 }
 
-export function parseCardWriterArtifact(rawOutput: string) {
-  const content = rawOutput.match(/<content\b[^>]*>([\s\S]*?)<\/content>/iu)?.[1] ?? rawOutput;
-  const artifact = content.match(/<artifact\b[^>]*>([\s\S]*?)<\/artifact>/iu)?.[1] ?? content;
-  return artifact
+export function parseCardWriterArtifact(rawOutput: string, stageLabel = '当前阶段') {
+  if (!/<content\b[^>]*>/iu.test(rawOutput)) throw new Error(`${stageLabel}缺少 <content> 起始标签`);
+  const contentMatch = rawOutput.match(/<content\b[^>]*>([\s\S]*?)<\/content>/iu);
+  if (!contentMatch) throw new Error(`${stageLabel}的 <content> 标签未闭合`);
+  const content = contentMatch[1];
+  if (!/<artifact\b[^>]*>/iu.test(content)) throw new Error(`${stageLabel}缺少 <artifact> 起始标签`);
+  const artifactMatch = content.match(/<artifact\b[^>]*>([\s\S]*?)<\/artifact>/iu);
+  if (!artifactMatch) throw new Error(`${stageLabel}的 <artifact> 标签未闭合`);
+  const artifact = artifactMatch[1]
     .trim()
     .replace(/^```(?:ya?ml|markdown|md|text)?\s*/iu, '')
     .replace(/\s*```$/u, '')
     .trim();
+  if (!artifact) throw new Error(`${stageLabel}的 <artifact> 内容为空`);
+  return artifact;
 }

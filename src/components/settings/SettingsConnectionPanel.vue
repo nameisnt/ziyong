@@ -25,6 +25,10 @@
           <option value="range">自定义范围</option>
         </select></label
       >
+      <label v-if="settings.generation.sourceMode === 'fromStart'" class="pc-field-group">
+        <span class="pc-field-label">默认结束楼层</span>
+        <input v-model.number="settings.generation.fromStartEnd" class="pc-field" type="number" min="0" />
+      </label>
       <label class="pc-field-group"
         ><span class="pc-field-label">酒馆预设</span>
         <div class="pc-preset-select-row">

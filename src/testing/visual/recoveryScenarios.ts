@@ -25,6 +25,7 @@ const recoveryScenarioNames = [
   'recovery-shelf',
   'recovery-group',
   'recovery-cleanup',
+  'recovery-duplicates',
   'recovery-reader',
   'recovery-confirm',
   'recovery-result',
@@ -53,6 +54,7 @@ export function applyRecoveryVisualScenario(name: string, context: RecoveryScena
     summary,
     {
       ...summary,
+      backupCreatedAt: Date.parse('2026-08-11T08:30:00.000Z'),
       fileId: 'chat_visual_user_20260811-083000',
       fileName: 'chat_visual_user_20260811-083000.jsonl',
       lastMessage: '更早的一份备份。',
@@ -60,6 +62,7 @@ export function applyRecoveryVisualScenario(name: string, context: RecoveryScena
     },
     {
       ...summary,
+      backupCreatedAt: Date.parse('2026-08-11T07:00:00.000Z'),
       chatItems: 0,
       fileId: 'chat_visual_user_20260811-070000',
       fileName: 'chat_visual_user_20260811-070000.jsonl',
@@ -68,6 +71,7 @@ export function applyRecoveryVisualScenario(name: string, context: RecoveryScena
     },
   ];
   const cleanupSummary = backups[2]!;
+  const duplicateSummary = backups[1]!;
   recovery.setVisualFixture({
     backups,
     characters,
@@ -80,6 +84,36 @@ export function applyRecoveryVisualScenario(name: string, context: RecoveryScena
             rejected: [],
           }
         : null,
+    duplicateScan:
+      name === 'recovery-duplicates'
+        ? {
+            groupId: '',
+            groups: [
+              {
+                byteLength: rawJsonl.length,
+                contentHash: 'visual-exact-hash',
+                duplicates: [
+                  {
+                    actualChatItems: 2,
+                    byteLength: rawJsonl.length,
+                    contentHash: 'visual-exact-hash',
+                    summary: duplicateSummary,
+                  },
+                ],
+                id: 'visual-user\u0000visual-exact-hash',
+                keeper: {
+                  actualChatItems: 2,
+                  byteLength: rawJsonl.length,
+                  contentHash: 'visual-exact-hash',
+                  summary,
+                },
+                reclaimBytes: rawJsonl.length,
+              },
+            ],
+            rejected: [],
+            scannedFiles: 2,
+          }
+        : null,
     loaded: ['recovery-reader', 'recovery-confirm', 'recovery-result'].includes(name) ? loaded : null,
     result:
       name === 'recovery-result'
@@ -89,6 +123,7 @@ export function applyRecoveryVisualScenario(name: string, context: RecoveryScena
   const pageByScenario: Record<string, string> = {
     'recovery-cleanup': 'cleanup',
     'recovery-confirm': 'confirm',
+    'recovery-duplicates': 'duplicates',
     'recovery-group': 'group',
     'recovery-reader': 'reader',
     'recovery-result': 'result',
@@ -97,13 +132,14 @@ export function applyRecoveryVisualScenario(name: string, context: RecoveryScena
   const titleByPage: Record<string, string> = {
     cleanup: '快速清理备份',
     confirm: '确认导入备份',
+    duplicates: '重复备份查找',
     group: '测试角色',
     reader: '阅读聊天备份',
     result: '导入完成',
-    root: '聊天备份恢复',
+    root: '酒馆备份管理',
   };
   const page = pageByScenario[name] ?? 'root';
-  const title = titleByPage[page] ?? '聊天备份恢复';
+  const title = titleByPage[page] ?? '酒馆备份管理';
   context.resetPhoneToRoute('recovery', page, title, {
     fileName: summary.fileName,
     groupId: page === 'group' ? 'character:0' : '',

@@ -869,17 +869,28 @@ function getBatchVisibleFloors() {
 
 function buildBatchJobs() {
   const floors = getBatchVisibleFloors();
+  const groupSize = Math.min(50, Math.max(1, Math.round(batchDraft.groupSize || 1)));
   if (!batchDraft.groupMode) {
-    return floors.map(floor => ({
-      fromStartEnd: floor,
-      label: `第 0-${floor} 楼`,
-      mode: 'fromStart' as const,
-      rangeText: '',
-      singleMessageId: 0,
-    }));
+    const jobs: Array<{
+      fromStartEnd: number;
+      label: string;
+      mode: 'fromStart';
+      rangeText: string;
+      singleMessageId: number;
+    }> = [];
+    for (let index = 0; index < floors.length; index += groupSize) {
+      const endFloor = floors.slice(index, index + groupSize).at(-1)!;
+      jobs.push({
+        fromStartEnd: endFloor,
+        label: `第 0-${endFloor} 楼`,
+        mode: 'fromStart',
+        rangeText: '',
+        singleMessageId: 0,
+      });
+    }
+    return jobs;
   }
 
-  const groupSize = Math.min(50, Math.max(1, Math.round(batchDraft.groupSize || 1)));
   const jobs: Array<{
     fromStartEnd: number;
     label: string;

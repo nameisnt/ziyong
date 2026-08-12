@@ -1975,6 +1975,8 @@ async function applyScenario(name: VisualScenarioName, options: { height?: numbe
     const historyScopeKey = 'char:0:chat:visual-history';
     usePresetLinkStore().saveBinding(historyScopeKey, {
       presetName: '简洁写作',
+      readerContentRuleId: '',
+      readerTitleRuleId: '',
       reloadRegex: true,
     });
     await phone.setViewingScope(historyScopeKey, {

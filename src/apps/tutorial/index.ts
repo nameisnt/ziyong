@@ -8,6 +8,7 @@ export default definePhoneApp({
   description: '插件功能与使用说明',
   accent: '#f59e0b',
   defaultRoute: 'root',
+  defaultDock: true,
   defaultOrder: 118,
   component: TutorialApp,
 });

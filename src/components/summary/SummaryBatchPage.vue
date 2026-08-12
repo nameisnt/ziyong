@@ -45,6 +45,12 @@
         placeholder="楼层范围，例如 1-30,35,40-45"
       />
 
+      <div class="pc-summary-batch-generation-label">
+        <span class="pc-field-label">生成方式</span>
+        <InfoHint
+          text="逐楼：每次只读取当前选中的单个楼层，不会带入之前楼层的正文。按组：只合并选中的目标楼层，不会自动包含中间楼层。"
+        />
+      </div>
       <div class="pc-segment pc-summary-batch-mode">
         <button
           :class="['pc-segment-btn', { active: !groupMode }]"
@@ -132,6 +138,7 @@
 </template>
 
 <script setup lang="ts">
+import InfoHint from '@/components/InfoHint.vue';
 import ReferencePicker from '@/components/ReferencePicker.vue';
 import SearchableCombobox from '@/components/SearchableCombobox.vue';
 import type { SummaryBook } from '@/type/summary';
@@ -189,6 +196,12 @@ const progressLabel = computed(
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   width: 100%;
+}
+
+.pc-summary-batch-generation-label {
+  display: flex;
+  align-items: center;
+  margin-top: 14px;
 }
 
 .pc-summary-batch-roles {

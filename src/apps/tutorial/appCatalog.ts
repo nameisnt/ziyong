@@ -65,6 +65,11 @@ export const tutorialAppGuides: TutorialAppGuide[] = [
     firstAction: '先维护全局规则库，再到使用设置为各 App 选择提取和正文显示规则。',
   },
   {
+    appId: 'regex-wizard',
+    groupId: 'tavern',
+    firstAction: '选择双边界或固定字段，粘贴示例测试，再复制表达式或保存到正则替换。',
+  },
+  {
     appId: 'app-builder',
     groupId: 'tavern',
     firstAction: '选择模板创建自制 App，再配置创建方式、命名、显示和内容转换。',
@@ -80,7 +85,7 @@ export const tutorialAppGuides: TutorialAppGuide[] = [
   {
     appId: 'recovery',
     groupId: 'automation',
-    firstAction: '先阅读备份并确认楼层，再选择目标角色卡；导入会新建聊天，不会覆盖原聊天。',
+    firstAction: '按角色查看备份；可阅读并导入为新聊天，也可清理小备份或删除完全相同的旧副本。',
   },
   { appId: 'chat-insert', groupId: 'automation', firstAction: '选择其他 App 内容作为引用，再写入酒馆当前聊天。' },
   { appId: 'favorites', groupId: 'automation', firstAction: '按类型筛选当前聊天中已经标记收藏的成品。' },

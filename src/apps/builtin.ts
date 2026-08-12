@@ -273,7 +273,6 @@ export const BUILTIN_PHONE_APP_MODULES: PhoneAppModule[] = [
     description: '聊天统计与概览',
     accent: '#2d9cdb',
     defaultRoute: 'root',
-    defaultDock: true,
     defaultOrder: 90,
     component: StatsApp,
   }),

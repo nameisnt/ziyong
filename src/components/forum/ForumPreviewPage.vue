@@ -40,7 +40,10 @@
             <div v-else class="pc-reply-list">
               <article v-for="reply in replies" :key="reply.key" class="pc-reply-card">
                 <div class="pc-reply-head">
-                  <strong>{{ reply.author }}</strong>
+                  <strong class="pc-forum-author">
+                    <span>{{ reply.author }}</span>
+                    <CapsuleTag v-if="reply.isOriginalPoster" active compact :interactive="false" :label="t`楼主`" />
+                  </strong>
                   <span>{{ `第 ${reply.floor} 层` }}</span>
                 </div>
                 <p class="pc-reply-content">{{ reply.content }}</p>
@@ -55,6 +58,7 @@
 
 <script setup lang="ts">
 import BaguScanPanel from '@/components/BaguScanPanel.vue';
+import CapsuleTag from '@/components/CapsuleTag.vue';
 import EmptyState from '@/components/EmptyState.vue';
 import GenerationPreviewPanel from '@/components/GenerationPreviewPanel.vue';
 
@@ -62,6 +66,7 @@ interface ForumPreviewReply {
   author: string;
   content: string;
   floor: number;
+  isOriginalPoster: boolean;
   key: string;
 }
 
@@ -140,6 +145,13 @@ defineEmits<{
 .pc-reply-head strong {
   display: block;
   font-size: 16px;
+}
+
+.pc-reply-head strong.pc-forum-author {
+  display: inline-flex;
+  min-width: 0;
+  align-items: center;
+  gap: 6px;
 }
 
 .pc-reply-content {

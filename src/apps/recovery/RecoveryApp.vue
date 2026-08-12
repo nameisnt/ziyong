@@ -6,17 +6,22 @@
           <i class="fa-solid fa-magnifying-glass"></i>
           <input v-model="query" type="search" placeholder="搜索角色或备份文件" />
         </label>
-        <button class="pc-icon-btn" type="button" title="快速清理小备份" @click="openCleanup()">
-          <i class="fa-solid fa-broom"></i>
-        </button>
         <button
           class="pc-icon-btn"
           type="button"
-          :disabled="recovery.loading"
+          :disabled="recovery.loading || recovery.managementBusy"
           title="刷新备份书架"
           @click="recovery.refresh"
         >
           <i :class="['fa-solid fa-rotate', { spinning: recovery.loading }]"></i>
+        </button>
+      </div>
+      <div class="pc-recovery-management-actions">
+        <button class="pc-soft-btn" type="button" :disabled="recovery.managementBusy" @click="openCleanup()">
+          <i class="fa-solid fa-broom"></i><span>清理小备份</span>
+        </button>
+        <button class="pc-soft-btn" type="button" :disabled="recovery.managementBusy" @click="openDuplicates()">
+          <i class="fa-solid fa-clone"></i><span>查找重复备份</span>
         </button>
       </div>
       <div class="pc-segment pc-recovery-sort" aria-label="角色卡排序">
@@ -70,13 +75,28 @@
       <div class="pc-compact-toolbar pc-directory-toolbar">
         <span class="pc-directory-count">{{ activeGroup.backups.length }} 份备份</span>
         <div class="pc-directory-actions">
-          <button class="pc-icon-btn" type="button" title="清理当前角色的小备份" @click="openCleanup(activeGroup.id)">
+          <button
+            class="pc-icon-btn"
+            type="button"
+            :disabled="recovery.managementBusy"
+            title="查找当前角色的重复备份"
+            @click="openDuplicates(activeGroup.id)"
+          >
+            <i class="fa-solid fa-clone"></i>
+          </button>
+          <button
+            class="pc-icon-btn"
+            type="button"
+            :disabled="recovery.managementBusy"
+            title="清理当前角色的小备份"
+            @click="openCleanup(activeGroup.id)"
+          >
             <i class="fa-solid fa-broom"></i>
           </button>
           <button
             class="pc-icon-btn"
             type="button"
-            :disabled="recovery.loading"
+            :disabled="recovery.loading || recovery.managementBusy"
             title="刷新当前角色备份"
             @click="recovery.refresh"
           >
@@ -93,7 +113,7 @@
           <button
             class="pc-list-row pc-recovery-backup-open"
             type="button"
-            :disabled="recovery.reading || Boolean(recovery.deletingFileName)"
+            :disabled="recovery.reading || recovery.managementBusy"
             @click="openBackup(backup)"
           >
             <span class="pc-recovery-book-icon"><i class="fa-solid fa-book"></i></span>
@@ -109,7 +129,7 @@
           <button
             class="pc-icon-btn danger"
             type="button"
-            :disabled="Boolean(recovery.deletingFileName) || recovery.cleanupDeleting"
+            :disabled="recovery.managementBusy"
             :title="`永久删除 ${backup.fileName}`"
             @click="confirmDeleteBackup(backup)"
           >
@@ -122,6 +142,87 @@
           </button>
         </div>
       </div>
+    </section>
+
+    <section v-else-if="route.page === 'duplicates'" class="pc-recovery-page">
+      <article class="pc-section-card pc-recovery-duplicate-config">
+        <div class="pc-section-head">
+          <strong>完全一致查重</strong>
+          <span>{{ duplicateScopeLabel }}</span>
+        </div>
+        <p class="pc-recovery-safety-note">
+          <i class="fa-solid fa-shield-halved"></i>
+          只匹配同一角色分组内原始 JSONL 字节长度和 SHA-256 都完全一致的文件。每组固定保留备份时间最新的一份。
+        </p>
+        <button
+          class="pc-primary-btn"
+          type="button"
+          :disabled="recovery.duplicateScanning || recovery.duplicateDeleting"
+          @click="scanDuplicates"
+        >
+          {{ duplicateScanButtonLabel }}
+        </button>
+      </article>
+
+      <article v-if="recovery.duplicateScanResult" class="pc-section-card pc-recovery-duplicate-results">
+        <div class="pc-section-head">
+          <strong>重复候选</strong>
+          <span>{{ duplicateSelectedNames.length }}/{{ duplicateCandidateCount }} 份已选</span>
+        </div>
+        <EmptyState v-if="!recovery.duplicateScanResult.groups.length" compact title="没有完全相同的重复备份">
+          <p>相似、前缀包含或 metadata 不同的备份不会被列入。</p>
+        </EmptyState>
+        <div v-else class="pc-recovery-duplicate-list">
+          <section v-for="group in recovery.duplicateScanResult.groups" :key="group.id" class="pc-recovery-duplicate-group">
+            <div class="pc-section-head">
+              <strong>{{ duplicateGroupLabel(group) }}</strong>
+              <span>可释放 {{ formatBytes(group.reclaimBytes) }}</span>
+            </div>
+            <div class="pc-recovery-duplicate-keeper">
+              <i class="fa-solid fa-shield"></i>
+              <span class="pc-list-row-copy">
+                <strong>保留 · {{ formatBackupCreatedAt(group.keeper.summary) }}</strong>
+                <small>{{ group.keeper.summary.fileName }}</small>
+              </span>
+            </div>
+            <label v-for="item in group.duplicates" :key="item.summary.fileName" class="pc-recovery-cleanup-item">
+              <input
+                type="checkbox"
+                :checked="duplicateSelectedNames.includes(item.summary.fileName)"
+                @change="toggleDuplicateCandidate(item.summary.fileName)"
+              />
+              <span class="pc-list-row-copy">
+                <strong>删除 · {{ formatBackupCreatedAt(item.summary) }}</strong>
+                <small>{{ item.summary.fileName }} · {{ item.actualChatItems }} 层</small>
+              </span>
+            </label>
+          </section>
+        </div>
+        <p v-if="recovery.duplicateScanResult.rejected.length" class="pc-recovery-warning">
+          已安全排除 {{ recovery.duplicateScanResult.rejected.length }} 份无法下载、解析或计数不一致的备份。
+        </p>
+        <button
+          v-if="duplicateCandidateCount"
+          class="pc-soft-btn danger"
+          type="button"
+          :disabled="!duplicateSelectedNames.length || recovery.duplicateDeleting"
+          @click="confirmDuplicateDelete"
+        >
+          {{ recovery.duplicateDeleting ? '正在逐份复核并删除…' : `删除选中的 ${duplicateSelectedNames.length} 份旧副本` }}
+        </button>
+      </article>
+
+      <article v-if="recovery.duplicateDeleteResult" class="pc-section-card pc-recovery-cleanup-summary">
+        <strong>查重删除完成</strong>
+        <p>
+          成功 {{ recovery.duplicateDeleteResult.deleted.length }} 份，释放
+          {{ formatBytes(recovery.duplicateDeleteResult.reclaimedBytes) }}；失败或跳过
+          {{ recovery.duplicateDeleteResult.failed.length }} 份。
+        </p>
+        <p v-if="recovery.duplicateDeleteResult.failed.length" class="pc-recovery-warning">
+          失败或复核变化的文件仍保留，可重新扫描后检查。
+        </p>
+      </article>
     </section>
 
     <section v-else-if="route.page === 'cleanup'" class="pc-recovery-page">
@@ -241,7 +342,13 @@
           <span v-if="activeMessage.isHidden" class="pc-hidden-pill">隐藏</span>
         </template>
         <template #actions>
-          <button class="pc-soft-btn danger" type="button" title="永久删除此备份" @click="deleteLoadedBackup">
+          <button
+            class="pc-soft-btn danger"
+            type="button"
+            :disabled="recovery.managementBusy"
+            title="永久删除此备份"
+            @click="deleteLoadedBackup"
+          >
             <i class="fa-solid fa-trash-can"></i>
           </button>
           <button class="pc-primary-btn" type="button" title="导入此备份" @click="openImportConfirm">
@@ -330,7 +437,7 @@
       </div>
     </section>
 
-    <EmptyState v-else title="恢复页面状态已失效" />
+    <EmptyState v-else title="备份管理页面状态已失效" />
   </section>
 </template>
 
@@ -339,7 +446,7 @@ import CatalogModal from '@/components/CatalogModal.vue';
 import EmptyState from '@/components/EmptyState.vue';
 import ReaderDetailShell from '@/components/ReaderDetailShell.vue';
 import SearchableCombobox from '@/components/SearchableCombobox.vue';
-import type { ChatBackupGroup, ChatBackupSummary } from '@/apps/recovery/model';
+import type { ChatBackupGroup, ChatBackupSummary, DuplicateBackupGroup } from '@/apps/recovery/model';
 import { useChatRecoveryStore } from '@/apps/recovery/store';
 import { usePhoneStore } from '@/store/phone';
 import { jumpToTavernChat } from '@/util/tavernNavigation';
@@ -356,6 +463,7 @@ const catalogOpen = ref(false);
 const selectedTargetId = ref('');
 const cleanupThreshold = ref(0);
 const cleanupSelectedNames = ref<string[]>([]);
+const duplicateSelectedNames = ref<string[]>([]);
 
 const activeGroup = computed(() => recovery.groups.find(group => group.id === route.value.params?.groupId) ?? null);
 const activeMessage = computed(() => loaded.value?.parsed.messages[messageIndex.value] ?? null);
@@ -382,6 +490,18 @@ const cleanupScopeGroup = computed(
   () => recovery.groups.find(group => group.id === route.value.params?.groupId) ?? null,
 );
 const cleanupScopeLabel = computed(() => cleanupScopeGroup.value?.label ?? '全部角色');
+const duplicateScopeGroup = computed(
+  () => recovery.groups.find(group => group.id === route.value.params?.groupId) ?? null,
+);
+const duplicateScopeLabel = computed(() => duplicateScopeGroup.value?.label ?? '全部角色');
+const duplicateCandidateCount = computed(() =>
+  (recovery.duplicateScanResult?.groups ?? []).reduce((total, group) => total + group.duplicates.length, 0),
+);
+const duplicateScanButtonLabel = computed(() => {
+  if (!recovery.duplicateScanning) return '扫描完全相同的备份';
+  if (!recovery.duplicateScanTotal) return '正在准备扫描…';
+  return `正在校验 ${recovery.duplicateScanCompleted}/${recovery.duplicateScanTotal}`;
+});
 const cleanupCandidateGroups = computed(() => {
   const candidates = recovery.cleanupScanResult?.candidates ?? [];
   const grouped = new Map<string, { candidates: typeof candidates; id: string; label: string }>();
@@ -417,6 +537,17 @@ watch(
   { immediate: true },
 );
 watch(
+  () => recovery.duplicateScanResult,
+  result => {
+    if (result && !recovery.duplicateDeleteResult) {
+      duplicateSelectedNames.value = result.groups.flatMap(group =>
+        group.duplicates.map(item => item.summary.fileName),
+      );
+    }
+  },
+  { immediate: true },
+);
+watch(
   () => recovery.cleanupScanResult,
   result => {
     if (result && !recovery.cleanupDeleteResult) {
@@ -429,6 +560,17 @@ watch(
 function formatDate(value?: number) {
   if (!value) return '时间未知';
   return new Intl.DateTimeFormat('zh-CN', { dateStyle: 'short', timeStyle: 'medium' }).format(new Date(value));
+}
+
+function formatBackupCreatedAt(summary: ChatBackupSummary) {
+  return summary.backupCreatedAt ? formatDate(summary.backupCreatedAt) : summary.fileName;
+}
+
+function formatBytes(value: number) {
+  if (!Number.isFinite(value) || value <= 0) return '0 B';
+  if (value < 1024) return `${value} B`;
+  if (value < 1024 * 1024) return `${(value / 1024).toFixed(1)} KiB`;
+  return `${(value / 1024 / 1024).toFixed(2)} MiB`;
 }
 
 function groupInitial(group: ChatBackupGroup) {
@@ -466,7 +608,7 @@ async function confirmDeleteBackup(summary: ChatBackupSummary, navigateWhenGroup
     await recovery.deleteBackup(summary);
     toastr.success('聊天备份已删除');
     if (navigateWhenGroupEmpty && !recovery.groups.some(group => group.id === route.value.params?.groupId)) {
-      phone.replacePage('root', '聊天备份恢复');
+      phone.replacePage('root', '酒馆备份管理');
     }
     return true;
   } catch (error) {
@@ -481,7 +623,7 @@ async function deleteLoadedBackup() {
   const groupId = route.value.params?.groupId ?? '';
   if (!(await confirmDeleteBackup(summary, false))) return;
   if (groupId && recovery.groups.some(group => group.id === groupId)) phone.goBack({ skipConfirm: true });
-  else phone.replacePage('root', '聊天备份恢复');
+  else phone.replacePage('root', '酒馆备份管理');
 }
 
 function openCleanup(groupId = '') {
@@ -489,6 +631,68 @@ function openCleanup(groupId = '') {
   cleanupThreshold.value = 0;
   cleanupSelectedNames.value = [];
   phone.pushPage('cleanup', groupId ? '清理角色备份' : '快速清理备份', groupId ? { groupId } : {});
+}
+
+function openDuplicates(groupId = '') {
+  recovery.resetDuplicates();
+  duplicateSelectedNames.value = [];
+  phone.pushPage('duplicates', groupId ? '当前角色备份查重' : '重复备份查找', groupId ? { groupId } : {});
+}
+
+async function scanDuplicates() {
+  try {
+    const result = await recovery.scanDuplicateBackups(route.value.params?.groupId ?? '');
+    duplicateSelectedNames.value = result.groups.flatMap(group =>
+      group.duplicates.map(item => item.summary.fileName),
+    );
+  } catch (error) {
+    toastr.error(error instanceof Error ? error.message : '扫描重复备份失败');
+  }
+}
+
+function duplicateGroupLabel(group: DuplicateBackupGroup) {
+  const owner = recovery.groups.find(item =>
+    item.backups.some(backup => backup.fileName === group.keeper.summary.fileName),
+  );
+  return `${owner?.label ?? '未识别角色'} · ${group.duplicates.length + 1} 份完全相同`;
+}
+
+function toggleDuplicateCandidate(fileName: string) {
+  duplicateSelectedNames.value = duplicateSelectedNames.value.includes(fileName)
+    ? duplicateSelectedNames.value.filter(name => name !== fileName)
+    : [...duplicateSelectedNames.value, fileName];
+}
+
+async function confirmDuplicateDelete() {
+  if (!recovery.duplicateScanResult || !duplicateSelectedNames.value.length) return;
+  const selectedBytes = recovery.duplicateScanResult.groups.reduce(
+    (total, group) =>
+      total +
+      group.duplicates
+        .filter(item => duplicateSelectedNames.value.includes(item.summary.fileName))
+        .reduce((groupTotal, item) => groupTotal + item.byteLength, 0),
+    0,
+  );
+  const confirmed = await phone.confirmNotice(
+    `范围：${duplicateScopeLabel.value}\n将永久删除：${duplicateSelectedNames.value.length} 份完全相同的旧副本\n预计释放：${formatBytes(selectedBytes)}\n\n每组最新备份会保留；删除前还会再次下载并校验。此操作不会删除已有聊天。`,
+    {
+      confirmLabel: `删除 ${duplicateSelectedNames.value.length} 份旧副本`,
+      kind: 'warning',
+      title: '确认查重删除',
+    },
+  );
+  if (!confirmed) return;
+  try {
+    const result = await recovery.deleteDuplicateBackups(duplicateSelectedNames.value);
+    duplicateSelectedNames.value = result.failed.map(item => item.summary.fileName);
+    if (result.failed.length) {
+      toastr.warning(`已删除 ${result.deleted.length} 份，${result.failed.length} 份失败或跳过`);
+    } else {
+      toastr.success(`已删除 ${result.deleted.length} 份完全相同的旧备份`);
+    }
+  } catch (error) {
+    toastr.error(error instanceof Error ? error.message : '查重删除失败');
+  }
 }
 
 async function scanCleanup() {
@@ -600,7 +804,17 @@ async function openImportedChat() {
 
 .pc-recovery-toolbar {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) auto auto;
+  grid-template-columns: minmax(0, 1fr) auto;
+}
+
+.pc-recovery-management-actions {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.pc-recovery-management-actions .pc-soft-btn {
+  min-width: 0;
 }
 
 .pc-recovery-sort {
@@ -717,6 +931,8 @@ async function openImportedChat() {
 
 .pc-recovery-cleanup-results,
 .pc-recovery-cleanup-summary,
+.pc-recovery-duplicate-config,
+.pc-recovery-duplicate-results,
 .pc-recovery-error,
 .pc-recovery-confirm-card,
 .pc-recovery-result-card {
@@ -729,6 +945,37 @@ async function openImportedChat() {
   max-height: 280px;
   gap: 0;
   overflow: auto;
+}
+
+.pc-recovery-duplicate-list {
+  display: grid;
+  max-height: 380px;
+  gap: 8px;
+  overflow: auto;
+}
+
+.pc-recovery-duplicate-group {
+  display: grid;
+  gap: 4px;
+  padding: 10px;
+  border: 1px solid var(--pc-border);
+  border-radius: min(var(--pc-control-radius), 10px);
+  background: var(--pc-surface);
+}
+
+.pc-recovery-duplicate-keeper {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: center;
+  gap: 10px;
+  padding: 9px 0;
+  border-bottom: 1px solid var(--pc-border);
+  color: var(--pc-theme-accent);
+}
+
+.pc-recovery-duplicate-keeper small,
+.pc-recovery-cleanup-item small {
+  overflow-wrap: anywhere;
 }
 
 .pc-recovery-cleanup-group {

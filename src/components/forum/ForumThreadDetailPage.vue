@@ -4,7 +4,10 @@
       <span class="pc-kicker">{{ boardName }}</span>
       <h2>{{ thread.title }}</h2>
       <div class="pc-detail-meta">
-        <span>{{ thread.author }}</span>
+        <span class="pc-forum-author">
+          <span>{{ thread.author }}</span>
+          <CapsuleTag active compact :interactive="false" :label="t`楼主`" />
+        </span>
         <span>{{ favorite ? t`已收藏` : t`未收藏` }}</span>
       </div>
       <VersionNavigator
@@ -42,7 +45,10 @@
       <div v-else class="pc-reply-list">
         <article v-for="reply in replies" :key="reply.id" class="pc-reply-card">
           <div class="pc-reply-head">
-            <strong>{{ reply.author }}</strong>
+            <strong class="pc-forum-author">
+              <span>{{ reply.author }}</span>
+              <CapsuleTag v-if="reply.isOriginalPoster" active compact :interactive="false" :label="t`楼主`" />
+            </strong>
             <span>{{ `第 ${reply.floor} 层` }}</span>
           </div>
           <p class="pc-reply-content">{{ reply.content }}</p>
@@ -65,6 +71,7 @@
 
 <script setup lang="ts">
 import EmptyState from '@/components/EmptyState.vue';
+import CapsuleTag from '@/components/CapsuleTag.vue';
 import ForumThreadActions from '@/components/forum/ForumThreadActions.vue';
 import ReaderContent from '@/components/ReaderContent.vue';
 import VersionNavigator from '@/components/VersionNavigator.vue';
@@ -124,6 +131,13 @@ defineEmits<{
   align-items: center;
   justify-content: space-between;
   gap: 10px;
+}
+
+.pc-forum-author {
+  display: inline-flex;
+  min-width: 0;
+  align-items: center;
+  gap: 6px;
 }
 
 .pc-detail-meta,

@@ -145,9 +145,11 @@
                   @pointermove="onAppPointerMove"
                   @pointerup="onAppPointerUp"
                 >
-                  <span class="pc-app-icon"><i class="fa-solid" :class="getDisplayAppIcon(app)"></i></span>
-                  <strong>{{ app.name }}</strong>
-                  <small v-if="getHomeAppSubtitle(app)">{{ getHomeAppSubtitle(app) }}</small>
+                  <span class="pc-app-icon">
+                    <i class="fa-solid" :class="getDisplayAppIcon(app)"></i>
+                    <span v-if="getHomeAppCount(app)" class="pc-app-count-badge">{{ formatHomeAppCount(app) }}</span>
+                  </span>
+                  <strong :title="app.name">{{ app.name }}</strong>
                 </button>
               </section>
 
@@ -349,22 +351,17 @@ function toFontStack(fontFamily: string, fallback: string) {
   return `"${escapeCssString(value)}", ${fallback}`;
 }
 
-function getHomeAppSubtitle(app: PhoneAppDefinition) {
+function getHomeAppCount(app: PhoneAppDefinition) {
   const subtitleAppIds = new Set(['summary', 'diary', 'extras', 'forum', 'theater', 'letters']);
-  if (!subtitleAppIds.has(app.id)) return '';
+  if (!subtitleAppIds.has(app.id)) return 0;
   const domain = homeArchiveDomainByApp.value.get(app.id);
-  if (!domain) {
-    return '暂无内容';
-  }
-  if (app.id === 'extras') return `${domain.collections}本`;
-  if (app.id === 'forum') return `${domain.collections}板块`;
-  const itemLabels: Record<string, string> = {
-    diary: '篇',
-    letters: '封',
-    summary: '篇',
-    theater: '篇',
-  };
-  return `${domain.items}${itemLabels[app.id] || domain.itemLabel}`;
+  if (!domain) return 0;
+  return app.id === 'extras' || app.id === 'forum' ? domain.collections : domain.items;
+}
+
+function formatHomeAppCount(app: PhoneAppDefinition) {
+  const count = getHomeAppCount(app);
+  return count > 99 ? '99+' : String(count);
 }
 
 function getDisplayAppIcon(app: PhoneAppDefinition) {
@@ -1495,6 +1492,7 @@ useEventListener(window, 'orientationchange', async () => {
 }
 
 .pc-app-icon {
+  position: relative;
   width: 44px;
   height: 44px;
   border-radius: var(--pc-icon-radius);
@@ -1507,18 +1505,30 @@ useEventListener(window, 'orientationchange', async () => {
 }
 
 .pc-app-tile strong {
-  font-size: 12px;
-  line-height: 1.25;
-}
-
-.pc-app-tile small {
-  display: block;
-  margin-top: 5px;
+  overflow: hidden;
   font-size: 11px;
   line-height: 1.25;
-  overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.pc-app-count-badge {
+  position: absolute;
+  top: -7px;
+  right: -10px;
+  display: grid;
+  min-width: 18px;
+  height: 18px;
+  place-items: center;
+  border: 2px solid var(--pc-surface);
+  border-radius: 999px;
+  padding: 0 4px;
+  background: var(--pc-danger);
+  color: var(--pc-primary-text);
+  font-size: 10px;
+  font-weight: 800;
+  line-height: 1;
+  box-sizing: border-box;
 }
 
 .pc-page-dots {

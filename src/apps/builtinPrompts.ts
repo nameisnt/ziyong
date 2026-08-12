@@ -256,6 +256,7 @@ export function createForumPromptDefinition(): PhonePromptDefinition {
           '  <content>主楼正文</content>',
           '  <reply>',
           '    <author>回复作者</author>',
+          '    <is_op>true 或 false，表示是否为楼主本人</is_op>',
           '    <content>回复正文</content>',
           '  </reply>',
           '</result>',
@@ -267,6 +268,7 @@ export function createForumPromptDefinition(): PhonePromptDefinition {
           textField('content', '主楼正文', 'content', { required: true }),
           objectListField('replies', '回复列表', 'reply', [
             textField('author', '回复作者', 'author', { required: true }),
+            textField('isOriginalPoster', '是否楼主', 'is_op', { required: true }),
             textField('content', '回复正文', 'content', { required: true }),
           ]),
         ]),
@@ -280,6 +282,7 @@ export function createForumPromptDefinition(): PhonePromptDefinition {
           '<result>',
           '  <reply>',
           '    <author>回复作者</author>',
+          '    <is_op>true 或 false，表示是否为楼主本人</is_op>',
           '    <content>回复正文</content>',
           '  </reply>',
           '</result>',
@@ -291,6 +294,7 @@ export function createForumPromptDefinition(): PhonePromptDefinition {
             'reply',
             [
               textField('author', '回复作者', 'author', { required: true }),
+              textField('isOriginalPoster', '是否楼主', 'is_op', { required: true }),
               textField('content', '回复正文', 'content', { required: true }),
             ],
             true,

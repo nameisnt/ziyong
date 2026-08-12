@@ -36,7 +36,7 @@
         :show-prompt-capture="false"
         :show-requirement-field="taskId !== 'full-card'"
         :single-message-id="generationDraft.singleMessageId"
-        :source-mode="settings.generation.sourceMode"
+        :source-mode="activeSourceMode"
         :user-requirement="generationDraft.userRequirement"
         @cancel="resetGeneration"
         @generate="runWriter"
@@ -46,7 +46,7 @@
         @update:recent-count="generationDraft.recentCount = $event"
         @update:references="references = $event"
         @update:single-message-id="generationDraft.singleMessageId = $event"
-        @update:source-mode="settings.generation.sourceMode = $event"
+        @update:source-mode="activeSourceMode = $event"
         @update:user-requirement="generationDraft.userRequirement = $event"
       >
         <template #before-fields>
@@ -112,7 +112,13 @@
               <div>
                 <strong>
                   一键写卡需求
-                  <InfoHint text="核心点子必填，其余内容可以留空交给 AI 补全。" />
+                  <InfoHint
+                    :text="
+                      fullCardMode === 'blank'
+                        ? '核心点子必填，其余内容可以留空交给 AI 补全。'
+                        : '主角必填；按剧情写卡至少还要选择聊天楼层、引用或世界书中的一种素材。'
+                    "
+                  />
                 </strong>
               </div>
               <button class="pc-soft-btn compact" type="button" :disabled="disabled" @click="fillBriefExample">
@@ -120,79 +126,144 @@
               </button>
             </header>
 
-            <div class="pc-card-writer-question">
-              <label class="pc-field-group">
-                <strong><span>01</span>角色最核心的点子是什么？</strong>
-                <textarea
-                  v-model="brief.concept"
-                  class="pc-area compact"
-                  :disabled="disabled"
-                  placeholder="例如：表面温柔可靠，实际上很怕被抛下的狐妖医生。"
-                ></textarea>
-              </label>
+            <div class="pc-card-writer-full-modes" role="tablist" aria-label="一键写卡模式">
+              <button
+                :class="['pc-segment-btn', { active: fullCardMode === 'blank' }]"
+                type="button"
+                role="tab"
+                :aria-selected="fullCardMode === 'blank'"
+                :disabled="disabled"
+                @click="fullCardMode = 'blank'"
+              >
+                空白卡
+              </button>
+              <button
+                :class="['pc-segment-btn', { active: fullCardMode === 'plot' }]"
+                type="button"
+                role="tab"
+                :aria-selected="fullCardMode === 'plot'"
+                :disabled="disabled"
+                @click="fullCardMode = 'plot'"
+              >
+                按剧情写卡
+              </button>
             </div>
 
-            <div class="pc-card-writer-question">
-              <label class="pc-field-group">
-                <strong><span>02</span>角色和玩家是什么关系？</strong>
-                <input
-                  v-model="brief.relationship"
-                  class="pc-field"
-                  :disabled="disabled"
-                  placeholder="例如：刚签订契约的御主、重逢旧友"
-                />
-              </label>
-            </div>
+            <template v-if="fullCardMode === 'blank'">
+              <div class="pc-card-writer-question">
+                <label class="pc-field-group">
+                  <strong><span>01</span>角色最核心的点子是什么？</strong>
+                  <textarea
+                    v-model="brief.concept"
+                    class="pc-area compact"
+                    :disabled="disabled"
+                    placeholder="例如：表面温柔可靠，实际上很怕被抛下的狐妖医生。"
+                  ></textarea>
+                </label>
+              </div>
 
-            <div class="pc-card-writer-question">
-              <div class="pc-field-group">
-                <strong><span>03</span>希望聊天时有什么感觉？</strong>
-                <div class="pc-card-writer-experience-options">
+              <div class="pc-card-writer-question">
+                <label class="pc-field-group">
+                  <strong><span>02</span>角色和玩家是什么关系？</strong>
+                  <input
+                    v-model="brief.relationship"
+                    class="pc-field"
+                    :disabled="disabled"
+                    placeholder="例如：刚签订契约的御主、重逢旧友"
+                  />
+                </label>
+              </div>
+
+              <div class="pc-card-writer-question">
+                <div class="pc-field-group">
+                  <strong><span>03</span>希望聊天时有什么感觉？</strong>
+                  <div class="pc-card-writer-experience-options">
+                    <button
+                      v-for="option in experienceOptions"
+                      :key="option"
+                      :class="['pc-soft-btn', 'compact', { active: brief.experience === option }]"
+                      type="button"
+                      :disabled="disabled"
+                      @click="brief.experience = option"
+                    >
+                      {{ option }}
+                    </button>
+                  </div>
+                  <textarea
+                    v-model="brief.experience"
+                    class="pc-area compact"
+                    :disabled="disabled"
+                    placeholder="例如：前期互相试探，熟悉后嘴硬心软。"
+                  ></textarea>
+                </div>
+              </div>
+
+              <div class="pc-card-writer-world-setting">
+                <strong>
+                  故事发生在哪里？
+                  <InfoHint text="默认由 AI 自动安排，也可以指定已有作品或自定义世界。" />
+                </strong>
+                <div class="pc-card-writer-world-modes">
                   <button
-                    v-for="option in experienceOptions"
-                    :key="option"
-                    :class="['pc-soft-btn', 'compact', { active: brief.experience === option }]"
+                    v-for="option in worldModeOptions"
+                    :key="option.value"
+                    :class="['pc-segment-btn', { active: brief.worldMode === option.value }]"
                     type="button"
                     :disabled="disabled"
-                    @click="brief.experience = option"
+                    @click="brief.worldMode = option.value"
                   >
-                    {{ option }}
+                    {{ option.label }}
                   </button>
                 </div>
                 <textarea
-                  v-model="brief.experience"
+                  v-if="brief.worldMode !== 'auto'"
+                  v-model="brief.worldHint"
                   class="pc-area compact"
                   :disabled="disabled"
-                  placeholder="例如：前期互相试探，熟悉后嘴硬心软。"
+                  :placeholder="brief.worldMode === 'existing' ? '例如：FGO 第七特异点' : '写下一句话世界设定'"
                 ></textarea>
               </div>
-            </div>
+            </template>
 
-            <div class="pc-card-writer-world-setting">
-              <strong>
-                故事发生在哪里？
-                <InfoHint text="默认由 AI 自动安排，也可以指定已有作品或自定义世界。" />
-              </strong>
-              <div class="pc-card-writer-world-modes">
-                <button
-                  v-for="option in worldModeOptions"
-                  :key="option.value"
-                  :class="['pc-segment-btn', { active: brief.worldMode === option.value }]"
-                  type="button"
-                  :disabled="disabled"
-                  @click="brief.worldMode = option.value"
-                >
-                  {{ option.label }}
-                </button>
+            <template v-else>
+              <div class="pc-card-writer-question">
+                <label class="pc-field-group">
+                  <strong><span>01</span>主角是谁？</strong>
+                  <input
+                    v-model="plotBrief.protagonists"
+                    class="pc-field"
+                    :disabled="disabled"
+                    placeholder="输入姓名，用空格或逗号分开；也可只填数量，如 2"
+                  />
+                </label>
+                <small v-if="protagonistInputError" class="pc-card-writer-field-error">{{
+                  protagonistInputError
+                }}</small>
               </div>
-              <textarea
-                v-if="brief.worldMode !== 'auto'"
-                v-model="brief.worldHint"
-                class="pc-area compact"
-                :disabled="disabled"
-                :placeholder="brief.worldMode === 'existing' ? '例如：FGO 第七特异点' : '写下一句话世界设定'"
-              ></textarea>
-            </div>
+              <div class="pc-card-writer-question">
+                <label class="pc-field-group">
+                  <strong><span>02</span>需要哪些 NPC？</strong>
+                  <input
+                    v-model="plotBrief.npcs"
+                    class="pc-field"
+                    :disabled="disabled"
+                    placeholder="可留空；输入姓名列表或只填数量，如 3"
+                  />
+                </label>
+                <small v-if="npcInputError" class="pc-card-writer-field-error">{{ npcInputError }}</small>
+              </div>
+              <div class="pc-card-writer-question">
+                <label class="pc-field-group">
+                  <strong><span>03</span>剧情与写卡要求</strong>
+                  <textarea
+                    v-model="plotBrief.requirement"
+                    class="pc-area compact"
+                    :disabled="disabled"
+                    placeholder="说明当前剧情、角色经历、关系进展，以及希望生成的方向。"
+                  ></textarea>
+                </label>
+              </div>
+            </template>
           </section>
         </template>
 
@@ -225,7 +296,9 @@
             <div class="pc-card-writer-stage-list">
               <div v-for="stage in stageStates" :key="stage.id" :class="['pc-card-writer-stage', stage.status]">
                 <i :class="stageIcon(stage.status)"></i>
-                <span>{{ stage.label }}</span>
+                <span
+                  >{{ stage.label }}<small v-if="stage.error">{{ stage.error }}</small></span
+                >
               </div>
             </div>
           </section>
@@ -234,20 +307,37 @@
     </section>
 
     <section v-else-if="route.page === 'preview'" class="pc-card-writer-page pc-card-writer-preview-page">
+      <nav v-if="previewStages.length > 1" class="pc-card-writer-preview-stages" aria-label="生成阶段">
+        <button
+          v-for="stage in previewStages"
+          :key="stage.id"
+          :class="['pc-segment-btn', stage.status, { active: activePreviewStageId === stage.id }]"
+          type="button"
+          :title="stage.error || stage.label"
+          @click="activePreviewStageId = stage.id"
+        >
+          <i :class="stageIcon(stage.status)"></i>
+          <span>{{ stage.label }}</span>
+        </button>
+      </nav>
       <GenerationPreviewPanel
-        v-model:content="preview.content"
-        v-model:raw="preview.raw"
+        :key="activePreviewStage?.id || 'preview'"
+        :content="activePreviewStage?.content || ''"
+        :raw="activePreviewStage?.raw || ''"
         :editable="true"
         copy-enabled
         :raw-editable="true"
-        :save-disabled="savingPreview"
+        :save-disabled="savingPreview || running"
         :scan-enabled="true"
         :short-content-guard="false"
         :source-label="preview.sourceLabel"
         :text-provider-summary="preview.providerSummary"
-        :title="preview.title"
-        :warnings="preview.warnings"
+        :title="activePreviewStage?.label || preview.title"
+        :warnings="activePreviewWarnings"
         :save-label="previewSaveLabel"
+        :reparse-handler="reparseActiveStage"
+        @update:content="updateActiveStageContent"
+        @update:raw="updateActiveStageRaw"
         @save="savePreview"
       />
     </section>
@@ -304,7 +394,7 @@ import { useSettingsStore } from '@/store/settings';
 import { useGenerationAliasesStore } from '@/store/generationAliases';
 import { getCurrentChatScopeKey, parseChatScopeKey } from '@/store/chatScoped';
 import { replaceGenerationAliases } from '@/util/generationAliases';
-import { buildSourceSelection } from '@/util/generationSource';
+import { buildSourceSelection, type SummaryGenerationSourceMode } from '@/util/generationSource';
 import type { GenerationReferenceItem } from '@/util/references';
 import {
   getChatMessagesSafe,
@@ -314,20 +404,19 @@ import {
 } from '@/util/runtime';
 import {
   buildCardWriterOrderedPrompts,
+  buildFullCardStages,
   CARD_WRITER_TASKS,
   getCardWriterTaskStages,
   parseCardWriterArtifact,
   type CardWriterTaskId,
+  type CardWriterStage,
+  type FullCardMode,
 } from './preset';
 import { formatCardWriterDocumentChat, isCardWriterDocumentFromScope } from './references';
-import { useCardWriterStore, type CardWriterDocument } from './store';
+import { useCardWriterStore, type CardWriterDocument, type CardWriterStageResult } from './store';
 import { storeToRefs } from 'pinia';
 
-type StageState = {
-  id: string;
-  label: string;
-  status: 'completed' | 'pending' | 'running';
-};
+type StageState = CardWriterStageResult;
 
 type PersonaMode = 'multistage' | 'normal';
 type WorldMode = 'auto' | 'custom' | 'existing';
@@ -342,6 +431,7 @@ const route = computed(() => phone.currentRoute);
 const currentChatScopeKey = computed(() => phone.currentTavernScopeKey || getCurrentChatScopeKey());
 const taskId = ref<CardWriterTaskId>('full-card');
 const personaMode = ref<PersonaMode>('normal');
+const fullCardMode = ref<FullCardMode>('blank');
 const includeWorldbook = ref(false);
 const targetWorldbookName = ref('');
 const worldbookOptions = ref<Array<{ group?: string; label: string; value: string }>>([]);
@@ -352,6 +442,8 @@ const rawOutput = ref('');
 const generationError = ref('');
 const activeGenerationId = ref('');
 const stageStates = ref<StageState[]>([]);
+const activeStageDefinitions = ref<CardWriterStage[]>([]);
+const activePreviewStageId = ref('');
 const activeDocumentId = ref('');
 const libraryChatFilter = ref('__all__');
 const brief = reactive({
@@ -360,6 +452,11 @@ const brief = reactive({
   relationship: '',
   worldHint: '',
   worldMode: 'auto' as WorldMode,
+});
+const plotBrief = reactive({
+  npcs: '',
+  protagonists: '',
+  requirement: '',
 });
 const generationDraft = reactive({
   fromStartEnd: 20,
@@ -397,7 +494,26 @@ const taskOptions = CARD_WRITER_TASKS.map(task => ({
   value: task.id,
 }));
 const selectedTask = computed(() => CARD_WRITER_TASKS.find(task => task.id === taskId.value) ?? CARD_WRITER_TASKS[0]);
-const selectedStages = computed(() => getCardWriterTaskStages(selectedTask.value, personaMode.value));
+const parsedProtagonists = computed(() => parseActorInput(plotBrief.protagonists, '主角'));
+const parsedNpcs = computed(() => parseActorInput(plotBrief.npcs, 'NPC', true));
+const protagonistInputError = computed(() => parsedProtagonists.value.error);
+const npcInputError = computed(() => parsedNpcs.value.error);
+const selectedStages = computed(() =>
+  taskId.value === 'full-card'
+    ? buildFullCardStages(fullCardMode.value, parsedProtagonists.value.names, parsedNpcs.value.names)
+    : getCardWriterTaskStages(selectedTask.value, personaMode.value),
+);
+const activeSourceMode = computed<SummaryGenerationSourceMode>({
+  get: () => {
+    if (taskId.value !== 'full-card') return writerSettings.value.otherTaskSourceMode;
+    return fullCardMode.value === 'blank' ? writerSettings.value.blankSourceMode : writerSettings.value.plotSourceMode;
+  },
+  set: value => {
+    if (taskId.value !== 'full-card') writerSettings.value.otherTaskSourceMode = value;
+    else if (fullCardMode.value === 'blank') writerSettings.value.blankSourceMode = value;
+    else writerSettings.value.plotSourceMode = value;
+  },
+});
 const libraryChatOptions = computed(() => {
   const options: Array<{ group?: string; label: string; value: string }> = [
     { group: '范围', label: '全部聊天', value: '__all__' },
@@ -423,37 +539,149 @@ const filteredDocuments = computed(() => {
   return documents.value.filter(document => document.sourceScopeKey === libraryChatFilter.value);
 });
 const completedStageCount = computed(() => stageStates.value.filter(stage => stage.status === 'completed').length);
-const generateDisabled = computed(() => taskId.value === 'full-card' && !brief.concept.trim());
+const plotHasSource = computed(
+  () => activeSourceMode.value !== 'none' || references.value.length > 0 || includeWorldbook.value,
+);
+const generateDisabled = computed(() => {
+  if (taskId.value !== 'full-card') return false;
+  if (fullCardMode.value === 'blank') return !brief.concept.trim();
+  return Boolean(
+    parsedProtagonists.value.error ||
+    parsedNpcs.value.error ||
+    !parsedProtagonists.value.names.length ||
+    !plotHasSource.value,
+  );
+});
+const previewStages = computed(() => stageStates.value);
+const activePreviewStage = computed(
+  () => previewStages.value.find(stage => stage.id === activePreviewStageId.value) ?? previewStages.value[0] ?? null,
+);
+const activePreviewWarnings = computed(() => {
+  const stage = activePreviewStage.value;
+  if (!stage) return preview.warnings;
+  if (stage.error) return [stage.error];
+  if (stage.status === 'pending') return ['此阶段尚未生成'];
+  return [];
+});
+const hasIncompleteStages = computed(() =>
+  stageStates.value.some(stage => stage.status !== 'completed' || !stage.content.trim()),
+);
 const previewSaveLabel = computed(() => {
+  if (hasIncompleteStages.value) return '继续生成';
   if (!preview.targetWorldbookName) return '保存成品';
   return preview.worldbookWritten ? '更新成品' : '保存并写入世界书';
 });
 usePreviewSession({
   appId: 'card-writer',
   getStatus: () => {
-    if (!preview.content.trim() && !preview.raw.trim()) return null;
+    const content = buildPreviewContent();
+    const raw = buildPreviewRaw();
+    if (!content.trim() && !raw.trim()) return null;
     if (!savedPreviewBaseline.value) return 'unsaved';
-    return savedPreviewBaseline.value.content === preview.content && savedPreviewBaseline.value.raw === preview.raw
-      ? 'saved'
-      : 'dirty';
+    return savedPreviewBaseline.value.content === content && savedPreviewBaseline.value.raw === raw ? 'saved' : 'dirty';
   },
   page: 'preview',
 });
 
+function buildPreviewContent() {
+  const completed = stageStates.value.filter(stage => stage.status === 'completed' && stage.content.trim());
+  if (completed.length === 1) return completed[0].content.trim();
+  return completed.map(stage => `## ${stage.label}\n\n${stage.content.trim()}`).join('\n\n');
+}
+
+function buildPreviewRaw() {
+  return stageStates.value
+    .filter(stage => stage.raw.trim())
+    .map(stage => `【${stage.label}】\n${stage.raw.trim()}`)
+    .join('\n\n');
+}
+
+function updatePreviewAggregate() {
+  preview.content = buildPreviewContent();
+  preview.raw = buildPreviewRaw();
+}
+
+function updateActiveStageContent(value: string) {
+  const stage = activePreviewStage.value;
+  if (!stage) return;
+  stage.content = value;
+  if (value.trim()) {
+    stage.status = 'completed';
+    stage.error = '';
+  } else {
+    stage.status = 'failed';
+    stage.error = `${stage.label}内容为空`;
+  }
+  updatePreviewAggregate();
+}
+
+function updateActiveStageRaw(value: string) {
+  const stage = activePreviewStage.value;
+  if (!stage) return;
+  stage.raw = value;
+  updatePreviewAggregate();
+}
+
+function reparseActiveStage() {
+  const stage = activePreviewStage.value;
+  if (!stage) return false;
+  try {
+    stage.content = parseCardWriterArtifact(stage.raw, stage.label);
+    stage.status = 'completed';
+    stage.error = '';
+    updatePreviewAggregate();
+    toastr.success(`${stage.label}重新解析成功`);
+    return true;
+  } catch (error) {
+    stage.status = 'failed';
+    stage.error = error instanceof Error ? error.message : `${stage.label}解析失败`;
+    toastr.error(stage.error);
+    return false;
+  }
+}
+
 function markPreviewSaved() {
   savedPreviewBaseline.value = {
-    content: preview.content,
-    raw: preview.raw,
+    content: buildPreviewContent(),
+    raw: buildPreviewRaw(),
   };
 }
 
 function stageIcon(status: StageState['status']) {
   if (status === 'completed') return 'fa-solid fa-check';
   if (status === 'running') return 'fa-solid fa-spinner fa-spin';
+  if (status === 'failed') return 'fa-solid fa-triangle-exclamation';
   return 'fa-regular fa-circle';
 }
 
+function parseActorInput(value: string, fallbackLabel: string, optional = false) {
+  const normalized = value.trim();
+  if (!normalized) return { error: optional ? '' : `请填写至少一个${fallbackLabel}`, names: [] as string[] };
+  if (/^\d+$/u.test(normalized)) {
+    const count = Number(normalized);
+    if (count < 1 || count > 20) return { error: `${fallbackLabel}数量需为 1-20`, names: [] as string[] };
+    return { error: '', names: Array.from({ length: count }, (_item, index) => `${fallbackLabel}${index + 1}`) };
+  }
+  const tokens = normalized
+    .split(/[\s,，、]+/u)
+    .map(name => name.trim())
+    .filter(Boolean);
+  if (tokens.some(token => /^\d+$/u.test(token))) {
+    return { error: '姓名列表和数量不能混填', names: [] as string[] };
+  }
+  const names = [...new Set(tokens)];
+  return names.length
+    ? { error: '', names }
+    : { error: optional ? '' : `请填写至少一个${fallbackLabel}`, names: [] as string[] };
+}
+
 function fillBriefExample() {
+  if (fullCardMode.value === 'plot') {
+    plotBrief.protagonists = '沈砚 苏晚';
+    plotBrief.npcs = '顾医生 老管家';
+    plotBrief.requirement = '两位主角在旧宅重逢，正在调查十年前的失踪案；根据已有剧情保留彼此隐瞒秘密的张力。';
+    return;
+  }
   brief.concept = '表面温柔从容，实际上很害怕再次失去重要之人的狐妖医生。';
   brief.relationship = '刚刚签订契约、还在互相观察的搭档';
   brief.experience = '前期礼貌试探，熟悉后嘴硬心软，亲密后展现明显保护欲。';
@@ -499,7 +727,7 @@ function getSelectedChatMessages() {
   const source = buildSourceSelection({
     chatIdAtGeneration: String(SillyTavern.getCurrentChatId?.() || SillyTavern.chatId || ''),
     fromStartEnd: generationDraft.fromStartEnd,
-    mode: settings.value.generation.sourceMode,
+    mode: activeSourceMode.value,
     rangeText: generationDraft.rangeText,
     recentCount: generationDraft.recentCount,
     scopeId: getCurrentChatScopeKey(),
@@ -523,6 +751,14 @@ function buildReferenceText() {
 function buildRequirementText() {
   if (taskId.value !== 'full-card') {
     return generationDraft.userRequirement.trim() || '请根据已选择的聊天、引用与世界书素材完成创作。';
+  }
+  if (fullCardMode.value === 'plot') {
+    return [
+      `主角：${parsedProtagonists.value.names.join('、')}`,
+      `NPC：${parsedNpcs.value.names.join('、') || '不额外生成 NPC'}`,
+      '写卡依据：优先依据选中的聊天楼层、引用和世界书还原当前剧情，不要擅自改写已经发生的事实。',
+      `剧情与要求：${plotBrief.requirement.trim() || '根据所选素材提炼剧情，并补全适合继续互动的角色卡。'}`,
+    ].join('\n');
   }
   const worldDescription =
     brief.worldMode === 'auto'
@@ -577,37 +813,86 @@ function buildStageUserInput(
   ].join('\n');
 }
 
+function getStagePriorOutputs(stage: CardWriterStage) {
+  const completed = stageStates.value.filter(item => item.status === 'completed' && item.content.trim());
+  if (!stage.dependencyIds) return completed.map(item => ({ content: item.content, label: item.label }));
+  const dependencyIds = new Set(stage.dependencyIds);
+  return completed
+    .filter(item => dependencyIds.has(item.id))
+    .map(item => ({ content: item.content, label: item.label }));
+}
+
 function providerSummary(result: Awaited<ReturnType<typeof generateOrderedPromptContent>>['textProvider']) {
   return result.mode === 'external' ? `${result.profileName} · ${result.model}` : '酒馆当前 API';
 }
 
 async function runWriter() {
   if (running.value) return;
+  if (generateDisabled.value) {
+    generationError.value =
+      fullCardMode.value === 'plot' && !plotHasSource.value
+        ? '按剧情写卡至少需要聊天楼层、引用或世界书中的一种素材'
+        : protagonistInputError.value || npcInputError.value || '请补全一键写卡的必填内容';
+    return;
+  }
   running.value = true;
   generationError.value = '';
   rawOutput.value = '';
   activeDocumentId.value = '';
   const task = selectedTask.value;
-  const stages = selectedStages.value;
+  const stages = selectedStages.value.map(stage => ({ ...stage, dependencyIds: stage.dependencyIds?.slice() }));
+  activeStageDefinitions.value = stages;
   const sourceScopeKey = currentChatScopeKey.value || getCurrentChatScopeKey();
   const sourceOwnerLabel = getCurrentOwnerLabel(sourceScopeKey);
+  stageStates.value = stages.map(stage => ({
+    content: '',
+    error: '',
+    id: stage.id,
+    label: stage.label,
+    raw: '',
+    status: 'pending',
+  }));
+  activePreviewStageId.value = stages[0]?.id || '';
+
+  try {
+    const { messages: chatMessages, sourceLabel } = getSelectedChatMessages();
+    const worldbookContent = await buildWorldbookText();
+    preview.providerSummary = '酒馆当前 API';
+    preview.sourceLabel = `${sourceLabel}${includeWorldbook.value ? ' · 已加入世界书' : ' · 未加入世界书'}`;
+    preview.sourceOwnerLabel = sourceOwnerLabel;
+    preview.sourceScopeKey = sourceScopeKey;
+    preview.taskId = task.id;
+    preview.taskLabel = task.label;
+    preview.targetWorldbookName = targetWorldbookName.value.trim();
+    preview.title = `${task.label}成品`;
+    preview.warnings = [];
+    preview.worldbookIncluded = includeWorldbook.value;
+    preview.worldbookWritten = false;
+    await runStageSequence(0, chatMessages, worldbookContent);
+  } catch (error) {
+    generationError.value = error instanceof Error ? error.message : '写卡生成失败';
+  } finally {
+    running.value = false;
+    activeGenerationId.value = '';
+  }
+}
+
+async function runStageSequence(startIndex: number, chatMessages: ChatMessage[], worldbookContent: string) {
   const requirement =
     replaceGenerationAliases(buildRequirementText(), {
       charReplacement: generationAliases.charReplacement,
       userReplacement: generationAliases.userReplacement,
     }) || '';
-  stageStates.value = stages.map(stage => ({ id: stage.id, label: stage.label, status: 'pending' }));
 
-  try {
-    const { messages: chatMessages, sourceLabel } = getSelectedChatMessages();
-    const worldbookContent = await buildWorldbookText();
-    const completed: Array<{ label: string; content: string }> = [];
-    const rawSections: string[] = [];
-    let latestProviderSummary = '酒馆当前 API';
-
-    for (const [stageIndex, stage] of stages.entries()) {
-      stageStates.value[stageIndex].status = 'running';
-      const userInput = buildStageUserInput(stage.label, stage.instruction, completed, requirement);
+  for (let stageIndex = startIndex; stageIndex < activeStageDefinitions.value.length; stageIndex += 1) {
+    const stage = activeStageDefinitions.value[stageIndex];
+    const state = stageStates.value[stageIndex];
+    if (!stage || !state || state.status === 'completed') continue;
+    state.status = 'running';
+    state.error = '';
+    activePreviewStageId.value = state.id;
+    const userInput = buildStageUserInput(stage.label, stage.instruction, getStagePriorOutputs(stage), requirement);
+    try {
       const messagesForStage: RawOrderedPrompt[] = buildCardWriterOrderedPrompts({
         assistantPrefillEnabled: writerSettings.value.assistantPrefillEnabled,
         chatMessages,
@@ -624,7 +909,8 @@ async function runWriter() {
           },
           onRawOutput: output => {
             liveStageOutput = output;
-            rawOutput.value = [...rawSections, `【${stage.label}】\n${output}`].join('\n\n');
+            state.raw = output;
+            rawOutput.value = buildPreviewRaw();
           },
           onStart: generationId => {
             activeGenerationId.value = generationId;
@@ -636,39 +922,27 @@ async function runWriter() {
         userInput,
       });
       const stageRaw = result.rawOutput || liveStageOutput;
-      const artifact = parseCardWriterArtifact(stageRaw);
-      if (!artifact) throw new Error(`${stage.label}没有生成可用内容`);
-      rawSections.push(`【${stage.label}】\n${stageRaw}`);
-      rawOutput.value = rawSections.join('\n\n');
-      completed.push({ label: stage.label, content: artifact });
-      latestProviderSummary = providerSummary(result);
-      stageStates.value[stageIndex].status = 'completed';
+      state.raw = stageRaw;
+      state.content = parseCardWriterArtifact(stageRaw, stage.label);
+      state.status = 'completed';
+      preview.providerSummary = providerSummary(result);
+      updatePreviewAggregate();
+      rawOutput.value = preview.raw;
+    } catch (error) {
+      state.status = 'failed';
+      state.error = error instanceof Error ? error.message : `${stage.label}生成或解析失败`;
+      generationError.value = state.error;
+      updatePreviewAggregate();
+      rawOutput.value = preview.raw;
+      savedPreviewBaseline.value = null;
+      if (route.value.page !== 'preview') phone.pushPage('preview', '写卡预览');
+      return false;
     }
-
-    preview.content =
-      completed.length === 1
-        ? completed[0].content
-        : completed.map(item => `## ${item.label}\n\n${item.content}`).join('\n\n');
-    preview.raw = rawOutput.value;
-    preview.providerSummary = latestProviderSummary;
-    preview.sourceLabel = `${sourceLabel}${includeWorldbook.value ? ' · 已加入世界书' : ' · 未加入世界书'}`;
-    preview.sourceOwnerLabel = sourceOwnerLabel;
-    preview.sourceScopeKey = sourceScopeKey;
-    preview.taskId = task.id;
-    preview.taskLabel = task.label;
-    preview.targetWorldbookName = targetWorldbookName.value.trim();
-    preview.title = `${task.label}成品`;
-    preview.warnings = [];
-    preview.worldbookIncluded = includeWorldbook.value;
-    preview.worldbookWritten = false;
-    savedPreviewBaseline.value = null;
-    phone.pushPage('preview', '写卡预览');
-  } catch (error) {
-    generationError.value = error instanceof Error ? error.message : '写卡生成失败';
-  } finally {
-    running.value = false;
-    activeGenerationId.value = '';
   }
+  updatePreviewAggregate();
+  savedPreviewBaseline.value = null;
+  if (route.value.page !== 'preview') phone.pushPage('preview', '写卡预览');
+  return true;
 }
 
 function stopWriter() {
@@ -688,8 +962,22 @@ function openLibrary() {
 
 function openDocument(document: CardWriterDocument) {
   activeDocumentId.value = document.id;
+  stageStates.value = document.stages.length
+    ? document.stages.map(stage => ({ ...stage, status: stage.status === 'running' ? 'pending' : stage.status }))
+    : [
+        {
+          content: document.content,
+          error: '',
+          id: 'saved-document',
+          label: document.taskLabel,
+          raw: document.raw || document.content,
+          status: 'completed',
+        },
+      ];
+  activeStageDefinitions.value = [];
+  activePreviewStageId.value = stageStates.value[0]?.id || '';
   preview.content = document.content;
-  preview.raw = document.content;
+  preview.raw = document.raw || buildPreviewRaw();
   preview.providerSummary = '已保存成品';
   preview.sourceLabel = document.sourceLabel;
   preview.sourceOwnerLabel = document.sourceOwnerLabel;
@@ -715,7 +1003,7 @@ async function copyDocument(document: CardWriterDocument) {
 }
 
 function buildWorldbookDrafts(): WorldbookEntryDraft[] {
-  const content = preview.content.trim();
+  const content = buildPreviewContent().trim();
   if (!content) return [];
   const headingPattern = /^##\s+(.+)$/gmu;
   const headings = [...content.matchAll(headingPattern)];
@@ -729,16 +1017,19 @@ function buildWorldbookDrafts(): WorldbookEntryDraft[] {
 }
 
 function persistPreviewDocument(worldbookWritten = preview.worldbookWritten) {
+  updatePreviewAggregate();
   const document = writerStore.saveDocument({
     content: preview.content,
     id: activeDocumentId.value || undefined,
     sourceLabel: preview.sourceLabel,
     sourceOwnerLabel: preview.sourceOwnerLabel,
     sourceScopeKey: preview.sourceScopeKey,
+    stages: stageStates.value.map(stage => ({ ...stage })),
     targetWorldbookName: preview.targetWorldbookName,
     taskId: preview.taskId,
     taskLabel: preview.taskLabel,
     title: preview.title,
+    raw: preview.raw,
     worldbookIncluded: preview.worldbookIncluded,
     worldbookWritten,
   });
@@ -750,6 +1041,31 @@ async function savePreview() {
   if (savingPreview.value) return;
   savingPreview.value = true;
   try {
+    if (hasIncompleteStages.value) {
+      const failedStage = stageStates.value.find(stage => stage.status === 'failed');
+      if (failedStage) {
+        activePreviewStageId.value = failedStage.id;
+        await nextTick();
+        if (!reparseActiveStage()) return;
+      }
+      const nextIndex = stageStates.value.findIndex(stage => stage.status !== 'completed');
+      if (nextIndex < 0) return;
+      if (!activeStageDefinitions.value.length) {
+        toastr.error('已保存的旧成品缺少阶段生成信息，无法继续生成');
+        return;
+      }
+      running.value = true;
+      generationError.value = '';
+      try {
+        const { messages } = getSelectedChatMessages();
+        const worldbookContent = await buildWorldbookText();
+        await runStageSequence(nextIndex, messages, worldbookContent);
+      } finally {
+        running.value = false;
+        activeGenerationId.value = '';
+      }
+      return;
+    }
     persistPreviewDocument();
     markPreviewSaved();
     if (!preview.targetWorldbookName) {
@@ -886,7 +1202,8 @@ onBeforeUnmount(stopWriter);
 }
 
 .pc-card-writer-persona-modes,
-.pc-card-writer-world-modes {
+.pc-card-writer-world-modes,
+.pc-card-writer-full-modes {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 8px;
@@ -904,6 +1221,10 @@ onBeforeUnmount(stopWriter);
 
 .pc-card-writer-brief-head {
   padding: 14px 0;
+}
+
+.pc-card-writer-full-modes {
+  padding-bottom: 14px;
 }
 
 .pc-card-writer-brief-head .pc-soft-btn {
@@ -945,6 +1266,11 @@ onBeforeUnmount(stopWriter);
   font-size: 12px;
   font-weight: 800;
   line-height: 1;
+}
+
+.pc-card-writer-field-error {
+  color: var(--pc-danger);
+  font-size: 12px;
 }
 
 .pc-card-writer-experience-options {
@@ -1031,6 +1357,24 @@ onBeforeUnmount(stopWriter);
   color: var(--pc-text);
 }
 
+.pc-card-writer-stage.failed {
+  color: var(--pc-danger);
+}
+
+.pc-card-writer-stage > span {
+  display: grid;
+  min-width: 0;
+  gap: 2px;
+}
+
+.pc-card-writer-stage small {
+  overflow: hidden;
+  color: var(--pc-danger);
+  font-size: 11px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .pc-card-writer-document-open {
   flex: 1;
   border: 0;
@@ -1049,7 +1393,31 @@ onBeforeUnmount(stopWriter);
 }
 
 .pc-card-writer-preview-page {
+  grid-template-rows: auto minmax(0, 1fr);
   height: 100%;
+}
+
+.pc-card-writer-preview-stages {
+  display: flex;
+  min-width: 0;
+  gap: 8px;
+  overflow-x: auto;
+  padding-bottom: 2px;
+}
+
+.pc-card-writer-preview-stages .pc-segment-btn {
+  flex: 0 0 auto;
+  max-width: 190px;
+}
+
+.pc-card-writer-preview-stages .pc-segment-btn span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.pc-card-writer-preview-stages .pc-segment-btn.failed {
+  color: var(--pc-danger);
 }
 
 .pc-card-writer-preview-page :deep(.pc-generation-preview) {

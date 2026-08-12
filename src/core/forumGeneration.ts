@@ -13,7 +13,8 @@ import { parseForumRepliesXmlResult, parseForumXmlResult } from '@/util/generati
 import { parseConfiguredOutput } from '@/util/outputParsing';
 import { parsePrettified } from '@/util/zod';
 
-type ForumReplyDraftInput = Pick<ForumReply, 'author' | 'content'> & Partial<Pick<ForumReply, 'source'>>;
+type ForumReplyDraftInput = Pick<ForumReply, 'author' | 'content' | 'isOriginalPoster'> &
+  Partial<Pick<ForumReply, 'source'>>;
 
 export const ForumThreadGenerateConfigSchema = z.object({
   appPrompt: z.string(),
@@ -53,6 +54,7 @@ export function materializeForumReplies(
     createdInputs.push({
       author: reply.author.trim() || '匿名',
       content: reply.content.trim(),
+      isOriginalPoster: reply.isOriginalPoster,
       source,
     });
   });
@@ -70,6 +72,7 @@ export function createForumReplySnapshots(parsedReplies: ForumXmlReply[], source
     content: reply.content.trim(),
     createdAt: timestamp,
     id: `forum_reply_${Date.now()}_${index}_${Math.random().toString(36).slice(2, 8)}`,
+    isOriginalPoster: reply.isOriginalPoster,
     source,
     updatedAt: timestamp,
   }));
@@ -96,6 +99,7 @@ export function persistForumReplyDrafts(
       {
         author: reply.author,
         content: reply.content,
+        isOriginalPoster: reply.isOriginalPoster,
         source: reply.source,
       },
       versionId,

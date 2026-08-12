@@ -71,8 +71,8 @@
         </button>
       </div>
 
-      <div v-if="groupMode" class="pc-field-group">
-        <label class="pc-field-label">每组楼数</label>
+      <div class="pc-field-group">
+        <label class="pc-field-label">{{ groupMode ? '每组楼数' : '每批目标楼层数' }}</label>
         <input v-model.number="groupSize" class="pc-field" type="number" min="1" max="50" :disabled="inputsLocked" />
       </div>
       <div class="pc-field-group">
@@ -173,7 +173,7 @@ const rpmLimit = defineModel<number>('rpmLimit', { required: true });
 const userRequirement = defineModel<string>('userRequirement', { required: true });
 
 const modeHint =
-  '逐楼：将每个符合条件的楼层作为截止点，累积读取第 0 楼到该楼层。例如目标楼层为 1、3、5，将分别使用 0-1、0-3、0-5 楼生成三篇日记。AI/用户选项只决定截止楼层，范围内会保留完整可见对话。\n\n按组：按设定数量合并符合条件的楼层。例如目标楼层为 1、3、5，每组 2 层，将使用 1、3 楼生成一篇，再使用第 5 楼生成一篇。';
+  '逐楼：按“每批目标楼层数”合并符合条件的截止楼层，并累积读取第 0 楼到该批最后一层。例如目标楼层为 1、3、5，每批 3 层时只生成一次并读取 0-5 楼；范围内保留完整可见对话。\n\n按组：只按设定数量合并符合条件的目标楼层。例如目标楼层为 1、3、5，每组 2 层，将使用 1、3 楼生成一篇，再使用第 5 楼生成一篇。';
 const progressLabel = computed(
   () =>
     `${props.state.done + props.state.failed}/${props.state.total} · 成功 ${props.state.done}${props.state.failed ? ` · 草稿 ${props.state.failed}` : ''}${props.state.currentLabel ? ` · ${props.state.currentLabel}` : ''}`,

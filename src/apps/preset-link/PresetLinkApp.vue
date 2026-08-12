@@ -80,32 +80,112 @@
         </button>
       </div>
     </article>
+
+    <article class="pc-page-section pc-preset-link-reader-profile">
+      <header class="pc-preset-link-reader-head">
+        <div>
+          <strong>{{ t`所选预设的阅读规则` }}</strong>
+          <small>{{ draftPresetName ? `共享配置 · ${draftPresetName}` : t`请先选择预设` }}</small>
+        </div>
+        <InfoHint :text="t`这里按预设名称保存；所有绑定同一预设的聊天都会使用这套标题与正文规则。`" />
+      </header>
+
+      <div v-if="readerMigrationConflict" class="pc-preset-link-conflict">
+        <div>
+          <i class="fa-solid fa-triangle-exclamation"></i>
+          <span>
+            {{ `旧数据中有 ${readerMigrationConflict.candidates.length} 套不同阅读规则；请选择一套候选，再点击保存。` }}
+          </span>
+        </div>
+        <div class="pc-preset-link-conflict-candidates">
+          <button
+            v-for="(candidate, index) in readerMigrationConflict.candidates"
+            :key="`${candidate.readerTitleRuleId}-${candidate.readerContentRuleId}`"
+            class="pc-soft-btn compact"
+            type="button"
+            @click="adoptReaderCandidate(candidate)"
+          >
+            {{
+              `候选 ${index + 1} · ${readerRuleName(candidate.readerTitleRuleId, '跟随全局标题')} / ${readerRuleName(candidate.readerContentRuleId, '跟随全局正文')} · ${candidate.scopeKeys.length} 个聊天`
+            }}
+          </button>
+        </div>
+      </div>
+
+      <label class="pc-field-group">
+        <span>{{ t`阅读标题规则` }}</span>
+        <SearchableCombobox
+          v-model="draftReaderTitleRuleId"
+          :disabled="busy || !draftPresetName"
+          :options="readerTitleRuleOptions"
+          :placeholder="t`跟随全局阅读规则`"
+        />
+      </label>
+
+      <label class="pc-field-group">
+        <span>{{ t`阅读正文规则` }}</span>
+        <SearchableCombobox
+          v-model="draftReaderContentRuleId"
+          :disabled="busy || !draftPresetName"
+          :options="readerContentRuleOptions"
+          :placeholder="t`跟随全局阅读规则`"
+        />
+      </label>
+
+      <div class="pc-form-actions">
+        <button class="pc-primary-btn" type="button" :disabled="busy || !draftPresetName" @click="saveReaderProfile">
+          {{ busyAction === 'reader' ? t`保存中` : t`保存预设阅读规则` }}
+        </button>
+      </div>
+    </article>
   </section>
 </template>
 
 <script setup lang="ts">
 import { getCurrentTavernPresetName, listTavernPresets } from '@/apps/preset-manager/api';
+import { defaultReaderBodyRegexDisplayRuleId, useRegexDisplayStore } from '@/apps/regex-display/store';
+import { getRegexRulesByOperation } from '@/util/regexDisplay';
 import { usePhoneStore } from '@/store/phone';
 import { getEnabledPresetRegexCount } from './api';
 import { usePresetLinkStore } from './store';
 
 const phone = usePhoneStore();
 const presetLinks = usePresetLinkStore();
+const regexDisplay = useRegexDisplayStore();
 const presetNames = ref<string[]>([]);
 const currentPresetName = ref('');
 const draftPresetName = ref('');
 const draftReloadRegex = ref(false);
-const busyAction = ref<'apply' | 'remove' | 'save' | ''>('');
+const draftReaderContentRuleId = ref('');
+const draftReaderTitleRuleId = ref('');
+const busyAction = ref<'apply' | 'reader' | 'remove' | 'save' | ''>('');
 const busy = computed(() => Boolean(busyAction.value) || presetLinks.applying);
 const scopeKey = computed(() => phone.viewingScopeKey);
 const binding = computed(() => presetLinks.getBinding(scopeKey.value));
 const currentMatchesBinding = computed(() =>
   Boolean(binding.value?.presetName && binding.value.presetName === currentPresetName.value),
 );
+const readerMigrationConflict = computed(() => presetLinks.getReaderMigrationConflict(draftPresetName.value));
 const enabledRegexCount = computed(() =>
   draftPresetName.value ? getEnabledPresetRegexCount(draftPresetName.value) : 0,
 );
 const presetOptions = computed(() => presetNames.value.map(name => ({ label: name, value: name })));
+const extractionRules = computed(() => getRegexRulesByOperation(regexDisplay.rules, 'extract'));
+const readerTitleRuleOptions = computed(() => [
+  { label: '跟随全局阅读规则', value: '' },
+  { label: '无正则', value: '__default_title__' },
+  ...extractionRules.value.map(rule => ({ label: rule.name || '未命名规则', value: rule.id })),
+]);
+const readerContentRuleOptions = computed(() => {
+  const options = extractionRules.value.map(rule => ({ label: rule.name || '未命名规则', value: rule.id }));
+  return [
+    { label: '跟随全局阅读规则', value: '' },
+    ...(options.some(option => option.value === defaultReaderBodyRegexDisplayRuleId)
+      ? []
+      : [{ label: '默认楼层正文提取', value: defaultReaderBodyRegexDisplayRuleId }]),
+    ...options,
+  ];
+});
 
 function refresh() {
   presetNames.value = listTavernPresets();
@@ -113,6 +193,24 @@ function refresh() {
   const stored = presetLinks.getBinding(scopeKey.value);
   draftPresetName.value = stored?.presetName || currentPresetName.value || presetNames.value[0] || '';
   draftReloadRegex.value = stored?.reloadRegex ?? false;
+  loadReaderProfile(draftPresetName.value);
+}
+
+function loadReaderProfile(presetName: string) {
+  const profile = presetLinks.getReaderProfile(presetName);
+  draftReaderContentRuleId.value = profile?.readerContentRuleId || '';
+  draftReaderTitleRuleId.value = profile?.readerTitleRuleId || '';
+}
+
+function readerRuleName(ruleId: string, fallback: string) {
+  if (!ruleId) return fallback;
+  if (ruleId === '__default_title__') return '无标题正则';
+  return extractionRules.value.find(rule => rule.id === ruleId)?.name || ruleId;
+}
+
+function adoptReaderCandidate(candidate: { readerContentRuleId: string; readerTitleRuleId: string }) {
+  draftReaderContentRuleId.value = candidate.readerContentRuleId;
+  draftReaderTitleRuleId.value = candidate.readerTitleRuleId;
 }
 
 function saveBinding() {
@@ -123,6 +221,21 @@ function saveBinding() {
       reloadRegex: draftReloadRegex.value,
     });
     toastr.success(phone.isViewingCurrentChat ? '已保存当前聊天的预设绑定' : '已保存历史聊天的预设绑定');
+  } catch (error) {
+    toastr.error(error instanceof Error ? error.message : String(error));
+  } finally {
+    busyAction.value = '';
+  }
+}
+
+function saveReaderProfile() {
+  busyAction.value = 'reader';
+  try {
+    presetLinks.saveReaderProfile(draftPresetName.value, {
+      readerContentRuleId: draftReaderContentRuleId.value,
+      readerTitleRuleId: draftReaderTitleRuleId.value,
+    });
+    toastr.success(`已保存预设“${draftPresetName.value}”的共享阅读规则`);
   } catch (error) {
     toastr.error(error instanceof Error ? error.message : String(error));
   } finally {
@@ -171,6 +284,7 @@ async function removeBinding() {
     presetLinks.removeBinding(scopeKey.value);
     draftPresetName.value = currentPresetName.value || presetNames.value[0] || '';
     draftReloadRegex.value = false;
+    loadReaderProfile(draftPresetName.value);
     toastr.success(`已解除${target}的预设绑定`);
   } finally {
     busyAction.value = '';
@@ -178,6 +292,7 @@ async function removeBinding() {
 }
 
 watch([() => phone.viewingScopeKey, () => presetLinks.revision], () => refresh(), { immediate: true });
+watch(draftPresetName, presetName => loadReaderProfile(presetName));
 onActivated(refresh);
 </script>
 
@@ -245,6 +360,63 @@ onActivated(refresh);
 .pc-preset-link-editor {
   display: grid;
   gap: 14px;
+}
+
+.pc-preset-link-reader-profile {
+  display: grid;
+  gap: 14px;
+}
+
+.pc-preset-link-reader-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.pc-preset-link-reader-head > div {
+  display: grid;
+  min-width: 0;
+  gap: 4px;
+}
+
+.pc-preset-link-reader-head small {
+  overflow: hidden;
+  color: var(--pc-muted);
+  font-size: 12px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.pc-preset-link-conflict {
+  display: grid;
+  gap: 10px;
+  border: 1px solid color-mix(in srgb, var(--pc-danger) 38%, var(--pc-border) 62%);
+  border-radius: min(var(--pc-control-radius), 8px);
+  padding: 10px;
+  color: var(--pc-danger);
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.pc-preset-link-conflict > div:first-child {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+}
+
+.pc-preset-link-conflict-candidates {
+  display: grid;
+  gap: 6px;
+}
+
+.pc-preset-link-conflict-candidates .pc-soft-btn {
+  justify-content: flex-start;
+  overflow: hidden;
+  color: var(--pc-text);
+  text-align: left;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .pc-preset-link-option {

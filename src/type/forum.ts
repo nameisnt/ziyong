@@ -10,6 +10,7 @@ export const ForumReplySchema = z.object({
   id: z.string(),
   author: z.string(),
   content: z.string(),
+  isOriginalPoster: z.boolean(),
   parentReplyId: z.string().optional(),
   source: SourceSelectionSchema.optional(),
   createdAt: z.string(),

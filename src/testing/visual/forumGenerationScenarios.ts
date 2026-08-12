@@ -23,9 +23,13 @@ export function createForumFixture() {
   });
   if (!longThread) throw new Error('Forum visual fixture did not create a thread');
   forum.appendReplies(board.id, longThread.thread.id, [
-    { author: '一楼', content: '第一条回复，只显示楼层，不显示现实时间。' },
-    { author: '二楼', content: '第二条回复，文字稍微长一点，用来检测回复卡片换行和底部按钮。' },
-    { author: '三楼', content: '第三条回复。' },
+    { author: '一楼', content: '第一条回复，只显示楼层，不显示现实时间。', isOriginalPoster: false },
+    {
+      author: '二楼',
+      content: '第二条回复，文字稍微长一点，用来检测回复卡片换行和底部按钮。',
+      isOriginalPoster: false,
+    },
+    { author: '三楼', content: '第三条回复。', isOriginalPoster: false },
   ]);
   return {
     board,
@@ -157,8 +161,8 @@ export async function applyForumGenerationVisualScenario(name: string, context: 
         mode: 'create',
         raw: '<forum><title>预览主题</title><content>这是论坛主楼预览正文。</content></forum>',
         replies: [
-          { author: '一楼', content: '第一条预览回复。' },
-          { author: '二楼', content: '第二条预览回复。' },
+          { author: '一楼', content: '第一条预览回复。', isOriginalPoster: false },
+          { author: '视觉楼主', content: '第二条预览回复。', isOriginalPoster: true },
         ],
         targetThreadId: '',
         targetVersionId: '',

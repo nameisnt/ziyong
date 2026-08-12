@@ -272,7 +272,8 @@ export const useForumStore = defineStore('forum', () => {
   function createReply(
     boardId: string,
     threadId: string,
-    input: Pick<ForumReply, 'author' | 'content'> & Partial<Pick<ForumReply, 'parentReplyId' | 'source'>>,
+    input: Pick<ForumReply, 'author' | 'content' | 'isOriginalPoster'> &
+      Partial<Pick<ForumReply, 'parentReplyId' | 'source'>>,
     versionId = '',
   ) {
     const board = getBoard(boardId);
@@ -283,6 +284,7 @@ export const useForumStore = defineStore('forum', () => {
       id: createId('forum_reply'),
       author: input.author.trim() || '匿名',
       content: input.content.trim(),
+      isOriginalPoster: input.isOriginalPoster,
       parentReplyId: input.parentReplyId?.trim() || undefined,
       source: input.source,
       createdAt: timestamp,
@@ -307,7 +309,10 @@ export const useForumStore = defineStore('forum', () => {
   function appendReplies(
     boardId: string,
     threadId: string,
-    replies: Array<Pick<ForumReply, 'author' | 'content'> & Partial<Pick<ForumReply, 'parentReplyId' | 'source'>>>,
+    replies: Array<
+      Pick<ForumReply, 'author' | 'content' | 'isOriginalPoster'> &
+        Partial<Pick<ForumReply, 'parentReplyId' | 'source'>>
+    >,
     versionId = '',
   ) {
     const createdReplies: ForumReply[] = [];
@@ -322,7 +327,7 @@ export const useForumStore = defineStore('forum', () => {
     boardId: string,
     threadId: string,
     replyId: string,
-    input: Pick<ForumReply, 'author' | 'content'> & Partial<Pick<ForumReply, 'parentReplyId'>>,
+    input: Pick<ForumReply, 'author' | 'content' | 'isOriginalPoster'> & Partial<Pick<ForumReply, 'parentReplyId'>>,
     versionId = '',
   ) {
     const board = getBoard(boardId);
@@ -332,6 +337,7 @@ export const useForumStore = defineStore('forum', () => {
     const timestamp = nowIso();
     reply.author = input.author.trim() || reply.author;
     reply.content = input.content.trim();
+    reply.isOriginalPoster = input.isOriginalPoster;
     reply.parentReplyId = input.parentReplyId?.trim() || undefined;
     reply.updatedAt = timestamp;
     const version = versionId ? thread.versions.find(item => item.id === versionId) : null;

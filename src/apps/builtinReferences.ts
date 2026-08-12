@@ -206,23 +206,29 @@ export function createForumReferenceTree() {
           branch(`forum:${board.id}:thread:${thread.id}`, thread.title, [
             leaf(
               makeItem({
-                content: `作者：${thread.author}\n${thread.content}`,
+                content: `帖子标题：${thread.title}\n主楼作者：${thread.author}（楼主）\n\n${thread.content}`,
                 id: `forum:${board.id}:thread:${thread.id}:main`,
                 sourcePath: ['论坛', board.name, thread.title],
-                title: `主楼 · ${thread.author}`,
+                title: '仅引用主题',
                 updatedAt: thread.updatedAt,
               }),
             ),
-            ...sortByUpdatedAt(thread.replies).map(reply =>
-              leaf(
-                makeItem({
-                  content: `作者：${reply.author}\n${reply.content}`,
-                  id: `forum:${board.id}:thread:${thread.id}:reply:${reply.id}`,
-                  sourcePath: ['论坛', board.name, thread.title],
-                  title: `回复 · ${reply.author}`,
-                  updatedAt: reply.updatedAt,
-                }),
-              ),
+            leaf(
+              makeItem({
+                content: [
+                  `帖子标题：${thread.title}`,
+                  `主楼作者：${thread.author}（楼主）`,
+                  thread.content,
+                  ...thread.replies.flatMap((reply, index) => [
+                    `第 ${index + 1} 层 · ${reply.author}${reply.isOriginalPoster ? '（楼主）' : ''}`,
+                    reply.content,
+                  ]),
+                ].join('\n\n'),
+                id: `forum:${board.id}:thread:${thread.id}:full`,
+                sourcePath: ['论坛', board.name, thread.title],
+                title: `引用主题和全部回复（${thread.replies.length}）`,
+                updatedAt: thread.updatedAt,
+              }),
             ),
           ]),
         ),

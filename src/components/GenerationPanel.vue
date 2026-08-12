@@ -149,12 +149,12 @@
 
         <GenerationSourceFields
           :disabled="controlsDisabled"
-          :from-start-end="fromStartEnd"
+          :from-start-end="settings.generation.fromStartEnd"
           :mode="sourceMode"
           :range-text="rangeText"
           :recent-count="recentCount"
           :single-message-id="singleMessageId"
-          @update:from-start-end="emit('update:fromStartEnd', $event)"
+          @update:from-start-end="updateFromStartEnd"
           @update:mode="emit('update:sourceMode', $event)"
           @update:range-text="emit('update:rangeText', $event)"
           @update:recent-count="emit('update:recentCount', $event)"
@@ -324,7 +324,7 @@ const controlsDisabled = computed(() => props.running || generationBlocked.value
 const sourceModeLabel = computed(() => {
   if (props.sourceMode === 'none') return '不使用聊天楼层';
   if (props.sourceMode === 'recent') return `最近 ${props.recentCount} 楼`;
-  if (props.sourceMode === 'fromStart') return `0-${props.fromStartEnd} 楼`;
+  if (props.sourceMode === 'fromStart') return `0-${settings.value.generation.fromStartEnd} 楼`;
   if (props.sourceMode === 'single') return `第 ${props.singleMessageId} 楼`;
   if (props.sourceMode === 'range') return props.rangeText.trim() || '自定义范围';
   if (props.sourceMode === 'all') return '全部楼层';
@@ -360,6 +360,20 @@ const emit = defineEmits<{
   'update:sourceMode': [value: SummaryGenerationSourceMode];
   'update:userRequirement': [value: string];
 }>();
+
+function updateFromStartEnd(value: number) {
+  const normalized = Math.max(0, Math.round(value || 0));
+  settings.value.generation.fromStartEnd = normalized;
+  emit('update:fromStartEnd', normalized);
+}
+
+watch(
+  [() => props.fromStartEnd, () => settings.value.generation.fromStartEnd],
+  ([draftValue, defaultValue]) => {
+    if (draftValue !== defaultValue) emit('update:fromStartEnd', defaultValue);
+  },
+  { immediate: true },
+);
 
 watch(controlsDisabled, disabled => {
   if (disabled) quickPhraseOpen.value = false;

@@ -41,6 +41,7 @@ export function createVisualScenarioGroups(rootAppScenarios: string[]): VisualSc
         'recovery-shelf',
         'recovery-group',
         'recovery-cleanup',
+        'recovery-duplicates',
         'recovery-reader',
         'recovery-confirm',
         'recovery-result',

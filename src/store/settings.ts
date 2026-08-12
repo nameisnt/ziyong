@@ -606,6 +606,7 @@ export const useSettingsStore = defineStore('settings', () => {
 
   function resetGenerationDefaults() {
     settings.value.generation = {
+      fromStartEnd: 20,
       rpmLimit: 10,
       sourceMode: 'latest',
       tavernPresetName: '',

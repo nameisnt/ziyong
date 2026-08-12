@@ -15,22 +15,125 @@ const PresetChatBindingSchema = z.object({
 });
 export type PresetChatBinding = z.infer<typeof PresetChatBindingSchema>;
 
-export const PresetLinkSettingsSchema = z.object({
-  bindings: z.record(z.string(), PresetChatBindingSchema).default({}),
-  version: z.literal(1).default(1),
+const PresetReaderProfileSchema = z.object({
+  readerContentRuleId: z.string().default(''),
+  readerTitleRuleId: z.string().default(''),
+  updatedAt: z.string().default(''),
 });
-export type PresetLinkSettings = z.infer<typeof PresetLinkSettingsSchema>;
+export type PresetReaderProfile = z.infer<typeof PresetReaderProfileSchema>;
 
-function readSettings(raw: unknown) {
-  return validateInplace(PresetLinkSettingsSchema, raw && typeof raw === 'object' ? raw : {});
+const PresetReaderMigrationCandidateSchema = PresetReaderProfileSchema.extend({
+  scopeKeys: z.array(z.string()).default([]),
+});
+type PresetReaderMigrationCandidate = z.infer<typeof PresetReaderMigrationCandidateSchema>;
+
+const PresetReaderMigrationConflictSchema = z.object({
+  candidates: z.array(PresetReaderMigrationCandidateSchema).default([]),
+  presetName: z.string(),
+});
+export type PresetReaderMigrationConflict = z.infer<typeof PresetReaderMigrationConflictSchema>;
+
+const LegacyPresetChatBindingSchema = PresetChatBindingSchema.extend({
+  readerContentRuleId: z.string().default(''),
+  readerTitleRuleId: z.string().default(''),
+});
+
+export const PresetLinkSettingsSchema = z.object({
+  bindings: z.record(z.string(), LegacyPresetChatBindingSchema).default({}),
+  readerMigrationConflicts: z.array(PresetReaderMigrationConflictSchema).default([]),
+  readerProfiles: z.record(z.string(), PresetReaderProfileSchema).default({}),
+  version: z.number().int().min(1).max(2).default(2),
+});
+
+export type PresetLinkSettings = {
+  bindings: Record<string, PresetChatBinding>;
+  readerMigrationConflicts: PresetReaderMigrationConflict[];
+  readerProfiles: Record<string, PresetReaderProfile>;
+  version: 2;
+};
+
+function compareUpdatedAt(left: string, right: string) {
+  return right.localeCompare(left);
+}
+
+function migrateLegacyReaderProfiles(
+  bindings: Record<string, z.infer<typeof LegacyPresetChatBindingSchema>>,
+  existingProfiles: Record<string, PresetReaderProfile>,
+) {
+  const readerProfiles = klona(existingProfiles);
+  const conflicts: PresetReaderMigrationConflict[] = [];
+  const grouped = new Map<string, Map<string, PresetReaderMigrationCandidate>>();
+
+  Object.entries(bindings).forEach(([scopeKey, binding]) => {
+    const presetName = binding.presetName.trim();
+    const readerContentRuleId = binding.readerContentRuleId.trim();
+    const readerTitleRuleId = binding.readerTitleRuleId.trim();
+    if (!presetName || (!readerContentRuleId && !readerTitleRuleId)) return;
+    const signature = `${readerTitleRuleId}\0${readerContentRuleId}`;
+    const candidates = grouped.get(presetName) ?? new Map<string, PresetReaderMigrationCandidate>();
+    const candidate = candidates.get(signature);
+    if (candidate) {
+      candidate.scopeKeys.push(scopeKey);
+      if (binding.updatedAt.localeCompare(candidate.updatedAt) > 0) candidate.updatedAt = binding.updatedAt;
+    } else {
+      candidates.set(signature, {
+        readerContentRuleId,
+        readerTitleRuleId,
+        scopeKeys: [scopeKey],
+        updatedAt: binding.updatedAt,
+      });
+    }
+    grouped.set(presetName, candidates);
+  });
+
+  grouped.forEach((candidateMap, presetName) => {
+    if (readerProfiles[presetName]) return;
+    const candidates = [...candidateMap.values()].sort((left, right) =>
+      compareUpdatedAt(left.updatedAt, right.updatedAt),
+    );
+    const selected = candidates[0];
+    if (!selected) return;
+    readerProfiles[presetName] = PresetReaderProfileSchema.parse(selected);
+    if (candidates.length > 1) conflicts.push({ candidates, presetName });
+  });
+
+  return { conflicts, readerProfiles };
+}
+
+function readSettings(raw: unknown): PresetLinkSettings {
+  const parsed = validateInplace(PresetLinkSettingsSchema, raw && typeof raw === 'object' ? raw : {});
+  const migrated = migrateLegacyReaderProfiles(parsed.bindings, parsed.readerProfiles);
+  return {
+    bindings: Object.fromEntries(
+      Object.entries(parsed.bindings).map(([scopeKey, binding]) => [scopeKey, PresetChatBindingSchema.parse(binding)]),
+    ),
+    readerMigrationConflicts:
+      parsed.version >= 2 && parsed.readerMigrationConflicts.length
+        ? parsed.readerMigrationConflicts
+        : migrated.conflicts,
+    readerProfiles: migrated.readerProfiles,
+    version: 2,
+  };
 }
 
 function assertScope(scopeKey: string) {
   if (isPlaceholderChatScopeKey(scopeKey)) throw new Error('当前聊天标识尚未就绪');
 }
 
+function normalizePresetName(presetName: string) {
+  const normalized = presetName.trim();
+  if (!normalized) throw new Error('请先选择预设');
+  return normalized;
+}
+
 export const usePresetLinkStore = defineStore('preset-link', () => {
-  const settings = ref<PresetLinkSettings>(readSettings(_.get(extension_settings, presetLinkField, {})));
+  const rawSettings = _.get(extension_settings, presetLinkField, {});
+  const initialSettings = readSettings(rawSettings);
+  const settings = ref<PresetLinkSettings>(initialSettings);
+  if (_.get(rawSettings, 'version') !== 2) {
+    _.set(extension_settings, presetLinkField, klona(initialSettings));
+    void saveSettingsDebounced();
+  }
   const applying = ref(false);
   const lastAppliedScopeKey = ref('');
   const revision = ref(0);
@@ -41,7 +144,7 @@ export const usePresetLinkStore = defineStore('preset-link', () => {
   watch(
     settings,
     value => {
-      _.set(extension_settings, presetLinkField, readSettings(klona(value)));
+      _.set(extension_settings, presetLinkField, klona(value));
       void saveSettingsDebounced();
     },
     { deep: true },
@@ -62,10 +165,21 @@ export const usePresetLinkStore = defineStore('preset-link', () => {
     return resolveBindingEntry(scopeKey)?.[1] ?? null;
   }
 
-  function saveBinding(scopeKey: string, input: Pick<PresetChatBinding, 'presetName' | 'reloadRegex'>) {
+  function getReaderProfile(presetName: string) {
+    return settings.value.readerProfiles[presetName.trim()] ?? null;
+  }
+
+  function getReaderMigrationConflict(presetName: string) {
+    return settings.value.readerMigrationConflicts.find(item => item.presetName === presetName.trim()) ?? null;
+  }
+
+  function saveBinding(
+    scopeKey: string,
+    input: Pick<PresetChatBinding, 'presetName' | 'reloadRegex'> &
+      Partial<Pick<PresetReaderProfile, 'readerContentRuleId' | 'readerTitleRuleId'>>,
+  ) {
     assertScope(scopeKey);
-    const presetName = input.presetName.trim();
-    if (!presetName) throw new Error('请先选择要绑定的预设');
+    const presetName = normalizePresetName(input.presetName);
     const existingEntry = resolveBindingEntry(scopeKey);
     if (existingEntry && existingEntry[0] !== scopeKey) delete settings.value.bindings[existingEntry[0]];
     settings.value.bindings[scopeKey] = {
@@ -73,8 +187,41 @@ export const usePresetLinkStore = defineStore('preset-link', () => {
       reloadRegex: input.reloadRegex,
       updatedAt: new Date().toISOString(),
     };
+    if (input.readerContentRuleId !== undefined || input.readerTitleRuleId !== undefined) {
+      const existingProfile = getReaderProfile(presetName) ?? PresetReaderProfileSchema.parse({});
+      saveReaderProfile(presetName, {
+        readerContentRuleId: input.readerContentRuleId ?? existingProfile.readerContentRuleId,
+        readerTitleRuleId: input.readerTitleRuleId ?? existingProfile.readerTitleRuleId,
+      });
+    }
     revision.value += 1;
     return settings.value.bindings[scopeKey];
+  }
+
+  function saveReaderProfile(
+    presetName: string,
+    input: Pick<PresetReaderProfile, 'readerContentRuleId' | 'readerTitleRuleId'>,
+  ) {
+    const normalizedPresetName = normalizePresetName(presetName);
+    settings.value.readerProfiles[normalizedPresetName] = {
+      readerContentRuleId: input.readerContentRuleId.trim(),
+      readerTitleRuleId: input.readerTitleRuleId.trim(),
+      updatedAt: new Date().toISOString(),
+    };
+    settings.value.readerMigrationConflicts = settings.value.readerMigrationConflicts.filter(
+      item => item.presetName !== normalizedPresetName,
+    );
+    revision.value += 1;
+    return settings.value.readerProfiles[normalizedPresetName];
+  }
+
+  function setReaderRule(presetName: string, field: 'content' | 'title', ruleId: string) {
+    const normalizedPresetName = normalizePresetName(presetName);
+    const existing = getReaderProfile(normalizedPresetName) ?? PresetReaderProfileSchema.parse({});
+    return saveReaderProfile(normalizedPresetName, {
+      readerContentRuleId: field === 'content' ? ruleId : existing.readerContentRuleId,
+      readerTitleRuleId: field === 'title' ? ruleId : existing.readerTitleRuleId,
+    });
   }
 
   function removeBinding(scopeKey = getCurrentChatScopeKey()) {
@@ -106,8 +253,7 @@ export const usePresetLinkStore = defineStore('preset-link', () => {
     if (!areChatScopeKeysEquivalent(scopeKey, getCurrentChatScopeKey())) {
       throw new Error('只能把预设应用到酒馆当前打开的聊天');
     }
-    const presetName = input.presetName.trim();
-    if (!presetName) throw new Error('请先选择要应用的预设');
+    const presetName = normalizePresetName(input.presetName);
     const currentPresetName = getCurrentTavernPresetName();
     const changed = currentPresetName !== presetName;
     const reloadKey = `${getCurrentChatScopeKey()}\0${presetName}`;
@@ -190,6 +336,8 @@ export const usePresetLinkStore = defineStore('preset-link', () => {
     applyScope,
     applying,
     getBinding,
+    getReaderMigrationConflict,
+    getReaderProfile,
     importBackup,
     inheritBinding,
     lastAppliedScopeKey,
@@ -198,6 +346,8 @@ export const usePresetLinkStore = defineStore('preset-link', () => {
     resetCurrentScope,
     revision,
     saveBinding,
+    saveReaderProfile,
+    setReaderRule,
     settings,
     switchScope,
   };

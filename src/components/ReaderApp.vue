@@ -37,7 +37,7 @@
           <div class="pc-rule-picker">
             <span class="pc-field-label">{{ t`标题规则` }}</span>
             <SearchableCombobox
-              :model-value="readerRegexUsage.titleRuleId || '__default_title__'"
+              :model-value="titleRuleSelectValue"
               :options="readerTitleRuleOptions"
               :placeholder="t`选择或搜索标题规则`"
               @update:model-value="onReaderTitleRuleSelect"
@@ -124,7 +124,7 @@
 
     <section v-else-if="route.page === 'detail' && activeMessage" class="pc-reader-page pc-reader-detail-page">
       <ReaderDetailShell
-        :actions-class="phone.isViewingCurrentChat ? 'five' : ''"
+        :actions-class="phone.isViewingCurrentChat ? 'six' : 'five'"
         :branch-disabled="branching"
         :branch-enabled="phone.isViewingCurrentChat"
         :branch-label="branching ? t`正在创建分支` : t`从此处创建分支`"
@@ -154,6 +154,15 @@
         <template #actions>
           <button class="pc-soft-btn" type="button" :title="t`选中文字加入摘抄`" @click="saveSelectionToDigest">
             <i class="fa-solid fa-highlighter"></i>
+          </button>
+          <button
+            class="pc-soft-btn danger"
+            type="button"
+            :disabled="!phone.isViewingCurrentChat"
+            :title="phone.isViewingCurrentChat ? t`删除当前选中文字` : t`历史聊天只读`"
+            @click="deleteSelectedReaderText"
+          >
+            <i class="fa-solid fa-eraser"></i>
           </button>
         </template>
         <template #overlays>
@@ -228,6 +237,7 @@ import { useSettingsStore } from '@/store/settings';
 import { useDigestStore } from '@/apps/digest/store';
 import { useWorldbookLinkStore } from '@/apps/worldbook-link/store';
 import { usePresetLinkStore } from '@/apps/preset-link/store';
+import { getCurrentTavernPresetName } from '@/apps/preset-manager/api';
 import { normalizeChatArchiveId, parseChatScopeKey } from '@/util/chatArchive';
 import { canOpenBaguScan } from '@/util/baguScanGate';
 import { useDetailScroll } from '@/util/detailScroll';
@@ -264,7 +274,18 @@ const fallbackRoute = Object.freeze({
 
 const route = computed(() => phone.currentRoute ?? fallbackRoute);
 const readerSettings = computed(() => reader.settings ?? fallbackSettings);
-const readerRegexUsage = computed(() => regexDisplay.getUsage('reader'));
+const globalReaderRegexUsage = computed(() => regexDisplay.getUsage('reader'));
+const readerBinding = computed(() => presetLinks.getBinding(phone.viewingScopeKey));
+const currentTavernPresetName = ref(getCurrentTavernPresetName());
+const effectiveReaderPresetName = computed(
+  () => readerBinding.value?.presetName || (phone.isViewingCurrentChat ? currentTavernPresetName.value : ''),
+);
+const readerPresetProfile = computed(() => presetLinks.getReaderProfile(effectiveReaderPresetName.value));
+const readerRegexUsage = computed(() => ({
+  contentRuleId: readerPresetProfile.value?.readerContentRuleId || globalReaderRegexUsage.value.contentRuleId,
+  displayRuleIds: globalReaderRegexUsage.value.displayRuleIds,
+  titleRuleId: readerPresetProfile.value?.readerTitleRuleId || globalReaderRegexUsage.value.titleRuleId,
+}));
 const currentMessages = ref<ReaderMessage[]>([]);
 const loadedScopeKey = ref('');
 const error = ref('');
@@ -308,6 +329,7 @@ const defaultTitleRule: ChatReaderRegexRule = { find: '', flags: '', replace: ''
 const readerTitleRegexRules = computed(() => getRegexRulesByOperation(regexDisplayRules.value, 'extract'));
 const readerBodyRegexRules = computed(() => getRegexRulesByOperation(regexDisplayRules.value, 'extract'));
 const readerTitleRuleOptions = computed(() => [
+  ...(effectiveReaderPresetName.value ? [{ label: '跟随全局阅读规则', value: '' }] : []),
   { label: '无正则', value: '__default_title__' },
   ...readerTitleRegexRules.value.map(rule => ({ label: rule.name || '未命名规则', value: rule.id })),
 ]);
@@ -316,7 +338,7 @@ const readerBodyRuleOptions = computed(() => {
   if (!options.some(option => option.value === defaultReaderBodyRegexDisplayRuleId)) {
     options.unshift({ label: '默认楼层正文提取', value: '__default_body__' });
   }
-  return options;
+  return [...(effectiveReaderPresetName.value ? [{ label: '跟随全局阅读规则', value: '' }] : []), ...options];
 });
 const readerCleanupRules = computed(() => getRegexRulesByOperation(regexDisplayRules.value, 'replace'));
 const selectedTitleRegexRule = computed(() =>
@@ -335,15 +357,24 @@ const cleanupSummary = computed(() =>
 );
 const readerRuleSummary = computed(
   () =>
-    `${selectedTitleRegexRule.value?.name || '无正则'} / ${selectedBodyRegexRule.value?.name || '默认正文'} / 清理 ${selectedCleanupRules.value.length}`,
+    `${effectiveReaderPresetName.value ? `预设 ${effectiveReaderPresetName.value} · ` : ''}${selectedTitleRegexRule.value?.name || '无正则'} / ${selectedBodyRegexRule.value?.name || '默认正文'} / 清理 ${selectedCleanupRules.value.length}`,
+);
+const titleRuleSelectValue = computed(() =>
+  effectiveReaderPresetName.value
+    ? readerPresetProfile.value?.readerTitleRuleId || ''
+    : globalReaderRegexUsage.value.titleRuleId || '__default_title__',
 );
 const bodyRuleSelectValue = computed(() => {
-  if (!readerRegexUsage.value.contentRuleId || readerRegexUsage.value.contentRuleId === '__default_body__') {
+  const selectedRuleId = effectiveReaderPresetName.value
+    ? readerPresetProfile.value?.readerContentRuleId || ''
+    : globalReaderRegexUsage.value.contentRuleId;
+  if (effectiveReaderPresetName.value && !selectedRuleId) return '';
+  if (!selectedRuleId || selectedRuleId === '__default_body__') {
     return readerBodyRegexRules.value.some(rule => rule.id === defaultReaderBodyRegexDisplayRuleId)
       ? defaultReaderBodyRegexDisplayRuleId
       : '__default_body__';
   }
-  return readerRegexUsage.value.contentRuleId;
+  return selectedRuleId;
 });
 const activeMessageFavorite = computed(() =>
   activeMessage.value ? reader.getFavorite(phone.viewingScopeKey, activeMessage.value.id) : null,
@@ -371,11 +402,21 @@ function toReaderRegexRule(rule: RegexDisplayRule | null, fallback: ChatReaderRe
 }
 
 function onReaderTitleRuleSelect(ruleId: string) {
+  if (effectiveReaderPresetName.value) {
+    presetLinks.setReaderRule(effectiveReaderPresetName.value, 'title', ruleId);
+    toastr.success(`已更新预设“${effectiveReaderPresetName.value}”的共享阅读标题规则`);
+    return;
+  }
   regexDisplay.setExtractionRule('reader', 'title', ruleId);
   reader.setReaderRegexSelection('title', ruleId);
 }
 
 function onReaderBodyRuleSelect(ruleId: string) {
+  if (effectiveReaderPresetName.value) {
+    presetLinks.setReaderRule(effectiveReaderPresetName.value, 'content', ruleId);
+    toastr.success(`已更新预设“${effectiveReaderPresetName.value}”的共享阅读正文规则`);
+    return;
+  }
   regexDisplay.setExtractionRule('reader', 'content', ruleId);
   reader.setReaderRegexSelection('body', ruleId);
 }
@@ -408,6 +449,9 @@ watch(
         rule.operation,
       ]),
       titleRuleId: readerRegexUsage.value.titleRuleId,
+      bindingUpdatedAt: readerBinding.value?.updatedAt || '',
+      presetName: effectiveReaderPresetName.value,
+      presetReaderUpdatedAt: readerPresetProfile.value?.updatedAt || '',
       showUserMessages: readerSettings.value.showUserMessages,
     }),
   () => {
@@ -447,6 +491,7 @@ watch(
 );
 
 const stopChatChanged = onTavernEvent('CHAT_CHANGED', () => {
+  currentTavernPresetName.value = getCurrentTavernPresetName();
   applyPendingBranchInheritance();
   currentMessages.value = [];
   loadedScopeKey.value = '';
@@ -599,6 +644,69 @@ function saveSelectionToDigest() {
       });
   selection?.removeAllRanges();
   toastr.success(`已加入摘抄：${entry?.title || activeMessage.value.title}`);
+}
+
+function getReaderSelectionText() {
+  const selection = window.getSelection();
+  if (!selection || selection.rangeCount !== 1 || selection.isCollapsed) return '';
+  const content = document.querySelector('.pc-reader-detail-page .pc-reader-content');
+  const range = selection.getRangeAt(0);
+  const ancestor = range.commonAncestorContainer;
+  const ancestorElement = ancestor.nodeType === Node.ELEMENT_NODE ? (ancestor as Element) : ancestor.parentElement;
+  if (!content || !ancestorElement || !content.contains(ancestorElement)) return '';
+  return selection.toString();
+}
+
+async function deleteSelectedReaderText() {
+  if (!activeMessage.value) return;
+  if (!phone.isViewingCurrentChat) {
+    toastr.warning('历史聊天只读，请先切回酒馆当前聊天再删除文字');
+    return;
+  }
+
+  const message = activeMessage.value;
+  const scopeKey = phone.viewingScopeKey;
+  const selectedText = getReaderSelectionText();
+  if (!selectedText.trim()) {
+    toastr.warning('请先在当前正文里选中要删除的文字');
+    return;
+  }
+
+  const body = message.body;
+  const firstIndex = body.indexOf(selectedText);
+  if (firstIndex < 0 || body.indexOf(selectedText, firstIndex + selectedText.length) >= 0) {
+    toastr.error('选中文字无法唯一对应到原正文，请改用“编辑正文”修改');
+    return;
+  }
+
+  const nextBody = `${body.slice(0, firstIndex)}${body.slice(firstIndex + selectedText.length)}`;
+  const nextRawText = replaceReaderBodyInRaw(message.rawText, body, nextBody);
+  if (nextRawText === null) {
+    toastr.error('当前正文规则无法安全写回原楼层，请改用“编辑正文”修改');
+    return;
+  }
+
+  const previewText = selectedText.trim().replace(/\s+/gu, ' ').slice(0, 80);
+  const confirmed = await phone.confirmNotice(
+    `确定从第 ${message.sourceMessageId} 楼删除“${previewText}${selectedText.trim().length > 80 ? '…' : ''}”吗？`,
+    { confirmLabel: '删除文字', kind: 'warning', title: '删除选中文字' },
+  );
+  if (!confirmed) return;
+  if (!phone.isViewingCurrentChat || phone.viewingScopeKey !== scopeKey || activeMessage.value?.id !== message.id) {
+    toastr.warning('当前聊天或楼层已经变化，已取消删除');
+    return;
+  }
+
+  const messageId = message.id;
+  await setChatMessagesSafe([{ message_id: message.sourceMessageId, message: nextRawText }], {
+    refresh: 'affected',
+  });
+  await saveChatIfAvailable();
+  window.getSelection()?.removeAllRanges();
+  await loadCurrentChat(true);
+  const updatedMessage = activeMessages.value.find(item => item.id === messageId);
+  if (updatedMessage) phone.replacePage('detail', updatedMessage.title, { messageId });
+  toastr.success('已从原聊天楼层删除选中文字');
 }
 
 function toggleActiveMessageFavorite() {
@@ -756,6 +864,7 @@ async function reloadActiveChat() {
 }
 
 async function loadCurrentChat(force = false) {
+  if (phone.isViewingCurrentChat) currentTavernPresetName.value = getCurrentTavernPresetName();
   const scopeKeyAtStart = phone.viewingScopeKey;
   const isViewingCurrentAtStart = phone.isViewingCurrentChat;
   if (currentMessages.value.length && loadedScopeKey.value === scopeKeyAtStart && !force) return currentMessages.value;
@@ -1071,7 +1180,7 @@ function formatReaderBody(value: string) {
 .pc-rule-panel {
   position: relative;
   z-index: 2;
-  overflow: hidden;
+  overflow: visible;
   flex: 0 0 auto;
   background: color-mix(in srgb, var(--pc-surface-strong) 88%, transparent 12%);
 }
@@ -1120,6 +1229,18 @@ function formatReaderBody(value: string) {
   flex-direction: column;
   gap: 10px;
   padding: 0 14px 14px;
+}
+
+.pc-rule-picker {
+  display: grid;
+  grid-template-columns: minmax(92px, auto) minmax(0, 1fr);
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+}
+
+.pc-rule-picker > :deep(.pc-combobox) {
+  min-width: 0;
 }
 
 .pc-reader-cleanup {

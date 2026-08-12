@@ -427,19 +427,18 @@ const editingThread = computed(() => {
   const threadId = route.value.params?.threadId;
   return route.value.page === 'thread-editor' && boardId && threadId ? forum.getThread(boardId, threadId) : null;
 });
-const { selectBoardType: selectThreadEditorBoardType, submit: submitThread } = useForumThreadEditorSession(
-  threadDraft,
-  {
-    customBoardId: CUSTOM_BOARD_ID,
-    customBoardTypeId: CUSTOM_BOARD_TYPE_ID,
-    getActiveBoard: () => activeBoard.value,
-    getEditingThread: () => editingThread.value,
-    getThreadId: () => route.value.params?.threadId,
-    getVersionId: () => route.value.params?.versionId,
-    navigateToThread: (title, params) => phone.replacePage('thread', title, params),
-    notify: toastr,
-  },
-);
+const threadEditorSession = useForumThreadEditorSession(threadDraft, {
+  customBoardId: CUSTOM_BOARD_ID,
+  customBoardTypeId: CUSTOM_BOARD_TYPE_ID,
+  getActiveBoard: () => activeBoard.value,
+  getEditingThread: () => editingThread.value,
+  getThreadId: () => route.value.params?.threadId,
+  getVersionId: () => route.value.params?.versionId,
+  navigateToThread: (title, params) => phone.replacePage('thread', title, params),
+  notify: toastr,
+});
+const selectThreadEditorBoardType = threadEditorSession.selectBoardType;
+const submitThread = threadEditorSession.submit;
 const { removeBoard, removeForumVersion, removeThread } = useForumDeletionSession({
   confirmDelete: (message, confirmLabel) => phone.confirmNotice(message, { confirmLabel, kind: 'warning' }),
   getActiveBoard: () => activeBoard.value,
@@ -875,7 +874,7 @@ function buildRepliesOutputFormat() {
 
 function buildReplyThreadContext(thread: ForumThread) {
   const replyBlocks = thread.replies.map((reply, index) =>
-    [`第 ${index + 1} 层 · ${reply.author}`, reply.content].join('\n'),
+    [`第 ${index + 1} 层 · ${reply.author}${reply.isOriginalPoster ? '（楼主）' : ''}`, reply.content].join('\n'),
   );
 
   return [

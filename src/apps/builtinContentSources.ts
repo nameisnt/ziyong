@@ -105,9 +105,12 @@ export function createForumContentSources(): PhoneContentConversionSource[] {
       appId: 'forum',
       appName: '论坛',
       content: [
-        `主楼 · ${thread.author}`,
+        `主楼 · ${thread.author}（楼主）`,
         thread.content,
-        ...thread.replies.flatMap((reply, index) => [`回复 ${index + 1} · ${reply.author}`, reply.content]),
+        ...thread.replies.flatMap((reply, index) => [
+          `回复 ${index + 1} · ${reply.author}${reply.isOriginalPoster ? '（楼主）' : ''}`,
+          reply.content,
+        ]),
       ].join('\n\n'),
       displayMode: 'markdown',
       entryId: thread.id,

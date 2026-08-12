@@ -6,6 +6,7 @@ export interface RecoveryCharacter {
 }
 
 export interface ChatBackupSummary {
+  backupCreatedAt: number;
   chatItems: number;
   fileId: string;
   fileName: string;
@@ -63,6 +64,35 @@ export interface CleanupDeleteResult {
   failed: CleanupRejectedBackup[];
 }
 
+export interface DuplicateBackupFingerprint {
+  actualChatItems: number;
+  byteLength: number;
+  contentHash: string;
+  summary: ChatBackupSummary;
+}
+
+export interface DuplicateBackupGroup {
+  byteLength: number;
+  contentHash: string;
+  duplicates: DuplicateBackupFingerprint[];
+  id: string;
+  keeper: DuplicateBackupFingerprint;
+  reclaimBytes: number;
+}
+
+export interface DuplicateScanResult {
+  groups: DuplicateBackupGroup[];
+  groupId: string;
+  rejected: CleanupRejectedBackup[];
+  scannedFiles: number;
+}
+
+export interface DuplicateDeleteResult {
+  deleted: ChatBackupSummary[];
+  failed: CleanupRejectedBackup[];
+  reclaimedBytes: number;
+}
+
 export function describeBackupMessageCountMismatch(listedCount: number, parsedCount: number) {
   if (listedCount === parsedCount) return '';
   return `备份列表记录 ${listedCount} 层，但实际解析到 ${parsedCount} 层；请刷新书架后重新读取，当前文件禁止导入。`;
@@ -96,6 +126,21 @@ export function extractBackupOwnerKey(fileName: string) {
   return match?.[1]?.toLowerCase() ?? '';
 }
 
+export function extractBackupCreatedAt(fileName: string) {
+  const match = /_(\d{4})(\d{2})(\d{2})-(\d{2})(\d{2})(\d{2})\.jsonl$/i.exec(fileName);
+  if (!match) return 0;
+  const [, year, month, day, hour, minute, second] = match;
+  const value = new Date(
+    Number(year),
+    Number(month) - 1,
+    Number(day),
+    Number(hour),
+    Number(minute),
+    Number(second),
+  ).getTime();
+  return Number.isFinite(value) ? value : 0;
+}
+
 export function normalizeBackupSummary(raw: unknown): ChatBackupSummary | null {
   if (!isRecord(raw)) return null;
   const fileName = textValue(raw.file_name);
@@ -105,6 +150,7 @@ export function normalizeBackupSummary(raw: unknown): ChatBackupSummary | null {
   const chatItems = Number(raw.chat_items);
   if (!Number.isInteger(chatItems) || chatItems < 0) return null;
   return {
+    backupCreatedAt: extractBackupCreatedAt(fileName),
     chatItems,
     fileId: textValue(raw.file_id) || fileName.replace(/\.jsonl$/i, ''),
     fileName,
@@ -122,6 +168,51 @@ export function assertCleanupThreshold(value: number) {
 
 export function isCleanupCandidate(summary: ChatBackupSummary, actualChatItems: number, maxChatItems: number) {
   return summary.chatItems === actualChatItems && actualChatItems <= assertCleanupThreshold(maxChatItems);
+}
+
+export function createDuplicateBackupGroups(fingerprints: DuplicateBackupFingerprint[]) {
+  const grouped = new Map<string, DuplicateBackupFingerprint[]>();
+  fingerprints.forEach(fingerprint => {
+    if (
+      !fingerprint.summary.ownerKey ||
+      fingerprint.summary.chatItems !== fingerprint.actualChatItems ||
+      !fingerprint.contentHash ||
+      fingerprint.byteLength <= 0
+    ) {
+      return;
+    }
+    const key = `${fingerprint.summary.ownerKey}\u0000${fingerprint.byteLength}\u0000${fingerprint.contentHash}`;
+    const items = grouped.get(key) ?? [];
+    items.push(fingerprint);
+    grouped.set(key, items);
+  });
+
+  return [...grouped.entries()]
+    .flatMap(([id, items]): DuplicateBackupGroup[] => {
+      if (items.length < 2) return [];
+      const ordered = [...items].sort(
+        (a, b) =>
+          b.summary.backupCreatedAt - a.summary.backupCreatedAt ||
+          b.summary.fileName.localeCompare(a.summary.fileName),
+      );
+      const [keeper, ...duplicates] = ordered;
+      if (!keeper || !duplicates.length) return [];
+      return [
+        {
+          byteLength: keeper.byteLength,
+          contentHash: keeper.contentHash,
+          duplicates,
+          id,
+          keeper,
+          reclaimBytes: duplicates.reduce((total, item) => total + item.byteLength, 0),
+        },
+      ];
+    })
+    .sort(
+      (a, b) =>
+        b.keeper.summary.backupCreatedAt - a.keeper.summary.backupCreatedAt ||
+        a.keeper.summary.fileName.localeCompare(b.keeper.summary.fileName),
+    );
 }
 
 export function createRecoveryCharacters(characters: unknown[]): RecoveryCharacter[] {

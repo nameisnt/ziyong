@@ -69,6 +69,7 @@ export const GenerationResultModeSchema = z.enum(['preview', 'save']);
 export type GenerationResultMode = z.infer<typeof GenerationResultModeSchema>;
 
 export const GenerationDefaultsSchema = z.object({
+  fromStartEnd: z.number().int().nonnegative().default(20),
   rpmLimit: z.number().int().min(0).max(120).default(10),
   sourceMode: GenerationSourceModeSchema.default('latest'),
   tavernPresetName: z.string().default(''),
@@ -174,6 +175,7 @@ const DEFAULT_WALLPAPER_SETTINGS: WallpaperSettings = {
 };
 
 const DEFAULT_GENERATION_SETTINGS: GenerationDefaults = {
+  fromStartEnd: 20,
   rpmLimit: 10,
   sourceMode: 'latest',
   tavernPresetName: '',

@@ -108,9 +108,19 @@ export const SimpleXmlResultSchema = z.object({
 });
 export type SimpleXmlResult = z.infer<typeof SimpleXmlResultSchema>;
 
+const ForumOriginalPosterFlagSchema = z.preprocess(value => {
+  if (typeof value === 'boolean') return value;
+  if (typeof value !== 'string') return value;
+  const normalized = value.trim().toLowerCase();
+  if (['true', '1', 'yes', '是'].includes(normalized)) return true;
+  if (['false', '0', 'no', '否'].includes(normalized)) return false;
+  return value;
+}, z.boolean());
+
 export const ForumXmlReplySchema = z.object({
   author: z.string(),
   content: z.string(),
+  isOriginalPoster: ForumOriginalPosterFlagSchema,
 });
 export type ForumXmlReply = z.infer<typeof ForumXmlReplySchema>;
 

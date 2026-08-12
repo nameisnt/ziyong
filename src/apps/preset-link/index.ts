@@ -21,7 +21,7 @@ export default definePhoneApp({
       },
       rehydrateFromSettings: () => usePresetLinkStore().rehydrateFromSettings(),
       schema: PresetLinkSettingsSchema,
-      schemaVersion: 1,
+      schemaVersion: 2,
       scope: 'global',
     },
   ],
