@@ -45,14 +45,14 @@ export const tutorialArticles: TutorialArticle[] = [
   {
     id: 'plugin-overview',
     category: 'start',
-    title: '先认识酒馆手机插件',
+    title: '先认识功能性阅读器插件',
     summary: '了解插件能做什么、数据从哪里来，以及第一次使用时应该先看哪些地方。',
-    keywords: ['插件介绍', '酒馆手机', '功能', '第一次使用', '新手', '首页', 'SillyTavern'],
+    keywords: ['插件介绍', '功能性阅读器', '功能', '第一次使用', '新手', '首页', 'SillyTavern'],
     blocks: [
       {
         type: 'paragraph',
         title: '它是什么',
-        text: '酒馆手机是运行在 SillyTavern 页面中的创作与资料管理面板。它不会替代聊天，而是读取当前角色卡与聊天楼层，把总结、衍生创作、资料整理、提示词管理、世界书联动和媒体生成组织成独立 App。',
+        text: '功能性阅读器是运行在 SillyTavern 页面中的创作与资料管理面板。它不会替代聊天，而是读取当前角色卡与聊天楼层，把总结、衍生创作、资料整理、提示词管理、世界书联动和媒体生成组织成独立 App。',
       },
       {
         type: 'paragraph',

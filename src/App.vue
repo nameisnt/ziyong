@@ -13,7 +13,7 @@
       <span class="extensionsMenuExtensionButton">
         <i class="fa-solid fa-mobile-screen-button"></i>
       </span>
-      <span>{{ t`打开酒馆手机` }}</span>
+      <span>{{ t`打开功能性阅读器` }}</span>
     </button>
   </Teleport>
 

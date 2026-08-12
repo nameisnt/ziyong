@@ -2570,7 +2570,7 @@ async function applyScenario(name: VisualScenarioName, options: { height?: numbe
   } else if (name === 'app-deferred-mount-order') {
     const phone = usePhoneStore();
     phone.isOpen = false;
-    phone.stack = [{ appId: 'home', page: 'home', title: '酒馆手机' }];
+    phone.stack = [{ appId: 'home', page: 'home', title: '功能性阅读器' }];
     await waitForPaint();
 
     resetPhoneToRoute('summary', 'root', '总结');
@@ -2921,7 +2921,7 @@ async function applyScenario(name: VisualScenarioName, options: { height?: numbe
     if (!deletedCurrentVersion)
       throw new Error('Deleting the viewed version did not show and activate its predecessor');
     phone.stack = [
-      { appId: 'home', page: 'home', title: '酒馆手机' },
+      { appId: 'home', page: 'home', title: '功能性阅读器' },
       { appId: 'extras', page: 'book', params: { bookId: book.id }, title: book.title },
       {
         appId: 'extras',

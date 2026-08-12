@@ -534,7 +534,7 @@ export const useWorldSlotsStore = defineStore('world-slots', () => {
     try {
       return await syncToWorldBook();
     } catch (error) {
-      console.error('[酒馆手机] 世界书槽位自动同步失败', error);
+      console.error('[功能性阅读器] 世界书槽位自动同步失败', error);
       return null;
     }
   }

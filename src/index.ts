@@ -26,8 +26,8 @@ function loadPanel() {
     }
     return Promise.resolve();
   } catch (error) {
-    console.error('[酒馆手机] 入口加载失败', error);
-    toastr?.error?.(`酒馆手机入口加载失败：${getErrorMessage(error)}`);
+    console.error('[功能性阅读器] 入口加载失败', error);
+    toastr?.error?.(`功能性阅读器入口加载失败：${getErrorMessage(error)}`);
     return Promise.reject(error);
   }
 }

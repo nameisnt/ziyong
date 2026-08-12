@@ -84,7 +84,7 @@ export interface PhonePromptOptions extends PhoneConfirmOptions {
 
 export const usePhoneStore = defineStore('phone', () => {
   const isOpen = ref(false);
-  const stack = ref<PhoneRoute[]>([{ appId: 'home', page: 'home', title: '酒馆手机' }]);
+  const stack = ref<PhoneRoute[]>([{ appId: 'home', page: 'home', title: '功能性阅读器' }]);
   const currentTavernScopeKey = ref(getCurrentChatScopeKey());
   const viewingScopeKey = ref(currentTavernScopeKey.value);
   const viewingScopeMeta = ref<PhoneViewingScopeMeta>(createDefaultScopeMeta(viewingScopeKey.value));
@@ -99,7 +99,7 @@ export const usePhoneStore = defineStore('phone', () => {
   const pendingConfirmKeys = new Set<string>();
 
   const currentRoute = computed<PhoneRoute>(
-    () => stack.value[stack.value.length - 1] ?? { appId: 'home', page: 'home', title: '酒馆手机' },
+    () => stack.value[stack.value.length - 1] ?? { appId: 'home', page: 'home', title: '功能性阅读器' },
   );
   const canGoBack = computed(() => stack.value.length > 1);
   const currentApp = computed(() =>
@@ -280,7 +280,7 @@ export const usePhoneStore = defineStore('phone', () => {
 
   async function goHome(options: PhoneNavigationOptions = {}) {
     if (!(await confirmNavigationLeave(options))) return;
-    stack.value = [{ appId: 'home', page: 'home', title: '酒馆手机' }];
+    stack.value = [{ appId: 'home', page: 'home', title: '功能性阅读器' }];
   }
 
   async function goBack(options: PhoneNavigationOptions = {}) {

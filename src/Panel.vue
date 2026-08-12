@@ -2,13 +2,13 @@
   <div class="pc-settings-panel">
     <div class="inline-drawer">
       <div class="inline-drawer-toggle inline-drawer-header">
-        <b>{{ t`酒馆手机` }}</b>
+        <b>{{ t`功能性阅读器` }}</b>
         <div class="inline-drawer-icon fa-solid fa-circle-chevron-down down"></div>
       </div>
       <div class="inline-drawer-content">
         <div class="pc-actions">
           <button class="menu_button" type="button" @click="phone.openPhone()">
-            {{ t`打开酒馆手机` }}
+            {{ t`打开功能性阅读器` }}
           </button>
           <button class="menu_button menu_button_secondary" type="button" @click="settingsStore.resetHomeLayout()">
             {{ t`重置布局` }}

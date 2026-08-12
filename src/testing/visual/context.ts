@@ -18,7 +18,7 @@ export function resetVisualPhoneRoute(appId: string, page: string, title: string
   const phone = usePhoneStore();
   phone.isOpen = true;
   phone.stack = [
-    { appId: 'home', page: 'home', title: '酒馆手机' },
+    { appId: 'home', page: 'home', title: '功能性阅读器' },
     { appId, page, params, title },
   ];
 }

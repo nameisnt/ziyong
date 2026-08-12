@@ -277,7 +277,7 @@ const fallbackSettings = Object.freeze(defaultReaderSettings);
 const fallbackRoute = Object.freeze({
   appId: 'home',
   page: 'home',
-  title: '酒馆手机',
+  title: '功能性阅读器',
   params: undefined,
 });
 

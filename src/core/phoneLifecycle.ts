@@ -84,9 +84,9 @@ export function initPhoneLifecycle() {
     installWorkbenchAutoRunner();
     window.setTimeout(syncNativeLauncherVisibility, 0);
   } catch (error) {
-    console.error('[酒馆手机] 初始化失败', error);
+    console.error('[功能性阅读器] 初始化失败', error);
     const message = error instanceof Error ? error.message : String(error);
-    toastr?.error?.(`酒馆手机初始化失败：${message}`);
+    toastr?.error?.(`功能性阅读器初始化失败：${message}`);
   }
   return state;
 }

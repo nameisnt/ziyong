@@ -23,8 +23,8 @@ export function ensureNativeLauncher(onOpen?: (event?: Event) => void, buildMark
   launcher = document.createElement('button');
   launcher.id = NATIVE_LAUNCHER_ID;
   launcher.type = 'button';
-  launcher.title = '打开酒馆手机';
-  launcher.setAttribute('aria-label', '打开酒馆手机');
+  launcher.title = '打开功能性阅读器';
+  launcher.setAttribute('aria-label', '打开功能性阅读器');
   if (buildMarker) launcher.dataset.phoneBuild = buildMarker;
   launcher.innerHTML = '<i class="fa-solid fa-mobile-screen-button" aria-hidden="true"></i>';
   launcher.style.cssText = [

@@ -8,7 +8,7 @@
     :data-reader-indent="settings.reader.firstLineIndent ? 'true' : 'false'"
     :data-theme="settings.theme"
     :style="rootStyle"
-    aria-label="酒馆手机创作助手"
+    aria-label="功能性阅读器创作助手"
   >
     <section
       ref="shellEl"

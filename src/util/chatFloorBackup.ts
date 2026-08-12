@@ -400,7 +400,7 @@ export function startChatFloorBackupService() {
     timer = window.setTimeout(() => {
       timer = null;
       void captureCurrentChatFloorBackup().catch(error => {
-        console.warn('[酒馆手机] 自动保存聊天楼层备份失败', error);
+        console.warn('[功能性阅读器] 自动保存聊天楼层备份失败', error);
       });
     }, 900);
   };
@@ -417,7 +417,7 @@ export function startChatFloorBackupService() {
   handles.push(
     onTavernEvent('CHAT_RENAMED', payload => {
       void migrateChatFloorBackupRename((payload ?? {}) as TavernChatRenamedEvent)
-        .catch(error => console.warn('[酒馆手机] 迁移改名聊天的楼层备份失败', error))
+        .catch(error => console.warn('[功能性阅读器] 迁移改名聊天的楼层备份失败', error))
         .finally(schedule);
     }),
   );
