@@ -46,9 +46,24 @@ const singleStage = (id: string, label: string, moduleName: string, instruction:
   modules: [moduleName],
 });
 
-const worldviewStage = singleStage('worldview', '世界观', '📋 世界观', '整理并生成可直接使用的世界观设定。');
-const characterBaseStage = singleStage('character-base', '角色基础', '📋 角色基础', '生成主要角色的完整基础信息。');
-const paletteStage = singleStage('palette', '性格调色盘', '📋 性格调色盘', '根据现有设定生成角色性格调色盘。');
+const worldviewStage = singleStage(
+  'worldview',
+  '世界观',
+  '📋 世界观',
+  '整理并生成可直接使用的世界观设定。若世界存在自定义历法，必须写明历法名称、纪元名称、每年月份、每月天数，并放入 <calendar name="历法名">...</calendar>；世界观各条目优先用 name 属性标明名称。',
+);
+const characterBaseStage = singleStage(
+  'character-base',
+  '角色基础',
+  '📋 角色基础',
+  '生成主要角色的完整基础信息；基本信息必须包含出生日期（无法从素材确认时明确写“待确认”），并在 <sample_basic name="角色名"> 上标明姓名。',
+);
+const paletteStage = singleStage(
+  'palette',
+  '性格调色盘',
+  '📋 性格调色盘',
+  '根据现有设定生成角色性格调色盘，并在 <sample_palette name="角色名"> 上标明对应人物姓名。',
+);
 const quickViewStage = singleStage('quick-view', '角色速览', '📋 角色速览', '把已有角色资料整理成简洁的角色速览。');
 const openingStage = singleStage('opening', '开场白', '📋 开场白', '根据已有世界观和角色资料生成可直接使用的开场白。');
 
@@ -84,14 +99,14 @@ export function buildFullCardStages(mode: FullCardMode, protagonists: string[], 
         characterBaseStage,
         baseId,
         `角色基础（${name}）`,
-        `只为主角“${name}”生成完整基础信息，不要混入其他角色的人设。`,
+        `只为主角“${name}”生成完整基础信息，不要混入其他角色的人设。基本信息必须包含出生日期（无法确认时写“待确认”），使用 <sample_basic name="${name}">。`,
         ['worldview'],
       ),
       targetedStage(
         paletteStage,
         paletteId,
         `性格调色盘（${name}）`,
-        `只为主角“${name}”生成性格调色盘，并保持与其角色基础一致。`,
+        `只为主角“${name}”生成性格调色盘，并保持与其角色基础一致，使用 <sample_palette name="${name}">。`,
         ['worldview', baseId],
       ),
     );
@@ -104,7 +119,7 @@ export function buildFullCardStages(mode: FullCardMode, protagonists: string[], 
         singleStage(npcId, `NPC 人物（${name}）`, '📋 NPC设计', ''),
         npcId,
         `NPC 人物（${name}）`,
-        `只生成 NPC“${name}”，明确其剧情功能、与主角的关系及可推动的冲突。`,
+        `只生成 NPC“${name}”，明确其剧情功能、与主角的关系及可推动的冲突。基本信息必须包含出生日期（无法确认时写“待确认”），并在 NPC 标签上增加 name="${name}"。`,
         ['worldview', ...protagonistOutputIds],
       ),
     );
@@ -141,7 +156,14 @@ export const CARD_WRITER_TASKS: CardWriterTask[] = [
     id: 'npc',
     label: 'NPC 人物',
     description: '生成一个或多个功能明确的 NPC',
-    stages: [singleStage('npc', 'NPC 人物', '📋 NPC设计', '根据素材生成用户需要的 NPC 人物。')],
+    stages: [
+      singleStage(
+        'npc',
+        'NPC 人物',
+        '📋 NPC设计',
+        '根据素材生成用户需要的 NPC 人物；每个人物基本信息必须包含出生日期（无法确认时写“待确认”），并在 NPC 标签上增加 name="角色名"。',
+      ),
+    ],
   },
   {
     id: 'character-base',

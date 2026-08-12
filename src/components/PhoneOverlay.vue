@@ -3,6 +3,7 @@
     v-show="isOpen"
     id="tavern-phone-root"
     class="pc-phone-root"
+    :data-home-columns="settings.interfaceSize.homeColumns"
     :data-reader-blank-lines="settings.reader.blankLineBetweenLines ? 'true' : 'false'"
     :data-reader-indent="settings.reader.firstLineIndent ? 'true' : 'false'"
     :data-theme="settings.theme"
@@ -1505,11 +1506,30 @@ useEventListener(window, 'orientationchange', async () => {
 }
 
 .pc-app-tile strong {
+  width: 100%;
+  min-width: 0;
   overflow: hidden;
   font-size: 11px;
   line-height: 1.25;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.pc-phone-root[data-home-columns='5'] .pc-grid {
+  gap: 4px;
+}
+
+.pc-phone-root[data-home-columns='5'] .pc-app-tile {
+  padding-inline: 1px;
+}
+
+.pc-phone-root[data-home-columns='5'] .pc-app-tile strong {
+  font-size: 10px;
+}
+
+.pc-phone-root[data-home-columns='5'] .pc-app-count-badge {
+  top: -6px;
+  right: -4px;
 }
 
 .pc-app-count-badge {

@@ -150,7 +150,7 @@
           <strong>{{ t`人物` }}</strong>
           <span class="pc-head-actions">
             <InfoHint :text="peopleHelpText" />
-            <button class="pc-icon-btn primary" type="button" :title="t`新增人物`" @click="timekeeper.createPerson()">
+            <button class="pc-icon-btn primary" type="button" :title="t`新增人物`" @click="createPerson">
               <i class="fa-solid fa-plus"></i>
             </button>
           </span>
@@ -166,8 +166,8 @@
                 v-model="person.name"
                 class="pc-field name"
                 type="text"
-                :disabled="isPersonProfileLinked(person.profileEntryId)"
                 :placeholder="t`人物名称`"
+                @change="timekeeper.syncPersonProfile(person.id)"
               />
             </label>
             <ProfileEntryPicker
@@ -191,8 +191,8 @@
                   v-model.number="person.birth.year"
                   class="pc-field"
                   type="number"
-                  min="1"
-                  @change="timekeeper.normalizeCurrentDates()"
+                min="1"
+                @change="syncPersonBirth(person.id)"
                 />
               </label>
               <label class="pc-number-field">
@@ -202,8 +202,8 @@
                   class="pc-field"
                   type="number"
                   min="1"
-                  :max="settings.calendar.monthsPerYear"
-                  @change="timekeeper.normalizeCurrentDates()"
+                :max="settings.calendar.monthsPerYear"
+                @change="syncPersonBirth(person.id)"
                 />
               </label>
               <label class="pc-number-field">
@@ -213,8 +213,8 @@
                   class="pc-field"
                   type="number"
                   min="1"
-                  :max="timekeeper.getDaysInMonth(person.birth.month, person.birth.year)"
-                  @change="timekeeper.normalizeCurrentDates()"
+                :max="timekeeper.getDaysInMonth(person.birth.month, person.birth.year)"
+                @change="syncPersonBirth(person.id)"
                 />
               </label>
             </div>
@@ -225,7 +225,7 @@
                 class="pc-icon-btn danger"
                 type="button"
                 :title="t`删除`"
-                @click="timekeeper.deletePerson(person.id)"
+                @click="deletePerson(person.id)"
               >
                 <i class="fa-solid fa-trash"></i>
               </button>
@@ -304,7 +304,8 @@ const { configError, nextDate, rawConfig, settings } = storeToRefs(timekeeper);
 const promptText = computed(() => timekeeper.buildPromptText());
 const calendarHelpText =
   '公历会自动计算大小月和闰年；手动历法可以填写统一天数或用逗号分开每个月。保存后的历法模板可在所有聊天中选择。';
-const peopleHelpText = '只有勾选的人物会进入年龄计算和写入预览。可以关联人物资料；出生日期仍由时间确认单独保存。';
+const peopleHelpText =
+  '当前聊天的人物资料会自动出现。姓名与出生日期会同步回资料表；没有出生日期的人物默认不勾选，填写后即可使用。';
 const advanceHelpText = '这里只设置流逝时长；点击确认推进才会把当前世界时间改成推进后的日期。';
 const previewHelpText = '写入输入框只会把这段文本追加到酒馆输入框，不会自动发送，也不会改变当前世界时间。';
 const calendarOptions = computed(() => {
@@ -315,6 +316,10 @@ const calendarOptions = computed(() => {
       label: template.name,
       value: template.id,
     })),
+    ...profiles.data.entries.flatMap(entry => {
+      const calendar = timekeeper.getProfileCalendar(entry.id);
+      return calendar ? [{ label: `${calendar.name}（资料表）`, value: calendar.id }] : [];
+    }),
   ];
   if (!options.some(option => option.value === settings.value.calendar.id)) {
     options.push({
@@ -373,7 +378,34 @@ function setPersonBirthDate(personId: string, event: Event) {
   const person = settings.value.people.find(item => item.id === personId);
   if (!date || !person) return;
   person.birth = date;
+  syncPersonBirth(personId);
+}
+
+function syncPersonBirth(personId: string) {
+  const person = settings.value.people.find(item => item.id === personId);
+  if (!person) return;
   timekeeper.normalizeCurrentDates();
+  person.selected = true;
+  timekeeper.syncPersonProfile(personId);
+}
+
+function createPerson() {
+  const person = timekeeper.createPerson();
+  toastr.success(`已新增人物“${person.name}”及对应人物资料`);
+}
+
+async function deletePerson(personId: string) {
+  const person = settings.value.people.find(item => item.id === personId);
+  if (!person) return;
+  const confirmed = await phone.confirmNotice(
+    person.profileEntryId
+      ? `删除“${person.name}”吗？对应的人物资料也会一起删除。`
+      : `删除“${person.name}”吗？`,
+    { confirmLabel: '删除人物及资料', kind: 'warning', title: '删除人物' },
+  );
+  if (!confirmed) return;
+  timekeeper.deletePerson(personId, true);
+  toastr.success(`已删除“${person.name}”${person.profileEntryId ? '及对应人物资料' : ''}`);
 }
 
 function isPersonProfileLinked(profileEntryId: string) {

@@ -364,12 +364,62 @@
           <button class="pc-icon-btn" type="button" title="复制成品" @click="copyDocument(document)">
             <i class="fa-solid fa-copy"></i>
           </button>
+          <button class="pc-icon-btn" type="button" title="导入资料表" @click="openProfileImport(document)">
+            <i class="fa-solid fa-table-list"></i>
+          </button>
           <button class="pc-icon-btn danger" type="button" title="删除成品" @click="deleteDocument(document)">
             <i class="fa-solid fa-trash"></i>
           </button>
         </article>
       </div>
       <EmptyState v-else :title="documents.length ? '当前筛选下没有写卡成品' : '还没有保存写卡成品'" />
+    </section>
+
+    <section v-else-if="route.page === 'profile-import'" class="pc-card-writer-page">
+      <article class="pc-section-card pc-card-writer-import-summary">
+        <div>
+          <span class="pc-kicker">导入目标</span>
+          <strong>{{ phone.viewingScopeMeta.ownerName }} / {{ phone.viewingScopeMeta.chatTitle }}</strong>
+          <small>只会写入上方聊天的资料表，不会改动写卡成品或创建聊天文件。</small>
+        </div>
+        <InfoHint text="成品按 XML 标签拆分。世界观区域、详情和事件会成为独立资料；同名人物的基础与性格会合并。" />
+      </article>
+
+      <div class="pc-field-group">
+        <label class="pc-field-label">遇到同名资料</label>
+        <div class="pc-card-writer-conflict-modes">
+          <button
+            v-for="option in importConflictOptions"
+            :key="option.value"
+            :class="['pc-segment-btn', { active: importConflictMode === option.value }]"
+            type="button"
+            @click="importConflictMode = option.value"
+          >
+            {{ option.label }}
+          </button>
+        </div>
+      </div>
+
+      <div v-if="profileImportItems.length" class="pc-directory-list pc-card-writer-import-list">
+        <label v-for="item in profileImportItems" :key="item.candidate.sourceKey" class="pc-list-row">
+          <input v-model="item.selected" type="checkbox" />
+          <span class="pc-card-writer-import-copy">
+            <strong>{{ item.candidate.title }}</strong>
+            <small>{{ profileKindLabel(item.candidate.kind) }} · &lt;{{ item.candidate.tagName }}&gt;</small>
+          </span>
+          <span v-if="findImportConflict(item.candidate)" class="pc-card-writer-import-conflict">同名</span>
+        </label>
+      </div>
+      <EmptyState v-else title="没有识别到可导入的 XML 标签" description="请在成品中使用世界观、角色基础、性格或 NPC 标签。" />
+
+      <div class="pc-form-actions">
+        <button class="pc-soft-btn" type="button" :disabled="!profileImportItems.length" @click="toggleAllImportItems">
+          {{ allImportItemsSelected ? '取消全选' : '全选' }}
+        </button>
+        <button class="pc-primary-btn" type="button" :disabled="!selectedImportCount" @click="importSelectedProfiles">
+          导入 {{ selectedImportCount }} 项
+        </button>
+      </div>
     </section>
   </section>
 </template>
@@ -380,6 +430,7 @@ import GenerationPanel from '@/components/GenerationPanel.vue';
 import GenerationPreviewPanel from '@/components/GenerationPreviewPanel.vue';
 import InfoHint from '@/components/InfoHint.vue';
 import SearchableCombobox from '@/components/SearchableCombobox.vue';
+import { getProfileKindLabel, useProfilesStore, type ProfileEntry } from '@/apps/profiles/store';
 import { usePreviewSession } from '@/composables/usePreviewSession';
 import { generateOrderedPromptContent, type RawOrderedPrompt } from '@/core/generationService';
 import {
@@ -414,6 +465,7 @@ import {
 } from './preset';
 import { formatCardWriterDocumentChat, isCardWriterDocumentFromScope } from './references';
 import { useCardWriterStore, type CardWriterDocument, type CardWriterStageResult } from './store';
+import { parseCardWriterProfileCandidates, type CardWriterImportCandidate } from './profileImport';
 import { storeToRefs } from 'pinia';
 
 type StageState = CardWriterStageResult;
@@ -425,6 +477,7 @@ const phone = usePhoneStore();
 const settingsStore = useSettingsStore();
 const generationAliases = useGenerationAliasesStore();
 const writerStore = useCardWriterStore();
+const profiles = useProfilesStore();
 const { settings } = storeToRefs(settingsStore);
 const { documents, settings: writerSettings } = storeToRefs(writerStore);
 const route = computed(() => phone.currentRoute);
@@ -446,6 +499,14 @@ const activeStageDefinitions = ref<CardWriterStage[]>([]);
 const activePreviewStageId = ref('');
 const activeDocumentId = ref('');
 const libraryChatFilter = ref('__all__');
+const importDocumentId = ref('');
+const importConflictMode = ref<'copy' | 'skip' | 'update'>('update');
+const profileImportItems = ref<Array<{ candidate: CardWriterImportCandidate; selected: boolean }>>([]);
+const importConflictOptions = [
+  { label: '更新', value: 'update' as const },
+  { label: '建副本', value: 'copy' as const },
+  { label: '跳过', value: 'skip' as const },
+];
 const brief = reactive({
   concept: '',
   experience: '',
@@ -538,6 +599,10 @@ const filteredDocuments = computed(() => {
   }
   return documents.value.filter(document => document.sourceScopeKey === libraryChatFilter.value);
 });
+const selectedImportCount = computed(() => profileImportItems.value.filter(item => item.selected).length);
+const allImportItemsSelected = computed(
+  () => Boolean(profileImportItems.value.length) && profileImportItems.value.every(item => item.selected),
+);
 const completedStageCount = computed(() => stageStates.value.filter(stage => stage.status === 'completed').length);
 const plotHasSource = computed(
   () => activeSourceMode.value !== 'none' || references.value.length > 0 || includeWorldbook.value,
@@ -1002,6 +1067,101 @@ async function copyDocument(document: CardWriterDocument) {
   }
 }
 
+function profileKindLabel(kind: CardWriterImportCandidate['kind']) {
+  return getProfileKindLabel(kind);
+}
+
+function openProfileImport(document: CardWriterDocument) {
+  importDocumentId.value = document.id;
+  const stages = document.stages.length
+    ? document.stages.filter(stage => stage.status === 'completed' && stage.content.trim())
+    : [{ content: document.content, id: 'saved-document', label: document.taskLabel }];
+  profileImportItems.value = parseCardWriterProfileCandidates(stages).map(candidate => ({ candidate, selected: true }));
+  phone.pushPage('profile-import', '导入资料表', { documentId: document.id });
+}
+
+function findImportConflict(candidate: CardWriterImportCandidate) {
+  const documentId = importDocumentId.value;
+  return (
+    profiles.data.entries.find(
+      entry =>
+        entry.origin?.appId === 'card-writer' &&
+        entry.origin.sourceId === documentId &&
+        entry.origin.sourceKey === candidate.sourceKey,
+    ) ?? profiles.data.entries.find(entry => entry.kind === candidate.kind && entry.title === candidate.title)
+  );
+}
+
+function toggleAllImportItems() {
+  const selected = !allImportItemsSelected.value;
+  profileImportItems.value.forEach(item => {
+    item.selected = selected;
+  });
+}
+
+function createCopyTitle(candidate: CardWriterImportCandidate) {
+  const titles = new Set(profiles.data.entries.map(entry => entry.title));
+  if (!titles.has(candidate.title)) return candidate.title;
+  let index = 2;
+  while (titles.has(`${candidate.title}（${index}）`)) index += 1;
+  return `${candidate.title}（${index}）`;
+}
+
+function importCandidate(candidate: CardWriterImportCandidate, conflict: ProfileEntry | null) {
+  const origin = {
+    appId: 'card-writer',
+    sourceId: importDocumentId.value,
+    sourceKey: candidate.sourceKey,
+  };
+  if (conflict && importConflictMode.value === 'skip') return 'skipped';
+  if (conflict && importConflictMode.value === 'update') {
+    profiles.updateEntry(conflict.id, {
+      fields: { ...conflict.fields, ...candidate.fields },
+      kind: candidate.kind,
+      origin,
+      summary: conflict.summary,
+      tableId: profiles.getDefaultTable(candidate.kind)?.id,
+      tags: conflict.tags,
+      title: candidate.title,
+    });
+    return 'updated';
+  }
+  profiles.createEntry({
+    fields: candidate.fields,
+    kind: candidate.kind,
+    origin,
+    summary: '',
+    tableId: profiles.getDefaultTable(candidate.kind)?.id,
+    tags: ['写卡工坊导入'],
+    title: conflict ? createCopyTitle(candidate) : candidate.title,
+  });
+  return 'created';
+}
+
+async function importSelectedProfiles() {
+  const selected = profileImportItems.value.filter(item => item.selected);
+  const conflictCount = selected.filter(item => findImportConflict(item.candidate)).length;
+  const confirmed = await phone.confirmNotice(
+    `把 ${selected.length} 项成品导入“${phone.viewingScopeMeta.ownerName} / ${phone.viewingScopeMeta.chatTitle}”的资料表吗？${
+      conflictCount ? `其中 ${conflictCount} 项存在同名资料，将按“${importConflictOptions.find(item => item.value === importConflictMode)?.label}”处理。` : ''
+    }`,
+    { confirmLabel: '确认导入', kind: conflictCount && importConflictMode.value === 'update' ? 'warning' : 'info', title: '确认导入目标' },
+  );
+  if (!confirmed) return;
+  const counts = { created: 0, skipped: 0, updated: 0 };
+  selected.forEach(item => {
+      const result = importCandidate(item.candidate, findImportConflict(item.candidate));
+      counts[result] += 1;
+  });
+  const segments = [
+    counts.created ? `新增 ${counts.created}` : '',
+    counts.updated ? `更新 ${counts.updated}` : '',
+    counts.skipped ? `跳过 ${counts.skipped}` : '',
+  ].filter(Boolean);
+  toastr.success(`资料表导入完成：${segments.join('，')}`);
+  void phone.goBack();
+}
+
 function buildWorldbookDrafts(): WorldbookEntryDraft[] {
   const content = buildPreviewContent().trim();
   if (!content) return [];
@@ -1338,6 +1498,46 @@ onBeforeUnmount(stopWriter);
 .pc-card-writer-library {
   display: grid;
   gap: 0;
+}
+
+.pc-card-writer-import-summary,
+.pc-card-writer-import-summary > div,
+.pc-card-writer-import-copy {
+  display: grid;
+  min-width: 0;
+  gap: 4px;
+}
+
+.pc-card-writer-import-summary {
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: start;
+}
+
+.pc-card-writer-import-summary small,
+.pc-card-writer-import-copy small {
+  color: var(--pc-muted);
+  font-size: 12px;
+}
+
+.pc-card-writer-conflict-modes {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.pc-card-writer-import-list {
+  display: grid;
+  gap: 0;
+}
+
+.pc-card-writer-import-list .pc-list-row {
+  grid-template-columns: auto minmax(0, 1fr) auto;
+}
+
+.pc-card-writer-import-conflict {
+  color: var(--pc-danger);
+  font-size: 11px;
+  font-weight: 700;
 }
 
 .pc-card-writer-stage {

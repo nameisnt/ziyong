@@ -5,6 +5,7 @@ export type RegexWizardClosingStyle = 'custom' | 'repeat' | 'standard';
 export type RegexWizardWhitespace = 'exact' | 'flexible' | 'horizontal' | 'lines';
 export type RegexWizardOccurrence = 'all' | 'first';
 export type RegexWizardFieldKind = 'capture' | 'fixed' | 'ignore';
+export type RegexWizardFieldStructure = 'line' | 'tag';
 
 export type RegexWizardField = {
   fixedValue: string;
@@ -25,6 +26,8 @@ export type RegexWizardDraft = {
   customEnd: string;
   customStart: string;
   fields: RegexWizardField[];
+  fieldsContainerTagName: string;
+  fieldStructure: RegexWizardFieldStructure;
   mode: RegexWizardMode;
   occurrence: RegexWizardOccurrence;
   outputSeparator: string;
@@ -75,6 +78,8 @@ export function createRegexWizardDraft(): RegexWizardDraft {
     customEnd: '',
     customStart: '',
     fields: [createRegexWizardField(0)],
+    fieldsContainerTagName: 'aa',
+    fieldStructure: 'line',
     mode: 'boundary',
     occurrence: 'all',
     outputSeparator: '\n\n',
@@ -154,27 +159,49 @@ function buildFieldsPattern(draft: RegexWizardDraft) {
   const gap = whitespacePattern(draft.whitespace);
   const captureNames: string[] = [];
   const segments = draft.fields.map((field, index) => {
-    const tagName = validateTagName(field.tagName, `第 ${index + 1} 个字段的标签名称`);
-    const boundaries = buildTagBoundaries(
-      tagName,
-      draft.closingStyle === 'repeat' ? 'repeat' : 'standard',
-      draft.allowAttributes,
-    );
+    const fieldName = field.tagName.trim();
+    if (!fieldName) {
+      throw new Error(`请填写第 ${index + 1} 个字段的${draft.fieldStructure === 'line' ? '固定字段名' : '标签名称'}`);
+    }
     let inner = contentPattern(field.multiline, draft.allowEmpty);
     if (field.kind === 'capture') {
       const captureName = `field${index + 1}`;
       captureNames.push(captureName);
       inner = `(?<${captureName}>${inner})`;
     } else if (field.kind === 'fixed') {
-      if (!field.fixedValue) throw new Error(`请填写“${field.label || tagName}”的固定内容`);
+      if (!field.fixedValue) throw new Error(`请填写“${field.label || fieldName}”的固定内容`);
       inner = escapeRegexLiteral(field.fixedValue);
     }
-    const segment = `${boundaries.start}${gap}${inner}${gap}${boundaries.end}`;
+    let segment = '';
+    if (draft.fieldStructure === 'line') {
+      segment = `^[ \\t]*${escapeRegexLiteral(fieldName)}[ \\t]*[：:][ \\t]*${inner}`;
+    } else {
+      const tagName = validateTagName(fieldName, `第 ${index + 1} 个字段的标签名称`);
+      const boundaries = buildTagBoundaries(
+        tagName,
+        draft.closingStyle === 'repeat' ? 'repeat' : 'standard',
+        draft.allowAttributes,
+      );
+      segment = `${boundaries.start}${gap}${inner}${gap}${boundaries.end}`;
+    }
     return field.optional ? `(?:${segment})?` : segment;
   });
+  const fieldsPattern = segments.join(gap);
+  if (draft.fieldStructure === 'line') {
+    const containerTagName = validateTagName(draft.fieldsContainerTagName, '外层标签名称');
+    const boundaries = buildTagBoundaries(
+      containerTagName,
+      draft.closingStyle === 'repeat' ? 'repeat' : 'standard',
+      draft.allowAttributes,
+    );
+    return {
+      captureNames,
+      pattern: `${boundaries.start}${gap}${fieldsPattern}${gap}${boundaries.end}`,
+    };
+  }
   return {
     captureNames,
-    pattern: segments.join(gap),
+    pattern: fieldsPattern,
   };
 }
 
@@ -202,7 +229,9 @@ export function generateRegexWizardRule(draft: RegexWizardDraft): GeneratedRegex
     replacement = '$<block>';
   }
 
-  const flags = `${draft.occurrence === 'all' ? 'g' : ''}${draft.caseInsensitive ? 'i' : ''}u`;
+  const flags = `${draft.occurrence === 'all' ? 'g' : ''}${draft.caseInsensitive ? 'i' : ''}${
+    draft.mode === 'fields' && draft.fieldStructure === 'line' ? 'm' : ''
+  }u`;
   const operation = draft.purpose === 'remove-block' ? 'replace' : 'extract';
   if (operation === 'replace') replacement = '';
   return {

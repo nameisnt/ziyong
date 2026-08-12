@@ -14,6 +14,7 @@ declare module 'vue' {
     ActionMenu: typeof import('./src/components/ActionMenu.vue')['default']
     BaguApp: typeof import('./src/components/BaguApp.vue')['default']
     BaguDetailPage: typeof import('./src/components/BaguDetailPage.vue')['default']
+    BaguHitDetailsModal: typeof import('./src/components/BaguHitDetailsModal.vue')['default']
     BaguScanPanel: typeof import('./src/components/BaguScanPanel.vue')['default']
     BookShelf: typeof import('./src/components/BookShelf.vue')['default']
     CapsuleTag: typeof import('./src/components/CapsuleTag.vue')['default']

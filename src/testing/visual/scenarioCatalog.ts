@@ -5,7 +5,7 @@ export type VisualScenarioGroup = {
 
 export function createVisualScenarioGroups(rootAppScenarios: string[]): VisualScenarioGroup[] {
   return [
-    { id: 'shell', scenarios: ['home', 'home-tasks', 'home-tasks-dark', ...rootAppScenarios] },
+    { id: 'shell', scenarios: ['home', 'home-five-columns', 'home-tasks', 'home-tasks-dark', ...rootAppScenarios] },
     {
       id: 'generation',
       scenarios: [
@@ -47,7 +47,7 @@ export function createVisualScenarioGroups(rootAppScenarios: string[]): VisualSc
         'recovery-result',
       ],
     },
-    { id: 'bagu', scenarios: ['bagu-scan-actions', 'bagu-scan-applied'] },
+    { id: 'bagu', scenarios: ['bagu-scan-actions', 'bagu-hit-details', 'bagu-scan-applied'] },
     {
       id: 'settings',
       scenarios: [

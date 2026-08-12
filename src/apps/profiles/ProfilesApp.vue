@@ -543,7 +543,17 @@ function isCoreColumn(columnId: string) {
 }
 
 function isProtectedColumn(columnId: string) {
-  return ['title', 'summary', 'tags', 'details'].includes(columnId);
+  return [
+    'title',
+    'summary',
+    'tags',
+    'details',
+    'birthDate',
+    'calendarName',
+    'calendarEraName',
+    'calendarMonthsPerYear',
+    'calendarMonthDays',
+  ].includes(columnId);
 }
 
 function isStatusColumn(column: ProfileTableColumn) {

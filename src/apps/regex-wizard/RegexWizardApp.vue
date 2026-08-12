@@ -78,6 +78,30 @@
         </template>
 
         <template v-else>
+          <div class="pc-regex-wizard-kind-tabs">
+            <button
+              :class="['pc-segment-btn', { active: draft.fieldStructure === 'line' }]"
+              type="button"
+              @click="draft.fieldStructure = 'line'"
+            >
+              外层标签 + 行字段
+            </button>
+            <button
+              :class="['pc-segment-btn', { active: draft.fieldStructure === 'tag' }]"
+              type="button"
+              @click="draft.fieldStructure = 'tag'"
+            >
+              多个 XML 子标签
+            </button>
+          </div>
+          <label v-if="draft.fieldStructure === 'line'" class="pc-field-group">
+            <span class="pc-field-label">外层标签名称</span>
+            <input v-model="draft.fieldsContainerTagName" class="pc-field" placeholder="例如：aa" />
+          </label>
+          <InfoHint
+            v-if="draft.fieldStructure === 'line'"
+            text="每项填写冒号前固定出现的文字。支持中文或英文冒号；相同字段名可以添加多次，并按列表顺序匹配。"
+          />
           <div class="pc-regex-wizard-field-list">
             <article v-for="(field, index) in draft.fields" :key="field.id" class="pc-editor-card pc-regex-field-card">
               <header>
@@ -118,8 +142,12 @@
                   <input v-model="field.label" class="pc-field" placeholder="例如：标题" />
                 </label>
                 <label class="pc-field-group">
-                  <span class="pc-field-label">标签名称</span>
-                  <input v-model="field.tagName" class="pc-field" placeholder="例如：title" />
+                  <span class="pc-field-label">{{ draft.fieldStructure === 'line' ? '固定字段名' : '标签名称' }}</span>
+                  <input
+                    v-model="field.tagName"
+                    class="pc-field"
+                    :placeholder="draft.fieldStructure === 'line' ? '例如：固定字段' : '例如：title'"
+                  />
                 </label>
               </div>
               <div class="pc-regex-field-kind">
@@ -224,7 +252,11 @@
           <small>{{ testSummary }}</small>
         </div>
         <InfoHint
-          text="多个固定字段按当前顺序匹配；每个字段可单独设为可选。下方“第一个/全部”只控制原文里有多个区块时取几个。"
+          :text="
+            draft.mode === 'fields' && draft.fieldStructure === 'line'
+              ? '先匹配外层标签，再按当前列表顺序匹配“字段名：内容”；同名字段也按顺序区分。每个字段可单独设为可选。'
+              : '多个固定字段按当前顺序匹配；每个字段可单独设为可选。下方“第一个/全部”只控制原文里有多个区块时取几个。'
+          "
         />
       </header>
       <textarea v-model="sampleInput" class="pc-area" placeholder="粘贴一段真实原文，立即查看是否命中。"></textarea>
@@ -508,7 +540,16 @@ onMounted(() => {
 watch(
   () => draft.mode,
   mode => {
-    if (mode === 'fields' && draft.closingStyle === 'custom') draft.closingStyle = 'standard';
+    if (mode !== 'fields') return;
+    if (draft.closingStyle === 'custom') draft.closingStyle = 'standard';
+    if (!draft.fields[0]?.tagName) draft.fields[0].tagName = '固定字段';
+    if (sampleInput.value === '<content>\n这里是正文。\n</content>') {
+      sampleInput.value = '<aa>\n固定字段：第一段内容\n固定字段：第二段内容\n</aa>';
+      draft.fields = [
+        { ...createRegexWizardField(0), label: '第一项', multiline: false, tagName: '固定字段' },
+        { ...createRegexWizardField(1), label: '第二项', multiline: false, tagName: '固定字段' },
+      ];
+    }
   },
 );
 </script>

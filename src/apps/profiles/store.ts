@@ -62,6 +62,14 @@ const ProfileEntryPersistedSchema = z.object({
   fields: z.record(z.string(), z.string()).default({}),
   id: z.string(),
   kind: ProfileKindSchema.default('character'),
+  origin: z
+    .object({
+      appId: z.string(),
+      sourceId: z.string(),
+      sourceKey: z.string(),
+    })
+    .nullable()
+    .default(null),
   summary: z.string().default(''),
   tableId: z.string().default(''),
   tags: z.array(z.string()).default([]),
@@ -142,6 +150,15 @@ const coreColumns: ProfileTableColumn[] = [
 
 const tableExtras: Record<ProfileKind, ProfileTableColumn[]> = {
   character: [
+    {
+      description: '人物出生日期，建议填写为“年-月-日”，时间确认会自动读取。',
+      id: 'birthDate',
+      label: '出生日期',
+      options: [],
+      required: false,
+      type: 'text',
+      enabled: true,
+    },
     {
       description: '人物在当前故事中的身份、职业或社会定位。',
       id: 'identity',
@@ -284,6 +301,42 @@ const tableExtras: Record<ProfileKind, ProfileTableColumn[]> = {
   ],
   world: [
     {
+      description: '历法名称；填写后可在时间确认中直接选择。',
+      id: 'calendarName',
+      label: '历法名称',
+      options: [],
+      required: false,
+      type: 'text',
+      enabled: true,
+    },
+    {
+      description: '纪年显示名称，例如“公历”或“星历”。',
+      id: 'calendarEraName',
+      label: '纪元名称',
+      options: [],
+      required: false,
+      type: 'text',
+      enabled: true,
+    },
+    {
+      description: '每年包含的月份数量。',
+      id: 'calendarMonthsPerYear',
+      label: '每年月份',
+      options: [],
+      required: false,
+      type: 'text',
+      enabled: true,
+    },
+    {
+      description: '每月天数；统一天数填一个数字，不同月份用逗号分隔。',
+      id: 'calendarMonthDays',
+      label: '每月天数',
+      options: [],
+      required: false,
+      type: 'text',
+      enabled: true,
+    },
+    {
       description: '世界观设定适用的对象、区域或情境。',
       id: 'scope',
       label: '适用范围',
@@ -364,7 +417,20 @@ function normalizeTables(data: z.infer<typeof ProfilesScopeDataBaseSchema>) {
   const tables = builtIns.map(table => {
     const saved = existing.get(table.id);
     const savedColumns = cloneColumns(saved?.columns ?? []);
-    return saved ? { ...saved, builtIn: true, columns: savedColumns.length ? savedColumns : table.columns } : table;
+    const savedColumnIds = new Set(savedColumns.map(column => column.id));
+    const requiredNewColumnIds = new Set(
+      table.kind === 'character'
+        ? ['birthDate']
+        : table.kind === 'world'
+          ? ['calendarName', 'calendarEraName', 'calendarMonthsPerYear', 'calendarMonthDays']
+          : [],
+    );
+    const addedBuiltInColumns = table.columns
+      .filter(column => requiredNewColumnIds.has(column.id) && !savedColumnIds.has(column.id))
+      .map(column => ({ ...column, options: [...column.options] }));
+    return saved
+      ? { ...saved, builtIn: true, columns: [...savedColumns, ...addedBuiltInColumns] }
+      : table;
   });
   data.tables.forEach(table => {
     if (!tables.some(item => item.id === table.id)) tables.push({ ...table, columns: cloneColumns(table.columns) });
@@ -387,11 +453,11 @@ export const ProfilesScopeDataSchema = ProfilesScopeDataBaseSchema.transform(dat
 export type ProfilesScopeData = z.infer<typeof ProfilesScopeDataSchema>;
 
 export type ProfileEntryInput = Partial<
-  Pick<ProfileEntry, 'favorite' | 'fields' | 'kind' | 'summary' | 'tableId' | 'tags'>
+  Pick<ProfileEntry, 'favorite' | 'fields' | 'kind' | 'origin' | 'summary' | 'tableId' | 'tags'>
 > &
   Pick<ProfileEntry, 'title'>;
 export type ProfileEntryUpdate = Pick<ProfileEntry, 'kind' | 'summary' | 'tags' | 'title'> &
-  Partial<Pick<ProfileEntry, 'fields' | 'tableId'>>;
+  Partial<Pick<ProfileEntry, 'fields' | 'origin' | 'tableId'>>;
 
 export const useProfilesStore = defineStore('profiles', () => {
   const { data, rehydrateFromSettings, resetCurrentScope, scopeKey, switchScope } = useChatScopedDomain({
@@ -438,6 +504,7 @@ export const useProfilesStore = defineStore('profiles', () => {
       fields: Object.fromEntries(Object.entries(input.fields ?? {}).map(([key, value]) => [key, String(value).trim()])),
       id: createId('profile_entry'),
       kind: table?.kind ?? input.kind ?? 'character',
+      origin: input.origin ?? null,
       summary: input.summary?.trim() || '',
       tableId: table?.id ?? builtInTableId(input.kind ?? 'character'),
       tags: cleanTags(input.tags ?? []),
@@ -454,6 +521,7 @@ export const useProfilesStore = defineStore('profiles', () => {
     const table = getTable(input.tableId || entry.tableId) ?? getDefaultTable(input.kind);
     entry.title = input.title.trim() || entry.title;
     entry.kind = table?.kind ?? input.kind;
+    entry.origin = typeof input.origin === 'undefined' ? entry.origin : input.origin;
     entry.tableId = table?.id ?? entry.tableId;
     entry.summary = input.summary.trim();
     entry.tags = cleanTags(input.tags);

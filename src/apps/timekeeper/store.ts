@@ -31,6 +31,7 @@ export type TimekeeperDelta = z.infer<typeof TimekeeperDeltaSchema>;
 
 export const TimekeeperSettingsSchema = z.object({
   calendar: TimekeeperCalendarTemplateSchema.default(() => createManualCalendar()),
+  calendarProfileEntryId: z.string().default(''),
   current: TimekeeperDateSchema.default(() => TimekeeperDateSchema.parse({})),
   delta: TimekeeperDeltaSchema.default(() => TimekeeperDeltaSchema.parse({})),
   people: z.array(TimekeeperPersonSchema).default([]),
@@ -81,6 +82,12 @@ export function parseProfileBirthDate(text: string): TimekeeperDate | null {
     month: values[1],
     year: values[0],
   };
+}
+
+function serializeBirthDate(date: TimekeeperDate) {
+  return `${Math.max(1, Math.round(date.year))}-${String(Math.max(1, Math.round(date.month))).padStart(2, '0')}-${String(
+    Math.max(1, Math.round(date.day)),
+  ).padStart(2, '0')}`;
 }
 
 function clampNumber(value: number, min: number, max: number) {
@@ -322,20 +329,88 @@ export const useTimekeeperStore = defineStore('timekeeper', () => {
   function getProfileBirthDate(profileEntryId: string) {
     const entry = profiles.getEntry(profileEntryId);
     if (!entry || entry.kind !== 'character') return null;
+    const formalBirthDate = entry.fields.birthDate?.trim();
+    if (formalBirthDate) return parseProfileBirthDate(`出生日期：${formalBirthDate}`);
     return parseProfileBirthDate([entry.summary, ...Object.values(entry.fields)].join('\n'));
   }
 
-  watch(
-    () => profiles.data.entries.map(entry => `${entry.id}:${entry.title}:${entry.kind}:${entry.updatedAt}`).join('|'),
-    () => {
-      settings.value.people.forEach(person => {
-        if (!person.profileEntryId) return;
-        const entry = profiles.getEntry(person.profileEntryId);
-        if (entry?.kind !== 'character') return;
-        person.name = entry.title;
-        const birth = getProfileBirthDate(entry.id);
-        if (birth) person.birth = normalizeDate(birth, settings.value.calendar);
+  function createDefaultBirth() {
+    return normalizeDate(
+      {
+        year: Math.max(1, settings.value.current.year - 18),
+        month: settings.value.current.month,
+        day: settings.value.current.day,
+      },
+      settings.value.calendar,
+    );
+  }
+
+  function syncProfilePeople() {
+    profiles.data.entries
+      .filter(entry => entry.kind === 'character')
+      .forEach(entry => {
+        const existing = settings.value.people.find(person => person.profileEntryId === entry.id);
+        if (existing) {
+          existing.name = entry.title;
+          const birth = getProfileBirthDate(entry.id);
+          if (birth) existing.birth = normalizeDate(birth, settings.value.calendar);
+          return;
+        }
+        settings.value.people.push({
+          birth: normalizeDate(getProfileBirthDate(entry.id) ?? createDefaultBirth(), settings.value.calendar),
+          id: createId('time_person'),
+          name: entry.title,
+          profileEntryId: entry.id,
+          selected: Boolean(getProfileBirthDate(entry.id)),
+        });
       });
+    settings.value.people = settings.value.people.filter(
+      person => !person.profileEntryId || profiles.getEntry(person.profileEntryId)?.kind === 'character',
+    );
+  }
+
+  function getProfileCalendar(profileEntryId: string) {
+    const entry = profiles.getEntry(profileEntryId);
+    if (!entry || entry.kind !== 'world') return null;
+    const name = entry.fields.calendarName?.trim();
+    const eraName = entry.fields.calendarEraName?.trim();
+    const monthsPerYear = Number(entry.fields.calendarMonthsPerYear?.match(/\d+/u)?.[0]);
+    const monthDaysText = entry.fields.calendarMonthDays?.trim();
+    if (!name && !eraName && !monthsPerYear && !monthDaysText) return null;
+    return normalizeCalendar({
+      eraName: eraName || name || '世界历',
+      id: `profile:${entry.id}`,
+      kind: 'fixed',
+      monthDaysText: monthDaysText || '30',
+      monthsPerYear: monthsPerYear || 12,
+      name: name || `${entry.title}历法`,
+    });
+  }
+
+  function syncProfileCalendar() {
+    if (settings.value.calendarProfileEntryId) {
+      const linked = getProfileCalendar(settings.value.calendarProfileEntryId);
+      if (linked) settings.value.calendar = linked;
+      else settings.value.calendarProfileEntryId = '';
+      return;
+    }
+    const available = profiles.data.entries
+      .map(entry => getProfileCalendar(entry.id))
+      .filter((calendar): calendar is TimekeeperCalendarTemplate => Boolean(calendar));
+    if (available.length !== 1) return;
+    settings.value.calendarProfileEntryId = available[0].id.replace(/^profile:/u, '');
+    settings.value.calendar = available[0];
+  }
+
+  watch(
+    () =>
+      `${profiles.scopeKey}|${scopeKey.value}|${profiles.data.entries
+        .map(entry => `${entry.id}:${entry.title}:${entry.kind}:${entry.updatedAt}`)
+        .join('|')}`,
+    () => {
+      if (profiles.scopeKey !== scopeKey.value) return;
+      syncProfilePeople();
+      syncProfileCalendar();
     },
     { immediate: true },
   );
@@ -375,7 +450,32 @@ export const useTimekeeperStore = defineStore('timekeeper', () => {
     }));
   }
 
+  function syncPersonProfile(personId: string) {
+    const person = settings.value.people.find(item => item.id === personId);
+    const entry = person?.profileEntryId ? profiles.getEntry(person.profileEntryId) : null;
+    if (!person || !entry || entry.kind !== 'character') return false;
+    profiles.updateEntry(entry.id, {
+      fields: { ...entry.fields, birthDate: serializeBirthDate(person.birth) },
+      kind: entry.kind,
+      summary: entry.summary,
+      tableId: entry.tableId,
+      tags: entry.tags,
+      title: person.name,
+    });
+    return true;
+  }
+
   function selectCalendar(calendarId: string) {
+    if (calendarId.startsWith('profile:')) {
+      const profileEntryId = calendarId.slice('profile:'.length);
+      const calendar = getProfileCalendar(profileEntryId);
+      if (!calendar) return;
+      settings.value.calendarProfileEntryId = profileEntryId;
+      settings.value.calendar = calendar;
+      normalizeCurrentDates();
+      return;
+    }
+    settings.value.calendarProfileEntryId = '';
     if (calendarId === GREGORIAN_CALENDAR.id) {
       settings.value.calendar = { ...GREGORIAN_CALENDAR };
       normalizeCurrentDates();
@@ -430,19 +530,20 @@ export const useTimekeeperStore = defineStore('timekeeper', () => {
   }
 
   function createPerson() {
+    const name = `人物 ${settings.value.people.length + 1}`;
+    const birth = createDefaultBirth();
+    const entry = profiles.createEntry({
+      fields: { birthDate: serializeBirthDate(birth) },
+      kind: 'character',
+      origin: { appId: 'timekeeper', sourceId: scopeKey.value, sourceKey: createId('time_person_origin') },
+      title: name,
+    });
     const person: TimekeeperPerson = {
       id: createId('time_person'),
-      name: `人物 ${settings.value.people.length + 1}`,
-      profileEntryId: '',
+      name,
+      profileEntryId: entry.id,
       selected: true,
-      birth: normalizeDate(
-        {
-          year: Math.max(1, settings.value.current.year - 18),
-          month: settings.value.current.month,
-          day: settings.value.current.day,
-        },
-        settings.value.calendar,
-      ),
+      birth,
     };
     settings.value.people = [...settings.value.people, person];
     return person;
@@ -464,7 +565,9 @@ export const useTimekeeperStore = defineStore('timekeeper', () => {
     return { birthImported: Boolean(birth), ok: true };
   }
 
-  function deletePerson(personId: string) {
+  function deletePerson(personId: string, deleteProfile = true) {
+    const person = settings.value.people.find(item => item.id === personId);
+    if (deleteProfile && person?.profileEntryId) profiles.deleteEntry(person.profileEntryId);
     settings.value.people = settings.value.people.filter(person => person.id !== personId);
   }
 
@@ -483,6 +586,7 @@ export const useTimekeeperStore = defineStore('timekeeper', () => {
     formatDuration,
     getAgeAt,
     getDaysInMonth,
+    getProfileCalendar,
     linkPersonProfile,
     nextDate,
     normalizeCurrentDates,
@@ -492,6 +596,8 @@ export const useTimekeeperStore = defineStore('timekeeper', () => {
     selectCalendar,
     selectedPeople,
     settings,
+    syncPersonProfile,
+    syncProfilePeople,
     scopeKey,
     switchScope,
   };

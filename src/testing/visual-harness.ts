@@ -468,7 +468,10 @@ function createTheaterBaguFixture() {
   const theater = useTheaterStore();
   theater.resetCurrentScope();
   return theater.createEntry({
-    content: '他仿佛听见雨声靠近，忍不住微微一愣，眼中闪过一丝迟疑。',
+    content: Array.from(
+      { length: 12 },
+      (_, index) => `第${index + 1}句，他仿佛听见雨声靠近，忍不住微微一愣，眼中闪过一丝迟疑。`,
+    ).join(''),
     participants: [{ name: 'Nova' }, { name: 'Zod' }],
     renderMode: 'markdown',
     title: '八股检测布局测试',
@@ -770,6 +773,22 @@ async function applyScenario(name: VisualScenarioName, options: { height?: numbe
 
   if (name === 'home') {
     await phone.goHome();
+  } else if (name === 'home-five-columns') {
+    const settings = useSettingsStore();
+    settings.setPhoneWindowWidth(350);
+    settings.setHomeColumns(5);
+    await phone.goHome();
+    await waitForPaint();
+    const grid = document.querySelector<HTMLElement>('.pc-home-grid-wrap .pc-grid');
+    const tile = document.querySelector<HTMLElement>('.pc-home-grid-wrap .pc-app-tile');
+    const label = tile?.querySelector<HTMLElement>('strong');
+    if (!grid || !tile || !label) throw new Error('Five-column home layout did not render App tiles');
+    const gridGap = Number.parseFloat(getComputedStyle(grid).columnGap);
+    const tilePadding = Number.parseFloat(getComputedStyle(tile).paddingInline);
+    const labelFontSize = Number.parseFloat(getComputedStyle(label).fontSize);
+    if (gridGap > 4 || tilePadding > 1 || labelFontSize > 10 || label.clientWidth < 50) {
+      throw new Error('Five-column App label does not reserve enough width for five Chinese characters');
+    }
   } else if (name === 'custom-app-extract-rules') {
     const { CustomAppDefinitionsSettingsSchema, customAppDefinitionsField } = await import('@/apps/app-builder/schema');
     const { useCustomAppsStore } = await import('@/apps/app-builder/store');
@@ -1201,7 +1220,7 @@ async function applyScenario(name: VisualScenarioName, options: { height?: numbe
     if (name === 'home-tasks-dark') useSettingsStore().setTheme('dark');
     createGenerationTaskFixture();
     await phone.goHome();
-  } else if (name === 'bagu-scan-actions' || name === 'bagu-scan-applied') {
+  } else if (name === 'bagu-scan-actions' || name === 'bagu-scan-applied' || name === 'bagu-hit-details') {
     const templateText = '开头，这是一个漫长等待的眼神，结尾。';
     const createTemplateRule = (suggestion: string) => ({
       createdAt: '2026-08-09T00:00:00.000Z',
@@ -1237,18 +1256,25 @@ async function applyScenario(name: VisualScenarioName, options: { height?: numbe
     resetPhoneToRoute('theater', 'bagu-scan', '八股检测', { entryId: entry.id });
     await waitForPaint();
     const sentenceCards = document.querySelectorAll('.pc-bagu-hit-card');
-    const matchRows = document.querySelectorAll('.pc-bagu-match-row');
     const mergedPreview = document.querySelector<HTMLTextAreaElement>('.pc-bagu-edit textarea')?.value || '';
     if (
-      sentenceCards.length !== 1 ||
-      matchRows.length !== 4 ||
+      sentenceCards.length !== 12 ||
+      document.querySelector('.pc-bagu-match-row') ||
       !['犹如', '下意识', '愣住', '目光中透出'].every(replacement => mergedPreview.includes(replacement))
     ) {
-      throw new Error('Bagu hits in one sentence were not merged into one editable sentence card');
+      throw new Error('Bagu hits were not merged into sentence-level editable cards');
     }
     if (name === 'bagu-scan-applied') {
-      document.querySelector<HTMLButtonElement>('.pc-bagu-scan-actions .accent')?.click();
+      document.querySelector<HTMLButtonElement>('.pc-bagu-select-row .pc-mini-btn')?.click();
       await waitForPaint();
+      document.querySelector<HTMLButtonElement>('.pc-bagu-scan-actions .pc-primary-btn')?.click();
+      await waitForPaint();
+    } else if (name === 'bagu-hit-details') {
+      document.querySelector<HTMLButtonElement>('.pc-bagu-hit-detail-trigger')?.click();
+      await waitForPaint();
+      if (document.querySelectorAll('.pc-bagu-hit-modal-item').length !== 4) {
+        throw new Error('Bagu hit detail dialog did not show all hits from the selected sentence');
+      }
     }
   } else if (name === 'cloud-media-generate') {
     resetPhoneToRoute('cloud-media', 'generate', 'AI 云媒体');
