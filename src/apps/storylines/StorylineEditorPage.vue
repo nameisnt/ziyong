@@ -1,0 +1,198 @@
+<template>
+  <section class="pc-storyline-editor-page">
+    <article class="pc-editor-card pc-storyline-editor-card">
+      <div class="pc-section-head">
+        <strong>编辑{{ itemLabel }}</strong>
+        <span>{{ itemMeta }}</span>
+      </div>
+
+      <div class="pc-field-group">
+        <label class="pc-field-label" for="pc-storyline-editor-title">标题</label>
+        <input id="pc-storyline-editor-title" v-model="draft.title" class="pc-field" type="text" />
+      </div>
+
+      <template v-if="draft.itemKind === 'line'">
+        <div class="pc-storyline-editor-grid">
+          <label class="pc-field-group">
+            <span class="pc-field-label">类型</span>
+            <select v-model="draft.lineKind" class="pc-select">
+              <option v-for="option in storylineKindOptions" :key="option.id" :value="option.id">
+                {{ option.label }}
+              </option>
+            </select>
+          </label>
+          <label class="pc-field-group">
+            <span class="pc-field-label">状态</span>
+            <select v-model="draft.lineStatus" class="pc-select">
+              <option v-for="option in storylineStatusOptions" :key="option.id" :value="option.id">
+                {{ option.label }}
+              </option>
+            </select>
+          </label>
+        </div>
+        <label class="pc-field-group">
+          <span class="pc-field-label">剧情概述</span>
+          <textarea v-model="draft.summary" class="pc-area compact"></textarea>
+        </label>
+        <label class="pc-field-group">
+          <span class="pc-field-label">当前目标</span>
+          <textarea v-model="draft.goal" class="pc-area compact"></textarea>
+        </label>
+        <label class="pc-field-group">
+          <span class="pc-field-label">风险与代价</span>
+          <textarea v-model="draft.stakes" class="pc-area compact"></textarea>
+        </label>
+      </template>
+
+      <template v-else-if="draft.itemKind === 'beat'">
+        <label class="pc-field-group">
+          <span class="pc-field-label">所属剧情线</span>
+          <select v-model="draft.lineId" class="pc-select">
+            <option v-for="option in lineOptions" :key="option.value" :value="option.value">
+              {{ option.label }}
+            </option>
+          </select>
+        </label>
+        <div class="pc-storyline-editor-grid">
+          <label class="pc-field-group">
+            <span class="pc-field-label">状态</span>
+            <select v-model="draft.beatStatus" class="pc-select">
+              <option v-for="option in beatStatusOptions" :key="option.id" :value="option.id">
+                {{ option.label }}
+              </option>
+            </select>
+          </label>
+          <label class="pc-field-group">
+            <span class="pc-field-label">节点顺序</span>
+            <input v-model.number="draft.order" class="pc-field" min="0" step="1" type="number" />
+          </label>
+        </div>
+        <label class="pc-field-group">
+          <span class="pc-field-label">节点说明</span>
+          <textarea v-model="draft.summary" class="pc-area"></textarea>
+        </label>
+      </template>
+
+      <template v-else>
+        <label class="pc-field-group">
+          <span class="pc-field-label">所属剧情线</span>
+          <select v-model="draft.lineId" class="pc-select">
+            <option value="">不绑定剧情线</option>
+            <option v-for="option in lineOptions" :key="option.value" :value="option.value">
+              {{ option.label }}
+            </option>
+          </select>
+        </label>
+        <label class="pc-field-group">
+          <span class="pc-field-label">状态</span>
+          <select v-model="draft.hookStatus" class="pc-select">
+            <option v-for="option in foreshadowStatusOptions" :key="option.id" :value="option.id">
+              {{ option.label }}
+            </option>
+          </select>
+        </label>
+        <label class="pc-field-group">
+          <span class="pc-field-label">埋设内容</span>
+          <textarea v-model="draft.seed" class="pc-area compact"></textarea>
+        </label>
+        <label class="pc-field-group">
+          <span class="pc-field-label">回收内容</span>
+          <textarea v-model="draft.payoff" class="pc-area compact"></textarea>
+        </label>
+      </template>
+
+      <label v-if="draft.itemKind !== 'beat'" class="pc-field-group">
+        <span class="pc-field-label">标签</span>
+        <input v-model="draft.tagsText" class="pc-field" placeholder="使用逗号或顿号分隔" type="text" />
+      </label>
+
+      <section v-if="draft.itemKind !== 'beat'" class="pc-storyline-profile-editor">
+        <div class="pc-section-head">
+          <strong>关联资料</strong>
+          <button class="pc-icon-btn" type="button" title="增加关联资料" @click="addRelatedProfile">
+            <i class="fa-solid fa-plus"></i>
+          </button>
+        </div>
+        <div v-if="draft.relatedProfileIds.length" class="pc-storyline-profile-list">
+          <div v-for="(_, index) in draft.relatedProfileIds" :key="index" class="pc-storyline-profile-row">
+            <ProfileEntryPicker
+              v-model="draft.relatedProfileIds[index]"
+              :disabled-ids="disabledProfileIds(index)"
+              empty-label="不关联资料"
+              placeholder="选择关联资料"
+              :show-open-button="false"
+            />
+            <button class="pc-icon-btn danger" type="button" title="移除关联" @click="removeRelatedProfile(index)">
+              <i class="fa-solid fa-xmark"></i>
+            </button>
+          </div>
+        </div>
+        <EmptyState v-else compact title="尚未关联资料" />
+      </section>
+
+      <div class="pc-form-actions">
+        <button class="pc-soft-btn" type="button" @click="$emit('cancel')">取消</button>
+        <button class="pc-primary-btn" type="button" @click="$emit('save')">保存</button>
+      </div>
+    </article>
+  </section>
+</template>
+
+<script setup lang="ts">
+import EmptyState from '@/components/EmptyState.vue';
+import ProfileEntryPicker from '@/components/ProfileEntryPicker.vue';
+import { beatStatusOptions, foreshadowStatusOptions, storylineKindOptions, storylineStatusOptions } from './store';
+import type { StorylineEditorDraft } from './viewTypes';
+
+const props = defineProps<{
+  itemMeta: string;
+  lineOptions: Array<{ label: string; value: string }>;
+}>();
+
+defineEmits<{
+  cancel: [];
+  save: [];
+}>();
+
+const draft = defineModel<StorylineEditorDraft>({ required: true });
+const itemLabel = computed(() => ({ beat: '节点', hook: '伏笔', line: '剧情线' })[draft.value.itemKind]);
+
+function addRelatedProfile() {
+  draft.value.relatedProfileIds.push('');
+}
+
+function removeRelatedProfile(index: number) {
+  draft.value.relatedProfileIds.splice(index, 1);
+}
+
+function disabledProfileIds(index: number) {
+  return draft.value.relatedProfileIds.filter((profileId, itemIndex) => itemIndex !== index && profileId);
+}
+</script>
+
+<style scoped>
+.pc-storyline-editor-page,
+.pc-storyline-editor-card,
+.pc-storyline-profile-editor,
+.pc-storyline-profile-list {
+  display: grid;
+  gap: 12px;
+}
+
+.pc-storyline-editor-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.pc-storyline-profile-editor {
+  padding-top: 4px;
+}
+
+.pc-storyline-profile-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 40px;
+  align-items: center;
+  gap: 8px;
+}
+</style>

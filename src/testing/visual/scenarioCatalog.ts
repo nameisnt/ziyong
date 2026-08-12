@@ -69,6 +69,7 @@ export function createVisualScenarioGroups(rootAppScenarios: string[]): VisualSc
     { id: 'cloud-media', scenarios: ['cloud-media-generate', 'cloud-media-settings'] },
     { id: 'mvu', scenarios: ['mvu-modifier-tree'] },
     { id: 'regex-wizard', scenarios: ['regex-wizard-fields'] },
+    { id: 'storylines', scenarios: ['storylines-detail', 'storylines-editor'] },
     {
       id: 'entry-library',
       scenarios: [

@@ -72,61 +72,94 @@
       <section v-if="activeTab === 'lines'" class="pc-directory-list pc-storylines-list">
         <EmptyState v-if="!storylines.lines.length" title="还没有梳理结果" />
         <article v-for="line in storylines.lines" v-else :key="line.id" class="pc-list-row pc-storyline-item">
-          <div class="pc-detail-title-row">
-            <div>
+          <button class="pc-storyline-item-main" type="button" @click="openItem('line', line.id)">
+            <span class="pc-storyline-item-copy">
               <span class="pc-storyline-meta">
                 {{ getStorylineKindLabel(line.kind) }} · {{ getStorylineStatusLabel(line.status) }}
               </span>
               <h3>{{ line.title }}</h3>
-            </div>
-            <button class="pc-detail-mini-btn" type="button" title="删除" @click="removeLine(line.id)">
-              <i class="fa-solid fa-trash"></i>
-            </button>
-          </div>
-          <p>{{ line.summary || line.goal || '暂无概述' }}</p>
-          <div class="pc-storyline-counts">
-            <span>{{ countLineBeats(line.id) }} 个节点</span>
-            <span>{{ countLineHooks(line.id) }} 个伏笔</span>
-          </div>
+              <p>{{ line.summary || line.goal || '暂无概述' }}</p>
+              <span class="pc-storyline-counts">
+                <span>{{ countLineBeats(line.id) }} 个节点</span>
+                <span>{{ countLineHooks(line.id) }} 个伏笔</span>
+              </span>
+            </span>
+            <i class="fa-solid fa-chevron-right"></i>
+          </button>
+          <button class="pc-detail-mini-btn" type="button" title="删除" @click="removeLine(line.id)">
+            <i class="fa-solid fa-trash"></i>
+          </button>
         </article>
       </section>
 
       <section v-else-if="activeTab === 'beats'" class="pc-directory-list pc-storylines-list">
         <EmptyState v-if="!storylines.beats.length" title="还没有剧情节点" />
         <article v-for="beat in storylines.beats" v-else :key="beat.id" class="pc-list-row pc-storyline-item">
-          <div class="pc-detail-title-row">
-            <div>
+          <button class="pc-storyline-item-main" type="button" @click="openItem('beat', beat.id)">
+            <span class="pc-storyline-item-copy">
               <span class="pc-storyline-meta">
                 {{ findLineTitle(beat.lineId) }} · {{ getBeatStatusLabel(beat.status) }}
               </span>
               <h3>{{ beat.title }}</h3>
-            </div>
-            <button class="pc-detail-mini-btn" type="button" title="删除" @click="removeBeat(beat.id)">
-              <i class="fa-solid fa-trash"></i>
-            </button>
-          </div>
-          <p>{{ beat.summary || '暂无节点说明' }}</p>
+              <p>{{ beat.summary || '暂无节点说明' }}</p>
+            </span>
+            <i class="fa-solid fa-chevron-right"></i>
+          </button>
+          <button class="pc-detail-mini-btn" type="button" title="删除" @click="removeBeat(beat.id)">
+            <i class="fa-solid fa-trash"></i>
+          </button>
         </article>
       </section>
 
       <section v-else class="pc-directory-list pc-storylines-list">
         <EmptyState v-if="!storylines.hooks.length" title="还没有识别到伏笔" />
         <article v-for="hook in storylines.hooks" v-else :key="hook.id" class="pc-list-row pc-storyline-item">
-          <div class="pc-detail-title-row">
-            <div>
+          <button class="pc-storyline-item-main" type="button" @click="openItem('hook', hook.id)">
+            <span class="pc-storyline-item-copy">
               <span class="pc-storyline-meta">
                 {{ getForeshadowStatusLabel(hook.status) }} · {{ findLineTitle(hook.lineId) || '未绑定剧情线' }}
               </span>
               <h3>{{ hook.title }}</h3>
-            </div>
-            <button class="pc-detail-mini-btn" type="button" title="删除" @click="removeHook(hook.id)">
-              <i class="fa-solid fa-trash"></i>
-            </button>
-          </div>
-          <p>{{ hook.seed || hook.payoff || '暂无伏笔说明' }}</p>
+              <p>{{ hook.seed || hook.payoff || '暂无伏笔说明' }}</p>
+            </span>
+            <i class="fa-solid fa-chevron-right"></i>
+          </button>
+          <button class="pc-detail-mini-btn" type="button" title="删除" @click="removeHook(hook.id)">
+            <i class="fa-solid fa-trash"></i>
+          </button>
         </article>
       </section>
     </section>
+
+    <StorylineDetailPage
+      v-else-if="route.page === 'detail' && activeItemKind && activeItemExists"
+      :beat="activeBeat"
+      :hook="activeHook"
+      :item-kind="activeItemKind"
+      :line="activeLine"
+      :line-beats="activeLineBeats"
+      :line-hooks="activeLineHooks"
+      :next-disabled="!nextItemId"
+      :parent-line="activeParentLine"
+      :previous-disabled="!previousItemId"
+      :profile-names="profileNames"
+      @catalog="returnToRoot"
+      @delete="removeActiveItem"
+      @edit="openActiveEditor"
+      @next="openAdjacentItem(nextItemId)"
+      @open-item="openItem"
+      @open-profile="openProfile"
+      @previous="openAdjacentItem(previousItemId)"
+    />
+
+    <StorylineEditorPage
+      v-else-if="route.page === 'editor' && activeItemKind && activeItemExists"
+      v-model="editorDraft"
+      :item-meta="activeItemMeta"
+      :line-options="lineOptions"
+      @cancel="phone.goBack()"
+      @save="saveEditor"
+    />
 
     <section v-else-if="route.page === 'generate'" class="pc-storylines-page">
       <article class="pc-storylines-generate-form">
@@ -204,6 +237,11 @@
       @delete="removeFailedDraft(activeFailedDraft.id)"
       @reparse="reparseFailedDraft"
     />
+
+    <EmptyState v-else title="这条剧情记录无法打开">
+      <p>记录可能已经被删除，或者页面地址已经失效。</p>
+      <button class="pc-soft-btn" type="button" @click="returnToRoot">返回剧情列表</button>
+    </EmptyState>
   </section>
 </template>
 
@@ -216,6 +254,7 @@ import GenerationPreviewPanel from '@/components/GenerationPreviewPanel.vue';
 import InfoHint from '@/components/InfoHint.vue';
 import PreviewDraftNotice from '@/components/PreviewDraftNotice.vue';
 import { getRegisteredPhoneGenerationAdapter } from '@/core/appRegistry';
+import { useProfilesStore } from '@/apps/profiles/store';
 import { captureGenerationPrompt, generateContent } from '@/core/generationService';
 import { usePhoneStore } from '@/store/phone';
 import { usePromptStore } from '@/store/prompts';
@@ -227,13 +266,21 @@ import { stopGenerationByIdSafe } from '@/util/runtime';
 import { formatTextProviderSummary } from '@/util/textProvider';
 import { usePreviewDraftPersistence } from '@/util/previewDrafts';
 import { createStorylineGenerationAdapter, formatStorylineResult, type StorylineGeneratedResult } from './generation';
+import StorylineDetailPage from './StorylineDetailPage.vue';
+import StorylineEditorPage from './StorylineEditorPage.vue';
 import {
+  beatStatusOptions,
+  foreshadowStatusOptions,
   getBeatStatusLabel,
   getForeshadowStatusLabel,
   getStorylineKindLabel,
   getStorylineStatusLabel,
+  storylineKindOptions,
+  storylineStatusOptions,
   useStorylinesStore,
 } from './store';
+import type { Foreshadow, Storyline, StorylineBeat } from './store';
+import type { StorylineEditorDraft, StorylineItemKind } from './viewTypes';
 import { storeToRefs } from 'pinia';
 
 type StorylinePreview = {
@@ -245,6 +292,7 @@ type StorylinePreview = {
 };
 
 const phone = usePhoneStore();
+const profiles = useProfilesStore();
 const prompts = usePromptStore();
 const settingsStore = useSettingsStore();
 const summary = useSummaryStore();
@@ -275,10 +323,49 @@ const generationState = reactive({
   running: false,
 });
 const failedDraftRawOutput = ref('');
+const editorDraft = reactive<StorylineEditorDraft>(createEmptyEditorDraft('line'));
 const activeFailedDraft = computed(() => {
   const draftId = route.value.params?.draftId;
   return draftId ? storylines.getFailedDraft(draftId) : null;
 });
+const activeItemKind = computed(() => parseItemKind(route.value.params?.kind));
+const activeItemId = computed(() => route.value.params?.id || '');
+const activeLine = computed(() => (activeItemKind.value === 'line' ? storylines.getLine(activeItemId.value) : null));
+const activeBeat = computed(() => (activeItemKind.value === 'beat' ? storylines.getBeat(activeItemId.value) : null));
+const activeHook = computed(() => (activeItemKind.value === 'hook' ? storylines.getHook(activeItemId.value) : null));
+const activeItemExists = computed(() => Boolean(activeLine.value || activeBeat.value || activeHook.value));
+const activeParentLine = computed(() => {
+  if (activeLine.value) return activeLine.value;
+  const lineId = activeBeat.value?.lineId || activeHook.value?.lineId || '';
+  return lineId ? storylines.getLine(lineId) : null;
+});
+const activeLineBeats = computed(() => {
+  if (!activeLine.value) return [];
+  return storylines.beats.filter(beat => beat.lineId === activeLine.value?.id);
+});
+const activeLineHooks = computed(() => {
+  if (!activeLine.value) return [];
+  return storylines.hooks.filter(hook => hook.lineId === activeLine.value?.id);
+});
+const activeItemMeta = computed(() => {
+  if (activeLine.value) {
+    return `${getStorylineKindLabel(activeLine.value.kind)} · ${getStorylineStatusLabel(activeLine.value.status)}`;
+  }
+  if (activeBeat.value) return `剧情节点 · ${getBeatStatusLabel(activeBeat.value.status)}`;
+  if (activeHook.value) return `伏笔 · ${getForeshadowStatusLabel(activeHook.value.status)}`;
+  return '剧情记录';
+});
+const activeItemList = computed<Array<Foreshadow | Storyline | StorylineBeat>>(() => {
+  if (activeItemKind.value === 'line') return storylines.lines;
+  if (activeItemKind.value === 'beat') return storylines.beats;
+  if (activeItemKind.value === 'hook') return storylines.hooks;
+  return [];
+});
+const activeItemIndex = computed(() => activeItemList.value.findIndex(item => item.id === activeItemId.value));
+const previousItemId = computed(() => activeItemList.value[activeItemIndex.value - 1]?.id || '');
+const nextItemId = computed(() => activeItemList.value[activeItemIndex.value + 1]?.id || '');
+const profileNames = computed(() => Object.fromEntries(profiles.entries.map(profile => [profile.id, profile.title])));
+const lineOptions = computed(() => storylines.lines.map(line => ({ label: line.title, value: line.id })));
 const {
   clearPreviewDraft: clearStorylinePreviewDraft,
   discardPreviewDraft: discardStorylinePreviewDraft,
@@ -329,6 +416,197 @@ watch(
   },
   { immediate: true },
 );
+
+watch(
+  () => [route.value.page, route.value.params?.kind, route.value.params?.id] as const,
+  ([page, kindValue, id]) => {
+    if (page !== 'detail' && page !== 'editor') return;
+    const kind = parseItemKind(kindValue);
+    if (!kind || !id) return;
+    activeTab.value = itemKindToTab(kind);
+    if (page === 'editor') loadEditorDraft(kind, id);
+  },
+  { immediate: true },
+);
+
+function createEmptyEditorDraft(itemKind: StorylineItemKind): StorylineEditorDraft {
+  return {
+    beatStatus: beatStatusOptions[0]?.id || 'planned',
+    goal: '',
+    hookStatus: foreshadowStatusOptions[0]?.id || 'seeded',
+    itemKind,
+    lineId: '',
+    lineKind: storylineKindOptions[0]?.id || 'main',
+    lineStatus: storylineStatusOptions[0]?.id || 'planned',
+    order: 0,
+    payoff: '',
+    relatedProfileIds: [],
+    seed: '',
+    stakes: '',
+    summary: '',
+    tagsText: '',
+    title: '',
+  };
+}
+
+function parseItemKind(value: unknown): StorylineItemKind | null {
+  return value === 'line' || value === 'beat' || value === 'hook' ? value : null;
+}
+
+function itemKindToTab(kind: StorylineItemKind): 'beats' | 'hooks' | 'lines' {
+  return kind === 'line' ? 'lines' : kind === 'beat' ? 'beats' : 'hooks';
+}
+
+function itemTitle(kind: StorylineItemKind, id: string) {
+  if (kind === 'line') return storylines.getLine(id)?.title || '';
+  if (kind === 'beat') return storylines.getBeat(id)?.title || '';
+  return storylines.getHook(id)?.title || '';
+}
+
+function loadEditorDraft(kind: StorylineItemKind, id: string) {
+  const next = createEmptyEditorDraft(kind);
+  if (kind === 'line') {
+    const line = storylines.getLine(id);
+    if (!line) return;
+    Object.assign(next, {
+      goal: line.goal,
+      lineKind: line.kind,
+      lineStatus: line.status,
+      relatedProfileIds: [...line.relatedProfileIds],
+      stakes: line.stakes,
+      summary: line.summary,
+      tagsText: line.tags.join('、'),
+      title: line.title,
+    });
+  } else if (kind === 'beat') {
+    const beat = storylines.getBeat(id);
+    if (!beat) return;
+    Object.assign(next, {
+      beatStatus: beat.status,
+      lineId: beat.lineId,
+      order: beat.order,
+      summary: beat.summary,
+      title: beat.title,
+    });
+  } else {
+    const hook = storylines.getHook(id);
+    if (!hook) return;
+    Object.assign(next, {
+      hookStatus: hook.status,
+      lineId: hook.lineId,
+      payoff: hook.payoff,
+      relatedProfileIds: [...hook.relatedProfileIds],
+      seed: hook.seed,
+      tagsText: hook.tags.join('、'),
+      title: hook.title,
+    });
+  }
+  Object.assign(editorDraft, next);
+}
+
+function cleanEditorTags(value: string) {
+  return [
+    ...new Set(
+      value
+        .split(/[,，、\n]/)
+        .map(item => item.trim())
+        .filter(Boolean),
+    ),
+  ];
+}
+
+function cleanRelatedProfileIds(values: string[]) {
+  return [...new Set(values.map(value => value.trim()).filter(Boolean))];
+}
+
+function openItem(kind: StorylineItemKind, id: string) {
+  const title = itemTitle(kind, id);
+  if (!title) return;
+  activeTab.value = itemKindToTab(kind);
+  phone.pushPage('detail', title, { id, kind });
+}
+
+function openAdjacentItem(id: string) {
+  const kind = activeItemKind.value;
+  if (!kind || !id) return;
+  const title = itemTitle(kind, id);
+  if (!title) return;
+  phone.replacePage('detail', title, { id, kind });
+}
+
+function openActiveEditor() {
+  const kind = activeItemKind.value;
+  const id = activeItemId.value;
+  if (!kind || !id || !activeItemExists.value) return;
+  loadEditorDraft(kind, id);
+  phone.pushPage('editor', `编辑${kind === 'line' ? '剧情线' : kind === 'beat' ? '节点' : '伏笔'}`, { id, kind });
+}
+
+function openProfile(profileId: string) {
+  const profile = profiles.getEntry(profileId);
+  if (!profile) return;
+  phone.pushRoute('profiles', 'entry', profile.title, { entryId: profile.id });
+}
+
+function returnToRoot() {
+  const targetIndex = phone.stack.findLastIndex(item => item.appId === 'storylines' && item.page === 'root');
+  if (targetIndex >= 0) {
+    phone.stack = phone.stack.slice(0, targetIndex + 1);
+    return;
+  }
+  phone.replacePage('root', '剧情梳理');
+}
+
+function saveEditor() {
+  const kind = activeItemKind.value;
+  const id = activeItemId.value;
+  const title = editorDraft.title.trim();
+  if (!kind || !id || !activeItemExists.value) return;
+  if (!title) return void toastr.warning('请先填写标题');
+  if (kind === 'beat' && !storylines.getLine(editorDraft.lineId)) {
+    return void toastr.warning('请选择有效的所属剧情线');
+  }
+
+  if (kind === 'line') {
+    storylines.updateLine(id, {
+      goal: editorDraft.goal,
+      kind: editorDraft.lineKind,
+      relatedProfileIds: cleanRelatedProfileIds(editorDraft.relatedProfileIds),
+      stakes: editorDraft.stakes,
+      status: editorDraft.lineStatus,
+      summary: editorDraft.summary,
+      tags: cleanEditorTags(editorDraft.tagsText),
+      title,
+    });
+  } else if (kind === 'beat') {
+    storylines.updateBeat(id, {
+      lineId: editorDraft.lineId,
+      order: editorDraft.order,
+      status: editorDraft.beatStatus,
+      summary: editorDraft.summary,
+      title,
+    });
+  } else {
+    storylines.updateHook(id, {
+      lineId: storylines.getLine(editorDraft.lineId) ? editorDraft.lineId : '',
+      payoff: editorDraft.payoff,
+      relatedProfileIds: cleanRelatedProfileIds(editorDraft.relatedProfileIds),
+      seed: editorDraft.seed,
+      status: editorDraft.hookStatus,
+      tags: cleanEditorTags(editorDraft.tagsText),
+      title,
+    });
+  }
+
+  toastr.success('剧情记录已保存');
+  phone.replacePage('detail', title, { id, kind });
+}
+
+function removeActiveItem() {
+  if (activeLine.value) return removeLine(activeLine.value.id);
+  if (activeBeat.value) return removeBeat(activeBeat.value.id);
+  if (activeHook.value) return removeHook(activeHook.value.id);
+}
 
 function referencesForBook(bookId: string) {
   const book = summary.getBook(bookId);
@@ -543,12 +821,22 @@ function countLineHooks(lineId: string) {
 async function removeLine(lineId: string) {
   const line = storylines.getLine(lineId);
   if (!line) return;
-  const confirmed = await phone.confirmNotice(`要删除剧情线“${line.title}”吗？`, {
+  const beatCount = countLineBeats(lineId);
+  const hookCount = countLineHooks(lineId);
+  const impact = [
+    beatCount ? `同时删除 ${beatCount} 个所属节点` : '',
+    hookCount ? `${hookCount} 个伏笔会保留，但解除剧情线绑定` : '',
+  ]
+    .filter(Boolean)
+    .join('；');
+  const confirmed = await phone.confirmNotice(`要删除剧情线“${line.title}”吗？${impact ? `\n${impact}。` : ''}`, {
     confirmLabel: '删除',
     kind: 'warning',
   });
   if (!confirmed) return;
+  const deletingActiveItem = activeItemKind.value === 'line' && activeItemId.value === lineId;
   storylines.deleteLine(lineId);
+  if (deletingActiveItem) returnToRoot();
   toastr.success('已删除剧情线');
 }
 
@@ -560,7 +848,9 @@ async function removeBeat(beatId: string) {
     kind: 'warning',
   });
   if (!confirmed) return;
+  const deletingActiveItem = activeItemKind.value === 'beat' && activeItemId.value === beatId;
   storylines.deleteBeat(beatId);
+  if (deletingActiveItem) returnToRoot();
   toastr.success('已删除节点');
 }
 
@@ -572,7 +862,9 @@ async function removeHook(hookId: string) {
     kind: 'warning',
   });
   if (!confirmed) return;
+  const deletingActiveItem = activeItemKind.value === 'hook' && activeItemId.value === hookId;
   storylines.deleteHook(hookId);
+  if (deletingActiveItem) returnToRoot();
   toastr.success('已删除伏笔');
 }
 </script>
@@ -595,7 +887,32 @@ async function removeHook(hookId: string) {
 }
 
 .pc-storyline-item {
-  display: block;
+  grid-template-columns: minmax(0, 1fr) 32px;
+}
+
+.pc-storyline-item-main {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+  border: 0;
+  padding: 0;
+  background: transparent;
+  color: var(--pc-text);
+  cursor: pointer;
+  text-align: left;
+}
+
+.pc-storyline-item-main > i {
+  color: var(--pc-muted);
+  font-size: 12px;
+}
+
+.pc-storyline-item-copy {
+  display: grid;
+  min-width: 0;
+  gap: 5px;
 }
 
 .pc-storylines-generate-form {

@@ -20,6 +20,7 @@ import { applyTheaterVisualScenario, createTheaterFixture } from '@/testing/visu
 import { applyRecoveryVisualScenario } from '@/testing/visual/recoveryScenarios';
 import { configureVisualPhoneSize, resetVisualPhoneRoute, waitForVisualPaint } from '@/testing/visual/context';
 import { createGenerationTaskFixture } from '@/testing/visual/generationTaskFixtures';
+import { useStorylinesStore } from '@/apps/storylines/store';
 import { computed, effectScope, nextTick, ref } from 'vue';
 
 type VisualScenarioName = string;
@@ -861,6 +862,84 @@ async function applyScenario(name: VisualScenarioName, options: { height?: numbe
     prepareChildPage();
     await dispatchSwipe(0.1, 18, 80);
     if (stackDepth() !== 3) throw new Error('Vertical scroll from a side zone unexpectedly navigated back');
+  } else if (name === 'storylines-detail' || name === 'storylines-editor') {
+    const storylines = useStorylinesStore();
+    storylines.resetCurrentScope();
+    const line = storylines.createLine({
+      goal: '查明旧港仓库失火的真正原因。',
+      kind: 'main',
+      stakes: '证据一旦被销毁，周临川将永远无法洗清嫌疑。',
+      status: 'active',
+      summary: '众人沿着失踪钥匙追查旧港火灾，并发现证词相互矛盾。',
+      tags: ['旧港', '调查'],
+      title: '旧港火灾真相',
+    });
+    storylines.createBeat({
+      lineId: line.id,
+      order: 0,
+      status: 'done',
+      summary: '主角在仓库废墟里找到一枚不属于管理员的钥匙齿。',
+      title: '发现钥匙齿',
+    });
+    const hook = storylines.createHook({
+      lineId: line.id,
+      payoff: '钥匙最终被证明属于伪造证词的巡夜人。',
+      seed: '火灾当晚，备用钥匙从值班室无故失踪。',
+      status: 'ready',
+      tags: ['钥匙'],
+      title: '失踪的备用钥匙',
+    });
+
+    resetPhoneToRoute('storylines', 'detail', '失效剧情记录', { id: 'missing', kind: 'line' });
+    await waitForPaint();
+    if (!document.body.textContent?.includes('这条剧情记录无法打开')) {
+      throw new Error('Missing storyline detail route rendered a blank page');
+    }
+
+    resetPhoneToRoute('storylines', 'root', '剧情梳理');
+    await waitForPaint();
+    const lineButton = [...document.querySelectorAll<HTMLButtonElement>('.pc-storyline-item-main')].find(button =>
+      button.textContent?.includes(line.title),
+    );
+    if (!lineButton) throw new Error('Storyline list item is not interactive');
+    lineButton.click();
+    await waitForPaint();
+    const lineDetailText = document.querySelector('.pc-storyline-detail-card')?.textContent || '';
+    if (!lineDetailText.includes(line.goal) || !lineDetailText.includes(line.stakes)) {
+      throw new Error('Storyline detail omitted goal or stakes');
+    }
+
+    const hookButton = [
+      ...document.querySelectorAll<HTMLButtonElement>('.pc-storyline-detail-section .pc-list-row'),
+    ].find(button => button.textContent?.includes(hook.title));
+    if (!hookButton) throw new Error('Storyline detail did not link its foreshadowing item');
+    hookButton.click();
+    await waitForPaint();
+    const hookDetailText = document.querySelector('.pc-storyline-detail-card')?.textContent || '';
+    if (!hookDetailText.includes(hook.seed) || !hookDetailText.includes(hook.payoff)) {
+      throw new Error('Foreshadowing detail did not show seed and payoff separately');
+    }
+
+    if (name === 'storylines-editor') {
+      document.querySelector<HTMLButtonElement>('.pc-detail-actions button[title="编辑"]')?.click();
+      await waitForPaint();
+      const editor = document.querySelector<HTMLElement>('.pc-storyline-editor-card');
+      const payoffField = [...(editor?.querySelectorAll<HTMLTextAreaElement>('textarea') ?? [])].find(
+        field => field.value === hook.payoff,
+      );
+      if (!editor || !payoffField) throw new Error('Foreshadowing editor did not load the complete record');
+      payoffField.value = '巡夜人承认自己调换钥匙并伪造了值班记录。';
+      payoffField.dispatchEvent(new Event('input', { bubbles: true }));
+      [...editor.querySelectorAll<HTMLButtonElement>('button')]
+        .find(button => button.textContent?.includes('保存'))
+        ?.click();
+      await waitForPaint();
+      if (storylines.getHook(hook.id)?.payoff !== payoffField.value || usePhoneStore().currentRoute.page !== 'detail') {
+        throw new Error('Foreshadowing editor did not save and return to detail');
+      }
+      document.querySelector<HTMLButtonElement>('.pc-detail-actions button[title="编辑"]')?.click();
+      await waitForPaint();
+    }
   } else if (name === 'custom-app-extract-rules') {
     const { CustomAppDefinitionsSettingsSchema, customAppDefinitionsField } = await import('@/apps/app-builder/schema');
     const { useCustomAppsStore } = await import('@/apps/app-builder/store');
