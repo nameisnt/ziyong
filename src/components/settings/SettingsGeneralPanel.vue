@@ -52,17 +52,15 @@
 
     <section class="pc-page-section">
       <div class="pc-row pc-row-top">
-        <div>
-          <strong>壁纸</strong>
-          <span class="pc-context-meta">{{ wallpaperSummary }}</span>
-        </div>
+        <strong>壁纸</strong>
         <button
-          class="pc-soft-btn compact"
+          class="pc-icon-btn"
           type="button"
           title="关闭壁纸"
+          aria-label="关闭壁纸"
           @click="settingsStore.clearWallpaperSelection()"
         >
-          关闭壁纸
+          <i class="fa-solid fa-eye-slash"></i>
         </button>
       </div>
       <div class="pc-asset-field">
@@ -74,35 +72,44 @@
           @update:model-value="onWallpaperSelect"
         />
         <div class="pc-asset-actions">
-          <button class="pc-soft-btn compact" type="button" title="导入壁纸" @click="wallpaperInputEl?.click()">
-            导入
+          <button
+            class="pc-icon-btn"
+            type="button"
+            title="导入壁纸"
+            aria-label="导入壁纸"
+            @click="wallpaperInputEl?.click()"
+          >
+            <i class="fa-solid fa-file-import"></i>
           </button>
           <button
-            class="pc-soft-btn compact"
+            class="pc-icon-btn"
             type="button"
             :disabled="!selectedCustomWallpaper"
             title="导出壁纸"
+            aria-label="导出壁纸"
             @click="exportSelectedWallpaper"
           >
-            导出
+            <i class="fa-solid fa-file-export"></i>
           </button>
           <button
-            class="pc-soft-btn compact"
+            class="pc-icon-btn"
             type="button"
             :disabled="!selectedCustomWallpaper"
             title="编辑壁纸名字"
+            aria-label="编辑壁纸名字"
             @click="renameSelectedWallpaper"
           >
-            改名
+            <i class="fa-solid fa-pen"></i>
           </button>
           <button
-            class="pc-soft-btn danger compact"
+            class="pc-icon-btn danger"
             type="button"
             :disabled="!selectedCustomWallpaper"
             title="删除壁纸"
+            aria-label="删除壁纸"
             @click="deleteSelectedWallpaper"
           >
-            删除
+            <i class="fa-solid fa-trash"></i>
           </button>
         </div>
       </div>
@@ -129,33 +136,44 @@
           @update:model-value="onFontAssetSelect"
         />
         <div class="pc-asset-actions">
-          <button class="pc-soft-btn compact" type="button" title="导入字体" @click="fontInputEl?.click()">导入</button>
           <button
-            class="pc-soft-btn compact"
+            class="pc-icon-btn"
+            type="button"
+            title="导入字体"
+            aria-label="导入字体"
+            @click="fontInputEl?.click()"
+          >
+            <i class="fa-solid fa-file-import"></i>
+          </button>
+          <button
+            class="pc-icon-btn"
             type="button"
             :disabled="!selectedCustomFont"
             title="导出字体"
+            aria-label="导出字体"
             @click="exportSelectedFont"
           >
-            导出
+            <i class="fa-solid fa-file-export"></i>
           </button>
           <button
-            class="pc-soft-btn compact"
+            class="pc-icon-btn"
             type="button"
             :disabled="!selectedCustomFont"
             title="编辑字体名字"
+            aria-label="编辑字体名字"
             @click="renameSelectedFont"
           >
-            改名
+            <i class="fa-solid fa-pen"></i>
           </button>
           <button
-            class="pc-soft-btn danger compact"
+            class="pc-icon-btn danger"
             type="button"
             :disabled="!selectedCustomFont"
             title="删除字体"
+            aria-label="删除字体"
             @click="deleteSelectedFont"
           >
-            删除
+            <i class="fa-solid fa-trash"></i>
           </button>
         </div>
       </div>
@@ -298,13 +316,6 @@ const fontAssetSelectionOptions = computed(() => {
   }
   return [{ label: settings.value.customFont.fonts.length ? '选择已导入字体' : '尚未导入字体', value: '' }, ...options];
 });
-const wallpaperSummary = computed(() =>
-  settings.value.wallpaper.mode === 'custom'
-    ? `自定义壁纸${selectedCustomWallpaper.value?.name.trim() ? ` · ${selectedCustomWallpaper.value.name}` : ''}`
-    : settings.value.wallpaper.mode === 'preset'
-      ? `预设壁纸 · ${WALLPAPER_PRESETS.find(item => item.id === settings.value.wallpaper.presetId)?.name || '未命名预设'}`
-      : '当前使用默认渐变背景',
-);
 
 function formatSize(bytes: number) {
   return bytes < 1024 ? `${bytes} B` : `${(bytes / 1024).toFixed(1)} KB`;
@@ -591,9 +602,15 @@ async function onBackupSelected(event: Event) {
 }
 .pc-action-grid {
   display: grid;
-  grid-template-columns: repeat(4, 40px);
-  justify-content: end;
+  width: 100%;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 8px;
+}
+.pc-action-grid .pc-soft-btn {
+  min-width: 0;
+  padding-inline: 6px;
+  font-size: 12px;
+  white-space: nowrap;
 }
 .pc-asset-field {
   display: grid;

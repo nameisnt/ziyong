@@ -41,7 +41,6 @@
         @click="$emit('open-entry', entry.id)"
       >
         <strong>{{ entry.kind === 'read-reaction' ? `📖 ${entry.title}` : entry.title }}</strong>
-        <small class="pc-list-row-meta">顺序 {{ entry.directoryOrder }}</small>
       </button>
     </div>
 

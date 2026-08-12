@@ -18,14 +18,7 @@
     @cancel="emit('cancel')"
     @generate="emit('generate')"
     @stop="emit('stop')"
-  >
-    <template #before-fields>
-      <div class="pc-preview-card">
-        <strong>{{ t`上下文` }}</strong>
-        <p>{{ t`基于主楼和已有回复继续生成` }}</p>
-      </div>
-    </template>
-  </GenerationFormPage>
+  />
 </template>
 
 <script setup lang="ts">
@@ -56,19 +49,3 @@ const emit = defineEmits<{
   stop: [];
 }>();
 </script>
-
-<style scoped>
-.pc-preview-card {
-  margin-top: 14px;
-  padding: 14px;
-  border: 1px solid var(--pc-border);
-  border-radius: min(var(--pc-card-radius), 8px);
-  background: color-mix(in srgb, var(--pc-surface) 72%, transparent 28%);
-  backdrop-filter: blur(12px);
-}
-
-.pc-preview-card p {
-  margin: 6px 0 0;
-  color: var(--pc-muted);
-}
-</style>

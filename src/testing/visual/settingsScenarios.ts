@@ -4,6 +4,7 @@ export const settingsScenarioNames = [
   'settings',
   'settings-interface',
   'settings-connection',
+  'settings-connection-external',
   'settings-connection-dark',
   'settings-advanced',
   'theme-form-control-isolation',
@@ -21,7 +22,17 @@ export async function applySettingsVisualScenario(name: string, context: Setting
   if (name === 'settings') context.resetPhoneToRoute('settings', 'root', '设置');
   else if (name === 'settings-interface') context.resetPhoneToRoute('settings', 'root', '设置', { tab: 'interface' });
   else if (name === 'settings-connection') context.resetPhoneToRoute('settings', 'root', '设置', { tab: 'connection' });
-  else if (name === 'settings-connection-dark') {
+  else if (name === 'settings-connection-external') {
+    settings.settings.textProvider.externalProfiles = [];
+    const profile = settings.createExternalApiProfile('custom');
+    profile.name = '视觉测试 API';
+    profile.apiUrl = 'https://api.example.com/v1';
+    context.resetPhoneToRoute('settings', 'root', '设置', { tab: 'connection' });
+    await context.waitForPaint();
+    Array.from(document.querySelectorAll<HTMLElement>('.pc-field-label'))
+      .find(element => element.textContent?.includes('外部 API 配置'))
+      ?.scrollIntoView({ block: 'start' });
+  } else if (name === 'settings-connection-dark') {
     settings.setTheme('dark');
     context.resetPhoneToRoute('settings', 'root', '设置', { tab: 'connection' });
   } else if (name === 'settings-advanced') context.resetPhoneToRoute('settings', 'root', '设置', { tab: 'advanced' });

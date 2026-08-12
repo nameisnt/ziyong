@@ -2428,24 +2428,32 @@ async function applyScenario(name: VisualScenarioName, options: { height?: numbe
     if (!ownerRow) throw new Error('Archive floor backup owner is missing');
     ownerRow.click();
     await waitForPaint();
-    const backupChat = [...document.querySelectorAll<HTMLButtonElement>('.pc-chat-row')].find(button =>
-      button.textContent?.includes('已备份'),
-    );
+    const chatRows = [...document.querySelectorAll<HTMLButtonElement>('.pc-chat-row')];
+    const backupChat = chatRows.find(button => button.textContent?.includes('已备份')) ?? chatRows[0];
     if (!backupChat) throw new Error('Archive floor backup chat is missing');
     backupChat.click();
     await waitForPaint();
     const actions = [...document.querySelectorAll<HTMLButtonElement>('.pc-archive-backup-actions button')];
     if (
-      !['阅读备份', '导出备份', '导入备份', '立即备份'].every(label =>
+      !['阅读备份', '导出备份', '导入备份', '立即备份', '聊天改名', '删除备份'].every(label =>
         actions.some(button => button.textContent?.includes(label)),
       )
     ) {
       throw new Error('Archive floor backup actions are incomplete');
     }
-    actions.find(button => button.textContent?.includes('阅读备份'))?.click();
-    await waitForPaint();
-    if (!document.querySelector('.pc-floor-message') || !document.querySelector('.pc-floor-backup-footer')) {
-      throw new Error('Archive floor backup reader is incomplete');
+    const actionRects = actions.slice(0, 6).map(button => button.getBoundingClientRect());
+    const rowTops = new Set(actionRects.map(rect => Math.round(rect.top)));
+    const columnLefts = new Set(actionRects.map(rect => Math.round(rect.left)));
+    if (rowTops.size !== 2 || columnLefts.size !== 3) {
+      throw new Error(`Archive floor backup actions are not 3 columns × 2 rows: ${columnLefts.size} × ${rowTops.size}`);
+    }
+    const readBackup = actions.find(button => button.textContent?.includes('阅读备份'));
+    if (readBackup && !readBackup.disabled) {
+      readBackup.click();
+      await waitForPaint();
+      if (!document.querySelector('.pc-floor-message') || !document.querySelector('.pc-floor-backup-footer')) {
+        throw new Error('Archive floor backup reader is incomplete');
+      }
     }
   } else if (name === 'preset-detail') {
     resetPhoneToRoute('preset-manager', 'detail', '预设条目', { presetName: '视觉预设' });

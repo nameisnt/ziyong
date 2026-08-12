@@ -38,7 +38,7 @@
             :options="tavernPresetOptions"
             placeholder="跟随酒馆当前预设"
           />
-          ><button
+          <button
             class="pc-icon-btn"
             type="button"
             title="刷新酒馆预设列表"
@@ -46,8 +46,9 @@
             @click="refreshTavernPresetNames"
           >
             <i class="fa-solid fa-rotate"></i>
-          </button></div
-      ></label>
+          </button>
+        </div>
+      </label>
       <label class="pc-field-group"
         ><span class="pc-field-label"
           >RPM 请求限制
@@ -143,10 +144,17 @@
               placeholder="请选择配置"
               @update:model-value="settingsStore.setActiveExternalApiProfile"
             />
-            ><button class="pc-icon-btn" type="button" title="新建外部 API 配置" @click="createExternalProfile">
+            <button
+              class="pc-icon-btn"
+              type="button"
+              title="新建外部 API 配置"
+              aria-label="新建外部 API 配置"
+              @click="createExternalProfile"
+            >
               <i class="fa-solid fa-plus"></i>
-            </button></div
-        ></label>
+            </button>
+          </div>
+        </label>
         <EmptyState v-if="!activeExternalProfile" compact title="还没有外部 API 配置，请先新建" />
         <template v-else>
           <label class="pc-field-group"
@@ -275,7 +283,7 @@ const externalUrlStatus = computed(() => {
   const url = resolvedExternalApiUrl.value;
   if (!url) return '请填写外部 API 地址';
   try {
-    return ['http:', 'https:'].includes(new URL(url).protocol) ? `已规范化为 ${url}` : '仅支持 http / https 地址';
+    return ['http:', 'https:'].includes(new URL(url).protocol) ? '' : '仅支持 http / https 地址';
   } catch {
     return '地址格式无效';
   }

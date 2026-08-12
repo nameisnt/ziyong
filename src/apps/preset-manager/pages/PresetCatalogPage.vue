@@ -27,7 +27,6 @@
         <button class="pc-preset-open" type="button" @click="$emit('open', presetName)">
           <span class="pc-preset-copy">
             <strong :title="presetName">{{ presetName }}</strong>
-            <small>{{ presetName === loadedPresetName ? '当前使用' : '点击管理条目' }}</small>
           </span>
         </button>
         <button
@@ -107,15 +106,10 @@ defineEmits<{
   min-width: 0;
   gap: 4px;
 }
-.pc-preset-copy strong,
-.pc-preset-copy small {
+.pc-preset-copy strong {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-}
-.pc-preset-copy small {
-  color: var(--pc-muted);
-  font-size: 12px;
 }
 .pc-preset-error {
   color: var(--pc-danger);

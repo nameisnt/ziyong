@@ -16,10 +16,7 @@
         </div>
       </div>
       <div v-for="control in sizeControls" :key="control.id" class="pc-control-row">
-        <div>
-          <strong>{{ control.label }}</strong>
-          <p>{{ control.value }}{{ control.suffix }}</p>
-        </div>
+        <strong>{{ control.label }}</strong>
         <div class="pc-range-with-number">
           <input
             :value="control.value"
@@ -103,7 +100,6 @@ const sizeControls = computed(() => [
     max: 720,
     min: 320,
     step: 10,
-    suffix: 'px',
     value: settings.value.interfaceSize.phoneWidth,
   },
   {
@@ -112,7 +108,6 @@ const sizeControls = computed(() => [
     max: 980,
     min: 560,
     step: 10,
-    suffix: 'px',
     value: settings.value.interfaceSize.phoneHeight,
   },
   {
@@ -121,7 +116,6 @@ const sizeControls = computed(() => [
     max: 120,
     min: 80,
     step: 5,
-    suffix: '%',
     value: settings.value.interfaceSize.readerScale,
   },
 ]);

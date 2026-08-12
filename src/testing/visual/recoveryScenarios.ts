@@ -22,6 +22,7 @@ const rawJsonl = [
 ].join('\n');
 
 const recoveryScenarioNames = [
+  'recovery-home',
   'recovery-shelf',
   'recovery-group',
   'recovery-cleanup',

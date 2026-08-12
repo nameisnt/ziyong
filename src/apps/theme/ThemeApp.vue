@@ -27,11 +27,9 @@
       <section class="pc-theme-preview" :style="previewStyle">
         <div class="pc-preview-status">
           <strong>10:08</strong>
-          <span>{{ settings.theme === 'light' ? t`日间方案` : t`夜间方案` }}</span>
         </div>
         <div class="pc-preview-copy">
           <strong>{{ t`主题预览` }}</strong>
-          <span>{{ activePresetLabel }}</span>
         </div>
         <div class="pc-preview-icons">
           <span
@@ -75,32 +73,6 @@
         </div>
       </section>
 
-      <section class="pc-theme-presets pc-page-section">
-        <div class="pc-section-head">
-          <strong>{{ t`单个方案` }}</strong>
-        </div>
-        <div class="pc-preset-grid">
-          <button
-            v-for="preset in visibleThemePresets"
-            :key="preset.id"
-            :class="['pc-preset-btn', { active: activePresetLabel === preset.name }]"
-            type="button"
-            :style="{
-              '--preview-accent': preset.accentColor,
-              '--preview-bg': preset.backgroundColor,
-              '--preview-surface': preset.surfaceColor,
-            }"
-            @click="applyPreset(preset)"
-          >
-            <span class="pc-preset-sample">
-              <i></i>
-              <b></b>
-            </span>
-            <strong>{{ preset.name }}</strong>
-          </button>
-        </div>
-      </section>
-
       <button class="pc-list-row pc-theme-entry" type="button" @click="openView('icons')">
         <span class="pc-entry-icon-stack" aria-hidden="true">
           <i
@@ -113,9 +85,6 @@
         </span>
         <span class="pc-entry-copy">
           <strong>{{ t`图标风格` }}</strong>
-          <small
-            >{{ iconStyleLabel }} · {{ customizedAppCount ? `${customizedAppCount} 个单独调整` : t`整套设置` }}</small
-          >
         </span>
         <i class="fa-solid fa-chevron-right pc-entry-chevron"></i>
       </button>
@@ -124,7 +93,6 @@
         <span class="pc-entry-symbol"><i class="fa-solid fa-sliders"></i></span>
         <span class="pc-entry-copy">
           <strong>{{ t`高级外观` }}</strong>
-          <small>{{ appearanceSummary }}</small>
         </span>
         <i class="fa-solid fa-chevron-right pc-entry-chevron"></i>
       </button>
@@ -213,7 +181,6 @@
             ></span>
             <div>
               <strong>{{ selectedApp.name }}</strong>
-              <small>{{ t`只修改这个 App` }}</small>
             </div>
             <button class="pc-icon-btn" type="button" :title="t`清除覆盖`" @click="clearAppOverride(selectedApp.id)">
               <i class="fa-solid fa-rotate-left"></i>
@@ -888,14 +855,6 @@ const radiusControls: { key: RadiusKey; label: string; min: number; max: number 
 const visibleApps = computed(() => getPhoneApps().filter(app => app.id !== 'home'));
 const previewApps = computed(() => visibleApps.value.slice(0, 6));
 const selectedApp = computed(() => visibleApps.value.find(app => app.id === selectedAppId.value) ?? null);
-const visibleThemePresets = computed(() => themePresets.filter(preset => preset.mode === settings.value.theme));
-const customizedAppCount = computed(
-  () =>
-    new Set([
-      ...Object.keys(settings.value.visualTheme.appIconOverrides),
-      ...Object.keys(settings.value.visualTheme.appAccentOverrides),
-    ]).size,
-);
 const selectedCustomFont = computed(
   () =>
     settings.value.customFont.fonts.find(
@@ -962,36 +921,10 @@ function createFontSelectionOptions(selected: string, includeSystemDefault: bool
 }
 const fontSelectionOptions = computed(() => createFontSelectionOptions(fontSelectionValue.value, true));
 const readerFontSelectionOptions = computed(() => createFontSelectionOptions(readerFontSelectionValue.value, false));
-const activePresetLabel = computed(() => {
-  const matched = visibleThemePresets.value.find(
-    preset =>
-      preset.accentColor.toLowerCase() === settings.value.visualTheme.accentColor.toLowerCase() &&
-      preset.backgroundColor.toLowerCase() === settings.value.visualTheme.backgroundColor.toLowerCase() &&
-      preset.surfaceColor.toLowerCase() === settings.value.visualTheme.surfaceColor.toLowerCase() &&
-      preset.cardRadius === settings.value.visualTheme.cardRadius &&
-      preset.controlRadius === settings.value.visualTheme.controlRadius &&
-      preset.iconRadius === settings.value.visualTheme.iconRadius,
-  );
-  return matched?.name || '自定义';
-});
 const iconStyleId = computed<IconStyleId>(() => {
   if (settings.value.visualTheme.appIconColor) return 'unified';
   if (settings.value.visualTheme.appIconBackgroundColor) return 'soft';
   return 'native';
-});
-const iconStyleLabel = computed(() => iconStyleOptions.find(item => item.id === iconStyleId.value)?.name || '跟随 App');
-const appearanceSummary = computed(() => {
-  const wallpaper =
-    settings.value.wallpaper.mode === 'preset'
-      ? getWallpaperPreset(settings.value.wallpaper.presetId)?.name || '预设壁纸'
-      : settings.value.wallpaper.mode === 'custom'
-        ? selectedCustomWallpaper.value?.name || '自定义壁纸'
-        : '默认背景';
-  const font =
-    fontOptions.find(item => item.value === settings.value.fontFamily)?.label ||
-    selectedCustomFont.value?.name ||
-    '自定义字体';
-  return `${wallpaper} · ${font}`;
 });
 const previewStyle = computed(() => {
   const wallpaper =
@@ -1012,18 +945,6 @@ const previewStyle = computed(() => {
 function openView(nextView: Exclude<ThemeView, 'root'>) {
   selectedAppId.value = '';
   view.value = nextView;
-}
-
-function applyPreset(preset: ThemePreset) {
-  const nextVisualTheme = normalizeImportedVisualTheme(preset);
-  if (!nextVisualTheme) return;
-  settings.value.visualTheme = {
-    ...nextVisualTheme,
-    appAccentOverrides: settings.value.visualTheme.appAccentOverrides,
-    appIconOverrides: settings.value.visualTheme.appIconOverrides,
-  };
-  settings.value.floatBallColor = preset.accentColor;
-  toastr.success(`已应用${settings.value.theme === 'light' ? '日间' : '夜间'}主题：${preset.name}`);
 }
 
 function createThemePackProfile(preset: ThemePreset, iconStyle: IconStyleId): ThemeAppearanceProfile {
@@ -1358,13 +1279,6 @@ async function onThemeSelected(event: Event) {
   font-size: 28px;
 }
 
-.pc-preview-status span,
-.pc-preview-copy span {
-  font-size: 12px;
-  font-weight: 800;
-  opacity: 0.7;
-}
-
 .pc-preview-icons {
   display: grid;
   grid-template-columns: repeat(6, minmax(0, 1fr));
@@ -1380,11 +1294,6 @@ async function onThemeSelected(event: Event) {
   border-radius: var(--pc-icon-radius);
   background: var(--preview-app-bg);
   color: var(--preview-app-accent);
-}
-
-.pc-theme-presets {
-  display: grid;
-  gap: 10px;
 }
 
 .pc-theme-packs {
@@ -1477,13 +1386,6 @@ async function onThemeSelected(event: Event) {
   font-size: 11px;
 }
 
-.pc-preset-grid {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 10px;
-}
-
-.pc-preset-btn,
 .pc-icon-style-option,
 .pc-app-grid-item {
   min-width: 0;
@@ -1493,48 +1395,10 @@ async function onThemeSelected(event: Event) {
   cursor: pointer;
 }
 
-.pc-preset-btn {
-  display: grid;
-  gap: 8px;
-  padding: 8px;
-  border-radius: var(--pc-control-radius);
-}
-
-.pc-preset-btn.active,
 .pc-icon-style-option.active,
 .pc-app-grid-item.active {
   border-color: var(--pc-theme-accent);
   box-shadow: 0 0 0 2px color-mix(in srgb, var(--pc-theme-accent) 16%, transparent);
-}
-
-.pc-preset-sample {
-  position: relative;
-  display: block;
-  height: 52px;
-  overflow: hidden;
-  border-radius: max(8px, calc(var(--pc-control-radius) - 5px));
-  background: var(--preview-bg);
-}
-
-.pc-preset-sample i,
-.pc-preset-sample b {
-  position: absolute;
-  display: block;
-  border-radius: 6px;
-}
-
-.pc-preset-sample i {
-  inset: 10px 10px auto;
-  height: 18px;
-  background: var(--preview-surface);
-}
-
-.pc-preset-sample b {
-  right: 10px;
-  bottom: 8px;
-  width: 18px;
-  height: 18px;
-  background: var(--preview-accent);
 }
 
 .pc-theme-entry {

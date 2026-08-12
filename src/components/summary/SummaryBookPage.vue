@@ -39,7 +39,6 @@
           <strong>{{ entry.title }}</strong>
           <small>{{ entry.rangeLabel }}</small>
         </span>
-        <small class="pc-list-row-meta">顺序 {{ entry.directoryOrder }}</small>
       </button>
     </div>
 

@@ -39,6 +39,7 @@ export function createVisualScenarioGroups(rootAppScenarios: string[]): VisualSc
     {
       id: 'recovery',
       scenarios: [
+        'recovery-home',
         'recovery-shelf',
         'recovery-group',
         'recovery-cleanup',
@@ -56,6 +57,7 @@ export function createVisualScenarioGroups(rootAppScenarios: string[]): VisualSc
         'settings',
         'settings-interface',
         'settings-connection',
+        'settings-connection-external',
         'settings-connection-dark',
         'settings-advanced',
         'theme-form-control-isolation',

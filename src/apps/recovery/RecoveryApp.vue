@@ -1,16 +1,11 @@
 <template>
   <section class="pc-recovery-app">
     <section v-if="route.page === 'root'" class="pc-recovery-page">
-      <article class="pc-section-card pc-recovery-category-intro">
-        <strong>选择备份类型</strong>
-        <p>聊天备份用于阅读和导入历史聊天；设置快照用于检查或恢复酒馆 settings.json。</p>
-      </article>
       <div class="pc-directory-list">
         <button class="pc-list-row pc-recovery-category-row" type="button" @click="openChatBackups">
           <span class="pc-recovery-category-icon"><i class="fa-solid fa-comments"></i></span>
           <span class="pc-list-row-copy">
             <strong>聊天备份</strong>
-            <small>按角色查看、阅读、导入、查层和查重</small>
           </span>
           <i class="fa-solid fa-chevron-right"></i>
         </button>
@@ -18,7 +13,6 @@
           <span class="pc-recovery-category-icon"><i class="fa-solid fa-sliders"></i></span>
           <span class="pc-list-row-copy">
             <strong>设置快照</strong>
-            <small>查看、创建、恢复和查重酒馆设置</small>
           </span>
           <i class="fa-solid fa-chevron-right"></i>
         </button>
@@ -1341,17 +1335,6 @@ async function openImportedChat() {
 .pc-recovery-toolbar {
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto;
-}
-
-.pc-recovery-category-intro {
-  display: grid;
-  gap: 6px;
-}
-
-.pc-recovery-category-intro p {
-  margin: 0;
-  color: var(--pc-muted);
-  line-height: 1.5;
 }
 
 .pc-recovery-category-row {
