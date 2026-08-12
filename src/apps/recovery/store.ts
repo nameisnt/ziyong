@@ -281,7 +281,11 @@ export const useChatRecoveryStore = defineStore('chat-recovery', () => {
         }
         return [item];
       });
-      if (deletable.length) await deleteSettingsSnapshotsByHashes(cleanupToken, deletable.map(item => item.hash));
+      if (deletable.length)
+        await deleteSettingsSnapshotsByHashes(
+          cleanupToken,
+          deletable.map(item => item.hash),
+        );
       const before = new Map(settingsSnapshots.value.map(item => [item.name, item]));
       await refreshSettingsSnapshots();
       const remaining = new Set(settingsSnapshots.value.map(item => item.name));

@@ -105,12 +105,7 @@
       <div class="pc-compact-toolbar pc-recovery-settings-toolbar">
         <span class="pc-directory-count">{{ recovery.settingsSnapshots.length }} 份设置快照</span>
         <div class="pc-directory-actions">
-          <button
-            class="pc-soft-btn"
-            type="button"
-            :disabled="recovery.managementBusy"
-            @click="openSettingsDuplicates"
-          >
+          <button class="pc-soft-btn" type="button" :disabled="recovery.managementBusy" @click="openSettingsDuplicates">
             <i class="fa-solid fa-clone"></i><span>查重</span>
           </button>
           <button
@@ -141,10 +136,7 @@
         <strong>读取失败</strong>
         <p>{{ recovery.settingsError }}</p>
       </article>
-      <EmptyState
-        v-if="!recovery.settingsLoading && !recovery.settingsSnapshots.length"
-        title="还没有设置快照"
-      >
+      <EmptyState v-if="!recovery.settingsLoading && !recovery.settingsSnapshots.length" title="还没有设置快照">
         <p>可以点击“新建”保存当前酒馆设置。</p>
       </EmptyState>
       <div v-else class="pc-directory-list">
@@ -397,8 +389,7 @@
               >
                 <strong>较短版 · {{ item.actualChatItems }} 层</strong>
                 <small>
-                  {{ item.summary.fileName }} · 续长版新增
-                  {{ group.keeper.actualChatItems - item.actualChatItems }} 层
+                  {{ item.summary.fileName }} · 续长版新增 {{ group.keeper.actualChatItems - item.actualChatItems }} 层
                 </small>
               </button>
               <i class="fa-solid fa-chevron-right"></i>
@@ -554,11 +545,7 @@
           <strong>重复候选</strong>
           <span>{{ settingsDuplicateSelectedNames.length }}/{{ settingsDuplicateCandidateCount }} 份已选</span>
         </div>
-        <EmptyState
-          v-if="!recovery.settingsDuplicateScanResult.groups.length"
-          compact
-          title="没有完全相同的设置快照"
-        />
+        <EmptyState v-if="!recovery.settingsDuplicateScanResult.groups.length" compact title="没有完全相同的设置快照" />
         <div v-else class="pc-recovery-duplicate-list">
           <section
             v-for="group in recovery.settingsDuplicateScanResult.groups"
@@ -582,11 +569,7 @@
               </span>
               <i class="fa-solid fa-chevron-right"></i>
             </button>
-            <div
-              v-for="item in group.duplicates"
-              :key="item.summary.name"
-              class="pc-recovery-cleanup-item"
-            >
+            <div v-for="item in group.duplicates" :key="item.summary.name" class="pc-recovery-cleanup-item">
               <input
                 type="checkbox"
                 :checked="settingsDuplicateSelectedNames.includes(item.summary.name)"
@@ -860,10 +843,7 @@ const duplicateCandidateCount = computed(() =>
   (recovery.duplicateScanResult?.groups ?? []).reduce((total, group) => total + group.duplicates.length, 0),
 );
 const containedCandidateCount = computed(() =>
-  (recovery.duplicateScanResult?.containedGroups ?? []).reduce(
-    (total, group) => total + group.contained.length,
-    0,
-  ),
+  (recovery.duplicateScanResult?.containedGroups ?? []).reduce((total, group) => total + group.contained.length, 0),
 );
 const duplicateScanButtonLabel = computed(() => {
   if (!recovery.duplicateScanning) return '扫描完全相同的备份';
@@ -876,10 +856,7 @@ const cleanupScanButtonLabel = computed(() => {
   return `正在检查 ${recovery.cleanupScanCompleted}/${recovery.cleanupScanTotal}`;
 });
 const settingsDuplicateCandidateCount = computed(() =>
-  (recovery.settingsDuplicateScanResult?.groups ?? []).reduce(
-    (total, group) => total + group.duplicates.length,
-    0,
-  ),
+  (recovery.settingsDuplicateScanResult?.groups ?? []).reduce((total, group) => total + group.duplicates.length, 0),
 );
 const settingsDuplicateScanButtonLabel = computed(() => {
   if (!recovery.settingsDuplicateScanning) return '扫描完全相同的设置快照';

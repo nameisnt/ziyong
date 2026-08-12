@@ -2389,7 +2389,11 @@ async function applyScenario(name: VisualScenarioName, options: { height?: numbe
     backupChat.click();
     await waitForPaint();
     const actions = [...document.querySelectorAll<HTMLButtonElement>('.pc-archive-backup-actions button')];
-    if (!['阅读备份', '导出备份', '导入备份', '立即备份'].every(label => actions.some(button => button.textContent?.includes(label)))) {
+    if (
+      !['阅读备份', '导出备份', '导入备份', '立即备份'].every(label =>
+        actions.some(button => button.textContent?.includes(label)),
+      )
+    ) {
       throw new Error('Archive floor backup actions are incomplete');
     }
     actions.find(button => button.textContent?.includes('阅读备份'))?.click();

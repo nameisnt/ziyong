@@ -300,7 +300,10 @@ export function createContainedBackupGroups(
         b.summary.backupCreatedAt - a.summary.backupCreatedAt ||
         b.summary.fileName.localeCompare(a.summary.fileName),
     );
-    const assignments = new Map<string, { contained: DuplicateBackupFingerprint[]; keeper: DuplicateBackupFingerprint }>();
+    const assignments = new Map<
+      string,
+      { contained: DuplicateBackupFingerprint[]; keeper: DuplicateBackupFingerprint }
+    >();
     ordered.forEach(candidate => {
       const keeper = ordered.find(item => isStrictMessagePrefix(candidate, item));
       if (!keeper) return;

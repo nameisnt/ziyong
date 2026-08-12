@@ -97,7 +97,8 @@
           <span class="pc-chat-main">
             <strong>{{ chat.title }}</strong>
             <small>
-              {{ chat.isUsed ? '有手机内容' : '无手机内容' }}{{ chat.floorBackup ? ` · 已备份 ${chat.floorBackup.messages.length} 层` : ''
+              {{ chat.isUsed ? '有手机内容' : '无手机内容'
+              }}{{ chat.floorBackup ? ` · 已备份 ${chat.floorBackup.messages.length} 层` : ''
               }}{{ chat.isCurrent ? ' · 当前聊天' : '' }}
             </small>
           </span>
@@ -116,20 +117,10 @@
           <i class="fa-solid fa-shield-halved"></i>
         </div>
         <div class="pc-archive-backup-actions">
-          <button
-            class="pc-soft-btn"
-            type="button"
-            :disabled="!selectedFloorBackup"
-            @click="openFloorBackup"
-          >
+          <button class="pc-soft-btn" type="button" :disabled="!selectedFloorBackup" @click="openFloorBackup">
             {{ t`阅读备份` }}
           </button>
-          <button
-            class="pc-soft-btn"
-            type="button"
-            :disabled="!selectedFloorBackup"
-            @click="exportSelectedFloorBackup"
-          >
+          <button class="pc-soft-btn" type="button" :disabled="!selectedFloorBackup" @click="exportSelectedFloorBackup">
             {{ t`导出备份` }}
           </button>
           <button class="pc-soft-btn" type="button" @click="floorBackupInputEl?.click()">
@@ -204,7 +195,9 @@
           <strong>{{ selectedFloorBackup.owner.displayName }} / {{ selectedFloorBackup.chat.title }}</strong>
           <span>{{ selectedFloorBackup.messages.length }} 层</span>
         </div>
-        <small>保存于 {{ formatBackupTime(selectedFloorBackup.updatedAt) }}；导入文件只进入备份库，不会自动写入聊天。</small>
+        <small
+          >保存于 {{ formatBackupTime(selectedFloorBackup.updatedAt) }}；导入文件只进入备份库，不会自动写入聊天。</small
+        >
       </article>
 
       <div class="pc-floor-message-list">
@@ -324,7 +317,8 @@ const activeOwner = computed(() => owners.value.find(owner => owner.key === rout
 const selectedFloorBackup = computed(() => selectedChat.value?.floorBackup ?? null);
 const floorBackupSummary = computed(() => {
   const backup = selectedFloorBackup.value;
-  if (!backup) return isSelectedCurrentChat.value ? '尚无备份，可立即保存当前楼层' : '尚无备份；需先在酒馆打开该聊天才能建立';
+  if (!backup)
+    return isSelectedCurrentChat.value ? '尚无备份，可立即保存当前楼层' : '尚无备份；需先在酒馆打开该聊天才能建立';
   return `${backup.messages.length} 层 · ${formatBackupTime(backup.updatedAt)}`;
 });
 const isSelectedCurrentChat = computed(() =>
@@ -439,7 +433,10 @@ function firstDisplayCharacter(value: string, fallback: string) {
   const normalized = value.trim();
   if (!normalized) return fallback;
   if (typeof Intl.Segmenter === 'function') {
-    const first = new Intl.Segmenter('zh-CN', { granularity: 'grapheme' }).segment(normalized)[Symbol.iterator]().next();
+    const first = new Intl.Segmenter('zh-CN', { granularity: 'grapheme' })
+      .segment(normalized)
+      [Symbol.iterator]()
+      .next();
     if (!first.done) return first.value.segment;
   }
   return Array.from(normalized)[0] || fallback;
@@ -476,13 +473,18 @@ function formatOwnerSummary(owner: ArchiveOwner) {
 }
 
 function normalizeOwnerAlias(value: string) {
-  return value.trim().toLowerCase().replace(/\.[^/.]+$/, '');
+  return value
+    .trim()
+    .toLowerCase()
+    .replace(/\.[^/.]+$/, '');
 }
 
 function isBackupOwnedBy(backup: ChatFloorBackup, owner: ArchiveOwner) {
   if (backup.owner.kind !== owner.kind) return false;
   const candidates = new Set(
-    [...owner.aliases, owner.avatar].filter(Boolean).flatMap(alias => [alias.trim().toLowerCase(), normalizeOwnerAlias(alias)]),
+    [...owner.aliases, owner.avatar]
+      .filter(Boolean)
+      .flatMap(alias => [alias.trim().toLowerCase(), normalizeOwnerAlias(alias)]),
   );
   const stableId = backup.owner.stableId.trim().toLowerCase();
   return candidates.has(stableId) || candidates.has(normalizeOwnerAlias(stableId));
@@ -492,7 +494,8 @@ function findFloorBackup(owner: ArchiveOwner, chatId: string) {
   const normalizedChatId = normalizeChatArchiveId(chatId).toLowerCase();
   return (
     floorBackups.value.find(
-      backup => isBackupOwnedBy(backup, owner) && normalizeChatArchiveId(backup.chat.id).toLowerCase() === normalizedChatId,
+      backup =>
+        isBackupOwnedBy(backup, owner) && normalizeChatArchiveId(backup.chat.id).toLowerCase() === normalizedChatId,
     ) ?? null
   );
 }
@@ -573,7 +576,9 @@ async function loadChatsForActiveOwner(force = false) {
     ]);
     floorBackups.value = loadedBackups;
     owner.backupChatIds = new Set(
-      loadedBackups.filter(backup => isBackupOwnedBy(backup, owner)).map(backup => normalizeChatArchiveId(backup.chat.id)),
+      loadedBackups
+        .filter(backup => isBackupOwnedBy(backup, owner))
+        .map(backup => normalizeChatArchiveId(backup.chat.id)),
     );
     if (
       requestSequence !== chatLoadSequence ||
@@ -599,7 +604,10 @@ async function loadChatsForActiveOwner(force = false) {
     owner.backupChatIds.forEach(chatId => {
       if (!rows.has(chatId)) {
         const backup = findFloorBackup(owner, chatId);
-        rows.set(chatId, createChatRow(owner, chatId, backup?.chat.title || formatArchiveChatTitle(chatId), domainReader));
+        rows.set(
+          chatId,
+          createChatRow(owner, chatId, backup?.chat.title || formatArchiveChatTitle(chatId), domainReader),
+        );
       }
     });
     chatRows.value = [...rows.values()].sort(

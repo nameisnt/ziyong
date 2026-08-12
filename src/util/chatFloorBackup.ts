@@ -105,7 +105,10 @@ async function runStore<T>(mode: IDBTransactionMode, action: (store: IDBObjectSt
 }
 
 function normalizeIdentityPart(value: string) {
-  return value.trim().toLowerCase().replace(/\.jsonl$/i, '');
+  return value
+    .trim()
+    .toLowerCase()
+    .replace(/\.jsonl$/i, '');
 }
 
 export function buildChatFloorBackupKey(ownerKind: 'char' | 'group', ownerStableId: string, chatId: string) {
@@ -145,9 +148,8 @@ function getCurrentIdentity() {
   }
 
   const characters = getOptionalGlobalValue<unknown[]>('characters');
-  const getCurrentCharacterId = getOptionalGlobalFunction<() => number | string | null | undefined>(
-    'getCurrentCharacterId',
-  );
+  const getCurrentCharacterId =
+    getOptionalGlobalFunction<() => number | string | null | undefined>('getCurrentCharacterId');
   const characterIndex = Number(
     getCurrentCharacterId?.() ??
       getOptionalGlobalValue('this_chid') ??
@@ -223,7 +225,9 @@ async function deleteChatFloorBackup(key: string) {
   await runStore<undefined>('readwrite', store => store.delete(key));
 }
 
-export async function captureCurrentChatFloorBackup(options: { force?: boolean } = {}): Promise<ChatFloorBackupCaptureResult> {
+export async function captureCurrentChatFloorBackup(
+  options: { force?: boolean } = {},
+): Promise<ChatFloorBackupCaptureResult> {
   const identity = getCurrentIdentity();
   if (!identity) return { backup: null, status: 'unavailable' };
   const messages = readCurrentMessages();
@@ -278,7 +282,12 @@ function assertBackupIdentity(backup: ChatFloorBackup) {
 }
 
 function safeFilePart(value: string) {
-  return value.replace(/[\\/:*?"<>|]/g, '_').trim().slice(0, 60) || '未命名';
+  return (
+    value
+      .replace(/[\\/:*?"<>|]/g, '_')
+      .trim()
+      .slice(0, 60) || '未命名'
+  );
 }
 
 export function downloadChatFloorBackup(backup: ChatFloorBackup) {
@@ -297,7 +306,10 @@ export function isChatFloorBackupForTarget(
   backup: ChatFloorBackup,
   target: { aliases: Iterable<string>; avatar: string; chatId: string; kind: 'char' | 'group' },
 ) {
-  if (backup.owner.kind !== target.kind || normalizeIdentityPart(backup.chat.id) !== normalizeIdentityPart(target.chatId)) {
+  if (
+    backup.owner.kind !== target.kind ||
+    normalizeIdentityPart(backup.chat.id) !== normalizeIdentityPart(target.chatId)
+  ) {
     return false;
   }
   const aliases = new Set([...target.aliases, target.avatar].filter(Boolean).map(normalizeIdentityPart));
@@ -370,7 +382,8 @@ export async function migrateChatFloorBackupRename(event: TavernChatRenamedEvent
     key: newKey,
     updatedAt: new Date().toISOString(),
   });
-  const keeper = alreadyMigrated && alreadyMigrated.messages.length > candidate.messages.length ? alreadyMigrated : candidate;
+  const keeper =
+    alreadyMigrated && alreadyMigrated.messages.length > candidate.messages.length ? alreadyMigrated : candidate;
   await saveChatFloorBackup(keeper);
   await deleteChatFloorBackup(oldKey);
   return true;
