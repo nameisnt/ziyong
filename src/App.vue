@@ -3,18 +3,19 @@
     <Panel />
   </Teleport>
 
-  <Teleport v-if="menuTargetReady" to="#extensionsMenu">
-    <button
+  <Teleport v-if="menuTargetReady" to="#pc_reader_wand_container">
+    <div
       id="pc-menu-entry"
-      class="list-group-item flex-container flexGap5 pc-menu-entry"
-      type="button"
+      class="pc-menu-entry"
+      role="button"
+      tabindex="0"
       @click="phone.openPhone()"
+      @keydown.enter.prevent="phone.openPhone()"
+      @keydown.space.prevent="phone.openPhone()"
     >
-      <span class="extensionsMenuExtensionButton">
-        <i class="fa-solid fa-mobile-screen-button"></i>
-      </span>
+      <div class="fa-solid fa-mobile-screen-button extensionsMenuExtensionButton" aria-hidden="true"></div>
       <span>{{ t`打开功能性阅读器` }}</span>
-    </button>
+    </div>
   </Teleport>
 
   <Teleport to="body">
@@ -66,7 +67,22 @@ async function tryRecoverCurrentScope() {
 
 function syncTeleportTargets() {
   settingsTargetReady.value = Boolean(document.querySelector('#extensions_settings2'));
-  menuTargetReady.value = Boolean(document.querySelector('#extensionsMenu'));
+  const menu = document.querySelector<HTMLElement>('#extensionsMenu');
+  if (!menu) {
+    menuTargetReady.value = false;
+    return;
+  }
+
+  let target = document.querySelector<HTMLElement>('#pc_reader_wand_container');
+  if (!target) {
+    target = document.createElement('div');
+    target.id = 'pc_reader_wand_container';
+    target.className = 'extension_container';
+    const dataBankContainer = menu.querySelector('#data_bank_wand_container');
+    if (dataBankContainer) dataBankContainer.insertAdjacentElement('afterend', target);
+    else menu.prepend(target);
+  }
+  menuTargetReady.value = true;
 }
 
 onMounted(() => {
@@ -99,20 +115,6 @@ onUnmounted(() => {
   stopChatRenamed = null;
   targetObserver?.disconnect();
   targetObserver = null;
+  document.querySelector('#pc_reader_wand_container')?.remove();
 });
 </script>
-
-<style scoped>
-.pc-menu-entry {
-  border: 0;
-  width: 100%;
-  text-align: left;
-  cursor: pointer;
-}
-
-.pc-menu-entry .extensionsMenuExtensionButton {
-  width: 28px;
-  display: inline-grid;
-  place-items: center;
-}
-</style>

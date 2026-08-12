@@ -1,17 +1,9 @@
 <template>
   <section class="pc-regex-wizard-app">
-    <article class="pc-section-card pc-regex-wizard-intro">
-      <div>
-        <strong>用结构生成正则</strong>
-        <small>填写标签、固定字段和容错方式；下方会实时生成并测试 JS 正则。</small>
-      </div>
-      <InfoHint text="适合结构稳定的平面文本；同名标签递归嵌套、任意 HTML/XML 不适合用正则可靠解析。" />
-    </article>
-
     <article class="pc-section-card pc-regex-wizard-form">
       <div class="pc-regex-wizard-section">
-        <span class="pc-field-label">1. 需要什么结果</span>
-        <div class="pc-regex-wizard-purpose">
+        <strong class="pc-regex-wizard-step-title">1. 需要什么结果</strong>
+        <div class="pc-segment pc-regex-wizard-purpose">
           <button
             v-for="option in purposeOptions"
             :key="option.value"
@@ -25,32 +17,36 @@
       </div>
 
       <div class="pc-regex-wizard-section">
-        <span class="pc-field-label">2. 原文结构</span>
-        <div class="pc-regex-wizard-mode-tabs">
+        <div class="pc-regex-wizard-step-head">
+          <strong class="pc-regex-wizard-step-title">2. 原文结构</strong>
+          <InfoHint text="适合结构稳定的平面文本；同名标签递归嵌套、任意 HTML/XML 不适合用正则可靠解析。" />
+        </div>
+        <div class="pc-segment pc-regex-wizard-mode-tabs">
           <button
             :class="['pc-segment-btn', { active: draft.mode === 'boundary' }]"
             type="button"
             @click="draft.mode = 'boundary'"
           >
-            双边界
+            标签或双边界
           </button>
           <button
             :class="['pc-segment-btn', { active: draft.mode === 'fields' }]"
             type="button"
             @click="draft.mode = 'fields'"
           >
-            多个固定字段
+            多个字段
           </button>
         </div>
 
         <template v-if="draft.mode === 'boundary'">
-          <div class="pc-regex-wizard-kind-tabs">
+          <span class="pc-regex-wizard-choice-label">边界类型</span>
+          <div class="pc-segment pc-regex-wizard-kind-tabs">
             <button
               :class="['pc-segment-btn', { active: draft.boundaryKind === 'tag' }]"
               type="button"
               @click="draft.boundaryKind = 'tag'"
             >
-              XML / 标签
+              XML 标签
             </button>
             <button
               :class="['pc-segment-btn', { active: draft.boundaryKind === 'literal' }]"
@@ -78,30 +74,33 @@
         </template>
 
         <template v-else>
-          <div class="pc-regex-wizard-kind-tabs">
+          <span class="pc-regex-wizard-choice-label pc-regex-wizard-choice-head">
+            字段结构
+            <InfoHint
+              v-if="draft.fieldStructure === 'line'"
+              text="每项填写冒号前固定出现的文字。支持中文或英文冒号；相同字段名可以添加多次，并按列表顺序匹配。"
+            />
+          </span>
+          <div class="pc-segment pc-regex-wizard-kind-tabs">
             <button
               :class="['pc-segment-btn', { active: draft.fieldStructure === 'line' }]"
               type="button"
               @click="draft.fieldStructure = 'line'"
             >
-              外层标签 + 行字段
+              行字段
             </button>
             <button
               :class="['pc-segment-btn', { active: draft.fieldStructure === 'tag' }]"
               type="button"
               @click="draft.fieldStructure = 'tag'"
             >
-              多个 XML 子标签
+              XML 子标签
             </button>
           </div>
           <label v-if="draft.fieldStructure === 'line'" class="pc-field-group">
             <span class="pc-field-label">外层标签名称</span>
             <input v-model="draft.fieldsContainerTagName" class="pc-field" placeholder="例如：aa" />
           </label>
-          <InfoHint
-            v-if="draft.fieldStructure === 'line'"
-            text="每项填写冒号前固定出现的文字。支持中文或英文冒号；相同字段名可以添加多次，并按列表顺序匹配。"
-          />
           <div class="pc-regex-wizard-field-list">
             <article v-for="(field, index) in draft.fields" :key="field.id" class="pc-editor-card pc-regex-field-card">
               <header>
@@ -150,17 +149,14 @@
                   />
                 </label>
               </div>
-              <div class="pc-regex-field-kind">
-                <button
-                  v-for="option in fieldKindOptions"
-                  :key="option.value"
-                  :class="['pc-segment-btn', { active: field.kind === option.value }]"
-                  type="button"
-                  @click="field.kind = option.value"
-                >
-                  {{ option.label }}
-                </button>
-              </div>
+              <label class="pc-field-group">
+                <span class="pc-field-label">字段用途</span>
+                <select v-model="field.kind" class="pc-select">
+                  <option v-for="option in fieldKindOptions" :key="option.value" :value="option.value">
+                    {{ option.label }}
+                  </option>
+                </select>
+              </label>
               <label v-if="field.kind === 'fixed'" class="pc-field-group">
                 <span class="pc-field-label">必须等于</span>
                 <input v-model="field.fixedValue" class="pc-field" placeholder="例如：forum" />
@@ -216,7 +212,7 @@
             <label><input v-model="draft.allowEmpty" type="checkbox" />允许内容为空</label>
             <label><input v-model="draft.caseInsensitive" type="checkbox" />忽略大小写</label>
           </div>
-          <div class="pc-regex-wizard-occurrence">
+          <div class="pc-segment pc-regex-wizard-occurrence">
             <button
               :class="['pc-segment-btn', { active: draft.occurrence === 'first' }]"
               type="button"
@@ -282,10 +278,8 @@
 
     <article class="pc-section-card pc-regex-wizard-result">
       <header>
-        <div>
-          <strong>生成结果</strong>
-          <small>正则替换 App 使用不带两侧 / / 的表达式主体。</small>
-        </div>
+        <strong>生成结果</strong>
+        <InfoHint text="正则替换 App 使用不带两侧 / / 的表达式主体。" />
       </header>
 
       <div class="pc-regex-wizard-code-row">
@@ -404,9 +398,9 @@ const targetPresetName = ref('');
 const presetNames = ref<string[]>([]);
 
 const purposeOptions: Array<{ label: string; value: RegexWizardPurpose }> = [
-  { label: '提取中间内容', value: 'extract-content' },
-  { label: '提取整个区块', value: 'extract-block' },
-  { label: '删除整个区块', value: 'remove-block' },
+  { label: '中间内容', value: 'extract-content' },
+  { label: '整个区块', value: 'extract-block' },
+  { label: '删除区块', value: 'remove-block' },
 ];
 const fieldKindOptions: Array<{ label: string; value: RegexWizardFieldKind }> = [
   { label: '提取内容', value: 'capture' },
@@ -562,8 +556,6 @@ watch(
   padding: 14px;
 }
 
-.pc-regex-wizard-intro,
-.pc-regex-wizard-intro > div,
 .pc-regex-wizard-form,
 .pc-regex-wizard-section,
 .pc-regex-wizard-test,
@@ -574,31 +566,51 @@ watch(
   gap: 12px;
 }
 
-.pc-regex-wizard-intro {
-  grid-template-columns: minmax(0, 1fr) auto;
-  align-items: center;
-}
-
-.pc-regex-wizard-intro small,
-.pc-regex-wizard-test small,
-.pc-regex-wizard-result small {
+.pc-regex-wizard-test small {
   color: var(--pc-muted);
   font-size: 12px;
   line-height: 1.45;
 }
 
-.pc-regex-wizard-purpose,
-.pc-regex-wizard-field-kind {
+.pc-regex-wizard-section + .pc-regex-wizard-section {
+  border-top: 1px solid var(--pc-border);
+  padding-top: 14px;
+}
+
+.pc-regex-wizard-step-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.pc-regex-wizard-step-title {
+  color: var(--pc-text);
+  font-size: 14px;
+}
+
+.pc-regex-wizard-choice-label {
+  color: var(--pc-muted);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.pc-regex-wizard-purpose {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 6px;
 }
 
-.pc-regex-wizard-purpose .pc-segment-btn,
-.pc-regex-wizard-field-kind .pc-segment-btn {
+.pc-regex-wizard-purpose .pc-segment-btn {
   min-width: 0;
   padding-inline: 4px;
-  font-size: 11px;
+  font-size: 12px;
+}
+
+.pc-regex-wizard-choice-head {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
 }
 
 .pc-regex-wizard-mode-tabs,
@@ -632,6 +644,21 @@ watch(
 
 .pc-regex-field-card header > div {
   justify-content: flex-end;
+}
+
+.pc-regex-wizard-test header > div {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: 8px;
+}
+
+.pc-regex-wizard-test header small {
+  border-radius: 999px;
+  padding: 3px 7px;
+  background: color-mix(in srgb, var(--pc-theme-accent) 12%, var(--pc-surface-strong) 88%);
+  color: var(--pc-theme-accent);
+  white-space: nowrap;
 }
 
 .pc-regex-field-grid {

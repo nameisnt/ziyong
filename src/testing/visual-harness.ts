@@ -781,6 +781,19 @@ async function applyScenario(name: VisualScenarioName, options: { height?: numbe
 
   if (name === 'home') {
     await phone.goHome();
+    await waitForPaint();
+    const dataBankContainer = document.querySelector('#data_bank_wand_container');
+    const readerContainer = document.querySelector('#pc_reader_wand_container');
+    const readerEntry = readerContainer?.querySelector('#pc-menu-entry');
+    if (
+      !dataBankContainer ||
+      dataBankContainer.nextElementSibling !== readerContainer ||
+      readerContainer?.className !== 'extension_container' ||
+      readerEntry?.tagName !== 'DIV' ||
+      !readerEntry.querySelector('.extensionsMenuExtensionButton')
+    ) {
+      throw new Error('Native reader launcher does not match SillyTavern menu structure or position');
+    }
   } else if (name === 'home-five-columns') {
     const settings = useSettingsStore();
     settings.setPhoneWindowWidth(350);
@@ -2366,6 +2379,15 @@ async function applyScenario(name: VisualScenarioName, options: { height?: numbe
     await leaveAttempt;
     if (String(phone.currentRoute.page) !== 'preview')
       throw new Error('Card writer preview left after cancelling confirmation');
+  } else if (name === 'regex-wizard-fields') {
+    resetPhoneToRoute('regex-wizard', 'root', '正则向导');
+    await waitForPaint();
+    const fieldsButton = [...document.querySelectorAll<HTMLButtonElement>('.pc-regex-wizard-mode-tabs button')].find(
+      button => button.textContent?.includes('多个字段'),
+    );
+    if (!fieldsButton) throw new Error('Regex wizard fields mode is missing');
+    fieldsButton.click();
+    await waitForPaint();
   } else if (name.startsWith('app:')) {
     const appId = name.slice('app:'.length);
     const app = PHONE_APPS.find(item => item.id === appId);
