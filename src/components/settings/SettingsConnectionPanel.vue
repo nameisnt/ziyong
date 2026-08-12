@@ -81,8 +81,9 @@
         <label class="pc-connection-setting-row">
           <strong
             >解析前清理思维链
-            <InfoHint text="找到配置的 XML 结束标签后，删除该标签及其之前的全部内容，再交给 App 解析。找不到标签时不会修改输出。" /></strong
-          >
+            <InfoHint
+              text="找到配置的 XML 结束标签后，删除该标签及其之前的全部内容，再交给 App 解析。找不到标签时不会修改输出。"
+          /></strong>
           <span class="pc-toggle"
             ><input v-model="settings.generation.outputCleaningEnabled" type="checkbox" /><span></span
           ></span>

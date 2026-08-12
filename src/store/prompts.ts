@@ -208,9 +208,7 @@ function ensureUnifiedTheaterOutputRule(settings: PromptSettings) {
   ].join('\n');
   settings.outputRules['theater.generate'] = {
     ...klona(legacy),
-    ...(legacy.outputFormat
-      ? { outputFormat: `${legacy.outputFormat.trim()}\n\n${fenceInstruction}` }
-      : {}),
+    ...(legacy.outputFormat ? { outputFormat: `${legacy.outputFormat.trim()}\n\n${fenceInstruction}` } : {}),
   };
 }
 

@@ -12,7 +12,6 @@
 </template>
 
 <script setup lang="ts">
-
 defineProps<{ title?: string }>();
 
 const content = defineModel<string>('content', { required: true });

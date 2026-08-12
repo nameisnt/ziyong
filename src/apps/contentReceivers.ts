@@ -378,9 +378,7 @@ export function createTheaterContentReceiver(): PhoneContentReceiver {
       const entries = context.sources.map(source =>
         theater.createEntry({
           content:
-            source.displayMode === 'frontend'
-              ? wrapLegacyTheaterFrontend(source.content)
-              : stripFrontendMarkup(source),
+            source.displayMode === 'frontend' ? wrapLegacyTheaterFrontend(source.content) : stripFrontendMarkup(source),
           participants,
           renderMode: 'markdown',
           title: sourceTitle(source, '未命名小剧场'),

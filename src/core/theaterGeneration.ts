@@ -52,12 +52,8 @@ export function createTheaterGenerationAdapter(theaterStore: {
     },
     configSchema: TheaterGenerateConfigSchema,
     parse(raw) {
-      return parseConfiguredOutput(
-        'theater.generate',
-        raw,
-        SimpleXmlResultSchema,
-        () =>
-          parseTheaterXmlResult(raw, { preserveContentMarkup: true }),
+      return parseConfiguredOutput('theater.generate', raw, SimpleXmlResultSchema, () =>
+        parseTheaterXmlResult(raw, { preserveContentMarkup: true }),
       );
     },
     async save(result, context) {

@@ -47,8 +47,8 @@ export function cleanGenerationOutput(
     const remaining = rawOutput.slice(cutEnd);
     const whitespaceLength = remaining.match(/^\s*/u)?.[0].length ?? 0;
     const candidateStart = cutEnd + whitespaceLength;
-    const candidate = tags.find(tag =>
-      rawOutput.slice(candidateStart, candidateStart + tag.length).toLowerCase() === tag.toLowerCase(),
+    const candidate = tags.find(
+      tag => rawOutput.slice(candidateStart, candidateStart + tag.length).toLowerCase() === tag.toLowerCase(),
     );
     if (!candidate) break;
     cutEnd = candidateStart + candidate.length;
