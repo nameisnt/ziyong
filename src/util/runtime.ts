@@ -661,6 +661,10 @@ export function captureTavernPromptPreview(
   const helperGenerateFn =
     getTavernHelperMethod<(config: Record<string, unknown>) => Promise<unknown>>('generate') ??
     getOptionalGlobalFunction<(config: Record<string, unknown>) => Promise<unknown>>('generate');
+  const helperGenerateRawFn =
+    getTavernHelperMethod<(config: Record<string, unknown>) => Promise<unknown>>('generateRaw') ??
+    getOptionalGlobalFunction<(config: Record<string, unknown>) => Promise<unknown>>('generateRaw');
+  const usesOrderedPrompts = Array.isArray(generateConfig.ordered_prompts);
   const sillyTavernGenerateFn = (() => {
     const runtime = getOptionalGlobalValue<Record<string, unknown>>('SillyTavern');
     const fn = runtime?.generate;
@@ -668,7 +672,10 @@ export function captureTavernPromptPreview(
       ? (fn.bind(runtime) as (input: string, options?: Record<string, unknown>) => Promise<unknown>)
       : null;
   })();
-  if (!helperGenerateFn && !sillyTavernGenerateFn) {
+  if (usesOrderedPrompts && !helperGenerateRawFn) {
+    return Promise.reject(new Error('未检测到酒馆助手 generateRaw 接口，无法捕获插件预设'));
+  }
+  if (!usesOrderedPrompts && !helperGenerateFn && !sillyTavernGenerateFn) {
     return Promise.reject(new Error('未检测到酒馆助手 generate 接口'));
   }
 
@@ -768,9 +775,11 @@ export function captureTavernPromptPreview(
       max_chat_history: generateConfig.max_chat_history,
       quiet: true,
     };
-    const capturePromise = helperGenerateFn
-      ? helperGenerateFn(generateConfig)
-      : sillyTavernGenerateFn?.(userInput, captureOptions);
+    const capturePromise = usesOrderedPrompts
+      ? helperGenerateRawFn?.(generateConfig)
+      : helperGenerateFn
+        ? helperGenerateFn(generateConfig)
+        : sillyTavernGenerateFn?.(userInput, captureOptions);
 
     Promise.resolve(capturePromise).catch(error => {
       if (settled) return;

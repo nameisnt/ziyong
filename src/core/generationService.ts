@@ -1004,7 +1004,10 @@ export async function captureGenerationPrompt<TConfig, TResult, TSaveResult = { 
     );
 
   try {
-    return await captureTask();
+    const captured = await captureTask();
+    return prepared.pluginPresetRecord
+      ? { ...captured, preset: prepared.pluginPresetRecord.name }
+      : captured;
   } finally {
     releasePhoneGeneration();
   }
