@@ -96,6 +96,7 @@ declare module 'vue' {
     ReaderContent: typeof import('./src/components/ReaderContent.vue')['default']
     ReaderDetailShell: typeof import('./src/components/ReaderDetailShell.vue')['default']
     ReaderTextEditModal: typeof import('./src/components/ReaderTextEditModal.vue')['default']
+    ReasoningDisclosure: typeof import('./src/components/ReasoningDisclosure.vue')['default']
     ReasoningModal: typeof import('./src/components/ReasoningModal.vue')['default']
     ReferencePicker: typeof import('./src/components/ReferencePicker.vue')['default']
     SearchableCombobox: typeof import('./src/components/SearchableCombobox.vue')['default']

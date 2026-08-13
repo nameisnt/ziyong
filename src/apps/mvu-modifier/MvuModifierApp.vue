@@ -6,6 +6,7 @@
         type="button"
         :class="{ active: showSourceSettings }"
         :title="t`数据来源设置`"
+        :aria-label="t`数据来源设置`"
         @click="showSourceSettings = !showSourceSettings"
       >
         <i class="fa-solid fa-sliders"></i>
@@ -49,6 +50,7 @@
           type="button"
           :disabled="busy || !rootEntries.length"
           :title="t`全部展开`"
+          :aria-label="t`全部展开`"
           @click="expandAll"
         >
           <i class="fa-solid fa-chevron-down"></i>
@@ -58,6 +60,7 @@
           type="button"
           :disabled="busy || !expandedKeys.length"
           :title="t`全部折叠`"
+          :aria-label="t`全部折叠`"
           @click="collapseAll"
         >
           <i class="fa-solid fa-chevron-up"></i>
@@ -67,6 +70,7 @@
           type="button"
           :disabled="busy || !undoStack.length"
           :title="t`撤销`"
+          :aria-label="t`撤销`"
           @click="undo"
         >
           <i class="fa-solid fa-arrow-rotate-left"></i>
@@ -76,6 +80,7 @@
           type="button"
           :disabled="busy || !redoStack.length"
           :title="t`重做`"
+          :aria-label="t`重做`"
           @click="redo"
         >
           <i class="fa-solid fa-arrow-rotate-right"></i>
@@ -85,6 +90,7 @@
           type="button"
           :disabled="busy"
           :title="t`刷新`"
+          :aria-label="t`刷新`"
           @click="loadData(true)"
         >
           <i class="fa-solid fa-rotate" :class="{ 'fa-spin': busy }"></i>
@@ -94,6 +100,7 @@
           type="button"
           :class="{ active: showHistory }"
           :title="t`修改记录`"
+          :aria-label="t`修改记录`"
           @click="showHistory = !showHistory"
         >
           <i class="fa-solid fa-clock-rotate-left"></i>
@@ -140,6 +147,7 @@
             class="pc-icon-btn danger compact"
             type="button"
             :title="t`清空记录`"
+            :aria-label="t`清空记录`"
             @click="clearHistory"
           >
             <i class="fa-solid fa-trash-can"></i>

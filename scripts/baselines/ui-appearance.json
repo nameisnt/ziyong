@@ -1,0 +1,388 @@
+{
+  "version": 2,
+  "defect": "D-VISUAL-001",
+  "generatedAt": "2026-08-13T12:38:22.997Z",
+  "scenarios": [
+    "home",
+    "home-tasks-dark",
+    "theme-form-control-isolation",
+    "theater-generate-dark-inputs",
+    "reader-theme-appearance"
+  ],
+  "sizes": [
+    "350x700",
+    "390x844",
+    "430x900"
+  ],
+  "evidence": [
+    {
+      "appearance": {
+        "screenshotPerceptualHash": "F0A2AAAA2A2A71AA",
+        "targets": [
+          {
+            "missing": false,
+            "selector": ".pc-phone-shell",
+            "styles": {
+              "backgroundColor": "rgba(0, 0, 0, 0)",
+              "color": "rgb(28, 28, 30)",
+              "fontFamily": "-apple-system, BlinkMacSystemFont, \"Segoe UI\", Roboto, \"Helvetica Neue\", Arial, \"Noto Sans SC\", sans-serif",
+              "fontSize": "16px"
+            }
+          },
+          {
+            "missing": false,
+            "selector": ".pc-home-grid-wrap .pc-grid",
+            "styles": {
+              "gridTemplateColumns": "72.5px 72.5px 72.5px 72.5px"
+            }
+          }
+        ]
+      },
+      "scenario": "home",
+      "size": "350x700"
+    },
+    {
+      "appearance": {
+        "screenshotPerceptualHash": "0D7F3F7355555555",
+        "targets": [
+          {
+            "missing": false,
+            "selector": ".pc-phone-shell",
+            "styles": {
+              "backgroundColor": "rgba(0, 0, 0, 0)",
+              "color": "rgb(245, 245, 247)",
+              "fontFamily": "-apple-system, BlinkMacSystemFont, \"Segoe UI\", Roboto, \"Helvetica Neue\", Arial, \"Noto Sans SC\", sans-serif",
+              "fontSize": "16px"
+            }
+          },
+          {
+            "missing": false,
+            "selector": ".pc-generation-task-center",
+            "styles": {
+              "backgroundColor": "color(srgb 1 1 1 / 0.067451)",
+              "color": "rgb(245, 245, 247)"
+            }
+          }
+        ]
+      },
+      "scenario": "home-tasks-dark",
+      "size": "350x700"
+    },
+    {
+      "appearance": {
+        "screenshotPerceptualHash": "4C38C08177792102",
+        "targets": [
+          {
+            "missing": false,
+            "selector": ".pc-field",
+            "styles": {
+              "backgroundColor": "rgb(44, 44, 46)",
+              "color": "rgb(245, 245, 247)"
+            }
+          },
+          {
+            "missing": false,
+            "selector": ".pc-generation-form-page",
+            "styles": {
+              "backgroundColor": "rgba(0, 0, 0, 0)",
+              "color": "rgb(245, 245, 247)"
+            }
+          }
+        ]
+      },
+      "scenario": "theme-form-control-isolation",
+      "size": "350x700"
+    },
+    {
+      "appearance": {
+        "screenshotPerceptualHash": "E03CE09377072100",
+        "targets": [
+          {
+            "missing": false,
+            "selector": ".pc-area",
+            "styles": {
+              "backgroundColor": "rgb(44, 44, 46)",
+              "color": "rgb(245, 245, 247)"
+            }
+          },
+          {
+            "missing": false,
+            "selector": ".pc-generation-form-page",
+            "styles": {
+              "backgroundColor": "rgba(0, 0, 0, 0)",
+              "color": "rgb(245, 245, 247)"
+            }
+          }
+        ]
+      },
+      "scenario": "theater-generate-dark-inputs",
+      "size": "350x700"
+    },
+    {
+      "appearance": {
+        "screenshotPerceptualHash": "F0D0CE0F07010101",
+        "targets": [
+          {
+            "missing": false,
+            "selector": ".pc-reader-content",
+            "styles": {
+              "backgroundColor": "rgba(0, 0, 0, 0)",
+              "color": "rgb(123, 63, 228)",
+              "fontFamily": "\"Courier New\", monospace",
+              "fontSize": "16px",
+              "lineHeight": "25.6px"
+            }
+          }
+        ]
+      },
+      "scenario": "reader-theme-appearance",
+      "size": "350x700"
+    },
+    {
+      "appearance": {
+        "screenshotPerceptualHash": "F0AA2B2B2B0101AA",
+        "targets": [
+          {
+            "missing": false,
+            "selector": ".pc-phone-shell",
+            "styles": {
+              "backgroundColor": "rgba(0, 0, 0, 0)",
+              "color": "rgb(28, 28, 30)",
+              "fontFamily": "-apple-system, BlinkMacSystemFont, \"Segoe UI\", Roboto, \"Helvetica Neue\", Arial, \"Noto Sans SC\", sans-serif",
+              "fontSize": "16px"
+            }
+          },
+          {
+            "missing": false,
+            "selector": ".pc-home-grid-wrap .pc-grid",
+            "styles": {
+              "gridTemplateColumns": "82.5px 82.5px 82.5px 82.5px"
+            }
+          }
+        ]
+      },
+      "scenario": "home",
+      "size": "390x844"
+    },
+    {
+      "appearance": {
+        "screenshotPerceptualHash": "0D3F7B6355555555",
+        "targets": [
+          {
+            "missing": false,
+            "selector": ".pc-phone-shell",
+            "styles": {
+              "backgroundColor": "rgba(0, 0, 0, 0)",
+              "color": "rgb(245, 245, 247)",
+              "fontFamily": "-apple-system, BlinkMacSystemFont, \"Segoe UI\", Roboto, \"Helvetica Neue\", Arial, \"Noto Sans SC\", sans-serif",
+              "fontSize": "16px"
+            }
+          },
+          {
+            "missing": false,
+            "selector": ".pc-generation-task-center",
+            "styles": {
+              "backgroundColor": "color(srgb 1 1 1 / 0.067451)",
+              "color": "rgb(245, 245, 247)"
+            }
+          }
+        ]
+      },
+      "scenario": "home-tasks-dark",
+      "size": "390x844"
+    },
+    {
+      "appearance": {
+        "screenshotPerceptualHash": "7B30372171230080",
+        "targets": [
+          {
+            "missing": false,
+            "selector": ".pc-field",
+            "styles": {
+              "backgroundColor": "rgb(44, 44, 46)",
+              "color": "rgb(245, 245, 247)"
+            }
+          },
+          {
+            "missing": false,
+            "selector": ".pc-generation-form-page",
+            "styles": {
+              "backgroundColor": "rgba(0, 0, 0, 0)",
+              "color": "rgb(245, 245, 247)"
+            }
+          }
+        ]
+      },
+      "scenario": "theme-form-control-isolation",
+      "size": "390x844"
+    },
+    {
+      "appearance": {
+        "screenshotPerceptualHash": "F3B037330F2300C0",
+        "targets": [
+          {
+            "missing": false,
+            "selector": ".pc-area",
+            "styles": {
+              "backgroundColor": "rgb(44, 44, 46)",
+              "color": "rgb(245, 245, 247)"
+            }
+          },
+          {
+            "missing": false,
+            "selector": ".pc-generation-form-page",
+            "styles": {
+              "backgroundColor": "rgba(0, 0, 0, 0)",
+              "color": "rgb(245, 245, 247)"
+            }
+          }
+        ]
+      },
+      "scenario": "theater-generate-dark-inputs",
+      "size": "390x844"
+    },
+    {
+      "appearance": {
+        "screenshotPerceptualHash": "D0D8DC0707010101",
+        "targets": [
+          {
+            "missing": false,
+            "selector": ".pc-reader-content",
+            "styles": {
+              "backgroundColor": "rgba(0, 0, 0, 0)",
+              "color": "rgb(123, 63, 228)",
+              "fontFamily": "\"Courier New\", monospace",
+              "fontSize": "16px",
+              "lineHeight": "25.6px"
+            }
+          }
+        ]
+      },
+      "scenario": "reader-theme-appearance",
+      "size": "390x844"
+    },
+    {
+      "appearance": {
+        "screenshotPerceptualHash": "B0AA2B2B010101AA",
+        "targets": [
+          {
+            "missing": false,
+            "selector": ".pc-phone-shell",
+            "styles": {
+              "backgroundColor": "rgba(0, 0, 0, 0)",
+              "color": "rgb(28, 28, 30)",
+              "fontFamily": "-apple-system, BlinkMacSystemFont, \"Segoe UI\", Roboto, \"Helvetica Neue\", Arial, \"Noto Sans SC\", sans-serif",
+              "fontSize": "16px"
+            }
+          },
+          {
+            "missing": false,
+            "selector": ".pc-home-grid-wrap .pc-grid",
+            "styles": {
+              "gridTemplateColumns": "92.5px 92.5px 92.5px 92.5px"
+            }
+          }
+        ]
+      },
+      "scenario": "home",
+      "size": "430x900"
+    },
+    {
+      "appearance": {
+        "screenshotPerceptualHash": "4C7D7BC9D4D45455",
+        "targets": [
+          {
+            "missing": false,
+            "selector": ".pc-phone-shell",
+            "styles": {
+              "backgroundColor": "rgba(0, 0, 0, 0)",
+              "color": "rgb(245, 245, 247)",
+              "fontFamily": "-apple-system, BlinkMacSystemFont, \"Segoe UI\", Roboto, \"Helvetica Neue\", Arial, \"Noto Sans SC\", sans-serif",
+              "fontSize": "16px"
+            }
+          },
+          {
+            "missing": false,
+            "selector": ".pc-generation-task-center",
+            "styles": {
+              "backgroundColor": "color(srgb 1 1 1 / 0.067451)",
+              "color": "rgb(245, 245, 247)"
+            }
+          }
+        ]
+      },
+      "scenario": "home-tasks-dark",
+      "size": "430x900"
+    },
+    {
+      "appearance": {
+        "screenshotPerceptualHash": "D878276921000040",
+        "targets": [
+          {
+            "missing": false,
+            "selector": ".pc-field",
+            "styles": {
+              "backgroundColor": "rgb(44, 44, 46)",
+              "color": "rgb(245, 245, 247)"
+            }
+          },
+          {
+            "missing": false,
+            "selector": ".pc-generation-form-page",
+            "styles": {
+              "backgroundColor": "rgba(0, 0, 0, 0)",
+              "color": "rgb(245, 245, 247)"
+            }
+          }
+        ]
+      },
+      "scenario": "theme-form-control-isolation",
+      "size": "430x900"
+    },
+    {
+      "appearance": {
+        "screenshotPerceptualHash": "F0F4276B23000040",
+        "targets": [
+          {
+            "missing": false,
+            "selector": ".pc-area",
+            "styles": {
+              "backgroundColor": "rgb(44, 44, 46)",
+              "color": "rgb(245, 245, 247)"
+            }
+          },
+          {
+            "missing": false,
+            "selector": ".pc-generation-form-page",
+            "styles": {
+              "backgroundColor": "rgba(0, 0, 0, 0)",
+              "color": "rgb(245, 245, 247)"
+            }
+          }
+        ]
+      },
+      "scenario": "theater-generate-dark-inputs",
+      "size": "430x900"
+    },
+    {
+      "appearance": {
+        "screenshotPerceptualHash": "B0F0400703010102",
+        "targets": [
+          {
+            "missing": false,
+            "selector": ".pc-reader-content",
+            "styles": {
+              "backgroundColor": "rgba(0, 0, 0, 0)",
+              "color": "rgb(123, 63, 228)",
+              "fontFamily": "\"Courier New\", monospace",
+              "fontSize": "16px",
+              "lineHeight": "25.6px"
+            }
+          }
+        ]
+      },
+      "scenario": "reader-theme-appearance",
+      "size": "430x900"
+    }
+  ]
+}

@@ -1,0 +1,1588 @@
+{
+  "defect": "D-GUARD-001",
+  "findings": [
+    {
+      "count": 1,
+      "excerpt": "<button class=\"pc-icon-btn\" type=\"button\" :title=\"t`导入 App`\" @click=\"importInput?.click()\">",
+      "file": "src/apps/app-builder/AppBuilderApp.vue",
+      "message": "Icon button must provide aria-label (static or bound).",
+      "ruleId": "icon-button-aria-label"
+    },
+    {
+      "count": 1,
+      "excerpt": "<button class=\"pc-icon-btn\" type=\"button\" :title=\"t`复制 App`\" @click=\"duplicateApp(definition.id)\">",
+      "file": "src/apps/app-builder/AppBuilderApp.vue",
+      "message": "Icon button must provide aria-label (static or bound).",
+      "ruleId": "icon-button-aria-label"
+    },
+    {
+      "count": 1,
+      "excerpt": "<button class=\"pc-icon-btn\" type=\"button\" :title=\"t`导出 App`\" @click=\"exportApp(definition.id)\">",
+      "file": "src/apps/app-builder/AppBuilderApp.vue",
+      "message": "Icon button must provide aria-label (static or bound).",
+      "ruleId": "icon-button-aria-label"
+    },
+    {
+      "count": 1,
+      "excerpt": "<button class=\"pc-icon-btn danger\" type=\"button\" :title=\"t`删除 App`\" @click=\"deleteApp(definition.id)\">",
+      "file": "src/apps/app-builder/AppBuilderApp.vue",
+      "message": "Icon button must provide aria-label (static or bound).",
+      "ruleId": "icon-button-aria-label"
+    },
+    {
+      "count": 1,
+      "excerpt": ".pc-search-wrap .pc-field",
+      "file": "src/apps/app-builder/AppBuilderApp.vue",
+      "message": "Scoped style overrides protected global control geometry.",
+      "ruleId": "protected-control-geometry"
+    },
+    {
+      "count": 1,
+      "excerpt": ".pc-app-builder-copy small, .pc-template-row small, .pc-builder-toggle-row small, .pc-app-builder-section-head small, .pc-field-help",
+      "file": "src/apps/app-builder/AppBuilderApp.vue",
+      "message": "Scoped style overrides protected global control geometry.",
+      "ruleId": "protected-control-geometry"
+    },
+    {
+      "count": 1,
+      "excerpt": "<button class=\"pc-icon-btn\" type=\"button\" :title=\"definition.display.sortDesc ? t`当前倒序，切换正序` : t`当前正序，切换倒序`\" @click=\"toggleSort\" >",
+      "file": "src/apps/app-builder/CustomAppHost.vue",
+      "message": "Icon button must provide aria-label (static or bound).",
+      "ruleId": "icon-button-aria-label"
+    },
+    {
+      "count": 1,
+      "excerpt": "<button class=\"pc-icon-btn\" type=\"button\" :title=\"t`编辑 App 设置`\" @click=\"openAppSettings\">",
+      "file": "src/apps/app-builder/CustomAppHost.vue",
+      "message": "Icon button must provide aria-label (static or bound).",
+      "ruleId": "icon-button-aria-label"
+    },
+    {
+      "count": 1,
+      "excerpt": "<button :class=\"['pc-icon-btn', { active: conversionSelectionMode }]\" type=\"button\" :title=\"conversionSelectionMode ? t`取消转换选择` : t`选择内容进行转换`\" @click=\"startConversionSelection\" >",
+      "file": "src/apps/app-builder/CustomAppHost.vue",
+      "message": "Icon button must provide aria-label (static or bound).",
+      "ruleId": "icon-button-aria-label"
+    },
+    {
+      "count": 1,
+      "excerpt": "<button class=\"pc-icon-btn\" type=\"button\" title=\"查看已保存成品\" @click=\"openLibrary\">",
+      "file": "src/apps/card-writer/CardWriterApp.vue",
+      "message": "Icon button must provide aria-label (static or bound).",
+      "ruleId": "icon-button-aria-label"
+    },
+    {
+      "count": 1,
+      "excerpt": "<button class=\"pc-icon-btn\" type=\"button\" title=\"刷新世界书列表\" @click=\"refreshWorldbooks\">",
+      "file": "src/apps/card-writer/CardWriterApp.vue",
+      "message": "Icon button must provide aria-label (static or bound).",
+      "ruleId": "icon-button-aria-label"
+    },
+    {
+      "count": 1,
+      "excerpt": "<button class=\"pc-icon-btn\" type=\"button\" title=\"复制成品\" @click=\"copyDocument(document)\">",
+      "file": "src/apps/card-writer/CardWriterApp.vue",
+      "message": "Icon button must provide aria-label (static or bound).",
+      "ruleId": "icon-button-aria-label"
+    },
+    {
+      "count": 1,
+      "excerpt": "<button class=\"pc-icon-btn\" type=\"button\" title=\"导入资料表\" @click=\"openProfileImport(document)\">",
+      "file": "src/apps/card-writer/CardWriterApp.vue",
+      "message": "Icon button must provide aria-label (static or bound).",
+      "ruleId": "icon-button-aria-label"
+    },
+    {
+      "count": 1,
+      "excerpt": "<button class=\"pc-icon-btn danger\" type=\"button\" title=\"删除成品\" @click=\"deleteDocument(document)\">",
+      "file": "src/apps/card-writer/CardWriterApp.vue",
+      "message": "Icon button must provide aria-label (static or bound).",
+      "ruleId": "icon-button-aria-label"
+    },
+    {
+      "count": 1,
+      "excerpt": ".pc-card-writer-experience-options .pc-soft-btn",
+      "file": "src/apps/card-writer/CardWriterApp.vue",
+      "message": "Scoped style overrides protected global control geometry.",
+      "ruleId": "protected-control-geometry"
+    },
+    {
+      "count": 1,
+      "excerpt": "<button class=\"pc-icon-btn\" type=\"button\" :disabled=\"!quickTemplateGroups.length\" :title=\"quickTemplateGroups.length ? t`插入模板快捷` : t`还没有模板快捷`\" @click=\"templateShortcutOpen = !templ",
+      "file": "src/apps/chat-insert/ChatInsertApp.vue",
+      "message": "Icon button must provide aria-label (static or bound).",
+      "ruleId": "icon-button-aria-label"
+    },
+    {
+      "count": 1,
+      "excerpt": ".pc-area.compact",
+      "file": "src/apps/chat-insert/ChatInsertApp.vue",
+      "message": "Scoped style overrides protected global control geometry.",
+      "ruleId": "protected-control-geometry"
+    },
+    {
+      "count": 1,
+      "excerpt": "<button class=\"pc-icon-btn primary\" type=\"button\" :disabled=\"!activeProfile\" :title=\"t`AI 生成媒体提示词`\" @click=\"openAiGenerate\" >",
+      "file": "src/apps/cloud-media/CloudMediaApp.vue",
+      "message": "Icon button must provide aria-label (static or bound).",
+      "ruleId": "icon-button-aria-label"
+    },
+    {
+      "count": 1,
+      "excerpt": "<button class=\"pc-icon-btn\" type=\"button\" :title=\"t`配置服务`\" @click=\"openSettings\">",
+      "file": "src/apps/cloud-media/CloudMediaApp.vue",
+      "message": "Icon button must provide aria-label (static or bound).",
+      "ruleId": "icon-button-aria-label"
+    },
+    {
+      "count": 1,
+      "excerpt": "<button class=\"pc-icon-btn\" type=\"button\" :title=\"t`新增配置`\" @click=\"addProfile\">",
+      "file": "src/apps/cloud-media/CloudMediaApp.vue",
+      "message": "Icon button must provide aria-label (static or bound).",
+      "ruleId": "icon-button-aria-label"
+    },
+    {
+      "count": 1,
+      "excerpt": "<button class=\"pc-icon-btn danger\" type=\"button\" :disabled=\"settings.profiles.length <= 1\" :title=\"t`删除配置`\" @click=\"deleteActiveProfile\" >",
+      "file": "src/apps/cloud-media/CloudMediaApp.vue",
+      "message": "Icon button must provide aria-label (static or bound).",
+      "ruleId": "icon-button-aria-label"
+    },
+    {
+      "count": 1,
+      "excerpt": "<button class=\"pc-icon-btn\" type=\"button\" :title=\"showApiKey ? t`隐藏密钥` : t`显示密钥`\" @click=\"showApiKey = !showApiKey\" >",
+      "file": "src/apps/cloud-media/CloudMediaApp.vue",
+      "message": "Icon button must provide aria-label (static or bound).",
+      "ruleId": "icon-button-aria-label"
+    },
+    {
+      "count": 1,
+      "excerpt": "<button class=\"pc-icon-btn primary\" type=\"button\" :disabled=\"loading\" :title=\"loading ? t`正在读取模型` : t`读取模型`\" @click=\"refresh\" >",
+      "file": "src/apps/comfy/ComfyApp.vue",
+      "message": "Icon button must provide aria-label (static or bound).",
+      "ruleId": "icon-button-aria-label"
+    },
+    {
+      "count": 1,
+      "excerpt": "<button class=\"pc-icon-btn primary\" type=\"button\" :title=\"t`新建工作流`\" @click=\"newWorkflow\">",
+      "file": "src/apps/comfy/ComfyApp.vue",
+      "message": "Icon button must provide aria-label (static or bound).",
+      "ruleId": "icon-button-aria-label"
+    },
+    {
+      "count": 1,
+      "excerpt": ".pc-param-mode .pc-segment-btn",
+      "file": "src/apps/comfy/ComfyApp.vue",
+      "message": "Scoped style overrides protected global control geometry.",
+      "ruleId": "protected-control-geometry"
+    },
+    {
+      "count": 1,
+      "excerpt": "<button class=\"pc-icon-btn\" type=\"button\" :title=\"t`手动新增`\" @click=\"openEditor()\">",
+      "file": "src/apps/digest/DigestApp.vue",
+      "message": "Icon button must provide aria-label (static or bound).",
+      "ruleId": "icon-button-aria-label"
+    },
+    {
+      "count": 1,
+      "excerpt": "<button class=\"pc-icon-btn primary\" type=\"button\" :title=\"t`AI 摘抄`\" @click=\"openGenerate\">",
+      "file": "src/apps/digest/DigestApp.vue",
+      "message": "Icon button must provide aria-label (static or bound).",
+      "ruleId": "icon-button-aria-label"
+    },
+    {
+      "count": 1,
+      "excerpt": ".pc-area.compact",
+      "file": "src/apps/digest/DigestApp.vue",
+      "message": "Scoped style overrides protected global control geometry.",
+      "ruleId": "protected-control-geometry"
+    },
+    {
+      "count": 1,
+      "excerpt": "<button class=\"pc-icon-btn\" type=\"button\" :disabled=\"syncingIds.includes(binding.id)\" title=\"立即同步\" @click=\"$emit('sync', binding.id)\" >",
+      "file": "src/apps/entry-library/pages/EntryLibraryBindingsPage.vue",
+      "message": "Icon button must provide aria-label (static or bound).",
+      "ruleId": "icon-button-aria-label"
+    },
+    {
+      "count": 1,
+      "excerpt": "<button class=\"pc-icon-btn danger\" type=\"button\" title=\"删除绑定\" @click=\"$emit('delete-binding', binding.id)\">",
+      "file": "src/apps/entry-library/pages/EntryLibraryBindingsPage.vue",
+      "message": "Icon button must provide aria-label (static or bound).",
+      "ruleId": "icon-button-aria-label"
+    },
+    {
+      "count": 1,
+      "excerpt": ".pc-entry-binding-template .pc-area",
+      "file": "src/apps/entry-library/pages/EntryLibraryBindingsPage.vue",
+      "message": "Scoped style overrides protected global control geometry.",
+      "ruleId": "protected-control-geometry"
+    },
+    {
+      "count": 1,
+      "excerpt": "<button class=\"pc-icon-btn active\" type=\"button\" :disabled=\"!groupName.trim()\" title=\"新建分组\" @click=\"$emit('create-group')\" >",
+      "file": "src/apps/entry-library/pages/EntryLibraryCatalogPage.vue",
+      "message": "Icon button must provide aria-label (static or bound).",
+      "ruleId": "icon-button-aria-label"
+    },
+    {
+      "count": 1,
+      "excerpt": "<button class=\"pc-icon-btn danger\" type=\"button\" title=\"删除分组\" @click=\"$emit('delete-group', section.group.id)\" >",
+      "file": "src/apps/entry-library/pages/EntryLibraryCatalogPage.vue",
+      "message": "Icon button must provide aria-label (static or bound).",
+      "ruleId": "icon-button-aria-label"
+    },
+    {
+      "count": 1,
+      "excerpt": "<button class=\"pc-icon-btn pc-entry-drag-handle\" type=\"button\" :disabled=\"Boolean(query.trim())\" :title=\"query.trim() ? '清除搜索后排序' : '拖拽排序'\" @click.prevent >",
+      "file": "src/apps/entry-library/pages/EntryLibraryCatalogPage.vue",
+      "message": "Icon button must provide aria-label (static or bound).",
+      "ruleId": "icon-button-aria-label"
+    },
+    {
+      "count": 1,
+      "excerpt": "<button class=\"pc-icon-btn danger\" type=\"button\" title=\"删除\" @click=\"$emit('delete-item', item.id)\">",
+      "file": "src/apps/entry-library/pages/EntryLibraryCatalogPage.vue",
+      "message": "Icon button must provide aria-label (static or bound).",
+      "ruleId": "icon-button-aria-label"
+    },
+    {
+      "count": 1,
+      "excerpt": ".pc-entry-library-search .pc-field",
+      "file": "src/apps/entry-library/pages/EntryLibraryCollectPage.vue",
+      "message": "Scoped style overrides protected global control geometry.",
+      "ruleId": "protected-control-geometry"
+    },
+    {
+      "count": 1,
+      "excerpt": "<button class=\"pc-icon-btn\" type=\"button\" title=\"保留两条\" @click=\"$emit('dismiss', pair)\">",
+      "file": "src/apps/entry-library/pages/EntryLibraryDedupePage.vue",
+      "message": "Icon button must provide aria-label (static or bound).",
+      "ruleId": "icon-button-aria-label"
+    },
+    {
+      "count": 1,
+      "excerpt": ".pc-entry-content-field .pc-area",
+      "file": "src/apps/entry-library/pages/EntryLibraryItemEditorPage.vue",
+      "message": "Scoped style overrides protected global control geometry.",
+      "ruleId": "protected-control-geometry"
+    },
+    {
+      "count": 1,
+      "excerpt": "<button class=\"pc-icon-btn\" type=\"button\" :disabled=\"repository.busy\" title=\"刷新仓库清单\" @click=\"refresh\">",
+      "file": "src/apps/file-repository/FileRepositoryApp.vue",
+      "message": "Icon button must provide aria-label (static or bound).",
+      "ruleId": "icon-button-aria-label"
+    },
+    {
+      "count": 1,
+      "excerpt": "<button class=\"pc-icon-btn primary\" type=\"button\" :title=\"t`新增图片`\" @click=\"openEditor()\">",
+      "file": "src/apps/gallery/GalleryApp.vue",
+      "message": "Icon button must provide aria-label (static or bound).",
+      "ruleId": "icon-button-aria-label"
+    },
+    {
+      "count": 1,
+      "excerpt": "<button class=\"pc-icon-btn\" type=\"button\" :title=\"t`编辑`\" @click=\"openEditor(activeEntry.id)\">",
+      "file": "src/apps/gallery/GalleryApp.vue",
+      "message": "Icon button must provide aria-label (static or bound).",
+      "ruleId": "icon-button-aria-label"
+    },
+    {
+      "count": 1,
+      "excerpt": "<button class=\"pc-icon-btn\" type=\"button\" :title=\"t`下载`\" @click=\"downloadEntry(activeEntry)\">",
+      "file": "src/apps/gallery/GalleryApp.vue",
+      "message": "Icon button must provide aria-label (static or bound).",
+      "ruleId": "icon-button-aria-label"
+    },
+    {
+      "count": 1,
+      "excerpt": "<button class=\"pc-icon-btn danger\" type=\"button\" :title=\"t`删除`\" @click=\"deleteEntry(activeEntry)\">",
+      "file": "src/apps/gallery/GalleryApp.vue",
+      "message": "Icon button must provide aria-label (static or bound).",
+      "ruleId": "icon-button-aria-label"
+    },
+    {
+      "count": 1,
+      "excerpt": ".pc-area.compact",
+      "file": "src/apps/gallery/GalleryApp.vue",
+      "message": "Scoped style overrides protected global control geometry.",
+      "ruleId": "protected-control-geometry"
+    },
+    {
+      "count": 1,
+      "excerpt": ".pc-guess-form .pc-field",
+      "file": "src/apps/game-2048/GuessNumberGame.vue",
+      "message": "Scoped style overrides protected global control geometry.",
+      "ruleId": "protected-control-geometry"
+    },
+    {
+      "count": 1,
+      "excerpt": ".pc-sudoku-pad .pc-soft-btn",
+      "file": "src/apps/game-2048/SudokuGame.vue",
+      "message": "Scoped style overrides protected global control geometry.",
+      "ruleId": "protected-control-geometry"
+    },
+    {
+      "count": 1,
+      "excerpt": "<button class=\"pc-icon-btn primary\" type=\"button\" :title=\"t`AI 填写参数`\" @click=\"openComfyGenerate\">",
+      "file": "src/apps/media/MediaGenerateApp.vue",
+      "message": "Icon button must provide aria-label (static or bound).",
+      "ruleId": "icon-button-aria-label"
+    },
+    {
+      "count": 1,
+      "excerpt": ".pc-area.compact",
+      "file": "src/apps/media/MediaGenerateApp.vue",
+      "message": "Scoped style overrides protected global control geometry.",
+      "ruleId": "protected-control-geometry"
+    },
+    {
+      "count": 1,
+      "excerpt": "<button class=\"pc-icon-btn primary\" type=\"button\" :title=\"t`新增音乐`\" @click=\"openEditor()\">",
+      "file": "src/apps/music/MusicApp.vue",
+      "message": "Icon button must provide aria-label (static or bound).",
+      "ruleId": "icon-button-aria-label"
+    },
+    {
+      "count": 1,
+      "excerpt": "<button class=\"pc-icon-btn\" type=\"button\" :disabled=\"busy\" :title=\"t`刷新预设状态`\" @click=\"refresh\">",
+      "file": "src/apps/preset-link/PresetLinkApp.vue",
+      "message": "Icon button must provide aria-label (static or bound).",
+      "ruleId": "icon-button-aria-label"
+    },
+    {
+      "count": 1,
+      "excerpt": "<button v-if=\"source === 'tavern'\" class=\"pc-icon-btn\" type=\"button\" :disabled=\"loading\" title=\"刷新预设\" @click=\"$emit('refresh')\" >",
+      "file": "src/apps/preset-manager/pages/PresetCatalogPage.vue",
+      "message": "Icon button must provide aria-label (static or bound).",
+      "ruleId": "icon-button-aria-label"
+    },
+    {
+      "count": 1,
+      "excerpt": "<button v-else class=\"pc-icon-btn primary\" type=\"button\" title=\"导入插件预设\" @click=\"fileInput?.click()\">",
+      "file": "src/apps/preset-manager/pages/PresetCatalogPage.vue",
+      "message": "Icon button must provide aria-label (static or bound).",
+      "ruleId": "icon-button-aria-label"
+    },
+    {
+      "count": 1,
+      "excerpt": "<button class=\"pc-icon-btn pc-preset-use\" type=\"button\" :class=\"{ active: presetName === loadedPresetName }\" :disabled=\"switchingPreset === presetName || presetName === loadedPrese",
+      "file": "src/apps/preset-manager/pages/PresetCatalogPage.vue",
+      "message": "Icon button must provide aria-label (static or bound).",
+      "ruleId": "icon-button-aria-label"
+    },
+    {
+      "count": 1,
+      "excerpt": "<button v-if=\"!pluginPreset && presetName !== loadedPresetName\" class=\"pc-icon-btn primary\" type=\"button\" :disabled=\"mutationBusy || switchingPreset === presetName\" title=\"使用这个预设\" ",
+      "file": "src/apps/preset-manager/pages/PresetDetailPage.vue",
+      "message": "Icon button must provide aria-label (static or bound).",
+      "ruleId": "icon-button-aria-label"
+    },
+    {
+      "count": 1,
+      "excerpt": ".pc-preset-editor .pc-area",
+      "file": "src/apps/preset-manager/pages/PresetPromptCopyPage.vue",
+      "message": "Scoped style overrides protected global control geometry.",
+      "ruleId": "protected-control-geometry"
+    },
+    {
+      "count": 1,
+      "excerpt": ".pc-preset-editor .pc-form-actions",
+      "file": "src/apps/preset-manager/pages/PresetPromptCopyPage.vue",
+      "message": "Scoped style overrides protected global control geometry.",
+      "ruleId": "protected-control-geometry"
+    },
+    {
+      "count": 1,
+      "excerpt": "<button class=\"pc-icon-btn danger\" type=\"button\" :disabled=\"saving\" title=\"删除条目\" @click=\"$emit('remove')\">",
+      "file": "src/apps/preset-manager/pages/PresetPromptEditorPage.vue",
+      "message": "Icon button must provide aria-label (static or bound).",
+      "ruleId": "icon-button-aria-label"
+    },
+    {
+      "count": 1,
+      "excerpt": ".pc-preset-editor .pc-area",
+      "file": "src/apps/preset-manager/pages/PresetPromptEditorPage.vue",
+      "message": "Scoped style overrides protected global control geometry.",
+      "ruleId": "protected-control-geometry"
+    },
+    {
+      "count": 1,
+      "excerpt": ".pc-preset-editor .pc-form-actions",
+      "file": "src/apps/preset-manager/pages/PresetPromptEditorPage.vue",
+      "message": "Scoped style overrides protected global control geometry.",
+      "ruleId": "protected-control-geometry"
+    },
+    {
+      "count": 1,
+      "excerpt": "<button v-if=\"reorderable\" class=\"pc-icon-btn pc-preset-drag-handle\" type=\"button\" :disabled=\"busy\" title=\"拖拽排序\" @click.prevent @pointercancel=\"$emit('drag-cancel', $event)\" @point",
+      "file": "src/apps/preset-manager/PresetPromptRow.vue",
+      "message": "Icon button must provide aria-label (static or bound).",
+      "ruleId": "icon-button-aria-label"
+    },
+    {
+      "count": 1,
+      "excerpt": "<button v-if=\"editable\" class=\"pc-icon-btn pc-preset-copy-btn\" type=\"button\" :disabled=\"busy\" title=\"复制到原条目下方\" @click=\"$emit('copy', prompt)\" >",
+      "file": "src/apps/preset-manager/PresetPromptRow.vue",
+      "message": "Icon button must provide aria-label (static or bound).",
+      "ruleId": "icon-button-aria-label"
+    },
+    {
+      "count": 1,
+      "excerpt": "<button class=\"pc-icon-btn\" type=\"button\" title=\"管理资料表\" @click=\"$emit('open-tables')\">",
+      "file": "src/apps/profiles/pages/ProfilesCatalogPage.vue",
+      "message": "Icon button must provide aria-label (static or bound).",
+      "ruleId": "icon-button-aria-label"
+    },
+    {
+      "count": 1,
+      "excerpt": "<button class=\"pc-icon-btn\" type=\"button\" title=\"新增条目\" @click=\"$emit('create')\">",
+      "file": "src/apps/profiles/pages/ProfilesCatalogPage.vue",
+      "message": "Icon button must provide aria-label (static or bound).",
+      "ruleId": "icon-button-aria-label"
+    },
+    {
+      "count": 1,
+      "excerpt": "<button class=\"pc-icon-btn primary\" type=\"button\" title=\"AI 生成资料\" @click=\"$emit('generate')\">",
+      "file": "src/apps/profiles/pages/ProfilesCatalogPage.vue",
+      "message": "Icon button must provide aria-label (static or bound).",
+      "ruleId": "icon-button-aria-label"
+    },
+    {
+      "count": 1,
+      "excerpt": ".pc-profile-view-toggle .pc-segment-btn",
+      "file": "src/apps/profiles/pages/ProfilesCatalogPage.vue",
+      "message": "Scoped style overrides protected global control geometry.",
+      "ruleId": "protected-control-geometry"
+    },
+    {
+      "count": 1,
+      "excerpt": "<button class=\"pc-icon-btn\" type=\"button\" title=\"添加字段\" @click=\"$emit('add-column')\">",
+      "file": "src/apps/profiles/pages/ProfilesTableEditorPage.vue",
+      "message": "Icon button must provide aria-label (static or bound).",
+      "ruleId": "icon-button-aria-label"
+    },
+    {
+      "count": 1,
+      "excerpt": "<button class=\"pc-icon-btn pc-profile-column-drag-handle\" type=\"button\" title=\"拖拽排序\" @click.prevent @pointercancel=\"$emit('drag-cancel', $event)\" @pointerdown=\"$emit('drag-start', ",
+      "file": "src/apps/profiles/pages/ProfilesTableEditorPage.vue",
+      "message": "Icon button must provide aria-label (static or bound).",
+      "ruleId": "icon-button-aria-label"
+    },
+    {
+      "count": 1,
+      "excerpt": "<button class=\"pc-icon-btn primary\" type=\"button\" title=\"新建资料表\" @click=\"$emit('create')\">",
+      "file": "src/apps/profiles/pages/ProfilesTableManagerPage.vue",
+      "message": "Icon button must provide aria-label (static or bound).",
+      "ruleId": "icon-button-aria-label"
+    },
+    {
+      "count": 1,
+      "excerpt": "<button class=\"pc-icon-btn\" type=\"button\" :disabled=\"recovery.loading || recovery.managementBusy\" title=\"刷新备份书架\" @click=\"recovery.refresh\" >",
+      "file": "src/apps/recovery/RecoveryApp.vue",
+      "message": "Icon button must provide aria-label (static or bound).",
+      "ruleId": "icon-button-aria-label"
+    },
+    {
+      "count": 1,
+      "excerpt": "<button class=\"pc-icon-btn\" type=\"button\" :disabled=\"recovery.managementBusy\" title=\"刷新设置快照\" @click=\"refreshSettingsSnapshots\" >",
+      "file": "src/apps/recovery/RecoveryApp.vue",
+      "message": "Icon button must provide aria-label (static or bound).",
+      "ruleId": "icon-button-aria-label"
+    },
+    {
+      "count": 1,
+      "excerpt": "<button class=\"pc-icon-btn\" type=\"button\" :disabled=\"recovery.managementBusy\" title=\"查找当前角色的重复备份\" @click=\"openDuplicates(activeGroup.id)\" >",
+      "file": "src/apps/recovery/RecoveryApp.vue",
+      "message": "Icon button must provide aria-label (static or bound).",
+      "ruleId": "icon-button-aria-label"
+    },
+    {
+      "count": 1,
+      "excerpt": "<button class=\"pc-icon-btn\" type=\"button\" :disabled=\"recovery.managementBusy\" title=\"清理当前角色的小备份\" @click=\"openCleanup(activeGroup.id)\" >",
+      "file": "src/apps/recovery/RecoveryApp.vue",
+      "message": "Icon button must provide aria-label (static or bound).",
+      "ruleId": "icon-button-aria-label"
+    },
+    {
+      "count": 1,
+      "excerpt": "<button class=\"pc-icon-btn\" type=\"button\" :disabled=\"recovery.loading || recovery.managementBusy\" title=\"刷新当前角色备份\" @click=\"recovery.refresh\" >",
+      "file": "src/apps/recovery/RecoveryApp.vue",
+      "message": "Icon button must provide aria-label (static or bound).",
+      "ruleId": "icon-button-aria-label"
+    },
+    {
+      "count": 1,
+      "excerpt": "<button class=\"pc-icon-btn danger\" type=\"button\" :disabled=\"recovery.managementBusy\" :title=\"`永久删除 ${backup.fileName}`\" @click=\"confirmDeleteBackup(backup)\" >",
+      "file": "src/apps/recovery/RecoveryApp.vue",
+      "message": "Icon button must provide aria-label (static or bound).",
+      "ruleId": "icon-button-aria-label"
+    },
+    {
+      "count": 1,
+      "excerpt": ".pc-recovery-settings-toolbar .pc-soft-btn",
+      "file": "src/apps/recovery/RecoveryApp.vue",
+      "message": "Scoped style overrides protected global control geometry.",
+      "ruleId": "protected-control-geometry"
+    },
+    {
+      "count": 1,
+      "excerpt": ".pc-recovery-row-actions .pc-soft-btn",
+      "file": "src/apps/recovery/RecoveryApp.vue",
+      "message": "Scoped style overrides protected global control geometry.",
+      "ruleId": "protected-control-geometry"
+    },
+    {
+      "count": 1,
+      "excerpt": "<button v-if=\"activeView === 'rules'\" class=\"pc-icon-btn\" type=\"button\" :title=\"t`新增规则`\" @click=\"addNewRule\">",
+      "file": "src/apps/regex-display/RegexDisplayApp.vue",
+      "message": "Icon button must provide aria-label (static or bound).",
+      "ruleId": "icon-button-aria-label"
+    },
+    {
+      "count": 1,
+      "excerpt": "<button class=\"pc-icon-btn\" type=\"button\" :disabled=\"activeRuleIndex <= 0\" :title=\"t`提高优先级`\" @click=\"regexDisplay.moveRule(activeRule.id, -1)\" >",
+      "file": "src/apps/regex-display/RegexDisplayApp.vue",
+      "message": "Icon button must provide aria-label (static or bound).",
+      "ruleId": "icon-button-aria-label"
+    },
+    {
+      "count": 1,
+      "excerpt": "<button class=\"pc-icon-btn\" type=\"button\" :disabled=\"activeRuleIndex < 0 || activeRuleIndex >= rules.length - 1\" :title=\"t`降低优先级`\" @click=\"regexDisplay.moveRule(activeRule.id, 1)\" ",
+      "file": "src/apps/regex-display/RegexDisplayApp.vue",
+      "message": "Icon button must provide aria-label (static or bound).",
+      "ruleId": "icon-button-aria-label"
+    },
+    {
+      "count": 1,
+      "excerpt": ".pc-area.preview-source",
+      "file": "src/apps/regex-display/RegexDisplayApp.vue",
+      "message": "Scoped style overrides protected global control geometry.",
+      "ruleId": "protected-control-geometry"
+    },
+    {
+      "count": 1,
+      "excerpt": ".pc-toggle-row, .pc-target-pill",
+      "file": "src/apps/regex-display/RegexDisplayApp.vue",
+      "message": "Scoped style overrides protected global control geometry.",
+      "ruleId": "protected-control-geometry"
+    },
+    {
+      "count": 1,
+      "excerpt": "<button class=\"pc-icon-btn\" type=\"button\" :disabled=\"index === 0\" title=\"上移字段\" @click=\"moveField(index, -1)\" >",
+      "file": "src/apps/regex-wizard/RegexWizardApp.vue",
+      "message": "Icon button must provide aria-label (static or bound).",
+      "ruleId": "icon-button-aria-label"
+    },
+    {
+      "count": 1,
+      "excerpt": "<button class=\"pc-icon-btn\" type=\"button\" :disabled=\"index === draft.fields.length - 1\" title=\"下移字段\" @click=\"moveField(index, 1)\" >",
+      "file": "src/apps/regex-wizard/RegexWizardApp.vue",
+      "message": "Icon button must provide aria-label (static or bound).",
+      "ruleId": "icon-button-aria-label"
+    },
+    {
+      "count": 1,
+      "excerpt": "<button class=\"pc-icon-btn danger\" type=\"button\" :disabled=\"draft.fields.length === 1\" title=\"删除字段\" @click=\"removeField(index)\" >",
+      "file": "src/apps/regex-wizard/RegexWizardApp.vue",
+      "message": "Icon button must provide aria-label (static or bound).",
+      "ruleId": "icon-button-aria-label"
+    },
+    {
+      "count": 1,
+      "excerpt": "<button class=\"pc-icon-btn\" type=\"button\" :disabled=\"!generatedRule\" title=\"复制匹配表达式\" @click=\"copyValue('表达式', generatedRule?.pattern || '')\" >",
+      "file": "src/apps/regex-wizard/RegexWizardApp.vue",
+      "message": "Icon button must provide aria-label (static or bound).",
+      "ruleId": "icon-button-aria-label"
+    },
+    {
+      "count": 1,
+      "excerpt": "<button class=\"pc-icon-btn\" type=\"button\" :disabled=\"!generatedRule\" title=\"复制模板\" @click=\"copyValue('模板', generatedRule?.replacement ?? '')\" >",
+      "file": "src/apps/regex-wizard/RegexWizardApp.vue",
+      "message": "Icon button must provide aria-label (static or bound).",
+      "ruleId": "icon-button-aria-label"
+    },
+    {
+      "count": 1,
+      "excerpt": "<button class=\"pc-icon-btn\" type=\"button\" :disabled=\"!generatedRule\" title=\"复制 Flags\" @click=\"copyValue('Flags', generatedRule?.flags || '')\" >",
+      "file": "src/apps/regex-wizard/RegexWizardApp.vue",
+      "message": "Icon button must provide aria-label (static or bound).",
+      "ruleId": "icon-button-aria-label"
+    },
+    {
+      "count": 1,
+      "excerpt": ".pc-regex-wizard-purpose .pc-segment-btn",
+      "file": "src/apps/regex-wizard/RegexWizardApp.vue",
+      "message": "Scoped style overrides protected global control geometry.",
+      "ruleId": "protected-control-geometry"
+    },
+    {
+      "count": 1,
+      "excerpt": ".pc-regex-wizard-test .pc-area",
+      "file": "src/apps/regex-wizard/RegexWizardApp.vue",
+      "message": "Scoped style overrides protected global control geometry.",
+      "ruleId": "protected-control-geometry"
+    },
+    {
+      "count": 1,
+      "excerpt": "<button class=\"pc-icon-btn primary\" type=\"button\" :title=\"t`AI 识别关系`\" @click=\"openGenerate\">",
+      "file": "src/apps/relationship/RelationshipApp.vue",
+      "message": "Icon button must provide aria-label (static or bound).",
+      "ruleId": "icon-button-aria-label"
+    },
+    {
+      "count": 1,
+      "excerpt": "<button class=\"pc-icon-btn\" type=\"button\" :disabled=\"!profileCharacterDraft\" :title=\"t`添加关联人物`\" @click=\"addProfileCharacter\" >",
+      "file": "src/apps/relationship/RelationshipApp.vue",
+      "message": "Icon button must provide aria-label (static or bound).",
+      "ruleId": "icon-button-aria-label"
+    },
+    {
+      "count": 1,
+      "excerpt": "<button class=\"pc-icon-btn\" type=\"button\" :title=\"t`新增人物`\" @click=\"addCharacter\">",
+      "file": "src/apps/relationship/RelationshipApp.vue",
+      "message": "Icon button must provide aria-label (static or bound).",
+      "ruleId": "icon-button-aria-label"
+    },
+    {
+      "count": 1,
+      "excerpt": "<button class=\"pc-icon-btn danger\" type=\"button\" :title=\"t`删除`\" @click=\"removeCharacter(character.id)\" >",
+      "file": "src/apps/relationship/RelationshipApp.vue",
+      "message": "Icon button must provide aria-label (static or bound).",
+      "ruleId": "icon-button-aria-label"
+    },
+    {
+      "count": 1,
+      "excerpt": "<button class=\"pc-icon-btn\" type=\"button\" :title=\"t`新增关系`\" @click=\"addLink\">",
+      "file": "src/apps/relationship/RelationshipApp.vue",
+      "message": "Icon button must provide aria-label (static or bound).",
+      "ruleId": "icon-button-aria-label"
+    },
+    {
+      "count": 1,
+      "excerpt": "<button class=\"pc-icon-btn danger\" type=\"button\" :title=\"t`删除`\" @click=\"relationship.deleteLink(link.id)\" >",
+      "file": "src/apps/relationship/RelationshipApp.vue",
+      "message": "Icon button must provide aria-label (static or bound).",
+      "ruleId": "icon-button-aria-label"
+    },
+    {
+      "count": 1,
+      "excerpt": "<button class=\"pc-icon-btn\" type=\"button\" title=\"新方案\" @click=\"newPlan\">",
+      "file": "src/apps/scene-planner/ScenePlannerApp.vue",
+      "message": "Icon button must provide aria-label (static or bound).",
+      "ruleId": "icon-button-aria-label"
+    },
+    {
+      "count": 1,
+      "excerpt": "<button class=\"pc-icon-btn\" type=\"button\" title=\"增加关联资料\" @click=\"addRelatedProfile\">",
+      "file": "src/apps/storylines/StorylineEditorPage.vue",
+      "message": "Icon button must provide aria-label (static or bound).",
+      "ruleId": "icon-button-aria-label"
+    },
+    {
+      "count": 1,
+      "excerpt": "<button class=\"pc-icon-btn danger\" type=\"button\" title=\"移除关联\" @click=\"removeRelatedProfile(index)\">",
+      "file": "src/apps/storylines/StorylineEditorPage.vue",
+      "message": "Icon button must provide aria-label (static or bound).",
+      "ruleId": "icon-button-aria-label"
+    },
+    {
+      "count": 2,
+      "excerpt": "<button class=\"pc-icon-btn\" type=\"button\" :title=\"t`返回`\" @click=\"view = 'root'\">",
+      "file": "src/apps/theme/ThemeApp.vue",
+      "message": "Icon button must provide aria-label (static or bound).",
+      "ruleId": "icon-button-aria-label"
+    },
+    {
+      "count": 1,
+      "excerpt": "<button class=\"pc-icon-btn\" type=\"button\" :title=\"t`清除覆盖`\" @click=\"clearAppOverride(selectedApp.id)\">",
+      "file": "src/apps/theme/ThemeApp.vue",
+      "message": "Icon button must provide aria-label (static or bound).",
+      "ruleId": "icon-button-aria-label"
+    },
+    {
+      "count": 1,
+      "excerpt": "<button class=\"pc-icon-btn\" type=\"button\" :title=\"t`导入字体`\" @click=\"fontInputEl?.click()\">",
+      "file": "src/apps/theme/ThemeApp.vue",
+      "message": "Icon button must provide aria-label (static or bound).",
+      "ruleId": "icon-button-aria-label"
+    },
+    {
+      "count": 1,
+      "excerpt": ".pc-preview-app-icon, .pc-app-grid-item > span, .pc-selected-app-head > span",
+      "file": "src/apps/theme/ThemeApp.vue",
+      "message": "Scoped style overrides protected global control geometry.",
+      "ruleId": "protected-control-geometry"
+    },
+    {
+      "count": 1,
+      "excerpt": ".pc-entry-copy small, .pc-theme-subhead span, .pc-selected-app-head small, .pc-color-row small, .pc-control-row p",
+      "file": "src/apps/theme/ThemeApp.vue",
+      "message": "Scoped style overrides protected global control geometry.",
+      "ruleId": "protected-control-geometry"
+    },
+    {
+      "count": 1,
+      "excerpt": ".pc-selected-icon-editor",
+      "file": "src/apps/theme/ThemeApp.vue",
+      "message": "Scoped style overrides protected global control geometry.",
+      "ruleId": "protected-control-geometry"
+    },
+    {
+      "count": 1,
+      "excerpt": "<button class=\"pc-icon-btn\" type=\"button\" :title=\"t`写入输入框`\" @click=\"writeToInput\">",
+      "file": "src/apps/timekeeper/TimekeeperApp.vue",
+      "message": "Icon button must provide aria-label (static or bound).",
+      "ruleId": "icon-button-aria-label"
+    },
+    {
+      "count": 1,
+      "excerpt": "<button v-if=\"settings.calendar.kind !== 'gregorian'\" class=\"pc-icon-btn\" type=\"button\" :title=\"t`保存为全局历法`\" @click=\"saveCalendarTemplate\" >",
+      "file": "src/apps/timekeeper/TimekeeperApp.vue",
+      "message": "Icon button must provide aria-label (static or bound).",
+      "ruleId": "icon-button-aria-label"
+    },
+    {
+      "count": 1,
+      "excerpt": "<button v-if=\"isCurrentGlobalTemplate\" class=\"pc-icon-btn danger\" type=\"button\" :title=\"t`删除全局历法模板`\" @click=\"deleteCurrentCalendarTemplate\" >",
+      "file": "src/apps/timekeeper/TimekeeperApp.vue",
+      "message": "Icon button must provide aria-label (static or bound).",
+      "ruleId": "icon-button-aria-label"
+    },
+    {
+      "count": 1,
+      "excerpt": "<button class=\"pc-icon-btn primary\" type=\"button\" :title=\"t`新增人物`\" @click=\"createPerson\">",
+      "file": "src/apps/timekeeper/TimekeeperApp.vue",
+      "message": "Icon button must provide aria-label (static or bound).",
+      "ruleId": "icon-button-aria-label"
+    },
+    {
+      "count": 1,
+      "excerpt": "<button class=\"pc-icon-btn danger\" type=\"button\" :title=\"t`删除`\" @click=\"deletePerson(person.id)\">",
+      "file": "src/apps/timekeeper/TimekeeperApp.vue",
+      "message": "Icon button must provide aria-label (static or bound).",
+      "ruleId": "icon-button-aria-label"
+    },
+    {
+      "count": 1,
+      "excerpt": "<button class=\"pc-icon-btn\" type=\"button\" title=\"复制\" @click=\"copyCode(block.code)\">",
+      "file": "src/apps/tutorial/TutorialApp.vue",
+      "message": "Icon button must provide aria-label (static or bound).",
+      "ruleId": "icon-button-aria-label"
+    },
+    {
+      "count": 1,
+      "excerpt": ".pc-tutorial-search .pc-field",
+      "file": "src/apps/tutorial/TutorialApp.vue",
+      "message": "Scoped style overrides protected global control geometry.",
+      "ruleId": "protected-control-geometry"
+    },
+    {
+      "count": 1,
+      "excerpt": ".pc-tutorial-categories .pc-segment-btn",
+      "file": "src/apps/tutorial/TutorialApp.vue",
+      "message": "Scoped style overrides protected global control geometry.",
+      "ruleId": "protected-control-geometry"
+    },
+    {
+      "count": 1,
+      "excerpt": ".pc-tutorial-code .pc-icon-btn",
+      "file": "src/apps/tutorial/TutorialApp.vue",
+      "message": "Scoped style overrides protected global control geometry.",
+      "ruleId": "protected-control-geometry"
+    },
+    {
+      "count": 1,
+      "excerpt": "<button class=\"pc-icon-btn\" type=\"button\" :title=\"t`打开 ${item.app.name}`\" @click=\"phone.openApp(item.appId)\" >",
+      "file": "src/apps/tutorial/TutorialAppDirectory.vue",
+      "message": "Icon button must provide aria-label (static or bound).",
+      "ruleId": "icon-button-aria-label"
+    },
+    {
+      "count": 1,
+      "excerpt": ".pc-tutorial-directory-search .pc-field",
+      "file": "src/apps/tutorial/TutorialAppDirectory.vue",
+      "message": "Scoped style overrides protected global control geometry.",
+      "ruleId": "protected-control-geometry"
+    },
+    {
+      "count": 1,
+      "excerpt": ".pc-tutorial-directory-row .pc-icon-btn",
+      "file": "src/apps/tutorial/TutorialAppDirectory.vue",
+      "message": "Scoped style overrides protected global control geometry.",
+      "ruleId": "protected-control-geometry"
+    },
+    {
+      "count": 1,
+      "excerpt": "<button class=\"pc-icon-btn primary\" type=\"button\" :title=\"t`新增视频`\" @click=\"openEditor()\">",
+      "file": "src/apps/video/VideoApp.vue",
+      "message": "Icon button must provide aria-label (static or bound).",
+      "ruleId": "icon-button-aria-label"
+    },
+    {
+      "count": 1,
+      "excerpt": "<button class=\"pc-icon-btn\" type=\"button\" :title=\"t`编辑`\" @click=\"openEditor(activeEntry.id)\">",
+      "file": "src/apps/video/VideoApp.vue",
+      "message": "Icon button must provide aria-label (static or bound).",
+      "ruleId": "icon-button-aria-label"
+    },
+    {
+      "count": 1,
+      "excerpt": "<button class=\"pc-icon-btn\" type=\"button\" :title=\"t`下载`\" @click=\"downloadEntry(activeEntry)\">",
+      "file": "src/apps/video/VideoApp.vue",
+      "message": "Icon button must provide aria-label (static or bound).",
+      "ruleId": "icon-button-aria-label"
+    },
+    {
+      "count": 1,
+      "excerpt": "<button class=\"pc-icon-btn danger\" type=\"button\" :title=\"t`删除`\" @click=\"deleteEntry(activeEntry)\">",
+      "file": "src/apps/video/VideoApp.vue",
+      "message": "Icon button must provide aria-label (static or bound).",
+      "ruleId": "icon-button-aria-label"
+    },
+    {
+      "count": 1,
+      "excerpt": ".pc-area.compact",
+      "file": "src/apps/video/VideoApp.vue",
+      "message": "Scoped style overrides protected global control geometry.",
+      "ruleId": "protected-control-geometry"
+    },
+    {
+      "count": 1,
+      "excerpt": "<button class=\"pc-icon-btn\" type=\"button\" :title=\"t`新建流程`\" @click=\"createWorkflow\">",
+      "file": "src/apps/workbench/WorkbenchApp.vue",
+      "message": "Icon button must provide aria-label (static or bound).",
+      "ruleId": "icon-button-aria-label"
+    },
+    {
+      "count": 1,
+      "excerpt": "<button class=\"pc-icon-btn\" type=\"button\" :title=\"t`刷新酒馆预设`\" @click=\"refreshTavernPresetNames\">",
+      "file": "src/apps/workbench/WorkbenchApp.vue",
+      "message": "Icon button must provide aria-label (static or bound).",
+      "ruleId": "icon-button-aria-label"
+    },
+    {
+      "count": 1,
+      "excerpt": "<button class=\"pc-icon-btn\" type=\"button\" :title=\"t`新增步骤`\" @click=\"addStep(workflow.id)\">",
+      "file": "src/apps/workbench/WorkbenchApp.vue",
+      "message": "Icon button must provide aria-label (static or bound).",
+      "ruleId": "icon-button-aria-label"
+    },
+    {
+      "count": 1,
+      "excerpt": "<button class=\"pc-icon-btn\" type=\"button\" :disabled=\"stepIndex === 0\" :title=\"t`上移`\" @click=\"workbench.moveStep(workflow.id, step.id, -1)\" >",
+      "file": "src/apps/workbench/WorkbenchApp.vue",
+      "message": "Icon button must provide aria-label (static or bound).",
+      "ruleId": "icon-button-aria-label"
+    },
+    {
+      "count": 1,
+      "excerpt": "<button class=\"pc-icon-btn\" type=\"button\" :disabled=\"stepIndex === workflow.steps.length - 1\" :title=\"t`下移`\" @click=\"workbench.moveStep(workflow.id, step.id, 1)\" >",
+      "file": "src/apps/workbench/WorkbenchApp.vue",
+      "message": "Icon button must provide aria-label (static or bound).",
+      "ruleId": "icon-button-aria-label"
+    },
+    {
+      "count": 1,
+      "excerpt": "<button class=\"pc-icon-btn danger\" type=\"button\" :title=\"t`删除`\" @click=\"workbench.deleteStep(workflow.id, step.id)\" >",
+      "file": "src/apps/workbench/WorkbenchApp.vue",
+      "message": "Icon button must provide aria-label (static or bound).",
+      "ruleId": "icon-button-aria-label"
+    },
+    {
+      "count": 1,
+      "excerpt": ".pc-workflow-title small, .pc-log-toggle small, .pc-field-group span, .pc-log-row small",
+      "file": "src/apps/workbench/WorkbenchApp.vue",
+      "message": "Scoped style overrides protected global control geometry.",
+      "ruleId": "protected-control-geometry"
+    },
+    {
+      "count": 1,
+      "excerpt": ".pc-step-body > .pc-area.compact",
+      "file": "src/apps/workbench/WorkbenchApp.vue",
+      "message": "Scoped style overrides protected global control geometry.",
+      "ruleId": "protected-control-geometry"
+    },
+    {
+      "count": 1,
+      "excerpt": ".pc-step-actions .pc-icon-btn",
+      "file": "src/apps/workbench/WorkbenchApp.vue",
+      "message": "Scoped style overrides protected global control geometry.",
+      "ruleId": "protected-control-geometry"
+    },
+    {
+      "count": 1,
+      "excerpt": "<button class=\"pc-icon-btn active\" type=\"button\" :title=\"t`新增槽位`\" @click=\"openEditor()\">",
+      "file": "src/apps/world-slots/WorldSlotsApp.vue",
+      "message": "Icon button must provide aria-label (static or bound).",
+      "ruleId": "icon-button-aria-label"
+    },
+    {
+      "count": 1,
+      "excerpt": "<button class=\"pc-icon-btn pc-worldbook-refresh\" type=\"button\" :title=\"t`刷新`\" :disabled=\"refreshing\" @click=\"$emit('refresh')\" >",
+      "file": "src/apps/worldbook-link/pages/WorldbookCatalogPage.vue",
+      "message": "Icon button must provide aria-label (static or bound).",
+      "ruleId": "icon-button-aria-label"
+    },
+    {
+      "count": 1,
+      "excerpt": ".pc-worldbook-tabs .pc-segment-btn",
+      "file": "src/apps/worldbook-link/pages/WorldbookCatalogPage.vue",
+      "message": "Scoped style overrides protected global control geometry.",
+      "ruleId": "protected-control-geometry"
+    },
+    {
+      "count": 1,
+      "excerpt": "<button class=\"pc-icon-btn\" type=\"button\" :disabled=\"busy\" :title=\"t`应用聊天配置`\" @click=\"$emit('apply-profile')\" >",
+      "file": "src/apps/worldbook-link/pages/WorldbookDetailPage.vue",
+      "message": "Icon button must provide aria-label (static or bound).",
+      "ruleId": "icon-button-aria-label"
+    },
+    {
+      "count": 1,
+      "excerpt": "<button class=\"pc-icon-btn\" type=\"button\" :disabled=\"busy\" :title=\"t`以当前状态更新配置`\" @click=\"$emit('capture-profile')\" >",
+      "file": "src/apps/worldbook-link/pages/WorldbookDetailPage.vue",
+      "message": "Icon button must provide aria-label (static or bound).",
+      "ruleId": "icon-button-aria-label"
+    },
+    {
+      "count": 1,
+      "excerpt": "<button class=\"pc-icon-btn danger\" type=\"button\" :disabled=\"busy\" :title=\"t`停止联动`\" @click=\"$emit('unlink')\" >",
+      "file": "src/apps/worldbook-link/pages/WorldbookDetailPage.vue",
+      "message": "Icon button must provide aria-label (static or bound).",
+      "ruleId": "icon-button-aria-label"
+    },
+    {
+      "count": 1,
+      "excerpt": ".pc-worldbook-link-actions .pc-icon-btn",
+      "file": "src/apps/worldbook-link/pages/WorldbookDetailPage.vue",
+      "message": "Scoped style overrides protected global control geometry.",
+      "ruleId": "protected-control-geometry"
+    },
+    {
+      "count": 1,
+      "excerpt": "<button class=\"pc-icon-btn danger\" type=\"button\" :disabled=\"busy\" title=\"删除条目\" @click=\"$emit('remove')\">",
+      "file": "src/apps/worldbook-link/pages/WorldbookEntryEditorPage.vue",
+      "message": "Icon button must provide aria-label (static or bound).",
+      "ruleId": "icon-button-aria-label"
+    },
+    {
+      "count": 1,
+      "excerpt": ".pc-worldbook-content-field .pc-area",
+      "file": "src/apps/worldbook-link/pages/WorldbookEntryEditorPage.vue",
+      "message": "Scoped style overrides protected global control geometry.",
+      "ruleId": "protected-control-geometry"
+    },
+    {
+      "count": 1,
+      "excerpt": "<button class=\"pc-icon-btn\" type=\"button\" :title=\"t`新增词汇规则`\" @click=\"addReplacementRule\">",
+      "file": "src/components/BaguApp.vue",
+      "message": "Icon button must provide aria-label (static or bound).",
+      "ruleId": "icon-button-aria-label"
+    },
+    {
+      "count": 1,
+      "excerpt": "<button class=\"pc-icon-btn\" type=\"button\" :title=\"t`恢复默认词汇规则`\" @click=\"resetRules('replacement')\">",
+      "file": "src/components/BaguApp.vue",
+      "message": "Icon button must provide aria-label (static or bound).",
+      "ruleId": "icon-button-aria-label"
+    },
+    {
+      "count": 2,
+      "excerpt": "<button class=\"pc-icon-btn danger\" type=\"button\" :title=\"t`删除`\" @click=\"removeRule(rule.id)\">",
+      "file": "src/components/BaguApp.vue",
+      "message": "Icon button must provide aria-label (static or bound).",
+      "ruleId": "icon-button-aria-label"
+    },
+    {
+      "count": 1,
+      "excerpt": "<button class=\"pc-icon-btn\" type=\"button\" :title=\"t`新增句式规则`\" @click=\"addTemplateRule\">",
+      "file": "src/components/BaguApp.vue",
+      "message": "Icon button must provide aria-label (static or bound).",
+      "ruleId": "icon-button-aria-label"
+    },
+    {
+      "count": 1,
+      "excerpt": "<button class=\"pc-icon-btn\" type=\"button\" :title=\"t`恢复默认句式规则`\" @click=\"resetRules('template')\">",
+      "file": "src/components/BaguApp.vue",
+      "message": "Icon button must provide aria-label (static or bound).",
+      "ruleId": "icon-button-aria-label"
+    },
+    {
+      "count": 1,
+      "excerpt": ".pc-bagu-scan-actions > :is(.pc-soft-btn, .pc-primary-btn)",
+      "file": "src/components/BaguScanPanel.vue",
+      "message": "Scoped style overrides protected global control geometry.",
+      "ruleId": "protected-control-geometry"
+    },
+    {
+      "count": 1,
+      "excerpt": "<button class=\"pc-icon-btn\" type=\"button\" :disabled=\"loadingCharacters\" :title=\"t`刷新`\" @click=\"loadCharacters(true)\" >",
+      "file": "src/components/ChatArchiveApp.vue",
+      "message": "Icon button must provide aria-label (static or bound).",
+      "ruleId": "icon-button-aria-label"
+    },
+    {
+      "count": 1,
+      "excerpt": "<button class=\"pc-icon-btn\" type=\"button\" :disabled=\"loadingChats\" :title=\"t`刷新聊天`\" @click=\"loadChatsForActiveOwner(true)\" >",
+      "file": "src/components/ChatArchiveApp.vue",
+      "message": "Icon button must provide aria-label (static or bound).",
+      "ruleId": "icon-button-aria-label"
+    },
+    {
+      "count": 1,
+      "excerpt": "<button v-if=\"canMigrateSelectedChat\" class=\"pc-icon-btn\" type=\"button\" :disabled=\"migratingChat\" :title=\"t`迁移到当前聊天`\" @click=\"migrateSelectedChatToCurrent\" >",
+      "file": "src/components/ChatArchiveApp.vue",
+      "message": "Icon button must provide aria-label (static or bound).",
+      "ruleId": "icon-button-aria-label"
+    },
+    {
+      "count": 1,
+      "excerpt": "<button class=\"pc-icon-btn\" type=\"button\" :disabled=\"!canJumpSelectedChat\" :title=\"t`跳转酒馆聊天`\" @click=\"jumpSelectedChatToTavern\" >",
+      "file": "src/components/ChatArchiveApp.vue",
+      "message": "Icon button must provide aria-label (static or bound).",
+      "ruleId": "icon-button-aria-label"
+    },
+    {
+      "count": 1,
+      "excerpt": ".pc-detail-nav .pc-soft-btn, .pc-detail-actions :deep(.pc-soft-btn)",
+      "file": "src/components/DetailFooter.vue",
+      "message": "Scoped style overrides protected global control geometry.",
+      "ruleId": "protected-control-geometry"
+    },
+    {
+      "count": 1,
+      "excerpt": "<button class=\"pc-icon-btn primary\" type=\"button\" title=\"生成日记\" @click=\"$emit('generate')\">",
+      "file": "src/components/diary/DiaryBookPage.vue",
+      "message": "Icon button must provide aria-label (static or bound).",
+      "ruleId": "icon-button-aria-label"
+    },
+    {
+      "count": 1,
+      "excerpt": "<button class=\"pc-icon-btn\" type=\"button\" title=\"批量生成\" @click=\"$emit('batch')\">",
+      "file": "src/components/diary/DiaryBookPage.vue",
+      "message": "Icon button must provide aria-label (static or bound).",
+      "ruleId": "icon-button-aria-label"
+    },
+    {
+      "count": 1,
+      "excerpt": "<button class=\"pc-icon-btn pc-directory-sort\" type=\"button\" :title=\"sortDesc ? '当前倒序，切换正序' : '当前正序，切换倒序'\" @click=\"$emit('toggle-sort')\" >",
+      "file": "src/components/diary/DiaryBookPage.vue",
+      "message": "Icon button must provide aria-label (static or bound).",
+      "ruleId": "icon-button-aria-label"
+    },
+    {
+      "count": 1,
+      "excerpt": "<button class=\"pc-icon-btn\" type=\"button\" title=\"重命名书架\" @click=\"$emit('rename')\">",
+      "file": "src/components/diary/DiaryBookPage.vue",
+      "message": "Icon button must provide aria-label (static or bound).",
+      "ruleId": "icon-button-aria-label"
+    },
+    {
+      "count": 1,
+      "excerpt": "<button class=\"pc-icon-btn danger\" type=\"button\" title=\"删除书架\" @click=\"$emit('remove-book')\">",
+      "file": "src/components/diary/DiaryBookPage.vue",
+      "message": "Icon button must provide aria-label (static or bound).",
+      "ruleId": "icon-button-aria-label"
+    },
+    {
+      "count": 1,
+      "excerpt": "<button class=\"pc-icon-btn primary\" type=\"button\" :title=\"t`生成章节`\" @click=\"emit('generateChapter')\">",
+      "file": "src/components/extras/ExtrasBookOverviewPage.vue",
+      "message": "Icon button must provide aria-label (static or bound).",
+      "ruleId": "icon-button-aria-label"
+    },
+    {
+      "count": 1,
+      "excerpt": "<button class=\"pc-icon-btn\" type=\"button\" :title=\"t`编辑番外信息`\" @click=\"emit('editBook')\">",
+      "file": "src/components/extras/ExtrasBookOverviewPage.vue",
+      "message": "Icon button must provide aria-label (static or bound).",
+      "ruleId": "icon-button-aria-label"
+    },
+    {
+      "count": 1,
+      "excerpt": "<button class=\"pc-icon-btn danger\" type=\"button\" :title=\"t`删除番外`\" @click=\"emit('deleteBook')\">",
+      "file": "src/components/extras/ExtrasBookOverviewPage.vue",
+      "message": "Icon button must provide aria-label (static or bound).",
+      "ruleId": "icon-button-aria-label"
+    },
+    {
+      "count": 1,
+      "excerpt": "<button class=\"pc-icon-btn pc-directory-sort\" type=\"button\" :title=\"sortDesc ? t`当前倒序，切换正序` : t`当前正序，切换倒序`\" @click=\"sortDesc = !sortDesc\" >",
+      "file": "src/components/extras/ExtrasBookOverviewPage.vue",
+      "message": "Icon button must provide aria-label (static or bound).",
+      "ruleId": "icon-button-aria-label"
+    },
+    {
+      "count": 1,
+      "excerpt": "<button class=\"pc-icon-btn\" type=\"button\" :title=\"t`编辑总结`\" @click=\"emit('editSummary', summaryItem.id)\" >",
+      "file": "src/components/extras/ExtrasBookOverviewPage.vue",
+      "message": "Icon button must provide aria-label (static or bound).",
+      "ruleId": "icon-button-aria-label"
+    },
+    {
+      "count": 1,
+      "excerpt": "<button class=\"pc-icon-btn danger\" type=\"button\" :title=\"t`删除总结`\" @click=\"emit('deleteSummary', summaryItem.id)\" >",
+      "file": "src/components/extras/ExtrasBookOverviewPage.vue",
+      "message": "Icon button must provide aria-label (static or bound).",
+      "ruleId": "icon-button-aria-label"
+    },
+    {
+      "count": 1,
+      "excerpt": ".pc-extras-editor-section .pc-area",
+      "file": "src/components/extras/ExtrasChapterEditorPage.vue",
+      "message": "Scoped style overrides protected global control geometry.",
+      "ruleId": "protected-control-geometry"
+    },
+    {
+      "count": 1,
+      "excerpt": ".pc-extras-summary-editor .pc-area",
+      "file": "src/components/extras/ExtrasSummaryEditorPage.vue",
+      "message": "Scoped style overrides protected global control geometry.",
+      "ruleId": "protected-control-geometry"
+    },
+    {
+      "count": 1,
+      "excerpt": ".pc-extras-app .pc-area",
+      "file": "src/components/ExtrasApp.vue",
+      "message": "Scoped style overrides protected global control geometry.",
+      "ruleId": "protected-control-geometry"
+    },
+    {
+      "count": 1,
+      "excerpt": ".pc-extras-app .pc-area.compact",
+      "file": "src/components/ExtrasApp.vue",
+      "message": "Scoped style overrides protected global control geometry.",
+      "ruleId": "protected-control-geometry"
+    },
+    {
+      "count": 1,
+      "excerpt": "<button class=\"pc-icon-btn danger\" type=\"button\" :title=\"deleteTitle\" @click=\"$emit('remove', draft.id)\">",
+      "file": "src/components/FailedDraftList.vue",
+      "message": "Icon button must provide aria-label (static or bound).",
+      "ruleId": "icon-button-aria-label"
+    },
+    {
+      "count": 1,
+      "excerpt": "<button class=\"pc-icon-btn\" type=\"button\" :title=\"t`生成帖子`\" @click=\"$emit('generate-thread')\">",
+      "file": "src/components/forum/ForumBoardPage.vue",
+      "message": "Icon button must provide aria-label (static or bound).",
+      "ruleId": "icon-button-aria-label"
+    },
+    {
+      "count": 1,
+      "excerpt": "<button class=\"pc-icon-btn primary\" type=\"button\" :title=\"t`发帖`\" @click=\"$emit('create-thread')\">",
+      "file": "src/components/forum/ForumBoardPage.vue",
+      "message": "Icon button must provide aria-label (static or bound).",
+      "ruleId": "icon-button-aria-label"
+    },
+    {
+      "count": 1,
+      "excerpt": "<button class=\"pc-icon-btn\" type=\"button\" :title=\"t`生成帖子`\" @click=\"$emit('generate-thread')\">",
+      "file": "src/components/forum/ForumCatalogPage.vue",
+      "message": "Icon button must provide aria-label (static or bound).",
+      "ruleId": "icon-button-aria-label"
+    },
+    {
+      "count": 1,
+      "excerpt": "<button class=\"pc-icon-btn primary\" type=\"button\" :title=\"t`新建板块`\" @click=\"$emit('create-board')\">",
+      "file": "src/components/forum/ForumCatalogPage.vue",
+      "message": "Icon button must provide aria-label (static or bound).",
+      "ruleId": "icon-button-aria-label"
+    },
+    {
+      "count": 1,
+      "excerpt": "<button class=\"pc-icon-btn\" type=\"button\" :title=\"t`编辑板块`\" @click=\"$emit('edit-board', board.id)\">",
+      "file": "src/components/forum/ForumCatalogPage.vue",
+      "message": "Icon button must provide aria-label (static or bound).",
+      "ruleId": "icon-button-aria-label"
+    },
+    {
+      "count": 1,
+      "excerpt": "<button class=\"pc-icon-btn danger\" type=\"button\" :title=\"t`删除板块`\" @click=\"$emit('remove-board', board.id)\" >",
+      "file": "src/components/forum/ForumCatalogPage.vue",
+      "message": "Icon button must provide aria-label (static or bound).",
+      "ruleId": "icon-button-aria-label"
+    },
+    {
+      "count": 1,
+      "excerpt": ".pc-forum-type-fields .pc-area",
+      "file": "src/components/forum/ForumThreadGeneratePage.vue",
+      "message": "Scoped style overrides protected global control geometry.",
+      "ruleId": "protected-control-geometry"
+    },
+    {
+      "count": 1,
+      "excerpt": "<button class=\"pc-icon-btn\" type=\"button\" :disabled=\"controlsDisabled || !quickPhraseGroups.length\" :title=\"quickPhraseGroups.length ? t`添加快速短语` : t`还没有快速短语`\" @click=\"toggleQuickPh",
+      "file": "src/components/GenerationPanel.vue",
+      "message": "Icon button must provide aria-label (static or bound).",
+      "ruleId": "icon-button-aria-label"
+    },
+    {
+      "count": 1,
+      "excerpt": "<button class=\"pc-icon-btn\" type=\"button\" :disabled=\"controlsDisabled\" :title=\"t`互换角色与用户称呼`\" @click=\"swapGenerationAliases\" >",
+      "file": "src/components/GenerationPanel.vue",
+      "message": "Icon button must provide aria-label (static or bound).",
+      "ruleId": "icon-button-aria-label"
+    },
+    {
+      "count": 1,
+      "excerpt": ".pc-area.compact",
+      "file": "src/components/GenerationPanel.vue",
+      "message": "Scoped style overrides protected global control geometry.",
+      "ruleId": "protected-control-geometry"
+    },
+    {
+      "count": 1,
+      "excerpt": "<button class=\"pc-icon-btn\" type=\"button\" :disabled=\"disabled\" title=\"刷新预设列表\" @click=\"refreshPresetNames\">",
+      "file": "src/components/GenerationProviderFields.vue",
+      "message": "Icon button must provide aria-label (static or bound).",
+      "ruleId": "icon-button-aria-label"
+    },
+    {
+      "count": 1,
+      "excerpt": ".pc-area.compact",
+      "file": "src/components/GenerationSourceFields.vue",
+      "message": "Scoped style overrides protected global control geometry.",
+      "ruleId": "protected-control-geometry"
+    },
+    {
+      "count": 1,
+      "excerpt": "<button class=\"pc-icon-btn\" type=\"button\" :title=\"t`打开任务`\" @click=\"openTask(task)\">",
+      "file": "src/components/GenerationTaskCenter.vue",
+      "message": "Icon button must provide aria-label (static or bound).",
+      "ruleId": "icon-button-aria-label"
+    },
+    {
+      "count": 1,
+      "excerpt": "<button v-if=\"task.status === 'running'\" class=\"pc-icon-btn\" type=\"button\" :title=\"t`完成当前项后暂停`\" @click=\"generationTasks.requestPause(task.id)\" >",
+      "file": "src/components/GenerationTaskCenter.vue",
+      "message": "Icon button must provide aria-label (static or bound).",
+      "ruleId": "icon-button-aria-label"
+    },
+    {
+      "count": 1,
+      "excerpt": "<button v-if=\"task.status === 'running' || task.status === 'pause-requested'\" class=\"pc-icon-btn danger\" type=\"button\" :title=\"t`立即停止并保留进度`\" @click=\"generationTasks.stopNow(task.id",
+      "file": "src/components/GenerationTaskCenter.vue",
+      "message": "Icon button must provide aria-label (static or bound).",
+      "ruleId": "icon-button-aria-label"
+    },
+    {
+      "count": 1,
+      "excerpt": "<button v-if=\"task.status === 'paused' || task.status === 'interrupted'\" class=\"pc-icon-btn\" type=\"button\" :title=\"t`继续任务`\" @click=\"resume(task.id)\" >",
+      "file": "src/components/GenerationTaskCenter.vue",
+      "message": "Icon button must provide aria-label (static or bound).",
+      "ruleId": "icon-button-aria-label"
+    },
+    {
+      "count": 1,
+      "excerpt": "<button v-if=\" task.status === 'paused' || task.status === 'interrupted' || task.status === 'completed' || task.status === 'cancelled' \" class=\"pc-icon-btn\" type=\"button\" :title=\"t",
+      "file": "src/components/GenerationTaskCenter.vue",
+      "message": "Icon button must provide aria-label (static or bound).",
+      "ruleId": "icon-button-aria-label"
+    },
+    {
+      "count": 1,
+      "excerpt": ".pc-task-actions .pc-icon-btn",
+      "file": "src/components/GenerationTaskCenter.vue",
+      "message": "Scoped style overrides protected global control geometry.",
+      "ruleId": "protected-control-geometry"
+    },
+    {
+      "count": 1,
+      "excerpt": "<button class=\"pc-icon-btn primary\" type=\"button\" title=\"生成回信\" @click=\"$emit('generate')\">",
+      "file": "src/components/letters/LettersBookPage.vue",
+      "message": "Icon button must provide aria-label (static or bound).",
+      "ruleId": "icon-button-aria-label"
+    },
+    {
+      "count": 1,
+      "excerpt": "<button class=\"pc-icon-btn pc-directory-sort\" type=\"button\" :title=\"sortDesc ? '当前倒序，切换正序' : '当前正序，切换倒序'\" @click=\"$emit('toggle-sort')\" >",
+      "file": "src/components/letters/LettersBookPage.vue",
+      "message": "Icon button must provide aria-label (static or bound).",
+      "ruleId": "icon-button-aria-label"
+    },
+    {
+      "count": 1,
+      "excerpt": "<button class=\"pc-icon-btn\" type=\"button\" title=\"前移\" @click=\"moveFolderApp(index, -1)\">",
+      "file": "src/components/PhoneOverlay.vue",
+      "message": "Icon button must provide aria-label (static or bound).",
+      "ruleId": "icon-button-aria-label"
+    },
+    {
+      "count": 1,
+      "excerpt": "<button class=\"pc-icon-btn\" type=\"button\" title=\"移出到主界面\" @click=\"removeFolderApp(app.id)\">",
+      "file": "src/components/PhoneOverlay.vue",
+      "message": "Icon button must provide aria-label (static or bound).",
+      "ruleId": "icon-button-aria-label"
+    },
+    {
+      "count": 1,
+      "excerpt": "<button class=\"pc-icon-btn\" type=\"button\" title=\"后移\" @click=\"moveFolderApp(index, 1)\">",
+      "file": "src/components/PhoneOverlay.vue",
+      "message": "Icon button must provide aria-label (static or bound).",
+      "ruleId": "icon-button-aria-label"
+    },
+    {
+      "count": 1,
+      "excerpt": ".pc-home-folder-controls .pc-icon-btn",
+      "file": "src/components/PhoneOverlay.vue",
+      "message": "Scoped style overrides protected global control geometry.",
+      "ruleId": "protected-control-geometry"
+    },
+    {
+      "count": 1,
+      "excerpt": "<button v-if=\"showOpenButton\" class=\"pc-icon-btn\" type=\"button\" :disabled=\"!selectedEntry\" :title=\"selectedEntry ? t`查看资料` : t`尚未关联资料`\" @click=\"openSelectedEntry\" >",
+      "file": "src/components/ProfileEntryPicker.vue",
+      "message": "Icon button must provide aria-label (static or bound).",
+      "ruleId": "icon-button-aria-label"
+    },
+    {
+      "count": 1,
+      "excerpt": ".pc-output-editor .pc-form-actions :is(.pc-soft-btn, .pc-primary-btn)",
+      "file": "src/components/prompts/PromptOutputEditorPage.vue",
+      "message": "Scoped style overrides protected global control geometry.",
+      "ruleId": "protected-control-geometry"
+    },
+    {
+      "count": 1,
+      "excerpt": ".pc-transfer-actions .pc-soft-btn, .pc-transfer-actions .pc-primary-btn",
+      "file": "src/components/prompts/PromptTransferPage.vue",
+      "message": "Scoped style overrides protected global control geometry.",
+      "ruleId": "protected-control-geometry"
+    },
+    {
+      "count": 1,
+      "excerpt": "<button class=\"pc-icon-btn\" type=\"button\" title=\"新建分组\" @click=\"createGroup\">",
+      "file": "src/components/prompts/PromptTypeEditorPage.vue",
+      "message": "Icon button must provide aria-label (static or bound).",
+      "ruleId": "icon-button-aria-label"
+    },
+    {
+      "count": 1,
+      "excerpt": ".pc-group-actions .pc-icon-btn",
+      "file": "src/components/PromptsApp.vue",
+      "message": "Scoped style overrides protected global control geometry.",
+      "ruleId": "protected-control-geometry"
+    },
+    {
+      "count": 1,
+      "excerpt": ".pc-prompt-variant-grid .pc-segment-btn",
+      "file": "src/components/PromptsApp.vue",
+      "message": "Scoped style overrides protected global control geometry.",
+      "ruleId": "protected-control-geometry"
+    },
+    {
+      "count": 1,
+      "excerpt": ".pc-prompt-detail-actions :is(.pc-soft-btn, .pc-primary-btn)",
+      "file": "src/components/PromptsApp.vue",
+      "message": "Scoped style overrides protected global control geometry.",
+      "ruleId": "protected-control-geometry"
+    },
+    {
+      "count": 1,
+      "excerpt": ".pc-prompts-app .pc-area",
+      "file": "src/components/PromptsApp.vue",
+      "message": "Scoped style overrides protected global control geometry.",
+      "ruleId": "protected-control-geometry"
+    },
+    {
+      "count": 1,
+      "excerpt": ".pc-prompts-app .pc-area.compact",
+      "file": "src/components/PromptsApp.vue",
+      "message": "Scoped style overrides protected global control geometry.",
+      "ruleId": "protected-control-geometry"
+    },
+    {
+      "count": 1,
+      "excerpt": "<button class=\"pc-icon-btn pc-refresh-icon\" type=\"button\" :disabled=\"loadingDetail\" :title=\"t`刷新`\" @click=\"refreshCurrentChat\" >",
+      "file": "src/components/ReaderApp.vue",
+      "message": "Icon button must provide aria-label (static or bound).",
+      "ruleId": "icon-button-aria-label"
+    },
+    {
+      "count": 1,
+      "excerpt": "<button class=\"pc-icon-btn\" type=\"button\" :title=\"rulesOpen ? t`折叠规则` : t`展开规则`\" @click=\"rulesOpen = !rulesOpen\" >",
+      "file": "src/components/ReaderApp.vue",
+      "message": "Icon button must provide aria-label (static or bound).",
+      "ruleId": "icon-button-aria-label"
+    },
+    {
+      "count": 1,
+      "excerpt": "<button class=\"pc-icon-btn pc-reader-tool-trigger\" type=\"button\" :aria-expanded=\"toolMenuOpen\" title=\"阅读工具\" @click.stop=\"toggleToolMenu\" @pointercancel.stop=\"finishToolDrag\" @point",
+      "file": "src/components/ReaderDetailShell.vue",
+      "message": "Icon button must provide aria-label (static or bound).",
+      "ruleId": "icon-button-aria-label"
+    },
+    {
+      "count": 1,
+      "excerpt": ".pc-reader-tool-menu > .pc-soft-btn, .pc-reader-tool-menu :deep(.pc-soft-btn), .pc-reader-tool-menu :deep(.pc-primary-btn)",
+      "file": "src/components/ReaderDetailShell.vue",
+      "message": "Scoped style overrides protected global control geometry.",
+      "ruleId": "protected-control-geometry"
+    },
+    {
+      "count": 1,
+      "excerpt": "<button class=\"pc-icon-btn\" type=\"button\" :title=\"t`关闭`\" @click=\"emit('close')\">",
+      "file": "src/components/ReaderTextEditModal.vue",
+      "message": "Icon button must provide aria-label (static or bound).",
+      "ruleId": "icon-button-aria-label"
+    },
+    {
+      "count": 1,
+      "excerpt": "<button class=\"pc-icon-btn\" type=\"button\" title=\"关闭\" @click=\"emit('close')\">",
+      "file": "src/components/ReasoningModal.vue",
+      "message": "Icon button must provide aria-label (static or bound).",
+      "ruleId": "icon-button-aria-label"
+    },
+    {
+      "count": 1,
+      "excerpt": "<button class=\"pc-icon-btn pc-combobox-toggle\" type=\"button\" :disabled=\"disabled\" :title=\"toggleTitle\" @click=\"toggleMenu\" >",
+      "file": "src/components/SearchableCombobox.vue",
+      "message": "Icon button must provide aria-label (static or bound).",
+      "ruleId": "icon-button-aria-label"
+    },
+    {
+      "count": 1,
+      "excerpt": "<button class=\"pc-icon-btn\" type=\"button\" :title=\"apiKeyVisible ? '隐藏 API Key' : '显示 API Key'\" @click=\"apiKeyVisible = !apiKeyVisible\" >",
+      "file": "src/components/settings/SettingsConnectionPanel.vue",
+      "message": "Icon button must provide aria-label (static or bound).",
+      "ruleId": "icon-button-aria-label"
+    },
+    {
+      "count": 1,
+      "excerpt": "<button class=\"pc-icon-btn\" type=\"button\" :disabled=\"externalModelLoading\" title=\"获取模型列表\" @click=\"refreshExternalModels\" >",
+      "file": "src/components/settings/SettingsConnectionPanel.vue",
+      "message": "Icon button must provide aria-label (static or bound).",
+      "ruleId": "icon-button-aria-label"
+    },
+    {
+      "count": 1,
+      "excerpt": ".pc-field-note",
+      "file": "src/components/settings/SettingsConnectionPanel.vue",
+      "message": "Scoped style overrides protected global control geometry.",
+      "ruleId": "protected-control-geometry"
+    },
+    {
+      "count": 1,
+      "excerpt": ".pc-action-grid .pc-soft-btn",
+      "file": "src/components/settings/SettingsGeneralPanel.vue",
+      "message": "Scoped style overrides protected global control geometry.",
+      "ruleId": "protected-control-geometry"
+    },
+    {
+      "count": 2,
+      "excerpt": ".pc-settings-tabs .pc-segment-btn",
+      "file": "src/components/SettingsApp.vue",
+      "message": "Scoped style overrides protected global control geometry.",
+      "ruleId": "protected-control-geometry"
+    },
+    {
+      "count": 1,
+      "excerpt": "<button class=\"pc-icon-btn pc-refresh-btn\" type=\"button\" :disabled=\"loading\" :title=\"loading ? t`刷新中` : t`刷新`\" @click=\"stats.refresh()\" >",
+      "file": "src/components/StatsApp.vue",
+      "message": "Icon button must provide aria-label (static or bound).",
+      "ruleId": "icon-button-aria-label"
+    },
+    {
+      "count": 1,
+      "excerpt": "<button class=\"pc-icon-btn pc-collapse-btn\" type=\"button\" :aria-expanded=\"domainExpanded\" :title=\"domainExpanded ? t`收起` : t`展开`\" @click=\"domainExpanded = !domainExpanded\" >",
+      "file": "src/components/StatsApp.vue",
+      "message": "Icon button must provide aria-label (static or bound).",
+      "ruleId": "icon-button-aria-label"
+    },
+    {
+      "count": 1,
+      "excerpt": "<button class=\"pc-icon-btn primary\" type=\"button\" title=\"生成总结\" @click=\"$emit('generate')\">",
+      "file": "src/components/summary/SummaryBookPage.vue",
+      "message": "Icon button must provide aria-label (static or bound).",
+      "ruleId": "icon-button-aria-label"
+    },
+    {
+      "count": 1,
+      "excerpt": "<button class=\"pc-icon-btn pc-directory-sort\" type=\"button\" :title=\"sortDesc ? '当前倒序，切换正序' : '当前正序，切换倒序'\" @click=\"$emit('toggle-sort')\" >",
+      "file": "src/components/summary/SummaryBookPage.vue",
+      "message": "Icon button must provide aria-label (static or bound).",
+      "ruleId": "icon-button-aria-label"
+    },
+    {
+      "count": 1,
+      "excerpt": "<button class=\"pc-icon-btn\" type=\"button\" :disabled=\"loading\" title=\"刷新楼层\" @click=\"$emit('refresh')\">",
+      "file": "src/components/summary/SummaryImportPage.vue",
+      "message": "Icon button must provide aria-label (static or bound).",
+      "ruleId": "icon-button-aria-label"
+    },
+    {
+      "count": 1,
+      "excerpt": "<button class=\"pc-icon-btn\" type=\"button\" :title=\"sortDesc ? t`当前倒序，切换正序` : t`当前正序，切换倒序`\" @click=\"sortDesc = !sortDesc\" >",
+      "file": "src/components/theater/TheaterHistoryPage.vue",
+      "message": "Icon button must provide aria-label (static or bound).",
+      "ruleId": "icon-button-aria-label"
+    },
+    {
+      "count": 1,
+      "excerpt": "<button v-if=\"historyTypeTabs.length\" :class=\"['pc-icon-btn', 'pc-theater-filter-toggle', { active: filterOpen || selectedTypeKeys.size }]\" type=\"button\" :title=\"selectedTypeKeys.s",
+      "file": "src/components/theater/TheaterHistoryPage.vue",
+      "message": "Icon button must provide aria-label (static or bound).",
+      "ruleId": "icon-button-aria-label"
+    },
+    {
+      "count": 1,
+      "excerpt": ".pc-version-status .pc-field",
+      "file": "src/components/VersionNavigator.vue",
+      "message": "Scoped style overrides protected global control geometry.",
+      "ruleId": "protected-control-geometry"
+    },
+    {
+      "count": 1,
+      "excerpt": ".pc-segment",
+      "file": "src/Panel.vue",
+      "message": "Scoped style overrides protected global control geometry.",
+      "ruleId": "protected-control-geometry"
+    },
+    {
+      "count": 1,
+      "excerpt": ".pc-segment-btn",
+      "file": "src/Panel.vue",
+      "message": "Scoped style overrides protected global control geometry.",
+      "ruleId": "protected-control-geometry"
+    },
+    {
+      "count": 1,
+      "excerpt": ".pc-toggle span",
+      "file": "src/Panel.vue",
+      "message": "Scoped style overrides protected global control geometry.",
+      "ruleId": "protected-control-geometry"
+    },
+    {
+      "count": 1,
+      "excerpt": ".pc-toggle span::after",
+      "file": "src/Panel.vue",
+      "message": "Scoped style overrides protected global control geometry.",
+      "ruleId": "protected-control-geometry"
+    },
+    {
+      "count": 1,
+      "excerpt": ".pc-segment-btn.active",
+      "file": "src/Panel.vue",
+      "message": "Scoped style applies a hard-coded theme color to a protected global control.",
+      "ruleId": "protected-control-theme-color"
+    },
+    {
+      "count": 1,
+      "excerpt": ".pc-toggle span::after",
+      "file": "src/Panel.vue",
+      "message": "Scoped style applies a hard-coded theme color to a protected global control.",
+      "ruleId": "protected-control-theme-color"
+    },
+    {
+      "count": 1,
+      "excerpt": ".pc-toggle input:checked + span",
+      "file": "src/Panel.vue",
+      "message": "Scoped style applies a hard-coded theme color to a protected global control.",
+      "ruleId": "protected-control-theme-color"
+    }
+  ],
+  "version": 1
+}

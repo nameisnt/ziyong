@@ -13,12 +13,16 @@ pnpm-debug.log*
 # Local editor and Codex working files
 .codex/
 .vscode/
+.agents/
 
 # Generated visual-check artifacts and temporary files
 tmp/
 *.bak
 
 # Local reference materials
+backups/
+ui-review/
+日记 (1).json
 可参考拓展/
 酒馆手机-脚本基础款/
 QITA/

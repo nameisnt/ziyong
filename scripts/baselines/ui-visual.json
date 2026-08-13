@@ -1,0 +1,3078 @@
+{
+  "version": 1,
+  "defect": "D-BASELINE-002",
+  "generatedAt": "2026-08-13T10:22:44.195Z",
+  "scenarioCount": 204,
+  "sizes": [
+    "350x700",
+    "390x844",
+    "430x900"
+  ],
+  "summary": {
+    "fails": 0,
+    "runs": 612,
+    "warnings": 0
+  },
+  "runs": [
+    {
+      "findings": [],
+      "scenario": "home",
+      "size": "350x700"
+    },
+    {
+      "findings": [],
+      "scenario": "home-five-columns",
+      "size": "350x700"
+    },
+    {
+      "findings": [],
+      "scenario": "home-tasks",
+      "size": "350x700"
+    },
+    {
+      "findings": [],
+      "scenario": "home-tasks-dark",
+      "size": "350x700"
+    },
+    {
+      "findings": [],
+      "scenario": "app:summary",
+      "size": "350x700"
+    },
+    {
+      "findings": [],
+      "scenario": "app:diary",
+      "size": "350x700"
+    },
+    {
+      "findings": [],
+      "scenario": "app:extras",
+      "size": "350x700"
+    },
+    {
+      "findings": [],
+      "scenario": "app:forum",
+      "size": "350x700"
+    },
+    {
+      "findings": [],
+      "scenario": "app:theater",
+      "size": "350x700"
+    },
+    {
+      "findings": [],
+      "scenario": "app:letters",
+      "size": "350x700"
+    },
+    {
+      "findings": [],
+      "scenario": "app:workbench",
+      "size": "350x700"
+    },
+    {
+      "findings": [],
+      "scenario": "app:digest",
+      "size": "350x700"
+    },
+    {
+      "findings": [],
+      "scenario": "app:scene-planner",
+      "size": "350x700"
+    },
+    {
+      "findings": [],
+      "scenario": "app:storylines",
+      "size": "350x700"
+    },
+    {
+      "findings": [],
+      "scenario": "app:relationship",
+      "size": "350x700"
+    },
+    {
+      "findings": [],
+      "scenario": "app:profiles",
+      "size": "350x700"
+    },
+    {
+      "findings": [],
+      "scenario": "app:favorites",
+      "size": "350x700"
+    },
+    {
+      "findings": [],
+      "scenario": "app:prompts",
+      "size": "350x700"
+    },
+    {
+      "findings": [],
+      "scenario": "app:stats",
+      "size": "350x700"
+    },
+    {
+      "findings": [],
+      "scenario": "app:archive",
+      "size": "350x700"
+    },
+    {
+      "findings": [],
+      "scenario": "app:recovery",
+      "size": "350x700"
+    },
+    {
+      "findings": [],
+      "scenario": "app:reader",
+      "size": "350x700"
+    },
+    {
+      "findings": [],
+      "scenario": "app:bagu",
+      "size": "350x700"
+    },
+    {
+      "findings": [],
+      "scenario": "app:preset-manager",
+      "size": "350x700"
+    },
+    {
+      "findings": [],
+      "scenario": "app:world-slots",
+      "size": "350x700"
+    },
+    {
+      "findings": [],
+      "scenario": "app:regex-wizard",
+      "size": "350x700"
+    },
+    {
+      "findings": [],
+      "scenario": "app:worldbook-link",
+      "size": "350x700"
+    },
+    {
+      "findings": [],
+      "scenario": "app:preset-link",
+      "size": "350x700"
+    },
+    {
+      "findings": [],
+      "scenario": "app:content-converter",
+      "size": "350x700"
+    },
+    {
+      "findings": [],
+      "scenario": "app:card-writer",
+      "size": "350x700"
+    },
+    {
+      "findings": [],
+      "scenario": "app:file-repository",
+      "size": "350x700"
+    },
+    {
+      "findings": [],
+      "scenario": "app:tutorial",
+      "size": "350x700"
+    },
+    {
+      "findings": [],
+      "scenario": "app:entry-library",
+      "size": "350x700"
+    },
+    {
+      "findings": [],
+      "scenario": "app:mvu-modifier",
+      "size": "350x700"
+    },
+    {
+      "findings": [],
+      "scenario": "app:settings",
+      "size": "350x700"
+    },
+    {
+      "findings": [],
+      "scenario": "app:regex-display",
+      "size": "350x700"
+    },
+    {
+      "findings": [],
+      "scenario": "app:app-builder",
+      "size": "350x700"
+    },
+    {
+      "findings": [],
+      "scenario": "app:theme",
+      "size": "350x700"
+    },
+    {
+      "findings": [],
+      "scenario": "app:timekeeper",
+      "size": "350x700"
+    },
+    {
+      "findings": [],
+      "scenario": "app:comfy",
+      "size": "350x700"
+    },
+    {
+      "findings": [],
+      "scenario": "app:cloud-media",
+      "size": "350x700"
+    },
+    {
+      "findings": [],
+      "scenario": "app:media",
+      "size": "350x700"
+    },
+    {
+      "findings": [],
+      "scenario": "app:gallery",
+      "size": "350x700"
+    },
+    {
+      "findings": [],
+      "scenario": "app:music",
+      "size": "350x700"
+    },
+    {
+      "findings": [],
+      "scenario": "app:video",
+      "size": "350x700"
+    },
+    {
+      "findings": [],
+      "scenario": "app:chat-insert",
+      "size": "350x700"
+    },
+    {
+      "findings": [],
+      "scenario": "app:games",
+      "size": "350x700"
+    },
+    {
+      "findings": [],
+      "scenario": "generation-rewrite-replay",
+      "size": "350x700"
+    },
+    {
+      "findings": [],
+      "scenario": "generation-preview-long-title",
+      "size": "350x700"
+    },
+    {
+      "findings": [],
+      "scenario": "generation-preview-long-title-edit",
+      "size": "350x700"
+    },
+    {
+      "findings": [],
+      "scenario": "generation-preview-long-title-raw",
+      "size": "350x700"
+    },
+    {
+      "findings": [],
+      "scenario": "preview-session-navigation",
+      "size": "350x700"
+    },
+    {
+      "findings": [],
+      "scenario": "generation-connection-override",
+      "size": "350x700"
+    },
+    {
+      "findings": [],
+      "scenario": "preview-draft-deferred-save",
+      "size": "350x700"
+    },
+    {
+      "findings": [],
+      "scenario": "legacy-data-migrations",
+      "size": "350x700"
+    },
+    {
+      "findings": [],
+      "scenario": "app-deferred-mount-order",
+      "size": "350x700"
+    },
+    {
+      "findings": [],
+      "scenario": "custom-app-conversion",
+      "size": "350x700"
+    },
+    {
+      "findings": [],
+      "scenario": "custom-app-conversion-complete",
+      "size": "350x700"
+    },
+    {
+      "findings": [],
+      "scenario": "custom-app-conversion-merge",
+      "size": "350x700"
+    },
+    {
+      "findings": [],
+      "scenario": "custom-app-extract-rules",
+      "size": "350x700"
+    },
+    {
+      "findings": [],
+      "scenario": "custom-app-save-flow",
+      "size": "350x700"
+    },
+    {
+      "findings": [],
+      "scenario": "content-transfer-dialog",
+      "size": "350x700"
+    },
+    {
+      "findings": [],
+      "scenario": "content-converter-source",
+      "size": "350x700"
+    },
+    {
+      "findings": [],
+      "scenario": "content-converter-target",
+      "size": "350x700"
+    },
+    {
+      "findings": [],
+      "scenario": "content-converter-complete",
+      "size": "350x700"
+    },
+    {
+      "findings": [],
+      "scenario": "card-writer-saved-preview",
+      "size": "350x700"
+    },
+    {
+      "findings": [],
+      "scenario": "archive-owner-list",
+      "size": "350x700"
+    },
+    {
+      "findings": [],
+      "scenario": "archive-floor-backup",
+      "size": "350x700"
+    },
+    {
+      "findings": [],
+      "scenario": "recovery-home",
+      "size": "350x700"
+    },
+    {
+      "findings": [],
+      "scenario": "recovery-shelf",
+      "size": "350x700"
+    },
+    {
+      "findings": [],
+      "scenario": "recovery-group",
+      "size": "350x700"
+    },
+    {
+      "findings": [],
+      "scenario": "recovery-cleanup",
+      "size": "350x700"
+    },
+    {
+      "findings": [],
+      "scenario": "recovery-duplicates",
+      "size": "350x700"
+    },
+    {
+      "findings": [],
+      "scenario": "recovery-reader",
+      "size": "350x700"
+    },
+    {
+      "findings": [],
+      "scenario": "recovery-confirm",
+      "size": "350x700"
+    },
+    {
+      "findings": [],
+      "scenario": "recovery-result",
+      "size": "350x700"
+    },
+    {
+      "findings": [],
+      "scenario": "recovery-settings",
+      "size": "350x700"
+    },
+    {
+      "findings": [],
+      "scenario": "bagu-scan-actions",
+      "size": "350x700"
+    },
+    {
+      "findings": [],
+      "scenario": "bagu-hit-details",
+      "size": "350x700"
+    },
+    {
+      "findings": [],
+      "scenario": "bagu-scan-applied",
+      "size": "350x700"
+    },
+    {
+      "findings": [],
+      "scenario": "settings",
+      "size": "350x700"
+    },
+    {
+      "findings": [],
+      "scenario": "settings-interface",
+      "size": "350x700"
+    },
+    {
+      "findings": [],
+      "scenario": "settings-connection",
+      "size": "350x700"
+    },
+    {
+      "findings": [],
+      "scenario": "settings-connection-external",
+      "size": "350x700"
+    },
+    {
+      "findings": [],
+      "scenario": "settings-connection-dark",
+      "size": "350x700"
+    },
+    {
+      "findings": [],
+      "scenario": "settings-advanced",
+      "size": "350x700"
+    },
+    {
+      "findings": [],
+      "scenario": "theme-form-control-isolation",
+      "size": "350x700"
+    },
+    {
+      "findings": [],
+      "scenario": "cloud-media-generate",
+      "size": "350x700"
+    },
+    {
+      "findings": [],
+      "scenario": "cloud-media-settings",
+      "size": "350x700"
+    },
+    {
+      "findings": [],
+      "scenario": "mvu-modifier-tree",
+      "size": "350x700"
+    },
+    {
+      "findings": [],
+      "scenario": "regex-wizard-fields",
+      "size": "350x700"
+    },
+    {
+      "findings": [],
+      "scenario": "storylines-detail",
+      "size": "350x700"
+    },
+    {
+      "findings": [],
+      "scenario": "storylines-editor",
+      "size": "350x700"
+    },
+    {
+      "findings": [],
+      "scenario": "entry-library-action-menu",
+      "size": "350x700"
+    },
+    {
+      "findings": [],
+      "scenario": "entry-library-manual-create",
+      "size": "350x700"
+    },
+    {
+      "findings": [],
+      "scenario": "entry-library-bindings",
+      "size": "350x700"
+    },
+    {
+      "findings": [],
+      "scenario": "entry-library-collect-manual-dedupe",
+      "size": "350x700"
+    },
+    {
+      "findings": [],
+      "scenario": "entry-library-collect-worldbook",
+      "size": "350x700"
+    },
+    {
+      "findings": [],
+      "scenario": "entry-library-ordering",
+      "size": "350x700"
+    },
+    {
+      "findings": [],
+      "scenario": "entry-library-scroll-return",
+      "size": "350x700"
+    },
+    {
+      "findings": [],
+      "scenario": "world-slots-batch-import",
+      "size": "350x700"
+    },
+    {
+      "findings": [],
+      "scenario": "world-slots-entry-library",
+      "size": "350x700"
+    },
+    {
+      "findings": [],
+      "scenario": "world-slots-root-cleanup",
+      "size": "350x700"
+    },
+    {
+      "findings": [],
+      "scenario": "worldbook-link-legacy-entry",
+      "size": "350x700"
+    },
+    {
+      "findings": [],
+      "scenario": "worldbook-entry-editor",
+      "size": "350x700"
+    },
+    {
+      "findings": [],
+      "scenario": "comfy-action-menu",
+      "size": "350x700"
+    },
+    {
+      "findings": [],
+      "scenario": "preset-link-auto-reload",
+      "size": "350x700"
+    },
+    {
+      "findings": [],
+      "scenario": "preset-link-history",
+      "size": "350x700"
+    },
+    {
+      "findings": [],
+      "scenario": "forum-generate-thread",
+      "size": "350x700"
+    },
+    {
+      "findings": [],
+      "scenario": "forum-catalog",
+      "size": "350x700"
+    },
+    {
+      "findings": [],
+      "scenario": "forum-board",
+      "size": "350x700"
+    },
+    {
+      "findings": [],
+      "scenario": "forum-board-editor",
+      "size": "350x700"
+    },
+    {
+      "findings": [],
+      "scenario": "forum-bagu",
+      "size": "350x700"
+    },
+    {
+      "findings": [],
+      "scenario": "forum-failed-draft",
+      "size": "350x700"
+    },
+    {
+      "findings": [],
+      "scenario": "forum-thread",
+      "size": "350x700"
+    },
+    {
+      "findings": [],
+      "scenario": "forum-thread-editor",
+      "size": "350x700"
+    },
+    {
+      "findings": [],
+      "scenario": "forum-generate-replies",
+      "size": "350x700"
+    },
+    {
+      "findings": [],
+      "scenario": "forum-preview",
+      "size": "350x700"
+    },
+    {
+      "findings": [],
+      "scenario": "forum-thread-versions",
+      "size": "350x700"
+    },
+    {
+      "findings": [],
+      "scenario": "forum-version-interactions",
+      "size": "350x700"
+    },
+    {
+      "findings": [],
+      "scenario": "forum-rewrite-generate",
+      "size": "350x700"
+    },
+    {
+      "findings": [],
+      "scenario": "preset-builtin-diary",
+      "size": "350x700"
+    },
+    {
+      "findings": [],
+      "scenario": "preset-detail",
+      "size": "350x700"
+    },
+    {
+      "findings": [],
+      "scenario": "preset-copy-reorder",
+      "size": "350x700"
+    },
+    {
+      "findings": [],
+      "scenario": "preset-copy-editor",
+      "size": "350x700"
+    },
+    {
+      "findings": [],
+      "scenario": "preset-editor",
+      "size": "350x700"
+    },
+    {
+      "findings": [],
+      "scenario": "preset-scroll-return",
+      "size": "350x700"
+    },
+    {
+      "findings": [],
+      "scenario": "reader-detail",
+      "size": "350x700"
+    },
+    {
+      "findings": [],
+      "scenario": "reader-theme-appearance",
+      "size": "350x700"
+    },
+    {
+      "findings": [],
+      "scenario": "reader-catalog",
+      "size": "350x700"
+    },
+    {
+      "findings": [],
+      "scenario": "reader-footer-persistence",
+      "size": "350x700"
+    },
+    {
+      "findings": [],
+      "scenario": "searchable-select",
+      "size": "350x700"
+    },
+    {
+      "findings": [],
+      "scenario": "diary-batch",
+      "size": "350x700"
+    },
+    {
+      "findings": [],
+      "scenario": "diary-creation-mode",
+      "size": "350x700"
+    },
+    {
+      "findings": [],
+      "scenario": "diary-book",
+      "size": "350x700"
+    },
+    {
+      "findings": [],
+      "scenario": "diary-entry-editor",
+      "size": "350x700"
+    },
+    {
+      "findings": [],
+      "scenario": "diary-bagu",
+      "size": "350x700"
+    },
+    {
+      "findings": [],
+      "scenario": "diary-generate",
+      "size": "350x700"
+    },
+    {
+      "findings": [],
+      "scenario": "diary-preview",
+      "size": "350x700"
+    },
+    {
+      "findings": [],
+      "scenario": "diary-failed-draft",
+      "size": "350x700"
+    },
+    {
+      "findings": [],
+      "scenario": "diary-entry-detail",
+      "size": "350x700"
+    },
+    {
+      "findings": [],
+      "scenario": "extras-book-generate",
+      "size": "350x700"
+    },
+    {
+      "findings": [],
+      "scenario": "extras-book-name-fallback",
+      "size": "350x700"
+    },
+    {
+      "findings": [],
+      "scenario": "extras-summary-overview",
+      "size": "350x700"
+    },
+    {
+      "findings": [],
+      "scenario": "extras-summary-generate",
+      "size": "350x700"
+    },
+    {
+      "findings": [],
+      "scenario": "extras-chapter-detail",
+      "size": "350x700"
+    },
+    {
+      "findings": [],
+      "scenario": "content-versions",
+      "size": "350x700"
+    },
+    {
+      "findings": [],
+      "scenario": "content-version-interactions",
+      "size": "350x700"
+    },
+    {
+      "findings": [],
+      "scenario": "content-version-deletion",
+      "size": "350x700"
+    },
+    {
+      "findings": [],
+      "scenario": "extras-chapter-editor",
+      "size": "350x700"
+    },
+    {
+      "findings": [],
+      "scenario": "extras-legacy-continuation",
+      "size": "350x700"
+    },
+    {
+      "findings": [],
+      "scenario": "extras-continuation-references",
+      "size": "350x700"
+    },
+    {
+      "findings": [],
+      "scenario": "summary-create",
+      "size": "350x700"
+    },
+    {
+      "findings": [],
+      "scenario": "summary-generate",
+      "size": "350x700"
+    },
+    {
+      "findings": [],
+      "scenario": "summary-preview",
+      "size": "350x700"
+    },
+    {
+      "findings": [],
+      "scenario": "summary-book",
+      "size": "350x700"
+    },
+    {
+      "findings": [],
+      "scenario": "summary-entry-detail",
+      "size": "350x700"
+    },
+    {
+      "findings": [],
+      "scenario": "summary-entry-editor",
+      "size": "350x700"
+    },
+    {
+      "findings": [],
+      "scenario": "summary-bagu",
+      "size": "350x700"
+    },
+    {
+      "findings": [],
+      "scenario": "summary-import",
+      "size": "350x700"
+    },
+    {
+      "findings": [],
+      "scenario": "summary-batch",
+      "size": "350x700"
+    },
+    {
+      "findings": [],
+      "scenario": "content-directory-sort-persistence",
+      "size": "350x700"
+    },
+    {
+      "findings": [],
+      "scenario": "summary-failed-draft",
+      "size": "350x700"
+    },
+    {
+      "findings": [],
+      "scenario": "prompts-app-detail",
+      "size": "350x700"
+    },
+    {
+      "findings": [],
+      "scenario": "prompts-task-detail",
+      "size": "350x700"
+    },
+    {
+      "findings": [],
+      "scenario": "prompts-task-editor",
+      "size": "350x700"
+    },
+    {
+      "findings": [],
+      "scenario": "prompts-type-detail",
+      "size": "350x700"
+    },
+    {
+      "findings": [],
+      "scenario": "prompts-type-editor",
+      "size": "350x700"
+    },
+    {
+      "findings": [],
+      "scenario": "prompts-output-list",
+      "size": "350x700"
+    },
+    {
+      "findings": [],
+      "scenario": "prompts-output-editor",
+      "size": "350x700"
+    },
+    {
+      "findings": [],
+      "scenario": "prompts-group-editor",
+      "size": "350x700"
+    },
+    {
+      "findings": [],
+      "scenario": "prompts-phrase-editor",
+      "size": "350x700"
+    },
+    {
+      "findings": [],
+      "scenario": "prompts-phrase-list",
+      "size": "350x700"
+    },
+    {
+      "findings": [],
+      "scenario": "prompts-template-list",
+      "size": "350x700"
+    },
+    {
+      "findings": [],
+      "scenario": "theater-generate",
+      "size": "350x700"
+    },
+    {
+      "findings": [],
+      "scenario": "theater-rewrite-generate",
+      "size": "350x700"
+    },
+    {
+      "findings": [],
+      "scenario": "theater-generate-dark-inputs",
+      "size": "350x700"
+    },
+    {
+      "findings": [],
+      "scenario": "theater-editor",
+      "size": "350x700"
+    },
+    {
+      "findings": [],
+      "scenario": "theater-frontend-footer",
+      "size": "350x700"
+    },
+    {
+      "findings": [],
+      "scenario": "theater-history",
+      "size": "350x700"
+    },
+    {
+      "findings": [],
+      "scenario": "theater-failed-draft",
+      "size": "350x700"
+    },
+    {
+      "findings": [],
+      "scenario": "letters-entry-detail",
+      "size": "350x700"
+    },
+    {
+      "findings": [],
+      "scenario": "letters-book",
+      "size": "350x700"
+    },
+    {
+      "findings": [],
+      "scenario": "letters-entry-editor",
+      "size": "350x700"
+    },
+    {
+      "findings": [],
+      "scenario": "letters-bagu",
+      "size": "350x700"
+    },
+    {
+      "findings": [],
+      "scenario": "letters-generate",
+      "size": "350x700"
+    },
+    {
+      "findings": [],
+      "scenario": "letters-preview",
+      "size": "350x700"
+    },
+    {
+      "findings": [],
+      "scenario": "letters-failed-draft",
+      "size": "350x700"
+    },
+    {
+      "findings": [],
+      "scenario": "letters-rewrite-generate",
+      "size": "350x700"
+    },
+    {
+      "findings": [],
+      "scenario": "tutorial-article",
+      "size": "350x700"
+    },
+    {
+      "findings": [],
+      "scenario": "tutorial-app-directory",
+      "size": "350x700"
+    },
+    {
+      "findings": [],
+      "scenario": "tutorial-missing-article",
+      "size": "350x700"
+    },
+    {
+      "findings": [],
+      "scenario": "tutorial-scroll-return",
+      "size": "350x700"
+    },
+    {
+      "findings": [],
+      "scenario": "tutorial-search-results",
+      "size": "350x700"
+    },
+    {
+      "findings": [],
+      "scenario": "video-viewer",
+      "size": "350x700"
+    },
+    {
+      "findings": [],
+      "scenario": "workbench-logs",
+      "size": "350x700"
+    },
+    {
+      "findings": [],
+      "scenario": "workbench-forum-step",
+      "size": "350x700"
+    },
+    {
+      "findings": [],
+      "scenario": "profiles-table",
+      "size": "350x700"
+    },
+    {
+      "findings": [],
+      "scenario": "profiles-empty-toolbar",
+      "size": "350x700"
+    },
+    {
+      "findings": [],
+      "scenario": "profiles-table-grid",
+      "size": "350x700"
+    },
+    {
+      "findings": [],
+      "scenario": "profiles-table-editor",
+      "size": "350x700"
+    },
+    {
+      "findings": [],
+      "scenario": "profiles-field-management",
+      "size": "350x700"
+    },
+    {
+      "findings": [],
+      "scenario": "profiles-field-detail",
+      "size": "350x700"
+    },
+    {
+      "findings": [],
+      "scenario": "profiles-detail",
+      "size": "350x700"
+    },
+    {
+      "findings": [],
+      "scenario": "home",
+      "size": "390x844"
+    },
+    {
+      "findings": [],
+      "scenario": "home-five-columns",
+      "size": "390x844"
+    },
+    {
+      "findings": [],
+      "scenario": "home-tasks",
+      "size": "390x844"
+    },
+    {
+      "findings": [],
+      "scenario": "home-tasks-dark",
+      "size": "390x844"
+    },
+    {
+      "findings": [],
+      "scenario": "app:summary",
+      "size": "390x844"
+    },
+    {
+      "findings": [],
+      "scenario": "app:diary",
+      "size": "390x844"
+    },
+    {
+      "findings": [],
+      "scenario": "app:extras",
+      "size": "390x844"
+    },
+    {
+      "findings": [],
+      "scenario": "app:forum",
+      "size": "390x844"
+    },
+    {
+      "findings": [],
+      "scenario": "app:theater",
+      "size": "390x844"
+    },
+    {
+      "findings": [],
+      "scenario": "app:letters",
+      "size": "390x844"
+    },
+    {
+      "findings": [],
+      "scenario": "app:workbench",
+      "size": "390x844"
+    },
+    {
+      "findings": [],
+      "scenario": "app:digest",
+      "size": "390x844"
+    },
+    {
+      "findings": [],
+      "scenario": "app:scene-planner",
+      "size": "390x844"
+    },
+    {
+      "findings": [],
+      "scenario": "app:storylines",
+      "size": "390x844"
+    },
+    {
+      "findings": [],
+      "scenario": "app:relationship",
+      "size": "390x844"
+    },
+    {
+      "findings": [],
+      "scenario": "app:profiles",
+      "size": "390x844"
+    },
+    {
+      "findings": [],
+      "scenario": "app:favorites",
+      "size": "390x844"
+    },
+    {
+      "findings": [],
+      "scenario": "app:prompts",
+      "size": "390x844"
+    },
+    {
+      "findings": [],
+      "scenario": "app:stats",
+      "size": "390x844"
+    },
+    {
+      "findings": [],
+      "scenario": "app:archive",
+      "size": "390x844"
+    },
+    {
+      "findings": [],
+      "scenario": "app:recovery",
+      "size": "390x844"
+    },
+    {
+      "findings": [],
+      "scenario": "app:reader",
+      "size": "390x844"
+    },
+    {
+      "findings": [],
+      "scenario": "app:bagu",
+      "size": "390x844"
+    },
+    {
+      "findings": [],
+      "scenario": "app:preset-manager",
+      "size": "390x844"
+    },
+    {
+      "findings": [],
+      "scenario": "app:world-slots",
+      "size": "390x844"
+    },
+    {
+      "findings": [],
+      "scenario": "app:regex-wizard",
+      "size": "390x844"
+    },
+    {
+      "findings": [],
+      "scenario": "app:worldbook-link",
+      "size": "390x844"
+    },
+    {
+      "findings": [],
+      "scenario": "app:preset-link",
+      "size": "390x844"
+    },
+    {
+      "findings": [],
+      "scenario": "app:content-converter",
+      "size": "390x844"
+    },
+    {
+      "findings": [],
+      "scenario": "app:card-writer",
+      "size": "390x844"
+    },
+    {
+      "findings": [],
+      "scenario": "app:file-repository",
+      "size": "390x844"
+    },
+    {
+      "findings": [],
+      "scenario": "app:tutorial",
+      "size": "390x844"
+    },
+    {
+      "findings": [],
+      "scenario": "app:entry-library",
+      "size": "390x844"
+    },
+    {
+      "findings": [],
+      "scenario": "app:mvu-modifier",
+      "size": "390x844"
+    },
+    {
+      "findings": [],
+      "scenario": "app:settings",
+      "size": "390x844"
+    },
+    {
+      "findings": [],
+      "scenario": "app:regex-display",
+      "size": "390x844"
+    },
+    {
+      "findings": [],
+      "scenario": "app:app-builder",
+      "size": "390x844"
+    },
+    {
+      "findings": [],
+      "scenario": "app:theme",
+      "size": "390x844"
+    },
+    {
+      "findings": [],
+      "scenario": "app:timekeeper",
+      "size": "390x844"
+    },
+    {
+      "findings": [],
+      "scenario": "app:comfy",
+      "size": "390x844"
+    },
+    {
+      "findings": [],
+      "scenario": "app:cloud-media",
+      "size": "390x844"
+    },
+    {
+      "findings": [],
+      "scenario": "app:media",
+      "size": "390x844"
+    },
+    {
+      "findings": [],
+      "scenario": "app:gallery",
+      "size": "390x844"
+    },
+    {
+      "findings": [],
+      "scenario": "app:music",
+      "size": "390x844"
+    },
+    {
+      "findings": [],
+      "scenario": "app:video",
+      "size": "390x844"
+    },
+    {
+      "findings": [],
+      "scenario": "app:chat-insert",
+      "size": "390x844"
+    },
+    {
+      "findings": [],
+      "scenario": "app:games",
+      "size": "390x844"
+    },
+    {
+      "findings": [],
+      "scenario": "generation-rewrite-replay",
+      "size": "390x844"
+    },
+    {
+      "findings": [],
+      "scenario": "generation-preview-long-title",
+      "size": "390x844"
+    },
+    {
+      "findings": [],
+      "scenario": "generation-preview-long-title-edit",
+      "size": "390x844"
+    },
+    {
+      "findings": [],
+      "scenario": "generation-preview-long-title-raw",
+      "size": "390x844"
+    },
+    {
+      "findings": [],
+      "scenario": "preview-session-navigation",
+      "size": "390x844"
+    },
+    {
+      "findings": [],
+      "scenario": "generation-connection-override",
+      "size": "390x844"
+    },
+    {
+      "findings": [],
+      "scenario": "preview-draft-deferred-save",
+      "size": "390x844"
+    },
+    {
+      "findings": [],
+      "scenario": "legacy-data-migrations",
+      "size": "390x844"
+    },
+    {
+      "findings": [],
+      "scenario": "app-deferred-mount-order",
+      "size": "390x844"
+    },
+    {
+      "findings": [],
+      "scenario": "custom-app-conversion",
+      "size": "390x844"
+    },
+    {
+      "findings": [],
+      "scenario": "custom-app-conversion-complete",
+      "size": "390x844"
+    },
+    {
+      "findings": [],
+      "scenario": "custom-app-conversion-merge",
+      "size": "390x844"
+    },
+    {
+      "findings": [],
+      "scenario": "custom-app-extract-rules",
+      "size": "390x844"
+    },
+    {
+      "findings": [],
+      "scenario": "custom-app-save-flow",
+      "size": "390x844"
+    },
+    {
+      "findings": [],
+      "scenario": "content-transfer-dialog",
+      "size": "390x844"
+    },
+    {
+      "findings": [],
+      "scenario": "content-converter-source",
+      "size": "390x844"
+    },
+    {
+      "findings": [],
+      "scenario": "content-converter-target",
+      "size": "390x844"
+    },
+    {
+      "findings": [],
+      "scenario": "content-converter-complete",
+      "size": "390x844"
+    },
+    {
+      "findings": [],
+      "scenario": "card-writer-saved-preview",
+      "size": "390x844"
+    },
+    {
+      "findings": [],
+      "scenario": "archive-owner-list",
+      "size": "390x844"
+    },
+    {
+      "findings": [],
+      "scenario": "archive-floor-backup",
+      "size": "390x844"
+    },
+    {
+      "findings": [],
+      "scenario": "recovery-home",
+      "size": "390x844"
+    },
+    {
+      "findings": [],
+      "scenario": "recovery-shelf",
+      "size": "390x844"
+    },
+    {
+      "findings": [],
+      "scenario": "recovery-group",
+      "size": "390x844"
+    },
+    {
+      "findings": [],
+      "scenario": "recovery-cleanup",
+      "size": "390x844"
+    },
+    {
+      "findings": [],
+      "scenario": "recovery-duplicates",
+      "size": "390x844"
+    },
+    {
+      "findings": [],
+      "scenario": "recovery-reader",
+      "size": "390x844"
+    },
+    {
+      "findings": [],
+      "scenario": "recovery-confirm",
+      "size": "390x844"
+    },
+    {
+      "findings": [],
+      "scenario": "recovery-result",
+      "size": "390x844"
+    },
+    {
+      "findings": [],
+      "scenario": "recovery-settings",
+      "size": "390x844"
+    },
+    {
+      "findings": [],
+      "scenario": "bagu-scan-actions",
+      "size": "390x844"
+    },
+    {
+      "findings": [],
+      "scenario": "bagu-hit-details",
+      "size": "390x844"
+    },
+    {
+      "findings": [],
+      "scenario": "bagu-scan-applied",
+      "size": "390x844"
+    },
+    {
+      "findings": [],
+      "scenario": "settings",
+      "size": "390x844"
+    },
+    {
+      "findings": [],
+      "scenario": "settings-interface",
+      "size": "390x844"
+    },
+    {
+      "findings": [],
+      "scenario": "settings-connection",
+      "size": "390x844"
+    },
+    {
+      "findings": [],
+      "scenario": "settings-connection-external",
+      "size": "390x844"
+    },
+    {
+      "findings": [],
+      "scenario": "settings-connection-dark",
+      "size": "390x844"
+    },
+    {
+      "findings": [],
+      "scenario": "settings-advanced",
+      "size": "390x844"
+    },
+    {
+      "findings": [],
+      "scenario": "theme-form-control-isolation",
+      "size": "390x844"
+    },
+    {
+      "findings": [],
+      "scenario": "cloud-media-generate",
+      "size": "390x844"
+    },
+    {
+      "findings": [],
+      "scenario": "cloud-media-settings",
+      "size": "390x844"
+    },
+    {
+      "findings": [],
+      "scenario": "mvu-modifier-tree",
+      "size": "390x844"
+    },
+    {
+      "findings": [],
+      "scenario": "regex-wizard-fields",
+      "size": "390x844"
+    },
+    {
+      "findings": [],
+      "scenario": "storylines-detail",
+      "size": "390x844"
+    },
+    {
+      "findings": [],
+      "scenario": "storylines-editor",
+      "size": "390x844"
+    },
+    {
+      "findings": [],
+      "scenario": "entry-library-action-menu",
+      "size": "390x844"
+    },
+    {
+      "findings": [],
+      "scenario": "entry-library-manual-create",
+      "size": "390x844"
+    },
+    {
+      "findings": [],
+      "scenario": "entry-library-bindings",
+      "size": "390x844"
+    },
+    {
+      "findings": [],
+      "scenario": "entry-library-collect-manual-dedupe",
+      "size": "390x844"
+    },
+    {
+      "findings": [],
+      "scenario": "entry-library-collect-worldbook",
+      "size": "390x844"
+    },
+    {
+      "findings": [],
+      "scenario": "entry-library-ordering",
+      "size": "390x844"
+    },
+    {
+      "findings": [],
+      "scenario": "entry-library-scroll-return",
+      "size": "390x844"
+    },
+    {
+      "findings": [],
+      "scenario": "world-slots-batch-import",
+      "size": "390x844"
+    },
+    {
+      "findings": [],
+      "scenario": "world-slots-entry-library",
+      "size": "390x844"
+    },
+    {
+      "findings": [],
+      "scenario": "world-slots-root-cleanup",
+      "size": "390x844"
+    },
+    {
+      "findings": [],
+      "scenario": "worldbook-link-legacy-entry",
+      "size": "390x844"
+    },
+    {
+      "findings": [],
+      "scenario": "worldbook-entry-editor",
+      "size": "390x844"
+    },
+    {
+      "findings": [],
+      "scenario": "comfy-action-menu",
+      "size": "390x844"
+    },
+    {
+      "findings": [],
+      "scenario": "preset-link-auto-reload",
+      "size": "390x844"
+    },
+    {
+      "findings": [],
+      "scenario": "preset-link-history",
+      "size": "390x844"
+    },
+    {
+      "findings": [],
+      "scenario": "forum-generate-thread",
+      "size": "390x844"
+    },
+    {
+      "findings": [],
+      "scenario": "forum-catalog",
+      "size": "390x844"
+    },
+    {
+      "findings": [],
+      "scenario": "forum-board",
+      "size": "390x844"
+    },
+    {
+      "findings": [],
+      "scenario": "forum-board-editor",
+      "size": "390x844"
+    },
+    {
+      "findings": [],
+      "scenario": "forum-bagu",
+      "size": "390x844"
+    },
+    {
+      "findings": [],
+      "scenario": "forum-failed-draft",
+      "size": "390x844"
+    },
+    {
+      "findings": [],
+      "scenario": "forum-thread",
+      "size": "390x844"
+    },
+    {
+      "findings": [],
+      "scenario": "forum-thread-editor",
+      "size": "390x844"
+    },
+    {
+      "findings": [],
+      "scenario": "forum-generate-replies",
+      "size": "390x844"
+    },
+    {
+      "findings": [],
+      "scenario": "forum-preview",
+      "size": "390x844"
+    },
+    {
+      "findings": [],
+      "scenario": "forum-thread-versions",
+      "size": "390x844"
+    },
+    {
+      "findings": [],
+      "scenario": "forum-version-interactions",
+      "size": "390x844"
+    },
+    {
+      "findings": [],
+      "scenario": "forum-rewrite-generate",
+      "size": "390x844"
+    },
+    {
+      "findings": [],
+      "scenario": "preset-builtin-diary",
+      "size": "390x844"
+    },
+    {
+      "findings": [],
+      "scenario": "preset-detail",
+      "size": "390x844"
+    },
+    {
+      "findings": [],
+      "scenario": "preset-copy-reorder",
+      "size": "390x844"
+    },
+    {
+      "findings": [],
+      "scenario": "preset-copy-editor",
+      "size": "390x844"
+    },
+    {
+      "findings": [],
+      "scenario": "preset-editor",
+      "size": "390x844"
+    },
+    {
+      "findings": [],
+      "scenario": "preset-scroll-return",
+      "size": "390x844"
+    },
+    {
+      "findings": [],
+      "scenario": "reader-detail",
+      "size": "390x844"
+    },
+    {
+      "findings": [],
+      "scenario": "reader-theme-appearance",
+      "size": "390x844"
+    },
+    {
+      "findings": [],
+      "scenario": "reader-catalog",
+      "size": "390x844"
+    },
+    {
+      "findings": [],
+      "scenario": "reader-footer-persistence",
+      "size": "390x844"
+    },
+    {
+      "findings": [],
+      "scenario": "searchable-select",
+      "size": "390x844"
+    },
+    {
+      "findings": [],
+      "scenario": "diary-batch",
+      "size": "390x844"
+    },
+    {
+      "findings": [],
+      "scenario": "diary-creation-mode",
+      "size": "390x844"
+    },
+    {
+      "findings": [],
+      "scenario": "diary-book",
+      "size": "390x844"
+    },
+    {
+      "findings": [],
+      "scenario": "diary-entry-editor",
+      "size": "390x844"
+    },
+    {
+      "findings": [],
+      "scenario": "diary-bagu",
+      "size": "390x844"
+    },
+    {
+      "findings": [],
+      "scenario": "diary-generate",
+      "size": "390x844"
+    },
+    {
+      "findings": [],
+      "scenario": "diary-preview",
+      "size": "390x844"
+    },
+    {
+      "findings": [],
+      "scenario": "diary-failed-draft",
+      "size": "390x844"
+    },
+    {
+      "findings": [],
+      "scenario": "diary-entry-detail",
+      "size": "390x844"
+    },
+    {
+      "findings": [],
+      "scenario": "extras-book-generate",
+      "size": "390x844"
+    },
+    {
+      "findings": [],
+      "scenario": "extras-book-name-fallback",
+      "size": "390x844"
+    },
+    {
+      "findings": [],
+      "scenario": "extras-summary-overview",
+      "size": "390x844"
+    },
+    {
+      "findings": [],
+      "scenario": "extras-summary-generate",
+      "size": "390x844"
+    },
+    {
+      "findings": [],
+      "scenario": "extras-chapter-detail",
+      "size": "390x844"
+    },
+    {
+      "findings": [],
+      "scenario": "content-versions",
+      "size": "390x844"
+    },
+    {
+      "findings": [],
+      "scenario": "content-version-interactions",
+      "size": "390x844"
+    },
+    {
+      "findings": [],
+      "scenario": "content-version-deletion",
+      "size": "390x844"
+    },
+    {
+      "findings": [],
+      "scenario": "extras-chapter-editor",
+      "size": "390x844"
+    },
+    {
+      "findings": [],
+      "scenario": "extras-legacy-continuation",
+      "size": "390x844"
+    },
+    {
+      "findings": [],
+      "scenario": "extras-continuation-references",
+      "size": "390x844"
+    },
+    {
+      "findings": [],
+      "scenario": "summary-create",
+      "size": "390x844"
+    },
+    {
+      "findings": [],
+      "scenario": "summary-generate",
+      "size": "390x844"
+    },
+    {
+      "findings": [],
+      "scenario": "summary-preview",
+      "size": "390x844"
+    },
+    {
+      "findings": [],
+      "scenario": "summary-book",
+      "size": "390x844"
+    },
+    {
+      "findings": [],
+      "scenario": "summary-entry-detail",
+      "size": "390x844"
+    },
+    {
+      "findings": [],
+      "scenario": "summary-entry-editor",
+      "size": "390x844"
+    },
+    {
+      "findings": [],
+      "scenario": "summary-bagu",
+      "size": "390x844"
+    },
+    {
+      "findings": [],
+      "scenario": "summary-import",
+      "size": "390x844"
+    },
+    {
+      "findings": [],
+      "scenario": "summary-batch",
+      "size": "390x844"
+    },
+    {
+      "findings": [],
+      "scenario": "content-directory-sort-persistence",
+      "size": "390x844"
+    },
+    {
+      "findings": [],
+      "scenario": "summary-failed-draft",
+      "size": "390x844"
+    },
+    {
+      "findings": [],
+      "scenario": "prompts-app-detail",
+      "size": "390x844"
+    },
+    {
+      "findings": [],
+      "scenario": "prompts-task-detail",
+      "size": "390x844"
+    },
+    {
+      "findings": [],
+      "scenario": "prompts-task-editor",
+      "size": "390x844"
+    },
+    {
+      "findings": [],
+      "scenario": "prompts-type-detail",
+      "size": "390x844"
+    },
+    {
+      "findings": [],
+      "scenario": "prompts-type-editor",
+      "size": "390x844"
+    },
+    {
+      "findings": [],
+      "scenario": "prompts-output-list",
+      "size": "390x844"
+    },
+    {
+      "findings": [],
+      "scenario": "prompts-output-editor",
+      "size": "390x844"
+    },
+    {
+      "findings": [],
+      "scenario": "prompts-group-editor",
+      "size": "390x844"
+    },
+    {
+      "findings": [],
+      "scenario": "prompts-phrase-editor",
+      "size": "390x844"
+    },
+    {
+      "findings": [],
+      "scenario": "prompts-phrase-list",
+      "size": "390x844"
+    },
+    {
+      "findings": [],
+      "scenario": "prompts-template-list",
+      "size": "390x844"
+    },
+    {
+      "findings": [],
+      "scenario": "theater-generate",
+      "size": "390x844"
+    },
+    {
+      "findings": [],
+      "scenario": "theater-rewrite-generate",
+      "size": "390x844"
+    },
+    {
+      "findings": [],
+      "scenario": "theater-generate-dark-inputs",
+      "size": "390x844"
+    },
+    {
+      "findings": [],
+      "scenario": "theater-editor",
+      "size": "390x844"
+    },
+    {
+      "findings": [],
+      "scenario": "theater-frontend-footer",
+      "size": "390x844"
+    },
+    {
+      "findings": [],
+      "scenario": "theater-history",
+      "size": "390x844"
+    },
+    {
+      "findings": [],
+      "scenario": "theater-failed-draft",
+      "size": "390x844"
+    },
+    {
+      "findings": [],
+      "scenario": "letters-entry-detail",
+      "size": "390x844"
+    },
+    {
+      "findings": [],
+      "scenario": "letters-book",
+      "size": "390x844"
+    },
+    {
+      "findings": [],
+      "scenario": "letters-entry-editor",
+      "size": "390x844"
+    },
+    {
+      "findings": [],
+      "scenario": "letters-bagu",
+      "size": "390x844"
+    },
+    {
+      "findings": [],
+      "scenario": "letters-generate",
+      "size": "390x844"
+    },
+    {
+      "findings": [],
+      "scenario": "letters-preview",
+      "size": "390x844"
+    },
+    {
+      "findings": [],
+      "scenario": "letters-failed-draft",
+      "size": "390x844"
+    },
+    {
+      "findings": [],
+      "scenario": "letters-rewrite-generate",
+      "size": "390x844"
+    },
+    {
+      "findings": [],
+      "scenario": "tutorial-article",
+      "size": "390x844"
+    },
+    {
+      "findings": [],
+      "scenario": "tutorial-app-directory",
+      "size": "390x844"
+    },
+    {
+      "findings": [],
+      "scenario": "tutorial-missing-article",
+      "size": "390x844"
+    },
+    {
+      "findings": [],
+      "scenario": "tutorial-scroll-return",
+      "size": "390x844"
+    },
+    {
+      "findings": [],
+      "scenario": "tutorial-search-results",
+      "size": "390x844"
+    },
+    {
+      "findings": [],
+      "scenario": "video-viewer",
+      "size": "390x844"
+    },
+    {
+      "findings": [],
+      "scenario": "workbench-logs",
+      "size": "390x844"
+    },
+    {
+      "findings": [],
+      "scenario": "workbench-forum-step",
+      "size": "390x844"
+    },
+    {
+      "findings": [],
+      "scenario": "profiles-table",
+      "size": "390x844"
+    },
+    {
+      "findings": [],
+      "scenario": "profiles-empty-toolbar",
+      "size": "390x844"
+    },
+    {
+      "findings": [],
+      "scenario": "profiles-table-grid",
+      "size": "390x844"
+    },
+    {
+      "findings": [],
+      "scenario": "profiles-table-editor",
+      "size": "390x844"
+    },
+    {
+      "findings": [],
+      "scenario": "profiles-field-management",
+      "size": "390x844"
+    },
+    {
+      "findings": [],
+      "scenario": "profiles-field-detail",
+      "size": "390x844"
+    },
+    {
+      "findings": [],
+      "scenario": "profiles-detail",
+      "size": "390x844"
+    },
+    {
+      "findings": [],
+      "scenario": "home",
+      "size": "430x900"
+    },
+    {
+      "findings": [],
+      "scenario": "home-five-columns",
+      "size": "430x900"
+    },
+    {
+      "findings": [],
+      "scenario": "home-tasks",
+      "size": "430x900"
+    },
+    {
+      "findings": [],
+      "scenario": "home-tasks-dark",
+      "size": "430x900"
+    },
+    {
+      "findings": [],
+      "scenario": "app:summary",
+      "size": "430x900"
+    },
+    {
+      "findings": [],
+      "scenario": "app:diary",
+      "size": "430x900"
+    },
+    {
+      "findings": [],
+      "scenario": "app:extras",
+      "size": "430x900"
+    },
+    {
+      "findings": [],
+      "scenario": "app:forum",
+      "size": "430x900"
+    },
+    {
+      "findings": [],
+      "scenario": "app:theater",
+      "size": "430x900"
+    },
+    {
+      "findings": [],
+      "scenario": "app:letters",
+      "size": "430x900"
+    },
+    {
+      "findings": [],
+      "scenario": "app:workbench",
+      "size": "430x900"
+    },
+    {
+      "findings": [],
+      "scenario": "app:digest",
+      "size": "430x900"
+    },
+    {
+      "findings": [],
+      "scenario": "app:scene-planner",
+      "size": "430x900"
+    },
+    {
+      "findings": [],
+      "scenario": "app:storylines",
+      "size": "430x900"
+    },
+    {
+      "findings": [],
+      "scenario": "app:relationship",
+      "size": "430x900"
+    },
+    {
+      "findings": [],
+      "scenario": "app:profiles",
+      "size": "430x900"
+    },
+    {
+      "findings": [],
+      "scenario": "app:favorites",
+      "size": "430x900"
+    },
+    {
+      "findings": [],
+      "scenario": "app:prompts",
+      "size": "430x900"
+    },
+    {
+      "findings": [],
+      "scenario": "app:stats",
+      "size": "430x900"
+    },
+    {
+      "findings": [],
+      "scenario": "app:archive",
+      "size": "430x900"
+    },
+    {
+      "findings": [],
+      "scenario": "app:recovery",
+      "size": "430x900"
+    },
+    {
+      "findings": [],
+      "scenario": "app:reader",
+      "size": "430x900"
+    },
+    {
+      "findings": [],
+      "scenario": "app:bagu",
+      "size": "430x900"
+    },
+    {
+      "findings": [],
+      "scenario": "app:preset-manager",
+      "size": "430x900"
+    },
+    {
+      "findings": [],
+      "scenario": "app:world-slots",
+      "size": "430x900"
+    },
+    {
+      "findings": [],
+      "scenario": "app:regex-wizard",
+      "size": "430x900"
+    },
+    {
+      "findings": [],
+      "scenario": "app:worldbook-link",
+      "size": "430x900"
+    },
+    {
+      "findings": [],
+      "scenario": "app:preset-link",
+      "size": "430x900"
+    },
+    {
+      "findings": [],
+      "scenario": "app:content-converter",
+      "size": "430x900"
+    },
+    {
+      "findings": [],
+      "scenario": "app:card-writer",
+      "size": "430x900"
+    },
+    {
+      "findings": [],
+      "scenario": "app:file-repository",
+      "size": "430x900"
+    },
+    {
+      "findings": [],
+      "scenario": "app:tutorial",
+      "size": "430x900"
+    },
+    {
+      "findings": [],
+      "scenario": "app:entry-library",
+      "size": "430x900"
+    },
+    {
+      "findings": [],
+      "scenario": "app:mvu-modifier",
+      "size": "430x900"
+    },
+    {
+      "findings": [],
+      "scenario": "app:settings",
+      "size": "430x900"
+    },
+    {
+      "findings": [],
+      "scenario": "app:regex-display",
+      "size": "430x900"
+    },
+    {
+      "findings": [],
+      "scenario": "app:app-builder",
+      "size": "430x900"
+    },
+    {
+      "findings": [],
+      "scenario": "app:theme",
+      "size": "430x900"
+    },
+    {
+      "findings": [],
+      "scenario": "app:timekeeper",
+      "size": "430x900"
+    },
+    {
+      "findings": [],
+      "scenario": "app:comfy",
+      "size": "430x900"
+    },
+    {
+      "findings": [],
+      "scenario": "app:cloud-media",
+      "size": "430x900"
+    },
+    {
+      "findings": [],
+      "scenario": "app:media",
+      "size": "430x900"
+    },
+    {
+      "findings": [],
+      "scenario": "app:gallery",
+      "size": "430x900"
+    },
+    {
+      "findings": [],
+      "scenario": "app:music",
+      "size": "430x900"
+    },
+    {
+      "findings": [],
+      "scenario": "app:video",
+      "size": "430x900"
+    },
+    {
+      "findings": [],
+      "scenario": "app:chat-insert",
+      "size": "430x900"
+    },
+    {
+      "findings": [],
+      "scenario": "app:games",
+      "size": "430x900"
+    },
+    {
+      "findings": [],
+      "scenario": "generation-rewrite-replay",
+      "size": "430x900"
+    },
+    {
+      "findings": [],
+      "scenario": "generation-preview-long-title",
+      "size": "430x900"
+    },
+    {
+      "findings": [],
+      "scenario": "generation-preview-long-title-edit",
+      "size": "430x900"
+    },
+    {
+      "findings": [],
+      "scenario": "generation-preview-long-title-raw",
+      "size": "430x900"
+    },
+    {
+      "findings": [],
+      "scenario": "preview-session-navigation",
+      "size": "430x900"
+    },
+    {
+      "findings": [],
+      "scenario": "generation-connection-override",
+      "size": "430x900"
+    },
+    {
+      "findings": [],
+      "scenario": "preview-draft-deferred-save",
+      "size": "430x900"
+    },
+    {
+      "findings": [],
+      "scenario": "legacy-data-migrations",
+      "size": "430x900"
+    },
+    {
+      "findings": [],
+      "scenario": "app-deferred-mount-order",
+      "size": "430x900"
+    },
+    {
+      "findings": [],
+      "scenario": "custom-app-conversion",
+      "size": "430x900"
+    },
+    {
+      "findings": [],
+      "scenario": "custom-app-conversion-complete",
+      "size": "430x900"
+    },
+    {
+      "findings": [],
+      "scenario": "custom-app-conversion-merge",
+      "size": "430x900"
+    },
+    {
+      "findings": [],
+      "scenario": "custom-app-extract-rules",
+      "size": "430x900"
+    },
+    {
+      "findings": [],
+      "scenario": "custom-app-save-flow",
+      "size": "430x900"
+    },
+    {
+      "findings": [],
+      "scenario": "content-transfer-dialog",
+      "size": "430x900"
+    },
+    {
+      "findings": [],
+      "scenario": "content-converter-source",
+      "size": "430x900"
+    },
+    {
+      "findings": [],
+      "scenario": "content-converter-target",
+      "size": "430x900"
+    },
+    {
+      "findings": [],
+      "scenario": "content-converter-complete",
+      "size": "430x900"
+    },
+    {
+      "findings": [],
+      "scenario": "card-writer-saved-preview",
+      "size": "430x900"
+    },
+    {
+      "findings": [],
+      "scenario": "archive-owner-list",
+      "size": "430x900"
+    },
+    {
+      "findings": [],
+      "scenario": "archive-floor-backup",
+      "size": "430x900"
+    },
+    {
+      "findings": [],
+      "scenario": "recovery-home",
+      "size": "430x900"
+    },
+    {
+      "findings": [],
+      "scenario": "recovery-shelf",
+      "size": "430x900"
+    },
+    {
+      "findings": [],
+      "scenario": "recovery-group",
+      "size": "430x900"
+    },
+    {
+      "findings": [],
+      "scenario": "recovery-cleanup",
+      "size": "430x900"
+    },
+    {
+      "findings": [],
+      "scenario": "recovery-duplicates",
+      "size": "430x900"
+    },
+    {
+      "findings": [],
+      "scenario": "recovery-reader",
+      "size": "430x900"
+    },
+    {
+      "findings": [],
+      "scenario": "recovery-confirm",
+      "size": "430x900"
+    },
+    {
+      "findings": [],
+      "scenario": "recovery-result",
+      "size": "430x900"
+    },
+    {
+      "findings": [],
+      "scenario": "recovery-settings",
+      "size": "430x900"
+    },
+    {
+      "findings": [],
+      "scenario": "bagu-scan-actions",
+      "size": "430x900"
+    },
+    {
+      "findings": [],
+      "scenario": "bagu-hit-details",
+      "size": "430x900"
+    },
+    {
+      "findings": [],
+      "scenario": "bagu-scan-applied",
+      "size": "430x900"
+    },
+    {
+      "findings": [],
+      "scenario": "settings",
+      "size": "430x900"
+    },
+    {
+      "findings": [],
+      "scenario": "settings-interface",
+      "size": "430x900"
+    },
+    {
+      "findings": [],
+      "scenario": "settings-connection",
+      "size": "430x900"
+    },
+    {
+      "findings": [],
+      "scenario": "settings-connection-external",
+      "size": "430x900"
+    },
+    {
+      "findings": [],
+      "scenario": "settings-connection-dark",
+      "size": "430x900"
+    },
+    {
+      "findings": [],
+      "scenario": "settings-advanced",
+      "size": "430x900"
+    },
+    {
+      "findings": [],
+      "scenario": "theme-form-control-isolation",
+      "size": "430x900"
+    },
+    {
+      "findings": [],
+      "scenario": "cloud-media-generate",
+      "size": "430x900"
+    },
+    {
+      "findings": [],
+      "scenario": "cloud-media-settings",
+      "size": "430x900"
+    },
+    {
+      "findings": [],
+      "scenario": "mvu-modifier-tree",
+      "size": "430x900"
+    },
+    {
+      "findings": [],
+      "scenario": "regex-wizard-fields",
+      "size": "430x900"
+    },
+    {
+      "findings": [],
+      "scenario": "storylines-detail",
+      "size": "430x900"
+    },
+    {
+      "findings": [],
+      "scenario": "storylines-editor",
+      "size": "430x900"
+    },
+    {
+      "findings": [],
+      "scenario": "entry-library-action-menu",
+      "size": "430x900"
+    },
+    {
+      "findings": [],
+      "scenario": "entry-library-manual-create",
+      "size": "430x900"
+    },
+    {
+      "findings": [],
+      "scenario": "entry-library-bindings",
+      "size": "430x900"
+    },
+    {
+      "findings": [],
+      "scenario": "entry-library-collect-manual-dedupe",
+      "size": "430x900"
+    },
+    {
+      "findings": [],
+      "scenario": "entry-library-collect-worldbook",
+      "size": "430x900"
+    },
+    {
+      "findings": [],
+      "scenario": "entry-library-ordering",
+      "size": "430x900"
+    },
+    {
+      "findings": [],
+      "scenario": "entry-library-scroll-return",
+      "size": "430x900"
+    },
+    {
+      "findings": [],
+      "scenario": "world-slots-batch-import",
+      "size": "430x900"
+    },
+    {
+      "findings": [],
+      "scenario": "world-slots-entry-library",
+      "size": "430x900"
+    },
+    {
+      "findings": [],
+      "scenario": "world-slots-root-cleanup",
+      "size": "430x900"
+    },
+    {
+      "findings": [],
+      "scenario": "worldbook-link-legacy-entry",
+      "size": "430x900"
+    },
+    {
+      "findings": [],
+      "scenario": "worldbook-entry-editor",
+      "size": "430x900"
+    },
+    {
+      "findings": [],
+      "scenario": "comfy-action-menu",
+      "size": "430x900"
+    },
+    {
+      "findings": [],
+      "scenario": "preset-link-auto-reload",
+      "size": "430x900"
+    },
+    {
+      "findings": [],
+      "scenario": "preset-link-history",
+      "size": "430x900"
+    },
+    {
+      "findings": [],
+      "scenario": "forum-generate-thread",
+      "size": "430x900"
+    },
+    {
+      "findings": [],
+      "scenario": "forum-catalog",
+      "size": "430x900"
+    },
+    {
+      "findings": [],
+      "scenario": "forum-board",
+      "size": "430x900"
+    },
+    {
+      "findings": [],
+      "scenario": "forum-board-editor",
+      "size": "430x900"
+    },
+    {
+      "findings": [],
+      "scenario": "forum-bagu",
+      "size": "430x900"
+    },
+    {
+      "findings": [],
+      "scenario": "forum-failed-draft",
+      "size": "430x900"
+    },
+    {
+      "findings": [],
+      "scenario": "forum-thread",
+      "size": "430x900"
+    },
+    {
+      "findings": [],
+      "scenario": "forum-thread-editor",
+      "size": "430x900"
+    },
+    {
+      "findings": [],
+      "scenario": "forum-generate-replies",
+      "size": "430x900"
+    },
+    {
+      "findings": [],
+      "scenario": "forum-preview",
+      "size": "430x900"
+    },
+    {
+      "findings": [],
+      "scenario": "forum-thread-versions",
+      "size": "430x900"
+    },
+    {
+      "findings": [],
+      "scenario": "forum-version-interactions",
+      "size": "430x900"
+    },
+    {
+      "findings": [],
+      "scenario": "forum-rewrite-generate",
+      "size": "430x900"
+    },
+    {
+      "findings": [],
+      "scenario": "preset-builtin-diary",
+      "size": "430x900"
+    },
+    {
+      "findings": [],
+      "scenario": "preset-detail",
+      "size": "430x900"
+    },
+    {
+      "findings": [],
+      "scenario": "preset-copy-reorder",
+      "size": "430x900"
+    },
+    {
+      "findings": [],
+      "scenario": "preset-copy-editor",
+      "size": "430x900"
+    },
+    {
+      "findings": [],
+      "scenario": "preset-editor",
+      "size": "430x900"
+    },
+    {
+      "findings": [],
+      "scenario": "preset-scroll-return",
+      "size": "430x900"
+    },
+    {
+      "findings": [],
+      "scenario": "reader-detail",
+      "size": "430x900"
+    },
+    {
+      "findings": [],
+      "scenario": "reader-theme-appearance",
+      "size": "430x900"
+    },
+    {
+      "findings": [],
+      "scenario": "reader-catalog",
+      "size": "430x900"
+    },
+    {
+      "findings": [],
+      "scenario": "reader-footer-persistence",
+      "size": "430x900"
+    },
+    {
+      "findings": [],
+      "scenario": "searchable-select",
+      "size": "430x900"
+    },
+    {
+      "findings": [],
+      "scenario": "diary-batch",
+      "size": "430x900"
+    },
+    {
+      "findings": [],
+      "scenario": "diary-creation-mode",
+      "size": "430x900"
+    },
+    {
+      "findings": [],
+      "scenario": "diary-book",
+      "size": "430x900"
+    },
+    {
+      "findings": [],
+      "scenario": "diary-entry-editor",
+      "size": "430x900"
+    },
+    {
+      "findings": [],
+      "scenario": "diary-bagu",
+      "size": "430x900"
+    },
+    {
+      "findings": [],
+      "scenario": "diary-generate",
+      "size": "430x900"
+    },
+    {
+      "findings": [],
+      "scenario": "diary-preview",
+      "size": "430x900"
+    },
+    {
+      "findings": [],
+      "scenario": "diary-failed-draft",
+      "size": "430x900"
+    },
+    {
+      "findings": [],
+      "scenario": "diary-entry-detail",
+      "size": "430x900"
+    },
+    {
+      "findings": [],
+      "scenario": "extras-book-generate",
+      "size": "430x900"
+    },
+    {
+      "findings": [],
+      "scenario": "extras-book-name-fallback",
+      "size": "430x900"
+    },
+    {
+      "findings": [],
+      "scenario": "extras-summary-overview",
+      "size": "430x900"
+    },
+    {
+      "findings": [],
+      "scenario": "extras-summary-generate",
+      "size": "430x900"
+    },
+    {
+      "findings": [],
+      "scenario": "extras-chapter-detail",
+      "size": "430x900"
+    },
+    {
+      "findings": [],
+      "scenario": "content-versions",
+      "size": "430x900"
+    },
+    {
+      "findings": [],
+      "scenario": "content-version-interactions",
+      "size": "430x900"
+    },
+    {
+      "findings": [],
+      "scenario": "content-version-deletion",
+      "size": "430x900"
+    },
+    {
+      "findings": [],
+      "scenario": "extras-chapter-editor",
+      "size": "430x900"
+    },
+    {
+      "findings": [],
+      "scenario": "extras-legacy-continuation",
+      "size": "430x900"
+    },
+    {
+      "findings": [],
+      "scenario": "extras-continuation-references",
+      "size": "430x900"
+    },
+    {
+      "findings": [],
+      "scenario": "summary-create",
+      "size": "430x900"
+    },
+    {
+      "findings": [],
+      "scenario": "summary-generate",
+      "size": "430x900"
+    },
+    {
+      "findings": [],
+      "scenario": "summary-preview",
+      "size": "430x900"
+    },
+    {
+      "findings": [],
+      "scenario": "summary-book",
+      "size": "430x900"
+    },
+    {
+      "findings": [],
+      "scenario": "summary-entry-detail",
+      "size": "430x900"
+    },
+    {
+      "findings": [],
+      "scenario": "summary-entry-editor",
+      "size": "430x900"
+    },
+    {
+      "findings": [],
+      "scenario": "summary-bagu",
+      "size": "430x900"
+    },
+    {
+      "findings": [],
+      "scenario": "summary-import",
+      "size": "430x900"
+    },
+    {
+      "findings": [],
+      "scenario": "summary-batch",
+      "size": "430x900"
+    },
+    {
+      "findings": [],
+      "scenario": "content-directory-sort-persistence",
+      "size": "430x900"
+    },
+    {
+      "findings": [],
+      "scenario": "summary-failed-draft",
+      "size": "430x900"
+    },
+    {
+      "findings": [],
+      "scenario": "prompts-app-detail",
+      "size": "430x900"
+    },
+    {
+      "findings": [],
+      "scenario": "prompts-task-detail",
+      "size": "430x900"
+    },
+    {
+      "findings": [],
+      "scenario": "prompts-task-editor",
+      "size": "430x900"
+    },
+    {
+      "findings": [],
+      "scenario": "prompts-type-detail",
+      "size": "430x900"
+    },
+    {
+      "findings": [],
+      "scenario": "prompts-type-editor",
+      "size": "430x900"
+    },
+    {
+      "findings": [],
+      "scenario": "prompts-output-list",
+      "size": "430x900"
+    },
+    {
+      "findings": [],
+      "scenario": "prompts-output-editor",
+      "size": "430x900"
+    },
+    {
+      "findings": [],
+      "scenario": "prompts-group-editor",
+      "size": "430x900"
+    },
+    {
+      "findings": [],
+      "scenario": "prompts-phrase-editor",
+      "size": "430x900"
+    },
+    {
+      "findings": [],
+      "scenario": "prompts-phrase-list",
+      "size": "430x900"
+    },
+    {
+      "findings": [],
+      "scenario": "prompts-template-list",
+      "size": "430x900"
+    },
+    {
+      "findings": [],
+      "scenario": "theater-generate",
+      "size": "430x900"
+    },
+    {
+      "findings": [],
+      "scenario": "theater-rewrite-generate",
+      "size": "430x900"
+    },
+    {
+      "findings": [],
+      "scenario": "theater-generate-dark-inputs",
+      "size": "430x900"
+    },
+    {
+      "findings": [],
+      "scenario": "theater-editor",
+      "size": "430x900"
+    },
+    {
+      "findings": [],
+      "scenario": "theater-frontend-footer",
+      "size": "430x900"
+    },
+    {
+      "findings": [],
+      "scenario": "theater-history",
+      "size": "430x900"
+    },
+    {
+      "findings": [],
+      "scenario": "theater-failed-draft",
+      "size": "430x900"
+    },
+    {
+      "findings": [],
+      "scenario": "letters-entry-detail",
+      "size": "430x900"
+    },
+    {
+      "findings": [],
+      "scenario": "letters-book",
+      "size": "430x900"
+    },
+    {
+      "findings": [],
+      "scenario": "letters-entry-editor",
+      "size": "430x900"
+    },
+    {
+      "findings": [],
+      "scenario": "letters-bagu",
+      "size": "430x900"
+    },
+    {
+      "findings": [],
+      "scenario": "letters-generate",
+      "size": "430x900"
+    },
+    {
+      "findings": [],
+      "scenario": "letters-preview",
+      "size": "430x900"
+    },
+    {
+      "findings": [],
+      "scenario": "letters-failed-draft",
+      "size": "430x900"
+    },
+    {
+      "findings": [],
+      "scenario": "letters-rewrite-generate",
+      "size": "430x900"
+    },
+    {
+      "findings": [],
+      "scenario": "tutorial-article",
+      "size": "430x900"
+    },
+    {
+      "findings": [],
+      "scenario": "tutorial-app-directory",
+      "size": "430x900"
+    },
+    {
+      "findings": [],
+      "scenario": "tutorial-missing-article",
+      "size": "430x900"
+    },
+    {
+      "findings": [],
+      "scenario": "tutorial-scroll-return",
+      "size": "430x900"
+    },
+    {
+      "findings": [],
+      "scenario": "tutorial-search-results",
+      "size": "430x900"
+    },
+    {
+      "findings": [],
+      "scenario": "video-viewer",
+      "size": "430x900"
+    },
+    {
+      "findings": [],
+      "scenario": "workbench-logs",
+      "size": "430x900"
+    },
+    {
+      "findings": [],
+      "scenario": "workbench-forum-step",
+      "size": "430x900"
+    },
+    {
+      "findings": [],
+      "scenario": "profiles-table",
+      "size": "430x900"
+    },
+    {
+      "findings": [],
+      "scenario": "profiles-empty-toolbar",
+      "size": "430x900"
+    },
+    {
+      "findings": [],
+      "scenario": "profiles-table-grid",
+      "size": "430x900"
+    },
+    {
+      "findings": [],
+      "scenario": "profiles-table-editor",
+      "size": "430x900"
+    },
+    {
+      "findings": [],
+      "scenario": "profiles-field-management",
+      "size": "430x900"
+    },
+    {
+      "findings": [],
+      "scenario": "profiles-field-detail",
+      "size": "430x900"
+    },
+    {
+      "findings": [],
+      "scenario": "profiles-detail",
+      "size": "430x900"
+    }
+  ]
+}

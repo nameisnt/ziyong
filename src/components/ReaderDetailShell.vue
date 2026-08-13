@@ -13,6 +13,7 @@
       <slot name="kicker"></slot>
       <template v-if="customContent">
         <article class="pc-detail-content pc-reader-content pc-reader-custom-content">
+          <ReasoningDisclosure :content="reasoning" />
           <header class="pc-reader-document-head">
             <h1>{{ title }}</h1>
             <slot name="meta"></slot>
@@ -23,6 +24,9 @@
         </article>
       </template>
       <ReaderContent v-else :content="displayContent" :formatted="contentFormatted" :title="title">
+        <template #before-header>
+          <ReasoningDisclosure :content="reasoning" />
+        </template>
         <template #meta><slot name="meta"></slot></template>
         <template #before>
           <slot name="before-content"></slot>
@@ -115,9 +119,6 @@
         >
           <i class="fa-solid fa-pen"></i><span>{{ editLabel }}</span>
         </button>
-        <button v-if="reasoning.trim()" class="pc-soft-btn" type="button" @click="reasoningOpen = true">
-          <i class="fa-solid fa-brain"></i><span>思维链</span>
-        </button>
         <slot name="actions"></slot>
       </div>
     </div>
@@ -130,8 +131,6 @@
       @save="saveTextEdit"
     />
 
-    <ReasoningModal :content="reasoning" :open="reasoningOpen" @close="reasoningOpen = false" />
-
     <slot name="overlays"></slot>
   </div>
 </template>
@@ -139,8 +138,8 @@
 <script setup lang="ts">
 import DetailFooter from '@/components/DetailFooter.vue';
 import ReaderContent from '@/components/ReaderContent.vue';
+import ReasoningDisclosure from '@/components/ReasoningDisclosure.vue';
 import ReaderTextEditModal from '@/components/ReaderTextEditModal.vue';
-import ReasoningModal from '@/components/ReasoningModal.vue';
 import { useRegexDisplayStore } from '@/apps/regex-display/store';
 import { applyRegexDisplayRules, getRegexRulesByIds } from '@/util/regexDisplay';
 import { findReaderTextOccurrences, type ReaderTextOccurrence } from '@/util/readerTextEdit';
@@ -250,10 +249,9 @@ const toolVisible = computed(
     props.branchEnabled ||
     props.eraserEnabled ||
     props.editEnabled ||
-    Boolean(props.reasoning.trim() || slots.actions || slots['version-navigation']),
+    Boolean(slots.actions || slots['version-navigation']),
 );
 const toolMenuOpen = ref(false);
-const reasoningOpen = ref(false);
 const textEditOpen = ref(false);
 const selectedText = ref('');
 const textOccurrences = ref<ReaderTextOccurrence[]>([]);

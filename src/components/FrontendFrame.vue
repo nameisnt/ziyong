@@ -115,11 +115,15 @@ function handleMessage(event: MessageEvent) {
 
   if (source !== getFrontendFrameSource() || nextChannelId !== channelId) return;
   if (type === 'reader-tap') {
+    const clientY = (payload as { clientY?: unknown }).clientY;
+    const frame = iframeEl.value;
+    const readerShell = frame?.closest<HTMLElement>('.pc-reader-detail-shell');
+    if (typeof clientY !== 'number' || !Number.isFinite(clientY) || !frame || !readerShell) return;
+    const shellRect = readerShell.getBoundingClientRect();
+    const viewportY = frame.getBoundingClientRect().top + clientY;
+    const relativeY = shellRect.height > 0 ? (viewportY - shellRect.top) / shellRect.height : -1;
+    if (relativeY < 0.2 || relativeY > 0.8) return;
     emit('readerTap');
-    return;
-  }
-  if (type === 'side-back') {
-    window.dispatchEvent(new CustomEvent('st-phone-side-back'));
     return;
   }
   if (type !== 'height') return;

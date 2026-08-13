@@ -18,6 +18,7 @@ import {
 } from '@/testing/visual/contentBookScenarios';
 import { applyTheaterVisualScenario, createTheaterFixture } from '@/testing/visual/theaterScenarios';
 import { applyRecoveryVisualScenario } from '@/testing/visual/recoveryScenarios';
+import { applyReaderVisualScenario } from '@/testing/visual/readerScenarios';
 import { configureVisualPhoneSize, resetVisualPhoneRoute, waitForVisualPaint } from '@/testing/visual/context';
 import { createGenerationTaskFixture } from '@/testing/visual/generationTaskFixtures';
 import { useStorylinesStore } from '@/apps/storylines/store';
@@ -379,7 +380,6 @@ const { usePhoneStore } = await import('@/store/phone');
 const { usePromptStore } = await import('@/store/prompts');
 const { useGenerationAliasesStore } = await import('@/store/generationAliases');
 const { useGenerationOverrideStore } = await import('@/store/generationOverrides');
-const { useReaderStore } = await import('@/store/reader');
 const { useSettingsStore } = await import('@/store/settings');
 const { useSummaryStore } = await import('@/store/summary');
 const { usePreviewDraftStore } = await import('@/store/previewDrafts');
@@ -522,6 +522,13 @@ function createExtrasGenerationRecordFixture() {
       rangeText: '12-18',
       recentCount: 8,
       references: [],
+      reasoning: [
+        '## 雨夜里的迟疑',
+        '',
+        '先回顾这一章和上一章的衔接，再确认人物此刻不知道哪些信息。',
+        '',
+        '*不能把尚未揭晓的真相提前写进角色认知。*',
+      ].join('\n'),
       singleMessageId: 0,
       sourceLabel: '第 12-18 楼',
       sourceMessageIds: [12, 13, 14, 15, 16, 17, 18],
@@ -780,6 +787,20 @@ async function applyScenario(name: VisualScenarioName, options: { height?: numbe
     return { name, route: usePhoneStore().currentRoute };
   }
 
+  if (
+    await applyReaderVisualScenario(name, {
+      openReaderCatalog,
+      openReaderTools,
+      resetPhoneToRoute,
+      toggleReaderFooter,
+      waitForCondition: waitForVisualCondition,
+      waitForPaint,
+    })
+  ) {
+    await waitForPaint();
+    return { name, route: usePhoneStore().currentRoute };
+  }
+
   if (name === 'home') {
     await phone.goHome();
     await waitForPaint();
@@ -811,57 +832,6 @@ async function applyScenario(name: VisualScenarioName, options: { height?: numbe
     if (gridGap > 4 || tilePadding > 1 || labelFontSize > 10 || label.clientWidth < 50) {
       throw new Error('Five-column App label does not reserve enough width for five Chinese characters');
     }
-  } else if (name === 'side-swipe-back') {
-    const dispatchSwipe = async (startRatio: number, deltaX: number, deltaY = 0) => {
-      const shell = document.querySelector<HTMLElement>('.pc-phone-shell');
-      if (!shell) throw new Error('Phone shell is missing from the side-swipe fixture');
-      const rect = shell.getBoundingClientRect();
-      const pointerId = Math.round(startRatio * 1000) + Math.round(Math.abs(deltaX)) + Math.round(Math.abs(deltaY));
-      const startX = rect.left + rect.width * startRatio;
-      const startY = rect.top + rect.height * 0.55;
-      const pointer = (type: string, clientX: number, clientY: number) =>
-        shell.dispatchEvent(
-          new PointerEvent(type, {
-            bubbles: true,
-            button: 0,
-            cancelable: true,
-            clientX,
-            clientY,
-            isPrimary: true,
-            pointerId,
-            pointerType: 'touch',
-          }),
-        );
-      pointer('pointerdown', startX, startY);
-      pointer('pointermove', startX + deltaX, startY + deltaY);
-      pointer('pointerup', startX + deltaX, startY + deltaY);
-      await waitForPaint();
-    };
-    const prepareChildPage = () => {
-      resetPhoneToRoute('settings', 'root', '设置');
-      phone.pushPage('gesture-child', '手势测试');
-    };
-    const stackDepth = () => Number(phone.stack.length);
-
-    prepareChildPage();
-    await dispatchSwipe(0.1, 80);
-    if (stackDepth() !== 2) throw new Error('Left-side inward swipe did not navigate back');
-
-    prepareChildPage();
-    await dispatchSwipe(0.9, -80);
-    if (stackDepth() !== 2) throw new Error('Right-side inward swipe did not navigate back');
-
-    prepareChildPage();
-    await dispatchSwipe(0.5, 72);
-    if (stackDepth() !== 3) throw new Error('Center swipe unexpectedly navigated back');
-
-    prepareChildPage();
-    await dispatchSwipe(0.015, 72);
-    if (stackDepth() !== 3) throw new Error('System-safe outer strip unexpectedly navigated back');
-
-    prepareChildPage();
-    await dispatchSwipe(0.1, 18, 80);
-    if (stackDepth() !== 3) throw new Error('Vertical scroll from a side zone unexpectedly navigated back');
   } else if (name === 'storylines-detail' || name === 'storylines-editor') {
     const storylines = useStorylinesStore();
     storylines.resetCurrentScope();
@@ -2809,97 +2779,6 @@ async function applyScenario(name: VisualScenarioName, options: { height?: numbe
       Boolean(document.querySelector('.pc-worldbook-entry-editor')),
     );
     if (!editorLoaded) throw new Error('Worldbook entry editor did not open');
-  } else if (name === 'reader-detail') {
-    const settingsStore = useSettingsStore();
-    settingsStore.settings.theme = 'dark';
-    const reader = useReaderStore();
-    reader.resetAllCaches();
-    const briefs = await reader.loadBriefs(true);
-    const brief = briefs[0];
-    const messages = brief ? await reader.loadChat(brief.fileName, true) : [];
-    const message = messages[0];
-    if (!message) throw new Error('Reader visual fixture did not create a message');
-    resetPhoneToRoute('reader', 'detail', message.title, { messageId: message.id });
-    const detailLoaded = await waitForVisualCondition(() => Boolean(document.querySelector('.pc-reader-tool-trigger')));
-    if (!detailLoaded) throw new Error('Reader tool trigger did not render');
-    await openReaderTools();
-    const trigger = document.querySelector<HTMLElement>('.pc-reader-tool-trigger');
-    const menu = document.querySelector<HTMLElement>('.pc-reader-tool-menu');
-    if (!trigger || !menu) throw new Error('Reader tool menu did not stay open');
-    if (getComputedStyle(trigger).backgroundColor !== 'rgb(44, 44, 46)') {
-      throw new Error('Reader tool trigger is not opaque in dark mode');
-    }
-    const menuStyle = getComputedStyle(menu);
-    if (menuStyle.backgroundColor !== 'rgb(44, 44, 46)' || menuStyle.gridTemplateColumns.split(' ').length !== 2) {
-      throw new Error('Reader tool menu is not an opaque two-column panel in dark mode');
-    }
-    const actionButtons = [...menu.querySelectorAll<HTMLButtonElement>(':scope > button')];
-    if (
-      !actionButtons.length ||
-      actionButtons.some(button => {
-        const label = button.textContent?.trim() || '';
-        return label.length < 2 || label.length > 4;
-      })
-    ) {
-      throw new Error('Reader tool actions must all expose a two-to-four-character label');
-    }
-  } else if (name === 'reader-theme-appearance') {
-    const settingsStore = useSettingsStore();
-    settingsStore.settings.reader.fontFamily = 'Courier New, monospace';
-    settingsStore.settings.visualTheme.readerTextColor = '#7b3fe4';
-    const reader = useReaderStore();
-    reader.resetAllCaches();
-    const briefs = await reader.loadBriefs(true);
-    const brief = briefs[0];
-    const messages = brief ? await reader.loadChat(brief.fileName, true) : [];
-    const message = messages[0];
-    if (!message) throw new Error('Reader appearance fixture did not create a message');
-    resetPhoneToRoute('reader', 'detail', message.title, { messageId: message.id });
-    const contentLoaded = await waitForVisualCondition(
-      () => Boolean(document.querySelector('.pc-reader-content')),
-      2_000,
-    );
-    if (!contentLoaded) throw new Error('Reader appearance content did not finish loading');
-    const content = document.querySelector<HTMLElement>('.pc-reader-content');
-    if (!content) throw new Error('Reader appearance content is missing');
-    const appearance = getComputedStyle(content);
-    if (!appearance.fontFamily.toLowerCase().includes('courier new')) {
-      throw new Error('Reader font family did not reach the rendered content');
-    }
-    if (appearance.color !== 'rgb(123, 63, 228)') {
-      throw new Error('Reader text color did not reach the rendered content');
-    }
-    const renderedText = content.querySelector<HTMLElement>('h1, h2, h3, p, li, blockquote');
-    if (!renderedText || !getComputedStyle(renderedText).fontFamily.toLowerCase().includes('courier new')) {
-      throw new Error('Reader font family did not reach nested rendered text');
-    }
-  } else if (name === 'reader-footer-persistence') {
-    const reader = useReaderStore();
-    reader.resetAllCaches();
-    const briefs = await reader.loadBriefs(true);
-    const brief = briefs[0];
-    const messages = brief ? await reader.loadChat(brief.fileName, true) : [];
-    const message = messages[0];
-    if (!message) throw new Error('Reader footer fixture did not create a message');
-    resetPhoneToRoute('reader', 'detail', message.title, { messageId: message.id });
-    await waitForPaint();
-    await toggleReaderFooter();
-    const stackLength = phone.stack.length;
-    const nextButton = document.querySelector<HTMLButtonElement>('.pc-detail-nav button:last-child:not(:disabled)');
-    if (!nextButton) throw new Error('Reader next button is missing from the persistent footer');
-    nextButton.click();
-    await waitForPaint();
-    if (!document.querySelector('.pc-reader-footer-popover')) {
-      throw new Error('Reader footer disappeared after an adjacent navigation action');
-    }
-    if (phone.stack.length !== stackLength) {
-      throw new Error('Reader adjacent navigation added an unnecessary history entry');
-    }
-    await toggleReaderFooter();
-    if (document.querySelector('.pc-reader-footer-popover')) {
-      throw new Error('Reader center tap did not hide the persistent footer');
-    }
-    await toggleReaderFooter();
   } else if (name === 'content-directory-sort-persistence') {
     const settings = useSettingsStore();
     settings.settings.directorySort.summaryDesc = false;
@@ -3780,17 +3659,6 @@ async function applyScenario(name: VisualScenarioName, options: { height?: numbe
     ) {
       throw new Error('Disabled profile field still participates in saved references');
     }
-  } else if (name === 'reader-catalog') {
-    const reader = useReaderStore();
-    reader.resetAllCaches();
-    const briefs = await reader.loadBriefs(true);
-    const brief = briefs[0];
-    const messages = brief ? await reader.loadChat(brief.fileName, true) : [];
-    const message = messages[0];
-    if (!message) throw new Error('Reader visual fixture did not create a message');
-    resetPhoneToRoute('reader', 'detail', message.title, { messageId: message.id });
-    await waitForPaint();
-    await openReaderCatalog();
   } else if (name === 'video-viewer') {
     const video = createVideoFixture();
     resetPhoneToRoute('video', 'viewer', video.title, { entryId: video.id });

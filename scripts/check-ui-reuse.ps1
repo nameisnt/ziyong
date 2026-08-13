@@ -82,17 +82,36 @@ foreach ($file in $files) {
 
 if (-not $findings.Count) {
   Write-Host "UI reuse check passed: no suspicious duplicated global UI styles found." -ForegroundColor Green
-  exit 0
+}
+else {
+  Write-Host "UI reuse check found possible issues:" -ForegroundColor Yellow
+  $findings |
+    Sort-Object File, Line |
+    Format-Table -AutoSize File, Line, Severity, Rule, Text
+
+  Write-Host ""
+  Write-Host "Please reuse global styles/components first. If a local override is intentional, add a short nearby comment with a defect or design ID." -ForegroundColor Yellow
 }
 
-Write-Host "UI reuse check found possible issues:" -ForegroundColor Yellow
-$findings |
-  Sort-Object File, Line |
-  Format-Table -AutoSize File, Line, Severity, Rule, Text
+$semanticScript = Join-Path $projectRoot "scripts\ui-contract-check.mjs"
+if (-not (Test-Path -LiteralPath $semanticScript)) {
+  throw "Cannot find semantic UI contract checker: $semanticScript"
+}
 
-Write-Host ""
-Write-Host "Please reuse global styles/components first. If a local override is intentional, add a short nearby comment explaining why." -ForegroundColor Yellow
-if ($Strict) {
+Push-Location $projectRoot
+try {
+  & node $semanticScript
+  $semanticExitCode = $LASTEXITCODE
+}
+finally {
+  Pop-Location
+}
+
+if ($semanticExitCode -ne 0) {
+  Write-Host "Semantic UI contract check failed." -ForegroundColor Yellow
+}
+
+if ($Strict -and ($findings.Count -gt 0 -or $semanticExitCode -ne 0)) {
   exit 1
 }
 exit 0

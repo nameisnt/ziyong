@@ -7,7 +7,7 @@ export function createVisualScenarioGroups(rootAppScenarios: string[]): VisualSc
   return [
     {
       id: 'shell',
-      scenarios: ['home', 'home-five-columns', 'side-swipe-back', 'home-tasks', 'home-tasks-dark', ...rootAppScenarios],
+      scenarios: ['home', 'home-five-columns', 'home-tasks', 'home-tasks-dark', ...rootAppScenarios],
     },
     {
       id: 'generation',

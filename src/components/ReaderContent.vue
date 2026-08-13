@@ -1,5 +1,6 @@
 <template>
   <article class="pc-detail-content pc-rendered-markdown pc-reader-content" :style="readerBackgroundStyle">
+    <slot name="before-header"></slot>
     <header v-if="title || $slots.meta" class="pc-reader-document-head">
       <h1 v-if="title">{{ title }}</h1>
       <slot name="meta"></slot>

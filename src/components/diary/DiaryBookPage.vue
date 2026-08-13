@@ -41,6 +41,7 @@
         @click="$emit('open-entry', entry.id)"
       >
         <strong>{{ entry.kind === 'read-reaction' ? `📖 ${entry.title}` : entry.title }}</strong>
+        <span v-if="entry.sourceFloorEnd != null" class="pc-list-row-meta">来源至 {{ entry.sourceFloorEnd }} 楼</span>
       </button>
     </div>
 

@@ -173,10 +173,62 @@ Set-Location -LiteralPath $repoRoot
 
 Write-Host ''
 Write-Host 'Safe push source and tracked changes to GitHub' -ForegroundColor Cyan
-Write-Host 'All tracked changes and new files under src/ will be published.' -ForegroundColor Cyan
-Write-Host 'Untracked files outside src/ are ignored.' -ForegroundColor Cyan
+Write-Host 'All tracked changes plus explicitly allowed new source, docs, and verification files will be published.' -ForegroundColor Cyan
+Write-Host 'Other untracked files are ignored.' -ForegroundColor Cyan
 Write-Host 'A temporary Git index is used. Existing staged changes are never overwritten.' -ForegroundColor Cyan
 Write-Host ''
+
+$currentRuleDocs = @(Get-ChildItem -LiteralPath 'docs' -File -Filter '07-*.md')
+if ($currentRuleDocs.Count -ne 1) {
+  throw "Expected exactly one current rule document matching docs/07-*.md, found $($currentRuleDocs.Count)."
+}
+$currentRuleDocPath = 'docs/' + $currentRuleDocs[0].Name
+
+$allowedNewExactPaths = @(
+  $currentRuleDocPath,
+  'scripts/backup-contract-check.mjs',
+  'scripts/check-eslint-baseline.mjs',
+  'scripts/check-style-guard.ps1',
+  'scripts/config-recovery-contract-check.mjs',
+  'scripts/recovery-contract-check.mjs',
+  'scripts/structure-contract-check.mjs',
+  'scripts/ui-appearance-contracts.mjs',
+  'scripts/ui-interaction-contracts.mjs',
+  'scripts/ui-contract-check.mjs'
+)
+$allowedNewPrefixes = @(
+  'src/',
+  'docs/archive/',
+  'docs/execution/',
+  'scripts/baselines/',
+  'scripts/unit/'
+)
+$allowedPublishPaths = @(
+  'src',
+  $currentRuleDocPath,
+  'docs/archive',
+  'docs/execution',
+  'scripts/backup-contract-check.mjs',
+  'scripts/check-eslint-baseline.mjs',
+  'scripts/check-style-guard.ps1',
+  'scripts/config-recovery-contract-check.mjs',
+  'scripts/recovery-contract-check.mjs',
+  'scripts/baselines',
+  'scripts/structure-contract-check.mjs',
+  'scripts/ui-appearance-contracts.mjs',
+  'scripts/ui-interaction-contracts.mjs',
+  'scripts/ui-contract-check.mjs',
+  'scripts/unit'
+)
+
+function Test-AllowedNewPath {
+  param([Parameter(Mandatory = $true)][string]$Path)
+
+  if ($allowedNewExactPaths -contains $Path) {
+    return $true
+  }
+  return @($allowedNewPrefixes | Where-Object { $Path.StartsWith($_) }).Count -gt 0
+}
 
 $expectedRemotes = @(
   'https://github.com/nameisnt/ziyong.git',
@@ -209,26 +261,30 @@ if ($branch -ne 'main') {
   throw "Current branch is '$branch', expected 'main'. Stop to avoid pushing the wrong branch."
 }
 
-& git diff --cached --quiet --exit-code
-$stagedDiffExitCode = $LASTEXITCODE
-if ($stagedDiffExitCode -eq 1) {
-  throw 'The normal staging area contains changes. Commit or unstage them before publishing.'
-}
-if ($stagedDiffExitCode -ne 0) {
-  throw 'Failed to inspect the normal staging area.'
-}
-
-$runBuild = -not $SkipBuild
+$runBuild = -not $SkipBuild -and -not $DryRun
 if ($runBuild) {
   $buildAnswer = Read-Host 'Run pnpm build after syncing main? Press Enter = yes, type n = skip'
   $runBuild = $buildAnswer.Trim().ToLowerInvariant() -notin @('n', 'no')
 }
 
-Invoke-CheckedWithRetry -Command git -Arguments @('fetch', 'origin', 'main')
+if (-not $DryRun) {
+  Invoke-CheckedWithRetry -Command git -Arguments @('fetch', 'origin', 'main')
+}
 
 $parent = Invoke-Capture -Command git -Arguments @('rev-parse', 'origin/main')
 $head = Invoke-Capture -Command git -Arguments @('rev-parse', 'HEAD')
+if ($DryRun -and $head -ne $parent) {
+  throw "DryRun is local-only and requires HEAD ($head) to match the locally cached origin/main ($parent). Run the normal command to fetch and synchronize first."
+}
 if ($head -ne $parent) {
+  & git diff --cached --quiet --exit-code
+  $stagedDiffExitCode = $LASTEXITCODE
+  if ($stagedDiffExitCode -eq 1) {
+    throw 'The normal staging area contains changes while main needs synchronization. Commit or unstage them before publishing.'
+  }
+  if ($stagedDiffExitCode -ne 0) {
+    throw 'Failed to inspect the normal staging area.'
+  }
   & git merge-base --is-ancestor $head $parent
   $ancestorExitCode = $LASTEXITCODE
   if ($ancestorExitCode -eq 1) {
@@ -376,16 +432,18 @@ Write-Host ''
 Write-Host 'Current build artifacts:' -ForegroundColor Yellow
 $distFiles | Select-Object Name, Length, LastWriteTime | Format-Table -AutoSize
 
-if ([string]::IsNullOrWhiteSpace($CommitMessage)) {
+if (-not $DryRun -and [string]::IsNullOrWhiteSpace($CommitMessage)) {
   $CommitMessage = 'update source and dist ' + (Get-Date -Format 'yyyy-MM-dd HH:mm')
 }
-$messageInput = Read-Host "Commit message. Press Enter to use default: $CommitMessage"
-if (-not [string]::IsNullOrWhiteSpace($messageInput)) {
-  $trimmedMessage = $messageInput.Trim()
-  if ($trimmedMessage.ToLowerInvariant() -eq 'yes') {
-    Write-Host 'Input "yes" was treated as an accidental early confirmation. Keep default commit message.' -ForegroundColor Yellow
-  } else {
-    $CommitMessage = $trimmedMessage
+if (-not $DryRun) {
+  $messageInput = Read-Host "Commit message. Press Enter to use default: $CommitMessage"
+  if (-not [string]::IsNullOrWhiteSpace($messageInput)) {
+    $trimmedMessage = $messageInput.Trim()
+    if ($trimmedMessage.ToLowerInvariant() -eq 'yes') {
+      Write-Host 'Input "yes" was treated as an accidental early confirmation. Keep default commit message.' -ForegroundColor Yellow
+    } else {
+      $CommitMessage = $trimmedMessage
+    }
   }
 }
 
@@ -393,27 +451,31 @@ $originalIndex = $env:GIT_INDEX_FILE
 $tmpIndex = Join-Path $env:TEMP ('ziyong-publish-index-' + [guid]::NewGuid().ToString())
 
 try {
-  $untrackedFiles = @(& git ls-files --others --exclude-standard)
+  $untrackedFiles = @(& git -c core.quotepath=false ls-files --others --exclude-standard)
   if ($LASTEXITCODE -ne 0) {
     throw 'Failed to inspect untracked files.'
   }
-  $untrackedSourceFiles = @($untrackedFiles | Where-Object { $_ -like 'src/*' })
-  $ignoredUntrackedFiles = @($untrackedFiles | Where-Object { $_ -notlike 'src/*' })
-  if ($untrackedSourceFiles.Count) {
+  $allowedUntrackedFiles = @($untrackedFiles | Where-Object { Test-AllowedNewPath -Path $_ })
+  $ignoredUntrackedFiles = @($untrackedFiles | Where-Object { -not (Test-AllowedNewPath -Path $_) })
+  if ($allowedUntrackedFiles.Count) {
     Write-Host ''
-    Write-Host 'New source files that will be published:' -ForegroundColor Yellow
-    $untrackedSourceFiles | ForEach-Object { Write-Host "  $_" -ForegroundColor Yellow }
+    Write-Host 'Explicitly allowed new files that will be published:' -ForegroundColor Yellow
+    $allowedUntrackedFiles | ForEach-Object { Write-Host "  $_" -ForegroundColor Yellow }
   }
   if ($ignoredUntrackedFiles.Count) {
     Write-Host ''
-    Write-Host 'Untracked files outside src/ will be ignored:' -ForegroundColor DarkGray
+    Write-Host 'Other untracked files will be ignored:' -ForegroundColor DarkGray
     $ignoredUntrackedFiles | ForEach-Object { Write-Host "  $_" -ForegroundColor DarkGray }
   }
 
   $env:GIT_INDEX_FILE = $tmpIndex
   Invoke-Checked -Command git -Arguments @('read-tree', $parent)
   Invoke-Checked -Command git -Arguments @('-c', 'core.safecrlf=false', 'add', '--update', '--', '.')
-  Invoke-Checked -Command git -Arguments @('-c', 'core.safecrlf=false', 'add', '--all', '--', 'src')
+  foreach ($path in $allowedPublishPaths) {
+    if (Test-Path -LiteralPath $path) {
+      Invoke-Checked -Command git -Arguments @('-c', 'core.safecrlf=false', 'add', '--all', '--', $path)
+    }
+  }
 
   $trackedExclusions = @()
   foreach ($path in $excludedTrackedPaths) {
@@ -461,6 +523,12 @@ try {
     exit 0
   }
 
+  if ($DryRun) {
+    Write-Host ''
+    Write-Host 'DryRun complete: no fetch, build, prompt, commit object, index update, or push was performed.' -ForegroundColor Green
+    exit 0
+  }
+
   $confirm = Read-Host 'Push to https://github.com/nameisnt/ziyong main? Type YES to continue'
   if ($confirm -ne 'YES') {
     Write-Host 'Canceled. Nothing was pushed.' -ForegroundColor Yellow
@@ -475,11 +543,6 @@ try {
 
   Write-Host ''
   Write-Host "Created commit: $commit" -ForegroundColor Green
-
-  if ($DryRun) {
-    Write-Host 'DryRun mode: git push was not executed.' -ForegroundColor Yellow
-    exit 0
-  }
 
   Invoke-CheckedWithRetry -Command git -Arguments @('push', 'origin', "$commit`:refs/heads/main")
 

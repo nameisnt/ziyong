@@ -5,7 +5,13 @@
         <span class="pc-directory-count">{{ activePromptTabLabel }}</span>
         <div class="pc-hero-actions">
           <div ref="promptMenuRoot" class="pc-prompts-menu-anchor">
-            <button class="pc-icon-btn" type="button" :title="t`切换分类`" @click="promptMenuOpen = !promptMenuOpen">
+            <button
+              class="pc-icon-btn"
+              type="button"
+              :title="t`切换分类`"
+              :aria-label="t`切换分类`"
+              @click="promptMenuOpen = !promptMenuOpen"
+            >
               <i class="fa-solid fa-bars"></i>
             </button>
             <div v-if="promptMenuOpen" class="pc-prompts-menu">
@@ -22,10 +28,22 @@
               </button>
             </div>
           </div>
-          <button class="pc-icon-btn" type="button" :title="t`导入或导出`" @click="openTransferCenter">
+          <button
+            class="pc-icon-btn"
+            type="button"
+            :title="t`导入或导出`"
+            :aria-label="t`导入或导出`"
+            @click="openTransferCenter"
+          >
             <i class="fa-solid fa-arrow-right-arrow-left"></i>
           </button>
-          <button class="pc-icon-btn pc-prompts-reset-btn" type="button" :title="t`恢复默认`" @click="resetDefaults">
+          <button
+            class="pc-icon-btn pc-prompts-reset-btn"
+            type="button"
+            :title="t`恢复默认`"
+            :aria-label="t`恢复默认`"
+            @click="resetDefaults"
+          >
             <i class="fa-solid fa-arrow-rotate-left"></i>
           </button>
         </div>
@@ -82,7 +100,13 @@
       <section v-else-if="activePromptTab === 'type'" class="pc-stack">
         <div class="pc-compact-toolbar pc-directory-toolbar pc-prompt-section-toolbar">
           <span class="pc-directory-count">{{ typePrompts.length }} {{ t`个类型` }}</span>
-          <button class="pc-icon-btn primary" type="button" :title="t`新增类型`" @click="openCreateTypePrompt">
+          <button
+            class="pc-icon-btn primary"
+            type="button"
+            :title="t`新增类型`"
+            :aria-label="t`新增类型`"
+            @click="openCreateTypePrompt"
+          >
             <i class="fa-solid fa-plus"></i>
           </button>
         </div>
@@ -106,6 +130,7 @@
                     class="pc-icon-btn"
                     type="button"
                     title="重命名分组"
+                    aria-label="重命名分组"
                     @click="renameTypeGroup(group.id, group.name)"
                   >
                     <i class="fa-solid fa-pen"></i>
@@ -115,6 +140,7 @@
                     class="pc-icon-btn danger"
                     type="button"
                     title="删除分组"
+                    aria-label="删除分组"
                     @click="removeTypeGroup(group.id, group.name)"
                   >
                     <i class="fa-solid fa-trash"></i>
@@ -151,7 +177,13 @@
       <section v-else-if="activePromptTab === 'phrase'" class="pc-stack">
         <div class="pc-compact-toolbar pc-directory-toolbar pc-prompt-section-toolbar">
           <span class="pc-directory-count">{{ quickPhraseGroups.length }} {{ t`个分组` }}</span>
-          <button class="pc-icon-btn primary" type="button" :title="t`新增分组`" @click="openCreateGroup">
+          <button
+            class="pc-icon-btn primary"
+            type="button"
+            :title="t`新增分组`"
+            :aria-label="t`新增分组`"
+            @click="openCreateGroup"
+          >
             <i class="fa-solid fa-folder-plus"></i>
           </button>
         </div>
@@ -170,6 +202,7 @@
                 type="button"
                 :disabled="groupIndex === 0"
                 :title="t`上移分组`"
+                :aria-label="t`上移分组`"
                 @click="prompts.moveQuickPhraseGroup(group.id, -1)"
               >
                 <i class="fa-solid fa-arrow-up"></i>
@@ -179,17 +212,36 @@
                 type="button"
                 :disabled="groupIndex === quickPhraseGroups.length - 1"
                 :title="t`下移分组`"
+                :aria-label="t`下移分组`"
                 @click="prompts.moveQuickPhraseGroup(group.id, 1)"
               >
                 <i class="fa-solid fa-arrow-down"></i>
               </button>
-              <button class="pc-icon-btn" type="button" @click="openRenameGroup(group.id)">
+              <button
+                class="pc-icon-btn"
+                type="button"
+                :title="t`重命名短语分组`"
+                :aria-label="t`重命名短语分组`"
+                @click="openRenameGroup(group.id)"
+              >
                 <i class="fa-solid fa-pen"></i>
               </button>
-              <button class="pc-icon-btn" type="button" @click="openCreatePhrase(group.id)">
+              <button
+                class="pc-icon-btn"
+                type="button"
+                :title="t`新增快速短语`"
+                :aria-label="t`新增快速短语`"
+                @click="openCreatePhrase(group.id)"
+              >
                 <i class="fa-solid fa-plus"></i>
               </button>
-              <button class="pc-icon-btn danger" type="button" @click="removeQuickPhraseGroup(group.id)">
+              <button
+                class="pc-icon-btn danger"
+                type="button"
+                :title="t`删除短语分组`"
+                :aria-label="t`删除短语分组`"
+                @click="removeQuickPhraseGroup(group.id)"
+              >
                 <i class="fa-solid fa-trash"></i>
               </button>
             </div>
@@ -205,13 +257,31 @@
             <article v-for="phrase in group.phrases" :key="phrase.id" class="pc-list-row pc-phrase-card">
               <p>{{ phrase.text }}</p>
               <div class="pc-inline-actions">
-                <button class="pc-icon-btn" type="button" @click="copyText(phrase.text, '已复制快速短语')">
+                <button
+                  class="pc-icon-btn"
+                  type="button"
+                  :title="t`复制快速短语`"
+                  :aria-label="t`复制快速短语`"
+                  @click="copyText(phrase.text, '已复制快速短语')"
+                >
                   <i class="fa-solid fa-copy"></i>
                 </button>
-                <button class="pc-icon-btn" type="button" @click="openEditPhrase(group.id, phrase.id)">
+                <button
+                  class="pc-icon-btn"
+                  type="button"
+                  :title="t`编辑快速短语`"
+                  :aria-label="t`编辑快速短语`"
+                  @click="openEditPhrase(group.id, phrase.id)"
+                >
                   <i class="fa-solid fa-pen"></i>
                 </button>
-                <button class="pc-icon-btn danger" type="button" @click="removeQuickPhrase(group.id, phrase.id)">
+                <button
+                  class="pc-icon-btn danger"
+                  type="button"
+                  :title="t`删除快速短语`"
+                  :aria-label="t`删除快速短语`"
+                  @click="removeQuickPhrase(group.id, phrase.id)"
+                >
                   <i class="fa-solid fa-trash"></i>
                 </button>
               </div>
@@ -223,7 +293,13 @@
       <section v-else-if="activePromptTab === 'template'" class="pc-stack">
         <div class="pc-compact-toolbar pc-directory-toolbar pc-prompt-section-toolbar">
           <span class="pc-directory-count">{{ quickTemplateGroups.length }} {{ t`个分组` }}</span>
-          <button class="pc-icon-btn primary" type="button" :title="t`新增分组`" @click="openCreateTemplateGroup">
+          <button
+            class="pc-icon-btn primary"
+            type="button"
+            :title="t`新增分组`"
+            :aria-label="t`新增分组`"
+            @click="openCreateTemplateGroup"
+          >
             <i class="fa-solid fa-folder-plus"></i>
           </button>
         </div>
@@ -242,6 +318,7 @@
                 type="button"
                 :disabled="groupIndex === 0"
                 :title="t`上移分组`"
+                :aria-label="t`上移分组`"
                 @click="prompts.moveQuickTemplateGroup(group.id, -1)"
               >
                 <i class="fa-solid fa-arrow-up"></i>
@@ -251,17 +328,36 @@
                 type="button"
                 :disabled="groupIndex === quickTemplateGroups.length - 1"
                 :title="t`下移分组`"
+                :aria-label="t`下移分组`"
                 @click="prompts.moveQuickTemplateGroup(group.id, 1)"
               >
                 <i class="fa-solid fa-arrow-down"></i>
               </button>
-              <button class="pc-icon-btn" type="button" @click="openRenameTemplateGroup(group.id)">
+              <button
+                class="pc-icon-btn"
+                type="button"
+                :title="t`重命名模板分组`"
+                :aria-label="t`重命名模板分组`"
+                @click="openRenameTemplateGroup(group.id)"
+              >
                 <i class="fa-solid fa-pen"></i>
               </button>
-              <button class="pc-icon-btn" type="button" @click="openCreateTemplate(group.id)">
+              <button
+                class="pc-icon-btn"
+                type="button"
+                :title="t`新增快捷模板`"
+                :aria-label="t`新增快捷模板`"
+                @click="openCreateTemplate(group.id)"
+              >
                 <i class="fa-solid fa-plus"></i>
               </button>
-              <button class="pc-icon-btn danger" type="button" @click="removeQuickTemplateGroup(group.id)">
+              <button
+                class="pc-icon-btn danger"
+                type="button"
+                :title="t`删除模板分组`"
+                :aria-label="t`删除模板分组`"
+                @click="removeQuickTemplateGroup(group.id)"
+              >
                 <i class="fa-solid fa-trash"></i>
               </button>
             </div>
@@ -277,13 +373,31 @@
             <article v-for="template in group.phrases" :key="template.id" class="pc-list-row pc-phrase-card">
               <p>{{ template.text }}</p>
               <div class="pc-inline-actions">
-                <button class="pc-icon-btn" type="button" @click="copyText(template.text, '已复制模板')">
+                <button
+                  class="pc-icon-btn"
+                  type="button"
+                  :title="t`复制快捷模板`"
+                  :aria-label="t`复制快捷模板`"
+                  @click="copyText(template.text, '已复制模板')"
+                >
                   <i class="fa-solid fa-copy"></i>
                 </button>
-                <button class="pc-icon-btn" type="button" @click="openEditTemplate(group.id, template.id)">
+                <button
+                  class="pc-icon-btn"
+                  type="button"
+                  :title="t`编辑快捷模板`"
+                  :aria-label="t`编辑快捷模板`"
+                  @click="openEditTemplate(group.id, template.id)"
+                >
                   <i class="fa-solid fa-pen"></i>
                 </button>
-                <button class="pc-icon-btn danger" type="button" @click="removeQuickTemplate(group.id, template.id)">
+                <button
+                  class="pc-icon-btn danger"
+                  type="button"
+                  :title="t`删除快捷模板`"
+                  :aria-label="t`删除快捷模板`"
+                  @click="removeQuickTemplate(group.id, template.id)"
+                >
                   <i class="fa-solid fa-trash"></i>
                 </button>
               </div>
@@ -367,7 +481,13 @@
                 <h2>{{ activeAppPrompt.label }}</h2>
               </div>
             </div>
-            <button class="pc-icon-btn" type="button" :title="t`关闭`" @click="closeAppPromptDetail">
+            <button
+              class="pc-icon-btn"
+              type="button"
+              :title="t`关闭`"
+              :aria-label="t`关闭`"
+              @click="closeAppPromptDetail"
+            >
               <i class="fa-solid fa-xmark"></i>
             </button>
           </header>
@@ -424,7 +544,13 @@
               <span class="pc-kicker">{{ activeTypePromptDomainLabel }}</span>
               <h2>{{ activeTypePrompt.name }}</h2>
             </div>
-            <button class="pc-icon-btn" type="button" :title="t`关闭`" @click="closeTypePromptDetail">
+            <button
+              class="pc-icon-btn"
+              type="button"
+              :title="t`关闭`"
+              :aria-label="t`关闭`"
+              @click="closeTypePromptDetail"
+            >
               <i class="fa-solid fa-xmark"></i>
             </button>
           </header>

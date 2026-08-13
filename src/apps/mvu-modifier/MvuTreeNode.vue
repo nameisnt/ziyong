@@ -31,6 +31,7 @@
         type="button"
         :disabled="busy"
         :title="t`新增子项`"
+        :aria-label="t`新增子项`"
         @click="isAdding = !isAdding"
       >
         <i class="fa-solid fa-plus"></i>
@@ -79,6 +80,7 @@
           type="button"
           :disabled="busy"
           :title="t`删除变量`"
+          :aria-label="t`删除变量`"
           @click="emit('delete', path)"
         >
           <i class="fa-solid fa-trash-can"></i>
@@ -113,10 +115,23 @@
         @keydown.enter.prevent="applyAddition"
       />
       <div class="pc-mvu-add-actions">
-        <button class="pc-icon-btn" type="button" :title="t`取消`" @click="cancelAddition">
+        <button
+          class="pc-icon-btn"
+          type="button"
+          :title="t`取消`"
+          :aria-label="t`取消`"
+          @click="cancelAddition"
+        >
           <i class="fa-solid fa-xmark"></i>
         </button>
-        <button class="pc-icon-btn" type="button" :disabled="busy" :title="t`确认新增`" @click="applyAddition">
+        <button
+          class="pc-icon-btn"
+          type="button"
+          :disabled="busy"
+          :title="t`确认新增`"
+          :aria-label="t`确认新增`"
+          @click="applyAddition"
+        >
           <i class="fa-solid fa-check"></i>
         </button>
       </div>
