@@ -43,7 +43,7 @@
           class="pc-list-row pc-slot-row"
           @click="openEditor(slot.id)"
         >
-          <span :class="['pc-world-entry-lamp', slot.keys.length ? 'blue' : 'green']" aria-hidden="true"></span>
+          <span :class="['pc-world-entry-lamp', slot.strategyType === 'selective' ? 'green' : 'blue']" aria-hidden="true"></span>
           <h3>{{ slot.title }}</h3>
           <strong :class="{ disabled: !slot.enabled }">{{ slot.enabled ? t`启用` : t`关闭` }}</strong>
         </article>
@@ -54,7 +54,21 @@
     <section v-else-if="route.page === 'editor'" class="pc-world-slots-page">
       <article class="pc-page-section pc-world-slot-editor">
         <input v-model="draft.title" class="pc-field" type="text" :placeholder="t`槽位名称`" />
-        <input v-model="draft.keysText" class="pc-field" type="text" :placeholder="t`关键词，用逗号分隔，可留空`" />
+        <div class="pc-field-group pc-world-field-group">
+          <span>{{ t`激活策略` }}</span>
+          <SearchableCombobox
+            v-model="draft.strategyType"
+            :options="strategyComboboxOptions"
+            :placeholder="t`选择激活策略`"
+          />
+        </div>
+        <input
+          v-if="draft.strategyType === 'selective'"
+          v-model="draft.keysText"
+          class="pc-field"
+          type="text"
+          :placeholder="t`主关键词，用逗号分隔`"
+        />
 
         <div class="pc-world-basic-grid">
           <div class="pc-field-group pc-world-field-group">
@@ -96,11 +110,11 @@
             <i class="fa-solid fa-chevron-down pc-world-advanced-chevron"></i>
           </summary>
           <div class="pc-world-advanced-body">
-            <label class="pc-field-group pc-world-field-group">
+            <label v-if="draft.strategyType === 'selective'" class="pc-field-group pc-world-field-group">
               <span>{{ t`次要关键词` }}</span>
               <input v-model="draft.secondaryKeysText" class="pc-field" type="text" :placeholder="t`用逗号分隔`" />
             </label>
-            <div class="pc-field-group pc-world-field-group">
+            <div v-if="draft.strategyType === 'selective'" class="pc-field-group pc-world-field-group">
               <span>{{ t`关键词逻辑` }}</span>
               <SearchableCombobox
                 v-model="draft.selectiveLogic"
@@ -240,6 +254,7 @@ import {
   type WorldSlotLogic,
   type WorldSlotPosition,
   type WorldSlotRole,
+  type WorldSlotStrategyType,
   useWorldSlotsStore,
   worldSlotLogicOptions,
   worldSlotPositionOptions,
@@ -270,6 +285,7 @@ const draft = reactive({
   role: 'system' as WorldSlotRole,
   secondaryKeysText: '',
   selectiveLogic: 'and_any' as WorldSlotLogic,
+  strategyType: 'constant' as WorldSlotStrategyType,
   stickyText: '',
   title: '',
 });
@@ -277,6 +293,10 @@ const draft = reactive({
 const positionComboboxOptions = worldSlotPositionOptions.map(option => ({ label: option.label, value: option.id }));
 const roleComboboxOptions = worldSlotRoleOptions.map(option => ({ label: option.label, value: option.id }));
 const logicComboboxOptions = worldSlotLogicOptions.map(option => ({ label: option.label, value: option.id }));
+const strategyComboboxOptions = [
+  { label: '蓝灯 · 永久激活', value: 'constant' },
+  { label: '绿灯 · 关键词触发', value: 'selective' },
+];
 
 const editingSlot = computed(() => (route.value.params?.slotId ? worldSlots.getSlot(route.value.params.slotId) : null));
 const normalizedQuery = computed(() => query.value.trim().toLowerCase());
@@ -322,6 +342,7 @@ function fillDraft(slot: WorldSlot | null) {
   draft.keysText = slot?.keys.join('、') || '';
   draft.secondaryKeysText = slot?.secondaryKeys.join('、') || '';
   draft.selectiveLogic = slot?.selectiveLogic || 'and_any';
+  draft.strategyType = slot?.strategyType || 'constant';
   draft.position = slot?.position || 'before_character_definition';
   draft.insertionOrderText = String(slot?.insertionOrder ?? 100);
   draft.depthText = String(slot?.depth ?? 4);
@@ -391,6 +412,7 @@ function readDraftSettings() {
     role: draft.role,
     secondaryKeys: splitKeys(draft.secondaryKeysText),
     selectiveLogic: draft.selectiveLogic,
+    strategyType: draft.strategyType,
     sticky,
   };
 }
@@ -550,7 +572,7 @@ async function syncSlots() {
   box-shadow: 0 0 0 3px color-mix(in srgb, currentColor 16%, transparent);
 }
 
-/* 业务状态色：对应酒馆世界书的绿灯（常驻）与蓝灯（关键词触发）。 */
+/* 业务状态色：酒馆无主关键词/常驻条目为蓝灯，有主关键词的触发条目为绿灯。 */
 .pc-world-entry-lamp.green {
   color: #27ae60;
   background: #27ae60;

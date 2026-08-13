@@ -1,6 +1,7 @@
 <template>
   <section class="pc-theater-detail-page">
     <ReaderDetailShell
+      ref="readerShell"
       actions-class="six"
       :content="viewedEntry.content"
       custom-content
@@ -45,6 +46,7 @@
           :theme="theme"
           :title="viewedEntry.title"
           @navigate-blocked="$emit('navigate-blocked')"
+          @reader-tap="readerShell?.toggleFooter()"
         />
       </template>
       <template #actions>
@@ -93,6 +95,8 @@ import ReaderDetailShell from '@/components/ReaderDetailShell.vue';
 import VersionNavigator from '@/components/VersionNavigator.vue';
 import type { CatalogModalItem } from '@/type/catalog';
 import type { TheaterEntry } from '@/type/theater';
+
+const readerShell = ref<InstanceType<typeof ReaderDetailShell> | null>(null);
 
 defineProps<{
   catalogItems: CatalogModalItem[];

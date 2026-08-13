@@ -201,7 +201,7 @@ export async function deleteTavernPreset(presetName: string) {
 function patchPrompt(
   preset: TavernPreset,
   promptId: string,
-  patch: Partial<Pick<TavernPresetPrompt, 'content' | 'enabled'>>,
+  patch: Partial<Pick<TavernPresetPrompt, 'content' | 'enabled' | 'name'>>,
 ) {
   const prompt = preset.prompts.find(item => item.id === promptId);
   if (!prompt) {
@@ -316,7 +316,7 @@ function enqueuePresetMutation<T>(presetName: string, task: () => Promise<T>) {
 export async function updateTavernPresetPrompt(
   presetName: string,
   promptId: string,
-  patch: Partial<Pick<TavernPresetPrompt, 'content' | 'enabled'>>,
+  patch: Partial<Pick<TavernPresetPrompt, 'content' | 'enabled' | 'name'>>,
 ) {
   return enqueuePresetMutation(presetName, async () => {
     const updatePresetWith = requirePresetFunction<UpdatePresetFn>('updatePresetWith');

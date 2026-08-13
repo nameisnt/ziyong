@@ -30,11 +30,11 @@
         <input v-model.number="settings.generation.fromStartEnd" class="pc-field" type="number" min="0" />
       </label>
       <label class="pc-field-group"
-        ><span class="pc-field-label">酒馆预设</span>
+        ><span class="pc-field-label">生成预设</span>
         <div class="pc-preset-select-row">
           <SearchableCombobox
             v-model="settings.generation.tavernPresetName"
-            input-label="选择酒馆预设"
+            input-label="选择生成预设"
             :options="tavernPresetOptions"
             placeholder="跟随酒馆当前预设"
           />
@@ -78,16 +78,16 @@
         <span class="pc-toggle"><input v-model="settings.generation.stream" type="checkbox" /><span></span></span>
       </label>
       <div class="pc-settings-subsection">
-        <label class="pc-connection-setting-row">
-          <strong
-            >解析前清理思维链
+        <div class="pc-connection-setting-row">
+          <strong class="pc-setting-title-with-hint"
+            ><span>解析前清理思维链</span>
             <InfoHint
               text="找到配置的 XML 结束标签后，删除该标签及其之前的全部内容，再交给 App 解析。找不到标签时不会修改输出。"
           /></strong>
-          <span class="pc-toggle"
-            ><input v-model="settings.generation.outputCleaningEnabled" type="checkbox" /><span></span
-          ></span>
-        </label>
+          <label class="pc-toggle" title="启用或关闭解析前思维链清理">
+            <input v-model="settings.generation.outputCleaningEnabled" type="checkbox" /><span></span>
+          </label>
+        </div>
         <label v-if="settings.generation.outputCleaningEnabled" class="pc-field-group">
           <span class="pc-field-label">思维链结束标签（每行一个）</span>
           <textarea
@@ -256,17 +256,21 @@ import InfoHint from '@/components/InfoHint.vue';
 import SearchableCombobox from '@/components/SearchableCombobox.vue';
 import { useGenerationAliasesStore } from '@/store/generationAliases';
 import { usePhoneStore } from '@/store/phone';
+import { usePluginPresetStore } from '@/store/pluginPresets';
 import { useSettingsStore } from '@/store/settings';
 import type { ExternalApiPresetId } from '@/type/settings';
 import { getPresetNamesSafe } from '@/util/runtime';
 import { EXTERNAL_API_PRESETS, getActiveExternalApiProfile, resolveExternalApiProfileUrl } from '@/util/textProvider';
 import { storeToRefs } from 'pinia';
+import { pluginPresetIdFromSelection, pluginPresetSelection } from '@/apps/preset-manager/pluginPreset';
 
 const aliases = useGenerationAliasesStore();
 const phone = usePhoneStore();
 const settingsStore = useSettingsStore();
+const pluginPresets = usePluginPresetStore();
 const { settings } = storeToRefs(settingsStore);
 const { charReplacement, userReplacement } = storeToRefs(aliases);
+const { items: pluginPresetItems } = storeToRefs(pluginPresets);
 const tavernPresetNames = ref<string[]>([]);
 const apiKeyVisible = ref(false);
 const externalModelLoading = ref(false);
@@ -282,10 +286,15 @@ const resolvedExternalApiUrl = computed(() =>
 const tavernPresetOptions = computed(() => {
   const selected = settings.value.generation.tavernPresetName.trim();
   const names = new Set(tavernPresetNames.value);
-  if (selected) names.add(selected);
+  if (selected && !pluginPresetIdFromSelection(selected)) names.add(selected);
   return [
     { label: '跟随酒馆当前预设', value: '' },
-    ...[...names].filter(Boolean).map(name => ({ label: name, value: name })),
+    ...[...names].filter(Boolean).map(name => ({ group: '酒馆预设', label: name, value: name })),
+    ...pluginPresetItems.value.map(preset => ({
+      group: '插件预设',
+      label: preset.name,
+      value: pluginPresetSelection(preset.id),
+    })),
   ];
 });
 const externalModelSelectOptions = computed(() => {
@@ -317,7 +326,9 @@ function swapGenerationAliases() {
 function refreshTavernPresetNames() {
   tavernPresetNames.value = getPresetNamesSafe();
   const selected = settings.value.generation.tavernPresetName.trim();
-  if (selected && !tavernPresetNames.value.includes(selected)) tavernPresetNames.value.unshift(selected);
+  if (selected && !pluginPresetIdFromSelection(selected) && !tavernPresetNames.value.includes(selected)) {
+    tavernPresetNames.value.unshift(selected);
+  }
 }
 function enableExternalMode() {
   if (!settings.value.textProvider.externalProfiles.length) settingsStore.createExternalApiProfile('custom');
@@ -443,6 +454,12 @@ onMounted(refreshTavernPresetNames);
 }
 .pc-connection-setting-row .pc-segment-btn {
   flex: 1;
+}
+.pc-setting-title-with-hint {
+  display: inline-flex;
+  min-width: 0;
+  align-items: center;
+  gap: 6px;
 }
 .pc-preset-select-row {
   display: grid;

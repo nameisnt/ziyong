@@ -5,7 +5,7 @@ export default definePhoneApp({
   id: 'preset-manager',
   name: '预设管理',
   icon: 'fa-list-check',
-  description: '切换预设并管理条目',
+  description: '管理酒馆预设与插件私有预设',
   accent: '#5b7cfa',
   defaultRoute: 'root',
   defaultOrder: 114,

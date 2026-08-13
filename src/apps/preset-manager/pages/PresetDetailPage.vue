@@ -8,12 +8,15 @@
         <button type="button" :disabled="mutationBusy" @click="$emit('rename-preset')">
           <i class="fa-solid fa-pen"></i><span>预设改名</span>
         </button>
+        <button v-if="pluginPreset" type="button" :disabled="mutationBusy" @click="$emit('export-preset')">
+          <i class="fa-solid fa-file-export"></i><span>导出预设</span>
+        </button>
         <button class="danger" type="button" :disabled="mutationBusy" @click="$emit('delete-preset')">
           <i class="fa-solid fa-trash"></i><span>删除预设</span>
         </button>
       </ActionMenu>
       <button
-        v-if="presetName !== loadedPresetName"
+        v-if="!pluginPreset && presetName !== loadedPresetName"
         class="pc-icon-btn primary"
         type="button"
         :disabled="mutationBusy || switchingPreset === presetName"
@@ -115,6 +118,7 @@ defineProps<{
   loadedPresetName: string;
   loading: boolean;
   mutationBusy: boolean;
+  pluginPreset: boolean;
   preset: TavernPreset | null;
   presetName: string;
   promptDrag: { insertBeforeId: string; isDragging: boolean; promptId: string };
@@ -130,6 +134,7 @@ defineEmits<{
   'drag-move': [event: PointerEvent];
   'drag-start': [event: PointerEvent, prompt: TavernPresetPrompt, groupId: string];
   'delete-preset': [];
+  'export-preset': [];
   'open-prompt': [prompt: TavernPresetPrompt];
   'rename-preset': [];
   'switch-preset': [presetName: string];

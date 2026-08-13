@@ -42,6 +42,7 @@ const props = withDefaults(
 
 const emit = defineEmits<{
   navigateBlocked: [];
+  readerTap: [];
 }>();
 
 const iframeEl = ref<HTMLIFrameElement | null>(null);
@@ -88,7 +89,8 @@ watch(
 );
 
 function clampHeight(height: number) {
-  return Math.max(props.embedded ? 80 : 220, Math.min(560, Math.round(height)));
+  const maximum = props.embedded ? 24000 : 560;
+  return Math.max(props.embedded ? 80 : 220, Math.min(maximum, Math.round(height)));
 }
 
 function handleLoad(event: Event) {
@@ -111,7 +113,16 @@ function handleMessage(event: MessageEvent) {
   const type = (payload as { type?: unknown }).type;
   const height = (payload as { height?: unknown }).height;
 
-  if (source !== getFrontendFrameSource() || nextChannelId !== channelId || type !== 'height') return;
+  if (source !== getFrontendFrameSource() || nextChannelId !== channelId) return;
+  if (type === 'reader-tap') {
+    emit('readerTap');
+    return;
+  }
+  if (type === 'side-back') {
+    window.dispatchEvent(new CustomEvent('st-phone-side-back'));
+    return;
+  }
+  if (type !== 'height') return;
   if (typeof height !== 'number' || !Number.isFinite(height)) return;
 
   frameHeight.value = clampHeight(height);

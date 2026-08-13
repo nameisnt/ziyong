@@ -690,19 +690,23 @@ import { useForumStore } from '@/store/forum';
 import { useLettersStore } from '@/store/letters';
 import { usePromptStore } from '@/store/prompts';
 import { useSettingsStore } from '@/store/settings';
+import { usePluginPresetStore } from '@/store/pluginPresets';
 import { getWorkbenchManualRunNotice, runWorkbenchWorkflow, supportedWorkbenchActions } from './runner';
 import { useWorkbenchStore, type WorkbenchInsertDraft, type WorkbenchStep, type WorkbenchWorkflow } from './store';
 import { applyChatInsert, formatChatInsertTemplate } from '@/util/chatInsert';
 import { getPresetNamesSafe } from '@/util/runtime';
 import { storeToRefs } from 'pinia';
+import { pluginPresetIdFromSelection, pluginPresetSelection } from '@/apps/preset-manager/pluginPreset';
 
 const workbench = useWorkbenchStore();
 const phone = usePhoneStore();
 const generationTasks = useGenerationTaskStore();
 const comfy = useComfyStore();
 const settingsStore = useSettingsStore();
+const pluginPresets = usePluginPresetStore();
 const { configError, insertDrafts, logs, rawConfig, workflows } = storeToRefs(workbench);
 const { settings } = storeToRefs(settingsStore);
+const { items: pluginPresetItems } = storeToRefs(pluginPresets);
 const { activeWorkflow: activeComfyWorkflow, settings: comfySettings } = storeToRefs(comfy);
 const { books: summaryBooks } = storeToRefs(useSummaryStore());
 const { books: diaryBooks } = storeToRefs(useDiaryStore());
@@ -893,10 +897,15 @@ function externalProfileOptions(selected: string) {
 
 function tavernPresetOptions(selected: string) {
   const names = new Set(tavernPresetNames.value);
-  if (selected) names.add(selected);
+  if (selected && !pluginPresetIdFromSelection(selected)) names.add(selected);
   return [
     { label: '跟随全局生成预设', value: '' },
-    ...[...names].filter(Boolean).map(name => ({ label: name, value: name })),
+    ...[...names].filter(Boolean).map(name => ({ group: '酒馆预设', label: name, value: name })),
+    ...pluginPresetItems.value.map(preset => ({
+      group: '插件预设',
+      label: preset.name,
+      value: pluginPresetSelection(preset.id),
+    })),
   ];
 }
 
@@ -918,11 +927,19 @@ function workflowProviderOptions(workflow: WorkbenchWorkflow) {
 function refreshTavernPresetNames() {
   const names = getPresetNamesSafe();
   workflows.value.forEach(workflow => {
-    if (workflow.tavernPresetName && !names.includes(workflow.tavernPresetName)) {
+    if (
+      workflow.tavernPresetName &&
+      !pluginPresetIdFromSelection(workflow.tavernPresetName) &&
+      !names.includes(workflow.tavernPresetName)
+    ) {
       names.push(workflow.tavernPresetName);
     }
     workflow.steps.forEach(step => {
-      if (step.tavernPresetName && !names.includes(step.tavernPresetName)) names.push(step.tavernPresetName);
+      if (
+        step.tavernPresetName &&
+        !pluginPresetIdFromSelection(step.tavernPresetName) &&
+        !names.includes(step.tavernPresetName)
+      ) names.push(step.tavernPresetName);
     });
   });
   tavernPresetNames.value = names;

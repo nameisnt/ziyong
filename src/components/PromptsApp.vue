@@ -102,7 +102,7 @@
                 <div class="pc-inline-actions">
                   <small>{{ group.items.length }} {{ t`项` }}</small>
                   <button
-                    v-if="!group.builtIn"
+                    v-if="group.id"
                     class="pc-icon-btn"
                     type="button"
                     title="重命名分组"
@@ -111,7 +111,7 @@
                     <i class="fa-solid fa-pen"></i>
                   </button>
                   <button
-                    v-if="!group.builtIn"
+                    v-if="group.id"
                     class="pc-icon-btn danger"
                     type="button"
                     title="删除分组"

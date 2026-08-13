@@ -95,6 +95,7 @@
       v-model:user-requirement="generationDraft.userRequirement"
       :capture="captureDiaryPrompt"
       :capture-reset-key="generationPromptPreview"
+      :default-preset-selection="BUILTIN_DIARY_PRESET_SELECTION"
       :error="generationState.error"
       extra-field-placeholder="视角角色名"
       :extra-field-visible="!activeBook"
@@ -198,6 +199,10 @@ import DiaryEntryEditorPage from '@/components/diary/DiaryEntryEditorPage.vue';
 import DiaryFailedDraftPage from '@/components/diary/DiaryFailedDraftPage.vue';
 import DiaryGeneratePage from '@/components/diary/DiaryGeneratePage.vue';
 import DiaryPreviewPage from '@/components/diary/DiaryPreviewPage.vue';
+import {
+  BUILTIN_DIARY_PRESET_SELECTION,
+  resolveDiaryPresetSelection,
+} from '@/apps/preset-manager/builtinDiaryPreset';
 import { useCatalogDetailNavigation } from '@/composables/useCatalogDetailNavigation';
 import { useDirectorySort } from '@/composables/useDirectorySort';
 import { getRegisteredPhoneGenerationAdapter } from '@/core/appRegistry';
@@ -432,7 +437,7 @@ const generationPromptPreview = computed(() => {
         generationDefaults: {
           resultMode: settings.value.generation.resultMode,
           stream: settings.value.generation.stream,
-          tavernPresetName: settings.value.generation.tavernPresetName,
+          tavernPresetName: resolveDiaryPresetSelection(settings.value.generation.tavernPresetName),
         },
         references: formattedReferences.value,
         source: {
@@ -505,7 +510,7 @@ function captureDiaryPrompt() {
       generationDefaults: {
         resultMode: settings.value.generation.resultMode,
         stream: settings.value.generation.stream,
-        tavernPresetName: settings.value.generation.tavernPresetName,
+        tavernPresetName: resolveDiaryPresetSelection(settings.value.generation.tavernPresetName),
       },
       references: formattedReferences.value,
       source: {
@@ -982,7 +987,7 @@ async function runGeneration() {
         generationDefaults: {
           resultMode: settings.value.generation.resultMode,
           stream: settings.value.generation.stream,
-          tavernPresetName: settings.value.generation.tavernPresetName,
+          tavernPresetName: resolveDiaryPresetSelection(settings.value.generation.tavernPresetName),
         },
         references: formattedReferences.value,
         lifecycle: {
@@ -1092,7 +1097,7 @@ async function runBatchGeneration() {
       references: formattedReferences.value,
       rpmLimit: batchDraft.rpmLimit,
       stream: settings.value.generation.stream,
-      tavernPresetName: settings.value.generation.tavernPresetName,
+      tavernPresetName: resolveDiaryPresetSelection(settings.value.generation.tavernPresetName),
       textProvider: klona(settings.value.textProvider),
       userRequirement: batchDraft.userRequirement,
     },

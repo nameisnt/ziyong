@@ -3,6 +3,7 @@ import { useGenerationAliasesStore } from '@/store/generationAliases';
 import { useGenerationOverrideStore } from '@/store/generationOverrides';
 import { usePhoneStore } from '@/store/phone';
 import { usePromptStore } from '@/store/prompts';
+import { usePluginPresetStore } from '@/store/pluginPresets';
 import type { TextProviderSettings } from '@/type/settings';
 import type {
   FailedGenerationDraft,
@@ -43,6 +44,11 @@ import { parsePrettified } from '@/util/zod';
 import { waitForGenerationRateLimit, waitForGenerationRetry } from '@/core/generationRateLimit';
 import { runGenerationTaskWithRateLimitRetries } from '@/core/generationRetry';
 import { useSettingsStore } from '@/store/settings';
+import {
+  buildPluginPresetOrderedPrompts,
+  pluginPresetIdFromSelection,
+} from '@/apps/preset-manager/pluginPreset';
+import { getBuiltinPluginPreset } from '@/apps/preset-manager/builtinDiaryPreset';
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return Boolean(value) && typeof value === 'object' && !Array.isArray(value);
@@ -292,6 +298,7 @@ function waitForCaptureTurn(previousCapture: Promise<void>, signal?: AbortSignal
 
 async function runWithPhoneUserInputMacro<TResult>(
   phoneUserInput: string,
+  variables: Record<string, string>,
   task: () => Promise<TResult>,
   signal?: AbortSignal,
 ): Promise<TResult> {
@@ -306,13 +313,18 @@ async function runWithPhoneUserInputMacro<TResult>(
     void previousUsage.then(releaseQueue, releaseQueue);
     throw error;
   }
-  let macroRegistration: { stop: () => void } | null = null;
+  const macroRegistrations: Array<{ stop: () => void }> = [];
   try {
     signal?.throwIfAborted();
-    macroRegistration = registerMacroLikeSafe(PHONE_USER_INPUT_MACRO_PATTERN, () => phoneUserInput);
+    macroRegistrations.push(registerMacroLikeSafe(PHONE_USER_INPUT_MACRO_PATTERN, () => phoneUserInput));
+    for (const [name, value] of Object.entries(variables)) {
+      if (!/^[\w.-]+$/u.test(name) || name.toLocaleLowerCase() === 'phoneuserinput') continue;
+      const escapedName = name.replace(/[.*+?^${}()|[\]\\]/gu, '\\$&');
+      macroRegistrations.push(registerMacroLikeSafe(new RegExp(`\\{\\{\\s*${escapedName}\\s*\\}\\}`, 'giu'), () => value));
+    }
     return await task();
   } finally {
-    macroRegistration?.stop();
+    macroRegistrations.reverse().forEach(registration => registration.stop());
     releaseQueue();
   }
 }
@@ -320,14 +332,23 @@ async function runWithPhoneUserInputMacro<TResult>(
 function captureWithPhoneUserInput(
   generateConfig: Record<string, unknown>,
   phoneUserInput: string,
+  variables: Record<string, string> = {},
   signal?: AbortSignal,
 ) {
+  const replaceRegisteredMacros = (content: string) => {
+    let result = content.replace(PHONE_USER_INPUT_MACRO_PATTERN, () => phoneUserInput);
+    for (const [name, value] of Object.entries(variables)) {
+      if (!/^[\w.-]+$/u.test(name)) continue;
+      const escapedName = name.replace(/[.*+?^${}()|[\]\\]/gu, '\\$&');
+      result = result.replace(new RegExp(`\\{\\{\\s*${escapedName}\\s*\\}\\}`, 'giu'), () => value);
+    }
+    return result;
+  };
   return runWithPhoneUserInputMacro(
     phoneUserInput,
+    variables,
     () =>
-      captureTavernPromptPreview(generateConfig, 15000, signal, content =>
-        content.replace(PHONE_USER_INPUT_MACRO_PATTERN, phoneUserInput),
-      ),
+      captureTavernPromptPreview(generateConfig, 15000, signal, replaceRegisteredMacros),
     signal,
   );
 }
@@ -335,9 +356,19 @@ function captureWithPhoneUserInput(
 function generateWithPhoneUserInput(
   generateConfig: Record<string, unknown>,
   phoneUserInput: string,
+  variables: Record<string, string> = {},
   signal?: AbortSignal,
 ) {
-  return runWithPhoneUserInputMacro(phoneUserInput, () => generateSafe(generateConfig), signal);
+  return runWithPhoneUserInputMacro(phoneUserInput, variables, () => generateSafe(generateConfig), signal);
+}
+
+function generateWithPluginPreset(
+  generateConfig: Record<string, unknown>,
+  phoneUserInput: string,
+  variables: Record<string, string>,
+  signal?: AbortSignal,
+) {
+  return runWithPhoneUserInputMacro(phoneUserInput, variables, () => generateRawSafe(generateConfig), signal);
 }
 
 function createGenerationId(appId: string) {
@@ -452,7 +483,16 @@ function prepareGenerationRequest<TConfig, TResult, TSaveResult = { entityId: st
   const chatTail = buildGenerationChatTail(request);
   const chatHistoryPrompts = buildSelectedChatHistoryPrompts(source.selection, visibleMessages, chatTail);
   const customApi = buildCustomApiConfig(textProvider);
-  const presetName = resolveGenerationPresetName(options);
+  const presetSelection = resolveGenerationPresetName(options);
+  const pluginPresetId = pluginPresetIdFromSelection(presetSelection || '');
+  const pluginPresetRecord =
+    getBuiltinPluginPreset(presetSelection || '') ??
+    (pluginPresetId ? usePluginPresetStore().getById(pluginPresetId) : null);
+  if (pluginPresetId && !pluginPresetRecord) throw new Error('本次选择的插件预设已经不存在，请重新选择');
+  const generationMacroVariables = {
+    ...(baseRequest.taskTemplateVariables || {}),
+    taskInstruction,
+  };
   const generateConfig = cleanGenerateConfig({
     custom_api: customApi,
     generation_id: generationId,
@@ -463,7 +503,10 @@ function prepareGenerationRequest<TConfig, TResult, TSaveResult = { entityId: st
         with_depth_entries: true,
       },
     },
-    preset_name: presetName,
+    ordered_prompts: pluginPresetRecord
+      ? buildPluginPresetOrderedPrompts(pluginPresetRecord, generationMacroVariables)
+      : undefined,
+    preset_name: pluginPresetRecord ? undefined : presetSelection,
     should_silence: true,
     should_stream: options.generationDefaults.stream,
     user_input: userInput,
@@ -474,6 +517,8 @@ function prepareGenerationRequest<TConfig, TResult, TSaveResult = { entityId: st
     generateConfig,
     parsedConfig,
     phoneUserInput,
+    generationMacroVariables,
+    pluginPresetRecord,
     request,
     scopeId,
     source,
@@ -631,6 +676,7 @@ async function generateFromCapturedOrderedPrompts(
   generateConfig: Record<string, unknown>,
   textProvider: ResolvedTextProviderSettings,
   phoneUserInput: string,
+  variables: Record<string, string>,
   abortSignal: AbortSignal,
   onRawOutput?: (rawOutput: string) => void,
 ) {
@@ -642,6 +688,7 @@ async function generateFromCapturedOrderedPrompts(
       should_stream: false,
     },
     phoneUserInput,
+    variables,
     abortSignal,
   );
   abortSignal.throwIfAborted();
@@ -770,12 +817,25 @@ export async function generateContent<TConfig, TResult, TSaveResult = { entityId
       );
       const generationRecord = createHiddenGenerationRecord(adapter.actionId, replay);
       const result =
-        textProvider.mode === 'tavern'
-          ? await generateWithPhoneUserInput(prepared.generateConfig, prepared.phoneUserInput, abortSignal)
+        prepared.pluginPresetRecord
+          ? await generateWithPluginPreset(
+              prepared.generateConfig,
+              prepared.phoneUserInput,
+              prepared.generationMacroVariables,
+              abortSignal,
+            )
+          : textProvider.mode === 'tavern'
+            ? await generateWithPhoneUserInput(
+                prepared.generateConfig,
+                prepared.phoneUserInput,
+                prepared.generationMacroVariables,
+                abortSignal,
+              )
           : await generateFromCapturedOrderedPrompts(
               prepared.generateConfig,
               textProvider,
               prepared.phoneUserInput,
+              prepared.generationMacroVariables,
               abortSignal,
               options.lifecycle?.onRawOutput,
             );
@@ -884,6 +944,19 @@ export function buildGenerationPreview<TConfig, TResult, TSaveResult = { entityI
       ].join('\n\n'),
     );
   }
+  if (prepared.pluginPresetRecord) {
+    const orderedPrompts = buildPluginPresetOrderedPrompts(prepared.pluginPresetRecord);
+    appendPreviewSection(
+      previewLines,
+      '插件预设',
+      [
+        `本次预设：${prepared.pluginPresetRecord.name}`,
+        `格式：${prepared.pluginPresetRecord.sourceFormat === 'legacy' ? 'identifier + prompt_order' : '现代 prompts'}`,
+        `实际启用：${orderedPrompts.length} 个条目或酒馆占位符`,
+        '作用域：仅本次插件生成，不会切换酒馆预设菜单。',
+      ].join('\n'),
+    );
+  }
   appendPreviewSection(
     previewLines,
     '来源楼层',
@@ -930,6 +1003,7 @@ export async function captureGenerationPrompt<TConfig, TResult, TSaveResult = { 
         should_stream: false,
       },
       prepared.phoneUserInput,
+      prepared.generationMacroVariables,
     );
 
   try {

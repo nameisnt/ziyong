@@ -20,6 +20,14 @@
       @pointermove.capture="onSideBackPointerMove"
       @pointerup.capture="onSideBackPointerUp"
     >
+      <div
+        v-if="sideBack.swiping"
+        :class="['pc-side-back-indicator', sideBack.direction > 0 ? 'from-left' : 'from-right']"
+        :style="{ '--pc-side-back-progress': String(sideBack.progress) }"
+        aria-hidden="true"
+      >
+        <i :class="sideBack.direction > 0 ? 'fa-solid fa-chevron-right' : 'fa-solid fa-chevron-left'"></i>
+      </div>
       <header
         ref="topbarEl"
         class="pc-topbar"
@@ -284,6 +292,7 @@ import {
 import { getPhoneApps, type PhoneAppDefinition } from '@/data/apps';
 import { getWallpaperPreset } from '@/data/wallpapers';
 import { useBaguStore } from '@/store/bagu';
+import { useFileRepositoryStore } from '@/store/fileRepository';
 import { useGenerationTaskStore } from '@/store/generationTasks';
 import { usePhoneStore, type PhoneRoute } from '@/store/phone';
 import { usePromptStore } from '@/store/prompts';
@@ -297,6 +306,7 @@ import { jumpToTavernChat } from '@/util/tavernNavigation';
 import { storeToRefs } from 'pinia';
 
 const bagu = useBaguStore();
+const fileRepository = useFileRepositoryStore();
 const generationTasks = useGenerationTaskStore();
 const phone = usePhoneStore();
 
@@ -384,6 +394,7 @@ const homeSwipe = reactive({
 const sideBack = reactive({
   direction: 0 as -1 | 0 | 1,
   pointerId: null as number | null,
+  progress: 0,
   shellWidth: 0,
   startX: 0,
   startY: 0,
@@ -1037,15 +1048,16 @@ function onHomeSwipePointerCancel(event: PointerEvent) {
 
 const SIDE_BACK_ZONE_RATIO = 0.2;
 const SIDE_BACK_SAFE_INSET = 12;
-const SIDE_BACK_LOCK_DISTANCE = 16;
-const SIDE_BACK_AXIS_RATIO = 1.5;
-const SIDE_BACK_DISTANCE_RATIO = 0.15;
-const SIDE_BACK_MIN_DISTANCE = 52;
-const SIDE_BACK_MAX_DISTANCE = 72;
+const SIDE_BACK_LOCK_DISTANCE = 20;
+const SIDE_BACK_AXIS_RATIO = 1.2;
+const SIDE_BACK_DISTANCE_RATIO = 0.11;
+const SIDE_BACK_MIN_DISTANCE = 40;
+const SIDE_BACK_MAX_DISTANCE = 54;
 
 function resetSideBack() {
   sideBack.direction = 0;
   sideBack.pointerId = null;
+  sideBack.progress = 0;
   sideBack.shellWidth = 0;
   sideBack.startX = 0;
   sideBack.startY = 0;
@@ -1086,6 +1098,7 @@ function onSideBackPointerDown(event: PointerEvent) {
   sideBack.startY = event.clientY;
   sideBack.swiping = false;
   sideBack.tracking = true;
+  (event.currentTarget as HTMLElement).setPointerCapture?.(event.pointerId);
 }
 
 function onSideBackPointerMove(event: PointerEvent) {
@@ -1096,12 +1109,22 @@ function onSideBackPointerMove(event: PointerEvent) {
   const distanceY = Math.abs(deltaY);
   if (!sideBack.swiping) {
     if (distanceX < SIDE_BACK_LOCK_DISTANCE && distanceY < SIDE_BACK_LOCK_DISTANCE) return;
-    if (Math.sign(deltaX) !== sideBack.direction || distanceX <= distanceY * SIDE_BACK_AXIS_RATIO) {
+    if (Math.sign(deltaX) !== sideBack.direction && distanceX >= SIDE_BACK_LOCK_DISTANCE) {
       resetSideBack();
       return;
     }
+    if (distanceY >= 28 && distanceY > distanceX * SIDE_BACK_AXIS_RATIO) {
+      resetSideBack();
+      return;
+    }
+    if (distanceX <= distanceY * SIDE_BACK_AXIS_RATIO) return;
     sideBack.swiping = true;
   }
+  const completeDistance = Math.min(
+    SIDE_BACK_MAX_DISTANCE,
+    Math.max(SIDE_BACK_MIN_DISTANCE, sideBack.shellWidth * SIDE_BACK_DISTANCE_RATIO),
+  );
+  sideBack.progress = Math.min(1, distanceX / completeDistance);
   event.preventDefault();
   event.stopPropagation();
 }
@@ -1124,12 +1147,14 @@ function onSideBackPointerUp(event: PointerEvent) {
     event.stopPropagation();
     suppressSideBackClickUntil.value = performance.now() + 350;
   }
+  (event.currentTarget as HTMLElement).releasePointerCapture?.(event.pointerId);
   resetSideBack();
   if (shouldBack) requestPhoneBack();
 }
 
 function onSideBackPointerCancel(event: PointerEvent) {
   if (sideBack.pointerId !== event.pointerId) return;
+  (event.currentTarget as HTMLElement).releasePointerCapture?.(event.pointerId);
   resetSideBack();
 }
 
@@ -1138,6 +1163,11 @@ function onSideBackClick(event: MouseEvent) {
   suppressSideBackClickUntil.value = 0;
   event.preventDefault();
   event.stopImmediatePropagation();
+}
+
+function onEmbeddedSideBack() {
+  if (!isOpen.value || !canGoBack.value || currentRoute.value.appId === 'home' || appDrag.isDragging) return;
+  requestPhoneBack();
 }
 
 function openHomeApp(appId: string) {
@@ -1418,6 +1448,13 @@ watch(isOpen, async nextIsOpen => {
 
 onMounted(() => {
   syncPositionFromSettings();
+  window.addEventListener('st-phone-side-back', onEmbeddedSideBack);
+  fileRepository.startAutoSnapshots();
+});
+
+onBeforeUnmount(() => {
+  window.removeEventListener('st-phone-side-back', onEmbeddedSideBack);
+  fileRepository.stopAutoSnapshots();
 });
 
 useEventListener(window, 'resize', async () => {
@@ -1497,6 +1534,37 @@ useEventListener(window, 'orientationchange', async () => {
   border: 1px solid var(--pc-border);
   display: flex;
   flex-direction: column;
+  touch-action: pan-y;
+}
+
+.pc-side-back-indicator {
+  --pc-side-back-progress: 0;
+  position: absolute;
+  top: 50%;
+  z-index: 20;
+  display: grid;
+  width: 34px;
+  height: 48px;
+  place-items: center;
+  border: 1px solid var(--pc-border);
+  background: var(--pc-surface-strong);
+  color: var(--pc-theme-accent);
+  box-shadow: 0 8px 20px color-mix(in srgb, var(--pc-text) 18%, transparent);
+  opacity: calc(0.45 + var(--pc-side-back-progress) * 0.55);
+  pointer-events: none;
+  transform: translateY(-50%) scale(calc(0.82 + var(--pc-side-back-progress) * 0.18));
+}
+
+.pc-side-back-indicator.from-left {
+  left: 0;
+  border-left: 0;
+  border-radius: 0 999px 999px 0;
+}
+
+.pc-side-back-indicator.from-right {
+  right: 0;
+  border-right: 0;
+  border-radius: 999px 0 0 999px;
 }
 
 .pc-topbar {

@@ -342,6 +342,11 @@ function hideFooter() {
   footerVisible.value = false;
 }
 
+function toggleFooter() {
+  if (props.footerAlwaysVisible) return;
+  footerVisible.value = !footerVisible.value;
+}
+
 function runFooterAction(event: 'bottom' | 'catalog' | 'next' | 'previous' | 'top') {
   emit(event);
 }
@@ -469,6 +474,8 @@ onMounted(() => {
 });
 
 onBeforeUnmount(() => toolResizeObserver?.disconnect());
+
+defineExpose({ hideFooter, toggleFooter });
 </script>
 
 <style scoped>
@@ -499,6 +506,19 @@ onBeforeUnmount(() => toolResizeObserver?.disconnect());
   color: var(--pc-reader-text, var(--pc-text));
   font-family: var(--pc-reader-font-family);
   overflow: auto;
+}
+
+.pc-reader-custom-content > .pc-reader-document-head {
+  margin: 0 0 18px;
+}
+
+.pc-reader-custom-content > .pc-reader-document-head h1 {
+  margin: 0;
+  overflow-wrap: anywhere;
+  color: var(--pc-reader-text, var(--pc-text));
+  font-family: inherit;
+  font-size: 24px;
+  line-height: 1.3;
 }
 
 .pc-reader-footer-layer {

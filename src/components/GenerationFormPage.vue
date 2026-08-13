@@ -3,6 +3,7 @@
     <GenerationPanel
       :capture="capture"
       :capture-reset-key="captureResetKey"
+      :default-preset-selection="defaultPresetSelection"
       :error="error"
       :from-start-end="fromStartEnd"
       :range-text="rangeText"
@@ -42,6 +43,7 @@ withDefaults(
   defineProps<{
     capture: () => Promise<CapturedTavernPromptPreview>;
     captureResetKey: unknown;
+    defaultPresetSelection?: string;
     error: string;
     kicker?: string;
     rawOutput: string;
@@ -51,6 +53,7 @@ withDefaults(
   }>(),
   {
     kicker: '',
+    defaultPresetSelection: '',
     requirementPlaceholder: '',
     title: '',
   },

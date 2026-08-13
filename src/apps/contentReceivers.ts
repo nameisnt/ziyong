@@ -602,15 +602,26 @@ export function createWorldSlotsContentReceiver(): PhoneContentReceiver {
     scope: 'chat',
     batchModes: ['separate', 'merge'],
     createDraft(sources) {
+      const keys = sources[0]?.tags.join('、') || '';
       return {
         enabled: true,
         insertionOrder: 100,
-        keys: sources[0]?.tags.join('、') || '',
+        keys,
         position: 'before_character_definition',
+        strategyType: keys ? 'selective' : 'constant',
       };
     },
     fields() {
       return [
+        {
+          key: 'strategyType',
+          kind: 'select',
+          label: '激活策略',
+          options: [
+            { label: '蓝灯 · 永久激活', value: 'constant' },
+            { label: '绿灯 · 关键词触发', value: 'selective' },
+          ],
+        },
         { key: 'keys', kind: 'text', label: '关键词', placeholder: '使用逗号分隔，可留空' },
         {
           key: 'position',
@@ -628,6 +639,7 @@ export function createWorldSlotsContentReceiver(): PhoneContentReceiver {
       const validPosition = worldSlotPositionOptions.some(option => option.id === position)
         ? (position as (typeof worldSlotPositionOptions)[number]['id'])
         : 'before_character_definition';
+      const strategyType = textValue(context, 'strategyType') === 'selective' ? 'selective' : 'constant';
       const slots = worldSlots.createSlots(
         context.sources.map(source => ({
           content: source.content.trim(),
@@ -635,6 +647,7 @@ export function createWorldSlotsContentReceiver(): PhoneContentReceiver {
           insertionOrder: Math.round(numberValue(context, 'insertionOrder', 100)),
           keys: splitList(textValue(context, 'keys') || source.tags.join('、')),
           position: validPosition,
+          strategyType,
           title: sourceTitle(source, '未命名槽位'),
         })),
       );

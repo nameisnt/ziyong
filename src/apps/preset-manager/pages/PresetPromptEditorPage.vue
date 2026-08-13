@@ -3,9 +3,13 @@
     <article class="pc-page-section pc-preset-editor">
       <div class="pc-compact-toolbar pc-preset-editor-head">
         <span :title="presetName">{{ presetName }}</span>
-        <h2 :title="prompt.name || prompt.id">{{ prompt.name || prompt.id }}</h2>
+        <h2>{{ prompt.id }}</h2>
         <small>{{ roleLabel }}</small>
       </div>
+      <label class="pc-field-group">
+        <span class="pc-field-label">条目名称</span>
+        <input v-model="nameDraft" class="pc-field" type="text" maxlength="160" placeholder="预设条目名称" />
+      </label>
       <textarea
         v-if="typeof prompt.content === 'string'"
         v-model="draft"
@@ -21,13 +25,7 @@
           <i class="fa-solid fa-trash"></i>
         </button>
         <button class="pc-soft-btn" type="button" :disabled="saving" @click="$emit('back')">返回</button>
-        <button
-          v-if="typeof prompt.content === 'string'"
-          class="pc-primary-btn"
-          type="button"
-          :disabled="saving || !dirty"
-          @click="$emit('save')"
-        >
+        <button class="pc-primary-btn" type="button" :disabled="saving || !dirty" @click="$emit('save')">
           {{ saving ? '保存中' : '保存' }}
         </button>
       </div>
@@ -47,6 +45,7 @@ defineProps<{
 }>();
 
 const draft = defineModel<string>('draft', { required: true });
+const nameDraft = defineModel<string>('nameDraft', { required: true });
 defineEmits<{ back: []; remove: []; save: [] }>();
 </script>
 

@@ -9,6 +9,7 @@
     v-model:user-requirement="userRequirement"
     :capture="capture"
     :capture-reset-key="captureResetKey"
+    :default-preset-selection="defaultPresetSelection"
     :error="error"
     :raw-output="rawOutput"
     :requirement-placeholder="requirementPlaceholder"
@@ -39,6 +40,7 @@ import type { CapturedTavernPromptPreview } from '@/util/runtime';
 defineProps<{
   capture: () => Promise<CapturedTavernPromptPreview>;
   captureResetKey: unknown;
+  defaultPresetSelection?: string;
   error: string;
   extraFieldPlaceholder: string;
   extraFieldVisible: boolean;

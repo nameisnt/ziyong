@@ -21,6 +21,7 @@
     },
     "moduleDetection": "auto",
     "moduleResolution": "bundler",
+    "resolveJsonModule": true,
     "isolatedModules": true,
     "importHelpers": true,
     "allowUmdGlobalAccess": true,

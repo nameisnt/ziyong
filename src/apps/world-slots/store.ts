@@ -26,10 +26,13 @@ export const WorldSlotRoleSchema = z.enum(['system', 'user', 'assistant']);
 export type WorldSlotRole = z.infer<typeof WorldSlotRoleSchema>;
 export const WorldSlotLogicSchema = z.enum(['and_any', 'and_all', 'not_all', 'not_any']);
 export type WorldSlotLogic = z.infer<typeof WorldSlotLogicSchema>;
+export const WorldSlotStrategyTypeSchema = z.enum(['constant', 'selective']);
+export type WorldSlotStrategyType = z.infer<typeof WorldSlotStrategyTypeSchema>;
 
-export const WorldSlotSchema = z.object({
+const WorldSlotDataSchema = z.object({
   id: z.string(),
   title: z.string(),
+  strategyType: WorldSlotStrategyTypeSchema,
   keys: z.array(z.string()).default([]),
   secondaryKeys: z.array(z.string()).default([]),
   selectiveLogic: WorldSlotLogicSchema.default('and_any'),
@@ -49,6 +52,12 @@ export const WorldSlotSchema = z.object({
   createdAt: z.string(),
   updatedAt: z.string(),
 });
+export const WorldSlotSchema = z.preprocess(value => {
+  if (!value || typeof value !== 'object' || Array.isArray(value) || 'strategyType' in value) return value;
+  const raw = value as Record<string, unknown>;
+  const keys = Array.isArray(raw.keys) ? raw.keys : [];
+  return { ...raw, strategyType: keys.length ? 'selective' : 'constant' };
+}, WorldSlotDataSchema);
 export type WorldSlot = z.infer<typeof WorldSlotSchema>;
 
 type WorldSlotEditableFields = Pick<
@@ -68,6 +77,7 @@ type WorldSlotEditableFields = Pick<
   | 'secondaryKeys'
   | 'selectiveLogic'
   | 'sticky'
+  | 'strategyType'
   | 'title'
 >;
 
@@ -180,16 +190,16 @@ const worldInfoLogicBySlot: Record<WorldSlotLogic, number> = {
 };
 
 function createWorldEntry(slot: WorldSlot, entryId: number): WorldBookEntry {
-  const usesKeys = slot.keys.length > 0;
+  const selective = slot.strategyType === 'selective';
   return {
     uid: entryId,
     key: slot.keys,
     keysecondary: slot.secondaryKeys,
     comment: `[${getSlotMarker(slot.id)}] ${slot.title}`,
     content: slot.content.trim(),
-    constant: !usesKeys,
+    constant: !selective,
     vectorized: false,
-    selective: usesKeys,
+    selective,
     selectiveLogic: worldInfoLogicBySlot[slot.selectiveLogic],
     addMemo: true,
     order: slot.insertionOrder,
@@ -273,6 +283,10 @@ function migrateLegacyWorldSlotSettings() {
       const slot = { ...rawSlot };
       delete slot.profileEntryIds;
       delete slot.type;
+      if (slot.strategyType !== 'constant' && slot.strategyType !== 'selective') {
+        slot.strategyType = Array.isArray(slot.keys) && slot.keys.length ? 'selective' : 'constant';
+        changed = true;
+      }
       if ('profileEntryIds' in rawSlot || 'type' in rawSlot) changed = true;
       return { ...slot, content };
     });
@@ -325,6 +339,7 @@ export const useWorldSlotsStore = defineStore('world-slots', () => {
     return {
       id: createId('world_slot'),
       title: input.title?.trim() || '未命名槽位',
+      strategyType: input.strategyType ?? 'constant',
       keys: cleanList(input.keys ?? []),
       secondaryKeys: cleanList(input.secondaryKeys ?? []),
       selectiveLogic: input.selectiveLogic ?? 'and_any',
@@ -363,6 +378,7 @@ export const useWorldSlotsStore = defineStore('world-slots', () => {
     const slot = getSlot(slotId);
     if (!slot) return null;
     slot.title = input.title.trim() || slot.title;
+    slot.strategyType = input.strategyType;
     slot.keys = cleanList(input.keys);
     slot.secondaryKeys = cleanList(input.secondaryKeys);
     slot.selectiveLogic = input.selectiveLogic;

@@ -9,6 +9,7 @@
         :theme="theme"
         :title="title"
         @navigate-blocked="$emit('navigate-blocked')"
+        @reader-tap="$emit('reader-tap')"
       />
       <!-- Markdown renderer sanitizes output before it reaches this component. -->
       <!-- eslint-disable vue/no-v-html -->
@@ -34,7 +35,7 @@ const props = withDefaults(
   defineProps<{ active?: boolean; content: string; theme?: 'dark' | 'light'; title?: string }>(),
   { active: true, theme: 'light', title: '' },
 );
-defineEmits<{ 'navigate-blocked': [] }>();
+defineEmits<{ 'navigate-blocked': []; 'reader-tap': [] }>();
 const { settings } = storeToRefs(useSettingsStore());
 const segments = computed(() => parseTheaterContentSegments(props.content));
 </script>

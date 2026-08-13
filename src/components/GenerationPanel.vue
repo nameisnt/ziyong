@@ -219,6 +219,7 @@ import TavernPromptCapture from '@/components/TavernPromptCapture.vue';
 import { useGenerationAliasesStore } from '@/store/generationAliases';
 import { useGenerationOverrideStore } from '@/store/generationOverrides';
 import { usePhoneStore } from '@/store/phone';
+import { usePluginPresetStore } from '@/store/pluginPresets';
 import { usePromptStore } from '@/store/prompts';
 import { useSettingsStore } from '@/store/settings';
 import type { SummaryGenerationSourceMode } from '@/util/generationSource';
@@ -230,12 +231,15 @@ import {
   type TextProviderSelection,
 } from '@/util/textProvider';
 import { storeToRefs } from 'pinia';
+import { getBuiltinPluginPreset, BUILTIN_DIARY_PRESET_SELECTION } from '@/apps/preset-manager/builtinDiaryPreset';
+import { pluginPresetIdFromSelection, pluginPresetSelection } from '@/apps/preset-manager/pluginPreset';
 
 const props = withDefaults(
   defineProps<{
     cancelLabel?: string;
     capture?: () => Promise<CapturedTavernPromptPreview>;
     captureResetKey?: unknown;
+    defaultPresetSelection?: string;
     error?: string;
     errorTitle?: string;
     fromStartEnd: number;
@@ -264,6 +268,7 @@ const props = withDefaults(
     cancelLabel: '取消',
     capture: undefined,
     captureResetKey: undefined,
+    defaultPresetSelection: '',
     error: '',
     errorTitle: '生成失败',
     generateIcon: 'fa-solid fa-sparkles',
@@ -286,10 +291,12 @@ const phone = usePhoneStore();
 const prompts = usePromptStore();
 const settingsStore = useSettingsStore();
 const generationAliases = useGenerationAliasesStore();
+const pluginPresets = usePluginPresetStore();
 const generationOverrides = useGenerationOverrideStore();
 const { quickPhraseGroups } = storeToRefs(prompts);
 const { settings } = storeToRefs(settingsStore);
 const { charReplacement, userReplacement } = storeToRefs(generationAliases);
+const { items: pluginPresetItems } = storeToRefs(pluginPresets);
 const quickPhraseOpen = ref(false);
 const openQuickPhraseGroupId = ref('');
 const tavernPresetNames = ref<string[]>([]);
@@ -298,7 +305,7 @@ const generationOverride = computed(() =>
   generationOverrides.ensureOverride(
     overrideRoute.value.appId,
     overrideRoute.value.page,
-    settings.value.generation.tavernPresetName,
+    settings.value.generation.tavernPresetName || props.defaultPresetSelection,
     getCurrentTextProviderSelection(settings.value.textProvider),
   ),
 );
@@ -317,7 +324,15 @@ const connectionOptions = computed(() => [
 ]);
 const tavernPresetOptions = computed(() => [
   { label: '跟随酒馆当前预设', value: '' },
-  ...tavernPresetNames.value.map(presetName => ({ label: presetName, value: presetName })),
+  ...([props.defaultPresetSelection, generationOverride.value.tavernPresetName].includes(BUILTIN_DIARY_PRESET_SELECTION)
+    ? [{ group: '插件内置', label: '日记（内置）', value: BUILTIN_DIARY_PRESET_SELECTION }]
+    : []),
+  ...tavernPresetNames.value.map(presetName => ({ group: '酒馆预设', label: presetName, value: presetName })),
+  ...pluginPresetItems.value.map(preset => ({
+    group: '插件预设',
+    label: preset.name,
+    value: pluginPresetSelection(preset.id),
+  })),
 ]);
 const generationBlocked = computed(() => !phone.isViewingCurrentChat);
 const controlsDisabled = computed(() => props.running || generationBlocked.value);
@@ -335,7 +350,14 @@ const advancedSummary = computed(() => {
     settings.value.textProvider,
     generationOverride.value.connectionSelection,
   );
-  const presetName = generationOverride.value.tavernPresetName.trim() || '当前预设';
+  const presetSelection = generationOverride.value.tavernPresetName.trim();
+  const pluginPresetId = pluginPresetIdFromSelection(presetSelection);
+  const builtinPreset = getBuiltinPluginPreset(presetSelection);
+  const presetName = builtinPreset
+    ? `内置：${builtinPreset.name}`
+    : pluginPresetId
+    ? `插件：${pluginPresets.getById(pluginPresetId)?.name || '已失效'}`
+    : presetSelection || '当前预设';
   const charName = charReplacement.value.trim();
   const userName = userReplacement.value.trim();
   const aliasSummary = charName || userName ? `称呼：${charName || '默认'} / ${userName || '默认'}` : '称呼：默认';
@@ -396,7 +418,11 @@ onMounted(() => {
 function refreshTavernPresetNames() {
   tavernPresetNames.value = getPresetNamesSafe();
   const selectedPresetName = generationOverride.value.tavernPresetName.trim();
-  if (selectedPresetName && !tavernPresetNames.value.includes(selectedPresetName)) {
+  if (
+    selectedPresetName &&
+    !pluginPresetIdFromSelection(selectedPresetName) &&
+    !tavernPresetNames.value.includes(selectedPresetName)
+  ) {
     tavernPresetNames.value = [selectedPresetName, ...tavernPresetNames.value];
   }
 }

@@ -83,7 +83,7 @@
           >
             <button class="pc-worldbook-entry-open" type="button" @click="$emit('open-entry', entry)">
               <span
-                :class="['pc-worldbook-entry-lamp', entry.strategy.type === 'constant' ? 'green' : 'blue']"
+                :class="['pc-worldbook-entry-lamp', entry.strategy.type === 'selective' ? 'green' : 'blue']"
                 aria-hidden="true"
               ></span>
               <span class="pc-worldbook-entry-copy">
@@ -167,7 +167,7 @@ defineEmits<{
   box-shadow: 0 0 0 3px color-mix(in srgb, currentColor 16%, transparent);
 }
 
-/* 业务状态色：对应酒馆世界书的绿灯（常驻）与蓝灯（触发）。 */
+/* 业务状态色：酒馆无主关键词/常驻条目为蓝灯，有主关键词的触发条目为绿灯。 */
 .pc-worldbook-entry-lamp.green {
   color: #27ae60;
   background: #27ae60;

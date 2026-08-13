@@ -89,6 +89,7 @@ export const PromptSettingsSchema = z.object({
   taskTemplates: z.record(z.string(), z.string()).default({}),
   typePrompts: z.array(TypePromptConfigSchema).default([]),
   typePromptGroups: z.array(TypePromptGroupSchema).default([]),
+  hiddenDefaultTypeGroupIds: z.array(z.string()).default([]),
   quickPhraseGroups: z.array(QuickPhraseGroupSchema).default([]),
   quickTemplateGroups: z.array(QuickTemplateGroupSchema).default([]),
 });
@@ -116,6 +117,7 @@ export const PromptTransferSchema = z.object({
     taskTemplates: z.record(z.string(), z.string()).optional(),
     typePrompts: z.array(TypePromptConfigSchema).optional(),
     typePromptGroups: z.array(TypePromptGroupSchema).optional(),
+    hiddenDefaultTypeGroupIds: z.array(z.string()).optional(),
     quickPhraseGroups: z.array(QuickPhraseGroupSchema).optional(),
     quickTemplateGroups: z.array(QuickTemplateGroupSchema).optional(),
   }),
@@ -177,8 +179,9 @@ function ensureDefaultTypePrompts(settings: PromptSettings) {
 
 function ensureDefaultTypePromptGroups(settings: PromptSettings) {
   const existingIds = new Set(settings.typePromptGroups.map(group => group.id));
+  const hiddenIds = new Set(settings.hiddenDefaultTypeGroupIds);
   getDefaultTypePromptGroups().forEach(group => {
-    if (!existingIds.has(group.id)) settings.typePromptGroups.push(group);
+    if (!existingIds.has(group.id) && !hiddenIds.has(group.id)) settings.typePromptGroups.push(group);
   });
   const defaultPrompts = new Map(getDefaultTypePromptDefinitions().map(prompt => [prompt.id, prompt]));
   settings.typePrompts.forEach(prompt => {
@@ -338,6 +341,7 @@ function createDefaultPromptSettings(): PromptSettings {
     taskTemplates: buildDefaultTaskTemplates(),
     typePrompts: createDefaultTypePrompts(timestamp),
     typePromptGroups: getDefaultTypePromptGroups(),
+    hiddenDefaultTypeGroupIds: [],
     quickPhraseGroups: [
       {
         id: 'prompt_group_emotion',
@@ -526,6 +530,7 @@ export const usePromptStore = defineStore('prompts', () => {
     if (parsedSelection.typePrompts) {
       sections.typePrompts = klona(data.value.typePrompts);
       sections.typePromptGroups = klona(data.value.typePromptGroups);
+      sections.hiddenDefaultTypeGroupIds = klona(data.value.hiddenDefaultTypeGroupIds);
     }
 
     if (parsedSelection.quickPhraseGroups) {
@@ -585,6 +590,7 @@ export const usePromptStore = defineStore('prompts', () => {
       }
       data.value.typePrompts = klona(transfer.sections.typePrompts);
       data.value.typePromptGroups = klona(transfer.sections.typePromptGroups ?? []);
+      data.value.hiddenDefaultTypeGroupIds = klona(transfer.sections.hiddenDefaultTypeGroupIds ?? []);
       ensureDefaultTypePromptGroups(data.value);
       ensureTheaterTypePromptRenderModes(data.value);
     }
@@ -670,6 +676,9 @@ export const usePromptStore = defineStore('prompts', () => {
 
   function deleteTypePromptGroup(groupId: string) {
     data.value.typePromptGroups = data.value.typePromptGroups.filter(group => group.id !== groupId);
+    if (getDefaultTypePromptGroups().some(group => group.id === groupId)) {
+      data.value.hiddenDefaultTypeGroupIds = _.uniq([...data.value.hiddenDefaultTypeGroupIds, groupId]);
+    }
     data.value.typePrompts.forEach(prompt => {
       if (prompt.groupId === groupId) prompt.groupId = '';
     });
