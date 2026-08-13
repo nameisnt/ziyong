@@ -9,9 +9,14 @@ import {
   type PluginPresetRecord,
 } from '@/apps/preset-manager/pluginPreset';
 import type { TavernPresetPrompt, TavernPresetPromptCopyInput } from '@/apps/preset-manager/api';
+import {
+  BUILTIN_DIARY_PRESET_ID,
+  createBuiltinDiaryPresetRecord,
+} from '@/apps/preset-manager/builtinDiaryPreset';
 // eslint-disable-next-line import-x/no-nodejs-modules
 import { getRequestHeaders, saveSettingsDebounced } from '@sillytavern/script';
 import { extension_settings } from '@sillytavern/scripts/extensions';
+import { klona } from 'klona';
 
 export const pluginPresetField = 'sillytavern_phone_plugin_presets';
 
@@ -76,11 +81,12 @@ function readStoredIndex(): StoredPluginPresetIndex[] {
     const id = String(item.id || '').trim();
     if (!id) return [];
     return [{
+      builtIn: item.builtIn === true || id === BUILTIN_DIARY_PRESET_ID,
       createdAt: String(item.createdAt || new Date().toISOString()),
       id,
       name: String(item.name || '插件预设'),
       path: normalizeFilePath(String(item.path || '')),
-      raw: isRecord(item.raw) ? structuredClone(item.raw) : undefined,
+      raw: isRecord(item.raw) ? klona(item.raw) : undefined,
       sourceFileName: String(item.sourceFileName || ''),
       sourceFormat: item.sourceFormat === 'legacy' ? 'legacy' as const : 'modern' as const,
       sourceRoot: item.sourceRoot === 'array' ? 'array' as const : 'object' as const,
@@ -94,13 +100,14 @@ function createId() {
 }
 
 export const usePluginPresetStore = defineStore('pluginPresets', () => {
-  const items = ref<PluginPresetRecord[]>([]);
+  const items = ref<PluginPresetRecord[]>([createBuiltinDiaryPresetRecord()]);
   const paths = ref<Record<string, string>>({});
   const loading = ref(false);
   const loadError = ref('');
 
   function persistIndex() {
     const stored = items.value.map(item => ({
+      builtIn: item.builtIn === true,
       createdAt: item.createdAt,
       id: item.id,
       name: item.name,
@@ -163,7 +170,7 @@ export const usePluginPresetStore = defineStore('pluginPresets', () => {
 
   async function mutateRecord<T>(id: string, mutate: (record: PluginPresetRecord) => T) {
     const item = requireById(id);
-    const backup = structuredClone(item);
+    const backup = klona(item);
     try {
       const result = mutate(item);
       await saveRecord(item);
@@ -184,6 +191,7 @@ export const usePluginPresetStore = defineStore('pluginPresets', () => {
   }
 
   async function deletePreset(id: string) {
+    if (id === BUILTIN_DIARY_PRESET_ID) throw new Error('内置日记预设不能删除，可以编辑、改名或导出');
     const index = items.value.findIndex(item => item.id === id);
     if (index < 0) throw new Error('插件预设已经不存在');
     await deleteRecordFile(paths.value[id] || '');
@@ -193,14 +201,15 @@ export const usePluginPresetStore = defineStore('pluginPresets', () => {
   }
 
   function exportRecords() {
-    return structuredClone(items.value);
+    return klona(items.value);
   }
 
   async function replaceRecords(records: PluginPresetRecord[]) {
-    const normalized = records.map(record => {
-      const raw = structuredClone(record.raw);
+    const normalized: PluginPresetRecord[] = records.map(record => {
+      const raw = klona(record.raw);
       const parsed = normalizePluginPresetImport(raw);
       return {
+        builtIn: record.id === BUILTIN_DIARY_PRESET_ID,
         createdAt: String(record.createdAt || new Date().toISOString()),
         id: String(record.id || '').trim(),
         name: String(record.name || '插件预设').trim() || '插件预设',
@@ -211,6 +220,9 @@ export const usePluginPresetStore = defineStore('pluginPresets', () => {
         updatedAt: String(record.updatedAt || record.createdAt || new Date().toISOString()),
       } satisfies PluginPresetRecord;
     });
+    if (!normalized.some(record => record.id === BUILTIN_DIARY_PRESET_ID)) {
+      normalized.unshift(createBuiltinDiaryPresetRecord());
+    }
     if (normalized.some(record => !record.id) || new Set(normalized.map(record => record.id)).size !== normalized.length) {
       throw new Error('私有预设备份包含空 ID 或重复 ID');
     }
@@ -268,6 +280,7 @@ export const usePluginPresetStore = defineStore('pluginPresets', () => {
           let record: PluginPresetRecord;
           if (entry.raw) {
             record = {
+              builtIn: entry.builtIn === true || entry.id === BUILTIN_DIARY_PRESET_ID,
               createdAt: entry.createdAt,
               id: entry.id,
               name: entry.name,
@@ -280,11 +293,23 @@ export const usePluginPresetStore = defineStore('pluginPresets', () => {
             loadedPaths[entry.id] = await uploadRecordFile(record);
           } else {
             record = await readRecordFile(entry.path);
+            record.builtIn = entry.builtIn === true || entry.id === BUILTIN_DIARY_PRESET_ID;
             loadedPaths[entry.id] = entry.path;
           }
           loaded.push(record);
         } catch (error) {
           errors.push(`${entry.name}：${error instanceof Error ? error.message : String(error)}`);
+        }
+      }
+      if (!loaded.some(record => record.id === BUILTIN_DIARY_PRESET_ID)) {
+        const builtin = createBuiltinDiaryPresetRecord();
+        loaded.unshift(builtin);
+        if (!errors.length) {
+          try {
+            loadedPaths[builtin.id] = await uploadRecordFile(builtin);
+          } catch (error) {
+            errors.push(`日记（内置）：${error instanceof Error ? error.message : String(error)}`);
+          }
         }
       }
       items.value = loaded;

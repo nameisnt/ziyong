@@ -30,6 +30,7 @@
       :loading="loading"
       :mutation-busy="mutationBusy"
       :plugin-preset="isPluginDetail"
+      :preset-deletable="detailPluginPresetId !== BUILTIN_DIARY_PRESET_ID"
       :preset="activePreset"
       :preset-name="detailPresetName"
       :prompt-drag="promptDrag"
@@ -78,6 +79,7 @@
 
 <script setup lang="ts">
 import { useEntryLibraryStore } from '@/apps/entry-library/store';
+import { BUILTIN_DIARY_PRESET_ID } from '@/apps/preset-manager/builtinDiaryPreset';
 import { usePresetLinkStore } from '@/apps/preset-link/store';
 import { usePhoneStore } from '@/store/phone';
 import { usePluginPresetStore } from '@/store/pluginPresets';

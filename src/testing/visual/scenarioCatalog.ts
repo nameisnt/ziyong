@@ -110,6 +110,7 @@ export function createVisualScenarioGroups(rootAppScenarios: string[]): VisualSc
     {
       id: 'preset-manager',
       scenarios: [
+        'preset-builtin-diary',
         'preset-detail',
         'preset-copy-reorder',
         'preset-copy-editor',

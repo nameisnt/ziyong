@@ -76,7 +76,10 @@
         <button class="pc-preset-open" type="button" @click="$emit('open-plugin', preset.id)">
           <span class="pc-preset-copy">
             <strong :title="preset.name">{{ preset.name }}</strong>
-            <small>{{ preset.sourceFormat === 'legacy' ? '兼容格式' : '现代格式' }}</small>
+            <small>
+              <template v-if="preset.builtIn">内置 · </template>
+              {{ preset.sourceFormat === 'legacy' ? '兼容格式' : '现代格式' }}
+            </small>
           </span>
           <i class="fa-solid fa-chevron-right"></i>
         </button>

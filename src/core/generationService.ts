@@ -48,7 +48,6 @@ import {
   buildPluginPresetOrderedPrompts,
   pluginPresetIdFromSelection,
 } from '@/apps/preset-manager/pluginPreset';
-import { getBuiltinPluginPreset } from '@/apps/preset-manager/builtinDiaryPreset';
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return Boolean(value) && typeof value === 'object' && !Array.isArray(value);
@@ -485,9 +484,7 @@ function prepareGenerationRequest<TConfig, TResult, TSaveResult = { entityId: st
   const customApi = buildCustomApiConfig(textProvider);
   const presetSelection = resolveGenerationPresetName(options);
   const pluginPresetId = pluginPresetIdFromSelection(presetSelection || '');
-  const pluginPresetRecord =
-    getBuiltinPluginPreset(presetSelection || '') ??
-    (pluginPresetId ? usePluginPresetStore().getById(pluginPresetId) : null);
+  const pluginPresetRecord = pluginPresetId ? usePluginPresetStore().getById(pluginPresetId) : null;
   if (pluginPresetId && !pluginPresetRecord) throw new Error('本次选择的插件预设已经不存在，请重新选择');
   const generationMacroVariables = {
     ...(baseRequest.taskTemplateVariables || {}),

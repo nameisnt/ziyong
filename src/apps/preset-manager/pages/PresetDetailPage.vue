@@ -11,7 +11,13 @@
         <button v-if="pluginPreset" type="button" :disabled="mutationBusy" @click="$emit('export-preset')">
           <i class="fa-solid fa-file-export"></i><span>导出预设</span>
         </button>
-        <button class="danger" type="button" :disabled="mutationBusy" @click="$emit('delete-preset')">
+        <button
+          v-if="presetDeletable"
+          class="danger"
+          type="button"
+          :disabled="mutationBusy"
+          @click="$emit('delete-preset')"
+        >
           <i class="fa-solid fa-trash"></i><span>删除预设</span>
         </button>
       </ActionMenu>
@@ -120,6 +126,7 @@ defineProps<{
   mutationBusy: boolean;
   pluginPreset: boolean;
   preset: TavernPreset | null;
+  presetDeletable: boolean;
   presetName: string;
   promptDrag: { insertBeforeId: string; isDragging: boolean; promptId: string };
   switchingPreset: string;

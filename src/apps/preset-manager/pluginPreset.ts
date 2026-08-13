@@ -6,6 +6,7 @@ export const PLUGIN_PRESET_SELECTION_PREFIX = 'plugin:';
 export type PluginPresetSourceFormat = 'legacy' | 'modern';
 
 export type PluginPresetRecord = {
+  builtIn?: boolean;
   createdAt: string;
   id: string;
   name: string;
@@ -45,7 +46,8 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 }
 
 function cloneRecord(value: Record<string, unknown>) {
-  return structuredClone(value);
+  // 预设来源本身必须是 JSON；JSON 往返既能去掉 Vue Proxy，也不会引入运行时专用字段。
+  return JSON.parse(JSON.stringify(value)) as Record<string, unknown>;
 }
 
 function normalizeRole(value: unknown): TavernPresetPrompt['role'] {
@@ -231,7 +233,7 @@ export function duplicatePluginPresetPrompt(
   const prompts = getRawPrompts(record.raw);
   const sourceIndex = prompts.findIndex(prompt => promptIdentifier(prompt, record.sourceFormat) === sourcePromptId);
   if (sourceIndex < 0) throw new Error('原插件预设条目已经不存在');
-  const source = structuredClone(prompts[sourceIndex]) as Record<string, unknown>;
+  const source = cloneRecord(prompts[sourceIndex]);
   const id = `phone_prompt_${Date.now()}_${Math.random().toString(36).slice(2, 9)}`;
   if (record.sourceFormat === 'legacy') source.identifier = id;
   else source.id = id;

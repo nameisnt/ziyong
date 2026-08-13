@@ -231,7 +231,6 @@ import {
   type TextProviderSelection,
 } from '@/util/textProvider';
 import { storeToRefs } from 'pinia';
-import { getBuiltinPluginPreset, BUILTIN_DIARY_PRESET_SELECTION } from '@/apps/preset-manager/builtinDiaryPreset';
 import { pluginPresetIdFromSelection, pluginPresetSelection } from '@/apps/preset-manager/pluginPreset';
 
 const props = withDefaults(
@@ -324,9 +323,6 @@ const connectionOptions = computed(() => [
 ]);
 const tavernPresetOptions = computed(() => [
   { label: '跟随酒馆当前预设', value: '' },
-  ...([props.defaultPresetSelection, generationOverride.value.tavernPresetName].includes(BUILTIN_DIARY_PRESET_SELECTION)
-    ? [{ group: '插件内置', label: '日记（内置）', value: BUILTIN_DIARY_PRESET_SELECTION }]
-    : []),
   ...tavernPresetNames.value.map(presetName => ({ group: '酒馆预设', label: presetName, value: presetName })),
   ...pluginPresetItems.value.map(preset => ({
     group: '插件预设',
@@ -352,10 +348,7 @@ const advancedSummary = computed(() => {
   );
   const presetSelection = generationOverride.value.tavernPresetName.trim();
   const pluginPresetId = pluginPresetIdFromSelection(presetSelection);
-  const builtinPreset = getBuiltinPluginPreset(presetSelection);
-  const presetName = builtinPreset
-    ? `内置：${builtinPreset.name}`
-    : pluginPresetId
+  const presetName = pluginPresetId
     ? `插件：${pluginPresets.getById(pluginPresetId)?.name || '已失效'}`
     : presetSelection || '当前预设';
   const charName = charReplacement.value.trim();

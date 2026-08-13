@@ -2629,6 +2629,29 @@ async function applyScenario(name: VisualScenarioName, options: { height?: numbe
         throw new Error('Archive floor backup reader is incomplete');
       }
     }
+  } else if (name === 'preset-builtin-diary') {
+    resetPhoneToRoute('preset-manager', 'root', '预设管理');
+    await waitForPaint();
+    const sourceTabs = [...document.querySelectorAll<HTMLButtonElement>('.pc-preset-source-tabs .pc-segment-btn')];
+    sourceTabs.find(button => button.textContent?.includes('插件预设'))?.click();
+    const loaded = await waitForVisualCondition(() =>
+      [...document.querySelectorAll<HTMLElement>('.pc-preset-row')].some(row => row.textContent?.includes('日记（内置）')),
+    );
+    if (!loaded) throw new Error('Built-in diary preset is missing from plugin preset management');
+    const row = [...document.querySelectorAll<HTMLElement>('.pc-preset-row')].find(item =>
+      item.textContent?.includes('日记（内置）'),
+    );
+    row?.querySelector<HTMLButtonElement>('.pc-preset-open')?.click();
+    const detailLoaded = await waitForVisualCondition(() =>
+      Boolean(document.querySelector('.pc-preset-nodes .pc-preset-prompt-main')),
+    );
+    if (!detailLoaded) {
+      const route = usePhoneStore().currentRoute;
+      const detailError = document.querySelector<HTMLElement>('.pc-preset-error')?.textContent?.trim() || 'none';
+      throw new Error(
+        `Built-in diary preset detail did not open from preset management; route=${route.appId}/${route.page}; error=${detailError}`,
+      );
+    }
   } else if (name === 'preset-detail') {
     resetPhoneToRoute('preset-manager', 'detail', '预设条目', { presetName: '视觉预设' });
   } else if (name === 'preset-copy-reorder') {
