@@ -263,7 +263,7 @@ export function buildPluginPresetOrderedPrompts(
   record: PluginPresetRecord,
   variables: Record<string, string> = {},
 ): Array<RawOrderedPrompt | string> {
-  return readPluginPreset(record).prompts.reduce<Array<RawOrderedPrompt | string>>((ordered, prompt) => {
+  const orderedPrompts = readPluginPreset(record).prompts.reduce<Array<RawOrderedPrompt | string>>((ordered, prompt) => {
     if (!prompt.enabled) return ordered;
     const placeholder = PLACEHOLDER_BY_ID[prompt.id];
     if (placeholder) {
@@ -279,6 +279,16 @@ export function buildPluginPresetOrderedPrompts(
     if (content) ordered.push({ content, role: prompt.role });
     return ordered;
   }, []);
+
+  // 酒馆聊天预设通常没有 userInput 标记：本轮输入原本由聊天生成流程自动接在
+  // Chat History 后。插件私有预设使用 generateRaw，必须显式补回这个占位符，
+  // 否则任务、类型、追加要求和输出格式会整段丢失。预设主动放置时仍尊重原位置。
+  if (!orderedPrompts.includes('user_input')) {
+    const chatHistoryIndex = orderedPrompts.indexOf('chat_history');
+    orderedPrompts.splice(chatHistoryIndex < 0 ? orderedPrompts.length : chatHistoryIndex + 1, 0, 'user_input');
+  }
+
+  return orderedPrompts;
 }
 
 export function pluginPresetSelection(id: string) {
