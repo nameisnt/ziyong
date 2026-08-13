@@ -233,6 +233,31 @@ async function runDomChecks(page) {
   });
 }
 
+async function runInteractionChecks(page, scenario) {
+  const findings = [];
+  try {
+    if (scenario === 'app:extras') {
+      await page.locator('.pc-book-item').first().click();
+      if ((await page.locator('.pc-extras-page').count()) === 0) {
+        findings.push({ severity: 'fail', message: '左侧生成入口点击后没有进入番外生成页' });
+      }
+    }
+
+    if (scenario === 'prompts-task-detail') {
+      await page.locator('.pc-prompt-detail-head > .pc-icon-btn').click();
+      if ((await page.locator('.pc-prompt-detail-backdrop').count()) > 0) {
+        findings.push({ severity: 'fail', message: '右侧提示词详情关闭按钮点击后弹窗仍然存在' });
+      }
+    }
+  } catch (error) {
+    findings.push({
+      severity: 'fail',
+      message: `交互检查异常：${error instanceof Error ? error.message : String(error)}`,
+    });
+  }
+  return findings;
+}
+
 function renderReport(results) {
   const rows = results
     .map(result => {
@@ -332,8 +357,10 @@ async function main() {
         await shell.waitFor({ state: 'visible' });
         const screenshotName = `${sanitizeName(scenario)}-${sanitizeName(size.label)}.png`;
         await shell.screenshot({ path: resolve(options.outDir, screenshotName) });
+        const findings = await runDomChecks(page);
+        findings.push(...(await runInteractionChecks(page, scenario)));
         results.push({
-          findings: await runDomChecks(page),
+          findings,
           scenario,
           screenshot: screenshotName,
           size: `${size.width}x${size.height}`,

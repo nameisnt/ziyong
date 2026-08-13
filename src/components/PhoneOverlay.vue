@@ -1098,7 +1098,6 @@ function onSideBackPointerDown(event: PointerEvent) {
   sideBack.startY = event.clientY;
   sideBack.swiping = false;
   sideBack.tracking = true;
-  (event.currentTarget as HTMLElement).setPointerCapture?.(event.pointerId);
 }
 
 function onSideBackPointerMove(event: PointerEvent) {
@@ -1119,6 +1118,9 @@ function onSideBackPointerMove(event: PointerEvent) {
     }
     if (distanceX <= distanceY * SIDE_BACK_AXIS_RATIO) return;
     sideBack.swiping = true;
+    // 普通点击也会从左右手势区起步。只有确认是横向滑动后再捕获指针，
+    // 否则 shell 会抢走按钮的 pointerup，导致两侧五分之一区域内的按钮失效。
+    (event.currentTarget as HTMLElement).setPointerCapture?.(event.pointerId);
   }
   const completeDistance = Math.min(
     SIDE_BACK_MAX_DISTANCE,
@@ -1147,14 +1149,16 @@ function onSideBackPointerUp(event: PointerEvent) {
     event.stopPropagation();
     suppressSideBackClickUntil.value = performance.now() + 350;
   }
-  (event.currentTarget as HTMLElement).releasePointerCapture?.(event.pointerId);
+  const shell = event.currentTarget as HTMLElement;
+  if (shell.hasPointerCapture?.(event.pointerId)) shell.releasePointerCapture?.(event.pointerId);
   resetSideBack();
   if (shouldBack) requestPhoneBack();
 }
 
 function onSideBackPointerCancel(event: PointerEvent) {
   if (sideBack.pointerId !== event.pointerId) return;
-  (event.currentTarget as HTMLElement).releasePointerCapture?.(event.pointerId);
+  const shell = event.currentTarget as HTMLElement;
+  if (shell.hasPointerCapture?.(event.pointerId)) shell.releasePointerCapture?.(event.pointerId);
   resetSideBack();
 }
 
