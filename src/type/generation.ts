@@ -61,6 +61,7 @@ export const HiddenGenerationRecordSchema = z.object({
   id: z.string(),
   actionId: z.string(),
   createdAt: z.string(),
+  reasoning: z.string().optional(),
   replay: GenerationReplaySnapshotSchema,
 });
 export type HiddenGenerationRecord = z.infer<typeof HiddenGenerationRecordSchema>;

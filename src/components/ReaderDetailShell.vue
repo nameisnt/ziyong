@@ -115,6 +115,9 @@
         >
           <i class="fa-solid fa-pen"></i><span>{{ editLabel }}</span>
         </button>
+        <button v-if="reasoning.trim()" class="pc-soft-btn" type="button" @click="reasoningOpen = true">
+          <i class="fa-solid fa-brain"></i><span>思维链</span>
+        </button>
         <slot name="actions"></slot>
       </div>
     </div>
@@ -127,6 +130,8 @@
       @save="saveTextEdit"
     />
 
+    <ReasoningModal :content="reasoning" :open="reasoningOpen" @close="reasoningOpen = false" />
+
     <slot name="overlays"></slot>
   </div>
 </template>
@@ -135,6 +140,7 @@
 import DetailFooter from '@/components/DetailFooter.vue';
 import ReaderContent from '@/components/ReaderContent.vue';
 import ReaderTextEditModal from '@/components/ReaderTextEditModal.vue';
+import ReasoningModal from '@/components/ReasoningModal.vue';
 import { useRegexDisplayStore } from '@/apps/regex-display/store';
 import { applyRegexDisplayRules, getRegexRulesByIds } from '@/util/regexDisplay';
 import { findReaderTextOccurrences, type ReaderTextOccurrence } from '@/util/readerTextEdit';
@@ -168,6 +174,7 @@ const props = withDefaults(
     nextLabel?: string;
     previousDisabled?: boolean;
     previousLabel?: string;
+    reasoning?: string;
     title: string;
   }>(),
   {
@@ -198,6 +205,7 @@ const props = withDefaults(
     nextLabel: '下一章',
     previousDisabled: false,
     previousLabel: '上一章',
+    reasoning: '',
   },
 );
 
@@ -242,9 +250,10 @@ const toolVisible = computed(
     props.branchEnabled ||
     props.eraserEnabled ||
     props.editEnabled ||
-    Boolean(slots.actions || slots['version-navigation']),
+    Boolean(props.reasoning.trim() || slots.actions || slots['version-navigation']),
 );
 const toolMenuOpen = ref(false);
+const reasoningOpen = ref(false);
 const textEditOpen = ref(false);
 const selectedText = ref('');
 const textOccurrences = ref<ReaderTextOccurrence[]>([]);

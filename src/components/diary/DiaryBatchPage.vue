@@ -80,6 +80,12 @@
         <input v-model.number="rpmLimit" class="pc-field" type="number" min="0" max="120" :disabled="state.running" />
       </div>
 
+      <GenerationProviderFields
+        v-model:connection-selection="connectionSelection"
+        v-model:tavern-preset-name="tavernPresetName"
+        :disabled="inputsLocked"
+      />
+
       <div class="pc-diary-batch-roles">
         <div>
           <span>AI 楼层</span>
@@ -137,7 +143,9 @@
 
 <script setup lang="ts">
 import InfoHint from '@/components/InfoHint.vue';
+import GenerationProviderFields from '@/components/GenerationProviderFields.vue';
 import ReferencePicker from '@/components/ReferencePicker.vue';
+import type { TextProviderSelection } from '@/util/textProvider';
 import type { GenerationReferenceItem } from '@/util/references';
 
 interface DiaryBatchState {
@@ -161,6 +169,7 @@ const props = defineProps<{
 defineEmits<{ cancel: []; generate: []; reset: []; stop: [] }>();
 
 const bookTitle = defineModel<string>('bookTitle', { required: true });
+const connectionSelection = defineModel<TextProviderSelection>('connectionSelection', { required: true });
 const floorMode = defineModel<'all' | 'custom'>('floorMode', { required: true });
 const floorText = defineModel<string>('floorText', { required: true });
 const groupMode = defineModel<boolean>('groupMode', { required: true });
@@ -170,6 +179,7 @@ const includeUser = defineModel<boolean>('includeUser', { required: true });
 const perspectiveName = defineModel<string>('perspectiveName', { required: true });
 const references = defineModel<GenerationReferenceItem[]>('references', { required: true });
 const rpmLimit = defineModel<number>('rpmLimit', { required: true });
+const tavernPresetName = defineModel<string>('tavernPresetName', { required: true });
 const userRequirement = defineModel<string>('userRequirement', { required: true });
 
 const modeHint =

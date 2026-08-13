@@ -1,11 +1,11 @@
 <template>
   <section class="pc-preset-page">
     <div class="pc-segment pc-preset-source-tabs" role="tablist" aria-label="预设来源">
-      <button class="pc-segment-btn" :class="{ active: source === 'tavern' }" type="button" @click="source = 'tavern'">
-        酒馆预设
-      </button>
       <button class="pc-segment-btn" :class="{ active: source === 'plugin' }" type="button" @click="source = 'plugin'">
         插件预设
+      </button>
+      <button class="pc-segment-btn" :class="{ active: source === 'tavern' }" type="button" @click="source = 'tavern'">
+        酒馆预设
       </button>
     </div>
 
@@ -47,7 +47,10 @@
       <input v-model="query" type="search" placeholder="搜索预设名称" />
     </label>
 
-    <div v-if="source === 'tavern' && !errorMessage && visiblePresetNames.length" class="pc-directory-list pc-preset-list">
+    <div
+      v-if="source === 'tavern' && !errorMessage && visiblePresetNames.length"
+      class="pc-directory-list pc-preset-list"
+    >
       <article
         v-for="presetName in visiblePresetNames"
         :key="presetName"
@@ -85,7 +88,10 @@
         </button>
       </article>
     </div>
-    <EmptyState v-else-if="!loading && (source === 'plugin' ? !pluginErrorMessage : !errorMessage)" :title="emptyTitle" />
+    <EmptyState
+      v-else-if="!loading && (source === 'plugin' ? !pluginErrorMessage : !errorMessage)"
+      :title="emptyTitle"
+    />
   </section>
 </template>
 
@@ -109,7 +115,9 @@ const source = defineModel<'plugin' | 'tavern'>('source', { required: true });
 const fileInput = ref<HTMLInputElement | null>(null);
 const visiblePluginPresets = computed(() => {
   const keyword = query.value.trim().toLocaleLowerCase();
-  return keyword ? props.pluginPresets.filter(item => item.name.toLocaleLowerCase().includes(keyword)) : props.pluginPresets;
+  return keyword
+    ? props.pluginPresets.filter(item => item.name.toLocaleLowerCase().includes(keyword))
+    : props.pluginPresets;
 });
 const emptyTitle = computed(() => {
   if (source.value === 'plugin') {

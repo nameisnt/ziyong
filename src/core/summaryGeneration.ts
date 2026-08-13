@@ -23,6 +23,7 @@ export function createSummaryGenerationAdapter(summaryStore: {
     bookId: string,
     input: Pick<SummaryEntry, 'title' | 'content' | 'rangeLabel'> & {
       directoryOrder?: number;
+      generationRecord?: SummaryEntry['generationRecord'];
       sourceFloorEnd?: number;
     },
   ) => SummaryEntry | null;
@@ -47,6 +48,7 @@ export function createSummaryGenerationAdapter(summaryStore: {
         content: result.content,
         rangeLabel: context.source.label,
         directoryOrder: sourceFloorEnd,
+        generationRecord: context.generationRecord,
         sourceFloorEnd,
         title: result.title,
       });

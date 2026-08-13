@@ -1,4 +1,4 @@
-import { FailedGenerationDraftSchema } from '@/type/generation';
+import { FailedGenerationDraftSchema, HiddenGenerationRecordSchema } from '@/type/generation';
 
 export const CharacterRefSchema = z.object({
   id: z.string().optional(),
@@ -19,6 +19,7 @@ export const DiaryEntrySchema = z.object({
   readers: z.array(CharacterRefSchema).optional(),
   directoryOrder: z.number().int().nonnegative().optional(),
   sourceFloorEnd: z.number().int().nonnegative().optional(),
+  generationRecord: HiddenGenerationRecordSchema.optional(),
 });
 export type DiaryEntry = z.infer<typeof DiaryEntrySchema>;
 

@@ -65,6 +65,7 @@
         previous-label="上一条"
         :next-disabled="!nextEntryId"
         :previous-disabled="!previousEntryId"
+        :reasoning="activeEntry.generationRecord?.reasoning"
         :title="activeEntry.title"
         @bagu="openDigestBaguScan"
         @bottom="scrollToBottom"
@@ -237,7 +238,7 @@ import { useInvalidRouteFallback } from '@/util/routeFallback';
 import { stopGenerationByIdSafe } from '@/util/runtime';
 import { getSourceLastFloor } from '@/util/sourceFloor';
 import { formatTextProviderSummary } from '@/util/textProvider';
-import type { FailedGenerationDraft } from '@/type/generation';
+import type { FailedGenerationDraft, HiddenGenerationRecord } from '@/type/generation';
 import { useDigestStore } from './store';
 import { storeToRefs } from 'pinia';
 
@@ -273,6 +274,7 @@ const generationState = reactive({
   preview: null as null | {
     content: string;
     draftId: null | string;
+    generationRecord?: HiddenGenerationRecord;
     raw: string;
     source: { floorEnd?: number; label: string };
     title: string;
@@ -563,6 +565,7 @@ async function runGeneration() {
     generationState.preview = {
       content: result.data.content,
       draftId: null,
+      generationRecord: result.generationRecord,
       raw: result.rawOutput,
       source: { floorEnd: getSourceLastFloor(result.source), label: result.source.label },
       title: result.data.title,
@@ -590,6 +593,7 @@ function savePreview() {
     title: preview.title,
     content: preview.content,
     kind: 'ai',
+    generationRecord: preview.generationRecord,
     sourceLabel: preview.source.label,
     directoryOrder: preview.source.floorEnd,
     sourceFloorEnd: preview.source.floorEnd,
@@ -665,6 +669,7 @@ function reparseFailedDraft() {
   generationState.preview = {
     content: parsed.data.content,
     draftId: null,
+    generationRecord: draft.generationRecord,
     raw: parsed.raw,
     source: { floorEnd: getSourceLastFloor(draft.source), label: draft.source.label },
     title: parsed.data.title,

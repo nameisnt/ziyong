@@ -8,6 +8,7 @@
       :favorite-active="entry.favorite"
       :next-disabled="!nextId"
       :previous-disabled="!previousId"
+      :reasoning="entry.generationRecord?.reasoning"
       :title="entry.kind === 'read-reaction' ? `📖 ${entry.title}` : entry.title"
       @bagu="emit('bagu')"
       @bottom="emit('bottom')"

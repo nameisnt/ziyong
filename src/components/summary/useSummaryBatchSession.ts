@@ -8,8 +8,14 @@ import { getCurrentChatScopeKey } from '@/store/chatScoped';
 import { useGenerationTaskStore } from '@/store/generationTasks';
 import { usePromptStore } from '@/store/prompts';
 import { useSettingsStore } from '@/store/settings';
+import { usePluginPresetStore } from '@/store/pluginPresets';
 import { useSummaryStore } from '@/store/summary';
 import { getChatMessagesSafe } from '@/util/runtime';
+import {
+  applyTextProviderSelection,
+  getCurrentTextProviderSelection,
+  type TextProviderSelection,
+} from '@/util/textProvider';
 import { klona } from 'klona';
 import { storeToRefs } from 'pinia';
 import type { ComputedRef } from 'vue';
@@ -25,10 +31,12 @@ export function useSummaryBatchSession(options: SummaryBatchSessionOptions) {
   const generationTasks = useGenerationTaskStore();
   const prompts = usePromptStore();
   const settingsStore = useSettingsStore();
+  const pluginPresets = usePluginPresetStore();
   const summary = useSummaryStore();
   const { settings } = storeToRefs(settingsStore);
   const draft = reactive({
     bookId: '',
+    connectionSelection: 'tavern' as TextProviderSelection,
     floorMode: 'custom' as 'all' | 'custom',
     floorText: '',
     groupMode: false,
@@ -36,6 +44,7 @@ export function useSummaryBatchSession(options: SummaryBatchSessionOptions) {
     includeAi: true,
     includeUser: true,
     rpmLimit: 10,
+    tavernPresetName: '',
     userRequirement: '',
   });
   const formError = ref('');
@@ -197,8 +206,8 @@ export function useSummaryBatchSession(options: SummaryBatchSessionOptions) {
         references: options.formattedReferences.value,
         rpmLimit: draft.rpmLimit,
         stream: settings.value.generation.stream,
-        tavernPresetName: settings.value.generation.tavernPresetName,
-        textProvider: klona(settings.value.textProvider),
+        tavernPresetName: draft.tavernPresetName,
+        textProvider: applyTextProviderSelection(klona(settings.value.textProvider), draft.connectionSelection),
         userRequirement: draft.userRequirement,
       },
       jobs,
@@ -211,6 +220,7 @@ export function useSummaryBatchSession(options: SummaryBatchSessionOptions) {
 
   function hydrate(config: ManualBatchTaskConfig) {
     draft.bookId = config.bookId;
+    draft.connectionSelection = getCurrentTextProviderSelection(config.textProvider);
     draft.floorMode = config.floorMode || 'custom';
     draft.floorText = config.floorText || '';
     draft.groupMode = config.groupMode ?? false;
@@ -218,11 +228,13 @@ export function useSummaryBatchSession(options: SummaryBatchSessionOptions) {
     draft.includeAi = config.includeAi ?? true;
     draft.includeUser = config.includeUser ?? true;
     draft.rpmLimit = config.rpmLimit;
+    draft.tavernPresetName = config.tavernPresetName;
     draft.userRequirement = config.userRequirement;
   }
 
   function initialize(bookId: string) {
     draft.bookId = bookId;
+    draft.connectionSelection = getCurrentTextProviderSelection(settings.value.textProvider);
     draft.floorMode = 'custom';
     draft.floorText = '';
     draft.groupMode = false;
@@ -230,6 +242,8 @@ export function useSummaryBatchSession(options: SummaryBatchSessionOptions) {
     draft.includeAi = true;
     draft.includeUser = true;
     draft.rpmLimit = settings.value.generation.rpmLimit;
+    draft.tavernPresetName =
+      pluginPresets.getDefaultSelectionForApp('summary') || settings.value.generation.tavernPresetName;
     draft.userRequirement = '';
     formError.value = '';
   }

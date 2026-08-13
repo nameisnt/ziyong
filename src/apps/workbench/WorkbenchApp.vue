@@ -900,12 +900,12 @@ function tavernPresetOptions(selected: string) {
   if (selected && !pluginPresetIdFromSelection(selected)) names.add(selected);
   return [
     { label: '跟随全局生成预设', value: '' },
-    ...[...names].filter(Boolean).map(name => ({ group: '酒馆预设', label: name, value: name })),
     ...pluginPresetItems.value.map(preset => ({
       group: '插件预设',
       label: preset.name,
       value: pluginPresetSelection(preset.id),
     })),
+    ...[...names].filter(Boolean).map(name => ({ group: '酒馆预设', label: name, value: name })),
   ];
 }
 
@@ -939,7 +939,8 @@ function refreshTavernPresetNames() {
         step.tavernPresetName &&
         !pluginPresetIdFromSelection(step.tavernPresetName) &&
         !names.includes(step.tavernPresetName)
-      ) names.push(step.tavernPresetName);
+      )
+        names.push(step.tavernPresetName);
     });
   });
   tavernPresetNames.value = names;

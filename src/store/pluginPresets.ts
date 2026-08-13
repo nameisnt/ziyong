@@ -4,15 +4,13 @@ import {
   exportPluginPreset,
   normalizePluginPresetImport,
   patchPluginPresetPrompt,
+  pluginPresetSelection,
   readPluginPreset,
   reorderPluginPresetPrompts,
   type PluginPresetRecord,
 } from '@/apps/preset-manager/pluginPreset';
 import type { TavernPresetPrompt, TavernPresetPromptCopyInput } from '@/apps/preset-manager/api';
-import {
-  BUILTIN_DIARY_PRESET_ID,
-  createBuiltinDiaryPresetRecord,
-} from '@/apps/preset-manager/builtinDiaryPreset';
+import { BUILTIN_DIARY_PRESET_ID, createBuiltinDiaryPresetRecord } from '@/apps/preset-manager/builtinDiaryPreset';
 // eslint-disable-next-line import-x/no-nodejs-modules
 import { getRequestHeaders, saveSettingsDebounced } from '@sillytavern/script';
 import { extension_settings } from '@sillytavern/scripts/extensions';
@@ -80,19 +78,36 @@ function readStoredIndex(): StoredPluginPresetIndex[] {
   return items.filter(isRecord).flatMap(item => {
     const id = String(item.id || '').trim();
     if (!id) return [];
-    return [{
-      builtIn: item.builtIn === true || id === BUILTIN_DIARY_PRESET_ID,
-      createdAt: String(item.createdAt || new Date().toISOString()),
-      id,
-      name: String(item.name || '插件预设'),
-      path: normalizeFilePath(String(item.path || '')),
-      raw: isRecord(item.raw) ? klona(item.raw) : undefined,
-      sourceFileName: String(item.sourceFileName || ''),
-      sourceFormat: item.sourceFormat === 'legacy' ? 'legacy' as const : 'modern' as const,
-      sourceRoot: item.sourceRoot === 'array' ? 'array' as const : 'object' as const,
-      updatedAt: String(item.updatedAt || item.createdAt || new Date().toISOString()),
-    }];
+    return [
+      {
+        builtIn: item.builtIn === true || id === BUILTIN_DIARY_PRESET_ID,
+        createdAt: String(item.createdAt || new Date().toISOString()),
+        id,
+        name: String(item.name || '插件预设'),
+        path: normalizeFilePath(String(item.path || '')),
+        raw: isRecord(item.raw) ? klona(item.raw) : undefined,
+        sourceFileName: String(item.sourceFileName || ''),
+        sourceFormat: item.sourceFormat === 'legacy' ? ('legacy' as const) : ('modern' as const),
+        sourceRoot: item.sourceRoot === 'array' ? ('array' as const) : ('object' as const),
+        updatedAt: String(item.updatedAt || item.createdAt || new Date().toISOString()),
+      },
+    ];
   });
+}
+
+function readStoredAppDefaults() {
+  const raw = _.get(extension_settings, pluginPresetField, {});
+  const version = isRecord(raw) ? Number(raw.version || 0) : 0;
+  if (!isRecord(raw) || !isRecord(raw.appDefaults)) {
+    return version >= 3 ? {} : { diary: BUILTIN_DIARY_PRESET_ID };
+  }
+  return Object.fromEntries(
+    Object.entries(raw.appDefaults).flatMap(([appId, presetId]) => {
+      const normalizedAppId = appId.trim();
+      const normalizedPresetId = String(presetId || '').trim();
+      return normalizedAppId && normalizedPresetId ? [[normalizedAppId, normalizedPresetId]] : [];
+    }),
+  );
 }
 
 function createId() {
@@ -102,6 +117,7 @@ function createId() {
 export const usePluginPresetStore = defineStore('pluginPresets', () => {
   const items = ref<PluginPresetRecord[]>([createBuiltinDiaryPresetRecord()]);
   const paths = ref<Record<string, string>>({});
+  const appDefaults = ref<Record<string, string>>(readStoredAppDefaults());
   const loading = ref(false);
   const loadError = ref('');
 
@@ -117,7 +133,7 @@ export const usePluginPresetStore = defineStore('pluginPresets', () => {
       sourceRoot: item.sourceRoot,
       updatedAt: item.updatedAt,
     }));
-    _.set(extension_settings, pluginPresetField, { items: stored, version: 2 });
+    _.set(extension_settings, pluginPresetField, { appDefaults: appDefaults.value, items: stored, version: 3 });
     void saveSettingsDebounced();
   }
 
@@ -137,6 +153,32 @@ export const usePluginPresetStore = defineStore('pluginPresets', () => {
     const item = getById(id);
     if (!item) throw new Error('所选插件预设尚未载入或已经不存在');
     return item;
+  }
+
+  function getDefaultAppIds(presetId: string) {
+    return Object.entries(appDefaults.value)
+      .filter(([, linkedPresetId]) => linkedPresetId === presetId)
+      .map(([appId]) => appId);
+  }
+
+  function getDefaultSelectionForApp(appId: string) {
+    const presetId = appDefaults.value[appId] || '';
+    return presetId && getById(presetId) ? pluginPresetSelection(presetId) : '';
+  }
+
+  function setDefaultApps(presetId: string, appIds: string[]) {
+    requireById(presetId);
+    const selected = new Set(appIds.map(appId => appId.trim()).filter(Boolean));
+    const previous = getDefaultAppIds(presetId);
+    const next = Object.fromEntries(
+      Object.entries(appDefaults.value).filter(([, linkedPresetId]) => linkedPresetId !== presetId),
+    );
+    selected.forEach(appId => {
+      next[appId] = presetId;
+    });
+    appDefaults.value = next;
+    persistIndex();
+    return [...new Set([...previous, ...selected])];
   }
 
   function uniqueName(requested: string, exceptId = '') {
@@ -197,6 +239,9 @@ export const usePluginPresetStore = defineStore('pluginPresets', () => {
     await deleteRecordFile(paths.value[id] || '');
     items.value.splice(index, 1);
     delete paths.value[id];
+    appDefaults.value = Object.fromEntries(
+      Object.entries(appDefaults.value).filter(([, linkedPresetId]) => linkedPresetId !== id),
+    );
     persistIndex();
   }
 
@@ -223,7 +268,10 @@ export const usePluginPresetStore = defineStore('pluginPresets', () => {
     if (!normalized.some(record => record.id === BUILTIN_DIARY_PRESET_ID)) {
       normalized.unshift(createBuiltinDiaryPresetRecord());
     }
-    if (normalized.some(record => !record.id) || new Set(normalized.map(record => record.id)).size !== normalized.length) {
+    if (
+      normalized.some(record => !record.id) ||
+      new Set(normalized.map(record => record.id)).size !== normalized.length
+    ) {
       throw new Error('私有预设备份包含空 ID 或重复 ID');
     }
 
@@ -238,6 +286,10 @@ export const usePluginPresetStore = defineStore('pluginPresets', () => {
     const oldPaths = { ...paths.value };
     items.value = normalized;
     paths.value = nextPaths;
+    const availableIds = new Set(normalized.map(record => record.id));
+    appDefaults.value = Object.fromEntries(
+      Object.entries(appDefaults.value).filter(([, presetId]) => availableIds.has(presetId)),
+    );
     persistIndex();
     await saveSettingsDebounced();
     await Promise.allSettled(Object.values(oldPaths).map(path => deleteRecordFile(path)));
@@ -314,6 +366,10 @@ export const usePluginPresetStore = defineStore('pluginPresets', () => {
       }
       items.value = loaded;
       paths.value = loadedPaths;
+      const availableIds = new Set(loaded.map(record => record.id));
+      appDefaults.value = Object.fromEntries(
+        Object.entries(appDefaults.value).filter(([, presetId]) => availableIds.has(presetId)),
+      );
       if (errors.length) loadError.value = errors.join('\n');
       else persistIndex();
     } finally {
@@ -329,6 +385,8 @@ export const usePluginPresetStore = defineStore('pluginPresets', () => {
     exportRecords,
     exportPreset: (id: string) => exportPluginPreset(requireById(id)),
     getById,
+    getDefaultAppIds,
+    getDefaultSelectionForApp,
     importPreset,
     items,
     loadError,
@@ -339,6 +397,7 @@ export const usePluginPresetStore = defineStore('pluginPresets', () => {
     removePrompt,
     renamePreset,
     reorderPrompts,
+    setDefaultApps,
     updatePrompt,
     whenReady: () => initialLoad,
   };

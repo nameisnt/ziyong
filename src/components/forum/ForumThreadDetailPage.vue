@@ -7,6 +7,7 @@
       :favorite-active="favorite"
       next-disabled
       previous-disabled
+      :reasoning="viewedGenerationRecord?.reasoning"
       :title="thread.title"
       @bagu="$emit('bagu')"
       @bottom="$emit('bottom')"
@@ -75,7 +76,7 @@ import ReaderDetailShell from '@/components/ReaderDetailShell.vue';
 import VersionNavigator from '@/components/VersionNavigator.vue';
 import type { ForumReply, ForumThread, ForumThreadVersion } from '@/type/forum';
 
-defineProps<{
+const props = defineProps<{
   boardName: string;
   displayedContent: string;
   favorite: boolean;
@@ -84,6 +85,12 @@ defineProps<{
   versions: ForumThreadVersion[];
   viewedVersionId: string;
 }>();
+
+const viewedGenerationRecord = computed(
+  () =>
+    props.versions.find(version => version.id === props.viewedVersionId)?.generationRecord ||
+    props.thread.generationRecord,
+);
 
 defineEmits<{
   bagu: [];

@@ -82,7 +82,7 @@
           <strong class="pc-setting-title-with-hint"
             ><span>解析前清理思维链</span>
             <InfoHint
-              text="找到配置的 XML 结束标签后，删除该标签及其之前的全部内容，再交给 App 解析。找不到标签时不会修改输出。"
+              text="找到配置的 XML 结束标签后，从正文中移除该标签及其之前的内容，再交给 App 解析；被移除的原文会随生成记录独立保存，可在阅读详情或写卡预览中查看。找不到标签时不会修改输出。"
           /></strong>
           <label class="pc-toggle" title="启用或关闭解析前思维链清理">
             <input v-model="settings.generation.outputCleaningEnabled" type="checkbox" /><span></span>
@@ -289,12 +289,12 @@ const tavernPresetOptions = computed(() => {
   if (selected && !pluginPresetIdFromSelection(selected)) names.add(selected);
   return [
     { label: '跟随酒馆当前预设', value: '' },
-    ...[...names].filter(Boolean).map(name => ({ group: '酒馆预设', label: name, value: name })),
     ...pluginPresetItems.value.map(preset => ({
       group: '插件预设',
       label: preset.name,
       value: pluginPresetSelection(preset.id),
     })),
+    ...[...names].filter(Boolean).map(name => ({ group: '酒馆预设', label: name, value: name })),
   ];
 });
 const externalModelSelectOptions = computed(() => {

@@ -174,7 +174,10 @@ export function useExtrasGenerationActions(options: ExtrasGenerationActionsOptio
         chapterId,
         content: result.data.content,
         draftId: null,
-        generationRecord: createExtraChapterGenerationRecord(generationConfig, result.source, result.replay),
+        generationRecord: {
+          ...createExtraChapterGenerationRecord(generationConfig, result.source, result.replay),
+          reasoning: result.generationRecord.reasoning,
+        },
         mode: draft.mode,
         raw: result.rawOutput,
         summary: result.data.summary,

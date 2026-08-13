@@ -9,6 +9,7 @@ import { stopGenerationByIdSafe } from '@/util/runtime';
 import { getSourceLastFloor } from '@/util/sourceFloor';
 import { storeToRefs } from 'pinia';
 import type { ComputedRef, Ref } from 'vue';
+import type { HiddenGenerationRecord } from '@/type/generation';
 
 interface SummaryGenerationDraft {
   fromStartEnd: number;
@@ -22,6 +23,7 @@ interface SummaryGenerationPreview {
   bookId: string;
   content: string;
   draftId: null | string;
+  generationRecord?: HiddenGenerationRecord;
   raw: string;
   source: { floorEnd?: number; label: string };
   title: string;
@@ -133,6 +135,7 @@ export function useSummaryGenerationActions(options: SummaryGenerationActionsOpt
         bookId,
         content: result.data.content,
         draftId: null,
+        generationRecord: result.generationRecord,
         raw: result.rawOutput,
         source: { floorEnd: getSourceLastFloor(result.source), label: result.source.label },
         title: result.data.title,

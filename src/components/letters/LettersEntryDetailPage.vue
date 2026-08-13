@@ -8,6 +8,7 @@
       :favorite-active="entry.favorite"
       :next-disabled="!nextId"
       :previous-disabled="!previousId"
+      :reasoning="viewedGenerationRecord?.reasoning"
       :title="entry.title"
       @bagu="emit('bagu')"
       @bottom="emit('bottom')"
@@ -65,7 +66,7 @@ import ReaderDetailShell from '@/components/ReaderDetailShell.vue';
 import VersionNavigator from '@/components/VersionNavigator.vue';
 import type { LetterEntry, LetterEntryVersion } from '@/type/letter';
 
-defineProps<{
+const props = defineProps<{
   catalogItems: CatalogModalItem[];
   catalogOpen: boolean;
   entry: LetterEntry;
@@ -74,6 +75,12 @@ defineProps<{
   versions: LetterEntryVersion[];
   viewedVersionId: string;
 }>();
+
+const viewedGenerationRecord = computed(
+  () =>
+    props.versions.find(version => version.id === props.viewedVersionId)?.generationRecord ||
+    props.entry.generationRecord,
+);
 
 const emit = defineEmits<{
   bagu: [];

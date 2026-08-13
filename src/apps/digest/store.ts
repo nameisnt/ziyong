@@ -1,6 +1,6 @@
 import { useChatScopedDomain } from '@/store/chatScoped';
 import { createFailedDraftCollection } from '@/store/failedDrafts';
-import type { FailedGenerationDraft } from '@/type/generation';
+import { HiddenGenerationRecordSchema, type FailedGenerationDraft } from '@/type/generation';
 import { validateInplace } from '@/util/zod';
 
 export const digestField = 'sillytavern_phone_digests';
@@ -19,6 +19,7 @@ export const DigestEntrySchema = z.object({
   updatedAt: z.string(),
   directoryOrder: z.number().int().nonnegative().optional(),
   sourceFloorEnd: z.number().int().nonnegative().optional(),
+  generationRecord: HiddenGenerationRecordSchema.optional(),
 });
 export type DigestEntry = z.infer<typeof DigestEntrySchema>;
 
@@ -83,7 +84,14 @@ export const useDigestStore = defineStore('digest', () => {
     input: Partial<
       Pick<
         DigestEntry,
-        'directoryOrder' | 'kind' | 'sourceFloorEnd' | 'sourceLabel' | 'sourceMessageId' | 'sourceText' | 'tags'
+        | 'directoryOrder'
+        | 'generationRecord'
+        | 'kind'
+        | 'sourceFloorEnd'
+        | 'sourceLabel'
+        | 'sourceMessageId'
+        | 'sourceText'
+        | 'tags'
       >
     > &
       Pick<DigestEntry, 'content' | 'title'>,
@@ -106,6 +114,7 @@ export const useDigestStore = defineStore('digest', () => {
       updatedAt: timestamp,
       directoryOrder: input.directoryOrder ?? sourceFloorEnd ?? nextDirectoryOrder,
       sourceFloorEnd,
+      generationRecord: input.generationRecord,
     };
     data.value.entries = [entry, ...data.value.entries];
     return entry;

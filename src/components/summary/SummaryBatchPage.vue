@@ -80,6 +80,12 @@
         <input v-model.number="rpmLimit" class="pc-field" type="number" min="0" max="120" :disabled="state.running" />
       </div>
 
+      <GenerationProviderFields
+        v-model:connection-selection="connectionSelection"
+        v-model:tavern-preset-name="tavernPresetName"
+        :disabled="inputsLocked"
+      />
+
       <div class="pc-summary-batch-roles">
         <div>
           <span>AI 楼层</span>
@@ -139,10 +145,12 @@
 
 <script setup lang="ts">
 import InfoHint from '@/components/InfoHint.vue';
+import GenerationProviderFields from '@/components/GenerationProviderFields.vue';
 import ReferencePicker from '@/components/ReferencePicker.vue';
 import SearchableCombobox from '@/components/SearchableCombobox.vue';
 import type { SummaryBook } from '@/type/summary';
 import type { GenerationReferenceItem } from '@/util/references';
+import type { TextProviderSelection } from '@/util/textProvider';
 
 interface SummaryBatchState {
   currentLabel: string;
@@ -170,6 +178,7 @@ defineEmits<{
 }>();
 
 const bookId = defineModel<string>('bookId', { required: true });
+const connectionSelection = defineModel<TextProviderSelection>('connectionSelection', { required: true });
 const floorMode = defineModel<'all' | 'custom'>('floorMode', { required: true });
 const floorText = defineModel<string>('floorText', { required: true });
 const groupMode = defineModel<boolean>('groupMode', { required: true });
@@ -178,6 +187,7 @@ const includeAi = defineModel<boolean>('includeAi', { required: true });
 const includeUser = defineModel<boolean>('includeUser', { required: true });
 const references = defineModel<GenerationReferenceItem[]>('references', { required: true });
 const rpmLimit = defineModel<number>('rpmLimit', { required: true });
+const tavernPresetName = defineModel<string>('tavernPresetName', { required: true });
 const userRequirement = defineModel<string>('userRequirement', { required: true });
 
 const bookOptions = computed(() => props.books.map(book => ({ label: book.title, value: book.id })));

@@ -101,6 +101,7 @@ export const useDiaryStore = defineStore('diary', () => {
       bookId?: string;
       bookTitle?: string;
       directoryOrder?: number;
+      generationRecord?: DiaryEntry['generationRecord'];
       sourceFloorEnd?: number;
     },
   ) {
@@ -120,6 +121,7 @@ export const useDiaryStore = defineStore('diary', () => {
       readers: input.readers?.length ? input.readers : undefined,
       directoryOrder: input.directoryOrder ?? input.sourceFloorEnd ?? getNextDirectoryOrder(book),
       sourceFloorEnd: input.sourceFloorEnd,
+      generationRecord: input.generationRecord,
     };
     book.entries = [entry, ...book.entries];
     book.updatedAt = timestamp;

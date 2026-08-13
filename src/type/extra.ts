@@ -39,6 +39,7 @@ export const ExtraChapterGenerationRecordSchema = z.object({
   summaryRulePattern: z.string().optional(),
   summaryRuleReplacement: z.string().optional(),
   replay: GenerationReplaySnapshotSchema.optional(),
+  reasoning: z.string().optional(),
 });
 export type ExtraChapterGenerationRecord = z.infer<typeof ExtraChapterGenerationRecordSchema>;
 

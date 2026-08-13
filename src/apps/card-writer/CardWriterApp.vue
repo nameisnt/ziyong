@@ -320,6 +320,14 @@
           <span>{{ stage.label }}</span>
         </button>
       </nav>
+      <button
+        v-if="activePreviewStage?.reasoning"
+        class="pc-soft-btn compact pc-card-writer-reasoning"
+        type="button"
+        @click="reasoningOpen = true"
+      >
+        <i class="fa-solid fa-brain"></i><span>查看思维链</span>
+      </button>
       <GenerationPreviewPanel
         :key="activePreviewStage?.id || 'preview'"
         :content="activePreviewStage?.content || ''"
@@ -339,6 +347,11 @@
         @update:content="updateActiveStageContent"
         @update:raw="updateActiveStageRaw"
         @save="savePreview"
+      />
+      <ReasoningModal
+        :content="activePreviewStage?.reasoning || ''"
+        :open="reasoningOpen"
+        @close="reasoningOpen = false"
       />
     </section>
 
@@ -446,6 +459,7 @@ import {
 } from '@/apps/worldbook-link/api';
 import { usePhoneStore } from '@/store/phone';
 import { useSettingsStore } from '@/store/settings';
+import ReasoningModal from '@/components/ReasoningModal.vue';
 import { useGenerationAliasesStore } from '@/store/generationAliases';
 import { getCurrentChatScopeKey, parseChatScopeKey } from '@/store/chatScoped';
 import { replaceGenerationAliases } from '@/util/generationAliases';
@@ -501,6 +515,7 @@ const activeGenerationId = ref('');
 const stageStates = ref<StageState[]>([]);
 const activeStageDefinitions = ref<CardWriterStage[]>([]);
 const activePreviewStageId = ref('');
+const reasoningOpen = ref(false);
 const activeDocumentId = ref('');
 const libraryChatFilter = ref('__all__');
 const importDocumentId = ref('');
@@ -919,6 +934,7 @@ async function runWriter() {
     id: stage.id,
     label: stage.label,
     raw: '',
+    reasoning: '',
     status: 'pending',
   }));
   activePreviewStageId.value = stages[0]?.id || '';
@@ -992,6 +1008,7 @@ async function runStageSequence(startIndex: number, chatMessages: ChatMessage[],
       });
       const stageRaw = result.rawOutput || liveStageOutput;
       state.raw = stageRaw;
+      state.reasoning = result.reasoning;
       state.content = parseCardWriterArtifact(stageRaw, stage.label);
       state.status = 'completed';
       preview.providerSummary = providerSummary(result);
@@ -1040,6 +1057,7 @@ function openDocument(document: CardWriterDocument) {
           id: 'saved-document',
           label: document.taskLabel,
           raw: document.raw || document.content,
+          reasoning: '',
           status: 'completed',
         },
       ];
@@ -1317,6 +1335,9 @@ onBeforeUnmount(stopWriter);
 </script>
 
 <style scoped>
+.pc-card-writer-reasoning {
+  align-self: flex-end;
+}
 .pc-card-writer-app,
 .pc-card-writer-page {
   min-height: 100%;

@@ -34,6 +34,7 @@ export function createDigestGenerationAdapter(digestStore: ReturnType<typeof use
         kind: 'ai',
         sourceLabel: context.source.label,
         directoryOrder: sourceFloorEnd,
+        generationRecord: context.generationRecord,
         sourceFloorEnd,
       });
       return {

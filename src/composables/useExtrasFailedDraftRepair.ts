@@ -95,7 +95,10 @@ export function useExtrasFailedDraftRepair(options: {
         content: parsed.data.content,
         draftId: null,
         generationRecord: config.success
-          ? createExtraChapterGenerationRecord(config.data, draft.source, draft.generationRecord?.replay)
+          ? {
+              ...createExtraChapterGenerationRecord(config.data, draft.source, draft.generationRecord?.replay),
+              reasoning: draft.generationRecord?.reasoning,
+            }
           : undefined,
         mode: options.normalizeChapterMode(draft.context.chapterMode),
         raw: parsed.raw,

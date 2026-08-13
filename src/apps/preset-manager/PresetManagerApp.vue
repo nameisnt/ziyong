@@ -30,6 +30,8 @@
       :loading="loading"
       :mutation-busy="mutationBusy"
       :plugin-preset="isPluginDetail"
+      :default-app-ids="detailDefaultAppIds"
+      :default-app-options="defaultAppOptions"
       :preset-deletable="detailPluginPresetId !== BUILTIN_DIARY_PRESET_ID"
       :preset="activePreset"
       :preset-name="detailPresetName"
@@ -47,6 +49,7 @@
       @switch-preset="switchPreset"
       @toggle-group="toggleGroup"
       @toggle-prompt="togglePrompt"
+      @toggle-default-app="toggleDefaultApp"
     />
 
     <PresetPromptEditorPage
@@ -81,6 +84,8 @@
 import { useEntryLibraryStore } from '@/apps/entry-library/store';
 import { BUILTIN_DIARY_PRESET_ID } from '@/apps/preset-manager/builtinDiaryPreset';
 import { usePresetLinkStore } from '@/apps/preset-link/store';
+import { getRegisteredPhoneGenerationActions } from '@/core/appRegistry';
+import { useGenerationOverrideStore } from '@/store/generationOverrides';
 import { usePhoneStore } from '@/store/phone';
 import { usePluginPresetStore } from '@/store/pluginPresets';
 import { storeToRefs } from 'pinia';
@@ -108,6 +113,7 @@ const phone = usePhoneStore();
 const entryLibrary = useEntryLibraryStore();
 const presetLinks = usePresetLinkStore();
 const pluginPresets = usePluginPresetStore();
+const generationOverrides = useGenerationOverrideStore();
 const {
   items: pluginPresetItems,
   loadError: pluginPresetLoadError,
@@ -116,7 +122,7 @@ const {
 const route = computed(() => phone.currentRoute);
 const presetNames = ref<string[]>([]);
 const presetQuery = ref('');
-const presetSource = ref<'plugin' | 'tavern'>('tavern');
+const presetSource = ref<'plugin' | 'tavern'>('plugin');
 const loadedPresetName = ref('');
 const activePreset = ref<TavernPreset | null>(null);
 const loading = ref(false);
@@ -150,6 +156,18 @@ const detailPresetName = computed(() =>
   isPluginDetail.value
     ? pluginPresets.getById(detailPluginPresetId.value)?.name || ''
     : route.value.params?.presetName || '',
+);
+const defaultAppOptions = computed(() => {
+  const apps = new Map<string, { icon: string; id: string; name: string }>();
+  getRegisteredPhoneGenerationActions().forEach(action => {
+    if (!apps.has(action.appId)) {
+      apps.set(action.appId, { icon: action.app.icon, id: action.appId, name: action.app.name });
+    }
+  });
+  return [...apps.values()];
+});
+const detailDefaultAppIds = computed(() =>
+  isPluginDetail.value ? pluginPresets.getDefaultAppIds(detailPluginPresetId.value) : [],
 );
 const activePromptId = computed(() => route.value.params?.promptId || '');
 const copySourcePromptId = computed(() => route.value.params?.sourcePromptId || '');
@@ -222,7 +240,8 @@ async function refreshRoot() {
 }
 
 async function loadDetail() {
-  if ((!isPluginDetail.value && !detailPresetName.value) || (isPluginDetail.value && !detailPluginPresetId.value)) return;
+  if ((!isPluginDetail.value && !detailPresetName.value) || (isPluginDetail.value && !detailPluginPresetId.value))
+    return;
   loading.value = true;
   errorMessage.value = '';
   try {
@@ -255,6 +274,15 @@ function openPreset(presetName: string) {
 
 function openPluginPreset(presetId: string) {
   phone.pushRoute('preset-manager', 'detail', '插件预设条目', { presetId, presetSource: 'plugin' });
+}
+
+function toggleDefaultApp(appId: string, enabled: boolean) {
+  if (!isPluginDetail.value || mutationBusy.value) return;
+  const next = new Set(detailDefaultAppIds.value);
+  if (enabled) next.add(appId);
+  else next.delete(appId);
+  const affectedAppIds = pluginPresets.setDefaultApps(detailPluginPresetId.value, [...next]);
+  affectedAppIds.forEach(id => generationOverrides.resetApp(id));
 }
 
 async function importPluginPreset(file: File) {

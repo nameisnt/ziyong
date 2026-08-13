@@ -1,4 +1,4 @@
-import { FailedGenerationDraftSchema } from '@/type/generation';
+import { FailedGenerationDraftSchema, HiddenGenerationRecordSchema } from '@/type/generation';
 
 export const SummaryEntrySchema = z.object({
   id: z.string(),
@@ -10,6 +10,7 @@ export const SummaryEntrySchema = z.object({
   updatedAt: z.string(),
   directoryOrder: z.number().int().nonnegative().optional(),
   sourceFloorEnd: z.number().int().nonnegative().optional(),
+  generationRecord: HiddenGenerationRecordSchema.optional(),
 });
 export type SummaryEntry = z.infer<typeof SummaryEntrySchema>;
 

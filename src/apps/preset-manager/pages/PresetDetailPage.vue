@@ -38,7 +38,26 @@
       <span>{{ errorMessage }}</span>
     </div>
 
-    <div v-else-if="preset" class="pc-preset-filter-row">
+    <section v-if="!errorMessage && preset && pluginPreset" class="pc-section-card pc-preset-default-apps">
+      <header>
+        <strong>默认使用此预设的 App</strong>
+        <span>打开所选 App 的生成页时，初始选择这个插件预设；仍可临时改选其他预设。</span>
+      </header>
+      <div class="pc-preset-app-grid">
+        <label v-for="app in defaultAppOptions" :key="app.id" class="pc-preset-app-option">
+          <input
+            type="checkbox"
+            :checked="defaultAppIds.includes(app.id)"
+            :disabled="mutationBusy"
+            @change="$emit('toggle-default-app', app.id, ($event.target as HTMLInputElement).checked)"
+          />
+          <i :class="['fa-solid', app.icon]"></i>
+          <span>{{ app.name }}</span>
+        </label>
+      </div>
+    </section>
+
+    <div v-if="!errorMessage && preset" class="pc-preset-filter-row">
       <span>只看当前已启用条目</span>
       <label class="pc-toggle" title="只显示当前实际启用的预设条目">
         <input v-model="enabledOnly" type="checkbox" aria-label="只看当前已启用条目" />
@@ -119,6 +138,8 @@ import PresetPromptRow from '../PresetPromptRow.vue';
 defineProps<{
   busyPromptIds: Set<string>;
   collapsedGroupIds: Set<string>;
+  defaultAppIds: string[];
+  defaultAppOptions: Array<{ icon: string; id: string; name: string }>;
   displayNodes: PresetDisplayNode[];
   errorMessage: string;
   loadedPresetName: string;
@@ -146,6 +167,7 @@ defineEmits<{
   'rename-preset': [];
   'switch-preset': [presetName: string];
   'toggle-group': [groupId: string];
+  'toggle-default-app': [appId: string, enabled: boolean];
   'toggle-prompt': [prompt: TavernPresetPrompt, enabled: boolean];
 }>();
 
@@ -171,6 +193,51 @@ defineExpose({ getScrollElement: () => pageEl.value });
   color: var(--pc-text);
   font-size: 13px;
   font-weight: 700;
+}
+.pc-preset-default-apps {
+  display: grid;
+  gap: 10px;
+  padding: 12px;
+}
+.pc-preset-default-apps header {
+  display: grid;
+  gap: 3px;
+}
+.pc-preset-default-apps header span {
+  color: var(--pc-muted);
+  font-size: 12px;
+  line-height: 1.45;
+}
+.pc-preset-app-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 6px;
+}
+.pc-preset-app-option {
+  display: flex;
+  min-width: 0;
+  min-height: 32px;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 7px;
+  border: 1px solid var(--pc-border);
+  border-radius: min(var(--pc-control-radius), 8px);
+  background: var(--pc-surface);
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 700;
+}
+.pc-preset-app-option input {
+  width: 14px;
+  height: 14px;
+  margin: 0;
+  accent-color: var(--pc-theme-accent);
+}
+.pc-preset-app-option span {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 .pc-preset-nodes,
 .pc-preset-group-body {

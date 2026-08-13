@@ -86,6 +86,7 @@ export const useSummaryStore = defineStore('summary', () => {
     bookId: string,
     input: Pick<SummaryEntry, 'title' | 'content' | 'rangeLabel'> & {
       directoryOrder?: number;
+      generationRecord?: SummaryEntry['generationRecord'];
       sourceFloorEnd?: number;
     },
   ) {
@@ -102,6 +103,7 @@ export const useSummaryStore = defineStore('summary', () => {
       updatedAt: timestamp,
       directoryOrder: input.directoryOrder ?? input.sourceFloorEnd ?? getNextDirectoryOrder(book),
       sourceFloorEnd: input.sourceFloorEnd,
+      generationRecord: input.generationRecord,
     };
     book.entries = [entry, ...book.entries];
     book.updatedAt = timestamp;

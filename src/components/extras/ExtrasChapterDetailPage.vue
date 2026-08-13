@@ -8,6 +8,7 @@
       :favorite-active="chapter.favorite"
       :next-disabled="!nextId"
       :previous-disabled="!previousId"
+      :reasoning="viewedGenerationRecord?.reasoning"
       :title="`第 ${chapter.chapterNumber} 章 · ${chapter.title}`"
       @bagu="emit('bagu')"
       @bottom="emit('bottom')"
@@ -67,7 +68,7 @@ import ReaderDetailShell from '@/components/ReaderDetailShell.vue';
 import VersionNavigator from '@/components/VersionNavigator.vue';
 import type { ExtraChapter, ExtraChapterVersion } from '@/type/extra';
 
-defineProps<{
+const props = defineProps<{
   catalogItems: CatalogModalItem[];
   catalogOpen: boolean;
   chapter: ExtraChapter;
@@ -76,6 +77,12 @@ defineProps<{
   versions: ExtraChapterVersion[];
   viewedVersionId: string;
 }>();
+
+const viewedGenerationRecord = computed(
+  () =>
+    props.versions.find(version => version.id === props.viewedVersionId)?.generationRecord ||
+    props.chapter.generationRecords.at(-1),
+);
 
 const emit = defineEmits<{
   bagu: [];

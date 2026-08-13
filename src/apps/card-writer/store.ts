@@ -12,6 +12,7 @@ const CardWriterStageResultSchema = z.object({
   id: z.string(),
   label: z.string(),
   raw: z.string().default(''),
+  reasoning: z.string().default(''),
   status: z.enum(['completed', 'failed', 'pending', 'running']).default('completed'),
 });
 

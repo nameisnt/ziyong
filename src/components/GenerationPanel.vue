@@ -66,44 +66,15 @@
         <i class="fa-solid fa-chevron-down pc-generation-advanced-chevron"></i>
       </summary>
       <div class="pc-generation-advanced-body">
-        <div class="pc-select-field">
-          <label class="pc-field-label">{{ t`本次连接` }}</label>
-          <SearchableCombobox
-            :disabled="controlsDisabled"
-            :empty-label="t`没有可用的连接配置`"
-            :input-label="t`选择本次连接`"
-            :model-value="generationOverride.connectionSelection"
-            :options="connectionOptions"
-            :placeholder="t`选择本次连接`"
-            :toggle-title="t`展开连接配置`"
-            @update:model-value="setConnectionSelection"
-          />
-        </div>
-
-        <div v-if="showPresetSelector" class="pc-select-field pc-preset-field">
-          <label class="pc-field-label">{{ t`本次预设` }}</label>
-          <div class="pc-preset-select-row">
-            <SearchableCombobox
-              :disabled="controlsDisabled"
-              :empty-label="t`没有匹配的预设`"
-              :input-label="t`选择本次预设`"
-              :model-value="generationOverride.tavernPresetName"
-              :options="tavernPresetOptions"
-              :placeholder="t`跟随酒馆当前预设`"
-              :toggle-title="t`展开预设列表`"
-              @update:model-value="setTavernPresetName"
-            />
-            <button
-              class="pc-icon-btn"
-              type="button"
-              :disabled="controlsDisabled"
-              :title="t`刷新预设列表`"
-              @click="refreshTavernPresetNames"
-            >
-              <i class="fa-solid fa-rotate"></i>
-            </button>
-          </div>
-        </div>
+        <GenerationProviderFields
+          compact
+          :connection-selection="generationOverride.connectionSelection"
+          :disabled="controlsDisabled"
+          :show-preset-selector="showPresetSelector"
+          :tavern-preset-name="generationOverride.tavernPresetName"
+          @update:connection-selection="setConnectionSelection"
+          @update:tavern-preset-name="setTavernPresetName"
+        />
 
         <div class="pc-generation-aliases">
           <div class="pc-field-head">
@@ -214,7 +185,7 @@
 import GenerationSourceFields from '@/components/GenerationSourceFields.vue';
 import InfoHint from '@/components/InfoHint.vue';
 import ReferencePicker from '@/components/ReferencePicker.vue';
-import SearchableCombobox from '@/components/SearchableCombobox.vue';
+import GenerationProviderFields from '@/components/GenerationProviderFields.vue';
 import TavernPromptCapture from '@/components/TavernPromptCapture.vue';
 import { useGenerationAliasesStore } from '@/store/generationAliases';
 import { useGenerationOverrideStore } from '@/store/generationOverrides';
@@ -224,14 +195,14 @@ import { usePromptStore } from '@/store/prompts';
 import { useSettingsStore } from '@/store/settings';
 import type { SummaryGenerationSourceMode } from '@/util/generationSource';
 import type { GenerationReferenceItem } from '@/util/references';
-import { getPresetNamesSafe, type CapturedTavernPromptPreview } from '@/util/runtime';
+import type { CapturedTavernPromptPreview } from '@/util/runtime';
 import {
   formatTextProviderSelection,
   getCurrentTextProviderSelection,
   type TextProviderSelection,
 } from '@/util/textProvider';
 import { storeToRefs } from 'pinia';
-import { pluginPresetIdFromSelection, pluginPresetSelection } from '@/apps/preset-manager/pluginPreset';
+import { pluginPresetIdFromSelection } from '@/apps/preset-manager/pluginPreset';
 
 const props = withDefaults(
   defineProps<{
@@ -295,41 +266,19 @@ const generationOverrides = useGenerationOverrideStore();
 const { quickPhraseGroups } = storeToRefs(prompts);
 const { settings } = storeToRefs(settingsStore);
 const { charReplacement, userReplacement } = storeToRefs(generationAliases);
-const { items: pluginPresetItems } = storeToRefs(pluginPresets);
 const quickPhraseOpen = ref(false);
 const openQuickPhraseGroupId = ref('');
-const tavernPresetNames = ref<string[]>([]);
 const overrideRoute = computed(() => ({ appId: phone.currentRoute.appId, page: phone.currentRoute.page }));
 const generationOverride = computed(() =>
   generationOverrides.ensureOverride(
     overrideRoute.value.appId,
     overrideRoute.value.page,
-    settings.value.generation.tavernPresetName || props.defaultPresetSelection,
+    pluginPresets.getDefaultSelectionForApp(overrideRoute.value.appId) ||
+      props.defaultPresetSelection ||
+      settings.value.generation.tavernPresetName,
     getCurrentTextProviderSelection(settings.value.textProvider),
   ),
 );
-const connectionOptions = computed(() => [
-  { label: '酒馆当前 API', value: 'tavern' },
-  ...settings.value.textProvider.externalProfiles.map(profile => ({
-    label: profile.name,
-    value: `external:${profile.id}`,
-  })),
-  ...(generationOverride.value.connectionSelection.startsWith('external:') &&
-  !settings.value.textProvider.externalProfiles.some(
-    profile => `external:${profile.id}` === generationOverride.value.connectionSelection,
-  )
-    ? [{ label: '连接配置已失效', value: generationOverride.value.connectionSelection }]
-    : []),
-]);
-const tavernPresetOptions = computed(() => [
-  { label: '跟随酒馆当前预设', value: '' },
-  ...tavernPresetNames.value.map(presetName => ({ group: '酒馆预设', label: presetName, value: presetName })),
-  ...pluginPresetItems.value.map(preset => ({
-    group: '插件预设',
-    label: preset.name,
-    value: pluginPresetSelection(preset.id),
-  })),
-]);
 const generationBlocked = computed(() => !phone.isViewingCurrentChat);
 const controlsDisabled = computed(() => props.running || generationBlocked.value);
 const sourceModeLabel = computed(() => {
@@ -404,22 +353,6 @@ watch(quickPhraseGroups, groups => {
   }
 });
 
-onMounted(() => {
-  refreshTavernPresetNames();
-});
-
-function refreshTavernPresetNames() {
-  tavernPresetNames.value = getPresetNamesSafe();
-  const selectedPresetName = generationOverride.value.tavernPresetName.trim();
-  if (
-    selectedPresetName &&
-    !pluginPresetIdFromSelection(selectedPresetName) &&
-    !tavernPresetNames.value.includes(selectedPresetName)
-  ) {
-    tavernPresetNames.value = [selectedPresetName, ...tavernPresetNames.value];
-  }
-}
-
 function setConnectionSelection(selection: string) {
   generationOverrides.setConnectionSelection(
     overrideRoute.value.appId,
@@ -493,21 +426,6 @@ function quickPhraseLabel(text: string) {
 
 .pc-status-card p {
   color: var(--pc-muted);
-}
-
-.pc-select-field {
-  margin-top: 14px;
-}
-
-.pc-generation-advanced-body > .pc-select-field:first-child {
-  margin-top: 0;
-}
-
-.pc-preset-select-row {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) 42px;
-  gap: 10px;
-  align-items: center;
 }
 
 .pc-generation-aliases {

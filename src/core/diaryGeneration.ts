@@ -190,6 +190,7 @@ export function createDiaryGenerationAdapter(diaryStore: {
       bookId?: string;
       bookTitle?: string;
       directoryOrder?: number;
+      generationRecord?: DiaryEntry['generationRecord'];
       sourceFloorEnd?: number;
     },
   ) => { book: { id: string }; entry: DiaryEntry } | null;
@@ -235,6 +236,7 @@ export function createDiaryGenerationAdapter(diaryStore: {
         readers: undefined,
         title: result.title,
         directoryOrder: sourceFloorEnd,
+        generationRecord: context.generationRecord,
         sourceFloorEnd,
       });
       if (!created) {
@@ -260,6 +262,7 @@ export function createDiaryReadReactionGenerationAdapter(diaryStore: {
       bookId?: string;
       bookTitle?: string;
       directoryOrder?: number;
+      generationRecord?: DiaryEntry['generationRecord'];
       sourceFloorEnd?: number;
     },
   ) => { book: { id: string }; entry: DiaryEntry } | null;
@@ -306,6 +309,7 @@ export function createDiaryReadReactionGenerationAdapter(diaryStore: {
         readers: [context.config.perspective],
         title: result.title,
         directoryOrder: sourceFloorEnd,
+        generationRecord: context.generationRecord,
         sourceFloorEnd,
       });
       if (!created) {

@@ -6,6 +6,7 @@ export type GenerationOutputCleaningSettings = {
 export type GenerationOutputCleaningResult = {
   content: string;
   matchedTag: string;
+  removedContent: string;
   removedLength: number;
 };
 
@@ -27,11 +28,11 @@ export function cleanGenerationOutput(
   settings: GenerationOutputCleaningSettings,
 ): GenerationOutputCleaningResult {
   if (!settings.enabled || !rawOutput) {
-    return { content: rawOutput, matchedTag: '', removedLength: 0 };
+    return { content: rawOutput, matchedTag: '', removedContent: '', removedLength: 0 };
   }
 
   const tags = parseGenerationOutputEndTags(settings.endTags);
-  if (!tags.length) return { content: rawOutput, matchedTag: '', removedLength: 0 };
+  if (!tags.length) return { content: rawOutput, matchedTag: '', removedContent: '', removedLength: 0 };
 
   const lowerOutput = rawOutput.toLowerCase();
   const matches = tags
@@ -39,7 +40,7 @@ export function cleanGenerationOutput(
     .filter(match => match.index >= 0)
     .sort((left, right) => left.index - right.index);
   const firstMatch = matches[0];
-  if (!firstMatch) return { content: rawOutput, matchedTag: '', removedLength: 0 };
+  if (!firstMatch) return { content: rawOutput, matchedTag: '', removedContent: '', removedLength: 0 };
 
   let cutEnd = firstMatch.index + firstMatch.tag.length;
   // 兼容 </think> 后紧接另一层已配置结束标签；只扫描连续标签，不误删后续正文中的同名标签。
@@ -57,6 +58,7 @@ export function cleanGenerationOutput(
   return {
     content: rawOutput.slice(cutEnd).trimStart(),
     matchedTag: firstMatch.tag,
+    removedContent: rawOutput.slice(0, cutEnd).trim(),
     removedLength: cutEnd,
   };
 }

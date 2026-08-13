@@ -39,12 +39,13 @@
 .pc-phone-root .pc-soft-btn,
 .pc-phone-root .pc-primary-btn,
 .pc-phone-root .pc-segment-btn {
-  min-height: 40px;
+  min-height: 36px;
+  font-size: 13px;
 }
 
 .pc-phone-root .pc-segment {
   display: inline-flex;
-  padding: 4px;
+  padding: 3px;
   border-radius: 999px;
   background: color-mix(in srgb, var(--pc-text) 8%, transparent);
 }
@@ -56,16 +57,16 @@
   color: var(--pc-text);
   cursor: pointer;
   font-weight: 800;
-  min-inline-size: 64px;
-  padding: 0 12px;
+  min-inline-size: 56px;
+  padding: 0 10px;
 }
 
 .pc-phone-root .pc-soft-btn,
 .pc-phone-root .pc-primary-btn {
   border: 0;
   border-radius: var(--pc-control-radius);
-  padding: 0 16px;
-  min-inline-size: 92px;
+  padding: 0 12px;
+  min-inline-size: 76px;
   cursor: pointer;
   font-weight: 800;
   transition:
@@ -77,9 +78,9 @@
 
 .pc-phone-root .pc-soft-btn.compact,
 .pc-phone-root .pc-primary-btn.compact {
-  min-height: 32px;
-  min-inline-size: 64px;
-  padding-inline: 12px;
+  min-height: 30px;
+  min-inline-size: 56px;
+  padding-inline: 10px;
 }
 
 .pc-phone-root .pc-icon-btn,
@@ -97,8 +98,9 @@
 }
 
 .pc-phone-root .pc-icon-btn {
-  width: 40px;
-  height: 40px;
+  width: 36px;
+  height: 36px;
+  font-size: 13px;
 }
 
 .pc-phone-root .pc-primary-btn {

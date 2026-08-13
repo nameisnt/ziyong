@@ -111,6 +111,7 @@
     <DiaryBatchPage
       v-else-if="route.page === 'batch-generate'"
       v-model:book-title="batchDraft.bookTitle"
+      v-model:connection-selection="batchDraft.connectionSelection"
       v-model:floor-mode="batchDraft.floorMode"
       v-model:floor-text="batchDraft.floorText"
       v-model:group-mode="batchDraft.groupMode"
@@ -120,6 +121,7 @@
       v-model:perspective-name="batchDraft.perspectiveName"
       v-model:references="selectedReferences"
       v-model:rpm-limit="batchDraft.rpmLimit"
+      v-model:tavern-preset-name="batchDraft.tavernPresetName"
       v-model:user-requirement="batchDraft.userRequirement"
       :inputs-locked="batchInputsLocked"
       :show-book-fields="!activeBook"
@@ -199,10 +201,7 @@ import DiaryEntryEditorPage from '@/components/diary/DiaryEntryEditorPage.vue';
 import DiaryFailedDraftPage from '@/components/diary/DiaryFailedDraftPage.vue';
 import DiaryGeneratePage from '@/components/diary/DiaryGeneratePage.vue';
 import DiaryPreviewPage from '@/components/diary/DiaryPreviewPage.vue';
-import {
-  BUILTIN_DIARY_PRESET_SELECTION,
-  resolveDiaryPresetSelection,
-} from '@/apps/preset-manager/builtinDiaryPreset';
+import { BUILTIN_DIARY_PRESET_SELECTION, resolveDiaryPresetSelection } from '@/apps/preset-manager/builtinDiaryPreset';
 import { useCatalogDetailNavigation } from '@/composables/useCatalogDetailNavigation';
 import { useDirectorySort } from '@/composables/useDirectorySort';
 import { getRegisteredPhoneGenerationAdapter } from '@/core/appRegistry';
@@ -218,6 +217,7 @@ import { getCurrentChatScopeKey } from '@/store/chatScoped';
 import { useDiaryStore } from '@/store/diary';
 import { useGenerationTaskStore } from '@/store/generationTasks';
 import { usePhoneStore } from '@/store/phone';
+import { usePluginPresetStore } from '@/store/pluginPresets';
 import { usePromptStore } from '@/store/prompts';
 import { useSettingsStore } from '@/store/settings';
 import { canOpenBaguScan } from '@/util/baguScanGate';
@@ -227,7 +227,12 @@ import { useInvalidRouteFallback } from '@/util/routeFallback';
 import { getChatMessagesSafe, stopGenerationByIdSafe } from '@/util/runtime';
 import { useDetailScroll } from '@/util/detailScroll';
 import { getSourceLastFloor } from '@/util/sourceFloor';
-import type { FailedGenerationDraft } from '@/type/generation';
+import {
+  applyTextProviderSelection,
+  getCurrentTextProviderSelection,
+  type TextProviderSelection,
+} from '@/util/textProvider';
+import type { FailedGenerationDraft, HiddenGenerationRecord } from '@/type/generation';
 import type { CharacterRef } from '@/type/diary';
 import { storeToRefs } from 'pinia';
 
@@ -236,6 +241,7 @@ const diaryGenerationAdapter = getRegisteredPhoneGenerationAdapter('diary', 'gen
 const diaryReadReactionAdapter = getRegisteredPhoneGenerationAdapter('diary', 'read-reaction');
 const generationTasks = useGenerationTaskStore();
 const phone = usePhoneStore();
+const pluginPresets = usePluginPresetStore();
 const creationModeOpen = ref(false);
 const diaryCreationOptions: CreationModeOption[] = [
   { description: '生成一篇日记', icon: 'fa-solid fa-wand-magic-sparkles', id: 'single', label: '单篇生成' },
@@ -292,6 +298,7 @@ const generationState = reactive({
     bookTitle: string;
     content: string;
     draftId: string | null;
+    generationRecord?: HiddenGenerationRecord;
     occurredAt: string;
     perspective: CharacterRef;
     raw: string;
@@ -341,6 +348,7 @@ onScopeDispose(() => {
 
 const batchDraft = reactive({
   bookTitle: '',
+  connectionSelection: 'tavern' as TextProviderSelection,
   floorMode: 'custom' as 'all' | 'custom',
   floorText: '',
   groupMode: false,
@@ -349,6 +357,7 @@ const batchDraft = reactive({
   includeUser: true,
   perspectiveName: '',
   rpmLimit: 10,
+  tavernPresetName: BUILTIN_DIARY_PRESET_SELECTION,
   userRequirement: '',
 });
 const batchFormError = ref('');
@@ -628,6 +637,7 @@ watch(
       }
       selectedReferences.value = [];
       batchDraft.bookTitle = activeBook.value?.title || '';
+      batchDraft.connectionSelection = getCurrentTextProviderSelection(settings.value.textProvider);
       batchDraft.floorMode = 'custom';
       batchDraft.floorText = '';
       batchDraft.groupMode = false;
@@ -636,6 +646,9 @@ watch(
       batchDraft.includeUser = true;
       batchDraft.perspectiveName = activeBook.value?.perspective.name || '';
       batchDraft.rpmLimit = settings.value.generation.rpmLimit;
+      batchDraft.tavernPresetName =
+        pluginPresets.getDefaultSelectionForApp('diary') ||
+        resolveDiaryPresetSelection(settings.value.generation.tavernPresetName);
       batchDraft.userRequirement = '';
       batchFormError.value = '';
     }
@@ -1037,6 +1050,7 @@ async function runGeneration() {
       bookTitle: generationTargetBookTitle.value || `${perspective.name}的日记`,
       content: result.data.content,
       draftId: null,
+      generationRecord: result.generationRecord,
       occurredAt: result.data.occurredAt || generationDraft.occurredAt,
       perspective,
       raw: result.rawOutput,
@@ -1097,8 +1111,8 @@ async function runBatchGeneration() {
       references: formattedReferences.value,
       rpmLimit: batchDraft.rpmLimit,
       stream: settings.value.generation.stream,
-      tavernPresetName: resolveDiaryPresetSelection(settings.value.generation.tavernPresetName),
-      textProvider: klona(settings.value.textProvider),
+      tavernPresetName: resolveDiaryPresetSelection(batchDraft.tavernPresetName),
+      textProvider: applyTextProviderSelection(klona(settings.value.textProvider), batchDraft.connectionSelection),
       userRequirement: batchDraft.userRequirement,
     },
     jobs,
@@ -1116,6 +1130,7 @@ function resetBatchProgress() {
 
 function hydrateBatchDraft(config: ManualBatchTaskConfig) {
   batchDraft.bookTitle = config.bookTitle || '';
+  batchDraft.connectionSelection = getCurrentTextProviderSelection(config.textProvider);
   batchDraft.floorMode = config.floorMode || 'custom';
   batchDraft.floorText = config.floorText || '';
   batchDraft.groupMode = config.groupMode ?? false;
@@ -1124,6 +1139,7 @@ function hydrateBatchDraft(config: ManualBatchTaskConfig) {
   batchDraft.includeUser = config.includeUser ?? true;
   batchDraft.perspectiveName = config.perspective?.name || '';
   batchDraft.rpmLimit = config.rpmLimit;
+  batchDraft.tavernPresetName = config.tavernPresetName;
   batchDraft.userRequirement = config.userRequirement;
 }
 
@@ -1214,6 +1230,7 @@ async function runReadReactionGeneration() {
       bookTitle: targetBook?.title || `${readerName}的日记`,
       content: result.data.content,
       draftId: null,
+      generationRecord: result.generationRecord,
       occurredAt: result.data.occurredAt || reactionDraft.occurredAt,
       perspective: targetPerspective,
       raw: result.rawOutput,
@@ -1247,6 +1264,7 @@ function savePreview() {
     readers: preview.action === 'read-reaction' ? [preview.perspective] : undefined,
     title: preview.title,
     directoryOrder: preview.sourceFloorEnd,
+    generationRecord: preview.generationRecord,
     sourceFloorEnd: preview.sourceFloorEnd,
   });
   if (!created) {
@@ -1367,6 +1385,7 @@ function reparseFailedDraft() {
     bookTitle,
     content: parsed.data.content,
     draftId: null,
+    generationRecord: draft.generationRecord,
     occurredAt: parsed.data.occurredAt || occurredAt,
     perspective: perspective || diary.getBook(bookId)?.perspective || { name: '当前视角' },
     raw: parsed.raw,

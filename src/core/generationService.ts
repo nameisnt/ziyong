@@ -44,10 +44,7 @@ import { parsePrettified } from '@/util/zod';
 import { waitForGenerationRateLimit, waitForGenerationRetry } from '@/core/generationRateLimit';
 import { runGenerationTaskWithRateLimitRetries } from '@/core/generationRetry';
 import { useSettingsStore } from '@/store/settings';
-import {
-  buildPluginPresetOrderedPrompts,
-  pluginPresetIdFromSelection,
-} from '@/apps/preset-manager/pluginPreset';
+import { buildPluginPresetOrderedPrompts, pluginPresetIdFromSelection } from '@/apps/preset-manager/pluginPreset';
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return Boolean(value) && typeof value === 'object' && !Array.isArray(value);
@@ -319,7 +316,9 @@ async function runWithPhoneUserInputMacro<TResult>(
     for (const [name, value] of Object.entries(variables)) {
       if (!/^[\w.-]+$/u.test(name) || name.toLocaleLowerCase() === 'phoneuserinput') continue;
       const escapedName = name.replace(/[.*+?^${}()|[\]\\]/gu, '\\$&');
-      macroRegistrations.push(registerMacroLikeSafe(new RegExp(`\\{\\{\\s*${escapedName}\\s*\\}\\}`, 'giu'), () => value));
+      macroRegistrations.push(
+        registerMacroLikeSafe(new RegExp(`\\{\\{\\s*${escapedName}\\s*\\}\\}`, 'giu'), () => value),
+      );
     }
     return await task();
   } finally {
@@ -346,8 +345,7 @@ function captureWithPhoneUserInput(
   return runWithPhoneUserInputMacro(
     phoneUserInput,
     variables,
-    () =>
-      captureTavernPromptPreview(generateConfig, 15000, signal, replaceRegisteredMacros),
+    () => captureTavernPromptPreview(generateConfig, 15000, signal, replaceRegisteredMacros),
     signal,
   );
 }
@@ -546,7 +544,7 @@ function normalizeAndCleanGenerationResult(rawResult: unknown) {
   return cleanGenerationOutput(normalizeGenerationResult(rawResult), {
     enabled: generation.outputCleaningEnabled,
     endTags: generation.outputCleaningEndTags,
-  }).content;
+  });
 }
 
 export type RawOrderedPrompt = {
@@ -776,9 +774,10 @@ export async function generateOrderedPromptContent(options: {
             });
 
       abortSignal.throwIfAborted();
-      const rawOutput = normalizeAndCleanGenerationResult(result);
+      const cleanedOutput = normalizeAndCleanGenerationResult(result);
+      const rawOutput = cleanedOutput.content;
       options.lifecycle?.onRawOutput?.(rawOutput);
-      return { generationId, rawOutput, textProvider };
+      return { generationId, rawOutput, reasoning: cleanedOutput.removedContent, textProvider };
     },
     textProvider,
   });
@@ -813,21 +812,29 @@ export async function generateContent<TConfig, TResult, TSaveResult = { entityId
         textProvider,
       );
       const generationRecord = createHiddenGenerationRecord(adapter.actionId, replay);
-      const result =
-        prepared.pluginPresetRecord
-          ? await generateWithPluginPreset(
+      const result = prepared.pluginPresetRecord
+        ? textProvider.mode === 'external'
+          ? await generateFromCapturedOrderedPrompts(
+              prepared.generateConfig,
+              textProvider,
+              prepared.phoneUserInput,
+              prepared.generationMacroVariables,
+              abortSignal,
+              options.lifecycle?.onRawOutput,
+            )
+          : await generateWithPluginPreset(
               prepared.generateConfig,
               prepared.phoneUserInput,
               prepared.generationMacroVariables,
               abortSignal,
             )
-          : textProvider.mode === 'tavern'
-            ? await generateWithPhoneUserInput(
-                prepared.generateConfig,
-                prepared.phoneUserInput,
-                prepared.generationMacroVariables,
-                abortSignal,
-              )
+        : textProvider.mode === 'tavern'
+          ? await generateWithPhoneUserInput(
+              prepared.generateConfig,
+              prepared.phoneUserInput,
+              prepared.generationMacroVariables,
+              abortSignal,
+            )
           : await generateFromCapturedOrderedPrompts(
               prepared.generateConfig,
               textProvider,
@@ -838,7 +845,9 @@ export async function generateContent<TConfig, TResult, TSaveResult = { entityId
             );
 
       abortSignal.throwIfAborted();
-      const rawOutput = normalizeAndCleanGenerationResult(result);
+      const cleanedOutput = normalizeAndCleanGenerationResult(result);
+      const rawOutput = cleanedOutput.content;
+      if (cleanedOutput.removedContent) generationRecord.reasoning = cleanedOutput.removedContent;
       options.lifecycle?.onRawOutput?.(rawOutput);
 
       const parsed = adapter.parse(rawOutput, prepared.parsedConfig);
@@ -1005,9 +1014,7 @@ export async function captureGenerationPrompt<TConfig, TResult, TSaveResult = { 
 
   try {
     const captured = await captureTask();
-    return prepared.pluginPresetRecord
-      ? { ...captured, preset: prepared.pluginPresetRecord.name }
-      : captured;
+    return prepared.pluginPresetRecord ? { ...captured, preset: prepared.pluginPresetRecord.name } : captured;
   } finally {
     releasePhoneGeneration();
   }

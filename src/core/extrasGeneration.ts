@@ -341,6 +341,7 @@ export function createExtraChapterGenerationAdapter(extrasStore: {
     },
     async save(result, context) {
       const generationRecord = createExtraChapterGenerationRecord(context.config, context.source, context.replay);
+      generationRecord.reasoning = context.generationRecord.reasoning;
       if (context.config.chapterMode === '重写当前章节' && context.config.chapterId) {
         const saved = extrasStore.appendChapterVersion(context.config.bookId, context.config.chapterId, {
           content: result.content,

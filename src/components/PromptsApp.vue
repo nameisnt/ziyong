@@ -973,9 +973,10 @@ async function copyText(text: string, successMessage: string) {
 
 .pc-tab-btn {
   border-radius: 999px;
-  padding: 10px 14px;
-  min-width: 92px;
-  height: 40px;
+  padding: 7px 10px;
+  min-width: 72px;
+  height: 34px;
+  font-size: 13px;
   white-space: nowrap;
 }
 

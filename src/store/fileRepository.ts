@@ -43,6 +43,12 @@ function isRecord(value: unknown): value is Record<string, unknown> {
   return Boolean(value) && typeof value === 'object' && !Array.isArray(value);
 }
 
+function cloneJsonValue<T>(value: T): T {
+  // 仓库索引和快照都是 JSON 数据。JSON 往返会安全地去掉 Vue/Pinia Proxy；
+  // structuredClone 不能克隆响应式 Proxy，会直接抛出 DataCloneError。
+  return JSON.parse(JSON.stringify(value)) as T;
+}
+
 function normalizePath(path: string) {
   return String(path || '').replace(/^\/+/, '');
 }
@@ -132,7 +138,7 @@ function normalizePayload(value: unknown): FileRepositorySnapshotPayload {
   if (!isRecord(value) || value.repositorySchemaVersion !== 1) throw new Error('不是受支持的插件文件仓库快照');
   const backup = parsePrettified(PhoneBackupSchema, value.backup);
   const pluginPresets = Array.isArray(value.pluginPresets)
-    ? value.pluginPresets.filter(isRecord).map(record => structuredClone(record) as unknown as PluginPresetRecord)
+    ? value.pluginPresets.filter(isRecord).map(record => cloneJsonValue(record) as unknown as PluginPresetRecord)
     : [];
   return {
     backup,
@@ -157,7 +163,7 @@ export const useFileRepositoryStore = defineStore('fileRepository', () => {
   );
 
   function persistIndex() {
-    _.set(extension_settings, fileRepositoryField, structuredClone(settings.value));
+    _.set(extension_settings, fileRepositoryField, cloneJsonValue(settings.value));
     void saveSettingsDebounced();
   }
 

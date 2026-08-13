@@ -123,6 +123,7 @@
     <SummaryBatchPage
       v-else-if="route.page === 'batch-generate'"
       v-model:book-id="batchDraft.bookId"
+      v-model:connection-selection="batchDraft.connectionSelection"
       v-model:floor-mode="batchDraft.floorMode"
       v-model:floor-text="batchDraft.floorText"
       v-model:group-mode="batchDraft.groupMode"
@@ -131,6 +132,7 @@
       v-model:include-user="batchDraft.includeUser"
       v-model:references="selectedReferences"
       v-model:rpm-limit="batchDraft.rpmLimit"
+      v-model:tavern-preset-name="batchDraft.tavernPresetName"
       v-model:user-requirement="batchDraft.userRequirement"
       :books="books"
       :inputs-locked="batchInputsLocked"
@@ -702,6 +704,7 @@ function savePreview() {
   const entry = summary.createEntry(bookId, {
     content: preview.content,
     directoryOrder: preview.source.floorEnd,
+    generationRecord: preview.generationRecord,
     rangeLabel: preview.source.label,
     sourceFloorEnd: preview.source.floorEnd,
     title: preview.title,
@@ -793,6 +796,7 @@ function reparseFailedDraft() {
     bookId,
     content: parsed.data.content,
     draftId: null,
+    generationRecord: draft.generationRecord,
     raw: parsed.raw,
     source: {
       floorEnd: getSourceLastFloor(draft.source),

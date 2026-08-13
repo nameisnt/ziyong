@@ -43,10 +43,17 @@ export const useGenerationOverrideStore = defineStore('generationOverrides', () 
     ensureOverride(appId, page).tavernPresetName = tavernPresetName;
   }
 
+  function resetApp(appId: string) {
+    overrides.value = Object.fromEntries(
+      Object.entries(overrides.value).filter(([key]) => !key.startsWith(`${appId}:`)),
+    );
+  }
+
   return {
     ensureOverride,
     getOverride,
     overrides,
+    resetApp,
     setConnectionSelection,
     setTavernPresetName,
   };

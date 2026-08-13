@@ -10,6 +10,7 @@
       :favorite-active="entry.favorite"
       :next-disabled="!nextEntryId"
       :previous-disabled="!previousEntryId"
+      :reasoning="viewedEntry.generationRecord?.reasoning"
       :title="viewedEntry.title"
       @bagu="$emit('bagu')"
       @bottom="$emit('bottom')"
