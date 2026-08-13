@@ -21,7 +21,10 @@
     },
     "moduleDetection": "auto",
     "moduleResolution": "bundler",
+<<<<<<< HEAD
     "resolveJsonModule": true,
+=======
+>>>>>>> f4129ea60a6332c92c6d17819aca0a1b420d99dd
     "isolatedModules": true,
     "importHelpers": true,
     "allowUmdGlobalAccess": true,
@@ -40,7 +43,10 @@
   },
   "include": [
     "*.d.ts",
+<<<<<<< HEAD
     "@types/**/*.d.ts",
+=======
+>>>>>>> f4129ea60a6332c92c6d17819aca0a1b420d99dd
     "src/**/*.ts",
     "../../../../**/*.js" // for intelligence
   ],
