@@ -1,7 +1,8 @@
 param(
   [string]$CommitMessage = '',
   [switch]$DryRun,
-  [switch]$SkipBuild
+  [switch]$SkipBuild,
+  [switch]$ConfirmPush
 )
 
 $ErrorActionPreference = 'Stop'
@@ -273,10 +274,29 @@ if (-not $DryRun) {
 
 $parent = Invoke-Capture -Command git -Arguments @('rev-parse', 'origin/main')
 $head = Invoke-Capture -Command git -Arguments @('rev-parse', 'HEAD')
-if ($DryRun -and $head -ne $parent) {
-  throw "DryRun is local-only and requires HEAD ($head) to match the locally cached origin/main ($parent). Run the normal command to fetch and synchronize first."
-}
+$pushExistingHead = $false
 if ($head -ne $parent) {
+  & git merge-base --is-ancestor $parent $head
+  $remoteAncestorExitCode = $LASTEXITCODE
+  if ($remoteAncestorExitCode -eq 0) {
+    & git diff --cached --quiet --exit-code
+    $stagedDiffExitCode = $LASTEXITCODE
+    & git diff --quiet --exit-code
+    $worktreeDiffExitCode = $LASTEXITCODE
+    $untrackedForAheadPush = @(& git ls-files --others --exclude-standard)
+    if ($LASTEXITCODE -ne 0) {
+      throw 'Failed to inspect untracked files before pushing the existing local HEAD.'
+    }
+    if ($stagedDiffExitCode -ne 0 -or $worktreeDiffExitCode -ne 0 -or $untrackedForAheadPush.Count) {
+      throw 'Local main is ahead of origin/main, but the index or worktree is not clean. Commit or remove those changes before publishing the existing HEAD.'
+    }
+    $pushExistingHead = $true
+    Write-Host "Local main is ahead of origin/main; the existing HEAD will be verified and pushed without rewriting it." -ForegroundColor Yellow
+  } elseif ($remoteAncestorExitCode -ne 1) {
+    throw 'Failed to determine whether origin/main is an ancestor of local HEAD.'
+  }
+}
+if ($head -ne $parent -and -not $pushExistingHead) {
   & git diff --cached --quiet --exit-code
   $stagedDiffExitCode = $LASTEXITCODE
   if ($stagedDiffExitCode -eq 1) {
@@ -432,10 +452,10 @@ Write-Host ''
 Write-Host 'Current build artifacts:' -ForegroundColor Yellow
 $distFiles | Select-Object Name, Length, LastWriteTime | Format-Table -AutoSize
 
-if (-not $DryRun -and [string]::IsNullOrWhiteSpace($CommitMessage)) {
+if (-not $DryRun -and -not $pushExistingHead -and [string]::IsNullOrWhiteSpace($CommitMessage)) {
   $CommitMessage = 'update source and dist ' + (Get-Date -Format 'yyyy-MM-dd HH:mm')
 }
-if (-not $DryRun) {
+if (-not $DryRun -and -not $pushExistingHead) {
   $messageInput = Read-Host "Commit message. Press Enter to use default: $CommitMessage"
   if (-not [string]::IsNullOrWhiteSpace($messageInput)) {
     $trimmedMessage = $messageInput.Trim()
@@ -523,15 +543,35 @@ try {
     exit 0
   }
 
+  if ($pushExistingHead) {
+    $headTree = Invoke-Capture -Command git -Arguments @('rev-parse', "$head^{tree}")
+    if ($tree -ne $headTree) {
+      throw "The safe publish candidate tree ($tree) differs from local HEAD ($headTree). Refusing to push an uncommitted or excluded change."
+    }
+  }
+
   if ($DryRun) {
     Write-Host ''
     Write-Host 'DryRun complete: no fetch, build, prompt, commit object, index update, or push was performed.' -ForegroundColor Green
     exit 0
   }
 
-  $confirm = Read-Host 'Push to https://github.com/nameisnt/ziyong main? Type YES to continue'
+  $confirm = if ($ConfirmPush) { 'YES' } else { Read-Host 'Push to https://github.com/nameisnt/ziyong main? Type YES to continue' }
   if ($confirm -ne 'YES') {
     Write-Host 'Canceled. Nothing was pushed.' -ForegroundColor Yellow
+    exit 0
+  }
+
+  if ($pushExistingHead) {
+    Invoke-CheckedWithRetry -Command git -Arguments @('push', 'origin', "$head`:refs/heads/main")
+    $remoteMain = Invoke-Capture -Command git -Arguments @('ls-remote', '--heads', 'origin', 'main')
+    $remoteHash = ($remoteMain -split '\s+')[0]
+    if ($remoteHash -ne $head) {
+      throw "Push returned without synchronizing origin/main. Expected $head, got $remoteHash."
+    }
+    Write-Host ''
+    Write-Host "Push succeeded: $head" -ForegroundColor Green
+    Write-Host 'The existing local HEAD was preserved and origin/main now points to it.' -ForegroundColor Green
     exit 0
   }
 
