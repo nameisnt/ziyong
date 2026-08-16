@@ -26,7 +26,7 @@ export function createDiaryTaskTemplateDefinitions(): PhoneTaskTemplateDefinitio
       ),
       variables: [
         { key: 'perspectiveName', label: '视角角色名' },
-        { key: 'timeInstruction', label: '日记时间要求' },
+        { key: 'timeInstruction', label: '完整日记时间说明（程序生成）' },
       ],
     },
     {
@@ -38,7 +38,7 @@ export function createDiaryTaskTemplateDefinitions(): PhoneTaskTemplateDefinitio
       ),
       variables: [
         { key: 'perspectiveName', label: '阅读者名字' },
-        { key: 'timeInstruction', label: '反应时间要求' },
+        { key: 'timeInstruction', label: '完整反应时间说明（程序生成）' },
       ],
     },
   ];
@@ -51,9 +51,9 @@ export function createExtrasTaskTemplateDefinitions(): PhoneTaskTemplateDefiniti
       label: '生成番外章节',
       defaultTemplate: lines('{{modeInstruction}}', '{{typeFallback}}', '{{summaryInstruction}}'),
       variables: [
-        { key: 'modeInstruction', label: '新开或续写要求' },
-        { key: 'typeFallback', label: '类型名称补充' },
-        { key: 'summaryInstruction', label: '自动摘要格式要求' },
+        { key: 'modeInstruction', label: '完整新开或续写要求（程序生成）' },
+        { key: 'typeFallback', label: '缺少类型提示词时的完整类型句（程序生成）' },
+        { key: 'summaryInstruction', label: '启用自动摘要时的完整格式要求（程序生成）' },
       ],
     },
     {
@@ -73,8 +73,8 @@ export function createForumTaskTemplateDefinitions(): PhoneTaskTemplateDefinitio
       variables: [
         { key: 'boardName', label: '板块名称' },
         { key: 'boardDescription', label: '板块说明正文' },
-        { key: 'boardInstruction', label: '板块名称要求' },
-        { key: 'boardDescriptionInstruction', label: '板块说明要求' },
+        { key: 'boardInstruction', label: '完整板块名称要求（程序生成）' },
+        { key: 'boardDescriptionInstruction', label: '完整板块说明要求（程序生成）' },
       ],
     },
     {
@@ -90,10 +90,10 @@ export function createTheaterTaskTemplateDefinitions(): PhoneTaskTemplateDefinit
     {
       actionId: 'generate',
       label: '生成小剧场',
-      defaultTemplate: '{{typeInstruction}}',
+      defaultTemplate: '本次小剧场类型为“{{typeName}}”。',
       variables: [
         { key: 'typeName', label: '小剧场类型名称' },
-        { key: 'typeInstruction', label: '小剧场类型要求' },
+        { key: 'typeInstruction', label: '完整小剧场类型句（程序生成）' },
       ],
     },
   ];

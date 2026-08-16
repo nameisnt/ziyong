@@ -934,14 +934,14 @@ async function runInteractionChecks(page, scenario) {
       if ((await page.locator('.pc-bagu-scan').count()) !== 0) {
         findings.push({ severity: 'fail', message: '论坛生成预览初始状态不应直接展开八股检测' });
       }
-      const baguButton = page.getByRole('button', { name: '八股', exact: true });
+      const baguButton = page.getByRole('tab', { name: '八股', exact: true });
       await baguButton.click();
       if ((await page.locator('.pc-bagu-scan').count()) !== 1) {
         findings.push({ severity: 'fail', message: '论坛生成预览点击八股后没有切换到检测视图' });
       }
       await baguButton.click();
 
-      await page.getByRole('button', { name: '原始输出', exact: true }).click();
+      await page.getByRole('tab', { name: '原始输出', exact: true }).click();
       const rawEditor = page.locator('.pc-raw-editor-area');
       await rawEditor.fill(
         '<result><board>视觉板块</board><title>论坛预览重解析成功</title><author>视觉楼主</author><content>论坛预览修复后的主楼正文。</content></result>',

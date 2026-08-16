@@ -46,8 +46,11 @@ const segments = computed(() => parseTheaterContentSegments(props.content));
   gap: 14px;
 }
 
-.pc-theater-text-segment {
+/* Mixed text sits in ReaderDetailShell/preview's outer scroller; it is not a standalone reader body. */
+:global(.pc-phone-root .pc-detail-content.pc-rendered-markdown.pc-theater-text-segment) {
+  height: auto;
   min-height: 0;
+  overflow: visible;
   padding: 0;
 }
 </style>

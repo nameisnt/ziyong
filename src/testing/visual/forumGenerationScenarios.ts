@@ -195,6 +195,19 @@ export async function applyForumGenerationVisualScenario(name: string, context: 
       title: '生成预览',
     });
     context.resetPhoneToRoute('forum', 'preview', '生成预览', { boardId: board.id });
+    await context.waitForPaint();
+    const viewTabs = [...document.querySelectorAll<HTMLButtonElement>('.pc-preview-mode-switch [role="tab"]')];
+    if (viewTabs.length !== 3) throw new Error('Forum preview must expose compact preview/raw/bagu view tabs');
+    const saveActions = document.querySelectorAll('.pc-preview-actions.single .pc-primary-btn');
+    if (saveActions.length !== 1 || document.querySelector('.pc-preview-actions .pc-soft-btn')) {
+      throw new Error('Forum preview footer must contain only the save action');
+    }
+    const rawTab = viewTabs.find(button => button.textContent?.includes('原始输出'));
+    rawTab?.click();
+    await context.waitForPaint();
+    if (!document.querySelector('.pc-raw-editor') || !document.querySelector('.pc-raw-editor button')) {
+      throw new Error('Forum preview raw-output tab lost its reparsing editor');
+    }
   } else if (name === 'forum-thread-versions' || name === 'forum-version-interactions') {
     await applyForumVersionScenario(name, context);
   } else if (name === 'forum-rewrite-generate') {

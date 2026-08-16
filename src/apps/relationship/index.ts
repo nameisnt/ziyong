@@ -207,10 +207,11 @@ export default definePhoneApp({
     {
       actionId: 'generate',
       label: '生成关系网',
-      defaultTemplate: '{{focusInstruction}}',
+      defaultTemplate: '请重点判断以下范围内角色之间的当前单向关系：{{characterScope}}。',
       variables: [
-        { key: 'focusInstruction', label: '指定角色要求' },
+        { key: 'characterScope', label: '关系分析范围' },
         { key: 'characterNames', label: '指定角色名' },
+        { key: 'focusInstruction', label: '完整指定角色要求（程序生成）' },
       ],
     },
   ],

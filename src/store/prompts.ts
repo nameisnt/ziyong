@@ -296,7 +296,10 @@ const currentExtrasChapterTaskTemplate = ['{{modeInstruction}}', '{{typeFallback
 );
 const currentSummaryTaskTemplate = '请根据本次选中的来源楼层和引用内容生成总结。';
 const currentCloudMediaTaskTemplate = '请根据当前目标服务、媒体类型和模型配置，生成一份可直接使用的媒体提示词。';
-const currentTheaterTaskTemplate = '{{typeInstruction}}';
+const legacyTheaterTaskTemplate = '{{typeInstruction}}';
+const currentTheaterTaskTemplate = '本次小剧场类型为“{{typeName}}”。';
+const legacyRelationshipTaskTemplate = '{{focusInstruction}}';
+const currentRelationshipTaskTemplate = '请重点判断以下范围内角色之间的当前单向关系：{{characterScope}}。';
 
 function ensureRegisteredPromptDefaults(settings: PromptSettings) {
   const needsTaskTemplateCoverageMigration =
@@ -363,6 +366,12 @@ function ensureRegisteredPromptDefaults(settings: PromptSettings) {
   ) {
     // 旧版小剧场类型名由适配器隐式发送；迁到任务模板后继续保留同一发送语义。
     settings.taskTemplates['theater.generate'] = currentTheaterTaskTemplate;
+  }
+  if (settings.taskTemplates['theater.generate']?.trim() === legacyTheaterTaskTemplate) {
+    settings.taskTemplates['theater.generate'] = currentTheaterTaskTemplate;
+  }
+  if (settings.taskTemplates['relationship.generate']?.trim() === legacyRelationshipTaskTemplate) {
+    settings.taskTemplates['relationship.generate'] = currentRelationshipTaskTemplate;
   }
   Object.entries(buildDefaultTaskTemplates()).forEach(([key, value]) => {
     if (!(key in settings.taskTemplates)) settings.taskTemplates[key] = value;

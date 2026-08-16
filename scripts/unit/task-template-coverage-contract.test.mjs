@@ -36,7 +36,7 @@ test('extras chapter task template preserves the optional summary instruction', 
     builtinPrompts,
     /defaultTemplate: lines\('\{\{modeInstruction\}\}', '\{\{typeFallback\}\}', '\{\{summaryInstruction\}\}'\)/,
   );
-  assert.match(builtinPrompts, /key: 'summaryInstruction', label: '自动摘要格式要求'/);
+  assert.match(builtinPrompts, /key: 'summaryInstruction', label: '启用自动摘要时的完整格式要求（程序生成）'/);
   assert.match(extrasGeneration, /summaryInstruction: config\.parseSummary/);
   assert.equal((extrasApp.match(/parseSummary: chapterGenerationDraft\.parseSummary/g) ?? []).length, 4);
   assert.equal((extrasApp.match(/summaryFormatHint: chapterGenerationDraft\.summaryFormatHint/g) ?? []).length, 4);

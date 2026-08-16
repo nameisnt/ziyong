@@ -94,8 +94,20 @@ export interface ReaderMessage {
   name: string;
   isHidden: boolean;
   isUser: boolean;
+  activeSwipeIndex: number;
+  swipeCandidates: ReaderSwipeCandidate[];
   swipeCount: number;
   timeLabel: string;
+}
+
+export interface ReaderSwipeCandidate {
+  body: string;
+  bodySourceRange: ReaderBodySourceRange | null;
+  index: number;
+  rawText: string;
+  reasoning: string;
+  sourceBody: string;
+  title: string;
 }
 
 export const readerSettingsField = 'sillytavern_phone_chat_reader_settings';
@@ -109,6 +121,8 @@ interface PendingReaderMessage {
   name: string;
   rawText: string;
   reasoning: string;
+  activeSwipeIndex: number;
+  swipeCandidates: Array<Pick<ReaderSwipeCandidate, 'index' | 'rawText' | 'reasoning'>>;
   swipeCount: number;
   timeLabel: string;
 }
@@ -231,6 +245,36 @@ function extractMessageText(record: Record<string, unknown>) {
   return '';
 }
 
+function extractSwipeCandidates(record: Record<string, unknown>, fallbackText: string) {
+  const rawSwipes = Array.isArray(record.swipes) ? record.swipes : [];
+  const swipesData = Array.isArray(record.swipes_data) ? record.swipes_data : [];
+  const swipesInfo = Array.isArray(record.swipes_info) ? record.swipes_info : [];
+  const requestedIndex = pickNumber(record, ['swipe_id']) ?? 0;
+  const candidates = rawSwipes
+    .map((value, index) => {
+      const rawText = typeof value === 'string' ? value.trim() : '';
+      if (!rawText) return null;
+      const meta = asRecord(swipesData[index]) ?? asRecord(swipesInfo[index]);
+      return {
+        index,
+        rawText,
+        reasoning: (meta ? extractMessageReasoning(meta) : '') ||
+          (index === requestedIndex ? extractMessageReasoning(record) : ''),
+      };
+    })
+    .filter((item): item is NonNullable<typeof item> => Boolean(item));
+
+  if (!candidates.length) {
+    return {
+      activeSwipeIndex: 0,
+      candidates: [{ index: 0, rawText: fallbackText, reasoning: extractMessageReasoning(record) }],
+    };
+  }
+
+  const activeSwipeIndex = candidates.some(item => item.index === requestedIndex) ? requestedIndex : candidates[0].index;
+  return { activeSwipeIndex, candidates };
+}
+
 export function normalizeArchivedMessage(
   raw: unknown,
   index: number,
@@ -252,16 +296,20 @@ export function normalizeArchivedMessage(
 
   const sourceMessageId = pickNumber(record, ['message_id']) ?? index;
   const messageIndex = sourceMessageId;
+  const swipe = extractSwipeCandidates(record, rawText);
+  const activeSwipe = swipe.candidates.find(item => item.index === swipe.activeSwipeIndex) ?? swipe.candidates[0];
   return {
     id: `${sourceMessageId}-${index + 1}`,
     messageIndex,
     sourceMessageId,
-    rawText,
-    reasoning: extractMessageReasoning(record),
+    rawText: activeSwipe.rawText,
+    reasoning: activeSwipe.reasoning,
     name: pickString(record, ['name']) || (isUser ? '用户' : 'AI'),
     isHidden,
     isUser,
-    swipeCount: Array.isArray(record.swipes) ? record.swipes.length : 1,
+    activeSwipeIndex: activeSwipe.index,
+    swipeCandidates: swipe.candidates,
+    swipeCount: swipe.candidates.length,
     timeLabel: pickString(record, ['send_date', 'sendDate', 'createdAt', 'create_date', 'date', 'timestamp', 'time']),
   };
 }
@@ -330,24 +378,43 @@ export const useReaderStore = defineStore('reader', () => {
             .filter((item): item is PendingReaderMessage => Boolean(item))
         : [];
       const transformed = await transformReaderMessages(
-        baseMessages.map(item => ({
-          messageIndex: item.messageIndex,
-          rawText: item.rawText,
-        })),
+        baseMessages.flatMap(item =>
+          item.swipeCandidates.map(candidate => ({
+            messageIndex: item.messageIndex,
+            rawText: candidate.rawText,
+          })),
+        ),
         presets.value[0]?.title ?? defaultReaderSettings.presets[0].title,
         presets.value[0]?.body ?? defaultReaderSettings.presets[0].body,
       );
       const bodyRule = presets.value[0]?.body ?? defaultReaderSettings.presets[0].body;
-      const normalized = baseMessages.map((item, index) => {
-        const sourceBody = transformed[index]?.body || item.rawText;
+      let transformedIndex = 0;
+      const normalized = baseMessages.map(item => {
+        const swipeCandidates = item.swipeCandidates.map(candidate => {
+          const transformedCandidate = transformed[transformedIndex++];
+          const sourceBody = transformedCandidate?.body || candidate.rawText;
+          return {
+            body: sourceBody,
+            bodySourceRange: resolveReaderBodySourceRange(candidate.rawText, sourceBody, bodyRule),
+            ...candidate,
+            sourceBody,
+            title: transformedCandidate?.title || `第 ${item.messageIndex} 楼`,
+          };
+        });
+        const activeSwipe =
+          swipeCandidates.find(candidate => candidate.index === item.activeSwipeIndex) ?? swipeCandidates[0];
+        if (!activeSwipe) return null;
         return {
           ...item,
-          bodySourceRange: resolveReaderBodySourceRange(item.rawText, sourceBody, bodyRule),
-          title: transformed[index]?.title || `第 ${item.messageIndex} 楼`,
-          body: sourceBody,
-          sourceBody,
+          body: activeSwipe.body,
+          bodySourceRange: activeSwipe.bodySourceRange,
+          rawText: activeSwipe.rawText,
+          reasoning: activeSwipe.reasoning,
+          sourceBody: activeSwipe.sourceBody,
+          swipeCandidates,
+          title: activeSwipe.title,
         };
-      });
+      }).filter((item): item is ReaderMessage => Boolean(item));
       detailCache.value = {
         ...detailCache.value,
         [fileName]: normalized,

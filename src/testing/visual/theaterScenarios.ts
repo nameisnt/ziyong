@@ -114,6 +114,16 @@ export async function applyTheaterVisualScenario(name: string, context: TheaterS
     await waitForPaint();
     if (!document.querySelector('.pc-frame-shell') || !document.querySelector('.pc-theater-text-segment'))
       throw new Error('Mixed theater detail did not render both text and HTML segments');
+    const textSegments = [...document.querySelectorAll<HTMLElement>('.pc-theater-text-segment')];
+    if (
+      !textSegments.length ||
+      textSegments.some(segment => {
+        const style = getComputedStyle(segment);
+        return style.overflowY !== 'visible' || segment.scrollHeight > segment.clientHeight;
+      })
+    ) {
+      throw new Error('Mixed theater text must use the outer reader scroll container');
+    }
     if (!document.querySelector('.pc-reader-source-label')?.textContent?.includes('最近 7 楼')) {
       throw new Error('Theater detail omitted its generation source label');
     }

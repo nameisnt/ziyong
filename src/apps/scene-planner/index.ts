@@ -188,8 +188,8 @@ export default definePhoneApp({
       defaultTemplate: ['用户剧情想法：', '{{brief}}', '{{styleInstruction}}', '{{avoidInstruction}}'].join('\n\n'),
       variables: [
         { key: 'brief', label: '剧情想法' },
-        { key: 'styleInstruction', label: '文风与节奏要求' },
-        { key: 'avoidInstruction', label: '避雷要求' },
+        { key: 'styleInstruction', label: '完整文风与节奏要求（程序生成）' },
+        { key: 'avoidInstruction', label: '完整避雷要求（程序生成）' },
       ],
     },
   ],

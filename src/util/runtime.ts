@@ -362,15 +362,23 @@ function getChatMessagesFromSillyTavern(range: string, options?: Record<string, 
   const context = getSillyTavernContext();
   const chat = Array.isArray(context?.chat) ? (context.chat as SillyTavern.ChatMessage[]) : [];
   const hideState = options?.hide_state;
-  const normalized = chat.map((message, index) => ({
-    data: {},
-    extra: message.extra || {},
-    is_hidden: Boolean(message.is_system),
-    message: typeof message.mes === 'string' ? message.mes : '',
-    message_id: index,
-    name: typeof message.name === 'string' ? message.name : '',
-    role: normalizeSillyTavernRole(message),
-  })) satisfies ChatMessage[];
+  const normalized = chat.map((message, index) => {
+    const record = message as unknown as Record<string, unknown>;
+    const swipes = Array.isArray(record.swipes) ? record.swipes.filter(value => typeof value === 'string') : [];
+    const swipesData = Array.isArray(record.swipes_data) ? record.swipes_data : [];
+    const swipesInfo = Array.isArray(record.swipes_info) ? record.swipes_info : [];
+    const swipeId = typeof record.swipe_id === 'number' ? record.swipe_id : 0;
+    return {
+      data: {},
+      extra: message.extra || {},
+      is_hidden: Boolean(message.is_system),
+      message: typeof message.mes === 'string' ? message.mes : '',
+      message_id: index,
+      name: typeof message.name === 'string' ? message.name : '',
+      role: normalizeSillyTavernRole(message),
+      ...(options?.include_swipes ? { swipe_id: swipeId, swipes, swipes_data: swipesData, swipes_info: swipesInfo } : {}),
+    };
+  }) satisfies ChatMessage[];
 
   const filtered = normalized.filter(message => {
     if (hideState === 'hidden') return message.is_hidden;

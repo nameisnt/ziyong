@@ -175,6 +175,7 @@ export function createVisualScenarioGroups(rootAppScenarios: string[]): VisualSc
       scenarios: [
         'reader-detail',
         'reader-reasoning',
+        'reader-swipe-candidates',
         'reader-text-edit-modal',
         'reader-theme-appearance',
         'reader-catalog',

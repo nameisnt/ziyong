@@ -42,7 +42,7 @@ test('forum board description and theater type name are editable task-template v
     /defaultTemplate: lines\('\{\{boardInstruction\}\}', '\{\{boardDescriptionInstruction\}\}'\)/,
   );
   assert.match(builtinPrompts, /key: 'boardDescription', label: '板块说明正文'/);
-  assert.match(builtinPrompts, /defaultTemplate: '\{\{typeInstruction\}\}'/);
+  assert.match(builtinPrompts, /defaultTemplate: '本次小剧场类型为“\{\{typeName\}\}”。'/);
   assert.match(builtinPrompts, /key: 'typeName', label: '小剧场类型名称'/);
 
   assert.match(forumGeneration, /boardDescriptionInstruction: buildBoardDescriptionInstruction\(config\)/);
@@ -58,4 +58,9 @@ test('legacy generated task defaults migrate without repeatedly replacing later 
   assert.match(promptStore, /settings\.taskTemplates\['forum\.generate-thread'\] = currentForumThreadTaskTemplate/);
   assert.match(promptStore, /hasLegacyForumAndTheaterDefaults \|\| needsTaskTemplateCoverageMigration/);
   assert.match(promptStore, /settings\.taskTemplates\['theater\.generate'\] = currentTheaterTaskTemplate/);
+  assert.match(promptStore, /settings\.taskTemplates\['theater\.generate'\]\?\.trim\(\) === legacyTheaterTaskTemplate/);
+  assert.match(
+    promptStore,
+    /settings\.taskTemplates\['relationship\.generate'\]\?\.trim\(\) === legacyRelationshipTaskTemplate/,
+  );
 });

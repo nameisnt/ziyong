@@ -139,11 +139,13 @@ export function createRelationshipGenerationAdapter(relationshipStore: ReturnTyp
     configSchema: RelationshipGenerateConfigSchema,
     buildRequest(config) {
       const characterNames = config.characterNames.trim();
+      const characterScope = characterNames || '来源内容中的主要角色';
       return {
         appPrompt: config.appPrompt,
         outputFormat: config.outputFormat,
         taskInstruction: characterNames ? `请重点判断这些角色之间的当前单向关系：${characterNames}` : '',
         taskTemplateVariables: {
+          characterScope,
           characterNames,
           focusInstruction: characterNames ? `请重点判断这些角色之间的当前单向关系：${characterNames}` : '',
         },

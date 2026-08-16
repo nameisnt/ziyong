@@ -1,8 +1,8 @@
 {
   "version": 1,
   "defect": "D-BASELINE-002",
-  "generatedAt": "2026-08-15T18:33:55.637Z",
-  "scenarioCount": 272,
+  "generatedAt": "2026-08-16T00:00:00.000Z",
+  "scenarioCount": 273,
   "sizes": [
     "350x700",
     "390x844",
@@ -10,7 +10,7 @@
   ],
   "summary": {
     "fails": 0,
-    "runs": 816,
+    "runs": 819,
     "warnings": 3
   },
   "runs": [
@@ -861,6 +861,11 @@
     },
     {
       "findings": [],
+      "scenario": "reader-swipe-candidates",
+      "size": "350x700"
+    },
+    {
+      "findings": [],
       "scenario": "reader-text-edit-modal",
       "size": "350x700"
     },
@@ -2227,6 +2232,11 @@
     },
     {
       "findings": [],
+      "scenario": "reader-swipe-candidates",
+      "size": "390x844"
+    },
+    {
+      "findings": [],
       "scenario": "reader-text-edit-modal",
       "size": "390x844"
     },
@@ -3589,6 +3599,11 @@
     {
       "findings": [],
       "scenario": "reader-reasoning",
+      "size": "430x900"
+    },
+    {
+      "findings": [],
+      "scenario": "reader-swipe-candidates",
       "size": "430x900"
     },
     {

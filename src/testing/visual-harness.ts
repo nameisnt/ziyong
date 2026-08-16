@@ -88,6 +88,9 @@ function setByPath(source: Record<string, unknown>, path: string, value: unknown
 let setReaderFixtureReasoning: (reasoning: string) => void = (_reasoning: string) => {
   throw new Error('Reader reasoning fixture is not initialized');
 };
+let setReaderFixtureSwipes: () => void = () => {
+  throw new Error('Reader swipe fixture is not initialized');
+};
 
 function setupVisualGlobals() {
   let visualMvuData = {
@@ -147,6 +150,20 @@ function setupVisualGlobals() {
     const target = visualMessages.find(message => !message.is_user);
     if (!target) throw new Error('Reader reasoning fixture has no assistant message');
     Object.assign(target, { extra: { reasoning } });
+  };
+  setReaderFixtureSwipes = () => {
+    const target = visualMessages.find(message => !message.is_user);
+    if (!target) throw new Error('Reader swipe fixture has no assistant message');
+    Object.assign(target, {
+      mes: '<content>当前候选正文</content>',
+      swipe_id: 1,
+      swipes: [
+        '<content>备选回复一</content>',
+        '<content>当前候选正文</content>',
+        '<content>备选回复三</content>',
+      ],
+      swipes_data: [{ reasoning: '候选一思维链' }, { reasoning: '当前候选思维链' }, { reasoning: '候选三思维链' }],
+    });
   };
   let visualLoadedPresetName = '视觉预设';
   let visualLegacyWorldbook = {
@@ -1010,6 +1027,7 @@ async function applyScenario(name: VisualScenarioName, options: { height?: numbe
       openReaderTools,
       resetPhoneToRoute,
       setReaderFixtureReasoning,
+      setReaderFixtureSwipes,
       toggleReaderFooter,
       waitForCondition: waitForVisualCondition,
       waitForPaint,

@@ -8,6 +8,36 @@
         <span>{{ warnings.length ? `${warnings.length} 条提示` : successLabel }}</span>
       </div>
     </header>
+    <div class="pc-preview-mode-switch pc-segment" role="tablist" aria-label="预览内容视图">
+      <button
+        :class="['pc-segment-btn', 'compact', { active: activeView === 'preview' }]"
+        role="tab"
+        type="button"
+        :aria-selected="activeView === 'preview'"
+        @click="activeView = 'preview'"
+      >
+        {{ previewLabel }}
+      </button>
+      <button
+        :class="['pc-segment-btn', 'compact', { active: activeView === 'raw' }]"
+        role="tab"
+        type="button"
+        :aria-selected="activeView === 'raw'"
+        @click="activeView = 'raw'"
+      >
+        {{ rawOutputLabel }}
+      </button>
+      <button
+        v-if="scanEnabled"
+        :class="['pc-segment-btn', 'compact', { active: activeView === 'bagu' }]"
+        role="tab"
+        type="button"
+        :aria-selected="activeView === 'bagu'"
+        @click="activeView = 'bagu'"
+      >
+        {{ baguLabel }}
+      </button>
+    </div>
     <section class="pc-preview-panel">
       <div v-if="activeView === 'preview'" class="pc-preview-view">
         <div class="pc-preview-toolbar">
@@ -65,24 +95,7 @@
         @update:model-value="emit('update:raw', $event)"
       />
     </section>
-    <div class="pc-preview-actions" :class="{ two: !scanEnabled }">
-      <button
-        v-if="scanEnabled"
-        class="pc-soft-btn"
-        :class="{ active: activeView === 'bagu' }"
-        type="button"
-        @click="activeView = activeView === 'bagu' ? 'preview' : 'bagu'"
-      >
-        {{ baguLabel }}
-      </button>
-      <button
-        class="pc-soft-btn"
-        :class="{ active: activeView === 'raw' }"
-        type="button"
-        @click="activeView = activeView === 'raw' ? 'preview' : 'raw'"
-      >
-        {{ rawOutputLabel }}
-      </button>
+    <div class="pc-preview-actions single">
       <button class="pc-primary-btn" type="button" :disabled="saveDisabled || saving" @click="handleSave">
         {{ saving ? savingLabel : saveLabel }}
       </button>
@@ -384,6 +397,10 @@ function goRawFromNotice() {
   min-height: 0;
 }
 
+.pc-preview-mode-switch {
+  justify-self: start;
+}
+
 .pc-preview-body {
   min-height: 0;
   overflow: auto;
@@ -420,13 +437,8 @@ function goRawFromNotice() {
   gap: 8px;
 }
 
-.pc-preview-actions.two {
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-}
-
-.pc-preview-actions .active {
-  color: var(--pc-theme-accent);
-  background: color-mix(in srgb, var(--pc-theme-accent) 18%, var(--pc-surface-strong) 82%);
+.pc-preview-actions.single {
+  grid-template-columns: minmax(0, 1fr);
 }
 
 .pc-preview-dialog-backdrop {

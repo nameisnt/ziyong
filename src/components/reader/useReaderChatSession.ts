@@ -41,41 +41,61 @@ export function useReaderChatSession(options: {
     try {
       const sourceMessages = await loadViewingSourceMessages(scopeKeyAtStart, isViewingCurrentAtStart);
       const transformed = await transformReaderMessages(
-        sourceMessages.map(item => ({
-          messageIndex: item.messageIndex,
-          rawText: item.rawText,
-        })),
+        sourceMessages.flatMap(item =>
+          item.swipeCandidates.map(candidate => ({
+            messageIndex: item.messageIndex,
+            rawText: candidate.rawText,
+          })),
+        ),
         options.activeTitleRule.value,
         options.activeBodyRule.value,
       );
 
+      let transformedIndex = 0;
       const normalized = sourceMessages
-        .map((item, index) => {
-          const sourceBody = transformed[index]?.body || item.rawText;
-          const body = options.applyReaderCleanupRules(sourceBody);
+        .map(item => {
+          const swipeCandidates = item.swipeCandidates.map(candidate => {
+            const transformedCandidate = transformed[transformedIndex++];
+            const sourceBody = transformedCandidate?.body || candidate.rawText;
+            return {
+              body: options.applyReaderCleanupRules(sourceBody),
+              bodySourceRange: resolveReaderBodySourceRange(
+                candidate.rawText,
+                sourceBody,
+                options.activeBodyRule.value,
+                options.contentRuleId.value,
+              ),
+              ...candidate,
+              sourceBody,
+              title: options.normalizeTitle(transformedCandidate?.title || '', item.messageIndex, item.isUser),
+            };
+          });
+          const activeSwipe =
+            swipeCandidates.find(candidate => candidate.index === item.activeSwipeIndex) ?? swipeCandidates[0];
+          if (!activeSwipe) return null;
           return {
             ...item,
-            bodySourceRange: resolveReaderBodySourceRange(
-              item.rawText,
-              sourceBody,
-              options.activeBodyRule.value,
-              options.contentRuleId.value,
-            ),
-            title: options.normalizeTitle(transformed[index]?.title || '', item.messageIndex, item.isUser),
-            body,
-            sourceBody,
+            body: activeSwipe.body,
+            bodySourceRange: activeSwipe.bodySourceRange,
+            rawText: activeSwipe.rawText,
+            reasoning: activeSwipe.reasoning,
+            sourceBody: activeSwipe.sourceBody,
+            swipeCandidates,
+            title: activeSwipe.title,
           };
         })
-        .filter(
-          item =>
+        .filter((item): item is NonNullable<typeof item> => {
+          if (!item) return false;
+          return (
             (options.readerSettings.value.showHiddenAssistantMessages || !item.isHidden) &&
-            (!options.readerSettings.value.hideEmptyAfterCleanup || item.body.trim()),
-        );
+            (!options.readerSettings.value.hideEmptyAfterCleanup || Boolean(item.body.trim()))
+          );
+        });
 
       if (loadSerial !== readerLoadSerial || phone.viewingScopeKey !== scopeKeyAtStart) return currentMessages.value;
       currentMessages.value = normalized;
       loadedScopeKey.value = scopeKeyAtStart;
-      if (phone.currentRoute.page === 'detail') {
+      if (phone.currentRoute.appId === 'reader' && phone.currentRoute.page === 'detail') {
         const currentMessageId = phone.currentRoute.params?.messageId;
         const exists = normalized.some(item => item.id === currentMessageId);
         if (!exists && normalized[0]) {
@@ -98,7 +118,7 @@ export function useReaderChatSession(options: {
 
   async function loadViewingSourceMessages(scopeKey: string, isViewingCurrent: boolean) {
     const rawMessages = isViewingCurrent
-      ? getChatMessagesSafe('0-{{lastMessageId}}')
+      ? getChatMessagesSafe('0-{{lastMessageId}}', { include_swipes: true })
       : await loadHistoryMessagesFromViewingScope(scopeKey);
     return rawMessages
       .map((item, index) => normalizeArchivedMessage(item, index, options.readerSettings.value))

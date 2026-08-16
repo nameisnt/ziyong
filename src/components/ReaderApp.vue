@@ -127,19 +127,22 @@
     <section v-else-if="route.page === 'detail' && activeMessage" class="pc-reader-page pc-reader-detail-page">
       <ReaderDetailShell
         :actions-class="phone.isViewingCurrentChat ? 'six' : 'five'"
-        :branch-disabled="branching"
-        :branch-enabled="phone.isViewingCurrentChat"
+        :bagu-enabled="isViewingActiveSwipe"
+        :branch-disabled="branching || !isViewingActiveSwipe"
+        :branch-enabled="phone.isViewingCurrentChat && isViewingActiveSwipe"
         :branch-label="branching ? t`创建中` : t`创建分支`"
         :content="activeMessageBody"
         content-formatted
         display-app-id="reader"
-        :edit-disabled="!phone.isViewingCurrentChat"
+        :edit-disabled="!phone.isViewingCurrentChat || !isViewingActiveSwipe"
         :edit-label="t`编辑正文`"
+        :eraser-enabled="phone.isViewingCurrentChat && isViewingActiveSwipe"
         :favorite-active="Boolean(activeMessageFavorite)"
+        :favorite-enabled="isViewingActiveSwipe"
         :next-disabled="!nextMessageId"
         :previous-disabled="!previousMessageId"
-        :reasoning="activeMessage.reasoning"
-        :title="activeMessage.title"
+        :reasoning="activeSwipeCandidate?.reasoning || ''"
+        :title="activeSwipeCandidate?.title || activeMessage.title"
         @bagu="openReaderBaguScan"
         @bottom="scrollToBottom"
         @branch="createReaderBranch"
@@ -154,14 +157,41 @@
           <span v-if="activeMessage.isUser" class="pc-hidden-pill">{{ t`用户` }}</span>
           <span v-if="activeMessage.isHidden" class="pc-hidden-pill">{{ t`隐藏` }}</span>
         </template>
+        <template #before-content>
+          <section v-if="activeSwipeCandidates.length > 1" class="pc-reader-swipe-selector" aria-label="候选回复">
+            <div class="pc-reader-swipe-head">
+              <strong>{{ t`候选回复` }}</strong>
+              <span>{{ t`当前酒馆选择` }} {{ activeMessage.activeSwipeIndex + 1 }}/{{ activeSwipeCandidates.length }}</span>
+            </div>
+            <div class="pc-reader-swipe-options">
+              <button
+                v-for="candidate in activeSwipeCandidates"
+                :key="candidate.index"
+                :class="['pc-segment-btn', 'compact', { active: candidate.index === selectedSwipeIndex }]"
+                type="button"
+                @click="selectSwipeCandidate(candidate.index)"
+              >
+                {{ t`候选` }} {{ candidate.index + 1 }}
+              </button>
+            </div>
+            <p v-if="!isViewingActiveSwipe">{{ t`正在只读查看其他候选，不会改动酒馆当前回复。` }}</p>
+          </section>
+        </template>
         <template #actions>
-          <button class="pc-soft-btn" type="button" :title="t`选中文字加入摘抄`" @click="saveSelectionToDigest">
+          <button
+            v-if="isViewingActiveSwipe"
+            class="pc-soft-btn"
+            type="button"
+            :title="t`选中文字加入摘抄`"
+            @click="saveSelectionToDigest"
+          >
             <i class="fa-solid fa-highlighter"></i>
             <span>{{ t`摘抄` }}</span>
           </button>
           <button
             class="pc-soft-btn danger"
             type="button"
+            v-if="isViewingActiveSwipe"
             :disabled="!phone.isViewingCurrentChat"
             :title="phone.isViewingCurrentChat ? t`删除当前选中文字` : t`历史聊天只读`"
             @click="deleteSelectedReaderText"
@@ -379,6 +409,18 @@ const activeMessage = computed(() => {
   const messageId = route.value.params?.messageId;
   return messageId ? (activeMessages.value.find(item => item.id === messageId) ?? null) : null;
 });
+const selectedSwipeIndex = ref(0);
+const activeSwipeCandidates = computed(() => activeMessage.value?.swipeCandidates ?? []);
+const activeSwipeCandidate = computed(
+  () =>
+    activeSwipeCandidates.value.find(candidate => candidate.index === selectedSwipeIndex.value) ??
+    activeSwipeCandidates.value.find(candidate => candidate.index === activeMessage.value?.activeSwipeIndex) ??
+    activeSwipeCandidates.value[0] ??
+    null,
+);
+const isViewingActiveSwipe = computed(
+  () => Boolean(activeMessage.value && activeSwipeCandidate.value?.index === activeMessage.value.activeSwipeIndex),
+);
 const {
   deleteSelectedReaderText,
   readerSelectedText,
@@ -392,8 +434,8 @@ const {
   replaceReaderBodyInRaw,
   saveChatIfAvailable,
 });
-const activeMessageBody = computed(() => (activeMessage.value ? formatReaderBody(activeMessage.value.body) : ''));
-const readerBaguContent = computed(() => activeMessage.value?.body || '');
+const activeMessageBody = computed(() => (activeSwipeCandidate.value ? formatReaderBody(activeSwipeCandidate.value.body) : ''));
+const readerBaguContent = computed(() => activeSwipeCandidate.value?.body || '');
 const messageCatalogItems = computed(() =>
   activeMessages.value.map(message => ({
     id: message.id,
@@ -414,6 +456,20 @@ const activeMessageFavorite = computed(() =>
 const reloadActiveChatDebounced = useDebounceFn(() => {
   void reloadActiveChat();
 }, 250);
+
+watch(
+  () => [activeMessage.value?.id, activeMessage.value?.activeSwipeIndex] as const,
+  ([messageId, activeSwipeIndex]) => {
+    if (!messageId) return;
+    selectedSwipeIndex.value = activeSwipeIndex ?? 0;
+  },
+  { immediate: true },
+);
+
+function selectSwipeCandidate(index: number) {
+  if (!activeSwipeCandidates.value.some(candidate => candidate.index === index)) return;
+  selectedSwipeIndex.value = index;
+}
 
 function getSelectedReaderRegexRule(ruleId: string, availableRules: RegexDisplayRule[]) {
   if (ruleId === '__default_body__') {
@@ -549,7 +605,7 @@ function openAdjacentMessage(messageId: string) {
 }
 
 function openReaderBaguScan() {
-  if (!activeMessage.value) return;
+  if (!activeMessage.value || !isViewingActiveSwipe.value) return;
   if (!canOpenBaguScan(readerBaguContent.value)) return;
   phone.pushPage('bagu-scan', '八股检测', {
     messageId: activeMessage.value.id,
@@ -557,7 +613,7 @@ function openReaderBaguScan() {
 }
 
 function openReaderEditor() {
-  if (!activeMessage.value) return;
+  if (!activeMessage.value || !isViewingActiveSwipe.value) return;
   if (!phone.isViewingCurrentChat) {
     toastr.warning('历史聊天只读，请先切回酒馆当前聊天再编辑');
     return;
@@ -637,7 +693,7 @@ function getActiveMessageSourceLabel() {
 }
 
 function saveSelectionToDigest() {
-  if (!activeMessage.value) return;
+  if (!activeMessage.value || !activeSwipeCandidate.value || !isViewingActiveSwipe.value) return;
   const selection = window.getSelection();
   const selectedText = selection?.toString().trim() || '';
   if (!selectedText) {
@@ -658,7 +714,7 @@ function saveSelectionToDigest() {
         title: existingEntry.title,
         content: [existingEntry.content.trim(), selectedText].filter(Boolean).join('\n\n'),
         sourceLabel,
-        sourceText: activeMessage.value.rawText,
+        sourceText: activeSwipeCandidate.value.rawText,
         tags: existingEntry.tags,
       })
     : digest.createEntry({
@@ -666,7 +722,7 @@ function saveSelectionToDigest() {
         content: selectedText,
         sourceLabel,
         sourceMessageId: activeMessage.value.sourceMessageId,
-        sourceText: activeMessage.value.rawText,
+        sourceText: activeSwipeCandidate.value.rawText,
         kind: 'manual',
       });
   selection?.removeAllRanges();
@@ -674,7 +730,7 @@ function saveSelectionToDigest() {
 }
 
 function toggleActiveMessageFavorite() {
-  if (!activeMessage.value) return;
+  if (!activeMessage.value || !isViewingActiveSwipe.value) return;
   const result = reader.toggleFavorite({
     content: activeMessage.value.rawText,
     messageId: activeMessage.value.id,
@@ -736,7 +792,7 @@ function applyReaderCleanupRules(body: string) {
 }
 
 async function applyReaderBaguContent(content: string) {
-  if (!activeMessage.value) return false;
+  if (!activeMessage.value || !isViewingActiveSwipe.value) return false;
   if (!phone.isViewingCurrentChat) {
     throw new Error('历史聊天只读，请先切回当前聊天再应用检测结果');
   }
@@ -1396,6 +1452,38 @@ function formatReaderBody(value: string) {
   position: absolute;
   top: 2px;
   right: 0;
+}
+
+.pc-reader-swipe-selector {
+  display: grid;
+  gap: 8px;
+  margin: 0 0 14px;
+  padding: 10px;
+  border: 1px solid var(--pc-border);
+  border-radius: min(var(--pc-card-radius), 10px);
+  background: var(--pc-surface-strong);
+}
+
+.pc-reader-swipe-head,
+.pc-reader-swipe-options {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.pc-reader-swipe-head {
+  justify-content: space-between;
+}
+
+.pc-reader-swipe-head span,
+.pc-reader-swipe-selector p {
+  margin: 0;
+  color: var(--pc-muted);
+  font-size: 12px;
+}
+
+.pc-reader-swipe-options {
+  flex-wrap: wrap;
 }
 
 .pc-rendered-markdown > * {

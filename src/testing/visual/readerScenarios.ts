@@ -5,6 +5,7 @@ import { useSettingsStore } from '@/store/settings';
 export const readerScenarioNames = [
   'reader-detail',
   'reader-reasoning',
+  'reader-swipe-candidates',
   'reader-text-edit-modal',
   'reader-theme-appearance',
   'reader-footer-persistence',
@@ -16,6 +17,7 @@ type ReaderScenarioContext = {
   openReaderTools: () => Promise<void>;
   resetPhoneToRoute: (appId: string, page: string, title: string, params?: Record<string, string>) => void;
   setReaderFixtureReasoning: (reasoning: string) => void;
+  setReaderFixtureSwipes: () => void;
   toggleReaderFooter: () => Promise<void>;
   waitForCondition: (condition: () => boolean, timeout?: number) => Promise<boolean>;
   waitForPaint: () => Promise<void>;
@@ -115,6 +117,34 @@ export async function applyReaderVisualScenario(name: string, context: ReaderSce
     if (disclosure.open) throw new Error('Reader reasoning did not collapse');
     summary.click();
     await context.waitForPaint();
+  } else if (name === 'reader-swipe-candidates') {
+    context.setReaderFixtureSwipes();
+    const message = await loadFirstReaderMessage();
+    if (!message || message.swipeCandidates.length !== 3 || message.activeSwipeIndex !== 1) {
+      throw new Error('Reader swipe fixture did not retain all candidates and its active index');
+    }
+    context.resetPhoneToRoute('reader', 'detail', message.title, { messageId: message.id });
+    const selectorLoaded = await context.waitForCondition(
+      () => document.querySelectorAll('.pc-reader-swipe-options button').length === 3,
+      2_000,
+    );
+    if (!selectorLoaded) throw new Error('Reader swipe selector did not render all candidates');
+    if (!document.querySelector('.pc-reader-content')?.textContent?.includes('当前候选正文')) {
+      throw new Error('Reader swipe selector did not default to Tavern active swipe');
+    }
+    const firstCandidate = document.querySelector<HTMLButtonElement>('.pc-reader-swipe-options button');
+    firstCandidate?.click();
+    await context.waitForPaint();
+    if (!document.querySelector('.pc-reader-content')?.textContent?.includes('备选回复一')) {
+      throw new Error('Reader swipe selector did not switch only the local preview');
+    }
+    await context.openReaderTools();
+    const writeActions = [...document.querySelectorAll<HTMLButtonElement>('.pc-reader-tool-menu button')].filter(button =>
+      /八股检测|创建分支|编辑正文|删除文字|摘抄|收藏/u.test(button.textContent?.trim() || ''),
+    );
+    if (writeActions.some(button => !button.disabled)) {
+      throw new Error('Non-active swipe must disable every content-writing reader tool');
+    }
   } else if (name === 'reader-text-edit-modal') {
     const message = await loadFirstReaderMessage();
     if (!message) throw new Error('Reader text edit fixture did not create a message');

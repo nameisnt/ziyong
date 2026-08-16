@@ -18,6 +18,7 @@ import { createHiddenGenerationRecord } from '@/util/hiddenGenerationRecord';
 import { buildSourceSelection, type SummaryGenerationSourceMode } from '@/util/generationSource';
 import { ensureCurrentScopeRecovery } from '@/util/generationVisibility';
 import { cleanGenerationOutput } from '@/util/generationOutputCleaning';
+import { mergeGenerationReasoning, normalizeGenerationResponse } from '@/util/generationResult';
 import type { GenerationReferenceItem } from '@/util/references';
 import {
   applyTextProviderSelection,
@@ -522,29 +523,17 @@ function prepareGenerationRequest<TConfig, TResult, TSaveResult = { entityId: st
   };
 }
 
-function normalizeGenerationResult(rawResult: unknown) {
-  if (typeof rawResult === 'string') return rawResult;
-  if (!rawResult || typeof rawResult !== 'object') return String(rawResult ?? '');
-
-  const record = rawResult as Record<string, unknown>;
-  if (typeof record.pipe === 'string') return record.pipe;
-  if (typeof record.text === 'string') return record.text;
-  if (typeof record.content === 'string') return record.content;
-
-  const message = record.message;
-  if (message && typeof message === 'object' && typeof (message as Record<string, unknown>).content === 'string') {
-    return String((message as Record<string, unknown>).content);
-  }
-
-  return String(rawResult);
-}
-
 function normalizeAndCleanGenerationResult(rawResult: unknown) {
   const generation = useSettingsStore().settings.generation;
-  return cleanGenerationOutput(normalizeGenerationResult(rawResult), {
+  const normalized = normalizeGenerationResponse(rawResult);
+  const cleanedOutput = cleanGenerationOutput(normalized.content, {
     enabled: generation.outputCleaningEnabled,
     endTags: generation.outputCleaningEndTags,
   });
+  return {
+    ...cleanedOutput,
+    reasoning: mergeGenerationReasoning(normalized.reasoning, cleanedOutput.removedContent),
+  };
 }
 
 export type RawOrderedPrompt = {
@@ -619,6 +608,7 @@ async function generateFromExternalCompatibleApi(
     const decoder = new TextDecoder();
     let buffer = '';
     let output = '';
+    let reasoning = '';
 
     const consumeLine = (rawLine: string) => {
       const line = rawLine.trim();
@@ -637,15 +627,10 @@ async function generateFromExternalCompatibleApi(
         throw new Error(String(message || '外部 API 流式生成失败'));
       }
 
-      const content =
-        data?.choices?.[0]?.delta?.content ??
-        data?.choices?.[0]?.message?.content ??
-        data?.choices?.[0]?.text ??
-        data?.delta?.content ??
-        data?.content ??
-        '';
-      if (typeof content !== 'string' || !content) return;
-      output += content;
+      const delta = normalizeGenerationResponse(data);
+      if (delta.reasoning) reasoning += delta.reasoning;
+      if (!delta.content) return;
+      output += delta.content;
       onRawOutput?.(output);
     };
 
@@ -658,13 +643,15 @@ async function generateFromExternalCompatibleApi(
       if (done) break;
     }
     if (buffer.trim()) consumeLine(buffer);
-    return output.trim();
+    return { content: output.trim(), reasoning: reasoning.trim() };
   }
 
   const data = await response.json();
-  const content =
-    data?.choices?.[0]?.message?.content ?? data?.choices?.[0]?.text ?? data?.message?.content ?? data?.content ?? '';
-  return String(content).trim() || JSON.stringify(data);
+  const normalized = normalizeGenerationResponse(data);
+  return {
+    content: normalized.content.trim() || JSON.stringify(data),
+    reasoning: normalized.reasoning,
+  };
 }
 
 async function generateFromCapturedOrderedPrompts(
@@ -777,7 +764,7 @@ export async function generateOrderedPromptContent(options: {
       const cleanedOutput = normalizeAndCleanGenerationResult(result);
       const rawOutput = cleanedOutput.content;
       options.lifecycle?.onRawOutput?.(rawOutput);
-      return { generationId, rawOutput, reasoning: cleanedOutput.removedContent, textProvider };
+      return { generationId, rawOutput, reasoning: cleanedOutput.reasoning, textProvider };
     },
     textProvider,
   });
@@ -847,7 +834,7 @@ export async function generateContent<TConfig, TResult, TSaveResult = { entityId
       abortSignal.throwIfAborted();
       const cleanedOutput = normalizeAndCleanGenerationResult(result);
       const rawOutput = cleanedOutput.content;
-      if (cleanedOutput.removedContent) generationRecord.reasoning = cleanedOutput.removedContent;
+      if (cleanedOutput.reasoning) generationRecord.reasoning = cleanedOutput.reasoning;
       options.lifecycle?.onRawOutput?.(rawOutput);
 
       const parsed = adapter.parse(rawOutput, prepared.parsedConfig);

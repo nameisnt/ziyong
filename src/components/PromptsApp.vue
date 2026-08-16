@@ -512,10 +512,14 @@
           </div>
           <div class="pc-prompt-detail-body">
             <p class="pc-prewrap">{{ activeAppPrompt.value || activePromptEmptyLabel }}</p>
-            <div v-if="activeAppPrompt.kind === 'task' && activeAppPrompt.variables.length" class="pc-chip-row">
-              <code v-for="variable in activeAppPrompt.variables" :key="variable.key" :title="variable.label">
-                {{ formatTaskVariable(variable.key) }}
-              </code>
+            <div
+              v-if="activeAppPrompt.kind === 'task' && activeAppPrompt.variables.length"
+              class="pc-chip-row pc-task-variable-summary"
+            >
+              <span v-for="variable in activeAppPrompt.variables" :key="variable.key">
+                <span>{{ variable.label }}</span>
+                <code>{{ formatTaskVariable(variable.key) }}</code>
+              </span>
             </div>
           </div>
           <div class="pc-form-actions pc-prompt-detail-actions">
@@ -1102,6 +1106,30 @@ async function copyText(text: string, successMessage: string) {
 .pc-chip-row {
   flex-wrap: wrap;
   justify-content: flex-start;
+}
+
+.pc-task-variable-summary > span {
+  display: inline-flex;
+  width: 100%;
+  min-width: 0;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+  padding: 5px 8px;
+  border: 1px solid var(--pc-border);
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--pc-surface) 74%, transparent 26%);
+  font-size: 12px;
+}
+
+.pc-task-variable-summary {
+  display: grid;
+  width: 100%;
+}
+
+.pc-task-variable-summary code {
+  color: var(--pc-theme-accent);
+  font-size: 11px;
 }
 
 .pc-group-actions {

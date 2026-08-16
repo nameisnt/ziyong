@@ -222,9 +222,9 @@ export default definePhoneApp({
       ].join('\n'),
       variables: [
         { key: 'tableName', label: '资料表名' },
-        { key: 'kindInstruction', label: '资料类型要求' },
-        { key: 'fieldInstruction', label: '启用字段要求' },
-        { key: 'titleInstruction', label: '标题提示' },
+        { key: 'kindInstruction', label: '完整资料类型要求（程序生成）' },
+        { key: 'fieldInstruction', label: '完整启用字段要求（程序生成）' },
+        { key: 'titleInstruction', label: '完整标题提示（程序生成）' },
       ],
     },
   ],
