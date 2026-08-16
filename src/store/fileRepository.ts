@@ -1,6 +1,6 @@
 import { usePluginPresetStore } from '@/store/pluginPresets';
 import type { PluginPresetRecord } from '@/apps/preset-manager/pluginPreset';
-import { PhoneBackupSchema, type PhoneBackup } from '@/type/backup';
+import { getEmbeddedPluginPresets, PhoneBackupSchema, type PhoneBackup } from '@/type/backup';
 import { applyPhoneBackup, buildPhoneBackup } from '@/util/backup';
 import { parsePrettified } from '@/util/zod';
 // eslint-disable-next-line import-x/no-nodejs-modules
@@ -137,6 +137,9 @@ function snapshotId() {
 function normalizePayload(value: unknown): FileRepositorySnapshotPayload {
   if (!isRecord(value) || value.repositorySchemaVersion !== 1) throw new Error('不是受支持的插件文件仓库快照');
   const backup = parsePrettified(PhoneBackupSchema, value.backup);
+  if (getEmbeddedPluginPresets(backup)) {
+    throw new Error('文件仓库快照不能嵌套手工完整备份 v2，请使用设置中的“完整恢复”');
+  }
   const pluginPresets = Array.isArray(value.pluginPresets)
     ? value.pluginPresets.filter(isRecord).map(record => cloneJsonValue(record) as unknown as PluginPresetRecord)
     : [];
@@ -217,9 +220,8 @@ export const useFileRepositoryStore = defineStore('fileRepository', () => {
     try {
       await initialize();
       const presetStore = usePluginPresetStore();
-      await presetStore.whenReady();
       const backup = buildPhoneBackup();
-      const pluginPresets = presetStore.exportRecords();
+      const pluginPresets = await presetStore.exportBackupRecords();
       const checksum = await checksumText(JSON.stringify({ data: backup.data, pluginPresets }));
       const latest = snapshots.value[0];
       if (!force && latest?.checksum === checksum) return latest;
@@ -267,8 +269,8 @@ export const useFileRepositoryStore = defineStore('fileRepository', () => {
     busy.value = true;
     lastError.value = '';
     const presets = usePluginPresetStore();
-    const previousPresets = presets.exportRecords();
     try {
+      const previousPresets = await presets.exportBackupRecords();
       const payload = await readSnapshot(id);
       await presets.replaceRecords(payload.pluginPresets);
       try {

@@ -1,7 +1,7 @@
 <template>
   <section class="pc-prompts-page">
     <div class="pc-prompts-editor">
-      <textarea v-model="text" class="pc-area compact" :placeholder="placeholder" />
+      <textarea v-model="text" class="pc-area pc-area-multiline" :placeholder="placeholder" />
       <div class="pc-form-actions">
         <button class="pc-soft-btn" type="button" @click="$emit('back')">{{ t`取消` }}</button>
         <button class="pc-primary-btn" type="button" @click="save">{{ t`保存` }}</button>

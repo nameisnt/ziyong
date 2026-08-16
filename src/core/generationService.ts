@@ -50,7 +50,7 @@ function isRecord(value: unknown): value is Record<string, unknown> {
   return Boolean(value) && typeof value === 'object' && !Array.isArray(value);
 }
 
-type GenerationLifecycle = {
+export type GenerationLifecycle = {
   onFinish?: () => void;
   onRawOutput?: (rawOutput: string) => void;
   onSaved?: (result: unknown, saved: unknown) => void | Promise<void>;

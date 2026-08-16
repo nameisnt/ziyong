@@ -43,7 +43,13 @@ export default definePhoneApp({
       createAdapter: () => createCloudMediaGenerationAdapter(),
     },
   ],
-  taskTemplateDefinitions: [{ actionId: 'generate-prompt', label: '生成云媒体提示词', defaultTemplate: '' }],
+  taskTemplateDefinitions: [
+    {
+      actionId: 'generate-prompt',
+      label: '生成云媒体提示词',
+      defaultTemplate: '请根据当前目标服务、媒体类型和模型配置，生成一份可直接使用的媒体提示词。',
+    },
+  ],
   promptDefinitions: [
     {
       key: 'cloud-media',

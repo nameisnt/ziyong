@@ -96,12 +96,12 @@
       :capture="captureDiaryPrompt"
       :capture-reset-key="generationPromptPreview"
       :default-preset-selection="BUILTIN_DIARY_PRESET_SELECTION"
-      :error="generationState.error"
+      :error="diaryGenerationError"
       extra-field-placeholder="视角角色名"
       :extra-field-visible="!activeBook"
-      :raw-output="generationState.rawOutput"
+      :raw-output="diaryGenerationRawOutput"
       requirement-placeholder="例如：更克制、更私密一点，少写结论，多写当下情绪。"
-      :running="generationState.running"
+      :running="diaryGenerationRunning"
       title="生成一篇新的日记"
       @cancel="phone.goBack()"
       @generate="runGeneration"
@@ -144,12 +144,12 @@
       v-model:user-requirement="reactionDraft.userRequirement"
       :capture="captureReactionPrompt"
       :capture-reset-key="reactionPromptPreview"
-      :error="generationState.error"
+      :error="reactionGenerationError"
       extra-field-placeholder="阅读者名字"
       extra-field-visible
-      :raw-output="generationState.rawOutput"
+      :raw-output="reactionGenerationRawOutput"
       requirement-placeholder="例如：更像读完以后压在心里的私密独白。"
-      :running="generationState.running"
+      :running="reactionGenerationRunning"
       title="生成阅读反应"
       @cancel="phone.goBack()"
       @generate="runReadReactionGeneration"
@@ -204,6 +204,7 @@ import DiaryPreviewPage from '@/components/diary/DiaryPreviewPage.vue';
 import { BUILTIN_DIARY_PRESET_SELECTION, resolveDiaryPresetSelection } from '@/apps/preset-manager/builtinDiaryPreset';
 import { useCatalogDetailNavigation } from '@/composables/useCatalogDetailNavigation';
 import { useDirectorySort } from '@/composables/useDirectorySort';
+import { useSingleGenerationTaskSession } from '@/composables/useSingleGenerationTaskSession';
 import { getRegisteredPhoneGenerationAdapter } from '@/core/appRegistry';
 import { parseDiaryGeneratedResult } from '@/core/diaryGeneration';
 import { buildGenerationPreview, captureGenerationPrompt, generateContent } from '@/core/generationService';
@@ -224,7 +225,7 @@ import { canOpenBaguScan } from '@/util/baguScanGate';
 import { formatGenerationReferences, type GenerationReferenceItem } from '@/util/references';
 import { usePreviewDraftPersistence } from '@/util/previewDrafts';
 import { useInvalidRouteFallback } from '@/util/routeFallback';
-import { getChatMessagesSafe, stopGenerationByIdSafe } from '@/util/runtime';
+import { getChatMessagesSafe } from '@/util/runtime';
 import { useDetailScroll } from '@/util/detailScroll';
 import { getSourceLastFloor } from '@/util/sourceFloor';
 import {
@@ -233,6 +234,7 @@ import {
   type TextProviderSelection,
 } from '@/util/textProvider';
 import type { FailedGenerationDraft, HiddenGenerationRecord } from '@/type/generation';
+import type { GenerationTask } from '@/type/generationTask';
 import type { CharacterRef } from '@/type/diary';
 import { storeToRefs } from 'pinia';
 
@@ -290,8 +292,6 @@ const reactionDraft = reactive({
   userRequirement: '',
 });
 const generationState = reactive({
-  error: '',
-  generationId: '',
   preview: null as null | {
     action: 'generate' | 'read-reaction';
     bookId: string;
@@ -308,9 +308,29 @@ const generationState = reactive({
     title: string;
     warnings: string[];
   },
-  rawOutput: '',
-  running: false,
 });
+const diaryGenerationSession = useSingleGenerationTaskSession({
+  actionId: 'generate',
+  appId: 'diary',
+  sourcePage: 'generate',
+  title: '生成日记 · 单次生成',
+});
+const reactionGenerationSession = useSingleGenerationTaskSession({
+  actionId: 'read-reaction',
+  appId: 'diary',
+  sourcePage: 'reaction-generate',
+  title: '生成阅读反应 · 单次生成',
+});
+const {
+  error: diaryGenerationError,
+  rawOutput: diaryGenerationRawOutput,
+  running: diaryGenerationRunning,
+} = diaryGenerationSession;
+const {
+  error: reactionGenerationError,
+  rawOutput: reactionGenerationRawOutput,
+  running: reactionGenerationRunning,
+} = reactionGenerationSession;
 
 type DiaryPreview = NonNullable<typeof generationState.preview>;
 
@@ -338,12 +358,6 @@ const {
     generationState.preview = preview;
   },
   title: () => (generationState.preview?.action === 'read-reaction' ? '阅读反应预览' : '日记预览'),
-});
-
-onScopeDispose(() => {
-  if (generationState.running && generationState.generationId) {
-    stopGenerationByIdSafe(generationState.generationId);
-  }
 });
 
 const batchDraft = reactive({
@@ -624,9 +638,7 @@ watch(
       generationDraft.rangeText = '';
       generationDraft.singleMessageId = 0;
       generationDraft.userRequirement = '';
-      generationState.error = '';
       generationState.preview = null;
-      generationState.rawOutput = '';
     }
 
     if (current.page === 'batch-generate') {
@@ -660,9 +672,7 @@ watch(
       reactionDraft.readerName = '';
       reactionDraft.singleMessageId = 0;
       reactionDraft.userRequirement = '';
-      generationState.error = '';
       generationState.preview = null;
-      generationState.rawOutput = '';
     }
 
     if (current.page === 'failed-draft') {
@@ -972,16 +982,24 @@ function returnToGenerate() {
 }
 
 async function runGeneration() {
+  let task: GenerationTask | null = null;
+  try {
+    task = diaryGenerationSession.create({
+      sourceParams: activeBook.value?.id ? { bookId: activeBook.value.id } : {},
+      title: '生成日记 · 单次生成',
+    });
+  } catch (error) {
+    toastr.error(error instanceof Error ? error.message : '无法建立日记生成任务');
+    return;
+  }
   const perspective = generationPerspective.value;
   if (!perspective) {
-    generationState.error = '请先填写视角角色名';
+    diaryGenerationSession.fail(task.id, new Error('请先填写视角角色名'));
     return;
   }
 
-  generationState.error = '';
   clearDiaryPreviewDraft();
   generationState.preview = null;
-  generationState.rawOutput = '';
 
   try {
     const result = await generateContent(
@@ -1003,19 +1021,7 @@ async function runGeneration() {
           tavernPresetName: resolveDiaryPresetSelection(settings.value.generation.tavernPresetName),
         },
         references: formattedReferences.value,
-        lifecycle: {
-          onFinish() {
-            generationState.running = false;
-            generationState.generationId = '';
-          },
-          onRawOutput(rawOutput) {
-            generationState.rawOutput = rawOutput;
-          },
-          onStart(generationId) {
-            generationState.running = true;
-            generationState.generationId = generationId;
-          },
-        },
+        lifecycle: diaryGenerationSession.lifecycle(task.id),
         source: {
           fromStartEnd: generationDraft.fromStartEnd,
           mode: settings.value.generation.sourceMode,
@@ -1029,13 +1035,26 @@ async function runGeneration() {
 
     if (result.status === 'failed') {
       failedDraftRawOutput.value = result.rawOutput;
-      generationState.error = result.warnings.join('；') || '模型没有返回可解析的日记 XML';
+      diaryGenerationSession.complete(task.id, {
+        currentLabel: '解析失败草稿已保留',
+        resultPage: 'failed-draft',
+        resultParams: { draftId: result.draft.id },
+        resultState: 'failed-draft',
+        resultTitle: '解析失败草稿',
+      });
       toastr.warning('XML 解析失败，已保存到失败草稿');
       void phone.presentGeneratedPage('diary', 'failed-draft', '解析失败草稿', { draftId: result.draft.id });
       return;
     }
 
     if (result.status === 'saved') {
+      diaryGenerationSession.complete(task.id, {
+        currentLabel: `已保存日记：${result.saved.entry.title}`,
+        resultPage: 'entry',
+        resultParams: { bookId: result.saved.bookId, entryId: result.saved.entry.id },
+        resultState: 'saved',
+        resultTitle: result.saved.entry.title,
+      });
       toastr.success('已生成并保存日记');
       void phone.presentGeneratedPage('diary', 'entry', result.saved.entry.title, {
         bookId: result.saved.bookId,
@@ -1060,7 +1079,15 @@ async function runGeneration() {
       title: result.data.title,
       warnings: result.warnings,
     };
-    persistDiaryPreviewDraft(activeBook.value?.id ? { bookId: activeBook.value.id } : {});
+    const previewParams = activeBook.value?.id ? { bookId: activeBook.value.id } : {};
+    persistDiaryPreviewDraft(previewParams);
+    diaryGenerationSession.complete(task.id, {
+      currentLabel: '日记已生成，等待确认',
+      resultPage: 'preview',
+      resultParams: previewParams,
+      resultState: 'preview',
+      resultTitle: '日记预览',
+    });
     void phone.presentGeneratedPage(
       'diary',
       'preview',
@@ -1068,7 +1095,7 @@ async function runGeneration() {
       activeBook.value?.id ? { bookId: activeBook.value.id } : undefined,
     );
   } catch (error) {
-    generationState.error = error instanceof Error ? error.message : '生成失败，请稍后再试';
+    diaryGenerationSession.fail(task.id, error);
   }
 }
 
@@ -1147,19 +1174,27 @@ async function runReadReactionGeneration() {
   const sourceBook = activeBook.value;
   const sourceEntry = activeEntry.value;
   if (!sourceBook || !sourceEntry) return;
+  let task: GenerationTask | null = null;
+  try {
+    task = reactionGenerationSession.create({
+      sourceParams: { bookId: sourceBook.id, entryId: sourceEntry.id },
+      title: '生成阅读反应 · 单次生成',
+    });
+  } catch (error) {
+    toastr.error(error instanceof Error ? error.message : '无法建立阅读反应任务');
+    return;
+  }
   const readerName = reactionDraft.readerName.trim();
   if (!readerName) {
-    generationState.error = '请先填写阅读者名字';
+    reactionGenerationSession.fail(task.id, new Error('请先填写阅读者名字'));
     return;
   }
 
   const targetPerspective: CharacterRef = { name: readerName };
   const targetBook = diary.findBookByPerspective(targetPerspective);
 
-  generationState.error = '';
   clearDiaryPreviewDraft();
   generationState.preview = null;
-  generationState.rawOutput = '';
 
   try {
     const result = await generateContent(
@@ -1183,19 +1218,7 @@ async function runReadReactionGeneration() {
           tavernPresetName: settings.value.generation.tavernPresetName,
         },
         references: formattedReferences.value,
-        lifecycle: {
-          onFinish() {
-            generationState.running = false;
-            generationState.generationId = '';
-          },
-          onRawOutput(rawOutput) {
-            generationState.rawOutput = rawOutput;
-          },
-          onStart(generationId) {
-            generationState.running = true;
-            generationState.generationId = generationId;
-          },
-        },
+        lifecycle: reactionGenerationSession.lifecycle(task.id),
         source: {
           fromStartEnd: reactionDraft.fromStartEnd,
           mode: settings.value.generation.sourceMode,
@@ -1209,13 +1232,26 @@ async function runReadReactionGeneration() {
 
     if (result.status === 'failed') {
       failedDraftRawOutput.value = result.rawOutput;
-      generationState.error = result.warnings.join('；') || '模型没有返回可解析的阅读反应 XML';
+      reactionGenerationSession.complete(task.id, {
+        currentLabel: '解析失败草稿已保留',
+        resultPage: 'failed-draft',
+        resultParams: { draftId: result.draft.id },
+        resultState: 'failed-draft',
+        resultTitle: '解析失败草稿',
+      });
       toastr.warning('XML 解析失败，已保存到失败草稿');
       void phone.presentGeneratedPage('diary', 'failed-draft', '解析失败草稿', { draftId: result.draft.id });
       return;
     }
 
     if (result.status === 'saved') {
+      reactionGenerationSession.complete(task.id, {
+        currentLabel: `已保存阅读反应：${result.saved.entry.title}`,
+        resultPage: 'entry',
+        resultParams: { bookId: result.saved.bookId, entryId: result.saved.entry.id },
+        resultState: 'saved',
+        resultTitle: result.saved.entry.title,
+      });
       toastr.success('已生成并保存阅读反应');
       void phone.presentGeneratedPage('diary', 'entry', result.saved.entry.title, {
         bookId: result.saved.bookId,
@@ -1241,12 +1277,19 @@ async function runReadReactionGeneration() {
       warnings: result.warnings,
     };
     persistDiaryPreviewDraft({ bookId: sourceBook.id, entryId: sourceEntry.id });
+    reactionGenerationSession.complete(task.id, {
+      currentLabel: '阅读反应已生成，等待确认',
+      resultPage: 'preview',
+      resultParams: { bookId: sourceBook.id, entryId: sourceEntry.id },
+      resultState: 'preview',
+      resultTitle: '阅读反应预览',
+    });
     void phone.presentGeneratedPage('diary', 'preview', '阅读反应预览', {
       bookId: sourceBook.id,
       entryId: sourceEntry.id,
     });
   } catch (error) {
-    generationState.error = error instanceof Error ? error.message : '生成失败，请稍后再试';
+    reactionGenerationSession.fail(task.id, error);
   }
 }
 
@@ -1307,10 +1350,8 @@ function reparsePreviewRaw() {
 }
 
 function stopGeneration() {
-  if (!generationState.generationId) return;
-  stopGenerationByIdSafe(generationState.generationId);
-  generationState.running = false;
-  generationState.error = '生成已停止';
+  if (route.value.page === 'reaction-generate') reactionGenerationSession.stop();
+  else diaryGenerationSession.stop();
 }
 
 function stopBatchGeneration() {

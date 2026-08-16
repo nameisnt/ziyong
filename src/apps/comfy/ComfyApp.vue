@@ -17,6 +17,7 @@
           type="button"
           :disabled="loading"
           :title="loading ? t`正在读取模型` : t`读取模型`"
+          :aria-label="loading ? t`正在读取模型` : t`读取模型`"
           @click="refresh"
         >
           <i class="fa-solid fa-cloud-arrow-down"></i>
@@ -54,7 +55,13 @@
         <div class="pc-section-head">
           <strong>{{ t`工作流库` }}</strong>
           <div class="pc-comfy-actions">
-            <button class="pc-icon-btn primary" type="button" :title="t`新建工作流`" @click="newWorkflow">
+            <button
+              class="pc-icon-btn primary"
+              type="button"
+              :title="t`新建工作流`"
+              :aria-label="t`新建工作流`"
+              @click="newWorkflow"
+            >
               <i class="fa-solid fa-plus"></i>
             </button>
             <ActionMenu :label="t`管理`" icon="fa-solid fa-sliders">
@@ -221,23 +228,23 @@
               <section v-for="item in group.inputs" :key="item.key" class="pc-list-row pc-param-row">
                 <div class="pc-param-head">
                   <strong>{{ getMappingLabel(item) }}</strong>
-                  <div class="pc-param-mode" role="group" :aria-label="`${item.inputName} 参数来源`">
+                  <div class="pc-segment pc-param-mode" role="group" :aria-label="`${item.inputName} 参数来源`">
                     <button
-                      :class="['pc-segment-btn', { active: getParameterMode(item) === 'fixed' }]"
+                      :class="['pc-segment-btn', 'compact', { active: getParameterMode(item) === 'fixed' }]"
                       type="button"
                       @click="setParameterMode(item, 'fixed')"
                     >
                       {{ t`固定` }}
                     </button>
                     <button
-                      :class="['pc-segment-btn', { active: getParameterMode(item) === 'user' }]"
+                      :class="['pc-segment-btn', 'compact', { active: getParameterMode(item) === 'user' }]"
                       type="button"
                       @click="setParameterMode(item, 'user')"
                     >
                       {{ t`用户参数` }}
                     </button>
                     <button
-                      :class="['pc-segment-btn', { active: getParameterMode(item) === 'ai' }]"
+                      :class="['pc-segment-btn', 'compact', { active: getParameterMode(item) === 'ai' }]"
                       type="button"
                       @click="setParameterMode(item, 'ai')"
                     >
@@ -308,7 +315,7 @@
         </div>
         <textarea
           v-model="workflowJsonModel"
-          class="pc-area pc-workflow-json-area"
+          class="pc-area pc-area-long pc-workflow-json-area"
           :placeholder="t`粘贴或导入 ComfyUI API 工作流 JSON`"
         ></textarea>
       </article>
@@ -702,10 +709,6 @@ function setParameterMode(item: ComfyWorkflowInput, mode: ParameterMode) {
   font-size: 11px;
 }
 
-.pc-workflow-json-area {
-  min-height: 260px;
-}
-
 .pc-param-section-head {
   align-items: flex-start;
 }
@@ -814,25 +817,6 @@ function setParameterMode(item: ComfyWorkflowInput, mode: ParameterMode) {
   gap: 5px;
 }
 
-.pc-param-mode .pc-segment-btn {
-  min-width: 0;
-  min-height: 30px;
-  border: 1px solid var(--pc-border);
-  border-radius: var(--pc-control-radius);
-  background: var(--pc-surface-strong);
-  color: var(--pc-muted);
-  cursor: pointer;
-  font-size: 11px;
-  font-weight: 900;
-  padding: 0 6px;
-}
-
-.pc-param-mode .pc-segment-btn.active {
-  border-color: color-mix(in srgb, var(--pc-theme-accent) 44%, var(--pc-border) 56%);
-  background: color-mix(in srgb, var(--pc-theme-accent) 16%, var(--pc-surface-strong) 84%);
-  color: var(--pc-theme-accent);
-}
-
 .pc-comfy-actions {
   display: flex;
   flex-wrap: wrap;
@@ -841,7 +825,7 @@ function setParameterMode(item: ComfyWorkflowInput, mode: ParameterMode) {
   gap: 6px;
 }
 
-@media (max-width: 420px) {
+@container (max-width: 420px) {
   .pc-param-section-head {
     align-items: stretch;
     flex-direction: column;

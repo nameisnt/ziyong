@@ -3,7 +3,14 @@
     <section class="pc-compact-toolbar pc-regex-toolbar">
       <span>{{ `${extractRuleCount} 条提取 · ${displayRuleCount} 条显示` }}</span>
       <InfoHint :text="t`提取规则用于从楼层创建内容；替换规则只改变显示结果，不会改动已保存原文。`" />
-      <button v-if="activeView === 'rules'" class="pc-icon-btn" type="button" :title="t`新增规则`" @click="addNewRule">
+      <button
+        v-if="activeView === 'rules'"
+        class="pc-icon-btn"
+        type="button"
+        :title="t`新增规则`"
+        :aria-label="t`新增规则`"
+        @click="addNewRule"
+      >
         <i class="fa-solid fa-plus"></i>
       </button>
     </section>
@@ -106,6 +113,7 @@
               type="button"
               :disabled="activeRuleIndex <= 0"
               :title="t`提高优先级`"
+              :aria-label="t`提高优先级`"
               @click="regexDisplay.moveRule(activeRule.id, -1)"
             >
               <i class="fa-solid fa-arrow-up"></i>
@@ -115,6 +123,7 @@
               type="button"
               :disabled="activeRuleIndex < 0 || activeRuleIndex >= rules.length - 1"
               :title="t`降低优先级`"
+              :aria-label="t`降低优先级`"
               @click="regexDisplay.moveRule(activeRule.id, 1)"
             >
               <i class="fa-solid fa-arrow-down"></i>
@@ -387,10 +396,6 @@ async function deleteActiveRule() {
 
 .pc-select-field {
   margin-top: 14px;
-}
-
-.pc-area.preview-source {
-  min-height: 150px;
 }
 
 .mono {

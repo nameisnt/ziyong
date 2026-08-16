@@ -3,10 +3,22 @@
     <div class="pc-compact-toolbar pc-directory-toolbar">
       <span class="pc-directory-count">{{ boards.length }} 个板块</span>
       <div class="pc-directory-actions pc-forum-actions">
-        <button class="pc-icon-btn" type="button" :title="t`生成帖子`" @click="$emit('generate-thread')">
+        <button
+          class="pc-icon-btn"
+          type="button"
+          :title="t`生成帖子`"
+          :aria-label="t`生成帖子`"
+          @click="$emit('generate-thread')"
+        >
           <i class="fa-solid fa-wand-magic-sparkles"></i>
         </button>
-        <button class="pc-icon-btn primary" type="button" :title="t`新建板块`" @click="$emit('create-board')">
+        <button
+          class="pc-icon-btn primary"
+          type="button"
+          :title="t`新建板块`"
+          :aria-label="t`新建板块`"
+          @click="$emit('create-board')"
+        >
           <i class="fa-solid fa-plus"></i>
         </button>
       </div>
@@ -20,13 +32,20 @@
           <p>{{ formatBoardMeta(board.threads.length) }}</p>
         </button>
         <div class="pc-board-actions">
-          <button class="pc-icon-btn" type="button" :title="t`编辑板块`" @click="$emit('edit-board', board.id)">
+          <button
+            class="pc-icon-btn"
+            type="button"
+            :title="t`编辑板块`"
+            :aria-label="t`编辑板块`"
+            @click="$emit('edit-board', board.id)"
+          >
             <i class="fa-solid fa-pen"></i>
           </button>
           <button
             class="pc-icon-btn danger"
             type="button"
             :title="t`删除板块`"
+            :aria-label="t`删除板块`"
             @click="$emit('remove-board', board.id)"
           >
             <i class="fa-solid fa-trash"></i>

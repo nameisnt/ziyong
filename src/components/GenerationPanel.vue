@@ -13,6 +13,7 @@
             type="button"
             :disabled="controlsDisabled || !quickPhraseGroups.length"
             :title="quickPhraseGroups.length ? t`添加快速短语` : t`还没有快速短语`"
+            :aria-label="quickPhraseGroups.length ? t`添加快速短语` : t`还没有快速短语`"
             @click="toggleQuickPhrasePanel"
           >
             <i class="fa-solid fa-plus"></i>
@@ -48,7 +49,7 @@
         </div>
         <textarea
           :value="userRequirement"
-          class="pc-area compact"
+          class="pc-area pc-area-multiline"
           :disabled="controlsDisabled"
           :placeholder="requirementPlaceholder"
           @input="emit('update:userRequirement', ($event.target as HTMLTextAreaElement).value)"
@@ -87,6 +88,7 @@
               type="button"
               :disabled="controlsDisabled"
               :title="t`互换角色与用户称呼`"
+              :aria-label="t`互换角色与用户称呼`"
               @click="swapGenerationAliases"
             >
               <i class="fa-solid fa-right-left"></i>
@@ -589,10 +591,6 @@ function quickPhraseLabel(text: string) {
 
 .pc-generation-panel > .pc-area {
   margin-top: 14px;
-}
-
-.pc-area.compact {
-  min-height: 120px;
 }
 
 .pc-raw-head {

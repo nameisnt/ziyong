@@ -1,6 +1,18 @@
 <template>
-  <section v-if="open" class="pc-content-transfer-backdrop" role="presentation" @click.self="close">
-    <article class="pc-section-card pc-content-transfer-dialog" role="dialog" aria-modal="true" aria-label="内容迁移">
+  <section
+    v-if="open"
+    class="pc-modal-backdrop pc-content-transfer-backdrop"
+    role="presentation"
+    @click.self="close"
+  >
+    <article
+      ref="dialogRef"
+      class="pc-section-card pc-modal-dialog pc-content-transfer-dialog"
+      role="dialog"
+      aria-modal="true"
+      aria-label="内容迁移"
+      tabindex="-1"
+    >
       <header class="pc-section-head">
         <div>
           <span class="pc-kicker">{{ appName }}</span>
@@ -56,6 +68,7 @@
 </template>
 
 <script setup lang="ts">
+import { usePhoneModalLifecycle } from '@/composables/usePhoneModalLifecycle';
 import { usePhoneStore } from '@/store/phone';
 import {
   buildContentTransfer,
@@ -71,6 +84,7 @@ type TransferDomainOption = { key: string; scope: 'chat' | 'global' };
 const props = defineProps<{ appName: string; domains: TransferDomainOption[]; open: boolean }>();
 const emit = defineEmits<{ close: [] }>();
 const phone = usePhoneStore();
+const dialogRef = ref<HTMLElement | null>(null);
 const inputEl = ref<HTMLInputElement | null>(null);
 const payload = shallowRef<ContentTransferPayload | null>(null);
 const fileName = ref('');
@@ -131,6 +145,12 @@ function domainLabel(key: string) {
 function close() {
   if (!busy.value) emit('close');
 }
+
+usePhoneModalLifecycle({
+  dialogRef,
+  isOpen: () => props.open,
+  onClose: close,
+});
 
 function exportCurrent() {
   if (!activeDomain.value) return;
@@ -199,13 +219,6 @@ watch(
 
 <style scoped>
 .pc-content-transfer-backdrop {
-  position: absolute;
-  z-index: 60;
-  inset: 0;
-  display: grid;
-  place-items: center;
-  padding: 18px;
-  background: color-mix(in srgb, var(--pc-text) 30%, transparent);
   backdrop-filter: blur(5px);
 }
 

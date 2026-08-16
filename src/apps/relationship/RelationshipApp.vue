@@ -3,7 +3,13 @@
     <section v-if="route.page === 'root'" class="pc-relationship-page">
       <div class="pc-compact-toolbar pc-directory-toolbar pc-relationship-toolbar">
         <span class="pc-directory-count">{{ characters.length }} {{ t`人物` }} · {{ links.length }} {{ t`关系` }}</span>
-        <button class="pc-icon-btn primary" type="button" :title="t`AI 识别关系`" @click="openGenerate">
+        <button
+          class="pc-icon-btn primary"
+          type="button"
+          :aria-label="t`AI 识别关系`"
+          :title="t`AI 识别关系`"
+          @click="openGenerate"
+        >
           <i class="fa-solid fa-wand-magic-sparkles"></i>
         </button>
       </div>
@@ -113,6 +119,7 @@
               class="pc-icon-btn"
               type="button"
               :disabled="!profileCharacterDraft"
+              :aria-label="t`添加关联人物`"
               :title="t`添加关联人物`"
               @click="addProfileCharacter"
             >
@@ -127,7 +134,13 @@
               :placeholder="t`人物名字`"
               @keydown.enter.prevent="addCharacter"
             />
-            <button class="pc-icon-btn" type="button" :title="t`新增人物`" @click="addCharacter">
+            <button
+              class="pc-icon-btn"
+              type="button"
+              :aria-label="t`新增人物`"
+              :title="t`新增人物`"
+              @click="addCharacter"
+            >
               <i class="fa-solid fa-plus"></i>
             </button>
           </div>
@@ -144,6 +157,7 @@
                 <button
                   class="pc-icon-btn danger"
                   type="button"
+                  :aria-label="t`删除`"
                   :title="t`删除`"
                   @click="removeCharacter(character.id)"
                 >
@@ -196,7 +210,13 @@
               :placeholder="t`关系，例如 父亲`"
               @keydown.enter.prevent="addLink"
             />
-            <button class="pc-icon-btn" type="button" :title="t`新增关系`" @click="addLink">
+            <button
+              class="pc-icon-btn"
+              type="button"
+              :aria-label="t`新增关系`"
+              :title="t`新增关系`"
+              @click="addLink"
+            >
               <i class="fa-solid fa-plus"></i>
             </button>
           </div>
@@ -263,8 +283,9 @@
               <button
                 class="pc-icon-btn danger"
                 type="button"
+                :aria-label="t`删除`"
                 :title="t`删除`"
-                @click="relationship.deleteLink(link.id)"
+                @click="removeLink(link.id)"
               >
                 <i class="fa-solid fa-xmark"></i>
               </button>
@@ -300,13 +321,13 @@
         <GenerationPanel
           :capture="captureRelationshipPrompt"
           :capture-reset-key="relationshipPromptPreview"
-          :error="generationState.error"
+          :error="generationError"
           :from-start-end="generationDraft.fromStartEnd"
           :range-text="generationDraft.rangeText"
-          :raw-output="generationState.rawOutput"
+          :raw-output="generationRawOutput"
           :recent-count="generationDraft.recentCount"
           :references="selectedReferences"
-          :running="generationState.running"
+          :running="generationRunning"
           :single-message-id="generationDraft.singleMessageId"
           :source-mode="settings.generation.sourceMode"
           :user-requirement="generationDraft.userRequirement"
@@ -395,6 +416,7 @@ import GenerationPreviewPanel from '@/components/GenerationPreviewPanel.vue';
 import ProfileEntryPicker from '@/components/ProfileEntryPicker.vue';
 import PreviewDraftNotice from '@/components/PreviewDraftNotice.vue';
 import RawOutputEditor from '@/components/RawOutputEditor.vue';
+import { useSingleGenerationTaskSession } from '@/composables/useSingleGenerationTaskSession';
 import { getRegisteredPhoneGenerationAdapter } from '@/core/appRegistry';
 import { buildGenerationPreview, captureGenerationPrompt, generateContent } from '@/core/generationService';
 import { usePhoneStore } from '@/store/phone';
@@ -402,11 +424,11 @@ import { useProfilesStore } from '@/apps/profiles/store';
 import { usePromptStore } from '@/store/prompts';
 import { useSettingsStore } from '@/store/settings';
 import type { FailedGenerationDraft } from '@/type/generation';
+import type { GenerationTask } from '@/type/generationTask';
 import type { GenerationReferenceItem } from '@/util/references';
 import { usePreviewDraftPersistence } from '@/util/previewDrafts';
 import { formatGenerationReferences } from '@/util/references';
 import { useInvalidRouteFallback } from '@/util/routeFallback';
-import { stopGenerationByIdSafe } from '@/util/runtime';
 import { formatTextProviderSummary } from '@/util/textProvider';
 import { useRelationshipStore, type RelationshipGeneratedResult } from './store';
 import { parseRelationshipXmlResult } from './generation';
@@ -451,8 +473,6 @@ const generationDraft = reactive({
   userRequirement: '',
 });
 const generationState = reactive({
-  error: '',
-  generationId: '',
   preview: null as null | {
     data: RelationshipGeneratedResult;
     draftId: null | string;
@@ -460,9 +480,14 @@ const generationState = reactive({
     source: { label: string };
     warnings: string[];
   },
-  rawOutput: '',
-  running: false,
 });
+const generationSession = useSingleGenerationTaskSession({
+  actionId: 'generate',
+  appId: 'relationship',
+  sourcePage: 'generate',
+  title: 'AI 关系识别 · 单次生成',
+});
+const { error: generationError, rawOutput: generationRawOutput, running: generationRunning } = generationSession;
 type RelationshipPreview = NonNullable<typeof generationState.preview>;
 
 const {
@@ -596,9 +621,7 @@ watch(
       selectedReferences.value = [];
       generationDraft.characterNames = characters.value.map(character => character.name).join(', ');
       generationDraft.userRequirement = '';
-      generationState.error = '';
       generationState.preview = null;
-      generationState.rawOutput = '';
     }
     if (current.page === 'failed-draft') {
       failedDraftRawOutput.value = activeFailedDraft.value?.rawOutput || '';
@@ -621,12 +644,6 @@ useInvalidRouteFallback({
     if (route.value.appId !== 'relationship') return;
     phone.replacePage('root', '关系网');
   },
-});
-
-onScopeDispose(() => {
-  if (generationState.running && generationState.generationId) {
-    stopGenerationByIdSafe(generationState.generationId);
-  }
 });
 
 function addCharacter() {
@@ -696,6 +713,20 @@ async function removeCharacter(characterId: string) {
   });
   if (!shouldDelete) return;
   relationship.deleteCharacter(characterId);
+}
+
+async function removeLink(linkId: string) {
+  const link = links.value.find(item => item.id === linkId);
+  if (!link) return;
+  const fromName = characterById.value.get(link.fromId)?.name || '未知人物';
+  const toName = characterById.value.get(link.toId)?.name || '未知人物';
+  const confirmed = await phone.confirmNotice(`要删除“${fromName} → ${toName}”的关系“${link.label || '未命名关系'}”吗？`, {
+    confirmLabel: '删除',
+    kind: 'warning',
+    title: '删除人物关系？',
+  });
+  if (!confirmed) return;
+  relationship.deleteLink(linkId);
 }
 
 function addLink() {
@@ -790,31 +821,28 @@ function captureRelationshipPrompt() {
 }
 
 async function runGeneration() {
-  generationState.error = '';
   clearRelationshipPreviewDraft();
-  generationState.rawOutput = '';
   generationState.preview = null;
+  let task: GenerationTask | null = null;
   try {
+    task = generationSession.create({
+      sourceParams: generationDraft.characterNames ? { characters: generationDraft.characterNames } : {},
+      title: 'AI 关系识别 · 单次生成',
+    });
     const result = await generateContent(adapter, buildGenerationConfig(), {
       ...getGenerationOptions(),
       createFailedDraft: input => relationship.createFailedDraft(input),
-      lifecycle: {
-        onFinish() {
-          generationState.running = false;
-          generationState.generationId = '';
-        },
-        onRawOutput(rawOutput) {
-          generationState.rawOutput = rawOutput;
-        },
-        onStart(generationId) {
-          generationState.running = true;
-          generationState.generationId = generationId;
-        },
-      },
+      lifecycle: generationSession.lifecycle(task.id),
     });
 
     if (result.status === 'failed') {
-      generationState.error = result.warnings.join('；') || '模型没有返回可解析的关系 XML';
+      generationSession.complete(task.id, {
+        currentLabel: '解析失败草稿已保留',
+        resultPage: 'failed-draft',
+        resultParams: { draftId: result.draft.id },
+        resultState: 'failed-draft',
+        resultTitle: '解析失败草稿',
+      });
       toastr.warning('XML 解析失败，已保存失败草稿');
       void phone.presentGeneratedPage('relationship', 'failed-draft', '解析失败草稿', {
         draftId: result.draft.id,
@@ -823,6 +851,12 @@ async function runGeneration() {
     }
 
     if (result.status === 'saved') {
+      generationSession.complete(task.id, {
+        currentLabel: '关系网已合并',
+        resultPage: 'root',
+        resultState: 'saved',
+        resultTitle: '关系网',
+      });
       toastr.success('已合并关系网');
       void phone.presentGeneratedPage('relationship', 'root', '关系网');
       return;
@@ -836,9 +870,16 @@ async function runGeneration() {
       warnings: result.warnings,
     };
     persistRelationshipPreviewDraft();
+    generationSession.complete(task.id, {
+      currentLabel: '关系已生成，等待确认',
+      resultPage: 'preview',
+      resultState: 'preview',
+      resultTitle: '关系预览',
+    });
     void phone.presentGeneratedPage('relationship', 'preview', '关系预览');
   } catch (caughtError) {
-    generationState.error = caughtError instanceof Error ? caughtError.message : '生成关系失败';
+    if (task) generationSession.fail(task.id, caughtError);
+    else toastr.error(caughtError instanceof Error ? caughtError.message : '生成关系失败');
   }
 }
 
@@ -935,10 +976,7 @@ function reparseFailedDraft() {
 }
 
 function stopGeneration() {
-  if (!generationState.generationId) return;
-  stopGenerationByIdSafe(generationState.generationId);
-  generationState.running = false;
-  generationState.error = '生成已停止';
+  generationSession.stop();
 }
 </script>
 

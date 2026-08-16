@@ -3,7 +3,13 @@
     <section class="pc-profile-table-manager">
       <div class="pc-compact-toolbar pc-directory-toolbar pc-profile-table-manager-head">
         <span class="pc-directory-count">{{ tables.length }} 个资料表</span>
-        <button class="pc-icon-btn primary" type="button" title="新建资料表" @click="$emit('create')">
+        <button
+          class="pc-icon-btn primary"
+          type="button"
+          title="新建资料表"
+          aria-label="新建资料表"
+          @click="$emit('create')"
+        >
           <i class="fa-solid fa-plus"></i>
         </button>
       </div>

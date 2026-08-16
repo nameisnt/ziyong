@@ -42,7 +42,7 @@
         />
         <textarea
           v-model="draft.boardTypePrompt"
-          class="pc-area compact"
+          class="pc-area pc-area-multiline"
           :disabled="generationState.running"
           :placeholder="t`板块类型提示词（可编辑）`"
           @input="draft.boardTypeId = customBoardTypeId"
@@ -141,10 +141,6 @@ const emit = defineEmits<{
 
 .pc-forum-type-fields :is(.pc-field, .pc-area) {
   margin-top: 0;
-}
-
-.pc-forum-type-fields .pc-area {
-  min-height: 120px;
 }
 
 .pc-forum-name-mode {

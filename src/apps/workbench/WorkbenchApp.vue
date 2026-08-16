@@ -12,7 +12,13 @@
 
       <div class="pc-compact-toolbar pc-directory-toolbar pc-workbench-toolbar">
         <span class="pc-directory-count">{{ workflows.length }} {{ t`个工作流` }}</span>
-        <button class="pc-icon-btn" type="button" :title="t`新建流程`" @click="createWorkflow">
+        <button
+          class="pc-icon-btn"
+          type="button"
+          :aria-label="t`新建流程`"
+          :title="t`新建流程`"
+          @click="createWorkflow"
+        >
           <i class="fa-solid fa-plus"></i>
         </button>
       </div>
@@ -32,7 +38,7 @@
             <strong>{{ draft.workflowName }}</strong>
             <pre>{{ previewInsertDraft(draft) }}</pre>
             <div class="pc-form-actions pc-workbench-actions">
-              <button class="pc-soft-btn danger" type="button" @click="workbench.deleteInsertDraft(draft.id)">
+              <button class="pc-soft-btn danger" type="button" @click="discardInsertDraft(draft.id)">
                 <i class="fa-solid fa-xmark"></i>
                 <span>{{ t`丢弃` }}</span>
               </button>
@@ -130,7 +136,13 @@
                 placeholder="跟随全局 API"
                 @update:model-value="updateWorkflowProvider(workflow.id, $event)"
               />
-              <button class="pc-icon-btn" type="button" :title="t`刷新酒馆预设`" @click="refreshTavernPresetNames">
+              <button
+                class="pc-icon-btn"
+                type="button"
+                :aria-label="t`刷新酒馆预设`"
+                :title="t`刷新酒馆预设`"
+                @click="refreshTavernPresetNames"
+              >
                 <i class="fa-solid fa-rotate"></i>
               </button>
             </div>
@@ -189,7 +201,13 @@
               :placeholder="t`选择要添加的生成步骤`"
               @update:model-value="selectedActions[workflow.id] = $event"
             />
-            <button class="pc-icon-btn" type="button" :title="t`新增步骤`" @click="addStep(workflow.id)">
+            <button
+              class="pc-icon-btn"
+              type="button"
+              :aria-label="t`新增步骤`"
+              :title="t`新增步骤`"
+              @click="addStep(workflow.id)"
+            >
               <i class="fa-solid fa-plus"></i>
             </button>
           </section>
@@ -223,6 +241,7 @@
                     class="pc-icon-btn"
                     type="button"
                     :disabled="stepIndex === 0"
+                    :aria-label="t`上移`"
                     :title="t`上移`"
                     @click="workbench.moveStep(workflow.id, step.id, -1)"
                   >
@@ -232,6 +251,7 @@
                     class="pc-icon-btn"
                     type="button"
                     :disabled="stepIndex === workflow.steps.length - 1"
+                    :aria-label="t`下移`"
                     :title="t`下移`"
                     @click="workbench.moveStep(workflow.id, step.id, 1)"
                   >
@@ -240,8 +260,9 @@
                   <button
                     class="pc-icon-btn danger"
                     type="button"
+                    :aria-label="t`删除`"
                     :title="t`删除`"
-                    @click="workbench.deleteStep(workflow.id, step.id)"
+                    @click="removeStep(workflow.id, step.id)"
                   >
                     <i class="fa-solid fa-xmark"></i>
                   </button>
@@ -1012,6 +1033,30 @@ async function clearRunLogs() {
   toastr.success('已清空运行日志');
 }
 
+async function removeStep(workflowId: string, stepId: string) {
+  const workflow = workbench.getWorkflow(workflowId);
+  const step = workflow?.steps.find(item => item.id === stepId);
+  if (!workflow || !step) return;
+  const confirmed = await phone.confirmNotice(
+    `要从工作流“${workflow.name}”中删除步骤“${getActionLabel(step.appId, step.actionId)}”吗？`,
+    { confirmLabel: '删除', kind: 'warning', title: '删除工作流步骤？' },
+  );
+  if (!confirmed) return;
+  workbench.deleteStep(workflowId, stepId);
+}
+
+async function discardInsertDraft(draftId: string) {
+  const draft = insertDrafts.value.find(item => item.id === draftId);
+  if (!draft) return;
+  const confirmed = await phone.confirmNotice(`要丢弃“${draft.workflowName}”生成的待插入内容吗？`, {
+    confirmLabel: '丢弃',
+    kind: 'warning',
+    title: '丢弃待插入草稿？',
+  });
+  if (!confirmed) return;
+  workbench.deleteInsertDraft(draftId);
+}
+
 function previewInsertDraft(draft: WorkbenchInsertDraft) {
   return formatChatInsertTemplate(draft.template, {
     content: draft.content,
@@ -1122,7 +1167,6 @@ onMounted(refreshTavernPresetNames);
 
 .pc-workflow-title small,
 .pc-log-toggle small,
-.pc-field-group span,
 .pc-log-row small {
   color: var(--pc-muted);
   font-size: 12px;
@@ -1162,10 +1206,6 @@ onMounted(refreshTavernPresetNames);
 .pc-field-group span {
   display: block;
   margin-bottom: 8px;
-}
-
-.pc-step-body > .pc-area.compact {
-  min-height: 82px;
 }
 
 .pc-switch-row,

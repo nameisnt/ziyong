@@ -371,7 +371,9 @@ assert.match(workbenchApp, /:options="workbenchActionOptions"/);
 assert.doesNotMatch(workbenchApp, /<select[\s\S]{0,300}supportedWorkbenchActions/);
 
 assert.match(contentTransfer, /domain\.scope === 'chat'/);
-assert.match(contentTransfer, /domain\.importData\(beforeRaw\)/);
+assert.match(contentTransfer, /executeBackupImportTransaction/);
+assert.match(contentTransfer, /restoreSnapshot:\s*snapshot\s*=>\s*domain\.importData\(snapshot\)/);
+assert.doesNotMatch(contentTransfer, /catch\s*\(error\)\s*\{\s*domain\.importData\(beforeRaw\)/s);
 assert.match(contentTransfer, /domain\.category !== 'draft'/);
 assert.match(contentTransfer, /payload\.schemaVersion > domain\.schemaVersion/);
 assert.match(contentTransferOverlay, /创建副本/);

@@ -14,7 +14,7 @@
           <span>{{ t`版本` }}</span>
           <input
             v-model="requestedIndex"
-            class="pc-field"
+            class="pc-field pc-version-index-input"
             type="number"
             inputmode="numeric"
             min="1"
@@ -109,15 +109,6 @@ function commitRequestedIndex() {
   gap: 4px;
   color: var(--pc-muted);
   font-weight: 750;
-}
-
-.pc-version-status .pc-field {
-  width: 42px;
-  height: 42px;
-  min-height: 42px;
-  padding: 0 8px;
-  line-height: 40px;
-  text-align: center;
 }
 
 @media (max-width: 380px) {

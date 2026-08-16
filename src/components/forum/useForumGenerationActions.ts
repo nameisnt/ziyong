@@ -10,18 +10,14 @@ import { usePhoneStore, type PhoneRoute } from '@/store/phone';
 import { usePromptStore } from '@/store/prompts';
 import { useSettingsStore } from '@/store/settings';
 import type { ForumBoard, ForumThread } from '@/type/forum';
+import type { GenerationTask } from '@/type/generationTask';
 import type { GenerationReferenceItem } from '@/util/references';
-import { stopGenerationByIdSafe } from '@/util/runtime';
 import { storeToRefs } from 'pinia';
 import type { ComputedRef, Ref } from 'vue';
 import type { ForumGenerationPreview } from './useForumPreviewSession';
 
 interface ForumGenerationState {
-  error: string;
-  generationId: string;
   preview: ForumGenerationPreview | null;
-  rawOutput: string;
-  running: boolean;
 }
 
 interface ForumSourceDraft {
@@ -62,22 +58,18 @@ export function useForumGenerationActions(options: ForumGenerationActionsOptions
   const { settings } = storeToRefs(settingsStore);
   const threadAdapter = getRegisteredPhoneGenerationAdapter('forum', 'generate-thread');
   const replyAdapter = getRegisteredPhoneGenerationAdapter('forum', 'generate-replies');
-
-  function lifecycle() {
-    return {
-      onFinish() {
-        options.generationState.running = false;
-        options.generationState.generationId = '';
-      },
-      onRawOutput(rawOutput: string) {
-        options.generationState.rawOutput = rawOutput;
-      },
-      onStart(generationId: string) {
-        options.generationState.running = true;
-        options.generationState.generationId = generationId;
-      },
-    };
-  }
+  const threadSession = useSingleGenerationTaskSession({
+    actionId: 'generate-thread',
+    appId: 'forum',
+    sourcePage: 'generate-thread',
+    title: '生成论坛主题 · 单次生成',
+  });
+  const replySession = useSingleGenerationTaskSession({
+    actionId: 'generate-replies',
+    appId: 'forum',
+    sourcePage: 'generate-replies',
+    title: '生成论坛回复 · 单次生成',
+  });
 
   function source(draft: ForumSourceDraft) {
     return {
@@ -99,32 +91,51 @@ export function useForumGenerationActions(options: ForumGenerationActionsOptions
 
   async function runThreadGeneration() {
     const state = options.generationState;
-    state.error = '';
     options.clearPreviewDraft();
     state.preview = null;
-    state.rawOutput = '';
-
+    let task: GenerationTask | null = null;
     try {
       const config = options.buildThreadGenerationConfig();
+      task = threadSession.create({
+        sourceParams: config.boardId ? { boardId: config.boardId } : {},
+        title: options.threadGenerationMode.value === 'rewrite' ? '重新生成论坛主题' : '生成论坛主题 · 单次生成',
+      });
       const result = await generateContent(threadAdapter, config, {
         createFailedDraft: input => forum.createFailedDraft(input),
         generationDefaults: generationDefaults(),
         references: options.formattedReferences.value,
         referenceItems: options.selectedReferences.value,
-        lifecycle: lifecycle(),
+        lifecycle: threadSession.lifecycle(task.id),
         source: source(options.threadGenerationDraft),
         textProvider: settings.value.textProvider,
       });
 
       if (result.status === 'failed') {
-        state.error = result.warnings.join('；') || '模型没有返回可解析的论坛 XML';
         options.failedDraftRawOutput.value = result.rawOutput;
+        threadSession.complete(task.id, {
+          currentLabel: '解析失败草稿已保留',
+          resultPage: 'failed-draft',
+          resultParams: { draftId: result.draft.id },
+          resultState: 'failed-draft',
+          resultTitle: '解析失败草稿',
+        });
         toastr.warning('XML 解析失败，已保存到失败草稿');
         void phone.presentGeneratedPage('forum', 'failed-draft', '解析失败草稿', { draftId: result.draft.id });
         return;
       }
 
       if (result.status === 'saved') {
+        threadSession.complete(task.id, {
+          currentLabel: `已保存论坛主题：${result.data.title}`,
+          resultPage: 'thread',
+          resultParams: {
+            boardId: result.saved.board.id,
+            threadId: result.saved.thread.id,
+            ...(result.saved.versionId ? { versionId: result.saved.versionId } : {}),
+          },
+          resultState: 'saved',
+          resultTitle: result.data.title,
+        });
         toastr.success(
           options.threadGenerationMode.value === 'rewrite' ? '已保存并切换到主帖新版本' : '已生成并保存帖子',
         );
@@ -162,9 +173,17 @@ export function useForumGenerationActions(options: ForumGenerationActionsOptions
         ...(state.preview.targetVersionId ? { versionId: state.preview.targetVersionId } : {}),
       };
       options.persistPreviewDraft(routeParams);
+      threadSession.complete(task.id, {
+        currentLabel: '论坛主题已生成，等待确认',
+        resultPage: 'preview',
+        resultParams: routeParams,
+        resultState: 'preview',
+        resultTitle: '生成预览',
+      });
       void phone.presentGeneratedPage('forum', 'preview', '生成预览', routeParams);
     } catch (error) {
-      state.error = error instanceof Error ? error.message : '生成失败，请稍后再试';
+      if (task) threadSession.fail(task.id, error);
+      else toastr.error(error instanceof Error ? error.message : '生成失败，请稍后再试');
     }
   }
 
@@ -175,12 +194,14 @@ export function useForumGenerationActions(options: ForumGenerationActionsOptions
     const state = options.generationState;
     if (!boardId || !threadId || !thread) return;
 
-    state.error = '';
     options.clearPreviewDraft();
     state.preview = null;
-    state.rawOutput = '';
-
+    let task: GenerationTask | null = null;
     try {
+      task = replySession.create({
+        sourceParams: { boardId, threadId },
+        title: `生成论坛回复 · ${thread.title}`,
+      });
       const config: ForumReplyGenerateConfig = {
         appPrompt: prompts.specialPrompts.forumReplies,
         boardId,
@@ -195,20 +216,38 @@ export function useForumGenerationActions(options: ForumGenerationActionsOptions
         generationDefaults: generationDefaults(),
         references: options.formattedReferences.value,
         referenceItems: options.selectedReferences.value,
-        lifecycle: lifecycle(),
+        lifecycle: replySession.lifecycle(task.id),
         source: source(options.replyGenerationDraft),
         textProvider: settings.value.textProvider,
       });
 
       if (result.status === 'failed') {
-        state.error = result.warnings.join('；') || '模型没有返回可解析的论坛回复 XML';
         options.failedDraftRawOutput.value = result.rawOutput;
+        replySession.complete(task.id, {
+          currentLabel: '解析失败草稿已保留',
+          resultPage: 'failed-draft',
+          resultParams: { draftId: result.draft.id },
+          resultState: 'failed-draft',
+          resultTitle: '解析失败草稿',
+        });
         toastr.warning('XML 解析失败，已保存到失败草稿');
         void phone.presentGeneratedPage('forum', 'failed-draft', '解析失败草稿', { draftId: result.draft.id });
         return;
       }
 
       if (result.status === 'saved') {
+        const savedParams = {
+          boardId,
+          threadId,
+          ...(options.viewedForumVersionId.value ? { versionId: options.viewedForumVersionId.value } : {}),
+        };
+        replySession.complete(task.id, {
+          currentLabel: '论坛回复已保存',
+          resultPage: 'thread',
+          resultParams: savedParams,
+          resultState: 'saved',
+          resultTitle: thread.title,
+        });
         toastr.success('已生成并保存回复');
         void phone.presentGeneratedPage('forum', 'thread', thread.title, {
           boardId,
@@ -237,25 +276,25 @@ export function useForumGenerationActions(options: ForumGenerationActionsOptions
         ...(options.viewedForumVersionId.value ? { versionId: options.viewedForumVersionId.value } : {}),
       };
       options.persistPreviewDraft(routeParams);
+      replySession.complete(task.id, {
+        currentLabel: '论坛回复已生成，等待确认',
+        resultPage: 'preview',
+        resultParams: routeParams,
+        resultState: 'preview',
+        resultTitle: '生成预览',
+      });
       void phone.presentGeneratedPage('forum', 'preview', '生成预览', routeParams);
     } catch (error) {
-      state.error = error instanceof Error ? error.message : '生成失败，请稍后再试';
+      if (task) replySession.fail(task.id, error);
+      else toastr.error(error instanceof Error ? error.message : '生成失败，请稍后再试');
     }
   }
 
   function stopGeneration() {
-    const state = options.generationState;
-    if (!state.generationId) return;
-    stopGenerationByIdSafe(state.generationId);
-    state.running = false;
-    state.error = '生成已停止';
+    if (options.route.value.page === 'generate-replies') replySession.stop();
+    else threadSession.stop();
   }
 
-  onScopeDispose(() => {
-    if (options.generationState.running && options.generationState.generationId) {
-      stopGenerationByIdSafe(options.generationState.generationId);
-    }
-  });
-
-  return { runReplyGeneration, runThreadGeneration, stopGeneration };
+  return { replySession, runReplyGeneration, runThreadGeneration, stopGeneration, threadSession };
 }
+import { useSingleGenerationTaskSession } from '@/composables/useSingleGenerationTaskSession';

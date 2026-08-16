@@ -262,6 +262,9 @@ function buildChapterTaskTemplateVariables(config: ExtraChapterGenerateConfig) {
     }[generationIntent],
     typeFallback:
       !config.typePrompt.trim() && config.typeName.trim() ? `本次番外类型为“${config.typeName.trim()}”。` : '',
+    summaryInstruction: config.parseSummary
+      ? config.summaryFormatHint?.trim() || '请同时输出简洁的 <summary>番外摘要</summary>。'
+      : '',
   };
 }
 

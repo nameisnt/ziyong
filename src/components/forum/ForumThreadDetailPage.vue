@@ -8,6 +8,7 @@
       next-disabled
       previous-disabled
       :reasoning="viewedGenerationRecord?.reasoning"
+      :source-label="viewedGenerationRecord?.replay.source.label"
       :title="thread.title"
       @bagu="$emit('bagu')"
       @bottom="$emit('bottom')"

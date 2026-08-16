@@ -6,9 +6,12 @@ const api = await readFile(new URL('../src/apps/recovery/api.ts', import.meta.ur
 const model = await readFile(new URL('../src/apps/recovery/model.ts', import.meta.url), 'utf8');
 const store = await readFile(new URL('../src/apps/recovery/store.ts', import.meta.url), 'utf8');
 const app = await readFile(new URL('../src/apps/recovery/RecoveryApp.vue', import.meta.url), 'utf8');
+const maintenanceFlow = await readFile(new URL('../src/apps/recovery/RecoveryMaintenanceFlow.vue', import.meta.url), 'utf8');
+const readImportFlow = await readFile(new URL('../src/apps/recovery/RecoveryReadImportFlow.vue', import.meta.url), 'utf8');
+const settingsFlow = await readFile(new URL('../src/apps/recovery/RecoverySettingsFlow.vue', import.meta.url), 'utf8');
 const builtins = await readFile(new URL('../src/apps/builtin.ts', import.meta.url), 'utf8');
 const scenarios = await readFile(new URL('../src/testing/visual/recoveryScenarios.ts', import.meta.url), 'utf8');
-const combined = `${api}\n${store}\n${app}`;
+const combined = `${api}\n${store}\n${app}\n${maintenanceFlow}\n${readImportFlow}\n${settingsFlow}`;
 
 assert.match(api, /\/api\/backups\/chat\/get/);
 assert.match(api, /\/api\/backups\/chat\/download/);
@@ -44,18 +47,18 @@ assert.match(store, /deleteSettingsSnapshots/);
 assert.match(store, /deleteSettingsSnapshot/);
 assert.match(store, /酒馆没有删除这份设置快照/);
 assert.match(store, /预定保留的设置快照内容已经变化/);
-assert.match(app, /将作为一份新聊天导入，不覆盖当前聊天/);
-assert.match(app, /实际楼层数小于或等于/);
+assert.match(readImportFlow, /将作为一份新聊天导入，不覆盖当前聊天/);
+assert.match(maintenanceFlow, /实际楼层数小于或等于/);
 assert.match(app, /永久删除备份/);
-assert.match(app, /只匹配同一角色分组内原始 JSONL 字节长度和 SHA-256 都完全一致/);
-assert.match(app, /每组固定保留备份时间最新的一份/);
+assert.match(maintenanceFlow, /只匹配同一角色分组内原始 JSONL 字节长度和 SHA-256 都完全一致/);
+assert.match(maintenanceFlow, /每组固定保留备份时间最新的一份/);
 assert.match(app, /酒馆备份管理/);
 assert.match(app, /聊天备份/);
 assert.match(app, /设置快照/);
-assert.doesNotMatch(app, /settings-reader|设置快照只读预览/);
-assert.match(app, /confirmDeleteSettingsSnapshot/);
-assert.match(app, /pc-recovery-settings-row/);
-assert.match(app, /恢复会用这份快照覆盖酒馆当前 settings\.json/);
+assert.doesNotMatch(combined, /settings-reader|设置快照只读预览/);
+assert.match(settingsFlow, /confirmDeleteSettingsSnapshot/);
+assert.match(settingsFlow, /pc-recovery-settings-row/);
+assert.match(settingsFlow, /恢复会用这份快照覆盖酒馆当前 settings\.json/);
 assert.match(builtins, /RecoveryModule/);
 for (const scenario of [
   'recovery-shelf',

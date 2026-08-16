@@ -37,13 +37,14 @@
       </div>
       <label class="pc-field-group">
         <span class="pc-field-label">阅读器字体</span>
-        <select class="pc-select" :value="settings.reader.fontFamily" @change="setFontFamily">
-          <option value="">跟随手机字体</option>
-          <option value="system-ui, sans-serif">系统无衬线</option>
-          <option value="serif">系统衬线</option>
-          <option value="ui-monospace, monospace">等宽字体</option>
-          <option value="'Noto Serif SC', serif">思源宋体</option>
-        </select>
+        <SearchableCombobox
+          v-model="readerFontSelectionValue"
+          :empty-label="t`没有匹配的字体`"
+          :input-label="t`选择阅读器字体`"
+          :options="readerFontSelectionOptions"
+          :placeholder="t`选择阅读器字体`"
+          :toggle-title="t`展开阅读器字体`"
+        />
       </label>
       <div class="pc-reader-toggle-grid">
         <label class="pc-reader-setting-row">
@@ -100,12 +101,51 @@
 </template>
 
 <script setup lang="ts">
+import SearchableCombobox from '@/components/SearchableCombobox.vue';
 import { useSettingsStore } from '@/store/settings';
 import { storeToRefs } from 'pinia';
 
 const settingsStore = useSettingsStore();
 const { settings } = storeToRefs(settingsStore);
 const fallbackBackground = computed(() => (settings.value.theme === 'dark' ? '#1c1c1e' : '#ffffff'));
+const selectedReaderCustomFont = computed(
+  () =>
+    settings.value.customFont.fonts.find(
+      font => settings.value.reader.fontFamily === settingsStore.getCustomFontFamily(font.id),
+    ) ?? null,
+);
+const readerFontSelectionValue = computed({
+  get: () =>
+    selectedReaderCustomFont.value
+      ? `custom:${selectedReaderCustomFont.value.id}`
+      : settings.value.reader.fontFamily,
+  set: (value: string) => {
+    if (value.startsWith('custom:')) {
+      settingsStore.setReaderFontFamily(settingsStore.getCustomFontFamily(value.slice('custom:'.length)));
+    } else {
+      settingsStore.setReaderFontFamily(value);
+    }
+  },
+});
+const readerFontSelectionOptions = computed(() => {
+  const selected = readerFontSelectionValue.value;
+  const options = [
+    { label: '跟随手机字体', value: '' },
+    { group: '系统字体', label: '系统无衬线', value: 'system-ui, sans-serif' },
+    { group: '系统字体', label: '系统衬线', value: 'serif' },
+    { group: '系统字体', label: '等宽字体', value: 'ui-monospace, monospace' },
+    { group: '系统字体', label: '思源宋体', value: "'Noto Serif SC', serif" },
+    ...settings.value.customFont.fonts.map(font => ({
+      group: '自定义字体',
+      label: font.name,
+      value: `custom:${font.id}`,
+    })),
+  ];
+  if (selected && !options.some(option => option.value === selected)) {
+    options.unshift({ label: '当前字体资源已失效', value: selected });
+  }
+  return options;
+});
 
 function numberValue(event: Event) {
   return Number((event.target as HTMLInputElement).value);
@@ -117,10 +157,6 @@ function inputValue(event: Event) {
 
 function checkedValue(event: Event) {
   return (event.target as HTMLInputElement).checked;
-}
-
-function setFontFamily(event: Event) {
-  settingsStore.setReaderFontFamily((event.target as HTMLSelectElement).value);
 }
 
 function clearBackground() {

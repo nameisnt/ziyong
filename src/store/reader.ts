@@ -1,4 +1,5 @@
 import { validateInplace } from '@/util/zod';
+import { extractMessageReasoning } from '@/util/messageReasoning';
 import { resolveReaderBodySourceRange, transformReaderMessages, type ReaderBodySourceRange } from '@/util/readerRegex';
 import { getChatHistoryBriefSafe, getChatHistoryDetailSafe, onTavernEvent } from '@/util/runtime';
 // eslint-disable-next-line import-x/no-nodejs-modules
@@ -88,6 +89,7 @@ export interface ReaderMessage {
   title: string;
   body: string;
   rawText: string;
+  reasoning: string;
   sourceBody: string;
   name: string;
   isHidden: boolean;
@@ -106,6 +108,7 @@ interface PendingReaderMessage {
   sourceMessageId: number;
   name: string;
   rawText: string;
+  reasoning: string;
   swipeCount: number;
   timeLabel: string;
 }
@@ -254,6 +257,7 @@ export function normalizeArchivedMessage(
     messageIndex,
     sourceMessageId,
     rawText,
+    reasoning: extractMessageReasoning(record),
     name: pickString(record, ['name']) || (isUser ? '用户' : 'AI'),
     isHidden,
     isUser,

@@ -1,6 +1,6 @@
 <template>
   <section class="pc-minigame-panel">
-    <section class="pc-minigame-stats">
+    <section class="pc-minigame-stats pc-guess-number-stats">
       <article>
         <span>{{ t`次数` }}</span
         ><strong>{{ state.guesses.length }}</strong>
@@ -18,7 +18,7 @@
     <form class="pc-guess-form" @submit.prevent="submitGuess">
       <input
         v-model="draft"
-        class="pc-field"
+        class="pc-field pc-guess-number-input"
         inputmode="numeric"
         maxlength="4"
         :placeholder="t`输入四位不重复数字`"
@@ -127,11 +127,8 @@ function newGame() {
   gap: 8px;
 }
 
-.pc-guess-form .pc-field {
-  letter-spacing: 0;
-  text-align: center;
-  font-size: 22px;
-  font-weight: 800;
+.pc-guess-number-stats {
+  grid-template-columns: minmax(0, 0.8fr) minmax(0, 0.8fr) minmax(0, 1.4fr);
 }
 
 .pc-guess-form .pc-primary-btn {

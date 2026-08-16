@@ -39,6 +39,26 @@ export async function applyTheaterVisualScenario(name: string, context: TheaterS
   const { resetPhoneToRoute, waitForPaint } = context;
   if (name === 'theater-generate') {
     resetPhoneToRoute('theater', 'generate', '小剧场配置');
+  } else if (name === 'theater-source-range') {
+    resetPhoneToRoute('theater', 'generate', '自定义楼层范围');
+    await waitForPaint();
+    const advanced = document.querySelector<HTMLDetailsElement>('.pc-generation-advanced');
+    if (!advanced) throw new Error('Theater generation advanced settings are missing');
+    advanced.open = true;
+    await waitForPaint();
+    document.querySelector<HTMLElement>('.pc-generation-provider-fields')?.style.setProperty('display', 'none');
+    document.querySelector<HTMLElement>('.pc-generation-aliases')?.style.setProperty('display', 'none');
+    const sourceMode = document.querySelector<HTMLSelectElement>('.pc-source-fields .pc-select');
+    if (!sourceMode) throw new Error('Theater generation source mode is missing');
+    sourceMode.value = 'range';
+    sourceMode.dispatchEvent(new Event('change', { bubbles: true }));
+    await waitForPaint();
+    const range = document.querySelector<HTMLTextAreaElement>('.pc-source-fields .pc-area');
+    if (!range) throw new Error('Theater custom source range is missing');
+    range.value = '0-5, 0-10, 0-15';
+    range.dispatchEvent(new Event('input', { bubbles: true }));
+    range.scrollIntoView({ block: 'center' });
+    await waitForPaint();
   } else if (name === 'theater-rewrite-generate') {
     const entry = createTheaterFixture();
     const requirement = '小剧场当前版本的隐藏追加要求。';
@@ -89,10 +109,14 @@ export async function applyTheaterVisualScenario(name: string, context: TheaterS
       title: '混合网页渲染测试',
       typeName: '网页测试',
     });
+    entry.generationRecord = context.createHiddenGenerationRecord('generate', '小剧场来源可视化夹具');
     resetPhoneToRoute('theater', 'entry', entry.title, { entryId: entry.id });
     await waitForPaint();
     if (!document.querySelector('.pc-frame-shell') || !document.querySelector('.pc-theater-text-segment'))
       throw new Error('Mixed theater detail did not render both text and HTML segments');
+    if (!document.querySelector('.pc-reader-source-label')?.textContent?.includes('最近 7 楼')) {
+      throw new Error('Theater detail omitted its generation source label');
+    }
   } else if (name === 'theater-history') {
     createTheaterFixture();
     const theater = useTheaterStore();

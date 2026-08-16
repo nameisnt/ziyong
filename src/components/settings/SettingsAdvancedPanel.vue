@@ -69,6 +69,11 @@ import { usePhoneStore } from '@/store/phone';
 import { usePreviewDraftStore } from '@/store/previewDrafts';
 import { useRecoveryStore } from '@/store/recovery';
 import { clearAllPhoneGeneratedContent } from '@/util/backup';
+import { executePhoneAppResetTransaction } from '@/util/settingsResetTransaction';
+// eslint-disable-next-line import-x/no-nodejs-modules
+import { saveSettingsDebounced } from '@sillytavern/script';
+import { extension_settings } from '@sillytavern/scripts/extensions';
+import { klona } from 'klona';
 import { storeToRefs } from 'pinia';
 
 const favorites = useFavoritesStore();
@@ -117,7 +122,21 @@ async function clearCurrentChatData() {
     }))
   )
     return;
-  await Promise.all(handlers.map(item => item.resetCurrentScope()));
+  try {
+    await executePhoneAppResetTransaction({
+      captureSnapshot: () => klona(extension_settings),
+      handlers: handlers.map(item => item.resetCurrentScope),
+      persist: () => saveSettingsDebounced(),
+      rehydrate: () => getRegisteredPhoneBackupRehydrateHandlers().forEach(handler => handler()),
+      restoreSnapshot: snapshot => {
+        Object.keys(extension_settings).forEach(key => delete extension_settings[key]);
+        Object.assign(extension_settings, snapshot);
+      },
+    });
+  } catch (error) {
+    toastr.error(error instanceof Error ? error.message : '清空当前聊天失败，原数据已恢复');
+    return;
+  }
   generationTasks.clearScopeTasks();
   previewDrafts.resetCurrentScope();
   favorites.clearSelection();

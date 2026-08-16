@@ -3,7 +3,13 @@
     <section v-if="route.page === 'root'" class="pc-world-slots-page">
       <div class="pc-compact-toolbar pc-world-root-toolbar">
         <span>{{ slots.length }} {{ t`个槽位` }}</span>
-        <button class="pc-icon-btn active" type="button" :title="t`新增槽位`" @click="openEditor()">
+        <button
+          class="pc-icon-btn active"
+          type="button"
+          :title="t`新增槽位`"
+          :aria-label="t`新增槽位`"
+          @click="openEditor()"
+        >
           <i class="fa-solid fa-plus"></i>
         </button>
       </div>

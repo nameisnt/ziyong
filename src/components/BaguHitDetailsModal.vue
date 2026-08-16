@@ -1,9 +1,14 @@
 <template>
   <Teleport to="#tavern-phone-root .pc-phone-shell">
-    <div v-if="open" class="pc-bagu-hit-modal-mask" role="presentation" @click.self="emit('close')">
+    <div
+      v-if="open"
+      class="pc-modal-backdrop pc-bagu-hit-modal-mask"
+      role="presentation"
+      @click.self="emit('close')"
+    >
       <section
         ref="dialogEl"
-        class="pc-section-card pc-bagu-hit-modal"
+        class="pc-section-card pc-modal-dialog pc-bagu-hit-modal"
         role="dialog"
         aria-modal="true"
         aria-labelledby="pc-bagu-hit-modal-title"
@@ -61,6 +66,7 @@
 </template>
 
 <script setup lang="ts">
+import { usePhoneModalLifecycle } from '@/composables/usePhoneModalLifecycle';
 import type { BaguHit } from '@/util/bagu';
 
 const props = defineProps<{
@@ -78,6 +84,13 @@ const emit = defineEmits<{
 }>();
 
 const dialogEl = ref<HTMLElement | null>(null);
+
+usePhoneModalLifecycle({
+  dialogRef: dialogEl,
+  isOpen: () => props.open,
+  onClose: () => emit('close'),
+});
+
 const sentenceSegments = computed(() => {
   const segments: Array<{ highlighted: boolean; text: string }> = [];
   let cursor = 0;
@@ -97,29 +110,11 @@ const sentenceSegments = computed(() => {
   return segments;
 });
 
-watch(
-  () => props.open,
-  open => {
-    if (open) void nextTick(() => dialogEl.value?.focus({ preventScroll: true }));
-  },
-);
-
-useEventListener(window, 'keydown', event => {
-  if (!props.open || event.key !== 'Escape') return;
-  event.preventDefault();
-  emit('close');
-});
 </script>
 
 <style scoped>
 .pc-bagu-hit-modal-mask {
-  position: absolute;
-  inset: 0;
-  z-index: 70;
-  display: grid;
-  place-items: center;
-  padding: 18px;
-  background: color-mix(in srgb, var(--pc-text) 32%, transparent 68%);
+  --pc-modal-z: 70;
 }
 
 .pc-bagu-hit-modal {
@@ -128,11 +123,7 @@ useEventListener(window, 'keydown', event => {
   width: min(100%, 330px);
   max-height: min(78%, 560px);
   min-height: 0;
-  border-color: var(--pc-border);
-  background: var(--pc-bg);
-  box-shadow: 0 18px 44px color-mix(in srgb, var(--pc-text) 22%, transparent 78%);
   padding: 14px;
-  outline: none;
 }
 
 .pc-bagu-hit-modal-head,

@@ -1,169 +1,173 @@
 <template>
   <section class="pc-storyline-detail-page">
-    <article ref="contentEl" class="pc-section-card pc-storyline-detail-card">
-      <header class="pc-storyline-detail-head">
-        <span class="pc-storyline-detail-kicker">{{ kicker }}</span>
-        <h2>{{ title }}</h2>
-        <p v-if="parentLine && itemKind !== 'line'">
+    <ReaderDetailShell
+      :bagu-enabled="false"
+      custom-content
+      :favorite-enabled="false"
+      :next-disabled="nextDisabled"
+      next-label="下一条"
+      :previous-disabled="previousDisabled"
+      previous-label="上一条"
+      :title="title"
+      @bottom="scrollToBottom"
+      @catalog="$emit('catalog')"
+      @edit="$emit('edit')"
+      @next="$emit('next')"
+      @previous="$emit('previous')"
+      @top="scrollToTop"
+    >
+      <template #kicker>
+        <span class="pc-kicker">{{ kicker }}</span>
+      </template>
+      <template v-if="parentLine && itemKind !== 'line'" #meta>
+        <p class="pc-storyline-parent-line">
           所属剧情线：
           <button class="pc-storyline-inline-link" type="button" @click="$emit('openItem', 'line', parentLine.id)">
             {{ parentLine.title }}
           </button>
         </p>
-      </header>
-
-      <template v-if="line">
-        <section class="pc-storyline-detail-section">
-          <strong>剧情概述</strong>
-          <p>{{ line.summary || '暂无剧情概述' }}</p>
-        </section>
-        <section class="pc-storyline-detail-section">
-          <strong>当前目标</strong>
-          <p>{{ line.goal || '暂无当前目标' }}</p>
-        </section>
-        <section class="pc-storyline-detail-section">
-          <strong>风险与代价</strong>
-          <p>{{ line.stakes || '暂无风险与代价' }}</p>
-        </section>
       </template>
 
-      <template v-else-if="beat">
-        <section class="pc-storyline-detail-section">
-          <strong>节点说明</strong>
-          <p>{{ beat.summary || '暂无节点说明' }}</p>
-        </section>
-        <dl class="pc-storyline-detail-facts">
-          <div>
-            <dt>节点顺序</dt>
-            <dd>第 {{ beat.order + 1 }} 个</dd>
-          </div>
-          <div>
-            <dt>更新时间</dt>
-            <dd>{{ formatTime(beat.updatedAt) }}</dd>
-          </div>
-        </dl>
+      <template #content>
+        <div class="pc-storyline-detail-content">
+          <template v-if="line">
+            <section class="pc-storyline-detail-section">
+              <strong>剧情概述</strong>
+              <p>{{ line.summary || '暂无剧情概述' }}</p>
+            </section>
+            <section class="pc-storyline-detail-section">
+              <strong>当前目标</strong>
+              <p>{{ line.goal || '暂无当前目标' }}</p>
+            </section>
+            <section class="pc-storyline-detail-section">
+              <strong>风险与代价</strong>
+              <p>{{ line.stakes || '暂无风险与代价' }}</p>
+            </section>
+          </template>
+
+          <template v-else-if="beat">
+            <section class="pc-storyline-detail-section">
+              <strong>节点说明</strong>
+              <p>{{ beat.summary || '暂无节点说明' }}</p>
+            </section>
+            <dl class="pc-storyline-detail-facts">
+              <div>
+                <dt>节点顺序</dt>
+                <dd>第 {{ beat.order + 1 }} 个</dd>
+              </div>
+              <div>
+                <dt>更新时间</dt>
+                <dd>{{ formatTime(beat.updatedAt) }}</dd>
+              </div>
+            </dl>
+          </template>
+
+          <template v-else-if="hook">
+            <section class="pc-storyline-detail-section">
+              <strong>埋设内容</strong>
+              <p>{{ hook.seed || '暂无埋设内容' }}</p>
+            </section>
+            <section class="pc-storyline-detail-section">
+              <strong>回收内容</strong>
+              <p>{{ hook.payoff || '尚未记录回收内容' }}</p>
+            </section>
+          </template>
+
+          <section v-if="tags.length" class="pc-storyline-detail-section">
+            <strong>标签</strong>
+            <div class="pc-storyline-tag-list">
+              <span v-for="tag in tags" :key="tag">{{ tag }}</span>
+            </div>
+          </section>
+
+          <section v-if="relatedProfileIds.length" class="pc-storyline-detail-section">
+            <strong>关联资料</strong>
+            <div class="pc-storyline-related-list">
+              <button
+                v-for="profileId in relatedProfileIds"
+                :key="profileId"
+                class="pc-soft-btn compact"
+                type="button"
+                :disabled="!profileNames[profileId]"
+                @click="$emit('openProfile', profileId)"
+              >
+                <i class="fa-solid fa-address-card"></i>
+                <span>{{ profileNames[profileId] || '资料已失效' }}</span>
+              </button>
+            </div>
+          </section>
+
+          <section v-if="line" class="pc-storyline-detail-section">
+            <div class="pc-section-head">
+              <strong>剧情节点</strong>
+              <span>{{ lineBeats.length }}</span>
+            </div>
+            <div v-if="lineBeats.length" class="pc-directory-list">
+              <button
+                v-for="item in lineBeats"
+                :key="item.id"
+                class="pc-list-row"
+                type="button"
+                @click="$emit('openItem', 'beat', item.id)"
+              >
+                <span class="pc-list-row-copy">
+                  <strong>{{ item.title }}</strong>
+                  <small>{{ getBeatStatusLabel(item.status) }} · 第 {{ item.order + 1 }} 个</small>
+                </span>
+                <i class="fa-solid fa-chevron-right"></i>
+              </button>
+            </div>
+            <EmptyState v-else compact title="这条剧情线还没有节点" />
+          </section>
+
+          <section v-if="line" class="pc-storyline-detail-section">
+            <div class="pc-section-head">
+              <strong>伏笔</strong>
+              <span>{{ lineHooks.length }}</span>
+            </div>
+            <div v-if="lineHooks.length" class="pc-directory-list">
+              <button
+                v-for="item in lineHooks"
+                :key="item.id"
+                class="pc-list-row"
+                type="button"
+                @click="$emit('openItem', 'hook', item.id)"
+              >
+                <span class="pc-list-row-copy">
+                  <strong>{{ item.title }}</strong>
+                  <small>{{ getForeshadowStatusLabel(item.status) }}</small>
+                </span>
+                <i class="fa-solid fa-chevron-right"></i>
+              </button>
+            </div>
+            <EmptyState v-else compact title="这条剧情线还没有伏笔" />
+          </section>
+
+          <dl v-if="line || hook" class="pc-storyline-detail-facts">
+            <div>
+              <dt>创建时间</dt>
+              <dd>{{ formatTime((line || hook)?.createdAt || '') }}</dd>
+            </div>
+            <div>
+              <dt>更新时间</dt>
+              <dd>{{ formatTime((line || hook)?.updatedAt || '') }}</dd>
+            </div>
+          </dl>
+        </div>
       </template>
 
-      <template v-else-if="hook">
-        <section class="pc-storyline-detail-section">
-          <strong>埋设内容</strong>
-          <p>{{ hook.seed || '暂无埋设内容' }}</p>
-        </section>
-        <section class="pc-storyline-detail-section">
-          <strong>回收内容</strong>
-          <p>{{ hook.payoff || '尚未记录回收内容' }}</p>
-        </section>
-      </template>
-
-      <section v-if="tags.length" class="pc-storyline-detail-section">
-        <strong>标签</strong>
-        <div class="pc-storyline-tag-list">
-          <span v-for="tag in tags" :key="tag">{{ tag }}</span>
-        </div>
-      </section>
-
-      <section v-if="relatedProfileIds.length" class="pc-storyline-detail-section">
-        <strong>关联资料</strong>
-        <div class="pc-storyline-related-list">
-          <button
-            v-for="profileId in relatedProfileIds"
-            :key="profileId"
-            class="pc-soft-btn compact"
-            type="button"
-            :disabled="!profileNames[profileId]"
-            @click="$emit('openProfile', profileId)"
-          >
-            <i class="fa-solid fa-address-card"></i>
-            <span>{{ profileNames[profileId] || '资料已失效' }}</span>
-          </button>
-        </div>
-      </section>
-
-      <section v-if="line" class="pc-storyline-detail-section">
-        <div class="pc-section-head">
-          <strong>剧情节点</strong>
-          <span>{{ lineBeats.length }}</span>
-        </div>
-        <div v-if="lineBeats.length" class="pc-directory-list">
-          <button
-            v-for="item in lineBeats"
-            :key="item.id"
-            class="pc-list-row"
-            type="button"
-            @click="$emit('openItem', 'beat', item.id)"
-          >
-            <span class="pc-list-row-copy">
-              <strong>{{ item.title }}</strong>
-              <small>{{ getBeatStatusLabel(item.status) }} · 第 {{ item.order + 1 }} 个</small>
-            </span>
-            <i class="fa-solid fa-chevron-right"></i>
-          </button>
-        </div>
-        <EmptyState v-else compact title="这条剧情线还没有节点" />
-      </section>
-
-      <section v-if="line" class="pc-storyline-detail-section">
-        <div class="pc-section-head">
-          <strong>伏笔</strong>
-          <span>{{ lineHooks.length }}</span>
-        </div>
-        <div v-if="lineHooks.length" class="pc-directory-list">
-          <button
-            v-for="item in lineHooks"
-            :key="item.id"
-            class="pc-list-row"
-            type="button"
-            @click="$emit('openItem', 'hook', item.id)"
-          >
-            <span class="pc-list-row-copy">
-              <strong>{{ item.title }}</strong>
-              <small>{{ getForeshadowStatusLabel(item.status) }}</small>
-            </span>
-            <i class="fa-solid fa-chevron-right"></i>
-          </button>
-        </div>
-        <EmptyState v-else compact title="这条剧情线还没有伏笔" />
-      </section>
-
-      <dl v-if="line || hook" class="pc-storyline-detail-facts">
-        <div>
-          <dt>创建时间</dt>
-          <dd>{{ formatTime((line || hook)?.createdAt || '') }}</dd>
-        </div>
-        <div>
-          <dt>更新时间</dt>
-          <dd>{{ formatTime((line || hook)?.updatedAt || '') }}</dd>
-        </div>
-      </dl>
-    </article>
-
-    <DetailFooter
-      catalog-label="列表"
-      next-label="下一条"
-      :next-disabled="nextDisabled"
-      previous-label="上一条"
-      :previous-disabled="previousDisabled"
-      @bottom="scrollToBottom"
-      @catalog="$emit('catalog')"
-      @next="$emit('next')"
-      @previous="$emit('previous')"
-      @top="scrollToTop"
-    >
       <template #actions>
-        <button class="pc-soft-btn" type="button" title="编辑" @click="$emit('edit')">
-          <i class="fa-solid fa-pen"></i><span>编辑</span>
-        </button>
         <button class="pc-soft-btn danger" type="button" title="删除" @click="$emit('delete')">
           <i class="fa-solid fa-trash"></i><span>删除</span>
         </button>
       </template>
-    </DetailFooter>
+    </ReaderDetailShell>
   </section>
 </template>
 
 <script setup lang="ts">
-import DetailFooter from '@/components/DetailFooter.vue';
 import EmptyState from '@/components/EmptyState.vue';
+import ReaderDetailShell from '@/components/ReaderDetailShell.vue';
 import { useDetailScroll } from '@/util/detailScroll';
 import {
   getBeatStatusLabel,
@@ -200,7 +204,7 @@ defineEmits<{
 }>();
 
 const contentEl = ref<HTMLElement | null>(null);
-const { scrollToBottom, scrollToTop } = useDetailScroll(contentEl, '.pc-storyline-detail-card');
+const { scrollToBottom, scrollToTop } = useDetailScroll(contentEl, '.pc-storyline-detail-page .pc-reader-content');
 const title = computed(() => props.line?.title || props.beat?.title || props.hook?.title || '剧情记录');
 const kicker = computed(() => {
   if (props.line) return `${getStorylineKindLabel(props.line.kind)} · ${getStorylineStatusLabel(props.line.status)}`;
@@ -219,41 +223,28 @@ function formatTime(value: string) {
 </script>
 
 <style scoped>
-.pc-storyline-detail-page,
-.pc-storyline-detail-card,
-.pc-storyline-detail-section,
-.pc-storyline-detail-head {
+.pc-storyline-detail-page {
+  height: 100%;
+  min-height: 0;
+}
+
+.pc-storyline-detail-content,
+.pc-storyline-detail-section {
   display: grid;
   gap: 10px;
 }
 
-.pc-storyline-detail-head {
-  gap: 5px;
-}
-
-.pc-storyline-detail-head h2,
-.pc-storyline-detail-head p,
+.pc-storyline-parent-line,
 .pc-storyline-detail-section p {
   margin: 0;
 }
 
-.pc-storyline-detail-head h2 {
-  font-size: 21px;
-  line-height: 1.3;
-}
-
-.pc-storyline-detail-head p,
+.pc-storyline-parent-line,
 .pc-storyline-detail-section p {
   color: var(--pc-muted);
   font-size: 13px;
   line-height: 1.65;
   white-space: pre-wrap;
-}
-
-.pc-storyline-detail-kicker {
-  color: var(--pc-theme-accent);
-  font-size: 12px;
-  font-weight: 850;
 }
 
 .pc-storyline-detail-section {

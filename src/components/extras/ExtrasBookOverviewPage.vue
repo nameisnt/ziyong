@@ -3,13 +3,31 @@
     <div class="pc-compact-toolbar pc-directory-toolbar">
       <span class="pc-directory-count">{{ chapters.length }} 章</span>
       <div class="pc-directory-actions pc-book-actions">
-        <button class="pc-icon-btn primary" type="button" :title="t`生成章节`" @click="emit('generateChapter')">
+        <button
+          class="pc-icon-btn primary"
+          type="button"
+          :title="t`生成章节`"
+          :aria-label="t`生成章节`"
+          @click="emit('generateChapter')"
+        >
           <i class="fa-solid fa-wand-magic-sparkles"></i>
         </button>
-        <button class="pc-icon-btn" type="button" :title="t`编辑番外信息`" @click="emit('editBook')">
+        <button
+          class="pc-icon-btn"
+          type="button"
+          :title="t`编辑番外信息`"
+          :aria-label="t`编辑番外信息`"
+          @click="emit('editBook')"
+        >
           <i class="fa-solid fa-pen"></i>
         </button>
-        <button class="pc-icon-btn danger" type="button" :title="t`删除番外`" @click="emit('deleteBook')">
+        <button
+          class="pc-icon-btn danger"
+          type="button"
+          :title="t`删除番外`"
+          :aria-label="t`删除番外`"
+          @click="emit('deleteBook')"
+        >
           <i class="fa-solid fa-trash"></i>
         </button>
       </div>
@@ -24,6 +42,7 @@
         class="pc-icon-btn pc-directory-sort"
         type="button"
         :title="sortDesc ? t`当前倒序，切换正序` : t`当前正序，切换倒序`"
+        :aria-label="sortDesc ? t`当前倒序，切换正序` : t`当前正序，切换倒序`"
         @click="sortDesc = !sortDesc"
       >
         <i :class="sortDesc ? 'fa-solid fa-arrow-down-wide-short' : 'fa-solid fa-arrow-up-short-wide'"></i>
@@ -60,6 +79,7 @@
                 class="pc-icon-btn"
                 type="button"
                 :title="t`编辑总结`"
+                :aria-label="t`编辑总结`"
                 @click="emit('editSummary', summaryItem.id)"
               >
                 <i class="fa-solid fa-pen"></i>
@@ -68,6 +88,7 @@
                 class="pc-icon-btn danger"
                 type="button"
                 :title="t`删除总结`"
+                :aria-label="t`删除总结`"
                 @click="emit('deleteSummary', summaryItem.id)"
               >
                 <i class="fa-solid fa-trash"></i>

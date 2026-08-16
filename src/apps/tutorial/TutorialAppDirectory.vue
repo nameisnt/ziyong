@@ -1,8 +1,8 @@
 <template>
   <section class="pc-tutorial-directory">
-    <label class="pc-tutorial-directory-search">
+    <label class="pc-search-field pc-tutorial-directory-search">
       <i class="fa-solid fa-magnifying-glass"></i>
-      <input v-model="query" class="pc-field" type="search" :placeholder="t`搜索 App 名称、用途或第一步`" />
+      <input v-model="query" type="search" :placeholder="t`搜索 App 名称、用途或第一步`" />
     </label>
 
     <div v-if="visibleItemCount" class="pc-tutorial-directory-groups">
@@ -34,6 +34,7 @@
               class="pc-icon-btn"
               type="button"
               :title="t`打开 ${item.app.name}`"
+              :aria-label="t`打开 ${item.app.name}`"
               @click="phone.openApp(item.appId)"
             >
               <i class="fa-solid fa-arrow-up-right-from-square"></i>
@@ -97,24 +98,6 @@ function toggleGroup(groupId: TutorialAppGroupId) {
 
 .pc-tutorial-directory {
   gap: 14px;
-}
-
-.pc-tutorial-directory-search {
-  position: relative;
-}
-
-.pc-tutorial-directory-search > i {
-  position: absolute;
-  z-index: 1;
-  top: 50%;
-  left: 14px;
-  color: var(--pc-muted);
-  pointer-events: none;
-  transform: translateY(-50%);
-}
-
-.pc-tutorial-directory-search .pc-field {
-  padding-left: 40px;
 }
 
 .pc-tutorial-directory-groups {

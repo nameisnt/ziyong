@@ -29,14 +29,32 @@
         </div>
 
         <div class="pc-task-actions">
-          <button class="pc-icon-btn" type="button" :title="t`打开任务`" @click="openTask(task)">
+          <button
+            class="pc-icon-btn"
+            type="button"
+            :title="t`打开任务`"
+            :aria-label="t`打开任务`"
+            @click="openTask(task)"
+          >
             <i class="fa-solid fa-arrow-up-right-from-square"></i>
           </button>
           <button
-            v-if="task.status === 'running'"
+            v-if="task.rawOutput"
+            class="pc-icon-btn"
+            type="button"
+            :class="{ active: expandedRawTaskId === task.id }"
+            :title="t`查看原始输出`"
+            :aria-label="t`查看原始输出`"
+            @click="toggleRawOutput(task.id)"
+          >
+            <i class="fa-solid fa-file-lines"></i>
+          </button>
+          <button
+            v-if="task.kind !== 'single' && task.status === 'running'"
             class="pc-icon-btn"
             type="button"
             :title="t`完成当前项后暂停`"
+            :aria-label="t`完成当前项后暂停`"
             @click="generationTasks.requestPause(task.id)"
           >
             <i class="fa-solid fa-pause"></i>
@@ -45,16 +63,18 @@
             v-if="task.status === 'running' || task.status === 'pause-requested'"
             class="pc-icon-btn danger"
             type="button"
-            :title="t`立即停止并保留进度`"
+            :title="task.kind === 'single' ? t`立即停止并保留原始输出` : t`立即停止并保留进度`"
+            :aria-label="task.kind === 'single' ? t`立即停止并保留原始输出` : t`立即停止并保留进度`"
             @click="generationTasks.stopNow(task.id)"
           >
             <i class="fa-solid fa-stop"></i>
           </button>
           <button
-            v-if="task.status === 'paused' || task.status === 'interrupted'"
+            v-if="task.kind !== 'single' && (task.status === 'paused' || task.status === 'interrupted')"
             class="pc-icon-btn"
             type="button"
             :title="t`继续任务`"
+            :aria-label="t`继续任务`"
             @click="resume(task.id)"
           >
             <i class="fa-solid fa-play"></i>
@@ -63,15 +83,25 @@
             v-if="
               task.status === 'paused' ||
               task.status === 'interrupted' ||
+              task.status === 'failed' ||
               task.status === 'completed' ||
               task.status === 'cancelled'
             "
             class="pc-icon-btn"
             type="button"
             :title="task.status === 'paused' || task.status === 'interrupted' ? t`放弃任务` : t`移除记录`"
+            :aria-label="task.status === 'paused' || task.status === 'interrupted' ? t`放弃任务` : t`移除记录`"
             @click="discard(task.id)"
           >
             <i class="fa-solid fa-xmark"></i>
+          </button>
+        </div>
+
+        <div v-if="expandedRawTaskId === task.id && task.rawOutput" class="pc-task-raw-output">
+          <textarea :value="task.rawOutput" class="pc-area compact pc-raw-area pc-task-raw-area" readonly></textarea>
+          <button class="pc-soft-btn" type="button" @click="copyRawOutput(task)">
+            <i class="fa-solid fa-copy"></i>
+            <span>{{ t`复制原始输出` }}</span>
           </button>
         </div>
       </article>
@@ -88,19 +118,27 @@ import type { GenerationTask, GenerationTaskStatus } from '@/type/generationTask
 const generationTasks = useGenerationTaskStore();
 const phone = usePhoneStore();
 const expanded = ref(true);
+const expandedRawTaskId = ref('');
 
 const visibleTasks = computed(() => generationTasks.currentScopeTasks.slice(0, 5));
 const statusSummary = computed(() => {
   const running = visibleTasks.value.filter(
     task => task.status === 'running' || task.status === 'pause-requested',
   ).length;
-  const paused = visibleTasks.value.filter(task => task.status === 'paused' || task.status === 'interrupted').length;
+  const paused = visibleTasks.value.filter(
+    task => task.kind !== 'single' && (task.status === 'paused' || task.status === 'interrupted'),
+  ).length;
+  const needsAttention = visibleTasks.value.filter(
+    task => task.kind === 'single' && ['interrupted', 'failed', 'cancelled'].includes(task.status),
+  ).length;
   if (running) return `${running} 个运行中`;
   if (paused) return `${paused} 个可继续`;
+  if (needsAttention) return `${needsAttention} 个需处理`;
   return `${visibleTasks.value.length} 条记录`;
 });
 
 function doneCount(task: GenerationTask) {
+  if (task.kind === 'single' && task.status === 'completed') return 1;
   return Math.min(task.total, task.savedCount + task.draftCount);
 }
 
@@ -110,6 +148,11 @@ function progressPercent(task: GenerationTask) {
 }
 
 function progressLabel(task: GenerationTask) {
+  if (task.kind === 'single') {
+    if (task.status === 'completed') return task.currentLabel || '生成完成';
+    if (task.rawOutput && ['cancelled', 'failed', 'interrupted'].includes(task.status)) return '原始输出已保留';
+    return task.status === 'running' ? '正在生成' : '等待开始';
+  }
   const draft = task.draftCount ? ` · 草稿 ${task.draftCount}` : '';
   return `${doneCount(task)}/${task.total} · 保存 ${task.savedCount}${draft}`;
 }
@@ -118,6 +161,7 @@ function statusLabel(status: GenerationTaskStatus) {
   return {
     cancelled: '已取消',
     completed: '已完成',
+    failed: '失败',
     interrupted: '已中断',
     paused: '已暂停',
     'pause-requested': '等待暂停',
@@ -129,6 +173,19 @@ function statusLabel(status: GenerationTaskStatus) {
 async function openTask(task: GenerationTask) {
   if (!phone.isViewingCurrentChat) await phone.returnToCurrentScope();
   phone.pushRoute(task.appId, task.routePage, task.title, task.routeParams);
+}
+
+function toggleRawOutput(taskId: string) {
+  expandedRawTaskId.value = expandedRawTaskId.value === taskId ? '' : taskId;
+}
+
+async function copyRawOutput(task: GenerationTask) {
+  try {
+    await navigator.clipboard.writeText(task.rawOutput);
+    toastr.success('已复制原始输出');
+  } catch {
+    toastr.error('复制失败，请手动选择文本');
+  }
 }
 
 function resume(taskId: string) {
@@ -167,6 +224,19 @@ function discard(taskId: string) {
 .pc-task-actions {
   display: flex;
   align-items: center;
+}
+
+.pc-task-raw-output {
+  grid-column: 1 / -1;
+  display: grid;
+  justify-items: end;
+  gap: 8px;
+  min-width: 0;
+}
+
+.pc-task-raw-area {
+  font-family: var(--pc-mono-font, ui-monospace, SFMono-Regular, Consolas, monospace);
+  font-size: 12px;
 }
 
 .pc-task-center-title {

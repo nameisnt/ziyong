@@ -35,6 +35,7 @@ export function createSummaryGenerationAdapter(summaryStore: {
       return parsePrettified(GenerationRequestPartsSchema, {
         appPrompt: config.appPrompt,
         outputFormat: config.outputFormat,
+        taskInstruction: '请根据本次选中的来源楼层和引用内容生成总结。',
         userRequirement: config.userRequirement,
       });
     },

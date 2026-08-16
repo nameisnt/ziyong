@@ -9,6 +9,7 @@
       :next-disabled="!nextId"
       :previous-disabled="!previousId"
       :reasoning="viewedGenerationRecord?.reasoning"
+      :source-label="viewedGenerationRecord?.replay.source.label"
       :title="entry.title"
       @bagu="emit('bagu')"
       @bottom="emit('bottom')"

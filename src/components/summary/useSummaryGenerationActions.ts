@@ -5,11 +5,11 @@ import { usePromptStore } from '@/store/prompts';
 import { useSettingsStore } from '@/store/settings';
 import { useSummaryStore } from '@/store/summary';
 import type { GenerationReferenceItem } from '@/util/references';
-import { stopGenerationByIdSafe } from '@/util/runtime';
 import { getSourceLastFloor } from '@/util/sourceFloor';
 import { storeToRefs } from 'pinia';
 import type { ComputedRef, Ref } from 'vue';
 import type { HiddenGenerationRecord } from '@/type/generation';
+import type { GenerationTask } from '@/type/generationTask';
 
 interface SummaryGenerationDraft {
   fromStartEnd: number;
@@ -31,11 +31,7 @@ interface SummaryGenerationPreview {
 }
 
 interface SummaryGenerationState {
-  error: string;
-  generationId: string;
   preview: SummaryGenerationPreview | null;
-  rawOutput: string;
-  running: boolean;
 }
 
 interface SummaryGenerationActionsOptions {
@@ -59,17 +55,22 @@ export function useSummaryGenerationActions(options: SummaryGenerationActionsOpt
   const summary = useSummaryStore();
   const { settings } = storeToRefs(settingsStore);
   const adapter = getRegisteredPhoneGenerationAdapter('summary', 'generate');
+  const generationSession = useSingleGenerationTaskSession({
+    actionId: 'generate',
+    appId: 'summary',
+    sourcePage: 'generate',
+    title: 'AI 总结 · 单次生成',
+  });
 
   async function runGeneration() {
     const bookId = options.route.value.params?.bookId;
     if (!bookId) return;
     const state = options.state;
-    state.error = '';
     options.clearPreviewDraft();
     state.preview = null;
-    state.rawOutput = '';
-
+    let task: GenerationTask | null = null;
     try {
+      task = generationSession.create({ sourceParams: { bookId }, title: 'AI 总结 · 单次生成' });
       const result = await generateContent(
         adapter,
         {
@@ -86,19 +87,7 @@ export function useSummaryGenerationActions(options: SummaryGenerationActionsOpt
             tavernPresetName: settings.value.generation.tavernPresetName,
           },
           references: options.formattedReferences.value,
-          lifecycle: {
-            onFinish() {
-              state.running = false;
-              state.generationId = '';
-            },
-            onRawOutput(rawOutput) {
-              state.rawOutput = rawOutput;
-            },
-            onStart(generationId) {
-              state.running = true;
-              state.generationId = generationId;
-            },
-          },
+          lifecycle: generationSession.lifecycle(task.id),
           source: {
             fromStartEnd: options.draft.fromStartEnd,
             mode: settings.value.generation.sourceMode,
@@ -111,9 +100,15 @@ export function useSummaryGenerationActions(options: SummaryGenerationActionsOpt
       );
 
       if (result.status === 'failed') {
-        state.error = result.warnings.join('；') || '模型没有返回可解析的总结 XML';
         options.failedDraftRawOutput.value = result.rawOutput;
         options.failedDraftTargetBookId.value = bookId;
+        generationSession.complete(task.id, {
+          currentLabel: '解析失败草稿已保留',
+          resultPage: 'failed-draft',
+          resultParams: { bookId, draftId: result.draft.id },
+          resultState: 'failed-draft',
+          resultTitle: '解析失败草稿',
+        });
         toastr.warning('XML 解析失败，已保存到失败草稿');
         void phone.presentGeneratedPage('summary', 'failed-draft', '解析失败草稿', {
           bookId,
@@ -123,6 +118,13 @@ export function useSummaryGenerationActions(options: SummaryGenerationActionsOpt
       }
 
       if (result.status === 'saved') {
+        generationSession.complete(task.id, {
+          currentLabel: `已保存总结：${result.saved.entry.title}`,
+          resultPage: 'entry',
+          resultParams: { bookId, entryId: result.saved.entry.id },
+          resultState: 'saved',
+          resultTitle: result.saved.entry.title,
+        });
         toastr.success('已生成并保存总结');
         void phone.presentGeneratedPage('summary', 'entry', result.saved.entry.title, {
           bookId,
@@ -142,23 +144,30 @@ export function useSummaryGenerationActions(options: SummaryGenerationActionsOpt
         warnings: result.warnings,
       };
       options.persistPreviewDraft({ bookId });
+      generationSession.complete(task.id, {
+        currentLabel: '总结已生成，等待确认',
+        resultPage: 'preview',
+        resultParams: { bookId },
+        resultState: 'preview',
+        resultTitle: '生成预览',
+      });
       void phone.presentGeneratedPage('summary', 'preview', '生成预览', { bookId });
     } catch (error) {
-      state.error = error instanceof Error ? error.message : '生成失败，请稍后再试';
+      if (task) generationSession.fail(task.id, error);
+      else toastr.error(error instanceof Error ? error.message : '生成失败，请稍后再试');
     }
   }
 
   function stopGeneration() {
-    const state = options.state;
-    if (!state.generationId) return;
-    stopGenerationByIdSafe(state.generationId);
-    state.running = false;
-    state.error = '生成已停止';
+    generationSession.stop();
   }
 
-  onScopeDispose(() => {
-    if (options.state.running && options.state.generationId) stopGenerationByIdSafe(options.state.generationId);
-  });
-
-  return { runGeneration, stopGeneration };
+  return {
+    error: generationSession.error,
+    rawOutput: generationSession.rawOutput,
+    runGeneration,
+    running: generationSession.running,
+    stopGeneration,
+  };
 }
+import { useSingleGenerationTaskSession } from '@/composables/useSingleGenerationTaskSession';

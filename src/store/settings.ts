@@ -11,6 +11,7 @@ import {
   type ThemeAppearanceProfile,
   type ThemeMode,
 } from '@/type/settings';
+import { commitSettingsResourceDeletion } from '@/util/settingsResourceTransaction';
 import { getExternalApiPreset, normalizeExternalApiUrl } from '@/util/textProvider';
 import { validateInplace } from '@/util/zod';
 // eslint-disable-next-line import-x/no-nodejs-modules
@@ -474,7 +475,10 @@ export const useSettingsStore = defineStore('settings', () => {
   }
 
   async function deleteUserFile(path: string) {
-    if (!path || typeof getRequestHeaders !== 'function') return;
+    if (!path) return;
+    if (typeof getRequestHeaders !== 'function') {
+      throw new Error('当前环境不支持 user/files 删除');
+    }
     const response = await fetch('/api/files/delete', {
       method: 'POST',
       headers: getRequestHeaders(),
@@ -514,21 +518,24 @@ export const useSettingsStore = defineStore('settings', () => {
     const item = getCustomWallpaper(wallpaperId);
     if (!item) return;
 
-    settings.value.wallpaper.customWallpapers = settings.value.wallpaper.customWallpapers.filter(
-      wallpaper => wallpaper.id !== wallpaperId,
-    );
-    if (settings.value.wallpaper.selectedCustomId === wallpaperId) {
-      const nextItem = settings.value.wallpaper.customWallpapers[0] ?? null;
-      if (nextItem) {
-        settings.value.wallpaper.mode = 'custom';
-        syncSelectedWallpaper(nextItem);
-      } else {
-        settings.value.wallpaper.mode = 'none';
-        syncSelectedWallpaper(null);
+    await commitSettingsResourceDeletion({
+      deleteResource: () => deleteUserFile(item.path),
+      removeReference: () => {
+        settings.value.wallpaper.customWallpapers = settings.value.wallpaper.customWallpapers.filter(
+          wallpaper => wallpaper.id !== wallpaperId,
+        );
+        if (settings.value.wallpaper.selectedCustomId === wallpaperId) {
+          const nextItem = settings.value.wallpaper.customWallpapers[0] ?? null;
+          if (nextItem) {
+            settings.value.wallpaper.mode = 'custom';
+            syncSelectedWallpaper(nextItem);
+          } else {
+            settings.value.wallpaper.mode = 'none';
+            syncSelectedWallpaper(null);
+          }
+        }
       }
-    }
-
-    await deleteUserFile(item.path);
+    });
   }
 
   function getCustomFont(fontId: string) {
@@ -590,17 +597,20 @@ export const useSettingsStore = defineStore('settings', () => {
 
     const wasSelectedAsset = settings.value.customFont.selectedFontId === fontId;
     const wasPhoneFont = settings.value.fontFamily === getCustomFontFamily(fontId);
-    settings.value.customFont.fonts = settings.value.customFont.fonts.filter(font => font.id !== fontId);
-    if (settings.value.reader.fontFamily === getCustomFontFamily(fontId)) {
-      settings.value.reader.fontFamily = '';
-    }
-    if (wasSelectedAsset) {
-      const nextItem = settings.value.customFont.fonts[0] ?? null;
-      syncSelectedFont(nextItem);
-    }
-    if (wasPhoneFont) settings.value.fontFamily = '';
-
-    await deleteUserFile(item.path);
+    await commitSettingsResourceDeletion({
+      deleteResource: () => deleteUserFile(item.path),
+      removeReference: () => {
+        settings.value.customFont.fonts = settings.value.customFont.fonts.filter(font => font.id !== fontId);
+        if (settings.value.reader.fontFamily === getCustomFontFamily(fontId)) {
+          settings.value.reader.fontFamily = '';
+        }
+        if (wasSelectedAsset) {
+          const nextItem = settings.value.customFont.fonts[0] ?? null;
+          syncSelectedFont(nextItem);
+        }
+        if (wasPhoneFont) settings.value.fontFamily = '';
+      },
+    });
   }
 
   function resetGenerationDefaults() {

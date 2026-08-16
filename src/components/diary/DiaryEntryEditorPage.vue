@@ -31,7 +31,7 @@
         type="text"
         placeholder="阅读者，用逗号分隔"
       />
-      <textarea v-model="content" class="pc-area pc-diary-entry-content" placeholder="正文"></textarea>
+      <textarea v-model="content" class="pc-area pc-area-long pc-diary-entry-content" placeholder="正文"></textarea>
 
       <div class="pc-form-actions">
         <button class="pc-soft-btn" type="button" @click="$emit('cancel')">取消</button>
@@ -71,7 +71,4 @@ const title = defineModel<string>('title', { required: true });
   margin-top: 14px;
 }
 
-.pc-diary-entry-content {
-  min-height: 260px;
-}
 </style>

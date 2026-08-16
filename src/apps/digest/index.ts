@@ -158,6 +158,13 @@ export default definePhoneApp({
       createAdapter: () => createDigestGenerationAdapter(useDigestStore()),
     },
   ],
+  taskTemplateDefinitions: [
+    {
+      actionId: 'generate',
+      label: '生成摘抄',
+      defaultTemplate: '请从本次选中的来源内容中提取值得保存的原文摘抄，不得改写。',
+    },
+  ],
   promptDefinitions: [
     {
       key: 'digest',

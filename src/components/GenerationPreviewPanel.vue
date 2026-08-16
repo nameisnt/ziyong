@@ -89,11 +89,18 @@
     </div>
     <section
       v-if="parseNoticeVisible"
-      class="pc-preview-dialog-backdrop"
+      class="pc-modal-backdrop pc-preview-dialog-backdrop"
       role="presentation"
       @click.self="parseNoticeVisible = false"
     >
-      <article class="pc-section-card pc-preview-dialog" role="dialog" aria-modal="true" :aria-label="parseNoticeTitle">
+      <article
+        ref="parseNoticeDialogRef"
+        class="pc-section-card pc-modal-dialog pc-preview-dialog"
+        role="dialog"
+        aria-modal="true"
+        :aria-label="parseNoticeTitle"
+        tabindex="-1"
+      >
         <h3>{{ parseNoticeTitle }}</h3>
         <p>{{ parseNoticeMessage }}</p>
         <div class="pc-form-actions">
@@ -110,6 +117,7 @@
 <script setup lang="ts">
 import BaguScanPanel from '@/components/BaguScanPanel.vue';
 import RawOutputEditor from '@/components/RawOutputEditor.vue';
+import { usePhoneModalLifecycle } from '@/composables/usePhoneModalLifecycle';
 import { useRegexDisplayStore } from '@/apps/regex-display/store';
 import { usePhoneStore } from '@/store/phone';
 import { applyRegexDisplayRules, getRegexRulesByIds } from '@/util/regexDisplay';
@@ -196,7 +204,16 @@ const acceptedContent = ref(props.content);
 const acceptedRaw = ref(props.raw);
 const editingContent = ref(false);
 const parseNoticeVisible = ref(false);
+const parseNoticeDialogRef = ref<HTMLElement | null>(null);
 const saving = ref(false);
+
+usePhoneModalLifecycle({
+  dialogRef: parseNoticeDialogRef,
+  isOpen: () => parseNoticeVisible.value,
+  onClose: () => {
+    parseNoticeVisible.value = false;
+  },
+});
 
 const editableContent = computed({
   get: () => props.content,
@@ -413,13 +430,7 @@ function goRawFromNotice() {
 }
 
 .pc-preview-dialog-backdrop {
-  position: absolute;
-  inset: 0;
-  z-index: 20;
-  display: grid;
-  place-items: center;
-  padding: 18px;
-  background: color-mix(in srgb, var(--pc-text) 32%, transparent 68%);
+  --pc-modal-z: 20;
 }
 
 .pc-preview-dialog {

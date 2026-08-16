@@ -75,10 +75,7 @@ watch(
 .pc-settings-tabs .pc-segment-btn {
   min-width: 0;
   min-inline-size: 0;
-  min-height: 32px;
   gap: 3px;
-  padding: 6px 3px;
-  font-size: 12px;
   white-space: nowrap;
 }
 .pc-settings-tabs .pc-segment-btn span {
@@ -87,8 +84,6 @@ watch(
 @media (max-width: 380px) {
   .pc-settings-tabs .pc-segment-btn {
     gap: 2px;
-    padding-inline: 2px;
-    font-size: 11px;
   }
 }
 .pc-settings-panels {

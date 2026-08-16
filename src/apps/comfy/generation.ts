@@ -192,6 +192,7 @@ export function createComfyGenerationAdapter() {
           .filter(Boolean)
           .join('\n\n'),
         outputFormat: config.outputFormat,
+        taskInstruction: '请根据本次来源、引用和用户要求，为当前工作流生成可直接填写的参数。',
         userRequirement: config.userRequirement,
       };
     },

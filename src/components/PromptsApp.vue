@@ -461,15 +461,17 @@
     <Teleport to=".pc-phone-shell">
       <div
         v-if="activeAppPromptGroup && activeAppPrompt"
-        class="pc-prompt-detail-backdrop"
+        class="pc-modal-backdrop pc-prompt-detail-backdrop"
         role="presentation"
         @click.self="closeAppPromptDetail"
       >
         <section
-          class="pc-section-card pc-prompt-detail-dialog"
+          ref="appPromptDialogRef"
+          class="pc-section-card pc-modal-dialog pc-prompt-detail-dialog"
           role="dialog"
           aria-modal="true"
           :aria-label="activeAppPrompt.label"
+          tabindex="-1"
         >
           <header class="pc-prompt-detail-head">
             <div class="pc-app-prompt-dialog-title">
@@ -491,12 +493,18 @@
               <i class="fa-solid fa-xmark"></i>
             </button>
           </header>
-          <div v-if="activeAppPromptGroup.items.length > 1" class="pc-prompt-variant-grid">
+          <div
+            v-if="activeAppPromptGroup.items.length > 1"
+            class="pc-prompt-variant-grid"
+            role="group"
+            :aria-label="`${activeAppPromptGroup.label}提示词选项`"
+          >
             <button
               v-for="item in activeAppPromptGroup.items"
               :key="item.openKey"
-              :class="['pc-segment-btn', { active: activeAppPrompt.openKey === item.openKey }]"
+              :class="['pc-soft-btn', 'pc-prompt-variant-option', { active: activeAppPrompt.openKey === item.openKey }]"
               type="button"
+              :aria-pressed="activeAppPrompt.openKey === item.openKey"
               @click="selectAppPrompt(item.openKey)"
             >
               {{ item.label }}
@@ -529,15 +537,17 @@
 
       <div
         v-else-if="activeTypePrompt"
-        class="pc-prompt-detail-backdrop"
+        class="pc-modal-backdrop pc-prompt-detail-backdrop"
         role="presentation"
         @click.self="closeTypePromptDetail"
       >
         <section
-          class="pc-section-card pc-prompt-detail-dialog"
+          ref="typePromptDialogRef"
+          class="pc-section-card pc-modal-dialog pc-prompt-detail-dialog"
           role="dialog"
           aria-modal="true"
           :aria-label="activeTypePrompt.name"
+          tabindex="-1"
         >
           <header class="pc-prompt-detail-head">
             <div>
@@ -582,6 +592,7 @@
 
 <script setup lang="ts">
 import EmptyState from '@/components/EmptyState.vue';
+import { usePhoneModalLifecycle } from '@/composables/usePhoneModalLifecycle';
 import PromptAppEditorPage from '@/components/prompts/PromptAppEditorPage.vue';
 import PromptGroupEditorPage from '@/components/prompts/PromptGroupEditorPage.vue';
 import PromptOutputEditorPage from '@/components/prompts/PromptOutputEditorPage.vue';
@@ -636,6 +647,8 @@ const activePromptTab = ref<PromptTab>('app');
 const activeAppPromptGroupId = ref('');
 const activeAppPromptOpenKey = ref('');
 const activeTypePromptId = ref('');
+const appPromptDialogRef = ref<HTMLElement | null>(null);
+const typePromptDialogRef = ref<HTMLElement | null>(null);
 const { removeQuickPhrase, removeQuickPhraseGroup, removeQuickTemplate, removeQuickTemplateGroup, removeTypePrompt } =
   usePromptLibraryActions({
     confirmNotice: phone.confirmNotice,
@@ -812,6 +825,18 @@ const activeTypePromptDomainLabel = computed(
 const activeTypePromptGroupName = computed(() => {
   const groupId = activeTypePrompt.value?.groupId || '';
   return typePromptGroups.value.find(group => group.id === groupId)?.name || '未分组';
+});
+
+usePhoneModalLifecycle({
+  dialogRef: appPromptDialogRef,
+  isOpen: () => Boolean(activeAppPromptGroup.value && activeAppPrompt.value),
+  onClose: closeAppPromptDetail,
+});
+
+usePhoneModalLifecycle({
+  dialogRef: typePromptDialogRef,
+  isOpen: () => Boolean(activeTypePrompt.value),
+  onClose: closeTypePromptDetail,
 });
 
 const editingAppPrompt = computed(() =>
@@ -1251,13 +1276,8 @@ async function copyText(text: string, successMessage: string) {
 }
 
 .pc-prompt-detail-backdrop {
-  position: absolute;
-  z-index: 64;
-  inset: 55px 0 0;
-  display: grid;
-  place-items: center;
-  padding: 18px;
-  background: color-mix(in srgb, var(--pc-text) 32%, transparent 68%);
+  --pc-modal-inset: 55px 0 0;
+  --pc-modal-z: 64;
 }
 
 .pc-prompt-detail-dialog {
@@ -1266,10 +1286,6 @@ async function copyText(text: string, successMessage: string) {
   width: min(100%, 340px);
   max-height: calc(100% - 36px);
   overflow: hidden;
-  background: var(--pc-bg);
-  opacity: 1;
-  backdrop-filter: none;
-  box-shadow: 0 18px 44px color-mix(in srgb, var(--pc-text) 20%, transparent 80%);
 }
 
 .pc-prompt-detail-head {
@@ -1303,12 +1319,9 @@ async function copyText(text: string, successMessage: string) {
   background: color-mix(in srgb, var(--pc-text) 8%, transparent);
 }
 
-.pc-prompt-variant-grid .pc-segment-btn {
+.pc-prompt-variant-option {
+  width: 100%;
   min-inline-size: 0;
-  min-height: 38px;
-  padding-inline: 6px;
-  border-radius: calc(var(--pc-control-radius) - 3px);
-  line-height: 1.25;
   white-space: normal;
 }
 
@@ -1523,15 +1536,6 @@ async function copyText(text: string, successMessage: string) {
 
 .pc-prompts-app :is(.pc-area, .pc-field) {
   margin-top: 14px;
-}
-
-.pc-prompts-app .pc-area {
-  min-height: 260px;
-  resize: vertical;
-}
-
-.pc-prompts-app .pc-area.compact {
-  min-height: 180px;
 }
 
 .pc-type-pill {

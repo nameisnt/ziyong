@@ -16,6 +16,7 @@
       type="button"
       :disabled="busy"
       title="拖拽排序"
+      aria-label="拖拽排序"
       @click.prevent
       @pointercancel="$emit('drag-cancel', $event)"
       @pointerdown="$emit('drag-start', $event, prompt)"
@@ -46,6 +47,7 @@
       type="button"
       :disabled="busy"
       title="复制到原条目下方"
+      aria-label="复制到原条目下方"
       @click="$emit('copy', prompt)"
     >
       <i class="fa-solid fa-copy"></i>

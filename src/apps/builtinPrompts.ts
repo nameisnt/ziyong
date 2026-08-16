@@ -6,7 +6,13 @@ function lines(...items: string[]) {
 }
 
 export function createSummaryTaskTemplateDefinitions(): PhoneTaskTemplateDefinition[] {
-  return [{ actionId: 'generate', label: '生成总结', defaultTemplate: '' }];
+  return [
+    {
+      actionId: 'generate',
+      label: '生成总结',
+      defaultTemplate: '请根据本次选中的来源楼层和引用内容生成总结。',
+    },
+  ];
 }
 
 export function createDiaryTaskTemplateDefinitions(): PhoneTaskTemplateDefinition[] {
@@ -43,10 +49,11 @@ export function createExtrasTaskTemplateDefinitions(): PhoneTaskTemplateDefiniti
     {
       actionId: 'chapter-generate',
       label: '生成番外章节',
-      defaultTemplate: lines('{{modeInstruction}}', '{{typeFallback}}'),
+      defaultTemplate: lines('{{modeInstruction}}', '{{typeFallback}}', '{{summaryInstruction}}'),
       variables: [
         { key: 'modeInstruction', label: '新开或续写要求' },
         { key: 'typeFallback', label: '类型名称补充' },
+        { key: 'summaryInstruction', label: '自动摘要格式要求' },
       ],
     },
     {
@@ -62,8 +69,13 @@ export function createForumTaskTemplateDefinitions(): PhoneTaskTemplateDefinitio
     {
       actionId: 'generate-thread',
       label: '生成论坛帖子',
-      defaultTemplate: '{{boardInstruction}}',
-      variables: [{ key: 'boardInstruction', label: '板块名称要求' }],
+      defaultTemplate: lines('{{boardInstruction}}', '{{boardDescriptionInstruction}}'),
+      variables: [
+        { key: 'boardName', label: '板块名称' },
+        { key: 'boardDescription', label: '板块说明正文' },
+        { key: 'boardInstruction', label: '板块名称要求' },
+        { key: 'boardDescriptionInstruction', label: '板块说明要求' },
+      ],
     },
     {
       actionId: 'generate-replies',
@@ -74,7 +86,17 @@ export function createForumTaskTemplateDefinitions(): PhoneTaskTemplateDefinitio
 }
 
 export function createTheaterTaskTemplateDefinitions(): PhoneTaskTemplateDefinition[] {
-  return [{ actionId: 'generate', label: '生成小剧场', defaultTemplate: '' }];
+  return [
+    {
+      actionId: 'generate',
+      label: '生成小剧场',
+      defaultTemplate: '{{typeInstruction}}',
+      variables: [
+        { key: 'typeName', label: '小剧场类型名称' },
+        { key: 'typeInstruction', label: '小剧场类型要求' },
+      ],
+    },
+  ];
 }
 
 export function createLettersTaskTemplateDefinitions(): PhoneTaskTemplateDefinition[] {

@@ -3,13 +3,14 @@
     <div class="pc-compact-toolbar pc-directory-toolbar">
       <span class="pc-directory-count">{{ book.entries.length }} 条总结</span>
       <div class="pc-directory-actions pc-summary-book-toolbar">
-        <button class="pc-icon-btn primary" type="button" title="生成总结" @click="$emit('generate')">
+        <button class="pc-icon-btn primary" type="button" title="生成总结" aria-label="生成总结" @click="$emit('generate')">
           <i class="fa-solid fa-wand-magic-sparkles"></i>
         </button>
         <button
           class="pc-icon-btn pc-directory-sort"
           type="button"
           :title="sortDesc ? '当前倒序，切换正序' : '当前正序，切换倒序'"
+          :aria-label="sortDesc ? '当前倒序，切换正序' : '当前正序，切换倒序'"
           @click="$emit('toggle-sort')"
         >
           <i :class="sortDesc ? 'fa-solid fa-arrow-down-wide-short' : 'fa-solid fa-arrow-up-short-wide'"></i>

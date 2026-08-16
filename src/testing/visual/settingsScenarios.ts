@@ -1,8 +1,13 @@
 import { useSettingsStore } from '@/store/settings';
+import { setting_field } from '@/type/settings';
+import { extension_settings } from '@sillytavern/scripts/extensions';
+import { klona } from 'klona';
 
 export const settingsScenarioNames = [
   'settings',
   'settings-interface',
+  'settings-reader-font',
+  'settings-theme-persistence',
   'settings-connection',
   'settings-connection-external',
   'settings-connection-dark',
@@ -21,6 +26,83 @@ export async function applySettingsVisualScenario(name: string, context: Setting
 
   if (name === 'settings') context.resetPhoneToRoute('settings', 'root', '设置');
   else if (name === 'settings-interface') context.resetPhoneToRoute('settings', 'root', '设置', { tab: 'interface' });
+  else if (name === 'settings-reader-font') {
+    const fontId = 'visual-reader-font';
+    settings.settings.customFont.fonts = [
+      { id: fontId, name: '需要在阅读器设置中完整显示的超长已导入字体名称', path: 'user/files/visual-reader-font.woff2' },
+    ];
+    settings.setReaderFontFamily('');
+    context.resetPhoneToRoute('settings', 'root', '设置', { tab: 'reader' });
+    await context.waitForPaint();
+    const fontGroup = [...document.querySelectorAll<HTMLElement>('.pc-field-group')].find(group =>
+      group.textContent?.includes('阅读器字体'),
+    );
+    if (!fontGroup) throw new Error('Reader settings font control is missing');
+    fontGroup.scrollIntoView({ block: 'center' });
+    const input = fontGroup.querySelector<HTMLInputElement>('.pc-combobox-input');
+    if (input) {
+      input.click();
+      await context.waitForPaint();
+      const option = [...document.querySelectorAll<HTMLButtonElement>('.pc-combobox-option')].find(button =>
+        button.textContent?.includes('超长已导入字体名称'),
+      );
+      if (!option) throw new Error('Reader font selector omitted the imported font');
+      option.click();
+      await context.waitForPaint();
+      if (settings.settings.reader.fontFamily !== settings.getCustomFontFamily(fontId)) {
+        throw new Error('Reader font selector did not map the imported font to its registered family');
+      }
+      input.click();
+      await context.waitForPaint();
+      input.value = '超长';
+      input.dispatchEvent(new Event('input', { bubbles: true }));
+      await context.waitForPaint();
+      if (!document.querySelector('.pc-combobox-menu')?.textContent?.includes('超长已导入字体名称')) {
+        throw new Error('Reader font selector could not search the imported font');
+      }
+    }
+  }
+  else if (name === 'settings-theme-persistence') {
+    settings.resetInterfaceSize();
+    context.resetPhoneToRoute('settings', 'root', '设置', { tab: 'interface' });
+    await context.waitForPaint();
+    const columnsInput = [...document.querySelectorAll<HTMLLabelElement>('.pc-inline-control')]
+      .find(label => label.querySelector('span')?.textContent?.trim() === '列')
+      ?.querySelector<HTMLInputElement>('input');
+    if (!columnsInput) throw new Error('Settings interface column control is missing');
+    columnsInput.value = '5';
+    columnsInput.dispatchEvent(new Event('change', { bubbles: true }));
+    await context.waitForPaint();
+    const interfaceSnapshot = klona(extension_settings[setting_field]) as typeof settings.settings;
+    if (interfaceSnapshot?.interfaceSize?.homeColumns !== 5) {
+      throw new Error('Settings interface value was not written to the persistent source');
+    }
+
+    settings.resetInterfaceSize();
+    extension_settings[setting_field] = interfaceSnapshot;
+    settings.rehydrateFromSettings();
+    await context.waitForPaint();
+    if (settings.settings.interfaceSize.homeColumns !== 5 || columnsInput.value !== '5') {
+      throw new Error('Settings interface value did not survive rehydrate');
+    }
+
+    context.resetPhoneToRoute('theme', 'root', '主题');
+    await context.waitForPaint();
+    const themeButtons = [...document.querySelectorAll<HTMLButtonElement>('.pc-theme-pack-btn')];
+    const selectedPack = themeButtons.find(button => !button.classList.contains('active'));
+    const selectedName = selectedPack?.textContent?.trim() || '';
+    if (!selectedPack || !selectedName) throw new Error('Theme persistence fixture needs a non-active built-in pack');
+    selectedPack.click();
+    await context.waitForPaint();
+    const themeSnapshot = klona(extension_settings[setting_field]) as typeof settings.settings;
+
+    settings.setVisualAccentColor('#123456');
+    extension_settings[setting_field] = themeSnapshot;
+    settings.rehydrateFromSettings();
+    await context.waitForPaint();
+    const activePackName = document.querySelector<HTMLButtonElement>('.pc-theme-pack-btn.active')?.textContent?.trim();
+    if (activePackName !== selectedName) throw new Error('Theme pack did not survive rehydrate');
+  }
   else if (name === 'settings-connection') context.resetPhoneToRoute('settings', 'root', '设置', { tab: 'connection' });
   else if (name === 'settings-connection-external') {
     settings.settings.textProvider.externalProfiles = [];

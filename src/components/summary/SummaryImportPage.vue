@@ -33,7 +33,14 @@
         <div class="pc-summary-import-head">
           <span>AI 楼层 · {{ items.length }}</span>
           <div>
-            <button class="pc-icon-btn" type="button" :disabled="loading" title="刷新楼层" @click="$emit('refresh')">
+            <button
+              class="pc-icon-btn"
+              type="button"
+              :disabled="loading"
+              title="刷新楼层"
+              aria-label="刷新楼层"
+              @click="$emit('refresh')"
+            >
               <i :class="['fa-solid fa-rotate-right', { spinning: loading }]"></i>
             </button>
             <button class="pc-soft-btn compact" type="button" :disabled="!items.length" @click="$emit('toggle-all')">

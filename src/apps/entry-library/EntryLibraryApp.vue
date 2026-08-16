@@ -551,7 +551,7 @@ function dismissPair(pair: DuplicateEntryPair) {
 }
 
 function deleteDuplicate(itemId: string) {
-  library.deleteItem(itemId);
+  return deleteItem(itemId);
 }
 
 function loadBindingPrompts() {

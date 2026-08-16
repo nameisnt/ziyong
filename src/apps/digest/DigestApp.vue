@@ -13,10 +13,16 @@
           >
             <i :class="sortDesc ? 'fa-solid fa-arrow-down-wide-short' : 'fa-solid fa-arrow-up-short-wide'"></i>
           </button>
-          <button class="pc-icon-btn" type="button" :title="t`手动新增`" @click="openEditor()">
+          <button class="pc-icon-btn" type="button" :title="t`手动新增`" :aria-label="t`手动新增`" @click="openEditor()">
             <i class="fa-solid fa-plus"></i>
           </button>
-          <button class="pc-icon-btn primary" type="button" :title="t`AI 摘抄`" @click="openGenerate">
+          <button
+            class="pc-icon-btn primary"
+            type="button"
+            :title="t`AI 摘抄`"
+            :aria-label="t`AI 摘抄`"
+            @click="openGenerate"
+          >
             <i class="fa-solid fa-wand-magic-sparkles"></i>
           </button>
         </div>
@@ -139,13 +145,13 @@
         <GenerationPanel
           :capture="captureDigestPrompt"
           :capture-reset-key="digestPromptPreview"
-          :error="generationState.error"
+          :error="generationError"
           :from-start-end="generationDraft.fromStartEnd"
           :range-text="generationDraft.rangeText"
-          :raw-output="generationState.rawOutput"
+          :raw-output="generationRawOutput"
           :recent-count="generationDraft.recentCount"
           :references="selectedReferences"
-          :running="generationState.running"
+          :running="generationRunning"
           :single-message-id="generationDraft.singleMessageId"
           :source-mode="settings.generation.sourceMode"
           :user-requirement="generationDraft.userRequirement"
@@ -223,6 +229,7 @@ import GenerationPreviewPanel from '@/components/GenerationPreviewPanel.vue';
 import PreviewDraftNotice from '@/components/PreviewDraftNotice.vue';
 import RawOutputEditor from '@/components/RawOutputEditor.vue';
 import ReaderDetailShell from '@/components/ReaderDetailShell.vue';
+import { useSingleGenerationTaskSession } from '@/composables/useSingleGenerationTaskSession';
 import { getRegisteredPhoneGenerationAdapter } from '@/core/appRegistry';
 import { buildGenerationPreview, captureGenerationPrompt, generateContent } from '@/core/generationService';
 import { usePhoneStore } from '@/store/phone';
@@ -235,10 +242,10 @@ import { usePreviewDraftPersistence } from '@/util/previewDrafts';
 import type { GenerationReferenceItem } from '@/util/references';
 import { formatGenerationReferences } from '@/util/references';
 import { useInvalidRouteFallback } from '@/util/routeFallback';
-import { stopGenerationByIdSafe } from '@/util/runtime';
 import { getSourceLastFloor } from '@/util/sourceFloor';
 import { formatTextProviderSummary } from '@/util/textProvider';
 import type { FailedGenerationDraft, HiddenGenerationRecord } from '@/type/generation';
+import type { GenerationTask } from '@/type/generationTask';
 import { useDigestStore } from './store';
 import { storeToRefs } from 'pinia';
 
@@ -269,8 +276,6 @@ const generationDraft = reactive({
   userRequirement: '',
 });
 const generationState = reactive({
-  error: '',
-  generationId: '',
   preview: null as null | {
     content: string;
     draftId: null | string;
@@ -280,9 +285,14 @@ const generationState = reactive({
     title: string;
     warnings: string[];
   },
-  rawOutput: '',
-  running: false,
 });
+const generationSession = useSingleGenerationTaskSession({
+  actionId: 'generate',
+  appId: 'digest',
+  sourcePage: 'generate',
+  title: '摘抄 · 单次生成',
+});
+const { error: generationError, rawOutput: generationRawOutput, running: generationRunning } = generationSession;
 type DigestPreview = NonNullable<typeof generationState.preview>;
 
 const {
@@ -364,9 +374,7 @@ watch(
     if (current.page === 'generate') {
       selectedReferences.value = [];
       generationDraft.userRequirement = '';
-      generationState.error = '';
       generationState.preview = null;
-      generationState.rawOutput = '';
     }
     if (current.page === 'failed-draft') {
       failedDraftRawOutput.value = activeFailedDraft.value?.rawOutput || '';
@@ -392,12 +400,6 @@ useInvalidRouteFallback({
     if (route.value.appId !== 'digest') return;
     phone.replacePage('root', '摘抄');
   },
-});
-
-onScopeDispose(() => {
-  if (generationState.running && generationState.generationId) {
-    stopGenerationByIdSafe(generationState.generationId);
-  }
 });
 
 function openEntry(entryId: string) {
@@ -516,11 +518,11 @@ function captureDigestPrompt() {
 }
 
 async function runGeneration() {
-  generationState.error = '';
   clearDigestPreviewDraft();
-  generationState.rawOutput = '';
   generationState.preview = null;
+  let task: GenerationTask | null = null;
   try {
+    task = generationSession.create({ title: '摘抄 · 单次生成' });
     const result = await generateContent(
       adapter,
       {
@@ -531,30 +533,31 @@ async function runGeneration() {
       {
         ...getGenerationOptions(),
         createFailedDraft: input => digest.createFailedDraft(input),
-        lifecycle: {
-          onFinish() {
-            generationState.running = false;
-            generationState.generationId = '';
-          },
-          onRawOutput(rawOutput) {
-            generationState.rawOutput = rawOutput;
-          },
-          onStart(generationId) {
-            generationState.running = true;
-            generationState.generationId = generationId;
-          },
-        },
+        lifecycle: generationSession.lifecycle(task.id),
       },
     );
 
     if (result.status === 'failed') {
-      generationState.error = result.warnings.join('；') || '模型没有返回可解析的摘抄 XML';
+      generationSession.complete(task.id, {
+        currentLabel: '解析失败草稿已保留',
+        resultPage: 'failed-draft',
+        resultParams: { draftId: result.draft.id },
+        resultState: 'failed-draft',
+        resultTitle: '解析失败草稿',
+      });
       toastr.warning('XML 解析失败，已保存失败草稿');
       void phone.presentGeneratedPage('digest', 'failed-draft', '解析失败草稿', { draftId: result.draft.id });
       return;
     }
 
     if (result.status === 'saved') {
+      generationSession.complete(task.id, {
+        currentLabel: `已保存摘抄：${result.saved.entry.title}`,
+        resultPage: 'entry',
+        resultParams: { entryId: result.saved.entry.id },
+        resultState: 'saved',
+        resultTitle: result.saved.entry.title,
+      });
       toastr.success('已生成并保存摘抄');
       void phone.presentGeneratedPage('digest', 'entry', result.saved.entry.title, {
         entryId: result.saved.entry.id,
@@ -572,9 +575,16 @@ async function runGeneration() {
       warnings: result.warnings,
     };
     persistDigestPreviewDraft();
+    generationSession.complete(task.id, {
+      currentLabel: '摘抄已生成，等待确认',
+      resultPage: 'preview',
+      resultState: 'preview',
+      resultTitle: '摘抄预览',
+    });
     void phone.presentGeneratedPage('digest', 'preview', '摘抄预览');
   } catch (caughtError) {
-    generationState.error = caughtError instanceof Error ? caughtError.message : '生成摘抄失败';
+    if (task) generationSession.fail(task.id, caughtError);
+    else toastr.error(caughtError instanceof Error ? caughtError.message : '生成摘抄失败');
   }
 }
 
@@ -682,10 +692,7 @@ function reparseFailedDraft() {
 }
 
 function stopGeneration() {
-  if (!generationState.generationId) return;
-  stopGenerationByIdSafe(generationState.generationId);
-  generationState.running = false;
-  generationState.error = '生成已停止';
+  generationSession.stop();
 }
 </script>
 
@@ -826,10 +833,6 @@ function stopGeneration() {
 .pc-digest-editor-section > .pc-area,
 .pc-digest-editor-section > .pc-field-group {
   margin-top: 12px;
-}
-
-.pc-area.compact {
-  min-height: 100px;
 }
 
 .pc-soft-btn.active {

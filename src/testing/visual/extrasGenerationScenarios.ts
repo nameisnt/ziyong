@@ -1,4 +1,6 @@
+import { useRegexDisplayStore } from '@/apps/regex-display/store';
 import { useExtrasStore } from '@/store/extras';
+import { usePreviewDraftStore } from '@/store/previewDrafts';
 
 export function createExtrasSummaryFixture() {
   const extras = useExtrasStore();
@@ -31,11 +33,73 @@ type ExtrasGenerationScenarioContext = {
 };
 
 export async function applyExtrasGenerationVisualScenario(name: string, context: ExtrasGenerationScenarioContext) {
+  if (name === 'extras-chapter-preview-summary') {
+    const extras = useExtrasStore();
+    extras.resetCurrentScope();
+    const book = extras.createBook({ title: '自动摘要视觉测试', typeName: 'IF线' });
+    usePreviewDraftStore().upsertPreviewDraft({
+      appId: 'extras',
+      page: 'chapter-preview',
+      preview: {
+        bookId: book.id,
+        chapterId: '',
+        content: '番外章节正文，用于确认自动摘要文本域与长正文编辑区保持各自的共享高度。',
+        draftId: null,
+        mode: '续写上一章',
+        raw: '<title>自动摘要测试</title><content>番外章节正文</content>',
+        summary: '这是自动解析出的章节摘要。\n第二行用于确认多行摘要高度。',
+        title: '自动摘要测试',
+        warnings: [],
+      },
+      routeParams: { bookId: book.id },
+      title: '番外预览',
+    });
+    context.resetPhoneToRoute('extras', 'chapter-preview', '番外预览', { bookId: book.id });
+    await context.waitForPaint();
+    const summary = document.querySelector<HTMLTextAreaElement>('.pc-extras-preview-summary .pc-area');
+    if (!summary) throw new Error('Extras chapter preview summary is missing');
+    summary.scrollIntoView({ block: 'center' });
+    await context.waitForPaint();
+    return true;
+  }
+
   if (name === 'extras-book-generate') {
     context.resetPhoneToRoute('extras', 'book-editor', '新建番外');
     await context.waitForPaint();
     const screen = document.querySelector<HTMLElement>('.pc-screen');
     screen?.scrollTo({ top: screen.scrollHeight });
+    return true;
+  }
+
+  if (name === 'extras-summary-rule-select') {
+    const extras = useExtrasStore();
+    extras.resetCurrentScope();
+    const book = extras.createBook({ title: '摘要规则选择测试', typeName: 'IF线' });
+    useRegexDisplayStore().addRule({
+      id: 'visual-extras-summary-rule',
+      name: '用于番外章节摘要提取的超长用户自定义正则规则',
+      operation: 'extract',
+      pattern: '/<summary>([\\s\\S]*?)<\\/summary>/i',
+      replacement: '$1',
+    });
+    context.resetPhoneToRoute('extras', 'chapter-generate', '生成章节', { bookId: book.id });
+    await context.waitForPaint();
+    const parseToggle = document.querySelector<HTMLInputElement>('.pc-extras-summary-options .pc-toggle input');
+    if (!parseToggle) throw new Error('Extras summary parser toggle is missing');
+    if (!parseToggle.checked) parseToggle.click();
+    await context.waitForPaint();
+    const ruleGroup = [...document.querySelectorAll<HTMLElement>('.pc-extras-summary-options .pc-field-group')].find(group =>
+      group.textContent?.includes('摘要提取规则'),
+    );
+    const ruleControl = ruleGroup?.querySelector<HTMLElement>('select, .pc-combobox');
+    if (!ruleControl) throw new Error('Extras summary rule selector is missing');
+    ruleControl.scrollIntoView({ block: 'center' });
+    const ruleInput = ruleControl.querySelector<HTMLInputElement>('.pc-combobox-input');
+    ruleInput?.click();
+    await context.waitForPaint();
+    if (ruleInput && !document.querySelector('.pc-combobox-menu')?.textContent?.includes('超长用户自定义正则规则')) {
+      throw new Error('Extras summary rule combobox omitted the user-created long rule');
+    }
     return true;
   }
 

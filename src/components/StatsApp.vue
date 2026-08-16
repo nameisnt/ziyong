@@ -8,6 +8,7 @@
           type="button"
           :disabled="loading"
           :title="loading ? t`刷新中` : t`刷新`"
+          :aria-label="loading ? t`刷新中` : t`刷新`"
           @click="stats.refresh()"
         >
           <i class="fa-solid fa-rotate-right"></i>
@@ -39,6 +40,7 @@
             type="button"
             :aria-expanded="domainExpanded"
             :title="domainExpanded ? t`收起` : t`展开`"
+            :aria-label="domainExpanded ? t`收起` : t`展开`"
             @click="domainExpanded = !domainExpanded"
           >
             <i :class="domainExpanded ? 'fa-solid fa-chevron-up' : 'fa-solid fa-chevron-down'"></i>

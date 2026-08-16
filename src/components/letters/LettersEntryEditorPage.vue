@@ -31,7 +31,7 @@
           placeholder="说明这种书信的结构、口吻和格式"
         ></textarea>
       </label>
-      <textarea v-model="content" class="pc-area pc-letters-entry-content" placeholder="正文"></textarea>
+      <textarea v-model="content" class="pc-area pc-area-long pc-letters-entry-content" placeholder="正文"></textarea>
 
       <div class="pc-form-actions">
         <button class="pc-soft-btn" type="button" @click="$emit('cancel')">取消</button>
@@ -81,7 +81,4 @@ const isCustomFormat = computed(() => !['email', 'formal', 'note', 'sms'].includ
   text-align: right;
 }
 
-.pc-letters-entry-content {
-  min-height: 260px;
-}
 </style>

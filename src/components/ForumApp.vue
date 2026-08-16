@@ -36,10 +36,7 @@
     <ForumBoardPage
       v-else-if="route.page === 'board' && activeBoard"
       v-model:query="query"
-      v-model:sort-mode="sortMode"
-      :board="activeBoard"
-      :sort-options="sortOptions"
-      :threads="sortedThreads"
+      :threads="filteredThreads"
       @create-thread="openCreateThread(activeBoard.id)"
       @generate-thread="openGenerateThread(activeBoard.id)"
       @open-thread="openThread(activeBoard.id, $event)"
@@ -108,7 +105,7 @@
       :capture-reset-key="forumPromptPreview"
       :custom-board-id="CUSTOM_BOARD_ID"
       :custom-board-type-id="CUSTOM_BOARD_TYPE_ID"
-      :generation-state="generationState"
+      :generation-state="threadGenerationState"
       :inside-board="Boolean(activeBoard)"
       :title="forumThreadGenerationMode === 'rewrite' ? '重新生成整个主题' : '生成一个新帖子'"
       @cancel="phone.goBack()"
@@ -125,7 +122,7 @@
       v-model:source-mode="generationSourceMode"
       :capture="captureForumReplyPrompt"
       :capture-reset-key="forumPromptPreview"
-      :generation-state="generationState"
+      :generation-state="replyGenerationState"
       @cancel="phone.goBack()"
       @generate="runReplyGeneration"
       @stop="stopGeneration"
@@ -210,7 +207,6 @@ import { applyRegexDisplayRules, getRegexRulesByIds } from '@/util/regexDisplay'
 import { useInvalidRouteFallback } from '@/util/routeFallback';
 import { storeToRefs } from 'pinia';
 
-type ThreadSortMode = 'favorite' | 'heat' | 'latestPublish' | 'latestReply';
 type BoardNameMode = 'ai' | 'fixed';
 const CUSTOM_BOARD_ID = '__custom_forum_board__';
 const CUSTOM_BOARD_TYPE_ID = '__custom_forum_board_type__';
@@ -240,12 +236,6 @@ const replaySession = useGenerationReplaySession({
 });
 
 const query = ref('');
-const sortMode = computed<ThreadSortMode>({
-  get: () => settings.value.directorySort.forumMode,
-  set: value => {
-    settings.value.directorySort.forumMode = value;
-  },
-});
 const boardEditorTypeId = ref('');
 const boardDraft = reactive({
   name: '',
@@ -285,11 +275,7 @@ const replyGenerationDraft = reactive({
   userRequirement: '',
 });
 const generationState = reactive({
-  error: '',
-  generationId: '',
   preview: null as ForumGenerationPreview | null,
-  rawOutput: '',
-  running: false,
 });
 const failedDraftRawOutput = ref('');
 const selectedReferences = ref<GenerationReferenceItem[]>([]);
@@ -339,12 +325,6 @@ const { reparsePreviewRaw, savePreview } = useForumPreviewSession({
   store: forum,
 });
 
-const sortOptions = [
-  { label: '回复', title: '最新回复', value: 'latestReply' as const },
-  { label: '发布', title: '最新发布', value: 'latestPublish' as const },
-  { label: '热度', title: '热度', value: 'heat' as const },
-  { label: '收藏', title: '收藏', value: 'favorite' as const },
-];
 const forumBoardTypePrompts = computed(() => typePrompts.value.filter(item => item.domain === 'forum-board'));
 const boardTypeOptions = computed(() => [
   { group: '新建', label: '+ 自定义', value: CUSTOM_BOARD_TYPE_ID },
@@ -574,7 +554,7 @@ function captureForumThreadPrompt() {
     textProvider: settings.value.textProvider,
   });
 }
-const sortedThreads = computed(() => {
+const filteredThreads = computed(() => {
   const normalized = query.value.trim().toLowerCase();
   const source = activeBoard.value?.threads || [];
   const matched = normalized
@@ -589,19 +569,6 @@ const sortedThreads = computed(() => {
   return [...matched].sort((left, right) => {
     const leftLatestReplyAt = left.replies.at(-1)?.createdAt || left.createdAt;
     const rightLatestReplyAt = right.replies.at(-1)?.createdAt || right.createdAt;
-    if (sortMode.value === 'favorite') {
-      const favoriteCompare = Number(right.favorite) - Number(left.favorite);
-      if (favoriteCompare) return favoriteCompare;
-      return rightLatestReplyAt.localeCompare(leftLatestReplyAt);
-    }
-    if (sortMode.value === 'heat') {
-      const heatCompare = right.replies.length - left.replies.length;
-      if (heatCompare) return heatCompare;
-      return rightLatestReplyAt.localeCompare(leftLatestReplyAt);
-    }
-    if (sortMode.value === 'latestPublish') {
-      return right.createdAt.localeCompare(left.createdAt);
-    }
     return rightLatestReplyAt.localeCompare(leftLatestReplyAt);
   });
 });
@@ -677,9 +644,7 @@ watch(
       threadGenerationDraft.rangeText = '';
       threadGenerationDraft.singleMessageId = 0;
       threadGenerationDraft.userRequirement = '';
-      generationState.error = '';
       generationState.preview = null;
-      generationState.rawOutput = '';
 
       const replay = rewriteForumThread.value?.versions.length
         ? rewriteForumVersion.value
@@ -709,9 +674,7 @@ watch(
       replyGenerationDraft.rangeText = '';
       replyGenerationDraft.singleMessageId = 0;
       replyGenerationDraft.userRequirement = '';
-      generationState.error = '';
       generationState.preview = null;
-      generationState.rawOutput = '';
     }
 
     if (current.page === 'failed-draft') {
@@ -958,7 +921,8 @@ function updatePreviewThreadContent(content: string) {
   }
 }
 
-const { runReplyGeneration, runThreadGeneration, stopGeneration } = useForumGenerationActions({
+const { replySession, runReplyGeneration, runThreadGeneration, stopGeneration, threadSession } =
+  useForumGenerationActions({
   activeBoard,
   buildReplyThreadContext,
   buildRepliesOutputFormat,
@@ -977,7 +941,19 @@ const { runReplyGeneration, runThreadGeneration, stopGeneration } = useForumGene
   threadGenerationMode: forumThreadGenerationMode,
   viewedForumThread,
   viewedForumVersionId,
-});
+  });
+const threadGenerationState = computed(() => ({
+  error: threadSession.error.value,
+  preview: generationState.preview,
+  rawOutput: threadSession.rawOutput.value,
+  running: threadSession.running.value,
+}));
+const replyGenerationState = computed(() => ({
+  error: replySession.error.value,
+  preview: generationState.preview,
+  rawOutput: replySession.rawOutput.value,
+  running: replySession.running.value,
+}));
 </script>
 
 <style scoped>

@@ -110,6 +110,7 @@
                     class="pc-icon-btn"
                     type="button"
                     :disabled="index === 0"
+                    aria-label="上移字段"
                     title="上移字段"
                     @click="moveField(index, -1)"
                   >
@@ -119,6 +120,7 @@
                     class="pc-icon-btn"
                     type="button"
                     :disabled="index === draft.fields.length - 1"
+                    aria-label="下移字段"
                     title="下移字段"
                     @click="moveField(index, 1)"
                   >
@@ -128,6 +130,7 @@
                     class="pc-icon-btn danger"
                     type="button"
                     :disabled="draft.fields.length === 1"
+                    aria-label="删除字段"
                     title="删除字段"
                     @click="removeField(index)"
                   >
@@ -290,6 +293,7 @@
           class="pc-icon-btn"
           type="button"
           :disabled="!generatedRule"
+          aria-label="复制匹配表达式"
           title="复制匹配表达式"
           @click="copyValue('表达式', generatedRule?.pattern || '')"
         >
@@ -305,6 +309,7 @@
           class="pc-icon-btn"
           type="button"
           :disabled="!generatedRule"
+          aria-label="复制模板"
           title="复制模板"
           @click="copyValue('模板', generatedRule?.replacement ?? '')"
         >
@@ -319,6 +324,7 @@
           class="pc-icon-btn"
           type="button"
           :disabled="!generatedRule"
+          aria-label="复制 Flags"
           title="复制 Flags"
           @click="copyValue('Flags', generatedRule?.flags || '')"
         >
@@ -603,8 +609,6 @@ watch(
 
 .pc-regex-wizard-purpose .pc-segment-btn {
   min-width: 0;
-  padding-inline: 4px;
-  font-size: 12px;
 }
 
 .pc-regex-wizard-choice-head {
@@ -735,7 +739,6 @@ watch(
 }
 
 .pc-regex-wizard-test .pc-area {
-  min-height: 160px;
   font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
 }
 

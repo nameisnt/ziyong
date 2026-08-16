@@ -1,5 +1,6 @@
 import { getRegisteredPhoneApp, getRegisteredPhoneBackupDomains, type PhoneBackupDomain } from '@/core/appRegistry';
 import { getCurrentChatScopeKey } from '@/store/chatScoped';
+import { executeBackupImportTransaction } from '@/util/backupTransaction';
 import { parsePrettified } from '@/util/zod';
 // eslint-disable-next-line import-x/no-nodejs-modules
 import { saveSettingsDebounced } from '@sillytavern/script';
@@ -189,16 +190,13 @@ export async function importContentTransfer(
     resultData = nextRaw;
   }
   const validated = parsePrettified(domain.schema, nextRaw);
-  try {
-    domain.importData(validated);
-    domain.rehydrateFromSettings?.();
-    await saveSettingsDebounced();
-  } catch (error) {
-    domain.importData(beforeRaw);
-    domain.rehydrateFromSettings?.();
-    await saveSettingsDebounced();
-    throw error;
-  }
+  await executeBackupImportTransaction({
+    captureSnapshot: () => beforeRaw,
+    commit: () => domain.importData(validated),
+    persist: () => saveSettingsDebounced(),
+    rehydrate: () => domain.rehydrateFromSettings?.(),
+    restoreSnapshot: snapshot => domain.importData(snapshot),
+  });
   return summarizeContentTransfer(resultData);
 }
 

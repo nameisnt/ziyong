@@ -8,12 +8,13 @@
             class="pc-icon-btn primary"
             type="button"
             :disabled="!activeProfile"
+            :aria-label="t`AI 生成媒体提示词`"
             :title="t`AI 生成媒体提示词`"
             @click="openAiGenerate"
           >
             <i class="fa-solid fa-wand-magic-sparkles"></i>
           </button>
-          <button class="pc-icon-btn" type="button" :title="t`配置服务`" @click="openSettings">
+          <button class="pc-icon-btn" type="button" :aria-label="t`配置服务`" :title="t`配置服务`" @click="openSettings">
             <i class="fa-solid fa-gear"></i>
           </button>
         </div>
@@ -142,13 +143,13 @@
       <GenerationPanel
         :capture="captureCloudPrompt"
         :capture-reset-key="cloudPromptPreview"
-        :error="generationState.error"
+        :error="generationError"
         :from-start-end="generationDraft.fromStartEnd"
         :range-text="generationDraft.rangeText"
-        :raw-output="generationState.rawOutput"
+        :raw-output="generationRawOutput"
         :recent-count="generationDraft.recentCount"
         :references="selectedReferences"
-        :running="generationState.running"
+        :running="generationRunning"
         :single-message-id="generationDraft.singleMessageId"
         :source-mode="generationSettings.generation.sourceMode"
         :user-requirement="generationDraft.userRequirement"
@@ -174,7 +175,7 @@
               input-label="选择云媒体配置"
               :options="profileOptions"
               placeholder="选择云媒体配置"
-              :disabled="generationState.running"
+              :disabled="generationRunning"
             />
           </label>
         </template>
@@ -257,7 +258,7 @@
     <template v-else-if="route.page === 'settings'">
       <header class="pc-compact-toolbar pc-directory-toolbar pc-cloud-media-head">
         <span class="pc-directory-count">{{ settings.profiles.length }} {{ t`个配置` }}</span>
-        <button class="pc-icon-btn" type="button" :title="t`新增配置`" @click="addProfile">
+        <button class="pc-icon-btn" type="button" :aria-label="t`新增配置`" :title="t`新增配置`" @click="addProfile">
           <i class="fa-solid fa-plus"></i>
         </button>
       </header>
@@ -273,6 +274,7 @@
           class="pc-icon-btn danger"
           type="button"
           :disabled="settings.profiles.length <= 1"
+          :aria-label="t`删除配置`"
           :title="t`删除配置`"
           @click="deleteActiveProfile"
         >
@@ -325,6 +327,7 @@
             <button
               class="pc-icon-btn"
               type="button"
+              :aria-label="showApiKey ? t`隐藏密钥` : t`显示密钥`"
               :title="showApiKey ? t`隐藏密钥` : t`显示密钥`"
               @click="showApiKey = !showApiKey"
             >
@@ -442,6 +445,7 @@ import GenerationPreviewPanel from '@/components/GenerationPreviewPanel.vue';
 import PreviewDraftNotice from '@/components/PreviewDraftNotice.vue';
 import RawOutputEditor from '@/components/RawOutputEditor.vue';
 import SearchableCombobox from '@/components/SearchableCombobox.vue';
+import { useSingleGenerationTaskSession } from '@/composables/useSingleGenerationTaskSession';
 import { useMediaStore, type MediaEntry, type MediaKind } from '@/apps/media/store';
 import { getRegisteredPhoneGenerationAdapter } from '@/core/appRegistry';
 import { buildGenerationPreview, captureGenerationPrompt, generateContent } from '@/core/generationService';
@@ -449,11 +453,11 @@ import { usePhoneStore } from '@/store/phone';
 import { usePromptStore } from '@/store/prompts';
 import { useSettingsStore } from '@/store/settings';
 import type { FailedGenerationDraft } from '@/type/generation';
+import type { GenerationTask } from '@/type/generationTask';
 import { usePreviewDraftPersistence } from '@/util/previewDrafts';
 import type { GenerationReferenceItem } from '@/util/references';
 import { formatGenerationReferences } from '@/util/references';
 import { useInvalidRouteFallback } from '@/util/routeFallback';
-import { stopGenerationByIdSafe } from '@/util/runtime';
 import { formatTextProviderSummary } from '@/util/textProvider';
 import { parseCloudMediaPromptXmlResult, type CloudMediaPromptResult } from './generation';
 import { generateCloudMedia } from './providers';
@@ -503,8 +507,6 @@ const generationDraft = reactive({
   userRequirement: '',
 });
 const generationState = reactive({
-  error: '',
-  generationId: '',
   preview: null as null | {
     draftId: null | string;
     instrumental: boolean;
@@ -519,9 +521,14 @@ const generationState = reactive({
     title: string;
     warnings: string[];
   },
-  rawOutput: '',
-  running: false,
 });
+const generationSession = useSingleGenerationTaskSession({
+  actionId: 'generate-prompt',
+  appId: 'cloud-media',
+  sourcePage: 'generate',
+  title: 'AI 云媒体 · 单次生成',
+});
+const { error: generationError, rawOutput: generationRawOutput, running: generationRunning } = generationSession;
 type CloudMediaPreview = NonNullable<typeof generationState.preview>;
 
 const {
@@ -640,9 +647,7 @@ function openAiGenerate() {
     openSettings();
     return;
   }
-  generationState.error = '';
   generationState.preview = null;
-  generationState.rawOutput = '';
   phone.pushPage('generate', 'AI 云媒体');
 }
 
@@ -690,10 +695,15 @@ function addProfile() {
   showApiKey.value = false;
 }
 
-function deleteActiveProfile() {
+async function deleteActiveProfile() {
   const profile = activeProfile.value;
   if (!profile || settings.value.profiles.length <= 1) return;
-  if (!window.confirm(`删除配置“${profile.name}”？`)) return;
+  const confirmed = await phone.confirmNotice(`删除云媒体配置“${profile.name}”吗？其中的 API Key 和模型设置也会一并删除。`, {
+    confirmLabel: '删除',
+    kind: 'warning',
+    title: '删除云媒体配置？',
+  });
+  if (!confirmed) return;
   cloudMedia.deleteProfile(profile.id);
   showApiKey.value = false;
 }
@@ -765,37 +775,29 @@ function createPreview(
 async function runAiGeneration() {
   const profile = activeProfile.value;
   if (!profile) return;
+  let task: GenerationTask | null = null;
   try {
+    task = generationSession.create({
+      sourceParams: { profileId: profile.id },
+      title: `AI 云媒体 · ${profile.name}`,
+    });
     validateProfile(profile);
-  } catch (error) {
-    generationState.error = error instanceof Error ? error.message : String(error);
-    return;
-  }
-  generationState.error = '';
-  clearCloudPreviewDraft();
-  generationState.rawOutput = '';
-  generationState.preview = null;
-  try {
+    clearCloudPreviewDraft();
+    generationState.preview = null;
     const result = await generateContent(adapter, buildGenerationConfig(), {
       ...getGenerationOptions(),
       createFailedDraft: input => media.createFailedDraft(input),
-      lifecycle: {
-        onFinish() {
-          generationState.running = false;
-          generationState.generationId = '';
-        },
-        onRawOutput(rawOutput) {
-          generationState.rawOutput = rawOutput;
-        },
-        onStart(generationId) {
-          generationState.running = true;
-          generationState.generationId = generationId;
-        },
-      },
+      lifecycle: generationSession.lifecycle(task.id),
     });
 
     if (result.status === 'failed') {
-      generationState.error = result.warnings.join('；') || '模型没有返回可解析的云媒体 XML';
+      generationSession.complete(task.id, {
+        currentLabel: '解析失败草稿已保留',
+        resultPage: 'failed-draft',
+        resultParams: { draftId: result.draft.id },
+        resultState: 'failed-draft',
+        resultTitle: '解析失败草稿',
+      });
       toastr.warning('XML 解析失败，已保存失败草稿');
       void phone.presentGeneratedPage('cloud-media', 'failed-draft', '解析失败草稿', {
         draftId: result.draft.id,
@@ -804,6 +806,12 @@ async function runAiGeneration() {
     }
     if (result.status === 'saved') {
       latestOutput.value = result.saved.entries[0] ?? null;
+      generationSession.complete(task.id, {
+        currentLabel: `已保存 ${result.saved.entries.length} 个媒体`,
+        resultPage: 'root',
+        resultState: 'saved',
+        resultTitle: '云媒体',
+      });
       toastr.success(`已生成并保存 ${result.saved.entries.length} 个媒体`);
       void phone.presentGeneratedPage('cloud-media', 'root', '云媒体');
       return;
@@ -818,9 +826,16 @@ async function runAiGeneration() {
       warnings: result.warnings,
     });
     persistCloudPreviewDraft();
+    generationSession.complete(task.id, {
+      currentLabel: '云媒体提示词已生成，等待确认',
+      resultPage: 'preview',
+      resultState: 'preview',
+      resultTitle: '云媒体预览',
+    });
     void phone.presentGeneratedPage('cloud-media', 'preview', '云媒体预览');
   } catch (error) {
-    generationState.error = error instanceof Error ? error.message : '生成云媒体提示词失败';
+    if (task) generationSession.fail(task.id, error);
+    else toastr.error(error instanceof Error ? error.message : '生成云媒体提示词失败');
   }
 }
 
@@ -1013,9 +1028,7 @@ async function runGeneration() {
 }
 
 function stopGeneration() {
-  if (generationState.running && generationState.generationId) {
-    stopGenerationByIdSafe(generationState.generationId);
-  }
+  generationSession.stop();
   controller.value?.abort();
 }
 
@@ -1027,7 +1040,7 @@ watch(
   },
 );
 
-onBeforeUnmount(stopGeneration);
+onBeforeUnmount(() => controller.value?.abort());
 </script>
 
 <style scoped>

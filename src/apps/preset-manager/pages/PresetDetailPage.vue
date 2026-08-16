@@ -27,6 +27,7 @@
         type="button"
         :disabled="mutationBusy || switchingPreset === presetName"
         title="使用这个预设"
+        aria-label="使用这个预设"
         @click="$emit('switch-preset', presetName)"
       >
         <i class="fa-solid fa-play"></i>

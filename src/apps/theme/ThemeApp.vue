@@ -100,7 +100,7 @@
 
     <template v-else-if="view === 'icons'">
       <div class="pc-theme-subhead">
-        <button class="pc-icon-btn" type="button" :title="t`返回`" @click="view = 'root'">
+        <button class="pc-icon-btn" type="button" :title="t`返回`" :aria-label="t`返回`" @click="view = 'root'">
           <i class="fa-solid fa-arrow-left"></i>
         </button>
         <div>
@@ -182,7 +182,13 @@
             <div>
               <strong>{{ selectedApp.name }}</strong>
             </div>
-            <button class="pc-icon-btn" type="button" :title="t`清除覆盖`" @click="clearAppOverride(selectedApp.id)">
+            <button
+              class="pc-icon-btn"
+              type="button"
+              :title="t`清除覆盖`"
+              :aria-label="t`清除覆盖`"
+              @click="clearAppOverride(selectedApp.id)"
+            >
               <i class="fa-solid fa-rotate-left"></i>
             </button>
           </div>
@@ -235,7 +241,7 @@
 
     <template v-else>
       <div class="pc-theme-subhead">
-        <button class="pc-icon-btn" type="button" :title="t`返回`" @click="view = 'root'">
+        <button class="pc-icon-btn" type="button" :title="t`返回`" :aria-label="t`返回`" @click="view = 'root'">
           <i class="fa-solid fa-arrow-left"></i>
         </button>
         <div>
@@ -284,7 +290,13 @@
       <section class="pc-page-section">
         <div class="pc-section-head">
           <strong>{{ t`字体与背景` }}</strong>
-          <button class="pc-icon-btn" type="button" :title="t`导入字体`" @click="fontInputEl?.click()">
+          <button
+            class="pc-icon-btn"
+            type="button"
+            :title="t`导入字体`"
+            :aria-label="t`导入字体`"
+            @click="fontInputEl?.click()"
+          >
             <i class="fa-solid fa-file-import"></i>
           </button>
         </div>
@@ -861,17 +873,8 @@ const selectedCustomFont = computed(
       item => settings.value.fontFamily === settingsStore.getCustomFontFamily(item.id),
     ) ?? null,
 );
-const readerSelectedCustomFont = computed(
-  () =>
-    settings.value.customFont.fonts.find(
-      item => settings.value.reader.fontFamily === settingsStore.getCustomFontFamily(item.id),
-    ) ?? null,
-);
 const fontSelectionValue = computed(() =>
   selectedCustomFont.value ? `custom:${selectedCustomFont.value.id}` : settings.value.fontFamily,
-);
-const readerFontSelectionValue = computed(() =>
-  readerSelectedCustomFont.value ? `custom:${readerSelectedCustomFont.value.id}` : settings.value.reader.fontFamily,
 );
 const selectedCustomWallpaper = computed(() => {
   if (settings.value.wallpaper.mode !== 'custom') return null;
@@ -903,11 +906,9 @@ const wallpaperSelectionOptions = computed(() => {
   }
   return options;
 });
-function createFontSelectionOptions(selected: string, includeSystemDefault: boolean) {
+function createFontSelectionOptions(selected: string) {
   const options = [
-    ...(includeSystemDefault
-      ? fontOptions
-      : [{ label: '跟随手机字体', value: '' }, ...fontOptions.filter(option => option.value)]),
+    ...fontOptions,
     ...settings.value.customFont.fonts.map(font => ({
       group: '自定义字体',
       label: font.name,
@@ -919,8 +920,7 @@ function createFontSelectionOptions(selected: string, includeSystemDefault: bool
   }
   return options;
 }
-const fontSelectionOptions = computed(() => createFontSelectionOptions(fontSelectionValue.value, true));
-const readerFontSelectionOptions = computed(() => createFontSelectionOptions(readerFontSelectionValue.value, false));
+const fontSelectionOptions = computed(() => createFontSelectionOptions(fontSelectionValue.value));
 const iconStyleId = computed<IconStyleId>(() => {
   if (settings.value.visualTheme.appIconColor) return 'unified';
   if (settings.value.visualTheme.appIconBackgroundColor) return 'soft';
@@ -1099,12 +1099,6 @@ function onRadiusInput(kind: RadiusKey, event: Event) {
 function onFontSelect(value: string) {
   if (value.startsWith('custom:')) settingsStore.selectCustomFont(value.slice('custom:'.length));
   else settingsStore.setFontFamily(value);
-}
-
-function onReaderFontSelect(value: string) {
-  if (value.startsWith('custom:'))
-    settingsStore.setReaderFontFamily(settingsStore.getCustomFontFamily(value.slice('custom:'.length)));
-  else settingsStore.setReaderFontFamily(value);
 }
 
 async function onThemeFontSelected(event: Event) {

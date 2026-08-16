@@ -15,6 +15,7 @@
       type="button"
       :disabled="!selectedEntry"
       :title="selectedEntry ? t`查看资料` : t`尚未关联资料`"
+      :aria-label="selectedEntry ? t`查看资料` : t`尚未关联资料`"
       @click="openSelectedEntry"
     >
       <i class="fa-solid fa-address-card"></i>

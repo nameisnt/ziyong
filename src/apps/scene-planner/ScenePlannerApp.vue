@@ -16,7 +16,7 @@
       <article class="pc-scene-editor">
         <div class="pc-section-head">
           <strong>{{ activePlan ? '继续编排' : '说出下一章剧情' }}</strong>
-          <button class="pc-icon-btn" type="button" title="新方案" @click="newPlan">
+          <button class="pc-icon-btn" type="button" title="新方案" aria-label="新方案" @click="newPlan">
             <i class="fa-solid fa-plus"></i>
           </button>
         </div>
@@ -42,16 +42,16 @@
 
         <GenerationPanel
           :capture="capturePrompt"
-          :error="generationState.error"
+          :error="generationError"
           :from-start-end="generationDraft.fromStartEnd"
           generate-label="生成提示词"
           :range-text="generationDraft.rangeText"
-          :raw-output="generationState.rawOutput"
+          :raw-output="generationRawOutput"
           :recent-count="generationDraft.recentCount"
           :references="selectedReferences"
           requirement-label="继续补充"
           requirement-placeholder="例如：让第三人中途出现，但主角不要立刻解释；结尾停在误会加深的位置。"
-          :running="generationState.running"
+          :running="generationRunning"
           :single-message-id="generationDraft.singleMessageId"
           :source-mode="settings.generation.sourceMode"
           :user-requirement="generationDraft.userRequirement"
@@ -156,6 +156,7 @@ import FailedDraftRepairPage from '@/components/FailedDraftRepairPage.vue';
 import GenerationPanel from '@/components/GenerationPanel.vue';
 import GenerationPreviewPanel from '@/components/GenerationPreviewPanel.vue';
 import PreviewDraftNotice from '@/components/PreviewDraftNotice.vue';
+import { useSingleGenerationTaskSession } from '@/composables/useSingleGenerationTaskSession';
 import { getRegisteredPhoneGenerationAdapter } from '@/core/appRegistry';
 import { captureGenerationPrompt, generateContent } from '@/core/generationService';
 import { usePhoneStore } from '@/store/phone';
@@ -164,7 +165,6 @@ import { useSettingsStore } from '@/store/settings';
 import { useSummaryStore } from '@/store/summary';
 import type { GenerationReferenceItem } from '@/util/references';
 import { formatGenerationReferences } from '@/util/references';
-import { stopGenerationByIdSafe } from '@/util/runtime';
 import { formatTextProviderSummary } from '@/util/textProvider';
 import { usePreviewDraftPersistence } from '@/util/previewDrafts';
 import {
@@ -174,6 +174,7 @@ import {
 } from './generation';
 import { getScenePlanStatusLabel, useScenePlannerStore } from './store';
 import type { SourceSelection } from '@/type/generation';
+import type { GenerationTask } from '@/type/generationTask';
 import { storeToRefs } from 'pinia';
 
 type ScenePreview = {
@@ -213,12 +214,15 @@ const generationDraft = reactive({
   userRequirement: '',
 });
 const generationState = reactive({
-  error: '',
-  generationId: '',
   preview: null as ScenePreview | null,
-  rawOutput: '',
-  running: false,
 });
+const generationSession = useSingleGenerationTaskSession({
+  actionId: 'generate',
+  appId: 'scene-planner',
+  sourcePage: 'root',
+  title: '场景编排 · 单次生成',
+});
+const { error: generationError, rawOutput: generationRawOutput, running: generationRunning } = generationSession;
 const failedDraftRawOutput = ref('');
 const activeFailedDraft = computed(() => {
   const draftId = route.value.params?.draftId;
@@ -240,12 +244,6 @@ const {
     generationState.preview = preview;
   },
   title: '下一章提示词',
-});
-
-onScopeDispose(() => {
-  if (generationState.running && generationState.generationId) {
-    stopGenerationByIdSafe(generationState.generationId);
-  }
 });
 
 const activePlan = computed(() => (activePlanId.value ? planner.getPlan(activePlanId.value) : null));
@@ -299,7 +297,6 @@ function newPlan() {
   draft.styleNote = '';
   draft.avoidNote = '';
   generationDraft.userRequirement = '';
-  generationState.error = '';
   selectRecentSummaries();
 }
 
@@ -312,7 +309,6 @@ function openPlan(planId: string) {
   draft.styleNote = plan.styleNote;
   draft.avoidNote = plan.avoidNote;
   generationDraft.userRequirement = '';
-  generationState.error = '';
 }
 
 function buildGenerationConfig() {
@@ -355,31 +351,28 @@ async function runGeneration() {
     toastr.warning('请先说出下一章剧情');
     return;
   }
-  generationState.error = '';
   clearScenePreviewDraft();
   generationState.preview = null;
-  generationState.rawOutput = '';
+  let task: GenerationTask | null = null;
   try {
+    task = generationSession.create({
+      sourceParams: activePlanId.value ? { planId: activePlanId.value } : {},
+      title: draft.title.trim() ? `场景编排 · ${draft.title.trim()}` : '场景编排 · 单次生成',
+    });
     const result = await generateContent(adapter, buildGenerationConfig(), {
       ...getGenerationOptions(),
       createFailedDraft: input => planner.createFailedDraft(input),
-      lifecycle: {
-        onFinish() {
-          generationState.running = false;
-          generationState.generationId = '';
-        },
-        onRawOutput(rawOutput) {
-          generationState.rawOutput = rawOutput;
-        },
-        onStart(generationId) {
-          generationState.running = true;
-          generationState.generationId = generationId;
-        },
-      },
+      lifecycle: generationSession.lifecycle(task.id),
     });
     if (result.status === 'failed') {
-      generationState.error = result.warnings.join('；') || '没有返回可解析的场景提示词';
       failedDraftRawOutput.value = result.rawOutput;
+      generationSession.complete(task.id, {
+        currentLabel: '解析失败草稿已保留',
+        resultPage: 'failed-draft',
+        resultParams: { draftId: result.draft.id },
+        resultState: 'failed-draft',
+        resultTitle: '解析失败草稿',
+      });
       toastr.warning('解析失败，已保存到失败草稿');
       void phone.presentGeneratedPage('scene-planner', 'failed-draft', '解析失败草稿', {
         draftId: result.draft.id,
@@ -396,9 +389,16 @@ async function runGeneration() {
     };
     if (result.status === 'saved') activePlanId.value = result.saved.id;
     persistScenePreviewDraft();
+    generationSession.complete(task.id, {
+      currentLabel: result.status === 'saved' ? '场景方案已保存' : '场景方案等待确认',
+      resultPage: 'preview',
+      resultState: result.status === 'saved' ? 'saved' : 'preview',
+      resultTitle: '下一章提示词',
+    });
     void phone.presentGeneratedPage('scene-planner', 'preview', '下一章提示词');
   } catch (error) {
-    generationState.error = error instanceof Error ? error.message : '场景编排失败';
+    if (task) generationSession.fail(task.id, error);
+    else toastr.error(error instanceof Error ? error.message : '场景编排失败');
   }
 }
 
@@ -503,10 +503,7 @@ async function copyPrompt() {
 }
 
 function stopGeneration() {
-  if (!generationState.generationId) return;
-  stopGenerationByIdSafe(generationState.generationId);
-  generationState.running = false;
-  generationState.error = '生成已停止';
+  generationSession.stop();
 }
 
 async function removePlan(planId: string) {

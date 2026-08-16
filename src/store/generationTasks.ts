@@ -17,7 +17,7 @@ import { extension_settings } from '@sillytavern/scripts/extensions';
 export const generationTasksField = 'sillytavern_phone_generation_tasks';
 
 const executingTaskIds = new Set<string>();
-const terminalStatuses = new Set<GenerationTaskStatus>(['completed', 'cancelled']);
+const terminalStatuses = new Set<GenerationTaskStatus>(['completed', 'cancelled', 'failed']);
 const pendingRawOutputs = new Map<string, string>();
 const rawOutputTimers = new Map<string, number>();
 const RAW_OUTPUT_PERSIST_INTERVAL_MS = 500;
@@ -31,15 +31,20 @@ function createId(prefix: string) {
   return `${prefix}_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
 }
 
-function readSettings(raw: unknown): GenerationTaskSettings {
+export function normalizePersistedGenerationTasks(raw: unknown): GenerationTaskSettings {
   const parsed = validateInplace(GenerationTaskSettingsSchema, raw);
   parsed.tasks = parsed.tasks.map(task => {
     if (!['queued', 'running', 'pause-requested'].includes(task.status)) return task;
+    const isSingle = task.kind === 'single';
     return {
       ...task,
       activeGenerationId: '',
-      error: '插件重新载入后任务已暂停，可从任务中心继续',
-      jobs: task.jobs.map(job => (job.status === 'running' ? { ...job, status: 'pending' as const } : job)),
+      error: isSingle
+        ? '插件重新载入后请求已中断，已保留原始输出；请返回来源页重新生成'
+        : '插件重新载入后任务已暂停，可从任务中心继续',
+      jobs: isSingle
+        ? task.jobs
+        : task.jobs.map(job => (job.status === 'running' ? { ...job, status: 'pending' as const } : job)),
       status: 'interrupted' as const,
       updatedAt: nowIso(),
     };
@@ -48,7 +53,9 @@ function readSettings(raw: unknown): GenerationTaskSettings {
 }
 
 export const useGenerationTaskStore = defineStore('generationTasks', () => {
-  const settings = ref<GenerationTaskSettings>(readSettings(_.get(extension_settings, generationTasksField, {})));
+  const settings = ref<GenerationTaskSettings>(
+    normalizePersistedGenerationTasks(_.get(extension_settings, generationTasksField, {})),
+  );
   const currentScopeKey = ref(getCurrentChatScopeKey());
 
   const tasks = computed(() => settings.value.tasks);
@@ -87,6 +94,18 @@ export const useGenerationTaskStore = defineStore('generationTasks', () => {
           task.scopeKey === scopeKey &&
           task.config.workflowId === workflowId &&
           !terminalStatuses.has(task.status),
+      ) ?? null
+    );
+  }
+
+  function getSingleTask(appId: string, actionId: string, scopeKey = getCurrentChatScopeKey()) {
+    return (
+      settings.value.tasks.find(
+        task =>
+          task.kind === 'single' &&
+          task.appId === appId &&
+          task.scopeKey === scopeKey &&
+          task.config.actionId === actionId,
       ) ?? null
     );
   }
@@ -219,7 +238,7 @@ export const useGenerationTaskStore = defineStore('generationTasks', () => {
 
   function requestPause(taskId: string) {
     const task = getTask(taskId);
-    if (!task || task.status !== 'running') return;
+    if (!task || task.kind === 'single' || task.status !== 'running') return;
     task.status = 'pause-requested';
     task.error = '将在当前生成完成后暂停';
     task.updatedAt = nowIso();
@@ -229,6 +248,11 @@ export const useGenerationTaskStore = defineStore('generationTasks', () => {
     const task = getTask(taskId);
     if (!task || terminalStatuses.has(task.status)) return;
     if (task.activeGenerationId) stopGenerationByIdSafe(task.activeGenerationId);
+    if (task.kind === 'single') {
+      commitRawOutput(taskId);
+      setStatus(taskId, 'cancelled', '已停止单次生成，已保留原始输出');
+      return;
+    }
     setStatus(taskId, 'paused', '已停止当前生成，进度已保留');
   }
 
@@ -287,7 +311,7 @@ export const useGenerationTaskStore = defineStore('generationTasks', () => {
     rawOutputTimers.forEach(timer => window.clearTimeout(timer));
     rawOutputTimers.clear();
     pendingRawOutputs.clear();
-    settings.value = readSettings(_.get(extension_settings, generationTasksField, {}));
+    settings.value = normalizePersistedGenerationTasks(_.get(extension_settings, generationTasksField, {}));
     currentScopeKey.value = getCurrentChatScopeKey();
     executingTaskIds.clear();
   }
@@ -299,7 +323,13 @@ export const useGenerationTaskStore = defineStore('generationTasks', () => {
         if (task.scopeKey === currentScopeKey.value || !['queued', 'running', 'pause-requested'].includes(task.status))
           return;
         if (task.activeGenerationId) stopGenerationByIdSafe(task.activeGenerationId);
-        setStatus(task.id, 'interrupted', '聊天已切换，任务已暂停以避免写入错误聊天');
+        setStatus(
+          task.id,
+          'interrupted',
+          task.kind === 'single'
+            ? '聊天已切换，单次生成请求已中断并保留原始输出，以避免写入错误聊天'
+            : '聊天已切换，任务已暂停以避免写入错误聊天',
+        );
       });
     }, 0);
   });
@@ -320,6 +350,7 @@ export const useGenerationTaskStore = defineStore('generationTasks', () => {
     endExecution,
     finishJob,
     getLatestTask,
+    getSingleTask,
     getTask,
     getWorkbenchTask,
     hasRunningTasks,

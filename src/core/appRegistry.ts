@@ -156,7 +156,13 @@ export interface PhoneTypePromptDomain {
 }
 
 export type PhoneGenerationAdapter = GenerationAdapter<any, any, any>;
-export type PhoneAppResetHandler = () => void | Promise<void>;
+export type PhoneAppResetRollback = () => void | Promise<void>;
+
+export interface PhoneAppResetContext {
+  addRollback: (rollback: PhoneAppResetRollback) => void;
+}
+
+export type PhoneAppResetHandler = (context: PhoneAppResetContext) => void | Promise<void>;
 
 export interface PhoneGenerationAction {
   actionId: string;

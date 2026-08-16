@@ -37,10 +37,20 @@
 }
 
 .pc-phone-root .pc-soft-btn,
-.pc-phone-root .pc-primary-btn,
-.pc-phone-root .pc-segment-btn {
+.pc-phone-root .pc-primary-btn {
   min-height: 36px;
   font-size: 13px;
+}
+
+.pc-phone-root .pc-segment-btn {
+  min-height: 32px;
+  font-size: 13px;
+}
+
+.pc-phone-root .pc-segment-btn.compact {
+  min-height: 30px;
+  padding-inline: 6px;
+  font-size: 12px;
 }
 
 .pc-phone-root .pc-segment {
@@ -166,7 +176,29 @@
   background: var(--pc-form-control-bg, var(--pc-surface-strong));
   color: var(--pc-form-control-text, var(--pc-text));
   padding: 10px 12px;
+  font-size: 14px;
   outline: none;
+}
+
+.pc-phone-root .pc-field,
+.pc-phone-root .pc-select {
+  min-height: 40px;
+}
+
+.pc-phone-root .pc-field.pc-guess-number-input {
+  font-size: 22px;
+  font-weight: 800;
+  letter-spacing: 0;
+  text-align: center;
+}
+
+.pc-phone-root .pc-field.pc-version-index-input {
+  width: 42px;
+  height: 42px;
+  min-height: 42px;
+  padding: 0 8px;
+  line-height: 40px;
+  text-align: center;
 }
 
 #tavern-phone-root.pc-phone-root[data-theme='light']
@@ -300,6 +332,18 @@
   min-height: 96px;
 }
 
+.pc-phone-root .pc-area.pc-area-multiline {
+  min-height: 120px;
+}
+
+.pc-phone-root .pc-area.pc-area-preview {
+  min-height: 160px;
+}
+
+.pc-phone-root .pc-area.pc-area-long {
+  min-height: 260px;
+}
+
 .pc-phone-root .pc-field-label {
   display: block;
   margin-bottom: 8px;
@@ -354,6 +398,23 @@
   border: 1px solid var(--pc-border);
   border-radius: var(--pc-card-radius);
   background: color-mix(in srgb, var(--pc-surface) 72%, transparent 28%);
+}
+
+.pc-phone-root .pc-modal-backdrop {
+  position: absolute;
+  inset: var(--pc-modal-inset, 0);
+  z-index: var(--pc-modal-z, 60);
+  display: grid;
+  place-items: center;
+  padding: 18px;
+  background: color-mix(in srgb, var(--pc-text) 30%, transparent 70%);
+}
+
+.pc-phone-root .pc-modal-dialog {
+  border: 1px solid var(--pc-border);
+  background: var(--pc-bg);
+  box-shadow: 0 18px 44px color-mix(in srgb, var(--pc-text) 22%, transparent 78%);
+  outline: none;
 }
 
 .pc-phone-root .pc-page-section {

@@ -27,7 +27,7 @@
       :capture="captureNewBookPrompt"
       :capture-reset-key="newBookPromptPreview"
       :editing="Boolean(editingBook)"
-      :generation-state="chapterGenerationState"
+      :generation-state="chapterGenerationViewState"
       :selected-type-value="selectedChapterTypeValue"
       :show-custom-type-field="showChapterCustomTypeField"
       :type-options="chapterTypeOptions"
@@ -133,7 +133,7 @@
       :capture="captureExtraSummaryPrompt"
       :capture-reset-key="generationPromptPreview"
       :chapters="summarizableChapters"
-      :generation-state="generationState"
+      :generation-state="summaryGenerationViewState"
       @cancel="phone.goBack()"
       @generate="runSummaryGeneration"
       @stop="stopGeneration"
@@ -157,7 +157,7 @@
         <section class="pc-section-card pc-extras-preview-summary">
           <label class="pc-field-group">
             <span class="pc-field-label">自动章节摘要</span>
-            <textarea v-model="chapterGenerationState.preview.summary" class="pc-area compact"></textarea>
+            <textarea v-model="chapterGenerationState.preview.summary" class="pc-area pc-area-multiline"></textarea>
           </label>
         </section>
       </template>
@@ -449,11 +449,13 @@ const { removeFailedDraft, reparseFailedDraft } = useExtrasFailedDraftRepair({
 });
 
 const {
+  chapterSession,
   runChapterGeneration,
   runChapterGenerationForBook,
   runSummaryGeneration,
   stopChapterGeneration,
   stopSummaryGeneration: stopGeneration,
+  summarySession,
 } = useExtrasGenerationActions({
   activeBook,
   buildChapterOutputFormat,
@@ -478,6 +480,18 @@ const {
   summaryGenerationState: generationState,
   viewedChapterVersion,
 });
+const chapterGenerationViewState = computed(() => ({
+  error: chapterSession.error.value,
+  preview: chapterGenerationState.preview,
+  rawOutput: chapterSession.rawOutput.value,
+  running: chapterSession.running.value,
+}));
+const summaryGenerationViewState = computed(() => ({
+  error: summarySession.error.value,
+  preview: generationState.preview,
+  rawOutput: summarySession.rawOutput.value,
+  running: summarySession.running.value,
+}));
 
 const editingBook = computed(() => (route.value.params?.bookId ? activeBook.value : null));
 const { saveBook: submitBook, saveBookAndGenerate: submitBookAndGenerate } = useExtrasBookEditorSession(
@@ -537,7 +551,9 @@ const newBookPromptPreview = computed(() => {
         chapterMode: chapterGenerationDraft.mode,
         generationIntent: chapterGenerationDraft.generationIntent,
         outputFormat: buildChapterOutputFormat(),
+        parseSummary: chapterGenerationDraft.parseSummary,
         previousChapterContext: buildNewBookGenerationContext(),
+        summaryFormatHint: chapterGenerationDraft.summaryFormatHint,
         typeName: chapterGenerationDraft.typeName,
         typePrompt: currentChapterTypePrompt.value,
         userRequirement: chapterGenerationDraft.userRequirement,
@@ -611,7 +627,9 @@ const chapterPromptPreview = computed(() => {
         chapterMode: chapterGenerationDraft.mode,
         generationIntent: chapterGenerationDraft.generationIntent,
         outputFormat: buildChapterOutputFormat(),
+        parseSummary: chapterGenerationDraft.parseSummary,
         previousChapterContext: buildPreviousChapterContext(activeBook.value),
+        summaryFormatHint: chapterGenerationDraft.summaryFormatHint,
         typeName: chapterGenerationDraft.typeName,
         typePrompt: currentChapterTypePrompt.value,
         userRequirement: chapterGenerationDraft.userRequirement,
@@ -647,7 +665,9 @@ function captureNewBookPrompt() {
       chapterMode: chapterGenerationDraft.mode,
       generationIntent: chapterGenerationDraft.generationIntent,
       outputFormat: buildChapterOutputFormat(),
+      parseSummary: chapterGenerationDraft.parseSummary,
       previousChapterContext: buildNewBookGenerationContext(),
+      summaryFormatHint: chapterGenerationDraft.summaryFormatHint,
       typeName: chapterGenerationDraft.typeName,
       typePrompt: currentChapterTypePrompt.value,
       userRequirement: chapterGenerationDraft.userRequirement,
@@ -716,7 +736,9 @@ function captureChapterPrompt() {
       chapterMode: chapterGenerationDraft.mode,
       generationIntent: chapterGenerationDraft.generationIntent,
       outputFormat: buildChapterOutputFormat(),
+      parseSummary: chapterGenerationDraft.parseSummary,
       previousChapterContext: buildPreviousChapterContext(activeBook.value),
+      summaryFormatHint: chapterGenerationDraft.summaryFormatHint,
       typeName: chapterGenerationDraft.typeName,
       typePrompt: currentChapterTypePrompt.value,
       userRequirement: chapterGenerationDraft.userRequirement,
@@ -821,9 +843,7 @@ watch(
       generationDraft.rangeText = '';
       generationDraft.singleMessageId = 0;
       generationDraft.userRequirement = '';
-      generationState.error = '';
       generationState.preview = null;
-      generationState.rawOutput = '';
     }
 
     if (current.page === 'failed-draft') {
@@ -983,9 +1003,7 @@ function resetChapterGenerationDraft(mode: typeof chapterGenerationDraft.mode) {
     chapterReplaySession.applyReplay(generationRecord.replay, chapterGenerationDraft);
   }
   syncCustomSelectionFromDraft();
-  chapterGenerationState.error = '';
   chapterGenerationState.preview = null;
-  chapterGenerationState.rawOutput = '';
 }
 
 function openCreateBook() {
@@ -1251,15 +1269,6 @@ function formatCoveredChaptersForBook(book: typeof activeBook.value, ids: string
 
 .pc-extras-app :is(.pc-field, .pc-area) {
   margin-top: 14px;
-}
-
-.pc-extras-app .pc-area {
-  min-height: 220px;
-  resize: vertical;
-}
-
-.pc-extras-app .pc-area.compact {
-  min-height: 120px;
 }
 
 .pc-type-prompt-card {

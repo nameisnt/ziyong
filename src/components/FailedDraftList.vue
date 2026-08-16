@@ -16,7 +16,7 @@
           <p>{{ getContext(draft) }}</p>
           <p class="preview">{{ draft.warnings.join('；') || emptyWarning }}</p>
         </button>
-        <button class="pc-icon-btn danger" type="button" :title="deleteTitle" @click="$emit('remove', draft.id)">
+        <button class="pc-icon-btn danger" type="button" :title="deleteTitle" :aria-label="deleteTitle" @click="$emit('remove', draft.id)">
           <i class="fa-solid fa-trash"></i>
         </button>
       </article>

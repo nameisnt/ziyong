@@ -54,7 +54,7 @@
       <label class="pc-field-label">{{ t`自定义范围` }}</label>
       <textarea
         :value="rangeText"
-        class="pc-area compact"
+        class="pc-area pc-area-multiline"
         :disabled="disabled"
         :placeholder="t`例如：12-20, 24, 30-32`"
         @input="onRangeTextInput"
@@ -122,10 +122,6 @@ function onRangeTextInput(event: Event) {
 .pc-source-fields {
   display: flex;
   flex-direction: column;
-}
-
-.pc-area.compact {
-  min-height: 120px;
 }
 
 .pc-number-field + .pc-number-field {

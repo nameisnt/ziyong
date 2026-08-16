@@ -1,7 +1,19 @@
 <template>
   <Teleport to="#tavern-phone-root .pc-phone-shell">
-    <div v-if="open" class="pc-creation-modal-mask" role="presentation" @click.self="emit('close')">
-      <section class="pc-section-card pc-creation-modal" role="dialog" aria-modal="true" :aria-label="title">
+    <div
+      v-if="open"
+      class="pc-modal-backdrop pc-creation-modal-mask"
+      role="presentation"
+      @click.self="emit('close')"
+    >
+      <section
+        ref="dialogRef"
+        class="pc-section-card pc-modal-dialog pc-creation-modal"
+        role="dialog"
+        aria-modal="true"
+        :aria-label="title"
+        tabindex="-1"
+      >
         <header>
           <strong>{{ title }}</strong>
           <small>{{ subtitle }}</small>
@@ -28,6 +40,8 @@
 </template>
 
 <script setup lang="ts">
+import { usePhoneModalLifecycle } from '@/composables/usePhoneModalLifecycle';
+
 export interface CreationModeOption {
   description: string;
   icon: string;
@@ -47,40 +61,29 @@ const emit = defineEmits<{
   select: [id: string];
 }>();
 
+const dialogRef = ref<HTMLElement | null>(null);
+
+usePhoneModalLifecycle({
+  dialogRef,
+  isOpen: () => props.open,
+  onClose: () => emit('close'),
+});
+
 function selectOption(id: string) {
   emit('close');
   emit('select', id);
 }
 
-useEventListener(window, 'phone-before-back', event => {
-  if (!props.open) return;
-  event.preventDefault();
-  emit('close');
-});
-
-useEventListener(window, 'keydown', event => {
-  if (!props.open || event.key !== 'Escape') return;
-  event.preventDefault();
-  emit('close');
-});
 </script>
 
 <style scoped>
 .pc-creation-modal-mask {
-  position: absolute;
-  inset: 0;
-  z-index: 70;
-  display: grid;
-  place-items: center;
-  padding: 18px;
-  background: color-mix(in srgb, var(--pc-text) 30%, transparent 70%);
+  --pc-modal-z: 70;
 }
 
 .pc-creation-modal {
   width: min(100%, 330px);
   padding: 14px;
-  background: var(--pc-bg);
-  box-shadow: 0 18px 44px color-mix(in srgb, var(--pc-text) 22%, transparent 78%);
 }
 
 .pc-creation-modal header {

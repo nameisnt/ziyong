@@ -178,16 +178,16 @@
         />
         <GenerationPanel
           :capture="capturePrompt"
-          :error="generationState.error"
+          :error="generationError"
           :from-start-end="generationDraft.fromStartEnd"
           generate-label="梳理剧情"
           :range-text="generationDraft.rangeText"
-          :raw-output="generationState.rawOutput"
+          :raw-output="generationRawOutput"
           :recent-count="generationDraft.recentCount"
           :references="selectedReferences"
           requirement-label="梳理要求"
           requirement-placeholder="例如：重点梳理关系变化；不要把尚未确认的猜测当成事实。"
-          :running="generationState.running"
+          :running="generationRunning"
           :single-message-id="generationDraft.singleMessageId"
           :source-mode="settings.generation.sourceMode"
           :user-requirement="generationDraft.userRequirement"
@@ -253,6 +253,7 @@ import GenerationPanel from '@/components/GenerationPanel.vue';
 import GenerationPreviewPanel from '@/components/GenerationPreviewPanel.vue';
 import InfoHint from '@/components/InfoHint.vue';
 import PreviewDraftNotice from '@/components/PreviewDraftNotice.vue';
+import { useSingleGenerationTaskSession } from '@/composables/useSingleGenerationTaskSession';
 import { getRegisteredPhoneGenerationAdapter } from '@/core/appRegistry';
 import { useProfilesStore } from '@/apps/profiles/store';
 import { captureGenerationPrompt, generateContent } from '@/core/generationService';
@@ -261,8 +262,8 @@ import { usePromptStore } from '@/store/prompts';
 import { useSettingsStore } from '@/store/settings';
 import { useSummaryStore } from '@/store/summary';
 import type { GenerationExecutionPreview, SourceSelection } from '@/type/generation';
+import type { GenerationTask } from '@/type/generationTask';
 import { formatGenerationReferences, type GenerationReferenceItem } from '@/util/references';
-import { stopGenerationByIdSafe } from '@/util/runtime';
 import { formatTextProviderSummary } from '@/util/textProvider';
 import { usePreviewDraftPersistence } from '@/util/previewDrafts';
 import { createStorylineGenerationAdapter, formatStorylineResult, type StorylineGeneratedResult } from './generation';
@@ -316,12 +317,15 @@ const generationDraft = reactive({
   userRequirement: '',
 });
 const generationState = reactive({
-  error: '',
-  generationId: '',
   preview: null as StorylinePreview | null,
-  rawOutput: '',
-  running: false,
 });
+const generationSession = useSingleGenerationTaskSession({
+  actionId: 'extract',
+  appId: 'storylines',
+  sourcePage: 'generate',
+  title: '剧情梳理 · 单次生成',
+});
+const { error: generationError, rawOutput: generationRawOutput, running: generationRunning } = generationSession;
 const failedDraftRawOutput = ref('');
 const editorDraft = reactive<StorylineEditorDraft>(createEmptyEditorDraft('line'));
 const activeFailedDraft = computed(() => {
@@ -381,12 +385,6 @@ const {
     generationState.preview = preview;
   },
   title: '剧情梳理预览',
-});
-
-onScopeDispose(() => {
-  if (generationState.running && generationState.generationId) {
-    stopGenerationByIdSafe(generationState.generationId);
-  }
 });
 
 const selectedSummaryBook = computed(() => summary.getBook(summaryBookId.value));
@@ -673,43 +671,53 @@ function capturePrompt() {
 }
 
 async function runGeneration() {
-  generationState.error = '';
   clearStorylinePreviewDraft();
   generationState.preview = null;
-  generationState.rawOutput = '';
+  let task: GenerationTask | null = null;
   try {
+    task = generationSession.create({
+      sourceParams: summaryBookId.value ? { bookId: summaryBookId.value } : {},
+      title: selectedSummaryBook.value ? `剧情梳理 · ${selectedSummaryBook.value.title}` : '剧情梳理 · 单次生成',
+    });
     const result = await generateContent(adapter, buildGenerationConfig(), {
       ...getGenerationOptions(),
       createFailedDraft: input => storylines.createFailedDraft(input),
-      lifecycle: {
-        onFinish() {
-          generationState.running = false;
-          generationState.generationId = '';
-        },
-        onRawOutput(rawOutput) {
-          generationState.rawOutput = rawOutput;
-        },
-        onStart(generationId) {
-          generationState.running = true;
-          generationState.generationId = generationId;
-        },
-      },
+      lifecycle: generationSession.lifecycle(task.id),
     });
     if (result.status === 'failed') {
-      generationState.error = result.warnings.join('；') || '没有返回可解析的剧情梳理结果';
       failedDraftRawOutput.value = result.rawOutput;
+      generationSession.complete(task.id, {
+        currentLabel: '解析失败草稿已保留',
+        resultPage: 'failed-draft',
+        resultParams: { draftId: result.draft.id },
+        resultState: 'failed-draft',
+        resultTitle: '解析失败草稿',
+      });
       toastr.warning('解析失败，已保存到失败草稿');
       void phone.presentGeneratedPage('storylines', 'failed-draft', '解析失败草稿', { draftId: result.draft.id });
       return;
     }
     if (result.status === 'saved') {
+      generationSession.complete(task.id, {
+        currentLabel: `已保存 ${result.saved.lineCount} 条剧情线`,
+        resultPage: 'root',
+        resultState: 'saved',
+        resultTitle: '剧情梳理',
+      });
       toastr.success(`已梳理 ${result.saved.lineCount} 条剧情线`);
       void phone.presentGeneratedPage('storylines', 'root', '剧情梳理');
       return;
     }
     openPreview(result);
+    generationSession.complete(task.id, {
+      currentLabel: `已梳理 ${result.data.lines.length} 条剧情线，等待确认`,
+      resultPage: 'preview',
+      resultState: 'preview',
+      resultTitle: '剧情梳理预览',
+    });
   } catch (error) {
-    generationState.error = error instanceof Error ? error.message : '剧情梳理失败';
+    if (task) generationSession.fail(task.id, error);
+    else toastr.error(error instanceof Error ? error.message : '剧情梳理失败');
   }
 }
 
@@ -800,10 +808,7 @@ async function savePreview() {
 }
 
 function stopGeneration() {
-  if (!generationState.generationId) return;
-  stopGenerationByIdSafe(generationState.generationId);
-  generationState.running = false;
-  generationState.error = '生成已停止';
+  generationSession.stop();
 }
 
 function findLineTitle(lineId: string) {

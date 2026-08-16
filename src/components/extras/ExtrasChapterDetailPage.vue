@@ -9,6 +9,7 @@
       :next-disabled="!nextId"
       :previous-disabled="!previousId"
       :reasoning="viewedGenerationRecord?.reasoning"
+      :source-label="viewedGenerationRecord?.replay?.source.label || viewedGenerationRecord?.sourceLabel"
       :title="`第 ${chapter.chapterNumber} 章 · ${chapter.title}`"
       @bagu="emit('bagu')"
       @bottom="emit('bottom')"

@@ -11,6 +11,7 @@
       :next-disabled="!nextEntryId"
       :previous-disabled="!previousEntryId"
       :reasoning="viewedEntry.generationRecord?.reasoning"
+      :source-label="viewedEntry.generationRecord?.replay.source.label"
       :title="viewedEntry.title"
       @bagu="$emit('bagu')"
       @bottom="$emit('bottom')"

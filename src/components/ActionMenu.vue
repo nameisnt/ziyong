@@ -36,8 +36,28 @@ function closeFromOutside(event: PointerEvent) {
   if (menu.value?.open && target instanceof Node && !menu.value.contains(target)) menu.value.open = false;
 }
 
-onMounted(() => document.addEventListener('pointerdown', closeFromOutside));
-onBeforeUnmount(() => document.removeEventListener('pointerdown', closeFromOutside));
+function closeFromKeyboard(event: KeyboardEvent) {
+  if (event.key !== 'Escape' || !menu.value?.open) return;
+  event.preventDefault();
+  menu.value.open = false;
+}
+
+function closeFromPhoneBack(event: Event) {
+  if (!menu.value?.open) return;
+  event.preventDefault();
+  menu.value.open = false;
+}
+
+onMounted(() => {
+  document.addEventListener('pointerdown', closeFromOutside);
+  window.addEventListener('keydown', closeFromKeyboard);
+  window.addEventListener('phone-before-back', closeFromPhoneBack);
+});
+onBeforeUnmount(() => {
+  document.removeEventListener('pointerdown', closeFromOutside);
+  window.removeEventListener('keydown', closeFromKeyboard);
+  window.removeEventListener('phone-before-back', closeFromPhoneBack);
+});
 </script>
 
 <style scoped>
@@ -73,6 +93,9 @@ onBeforeUnmount(() => document.removeEventListener('pointerdown', closeFromOutsi
   display: grid;
   width: max-content;
   min-width: 156px;
+  max-width: min(220px, calc(100vw - 32px));
+  max-height: min(60vh, 320px);
+  overflow-y: auto;
   gap: 4px;
   padding: 6px;
   border: 1px solid var(--pc-border);
@@ -90,13 +113,19 @@ onBeforeUnmount(() => document.removeEventListener('pointerdown', closeFromOutsi
   gap: 10px;
   border: 0;
   border-radius: calc(var(--pc-control-radius) - 4px);
-  padding: 0 12px;
+  padding: 9px 12px;
   background: transparent;
   color: var(--pc-form-control-text);
   cursor: pointer;
   font-weight: 750;
+  line-height: 1.35;
   text-align: left;
-  white-space: nowrap;
+  overflow-wrap: anywhere;
+  white-space: normal;
+}
+
+.pc-action-menu-panel :deep(button > span) {
+  min-width: 0;
 }
 
 .pc-action-menu-panel :deep(button:hover) {

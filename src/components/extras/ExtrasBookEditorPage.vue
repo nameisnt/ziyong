@@ -34,7 +34,11 @@
             <label class="pc-field-label">
               {{ t`生成模式` }}
             </label>
-            <select v-model="chapterDraft.mode" class="pc-field" :disabled="generationState.running">
+            <select
+              v-model="chapterDraft.mode"
+              class="pc-select pc-extras-mode-select"
+              :disabled="generationState.running"
+            >
               <option value="新开一本书">{{ t`新开一本书` }}</option>
               <option value="续写上一章">{{ t`续写上一章` }}</option>
             </select>
@@ -136,3 +140,10 @@ const emit = defineEmits<{
   stop: [];
 }>();
 </script>
+
+<style scoped>
+/* App-only layout: preserve the Extras generation form's established vertical rhythm. */
+.pc-extras-mode-select {
+  margin-top: 14px;
+}
+</style>

@@ -4,7 +4,7 @@
       <textarea
         ref="editorEl"
         v-model="draft"
-        class="pc-area pc-app-prompt-editor-area"
+        class="pc-area pc-area-long pc-app-prompt-editor-area"
         :placeholder="definition.placeholder"
       />
       <div v-if="definition.kind === 'task' && definition.variables.length" class="pc-field-group">
@@ -99,7 +99,4 @@ watch(
   gap: 14px;
 }
 
-.pc-app-prompt-editor-area {
-  min-height: 320px;
-}
 </style>

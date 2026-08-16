@@ -1,9 +1,14 @@
 <template>
   <Teleport to="#tavern-phone-root .pc-phone-shell">
-    <div v-if="open" class="pc-reader-edit-mask" role="presentation" @click.self="emit('close')">
+    <div
+      v-if="open"
+      class="pc-modal-backdrop pc-reader-edit-mask"
+      role="presentation"
+      @click.self="emit('close')"
+    >
       <section
         ref="dialogEl"
-        class="pc-section-card pc-reader-edit-modal"
+        class="pc-section-card pc-modal-dialog pc-reader-edit-modal"
         role="dialog"
         aria-modal="true"
         tabindex="-1"
@@ -13,7 +18,7 @@
             <strong>{{ chosen ? t`编辑整句` : t`选择文字位置` }}</strong>
             <small>{{ occurrences.length > 1 ? `正文中找到 ${occurrences.length} 处` : t`只会覆盖当前内容` }}</small>
           </div>
-          <button class="pc-icon-btn" type="button" :title="t`关闭`" @click="emit('close')">
+          <button class="pc-icon-btn" type="button" :aria-label="t`关闭`" :title="t`关闭`" @click="emit('close')">
             <i class="fa-solid fa-xmark"></i>
           </button>
         </header>
@@ -58,6 +63,7 @@
 </template>
 
 <script setup lang="ts">
+import { usePhoneModalLifecycle } from '@/composables/usePhoneModalLifecycle';
 import type { ReaderTextOccurrence } from '@/util/readerTextEdit';
 
 const props = defineProps<{
@@ -76,6 +82,12 @@ const draft = ref('');
 const dialogEl = ref<HTMLElement | null>(null);
 const textareaEl = ref<HTMLTextAreaElement | null>(null);
 const chosen = computed(() => props.occurrences.find(item => item.index === chosenIndex.value) ?? null);
+
+usePhoneModalLifecycle({
+  dialogRef: dialogEl,
+  isOpen: () => props.open,
+  onClose: () => emit('close'),
+});
 
 async function chooseOccurrence(index: number) {
   chosenIndex.value = index;
@@ -101,27 +113,14 @@ watch(
     chosenIndex.value = -1;
     draft.value = '';
     await nextTick();
-    dialogEl.value?.focus({ preventScroll: true });
     if (props.occurrences.length === 1) await chooseOccurrence(props.occurrences[0]?.index ?? 0);
   },
 );
-
-useEventListener(window, 'keydown', event => {
-  if (!props.open || event.key !== 'Escape') return;
-  event.preventDefault();
-  emit('close');
-});
 </script>
 
 <style scoped>
 .pc-reader-edit-mask {
-  position: absolute;
-  inset: 0;
-  z-index: 72;
-  display: grid;
-  place-items: center;
-  padding: 16px;
-  background: color-mix(in srgb, var(--pc-text) 34%, transparent 66%);
+  --pc-modal-z: 72;
 }
 
 .pc-reader-edit-modal {
@@ -131,9 +130,6 @@ useEventListener(window, 'keydown', event => {
   max-height: min(82%, 620px);
   min-height: 0;
   padding: 14px;
-  background: var(--pc-bg);
-  box-shadow: 0 18px 44px color-mix(in srgb, var(--pc-text) 22%, transparent 78%);
-  outline: none;
 }
 
 .pc-reader-edit-head {

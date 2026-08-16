@@ -10,6 +10,8 @@ import {
   createExtrasSummaryFixture,
 } from '@/testing/visual/extrasGenerationScenarios';
 import { applyPromptsVisualScenario } from '@/testing/visual/promptsScenarios';
+import { applyMediaLibraryVisualScenario } from '@/testing/visual/mediaLibraryScenarios';
+import { applyMinigameVisualScenario } from '@/testing/visual/minigameScenarios';
 import {
   applyContentBookVisualScenario,
   createDiaryFixture,
@@ -21,7 +23,23 @@ import { applyRecoveryVisualScenario } from '@/testing/visual/recoveryScenarios'
 import { applyReaderVisualScenario } from '@/testing/visual/readerScenarios';
 import { configureVisualPhoneSize, resetVisualPhoneRoute, waitForVisualPaint } from '@/testing/visual/context';
 import { createGenerationTaskFixture } from '@/testing/visual/generationTaskFixtures';
+import { applyBusinessContentVisualScenario } from '@/testing/visual/businessContentScenarios';
+import { applyFileRepositoryVisualScenario } from '@/testing/visual/fileRepositoryScenarios';
+import { applyPresetManagerVisualScenario } from '@/testing/visual/presetManagerScenarios';
+import { applyRelationshipVisualScenario } from '@/testing/visual/relationshipScenarios';
+import { applyRegexWizardVisualScenario } from '@/testing/visual/regexWizardScenarios';
+import { applyRegexDisplayVisualScenario } from '@/testing/visual/regexDisplayScenarios';
+import { applyWorkbenchVisualScenario } from '@/testing/visual/workbenchScenarios';
+import { applyChatInsertVisualScenario } from '@/testing/visual/chatInsertScenarios';
+import { applyCloudMediaVisualScenario } from '@/testing/visual/cloudMediaScenarios';
+import { applyComfyVisualScenario } from '@/testing/visual/comfyScenarios';
+import { applyAppBuilderVisualScenario } from '@/testing/visual/appBuilderScenarios';
+import { applyMvuModifierVisualScenario } from '@/testing/visual/mvuModifierScenarios';
+import { applyScenePlannerVisualScenario } from '@/testing/visual/scenePlannerScenarios';
+import { seedArchiveFloorBackupFixture } from '@/testing/visual/archiveScenarios';
 import { useStorylinesStore } from '@/apps/storylines/store';
+import { useBaguStore } from '@/store/bagu';
+import { useGenerationTaskStore } from '@/store/generationTasks';
 import { computed, effectScope, nextTick, ref } from 'vue';
 
 type VisualScenarioName = string;
@@ -66,6 +84,10 @@ function setByPath(source: Record<string, unknown>, path: string, value: unknown
   current[parts[parts.length - 1]] = value;
   return source;
 }
+
+let setReaderFixtureReasoning: (reasoning: string) => void = (_reasoning: string) => {
+  throw new Error('Reader reasoning fixture is not initialized');
+};
 
 function setupVisualGlobals() {
   let visualMvuData = {
@@ -121,16 +143,34 @@ function setupVisualGlobals() {
       send_date: '第 3 楼',
     },
   ];
+  setReaderFixtureReasoning = (reasoning: string) => {
+    const target = visualMessages.find(message => !message.is_user);
+    if (!target) throw new Error('Reader reasoning fixture has no assistant message');
+    Object.assign(target, { extra: { reasoning } });
+  };
   let visualLoadedPresetName = '视觉预设';
   let visualLegacyWorldbook = {
     entries: {
       1: {
         comment: '缺少关键词数组的旧条目',
+        constant: true,
         content: '这个条目用于验证原始世界书兼容读取与开关写入。',
         disable: false,
         enabled: true,
         order: 10,
+        selective: false,
         uid: 1,
+      },
+      2: {
+        comment: '显式关键词触发条目',
+        constant: false,
+        content: '这个条目用于验证 selective 策略显示为绿灯。',
+        disable: false,
+        enabled: true,
+        key: [],
+        order: 20,
+        selective: true,
+        uid: 2,
       },
     },
     name: '【视觉】旧格式世界书',
@@ -223,6 +263,7 @@ function setupVisualGlobals() {
       mapValues: (source: Record<string, unknown>, iteratee: (value: unknown, key: string) => unknown) =>
         Object.fromEntries(Object.entries(source || {}).map(([key, value]) => [key, iteratee(value, key)])),
       set: setByPath,
+      shuffle: <T>(items: T[]) => [...items].reverse(),
     },
     chatId: 'visual-chat',
     characters: [{ avatar: 'visual-user.png', name: '测试角色' }],
@@ -249,6 +290,7 @@ function setupVisualGlobals() {
     },
     reloadCurrentChat: async () => {},
     reloadWorldInfoEditor: () => {},
+    registerMacroLike: () => ({ unregister() {} }),
     rebindGlobalWorldbooks: async () => {},
     saveWorldInfo: async (name: string, data: typeof visualLegacyWorldbook) => {
       if (name === '【视觉】旧格式世界书') visualLegacyWorldbook = structuredClone(data);
@@ -391,6 +433,11 @@ const { ProfileEntrySchema, ProfileTableColumnSchema, profilesField, useProfiles
   await import('@/apps/profiles/store');
 const { usePresetLinkStore } = await import('@/apps/preset-link/store');
 const { useWorldSlotsStore, worldSlotsField } = await import('@/apps/world-slots/store');
+const { useTimekeeperStore } = await import('@/apps/timekeeper/store');
+const { useFileRepositoryStore } = await import('@/store/fileRepository');
+const { usePluginPresetStore } = await import('@/store/pluginPresets');
+const { useRelationshipStore } = await import('@/apps/relationship/store');
+const { useRegexDisplayStore } = await import('@/apps/regex-display/store');
 const { getCurrentChatScopeKey } = await import('@/store/chatScoped');
 const { extension_settings } = await import('@sillytavern/scripts/extensions');
 const { createExtraChapterGenerationAdapter, createExtraChapterGenerationRecord, resolveGeneratedExtraBookTitle } =
@@ -738,6 +785,148 @@ async function applyScenario(name: VisualScenarioName, options: { height?: numbe
   }
 
   if (
+    await applyWorkbenchVisualScenario(name, {
+      resetPhoneToRoute,
+      waitForCondition: waitForVisualCondition,
+      waitForPaint,
+    })
+  ) {
+    await waitForPaint();
+    return { name, route: usePhoneStore().currentRoute };
+  }
+
+  if (
+    await applyChatInsertVisualScenario(name, {
+      resetPhoneToRoute,
+      waitForCondition: waitForVisualCondition,
+      waitForPaint,
+    })
+  ) {
+    await waitForPaint();
+    return { name, route: usePhoneStore().currentRoute };
+  }
+
+  if (
+    await applyCloudMediaVisualScenario(name, {
+      resetPhoneToRoute,
+      waitForCondition: waitForVisualCondition,
+      waitForPaint,
+    })
+  ) {
+    await waitForPaint();
+    return { name, route: usePhoneStore().currentRoute };
+  }
+
+  if (
+    await applyComfyVisualScenario(name, {
+      resetPhoneToRoute,
+      waitForCondition: waitForVisualCondition,
+      waitForPaint,
+    })
+  ) {
+    await waitForPaint();
+    return { name, route: usePhoneStore().currentRoute };
+  }
+
+  if (
+    await applyAppBuilderVisualScenario(name, {
+      resetPhoneToRoute,
+      waitForCondition: waitForVisualCondition,
+      waitForPaint,
+    })
+  ) {
+    await waitForPaint();
+    return { name, route: usePhoneStore().currentRoute };
+  }
+
+  if (
+    await applyMvuModifierVisualScenario(name, {
+      resetPhoneToRoute,
+      waitForCondition: waitForVisualCondition,
+      waitForPaint,
+    })
+  ) {
+    await waitForPaint();
+    return { name, route: usePhoneStore().currentRoute };
+  }
+
+  if (
+    await applyScenePlannerVisualScenario(name, {
+      resetPhoneToRoute,
+      waitForCondition: waitForVisualCondition,
+      waitForPaint,
+    })
+  ) {
+    await waitForPaint();
+    return { name, route: usePhoneStore().currentRoute };
+  }
+
+  if (applyBusinessContentVisualScenario(name, { resetPhoneToRoute })) {
+    await waitForPaint();
+    return { name, route: usePhoneStore().currentRoute };
+  }
+
+  if (
+    await applyFileRepositoryVisualScenario(name, {
+      repository: useFileRepositoryStore(),
+      resetPhoneToRoute,
+      waitForCondition: waitForVisualCondition,
+      waitForPaint,
+    })
+  ) {
+    await waitForPaint();
+    return { name, route: usePhoneStore().currentRoute };
+  }
+
+  if (
+    await applyPresetManagerVisualScenario(name, {
+      getPluginPresets: usePluginPresetStore,
+      resetPhoneToRoute,
+      waitForCondition: waitForVisualCondition,
+      waitForPaint,
+    })
+  ) {
+    await waitForPaint();
+    return { name, route: usePhoneStore().currentRoute };
+  }
+
+  if (
+    await applyRelationshipVisualScenario(name, {
+      getRelationship: useRelationshipStore,
+      resetPhoneToRoute,
+      waitForCondition: waitForVisualCondition,
+      waitForPaint,
+    })
+  ) {
+    await waitForPaint();
+    return { name, route: usePhoneStore().currentRoute };
+  }
+
+  if (
+    await applyRegexWizardVisualScenario(name, {
+      getRegexDisplay: useRegexDisplayStore,
+      resetPhoneToRoute,
+      waitForCondition: waitForVisualCondition,
+      waitForPaint,
+    })
+  ) {
+    await waitForPaint();
+    return { name, route: usePhoneStore().currentRoute };
+  }
+
+  if (
+    await applyRegexDisplayVisualScenario(name, {
+      getRegexDisplay: useRegexDisplayStore,
+      resetPhoneToRoute,
+      waitForCondition: waitForVisualCondition,
+      waitForPaint,
+    })
+  ) {
+    await waitForPaint();
+    return { name, route: usePhoneStore().currentRoute };
+  }
+
+  if (
     await applyForumGenerationVisualScenario(name, {
       createHiddenGenerationRecord: createVisualHiddenGenerationRecord,
       resetPhoneToRoute,
@@ -753,7 +942,35 @@ async function applyScenario(name: VisualScenarioName, options: { height?: numbe
     return { name, route: usePhoneStore().currentRoute };
   }
 
-  if (await applyPromptsVisualScenario(name, { resetPhoneToRoute, waitForPaint })) {
+  if (
+    await applyPromptsVisualScenario(name, {
+      resetPhoneToRoute,
+      waitForCondition: waitForVisualCondition,
+      waitForPaint,
+    })
+  ) {
+    await waitForPaint();
+    return { name, route: usePhoneStore().currentRoute };
+  }
+
+  if (
+    await applyMediaLibraryVisualScenario(name, {
+      resetPhoneToRoute,
+      waitForCondition: waitForVisualCondition,
+      waitForPaint,
+    })
+  ) {
+    await waitForPaint();
+    return { name, route: usePhoneStore().currentRoute };
+  }
+
+  if (
+    await applyMinigameVisualScenario(name, {
+      resetPhoneToRoute,
+      waitForCondition: waitForVisualCondition,
+      waitForPaint,
+    })
+  ) {
     await waitForPaint();
     return { name, route: usePhoneStore().currentRoute };
   }
@@ -792,6 +1009,7 @@ async function applyScenario(name: VisualScenarioName, options: { height?: numbe
       openReaderCatalog,
       openReaderTools,
       resetPhoneToRoute,
+      setReaderFixtureReasoning,
       toggleReaderFooter,
       waitForCondition: waitForVisualCondition,
       waitForPaint,
@@ -832,6 +1050,265 @@ async function applyScenario(name: VisualScenarioName, options: { height?: numbe
     if (gridGap > 4 || tilePadding > 1 || labelFontSize > 10 || label.clientWidth < 50) {
       throw new Error('Five-column App label does not reserve enough width for five Chinese characters');
     }
+  } else if (name === 'home-layout-drag') {
+    const settings = useSettingsStore();
+    settings.resetHomeLayout();
+    settings.setHomeColumns(4);
+    settings.setHomeRows(3);
+    await phone.goHome();
+    await waitForPaint();
+
+    const tiles = [...document.querySelectorAll<HTMLButtonElement>('.pc-home-grid-wrap .pc-app-tile')];
+    const source = tiles[0];
+    const target = tiles[1];
+    const sourceToken = source?.dataset.homeToken || '';
+    const targetToken = target?.dataset.homeToken || '';
+    if (!source || !target || !sourceToken || !targetToken) throw new Error('Home drag fixture needs two App tiles');
+
+    Object.defineProperties(source, {
+      releasePointerCapture: { configurable: true, value: () => undefined },
+      setPointerCapture: { configurable: true, value: () => undefined },
+    });
+    const sourceRect = source.getBoundingClientRect();
+    const targetRect = target.getBoundingClientRect();
+    const pointerId = 121;
+    source.dispatchEvent(
+      new PointerEvent('pointerdown', {
+        bubbles: true,
+        button: 0,
+        clientX: sourceRect.left + sourceRect.width / 2,
+        clientY: sourceRect.top + sourceRect.height / 2,
+        pointerId,
+      }),
+    );
+    await new Promise(resolve => window.setTimeout(resolve, 390));
+    source.dispatchEvent(
+      new PointerEvent('pointermove', {
+        bubbles: true,
+        button: 0,
+        clientX: targetRect.left + targetRect.width / 2,
+        clientY: targetRect.top + targetRect.height / 2,
+        pointerId,
+      }),
+    );
+    source.dispatchEvent(
+      new PointerEvent('pointerup', {
+        bubbles: true,
+        button: 0,
+        clientX: targetRect.left + targetRect.width / 2,
+        clientY: targetRect.top + targetRect.height / 2,
+        pointerId,
+      }),
+    );
+    await waitForPaint();
+
+    const folder = settings.settings.layout.folders.find(
+      item => item.appIds.includes(sourceToken) && item.appIds.includes(targetToken),
+    );
+    if (!folder) throw new Error('Home drag did not create the expected folder');
+    const folderTile = document.querySelector<HTMLButtonElement>(`[data-home-token="folder:${folder.id}"]`);
+    if (!folderTile) throw new Error('Home drag folder is missing from the rendered grid');
+    await new Promise(resolve => window.setTimeout(resolve, 280));
+    folderTile.click();
+    await waitForPaint();
+
+    const nameInput = document.querySelector<HTMLInputElement>('.pc-home-folder-name');
+    if (!nameInput) throw new Error('Home folder dialog did not open after dragging');
+    nameInput.value = '自动测试文件夹';
+    nameInput.dispatchEvent(new Event('change', { bubbles: true }));
+    await waitForPaint();
+    if (settings.settings.layout.folders.find(item => item.id === folder.id)?.name !== '自动测试文件夹') {
+      throw new Error('Home folder rename was not persisted');
+    }
+
+    document.querySelector<HTMLButtonElement>('.pc-home-folder-controls button[title="移出到主界面"]')?.click();
+    await waitForPaint();
+    if (settings.settings.layout.folders.some(item => item.id === folder.id)) {
+      throw new Error('Home folder removal did not dissolve the one-item folder');
+    }
+  } else if (
+    name === 'storylines-generation-background' ||
+    name === 'storylines-generation-failed-background' ||
+    name === 'scene-planner-generation-background'
+  ) {
+    const isStorylines = name.startsWith('storylines-generation-');
+    const isFailedResult = name === 'storylines-generation-failed-background';
+    const appId = isStorylines ? 'storylines' : 'scene-planner';
+    const actionId = isStorylines ? 'extract' : 'generate';
+    const output = isFailedResult
+      ? '<result><line><summary>离页后完成，但故意缺少必填标题以进入失败草稿。</summary></line></result>'
+      : isStorylines
+        ? [
+            '<result>',
+            '  <line>',
+            '    <title>离页后完成的剧情线</title>',
+            '    <kind>main</kind>',
+            '    <status>active</status>',
+            '    <summary>请求在来源页面卸载后继续完成。</summary>',
+            '    <goal>验证持久任务会话</goal>',
+            '    <stakes>不得被卸载钩子停止</stakes>',
+            '  </line>',
+            '</result>',
+          ].join('\n')
+        : [
+            '<result>',
+            '  <title>离页后完成的下一章</title>',
+            '  <analysis>请求在场景编排页面卸载后继续运行，并把结果保存到原预览事实源。</analysis>',
+            '  <prompt>请续写下一章正文，让角色在雨夜车站确认彼此的误会仍未解除。</prompt>',
+            '</result>',
+          ].join('\n');
+    const generationTasks = useGenerationTaskStore();
+    generationTasks.tasks.slice().forEach(task => generationTasks.removeTask(task.id));
+    const previewDrafts = usePreviewDraftStore();
+    previewDrafts.deleteAppPreviewDrafts(appId);
+    const settingsStore = useSettingsStore();
+    settingsStore.settings.generation.resultMode = isStorylines ? 'preview' : 'save';
+    settingsStore.settings.generation.rpmLimit = 0;
+    settingsStore.settings.generation.stream = false;
+    settingsStore.settings.textProvider.mode = 'tavern';
+    const visualRuntime = globalThis as typeof globalThis & {
+      generate?: (config: Record<string, unknown>) => Promise<string>;
+      generateRaw?: (config: Record<string, unknown>) => Promise<string>;
+    };
+    const mockGenerate = async () => {
+      await new Promise<void>(resolve => window.setTimeout(resolve, 120));
+      return output;
+    };
+    visualRuntime.generate = mockGenerate;
+    visualRuntime.generateRaw = mockGenerate;
+
+    resetPhoneToRoute(appId, isStorylines ? 'generate' : 'root', isStorylines ? '梳理剧情' : '场景编排');
+    await waitForPaint();
+    if (!isStorylines) {
+      const brief = document.querySelector<HTMLTextAreaElement>('.pc-scene-brief');
+      if (!brief) throw new Error('Scene planner brief input is missing');
+      brief.value = '让两人在雨夜车站再次相遇，但暂时不要和解。';
+      brief.dispatchEvent(new Event('input', { bubbles: true }));
+    }
+    const generateButton = document.querySelector<HTMLButtonElement>('.pc-generation-actions .pc-primary-btn');
+    if (!generateButton) throw new Error(`${appId} shared generation action is missing`);
+    generateButton.click();
+    const started = await waitForVisualCondition(
+      () => generationTasks.getSingleTask(appId, actionId)?.status === 'running',
+      1500,
+    );
+    if (!started) {
+      const failedStart = generationTasks.getSingleTask(appId, actionId);
+      throw new Error(
+        `${appId} single generation task did not enter running state: status=${failedStart?.status ?? 'missing'}, error=${failedStart?.error ?? ''}`,
+      );
+    }
+    await phone.goHome();
+    await waitForPaint();
+    if (document.querySelector(`.pc-${appId}-app`)) throw new Error(`${appId} source App did not unmount`);
+
+    const completed = await waitForVisualCondition(
+      () => generationTasks.getSingleTask(appId, actionId)?.status === 'completed',
+      2500,
+    );
+    delete (visualRuntime as { generate?: (config: Record<string, unknown>) => Promise<string> }).generate;
+    delete (visualRuntime as { generateRaw?: (config: Record<string, unknown>) => Promise<string> }).generateRaw;
+    const task = generationTasks.getSingleTask(appId, actionId);
+    const expectedPage = isFailedResult ? 'failed-draft' : 'preview';
+    const persistedResult = isFailedResult
+      ? useStorylinesStore().failedDrafts.some(draft => draft.rawOutput.includes('故意缺少必填标题'))
+      : Boolean(previewDrafts.getPreviewDraft(appId, 'preview'));
+    if (
+      !completed ||
+      task?.routePage !== expectedPage ||
+      !task.rawOutput.includes('离页后完成') ||
+      !persistedResult ||
+      phone.currentRoute.appId === appId
+    ) {
+      throw new Error(`${appId} did not finish into its persisted preview after leaving the source App`);
+    }
+  } else if (
+    name === 'digest-generation-background' ||
+    name === 'relationship-generation-background' ||
+    name === 'summary-generation-background' ||
+    name === 'theater-generation-background'
+  ) {
+    const isDigest = name === 'digest-generation-background';
+    const isRelationship = name === 'relationship-generation-background';
+    const isSummary = name === 'summary-generation-background';
+    const appId = isDigest ? 'digest' : isRelationship ? 'relationship' : isSummary ? 'summary' : 'theater';
+    const actionId = 'generate';
+    const output = isDigest
+      ? [
+          '<result>',
+          '  <title>离页后完成的摘抄</title>',
+          '  <content>离页后完成的摘抄正文，验证预览事实源仍会写回。</content>',
+          '</result>',
+        ].join('\n')
+      : isRelationship
+        ? [
+            '<result>',
+            '  <characters><character>离页甲</character><character>离页乙</character></characters>',
+            '  <relations><relation><from>离页甲</from><to>离页乙</to><label>仍在等待回应</label></relation></relations>',
+            '</result>',
+          ].join('\n')
+        : [
+            '<result>',
+            `  <title>离页后完成的${isSummary ? '总结' : '小剧场'}</title>`,
+            `  <content>离页后完成的${isSummary ? '总结' : '小剧场'}正文，验证内容域预览仍会写回。</content>`,
+            '</result>',
+          ].join('\n');
+    const generationTasks = useGenerationTaskStore();
+    generationTasks.tasks.slice().forEach(task => generationTasks.removeTask(task.id));
+    const previewDrafts = usePreviewDraftStore();
+    previewDrafts.deleteAppPreviewDrafts(appId);
+    const settingsStore = useSettingsStore();
+    settingsStore.settings.generation.resultMode = 'preview';
+    settingsStore.settings.generation.rpmLimit = 0;
+    settingsStore.settings.generation.stream = false;
+    settingsStore.settings.textProvider.mode = 'tavern';
+    const visualRuntime = globalThis as typeof globalThis & {
+      generate?: (config: Record<string, unknown>) => Promise<string>;
+      generateRaw?: (config: Record<string, unknown>) => Promise<string>;
+    };
+    const mockGenerate = async () => {
+      await new Promise<void>(resolve => window.setTimeout(resolve, 120));
+      return output;
+    };
+    visualRuntime.generate = mockGenerate;
+    visualRuntime.generateRaw = mockGenerate;
+
+    const summaryBook = isSummary ? createSummaryFixture() : null;
+    resetPhoneToRoute(
+      appId,
+      'generate',
+      isDigest ? 'AI 摘抄' : isRelationship ? 'AI 关系识别' : isSummary ? 'AI 总结' : '生成小剧场',
+      summaryBook ? { bookId: summaryBook.id } : undefined,
+    );
+    await waitForPaint();
+    const generateButton = document.querySelector<HTMLButtonElement>('.pc-generation-actions .pc-primary-btn');
+    if (!generateButton) throw new Error(`${appId} shared generation action is missing`);
+    generateButton.click();
+    const started = await waitForVisualCondition(
+      () => generationTasks.getSingleTask(appId, actionId)?.status === 'running',
+      1500,
+    );
+    if (!started) throw new Error(`${appId} single generation task did not enter running state`);
+    await phone.goHome();
+    await waitForPaint();
+    if (document.querySelector(`.pc-${appId}-app`)) throw new Error(`${appId} source App did not unmount`);
+
+    const completed = await waitForVisualCondition(
+      () => generationTasks.getSingleTask(appId, actionId)?.status === 'completed',
+      2500,
+    );
+    delete (visualRuntime as { generate?: (config: Record<string, unknown>) => Promise<string> }).generate;
+    delete (visualRuntime as { generateRaw?: (config: Record<string, unknown>) => Promise<string> }).generateRaw;
+    const task = generationTasks.getSingleTask(appId, actionId);
+    if (
+      !completed ||
+      task?.routePage !== 'preview' ||
+      (!task.rawOutput.includes('离页后完成') && !task.rawOutput.includes('离页甲')) ||
+      !previewDrafts.getPreviewDraft(appId, 'preview') ||
+      phone.currentRoute.appId === appId
+    ) {
+      throw new Error(`${appId} did not finish into its persisted preview after leaving the source App`);
+    }
   } else if (name === 'storylines-detail' || name === 'storylines-editor') {
     const storylines = useStorylinesStore();
     storylines.resetCurrentScope();
@@ -843,6 +1320,15 @@ async function applyScenario(name: VisualScenarioName, options: { height?: numbe
       summary: '众人沿着失踪钥匙追查旧港火灾，并发现证词相互矛盾。',
       tags: ['旧港', '调查'],
       title: '旧港火灾真相',
+    });
+    storylines.createLine({
+      goal: '确认动态剧情线选择器可以搜索并完整辨识长名称。',
+      kind: 'branch',
+      stakes: '错误绑定会让后续剧情节点归入另一条支线。',
+      status: 'planned',
+      summary: '用于选择器视觉回归的第二条剧情线。',
+      tags: ['选择器'],
+      title: '这是一条需要在窄屏选择器中完整显示的超长用户剧情线名称',
     });
     storylines.createBeat({
       lineId: line.id,
@@ -874,7 +1360,8 @@ async function applyScenario(name: VisualScenarioName, options: { height?: numbe
     if (!lineButton) throw new Error('Storyline list item is not interactive');
     lineButton.click();
     await waitForPaint();
-    const lineDetailText = document.querySelector('.pc-storyline-detail-card')?.textContent || '';
+    const lineDetailText =
+      document.querySelector('.pc-storyline-detail-page .pc-reader-detail-card')?.textContent || '';
     if (!lineDetailText.includes(line.goal) || !lineDetailText.includes(line.stakes)) {
       throw new Error('Storyline detail omitted goal or stakes');
     }
@@ -885,14 +1372,22 @@ async function applyScenario(name: VisualScenarioName, options: { height?: numbe
     if (!hookButton) throw new Error('Storyline detail did not link its foreshadowing item');
     hookButton.click();
     await waitForPaint();
-    const hookDetailText = document.querySelector('.pc-storyline-detail-card')?.textContent || '';
+    const hookDetailText =
+      document.querySelector('.pc-storyline-detail-page .pc-reader-detail-card')?.textContent || '';
     if (!hookDetailText.includes(hook.seed) || !hookDetailText.includes(hook.payoff)) {
       throw new Error('Foreshadowing detail did not show seed and payoff separately');
     }
 
     if (name === 'storylines-editor') {
-      document.querySelector<HTMLButtonElement>('.pc-detail-actions button[title="编辑"]')?.click();
-      await waitForPaint();
+      const openDetailEditor = async () => {
+        document.querySelector<HTMLButtonElement>('.pc-storyline-detail-page .pc-reader-tool-trigger')?.click();
+        await waitForPaint();
+        [...document.querySelectorAll<HTMLButtonElement>('.pc-storyline-detail-page .pc-reader-tool-menu button')]
+          .find(button => button.textContent?.includes('编辑'))
+          ?.click();
+        await waitForPaint();
+      };
+      await openDetailEditor();
       const editor = document.querySelector<HTMLElement>('.pc-storyline-editor-card');
       const payoffField = [...(editor?.querySelectorAll<HTMLTextAreaElement>('textarea') ?? [])].find(
         field => field.value === hook.payoff,
@@ -907,8 +1402,20 @@ async function applyScenario(name: VisualScenarioName, options: { height?: numbe
       if (storylines.getHook(hook.id)?.payoff !== payoffField.value || usePhoneStore().currentRoute.page !== 'detail') {
         throw new Error('Foreshadowing editor did not save and return to detail');
       }
-      document.querySelector<HTMLButtonElement>('.pc-detail-actions button[title="编辑"]')?.click();
+      await openDetailEditor();
+      const lineControl = [...document.querySelectorAll<HTMLElement>('.pc-storyline-editor-card .pc-field-group')].find(
+        group => group.textContent?.includes('所属剧情线'),
+      );
+      if (!lineControl) {
+        throw new Error('Foreshadowing editor did not render its storyline selector');
+      }
+      lineControl.scrollIntoView({ block: 'center' });
+      const lineInput = lineControl.querySelector<HTMLInputElement>('.pc-combobox-input');
+      lineInput?.click();
       await waitForPaint();
+      if (lineInput && !document.querySelector('.pc-combobox-menu')?.textContent?.includes('超长用户剧情线名称')) {
+        throw new Error('Storyline combobox omitted the user-created long storyline');
+      }
     }
   } else if (name === 'custom-app-extract-rules') {
     const { CustomAppDefinitionsSettingsSchema, customAppDefinitionsField } = await import('@/apps/app-builder/schema');
@@ -1034,6 +1541,89 @@ async function applyScenario(name: VisualScenarioName, options: { height?: numbe
     for (const expected of ['可见标题', '可见 AI 正文', '隐藏标题', '隐藏 AI 正文']) {
       if (!savedListText.includes(expected)) throw new Error(`Saved custom app list missed ${expected}`);
     }
+  } else if (name === 'custom-app-generation-background') {
+    const { CustomAppDefinitionsSettingsSchema, customAppDefinitionsField } = await import('@/apps/app-builder/schema');
+    const { useCustomAppsStore } = await import('@/apps/app-builder/store');
+    const appId = 'custom-visual-generation';
+    const timestamp = '2026-08-14T08:00:00.000Z';
+    _.set(
+      extension_settings,
+      customAppDefinitionsField,
+      CustomAppDefinitionsSettingsSchema.parse({
+        definitions: [
+          {
+            id: appId,
+            name: '离页生成测试',
+            icon: 'fa-wand-magic-sparkles',
+            description: '验证动态自制 App 的持久单次任务',
+            dataScope: 'global',
+            creation: { manual: true, extract: false, generate: true },
+            naming: { mode: 'ai', template: '{{title}}' },
+            extraction: { saveMode: 'separate' },
+            display: { mode: 'markdown', sortDesc: false },
+            referenceEnabled: true,
+            createdAt: timestamp,
+            updatedAt: timestamp,
+          },
+        ],
+      }),
+    );
+    useCustomAppsStore().rehydrateFromSettings();
+    const generationTasks = useGenerationTaskStore();
+    generationTasks.tasks.slice().forEach(task => generationTasks.removeTask(task.id));
+    const previewDrafts = usePreviewDraftStore();
+    previewDrafts.deleteAppPreviewDrafts(appId);
+    const settingsStore = useSettingsStore();
+    settingsStore.settings.generation.resultMode = 'preview';
+    settingsStore.settings.generation.rpmLimit = 0;
+    settingsStore.settings.generation.stream = false;
+    settingsStore.settings.textProvider.mode = 'tavern';
+    const output = [
+      '<result>',
+      '  <title>离页后完成的自制内容</title>',
+      '  <content>动态 appId 的请求在宿主卸载后继续完成。</content>',
+      '</result>',
+    ].join('\n');
+    const visualRuntime = globalThis as typeof globalThis & {
+      generate?: (config: Record<string, unknown>) => Promise<string>;
+      generateRaw?: (config: Record<string, unknown>) => Promise<string>;
+    };
+    const mockGenerate = async () => {
+      await new Promise<void>(resolve => window.setTimeout(resolve, 120));
+      return output;
+    };
+    visualRuntime.generate = mockGenerate;
+    visualRuntime.generateRaw = mockGenerate;
+
+    resetPhoneToRoute(appId, 'generate', 'AI 生成');
+    await waitForPaint();
+    const generateButton = document.querySelector<HTMLButtonElement>('.pc-generation-actions .pc-primary-btn');
+    if (!generateButton) throw new Error('Dynamic custom app generation action is missing');
+    generateButton.click();
+    const started = await waitForVisualCondition(
+      () => generationTasks.getSingleTask(appId, 'generate')?.status === 'running',
+      1500,
+    );
+    if (!started) throw new Error('Dynamic custom app task did not enter running state');
+    await phone.goHome();
+    await waitForPaint();
+    if (document.querySelector('.pc-custom-app')) throw new Error('Dynamic custom host did not unmount');
+    const completed = await waitForVisualCondition(
+      () => generationTasks.getSingleTask(appId, 'generate')?.status === 'completed',
+      2500,
+    );
+    delete (visualRuntime as { generate?: (config: Record<string, unknown>) => Promise<string> }).generate;
+    delete (visualRuntime as { generateRaw?: (config: Record<string, unknown>) => Promise<string> }).generateRaw;
+    const task = generationTasks.getSingleTask(appId, 'generate');
+    if (
+      !completed ||
+      task?.routePage !== 'preview' ||
+      !task.rawOutput.includes('动态 appId') ||
+      !previewDrafts.getPreviewDraft(appId, 'preview') ||
+      phone.currentRoute.appId === appId
+    ) {
+      throw new Error('Dynamic custom app did not finish into its own persisted preview after leaving the host');
+    }
   } else if (name === 'custom-app-save-flow') {
     const { useCustomAppsStore } = await import('@/apps/app-builder/store');
     const { getRegisteredPhoneAppComponent } = await import('@/core/appRegistry');
@@ -1106,6 +1696,7 @@ async function applyScenario(name: VisualScenarioName, options: { height?: numbe
       throw new Error('Custom app conversion panel did not open from the saved entry');
     }
   } else if (name === 'content-transfer-dialog') {
+    useSettingsStore().setTheme('dark');
     resetPhoneToRoute('app-builder', 'root', '一键生成 App');
     await waitForPaint();
     const transferButton = document.querySelector<HTMLButtonElement>('.pc-top-actions [aria-label="内容迁移"]');
@@ -1114,6 +1705,17 @@ async function applyScenario(name: VisualScenarioName, options: { height?: numbe
     await waitForPaint();
     const dialog = document.querySelector<HTMLElement>('.pc-content-transfer-dialog');
     if (!dialog) throw new Error('App content transfer dialog did not open');
+    const dialogBackground = getComputedStyle(dialog).backgroundColor;
+    const commaAlpha = dialogBackground.match(/rgba\([^,]+,[^,]+,[^,]+,\s*([\d.]+)\s*\)$/)?.[1];
+    const slashAlpha = dialogBackground.match(/\/\s*([\d.]+)(%)?\s*\)$/);
+    const backgroundAlpha = commaAlpha
+      ? Number(commaAlpha)
+      : slashAlpha
+        ? Number(slashAlpha[1]) / (slashAlpha[2] ? 100 : 1)
+        : 1;
+    if (backgroundAlpha < 0.99) {
+      throw new Error(`App content transfer dialog is translucent in dark mode (${dialogBackground})`);
+    }
     const domainSelect = dialog.querySelector<HTMLSelectElement>('.pc-select');
     if (!domainSelect || domainSelect.options.length !== 3) {
       throw new Error('Multi-domain App transfer selector is incomplete');
@@ -1376,6 +1978,31 @@ async function applyScenario(name: VisualScenarioName, options: { height?: numbe
     if (name === 'home-tasks-dark') useSettingsStore().setTheme('dark');
     createGenerationTaskFixture();
     await phone.goHome();
+    await waitForPaint();
+    const singleTaskRow = [...document.querySelectorAll<HTMLElement>('.pc-task-row')].find(row =>
+      row.textContent?.includes('剧情梳理 · 单次生成'),
+    );
+    if (!singleTaskRow) throw new Error('Single interrupted generation task is missing from TaskCenter');
+    if (singleTaskRow.querySelector('[aria-label="继续任务"]')) {
+      throw new Error('Single interrupted generation task exposes a fake resume action');
+    }
+    const rawToggle = singleTaskRow.querySelector<HTMLButtonElement>('[aria-label="查看原始输出"]');
+    if (!rawToggle) throw new Error('Single interrupted generation task has no raw output action');
+    rawToggle.click();
+    await waitForPaint();
+    const expandedSingleTaskRow = [...document.querySelectorAll<HTMLElement>('.pc-task-row')].find(row =>
+      row.textContent?.includes('剧情梳理 · 单次生成'),
+    );
+    const rawArea = expandedSingleTaskRow?.querySelector<HTMLTextAreaElement>('.pc-task-raw-area');
+    if (
+      !rawArea?.value.includes('已保留的部分原始输出') ||
+      !expandedSingleTaskRow?.textContent?.includes('复制原始输出')
+    ) {
+      throw new Error(
+        `Single interrupted generation raw output cannot be inspected and copied: area=${Boolean(rawArea)}, value=${rawArea?.value ?? ''}, text=${expandedSingleTaskRow?.textContent ?? ''}`,
+      );
+    }
+    rawToggle?.click();
   } else if (name === 'bagu-scan-actions' || name === 'bagu-scan-applied' || name === 'bagu-hit-details') {
     const templateText = '开头，这是一个漫长等待的眼神，结尾。';
     const createTemplateRule = (suggestion: string) => ({
@@ -1432,6 +2059,31 @@ async function applyScenario(name: VisualScenarioName, options: { height?: numbe
         throw new Error('Bagu hit detail dialog did not show all hits from the selected sentence');
       }
     }
+  } else if (name === 'bagu-delete-confirm') {
+    resetPhoneToRoute('bagu', 'root', '八股去除');
+    await waitForPaint();
+    const bagu = useBaguStore();
+    const initialCount = bagu.rules.length;
+    const deleteButton = document.querySelector<HTMLButtonElement>('.pc-rule-row .pc-icon-btn.danger');
+    if (!deleteButton || !initialCount) throw new Error('Bagu delete confirmation fixture is missing');
+    deleteButton.click();
+    await waitForPaint();
+    const cancelButton = [...document.querySelectorAll<HTMLButtonElement>('.pc-phone-notice-action')].find(button =>
+      button.textContent?.includes('取消'),
+    );
+    if (!cancelButton) throw new Error('Bagu delete cancellation action is missing');
+    cancelButton.click();
+    await waitForPaint();
+    if (bagu.rules.length !== initialCount) throw new Error('Cancelling Bagu deletion changed the persisted rules');
+    document.querySelector<HTMLButtonElement>('.pc-rule-row .pc-icon-btn.danger')?.click();
+    await waitForPaint();
+    const confirmButton = [...document.querySelectorAll<HTMLButtonElement>('.pc-phone-notice-action')].find(button =>
+      button.textContent?.includes('删除'),
+    );
+    if (!confirmButton) throw new Error('Bagu delete confirmation action is missing');
+    confirmButton.click();
+    await waitForPaint();
+    if (bagu.rules.length !== initialCount - 1) throw new Error('Confirming Bagu deletion did not remove exactly one rule');
   } else if (name === 'cloud-media-generate') {
     resetPhoneToRoute('cloud-media', 'generate', 'AI 云媒体');
   } else if (name === 'cloud-media-settings') {
@@ -1441,7 +2093,9 @@ async function applyScenario(name: VisualScenarioName, options: { height?: numbe
     resetPhoneToRoute('entry-library', 'root', '条目库');
     await waitForPaint();
     const actionMenu = document.querySelector<HTMLDetailsElement>('.pc-entry-library-head .pc-action-menu');
-    actionMenu?.setAttribute('open', '');
+    const longLabel = actionMenu?.querySelector<HTMLButtonElement>('.pc-action-menu-panel button span');
+    if (longLabel) longLabel.textContent = '这是一个需要在三百五十像素手机菜单内完整换行显示的超长功能名称';
+    actionMenu?.querySelector<HTMLButtonElement>('summary')?.click();
     await waitForPaint();
     const panel = actionMenu?.querySelector<HTMLElement>('.pc-action-menu-panel');
     const panelBackground = panel ? getComputedStyle(panel).backgroundColor : '';
@@ -1455,7 +2109,7 @@ async function applyScenario(name: VisualScenarioName, options: { height?: numbe
     resetPhoneToRoute('entry-library', 'root', '条目库');
     await waitForPaint();
     const addMenu = document.querySelectorAll<HTMLDetailsElement>('.pc-entry-library-head .pc-action-menu')[1];
-    addMenu?.setAttribute('open', '');
+    addMenu?.querySelector<HTMLButtonElement>('summary')?.click();
     await waitForPaint();
     [...(addMenu?.querySelectorAll<HTMLButtonElement>('button') ?? [])]
       .find(button => button.textContent?.includes('手动新建'))
@@ -1475,10 +2129,97 @@ async function applyScenario(name: VisualScenarioName, options: { height?: numbe
     if (!saved) {
       throw new Error('Entry library manual item was not saved back to the directory');
     }
+  } else if (name === 'entry-library-item-editor') {
+    const library = useEntryLibraryStore();
+    library.importBackup({ bindings: [], groups: [], items: [], version: 1 });
+    resetPhoneToRoute('entry-library', 'root', '条目库');
+    await waitForPaint();
+    const addMenu = document.querySelectorAll<HTMLDetailsElement>('.pc-entry-library-head .pc-action-menu')[1];
+    addMenu?.querySelector<HTMLButtonElement>('summary')?.click();
+    await waitForPaint();
+    [...(addMenu?.querySelectorAll<HTMLButtonElement>('button') ?? [])]
+      .find(button => button.textContent?.includes('手动新建'))
+      ?.click();
+    await waitForPaint();
+    const editor = document.querySelector<HTMLElement>('.pc-entry-item-editor');
+    const content = editor?.querySelector<HTMLTextAreaElement>('.pc-area');
+    if (!editor || !content) throw new Error('Entry library item editor did not render');
   } else if (name === 'comfy-action-menu') {
     resetPhoneToRoute('comfy', 'root', 'ComfyUI');
     await waitForPaint();
-    document.querySelector<HTMLDetailsElement>('.pc-comfy-actions .pc-action-menu')?.setAttribute('open', '');
+    document
+      .querySelector<HTMLDetailsElement>('.pc-comfy-actions .pc-action-menu')
+      ?.querySelector<HTMLButtonElement>('summary')
+      ?.click();
+  } else if (name === 'comfy-workflow-json') {
+    resetPhoneToRoute('comfy', 'root', 'ComfyUI');
+    await waitForPaint();
+    const area = document.querySelector<HTMLTextAreaElement>('.pc-workflow-json-area');
+    if (!area) throw new Error('Comfy workflow JSON editor did not render');
+    const section = area.closest<HTMLElement>('.pc-page-section');
+    if (!section) throw new Error('Comfy workflow JSON editor lost its section');
+    let previousSection = section.previousElementSibling;
+    while (previousSection) {
+      (previousSection as HTMLElement).hidden = true;
+      previousSection = previousSection.previousElementSibling;
+    }
+    await waitForPaint();
+  } else if (name === 'comfy-parameter-modes') {
+    const { ComfySettingsSchema, useComfyStore } = await import('@/apps/comfy/store');
+    const comfy = useComfyStore();
+    const workflowJson = JSON.stringify({
+      101: {
+        _meta: { title: '风格控制' },
+        class_type: 'StyleControl',
+        inputs: { style_strength: 0.75 },
+      },
+    });
+    Object.assign(
+      comfy.settings,
+      ComfySettingsSchema.parse({
+        activeWorkflowId: 'visual-parameter-modes',
+        workflowJson,
+        workflows: [
+          {
+            id: 'visual-parameter-modes',
+            json: workflowJson,
+            kind: 'image',
+            name: '参数模式视觉工作流',
+            nodeSelections: {},
+            paramMappings: {},
+            updatedAt: '2026-08-14T00:00:00.000Z',
+          },
+        ],
+      }),
+    );
+    resetPhoneToRoute('comfy', 'root', 'ComfyUI');
+    await waitForPaint();
+    const runtimeToggle = document.querySelector<HTMLButtonElement>('button[title="折叠基础运行参数"]');
+    if (!runtimeToggle) throw new Error('Comfy runtime parameter collapse action did not render');
+    runtimeToggle.click();
+    const modeControlRendered = await waitForVisualCondition(() =>
+      Boolean(document.querySelector<HTMLElement>('.pc-param-mode')),
+    );
+    if (!modeControlRendered) throw new Error('Comfy parameter mode control did not render from the isolated workflow');
+    const modeControl = document.querySelector<HTMLElement>('.pc-param-mode');
+    if (!modeControl) throw new Error('Comfy parameter mode control disappeared before visual capture');
+    const parameterSection = modeControl.closest<HTMLElement>('.pc-page-section');
+    if (!parameterSection) throw new Error('Comfy parameter mode control is not inside its parameter section');
+    let previousSection = parameterSection.previousElementSibling;
+    while (previousSection) {
+      (previousSection as HTMLElement).hidden = true;
+      previousSection = previousSection.previousElementSibling;
+    }
+    await waitForPaint();
+    const screen = modeControl.closest<HTMLElement>('.pc-screen');
+    if (!screen) throw new Error('Comfy parameter mode control is not inside the phone scroll region');
+    screen.scrollTop = 0;
+    await waitForPaint();
+    const modeRect = modeControl.getBoundingClientRect();
+    const screenRect = screen.getBoundingClientRect();
+    if (modeRect.top < screenRect.top || modeRect.bottom > screenRect.bottom) {
+      throw new Error('Comfy parameter mode control is outside the isolated screenshot viewport');
+    }
   } else if (name === 'entry-library-collect-worldbook') {
     useSettingsStore().setTheme('light');
     const library = useEntryLibraryStore();
@@ -1562,7 +2303,7 @@ async function applyScenario(name: VisualScenarioName, options: { height?: numbe
     resetPhoneToRoute('entry-library', 'root', '条目库');
     await waitForPaint();
     const addMenu = document.querySelectorAll<HTMLDetailsElement>('.pc-entry-library-head .pc-action-menu')[1];
-    addMenu?.setAttribute('open', '');
+    addMenu?.querySelector<HTMLButtonElement>('summary')?.click();
     await waitForPaint();
     [...(addMenu?.querySelectorAll<HTMLButtonElement>('button') ?? [])]
       .find(button => button.textContent?.includes('预设或世界书'))
@@ -2175,8 +2916,8 @@ async function applyScenario(name: VisualScenarioName, options: { height?: numbe
       ownerName: '测试角色',
     });
     resetPhoneToRoute('preset-link', 'root', '预设绑定');
-  } else if (name === 'searchable-select') {
-    useSettingsStore().setTheme('light');
+  } else if (name === 'searchable-select' || name === 'searchable-select-dark-long') {
+    useSettingsStore().setTheme(name === 'searchable-select-dark-long' ? 'dark' : 'light');
     const library = useEntryLibraryStore();
     library.importBackup({
       bindings: [],
@@ -2192,6 +2933,12 @@ async function applyScenario(name: VisualScenarioName, options: { height?: numbe
           enabled: true,
           id: 'visual-search-group-target',
           name: '目标分组',
+        },
+        {
+          createdAt: '2026-07-31T00:00:03.000Z',
+          enabled: true,
+          id: 'visual-search-group-long',
+          name: '这是一个需要在窄屏菜单中完整显示的超长动态分组名称',
         },
       ],
       items: [
@@ -2235,9 +2982,27 @@ async function applyScenario(name: VisualScenarioName, options: { height?: numbe
     }
     search.click();
     await waitForPaint();
-    if (combobox.querySelectorAll('.pc-combobox-option').length !== 2) {
+    if (combobox.querySelectorAll('.pc-combobox-option').length !== 3) {
       throw new Error('Reopened searchable selector did not restore the full option list');
     }
+    search.dispatchEvent(new KeyboardEvent('keydown', { bubbles: true, key: 'Escape' }));
+    await waitForPaint();
+    if (combobox.querySelector('.pc-combobox-menu')) throw new Error('Escape did not close the searchable selector');
+    search.click();
+    await waitForPaint();
+    document.body.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true }));
+    await waitForPaint();
+    if (combobox.querySelector('.pc-combobox-menu'))
+      throw new Error('Outside pointerdown did not close the searchable selector');
+    search.click();
+    search.value = '当前';
+    search.dispatchEvent(new Event('input', { bubbles: true }));
+    search.dispatchEvent(new KeyboardEvent('keydown', { bubbles: true, key: 'ArrowDown' }));
+    search.dispatchEvent(new KeyboardEvent('keydown', { bubbles: true, key: 'Enter' }));
+    await waitForPaint();
+    if (search.value !== '当前分组') throw new Error('Keyboard selection did not update the searchable selector');
+    search.click();
+    await waitForPaint();
   } else if (
     name === 'content-converter-source' ||
     name === 'content-converter-target' ||
@@ -2424,6 +3189,118 @@ async function applyScenario(name: VisualScenarioName, options: { height?: numbe
     } finally {
       stopPreviewSession();
     }
+  } else if (name === 'card-writer-generation-background') {
+    const generationTasks = useGenerationTaskStore();
+    generationTasks.tasks.slice().forEach(task => generationTasks.removeTask(task.id));
+    const previewDrafts = usePreviewDraftStore();
+    previewDrafts.deleteAppPreviewDrafts('card-writer');
+    const settingsStore = useSettingsStore();
+    settingsStore.settings.generation.rpmLimit = 0;
+    settingsStore.settings.generation.stream = false;
+    settingsStore.settings.textProvider.mode = 'tavern';
+    const output = [
+      '<content>',
+      '  <artifact>离页后完成的写卡阶段；前序阶段会继续供后续阶段使用。</artifact>',
+      '</content>',
+    ].join('\n');
+    const visualRuntime = globalThis as typeof globalThis & {
+      generate?: (config: Record<string, unknown>) => Promise<string>;
+      generateRaw?: (config: Record<string, unknown>) => Promise<string>;
+    };
+    const mockGenerate = async () => {
+      await new Promise<void>(resolve => window.setTimeout(resolve, 140));
+      return output;
+    };
+    visualRuntime.generate = mockGenerate;
+    visualRuntime.generateRaw = mockGenerate;
+
+    resetPhoneToRoute('card-writer', 'root', '写卡工坊');
+    await waitForPaint();
+    const fillExample = [...document.querySelectorAll<HTMLButtonElement>('.pc-card-writer-brief button')].find(button =>
+      button.textContent?.includes('填入示例'),
+    );
+    if (!fillExample) throw new Error('Card writer full-card example action is missing');
+    fillExample.click();
+    await waitForPaint();
+    const generateButton = document.querySelector<HTMLButtonElement>('.pc-generation-actions .pc-primary-btn');
+    if (!generateButton) throw new Error('Card writer generation action is missing');
+    generateButton.click();
+    const started = await waitForVisualCondition(
+      () => generationTasks.getSingleTask('card-writer', 'generate-sequence')?.status === 'running',
+      1500,
+    );
+    if (!started) {
+      const task = generationTasks.getSingleTask('card-writer', 'generate-sequence');
+      const error = document.querySelector<HTMLElement>('.pc-generation-error')?.textContent?.trim() || '';
+      throw new Error(
+        `Card writer sequence task did not enter running state: status=${task?.status ?? 'missing'}, error=${task?.error || error}`,
+      );
+    }
+    await phone.goHome();
+    await waitForPaint();
+    if (document.querySelector('.pc-card-writer-app')) throw new Error('Card writer source App did not unmount');
+
+    const completed = await waitForVisualCondition(
+      () => generationTasks.getSingleTask('card-writer', 'generate-sequence')?.status === 'completed',
+      6000,
+    );
+    delete (visualRuntime as { generate?: (config: Record<string, unknown>) => Promise<string> }).generate;
+    delete (visualRuntime as { generateRaw?: (config: Record<string, unknown>) => Promise<string> }).generateRaw;
+    const task = generationTasks.getSingleTask('card-writer', 'generate-sequence');
+    const draft = previewDrafts.getPreviewDraft('card-writer', 'preview');
+    const payload = draft?.preview as { stages?: Array<{ status?: string }> } | undefined;
+    if (
+      !completed ||
+      task?.routePage !== 'preview' ||
+      !task.rawOutput.includes('离页后完成的写卡阶段') ||
+      !payload?.stages?.length ||
+      payload.stages.some(stage => stage.status !== 'completed') ||
+      phone.currentRoute.appId === 'card-writer'
+    ) {
+      throw new Error('Card writer sequence did not finish into its persisted preview after leaving the App');
+    }
+  } else if (name === 'card-writer-reasoning-modal') {
+    const { useCardWriterStore } = await import('@/apps/card-writer/store');
+    const writer = useCardWriterStore();
+    writer.settings.documents = [];
+    writer.saveDocument({
+      content: '## 角色基础\n\n这是带思维链记录的写卡成品。',
+      sourceOwnerLabel: '测试角色',
+      sourceLabel: '思维链弹窗测试成品',
+      sourceScopeKey: 'char:0:chat:visual-current',
+      stages: [
+        {
+          content: '## 角色基础\n\n这是带思维链记录的写卡成品。',
+          error: '',
+          id: 'visual-reasoning-stage',
+          label: '角色基础',
+          raw: '<content><artifact>这是带思维链记录的写卡成品。</artifact></content>',
+          reasoning: '<thinking>先确认角色身份，再整理资料字段。</thinking>',
+          status: 'completed',
+        },
+      ],
+      targetWorldbookName: '',
+      taskId: 'full-card',
+      taskLabel: '一键写卡',
+      title: '思维链视觉成品',
+      worldbookIncluded: false,
+      worldbookWritten: false,
+    });
+    resetPhoneToRoute('card-writer', 'library', '写卡成品');
+    await waitForPaint();
+    document.querySelector<HTMLButtonElement>('.pc-card-writer-document-open')?.click();
+    const previewOpened = await waitForVisualCondition(
+      () => phone.currentRoute.appId === 'card-writer' && phone.currentRoute.page === 'preview',
+    );
+    if (!previewOpened) throw new Error('Card writer reasoning fixture did not open its preview');
+    const reasoningButton = document.querySelector<HTMLButtonElement>('.pc-card-writer-reasoning');
+    if (!reasoningButton) throw new Error('Card writer reasoning action did not render from the saved stage');
+    reasoningButton.click();
+    const modalOpened = await waitForVisualCondition(() => Boolean(document.querySelector('.pc-reasoning-card')));
+    if (!modalOpened) throw new Error('Card writer reasoning modal did not open');
+    if (!document.querySelector<HTMLButtonElement>('.pc-reasoning-head .pc-icon-btn[title="关闭"]')) {
+      throw new Error('Card writer reasoning modal close action is missing');
+    }
   } else if (name === 'card-writer-saved-preview') {
     const { useCardWriterStore } = await import('@/apps/card-writer/store');
     const writer = useCardWriterStore();
@@ -2495,6 +3372,32 @@ async function applyScenario(name: VisualScenarioName, options: { height?: numbe
     await leaveAttempt;
     if (String(phone.currentRoute.page) !== 'preview')
       throw new Error('Card writer preview left after cancelling confirmation');
+  } else if (name === 'regex-display-preview') {
+    resetPhoneToRoute('regex-display', 'root', '正则展示');
+    await waitForPaint();
+    const previewArea = document.querySelector<HTMLTextAreaElement>('.pc-area.preview-source');
+    if (!previewArea) throw new Error('Regex display preview textarea is missing');
+    const previewSection = previewArea.closest<HTMLElement>('.pc-regex-preview-section');
+    const displayApp = previewArea.closest<HTMLElement>('.pc-regex-display-app');
+    if (!previewSection || !displayApp) throw new Error('Regex display preview layout container is missing');
+    for (const child of displayApp.children) {
+      if (child !== previewSection) (child as HTMLElement).style.display = 'none';
+    }
+    previewArea.scrollIntoView({ block: 'center' });
+    await waitForPaint();
+  } else if (name === 'regex-wizard-test') {
+    resetPhoneToRoute('regex-wizard', 'root', '正则向导');
+    await waitForPaint();
+    const testArea = document.querySelector<HTMLTextAreaElement>('.pc-regex-wizard-test .pc-area');
+    if (!testArea) throw new Error('Regex wizard test textarea is missing');
+    const testSection = testArea.closest<HTMLElement>('.pc-regex-wizard-test');
+    const wizardApp = testArea.closest<HTMLElement>('.pc-regex-wizard-app');
+    if (!testSection || !wizardApp) throw new Error('Regex wizard test layout container is missing');
+    for (const child of wizardApp.children) {
+      if (child !== testSection) (child as HTMLElement).style.display = 'none';
+    }
+    testArea.scrollIntoView({ block: 'center' });
+    await waitForPaint();
   } else if (name === 'regex-wizard-fields') {
     resetPhoneToRoute('regex-wizard', 'root', '正则向导');
     await waitForPaint();
@@ -2503,6 +3406,76 @@ async function applyScenario(name: VisualScenarioName, options: { height?: numbe
     );
     if (!fieldsButton) throw new Error('Regex wizard fields mode is missing');
     fieldsButton.click();
+    await waitForPaint();
+  } else if (name === 'digest-editor') {
+    resetPhoneToRoute('digest', 'editor', '新建摘抄');
+    await waitForPaint();
+    const sourceArea = document.querySelector<HTMLTextAreaElement>('.pc-digest-editor-section .pc-area.compact');
+    if (!sourceArea) throw new Error('Digest source-text textarea is missing');
+    sourceArea.scrollIntoView({ block: 'center' });
+    await waitForPaint();
+  } else if (name === 'gallery-editor') {
+    resetPhoneToRoute('gallery', 'editor', '新增图片');
+    await waitForPaint();
+    const noteArea = document.querySelector<HTMLTextAreaElement>('.pc-gallery-editor .pc-area.compact');
+    if (!noteArea) throw new Error('Gallery note textarea is missing');
+    noteArea.scrollIntoView({ block: 'center' });
+    await waitForPaint();
+  } else if (name === 'media-param-preview') {
+    const previewDrafts = usePreviewDraftStore();
+    previewDrafts.deleteAppPreviewDrafts('media');
+    resetPhoneToRoute('media', 'root', '媒体生成');
+    await waitForPaint();
+    previewDrafts.upsertPreviewDraft({
+      appId: 'media',
+      page: 'preview',
+      preview: {
+        negativePrompt: '',
+        draftId: null,
+        note: '',
+        params: [{ key: 'prompt', value: '雾中的旧灯塔' }],
+        prompt: '雾中的旧灯塔',
+        raw: '<params><param key="prompt">雾中的旧灯塔</param></params>',
+        source: { label: '视觉测试楼层' },
+        title: '媒体参数预览',
+        warnings: [],
+        workflowId: 'visual-workflow',
+      },
+      routeParams: {},
+      title: '媒体预览',
+    });
+    await waitForPaint();
+    const openDraftButton = document.querySelector<HTMLButtonElement>('.pc-preview-draft-notice .pc-primary-btn');
+    if (!openDraftButton) throw new Error('Media preview draft notice did not appear');
+    openDraftButton.click();
+    await waitForPaint();
+    const paramArea = document.querySelector<HTMLTextAreaElement>('.pc-param-preview-area');
+    if (!paramArea) throw new Error('Media parameter preview textarea is missing');
+    paramArea.scrollIntoView({ block: 'center' });
+    await waitForPaint();
+  } else if (name === 'video-editor') {
+    resetPhoneToRoute('video', 'editor', '新增视频');
+    await waitForPaint();
+    const noteArea = document.querySelector<HTMLTextAreaElement>('.pc-video-editor .pc-area.compact');
+    if (!noteArea) throw new Error('Video note textarea is missing');
+    noteArea.scrollIntoView({ block: 'center' });
+    await waitForPaint();
+  } else if (name === 'game-guess-number-input') {
+    resetPhoneToRoute('games', 'play', '猜数字', { game: 'guess-number' });
+    await waitForPaint();
+    const input = document.querySelector<HTMLInputElement>('.pc-guess-form .pc-guess-number-input');
+    if (!input) throw new Error('Guess-number input is missing from its isolated scenario');
+    if (input.value) throw new Error('Guess-number visual scenario must not prefill or submit a guess');
+    const styles = getComputedStyle(input);
+    if (styles.fontSize !== '22px' || styles.fontWeight !== '800' || styles.textAlign !== 'center') {
+      throw new Error(
+        `Guess-number input semantic changed: ${styles.fontSize}/${styles.fontWeight}/${styles.textAlign}`,
+      );
+    }
+    const stats = document.querySelector<HTMLElement>('.pc-minigame-stats');
+    if (!stats) throw new Error('Guess-number stats fixture is missing');
+    stats.style.display = 'none';
+    input.scrollIntoView({ block: 'center' });
     await waitForPaint();
   } else if (name.startsWith('app:')) {
     const appId = name.slice('app:'.length);
@@ -2552,29 +3525,46 @@ async function applyScenario(name: VisualScenarioName, options: { height?: numbe
       throw new Error('Archive character row content wrapped onto multiple lines');
     }
   } else if (name === 'archive-floor-backup') {
+    await new Promise(resolve => window.setTimeout(resolve, 1000));
+    await seedArchiveFloorBackupFixture();
+    resetPhoneToRoute('settings', 'root', '设置');
+    await waitForPaint();
     resetPhoneToRoute('archive', 'root', '聊天档案');
-    await new Promise(resolve => window.setTimeout(resolve, 1100));
     await waitForPaint();
-    document.querySelector<HTMLButtonElement>('.pc-archive-search-row .pc-icon-btn')?.click();
+    const unusedTab = [...document.querySelectorAll<HTMLButtonElement>('.pc-tab-row .pc-segment-btn')].find(button =>
+      button.textContent?.includes('未使用'),
+    );
+    if (!unusedTab) throw new Error('Archive unused-character tab is missing');
+    unusedTab.click();
     await waitForPaint();
-    let ownerRow = document.querySelector<HTMLButtonElement>('.pc-owner-row');
-    if (!ownerRow) {
-      const archiveTabs = [...document.querySelectorAll<HTMLButtonElement>('.pc-tab-row .pc-segment-btn')].filter(
-        button => !button.textContent?.includes('当前聊天'),
-      );
-      for (const archiveTab of archiveTabs) {
-        archiveTab.click();
-        await waitForPaint();
-        ownerRow = document.querySelector<HTMLButtonElement>('.pc-owner-row');
-        if (ownerRow) break;
-      }
-    }
+    const refresh = document.querySelector<HTMLButtonElement>('.pc-archive-search-row .pc-icon-btn');
+    if (!refresh) throw new Error('Archive character refresh action is missing');
+    refresh.click();
+    await waitForVisualCondition(() => Boolean(document.querySelector('.pc-owner-row')));
+    await waitForPaint();
+    const ownerRow = document.querySelector<HTMLButtonElement>('.pc-owner-row');
     if (!ownerRow) throw new Error('Archive floor backup owner is missing');
     ownerRow.click();
+    await waitForVisualCondition(() => Boolean(document.querySelector('.pc-archive-toolbar .pc-icon-btn')));
+    await waitForPaint();
+    const chatRefresh = document.querySelector<HTMLButtonElement>('.pc-archive-toolbar .pc-icon-btn');
+    if (!chatRefresh) throw new Error('Archive chat refresh action is missing');
+    chatRefresh.click();
+    await waitForVisualCondition(() =>
+      [...document.querySelectorAll<HTMLButtonElement>('.pc-chat-row')].some(
+        button => button.textContent?.includes('visual-chat.jsonl') && button.textContent.includes('已备份 2 层'),
+      ),
+    );
     await waitForPaint();
     const chatRows = [...document.querySelectorAll<HTMLButtonElement>('.pc-chat-row')];
-    const backupChat = chatRows.find(button => button.textContent?.includes('已备份')) ?? chatRows[0];
-    if (!backupChat) throw new Error('Archive floor backup chat is missing');
+    const backupChat = chatRows.find(
+      button => button.textContent?.includes('visual-chat.jsonl') && button.textContent.includes('已备份'),
+    );
+    if (!backupChat) {
+      throw new Error(
+        `Archive floor backup chat is missing: ${chatRows.map(button => button.textContent?.trim() ?? '').join(' | ')}`,
+      );
+    }
     backupChat.click();
     await waitForPaint();
     const actions = [...document.querySelectorAll<HTMLButtonElement>('.pc-archive-backup-actions button')];
@@ -2592,12 +3582,19 @@ async function applyScenario(name: VisualScenarioName, options: { height?: numbe
       throw new Error(`Archive floor backup actions are not 3 columns × 2 rows: ${columnLefts.size} × ${rowTops.size}`);
     }
     const readBackup = actions.find(button => button.textContent?.includes('阅读备份'));
-    if (readBackup && !readBackup.disabled) {
-      readBackup.click();
-      await waitForPaint();
-      if (!document.querySelector('.pc-floor-message') || !document.querySelector('.pc-floor-backup-footer')) {
-        throw new Error('Archive floor backup reader is incomplete');
-      }
+    if (!readBackup || readBackup.disabled) throw new Error('Archive seeded floor backup is not readable');
+    readBackup.click();
+    await waitForPaint();
+    const hasMessage = Boolean(document.querySelector('.pc-floor-message'));
+    const hasReasoning = Boolean(document.querySelector('.pc-floor-message details'));
+    const hasFooter = Boolean(document.querySelector('.pc-floor-backup-footer'));
+    if (!hasMessage || !hasReasoning || !hasFooter) {
+      const messageText = [...document.querySelectorAll<HTMLElement>('.pc-floor-message')]
+        .map(item => item.textContent?.trim() ?? '')
+        .join(' | ');
+      throw new Error(
+        `Archive floor backup reader is incomplete: message=${hasMessage}, reasoning=${hasReasoning}, footer=${hasFooter}, text=${messageText}`,
+      );
     }
   } else if (name === 'preset-builtin-diary') {
     resetPhoneToRoute('preset-manager', 'root', '预设管理');
@@ -2605,7 +3602,9 @@ async function applyScenario(name: VisualScenarioName, options: { height?: numbe
     const sourceTabs = [...document.querySelectorAll<HTMLButtonElement>('.pc-preset-source-tabs .pc-segment-btn')];
     sourceTabs.find(button => button.textContent?.includes('插件预设'))?.click();
     const loaded = await waitForVisualCondition(() =>
-      [...document.querySelectorAll<HTMLElement>('.pc-preset-row')].some(row => row.textContent?.includes('日记（内置）')),
+      [...document.querySelectorAll<HTMLElement>('.pc-preset-row')].some(row =>
+        row.textContent?.includes('日记（内置）'),
+      ),
     );
     if (!loaded) throw new Error('Built-in diary preset is missing from plugin preset management');
     const row = [...document.querySelectorAll<HTMLElement>('.pc-preset-row')].find(item =>
@@ -2770,6 +3769,83 @@ async function applyScenario(name: VisualScenarioName, options: { height?: numbe
       return Boolean(current && !current.disabled && !current.checked);
     });
     if (!toggled) throw new Error('Legacy worldbook enabled/disable fields were not updated together');
+  } else if (name === 'timekeeper-profile-sync') {
+    const profiles = useProfilesStore();
+    profiles.resetCurrentScope();
+    const existingProfile = profiles.createEntry({
+      fields: { birthDate: '2001-02-03' },
+      kind: 'character',
+      title: '既有人物',
+    });
+    const timekeeper = useTimekeeperStore();
+    timekeeper.resetCurrentScope();
+    timekeeper.syncProfilePeople();
+    resetPhoneToRoute('timekeeper', 'root', '时间确认');
+    await waitForPaint();
+    if (
+      timekeeper.settings.people.length !== 1 ||
+      timekeeper.settings.people[0]?.profileEntryId !== existingProfile.id ||
+      document.querySelector<HTMLInputElement>('.pc-person-card .pc-field.name')?.value !== '既有人物'
+    ) {
+      throw new Error(
+        `Timekeeper did not read the existing character profile exactly once: people=${timekeeper.settings.people
+          .map(person => `${person.name}:${person.profileEntryId}`)
+          .join('|')}; expected=${existingProfile.id}; profilesScope=${profiles.scopeKey}; timekeeperScope=${timekeeper.scopeKey}; cards=${document.querySelectorAll('.pc-person-card').length}`,
+      );
+    }
+
+    document.querySelector<HTMLButtonElement>('.pc-section-head button[title="新增人物"]')?.click();
+    await waitForPaint();
+    const createdPerson = timekeeper.settings.people.find(person => person.profileEntryId !== existingProfile.id);
+    const createdProfile = createdPerson?.profileEntryId ? profiles.getEntry(createdPerson.profileEntryId) : null;
+    if (!createdPerson || !createdProfile || profiles.entries.filter(entry => entry.kind === 'character').length !== 2) {
+      throw new Error('Adding a timekeeper person did not create exactly one linked character profile');
+    }
+
+    const createdCard = [...document.querySelectorAll<HTMLElement>('.pc-person-card')].find(card =>
+      card.querySelector<HTMLInputElement>('.pc-field.name')?.value.includes('人物 2'),
+    );
+    const nameInput = createdCard?.querySelector<HTMLInputElement>('.pc-field.name');
+    const birthInputs = createdCard?.querySelectorAll<HTMLInputElement>('.pc-number-field .pc-field');
+    if (!createdCard || !nameInput || birthInputs?.length !== 3) {
+      throw new Error('The newly created timekeeper person editor is incomplete');
+    }
+    nameInput.value = '联动人物';
+    nameInput.dispatchEvent(new Event('input', { bubbles: true }));
+    nameInput.dispatchEvent(new Event('change', { bubbles: true }));
+    for (const [index, value] of ['2005', '6', '7'].entries()) {
+      const currentCard = [...document.querySelectorAll<HTMLElement>('.pc-person-card')].find(
+        card => card.querySelector<HTMLInputElement>('.pc-field.name')?.value === '联动人物',
+      );
+      const input = currentCard?.querySelectorAll<HTMLInputElement>('.pc-number-field .pc-field')[index];
+      if (!input) throw new Error(`Timekeeper birth input ${index + 1} disappeared after synchronization`);
+      input.value = value;
+      input.dispatchEvent(new Event('input', { bubbles: true }));
+      input.dispatchEvent(new Event('change', { bubbles: true }));
+      await waitForPaint();
+    }
+    const updatedProfile = profiles.getEntry(createdProfile.id);
+    if (updatedProfile?.title !== '联动人物' || updatedProfile.fields.birthDate !== '2005-06-07') {
+      throw new Error(
+        `Editing a timekeeper person did not synchronize name and birthDate to its profile: profile=${updatedProfile?.title}:${updatedProfile?.fields.birthDate}; person=${createdPerson.name}:${createdPerson.birth.year}-${createdPerson.birth.month}-${createdPerson.birth.day}`,
+      );
+    }
+
+    createdCard.querySelector<HTMLButtonElement>('.pc-icon-btn.danger[title="删除"]')?.click();
+    await waitForPaint();
+    const confirmDelete = [...document.querySelectorAll<HTMLButtonElement>('.pc-phone-notice-action')].find(button =>
+      button.textContent?.includes('删除人物及资料'),
+    );
+    if (!confirmDelete) throw new Error('Timekeeper linked profile deletion confirmation is missing');
+    confirmDelete.click();
+    await waitForPaint();
+    if (
+      timekeeper.settings.people.some(person => person.id === createdPerson.id) ||
+      profiles.getEntry(createdProfile.id) ||
+      !profiles.getEntry(existingProfile.id)
+    ) {
+      throw new Error('Confirming timekeeper deletion did not remove only the linked person and profile');
+    }
   } else if (name === 'worldbook-entry-editor') {
     resetPhoneToRoute('worldbook-link', 'detail', '【视觉】旧格式世界书', { bookName: '【视觉】旧格式世界书' });
     const loaded = await waitForVisualCondition(() => Boolean(document.querySelector('.pc-worldbook-entry-open')));
@@ -2779,6 +3855,41 @@ async function applyScenario(name: VisualScenarioName, options: { height?: numbe
       Boolean(document.querySelector('.pc-worldbook-entry-editor')),
     );
     if (!editorLoaded) throw new Error('Worldbook entry editor did not open');
+  } else if (name === 'world-strategy-lamps') {
+    const worldSlots = useWorldSlotsStore();
+    await worldSlots.resetCurrentScope();
+    worldSlots.createSlot({
+      content: 'constant 即使保留关键词也必须显示蓝灯。',
+      keys: ['不参与灯色判断'],
+      strategyType: 'constant',
+      title: '常驻策略',
+    });
+    worldSlots.createSlot({
+      content: 'selective 即使暂未填写关键词也必须显示绿灯。',
+      keys: [],
+      strategyType: 'selective',
+      title: '触发策略',
+    });
+    resetPhoneToRoute('world-slots', 'root', '世界书槽位');
+    await waitForPaint();
+    if (
+      document.querySelectorAll('.pc-world-entry-lamp.blue').length !== 1 ||
+      document.querySelectorAll('.pc-world-entry-lamp.green').length !== 1
+    ) {
+      throw new Error('World slot lamps did not map constant to blue and selective to green');
+    }
+
+    resetPhoneToRoute('worldbook-link', 'detail', '【视觉】旧格式世界书', { bookName: '【视觉】旧格式世界书' });
+    const strategiesLoaded = await waitForVisualCondition(
+      () => document.querySelectorAll('.pc-worldbook-entry').length === 2,
+    );
+    if (!strategiesLoaded) throw new Error('Worldbook strategy fixtures did not load');
+    if (
+      document.querySelectorAll('.pc-worldbook-entry-lamp.blue').length !== 1 ||
+      document.querySelectorAll('.pc-worldbook-entry-lamp.green').length !== 1
+    ) {
+      throw new Error('Worldbook lamps did not map constant to blue and selective to green');
+    }
   } else if (name === 'content-directory-sort-persistence') {
     const settings = useSettingsStore();
     settings.settings.directorySort.summaryDesc = false;
@@ -2874,6 +3985,38 @@ async function applyScenario(name: VisualScenarioName, options: { height?: numbe
       throw new Error('Extra chapter navigation included summaries or omitted original chapters');
     }
     resetPhoneToRoute('extras', 'book', book.title, { bookId: book.id });
+  } else if (name === 'version-navigator-stepper') {
+    const extras = useExtrasStore();
+    const book = createLegacyExtrasFixture();
+    const chapter = book.chapters[0];
+    if (!chapter) throw new Error('Version stepper fixture did not create an extra chapter');
+    const saved = extras.appendChapterVersion(book.id, chapter.id, {
+      content: '用于验证版本序号跳转器的候选正文。',
+      title: '版本序号候选版',
+    });
+    if (!saved || chapter.versions.length !== 2) throw new Error('Version stepper fixture did not create two versions');
+    resetPhoneToRoute('extras', 'chapter', saved.version.title, {
+      bookId: book.id,
+      chapterId: chapter.id,
+      versionId: saved.version.id,
+    });
+    await waitForPaint();
+    await openReaderTools();
+    const input = document.querySelector<HTMLInputElement>('.pc-version-navigator .pc-version-index-input');
+    if (!input) throw new Error('Version stepper input is missing from its isolated scenario');
+    if (input.value !== '2') throw new Error(`Version stepper scenario opened the wrong index: ${input.value}`);
+    const styles = getComputedStyle(input);
+    if (
+      styles.width !== '42px' ||
+      styles.height !== '42px' ||
+      styles.minHeight !== '42px' ||
+      styles.lineHeight !== '40px' ||
+      styles.textAlign !== 'center'
+    ) {
+      throw new Error(
+        `Version index semantic changed: ${styles.width}/${styles.height}/${styles.minHeight}/${styles.lineHeight}/${styles.textAlign}`,
+      );
+    }
   } else if (name === 'content-versions') {
     const extras = useExtrasStore();
     const extraBook = createLegacyExtrasFixture();
@@ -3478,6 +4621,9 @@ async function applyScenario(name: VisualScenarioName, options: { height?: numbe
     if (document.querySelector('.pc-generation-history')) {
       throw new Error('Extra chapter detail still exposes hidden generation records');
     }
+    if (!document.querySelector('.pc-reader-source-label')?.textContent?.includes('第 12-18 楼')) {
+      throw new Error('Extra chapter detail omitted its generation source label');
+    }
   } else if (name === 'extras-chapter-editor') {
     const book = createLegacyExtrasFixture();
     const chapter = book.chapters[0];
@@ -3503,6 +4649,15 @@ async function applyScenario(name: VisualScenarioName, options: { height?: numbe
     if (!forumStep || !typePromptArea || forumStep.textContent?.includes('板块说明')) {
       throw new Error('Workbench forum step still uses the legacy board description design');
     }
+    const workflowBody = forumStep.closest<HTMLElement>('.pc-workflow-body');
+    const stepList = forumStep.closest<HTMLElement>('.pc-step-list');
+    if (!workflowBody || !stepList) throw new Error('Workbench forum step layout container is missing');
+    for (const child of workflowBody.children) {
+      if (child !== stepList) (child as HTMLElement).style.display = 'none';
+    }
+    for (const stepCard of stepList.querySelectorAll<HTMLElement>('.pc-step-card')) {
+      if (stepCard !== forumStep) stepCard.style.display = 'none';
+    }
     typePromptArea.scrollIntoView({ block: 'center' });
     await waitForPaint();
   } else if (name === 'profiles-empty-toolbar') {
@@ -3520,20 +4675,39 @@ async function applyScenario(name: VisualScenarioName, options: { height?: numbe
   } else if (
     name === 'profiles-table' ||
     name === 'profiles-table-grid' ||
+    name === 'profiles-table-manager' ||
     name === 'profiles-table-editor' ||
     name === 'profiles-detail'
   ) {
     const { firstEntry, table } = createProfilesFixture();
     resetPhoneToRoute(
       'profiles',
-      name === 'profiles-table-editor' ? 'table-editor' : name === 'profiles-detail' ? 'entry' : 'root',
-      name === 'profiles-table-editor' ? table.name : name === 'profiles-detail' ? firstEntry.title : '资料表',
+      name === 'profiles-table-manager'
+        ? 'tables'
+        : name === 'profiles-table-editor'
+          ? 'table-editor'
+          : name === 'profiles-detail'
+            ? 'entry'
+            : 'root',
+      name === 'profiles-table-manager'
+        ? '表格类型'
+        : name === 'profiles-table-editor'
+          ? table.name
+          : name === 'profiles-detail'
+            ? firstEntry.title
+            : '资料表',
       name === 'profiles-table-editor'
         ? { tableId: table.id }
         : name === 'profiles-detail'
           ? { entryId: firstEntry.id }
           : undefined,
     );
+    if (name === 'profiles-table-manager') {
+      await waitForPaint();
+      if (!document.querySelector('.pc-profile-table-manager')) {
+        throw new Error('Profiles table manager page did not render from the isolated fixture');
+      }
+    }
     if (name === 'profiles-table-grid') {
       await waitForPaint();
       document.querySelectorAll<HTMLButtonElement>('.pc-profile-view-toggle .pc-segment-btn')[1]?.click();

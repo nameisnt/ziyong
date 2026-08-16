@@ -31,7 +31,7 @@
 import { useSettingsStore } from '@/store/settings';
 import { cleanGenerationOutput } from '@/util/generationOutputCleaning';
 
-withDefaults(
+const props = withDefaults(
   defineProps<{
     description?: string;
     editable?: boolean;

@@ -102,10 +102,10 @@
       v-model:user-requirement="generationDraft.userRequirement"
       :capture="captureLetterPrompt"
       :capture-reset-key="letterPromptPreview"
-      :error="generationState.error"
+      :error="generationError"
       :format-options="formatOptions"
-      :raw-output="generationState.rawOutput"
-      :running="generationState.running"
+      :raw-output="generationRawOutput"
+      :running="generationRunning"
       :show-recent-entries="Boolean(activeBook)"
       :show-book-field="!activeBook"
       :title="
@@ -159,6 +159,7 @@ import { useCatalogDetailNavigation } from '@/composables/useCatalogDetailNaviga
 import { useDirectorySort } from '@/composables/useDirectorySort';
 import { useGenerationReplaySession } from '@/composables/useGenerationReplaySession';
 import { getRegisteredPhoneGenerationAdapter } from '@/core/appRegistry';
+import { useSingleGenerationTaskSession } from '@/composables/useSingleGenerationTaskSession';
 import { buildGenerationPreview, captureGenerationPrompt, generateContent } from '@/core/generationService';
 import { useLettersStore } from '@/store/letters';
 import { usePhoneStore } from '@/store/phone';
@@ -167,6 +168,7 @@ import { useSettingsStore } from '@/store/settings';
 import type { CharacterRef } from '@/type/diary';
 import type { FailedGenerationDraft, GenerationReplaySnapshot, HiddenGenerationRecord } from '@/type/generation';
 import type { LetterFormat } from '@/type/letter';
+import type { GenerationTask } from '@/type/generationTask';
 import { canOpenBaguScan } from '@/util/baguScanGate';
 import { useDetailScroll } from '@/util/detailScroll';
 import { parseSimpleXmlResult } from '@/util/generation';
@@ -176,7 +178,6 @@ import { usePreviewDraftPersistence } from '@/util/previewDrafts';
 import { formatGenerationReferences, type GenerationReferenceItem } from '@/util/references';
 import { resolveContentVersion } from '@/util/contentVersions';
 import { useInvalidRouteFallback } from '@/util/routeFallback';
-import { stopGenerationByIdSafe } from '@/util/runtime';
 import { storeToRefs } from 'pinia';
 
 const letters = useLettersStore();
@@ -230,8 +231,6 @@ const generationDraft = reactive({
   userRequirement: '',
 });
 const generationState = reactive({
-  error: '',
-  generationId: '',
   preview: null as null | {
     bookId: string;
     bookTitle: string;
@@ -250,9 +249,14 @@ const generationState = reactive({
     targetVersionId: string;
     warnings: string[];
   },
-  rawOutput: '',
-  running: false,
 });
+const generationSession = useSingleGenerationTaskSession({
+  actionId: 'generate',
+  appId: 'letters',
+  sourcePage: 'generate',
+  title: '生成书信 · 单次生成',
+});
+const { error: generationError, rawOutput: generationRawOutput, running: generationRunning } = generationSession;
 const failedDraftRawOutput = ref('');
 const selectedReferences = ref<GenerationReferenceItem[]>([]);
 type LettersPreview = NonNullable<typeof generationState.preview>;
@@ -537,9 +541,7 @@ watch(
         rewriteEntry?.sender.name || replyEntry?.receiver.name || activeBook.value?.participants[0]?.name || '';
       generationDraft.singleMessageId = 0;
       generationDraft.userRequirement = '';
-      generationState.error = '';
       generationState.preview = null;
-      generationState.rawOutput = '';
 
       const replay = rewriteLetterReplay.value;
       if (replay) {
@@ -603,12 +605,6 @@ useInvalidRouteFallback({
     }
     phone.replacePage('root', '往返信箱');
   },
-});
-
-onScopeDispose(() => {
-  if (generationState.running && generationState.generationId) {
-    stopGenerationByIdSafe(generationState.generationId);
-  }
 });
 
 function buildCharacter(name: string) {
@@ -935,15 +931,17 @@ function returnToGenerate() {
 }
 
 async function runGeneration() {
-  generationState.error = '';
   clearLettersPreviewDraft();
   generationState.preview = null;
-  generationState.rawOutput = '';
-
+  let task: GenerationTask | null = null;
   try {
+    task = generationSession.create({
+      sourceParams: activeBook.value?.id ? { bookId: activeBook.value.id } : {},
+      title: letterGenerationMode.value === 'rewrite' ? '重新生成书信' : '生成书信 · 单次生成',
+    });
     const { receiver, sender } = normalizeDraftPair(generationDraft.senderName, generationDraft.receiverName);
     if (!matchesActiveBook(sender, receiver)) {
-      generationState.error = '当前分册只允许这两位参与者互通信件';
+      generationSession.fail(task.id, new Error('当前分册只允许这两位参与者互通信件'));
       return;
     }
 
@@ -972,19 +970,7 @@ async function runGeneration() {
         },
         references: formattedReferences.value,
         referenceItems: selectedReferences.value,
-        lifecycle: {
-          onFinish() {
-            generationState.running = false;
-            generationState.generationId = '';
-          },
-          onRawOutput(rawOutput) {
-            generationState.rawOutput = rawOutput;
-          },
-          onStart(generationId) {
-            generationState.running = true;
-            generationState.generationId = generationId;
-          },
-        },
+        lifecycle: generationSession.lifecycle(task.id),
         source: {
           fromStartEnd: generationDraft.fromStartEnd,
           mode: settings.value.generation.sourceMode,
@@ -997,14 +983,31 @@ async function runGeneration() {
     );
 
     if (result.status === 'failed') {
-      generationState.error = result.warnings.join('；') || '模型没有返回可解析的书信 XML';
       failedDraftRawOutput.value = result.rawOutput;
+      generationSession.complete(task.id, {
+        currentLabel: '解析失败草稿已保留',
+        resultPage: 'failed-draft',
+        resultParams: { draftId: result.draft.id },
+        resultState: 'failed-draft',
+        resultTitle: '解析失败草稿',
+      });
       toastr.warning('XML 解析失败，已保存到失败草稿');
       void phone.presentGeneratedPage('letters', 'failed-draft', '解析失败草稿', { draftId: result.draft.id });
       return;
     }
 
     if (result.status === 'saved') {
+      generationSession.complete(task.id, {
+        currentLabel: `已保存书信：${result.data.title}`,
+        resultPage: 'entry',
+        resultParams: {
+          bookId: result.saved.book.id,
+          entryId: result.saved.entry.id,
+          ...(result.saved.versionId ? { versionId: result.saved.versionId } : {}),
+        },
+        resultState: 'saved',
+        resultTitle: result.data.title,
+      });
       toastr.success(letterGenerationMode.value === 'rewrite' ? '已保存并切换到书信新版本' : '已生成并保存信件');
       void phone.presentGeneratedPage('letters', 'entry', result.data.title, {
         bookId: result.saved.book.id,
@@ -1037,14 +1040,23 @@ async function runGeneration() {
       ...(rewriteLetterEntry.value ? { rewriteEntryId: rewriteLetterEntry.value.id } : {}),
       ...(rewriteLetterVersion.value ? { versionId: rewriteLetterVersion.value.id } : {}),
     });
-    void phone.presentGeneratedPage('letters', 'preview', '生成预览', {
+    const previewParams = {
       ...(activeBook.value?.id ? { bookId: activeBook.value.id } : {}),
       ...(route.value.params?.replyToEntryId ? { replyToEntryId: route.value.params.replyToEntryId } : {}),
       ...(rewriteLetterEntry.value ? { rewriteEntryId: rewriteLetterEntry.value.id } : {}),
       ...(rewriteLetterVersion.value ? { versionId: rewriteLetterVersion.value.id } : {}),
+    };
+    generationSession.complete(task.id, {
+      currentLabel: '书信已生成，等待确认',
+      resultPage: 'preview',
+      resultParams: previewParams,
+      resultState: 'preview',
+      resultTitle: '生成预览',
     });
+    void phone.presentGeneratedPage('letters', 'preview', '生成预览', previewParams);
   } catch (error) {
-    generationState.error = error instanceof Error ? error.message : '生成失败，请稍后再试';
+    if (task) generationSession.fail(task.id, error);
+    else toastr.error(error instanceof Error ? error.message : '生成失败，请稍后再试');
   }
 }
 
@@ -1121,10 +1133,7 @@ function reparsePreviewRaw() {
 }
 
 function stopGeneration() {
-  if (!generationState.generationId) return;
-  stopGenerationByIdSafe(generationState.generationId);
-  generationState.running = false;
-  generationState.error = '生成已停止';
+  generationSession.stop();
 }
 
 async function removeFailedDraft(draftId: string) {

@@ -2,11 +2,17 @@
   <section class="pc-app-builder">
     <section v-if="route.page === 'root'" class="pc-app-builder-page">
       <div class="pc-app-builder-toolbar">
-        <div class="pc-search-wrap">
+        <div class="pc-search-field pc-search-wrap">
           <i class="fa-solid fa-magnifying-glass"></i>
-          <input v-model="query" class="pc-field" type="search" :placeholder="t`搜索自制 App`" />
+          <input v-model="query" type="search" :placeholder="t`搜索自制 App`" />
         </div>
-        <button class="pc-icon-btn" type="button" :title="t`导入 App`" @click="importInput?.click()">
+        <button
+          class="pc-icon-btn"
+          type="button"
+          :title="t`导入 App`"
+          :aria-label="t`导入 App`"
+          @click="importInput?.click()"
+        >
           <i class="fa-solid fa-file-import"></i>
         </button>
         <button class="pc-primary-btn compact" type="button" @click="phone.pushPage('templates', '选择模板')">
@@ -35,13 +41,31 @@
             <i class="fa-solid fa-chevron-right"></i>
           </button>
           <div class="pc-app-builder-actions">
-            <button class="pc-icon-btn" type="button" :title="t`复制 App`" @click="duplicateApp(definition.id)">
+            <button
+              class="pc-icon-btn"
+              type="button"
+              :title="t`复制 App`"
+              :aria-label="t`复制 App`"
+              @click="duplicateApp(definition.id)"
+            >
               <i class="fa-solid fa-copy"></i>
             </button>
-            <button class="pc-icon-btn" type="button" :title="t`导出 App`" @click="exportApp(definition.id)">
+            <button
+              class="pc-icon-btn"
+              type="button"
+              :title="t`导出 App`"
+              :aria-label="t`导出 App`"
+              @click="exportApp(definition.id)"
+            >
               <i class="fa-solid fa-file-export"></i>
             </button>
-            <button class="pc-icon-btn danger" type="button" :title="t`删除 App`" @click="deleteApp(definition.id)">
+            <button
+              class="pc-icon-btn danger"
+              type="button"
+              :title="t`删除 App`"
+              :aria-label="t`删除 App`"
+              @click="deleteApp(definition.id)"
+            >
               <i class="fa-solid fa-trash"></i>
             </button>
           </div>
@@ -494,24 +518,6 @@ async function deleteApp(appId: string) {
   grid-template-columns: minmax(0, 1fr) auto auto;
   gap: 8px;
   align-items: center;
-}
-
-.pc-search-wrap {
-  position: relative;
-  min-width: 0;
-}
-
-.pc-search-wrap > i {
-  position: absolute;
-  z-index: 1;
-  top: 50%;
-  left: 14px;
-  color: var(--pc-muted);
-  transform: translateY(-50%);
-}
-
-.pc-search-wrap .pc-field {
-  padding-left: 40px;
 }
 
 .pc-app-builder-row {

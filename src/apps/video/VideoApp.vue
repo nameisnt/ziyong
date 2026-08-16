@@ -3,7 +3,13 @@
     <section class="pc-video-page">
       <div v-if="route.page === 'root'" class="pc-compact-toolbar pc-directory-toolbar pc-video-toolbar">
         <span class="pc-directory-count">{{ videoEntries.length }} {{ t`个视频` }}</span>
-        <button class="pc-icon-btn primary" type="button" :title="t`新增视频`" @click="openEditor()">
+        <button
+          class="pc-icon-btn primary"
+          type="button"
+          :title="t`新增视频`"
+          :aria-label="t`新增视频`"
+          @click="openEditor()"
+        >
           <i class="fa-solid fa-plus"></i>
         </button>
       </div>
@@ -60,13 +66,31 @@
           </div>
           <p v-if="activeEntry.note">{{ activeEntry.note }}</p>
           <div class="pc-directory-actions pc-video-detail-actions">
-            <button class="pc-icon-btn" type="button" :title="t`编辑`" @click="openEditor(activeEntry.id)">
+            <button
+              class="pc-icon-btn"
+              type="button"
+              :title="t`编辑`"
+              :aria-label="t`编辑`"
+              @click="openEditor(activeEntry.id)"
+            >
               <i class="fa-solid fa-pen"></i>
             </button>
-            <button class="pc-icon-btn" type="button" :title="t`下载`" @click="downloadEntry(activeEntry)">
+            <button
+              class="pc-icon-btn"
+              type="button"
+              :title="t`下载`"
+              :aria-label="t`下载`"
+              @click="downloadEntry(activeEntry)"
+            >
               <i class="fa-solid fa-download"></i>
             </button>
-            <button class="pc-icon-btn danger" type="button" :title="t`删除`" @click="deleteEntry(activeEntry)">
+            <button
+              class="pc-icon-btn danger"
+              type="button"
+              :title="t`删除`"
+              :aria-label="t`删除`"
+              @click="deleteEntry(activeEntry)"
+            >
               <i class="fa-solid fa-trash"></i>
             </button>
           </div>
@@ -330,7 +354,4 @@ async function deleteEntry(entry: MediaEntry) {
   gap: 12px;
 }
 
-.pc-area.compact {
-  min-height: 90px;
-}
 </style>

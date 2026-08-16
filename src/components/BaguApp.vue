@@ -40,10 +40,22 @@
             <i class="fa-solid fa-chevron-down" :data-open="lexicalOpen"></i>
           </button>
           <div class="pc-panel-actions">
-            <button class="pc-icon-btn" type="button" :title="t`新增词汇规则`" @click="addReplacementRule">
+            <button
+              class="pc-icon-btn"
+              type="button"
+              :title="t`新增词汇规则`"
+              :aria-label="t`新增词汇规则`"
+              @click="addReplacementRule"
+            >
               <i class="fa-solid fa-plus"></i>
             </button>
-            <button class="pc-icon-btn" type="button" :title="t`恢复默认词汇规则`" @click="resetRules('replacement')">
+            <button
+              class="pc-icon-btn"
+              type="button"
+              :title="t`恢复默认词汇规则`"
+              :aria-label="t`恢复默认词汇规则`"
+              @click="resetRules('replacement')"
+            >
               <i class="fa-solid fa-rotate-left"></i>
             </button>
           </div>
@@ -76,7 +88,13 @@
               @input="updateReplacementCandidatesDraft(rule.id, $event)"
               @blur="commitReplacementCandidatesDraft(rule)"
             />
-            <button class="pc-icon-btn danger" type="button" :title="t`删除`" @click="removeRule(rule.id)">
+            <button
+              class="pc-icon-btn danger"
+              type="button"
+              :title="t`删除`"
+              :aria-label="t`删除`"
+              @click="removeRule(rule.id)"
+            >
               <i class="fa-solid fa-xmark"></i>
             </button>
           </div>
@@ -95,10 +113,22 @@
             <i class="fa-solid fa-chevron-down" :data-open="templateOpen"></i>
           </button>
           <div class="pc-panel-actions">
-            <button class="pc-icon-btn" type="button" :title="t`新增句式规则`" @click="addTemplateRule">
+            <button
+              class="pc-icon-btn"
+              type="button"
+              :title="t`新增句式规则`"
+              :aria-label="t`新增句式规则`"
+              @click="addTemplateRule"
+            >
               <i class="fa-solid fa-plus"></i>
             </button>
-            <button class="pc-icon-btn" type="button" :title="t`恢复默认句式规则`" @click="resetRules('template')">
+            <button
+              class="pc-icon-btn"
+              type="button"
+              :title="t`恢复默认句式规则`"
+              :aria-label="t`恢复默认句式规则`"
+              @click="resetRules('template')"
+            >
               <i class="fa-solid fa-rotate-left"></i>
             </button>
           </div>
@@ -130,7 +160,13 @@
               :placeholder="templateReplacementPlaceholder"
               @input="updateTemplateRule(rule, rule.template, String(($event.target as HTMLInputElement).value))"
             />
-            <button class="pc-icon-btn danger" type="button" :title="t`删除`" @click="removeRule(rule.id)">
+            <button
+              class="pc-icon-btn danger"
+              type="button"
+              :title="t`删除`"
+              :aria-label="t`删除`"
+              @click="removeRule(rule.id)"
+            >
               <i class="fa-solid fa-xmark"></i>
             </button>
           </div>
@@ -146,9 +182,11 @@
 
 <script setup lang="ts">
 import { type BaguRule, useBaguStore } from '@/store/bagu';
+import { usePhoneStore } from '@/store/phone';
 import { storeToRefs } from 'pinia';
 
 const bagu = useBaguStore();
+const phone = usePhoneStore();
 const { rules } = storeToRefs(bagu);
 
 const lexicalOpen = ref(true);
@@ -363,7 +401,15 @@ function resetRules(type: BaguRule['type']) {
   toastr.success('已恢复默认规则');
 }
 
-function removeRule(ruleId: string) {
+async function removeRule(ruleId: string) {
+  const rule = rules.value.find(item => item.id === ruleId);
+  if (!rule) return;
+  const confirmed = await phone.confirmNotice(`要删除八股规则“${rule.title || '未命名规则'}”吗？`, {
+    confirmLabel: '删除',
+    kind: 'warning',
+    title: '删除八股规则？',
+  });
+  if (!confirmed) return;
   bagu.deleteRule(ruleId);
   const nextSourceDrafts = { ...replacementSourceDrafts.value };
   const nextCandidateDrafts = { ...replacementCandidateDrafts.value };

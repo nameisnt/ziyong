@@ -1,4 +1,5 @@
 import { getCurrentWorldbookGroups, getWorldbookEntries, setWorldbookEntryStates } from './api';
+import type { PhoneAppResetContext } from '@/core/appRegistry';
 import { getCurrentChatScopeKey, isPlaceholderChatScopeKey } from '@/store/chatScoped';
 import { validateInplace } from '@/util/zod';
 // eslint-disable-next-line import-x/no-nodejs-modules
@@ -278,10 +279,21 @@ export const useWorldbookLinkStore = defineStore('worldbook-link', () => {
     }
   }
 
-  async function resetCurrentScope() {
+  async function resetCurrentScope(transaction: PhoneAppResetContext) {
     const scopeKey = getCurrentChatScopeKey();
     const bookNames = Object.keys(settings.value.profiles[scopeKey] ?? {});
     for (const bookName of bookNames) {
+      const wasActive = settings.value.activeScopes[bookName] === scopeKey;
+      const previousEntries = wasActive ? await getWorldbookEntries(bookName) : [];
+      if (wasActive) {
+        transaction.addRollback(() =>
+          setWorldbookEntryStates(
+            bookName,
+            new Map(previousEntries.map(entry => [entry.uid, entry.enabled])),
+            false,
+          ).then(() => undefined),
+        );
+      }
       await removeProfile(scopeKey, bookName);
     }
   }

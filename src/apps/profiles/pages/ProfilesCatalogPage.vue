@@ -13,7 +13,13 @@
             toggle-title="展开资料表"
           />
         </div>
-        <button class="pc-icon-btn" type="button" title="管理资料表" @click="$emit('open-tables')">
+        <button
+          class="pc-icon-btn"
+          type="button"
+          title="管理资料表"
+          aria-label="管理资料表"
+          @click="$emit('open-tables')"
+        >
           <i class="fa-solid fa-gear"></i>
         </button>
       </div>
@@ -42,9 +48,15 @@
           </button>
         </span>
         <div class="pc-profile-primary-actions">
-          <button class="pc-icon-btn" type="button" title="新增条目" @click="$emit('create')">
+          <button class="pc-icon-btn" type="button" title="新增条目" aria-label="新增条目" @click="$emit('create')">
             <i class="fa-solid fa-plus"></i></button
-          ><button class="pc-icon-btn primary" type="button" title="AI 生成资料" @click="$emit('generate')">
+          ><button
+            class="pc-icon-btn primary"
+            type="button"
+            title="AI 生成资料"
+            aria-label="AI 生成资料"
+            @click="$emit('generate')"
+          >
             <i class="fa-solid fa-wand-magic-sparkles"></i>
           </button>
         </div>
@@ -233,6 +245,7 @@ defineEmits<{
 .pc-profile-view-toggle {
   flex: 0 0 auto;
 }
+/* ui-reuse-allow: D-UI-TABS-008 fixed 40px icon-only toggle requires zero inline padding; global height and font stay authoritative. */
 .pc-profile-view-toggle .pc-segment-btn {
   width: 40px;
   min-width: 40px;

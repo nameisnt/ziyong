@@ -1,9 +1,16 @@
 <template>
-  <div v-if="open" class="pc-catalog-mask" @click.self="emit('close')">
-    <section class="pc-catalog-card" role="dialog" aria-modal="true" :aria-label="title">
+  <div v-if="open" class="pc-modal-backdrop pc-catalog-mask" @click.self="emit('close')">
+    <section
+      ref="dialogRef"
+      class="pc-modal-dialog pc-catalog-card"
+      role="dialog"
+      aria-modal="true"
+      :aria-label="title"
+      tabindex="-1"
+    >
       <header class="pc-catalog-head">
         <strong>{{ title }}</strong>
-        <button class="pc-catalog-close" type="button" :title="t`关闭`" @click="emit('close')">
+        <button class="pc-icon-btn" type="button" :title="t`关闭`" :aria-label="t`关闭`" @click="emit('close')">
           <i class="fa-solid fa-xmark"></i>
         </button>
       </header>
@@ -30,6 +37,7 @@
 </template>
 
 <script setup lang="ts">
+import { usePhoneModalLifecycle } from '@/composables/usePhoneModalLifecycle';
 import type { CatalogModalItem } from '@/type/catalog';
 
 const props = withDefaults(
@@ -50,7 +58,14 @@ const emit = defineEmits<{
   select: [id: string];
 }>();
 
+const dialogRef = ref<HTMLElement | null>(null);
 const itemRefs = new Map<string, HTMLElement>();
+
+usePhoneModalLifecycle({
+  dialogRef,
+  isOpen: () => props.open,
+  onClose: () => emit('close'),
+});
 
 function setItemRef(itemId: string, element: Element | ComponentPublicInstance | null) {
   if (element instanceof HTMLElement) {
@@ -83,16 +98,6 @@ watch(
 </script>
 
 <style scoped>
-.pc-catalog-mask {
-  position: absolute;
-  inset: 0;
-  z-index: 60;
-  display: grid;
-  place-items: center;
-  padding: 18px;
-  background: rgba(15, 23, 42, 0.26);
-}
-
 .pc-catalog-card {
   display: flex;
   flex-direction: column;
@@ -102,10 +107,7 @@ watch(
   height: min(72%, 520px);
   max-height: calc(100% - 36px);
   overflow: hidden;
-  border: 1px solid var(--pc-border);
   border-radius: min(var(--pc-card-radius), 8px);
-  background: var(--pc-bg);
-  box-shadow: 0 18px 44px rgba(15, 23, 42, 0.2);
 }
 
 .pc-catalog-head {
@@ -122,18 +124,6 @@ watch(
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-}
-
-.pc-catalog-close {
-  display: inline-grid;
-  width: 38px;
-  height: 38px;
-  place-items: center;
-  border: 0;
-  border-radius: 999px;
-  background: color-mix(in srgb, var(--pc-bg) 96%, var(--pc-text) 4%);
-  color: var(--pc-text);
-  cursor: pointer;
 }
 
 .pc-catalog-list {

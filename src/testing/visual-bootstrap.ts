@@ -28,6 +28,7 @@ Object.assign(globalThis, {
     mapValues: (source: Record<string, unknown>, iteratee: (value: unknown, key: string) => unknown) =>
       Object.fromEntries(Object.entries(source || {}).map(([key, value]) => [key, iteratee(value, key)])),
     set: setByPath,
+    shuffle: <T>(items: T[]) => [...items].reverse(),
   },
   toastr: {
     error: console.error,

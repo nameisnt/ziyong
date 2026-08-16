@@ -9,6 +9,7 @@
         <button
           class="pc-icon-btn pc-refresh-icon"
           type="button"
+          :aria-label="t`刷新`"
           :disabled="loadingDetail"
           :title="t`刷新`"
           @click="refreshCurrentChat"
@@ -26,6 +27,7 @@
           <button
             class="pc-icon-btn"
             type="button"
+            :aria-label="rulesOpen ? t`折叠规则` : t`展开规则`"
             :title="rulesOpen ? t`折叠规则` : t`展开规则`"
             @click="rulesOpen = !rulesOpen"
           >
@@ -136,6 +138,7 @@
         :favorite-active="Boolean(activeMessageFavorite)"
         :next-disabled="!nextMessageId"
         :previous-disabled="!previousMessageId"
+        :reasoning="activeMessage.reasoning"
         :title="activeMessage.title"
         @bagu="openReaderBaguScan"
         @bottom="scrollToBottom"
@@ -227,12 +230,12 @@ import BaguScanPanel from '@/components/BaguScanPanel.vue';
 import EmptyState from '@/components/EmptyState.vue';
 import ReaderDetailShell from '@/components/ReaderDetailShell.vue';
 import ReaderTextEditModal from '@/components/ReaderTextEditModal.vue';
+import { useReaderChatSession } from '@/components/reader/useReaderChatSession';
+import { useReaderTextEditSession } from '@/components/reader/useReaderTextEditSession';
 import SearchableCombobox from '@/components/SearchableCombobox.vue';
 import {
   defaultReaderBodyRule,
   defaultReaderSettings,
-  normalizeBrief,
-  normalizeArchivedMessage,
   type ChatReaderRegexRule,
   type ReaderMessage,
 } from '@/store/reader';
@@ -248,21 +251,17 @@ import { useDigestStore } from '@/apps/digest/store';
 import { useWorldbookLinkStore } from '@/apps/worldbook-link/store';
 import { usePresetLinkStore } from '@/apps/preset-link/store';
 import { getCurrentTavernPresetName } from '@/apps/preset-manager/api';
-import { normalizeChatArchiveId, parseChatScopeKey } from '@/util/chatArchive';
 import { canOpenBaguScan } from '@/util/baguScanGate';
 import { useDetailScroll } from '@/util/detailScroll';
 import { getRegexRulesByOperation } from '@/util/regexDisplay';
 import {
   executeSlashCommandSafe,
-  getChatHistoryDetailSafe,
-  getChatMessagesSafe,
   getOptionalGlobalFunction,
   onTavernEvent,
   setChatMessagesSafe,
 } from '@/util/runtime';
 import { getCurrentChatScopeKey, isPlaceholderChatScopeKey } from '@/store/chatScoped';
-import { resolveReaderBodySourceRange, transformReaderMessages, type ReaderBodySourceRange } from '@/util/readerRegex';
-import { findReaderTextOccurrences, type ReaderTextOccurrence } from '@/util/readerTextEdit';
+import { resolveReaderBodySourceRange, type ReaderBodySourceRange } from '@/util/readerRegex';
 import { characters, getCharacters, getPastCharacterChats } from '@sillytavern/script';
 import { storeToRefs } from 'pinia';
 
@@ -297,14 +296,7 @@ const readerRegexUsage = computed(() => ({
   displayRuleIds: globalReaderRegexUsage.value.displayRuleIds,
   titleRuleId: readerPresetProfile.value?.readerTitleRuleId || globalReaderRegexUsage.value.titleRuleId,
 }));
-const currentMessages = ref<ReaderMessage[]>([]);
-const loadedScopeKey = ref('');
-const error = ref('');
-const loadingDetail = ref(false);
 const showCatalogModal = ref(false);
-const readerTextEditOpen = ref(false);
-const readerSelectedText = ref('');
-const readerTextOccurrences = ref<ReaderTextOccurrence[]>([]);
 const rulesOpen = ref(true);
 const messageBodyEl = ref<HTMLElement | null>(null);
 const readerEditDraft = ref('');
@@ -318,27 +310,6 @@ const currentChatTitle = computed(
 );
 const readerScopeLabel = computed(() => (phone.isViewingCurrentChat ? '当前聊天' : '选中聊天'));
 
-const activeMessages = computed(() => currentMessages.value);
-const activeMessage = computed(() => {
-  const messageId = route.value.params?.messageId;
-  return messageId ? (activeMessages.value.find(item => item.id === messageId) ?? null) : null;
-});
-const activeMessageBody = computed(() => (activeMessage.value ? formatReaderBody(activeMessage.value.body) : ''));
-const readerBaguContent = computed(() => activeMessage.value?.body || '');
-const messageCatalogItems = computed(() =>
-  activeMessages.value.map(message => ({
-    id: message.id,
-    meta: hasExtractedReaderTitle(message) ? readerFloorLabel(message) : '',
-    title: message.title,
-  })),
-);
-const activeMessageIndex = computed(() => activeMessages.value.findIndex(item => item.id === activeMessage.value?.id));
-const previousMessageId = computed(() =>
-  activeMessageIndex.value > 0 ? activeMessages.value[activeMessageIndex.value - 1]?.id || '' : '',
-);
-const nextMessageId = computed(() =>
-  activeMessageIndex.value >= 0 ? activeMessages.value[activeMessageIndex.value + 1]?.id || '' : '',
-);
 const defaultTitleRule: ChatReaderRegexRule = { find: '', flags: '', replace: '' };
 const readerTitleRegexRules = computed(() => getRegexRulesByOperation(regexDisplayRules.value, 'extract'));
 const readerBodyRegexRules = computed(() => getRegexRulesByOperation(regexDisplayRules.value, 'extract'));
@@ -390,13 +361,59 @@ const bodyRuleSelectValue = computed(() => {
   }
   return selectedRuleId;
 });
+const contentRuleId = computed(() => readerRegexUsage.value.contentRuleId);
+const { currentMessages, error, loadingDetail, loadCurrentChat, resetReaderChatSession } = useReaderChatSession({
+  activeBodyRule,
+  activeTitleRule,
+  applyReaderCleanupRules,
+  contentRuleId,
+  getCharacterRecords: () => characters,
+  getCharacters,
+  getPastCharacterChats,
+  normalizeTitle,
+  readerSettings,
+  syncCurrentTavernPresetName,
+});
+const activeMessages = computed(() => currentMessages.value);
+const activeMessage = computed(() => {
+  const messageId = route.value.params?.messageId;
+  return messageId ? (activeMessages.value.find(item => item.id === messageId) ?? null) : null;
+});
+const {
+  deleteSelectedReaderText,
+  readerSelectedText,
+  readerTextEditOpen,
+  readerTextOccurrences,
+  saveReaderSentenceEdit,
+} = useReaderTextEditSession({
+  activeMessage,
+  activeMessages,
+  loadCurrentChat,
+  replaceReaderBodyInRaw,
+  saveChatIfAvailable,
+});
+const activeMessageBody = computed(() => (activeMessage.value ? formatReaderBody(activeMessage.value.body) : ''));
+const readerBaguContent = computed(() => activeMessage.value?.body || '');
+const messageCatalogItems = computed(() =>
+  activeMessages.value.map(message => ({
+    id: message.id,
+    meta: hasExtractedReaderTitle(message) ? readerFloorLabel(message) : '',
+    title: message.title,
+  })),
+);
+const activeMessageIndex = computed(() => activeMessages.value.findIndex(item => item.id === activeMessage.value?.id));
+const previousMessageId = computed(() =>
+  activeMessageIndex.value > 0 ? activeMessages.value[activeMessageIndex.value - 1]?.id || '' : '',
+);
+const nextMessageId = computed(() =>
+  activeMessageIndex.value >= 0 ? activeMessages.value[activeMessageIndex.value + 1]?.id || '' : '',
+);
 const activeMessageFavorite = computed(() =>
   activeMessage.value ? reader.getFavorite(phone.viewingScopeKey, activeMessage.value.id) : null,
 );
 const reloadActiveChatDebounced = useDebounceFn(() => {
   void reloadActiveChat();
 }, 250);
-let readerLoadSerial = 0;
 
 function getSelectedReaderRegexRule(ruleId: string, availableRules: RegexDisplayRule[]) {
   if (ruleId === '__default_body__') {
@@ -495,9 +512,7 @@ watch(
 watch(
   () => phone.viewingScopeKey,
   () => {
-    currentMessages.value = [];
-    loadedScopeKey.value = '';
-    error.value = '';
+    resetReaderChatSession();
     if (route.value.appId === 'reader') {
       void loadCurrentChat(true);
     }
@@ -505,11 +520,9 @@ watch(
 );
 
 const stopChatChanged = onTavernEvent('CHAT_CHANGED', () => {
-  currentTavernPresetName.value = getCurrentTavernPresetName();
+  syncCurrentTavernPresetName();
   applyPendingBranchInheritance();
-  currentMessages.value = [];
-  loadedScopeKey.value = '';
-  error.value = '';
+  resetReaderChatSession();
   if (route.value.appId === 'reader') {
     void loadCurrentChat(true);
   }
@@ -660,82 +673,6 @@ function saveSelectionToDigest() {
   toastr.success(`已加入摘抄：${entry?.title || activeMessage.value.title}`);
 }
 
-function getReaderSelectionText() {
-  const selection = window.getSelection();
-  if (!selection || selection.rangeCount !== 1 || selection.isCollapsed) return '';
-  const content = document.querySelector('.pc-reader-detail-page .pc-reader-content');
-  const range = selection.getRangeAt(0);
-  const ancestor = range.commonAncestorContainer;
-  const ancestorElement = ancestor.nodeType === Node.ELEMENT_NODE ? (ancestor as Element) : ancestor.parentElement;
-  if (!content || !ancestorElement || !content.contains(ancestorElement)) return '';
-  return selection.toString();
-}
-
-function deleteSelectedReaderText() {
-  if (!activeMessage.value) return;
-  if (!phone.isViewingCurrentChat) {
-    toastr.warning('历史聊天只读，请先切回酒馆当前聊天再删除文字');
-    return;
-  }
-
-  const message = activeMessage.value;
-  const selectedText = getReaderSelectionText();
-  if (!selectedText.trim()) {
-    toastr.warning('请先在当前正文里选中要删除的文字');
-    return;
-  }
-
-  const occurrences = findReaderTextOccurrences(message.sourceBody, selectedText);
-  if (!occurrences.length) {
-    toastr.error('这是显示替换结果，无法安全写回原文');
-    return;
-  }
-  if (!message.bodySourceRange) {
-    toastr.error('当前正文规则没有提供可验证的正文捕获范围，无法安全写回原楼层');
-    return;
-  }
-  readerSelectedText.value = selectedText;
-  readerTextOccurrences.value = occurrences;
-  readerTextEditOpen.value = true;
-}
-
-async function saveReaderSentenceEdit(payload: { occurrence: ReaderTextOccurrence; replacement: string }) {
-  const message = activeMessage.value;
-  if (!message || !phone.isViewingCurrentChat) return;
-  const scopeKey = phone.viewingScopeKey;
-  const selectedText = readerSelectedText.value;
-  const occurrence = payload.occurrence;
-  if (message.sourceBody.slice(occurrence.offset, occurrence.offset + selectedText.length) !== selectedText) {
-    toastr.warning('正文在编辑期间已经变化，已停止写回');
-    readerTextEditOpen.value = false;
-    return;
-  }
-  const nextBody = `${message.sourceBody.slice(0, occurrence.sentenceStart)}${payload.replacement}${message.sourceBody.slice(
-    occurrence.sentenceEnd,
-  )}`;
-  const nextRawText = replaceReaderBodyInRaw(message.rawText, message.sourceBody, nextBody, message.bodySourceRange);
-  if (nextRawText === null) {
-    toastr.error('正文捕获范围已经变化，无法安全写回原楼层');
-    return;
-  }
-  if (!phone.isViewingCurrentChat || phone.viewingScopeKey !== scopeKey || activeMessage.value?.id !== message.id) {
-    toastr.warning('当前聊天或楼层已经变化，已取消写回');
-    return;
-  }
-
-  const messageId = message.id;
-  await setChatMessagesSafe([{ message_id: message.sourceMessageId, message: nextRawText }], {
-    refresh: 'affected',
-  });
-  await saveChatIfAvailable();
-  readerTextEditOpen.value = false;
-  window.getSelection()?.removeAllRanges();
-  await loadCurrentChat(true);
-  const updatedMessage = activeMessages.value.find(item => item.id === messageId);
-  if (updatedMessage) phone.replacePage('detail', updatedMessage.title, { messageId });
-  toastr.success('已精确更新原聊天楼层正文');
-}
-
 function toggleActiveMessageFavorite() {
   if (!activeMessage.value) return;
   const result = reader.toggleFavorite({
@@ -883,148 +820,8 @@ async function reloadActiveChat() {
   await loadCurrentChat(true);
 }
 
-async function loadCurrentChat(force = false) {
-  if (phone.isViewingCurrentChat) currentTavernPresetName.value = getCurrentTavernPresetName();
-  const scopeKeyAtStart = phone.viewingScopeKey;
-  const isViewingCurrentAtStart = phone.isViewingCurrentChat;
-  if (currentMessages.value.length && loadedScopeKey.value === scopeKeyAtStart && !force) return currentMessages.value;
-  const loadSerial = ++readerLoadSerial;
-  loadingDetail.value = true;
-  error.value = '';
-  try {
-    const sourceMessages = await loadViewingSourceMessages(scopeKeyAtStart, isViewingCurrentAtStart);
-    const transformed = await transformReaderMessages(
-      sourceMessages.map(item => ({
-        messageIndex: item.messageIndex,
-        rawText: item.rawText,
-      })),
-      activeTitleRule.value,
-      activeBodyRule.value,
-    );
-
-    const normalized = sourceMessages
-      .map((item, index) => {
-        const sourceBody = transformed[index]?.body || item.rawText;
-        const body = applyReaderCleanupRules(sourceBody);
-        return {
-          ...item,
-          bodySourceRange: resolveReaderBodySourceRange(
-            item.rawText,
-            sourceBody,
-            activeBodyRule.value,
-            readerRegexUsage.value.contentRuleId,
-          ),
-          title: normalizeTitle(transformed[index]?.title || '', item.messageIndex, item.isUser),
-          body,
-          sourceBody,
-        };
-      })
-      .filter(
-        item =>
-          (readerSettings.value.showHiddenAssistantMessages || !item.isHidden) &&
-          (!readerSettings.value.hideEmptyAfterCleanup || item.body.trim()),
-      );
-
-    if (loadSerial !== readerLoadSerial || phone.viewingScopeKey !== scopeKeyAtStart) return currentMessages.value;
-    currentMessages.value = normalized;
-    loadedScopeKey.value = scopeKeyAtStart;
-    if (route.value.page === 'detail') {
-      const currentMessageId = route.value.params?.messageId;
-      const exists = normalized.some(item => item.id === currentMessageId);
-      if (!exists && normalized[0]) {
-        phone.replacePage('detail', normalized[0].title, {
-          messageId: normalized[0].id,
-        });
-      }
-    }
-    return normalized;
-  } catch (caughtError) {
-    if (loadSerial === readerLoadSerial && phone.viewingScopeKey === scopeKeyAtStart) {
-      error.value = caughtError instanceof Error ? caughtError.message : '读取聊天失败';
-      loadedScopeKey.value = scopeKeyAtStart;
-    }
-    return [];
-  } finally {
-    if (loadSerial === readerLoadSerial) loadingDetail.value = false;
-  }
-}
-
-async function loadViewingSourceMessages(scopeKey: string, isViewingCurrent: boolean) {
-  const rawMessages = isViewingCurrent
-    ? getChatMessagesSafe('0-{{lastMessageId}}')
-    : await loadHistoryMessagesFromViewingScope(scopeKey);
-  return rawMessages
-    .map((item, index) => normalizeArchivedMessage(item, index, readerSettings.value))
-    .filter((item): item is NonNullable<ReturnType<typeof normalizeArchivedMessage>> => Boolean(item));
-}
-
-async function loadHistoryMessagesFromViewingScope(scopeKey: string) {
-  const scope = parseChatScopeKey(scopeKey);
-  if (!scope.chatId || scope.chatId === '__no_chat__') {
-    throw new Error('这个档案没有可读取的酒馆聊天文件');
-  }
-  if (scope.kind !== 'char') {
-    throw new Error('当前只支持读取角色卡聊天历史');
-  }
-
-  await getCharacters();
-  const characterId = resolveViewingCharacterId(scope.ownerId, phone.viewingScopeMeta.ownerName);
-  if (characterId < 0) {
-    throw new Error('无法在酒馆角色列表中找到这个角色卡');
-  }
-
-  const briefs = await getPastCharacterChats(characterId);
-  const normalizedBriefs = (briefs || [])
-    .map(normalizeBrief)
-    .filter((item): item is NonNullable<ReturnType<typeof normalizeBrief>> => Boolean(item));
-  const targetChatId = normalizeChatArchiveId(scope.chatId);
-  const brief = normalizedBriefs.find(item => isHistoryBriefMatch(item, targetChatId));
-  if (!brief) {
-    throw new Error('无法找到这个历史聊天文件');
-  }
-
-  const result = await getChatHistoryDetailSafe([brief.raw], false);
-  const detailArray =
-    result && typeof result === 'object'
-      ? (Object.entries(result).find(([key]) => normalizeChatArchiveId(key) === targetChatId)?.[1] ??
-        Object.values(result)[0])
-      : null;
-  if (!Array.isArray(detailArray)) return [];
-  return detailArray;
-}
-
-function isHistoryBriefMatch(brief: NonNullable<ReturnType<typeof normalizeBrief>>, targetChatId: string) {
-  const candidates = [brief.id, brief.fileName, brief.title]
-    .map(value => normalizeChatArchiveId(value))
-    .filter(Boolean);
-  return candidates.includes(targetChatId);
-}
-
-function resolveViewingCharacterId(ownerId: string, ownerName: string) {
-  const numericOwnerId = Number(ownerId);
-  if (
-    Number.isInteger(numericOwnerId) &&
-    numericOwnerId >= 0 &&
-    Array.isArray(characters) &&
-    characters[numericOwnerId]
-  ) {
-    return numericOwnerId;
-  }
-
-  if (!Array.isArray(characters)) return -1;
-  const ownerNameLower = ownerName.trim().toLowerCase();
-  const ownerIdLower = ownerId.trim().toLowerCase();
-  return characters.findIndex(character => {
-    if (!character || typeof character !== 'object') return false;
-    const record = character as Record<string, unknown>;
-    const name = typeof record.name === 'string' ? record.name.trim().toLowerCase() : '';
-    const avatar = typeof record.avatar === 'string' ? record.avatar.trim().toLowerCase() : '';
-    const avatarStem = avatar.replace(/\.[^/.]+$/, '');
-    return Boolean(
-      (ownerNameLower && name === ownerNameLower) ||
-      (ownerIdLower && (name === ownerIdLower || avatar === ownerIdLower || avatarStem === ownerIdLower)),
-    );
-  });
+function syncCurrentTavernPresetName() {
+  currentTavernPresetName.value = getCurrentTavernPresetName();
 }
 
 function normalizeTitle(title: string, messageIndex: number, isUser = false) {

@@ -177,7 +177,7 @@ export default definePhoneApp({
   generationProvider: () => [
     {
       actionId: 'generate',
-      label: '生成提示词',
+      label: '生成场景方案',
       createAdapter: () => createScenePlannerGenerationAdapter(useScenePlannerStore()),
     },
   ],

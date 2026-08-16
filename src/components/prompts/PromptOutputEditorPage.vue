@@ -3,7 +3,7 @@
     <div class="pc-prompts-editor pc-output-editor">
       <label class="pc-field-group">
         <span>{{ t`输出格式` }}</span>
-        <textarea v-model="draft.outputFormat" class="pc-area" />
+        <textarea v-model="draft.outputFormat" class="pc-area pc-area-long" />
       </label>
 
       <label class="pc-output-parser-toggle">
@@ -56,7 +56,7 @@
 
         <label class="pc-field-group">
           <span>{{ t`测试输出` }}</span>
-          <textarea v-model="draft.sample" class="pc-area compact" :placeholder="t`粘贴一段 AI 输出`" />
+          <textarea v-model="draft.sample" class="pc-area pc-area-preview" :placeholder="t`粘贴一段 AI 输出`" />
         </label>
         <button class="pc-soft-btn" type="button" @click="testParser">{{ t`测试解析` }}</button>
         <pre v-if="draft.testResult" class="pc-output-test-result">{{ draft.testResult }}</pre>

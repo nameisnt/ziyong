@@ -10,7 +10,7 @@
         ><span>顺序</span><input v-model.number="order" class="pc-field" type="number" min="1" :max="orderMax"
       /></label>
       <label class="pc-field-group pc-entry-content-field"
-        ><span>内容</span><textarea v-model="content" class="pc-area"></textarea>
+        ><span>内容</span><textarea v-model="content" class="pc-area pc-area-long"></textarea>
       </label>
       <div class="pc-form-actions">
         <button class="pc-soft-btn" type="button" @click="$emit('back')">取消</button
@@ -37,8 +37,5 @@ const groupOptions = computed(() => props.groups.map(group => ({ label: group.na
 .pc-entry-item-editor {
   display: grid;
   gap: 12px;
-}
-.pc-entry-content-field .pc-area {
-  min-height: 300px;
 }
 </style>

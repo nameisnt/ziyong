@@ -25,6 +25,7 @@
       type="button"
       :disabled="disabled"
       :title="toggleTitle"
+      :aria-label="toggleTitle"
       @click="toggleMenu"
     >
       <i class="fa-solid fa-chevron-down"></i>
@@ -334,9 +335,8 @@ defineExpose({ focusAndOpen });
 
 .pc-combobox-option span {
   min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  overflow-wrap: anywhere;
+  white-space: normal;
 }
 
 .pc-combobox-option.active,

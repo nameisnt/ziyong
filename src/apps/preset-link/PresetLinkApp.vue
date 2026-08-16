@@ -7,7 +7,14 @@
           <strong>{{ phone.viewingScopeMeta.chatTitle }}</strong>
           <small>{{ phone.viewingScopeMeta.ownerName }}</small>
         </div>
-        <button class="pc-icon-btn" type="button" :disabled="busy" :title="t`刷新预设状态`" @click="refresh">
+        <button
+          class="pc-icon-btn"
+          type="button"
+          :disabled="busy"
+          :title="t`刷新预设状态`"
+          :aria-label="t`刷新预设状态`"
+          @click="refresh"
+        >
           <i class="fa-solid fa-rotate"></i>
         </button>
       </div>

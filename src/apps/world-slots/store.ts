@@ -5,6 +5,7 @@ import {
   useChatScopedDomain,
 } from '@/store/chatScoped';
 import { getProfileKindLabel, profilesField, ProfilesScopeDataSchema, type ProfileEntry } from '@/apps/profiles/store';
+import type { PhoneAppResetContext } from '@/core/appRegistry';
 import { getOptionalGlobalFunction } from '@/util/runtime';
 import { validateInplace } from '@/util/zod';
 import { extension_settings } from '@sillytavern/scripts/extensions';
@@ -572,9 +573,51 @@ export const useWorldSlotsStore = defineStore('world-slots', () => {
     queueAutoSync();
   }
 
-  function resetCurrentScope() {
+  async function captureExternalResetSnapshot() {
+    const loadWorldInfo = getOptionalGlobalFunction<(name: string) => Promise<unknown | null>>('loadWorldInfo');
+    const getGlobalWorldbookNames = getOptionalGlobalFunction<() => string[]>('getGlobalWorldbookNames');
+    if (!loadWorldInfo || !getGlobalWorldbookNames) {
+      throw new Error('当前酒馆环境没有开放世界书重置快照 API');
+    }
+    const book = await loadWorldInfo(WORLD_SLOTS_BOOK_NAME);
+    if (!book || typeof book !== 'object') return null;
+    return {
+      book: klona(book),
+      globalNames: cleanList(getGlobalWorldbookNames()),
+    };
+  }
+
+  async function restoreExternalResetSnapshot(snapshot: { book: unknown; globalNames: string[] }) {
+    const saveWorldInfo =
+      getOptionalGlobalFunction<(name: string, data: unknown, immediately?: boolean) => Promise<void>>('saveWorldInfo');
+    const rebindGlobalWorldbooks =
+      getOptionalGlobalFunction<(worldbookNames: string[]) => Promise<void>>('rebindGlobalWorldbooks');
+    const updateWorldInfoList = getOptionalGlobalFunction<() => Promise<void>>('updateWorldInfoList');
+    const reloadWorldInfoEditor =
+      getOptionalGlobalFunction<(file: string, loadIfNotSelected?: boolean) => void>('reloadWorldInfoEditor');
+    if (!saveWorldInfo || !rebindGlobalWorldbooks) {
+      throw new Error('当前酒馆环境没有开放世界书重置恢复 API');
+    }
+    await saveWorldInfo(WORLD_SLOTS_BOOK_NAME, klona(snapshot.book), true);
+    await rebindGlobalWorldbooks(snapshot.globalNames);
+    await updateWorldInfoList?.();
+    reloadWorldInfoEditor?.(WORLD_SLOTS_BOOK_NAME, false);
+  }
+
+  async function resetCurrentScope(transaction?: PhoneAppResetContext) {
+    if (!transaction) {
+      resetScopedData();
+      queueAutoSync();
+      return;
+    }
+
+    const shouldSyncExternal = autoSyncStarted && isCurrentChatScope.value;
+    const externalSnapshot = shouldSyncExternal ? await captureExternalResetSnapshot() : null;
+    if (externalSnapshot) {
+      transaction.addRollback(() => restoreExternalResetSnapshot(externalSnapshot));
+    }
     resetScopedData();
-    queueAutoSync();
+    if (externalSnapshot) await syncToWorldBook();
   }
 
   function switchScope(nextScopeKey: string) {

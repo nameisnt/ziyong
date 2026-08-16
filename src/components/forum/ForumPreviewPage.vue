@@ -7,7 +7,7 @@
         raw-editable
         :reparse-handler="reparseHandler"
         :save-label="saveLabel"
-        :scan-enabled="false"
+        :scan-enabled="action === 'thread'"
         :source-label="boardName"
         :text-provider-summary="action === 'thread' ? author : `${replies.length} 条回复`"
         :title="title"
@@ -15,6 +15,7 @@
         @back="$emit('back')"
         @reparse="$emit('reparse')"
         @save="$emit('save')"
+        @update:content="$emit('apply-thread-content', $event)"
         @update:raw="raw = $event"
       >
         <template #content="{ renderedContent }">
@@ -24,13 +25,6 @@
             class="pc-detail-content pc-rendered-markdown"
             v-html="renderedContent"
           ></article>
-          <BaguScanPanel
-            v-if="action === 'thread'"
-            auto-scan
-            :content="threadContent"
-            @apply="$emit('apply-thread-content', $event)"
-          />
-
           <section class="pc-reply-section">
             <div class="pc-section-head">
               <strong>{{ action === 'thread' ? t`预览回复` : t`回复预览` }}</strong>
@@ -57,7 +51,6 @@
 </template>
 
 <script setup lang="ts">
-import BaguScanPanel from '@/components/BaguScanPanel.vue';
 import CapsuleTag from '@/components/CapsuleTag.vue';
 import EmptyState from '@/components/EmptyState.vue';
 import GenerationPreviewPanel from '@/components/GenerationPreviewPanel.vue';

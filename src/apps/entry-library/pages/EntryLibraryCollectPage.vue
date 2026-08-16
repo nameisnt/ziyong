@@ -29,9 +29,9 @@
         <span>收藏到分组</span>
         <SearchableCombobox v-model="groupId" :options="groupOptions" placeholder="选择或搜索分组" />
       </div>
-      <label class="pc-entry-library-search"
+      <label class="pc-search-field pc-entry-library-search"
         ><i class="fa-solid fa-magnifying-glass"></i
-        ><input v-model="query" class="pc-field" type="search" placeholder="搜索条目名称或内容"
+        ><input v-model="query" type="search" placeholder="搜索条目名称或内容"
       /></label>
       <div class="pc-entry-library-select-actions">
         <span>已选 {{ visibleSelectedCount }} / {{ entries.length }}</span>
@@ -156,21 +156,6 @@ function compact(content: string) {
 .pc-entry-library-collect-footer .pc-primary-btn {
   min-width: 126px;
   margin: 0;
-}
-.pc-entry-library-search {
-  position: relative;
-  display: block;
-}
-.pc-entry-library-search > i {
-  position: absolute;
-  z-index: 1;
-  top: 50%;
-  left: 14px;
-  color: var(--pc-muted);
-  transform: translateY(-50%);
-}
-.pc-entry-library-search .pc-field {
-  padding-left: 40px;
 }
 .pc-entry-library-select-actions {
   display: flex;

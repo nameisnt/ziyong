@@ -16,7 +16,13 @@
           <h2>{{ timekeeper.formatDate(settings.current) }}</h2>
           <p>{{ t`推进后` }}：{{ timekeeper.formatDate(nextDate) }}</p>
         </div>
-        <button class="pc-icon-btn" type="button" :title="t`写入输入框`" @click="writeToInput">
+        <button
+          class="pc-icon-btn"
+          type="button"
+          :aria-label="t`写入输入框`"
+          :title="t`写入输入框`"
+          @click="writeToInput"
+        >
           <i class="fa-solid fa-keyboard"></i>
         </button>
       </article>
@@ -42,6 +48,7 @@
               v-if="settings.calendar.kind !== 'gregorian'"
               class="pc-icon-btn"
               type="button"
+              :aria-label="t`保存为全局历法`"
               :title="t`保存为全局历法`"
               @click="saveCalendarTemplate"
             >
@@ -51,6 +58,7 @@
               v-if="isCurrentGlobalTemplate"
               class="pc-icon-btn danger"
               type="button"
+              :aria-label="t`删除全局历法模板`"
               :title="t`删除全局历法模板`"
               @click="deleteCurrentCalendarTemplate"
             >
@@ -150,7 +158,13 @@
           <strong>{{ t`人物` }}</strong>
           <span class="pc-head-actions">
             <InfoHint :text="peopleHelpText" />
-            <button class="pc-icon-btn primary" type="button" :title="t`新增人物`" @click="createPerson">
+            <button
+              class="pc-icon-btn primary"
+              type="button"
+              :aria-label="t`新增人物`"
+              :title="t`新增人物`"
+              @click="createPerson"
+            >
               <i class="fa-solid fa-plus"></i>
             </button>
           </span>
@@ -221,7 +235,13 @@
             <div class="pc-person-foot">
               <span>{{ t`当前` }} {{ timekeeper.formatAge(timekeeper.getAgeAt(person, settings.current)) }}</span>
               <span>{{ t`推进后` }} {{ timekeeper.formatAge(timekeeper.getAgeAt(person, nextDate)) }}</span>
-              <button class="pc-icon-btn danger" type="button" :title="t`删除`" @click="deletePerson(person.id)">
+              <button
+                class="pc-icon-btn danger"
+                type="button"
+                :aria-label="t`删除`"
+                :title="t`删除`"
+                @click="deletePerson(person.id)"
+              >
                 <i class="fa-solid fa-trash"></i>
               </button>
             </div>

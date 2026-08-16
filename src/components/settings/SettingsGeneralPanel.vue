@@ -21,7 +21,7 @@
         <button
           class="pc-soft-btn compact"
           type="button"
-          title="导出手机配置与内容（不含密钥和本地资源）"
+          title="导出手机配置、内容与插件预设（不含密钥和字体/壁纸文件）"
           @click="downloadBackup"
         >
           导出全部
@@ -444,9 +444,13 @@ async function deleteSelectedWallpaper() {
     toastr.error(error instanceof Error ? error.message : '壁纸删除失败');
   }
 }
-function downloadBackup() {
-  downloadPhoneBackup();
-  toastr.success('已开始导出全部备份');
+async function downloadBackup() {
+  try {
+    await downloadPhoneBackup();
+    toastr.success('已开始导出全部备份');
+  } catch (error) {
+    toastr.error(error instanceof Error ? error.message : '完整备份导出失败');
+  }
 }
 function downloadCurrentBackup() {
   downloadCurrentChatPhoneBackup();

@@ -1,6 +1,5 @@
 import type { ExtraChapterGenerationRecord } from '@/type/extra';
 import type { ExtraChapterGenerationIntent, ExtraChapterGenerationMode } from '@/core/extrasGeneration';
-import { stopGenerationByIdSafe } from '@/util/runtime';
 
 export function useExtrasGenerationState() {
   const chapterGenerationDraft = reactive({
@@ -20,8 +19,6 @@ export function useExtrasGenerationState() {
     userRequirement: '',
   });
   const chapterGenerationState = reactive({
-    error: '',
-    generationId: '',
     preview: null as null | {
       bookId: string;
       chapterId: string;
@@ -35,8 +32,6 @@ export function useExtrasGenerationState() {
       title: string;
       warnings: string[];
     },
-    rawOutput: '',
-    running: false,
   });
   const summaryGenerationDraft = reactive({
     coveredChapterIds: [] as string[],
@@ -48,8 +43,6 @@ export function useExtrasGenerationState() {
     userRequirement: '',
   });
   const summaryGenerationState = reactive({
-    error: '',
-    generationId: '',
     preview: null as null | {
       bookId: string;
       content: string;
@@ -59,17 +52,6 @@ export function useExtrasGenerationState() {
       raw: string;
       warnings: string[];
     },
-    rawOutput: '',
-    running: false,
-  });
-
-  onScopeDispose(() => {
-    if (chapterGenerationState.running && chapterGenerationState.generationId) {
-      stopGenerationByIdSafe(chapterGenerationState.generationId);
-    }
-    if (summaryGenerationState.running && summaryGenerationState.generationId) {
-      stopGenerationByIdSafe(summaryGenerationState.generationId);
-    }
   });
 
   return {

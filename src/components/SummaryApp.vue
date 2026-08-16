@@ -112,9 +112,9 @@
       v-model:user-requirement="generationDraft.userRequirement"
       :capture="captureSummaryPrompt"
       :capture-reset-key="summaryPromptPreview"
-      :error="generationState.error"
-      :raw-output="generationState.rawOutput"
-      :running="generationState.running"
+      :error="generationError"
+      :raw-output="generationRawOutput"
+      :running="generationRunning"
       @cancel="phone.goBack()"
       @generate="runGeneration"
       @stop="stopGeneration"
@@ -207,6 +207,7 @@ import { useSummaryStore } from '@/store/summary';
 import type { FailedGenerationDraft } from '@/type/generation';
 import { canOpenBaguScan } from '@/util/baguScanGate';
 import { useDetailScroll } from '@/util/detailScroll';
+import { parseSimpleXmlResult } from '@/util/generation';
 import { formatGenerationReferences, type GenerationReferenceItem } from '@/util/references';
 import { usePreviewDraftPersistence } from '@/util/previewDrafts';
 import { useInvalidRouteFallback } from '@/util/routeFallback';
@@ -245,8 +246,6 @@ const generationDraft = reactive({
   userRequirement: '',
 });
 const generationState = reactive({
-  error: '',
-  generationId: '',
   preview: null as null | {
     bookId: string;
     content: string;
@@ -259,8 +258,6 @@ const generationState = reactive({
     title: string;
     warnings: string[];
   },
-  rawOutput: '',
-  running: false,
 });
 const failedDraftRawOutput = ref('');
 const failedDraftTargetBookId = ref('');
@@ -374,7 +371,13 @@ const {
   getRouteBookId: () => route.value.params?.bookId || '',
 });
 
-const { runGeneration, stopGeneration } = useSummaryGenerationActions({
+const {
+  error: generationError,
+  rawOutput: generationRawOutput,
+  runGeneration,
+  running: generationRunning,
+  stopGeneration,
+} = useSummaryGenerationActions({
   buildOutputFormat: buildSummaryOutputFormat,
   clearPreviewDraft: clearSummaryPreviewDraft,
   draft: generationDraft,
@@ -485,8 +488,6 @@ watch(
       generationDraft.rangeText = '';
       generationDraft.singleMessageId = 0;
       generationDraft.userRequirement = '';
-      generationState.error = '';
-      generationState.rawOutput = '';
       generationState.preview = null;
     }
 

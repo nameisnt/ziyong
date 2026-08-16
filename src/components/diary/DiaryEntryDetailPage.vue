@@ -9,6 +9,7 @@
       :next-disabled="!nextId"
       :previous-disabled="!previousId"
       :reasoning="entry.generationRecord?.reasoning"
+      :source-label="entry.generationRecord?.replay.source.label"
       :title="entry.kind === 'read-reaction' ? `📖 ${entry.title}` : entry.title"
       @bagu="emit('bagu')"
       @bottom="emit('bottom')"

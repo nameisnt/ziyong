@@ -231,28 +231,20 @@ import {
 } from './model';
 import EmptyState from '@/components/EmptyState.vue';
 import { getCurrentChatScopeKey } from '@/store/chatScoped';
+import {
+  useMvuModifierPersistenceStore,
+  type MvuChangeRecord,
+} from '@/store/mvuModifier';
 import { usePhoneStore } from '@/store/phone';
 import { onTavernEvent } from '@/util/runtime';
+import { storeToRefs } from 'pinia';
 
-type FavoriteRecord = {
-  label: string;
-  path: MvuPath;
-};
-
-type ChangeRecord = {
-  id: string;
-  newValue: unknown;
-  oldValue: unknown;
-  path: string;
-  timestamp: number;
-};
-
-const FAVORITES_STORAGE_KEY = 'sillytavern_phone_mvu_favorites';
-const HISTORY_STORAGE_KEY = 'sillytavern_phone_mvu_history';
 const HISTORY_LIMIT = 30;
 const CHANGE_RECORD_LIMIT = 100;
 
 const phone = usePhoneStore();
+const mvuPersistence = useMvuModifierPersistenceStore();
+const { favoriteStorage, historyStorage } = storeToRefs(mvuPersistence);
 const scopeOptions: Array<{ label: string; value: MvuScope }> = [
   { label: '消息', value: 'message' },
   { label: '聊天', value: 'chat' },
@@ -275,8 +267,6 @@ const showSourceSettings = ref(false);
 const showHistory = ref(false);
 const favoritesExpanded = ref(true);
 const contextVersion = ref(0);
-const favoriteStorage = ref<Record<string, FavoriteRecord[]>>(readStorage(FAVORITES_STORAGE_KEY, {}));
-const historyStorage = ref<Record<string, ChangeRecord[]>>(readStorage(HISTORY_STORAGE_KEY, {}));
 let stopChatChanged: { stop: () => void } | null = null;
 
 const currentOptions = computed<MvuOptions>(() => {
@@ -311,23 +301,6 @@ const favoriteEntries = computed(() =>
   currentFavorites.value.map(item => ({ ...item, value: getMvuPathValue(statData.value, item.path) })),
 );
 const currentHistory = computed(() => historyStorage.value[activeChatKey.value] ?? []);
-
-function readStorage<T>(key: string, fallback: T): T {
-  try {
-    const value = localStorage.getItem(key);
-    return value ? (JSON.parse(value) as T) : fallback;
-  } catch {
-    return fallback;
-  }
-}
-
-function saveStorage(key: string, value: unknown) {
-  try {
-    localStorage.setItem(key, JSON.stringify(value));
-  } catch {
-    toastr.warning('MVU 本地配置保存失败');
-  }
-}
 
 function sameData(left: unknown, right: unknown) {
   return JSON.stringify(left) === JSON.stringify(right);
@@ -397,7 +370,7 @@ function pushUndo(snapshot: MvuStatData) {
 function recordChange(path: MvuPath, oldValue: unknown, newValue: unknown) {
   const key = activeChatKey.value;
   const records = historyStorage.value[key] ?? [];
-  const nextRecord: ChangeRecord = {
+  const nextRecord: MvuChangeRecord = {
     id: `mvu_change_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`,
     newValue,
     oldValue,
@@ -408,7 +381,6 @@ function recordChange(path: MvuPath, oldValue: unknown, newValue: unknown) {
     ...historyStorage.value,
     [key]: [nextRecord, ...records].slice(0, CHANGE_RECORD_LIMIT),
   };
-  saveStorage(HISTORY_STORAGE_KEY, historyStorage.value);
 }
 
 async function updateValue(mutation: MvuTreeMutation) {
@@ -534,7 +506,6 @@ function toggleFavorite(path: MvuPath) {
     ? records.filter(item => mvuPathKey(item.path) !== key)
     : [...records, { label: formatMvuPath(path), path: [...path] }];
   favoriteStorage.value = { ...favoriteStorage.value, [characterKey]: nextRecords };
-  saveStorage(FAVORITES_STORAGE_KEY, favoriteStorage.value);
 }
 
 function focusFavorite(path: MvuPath) {
@@ -548,10 +519,15 @@ function focusFavorite(path: MvuPath) {
   });
 }
 
-function clearHistory() {
+async function clearHistory() {
+  const confirmed = await phone.confirmNotice('要清空当前聊天的全部 MVU 修改记录吗？此操作不可撤销。', {
+    confirmLabel: '清空',
+    kind: 'warning',
+    title: '清空修改记录？',
+  });
+  if (!confirmed) return;
   const key = activeChatKey.value;
   historyStorage.value = { ...historyStorage.value, [key]: [] };
-  saveStorage(HISTORY_STORAGE_KEY, historyStorage.value);
 }
 
 function formatRecordTime(timestamp: number) {

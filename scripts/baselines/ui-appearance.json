@@ -1,7 +1,7 @@
 {
   "version": 2,
   "defect": "D-VISUAL-001",
-  "generatedAt": "2026-08-13T12:38:22.997Z",
+  "generatedAt": "2026-08-14T09:53:15.255Z",
   "scenarios": [
     "home",
     "home-tasks-dark",
@@ -43,7 +43,7 @@
     },
     {
       "appearance": {
-        "screenshotPerceptualHash": "0D7F3F7355555555",
+        "screenshotPerceptualHash": "0D7F733F73735555",
         "targets": [
           {
             "missing": false,
@@ -70,7 +70,7 @@
     },
     {
       "appearance": {
-        "screenshotPerceptualHash": "4C38C08177792102",
+        "screenshotPerceptualHash": "4C70C02277792100",
         "targets": [
           {
             "missing": false,
@@ -95,7 +95,7 @@
     },
     {
       "appearance": {
-        "screenshotPerceptualHash": "E03CE09377072100",
+        "screenshotPerceptualHash": "E078E80377072100",
         "targets": [
           {
             "missing": false,
@@ -166,7 +166,7 @@
     },
     {
       "appearance": {
-        "screenshotPerceptualHash": "0D3F7B6355555555",
+        "screenshotPerceptualHash": "0D3F73735BD55555",
         "targets": [
           {
             "missing": false,
@@ -193,7 +193,7 @@
     },
     {
       "appearance": {
-        "screenshotPerceptualHash": "7B30372171230080",
+        "screenshotPerceptualHash": "6BA0366139230080",
         "targets": [
           {
             "missing": false,
@@ -218,7 +218,7 @@
     },
     {
       "appearance": {
-        "screenshotPerceptualHash": "F3B037330F2300C0",
+        "screenshotPerceptualHash": "F3E03637072300C0",
         "targets": [
           {
             "missing": false,
@@ -289,7 +289,7 @@
     },
     {
       "appearance": {
-        "screenshotPerceptualHash": "4C7D7BC9D4D45455",
+        "screenshotPerceptualHash": "4C7D777BD5D4D4DC",
         "targets": [
           {
             "missing": false,
@@ -316,7 +316,7 @@
     },
     {
       "appearance": {
-        "screenshotPerceptualHash": "D878276921000040",
+        "screenshotPerceptualHash": "E8E42E6931000040",
         "targets": [
           {
             "missing": false,
@@ -341,7 +341,7 @@
     },
     {
       "appearance": {
-        "screenshotPerceptualHash": "F0F4276B23000040",
+        "screenshotPerceptualHash": "E0C02E6B23000040",
         "targets": [
           {
             "missing": false,

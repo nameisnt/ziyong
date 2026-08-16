@@ -37,6 +37,7 @@
         type="button"
         :disabled="!groupName.trim()"
         title="新建分组"
+        aria-label="新建分组"
         @click="$emit('create-group')"
       >
         <i class="fa-solid fa-plus"></i>
@@ -74,6 +75,7 @@
               class="pc-icon-btn danger"
               type="button"
               title="删除分组"
+              aria-label="删除分组"
               @click="$emit('delete-group', section.group.id)"
             >
               <i class="fa-solid fa-trash"></i>
@@ -108,6 +110,7 @@
               type="button"
               :disabled="Boolean(query.trim())"
               :title="query.trim() ? '清除搜索后排序' : '拖拽排序'"
+              :aria-label="query.trim() ? '清除搜索后排序' : '拖拽排序'"
               @click.prevent
             >
               <i class="fa-solid fa-grip-lines"></i>
@@ -125,7 +128,13 @@
                   aria-hidden="true"
                 ></span
               ></label>
-              <button class="pc-icon-btn danger" type="button" title="删除" @click="$emit('delete-item', item.id)">
+              <button
+                class="pc-icon-btn danger"
+                type="button"
+                title="删除"
+                aria-label="删除"
+                @click="$emit('delete-item', item.id)"
+              >
                 <i class="fa-solid fa-xmark"></i>
               </button>
             </div>

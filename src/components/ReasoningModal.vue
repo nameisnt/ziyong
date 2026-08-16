@@ -1,12 +1,19 @@
 <template>
-  <div v-if="open" class="pc-reasoning-mask" @click.self="emit('close')">
-    <section class="pc-reasoning-card" role="dialog" aria-modal="true" aria-label="已保存的思维链">
+  <div v-if="open" class="pc-modal-backdrop pc-reasoning-mask" @click.self="emit('close')">
+    <section
+      ref="dialogRef"
+      class="pc-modal-dialog pc-reasoning-card"
+      role="dialog"
+      aria-modal="true"
+      aria-label="已保存的思维链"
+      tabindex="-1"
+    >
       <header class="pc-reasoning-head">
         <div>
           <strong>已保存的思维链</strong>
           <span>清洗时从正文前方移除的原始内容</span>
         </div>
-        <button class="pc-icon-btn" type="button" title="关闭" @click="emit('close')">
+        <button class="pc-icon-btn" type="button" aria-label="关闭" title="关闭" @click="emit('close')">
           <i class="fa-solid fa-xmark"></i>
         </button>
       </header>
@@ -21,6 +28,8 @@
 </template>
 
 <script setup lang="ts">
+import { usePhoneModalLifecycle } from '@/composables/usePhoneModalLifecycle';
+
 const props = defineProps<{
   content: string;
   open: boolean;
@@ -29,6 +38,14 @@ const props = defineProps<{
 const emit = defineEmits<{
   close: [];
 }>();
+
+const dialogRef = ref<HTMLElement | null>(null);
+
+usePhoneModalLifecycle({
+  dialogRef,
+  isOpen: () => props.open,
+  onClose: () => emit('close'),
+});
 
 async function copyContent() {
   try {
@@ -42,13 +59,7 @@ async function copyContent() {
 
 <style scoped>
 .pc-reasoning-mask {
-  position: absolute;
-  inset: 0;
-  z-index: 65;
-  display: grid;
-  place-items: center;
-  padding: 18px;
-  background: color-mix(in srgb, var(--pc-text) 24%, transparent);
+  --pc-modal-z: 65;
 }
 
 .pc-reasoning-card {
@@ -60,10 +71,7 @@ async function copyContent() {
   gap: 10px;
   overflow: hidden;
   padding: 14px;
-  border: 1px solid var(--pc-border);
   border-radius: min(var(--pc-card-radius), 10px);
-  background: var(--pc-bg);
-  box-shadow: 0 18px 44px color-mix(in srgb, var(--pc-text) 20%, transparent);
 }
 
 .pc-reasoning-head {

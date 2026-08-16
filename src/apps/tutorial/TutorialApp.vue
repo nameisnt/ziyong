@@ -1,23 +1,24 @@
 <template>
   <section class="pc-tutorial-app">
     <section v-if="route.page === 'root'" class="pc-tutorial-page">
-      <label class="pc-tutorial-search">
+      <label class="pc-search-field pc-tutorial-search">
         <i class="fa-solid fa-magnifying-glass"></i>
-        <input v-model="searchQuery" class="pc-field" type="search" placeholder="搜索功能、操作或问题" />
+        <input v-model="searchQuery" type="search" placeholder="搜索功能、操作或问题" />
       </label>
 
-      <nav class="pc-tutorial-categories" aria-label="教程分类">
+      <div class="pc-tutorial-categories" role="group" aria-label="教程分类">
         <button
           v-for="category in tutorialCategories"
           :key="category.id"
-          class="pc-segment-btn"
+          class="pc-soft-btn compact pc-tutorial-category"
           :class="{ active: activeCategory === category.id }"
+          :aria-pressed="activeCategory === category.id"
           type="button"
           @click="activeCategory = category.id"
         >
           {{ category.label }}
         </button>
-      </nav>
+      </div>
 
       <div v-if="visibleArticleResults.length" class="pc-tutorial-list">
         <button
@@ -81,7 +82,7 @@
           <section v-else-if="block.type === 'code'" class="pc-tutorial-code">
             <header>
               <span>{{ block.label || '示例' }}</span>
-              <button class="pc-icon-btn" type="button" title="复制" @click="copyCode(block.code)">
+              <button class="pc-icon-btn" type="button" title="复制" aria-label="复制" @click="copyCode(block.code)">
                 <i class="fa-regular fa-copy"></i>
               </button>
             </header>
@@ -205,24 +206,6 @@ async function copyCode(code: string) {
   justify-content: center;
 }
 
-.pc-tutorial-search {
-  position: relative;
-  display: block;
-}
-
-.pc-tutorial-search > i {
-  position: absolute;
-  z-index: 1;
-  top: 50%;
-  left: 14px;
-  color: var(--pc-muted);
-  transform: translateY(-50%);
-}
-
-.pc-tutorial-search .pc-field {
-  padding-left: 40px;
-}
-
 .pc-tutorial-categories {
   display: grid;
   flex: 0 0 auto;
@@ -230,12 +213,8 @@ async function copyCode(code: string) {
   gap: 6px;
 }
 
-.pc-tutorial-categories .pc-segment-btn {
+.pc-tutorial-category {
   width: 100%;
-  min-height: 34px;
-  min-inline-size: auto;
-  padding-inline: 8px;
-  background: var(--pc-soft-button-bg);
 }
 
 .pc-tutorial-list {

@@ -20,6 +20,7 @@ export function createDigestGenerationAdapter(digestStore: ReturnType<typeof use
       return {
         appPrompt: config.appPrompt,
         outputFormat: config.outputFormat,
+        taskInstruction: '请从本次选中的来源内容中提取值得保存的原文摘抄，不得改写。',
         userRequirement: config.userRequirement,
       };
     },

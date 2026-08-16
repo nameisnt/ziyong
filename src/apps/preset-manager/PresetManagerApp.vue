@@ -98,7 +98,6 @@ import {
   listTavernPresets,
   loadTavernPreset,
   readTavernPreset,
-  renameTavernPreset,
   reorderTavernPresetPrompts,
   updateTavernPresetPrompt,
   type TavernPreset,
@@ -269,7 +268,11 @@ async function loadDetail() {
 }
 
 function openPreset(presetName: string) {
-  phone.pushRoute('preset-manager', 'detail', '预设条目', { presetName });
+  phone.pushRoute('preset-manager', 'detail', '预设条目', {
+    presetId: '',
+    presetName,
+    presetSource: 'tavern',
+  });
 }
 
 function openPluginPreset(presetId: string) {
@@ -345,10 +348,12 @@ async function switchPreset(presetName: string) {
 async function renamePreset() {
   const oldName = detailPresetName.value;
   if (!oldName || mutationBusy.value) return;
+  if (!isPluginDetail.value) {
+    toastr.error('当前酒馆没有不切换预设、不导入正则的安全改名接口；插件已阻止本次操作');
+    return;
+  }
   const requested = await phone.promptNotice(
-    isPluginDetail.value
-      ? '输入新的插件预设名称。它只影响插件内显示和选择，不会出现在酒馆预设菜单。'
-      : '输入新的预设名称。改名后，聊天预设绑定、阅读规则绑定和收藏条目绑定会一起迁移。',
+    '输入新的插件预设名称。它只影响插件内显示和选择，不会出现在酒馆预设菜单。',
     {
       confirmLabel: '继续',
       initialValue: oldName,
@@ -360,22 +365,12 @@ async function renamePreset() {
   if (!(await phone.confirmNotice(`确认把预设“${oldName}”改名为“${newName}”吗？`, { confirmLabel: '改名' }))) return;
   saving.value = true;
   try {
-    if (isPluginDetail.value) {
-      const savedName = await pluginPresets.renamePreset(detailPluginPresetId.value, newName);
-      phone.replaceRoute('preset-manager', 'detail', '插件预设条目', {
-        presetId: detailPluginPresetId.value,
-        presetSource: 'plugin',
-      });
-      toastr.success(`插件预设已改名为“${savedName}”`);
-      return;
-    }
-    const result = await renameTavernPreset(oldName, newName);
-    const migrated =
-      presetLinks.migratePresetReferences(oldName, newName) + entryLibrary.migratePresetReferences(oldName, newName);
-    if (result.current) loadedPresetName.value = newName;
-    await refreshRoot();
-    phone.replaceRoute('preset-manager', 'detail', '预设条目', { presetName: newName });
-    toastr.success(`预设已改名，并迁移 ${migrated} 处手机引用`);
+    const savedName = await pluginPresets.renamePreset(detailPluginPresetId.value, newName);
+    phone.replaceRoute('preset-manager', 'detail', '插件预设条目', {
+      presetId: detailPluginPresetId.value,
+      presetSource: 'plugin',
+    });
+    toastr.success(`插件预设已改名为“${savedName}”`);
   } catch (error) {
     toastr.error(error instanceof Error ? error.message : String(error));
   } finally {

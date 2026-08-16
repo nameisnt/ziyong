@@ -21,6 +21,33 @@ const defaultSizes = [
   { height: 844, label: 'phone-tall', width: 390 },
   { height: 900, label: 'wide-tall', width: 430 },
 ];
+const businessFailedDraftReparseScenarios = Object.freeze({
+  'diary-failed-draft-reparse': {
+    content: '修复 XML 后保留的日记正文。',
+    raw: '<result><title>重新解析成功</title><content>修复 XML 后保留的日记正文。</content></result>',
+    title: '重新解析成功',
+  },
+  'digest-failed-draft-reparse': {
+    content: '修复 XML 后保留的摘抄正文。',
+    raw: '<result><title>重新解析成功</title><content>修复 XML 后保留的摘抄正文。</content></result>',
+    title: '重新解析成功',
+  },
+  'forum-failed-draft-reparse': {
+    content: '修复 XML 后保留的论坛正文。',
+    raw: '<result><board>视觉板块</board><title>重新解析成功</title><author>视觉楼主</author><content>修复 XML 后保留的论坛正文。</content></result>',
+    title: '重新解析成功',
+  },
+  'letters-failed-draft-reparse': {
+    content: '修复 XML 后保留的书信正文。',
+    raw: '<result><title>重新解析成功</title><content>修复 XML 后保留的书信正文。</content></result>',
+    title: '重新解析成功',
+  },
+  'storylines-failed-draft-reparse': {
+    content: '修复后保留的剧情线概述。',
+    raw: '<result><line><title>重新解析成功</title><kind>main</kind><status>active</status><summary>修复后保留的剧情线概述。</summary></line></result>',
+    title: '重新解析成功',
+  },
+});
 let stopActiveCheck = null;
 
 for (const signal of ['SIGINT', 'SIGTERM']) {
@@ -455,8 +482,14 @@ async function runDomChecks(page) {
       findings.push({ severity: 'fail', message: '.pc-screen 出现横向滚动' });
     }
 
+    const activeDialogs = Array.from(shell.querySelectorAll('[role="dialog"]')).filter(
+      element => element.getClientRects().length && getComputedStyle(element).visibility !== 'hidden',
+    );
+    const activeDialog = activeDialogs.at(-1) ?? null;
+    const isInActiveLayer = element => !activeDialog || element === activeDialog || activeDialog.contains(element);
     const controls = Array.from(shell.querySelectorAll('button,input,select,textarea')).filter(element => {
       return (
+        isInActiveLayer(element) &&
         !element.hidden &&
         getComputedStyle(element).display !== 'none' &&
         getComputedStyle(element).visibility !== 'hidden' &&
@@ -505,6 +538,7 @@ async function runDomChecks(page) {
 
     const overflowing = Array.from(shell.querySelectorAll('*'))
       .filter(element => {
+        if (!isInActiveLayer(element)) return false;
         const rect = element.getBoundingClientRect();
         return (
           rect.width > 8 &&
@@ -524,6 +558,7 @@ async function runDomChecks(page) {
 
     const textOverflow = Array.from(shell.querySelectorAll('button,strong,p,span,small,label'))
       .filter(element => {
+        if (!isInActiveLayer(element)) return false;
         if (element.matches('button') && element.children.length > 0) return false;
         if (element.scrollWidth <= element.clientWidth + 3 || element.clientWidth <= 0) return false;
         const style = getComputedStyle(element);
@@ -555,10 +590,235 @@ async function runInteractionChecks(page, scenario) {
     }
 
     if (scenario === 'prompts-task-detail') {
+      const dialog = page.locator('.pc-prompt-detail-dialog');
+      const backdrop = page.locator('.pc-prompt-detail-backdrop');
+      const screen = page.locator('.pc-screen');
+      const trigger = page.locator('[data-task-template-app-id="diary"]');
+      if ((await screen.evaluate(element => element.style.overflow)) !== 'hidden') {
+        findings.push({ severity: 'fail', message: '提示词详情打开后没有锁定背景滚动' });
+      }
       await page.locator('.pc-prompt-detail-head > .pc-icon-btn').click();
-      if ((await page.locator('.pc-prompt-detail-backdrop').count()) > 0) {
+      if ((await backdrop.count()) > 0) {
         findings.push({ severity: 'fail', message: '右侧提示词详情关闭按钮点击后弹窗仍然存在' });
       }
+      if ((await screen.evaluate(element => element.style.overflow)) === 'hidden') {
+        findings.push({ severity: 'fail', message: '提示词详情关闭后没有恢复背景滚动' });
+      }
+
+      await trigger.click();
+      await dialog.waitFor({ state: 'visible' });
+      if (!(await dialog.evaluate(element => element === document.activeElement))) {
+        findings.push({ severity: 'fail', message: '提示词详情重新打开后没有获得初始焦点' });
+      }
+      await page.keyboard.press('Escape');
+      if ((await backdrop.count()) > 0) findings.push({ severity: 'fail', message: 'Escape 没有关闭提示词详情' });
+
+      await trigger.click();
+      await page.evaluate(() => window.dispatchEvent(new Event('phone-before-back', { cancelable: true })));
+      if ((await backdrop.count()) > 0) findings.push({ severity: 'fail', message: '手机返回没有关闭提示词详情' });
+
+      await trigger.click();
+      await backdrop.click({ position: { x: 2, y: 2 } });
+      if ((await backdrop.count()) > 0) findings.push({ severity: 'fail', message: '点击遮罩没有关闭提示词详情' });
+    }
+
+    if (scenario === 'diary-creation-mode') {
+      const dialog = page.locator('.pc-creation-modal');
+      const mask = page.locator('.pc-creation-modal-mask');
+      const screen = page.locator('.pc-screen');
+      const trigger = page.locator('.pc-diary-catalog-page .pc-book-item').last();
+      if ((await screen.evaluate(element => element.style.overflow)) !== 'hidden') {
+        findings.push({ severity: 'fail', message: '创建方式弹窗打开后没有锁定背景滚动' });
+      }
+      await mask.click({ position: { x: 10, y: 100 } });
+      if ((await mask.count()) > 0) findings.push({ severity: 'fail', message: '点击遮罩没有关闭创建方式弹窗' });
+
+      await trigger.click();
+      await dialog.waitFor({ state: 'visible' });
+      if (!(await dialog.evaluate(element => element === document.activeElement))) {
+        findings.push({ severity: 'fail', message: '创建方式弹窗重新打开后没有获得初始焦点' });
+      }
+      await page.keyboard.press('Escape');
+      if ((await mask.count()) > 0) findings.push({ severity: 'fail', message: 'Escape 没有关闭创建方式弹窗' });
+
+      await trigger.click();
+      await page.evaluate(() => window.dispatchEvent(new Event('phone-before-back', { cancelable: true })));
+      if ((await mask.count()) > 0) findings.push({ severity: 'fail', message: '手机返回没有关闭创建方式弹窗' });
+      if ((await screen.evaluate(element => element.style.overflow)) === 'hidden') {
+        findings.push({ severity: 'fail', message: '创建方式弹窗关闭后没有恢复背景滚动' });
+      }
+    }
+
+    if (scenario === 'card-writer-reasoning-modal') {
+      const dialog = page.locator('.pc-reasoning-card');
+      const mask = page.locator('.pc-reasoning-mask');
+      const screen = page.locator('.pc-screen');
+      const trigger = page.locator('.pc-card-writer-reasoning');
+      if ((await screen.evaluate(element => element.style.overflow)) !== 'hidden') {
+        findings.push({ severity: 'fail', message: '思维链弹窗打开后没有锁定背景滚动' });
+      }
+      await page.locator('.pc-reasoning-head .pc-icon-btn').click();
+      if ((await mask.count()) > 0) findings.push({ severity: 'fail', message: '思维链关闭按钮没有关闭弹窗' });
+
+      await trigger.click();
+      await dialog.waitFor({ state: 'visible' });
+      if (!(await dialog.evaluate(element => element === document.activeElement))) {
+        findings.push({ severity: 'fail', message: '思维链弹窗重新打开后没有获得初始焦点' });
+      }
+      await page.keyboard.press('Escape');
+      if ((await mask.count()) > 0) findings.push({ severity: 'fail', message: 'Escape 没有关闭思维链弹窗' });
+
+      await trigger.click();
+      await page.evaluate(() => window.dispatchEvent(new Event('phone-before-back', { cancelable: true })));
+      if ((await mask.count()) > 0) findings.push({ severity: 'fail', message: '手机返回没有关闭思维链弹窗' });
+
+      await trigger.click();
+      await mask.click({ position: { x: 2, y: 2 } });
+      if ((await mask.count()) > 0) findings.push({ severity: 'fail', message: '点击遮罩没有关闭思维链弹窗' });
+      if ((await screen.evaluate(element => element.style.overflow)) === 'hidden') {
+        findings.push({ severity: 'fail', message: '思维链弹窗关闭后没有恢复背景滚动' });
+      }
+    }
+
+    if (scenario === 'bagu-hit-details') {
+      const dialog = page.locator('.pc-bagu-hit-modal');
+      const mask = page.locator('.pc-bagu-hit-modal-mask');
+      const screen = page.locator('.pc-screen');
+      const trigger = page.locator('.pc-bagu-hit-detail-trigger').first();
+      if ((await screen.evaluate(element => element.style.overflow)) !== 'hidden') {
+        findings.push({ severity: 'fail', message: '八股命中详情打开后没有锁定背景滚动' });
+      }
+      await page.locator('.pc-bagu-hit-modal-head .pc-icon-btn').click();
+      if ((await mask.count()) > 0) findings.push({ severity: 'fail', message: '八股命中详情关闭按钮没有关闭弹窗' });
+
+      await trigger.click();
+      await dialog.waitFor({ state: 'visible' });
+      if (!(await dialog.evaluate(element => element === document.activeElement))) {
+        findings.push({ severity: 'fail', message: '八股命中详情重新打开后没有获得初始焦点' });
+      }
+      await page.keyboard.press('Escape');
+      if ((await mask.count()) > 0) findings.push({ severity: 'fail', message: 'Escape 没有关闭八股命中详情' });
+
+      await trigger.click();
+      await page.evaluate(() => window.dispatchEvent(new Event('phone-before-back', { cancelable: true })));
+      if ((await mask.count()) > 0) findings.push({ severity: 'fail', message: '手机返回没有关闭八股命中详情' });
+
+      await trigger.click();
+      await mask.click({ position: { x: 10, y: 100 } });
+      if ((await mask.count()) > 0) findings.push({ severity: 'fail', message: '点击遮罩没有关闭八股命中详情' });
+      if ((await screen.evaluate(element => element.style.overflow)) === 'hidden') {
+        findings.push({ severity: 'fail', message: '八股命中详情关闭后没有恢复背景滚动' });
+      }
+    }
+
+    if (scenario === 'reader-text-edit-modal') {
+      const dialog = page.locator('.pc-reader-edit-modal');
+      const mask = page.locator('.pc-reader-edit-mask');
+      const screen = page.locator('.pc-screen');
+      if ((await screen.evaluate(element => element.style.overflow)) !== 'hidden') {
+        findings.push({ severity: 'fail', message: '阅读文字编辑打开后没有锁定背景滚动' });
+      }
+      await page.keyboard.press('Escape');
+      if ((await mask.count()) > 0) findings.push({ severity: 'fail', message: 'Escape 没有关闭阅读文字编辑' });
+      if ((await screen.evaluate(element => element.style.overflow)) === 'hidden') {
+        findings.push({ severity: 'fail', message: '阅读文字编辑关闭后没有恢复背景滚动' });
+      }
+
+    }
+
+    if (scenario === 'content-transfer-dialog') {
+      const dialog = page.locator('.pc-content-transfer-dialog');
+      const backdrop = page.locator('.pc-content-transfer-backdrop');
+      const screen = page.locator('.pc-screen');
+      const trigger = page.locator('.pc-top-actions [aria-label="内容迁移"]');
+      if ((await screen.evaluate(element => element.style.overflow)) !== 'hidden') {
+        findings.push({ severity: 'fail', message: '内容迁移打开后没有锁定背景滚动' });
+      }
+      await dialog.locator('.pc-section-head .pc-icon-btn').click();
+      if ((await backdrop.count()) > 0) findings.push({ severity: 'fail', message: '内容迁移关闭按钮没有关闭弹窗' });
+
+      await trigger.click();
+      await dialog.waitFor({ state: 'visible' });
+      if (!(await dialog.evaluate(element => element === document.activeElement))) {
+        findings.push({ severity: 'fail', message: '内容迁移重新打开后没有获得初始焦点' });
+      }
+      await page.keyboard.press('Escape');
+      if ((await backdrop.count()) > 0) findings.push({ severity: 'fail', message: 'Escape 没有关闭内容迁移' });
+
+      await trigger.click();
+      await page.evaluate(() => window.dispatchEvent(new Event('phone-before-back', { cancelable: true })));
+      if ((await backdrop.count()) > 0) findings.push({ severity: 'fail', message: '手机返回没有关闭内容迁移' });
+
+      await trigger.click();
+      await backdrop.click({ position: { x: 10, y: 100 } });
+      if ((await backdrop.count()) > 0) findings.push({ severity: 'fail', message: '点击遮罩没有关闭内容迁移' });
+      if ((await screen.evaluate(element => element.style.overflow)) === 'hidden') {
+        findings.push({ severity: 'fail', message: '内容迁移关闭后没有恢复背景滚动' });
+      }
+    }
+
+    if (scenario === 'entry-library-action-menu') {
+      const menu = page.locator('.pc-entry-library-head .pc-action-menu').first();
+      const summary = menu.locator('summary');
+      if (!(await menu.evaluate(element => element.hasAttribute('open')))) {
+        findings.push({ severity: 'fail', message: 'ActionMenu 没有通过 summary 打开' });
+      }
+      await page.keyboard.press('Escape');
+      if (await menu.evaluate(element => element.hasAttribute('open'))) {
+        findings.push({ severity: 'fail', message: 'Escape 没有关闭 ActionMenu' });
+      }
+
+      await summary.click();
+      await page.evaluate(() => window.dispatchEvent(new Event('phone-before-back', { cancelable: true })));
+      if (await menu.evaluate(element => element.hasAttribute('open'))) {
+        findings.push({ severity: 'fail', message: '手机返回事件没有关闭 ActionMenu' });
+      }
+
+      await summary.click();
+      await page.mouse.click(2, 2);
+      if (await menu.evaluate(element => element.hasAttribute('open'))) {
+        findings.push({ severity: 'fail', message: '点击 ActionMenu 外部没有关闭菜单' });
+      }
+
+      await summary.click();
+      await menu.locator('.pc-action-menu-panel button:not([disabled])').first().click();
+      if ((await menu.count()) > 0 && (await menu.evaluate(element => element.hasAttribute('open')))) {
+        findings.push({ severity: 'fail', message: 'ActionMenu 执行可用动作后没有关闭' });
+      }
+    }
+
+    if (scenario === 'summary-entry-detail') {
+      const catalog = page.locator('.pc-catalog-card');
+      const screen = page.locator('.pc-screen');
+      if ((await screen.evaluate(element => element.style.overflow)) !== 'hidden') {
+        findings.push({ severity: 'fail', message: '目录弹窗打开后没有锁定背景滚动' });
+      }
+
+      await catalog.locator('.pc-icon-btn').click();
+      if ((await catalog.count()) > 0) findings.push({ severity: 'fail', message: '目录关闭按钮没有关闭弹窗' });
+      if ((await screen.evaluate(element => element.style.overflow)) === 'hidden') {
+        findings.push({ severity: 'fail', message: '目录关闭按钮关闭后没有恢复背景滚动' });
+      }
+      await page.locator('.pc-detail-nav .catalog').click();
+      await catalog.waitFor({ state: 'visible' });
+      if (!(await catalog.evaluate(element => element === document.activeElement))) {
+        const activeElement = await page.evaluate(() => document.activeElement?.outerHTML.slice(0, 180) || 'none');
+        findings.push({ severity: 'fail', message: `目录弹窗重新打开后没有获得初始焦点：${activeElement}` });
+      }
+      await page.keyboard.press('Escape');
+      if ((await catalog.count()) > 0) findings.push({ severity: 'fail', message: 'Escape 没有关闭目录弹窗' });
+      if ((await screen.evaluate(element => element.style.overflow)) === 'hidden') {
+        findings.push({ severity: 'fail', message: '目录弹窗关闭后没有恢复背景滚动' });
+      }
+
+      await page.locator('.pc-detail-nav .catalog').click();
+      await page.locator('.pc-catalog-mask').click({ position: { x: 2, y: 2 } });
+      if ((await catalog.count()) > 0) findings.push({ severity: 'fail', message: '点击遮罩没有关闭目录弹窗' });
+
+      await page.locator('.pc-detail-nav .catalog').click();
+      await page.evaluate(() => window.dispatchEvent(new Event('phone-before-back', { cancelable: true })));
+      if ((await catalog.count()) > 0) findings.push({ severity: 'fail', message: '手机返回事件没有先关闭目录弹窗' });
+      await page.locator('.pc-detail-nav .catalog').click();
     }
 
     if (scenario === 'extras-chapter-detail') {
@@ -632,6 +892,95 @@ async function runInteractionChecks(page, scenario) {
         }
         if ((await page.locator('.pc-failed-draft-page').count()) > 0) {
           findings.push({ severity: 'fail', message: '重新解析成功后仍停留在失败草稿页' });
+        }
+      }
+    }
+
+    if (scenario === 'summary-failed-draft-reparse') {
+      const editor = page.locator('.pc-failed-draft-page .pc-raw-editor-area');
+      if ((await editor.count()) !== 1) {
+        findings.push({ severity: 'fail', message: '总结失败草稿没有保留可编辑的原始输出' });
+      } else {
+        await editor.fill(
+          '<result><title>重新解析成功</title><content>修复 XML 后保留的总结正文。</content></result>',
+        );
+        await page.locator('.pc-failed-draft-page .pc-form-actions .pc-primary-btn').click();
+        try {
+          await page.locator('.pc-shared-generation-preview-page').waitFor({ state: 'visible' });
+        } catch {
+          const feedback = await page
+            .locator('.toast-message, .pc-phone-notice, .pc-failed-draft-page')
+            .allTextContents();
+          const editorValue = await editor.inputValue();
+          const reparseDisabled = await page
+            .locator('.pc-failed-draft-page .pc-form-actions .pc-primary-btn')
+            .isDisabled();
+          findings.push({
+            severity: 'fail',
+            message: `总结原始输出修复后没有进入预览（disabled=${reparseDisabled}; value=${editorValue.slice(0, 100)}; feedback=${feedback.join(' | ').slice(0, 180)}）`,
+          });
+        }
+        const previewText = await page.locator('.pc-shared-generation-preview-page').textContent().catch(() => '');
+        if (!previewText.includes('重新解析成功') || !previewText.includes('修复 XML 后保留的总结正文')) {
+          findings.push({ severity: 'fail', message: '总结重解析预览没有保留修复后的标题与正文' });
+        }
+        if ((await page.locator('.pc-failed-draft-page').count()) > 0) {
+          findings.push({ severity: 'fail', message: '总结重解析成功后仍停留在失败草稿页' });
+        }
+      }
+    }
+
+    if (scenario === 'forum-preview') {
+      if ((await page.locator('.pc-bagu-scan').count()) !== 0) {
+        findings.push({ severity: 'fail', message: '论坛生成预览初始状态不应直接展开八股检测' });
+      }
+      const baguButton = page.getByRole('button', { name: '八股', exact: true });
+      await baguButton.click();
+      if ((await page.locator('.pc-bagu-scan').count()) !== 1) {
+        findings.push({ severity: 'fail', message: '论坛生成预览点击八股后没有切换到检测视图' });
+      }
+      await baguButton.click();
+
+      await page.getByRole('button', { name: '原始输出', exact: true }).click();
+      const rawEditor = page.locator('.pc-raw-editor-area');
+      await rawEditor.fill(
+        '<result><board>视觉板块</board><title>论坛预览重解析成功</title><author>视觉楼主</author><content>论坛预览修复后的主楼正文。</content></result>',
+      );
+      await page.getByRole('button', { name: '重新解析', exact: true }).last().click();
+      const previewText = await page.locator('.pc-forum-preview-page').textContent().catch(() => '');
+      if (!previewText.includes('论坛预览重解析成功') || !previewText.includes('论坛预览修复后的主楼正文')) {
+        findings.push({ severity: 'fail', message: '论坛预览修改原始输出后重新解析没有更新主楼内容' });
+      }
+      if ((await page.locator('.pc-raw-editor').count()) !== 0) {
+        findings.push({ severity: 'fail', message: '论坛预览重新解析成功后仍停留在原始输出视图' });
+      }
+    }
+
+    const businessReparse = businessFailedDraftReparseScenarios[scenario];
+    if (businessReparse) {
+      const editor = page.locator('.pc-raw-editor-area');
+      if ((await editor.count()) !== 1) {
+        findings.push({ severity: 'fail', message: `${scenario} 没有保留可编辑的原始输出` });
+      } else {
+        await editor.fill(businessReparse.raw);
+        const reparseButton = page.getByRole('button', { name: '重新解析', exact: true }).last();
+        await reparseButton.click();
+        const preview = page.locator('.pc-generation-preview-page, .pc-shared-generation-preview-page').first();
+        try {
+          await preview.waitFor({ state: 'visible' });
+        } catch {
+          const feedback = await page.locator('.toast-message, .pc-phone-notice, .pc-failed-draft-page').allTextContents();
+          findings.push({
+            severity: 'fail',
+            message: `${scenario} 修复原文后没有进入预览（feedback=${feedback.join(' | ').slice(0, 180)}）`,
+          });
+        }
+        const previewText = await preview.textContent().catch(() => '');
+        if (!previewText.includes(businessReparse.title) || !previewText.includes(businessReparse.content)) {
+          findings.push({ severity: 'fail', message: `${scenario} 的预览没有保留修复后的标题与正文` });
+        }
+        if ((await page.locator('.pc-failed-draft-page, .pc-repair-page').count()) > 0) {
+          findings.push({ severity: 'fail', message: `${scenario} 重新解析成功后仍停留在失败草稿页` });
         }
       }
     }

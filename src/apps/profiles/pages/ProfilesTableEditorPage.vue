@@ -43,7 +43,13 @@
         <div class="pc-profile-fields-head">
           <span
             ><strong>字段</strong><small>{{ columns.length }}</small></span
-          ><button class="pc-icon-btn" type="button" title="添加字段" @click="$emit('add-column')">
+          ><button
+            class="pc-icon-btn"
+            type="button"
+            title="添加字段"
+            aria-label="添加字段"
+            @click="$emit('add-column')"
+          >
             <i class="fa-solid fa-plus"></i>
           </button>
         </div>
@@ -63,6 +69,7 @@
               class="pc-icon-btn pc-profile-column-drag-handle"
               type="button"
               title="拖拽排序"
+              aria-label="拖拽排序"
               @click.prevent
               @pointercancel="$emit('drag-cancel', $event)"
               @pointerdown="$emit('drag-start', $event, column.id)"

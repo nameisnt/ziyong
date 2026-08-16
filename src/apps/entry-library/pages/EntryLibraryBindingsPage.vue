@@ -32,7 +32,7 @@
         ><textarea
           ref="templateField"
           v-model="contentTemplate"
-          class="pc-area compact"
+          class="pc-area pc-area-multiline"
           rows="5"
           :placeholder="`<a>${placeholder}</a>`"
         ></textarea>
@@ -60,10 +60,17 @@
           type="button"
           :disabled="syncingIds.includes(binding.id)"
           title="立即同步"
+          aria-label="立即同步"
           @click="$emit('sync', binding.id)"
         >
           <i class="fa-solid fa-rotate"></i></button
-        ><button class="pc-icon-btn danger" type="button" title="删除绑定" @click="$emit('delete-binding', binding.id)">
+        ><button
+          class="pc-icon-btn danger"
+          type="button"
+          title="删除绑定"
+          aria-label="删除绑定"
+          @click="$emit('delete-binding', binding.id)"
+        >
           <i class="fa-solid fa-xmark"></i>
         </button>
       </article>
@@ -144,9 +151,6 @@ function compact(content: string) {
   align-items: center;
   justify-content: space-between;
   gap: 10px;
-}
-.pc-entry-binding-template .pc-area {
-  min-height: 120px;
 }
 .pc-entry-binding-row {
   display: grid;

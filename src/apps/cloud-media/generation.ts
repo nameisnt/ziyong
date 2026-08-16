@@ -89,6 +89,7 @@ export function createCloudMediaGenerationAdapter() {
           .filter(Boolean)
           .join('\n'),
         outputFormat: config.outputFormat,
+        taskInstruction: '请根据当前目标服务、媒体类型和模型配置，生成一份可直接使用的媒体提示词。',
         userRequirement: config.userRequirement,
       };
     },

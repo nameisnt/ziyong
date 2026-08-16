@@ -17,16 +17,20 @@
       <div v-if="draft.domain === 'theater'" class="pc-field-group">
         <span class="pc-field-label">所属分组</span>
         <div class="pc-type-group-row">
-          <select v-model="draft.groupId" class="pc-select">
-            <option value="">未分组</option>
-            <option v-for="group in theaterGroups" :key="group.id" :value="group.id">{{ group.name }}</option>
-          </select>
-          <button class="pc-icon-btn" type="button" title="新建分组" @click="createGroup">
+          <SearchableCombobox
+            v-model="draft.groupId"
+            :empty-label="t`没有匹配的分组`"
+            :input-label="t`选择所属分组`"
+            :options="theaterGroupOptions"
+            :placeholder="t`选择所属分组`"
+            :toggle-title="t`展开所属分组`"
+          />
+          <button class="pc-icon-btn" type="button" title="新建分组" aria-label="新建分组" @click="createGroup">
             <i class="fa-solid fa-folder-plus"></i>
           </button>
         </div>
       </div>
-      <textarea v-model="draft.prompt" class="pc-area" :placeholder="t`类型提示词正文`" />
+      <textarea v-model="draft.prompt" class="pc-area pc-area-long" :placeholder="t`类型提示词正文`" />
 
       <div class="pc-form-actions">
         <button class="pc-soft-btn" type="button" @click="$emit('back')">{{ t`取消` }}</button>
@@ -37,6 +41,7 @@
 </template>
 
 <script setup lang="ts">
+import SearchableCombobox from '@/components/SearchableCombobox.vue';
 import type { PhoneTypePromptDomain } from '@/core/appRegistry';
 import { usePromptStore, type TypePromptConfig } from '@/store/prompts';
 import { usePhoneStore } from '@/store/phone';
@@ -54,7 +59,12 @@ const draft = reactive({
   name: '',
   prompt: '',
 });
-const theaterGroups = computed(() => prompts.typePromptGroups.filter(group => group.domain === 'theater'));
+const theaterGroupOptions = computed(() => [
+  { label: '未分组', value: '' },
+  ...prompts.typePromptGroups
+    .filter(group => group.domain === 'theater')
+    .map(group => ({ label: group.name, value: group.id })),
+]);
 
 function loadDraft() {
   draft.domain = props.prompt?.domain || props.domains[0]?.key || '';

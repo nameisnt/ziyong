@@ -171,6 +171,6 @@ export default definePhoneApp({
   },
   contentStatsProvider: createWorldSlotsContentStats,
   referenceProvider: createWorldSlotsReferenceTree,
-  resetCurrentScope: () => useWorldSlotsStore().resetCurrentScope(),
+  resetCurrentScope: transaction => useWorldSlotsStore().resetCurrentScope(transaction),
   scopeSwitchHandler: scopeKey => useWorldSlotsStore().switchScope(scopeKey),
 });

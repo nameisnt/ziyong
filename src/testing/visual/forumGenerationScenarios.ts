@@ -49,6 +49,19 @@ type ForumGenerationScenarioContext = {
 };
 
 export async function applyForumGenerationVisualScenario(name: string, context: ForumGenerationScenarioContext) {
+  if (name === 'forum-type-prompt') {
+    useForumStore().resetCurrentScope();
+    context.resetPhoneToRoute('forum', 'generate-thread', '板块类型提示词');
+    await context.waitForPaint();
+    const prompt = document.querySelector<HTMLTextAreaElement>('.pc-forum-type-fields .pc-area');
+    if (!prompt) throw new Error('Forum custom board type prompt is missing');
+    prompt.value = '视觉测试板块类型提示词\n第二行用于确认多行文本域高度。';
+    prompt.dispatchEvent(new Event('input', { bubbles: true }));
+    prompt.scrollIntoView({ block: 'center' });
+    await context.waitForPaint();
+    return true;
+  }
+
   if (name === 'forum-generate-thread') {
     const forum = useForumStore();
     forum.resetCurrentScope();
@@ -110,6 +123,9 @@ export async function applyForumGenerationVisualScenario(name: string, context: 
     name === 'forum-thread-editor'
   ) {
     const { board, thread } = createForumFixture();
+    if (name === 'forum-thread') {
+      thread.generationRecord = context.createHiddenGenerationRecord('generate-thread', '论坛来源可视化夹具');
+    }
     const page =
       name === 'forum-board-editor'
         ? 'board-editor'
@@ -132,7 +148,13 @@ export async function applyForumGenerationVisualScenario(name: string, context: 
       title,
       name === 'forum-board-editor' ? { boardId: board.id } : { boardId: board.id, threadId: thread.id },
     );
-  } else if (name === 'forum-failed-draft') {
+    if (name === 'forum-thread') {
+      await context.waitForPaint();
+      if (!document.querySelector('.pc-reader-source-label')?.textContent?.includes('最近 7 楼')) {
+        throw new Error('Forum detail omitted its generation source label');
+      }
+    }
+  } else if (name === 'forum-failed-draft' || name === 'forum-failed-draft-reparse') {
     forum.resetCurrentScope();
     const draft = forum.createFailedDraft({
       actionId: 'generate-thread',

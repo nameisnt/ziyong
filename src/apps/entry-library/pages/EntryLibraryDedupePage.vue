@@ -6,7 +6,13 @@
     <article v-for="pair in pairs" :key="pairKey(pair)" class="pc-section-card pc-entry-duplicate-pair">
       <header>
         <strong>{{ Math.round(pair.score * 100) }}%</strong
-        ><button class="pc-icon-btn" type="button" title="保留两条" @click="$emit('dismiss', pair)">
+        ><button
+          class="pc-icon-btn"
+          type="button"
+          title="保留两条"
+          aria-label="保留两条"
+          @click="$emit('dismiss', pair)"
+        >
           <i class="fa-solid fa-check"></i>
         </button>
       </header>

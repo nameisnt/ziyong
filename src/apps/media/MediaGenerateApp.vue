@@ -9,7 +9,13 @@
     >
       <div v-if="route.page === 'root'" class="pc-compact-toolbar pc-directory-toolbar pc-media-generate-toolbar">
         <span class="pc-directory-count">{{ activeWorkflowLabel }}</span>
-        <button class="pc-icon-btn primary" type="button" :title="t`AI 填写参数`" @click="openComfyGenerate">
+        <button
+          class="pc-icon-btn primary"
+          type="button"
+          :title="t`AI 填写参数`"
+          :aria-label="t`AI 填写参数`"
+          @click="openComfyGenerate"
+        >
           <i class="fa-solid fa-wand-magic-sparkles"></i>
         </button>
       </div>
@@ -82,13 +88,13 @@
         <GenerationPanel
           :capture="captureComfyPrompt"
           :capture-reset-key="comfyPromptPreview"
-          :error="generationState.error"
+          :error="generationError"
           :from-start-end="generationDraft.fromStartEnd"
           :range-text="generationDraft.rangeText"
-          :raw-output="generationState.rawOutput"
+          :raw-output="generationRawOutput"
           :recent-count="generationDraft.recentCount"
           :references="selectedReferences"
-          :running="generationState.running"
+          :running="generationRunning"
           :single-message-id="generationDraft.singleMessageId"
           :source-mode="settings.generation.sourceMode"
           :user-requirement="generationDraft.userRequirement"
@@ -201,6 +207,7 @@ import GenerationPreviewPanel from '@/components/GenerationPreviewPanel.vue';
 import PreviewDraftNotice from '@/components/PreviewDraftNotice.vue';
 import RawOutputEditor from '@/components/RawOutputEditor.vue';
 import SearchableCombobox from '@/components/SearchableCombobox.vue';
+import { useSingleGenerationTaskSession } from '@/composables/useSingleGenerationTaskSession';
 import { parseComfyPromptXmlResult, type ComfyPromptResult } from '@/apps/comfy/generation';
 import { useComfyStore, type ComfyWorkflowInput } from '@/apps/comfy/store';
 import { getRegisteredPhoneGenerationAdapter } from '@/core/appRegistry';
@@ -209,11 +216,11 @@ import { usePhoneStore } from '@/store/phone';
 import { usePromptStore } from '@/store/prompts';
 import { useSettingsStore } from '@/store/settings';
 import type { FailedGenerationDraft } from '@/type/generation';
+import type { GenerationTask } from '@/type/generationTask';
 import { usePreviewDraftPersistence } from '@/util/previewDrafts';
 import type { GenerationReferenceItem } from '@/util/references';
 import { formatGenerationReferences } from '@/util/references';
 import { useInvalidRouteFallback } from '@/util/routeFallback';
-import { stopGenerationByIdSafe } from '@/util/runtime';
 import { formatTextProviderSummary } from '@/util/textProvider';
 import { getMediaKindLabel, useMediaStore } from './store';
 import { storeToRefs } from 'pinia';
@@ -240,8 +247,6 @@ const generationDraft = reactive({
   userRequirement: '',
 });
 const generationState = reactive({
-  error: '',
-  generationId: '',
   preview: null as null | {
     negativePrompt: string;
     draftId: null | string;
@@ -254,9 +259,14 @@ const generationState = reactive({
     warnings: string[];
     workflowId: string;
   },
-  rawOutput: '',
-  running: false,
 });
+const generationSession = useSingleGenerationTaskSession({
+  actionId: 'generate-prompt',
+  appId: 'media',
+  sourcePage: 'generate',
+  title: 'AI 媒体 · 单次生成',
+});
+const { error: generationError, rawOutput: generationRawOutput, running: generationRunning } = generationSession;
 type MediaPreview = NonNullable<typeof generationState.preview>;
 
 const {
@@ -361,16 +371,8 @@ useInvalidRouteFallback({
   },
 });
 
-onScopeDispose(() => {
-  if (generationState.running && generationState.generationId) {
-    stopGenerationByIdSafe(generationState.generationId);
-  }
-});
-
 function openComfyGenerate() {
-  generationState.error = '';
   generationState.preview = null;
-  generationState.rawOutput = '';
   phone.pushPage('generate', 'AI 媒体');
 }
 
@@ -588,37 +590,40 @@ async function runComfyGeneration() {
     toastr.warning('请先在 ComfyUI 设置中选择或导入工作流');
     return;
   }
-  generationState.error = '';
   clearMediaPreviewDraft();
-  generationState.rawOutput = '';
   generationState.preview = null;
+  let task: GenerationTask | null = null;
   try {
+    task = generationSession.create({
+      sourceParams: activeWorkflow.value ? { workflowId: activeWorkflow.value.id } : {},
+      title: activeWorkflow.value ? `AI 媒体 · ${activeWorkflow.value.name}` : 'AI 媒体 · 单次生成',
+    });
     const result = await generateContent(adapter, buildGenerationConfig(), {
       ...getGenerationOptions(),
       createFailedDraft: input => media.createFailedDraft(input),
-      lifecycle: {
-        onFinish() {
-          generationState.running = false;
-          generationState.generationId = '';
-        },
-        onRawOutput(rawOutput) {
-          generationState.rawOutput = rawOutput;
-        },
-        onStart(generationId) {
-          generationState.running = true;
-          generationState.generationId = generationId;
-        },
-      },
+      lifecycle: generationSession.lifecycle(task.id),
     });
 
     if (result.status === 'failed') {
-      generationState.error = result.warnings.join('；') || '模型没有返回可解析的 ComfyUI XML';
+      generationSession.complete(task.id, {
+        currentLabel: '解析失败草稿已保留',
+        resultPage: 'failed-draft',
+        resultParams: { draftId: result.draft.id },
+        resultState: 'failed-draft',
+        resultTitle: '解析失败草稿',
+      });
       toastr.warning('XML 解析失败，已保存失败草稿');
       void phone.presentGeneratedPage('media', 'failed-draft', '解析失败草稿', { draftId: result.draft.id });
       return;
     }
 
     if (result.status === 'saved') {
+      generationSession.complete(task.id, {
+        currentLabel: `已保存 ${result.saved.entries.length} 个媒体`,
+        resultPage: 'root',
+        resultState: 'saved',
+        resultTitle: '媒体生成',
+      });
       toastr.success(`已生成并保存 ${result.saved.entries.length} 个媒体`);
       void phone.presentGeneratedPage('media', 'root', '媒体生成');
       return;
@@ -637,9 +642,16 @@ async function runComfyGeneration() {
       workflowId: activeWorkflow.value.id,
     };
     persistMediaPreviewDraft();
+    generationSession.complete(task.id, {
+      currentLabel: '媒体提示词已生成，等待确认',
+      resultPage: 'preview',
+      resultState: 'preview',
+      resultTitle: '媒体预览',
+    });
     void phone.presentGeneratedPage('media', 'preview', '媒体预览');
   } catch (caughtError) {
-    generationState.error = caughtError instanceof Error ? caughtError.message : '生成 ComfyUI 输入失败';
+    if (task) generationSession.fail(task.id, caughtError);
+    else toastr.error(caughtError instanceof Error ? caughtError.message : '生成 ComfyUI 输入失败');
   }
 }
 
@@ -749,10 +761,7 @@ function reparseFailedDraft() {
 }
 
 function stopGeneration() {
-  if (!generationState.generationId) return;
-  stopGenerationByIdSafe(generationState.generationId);
-  generationState.running = false;
-  generationState.error = '生成已停止';
+  generationSession.stop();
 }
 </script>
 
@@ -815,14 +824,6 @@ function stopGeneration() {
 .pc-comfy-param-preview-list {
   display: grid;
   gap: 10px;
-}
-
-.pc-param-preview-area {
-  min-height: 86px;
-}
-
-.pc-area.compact {
-  min-height: 90px;
 }
 
 .pc-raw-area {

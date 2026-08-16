@@ -29,6 +29,7 @@
           <button
             class="pc-icon-btn"
             type="button"
+            :aria-label="t`应用聊天配置`"
             :disabled="busy"
             :title="t`应用聊天配置`"
             @click="$emit('apply-profile')"
@@ -38,6 +39,7 @@
           <button
             class="pc-icon-btn"
             type="button"
+            :aria-label="t`以当前状态更新配置`"
             :disabled="busy"
             :title="t`以当前状态更新配置`"
             @click="$emit('capture-profile')"
@@ -47,6 +49,7 @@
           <button
             class="pc-icon-btn danger"
             type="button"
+            :aria-label="t`停止联动`"
             :disabled="busy"
             :title="t`停止联动`"
             @click="$emit('unlink')"

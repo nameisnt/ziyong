@@ -9,6 +9,7 @@
         class="pc-icon-btn"
         type="button"
         :title="sortDesc ? t`当前倒序，切换正序` : t`当前正序，切换倒序`"
+        :aria-label="sortDesc ? t`当前倒序，切换正序` : t`当前正序，切换倒序`"
         @click="sortDesc = !sortDesc"
       >
         <i :class="sortDesc ? 'fa-solid fa-arrow-down-wide-short' : 'fa-solid fa-arrow-up-wide-short'"></i>
@@ -18,6 +19,7 @@
         :class="['pc-icon-btn', 'pc-theater-filter-toggle', { active: filterOpen || selectedTypeKeys.size }]"
         type="button"
         :title="selectedTypeKeys.size ? `标签筛选，已选 ${selectedTypeKeys.size} 项` : t`标签筛选`"
+        :aria-label="selectedTypeKeys.size ? `标签筛选，已选 ${selectedTypeKeys.size} 项` : t`标签筛选`"
         @click="filterOpen = !filterOpen"
       >
         <i class="fa-solid fa-tags"></i>

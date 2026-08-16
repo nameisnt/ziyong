@@ -27,7 +27,14 @@
           toggle-title="展开预设列表"
           @update:model-value="emit('update:tavernPresetName', $event)"
         />
-        <button class="pc-icon-btn" type="button" :disabled="disabled" title="刷新预设列表" @click="refreshPresetNames">
+        <button
+          class="pc-icon-btn"
+          type="button"
+          :disabled="disabled"
+          title="刷新预设列表"
+          aria-label="刷新预设列表"
+          @click="refreshPresetNames"
+        >
           <i class="fa-solid fa-rotate"></i>
         </button>
       </div>

@@ -5,6 +5,7 @@
       <button
         class="pc-icon-btn pc-worldbook-refresh"
         type="button"
+        :aria-label="t`刷新`"
         :title="t`刷新`"
         :disabled="refreshing"
         @click="$emit('refresh')"
@@ -139,6 +140,7 @@ defineEmits<{
   width: 100%;
 }
 
+/* ui-reuse-allow: D-UI-TABS-008 five equal columns include labels and counts, so inline padding stays compact; global height and font stay authoritative. */
 .pc-worldbook-tabs .pc-segment-btn {
   min-width: 0;
   padding-inline: 6px;

@@ -217,6 +217,7 @@
                 class="pc-icon-btn"
                 type="button"
                 :title="apiKeyVisible ? '隐藏 API Key' : '显示 API Key'"
+                :aria-label="apiKeyVisible ? '隐藏 API Key' : '显示 API Key'"
                 @click="apiKeyVisible = !apiKeyVisible"
               >
                 <i class="fa-solid" :class="apiKeyVisible ? 'fa-eye-slash' : 'fa-eye'"></i>
@@ -236,6 +237,7 @@
                 type="button"
                 :disabled="externalModelLoading"
                 title="获取模型列表"
+                aria-label="获取模型列表"
                 @click="refreshExternalModels"
               >
                 <i class="fa-solid" :class="externalModelLoading ? 'fa-spinner fa-spin' : 'fa-cloud-arrow-down'"></i>

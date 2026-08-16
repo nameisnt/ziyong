@@ -7,8 +7,8 @@ import { usePhoneStore, type PhoneRoute } from '@/store/phone';
 import { usePromptStore } from '@/store/prompts';
 import { useSettingsStore } from '@/store/settings';
 import type { ExtraBook, ExtraChapter } from '@/type/extra';
+import type { GenerationTask } from '@/type/generationTask';
 import type { GenerationReferenceItem } from '@/util/references';
-import { stopGenerationByIdSafe } from '@/util/runtime';
 import { storeToRefs } from 'pinia';
 import type { ComputedRef, Ref } from 'vue';
 import type { useExtrasGenerationState } from './useExtrasGenerationState';
@@ -50,6 +50,18 @@ export function useExtrasGenerationActions(options: ExtrasGenerationActionsOptio
   const { settings } = storeToRefs(settingsStore);
   const chapterAdapter = getRegisteredPhoneGenerationAdapter('extras', 'chapter-generate');
   const summaryAdapter = getRegisteredPhoneGenerationAdapter('extras', 'chapter-summary');
+  const chapterSession = useSingleGenerationTaskSession({
+    actionId: 'chapter-generate',
+    appId: 'extras',
+    sourcePage: 'chapter-generate',
+    title: '生成番外 · 单次生成',
+  });
+  const summarySession = useSingleGenerationTaskSession({
+    actionId: 'chapter-summary',
+    appId: 'extras',
+    sourcePage: 'summary-generate',
+    title: '生成章节总结 · 单次生成',
+  });
 
   async function runChapterGeneration() {
     const bookId = options.route.value.params?.bookId;
@@ -61,15 +73,23 @@ export function useExtrasGenerationActions(options: ExtrasGenerationActionsOptio
   async function runChapterGenerationForBook(bookId: string, book: ExtraBook, chapterId = '') {
     const draft = options.chapterGenerationDraft;
     const state = options.chapterGenerationState;
+    let task: GenerationTask | null = null;
+    try {
+      task = chapterSession.create({
+        sourceParams: { bookId, ...(chapterId ? { chapterId } : {}) },
+        title: draft.mode === '重写当前章节' ? '重新生成番外章节' : '生成番外 · 单次生成',
+      });
+    } catch (error) {
+      toastr.error(error instanceof Error ? error.message : '无法建立番外生成任务');
+      return;
+    }
     if (draft.mode === '重写当前章节' && !chapterId) {
-      state.error = '当前没有可重写的章节';
+      chapterSession.fail(task.id, new Error('当前没有可重写的章节'));
       return;
     }
 
-    state.error = '';
     options.clearChapterPreviewDraft();
     state.preview = null;
-    state.rawOutput = '';
     const savedTypePrompt = options.saveChapterTypePrompt();
     if (savedTypePrompt) {
       extras.updateBook(bookId, {
@@ -123,19 +143,7 @@ export function useExtrasGenerationActions(options: ExtrasGenerationActionsOptio
         },
         references: options.formattedReferences.value,
         referenceItems: options.selectedReferences.value,
-        lifecycle: {
-          onFinish() {
-            state.running = false;
-            state.generationId = '';
-          },
-          onRawOutput(rawOutput) {
-            state.rawOutput = rawOutput;
-          },
-          onStart(generationId) {
-            state.running = true;
-            state.generationId = generationId;
-          },
-        },
+        lifecycle: chapterSession.lifecycle(task.id),
         source: {
           fromStartEnd: draft.fromStartEnd,
           mode: settings.value.generation.sourceMode,
@@ -148,7 +156,13 @@ export function useExtrasGenerationActions(options: ExtrasGenerationActionsOptio
 
       if (result.status === 'failed') {
         options.failedDraftRawOutput.value = result.rawOutput;
-        state.error = result.warnings.join('；') || '模型没有返回可解析的番外 XML';
+        chapterSession.complete(task.id, {
+          currentLabel: '解析失败草稿已保留',
+          resultPage: 'failed-draft',
+          resultParams: { bookId, draftId: result.draft.id },
+          resultState: 'failed-draft',
+          resultTitle: '解析失败草稿',
+        });
         toastr.warning('XML 解析失败，已保存到失败草稿');
         void phone.presentGeneratedPage('extras', 'failed-draft', '解析失败草稿', {
           draftId: result.draft.id,
@@ -159,6 +173,17 @@ export function useExtrasGenerationActions(options: ExtrasGenerationActionsOptio
 
       if (result.status === 'saved') {
         const savedChapter = result.saved.chapter;
+        chapterSession.complete(task.id, {
+          currentLabel: `已保存番外：${result.data.title}`,
+          resultPage: 'chapter',
+          resultParams: {
+            bookId,
+            chapterId: savedChapter.id,
+            ...(result.saved.versionId ? { versionId: result.saved.versionId } : {}),
+          },
+          resultState: 'saved',
+          resultTitle: result.data.title,
+        });
         toastr.success(draft.mode === '重写当前章节' ? '已保存并切换到章节新版本' : '已生成并保存章节');
         void phone.presentGeneratedPage('extras', 'chapter', result.data.title, {
           bookId,
@@ -185,9 +210,17 @@ export function useExtrasGenerationActions(options: ExtrasGenerationActionsOptio
         title: result.data.title,
         warnings: result.warnings,
       };
-      options.persistChapterPreviewDraft(
-        chapterId ? { bookId, chapterId, ...(targetVersionId ? { versionId: targetVersionId } : {}) } : { bookId },
-      );
+      const previewParams = chapterId
+        ? { bookId, chapterId, ...(targetVersionId ? { versionId: targetVersionId } : {}) }
+        : { bookId };
+      options.persistChapterPreviewDraft(previewParams);
+      chapterSession.complete(task.id, {
+        currentLabel: '番外已生成，等待确认',
+        resultPage: 'chapter-preview',
+        resultParams: previewParams,
+        resultState: 'preview',
+        resultTitle: '番外预览',
+      });
       void phone.presentGeneratedPage(
         'extras',
         'chapter-preview',
@@ -195,7 +228,7 @@ export function useExtrasGenerationActions(options: ExtrasGenerationActionsOptio
         chapterId ? { bookId, chapterId, ...(targetVersionId ? { versionId: targetVersionId } : {}) } : { bookId },
       );
     } catch (error) {
-      state.error = error instanceof Error ? error.message : '生成失败，请稍后再试';
+      chapterSession.fail(task.id, error);
     }
   }
 
@@ -205,21 +238,26 @@ export function useExtrasGenerationActions(options: ExtrasGenerationActionsOptio
     const draft = options.summaryGenerationDraft;
     const state = options.summaryGenerationState;
     if (!bookId || !book) return;
+    let task: GenerationTask | null = null;
+    try {
+      task = summarySession.create({ sourceParams: { bookId }, title: '生成章节总结 · 单次生成' });
+    } catch (error) {
+      toastr.error(error instanceof Error ? error.message : '无法建立章节总结任务');
+      return;
+    }
     if (!draft.coveredChapterIds.length) {
-      state.error = '请至少选择一章后再生成总结';
+      summarySession.fail(task.id, new Error('请至少选择一章后再生成总结'));
       return;
     }
     const selectableChapterIds = new Set(options.getSummarizableChapters().map(chapter => chapter.id));
     if (draft.coveredChapterIds.some(chapterId => !selectableChapterIds.has(chapterId))) {
-      state.error = '所选章节已经被其他启用总结覆盖，请重新选择';
+      summarySession.fail(task.id, new Error('所选章节已经被其他启用总结覆盖，请重新选择'));
       draft.coveredChapterIds = draft.coveredChapterIds.filter(chapterId => selectableChapterIds.has(chapterId));
       return;
     }
 
-    state.error = '';
     options.clearSummaryPreviewDraft();
     state.preview = null;
-    state.rawOutput = '';
 
     try {
       const result = await generateContent(
@@ -242,19 +280,7 @@ export function useExtrasGenerationActions(options: ExtrasGenerationActionsOptio
             tavernPresetName: settings.value.generation.tavernPresetName,
           },
           references: options.formattedReferences.value,
-          lifecycle: {
-            onFinish() {
-              state.running = false;
-              state.generationId = '';
-            },
-            onRawOutput(rawOutput) {
-              state.rawOutput = rawOutput;
-            },
-            onStart(generationId) {
-              state.running = true;
-              state.generationId = generationId;
-            },
-          },
+          lifecycle: summarySession.lifecycle(task.id),
           source: {
             fromStartEnd: draft.fromStartEnd,
             mode: settings.value.generation.sourceMode,
@@ -268,7 +294,13 @@ export function useExtrasGenerationActions(options: ExtrasGenerationActionsOptio
 
       if (result.status === 'failed') {
         options.failedDraftRawOutput.value = result.rawOutput;
-        state.error = result.warnings.join('；') || '模型没有返回可解析的章节总结 XML';
+        summarySession.complete(task.id, {
+          currentLabel: '解析失败草稿已保留',
+          resultPage: 'failed-draft',
+          resultParams: { bookId, draftId: result.draft.id },
+          resultState: 'failed-draft',
+          resultTitle: '解析失败草稿',
+        });
         toastr.warning('XML 解析失败，已保存到失败草稿');
         void phone.presentGeneratedPage('extras', 'failed-draft', '解析失败草稿', { draftId: result.draft.id });
         return;
@@ -276,6 +308,13 @@ export function useExtrasGenerationActions(options: ExtrasGenerationActionsOptio
 
       if (result.status === 'saved') {
         const nextBook = extras.getBook(bookId);
+        summarySession.complete(task.id, {
+          currentLabel: '章节总结已保存',
+          resultPage: 'book',
+          resultParams: { bookId },
+          resultState: 'saved',
+          resultTitle: nextBook?.title || book.title,
+        });
         toastr.success('已生成并保存章节总结');
         if (nextBook) void phone.presentGeneratedPage('extras', 'book', nextBook.title, { bookId });
         return;
@@ -291,33 +330,35 @@ export function useExtrasGenerationActions(options: ExtrasGenerationActionsOptio
         warnings: result.warnings,
       };
       options.persistSummaryPreviewDraft({ bookId });
+      summarySession.complete(task.id, {
+        currentLabel: '章节总结已生成，等待确认',
+        resultPage: 'summary-preview',
+        resultParams: { bookId },
+        resultState: 'preview',
+        resultTitle: '章节总结预览',
+      });
       void phone.presentGeneratedPage('extras', 'summary-preview', '章节总结预览', { bookId });
     } catch (error) {
-      state.error = error instanceof Error ? error.message : '生成失败，请稍后再试';
+      summarySession.fail(task.id, error);
     }
   }
 
   function stopChapterGeneration() {
-    const state = options.chapterGenerationState;
-    if (!state.generationId) return;
-    stopGenerationByIdSafe(state.generationId);
-    state.running = false;
-    state.error = '生成已停止';
+    chapterSession.stop();
   }
 
   function stopSummaryGeneration() {
-    const state = options.summaryGenerationState;
-    if (!state.generationId) return;
-    stopGenerationByIdSafe(state.generationId);
-    state.running = false;
-    state.error = '生成已停止';
+    summarySession.stop();
   }
 
   return {
+    chapterSession,
     runChapterGeneration,
     runChapterGenerationForBook,
     runSummaryGeneration,
     stopChapterGeneration,
     stopSummaryGeneration,
+    summarySession,
   };
 }
+import { useSingleGenerationTaskSession } from '@/composables/useSingleGenerationTaskSession';

@@ -36,9 +36,27 @@ export const LettersEnvelopeSchema = createEnvelopeSchema(LettersScopeDataSchema
 export const TheaterEnvelopeSchema = createEnvelopeSchema(TheaterScopeDataSchema);
 
 const PhoneBackupBaseSchema = z.object({
-  schemaVersion: z.literal(1),
   exportedAt: z.string(),
 });
+
+export const PluginPresetBackupRecordSchema = z.object({
+  builtIn: z.boolean().optional(),
+  createdAt: z.string(),
+  id: z.string(),
+  name: z.string(),
+  raw: z.record(z.string(), z.unknown()),
+  sourceFileName: z.string(),
+  sourceFormat: z.enum(['legacy', 'modern']),
+  sourceRoot: z.enum(['array', 'object']),
+  updatedAt: z.string(),
+});
+export type PluginPresetBackupRecord = z.infer<typeof PluginPresetBackupRecordSchema>;
+
+export const PluginPresetBackupBundleSchema = z.object({
+  appDefaults: z.record(z.string(), z.string()).default({}),
+  records: z.array(PluginPresetBackupRecordSchema),
+});
+export type PluginPresetBackupBundle = z.infer<typeof PluginPresetBackupBundleSchema>;
 
 export const PhoneBackupFullDataSchema = z.object({
   settings: Settings,
@@ -54,6 +72,10 @@ export const PhoneBackupFullDataSchema = z.object({
   forum: ForumEnvelopeSchema.optional(),
   letters: LettersEnvelopeSchema.optional(),
   theater: TheaterEnvelopeSchema.optional(),
+});
+
+export const PhoneBackupFullDataV2Schema = PhoneBackupFullDataSchema.extend({
+  pluginPresets: PluginPresetBackupBundleSchema,
 });
 
 const PhoneBackupCurrentChatDataSchema = z.object({
@@ -79,14 +101,22 @@ export const PhoneBackupSchema = z.union([
   PhoneBackupBaseSchema.extend({
     backupKind: z.literal('full'),
     data: PhoneBackupFullDataSchema,
+    schemaVersion: z.literal(1),
+  }),
+  PhoneBackupBaseSchema.extend({
+    backupKind: z.literal('full'),
+    data: PhoneBackupFullDataV2Schema,
+    schemaVersion: z.literal(2),
   }),
   PhoneBackupBaseSchema.extend({
     backupKind: z.literal('current-chat'),
     data: PhoneBackupCurrentChatDataSchema,
+    schemaVersion: z.literal(1),
   }),
   PhoneBackupBaseSchema.extend({
     backupKind: z.undefined().optional(),
     data: PhoneBackupLegacyDataSchema,
+    schemaVersion: z.literal(1),
   }),
 ]);
 export type PhoneBackup = z.infer<typeof PhoneBackupSchema>;
@@ -99,4 +129,8 @@ export function getPhoneBackupKind(backup: PhoneBackup): PhoneBackupKind | 'lega
 
 export function isFullPhoneBackup(backup: PhoneBackup): backup is PhoneFullBackup {
   return backup.backupKind === 'full';
+}
+
+export function getEmbeddedPluginPresets(backup: PhoneBackup): PluginPresetBackupBundle | null {
+  return backup.backupKind === 'full' && backup.schemaVersion === 2 ? backup.data.pluginPresets : null;
 }

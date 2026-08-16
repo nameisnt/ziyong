@@ -182,6 +182,7 @@ export async function runManualBatchTask(taskId: string) {
 export async function resumeGenerationTask(taskId: string) {
   const task = useGenerationTaskStore().getTask(taskId);
   if (!task) return;
+  if (task.kind === 'single') return;
   if (task.kind === 'workbench') {
     await resumeWorkbenchTask(taskId);
     return;

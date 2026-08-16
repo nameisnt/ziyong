@@ -14,7 +14,7 @@
         <div class="pc-section-head">
           <strong>{{ t`插入方式` }}</strong>
         </div>
-        <select v-model="settings.mode" class="pc-field">
+        <select v-model="settings.mode" class="pc-select">
           <option value="new-end">{{ t`作为新楼层插入末尾` }}</option>
           <option value="new-before">{{ t`作为新楼层插入到指定楼层前` }}</option>
           <option value="append-last">{{ t`追加到最后楼层结尾` }}</option>
@@ -23,7 +23,7 @@
         <div class="pc-grid two">
           <label class="pc-number-field">
             <span>{{ t`楼层角色` }}</span>
-            <select v-model="settings.role" class="pc-field" :disabled="settings.mode.startsWith('append')">
+            <select v-model="settings.role" class="pc-select" :disabled="settings.mode.startsWith('append')">
               <option value="assistant">assistant</option>
               <option value="user">user</option>
               <option value="system">system</option>
@@ -76,6 +76,7 @@
               type="button"
               :disabled="!quickTemplateGroups.length"
               :title="quickTemplateGroups.length ? t`插入模板快捷` : t`还没有模板快捷`"
+              :aria-label="quickTemplateGroups.length ? t`插入模板快捷` : t`还没有模板快捷`"
               @click="templateShortcutOpen = !templateShortcutOpen"
             >
               <i class="fa-solid fa-plus"></i>
@@ -99,7 +100,7 @@
             </div>
           </article>
         </div>
-        <textarea v-model="settings.template" class="pc-area compact"></textarea>
+        <textarea v-model="settings.template" class="pc-area pc-area-multiline"></textarea>
       </article>
 
       <article class="pc-page-section">
@@ -301,10 +302,6 @@ async function confirmInsert() {
 
 .pc-grid {
   margin-top: 12px;
-}
-
-.pc-area.compact {
-  min-height: 120px;
 }
 
 .pc-head-actions {

@@ -47,11 +47,14 @@
       <template v-else-if="draft.itemKind === 'beat'">
         <label class="pc-field-group">
           <span class="pc-field-label">所属剧情线</span>
-          <select v-model="draft.lineId" class="pc-select">
-            <option v-for="option in lineOptions" :key="option.value" :value="option.value">
-              {{ option.label }}
-            </option>
-          </select>
+          <SearchableCombobox
+            v-model="draft.lineId"
+            :empty-label="t`没有匹配的剧情线`"
+            :input-label="t`选择所属剧情线`"
+            :options="lineOptions"
+            :placeholder="t`选择所属剧情线`"
+            :toggle-title="t`展开所属剧情线`"
+          />
         </label>
         <div class="pc-storyline-editor-grid">
           <label class="pc-field-group">
@@ -76,12 +79,14 @@
       <template v-else>
         <label class="pc-field-group">
           <span class="pc-field-label">所属剧情线</span>
-          <select v-model="draft.lineId" class="pc-select">
-            <option value="">不绑定剧情线</option>
-            <option v-for="option in lineOptions" :key="option.value" :value="option.value">
-              {{ option.label }}
-            </option>
-          </select>
+          <SearchableCombobox
+            v-model="draft.lineId"
+            :empty-label="t`没有匹配的剧情线`"
+            :input-label="t`选择所属剧情线`"
+            :options="hookLineOptions"
+            :placeholder="t`选择所属剧情线`"
+            :toggle-title="t`展开所属剧情线`"
+          />
         </label>
         <label class="pc-field-group">
           <span class="pc-field-label">状态</span>
@@ -109,7 +114,7 @@
       <section v-if="draft.itemKind !== 'beat'" class="pc-storyline-profile-editor">
         <div class="pc-section-head">
           <strong>关联资料</strong>
-          <button class="pc-icon-btn" type="button" title="增加关联资料" @click="addRelatedProfile">
+          <button class="pc-icon-btn" type="button" title="增加关联资料" aria-label="增加关联资料" @click="addRelatedProfile">
             <i class="fa-solid fa-plus"></i>
           </button>
         </div>
@@ -122,7 +127,7 @@
               placeholder="选择关联资料"
               :show-open-button="false"
             />
-            <button class="pc-icon-btn danger" type="button" title="移除关联" @click="removeRelatedProfile(index)">
+            <button class="pc-icon-btn danger" type="button" title="移除关联" aria-label="移除关联" @click="removeRelatedProfile(index)">
               <i class="fa-solid fa-xmark"></i>
             </button>
           </div>
@@ -141,6 +146,7 @@
 <script setup lang="ts">
 import EmptyState from '@/components/EmptyState.vue';
 import ProfileEntryPicker from '@/components/ProfileEntryPicker.vue';
+import SearchableCombobox from '@/components/SearchableCombobox.vue';
 import { beatStatusOptions, foreshadowStatusOptions, storylineKindOptions, storylineStatusOptions } from './store';
 import type { StorylineEditorDraft } from './viewTypes';
 
@@ -156,6 +162,7 @@ defineEmits<{
 
 const draft = defineModel<StorylineEditorDraft>({ required: true });
 const itemLabel = computed(() => ({ beat: '节点', hook: '伏笔', line: '剧情线' })[draft.value.itemKind]);
+const hookLineOptions = computed(() => [{ label: '不绑定剧情线', value: '' }, ...props.lineOptions]);
 
 function addRelatedProfile() {
   draft.value.relatedProfileIds.push('');

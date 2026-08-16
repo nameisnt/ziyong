@@ -40,13 +40,18 @@ export function createTheaterGenerationAdapter(theaterStore: {
     actionId: 'generate',
     appId: 'theater',
     buildRequest(config) {
+      const typeName = config.typeName.trim();
+      const typeInstruction = typeName ? `本次小剧场类型为“${typeName}”。` : '';
       return parsePrettified(GenerationRequestPartsSchema, {
         appPrompt: config.appPrompt,
         context: '',
         outputFormat: config.outputFormat,
-        taskInstruction: '',
-        typePrompt:
-          config.typePrompt.trim() || (config.typeName.trim() ? `本次小剧场类型为“${config.typeName.trim()}”。` : ''),
+        taskInstruction: typeInstruction,
+        taskTemplateVariables: {
+          typeInstruction,
+          typeName,
+        },
+        typePrompt: config.typePrompt.trim(),
         userRequirement: config.userRequirement,
       });
     },

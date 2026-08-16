@@ -110,18 +110,17 @@ export function persistForumReplyDrafts(
   return createdReplies;
 }
 
-function buildThreadRequestContext(config: ForumThreadGenerateConfig) {
-  return [config.boardTypePrompt.trim() ? `板块类型提示词：${config.boardTypePrompt.trim()}` : '']
-    .filter(Boolean)
-    .join('\n\n');
-}
-
 function buildThreadTaskInstruction(config: ForumThreadGenerateConfig) {
   const boardName = config.boardName.trim();
   if (boardName) {
     return `请为“${boardName}”板块生成一篇新帖，并在 <board> 中原样输出板块名称“${boardName}”。`;
   }
   return '请生成一篇新的论坛帖子，根据帖子主题拟定一个简短、自然、明确的论坛板块名称，并写入 <board>。';
+}
+
+function buildBoardDescriptionInstruction(config: ForumThreadGenerateConfig) {
+  const boardDescription = config.boardTypePrompt.trim();
+  return boardDescription ? `板块说明：${boardDescription}` : '';
 }
 
 export function createForumThreadGenerationAdapter(forumStore: {
@@ -150,11 +149,14 @@ export function createForumThreadGenerationAdapter(forumStore: {
     buildRequest(config) {
       return parsePrettified(GenerationRequestPartsSchema, {
         appPrompt: config.appPrompt,
-        context: buildThreadRequestContext(config),
+        context: '',
         outputFormat: config.outputFormat,
         taskInstruction: buildThreadTaskInstruction(config),
         taskTemplateVariables: {
+          boardDescription: config.boardTypePrompt.trim(),
+          boardDescriptionInstruction: buildBoardDescriptionInstruction(config),
           boardInstruction: buildThreadTaskInstruction(config),
+          boardName: config.boardName.trim(),
         },
         userRequirement: config.userRequirement,
       });

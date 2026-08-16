@@ -136,7 +136,7 @@ export async function applyContentBookVisualScenario(name: string, dependencies:
     if (!(await waitForCondition(() => Boolean(document.querySelector('.pc-shared-generation-preview-page'))))) {
       throw new Error('Summary preview page did not restore its persisted preview after extraction');
     }
-  } else if (name === 'summary-failed-draft') {
+  } else if (name === 'summary-failed-draft' || name === 'summary-failed-draft-reparse') {
     const book = createSummaryFixture();
     const draft = useSummaryStore().createFailedDraft({
       actionId: 'generate',
@@ -148,11 +148,15 @@ export async function applyContentBookVisualScenario(name: string, dependencies:
     });
     resetPhoneToRoute('summary', 'failed-draft', '解析失败草稿', { bookId: book.id, draftId: draft.id });
   } else if (name === 'diary-creation-mode' || name === 'diary-batch') {
-    resetPhoneToRoute(
-      'diary',
-      name === 'diary-batch' ? 'batch-generate' : 'creation-mode',
-      name === 'diary-batch' ? '批量生成日记' : '生成日记',
-    );
+    if (name === 'diary-batch') {
+      resetPhoneToRoute('diary', 'batch-generate', '批量生成日记');
+    } else {
+      resetPhoneToRoute('diary', 'root', '日记');
+      await waitForPaint();
+      document.querySelector<HTMLButtonElement>('.pc-diary-catalog-page .pc-book-item:last-child')?.click();
+      await waitForPaint();
+      if (!document.querySelector('.pc-creation-modal')) throw new Error('Diary creation modal did not open');
+    }
   } else if (
     name === 'diary-book' ||
     name === 'diary-entry-editor' ||
@@ -162,6 +166,9 @@ export async function applyContentBookVisualScenario(name: string, dependencies:
   ) {
     const book = createDiaryFixture();
     const entry = book.entries[0];
+    if (name === 'diary-entry-detail' && entry) {
+      entry.generationRecord = dependencies.createHiddenGenerationRecord('generate', '日记来源可视化夹具');
+    }
     const page =
       name === 'diary-book'
         ? 'book'
@@ -190,6 +197,9 @@ export async function applyContentBookVisualScenario(name: string, dependencies:
     );
     if (name === 'diary-entry-detail') {
       await waitForPaint();
+      if (!document.querySelector('.pc-reader-source-label')?.textContent?.includes('最近 7 楼')) {
+        throw new Error('Diary detail omitted its generation source label');
+      }
       await openReaderCatalog();
     }
   } else if (name === 'diary-preview') {
@@ -216,7 +226,7 @@ export async function applyContentBookVisualScenario(name: string, dependencies:
       title: '日记预览',
     });
     resetPhoneToRoute('diary', 'preview', '日记预览', { bookId: book.id });
-  } else if (name === 'diary-failed-draft') {
+  } else if (name === 'diary-failed-draft' || name === 'diary-failed-draft-reparse') {
     const book = createDiaryFixture();
     const draft = useDiaryStore().createFailedDraft({
       actionId: 'generate',
@@ -266,7 +276,7 @@ async function applyLettersScenario(name: string, dependencies: ContentBookScena
     dependencies.resetPhoneToRoute('letters', 'preview', '生成预览', { bookId: book.id });
     return;
   }
-  if (name === 'letters-failed-draft') {
+  if (name === 'letters-failed-draft' || name === 'letters-failed-draft-reparse') {
     const draft = useLettersStore().createFailedDraft({
       actionId: 'generate',
       appId: 'letters',
@@ -293,6 +303,9 @@ async function applyLettersScenario(name: string, dependencies: ContentBookScena
       throw new Error('Letter rewrite did not restore the current version hidden generation record');
     return;
   }
+  if (name === 'letters-entry-detail') {
+    entry.generationRecord = dependencies.createHiddenGenerationRecord('generate', '书信来源可视化夹具');
+  }
   const page =
     name === 'letters-book'
       ? 'book'
@@ -317,6 +330,9 @@ async function applyLettersScenario(name: string, dependencies: ContentBookScena
   );
   if (name === 'letters-entry-detail') {
     await dependencies.waitForPaint();
+    if (!document.querySelector('.pc-reader-source-label')?.textContent?.includes('最近 7 楼')) {
+      throw new Error('Letters detail omitted its generation source label');
+    }
     await dependencies.openReaderCatalog();
   }
 }

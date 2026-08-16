@@ -11,7 +11,7 @@
       /></label>
       <label class="pc-field-group pc-worldbook-content-field"
         ><span class="pc-field-label">条目内容</span
-        ><textarea v-model="content" class="pc-area" placeholder="世界书条目内容"></textarea>
+        ><textarea v-model="content" class="pc-area pc-area-long" placeholder="世界书条目内容"></textarea>
       </label>
       <div class="pc-field-group">
         <span class="pc-field-label">插入位置</span>
@@ -45,7 +45,14 @@
         /></label>
       </template>
       <div class="pc-form-actions pc-worldbook-entry-editor-actions">
-        <button class="pc-icon-btn danger" type="button" :disabled="busy" title="删除条目" @click="$emit('remove')">
+        <button
+          class="pc-icon-btn danger"
+          type="button"
+          aria-label="删除条目"
+          :disabled="busy"
+          title="删除条目"
+          @click="$emit('remove')"
+        >
           <i class="fa-solid fa-trash"></i>
         </button>
         <button class="pc-soft-btn" type="button" :disabled="busy" @click="$emit('back')">返回</button>
@@ -107,7 +114,6 @@ defineEmits<{ back: []; remove: []; save: [] }>();
   flex: 1;
 }
 .pc-worldbook-content-field .pc-area {
-  min-height: 240px;
   flex: 1;
   resize: vertical;
 }

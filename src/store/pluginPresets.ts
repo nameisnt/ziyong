@@ -15,6 +15,8 @@ import { BUILTIN_DIARY_PRESET_ID, createBuiltinDiaryPresetRecord } from '@/apps/
 import { getRequestHeaders, saveSettingsDebounced } from '@sillytavern/script';
 import { extension_settings } from '@sillytavern/scripts/extensions';
 import { klona } from 'klona';
+import { executeBackupImportTransaction } from '@/util/backupTransaction';
+import type { PluginPresetBackupBundle } from '@/type/backup';
 
 export const pluginPresetField = 'sillytavern_phone_plugin_presets';
 
@@ -121,7 +123,7 @@ export const usePluginPresetStore = defineStore('pluginPresets', () => {
   const loading = ref(false);
   const loadError = ref('');
 
-  function persistIndex() {
+  function writeIndex() {
     const stored = items.value.map(item => ({
       builtIn: item.builtIn === true,
       createdAt: item.createdAt,
@@ -134,6 +136,10 @@ export const usePluginPresetStore = defineStore('pluginPresets', () => {
       updatedAt: item.updatedAt,
     }));
     _.set(extension_settings, pluginPresetField, { appDefaults: appDefaults.value, items: stored, version: 3 });
+  }
+
+  function persistIndex() {
+    writeIndex();
     void saveSettingsDebounced();
   }
 
@@ -249,7 +255,24 @@ export const usePluginPresetStore = defineStore('pluginPresets', () => {
     return klona(items.value);
   }
 
-  async function replaceRecords(records: PluginPresetRecord[]) {
+  async function exportBackupRecords() {
+    await initialLoad;
+    if (loadError.value) throw new Error(`插件预设未完整载入，无法备份：${loadError.value}`);
+    return exportRecords();
+  }
+
+  async function exportBackupBundle(): Promise<PluginPresetBackupBundle> {
+    const records = await exportBackupRecords();
+    return {
+      appDefaults: klona(appDefaults.value),
+      records,
+    };
+  }
+
+  async function replaceRecords(
+    records: PluginPresetRecord[],
+    requestedAppDefaults: Record<string, string> = appDefaults.value,
+  ) {
     const normalized: PluginPresetRecord[] = records.map(record => {
       const raw = klona(record.raw);
       const parsed = normalizePluginPresetImport(raw);
@@ -283,16 +306,48 @@ export const usePluginPresetStore = defineStore('pluginPresets', () => {
       throw error;
     }
 
-    const oldPaths = { ...paths.value };
-    items.value = normalized;
-    paths.value = nextPaths;
+    const previous = {
+      appDefaults: klona(appDefaults.value),
+      items: klona(items.value),
+      paths: { ...paths.value },
+      rawIndex: klona(_.get(extension_settings, pluginPresetField)),
+    };
     const availableIds = new Set(normalized.map(record => record.id));
-    appDefaults.value = Object.fromEntries(
-      Object.entries(appDefaults.value).filter(([, presetId]) => availableIds.has(presetId)),
+    const nextAppDefaults = Object.fromEntries(
+      Object.entries(requestedAppDefaults).filter(([, presetId]) => availableIds.has(presetId)),
     );
-    persistIndex();
-    await saveSettingsDebounced();
-    await Promise.allSettled(Object.values(oldPaths).map(path => deleteRecordFile(path)));
+    try {
+      await executeBackupImportTransaction({
+        captureSnapshot: () => previous,
+        commit: () => {
+          items.value = normalized;
+          paths.value = nextPaths;
+          appDefaults.value = nextAppDefaults;
+          writeIndex();
+        },
+        persist: () => saveSettingsDebounced(),
+        rehydrate: () => undefined,
+        restoreSnapshot: snapshot => {
+          items.value = snapshot.items;
+          paths.value = snapshot.paths;
+          appDefaults.value = snapshot.appDefaults;
+          if (typeof snapshot.rawIndex === 'undefined') _.unset(extension_settings, pluginPresetField);
+          else _.set(extension_settings, pluginPresetField, snapshot.rawIndex);
+        },
+      });
+    } catch (error) {
+      // A successful rollback means no persisted index references the newly uploaded files.
+      // If rollback persistence also failed, preserve both file sets for manual recovery.
+      if (!(error instanceof AggregateError)) {
+        await Promise.allSettled(Object.values(nextPaths).map(path => deleteRecordFile(path)));
+      }
+      throw error;
+    }
+    await Promise.allSettled(Object.values(previous.paths).map(path => deleteRecordFile(path)));
+  }
+
+  function replaceBackupBundle(bundle: PluginPresetBackupBundle) {
+    return replaceRecords(bundle.records, bundle.appDefaults);
   }
 
   async function updatePrompt(
@@ -382,6 +437,8 @@ export const usePluginPresetStore = defineStore('pluginPresets', () => {
   return {
     deletePreset,
     duplicatePrompt,
+    exportBackupBundle,
+    exportBackupRecords,
     exportRecords,
     exportPreset: (id: string) => exportPluginPreset(requireById(id)),
     getById,
@@ -393,6 +450,7 @@ export const usePluginPresetStore = defineStore('pluginPresets', () => {
     loading,
     readPreset: (id: string) => readPluginPreset(requireById(id)),
     reload,
+    replaceBackupBundle,
     replaceRecords,
     removePrompt,
     renamePreset,

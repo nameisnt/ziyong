@@ -10,6 +10,7 @@
           class="pc-icon-btn"
           type="button"
           :title="definition.display.sortDesc ? t`当前倒序，切换正序` : t`当前正序，切换倒序`"
+          :aria-label="definition.display.sortDesc ? t`当前倒序，切换正序` : t`当前正序，切换倒序`"
           @click="toggleSort"
         >
           <i
@@ -18,7 +19,13 @@
             "
           ></i>
         </button>
-        <button class="pc-icon-btn" type="button" :title="t`编辑 App 设置`" @click="openAppSettings">
+        <button
+          class="pc-icon-btn"
+          type="button"
+          :title="t`编辑 App 设置`"
+          :aria-label="t`编辑 App 设置`"
+          @click="openAppSettings"
+        >
           <i class="fa-solid fa-gear"></i>
         </button>
       </div>
@@ -47,6 +54,7 @@
           :class="['pc-icon-btn', { active: conversionSelectionMode }]"
           type="button"
           :title="conversionSelectionMode ? t`取消转换选择` : t`选择内容进行转换`"
+          :aria-label="conversionSelectionMode ? t`取消转换选择` : t`选择内容进行转换`"
           @click="startConversionSelection"
         >
           <i class="fa-solid fa-arrow-right-arrow-left"></i>
@@ -312,13 +320,13 @@
       <GenerationPanel
         :capture="captureCustomPrompt"
         :capture-reset-key="promptPreview"
-        :error="generationState.error"
+        :error="generationError"
         :from-start-end="generationDraft.fromStartEnd"
         :range-text="generationDraft.rangeText"
-        :raw-output="generationState.rawOutput"
+        :raw-output="generationRawOutput"
         :recent-count="generationDraft.recentCount"
         :references="selectedReferences"
-        :running="generationState.running"
+        :running="generationRunning"
         :single-message-id="generationDraft.singleMessageId"
         :source-mode="settings.generation.sourceMode"
         :user-requirement="generationDraft.userRequirement"
@@ -400,6 +408,7 @@ import GenerationSourceFields from '@/components/GenerationSourceFields.vue';
 import PreviewDraftNotice from '@/components/PreviewDraftNotice.vue';
 import RawOutputEditor from '@/components/RawOutputEditor.vue';
 import ReaderDetailShell from '@/components/ReaderDetailShell.vue';
+import { useSingleGenerationTaskSession } from '@/composables/useSingleGenerationTaskSession';
 import { useRegexDisplayStore } from '@/apps/regex-display/store';
 import {
   getRegisteredPhoneGenerationAdapter,
@@ -411,13 +420,14 @@ import { getCurrentChatScopeKey } from '@/store/chatScoped';
 import { usePhoneStore } from '@/store/phone';
 import { usePromptStore } from '@/store/prompts';
 import { useSettingsStore } from '@/store/settings';
+import type { GenerationTask } from '@/type/generationTask';
 import { storeToRefs } from 'pinia';
 import { buildSourceSelection, type SummaryGenerationSourceMode } from '@/util/generationSource';
 import { parseSimpleXmlResult } from '@/util/generation';
 import { usePreviewDraftPersistence } from '@/util/previewDrafts';
 import { applyRegexDisplayRules, extractWithRegexRules, getRegexRulesByIds } from '@/util/regexDisplay';
 import { formatGenerationReferences, type GenerationReferenceItem } from '@/util/references';
-import { getChatMessagesSafe, stopGenerationByIdSafe } from '@/util/runtime';
+import { getChatMessagesSafe } from '@/util/runtime';
 import { getSourceLastFloor } from '@/util/sourceFloor';
 import { formatTextProviderSummary } from '@/util/textProvider';
 import { resolveCustomGeneratedTitle } from './generation';
@@ -436,6 +446,13 @@ const conversionSelectionMode = ref(false);
 const selectedConversionIds = ref<string[]>([]);
 const savingEntry = ref(false);
 const hostAppId = route.value.appId;
+const generationSession = useSingleGenerationTaskSession({
+  actionId: 'generate',
+  appId: hostAppId,
+  sourcePage: 'generate',
+  title: '自制 App · 单次生成',
+});
+const { error: generationError, rawOutput: generationRawOutput, running: generationRunning } = generationSession;
 const selectedReferences = ref<GenerationReferenceItem[]>([]);
 const entryDraft = reactive({ title: '', content: '', tags: '', sourceLabel: '', sourceText: '', directoryOrder: 0 });
 const extractDraft = reactive({
@@ -468,8 +485,6 @@ const generationDraft = reactive({
   userRequirement: '',
 });
 const generationState = reactive({
-  error: '',
-  generationId: '',
   preview: null as null | {
     content: string;
     draftId: null | string;
@@ -478,8 +493,6 @@ const generationState = reactive({
     title: string;
     warnings: string[];
   },
-  rawOutput: '',
-  running: false,
 });
 const failedDraftRawOutput = ref('');
 
@@ -615,8 +628,6 @@ watch(
       selectedConversionIds.value = [];
     }
     if (current.page === 'generate') {
-      generationState.error = '';
-      generationState.rawOutput = '';
       selectedReferences.value = [];
     }
     if (current.page === 'failed-draft') failedDraftRawOutput.value = activeFailedDraft.value?.rawOutput || '';
@@ -895,34 +906,35 @@ async function runGeneration() {
   const currentAdapter = adapter.value;
   const app = definition.value;
   if (!currentAdapter || !app) return;
-  generationState.error = '';
-  generationState.rawOutput = '';
   generationState.preview = null;
   clearPreviewDraft();
+  let task: GenerationTask | null = null;
   try {
+    task = generationSession.create({ title: `${app.name} · 单次生成` });
     const result = await generateContent(currentAdapter, buildGenerationConfig(), {
       ...getGenerationOptions(),
       createFailedDraft: input => customApps.createFailedDraft(app.id, input),
-      lifecycle: {
-        onFinish() {
-          generationState.running = false;
-          generationState.generationId = '';
-        },
-        onRawOutput(rawOutput) {
-          generationState.rawOutput = rawOutput;
-        },
-        onStart(generationId) {
-          generationState.running = true;
-          generationState.generationId = generationId;
-        },
-      },
+      lifecycle: generationSession.lifecycle(task.id),
     });
     if (result.status === 'failed') {
-      generationState.error = result.warnings.join('；') || '模型输出无法解析';
+      generationSession.complete(task.id, {
+        currentLabel: '解析失败草稿已保留',
+        resultPage: 'failed-draft',
+        resultParams: { draftId: result.draft.id },
+        resultState: 'failed-draft',
+        resultTitle: '解析失败草稿',
+      });
       void phone.presentGeneratedPage(app.id, 'failed-draft', '解析失败草稿', { draftId: result.draft.id });
       return;
     }
     if (result.status === 'saved') {
+      generationSession.complete(task.id, {
+        currentLabel: `已保存内容：${result.saved.entry.title}`,
+        resultPage: 'entry',
+        resultParams: { entryId: result.saved.entry.id },
+        resultState: 'saved',
+        resultTitle: result.saved.entry.title,
+      });
       toastr.success('已生成并保存');
       void phone.presentGeneratedPage(app.id, 'entry', result.saved.entry.title, { entryId: result.saved.entry.id });
       return;
@@ -936,14 +948,21 @@ async function runGeneration() {
       warnings: result.warnings,
     };
     persistPreviewDraft();
+    generationSession.complete(task.id, {
+      currentLabel: `${app.name}内容已生成，等待确认`,
+      resultPage: 'preview',
+      resultState: 'preview',
+      resultTitle: `${app.name}预览`,
+    });
     void phone.presentGeneratedPage(app.id, 'preview', `${app.name}预览`);
   } catch (error) {
-    generationState.error = error instanceof Error ? error.message : '生成失败';
+    if (task) generationSession.fail(task.id, error);
+    else toastr.error(error instanceof Error ? error.message : '生成失败');
   }
 }
 
 function stopGeneration() {
-  if (generationState.generationId) stopGenerationByIdSafe(generationState.generationId);
+  generationSession.stop();
 }
 
 function saveGenerationPreview() {

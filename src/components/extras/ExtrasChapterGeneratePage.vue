@@ -83,12 +83,16 @@
             <template v-if="chapterDraft.parseSummary">
               <label class="pc-field-group">
                 <span class="pc-field-label">{{ t`摘要提取规则` }}</span>
-                <select v-model="chapterDraft.summaryRuleId" class="pc-select" :disabled="generationState.running">
-                  <option value="">{{ t`仅识别结构化 summary 字段` }}</option>
-                  <option v-for="option in summaryRuleOptions" :key="option.value" :value="option.value">
-                    {{ option.label }}
-                  </option>
-                </select>
+                <SearchableCombobox
+                  v-model="chapterDraft.summaryRuleId"
+                  class="pc-extras-summary-rule-combobox"
+                  :disabled="generationState.running"
+                  :empty-label="t`没有匹配的摘要规则`"
+                  :input-label="t`选择摘要提取规则`"
+                  :options="summaryRuleSelectOptions"
+                  :placeholder="t`选择摘要提取规则`"
+                  :toggle-title="t`展开摘要提取规则`"
+                />
               </label>
               <label class="pc-field-group">
                 <span class="pc-field-label">{{ t`摘要格式提示` }}</span>
@@ -148,7 +152,7 @@ const chapterDraft = defineModel<{
 const references = defineModel<GenerationReferenceItem[]>('references', { required: true });
 const sourceMode = defineModel<SummaryGenerationSourceMode>('sourceMode', { required: true });
 
-defineProps<{
+const props = defineProps<{
   capture: () => Promise<CapturedTavernPromptPreview>;
   captureResetKey: unknown;
   generationState: { error: string; rawOutput: string; running: boolean };
@@ -157,6 +161,11 @@ defineProps<{
   summaryRuleOptions: Array<{ label: string; value: string }>;
   typeOptions: Array<{ label: string; value: string }>;
 }>();
+
+const summaryRuleSelectOptions = computed(() => [
+  { label: '仅识别结构化 summary 字段', value: '' },
+  ...props.summaryRuleOptions,
+]);
 
 const emit = defineEmits<{
   cancel: [];

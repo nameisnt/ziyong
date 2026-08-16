@@ -10,12 +10,25 @@ import {
 
 const expectedContracts = {
   back: 'tutorial-scroll-return',
+  'bagu-modal': 'bagu-hit-details',
   catalog: 'summary-entry-detail',
   close: 'prompts-task-detail',
+  'creation-modal': 'diary-creation-mode',
   'delete-unbind': 'content-version-interactions',
+  'home-layout-drag': 'home-layout-drag',
   persistence: 'content-directory-sort-persistence',
-  reparse: 'theater-failed-draft',
+  'reader-edit-modal': 'reader-text-edit-modal',
+  'reasoning-modal': 'card-writer-reasoning-modal',
+  'reparse-diary': 'diary-failed-draft-reparse',
+  'reparse-digest': 'digest-failed-draft-reparse',
+  'reparse-forum': 'forum-failed-draft-reparse',
+  'reparse-letters': 'letters-failed-draft-reparse',
+  'reparse-storylines': 'storylines-failed-draft-reparse',
+  'reparse-summary': 'summary-failed-draft-reparse',
+  'reparse-theater': 'theater-failed-draft',
+  'settings-persistence': 'settings-theme-persistence',
   toggle: 'extras-chapter-detail',
+  'transfer-modal': 'content-transfer-dialog',
 };
 
 test('the shared interaction contract has exactly one representative scenario for every required action', () => {

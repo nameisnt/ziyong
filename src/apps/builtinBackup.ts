@@ -157,9 +157,13 @@ export function createGenerationTasksBackupDomain(): PhoneBackupDomain {
       );
       _.set(extension_settings, generationTasksField, { tasks });
     },
+    migrateImport: (data, fromVersion) => {
+      if (fromVersion !== 1) throw new Error(`不支持从 generation-tasks v${fromVersion} 迁移`);
+      return data;
+    },
     rehydrateFromSettings: () => useGenerationTaskStore().rehydrateFromSettings(),
     schema: createChatScopedBackupSchema(GenerationTaskSettingsSchema),
-    schemaVersion: 1,
+    schemaVersion: 2,
     scope: 'chat',
   };
 }

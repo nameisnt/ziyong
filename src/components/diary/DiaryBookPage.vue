@@ -3,24 +3,25 @@
     <div class="pc-compact-toolbar pc-directory-toolbar">
       <span class="pc-directory-count">{{ book.perspective.name }} · {{ entries.length }} 篇</span>
       <div class="pc-directory-actions pc-diary-book-toolbar">
-        <button class="pc-icon-btn primary" type="button" title="生成日记" @click="$emit('generate')">
+        <button class="pc-icon-btn primary" type="button" aria-label="生成日记" title="生成日记" @click="$emit('generate')">
           <i class="fa-solid fa-wand-magic-sparkles"></i>
         </button>
-        <button class="pc-icon-btn" type="button" title="批量生成" @click="$emit('batch')">
+        <button class="pc-icon-btn" type="button" aria-label="批量生成" title="批量生成" @click="$emit('batch')">
           <i class="fa-solid fa-layer-group"></i>
         </button>
         <button
           class="pc-icon-btn pc-directory-sort"
           type="button"
+          :aria-label="sortDesc ? '当前倒序，切换正序' : '当前正序，切换倒序'"
           :title="sortDesc ? '当前倒序，切换正序' : '当前正序，切换倒序'"
           @click="$emit('toggle-sort')"
         >
           <i :class="sortDesc ? 'fa-solid fa-arrow-down-wide-short' : 'fa-solid fa-arrow-up-short-wide'"></i>
         </button>
-        <button class="pc-icon-btn" type="button" title="重命名书架" @click="$emit('rename')">
+        <button class="pc-icon-btn" type="button" aria-label="重命名书架" title="重命名书架" @click="$emit('rename')">
           <i class="fa-solid fa-pen"></i>
         </button>
-        <button class="pc-icon-btn danger" type="button" title="删除书架" @click="$emit('remove-book')">
+        <button class="pc-icon-btn danger" type="button" aria-label="删除书架" title="删除书架" @click="$emit('remove-book')">
           <i class="fa-solid fa-trash"></i>
         </button>
       </div>

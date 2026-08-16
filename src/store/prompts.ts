@@ -288,7 +288,19 @@ const migratedSpecialPrompts = {
   },
 } as const;
 
+const legacyForumThreadTaskTemplate = '{{boardInstruction}}';
+const currentForumThreadTaskTemplate = ['{{boardInstruction}}', '{{boardDescriptionInstruction}}'].join('\n');
+const legacyExtrasChapterTaskTemplate = ['{{modeInstruction}}', '{{typeFallback}}'].join('\n');
+const currentExtrasChapterTaskTemplate = ['{{modeInstruction}}', '{{typeFallback}}', '{{summaryInstruction}}'].join(
+  '\n',
+);
+const currentSummaryTaskTemplate = '请根据本次选中的来源楼层和引用内容生成总结。';
+const currentCloudMediaTaskTemplate = '请根据当前目标服务、媒体类型和模型配置，生成一份可直接使用的媒体提示词。';
+const currentTheaterTaskTemplate = '{{typeInstruction}}';
+
 function ensureRegisteredPromptDefaults(settings: PromptSettings) {
+  const needsTaskTemplateCoverageMigration =
+    !('digest.generate' in settings.taskTemplates) || !('comfy.generate-prompt' in settings.taskTemplates);
   const previousExtrasPrompt = settings.appPrompts.extras?.trim() || '';
   const hadExtrasContinuePrompt = 'extrasContinue' in settings.appPrompts;
   const appDefaults = buildDefaultAppPrompts();
@@ -327,6 +339,31 @@ function ensureRegisteredPromptDefaults(settings: PromptSettings) {
       settings.specialPrompts[key] = migration.to;
     }
   });
+  const hasLegacyForumAndTheaterDefaults =
+    settings.taskTemplates['forum.generate-thread']?.trim() === legacyForumThreadTaskTemplate &&
+    !settings.taskTemplates['theater.generate']?.trim();
+  if (settings.taskTemplates['forum.generate-thread']?.trim() === legacyForumThreadTaskTemplate) {
+    settings.taskTemplates['forum.generate-thread'] = currentForumThreadTaskTemplate;
+  }
+  if (
+    needsTaskTemplateCoverageMigration &&
+    settings.taskTemplates['extras.chapter-generate']?.trim() === legacyExtrasChapterTaskTemplate
+  ) {
+    settings.taskTemplates['extras.chapter-generate'] = currentExtrasChapterTaskTemplate;
+  }
+  if (needsTaskTemplateCoverageMigration && !settings.taskTemplates['summary.generate']?.trim()) {
+    settings.taskTemplates['summary.generate'] = currentSummaryTaskTemplate;
+  }
+  if (needsTaskTemplateCoverageMigration && !settings.taskTemplates['cloud-media.generate-prompt']?.trim()) {
+    settings.taskTemplates['cloud-media.generate-prompt'] = currentCloudMediaTaskTemplate;
+  }
+  if (
+    (hasLegacyForumAndTheaterDefaults || needsTaskTemplateCoverageMigration) &&
+    !settings.taskTemplates['theater.generate']?.trim()
+  ) {
+    // 旧版小剧场类型名由适配器隐式发送；迁到任务模板后继续保留同一发送语义。
+    settings.taskTemplates['theater.generate'] = currentTheaterTaskTemplate;
+  }
   Object.entries(buildDefaultTaskTemplates()).forEach(([key, value]) => {
     if (!(key in settings.taskTemplates)) settings.taskTemplates[key] = value;
   });

@@ -20,11 +20,19 @@
         type="button"
         :disabled="loading"
         title="刷新预设"
+        aria-label="刷新预设"
         @click="$emit('refresh')"
       >
         <i class="fa-solid fa-rotate" :class="{ 'fa-spin': loading }"></i>
       </button>
-      <button v-else class="pc-icon-btn primary" type="button" title="导入插件预设" @click="fileInput?.click()">
+      <button
+        v-else
+        class="pc-icon-btn primary"
+        type="button"
+        title="导入插件预设"
+        aria-label="导入插件预设"
+        @click="fileInput?.click()"
+      >
         <i class="fa-solid fa-file-import"></i>
       </button>
       <input ref="fileInput" hidden type="file" accept="application/json,.json" @change="importFile" />
@@ -68,6 +76,7 @@
           :class="{ active: presetName === loadedPresetName }"
           :disabled="switchingPreset === presetName || presetName === loadedPresetName"
           :title="presetName === loadedPresetName ? '当前使用' : '使用这个预设'"
+          :aria-label="presetName === loadedPresetName ? '当前使用' : '使用这个预设'"
           @click="$emit('switch-preset', presetName)"
         >
           <i :class="presetName === loadedPresetName ? 'fa-solid fa-check' : 'fa-solid fa-play'"></i>

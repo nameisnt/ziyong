@@ -42,7 +42,14 @@
 
       <div class="pc-compact-toolbar pc-directory-toolbar">
         <span class="pc-directory-count">{{ repository.snapshots.length }} 个快照</span>
-        <button class="pc-icon-btn" type="button" :disabled="repository.busy" title="刷新仓库清单" @click="refresh">
+        <button
+          class="pc-icon-btn"
+          type="button"
+          :disabled="repository.busy"
+          title="刷新仓库清单"
+          aria-label="刷新仓库清单"
+          @click="refresh"
+        >
           <i :class="repository.busy ? 'fa-solid fa-spinner fa-spin' : 'fa-solid fa-rotate'"></i>
         </button>
       </div>

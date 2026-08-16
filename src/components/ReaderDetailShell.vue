@@ -17,6 +17,7 @@
           <header class="pc-reader-document-head">
             <h1>{{ title }}</h1>
             <slot name="meta"></slot>
+            <span v-if="sourceLabel" class="pc-reader-source-label">{{ sourceLabel }}</span>
           </header>
           <slot name="before-content"></slot>
           <slot name="content" :display-content="displayContent"></slot>
@@ -27,7 +28,10 @@
         <template #before-header>
           <ReasoningDisclosure :content="reasoning" />
         </template>
-        <template #meta><slot name="meta"></slot></template>
+        <template #meta>
+          <slot name="meta"></slot>
+          <span v-if="sourceLabel" class="pc-reader-source-label">{{ sourceLabel }}</span>
+        </template>
         <template #before>
           <slot name="before-content"></slot>
         </template>
@@ -64,6 +68,7 @@
       <button
         class="pc-icon-btn pc-reader-tool-trigger"
         type="button"
+        aria-label="阅读工具"
         :aria-expanded="toolMenuOpen"
         title="阅读工具"
         @click.stop="toggleToolMenu"
@@ -174,6 +179,7 @@ const props = withDefaults(
     previousDisabled?: boolean;
     previousLabel?: string;
     reasoning?: string;
+    sourceLabel?: string;
     title: string;
   }>(),
   {
@@ -205,6 +211,7 @@ const props = withDefaults(
     previousDisabled: false,
     previousLabel: '上一章',
     reasoning: '',
+    sourceLabel: '',
   },
 );
 
@@ -526,6 +533,15 @@ defineExpose({ hideFooter, toggleFooter });
   font-family: inherit;
   font-size: 24px;
   line-height: 1.3;
+}
+
+.pc-reader-source-label {
+  display: block;
+  margin-top: 8px;
+  color: var(--pc-muted);
+  font-size: 12px;
+  line-height: 1.45;
+  overflow-wrap: anywhere;
 }
 
 .pc-reader-footer-layer {

@@ -16,7 +16,7 @@
             @update:model-value="taskId = $event as CardWriterTaskId"
           />
         </div>
-        <button class="pc-icon-btn" type="button" title="查看已保存成品" @click="openLibrary">
+        <button class="pc-icon-btn" type="button" aria-label="查看已保存成品" title="查看已保存成品" @click="openLibrary">
           <i class="fa-solid fa-box-archive"></i>
         </button>
       </div>
@@ -99,7 +99,13 @@
                 toggle-title="展开世界书列表"
                 @update:model-value="targetWorldbookName = $event"
               />
-              <button class="pc-icon-btn" type="button" title="刷新世界书列表" @click="refreshWorldbooks">
+              <button
+                class="pc-icon-btn"
+                type="button"
+                aria-label="刷新世界书列表"
+                title="刷新世界书列表"
+                @click="refreshWorldbooks"
+              >
                 <i class="fa-solid fa-rotate"></i>
               </button>
             </div>
@@ -374,13 +380,19 @@
             <strong :title="document.title">{{ document.title }}</strong>
             <small :title="formatDocumentMeta(document)">{{ formatDocumentMeta(document) }}</small>
           </button>
-          <button class="pc-icon-btn" type="button" title="复制成品" @click="copyDocument(document)">
+          <button class="pc-icon-btn" type="button" aria-label="复制成品" title="复制成品" @click="copyDocument(document)">
             <i class="fa-solid fa-copy"></i>
           </button>
-          <button class="pc-icon-btn" type="button" title="导入资料表" @click="openProfileImport(document)">
+          <button class="pc-icon-btn" type="button" aria-label="导入资料表" title="导入资料表" @click="openProfileImport(document)">
             <i class="fa-solid fa-table-list"></i>
           </button>
-          <button class="pc-icon-btn danger" type="button" title="删除成品" @click="deleteDocument(document)">
+          <button
+            class="pc-icon-btn danger"
+            type="button"
+            aria-label="删除成品"
+            title="删除成品"
+            @click="deleteDocument(document)"
+          >
             <i class="fa-solid fa-trash"></i>
           </button>
         </article>
@@ -448,6 +460,7 @@ import GenerationPreviewPanel from '@/components/GenerationPreviewPanel.vue';
 import InfoHint from '@/components/InfoHint.vue';
 import SearchableCombobox from '@/components/SearchableCombobox.vue';
 import { getProfileKindLabel, useProfilesStore, type ProfileEntry } from '@/apps/profiles/store';
+import { useSingleGenerationTaskSession } from '@/composables/useSingleGenerationTaskSession';
 import { usePreviewSession } from '@/composables/usePreviewSession';
 import { generateOrderedPromptContent, type RawOrderedPrompt } from '@/core/generationService';
 import {
@@ -458,6 +471,7 @@ import {
   type WorldbookEntryDraft,
 } from '@/apps/worldbook-link/api';
 import { usePhoneStore } from '@/store/phone';
+import { usePreviewDraftStore } from '@/store/previewDrafts';
 import { useSettingsStore } from '@/store/settings';
 import ReasoningModal from '@/components/ReasoningModal.vue';
 import { useGenerationAliasesStore } from '@/store/generationAliases';
@@ -469,7 +483,6 @@ import {
   getChatMessagesSafe,
   getOptionalGlobalFunction,
   getOptionalGlobalValue,
-  stopGenerationByIdSafe,
 } from '@/util/runtime';
 import {
   buildCardWriterOrderedPrompts,
@@ -491,11 +504,41 @@ type StageState = CardWriterStageResult;
 type PersonaMode = 'multistage' | 'normal';
 type WorldMode = 'auto' | 'custom' | 'existing';
 
+interface CardWriterPreviewState {
+  content: string;
+  providerSummary: string;
+  raw: string;
+  sourceLabel: string;
+  sourceOwnerLabel: string;
+  sourceScopeKey: string;
+  taskId: CardWriterTaskId;
+  taskLabel: string;
+  targetWorldbookName: string;
+  title: string;
+  warnings: string[];
+  worldbookIncluded: boolean;
+  worldbookWritten: boolean;
+}
+
+interface CardWriterPreviewDraftPayload {
+  activePreviewStageId: string;
+  definitions: CardWriterStage[];
+  preview: CardWriterPreviewState;
+  stages: StageState[];
+}
+
 const phone = usePhoneStore();
 const settingsStore = useSettingsStore();
 const generationAliases = useGenerationAliasesStore();
 const writerStore = useCardWriterStore();
 const profiles = useProfilesStore();
+const previewDraftStore = usePreviewDraftStore();
+const generationSession = useSingleGenerationTaskSession({
+  actionId: 'generate-sequence',
+  appId: 'card-writer',
+  sourcePage: 'root',
+  title: '写卡工坊 · 多阶段生成',
+});
 const { settings } = storeToRefs(settingsStore);
 const { documents, settings: writerSettings } = storeToRefs(writerStore);
 const route = computed(() => phone.currentRoute);
@@ -507,11 +550,11 @@ const includeWorldbook = ref(false);
 const targetWorldbookName = ref('');
 const worldbookOptions = ref<Array<{ group?: string; label: string; value: string }>>([]);
 const references = ref<GenerationReferenceItem[]>([]);
-const running = ref(false);
 const savingPreview = ref(false);
-const rawOutput = ref('');
-const generationError = ref('');
-const activeGenerationId = ref('');
+const generationFormError = ref('');
+const running = generationSession.running;
+const rawOutput = generationSession.rawOutput;
+const generationError = computed(() => generationFormError.value || generationSession.error.value);
 const stageStates = ref<StageState[]>([]);
 const activeStageDefinitions = ref<CardWriterStage[]>([]);
 const activePreviewStageId = ref('');
@@ -545,7 +588,7 @@ const generationDraft = reactive({
   singleMessageId: 0,
   userRequirement: '',
 });
-const preview = reactive({
+const preview = reactive<CardWriterPreviewState>({
   content: '',
   providerSummary: '酒馆当前 API',
   raw: '',
@@ -685,6 +728,43 @@ function updatePreviewAggregate() {
   preview.raw = buildPreviewRaw();
 }
 
+function persistWriterPreviewDraft() {
+  previewDraftStore.upsertPreviewDraft({
+    appId: 'card-writer',
+    page: 'preview',
+    preview: {
+      activePreviewStageId: activePreviewStageId.value,
+      definitions: activeStageDefinitions.value.map(stage => ({
+        ...stage,
+        dependencyIds: stage.dependencyIds?.slice(),
+        modules: stage.modules.slice(),
+      })),
+      preview: klona(preview),
+      stages: stageStates.value.map(stage => ({ ...stage })),
+    } satisfies CardWriterPreviewDraftPayload,
+    routeParams: {},
+    title: '写卡预览',
+  });
+}
+
+function restoreWriterPreviewDraft() {
+  const draft = previewDraftStore.getPreviewDraft('card-writer', 'preview');
+  if (!draft?.preview || typeof draft.preview !== 'object') return false;
+  const payload = draft.preview as Partial<CardWriterPreviewDraftPayload>;
+  if (!Array.isArray(payload.stages) || !Array.isArray(payload.definitions) || !payload.preview) return false;
+  stageStates.value = klona(payload.stages);
+  activeStageDefinitions.value = klona(payload.definitions);
+  activePreviewStageId.value = payload.activePreviewStageId || stageStates.value[0]?.id || '';
+  Object.assign(preview, klona(payload.preview));
+  activeDocumentId.value = '';
+  savedPreviewBaseline.value = null;
+  return true;
+}
+
+function clearWriterPreviewDraft() {
+  previewDraftStore.deletePreviewDraft('card-writer', 'preview');
+}
+
 function updateActiveStageContent(value: string) {
   const stage = activePreviewStage.value;
   if (!stage) return;
@@ -697,6 +777,7 @@ function updateActiveStageContent(value: string) {
     stage.error = `${stage.label}内容为空`;
   }
   updatePreviewAggregate();
+  persistWriterPreviewDraft();
 }
 
 function updateActiveStageRaw(value: string) {
@@ -704,6 +785,8 @@ function updateActiveStageRaw(value: string) {
   if (!stage) return;
   stage.raw = value;
   updatePreviewAggregate();
+  generationSession.setRawOutput(preview.raw);
+  persistWriterPreviewDraft();
 }
 
 function reparseActiveStage() {
@@ -714,11 +797,14 @@ function reparseActiveStage() {
     stage.status = 'completed';
     stage.error = '';
     updatePreviewAggregate();
+    generationSession.setRawOutput(preview.raw);
+    persistWriterPreviewDraft();
     toastr.success(`${stage.label}重新解析成功`);
     return true;
   } catch (error) {
     stage.status = 'failed';
     stage.error = error instanceof Error ? error.message : `${stage.label}解析失败`;
+    persistWriterPreviewDraft();
     toastr.error(stage.error);
     return false;
   }
@@ -802,7 +888,7 @@ function refreshWorldbooks() {
     worldbookOptions.value = options;
   } catch (error) {
     worldbookOptions.value = getAllWorldbookNames().map(name => ({ label: name, value: name }));
-    generationError.value = error instanceof Error ? error.message : '读取世界书列表失败';
+    generationFormError.value = error instanceof Error ? error.message : '读取世界书列表失败';
   }
 }
 
@@ -913,17 +999,16 @@ function providerSummary(result: Awaited<ReturnType<typeof generateOrderedPrompt
 async function runWriter() {
   if (running.value) return;
   if (generateDisabled.value) {
-    generationError.value =
+    generationFormError.value =
       fullCardMode.value === 'plot' && !plotHasSource.value
         ? '按剧情写卡至少需要聊天楼层、引用或世界书中的一种素材'
         : protagonistInputError.value || npcInputError.value || '请补全一键写卡的必填内容';
     return;
   }
-  running.value = true;
-  generationError.value = '';
-  rawOutput.value = '';
+  generationFormError.value = '';
   activeDocumentId.value = '';
-  const task = selectedTask.value;
+  clearWriterPreviewDraft();
+  const writerTask = selectedTask.value;
   const stages = selectedStages.value.map(stage => ({ ...stage, dependencyIds: stage.dependencyIds?.slice() }));
   activeStageDefinitions.value = stages;
   const sourceScopeKey = currentChatScopeKey.value || getCurrentChatScopeKey();
@@ -946,23 +1031,39 @@ async function runWriter() {
     preview.sourceLabel = `${sourceLabel}${includeWorldbook.value ? ' · 已加入世界书' : ' · 未加入世界书'}`;
     preview.sourceOwnerLabel = sourceOwnerLabel;
     preview.sourceScopeKey = sourceScopeKey;
-    preview.taskId = task.id;
-    preview.taskLabel = task.label;
+    preview.taskId = writerTask.id;
+    preview.taskLabel = writerTask.label;
     preview.targetWorldbookName = targetWorldbookName.value.trim();
-    preview.title = `${task.label}成品`;
+    preview.title = `${writerTask.label}成品`;
     preview.warnings = [];
     preview.worldbookIncluded = includeWorldbook.value;
     preview.worldbookWritten = false;
-    await runStageSequence(0, chatMessages, worldbookContent);
+    persistWriterPreviewDraft();
+    const task = generationSession.create({
+      sourceParams: { taskId: writerTask.id },
+      title: `写卡工坊 · ${writerTask.label}`,
+    });
+    const completed = await runStageSequence(0, chatMessages, worldbookContent, task.id);
+    generationSession.complete(task.id, {
+      currentLabel: completed ? '多阶段写卡已生成，等待确认' : '部分阶段失败，等待修复',
+      resultPage: 'preview',
+      resultState: 'preview',
+      resultTitle: '写卡预览',
+    });
+    void phone.presentGeneratedPage('card-writer', 'preview', '写卡预览');
   } catch (error) {
-    generationError.value = error instanceof Error ? error.message : '写卡生成失败';
-  } finally {
-    running.value = false;
-    activeGenerationId.value = '';
+    const task = generationSession.task.value;
+    if (task && (task.status === 'queued' || task.status === 'running')) generationSession.fail(task.id, error);
+    else generationFormError.value = error instanceof Error ? error.message : '写卡生成失败';
   }
 }
 
-async function runStageSequence(startIndex: number, chatMessages: ChatMessage[], worldbookContent: string) {
+async function runStageSequence(
+  startIndex: number,
+  chatMessages: ChatMessage[],
+  worldbookContent: string,
+  taskId: string,
+) {
   const requirement =
     replaceGenerationAliases(buildRequirementText(), {
       charReplacement: generationAliases.charReplacement,
@@ -985,61 +1086,50 @@ async function runStageSequence(startIndex: number, chatMessages: ChatMessage[],
         userInput,
         worldbookContent,
       });
-      let liveStageOutput = '';
       const result = await generateOrderedPromptContent({
         appId: 'card-writer',
-        lifecycle: {
-          onFinish: () => {
-            activeGenerationId.value = '';
-          },
-          onRawOutput: output => {
-            liveStageOutput = output;
-            state.raw = output;
-            rawOutput.value = buildPreviewRaw();
-          },
-          onStart: generationId => {
-            activeGenerationId.value = generationId;
-          },
-        },
+        lifecycle: generationSession.lifecycle(taskId),
         messages: messagesForStage,
         shouldStream: settings.value.generation.stream,
         textProvider: settings.value.textProvider,
         userInput,
       });
-      const stageRaw = result.rawOutput || liveStageOutput;
+      const stageRaw = result.rawOutput;
       state.raw = stageRaw;
       state.reasoning = result.reasoning;
       state.content = parseCardWriterArtifact(stageRaw, stage.label);
       state.status = 'completed';
       preview.providerSummary = providerSummary(result);
       updatePreviewAggregate();
-      rawOutput.value = preview.raw;
+      generationSession.setRawOutput(preview.raw, taskId);
+      persistWriterPreviewDraft();
     } catch (error) {
       state.status = 'failed';
       state.error = error instanceof Error ? error.message : `${stage.label}生成或解析失败`;
-      generationError.value = state.error;
+      generationFormError.value = state.error;
       updatePreviewAggregate();
-      rawOutput.value = preview.raw;
+      generationSession.setRawOutput(preview.raw, taskId);
+      persistWriterPreviewDraft();
       savedPreviewBaseline.value = null;
-      if (route.value.page !== 'preview') phone.pushPage('preview', '写卡预览');
       return false;
     }
   }
   updatePreviewAggregate();
+  generationSession.setRawOutput(preview.raw, taskId);
+  persistWriterPreviewDraft();
   savedPreviewBaseline.value = null;
-  if (route.value.page !== 'preview') phone.pushPage('preview', '写卡预览');
   return true;
 }
 
 function stopWriter() {
-  if (activeGenerationId.value) stopGenerationByIdSafe(activeGenerationId.value);
+  generationSession.stop();
 }
 
 function resetGeneration() {
   if (running.value) return;
-  generationError.value = '';
-  rawOutput.value = '';
+  generationFormError.value = '';
   stageStates.value = [];
+  clearWriterPreviewDraft();
 }
 
 function openLibrary() {
@@ -1237,36 +1327,51 @@ async function savePreview() {
         if (!reparseActiveStage()) return;
       }
       const nextIndex = stageStates.value.findIndex(stage => stage.status !== 'completed');
-      if (nextIndex < 0) return;
-      if (!activeStageDefinitions.value.length) {
-        toastr.error('已保存的旧成品缺少阶段生成信息，无法继续生成');
-        return;
-      }
-      running.value = true;
-      generationError.value = '';
-      try {
+      if (nextIndex >= 0) {
+        if (!activeStageDefinitions.value.length) {
+          toastr.error('已保存的旧成品缺少阶段生成信息，无法继续生成');
+          return;
+        }
+        generationFormError.value = '';
         const { messages } = getSelectedChatMessages();
         const worldbookContent = await buildWorldbookText();
-        await runStageSequence(nextIndex, messages, worldbookContent);
-      } finally {
-        running.value = false;
-        activeGenerationId.value = '';
+        const task = generationSession.create({
+          sourcePage: 'preview',
+          sourceParams: { taskId: preview.taskId },
+          title: `写卡工坊 · 继续${preview.taskLabel}`,
+        });
+        try {
+          const completed = await runStageSequence(nextIndex, messages, worldbookContent, task.id);
+          generationSession.complete(task.id, {
+            currentLabel: completed ? '多阶段写卡已生成，等待确认' : '部分阶段失败，等待修复',
+            resultPage: 'preview',
+            resultState: 'preview',
+            resultTitle: '写卡预览',
+          });
+          void phone.presentGeneratedPage('card-writer', 'preview', '写卡预览');
+        } catch (error) {
+          generationSession.fail(task.id, error);
+          throw error;
+        }
+        return;
       }
-      return;
     }
     persistPreviewDocument();
     markPreviewSaved();
     if (!preview.targetWorldbookName) {
+      clearWriterPreviewDraft();
       toastr.success('写卡成品已保存');
       return;
     }
     if (preview.worldbookWritten) {
+      clearWriterPreviewDraft();
       toastr.success('写卡成品已更新；已写入的世界书条目不会重复新增');
       return;
     }
     const count = await appendWorldbookEntries(preview.targetWorldbookName, buildWorldbookDrafts());
     preview.worldbookWritten = true;
     persistPreviewDocument(true);
+    clearWriterPreviewDraft();
     refreshWorldbooks();
     toastr.success(`已保存，并向世界书“${preview.targetWorldbookName}”写入 ${count} 个条目`);
   } catch (error) {
@@ -1330,8 +1435,10 @@ function formatDocumentMeta(document: CardWriterDocument) {
   return `${isCurrentChatDocument(document) ? '当前 · ' : ''}${formatCardWriterDocumentChat(document)} · ${document.taskLabel} · ${formatDate(document.updatedAt)}`;
 }
 
-onMounted(refreshWorldbooks);
-onBeforeUnmount(stopWriter);
+onMounted(() => {
+  void refreshWorldbooks();
+  if (route.value.page === 'preview' && !activeDocumentId.value) restoreWriterPreviewDraft();
+});
 </script>
 
 <style scoped>

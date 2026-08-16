@@ -21,7 +21,14 @@
         <span>这个条目用于确定酒馆内容的插入位置，没有独立正文。</span>
       </div>
       <div class="pc-form-actions">
-        <button class="pc-icon-btn danger" type="button" :disabled="saving" title="删除条目" @click="$emit('remove')">
+        <button
+          class="pc-icon-btn danger"
+          type="button"
+          :disabled="saving"
+          title="删除条目"
+          aria-label="删除条目"
+          @click="$emit('remove')"
+        >
           <i class="fa-solid fa-trash"></i>
         </button>
         <button class="pc-soft-btn" type="button" :disabled="saving" @click="$emit('back')">返回</button>

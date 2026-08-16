@@ -3,7 +3,13 @@
     <section class="pc-music-page">
       <div v-if="route.page === 'root'" class="pc-compact-toolbar pc-directory-toolbar pc-music-toolbar">
         <span class="pc-directory-count">{{ audioEntries.length }} {{ t`首音频` }}</span>
-        <button class="pc-icon-btn primary" type="button" :title="t`新增音乐`" @click="openEditor()">
+        <button
+          class="pc-icon-btn primary"
+          type="button"
+          :title="t`新增音乐`"
+          :aria-label="t`新增音乐`"
+          @click="openEditor()"
+        >
           <i class="fa-solid fa-plus"></i>
         </button>
       </div>

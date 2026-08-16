@@ -3,10 +3,19 @@ import { baguField } from '@/store/bagu';
 import { promptField } from '@/store/prompts';
 import { recoveryField } from '@/store/recovery';
 import { readerSettingsField } from '@/store/reader';
+import { usePluginPresetStore } from '@/store/pluginPresets';
 import { getCurrentChatScopeKey } from '@/store/chatScoped';
-import { isFullPhoneBackup, PhoneBackupFullDataSchema, PhoneBackupSchema, type PhoneBackup } from '@/type/backup';
+import {
+  getEmbeddedPluginPresets,
+  isFullPhoneBackup,
+  PhoneBackupFullDataSchema,
+  PhoneBackupSchema,
+  type PhoneBackup,
+  type PluginPresetBackupBundle,
+} from '@/type/backup';
 import { parsePrettified } from '@/util/zod';
 import { executeBackupImportTransaction } from '@/util/backupTransaction';
+import { executeBackupResourceTransaction } from '@/util/backupResourceTransaction';
 import {
   analyzeBackupDomainCoverage,
   assertFullBackupImportAllowed,
@@ -46,6 +55,7 @@ const backupDomainLabels: Record<string, string> = {
   forum: '论坛',
   letters: '书信',
   media: '媒体生成',
+  'mvu-modifier': 'MVU 收藏与记录',
   profiles: '资料表',
   'preview-drafts': '未保存预览',
   'preset-link': '预设绑定',
@@ -94,6 +104,7 @@ type StagedPhoneBackupDomainImport = {
 };
 
 type PreparedFullPhoneBackupImport = {
+  embeddedPluginPresets: PluginPresetBackupBundle | null;
   plan: PhoneBackupImportPlan;
   stagedDomains: StagedPhoneBackupDomainImport[];
   stagedSettings: Settings;
@@ -364,14 +375,15 @@ function sanitizeSettingsForJsonBackup(rawSettings: unknown) {
   return parsed;
 }
 
-export function buildPhoneBackup(): PhoneBackup {
+export function buildPhoneBackup(options: { pluginPresets?: PluginPresetBackupBundle } = {}): PhoneBackup {
   const scopeKey = getCurrentChatScopeKey();
   const registeredDomains = getRegisteredPhoneBackupDomains();
   const domains = Object.fromEntries(registeredDomains.map(domain => [domain.key, domain.exportData(scopeKey)]));
+  const pluginPresets = options.pluginPresets ? klona(options.pluginPresets) : null;
 
   return parsePrettified(PhoneBackupSchema, {
     backupKind: 'full',
-    schemaVersion: 1,
+    schemaVersion: pluginPresets ? 2 : 1,
     exportedAt: new Date().toISOString(),
     data: {
       settings: sanitizeSettingsForJsonBackup(_.get(extension_settings, setting_field, {})),
@@ -381,12 +393,18 @@ export function buildPhoneBackup(): PhoneBackup {
       recoveries: _.get(extension_settings, recoveryField, {}),
       domains,
       domainVersions: Object.fromEntries(registeredDomains.map(domain => [domain.key, domain.schemaVersion])),
+      ...(pluginPresets ? { pluginPresets } : {}),
     },
   });
 }
 
-export function downloadPhoneBackup() {
-  const backup = buildPhoneBackup();
+export async function buildCompletePhoneBackup() {
+  const presetStore = usePluginPresetStore();
+  return buildPhoneBackup({ pluginPresets: await presetStore.exportBackupBundle() });
+}
+
+export async function downloadPhoneBackup() {
+  const backup = await buildCompletePhoneBackup();
   downloadBackupObject(backup, `sillytavern-phone-backup-${timestampLabel(new Date())}.json`);
 }
 
@@ -555,9 +573,13 @@ function prepareFullPhoneBackupImport(
     stagedDomains.map(({ domain }) => domain.key),
     Object.keys(backup.data.domains),
   );
+  const embeddedPluginPresets = getEmbeddedPluginPresets(backup);
+  const plan = buildImportPlan('full', stagedDomains, coverage.missingDomains, coverage.unknownDomainKeys);
+  if (embeddedPluginPresets) plan.domainsToReplace.unshift('插件预设');
   return {
     data,
-    plan: buildImportPlan('full', stagedDomains, coverage.missingDomains, coverage.unknownDomainKeys),
+    embeddedPluginPresets,
+    plan,
     stagedDomains,
     stagedSettings,
   };
@@ -571,16 +593,32 @@ export function planPhoneFullBackupImport(
 }
 
 export async function applyPhoneBackup(backup: PhoneBackup, options: { allowLegacy?: boolean } = {}) {
-  const { data, stagedDomains, stagedSettings } = prepareFullPhoneBackupImport(backup, options);
+  const prepared = prepareFullPhoneBackupImport(backup, options);
+  const { data, embeddedPluginPresets, stagedDomains, stagedSettings } = prepared;
 
-  await commitBackupImport(() => {
-    _.set(extension_settings, setting_field, stagedSettings);
-    _.set(extension_settings, promptField, klona(data.prompts));
-    _.set(extension_settings, baguField, klona(data.bagu));
-    _.set(extension_settings, readerSettingsField, klona(data.reader));
-    _.set(extension_settings, recoveryField, klona(data.recoveries));
-    stagedDomains.forEach(({ data: domainData, domain }) => {
-      domain.importData(domainData);
-    });
-  }, getRegisteredPhoneBackupRehydrateHandlers());
+  const commitSettings = () =>
+    commitBackupImport(() => {
+      _.set(extension_settings, setting_field, stagedSettings);
+      _.set(extension_settings, promptField, klona(data.prompts));
+      _.set(extension_settings, baguField, klona(data.bagu));
+      _.set(extension_settings, readerSettingsField, klona(data.reader));
+      _.set(extension_settings, recoveryField, klona(data.recoveries));
+      stagedDomains.forEach(({ data: domainData, domain }) => {
+        domain.importData(domainData);
+      });
+    }, getRegisteredPhoneBackupRehydrateHandlers());
+
+  if (!embeddedPluginPresets) {
+    await commitSettings();
+    return;
+  }
+
+  const presetStore = usePluginPresetStore();
+  const currentPluginPresets = await presetStore.exportBackupBundle();
+  await executeBackupResourceTransaction({
+    captureSnapshot: () => currentPluginPresets,
+    commitSettings,
+    replaceResource: () => presetStore.replaceBackupBundle(embeddedPluginPresets),
+    restoreResource: snapshot => presetStore.replaceBackupBundle(snapshot),
+  });
 }
