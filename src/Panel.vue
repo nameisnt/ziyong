@@ -1,4 +1,5 @@
 <template>
+<<<<<<< HEAD
   <div class="pc-settings-panel">
     <div class="inline-drawer">
       <div class="inline-drawer-toggle inline-drawer-header">
@@ -88,6 +89,23 @@
             }}
           </p>
         </section>
+=======
+  <div class="example-extension-settings">
+    <div class="inline-drawer">
+      <div class="inline-drawer-toggle inline-drawer-header">
+        <b>{{ t`插件示例` }}</b>
+        <div class="inline-drawer-icon fa-solid fa-circle-chevron-down down"></div>
+      </div>
+      <div class="inline-drawer-content">
+        <div class="example-extension_block flex-container">
+          <input class="menu_button" type="submit" :value="t`示例按钮`" @click="handle_button_click" />
+        </div>
+
+        <div class="example-extension_block flex-container">
+          <input v-model="settings.button_selected" type="checkbox" />
+          <label for="example_setting">{{ t`示例开关` }}</label>
+        </div>
+>>>>>>> f4a4f43d6d22c4343246ecdffd77b3eb6b9c73b7
 
         <hr class="sysHR" />
       </div>
@@ -96,6 +114,7 @@
 </template>
 
 <script setup lang="ts">
+<<<<<<< HEAD
 import { usePhoneStore } from '@/store/phone';
 import { useSettingsStore } from '@/store/settings';
 import { storeToRefs } from 'pinia';
@@ -234,3 +253,16 @@ const { settings } = storeToRefs(settingsStore);
   transform: translateX(18px);
 }
 </style>
+=======
+import { useSettingsStore } from '@/store/settings';
+import { storeToRefs } from 'pinia';
+
+const { settings } = storeToRefs(useSettingsStore());
+
+const handle_button_click = () => {
+  toastr.success('你好呀!');
+};
+</script>
+
+<style scoped></style>
+>>>>>>> f4a4f43d6d22c4343246ecdffd77b3eb6b9c73b7
