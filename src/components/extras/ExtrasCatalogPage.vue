@@ -17,15 +17,15 @@
     />
     <PreviewDraftNotice
       :draft="chapterPreviewDraft"
-      label="未保存章节预览"
-      @discard="$emit('discard-chapter-preview')"
+      @discard="$emit('discard-chapter-preview', $event)"
       @open="$emit('open-chapter-preview')"
+      @open-id="$emit('open-chapter-preview', $event)"
     />
     <PreviewDraftNotice
       :draft="summaryPreviewDraft"
-      label="未保存总结预览"
-      @discard="$emit('discard-summary-preview')"
+      @discard="$emit('discard-summary-preview', $event)"
       @open="$emit('open-summary-preview')"
+      @open-id="$emit('open-summary-preview', $event)"
     />
   </section>
 </template>
@@ -57,12 +57,12 @@ defineProps<{
 
 defineEmits<{
   create: [];
-  'discard-chapter-preview': [];
-  'discard-summary-preview': [];
+  'discard-chapter-preview': [id?: string];
+  'discard-summary-preview': [id?: string];
   'open-book': [bookId: string];
-  'open-chapter-preview': [];
+  'open-chapter-preview': [id?: string];
   'open-failed-draft': [draftId: string];
-  'open-summary-preview': [];
+  'open-summary-preview': [id?: string];
   'remove-failed-draft': [draftId: string];
 }>();
 </script>

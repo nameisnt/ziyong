@@ -1,6 +1,6 @@
 <template>
-  <section class="pc-entry-library-page">
-    <article class="pc-page-section pc-entry-item-editor">
+  <section class="pc-entry-library-page pc-saved-content-editor-page">
+    <article class="pc-page-section pc-entry-item-editor pc-saved-content-editor">
       <label class="pc-field-group"><span>名称</span><input v-model="title" class="pc-field" type="text" /></label>
       <div class="pc-field-group">
         <span>分组</span>
@@ -9,8 +9,8 @@
       <label class="pc-field-group"
         ><span>顺序</span><input v-model.number="order" class="pc-field" type="number" min="1" :max="orderMax"
       /></label>
-      <label class="pc-field-group pc-entry-content-field"
-        ><span>内容</span><textarea v-model="content" class="pc-area pc-area-long"></textarea>
+      <label class="pc-field-group pc-entry-content-field pc-saved-content-field"
+        ><span>内容</span><textarea v-model="content" class="pc-area pc-saved-content-area"></textarea>
       </label>
       <div class="pc-form-actions">
         <button class="pc-soft-btn" type="button" @click="$emit('back')">取消</button
@@ -33,9 +33,5 @@ const groupOptions = computed(() => props.groups.map(group => ({ label: group.na
 <style scoped>
 .pc-entry-library-page {
   min-height: 100%;
-}
-.pc-entry-item-editor {
-  display: grid;
-  gap: 12px;
 }
 </style>

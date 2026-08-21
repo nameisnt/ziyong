@@ -18,12 +18,13 @@
         >
           <i :class="sortDesc ? 'fa-solid fa-arrow-down-wide-short' : 'fa-solid fa-arrow-up-short-wide'"></i>
         </button>
-        <button class="pc-icon-btn" type="button" aria-label="重命名书架" title="重命名书架" @click="$emit('rename')">
-          <i class="fa-solid fa-pen"></i>
-        </button>
-        <button class="pc-icon-btn danger" type="button" aria-label="删除书架" title="删除书架" @click="$emit('remove-book')">
-          <i class="fa-solid fa-trash"></i>
-        </button>
+        <ActionMenu label="管理" icon="fa-solid fa-bars">
+          <ItemTransferImportAction app-id="diary" :params="{ bookId: book.id }" label="导入单篇日记" />
+          <button type="button" @click="$emit('rename')"><i class="fa-solid fa-pen"></i>重命名书架</button>
+          <button class="danger" type="button" @click="$emit('remove-book')">
+            <i class="fa-solid fa-trash"></i>删除书架
+          </button>
+        </ActionMenu>
       </div>
     </div>
 
@@ -58,8 +59,10 @@
 </template>
 
 <script setup lang="ts">
+import ActionMenu from '@/components/ActionMenu.vue';
 import EmptyState from '@/components/EmptyState.vue';
 import FailedDraftList from '@/components/FailedDraftList.vue';
+import ItemTransferImportAction from '@/components/ItemTransferImportAction.vue';
 import type { DiaryBook, DiaryEntry } from '@/type/diary';
 import type { FailedGenerationDraft } from '@/type/generation';
 

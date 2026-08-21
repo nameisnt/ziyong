@@ -58,6 +58,7 @@ export const GenerationTaskSchema = z
     jobs: z.array(GenerationTaskJobSchema).default([]),
     kind: GenerationTaskKindSchema,
     rawOutput: z.string().default(''),
+    rawOutputSemantics: RawOutputSemanticsSchema.default('legacy-unknown'),
     routePage: z.string().default('root'),
     routeParams: z.record(z.string(), z.string()).default({}),
     savedCount: z.number().int().nonnegative().default(0),
@@ -83,3 +84,4 @@ export const GenerationTaskSettingsSchema = z.object({
   tasks: z.array(GenerationTaskSchema).default([]),
 });
 export type GenerationTaskSettings = z.infer<typeof GenerationTaskSettingsSchema>;
+import { RawOutputSemanticsSchema } from '@/type/generation';

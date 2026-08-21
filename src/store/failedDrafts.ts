@@ -5,6 +5,9 @@ export interface FailedDraftScopeData {
   failedDrafts: FailedGenerationDraft[];
 }
 
+type FailedDraftInput = Omit<FailedGenerationDraft, 'createdAt' | 'id' | 'rawOutputSemantics'> &
+  Partial<Pick<FailedGenerationDraft, 'rawOutputSemantics'>>;
+
 const MAX_FAILED_DRAFTS_PER_APP = 30;
 
 function nowIso() {
@@ -24,11 +27,12 @@ export function createFailedDraftCollection<TData extends FailedDraftScopeData>(
     return data.value.failedDrafts.find(item => item.id === draftId) ?? null;
   }
 
-  function createFailedDraft(input: Omit<FailedGenerationDraft, 'createdAt' | 'id'>) {
+  function createFailedDraft(input: FailedDraftInput) {
     const draft: FailedGenerationDraft = {
       ...input,
       createdAt: nowIso(),
       id: createId(idPrefix),
+      rawOutputSemantics: input.rawOutputSemantics ?? 'legacy-unknown',
     };
     data.value.failedDrafts = [draft, ...data.value.failedDrafts].slice(0, MAX_FAILED_DRAFTS_PER_APP);
     return draft;

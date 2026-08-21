@@ -1,6 +1,6 @@
 <template>
-  <section class="pc-extras-page">
-    <div class="pc-page-section pc-extras-editor-section">
+  <section class="pc-extras-page pc-saved-content-editor-page">
+    <div class="pc-page-section pc-extras-editor-section pc-saved-content-editor">
       <input v-model="title" class="pc-field" type="text" :placeholder="t`章节标题`" />
       <textarea v-model="content" class="pc-area pc-saved-content-area" :placeholder="t`章节正文`"></textarea>
       <div class="pc-form-actions">
@@ -22,11 +22,6 @@ const emit = defineEmits<{ cancel: []; save: [] }>();
 <style scoped>
 .pc-extras-page {
   min-height: 100%;
-}
-
-.pc-extras-editor-section .pc-area {
-  min-height: 220px;
-  resize: vertical;
 }
 
 .pc-extras-editor-section > .pc-form-actions {

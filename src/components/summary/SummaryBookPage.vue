@@ -16,6 +16,7 @@
           <i :class="sortDesc ? 'fa-solid fa-arrow-down-wide-short' : 'fa-solid fa-arrow-up-short-wide'"></i>
         </button>
         <ActionMenu label="管理" icon="fa-solid fa-bars">
+          <ItemTransferImportAction app-id="summary" :params="{ bookId: book.id }" label="导入单条总结" />
           <button type="button" @click="$emit('import')"><i class="fa-solid fa-file-import"></i>导入总结</button>
           <button type="button" @click="$emit('batch')"><i class="fa-solid fa-layer-group"></i>批量生成</button>
           <button type="button" @click="$emit('rename')"><i class="fa-solid fa-pen"></i>重命名总结集</button>
@@ -58,6 +59,7 @@
 import EmptyState from '@/components/EmptyState.vue';
 import ActionMenu from '@/components/ActionMenu.vue';
 import FailedDraftList from '@/components/FailedDraftList.vue';
+import ItemTransferImportAction from '@/components/ItemTransferImportAction.vue';
 import type { FailedGenerationDraft } from '@/type/generation';
 import type { SummaryBook, SummaryEntry } from '@/type/summary';
 

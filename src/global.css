@@ -23,6 +23,58 @@
   -webkit-appearance: none;
 }
 
+/* Shared static material for desktop App identities; it deliberately avoids per-icon backdrop filters and animation. */
+.pc-phone-root .pc-app-icon-material {
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+  border: 1px solid color-mix(in srgb, white 48%, var(--pc-icon-material-accent) 52%);
+  background:
+    linear-gradient(155deg, color-mix(in srgb, white 34%, transparent 66%), transparent 46%),
+    linear-gradient(
+      145deg,
+      color-mix(in srgb, var(--pc-icon-material-accent) 62%, var(--pc-icon-material-base) 38%),
+      color-mix(in srgb, var(--pc-icon-material-accent) 82%, black 18%)
+    );
+  box-shadow:
+    inset 0 1px 0 color-mix(in srgb, white 68%, transparent 32%),
+    inset 0 -1px 0 color-mix(in srgb, black 12%, transparent 88%),
+    0 7px 14px color-mix(in srgb, var(--pc-icon-material-accent) 24%, transparent 76%);
+  color: var(--pc-icon-material-foreground, white);
+}
+
+.pc-phone-root .pc-app-icon-material::before {
+  content: '';
+  position: absolute;
+  z-index: 1;
+  inset: 1px 2px 48%;
+  border-radius: inherit;
+  background: linear-gradient(180deg, color-mix(in srgb, white 58%, transparent 42%), transparent);
+  opacity: 0.56;
+  pointer-events: none;
+}
+
+.pc-phone-root .pc-app-icon-material > :is(i, img) {
+  position: relative;
+  z-index: 2;
+}
+
+.pc-phone-root .pc-app-icon-material > i {
+  text-shadow: 0 1px 2px color-mix(in srgb, black 18%, transparent 82%);
+}
+
+.pc-phone-root .pc-app-icon-material:has(> img) {
+  border-color: color-mix(in srgb, white 42%, var(--pc-border) 58%);
+  background: var(--pc-icon-material-base);
+  box-shadow:
+    inset 0 1px 0 color-mix(in srgb, white 56%, transparent 44%),
+    0 7px 14px color-mix(in srgb, var(--pc-text) 18%, transparent 82%);
+}
+
+.pc-phone-root .pc-app-icon-material:has(> img)::before {
+  opacity: 0.24;
+}
+
 .pc-phone-root .pc-soft-btn,
 .pc-phone-root .pc-primary-btn,
 .pc-phone-root .pc-segment-btn,
@@ -31,24 +83,24 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  gap: 8px;
+  gap: 6px;
   text-align: center;
   line-height: 1;
 }
 
 .pc-phone-root .pc-soft-btn,
 .pc-phone-root .pc-primary-btn {
-  min-height: 36px;
+  min-height: 34px;
   font-size: 13px;
 }
 
 .pc-phone-root .pc-segment-btn {
-  min-height: 32px;
+  min-height: 30px;
   font-size: 13px;
 }
 
 .pc-phone-root .pc-segment-btn.compact {
-  min-height: 30px;
+  min-height: 28px;
   padding-inline: 6px;
   font-size: 12px;
 }
@@ -66,19 +118,19 @@
   background: transparent;
   color: var(--pc-text);
   cursor: pointer;
-  font-weight: 800;
-  min-inline-size: 56px;
-  padding: 0 10px;
+  font-weight: 700;
+  min-inline-size: 0;
+  padding: 0 8px;
 }
 
 .pc-phone-root .pc-soft-btn,
 .pc-phone-root .pc-primary-btn {
   border: 0;
   border-radius: var(--pc-control-radius);
-  padding: 0 12px;
-  min-inline-size: 76px;
+  padding: 0 10px;
+  min-inline-size: 0;
   cursor: pointer;
-  font-weight: 800;
+  font-weight: 700;
   transition:
     background 0.16s ease,
     color 0.16s ease,
@@ -88,9 +140,9 @@
 
 .pc-phone-root .pc-soft-btn.compact,
 .pc-phone-root .pc-primary-btn.compact {
-  min-height: 30px;
-  min-inline-size: 56px;
-  padding-inline: 10px;
+  min-height: 28px;
+  min-inline-size: 0;
+  padding-inline: 8px;
 }
 
 .pc-phone-root .pc-icon-btn,
@@ -108,8 +160,8 @@
 }
 
 .pc-phone-root .pc-icon-btn {
-  width: 36px;
-  height: 36px;
+  width: 34px;
+  height: 34px;
   font-size: 13px;
 }
 
@@ -175,14 +227,25 @@
   border-radius: var(--pc-control-radius);
   background: var(--pc-form-control-bg, var(--pc-surface-strong));
   color: var(--pc-form-control-text, var(--pc-text));
-  padding: 10px 12px;
-  font-size: 14px;
   outline: none;
 }
 
 .pc-phone-root .pc-field,
 .pc-phone-root .pc-select {
-  min-height: 40px;
+  min-height: 36px;
+  padding: 8px 10px;
+  font-size: 13px;
+}
+
+.pc-phone-root .pc-area {
+  padding: 10px 12px;
+  font-size: 14px;
+}
+
+.pc-phone-root .pc-select.pc-select-compact {
+  width: fit-content;
+  max-width: 100%;
+  align-self: flex-start;
 }
 
 .pc-phone-root .pc-field.pc-guess-number-input {
@@ -344,12 +407,58 @@
   min-height: 260px;
 }
 
+/* Saved entities have one main body editor; it owns the free vertical page space. */
+.pc-phone-root .pc-saved-content-editor-page {
+  height: 100%;
+  min-height: 0;
+}
+
+.pc-phone-root .pc-saved-content-editor {
+  display: flex;
+  min-height: 100%;
+  height: 100%;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.pc-phone-root .pc-saved-content-editor > .pc-saved-content-area,
+.pc-phone-root .pc-saved-content-editor > .pc-saved-content-field {
+  flex: 1 1 160px;
+  min-height: 160px;
+}
+
+.pc-phone-root .pc-saved-content-field {
+  display: flex;
+  flex-direction: column;
+}
+
+.pc-phone-root .pc-saved-content-editor .pc-saved-content-area {
+  min-height: 0;
+  height: 100%;
+  flex: 1 1 auto;
+  resize: none;
+}
+
 .pc-phone-root .pc-field-label {
   display: block;
   margin-bottom: 8px;
   color: var(--pc-muted);
   font-size: 13px;
   font-weight: 800;
+}
+
+.pc-phone-root .pc-field-head {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 8px;
+}
+
+.pc-phone-root .pc-field-head > .pc-field-label {
+  min-width: 0;
+  margin-bottom: 0;
 }
 
 .pc-phone-root .pc-field-group > span,
@@ -431,6 +540,15 @@
 .pc-phone-root .pc-page-section:last-child {
   padding-bottom: 0;
   border-bottom: 0;
+}
+
+/* Saved editor pages share pc-page-section, so this combined semantic must follow the generic Grid rule. */
+.pc-phone-root .pc-page-section.pc-saved-content-editor {
+  display: flex;
+}
+
+.pc-phone-root .pc-saved-content-editor > .pc-form-actions {
+  flex: 0 0 auto;
 }
 
 .pc-phone-root .pc-compact-toolbar {
@@ -692,11 +810,7 @@
 }
 
 .pc-phone-root .pc-editor-card textarea.pc-area:not(.compact):not(.pc-raw-area) {
-  min-height: clamp(280px, 42vh, 440px);
-}
-
-.pc-phone-root .pc-editor-card textarea.pc-area.pc-saved-content-area:not(.compact):not(.pc-raw-area) {
-  min-height: clamp(420px, 62vh, 640px);
+  min-height: 280px;
 }
 
 .pc-phone-root .pc-detail-title-row {
@@ -911,8 +1025,8 @@
 }
 
 .pc-phone-root .pc-detail-content.pc-rendered-markdown {
-  height: var(--pc-reader-body-height, clamp(260px, 48vh, 430px));
-  min-height: var(--pc-reader-body-min-height, 260px);
+  height: auto;
+  min-height: 0;
   font-family: var(--pc-reader-font-family);
   font-size: var(--pc-reader-font-size);
   line-height: var(--pc-reader-line-height);

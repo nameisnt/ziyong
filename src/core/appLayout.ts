@@ -3,6 +3,17 @@ import type { HomeFolder, HomeScreenLayout } from '@/type/settings';
 
 export const homeFolderToken = (folderId: string) => `folder:${folderId}`;
 
+const DEFAULT_DOCK_APP_IDS = ['favorites', 'prompts', 'tutorial', 'settings'];
+const DEFAULT_HOME_FOLDERS = [
+  { id: 'home_default_creation', name: '创作', appIds: ['diary', 'extras', 'theater', 'forum', 'letters', 'card-writer', 'scene-planner'] },
+  { id: 'home_default_organize', name: '整理', appIds: ['summary', 'storylines', 'bagu', 'content-converter'] },
+  { id: 'home_default_archive', name: '阅读档案', appIds: ['reader', 'archive', 'recovery', 'digest', 'chat-insert', 'stats'] },
+  { id: 'home_default_prompt', name: '设定提示', appIds: ['preset-manager', 'preset-link', 'entry-library', 'worldbook-link', 'world-slots', 'mvu-modifier', 'regex-display', 'regex-wizard'] },
+  { id: 'home_default_profiles', name: '资料关系', appIds: ['profiles', 'relationship', 'timekeeper'] },
+  { id: 'home_default_tools', name: '工具', appIds: ['workbench', 'app-builder', 'theme', 'file-repository'] },
+  { id: 'home_default_games', name: '娱乐', appIds: ['games'] },
+];
+
 export function readHomeFolderToken(token: string) {
   return token.startsWith('folder:') ? token.slice('folder:'.length) : '';
 }
@@ -17,11 +28,21 @@ export function getPhoneAppDefinitions() {
 
 export function buildDefaultHomeLayout(): HomeScreenLayout {
   const ordered = getRegisteredPhoneApps();
-  const dockOrder = ordered.filter(app => app.defaultDock).map(app => app.id);
+  const knownIds = new Set(ordered.map(app => app.id));
+  const dockOrder = DEFAULT_DOCK_APP_IDS.filter(appId => knownIds.has(appId));
+  const resolvedDockOrder = dockOrder.length ? dockOrder : ordered.filter(app => app.defaultDock).map(app => app.id);
+  const folders = DEFAULT_HOME_FOLDERS.flatMap(folder => {
+    const appIds = folder.appIds.filter(appId => knownIds.has(appId) && !resolvedDockOrder.includes(appId));
+    return appIds.length ? [{ ...folder, appIds, iconAssetId: '' }] : [];
+  });
+  const folderAppIds = new Set(folders.flatMap(folder => folder.appIds));
+  const remainingAppIds = ordered
+    .map(app => app.id)
+    .filter(appId => !resolvedDockOrder.includes(appId) && !folderAppIds.has(appId));
   return {
-    appOrder: ordered.map(app => app.id).filter(id => !dockOrder.includes(id)),
-    dockOrder,
-    folders: [],
+    appOrder: [...folders.map(folder => homeFolderToken(folder.id)), ...remainingAppIds],
+    dockOrder: resolvedDockOrder,
+    folders,
     version: 2,
   };
 }
@@ -32,34 +53,31 @@ export function normalizeHomeLayout(layout: HomeScreenLayout): HomeScreenLayout 
   const legacy = layout.version < 2;
   const claimed = new Set<string>();
   const folders: HomeFolder[] = [];
-  const dissolved = new Map<string, string>();
 
   layout.folders.forEach((folder, index) => {
     const appIds = folder.appIds.filter(appId => knownIds.has(appId) && !claimed.has(appId));
     appIds.forEach(appId => claimed.add(appId));
     if (!appIds.length) return;
-    if (appIds.length === 1) {
-      dissolved.set(folder.id, appIds[0]!);
-      claimed.delete(appIds[0]!);
-      return;
-    }
-    folders.push({ appIds, id: folder.id || `home_folder_${index + 1}`, name: folder.name.trim() || '文件夹' });
+    folders.push({
+      appIds,
+      id: folder.id || `home_folder_${index + 1}`,
+      iconAssetId: folder.iconAssetId || '',
+      name: folder.name.trim() || '文件夹',
+    });
   });
 
   const folderIds = new Set(folders.map(folder => folder.id));
   const normalizeTokens = (tokens: string[]) => {
     const seen = new Set<string>();
     return tokens.flatMap(token => {
-      const folderId = readHomeFolderToken(token);
-      const normalized = folderId && dissolved.has(folderId) ? dissolved.get(folderId)! : token;
-      const normalizedFolderId = readHomeFolderToken(normalized);
+      const normalizedFolderId = readHomeFolderToken(token);
       if (normalizedFolderId) {
-        if (!folderIds.has(normalizedFolderId) || seen.has(normalized)) return [];
-      } else if (!knownIds.has(normalized) || claimed.has(normalized) || seen.has(normalized)) {
+        if (!folderIds.has(normalizedFolderId) || seen.has(token)) return [];
+      } else if (!knownIds.has(token) || claimed.has(token) || seen.has(token)) {
         return [];
       }
-      seen.add(normalized);
-      return [normalized];
+      seen.add(token);
+      return [token];
     });
   };
 
@@ -75,6 +93,22 @@ export function normalizeHomeLayout(layout: HomeScreenLayout): HomeScreenLayout 
     if (!dockSet.has(token) && !appOrder.includes(token)) appOrder.push(token);
   });
   return { appOrder, dockOrder, folders, version: 2 };
+}
+
+export function migrateHomeLayoutDockCapacity(layout: HomeScreenLayout, dockCapacity = 4): HomeScreenLayout {
+  const normalized = normalizeHomeLayout(layout);
+  const capacity = Math.min(4, Math.max(3, Math.trunc(dockCapacity)));
+  const dockOrder: string[] = [];
+  const movedToDesktop: string[] = [];
+  normalized.dockOrder.forEach(token => {
+    if (readHomeFolderToken(token) || dockOrder.length >= capacity) movedToDesktop.push(token);
+    else dockOrder.push(token);
+  });
+  return normalizeHomeLayout({
+    ...normalized,
+    appOrder: [...normalized.appOrder.filter(token => !movedToDesktop.includes(token)), ...movedToDesktop],
+    dockOrder,
+  });
 }
 
 export function moveHomeLayoutItem(
@@ -114,7 +148,7 @@ export function putHomeAppInFolder(layout: HomeScreenLayout, appId: string, targ
     folder.appIds.push(appId);
   } else {
     const id = `home_folder_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`;
-    folders.push({ appIds: [targetToken, appId], id, name: '文件夹' });
+    folders.push({ appIds: [targetToken, appId], id, iconAssetId: '', name: '文件夹' });
     folderToken = homeFolderToken(id);
   }
   const targetWasDock = normalized.dockOrder.includes(targetToken);
@@ -123,6 +157,39 @@ export function putHomeAppInFolder(layout: HomeScreenLayout, appId: string, targ
     : normalized.appOrder.indexOf(targetToken);
   (targetWasDock ? dockOrder : appOrder).splice(Math.max(0, targetIndex), 0, folderToken);
   return normalizeHomeLayout({ ...normalized, appOrder, dockOrder, folders });
+}
+
+export function createHomeFolder(
+  layout: HomeScreenLayout,
+  input: { appIds: string[]; id: string; name: string },
+) {
+  const normalized = normalizeHomeLayout(layout);
+  const selectedIds = [...new Set(input.appIds)].filter(appId => normalized.appOrder.includes(appId));
+  if (!selectedIds.length || !input.id.trim()) return normalized;
+  const insertionIndex = Math.min(...selectedIds.map(appId => normalized.appOrder.indexOf(appId)));
+  const appOrder = normalized.appOrder.filter(token => !selectedIds.includes(token));
+  appOrder.splice(insertionIndex, 0, homeFolderToken(input.id));
+  return normalizeHomeLayout({
+    ...normalized,
+    appOrder,
+    folders: [
+      ...normalized.folders,
+      { appIds: selectedIds, iconAssetId: '', id: input.id, name: input.name.trim() || '文件夹' },
+    ],
+  });
+}
+
+export function reorderHomeFolderApp(layout: HomeScreenLayout, folderId: string, appId: string, targetIndex: number) {
+  const normalized = normalizeHomeLayout(layout);
+  return normalizeHomeLayout({
+    ...normalized,
+    folders: normalized.folders.map(folder => {
+      if (folder.id !== folderId || !folder.appIds.includes(appId)) return folder;
+      const appIds = folder.appIds.filter(id => id !== appId);
+      appIds.splice(Math.max(0, Math.min(targetIndex, appIds.length)), 0, appId);
+      return { ...folder, appIds };
+    }),
+  });
 }
 
 export function removeHomeAppFromFolder(layout: HomeScreenLayout, folderId: string, appId: string, homeIndex: number) {

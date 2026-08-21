@@ -8,7 +8,12 @@
       </button>
     </div>
 
-    <PreviewDraftNotice :draft="previewDraft" @discard="$emit('discard-preview')" @open="$emit('open-preview')" />
+    <PreviewDraftNotice
+      :draft="previewDraft"
+      @discard="$emit('discard-preview', $event)"
+      @open="$emit('open-preview')"
+      @open-id="$emit('open-preview', $event)"
+    />
 
     <div class="pc-segment pc-theater-type-view" role="group" aria-label="小剧场类型范围">
       <button :class="['pc-segment-btn', { active: typeView === 'recent' }]" type="button" @click="typeView = 'recent'">
@@ -114,12 +119,12 @@ const groupedTypePrompts = computed(() => {
 });
 
 defineEmits<{
-  'discard-preview': [];
+  'discard-preview': [id?: string];
   'open-custom-generate': [];
   'open-failed-draft': [draftId: string];
   'open-generate': [typeId: string];
   'open-history': [];
-  'open-preview': [];
+  'open-preview': [id?: string];
   'remove-failed-draft': [draftId: string];
 }>();
 </script>
@@ -160,7 +165,7 @@ defineEmits<{
 
 .pc-tag-cloud {
   display: flex;
-  max-height: clamp(180px, 30vh, 240px);
+  max-height: 220px;
   align-items: center;
   align-content: flex-start;
   flex-wrap: wrap;

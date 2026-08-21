@@ -47,3 +47,14 @@ test('shared searchable options expose complete long labels and formal close/key
 
   assert.deepEqual(failures, []);
 });
+
+test('dynamic searchable selects stay full width with compact internal controls', () => {
+  const inputRules = rulesFor(componentSource, '.pc-combobox-input');
+  const toggleRules = rulesFor(componentSource, '.pc-combobox-toggle');
+  const optionRules = rulesFor(componentSource, '.pc-combobox-option');
+
+  assert.match(componentSource, /\.pc-combobox\s*\{[^}]*width:\s*100%;/su, 'dynamic combobox must keep the parent width');
+  assert.ok(inputRules.some(rule => /padding-right:\s*40px/.test(rule)), 'input must reserve only the compact toggle width');
+  assert.ok(toggleRules.some(rule => /width:\s*30px/.test(rule) && /height:\s*30px/.test(rule)));
+  assert.ok(optionRules.some(rule => /min-height:\s*34px/.test(rule)), 'dynamic options must use compact row height');
+});

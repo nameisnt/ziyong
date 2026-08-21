@@ -1446,7 +1446,7 @@ async function copyText(text: string, successMessage: string) {
   z-index: 30;
   top: calc(100% + 8px);
   left: 0;
-  width: min(220px, calc(100vw - 96px));
+  width: 220px;
   padding: 6px;
   border: 1px solid var(--pc-border);
   border-radius: 8px;

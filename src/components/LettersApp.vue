@@ -128,6 +128,7 @@
       :meta-label="`${formatDirection(generationState.preview.sender.name, generationState.preview.receiver.name)} · ${formatLabel(generationState.preview.format)}`"
       :mode="generationState.preview.mode"
       :reparse-handler="reparsePreviewRaw"
+      :reasoning="generationState.preview.generationRecord?.reasoning || ''"
       :title="generationState.preview.title"
       :warnings="generationState.preview.warnings"
       @back="returnToGenerate"
@@ -262,6 +263,7 @@ const selectedReferences = ref<GenerationReferenceItem[]>([]);
 type LettersPreview = NonNullable<typeof generationState.preview>;
 
 const {
+  beginPreviewDraft: beginLettersPreviewDraft,
   clearPreviewDraft: clearLettersPreviewDraft,
   discardPreviewDraft: discardLettersPreviewDraft,
   draft: lettersPreviewDraft,
@@ -931,7 +933,7 @@ function returnToGenerate() {
 }
 
 async function runGeneration() {
-  clearLettersPreviewDraft();
+  beginLettersPreviewDraft();
   generationState.preview = null;
   let task: GenerationTask | null = null;
   try {
@@ -1110,8 +1112,8 @@ function savePreview() {
 function reparsePreviewRaw() {
   const preview = generationState.preview;
   if (!preview) return false;
-  const rawOutput = preview.raw.trim();
-  if (!rawOutput) {
+  const rawOutput = preview.raw;
+  if (!rawOutput.trim()) {
     toastr.warning('先补一点可解析的 XML 内容');
     return false;
   }
@@ -1125,7 +1127,7 @@ function reparsePreviewRaw() {
   }
 
   preview.content = parsed.data.content;
-  preview.raw = parsed.raw;
+  preview.raw = rawOutput;
   preview.title = parsed.data.title;
   preview.warnings = parsed.warnings;
   toastr.success('已按原始输出重新解析');
@@ -1154,8 +1156,8 @@ function reparseFailedDraft() {
   const draft = activeFailedDraft.value;
   if (!draft) return;
 
-  const rawOutput = failedDraftRawOutput.value.trim();
-  if (!rawOutput) {
+  const rawOutput = failedDraftRawOutput.value;
+  if (!rawOutput.trim()) {
     toastr.warning('先补一点可解析的 XML 内容');
     return;
   }
@@ -1197,7 +1199,7 @@ function reparseFailedDraft() {
       : letters.getBook(bookId)?.title || `${sender.name} 与 ${receiver.name}的书信`;
 
   letters.updateFailedDraft(draft.id, {
-    rawOutput: parsed.raw,
+    rawOutput,
     warnings: parsed.warnings,
   });
   generationState.preview = {
@@ -1208,7 +1210,7 @@ function reparseFailedDraft() {
     format,
     generationRecord: draft.generationRecord,
     mode: draft.context.mode === 'rewrite' ? 'rewrite' : 'create',
-    raw: parsed.raw,
+    raw: rawOutput,
     receiver,
     sender,
     title: parsed.data.title,

@@ -14,7 +14,7 @@
         <div class="pc-section-head">
           <strong>{{ t`插入方式` }}</strong>
         </div>
-        <select v-model="settings.mode" class="pc-select">
+        <select v-model="settings.mode" class="pc-select pc-select-compact">
           <option value="new-end">{{ t`作为新楼层插入末尾` }}</option>
           <option value="new-before">{{ t`作为新楼层插入到指定楼层前` }}</option>
           <option value="append-last">{{ t`追加到最后楼层结尾` }}</option>
@@ -23,7 +23,11 @@
         <div class="pc-grid two">
           <label class="pc-number-field">
             <span>{{ t`楼层角色` }}</span>
-            <select v-model="settings.role" class="pc-select" :disabled="settings.mode.startsWith('append')">
+            <select
+              v-model="settings.role"
+              class="pc-select pc-select-compact"
+              :disabled="settings.mode.startsWith('append')"
+            >
               <option value="assistant">assistant</option>
               <option value="user">user</option>
               <option value="system">system</option>

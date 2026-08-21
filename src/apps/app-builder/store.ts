@@ -227,7 +227,11 @@ export const useCustomAppsStore = defineStore('custom-apps', () => {
     return getFailedDrafts(appId).find(draft => draft.id === draftId) ?? null;
   }
 
-  function createFailedDraft(appId: string, input: Omit<FailedGenerationDraft, 'createdAt' | 'id'>) {
+  function createFailedDraft(
+    appId: string,
+    input: Omit<FailedGenerationDraft, 'createdAt' | 'id' | 'rawOutputSemantics'> &
+      Partial<Pick<FailedGenerationDraft, 'rawOutputSemantics'>>,
+  ) {
     const definition = getDefinition(appId);
     if (!definition) throw new Error('自制 App 不存在');
     const data = getData(definition);
@@ -236,6 +240,7 @@ export const useCustomAppsStore = defineStore('custom-apps', () => {
       appId,
       createdAt: nowIso(),
       id: `custom_failed_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
+      rawOutputSemantics: input.rawOutputSemantics ?? 'legacy-unknown',
     };
     const sameAppDrafts = data.failedDrafts.filter(item => item.appId === appId);
     const otherDrafts = data.failedDrafts.filter(item => item.appId !== appId);

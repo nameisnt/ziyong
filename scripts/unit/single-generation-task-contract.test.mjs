@@ -20,8 +20,8 @@ test('single generation tasks have an explicit durable schema and v1 backup migr
   assert.match(schema, /GenerationTaskStatusSchema\s*=\s*z\.enum\(\[[^\]]*'failed'/s);
   assert.match(schema, /SingleGenerationTaskConfigSchema/);
   assert.match(backup, /key:\s*'generation-tasks'[\s\S]*?migrateImport:/);
-  assert.match(backup, /schemaVersion:\s*2/);
-  assert.match(backup, /fromVersion\s*!==\s*1/);
+  assert.match(backup, /schemaVersion:\s*3/);
+  assert.match(backup, /migrateGenerationTasksBackupData/);
 });
 
 test('single task lifecycle never exposes batch resume semantics', () => {

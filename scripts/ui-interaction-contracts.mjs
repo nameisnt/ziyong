@@ -5,7 +5,7 @@ export const UI_INTERACTION_CONTRACTS = Object.freeze([
   Object.freeze({ id: 'close', scenario: 'prompts-task-detail' }),
   Object.freeze({ id: 'creation-modal', scenario: 'diary-creation-mode' }),
   Object.freeze({ id: 'home-layout-drag', scenario: 'home-layout-drag' }),
-  Object.freeze({ id: 'reasoning-modal', scenario: 'card-writer-reasoning-modal' }),
+  Object.freeze({ id: 'reasoning-disclosure', scenario: 'card-writer-reasoning-modal' }),
   Object.freeze({ id: 'delete-unbind', scenario: 'content-version-interactions' }),
   Object.freeze({ id: 'persistence', scenario: 'content-directory-sort-persistence' }),
   Object.freeze({ id: 'reader-edit-modal', scenario: 'reader-text-edit-modal' }),

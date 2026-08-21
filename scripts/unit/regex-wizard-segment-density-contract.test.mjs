@@ -34,6 +34,6 @@ test('regex wizard purpose uses the global segment density while keeping its thr
     localRules.every(rule => !/padding(?:-[a-z]+)*\s*:/.test(rule)),
     'standard segment padding must inherit the global spacing',
   );
-  assert.ok(globalRules.some(rule => /min-height:\s*32px/.test(rule)), 'global segment height must remain 32px');
+  assert.ok(globalRules.some(rule => /min-height:\s*30px/.test(rule)), 'global segment height must remain 30px');
   assert.ok(globalRules.some(rule => /font-size:\s*13px/.test(rule)), 'global segment text must remain 13px');
 });

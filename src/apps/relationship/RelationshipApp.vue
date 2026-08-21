@@ -307,6 +307,7 @@
         :draft="relationshipPreviewDraft"
         @discard="discardRelationshipPreviewDraft"
         @open="openRelationshipPreviewDraft"
+        @open-id="openRelationshipPreviewDraft"
       />
     </section>
 
@@ -356,6 +357,7 @@
           :raw="generationState.preview.raw"
           raw-editable
           :reparse-handler="reparsePreviewRaw"
+          :reasoning="generationState.preview.generationRecord?.reasoning || ''"
           :scan-enabled="false"
           :source-label="generationState.preview.source.label"
           :text-provider-summary="textProviderSummary"
@@ -383,39 +385,28 @@
       </article>
     </section>
 
-    <section v-else-if="route.page === 'failed-draft' && activeFailedDraft" class="pc-relationship-page pc-repair-page">
-      <article class="pc-repair-card">
-        <div v-if="activeFailedDraft.warnings.length" class="pc-status-card warning">
-          <strong>{{ t`上次解析提示` }}</strong>
-          <p>{{ activeFailedDraft.warnings.join('；') }}</p>
-        </div>
-        <label class="pc-number-field pc-repair-raw-field">
-          <span class="pc-field-label">{{ t`原始输出` }}</span>
-          <RawOutputEditor
-            v-model="failedDraftRawOutput"
-            :placeholder="t`在这里修 XML 结构或补 characters / relations。`"
-            @reparse="reparseFailedDraft"
-          />
-        </label>
-        <div class="pc-form-actions pc-relationship-actions">
-          <button class="pc-soft-btn danger" type="button" @click="removeFailedDraft(activeFailedDraft.id)">
-            {{ t`删除草稿` }}
-          </button>
-          <button class="pc-soft-btn" type="button" @click="reparseFailedDraft">{{ t`重新解析` }}</button>
-        </div>
-      </article>
-    </section>
+    <FailedDraftRepairPage
+      v-else-if="route.page === 'failed-draft' && activeFailedDraft"
+      v-model:raw-output="failedDraftRawOutput"
+      :raw-output-semantics="activeFailedDraft.rawOutputSemantics"
+      :reasoning="activeFailedDraft.generationRecord?.reasoning || ''"
+      :source-label="activeFailedDraft.source.label"
+      title="修复关系草稿"
+      :warnings="activeFailedDraft.warnings"
+      @delete="removeFailedDraft(activeFailedDraft.id)"
+      @reparse="reparseFailedDraft"
+    />
   </section>
 </template>
 
 <script setup lang="ts">
 import EmptyState from '@/components/EmptyState.vue';
 import FailedDraftList from '@/components/FailedDraftList.vue';
+import FailedDraftRepairPage from '@/components/FailedDraftRepairPage.vue';
 import GenerationPanel from '@/components/GenerationPanel.vue';
 import GenerationPreviewPanel from '@/components/GenerationPreviewPanel.vue';
 import ProfileEntryPicker from '@/components/ProfileEntryPicker.vue';
 import PreviewDraftNotice from '@/components/PreviewDraftNotice.vue';
-import RawOutputEditor from '@/components/RawOutputEditor.vue';
 import { useSingleGenerationTaskSession } from '@/composables/useSingleGenerationTaskSession';
 import { getRegisteredPhoneGenerationAdapter } from '@/core/appRegistry';
 import { buildGenerationPreview, captureGenerationPrompt, generateContent } from '@/core/generationService';
@@ -491,6 +482,7 @@ const { error: generationError, rawOutput: generationRawOutput, running: generat
 type RelationshipPreview = NonNullable<typeof generationState.preview>;
 
 const {
+  beginPreviewDraft: beginRelationshipPreviewDraft,
   clearPreviewDraft: clearRelationshipPreviewDraft,
   discardPreviewDraft: discardRelationshipPreviewDraft,
   draft: relationshipPreviewDraft,
@@ -821,7 +813,7 @@ function captureRelationshipPrompt() {
 }
 
 async function runGeneration() {
-  clearRelationshipPreviewDraft();
+  beginRelationshipPreviewDraft();
   generationState.preview = null;
   let task: GenerationTask | null = null;
   try {
@@ -905,8 +897,8 @@ function savePreview() {
 function reparsePreviewRaw() {
   const preview = generationState.preview;
   if (!preview) return false;
-  const rawOutput = preview.raw.trim();
-  if (!rawOutput) {
+  const rawOutput = preview.raw;
+  if (!rawOutput.trim()) {
     toastr.warning('先补一点可解析的 XML 内容');
     return false;
   }
@@ -920,7 +912,7 @@ function reparsePreviewRaw() {
   }
 
   preview.data = parsed.data;
-  preview.raw = parsed.raw;
+  preview.raw = rawOutput;
   preview.warnings = parsed.warnings;
   toastr.success('已按原始输出重新解析');
   return true;
@@ -941,8 +933,8 @@ async function removeFailedDraft(draftId: string) {
 function reparseFailedDraft() {
   const draft = activeFailedDraft.value;
   if (!draft) return;
-  const rawOutput = failedDraftRawOutput.value.trim();
-  if (!rawOutput) {
+  const rawOutput = failedDraftRawOutput.value;
+  if (!rawOutput.trim()) {
     toastr.warning('先补一点可解析的 XML 内容');
     return;
   }
@@ -959,13 +951,13 @@ function reparseFailedDraft() {
   }
 
   relationship.updateFailedDraft(draft.id, {
-    rawOutput: parsed.raw,
+    rawOutput,
     warnings: parsed.warnings,
   });
   generationState.preview = {
     data: parsed.data,
     draftId: null,
-    raw: parsed.raw,
+    raw: rawOutput,
     source: { label: draft.source.label },
     warnings: parsed.warnings,
   };

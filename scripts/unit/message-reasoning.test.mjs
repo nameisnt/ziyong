@@ -35,7 +35,7 @@ test('reader normalization retains reasoning through its typed message pipeline'
   assert.match(readerStoreSource, /export interface ReaderMessage\s*\{[\s\S]*?reasoning:\s*string;/u);
   assert.match(readerStoreSource, /interface PendingReaderMessage\s*\{[\s\S]*?reasoning:\s*string;/u);
   assert.match(readerStoreSource, /reasoning:\s*extractMessageReasoning\(record\)/u);
-  assert.match(readerAppSource, /:reasoning="activeMessage\.reasoning"/u);
+  assert.match(readerAppSource, /:reasoning="activeSwipeCandidate\?\.reasoning \|\| ''"/u);
 });
 
 test('chat archive and reader share one reasoning extractor', () => {

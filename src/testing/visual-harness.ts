@@ -10,7 +10,6 @@ import {
   createExtrasSummaryFixture,
 } from '@/testing/visual/extrasGenerationScenarios';
 import { applyPromptsVisualScenario } from '@/testing/visual/promptsScenarios';
-import { applyMediaLibraryVisualScenario } from '@/testing/visual/mediaLibraryScenarios';
 import { applyMinigameVisualScenario } from '@/testing/visual/minigameScenarios';
 import {
   applyContentBookVisualScenario,
@@ -31,8 +30,6 @@ import { applyRegexWizardVisualScenario } from '@/testing/visual/regexWizardScen
 import { applyRegexDisplayVisualScenario } from '@/testing/visual/regexDisplayScenarios';
 import { applyWorkbenchVisualScenario } from '@/testing/visual/workbenchScenarios';
 import { applyChatInsertVisualScenario } from '@/testing/visual/chatInsertScenarios';
-import { applyCloudMediaVisualScenario } from '@/testing/visual/cloudMediaScenarios';
-import { applyComfyVisualScenario } from '@/testing/visual/comfyScenarios';
 import { applyAppBuilderVisualScenario } from '@/testing/visual/appBuilderScenarios';
 import { applyMvuModifierVisualScenario } from '@/testing/visual/mvuModifierScenarios';
 import { applyScenePlannerVisualScenario } from '@/testing/visual/scenePlannerScenarios';
@@ -434,7 +431,6 @@ const { PHONE_APPS } = await import('@/data/apps');
 const { useForumStore } = await import('@/store/forum');
 const { ForumBoardSchema } = await import('@/type/forum');
 const { useExtrasStore } = await import('@/store/extras');
-const { useMediaStore } = await import('@/apps/media/store');
 const { usePhoneStore } = await import('@/store/phone');
 const { usePromptStore } = await import('@/store/prompts');
 const { useGenerationAliasesStore } = await import('@/store/generationAliases');
@@ -673,18 +669,6 @@ function createExtrasContinuationReferencesFixture() {
   return { adoptedReferences, sourceA, sourceB, targetBook };
 }
 
-function createVideoFixture() {
-  const media = useMediaStore();
-  media.resetCurrentScope();
-  return media.createEntry({
-    kind: 'video',
-    note: '用于检查视频标题、翻页按钮和详情操作区在手机宽度下是否保持稳定。',
-    source: 'link',
-    title: '雨夜回廊片段',
-    url: 'data:video/mp4;base64,',
-  });
-}
-
 function createWorkbenchFixture() {
   const workbench = useWorkbenchStore();
   workbench.settings.insertDrafts = [];
@@ -792,6 +776,9 @@ async function applyScenario(name: VisualScenarioName, options: { height?: numbe
 
   configurePhoneSize(options.width, options.height);
   document.querySelector('#visual-host-theme-override')?.remove();
+  useSettingsStore().setTheme(
+    name === 'diary-entry-editor-dark' || name === 'preview-draft-deferred-save-dark' ? 'dark' : 'light',
+  );
   const phone = usePhoneStore();
   await phone.goHome();
   phone.openPhone();
@@ -814,28 +801,6 @@ async function applyScenario(name: VisualScenarioName, options: { height?: numbe
 
   if (
     await applyChatInsertVisualScenario(name, {
-      resetPhoneToRoute,
-      waitForCondition: waitForVisualCondition,
-      waitForPaint,
-    })
-  ) {
-    await waitForPaint();
-    return { name, route: usePhoneStore().currentRoute };
-  }
-
-  if (
-    await applyCloudMediaVisualScenario(name, {
-      resetPhoneToRoute,
-      waitForCondition: waitForVisualCondition,
-      waitForPaint,
-    })
-  ) {
-    await waitForPaint();
-    return { name, route: usePhoneStore().currentRoute };
-  }
-
-  if (
-    await applyComfyVisualScenario(name, {
       resetPhoneToRoute,
       waitForCondition: waitForVisualCondition,
       waitForPaint,
@@ -971,17 +936,6 @@ async function applyScenario(name: VisualScenarioName, options: { height?: numbe
   }
 
   if (
-    await applyMediaLibraryVisualScenario(name, {
-      resetPhoneToRoute,
-      waitForCondition: waitForVisualCondition,
-      waitForPaint,
-    })
-  ) {
-    await waitForPaint();
-    return { name, route: usePhoneStore().currentRoute };
-  }
-
-  if (
     await applyMinigameVisualScenario(name, {
       resetPhoneToRoute,
       waitForCondition: waitForVisualCondition,
@@ -1038,7 +992,46 @@ async function applyScenario(name: VisualScenarioName, options: { height?: numbe
   }
 
   if (name === 'home') {
+    const settings = useSettingsStore();
     await phone.goHome();
+    await waitForPaint();
+    const context = document.querySelector<HTMLElement>('.pc-home-context');
+    const contextCopy = context?.querySelector<HTMLElement>('.pc-home-context-copy');
+    const actionMenu = context?.querySelector<HTMLDetailsElement>('.pc-home-context-actions .pc-action-menu');
+    const actionTrigger = actionMenu?.querySelector<HTMLElement>('summary');
+    if (!context || !contextCopy || !actionMenu || !actionTrigger) {
+      throw new Error('Home chat status omitted its shared action menu');
+    }
+    if (
+      actionTrigger.textContent?.trim() ||
+      actionTrigger.getAttribute('aria-label') !== '操作' ||
+      actionTrigger.getBoundingClientRect().right > contextCopy.getBoundingClientRect().left + 1
+    ) {
+      throw new Error('Home action menu is not an accessible icon-only trigger on the left');
+    }
+    actionTrigger.click();
+    await waitForPaint();
+    const actionPanel = actionMenu.querySelector<HTMLElement>('.pc-action-menu-panel');
+    if (
+      !actionMenu.open ||
+      !actionPanel ||
+      actionPanel.getBoundingClientRect().left < context.getBoundingClientRect().left - 1 ||
+      actionPanel.getBoundingClientRect().right > context.getBoundingClientRect().right + 1
+    ) {
+      throw new Error('Home action menu did not open toward the available right-hand space');
+    }
+    window.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' }));
+    await waitForPaint();
+    if (actionMenu.open) throw new Error('Home action menu ignored Escape');
+    settings.setTheme('dark');
+    await waitForPaint();
+    if (
+      actionTrigger.getBoundingClientRect().right > contextCopy.getBoundingClientRect().left + 1 ||
+      getComputedStyle(actionTrigger).visibility !== 'visible'
+    ) {
+      throw new Error('Home action menu lost its left-side geometry in dark mode');
+    }
+    settings.setTheme('light');
     await waitForPaint();
     const dataBankContainer = document.querySelector('#data_bank_wand_container');
     const readerContainer = document.querySelector('#pc_reader_wand_container');
@@ -1052,6 +1045,32 @@ async function applyScenario(name: VisualScenarioName, options: { height?: numbe
     ) {
       throw new Error('Native reader launcher does not match SillyTavern menu structure or position');
     }
+    const folderTile = document.querySelector<HTMLElement>('.pc-home-folder-tile');
+    const shortcuts = folderTile?.querySelectorAll<HTMLButtonElement>('.pc-home-folder-shortcut');
+    const remainingPreview = folderTile?.querySelectorAll('.pc-home-folder-mini-icon');
+    const moreButton = folderTile?.querySelector<HTMLButtonElement>('.pc-home-folder-more');
+    if (!folderTile || shortcuts?.length !== 3 || !remainingPreview?.length || !moreButton) {
+      throw new Error('Large home folder does not expose three shortcuts and a remaining-App preview');
+    }
+    const folderStyle = getComputedStyle(folderTile);
+    if (folderStyle.gridColumnEnd !== 'span 2' || folderStyle.gridRowEnd !== 'span 2') {
+      throw new Error('Large home folder does not occupy a 2x2 grid area');
+    }
+    const shortcutAppId = settings.settings.layout.folders[0]?.appIds[0] || '';
+    shortcuts[0]?.click();
+    await waitForPaint();
+    if (!shortcutAppId || phone.currentRoute.appId !== shortcutAppId) {
+      throw new Error('Large home folder shortcut did not open its App directly');
+    }
+    await phone.goHome();
+    await waitForPaint();
+    document.querySelector<HTMLButtonElement>('.pc-home-folder-more')?.click();
+    await waitForPaint();
+    if (!document.querySelector('.pc-home-folder-dialog')) {
+      throw new Error('Large home folder remaining preview did not open the full folder');
+    }
+    document.querySelector<HTMLButtonElement>('.pc-home-folder-head button[title="关闭"]')?.click();
+    await waitForPaint();
   } else if (name === 'home-five-columns') {
     const settings = useSettingsStore();
     settings.setPhoneWindowWidth(350);
@@ -1068,9 +1087,15 @@ async function applyScenario(name: VisualScenarioName, options: { height?: numbe
     if (gridGap > 4 || tilePadding > 1 || labelFontSize > 10 || label.clientWidth < 50) {
       throw new Error('Five-column App label does not reserve enough width for five Chinese characters');
     }
-  } else if (name === 'home-layout-drag') {
+  } else if (name === 'home-layout-drag' || name === 'home-layout-drag-dark') {
     const settings = useSettingsStore();
-    settings.resetHomeLayout();
+    if (name === 'home-layout-drag-dark') settings.setTheme('dark');
+    settings.setHomeLayout({
+      appOrder: ['diary', 'extras'],
+      dockOrder: ['favorites', 'prompts', 'tutorial', 'settings'],
+      folders: [],
+      version: 2,
+    });
     settings.setHomeColumns(4);
     settings.setHomeRows(3);
     await phone.goHome();
@@ -1109,6 +1134,7 @@ async function applyScenario(name: VisualScenarioName, options: { height?: numbe
         pointerId,
       }),
     );
+    await new Promise(resolve => window.setTimeout(resolve, 410));
     source.dispatchEvent(
       new PointerEvent('pointerup', {
         bubbles: true,
@@ -1139,10 +1165,182 @@ async function applyScenario(name: VisualScenarioName, options: { height?: numbe
       throw new Error('Home folder rename was not persisted');
     }
 
-    document.querySelector<HTMLButtonElement>('.pc-home-folder-controls button[title="移出到主界面"]')?.click();
+    const folderApps = [...document.querySelectorAll<HTMLElement>('.pc-home-folder-app')];
+    const folderDragSource = folderApps[0];
+    const folderDragTarget = folderApps[1];
+    if (!folderDragSource || !folderDragTarget) throw new Error('Home folder drag fixture needs two folder Apps');
+    Object.defineProperties(folderDragSource, {
+      releasePointerCapture: { configurable: true, value: () => undefined },
+      setPointerCapture: { configurable: true, value: () => undefined },
+    });
+    const folderSourceRect = folderDragSource.getBoundingClientRect();
+    const folderTargetRect = folderDragTarget.getBoundingClientRect();
+    const folderPointerId = 122;
+    folderDragSource.dispatchEvent(new PointerEvent('pointerdown', {
+      bubbles: true,
+      button: 0,
+      clientX: folderSourceRect.left + folderSourceRect.width / 2,
+      clientY: folderSourceRect.top + folderSourceRect.height / 2,
+      pointerId: folderPointerId,
+    }));
+    const folderSourceCenterX = folderSourceRect.left + folderSourceRect.width / 2;
+    const folderSourceCenterY = folderSourceRect.top + folderSourceRect.height / 2;
+    const folderTargetCenterX = folderTargetRect.left + folderTargetRect.width / 2;
+    const folderTargetCenterY = folderTargetRect.top + folderTargetRect.height / 2;
+    const originalElementFromPoint = document.elementFromPoint.bind(document);
+    Object.defineProperty(document, 'elementFromPoint', {
+      configurable: true,
+      value: () => folderDragSource,
+    });
+    try {
+      for (const progress of [0.25, 0.5, 0.75, 1]) {
+        folderDragSource.dispatchEvent(new PointerEvent('pointermove', {
+          bubbles: true,
+          button: 0,
+          clientX: folderSourceCenterX + (folderTargetCenterX - folderSourceCenterX) * progress,
+          clientY: folderSourceCenterY + (folderTargetCenterY - folderSourceCenterY) * progress,
+          pointerId: folderPointerId,
+        }));
+        await waitForPaint();
+      }
+      folderDragSource.dispatchEvent(new PointerEvent('pointerup', {
+        bubbles: true,
+        button: 0,
+        clientX: folderTargetCenterX,
+        clientY: folderTargetCenterY,
+        pointerId: folderPointerId,
+      }));
+    } finally {
+      Object.defineProperty(document, 'elementFromPoint', {
+        configurable: true,
+        value: originalElementFromPoint,
+      });
+    }
     await waitForPaint();
-    if (settings.settings.layout.folders.some(item => item.id === folder.id)) {
-      throw new Error('Home folder removal did not dissolve the one-item folder');
+    if (settings.settings.layout.folders.find(item => item.id === folder.id)?.appIds[0] !== sourceToken) {
+      throw new Error('Home folder pointer drag did not reorder its Apps');
+    }
+
+    const removeButton = document.querySelector<HTMLButtonElement>('.pc-home-folder-remove');
+    const removeOwner = removeButton?.closest<HTMLElement>('.pc-home-folder-app');
+    if (!removeButton || !removeOwner) throw new Error('Home folder removal control is missing');
+    let nestedPointerCaptureCount = 0;
+    Object.defineProperty(removeOwner, 'setPointerCapture', {
+      configurable: true,
+      value: () => {
+        nestedPointerCaptureCount += 1;
+      },
+    });
+    const removeRect = removeButton.getBoundingClientRect();
+    const removePointerId = 123;
+    removeButton.dispatchEvent(new PointerEvent('pointerdown', {
+      bubbles: true,
+      button: 0,
+      clientX: removeRect.left + removeRect.width / 2,
+      clientY: removeRect.top + removeRect.height / 2,
+      pointerId: removePointerId,
+    }));
+    removeButton.dispatchEvent(new PointerEvent('pointerup', {
+      bubbles: true,
+      button: 0,
+      clientX: removeRect.left + removeRect.width / 2,
+      clientY: removeRect.top + removeRect.height / 2,
+      pointerId: removePointerId,
+    }));
+    if (nestedPointerCaptureCount) throw new Error('Home folder removal started the parent drag pointer chain');
+    removeButton.click();
+    await waitForPaint();
+    const remainingFolder = settings.settings.layout.folders.find(item => item.id === folder.id);
+    if (!remainingFolder || remainingFolder.appIds.length !== 1) {
+      throw new Error('Home folder removal did not preserve the one-item folder');
+    }
+
+    document.querySelector<HTMLButtonElement>('.pc-home-folder-head button[title="关闭"]')?.click();
+    await waitForPaint();
+    document.querySelector<HTMLDetailsElement>('.pc-home-context-actions .pc-action-menu > summary')?.click();
+    await waitForPaint();
+    const newFolderButton = [...document.querySelectorAll<HTMLButtonElement>('.pc-action-menu-panel button')].find(button =>
+      button.textContent?.includes('新建文件夹'),
+    );
+    if (!newFolderButton) throw new Error('Home action menu omitted explicit folder creation');
+    newFolderButton.click();
+    await waitForPaint();
+    const folderName = document.querySelector<HTMLInputElement>('.pc-home-folder-create-dialog input.pc-field');
+    const folderChoice = document.querySelector<HTMLInputElement>('.pc-home-folder-choice input');
+    if (!folderName || !folderChoice) throw new Error('Explicit folder creator omitted name or App selection');
+    folderName.value = '显式新建';
+    folderName.dispatchEvent(new Event('input', { bubbles: true }));
+    folderChoice.click();
+    await waitForPaint();
+    const createFolderButton = document.querySelector<HTMLButtonElement>('.pc-home-folder-create-dialog .pc-primary-btn');
+    if (!createFolderButton || createFolderButton.disabled) throw new Error('Explicit folder creator did not enable submit');
+    createFolderButton.click();
+    await waitForPaint();
+    const explicitFolder = settings.settings.layout.folders.find(item => item.name === '显式新建' && item.appIds.length === 1);
+    if (!explicitFolder) {
+      throw new Error('Explicit one-App folder creation did not persist through the layout transaction');
+    }
+    const releasedAppId = explicitFolder.appIds[0];
+    document.querySelector<HTMLButtonElement>('.pc-home-folder-head button[title="关闭"]')?.click();
+    await waitForPaint();
+    const explicitFolderTile = document.querySelector<HTMLButtonElement>(
+      `[data-home-token="folder:${explicitFolder.id}"]`,
+    );
+    explicitFolderTile?.click();
+    await waitForPaint();
+    if (!explicitFolderTile || !document.querySelector('.pc-home-folder-dialog')) {
+      throw new Error('Explicit folder creation left the home interaction locked');
+    }
+
+    document.querySelector<HTMLButtonElement>('.pc-home-folder-tools .pc-soft-btn.danger')?.click();
+    await new Promise(resolve => window.setTimeout(resolve, 180));
+    await waitForPaint();
+    const releasedTile = document.querySelector<HTMLButtonElement>(`[data-home-token="${releasedAppId}"]`);
+    releasedTile?.click();
+    await waitForPaint();
+    if (document.querySelector('.pc-home-folder-backdrop') || !releasedTile || phone.currentRoute.appId !== releasedAppId) {
+      throw new Error('Folder dissolution left a modal backdrop or the App route locked');
+    }
+
+    await phone.goHome();
+    await waitForPaint();
+    const movableTile = document.querySelector<HTMLButtonElement>(`[data-home-token="${releasedAppId}"]`);
+    const moveBeforeTile = [...document.querySelectorAll<HTMLButtonElement>('.pc-home-grid-wrap .pc-app-tile')].find(
+      tile => tile.dataset.homeToken !== releasedAppId,
+    );
+    if (!movableTile || !moveBeforeTile) throw new Error('Post-dissolution drag fixture needs two desktop items');
+    Object.defineProperties(movableTile, {
+      releasePointerCapture: { configurable: true, value: () => undefined },
+      setPointerCapture: { configurable: true, value: () => undefined },
+    });
+    const movableRect = movableTile.getBoundingClientRect();
+    const moveBeforeRect = moveBeforeTile.getBoundingClientRect();
+    const postDissolvePointerId = 124;
+    movableTile.dispatchEvent(new PointerEvent('pointerdown', {
+      bubbles: true,
+      button: 0,
+      clientX: movableRect.left + movableRect.width / 2,
+      clientY: movableRect.top + movableRect.height / 2,
+      pointerId: postDissolvePointerId,
+    }));
+    await new Promise(resolve => window.setTimeout(resolve, 390));
+    movableTile.dispatchEvent(new PointerEvent('pointermove', {
+      bubbles: true,
+      button: 0,
+      clientX: moveBeforeRect.left + 2,
+      clientY: moveBeforeRect.top + 2,
+      pointerId: postDissolvePointerId,
+    }));
+    movableTile.dispatchEvent(new PointerEvent('pointerup', {
+      bubbles: true,
+      button: 0,
+      clientX: moveBeforeRect.left + 2,
+      clientY: moveBeforeRect.top + 2,
+      pointerId: postDissolvePointerId,
+    }));
+    await waitForPaint();
+    if (settings.settings.layout.appOrder[0] !== releasedAppId) {
+      throw new Error('Folder dissolution left desktop dragging locked');
     }
   } else if (
     name === 'storylines-generation-background' ||
@@ -1715,10 +1913,30 @@ async function applyScenario(name: VisualScenarioName, options: { height?: numbe
     }
   } else if (name === 'content-transfer-dialog') {
     useSettingsStore().setTheme('dark');
-    resetPhoneToRoute('app-builder', 'root', '一键生成 App');
+    resetPhoneToRoute('settings', 'root', '设置');
     await waitForPaint();
-    const transferButton = document.querySelector<HTMLButtonElement>('.pc-top-actions [aria-label="内容迁移"]');
-    if (!transferButton) throw new Error('App content transfer action is missing');
+    const dataEntry = [...document.querySelectorAll<HTMLButtonElement>('.pc-settings-entry')].find(button =>
+      button.textContent?.includes('数据管理'),
+    );
+    if (!dataEntry) throw new Error('Settings data-management entry is missing');
+    dataEntry.click();
+    await waitForPaint();
+    const appInput = document.querySelector<HTMLInputElement>('.pc-transfer-app-field .pc-combobox-input');
+    if (!appInput) throw new Error('App content transfer selector is missing');
+    appInput.click();
+    appInput.value = 'App 工坊';
+    appInput.dispatchEvent(new Event('input', { bubbles: true }));
+    await waitForPaint();
+    const appOption = [...document.querySelectorAll<HTMLButtonElement>('.pc-combobox-option')].find(button =>
+      button.textContent?.includes('App 工坊'),
+    );
+    if (!appOption) throw new Error('App Builder is missing from the content transfer selector');
+    appOption.click();
+    await waitForPaint();
+    const transferButton = [...document.querySelectorAll<HTMLButtonElement>('.pc-transfer-app-field button')].find(
+      button => button.textContent?.includes('管理内容'),
+    );
+    if (!transferButton) throw new Error('App content transfer action is missing from data management');
     transferButton.click();
     await waitForPaint();
     const dialog = document.querySelector<HTMLElement>('.pc-content-transfer-dialog');
@@ -1795,10 +2013,11 @@ async function applyScenario(name: VisualScenarioName, options: { height?: numbe
       document.querySelector<HTMLButtonElement>('.pc-preview-toolbar .pc-soft-btn')?.click();
       await waitForPaint();
     } else if (name === 'generation-preview-long-title-raw') {
-      const rawButton = [...document.querySelectorAll<HTMLButtonElement>('.pc-preview-actions .pc-soft-btn')].find(
+      const rawButton = [...document.querySelectorAll<HTMLButtonElement>('.pc-preview-mode-switch .pc-segment-btn')].find(
         button => button.textContent?.includes('原始输出'),
       );
-      rawButton?.click();
+      if (!rawButton) throw new Error('Generation preview raw view switch is missing');
+      rawButton.click();
       await waitForPaint();
     }
 
@@ -1997,6 +2216,8 @@ async function applyScenario(name: VisualScenarioName, options: { height?: numbe
     createGenerationTaskFixture();
     await phone.goHome();
     await waitForPaint();
+    document.querySelector<HTMLButtonElement>('.pc-page-dot')?.click();
+    await waitForPaint();
     const singleTaskRow = [...document.querySelectorAll<HTMLElement>('.pc-task-row')].find(row =>
       row.textContent?.includes('剧情梳理 · 单次生成'),
     );
@@ -2102,10 +2323,6 @@ async function applyScenario(name: VisualScenarioName, options: { height?: numbe
     confirmButton.click();
     await waitForPaint();
     if (bagu.rules.length !== initialCount - 1) throw new Error('Confirming Bagu deletion did not remove exactly one rule');
-  } else if (name === 'cloud-media-generate') {
-    resetPhoneToRoute('cloud-media', 'generate', 'AI 云媒体');
-  } else if (name === 'cloud-media-settings') {
-    resetPhoneToRoute('cloud-media', 'settings', '云媒体配置');
   } else if (name === 'entry-library-action-menu') {
     useSettingsStore().setTheme('dark');
     resetPhoneToRoute('entry-library', 'root', '条目库');
@@ -2162,82 +2379,6 @@ async function applyScenario(name: VisualScenarioName, options: { height?: numbe
     const editor = document.querySelector<HTMLElement>('.pc-entry-item-editor');
     const content = editor?.querySelector<HTMLTextAreaElement>('.pc-area');
     if (!editor || !content) throw new Error('Entry library item editor did not render');
-  } else if (name === 'comfy-action-menu') {
-    resetPhoneToRoute('comfy', 'root', 'ComfyUI');
-    await waitForPaint();
-    document
-      .querySelector<HTMLDetailsElement>('.pc-comfy-actions .pc-action-menu')
-      ?.querySelector<HTMLButtonElement>('summary')
-      ?.click();
-  } else if (name === 'comfy-workflow-json') {
-    resetPhoneToRoute('comfy', 'root', 'ComfyUI');
-    await waitForPaint();
-    const area = document.querySelector<HTMLTextAreaElement>('.pc-workflow-json-area');
-    if (!area) throw new Error('Comfy workflow JSON editor did not render');
-    const section = area.closest<HTMLElement>('.pc-page-section');
-    if (!section) throw new Error('Comfy workflow JSON editor lost its section');
-    let previousSection = section.previousElementSibling;
-    while (previousSection) {
-      (previousSection as HTMLElement).hidden = true;
-      previousSection = previousSection.previousElementSibling;
-    }
-    await waitForPaint();
-  } else if (name === 'comfy-parameter-modes') {
-    const { ComfySettingsSchema, useComfyStore } = await import('@/apps/comfy/store');
-    const comfy = useComfyStore();
-    const workflowJson = JSON.stringify({
-      101: {
-        _meta: { title: '风格控制' },
-        class_type: 'StyleControl',
-        inputs: { style_strength: 0.75 },
-      },
-    });
-    Object.assign(
-      comfy.settings,
-      ComfySettingsSchema.parse({
-        activeWorkflowId: 'visual-parameter-modes',
-        workflowJson,
-        workflows: [
-          {
-            id: 'visual-parameter-modes',
-            json: workflowJson,
-            kind: 'image',
-            name: '参数模式视觉工作流',
-            nodeSelections: {},
-            paramMappings: {},
-            updatedAt: '2026-08-14T00:00:00.000Z',
-          },
-        ],
-      }),
-    );
-    resetPhoneToRoute('comfy', 'root', 'ComfyUI');
-    await waitForPaint();
-    const runtimeToggle = document.querySelector<HTMLButtonElement>('button[title="折叠基础运行参数"]');
-    if (!runtimeToggle) throw new Error('Comfy runtime parameter collapse action did not render');
-    runtimeToggle.click();
-    const modeControlRendered = await waitForVisualCondition(() =>
-      Boolean(document.querySelector<HTMLElement>('.pc-param-mode')),
-    );
-    if (!modeControlRendered) throw new Error('Comfy parameter mode control did not render from the isolated workflow');
-    const modeControl = document.querySelector<HTMLElement>('.pc-param-mode');
-    if (!modeControl) throw new Error('Comfy parameter mode control disappeared before visual capture');
-    const parameterSection = modeControl.closest<HTMLElement>('.pc-page-section');
-    if (!parameterSection) throw new Error('Comfy parameter mode control is not inside its parameter section');
-    let previousSection = parameterSection.previousElementSibling;
-    while (previousSection) {
-      (previousSection as HTMLElement).hidden = true;
-      previousSection = previousSection.previousElementSibling;
-    }
-    await waitForPaint();
-    const screen = modeControl.closest<HTMLElement>('.pc-screen');
-    if (!screen) throw new Error('Comfy parameter mode control is not inside the phone scroll region');
-    screen.scrollTop = 0;
-    await waitForPaint();
-    const modeRect = modeControl.getBoundingClientRect();
-    const screenRect = screen.getBoundingClientRect();
-    if (modeRect.top < screenRect.top || modeRect.bottom > screenRect.bottom) {
-      throw new Error('Comfy parameter mode control is outside the isolated screenshot viewport');
-    }
   } else if (name === 'entry-library-collect-worldbook') {
     useSettingsStore().setTheme('light');
     const library = useEntryLibraryStore();
@@ -3311,13 +3452,14 @@ async function applyScenario(name: VisualScenarioName, options: { height?: numbe
       () => phone.currentRoute.appId === 'card-writer' && phone.currentRoute.page === 'preview',
     );
     if (!previewOpened) throw new Error('Card writer reasoning fixture did not open its preview');
-    const reasoningButton = document.querySelector<HTMLButtonElement>('.pc-card-writer-reasoning');
-    if (!reasoningButton) throw new Error('Card writer reasoning action did not render from the saved stage');
-    reasoningButton.click();
-    const modalOpened = await waitForVisualCondition(() => Boolean(document.querySelector('.pc-reasoning-card')));
-    if (!modalOpened) throw new Error('Card writer reasoning modal did not open');
-    if (!document.querySelector<HTMLButtonElement>('.pc-reasoning-head .pc-icon-btn[title="关闭"]')) {
-      throw new Error('Card writer reasoning modal close action is missing');
+    const reasoningSummary = document.querySelector<HTMLElement>('.pc-generation-preview .pc-reasoning-disclosure > summary');
+    if (!reasoningSummary) throw new Error('Card writer reasoning disclosure did not render from the saved stage');
+    reasoningSummary.click();
+    const disclosureOpened = await waitForVisualCondition(
+      () => document.querySelector<HTMLDetailsElement>('.pc-generation-preview .pc-reasoning-disclosure')?.open === true,
+    );
+    if (!disclosureOpened || !document.querySelector('.pc-reasoning-disclosure')?.textContent?.includes('先确认角色身份')) {
+      throw new Error('Card writer reasoning disclosure did not expand with saved content');
     }
   } else if (name === 'card-writer-saved-preview') {
     const { useCardWriterStore } = await import('@/apps/card-writer/store');
@@ -3431,52 +3573,6 @@ async function applyScenario(name: VisualScenarioName, options: { height?: numbe
     const sourceArea = document.querySelector<HTMLTextAreaElement>('.pc-digest-editor-section .pc-area.compact');
     if (!sourceArea) throw new Error('Digest source-text textarea is missing');
     sourceArea.scrollIntoView({ block: 'center' });
-    await waitForPaint();
-  } else if (name === 'gallery-editor') {
-    resetPhoneToRoute('gallery', 'editor', '新增图片');
-    await waitForPaint();
-    const noteArea = document.querySelector<HTMLTextAreaElement>('.pc-gallery-editor .pc-area.compact');
-    if (!noteArea) throw new Error('Gallery note textarea is missing');
-    noteArea.scrollIntoView({ block: 'center' });
-    await waitForPaint();
-  } else if (name === 'media-param-preview') {
-    const previewDrafts = usePreviewDraftStore();
-    previewDrafts.deleteAppPreviewDrafts('media');
-    resetPhoneToRoute('media', 'root', '媒体生成');
-    await waitForPaint();
-    previewDrafts.upsertPreviewDraft({
-      appId: 'media',
-      page: 'preview',
-      preview: {
-        negativePrompt: '',
-        draftId: null,
-        note: '',
-        params: [{ key: 'prompt', value: '雾中的旧灯塔' }],
-        prompt: '雾中的旧灯塔',
-        raw: '<params><param key="prompt">雾中的旧灯塔</param></params>',
-        source: { label: '视觉测试楼层' },
-        title: '媒体参数预览',
-        warnings: [],
-        workflowId: 'visual-workflow',
-      },
-      routeParams: {},
-      title: '媒体预览',
-    });
-    await waitForPaint();
-    const openDraftButton = document.querySelector<HTMLButtonElement>('.pc-preview-draft-notice .pc-primary-btn');
-    if (!openDraftButton) throw new Error('Media preview draft notice did not appear');
-    openDraftButton.click();
-    await waitForPaint();
-    const paramArea = document.querySelector<HTMLTextAreaElement>('.pc-param-preview-area');
-    if (!paramArea) throw new Error('Media parameter preview textarea is missing');
-    paramArea.scrollIntoView({ block: 'center' });
-    await waitForPaint();
-  } else if (name === 'video-editor') {
-    resetPhoneToRoute('video', 'editor', '新增视频');
-    await waitForPaint();
-    const noteArea = document.querySelector<HTMLTextAreaElement>('.pc-video-editor .pc-area.compact');
-    if (!noteArea) throw new Error('Video note textarea is missing');
-    noteArea.scrollIntoView({ block: 'center' });
     await waitForPaint();
   } else if (name === 'game-guess-number-input') {
     resetPhoneToRoute('games', 'play', '猜数字', { game: 'guess-number' });
@@ -4412,6 +4508,29 @@ async function applyScenario(name: VisualScenarioName, options: { height?: numbe
     document.querySelector<HTMLDetailsElement>('.pc-generation-advanced')?.setAttribute('open', '');
     await waitForPaint();
 
+    const presetField = document.querySelector<HTMLElement>('.pc-generation-provider-fields .pc-preset-field');
+    const presetHead = presetField?.querySelector<HTMLElement>('.pc-field-head');
+    const presetSelect = presetField?.querySelector<HTMLElement>('.pc-combobox');
+    const refreshButton = presetHead?.querySelector<HTMLButtonElement>('button[aria-label="刷新预设列表"]');
+    if (!presetField || !presetHead || !presetSelect || !refreshButton) {
+      throw new Error('Generation preset refresh field did not render the shared heading structure');
+    }
+    const fieldRect = presetField.getBoundingClientRect();
+    const headRect = presetHead.getBoundingClientRect();
+    const selectRect = presetSelect.getBoundingClientRect();
+    const refreshRect = refreshButton.getBoundingClientRect();
+    if (Math.abs(refreshRect.top + refreshRect.height / 2 - (headRect.top + headRect.height / 2)) > 2) {
+      throw new Error('Generation preset refresh action is not aligned with the field label');
+    }
+    if (selectRect.top < headRect.bottom || selectRect.width < fieldRect.width * 0.95) {
+      throw new Error('Generation preset selector did not keep its own full-width row');
+    }
+    refreshButton.click();
+    await waitForPaint();
+    if (!refreshButton.disabled || !refreshButton.querySelector('.fa-spin')) {
+      throw new Error('Generation preset refresh action did not expose its active feedback');
+    }
+
     const connectionCombobox = document.querySelector<HTMLElement>('.pc-generation-advanced-body .pc-combobox');
     if (!connectionCombobox) throw new Error('Generation connection selector is missing');
     const initialOverride = useGenerationOverrideStore().getOverride('summary', 'generate');
@@ -4493,13 +4612,13 @@ async function applyScenario(name: VisualScenarioName, options: { height?: numbe
     if (resolvedProvider.mode !== 'external' || resolvedProvider.activeExternalProfileId !== externalProfile.id) {
       throw new Error('Generation request did not resolve the selected external connection profile');
     }
-  } else if (name === 'preview-draft-deferred-save') {
+  } else if (name === 'preview-draft-deferred-save' || name === 'preview-draft-deferred-save-dark') {
     const previewDrafts = usePreviewDraftStore();
-    const probePreview = ref({ content: '首次保存的预览内容' });
+    const probePreview = ref<{ content: string } | null>({ content: '首次保存的预览内容' });
     let probeRouteParams: Record<string, string> = { bookId: 'visual_preserved_book' };
     const scope = effectScope();
     const persistence = scope.run(() =>
-      usePreviewDraftPersistence({
+      usePreviewDraftPersistence<{ content: string }>({
         appId: 'visual-preview-probe',
         getPreview: () => probePreview.value,
         getRouteParams: () => ({ ...probeRouteParams }),
@@ -4514,12 +4633,50 @@ async function applyScenario(name: VisualScenarioName, options: { height?: numbe
     if (!persistence) throw new Error('Preview draft persistence probe did not initialize');
     persistence.persistPreviewDraft({ bookId: 'visual_preserved_book' });
     probeRouteParams = {};
-    probePreview.value.content = '离开生成页后自动更新的预览内容';
+    const initialProbePreview = probePreview.value;
+    if (!initialProbePreview) throw new Error('Preview draft probe lost its initial content');
+    initialProbePreview.content = '离开生成页后自动更新的预览内容';
     await nextTick();
     await waitForPaint();
     const probeDraft = previewDrafts.getPreviewDraft('visual-preview-probe', 'preview');
     if (probeDraft?.routeParams.bookId !== 'visual_preserved_book') {
       throw new Error('Preview draft auto-update overwrote its original target route parameters');
+    }
+    if (!probeDraft) throw new Error('Preview draft probe did not create its first draft');
+    const firstProbeDraftId = probeDraft.id;
+    persistence.beginPreviewDraft();
+    probePreview.value = { content: '第二份独立预览内容' };
+    await nextTick();
+    await waitForPaint();
+    const probeDrafts = previewDrafts.getPreviewDrafts('visual-preview-probe', 'preview');
+    if (probeDrafts.length !== 2) throw new Error('Starting a second preview overwrote the first draft');
+    const secondProbeDraft = probeDrafts.find(draft => draft.id !== firstProbeDraftId);
+    if (!secondProbeDraft) throw new Error('Second preview draft did not receive a distinct id');
+
+    probePreview.value = null;
+    const restoredDraft = persistence.restorePreviewDraft(firstProbeDraftId);
+    const restoredPreview = probePreview.value ?? (restoredDraft?.preview as { content: string } | null);
+    if (restoredPreview?.content !== '离开生成页后自动更新的预览内容') {
+      throw new Error('Restoring an older preview draft did not select its own content');
+    }
+    const restoredProbePreview = restoredPreview;
+    if (!restoredProbePreview) throw new Error('Restored preview draft did not provide editable content');
+    probePreview.value = restoredProbePreview;
+    restoredProbePreview.content = '只修改第一份预览内容';
+    await nextTick();
+    await waitForPaint();
+    const preservedSecondPreview = previewDrafts.getPreviewDraftById(secondProbeDraft.id)?.preview;
+    if (
+      !preservedSecondPreview ||
+      typeof preservedSecondPreview !== 'object' ||
+      !('content' in preservedSecondPreview) ||
+      (preservedSecondPreview as { content?: unknown }).content !== '第二份独立预览内容'
+    ) {
+      throw new Error('Editing the active draft also modified a different preview draft');
+    }
+    persistence.clearPreviewDraft();
+    if (previewDrafts.getPreviewDraftById(firstProbeDraftId) || previewDrafts.getPreviewDrafts('visual-preview-probe', 'preview').length !== 1) {
+      throw new Error('Saving or clearing the active preview draft removed more than that draft');
     }
     scope.stop();
     previewDrafts.deleteAppPreviewDrafts('visual-preview-probe');
@@ -4530,7 +4687,7 @@ async function applyScenario(name: VisualScenarioName, options: { height?: numbe
     previewDrafts.deleteAppPreviewDrafts('extras');
     resetPhoneToRoute('extras', 'root', '番外书架');
     await waitForPaint();
-    previewDrafts.upsertPreviewDraft({
+    const staleExtrasDraft = previewDrafts.upsertPreviewDraft({
       appId: 'extras',
       page: 'chapter-preview',
       preview: {
@@ -4544,8 +4701,66 @@ async function applyScenario(name: VisualScenarioName, options: { height?: numbe
         warnings: [],
       },
       routeParams: { bookId: book.id },
-      title: '番外预览',
+      title: '稍后处理章节草稿',
     });
+    previewDrafts.createPreviewDraft({
+      appId: 'extras',
+      page: 'chapter-preview',
+      preview: {
+        bookId: book.id,
+        chapterId: '',
+        content: '这是第二份未保存的番外章节正文，用于确认草稿管理可以选择后继续。',
+        draftId: null,
+        mode: '续写上一章',
+        raw: '<title>第二份草稿章节</title><content>这是第二份未保存的番外章节正文。</content>',
+        title: '第二份草稿章节',
+        warnings: [],
+      },
+      routeParams: { bookId: book.id },
+      title: '第二份草稿章节',
+    });
+    await waitForPaint();
+    const draftCountLabel = document.querySelector<HTMLElement>('.pc-preview-draft-notice .pc-kicker')?.textContent || '';
+    if (!draftCountLabel.includes('2')) throw new Error('Preview draft notice did not show the multi-draft count');
+    const manageDraftButton = [...document.querySelectorAll<HTMLButtonElement>('.pc-preview-draft-notice button')].find(button =>
+      button.textContent?.includes('管理草稿'),
+    );
+    if (!manageDraftButton) throw new Error('Preview draft manager entry did not appear');
+    manageDraftButton.click();
+    await waitForPaint();
+    const managerItems = [...document.querySelectorAll<HTMLButtonElement>('.pc-preview-draft-manager-item')];
+    if (managerItems.length !== 2) throw new Error('Preview draft manager did not list both unsaved previews');
+    const staleExtrasManagerItem = managerItems.find(item => item.dataset.draftId === staleExtrasDraft.id);
+    if (!staleExtrasManagerItem) throw new Error('Preview draft manager did not expose the older draft title');
+    staleExtrasManagerItem.click();
+    document.querySelector<HTMLButtonElement>('.pc-preview-draft-manager .pc-primary-btn')?.click();
+    await waitForPaint();
+    if (usePhoneStore().currentRoute.page !== 'chapter-preview') {
+      throw new Error('Preview draft manager did not continue the selected preview');
+    }
+    resetPhoneToRoute('extras', 'root', '番外书架');
+    await waitForPaint();
+    const manageDraftButtonAfterReturn = [...document.querySelectorAll<HTMLButtonElement>('.pc-preview-draft-notice button')].find(
+      button => button.textContent?.includes('管理草稿'),
+    );
+    if (!manageDraftButtonAfterReturn) throw new Error('Preview draft manager disappeared after returning home');
+    manageDraftButtonAfterReturn.click();
+    await waitForPaint();
+    const deleteTarget = [...document.querySelectorAll<HTMLButtonElement>('.pc-preview-draft-manager-item')].find(
+      item => item.dataset.draftId === staleExtrasDraft.id,
+    );
+    if (!deleteTarget) throw new Error('Preview draft manager lost the selected older draft');
+    deleteTarget.click();
+    document.querySelector<HTMLButtonElement>('.pc-preview-draft-manager .pc-soft-btn.danger')?.click();
+    await waitForPaint();
+    const deleteNotice = usePhoneStore().notices.find(notice => notice.message.includes('要删除未保存预览'));
+    if (!deleteNotice) throw new Error('Preview draft deletion did not require confirmation');
+    usePhoneStore().chooseNoticeAction(deleteNotice.id, 'confirm');
+    await waitForPaint();
+    if (previewDrafts.getPreviewDraftById(staleExtrasDraft.id)) {
+      throw new Error('Confirmed preview draft deletion did not remove only the selected draft');
+    }
+    document.querySelector<HTMLButtonElement>('.pc-preview-draft-manager-head .pc-icon-btn')?.click();
     await waitForPaint();
     const openDraftButton = document.querySelector<HTMLButtonElement>('.pc-preview-draft-notice .pc-primary-btn');
     if (!openDraftButton) throw new Error('Deferred preview draft notice did not appear');
@@ -4596,6 +4811,48 @@ async function applyScenario(name: VisualScenarioName, options: { height?: numbe
     if (summary.getBook(summaryBook.id)?.entries.length !== summaryEntryCount + 1) {
       throw new Error('Deferred preview draft was not saved to its original summary book');
     }
+
+    previewDrafts.deleteAppPreviewDrafts('extras');
+    resetPhoneToRoute('extras', 'root', '番外书架');
+    previewDrafts.createPreviewDraft({
+      appId: 'extras',
+      page: 'chapter-preview',
+      preview: {
+        bookId: book.id,
+        chapterId: '',
+        content: '用于展示草稿管理弹窗的第一份预览。',
+        draftId: null,
+        mode: '续写上一章',
+        raw: '<title>草稿管理一</title><content>用于展示草稿管理弹窗的第一份预览。</content>',
+        title: '草稿管理一',
+        warnings: [],
+      },
+      routeParams: { bookId: book.id },
+      title: '草稿管理一',
+    });
+    previewDrafts.createPreviewDraft({
+      appId: 'extras',
+      page: 'chapter-preview',
+      preview: {
+        bookId: book.id,
+        chapterId: '',
+        content: '用于展示草稿管理弹窗的第二份预览。',
+        draftId: null,
+        mode: '续写上一章',
+        raw: '<title>草稿管理二</title><content>用于展示草稿管理弹窗的第二份预览。</content>',
+        title: '草稿管理二',
+        warnings: [],
+      },
+      routeParams: { bookId: book.id },
+      title: '草稿管理二',
+    });
+    await waitForPaint();
+    const finalManageDraftButton = [...document.querySelectorAll<HTMLButtonElement>('.pc-preview-draft-notice button')].find(
+      button => button.textContent?.includes('管理草稿'),
+    );
+    if (!finalManageDraftButton) throw new Error('Preview draft manager did not remain available for visual inspection');
+    finalManageDraftButton.click();
+    await waitForPaint();
   } else if (name === 'extras-legacy-continuation') {
     const book = createLegacyExtrasFixture();
     resetPhoneToRoute('extras', 'chapter-generate', '生成章节', { bookId: book.id });
@@ -4851,9 +5108,6 @@ async function applyScenario(name: VisualScenarioName, options: { height?: numbe
     ) {
       throw new Error('Disabled profile field still participates in saved references');
     }
-  } else if (name === 'video-viewer') {
-    const video = createVideoFixture();
-    resetPhoneToRoute('video', 'viewer', video.title, { entryId: video.id });
   }
 
   await waitForPaint();

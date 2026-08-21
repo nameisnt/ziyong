@@ -454,14 +454,6 @@ function quickPhraseLabel(text: string) {
   }
 }
 
-.pc-field-head {
-  position: relative;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 10px;
-}
-
 .pc-quick-phrase-panel {
   display: flex;
   flex-direction: column;

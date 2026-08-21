@@ -59,7 +59,7 @@
     },
     {
       "count": 1,
-      "excerpt": ".pc-preview-app-icon, .pc-app-grid-item > span, .pc-selected-app-head > span",
+      "excerpt": ".pc-app-grid-item > span, .pc-selected-app-head > span",
       "file": "src/apps/theme/ThemeApp.vue",
       "message": "Scoped style overrides protected global control geometry.",
       "ruleId": "protected-control-geometry"
@@ -122,20 +122,6 @@
     },
     {
       "count": 1,
-      "excerpt": ".pc-extras-editor-section .pc-area",
-      "file": "src/components/extras/ExtrasChapterEditorPage.vue",
-      "message": "Scoped style overrides protected global control geometry.",
-      "ruleId": "protected-control-geometry"
-    },
-    {
-      "count": 1,
-      "excerpt": ".pc-extras-summary-editor .pc-area",
-      "file": "src/components/extras/ExtrasSummaryEditorPage.vue",
-      "message": "Scoped style overrides protected global control geometry.",
-      "ruleId": "protected-control-geometry"
-    },
-    {
-      "count": 1,
       "excerpt": ".pc-task-actions .pc-icon-btn",
       "file": "src/components/GenerationTaskCenter.vue",
       "message": "Scoped style overrides protected global control geometry.",
@@ -180,13 +166,6 @@
       "count": 1,
       "excerpt": ".pc-field-note",
       "file": "src/components/settings/SettingsConnectionPanel.vue",
-      "message": "Scoped style overrides protected global control geometry.",
-      "ruleId": "protected-control-geometry"
-    },
-    {
-      "count": 1,
-      "excerpt": ".pc-action-grid .pc-soft-btn",
-      "file": "src/components/settings/SettingsGeneralPanel.vue",
       "message": "Scoped style overrides protected global control geometry.",
       "ruleId": "protected-control-geometry"
     },

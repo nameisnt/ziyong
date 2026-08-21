@@ -124,6 +124,12 @@
         >
           <i class="fa-solid fa-pen"></i><span>{{ editLabel }}</span>
         </button>
+        <ItemTransferExportButton
+          v-if="itemTransferAvailable"
+          :app-id="displayAppId"
+          button-class="pc-soft-btn"
+          :params="itemTransferParams"
+        />
         <slot name="actions"></slot>
       </div>
     </div>
@@ -142,10 +148,13 @@
 
 <script setup lang="ts">
 import DetailFooter from '@/components/DetailFooter.vue';
+import ItemTransferExportButton from '@/components/ItemTransferExportButton.vue';
 import ReaderContent from '@/components/ReaderContent.vue';
 import ReasoningDisclosure from '@/components/ReasoningDisclosure.vue';
 import ReaderTextEditModal from '@/components/ReaderTextEditModal.vue';
+import { getRegisteredPhoneApp } from '@/core/appRegistry';
 import { useRegexDisplayStore } from '@/apps/regex-display/store';
+import { usePhoneStore } from '@/store/phone';
 import { applyRegexDisplayRules, getRegexRulesByIds } from '@/util/regexDisplay';
 import { findReaderTextOccurrences, type ReaderTextOccurrence } from '@/util/readerTextEdit';
 
@@ -229,7 +238,19 @@ const emit = defineEmits<{
 }>();
 
 const regexDisplay = useRegexDisplayStore();
+const phone = usePhoneStore();
 const slots = useSlots();
+const itemTransferParams = computed(() => phone.currentRoute.params || {});
+const itemTransferAvailable = computed(() => {
+  if (!props.displayAppId) return false;
+  const provider = getRegisteredPhoneApp(props.displayAppId)?.itemTransferProvider;
+  if (!provider) return false;
+  try {
+    return Boolean(provider.exportItem(itemTransferParams.value));
+  } catch {
+    return false;
+  }
+});
 const displayRules = computed(() => {
   if (!props.displayAppId) return [];
   return getRegexRulesByIds(regexDisplay.rules, regexDisplay.getUsage(props.displayAppId).displayRuleIds, 'replace');
@@ -256,6 +277,7 @@ const toolVisible = computed(
     props.branchEnabled ||
     props.eraserEnabled ||
     props.editEnabled ||
+    itemTransferAvailable.value ||
     Boolean(slots.actions || slots['version-navigation']),
 );
 const toolMenuOpen = ref(false);
@@ -599,8 +621,8 @@ defineExpose({ hideFooter, toggleFooter });
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 7px;
-  width: min(250px, calc(100vw - 38px));
-  max-height: min(58vh, 420px);
+  width: 250px;
+  max-height: 420px;
   padding: 9px;
   overflow: auto;
   border: 1px solid color-mix(in srgb, var(--pc-form-control-text) 20%, var(--pc-form-control-bg) 80%);

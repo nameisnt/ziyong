@@ -98,9 +98,18 @@ export function createGenerationTaskFixture() {
   tasks.removeTask(stopped.id);
 
   const backupDomain = createGenerationTasksBackupDomain();
-  const v1Data = { __chatScoped: true, legacyScopeMigrations: {}, scopes: { visual: { tasks: [rehydrated] } } };
+  const { rawOutputSemantics: _legacyRawOutputSemantics, ...legacyTask } = rehydrated;
+  const v1Data = { __chatScoped: true, legacyScopeMigrations: {}, scopes: { visual: { tasks: [legacyTask] } } };
   const migrated = backupDomain.migrateImport?.(v1Data, 1);
-  if (migrated !== v1Data || !backupDomain.schema.safeParse(migrated).success || backupDomain.schemaVersion !== 2) {
-    throw new Error('Generation task v1 backup was not migrated losslessly into schema v2');
+  const migratedTask = (migrated as { scopes?: { visual?: { tasks?: [typeof rehydrated] } } })?.scopes?.visual?.tasks?.[0];
+  if (
+    !migrated ||
+    migrated === v1Data ||
+    migratedTask?.rawOutput !== rehydrated.rawOutput ||
+    migratedTask?.rawOutputSemantics !== 'legacy-unknown' ||
+    !backupDomain.schema.safeParse(migrated).success ||
+    backupDomain.schemaVersion !== 3
+  ) {
+    throw new Error('Generation task v1 backup was not migrated losslessly into schema v3');
   }
 }

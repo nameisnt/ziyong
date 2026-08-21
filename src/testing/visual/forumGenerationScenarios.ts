@@ -1,6 +1,7 @@
 import { useForumStore } from '@/store/forum';
 import { usePreviewDraftStore } from '@/store/previewDrafts';
 import type { HiddenGenerationRecord } from '@/type/generation';
+import { buildItemTransfer, importItemTransfer } from '@/util/itemTransfer';
 
 export function createForumFixture() {
   const forum = useForumStore();
@@ -105,7 +106,7 @@ export async function applyForumGenerationVisualScenario(name: string, context: 
     createForumFixture();
     context.resetPhoneToRoute('forum', 'root', '论坛');
   } else if (name === 'forum-board') {
-    const { board, longTypePrompt } = createForumFixture();
+    const { board, longTypePrompt, thread } = createForumFixture();
     context.resetPhoneToRoute('forum', 'board', board.name, { boardId: board.id });
     await context.waitForPaint();
     const toolbar = document.querySelector<HTMLElement>('.pc-forum-board-toolbar');
@@ -116,6 +117,19 @@ export async function applyForumGenerationVisualScenario(name: string, context: 
       throw new Error('Forum board header did not preserve the board name');
     if (toolbar?.textContent?.includes('视觉自定义类型'))
       throw new Error('Forum board header still exposes the removed type label');
+    const originalThreadIds = new Set(board.threads.map(item => item.id));
+    const originalReplyIds = new Set(thread.replies.map(reply => reply.id));
+    const payload = buildItemTransfer('forum', { boardId: board.id, threadId: thread.id });
+    const imported = await importItemTransfer('forum', payload, { mode: 'copy', params: { boardId: board.id } });
+    const copied = forum.getThread(board.id, imported.itemId);
+    if (!copied || originalThreadIds.has(copied.id) || copied.boardId !== board.id) {
+      throw new Error('Forum copy import did not create a fresh thread in the selected board');
+    }
+    if (copied.replies.some(reply => originalReplyIds.has(reply.id))) {
+      throw new Error('Forum copy import retained nested reply ids');
+    }
+    forum.deleteThread(board.id, copied.id);
+    await context.waitForPaint();
   } else if (
     name === 'forum-board-editor' ||
     name === 'forum-bagu' ||

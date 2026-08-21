@@ -5,10 +5,7 @@ import test from 'node:test';
 
 const files = {
   digest: await readFile(new URL('../../src/apps/digest/DigestApp.vue', import.meta.url), 'utf8'),
-  gallery: await readFile(new URL('../../src/apps/gallery/GalleryApp.vue', import.meta.url), 'utf8'),
   global: await readFile(new URL('../../src/global.css', import.meta.url), 'utf8'),
-  media: await readFile(new URL('../../src/apps/media/MediaGenerateApp.vue', import.meta.url), 'utf8'),
-  video: await readFile(new URL('../../src/apps/video/VideoApp.vue', import.meta.url), 'utf8'),
   workbench: await readFile(new URL('../../src/apps/workbench/WorkbenchApp.vue', import.meta.url), 'utf8'),
 };
 
@@ -31,10 +28,6 @@ test('short textareas inherit the shared 96px compact-area density', () => {
 
   const localTargets = [
     ['digest .pc-area.compact', files.digest, '.pc-area.compact'],
-    ['gallery .pc-area.compact', files.gallery, '.pc-area.compact'],
-    ['media .pc-param-preview-area', files.media, '.pc-param-preview-area'],
-    ['media .pc-area.compact', files.media, '.pc-area.compact'],
-    ['video .pc-area.compact', files.video, '.pc-area.compact'],
     ['workbench direct compact area', files.workbench, '.pc-step-body > .pc-area.compact'],
   ];
 

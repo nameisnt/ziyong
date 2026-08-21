@@ -51,8 +51,8 @@ export function useExtrasSummaryPreviewSession(options: {
   function reparseRaw() {
     const preview = options.getPreview();
     if (!preview) return false;
-    const rawOutput = preview.raw.trim();
-    if (!rawOutput) {
+    const rawOutput = preview.raw;
+    if (!rawOutput.trim()) {
       options.notify.warning('先补一点可解析的 XML 内容');
       return false;
     }
@@ -66,7 +66,7 @@ export function useExtrasSummaryPreviewSession(options: {
     }
 
     preview.content = parsed.data.content;
-    preview.raw = parsed.raw;
+    preview.raw = rawOutput;
     preview.warnings = parsed.warnings;
     options.notify.success('已按原始输出重新解析');
     return true;

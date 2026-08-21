@@ -60,6 +60,7 @@
           </div>
         </div>
         <div class="pc-preview-body">
+          <ReasoningDisclosure v-if="!editingContent" :content="reasoning" />
           <textarea
             v-if="editingContent"
             v-model="editableContent"
@@ -89,6 +90,7 @@
         :editable="rawEditable"
         :model-value="raw"
         :placeholder="rawPlaceholder"
+        :raw-output-semantics="rawOutputSemantics"
         :reparse-label="reparseLabel"
         :title="rawOutputLabel"
         @reparse="runReparse"
@@ -130,6 +132,8 @@
 <script setup lang="ts">
 import BaguScanPanel from '@/components/BaguScanPanel.vue';
 import RawOutputEditor from '@/components/RawOutputEditor.vue';
+import ReasoningDisclosure from '@/components/ReasoningDisclosure.vue';
+import type { RawOutputSemantics } from '@/type/generation';
 import { usePhoneModalLifecycle } from '@/composables/usePhoneModalLifecycle';
 import { useRegexDisplayStore } from '@/apps/regex-display/store';
 import { usePhoneStore } from '@/store/phone';
@@ -156,10 +160,12 @@ const props = withDefaults(
     previewLabel?: string;
     raw: string;
     rawEditable?: boolean;
+    rawOutputSemantics?: RawOutputSemantics;
     rawOutputLabel?: string;
     rawPlaceholder?: string;
     reparseLabel?: string;
     reparseHandler?: () => boolean | Promise<boolean>;
+    reasoning?: string;
     saveDisabled?: boolean;
     saveLabel?: string;
     savingLabel?: string;
@@ -187,10 +193,12 @@ const props = withDefaults(
     parseNoticeTitle: '需要修复原始输出',
     previewLabel: '查看预览',
     rawEditable: false,
+    rawOutputSemantics: 'original-v1',
     rawOutputLabel: '原始输出',
     rawPlaceholder: '在这里修改 AI 返回的原始 XML。',
     reparseLabel: '重新解析',
     reparseHandler: undefined,
+    reasoning: '',
     saveDisabled: false,
     saveLabel: '保存',
     savingLabel: '保存中',

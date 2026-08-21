@@ -39,3 +39,11 @@ test('every shared generation icon button has the same accessible name as its ti
     }
   }
 });
+
+test('preset refresh belongs to the preset field heading and gives visible feedback', () => {
+  const provider = sources.find(item => item.file.endsWith('GenerationProviderFields.vue'))?.source || '';
+  assert.match(provider, /class="pc-field-head"[\s\S]*<label class="pc-field-label">本次预设<\/label>[\s\S]*@click="handleRefreshPresetNames"/u);
+  assert.doesNotMatch(provider, /pc-preset-select-row/u);
+  assert.match(provider, /refreshingPresetNames/u);
+  assert.match(provider, /toastr\.success\(`预设列表已刷新，共 \$\{[^}]+\} 个预设`\)/u);
+});

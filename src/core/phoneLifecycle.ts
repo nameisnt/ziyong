@@ -1,8 +1,12 @@
 import AppRoot from '@/App.vue';
 import { installWorkbenchAutoRunner, uninstallWorkbenchAutoRunner } from '@/apps/workbench/runner';
 import { ensureNativeLauncher, syncNativeLauncherVisibility } from '@/core/nativeLauncher';
+import { purgeRetiredMediaExtensionData } from '@/core/retiredMedia';
 import { ensurePhoneAppsRegistered } from '@/data/apps';
 import { usePhoneStore } from '@/store/phone';
+// eslint-disable-next-line import-x/no-nodejs-modules
+import { saveSettingsDebounced } from '@sillytavern/script';
+import { extension_settings } from '@sillytavern/scripts/extensions';
 import { App } from 'vue';
 
 const ROOT_ID = 'phone-creative-root';
@@ -55,6 +59,9 @@ function ensureRoot() {
 }
 
 export function initPhoneLifecycle() {
+  if (purgeRetiredMediaExtensionData(extension_settings as Record<string, unknown>)) {
+    void saveSettingsDebounced();
+  }
   ensurePhoneAppsRegistered();
   const state = getPluginState();
   ensureNativeLauncher(() => window.__sillytavernPhoneOpen__?.());

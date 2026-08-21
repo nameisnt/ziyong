@@ -1,5 +1,6 @@
 import ScenePlannerApp from './ScenePlannerApp.vue';
 import { createScenePlannerContentReceiver } from '@/apps/contentReceivers';
+import { scenePlannerItemTransferProvider } from '@/item-transfer/providers';
 import { createScenePlannerGenerationAdapter, scenePlannerOutputFormat, scenePlannerOutputParser } from './generation';
 import {
   getScenePlanStatusLabel,
@@ -181,6 +182,12 @@ export default definePhoneApp({
       createAdapter: () => createScenePlannerGenerationAdapter(useScenePlannerStore()),
     },
   ],
+  generationRecoveryProvider: scopeKey => {
+    const store = useScenePlannerStore();
+    if (store.scopeKey !== scopeKey) return [];
+    return store.failedDrafts.map(draft => ({ appId: 'scene-planner', id: draft.id, kind: 'failed-draft' as const, routePage: 'failed-draft', routeParams: { draftId: draft.id }, scopeKey, title: typeof draft.context.title === 'string' ? draft.context.title : '待修复生成草稿' }));
+  },
+  itemTransferProvider: scenePlannerItemTransferProvider,
   taskTemplateDefinitions: [
     {
       actionId: 'generate',

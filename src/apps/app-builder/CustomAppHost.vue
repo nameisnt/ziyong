@@ -66,6 +66,7 @@
         :draft="previewDraft"
         @discard="discardPreviewDraft"
         @open="openPreviewDraft"
+        @open-id="openPreviewDraft"
       />
       <FailedDraftList
         v-if="failedDrafts.length"
@@ -177,13 +178,13 @@
       </ReaderDetailShell>
     </section>
 
-    <section v-else-if="route.page === 'editor'" class="pc-custom-page">
-      <div class="pc-custom-form">
+    <section v-else-if="route.page === 'editor'" class="pc-custom-page pc-saved-content-editor-page">
+      <div class="pc-custom-form pc-saved-content-editor">
         <div v-if="showTitleField" class="pc-field-group">
           <label class="pc-field-label">{{ t`标题` }}</label>
           <input v-model="entryDraft.title" class="pc-field" type="text" :placeholder="t`条目标题`" />
         </div>
-        <div class="pc-field-group">
+        <div class="pc-field-group pc-saved-content-field">
           <label class="pc-field-label">{{ t`正文` }}</label>
           <textarea
             v-model="entryDraft.content"
@@ -348,6 +349,7 @@
       <GenerationPreviewPanel
         :content="generationState.preview.content"
         :raw="generationState.preview.raw"
+        :reasoning="generationState.preview.generationRecord?.reasoning || ''"
         raw-editable
         :source-label="generationState.preview.source.label"
         :text-provider-summary="textProviderSummary"
@@ -372,22 +374,17 @@
       </GenerationPreviewPanel>
     </section>
 
-    <section v-else-if="route.page === 'failed-draft' && activeFailedDraft" class="pc-custom-page">
-      <div class="pc-custom-form pc-repair-form">
-        <span class="pc-context-meta">{{ activeFailedDraft.source.label }}</span>
-        <div v-if="activeFailedDraft.warnings.length" class="pc-status-card warning">
-          <strong>{{ t`解析提示` }}</strong>
-          <p>{{ activeFailedDraft.warnings.join('；') }}</p>
-        </div>
-        <RawOutputEditor v-model="failedDraftRawOutput" @reparse="reparseFailedDraft" />
-        <div class="pc-form-actions">
-          <button class="pc-soft-btn danger" type="button" @click="removeFailedDraft(activeFailedDraft.id)">
-            {{ t`删除草稿` }}
-          </button>
-          <button class="pc-primary-btn" type="button" @click="reparseFailedDraft">{{ t`重新解析` }}</button>
-        </div>
-      </div>
-    </section>
+    <FailedDraftRepairPage
+      v-else-if="route.page === 'failed-draft' && activeFailedDraft"
+      v-model:raw-output="failedDraftRawOutput"
+      :raw-output-semantics="activeFailedDraft.rawOutputSemantics"
+      :reasoning="activeFailedDraft.generationRecord?.reasoning || ''"
+      :source-label="activeFailedDraft.source.label"
+      :title="`修复${definition.name}草稿`"
+      :warnings="activeFailedDraft.warnings"
+      @delete="removeFailedDraft(activeFailedDraft.id)"
+      @reparse="reparseFailedDraft"
+    />
 
     <EmptyState v-else :title="t`内容不存在`" />
   </section>
@@ -401,12 +398,12 @@
 import EmptyState from '@/components/EmptyState.vue';
 import ContentConversionPanel from '@/components/ContentConversionPanel.vue';
 import FailedDraftList from '@/components/FailedDraftList.vue';
+import FailedDraftRepairPage from '@/components/FailedDraftRepairPage.vue';
 import FrontendFrame from '@/components/FrontendFrame.vue';
 import GenerationPanel from '@/components/GenerationPanel.vue';
 import GenerationPreviewPanel from '@/components/GenerationPreviewPanel.vue';
 import GenerationSourceFields from '@/components/GenerationSourceFields.vue';
 import PreviewDraftNotice from '@/components/PreviewDraftNotice.vue';
-import RawOutputEditor from '@/components/RawOutputEditor.vue';
 import ReaderDetailShell from '@/components/ReaderDetailShell.vue';
 import { useSingleGenerationTaskSession } from '@/composables/useSingleGenerationTaskSession';
 import { useRegexDisplayStore } from '@/apps/regex-display/store';
@@ -587,6 +584,7 @@ const promptPreview = computed(() => {
 });
 
 const {
+  beginPreviewDraft,
   clearPreviewDraft,
   discardPreviewDraft,
   draft: previewDraft,
@@ -907,7 +905,7 @@ async function runGeneration() {
   const app = definition.value;
   if (!currentAdapter || !app) return;
   generationState.preview = null;
-  clearPreviewDraft();
+  beginPreviewDraft();
   let task: GenerationTask | null = null;
   try {
     task = generationSession.create({ title: `${app.name} · 单次生成` });
@@ -987,8 +985,9 @@ function saveGenerationPreview() {
 function reparsePreviewRaw() {
   const preview = generationState.preview;
   if (!preview) return false;
+  const rawOutput = preview.raw;
   const parsed = parseSimpleXmlResult(
-    preview.raw.trim(),
+    rawOutput,
     definition.value?.display.mode === 'frontend' ? { preserveContentMarkup: true } : undefined,
   );
   if (!parsed.ok) {
@@ -998,7 +997,6 @@ function reparsePreviewRaw() {
   }
   preview.title = parsed.data.title;
   preview.content = parsed.data.content;
-  preview.raw = parsed.raw;
   preview.warnings = parsed.warnings;
   toastr.success('已重新解析');
   return true;
@@ -1007,8 +1005,9 @@ function reparsePreviewRaw() {
 function reparseFailedDraft() {
   const draft = activeFailedDraft.value;
   if (!draft) return;
+  const rawOutput = failedDraftRawOutput.value;
   const parsed = parseSimpleXmlResult(
-    failedDraftRawOutput.value.trim(),
+    rawOutput,
     definition.value?.display.mode === 'frontend' ? { preserveContentMarkup: true } : undefined,
   );
   if (!parsed.ok) {
@@ -1019,7 +1018,7 @@ function reparseFailedDraft() {
   generationState.preview = {
     content: parsed.data.content,
     draftId: draft.id,
-    raw: parsed.raw,
+    raw: rawOutput,
     source: { floorEnd: getSourceLastFloor(draft.source), label: draft.source.label },
     title: parsed.data.title,
     warnings: parsed.warnings,

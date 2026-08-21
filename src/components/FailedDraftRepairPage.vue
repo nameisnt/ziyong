@@ -3,9 +3,19 @@
     <article class="pc-page-section pc-failed-draft-editor">
       <div class="pc-compact-toolbar">{{ sourceLabel }}</div>
       <slot name="before-editor"></slot>
+      <ReasoningDisclosure :content="reasoning" />
+      <div v-if="warnings.length" class="pc-status-card warning">
+        <strong>解析提示</strong>
+        <p>{{ warnings.join('；') }}</p>
+      </div>
       <div class="pc-field-group">
         <label v-if="rawLabel" class="pc-field-label">{{ rawLabel }}</label>
-        <RawOutputEditor v-model="rawOutput" :placeholder="placeholder" @reparse="$emit('reparse')" />
+        <RawOutputEditor
+          v-model="rawOutput"
+          :placeholder="placeholder"
+          :raw-output-semantics="rawOutputSemantics"
+          @reparse="$emit('reparse')"
+        />
       </div>
       <div class="pc-form-actions">
         <button class="pc-soft-btn danger" type="button" @click="$emit('delete')">{{ deleteLabel }}</button>
@@ -19,23 +29,31 @@
 
 <script setup lang="ts">
 import RawOutputEditor from '@/components/RawOutputEditor.vue';
+import ReasoningDisclosure from '@/components/ReasoningDisclosure.vue';
+import type { RawOutputSemantics } from '@/type/generation';
 
 withDefaults(
   defineProps<{
     deleteLabel?: string;
     placeholder?: string;
+    rawOutputSemantics?: RawOutputSemantics;
     rawLabel?: string;
     reparseDisabled?: boolean;
     reparseLabel?: string;
     sourceLabel: string;
     title: string;
+    reasoning?: string;
+    warnings?: string[];
   }>(),
   {
     deleteLabel: '删除草稿',
     placeholder: '在这里修 XML 结构或补 title / content。',
+    rawOutputSemantics: 'original-v1',
     rawLabel: '',
     reparseDisabled: false,
     reparseLabel: '重新解析',
+    reasoning: '',
+    warnings: () => [],
   },
 );
 

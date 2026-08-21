@@ -19,7 +19,7 @@ const resourceTransactionSource = await readMaybe(
 );
 const pluginPresetStore = await readMaybe(new URL('../../src/store/pluginPresets.ts', import.meta.url));
 const settingsPanel = await readMaybe(
-  new URL('../../src/components/settings/SettingsGeneralPanel.vue', import.meta.url),
+  new URL('../../src/components/settings/SettingsDataManagementPage.vue', import.meta.url),
 );
 const repositoryStore = await readMaybe(new URL('../../src/store/fileRepository.ts', import.meta.url));
 
@@ -31,7 +31,7 @@ test('manual full backup v2 embeds plugin presets while v1 remains supported', (
   assert.match(backupType, /records:\s*z\.array/);
   assert.match(backupUtil, /async function buildCompletePhoneBackup/);
   assert.match(backupUtil, /await\s+presetStore\.exportBackupBundle\(\)/);
-  assert.match(backupUtil, /schemaVersion:\s*pluginPresets\s*\?\s*2\s*:\s*1/);
+  assert.match(backupUtil, /schemaVersion:\s*options\.homeIconAssets\s*\?\s*3\s*:\s*pluginPresets\s*\?\s*2\s*:\s*1/);
   assert.match(backupUtil, /embeddedPluginPresets/);
   assert.match(backupUtil, /executeBackupResourceTransaction/);
   assert.match(settingsPanel, /async function downloadBackup\(\)/);

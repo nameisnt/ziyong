@@ -11,9 +11,6 @@ const [
   extrasApp,
   digestModule,
   digestGeneration,
-  comfyModule,
-  comfyGeneration,
-  cloudMediaModule,
   summaryGeneration,
   scenePlannerModule,
   promptStore,
@@ -23,9 +20,6 @@ const [
   readSource('src/components/ExtrasApp.vue'),
   readSource('src/apps/digest/index.ts'),
   readSource('src/apps/digest/generation.ts'),
-  readSource('src/apps/comfy/index.ts'),
-  readSource('src/apps/comfy/generation.ts'),
-  readSource('src/apps/cloud-media/index.ts'),
   readSource('src/core/summaryGeneration.ts'),
   readSource('src/apps/scene-planner/index.ts'),
   readSource('src/store/prompts.ts'),
@@ -42,34 +36,21 @@ test('extras chapter task template preserves the optional summary instruction', 
   assert.equal((extrasApp.match(/summaryFormatHint: chapterGenerationDraft\.summaryFormatHint/g) ?? []).length, 4);
 });
 
-test('digest and ComfyUI generation actions expose editable task templates', () => {
+test('digest generation action exposes an editable task template', () => {
   assert.match(digestModule, /taskTemplateDefinitions:/);
   assert.match(digestModule, /actionId: 'generate'/);
   assert.match(digestGeneration, /taskInstruction: '请从本次选中的来源内容中提取值得保存的原文摘抄，不得改写。'/);
-
-  assert.match(comfyModule, /taskTemplateDefinitions:/);
-  assert.match(comfyModule, /actionId: 'generate-prompt'/);
-  assert.match(
-    comfyGeneration,
-    /taskInstruction: '请根据本次来源、引用和用户要求，为当前工作流生成可直接填写的参数。'/,
-  );
 });
 
-test('summary and cloud media no longer register empty default task layers', () => {
+test('summary no longer registers an empty default task layer', () => {
   assert.doesNotMatch(builtinPrompts, /label: '生成总结', defaultTemplate: ''/);
   assert.match(summaryGeneration, /taskInstruction: '请根据本次选中的来源楼层和引用内容生成总结。'/);
-  assert.doesNotMatch(cloudMediaModule, /label: '生成云媒体提示词', defaultTemplate: ''/);
 });
 
 test('task default coverage migration runs once for old installations', () => {
   assert.match(promptStore, /!\('digest\.generate' in settings\.taskTemplates\)/);
-  assert.match(promptStore, /!\('comfy\.generate-prompt' in settings\.taskTemplates\)/);
   assert.match(promptStore, /settings\.taskTemplates\['extras\.chapter-generate'\] = currentExtrasChapterTaskTemplate/);
   assert.match(promptStore, /settings\.taskTemplates\['summary\.generate'\] = currentSummaryTaskTemplate/);
-  assert.match(
-    promptStore,
-    /settings\.taskTemplates\['cloud-media\.generate-prompt'\] = currentCloudMediaTaskTemplate/,
-  );
 });
 
 test('scene planner uses one generation action label', () => {

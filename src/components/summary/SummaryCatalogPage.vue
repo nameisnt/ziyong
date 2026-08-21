@@ -1,6 +1,11 @@
 <template>
   <section class="pc-summary-catalog-page">
-    <PreviewDraftNotice :draft="previewDraft" @discard="$emit('discard-preview')" @open="$emit('open-preview')" />
+    <PreviewDraftNotice
+      :draft="previewDraft"
+      @discard="$emit('discard-preview', $event)"
+      @open="$emit('open-preview')"
+      @open-id="$emit('open-preview', $event)"
+    />
 
     <BookShelf
       :books="shelfBooks"
@@ -47,10 +52,10 @@ defineProps<{
 
 defineEmits<{
   create: [];
-  'discard-preview': [];
+  'discard-preview': [id?: string];
   'open-book': [bookId: string];
   'open-failed-draft': [draftId: string];
-  'open-preview': [];
+  'open-preview': [id?: string];
   'remove-failed-draft': [draftId: string];
 }>();
 </script>

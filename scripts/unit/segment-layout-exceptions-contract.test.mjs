@@ -46,6 +46,6 @@ test('special segment layouts have numbered reasons without overriding global de
   assert.deepEqual(missingAllowances, [], 'each special layout must document its D-UI-TABS-008 business reason');
 
   const globalRules = rulesFor(globalSource, '.pc-phone-root .pc-segment-btn');
-  assert.ok(globalRules.some(rule => /min-height:\s*32px/.test(rule.body)), 'global segment height must remain 32px');
+  assert.ok(globalRules.some(rule => /min-height:\s*30px/.test(rule.body)), 'global segment height must remain 30px');
   assert.ok(globalRules.some(rule => /font-size:\s*13px/.test(rule.body)), 'global segment text must remain 13px');
 });

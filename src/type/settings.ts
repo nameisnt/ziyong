@@ -4,6 +4,7 @@ export type ThemeMode = z.infer<typeof ThemeMode>;
 export const HomeFolderSchema = z.object({
   appIds: z.array(z.string()).default([]),
   id: z.string(),
+  iconAssetId: z.string().default(''),
   name: z.string().default('文件夹'),
 });
 export type HomeFolder = z.infer<typeof HomeFolderSchema>;
@@ -48,10 +49,18 @@ export const InterfaceSizeSettingsSchema = z.object({
 });
 export type InterfaceSizeSettings = z.infer<typeof InterfaceSizeSettingsSchema>;
 
+export const HomeIconAssetSchema = z.object({
+  id: z.string(),
+  name: z.string(),
+  path: z.string(),
+});
+export type HomeIconAsset = z.infer<typeof HomeIconAssetSchema>;
+
 export const VisualThemeSettingsSchema = z.object({
   accentColor: z.string().default('#007aff'),
   appAccentOverrides: z.record(z.string(), z.string()).default({}),
   appIconBackgroundColor: z.string().default(''),
+  appIconAssetIds: z.record(z.string(), z.string()).default({}),
   appIconOverrides: z.record(z.string(), z.string()).default({}),
   appIconColor: z.string().default(''),
   backgroundColor: z.string().default(''),
@@ -231,6 +240,7 @@ const DEFAULT_VISUAL_THEME_SETTINGS: VisualThemeSettings = {
   accentColor: '#007aff',
   appAccentOverrides: {},
   appIconBackgroundColor: '',
+  appIconAssetIds: {},
   appIconOverrides: {},
   appIconColor: '',
   backgroundColor: '',
@@ -258,6 +268,7 @@ function createDefaultThemeProfile(): ThemeAppearanceProfile {
     visualTheme: {
       ...DEFAULT_VISUAL_THEME_SETTINGS,
       appAccentOverrides: {},
+      appIconAssetIds: {},
       appIconOverrides: {},
     },
     wallpaperMode: 'none',
@@ -291,12 +302,14 @@ export const Settings = z
       ...DEFAULT_VISUAL_THEME_SETTINGS,
       appAccentOverrides: {},
       appIconBackgroundColor: '',
+      appIconAssetIds: {},
       appIconOverrides: {},
     })),
     reader: ReaderAppearanceSchema.default(() => ({ ...DEFAULT_READER_SETTINGS })),
     directorySort: DirectorySortSettingsSchema.default(() => ({ ...DEFAULT_DIRECTORY_SORT_SETTINGS })),
     textProvider: TextProviderSettingsSchema.default(() => ({ ...DEFAULT_TEXT_PROVIDER_SETTINGS })),
     timekeeperCalendarTemplates: z.array(TimekeeperCalendarTemplateSchema).default([]),
+    homeIconAssets: z.array(HomeIconAssetSchema).default([]),
     floatBallEnabled: z.boolean().default(true),
     floatBallSize: z.number().min(28).max(80).default(44),
     floatBallColor: z.string().default('#007aff'),
@@ -326,12 +339,14 @@ export const Settings = z
       ...DEFAULT_VISUAL_THEME_SETTINGS,
       appAccentOverrides: {},
       appIconBackgroundColor: '',
+      appIconAssetIds: {},
       appIconOverrides: {},
     },
     reader: { ...DEFAULT_READER_SETTINGS },
     directorySort: { ...DEFAULT_DIRECTORY_SORT_SETTINGS },
     textProvider: { ...DEFAULT_TEXT_PROVIDER_SETTINGS },
     timekeeperCalendarTemplates: [],
+    homeIconAssets: [],
     floatBallEnabled: true,
     floatBallSize: 44,
     floatBallColor: '#007aff',

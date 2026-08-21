@@ -1,36 +1,42 @@
 <template>
   <section class="pc-settings-app">
-    <nav class="pc-settings-tabs" aria-label="设置分类">
-      <button
-        v-for="tab in settingsTabs"
-        :key="tab.id"
-        :class="['pc-segment-btn', { active: activeSettingsTab === tab.id }]"
-        type="button"
-        @click="activeSettingsTab = tab.id"
-      >
-        <i :class="tab.icon"></i><span>{{ tab.label }}</span>
-      </button>
-    </nav>
-    <div class="pc-settings-panels">
-      <SettingsGeneralPanel v-if="activeSettingsTab === 'general'" />
-      <SettingsInterfacePanel v-else-if="activeSettingsTab === 'interface'" />
-      <SettingsReaderPanel v-else-if="activeSettingsTab === 'reader'" />
-      <SettingsConnectionPanel v-else-if="activeSettingsTab === 'connection'" />
-      <SettingsAdvancedPanel v-else />
-    </div>
+    <SettingsDataManagementPage v-if="currentRoute.page === 'data'" />
+    <template v-else>
+      <nav class="pc-settings-tabs" aria-label="设置分类">
+        <button
+          v-for="tab in settingsTabs"
+          :key="tab.id"
+          :class="['pc-segment-btn', { active: activeSettingsTab === tab.id }]"
+          type="button"
+          @click="activeSettingsTab = tab.id"
+        >
+          <i :class="tab.icon"></i><span>{{ tab.label }}</span>
+        </button>
+      </nav>
+      <div class="pc-settings-panels">
+        <SettingsGeneralPanel v-if="activeSettingsTab === 'general'" />
+        <SettingsInterfacePanel v-else-if="activeSettingsTab === 'interface'" />
+        <SettingsReaderPanel v-else-if="activeSettingsTab === 'reader'" />
+        <SettingsConnectionPanel v-else-if="activeSettingsTab === 'connection'" />
+        <SettingsAdvancedPanel v-else />
+      </div>
+    </template>
   </section>
 </template>
 
 <script setup lang="ts">
 import SettingsAdvancedPanel from './settings/SettingsAdvancedPanel.vue';
 import SettingsConnectionPanel from './settings/SettingsConnectionPanel.vue';
+import SettingsDataManagementPage from './settings/SettingsDataManagementPage.vue';
 import SettingsGeneralPanel from './settings/SettingsGeneralPanel.vue';
 import SettingsInterfacePanel from './settings/SettingsInterfacePanel.vue';
 import SettingsReaderPanel from './settings/SettingsReaderPanel.vue';
 import { usePhoneStore } from '@/store/phone';
+import { storeToRefs } from 'pinia';
 
 type SettingsTabId = 'advanced' | 'connection' | 'general' | 'interface' | 'reader';
 const phone = usePhoneStore();
+const { currentRoute } = storeToRefs(phone);
 const activeSettingsTab = ref<SettingsTabId>('general');
 const settingsTabs = [
   { icon: 'fa-solid fa-database', id: 'general', label: '常规' },

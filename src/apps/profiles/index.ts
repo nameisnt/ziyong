@@ -1,5 +1,6 @@
 import ProfilesApp from './ProfilesApp.vue';
 import { createProfilesContentReceiver } from '@/apps/contentReceivers';
+import { profilesItemTransferProvider } from '@/item-transfer/providers';
 import { createProfileGenerationAdapter } from './generation';
 import { objectListField, textField, textListField, xmlParser } from '@/apps/outputDefinitions';
 import {
@@ -210,6 +211,12 @@ export default definePhoneApp({
       createAdapter: () => createProfileGenerationAdapter(useProfilesStore()),
     },
   ],
+  generationRecoveryProvider: scopeKey => {
+    const store = useProfilesStore();
+    if (store.scopeKey !== scopeKey) return [];
+    return store.failedDrafts.map(draft => ({ appId: 'profiles', id: draft.id, kind: 'failed-draft' as const, routePage: 'failed-draft', routeParams: { draftId: draft.id }, scopeKey, title: typeof draft.context.title === 'string' ? draft.context.title : '待修复生成草稿' }));
+  },
+  itemTransferProvider: profilesItemTransferProvider,
   taskTemplateDefinitions: [
     {
       actionId: 'generate',

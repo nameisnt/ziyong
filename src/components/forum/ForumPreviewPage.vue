@@ -6,6 +6,7 @@
         :raw="raw"
         raw-editable
         :reparse-handler="reparseHandler"
+        :reasoning="reasoning"
         :save-label="saveLabel"
         :scan-enabled="action === 'thread'"
         :source-label="boardName"
@@ -68,6 +69,7 @@ defineProps<{
   author: string;
   boardName: string;
   reparseHandler: () => boolean | Promise<boolean>;
+  reasoning?: string;
   replies: ForumPreviewReply[];
   saveLabel: string;
   threadContent: string;

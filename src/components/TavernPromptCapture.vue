@@ -186,9 +186,9 @@ async function capturePrompt() {
 .pc-capture-list {
   display: block;
   gap: 7px;
-  height: clamp(320px, 54vh, 520px);
-  min-height: 320px;
-  max-height: 520px;
+  height: 420px;
+  min-height: 0;
+  max-height: 420px;
   overflow-y: auto;
   overflow-x: hidden;
   scrollbar-gutter: stable;

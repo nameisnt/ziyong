@@ -7,7 +7,7 @@ export function createVisualScenarioGroups(rootAppScenarios: string[]): VisualSc
   return [
     {
       id: 'shell',
-      scenarios: ['home', 'home-five-columns', 'home-layout-drag', 'home-tasks', 'home-tasks-dark', ...rootAppScenarios],
+      scenarios: ['home', 'home-five-columns', 'home-layout-drag', 'home-layout-drag-dark', 'home-tasks', 'home-tasks-dark', ...rootAppScenarios],
     },
     {
       id: 'generation',
@@ -19,6 +19,7 @@ export function createVisualScenarioGroups(rootAppScenarios: string[]): VisualSc
         'preview-session-navigation',
         'generation-connection-override',
         'preview-draft-deferred-save',
+        'preview-draft-deferred-save-dark',
       ],
     },
     { id: 'migration', scenarios: ['legacy-data-migrations', 'app-deferred-mount-order'] },
@@ -84,6 +85,8 @@ export function createVisualScenarioGroups(rootAppScenarios: string[]): VisualSc
       id: 'settings',
       scenarios: [
         'settings',
+        'settings-data-management',
+        'settings-data-management-dark',
         'settings-interface',
         'settings-reader-font',
         'settings-theme-persistence',
@@ -92,11 +95,8 @@ export function createVisualScenarioGroups(rootAppScenarios: string[]): VisualSc
         'settings-connection-dark',
         'settings-advanced',
         'theme-form-control-isolation',
+        'theme-home-icon-assets',
       ],
-    },
-    {
-      id: 'cloud-media',
-      scenarios: ['cloud-media-generate', 'cloud-media-settings', 'cloud-media-profile-crud'],
     },
     { id: 'mvu', scenarios: ['mvu-modifier-tree', 'mvu-modifier-crud'] },
     { id: 'regex-display', scenarios: ['regex-display-preview', 'regex-display-crud'] },
@@ -132,10 +132,6 @@ export function createVisualScenarioGroups(rootAppScenarios: string[]): VisualSc
     {
       id: 'worldbook',
       scenarios: ['worldbook-link-legacy-entry', 'worldbook-entry-editor', 'world-strategy-lamps'],
-    },
-    {
-      id: 'comfy',
-      scenarios: ['comfy-action-menu', 'comfy-parameter-modes', 'comfy-workflow-json', 'comfy-workflow-crud'],
     },
     { id: 'preset-link', scenarios: ['preset-link-auto-reload', 'preset-link-history'] },
     {
@@ -191,6 +187,7 @@ export function createVisualScenarioGroups(rootAppScenarios: string[]): VisualSc
         'diary-creation-mode',
         'diary-book',
         'diary-entry-editor',
+        'diary-entry-editor-dark',
         'diary-bagu',
         'diary-generate',
         'diary-preview',
@@ -300,9 +297,6 @@ export function createVisualScenarioGroups(rootAppScenarios: string[]): VisualSc
         'tutorial-search-results',
       ],
     },
-    { id: 'gallery', scenarios: ['gallery-editor'] },
-    { id: 'media', scenarios: ['media-param-preview', 'media-library-crud'] },
-    { id: 'video', scenarios: ['video-editor', 'video-viewer'] },
     { id: 'workbench', scenarios: ['workbench-logs', 'workbench-forum-step', 'workbench-crud'] },
     {
       id: 'profiles',

@@ -12,6 +12,7 @@ export {}
 declare module 'vue' {
   export interface GlobalComponents {
     ActionMenu: typeof import('./src/components/ActionMenu.vue')['default']
+    AppIcon: typeof import('./src/components/AppIcon.vue')['default']
     BaguApp: typeof import('./src/components/BaguApp.vue')['default']
     BaguDetailPage: typeof import('./src/components/BaguDetailPage.vue')['default']
     BaguHitDetailsModal: typeof import('./src/components/BaguHitDetailsModal.vue')['default']
@@ -72,6 +73,9 @@ declare module 'vue' {
     GenerationSourceFields: typeof import('./src/components/GenerationSourceFields.vue')['default']
     GenerationTaskCenter: typeof import('./src/components/GenerationTaskCenter.vue')['default']
     InfoHint: typeof import('./src/components/InfoHint.vue')['default']
+    ItemTransferExportButton: typeof import('./src/components/ItemTransferExportButton.vue')['default']
+    ItemTransferImportAction: typeof import('./src/components/ItemTransferImportAction.vue')['default']
+    ItemTransferImportModal: typeof import('./src/components/ItemTransferImportModal.vue')['default']
     LettersApp: typeof import('./src/components/LettersApp.vue')['default']
     LettersBaguPage: typeof import('./src/components/letters/LettersBaguPage.vue')['default']
     LettersBookEditorPage: typeof import('./src/components/letters/LettersBookEditorPage.vue')['default']
@@ -106,6 +110,7 @@ declare module 'vue' {
     SettingsAdvancedPanel: typeof import('./src/components/settings/SettingsAdvancedPanel.vue')['default']
     SettingsApp: typeof import('./src/components/SettingsApp.vue')['default']
     SettingsConnectionPanel: typeof import('./src/components/settings/SettingsConnectionPanel.vue')['default']
+    SettingsDataManagementPage: typeof import('./src/components/settings/SettingsDataManagementPage.vue')['default']
     SettingsGeneralPanel: typeof import('./src/components/settings/SettingsGeneralPanel.vue')['default']
     SettingsInterfacePanel: typeof import('./src/components/settings/SettingsInterfacePanel.vue')['default']
     SettingsReaderPanel: typeof import('./src/components/settings/SettingsReaderPanel.vue')['default']

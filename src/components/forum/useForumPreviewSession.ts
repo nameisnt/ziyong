@@ -138,8 +138,8 @@ export function useForumPreviewSession(options: ForumPreviewSessionOptions) {
   function reparsePreviewRaw() {
     const preview = options.getPreview();
     if (!preview) return false;
-    const rawOutput = preview.raw.trim();
-    if (!rawOutput) {
+    const rawOutput = preview.raw;
+    if (!rawOutput.trim()) {
       options.notify.warning('先补一点可解析的 XML 内容');
       return false;
     }
@@ -157,7 +157,7 @@ export function useForumPreviewSession(options: ForumPreviewSessionOptions) {
       preview.author = parsed.data.author;
       preview.boardName = parsed.data.board || preview.boardName;
       preview.content = parsed.data.content;
-      preview.raw = parsed.raw;
+      preview.raw = rawOutput;
       preview.replies = materialized.replies;
       preview.title = parsed.data.title;
       preview.warnings = [...parsed.warnings, ...materialized.warnings];
@@ -179,7 +179,7 @@ export function useForumPreviewSession(options: ForumPreviewSessionOptions) {
     }
 
     const materialized = materializeForumReplies(thread.replies, parsed.data.replies);
-    preview.raw = parsed.raw;
+    preview.raw = rawOutput;
     preview.replies = materialized.replies;
     preview.warnings = [...parsed.warnings, ...materialized.warnings];
     options.notify.success('已按原始输出重新解析');

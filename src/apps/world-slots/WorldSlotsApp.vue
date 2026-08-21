@@ -57,8 +57,8 @@
       <EmptyState v-else :title="slots.length ? t`没有匹配的槽位` : t`还没有槽位`" />
     </section>
 
-    <section v-else-if="route.page === 'editor'" class="pc-world-slots-page">
-      <article class="pc-page-section pc-world-slot-editor">
+    <section v-else-if="route.page === 'editor'" class="pc-world-slots-page pc-saved-content-editor-page">
+      <article class="pc-page-section pc-world-slot-editor pc-saved-content-editor">
         <input v-model="draft.title" class="pc-field" type="text" :placeholder="t`槽位名称`" />
         <div class="pc-field-group pc-world-field-group">
           <span>{{ t`激活策略` }}</span>

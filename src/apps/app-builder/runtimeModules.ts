@@ -202,6 +202,19 @@ export function createCustomAppRuntimeModules(): PhoneAppModule[] {
             },
           ]
         : undefined,
+      generationRecoveryProvider: scopeKey => {
+        const customApps = useCustomAppsStore();
+        if (customApps.scopeKey !== scopeKey) return [];
+        return customApps.getFailedDrafts(definition.id).map(draft => ({
+          appId: definition.id,
+          id: draft.id,
+          kind: 'failed-draft' as const,
+          routePage: 'failed-draft',
+          routeParams: { draftId: draft.id },
+          scopeKey,
+          title: typeof draft.context.title === 'string' ? draft.context.title : '待修复生成草稿',
+        }));
+      },
       promptDefinitions: definition.creation.generate
         ? [
             {

@@ -16,19 +16,20 @@ function hasDeclaration(selector, property, value) {
   return rulesFor(selector).some(body => declaration.test(body));
 }
 
-test('shared fields use explicit readable density independent of the host page', () => {
+test('single-line fields use compact readable density while multiline editors keep their reading size', () => {
   const failures = [];
 
-  for (const selector of ['.pc-phone-root .pc-field', '.pc-phone-root .pc-select', '.pc-phone-root .pc-area']) {
-    if (!hasDeclaration(selector, 'font-size', '14px')) {
-      failures.push(`${selector} does not explicitly use the 14px shared control font size`);
+  for (const selector of ['.pc-phone-root .pc-field', '.pc-phone-root .pc-select']) {
+    if (!hasDeclaration(selector, 'font-size', '13px')) {
+      failures.push(`${selector} does not explicitly use the 13px compact control font size`);
+    }
+    if (!hasDeclaration(selector, 'min-height', '36px')) {
+      failures.push(`${selector} does not explicitly guarantee the 36px minimum control height`);
     }
   }
 
-  for (const selector of ['.pc-phone-root .pc-field', '.pc-phone-root .pc-select']) {
-    if (!hasDeclaration(selector, 'min-height', '40px')) {
-      failures.push(`${selector} does not explicitly guarantee the 40px minimum control height`);
-    }
+  if (!hasDeclaration('.pc-phone-root .pc-area', 'font-size', '14px')) {
+    failures.push('.pc-phone-root .pc-area does not preserve the 14px multiline reading size');
   }
 
   assert.deepEqual(failures, []);

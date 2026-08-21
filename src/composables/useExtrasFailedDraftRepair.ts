@@ -75,8 +75,8 @@ export function useExtrasFailedDraftRepair(options: {
   function reparseFailedDraft() {
     const draft = options.activeDraft.value;
     if (!draft) return;
-    const rawOutput = options.rawOutput.value.trim();
-    if (!rawOutput) {
+    const rawOutput = options.rawOutput.value;
+    if (!rawOutput.trim()) {
       toastr.warning('先补一点可解析的 XML 内容');
       return;
     }
@@ -86,7 +86,7 @@ export function useExtrasFailedDraftRepair(options: {
       const parsed = config.success ? parseExtraChapterOutput(rawOutput, config.data) : parseSimpleXmlResult(rawOutput);
       if (!parsed.ok) return updateUnparsedDraft(draft, rawOutput, parsed.warnings);
 
-      extras.updateFailedDraft(draft.id, { rawOutput: parsed.raw, warnings: parsed.warnings });
+      extras.updateFailedDraft(draft.id, { rawOutput, warnings: parsed.warnings });
       const bookId = getDraftContextValue<string>(draft, 'bookId', '');
       const chapterId = getDraftContextValue<string>(draft, 'chapterId', '');
       options.setChapterPreview({
@@ -101,7 +101,7 @@ export function useExtrasFailedDraftRepair(options: {
             }
           : undefined,
         mode: options.normalizeChapterMode(draft.context.chapterMode),
-        raw: parsed.raw,
+        raw: rawOutput,
         summary: 'summary' in parsed.data && typeof parsed.data.summary === 'string' ? parsed.data.summary : '',
         targetVersionId: '',
         title: parsed.data.title,
@@ -130,14 +130,14 @@ export function useExtrasFailedDraftRepair(options: {
       toastr.warning('原番外已经不存在，暂时不能恢复这条章节总结');
       return;
     }
-    extras.updateFailedDraft(draft.id, { rawOutput: parsed.raw, warnings: parsed.warnings });
+    extras.updateFailedDraft(draft.id, { rawOutput, warnings: parsed.warnings });
     options.setSummaryPreview({
       bookId,
       content: parsed.data.content,
       coveredChapterIds: [...coveredChapterIds],
       draftId: null,
       enabled,
-      raw: parsed.raw,
+      raw: rawOutput,
       warnings: parsed.warnings,
     });
     options.persistSummaryPreviewDraft({ bookId });

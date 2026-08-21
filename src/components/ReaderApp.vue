@@ -189,9 +189,9 @@
             <span>{{ t`摘抄` }}</span>
           </button>
           <button
+            v-if="isViewingActiveSwipe"
             class="pc-soft-btn danger"
             type="button"
-            v-if="isViewingActiveSwipe"
             :disabled="!phone.isViewingCurrentChat"
             :title="phone.isViewingCurrentChat ? t`删除当前选中文字` : t`历史聊天只读`"
             @click="deleteSelectedReaderText"

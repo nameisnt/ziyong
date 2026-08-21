@@ -114,11 +114,9 @@ const modeHelp = computed(
 
 const domainLabels: Record<string, string> = {
   'card-writer': '写卡工坊',
-  'cloud-media': '云媒体配置',
   'custom-app-chat-data': '自定义 App 聊天内容',
   'custom-app-definitions': '自定义 App 定义',
   'custom-app-global-data': '自定义 App 全局内容',
-  comfy: 'Comfy 工作流',
   diaries: '日记本',
   digests: '剧情摘要',
   extras: '番外书籍',

@@ -1,6 +1,6 @@
 <template>
-  <section class="pc-forum-thread-editor-page">
-    <article class="pc-page-section">
+  <section class="pc-forum-thread-editor-page pc-saved-content-editor-page">
+    <article class="pc-page-section pc-saved-content-editor">
       <template v-if="!editing">
         <SearchableCombobox
           v-if="!insideBoard"
@@ -84,9 +84,5 @@ defineEmits<{
 <style scoped>
 .pc-forum-thread-editor-page {
   min-height: 100%;
-}
-
-.pc-saved-content-area {
-  min-height: 240px;
 }
 </style>

@@ -36,6 +36,7 @@
     <ForumBoardPage
       v-else-if="route.page === 'board' && activeBoard"
       v-model:query="query"
+      :board-id="activeBoard.id"
       :threads="filteredThreads"
       @create-thread="openCreateThread(activeBoard.id)"
       @generate-thread="openGenerateThread(activeBoard.id)"
@@ -135,6 +136,7 @@
       :author="generationState.preview.action === 'thread' ? generationState.preview.author : ''"
       :board-name="generationState.preview.boardName"
       :reparse-handler="reparsePreviewRaw"
+      :reasoning="generationState.preview.generationRecord?.reasoning || ''"
       :replies="previewReplies"
       :save-label="
         generationState.preview.action === 'thread'
@@ -159,9 +161,12 @@
     <FailedDraftRepairPage
       v-else-if="route.page === 'failed-draft' && activeFailedDraft"
       v-model:raw-output="failedDraftRawOutput"
+      :raw-output-semantics="activeFailedDraft.rawOutputSemantics"
+      :reasoning="activeFailedDraft.generationRecord?.reasoning || ''"
       placeholder="在这里修 XML 结构或补字段。"
       :source-label="activeFailedDraft.source.label"
       title="修复解析失败草稿"
+      :warnings="activeFailedDraft.warnings"
       @delete="removeFailedDraft(activeFailedDraft.id)"
       @reparse="reparseFailedDraft"
     />
@@ -282,6 +287,7 @@ const selectedReferences = ref<GenerationReferenceItem[]>([]);
 type ForumPreview = ForumGenerationPreview;
 
 const {
+  beginPreviewDraft: beginForumPreviewDraft,
   clearPreviewDraft: clearForumPreviewDraft,
   discardPreviewDraft: discardForumPreviewDraft,
   draft: forumPreviewDraft,
@@ -927,6 +933,7 @@ const { replySession, runReplyGeneration, runThreadGeneration, stopGeneration, t
   buildReplyThreadContext,
   buildRepliesOutputFormat,
   buildThreadGenerationConfig,
+  beginPreviewDraft: beginForumPreviewDraft,
   clearPreviewDraft: clearForumPreviewDraft,
   failedDraftRawOutput,
   formattedReferences,

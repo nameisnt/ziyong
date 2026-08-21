@@ -67,7 +67,7 @@ test('every modal dialog consumes one opaque global theme surface', () => {
       }
     }
   }
-  if (consumerCount !== 10) failures.push(`expected 10 modal dialog consumers, found ${consumerCount}`);
+  if (consumerCount !== 11) failures.push(`expected 11 modal dialog consumers, found ${consumerCount}`);
 
   const sectionCardIndex = globalSource.indexOf('.pc-phone-root .pc-section-card');
   const modalDialogIndex = globalSource.indexOf('.pc-phone-root .pc-modal-dialog');

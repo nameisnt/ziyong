@@ -3,6 +3,8 @@
     v-model:content="content"
     v-model:raw="raw"
     :reparse-handler="reparseHandler"
+    :reasoning="reasoning"
+    :raw-output-semantics="rawOutputSemantics"
     :save-label="saveLabel"
     :source-label="sourceLabel"
     :text-provider-summary="perspectiveName"
@@ -16,12 +18,15 @@
 
 <script setup lang="ts">
 import GenerationPreviewPage from '@/components/GenerationPreviewPage.vue';
+import type { RawOutputSemantics } from '@/type/generation';
 
 const props = defineProps<{
   action: 'generate' | 'read-reaction';
   occurredAt: string;
   perspectiveName: string;
+  rawOutputSemantics?: RawOutputSemantics;
   reparseHandler: () => boolean | Promise<boolean>;
+  reasoning?: string;
   title: string;
   warnings: string[];
 }>();

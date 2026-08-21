@@ -17,9 +17,10 @@ const [rawEditor, forumPreview, forumBoard, forumApp, builtinPrompts, forumGener
     readSource('src/store/prompts.ts'),
   ]);
 
-test('shared raw output editor reads the declared props binding before reparsing', () => {
+test('shared raw output editor forwards the declared props binding without cleaning before reparsing', () => {
   assert.match(rawEditor, /const props = withDefaults\(/);
-  assert.match(rawEditor, /cleanGenerationOutput\(props\.modelValue,/);
+  assert.match(rawEditor, /emit\('reparse'\);/);
+  assert.doesNotMatch(rawEditor, /cleanGenerationOutput\(props\.modelValue,/);
 });
 
 test('forum preview opens Bagu only through the shared preview view', () => {

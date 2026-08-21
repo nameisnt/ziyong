@@ -158,7 +158,7 @@ function updateRule(value: string) {
 
 .pc-summary-import-list {
   display: grid;
-  max-height: min(46vh, 420px);
+  max-height: 360px;
   gap: 8px;
   margin-top: 12px;
   overflow-y: auto;

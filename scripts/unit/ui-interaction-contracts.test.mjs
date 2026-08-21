@@ -18,7 +18,7 @@ const expectedContracts = {
   'home-layout-drag': 'home-layout-drag',
   persistence: 'content-directory-sort-persistence',
   'reader-edit-modal': 'reader-text-edit-modal',
-  'reasoning-modal': 'card-writer-reasoning-modal',
+  'reasoning-disclosure': 'card-writer-reasoning-modal',
   'reparse-diary': 'diary-failed-draft-reparse',
   'reparse-digest': 'digest-failed-draft-reparse',
   'reparse-forum': 'forum-failed-draft-reparse',

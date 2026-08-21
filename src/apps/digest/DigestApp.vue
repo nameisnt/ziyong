@@ -13,9 +13,10 @@
           >
             <i :class="sortDesc ? 'fa-solid fa-arrow-down-wide-short' : 'fa-solid fa-arrow-up-short-wide'"></i>
           </button>
-          <button class="pc-icon-btn" type="button" :title="t`手动新增`" :aria-label="t`手动新增`" @click="openEditor()">
-            <i class="fa-solid fa-plus"></i>
-          </button>
+          <ActionMenu :label="t`新增`" icon="fa-solid fa-plus">
+            <button type="button" @click="openEditor()"><i class="fa-solid fa-pen"></i>{{ t`手动新增` }}</button>
+            <ItemTransferImportAction app-id="digest" :params="{}" :label="t`导入单条摘抄`" />
+          </ActionMenu>
           <button
             class="pc-icon-btn primary"
             type="button"
@@ -58,6 +59,7 @@
         :draft="digestPreviewDraft"
         @discard="discardDigestPreviewDraft"
         @open="openDigestPreviewDraft"
+        @open-id="openDigestPreviewDraft"
       />
     </section>
 
@@ -119,8 +121,8 @@
       </article>
     </section>
 
-    <section v-else-if="route.page === 'editor'" class="pc-digest-page">
-      <article class="pc-page-section pc-digest-editor-section">
+    <section v-else-if="route.page === 'editor'" class="pc-digest-page pc-saved-content-editor-page">
+      <article class="pc-page-section pc-digest-editor-section pc-saved-content-editor">
         <input v-model="draft.title" class="pc-field" type="text" :placeholder="t`标题`" />
         <input v-model="draft.sourceLabel" class="pc-field" type="text" :placeholder="t`来源，例如 第 12 楼`" />
         <div v-if="editingEntry" class="pc-field-group">
@@ -180,6 +182,7 @@
           :raw="generationState.preview.raw"
           raw-editable
           :reparse-handler="reparsePreviewRaw"
+          :reasoning="generationState.preview.generationRecord?.reasoning || ''"
           :source-label="generationState.preview.source.label"
           :text-provider-summary="textProviderSummary"
           :title="generationState.preview.title"
@@ -194,40 +197,30 @@
       </article>
     </section>
 
-    <section v-else-if="route.page === 'failed-draft' && activeFailedDraft" class="pc-digest-page pc-repair-page">
-      <article class="pc-page-section pc-repair-card">
-        <div class="pc-compact-toolbar">{{ activeFailedDraft.source.label }}</div>
-        <div v-if="activeFailedDraft.warnings.length" class="pc-status-card warning">
-          <strong>{{ t`上次解析提示` }}</strong>
-          <p>{{ activeFailedDraft.warnings.join('；') }}</p>
-        </div>
-        <div class="pc-number-field pc-repair-raw-field">
-          <span class="pc-field-label">{{ t`原始输出` }}</span>
-          <RawOutputEditor
-            v-model="failedDraftRawOutput"
-            :placeholder="t`在这里修 XML 结构或补 title / content。`"
-            @reparse="reparseFailedDraft"
-          />
-        </div>
-        <div class="pc-form-actions">
-          <button class="pc-soft-btn danger" type="button" @click="removeFailedDraft(activeFailedDraft.id)">
-            {{ t`删除草稿` }}
-          </button>
-          <button class="pc-soft-btn" type="button" @click="reparseFailedDraft">{{ t`重新解析` }}</button>
-        </div>
-      </article>
-    </section>
+    <FailedDraftRepairPage
+      v-else-if="route.page === 'failed-draft' && activeFailedDraft"
+      v-model:raw-output="failedDraftRawOutput"
+      :raw-output-semantics="activeFailedDraft.rawOutputSemantics"
+      :reasoning="activeFailedDraft.generationRecord?.reasoning || ''"
+      :source-label="activeFailedDraft.source.label"
+      title="修复摘抄草稿"
+      :warnings="activeFailedDraft.warnings"
+      @delete="removeFailedDraft(activeFailedDraft.id)"
+      @reparse="reparseFailedDraft"
+    />
   </section>
 </template>
 
 <script setup lang="ts">
+import ActionMenu from '@/components/ActionMenu.vue';
+import BaguScanPanel from '@/components/BaguScanPanel.vue';
 import EmptyState from '@/components/EmptyState.vue';
 import FailedDraftList from '@/components/FailedDraftList.vue';
-import BaguScanPanel from '@/components/BaguScanPanel.vue';
+import FailedDraftRepairPage from '@/components/FailedDraftRepairPage.vue';
 import GenerationPanel from '@/components/GenerationPanel.vue';
 import GenerationPreviewPanel from '@/components/GenerationPreviewPanel.vue';
+import ItemTransferImportAction from '@/components/ItemTransferImportAction.vue';
 import PreviewDraftNotice from '@/components/PreviewDraftNotice.vue';
-import RawOutputEditor from '@/components/RawOutputEditor.vue';
 import ReaderDetailShell from '@/components/ReaderDetailShell.vue';
 import { useSingleGenerationTaskSession } from '@/composables/useSingleGenerationTaskSession';
 import { getRegisteredPhoneGenerationAdapter } from '@/core/appRegistry';
@@ -296,6 +289,7 @@ const { error: generationError, rawOutput: generationRawOutput, running: generat
 type DigestPreview = NonNullable<typeof generationState.preview>;
 
 const {
+  beginPreviewDraft: beginDigestPreviewDraft,
   clearPreviewDraft: clearDigestPreviewDraft,
   discardPreviewDraft: discardDigestPreviewDraft,
   draft: digestPreviewDraft,
@@ -518,7 +512,7 @@ function captureDigestPrompt() {
 }
 
 async function runGeneration() {
-  clearDigestPreviewDraft();
+  beginDigestPreviewDraft();
   generationState.preview = null;
   let task: GenerationTask | null = null;
   try {
@@ -618,8 +612,8 @@ function savePreview() {
 function reparsePreviewRaw() {
   const preview = generationState.preview;
   if (!preview) return false;
-  const rawOutput = preview.raw.trim();
-  if (!rawOutput) {
+  const rawOutput = preview.raw;
+  if (!rawOutput.trim()) {
     toastr.warning('先补一点可解析的 XML 内容');
     return false;
   }
@@ -633,7 +627,7 @@ function reparsePreviewRaw() {
   }
 
   preview.content = parsed.data.content;
-  preview.raw = parsed.raw;
+  preview.raw = rawOutput;
   preview.title = parsed.data.title;
   preview.warnings = parsed.warnings;
   toastr.success('已按原始输出重新解析');
@@ -655,8 +649,8 @@ async function removeFailedDraft(draftId: string) {
 function reparseFailedDraft() {
   const draft = activeFailedDraft.value;
   if (!draft) return;
-  const rawOutput = failedDraftRawOutput.value.trim();
-  if (!rawOutput) {
+  const rawOutput = failedDraftRawOutput.value;
+  if (!rawOutput.trim()) {
     toastr.warning('先补一点可解析的 XML 内容');
     return;
   }
@@ -673,14 +667,14 @@ function reparseFailedDraft() {
   }
 
   digest.updateFailedDraft(draft.id, {
-    rawOutput: parsed.raw,
+    rawOutput,
     warnings: parsed.warnings,
   });
   generationState.preview = {
     content: parsed.data.content,
     draftId: null,
     generationRecord: draft.generationRecord,
-    raw: parsed.raw,
+    raw: rawOutput,
     source: { floorEnd: getSourceLastFloor(draft.source), label: draft.source.label },
     title: parsed.data.title,
     warnings: parsed.warnings,

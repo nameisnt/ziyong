@@ -61,7 +61,12 @@
       @open="$emit('open-failed-draft', $event)"
       @remove="$emit('remove-failed-draft', $event)"
     />
-    <PreviewDraftNotice :draft="previewDraft" @discard="$emit('discard-preview')" @open="$emit('open-preview')" />
+    <PreviewDraftNotice
+      :draft="previewDraft"
+      @discard="$emit('discard-preview', $event)"
+      @open="$emit('open-preview')"
+      @open-id="$emit('open-preview', $event)"
+    />
   </section>
 </template>
 
@@ -84,12 +89,12 @@ defineProps<{
 
 defineEmits<{
   'create-board': [];
-  'discard-preview': [];
+  'discard-preview': [id?: string];
   'edit-board': [boardId: string];
   'generate-thread': [];
   'open-board': [boardId: string];
   'open-failed-draft': [draftId: string];
-  'open-preview': [];
+  'open-preview': [id?: string];
   'remove-board': [boardId: string];
   'remove-failed-draft': [draftId: string];
 }>();

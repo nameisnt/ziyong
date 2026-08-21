@@ -7,6 +7,7 @@ import {
   type PhoneOutputParserField,
   type PhonePromptOutputFormat,
 } from '@/core/appRegistry';
+import { stripRetiredMediaPromptSettings } from '@/core/retiredMedia';
 import { parsePrettified, validateInplace } from '@/util/zod';
 import type { ZodType } from 'zod';
 // eslint-disable-next-line import-x/no-nodejs-modules
@@ -250,14 +251,6 @@ const legacyDigestDefaultPrompt = [
   '不要写成长篇总结，不要编造来源中不存在的信息。',
 ].join('\n');
 
-const legacyComfyDefaultPrompt = [
-  '你负责把用户的自然语言需求转换为适合 ComfyUI 工作流的结构化生成输入。',
-  '根据来源楼层和引用内容理解画面、声音或视频目标，但不要把聊天原文直接塞进提示词。',
-  'prompt 要写成可直接进入生图/生音/生视频工作流的提示词；negative 用于排除不想要的质量问题或元素。',
-  '如果提供了可填写工作流参数，只填写你有把握且和本次需求相关的参数。',
-  '不要输出 XML 之外的解释。',
-].join('\n');
-
 const migratedDefaultPrompts = {
   diary: {
     from: '请以视角角色的第一人称写一篇私密日记。保留角色真实情绪，不要写成剧情总结；重点记录角色不知道如何当面说出口的想法。',
@@ -295,15 +288,14 @@ const currentExtrasChapterTaskTemplate = ['{{modeInstruction}}', '{{typeFallback
   '\n',
 );
 const currentSummaryTaskTemplate = '请根据本次选中的来源楼层和引用内容生成总结。';
-const currentCloudMediaTaskTemplate = '请根据当前目标服务、媒体类型和模型配置，生成一份可直接使用的媒体提示词。';
 const legacyTheaterTaskTemplate = '{{typeInstruction}}';
 const currentTheaterTaskTemplate = '本次小剧场类型为“{{typeName}}”。';
 const legacyRelationshipTaskTemplate = '{{focusInstruction}}';
 const currentRelationshipTaskTemplate = '请重点判断以下范围内角色之间的当前单向关系：{{characterScope}}。';
 
 function ensureRegisteredPromptDefaults(settings: PromptSettings) {
-  const needsTaskTemplateCoverageMigration =
-    !('digest.generate' in settings.taskTemplates) || !('comfy.generate-prompt' in settings.taskTemplates);
+  stripRetiredMediaPromptSettings(settings);
+  const needsTaskTemplateCoverageMigration = !('digest.generate' in settings.taskTemplates);
   const previousExtrasPrompt = settings.appPrompts.extras?.trim() || '';
   const hadExtrasContinuePrompt = 'extrasContinue' in settings.appPrompts;
   const appDefaults = buildDefaultAppPrompts();
@@ -321,9 +313,6 @@ function ensureRegisteredPromptDefaults(settings: PromptSettings) {
   }
   if (settings.appPrompts.digest?.trim() === legacyDigestDefaultPrompt) {
     settings.appPrompts.digest = appDefaults.digest ?? settings.appPrompts.digest;
-  }
-  if (settings.appPrompts.comfy?.trim() === legacyComfyDefaultPrompt) {
-    settings.appPrompts.comfy = appDefaults.comfy ?? settings.appPrompts.comfy;
   }
   Object.entries(migratedDefaultPrompts).forEach(([key, migration]) => {
     if (settings.appPrompts[key]?.trim() === migration.from) {
@@ -356,9 +345,6 @@ function ensureRegisteredPromptDefaults(settings: PromptSettings) {
   }
   if (needsTaskTemplateCoverageMigration && !settings.taskTemplates['summary.generate']?.trim()) {
     settings.taskTemplates['summary.generate'] = currentSummaryTaskTemplate;
-  }
-  if (needsTaskTemplateCoverageMigration && !settings.taskTemplates['cloud-media.generate-prompt']?.trim()) {
-    settings.taskTemplates['cloud-media.generate-prompt'] = currentCloudMediaTaskTemplate;
   }
   if (
     (hasLegacyForumAndTheaterDefaults || needsTaskTemplateCoverageMigration) &&
@@ -420,7 +406,9 @@ function createDefaultPromptSettings(): PromptSettings {
 }
 
 export const usePromptStore = defineStore('prompts', () => {
-  const data = ref(validateInplace(PromptSettingsSchema, _.get(extension_settings, promptField, {})));
+  const initialData = validateInplace(PromptSettingsSchema, _.get(extension_settings, promptField, {}));
+  stripRetiredMediaPromptSettings(initialData);
+  const data = ref(initialData);
 
   function persist(nextData: typeof data.value) {
     const parsed = validateInplace(PromptSettingsSchema, klona(nextData));
@@ -653,6 +641,7 @@ export const usePromptStore = defineStore('prompts', () => {
       }
       data.value.quickTemplateGroups = klona(transfer.sections.quickTemplateGroups);
     }
+    stripRetiredMediaPromptSettings(data.value);
   }
 
   function getTypePrompt(promptId: string) {

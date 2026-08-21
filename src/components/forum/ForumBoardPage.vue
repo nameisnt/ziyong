@@ -12,15 +12,10 @@
         >
           <i class="fa-solid fa-wand-magic-sparkles"></i>
         </button>
-        <button
-          class="pc-icon-btn primary"
-          type="button"
-          :title="t`发帖`"
-          :aria-label="t`发帖`"
-          @click="$emit('create-thread')"
-        >
-          <i class="fa-solid fa-file-circle-plus"></i>
-        </button>
+        <ActionMenu :label="t`新增`" icon="fa-solid fa-plus">
+          <button type="button" @click="$emit('create-thread')"><i class="fa-solid fa-file-circle-plus"></i>{{ t`发帖` }}</button>
+          <ItemTransferImportAction app-id="forum" :params="{ boardId }" :label="t`导入单个帖子`" />
+        </ActionMenu>
       </div>
     </div>
 
@@ -52,11 +47,14 @@
 </template>
 
 <script setup lang="ts">
+import ActionMenu from '@/components/ActionMenu.vue';
 import ContentVersionBadge from '@/components/ContentVersionBadge.vue';
 import EmptyState from '@/components/EmptyState.vue';
+import ItemTransferImportAction from '@/components/ItemTransferImportAction.vue';
 import type { ForumThread } from '@/type/forum';
 
 defineProps<{
+  boardId: string;
   threads: ForumThread[];
 }>();
 

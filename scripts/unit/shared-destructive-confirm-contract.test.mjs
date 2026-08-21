@@ -4,7 +4,6 @@ import { readFile } from 'node:fs/promises';
 import test from 'node:test';
 
 const consumers = [
-  ['cloud media profile deletion', '../../src/apps/cloud-media/CloudMediaApp.vue'],
   ['chat archive scope migration', '../../src/components/ChatArchiveApp.vue'],
 ];
 

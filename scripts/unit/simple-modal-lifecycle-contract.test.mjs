@@ -62,7 +62,7 @@ test('simple dialogs share modal focus, keyboard, phone-back and scroll-lock lif
     failures.push('diary modal fixture does not use the real create action');
   }
 
-  for (const scenario of ['diary-creation-mode', 'card-writer-reasoning-modal']) {
+  for (const scenario of ['diary-creation-mode']) {
     if (!interactionContracts.includes(`scenario: '${scenario}'`)) {
       failures.push(`${scenario} is not registered as a formal interaction contract`);
     }

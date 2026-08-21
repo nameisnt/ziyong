@@ -15,29 +15,29 @@
     </div>
 
     <div v-if="showPresetSelector" class="pc-select-field pc-preset-field">
-      <label class="pc-field-label">本次预设</label>
-      <div class="pc-preset-select-row">
-        <SearchableCombobox
-          :disabled="disabled"
-          empty-label="没有匹配的预设"
-          input-label="选择本次预设"
-          :model-value="tavernPresetName"
-          :options="presetOptions"
-          placeholder="跟随酒馆当前预设"
-          toggle-title="展开预设列表"
-          @update:model-value="emit('update:tavernPresetName', $event)"
-        />
+      <div class="pc-field-head">
+        <label class="pc-field-label">本次预设</label>
         <button
           class="pc-icon-btn"
           type="button"
-          :disabled="disabled"
+          :disabled="disabled || refreshingPresetNames"
           title="刷新预设列表"
           aria-label="刷新预设列表"
-          @click="refreshPresetNames"
+          @click="handleRefreshPresetNames"
         >
-          <i class="fa-solid fa-rotate"></i>
+          <i :class="['fa-solid fa-rotate', { 'fa-spin': refreshingPresetNames }]"></i>
         </button>
       </div>
+      <SearchableCombobox
+        :disabled="disabled"
+        empty-label="没有匹配的预设"
+        input-label="选择本次预设"
+        :model-value="tavernPresetName"
+        :options="presetOptions"
+        placeholder="跟随酒馆当前预设"
+        toggle-title="展开预设列表"
+        @update:model-value="emit('update:tavernPresetName', $event)"
+      />
     </div>
   </div>
 </template>
@@ -76,6 +76,8 @@ const pluginPresets = usePluginPresetStore();
 const { settings } = storeToRefs(settingsStore);
 const { items: pluginPresetItems } = storeToRefs(pluginPresets);
 const tavernPresetNames = ref<string[]>([]);
+const refreshingPresetNames = ref(false);
+let refreshFeedbackTimer: number | undefined;
 
 const connectionOptions = computed(() => [
   { label: '酒馆当前 API', value: 'tavern' },
@@ -107,7 +109,18 @@ function refreshPresetNames() {
   }
 }
 
+function handleRefreshPresetNames() {
+  refreshingPresetNames.value = true;
+  refreshPresetNames();
+  toastr.success(`预设列表已刷新，共 ${pluginPresetItems.value.length + tavernPresetNames.value.length} 个预设`);
+  window.clearTimeout(refreshFeedbackTimer);
+  refreshFeedbackTimer = window.setTimeout(() => {
+    refreshingPresetNames.value = false;
+  }, 300);
+}
+
 onMounted(refreshPresetNames);
+onBeforeUnmount(() => window.clearTimeout(refreshFeedbackTimer));
 </script>
 
 <style scoped>

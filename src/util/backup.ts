@@ -23,9 +23,10 @@ import {
   selectGeneratedContentDomains,
 } from '@/util/backupPolicy';
 // eslint-disable-next-line import-x/no-nodejs-modules
-import { saveSettingsDebounced } from '@sillytavern/script';
+import { getRequestHeaders, saveSettingsDebounced } from '@sillytavern/script';
 import { extension_settings } from '@sillytavern/scripts/extensions';
 import { setting_field, Settings } from '@/type/settings';
+import { migrateHomeLayoutDockCapacity } from '@/core/appLayout';
 
 export interface PhoneBackupScopeOption {
   collections: number;
@@ -44,8 +45,6 @@ export interface PhoneBackupImportPlan {
 
 const backupDomainLabels: Record<string, string> = {
   'chat-insert': '插入工具',
-  'cloud-media': '云媒体配置',
-  comfy: 'ComfyUI',
   diaries: '日记',
   digests: '摘抄',
   'generation-aliases': '生成称呼替换',
@@ -105,11 +104,51 @@ type StagedPhoneBackupDomainImport = {
 
 type PreparedFullPhoneBackupImport = {
   embeddedPluginPresets: PluginPresetBackupBundle | null;
+  homeIconAssets: Array<{ data: string; id: string; name: string }>;
   plan: PhoneBackupImportPlan;
   stagedDomains: StagedPhoneBackupDomainImport[];
   stagedSettings: Settings;
   data: z.infer<typeof PhoneBackupFullDataSchema>;
 };
+
+function decodeHomeIconBackupData(value: string) {
+  let binary = '';
+  try {
+    binary = atob(value);
+  } catch {
+    throw new Error('图标资源不是有效的 base64 数据');
+  }
+  if (!binary.length || binary.length > 5 * 1024 * 1024) throw new Error('图标资源为空或超过 5 MB');
+  return Uint8Array.from(binary, character => character.charCodeAt(0));
+}
+
+async function uploadHomeIconBackupAsset(asset: { data: string; id: string; name: string }) {
+  const extension = asset.name.split('.').pop()?.toLowerCase() || '';
+  if (!['gif', 'jpeg', 'jpg', 'png', 'webp'].includes(extension)) throw new Error(`图标资源格式不支持：${asset.name}`);
+  decodeHomeIconBackupData(asset.data);
+  const fileName = `phone-icon-${Date.now()}-${Math.random().toString(36).slice(2, 8)}.${extension}`;
+  const response = await fetch('/api/files/upload', {
+    method: 'POST',
+    headers: getRequestHeaders(),
+    body: JSON.stringify({
+      data: asset.data,
+      name: fileName,
+    }),
+  });
+  if (!response.ok) throw new Error(`图标资源上传失败：HTTP ${response.status}`);
+  const result = await response.json();
+  return String(result.path || `user/files/${fileName}`).replace(/^\/+/, '');
+}
+
+async function deleteImportedHomeIcon(path: string) {
+  if (!path) return;
+  const response = await fetch('/api/files/delete', {
+    method: 'POST',
+    headers: getRequestHeaders(),
+    body: JSON.stringify({ path }),
+  });
+  if (!response.ok && response.status !== 404) throw new Error(`图标资源回滚删除失败：HTTP ${response.status}`);
+}
 
 type PreparedChatPhoneBackupImport = {
   plan: PhoneBackupImportPlan;
@@ -344,6 +383,8 @@ function formatScopeLabel(scopeKey: string) {
 
 function sanitizeSettingsForJsonBackup(rawSettings: unknown) {
   const parsed = parsePrettified(Settings, klona(rawSettings ?? {}));
+  parsed.layout = migrateHomeLayoutDockCapacity(parsed.layout);
+  parsed.interfaceSize.dockColumns = Math.min(4, Math.max(3, parsed.interfaceSize.dockColumns));
   parsed.textProvider.externalProfiles.forEach(profile => {
     profile.apiKey = '';
   });
@@ -375,7 +416,7 @@ function sanitizeSettingsForJsonBackup(rawSettings: unknown) {
   return parsed;
 }
 
-export function buildPhoneBackup(options: { pluginPresets?: PluginPresetBackupBundle } = {}): PhoneBackup {
+export function buildPhoneBackup(options: { homeIconAssets?: Array<{ data: string; id: string; name: string }>; pluginPresets?: PluginPresetBackupBundle } = {}): PhoneBackup {
   const scopeKey = getCurrentChatScopeKey();
   const registeredDomains = getRegisteredPhoneBackupDomains();
   const domains = Object.fromEntries(registeredDomains.map(domain => [domain.key, domain.exportData(scopeKey)]));
@@ -383,7 +424,7 @@ export function buildPhoneBackup(options: { pluginPresets?: PluginPresetBackupBu
 
   return parsePrettified(PhoneBackupSchema, {
     backupKind: 'full',
-    schemaVersion: pluginPresets ? 2 : 1,
+    schemaVersion: options.homeIconAssets ? 3 : pluginPresets ? 2 : 1,
     exportedAt: new Date().toISOString(),
     data: {
       settings: sanitizeSettingsForJsonBackup(_.get(extension_settings, setting_field, {})),
@@ -394,13 +435,29 @@ export function buildPhoneBackup(options: { pluginPresets?: PluginPresetBackupBu
       domains,
       domainVersions: Object.fromEntries(registeredDomains.map(domain => [domain.key, domain.schemaVersion])),
       ...(pluginPresets ? { pluginPresets } : {}),
+      ...(options.homeIconAssets ? { homeIconAssets: options.homeIconAssets } : {}),
     },
   });
 }
 
+async function readHomeIconBackupAssets(settings: Settings) {
+  return Promise.all(
+    settings.homeIconAssets.map(async asset => {
+      const response = await fetch(`/${asset.path.replace(/^\/+/, '')}`, { cache: 'no-store' });
+      if (!response.ok) throw new Error(`图标资源读取失败：${asset.name}`);
+      const bytes = new Uint8Array(await response.arrayBuffer());
+      if (!bytes.length || bytes.length > 5 * 1024 * 1024) throw new Error(`图标资源为空或超过 5 MB：${asset.name}`);
+      let binary = '';
+      bytes.forEach(byte => { binary += String.fromCharCode(byte); });
+      return { data: btoa(binary), id: asset.id, name: asset.name };
+    }),
+  );
+}
+
 export async function buildCompletePhoneBackup() {
   const presetStore = usePluginPresetStore();
-  return buildPhoneBackup({ pluginPresets: await presetStore.exportBackupBundle() });
+  const settings = sanitizeSettingsForJsonBackup(_.get(extension_settings, setting_field, {}));
+  return buildPhoneBackup({ homeIconAssets: await readHomeIconBackupAssets(settings), pluginPresets: await presetStore.exportBackupBundle() });
 }
 
 export async function downloadPhoneBackup() {
@@ -568,6 +625,31 @@ function prepareFullPhoneBackupImport(
   });
   const stagedDomains = stageDomainImports(entries, data.domainVersions);
   const stagedSettings = sanitizeSettingsForJsonBackup(data.settings);
+  const homeIconAssets = backup.backupKind === 'full' && backup.schemaVersion === 3 ? backup.data.homeIconAssets : [];
+  if (backup.backupKind !== 'full' || backup.schemaVersion !== 3) {
+    stagedSettings.homeIconAssets = [];
+    stagedSettings.visualTheme.appIconAssetIds = {};
+    stagedSettings.themeProfiles.light.visualTheme.appIconAssetIds = {};
+    stagedSettings.themeProfiles.dark.visualTheme.appIconAssetIds = {};
+    stagedSettings.layout.folders.forEach(folder => { folder.iconAssetId = ''; });
+  } else {
+    const settingsIds = [...new Set(stagedSettings.homeIconAssets.map(asset => asset.id))].sort();
+    const backupIds = [...new Set(homeIconAssets.map(asset => asset.id))].sort();
+    if (
+      settingsIds.length !== stagedSettings.homeIconAssets.length ||
+      backupIds.length !== homeIconAssets.length ||
+      settingsIds.join('\n') !== backupIds.join('\n')
+    ) throw new Error('图标资源清单与设置引用不一致');
+    const knownAssetIds = new Set(settingsIds);
+    const referencedAssetIds = [
+      ...Object.values(stagedSettings.visualTheme.appIconAssetIds),
+      ...Object.values(stagedSettings.themeProfiles.light.visualTheme.appIconAssetIds),
+      ...Object.values(stagedSettings.themeProfiles.dark.visualTheme.appIconAssetIds),
+      ...stagedSettings.layout.folders.map(folder => folder.iconAssetId),
+    ].filter(Boolean);
+    if (referencedAssetIds.some(assetId => !knownAssetIds.has(assetId))) throw new Error('图标资源引用指向不存在的资源');
+    homeIconAssets.forEach(asset => decodeHomeIconBackupData(asset.data));
+  }
   const coverage = analyzeBackupDomainCoverage(
     registeredDomains,
     stagedDomains.map(({ domain }) => domain.key),
@@ -576,9 +658,11 @@ function prepareFullPhoneBackupImport(
   const embeddedPluginPresets = getEmbeddedPluginPresets(backup);
   const plan = buildImportPlan('full', stagedDomains, coverage.missingDomains, coverage.unknownDomainKeys);
   if (embeddedPluginPresets) plan.domainsToReplace.unshift('插件预设');
+  if (homeIconAssets.length) plan.domainsToReplace.unshift('首页图标资源');
   return {
     data,
     embeddedPluginPresets,
+    homeIconAssets,
     plan,
     stagedDomains,
     stagedSettings,
@@ -594,7 +678,7 @@ export function planPhoneFullBackupImport(
 
 export async function applyPhoneBackup(backup: PhoneBackup, options: { allowLegacy?: boolean } = {}) {
   const prepared = prepareFullPhoneBackupImport(backup, options);
-  const { data, embeddedPluginPresets, stagedDomains, stagedSettings } = prepared;
+  const { data, embeddedPluginPresets, homeIconAssets, stagedDomains, stagedSettings } = prepared;
 
   const commitSettings = () =>
     commitBackupImport(() => {
@@ -608,17 +692,35 @@ export async function applyPhoneBackup(backup: PhoneBackup, options: { allowLega
       });
     }, getRegisteredPhoneBackupRehydrateHandlers());
 
-  if (!embeddedPluginPresets) {
+  if (!embeddedPluginPresets && !homeIconAssets.length) {
     await commitSettings();
     return;
   }
 
   const presetStore = usePluginPresetStore();
-  const currentPluginPresets = await presetStore.exportBackupBundle();
+  const currentPluginPresets = embeddedPluginPresets ? await presetStore.exportBackupBundle() : null;
+  const uploadedPaths: string[] = [];
   await executeBackupResourceTransaction({
     captureSnapshot: () => currentPluginPresets,
     commitSettings,
-    replaceResource: () => presetStore.replaceBackupBundle(embeddedPluginPresets),
-    restoreResource: snapshot => presetStore.replaceBackupBundle(snapshot),
+    replaceResource: async () => {
+      try {
+        for (const asset of homeIconAssets) {
+          const path = await uploadHomeIconBackupAsset(asset);
+          uploadedPaths.push(path);
+          const stagedAsset = stagedSettings.homeIconAssets.find(item => item.id === asset.id);
+          if (stagedAsset) stagedAsset.path = path;
+        }
+        if (embeddedPluginPresets) await presetStore.replaceBackupBundle(embeddedPluginPresets);
+      } catch (error) {
+        await Promise.allSettled(uploadedPaths.map(deleteImportedHomeIcon));
+        throw error;
+      }
+    },
+    restoreResource: async snapshot => {
+      const cleanup = Promise.all(uploadedPaths.map(deleteImportedHomeIcon));
+      const restorePresets = snapshot ? presetStore.replaceBackupBundle(snapshot) : Promise.resolve();
+      await Promise.all([cleanup, restorePresets]);
+    },
   });
 }

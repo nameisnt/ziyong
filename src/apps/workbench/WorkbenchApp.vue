@@ -601,25 +601,6 @@
                   </div>
                 </div>
 
-                <div v-else-if="step.appId === 'comfy'" class="pc-step-config">
-                  <label class="pc-field-group">
-                    <span>{{ t`ComfyUI 工作流` }}</span>
-                    <SearchableCombobox
-                      v-model="step.config.comfyWorkflowId"
-                      input-label="选择 ComfyUI 工作流"
-                      :options="
-                        resourceOptions(
-                          comfySettings.workflows,
-                          step.config.comfyWorkflowId,
-                          '请选择工作流',
-                          item => item.name,
-                        )
-                      "
-                      placeholder="请选择工作流"
-                    />
-                  </label>
-                </div>
-
                 <textarea
                   class="pc-area compact"
                   :placeholder="t`本步骤追加要求，可留空`"
@@ -700,7 +681,6 @@
 import EmptyState from '@/components/EmptyState.vue';
 import ConfigurationRecoveryNotice from '@/components/ConfigurationRecoveryNotice.vue';
 import SearchableCombobox from '@/components/SearchableCombobox.vue';
-import { useComfyStore } from '@/apps/comfy/store';
 import { profileKindOptions, useProfilesStore } from '@/apps/profiles/store';
 import { usePhoneStore } from '@/store/phone';
 import { useGenerationTaskStore } from '@/store/generationTasks';
@@ -722,13 +702,11 @@ import { pluginPresetIdFromSelection, pluginPresetSelection } from '@/apps/prese
 const workbench = useWorkbenchStore();
 const phone = usePhoneStore();
 const generationTasks = useGenerationTaskStore();
-const comfy = useComfyStore();
 const settingsStore = useSettingsStore();
 const pluginPresets = usePluginPresetStore();
 const { configError, insertDrafts, logs, rawConfig, workflows } = storeToRefs(workbench);
 const { settings } = storeToRefs(settingsStore);
 const { items: pluginPresetItems } = storeToRefs(pluginPresets);
-const { activeWorkflow: activeComfyWorkflow, settings: comfySettings } = storeToRefs(comfy);
 const { books: summaryBooks } = storeToRefs(useSummaryStore());
 const { books: diaryBooks } = storeToRefs(useDiaryStore());
 const { books: extrasBooks } = storeToRefs(useExtrasStore());
@@ -975,14 +953,6 @@ function addStep(workflowId: string) {
     return;
   }
   const step = workbench.addStep(workflowId, { actionId, appId });
-  if (step && appId === 'comfy') {
-    workbench.updateStep(workflowId, step.id, {
-      config: {
-        ...step.config,
-        comfyWorkflowId: activeComfyWorkflow.value?.id || comfySettings.value.workflows[0]?.id || '',
-      },
-    });
-  }
   collapsedStepIds.value = collapsedStepIds.value.filter(id => id !== step?.id);
   selectedActions[workflowId] = '';
 }

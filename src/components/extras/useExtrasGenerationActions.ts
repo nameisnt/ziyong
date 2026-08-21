@@ -17,6 +17,8 @@ type GenerationSession = ReturnType<typeof useExtrasGenerationState>;
 
 interface ExtrasGenerationActionsOptions {
   activeBook: ComputedRef<ExtraBook | null>;
+  beginChapterPreviewDraft: () => void;
+  beginSummaryPreviewDraft: () => void;
   buildChapterOutputFormat: () => string;
   buildChaptersContext: (book: ExtraBook, coveredChapterIds: string[]) => string;
   buildPreviousChapterContext: (book: ExtraBook) => string;
@@ -88,7 +90,7 @@ export function useExtrasGenerationActions(options: ExtrasGenerationActionsOptio
       return;
     }
 
-    options.clearChapterPreviewDraft();
+    options.beginChapterPreviewDraft();
     state.preview = null;
     const savedTypePrompt = options.saveChapterTypePrompt();
     if (savedTypePrompt) {
@@ -256,7 +258,7 @@ export function useExtrasGenerationActions(options: ExtrasGenerationActionsOptio
       return;
     }
 
-    options.clearSummaryPreviewDraft();
+    options.beginSummaryPreviewDraft();
     state.preview = null;
 
     try {

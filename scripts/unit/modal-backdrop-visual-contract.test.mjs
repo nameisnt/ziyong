@@ -69,7 +69,7 @@ test('every modal backdrop consumes one global structural and theme rule', () =>
       }
     }
   }
-  if (consumerCount !== 10) failures.push(`expected 10 modal backdrop consumers, found ${consumerCount}`);
+  if (consumerCount !== 11) failures.push(`expected 11 modal backdrop consumers, found ${consumerCount}`);
 
   const expectedVariables = {
     bagu: '--pc-modal-z: 70',

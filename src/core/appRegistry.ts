@@ -174,6 +174,21 @@ export interface PhoneGenerationAction {
 export type PhoneGenerationProvider = () => PhoneGenerationAction[];
 export type PhoneScopeSwitchHandler = (scopeKey: string) => void | Promise<void>;
 
+/** A read-only recovery target exposed by an App without leaking its store implementation. */
+export interface PhoneGenerationRecoveryItem {
+  appId: string;
+  id: string;
+  kind: 'failed-draft';
+  routePage: string;
+  routeParams: Record<string, string>;
+  scopeKey: string;
+  title: string;
+}
+
+export type PhoneGenerationRecoveryProvider = (
+  scopeKey: string,
+) => PhoneGenerationRecoveryItem[] | Promise<PhoneGenerationRecoveryItem[]>;
+
 export type PhoneContentConversionValue = boolean | number | string;
 export type PhoneContentConversionValues = Record<string, PhoneContentConversionValue>;
 export type PhoneContentConversionBatchMode = 'merge' | 'separate';
@@ -253,6 +268,54 @@ export interface PhoneBackupDomain {
   scope: 'global' | 'chat';
 }
 
+export interface PhoneItemTransferRoute {
+  page: string;
+  params?: Record<string, string>;
+  title: string;
+}
+
+export interface PhoneItemTransferExport {
+  data: unknown;
+  itemId: string;
+  title: string;
+}
+
+export interface PhoneItemTransferPreview {
+  conflict: boolean;
+  description?: string;
+  itemId: string;
+  targetLabel?: string;
+  title: string;
+}
+
+export interface PhoneItemTransferImportContext {
+  mode: 'copy' | 'replace';
+  params: Record<string, string>;
+}
+
+export interface PhoneItemTransferImportResult {
+  itemId: string;
+  message: string;
+  route?: PhoneItemTransferRoute;
+  title: string;
+}
+
+export interface PhoneItemTransferProvider {
+  captureSnapshot: () => unknown;
+  exportItem: (params: Record<string, string>) => PhoneItemTransferExport | null;
+  importItem: (
+    data: unknown,
+    context: PhoneItemTransferImportContext,
+  ) => PhoneItemTransferImportResult | Promise<PhoneItemTransferImportResult>;
+  itemLabel: string;
+  itemType: string;
+  migrateImport?: (data: unknown, fromVersion: number) => unknown;
+  previewImport: (data: unknown, params: Record<string, string>) => PhoneItemTransferPreview;
+  restoreSnapshot: (snapshot: unknown) => void;
+  schema: z.ZodType;
+  schemaVersion: number;
+}
+
 export interface PhoneAppDefinition {
   id: string;
   name: string;
@@ -275,6 +338,8 @@ export interface PhoneAppModule extends PhoneAppDefinition {
   contentStatsProvider?: PhoneContentStatsProvider;
   favoriteProvider?: PhoneFavoriteProvider;
   generationProvider?: PhoneGenerationProvider;
+  generationRecoveryProvider?: PhoneGenerationRecoveryProvider;
+  itemTransferProvider?: PhoneItemTransferProvider;
   promptDefinitions?: PhonePromptDefinition[];
   referenceProvider?: PhoneReferenceProvider;
   resetCurrentScope?: PhoneAppResetHandler;
@@ -306,6 +371,17 @@ function assertValidModule(module: PhoneAppModule) {
     }
     keys.add(domain.key);
   });
+
+  const itemTransfer = module.itemTransferProvider;
+  if (itemTransfer) {
+    if (!itemTransfer.itemLabel.trim()) throw new Error(`Phone app ${module.id} has an empty item transfer label`);
+    if (!appIdPattern.test(itemTransfer.itemType)) {
+      throw new Error(`Phone app ${module.id} has an invalid item transfer type: ${itemTransfer.itemType}`);
+    }
+    if (!Number.isInteger(itemTransfer.schemaVersion) || itemTransfer.schemaVersion < 1) {
+      throw new Error(`Phone app ${module.id} has an invalid item transfer schema version`);
+    }
+  }
 }
 
 export function definePhoneApp(module: PhoneAppModule) {
@@ -462,6 +538,18 @@ export function getRegisteredPhoneGenerationActions(appId?: string) {
       appId: module.id,
     })),
   );
+}
+
+export async function getRegisteredPhoneGenerationRecoveryItems(scopeKey: string) {
+  const registrations = await Promise.all(
+    getRegisteredPhoneApps().map(async app => {
+      const items = (await app.generationRecoveryProvider?.(scopeKey)) ?? [];
+      return items.map(item => ({ ...item, appId: app.id }));
+    }),
+  );
+  const unique = new Map<string, PhoneGenerationRecoveryItem>();
+  registrations.flat().forEach(item => unique.set(`${item.appId}:${item.id}`, item));
+  return [...unique.values()];
 }
 
 export function getRegisteredPhoneGenerationAction(appId: string, actionId: string) {

@@ -1,4 +1,5 @@
-import { buildDefaultHomeLayout, normalizeHomeLayout } from '@/core/appLayout';
+import { buildDefaultHomeLayout, migrateHomeLayoutDockCapacity, normalizeHomeLayout } from '@/core/appLayout';
+import { stripRetiredMediaPhoneSettings } from '@/core/retiredMedia';
 import { WALLPAPER_PRESETS } from '@/data/wallpapers';
 import {
   setting_field,
@@ -186,6 +187,7 @@ function normalizeThemeProfileAssets(nextSettings: PhoneSettings, profile: Theme
 function normalizeSettings(rawSettings: unknown) {
   const hadThemeProfiles = hasStoredThemeProfiles(rawSettings);
   const source = rawSettings && typeof rawSettings === 'object' ? (klona(rawSettings) as Record<string, unknown>) : {};
+  stripRetiredMediaPhoneSettings(source);
   const rawTextProvider =
     source.textProvider && typeof source.textProvider === 'object'
       ? (source.textProvider as Record<string, unknown>)
@@ -212,9 +214,29 @@ function normalizeSettings(rawSettings: unknown) {
   }
 
   const nextSettings = validateInplace(Settings, source);
-  nextSettings.layout = normalizeHomeLayout(
-    nextSettings.layout.appOrder.length ? nextSettings.layout : buildDefaultHomeLayout(),
+  nextSettings.layout = migrateHomeLayoutDockCapacity(
+    normalizeHomeLayout(nextSettings.layout.appOrder.length ? nextSettings.layout : buildDefaultHomeLayout()),
   );
+  const seenHomeIconAssetIds = new Set<string>();
+  nextSettings.homeIconAssets = nextSettings.homeIconAssets.filter(asset => {
+    if (!asset.id.trim() || !asset.path.trim() || seenHomeIconAssetIds.has(asset.id)) return false;
+    seenHomeIconAssetIds.add(asset.id);
+    asset.name = asset.name.trim() || '图片图标';
+    asset.path = asset.path.replace(/^\/+/, '');
+    return true;
+  });
+  const pruneIconReferences = (references: Record<string, string>) => {
+    Object.entries(references).forEach(([appId, assetId]) => {
+      if (!seenHomeIconAssetIds.has(assetId)) delete references[appId];
+    });
+  };
+  pruneIconReferences(nextSettings.visualTheme.appIconAssetIds);
+  pruneIconReferences(nextSettings.themeProfiles.light.visualTheme.appIconAssetIds);
+  pruneIconReferences(nextSettings.themeProfiles.dark.visualTheme.appIconAssetIds);
+  nextSettings.layout.folders.forEach(folder => {
+    if (!seenHomeIconAssetIds.has(folder.iconAssetId)) folder.iconAssetId = '';
+  });
+  nextSettings.interfaceSize.dockColumns = Math.min(4, Math.max(3, nextSettings.interfaceSize.dockColumns));
   nextSettings.textProvider.contextWindow = null;
   nextSettings.textProvider.maxOutputTokens = null;
   const profileIds = new Set<string>();
@@ -250,7 +272,8 @@ export const useSettingsStore = defineStore('settings', () => {
 
   function persist(newSettings: typeof settings.value) {
     const nextSettings = validateInplace(Settings, klona(newSettings));
-    nextSettings.layout = normalizeHomeLayout(nextSettings.layout);
+    nextSettings.layout = migrateHomeLayoutDockCapacity(normalizeHomeLayout(nextSettings.layout));
+    nextSettings.interfaceSize.dockColumns = Math.min(4, Math.max(3, nextSettings.interfaceSize.dockColumns));
     nextSettings.themeProfiles[nextSettings.theme] = captureThemeProfile(nextSettings);
     _.set(extension_settings, setting_field, nextSettings);
     void saveSettingsDebounced();
@@ -314,6 +337,7 @@ export const useSettingsStore = defineStore('settings', () => {
       accentColor: '#007aff',
       appAccentOverrides: {},
       appIconBackgroundColor: '',
+      appIconAssetIds: {},
       appIconOverrides: {},
       appIconColor: '',
       backgroundColor: '',
@@ -337,6 +361,44 @@ export const useSettingsStore = defineStore('settings', () => {
 
   function getCustomWallpaper(wallpaperId: string) {
     return settings.value.wallpaper.customWallpapers.find(item => item.id === wallpaperId) ?? null;
+  }
+
+  function getHomeIconAsset(assetId: string) {
+    return settings.value.homeIconAssets.find(asset => asset.id === assetId) ?? null;
+  }
+
+  async function uploadHomeIconAsset(file: File) {
+    await validateImageFile(file, '图片图标');
+    const extension = getFileExtension(file);
+    const bytes = new Uint8Array(await file.arrayBuffer());
+    const path = await uploadUserFile(`phone-icon-${Date.now()}-${Math.random().toString(36).slice(2, 8)}.${extension}`, bytes);
+    const asset = { id: createId('home_icon'), name: file.name, path };
+    settings.value.homeIconAssets.push(asset);
+    return asset;
+  }
+
+  function getHomeIconAssetReferenceCount(assetId: string) {
+    const inactiveProfile = settings.value.theme === 'light'
+      ? settings.value.themeProfiles.dark
+      : settings.value.themeProfiles.light;
+    return (
+      Object.values(settings.value.visualTheme.appIconAssetIds).filter(value => value === assetId).length +
+      Object.values(inactiveProfile.visualTheme.appIconAssetIds).filter(value => value === assetId).length +
+      settings.value.layout.folders.filter(folder => folder.iconAssetId === assetId).length
+    );
+  }
+
+  async function deleteHomeIconAsset(assetId: string) {
+    const asset = getHomeIconAsset(assetId);
+    if (!asset) return;
+    const references = getHomeIconAssetReferenceCount(assetId);
+    if (references) throw new Error(`该图标仍被 ${references} 处引用，解除引用后才能删除`);
+    await commitSettingsResourceDeletion({
+      deleteResource: () => deleteUserFile(asset.path),
+      removeReference: () => {
+        settings.value.homeIconAssets = settings.value.homeIconAssets.filter(item => item.id !== assetId);
+      },
+    });
   }
 
   function syncSelectedWallpaper(item: CustomWallpaperSettings | null) {
@@ -393,17 +455,17 @@ export const useSettingsStore = defineStore('settings', () => {
     return '';
   }
 
-  async function validateWallpaperFile(file: File) {
+  async function validateImageFile(file: File, label: '图片图标' | '壁纸') {
     const allowedTypes = new Set(['image/png', 'image/jpeg', 'image/webp', 'image/gif']);
     const extension = getFileExtension(file);
     const allowedExtensions = new Set(['png', 'jpg', 'jpeg', 'webp', 'gif']);
 
     if (!allowedTypes.has(file.type) || !allowedExtensions.has(extension)) {
-      throw new Error('仅支持 PNG / JPEG / WebP / GIF 壁纸');
+      throw new Error(`${label}仅支持 PNG / JPEG / WebP / GIF`);
     }
 
     if (file.size > 10 * 1024 * 1024) {
-      throw new Error('壁纸文件不能超过 10 MiB');
+      throw new Error(`${label}文件不能超过 10 MiB`);
     }
 
     const objectUrl = URL.createObjectURL(file);
@@ -411,12 +473,12 @@ export const useSettingsStore = defineStore('settings', () => {
       const image = await new Promise<HTMLImageElement>((resolve, reject) => {
         const img = new Image();
         img.onload = () => resolve(img);
-        img.onerror = () => reject(new Error('壁纸图片无法解码'));
+        img.onerror = () => reject(new Error(`${label}无法解码`));
         img.src = objectUrl;
       });
 
       if (image.naturalWidth > 8192 || image.naturalHeight > 8192) {
-        throw new Error('壁纸分辨率不能超过 8192×8192');
+        throw new Error(`${label}分辨率不能超过 8192×8192`);
       }
     } finally {
       URL.revokeObjectURL(objectUrl);
@@ -491,7 +553,7 @@ export const useSettingsStore = defineStore('settings', () => {
   }
 
   async function uploadCustomWallpaper(file: File) {
-    await validateWallpaperFile(file);
+    await validateImageFile(file, '壁纸');
     const extension = getFileExtension(file);
     const fileName = `phone-wallpaper-${Date.now()}-${Math.random().toString(36).slice(2, 8)}.${extension}`;
     const bytes = new Uint8Array(await file.arrayBuffer());
@@ -687,7 +749,7 @@ export const useSettingsStore = defineStore('settings', () => {
   }
 
   function setDockColumns(columns: number) {
-    settings.value.interfaceSize.dockColumns = Math.min(5, Math.max(3, Math.round(columns)));
+    settings.value.interfaceSize.dockColumns = Math.min(4, Math.max(3, Math.round(columns)));
   }
 
   function resetInterfaceSize() {
@@ -836,7 +898,7 @@ export const useSettingsStore = defineStore('settings', () => {
   }
 
   function setHomeLayout(layout: PhoneSettings['layout']) {
-    settings.value.layout = normalizeHomeLayout(layout);
+    settings.value.layout = migrateHomeLayoutDockCapacity(normalizeHomeLayout(layout));
   }
 
   function rehydrateFromSettings() {
@@ -865,7 +927,10 @@ export const useSettingsStore = defineStore('settings', () => {
     resetVisualTheme,
     deleteCustomFont,
     deleteCustomWallpaper,
+    deleteHomeIconAsset,
     getCustomFontFamily,
+    getHomeIconAsset,
+    getHomeIconAssetReferenceCount,
     renameCustomFont,
     renameCustomWallpaper,
     renameExternalApiProfile,
@@ -890,6 +955,7 @@ export const useSettingsStore = defineStore('settings', () => {
     setReaderLineHeight,
     setReaderScale,
     setTextProviderApiUrl,
+    uploadHomeIconAsset,
     setActiveExternalApiProfile,
     setExternalApiProfilePreset,
     setTheme,

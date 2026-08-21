@@ -15,7 +15,7 @@ test('every Extras book-overview icon button has the same accessible name as its
   const iconButtons = [...source.matchAll(/<button\b[\s\S]*?>/g)]
     .map(match => match[0])
     .filter(tag => /\bclass="[^"]*\bpc-icon-btn\b[^"]*"/.test(tag));
-  assert.equal(iconButtons.length, 6);
+  assert.equal(iconButtons.length, 4);
 
   for (const tag of iconButtons) {
     const title = tag.match(/\s(:?)title="([^"]+)"/);

@@ -39,6 +39,6 @@ test('settings five-column tabs inherit global density at every viewport width',
   assert.deepEqual(declarationsFor(localRules[1]), { gap: '2px' });
 
   const globalRules = rulesFor(globalSource, '.pc-phone-root .pc-segment-btn');
-  assert.ok(globalRules.some(rule => /min-height:\s*32px/.test(rule)), 'global segment height must remain 32px');
+  assert.ok(globalRules.some(rule => /min-height:\s*30px/.test(rule)), 'global segment height must remain 30px');
   assert.ok(globalRules.some(rule => /font-size:\s*13px/.test(rule)), 'global segment text must remain 13px');
 });

@@ -4,8 +4,10 @@
       <GenerationPreviewPanel
         :content="content"
         :raw="raw"
+        :raw-output-semantics="rawOutputSemantics"
         raw-editable
         :reparse-handler="reparseHandler"
+        :reasoning="reasoning"
         :save-label="saveLabel"
         :scan-enabled="scanEnabled"
         :source-label="sourceLabel"
@@ -31,9 +33,12 @@
 
 <script setup lang="ts">
 import GenerationPreviewPanel from '@/components/GenerationPreviewPanel.vue';
+import type { RawOutputSemantics } from '@/type/generation';
 
 defineProps<{
   reparseHandler: () => boolean | Promise<boolean>;
+  rawOutputSemantics?: RawOutputSemantics;
+  reasoning?: string;
   saveLabel: string;
   sourceLabel: string;
   scanEnabled?: boolean;

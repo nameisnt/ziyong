@@ -30,6 +30,7 @@ interface ForumSourceDraft {
 
 interface ForumGenerationActionsOptions {
   activeBoard: ComputedRef<ForumBoard | null>;
+  beginPreviewDraft: () => void;
   buildReplyThreadContext: (thread: ForumThread) => string;
   buildRepliesOutputFormat: () => string;
   buildThreadGenerationConfig: () => ForumThreadGenerateConfig;
@@ -91,7 +92,7 @@ export function useForumGenerationActions(options: ForumGenerationActionsOptions
 
   async function runThreadGeneration() {
     const state = options.generationState;
-    options.clearPreviewDraft();
+    options.beginPreviewDraft();
     state.preview = null;
     let task: GenerationTask | null = null;
     try {
@@ -194,7 +195,7 @@ export function useForumGenerationActions(options: ForumGenerationActionsOptions
     const state = options.generationState;
     if (!boardId || !threadId || !thread) return;
 
-    options.clearPreviewDraft();
+    options.beginPreviewDraft();
     state.preview = null;
     let task: GenerationTask | null = null;
     try {

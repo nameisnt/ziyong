@@ -4,6 +4,10 @@ export const GenerationRangeSchema = z.object({
 });
 export type GenerationRange = z.infer<typeof GenerationRangeSchema>;
 
+/** Records whether a persisted raw output is known to be the complete model response. */
+export const RawOutputSemanticsSchema = z.enum(['legacy-unknown', 'original-v1']);
+export type RawOutputSemantics = z.infer<typeof RawOutputSemanticsSchema>;
+
 export const SourceSelectionSchema = z.object({
   scopeId: z.string(),
   chatIdAtGeneration: z.string(),
@@ -79,6 +83,7 @@ export type GenerationSaveContext<TConfig = unknown> = {
   config: TConfig;
   generationRecord: HiddenGenerationRecord;
   rawOutput: string;
+  rawOutputSemantics: RawOutputSemantics;
   replay: GenerationReplaySnapshot;
   scopeId: string;
   source: SourceSelection;
@@ -92,6 +97,7 @@ export const FailedGenerationDraftSchema = z.object({
   context: z.record(z.string(), z.unknown()).default({}),
   generationRecord: HiddenGenerationRecordSchema.optional(),
   rawOutput: z.string(),
+  rawOutputSemantics: RawOutputSemanticsSchema.default('legacy-unknown'),
   warnings: z.array(z.string()).default([]),
   createdAt: z.string(),
   source: SourceSelectionSchema,
@@ -157,6 +163,7 @@ export type XmlParseResult<T> = XmlParseSuccess<T> | XmlParseFailure;
 export type GenerationExecutionFailure = {
   draft: FailedGenerationDraft;
   rawOutput: string;
+  rawOutputSemantics: RawOutputSemantics;
   source: SourceSelection;
   status: 'failed';
   warnings: string[];
@@ -166,6 +173,7 @@ export type GenerationExecutionPreview<TResult> = {
   data: TResult;
   generationRecord: HiddenGenerationRecord;
   rawOutput: string;
+  rawOutputSemantics: RawOutputSemantics;
   replay: GenerationReplaySnapshot;
   source: SourceSelection;
   status: 'preview';
@@ -176,6 +184,7 @@ export type GenerationExecutionSaved<TResult, TSaveResult> = {
   data: TResult;
   generationRecord: HiddenGenerationRecord;
   rawOutput: string;
+  rawOutputSemantics: RawOutputSemantics;
   replay: GenerationReplaySnapshot;
   saved: TSaveResult;
   source: SourceSelection;

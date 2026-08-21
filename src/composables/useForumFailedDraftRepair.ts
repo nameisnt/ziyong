@@ -38,8 +38,8 @@ export function useForumFailedDraftRepair(options: {
   function reparseFailedDraft() {
     const draft = options.activeDraft.value;
     if (!draft) return;
-    const rawOutput = options.rawOutput.value.trim();
-    if (!rawOutput) {
+    const rawOutput = options.rawOutput.value;
+    if (!rawOutput.trim()) {
       toastr.warning('先补一点可解析的 XML 内容');
       return;
     }
@@ -65,7 +65,7 @@ export function useForumFailedDraftRepair(options: {
         content: parsed.data.content,
         draftId: null,
         generationRecord: draft.generationRecord,
-        raw: parsed.raw,
+        raw: rawOutput,
         replies: materialized.replies,
         mode: draft.context.mode === 'rewrite' ? 'rewrite' : 'create',
         targetThreadId: typeof draft.context.threadId === 'string' ? draft.context.threadId : '',
@@ -73,7 +73,7 @@ export function useForumFailedDraftRepair(options: {
         title: parsed.data.title,
         warnings: [...parsed.warnings, ...materialized.warnings],
       };
-      forum.updateFailedDraft(draft.id, { rawOutput: parsed.raw, warnings: preview.warnings });
+      forum.updateFailedDraft(draft.id, { rawOutput, warnings: preview.warnings });
       options.setPreview(preview);
       options.persistPreviewDraft(preview.boardId ? { boardId: preview.boardId } : {});
       forum.deleteFailedDraft(draft.id);
@@ -100,14 +100,14 @@ export function useForumFailedDraftRepair(options: {
       boardId,
       boardName: forum.getBoard(boardId)?.name || '论坛板块',
       draftId: null,
-      raw: parsed.raw,
+      raw: rawOutput,
       replies: materialized.replies,
       threadId,
       threadTitle: thread.title,
       versionId,
       warnings: [...parsed.warnings, ...materialized.warnings],
     };
-    forum.updateFailedDraft(draft.id, { rawOutput: parsed.raw, warnings: preview.warnings });
+    forum.updateFailedDraft(draft.id, { rawOutput, warnings: preview.warnings });
     options.setPreview(preview);
     options.persistPreviewDraft({ boardId, threadId, ...(versionId ? { versionId } : {}) });
     forum.deleteFailedDraft(draft.id);

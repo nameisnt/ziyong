@@ -560,6 +560,8 @@ async function runDomChecks(page) {
       .filter(element => {
         if (!isInActiveLayer(element)) return false;
         if (element.matches('button') && element.children.length > 0) return false;
+        // Count badges intentionally sit outside the icon box; their geometry is checked with the shell overflow rule.
+        if (element.matches('.pc-app-icon') && element.querySelector('.pc-app-count-badge')) return false;
         if (element.scrollWidth <= element.clientWidth + 3 || element.clientWidth <= 0) return false;
         const style = getComputedStyle(element);
         const clipsOverflow =
@@ -650,33 +652,14 @@ async function runInteractionChecks(page, scenario) {
     }
 
     if (scenario === 'card-writer-reasoning-modal') {
-      const dialog = page.locator('.pc-reasoning-card');
-      const mask = page.locator('.pc-reasoning-mask');
-      const screen = page.locator('.pc-screen');
-      const trigger = page.locator('.pc-card-writer-reasoning');
-      if ((await screen.evaluate(element => element.style.overflow)) !== 'hidden') {
-        findings.push({ severity: 'fail', message: '思维链弹窗打开后没有锁定背景滚动' });
+      const disclosure = page.locator('.pc-generation-preview .pc-reasoning-disclosure');
+      const summary = disclosure.locator('summary');
+      if (await disclosure.evaluate(element => !(element instanceof HTMLDetailsElement) || !element.open)) {
+        findings.push({ severity: 'fail', message: '写卡思维链没有按共享阅读样式展开' });
       }
-      await page.locator('.pc-reasoning-head .pc-icon-btn').click();
-      if ((await mask.count()) > 0) findings.push({ severity: 'fail', message: '思维链关闭按钮没有关闭弹窗' });
-
-      await trigger.click();
-      await dialog.waitFor({ state: 'visible' });
-      if (!(await dialog.evaluate(element => element === document.activeElement))) {
-        findings.push({ severity: 'fail', message: '思维链弹窗重新打开后没有获得初始焦点' });
-      }
-      await page.keyboard.press('Escape');
-      if ((await mask.count()) > 0) findings.push({ severity: 'fail', message: 'Escape 没有关闭思维链弹窗' });
-
-      await trigger.click();
-      await page.evaluate(() => window.dispatchEvent(new Event('phone-before-back', { cancelable: true })));
-      if ((await mask.count()) > 0) findings.push({ severity: 'fail', message: '手机返回没有关闭思维链弹窗' });
-
-      await trigger.click();
-      await mask.click({ position: { x: 2, y: 2 } });
-      if ((await mask.count()) > 0) findings.push({ severity: 'fail', message: '点击遮罩没有关闭思维链弹窗' });
-      if ((await screen.evaluate(element => element.style.overflow)) === 'hidden') {
-        findings.push({ severity: 'fail', message: '思维链弹窗关闭后没有恢复背景滚动' });
+      await summary.click();
+      if (await disclosure.evaluate(element => element instanceof HTMLDetailsElement && element.open)) {
+        findings.push({ severity: 'fail', message: '写卡思维链不能折叠' });
       }
     }
 
@@ -730,7 +713,7 @@ async function runInteractionChecks(page, scenario) {
       const dialog = page.locator('.pc-content-transfer-dialog');
       const backdrop = page.locator('.pc-content-transfer-backdrop');
       const screen = page.locator('.pc-screen');
-      const trigger = page.locator('.pc-top-actions [aria-label="内容迁移"]');
+      const trigger = page.locator('.pc-transfer-app-field .pc-soft-btn', { hasText: '管理内容' });
       if ((await screen.evaluate(element => element.style.overflow)) !== 'hidden') {
         findings.push({ severity: 'fail', message: '内容迁移打开后没有锁定背景滚动' });
       }

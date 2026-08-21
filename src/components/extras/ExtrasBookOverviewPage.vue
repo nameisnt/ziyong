@@ -12,24 +12,13 @@
         >
           <i class="fa-solid fa-wand-magic-sparkles"></i>
         </button>
-        <button
-          class="pc-icon-btn"
-          type="button"
-          :title="t`编辑番外信息`"
-          :aria-label="t`编辑番外信息`"
-          @click="emit('editBook')"
-        >
-          <i class="fa-solid fa-pen"></i>
-        </button>
-        <button
-          class="pc-icon-btn danger"
-          type="button"
-          :title="t`删除番外`"
-          :aria-label="t`删除番外`"
-          @click="emit('deleteBook')"
-        >
-          <i class="fa-solid fa-trash"></i>
-        </button>
+        <ActionMenu :label="t`管理`" icon="fa-solid fa-bars">
+          <ItemTransferImportAction app-id="extras" :params="{ bookId: book.id }" :label="t`导入单章番外`" />
+          <button type="button" @click="emit('editBook')"><i class="fa-solid fa-pen"></i>{{ t`编辑番外信息` }}</button>
+          <button class="danger" type="button" @click="emit('deleteBook')">
+            <i class="fa-solid fa-trash"></i>{{ t`删除番外` }}
+          </button>
+        </ActionMenu>
       </div>
     </div>
 
@@ -117,8 +106,10 @@
 </template>
 
 <script setup lang="ts">
+import ActionMenu from '@/components/ActionMenu.vue';
 import EmptyState from '@/components/EmptyState.vue';
 import ContentVersionBadge from '@/components/ContentVersionBadge.vue';
+import ItemTransferImportAction from '@/components/ItemTransferImportAction.vue';
 import type { ExtraBook, ExtraChapter } from '@/type/extra';
 
 const props = defineProps<{

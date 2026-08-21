@@ -3,7 +3,7 @@
     <header class="pc-raw-editor-head">
       <div>
         <strong>{{ title }}</strong>
-        <p v-if="description">{{ description }}</p>
+        <p v-if="displayDescription">{{ displayDescription }}</p>
       </div>
       <button v-if="editable" class="pc-soft-btn compact" type="button" @click="requestReparse">
         {{ reparseLabel }}
@@ -28,15 +28,14 @@
 </template>
 
 <script setup lang="ts">
-import { useSettingsStore } from '@/store/settings';
-import { cleanGenerationOutput } from '@/util/generationOutputCleaning';
-
+import type { RawOutputSemantics } from '@/type/generation';
 const props = withDefaults(
   defineProps<{
     description?: string;
     editable?: boolean;
     modelValue: string;
     placeholder?: string;
+    rawOutputSemantics?: RawOutputSemantics;
     reparseLabel?: string;
     title?: string;
   }>(),
@@ -45,6 +44,7 @@ const props = withDefaults(
     editable: true,
     placeholder: '在这里修改 AI 返回的原始 XML。',
     reparseLabel: '重新解析',
+    rawOutputSemantics: 'original-v1',
     title: '原始输出',
   },
 );
@@ -54,7 +54,12 @@ const emit = defineEmits<{
   'update:modelValue': [value: string];
 }>();
 
-const settingsStore = useSettingsStore();
+const displayDescription = computed(() =>
+  props.description ||
+  (props.rawOutputSemantics === 'legacy-unknown'
+    ? '这份历史输出的完整性无法验证；它可能是清洗后正文或解析候选。'
+    : ''),
+);
 
 const rootEl = ref<HTMLElement | null>(null);
 const editorEl = ref<HTMLTextAreaElement | null>(null);
@@ -62,14 +67,7 @@ const keyboardActionVisible = ref(false);
 const keyboardActionStyle = ref<Record<string, string>>({});
 const keyboardSyncTimers = new Set<number>();
 
-async function requestReparse() {
-  const generation = settingsStore.settings.generation;
-  const cleaned = cleanGenerationOutput(props.modelValue, {
-    enabled: generation.outputCleaningEnabled,
-    endTags: generation.outputCleaningEndTags,
-  });
-  if (cleaned.removedLength) emit('update:modelValue', cleaned.content);
-  await nextTick();
+function requestReparse() {
   emit('reparse');
 }
 

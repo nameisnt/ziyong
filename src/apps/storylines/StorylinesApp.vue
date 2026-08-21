@@ -5,6 +5,7 @@
         :draft="storylinePreviewDraft"
         @discard="discardStorylinePreviewDraft"
         @open="openStorylinePreviewDraft"
+        @open-id="openStorylinePreviewDraft"
       />
       <FailedDraftList
         :drafts="failedDrafts"
@@ -216,6 +217,7 @@
           :raw="generationState.preview.raw"
           raw-editable
           :reparse-handler="reparsePreviewRaw"
+          :reasoning="generationState.preview.generationRecord?.reasoning || ''"
           :scan-enabled="false"
           save-label="合并保存"
           :source-label="generationState.preview.source.label"
@@ -232,8 +234,11 @@
     <FailedDraftRepairPage
       v-else-if="route.page === 'failed-draft' && activeFailedDraft"
       v-model:raw-output="failedDraftRawOutput"
+      :raw-output-semantics="activeFailedDraft.rawOutputSemantics"
+      :reasoning="activeFailedDraft.generationRecord?.reasoning || ''"
       :source-label="activeFailedDraft.source.label"
       title="修复剧情梳理草稿"
+      :warnings="activeFailedDraft.warnings"
       @delete="removeFailedDraft(activeFailedDraft.id)"
       @reparse="reparseFailedDraft"
     />
@@ -371,6 +376,7 @@ const nextItemId = computed(() => activeItemList.value[activeItemIndex.value + 1
 const profileNames = computed(() => Object.fromEntries(profiles.entries.map(profile => [profile.id, profile.title])));
 const lineOptions = computed(() => storylines.lines.map(line => ({ label: line.title, value: line.id })));
 const {
+  beginPreviewDraft: beginStorylinePreviewDraft,
   clearPreviewDraft: clearStorylinePreviewDraft,
   discardPreviewDraft: discardStorylinePreviewDraft,
   draft: storylinePreviewDraft,
@@ -671,7 +677,7 @@ function capturePrompt() {
 }
 
 async function runGeneration() {
-  clearStorylinePreviewDraft();
+  beginStorylinePreviewDraft();
   generationState.preview = null;
   let task: GenerationTask | null = null;
   try {
@@ -741,8 +747,8 @@ async function removeFailedDraft(draftId: string) {
 function reparseFailedDraft() {
   const failedDraft = activeFailedDraft.value;
   if (!failedDraft) return;
-  const rawOutput = failedDraftRawOutput.value.trim();
-  if (!rawOutput) return void toastr.warning('先补一点可解析的输出');
+  const rawOutput = failedDraftRawOutput.value;
+  if (!rawOutput.trim()) return void toastr.warning('先补一点可解析的输出');
   const parsed = adapter.parse(rawOutput, buildGenerationConfig());
   if (!parsed.ok) {
     storylines.updateFailedDraft(failedDraft.id, { rawOutput, warnings: parsed.warnings });
@@ -752,7 +758,7 @@ function reparseFailedDraft() {
   generationState.preview = {
     content: formatStorylineResult(parsed.data),
     data: parsed.data,
-    raw: parsed.raw,
+    raw: rawOutput,
     source: failedDraft.source,
     warnings: parsed.warnings,
   };

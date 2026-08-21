@@ -2,9 +2,14 @@
   <section class="pc-letters-book-page">
     <div class="pc-compact-toolbar pc-directory-toolbar">
       <span class="pc-directory-count">{{ entries.length }} 封书信</span>
-      <button class="pc-icon-btn primary" type="button" title="生成回信" aria-label="生成回信" @click="$emit('generate')">
-        <i class="fa-solid fa-wand-magic-sparkles"></i>
-      </button>
+      <div class="pc-directory-actions">
+        <button class="pc-icon-btn primary" type="button" title="生成回信" aria-label="生成回信" @click="$emit('generate')">
+          <i class="fa-solid fa-wand-magic-sparkles"></i>
+        </button>
+        <ActionMenu label="管理" icon="fa-solid fa-bars">
+          <ItemTransferImportAction app-id="letters" :params="{ bookId: book.id }" label="导入单封书信" />
+        </ActionMenu>
+      </div>
     </div>
 
     <div class="pc-compact-toolbar pc-letters-book-filter">
@@ -43,8 +48,10 @@
 </template>
 
 <script setup lang="ts">
+import ActionMenu from '@/components/ActionMenu.vue';
 import ContentVersionBadge from '@/components/ContentVersionBadge.vue';
 import EmptyState from '@/components/EmptyState.vue';
+import ItemTransferImportAction from '@/components/ItemTransferImportAction.vue';
 import type { LetterBook, LetterEntry, LetterFormat } from '@/type/letter';
 
 defineProps<{

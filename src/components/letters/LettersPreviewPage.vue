@@ -3,6 +3,8 @@
     v-model:content="content"
     v-model:raw="raw"
     :reparse-handler="reparseHandler"
+    :reasoning="reasoning"
+    :raw-output-semantics="rawOutputSemantics"
     :save-label="mode === 'rewrite' ? '保存新版本' : '保存信件'"
     :source-label="bookTitle"
     :text-provider-summary="metaLabel"
@@ -16,12 +18,15 @@
 
 <script setup lang="ts">
 import GenerationPreviewPage from '@/components/GenerationPreviewPage.vue';
+import type { RawOutputSemantics } from '@/type/generation';
 
 defineProps<{
   bookTitle: string;
   metaLabel: string;
   mode: 'create' | 'rewrite';
+  rawOutputSemantics?: RawOutputSemantics;
   reparseHandler: () => boolean | Promise<boolean>;
+  reasoning?: string;
   title: string;
   warnings: string[];
 }>();

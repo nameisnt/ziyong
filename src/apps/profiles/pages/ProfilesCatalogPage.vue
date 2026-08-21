@@ -48,9 +48,16 @@
           </button>
         </span>
         <div class="pc-profile-primary-actions">
-          <button class="pc-icon-btn" type="button" title="新增条目" aria-label="新增条目" @click="$emit('create')">
-            <i class="fa-solid fa-plus"></i></button
-          ><button
+          <ActionMenu label="新增" icon="fa-solid fa-plus">
+            <button type="button" @click="$emit('create')"><i class="fa-solid fa-pen"></i>手动新增</button>
+            <ItemTransferImportAction
+              v-if="selectedTable"
+              app-id="profiles"
+              :params="{ tableId: selectedTable.id }"
+              label="导入单条资料"
+            />
+          </ActionMenu>
+          <button
             class="pc-icon-btn primary"
             type="button"
             title="AI 生成资料"
@@ -127,9 +134,16 @@
       :title="tableEntries.length ? '没有匹配的资料' : '当前表还没有条目'"
     >
       <div v-if="!tableEntries.length" class="pc-profile-empty-actions">
-        <button class="pc-soft-btn compact" type="button" @click="$emit('create')">
-          <i class="fa-solid fa-plus"></i><span>新增条目</span></button
-        ><button class="pc-primary-btn compact" type="button" @click="$emit('generate')">
+        <ActionMenu label="新增" icon="fa-solid fa-plus">
+          <button type="button" @click="$emit('create')"><i class="fa-solid fa-pen"></i>手动新增</button>
+          <ItemTransferImportAction
+            v-if="selectedTable"
+            app-id="profiles"
+            :params="{ tableId: selectedTable.id }"
+            label="导入单条资料"
+          />
+        </ActionMenu>
+        <button class="pc-primary-btn compact" type="button" @click="$emit('generate')">
           <i class="fa-solid fa-wand-magic-sparkles"></i><span>AI 生成</span>
         </button>
       </div>
@@ -144,13 +158,20 @@
       @open="$emit('open-failed', $event)"
       @remove="$emit('remove-failed', $event)"
     />
-    <PreviewDraftNotice :draft="previewDraft" @discard="$emit('discard-preview')" @open="$emit('open-preview')" />
+    <PreviewDraftNotice
+      :draft="previewDraft"
+      @discard="$emit('discard-preview', $event)"
+      @open="$emit('open-preview')"
+      @open-id="$emit('open-preview', $event)"
+    />
   </section>
 </template>
 
 <script setup lang="ts">
+import ActionMenu from '@/components/ActionMenu.vue';
 import EmptyState from '@/components/EmptyState.vue';
 import FailedDraftList from '@/components/FailedDraftList.vue';
+import ItemTransferImportAction from '@/components/ItemTransferImportAction.vue';
 import PreviewDraftNotice from '@/components/PreviewDraftNotice.vue';
 import SearchableCombobox from '@/components/SearchableCombobox.vue';
 import type { GenerationPreviewDraft } from '@/store/previewDrafts';
@@ -180,11 +201,11 @@ const tableId = defineModel<string>('tableId', { required: true });
 const viewMode = defineModel<'list' | 'table'>('viewMode', { required: true });
 defineEmits<{
   create: [];
-  'discard-preview': [];
+  'discard-preview': [id?: string];
   generate: [];
   'open-entry': [entryId: string];
   'open-failed': [draftId: string];
-  'open-preview': [];
+  'open-preview': [id?: string];
   'open-tables': [];
   'remove-failed': [draftId: string];
 }>();

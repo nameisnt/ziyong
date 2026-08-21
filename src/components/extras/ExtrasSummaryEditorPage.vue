@@ -1,6 +1,6 @@
 <template>
-  <section class="pc-extras-page">
-    <div class="pc-page-section pc-extras-summary-editor">
+  <section class="pc-extras-page pc-saved-content-editor-page">
+    <div class="pc-page-section pc-extras-summary-editor pc-saved-content-editor">
       <textarea v-model="content" class="pc-area pc-saved-content-area" :placeholder="t`总结正文`"></textarea>
       <div v-if="chapters.length" class="pc-chapter-picks">
         <label v-for="chapter in chapters" :key="chapter.id" class="pc-check-item">
@@ -45,11 +45,6 @@ const emit = defineEmits<{ cancel: []; save: [] }>();
 <style scoped>
 .pc-extras-page {
   min-height: 100%;
-}
-
-.pc-extras-summary-editor .pc-area {
-  min-height: 220px;
-  resize: vertical;
 }
 
 .pc-chapter-picks {

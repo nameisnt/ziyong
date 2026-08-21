@@ -246,6 +246,11 @@ export default definePhoneApp({
       createAdapter: () => createStorylineGenerationAdapter(useStorylinesStore()),
     },
   ],
+  generationRecoveryProvider: scopeKey => {
+    const store = useStorylinesStore();
+    if (store.scopeKey !== scopeKey) return [];
+    return store.failedDrafts.map(draft => ({ appId: 'storylines', id: draft.id, kind: 'failed-draft' as const, routePage: 'failed-draft', routeParams: { draftId: draft.id }, scopeKey, title: typeof draft.context.title === 'string' ? draft.context.title : '待修复生成草稿' }));
+  },
   taskTemplateDefinitions: [
     {
       actionId: 'extract',

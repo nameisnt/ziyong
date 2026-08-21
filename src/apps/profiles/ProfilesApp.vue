@@ -160,6 +160,7 @@
       v-model:content="generationState.preview.content"
       v-model:raw="generationState.preview.raw"
       :reparse-handler="reparsePreviewRaw"
+      :reasoning="generationState.preview.generationRecord?.reasoning || ''"
       save-label="保存资料"
       :scan-enabled="false"
       :source-label="generationState.preview.source.label"
@@ -174,18 +175,15 @@
     <FailedDraftRepairPage
       v-else-if="route.page === 'failed-draft' && activeFailedDraft"
       v-model:raw-output="failedDraftRawOutput"
+      :raw-output-semantics="activeFailedDraft.rawOutputSemantics"
+      :reasoning="activeFailedDraft.generationRecord?.reasoning || ''"
       raw-label="原始输出"
       :source-label="activeFailedDraft.source.label"
       title="修复解析失败草稿"
+      :warnings="activeFailedDraft.warnings"
       @delete="removeFailedDraft(activeFailedDraft.id)"
       @reparse="reparseFailedDraft"
     >
-      <template v-if="activeFailedDraft.warnings.length" #before-editor>
-        <div class="pc-status-card warning">
-          <strong>上次解析提示</strong>
-          <p>{{ activeFailedDraft.warnings.join('；') }}</p>
-        </div>
-      </template>
     </FailedDraftRepairPage>
   </section>
 </template>
@@ -314,6 +312,7 @@ const tableColumnDrag = reactive({
 const booleanOptions = ['否', '是'];
 
 const {
+  beginPreviewDraft: beginProfilesPreviewDraft,
   clearPreviewDraft: clearProfilesPreviewDraft,
   discardPreviewDraft: discardProfilesPreviewDraft,
   draft: profilesPreviewDraft,
@@ -955,7 +954,7 @@ function fieldsForTable(fields: Record<string, string>, tableId: string) {
 }
 
 async function runGeneration() {
-  clearProfilesPreviewDraft();
+  beginProfilesPreviewDraft();
   generationState.preview = null;
   let task: GenerationTask | null = null;
   try {
@@ -1061,8 +1060,8 @@ function savePreview() {
 function reparsePreviewRaw() {
   const preview = generationState.preview;
   if (!preview) return false;
-  const rawOutput = preview.raw.trim();
-  if (!rawOutput) {
+  const rawOutput = preview.raw;
+  if (!rawOutput.trim()) {
     toastr.warning('先补一点可解析的 XML 内容');
     return false;
   }
@@ -1083,7 +1082,7 @@ function reparsePreviewRaw() {
     preview.tableId,
   );
   preview.fields = fieldsForTable(parsed.data.fields, preview.tableId);
-  preview.raw = parsed.raw;
+  preview.raw = rawOutput;
   preview.summary = parsed.data.summary;
   preview.tags = parsed.data.tags;
   preview.title = parsed.data.title;
@@ -1117,8 +1116,8 @@ async function removeFailedDraft(draftId: string) {
 function reparseFailedDraft() {
   const draft = activeFailedDraft.value;
   if (!draft) return;
-  const rawOutput = failedDraftRawOutput.value.trim();
-  if (!rawOutput) {
+  const rawOutput = failedDraftRawOutput.value;
+  if (!rawOutput.trim()) {
     toastr.warning('先补一点可解析的 XML 内容');
     return;
   }
@@ -1135,7 +1134,7 @@ function reparseFailedDraft() {
   }
 
   profiles.updateFailedDraft(draft.id, {
-    rawOutput: parsed.raw,
+    rawOutput,
     warnings: parsed.warnings,
   });
   generationState.preview = {
@@ -1149,7 +1148,7 @@ function reparseFailedDraft() {
     draftId: null,
     fields: fieldsForTable(parsed.data.fields, profileTableIdFromFailedDraft(draft)),
     kind: profileKindFromFailedDraft(draft),
-    raw: parsed.raw,
+    raw: rawOutput,
     source: { label: draft.source.label },
     summary: parsed.data.summary,
     tags: parsed.data.tags,

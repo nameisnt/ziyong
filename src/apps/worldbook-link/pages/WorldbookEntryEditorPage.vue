@@ -1,6 +1,6 @@
 <template>
-  <section class="pc-worldbook-entry-editor-page">
-    <article v-if="entry" class="pc-page-section pc-worldbook-entry-editor">
+  <section class="pc-worldbook-entry-editor-page pc-saved-content-editor-page">
+    <article v-if="entry" class="pc-page-section pc-worldbook-entry-editor pc-saved-content-editor">
       <header class="pc-compact-toolbar pc-worldbook-entry-editor-head">
         <span :title="bookName">{{ bookName }}</span>
         <strong>条目 #{{ entry.uid }}</strong>
@@ -9,9 +9,9 @@
         ><span class="pc-field-label">条目名称</span
         ><input v-model="name" class="pc-field" type="text" placeholder="条目名称"
       /></label>
-      <label class="pc-field-group pc-worldbook-content-field"
+      <label class="pc-field-group pc-worldbook-content-field pc-saved-content-field"
         ><span class="pc-field-label">条目内容</span
-        ><textarea v-model="content" class="pc-area pc-area-long" placeholder="世界书条目内容"></textarea>
+        ><textarea v-model="content" class="pc-area pc-saved-content-area" placeholder="世界书条目内容"></textarea>
       </label>
       <div class="pc-field-group">
         <span class="pc-field-label">插入位置</span>
@@ -91,12 +91,6 @@ defineEmits<{ back: []; remove: []; save: [] }>();
 .pc-worldbook-entry-editor-page {
   min-height: 100%;
 }
-.pc-worldbook-entry-editor {
-  display: flex;
-  min-height: calc(100vh - 160px);
-  flex-direction: column;
-  gap: 14px;
-}
 .pc-worldbook-entry-editor-head {
   display: flex;
   justify-content: space-between;
@@ -108,14 +102,6 @@ defineEmits<{ back: []; remove: []; save: [] }>();
   font-size: 12px;
   text-overflow: ellipsis;
   white-space: nowrap;
-}
-.pc-worldbook-content-field {
-  min-height: 260px;
-  flex: 1;
-}
-.pc-worldbook-content-field .pc-area {
-  flex: 1;
-  resize: vertical;
 }
 .pc-worldbook-entry-editor-actions {
   margin-top: auto;

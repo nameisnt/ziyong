@@ -35,6 +35,7 @@ interface SummaryGenerationState {
 }
 
 interface SummaryGenerationActionsOptions {
+  beginPreviewDraft: () => void;
   buildOutputFormat: () => string;
   clearPreviewDraft: () => void;
   draft: SummaryGenerationDraft;
@@ -66,7 +67,7 @@ export function useSummaryGenerationActions(options: SummaryGenerationActionsOpt
     const bookId = options.route.value.params?.bookId;
     if (!bookId) return;
     const state = options.state;
-    options.clearPreviewDraft();
+    options.beginPreviewDraft();
     state.preview = null;
     let task: GenerationTask | null = null;
     try {

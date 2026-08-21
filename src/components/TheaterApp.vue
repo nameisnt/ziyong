@@ -134,6 +134,7 @@
       v-model:content="generationState.preview.content"
       v-model:raw="generationState.preview.raw"
       :reparse-handler="reparsePreviewRaw"
+      :reasoning="generationState.preview.generationRecord?.reasoning || ''"
       :save-label="generationState.preview.mode === 'rewrite' ? '保存新版本' : '保存为条目'"
       :source-label="generationState.preview.source.label"
       :text-provider-summary="generationState.preview.typeName"
@@ -157,8 +158,11 @@
     <FailedDraftRepairPage
       v-else-if="route.page === 'failed-draft' && activeFailedDraft"
       v-model:raw-output="failedDraftRawOutput"
+      :raw-output-semantics="activeFailedDraft.rawOutputSemantics"
+      :reasoning="activeFailedDraft.generationRecord?.reasoning || ''"
       :source-label="activeFailedDraft.source.label"
       title="修复小剧场草稿"
+      :warnings="activeFailedDraft.warnings"
       @delete="removeFailedDraft(activeFailedDraft.id)"
       @reparse="reparseFailedDraft"
     />
@@ -290,6 +294,7 @@ const { error: generationError, rawOutput: generationRawOutput, running: generat
 type TheaterPreview = NonNullable<typeof generationState.preview>;
 
 const {
+  beginPreviewDraft: beginTheaterPreviewDraft,
   clearPreviewDraft: clearTheaterPreviewDraft,
   discardPreviewDraft: discardTheaterPreviewDraft,
   draft: theaterPreviewDraft,
@@ -977,7 +982,7 @@ function saveGenerationTypePrompt() {
 }
 
 async function runGeneration() {
-  clearTheaterPreviewDraft();
+  beginTheaterPreviewDraft();
   generationState.preview = null;
   const savedTypePrompt = saveGenerationTypePrompt();
   let task: GenerationTask | null = null;
@@ -1131,8 +1136,8 @@ function savePreview() {
 function reparsePreviewRaw() {
   const preview = generationState.preview;
   if (!preview) return false;
-  const rawOutput = preview.raw.trim();
-  if (!rawOutput) {
+  const rawOutput = preview.raw;
+  if (!rawOutput.trim()) {
     toastr.warning('先补一点可解析的 XML 内容');
     return false;
   }
@@ -1146,7 +1151,7 @@ function reparsePreviewRaw() {
   }
 
   preview.content = parsed.data.content;
-  preview.raw = parsed.raw;
+  preview.raw = rawOutput;
   preview.renderMode = 'markdown';
   preview.title = parsed.data.title;
   preview.warnings = parsed.warnings;
@@ -1198,8 +1203,8 @@ function reparseFailedDraft() {
   const failedDraft = activeFailedDraft.value;
   if (!failedDraft) return;
 
-  const rawOutput = failedDraftRawOutput.value.trim();
-  if (!rawOutput) {
+  const rawOutput = failedDraftRawOutput.value;
+  if (!rawOutput.trim()) {
     toastr.warning('先补一点可解析的 XML 内容');
     return;
   }
@@ -1216,13 +1221,13 @@ function reparseFailedDraft() {
   }
 
   theater.updateFailedDraft(failedDraft.id, {
-    rawOutput: parsed.raw,
+    rawOutput,
     warnings: parsed.warnings,
   });
   generationState.preview = {
     content: parsed.data.content,
     draftId: null,
-    raw: parsed.raw,
+    raw: rawOutput,
     renderMode: 'markdown',
     mode: failedDraft.context.mode === 'rewrite' ? 'rewrite' : 'create',
     source: {

@@ -6,9 +6,6 @@ import {
   type GenerateContentOptions,
 } from '@/core/generationService';
 import { useDigestStore } from '@/apps/digest/store';
-import { buildAvailableComfyParams } from '@/apps/comfy/generation';
-import { useComfyStore } from '@/apps/comfy/store';
-import { useMediaStore } from '@/apps/media/store';
 import { useProfilesStore } from '@/apps/profiles/store';
 import { useRelationshipStore } from '@/apps/relationship/store';
 import { useDiaryStore } from '@/store/diary';
@@ -56,7 +53,6 @@ export const supportedWorkbenchActions: SupportedWorkbenchAction[] = [
   { appId: 'digest', actionId: 'generate', label: '摘抄' },
   { appId: 'relationship', actionId: 'generate', label: '关系网' },
   { appId: 'profiles', actionId: 'generate', label: '资料表' },
-  { appId: 'comfy', actionId: 'generate-prompt', label: 'ComfyUI 媒体' },
 ];
 
 const autoBookTitle = '工作台自动生成';
@@ -76,7 +72,6 @@ function stepHasExistingContent(step: WorkbenchStep) {
     return relationship.data.characters.length > 0 || relationship.data.links.length > 0;
   }
   if (step.appId === 'profiles') return useProfilesStore().entries.length > 0;
-  if (step.appId === 'comfy') return useMediaStore().entries.length > 0;
   return false;
 }
 
@@ -344,24 +339,6 @@ function buildStepConfig(step: WorkbenchStep) {
     };
   }
 
-  if (step.appId === 'comfy') {
-    const comfy = useComfyStore();
-    const workflow = comfy.settings.workflows.find(item => item.id === step.config.comfyWorkflowId);
-    if (!workflow) {
-      throw new Error('请选择有效的 ComfyUI 工作流');
-    }
-    comfy.setActiveWorkflow(workflow.id);
-    return {
-      appPrompt: getPrompt('comfy'),
-      availableParams: buildAvailableComfyParams(workflow, comfy.workflowInputs),
-      kind: workflow.kind,
-      outputFormat: getOutputFormat('comfy.generate'),
-      userRequirement: requirement,
-      workflowId: workflow.id,
-      workflowName: workflow.name,
-    };
-  }
-
   throw new Error(`暂不支持工作台步骤：${step.appId}/${step.actionId}`);
 }
 
@@ -392,7 +369,6 @@ function createFailedDraft(
     if (step.appId === 'digest') return useDigestStore().createFailedDraft(draftInput);
     if (step.appId === 'relationship') return useRelationshipStore().createFailedDraft(draftInput);
     if (step.appId === 'profiles') return useProfilesStore().createFailedDraft(draftInput);
-    if (step.appId === 'comfy') return useMediaStore().createFailedDraft(draftInput);
 
     throw new Error(`暂不支持工作台失败草稿：${step.appId}/${step.actionId}`);
   };
@@ -409,7 +385,6 @@ function deleteFailedDraft(appId: string, draftId: string) {
   if (appId === 'digest') return useDigestStore().deleteFailedDraft(draftId);
   if (appId === 'relationship') return useRelationshipStore().deleteFailedDraft(draftId);
   if (appId === 'profiles') return useProfilesStore().deleteFailedDraft(draftId);
-  if (appId === 'comfy') return useMediaStore().deleteFailedDraft(draftId);
 }
 
 function buildGenerationOptions(

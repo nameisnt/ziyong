@@ -532,6 +532,7 @@ function normalizeAndCleanGenerationResult(rawResult: unknown) {
   });
   return {
     ...cleanedOutput,
+    originalOutput: normalized.content,
     reasoning: mergeGenerationReasoning(normalized.reasoning, cleanedOutput.removedContent),
   };
 }
@@ -762,9 +763,9 @@ export async function generateOrderedPromptContent(options: {
 
       abortSignal.throwIfAborted();
       const cleanedOutput = normalizeAndCleanGenerationResult(result);
-      const rawOutput = cleanedOutput.content;
+      const rawOutput = cleanedOutput.originalOutput;
       options.lifecycle?.onRawOutput?.(rawOutput);
-      return { generationId, rawOutput, reasoning: cleanedOutput.reasoning, textProvider };
+      return { generationId, rawOutput, rawOutputSemantics: 'original-v1' as const, reasoning: cleanedOutput.reasoning, textProvider };
     },
     textProvider,
   });
@@ -833,11 +834,12 @@ export async function generateContent<TConfig, TResult, TSaveResult = { entityId
 
       abortSignal.throwIfAborted();
       const cleanedOutput = normalizeAndCleanGenerationResult(result);
-      const rawOutput = cleanedOutput.content;
+      const rawOutput = cleanedOutput.originalOutput;
+      const parseInput = cleanedOutput.content;
       if (cleanedOutput.reasoning) generationRecord.reasoning = cleanedOutput.reasoning;
       options.lifecycle?.onRawOutput?.(rawOutput);
 
-      const parsed = adapter.parse(rawOutput, prepared.parsedConfig);
+      const parsed = adapter.parse(parseInput, prepared.parsedConfig);
       abortSignal.throwIfAborted();
       if (!parsed.ok) {
         const draft = options.createFailedDraft({
@@ -846,6 +848,7 @@ export async function generateContent<TConfig, TResult, TSaveResult = { entityId
           context: isRecord(prepared.parsedConfig) ? { ...prepared.parsedConfig } : {},
           generationRecord,
           rawOutput,
+          rawOutputSemantics: 'original-v1',
           source: prepared.source.selection,
           warnings: parsed.warnings,
         });
@@ -853,6 +856,7 @@ export async function generateContent<TConfig, TResult, TSaveResult = { entityId
         return {
           draft,
           rawOutput,
+          rawOutputSemantics: 'original-v1',
           source: prepared.source.selection,
           status: 'failed',
           warnings: parsed.warnings,
@@ -864,7 +868,8 @@ export async function generateContent<TConfig, TResult, TSaveResult = { entityId
         const saved = await adapter.save(parsed.data, {
           config: prepared.parsedConfig,
           generationRecord,
-          rawOutput: parsed.raw,
+          rawOutput,
+          rawOutputSemantics: 'original-v1',
           replay,
           scopeId: prepared.scopeId,
           source: prepared.source.selection,
@@ -875,7 +880,8 @@ export async function generateContent<TConfig, TResult, TSaveResult = { entityId
         return {
           data: parsed.data,
           generationRecord,
-          rawOutput: parsed.raw,
+          rawOutput,
+          rawOutputSemantics: 'original-v1',
           replay,
           saved,
           source: prepared.source.selection,
@@ -887,7 +893,8 @@ export async function generateContent<TConfig, TResult, TSaveResult = { entityId
       return {
         data: parsed.data,
         generationRecord,
-        rawOutput: parsed.raw,
+        rawOutput,
+        rawOutputSemantics: 'original-v1',
         replay,
         source: prepared.source.selection,
         status: 'preview',

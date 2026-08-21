@@ -277,23 +277,23 @@ defineExpose({ focusAndOpen });
 }
 
 .pc-combobox-input {
-  padding-right: 48px;
+  padding-right: 40px;
 }
 
 .pc-combobox-toggle {
   position: absolute;
   top: 50%;
-  right: 6px;
-  width: 34px;
-  height: 34px;
-  min-width: 34px;
+  right: 3px;
+  width: 30px;
+  height: 30px;
+  min-width: 30px;
   transform: translateY(-50%);
 }
 
 .pc-combobox-menu {
   position: absolute;
   z-index: 30;
-  top: calc(100% + 6px);
+  top: calc(100% + 4px);
   right: 0;
   left: 0;
   display: grid;
@@ -303,16 +303,16 @@ defineExpose({ focusAndOpen });
   border-radius: 12px;
   background: var(--pc-bg);
   box-shadow: 0 10px 28px rgba(0, 0, 0, 0.16);
-  padding: 6px;
+  padding: 4px;
 }
 
 .pc-combobox.menu-above .pc-combobox-menu {
   top: auto;
-  bottom: calc(100% + 6px);
+  bottom: calc(100% + 4px);
 }
 
 .pc-combobox-group {
-  padding: 8px 10px 3px;
+  padding: 6px 8px 2px;
   color: var(--pc-muted);
   font-size: 11px;
   font-weight: 800;
@@ -322,14 +322,14 @@ defineExpose({ focusAndOpen });
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 10px;
-  min-height: 38px;
+  gap: 8px;
+  min-height: 34px;
   border: 0;
   border-radius: 9px;
   background: transparent;
   color: var(--pc-text);
   cursor: pointer;
-  padding: 8px 10px;
+  padding: 6px 8px;
   text-align: left;
 }
 
@@ -356,7 +356,7 @@ defineExpose({ focusAndOpen });
 
 .pc-combobox-empty {
   color: var(--pc-muted);
-  padding: 10px;
+  padding: 8px;
   text-align: center;
 }
 </style>

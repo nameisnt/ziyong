@@ -1,6 +1,6 @@
 <template>
-  <section class="pc-letters-entry-editor-page">
-    <article class="pc-page-section">
+  <section class="pc-letters-entry-editor-page pc-saved-content-editor-page">
+    <article class="pc-page-section pc-saved-content-editor">
       <div v-if="editingTitle" class="pc-compact-toolbar pc-letters-edit-context">
         <strong>{{ directionLabel }}</strong>
         <small>{{ formatLabel }} · {{ bookTitleLabel || '当前分册' }}</small>
@@ -31,7 +31,7 @@
           placeholder="说明这种书信的结构、口吻和格式"
         ></textarea>
       </label>
-      <textarea v-model="content" class="pc-area pc-area-long pc-letters-entry-content" placeholder="正文"></textarea>
+      <textarea v-model="content" class="pc-area pc-saved-content-area" placeholder="正文"></textarea>
 
       <div class="pc-form-actions">
         <button class="pc-soft-btn" type="button" @click="$emit('cancel')">取消</button>

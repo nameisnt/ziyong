@@ -3,6 +3,7 @@ import { useLettersStore } from '@/store/letters';
 import { usePreviewDraftStore } from '@/store/previewDrafts';
 import { useSummaryStore } from '@/store/summary';
 import type { HiddenGenerationRecord } from '@/type/generation';
+import { buildItemTransfer, previewItemTransfer } from '@/util/itemTransfer';
 
 interface ContentBookScenarioDependencies {
   createHiddenGenerationRecord: (
@@ -90,6 +91,37 @@ export async function applyContentBookVisualScenario(name: string, dependencies:
   } else if (name === 'summary-book') {
     const book = createSummaryFixture();
     resetPhoneToRoute('summary', 'book', book.title, { bookId: book.id });
+    await waitForPaint();
+    document.querySelector<HTMLButtonElement>('.pc-summary-book-toolbar .pc-action-menu > summary')?.click();
+    await waitForPaint();
+    const importButton = [...document.querySelectorAll<HTMLButtonElement>('.pc-summary-book-toolbar button')].find(button =>
+      button.textContent?.includes('导入单条总结'),
+    );
+    if (!importButton) throw new Error('Summary list did not expose the shared single-item import action');
+    importButton.click();
+    await waitForPaint();
+    if (!document.querySelector('.pc-item-transfer-dialog')) {
+      throw new Error('Summary single-item import action did not open the shared import dialog');
+    }
+    const fileInput = document.querySelector<HTMLInputElement>('.pc-item-transfer-dialog input[type="file"]');
+    const sourceEntry = book.entries[0];
+    if (!fileInput || !sourceEntry) throw new Error('Summary import dialog did not expose its file input or fixture item');
+    const file = new File(
+      [JSON.stringify(buildItemTransfer('summary', { bookId: book.id, entryId: sourceEntry.id }))],
+      'summary-item.json',
+      { type: 'application/json' },
+    );
+    Object.defineProperty(fileInput, 'files', { configurable: true, value: [file] });
+    fileInput.dispatchEvent(new Event('change', { bubbles: true }));
+    if (
+      !(await waitForCondition(
+        () => document.querySelectorAll('.pc-item-transfer-dialog .pc-segment-btn').length === 2,
+      ))
+    ) {
+      throw new Error('Summary import dialog did not preview its same-id copy/replace choices');
+    }
+    document.querySelector<HTMLButtonElement>('.pc-item-transfer-dialog button[aria-label="关闭"]')?.click();
+    await waitForPaint();
   } else if (name === 'summary-entry-detail' || name === 'summary-entry-editor' || name === 'summary-bagu') {
     const book = createSummaryFixture();
     const entry = book.entries[0];
@@ -99,6 +131,18 @@ export async function applyContentBookVisualScenario(name: string, dependencies:
       name === 'summary-entry-detail' ? entry.title : name === 'summary-entry-editor' ? '编辑总结' : '八股检测';
     resetPhoneToRoute('summary', page, title, { bookId: book.id, entryId: entry.id });
     if (name === 'summary-entry-detail') {
+      await waitForPaint();
+      document.querySelector<HTMLButtonElement>('.pc-reader-tool-trigger')?.click();
+      await waitForPaint();
+      const exportButton = [...document.querySelectorAll<HTMLButtonElement>('.pc-reader-tool-menu button')].find(button =>
+        button.textContent?.includes('导出本条'),
+      );
+      if (!exportButton) throw new Error('Summary detail did not expose its single-item export action');
+      const payload = buildItemTransfer('summary', { bookId: book.id, entryId: entry.id });
+      if (!previewItemTransfer('summary', payload, { bookId: book.id }).conflict) {
+        throw new Error('Summary transfer preview did not detect the same-id target conflict');
+      }
+      document.querySelector<HTMLButtonElement>('.pc-reader-tool-trigger')?.click();
       await waitForPaint();
       await openReaderCatalog();
     }
@@ -160,6 +204,7 @@ export async function applyContentBookVisualScenario(name: string, dependencies:
   } else if (
     name === 'diary-book' ||
     name === 'diary-entry-editor' ||
+    name === 'diary-entry-editor-dark' ||
     name === 'diary-bagu' ||
     name === 'diary-generate' ||
     name === 'diary-entry-detail'
@@ -172,7 +217,7 @@ export async function applyContentBookVisualScenario(name: string, dependencies:
     const page =
       name === 'diary-book'
         ? 'book'
-        : name === 'diary-entry-editor'
+        : name === 'diary-entry-editor' || name === 'diary-entry-editor-dark'
           ? 'editor'
           : name === 'diary-bagu'
             ? 'bagu-scan'
@@ -182,7 +227,7 @@ export async function applyContentBookVisualScenario(name: string, dependencies:
     const title =
       name === 'diary-book'
         ? book.title
-        : name === 'diary-entry-editor'
+        : name === 'diary-entry-editor' || name === 'diary-entry-editor-dark'
           ? '编辑日记'
           : name === 'diary-bagu'
             ? '八股检测'

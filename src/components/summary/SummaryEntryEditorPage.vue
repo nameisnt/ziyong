@@ -1,6 +1,6 @@
 <template>
-  <section class="pc-summary-entry-editor-page">
-    <div class="pc-page-section">
+  <section class="pc-summary-entry-editor-page pc-saved-content-editor-page">
+    <div class="pc-page-section pc-saved-content-editor">
       <input v-model="title" class="pc-field" type="text" placeholder="标题" />
       <input v-model="rangeLabel" class="pc-field" type="text" placeholder="范围，例如 第 1-20 楼" />
       <div v-if="showOrder" class="pc-field-group">
@@ -9,7 +9,7 @@
       </div>
       <textarea
         v-model="content"
-        class="pc-area pc-saved-content-area pc-summary-entry-content"
+        class="pc-area pc-saved-content-area"
         placeholder="正文"
       ></textarea>
       <div class="pc-form-actions">
@@ -42,8 +42,4 @@ const title = defineModel<string>('title', { required: true });
   min-height: 100%;
 }
 
-.pc-summary-entry-content {
-  min-height: 220px;
-  resize: vertical;
-}
 </style>

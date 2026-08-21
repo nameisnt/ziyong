@@ -95,6 +95,30 @@ export async function applyTheaterVisualScenario(name: string, context: TheaterS
       if (background !== 'rgb(44,44,46)' || color !== 'rgb(245,245,247)')
         throw new Error(`Theater dark input colors are invalid: ${background} / ${color}`);
     });
+    const advanced = document.querySelector<HTMLDetailsElement>('.pc-generation-advanced');
+    if (!advanced) throw new Error('Theater dark generation settings are missing');
+    advanced.open = true;
+    await waitForPaint();
+    const presetField = document.querySelector<HTMLElement>('.pc-generation-provider-fields .pc-preset-field');
+    const presetHead = presetField?.querySelector<HTMLElement>('.pc-field-head');
+    const presetSelect = presetField?.querySelector<HTMLElement>('.pc-combobox');
+    const refreshButton = presetHead?.querySelector<HTMLButtonElement>('button[aria-label="刷新预设列表"]');
+    if (!presetField || !presetHead || !presetSelect || !refreshButton) {
+      throw new Error('Theater dark preset refresh field is incomplete');
+    }
+    const fieldRect = presetField.getBoundingClientRect();
+    const headRect = presetHead.getBoundingClientRect();
+    const selectRect = presetSelect.getBoundingClientRect();
+    const refreshRect = refreshButton.getBoundingClientRect();
+    if (
+      Math.abs(refreshRect.top + refreshRect.height / 2 - (headRect.top + headRect.height / 2)) > 2 ||
+      selectRect.top < headRect.bottom ||
+      selectRect.width < fieldRect.width * 0.95
+    ) {
+      throw new Error('Theater dark preset refresh layout is invalid');
+    }
+    advanced.open = false;
+    await waitForPaint();
   } else if (name === 'theater-editor') {
     const entry = createTheaterFixture();
     resetPhoneToRoute('theater', 'editor', '编辑小剧场', { entryId: entry.id });
@@ -103,7 +127,7 @@ export async function applyTheaterVisualScenario(name: string, context: TheaterS
     theater.resetCurrentScope();
     const entry = theater.createEntry({
       content:
-        '围栏前普通文字\n```html\n<main><button type="button">网页内部按钮</button><p>网页渲染正文</p></main>\n```\n围栏后普通文字',
+        '围栏前普通文字\n```html\n<!doctype html><html><head><style>.viewport-card{min-height:100vh;padding:12px;box-sizing:border-box}</style></head><body><main class="viewport-card"><button type="button">网页内部按钮</button><p>网页渲染正文</p></main></body></html>\n```\n围栏后普通文字',
       participants: [],
       renderMode: 'markdown',
       title: '混合网页渲染测试',
@@ -127,6 +151,32 @@ export async function applyTheaterVisualScenario(name: string, context: TheaterS
     if (!document.querySelector('.pc-reader-source-label')?.textContent?.includes('最近 7 楼')) {
       throw new Error('Theater detail omitted its generation source label');
     }
+    const frontendFrame = document.querySelector<HTMLIFrameElement>('.pc-frame');
+    if (!frontendFrame) throw new Error('Theater detail omitted its frontend iframe');
+    await new Promise(resolve => window.setTimeout(resolve, 350));
+    const initialFrameHeight = frontendFrame.getBoundingClientRect().height;
+    await new Promise(resolve => window.setTimeout(resolve, 1700));
+    const stableFrameHeight = frontendFrame.getBoundingClientRect().height;
+    if (stableFrameHeight > initialFrameHeight + 2 || stableFrameHeight > 700) {
+      throw new Error(`Theater frontend frame kept growing after content settled: ${initialFrameHeight} -> ${stableFrameHeight}`);
+    }
+    if (!document.querySelector('.pc-frame-height-note')) {
+      throw new Error('Theater frontend viewport feedback was not reported as a limited-height state');
+    }
+    const settings = useSettingsStore();
+    settings.setTheme('dark');
+    await waitForPaint();
+    const darkFrontendFrame = document.querySelector<HTMLIFrameElement>('.pc-frame');
+    if (!darkFrontendFrame) throw new Error('Theater frontend iframe disappeared in dark mode');
+    await new Promise(resolve => window.setTimeout(resolve, 350));
+    const darkInitialHeight = darkFrontendFrame.getBoundingClientRect().height;
+    await new Promise(resolve => window.setTimeout(resolve, 1700));
+    const darkStableHeight = darkFrontendFrame.getBoundingClientRect().height;
+    if (darkStableHeight > darkInitialHeight + 2 || darkStableHeight > 700) {
+      throw new Error(`Dark theater frontend frame kept growing: ${darkInitialHeight} -> ${darkStableHeight}`);
+    }
+    settings.setTheme('light');
+    await waitForPaint();
   } else if (name === 'theater-history') {
     createTheaterFixture();
     const theater = useTheaterStore();

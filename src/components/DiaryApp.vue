@@ -164,6 +164,7 @@
       :occurred-at="generationState.preview.occurredAt || ''"
       :perspective-name="generationState.preview.perspective.name"
       :reparse-handler="reparsePreviewRaw"
+      :reasoning="generationState.preview.generationRecord?.reasoning || ''"
       :title="generationState.preview.title"
       :warnings="generationState.preview.warnings"
       @back="returnToGenerate"
@@ -335,6 +336,7 @@ const {
 type DiaryPreview = NonNullable<typeof generationState.preview>;
 
 const {
+  beginPreviewDraft: beginDiaryPreviewDraft,
   clearPreviewDraft: clearDiaryPreviewDraft,
   discardPreviewDraft: discardDiaryPreviewDraft,
   draft: diaryPreviewDraft,
@@ -998,7 +1000,7 @@ async function runGeneration() {
     return;
   }
 
-  clearDiaryPreviewDraft();
+  beginDiaryPreviewDraft();
   generationState.preview = null;
 
   try {
@@ -1193,7 +1195,7 @@ async function runReadReactionGeneration() {
   const targetPerspective: CharacterRef = { name: readerName };
   const targetBook = diary.findBookByPerspective(targetPerspective);
 
-  clearDiaryPreviewDraft();
+  beginDiaryPreviewDraft();
   generationState.preview = null;
 
   try {
@@ -1326,8 +1328,8 @@ function savePreview() {
 function reparsePreviewRaw() {
   const preview = generationState.preview;
   if (!preview) return false;
-  const rawOutput = preview.raw.trim();
-  if (!rawOutput) {
+  const rawOutput = preview.raw;
+  if (!rawOutput.trim()) {
     toastr.warning('先补一点可解析的 XML 内容');
     return false;
   }
@@ -1342,7 +1344,7 @@ function reparsePreviewRaw() {
 
   preview.content = parsed.data.content;
   preview.occurredAt = parsed.data.occurredAt;
-  preview.raw = parsed.raw;
+  preview.raw = rawOutput;
   preview.title = parsed.data.title;
   preview.warnings = parsed.warnings;
   toastr.success('已按原始输出重新解析');
@@ -1376,8 +1378,8 @@ function reparseFailedDraft() {
   const draft = activeFailedDraft.value;
   if (!draft) return;
 
-  const rawOutput = failedDraftRawOutput.value.trim();
-  if (!rawOutput) {
+  const rawOutput = failedDraftRawOutput.value;
+  if (!rawOutput.trim()) {
     toastr.warning('先补一点可解析的 XML 内容');
     return;
   }
@@ -1417,7 +1419,7 @@ function reparseFailedDraft() {
   }
 
   diary.updateFailedDraft(draft.id, {
-    rawOutput: parsed.raw,
+    rawOutput,
     warnings: parsed.warnings,
   });
   generationState.preview = {
@@ -1429,7 +1431,7 @@ function reparseFailedDraft() {
     generationRecord: draft.generationRecord,
     occurredAt: parsed.data.occurredAt || occurredAt,
     perspective: perspective || diary.getBook(bookId)?.perspective || { name: '当前视角' },
-    raw: parsed.raw,
+    raw: rawOutput,
     sourceBookId: typeof draft.context.sourceBookId === 'string' ? draft.context.sourceBookId : bookId,
     sourceEntryId: typeof draft.context.sourceEntryId === 'string' ? draft.context.sourceEntryId : '',
     sourceFloorEnd: getSourceLastFloor(draft.source),

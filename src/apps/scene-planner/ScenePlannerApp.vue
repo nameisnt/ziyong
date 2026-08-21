@@ -5,6 +5,7 @@
         :draft="scenePreviewDraft"
         @discard="discardScenePreviewDraft"
         @open="openScenePreviewDraft"
+        @open-id="openScenePreviewDraft"
       />
       <FailedDraftList
         :drafts="failedDrafts"
@@ -16,9 +17,10 @@
       <article class="pc-scene-editor">
         <div class="pc-section-head">
           <strong>{{ activePlan ? '继续编排' : '说出下一章剧情' }}</strong>
-          <button class="pc-icon-btn" type="button" title="新方案" aria-label="新方案" @click="newPlan">
-            <i class="fa-solid fa-plus"></i>
-          </button>
+          <ActionMenu label="新增" icon="fa-solid fa-plus">
+            <button type="button" @click="newPlan"><i class="fa-solid fa-pen"></i>新方案</button>
+            <ItemTransferImportAction app-id="scene-planner" :params="{}" label="导入单个方案" @imported="openPlan" />
+          </ActionMenu>
         </div>
         <input v-model="draft.title" class="pc-field" type="text" placeholder="下一章标题或场景名，可留空" />
         <textarea
@@ -84,9 +86,12 @@
               <strong>{{ plan.title }}</strong>
               <span>{{ getScenePlanStatusLabel(plan.status) }} · {{ plan.updatedAt.slice(0, 10) }}</span>
             </button>
-            <button class="pc-detail-mini-btn" type="button" title="删除" @click="removePlan(plan.id)">
-              <i class="fa-solid fa-trash"></i>
-            </button>
+            <ActionMenu label="管理" icon="fa-solid fa-ellipsis">
+              <ItemTransferExportButton app-id="scene-planner" :params="{ planId: plan.id }" />
+              <button class="danger" type="button" @click="removePlan(plan.id)">
+                <i class="fa-solid fa-trash"></i>删除
+              </button>
+            </ActionMenu>
           </article>
         </div>
       </article>
@@ -103,6 +108,7 @@
           :raw="generationState.preview.raw"
           raw-editable
           :reparse-handler="reparsePreviewRaw"
+          :reasoning="generationState.preview.generationRecord?.reasoning || ''"
           :scan-enabled="false"
           :save-label="generationState.preview.savedPlanId ? '完成' : '保存方案'"
           :source-label="generationState.preview.source.label"
@@ -141,8 +147,11 @@
     <FailedDraftRepairPage
       v-else-if="route.page === 'failed-draft' && activeFailedDraft"
       v-model:raw-output="failedDraftRawOutput"
+      :raw-output-semantics="activeFailedDraft.rawOutputSemantics"
+      :reasoning="activeFailedDraft.generationRecord?.reasoning || ''"
       :source-label="activeFailedDraft.source.label"
       title="修复场景编排草稿"
+      :warnings="activeFailedDraft.warnings"
       @delete="removeFailedDraft(activeFailedDraft.id)"
       @reparse="reparseFailedDraft"
     />
@@ -150,11 +159,14 @@
 </template>
 
 <script setup lang="ts">
+import ActionMenu from '@/components/ActionMenu.vue';
 import EmptyState from '@/components/EmptyState.vue';
 import FailedDraftList from '@/components/FailedDraftList.vue';
 import FailedDraftRepairPage from '@/components/FailedDraftRepairPage.vue';
 import GenerationPanel from '@/components/GenerationPanel.vue';
 import GenerationPreviewPanel from '@/components/GenerationPreviewPanel.vue';
+import ItemTransferExportButton from '@/components/ItemTransferExportButton.vue';
+import ItemTransferImportAction from '@/components/ItemTransferImportAction.vue';
 import PreviewDraftNotice from '@/components/PreviewDraftNotice.vue';
 import { useSingleGenerationTaskSession } from '@/composables/useSingleGenerationTaskSession';
 import { getRegisteredPhoneGenerationAdapter } from '@/core/appRegistry';
@@ -229,6 +241,7 @@ const activeFailedDraft = computed(() => {
   return draftId ? planner.getFailedDraft(draftId) : null;
 });
 const {
+  beginPreviewDraft: beginScenePreviewDraft,
   clearPreviewDraft: clearScenePreviewDraft,
   discardPreviewDraft: discardScenePreviewDraft,
   draft: scenePreviewDraft,
@@ -269,6 +282,14 @@ watch(
     if (typeof failedDraft.context.userRequirement === 'string') {
       generationDraft.userRequirement = failedDraft.context.userRequirement;
     }
+  },
+  { immediate: true },
+);
+
+watch(
+  () => [route.value.page, route.value.params?.planId] as const,
+  ([page, planId]) => {
+    if (page === 'root' && planId) openPlan(planId);
   },
   { immediate: true },
 );
@@ -351,7 +372,7 @@ async function runGeneration() {
     toastr.warning('请先说出下一章剧情');
     return;
   }
-  clearScenePreviewDraft();
+  beginScenePreviewDraft();
   generationState.preview = null;
   let task: GenerationTask | null = null;
   try {
@@ -422,8 +443,8 @@ async function removeFailedDraft(draftId: string) {
 function reparseFailedDraft() {
   const failedDraft = activeFailedDraft.value;
   if (!failedDraft) return;
-  const rawOutput = failedDraftRawOutput.value.trim();
-  if (!rawOutput) return void toastr.warning('先补一点可解析的输出');
+  const rawOutput = failedDraftRawOutput.value;
+  if (!rawOutput.trim()) return void toastr.warning('先补一点可解析的输出');
   const parsed = adapter.parse(rawOutput, buildGenerationConfig());
   if (!parsed.ok) {
     planner.updateFailedDraft(failedDraft.id, { rawOutput, warnings: parsed.warnings });
@@ -433,7 +454,7 @@ function reparseFailedDraft() {
   generationState.preview = {
     content: formatScenePlannerResult(parsed.data),
     data: parsed.data,
-    raw: parsed.raw,
+    raw: rawOutput,
     savedPlanId: '',
     source: failedDraft.source,
     warnings: parsed.warnings,

@@ -36,7 +36,7 @@
             </label>
             <select
               v-model="chapterDraft.mode"
-              class="pc-select pc-extras-mode-select"
+              class="pc-select pc-select-compact pc-extras-mode-select"
               :disabled="generationState.running"
             >
               <option value="新开一本书">{{ t`新开一本书` }}</option>

@@ -289,11 +289,13 @@ export async function applyPromptsVisualScenario(name: string, context: PromptsS
     });
     await context.waitForPaint();
     const editor = document.querySelector<HTMLTextAreaElement>('.pc-app-prompt-editor-area');
-    const variable = document.querySelector<HTMLButtonElement>('.pc-app-prompt-editor-area ~ .pc-field-group button');
+    const variable = document.querySelector<HTMLButtonElement>('.pc-task-template-help .pc-task-variable-btn');
     if (!editor || !variable) throw new Error('Prompt task editor did not render its editable task template');
+    const placeholder = variable.querySelector('code')?.textContent?.trim() || '';
+    if (!placeholder) throw new Error('Prompt task editor variable did not explain its placeholder');
     variable.click();
     await context.waitForPaint();
-    if (!editor.value.includes(variable.textContent?.trim() || '')) {
+    if (!editor.value.includes(placeholder)) {
       throw new Error('Prompt task editor did not insert the selected placeholder');
     }
     return true;

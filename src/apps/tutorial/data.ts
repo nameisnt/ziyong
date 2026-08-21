@@ -52,12 +52,12 @@ export const tutorialArticles: TutorialArticle[] = [
       {
         type: 'paragraph',
         title: '它是什么',
-        text: '功能性阅读器是运行在 SillyTavern 页面中的创作与资料管理面板。它不会替代聊天，而是读取当前角色卡与聊天楼层，把总结、衍生创作、资料整理、提示词管理、世界书联动和媒体生成组织成独立 App。',
+        text: '功能性阅读器是运行在 SillyTavern 页面中的创作与资料管理面板。它不会替代聊天，而是读取当前角色卡与聊天楼层，把总结、衍生创作、资料整理、提示词管理和世界书联动组织成独立 App。',
       },
       {
         type: 'paragraph',
         title: '当前 App 分成五类',
-        text: '创作类把聊天整理为总结、日记、番外、论坛、小剧场和书信；资料与规划类保存摘抄、资料表、关系网、剧情线和场景计划；提示词与联动类管理预设、正则、世界书、条目库和 MVU；阅读与自动化类负责连续阅读、楼层写回、收藏聚合和工作流；媒体与系统类负责图片、音乐、视频、主题、设置和小游戏。',
+        text: '创作类把聊天整理为总结、日记、番外、论坛、小剧场和书信；资料与规划类保存摘抄、资料表、关系网、剧情线和场景计划；提示词与联动类管理预设、正则、世界书、条目库和 MVU；阅读与自动化类负责连续阅读、楼层写回、收藏聚合和工作流；外观与系统类负责主题、设置和小游戏。',
       },
       {
         type: 'steps',
@@ -115,8 +115,8 @@ export const tutorialArticles: TutorialArticle[] = [
     id: 'similar-apps',
     category: 'start',
     title: '名字相近的 App 怎么选',
-    summary: '区分收藏与条目库、提示词与预设、世界书联动与槽位，以及几种媒体工具。',
-    keywords: ['区别', '怎么选', '收藏', '条目库', '预设', '世界书', 'ComfyUI', '媒体'],
+    summary: '区分收藏与条目库、提示词与预设，以及世界书联动与槽位。',
+    keywords: ['区别', '怎么选', '收藏', '条目库', '预设', '世界书'],
     blocks: [
       {
         type: 'paragraph',
@@ -132,11 +132,6 @@ export const tutorialArticles: TutorialArticle[] = [
         type: 'paragraph',
         title: '世界书联动与世界书槽位',
         text: '“世界书联动”保存同一角色卡不同聊天应启用哪些既有世界书条目；“世界书槽位”则把当前聊天专用内容同步到名为“当前聊天”的世界书中。联动负责切换已有条目状态，槽位负责维护当前聊天自己的条目内容。',
-      },
-      {
-        type: 'paragraph',
-        title: 'ComfyUI、媒体生成与云媒体',
-        text: '“ComfyUI”保存模型、采样器和工作流连接设置；“媒体生成”使用这些设置执行 ComfyUI 任务；“云媒体”直接连接 fal.ai、MiniMax 或 NovelAI 等云端服务。生成结果再分别进入相册、音乐或视频 App。',
       },
     ],
   },
@@ -361,15 +356,10 @@ export const tutorialArticles: TutorialArticle[] = [
   {
     id: 'media-and-utility-apps',
     category: 'apps',
-    title: '媒体、外观和其他工具',
-    summary: '了解云媒体、ComfyUI、相册、音乐、视频、主题、设置、工作台和小游戏。',
-    keywords: ['云媒体', 'ComfyUI', '媒体生成', '相册', '音乐', '视频', '主题', '设置', '工作台', '小游戏'],
+    title: '外观和其他工具',
+    summary: '了解主题、设置、工作台和小游戏。',
+    keywords: ['主题', '设置', '工作台', '小游戏'],
     blocks: [
-      {
-        type: 'paragraph',
-        title: '媒体生成链路',
-        text: '云媒体直接调用云端图片、音频或视频 API；ComfyUI 保存本地或远程工作流参数，媒体生成负责执行 ComfyUI 任务。生成的图片、音频和视频分别进入相册、音乐和视频 App 统一查看与管理。',
-      },
       {
         type: 'paragraph',
         title: '主题与设置',
@@ -1202,46 +1192,6 @@ export const tutorialArticles: TutorialArticle[] = [
     ],
   },
   {
-    id: 'cloud-media-generation',
-    category: 'generation',
-    title: '用云端 API 生成媒体',
-    summary: '配置 fal.ai、MiniMax 或 NovelAI，把结果保存到相册、音乐和视频。',
-    keywords: ['云媒体', 'fal.ai', 'MiniMax', 'NovelAI', '图片', '音乐', '视频', 'API'],
-    blocks: [
-      {
-        type: 'steps',
-        title: '配置与生成',
-        items: [
-          '打开“云媒体”，进入右上角配置页并新增服务配置。',
-          '填写 API Key、接口地址和模型；fal.ai 的模型名称要填写完整端点。',
-          '选择媒体类型，返回首页点击右上角“AI”，再选择聊天楼层、引用内容与文本生成预设。',
-          '让文本 AI 生成媒体提示词，在预览中修改确认后调用云媒体 API。',
-          '图片会进入相册，音频会进入音乐，视频会进入视频 App。',
-        ],
-      },
-      {
-        type: 'note',
-        title: '直接输入',
-        text: '首页的“直接输入提示词（备用）”用于粘贴已有提示词。通常使用右上角 AI，让文本模型先根据当前聊天生成提示词。',
-      },
-      {
-        type: 'paragraph',
-        title: '三家服务的区别',
-        text: 'fal.ai 可连接不同的图片、音频或视频模型，模型特有字段可写进高级请求 JSON；MiniMax 可生成图片、音乐和视频；NovelAI 当前只提供图片生成。',
-      },
-      {
-        type: 'note',
-        title: '密钥与备份',
-        text: 'API Key 会保存在酒馆扩展设置中，但手机备份会自动清空所有云媒体密钥。导入备份后需要重新填写。',
-      },
-      {
-        type: 'note',
-        title: '浏览器跨域',
-        text: '云媒体请求从浏览器直接发出。如果服务端或反向代理不允许跨域，请使用支持 CORS 的接口地址。',
-      },
-    ],
-  },
-  {
     id: 'card-writer-workflow',
     category: 'generation',
     title: '使用写卡工坊一键写卡',
@@ -1356,7 +1306,7 @@ export const tutorialArticles: TutorialArticle[] = [
           '暂停所有正在运行的生成任务。',
           '确认要使用“导入当前”还是会覆盖插件设置和全部数据的“导入全部”。',
           '恢复完成后检查当前聊天、生成连接、主题和主要 App 内容。',
-          '重新填写外部 API 与云媒体 API Key，备份会主动清空这些密钥。',
+          '重新填写外部 API Key，备份会主动清空这些密钥。',
         ],
       },
       {

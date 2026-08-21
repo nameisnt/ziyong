@@ -1,7 +1,7 @@
 import { usePreviewSession } from '@/composables/usePreviewSession';
 import { usePhoneStore, type PhonePreviewSessionStatus, type PhoneRoute } from '@/store/phone';
 import { usePreviewDraftStore } from '@/store/previewDrafts';
-import { computed, watch, type Ref } from 'vue';
+import { computed, ref, watch, type Ref } from 'vue';
 
 export interface PreviewDraftPersistenceOptions<TPreview> {
   appId: string;
@@ -18,6 +18,7 @@ export interface PreviewDraftPersistenceOptions<TPreview> {
 export function usePreviewDraftPersistence<TPreview>(options: PreviewDraftPersistenceOptions<TPreview>) {
   const phone = usePhoneStore();
   const previewDrafts = usePreviewDraftStore();
+  const activeDraftId = ref<string | null>(null);
 
   usePreviewSession({
     appId: options.appId,
@@ -28,40 +29,59 @@ export function usePreviewDraftPersistence<TPreview>(options: PreviewDraftPersis
     page: options.page,
   });
 
-  const draft = computed(() => previewDrafts.getPreviewDraft(options.appId, options.page));
+  const drafts = computed(() => previewDrafts.getPreviewDrafts(options.appId, options.page));
+  const draft = computed(() =>
+    activeDraftId.value ? previewDrafts.getPreviewDraftById(activeDraftId.value) : drafts.value[0] ?? null,
+  );
 
-  function restorePreviewDraft() {
-    const saved = draft.value;
-    if (!saved || options.getPreview()) return saved;
+  function restorePreviewDraft(id = activeDraftId.value || draft.value?.id || '') {
+    const saved = id ? previewDrafts.getPreviewDraftById(id) : null;
+    if (!saved) return null;
+    activeDraftId.value = saved.id;
     options.setPreview(klona(saved.preview) as TPreview);
     return saved;
+  }
+
+  function beginPreviewDraft() {
+    activeDraftId.value = null;
   }
 
   function persistPreviewDraft(routeParams?: Record<string, string>) {
     const preview = options.getPreview();
     if (!preview) return null;
     const title = typeof options.title === 'function' ? options.title() : options.title;
-    const resolvedRouteParams = routeParams ?? draft.value?.routeParams ?? options.getRouteParams?.() ?? {};
-    return previewDrafts.upsertPreviewDraft({
+    const current = activeDraftId.value ? previewDrafts.getPreviewDraftById(activeDraftId.value) : null;
+    const resolvedRouteParams = routeParams ?? current?.routeParams ?? options.getRouteParams?.() ?? {};
+    const input = {
       appId: options.appId,
       page: options.page,
       preview,
       routeParams: resolvedRouteParams,
       title,
-    });
+    };
+    const saved = current
+      ? previewDrafts.updatePreviewDraft(current.id, input)
+      : previewDrafts.createPreviewDraft(input);
+    if (saved) activeDraftId.value = saved.id;
+    return saved;
   }
 
   function clearPreviewDraft() {
-    previewDrafts.deletePreviewDraft(options.appId, options.page);
+    if (!activeDraftId.value) return;
+    previewDrafts.deletePreviewDraft(activeDraftId.value);
+    activeDraftId.value = null;
   }
 
-  function openPreviewDraft() {
-    const saved = restorePreviewDraft();
+  function openPreviewDraft(id = draft.value?.id || '') {
+    const saved = restorePreviewDraft(id);
     if (!saved) return;
     phone.pushPage(saved.page, saved.title, saved.routeParams);
   }
 
-  function discardPreviewDraft() {
+  function discardPreviewDraft(id = draft.value?.id || '') {
+    const saved = id ? previewDrafts.getPreviewDraftById(id) : null;
+    if (!saved) return;
+    activeDraftId.value = saved.id;
     if (options.route.value.appId === options.appId && options.route.value.page === options.page) {
       options.setPreview(null);
     }
@@ -81,7 +101,8 @@ export function usePreviewDraftPersistence<TPreview>(options: PreviewDraftPersis
         ...preview,
         draftId: null,
       } as TPreview;
-      previewDrafts.upsertPreviewDraft({
+      activeDraftId.value = saved.id;
+      previewDrafts.updatePreviewDraft(saved.id, {
         appId: saved.appId,
         page: saved.page,
         preview: normalized,
@@ -121,9 +142,12 @@ export function usePreviewDraftPersistence<TPreview>(options: PreviewDraftPersis
   );
 
   return {
+    activeDraftId,
+    beginPreviewDraft,
     clearPreviewDraft,
     discardPreviewDraft,
     draft,
+    drafts,
     openPreviewDraft,
     persistPreviewDraft,
     restorePreviewDraft,

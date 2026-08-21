@@ -9,10 +9,26 @@ function decodeUpload(body: BodyInit | null | undefined) {
   const request = JSON.parse(String(body || '{}')) as { data?: string; name?: string };
   const binary = atob(request.data || '');
   const bytes = Uint8Array.from(binary, character => character.charCodeAt(0));
+  let value: unknown = bytes;
+  try {
+    value = JSON.parse(new TextDecoder().decode(bytes)) as unknown;
+  } catch {
+    // Image/font fixtures are binary and must survive the same user/files round trip.
+  }
   return {
     name: String(request.name || ''),
-    value: JSON.parse(new TextDecoder().decode(bytes)) as unknown,
+    value,
   };
+}
+
+function fileResponse(value: unknown) {
+  if (value instanceof Uint8Array) {
+    return new Response(value.slice(), {
+      headers: { 'content-type': 'application/octet-stream' },
+      status: 200,
+    });
+  }
+  return jsonResponse(value);
 }
 
 export function installMemoryFileService() {
@@ -34,12 +50,15 @@ export function installMemoryFileService() {
     }
     const path = url.replace(/^\/+/, '');
     if (failedReads.has(path)) return jsonResponse({ error: 'visual file read failure' }, 500);
-    return files.has(path) ? jsonResponse(files.get(path)) : jsonResponse({ error: 'not found' }, 404);
+    return files.has(path) ? fileResponse(files.get(path)) : jsonResponse({ error: 'not found' }, 404);
   };
 
   return {
     failRead(path: string) {
       failedReads.add(path.replace(/^\/+/, ''));
+    },
+    has(path: string) {
+      return files.has(path.replace(/^\/+/, ''));
     },
   };
 }

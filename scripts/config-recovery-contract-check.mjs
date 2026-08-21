@@ -8,12 +8,11 @@ const files = await Promise.all(
     '../src/store/chatScoped.ts',
     '../src/apps/timekeeper/store.ts',
     '../src/apps/chat-insert/store.ts',
-    '../src/apps/comfy/store.ts',
     '../src/apps/workbench/store.ts',
     '../src/components/ConfigurationRecoveryNotice.vue',
   ].map(path => readFile(new URL(path, import.meta.url), 'utf8')),
 );
-const [chatScoped, timekeeper, chatInsert, comfy, workbench, notice] = files;
+const [chatScoped, timekeeper, chatInsert, workbench, notice] = files;
 
 assert.match(chatScoped, /if \(configError\.value\) return;/);
 assert.match(chatScoped, /rawConfig\.value = klona\(raw\)/);
@@ -22,7 +21,7 @@ const normalizeSettingsSource = timekeeper.slice(
   timekeeper.indexOf('const TimekeeperStorageSchema'),
 );
 assert.doesNotMatch(normalizeSettingsSource, /catch \{/);
-for (const source of [chatInsert, comfy, workbench]) {
+for (const source of [chatInsert, workbench]) {
   assert.match(source, /if \(configError\.value\) return;/);
   assert.match(source, /function resetCorruptedSettings/);
   assert.match(source, /rawConfig/);

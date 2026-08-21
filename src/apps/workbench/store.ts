@@ -1,4 +1,5 @@
 import { getCurrentChatScopeKey } from '@/store/chatScoped';
+import { stripRetiredMediaWorkbenchSettings } from '@/core/retiredMedia';
 import { getChatMessagesSafe, onTavernEvent } from '@/util/runtime';
 import { validateInplace } from '@/util/zod';
 // eslint-disable-next-line import-x/no-nodejs-modules
@@ -8,7 +9,6 @@ import { extension_settings } from '@sillytavern/scripts/extensions';
 export const workbenchField = 'sillytavern_phone_workbench';
 
 const WorkbenchStepConfigPersistedSchema = z.object({
-  comfyWorkflowId: z.string().default(''),
   diaryBookId: z.string().default(''),
   diaryBookTitle: z.string().default(''),
   diaryOccurredAt: z.string().default(''),
@@ -162,7 +162,9 @@ type SettingsReadResult = { data: WorkbenchSettings; error: string; rawData: unk
 
 function readSettings(raw: unknown): SettingsReadResult {
   const rawData = klona(raw);
-  const parsedResult = WorkbenchSettingsSchema.safeParse(typeof raw === 'undefined' ? {} : raw);
+  const normalizedRaw = klona(typeof raw === 'undefined' ? {} : raw);
+  stripRetiredMediaWorkbenchSettings(normalizedRaw);
+  const parsedResult = WorkbenchSettingsSchema.safeParse(normalizedRaw);
   if (!parsedResult.success) {
     return {
       data: WorkbenchSettingsSchema.parse({}),
@@ -171,7 +173,7 @@ function readSettings(raw: unknown): SettingsReadResult {
     };
   }
   try {
-    const source = raw && typeof raw === 'object' ? raw : {};
+    const source = normalizedRaw && typeof normalizedRaw === 'object' ? normalizedRaw : {};
     const rawWorkflows = Array.isArray((source as Record<string, unknown>).workflows)
       ? ((source as Record<string, unknown>).workflows as Array<Record<string, unknown>>)
       : [];

@@ -1,7 +1,9 @@
 import { getCurrentChatScopeKey } from '@/store/chatScoped';
+import { stripRetiredMediaGenerationTasks } from '@/core/retiredMedia';
 import {
   GenerationTaskSchema,
   GenerationTaskSettingsSchema,
+  SingleGenerationTaskConfigSchema,
   type GenerationTask,
   type GenerationTaskJob,
   type GenerationTaskKind,
@@ -23,6 +25,15 @@ const rawOutputTimers = new Map<string, number>();
 const RAW_OUTPUT_PERSIST_INTERVAL_MS = 500;
 const MAX_TERMINAL_TASKS = 40;
 
+export function isPureSavedGenerationTask(task: GenerationTask) {
+  if (task.status !== 'completed' || task.draftCount !== 0) return false;
+  if (task.kind === 'single') {
+    const config = SingleGenerationTaskConfigSchema.safeParse(task.config);
+    return config.success && config.data.resultState === 'saved';
+  }
+  return task.total > 0 && task.jobs.length === task.total && task.jobs.every(job => job.status === 'saved');
+}
+
 function nowIso() {
   return new Date().toISOString();
 }
@@ -33,6 +44,7 @@ function createId(prefix: string) {
 
 export function normalizePersistedGenerationTasks(raw: unknown): GenerationTaskSettings {
   const parsed = validateInplace(GenerationTaskSettingsSchema, raw);
+  stripRetiredMediaGenerationTasks(parsed);
   parsed.tasks = parsed.tasks.map(task => {
     if (!['queued', 'running', 'pause-requested'].includes(task.status)) return task;
     const isSingle = task.kind === 'single';
@@ -50,6 +62,33 @@ export function normalizePersistedGenerationTasks(raw: unknown): GenerationTaskS
     };
   });
   return parsed;
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return Boolean(value) && typeof value === 'object' && !Array.isArray(value);
+}
+
+/** Adds explicit raw-output semantics to supported legacy generation-task backup payloads. */
+export function migrateGenerationTasksBackupData(raw: unknown, fromVersion: number): unknown {
+  if (fromVersion !== 1 && fromVersion !== 2) throw new Error(`不支持从 generation-tasks v${fromVersion} 迁移`);
+  if (!isRecord(raw) || !isRecord(raw.scopes)) return raw;
+  return {
+    ...raw,
+    scopes: Object.fromEntries(
+      Object.entries(raw.scopes).map(([scopeKey, scope]) => {
+        if (!isRecord(scope) || !Array.isArray(scope.tasks)) return [scopeKey, scope];
+        return [
+          scopeKey,
+          {
+            ...scope,
+            tasks: scope.tasks.map(task =>
+              isRecord(task) ? { ...task, rawOutputSemantics: task.rawOutputSemantics ?? 'legacy-unknown' } : task,
+            ),
+          },
+        ];
+      }),
+    ),
+  };
 }
 
 export const useGenerationTaskStore = defineStore('generationTasks', () => {
@@ -138,6 +177,7 @@ export const useGenerationTaskStore = defineStore('generationTasks', () => {
       jobs: input.jobs ?? [],
       kind: input.kind,
       rawOutput: '',
+      rawOutputSemantics: 'original-v1',
       routePage: input.routePage ?? 'root',
       routeParams: input.routeParams ?? {},
       savedCount: 0,
@@ -291,6 +331,16 @@ export const useGenerationTaskStore = defineStore('generationTasks', () => {
     settings.value.tasks.filter(task => task.scopeKey === scopeKey).forEach(task => removeTask(task.id));
   }
 
+  function getClearableTasks(scopeKey = getCurrentChatScopeKey()) {
+    return settings.value.tasks.filter(task => task.scopeKey === scopeKey && isPureSavedGenerationTask(task));
+  }
+
+  function clearPureSavedTasks(scopeKey = getCurrentChatScopeKey()) {
+    const taskIds = getClearableTasks(scopeKey).map(task => task.id);
+    taskIds.forEach(taskId => removeTask(taskId));
+    return taskIds;
+  }
+
   function beginExecution(taskId: string) {
     if (executingTaskIds.has(taskId)) return false;
     executingTaskIds.add(taskId);
@@ -343,6 +393,7 @@ export const useGenerationTaskStore = defineStore('generationTasks', () => {
     beginExecution,
     cancelTask,
     clearScopeTasks,
+    clearPureSavedTasks,
     commitRawOutput,
     completeTask,
     createTask,
@@ -350,6 +401,7 @@ export const useGenerationTaskStore = defineStore('generationTasks', () => {
     endExecution,
     finishJob,
     getLatestTask,
+    getClearableTasks,
     getSingleTask,
     getTask,
     getWorkbenchTask,

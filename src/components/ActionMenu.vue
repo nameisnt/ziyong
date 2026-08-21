@@ -1,9 +1,13 @@
 <template>
-  <details ref="menu" class="pc-action-menu">
-    <summary class="pc-soft-btn compact" :aria-label="label">
+  <details ref="menu" :class="['pc-action-menu', `align-${align}`, { 'icon-only': iconOnly }]">
+    <summary
+      :class="iconOnly ? 'pc-icon-btn' : 'pc-soft-btn compact'"
+      :aria-label="label"
+      :title="iconOnly ? label : undefined"
+    >
       <i :class="icon"></i>
-      <span>{{ label }}</span>
-      <i class="fa-solid fa-chevron-down pc-action-menu-chevron"></i>
+      <span v-if="!iconOnly">{{ label }}</span>
+      <i v-if="!iconOnly" class="fa-solid fa-chevron-down pc-action-menu-chevron"></i>
     </summary>
     <div class="pc-action-menu-panel" @click="closeAfterAction">
       <slot />
@@ -16,11 +20,15 @@ import { onBeforeUnmount, onMounted, ref } from 'vue';
 
 withDefaults(
   defineProps<{
+    align?: 'end' | 'start';
     icon?: string;
+    iconOnly?: boolean;
     label: string;
   }>(),
   {
+    align: 'end',
     icon: 'fa-solid fa-ellipsis',
+    iconOnly: false,
   },
 );
 
@@ -93,8 +101,8 @@ onBeforeUnmount(() => {
   display: grid;
   width: max-content;
   min-width: 156px;
-  max-width: min(220px, calc(100vw - 32px));
-  max-height: min(60vh, 320px);
+  max-width: 220px;
+  max-height: 320px;
   overflow-y: auto;
   gap: 4px;
   padding: 6px;
@@ -122,6 +130,11 @@ onBeforeUnmount(() => {
   text-align: left;
   overflow-wrap: anywhere;
   white-space: normal;
+}
+
+.pc-action-menu.align-start .pc-action-menu-panel {
+  right: auto;
+  left: 0;
 }
 
 .pc-action-menu-panel :deep(button > span) {

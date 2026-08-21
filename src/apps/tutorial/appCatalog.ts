@@ -23,7 +23,7 @@ export const tutorialAppGroups: Array<{ id: TutorialAppGroupId; label: string }>
   { id: 'planning', label: '资料、规划与统计' },
   { id: 'tavern', label: '提示词与酒馆联动' },
   { id: 'automation', label: '阅读、写回与自动化' },
-  { id: 'media', label: '媒体、外观与系统' },
+  { id: 'media', label: '外观与系统' },
 ];
 
 export const tutorialAppGuides: TutorialAppGuide[] = [
@@ -91,12 +91,6 @@ export const tutorialAppGuides: TutorialAppGuide[] = [
   { appId: 'favorites', groupId: 'automation', firstAction: '按类型筛选当前聊天中已经标记收藏的成品。' },
   { appId: 'workbench', groupId: 'automation', firstAction: '新建工作流并配置步骤，每一步可单独选择 API 与预设。' },
 
-  { appId: 'comfy', groupId: 'media', firstAction: '先保存模型、采样器和工作流连接参数。' },
-  { appId: 'media', groupId: 'media', firstAction: '选择 ComfyUI 工作流和参数后生成并保存媒体。' },
-  { appId: 'cloud-media', groupId: 'media', firstAction: '配置云端服务，通常先让文本 AI 生成媒体提示词。' },
-  { appId: 'gallery', groupId: 'media', firstAction: '集中查看、预览和管理已经保存的图片。' },
-  { appId: 'music', groupId: 'media', firstAction: '查看生成音频、播放列表和歌词。' },
-  { appId: 'video', groupId: 'media', firstAction: '查看并管理已经完成和保存的视频。' },
   { appId: 'theme', groupId: 'media', firstAction: '调整颜色、圆角、图标和阅读外观，并检查明暗模式。' },
   {
     appId: 'settings',

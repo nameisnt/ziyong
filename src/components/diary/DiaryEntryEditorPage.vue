@@ -1,6 +1,6 @@
 <template>
-  <section class="pc-diary-entry-editor-page">
-    <article class="pc-page-section">
+  <section class="pc-diary-entry-editor-page pc-saved-content-editor-page">
+    <article class="pc-page-section pc-saved-content-editor">
       <input v-if="showBookFields" v-model="perspectiveName" class="pc-field" type="text" placeholder="视角角色名" />
       <input v-if="showBookFields" v-model="bookTitle" class="pc-field" type="text" placeholder="书架名称（可留空）" />
       <input v-model="title" class="pc-field" type="text" placeholder="标题" />
@@ -31,7 +31,7 @@
         type="text"
         placeholder="阅读者，用逗号分隔"
       />
-      <textarea v-model="content" class="pc-area pc-area-long pc-diary-entry-content" placeholder="正文"></textarea>
+      <textarea v-model="content" class="pc-area pc-saved-content-area" placeholder="正文"></textarea>
 
       <div class="pc-form-actions">
         <button class="pc-soft-btn" type="button" @click="$emit('cancel')">取消</button>

@@ -150,6 +150,10 @@ const contentTransferOverlay = await readFile(
   'utf8',
 );
 const phoneOverlay = await readFile(new URL('../src/components/PhoneOverlay.vue', import.meta.url), 'utf8');
+const settingsDataManagement = await readFile(
+  new URL('../src/components/settings/SettingsDataManagementPage.vue', import.meta.url),
+  'utf8',
+);
 
 assert.match(promptsApp, /<PromptTransferPage v-else-if="route\.page === 'transfer'"/);
 assert.doesNotMatch(promptsApp, /const transferSelection/);
@@ -380,7 +384,8 @@ assert.match(contentTransferOverlay, /创建副本/);
 assert.match(contentTransferOverlay, /合并/);
 assert.match(contentTransferOverlay, /覆盖/);
 assert.match(contentTransferOverlay, /props\.domains\.some/);
-assert.match(phoneOverlay, /<ContentTransferOverlay/);
-assert.match(phoneOverlay, /:domains="contentTransferDomains"/);
+assert.doesNotMatch(phoneOverlay, /<ContentTransferOverlay/);
+assert.match(settingsDataManagement, /<ContentTransferOverlay/);
+assert.match(settingsDataManagement, /:domains="selectedTransferApp\.domains"/);
 
 console.log('Structure split safeguards are present.');

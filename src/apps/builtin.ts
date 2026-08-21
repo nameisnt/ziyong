@@ -103,6 +103,33 @@ import { useGenerationAliasesStore } from '@/store/generationAliases';
 import { useLettersStore } from '@/store/letters';
 import { useSummaryStore } from '@/store/summary';
 import { useTheaterStore } from '@/store/theater';
+import {
+  diaryItemTransferProvider,
+  extrasItemTransferProvider,
+  forumItemTransferProvider,
+  lettersItemTransferProvider,
+  summaryItemTransferProvider,
+  theaterItemTransferProvider,
+} from '@/item-transfer/providers';
+
+function createFailedDraftRecoveryProvider(
+  appId: string,
+  getStore: () => { failedDrafts: Array<{ context: Record<string, unknown>; id: string }>; scopeKey: string },
+) {
+  return (scopeKey: string) => {
+    const store = getStore();
+    if (store.scopeKey !== scopeKey) return [];
+    return store.failedDrafts.map(draft => ({
+      appId,
+      id: draft.id,
+      kind: 'failed-draft' as const,
+      routePage: 'failed-draft',
+      routeParams: { draftId: draft.id },
+      scopeKey,
+      title: typeof draft.context.title === 'string' && draft.context.title.trim() ? draft.context.title : '待修复生成草稿',
+    }));
+  };
+}
 
 export const BUILTIN_PHONE_APP_MODULES: PhoneAppModule[] = [
   definePhoneApp({
@@ -120,6 +147,8 @@ export const BUILTIN_PHONE_APP_MODULES: PhoneAppModule[] = [
     contentStatsProvider: createSummaryContentStats,
     favoriteProvider: createSummaryFavoriteItems,
     generationProvider: createSummaryGenerationActions,
+    generationRecoveryProvider: createFailedDraftRecoveryProvider('summary', useSummaryStore),
+    itemTransferProvider: summaryItemTransferProvider,
     promptDefinitions: [createSummaryPromptDefinition()],
     taskTemplateDefinitions: createSummaryTaskTemplateDefinitions(),
     referenceProvider: createSummaryReferenceTree,
@@ -141,6 +170,8 @@ export const BUILTIN_PHONE_APP_MODULES: PhoneAppModule[] = [
     contentStatsProvider: createDiaryContentStats,
     favoriteProvider: createDiaryFavoriteItems,
     generationProvider: createDiaryGenerationActions,
+    generationRecoveryProvider: createFailedDraftRecoveryProvider('diary', useDiaryStore),
+    itemTransferProvider: diaryItemTransferProvider,
     promptDefinitions: [createDiaryPromptDefinition()],
     referenceProvider: createDiaryReferenceTree,
     resetCurrentScope: () => useDiaryStore().resetCurrentScope(),
@@ -163,6 +194,8 @@ export const BUILTIN_PHONE_APP_MODULES: PhoneAppModule[] = [
     contentStatsProvider: createExtrasContentStats,
     favoriteProvider: createExtrasFavoriteItems,
     generationProvider: createExtrasGenerationActions,
+    generationRecoveryProvider: createFailedDraftRecoveryProvider('extras', useExtrasStore),
+    itemTransferProvider: extrasItemTransferProvider,
     promptDefinitions: [createExtrasPromptDefinition(), createExtrasContinuePromptDefinition()],
     referenceProvider: createExtrasReferenceTree,
     resetCurrentScope: () => useExtrasStore().resetCurrentScope(),
@@ -186,6 +219,8 @@ export const BUILTIN_PHONE_APP_MODULES: PhoneAppModule[] = [
     contentStatsProvider: createForumContentStats,
     favoriteProvider: createForumFavoriteItems,
     generationProvider: createForumGenerationActions,
+    generationRecoveryProvider: createFailedDraftRecoveryProvider('forum', useForumStore),
+    itemTransferProvider: forumItemTransferProvider,
     promptDefinitions: [createForumPromptDefinition()],
     referenceProvider: createForumReferenceTree,
     resetCurrentScope: () => useForumStore().resetCurrentScope(),
@@ -209,6 +244,8 @@ export const BUILTIN_PHONE_APP_MODULES: PhoneAppModule[] = [
     contentStatsProvider: createTheaterContentStats,
     favoriteProvider: createTheaterFavoriteItems,
     generationProvider: createTheaterGenerationActions,
+    generationRecoveryProvider: createFailedDraftRecoveryProvider('theater', useTheaterStore),
+    itemTransferProvider: theaterItemTransferProvider,
     promptDefinitions: [createTheaterPromptDefinition()],
     referenceProvider: createTheaterReferenceTree,
     resetCurrentScope: () => {
@@ -237,6 +274,8 @@ export const BUILTIN_PHONE_APP_MODULES: PhoneAppModule[] = [
     contentStatsProvider: createLettersContentStats,
     favoriteProvider: createLettersFavoriteItems,
     generationProvider: createLettersGenerationActions,
+    generationRecoveryProvider: createFailedDraftRecoveryProvider('letters', useLettersStore),
+    itemTransferProvider: lettersItemTransferProvider,
     promptDefinitions: [createLettersPromptDefinition()],
     taskTemplateDefinitions: createLettersTaskTemplateDefinitions(),
     referenceProvider: createLettersReferenceTree,

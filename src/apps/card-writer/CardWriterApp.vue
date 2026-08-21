@@ -21,6 +21,13 @@
         </button>
       </div>
 
+      <PreviewDraftNotice
+        :draft="writerPreviewDraft"
+        @discard="discardWriterPreviewDraft"
+        @open="openWriterPreviewDraft"
+        @open-id="openWriterPreviewDraft"
+      />
+
       <GenerationPanel
         :error="generationError"
         :from-start-end="generationDraft.fromStartEnd"
@@ -326,14 +333,6 @@
           <span>{{ stage.label }}</span>
         </button>
       </nav>
-      <button
-        v-if="activePreviewStage?.reasoning"
-        class="pc-soft-btn compact pc-card-writer-reasoning"
-        type="button"
-        @click="reasoningOpen = true"
-      >
-        <i class="fa-solid fa-brain"></i><span>查看思维链</span>
-      </button>
       <GenerationPreviewPanel
         :key="activePreviewStage?.id || 'preview'"
         :content="activePreviewStage?.content || ''"
@@ -350,14 +349,10 @@
         :warnings="activePreviewWarnings"
         :save-label="previewSaveLabel"
         :reparse-handler="reparseActiveStage"
+        :reasoning="activePreviewStage?.reasoning || ''"
         @update:content="updateActiveStageContent"
         @update:raw="updateActiveStageRaw"
         @save="savePreview"
-      />
-      <ReasoningModal
-        :content="activePreviewStage?.reasoning || ''"
-        :open="reasoningOpen"
-        @close="reasoningOpen = false"
       />
     </section>
 
@@ -458,6 +453,7 @@ import EmptyState from '@/components/EmptyState.vue';
 import GenerationPanel from '@/components/GenerationPanel.vue';
 import GenerationPreviewPanel from '@/components/GenerationPreviewPanel.vue';
 import InfoHint from '@/components/InfoHint.vue';
+import PreviewDraftNotice from '@/components/PreviewDraftNotice.vue';
 import SearchableCombobox from '@/components/SearchableCombobox.vue';
 import { getProfileKindLabel, useProfilesStore, type ProfileEntry } from '@/apps/profiles/store';
 import { useSingleGenerationTaskSession } from '@/composables/useSingleGenerationTaskSession';
@@ -473,7 +469,6 @@ import {
 import { usePhoneStore } from '@/store/phone';
 import { usePreviewDraftStore } from '@/store/previewDrafts';
 import { useSettingsStore } from '@/store/settings';
-import ReasoningModal from '@/components/ReasoningModal.vue';
 import { useGenerationAliasesStore } from '@/store/generationAliases';
 import { getCurrentChatScopeKey, parseChatScopeKey } from '@/store/chatScoped';
 import { replaceGenerationAliases } from '@/util/generationAliases';
@@ -558,7 +553,7 @@ const generationError = computed(() => generationFormError.value || generationSe
 const stageStates = ref<StageState[]>([]);
 const activeStageDefinitions = ref<CardWriterStage[]>([]);
 const activePreviewStageId = ref('');
-const reasoningOpen = ref(false);
+const writerPreviewDraftId = ref('');
 const activeDocumentId = ref('');
 const libraryChatFilter = ref('__all__');
 const importDocumentId = ref('');
@@ -680,6 +675,7 @@ const generateDisabled = computed(() => {
   );
 });
 const previewStages = computed(() => stageStates.value);
+const writerPreviewDraft = computed(() => previewDraftStore.getPreviewDraft('card-writer', 'preview'));
 const activePreviewStage = computed(
   () => previewStages.value.find(stage => stage.id === activePreviewStageId.value) ?? previewStages.value[0] ?? null,
 );
@@ -729,7 +725,7 @@ function updatePreviewAggregate() {
 }
 
 function persistWriterPreviewDraft() {
-  previewDraftStore.upsertPreviewDraft({
+  const input = {
     appId: 'card-writer',
     page: 'preview',
     preview: {
@@ -744,11 +740,16 @@ function persistWriterPreviewDraft() {
     } satisfies CardWriterPreviewDraftPayload,
     routeParams: {},
     title: '写卡预览',
-  });
+  };
+  const saved = writerPreviewDraftId.value
+    ? previewDraftStore.updatePreviewDraft(writerPreviewDraftId.value, input)
+    : previewDraftStore.createPreviewDraft(input);
+  if (saved) writerPreviewDraftId.value = saved.id;
 }
 
-function restoreWriterPreviewDraft() {
-  const draft = previewDraftStore.getPreviewDraft('card-writer', 'preview');
+function restoreWriterPreviewDraft(id = writerPreviewDraft.value?.id || '') {
+  const draft = id ? previewDraftStore.getPreviewDraftById(id) : null;
+  if (draft?.appId !== 'card-writer' || draft.page !== 'preview') return false;
   if (!draft?.preview || typeof draft.preview !== 'object') return false;
   const payload = draft.preview as Partial<CardWriterPreviewDraftPayload>;
   if (!Array.isArray(payload.stages) || !Array.isArray(payload.definitions) || !payload.preview) return false;
@@ -756,13 +757,32 @@ function restoreWriterPreviewDraft() {
   activeStageDefinitions.value = klona(payload.definitions);
   activePreviewStageId.value = payload.activePreviewStageId || stageStates.value[0]?.id || '';
   Object.assign(preview, klona(payload.preview));
+  writerPreviewDraftId.value = draft.id;
   activeDocumentId.value = '';
   savedPreviewBaseline.value = null;
   return true;
 }
 
 function clearWriterPreviewDraft() {
-  previewDraftStore.deletePreviewDraft('card-writer', 'preview');
+  if (!writerPreviewDraftId.value) return;
+  previewDraftStore.deletePreviewDraft(writerPreviewDraftId.value);
+  writerPreviewDraftId.value = '';
+}
+
+function openWriterPreviewDraft(id?: string) {
+  if (!restoreWriterPreviewDraft(id)) return;
+  phone.pushPage('preview', '写卡预览');
+}
+
+function discardWriterPreviewDraft(id?: string) {
+  const draftId = id || writerPreviewDraftId.value || writerPreviewDraft.value?.id || '';
+  if (!draftId) return;
+  previewDraftStore.deletePreviewDraft(draftId);
+  if (writerPreviewDraftId.value === draftId) writerPreviewDraftId.value = '';
+}
+
+function beginWriterPreviewDraft() {
+  writerPreviewDraftId.value = '';
 }
 
 function updateActiveStageContent(value: string) {
@@ -1007,7 +1027,7 @@ async function runWriter() {
   }
   generationFormError.value = '';
   activeDocumentId.value = '';
-  clearWriterPreviewDraft();
+  beginWriterPreviewDraft();
   const writerTask = selectedTask.value;
   const stages = selectedStages.value.map(stage => ({ ...stage, dependencyIds: stage.dependencyIds?.slice() }));
   activeStageDefinitions.value = stages;
@@ -1129,7 +1149,7 @@ function resetGeneration() {
   if (running.value) return;
   generationFormError.value = '';
   stageStates.value = [];
-  clearWriterPreviewDraft();
+  beginWriterPreviewDraft();
 }
 
 function openLibrary() {
@@ -1442,9 +1462,6 @@ onMounted(() => {
 </script>
 
 <style scoped>
-.pc-card-writer-reasoning {
-  align-self: flex-end;
-}
 .pc-card-writer-app,
 .pc-card-writer-page {
   min-height: 100%;

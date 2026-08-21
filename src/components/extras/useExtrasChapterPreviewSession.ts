@@ -79,8 +79,8 @@ export function useExtrasChapterPreviewSession(options: ExtraChapterPreviewSessi
     const preview = options.getPreview();
     if (!preview) return false;
 
-    const rawOutput = preview.raw.trim();
-    if (!rawOutput) {
+    const rawOutput = preview.raw;
+    if (!rawOutput.trim()) {
       options.notify.warning('先补一点可解析的 XML 内容');
       return false;
     }
@@ -123,7 +123,7 @@ export function useExtrasChapterPreviewSession(options: ExtraChapterPreviewSessi
     }
 
     preview.content = parsed.data.content;
-    preview.raw = parsed.raw;
+    preview.raw = rawOutput;
     preview.title = parsed.data.title;
     preview.summary = 'summary' in parsed.data && typeof parsed.data.summary === 'string' ? parsed.data.summary : '';
     preview.warnings = parsed.warnings;

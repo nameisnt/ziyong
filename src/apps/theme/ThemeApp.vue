@@ -35,11 +35,11 @@
           <span
             v-for="app in previewApps"
             :key="app.id"
-            class="pc-preview-app-icon"
+            class="pc-preview-app-icon pc-app-icon-material"
             :style="getAppPreviewStyle(app)"
             :title="app.name"
           >
-            <i class="fa-solid" :class="getAppIcon(app)"></i>
+            <AppIcon :asset-path="getAppIconAssetPath(app)" :icon="getAppIcon(app)" />
           </span>
         </div>
       </section>
@@ -169,16 +169,16 @@
             :title="app.name"
             @click="selectedAppId = app.id"
           >
-            <span :style="getAppPreviewStyle(app)"><i class="fa-solid" :class="getAppIcon(app)"></i></span>
+            <span :style="getAppPreviewStyle(app)"><AppIcon :asset-path="getAppIconAssetPath(app)" :icon="getAppIcon(app)" /></span>
             <small>{{ app.name }}</small>
           </button>
         </div>
 
         <div v-if="selectedApp" class="pc-selected-icon-editor">
           <div class="pc-selected-app-head">
-            <span :style="getAppPreviewStyle(selectedApp)"
-              ><i class="fa-solid" :class="getAppIcon(selectedApp)"></i
-            ></span>
+            <span :style="getAppPreviewStyle(selectedApp)">
+              <AppIcon :asset-path="getAppIconAssetPath(selectedApp)" :icon="getAppIcon(selectedApp)" />
+            </span>
             <div>
               <strong>{{ selectedApp.name }}</strong>
             </div>
@@ -216,6 +216,27 @@
               @change="onAppIconChange(selectedApp.id, $event)"
             />
           </label>
+          <label class="pc-inline-field">
+            <span class="pc-field-label">图片图标</span>
+            <select class="pc-select" :value="settings.visualTheme.appIconAssetIds[selectedApp.id] || ''" @change="setAppIconAsset(selectedApp.id, $event)">
+              <option value="">使用字体图标</option>
+              <option v-for="asset in settings.homeIconAssets" :key="asset.id" :value="asset.id">{{ asset.name }}</option>
+            </select>
+          </label>
+          <div class="pc-form-actions">
+            <button class="pc-soft-btn" type="button" @click="homeIconInputEl?.click()">
+              <i class="fa-solid fa-upload"></i><span>上传图片</span>
+            </button>
+            <button
+              class="pc-soft-btn danger"
+              type="button"
+              :disabled="!settings.visualTheme.appIconAssetIds[selectedApp.id]"
+              @click="deleteSelectedHomeIcon"
+            >
+              <i class="fa-solid fa-trash"></i><span>删除图片</span>
+            </button>
+            <input ref="homeIconInputEl" hidden type="file" accept="image/png,image/jpeg,image/webp,image/gif" @change="uploadHomeIcon" />
+          </div>
           <label class="pc-inline-field">
             <span class="pc-field-label">{{ t`图标颜色` }}</span>
             <input
@@ -369,6 +390,7 @@
 
 <script setup lang="ts">
 import InfoHint from '@/components/InfoHint.vue';
+import AppIcon from '@/components/AppIcon.vue';
 import SearchableCombobox from '@/components/SearchableCombobox.vue';
 import { getPhoneApps, type PhoneAppDefinition } from '@/data/apps';
 import { WALLPAPER_PRESETS, getWallpaperPreset } from '@/data/wallpapers';
@@ -670,6 +692,7 @@ const view = ref<ThemeView>('root');
 const selectedAppId = ref('');
 const themeInputEl = ref<HTMLInputElement | null>(null);
 const iconInputEl = ref<HTMLInputElement | null>(null);
+const homeIconInputEl = ref<HTMLInputElement | null>(null);
 const fontInputEl = ref<HTMLInputElement | null>(null);
 
 const fontOptions = [
@@ -734,17 +757,13 @@ const builtinIconPacks: BuiltinIconPack[] = [
       archive: 'fa-folder-open',
       bagu: 'fa-highlighter',
       'chat-insert': 'fa-pen',
-      comfy: 'fa-image',
       diary: 'fa-book',
       digest: 'fa-note-sticky',
       extras: 'fa-feather-pointed',
       favorites: 'fa-bookmark',
       forum: 'fa-comments',
-      gallery: 'fa-photo-film',
       games: 'fa-masks-theater',
       letters: 'fa-envelope-open-text',
-      media: 'fa-image',
-      music: 'fa-music',
       'preset-manager': 'fa-wand-magic-sparkles',
       profiles: 'fa-address-card',
       prompts: 'fa-quote-left',
@@ -760,7 +779,6 @@ const builtinIconPacks: BuiltinIconPack[] = [
       theme: 'fa-palette',
       timekeeper: 'fa-clock',
       tutorial: 'fa-book-open',
-      video: 'fa-video',
       workbench: 'fa-pen',
       'world-slots': 'fa-book',
       'worldbook-link': 'fa-book-open-reader',
@@ -775,17 +793,13 @@ const builtinIconPacks: BuiltinIconPack[] = [
       archive: 'fa-folder-open',
       bagu: 'fa-filter-circle-xmark',
       'chat-insert': 'fa-plus',
-      comfy: 'fa-image',
       diary: 'fa-calendar-days',
       digest: 'fa-highlighter',
       extras: 'fa-file-pen',
       favorites: 'fa-star',
       forum: 'fa-table-columns',
-      gallery: 'fa-images',
       games: 'fa-gamepad',
       letters: 'fa-inbox',
-      media: 'fa-photo-film',
-      music: 'fa-music',
       'preset-manager': 'fa-sliders',
       profiles: 'fa-address-card',
       prompts: 'fa-wand-magic-sparkles',
@@ -801,7 +815,6 @@ const builtinIconPacks: BuiltinIconPack[] = [
       theme: 'fa-palette',
       timekeeper: 'fa-calendar-days',
       tutorial: 'fa-circle-question',
-      video: 'fa-video',
       workbench: 'fa-table-columns',
       'world-slots': 'fa-table-cells-large',
       'worldbook-link': 'fa-book-open-reader',
@@ -816,17 +829,13 @@ const builtinIconPacks: BuiltinIconPack[] = [
       archive: 'fa-box-archive',
       bagu: 'fa-wand-magic-sparkles',
       'chat-insert': 'fa-comment-dots',
-      comfy: 'fa-camera-retro',
       diary: 'fa-book-open',
       digest: 'fa-bookmark',
       extras: 'fa-scroll',
       favorites: 'fa-heart',
       forum: 'fa-comment-dots',
-      gallery: 'fa-images',
       games: 'fa-gamepad',
       letters: 'fa-envelope',
-      media: 'fa-film',
-      music: 'fa-headphones',
       'preset-manager': 'fa-sliders',
       profiles: 'fa-user',
       prompts: 'fa-wand-magic-sparkles',
@@ -842,7 +851,6 @@ const builtinIconPacks: BuiltinIconPack[] = [
       theme: 'fa-palette',
       timekeeper: 'fa-clock',
       tutorial: 'fa-circle-play',
-      video: 'fa-video',
       workbench: 'fa-photo-film',
       'world-slots': 'fa-images',
       'worldbook-link': 'fa-book-open-reader',
@@ -1001,17 +1009,26 @@ function getAppIcon(app: PhoneAppDefinition) {
   return settings.value.visualTheme.appIconOverrides[app.id] || app.icon;
 }
 
+function getAppIconAssetPath(app: PhoneAppDefinition) {
+  const assetId = settings.value.visualTheme.appIconAssetIds[app.id] || '';
+  return settings.value.homeIconAssets.find(asset => asset.id === assetId)?.path || '';
+}
+
 function getAppAccent(app: PhoneAppDefinition) {
   return settings.value.visualTheme.appAccentOverrides[app.id] || settings.value.visualTheme.appIconColor || app.accent;
 }
 
 function getAppPreviewStyle(app: PhoneAppDefinition) {
   const accent = getAppAccent(app);
+  const iconBase =
+    settings.value.visualTheme.appIconBackgroundColor ||
+    `color-mix(in srgb, ${accent} 18%, var(--pc-surface-strong) 82%)`;
   return {
     '--preview-app-accent': accent,
-    '--preview-app-bg':
-      settings.value.visualTheme.appIconBackgroundColor ||
-      `color-mix(in srgb, ${accent} 18%, var(--pc-surface-strong) 82%)`,
+    '--preview-app-bg': iconBase,
+    '--pc-icon-material-accent': accent,
+    '--pc-icon-material-base': iconBase,
+    '--pc-icon-material-foreground': settings.value.visualTheme.appIconColor || '#ffffff',
   };
 }
 
@@ -1061,6 +1078,42 @@ function onAppAccentInput(appId: string, fallback: string, event: Event) {
 
 function clearAppOverride(appId: string) {
   settingsStore.setAppThemeOverride(appId, { accent: '', icon: '' });
+  delete settings.value.visualTheme.appIconAssetIds[appId];
+}
+
+function setAppIconAsset(appId: string, event: Event) {
+  const assetId = (event.target as HTMLSelectElement).value;
+  if (assetId) settings.value.visualTheme.appIconAssetIds[appId] = assetId;
+  else delete settings.value.visualTheme.appIconAssetIds[appId];
+}
+
+async function uploadHomeIcon(event: Event) {
+  const input = event.target as HTMLInputElement;
+  const file = input.files?.[0];
+  input.value = '';
+  if (!file || !selectedApp.value) return;
+  try {
+    const asset = await settingsStore.uploadHomeIconAsset(file);
+    settings.value.visualTheme.appIconAssetIds[selectedApp.value.id] = asset.id;
+    toastr.success('图片图标已上传');
+  } catch (error) {
+    toastr.error(error instanceof Error ? error.message : '图片图标上传失败');
+  }
+}
+
+async function deleteSelectedHomeIcon() {
+  const app = selectedApp.value;
+  if (!app) return;
+  const assetId = settings.value.visualTheme.appIconAssetIds[app.id] || '';
+  if (!assetId) return;
+  delete settings.value.visualTheme.appIconAssetIds[app.id];
+  try {
+    await settingsStore.deleteHomeIconAsset(assetId);
+    toastr.success('图片图标已删除');
+  } catch (error) {
+    settings.value.visualTheme.appIconAssetIds[app.id] = assetId;
+    toastr.error(error instanceof Error ? error.message : '图片图标删除失败');
+  }
 }
 
 function getColorFallback(key: ColorKey) {
@@ -1279,7 +1332,6 @@ async function onThemeSelected(event: Event) {
   gap: 8px;
 }
 
-.pc-preview-app-icon,
 .pc-app-grid-item > span,
 .pc-selected-app-head > span {
   display: grid;
@@ -1288,6 +1340,13 @@ async function onThemeSelected(event: Event) {
   border-radius: var(--pc-icon-radius);
   background: var(--preview-app-bg);
   color: var(--preview-app-accent);
+}
+
+.pc-preview-app-icon {
+  display: grid;
+  aspect-ratio: 1;
+  place-items: center;
+  border-radius: var(--pc-icon-radius);
 }
 
 .pc-theme-packs {

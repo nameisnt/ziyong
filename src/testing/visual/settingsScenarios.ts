@@ -1,10 +1,14 @@
+import { getRegisteredPhoneApps } from '@/core/appRegistry';
 import { useSettingsStore } from '@/store/settings';
+import { installMemoryFileService } from '@/testing/visual/memoryFileService';
 import { setting_field } from '@/type/settings';
 import { extension_settings } from '@sillytavern/scripts/extensions';
 import { klona } from 'klona';
 
 export const settingsScenarioNames = [
   'settings',
+  'settings-data-management',
+  'settings-data-management-dark',
   'settings-interface',
   'settings-reader-font',
   'settings-theme-persistence',
@@ -13,6 +17,7 @@ export const settingsScenarioNames = [
   'settings-connection-dark',
   'settings-advanced',
   'theme-form-control-isolation',
+  'theme-home-icon-assets',
 ] as const;
 
 type SettingsScenarioContext = {
@@ -25,6 +30,20 @@ export async function applySettingsVisualScenario(name: string, context: Setting
   const settings = useSettingsStore();
 
   if (name === 'settings') context.resetPhoneToRoute('settings', 'root', '设置');
+  else if (name === 'settings-data-management' || name === 'settings-data-management-dark') {
+    settings.setTheme(name.endsWith('-dark') ? 'dark' : 'light');
+    context.resetPhoneToRoute('settings', 'root', '设置');
+    await context.waitForPaint();
+    const dataEntry = [...document.querySelectorAll<HTMLButtonElement>('.pc-settings-entry')].find(button =>
+      button.textContent?.includes('数据管理'),
+    );
+    if (!dataEntry) throw new Error('Settings data-management entry is missing');
+    dataEntry.click();
+    await context.waitForPaint();
+    if (!document.querySelector('.pc-data-management-page')) {
+      throw new Error('Settings data-management page did not open');
+    }
+  }
   else if (name === 'settings-interface') context.resetPhoneToRoute('settings', 'root', '设置', { tab: 'interface' });
   else if (name === 'settings-reader-font') {
     const fontId = 'visual-reader-font';
@@ -123,6 +142,66 @@ export async function applySettingsVisualScenario(name: string, context: Setting
       throw new Error('Settings tabs overflow or wrap in the narrow phone layout');
     }
   } else if (name === 'settings-advanced') context.resetPhoneToRoute('settings', 'root', '设置', { tab: 'advanced' });
+  else if (name === 'theme-home-icon-assets') {
+    const fileService = installMemoryFileService();
+    context.resetPhoneToRoute('theme', 'root', '主题');
+    await context.waitForPaint();
+    const iconEntry = [...document.querySelectorAll<HTMLButtonElement>('.pc-theme-entry')].find(button =>
+      button.textContent?.includes('图标风格'),
+    );
+    if (!iconEntry) throw new Error('Theme icon entry is missing');
+    iconEntry.click();
+    await context.waitForPaint();
+
+    const appButton = document.querySelector<HTMLButtonElement>('.pc-app-grid-item');
+    const app = getRegisteredPhoneApps().find(item => item.name === appButton?.title);
+    if (!appButton || !app) throw new Error('Theme app icon editor has no selectable app');
+    appButton.click();
+    await context.waitForPaint();
+
+    const pngBytes = Uint8Array.from(
+      atob('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAusB9Y9ZukQAAAAASUVORK5CYII='),
+      character => character.charCodeAt(0),
+    );
+    const asset = await settings.uploadHomeIconAsset(new File([pngBytes], '视觉首页图标.png', { type: 'image/png' }));
+    if (!fileService.has(asset.path)) throw new Error('Home icon upload did not reach user/files');
+    asset.path =
+      'data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 width=%2264%22 height=%2264%22%3E%3Crect width=%2264%22 height=%2264%22 rx=%2214%22 fill=%22%23007aff%22/%3E%3Ccircle cx=%2232%22 cy=%2232%22 r=%2212%22 fill=%22white%22/%3E%3C/svg%3E';
+    const imageField = [...document.querySelectorAll<HTMLLabelElement>('.pc-inline-field')].find(label =>
+      label.textContent?.includes('图片图标'),
+    );
+    const select = imageField?.querySelector<HTMLSelectElement>('select');
+    if (!select || ![...select.options].some(option => option.value === asset.id)) {
+      throw new Error('Uploaded home icon was not exposed by the theme editor');
+    }
+    select.value = asset.id;
+    select.dispatchEvent(new Event('change', { bubbles: true }));
+    await context.waitForPaint();
+    if (!document.querySelector('.pc-selected-icon-editor img')) {
+      throw new Error('Selected image icon was not rendered in the theme editor');
+    }
+
+    await assertRejects(() => settings.deleteHomeIconAsset(asset.id), 'Referenced home icon deletion was not rejected');
+    const disposable = await settings.uploadHomeIconAsset(
+      new File([pngBytes], '视觉待删除图标.png', { type: 'image/png' }),
+    );
+    if (!fileService.has(disposable.path)) throw new Error('Home icon upload did not reach user/files');
+    await settings.deleteHomeIconAsset(disposable.id);
+    if (fileService.has(disposable.path)) throw new Error('Unreferenced home icon was not deleted from user/files');
+
+    settings.setHomeLayout({
+      ...settings.settings.layout,
+      appOrder: [app.id],
+      dockOrder: settings.settings.layout.dockOrder.filter(appId => appId !== app.id),
+      folders: [],
+    });
+    context.resetPhoneToRoute('home', 'root', '主页');
+    await context.waitForPaint();
+    const homeTile = [...document.querySelectorAll<HTMLButtonElement>('.pc-app-tile')].find(button =>
+      button.textContent?.includes(app.name),
+    );
+    if (!homeTile?.querySelector('img')) throw new Error('Image icon was not rendered on the home grid');
+  }
   else {
     const hostThemeOverride = document.createElement('style');
     hostThemeOverride.id = 'visual-host-theme-override';
@@ -169,4 +248,13 @@ export async function applySettingsVisualScenario(name: string, context: Setting
   }
 
   return true;
+}
+
+async function assertRejects(action: () => Promise<unknown>, message: string) {
+  try {
+    await action();
+  } catch {
+    return;
+  }
+  throw new Error(message);
 }

@@ -144,6 +144,7 @@
       v-model:content="chapterGenerationState.preview.content"
       v-model:raw="chapterGenerationState.preview.raw"
       :reparse-handler="reparseChapterPreviewRaw"
+      :reasoning="chapterGenerationState.preview.generationRecord?.reasoning || ''"
       :save-label="chapterGenerationState.preview.mode === '重写当前章节' ? '保存新版本' : '保存章节'"
       :source-label="activeBook?.title || '番外预览'"
       :text-provider-summary="chapterGenerationState.preview.mode"
@@ -168,6 +169,7 @@
       v-model:content="generationState.preview.content"
       v-model:raw="generationState.preview.raw"
       :reparse-handler="reparseSummaryPreviewRaw"
+      :reasoning="generationState.preview.generationRecord?.reasoning || ''"
       save-label="保存章节总结"
       :source-label="previewBook?.title || '章节总结预览'"
       :text-provider-summary="generationState.preview.enabled ? '保存后启用' : '保存后停用'"
@@ -181,9 +183,12 @@
     <FailedDraftRepairPage
       v-else-if="route.page === 'failed-draft' && activeFailedDraft"
       v-model:raw-output="failedDraftRawOutput"
+      :raw-output-semantics="activeFailedDraft.rawOutputSemantics"
+      :reasoning="activeFailedDraft.generationRecord?.reasoning || ''"
       placeholder="在这里修 XML 结构或补 content。"
       :source-label="activeFailedDraft.source.label"
       :title="activeFailedDraft.actionId === 'chapter-generate' ? '修复番外章节草稿' : '修复章节总结草稿'"
+      :warnings="activeFailedDraft.warnings"
       @delete="removeFailedDraft(activeFailedDraft.id)"
       @reparse="reparseFailedDraft"
     />
@@ -302,6 +307,7 @@ type ExtraChapterPreview = NonNullable<typeof chapterGenerationState.preview>;
 type ExtraSummaryPreview = NonNullable<typeof generationState.preview>;
 
 const {
+  beginPreviewDraft: beginExtraChapterPreviewDraft,
   clearPreviewDraft: clearExtraChapterPreviewDraft,
   discardPreviewDraft: discardExtraChapterPreviewDraft,
   draft: extraChapterPreviewDraft,
@@ -338,6 +344,7 @@ const {
 });
 
 const {
+  beginPreviewDraft: beginExtraSummaryPreviewDraft,
   clearPreviewDraft: clearExtraSummaryPreviewDraft,
   discardPreviewDraft: discardExtraSummaryPreviewDraft,
   draft: extraSummaryPreviewDraft,
@@ -464,6 +471,8 @@ const {
   buildSummaryOutputFormat,
   chapterGenerationDraft,
   chapterGenerationState,
+  beginChapterPreviewDraft: beginExtraChapterPreviewDraft,
+  beginSummaryPreviewDraft: beginExtraSummaryPreviewDraft,
   clearChapterPreviewDraft: clearExtraChapterPreviewDraft,
   clearSummaryPreviewDraft: clearExtraSummaryPreviewDraft,
   currentChapterTypePrompt,

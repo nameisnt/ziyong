@@ -3,10 +3,11 @@ import { getCurrentChatScopeKey, readChatScopedEnvelope } from '@/store/chatScop
 import { diaryField, useDiaryStore } from '@/store/diary';
 import { extrasField, useExtrasStore } from '@/store/extras';
 import { forumField, useForumStore } from '@/store/forum';
-import { generationTasksField, useGenerationTaskStore } from '@/store/generationTasks';
+import { generationTasksField, migrateGenerationTasksBackupData, useGenerationTaskStore } from '@/store/generationTasks';
 import { GenerationAliasesSchema, generationAliasesField, useGenerationAliasesStore } from '@/store/generationAliases';
 import { lettersField, useLettersStore } from '@/store/letters';
 import { PreviewDraftScopeDataSchema, previewDraftsField, usePreviewDraftStore } from '@/store/previewDrafts';
+import { migratePreviewDraftsBackupData, normalizePreviewDraftsEnvelope } from '@/util/previewDraftMigration';
 import { summaryField, useSummaryStore } from '@/store/summary';
 import { theaterField, useTheaterStore } from '@/store/theater';
 import { GenerationTaskSettingsSchema } from '@/type/generationTask';
@@ -113,14 +114,21 @@ export function createLettersBackupDomain() {
   });
 }
 
-export function createPreviewDraftsBackupDomain() {
-  return createChatScopedBackupDomain({
+export function createPreviewDraftsBackupDomain(): PhoneBackupDomain {
+  return {
     category: 'draft',
-    field: previewDraftsField,
+    exportData: currentScopeKey =>
+      normalizePreviewDraftsEnvelope(readChatScopedEnvelope(previewDraftsField, currentScopeKey || getCurrentChatScopeKey())),
+    importData: data => {
+      _.set(extension_settings, previewDraftsField, data);
+    },
     key: 'preview-drafts',
+    migrateImport: migratePreviewDraftsBackupData,
     rehydrateFromSettings: () => usePreviewDraftStore().rehydrateFromSettings(),
     schema: createChatScopedBackupSchema(PreviewDraftScopeDataSchema),
-  });
+    schemaVersion: 3,
+    scope: 'chat',
+  };
 }
 
 export function createGenerationTasksBackupDomain(): PhoneBackupDomain {
@@ -157,13 +165,10 @@ export function createGenerationTasksBackupDomain(): PhoneBackupDomain {
       );
       _.set(extension_settings, generationTasksField, { tasks });
     },
-    migrateImport: (data, fromVersion) => {
-      if (fromVersion !== 1) throw new Error(`不支持从 generation-tasks v${fromVersion} 迁移`);
-      return data;
-    },
+    migrateImport: migrateGenerationTasksBackupData,
     rehydrateFromSettings: () => useGenerationTaskStore().rehydrateFromSettings(),
     schema: createChatScopedBackupSchema(GenerationTaskSettingsSchema),
-    schemaVersion: 2,
+    schemaVersion: 3,
     scope: 'chat',
   };
 }

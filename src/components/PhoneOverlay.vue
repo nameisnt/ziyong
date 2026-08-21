@@ -35,16 +35,6 @@
         </div>
         <strong ref="topTitleEl" class="pc-top-title">{{ currentTitle }}</strong>
         <div class="pc-top-actions">
-          <button
-            v-if="contentTransferDomains.length"
-            class="pc-top-btn"
-            type="button"
-            title="导入或导出当前 App 内容"
-            aria-label="内容迁移"
-            @click.stop="contentTransferOpen = true"
-          >
-            <i class="fa-solid fa-right-left"></i>
-          </button>
           <button class="pc-top-btn" type="button" @click.stop="settingsStore.toggleTheme()">
             <i class="fa-solid" :class="settings.theme === 'light' ? 'fa-moon' : 'fa-sun'"></i>
           </button>
@@ -94,6 +84,7 @@
         <PhoneHome
           v-if="currentRoute.appId === 'home'"
           :get-display-app-icon="getDisplayAppIcon"
+          :get-display-app-icon-asset-path="getDisplayAppIconAssetPath"
           :get-display-app-style="getDisplayAppStyle"
         />
 
@@ -107,20 +98,12 @@
           </div>
         </section>
       </main>
-      <ContentTransferOverlay
-        v-if="contentTransferDomains.length"
-        :app-name="currentApp?.name || currentTitle"
-        :domains="contentTransferDomains"
-        :open="contentTransferOpen"
-        @close="contentTransferOpen = false"
-      />
       <SearchableSelectOverlay />
     </section>
   </div>
 </template>
 
 <script setup lang="ts">
-import ContentTransferOverlay from '@/components/ContentTransferOverlay.vue';
 import PhoneHome from '@/components/PhoneHome.vue';
 import SearchableSelectOverlay from '@/components/SearchableSelectOverlay.vue';
 import { useDeferredAppMount } from '@/composables/useDeferredAppMount';
@@ -134,7 +117,6 @@ import { getWallpaperPreset } from '@/data/wallpapers';
 import { useFileRepositoryStore } from '@/store/fileRepository';
 import { usePhoneStore } from '@/store/phone';
 import { getCustomFontFamily, useSettingsStore } from '@/store/settings';
-import { getAppContentTransferDomains } from '@/util/contentTransfer';
 import { storeToRefs } from 'pinia';
 
 const fileRepository = useFileRepositoryStore();
@@ -157,8 +139,6 @@ const {
   notices,
 } = storeToRefs(phone);
 const currentAppId = computed(() => currentRoute.value.appId);
-const contentTransferDomains = computed(() => getAppContentTransferDomains(currentAppId.value));
-const contentTransferOpen = ref(false);
 const { mountedAppId } = useDeferredAppMount(isOpen, currentAppId);
 const appMountReady = computed(
   () => currentRoute.value.appId === 'home' || mountedAppId.value === currentRoute.value.appId,
@@ -205,17 +185,26 @@ function getDisplayAppIcon(app: PhoneAppDefinition) {
   return settings.value.visualTheme.appIconOverrides[app.id] || app.icon;
 }
 
+function getDisplayAppIconAssetPath(app: PhoneAppDefinition) {
+  const assetId = settings.value.visualTheme.appIconAssetIds[app.id] || '';
+  return settings.value.homeIconAssets.find(asset => asset.id === assetId)?.path || '';
+}
+
 function getDisplayAppAccent(app: PhoneAppDefinition) {
   return settings.value.visualTheme.appAccentOverrides[app.id] || settings.value.visualTheme.appIconColor || app.accent;
 }
 
 function getDisplayAppStyle(app: PhoneAppDefinition) {
   const accent = getDisplayAppAccent(app);
+  const iconBase =
+    settings.value.visualTheme.appIconBackgroundColor ||
+    `color-mix(in srgb, ${accent} 18%, var(--pc-surface-strong) 82%)`;
   return {
     '--pc-accent': accent,
-    '--pc-app-icon-bg':
-      settings.value.visualTheme.appIconBackgroundColor ||
-      `color-mix(in srgb, ${accent} 18%, var(--pc-surface-strong) 82%)`,
+    '--pc-app-icon-bg': iconBase,
+    '--pc-icon-material-accent': accent,
+    '--pc-icon-material-base': iconBase,
+    '--pc-icon-material-foreground': settings.value.visualTheme.appIconColor || '#ffffff',
   };
 }
 
@@ -351,13 +340,6 @@ watch(
     }
   },
   { deep: true, immediate: true },
-);
-
-watch(
-  () => currentRoute.value.appId,
-  () => {
-    contentTransferOpen.value = false;
-  },
 );
 
 watch(isOpen, async nextIsOpen => {

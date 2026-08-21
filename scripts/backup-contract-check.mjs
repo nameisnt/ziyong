@@ -8,7 +8,10 @@ const types = await readFile(new URL('../src/type/backup.ts', import.meta.url), 
 const backup = await readFile(new URL('../src/util/backup.ts', import.meta.url), 'utf8');
 const backupTransaction = await readFile(new URL('../src/util/backupTransaction.ts', import.meta.url), 'utf8');
 const backupPolicy = await readFile(new URL('../src/util/backupPolicy.ts', import.meta.url), 'utf8');
-const settingsPanel = await readFile(new URL('../src/components/settings/SettingsGeneralPanel.vue', import.meta.url), 'utf8');
+const settingsPanel = await readFile(
+  new URL('../src/components/settings/SettingsDataManagementPage.vue', import.meta.url),
+  'utf8',
+);
 const generationService = await readFile(new URL('../src/core/generationService.ts', import.meta.url), 'utf8');
 const fileRepository = await readFile(new URL('../src/store/fileRepository.ts', import.meta.url), 'utf8');
 

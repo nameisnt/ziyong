@@ -148,6 +148,7 @@
       v-model:content="generationState.preview.content"
       v-model:raw="generationState.preview.raw"
       :reparse-handler="reparsePreviewRaw"
+      :reasoning="generationState.preview.generationRecord?.reasoning || ''"
       :source-label="generationState.preview.source.label"
       :text-provider-summary="textProviderSummary"
       :title="generationState.preview.title"
@@ -283,6 +284,7 @@ const {
 type SummaryPreview = NonNullable<typeof generationState.preview>;
 
 const {
+  beginPreviewDraft: beginSummaryPreviewDraft,
   clearPreviewDraft: clearSummaryPreviewDraft,
   discardPreviewDraft: discardSummaryPreviewDraft,
   draft: summaryPreviewDraft,
@@ -378,6 +380,7 @@ const {
   running: generationRunning,
   stopGeneration,
 } = useSummaryGenerationActions({
+  beginPreviewDraft: beginSummaryPreviewDraft,
   buildOutputFormat: buildSummaryOutputFormat,
   clearPreviewDraft: clearSummaryPreviewDraft,
   draft: generationDraft,
@@ -726,8 +729,8 @@ function savePreview() {
 function reparsePreviewRaw() {
   const preview = generationState.preview;
   if (!preview) return false;
-  const rawOutput = preview.raw.trim();
-  if (!rawOutput) {
+  const rawOutput = preview.raw;
+  if (!rawOutput.trim()) {
     toastr.warning('先补一点可解析的 XML 内容');
     return false;
   }
@@ -741,7 +744,7 @@ function reparsePreviewRaw() {
   }
 
   preview.content = parsed.data.content;
-  preview.raw = parsed.raw;
+  preview.raw = rawOutput;
   preview.title = parsed.data.title;
   preview.warnings = parsed.warnings;
   toastr.success('已按原始输出重新解析');
@@ -766,8 +769,8 @@ function reparseFailedDraft() {
   const draft = activeFailedDraft.value;
   if (!draft) return;
 
-  const rawOutput = failedDraftRawOutput.value.trim();
-  if (!rawOutput) {
+  const rawOutput = failedDraftRawOutput.value;
+  if (!rawOutput.trim()) {
     toastr.warning('先补一点可解析的 XML 内容');
     return;
   }
@@ -790,7 +793,7 @@ function reparseFailedDraft() {
   }
 
   summary.updateFailedDraft(draft.id, {
-    rawOutput: parsed.raw,
+    rawOutput,
     warnings: parsed.warnings,
   });
   generationState.preview = {
@@ -798,7 +801,7 @@ function reparseFailedDraft() {
     content: parsed.data.content,
     draftId: null,
     generationRecord: draft.generationRecord,
-    raw: parsed.raw,
+    raw: rawOutput,
     source: {
       floorEnd: getSourceLastFloor(draft.source),
       label: draft.source.label,
