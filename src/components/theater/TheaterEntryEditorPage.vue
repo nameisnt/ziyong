@@ -21,17 +21,3 @@ defineEmits<{
   save: [];
 }>();
 </script>
-
-<style scoped>
-.pc-theater-entry-editor-page {
-  display: grid;
-  min-height: 100%;
-  align-content: start;
-  gap: 14px;
-}
-
-.pc-mode-selector {
-  max-width: 100%;
-}
-
-</style>

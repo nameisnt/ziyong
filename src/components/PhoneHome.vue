@@ -57,7 +57,7 @@
               :key="`${item.kind}:${item.appId}:${item.id}`"
               class="pc-list-row"
               type="button"
-              @click="phone.openApp(item.appId, item.routePage, item.title, item.routeParams)"
+              @click="openHomeActivityItem(item)"
             >
               <span class="pc-list-row-copy"><strong>{{ item.title }}</strong><small>{{ item.kind === 'preview-draft' ? '未保存预览' : '等待修复' }}</small></span>
               <i class="fa-solid fa-chevron-right"></i>
@@ -836,8 +836,19 @@ function onHomeSwipePointerCancel(event: PointerEvent) {
   if (homeSwipe.pointerId === event.pointerId) resetHomeSwipe();
 }
 
-function openHomeApp(appId: string) {
-  if (Date.now() >= suppressHomeClickUntil.value) phone.openApp(appId);
+function rememberHomeSource(folderId = '') {
+  phone.recordHomeSource({ folderId: folderId || undefined, pageIndex: homePageIndex.value });
+}
+
+function openHomeApp(appId: string, folderId = '') {
+  if (Date.now() < suppressHomeClickUntil.value) return;
+  rememberHomeSource(folderId);
+  phone.openApp(appId);
+}
+
+function openHomeActivityItem(item: GenerationActivityItem) {
+  rememberHomeSource();
+  phone.pushRoute(item.appId, item.routePage, item.title, item.routeParams);
 }
 
 function getFolderStyle(item: HomeDisplayItem) {
@@ -955,8 +966,9 @@ function setActiveHomeFolderIcon(iconAssetId: string) {
 
 function openFolderApp(appId: string) {
   if (isOrganizing.value || folderDrag.isDragging || Date.now() < suppressHomeClickUntil.value) return;
+  const folderId = activeHomeFolderId.value;
   closeHomeFolder();
-  openHomeApp(appId);
+  openHomeApp(appId, folderId);
 }
 
 function resetFolderDrag() {
@@ -1116,7 +1128,7 @@ async function refreshPhoneData() {
 watch(
   () => homePages.value.length,
   pageCount => {
-    homePageIndex.value = Math.min(Math.max(1, homePageIndex.value), Math.max(1, pageCount));
+    homePageIndex.value = Math.min(Math.max(0, homePageIndex.value), Math.max(1, pageCount));
   },
 );
 watch(viewingScopeKey, refreshHomeArchiveDomains);
@@ -1138,11 +1150,14 @@ watch(
       folderCreateOpen.value = false;
       return;
     }
-    homePageIndex.value = 1;
+    homePageIndex.value = clampHomePageIndex(route.homeSource?.pageIndex ?? 1);
     await nextTick();
+    activeHomeFolderId.value = homeLayout.value.folders.some(folder => folder.id === route.homeSource?.folderId)
+      ? route.homeSource?.folderId || ''
+      : '';
     refreshHomeArchiveDomains();
   },
-  { deep: true },
+  { deep: true, immediate: true },
 );
 watch(isOpen, async nextIsOpen => {
   if (!nextIsOpen) {

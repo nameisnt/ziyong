@@ -1,23 +1,7 @@
 <template>
   <section class="pc-game2048-app">
     <section class="pc-game2048-page">
-      <section v-if="!activeGame" class="pc-minigame-home-grid" aria-label="小游戏列表">
-        <button
-          v-for="gameOption in gameOptions"
-          :key="gameOption.id"
-          class="pc-minigame-home-item"
-          type="button"
-          @click="openMiniGame(gameOption.id)"
-        >
-          <span class="pc-minigame-home-icon">
-            <i :class="['fa-solid', gameOption.icon]"></i>
-          </span>
-          <span>{{ gameOption.label }}</span>
-          <small>{{ gameOption.description }}</small>
-        </button>
-      </section>
-
-      <template v-else-if="activeGame === '2048'">
+      <template v-if="activeGame === '2048'">
         <section class="pc-game2048-score-grid">
           <article class="pc-game2048-score-card">
             <span>{{ t`分数` }}</span>
@@ -105,40 +89,13 @@ import SlidingPuzzleGame from './SlidingPuzzleGame.vue';
 import SolitaireGame from './SolitaireGame.vue';
 import SudokuGame from './SudokuGame.vue';
 import { useGame2048Store, type Game2048Direction } from './store';
+import { getMiniGameIdByAppId } from '@/data/miniGameApps';
 import { usePhoneStore } from '@/store/phone';
 import { storeToRefs } from 'pinia';
 
-type MiniGameId =
-  | '2048'
-  | 'gomoku'
-  | 'guess-number'
-  | 'minesweeper'
-  | 'nonogram'
-  | 'reversi'
-  | 'sliding-puzzle'
-  | 'snake'
-  | 'solitaire'
-  | 'sudoku';
-
-const gameOptions: Array<{ description: string; icon: string; id: MiniGameId; label: string }> = [
-  { description: '合成数字', icon: 'fa-table-cells-large', id: '2048', label: '2048' },
-  { description: '滑动吃点', icon: 'fa-route', id: 'snake', label: '贪吃蛇' },
-  { description: '排雷开格', icon: 'fa-bomb', id: 'minesweeper', label: '扫雷' },
-  { description: '填数解题', icon: 'fa-border-all', id: 'sudoku', label: '数独' },
-  { description: '看数填格', icon: 'fa-table-cells', id: 'nonogram', label: '数织' },
-  { description: '移动排序', icon: 'fa-grip', id: 'sliding-puzzle', label: '数字华容道' },
-  { description: '数字推理', icon: 'fa-arrow-down-1-9', id: 'guess-number', label: '猜数字' },
-  { description: '人机对弈', icon: 'fa-chess-board', id: 'gomoku', label: '五子棋' },
-  { description: '翻转棋局', icon: 'fa-circle-half-stroke', id: 'reversi', label: '黑白棋' },
-  { description: '经典牌局', icon: 'fa-clone', id: 'solitaire', label: '纸牌接龙' },
-];
-
 const phone = usePhoneStore();
 const { currentRoute } = storeToRefs(phone);
-const activeGame = computed<MiniGameId | null>(() => {
-  if (currentRoute.value.appId !== 'games' || currentRoute.value.page !== 'play') return null;
-  return parseMiniGameId(currentRoute.value.params?.game);
-});
+const activeGame = computed(() => getMiniGameIdByAppId(currentRoute.value.appId));
 const game = useGame2048Store();
 const { bestScore, board, canUndo, isPausedOnWin, moves, score, status } = storeToRefs(game);
 const pointerStart = ref<{ x: number; y: number } | null>(null);
@@ -149,14 +106,6 @@ const cells = computed(() =>
 const maxTile = computed(() => Math.max(...board.value.flatMap(row => row), 0));
 
 const statusTitle = computed(() => (status.value === 'won' ? t`合成 2048 了` : t`没有可移动格子`));
-function parseMiniGameId(value: unknown): MiniGameId | null {
-  return typeof value === 'string' && gameOptions.some(item => item.id === value) ? (value as MiniGameId) : null;
-}
-
-function openMiniGame(id: MiniGameId) {
-  const option = gameOptions.find(item => item.id === id);
-  phone.pushPage('play', option?.label ?? '小游戏', { game: id });
-}
 
 function tileStyle(value: number) {
   const rank = Math.max(1, Math.log2(value));
@@ -228,58 +177,6 @@ onUnmounted(() => {
   display: flex;
   flex-direction: column;
   gap: 14px;
-}
-
-.pc-minigame-home-grid {
-  display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 16px 10px;
-  padding: 10px 2px 18px;
-}
-
-.pc-minigame-home-item {
-  display: grid;
-  min-width: 0;
-  gap: 7px;
-  justify-items: center;
-  border: 0;
-  background: transparent;
-  color: var(--pc-text);
-  cursor: pointer;
-  padding: 0;
-  text-align: center;
-}
-
-.pc-minigame-home-item > span:last-child {
-  width: 100%;
-  overflow: hidden;
-  font-size: 13px;
-  font-weight: 800;
-  line-height: 1.2;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.pc-minigame-home-item small {
-  width: 100%;
-  overflow: hidden;
-  color: var(--pc-muted);
-  font-size: 11px;
-  font-weight: 700;
-  line-height: 1.15;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.pc-minigame-home-icon {
-  display: grid;
-  width: 54px;
-  aspect-ratio: 1;
-  place-items: center;
-  border-radius: 16px;
-  background: color-mix(in srgb, var(--pc-theme-accent) 18%, var(--pc-surface-strong) 82%);
-  color: var(--pc-theme-accent);
-  font-size: 22px;
 }
 
 .pc-game2048-score-grid {

@@ -57,7 +57,7 @@
       <EmptyState v-else :title="slots.length ? t`没有匹配的槽位` : t`还没有槽位`" />
     </section>
 
-    <section v-else-if="route.page === 'editor'" class="pc-world-slots-page pc-saved-content-editor-page">
+    <section v-else-if="route.page === 'editor'" class="pc-world-slot-editor-page pc-saved-content-editor-page">
       <article class="pc-page-section pc-world-slot-editor pc-saved-content-editor">
         <input v-model="draft.title" class="pc-field" type="text" :placeholder="t`槽位名称`" />
         <div class="pc-field-group pc-world-field-group">
@@ -519,7 +519,8 @@ async function syncSlots() {
 
 <style scoped>
 .pc-world-slots-app,
-.pc-world-slots-page {
+.pc-world-slots-page,
+.pc-world-slot-editor-page {
   width: 100%;
   min-width: 0;
   max-width: 100%;

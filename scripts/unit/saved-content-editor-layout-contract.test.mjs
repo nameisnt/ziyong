@@ -29,6 +29,18 @@ test('saved entity editors use the shared remaining-height body layout', () => {
     if (!source.includes('pc-saved-content-editor-page')) failures.push(`${label} has no editor page layout`);
     if (!source.includes('pc-saved-content-editor')) failures.push(`${label} has no editor container layout`);
     if (!source.includes('pc-saved-content-area')) failures.push(`${label} body is not marked as saved content`);
+
+    const pageClassList = source.match(/class="([^"]*\bpc-saved-content-editor-page\b[^"]*)"/u)?.[1].split(/\s+/u) ?? [];
+    const localPageClass = pageClassList.find(className => className !== 'pc-saved-content-editor-page');
+    if (localPageClass) {
+      const escapedClass = localPageClass.replace(/[.*+?^${}()|[\]\\]/gu, '\\$&');
+      const localRule = new RegExp(`\\.${escapedClass}\\s*\\{([^}]*)\\}`, 'gu');
+      for (const match of source.matchAll(localRule)) {
+        if (/display:\s*grid|align-content:\s*start/u.test(match[1])) {
+          failures.push(`${label} overrides the shared remaining-height page layout`);
+        }
+      }
+    }
   }
   assert.deepEqual(failures, []);
 });

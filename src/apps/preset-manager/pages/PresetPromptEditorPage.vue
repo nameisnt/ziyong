@@ -10,6 +10,14 @@
         <span class="pc-field-label">条目名称</span>
         <input v-model="nameDraft" class="pc-field" type="text" maxlength="160" placeholder="预设条目名称" />
       </label>
+      <label class="pc-field-group pc-field-inline">
+        <span class="pc-field-label">消息角色</span>
+        <select v-model="roleDraft" class="pc-select">
+          <option value="system">系统消息</option>
+          <option value="assistant">AI 消息</option>
+          <option value="user">用户消息</option>
+        </select>
+      </label>
       <textarea
         v-if="typeof prompt.content === 'string'"
         v-model="draft"
@@ -47,12 +55,12 @@ defineProps<{
   dirty: boolean;
   presetName: string;
   prompt: TavernPresetPrompt;
-  roleLabel: string;
   saving: boolean;
 }>();
 
 const draft = defineModel<string>('draft', { required: true });
 const nameDraft = defineModel<string>('nameDraft', { required: true });
+const roleDraft = defineModel<TavernPresetPrompt['role']>('roleDraft', { required: true });
 defineEmits<{ back: []; remove: []; save: [] }>();
 </script>
 

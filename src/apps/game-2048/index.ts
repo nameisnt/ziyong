@@ -2,7 +2,13 @@ import Game2048App from './Game2048App.vue';
 import { miniGameFields } from './fields';
 import { MiniGamesBackupSchema } from './backupSchemas';
 import { useGame2048Store } from './store';
-import { definePhoneApp, type PhoneBackupDomain } from '@/core/appRegistry';
+import {
+  definePhoneApp,
+  registerPhoneAppProvider,
+  type PhoneAppModule,
+  type PhoneBackupDomain,
+} from '@/core/appRegistry';
+import { MINI_GAME_APPS } from '@/data/miniGameApps';
 import { extension_settings } from '@sillytavern/scripts/extensions';
 
 const backupDomain: PhoneBackupDomain = {
@@ -21,14 +27,20 @@ const backupDomain: PhoneBackupDomain = {
   scope: 'global',
 };
 
-export default definePhoneApp({
-  id: 'games',
-  name: '小游戏',
-  icon: 'fa-gamepad',
-  description: '等待生成时玩的轻量小游戏合集',
-  accent: '#f4a261',
-  defaultRoute: 'root',
-  defaultOrder: 145,
-  backupDomains: [backupDomain],
-  component: Game2048App,
-});
+const miniGameModules: PhoneAppModule[] = MINI_GAME_APPS.map((game, index) =>
+  definePhoneApp({
+    id: game.appId,
+    name: game.name,
+    icon: game.icon,
+    description: game.description,
+    accent: '#f4a261',
+    defaultRoute: 'root',
+    defaultOrder: 145 + index,
+    backupDomains: index === 0 ? [backupDomain] : undefined,
+    component: Game2048App,
+  }),
+);
+
+registerPhoneAppProvider(() => miniGameModules.slice(1));
+
+export default miniGameModules[0];

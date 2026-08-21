@@ -1,18 +1,7 @@
 import { miniGameFields } from '@/apps/game-2048/fields';
 import { useGame2048Store } from '@/apps/game-2048/store';
+import { MINI_GAME_APPS, type MiniGameId } from '@/data/miniGameApps';
 import { extension_settings } from '@sillytavern/scripts/extensions';
-
-type MinigameId =
-  | '2048'
-  | 'gomoku'
-  | 'guess-number'
-  | 'minesweeper'
-  | 'nonogram'
-  | 'reversi'
-  | 'sliding-puzzle'
-  | 'snake'
-  | 'solitaire'
-  | 'sudoku';
 
 type MinigameScenarioContext = {
   resetPhoneToRoute: (appId: string, page: string, title: string, params?: Record<string, string>) => void;
@@ -20,7 +9,7 @@ type MinigameScenarioContext = {
   waitForPaint: () => Promise<void>;
 };
 
-const gameByScenario: Record<string, MinigameId> = {
+const gameByScenario: Record<string, MiniGameId> = {
   'game-2048-play': '2048',
   'game-gomoku-play': 'gomoku',
   'game-guess-number-play': 'guess-number',
@@ -33,7 +22,7 @@ const gameByScenario: Record<string, MinigameId> = {
   'game-sudoku-play': 'sudoku',
 };
 
-const fieldByGame: Record<MinigameId, string> = {
+const fieldByGame: Record<MiniGameId, string> = {
   '2048': miniGameFields.game2048,
   gomoku: miniGameFields.gomoku,
   'guess-number': miniGameFields.guessNumber,
@@ -44,19 +33,6 @@ const fieldByGame: Record<MinigameId, string> = {
   snake: miniGameFields.snake,
   solitaire: miniGameFields.solitaire,
   sudoku: miniGameFields.sudoku,
-};
-
-const titleByGame: Record<MinigameId, string> = {
-  '2048': '2048',
-  gomoku: '五子棋',
-  'guess-number': '猜数字',
-  minesweeper: '扫雷',
-  nonogram: '数织',
-  reversi: '黑白棋',
-  'sliding-puzzle': '数字华容道',
-  snake: '贪吃蛇',
-  solitaire: '纸牌接龙',
-  sudoku: '数独',
 };
 
 function setting(field: string) {
@@ -98,7 +74,9 @@ export async function applyMinigameVisualScenario(name: string, context: Minigam
     game.startNewGame();
   }
 
-  context.resetPhoneToRoute('games', 'play', titleByGame[gameId], { game: gameId });
+  const gameDefinition = MINI_GAME_APPS.find(game => game.gameId === gameId);
+  if (!gameDefinition) throw new Error(`Missing app definition for ${gameId}`);
+  context.resetPhoneToRoute(gameDefinition.appId, 'root', gameDefinition.name);
 
   if (gameId === '2048') {
     await waitForSelector('.pc-game2048-board', context, '2048 board did not render');

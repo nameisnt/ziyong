@@ -11,6 +11,9 @@
         <button v-if="pluginPreset" type="button" :disabled="mutationBusy" @click="$emit('export-preset')">
           <i class="fa-solid fa-file-export"></i><span>导出预设</span>
         </button>
+        <button type="button" :disabled="mutationBusy || !presetMovable" @click="$emit('move-preset')">
+          <i class="fa-solid fa-right-left"></i><span>{{ movePresetLabel }}</span>
+        </button>
         <button
           v-if="presetDeletable"
           class="danger"
@@ -57,6 +60,8 @@
         </label>
       </div>
     </section>
+
+    <PresetOwnershipPanel v-if="!errorMessage && preset && !pluginPreset" :preset-name="presetName" />
 
     <div v-if="!errorMessage && preset" class="pc-preset-filter-row">
       <span>只看当前已启用条目</span>
@@ -134,6 +139,7 @@
 import EmptyState from '@/components/EmptyState.vue';
 import ActionMenu from '@/components/ActionMenu.vue';
 import type { PresetDisplayNode, TavernPreset, TavernPresetPrompt } from '../api';
+import PresetOwnershipPanel from './PresetOwnershipPanel.vue';
 import PresetPromptRow from '../PresetPromptRow.vue';
 
 defineProps<{
@@ -146,9 +152,11 @@ defineProps<{
   loadedPresetName: string;
   loading: boolean;
   mutationBusy: boolean;
+  movePresetLabel: string;
   pluginPreset: boolean;
   preset: TavernPreset | null;
   presetDeletable: boolean;
+  presetMovable: boolean;
   presetName: string;
   promptDrag: { insertBeforeId: string; isDragging: boolean; promptId: string };
   switchingPreset: string;
@@ -164,6 +172,7 @@ defineEmits<{
   'drag-start': [event: PointerEvent, prompt: TavernPresetPrompt, groupId: string];
   'delete-preset': [];
   'export-preset': [];
+  'move-preset': [];
   'open-prompt': [prompt: TavernPresetPrompt];
   'rename-preset': [];
   'switch-preset': [presetName: string];

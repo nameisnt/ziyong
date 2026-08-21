@@ -12,13 +12,14 @@ test('home reserves page zero for transient activity and defaults to the first d
   assert.match(source, /v-for="\(_, pageIndex\) in homePages\.length \+ 1"/u);
 });
 
-test('activity is never a drag destination and home re-entry returns to desktop', () => {
+test('activity is never a drag destination and home re-entry restores the recorded source page', () => {
   assert.match(source, /nextPage < 1 \|\| nextPage > homePages\.value\.length/u);
-  assert.match(source, /homePageIndex\.value = 1;/u);
+  assert.match(source, /homePageIndex\.value = clampHomePageIndex\(route\.homeSource\?\.pageIndex \?\? 1\)/u);
 });
 
 test('activity routes drafts and recovery items through their registered app and keeps saved-task cleanup explicit', () => {
-  assert.match(source, /phone\.openApp\(item\.appId, item\.routePage, item\.title, item\.routeParams\)/u);
+  assert.match(source, /function openHomeActivityItem\(item: GenerationActivityItem\)/u);
+  assert.match(source, /rememberHomeSource\(\);\s+phone\.pushRoute\(item\.appId, item\.routePage, item\.title, item\.routeParams\)/u);
   assert.match(source, /generationTasks\.getClearableTasks\(viewingScopeKey\.value\)/u);
   assert.match(source, /generationTasks\.clearPureSavedTasks\(viewingScopeKey\.value\)/u);
   assert.match(source, /item\.kind !== 'active-task'/u);

@@ -1,4 +1,5 @@
 import { getRegisteredPhoneApp, getRegisteredPhoneApps } from '@/core/appRegistry';
+import { MINI_GAME_APP_IDS } from '@/data/miniGameApps';
 import type { HomeFolder, HomeScreenLayout } from '@/type/settings';
 
 export const homeFolderToken = (folderId: string) => `folder:${folderId}`;
@@ -8,11 +9,86 @@ const DEFAULT_HOME_FOLDERS = [
   { id: 'home_default_creation', name: '创作', appIds: ['diary', 'extras', 'theater', 'forum', 'letters', 'card-writer', 'scene-planner'] },
   { id: 'home_default_organize', name: '整理', appIds: ['summary', 'storylines', 'bagu', 'content-converter'] },
   { id: 'home_default_archive', name: '阅读档案', appIds: ['reader', 'archive', 'recovery', 'digest', 'chat-insert', 'stats'] },
-  { id: 'home_default_prompt', name: '设定提示', appIds: ['preset-manager', 'preset-link', 'entry-library', 'worldbook-link', 'world-slots', 'mvu-modifier', 'regex-display', 'regex-wizard'] },
+  { id: 'home_default_prompt', name: '设定提示', appIds: ['preset-manager', 'entry-library', 'worldbook-link', 'world-slots', 'mvu-modifier', 'regex-display', 'regex-wizard'] },
   { id: 'home_default_profiles', name: '资料关系', appIds: ['profiles', 'relationship', 'timekeeper'] },
   { id: 'home_default_tools', name: '工具', appIds: ['workbench', 'app-builder', 'theme', 'file-repository'] },
-  { id: 'home_default_games', name: '娱乐', appIds: ['games'] },
+  { id: 'home_default_games', name: '小游戏', appIds: MINI_GAME_APP_IDS },
 ];
+
+const LEGACY_GAMES_APP_ID = 'games';
+const DEFAULT_GAMES_FOLDER_ID = 'home_default_games';
+
+function createUniqueGamesFolderId(folders: HomeFolder[]) {
+  const usedIds = new Set(folders.map(folder => folder.id));
+  if (!usedIds.has(DEFAULT_GAMES_FOLDER_ID)) return DEFAULT_GAMES_FOLDER_ID;
+  if (!usedIds.has('home_migrated_games')) return 'home_migrated_games';
+  let suffix = 2;
+  while (usedIds.has(`home_migrated_games_${suffix}`)) suffix += 1;
+  return `home_migrated_games_${suffix}`;
+}
+
+function migrateLegacyGamesLayout(layout: HomeScreenLayout, knownIds: Set<string>): HomeScreenLayout {
+  const availableGameIds = MINI_GAME_APP_IDS.filter(appId => knownIds.has(appId));
+  if (!availableGameIds.length) return layout;
+  const availableGameIdSet = new Set<string>(availableGameIds);
+
+  const hasModernPlacement = [
+    ...layout.appOrder,
+    ...layout.dockOrder,
+    ...layout.folders.flatMap(folder => folder.appIds),
+  ].some(token => availableGameIdSet.has(token));
+  if (hasModernPlacement) {
+    return {
+      ...layout,
+      appOrder: layout.appOrder.filter(token => token !== LEGACY_GAMES_APP_ID),
+      dockOrder: layout.dockOrder.filter(token => token !== LEGACY_GAMES_APP_ID),
+      folders: layout.folders.map(folder => ({
+        ...folder,
+        appIds: folder.appIds.filter(appId => appId !== LEGACY_GAMES_APP_ID),
+      })),
+    };
+  }
+
+  const sourceFolders = layout.folders.map(folder => ({ ...folder, appIds: [...folder.appIds] }));
+  const defaultFolder = sourceFolders.find(
+    folder => folder.id === DEFAULT_GAMES_FOLDER_ID && folder.appIds.includes(LEGACY_GAMES_APP_ID),
+  );
+  if (defaultFolder) {
+    defaultFolder.name = '小游戏';
+    defaultFolder.appIds = defaultFolder.appIds.flatMap(appId =>
+      appId === LEGACY_GAMES_APP_ID ? availableGameIds : [appId],
+    );
+    return {
+      ...layout,
+      appOrder: layout.appOrder.filter(token => token !== LEGACY_GAMES_APP_ID),
+      dockOrder: layout.dockOrder.filter(token => token !== LEGACY_GAMES_APP_ID),
+      folders: sourceFolders,
+    };
+  }
+
+  const customFolder = sourceFolders.find(folder => folder.appIds.includes(LEGACY_GAMES_APP_ID));
+  sourceFolders.forEach(folder => {
+    folder.appIds = folder.appIds.filter(appId => appId !== LEGACY_GAMES_APP_ID);
+  });
+  const folderId = createUniqueGamesFolderId(sourceFolders);
+  const folderToken = homeFolderToken(folderId);
+  sourceFolders.push({ appIds: availableGameIds, iconAssetId: '', id: folderId, name: '小游戏' });
+
+  const appOrder = layout.appOrder.filter(token => token !== LEGACY_GAMES_APP_ID && token !== folderToken);
+  const dockOrder = layout.dockOrder.filter(token => token !== LEGACY_GAMES_APP_ID && token !== folderToken);
+  const standaloneIndex = layout.appOrder.indexOf(LEGACY_GAMES_APP_ID);
+  if (customFolder) {
+    const sourceToken = homeFolderToken(customFolder.id);
+    const sourceIndex = appOrder.indexOf(sourceToken);
+    appOrder.splice(sourceIndex >= 0 ? sourceIndex + 1 : appOrder.length, 0, folderToken);
+  } else if (standaloneIndex >= 0) {
+    appOrder.splice(Math.min(standaloneIndex, appOrder.length), 0, folderToken);
+  } else {
+    appOrder.push(folderToken);
+  }
+
+  return { ...layout, appOrder, dockOrder, folders: sourceFolders };
+}
 
 export function readHomeFolderToken(token: string) {
   return token.startsWith('folder:') ? token.slice('folder:'.length) : '';
@@ -50,11 +126,12 @@ export function buildDefaultHomeLayout(): HomeScreenLayout {
 export function normalizeHomeLayout(layout: HomeScreenLayout): HomeScreenLayout {
   const registered = getRegisteredPhoneApps();
   const knownIds = new Set(registered.map(app => app.id));
-  const legacy = layout.version < 2;
+  const sourceLayout = migrateLegacyGamesLayout(layout, knownIds);
+  const legacy = sourceLayout.version < 2;
   const claimed = new Set<string>();
   const folders: HomeFolder[] = [];
 
-  layout.folders.forEach((folder, index) => {
+  sourceLayout.folders.forEach((folder, index) => {
     const appIds = folder.appIds.filter(appId => knownIds.has(appId) && !claimed.has(appId));
     appIds.forEach(appId => claimed.add(appId));
     if (!appIds.length) return;
@@ -81,10 +158,10 @@ export function normalizeHomeLayout(layout: HomeScreenLayout): HomeScreenLayout 
     });
   };
 
-  const legacyDock = legacy ? registered.filter(app => app.defaultDock).map(app => app.id) : layout.dockOrder;
+  const legacyDock = legacy ? registered.filter(app => app.defaultDock).map(app => app.id) : sourceLayout.dockOrder;
   const dockOrder = normalizeTokens(legacyDock);
   const dockSet = new Set(dockOrder);
-  const appOrder = normalizeTokens(layout.appOrder).filter(token => !dockSet.has(token));
+  const appOrder = normalizeTokens(sourceLayout.appOrder).filter(token => !dockSet.has(token));
   registered.forEach(app => {
     if (!claimed.has(app.id) && !dockSet.has(app.id) && !appOrder.includes(app.id)) appOrder.push(app.id);
   });

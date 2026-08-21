@@ -324,6 +324,13 @@ function setupVisualGlobals() {
       groupId: '',
     },
     TavernHelper: {
+      deletePreset: async (presetName: string) => {
+        if (!visualPresetStore[presetName] || presetName === visualLoadedPresetName || presetName === 'in_use') {
+          return false;
+        }
+        delete visualPresetStore[presetName];
+        return true;
+      },
       getChatHistoryBrief: async () => visualBriefs,
       getChatHistoryDetail: async () => ({
         'visual-current.json': visualMessages,
@@ -367,6 +374,11 @@ function setupVisualGlobals() {
         visualPresetStore[presetName] = structuredClone(updated);
         return structuredClone(updated);
       },
+    },
+    createPreset: async (presetName: string, preset: Record<string, unknown>) => {
+      if (!presetName || presetName === 'in_use' || visualPresetStore[presetName]) return false;
+      visualPresetStore[presetName] = structuredClone(preset);
+      return true;
     },
     this_chid: 0,
     toastr: {
@@ -464,8 +476,13 @@ const { buildPhoneUserInput } = await import('@/util/generation');
 const { getRegisteredPhoneAppReferenceTrees } = await import('@/core/appRegistry');
 const { ENTRY_LIBRARY_CONTENT_PLACEHOLDER, renderEntryLibraryBindingContent, useEntryLibraryStore } =
   await import('@/apps/entry-library/store');
-const { deleteTavernPresetPrompt, duplicateTavernPresetPrompt, readTavernPreset, reorderTavernPresetPrompts } =
-  await import('@/apps/preset-manager/api');
+const {
+  deleteTavernPresetPrompt,
+  duplicateTavernPresetPrompt,
+  getCurrentTavernPresetName,
+  readTavernPreset,
+  reorderTavernPresetPrompts,
+} = await import('@/apps/preset-manager/api');
 const { applyTextProviderSelection } = await import('@/util/textProvider');
 const { buildExtraHistoryContext, getSummarizableChapters } = await import('@/util/extrasSummary');
 const { resolveExtraChapterGenerationRecords, synchronizeExtraChapterGenerationRecords } =
@@ -529,6 +546,17 @@ function createVisualHiddenGenerationRecord(
 const rootAppScenarios = PHONE_APPS.map(app => `app:${app.id}`);
 const scenarioGroups = createVisualScenarioGroups(rootAppScenarios);
 const scenarios: VisualScenarioName[] = flattenVisualScenarioGroups(scenarioGroups);
+const presetMigrationVisualScenarioIds = [
+  'preset-move-tavern-to-plugin',
+  'preset-move-plugin-to-tavern',
+  'preset-move-conflict',
+  'preset-move-target-failure',
+  'preset-move-verify-rollback',
+  'preset-move-source-delete-failure',
+] as const;
+if (presetMigrationVisualScenarioIds.some(name => !scenarios.includes(name))) {
+  throw new Error('Preset migration visual scenarios are missing from the scenario catalog');
+}
 
 const configurePhoneSize = configureVisualPhoneSize;
 const resetPhoneToRoute = resetVisualPhoneRoute;
@@ -1057,19 +1085,114 @@ async function applyScenario(name: VisualScenarioName, options: { height?: numbe
       throw new Error('Large home folder does not occupy a 2x2 grid area');
     }
     const shortcutAppId = settings.settings.layout.folders[0]?.appIds[0] || '';
+    const firstDesktopSourcePage = document.querySelector<HTMLButtonElement>('.pc-page-dot.active')?.title || '';
     shortcuts[0]?.click();
     await waitForPaint();
     if (!shortcutAppId || phone.currentRoute.appId !== shortcutAppId) {
       throw new Error('Large home folder shortcut did not open its App directly');
     }
-    await phone.goHome();
+    await phone.goBack();
     await waitForPaint();
+    if (document.querySelector<HTMLButtonElement>('.pc-page-dot.active')?.title !== firstDesktopSourcePage) {
+      throw new Error('First desktop page source was not restored');
+    }
+
+    const thirdPageDot = [...document.querySelectorAll<HTMLButtonElement>('.pc-page-dot')].find(
+      dot => dot.title === '第 3 页',
+    );
+    thirdPageDot?.click();
+    await waitForPaint();
+    const thirdPageShortcut = document.querySelector<HTMLButtonElement>('.pc-home-folder-shortcut');
+    if (!thirdPageDot || !thirdPageShortcut) throw new Error('Third-page source fixture is missing');
+    thirdPageShortcut.click();
+    await waitForPaint();
+    await phone.goBack();
+    await waitForPaint();
+    if (document.querySelector<HTMLButtonElement>('.pc-page-dot.active')?.title !== '第 3 页') {
+      throw new Error('Third desktop page source was not restored');
+    }
+
     document.querySelector<HTMLButtonElement>('.pc-home-folder-more')?.click();
     await waitForPaint();
     if (!document.querySelector('.pc-home-folder-dialog')) {
       throw new Error('Large home folder remaining preview did not open the full folder');
     }
     document.querySelector<HTMLButtonElement>('.pc-home-folder-head button[title="关闭"]')?.click();
+    await waitForPaint();
+
+    const gameFolder = settings.settings.layout.folders.find(folder => folder.name === '小游戏');
+    if (!gameFolder || gameFolder.appIds.length !== 10) {
+      throw new Error('Default desktop does not contain one ten-App minigame folder');
+    }
+    let gameFolderTile = document.querySelector<HTMLElement>(`[data-home-token="folder:${gameFolder.id}"]`);
+    if (!gameFolderTile) {
+      const pageDots = [...document.querySelectorAll<HTMLButtonElement>('.pc-page-dot')];
+      for (const pageDot of pageDots.slice(1)) {
+        pageDot.click();
+        await waitForPaint();
+        gameFolderTile = document.querySelector<HTMLElement>(`[data-home-token="folder:${gameFolder.id}"]`);
+        if (gameFolderTile) break;
+      }
+    }
+    if (!gameFolderTile) throw new Error('Minigame folder is missing from the desktop');
+    const gameFolderSourcePage = document.querySelector<HTMLButtonElement>('.pc-page-dot.active')?.title || '';
+    gameFolderTile.querySelector<HTMLButtonElement>('.pc-home-folder-more')?.click();
+    await waitForPaint();
+    const gameFolderApps = [...document.querySelectorAll<HTMLElement>('.pc-home-folder-app')];
+    if (gameFolderApps.length !== 10) throw new Error('Minigame folder did not expose all ten direct App entries');
+    gameFolderApps[0]?.querySelector<HTMLButtonElement>('button')?.click();
+    await waitForPaint();
+    if (phone.currentRoute.appId !== 'game-2048' || !document.querySelector('.pc-game2048-board')) {
+      throw new Error('Minigame folder entry did not open 2048 directly');
+    }
+    await phone.goBack();
+    await waitForPaint();
+    if (String(phone.currentRoute.appId) !== 'home') throw new Error('Minigame direct App did not return to the desktop');
+    if (document.querySelector<HTMLButtonElement>('.pc-page-dot.active')?.title !== gameFolderSourcePage) {
+      throw new Error('Home source page was not restored');
+    }
+    if (!document.querySelector('.pc-home-folder-dialog')) throw new Error('Home source folder was not restored');
+
+    const restoredFolderApp = document.querySelector<HTMLButtonElement>('.pc-home-folder-app > button');
+    restoredFolderApp?.click();
+    await waitForPaint();
+    phone.pushPage('visual-detail', '视觉详情');
+    await phone.goBack();
+    if (phone.currentRoute.page !== 'root') throw new Error('Nested App detail did not return to its root');
+    await phone.goBack();
+    await waitForPaint();
+    if (!document.querySelector('.pc-home-folder-dialog')) throw new Error('Nested App root did not restore its source folder');
+
+    document.querySelector<HTMLButtonElement>('.pc-home-folder-app > button')?.click();
+    await waitForPaint();
+    await phone.closePhone({ skipConfirm: true });
+    phone.openPhone();
+    if (phone.currentRoute.appId !== 'game-2048') throw new Error('Closed phone lost its App route');
+    await phone.goBack();
+    await waitForPaint();
+    if (!document.querySelector('.pc-home-folder-dialog')) throw new Error('Closed phone lost its source folder');
+
+    document.querySelector<HTMLButtonElement>('.pc-home-folder-app > button')?.click();
+    await waitForPaint();
+    await phone.goHome();
+    await waitForPaint();
+    if (
+      document.querySelector<HTMLButtonElement>('.pc-page-dot.active')?.title !== '第 2 页' ||
+      document.querySelector('.pc-home-folder-dialog')
+    ) {
+      throw new Error('Home action did not reset the desktop source');
+    }
+    document.querySelector<HTMLButtonElement>('.pc-page-dot[title="第 1 页"]')?.click();
+    await waitForPaint();
+    phone.recordHomeSource({ pageIndex: 0 });
+    phone.openApp('settings');
+    await waitForPaint();
+    await phone.goBack();
+    await waitForPaint();
+    if (document.querySelector<HTMLButtonElement>('.pc-page-dot.active')?.title !== '第 1 页') {
+      throw new Error('Activity page source was not restored');
+    }
+    await phone.goHome();
     await waitForPaint();
   } else if (name === 'home-five-columns') {
     const settings = useSettingsStore();
@@ -3048,21 +3171,37 @@ async function applyScenario(name: VisualScenarioName, options: { height?: numbe
     ) {
       throw new Error('Entry library placeholder insertion removed selected text or restored the caret incorrectly');
     }
-  } else if (name === 'preset-link-auto-reload') {
-    resetPhoneToRoute('preset-link', 'root', '预设绑定');
-    const result = await usePresetLinkStore().applySelection(
-      phone.viewingScopeKey,
-      {
-        presetName: '简洁写作',
-        reloadRegex: true,
-      },
-      true,
-    );
+  } else if (name === 'preset-owner-current') {
+    resetPhoneToRoute('preset-manager', 'detail', '预设条目', { presetName: '简洁写作' });
+    const loaded = await waitForVisualCondition(() => Boolean(document.querySelector('.pc-preset-owner')));
+    if (!loaded) throw new Error('Preset ownership controls are missing from Tavern preset detail');
+    const reloadToggle = document.querySelector<HTMLInputElement>('.pc-preset-owner-option input');
+    if (!reloadToggle) throw new Error('Preset ownership regex reload toggle is missing');
+    reloadToggle.click();
+    const actions = [...document.querySelectorAll<HTMLButtonElement>('.pc-preset-owner-actions button')];
+    actions.find(button => button.textContent?.includes('绑定此预设'))?.click();
     await waitForPaint();
-    if (!result.reloaded || document.querySelector('.toast')) {
-      throw new Error('Preset regex auto-reload notice was not suppressed');
+    const binding = usePresetLinkStore().getBinding(phone.viewingScopeKey);
+    if (binding?.presetName !== '简洁写作' || !binding.reloadRegex) {
+      throw new Error('Preset detail did not save the current chat binding');
     }
-  } else if (name === 'preset-link-history') {
+    const applyButton = actions.find(button => button.textContent?.includes('立即应用'));
+    if (!applyButton || applyButton.disabled) throw new Error('Preset detail apply action is missing or disabled');
+    applyButton.click();
+    const applied = await waitForVisualCondition(
+      () => getCurrentTavernPresetName() === '简洁写作' && !document.querySelector('.toast'),
+    );
+    if (!applied) {
+      throw new Error(
+        `Preset detail did not settle guarded regex reload: current=${getCurrentTavernPresetName()}, toast=${Boolean(document.querySelector('.toast'))}`,
+      );
+    }
+    document.querySelector<HTMLButtonElement>('.pc-preset-owner-rule-action button')?.click();
+    if (!usePresetLinkStore().getReaderProfile('简洁写作')) {
+      throw new Error('Preset detail did not save its shared reader profile');
+    }
+  } else if (name === 'preset-owner-history') {
+    useSettingsStore().setTheme('dark');
     const historyScopeKey = 'char:0:chat:visual-history';
     usePresetLinkStore().saveBinding(historyScopeKey, {
       presetName: '简洁写作',
@@ -3074,7 +3213,14 @@ async function applyScenario(name: VisualScenarioName, options: { height?: numbe
       chatTitle: '旧章节讨论',
       ownerName: '测试角色',
     });
-    resetPhoneToRoute('preset-link', 'root', '预设绑定');
+    resetPhoneToRoute('preset-manager', 'detail', '预设条目', { presetName: '简洁写作' });
+    const loaded = await waitForVisualCondition(() => Boolean(document.querySelector('.pc-preset-owner')));
+    const applyButton = [...document.querySelectorAll<HTMLButtonElement>('.pc-preset-owner-actions button')].find(button =>
+      button.textContent?.includes('立即应用'),
+    );
+    if (!loaded || !applyButton?.disabled) {
+      throw new Error('Historical chat preset ownership state is missing or directly applicable');
+    }
   } else if (name === 'searchable-select' || name === 'searchable-select-dark-long') {
     useSettingsStore().setTheme(name === 'searchable-select-dark-long' ? 'dark' : 'light');
     const library = useEntryLibraryStore();
@@ -3575,7 +3721,7 @@ async function applyScenario(name: VisualScenarioName, options: { height?: numbe
     sourceArea.scrollIntoView({ block: 'center' });
     await waitForPaint();
   } else if (name === 'game-guess-number-input') {
-    resetPhoneToRoute('games', 'play', '猜数字', { game: 'guess-number' });
+    resetPhoneToRoute('game-guess-number', 'root', '猜数字');
     await waitForPaint();
     const input = document.querySelector<HTMLInputElement>('.pc-guess-form .pc-guess-number-input');
     if (!input) throw new Error('Guess-number input is missing from its isolated scenario');
@@ -3785,6 +3931,28 @@ async function applyScenario(name: VisualScenarioName, options: { height?: numbe
       presetName: '视觉预设',
       promptId: 'visual-style',
     });
+  } else if (name === 'preset-editor-role-save') {
+    resetPhoneToRoute('preset-manager', 'detail', '预设条目', { presetName: '视觉预设' });
+    phone.pushRoute('preset-manager', 'edit', '编辑预设条目', {
+      presetName: '视觉预设',
+      promptId: 'visual-style',
+    });
+    const loaded = await waitForVisualCondition(() => Boolean(document.querySelector('.pc-preset-editor-page')));
+    const roleSelect = document.querySelector<HTMLSelectElement>('.pc-preset-editor-page .pc-select');
+    if (!loaded || !roleSelect) throw new Error('Saved preset prompt role selector is missing');
+    roleSelect.value = 'assistant';
+    roleSelect.dispatchEvent(new Event('change', { bubbles: true }));
+    await waitForPaint();
+    const saveButton = [...document.querySelectorAll<HTMLButtonElement>('.pc-preset-editor-page .pc-form-actions button')].find(
+      button => button.textContent?.trim() === '保存',
+    );
+    if (!saveButton || saveButton.disabled) throw new Error('Changing a saved prompt role did not enable save');
+    saveButton.click();
+    const returned = await waitForVisualCondition(() => usePhoneStore().currentRoute.page === 'detail');
+    const savedRole = readTavernPreset('视觉预设').prompts.find(prompt => prompt.id === 'visual-style')?.role;
+    if (!returned || savedRole !== 'assistant') {
+      throw new Error(`Saved preset prompt role did not persist: ${savedRole || 'missing'}`);
+    }
   } else if (name === 'preset-scroll-return') {
     resetPhoneToRoute('preset-manager', 'detail', '预设条目', { presetName: '视觉预设' });
     const loaded = await waitForVisualCondition(() => document.querySelectorAll('.pc-preset-prompt-main').length > 2);

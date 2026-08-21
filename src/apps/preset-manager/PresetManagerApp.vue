@@ -29,10 +29,12 @@
       :loaded-preset-name="loadedPresetName"
       :loading="loading"
       :mutation-busy="mutationBusy"
+      :move-preset-label="isPluginDetail ? '移到酒馆预设' : '移到插件预设'"
       :plugin-preset="isPluginDetail"
       :default-app-ids="detailDefaultAppIds"
       :default-app-options="defaultAppOptions"
       :preset-deletable="detailPluginPresetId !== BUILTIN_DIARY_PRESET_ID"
+      :preset-movable="detailPresetMovable"
       :preset="activePreset"
       :preset-name="detailPresetName"
       :prompt-drag="promptDrag"
@@ -44,6 +46,7 @@
       @drag-start="startPromptDrag"
       @delete-preset="removePreset"
       @export-preset="exportActivePreset"
+      @move-preset="movePreset"
       @open-prompt="openPromptEditor"
       @rename-preset="renamePreset"
       @switch-preset="switchPreset"
@@ -56,10 +59,10 @@
       v-else-if="route.page === 'edit' && activePrompt"
       v-model:draft="editorDraft"
       v-model:name-draft="editorNameDraft"
+      v-model:role-draft="editorRoleDraft"
       :dirty="editorDirty"
       :preset-name="detailPresetName"
       :prompt="activePrompt"
-      :role-label="promptRoleLabel(activePrompt.role)"
       :saving="saving"
       @back="phone.goBack()"
       @remove="removePrompt"
@@ -91,6 +94,7 @@ import { usePluginPresetStore } from '@/store/pluginPresets';
 import { storeToRefs } from 'pinia';
 import {
   buildPresetDisplayNodes,
+  createTavernPreset,
   deleteTavernPreset,
   deleteTavernPresetPrompt,
   duplicateTavernPresetPrompt,
@@ -103,6 +107,7 @@ import {
   type TavernPreset,
   type TavernPresetPrompt,
 } from './api';
+import { movePresetTransactional, PresetMigrationError } from './presetMigration';
 import PresetCatalogPage from './pages/PresetCatalogPage.vue';
 import PresetDetailPage from './pages/PresetDetailPage.vue';
 import PresetPromptCopyPage from './pages/PresetPromptCopyPage.vue';
@@ -132,6 +137,7 @@ const busyPromptIds = ref(new Set<string>());
 const collapsedGroupIds = ref(new Set<string>());
 const editorDraft = ref('');
 const editorNameDraft = ref('');
+const editorRoleDraft = ref<TavernPresetPrompt['role']>('system');
 const enabledOnly = ref(false);
 const copyDraft = reactive({
   content: '',
@@ -168,6 +174,11 @@ const defaultAppOptions = computed(() => {
 const detailDefaultAppIds = computed(() =>
   isPluginDetail.value ? pluginPresets.getDefaultAppIds(detailPluginPresetId.value) : [],
 );
+const detailPresetMovable = computed(() =>
+  isPluginDetail.value
+    ? detailPluginPresetId.value !== BUILTIN_DIARY_PRESET_ID
+    : getCurrentTavernPresetName() !== detailPresetName.value,
+);
 const activePromptId = computed(() => route.value.params?.promptId || '');
 const copySourcePromptId = computed(() => route.value.params?.sourcePromptId || '');
 const activePrompt = computed(
@@ -203,7 +214,9 @@ const visiblePresetNames = computed(() => {
 });
 const editorDirty = computed(() =>
   activePrompt.value
-    ? editorDraft.value !== (activePrompt.value.content || '') || editorNameDraft.value !== activePrompt.value.name
+    ? editorDraft.value !== (activePrompt.value.content || '') ||
+      editorNameDraft.value !== activePrompt.value.name ||
+      editorRoleDraft.value !== activePrompt.value.role
     : false,
 );
 const mutationBusy = computed(() => saving.value || busyPromptIds.value.size > 0 || promptDrag.isDragging);
@@ -252,6 +265,7 @@ async function loadDetail() {
     if (route.value.page === 'edit') {
       editorDraft.value = activePrompt.value?.content || '';
       editorNameDraft.value = activePrompt.value?.name || '';
+      editorRoleDraft.value = activePrompt.value?.role || 'system';
     }
     if (route.value.page === 'copy' && copySourcePrompt.value) {
       copyDraft.content = copySourcePrompt.value.content || '';
@@ -411,6 +425,92 @@ async function removePreset() {
   }
 }
 
+async function movePreset() {
+  const sourceName = detailPresetName.value.trim();
+  if (!sourceName || mutationBusy.value || !detailPresetMovable.value) return;
+  const targetOwner = isPluginDetail.value ? '酒馆预设' : '插件预设';
+  const requested = await phone.promptNotice(`输入移动到${targetOwner}后使用的名称。`, {
+    confirmLabel: '继续',
+    initialValue: sourceName,
+    title: `移到${targetOwner}`,
+  });
+  const targetName = requested?.trim() || '';
+  if (!targetName) return;
+  const confirmed = await phone.confirmNotice(
+    `确认把“${sourceName}”移到${targetOwner}吗？目标创建并校验成功后，才会删除来源。`,
+    { confirmLabel: '移动', kind: 'warning' },
+  );
+  if (!confirmed || mutationBusy.value) return;
+
+  saving.value = true;
+  try {
+    if (isPluginDetail.value) {
+      const sourceId = detailPluginPresetId.value;
+      const affectedAppIds = pluginPresets.getDefaultAppIds(sourceId);
+      await movePresetTransactional({
+        createTarget: preset => createTavernPreset(targetName, preset),
+        deleteSource: () => pluginPresets.deletePreset(sourceId),
+        deleteTarget: () => deleteTavernPreset(targetName),
+        readSource: () => pluginPresets.readPreset(sourceId),
+        readTarget: () => readTavernPreset(targetName),
+        sourceDeletable: sourceId !== BUILTIN_DIARY_PRESET_ID,
+        sourceName,
+        targetExists: name => listTavernPresets().includes(name),
+        targetName,
+      });
+      affectedAppIds.forEach(appId => generationOverrides.resetApp(appId));
+      activePreset.value = null;
+      await refreshRoot();
+      phone.replaceRoute('preset-manager', 'detail', '预设条目', {
+        presetId: '',
+        presetName: targetName,
+        presetSource: 'tavern',
+      });
+      toastr.success(`已移到酒馆预设“${targetName}”`);
+      return;
+    }
+
+    let targetId = '';
+    await movePresetTransactional({
+      createTarget: async preset => {
+        const imported = await pluginPresets.importPreset(preset, `${targetName}.json`);
+        targetId = imported.id;
+        if (imported.name !== targetName) {
+          await pluginPresets.deletePreset(imported.id);
+          targetId = '';
+          throw new Error(`插件预设名称“${targetName}”在创建时发生冲突`);
+        }
+      },
+      deleteSource: () => deleteTavernPreset(sourceName),
+      deleteTarget: async () => {
+        if (targetId) await pluginPresets.deletePreset(targetId);
+      },
+      readSource: () => readTavernPreset(sourceName),
+      readTarget: () => pluginPresets.readPreset(targetId),
+      sourceDeletable: getCurrentTavernPresetName() !== detailPresetName.value,
+      sourceName,
+      targetExists: name => pluginPresetItems.value.some(item => item.name === name),
+      targetName,
+    });
+    const removed = presetLinks.removePresetReferences(sourceName) + entryLibrary.removePresetReferences(sourceName);
+    activePreset.value = null;
+    presetSource.value = 'plugin';
+    phone.replaceRoute('preset-manager', 'detail', '插件预设条目', {
+      presetId: targetId,
+      presetSource: 'plugin',
+    });
+    toastr.success(`已移到插件预设“${targetName}”，并清理 ${removed} 处酒馆预设引用`);
+  } catch (error) {
+    if (error instanceof PresetMigrationError && error.stage === 'source-delete') {
+      toastr.error('目标预设已创建并校验，但来源删除失败；两边都还在');
+    } else {
+      toastr.error(error instanceof Error ? error.message : String(error));
+    }
+  } finally {
+    saving.value = false;
+  }
+}
+
 async function togglePrompt(prompt: TavernPresetPrompt, enabled: boolean) {
   if (!activePreset.value || busyPromptIds.value.has(prompt.id)) return;
   setBusyPrompt(prompt.id, true);
@@ -542,22 +642,13 @@ function cancelPromptDrag(event: PointerEvent) {
   resetPromptDrag();
 }
 
-function promptRoleLabel(role: TavernPresetPrompt['role']) {
-  return (
-    {
-      assistant: 'AI 消息',
-      system: '系统消息',
-      user: '用户消息',
-    }[role] || role
-  );
-}
-
 async function savePromptContent() {
   if (!activePrompt.value || !editorDirty.value || saving.value || !editorNameDraft.value.trim()) return;
   saving.value = true;
   try {
-    const patch: Partial<Pick<TavernPresetPrompt, 'content' | 'name'>> = {
+    const patch: Partial<Pick<TavernPresetPrompt, 'content' | 'name' | 'role'>> = {
       name: editorNameDraft.value.trim(),
+      role: editorRoleDraft.value,
     };
     if (typeof activePrompt.value.content === 'string') patch.content = editorDraft.value;
     if (isPluginDetail.value) {

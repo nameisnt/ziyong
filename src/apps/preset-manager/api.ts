@@ -54,6 +54,7 @@ export type TavernPresetPromptCopyInput = {
 };
 
 type GetPresetFn = (presetName: string) => unknown;
+type CreatePresetFn = (presetName: string, preset: TavernPreset) => boolean | Promise<boolean>;
 type LoadPresetFn = (presetName: string) => boolean | Promise<boolean>;
 type UpdatePresetFn = (
   presetName: string,
@@ -162,6 +163,18 @@ export function readTavernPreset(presetName: string) {
   throw new Error(`无法读取预设“${presetName}”：当前环境只提供了预设名称，没有提供完整预设内容`);
 }
 
+export async function createTavernPreset(presetName: string, preset: TavernPreset) {
+  const name = presetName.trim();
+  if (!name || name === 'in_use') throw new Error('预设名称无效');
+  if (listTavernPresets().includes(name)) throw new Error(`已经存在名为“${name}”的预设`);
+  const createPreset = requirePresetFunction<CreatePresetFn>('createPreset');
+  const created = await createPreset(name, structuredClone(assertPreset(preset)));
+  if (!created || !listTavernPresets().includes(name)) {
+    throw new Error('酒馆未能确认目标预设已创建');
+  }
+  return readTavernPreset(name);
+}
+
 export async function loadTavernPreset(presetName: string) {
   const loadPreset = requirePresetFunction<LoadPresetFn>('loadPreset');
   const loaded = await loadPreset(presetName);
@@ -204,7 +217,7 @@ export async function deleteTavernPreset(presetName: string) {
 function patchPrompt(
   preset: TavernPreset,
   promptId: string,
-  patch: Partial<Pick<TavernPresetPrompt, 'content' | 'enabled' | 'name'>>,
+  patch: Partial<Pick<TavernPresetPrompt, 'content' | 'enabled' | 'name' | 'role'>>,
 ) {
   const prompt = preset.prompts.find(item => item.id === promptId);
   if (!prompt) {
@@ -319,18 +332,34 @@ function enqueuePresetMutation<T>(presetName: string, task: () => Promise<T>) {
 export async function updateTavernPresetPrompt(
   presetName: string,
   promptId: string,
-  patch: Partial<Pick<TavernPresetPrompt, 'content' | 'enabled' | 'name'>>,
+  patch: Partial<Pick<TavernPresetPrompt, 'content' | 'enabled' | 'name' | 'role'>>,
 ) {
   return enqueuePresetMutation(presetName, async () => {
     const updatePresetWith = requirePresetFunction<UpdatePresetFn>('updatePresetWith');
     const stored = assertPreset(
-      await updatePresetWith(presetName, preset => patchPrompt(preset, promptId, patch), { render: 'none' }),
+      await updatePresetWith(
+        presetName,
+        preset => {
+          patchPrompt(preset, promptId, patch);
+          if (patch.role) normalizeInChatPromptOrder(preset);
+          return preset;
+        },
+        { render: 'none' },
+      ),
     );
 
     let liveSynced = true;
     if (getCurrentTavernPresetName() === presetName) {
       try {
-        await updatePresetWith('in_use', preset => patchPrompt(preset, promptId, patch), { render: 'immediate' });
+        await updatePresetWith(
+          'in_use',
+          preset => {
+            patchPrompt(preset, promptId, patch);
+            if (patch.role) normalizeInChatPromptOrder(preset);
+            return preset;
+          },
+          { render: 'immediate' },
+        );
       } catch {
         liveSynced = false;
       }

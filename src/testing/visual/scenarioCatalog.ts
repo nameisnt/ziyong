@@ -133,7 +133,6 @@ export function createVisualScenarioGroups(rootAppScenarios: string[]): VisualSc
       id: 'worldbook',
       scenarios: ['worldbook-link-legacy-entry', 'worldbook-entry-editor', 'world-strategy-lamps'],
     },
-    { id: 'preset-link', scenarios: ['preset-link-auto-reload', 'preset-link-history'] },
     {
       id: 'forum',
       scenarios: [
@@ -159,11 +158,20 @@ export function createVisualScenarioGroups(rootAppScenarios: string[]): VisualSc
       scenarios: [
         'preset-builtin-diary',
         'plugin-preset-lifecycle',
+        'preset-owner-current',
+        'preset-owner-history',
         'preset-detail',
         'preset-copy-reorder',
         'preset-copy-editor',
         'preset-editor',
+        'preset-editor-role-save',
         'preset-scroll-return',
+        'preset-move-tavern-to-plugin',
+        'preset-move-plugin-to-tavern',
+        'preset-move-conflict',
+        'preset-move-target-failure',
+        'preset-move-verify-rollback',
+        'preset-move-source-delete-failure',
       ],
     },
     {

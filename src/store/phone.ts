@@ -3,8 +3,14 @@ import { getRegisteredPhoneAppScopeSwitchHandlers } from '@/core/appRegistry';
 import { areChatScopeKeysEquivalent, getCurrentChatScopeKey, isPlaceholderChatScopeKey } from '@/store/chatScoped';
 import { getOptionalGlobalFunction, getOptionalGlobalValue, onTavernEvent } from '@/util/runtime';
 
+export interface PhoneHomeSourceContext {
+  folderId?: string;
+  pageIndex: number;
+}
+
 export interface PhoneRoute {
   appId: string;
+  homeSource?: PhoneHomeSourceContext;
   page: string;
   title: string;
   params?: Record<string, string>;
@@ -292,6 +298,20 @@ export const usePhoneStore = defineStore('phone', () => {
     closePhoneNow();
   }
 
+  function recordHomeSource(source: PhoneHomeSourceContext) {
+    const route = currentRoute.value;
+    if (route.appId !== 'home') return;
+    const pageIndex = Math.max(0, Math.trunc(source.pageIndex));
+    const folderId = source.folderId?.trim() || undefined;
+    stack.value = [
+      ...stack.value.slice(0, -1),
+      {
+        ...route,
+        homeSource: folderId ? { folderId, pageIndex } : { pageIndex },
+      },
+    ];
+  }
+
   function openApp(appId: string) {
     const app = getPhoneApp(appId);
     if (!app) return;
@@ -577,6 +597,7 @@ export const usePhoneStore = defineStore('phone', () => {
     presentGeneratedPage,
     pushPage,
     pushRoute,
+    recordHomeSource,
     registerNavigationGuard,
     registerPreviewSession,
     replacePage,

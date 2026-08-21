@@ -49,7 +49,6 @@ export const tutorialAppGuides: TutorialAppGuide[] = [
 
   { appId: 'prompts', groupId: 'tavern', firstAction: '选择主提示词、类型提示词、解析规则或快捷短语进行编辑。' },
   { appId: 'preset-manager', groupId: 'tavern', firstAction: '选择酒馆预设，或导入只供插件生成使用的私有预设。' },
-  { appId: 'preset-link', groupId: 'tavern', firstAction: '选择预设后保存聊天绑定，需要时再单独立即应用。' },
   { appId: 'entry-library', groupId: 'tavern', firstAction: '手动新建条目，或选择预设、世界书来源和分组批量收藏。' },
   { appId: 'worldbook-link', groupId: 'tavern', firstAction: '选择世界书并保存当前聊天需要启用的条目状态。' },
   {
@@ -102,7 +101,16 @@ export const tutorialAppGuides: TutorialAppGuide[] = [
     groupId: 'media',
     firstAction: '开启自动快照并设置保留数量；进入具体版本后可保护、导出或确认恢复。',
   },
-  { appId: 'games', groupId: 'media', firstAction: '选择一个轻量小游戏，不会读取或修改聊天创作数据。' },
+  { appId: 'game-2048', groupId: 'media', firstAction: '滑动或使用方向键合并相同数字。' },
+  { appId: 'game-snake', groupId: 'media', firstAction: '选择速度后开始，滑动控制贪吃蛇方向。' },
+  { appId: 'game-minesweeper', groupId: 'media', firstAction: '选择翻开或插旗模式，再点击棋盘格。' },
+  { appId: 'game-sudoku', groupId: 'media', firstAction: '选择空格，再使用数字键盘填数。' },
+  { appId: 'game-nonogram', groupId: 'media', firstAction: '根据行列提示填充或排除格子。' },
+  { appId: 'game-sliding-puzzle', groupId: 'media', firstAction: '移动相邻数字块，把数字恢复为顺序。' },
+  { appId: 'game-guess-number', groupId: 'media', firstAction: '输入四位数字，根据提示继续推理。' },
+  { appId: 'game-gomoku', groupId: 'media', firstAction: '点击棋盘落子，与电脑进行五子棋对局。' },
+  { appId: 'game-reversi', groupId: 'media', firstAction: '选择合法位置落子并翻转对方棋子。' },
+  { appId: 'game-solitaire', groupId: 'media', firstAction: '点击牌库发牌，按接龙规则整理牌组。' },
   { appId: 'tutorial', groupId: 'media', firstAction: '按分类浏览，或搜索按钮文字、错误关键词和 App 名。' },
 ];
 
