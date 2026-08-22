@@ -231,9 +231,10 @@ export default definePhoneApp({
       importData: data => {
         _.set(extension_settings, storylinesField, data);
       },
+      migrateImport: data => data,
       rehydrateFromSettings: () => useStorylinesStore().rehydrateFromSettings(),
       schema: createChatScopedBackupSchema(StorylinesScopeDataSchema),
-      schemaVersion: 1,
+      schemaVersion: 2,
       scope: 'chat',
     },
   ],

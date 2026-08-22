@@ -1,14 +1,11 @@
 import {
   areChatScopeKeysEquivalent,
   getCurrentChatScopeKey,
-  readChatScopedEnvelope,
   useChatScopedDomain,
 } from '@/store/chatScoped';
-import { getProfileKindLabel, profilesField, ProfilesScopeDataSchema, type ProfileEntry } from '@/apps/profiles/store';
 import type { PhoneAppResetContext } from '@/core/appRegistry';
 import { getOptionalGlobalFunction } from '@/util/runtime';
 import { validateInplace } from '@/util/zod';
-import { extension_settings } from '@sillytavern/scripts/extensions';
 
 export const worldSlotsField = 'sillytavern_phone_world_slots';
 export const WORLD_SLOTS_BOOK_NAME = '当前聊天';
@@ -232,74 +229,6 @@ function createWorldEntry(slot: WorldSlot, entryId: number): WorldBookEntry {
   };
 }
 
-function buildProfileContent(entry: ProfileEntry, columns: Array<{ enabled: boolean; id: string; label: string }>) {
-  const enabledColumnIds = new Set(columns.filter(column => column.enabled).map(column => column.id));
-  const fieldLines = columns
-    .filter(column => column.enabled && !['title', 'summary', 'tags', 'content'].includes(column.id))
-    .map(column => (entry.fields[column.id]?.trim() ? `${column.label}：${entry.fields[column.id].trim()}` : ''))
-    .filter(Boolean);
-  return [
-    `## ${entry.title}`,
-    `类型：${getProfileKindLabel(entry.kind)}`,
-    enabledColumnIds.has('summary') && entry.summary ? `摘要：${entry.summary}` : '',
-    enabledColumnIds.has('tags') && entry.tags.length ? `标签：${entry.tags.join('、')}` : '',
-    ...fieldLines,
-  ]
-    .filter(Boolean)
-    .join('\n');
-}
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return Boolean(value) && typeof value === 'object' && !Array.isArray(value);
-}
-
-function migrateLegacyWorldSlotSettings() {
-  const currentScopeKey = getCurrentChatScopeKey();
-  const envelope = readChatScopedEnvelope(worldSlotsField, currentScopeKey);
-  const profileEnvelope = readChatScopedEnvelope(profilesField, currentScopeKey);
-  let changed = false;
-
-  Object.entries(envelope.scopes).forEach(([scopeKey, rawScope]) => {
-    if (!isRecord(rawScope) || !Array.isArray(rawScope.slots)) return;
-    const profileScope = Object.entries(profileEnvelope.scopes).find(
-      ([candidateScopeKey]) =>
-        candidateScopeKey === scopeKey || areChatScopeKeysEquivalent(candidateScopeKey, scopeKey),
-    )?.[1];
-    const profileResult = ProfilesScopeDataSchema.safeParse(profileScope ?? {});
-    const profileData = profileResult.success ? profileResult.data : null;
-    const profilesById = new Map(profileData?.entries.map(entry => [entry.id, entry]) ?? []);
-    const tablesById = new Map(profileData?.tables.map(table => [table.id, table]) ?? []);
-    const slots = rawScope.slots.map(rawSlot => {
-      if (!isRecord(rawSlot)) return rawSlot;
-      const profileEntryIds = Array.isArray(rawSlot.profileEntryIds)
-        ? rawSlot.profileEntryIds.filter((id): id is string => typeof id === 'string')
-        : [];
-      const profileBlocks = profileEntryIds
-        .map(id => profilesById.get(id))
-        .filter((entry): entry is ProfileEntry => Boolean(entry))
-        .map(entry => buildProfileContent(entry, tablesById.get(entry.tableId)?.columns ?? []));
-      const content = [typeof rawSlot.content === 'string' ? rawSlot.content.trim() : '', ...profileBlocks]
-        .filter(Boolean)
-        .join('\n\n');
-      const slot = { ...rawSlot };
-      delete slot.profileEntryIds;
-      delete slot.type;
-      if (slot.strategyType !== 'constant' && slot.strategyType !== 'selective') {
-        slot.strategyType = Array.isArray(slot.keys) && slot.keys.length ? 'selective' : 'constant';
-        changed = true;
-      }
-      if ('profileEntryIds' in rawSlot || 'type' in rawSlot) changed = true;
-      return { ...slot, content };
-    });
-    const scope: Record<string, unknown> = { ...rawScope, slots };
-    delete scope.bookName;
-    if ('bookName' in rawScope) changed = true;
-    envelope.scopes[scopeKey] = scope;
-  });
-
-  if (changed) _.set(extension_settings, worldSlotsField, envelope);
-}
-
 function nextEntryId(entries: Record<string, WorldBookEntry>) {
   const ids = Object.keys(entries)
     .map(key => Number(key))
@@ -308,7 +237,6 @@ function nextEntryId(entries: Record<string, WorldBookEntry>) {
 }
 
 export const useWorldSlotsStore = defineStore('world-slots', () => {
-  migrateLegacyWorldSlotSettings();
   const {
     data,
     rehydrateFromSettings: rehydrateScopedData,
@@ -568,7 +496,6 @@ export const useWorldSlotsStore = defineStore('world-slots', () => {
   }
 
   function rehydrateFromSettings() {
-    migrateLegacyWorldSlotSettings();
     rehydrateScopedData();
     queueAutoSync();
   }

@@ -24,9 +24,6 @@
       >
         <i class="fa-solid fa-tags"></i>
       </button>
-      <ActionMenu :label="t`管理`" icon="fa-solid fa-bars">
-        <ItemTransferImportAction app-id="theater" :params="{}" :label="t`导入单条小剧场`" />
-      </ActionMenu>
     </div>
 
     <section v-if="filterOpen && historyTypeTabs.length" class="pc-page-section pc-history-tag-panel">
@@ -69,11 +66,9 @@
 </template>
 
 <script setup lang="ts">
-import ActionMenu from '@/components/ActionMenu.vue';
 import CapsuleTag from '@/components/CapsuleTag.vue';
 import ContentVersionBadge from '@/components/ContentVersionBadge.vue';
 import EmptyState from '@/components/EmptyState.vue';
-import ItemTransferImportAction from '@/components/ItemTransferImportAction.vue';
 import type { TheaterEntry } from '@/type/theater';
 
 export interface TheaterHistoryTypeTab {

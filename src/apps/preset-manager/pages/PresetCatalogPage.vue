@@ -13,7 +13,9 @@
       <span v-if="source === 'tavern'" class="pc-directory-count" :title="loadedPresetName">
         当前：{{ loadedPresetName || '未读取到预设' }}
       </span>
-      <span v-else class="pc-directory-count">{{ pluginPresets.length }} 个私有预设</span>
+      <span v-else class="pc-directory-count">
+        {{ pluginPresets.length }} 个私有预设<template v-if="hiddenPluginPresetCount"> · {{ hiddenPluginPresetCount }} 隐藏</template>
+      </span>
       <button
         v-if="source === 'tavern'"
         class="pc-icon-btn"
@@ -25,16 +27,27 @@
       >
         <i class="fa-solid fa-rotate" :class="{ 'fa-spin': loading }"></i>
       </button>
-      <button
-        v-else
-        class="pc-icon-btn primary"
-        type="button"
-        title="导入插件预设"
-        aria-label="导入插件预设"
-        @click="fileInput?.click()"
-      >
-        <i class="fa-solid fa-file-import"></i>
-      </button>
+      <template v-else>
+        <button
+          class="pc-icon-btn"
+          :class="{ active: showHidden }"
+          type="button"
+          :title="showHidden ? '收起隐藏预设' : '显示隐藏预设'"
+          :aria-label="showHidden ? '收起隐藏预设' : '显示隐藏预设'"
+          @click="showHidden = !showHidden"
+        >
+          <i :class="showHidden ? 'fa-solid fa-eye-slash' : 'fa-solid fa-eye'"></i>
+        </button>
+        <button
+          class="pc-icon-btn primary"
+          type="button"
+          title="导入插件预设"
+          aria-label="导入插件预设"
+          @click="fileInput?.click()"
+        >
+          <i class="fa-solid fa-file-import"></i>
+        </button>
+      </template>
       <input ref="fileInput" hidden type="file" accept="application/json,.json" @change="importFile" />
     </header>
 
@@ -48,7 +61,7 @@
     </div>
 
     <label
-      v-else-if="source === 'tavern' ? presetNames.length : pluginPresets.length"
+      v-else-if="source === 'tavern' ? presetNames.length : catalogPluginPresets.length"
       class="pc-search-field pc-preset-search"
     >
       <i class="fa-solid fa-magnifying-glass"></i>
@@ -84,12 +97,18 @@
       </article>
     </div>
     <div v-else-if="source === 'plugin' && visiblePluginPresets.length" class="pc-directory-list pc-preset-list">
-      <article v-for="preset in visiblePluginPresets" :key="preset.id" class="pc-list-row pc-preset-row">
+      <article
+        v-for="preset in visiblePluginPresets"
+        :key="preset.id"
+        class="pc-list-row pc-preset-row"
+        :class="{ disabled: preset.hidden }"
+      >
         <button class="pc-preset-open" type="button" @click="$emit('open-plugin', preset.id)">
           <span class="pc-preset-copy">
             <strong :title="preset.name">{{ preset.name }}</strong>
             <small>
               <template v-if="preset.builtIn">内置 · </template>
+              <template v-if="preset.hidden">已隐藏 · </template>
               {{ preset.sourceFormat === 'legacy' ? '兼容格式' : '现代格式' }}
             </small>
           </span>
@@ -120,17 +139,27 @@ const props = defineProps<{
 }>();
 
 const query = defineModel<string>('query', { required: true });
+const showHidden = defineModel<boolean>('showHidden', { required: true });
 const source = defineModel<'plugin' | 'tavern'>('source', { required: true });
 const fileInput = ref<HTMLInputElement | null>(null);
+const hiddenPluginPresetCount = computed(() => props.pluginPresets.filter(item => item.hidden).length);
+const catalogPluginPresets = computed(() =>
+  showHidden.value ? props.pluginPresets : props.pluginPresets.filter(item => !item.hidden),
+);
 const visiblePluginPresets = computed(() => {
   const keyword = query.value.trim().toLocaleLowerCase();
   return keyword
-    ? props.pluginPresets.filter(item => item.name.toLocaleLowerCase().includes(keyword))
-    : props.pluginPresets;
+    ? catalogPluginPresets.value.filter(item => item.name.toLocaleLowerCase().includes(keyword))
+    : catalogPluginPresets.value;
 });
 const emptyTitle = computed(() => {
   if (source.value === 'plugin') {
-    return props.pluginPresets.length && query.value.trim() ? '没有找到匹配的插件预设' : '还没有导入插件预设';
+    if (!showHidden.value && hiddenPluginPresetCount.value === props.pluginPresets.length && props.pluginPresets.length) {
+      return '插件预设均已隐藏，可点击眼睛查看';
+    }
+    return catalogPluginPresets.value.length && query.value.trim()
+      ? '没有找到匹配的插件预设'
+      : '还没有导入插件预设';
   }
   return props.presetNames.length && query.value.trim() ? '没有找到匹配的预设' : '没有可用的酒馆预设';
 });

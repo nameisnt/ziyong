@@ -6,6 +6,7 @@
       :default-preset-selection="defaultPresetSelection"
       :error="error"
       :from-start-end="fromStartEnd"
+      :generate-disabled="generateDisabled"
       :range-text="rangeText"
       :raw-output="rawOutput"
       :recent-count="recentCount"
@@ -45,6 +46,7 @@ withDefaults(
     captureResetKey: unknown;
     defaultPresetSelection?: string;
     error: string;
+    generateDisabled?: boolean;
     kicker?: string;
     rawOutput: string;
     requirementPlaceholder?: string;
@@ -54,6 +56,7 @@ withDefaults(
   {
     kicker: '',
     defaultPresetSelection: '',
+    generateDisabled: false,
     requirementPlaceholder: '',
     title: '',
   },

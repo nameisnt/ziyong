@@ -17,6 +17,16 @@ export async function getPastCharacterChats() {
       file_name: 'visual-chat.jsonl',
       mes: '视觉测试聊天',
     },
+    {
+      file_name: 'visual-history-a.jsonl',
+      mes: '视觉旧聊天 A',
+      title: '视觉旧聊天 A',
+    },
+    {
+      file_name: 'visual-history-b.jsonl',
+      mes: '视觉旧聊天 B',
+      title: '视觉旧聊天 B',
+    },
   ];
 }
 

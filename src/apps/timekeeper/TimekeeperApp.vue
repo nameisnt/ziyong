@@ -37,6 +37,24 @@
         </summary>
         <div class="pc-asset-field pc-calendar-select">
           <SearchableCombobox
+            input-label="历法资料映射"
+            :model-value="settings.calendarProfileMappingId"
+            :options="calendarMappingOptions"
+            placeholder="不读取外部历法"
+            @update:model-value="settings.calendarProfileMappingId = $event"
+          />
+          <button
+            class="pc-icon-btn"
+            type="button"
+            aria-label="刷新外部资料"
+            title="刷新外部资料"
+            @click="refreshMappedProfiles"
+          >
+            <i class="fa-solid fa-rotate"></i>
+          </button>
+        </div>
+        <div class="pc-asset-field pc-calendar-select">
+          <SearchableCombobox
             input-label="选择历法"
             :model-value="settings.calendar.id"
             :options="calendarOptions"
@@ -170,6 +188,26 @@
           </span>
         </div>
 
+        <div class="pc-asset-field pc-profile-mapping-select">
+          <SearchableCombobox
+            input-label="人物资料映射"
+            :model-value="settings.personProfileMappingId"
+            :options="personMappingOptions"
+            placeholder="仅使用本地人物"
+            @update:model-value="settings.personProfileMappingId = $event"
+          />
+          <button
+            class="pc-icon-btn"
+            type="button"
+            aria-label="刷新外部人物"
+            title="刷新外部人物"
+            @click="refreshMappedProfiles"
+          >
+            <i class="fa-solid fa-rotate"></i>
+          </button>
+        </div>
+        <p v-if="externalProfileError" class="pc-timekeeper-profile-error">{{ externalProfileError }}</p>
+
         <EmptyState v-if="!settings.people.length" compact :title="t`还没有人物`" />
 
         <div v-else class="pc-people-list">
@@ -181,13 +219,13 @@
                 class="pc-field name"
                 type="text"
                 :placeholder="t`人物名称`"
-                @change="timekeeper.syncPersonProfile(person.id)"
+                @change="syncPersonName(person.id)"
               />
             </label>
-            <ProfileEntryPicker
-              :disabled-ids="linkedPersonProfileIds(person.id)"
-              :kinds="['character']"
-              :model-value="person.profileEntryId"
+            <SearchableCombobox
+              input-label="关联外部人物"
+              :model-value="person.profileIdentityValue"
+              :options="personProfileOptions(person.id)"
               :placeholder="t`关联人物资料`"
               @update:model-value="onPersonProfileChange(person.id, $event)"
             />
@@ -302,9 +340,8 @@
 import EmptyState from '@/components/EmptyState.vue';
 import ConfigurationRecoveryNotice from '@/components/ConfigurationRecoveryNotice.vue';
 import InfoHint from '@/components/InfoHint.vue';
-import ProfileEntryPicker from '@/components/ProfileEntryPicker.vue';
 import SearchableCombobox from '@/components/SearchableCombobox.vue';
-import { useProfilesStore } from '@/apps/profiles/store';
+import { useExternalProfileMappingsStore } from '@/apps/profiles/profileMappings';
 import { usePhoneStore } from '@/store/phone';
 import { useSettingsStore } from '@/store/settings';
 import { appendToTavernInput } from '@/util/tavernInput';
@@ -313,9 +350,10 @@ import { storeToRefs } from 'pinia';
 
 const timekeeper = useTimekeeperStore();
 const phone = usePhoneStore();
-const profiles = useProfilesStore();
+const profileMappings = useExternalProfileMappingsStore();
 const settingsStore = useSettingsStore();
-const { configError, nextDate, rawConfig, settings } = storeToRefs(timekeeper);
+const { configError, externalProfileError, mappedCalendarRows, mappedPersonRows, nextDate, rawConfig, settings } =
+  storeToRefs(timekeeper);
 const promptText = computed(() => timekeeper.buildPromptText());
 const calendarHelpText =
   '公历会自动计算大小月和闰年；手动历法可以填写统一天数或用逗号分开每个月。保存后的历法模板可在所有聊天中选择。';
@@ -331,8 +369,8 @@ const calendarOptions = computed(() => {
       label: template.name,
       value: template.id,
     })),
-    ...profiles.data.entries.flatMap(entry => {
-      const calendar = timekeeper.getProfileCalendar(entry.id);
+    ...mappedCalendarRows.value.flatMap(row => {
+      const calendar = timekeeper.getProfileCalendar(row.identityValue);
       return calendar ? [{ label: `${calendar.name}（资料表）`, value: calendar.id }] : [];
     }),
   ];
@@ -344,6 +382,23 @@ const calendarOptions = computed(() => {
   }
   return options;
 });
+const personMappingOptions = computed(() => [
+  { label: '不连接外部人物', value: '' },
+  ...profileMappings.mappings.map(mapping => ({
+    disabled: !mapping.fields.some(field => field.key === 'birthDate'),
+    label: mapping.name,
+    value: mapping.id,
+  })),
+]);
+const calendarFieldKeys = ['calendarName', 'calendarEraName', 'calendarMonthsPerYear', 'calendarMonthDays'];
+const calendarMappingOptions = computed(() => [
+  { label: '不读取外部历法', value: '' },
+  ...profileMappings.mappings.map(mapping => ({
+    disabled: calendarFieldKeys.some(key => !mapping.fields.some(field => field.key === key)),
+    label: mapping.name,
+    value: mapping.id,
+  })),
+]);
 const isCurrentGlobalTemplate = computed(() =>
   settingsStore.settings.timekeeperCalendarTemplates.some(template => template.id === settings.value.calendar.id),
 );
@@ -396,48 +451,79 @@ function setPersonBirthDate(personId: string, event: Event) {
   syncPersonBirth(personId);
 }
 
-function syncPersonBirth(personId: string) {
+async function syncPersonBirth(personId: string) {
   const person = settings.value.people.find(item => item.id === personId);
   if (!person) return;
   timekeeper.normalizeCurrentDates();
   person.selected = true;
-  timekeeper.syncPersonProfile(personId);
+  try {
+    await timekeeper.syncPersonProfile(personId);
+  } catch (error) {
+    toastr.warning(error instanceof Error ? error.message : '同步人物资料失败');
+  }
 }
 
-function createPerson() {
-  const person = timekeeper.createPerson();
-  toastr.success(`已新增人物“${person.name}”及对应人物资料`);
+async function syncPersonName(personId: string) {
+  try {
+    await timekeeper.syncPersonProfile(personId);
+  } catch (error) {
+    toastr.warning(error instanceof Error ? error.message : '同步人物资料失败');
+  }
+}
+
+async function createPerson() {
+  try {
+    const person = await timekeeper.createPerson();
+    toastr.success(`已新增人物“${person.name}”${person.profileIdentityValue ? '及对应外部资料' : ''}`);
+  } catch (error) {
+    toastr.warning(error instanceof Error ? error.message : '新增人物失败');
+  }
 }
 
 async function deletePerson(personId: string) {
   const person = settings.value.people.find(item => item.id === personId);
   if (!person) return;
   const confirmed = await phone.confirmNotice(
-    person.profileEntryId ? `删除“${person.name}”吗？对应的人物资料也会一起删除。` : `删除“${person.name}”吗？`,
+    person.profileIdentityValue ? `删除“${person.name}”吗？对应的外部人物资料也会一起删除。` : `删除“${person.name}”吗？`,
     { confirmLabel: '删除人物及资料', kind: 'warning', title: '删除人物' },
   );
   if (!confirmed) return;
-  timekeeper.deletePerson(personId, true);
-  toastr.success(`已删除“${person.name}”${person.profileEntryId ? '及对应人物资料' : ''}`);
+  try {
+    await timekeeper.deletePerson(personId, true);
+    toastr.success(`已删除“${person.name}”${person.profileIdentityValue ? '及对应外部资料' : ''}`);
+  } catch (error) {
+    toastr.warning(error instanceof Error ? error.message : '删除人物失败');
+  }
 }
 
-function isPersonProfileLinked(profileEntryId: string) {
-  return Boolean(profileEntryId && profiles.getEntry(profileEntryId));
+function personProfileOptions(exceptPersonId: string) {
+  const linked = new Set(
+    settings.value.people
+      .filter(person => person.id !== exceptPersonId && person.profileIdentityValue)
+      .map(person => person.profileIdentityValue),
+  );
+  return [
+    { label: '不关联外部人物', value: '' },
+    ...mappedPersonRows.value.map(row => ({
+      disabled: linked.has(row.identityValue),
+      label: row.displayValue || row.identityValue,
+      value: row.identityValue,
+    })),
+  ];
 }
 
-function linkedPersonProfileIds(exceptPersonId: string) {
-  return settings.value.people
-    .filter(person => person.id !== exceptPersonId && person.profileEntryId)
-    .map(person => person.profileEntryId);
-}
-
-function onPersonProfileChange(personId: string, profileEntryId: string) {
-  const result = timekeeper.linkPersonProfile(personId, profileEntryId);
+function onPersonProfileChange(personId: string, profileIdentityValue: string) {
+  const result = timekeeper.linkPersonProfile(personId, profileIdentityValue);
   if (!result.ok) {
     toastr.warning('没有找到这份人物资料');
     return;
   }
   if (result.birthImported) toastr.success('已读取资料中的出生日期');
+}
+
+async function refreshMappedProfiles() {
+  await timekeeper.refreshMappedProfiles();
+  if (externalProfileError.value) toastr.warning(externalProfileError.value);
 }
 
 async function saveCalendarTemplate() {
@@ -529,6 +615,7 @@ async function copyPrompt() {
 }
 
 .pc-calendar-select,
+.pc-profile-mapping-select,
 .pc-calendar-card > .pc-field,
 .pc-date-field,
 .pc-calendar-summary {
@@ -540,6 +627,20 @@ async function copyPrompt() {
   grid-template-columns: minmax(0, 1fr) auto;
   gap: 8px;
   align-items: center;
+}
+
+.pc-profile-mapping-select {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 8px;
+  align-items: center;
+  margin-top: 12px;
+}
+
+.pc-timekeeper-profile-error {
+  margin: 8px 0 0;
+  color: var(--pc-danger);
+  font-size: 12px;
 }
 
 .pc-calendar-select .pc-asset-actions {

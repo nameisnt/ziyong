@@ -1,4 +1,5 @@
 import { useWorkbenchStore } from '@/apps/workbench/store';
+import { useExternalProfileMappingsStore } from '@/apps/profiles/profileMappings';
 
 type WorkbenchVisualScenarioContext = {
   resetPhoneToRoute: (appId: string, page: string, title: string, params?: Record<string, string>) => void;
@@ -50,6 +51,48 @@ async function confirmWorkbenchDeletion(context: WorkbenchVisualScenarioContext)
 }
 
 export async function applyWorkbenchVisualScenario(name: string, context: WorkbenchVisualScenarioContext) {
+  if (name === 'workbench-profile-step') {
+    const workbench = useWorkbenchStore();
+    const mappings = useExternalProfileMappingsStore();
+    workbench.settings.insertDrafts = [];
+    workbench.settings.logs = [];
+    workbench.settings.workflows = [];
+    mappings.data.mappings = [];
+    const mapping = mappings.createMapping({
+      displayColumn: '姓名',
+      fields: [{ column: '详情', key: 'details', label: '人物详情' }],
+      identityColumn: 'row_id',
+      name: '人物资料生成',
+      sheetKey: 'sheet_people',
+      tableName: '重要人物表',
+    });
+    const workflow = workbench.createWorkflow('外部资料整理');
+    const step = workbench.addStep(workflow.id, { actionId: 'generate', appId: 'profiles' });
+    step.config.profileMappingId = mapping.id;
+    step.config.profileTitleHint = '李沐晨';
+    context.resetPhoneToRoute('workbench', 'root', '工作台');
+    await context.waitForPaint();
+    document.querySelector<HTMLButtonElement>('.pc-workflow-title')?.click();
+    await context.waitForPaint();
+    findButtonByTitle('展开步骤')?.click();
+    await context.waitForPaint();
+    const mappingInput = [...document.querySelectorAll<HTMLInputElement>('.pc-step-card .pc-combobox-input')].find(
+      input => input.getAttribute('aria-label') === '选择外部资料映射',
+    );
+    if (mappingInput?.value !== '人物资料生成 · 重要人物表') {
+      throw new Error('Workbench profile step did not render the selected external mapping');
+    }
+    const workflowBody = document.querySelector<HTMLElement>('.pc-workflow-body');
+    const stepList = workflowBody?.querySelector<HTMLElement>('.pc-step-list');
+    if (!workflowBody || !stepList) throw new Error('Workbench profile step list is missing');
+    for (const child of workflowBody.children) {
+      if (child !== stepList) (child as HTMLElement).style.display = 'none';
+    }
+    mappingInput.scrollIntoView({ block: 'center' });
+    await context.waitForPaint();
+    return true;
+  }
+
   if (name !== 'workbench-crud') return false;
 
   const workbench = useWorkbenchStore();

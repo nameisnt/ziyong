@@ -3,6 +3,7 @@
     <PresetCatalogPage
       v-if="route.page === 'root'"
       v-model:query="presetQuery"
+      v-model:show-hidden="showHiddenPluginPresets"
       v-model:source="presetSource"
       :error-message="errorMessage"
       :loaded-preset-name="loadedPresetName"
@@ -31,6 +32,8 @@
       :mutation-busy="mutationBusy"
       :move-preset-label="isPluginDetail ? '移到酒馆预设' : '移到插件预设'"
       :plugin-preset="isPluginDetail"
+      :plugin-preset-built-in="detailPluginPreset?.builtIn === true"
+      :plugin-preset-hidden="detailPluginPreset?.hidden === true"
       :default-app-ids="detailDefaultAppIds"
       :default-app-options="defaultAppOptions"
       :preset-deletable="detailPluginPresetId !== BUILTIN_DIARY_PRESET_ID"
@@ -51,6 +54,7 @@
       @rename-preset="renamePreset"
       @switch-preset="switchPreset"
       @toggle-group="toggleGroup"
+      @toggle-preset-visibility="togglePresetVisibility"
       @toggle-prompt="togglePrompt"
       @toggle-default-app="toggleDefaultApp"
     />
@@ -127,6 +131,7 @@ const route = computed(() => phone.currentRoute);
 const presetNames = ref<string[]>([]);
 const presetQuery = ref('');
 const presetSource = ref<'plugin' | 'tavern'>('plugin');
+const showHiddenPluginPresets = ref(false);
 const loadedPresetName = ref('');
 const activePreset = ref<TavernPreset | null>(null);
 const loading = ref(false);
@@ -161,6 +166,9 @@ const detailPresetName = computed(() =>
   isPluginDetail.value
     ? pluginPresets.getById(detailPluginPresetId.value)?.name || ''
     : route.value.params?.presetName || '',
+);
+const detailPluginPreset = computed(() =>
+  isPluginDetail.value ? pluginPresets.getById(detailPluginPresetId.value) : null,
 );
 const defaultAppOptions = computed(() => {
   const apps = new Map<string, { icon: string; id: string; name: string }>();
@@ -302,6 +310,20 @@ function toggleDefaultApp(appId: string, enabled: boolean) {
   affectedAppIds.forEach(id => generationOverrides.resetApp(id));
 }
 
+async function togglePresetVisibility() {
+  const record = detailPluginPreset.value;
+  if (!record?.builtIn || mutationBusy.value) return;
+  saving.value = true;
+  try {
+    await pluginPresets.setHidden(record.id, !record.hidden);
+    toastr.success(record.hidden ? '内置预设已隐藏' : '内置预设已取消隐藏');
+  } catch (error) {
+    toastr.error(error instanceof Error ? error.message : String(error));
+  } finally {
+    saving.value = false;
+  }
+}
+
 async function importPluginPreset(file: File) {
   loading.value = true;
   try {
@@ -425,6 +447,54 @@ async function removePreset() {
   }
 }
 
+const TAVERN_ZERO_NORMALIZED_SETTING_KEYS = [
+  'frequency_penalty',
+  'max_completion_tokens',
+  'max_context',
+  'min_p',
+  'presence_penalty',
+  'repetition_penalty',
+  'reply_count',
+  'seed',
+  'temperature',
+  'top_a',
+  'top_k',
+  'top_p',
+] as const;
+
+function normalizePresetTransferPayload(value: unknown, sourceLabel: string): TavernPreset {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) {
+    throw new Error(`${sourceLabel}预设的原始内容无效`);
+  }
+  const cloned = JSON.parse(JSON.stringify(value)) as unknown;
+  if (!cloned || typeof cloned !== 'object' || Array.isArray(cloned)) {
+    throw new Error(`${sourceLabel}预设的原始内容无法序列化`);
+  }
+  const preset = cloned as TavernPreset;
+  if (!Array.isArray(preset.prompts)) {
+    throw new Error(`${sourceLabel}预设中没有可迁移的条目列表`);
+  }
+  if (!preset.extensions || typeof preset.extensions !== 'object' || Array.isArray(preset.extensions)) {
+    preset.extensions = {};
+  }
+  if (preset.settings && typeof preset.settings === 'object' && !Array.isArray(preset.settings)) {
+    TAVERN_ZERO_NORMALIZED_SETTING_KEYS.forEach(key => {
+      if (preset.settings?.[key] === null) preset.settings[key] = 0;
+    });
+  }
+  return preset;
+}
+
+function readPluginPresetTransferPayload(presetId: string): TavernPreset {
+  const raw = pluginPresets.getById(presetId)?.raw;
+  if (!raw) throw new Error('所选插件预设尚未载入或已经不存在');
+  return normalizePresetTransferPayload(raw, '插件');
+}
+
+function readTavernPresetTransferPayload(presetName: string): TavernPreset {
+  return normalizePresetTransferPayload(readTavernPreset(presetName), '酒馆');
+}
+
 async function movePreset() {
   const sourceName = detailPresetName.value.trim();
   if (!sourceName || mutationBusy.value || !detailPresetMovable.value) return;
@@ -451,8 +521,8 @@ async function movePreset() {
         createTarget: preset => createTavernPreset(targetName, preset),
         deleteSource: () => pluginPresets.deletePreset(sourceId),
         deleteTarget: () => deleteTavernPreset(targetName),
-        readSource: () => pluginPresets.readPreset(sourceId),
-        readTarget: () => readTavernPreset(targetName),
+        readSource: () => readPluginPresetTransferPayload(sourceId),
+        readTarget: () => readTavernPresetTransferPayload(targetName),
         sourceDeletable: sourceId !== BUILTIN_DIARY_PRESET_ID,
         sourceName,
         targetExists: name => listTavernPresets().includes(name),
@@ -485,8 +555,8 @@ async function movePreset() {
       deleteTarget: async () => {
         if (targetId) await pluginPresets.deletePreset(targetId);
       },
-      readSource: () => readTavernPreset(sourceName),
-      readTarget: () => pluginPresets.readPreset(targetId),
+      readSource: () => readTavernPresetTransferPayload(sourceName),
+      readTarget: () => readPluginPresetTransferPayload(targetId),
       sourceDeletable: getCurrentTavernPresetName() !== detailPresetName.value,
       sourceName,
       targetExists: name => pluginPresetItems.value.some(item => item.name === name),

@@ -5,10 +5,10 @@ import test from 'node:test';
 
 import { scanVueUiContracts } from '../ui-contract-check.mjs';
 
-const file = 'src/components/prompts/PromptTypeEditorPage.vue';
-const source = await readFile(new URL('../../src/components/prompts/PromptTypeEditorPage.vue', import.meta.url), 'utf8');
+const file = 'src/components/prompts/TheaterTypeGroupField.vue';
+const source = await readFile(new URL('../../src/components/prompts/TheaterTypeGroupField.vue', import.meta.url), 'utf8');
 
-test('the shared Prompt Type editor icon button has the same accessible name as its title', () => {
+test('the shared Theater type group field icon button has the same accessible name as its title', () => {
   const nameFindings = scanVueUiContracts(source, file).filter(finding => finding.ruleId === 'icon-button-aria-label');
   assert.deepEqual(nameFindings, []);
 

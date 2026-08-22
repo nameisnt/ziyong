@@ -2,12 +2,13 @@
   <section class="pc-shared-generation-preview-page pc-generation-preview-page">
     <article class="pc-section-card pc-detail-card pc-generation-preview-card">
       <GenerationPreviewPanel
+        v-model:reasoning="reasoning"
         :content="content"
         :raw="raw"
         :raw-output-semantics="rawOutputSemantics"
         raw-editable
         :reparse-handler="reparseHandler"
-        :reasoning="reasoning"
+        reasoning-editable
         :save-label="saveLabel"
         :scan-enabled="scanEnabled"
         :source-label="sourceLabel"
@@ -38,7 +39,6 @@ import type { RawOutputSemantics } from '@/type/generation';
 defineProps<{
   reparseHandler: () => boolean | Promise<boolean>;
   rawOutputSemantics?: RawOutputSemantics;
-  reasoning?: string;
   saveLabel: string;
   sourceLabel: string;
   scanEnabled?: boolean;
@@ -50,6 +50,7 @@ defineProps<{
 defineEmits<{ back: []; reparse: []; save: [] }>();
 const content = defineModel<string>('content', { required: true });
 const raw = defineModel<string>('raw', { required: true });
+const reasoning = defineModel<string>('reasoning', { default: '' });
 </script>
 
 <style scoped>

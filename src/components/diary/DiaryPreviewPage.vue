@@ -2,8 +2,8 @@
   <GenerationPreviewPage
     v-model:content="content"
     v-model:raw="raw"
+    v-model:reasoning="reasoning"
     :reparse-handler="reparseHandler"
-    :reasoning="reasoning"
     :raw-output-semantics="rawOutputSemantics"
     :save-label="saveLabel"
     :source-label="sourceLabel"
@@ -26,7 +26,6 @@ const props = defineProps<{
   perspectiveName: string;
   rawOutputSemantics?: RawOutputSemantics;
   reparseHandler: () => boolean | Promise<boolean>;
-  reasoning?: string;
   title: string;
   warnings: string[];
 }>();
@@ -35,6 +34,7 @@ defineEmits<{ back: []; reparse: []; save: [] }>();
 
 const content = defineModel<string>('content', { required: true });
 const raw = defineModel<string>('raw', { required: true });
+const reasoning = defineModel<string>('reasoning', { default: '' });
 const displayTitle = computed(() => (props.action === 'read-reaction' ? `📖 ${props.title}` : props.title));
 const saveLabel = computed(() => (props.action === 'read-reaction' ? '保存阅读反应' : '保存日记'));
 const sourceLabel = computed(

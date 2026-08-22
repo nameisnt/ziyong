@@ -265,7 +265,7 @@ function bindStreamOutput(enabled: boolean, generationId: string, onRawOutput?: 
     const eventGenerationId = getGenerationIdFromEventArgs(...eventArgs);
     if (eventGenerationId && eventGenerationId !== generationId) return;
     const payload = eventArgs[0];
-    onRawOutput(typeof payload === 'string' ? payload : String(payload ?? ''));
+    onRawOutput(normalizeGenerationResponse(payload).content);
   });
 }
 
@@ -865,16 +865,43 @@ export async function generateContent<TConfig, TResult, TSaveResult = { entityId
 
       if (options.generationDefaults.resultMode === 'save') {
         abortSignal.throwIfAborted();
-        const saved = await adapter.save(parsed.data, {
-          config: prepared.parsedConfig,
-          generationRecord,
-          rawOutput,
-          rawOutputSemantics: 'original-v1',
-          replay,
-          scopeId: prepared.scopeId,
-          source: prepared.source.selection,
-          warnings: parsed.warnings,
-        });
+        let saved: TSaveResult;
+        try {
+          saved = await adapter.save(parsed.data, {
+            config: prepared.parsedConfig,
+            generationRecord,
+            rawOutput,
+            rawOutputSemantics: 'original-v1',
+            replay,
+            scopeId: prepared.scopeId,
+            source: prepared.source.selection,
+            warnings: parsed.warnings,
+          });
+        } catch (error) {
+          if (!adapter.preserveSaveFailure) throw error;
+          const warnings = [
+            ...parsed.warnings,
+            `保存失败：${error instanceof Error ? error.message : String(error)}`,
+          ];
+          const draft = options.createFailedDraft({
+            actionId: adapter.actionId,
+            appId: adapter.appId,
+            context: isRecord(prepared.parsedConfig) ? { ...prepared.parsedConfig } : {},
+            generationRecord,
+            rawOutput,
+            rawOutputSemantics: 'original-v1',
+            source: prepared.source.selection,
+            warnings,
+          });
+          return {
+            draft,
+            rawOutput,
+            rawOutputSemantics: 'original-v1',
+            source: prepared.source.selection,
+            status: 'failed',
+            warnings,
+          };
+        }
         await options.lifecycle?.onSaved?.(parsed.data, saved);
 
         return {

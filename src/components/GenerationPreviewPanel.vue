@@ -8,59 +8,68 @@
         <span>{{ warnings.length ? `${warnings.length} 条提示` : successLabel }}</span>
       </div>
     </header>
-    <div class="pc-preview-mode-switch pc-segment" role="tablist" aria-label="预览内容视图">
-      <button
-        :class="['pc-segment-btn', 'compact', { active: activeView === 'preview' }]"
-        role="tab"
-        type="button"
-        :aria-selected="activeView === 'preview'"
-        @click="activeView = 'preview'"
-      >
-        {{ previewLabel }}
-      </button>
-      <button
-        :class="['pc-segment-btn', 'compact', { active: activeView === 'raw' }]"
-        role="tab"
-        type="button"
-        :aria-selected="activeView === 'raw'"
-        @click="activeView = 'raw'"
-      >
-        {{ rawOutputLabel }}
-      </button>
-      <button
-        v-if="scanEnabled"
-        :class="['pc-segment-btn', 'compact', { active: activeView === 'bagu' }]"
-        role="tab"
-        type="button"
-        :aria-selected="activeView === 'bagu'"
-        @click="activeView = 'bagu'"
-      >
-        {{ baguLabel }}
-      </button>
+    <div class="pc-preview-toolbar">
+      <div class="pc-preview-toolbar-actions">
+        <div class="pc-preview-mode-switch pc-segment" role="tablist" aria-label="预览内容视图">
+          <button
+            :class="['pc-segment-btn', 'compact', { active: activeView === 'preview' }]"
+            role="tab"
+            type="button"
+            :aria-selected="activeView === 'preview'"
+            @click="activeView = 'preview'"
+          >
+            {{ t`预览` }}
+          </button>
+          <button
+            :class="['pc-segment-btn', 'compact', { active: activeView === 'raw' }]"
+            role="tab"
+            type="button"
+            :aria-selected="activeView === 'raw'"
+            @click="activeView = 'raw'"
+          >
+            {{ t`原文` }}
+          </button>
+          <button
+            v-if="scanEnabled"
+            :class="['pc-segment-btn', 'compact', { active: activeView === 'bagu' }]"
+            role="tab"
+            type="button"
+            :aria-selected="activeView === 'bagu'"
+            @click="activeView = 'bagu'"
+          >
+            {{ baguLabel }}
+          </button>
+        </div>
+        <button
+          v-if="activeView === 'preview' && copyEnabled"
+          class="pc-icon-btn"
+          type="button"
+          :disabled="!content.trim()"
+          :title="copyLabel"
+          :aria-label="copyLabel"
+          @click="copyContent"
+        >
+          <i class="fa-solid fa-copy"></i>
+        </button>
+        <button
+          v-if="activeView === 'preview' && editable"
+          class="pc-soft-btn compact"
+          type="button"
+          @click="editingContent = !editingContent"
+        >
+          {{ editingContent ? previewLabel : editLabel }}
+        </button>
+      </div>
     </div>
     <section class="pc-preview-panel">
       <div v-if="activeView === 'preview'" class="pc-preview-view">
-        <div class="pc-preview-toolbar">
-          <strong>{{ contentLabel }}</strong>
-          <div class="pc-preview-toolbar-actions">
-            <button
-              v-if="copyEnabled"
-              class="pc-icon-btn"
-              type="button"
-              :disabled="!content.trim()"
-              :title="copyLabel"
-              :aria-label="copyLabel"
-              @click="copyContent"
-            >
-              <i class="fa-solid fa-copy"></i>
-            </button>
-            <button v-if="editable" class="pc-soft-btn compact" type="button" @click="editingContent = !editingContent">
-              {{ editingContent ? previewLabel : editLabel }}
-            </button>
-          </div>
-        </div>
         <div class="pc-preview-body">
-          <ReasoningDisclosure v-if="!editingContent" :content="reasoning" />
+          <ReasoningDisclosure
+            v-if="!editingContent"
+            :content="reasoning"
+            :editable="reasoningEditable"
+            @update:content="emit('update:reasoning', $event)"
+          />
           <textarea
             v-if="editingContent"
             v-model="editableContent"
@@ -166,6 +175,7 @@ const props = withDefaults(
     reparseLabel?: string;
     reparseHandler?: () => boolean | Promise<boolean>;
     reasoning?: string;
+    reasoningEditable?: boolean;
     saveDisabled?: boolean;
     saveLabel?: string;
     savingLabel?: string;
@@ -199,6 +209,7 @@ const props = withDefaults(
     reparseLabel: '重新解析',
     reparseHandler: undefined,
     reasoning: '',
+    reasoningEditable: false,
     saveDisabled: false,
     saveLabel: '保存',
     savingLabel: '保存中',
@@ -216,6 +227,7 @@ const emit = defineEmits<{
   save: [];
   'update:content': [value: string];
   'update:raw': [value: string];
+  'update:reasoning': [value: string];
 }>();
 
 const phone = usePhoneStore();
@@ -332,8 +344,8 @@ function goRawFromNotice() {
 <style scoped>
 .pc-generation-preview {
   position: relative;
-  display: grid;
-  grid-template-rows: auto minmax(0, 1fr) auto;
+  display: flex;
+  flex-direction: column;
   gap: 12px;
   height: 100%;
   min-height: 0;
@@ -383,24 +395,26 @@ function goRawFromNotice() {
   align-items: center;
   justify-content: space-between;
   gap: 10px;
+  flex: 0 0 auto;
 }
 
 .pc-preview-toolbar-actions {
   display: flex;
+  min-width: 0;
   align-items: center;
-  flex: 0 0 auto;
+  justify-content: flex-end;
+  flex: 1 1 auto;
+  flex-wrap: wrap;
   gap: 8px;
 }
 
-.pc-preview-toolbar strong {
-  font-size: 14px;
+.pc-preview-panel {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: hidden;
 }
 
-.pc-preview-panel,
 .pc-preview-view {
-  display: grid;
-  grid-template-rows: auto minmax(0, 1fr);
-  gap: 8px;
   height: 100%;
   min-height: 0;
 }
@@ -410,6 +424,7 @@ function goRawFromNotice() {
 }
 
 .pc-preview-body {
+  height: 100%;
   min-height: 0;
   overflow: auto;
 }
@@ -441,6 +456,7 @@ function goRawFromNotice() {
 
 .pc-preview-actions {
   display: grid;
+  flex: 0 0 auto;
   grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 8px;
 }

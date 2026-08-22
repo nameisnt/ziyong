@@ -154,11 +154,7 @@ function setupVisualGlobals() {
     Object.assign(target, {
       mes: '<content>当前候选正文</content>',
       swipe_id: 1,
-      swipes: [
-        '<content>备选回复一</content>',
-        '<content>当前候选正文</content>',
-        '<content>备选回复三</content>',
-      ],
+      swipes: ['<content>备选回复一</content>', '<content>当前候选正文</content>', '<content>备选回复三</content>'],
       swipes_data: [{ reasoning: '候选一思维链' }, { reasoning: '当前候选思维链' }, { reasoning: '候选三思维链' }],
     });
   };
@@ -454,8 +450,9 @@ const { usePreviewDraftPersistence } = await import('@/util/previewDrafts');
 const { useLettersStore } = await import('@/store/letters');
 const { useTheaterStore } = await import('@/store/theater');
 const { WorkbenchStepConfigSchema, useWorkbenchStore } = await import('@/apps/workbench/store');
-const { ProfileEntrySchema, ProfileTableColumnSchema, profilesField, useProfilesStore } =
-  await import('@/apps/profiles/store');
+const { profilesField, runLegacyProfilesCleanup } = await import('@/apps/profiles/legacyCleanup');
+const { useExternalProfileMappingsStore } = await import('@/apps/profiles/profileMappings');
+const { useExternalProfileGenerationStore } = await import('@/apps/profiles/generationDrafts');
 const { usePresetLinkStore } = await import('@/apps/preset-link/store');
 const { useWorldSlotsStore, worldSlotsField } = await import('@/apps/world-slots/store');
 const { useTimekeeperStore } = await import('@/apps/timekeeper/store');
@@ -723,80 +720,6 @@ function createWorkbenchForumFixture() {
   step.config.forumBoardTypePrompt = '围绕当前剧情生成轻松但有信息量的主题帖。';
 }
 
-function createProfilesFixture() {
-  const profiles = useProfilesStore();
-  profiles.resetCurrentScope();
-  const table = profiles.createTable({
-    kind: 'character',
-    name: '登场人物',
-    columns: [
-      {
-        description: '人物姓名。',
-        id: 'title',
-        label: '姓名',
-        options: [],
-        required: true,
-        type: 'text',
-        enabled: true,
-      },
-      {
-        description: '人物身份。',
-        id: 'identity',
-        label: '身份',
-        options: [],
-        required: false,
-        type: 'text',
-        enabled: true,
-      },
-      {
-        description: '人物当前状态。',
-        id: 'status',
-        label: '当前状态',
-        options: ['在场', '失联', '未知'],
-        required: false,
-        type: 'select',
-        enabled: true,
-      },
-      {
-        description: '一句话摘要。',
-        id: 'summary',
-        label: '摘要',
-        options: [],
-        required: false,
-        type: 'text',
-        enabled: true,
-      },
-    ],
-  });
-  const characterTable = profiles.getDefaultTable('character');
-  if (!characterTable) throw new Error('Profiles visual fixture did not create the character table');
-  const firstEntry = profiles.createEntry({
-    fields: {
-      details: '她在雨夜留下了一封没有署名的信，目前仍在城中调查旧案。',
-      identity: '调查员',
-      status: '在场',
-    },
-    kind: 'character',
-    summary: '追查旧案的调查员，与主角互相隐瞒关键线索。',
-    tableId: characterTable.id,
-    tags: ['旧案', '雨夜'],
-    title: '林见夏',
-  });
-  profiles.createEntry({
-    fields: {
-      details: '他掌管港口仓库，知道失踪货物最后一次出现的位置。',
-      identity: '仓库管理员',
-      status: '未知',
-    },
-    kind: 'character',
-    summary: '寡言的港口管理员。',
-    tableId: characterTable.id,
-    tags: ['港口'],
-    title: '周临川',
-  });
-  return { firstEntry, table };
-}
-
 async function applyScenario(name: VisualScenarioName, options: { height?: number; width?: number } = {}) {
   if (!scenarios.includes(name)) {
     throw new Error(`Unknown visual scenario: ${name}`);
@@ -805,7 +728,13 @@ async function applyScenario(name: VisualScenarioName, options: { height?: numbe
   configurePhoneSize(options.width, options.height);
   document.querySelector('#visual-host-theme-override')?.remove();
   useSettingsStore().setTheme(
-    name === 'diary-entry-editor-dark' || name === 'preview-draft-deferred-save-dark' ? 'dark' : 'light',
+    name === 'diary-entry-editor-dark' ||
+      name === 'preview-draft-deferred-save-dark' ||
+      name === 'profiles-external-dark' ||
+      name === 'profiles-external-transfer-row-dark' ||
+      name === 'profiles-external-mapping-editor-dark'
+      ? 'dark'
+      : 'light',
   );
   const phone = usePhoneStore();
   await phone.goHome();
@@ -991,6 +920,7 @@ async function applyScenario(name: VisualScenarioName, options: { height?: numbe
     await applyTheaterVisualScenario(name, {
       createHiddenGenerationRecord: createVisualHiddenGenerationRecord,
       resetPhoneToRoute,
+      waitForCondition: waitForVisualCondition,
       waitForPaint,
     })
   ) {
@@ -1147,7 +1077,8 @@ async function applyScenario(name: VisualScenarioName, options: { height?: numbe
     }
     await phone.goBack();
     await waitForPaint();
-    if (String(phone.currentRoute.appId) !== 'home') throw new Error('Minigame direct App did not return to the desktop');
+    if (String(phone.currentRoute.appId) !== 'home')
+      throw new Error('Minigame direct App did not return to the desktop');
     if (document.querySelector<HTMLButtonElement>('.pc-page-dot.active')?.title !== gameFolderSourcePage) {
       throw new Error('Home source page was not restored');
     }
@@ -1161,7 +1092,8 @@ async function applyScenario(name: VisualScenarioName, options: { height?: numbe
     if (phone.currentRoute.page !== 'root') throw new Error('Nested App detail did not return to its root');
     await phone.goBack();
     await waitForPaint();
-    if (!document.querySelector('.pc-home-folder-dialog')) throw new Error('Nested App root did not restore its source folder');
+    if (!document.querySelector('.pc-home-folder-dialog'))
+      throw new Error('Nested App root did not restore its source folder');
 
     document.querySelector<HTMLButtonElement>('.pc-home-folder-app > button')?.click();
     await waitForPaint();
@@ -1299,13 +1231,15 @@ async function applyScenario(name: VisualScenarioName, options: { height?: numbe
     const folderSourceRect = folderDragSource.getBoundingClientRect();
     const folderTargetRect = folderDragTarget.getBoundingClientRect();
     const folderPointerId = 122;
-    folderDragSource.dispatchEvent(new PointerEvent('pointerdown', {
-      bubbles: true,
-      button: 0,
-      clientX: folderSourceRect.left + folderSourceRect.width / 2,
-      clientY: folderSourceRect.top + folderSourceRect.height / 2,
-      pointerId: folderPointerId,
-    }));
+    folderDragSource.dispatchEvent(
+      new PointerEvent('pointerdown', {
+        bubbles: true,
+        button: 0,
+        clientX: folderSourceRect.left + folderSourceRect.width / 2,
+        clientY: folderSourceRect.top + folderSourceRect.height / 2,
+        pointerId: folderPointerId,
+      }),
+    );
     const folderSourceCenterX = folderSourceRect.left + folderSourceRect.width / 2;
     const folderSourceCenterY = folderSourceRect.top + folderSourceRect.height / 2;
     const folderTargetCenterX = folderTargetRect.left + folderTargetRect.width / 2;
@@ -1317,22 +1251,26 @@ async function applyScenario(name: VisualScenarioName, options: { height?: numbe
     });
     try {
       for (const progress of [0.25, 0.5, 0.75, 1]) {
-        folderDragSource.dispatchEvent(new PointerEvent('pointermove', {
-          bubbles: true,
-          button: 0,
-          clientX: folderSourceCenterX + (folderTargetCenterX - folderSourceCenterX) * progress,
-          clientY: folderSourceCenterY + (folderTargetCenterY - folderSourceCenterY) * progress,
-          pointerId: folderPointerId,
-        }));
+        folderDragSource.dispatchEvent(
+          new PointerEvent('pointermove', {
+            bubbles: true,
+            button: 0,
+            clientX: folderSourceCenterX + (folderTargetCenterX - folderSourceCenterX) * progress,
+            clientY: folderSourceCenterY + (folderTargetCenterY - folderSourceCenterY) * progress,
+            pointerId: folderPointerId,
+          }),
+        );
         await waitForPaint();
       }
-      folderDragSource.dispatchEvent(new PointerEvent('pointerup', {
-        bubbles: true,
-        button: 0,
-        clientX: folderTargetCenterX,
-        clientY: folderTargetCenterY,
-        pointerId: folderPointerId,
-      }));
+      folderDragSource.dispatchEvent(
+        new PointerEvent('pointerup', {
+          bubbles: true,
+          button: 0,
+          clientX: folderTargetCenterX,
+          clientY: folderTargetCenterY,
+          pointerId: folderPointerId,
+        }),
+      );
     } finally {
       Object.defineProperty(document, 'elementFromPoint', {
         configurable: true,
@@ -1356,20 +1294,24 @@ async function applyScenario(name: VisualScenarioName, options: { height?: numbe
     });
     const removeRect = removeButton.getBoundingClientRect();
     const removePointerId = 123;
-    removeButton.dispatchEvent(new PointerEvent('pointerdown', {
-      bubbles: true,
-      button: 0,
-      clientX: removeRect.left + removeRect.width / 2,
-      clientY: removeRect.top + removeRect.height / 2,
-      pointerId: removePointerId,
-    }));
-    removeButton.dispatchEvent(new PointerEvent('pointerup', {
-      bubbles: true,
-      button: 0,
-      clientX: removeRect.left + removeRect.width / 2,
-      clientY: removeRect.top + removeRect.height / 2,
-      pointerId: removePointerId,
-    }));
+    removeButton.dispatchEvent(
+      new PointerEvent('pointerdown', {
+        bubbles: true,
+        button: 0,
+        clientX: removeRect.left + removeRect.width / 2,
+        clientY: removeRect.top + removeRect.height / 2,
+        pointerId: removePointerId,
+      }),
+    );
+    removeButton.dispatchEvent(
+      new PointerEvent('pointerup', {
+        bubbles: true,
+        button: 0,
+        clientX: removeRect.left + removeRect.width / 2,
+        clientY: removeRect.top + removeRect.height / 2,
+        pointerId: removePointerId,
+      }),
+    );
     if (nestedPointerCaptureCount) throw new Error('Home folder removal started the parent drag pointer chain');
     removeButton.click();
     await waitForPaint();
@@ -1380,48 +1322,86 @@ async function applyScenario(name: VisualScenarioName, options: { height?: numbe
 
     document.querySelector<HTMLButtonElement>('.pc-home-folder-head button[title="关闭"]')?.click();
     await waitForPaint();
+    const visibleFolderCandidate = [
+      ...document.querySelectorAll<HTMLButtonElement>('.pc-home-grid-wrap .pc-app-tile'),
+    ].find(tile => !tile.dataset.homeToken?.startsWith('folder:'));
+    const visibleFolderCandidateName = visibleFolderCandidate?.querySelector('strong')?.textContent?.trim();
+    if (!visibleFolderCandidateName)
+      throw new Error('Explicit folder fixture needs one visible App on the current page');
     document.querySelector<HTMLDetailsElement>('.pc-home-context-actions .pc-action-menu > summary')?.click();
     await waitForPaint();
-    const newFolderButton = [...document.querySelectorAll<HTMLButtonElement>('.pc-action-menu-panel button')].find(button =>
-      button.textContent?.includes('新建文件夹'),
+    const newFolderButton = [...document.querySelectorAll<HTMLButtonElement>('.pc-action-menu-panel button')].find(
+      button => button.textContent?.includes('新建文件夹'),
     );
     if (!newFolderButton) throw new Error('Home action menu omitted explicit folder creation');
     newFolderButton.click();
     await waitForPaint();
     const folderName = document.querySelector<HTMLInputElement>('.pc-home-folder-create-dialog input.pc-field');
-    const folderChoice = document.querySelector<HTMLInputElement>('.pc-home-folder-choice input');
+    const folderChoice = [...document.querySelectorAll<HTMLLabelElement>('.pc-home-folder-choice')]
+      .find(label => label.querySelector('strong')?.textContent?.trim() === visibleFolderCandidateName)
+      ?.querySelector<HTMLInputElement>('input');
     if (!folderName || !folderChoice) throw new Error('Explicit folder creator omitted name or App selection');
     folderName.value = '显式新建';
     folderName.dispatchEvent(new Event('input', { bubbles: true }));
     folderChoice.click();
     await waitForPaint();
-    const createFolderButton = document.querySelector<HTMLButtonElement>('.pc-home-folder-create-dialog .pc-primary-btn');
-    if (!createFolderButton || createFolderButton.disabled) throw new Error('Explicit folder creator did not enable submit');
+    const createFolderButton = document.querySelector<HTMLButtonElement>(
+      '.pc-home-folder-create-dialog .pc-primary-btn',
+    );
+    if (!createFolderButton || createFolderButton.disabled)
+      throw new Error('Explicit folder creator did not enable submit');
     createFolderButton.click();
     await waitForPaint();
-    const explicitFolder = settings.settings.layout.folders.find(item => item.name === '显式新建' && item.appIds.length === 1);
+    const explicitFolder = settings.settings.layout.folders.find(
+      item => item.name === '显式新建' && item.appIds.length === 1,
+    );
     if (!explicitFolder) {
       throw new Error('Explicit one-App folder creation did not persist through the layout transaction');
     }
     const releasedAppId = explicitFolder.appIds[0];
     document.querySelector<HTMLButtonElement>('.pc-home-folder-head button[title="关闭"]')?.click();
     await waitForPaint();
-    const explicitFolderTile = document.querySelector<HTMLButtonElement>(
+    let explicitFolderTile = document.querySelector<HTMLButtonElement>(
       `[data-home-token="folder:${explicitFolder.id}"]`,
     );
+    if (!explicitFolderTile) {
+      for (const pageDot of document.querySelectorAll<HTMLButtonElement>('.pc-page-dot')) {
+        pageDot.click();
+        await waitForPaint();
+        explicitFolderTile = document.querySelector<HTMLButtonElement>(
+          `[data-home-token="folder:${explicitFolder.id}"]`,
+        );
+        if (explicitFolderTile) break;
+      }
+    }
+    if (!explicitFolderTile) {
+      throw new Error(`Explicit folder tile is absent from every page after creating ${visibleFolderCandidateName}`);
+    }
     explicitFolderTile?.click();
     await waitForPaint();
-    if (!explicitFolderTile || !document.querySelector('.pc-home-folder-dialog')) {
+    if (!document.querySelector('.pc-home-folder-dialog')) {
       throw new Error('Explicit folder creation left the home interaction locked');
     }
 
     document.querySelector<HTMLButtonElement>('.pc-home-folder-tools .pc-soft-btn.danger')?.click();
     await new Promise(resolve => window.setTimeout(resolve, 180));
     await waitForPaint();
-    const releasedTile = document.querySelector<HTMLButtonElement>(`[data-home-token="${releasedAppId}"]`);
+    let releasedTile = document.querySelector<HTMLButtonElement>(`[data-home-token="${releasedAppId}"]`);
+    if (!releasedTile) {
+      for (const pageDot of document.querySelectorAll<HTMLButtonElement>('.pc-page-dot')) {
+        pageDot.click();
+        await waitForPaint();
+        releasedTile = document.querySelector<HTMLButtonElement>(`[data-home-token="${releasedAppId}"]`);
+        if (releasedTile) break;
+      }
+    }
     releasedTile?.click();
     await waitForPaint();
-    if (document.querySelector('.pc-home-folder-backdrop') || !releasedTile || phone.currentRoute.appId !== releasedAppId) {
+    if (
+      document.querySelector('.pc-home-folder-backdrop') ||
+      !releasedTile ||
+      phone.currentRoute.appId !== releasedAppId
+    ) {
       throw new Error('Folder dissolution left a modal backdrop or the App route locked');
     }
 
@@ -1439,28 +1419,34 @@ async function applyScenario(name: VisualScenarioName, options: { height?: numbe
     const movableRect = movableTile.getBoundingClientRect();
     const moveBeforeRect = moveBeforeTile.getBoundingClientRect();
     const postDissolvePointerId = 124;
-    movableTile.dispatchEvent(new PointerEvent('pointerdown', {
-      bubbles: true,
-      button: 0,
-      clientX: movableRect.left + movableRect.width / 2,
-      clientY: movableRect.top + movableRect.height / 2,
-      pointerId: postDissolvePointerId,
-    }));
+    movableTile.dispatchEvent(
+      new PointerEvent('pointerdown', {
+        bubbles: true,
+        button: 0,
+        clientX: movableRect.left + movableRect.width / 2,
+        clientY: movableRect.top + movableRect.height / 2,
+        pointerId: postDissolvePointerId,
+      }),
+    );
     await new Promise(resolve => window.setTimeout(resolve, 390));
-    movableTile.dispatchEvent(new PointerEvent('pointermove', {
-      bubbles: true,
-      button: 0,
-      clientX: moveBeforeRect.left + 2,
-      clientY: moveBeforeRect.top + 2,
-      pointerId: postDissolvePointerId,
-    }));
-    movableTile.dispatchEvent(new PointerEvent('pointerup', {
-      bubbles: true,
-      button: 0,
-      clientX: moveBeforeRect.left + 2,
-      clientY: moveBeforeRect.top + 2,
-      pointerId: postDissolvePointerId,
-    }));
+    movableTile.dispatchEvent(
+      new PointerEvent('pointermove', {
+        bubbles: true,
+        button: 0,
+        clientX: moveBeforeRect.left + 2,
+        clientY: moveBeforeRect.top + 2,
+        pointerId: postDissolvePointerId,
+      }),
+    );
+    movableTile.dispatchEvent(
+      new PointerEvent('pointerup', {
+        bubbles: true,
+        button: 0,
+        clientX: moveBeforeRect.left + 2,
+        clientY: moveBeforeRect.top + 2,
+        pointerId: postDissolvePointerId,
+      }),
+    );
     await waitForPaint();
     if (settings.settings.layout.appOrder[0] !== releasedAppId) {
       throw new Error('Folder dissolution left desktop dragging locked');
@@ -1648,7 +1634,42 @@ async function applyScenario(name: VisualScenarioName, options: { height?: numbe
     ) {
       throw new Error(`${appId} did not finish into its persisted preview after leaving the source App`);
     }
-  } else if (name === 'storylines-detail' || name === 'storylines-editor') {
+  } else if (
+    name === 'storylines-detail' ||
+    name === 'storylines-editor' ||
+    name === 'storylines-profile-reference' ||
+    name === 'storylines-profile-reference-dark'
+  ) {
+    const isProfileReference = name.startsWith('storylines-profile-reference');
+    let profileMappingId = '';
+    if (isProfileReference) {
+      useSettingsStore().setTheme(name.endsWith('-dark') ? 'dark' : 'light');
+      const visualGlobal = globalThis as typeof globalThis & { AutoCardUpdaterAPI?: Record<string, unknown> };
+      visualGlobal.AutoCardUpdaterAPI = {
+        exportTableAsJson: () => ({
+          mate: { type: 'chatSheets' },
+          sheet_people: {
+            content: [
+              ['row_id', '姓名'],
+              ['person-1', '林见夏'],
+              ['person-2', '周临川'],
+            ],
+            name: '人物表',
+            uid: 'people',
+          },
+        }),
+      };
+      const mappings = useExternalProfileMappingsStore();
+      mappings.resetCurrentScope();
+      profileMappingId = mappings.createMapping({
+        displayColumn: '姓名',
+        fields: [],
+        identityColumn: 'row_id',
+        name: '人物资料',
+        sheetKey: 'sheet_people',
+        tableName: '人物表',
+      }).id;
+    }
     const storylines = useStorylinesStore();
     storylines.resetCurrentScope();
     const line = storylines.createLine({
@@ -1659,6 +1680,7 @@ async function applyScenario(name: VisualScenarioName, options: { height?: numbe
       summary: '众人沿着失踪钥匙追查旧港火灾，并发现证词相互矛盾。',
       tags: ['旧港', '调查'],
       title: '旧港火灾真相',
+      ...(isProfileReference ? { relatedProfileIds: ['legacy-profile-id'] } : {}),
     });
     storylines.createLine({
       goal: '确认动态剧情线选择器可以搜索并完整辨识长名称。',
@@ -1684,6 +1706,54 @@ async function applyScenario(name: VisualScenarioName, options: { height?: numbe
       tags: ['钥匙'],
       title: '失踪的备用钥匙',
     });
+
+    if (isProfileReference) {
+      resetPhoneToRoute('storylines', 'editor', '编辑剧情线', { id: line.id, kind: 'line' });
+      await waitForPaint();
+      document.querySelector<HTMLButtonElement>('.pc-storyline-profile-editor button[title="增加关联资料"]')?.click();
+      await waitForPaint();
+      let picker = document.querySelector<HTMLElement>('.pc-storyline-profile-row .pc-external-profile-picker');
+      let combos = picker?.querySelectorAll<HTMLElement>('.pc-combobox');
+      if (!picker || !combos || combos.length !== 2) throw new Error('Storyline external profile picker is missing');
+      const selectProfileOption = async (combo: HTMLElement, label: string) => {
+        combo.querySelector<HTMLInputElement>('.pc-combobox-input')?.click();
+        await waitForPaint();
+        const option = [...combo.querySelectorAll<HTMLButtonElement>('.pc-combobox-option')].find(button =>
+          button.textContent?.includes(label),
+        );
+        if (!option) throw new Error(`Storyline external profile option is missing: ${label}`);
+        option.click();
+        await waitForPaint();
+      };
+      await selectProfileOption(combos[0], '人物资料');
+      picker = document.querySelector<HTMLElement>('.pc-storyline-profile-row .pc-external-profile-picker');
+      combos = picker?.querySelectorAll<HTMLElement>('.pc-combobox');
+      if (!picker || !combos || combos.length !== 2) throw new Error('Storyline profile row disappeared after mapping');
+      await selectProfileOption(combos[1], '林见夏');
+      [...document.querySelectorAll<HTMLButtonElement>('.pc-storyline-editor-card .pc-form-actions button')]
+        .find(button => button.textContent?.includes('保存'))
+        ?.click();
+      if (
+        !(await waitForVisualCondition(() => {
+          const saved = storylines.getLine(line.id);
+          return Boolean(
+            saved?.relatedProfileIds.includes('legacy-profile-id') &&
+            saved.relatedProfiles.some(
+              profile => profile.profileMappingId === profileMappingId && profile.profileIdentityValue === 'person-1',
+            ) &&
+            usePhoneStore().currentRoute.page === 'detail',
+          );
+        }))
+      ) {
+        throw new Error('Storyline profile reference did not preserve legacy ids and save the new identity');
+      }
+      await waitForPaint();
+      const detailText = document.querySelector('.pc-storyline-detail-page')?.textContent || '';
+      if (!detailText.includes('林见夏') || !detailText.includes('旧资料关联待重新选择')) {
+        throw new Error('Storyline detail did not show new and unresolved legacy profile references');
+      }
+      return { name, route: usePhoneStore().currentRoute };
+    }
 
     resetPhoneToRoute('storylines', 'detail', '失效剧情记录', { id: 'missing', kind: 'line' });
     await waitForPaint();
@@ -2136,15 +2206,64 @@ async function applyScenario(name: VisualScenarioName, options: { height?: numbe
       document.querySelector<HTMLButtonElement>('.pc-preview-toolbar .pc-soft-btn')?.click();
       await waitForPaint();
     } else if (name === 'generation-preview-long-title-raw') {
-      const rawButton = [...document.querySelectorAll<HTMLButtonElement>('.pc-preview-mode-switch .pc-segment-btn')].find(
-        button => button.textContent?.includes('原始输出'),
-      );
+      const rawButton = [
+        ...document.querySelectorAll<HTMLButtonElement>('.pc-preview-mode-switch .pc-segment-btn'),
+      ].find(button => button.textContent?.includes('原文'));
       if (!rawButton) throw new Error('Generation preview raw view switch is missing');
       rawButton.click();
       await waitForPaint();
     }
 
     const previewHeader = document.querySelector('.pc-generation-preview-head');
+    const previewToolbar = document.querySelector<HTMLElement>('.pc-preview-toolbar');
+    const previewPanel = document.querySelector<HTMLElement>('.pc-preview-panel');
+    const previewActions = document.querySelector<HTMLElement>('.pc-preview-actions');
+    if (!previewToolbar || !previewPanel || !previewActions) {
+      throw new Error('Generation preview shared toolbar, panel or save area is missing');
+    }
+    const toolbarRect = previewToolbar.getBoundingClientRect();
+    const panelRect = previewPanel.getBoundingClientRect();
+    const actionsRect = previewActions.getBoundingClientRect();
+    const saveButtonRect = previewActions.querySelector<HTMLButtonElement>('button')?.getBoundingClientRect();
+    const screenRect = document.querySelector<HTMLElement>('.pc-screen')?.getBoundingClientRect();
+    if (toolbarRect.bottom > panelRect.top + 1 || panelRect.bottom > actionsRect.top + 1) {
+      throw new Error('Generation preview toolbar, content and save action overlap');
+    }
+    if (!screenRect || actionsRect.bottom > screenRect.bottom + 1) {
+      throw new Error(
+        `Generation preview save action left the phone viewport (${actionsRect.bottom.toFixed(1)} > ${screenRect?.bottom.toFixed(1) || 'missing'})`,
+      );
+    }
+    if (!saveButtonRect || saveButtonRect.height < 28 || saveButtonRect.bottom > screenRect.bottom + 1) {
+      throw new Error(
+        `Generation preview save button is not visibly laid out (${saveButtonRect?.height.toFixed(1) || 'missing'}px)`,
+      );
+    }
+    const saveButtonHit = document.elementFromPoint(
+      saveButtonRect.left + saveButtonRect.width / 2,
+      saveButtonRect.top + saveButtonRect.height / 2,
+    );
+    if (
+      !saveButtonHit ||
+      !(saveButtonHit === previewActions.querySelector('button') || saveButtonHit.closest('.pc-preview-actions'))
+    ) {
+      throw new Error(
+        `Generation preview save button is covered by ${saveButtonHit?.className || saveButtonHit?.tagName || 'nothing'}`,
+      );
+    }
+    const toolbarButtons = [...previewToolbar.querySelectorAll<HTMLButtonElement>('button')];
+    toolbarButtons.forEach((button, index) => {
+      const rect = button.getBoundingClientRect();
+      toolbarButtons.slice(index + 1).forEach(other => {
+        const otherRect = other.getBoundingClientRect();
+        const overlaps =
+          rect.left < otherRect.right &&
+          rect.right > otherRect.left &&
+          rect.top < otherRect.bottom &&
+          rect.bottom > otherRect.top;
+        if (overlaps) throw new Error('Generation preview toolbar buttons overlap');
+      });
+    });
     if (name === 'generation-preview-long-title') {
       const title = previewHeader?.querySelector('h2');
       if (!title || title.getBoundingClientRect().height > 54) {
@@ -2287,17 +2406,13 @@ async function applyScenario(name: VisualScenarioName, options: { height?: numbe
       },
     });
 
-    const profile = ProfileEntrySchema.parse({
-      content: '旧版资料正文',
-      createdAt: timestamp,
-      fields: {},
-      id: 'legacy-profile-schema',
-      kind: 'character',
-      title: '旧版人物',
-      updatedAt: timestamp,
-    });
-    if (profile.fields.details !== '旧版资料正文' || 'content' in profile) {
-      throw new Error('Legacy profile content was not migrated to the details field');
+    const cleanupResult = runLegacyProfilesCleanup();
+    if (
+      !cleanupResult.deleted ||
+      cleanupResult.embeddedEntries !== 1 ||
+      typeof _.get(extension_settings, profilesField) !== 'undefined'
+    ) {
+      throw new Error(`Legacy profile cleanup did not delete the old domain: ${cleanupResult.error}`);
     }
 
     const board = ForumBoardSchema.parse({
@@ -2364,7 +2479,73 @@ async function applyScenario(name: VisualScenarioName, options: { height?: numbe
         `Single interrupted generation raw output cannot be inspected and copied: area=${Boolean(rawArea)}, value=${rawArea?.value ?? ''}, text=${expandedSingleTaskRow?.textContent ?? ''}`,
       );
     }
+
+    const dispatchHomeSwipe = (target: Element, startX: number, endX: number, pointerId: number) => {
+      target.dispatchEvent(
+        new PointerEvent('pointerdown', { bubbles: true, button: 0, clientX: startX, clientY: 260, pointerId }),
+      );
+      target.dispatchEvent(new PointerEvent('pointermove', { bubbles: true, clientX: endX, clientY: 264, pointerId }));
+      target.dispatchEvent(new PointerEvent('pointerup', { bubbles: true, clientX: endX, clientY: 264, pointerId }));
+    };
+    dispatchHomeSwipe(rawArea, 300, 90, 71);
+    await waitForPaint();
+    if (document.querySelector<HTMLButtonElement>('.pc-page-dot.active')?.title !== '第 1 页') {
+      throw new Error('Generation task raw editor incorrectly started a desktop page swipe');
+    }
     rawToggle?.click();
+    await waitForPaint();
+
+    const taskHead = document.querySelector<HTMLButtonElement>('.pc-task-center-toggle');
+    if (!taskHead || !document.querySelector('.pc-task-list'))
+      throw new Error('Generation TaskCenter header fixture is missing');
+    dispatchHomeSwipe(taskHead, 90, 290, 72);
+    taskHead.click();
+    await waitForPaint();
+    if (!document.querySelector('.pc-task-list')) {
+      throw new Error('Generation task page swipe released into the TaskCenter toggle action');
+    }
+    await new Promise(resolve => window.setTimeout(resolve, 280));
+
+    const taskCopy = document.querySelector<HTMLElement>('.pc-task-copy');
+    if (!taskCopy) throw new Error('Generation task swipe surface fixture is missing');
+    dispatchHomeSwipe(taskCopy, 300, 90, 73);
+    await waitForPaint();
+    if (document.querySelector<HTMLButtonElement>('.pc-page-dot.active')?.title !== '第 2 页') {
+      throw new Error('Generation task card could not swipe back to the default desktop page');
+    }
+    await new Promise(resolve => window.setTimeout(resolve, 280));
+    document.querySelector<HTMLButtonElement>('.pc-page-dot[title="第 1 页"]')?.click();
+    await waitForPaint();
+    const restoredTaskHead = document.querySelector<HTMLButtonElement>('.pc-task-center-toggle');
+    restoredTaskHead?.click();
+    await waitForPaint();
+    if (!restoredTaskHead || document.querySelector('.pc-task-list')) {
+      throw new Error('Normal Generation TaskCenter header click was blocked after page navigation');
+    }
+    restoredTaskHead.click();
+    await waitForPaint();
+    if (!document.querySelector('.pc-task-list')) {
+      throw new Error('Normal Generation TaskCenter header click could not restore the task list');
+    }
+    const generationTaskStore = useGenerationTaskStore();
+    const clearSavedButton = document.querySelector<HTMLButtonElement>('[aria-label="清理已保存任务"]');
+    if (generationTaskStore.getClearableTasks().length !== 1 || !clearSavedButton?.textContent?.includes('清理 1')) {
+      throw new Error('Generation TaskCenter did not expose the saved-task cleanup count in its header');
+    }
+    clearSavedButton.click();
+    await waitForPaint();
+    if (
+      generationTaskStore.getClearableTasks().length !== 0 ||
+      generationTaskStore.currentScopeTasks.length !== 3 ||
+      !generationTaskStore.currentScopeTasks.some(task => task.status === 'running') ||
+      !generationTaskStore.currentScopeTasks.some(task => task.status === 'paused') ||
+      !generationTaskStore.currentScopeTasks.some(task => task.status === 'interrupted')
+    ) {
+      throw new Error('Saved-task cleanup removed a running, paused, or interrupted generation task');
+    }
+    if (document.querySelector('[aria-label="清理已保存任务"]')) {
+      throw new Error('Generation TaskCenter kept an empty saved-task cleanup action visible');
+    }
   } else if (name === 'bagu-scan-actions' || name === 'bagu-scan-applied' || name === 'bagu-hit-details') {
     const templateText = '开头，这是一个漫长等待的眼神，结尾。';
     const createTemplateRule = (suggestion: string) => ({
@@ -2445,7 +2626,8 @@ async function applyScenario(name: VisualScenarioName, options: { height?: numbe
     if (!confirmButton) throw new Error('Bagu delete confirmation action is missing');
     confirmButton.click();
     await waitForPaint();
-    if (bagu.rules.length !== initialCount - 1) throw new Error('Confirming Bagu deletion did not remove exactly one rule');
+    if (bagu.rules.length !== initialCount - 1)
+      throw new Error('Confirming Bagu deletion did not remove exactly one rule');
   } else if (name === 'entry-library-action-menu') {
     useSettingsStore().setTheme('dark');
     resetPhoneToRoute('entry-library', 'root', '条目库');
@@ -2753,17 +2935,44 @@ async function applyScenario(name: VisualScenarioName, options: { height?: numbe
     }
   } else if (name === 'world-slots-entry-library') {
     useSettingsStore().setTheme('light');
-    const { firstEntry } = createProfilesFixture();
+    const visualGlobal = globalThis as typeof globalThis & { AutoCardUpdaterAPI?: Record<string, unknown> };
+    visualGlobal.AutoCardUpdaterAPI = {
+      exportTableAsJson: () => ({
+        mate: { type: 'chatSheets', version: 1 },
+        sheet_people: {
+          content: [
+            ['row_id', '姓名', '摘要', '人物详情', '未映射备注'],
+            ['person-1', '林见夏', '追查旧案的调查员。', '她在雨夜留下了一封没有署名的信。', '不能进入引用'],
+          ],
+          name: '重要人物表',
+          uid: 'important_people',
+        },
+      }),
+    };
+    const mappingStore = useExternalProfileMappingsStore();
+    mappingStore.data.mappings = [];
+    mappingStore.createMapping({
+      displayColumn: '姓名',
+      fields: [
+        { column: '摘要', key: 'summary', label: '摘要' },
+        { column: '人物详情', key: 'details', label: '人物详情' },
+      ],
+      identityColumn: 'row_id',
+      name: '人物资料',
+      sheetKey: 'sheet_people',
+      tableName: '重要人物表',
+    });
     const profileReference = getRegisteredPhoneAppReferenceTrees()
       .flatMap(root => (root.kind === 'branch' ? root.children : [root]))
-      .find(node => node.kind === 'leaf' && node.item.id === `profiles:${firstEntry.id}`);
+      .flatMap(node => (node.kind === 'branch' ? node.children : [node]))
+      .find(node => node.kind === 'leaf' && node.item.title === '林见夏');
     if (
       !profileReference ||
       profileReference.kind !== 'leaf' ||
-      profileReference.item.content.includes('分类：人物') ||
-      profileReference.item.timeLabel === '人物'
+      profileReference.item.content.includes('不能进入引用') ||
+      !profileReference.item.content.includes('人物详情：她在雨夜留下了一封没有署名的信。')
     ) {
-      throw new Error('Profile reference still duplicates its type metadata');
+      throw new Error('External profile reference did not keep the explicit mapping boundary');
     }
     const library = useEntryLibraryStore();
     library.importBackup({
@@ -2860,13 +3069,24 @@ async function applyScenario(name: VisualScenarioName, options: { height?: numbe
     ].find(button => button.textContent?.includes('资料表'));
     if (!profilesRoot) throw new Error('Profiles source is missing from the world slot reference picker');
     let profileOption = [...document.querySelectorAll<HTMLElement>('.pc-reference-node.leaf')].find(option =>
-      option.textContent?.includes(firstEntry.title),
+      option.textContent?.includes('林见夏'),
     );
     if (!profileOption) {
-      profilesRoot.click();
+      let mappingGroup = [...document.querySelectorAll<HTMLButtonElement>('.pc-reference-node.branch')].find(button =>
+        button.textContent?.includes('人物资料'),
+      );
+      if (!mappingGroup) {
+        profilesRoot.click();
+        await waitForPaint();
+        mappingGroup = [...document.querySelectorAll<HTMLButtonElement>('.pc-reference-node.branch')].find(button =>
+          button.textContent?.includes('人物资料'),
+        );
+      }
+      if (!mappingGroup) throw new Error('External profile mapping group is missing from the reference picker');
+      mappingGroup.click();
       await waitForPaint();
       profileOption = [...document.querySelectorAll<HTMLElement>('.pc-reference-node.leaf')].find(option =>
-        option.textContent?.includes(firstEntry.title),
+        option.textContent?.includes('林见夏'),
       );
     }
     if (!profileOption) throw new Error('Profile entry is missing from the world slot reference picker');
@@ -2874,10 +3094,47 @@ async function applyScenario(name: VisualScenarioName, options: { height?: numbe
     await waitForPaint();
     document.querySelector<HTMLButtonElement>('.pc-world-import-controls .pc-primary-btn')?.click();
     await waitForPaint();
-    if (titleField.value !== firstEntry.title || contentArea.value !== profileReference.item.content.trim()) {
+    if (titleField.value !== '林见夏' || contentArea.value !== profileReference.item.content.trim()) {
       throw new Error('Merged profile reference did not preserve its title and prefix-free content');
     }
-  } else if (name === 'world-slots-root-cleanup') {
+  } else if (name === 'world-slots-profile-reference-warning-dark') {
+    useSettingsStore().setTheme('dark');
+    const visualGlobal = globalThis as typeof globalThis & { AutoCardUpdaterAPI?: Record<string, unknown> };
+    visualGlobal.AutoCardUpdaterAPI = {
+      exportTableAsJson: () => ({
+        mate: { type: 'chatSheets', version: 1 },
+        sheet_people: {
+          content: [
+            ['row_id', '姓名', '摘要'],
+            ['duplicate', '林见夏', '第一条'],
+            ['duplicate', '周临川', '第二条'],
+          ],
+          name: '重要人物表',
+          uid: 'important_people',
+        },
+      }),
+    };
+    const mappingStore = useExternalProfileMappingsStore();
+    mappingStore.data.mappings = [];
+    mappingStore.createMapping({
+      displayColumn: '姓名',
+      fields: [{ column: '摘要', key: 'summary', label: '摘要' }],
+      identityColumn: 'row_id',
+      name: '重复身份资料',
+      sheetKey: 'sheet_people',
+      tableName: '重要人物表',
+    });
+    resetPhoneToRoute('world-slots', 'editor', '新增槽位');
+    await waitForPaint();
+    document.querySelector<HTMLButtonElement>('.pc-reference-toggle')?.click();
+    await waitForPaint();
+    const warning = document.querySelector<HTMLElement>('.pc-reference-warning');
+    const refresh = warning?.querySelector<HTMLButtonElement>('button');
+    if (!warning?.textContent?.includes('身份值“duplicate”命中 2 行') || refresh?.title !== '刷新引用') {
+      throw new Error('External profile reference warning did not expose the mapping failure and refresh action');
+    }
+  } else if (name === 'world-slots-root-cleanup' || name === 'world-slots-root-cleanup-dark') {
+    useSettingsStore().setTheme(name.endsWith('-dark') ? 'dark' : 'light');
     const worldSlots = useWorldSlotsStore();
     worldSlots.resetCurrentScope();
     worldSlots.createSlot({
@@ -2891,6 +3148,20 @@ async function applyScenario(name: VisualScenarioName, options: { height?: numbe
     }
     if (document.querySelector('.pc-world-search-toolbar select, .pc-world-search-toolbar .pc-combobox')) {
       throw new Error('Legacy world slot type filter is still visible');
+    }
+    const rootToolbar = document.querySelector<HTMLElement>('.pc-world-root-toolbar.pc-directory-toolbar');
+    const addSlot = rootToolbar?.querySelector<HTMLButtonElement>('button[title="新增槽位"]');
+    const slotCount = rootToolbar?.querySelector<HTMLElement>('.pc-directory-count');
+    if (!rootToolbar || !addSlot || !slotCount) throw new Error('World slot root toolbar is incomplete');
+    const toolbarRect = rootToolbar.getBoundingClientRect();
+    const addRect = addSlot.getBoundingClientRect();
+    if (Math.abs(toolbarRect.right - addRect.right) > 1 || addRect.left <= slotCount.getBoundingClientRect().right) {
+      throw new Error('World slot add action is not aligned to the far right of the shared toolbar');
+    }
+    const bookCard = document.querySelector<HTMLElement>('.pc-world-card');
+    const bookStyle = bookCard ? getComputedStyle(bookCard) : null;
+    if (!bookStyle || parseFloat(bookStyle.paddingTop) > 4 || parseFloat(bookStyle.paddingBottom) > 12) {
+      throw new Error('World slot fixed-book section kept excessive vertical padding');
     }
     const slotsApp = document.querySelector<HTMLElement>('.pc-world-slots-app');
     if (!slotsApp || slotsApp.scrollWidth > slotsApp.clientWidth + 1) {
@@ -3215,8 +3486,8 @@ async function applyScenario(name: VisualScenarioName, options: { height?: numbe
     });
     resetPhoneToRoute('preset-manager', 'detail', '预设条目', { presetName: '简洁写作' });
     const loaded = await waitForVisualCondition(() => Boolean(document.querySelector('.pc-preset-owner')));
-    const applyButton = [...document.querySelectorAll<HTMLButtonElement>('.pc-preset-owner-actions button')].find(button =>
-      button.textContent?.includes('立即应用'),
+    const applyButton = [...document.querySelectorAll<HTMLButtonElement>('.pc-preset-owner-actions button')].find(
+      button => button.textContent?.includes('立即应用'),
     );
     if (!loaded || !applyButton?.disabled) {
       throw new Error('Historical chat preset ownership state is missing or directly applicable');
@@ -3347,7 +3618,9 @@ async function applyScenario(name: VisualScenarioName, options: { height?: numbe
   } else if (
     name === 'custom-app-conversion' ||
     name === 'custom-app-conversion-complete' ||
-    name === 'custom-app-conversion-merge'
+    name === 'custom-app-conversion-merge' ||
+    name === 'custom-app-conversion-profiles' ||
+    name === 'custom-app-conversion-profiles-dark'
   ) {
     const {
       CustomAppContentDataSchema,
@@ -3413,6 +3686,39 @@ async function applyScenario(name: VisualScenarioName, options: { height?: numbe
       }),
     );
     useCustomAppsStore().rehydrateFromSettings();
+    let externalConversionData: null | {
+      mate: { type: string };
+      sheet_notes: { content: string[][]; name: string; uid: string };
+    } = null;
+    const isProfilesConversion =
+      name === 'custom-app-conversion-profiles' || name === 'custom-app-conversion-profiles-dark';
+    if (isProfilesConversion) {
+      externalConversionData = {
+        mate: { type: 'chatSheets' },
+        sheet_notes: { content: [['row_id', '标题', '正文']], name: '片段资料表', uid: 'notes' },
+      };
+      const visualGlobal = globalThis as typeof globalThis & { AutoCardUpdaterAPI?: Record<string, unknown> };
+      visualGlobal.AutoCardUpdaterAPI = {
+        exportTableAsJson: () => externalConversionData,
+        insertRow: (tableName: string, values: Record<string, unknown>) => {
+          if (!externalConversionData || tableName !== externalConversionData.sheet_notes.name) return -1;
+          const header = externalConversionData.sheet_notes.content[0] ?? [];
+          externalConversionData.sheet_notes.content.push(header.map(column => String(values[column] ?? '')));
+          return externalConversionData.sheet_notes.content.length - 1;
+        },
+      };
+      const mappings = useExternalProfileMappingsStore();
+      mappings.resetCurrentScope();
+      mappings.createMapping({
+        displayColumn: '标题',
+        fields: [{ column: '正文', key: 'content', label: '正文' }],
+        identityColumn: 'row_id',
+        name: '片段资料',
+        sheetKey: 'sheet_notes',
+        tableName: '片段资料表',
+      });
+    }
+    if (name.endsWith('-dark')) useSettingsStore().setTheme('dark');
     resetPhoneToRoute(appId, 'convert', '转换内容', {
       entryIds: 'visual-conversion-entry-1,visual-conversion-entry-2',
     });
@@ -3424,6 +3730,29 @@ async function applyScenario(name: VisualScenarioName, options: { height?: numbe
         );
         if (!mergeButton) throw new Error('Custom app conversion merge mode was not rendered');
         mergeButton.click();
+        await waitForPaint();
+      }
+      if (isProfilesConversion) {
+        const targetCombobox = document.querySelector<HTMLElement>('.pc-conversion-panel .pc-field-group .pc-combobox');
+        targetCombobox?.querySelector<HTMLInputElement>('.pc-combobox-input')?.click();
+        await waitForPaint();
+        const profilesOption = [...document.querySelectorAll<HTMLButtonElement>('.pc-combobox-option')].find(button =>
+          button.textContent?.includes('资料表'),
+        );
+        if (!profilesOption) throw new Error('Profiles conversion target option was not rendered');
+        profilesOption.click();
+        await waitForPaint();
+        const fieldComboboxes = document.querySelectorAll<HTMLElement>(
+          '.pc-conversion-panel .pc-field-group .pc-combobox',
+        );
+        const contentFieldCombobox = fieldComboboxes[fieldComboboxes.length - 1];
+        contentFieldCombobox?.querySelector<HTMLInputElement>('.pc-combobox-input')?.click();
+        await waitForPaint();
+        const contentOption = [
+          ...(contentFieldCombobox?.querySelectorAll<HTMLButtonElement>('.pc-combobox-option') ?? []),
+        ].find(button => button.textContent?.includes('正文'));
+        if (!contentOption) throw new Error('Mapped content field option was not rendered');
+        contentOption.click();
         await waitForPaint();
       }
       const confirmButton = [...document.querySelectorAll<HTMLButtonElement>('button')].find(button =>
@@ -3444,6 +3773,9 @@ async function applyScenario(name: VisualScenarioName, options: { height?: numbe
       const status = document.querySelector<HTMLElement>('.pc-status-card.success');
       if (!status?.textContent?.includes('转换完成')) {
         throw new Error('Custom app conversion did not reach its completion state');
+      }
+      if (isProfilesConversion && externalConversionData?.sheet_notes.content.length !== 3) {
+        throw new Error('Mapped Profiles conversion did not insert one external row per source');
       }
     }
   } else if (name === 'preview-session-navigation') {
@@ -3598,15 +3930,158 @@ async function applyScenario(name: VisualScenarioName, options: { height?: numbe
       () => phone.currentRoute.appId === 'card-writer' && phone.currentRoute.page === 'preview',
     );
     if (!previewOpened) throw new Error('Card writer reasoning fixture did not open its preview');
-    const reasoningSummary = document.querySelector<HTMLElement>('.pc-generation-preview .pc-reasoning-disclosure > summary');
+    const reasoningSummary = document.querySelector<HTMLElement>(
+      '.pc-generation-preview .pc-reasoning-disclosure > summary',
+    );
     if (!reasoningSummary) throw new Error('Card writer reasoning disclosure did not render from the saved stage');
     reasoningSummary.click();
     const disclosureOpened = await waitForVisualCondition(
-      () => document.querySelector<HTMLDetailsElement>('.pc-generation-preview .pc-reasoning-disclosure')?.open === true,
+      () =>
+        document.querySelector<HTMLDetailsElement>('.pc-generation-preview .pc-reasoning-disclosure')?.open === true,
     );
-    if (!disclosureOpened || !document.querySelector('.pc-reasoning-disclosure')?.textContent?.includes('先确认角色身份')) {
+    if (
+      !disclosureOpened ||
+      !document.querySelector('.pc-reasoning-disclosure')?.textContent?.includes('先确认角色身份')
+    ) {
       throw new Error('Card writer reasoning disclosure did not expand with saved content');
     }
+    const findReasoningAction = (label: string) =>
+      [...document.querySelectorAll<HTMLButtonElement>('.pc-reasoning-actions button')].find(
+        button => button.textContent?.trim() === label,
+      );
+    findReasoningAction('编辑')?.click();
+    await waitForPaint();
+    const firstEditor = document.querySelector<HTMLTextAreaElement>('.pc-reasoning-editor');
+    if (!firstEditor) throw new Error('Card writer reasoning edit action did not open the shared editor');
+    firstEditor.value = '这次修改应被取消。';
+    firstEditor.dispatchEvent(new Event('input', { bubbles: true }));
+    findReasoningAction('取消')?.click();
+    await waitForPaint();
+    if (!document.querySelector('.pc-reasoning-disclosure')?.textContent?.includes('先确认角色身份')) {
+      throw new Error('Card writer reasoning cancel did not preserve the saved stage');
+    }
+    findReasoningAction('编辑')?.click();
+    await waitForPaint();
+    const appliedEditor = document.querySelector<HTMLTextAreaElement>('.pc-reasoning-editor');
+    if (!appliedEditor) throw new Error('Card writer reasoning editor did not reopen');
+    appliedEditor.value = '已修改的写卡思维链。';
+    appliedEditor.dispatchEvent(new Event('input', { bubbles: true }));
+    findReasoningAction('应用')?.click();
+    const reasoningApplied = await waitForVisualCondition(
+      () => document.querySelector('.pc-reasoning-disclosure')?.textContent?.includes('已修改的写卡思维链') === true,
+    );
+    if (!reasoningApplied) throw new Error('Card writer reasoning apply did not update the active preview stage');
+    findReasoningAction('编辑')?.click();
+    await waitForPaint();
+    findReasoningAction('清空')?.click();
+    await waitForPaint();
+    const clearedEditor = document.querySelector<HTMLTextAreaElement>('.pc-reasoning-editor');
+    if (!clearedEditor || clearedEditor.value !== '') {
+      throw new Error('Card writer reasoning clear did not empty the local edit draft');
+    }
+    useSettingsStore().setTheme('dark');
+    await waitForPaint();
+    const darkActions = [...document.querySelectorAll<HTMLElement>('.pc-reasoning-actions button')];
+    const darkEditor = document.querySelector<HTMLElement>('.pc-reasoning-editor');
+    if (
+      darkActions.length !== 3 ||
+      darkActions.some(
+        button => button.getBoundingClientRect().width <= 0 || getComputedStyle(button).color === 'transparent',
+      ) ||
+      !darkEditor ||
+      darkEditor.getBoundingClientRect().height < 96
+    ) {
+      throw new Error('Card writer reasoning editor is not readable in dark mode');
+    }
+    useSettingsStore().setTheme('light');
+    await waitForPaint();
+  } else if (name === 'card-writer-profile-mapping-import' || name === 'card-writer-profile-mapping-import-dark') {
+    const visualGlobal = globalThis as typeof globalThis & { AutoCardUpdaterAPI?: Record<string, unknown> };
+    const data = {
+      mate: { type: 'chatSheets' },
+      sheet_people: {
+        content: [['row_id', '姓名', '正文', '出生日期']],
+        name: '人物表',
+        uid: 'people',
+      },
+    };
+    visualGlobal.AutoCardUpdaterAPI = {
+      exportTableAsJson: () => data,
+      insertRow: (tableName: string, values: Record<string, unknown>) => {
+        if (tableName !== data.sheet_people.name) return -1;
+        const header = data.sheet_people.content[0] ?? [];
+        data.sheet_people.content.push(header.map(column => String(values[column] ?? '')));
+        return data.sheet_people.content.length - 1;
+      },
+      updateRow: () => true,
+      deleteRow: () => true,
+    };
+    const mappings = useExternalProfileMappingsStore();
+    mappings.resetCurrentScope();
+    mappings.createMapping({
+      displayColumn: '姓名',
+      fields: [
+        { column: '正文', key: 'details', label: '正文' },
+        { column: '出生日期', key: 'birthDate', label: '出生日期' },
+      ],
+      identityColumn: 'row_id',
+      name: '写卡人物资料',
+      sheetKey: 'sheet_people',
+      tableName: '人物表',
+    });
+    const { useCardWriterStore } = await import('@/apps/card-writer/store');
+    const writer = useCardWriterStore();
+    writer.settings.documents = [];
+    writer.saveDocument({
+      content: '<character>\n姓名：林见夏\n出生日期：2002-03-04\n身份：调查员\n</character>',
+      sourceOwnerLabel: '测试角色',
+      sourceLabel: '外部映射导入测试',
+      sourceScopeKey: getCurrentChatScopeKey(),
+      stages: [],
+      targetWorldbookName: '',
+      taskId: 'full-card',
+      taskLabel: '一键写卡',
+      title: '外部资料导入测试',
+      worldbookIncluded: false,
+      worldbookWritten: false,
+    });
+    if (name.endsWith('-dark')) useSettingsStore().setTheme('dark');
+    resetPhoneToRoute('card-writer', 'library', '写卡成品');
+    await waitForPaint();
+    document.querySelector<HTMLButtonElement>('button[title="导入资料表"]')?.click();
+    const importOpened = await waitForVisualCondition(() => phone.currentRoute.page === 'profile-import');
+    if (!importOpened || !document.querySelector('.pc-card-writer-import-mapping')) {
+      throw new Error('Card writer profile mapping import page did not open');
+    }
+    document.querySelector<HTMLButtonElement>('.pc-form-actions .pc-primary-btn')?.click();
+    const confirmButton = await waitForVisualCondition(() =>
+      [...document.querySelectorAll<HTMLButtonElement>('.pc-phone-notice-action')].some(button =>
+        button.textContent?.includes('确认导入'),
+      ),
+    );
+    if (!confirmButton) throw new Error('Card writer external import confirmation did not open');
+    [...document.querySelectorAll<HTMLButtonElement>('.pc-phone-notice-action')]
+      .find(button => button.textContent?.includes('确认导入'))
+      ?.click();
+    const imported = await waitForVisualCondition(() => data.sheet_people.content.length === 2);
+    if (
+      !imported ||
+      data.sheet_people.content[1]?.[1] !== '林见夏' ||
+      data.sheet_people.content[1]?.[3] !== '2002-03-04'
+    ) {
+      throw new Error(
+        `Card writer did not insert the mapped external row: ${JSON.stringify(data.sheet_people.content)}`,
+      );
+    }
+    const returnedToLibrary = await waitForVisualCondition(() => phone.currentRoute.page === 'library');
+    if (!returnedToLibrary) throw new Error('Card writer did not return to its library after external import');
+    document.querySelector<HTMLButtonElement>('button[title="导入资料表"]')?.click();
+    const reopened = await waitForVisualCondition(
+      () =>
+        phone.currentRoute.page === 'profile-import' &&
+        Boolean(document.querySelector('.pc-card-writer-import-mapping')),
+    );
+    if (!reopened) throw new Error('Card writer profile import page did not reopen for visual verification');
   } else if (name === 'card-writer-saved-preview') {
     const { useCardWriterStore } = await import('@/apps/card-writer/store');
     const writer = useCardWriterStore();
@@ -3784,6 +4259,64 @@ async function applyScenario(name: VisualScenarioName, options: { height?: numbe
     if (Math.max(...centers) - Math.min(...centers) > 6) {
       throw new Error('Archive character row content wrapped onto multiple lines');
     }
+  } else if (name === 'archive-current-browser') {
+    await seedArchiveFloorBackupFixture();
+    resetPhoneToRoute('archive', 'root', '聊天档案');
+    const loaded = await waitForVisualCondition(() =>
+      [...document.querySelectorAll<HTMLButtonElement>('.pc-current-chat-browser .pc-chat-row')].some(button =>
+        button.textContent?.includes('视觉旧聊天 B'),
+      ),
+    );
+    if (!loaded) throw new Error('Archive current page did not load all chats for the current owner');
+    await waitForPaint();
+    const backupStatus = document.querySelector<HTMLElement>('.pc-current-backup-status');
+    const statusCopy = backupStatus?.querySelector<HTMLElement>('p');
+    if (!backupStatus || !statusCopy) throw new Error('Archive current backup status card is incomplete');
+    const statusRect = backupStatus.getBoundingClientRect();
+    const copyRect = statusCopy.getBoundingClientRect();
+    if (copyRect.left < statusRect.left || copyRect.right > statusRect.right + 1) {
+      throw new Error('Archive current backup status escaped its card on a narrow phone');
+    }
+    const rows = [...document.querySelectorAll<HTMLButtonElement>('.pc-current-chat-browser .pc-chat-row')];
+    if (rows.length !== 3) throw new Error(`Archive current browser expected 3 chats, received ${rows.length}`);
+    const originalTavernScope = phone.currentTavernScopeKey;
+    const historicalRow = rows.find(button => button.textContent?.includes('视觉旧聊天 B'));
+    historicalRow?.click();
+    const detailOpened = await waitForVisualCondition(() => Boolean(document.querySelector('.pc-readonly-card')));
+    if (
+      !historicalRow ||
+      !detailOpened ||
+      phone.currentRoute.page !== 'detail' ||
+      phone.currentTavernScopeKey !== originalTavernScope ||
+      phone.viewingScopeKey === originalTavernScope
+    ) {
+      throw new Error('Archive list selection switched the tavern chat or missed the shared read-only detail path');
+    }
+    await phone.goBack();
+    await waitForVisualCondition(() => Boolean(document.querySelector('.pc-current-chat-browser .pc-chat-row')));
+    const randomButton = document.querySelector<HTMLButtonElement>(
+      '.pc-current-chat-browser button[title="随机查看聊天"]',
+    );
+    if (!randomButton || randomButton.disabled) throw new Error('Archive random read-only action is unavailable');
+    const originalRandom = Math.random;
+    try {
+      Math.random = () => 0.5;
+      randomButton.click();
+      await waitForVisualCondition(() => phone.currentRoute.page === 'detail');
+    } finally {
+      Math.random = originalRandom;
+    }
+    if (phone.currentRoute.page !== 'detail' || phone.currentTavernScopeKey !== originalTavernScope) {
+      throw new Error('Archive random action changed the tavern chat instead of opening an archive detail');
+    }
+    await phone.goBack();
+    const returned = await waitForVisualCondition(() =>
+      Boolean(document.querySelector('.pc-current-chat-browser .pc-chat-row')),
+    );
+    const currentTab = document.querySelector<HTMLButtonElement>('.pc-tab-row .pc-segment-btn.active');
+    if (!returned || !currentTab?.textContent?.includes('当前聊天')) {
+      throw new Error('Archive random detail did not return to the current-chat browser');
+    }
   } else if (name === 'archive-floor-backup') {
     await new Promise(resolve => window.setTimeout(resolve, 1000));
     await seedArchiveFloorBackupFixture();
@@ -3943,9 +4476,9 @@ async function applyScenario(name: VisualScenarioName, options: { height?: numbe
     roleSelect.value = 'assistant';
     roleSelect.dispatchEvent(new Event('change', { bubbles: true }));
     await waitForPaint();
-    const saveButton = [...document.querySelectorAll<HTMLButtonElement>('.pc-preset-editor-page .pc-form-actions button')].find(
-      button => button.textContent?.trim() === '保存',
-    );
+    const saveButton = [
+      ...document.querySelectorAll<HTMLButtonElement>('.pc-preset-editor-page .pc-form-actions button'),
+    ].find(button => button.textContent?.trim() === '保存');
     if (!saveButton || saveButton.disabled) throw new Error('Changing a saved prompt role did not enable save');
     saveButton.click();
     const returned = await waitForVisualCondition(() => usePhoneStore().currentRoute.page === 'detail');
@@ -4051,37 +4584,86 @@ async function applyScenario(name: VisualScenarioName, options: { height?: numbe
       return Boolean(current && !current.disabled && !current.checked);
     });
     if (!toggled) throw new Error('Legacy worldbook enabled/disable fields were not updated together');
-  } else if (name === 'timekeeper-profile-sync') {
-    const profiles = useProfilesStore();
-    profiles.resetCurrentScope();
-    const existingProfile = profiles.createEntry({
-      fields: { birthDate: '2001-02-03' },
-      kind: 'character',
-      title: '既有人物',
+  } else if (name === 'timekeeper-profile-sync' || name === 'timekeeper-profile-sync-dark') {
+    const visualGlobal = globalThis as typeof globalThis & { AutoCardUpdaterAPI?: Record<string, unknown> };
+    const data = {
+      mate: { type: 'chatSheets' },
+      sheet_people: {
+        content: [
+          ['row_id', '姓名', '出生日期'],
+          ['p-1', '既有人物', '2001-02-03'],
+        ],
+        name: '人物表',
+        uid: 'people',
+      },
+    };
+    const findTable = (tableName: string) =>
+      Object.values(data).find((value): value is { content: string[][]; name: string; uid: string } =>
+        Boolean(value && typeof value === 'object' && 'name' in value && value.name === tableName),
+      );
+    visualGlobal.AutoCardUpdaterAPI = {
+      deleteRow: (tableName: string, rowIndex: number) => {
+        const table = findTable(tableName);
+        if (!table || rowIndex < 1 || rowIndex >= table.content.length) return false;
+        table.content.splice(rowIndex, 1);
+        return true;
+      },
+      exportTableAsJson: () => data,
+      insertRow: (tableName: string, values: Record<string, unknown>) => {
+        const table = findTable(tableName);
+        if (!table) return -1;
+        const header = table.content[0] ?? [];
+        table.content.push(header.map(column => String(values[column] ?? '')));
+        return table.content.length - 1;
+      },
+      updateRow: (tableName: string, rowIndex: number, values: Record<string, unknown>) => {
+        const table = findTable(tableName);
+        const header = table?.content[0] ?? [];
+        const row = table?.content[rowIndex];
+        if (!table || !row) return false;
+        Object.entries(values).forEach(([column, value]) => {
+          const columnIndex = header.indexOf(column);
+          if (columnIndex >= 0) row[columnIndex] = String(value ?? '');
+        });
+        return true;
+      },
+    };
+    const mappings = useExternalProfileMappingsStore();
+    mappings.resetCurrentScope();
+    const personMapping = mappings.createMapping({
+      displayColumn: '姓名',
+      fields: [{ column: '出生日期', key: 'birthDate', label: '出生日期' }],
+      identityColumn: 'row_id',
+      name: '人物资料',
+      sheetKey: 'sheet_people',
+      tableName: '人物表',
     });
     const timekeeper = useTimekeeperStore();
     timekeeper.resetCurrentScope();
-    timekeeper.syncProfilePeople();
+    timekeeper.settings.personProfileMappingId = personMapping.id;
+    await timekeeper.refreshMappedProfiles();
+    if (name.endsWith('-dark')) useSettingsStore().setTheme('dark');
     resetPhoneToRoute('timekeeper', 'root', '时间确认');
     await waitForPaint();
     if (
       timekeeper.settings.people.length !== 1 ||
-      timekeeper.settings.people[0]?.profileEntryId !== existingProfile.id ||
+      timekeeper.settings.people[0]?.profileIdentityValue !== 'p-1' ||
       document.querySelector<HTMLInputElement>('.pc-person-card .pc-field.name')?.value !== '既有人物'
     ) {
       throw new Error(
         `Timekeeper did not read the existing character profile exactly once: people=${timekeeper.settings.people
-          .map(person => `${person.name}:${person.profileEntryId}`)
-          .join('|')}; expected=${existingProfile.id}; profilesScope=${profiles.scopeKey}; timekeeperScope=${timekeeper.scopeKey}; cards=${document.querySelectorAll('.pc-person-card').length}`,
+          .map(person => `${person.name}:${person.profileIdentityValue}`)
+          .join(
+            '|',
+          )}; expected=p-1; mappingScope=${mappings.scopeKey}; timekeeperScope=${timekeeper.scopeKey}; cards=${document.querySelectorAll('.pc-person-card').length}`,
       );
     }
 
     document.querySelector<HTMLButtonElement>('.pc-section-head button[title="新增人物"]')?.click();
-    await waitForPaint();
-    const createdPerson = timekeeper.settings.people.find(person => person.profileEntryId !== existingProfile.id);
-    const createdProfile = createdPerson?.profileEntryId ? profiles.getEntry(createdPerson.profileEntryId) : null;
-    if (!createdPerson || !createdProfile || profiles.entries.filter(entry => entry.kind === 'character').length !== 2) {
-      throw new Error('Adding a timekeeper person did not create exactly one linked character profile');
+    const personCreated = await waitForVisualCondition(() => timekeeper.settings.people.length === 2);
+    const createdPerson = timekeeper.settings.people.find(person => person.profileIdentityValue !== 'p-1');
+    if (!personCreated || !createdPerson || data.sheet_people.content.length !== 3) {
+      throw new Error('Adding a timekeeper person did not create exactly one external mapped row');
     }
 
     const createdCard = [...document.querySelectorAll<HTMLElement>('.pc-person-card')].find(card =>
@@ -4106,10 +4688,10 @@ async function applyScenario(name: VisualScenarioName, options: { height?: numbe
       input.dispatchEvent(new Event('change', { bubbles: true }));
       await waitForPaint();
     }
-    const updatedProfile = profiles.getEntry(createdProfile.id);
-    if (updatedProfile?.title !== '联动人物' || updatedProfile.fields.birthDate !== '2005-06-07') {
+    const updatedRow = data.sheet_people.content.find(row => row[0] === createdPerson.profileIdentityValue);
+    if (updatedRow?.[1] !== '联动人物' || updatedRow[2] !== '2005-06-07') {
       throw new Error(
-        `Editing a timekeeper person did not synchronize name and birthDate to its profile: profile=${updatedProfile?.title}:${updatedProfile?.fields.birthDate}; person=${createdPerson.name}:${createdPerson.birth.year}-${createdPerson.birth.month}-${createdPerson.birth.day}`,
+        `Editing a timekeeper person did not synchronize name and birthDate to its external row: row=${updatedRow?.join(':')}; person=${createdPerson.name}:${createdPerson.birth.year}-${createdPerson.birth.month}-${createdPerson.birth.day}`,
       );
     }
 
@@ -4120,13 +4702,13 @@ async function applyScenario(name: VisualScenarioName, options: { height?: numbe
     );
     if (!confirmDelete) throw new Error('Timekeeper linked profile deletion confirmation is missing');
     confirmDelete.click();
-    await waitForPaint();
+    await waitForVisualCondition(() => !timekeeper.settings.people.some(person => person.id === createdPerson.id));
     if (
       timekeeper.settings.people.some(person => person.id === createdPerson.id) ||
-      profiles.getEntry(createdProfile.id) ||
-      !profiles.getEntry(existingProfile.id)
+      data.sheet_people.content.some(row => row[0] === createdPerson.profileIdentityValue) ||
+      !data.sheet_people.content.some(row => row[0] === 'p-1')
     ) {
-      throw new Error('Confirming timekeeper deletion did not remove only the linked person and profile');
+      throw new Error('Confirming timekeeper deletion did not remove only the linked person and external row');
     }
   } else if (name === 'worldbook-entry-editor') {
     resetPhoneToRoute('worldbook-link', 'detail', '【视觉】旧格式世界书', { bookName: '【视觉】旧格式世界书' });
@@ -4843,7 +5425,10 @@ async function applyScenario(name: VisualScenarioName, options: { height?: numbe
       throw new Error('Editing the active draft also modified a different preview draft');
     }
     persistence.clearPreviewDraft();
-    if (previewDrafts.getPreviewDraftById(firstProbeDraftId) || previewDrafts.getPreviewDrafts('visual-preview-probe', 'preview').length !== 1) {
+    if (
+      previewDrafts.getPreviewDraftById(firstProbeDraftId) ||
+      previewDrafts.getPreviewDrafts('visual-preview-probe', 'preview').length !== 1
+    ) {
       throw new Error('Saving or clearing the active preview draft removed more than that draft');
     }
     scope.stop();
@@ -4888,10 +5473,11 @@ async function applyScenario(name: VisualScenarioName, options: { height?: numbe
       title: '第二份草稿章节',
     });
     await waitForPaint();
-    const draftCountLabel = document.querySelector<HTMLElement>('.pc-preview-draft-notice .pc-kicker')?.textContent || '';
+    const draftCountLabel =
+      document.querySelector<HTMLElement>('.pc-preview-draft-notice .pc-kicker')?.textContent || '';
     if (!draftCountLabel.includes('2')) throw new Error('Preview draft notice did not show the multi-draft count');
-    const manageDraftButton = [...document.querySelectorAll<HTMLButtonElement>('.pc-preview-draft-notice button')].find(button =>
-      button.textContent?.includes('管理草稿'),
+    const manageDraftButton = [...document.querySelectorAll<HTMLButtonElement>('.pc-preview-draft-notice button')].find(
+      button => button.textContent?.includes('管理草稿'),
     );
     if (!manageDraftButton) throw new Error('Preview draft manager entry did not appear');
     manageDraftButton.click();
@@ -4908,9 +5494,9 @@ async function applyScenario(name: VisualScenarioName, options: { height?: numbe
     }
     resetPhoneToRoute('extras', 'root', '番外书架');
     await waitForPaint();
-    const manageDraftButtonAfterReturn = [...document.querySelectorAll<HTMLButtonElement>('.pc-preview-draft-notice button')].find(
-      button => button.textContent?.includes('管理草稿'),
-    );
+    const manageDraftButtonAfterReturn = [
+      ...document.querySelectorAll<HTMLButtonElement>('.pc-preview-draft-notice button'),
+    ].find(button => button.textContent?.includes('管理草稿'));
     if (!manageDraftButtonAfterReturn) throw new Error('Preview draft manager disappeared after returning home');
     manageDraftButtonAfterReturn.click();
     await waitForPaint();
@@ -5015,10 +5601,11 @@ async function applyScenario(name: VisualScenarioName, options: { height?: numbe
       title: '草稿管理二',
     });
     await waitForPaint();
-    const finalManageDraftButton = [...document.querySelectorAll<HTMLButtonElement>('.pc-preview-draft-notice button')].find(
-      button => button.textContent?.includes('管理草稿'),
-    );
-    if (!finalManageDraftButton) throw new Error('Preview draft manager did not remain available for visual inspection');
+    const finalManageDraftButton = [
+      ...document.querySelectorAll<HTMLButtonElement>('.pc-preview-draft-notice button'),
+    ].find(button => button.textContent?.includes('管理草稿'));
+    if (!finalManageDraftButton)
+      throw new Error('Preview draft manager did not remain available for visual inspection');
     finalManageDraftButton.click();
     await waitForPaint();
   } else if (name === 'extras-legacy-continuation') {
@@ -5103,178 +5690,334 @@ async function applyScenario(name: VisualScenarioName, options: { height?: numbe
     }
     typePromptArea.scrollIntoView({ block: 'center' });
     await waitForPaint();
-  } else if (name === 'profiles-empty-toolbar') {
-    const profiles = useProfilesStore();
-    profiles.resetCurrentScope();
-    resetPhoneToRoute('profiles', 'root', '资料表');
-    await waitForPaint();
-    document.querySelector<HTMLInputElement>('.pc-profile-table-switcher .pc-combobox-input')?.click();
-    await waitForPaint();
-    const toolbar = document.querySelector<HTMLElement>('.pc-profiles-toolbar');
-    const menu = document.querySelector<HTMLElement>('.pc-profile-table-switcher .pc-combobox-menu');
-    if (!toolbar || !menu || menu.scrollHeight <= menu.clientHeight) {
-      throw new Error('Profiles searchable table menu is missing or does not keep its own scroll area');
+  } else if (name.startsWith('profiles-external-')) {
+    const visualGlobal = globalThis as typeof globalThis & { AutoCardUpdaterAPI?: Record<string, unknown> };
+    const callbacks = new Set<(data: unknown) => void>();
+    let data: Record<string, unknown> = {
+      mate: { type: 'chatSheets', version: 1 },
+      sheet_people: {
+        uid: 'important_people',
+        name: '重要人物表',
+        content: [
+          ['row_id', '姓名', '身份', '出生日期'],
+          [1, '李沐晨', '调查员', '1998-04-16'],
+          [2, '沈知遥', '记者', '1997-11-02'],
+          [3, '周临川', '仓库管理员', '未知'],
+        ],
+      },
+      sheet_events: {
+        uid: 'story_events',
+        name: '剧情事件表',
+        content: [
+          ['row_id', '事件', '阶段', '状态'],
+          [1, '雨夜旧案重启调查', '第三章', '进行中'],
+          [2, '港口仓库失窃', '第四章', '待确认'],
+        ],
+      },
+    };
+    let openCount = 0;
+
+    if (name === 'profiles-external-missing') {
+      delete visualGlobal.AutoCardUpdaterAPI;
+    } else {
+      if (name === 'profiles-external-empty') data = { mate: { type: 'chatSheets', version: 1 } };
+      if (name === 'profiles-external-long-table') {
+        data = {
+          mate: { type: 'chatSheets', version: 1 },
+          sheet_long: {
+            uid: 'long_sheet',
+            name: '多字段长表格',
+            content: [
+              ['row_id', '姓名', '身份', '阵营', '所在地', '状态'],
+              ...Array.from({ length: 24 }, (_, index) => [
+                index + 1,
+                `人物 ${index + 1}`,
+                index % 2 ? '联络人' : '调查员',
+                index % 3 ? '中立' : '主角方',
+                `区域 ${index + 1}`,
+                index % 2 ? '未知' : '在场',
+              ]),
+            ],
+          },
+        };
+      }
+      visualGlobal.AutoCardUpdaterAPI = {
+        exportTableAsJson: () => {
+          if (name === 'profiles-external-error') throw new Error('视觉夹具读取失败');
+          return data;
+        },
+        openVisualizer: () => {
+          openCount += 1;
+        },
+        registerTableUpdateCallback: (callback: (value: unknown) => void) => callbacks.add(callback),
+        unregisterTableUpdateCallback: (callback: (value: unknown) => void) => callbacks.delete(callback),
+      };
     }
-  } else if (
-    name === 'profiles-table' ||
-    name === 'profiles-table-grid' ||
-    name === 'profiles-table-manager' ||
-    name === 'profiles-table-editor' ||
-    name === 'profiles-detail'
-  ) {
-    const { firstEntry, table } = createProfilesFixture();
-    resetPhoneToRoute(
-      'profiles',
-      name === 'profiles-table-manager'
-        ? 'tables'
-        : name === 'profiles-table-editor'
-          ? 'table-editor'
-          : name === 'profiles-detail'
-            ? 'entry'
-            : 'root',
-      name === 'profiles-table-manager'
-        ? '表格类型'
-        : name === 'profiles-table-editor'
-          ? table.name
-          : name === 'profiles-detail'
-            ? firstEntry.title
-            : '资料表',
-      name === 'profiles-table-editor'
-        ? { tableId: table.id }
-        : name === 'profiles-detail'
-          ? { entryId: firstEntry.id }
-          : undefined,
-    );
-    if (name === 'profiles-table-manager') {
-      await waitForPaint();
-      if (!document.querySelector('.pc-profile-table-manager')) {
-        throw new Error('Profiles table manager page did not render from the isolated fixture');
+
+    const failedDraftScenario = name === 'profiles-external-failed-draft';
+    const transferScenario =
+      name === 'profiles-external-transfer-table' ||
+      name === 'profiles-external-transfer-import' ||
+      name === 'profiles-external-transfer-row-dark';
+    const mappingScenario = name.startsWith('profiles-external-mapping') || failedDraftScenario || transferScenario;
+    if (mappingScenario) {
+      const { useExternalProfileMappingsStore } = await import('@/apps/profiles/profileMappings');
+      const mappingStore = useExternalProfileMappingsStore();
+      mappingStore.data.mappings = [];
+      if (name === 'profiles-external-mappings' || failedDraftScenario || transferScenario) {
+        const mapping = mappingStore.createMapping({
+          displayColumn: '姓名',
+          fields: failedDraftScenario
+            ? [
+                { column: '身份', key: 'summary', label: '摘要' },
+                { column: '出生日期', key: 'details', label: '人物详情' },
+              ]
+            : [{ column: '出生日期', key: 'birthDate', label: '出生日期' }],
+          identityColumn: 'row_id',
+          name: '人物基础资料',
+          sheetKey: 'sheet_people',
+          tableName: '重要人物表',
+        });
+        if (failedDraftScenario) {
+          const draftInput = {
+            actionId: 'generate',
+            appId: 'profiles',
+            context: { mappingId: mapping.id, titleHint: '李沐晨' },
+            rawOutput: [
+              '<result>',
+              '  <title>李沐晨</title>',
+              '  <summary>调查旧案的学生</summary>',
+              '  <fields><field id="details">在雨夜追查一封旧信。</field></fields>',
+              '</result>',
+            ].join('\n'),
+            rawOutputSemantics: 'original-v1' as const,
+            source: {
+              chatIdAtGeneration: 'visual-chat',
+              label: '不使用聊天楼层',
+              messageIds: [],
+              mode: 'none' as const,
+              ranges: [],
+              scopeId: getCurrentChatScopeKey(),
+              sortKey: 0,
+            },
+            warnings: ['视觉夹具：等待重新解析'],
+          };
+          useExternalProfileGenerationStore().data.failedDrafts = [];
+          const draft = useExternalProfileGenerationStore().createFailedDraft(draftInput);
+          resetPhoneToRoute('profiles', 'failed-draft', '修复资料生成草稿', {
+            draftId: draft.id,
+            draftSource: 'external',
+          });
+        }
       }
     }
-    if (name === 'profiles-table-grid') {
-      await waitForPaint();
-      document.querySelectorAll<HTMLButtonElement>('.pc-profile-view-toggle .pc-segment-btn')[1]?.click();
-      await waitForPaint();
-      if (!document.querySelector('.pc-profile-table-header')) {
-        throw new Error('Profiles table view did not render after switching modes');
+
+    const tableScenario =
+      name === 'profiles-external-table' ||
+      name === 'profiles-external-long-table' ||
+      name === 'profiles-external-transfer-table' ||
+      name === 'profiles-external-transfer-import';
+    const mappingEditorScenario =
+      name === 'profiles-external-mapping-editor' ||
+      name === 'profiles-external-mapping-editor-dark' ||
+      name === 'profiles-external-mapping-crud';
+    const routePage = failedDraftScenario
+      ? 'failed-draft'
+      : name === 'profiles-external-transfer-row-dark'
+        ? 'row'
+        : name === 'profiles-external-mapping-crud'
+          ? 'mappings'
+          : mappingEditorScenario
+            ? 'mapping-editor'
+            : name === 'profiles-external-mappings'
+              ? 'mappings'
+              : tableScenario
+                ? 'table'
+                : 'root';
+    if (!failedDraftScenario)
+      resetPhoneToRoute(
+        'profiles',
+        routePage,
+        name === 'profiles-external-mapping-crud'
+          ? '资料映射'
+          : mappingEditorScenario
+            ? '新建资料映射'
+            : name === 'profiles-external-mappings'
+              ? '资料映射'
+              : tableScenario
+                ? name === 'profiles-external-long-table'
+                  ? '多字段长表格'
+                  : '重要人物表'
+                : name === 'profiles-external-transfer-row-dark'
+                  ? '李沐晨'
+                  : '资料表',
+        name === 'profiles-external-mapping-crud'
+          ? undefined
+          : mappingEditorScenario
+            ? { mappingId: 'new' }
+            : name === 'profiles-external-transfer-row-dark'
+              ? {
+                  identityValue: '1',
+                  mappingId: useExternalProfileMappingsStore().mappings[0]?.id || '',
+                  sheetKey: 'sheet_people',
+                }
+              : tableScenario
+                ? { sheetKey: name === 'profiles-external-long-table' ? 'sheet_long' : 'sheet_people' }
+                : undefined,
+      );
+    await waitForPaint();
+
+    if (name === 'profiles-external-transfer-table') {
+      const mappingSelect = document.querySelector<HTMLSelectElement>('.pc-external-profile-mapping-row .pc-select');
+      const importButton = document.querySelector<HTMLButtonElement>('[aria-label="导入单行资料"]');
+      const firstRow = document.querySelector<HTMLButtonElement>('.pc-external-profile-grid-row');
+      if (!mappingSelect?.value || !importButton || !firstRow || firstRow.disabled) {
+        throw new Error('External Profiles transfer table did not expose mapped import and row actions');
       }
     }
-  } else if (name === 'profiles-field-detail') {
-    const { table } = createProfilesFixture();
-    resetPhoneToRoute('profiles', 'table-editor', table.name, { tableId: table.id });
-    await waitForPaint();
-    document.querySelector<HTMLElement>('[data-profile-column-id="identity"] .pc-profile-column-main')?.click();
-    await waitForPaint();
-    if (!document.querySelector('.pc-profile-field-editor')) {
-      throw new Error('Profile field detail page did not open from the compact field list');
-    }
-  } else if (name === 'profiles-field-management') {
-    const migratedColumn = ProfileTableColumnSchema.parse({
-      description: '旧字段',
-      id: 'legacy_hidden',
-      label: '旧隐藏字段',
-      options: [],
-      required: false,
-      type: 'text',
-      visible: false,
-    });
-    if (migratedColumn.enabled || 'visible' in migratedColumn) {
-      throw new Error('Legacy profile column visibility did not migrate to enabled state');
-    }
 
-    const profiles = useProfilesStore();
-    const { table } = createProfilesFixture();
-    const entry = profiles.createEntry({
-      fields: { identity: '不会进入停用后的引用', status: '在场' },
-      kind: table.kind,
-      summary: '字段管理测试资料',
-      tableId: table.id,
-      tags: ['字段管理'],
-      title: '字段管理对象',
-    });
-    resetPhoneToRoute('profiles', 'table-editor', table.name, { tableId: table.id });
-    await waitForPaint();
-
-    const initialRows = [...document.querySelectorAll<HTMLElement>('.pc-profile-column-row')];
-    if (!initialRows.length || initialRows.some(row => row.querySelector('input, textarea, select'))) {
-      throw new Error('Profile field list still renders expanded field forms');
+    if (name === 'profiles-external-transfer-import') {
+      const mapping = useExternalProfileMappingsStore().mappings[0];
+      const importButton = document.querySelector<HTMLButtonElement>('[aria-label="导入单行资料"]');
+      if (!mapping || !importButton) throw new Error('External Profiles transfer import entry is missing');
+      importButton.click();
+      await waitForPaint();
+      const input = document.querySelector<HTMLInputElement>('.pc-item-transfer-dialog input[type="file"]');
+      if (!input) throw new Error('External Profiles transfer file input is missing');
+      const payload = {
+        appId: 'profiles',
+        data: {
+          item: { displayValue: '李沐晨', fields: { birthDate: '1998-04-16' }, identityValue: '1' },
+          source: {
+            fields: [{ key: 'birthDate', label: '出生日期' }],
+            mappingName: '人物基础资料',
+            tableName: '重要人物表',
+          },
+        },
+        exportedAt: '2026-08-22T00:00:00.000Z',
+        format: 'sillytavern-phone-item-transfer',
+        itemId: '1',
+        itemSchemaVersion: 1,
+        itemType: 'external-profile-row',
+        title: '李沐晨',
+        version: 1,
+      };
+      const file = new File([JSON.stringify(payload)], 'external-profile-row.json', { type: 'application/json' });
+      Object.defineProperty(input, 'files', { configurable: true, value: [file] });
+      input.dispatchEvent(new Event('change', { bubbles: true }));
+      const previewVisible = await waitForVisualCondition(
+        () => document.querySelectorAll('.pc-item-transfer-dialog .pc-segment-btn').length === 2,
+      );
+      if (!previewVisible || !document.body.textContent?.includes('人物基础资料 · 重要人物表')) {
+        throw new Error('External Profiles transfer preview did not show target and conflict actions');
+      }
     }
 
-    const dragHandle = initialRows[0]?.querySelector<HTMLButtonElement>('.pc-profile-column-drag-handle');
-    const targetRow = initialRows.at(-1);
-    if (!dragHandle || !targetRow) throw new Error('Profile field drag fixture is incomplete');
-    const dragRect = dragHandle.getBoundingClientRect();
-    const targetRect = targetRow.getBoundingClientRect();
-    const pointerId = 91;
-    dragHandle.dispatchEvent(
-      new PointerEvent('pointerdown', {
-        bubbles: true,
-        button: 0,
-        clientY: dragRect.top + dragRect.height / 2,
-        pointerId,
-      }),
-    );
-    dragHandle.dispatchEvent(
-      new PointerEvent('pointermove', {
-        bubbles: true,
-        button: 0,
-        clientY: targetRect.bottom + 8,
-        pointerId,
-      }),
-    );
-    dragHandle.dispatchEvent(
-      new PointerEvent('pointerup', {
-        bubbles: true,
-        button: 0,
-        clientY: targetRect.bottom + 8,
-        pointerId,
-      }),
-    );
-    await waitForPaint();
-    const reorderedRows = [...document.querySelectorAll<HTMLElement>('.pc-profile-column-row')];
-    if (reorderedRows.at(-1)?.dataset.profileColumnId !== initialRows[0]?.dataset.profileColumnId) {
-      throw new Error('Profile field drag did not move the field to the selected position');
+    if (name === 'profiles-external-transfer-row-dark') {
+      if (!document.body.textContent?.includes('出生日期') || !document.body.textContent?.includes('1998-04-16')) {
+        throw new Error('External Profiles row detail did not render mapped fields');
+      }
+      document.querySelector<HTMLButtonElement>('.pc-reader-tool-trigger')?.click();
+      await waitForPaint();
+      if (!document.querySelector<HTMLButtonElement>('[aria-label="导出本条"]')) {
+        throw new Error('External Profiles row detail did not expose single-row export');
+      }
     }
 
-    document.querySelector<HTMLButtonElement>('.pc-profile-fields-head .pc-icon-btn')?.click();
-    await waitForPaint();
-    const newFieldName = document.querySelector<HTMLInputElement>('input[placeholder="例如：身份"]');
-    if (!newFieldName) throw new Error('Profile new field detail page did not open');
-    newFieldName.value = '临时字段';
-    newFieldName.dispatchEvent(new Event('input', { bubbles: true }));
-    document.querySelector<HTMLButtonElement>('.pc-profile-field-editor .pc-primary-btn')?.click();
-    await waitForPaint();
-    if (![...document.querySelectorAll('.pc-profile-column-main')].some(row => row.textContent?.includes('临时字段'))) {
-      throw new Error('Profile new field was not added after saving its detail page');
+    if (failedDraftScenario) {
+      const reparseButton = [...document.querySelectorAll<HTMLButtonElement>('.pc-failed-draft-page button')].find(
+        button => button.textContent?.includes('重新解析'),
+      );
+      if (!reparseButton || reparseButton.disabled) throw new Error('External profile failed draft cannot reparse');
+      reparseButton.click();
+      await waitForPaint();
+      if (!document.querySelector('.pc-external-profile-repair-preview')) {
+        throw new Error('External profile failed draft did not expose a confirmation preview');
+      }
     }
 
-    const identityRow = [...document.querySelectorAll<HTMLElement>('.pc-profile-column-row')].find(
-      row => row.dataset.profileColumnId === 'identity',
-    );
-    identityRow?.querySelector<HTMLButtonElement>('.pc-profile-column-main')?.click();
-    await waitForPaint();
-    const enabledToggle = document.querySelector<HTMLInputElement>('.pc-profile-field-toggle .pc-toggle input');
-    if (!enabledToggle?.checked) throw new Error('Profile field enabled toggle did not restore the saved state');
-    enabledToggle.click();
-    document.querySelector<HTMLButtonElement>('.pc-profile-field-editor .pc-primary-btn')?.click();
-    await waitForPaint();
-    if (!document.querySelector<HTMLElement>('[data-profile-column-id="identity"]')?.classList.contains('disabled')) {
-      throw new Error('Profile field list did not reflect the disabled field state');
+    if (mappingEditorScenario) {
+      if (name === 'profiles-external-mapping-crud') {
+        const createButton = document.querySelector<HTMLButtonElement>('[aria-label="新建资料映射"]');
+        createButton?.click();
+        await waitForPaint();
+      }
+      const nameInput = document.querySelector<HTMLInputElement>('.pc-profile-mapping-editor input.pc-field');
+      const tableSelect = document.querySelector<HTMLSelectElement>('.pc-profile-mapping-editor select.pc-select');
+      if (!nameInput || !tableSelect) throw new Error('External Profiles mapping editor fields did not render');
+      nameInput.value = '人物基础资料';
+      nameInput.dispatchEvent(new Event('input', { bubbles: true }));
+      tableSelect.value = 'sheet_people';
+      tableSelect.dispatchEvent(new Event('change', { bubbles: true }));
+      await waitForPaint();
+      const selects = [...document.querySelectorAll<HTMLSelectElement>('.pc-profile-mapping-editor select.pc-select')];
+      const identitySelect = selects[1];
+      const displaySelect = selects[2];
+      if (!identitySelect || !displaySelect)
+        throw new Error('External Profiles identity/display selectors did not render');
+      identitySelect.value = 'row_id';
+      identitySelect.dispatchEvent(new Event('change', { bubbles: true }));
+      displaySelect.value = '姓名';
+      displaySelect.dispatchEvent(new Event('change', { bubbles: true }));
+      const addField = document.querySelector<HTMLButtonElement>('[aria-label="增加业务字段"]');
+      addField?.click();
+      await waitForPaint();
+      const fieldInputs = [...document.querySelectorAll<HTMLInputElement>('.pc-profile-field-row input.pc-field')];
+      const fieldSelect = document.querySelector<HTMLSelectElement>('.pc-profile-field-row select.pc-select');
+      if (fieldInputs.length !== 2 || !fieldSelect)
+        throw new Error('External Profiles business field editor did not render');
+      fieldInputs[0].value = 'birthDate';
+      fieldInputs[0].dispatchEvent(new Event('input', { bubbles: true }));
+      fieldInputs[1].value = '出生日期';
+      fieldInputs[1].dispatchEvent(new Event('input', { bubbles: true }));
+      fieldSelect.value = '出生日期';
+      fieldSelect.dispatchEvent(new Event('change', { bubbles: true }));
+      await waitForPaint();
+
+      if (name === 'profiles-external-mapping-crud') {
+        const saveButton = [
+          ...document.querySelectorAll<HTMLButtonElement>('.pc-profile-mapping-editor .pc-form-actions button'),
+        ].find(button => button.textContent?.includes('保存映射'));
+        saveButton?.click();
+        await waitForPaint();
+        if (!document.body.textContent?.includes('人物基础资料') || usePhoneStore().currentRoute.page !== 'mappings') {
+          throw new Error('External Profiles mapping save did not return to the mapping catalog');
+        }
+      }
     }
 
-    document.querySelector<HTMLButtonElement>('.pc-profile-table-editor > .pc-form-actions .pc-primary-btn')?.click();
-    await waitForPaint();
-    const savedIdentity = profiles.getTable(table.id)?.columns.find(column => column.id === 'identity');
-    const profileReference = getRegisteredPhoneAppReferenceTrees()
-      .flatMap(root => (root.kind === 'branch' ? root.children : [root]))
-      .find(node => node.kind === 'leaf' && node.item.id === `profiles:${entry.id}`);
-    if (
-      savedIdentity?.enabled ||
-      !profileReference ||
-      profileReference.kind !== 'leaf' ||
-      profileReference.item.content.includes('不会进入停用后的引用')
-    ) {
-      throw new Error('Disabled profile field still participates in saved references');
+    if (name === 'profiles-external-callback') {
+      data = {
+        ...data,
+        sheet_callback: {
+          uid: 'callback',
+          name: '回调新增表',
+          content: [
+            ['row_id', '内容'],
+            [1, '已刷新'],
+          ],
+        },
+      };
+      callbacks.forEach(callback => callback(data));
+      await waitForPaint();
+      if (!document.body.textContent?.includes('回调新增表')) {
+        throw new Error('External Profiles update callback did not reread the API snapshot');
+      }
+    }
+    if (name === 'profiles-external-catalog') {
+      const firstTable = document.querySelector<HTMLButtonElement>('.pc-external-profile-table-row');
+      if (!firstTable) throw new Error('External Profiles catalog did not render table rows');
+      const mappingButton = document.querySelector<HTMLButtonElement>('[aria-label="资料映射"]');
+      mappingButton?.click();
+      await waitForPaint();
+      if (usePhoneStore().currentRoute.page !== 'mappings') {
+        throw new Error('External Profiles mapping button did not open the mapping catalog');
+      }
+      usePhoneStore().goBack();
+      await waitForPaint();
+      const openButton = document.querySelector<HTMLButtonElement>('.pc-external-profiles-actions .pc-soft-btn');
+      openButton?.click();
+      if (openCount !== 1) throw new Error('External Profiles full database button did not call openVisualizer');
     }
   }
 

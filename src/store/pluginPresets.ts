@@ -84,6 +84,7 @@ function readStoredIndex(): StoredPluginPresetIndex[] {
       {
         builtIn: item.builtIn === true || id === BUILTIN_DIARY_PRESET_ID,
         createdAt: String(item.createdAt || new Date().toISOString()),
+        hidden: item.hidden === true,
         id,
         name: String(item.name || '插件预设'),
         path: normalizeFilePath(String(item.path || '')),
@@ -127,6 +128,7 @@ export const usePluginPresetStore = defineStore('pluginPresets', () => {
     const stored = items.value.map(item => ({
       builtIn: item.builtIn === true,
       createdAt: item.createdAt,
+      hidden: item.hidden === true,
       id: item.id,
       name: item.name,
       path: paths.value[item.id] || '',
@@ -135,7 +137,7 @@ export const usePluginPresetStore = defineStore('pluginPresets', () => {
       sourceRoot: item.sourceRoot,
       updatedAt: item.updatedAt,
     }));
-    _.set(extension_settings, pluginPresetField, { appDefaults: appDefaults.value, items: stored, version: 3 });
+    _.set(extension_settings, pluginPresetField, { appDefaults: appDefaults.value, items: stored, version: 4 });
   }
 
   function persistIndex() {
@@ -238,6 +240,19 @@ export const usePluginPresetStore = defineStore('pluginPresets', () => {
     return savedName;
   }
 
+  async function setHidden(id: string, hidden: boolean) {
+    const item = requireById(id);
+    if (!item.builtIn) throw new Error('只有内置插件预设可以隐藏');
+    const defaultAppIds = getDefaultAppIds(id);
+    if (hidden && defaultAppIds.length) {
+      throw new Error(`请先取消 ${defaultAppIds.length} 个 App 对此预设的默认使用，再隐藏预设`);
+    }
+    await mutateRecord(id, record => {
+      record.hidden = hidden;
+      record.updatedAt = new Date().toISOString();
+    });
+  }
+
   async function deletePreset(id: string) {
     if (id === BUILTIN_DIARY_PRESET_ID) throw new Error('内置日记预设不能删除，可以编辑、改名或导出');
     const index = items.value.findIndex(item => item.id === id);
@@ -279,6 +294,7 @@ export const usePluginPresetStore = defineStore('pluginPresets', () => {
       return {
         builtIn: record.id === BUILTIN_DIARY_PRESET_ID,
         createdAt: String(record.createdAt || new Date().toISOString()),
+        hidden: record.hidden === true,
         id: String(record.id || '').trim(),
         name: String(record.name || '插件预设').trim() || '插件预设',
         raw: parsed.raw,
@@ -389,6 +405,7 @@ export const usePluginPresetStore = defineStore('pluginPresets', () => {
             record = {
               builtIn: entry.builtIn === true || entry.id === BUILTIN_DIARY_PRESET_ID,
               createdAt: entry.createdAt,
+              hidden: entry.hidden === true,
               id: entry.id,
               name: entry.name,
               raw: entry.raw,
@@ -401,6 +418,7 @@ export const usePluginPresetStore = defineStore('pluginPresets', () => {
           } else {
             record = await readRecordFile(entry.path);
             record.builtIn = entry.builtIn === true || entry.id === BUILTIN_DIARY_PRESET_ID;
+            record.hidden = entry.hidden === true || record.hidden === true;
             loadedPaths[entry.id] = entry.path;
           }
           loaded.push(record);
@@ -456,6 +474,7 @@ export const usePluginPresetStore = defineStore('pluginPresets', () => {
     renamePreset,
     reorderPrompts,
     setDefaultApps,
+    setHidden,
     updatePrompt,
     whenReady: () => initialLoad,
   };

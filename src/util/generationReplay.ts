@@ -1,4 +1,4 @@
-import { getRegisteredPhoneAppReferenceTrees, type PhoneReferenceTreeNode } from '@/core/appRegistry';
+import { getRegisteredPhoneAppReferenceCatalog, type PhoneReferenceTreeNode } from '@/core/appRegistry';
 import type { GenerationReplaySnapshot } from '@/type/generation';
 import type { GenerationSourceMode } from '@/type/settings';
 import type { GenerationReferenceItem } from '@/util/references';
@@ -91,7 +91,7 @@ export function resolveSavedGenerationReferences(
   references: GenerationReplaySnapshot['references'],
 ): GenerationReferenceItem[] {
   const availableItems = new Map<string, GenerationReferenceItem>();
-  collectReferenceItems(getRegisteredPhoneAppReferenceTrees(), availableItems);
+  collectReferenceItems(getRegisteredPhoneAppReferenceCatalog().nodes, availableItems);
 
   return references.map(reference => {
     const current = availableItems.get(reference.id);

@@ -131,6 +131,7 @@
       :reasoning="generationState.preview.generationRecord?.reasoning || ''"
       :title="generationState.preview.title"
       :warnings="generationState.preview.warnings"
+      @update:reasoning="updateGenerationRecordReasoning(generationState.preview, $event)"
       @back="returnToGenerate"
       @reparse="reparsePreviewRaw"
       @save="savePreview"
@@ -179,6 +180,7 @@ import { usePreviewDraftPersistence } from '@/util/previewDrafts';
 import { formatGenerationReferences, type GenerationReferenceItem } from '@/util/references';
 import { resolveContentVersion } from '@/util/contentVersions';
 import { useInvalidRouteFallback } from '@/util/routeFallback';
+import { updateGenerationRecordReasoning } from '@/util/generationReasoning';
 import { storeToRefs } from 'pinia';
 
 const letters = useLettersStore();

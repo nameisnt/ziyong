@@ -1,7 +1,16 @@
 <template>
   <section class="pc-diary-book-page">
     <div class="pc-compact-toolbar pc-directory-toolbar">
-      <span class="pc-directory-count">{{ book.perspective.name }} · {{ entries.length }} 篇</span>
+      <div class="pc-directory-leading">
+        <ActionMenu align="start" icon-only label="管理" icon="fa-solid fa-bars">
+          <ItemTransferImportAction app-id="diary" :params="{ bookId: book.id }" label="导入单篇日记" />
+          <button type="button" @click="$emit('rename')"><i class="fa-solid fa-pen"></i>重命名书架</button>
+          <button class="danger" type="button" @click="$emit('remove-book')">
+            <i class="fa-solid fa-trash"></i>删除书架
+          </button>
+        </ActionMenu>
+        <span class="pc-directory-count">{{ book.perspective.name }} · {{ entries.length }} 篇</span>
+      </div>
       <div class="pc-directory-actions pc-diary-book-toolbar">
         <button class="pc-icon-btn primary" type="button" aria-label="生成日记" title="生成日记" @click="$emit('generate')">
           <i class="fa-solid fa-wand-magic-sparkles"></i>
@@ -18,13 +27,6 @@
         >
           <i :class="sortDesc ? 'fa-solid fa-arrow-down-wide-short' : 'fa-solid fa-arrow-up-short-wide'"></i>
         </button>
-        <ActionMenu label="管理" icon="fa-solid fa-bars">
-          <ItemTransferImportAction app-id="diary" :params="{ bookId: book.id }" label="导入单篇日记" />
-          <button type="button" @click="$emit('rename')"><i class="fa-solid fa-pen"></i>重命名书架</button>
-          <button class="danger" type="button" @click="$emit('remove-book')">
-            <i class="fa-solid fa-trash"></i>删除书架
-          </button>
-        </ActionMenu>
       </div>
     </div>
 

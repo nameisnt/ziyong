@@ -4,7 +4,10 @@ import { readFile } from 'node:fs/promises';
 import test from 'node:test';
 
 const source = await readFile(new URL('../../src/apps/preset-manager/api.ts', import.meta.url), 'utf8');
-const appSource = await readFile(new URL('../../src/apps/preset-manager/PresetManagerApp.vue', import.meta.url), 'utf8');
+const appSource = await readFile(
+  new URL('../../src/apps/preset-manager/PresetManagerApp.vue', import.meta.url),
+  'utf8',
+);
 
 test('opening a Tavern preset clears stale plugin route identity', () => {
   const openStart = appSource.indexOf('function openPreset(presetName: string)');
@@ -44,4 +47,27 @@ test('deleting a non-current Tavern preset prefers the direct helper and still v
   assert.match(deleteSource, /await deletePreset\(name\)/u);
   assert.match(deleteSource, /listTavernPresets\(\)\.includes\(name\)/u);
   assert.match(deleteSource, /不能直接删除当前正在使用的预设/u);
+});
+
+test('preset migration compares serializable raw JSON on both owners instead of runtime editing views', () => {
+  const helperStart = appSource.indexOf('function normalizePresetTransferPayload');
+  const handlerStart = appSource.indexOf('async function movePreset()', helperStart);
+  const helperSource = appSource.slice(helperStart, handlerStart);
+  const handlerEnd = appSource.indexOf('\nasync function loadPreset()', handlerStart);
+  const handlerSource = appSource.slice(handlerStart, handlerEnd);
+
+  assert.notEqual(helperStart, -1);
+  assert.match(helperSource, /pluginPresets\.getById\(presetId\)\?\.raw/u);
+  assert.match(helperSource, /JSON\.parse\(JSON\.stringify\(value\)\)/u);
+  assert.match(helperSource, /TAVERN_ZERO_NORMALIZED_SETTING_KEYS/u);
+  assert.match(helperSource, /preset\.settings\?\.\[key\] === null/u);
+  assert.match(helperSource, /preset\.settings\[key\] = 0/u);
+  assert.match(helperSource, /readTavernPresetTransferPayload/u);
+  assert.match(helperSource, /normalizePresetTransferPayload\(readTavernPreset\(presetName\), '酒馆'\)/u);
+  assert.match(handlerSource, /readSource:\s*\(\) => readPluginPresetTransferPayload\(sourceId\)/u);
+  assert.match(handlerSource, /readTarget:\s*\(\) => readPluginPresetTransferPayload\(targetId\)/u);
+  assert.match(handlerSource, /readSource:\s*\(\) => readTavernPresetTransferPayload\(sourceName\)/u);
+  assert.match(handlerSource, /readTarget:\s*\(\) => readTavernPresetTransferPayload\(targetName\)/u);
+  assert.doesNotMatch(handlerSource, /read(?:Source|Target):\s*\(\) => pluginPresets\.readPreset/u);
+  assert.doesNotMatch(handlerSource, /read(?:Source|Target):\s*\(\) => readTavernPreset\(/u);
 });

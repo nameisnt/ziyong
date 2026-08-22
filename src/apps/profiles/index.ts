@@ -1,178 +1,27 @@
 import ProfilesApp from './ProfilesApp.vue';
 import { createProfilesContentReceiver } from '@/apps/contentReceivers';
-import { profilesItemTransferProvider } from '@/item-transfer/providers';
+import { profilesItemTransferProvider } from './itemTransfer';
 import { createProfileGenerationAdapter } from './generation';
+import { createExternalProfileReferenceCatalog } from './externalReferenceCatalog';
+import {
+  externalProfileGenerationDraftsField,
+  ExternalProfileGenerationScopeDataSchema,
+  useExternalProfileGenerationStore,
+} from './generationDrafts';
+import { createExternalProfilesRepository } from './externalCrud';
+import { runLegacyProfilesCleanup } from './legacyCleanup';
+import {
+  ExternalProfileMappingsScopeDataSchema,
+  profileMappingsField,
+  useExternalProfileMappingsStore,
+} from './profileMappings';
 import { objectListField, textField, textListField, xmlParser } from '@/apps/outputDefinitions';
-import {
-  getProfileKindLabel,
-  profilesField,
-  ProfilesScopeDataSchema,
-  useProfilesStore,
-  type ProfileEntry,
-} from './store';
-import {
-  definePhoneApp,
-  type PhoneArchiveDomain,
-  type PhoneContentOverview,
-  type PhoneContentStatsContribution,
-  type PhoneReferenceTreeNode,
-} from '@/core/appRegistry';
+import { definePhoneApp } from '@/core/appRegistry';
 import { getCurrentChatScopeKey, readChatScopedEnvelope } from '@/store/chatScoped';
-import { usePhoneStore } from '@/store/phone';
-import { parsePrettified } from '@/util/zod';
-import { getProfileListPreview } from './rendering';
 import { extension_settings } from '@sillytavern/scripts/extensions';
 import { createChatScopedBackupSchema } from '@/type/backup';
 
-function emptyOverview(): PhoneContentOverview {
-  return {
-    averageChars: 0,
-    chars: 0,
-    collections: 0,
-    items: 0,
-    latestUpdatedAt: '',
-    scopeCount: 0,
-  };
-}
-
-function getLatestIso(left: string, right: string) {
-  if (!right) return left;
-  if (!left) return right;
-  return right.localeCompare(left) > 0 ? right : left;
-}
-
-function entryContent(entry: ProfileEntry) {
-  const table = useProfilesStore().getTable(entry.tableId);
-  const enabledColumnIds = new Set((table?.columns ?? []).filter(column => column.enabled).map(column => column.id));
-  const fieldLines = (table?.columns ?? [])
-    .filter(column => column.enabled && !['title', 'summary', 'tags', 'content'].includes(column.id))
-    .map(column => (entry.fields[column.id] ? `${column.label}：${entry.fields[column.id]}` : ''))
-    .filter(Boolean);
-  return [
-    enabledColumnIds.has('summary') && entry.summary ? `摘要：${entry.summary}` : '',
-    enabledColumnIds.has('tags') && entry.tags.length ? `标签：${entry.tags.join('、')}` : '',
-    ...fieldLines,
-  ]
-    .filter(Boolean)
-    .join('\n');
-}
-
-function createProfilesArchiveDomain(raw: unknown): PhoneArchiveDomain {
-  const data = ProfilesScopeDataSchema.safeParse(raw).success
-    ? ProfilesScopeDataSchema.parse(raw)
-    : ProfilesScopeDataSchema.parse({});
-  return {
-    appId: 'profiles',
-    label: '资料表',
-    collectionLabel: '分类',
-    itemLabel: '资料',
-    collections: new Set(data.entries.map(entry => entry.kind)).size,
-    entries: data.entries.map(entry => ({
-      id: entry.id,
-      subtitle: getProfileKindLabel(entry.kind),
-      title: entry.title,
-    })),
-    items: data.entries.length,
-  };
-}
-
-function createOverview(entries: ProfileEntry[], scopeCount: number): PhoneContentOverview {
-  const chars = entries.reduce(
-    (sum, entry) => sum + entry.title.length + entry.summary.length + Object.values(entry.fields).join('').length,
-    0,
-  );
-  const latestUpdatedAt = entries
-    .map(entry => entry.updatedAt)
-    .reduce((latest, value) => getLatestIso(latest, value), '');
-  return {
-    averageChars: entries.length ? Math.round(chars / entries.length) : 0,
-    chars,
-    collections: new Set(entries.map(entry => entry.kind)).size,
-    items: entries.length,
-    latestUpdatedAt,
-    scopeCount,
-  };
-}
-
-function createProfilesContentStats(currentScopeKey: string): PhoneContentStatsContribution {
-  const envelope = readChatScopedEnvelope(profilesField, currentScopeKey);
-  const currentData = parsePrettified(ProfilesScopeDataSchema, envelope.scopes[currentScopeKey] ?? {});
-  const allEntries: ProfileEntry[] = [];
-  const scopeKeys: string[] = [];
-  const warnings: string[] = [];
-  let scopeCount = 0;
-
-  Object.entries(envelope.scopes).forEach(([scopeKey, raw]) => {
-    try {
-      const data = parsePrettified(ProfilesScopeDataSchema, raw);
-      if (!data.entries.length) return;
-      scopeCount += 1;
-      scopeKeys.push(scopeKey);
-      allEntries.push(...data.entries);
-    } catch (caughtError) {
-      const message = caughtError instanceof Error ? caughtError.message.split('\n')[0] : String(caughtError);
-      warnings.push(`资料表 ${scopeKey}：${message}`);
-    }
-  });
-
-  const current = currentData.entries.length ? createOverview(currentData.entries, 1) : emptyOverview();
-  const overview = createOverview(allEntries, scopeCount);
-  return {
-    current,
-    domain: {
-      ...overview,
-      collectionLabel: '分类',
-      id: 'profiles',
-      itemLabel: '条',
-      label: '资料表',
-    },
-    overview,
-    scopeKeys,
-    warnings,
-  };
-}
-
-function createProfilesFavoriteItems() {
-  const profiles = useProfilesStore();
-  const phone = usePhoneStore();
-  return profiles.entries
-    .filter(entry => entry.favorite)
-    .map(entry => ({
-      key: `profiles:${entry.id}`,
-      appId: 'profiles',
-      entryId: entry.id,
-      title: entry.title,
-      preview: getProfileListPreview(entry, profiles.getTable(entry.tableId)),
-      bookTitle: getProfileKindLabel(entry.kind),
-      subtitle: entry.tags.join('、') || getProfileKindLabel(entry.kind),
-      updatedAt: entry.updatedAt,
-      exists: () => Boolean(profiles.getEntry(entry.id)),
-      open: () => phone.pushRoute('profiles', 'entry', entry.title, { entryId: entry.id }, 'favorites'),
-      removeFavorite: () => {
-        if (profiles.getEntry(entry.id)?.favorite) profiles.toggleFavorite(entry.id);
-      },
-    }));
-}
-
-function createProfilesReferenceTree(): PhoneReferenceTreeNode {
-  const profiles = useProfilesStore();
-  return {
-    id: 'app:profiles',
-    kind: 'branch',
-    label: '资料表',
-    children: profiles.entries.map(entry => ({
-      id: `profiles:${entry.id}`,
-      kind: 'leaf',
-      item: {
-        id: `profiles:${entry.id}`,
-        title: entry.title,
-        content: entryContent(entry),
-        sourcePath: ['资料表', getProfileKindLabel(entry.kind)],
-        updatedAt: entry.updatedAt,
-      },
-    })),
-  };
-}
+runLegacyProfilesCleanup();
 
 export default definePhoneApp({
   id: 'profiles',
@@ -183,38 +32,61 @@ export default definePhoneApp({
   defaultRoute: 'root',
   defaultOrder: 69,
   contentReceiver: createProfilesContentReceiver(),
-  archiveProvider: {
-    field: profilesField,
-    collect: createProfilesArchiveDomain,
-  },
   backupDomains: [
     {
-      category: 'content',
-      key: 'profiles',
-      exportData: currentScopeKey => readChatScopedEnvelope(profilesField, currentScopeKey || getCurrentChatScopeKey()),
+      category: 'configuration',
+      key: 'profile-bridge-mappings',
+      exportData: currentScopeKey =>
+        readChatScopedEnvelope(profileMappingsField, currentScopeKey || getCurrentChatScopeKey()),
       importData: data => {
-        _.set(extension_settings, profilesField, data);
+        _.set(extension_settings, profileMappingsField, data);
       },
-      rehydrateFromSettings: () => useProfilesStore().rehydrateFromSettings(),
-      schema: createChatScopedBackupSchema(ProfilesScopeDataSchema),
+      rehydrateFromSettings: () => useExternalProfileMappingsStore().rehydrateFromSettings(),
+      schema: createChatScopedBackupSchema(ExternalProfileMappingsScopeDataSchema),
+      schemaVersion: 1,
+      scope: 'chat',
+    },
+    {
+      category: 'content',
+      key: 'external-profile-generation-drafts',
+      exportData: currentScopeKey =>
+        readChatScopedEnvelope(externalProfileGenerationDraftsField, currentScopeKey || getCurrentChatScopeKey()),
+      importData: data => {
+        _.set(extension_settings, externalProfileGenerationDraftsField, data);
+      },
+      rehydrateFromSettings: () => useExternalProfileGenerationStore().rehydrateFromSettings(),
+      schema: createChatScopedBackupSchema(ExternalProfileGenerationScopeDataSchema),
       schemaVersion: 1,
       scope: 'chat',
     },
   ],
   component: ProfilesApp,
-  contentStatsProvider: createProfilesContentStats,
-  favoriteProvider: createProfilesFavoriteItems,
   generationProvider: () => [
     {
       actionId: 'generate',
       label: '生成资料卡片',
-      createAdapter: () => createProfileGenerationAdapter(useProfilesStore()),
+      createAdapter: () => {
+        const mappings = useExternalProfileMappingsStore();
+        const repository = createExternalProfilesRepository();
+        return createProfileGenerationAdapter({
+          getMapping: mappingId => mappings.getMapping(mappingId),
+          insertMappedRow: (mapping, values) => repository.insertMappedRow(mapping, values),
+        });
+      },
     },
   ],
   generationRecoveryProvider: scopeKey => {
-    const store = useProfilesStore();
-    if (store.scopeKey !== scopeKey) return [];
-    return store.failedDrafts.map(draft => ({ appId: 'profiles', id: draft.id, kind: 'failed-draft' as const, routePage: 'failed-draft', routeParams: { draftId: draft.id }, scopeKey, title: typeof draft.context.title === 'string' ? draft.context.title : '待修复生成草稿' }));
+    const externalStore = useExternalProfileGenerationStore();
+    if (externalStore.scopeKey !== scopeKey) return [];
+    return externalStore.failedDrafts.map(draft => ({
+      appId: 'profiles',
+      id: draft.id,
+      kind: 'failed-draft' as const,
+      routePage: 'failed-draft',
+      routeParams: { draftId: draft.id, draftSource: 'external' },
+      scopeKey,
+      title: typeof draft.context.titleHint === 'string' ? draft.context.titleHint : '待修复资料草稿',
+    }));
   },
   itemTransferProvider: profilesItemTransferProvider,
   taskTemplateDefinitions: [
@@ -222,14 +94,14 @@ export default definePhoneApp({
       actionId: 'generate',
       label: '生成资料卡片',
       defaultTemplate: [
-        '目标资料表：{{tableName}}',
-        '{{kindInstruction}}',
+        '目标资料映射：{{mappingName}}',
+        '目标外部表：{{tableName}}',
         '{{fieldInstruction}}',
         '{{titleInstruction}}',
       ].join('\n'),
       variables: [
-        { key: 'tableName', label: '资料表名' },
-        { key: 'kindInstruction', label: '完整资料类型要求（程序生成）' },
+        { key: 'mappingName', label: '资料映射名' },
+        { key: 'tableName', label: '外部资料表名' },
         { key: 'fieldInstruction', label: '完整启用字段要求（程序生成）' },
         { key: 'titleInstruction', label: '完整标题提示（程序生成）' },
       ],
@@ -274,7 +146,13 @@ export default definePhoneApp({
       ],
     },
   ],
-  referenceProvider: createProfilesReferenceTree,
-  resetCurrentScope: () => useProfilesStore().resetCurrentScope(),
-  scopeSwitchHandler: scopeKey => useProfilesStore().switchScope(scopeKey),
+  referenceProvider: () => createExternalProfileReferenceCatalog(useExternalProfileMappingsStore().mappings),
+  resetCurrentScope: () => {
+    useExternalProfileMappingsStore().resetCurrentScope();
+    useExternalProfileGenerationStore().resetCurrentScope();
+  },
+  scopeSwitchHandler: scopeKey => {
+    useExternalProfileMappingsStore().switchScope(scopeKey);
+    useExternalProfileGenerationStore().switchScope(scopeKey);
+  },
 });

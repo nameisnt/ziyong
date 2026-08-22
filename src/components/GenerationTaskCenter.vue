@@ -1,13 +1,24 @@
 <template>
   <section v-if="visibleTasks.length" class="pc-section-card pc-generation-task-center">
-    <button class="pc-task-center-head" type="button" @click="expanded = !expanded">
-      <span class="pc-task-center-title">
-        <i class="fa-solid fa-list-check"></i>
-        <strong>{{ t`生成任务` }}</strong>
-        <small>{{ statusSummary }}</small>
-      </span>
-      <i :class="expanded ? 'fa-solid fa-chevron-up' : 'fa-solid fa-chevron-down'"></i>
-    </button>
+    <header class="pc-task-center-head">
+      <button class="pc-task-center-toggle" type="button" @click="expanded = !expanded">
+        <span class="pc-task-center-title">
+          <i class="fa-solid fa-list-check"></i>
+          <strong>{{ t`生成任务` }}</strong>
+          <small>{{ statusSummary }}</small>
+        </span>
+        <i :class="expanded ? 'fa-solid fa-chevron-up' : 'fa-solid fa-chevron-down'"></i>
+      </button>
+      <button
+        v-if="clearableTaskCount"
+        class="pc-soft-btn compact"
+        type="button"
+        aria-label="清理已保存任务"
+        @click="clearSavedTasks"
+      >
+        清理 {{ clearableTaskCount }}
+      </button>
+    </header>
 
     <div v-if="expanded" class="pc-task-list">
       <article v-for="task in visibleTasks" :key="task.id" class="pc-task-row">
@@ -121,6 +132,7 @@ const expanded = ref(true);
 const expandedRawTaskId = ref('');
 
 const visibleTasks = computed(() => generationTasks.currentScopeTasks.slice(0, 5));
+const clearableTaskCount = computed(() => generationTasks.getClearableTasks().length);
 const statusSummary = computed(() => {
   const running = visibleTasks.value.filter(
     task => task.status === 'running' || task.status === 'pause-requested',
@@ -195,6 +207,12 @@ function resume(taskId: string) {
 function discard(taskId: string) {
   void discardGenerationTask(taskId);
 }
+
+function clearSavedTasks() {
+  const clearedTaskIds = generationTasks.clearPureSavedTasks();
+  if (!clearedTaskIds.length) return;
+  phone.noticeSuccess(`已清理 ${clearedTaskIds.length} 条已保存任务记录`);
+}
 </script>
 
 <style scoped>
@@ -210,13 +228,26 @@ function discard(taskId: string) {
   min-height: 46px;
   display: flex;
   align-items: center;
-  justify-content: space-between;
   gap: 10px;
   padding: 10px 12px;
+}
+
+.pc-task-center-toggle {
+  min-width: 0;
+  flex: 1 1 auto;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 0;
   border: 0;
   background: transparent;
   color: var(--pc-text);
   text-align: left;
+}
+
+.pc-task-center-head > .pc-soft-btn {
+  flex: 0 0 auto;
 }
 
 .pc-task-center-title,

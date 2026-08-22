@@ -183,6 +183,7 @@
           raw-editable
           :reparse-handler="reparsePreviewRaw"
           :reasoning="generationState.preview.generationRecord?.reasoning || ''"
+          reasoning-editable
           :source-label="generationState.preview.source.label"
           :text-provider-summary="textProviderSummary"
           :title="generationState.preview.title"
@@ -193,6 +194,7 @@
           @save="savePreview"
           @update:content="generationState.preview.content = $event"
           @update:raw="generationState.preview.raw = $event"
+          @update:reasoning="updateGenerationRecordReasoning(generationState.preview, $event)"
         />
       </article>
     </section>
@@ -237,6 +239,7 @@ import { formatGenerationReferences } from '@/util/references';
 import { useInvalidRouteFallback } from '@/util/routeFallback';
 import { getSourceLastFloor } from '@/util/sourceFloor';
 import { formatTextProviderSummary } from '@/util/textProvider';
+import { updateGenerationRecordReasoning } from '@/util/generationReasoning';
 import type { FailedGenerationDraft, HiddenGenerationRecord } from '@/type/generation';
 import type { GenerationTask } from '@/type/generationTask';
 import { useDigestStore } from './store';

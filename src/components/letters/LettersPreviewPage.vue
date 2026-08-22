@@ -2,8 +2,8 @@
   <GenerationPreviewPage
     v-model:content="content"
     v-model:raw="raw"
+    v-model:reasoning="reasoning"
     :reparse-handler="reparseHandler"
-    :reasoning="reasoning"
     :raw-output-semantics="rawOutputSemantics"
     :save-label="mode === 'rewrite' ? '保存新版本' : '保存信件'"
     :source-label="bookTitle"
@@ -26,7 +26,6 @@ defineProps<{
   mode: 'create' | 'rewrite';
   rawOutputSemantics?: RawOutputSemantics;
   reparseHandler: () => boolean | Promise<boolean>;
-  reasoning?: string;
   title: string;
   warnings: string[];
 }>();
@@ -34,4 +33,5 @@ defineProps<{
 defineEmits<{ back: []; reparse: []; save: [] }>();
 const content = defineModel<string>('content', { required: true });
 const raw = defineModel<string>('raw', { required: true });
+const reasoning = defineModel<string>('reasoning', { default: '' });
 </script>

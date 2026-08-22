@@ -18,7 +18,17 @@ export type PhoneReferenceBranchNode = {
 };
 
 export type PhoneReferenceTreeNode = PhoneReferenceBranchNode | PhoneReferenceLeafNode;
-export type PhoneReferenceProvider = () => PhoneReferenceTreeNode | PhoneReferenceTreeNode[] | null | undefined;
+export type PhoneReferenceProviderResult = {
+  nodes: PhoneReferenceTreeNode[];
+  warnings?: string[];
+};
+export type PhoneReferenceProviderOutput =
+  PhoneReferenceProviderResult | PhoneReferenceTreeNode | PhoneReferenceTreeNode[] | null | undefined;
+export type PhoneReferenceProvider = () => PhoneReferenceProviderOutput;
+export type PhoneReferenceCatalog = {
+  nodes: PhoneReferenceTreeNode[];
+  warnings: string[];
+};
 
 export interface PhoneFavoriteItem {
   key: string;
@@ -301,7 +311,7 @@ export interface PhoneItemTransferImportResult {
 }
 
 export interface PhoneItemTransferProvider {
-  captureSnapshot: () => unknown;
+  captureSnapshot?: () => unknown;
   exportItem: (params: Record<string, string>) => PhoneItemTransferExport | null;
   importItem: (
     data: unknown,
@@ -309,9 +319,10 @@ export interface PhoneItemTransferProvider {
   ) => PhoneItemTransferImportResult | Promise<PhoneItemTransferImportResult>;
   itemLabel: string;
   itemType: string;
+  importTransaction?: 'provider-owned' | 'shared-snapshot';
   migrateImport?: (data: unknown, fromVersion: number) => unknown;
   previewImport: (data: unknown, params: Record<string, string>) => PhoneItemTransferPreview;
-  restoreSnapshot: (snapshot: unknown) => void;
+  restoreSnapshot?: (snapshot: unknown) => void;
   schema: z.ZodType;
   schemaVersion: number;
 }
@@ -380,6 +391,12 @@ function assertValidModule(module: PhoneAppModule) {
     }
     if (!Number.isInteger(itemTransfer.schemaVersion) || itemTransfer.schemaVersion < 1) {
       throw new Error(`Phone app ${module.id} has an invalid item transfer schema version`);
+    }
+    if (
+      itemTransfer.importTransaction !== 'provider-owned' &&
+      (!itemTransfer.captureSnapshot || !itemTransfer.restoreSnapshot)
+    ) {
+      throw new Error(`Phone app ${module.id} must provide item transfer snapshot handlers`);
     }
   }
 }
@@ -450,14 +467,48 @@ export function getRegisteredPhoneAppScopeSwitchHandlers() {
     .filter((item): item is { app: PhoneAppModule; switchScope: PhoneScopeSwitchHandler } => Boolean(item.switchScope));
 }
 
+function isPhoneReferenceProviderResult(value: PhoneReferenceProviderOutput): value is PhoneReferenceProviderResult {
+  return Boolean(value && !Array.isArray(value) && 'nodes' in value);
+}
+
+function readPhoneReferenceProvider(app: PhoneAppModule): PhoneReferenceCatalog {
+  try {
+    const result = app.referenceProvider?.();
+    if (!result) return { nodes: [], warnings: [] };
+    if (isPhoneReferenceProviderResult(result)) {
+      return {
+        nodes: result.nodes.filter((node): node is PhoneReferenceTreeNode => Boolean(node)),
+        warnings: (result.warnings ?? []).map(warning => `${app.name}：${warning}`),
+      };
+    }
+    return {
+      nodes: (Array.isArray(result) ? result : [result]).filter((node): node is PhoneReferenceTreeNode =>
+        Boolean(node),
+      ),
+      warnings: [],
+    };
+  } catch (error) {
+    return {
+      nodes: [],
+      warnings: [`${app.name}：${error instanceof Error ? error.message : String(error)}`],
+    };
+  }
+}
+
+export function getRegisteredPhoneAppReferenceCatalog(): PhoneReferenceCatalog {
+  return getRegisteredPhoneApps().reduce<PhoneReferenceCatalog>(
+    (catalog, app) => {
+      const contribution = readPhoneReferenceProvider(app);
+      catalog.nodes.push(...contribution.nodes);
+      catalog.warnings.push(...contribution.warnings);
+      return catalog;
+    },
+    { nodes: [], warnings: [] },
+  );
+}
+
 export function getRegisteredPhoneAppReferenceTrees() {
-  return getRegisteredPhoneApps()
-    .flatMap(module => {
-      const result = module.referenceProvider?.();
-      if (!result) return [];
-      return Array.isArray(result) ? result : [result];
-    })
-    .filter((node): node is PhoneReferenceTreeNode => Boolean(node));
+  return getRegisteredPhoneAppReferenceCatalog().nodes;
 }
 
 export function getRegisteredPhoneFavoriteItems() {
@@ -518,9 +569,8 @@ export async function getRegisteredPhoneContentSources() {
     getRegisteredPhoneApps().map(async app => {
       const explicitSources = await app.contentSourceProvider?.();
       if (explicitSources) return { app, sources: explicitSources };
-      const references = app.referenceProvider?.();
-      if (!references) return null;
-      const nodes = Array.isArray(references) ? references : [references];
+      const nodes = readPhoneReferenceProvider(app).nodes;
+      if (!nodes.length) return null;
       return { app, sources: flattenReferenceSources(app, nodes) };
     }),
   );

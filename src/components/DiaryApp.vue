@@ -169,6 +169,7 @@
       :warnings="generationState.preview.warnings"
       @back="returnToGenerate"
       @reparse="reparsePreviewRaw"
+      @update:reasoning="updateGenerationRecordReasoning(generationState.preview, $event)"
       @save="savePreview"
     />
 
@@ -229,6 +230,7 @@ import { useInvalidRouteFallback } from '@/util/routeFallback';
 import { getChatMessagesSafe } from '@/util/runtime';
 import { useDetailScroll } from '@/util/detailScroll';
 import { getSourceLastFloor } from '@/util/sourceFloor';
+import { updateGenerationRecordReasoning } from '@/util/generationReasoning';
 import {
   applyTextProviderSelection,
   getCurrentTextProviderSelection,

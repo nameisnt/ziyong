@@ -101,6 +101,17 @@
         <div class="pc-compact-toolbar pc-directory-toolbar pc-prompt-section-toolbar">
           <span class="pc-directory-count">{{ typePrompts.length }} {{ t`个类型` }}</span>
           <button
+            v-if="!typeOrganizeMode"
+            class="pc-soft-btn compact"
+            type="button"
+            :disabled="!theaterTypePromptItems.length"
+            @click="startTypeOrganize"
+          >
+            <i class="fa-solid fa-list-check"></i>
+            <span>{{ t`整理` }}</span>
+          </button>
+          <button
+            v-if="!typeOrganizeMode"
             class="pc-icon-btn primary"
             type="button"
             :title="t`新增类型`"
@@ -110,6 +121,43 @@
             <i class="fa-solid fa-plus"></i>
           </button>
         </div>
+
+        <section v-if="typeOrganizeMode" class="pc-section-card pc-stack pc-type-organize-panel">
+          <div class="pc-compact-toolbar">
+            <strong>批量调整分组</strong>
+            <span class="pc-directory-count">已选 {{ selectedTypePromptIds.size }} 项</span>
+          </div>
+          <div class="pc-inline-actions">
+            <button class="pc-soft-btn compact" type="button" @click="selectAllTypePrompts">全选小剧场类型</button>
+            <button
+              class="pc-soft-btn compact"
+              type="button"
+              :disabled="!selectedTypePromptIds.size"
+              @click="clearTypePromptSelection"
+            >
+              清空选择
+            </button>
+          </div>
+          <SearchableCombobox
+            v-model="typeOrganizeTargetGroupId"
+            empty-label="没有匹配的分组"
+            input-label="移动到分组"
+            :options="theaterTypeGroupOptions"
+            placeholder="选择目标分组"
+            toggle-title="展开目标分组"
+          />
+          <div class="pc-form-actions">
+            <button class="pc-soft-btn" type="button" @click="cancelTypeOrganize">取消</button>
+            <button
+              class="pc-primary-btn"
+              type="button"
+              :disabled="!selectedTypePromptIds.size"
+              @click="applyTypeGroupMove"
+            >
+              移动所选
+            </button>
+          </div>
+        </section>
 
         <EmptyState v-if="!typePrompts.length" :title="t`还没有类型提示词`" />
 
@@ -126,7 +174,15 @@
                 <div class="pc-inline-actions">
                   <small>{{ group.items.length }} {{ t`项` }}</small>
                   <button
-                    v-if="group.id"
+                    v-if="typeOrganizeMode"
+                    class="pc-soft-btn compact"
+                    type="button"
+                    @click="selectTypePromptGroup(group.items.map(item => item.id))"
+                  >
+                    {{ isTypePromptGroupSelected(group.items.map(item => item.id)) ? '取消本组' : '全选本组' }}
+                  </button>
+                  <button
+                    v-if="group.id && !typeOrganizeMode"
                     class="pc-icon-btn"
                     type="button"
                     title="重命名分组"
@@ -136,7 +192,7 @@
                     <i class="fa-solid fa-pen"></i>
                   </button>
                   <button
-                    v-if="group.id"
+                    v-if="group.id && !typeOrganizeMode"
                     class="pc-icon-btn danger"
                     type="button"
                     title="删除分组"
@@ -151,10 +207,15 @@
                 <button
                   v-for="item in group.items"
                   :key="item.id"
-                  class="pc-type-prompt-tile"
+                  :class="['pc-type-prompt-tile', { selected: selectedTypePromptIds.has(item.id) }]"
                   type="button"
-                  @click="openTypePromptDetail(item.id)"
+                  :aria-pressed="typeOrganizeMode ? selectedTypePromptIds.has(item.id) : undefined"
+                  @click="typeOrganizeMode ? toggleTypePromptSelection(item.id) : openTypePromptDetail(item.id)"
                 >
+                  <i
+                    v-if="typeOrganizeMode"
+                    :class="selectedTypePromptIds.has(item.id) ? 'fa-solid fa-square-check' : 'fa-regular fa-square'"
+                  ></i>
                   <strong>{{ item.name }}</strong>
                 </button>
               </div>
@@ -596,6 +657,7 @@
 
 <script setup lang="ts">
 import EmptyState from '@/components/EmptyState.vue';
+import SearchableCombobox from '@/components/SearchableCombobox.vue';
 import { usePhoneModalLifecycle } from '@/composables/usePhoneModalLifecycle';
 import PromptAppEditorPage from '@/components/prompts/PromptAppEditorPage.vue';
 import PromptGroupEditorPage from '@/components/prompts/PromptGroupEditorPage.vue';
@@ -673,6 +735,9 @@ const promptMenuOpen = ref(false);
 const promptMenuRoot = ref<HTMLElement | null>(null);
 const phraseGroupOpen = reactive<Record<string, boolean>>({});
 const templateGroupOpen = reactive<Record<string, boolean>>({});
+const typeOrganizeMode = ref(false);
+const selectedTypePromptIds = ref(new Set<string>());
+const typeOrganizeTargetGroupId = ref('');
 
 function createAppPromptCard(
   appId: string,
@@ -808,6 +873,13 @@ const typePromptDomainCards = computed(() =>
     };
   }),
 );
+const theaterTypePromptItems = computed(() => typePrompts.value.filter(item => item.domain === 'theater'));
+const theaterTypeGroupOptions = computed(() => [
+  { label: '未分组', value: '' },
+  ...typePromptGroups.value
+    .filter(group => group.domain === 'theater')
+    .map(group => ({ label: group.name, value: group.id })),
+]);
 const activeTypePrompt = computed(() =>
   activeTypePromptId.value ? prompts.getTypePrompt(activeTypePromptId.value) : null,
 );
@@ -940,10 +1012,63 @@ async function restoreActiveAppPrompt() {
 }
 
 function selectPromptTab(tab: PromptTab) {
+  cancelTypeOrganize();
   activePromptTab.value = tab;
   closeAppPromptDetail();
   activeTypePromptId.value = '';
   promptMenuOpen.value = false;
+}
+
+function startTypeOrganize() {
+  selectedTypePromptIds.value = new Set();
+  typeOrganizeTargetGroupId.value = '';
+  typeOrganizeMode.value = true;
+}
+
+function cancelTypeOrganize() {
+  typeOrganizeMode.value = false;
+  selectedTypePromptIds.value = new Set();
+  typeOrganizeTargetGroupId.value = '';
+}
+
+function toggleTypePromptSelection(promptId: string) {
+  if (!theaterTypePromptItems.value.some(item => item.id === promptId)) return;
+  const next = new Set(selectedTypePromptIds.value);
+  if (next.has(promptId)) next.delete(promptId);
+  else next.add(promptId);
+  selectedTypePromptIds.value = next;
+}
+
+function selectAllTypePrompts() {
+  selectedTypePromptIds.value = new Set(theaterTypePromptItems.value.map(item => item.id));
+}
+
+function clearTypePromptSelection() {
+  selectedTypePromptIds.value = new Set();
+}
+
+function isTypePromptGroupSelected(promptIds: string[]) {
+  return Boolean(promptIds.length) && promptIds.every(promptId => selectedTypePromptIds.value.has(promptId));
+}
+
+function selectTypePromptGroup(promptIds: string[]) {
+  const next = new Set(selectedTypePromptIds.value);
+  const remove = isTypePromptGroupSelected(promptIds);
+  promptIds.forEach(promptId => {
+    if (remove) next.delete(promptId);
+    else next.add(promptId);
+  });
+  selectedTypePromptIds.value = next;
+}
+
+function applyTypeGroupMove() {
+  const movedCount = prompts.moveTypePromptsToGroup(
+    'theater',
+    [...selectedTypePromptIds.value],
+    typeOrganizeTargetGroupId.value,
+  );
+  toastr.success(movedCount ? `已移动 ${movedCount} 个小剧场类型` : '所选类型已在目标分组');
+  cancelTypeOrganize();
 }
 
 function isPhraseGroupOpen(groupId: string) {
@@ -1281,6 +1406,7 @@ async function copyText(text: string, successMessage: string) {
 }
 
 .pc-type-prompt-tile {
+  position: relative;
   width: 100%;
   min-width: 0;
   min-height: 50px;
@@ -1291,6 +1417,23 @@ async function copyText(text: string, successMessage: string) {
   color: var(--pc-text);
   cursor: pointer;
   text-align: center;
+}
+
+.pc-type-prompt-tile.selected {
+  border-color: var(--pc-theme-accent);
+  background: color-mix(in srgb, var(--pc-theme-accent) 12%, var(--pc-surface-strong) 88%);
+}
+
+.pc-type-prompt-tile > i {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  color: var(--pc-theme-accent);
+  font-size: 13px;
+}
+
+.pc-type-organize-panel .pc-form-actions {
+  margin-top: 0;
 }
 
 .pc-type-prompt-tile strong {

@@ -1,4 +1,8 @@
 import { useChatScopedDomain } from '@/store/chatScoped';
+import {
+  cleanExternalProfileReferences,
+  ExternalProfileReferenceSchema,
+} from '@/apps/profiles/profileReferences';
 import { createFailedDraftCollection } from '@/store/failedDrafts';
 import { FailedGenerationDraftSchema } from '@/type/generation';
 import { validateInplace } from '@/util/zod';
@@ -26,6 +30,7 @@ export const StorylineSchema = z.object({
   goal: z.string().default(''),
   stakes: z.string().default(''),
   relatedProfileIds: z.array(z.string()).default([]),
+  relatedProfiles: z.array(ExternalProfileReferenceSchema).default([]),
   tags: z.array(z.string()).default([]),
   createdAt: z.string(),
   updatedAt: z.string(),
@@ -52,6 +57,7 @@ export const ForeshadowSchema = z.object({
   payoff: z.string().default(''),
   status: ForeshadowStatusSchema.default('seeded'),
   relatedProfileIds: z.array(z.string()).default([]),
+  relatedProfiles: z.array(ExternalProfileReferenceSchema).default([]),
   tags: z.array(z.string()).default([]),
   createdAt: z.string(),
   updatedAt: z.string(),
@@ -163,7 +169,9 @@ export const useStorylinesStore = defineStore('storylines', () => {
   }
 
   function createLine(
-    input: Partial<Pick<Storyline, 'goal' | 'kind' | 'relatedProfileIds' | 'stakes' | 'status' | 'summary' | 'tags'>> &
+    input: Partial<
+      Pick<Storyline, 'goal' | 'kind' | 'relatedProfileIds' | 'relatedProfiles' | 'stakes' | 'status' | 'summary' | 'tags'>
+    > &
       Pick<Storyline, 'title'>,
   ) {
     const timestamp = nowIso();
@@ -176,6 +184,7 @@ export const useStorylinesStore = defineStore('storylines', () => {
       goal: input.goal?.trim() || '',
       stakes: input.stakes?.trim() || '',
       relatedProfileIds: cleanList(input.relatedProfileIds ?? []),
+      relatedProfiles: cleanExternalProfileReferences(input.relatedProfiles ?? []),
       tags: cleanList(input.tags ?? []),
       createdAt: timestamp,
       updatedAt: timestamp,
@@ -186,7 +195,10 @@ export const useStorylinesStore = defineStore('storylines', () => {
 
   function updateLine(
     lineId: string,
-    input: Pick<Storyline, 'goal' | 'kind' | 'relatedProfileIds' | 'stakes' | 'status' | 'summary' | 'tags' | 'title'>,
+    input: Pick<
+      Storyline,
+      'goal' | 'kind' | 'relatedProfileIds' | 'relatedProfiles' | 'stakes' | 'status' | 'summary' | 'tags' | 'title'
+    >,
   ) {
     const line = getLine(lineId);
     if (!line) return null;
@@ -197,6 +209,7 @@ export const useStorylinesStore = defineStore('storylines', () => {
     line.goal = input.goal.trim();
     line.stakes = input.stakes.trim();
     line.relatedProfileIds = cleanList(input.relatedProfileIds);
+    line.relatedProfiles = cleanExternalProfileReferences(input.relatedProfiles);
     line.tags = cleanList(input.tags);
     line.updatedAt = nowIso();
     return line;
@@ -245,7 +258,9 @@ export const useStorylinesStore = defineStore('storylines', () => {
   }
 
   function createHook(
-    input: Partial<Pick<Foreshadow, 'lineId' | 'payoff' | 'relatedProfileIds' | 'seed' | 'status' | 'tags'>> &
+    input: Partial<
+      Pick<Foreshadow, 'lineId' | 'payoff' | 'relatedProfileIds' | 'relatedProfiles' | 'seed' | 'status' | 'tags'>
+    > &
       Pick<Foreshadow, 'title'>,
   ) {
     const timestamp = nowIso();
@@ -257,6 +272,7 @@ export const useStorylinesStore = defineStore('storylines', () => {
       payoff: input.payoff?.trim() || '',
       status: input.status ?? 'seeded',
       relatedProfileIds: cleanList(input.relatedProfileIds ?? []),
+      relatedProfiles: cleanExternalProfileReferences(input.relatedProfiles ?? []),
       tags: cleanList(input.tags ?? []),
       createdAt: timestamp,
       updatedAt: timestamp,
@@ -267,7 +283,10 @@ export const useStorylinesStore = defineStore('storylines', () => {
 
   function updateHook(
     hookId: string,
-    input: Pick<Foreshadow, 'lineId' | 'payoff' | 'relatedProfileIds' | 'seed' | 'status' | 'tags' | 'title'>,
+    input: Pick<
+      Foreshadow,
+      'lineId' | 'payoff' | 'relatedProfileIds' | 'relatedProfiles' | 'seed' | 'status' | 'tags' | 'title'
+    >,
   ) {
     const hook = getHook(hookId);
     if (!hook) return null;
@@ -277,6 +296,7 @@ export const useStorylinesStore = defineStore('storylines', () => {
     hook.payoff = input.payoff.trim();
     hook.status = input.status;
     hook.relatedProfileIds = cleanList(input.relatedProfileIds);
+    hook.relatedProfiles = cleanExternalProfileReferences(input.relatedProfiles);
     hook.tags = cleanList(input.tags);
     hook.updatedAt = nowIso();
     return hook;

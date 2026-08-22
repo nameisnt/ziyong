@@ -5,14 +5,6 @@ import {
 } from '@/core/appRegistry';
 import { DigestEntrySchema, DigestScopeDataSchema, useDigestStore, type DigestEntry } from '@/apps/digest/store';
 import {
-  ProfileEntrySchema,
-  ProfileTableSchema,
-  ProfilesScopeDataSchema,
-  useProfilesStore,
-  type ProfileEntry,
-  type ProfileTable,
-} from '@/apps/profiles/store';
-import {
   ScenePlanSchema,
   ScenePlannerScopeDataSchema,
   useScenePlannerStore,
@@ -331,74 +323,6 @@ export const digestItemTransferProvider = createCollectionProvider<DigestEntry>(
   restoreSnapshot: snapshot => (useDigestStore().data = parsePrettified(DigestScopeDataSchema, snapshot)),
   route: item => ({ page: 'entry', params: { entryId: item.id }, title: item.title }),
 });
-
-const ProfileTransferRecordSchema = transferRecordSchema(ProfileEntrySchema);
-
-export const profilesItemTransferProvider: PhoneItemTransferProvider = {
-  captureSnapshot: () => klona(useProfilesStore().data),
-  exportItem(params) {
-    const store = useProfilesStore();
-    const item = store.getEntry(params.entryId || '');
-    const table = item && store.getTable(item.tableId);
-    return item && table
-      ? {
-          data: { item, parent: { id: table.id, label: table.name, metadata: table } },
-          itemId: item.id,
-          title: item.title,
-        }
-      : null;
-  },
-  importItem(data, context) {
-    const record = parsePrettified(ProfileTransferRecordSchema, data) as TransferRecord<ProfileEntry>;
-    const store = useProfilesStore();
-    const table = store.getTable(context.params.tableId || '');
-    if (!table) throw new Error('请先选择要导入到的资料表');
-    validateProfileTarget(record, table);
-    const conflict = store.entries.some(entry => entry.tableId === table.id && entry.id === record.item.id);
-    if (context.mode === 'replace' && !conflict) throw new Error('当前资料表没有同 ID 条目，不能覆盖');
-    const prepared = context.mode === 'copy' ? cloneItemWithFreshIds(record.item) : klona(record.item);
-    const item = { ...prepared, kind: table.kind, tableId: table.id };
-    store.data.entries =
-      context.mode === 'replace'
-        ? store.entries.map(current => (current.tableId === table.id && current.id === item.id ? item : current))
-        : [item, ...store.entries];
-    return {
-      itemId: item.id,
-      message: `已${context.mode === 'replace' ? '覆盖' : '导入'}资料“${item.title}”`,
-      route: { page: 'entry', params: { entryId: item.id }, title: item.title },
-      title: item.title,
-    };
-  },
-  itemLabel: '资料条目',
-  itemType: 'profile-entry',
-  previewImport(data, params) {
-    const record = parsePrettified(ProfileTransferRecordSchema, data) as TransferRecord<ProfileEntry>;
-    const store = useProfilesStore();
-    const table = store.getTable(params.tableId || '');
-    if (!table) throw new Error('请先选择要导入到的资料表');
-    validateProfileTarget(record, table);
-    return {
-      conflict: store.entries.some(entry => entry.tableId === table.id && entry.id === record.item.id),
-      description: record.parent ? `来源：${record.parent.label}` : undefined,
-      itemId: record.item.id,
-      targetLabel: table.name,
-      title: record.item.title,
-    };
-  },
-  restoreSnapshot: snapshot => (useProfilesStore().data = parsePrettified(ProfilesScopeDataSchema, snapshot)),
-  schema: ProfileTransferRecordSchema,
-  schemaVersion: 1,
-};
-
-function validateProfileTarget(record: TransferRecord<ProfileEntry>, table: ProfileTable) {
-  const sourceTable = ProfileTableSchema.safeParse(record.parent?.metadata);
-  if (!sourceTable.success) return;
-  const targetColumns = new Set(table.columns.map(column => column.id));
-  const missing = sourceTable.data.columns
-    .filter(column => Object.hasOwn(record.item.fields, column.id) && !targetColumns.has(column.id))
-    .map(column => column.label);
-  if (missing.length) throw new Error(`目标资料表缺少字段：${missing.join('、')}`);
-}
 
 export const scenePlannerItemTransferProvider = createCollectionProvider<ScenePlan>({
   captureSnapshot: () => klona(useScenePlannerStore().data),

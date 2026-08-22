@@ -11,6 +11,10 @@ const promptsSource = await readFile(
   new URL('../../src/components/prompts/PromptTypeEditorPage.vue', import.meta.url),
   'utf8',
 );
+const theaterGroupFieldSource = await readFile(
+  new URL('../../src/components/prompts/TheaterTypeGroupField.vue', import.meta.url),
+  'utf8',
+);
 const storylinesSource = await readFile(
   new URL('../../src/apps/storylines/StorylineEditorPage.vue', import.meta.url),
   'utf8',
@@ -24,7 +28,7 @@ test('user-grown regex, group and storyline resources use searchable selectors w
   const failures = [];
   const targets = [
     { binding: 'chapterDraft.summaryRuleId', count: 1, source: extrasSource },
-    { binding: 'draft.groupId', count: 1, source: promptsSource },
+    { binding: 'groupId', count: 1, source: theaterGroupFieldSource },
     { binding: 'draft.lineId', count: 2, source: storylinesSource },
   ];
 
@@ -40,7 +44,7 @@ test('user-grown regex, group and storyline resources use searchable selectors w
   }
 
   for (const [source, label] of [
-    [promptsSource, 'prompt type editor'],
+    [theaterGroupFieldSource, 'shared Theater group field'],
     [storylinesSource, 'storyline editor'],
   ]) {
     if (!source.includes("import SearchableCombobox from '@/components/SearchableCombobox.vue';")) {
@@ -52,13 +56,13 @@ test('user-grown regex, group and storyline resources use searchable selectors w
     'summaryRuleSelectOptions',
     "label: '仅识别结构化 summary 字段', value: ''",
     ':disabled="generationState.running"',
-    'theaterGroupOptions',
+    'groupOptions',
     "label: '未分组', value: ''",
     'hookLineOptions',
     "label: '不绑定剧情线', value: ''",
     ':options="lineOptions"',
   ]) {
-    if (!`${extrasSource}\n${promptsSource}\n${storylinesSource}`.includes(evidence)) {
+    if (!`${extrasSource}\n${promptsSource}\n${theaterGroupFieldSource}\n${storylinesSource}`.includes(evidence)) {
       failures.push(`dynamic selector semantics missing: ${evidence}`);
     }
   }

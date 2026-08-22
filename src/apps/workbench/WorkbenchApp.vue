@@ -567,27 +567,20 @@
                 <div v-else-if="step.appId === 'profiles'" class="pc-step-config">
                   <div class="pc-form-grid">
                     <label class="pc-field-group">
-                      <span>{{ t`目标资料表` }}</span>
+                      <span>{{ t`资料映射` }}</span>
                       <SearchableCombobox
-                        :model-value="step.config.profileTableId"
-                        input-label="选择目标资料表"
+                        v-model="step.config.profileMappingId"
+                        input-label="选择外部资料映射"
                         :options="
-                          resourceOptions(profileTables, step.config.profileTableId, '按资料类型', table => table.name)
+                          resourceOptions(
+                            profileMappings,
+                            step.config.profileMappingId,
+                            '请选择外部资料映射',
+                            mapping => `${mapping.name} · ${mapping.tableName}`,
+                          )
                         "
-                        placeholder="按资料类型"
-                        @update:model-value="
-                          step.config.profileTableId = $event;
-                          syncProfileStepKind(step);
-                        "
+                        placeholder="请选择外部资料映射"
                       />
-                    </label>
-                    <label class="pc-field-group">
-                      <span>{{ t`资料类型` }}</span>
-                      <select v-model="step.config.profileKind" class="pc-select">
-                        <option v-for="option in profileKindOptions" :key="option.id" :value="option.id">
-                          {{ option.label }}
-                        </option>
-                      </select>
                     </label>
                     <label class="pc-field-group">
                       <span>{{ t`对象名称` }}</span>
@@ -598,6 +591,13 @@
                         :placeholder="t`可留空`"
                       />
                     </label>
+                  </div>
+                  <div
+                    v-if="!step.config.profileMappingId && step.config.profileTableId"
+                    class="pc-status-card warning"
+                  >
+                    <strong>{{ t`旧资料目标待重新选择` }}</strong>
+                    <p>{{ t`旧目标信息会保留，但不会自动猜成外部资料映射。` }}</p>
                   </div>
                 </div>
 
@@ -681,7 +681,7 @@
 import EmptyState from '@/components/EmptyState.vue';
 import ConfigurationRecoveryNotice from '@/components/ConfigurationRecoveryNotice.vue';
 import SearchableCombobox from '@/components/SearchableCombobox.vue';
-import { profileKindOptions, useProfilesStore } from '@/apps/profiles/store';
+import { useExternalProfileMappingsStore } from '@/apps/profiles/profileMappings';
 import { usePhoneStore } from '@/store/phone';
 import { useGenerationTaskStore } from '@/store/generationTasks';
 import { useSummaryStore } from '@/store/summary';
@@ -697,7 +697,7 @@ import { useWorkbenchStore, type WorkbenchInsertDraft, type WorkbenchStep, type 
 import { applyChatInsert, formatChatInsertTemplate } from '@/util/chatInsert';
 import { getPresetNamesSafe } from '@/util/runtime';
 import { storeToRefs } from 'pinia';
-import { pluginPresetIdFromSelection, pluginPresetSelection } from '@/apps/preset-manager/pluginPreset';
+import { buildPluginPresetSelectionOptions, pluginPresetIdFromSelection } from '@/apps/preset-manager/pluginPreset';
 
 const workbench = useWorkbenchStore();
 const phone = usePhoneStore();
@@ -712,7 +712,7 @@ const { books: diaryBooks } = storeToRefs(useDiaryStore());
 const { books: extrasBooks } = storeToRefs(useExtrasStore());
 const { boards: forumBoards } = storeToRefs(useForumStore());
 const { books: letterBooks } = storeToRefs(useLettersStore());
-const { tables: profileTables } = storeToRefs(useProfilesStore());
+const { mappings: profileMappings } = storeToRefs(useExternalProfileMappingsStore());
 const promptStore = usePromptStore();
 const { typePromptGroups, typePrompts } = storeToRefs(promptStore);
 const extrasTypePrompts = computed(() => typePrompts.value.filter(prompt => prompt.domain === 'extras'));
@@ -767,11 +767,6 @@ async function resetCorruptedSettings() {
     return;
   workbench.resetCorruptedSettings();
   toastr.success('已重置工作台配置');
-}
-
-function syncProfileStepKind(step: WorkbenchStep) {
-  const table = profileTables.value.find(item => item.id === step.config.profileTableId);
-  if (table) step.config.profileKind = table.kind;
 }
 
 function isWorkflowOpen(workflowId: string) {
@@ -899,11 +894,7 @@ function tavernPresetOptions(selected: string) {
   if (selected && !pluginPresetIdFromSelection(selected)) names.add(selected);
   return [
     { label: '跟随全局生成预设', value: '' },
-    ...pluginPresetItems.value.map(preset => ({
-      group: '插件预设',
-      label: preset.name,
-      value: pluginPresetSelection(preset.id),
-    })),
+    ...buildPluginPresetSelectionOptions(pluginPresetItems.value, selected),
     ...[...names].filter(Boolean).map(name => ({ group: '酒馆预设', label: name, value: name })),
   ];
 }

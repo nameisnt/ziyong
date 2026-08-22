@@ -66,7 +66,7 @@
             <small>{{ currentChatRow.title }}</small>
           </span>
         </div>
-        <div :class="['pc-status-card', { danger: currentBackupIsLonger }]">
+        <div :class="['pc-section-card pc-current-backup-status', { danger: currentBackupIsLonger }]">
           <strong>{{
             currentFloorBackup ? `已备份 ${currentFloorBackup.messages.length} 层` : t`尚无楼层备份`
           }}</strong>
@@ -113,6 +113,34 @@
           type="file"
           accept="application/json,.json"
           @change="onCurrentFloorBackupSelected"
+        />
+      </article>
+
+      <article
+        v-if="activeTab === 'current' && currentChatRow && currentOwner"
+        class="pc-page-section pc-current-chat-browser"
+      >
+        <div class="pc-compact-toolbar pc-directory-toolbar">
+          <span class="pc-directory-count">
+            {{ loadingCurrentChats ? t`读取聊天中…` : `${currentOwnerChatRows.length} 个聊天` }}
+          </span>
+          <button
+            class="pc-icon-btn"
+            type="button"
+            :aria-label="t`随机查看聊天`"
+            :disabled="!currentOwnerChatRows.length || loadingCurrentChats"
+            :title="t`随机查看聊天`"
+            @click="randomCurrentOwnerChat"
+          >
+            <i class="fa-solid fa-dice"></i>
+          </button>
+        </div>
+        <ChatArchiveChatList
+          :loading="loadingCurrentChats"
+          :rows="currentOwnerChatRows"
+          scrollable
+          :empty-title="t`当前角色没有可阅读的聊天`"
+          @select="openCurrentOwnerChat"
         />
       </article>
 
@@ -167,27 +195,7 @@
         </button>
       </div>
 
-      <EmptyState v-if="!chatRows.length && !loadingChats" :title="t`暂无聊天`" />
-
-      <div v-else class="pc-directory-list pc-chat-list">
-        <button
-          v-for="chat in chatRows"
-          :key="chat.key"
-          class="pc-list-row pc-chat-row"
-          type="button"
-          @click="openChat(chat)"
-        >
-          <span class="pc-chat-main">
-            <strong>{{ chat.title }}</strong>
-            <small>
-              {{ chat.isUsed ? '有手机内容' : '无手机内容'
-              }}{{ chat.floorBackup ? ` · 已备份 ${chat.floorBackup.messages.length} 层` : ''
-              }}{{ chat.isCurrent ? ' · 当前聊天' : '' }}
-            </small>
-          </span>
-          <span v-if="chat.isUsed" class="pc-count-pill">{{ chat.contentCount }}</span>
-        </button>
-      </div>
+      <ChatArchiveChatList :loading="loadingChats" :rows="chatRows" @select="openChat" />
     </section>
 
     <section v-else-if="route.page === 'detail' && activeOwner && selectedChat" class="pc-archive-page">
@@ -294,6 +302,7 @@
 
 <script setup lang="ts">
 import EmptyState from '@/components/EmptyState.vue';
+import ChatArchiveChatList from '@/components/archive/ChatArchiveChatList.vue';
 import ChatArchiveFloorBackupPage from '@/components/archive/ChatArchiveFloorBackupPage.vue';
 import {
   useChatArchiveCatalogSession,
@@ -330,6 +339,7 @@ const {
   activeOwner,
   activeTab,
   chatRows,
+  currentOwnerChatRows,
   currentChatRow,
   currentOwner,
   currentScope,
@@ -344,8 +354,10 @@ const {
   loadFloorBackupsSafe,
   loadingCharacters,
   loadingChats,
+  loadingCurrentChats,
   markAvatarFailed,
   openChat,
+  openChatForOwner,
   openOwner,
   ownerQuery,
   refreshSelectedChatRow,
@@ -394,6 +406,20 @@ const canMigrateSelectedChat = computed(() => {
   if (target.kind !== activeOwner.value.kind) return false;
   return activeOwner.value.aliases.has(target.ownerId);
 });
+
+async function openCurrentOwnerChat(chat: ArchiveChatRow) {
+  const owner = currentOwner.value;
+  if (!owner) return;
+  await openChatForOwner(owner, chat);
+}
+
+async function randomCurrentOwnerChat() {
+  const rows = currentOwnerChatRows.value;
+  if (!rows.length) return;
+  const index = Math.min(rows.length - 1, Math.floor(Math.random() * rows.length));
+  const chat = rows[index];
+  if (chat) await openCurrentOwnerChat(chat);
+}
 
 function formatBackupTime(value: string) {
   const timestamp = Date.parse(value);
@@ -767,7 +793,6 @@ async function migrateSelectedChatToCurrent() {
 
 .pc-status-card p,
 .pc-owner-main small,
-.pc-chat-main small,
 .pc-readonly-card p,
 .pc-domain-head span,
 .pc-domain-item small {
@@ -786,11 +811,6 @@ async function migrateSelectedChatToCurrent() {
   to {
     transform: rotate(360deg);
   }
-}
-
-.pc-owner-row,
-.pc-chat-row {
-  min-height: 64px;
 }
 
 .pc-current-chat-card {
@@ -831,8 +851,7 @@ async function migrateSelectedChatToCurrent() {
   object-fit: cover;
 }
 
-.pc-owner-main,
-.pc-chat-main {
+.pc-owner-main {
   min-width: 0;
   flex: 1 1 auto;
 }
@@ -860,8 +879,6 @@ async function migrateSelectedChatToCurrent() {
 
 .pc-owner-main strong,
 .pc-owner-main small,
-.pc-chat-main strong,
-.pc-chat-main small,
 .pc-domain-item strong,
 .pc-domain-item small {
   display: block;
@@ -870,14 +887,21 @@ async function migrateSelectedChatToCurrent() {
   white-space: nowrap;
 }
 
-.pc-count-pill {
-  min-width: 32px;
-  height: 28px;
-  border-radius: 999px;
-  display: grid;
-  place-items: center;
-  background: color-mix(in srgb, #2d9cdb 16%, var(--pc-surface) 84%);
-  color: #2d9cdb;
+.pc-current-backup-status {
+  min-width: 0;
+}
+
+.pc-current-backup-status.danger {
+  border-color: color-mix(in srgb, var(--pc-danger) 48%, var(--pc-border) 52%);
+}
+
+.pc-current-backup-status p {
+  margin: 4px 0 0;
+  overflow-wrap: anywhere;
+}
+
+.pc-current-chat-browser {
+  min-height: 0;
 }
 
 .pc-readonly-card {

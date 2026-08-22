@@ -73,6 +73,31 @@ export function createGenerationTaskFixture() {
   }
   tasks.patchTask(interrupted.id, rehydrated);
 
+  const saved = tasks.createTask({
+    appId: 'diary',
+    config: {
+      actionId: 'visual-saved',
+      resultPage: 'detail',
+      resultParams: { id: 'visual-saved-diary' },
+      resultState: 'saved',
+      resultTitle: '已保存日记',
+      sourcePage: 'generate',
+      sourceParams: {},
+    },
+    kind: 'single',
+    routePage: 'detail',
+    routeParams: { id: 'visual-saved-diary' },
+    title: '日记 · 已保存任务',
+    total: 1,
+  });
+  tasks.patchTask(saved.id, {
+    currentJobIndex: 1,
+    currentLabel: '已保存为日记',
+    finishedAt: '2026-08-22T00:00:00.000Z',
+    savedCount: 1,
+    status: 'completed',
+  });
+
   const stopped = tasks.createTask({
     appId: 'storylines',
     config: {
@@ -101,7 +126,8 @@ export function createGenerationTaskFixture() {
   const { rawOutputSemantics: _legacyRawOutputSemantics, ...legacyTask } = rehydrated;
   const v1Data = { __chatScoped: true, legacyScopeMigrations: {}, scopes: { visual: { tasks: [legacyTask] } } };
   const migrated = backupDomain.migrateImport?.(v1Data, 1);
-  const migratedTask = (migrated as { scopes?: { visual?: { tasks?: [typeof rehydrated] } } })?.scopes?.visual?.tasks?.[0];
+  const migratedTask = (migrated as { scopes?: { visual?: { tasks?: [typeof rehydrated] } } })?.scopes?.visual
+    ?.tasks?.[0];
   if (
     !migrated ||
     migrated === v1Data ||

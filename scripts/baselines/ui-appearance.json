@@ -1,7 +1,7 @@
 {
   "version": 2,
   "defect": "D-VISUAL-001",
-  "generatedAt": "2026-08-21T02:43:23.737Z",
+  "generatedAt": "2026-08-22T09:28:28.372Z",
   "scenarios": [
     "home",
     "home-tasks-dark",
@@ -9,15 +9,11 @@
     "theater-generate-dark-inputs",
     "reader-theme-appearance"
   ],
-  "sizes": [
-    "350x700",
-    "390x844",
-    "430x900"
-  ],
+  "sizes": ["350x700", "390x844", "430x900"],
   "evidence": [
     {
       "appearance": {
-        "screenshotPerceptualHash": "F0AAA845010173AA",
+        "screenshotPerceptualHash": "F0AAA8CD010173AA",
         "targets": [
           {
             "missing": false,
@@ -43,7 +39,7 @@
     },
     {
       "appearance": {
-        "screenshotPerceptualHash": "0D3D737373E14C55",
+        "screenshotPerceptualHash": "0C3E733373734C55",
         "targets": [
           {
             "missing": false,
@@ -70,7 +66,7 @@
     },
     {
       "appearance": {
-        "screenshotPerceptualHash": "6C70C01377792100",
+        "screenshotPerceptualHash": "6C7FE01373712120",
         "targets": [
           {
             "missing": false,
@@ -95,7 +91,7 @@
     },
     {
       "appearance": {
-        "screenshotPerceptualHash": "E078E00377072100",
+        "screenshotPerceptualHash": "F87CD03373372110",
         "targets": [
           {
             "missing": false,
@@ -140,7 +136,7 @@
     },
     {
       "appearance": {
-        "screenshotPerceptualHash": "F0AAA901010121AA",
+        "screenshotPerceptualHash": "F0AAA900010121AA",
         "targets": [
           {
             "missing": false,
@@ -166,7 +162,7 @@
     },
     {
       "appearance": {
-        "screenshotPerceptualHash": "0D3F335B23000055",
+        "screenshotPerceptualHash": "8C3D335B13000055",
         "targets": [
           {
             "missing": false,
@@ -193,7 +189,7 @@
     },
     {
       "appearance": {
-        "screenshotPerceptualHash": "6AA0362139230080",
+        "screenshotPerceptualHash": "EC38763139230080",
         "targets": [
           {
             "missing": false,
@@ -218,7 +214,7 @@
     },
     {
       "appearance": {
-        "screenshotPerceptualHash": "E3E026332F2300C0",
+        "screenshotPerceptualHash": "F07876E0272300C0",
         "targets": [
           {
             "missing": false,
@@ -263,7 +259,7 @@
     },
     {
       "appearance": {
-        "screenshotPerceptualHash": "F2AAD501010101AA",
+        "screenshotPerceptualHash": "F0AAC501010101AA",
         "targets": [
           {
             "missing": false,
@@ -289,7 +285,7 @@
     },
     {
       "appearance": {
-        "screenshotPerceptualHash": "0C7F337900000055",
+        "screenshotPerceptualHash": "8C7B737900000055",
         "targets": [
           {
             "missing": false,
@@ -316,7 +312,7 @@
     },
     {
       "appearance": {
-        "screenshotPerceptualHash": "E8C42E6931000040",
+        "screenshotPerceptualHash": "EC702EE371030040",
         "targets": [
           {
             "missing": false,
@@ -341,7 +337,7 @@
     },
     {
       "appearance": {
-        "screenshotPerceptualHash": "E0C02E6B23000040",
+        "screenshotPerceptualHash": "F8F02EF303030040",
         "targets": [
           {
             "missing": false,

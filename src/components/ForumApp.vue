@@ -152,6 +152,7 @@
           : generationState.preview.threadTitle
       "
       :warnings="generationState.preview.warnings"
+      @update:reasoning="updateGenerationRecordReasoning(generationState.preview, $event)"
       @apply-thread-content="updatePreviewThreadContent"
       @back="returnToGenerate"
       @reparse="reparsePreviewRaw"
@@ -210,6 +211,7 @@ import { formatGenerationReferences, type GenerationReferenceItem } from '@/util
 import { resolveContentVersion } from '@/util/contentVersions';
 import { applyRegexDisplayRules, getRegexRulesByIds } from '@/util/regexDisplay';
 import { useInvalidRouteFallback } from '@/util/routeFallback';
+import { updateGenerationRecordReasoning } from '@/util/generationReasoning';
 import { storeToRefs } from 'pinia';
 
 type BoardNameMode = 'ai' | 'fixed';
@@ -929,25 +931,25 @@ function updatePreviewThreadContent(content: string) {
 
 const { replySession, runReplyGeneration, runThreadGeneration, stopGeneration, threadSession } =
   useForumGenerationActions({
-  activeBoard,
-  buildReplyThreadContext,
-  buildRepliesOutputFormat,
-  buildThreadGenerationConfig,
-  beginPreviewDraft: beginForumPreviewDraft,
-  clearPreviewDraft: clearForumPreviewDraft,
-  failedDraftRawOutput,
-  formattedReferences,
-  generationState,
-  persistPreviewDraft: persistForumPreviewDraft,
-  replyGenerationDraft,
-  rewriteForumThread,
-  rewriteForumVersion,
-  route,
-  selectedReferences,
-  threadGenerationDraft,
-  threadGenerationMode: forumThreadGenerationMode,
-  viewedForumThread,
-  viewedForumVersionId,
+    activeBoard,
+    buildReplyThreadContext,
+    buildRepliesOutputFormat,
+    buildThreadGenerationConfig,
+    beginPreviewDraft: beginForumPreviewDraft,
+    clearPreviewDraft: clearForumPreviewDraft,
+    failedDraftRawOutput,
+    formattedReferences,
+    generationState,
+    persistPreviewDraft: persistForumPreviewDraft,
+    replyGenerationDraft,
+    rewriteForumThread,
+    rewriteForumVersion,
+    route,
+    selectedReferences,
+    threadGenerationDraft,
+    threadGenerationMode: forumThreadGenerationMode,
+    viewedForumThread,
+    viewedForumVersionId,
   });
 const threadGenerationState = computed(() => ({
   error: threadSession.error.value,

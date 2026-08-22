@@ -17,10 +17,10 @@ test('all approved A-group list surfaces expose item import', () => {
     ['src/components/diary/DiaryBookPage.vue', 'app-id="diary"'],
     ['src/components/extras/ExtrasBookOverviewPage.vue', 'app-id="extras"'],
     ['src/components/forum/ForumBoardPage.vue', 'app-id="forum"'],
-    ['src/components/theater/TheaterHistoryPage.vue', 'app-id="theater"'],
+    ['src/components/theater/TheaterCatalogPage.vue', 'app-id="theater"'],
     ['src/components/letters/LettersBookPage.vue', 'app-id="letters"'],
     ['src/apps/digest/DigestApp.vue', 'app-id="digest"'],
-    ['src/apps/profiles/pages/ProfilesCatalogPage.vue', 'app-id="profiles"'],
+    ['src/apps/profiles/ProfilesApp.vue', 'app-id="profiles"'],
     ['src/apps/scene-planner/ScenePlannerApp.vue', 'app-id="scene-planner"'],
   ];
   for (const [path, marker] of cases) {
@@ -30,8 +30,12 @@ test('all approved A-group list surfaces expose item import', () => {
   }
 });
 
-test('profile detail and scene plan expose item-specific export context', () => {
-  assert.match(read('src/apps/profiles/pages/ProfilesEntryDetailPage.vue'), /display-app-id="profiles"/);
+test('profile row detail and scene plan expose item-specific export context', () => {
+  const profiles = read('src/apps/profiles/ProfilesApp.vue');
+  assert.match(profiles, /route\.page === 'row'/);
+  assert.match(profiles, /display-app-id="profiles"/);
+  assert.match(profiles, /identityValue/);
+  assert.match(profiles, /mappingId/);
   const scene = read('src/apps/scene-planner/ScenePlannerApp.vue');
   assert.match(scene, /ItemTransferExportButton/);
   assert.match(scene, /planId:\s*plan\.id/);

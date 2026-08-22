@@ -8,6 +8,7 @@ export type PluginPresetSourceFormat = 'legacy' | 'modern';
 export type PluginPresetRecord = {
   builtIn?: boolean;
   createdAt: string;
+  hidden?: boolean;
   id: string;
   name: string;
   raw: Record<string, unknown>;
@@ -299,4 +300,16 @@ export function pluginPresetIdFromSelection(selection: string) {
   return selection.startsWith(PLUGIN_PRESET_SELECTION_PREFIX)
     ? selection.slice(PLUGIN_PRESET_SELECTION_PREFIX.length).trim()
     : '';
+}
+
+export function buildPluginPresetSelectionOptions(records: PluginPresetRecord[], currentSelection = '') {
+  const currentId = pluginPresetIdFromSelection(currentSelection);
+  return records
+    .filter(record => !record.hidden || record.id === currentId)
+    .map(record => ({
+      ...(record.hidden ? { disabled: true } : {}),
+      group: '插件预设',
+      label: record.hidden ? `${record.name}（已隐藏，请重新选择）` : record.name,
+      value: pluginPresetSelection(record.id),
+    }));
 }

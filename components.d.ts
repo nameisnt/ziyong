@@ -21,6 +21,7 @@ declare module 'vue' {
     CapsuleTag: typeof import('./src/components/CapsuleTag.vue')['default']
     CatalogModal: typeof import('./src/components/CatalogModal.vue')['default']
     ChatArchiveApp: typeof import('./src/components/ChatArchiveApp.vue')['default']
+    ChatArchiveChatList: typeof import('./src/components/archive/ChatArchiveChatList.vue')['default']
     ChatArchiveFloorBackupPage: typeof import('./src/components/archive/ChatArchiveFloorBackupPage.vue')['default']
     ConfigurationRecoveryNotice: typeof import('./src/components/ConfigurationRecoveryNotice.vue')['default']
     ContentConversionPanel: typeof import('./src/components/ContentConversionPanel.vue')['default']
@@ -41,6 +42,7 @@ declare module 'vue' {
     DiaryGeneratePage: typeof import('./src/components/diary/DiaryGeneratePage.vue')['default']
     DiaryPreviewPage: typeof import('./src/components/diary/DiaryPreviewPage.vue')['default']
     EmptyState: typeof import('./src/components/EmptyState.vue')['default']
+    ExternalProfileReferencePicker: typeof import('./src/components/ExternalProfileReferencePicker.vue')['default']
     ExtrasApp: typeof import('./src/components/ExtrasApp.vue')['default']
     ExtrasBookEditorPage: typeof import('./src/components/extras/ExtrasBookEditorPage.vue')['default']
     ExtrasBookOverviewPage: typeof import('./src/components/extras/ExtrasBookOverviewPage.vue')['default']
@@ -135,6 +137,7 @@ declare module 'vue' {
     TheaterEntryEditorPage: typeof import('./src/components/theater/TheaterEntryEditorPage.vue')['default']
     TheaterHistoryPage: typeof import('./src/components/theater/TheaterHistoryPage.vue')['default']
     TheaterMixedContent: typeof import('./src/components/theater/TheaterMixedContent.vue')['default']
+    TheaterTypeGroupField: typeof import('./src/components/prompts/TheaterTypeGroupField.vue')['default']
     VersionNavigator: typeof import('./src/components/VersionNavigator.vue')['default']
   }
 }

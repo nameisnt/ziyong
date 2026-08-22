@@ -143,6 +143,7 @@
       :next-disabled="!nextItemId"
       :parent-line="activeParentLine"
       :previous-disabled="!previousItemId"
+      :profile-error="profileReadError"
       :profile-names="profileNames"
       @catalog="returnToRoot"
       @delete="removeActiveItem"
@@ -218,6 +219,7 @@
           raw-editable
           :reparse-handler="reparsePreviewRaw"
           :reasoning="generationState.preview.generationRecord?.reasoning || ''"
+          reasoning-editable
           :scan-enabled="false"
           save-label="合并保存"
           :source-label="generationState.preview.source.label"
@@ -227,6 +229,7 @@
           @reparse="reparsePreviewRaw"
           @save="savePreview"
           @update:raw="generationState.preview.raw = $event"
+          @update:reasoning="updateGenerationRecordReasoning(generationState.preview, $event)"
         />
       </article>
     </section>
@@ -258,9 +261,15 @@ import GenerationPanel from '@/components/GenerationPanel.vue';
 import GenerationPreviewPanel from '@/components/GenerationPreviewPanel.vue';
 import InfoHint from '@/components/InfoHint.vue';
 import PreviewDraftNotice from '@/components/PreviewDraftNotice.vue';
+import { readExternalMappedRows } from '@/apps/profiles/profileConsumerBridge';
+import { useExternalProfileMappingsStore } from '@/apps/profiles/profileMappings';
+import {
+  cleanExternalProfileReferences,
+  externalProfileReferenceKey,
+  type ExternalProfileReference,
+} from '@/apps/profiles/profileReferences';
 import { useSingleGenerationTaskSession } from '@/composables/useSingleGenerationTaskSession';
 import { getRegisteredPhoneGenerationAdapter } from '@/core/appRegistry';
-import { useProfilesStore } from '@/apps/profiles/store';
 import { captureGenerationPrompt, generateContent } from '@/core/generationService';
 import { usePhoneStore } from '@/store/phone';
 import { usePromptStore } from '@/store/prompts';
@@ -271,6 +280,7 @@ import type { GenerationTask } from '@/type/generationTask';
 import { formatGenerationReferences, type GenerationReferenceItem } from '@/util/references';
 import { formatTextProviderSummary } from '@/util/textProvider';
 import { usePreviewDraftPersistence } from '@/util/previewDrafts';
+import { updateGenerationRecordReasoning } from '@/util/generationReasoning';
 import { createStorylineGenerationAdapter, formatStorylineResult, type StorylineGeneratedResult } from './generation';
 import StorylineDetailPage from './StorylineDetailPage.vue';
 import StorylineEditorPage from './StorylineEditorPage.vue';
@@ -298,7 +308,7 @@ type StorylinePreview = {
 };
 
 const phone = usePhoneStore();
-const profiles = useProfilesStore();
+const profileMappings = useExternalProfileMappingsStore();
 const prompts = usePromptStore();
 const settingsStore = useSettingsStore();
 const summary = useSummaryStore();
@@ -314,6 +324,8 @@ const route = computed(() => phone.currentRoute);
 const activeTab = ref<'beats' | 'hooks' | 'lines'>('lines');
 const summaryBookId = ref('');
 const selectedReferences = ref<GenerationReferenceItem[]>([]);
+const profileNames = ref<Record<string, string>>({});
+const profileReadError = ref('');
 const generationDraft = reactive({
   fromStartEnd: 20,
   rangeText: '',
@@ -373,7 +385,6 @@ const activeItemList = computed<Array<Foreshadow | Storyline | StorylineBeat>>((
 const activeItemIndex = computed(() => activeItemList.value.findIndex(item => item.id === activeItemId.value));
 const previousItemId = computed(() => activeItemList.value[activeItemIndex.value - 1]?.id || '');
 const nextItemId = computed(() => activeItemList.value[activeItemIndex.value + 1]?.id || '');
-const profileNames = computed(() => Object.fromEntries(profiles.entries.map(profile => [profile.id, profile.title])));
 const lineOptions = computed(() => storylines.lines.map(line => ({ label: line.title, value: line.id })));
 const {
   beginPreviewDraft: beginStorylinePreviewDraft,
@@ -402,6 +413,19 @@ const summaryBookOptions = computed(() =>
 );
 const formattedReferences = computed(() => formatGenerationReferences(selectedReferences.value));
 const textProviderSummary = computed(() => formatTextProviderSummary(settings.value.textProvider));
+
+watch(
+  () => {
+    const references = [...storylines.lines, ...storylines.hooks]
+      .flatMap(item => item.relatedProfiles)
+      .map(externalProfileReferenceKey)
+      .join('|');
+    const mappings = profileMappings.mappings.map(mapping => `${mapping.id}:${mapping.updatedAt}`).join('|');
+    return `${profileMappings.scopeKey}|${mappings}|${references}`;
+  },
+  () => refreshProfileNames(),
+  { immediate: true },
+);
 
 watch(
   summaryBooks,
@@ -445,6 +469,7 @@ function createEmptyEditorDraft(itemKind: StorylineItemKind): StorylineEditorDra
     order: 0,
     payoff: '',
     relatedProfileIds: [],
+    relatedProfiles: [],
     seed: '',
     stakes: '',
     summary: '',
@@ -477,6 +502,7 @@ function loadEditorDraft(kind: StorylineItemKind, id: string) {
       lineKind: line.kind,
       lineStatus: line.status,
       relatedProfileIds: [...line.relatedProfileIds],
+      relatedProfiles: klona(line.relatedProfiles),
       stakes: line.stakes,
       summary: line.summary,
       tagsText: line.tags.join('、'),
@@ -500,6 +526,7 @@ function loadEditorDraft(kind: StorylineItemKind, id: string) {
       lineId: hook.lineId,
       payoff: hook.payoff,
       relatedProfileIds: [...hook.relatedProfileIds],
+      relatedProfiles: klona(hook.relatedProfiles),
       seed: hook.seed,
       tagsText: hook.tags.join('、'),
       title: hook.title,
@@ -519,8 +546,25 @@ function cleanEditorTags(value: string) {
   ];
 }
 
-function cleanRelatedProfileIds(values: string[]) {
-  return [...new Set(values.map(value => value.trim()).filter(Boolean))];
+function refreshProfileNames() {
+  profileNames.value = {};
+  profileReadError.value = '';
+  const references = [...storylines.lines, ...storylines.hooks].flatMap(item => item.relatedProfiles);
+  const mappingIds = [...new Set(references.map(reference => reference.profileMappingId).filter(Boolean))];
+  if (!mappingIds.length) return;
+  try {
+    mappingIds.forEach(mappingId => {
+      const mapping = profileMappings.getMapping(mappingId);
+      if (!mapping) throw new Error('关联的资料映射已经不存在');
+      readExternalMappedRows(mapping).forEach(row => {
+        profileNames.value[
+          externalProfileReferenceKey({ profileIdentityValue: row.identityValue, profileMappingId: mappingId })
+        ] = row.displayValue.trim() || row.identityValue;
+      });
+    });
+  } catch (error) {
+    profileReadError.value = error instanceof Error ? error.message : '读取关联资料失败';
+  }
 }
 
 function openItem(kind: StorylineItemKind, id: string) {
@@ -546,10 +590,10 @@ function openActiveEditor() {
   phone.pushPage('editor', `编辑${kind === 'line' ? '剧情线' : kind === 'beat' ? '节点' : '伏笔'}`, { id, kind });
 }
 
-function openProfile(profileId: string) {
-  const profile = profiles.getEntry(profileId);
-  if (!profile) return;
-  phone.pushRoute('profiles', 'entry', profile.title, { entryId: profile.id });
+function openProfile(profile: ExternalProfileReference) {
+  const mapping = profileMappings.getMapping(profile.profileMappingId);
+  if (!mapping) return void toastr.warning('关联的资料映射已经不存在');
+  phone.pushRoute('profiles', 'table', mapping.name, { sheetKey: mapping.sheetKey });
 }
 
 function returnToRoot() {
@@ -575,7 +619,8 @@ function saveEditor() {
     storylines.updateLine(id, {
       goal: editorDraft.goal,
       kind: editorDraft.lineKind,
-      relatedProfileIds: cleanRelatedProfileIds(editorDraft.relatedProfileIds),
+      relatedProfileIds: [...editorDraft.relatedProfileIds],
+      relatedProfiles: cleanExternalProfileReferences(editorDraft.relatedProfiles),
       stakes: editorDraft.stakes,
       status: editorDraft.lineStatus,
       summary: editorDraft.summary,
@@ -594,7 +639,8 @@ function saveEditor() {
     storylines.updateHook(id, {
       lineId: storylines.getLine(editorDraft.lineId) ? editorDraft.lineId : '',
       payoff: editorDraft.payoff,
-      relatedProfileIds: cleanRelatedProfileIds(editorDraft.relatedProfileIds),
+      relatedProfileIds: [...editorDraft.relatedProfileIds],
+      relatedProfiles: cleanExternalProfileReferences(editorDraft.relatedProfiles),
       seed: editorDraft.seed,
       status: editorDraft.hookStatus,
       tags: cleanEditorTags(editorDraft.tagsText),

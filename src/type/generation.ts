@@ -76,6 +76,7 @@ export type GenerationAdapter<TConfig, TResult, TSaveResult = { entityId: string
   buildRequest: (config: TConfig) => GenerationRequestParts;
   configSchema: z.ZodType<TConfig>;
   parse: (raw: string, config: TConfig) => XmlParseResult<TResult>;
+  preserveSaveFailure?: boolean;
   save: (result: TResult, context: GenerationSaveContext<TConfig>) => Promise<TSaveResult> | TSaveResult;
 };
 

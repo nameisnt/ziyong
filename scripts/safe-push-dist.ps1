@@ -183,10 +183,13 @@ $currentRuleDocs = @(Get-ChildItem -LiteralPath 'docs' -File -Filter '07-*.md')
 if ($currentRuleDocs.Count -ne 1) {
   throw "Expected exactly one current rule document matching docs/07-*.md, found $($currentRuleDocs.Count)."
 }
-$currentRuleDocPath = 'docs/' + $currentRuleDocs[0].Name
+$rootDocumentationPaths = @(
+  Get-ChildItem -LiteralPath 'docs' -File -Filter '*.md' |
+    Sort-Object Name |
+    ForEach-Object { 'docs/' + $_.Name }
+)
 
-$allowedNewExactPaths = @(
-  $currentRuleDocPath,
+$allowedNewExactPaths = @($rootDocumentationPaths) + @(
   'scripts/backup-contract-check.mjs',
   'scripts/check-eslint-baseline.mjs',
   'scripts/check-style-guard.ps1',
@@ -204,9 +207,7 @@ $allowedNewPrefixes = @(
   'scripts/baselines/',
   'scripts/unit/'
 )
-$allowedPublishPaths = @(
-  'src',
-  $currentRuleDocPath,
+$allowedPublishPaths = @('src') + @($rootDocumentationPaths) + @(
   'docs/archive',
   'docs/execution',
   'scripts/backup-contract-check.mjs',

@@ -22,9 +22,10 @@ export default definePhoneApp({
       importData: data => {
         _.set(extension_settings, timekeeperField, data);
       },
+      migrateImport: data => data,
       rehydrateFromSettings: () => useTimekeeperStore().rehydrateFromSettings(),
       schema: createChatScopedBackupSchema(TimekeeperSettingsSchema),
-      schemaVersion: 1,
+      schemaVersion: 2,
       scope: 'chat',
     },
   ],

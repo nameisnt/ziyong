@@ -6,7 +6,6 @@ import test from 'node:test';
 const consumers = await Promise.all(
   [
     ['Digest', 'src/apps/digest/DigestApp.vue'],
-    ['Profiles', 'src/apps/profiles/ProfilesApp.vue'],
     ['Relationship', 'src/apps/relationship/RelationshipApp.vue'],
   ].map(async ([name, file]) => ({
     file,

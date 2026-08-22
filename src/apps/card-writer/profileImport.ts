@@ -1,9 +1,9 @@
-import type { ProfileKind } from '@/apps/profiles/store';
+export type CardWriterProfileKind = 'character' | 'event' | 'world';
 
 export type CardWriterImportCandidate = {
   content: string;
   fields: Record<string, string>;
-  kind: ProfileKind;
+  kind: CardWriterProfileKind;
   sourceKey: string;
   tagName: string;
   title: string;
@@ -64,7 +64,7 @@ function candidateFromTag(stage: ImportStage, tagName: string, attributes: strin
   const attributeName = readAttribute(attributes, 'name') || readAttribute(attributes, 'title');
   const explicitName = cleanYamlValue(readLine(content, ['姓名', '名称', '标题']));
   const stageName = titleFromStage(stage);
-  let kind: ProfileKind = 'world';
+  let kind: CardWriterProfileKind = 'world';
   let title = '';
   let fields: Record<string, string> = {};
 

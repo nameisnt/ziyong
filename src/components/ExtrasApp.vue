@@ -150,6 +150,7 @@
       :text-provider-summary="chapterGenerationState.preview.mode"
       :title="chapterGenerationState.preview.title"
       :warnings="chapterGenerationState.preview.warnings"
+      @update:reasoning="updateGenerationRecordReasoning(chapterGenerationState.preview, $event)"
       @back="returnToChapterGenerate"
       @reparse="reparseChapterPreviewRaw"
       @save="saveChapterPreview"
@@ -175,6 +176,7 @@
       :text-provider-summary="generationState.preview.enabled ? '保存后启用' : '保存后停用'"
       :title="formatCoveredChaptersForBook(previewBook, generationState.preview.coveredChapterIds)"
       :warnings="generationState.preview.warnings"
+      @update:reasoning="updateGenerationRecordReasoning(generationState.preview, $event)"
       @back="returnToGenerate"
       @reparse="reparseSummaryPreviewRaw"
       @save="saveSummaryPreview"
@@ -244,6 +246,7 @@ import { resolveContentVersion } from '@/util/contentVersions';
 import { buildExtraHistoryContext, getSummarizableChapters } from '@/util/extrasSummary';
 import { resolveExtraChapterGenerationRecords } from '@/util/extraGenerationRecords';
 import { useInvalidRouteFallback } from '@/util/routeFallback';
+import { updateGenerationRecordReasoning } from '@/util/generationReasoning';
 import { storeToRefs } from 'pinia';
 
 const extras = useExtrasStore();

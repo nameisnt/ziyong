@@ -1,5 +1,8 @@
 import { useChatScopedDomain } from '@/store/chatScoped';
-import { useProfilesStore } from '@/apps/profiles/store';
+import {
+  externalProfileReferenceKey,
+  type ExternalProfileReferenceDraft,
+} from '@/apps/profiles/profileReferences';
 import { createFailedDraftCollection } from '@/store/failedDrafts';
 import type { FailedGenerationDraft } from '@/type/generation';
 import { validateInplace } from '@/util/zod';
@@ -10,6 +13,8 @@ export const RelationshipCharacterSchema = z.object({
   id: z.string(),
   name: z.string(),
   profileEntryId: z.string().default(''),
+  profileIdentityValue: z.string().default(''),
+  profileMappingId: z.string().default(''),
   x: z.number().default(160),
   y: z.number().default(130),
   createdAt: z.string(),
@@ -69,7 +74,6 @@ function getAutoPosition(index: number, total: number) {
 }
 
 export const useRelationshipStore = defineStore('relationship', () => {
-  const profiles = useProfilesStore();
   const { data, rehydrateFromSettings, resetCurrentScope, scopeKey, switchScope } = useChatScopedDomain({
     field: relationshipField,
     schema: RelationshipScopeDataSchema,
@@ -83,18 +87,6 @@ export const useRelationshipStore = defineStore('relationship', () => {
     [...data.value.links].sort((left, right) => left.createdAt.localeCompare(right.createdAt)),
   );
   const failedDraftCollection = createFailedDraftCollection(data, 'relationship_failed');
-
-  watch(
-    () => profiles.data.entries.map(entry => `${entry.id}:${entry.title}:${entry.kind}`).join('|'),
-    () => {
-      data.value.characters.forEach(character => {
-        if (!character.profileEntryId) return;
-        const entry = profiles.getEntry(character.profileEntryId);
-        if (entry?.kind === 'character') character.name = entry.title;
-      });
-    },
-    { immediate: true },
-  );
 
   function getCharacter(characterId: string) {
     return data.value.characters.find(character => character.id === characterId) ?? null;
@@ -115,7 +107,7 @@ export const useRelationshipStore = defineStore('relationship', () => {
     );
   }
 
-  function createCharacter(name: string, profileEntryId = '') {
+  function createCharacter(name: string, profile: ExternalProfileReferenceDraft | null = null) {
     const normalized = normalizeName(name);
     if (!normalized) return null;
     const existing = findCharacterByName(normalized);
@@ -127,7 +119,9 @@ export const useRelationshipStore = defineStore('relationship', () => {
       ...position,
       id: createId('relationship_character'),
       name: normalized,
-      profileEntryId,
+      profileEntryId: '',
+      profileIdentityValue: profile?.profileIdentityValue || '',
+      profileMappingId: profile?.profileMappingId || '',
       createdAt: timestamp,
       updatedAt: timestamp,
     };
@@ -135,36 +129,71 @@ export const useRelationshipStore = defineStore('relationship', () => {
     return character;
   }
 
-  function createCharacterFromProfile(profileEntryId: string) {
-    const entry = profiles.getEntry(profileEntryId);
-    if (!entry || entry.kind !== 'character') return null;
-    const linked = data.value.characters.find(character => character.profileEntryId === entry.id);
+  function createCharacterFromProfile(profile: ExternalProfileReferenceDraft, displayName: string) {
+    const name = normalizeName(displayName);
+    if (!profile.profileMappingId || !profile.profileIdentityValue || !name) return null;
+    const referenceKey = externalProfileReferenceKey(profile);
+    const linked = data.value.characters.find(
+      character =>
+        character.profileMappingId &&
+        character.profileIdentityValue &&
+        externalProfileReferenceKey(character) === referenceKey,
+    );
     if (linked) return linked;
-    const sameName = findCharacterByName(entry.title);
+    const sameName = findCharacterByName(name);
     if (sameName) {
-      if (sameName.profileEntryId && sameName.profileEntryId !== entry.id) return null;
-      sameName.profileEntryId = entry.id;
-      sameName.name = entry.title;
+      if (sameName.profileMappingId && sameName.profileIdentityValue) return null;
+      sameName.profileEntryId = '';
+      sameName.profileIdentityValue = profile.profileIdentityValue;
+      sameName.profileMappingId = profile.profileMappingId;
+      sameName.name = name;
       sameName.updatedAt = nowIso();
       return sameName;
     }
-    return createCharacter(entry.title, entry.id);
+    return createCharacter(name, profile);
   }
 
-  function linkCharacterProfile(characterId: string, profileEntryId: string) {
+  function setCharacterProfileDraft(characterId: string, patch: Partial<ExternalProfileReferenceDraft>) {
     const character = getCharacter(characterId);
     if (!character) return false;
-    if (!profileEntryId) {
+    if (typeof patch.profileMappingId === 'string') {
+      character.profileMappingId = patch.profileMappingId;
+      character.profileIdentityValue = '';
+      if (!patch.profileMappingId) character.profileEntryId = '';
+    }
+    if (typeof patch.profileIdentityValue === 'string') character.profileIdentityValue = patch.profileIdentityValue;
+    character.updatedAt = nowIso();
+    return true;
+  }
+
+  function linkCharacterProfile(
+    characterId: string,
+    profile: ExternalProfileReferenceDraft | null,
+    displayName = '',
+  ) {
+    const character = getCharacter(characterId);
+    if (!character) return false;
+    if (!profile?.profileMappingId || !profile.profileIdentityValue) {
       character.profileEntryId = '';
+      character.profileIdentityValue = '';
+      character.profileMappingId = '';
       character.updatedAt = nowIso();
       return true;
     }
-    const entry = profiles.getEntry(profileEntryId);
-    if (!entry || entry.kind !== 'character') return false;
-    const duplicate = data.value.characters.find(item => item.id !== characterId && item.profileEntryId === entry.id);
+    const referenceKey = externalProfileReferenceKey(profile);
+    const duplicate = data.value.characters.find(
+      item =>
+        item.id !== characterId &&
+        item.profileMappingId &&
+        item.profileIdentityValue &&
+        externalProfileReferenceKey(item) === referenceKey,
+    );
     if (duplicate) return false;
-    character.profileEntryId = entry.id;
-    character.name = entry.title;
+    character.profileEntryId = '';
+    character.profileIdentityValue = profile.profileIdentityValue;
+    character.profileMappingId = profile.profileMappingId;
+    const normalizedName = normalizeName(displayName);
+    if (normalizedName) character.name = normalizedName;
     character.updatedAt = nowIso();
     return true;
   }
@@ -280,6 +309,7 @@ export const useRelationshipStore = defineStore('relationship', () => {
     rehydrateFromSettings,
     resetCurrentScope,
     scopeKey,
+    setCharacterProfileDraft,
     switchScope,
     updateCharacter,
     updateLink,

@@ -1,29 +1,40 @@
 <template>
   <section ref="pageEl" class="pc-preset-page">
     <header class="pc-compact-toolbar pc-directory-toolbar pc-preset-detail-head">
-      <span class="pc-directory-count">
-        {{ preset ? `${preset.prompts.length} 个条目` : '正在读取条目' }}
-      </span>
-      <ActionMenu label="管理" icon="fa-solid fa-bars">
-        <button type="button" :disabled="mutationBusy" @click="$emit('rename-preset')">
-          <i class="fa-solid fa-pen"></i><span>预设改名</span>
-        </button>
-        <button v-if="pluginPreset" type="button" :disabled="mutationBusy" @click="$emit('export-preset')">
-          <i class="fa-solid fa-file-export"></i><span>导出预设</span>
-        </button>
-        <button type="button" :disabled="mutationBusy || !presetMovable" @click="$emit('move-preset')">
-          <i class="fa-solid fa-right-left"></i><span>{{ movePresetLabel }}</span>
-        </button>
-        <button
-          v-if="presetDeletable"
-          class="danger"
-          type="button"
-          :disabled="mutationBusy"
-          @click="$emit('delete-preset')"
-        >
-          <i class="fa-solid fa-trash"></i><span>删除预设</span>
-        </button>
-      </ActionMenu>
+      <div class="pc-directory-leading">
+        <ActionMenu align="start" icon-only label="管理" icon="fa-solid fa-bars">
+          <button type="button" :disabled="mutationBusy" @click="$emit('rename-preset')">
+            <i class="fa-solid fa-pen"></i><span>预设改名</span>
+          </button>
+          <button v-if="pluginPreset" type="button" :disabled="mutationBusy" @click="$emit('export-preset')">
+            <i class="fa-solid fa-file-export"></i><span>导出预设</span>
+          </button>
+          <button
+            v-if="pluginPreset && pluginPresetBuiltIn"
+            type="button"
+            :disabled="mutationBusy"
+            @click="$emit('toggle-preset-visibility')"
+          >
+            <i :class="pluginPresetHidden ? 'fa-solid fa-eye' : 'fa-solid fa-eye-slash'"></i>
+            <span>{{ pluginPresetHidden ? '取消隐藏' : '隐藏预设' }}</span>
+          </button>
+          <button type="button" :disabled="mutationBusy || !presetMovable" @click="$emit('move-preset')">
+            <i class="fa-solid fa-right-left"></i><span>{{ movePresetLabel }}</span>
+          </button>
+          <button
+            v-if="presetDeletable"
+            class="danger"
+            type="button"
+            :disabled="mutationBusy"
+            @click="$emit('delete-preset')"
+          >
+            <i class="fa-solid fa-trash"></i><span>删除预设</span>
+          </button>
+        </ActionMenu>
+        <span class="pc-directory-count">
+          {{ preset ? `${preset.prompts.length} 个条目` : '正在读取条目' }}
+        </span>
+      </div>
       <button
         v-if="!pluginPreset && presetName !== loadedPresetName"
         class="pc-icon-btn primary"
@@ -154,6 +165,8 @@ defineProps<{
   mutationBusy: boolean;
   movePresetLabel: string;
   pluginPreset: boolean;
+  pluginPresetBuiltIn: boolean;
+  pluginPresetHidden: boolean;
   preset: TavernPreset | null;
   presetDeletable: boolean;
   presetMovable: boolean;
@@ -177,6 +190,7 @@ defineEmits<{
   'rename-preset': [];
   'switch-preset': [presetName: string];
   'toggle-group': [groupId: string];
+  'toggle-preset-visibility': [];
   'toggle-default-app': [appId: string, enabled: boolean];
   'toggle-prompt': [prompt: TavernPresetPrompt, enabled: boolean];
 }>();

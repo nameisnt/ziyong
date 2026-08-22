@@ -118,14 +118,17 @@
             <i class="fa-solid fa-plus"></i>
           </button>
         </div>
-        <div v-if="draft.relatedProfileIds.length" class="pc-storyline-profile-list">
-          <div v-for="(_, index) in draft.relatedProfileIds" :key="index" class="pc-storyline-profile-row">
-            <ProfileEntryPicker
-              v-model="draft.relatedProfileIds[index]"
-              :disabled-ids="disabledProfileIds(index)"
-              empty-label="不关联资料"
-              placeholder="选择关联资料"
-              :show-open-button="false"
+        <p v-if="draft.relatedProfileIds.length" class="pc-storyline-legacy-warning">
+          {{ draft.relatedProfileIds.length }} 条旧资料关联待重新选择；旧标识会继续保留。
+        </p>
+        <div v-if="draft.relatedProfiles.length" class="pc-storyline-profile-list">
+          <div v-for="(profile, index) in draft.relatedProfiles" :key="index" class="pc-storyline-profile-row">
+            <ExternalProfileReferencePicker
+              :disabled-reference-keys="disabledProfileKeys(index)"
+              :identity-value="profile.profileIdentityValue"
+              :mapping-id="profile.profileMappingId"
+              @update:identity-value="profile.profileIdentityValue = $event"
+              @update:mapping-id="profile.profileMappingId = $event"
             />
             <button class="pc-icon-btn danger" type="button" title="移除关联" aria-label="移除关联" @click="removeRelatedProfile(index)">
               <i class="fa-solid fa-xmark"></i>
@@ -145,8 +148,9 @@
 
 <script setup lang="ts">
 import EmptyState from '@/components/EmptyState.vue';
-import ProfileEntryPicker from '@/components/ProfileEntryPicker.vue';
+import ExternalProfileReferencePicker from '@/components/ExternalProfileReferencePicker.vue';
 import SearchableCombobox from '@/components/SearchableCombobox.vue';
+import { externalProfileReferenceKey } from '@/apps/profiles/profileReferences';
 import { beatStatusOptions, foreshadowStatusOptions, storylineKindOptions, storylineStatusOptions } from './store';
 import type { StorylineEditorDraft } from './viewTypes';
 
@@ -165,15 +169,20 @@ const itemLabel = computed(() => ({ beat: '节点', hook: '伏笔', line: '剧�
 const hookLineOptions = computed(() => [{ label: '不绑定剧情线', value: '' }, ...props.lineOptions]);
 
 function addRelatedProfile() {
-  draft.value.relatedProfileIds.push('');
+  draft.value.relatedProfiles.push({ profileIdentityValue: '', profileMappingId: '' });
 }
 
 function removeRelatedProfile(index: number) {
-  draft.value.relatedProfileIds.splice(index, 1);
+  draft.value.relatedProfiles.splice(index, 1);
 }
 
-function disabledProfileIds(index: number) {
-  return draft.value.relatedProfileIds.filter((profileId, itemIndex) => itemIndex !== index && profileId);
+function disabledProfileKeys(index: number) {
+  return draft.value.relatedProfiles
+    .filter(
+      (profile, itemIndex) =>
+        itemIndex !== index && profile.profileMappingId && profile.profileIdentityValue,
+    )
+    .map(profile => externalProfileReferenceKey(profile));
 }
 </script>
 
@@ -194,6 +203,14 @@ function disabledProfileIds(index: number) {
 
 .pc-storyline-profile-editor {
   padding-top: 4px;
+}
+
+.pc-storyline-legacy-warning {
+  margin: 0;
+  color: var(--pc-danger);
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 1.45;
 }
 
 .pc-storyline-profile-row {

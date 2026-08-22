@@ -188,9 +188,10 @@ export default definePhoneApp({
       importData: data => {
         _.set(extension_settings, relationshipField, data);
       },
+      migrateImport: data => data,
       rehydrateFromSettings: () => useRelationshipStore().rehydrateFromSettings(),
       schema: createChatScopedBackupSchema(RelationshipScopeDataSchema),
-      schemaVersion: 1,
+      schemaVersion: 2,
       scope: 'chat',
     },
   ],

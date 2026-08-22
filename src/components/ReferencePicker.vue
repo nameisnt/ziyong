@@ -13,6 +13,22 @@
       <input v-model="query" class="pc-field" type="text" :placeholder="t`搜索标题或内容`" />
       <slot name="actions"></slot>
 
+      <div v-if="referenceCatalog.warnings.length" class="pc-reference-warning" role="status">
+        <div>
+          <strong>{{ t`部分引用来源不可用` }}</strong>
+          <p v-for="warning in referenceCatalog.warnings" :key="warning">{{ warning }}</p>
+        </div>
+        <button
+          class="pc-icon-btn"
+          type="button"
+          :title="t`刷新引用`"
+          :aria-label="t`刷新引用`"
+          @click="refreshReferences"
+        >
+          <i class="fa-solid fa-rotate"></i>
+        </button>
+      </div>
+
       <div v-if="!filteredTree.length" class="pc-reference-empty">
         {{ t`没有可引用的内容` }}
       </div>
@@ -110,7 +126,7 @@
 </template>
 
 <script setup lang="ts">
-import { getRegisteredPhoneAppReferenceTrees, type PhoneReferenceTreeNode } from '@/core/appRegistry';
+import { getRegisteredPhoneAppReferenceCatalog, type PhoneReferenceTreeNode } from '@/core/appRegistry';
 import type { GenerationReferenceItem } from '@/util/references';
 import { defineComponent, h, type PropType } from 'vue';
 
@@ -239,12 +255,18 @@ const referenceDrag = reactive({
   pointerId: -1,
   startY: 0,
 });
+const referenceRevision = ref(0);
 
 const selectedIds = computed(() => new Set(props.modelValue.map(item => item.id)));
 
+const referenceCatalog = computed(() => {
+  void referenceRevision.value;
+  return getRegisteredPhoneAppReferenceCatalog();
+});
+
 const tree = computed(() => {
   const preferredOrder = new Map(props.preferredRootIds.map((id, index) => [id, index]));
-  return getRegisteredPhoneAppReferenceTrees()
+  return referenceCatalog.value.nodes
     .filter(
       item =>
         !props.excludedRootIds.includes(item.id) &&
@@ -284,9 +306,15 @@ const filteredTree = computed(() => {
 });
 
 watch(open, value => {
-  if (!value || expanded.value.size) return;
+  if (!value) return;
+  refreshReferences();
+  if (expanded.value.size) return;
   expanded.value = new Set(filteredTree.value.map(node => node.id));
 });
+
+function refreshReferences() {
+  referenceRevision.value += 1;
+}
 
 watch(
   () => props.modelValue.length,
@@ -502,6 +530,29 @@ function cancelReferenceDrag(event: PointerEvent) {
   gap: 4px;
   max-height: 220px;
   overflow: auto;
+}
+
+.pc-reference-warning {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 9px 10px;
+  border: 1px solid color-mix(in srgb, var(--pc-danger) 34%, var(--pc-border) 66%);
+  border-radius: var(--pc-control-radius);
+  background: color-mix(in srgb, var(--pc-danger) 8%, var(--pc-surface-strong) 92%);
+  color: var(--pc-text);
+}
+
+.pc-reference-warning > div {
+  min-width: 0;
+}
+
+.pc-reference-warning p {
+  margin: 3px 0 0;
+  color: var(--pc-danger);
+  font-size: 12px;
+  overflow-wrap: anywhere;
 }
 
 .pc-reference-node {

@@ -47,17 +47,20 @@ export function useChatArchiveCatalogSession() {
   const activeTab = ref<'current' | 'used' | 'unused'>('current');
   const owners = ref<ArchiveOwner[]>([]);
   const chatRows = ref<ArchiveChatRow[]>([]);
+  const currentOwnerChatRows = ref<ArchiveChatRow[]>([]);
   const selectedChat = ref<ArchiveChatRow | null>(null);
   const selectedDomains = ref<ChatArchiveDomain[]>([]);
   const floorBackups = ref<ChatFloorBackup[]>([]);
   const ownerQuery = ref('');
   const loadingCharacters = ref(false);
   const loadingChats = ref(false);
+  const loadingCurrentChats = ref(false);
   const error = ref('');
   const floorBackupError = ref('');
   const failedAvatars = reactive(new Set<string>());
   let characterLoadSequence = 0;
   let chatLoadSequence = 0;
+  let currentChatLoadSequence = 0;
 
   const activeOwner = computed(() => owners.value.find(owner => owner.key === route.value.params?.ownerKey) ?? null);
   const currentScope = computed(() => parseArchiveScopeKey(currentTavernScopeKey.value));
@@ -107,6 +110,15 @@ export function useChatArchiveCatalogSession() {
       }
     },
     { deep: true, immediate: true },
+  );
+
+  watch(
+    [activeTab, currentOwner],
+    ([tab, owner]) => {
+      if (tab === 'current' && owner) void loadCurrentOwnerChats(true);
+      else if (!owner) currentOwnerChatRows.value = [];
+    },
+    { immediate: true },
   );
 
   async function loadCharacters(force = false) {
@@ -335,47 +347,14 @@ export function useChatArchiveCatalogSession() {
     loadingChats.value = true;
     error.value = '';
     try {
-      const [briefs, loadedBackups] = await Promise.all([
-        owner.characterId === null ? Promise.resolve([]) : getPastCharacterChats(owner.characterId),
-        loadFloorBackupsSafe(),
-      ]);
-      floorBackups.value = loadedBackups;
-      owner.backupChatIds = new Set(
-        loadedBackups
-          .filter(backup => isBackupOwnedBy(backup, owner))
-          .map(backup => normalizeChatArchiveId(backup.chat.id)),
-      );
+      const rows = await buildChatRowsForOwner(owner);
       if (
         requestSequence !== chatLoadSequence ||
         route.value.appId !== 'archive' ||
         route.value.params?.ownerKey !== owner.key
       )
         return;
-
-      const normalizedBriefs = (briefs || [])
-        .map(normalizeBrief)
-        .filter((item): item is ChatHistoryBriefItem => Boolean(item));
-      const rows = new Map<string, ArchiveChatRow>();
-      const domainReader = createChatArchiveDomainReader();
-      normalizedBriefs.forEach(brief => {
-        const chatId = normalizeChatArchiveId(brief.fileName);
-        rows.set(chatId, createChatRow(owner, chatId, brief.title, domainReader));
-      });
-      owner.usedChatIds.forEach(chatId => {
-        if (!rows.has(chatId)) rows.set(chatId, createChatRow(owner, chatId, formatArchiveChatTitle(chatId), domainReader));
-      });
-      owner.backupChatIds.forEach(chatId => {
-        if (!rows.has(chatId)) {
-          const backup = findFloorBackup(owner, chatId);
-          rows.set(
-            chatId,
-            createChatRow(owner, chatId, backup?.chat.title || formatArchiveChatTitle(chatId), domainReader),
-          );
-        }
-      });
-      chatRows.value = [...rows.values()].sort(
-        (left, right) => Number(right.isUsed) - Number(left.isUsed) || left.title.localeCompare(right.title, 'zh-CN'),
-      );
+      chatRows.value = rows;
     } catch (caughtError) {
       if (requestSequence === chatLoadSequence) {
         error.value = caughtError instanceof Error ? caughtError.message : '读取聊天列表失败';
@@ -383,6 +362,68 @@ export function useChatArchiveCatalogSession() {
     } finally {
       if (requestSequence === chatLoadSequence) loadingChats.value = false;
     }
+  }
+
+  async function loadCurrentOwnerChats(force = false) {
+    const owner = currentOwner.value;
+    if (!owner) {
+      currentOwnerChatRows.value = [];
+      return;
+    }
+    if (currentOwnerChatRows.value.length && !force) return;
+    const requestSequence = ++currentChatLoadSequence;
+    const ownerKey = owner.key;
+    loadingCurrentChats.value = true;
+    error.value = '';
+    try {
+      const rows = await buildChatRowsForOwner(owner);
+      if (requestSequence !== currentChatLoadSequence || currentOwner.value?.key !== ownerKey) return;
+      currentOwnerChatRows.value = rows;
+    } catch (caughtError) {
+      if (requestSequence === currentChatLoadSequence) {
+        error.value = caughtError instanceof Error ? caughtError.message : '读取当前角色聊天列表失败';
+        currentOwnerChatRows.value = [];
+      }
+    } finally {
+      if (requestSequence === currentChatLoadSequence) loadingCurrentChats.value = false;
+    }
+  }
+
+  async function buildChatRowsForOwner(owner: ArchiveOwner) {
+    const [briefs, loadedBackups] = await Promise.all([
+      owner.characterId === null ? Promise.resolve([]) : getPastCharacterChats(owner.characterId),
+      loadFloorBackupsSafe(),
+    ]);
+    floorBackups.value = loadedBackups;
+    owner.backupChatIds = new Set(
+      loadedBackups
+        .filter(backup => isBackupOwnedBy(backup, owner))
+        .map(backup => normalizeChatArchiveId(backup.chat.id)),
+    );
+    const normalizedBriefs = (briefs || [])
+      .map(normalizeBrief)
+      .filter((item): item is ChatHistoryBriefItem => Boolean(item));
+    const rows = new Map<string, ArchiveChatRow>();
+    const domainReader = createChatArchiveDomainReader();
+    normalizedBriefs.forEach(brief => {
+      const chatId = normalizeChatArchiveId(brief.fileName);
+      rows.set(chatId, createChatRow(owner, chatId, brief.title, domainReader));
+    });
+    owner.usedChatIds.forEach(chatId => {
+      if (!rows.has(chatId)) rows.set(chatId, createChatRow(owner, chatId, formatArchiveChatTitle(chatId), domainReader));
+    });
+    owner.backupChatIds.forEach(chatId => {
+      if (!rows.has(chatId)) {
+        const backup = findFloorBackup(owner, chatId);
+        rows.set(
+          chatId,
+          createChatRow(owner, chatId, backup?.chat.title || formatArchiveChatTitle(chatId), domainReader),
+        );
+      }
+    });
+    return [...rows.values()].sort(
+      (left, right) => Number(right.isUsed) - Number(left.isUsed) || left.title.localeCompare(right.title, 'zh-CN'),
+    );
   }
 
   function createChatRow(
@@ -435,16 +476,22 @@ export function useChatArchiveCatalogSession() {
   }
 
   async function openChat(chat: ArchiveChatRow) {
+    const owner = activeOwner.value;
+    if (!owner) return;
+    await openChatForOwner(owner, chat);
+  }
+
+  async function openChatForOwner(owner: ArchiveOwner, chat: ArchiveChatRow) {
     await phone.syncCurrentTavernScope();
     selectedChat.value = chat;
     selectedDomains.value = chat.domains;
     await phone.setViewingScope(chat.scopeKey, {
       chatTitle: chat.title,
-      ownerName: activeOwner.value?.name || '',
+      ownerName: owner.name,
     });
     phone.pushPage('detail', chat.title, {
       chatKey: chat.key,
-      ownerKey: activeOwner.value?.key || '',
+      ownerKey: owner.key,
     });
   }
 
@@ -460,6 +507,7 @@ export function useChatArchiveCatalogSession() {
     activeOwner,
     activeTab,
     chatRows,
+    currentOwnerChatRows,
     currentChatRow,
     currentOwner,
     currentScope,
@@ -471,11 +519,14 @@ export function useChatArchiveCatalogSession() {
     formatOwnerSummary,
     loadCharacters,
     loadChatsForActiveOwner,
+    loadCurrentOwnerChats,
     loadFloorBackupsSafe,
     loadingCharacters,
     loadingChats,
+    loadingCurrentChats,
     markAvatarFailed,
     openChat,
+    openChatForOwner,
     openOwner,
     ownerQuery,
     owners,

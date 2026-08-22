@@ -6,6 +6,7 @@ import test from 'node:test';
 const registry = await readFile(new URL('../../src/core/appRegistry.ts', import.meta.url), 'utf8');
 const transfer = await readFile(new URL('../../src/util/itemTransfer.ts', import.meta.url), 'utf8');
 const providers = await readFile(new URL('../../src/item-transfer/providers.ts', import.meta.url), 'utf8');
+const profileProvider = await readFile(new URL('../../src/apps/profiles/itemTransfer.ts', import.meta.url), 'utf8');
 
 test('item transfer is an explicit App capability with one versioned file envelope', () => {
   assert.match(registry, /export interface PhoneItemTransferProvider/u);
@@ -24,6 +25,8 @@ test('copy import remaps nested ids while replacement stays conflict-gated and t
   assert.match(transfer, /mode === 'replace' && !preview\.conflict/u);
   assert.match(transfer, /const snapshot = provider\.captureSnapshot\(\)/u);
   assert.match(transfer, /provider\.restoreSnapshot\(snapshot\)/u);
+  assert.match(registry, /importTransaction\?: 'provider-owned' \| 'shared-snapshot'/u);
+  assert.match(transfer, /provider\.importTransaction === 'provider-owned'/u);
 });
 
 test('the first item batch registers exactly the nine approved detail object types', () => {
@@ -35,9 +38,10 @@ test('the first item batch registers exactly the nine approved detail object typ
     'theater-entry',
     'letter-entry',
     'digest-entry',
-    'profile-entry',
     'scene-plan',
   ]) {
     assert.match(providers, new RegExp(`itemType: '${type}'`, 'u'));
   }
+  assert.match(profileProvider, /itemType: 'external-profile-row'/u);
+  assert.doesNotMatch(profileProvider, /useProfilesStore|ProfileEntrySchema/u);
 });

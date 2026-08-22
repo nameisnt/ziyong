@@ -44,7 +44,7 @@
 
 <script setup lang="ts">
 import SearchableCombobox from '@/components/SearchableCombobox.vue';
-import { pluginPresetIdFromSelection, pluginPresetSelection } from '@/apps/preset-manager/pluginPreset';
+import { buildPluginPresetSelectionOptions, pluginPresetIdFromSelection } from '@/apps/preset-manager/pluginPreset';
 import { usePluginPresetStore } from '@/store/pluginPresets';
 import { useSettingsStore } from '@/store/settings';
 import { getPresetNamesSafe } from '@/util/runtime';
@@ -93,11 +93,7 @@ const connectionOptions = computed(() => [
 
 const presetOptions = computed(() => [
   { label: '跟随酒馆当前预设', value: '' },
-  ...pluginPresetItems.value.map(preset => ({
-    group: '插件预设',
-    label: preset.name,
-    value: pluginPresetSelection(preset.id),
-  })),
+  ...buildPluginPresetSelectionOptions(pluginPresetItems.value, props.tavernPresetName),
   ...tavernPresetNames.value.map(name => ({ group: '酒馆预设', label: name, value: name })),
 ]);
 
@@ -112,7 +108,8 @@ function refreshPresetNames() {
 function handleRefreshPresetNames() {
   refreshingPresetNames.value = true;
   refreshPresetNames();
-  toastr.success(`预设列表已刷新，共 ${pluginPresetItems.value.length + tavernPresetNames.value.length} 个预设`);
+  const visiblePluginPresetCount = pluginPresetItems.value.filter(item => !item.hidden).length;
+  toastr.success(`预设列表已刷新，共 ${visiblePluginPresetCount + tavernPresetNames.value.length} 个预设`);
   window.clearTimeout(refreshFeedbackTimer);
   refreshFeedbackTimer = window.setTimeout(() => {
     refreshingPresetNames.value = false;

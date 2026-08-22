@@ -23,8 +23,9 @@ test('Scene Planner has one dedicated local history lifecycle scenario', () => {
 
 test('the Scene Planner scenario covers selection reset and shared deletion', () => {
   assert.match(scenario, /pc-scene-history-main/);
-  assert.match(scenario, /button\[title="新方案"\]/);
-  assert.match(scenario, /button\[title="删除"\]/);
+  assert.match(scenario, /clickSceneMenuAction\(editor, '新增', '新方案'\)/);
+  assert.match(scenario, /clickSceneMenuAction\(activeRow, '管理', '删除'\)/);
+  assert.match(scenario, /summary\[aria-label="\$\{menuLabel\}"\]/);
   assert.match(scenario, /confirmScenePlanDeletion/);
   assert.match(scenario, /ScenePlannerScopeDataSchema/);
 });

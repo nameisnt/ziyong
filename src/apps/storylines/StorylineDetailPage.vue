@@ -80,21 +80,25 @@
             </div>
           </section>
 
-          <section v-if="relatedProfileIds.length" class="pc-storyline-detail-section">
+          <section v-if="relatedProfiles.length || relatedProfileIds.length" class="pc-storyline-detail-section">
             <strong>关联资料</strong>
-            <div class="pc-storyline-related-list">
+            <div v-if="relatedProfiles.length" class="pc-storyline-related-list">
               <button
-                v-for="profileId in relatedProfileIds"
-                :key="profileId"
+                v-for="profile in relatedProfiles"
+                :key="externalProfileReferenceKey(profile)"
                 class="pc-soft-btn compact"
                 type="button"
-                :disabled="!profileNames[profileId]"
-                @click="$emit('openProfile', profileId)"
+                :disabled="!profileNames[externalProfileReferenceKey(profile)]"
+                @click="$emit('openProfile', profile)"
               >
                 <i class="fa-solid fa-address-card"></i>
-                <span>{{ profileNames[profileId] || '资料已失效' }}</span>
+                <span>{{ profileNames[externalProfileReferenceKey(profile)] || '资料已失效' }}</span>
               </button>
             </div>
+            <p v-if="relatedProfileIds.length" class="pc-storyline-profile-warning">
+              {{ relatedProfileIds.length }} 条旧资料关联待重新选择
+            </p>
+            <p v-if="profileError" class="pc-storyline-profile-warning">{{ profileError }}</p>
           </section>
 
           <section v-if="line" class="pc-storyline-detail-section">
@@ -168,6 +172,10 @@
 <script setup lang="ts">
 import EmptyState from '@/components/EmptyState.vue';
 import ReaderDetailShell from '@/components/ReaderDetailShell.vue';
+import {
+  externalProfileReferenceKey,
+  type ExternalProfileReference,
+} from '@/apps/profiles/profileReferences';
 import { useDetailScroll } from '@/util/detailScroll';
 import {
   getBeatStatusLabel,
@@ -190,6 +198,7 @@ const props = defineProps<{
   nextDisabled: boolean;
   parentLine: Storyline | null;
   previousDisabled: boolean;
+  profileError: string;
   profileNames: Record<string, string>;
 }>();
 
@@ -199,7 +208,7 @@ defineEmits<{
   edit: [];
   next: [];
   openItem: [kind: StorylineItemKind, id: string];
-  openProfile: [profileId: string];
+  openProfile: [profile: ExternalProfileReference];
   previous: [];
 }>();
 
@@ -214,6 +223,7 @@ const kicker = computed(() => {
 });
 const tags = computed(() => props.line?.tags || props.hook?.tags || []);
 const relatedProfileIds = computed(() => props.line?.relatedProfileIds || props.hook?.relatedProfileIds || []);
+const relatedProfiles = computed(() => props.line?.relatedProfiles || props.hook?.relatedProfiles || []);
 
 function formatTime(value: string) {
   if (!value) return '未知';
@@ -279,6 +289,12 @@ function formatTime(value: string) {
 
 .pc-storyline-related-list .pc-soft-btn {
   min-inline-size: 0;
+}
+
+.pc-storyline-detail-section .pc-storyline-profile-warning {
+  margin: 0;
+  color: var(--pc-danger);
+  font-weight: 700;
 }
 
 .pc-storyline-detail-facts {

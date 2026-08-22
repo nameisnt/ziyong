@@ -14,22 +14,7 @@
       </div>
 
       <input v-model="draft.name" class="pc-field" type="text" :placeholder="t`类型名称`" />
-      <div v-if="draft.domain === 'theater'" class="pc-field-group">
-        <span class="pc-field-label">所属分组</span>
-        <div class="pc-type-group-row">
-          <SearchableCombobox
-            v-model="draft.groupId"
-            :empty-label="t`没有匹配的分组`"
-            :input-label="t`选择所属分组`"
-            :options="theaterGroupOptions"
-            :placeholder="t`选择所属分组`"
-            :toggle-title="t`展开所属分组`"
-          />
-          <button class="pc-icon-btn" type="button" title="新建分组" aria-label="新建分组" @click="createGroup">
-            <i class="fa-solid fa-folder-plus"></i>
-          </button>
-        </div>
-      </div>
+      <TheaterTypeGroupField v-if="draft.domain === 'theater'" v-model="draft.groupId" />
       <textarea v-model="draft.prompt" class="pc-area pc-area-long" :placeholder="t`类型提示词正文`" />
 
       <div class="pc-form-actions">
@@ -41,10 +26,9 @@
 </template>
 
 <script setup lang="ts">
-import SearchableCombobox from '@/components/SearchableCombobox.vue';
+import TheaterTypeGroupField from '@/components/prompts/TheaterTypeGroupField.vue';
 import type { PhoneTypePromptDomain } from '@/core/appRegistry';
 import { usePromptStore, type TypePromptConfig } from '@/store/prompts';
-import { usePhoneStore } from '@/store/phone';
 
 const props = defineProps<{
   domains: PhoneTypePromptDomain[];
@@ -52,35 +36,18 @@ const props = defineProps<{
 }>();
 const emit = defineEmits<{ back: [] }>();
 const prompts = usePromptStore();
-const phone = usePhoneStore();
 const draft = reactive({
   domain: '',
   groupId: '',
   name: '',
   prompt: '',
 });
-const theaterGroupOptions = computed(() => [
-  { label: '未分组', value: '' },
-  ...prompts.typePromptGroups
-    .filter(group => group.domain === 'theater')
-    .map(group => ({ label: group.name, value: group.id })),
-]);
 
 function loadDraft() {
   draft.domain = props.prompt?.domain || props.domains[0]?.key || '';
   draft.groupId = props.prompt?.groupId || '';
   draft.name = props.prompt?.name || '';
   draft.prompt = props.prompt?.prompt || '';
-}
-
-async function createGroup() {
-  const name = await phone.promptNotice('输入新的小剧场类型分组名称。', {
-    confirmLabel: '创建',
-    placeholder: '例如：论坛与社交媒体',
-    title: '新建分组',
-  });
-  if (!name?.trim()) return;
-  draft.groupId = prompts.createTypePromptGroup('theater', name).id;
 }
 
 function save() {
@@ -106,9 +73,4 @@ watch([() => props.domains, () => props.prompt], loadDraft, { immediate: true })
   gap: 14px;
 }
 
-.pc-type-group-row {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
-  gap: 8px;
-}
 </style>

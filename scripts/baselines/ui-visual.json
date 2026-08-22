@@ -1,8 +1,8 @@
 {
   "version": 1,
   "defect": "D-BASELINE-002",
-  "generatedAt": "2026-08-21T00:00:00Z",
-  "scenarioCount": 261,
+  "generatedAt": "2026-08-22T00:00:00Z",
+  "scenarioCount": 288,
   "sizes": [
     "350x700",
     "390x844",
@@ -10,7 +10,7 @@
   ],
   "summary": {
     "fails": 0,
-    "runs": 783,
+    "runs": 864,
     "warnings": 0
   },
   "runs": [
@@ -351,6 +351,16 @@
     },
     {
       "findings": [],
+      "scenario": "custom-app-conversion-profiles",
+      "size": "350x700"
+    },
+    {
+      "findings": [],
+      "scenario": "custom-app-conversion-profiles-dark",
+      "size": "350x700"
+    },
+    {
+      "findings": [],
       "scenario": "custom-app-extract-rules",
       "size": "350x700"
     },
@@ -411,7 +421,22 @@
     },
     {
       "findings": [],
+      "scenario": "card-writer-profile-mapping-import",
+      "size": "350x700"
+    },
+    {
+      "findings": [],
+      "scenario": "card-writer-profile-mapping-import-dark",
+      "size": "350x700"
+    },
+    {
+      "findings": [],
       "scenario": "archive-owner-list",
+      "size": "350x700"
+    },
+    {
+      "findings": [],
+      "scenario": "archive-current-browser",
       "size": "350x700"
     },
     {
@@ -596,6 +621,16 @@
     },
     {
       "findings": [],
+      "scenario": "storylines-profile-reference",
+      "size": "350x700"
+    },
+    {
+      "findings": [],
+      "scenario": "storylines-profile-reference-dark",
+      "size": "350x700"
+    },
+    {
+      "findings": [],
       "scenario": "storylines-generation-background",
       "size": "350x700"
     },
@@ -671,7 +706,17 @@
     },
     {
       "findings": [],
+      "scenario": "world-slots-profile-reference-warning-dark",
+      "size": "350x700"
+    },
+    {
+      "findings": [],
       "scenario": "world-slots-root-cleanup",
+      "size": "350x700"
+    },
+    {
+      "findings": [],
+      "scenario": "world-slots-root-cleanup-dark",
       "size": "350x700"
     },
     {
@@ -782,6 +827,11 @@
     {
       "findings": [],
       "scenario": "plugin-preset-lifecycle",
+      "size": "350x700"
+    },
+    {
+      "findings": [],
+      "scenario": "plugin-preset-visibility",
       "size": "350x700"
     },
     {
@@ -936,7 +986,22 @@
     },
     {
       "findings": [],
+      "scenario": "relationship-profile-reference",
+      "size": "350x700"
+    },
+    {
+      "findings": [],
+      "scenario": "relationship-profile-reference-dark",
+      "size": "350x700"
+    },
+    {
+      "findings": [],
       "scenario": "timekeeper-profile-sync",
+      "size": "350x700"
+    },
+    {
+      "findings": [],
+      "scenario": "timekeeper-profile-sync-dark",
       "size": "350x700"
     },
     {
@@ -1151,6 +1216,11 @@
     },
     {
       "findings": [],
+      "scenario": "prompts-type-group-batch",
+      "size": "350x700"
+    },
+    {
+      "findings": [],
       "scenario": "theater-generate",
       "size": "350x700"
     },
@@ -1187,6 +1257,26 @@
     {
       "findings": [],
       "scenario": "theater-history",
+      "size": "350x700"
+    },
+    {
+      "findings": [],
+      "scenario": "theater-catalog-transfer",
+      "size": "350x700"
+    },
+    {
+      "findings": [],
+      "scenario": "theater-type-group",
+      "size": "350x700"
+    },
+    {
+      "findings": [],
+      "scenario": "theater-random-type",
+      "size": "350x700"
+    },
+    {
+      "findings": [],
+      "scenario": "theater-type-prompt-session",
       "size": "350x700"
     },
     {
@@ -1276,47 +1366,92 @@
     },
     {
       "findings": [],
+      "scenario": "workbench-profile-step",
+      "size": "350x700"
+    },
+    {
+      "findings": [],
       "scenario": "workbench-crud",
       "size": "350x700"
     },
     {
       "findings": [],
-      "scenario": "profiles-table",
+      "scenario": "profiles-external-mappings",
       "size": "350x700"
     },
     {
       "findings": [],
-      "scenario": "profiles-empty-toolbar",
+      "scenario": "profiles-external-mapping-editor",
       "size": "350x700"
     },
     {
       "findings": [],
-      "scenario": "profiles-table-grid",
+      "scenario": "profiles-external-mapping-crud",
       "size": "350x700"
     },
     {
       "findings": [],
-      "scenario": "profiles-table-manager",
+      "scenario": "profiles-external-mapping-editor-dark",
       "size": "350x700"
     },
     {
       "findings": [],
-      "scenario": "profiles-table-editor",
+      "scenario": "profiles-external-failed-draft",
       "size": "350x700"
     },
     {
       "findings": [],
-      "scenario": "profiles-field-management",
+      "scenario": "profiles-external-catalog",
       "size": "350x700"
     },
     {
       "findings": [],
-      "scenario": "profiles-field-detail",
+      "scenario": "profiles-external-table",
       "size": "350x700"
     },
     {
       "findings": [],
-      "scenario": "profiles-detail",
+      "scenario": "profiles-external-transfer-table",
+      "size": "350x700"
+    },
+    {
+      "findings": [],
+      "scenario": "profiles-external-transfer-import",
+      "size": "350x700"
+    },
+    {
+      "findings": [],
+      "scenario": "profiles-external-transfer-row-dark",
+      "size": "350x700"
+    },
+    {
+      "findings": [],
+      "scenario": "profiles-external-missing",
+      "size": "350x700"
+    },
+    {
+      "findings": [],
+      "scenario": "profiles-external-error",
+      "size": "350x700"
+    },
+    {
+      "findings": [],
+      "scenario": "profiles-external-empty",
+      "size": "350x700"
+    },
+    {
+      "findings": [],
+      "scenario": "profiles-external-callback",
+      "size": "350x700"
+    },
+    {
+      "findings": [],
+      "scenario": "profiles-external-long-table",
+      "size": "350x700"
+    },
+    {
+      "findings": [],
+      "scenario": "profiles-external-dark",
       "size": "350x700"
     },
     {
@@ -1656,6 +1791,16 @@
     },
     {
       "findings": [],
+      "scenario": "custom-app-conversion-profiles",
+      "size": "390x844"
+    },
+    {
+      "findings": [],
+      "scenario": "custom-app-conversion-profiles-dark",
+      "size": "390x844"
+    },
+    {
+      "findings": [],
       "scenario": "custom-app-extract-rules",
       "size": "390x844"
     },
@@ -1716,7 +1861,22 @@
     },
     {
       "findings": [],
+      "scenario": "card-writer-profile-mapping-import",
+      "size": "390x844"
+    },
+    {
+      "findings": [],
+      "scenario": "card-writer-profile-mapping-import-dark",
+      "size": "390x844"
+    },
+    {
+      "findings": [],
       "scenario": "archive-owner-list",
+      "size": "390x844"
+    },
+    {
+      "findings": [],
+      "scenario": "archive-current-browser",
       "size": "390x844"
     },
     {
@@ -1901,6 +2061,16 @@
     },
     {
       "findings": [],
+      "scenario": "storylines-profile-reference",
+      "size": "390x844"
+    },
+    {
+      "findings": [],
+      "scenario": "storylines-profile-reference-dark",
+      "size": "390x844"
+    },
+    {
+      "findings": [],
       "scenario": "storylines-generation-background",
       "size": "390x844"
     },
@@ -1976,7 +2146,17 @@
     },
     {
       "findings": [],
+      "scenario": "world-slots-profile-reference-warning-dark",
+      "size": "390x844"
+    },
+    {
+      "findings": [],
       "scenario": "world-slots-root-cleanup",
+      "size": "390x844"
+    },
+    {
+      "findings": [],
+      "scenario": "world-slots-root-cleanup-dark",
       "size": "390x844"
     },
     {
@@ -2087,6 +2267,11 @@
     {
       "findings": [],
       "scenario": "plugin-preset-lifecycle",
+      "size": "390x844"
+    },
+    {
+      "findings": [],
+      "scenario": "plugin-preset-visibility",
       "size": "390x844"
     },
     {
@@ -2241,7 +2426,22 @@
     },
     {
       "findings": [],
+      "scenario": "relationship-profile-reference",
+      "size": "390x844"
+    },
+    {
+      "findings": [],
+      "scenario": "relationship-profile-reference-dark",
+      "size": "390x844"
+    },
+    {
+      "findings": [],
       "scenario": "timekeeper-profile-sync",
+      "size": "390x844"
+    },
+    {
+      "findings": [],
+      "scenario": "timekeeper-profile-sync-dark",
       "size": "390x844"
     },
     {
@@ -2456,6 +2656,11 @@
     },
     {
       "findings": [],
+      "scenario": "prompts-type-group-batch",
+      "size": "390x844"
+    },
+    {
+      "findings": [],
       "scenario": "theater-generate",
       "size": "390x844"
     },
@@ -2492,6 +2697,26 @@
     {
       "findings": [],
       "scenario": "theater-history",
+      "size": "390x844"
+    },
+    {
+      "findings": [],
+      "scenario": "theater-catalog-transfer",
+      "size": "390x844"
+    },
+    {
+      "findings": [],
+      "scenario": "theater-type-group",
+      "size": "390x844"
+    },
+    {
+      "findings": [],
+      "scenario": "theater-random-type",
+      "size": "390x844"
+    },
+    {
+      "findings": [],
+      "scenario": "theater-type-prompt-session",
       "size": "390x844"
     },
     {
@@ -2581,47 +2806,92 @@
     },
     {
       "findings": [],
+      "scenario": "workbench-profile-step",
+      "size": "390x844"
+    },
+    {
+      "findings": [],
       "scenario": "workbench-crud",
       "size": "390x844"
     },
     {
       "findings": [],
-      "scenario": "profiles-table",
+      "scenario": "profiles-external-mappings",
       "size": "390x844"
     },
     {
       "findings": [],
-      "scenario": "profiles-empty-toolbar",
+      "scenario": "profiles-external-mapping-editor",
       "size": "390x844"
     },
     {
       "findings": [],
-      "scenario": "profiles-table-grid",
+      "scenario": "profiles-external-mapping-crud",
       "size": "390x844"
     },
     {
       "findings": [],
-      "scenario": "profiles-table-manager",
+      "scenario": "profiles-external-mapping-editor-dark",
       "size": "390x844"
     },
     {
       "findings": [],
-      "scenario": "profiles-table-editor",
+      "scenario": "profiles-external-failed-draft",
       "size": "390x844"
     },
     {
       "findings": [],
-      "scenario": "profiles-field-management",
+      "scenario": "profiles-external-catalog",
       "size": "390x844"
     },
     {
       "findings": [],
-      "scenario": "profiles-field-detail",
+      "scenario": "profiles-external-table",
       "size": "390x844"
     },
     {
       "findings": [],
-      "scenario": "profiles-detail",
+      "scenario": "profiles-external-transfer-table",
+      "size": "390x844"
+    },
+    {
+      "findings": [],
+      "scenario": "profiles-external-transfer-import",
+      "size": "390x844"
+    },
+    {
+      "findings": [],
+      "scenario": "profiles-external-transfer-row-dark",
+      "size": "390x844"
+    },
+    {
+      "findings": [],
+      "scenario": "profiles-external-missing",
+      "size": "390x844"
+    },
+    {
+      "findings": [],
+      "scenario": "profiles-external-error",
+      "size": "390x844"
+    },
+    {
+      "findings": [],
+      "scenario": "profiles-external-empty",
+      "size": "390x844"
+    },
+    {
+      "findings": [],
+      "scenario": "profiles-external-callback",
+      "size": "390x844"
+    },
+    {
+      "findings": [],
+      "scenario": "profiles-external-long-table",
+      "size": "390x844"
+    },
+    {
+      "findings": [],
+      "scenario": "profiles-external-dark",
       "size": "390x844"
     },
     {
@@ -2961,6 +3231,16 @@
     },
     {
       "findings": [],
+      "scenario": "custom-app-conversion-profiles",
+      "size": "430x900"
+    },
+    {
+      "findings": [],
+      "scenario": "custom-app-conversion-profiles-dark",
+      "size": "430x900"
+    },
+    {
+      "findings": [],
       "scenario": "custom-app-extract-rules",
       "size": "430x900"
     },
@@ -3021,7 +3301,22 @@
     },
     {
       "findings": [],
+      "scenario": "card-writer-profile-mapping-import",
+      "size": "430x900"
+    },
+    {
+      "findings": [],
+      "scenario": "card-writer-profile-mapping-import-dark",
+      "size": "430x900"
+    },
+    {
+      "findings": [],
       "scenario": "archive-owner-list",
+      "size": "430x900"
+    },
+    {
+      "findings": [],
+      "scenario": "archive-current-browser",
       "size": "430x900"
     },
     {
@@ -3206,6 +3501,16 @@
     },
     {
       "findings": [],
+      "scenario": "storylines-profile-reference",
+      "size": "430x900"
+    },
+    {
+      "findings": [],
+      "scenario": "storylines-profile-reference-dark",
+      "size": "430x900"
+    },
+    {
+      "findings": [],
       "scenario": "storylines-generation-background",
       "size": "430x900"
     },
@@ -3281,7 +3586,17 @@
     },
     {
       "findings": [],
+      "scenario": "world-slots-profile-reference-warning-dark",
+      "size": "430x900"
+    },
+    {
+      "findings": [],
       "scenario": "world-slots-root-cleanup",
+      "size": "430x900"
+    },
+    {
+      "findings": [],
+      "scenario": "world-slots-root-cleanup-dark",
       "size": "430x900"
     },
     {
@@ -3392,6 +3707,11 @@
     {
       "findings": [],
       "scenario": "plugin-preset-lifecycle",
+      "size": "430x900"
+    },
+    {
+      "findings": [],
+      "scenario": "plugin-preset-visibility",
       "size": "430x900"
     },
     {
@@ -3546,7 +3866,22 @@
     },
     {
       "findings": [],
+      "scenario": "relationship-profile-reference",
+      "size": "430x900"
+    },
+    {
+      "findings": [],
+      "scenario": "relationship-profile-reference-dark",
+      "size": "430x900"
+    },
+    {
+      "findings": [],
       "scenario": "timekeeper-profile-sync",
+      "size": "430x900"
+    },
+    {
+      "findings": [],
+      "scenario": "timekeeper-profile-sync-dark",
       "size": "430x900"
     },
     {
@@ -3761,6 +4096,11 @@
     },
     {
       "findings": [],
+      "scenario": "prompts-type-group-batch",
+      "size": "430x900"
+    },
+    {
+      "findings": [],
       "scenario": "theater-generate",
       "size": "430x900"
     },
@@ -3797,6 +4137,26 @@
     {
       "findings": [],
       "scenario": "theater-history",
+      "size": "430x900"
+    },
+    {
+      "findings": [],
+      "scenario": "theater-catalog-transfer",
+      "size": "430x900"
+    },
+    {
+      "findings": [],
+      "scenario": "theater-type-group",
+      "size": "430x900"
+    },
+    {
+      "findings": [],
+      "scenario": "theater-random-type",
+      "size": "430x900"
+    },
+    {
+      "findings": [],
+      "scenario": "theater-type-prompt-session",
       "size": "430x900"
     },
     {
@@ -3886,47 +4246,92 @@
     },
     {
       "findings": [],
+      "scenario": "workbench-profile-step",
+      "size": "430x900"
+    },
+    {
+      "findings": [],
       "scenario": "workbench-crud",
       "size": "430x900"
     },
     {
       "findings": [],
-      "scenario": "profiles-table",
+      "scenario": "profiles-external-mappings",
       "size": "430x900"
     },
     {
       "findings": [],
-      "scenario": "profiles-empty-toolbar",
+      "scenario": "profiles-external-mapping-editor",
       "size": "430x900"
     },
     {
       "findings": [],
-      "scenario": "profiles-table-grid",
+      "scenario": "profiles-external-mapping-crud",
       "size": "430x900"
     },
     {
       "findings": [],
-      "scenario": "profiles-table-manager",
+      "scenario": "profiles-external-mapping-editor-dark",
       "size": "430x900"
     },
     {
       "findings": [],
-      "scenario": "profiles-table-editor",
+      "scenario": "profiles-external-failed-draft",
       "size": "430x900"
     },
     {
       "findings": [],
-      "scenario": "profiles-field-management",
+      "scenario": "profiles-external-catalog",
       "size": "430x900"
     },
     {
       "findings": [],
-      "scenario": "profiles-field-detail",
+      "scenario": "profiles-external-table",
       "size": "430x900"
     },
     {
       "findings": [],
-      "scenario": "profiles-detail",
+      "scenario": "profiles-external-transfer-table",
+      "size": "430x900"
+    },
+    {
+      "findings": [],
+      "scenario": "profiles-external-transfer-import",
+      "size": "430x900"
+    },
+    {
+      "findings": [],
+      "scenario": "profiles-external-transfer-row-dark",
+      "size": "430x900"
+    },
+    {
+      "findings": [],
+      "scenario": "profiles-external-missing",
+      "size": "430x900"
+    },
+    {
+      "findings": [],
+      "scenario": "profiles-external-error",
+      "size": "430x900"
+    },
+    {
+      "findings": [],
+      "scenario": "profiles-external-empty",
+      "size": "430x900"
+    },
+    {
+      "findings": [],
+      "scenario": "profiles-external-callback",
+      "size": "430x900"
+    },
+    {
+      "findings": [],
+      "scenario": "profiles-external-long-table",
+      "size": "430x900"
+    },
+    {
+      "findings": [],
+      "scenario": "profiles-external-dark",
       "size": "430x900"
     }
   ]

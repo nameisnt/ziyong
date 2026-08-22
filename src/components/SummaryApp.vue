@@ -155,6 +155,7 @@
       :warnings="generationState.preview.warnings"
       @back="returnToGenerate"
       @reparse="reparsePreviewRaw"
+      @update:reasoning="updateGenerationRecordReasoning(generationState.preview, $event)"
       @save="savePreview"
     />
 
@@ -213,6 +214,7 @@ import { formatGenerationReferences, type GenerationReferenceItem } from '@/util
 import { usePreviewDraftPersistence } from '@/util/previewDrafts';
 import { useInvalidRouteFallback } from '@/util/routeFallback';
 import { getSourceLastFloor } from '@/util/sourceFloor';
+import { updateGenerationRecordReasoning } from '@/util/generationReasoning';
 import { storeToRefs } from 'pinia';
 
 const phone = usePhoneStore();

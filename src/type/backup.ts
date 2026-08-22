@@ -42,6 +42,7 @@ const PhoneBackupBaseSchema = z.object({
 export const PluginPresetBackupRecordSchema = z.object({
   builtIn: z.boolean().optional(),
   createdAt: z.string(),
+  hidden: z.boolean().optional(),
   id: z.string(),
   name: z.string(),
   raw: z.record(z.string(), z.unknown()),

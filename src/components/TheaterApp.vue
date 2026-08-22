@@ -20,6 +20,7 @@
       @open-generate="openGenerate"
       @open-history="openHistory"
       @open-preview="openTheaterPreviewDraft"
+      @random-type="openRandomVisibleType"
       @remove-failed-draft="removeFailedDraft"
     />
 
@@ -93,6 +94,7 @@
       :capture="captureTheaterPrompt"
       :capture-reset-key="generationPromptPreview"
       :error="generationError"
+      :generate-disabled="theaterGenerateDisabled"
       kicker="类型配置"
       :raw-output="generationRawOutput"
       requirement-placeholder="例如：更强调舞台调度、停顿和角色对视。"
@@ -120,12 +122,56 @@
           :disabled="generationRunning"
           :placeholder="t`自定义类型名称`"
         />
-        <textarea
-          v-model="generationDraft.typePrompt"
-          class="pc-area compact"
+        <TheaterTypeGroupField
+          v-if="showGenerationCustomTypeField"
+          v-model="generationDraft.typeGroupId"
           :disabled="generationRunning"
-          :placeholder="t`小剧场类型提示词`"
-        ></textarea>
+        />
+        <div v-else-if="selectedGenerationTypePrompt" class="pc-field-group">
+          <span class="pc-field-label">所属分组</span>
+          <input
+            class="pc-field"
+            type="text"
+            :value="selectedGenerationTypeGroupName"
+            aria-label="当前小剧场类型所属分组"
+            readonly
+          />
+        </div>
+        <div class="pc-field-group pc-theater-type-prompt-field">
+          <div class="pc-field-head">
+            <span class="pc-field-label">{{ showGenerationCustomTypeField ? t`类型提示词` : t`本次类型提示词` }}</span>
+            <button
+              v-if="selectedGenerationTypePrompt"
+              class="pc-soft-btn compact"
+              type="button"
+              :disabled="generationRunning || !generationTypePromptChanged"
+              @click="saveExistingGenerationTypePrompt"
+            >
+              {{ t`保存到类型库` }}
+            </button>
+          </div>
+          <textarea
+            v-model="generationDraft.typePrompt"
+            class="pc-area compact"
+            :disabled="generationRunning"
+            :placeholder="t`小剧场类型提示词`"
+          ></textarea>
+        </div>
+        <div v-if="showGenerationCustomTypeField" class="pc-theater-type-library-option">
+          <span>{{ t`保存为新类型` }}</span>
+          <label class="pc-toggle" title="保存为新类型">
+            <input v-model="saveCustomTypeToLibrary" type="checkbox" :disabled="generationRunning" />
+            <span></span>
+          </label>
+        </div>
+        <p v-if="legacyTypePromptNotice" class="pc-theater-type-notice">
+          <i class="fa-solid fa-circle-info"></i>
+          <span>{{ legacyTypePromptNotice }}</span>
+        </p>
+        <p v-if="generationTypeBlockingMessage" class="pc-theater-type-notice warning">
+          <i class="fa-solid fa-triangle-exclamation"></i>
+          <span>{{ generationTypeBlockingMessage }}</span>
+        </p>
       </template>
     </GenerationFormPage>
 
@@ -140,6 +186,7 @@
       :text-provider-summary="generationState.preview.typeName"
       :title="generationState.preview.title"
       :warnings="generationState.preview.warnings"
+      @update:reasoning="updateGenerationRecordReasoning(generationState.preview, $event)"
       @back="returnToGenerate"
       @reparse="reparsePreviewRaw"
       @save="savePreview"
@@ -180,11 +227,13 @@ import FailedDraftRepairPage from '@/components/FailedDraftRepairPage.vue';
 import GenerationFormPage from '@/components/GenerationFormPage.vue';
 import GenerationPreviewPage from '@/components/GenerationPreviewPage.vue';
 import SearchableCombobox from '@/components/SearchableCombobox.vue';
+import TheaterTypeGroupField from '@/components/prompts/TheaterTypeGroupField.vue';
 import TheaterCatalogPage from '@/components/theater/TheaterCatalogPage.vue';
 import TheaterEntryDetailPage from '@/components/theater/TheaterEntryDetailPage.vue';
 import TheaterEntryEditorPage from '@/components/theater/TheaterEntryEditorPage.vue';
 import TheaterHistoryPage from '@/components/theater/TheaterHistoryPage.vue';
 import TheaterMixedContent from '@/components/theater/TheaterMixedContent.vue';
+import { pickVisibleTheaterType } from '@/components/theater/theaterTypeRandom';
 import { useGenerationReplaySession } from '@/composables/useGenerationReplaySession';
 import { useSingleGenerationTaskSession } from '@/composables/useSingleGenerationTaskSession';
 import { getRegisteredPhoneGenerationAdapter } from '@/core/appRegistry';
@@ -206,6 +255,7 @@ import { formatGenerationReferences, type GenerationReferenceItem } from '@/util
 import { resolveContentVersion } from '@/util/contentVersions';
 import { usePreviewDraftPersistence } from '@/util/previewDrafts';
 import { useInvalidRouteFallback } from '@/util/routeFallback';
+import { updateGenerationRecordReasoning } from '@/util/generationReasoning';
 import { storeToRefs } from 'pinia';
 
 const phone = usePhoneStore();
@@ -258,6 +308,7 @@ const generationDraft = reactive({
   renderMode: 'markdown' as TheaterRenderMode,
   singleMessageId: 0,
   typeId: '',
+  typeGroupId: '',
   typeName: '',
   typePrompt: '',
   userRequirement: '',
@@ -315,6 +366,9 @@ const {
 
 const failedDraftRawOutput = ref('');
 const generationCustomTypeSelected = ref(false);
+const saveCustomTypeToLibrary = ref(false);
+const legacyTypePromptNotice = ref('');
+const legacyTypeSelectionRequired = ref(false);
 const selectedReferences = ref<GenerationReferenceItem[]>([]);
 const entryContentEl = ref<HTMLElement | null>(null);
 const { scrollToBottom, scrollToTop } = useDetailScroll(entryContentEl, '.pc-theater-detail-page .pc-detail-content');
@@ -398,6 +452,10 @@ const selectedEditorTypePrompt = computed(() => (draft.typeId ? prompts.getTypeP
 const selectedGenerationTypePrompt = computed(() =>
   generationDraft.typeId ? prompts.getTypePrompt(generationDraft.typeId) : null,
 );
+const selectedGenerationTypeGroupName = computed(() => {
+  const groupId = selectedGenerationTypePrompt.value?.groupId || '';
+  return theaterTypePromptGroups.value.find(group => group.id === groupId)?.name || '未分组';
+});
 const theaterTypeComboboxOptions = computed(() => [
   { label: '+ 自定义', value: CUSTOM_THEATER_TYPE_VALUE },
   ...theaterTypePrompts.value.map(typePrompt => ({
@@ -469,6 +527,32 @@ const generationTypeChoice = computed({
   },
 });
 const showGenerationCustomTypeField = computed(() => generationCustomTypeSelected.value);
+const generationTypePromptChanged = computed(() => {
+  const selected = selectedGenerationTypePrompt.value;
+  return Boolean(selected && generationDraft.typePrompt.trim() !== selected.prompt.trim());
+});
+const customTypeNameConflict = computed(() => {
+  if (!generationCustomTypeSelected.value) return null;
+  const normalizedName = generationDraft.typeName.trim().toLocaleLowerCase();
+  if (!normalizedName) return null;
+  return (
+    theaterTypePrompts.value.find(
+      item => item.id !== generationDraft.typeId && item.name.trim().toLocaleLowerCase() === normalizedName,
+    ) ?? null
+  );
+});
+const generationTypeBlockingMessage = computed(() => {
+  if (legacyTypeSelectionRequired.value && !selectedGenerationTypePrompt.value && !generationDraft.typePrompt.trim()) {
+    return '旧版本没有可用的类型提示词，请重新选择类型或填写本次类型提示词。';
+  }
+  if (generationCustomTypeSelected.value && saveCustomTypeToLibrary.value) {
+    if (!generationDraft.typeName.trim()) return '填写类型名称后才能保存为新类型。';
+    if (customTypeNameConflict.value)
+      return `类型库中已有“${customTypeNameConflict.value.name}”，请直接选择它或更换名称。`;
+  }
+  return '';
+});
+const theaterGenerateDisabled = computed(() => Boolean(generationTypeBlockingMessage.value));
 const filteredTypePrompts = computed(() => {
   const normalized = query.value.trim().toLowerCase();
   const source = normalized
@@ -628,10 +712,14 @@ watch(
       generationDraft.renderMode = 'markdown';
       generationDraft.singleMessageId = 0;
       generationDraft.typeId = current.params?.typeId || '';
+      generationDraft.typeGroupId = initialTypePrompt?.groupId || '';
       generationDraft.typeName = initialTypePrompt?.name || customTypeName;
       generationDraft.typePrompt = initialTypePrompt?.prompt || '';
       generationDraft.userRequirement = '';
       generationCustomTypeSelected.value = Boolean(customTypeName && !initialTypePrompt);
+      saveCustomTypeToLibrary.value = false;
+      legacyTypePromptNotice.value = '';
+      legacyTypeSelectionRequired.value = false;
       generationState.preview = null;
 
       const replay = rewriteGenerationReplay.value;
@@ -644,6 +732,20 @@ watch(
           typeof replay.config.typeName === 'string' ? replay.config.typeName : generationDraft.typeName;
         generationDraft.typePrompt =
           typeof replay.config.typePrompt === 'string' ? replay.config.typePrompt : generationDraft.typePrompt;
+        generationDraft.typeGroupId = prompts.getTypePrompt(generationDraft.typeId)?.groupId || '';
+        generationCustomTypeSelected.value = Boolean(
+          !prompts.getTypePrompt(generationDraft.typeId) &&
+          (generationDraft.typeId || generationDraft.typeName.trim() || generationDraft.typePrompt.trim()),
+        );
+      } else if (rewriteTargetEntry.value) {
+        if (initialTypePrompt) {
+          legacyTypePromptNotice.value = `旧版本没有生成回放，已加载当前类型库中的“${initialTypePrompt.name}”；不会写回旧版本。`;
+        } else {
+          generationDraft.typeId = '';
+          generationDraft.typeName = rewriteTargetEntry.value.typeName || '';
+          legacyTypeSelectionRequired.value = true;
+          legacyTypePromptNotice.value = '旧版本没有生成回放，且原类型已不存在。';
+        }
       }
     }
 
@@ -703,17 +805,25 @@ function failedDraftContextSummary(draft: FailedGenerationDraft) {
 function selectGenerationTypePrompt(promptId: string) {
   const prompt = prompts.getTypePrompt(promptId);
   generationCustomTypeSelected.value = false;
+  saveCustomTypeToLibrary.value = false;
+  legacyTypePromptNotice.value = '';
+  legacyTypeSelectionRequired.value = false;
   generationDraft.typeId = promptId;
   if (prompt) {
     generationDraft.typeName = prompt.name;
     generationDraft.typePrompt = prompt.prompt;
+    generationDraft.typeGroupId = prompt.groupId || '';
     generationDraft.renderMode = 'markdown';
   }
 }
 
 function startCustomGenerationType() {
   generationCustomTypeSelected.value = true;
+  saveCustomTypeToLibrary.value = false;
+  legacyTypePromptNotice.value = '';
+  legacyTypeSelectionRequired.value = false;
   generationDraft.typeId = '';
+  generationDraft.typeGroupId = '';
   generationDraft.typeName = '';
   generationDraft.typePrompt = '';
   generationDraft.renderMode = 'markdown';
@@ -789,6 +899,12 @@ function openGenerate(typeId?: string, entryId?: string) {
   if (typeId) params.typeId = typeId;
   if (entryId) params.entryId = entryId;
   phone.pushPage('generate', '小剧场配置', Object.keys(params).length ? params : undefined);
+}
+
+function openRandomVisibleType() {
+  const typePrompt = pickVisibleTheaterType(visibleTypePrompts.value);
+  if (!typePrompt) return;
+  openGenerate(typePrompt.id);
 }
 
 function openRewrite(entryId: string) {
@@ -951,40 +1067,54 @@ function returnToGenerate() {
   });
 }
 
-function saveGenerationTypePrompt() {
-  const name = generationDraft.typeName.trim();
-  const promptText = generationDraft.typePrompt.trim();
-  if (!name && !promptText) return null;
-  if (generationDraft.typeId) {
-    const updated = prompts.updateTypePrompt(generationDraft.typeId, {
-      domain: 'theater',
-      name: name || selectedGenerationTypePrompt.value?.name || '未分类小剧场',
-      prompt: promptText,
-      groupId: selectedGenerationTypePrompt.value?.groupId || '',
-    });
-    if (!updated) return null;
-    generationDraft.typeName = updated.name;
-    generationDraft.typePrompt = updated.prompt;
-    generationCustomTypeSelected.value = false;
-    return updated;
+function saveExistingGenerationTypePrompt() {
+  const selected = selectedGenerationTypePrompt.value;
+  if (!selected || !generationTypePromptChanged.value) return;
+  const updated = prompts.updateTypePrompt(selected.id, {
+    domain: 'theater',
+    groupId: selected.groupId || '',
+    name: selected.name,
+    prompt: generationDraft.typePrompt,
+  });
+  if (!updated) {
+    toastr.warning('类型提示词已不存在，无法保存到类型库');
+    return;
+  }
+  generationDraft.typePrompt = updated.prompt;
+  toastr.success(`已更新类型库中的“${updated.name}”`);
+}
+
+function saveCustomGenerationTypePrompt() {
+  if (!generationCustomTypeSelected.value || !saveCustomTypeToLibrary.value) return true;
+  if (generationTypeBlockingMessage.value) {
+    toastr.warning(generationTypeBlockingMessage.value);
+    return false;
   }
   const created = prompts.createTypePrompt({
     domain: 'theater',
-    name: name || '未分类小剧场',
-    prompt: promptText,
+    groupId: generationDraft.typeGroupId,
+    name: generationDraft.typeName,
+    prompt: generationDraft.typePrompt,
     renderMode: 'markdown',
   });
   generationDraft.typeId = created.id;
   generationDraft.typeName = created.name;
   generationDraft.typePrompt = created.prompt;
   generationCustomTypeSelected.value = false;
-  return created;
+  saveCustomTypeToLibrary.value = false;
+  legacyTypeSelectionRequired.value = false;
+  toastr.success(`已将“${created.name}”保存为新类型`);
+  return true;
 }
 
 async function runGeneration() {
+  if (theaterGenerateDisabled.value) {
+    toastr.warning(generationTypeBlockingMessage.value);
+    return;
+  }
+  if (!saveCustomGenerationTypePrompt()) return;
   beginTheaterPreviewDraft();
   generationState.preview = null;
-  const savedTypePrompt = saveGenerationTypePrompt();
   let task: GenerationTask | null = null;
   try {
     task = generationSession.create({
@@ -1000,7 +1130,7 @@ async function runGeneration() {
         mode: theaterGenerationMode.value,
         outputFormat: buildOutputFormat(),
         renderMode: 'markdown',
-        typeId: savedTypePrompt?.id || generationDraft.typeId,
+        typeId: generationDraft.typeId,
         typeName: generationDraft.typeName,
         typePrompt: generationDraft.typePrompt,
         userRequirement: generationDraft.userRequirement,
@@ -1296,5 +1426,29 @@ function handleFrameNavigateBlocked() {
 
 .pc-detail-content :deep(*) {
   font-family: inherit;
+}
+
+.pc-theater-type-library-option {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  color: var(--pc-text);
+  font-size: 13px;
+  font-weight: 650;
+}
+
+.pc-theater-type-notice {
+  display: flex;
+  align-items: flex-start;
+  gap: 7px;
+  margin: 0;
+  color: var(--pc-muted);
+  font-size: 12px;
+  line-height: 1.45;
+}
+
+.pc-theater-type-notice.warning {
+  color: var(--pc-danger);
 }
 </style>

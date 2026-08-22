@@ -1,10 +1,10 @@
 <template>
   <section class="pc-world-slots-app">
     <section v-if="route.page === 'root'" class="pc-world-slots-page">
-      <div class="pc-compact-toolbar pc-world-root-toolbar">
-        <span>{{ slots.length }} {{ t`个槽位` }}</span>
+      <div class="pc-compact-toolbar pc-directory-toolbar pc-world-root-toolbar">
+        <span class="pc-directory-count">{{ slots.length }} {{ t`个槽位` }}</span>
         <button
-          class="pc-icon-btn active"
+          class="pc-icon-btn primary"
           type="button"
           :title="t`新增槽位`"
           :aria-label="t`新增槽位`"
@@ -531,24 +531,13 @@ async function syncSlots() {
   display: grid;
   grid-template-columns: minmax(0, 1fr);
   align-content: start;
-  gap: 14px;
+  gap: 10px;
 }
 
 .pc-world-slots-page > *,
 .pc-world-slot-editor > * {
   min-width: 0;
   max-width: 100%;
-}
-
-.pc-world-root-toolbar {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-}
-
-.pc-world-root-toolbar > span {
-  color: var(--pc-muted);
-  font-size: 12px;
 }
 
 .pc-slot-row {
@@ -593,6 +582,7 @@ async function syncSlots() {
 .pc-world-card {
   display: grid;
   gap: 8px;
+  padding: 4px 0 12px;
 }
 
 .pc-world-card p,

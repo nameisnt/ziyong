@@ -7,7 +7,15 @@ export function createVisualScenarioGroups(rootAppScenarios: string[]): VisualSc
   return [
     {
       id: 'shell',
-      scenarios: ['home', 'home-five-columns', 'home-layout-drag', 'home-layout-drag-dark', 'home-tasks', 'home-tasks-dark', ...rootAppScenarios],
+      scenarios: [
+        'home',
+        'home-five-columns',
+        'home-layout-drag',
+        'home-layout-drag-dark',
+        'home-tasks',
+        'home-tasks-dark',
+        ...rootAppScenarios,
+      ],
     },
     {
       id: 'generation',
@@ -45,6 +53,8 @@ export function createVisualScenarioGroups(rootAppScenarios: string[]): VisualSc
         'custom-app-conversion',
         'custom-app-conversion-complete',
         'custom-app-conversion-merge',
+        'custom-app-conversion-profiles',
+        'custom-app-conversion-profiles-dark',
         'custom-app-extract-rules',
         'custom-app-save-flow',
         'custom-app-definition-crud',
@@ -59,9 +69,15 @@ export function createVisualScenarioGroups(rootAppScenarios: string[]): VisualSc
     { id: 'chat-insert', scenarios: ['chat-insert-operations'] },
     {
       id: 'card-writer',
-      scenarios: ['card-writer-generation-background', 'card-writer-saved-preview', 'card-writer-reasoning-modal'],
+      scenarios: [
+        'card-writer-generation-background',
+        'card-writer-saved-preview',
+        'card-writer-reasoning-modal',
+        'card-writer-profile-mapping-import',
+        'card-writer-profile-mapping-import-dark',
+      ],
     },
-    { id: 'archive', scenarios: ['archive-owner-list', 'archive-floor-backup'] },
+    { id: 'archive', scenarios: ['archive-owner-list', 'archive-current-browser', 'archive-floor-backup'] },
     {
       id: 'recovery',
       scenarios: [
@@ -106,6 +122,8 @@ export function createVisualScenarioGroups(rootAppScenarios: string[]): VisualSc
       scenarios: [
         'storylines-detail',
         'storylines-editor',
+        'storylines-profile-reference',
+        'storylines-profile-reference-dark',
         'storylines-generation-background',
         'storylines-generation-failed-background',
         'storylines-failed-draft-reparse',
@@ -127,7 +145,13 @@ export function createVisualScenarioGroups(rootAppScenarios: string[]): VisualSc
     },
     {
       id: 'world-slots',
-      scenarios: ['world-slots-batch-import', 'world-slots-entry-library', 'world-slots-root-cleanup'],
+      scenarios: [
+        'world-slots-batch-import',
+        'world-slots-entry-library',
+        'world-slots-profile-reference-warning-dark',
+        'world-slots-root-cleanup',
+        'world-slots-root-cleanup-dark',
+      ],
     },
     {
       id: 'worldbook',
@@ -158,6 +182,7 @@ export function createVisualScenarioGroups(rootAppScenarios: string[]): VisualSc
       scenarios: [
         'preset-builtin-diary',
         'plugin-preset-lifecycle',
+        'plugin-preset-visibility',
         'preset-owner-current',
         'preset-owner-history',
         'preset-detail',
@@ -208,8 +233,16 @@ export function createVisualScenarioGroups(rootAppScenarios: string[]): VisualSc
       id: 'digest',
       scenarios: ['digest-editor', 'digest-generation-background', 'digest-failed-draft-reparse'],
     },
-    { id: 'relationship', scenarios: ['relationship-generation-background', 'relationship-crud'] },
-    { id: 'timekeeper', scenarios: ['timekeeper-profile-sync'] },
+    {
+      id: 'relationship',
+      scenarios: [
+        'relationship-generation-background',
+        'relationship-crud',
+        'relationship-profile-reference',
+        'relationship-profile-reference-dark',
+      ],
+    },
+    { id: 'timekeeper', scenarios: ['timekeeper-profile-sync', 'timekeeper-profile-sync-dark'] },
     { id: 'file-repository', scenarios: ['file-repository-operations'] },
     {
       id: 'extras',
@@ -265,6 +298,7 @@ export function createVisualScenarioGroups(rootAppScenarios: string[]): VisualSc
         'prompts-template-list',
         'prompts-library-crud',
         'prompts-config-save',
+        'prompts-type-group-batch',
       ],
     },
     {
@@ -278,6 +312,10 @@ export function createVisualScenarioGroups(rootAppScenarios: string[]): VisualSc
         'theater-editor',
         'theater-frontend-footer',
         'theater-history',
+        'theater-catalog-transfer',
+        'theater-type-group',
+        'theater-random-type',
+        'theater-type-prompt-session',
         'theater-failed-draft',
       ],
     },
@@ -305,18 +343,29 @@ export function createVisualScenarioGroups(rootAppScenarios: string[]): VisualSc
         'tutorial-search-results',
       ],
     },
-    { id: 'workbench', scenarios: ['workbench-logs', 'workbench-forum-step', 'workbench-crud'] },
+    {
+      id: 'workbench',
+      scenarios: ['workbench-logs', 'workbench-forum-step', 'workbench-profile-step', 'workbench-crud'],
+    },
     {
       id: 'profiles',
       scenarios: [
-        'profiles-table',
-        'profiles-empty-toolbar',
-        'profiles-table-grid',
-        'profiles-table-manager',
-        'profiles-table-editor',
-        'profiles-field-management',
-        'profiles-field-detail',
-        'profiles-detail',
+        'profiles-external-catalog',
+        'profiles-external-table',
+        'profiles-external-transfer-table',
+        'profiles-external-transfer-import',
+        'profiles-external-transfer-row-dark',
+        'profiles-external-missing',
+        'profiles-external-error',
+        'profiles-external-empty',
+        'profiles-external-callback',
+        'profiles-external-long-table',
+        'profiles-external-dark',
+        'profiles-external-mappings',
+        'profiles-external-mapping-editor',
+        'profiles-external-mapping-crud',
+        'profiles-external-mapping-editor-dark',
+        'profiles-external-failed-draft',
       ],
     },
   ];

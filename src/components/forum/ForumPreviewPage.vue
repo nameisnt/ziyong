@@ -2,11 +2,12 @@
   <section class="pc-forum-preview-page pc-generation-preview-page">
     <article class="pc-detail-card pc-generation-preview-card">
       <GenerationPreviewPanel
+        v-model:reasoning="reasoning"
         :content="action === 'thread' ? threadContent : replies.map(reply => reply.content).join('\n')"
         :raw="raw"
         raw-editable
+        reasoning-editable
         :reparse-handler="reparseHandler"
-        :reasoning="reasoning"
         :save-label="saveLabel"
         :scan-enabled="action === 'thread'"
         :source-label="boardName"
@@ -69,7 +70,6 @@ defineProps<{
   author: string;
   boardName: string;
   reparseHandler: () => boolean | Promise<boolean>;
-  reasoning?: string;
   replies: ForumPreviewReply[];
   saveLabel: string;
   threadContent: string;
@@ -78,6 +78,7 @@ defineProps<{
 }>();
 
 const raw = defineModel<string>('raw', { required: true });
+const reasoning = defineModel<string>('reasoning', { default: '' });
 
 defineEmits<{
   'apply-thread-content': [content: string];

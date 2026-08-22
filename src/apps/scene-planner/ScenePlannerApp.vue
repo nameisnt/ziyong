@@ -82,16 +82,16 @@
             :key="plan.id"
             :class="['pc-list-row', 'pc-scene-history-item', { active: activePlanId === plan.id }]"
           >
-            <button class="pc-scene-history-main" type="button" @click="openPlan(plan.id)">
-              <strong>{{ plan.title }}</strong>
-              <span>{{ getScenePlanStatusLabel(plan.status) }} · {{ plan.updatedAt.slice(0, 10) }}</span>
-            </button>
-            <ActionMenu label="管理" icon="fa-solid fa-ellipsis">
+            <ActionMenu align="start" icon-only label="管理" icon="fa-solid fa-ellipsis">
               <ItemTransferExportButton app-id="scene-planner" :params="{ planId: plan.id }" />
               <button class="danger" type="button" @click="removePlan(plan.id)">
                 <i class="fa-solid fa-trash"></i>删除
               </button>
             </ActionMenu>
+            <button class="pc-scene-history-main" type="button" @click="openPlan(plan.id)">
+              <strong>{{ plan.title }}</strong>
+              <span>{{ getScenePlanStatusLabel(plan.status) }} · {{ plan.updatedAt.slice(0, 10) }}</span>
+            </button>
           </article>
         </div>
       </article>
@@ -109,6 +109,7 @@
           raw-editable
           :reparse-handler="reparsePreviewRaw"
           :reasoning="generationState.preview.generationRecord?.reasoning || ''"
+          reasoning-editable
           :scan-enabled="false"
           :save-label="generationState.preview.savedPlanId ? '完成' : '保存方案'"
           :source-label="generationState.preview.source.label"
@@ -118,6 +119,7 @@
           @reparse="reparsePreviewRaw"
           @save="savePreview"
           @update:raw="updatePreviewRaw"
+          @update:reasoning="updateGenerationRecordReasoning(generationState.preview, $event)"
         >
           <template #content>
             <article class="pc-scene-result">
@@ -179,6 +181,7 @@ import type { GenerationReferenceItem } from '@/util/references';
 import { formatGenerationReferences } from '@/util/references';
 import { formatTextProviderSummary } from '@/util/textProvider';
 import { usePreviewDraftPersistence } from '@/util/previewDrafts';
+import { updateGenerationRecordReasoning } from '@/util/generationReasoning';
 import {
   createScenePlannerGenerationAdapter,
   formatScenePlannerResult,
@@ -565,7 +568,7 @@ async function removePlan(planId: string) {
 }
 
 .pc-scene-history-item {
-  grid-template-columns: minmax(0, 1fr) auto;
+  grid-template-columns: auto minmax(0, 1fr);
 }
 
 .pc-scene-brief {

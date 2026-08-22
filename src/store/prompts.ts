@@ -688,6 +688,27 @@ export const usePromptStore = defineStore('prompts', () => {
     return item;
   }
 
+  function moveTypePromptsToGroup(domain: string, promptIds: string[], groupId: string) {
+    const targetGroupId = groupId.trim();
+    if (
+      targetGroupId &&
+      !data.value.typePromptGroups.some(group => group.domain === domain && group.id === targetGroupId)
+    ) {
+      throw new Error('目标分组不存在或不属于当前类型域');
+    }
+
+    const selectedIds = new Set(promptIds.filter(Boolean));
+    if (!selectedIds.size) return 0;
+    const updatedAt = nowIso();
+    let movedCount = 0;
+    data.value.typePrompts = data.value.typePrompts.map(item => {
+      if (item.domain !== domain || !selectedIds.has(item.id) || item.groupId === targetGroupId) return item;
+      movedCount += 1;
+      return { ...item, groupId: targetGroupId, updatedAt };
+    });
+    return movedCount;
+  }
+
   function deleteTypePrompt(promptId: string) {
     data.value.typePrompts = data.value.typePrompts.filter(item => item.id !== promptId);
   }
@@ -871,6 +892,7 @@ export const usePromptStore = defineStore('prompts', () => {
     getQuickTemplateGroup,
     getOutputFormatDefinition,
     getTypePrompt,
+    moveTypePromptsToGroup,
     moveQuickPhraseGroup,
     moveQuickTemplateGroup,
     outputFormatDefinitions,

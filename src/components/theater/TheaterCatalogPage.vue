@@ -2,10 +2,19 @@
   <section class="pc-theater-catalog-page">
     <div class="pc-toolbar">
       <input v-model="query" class="pc-search" type="text" :placeholder="t`搜索类型或历史内容...`" />
-      <button v-if="entryCount" class="pc-soft-btn compact" type="button" @click="$emit('open-history')">
-        <i class="fa-solid fa-clock-rotate-left"></i>
-        <span>{{ `小剧场记录（${entryCount}）` }}</span>
-      </button>
+      <div class="pc-theater-record-row">
+        <button class="pc-soft-btn compact" type="button" :disabled="!entryCount" @click="$emit('open-history')">
+          <i class="fa-solid fa-clock-rotate-left"></i>
+          <span>{{ `小剧场记录（${entryCount}）` }}</span>
+        </button>
+        <ItemTransferImportAction
+          app-id="theater"
+          button-class="pc-icon-btn"
+          icon-only
+          label="导入单条小剧场"
+          :params="{}"
+        />
+      </div>
     </div>
 
     <PreviewDraftNotice
@@ -15,12 +24,28 @@
       @open-id="$emit('open-preview', $event)"
     />
 
-    <div class="pc-segment pc-theater-type-view" role="group" aria-label="小剧场类型范围">
-      <button :class="['pc-segment-btn', { active: typeView === 'recent' }]" type="button" @click="typeView = 'recent'">
-        {{ t`最近使用` }}
-      </button>
-      <button :class="['pc-segment-btn', { active: typeView === 'all' }]" type="button" @click="typeView = 'all'">
-        {{ t`全部类型` }}
+    <div class="pc-compact-toolbar pc-theater-type-toolbar">
+      <div class="pc-segment pc-theater-type-view" role="group" aria-label="小剧场类型范围">
+        <button
+          :class="['pc-segment-btn', { active: typeView === 'recent' }]"
+          type="button"
+          @click="typeView = 'recent'"
+        >
+          {{ t`最近使用` }}
+        </button>
+        <button :class="['pc-segment-btn', { active: typeView === 'all' }]" type="button" @click="typeView = 'all'">
+          {{ t`全部类型` }}
+        </button>
+      </div>
+      <button
+        class="pc-icon-btn"
+        type="button"
+        :disabled="!visibleTypePrompts.length"
+        aria-label="随机选择当前可见类型"
+        title="随机选择当前可见类型"
+        @click="$emit('random-type')"
+      >
+        <i class="fa-solid fa-dice"></i>
       </button>
     </div>
 
@@ -89,6 +114,7 @@
 <script setup lang="ts">
 import CapsuleTag from '@/components/CapsuleTag.vue';
 import FailedDraftList from '@/components/FailedDraftList.vue';
+import ItemTransferImportAction from '@/components/ItemTransferImportAction.vue';
 import PreviewDraftNotice from '@/components/PreviewDraftNotice.vue';
 import type { TypePromptConfig, TypePromptGroup } from '@/store/prompts';
 import type { GenerationPreviewDraft } from '@/store/previewDrafts';
@@ -125,6 +151,7 @@ defineEmits<{
   'open-generate': [typeId: string];
   'open-history': [];
   'open-preview': [id?: string];
+  'random-type': [];
   'remove-failed-draft': [draftId: string];
 }>();
 </script>
@@ -143,10 +170,20 @@ defineEmits<{
   gap: 8px;
 }
 
-.pc-toolbar .pc-soft-btn {
-  justify-self: start;
+.pc-theater-record-row {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.pc-theater-record-row > .pc-soft-btn {
   width: auto;
-  margin-bottom: 4px;
+}
+
+.pc-theater-type-toolbar > .pc-segment {
+  min-width: 0;
 }
 
 .pc-search {

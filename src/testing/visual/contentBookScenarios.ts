@@ -92,11 +92,11 @@ export async function applyContentBookVisualScenario(name: string, dependencies:
     const book = createSummaryFixture();
     resetPhoneToRoute('summary', 'book', book.title, { bookId: book.id });
     await waitForPaint();
-    document.querySelector<HTMLButtonElement>('.pc-summary-book-toolbar .pc-action-menu > summary')?.click();
+    document.querySelector<HTMLButtonElement>('.pc-summary-book-page > .pc-directory-toolbar .pc-action-menu > summary')?.click();
     await waitForPaint();
-    const importButton = [...document.querySelectorAll<HTMLButtonElement>('.pc-summary-book-toolbar button')].find(button =>
-      button.textContent?.includes('导入单条总结'),
-    );
+    const importButton = [
+      ...document.querySelectorAll<HTMLButtonElement>('.pc-summary-book-page > .pc-directory-toolbar button'),
+    ].find(button => button.textContent?.includes('导入单条总结'));
     if (!importButton) throw new Error('Summary list did not expose the shared single-item import action');
     importButton.click();
     await waitForPaint();

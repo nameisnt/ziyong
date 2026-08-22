@@ -2,8 +2,8 @@
   <GenerationPreviewPage
     v-model:content="content"
     v-model:raw="raw"
+    v-model:reasoning="reasoning"
     :reparse-handler="reparseHandler"
-    :reasoning="reasoning"
     :raw-output-semantics="rawOutputSemantics"
     save-label="保存条目"
     :source-label="sourceLabel"
@@ -23,7 +23,6 @@ import type { RawOutputSemantics } from '@/type/generation';
 defineProps<{
   reparseHandler: () => boolean | Promise<boolean>;
   rawOutputSemantics?: RawOutputSemantics;
-  reasoning?: string;
   sourceLabel: string;
   textProviderSummary: string;
   title: string;
@@ -38,4 +37,5 @@ defineEmits<{
 
 const content = defineModel<string>('content', { required: true });
 const raw = defineModel<string>('raw', { required: true });
+const reasoning = defineModel<string>('reasoning', { default: '' });
 </script>

@@ -42,11 +42,7 @@ function getProvider(appId: string) {
   return { app, provider };
 }
 
-function validatePayloadForProvider(
-  appId: string,
-  payload: ItemTransferPayload,
-  provider: PhoneItemTransferProvider,
-) {
+function validatePayloadForProvider(appId: string, payload: ItemTransferPayload, provider: PhoneItemTransferProvider) {
   if (payload.version !== 1) throw new Error(`不支持的单条内容文件版本：${payload.version}`);
   if (payload.appId !== appId) throw new Error(`这份文件属于“${payload.appId}”，不能导入当前 App`);
   if (payload.itemType !== provider.itemType) throw new Error(`文件对象类型“${payload.itemType}”与当前 App 不一致`);
@@ -153,6 +149,14 @@ export async function importItemTransfer(
   const data = validatePayloadForProvider(appId, payload, provider);
   const preview = provider.previewImport(data, options.params);
   if (options.mode === 'replace' && !preview.conflict) throw new Error('目标中没有同 ID 内容，不能执行覆盖');
+  if (provider.importTransaction === 'provider-owned') {
+    const result = await provider.importItem(klona(data), options);
+    saveSettingsDebounced();
+    return result;
+  }
+  if (!provider.captureSnapshot || !provider.restoreSnapshot) {
+    throw new Error('当前 App 没有提供单条导入回滚能力');
+  }
   const snapshot = provider.captureSnapshot();
   try {
     const result = await provider.importItem(klona(data), options);
@@ -168,4 +172,3 @@ export async function importItemTransfer(
     throw error;
   }
 }
-

@@ -1,14 +1,13 @@
-import { getProfileKindLabel, ProfileKindSchema, type ProfileEntry, type useProfilesStore } from './store';
 import type { GenerationAdapter, XmlParseResult } from '@/type/generation';
 import { parsePrettified } from '@/util/zod';
 import { parseConfiguredOutput } from '@/util/outputParsing';
 import { parseTaggedOutputCandidates } from '@/util/parseCandidates';
+import type { ExternalProfileMapping } from './profileMappings';
 
 export const ProfileGenerateConfigSchema = z.object({
   appPrompt: z.string(),
-  kind: ProfileKindSchema,
+  mappingId: z.string().min(1, '请选择外部资料映射'),
   outputFormat: z.string(),
-  tableId: z.string().default(''),
   titleHint: z.string().default(''),
   userRequirement: z.string().default(''),
 });
@@ -141,43 +140,69 @@ export function parseProfileXmlResult(raw: string): XmlParseResult<ProfileXmlRes
   return parseTaggedOutputCandidates(raw, 'result', parseProfileXmlCandidate);
 }
 
-export function createProfileGenerationAdapter(profilesStore: ReturnType<typeof useProfilesStore>) {
+type ProfileGenerationDependencies = {
+  getMapping: (mappingId: string) => ExternalProfileMapping | null;
+  insertMappedRow: (
+    mapping: ExternalProfileMapping,
+    values: {
+      displayValue: string;
+      fields: Record<string, string>;
+      identityValue: string;
+    },
+  ) => Promise<number> | number;
+};
+
+function requireMapping(dependencies: ProfileGenerationDependencies, mappingId: string) {
+  const mapping = dependencies.getMapping(mappingId);
+  if (!mapping) throw new Error('请选择有效的外部资料映射');
+  return mapping;
+}
+
+function createFieldInstruction(mapping: ExternalProfileMapping) {
+  if (!mapping.fields.length) return '';
+  return [
+    '请按以下显式映射字段填写 <fields> 中的 <field id="字段id">字段值</field>；只填写上下文可确认的信息，未知可留空：',
+    ...mapping.fields.map(field => `- ${field.label}（id=${field.key}）`),
+  ].join('\n');
+}
+
+export function buildExternalProfileGenerationValues(result: ProfileXmlResult, mapping: ExternalProfileMapping) {
+  const allowedFieldKeys = new Set(mapping.fields.map(field => field.key));
+  const fields = Object.fromEntries(
+    Object.entries(result.fields).filter(([fieldKey]) => allowedFieldKeys.has(fieldKey)),
+  );
+  if (allowedFieldKeys.has('summary') && result.summary.trim()) fields.summary = result.summary.trim();
+  if (allowedFieldKeys.has('tags') && result.tags.length) fields.tags = result.tags.join('、');
+  return {
+    displayValue: result.title.trim(),
+    fields,
+  };
+}
+
+export function createProfileGenerationAdapter(dependencies: ProfileGenerationDependencies) {
   return {
     appId: 'profiles',
     actionId: 'generate',
     configSchema: ProfileGenerateConfigSchema,
     buildRequest(config) {
-      const table = profilesStore.getTable(config.tableId) ?? profilesStore.getDefaultTable(config.kind);
-      const editableColumns =
-        table?.columns
-          .filter(column => column.enabled && !['title', 'summary', 'tags', 'content'].includes(column.id))
-          .map(column => {
-            const options = column.options.length ? ` 可选值：${column.options.join('、')}。` : '';
-            const description = column.description.trim() ? ` 说明：${column.description.trim()}。` : '';
-            return `- ${column.label}（id=${column.id}，${column.type}）${description}${options}`;
-          })
-          .join('\n') || '';
-      const kindLabel = getProfileKindLabel(table?.kind ?? config.kind);
-      const tableName = table?.name || kindLabel;
+      const mapping = requireMapping(dependencies, config.mappingId);
+      const fieldInstruction = createFieldInstruction(mapping);
       return {
         appPrompt: config.appPrompt,
-        outputFormat: filterDisabledCoreFieldsFromOutputFormat(config.outputFormat, table),
+        outputFormat: config.outputFormat,
         taskInstruction: [
-          `目标资料表：${tableName}`,
-          tableName !== kindLabel ? `资料类型：${kindLabel}` : '',
-          editableColumns
-            ? `请按以下字段填写 <fields> 中的 <field id="字段id">字段值</field>；只填写上下文可确认的信息，未知可留空：\n${editableColumns}`
-            : '',
+          `目标资料映射：${mapping.name}`,
+          `目标外部表：${mapping.tableName}`,
+          fieldInstruction,
           config.titleHint.trim() ? `标题或对象名：${config.titleHint.trim()}` : '',
         ]
           .filter(Boolean)
           .join('\n'),
         taskTemplateVariables: {
-          fieldInstruction: editableColumns
-            ? `请按以下字段填写 <fields> 中的 <field id="字段id">字段值</field>；只填写上下文可确认的信息，未知可留空：\n${editableColumns}`
-            : '',
-          kindInstruction: tableName !== kindLabel ? `资料类型：${kindLabel}` : '',
-          tableName,
+          fieldInstruction,
+          kindInstruction: '',
+          mappingName: mapping.name,
+          tableName: mapping.tableName,
           titleInstruction: config.titleHint.trim() ? `标题或对象名：${config.titleHint.trim()}` : '',
         },
         userRequirement: config.userRequirement,
@@ -188,45 +213,23 @@ export function createProfileGenerationAdapter(profilesStore: ReturnType<typeof 
       if (direct.ok) return direct;
       return parseConfiguredOutput('profiles.generate', raw, ProfileXmlResultSchema, () => direct);
     },
-    save(result, context) {
-      const table =
-        profilesStore.getTable(context.config.tableId) ?? profilesStore.getDefaultTable(context.config.kind);
-      const fieldIds = new Set(
-        (table?.columns ?? [])
-          .filter(column => column.enabled && !['title', 'summary', 'tags', 'content'].includes(column.id))
-          .map(column => column.id),
-      );
-      const enabledColumnIds = new Set(
-        (table?.columns ?? []).filter(column => column.enabled).map(column => column.id),
-      );
-      const entry = profilesStore.createEntry({
-        title: result.title,
-        kind: context.config.kind,
-        summary: enabledColumnIds.has('summary') ? result.summary : '',
-        tableId: context.config.tableId,
-        fields: Object.fromEntries(Object.entries(result.fields).filter(([fieldId]) => fieldIds.has(fieldId))),
-        tags: enabledColumnIds.has('tags') ? result.tags : [],
+    preserveSaveFailure: true,
+    async save(result, context) {
+      const mapping = requireMapping(dependencies, context.config.mappingId);
+      const entityId = `profile-generation:${context.generationRecord.id}`;
+      const rowIndex = await dependencies.insertMappedRow(mapping, {
+        ...buildExternalProfileGenerationValues(result, mapping),
+        identityValue: entityId,
       });
       return {
-        entityId: entry.id,
-        entry,
+        entityId,
+        mappingId: mapping.id,
+        rowIndex,
       };
     },
-  } satisfies GenerationAdapter<ProfileGenerateConfig, ProfileXmlResult, { entityId: string; entry: ProfileEntry }>;
-}
-
-function filterDisabledCoreFieldsFromOutputFormat(
-  outputFormat: string,
-  table: ReturnType<ReturnType<typeof useProfilesStore>['getTable']>,
-) {
-  if (!table) return outputFormat;
-  const enabledColumnIds = new Set(table.columns.filter(column => column.enabled).map(column => column.id));
-  return outputFormat
-    .split('\n')
-    .filter(line => {
-      if (!enabledColumnIds.has('summary') && /<\/?summary\b/i.test(line)) return false;
-      if (!enabledColumnIds.has('tags') && /<\/?tags\b/i.test(line)) return false;
-      return true;
-    })
-    .join('\n');
+  } satisfies GenerationAdapter<
+    ProfileGenerateConfig,
+    ProfileXmlResult,
+    { entityId: string; mappingId: string; rowIndex: number }
+  >;
 }

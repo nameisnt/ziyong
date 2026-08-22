@@ -1,7 +1,18 @@
 <template>
   <section class="pc-summary-book-page">
     <div class="pc-compact-toolbar pc-directory-toolbar">
-      <span class="pc-directory-count">{{ book.entries.length }} 条总结</span>
+      <div class="pc-directory-leading">
+        <ActionMenu align="start" icon-only label="管理" icon="fa-solid fa-bars">
+          <ItemTransferImportAction app-id="summary" :params="{ bookId: book.id }" label="导入单条总结" />
+          <button type="button" @click="$emit('import')"><i class="fa-solid fa-file-import"></i>导入总结</button>
+          <button type="button" @click="$emit('batch')"><i class="fa-solid fa-layer-group"></i>批量生成</button>
+          <button type="button" @click="$emit('rename')"><i class="fa-solid fa-pen"></i>重命名总结集</button>
+          <button class="danger" type="button" @click="$emit('remove-book')">
+            <i class="fa-solid fa-trash"></i>删除总结集
+          </button>
+        </ActionMenu>
+        <span class="pc-directory-count">{{ book.entries.length }} 条总结</span>
+      </div>
       <div class="pc-directory-actions pc-summary-book-toolbar">
         <button class="pc-icon-btn primary" type="button" title="生成总结" aria-label="生成总结" @click="$emit('generate')">
           <i class="fa-solid fa-wand-magic-sparkles"></i>
@@ -15,15 +26,6 @@
         >
           <i :class="sortDesc ? 'fa-solid fa-arrow-down-wide-short' : 'fa-solid fa-arrow-up-short-wide'"></i>
         </button>
-        <ActionMenu label="管理" icon="fa-solid fa-bars">
-          <ItemTransferImportAction app-id="summary" :params="{ bookId: book.id }" label="导入单条总结" />
-          <button type="button" @click="$emit('import')"><i class="fa-solid fa-file-import"></i>导入总结</button>
-          <button type="button" @click="$emit('batch')"><i class="fa-solid fa-layer-group"></i>批量生成</button>
-          <button type="button" @click="$emit('rename')"><i class="fa-solid fa-pen"></i>重命名总结集</button>
-          <button class="danger" type="button" @click="$emit('remove-book')">
-            <i class="fa-solid fa-trash"></i>删除总结集
-          </button>
-        </ActionMenu>
       </div>
     </div>
 

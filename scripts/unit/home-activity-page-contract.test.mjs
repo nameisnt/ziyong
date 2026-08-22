@@ -4,6 +4,7 @@ import test from 'node:test';
 import { readFile } from 'node:fs/promises';
 
 const source = await readFile(new URL('../../src/components/PhoneHome.vue', import.meta.url), 'utf8');
+const taskCenter = await readFile(new URL('../../src/components/GenerationTaskCenter.vue', import.meta.url), 'utf8');
 
 test('home reserves page zero for transient activity and defaults to the first desktop page', () => {
   assert.match(source, /const homePageIndex = ref\(1\)/u);
@@ -17,11 +18,16 @@ test('activity is never a drag destination and home re-entry restores the record
   assert.match(source, /homePageIndex\.value = clampHomePageIndex\(route\.homeSource\?\.pageIndex \?\? 1\)/u);
 });
 
-test('activity routes drafts and recovery items through their registered app and keeps saved-task cleanup explicit', () => {
+test('activity routes drafts and recovery items through their registered app and keeps saved-task cleanup in TaskCenter', () => {
   assert.match(source, /function openHomeActivityItem\(item: GenerationActivityItem\)/u);
-  assert.match(source, /rememberHomeSource\(\);\s+phone\.pushRoute\(item\.appId, item\.routePage, item\.title, item\.routeParams\)/u);
-  assert.match(source, /generationTasks\.getClearableTasks\(viewingScopeKey\.value\)/u);
-  assert.match(source, /generationTasks\.clearPureSavedTasks\(viewingScopeKey\.value\)/u);
+  assert.match(
+    source,
+    /rememberHomeSource\(\);\s+phone\.pushRoute\(item\.appId, item\.routePage, item\.title, item\.routeParams\)/u,
+  );
+  assert.doesNotMatch(source, /clearSavedTaskRecords|pc-home-saved-tasks/u);
+  assert.match(taskCenter, /generationTasks\.getClearableTasks\(\)/u);
+  assert.match(taskCenter, /generationTasks\.clearPureSavedTasks\(\)/u);
+  assert.match(taskCenter, /aria-label="清理已保存任务"/u);
   assert.match(source, /item\.kind !== 'active-task'/u);
 });
 

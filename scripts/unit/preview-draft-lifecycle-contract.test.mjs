@@ -10,7 +10,6 @@ const startConsumers = {
   diary: [await readFile(new URL('../../src/components/DiaryApp.vue', import.meta.url), 'utf8'), /beginDiaryPreviewDraft\(\);/],
   digest: [await readFile(new URL('../../src/apps/digest/DigestApp.vue', import.meta.url), 'utf8'), /beginDigestPreviewDraft\(\);/],
   letters: [await readFile(new URL('../../src/components/LettersApp.vue', import.meta.url), 'utf8'), /beginLettersPreviewDraft\(\);/],
-  profiles: [await readFile(new URL('../../src/apps/profiles/ProfilesApp.vue', import.meta.url), 'utf8'), /beginProfilesPreviewDraft\(\);/],
   relationship: [await readFile(new URL('../../src/apps/relationship/RelationshipApp.vue', import.meta.url), 'utf8'), /beginRelationshipPreviewDraft\(\);/],
   scenePlanner: [await readFile(new URL('../../src/apps/scene-planner/ScenePlannerApp.vue', import.meta.url), 'utf8'), /beginScenePreviewDraft\(\);/],
   storylines: [await readFile(new URL('../../src/apps/storylines/StorylinesApp.vue', import.meta.url), 'utf8'), /beginStorylinePreviewDraft\(\);/],

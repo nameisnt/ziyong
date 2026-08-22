@@ -5,8 +5,15 @@ import type {
   PhoneContentConversionSource,
   PhoneContentReceiver,
 } from '@/core/appRegistry';
+import { createExtraChapterGenerationRecord, type ExtraChapterGenerateConfig } from '@/core/extrasGeneration';
+import { getCurrentChatScopeKey, parseChatScopeKey } from '@/store/chatScoped';
 import { wrapLegacyTheaterFrontend } from '@/util/theaterMixedContent';
-import { useProfilesStore } from '@/apps/profiles/store';
+import { createHiddenGenerationRecord } from '@/util/hiddenGenerationRecord';
+import { getChatMessagesSafe } from '@/util/runtime';
+import type { GenerationReplaySnapshot, SourceSelection } from '@/type/generation';
+import { createExternalProfilesRepository } from '@/apps/profiles/externalCrud';
+import { assertExternalMappingFields } from '@/apps/profiles/profileConsumerBridge';
+import { useExternalProfileMappingsStore } from '@/apps/profiles/profileMappings';
 import { useDigestStore } from '@/apps/digest/store';
 import { useEntryLibraryStore } from '@/apps/entry-library/store';
 import { useWorldSlotsStore, worldSlotPositionOptions } from '@/apps/world-slots/store';
@@ -23,6 +30,7 @@ import { useDiaryStore } from '@/store/diary';
 import { useExtrasStore } from '@/store/extras';
 import { useForumStore } from '@/store/forum';
 import { useLettersStore } from '@/store/letters';
+import { usePromptStore } from '@/store/prompts';
 import { useTheaterStore } from '@/store/theater';
 
 const NEW_COLLECTION = '__new__';
@@ -60,6 +68,65 @@ function stripFrontendMarkup(source: PhoneContentConversionSource) {
 
 function sourceTitle(source: PhoneContentConversionSource, fallback: string) {
   return source.title.trim() || fallback;
+}
+
+function activeSwipeText(message: ReturnType<typeof getChatMessagesSafe>[number]) {
+  const record = message as Record<string, unknown>;
+  const data = record.data && typeof record.data === 'object' ? (record.data as Record<string, unknown>) : null;
+  const swipes = Array.isArray(record.swipes)
+    ? record.swipes
+    : data && Array.isArray(data.swipes)
+      ? data.swipes
+      : [];
+  const rawSwipeIndex = typeof record.swipe_id === 'number' ? record.swipe_id : data?.swipe_id;
+  const activeSwipeIndex = typeof rawSwipeIndex === 'number' && Number.isInteger(rawSwipeIndex) ? rawSwipeIndex : 0;
+  const activeSwipe = swipes[activeSwipeIndex];
+  return (typeof activeSwipe === 'string' ? activeSwipe : message.message).trim();
+}
+
+function resolveFloorConversionRequirements(context: PhoneContentConversionContext) {
+  const requirements = new Map<PhoneContentConversionSource, string>();
+  if (context.batchMode !== 'separate') return requirements;
+
+  const messages = getChatMessagesSafe('0-{{lastMessageId}}', { hide_state: 'all', include_swipes: true });
+  const messagesById = new Map(messages.map(message => [message.message_id, message]));
+  context.sources.forEach(source => {
+    if (source.appId !== 'reader' || typeof source.sourceFloorEnd !== 'number' || source.sourceFloorEnd <= 0) {
+      requirements.set(source, '');
+      return;
+    }
+    const previous = messagesById.get(source.sourceFloorEnd - 1);
+    requirements.set(source, !previous || previous.role !== 'user' ? '' : activeSwipeText(previous));
+  });
+  return requirements;
+}
+
+function createFloorConversionReplay(
+  source: PhoneContentConversionSource,
+  userRequirement: string,
+  config: Record<string, unknown>,
+): GenerationReplaySnapshot | undefined {
+  if (source.appId !== 'reader' || typeof source.sourceFloorEnd !== 'number') return undefined;
+  const floor = source.sourceFloorEnd;
+  const scopeId = getCurrentChatScopeKey();
+  const selection: SourceSelection = {
+    chatIdAtGeneration: parseChatScopeKey(scopeId).chatId,
+    label: source.sourceLabel || `第 ${floor} 楼`,
+    messageIds: [floor],
+    mode: 'single',
+    ranges: [{ end: floor, start: floor }],
+    scopeId,
+    sortKey: floor,
+  };
+  return {
+    config: { ...config, userRequirement },
+    connectionSelection: 'inherit',
+    references: [],
+    request: { outputFormat: '', userRequirement },
+    source: selection,
+    sourceInput: { singleMessageId: floor },
+    tavernPresetName: '',
+  };
 }
 
 function result(
@@ -176,18 +243,46 @@ export function createExtrasContentReceiver(): PhoneContentReceiver {
     },
     receive(context) {
       const extras = useExtrasStore();
+      const prompts = usePromptStore();
       const bookId = textValue(context, 'bookId');
       const book =
         bookId === NEW_COLLECTION
           ? extras.createBook({ title: textValue(context, 'bookName'), typeName: textValue(context, 'typeName') })
           : extras.getBook(bookId);
       if (!book) throw new Error('请选择有效的番外');
-      const chapters = context.sources.map(source =>
-        extras.createChapter(book.id, {
+      const requirements = resolveFloorConversionRequirements(context);
+      const chapters = context.sources.map(source => {
+        const userRequirement = requirements.get(source) || '';
+        const typePrompt = book.typeId ? prompts.getTypePrompt(book.typeId) : null;
+        const chapterMode = book.chapters.length ? '续写上一章' : '新开一本书';
+        const generationConfig = {
+          appPrompt: '',
+          bookId: book.id,
+          chapterId: '',
+          chapterMode,
+          fromStartEnd: 20,
+          outputFormat: '',
+          previousChapterContext: '',
+          rangeText: '',
+          recentCount: 20,
+          references: [],
+          singleMessageId: source.sourceFloorEnd ?? 0,
+          sourceMode: 'single',
+          tavernPresetName: '',
+          typeId: book.typeId || '',
+          typeName: book.typeName,
+          typePrompt: typePrompt?.domain === 'extras' ? typePrompt.prompt : '',
+          userRequirement,
+        } satisfies ExtraChapterGenerateConfig;
+        const replay = createFloorConversionReplay(source, userRequirement, generationConfig);
+        return extras.createChapter(book.id, {
           content: stripFrontendMarkup(source),
+          generationRecord: replay
+            ? createExtraChapterGenerationRecord(generationConfig, replay.source, replay)
+            : undefined,
           title: sourceTitle(source, `第 ${book.chapters.length + 1} 章`),
-        }),
-      );
+        });
+      });
       if (chapters.some(chapter => !chapter)) throw new Error('番外章节写入失败');
       const created = chapters.filter((chapter): chapter is NonNullable<typeof chapter> => Boolean(chapter));
       const first = created[0];
@@ -375,16 +470,33 @@ export function createTheaterContentReceiver(): PhoneContentReceiver {
     receive(context) {
       const theater = useTheaterStore();
       const participants = splitList(textValue(context, 'participants')).map(name => ({ name }));
-      const entries = context.sources.map(source =>
-        theater.createEntry({
+      const requirements = resolveFloorConversionRequirements(context);
+      const entries = context.sources.map(source => {
+        const userRequirement = requirements.get(source) || '';
+        const generationConfig = {
+          appPrompt: '',
+          entryId: '',
+          existingContent: '',
+          mode: 'create',
+          outputFormat: '',
+          participants,
+          renderMode: 'markdown',
+          typeId: '',
+          typeName: textValue(context, 'typeName') || '未分类小剧场',
+          typePrompt: '',
+          userRequirement,
+        };
+        const replay = createFloorConversionReplay(source, userRequirement, generationConfig);
+        return theater.createEntry({
           content:
             source.displayMode === 'frontend' ? wrapLegacyTheaterFrontend(source.content) : stripFrontendMarkup(source),
+          generationRecord: replay ? createHiddenGenerationRecord('generate', replay) : undefined,
           participants,
           renderMode: 'markdown',
           title: sourceTitle(source, '未命名小剧场'),
           typeName: textValue(context, 'typeName') || '未分类小剧场',
-        }),
-      );
+        });
+      });
       const first = entries[0];
       return result(
         entries.map(entry => entry.id),
@@ -461,24 +573,24 @@ export function createProfilesContentReceiver(): PhoneContentReceiver {
     scope: 'chat',
     batchModes: ['separate', 'merge'],
     createDraft() {
-      const profiles = useProfilesStore();
-      return { contentField: 'summary', tableId: profiles.tables[0]?.id || '' };
+      const mappings = useExternalProfileMappingsStore();
+      const compatible = mappings.mappings.filter(mapping => mapping.fields.length);
+      return { contentField: '', mappingId: compatible.length === 1 ? compatible[0]!.id : '' };
     },
     fields(context) {
-      const profiles = useProfilesStore();
-      const table = profiles.getTable(textValue(context, 'tableId')) ?? profiles.tables[0];
-      const fieldOptions = [
-        { label: '摘要', value: 'summary' },
-        ...(table?.columns ?? [])
-          .filter(column => column.enabled && !['title', 'summary', 'tags'].includes(column.id))
-          .map(column => ({ label: column.label, value: column.id })),
-      ];
+      const mappings = useExternalProfileMappingsStore();
+      const mapping = mappings.getMapping(textValue(context, 'mappingId'));
+      const fieldOptions = (mapping?.fields ?? []).map(field => ({ label: field.label, value: field.key }));
       return [
         {
-          key: 'tableId',
+          key: 'mappingId',
           kind: 'select',
-          label: '目标资料表',
-          options: profiles.tables.map(item => ({ label: item.name, value: item.id })),
+          label: '目标资料映射',
+          options: mappings.mappings.map(item => ({
+            disabled: !item.fields.length,
+            label: item.name,
+            value: item.id,
+          })),
           required: true,
         },
         {
@@ -490,29 +602,30 @@ export function createProfilesContentReceiver(): PhoneContentReceiver {
         },
       ];
     },
-    receive(context) {
-      const profiles = useProfilesStore();
-      const table = profiles.getTable(textValue(context, 'tableId'));
-      if (!table) throw new Error('请选择有效的资料表');
-      const contentField = textValue(context, 'contentField') || 'summary';
-      const entries = context.sources.map(source => {
+    async receive(context) {
+      const mappings = useExternalProfileMappingsStore();
+      const repository = createExternalProfilesRepository();
+      const mapping = mappings.getMapping(textValue(context, 'mappingId'));
+      if (!mapping) throw new Error('请选择有效的资料映射');
+      const contentField = textValue(context, 'contentField');
+      if (!contentField) throw new Error('请选择正文写入字段');
+      assertExternalMappingFields(mapping, [contentField]);
+      const conversionId = `${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+      const identityValues: string[] = [];
+      for (const [index, source] of context.sources.entries()) {
         const content = stripFrontendMarkup(source);
-        return profiles.createEntry({
-          fields: contentField === 'summary' ? {} : { [contentField]: content },
-          kind: table.kind,
-          summary: contentField === 'summary' ? content : '',
-          tableId: table.id,
-          tags: source.tags,
-          title: sourceTitle(source, '未命名资料'),
+        const identityValue = `${source.appId}:${source.entryId}:${conversionId}:${index + 1}`;
+        await repository.insertMappedRow(mapping, {
+          displayValue: sourceTitle(source, '未命名资料'),
+          fields: { [contentField]: content },
+          identityValue,
         });
-      });
-      const first = entries[0];
+        identityValues.push(identityValue);
+      }
       return result(
-        entries.map(entry => entry.id),
-        `已转换 ${entries.length} 条资料`,
-        first && entries.length === 1
-          ? { page: 'entry', params: { entryId: first.id }, title: first.title }
-          : { page: 'root', title: '资料表' },
+        identityValues,
+        `已转换 ${identityValues.length} 条资料`,
+        { page: 'table', params: { sheetKey: mapping.sheetKey }, title: mapping.tableName },
       );
     },
   };

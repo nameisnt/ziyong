@@ -350,6 +350,7 @@
         :content="generationState.preview.content"
         :raw="generationState.preview.raw"
         :reasoning="generationState.preview.generationRecord?.reasoning || ''"
+        reasoning-editable
         raw-editable
         :source-label="generationState.preview.source.label"
         :text-provider-summary="textProviderSummary"
@@ -361,6 +362,7 @@
         @save="saveGenerationPreview"
         @update:content="generationState.preview.content = $event"
         @update:raw="generationState.preview.raw = $event"
+        @update:reasoning="updateGenerationRecordReasoning(generationState.preview, $event)"
       >
         <template v-if="definition.display.mode === 'frontend'" #content>
           <FrontendFrame
@@ -427,6 +429,7 @@ import { formatGenerationReferences, type GenerationReferenceItem } from '@/util
 import { getChatMessagesSafe } from '@/util/runtime';
 import { getSourceLastFloor } from '@/util/sourceFloor';
 import { formatTextProviderSummary } from '@/util/textProvider';
+import { updateGenerationRecordReasoning } from '@/util/generationReasoning';
 import { resolveCustomGeneratedTitle } from './generation';
 import { type CustomAppDefinition, type CustomAppEntry } from './schema';
 import { useCustomAppsStore } from './store';

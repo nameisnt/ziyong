@@ -1,5 +1,6 @@
 import { usePromptStore } from '@/store/prompts';
 import { usePhoneStore } from '@/store/phone';
+import { useSettingsStore } from '@/store/settings';
 
 type PromptsScenarioContext = {
   resetPhoneToRoute: (appId: string, page: string, title: string, params?: Record<string, string>) => void;
@@ -31,7 +32,7 @@ async function waitForPromptsRoot(context: PromptsScenarioContext) {
   await context.waitForPaint();
 }
 
-async function selectPromptLibraryTab(tab: 'phrase' | 'template', context: PromptsScenarioContext) {
+async function selectPromptLibraryTab(tab: 'phrase' | 'template' | 'type', context: PromptsScenarioContext) {
   const menu = document.querySelector<HTMLButtonElement>('.pc-prompts-menu-anchor > .pc-icon-btn');
   if (!menu) throw new Error('Prompt library category menu is missing');
   menu.click();
@@ -55,6 +56,109 @@ async function confirmPromptDeletion(context: PromptsScenarioContext) {
 }
 
 export async function applyPromptsVisualScenario(name: string, context: PromptsScenarioContext) {
+  if (name === 'prompts-type-group-batch') {
+    const prompts = usePromptStore();
+    prompts.resetDefaults();
+    const sourceGroup = prompts.createTypePromptGroup('theater', '__pc_test__来源分组');
+    const targetGroup = prompts.createTypePromptGroup('theater', '__pc_test__目标分组');
+    const first = prompts.createTypePrompt({
+      domain: 'theater',
+      groupId: sourceGroup.id,
+      name: '__pc_test__跨组类型甲',
+      prompt: '甲的正文保持不变。',
+    });
+    const second = prompts.createTypePrompt({
+      domain: 'theater',
+      groupId: targetGroup.id,
+      name: '__pc_test__跨组类型乙',
+      prompt: '乙的正文保持不变。',
+    });
+    const unrelated = prompts.typePrompts.find(item => item.domain !== 'theater');
+    const unrelatedSnapshot = unrelated ? { groupId: unrelated.groupId, prompt: unrelated.prompt } : null;
+
+    context.resetPhoneToRoute('prompts', 'root', '提示词');
+    await context.waitForPaint();
+    await selectPromptLibraryTab('type', context);
+
+    const findTypeTile = (label: string) =>
+      [...document.querySelectorAll<HTMLButtonElement>('.pc-type-prompt-tile')].find(button =>
+        button.textContent?.includes(label),
+      );
+    const openOrganize = async () => {
+      const button = findButton('整理', document.querySelector('.pc-prompts-app') || document);
+      if (!button) throw new Error('Prompt type organizer action is missing');
+      button.click();
+      await context.waitForPaint();
+      if (!document.querySelector('.pc-type-organize-panel')) throw new Error('Prompt type organizer did not open');
+    };
+
+    await openOrganize();
+    findButton('全选小剧场类型', document.querySelector('.pc-type-organize-panel') || document)?.click();
+    await context.waitForPaint();
+    if (
+      document.querySelectorAll('.pc-type-prompt-tile[aria-pressed="true"]').length !==
+      prompts.typePrompts.filter(item => item.domain === 'theater').length
+    ) {
+      throw new Error('Prompt type organizer did not select all Theater types');
+    }
+    findButton('清空选择', document.querySelector('.pc-type-organize-panel') || document)?.click();
+    const sourceSection = [...document.querySelectorAll<HTMLElement>('.pc-type-group-section')].find(section =>
+      section.querySelector('.pc-type-group-head strong')?.textContent?.includes(sourceGroup.name),
+    );
+    findButton('全选本组', sourceSection || document)?.click();
+    findButton('取消', document.querySelector('.pc-type-organize-panel') || document)?.click();
+    await context.waitForPaint();
+    if (prompts.getTypePrompt(first.id)?.groupId !== sourceGroup.id) {
+      throw new Error('Cancelling type organization changed a prompt group');
+    }
+
+    await openOrganize();
+    const firstTile = findTypeTile(first.name);
+    const secondTile = findTypeTile(second.name);
+    if (!firstTile || !secondTile) throw new Error('Prompt type organizer omitted cross-group fixture types');
+    firstTile.click();
+    secondTile.click();
+    const targetInput = document.querySelector<HTMLInputElement>('.pc-type-organize-panel .pc-combobox-input');
+    if (!targetInput) throw new Error('Prompt type organizer target group selector is missing');
+    targetInput.click();
+    await context.waitForPaint();
+    const targetOption = [...document.querySelectorAll<HTMLButtonElement>('.pc-combobox-option')].find(
+      option => option.textContent?.trim() === targetGroup.name,
+    );
+    if (!targetOption) throw new Error('Prompt type organizer target group option is missing');
+    targetOption.click();
+    findButton('移动所选', document.querySelector('.pc-type-organize-panel') || document)?.click();
+    await context.waitForPaint();
+    if (
+      prompts.getTypePrompt(first.id)?.groupId !== targetGroup.id ||
+      prompts.getTypePrompt(second.id)?.groupId !== targetGroup.id ||
+      prompts.getTypePrompt(first.id)?.prompt !== '甲的正文保持不变。' ||
+      prompts.getTypePrompt(second.id)?.prompt !== '乙的正文保持不变。'
+    ) {
+      throw new Error('Prompt type batch move changed the wrong fields or failed across groups');
+    }
+    if (
+      unrelated &&
+      (unrelated.groupId !== unrelatedSnapshot?.groupId || unrelated.prompt !== unrelatedSnapshot?.prompt)
+    ) {
+      throw new Error('Prompt type batch move leaked into another type domain');
+    }
+
+    await openOrganize();
+    findTypeTile(first.name)?.click();
+    findTypeTile(second.name)?.click();
+    document.querySelector<HTMLElement>('.pc-type-organize-panel')?.scrollIntoView({ block: 'start' });
+    const settings = useSettingsStore();
+    settings.setTheme('dark');
+    await context.waitForPaint();
+    if (!document.querySelector('.pc-type-organize-panel .pc-primary-btn')) {
+      throw new Error('Prompt type organizer actions disappeared in dark mode');
+    }
+    settings.setTheme('light');
+    await context.waitForPaint();
+    return true;
+  }
+
   if (name === 'prompts-config-save') {
     const prompts = usePromptStore();
     const phone = usePhoneStore();
@@ -324,7 +428,7 @@ export async function applyPromptsVisualScenario(name: string, context: PromptsS
     if (!document.querySelector<HTMLInputElement>('input[placeholder="类型名称"]')) {
       throw new Error('Prompt type editor did not render its editable fields');
     }
-    const groupControl = document.querySelector<HTMLElement>('.pc-type-group-row > :first-child');
+    const groupControl = document.querySelector<HTMLElement>('.pc-theater-type-group-field .pc-combobox');
     if (!groupControl) throw new Error('Prompt type editor did not render its group selector');
     groupControl.scrollIntoView({ block: 'center' });
     const groupInput = groupControl.querySelector<HTMLInputElement>('.pc-combobox-input');

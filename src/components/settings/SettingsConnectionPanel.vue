@@ -264,7 +264,7 @@ import type { ExternalApiPresetId } from '@/type/settings';
 import { getPresetNamesSafe } from '@/util/runtime';
 import { EXTERNAL_API_PRESETS, getActiveExternalApiProfile, resolveExternalApiProfileUrl } from '@/util/textProvider';
 import { storeToRefs } from 'pinia';
-import { pluginPresetIdFromSelection, pluginPresetSelection } from '@/apps/preset-manager/pluginPreset';
+import { buildPluginPresetSelectionOptions, pluginPresetIdFromSelection } from '@/apps/preset-manager/pluginPreset';
 
 const aliases = useGenerationAliasesStore();
 const phone = usePhoneStore();
@@ -291,11 +291,7 @@ const tavernPresetOptions = computed(() => {
   if (selected && !pluginPresetIdFromSelection(selected)) names.add(selected);
   return [
     { label: '跟随酒馆当前预设', value: '' },
-    ...pluginPresetItems.value.map(preset => ({
-      group: '插件预设',
-      label: preset.name,
-      value: pluginPresetSelection(preset.id),
-    })),
+    ...buildPluginPresetSelectionOptions(pluginPresetItems.value, selected),
     ...[...names].filter(Boolean).map(name => ({ group: '酒馆预设', label: name, value: name })),
   ];
 });

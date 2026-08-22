@@ -1,7 +1,16 @@
 <template>
   <section class="pc-extras-page">
     <div class="pc-compact-toolbar pc-directory-toolbar">
-      <span class="pc-directory-count">{{ chapters.length }} 章</span>
+      <div class="pc-directory-leading">
+        <ActionMenu align="start" icon-only :label="t`管理`" icon="fa-solid fa-bars">
+          <ItemTransferImportAction app-id="extras" :params="{ bookId: book.id }" :label="t`导入单章番外`" />
+          <button type="button" @click="emit('editBook')"><i class="fa-solid fa-pen"></i>{{ t`编辑番外信息` }}</button>
+          <button class="danger" type="button" @click="emit('deleteBook')">
+            <i class="fa-solid fa-trash"></i>{{ t`删除番外` }}
+          </button>
+        </ActionMenu>
+        <span class="pc-directory-count">{{ chapters.length }} 章</span>
+      </div>
       <div class="pc-directory-actions pc-book-actions">
         <button
           class="pc-icon-btn primary"
@@ -12,13 +21,6 @@
         >
           <i class="fa-solid fa-wand-magic-sparkles"></i>
         </button>
-        <ActionMenu :label="t`管理`" icon="fa-solid fa-bars">
-          <ItemTransferImportAction app-id="extras" :params="{ bookId: book.id }" :label="t`导入单章番外`" />
-          <button type="button" @click="emit('editBook')"><i class="fa-solid fa-pen"></i>{{ t`编辑番外信息` }}</button>
-          <button class="danger" type="button" @click="emit('deleteBook')">
-            <i class="fa-solid fa-trash"></i>{{ t`删除番外` }}
-          </button>
-        </ActionMenu>
       </div>
     </div>
 

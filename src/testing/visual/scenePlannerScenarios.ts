@@ -16,6 +16,18 @@ function sceneTitleInput() {
   return document.querySelector<HTMLInputElement>('.pc-scene-editor > input.pc-field');
 }
 
+function clickSceneMenuAction(container: ParentNode, menuLabel: string, actionLabel: string) {
+  const trigger = container.querySelector<HTMLButtonElement | HTMLElement>(
+    `.pc-action-menu > summary[aria-label="${menuLabel}"]`,
+  );
+  trigger?.click();
+  const action = [...container.querySelectorAll<HTMLButtonElement>('.pc-action-menu-panel button')].find(button =>
+    button.textContent?.includes(actionLabel),
+  );
+  if (!action) throw new Error(`Scene Planner menu action is missing: ${menuLabel} / ${actionLabel}`);
+  action.click();
+}
+
 async function confirmScenePlanDeletion(
   label: '取消' | '删除',
   { waitForCondition, waitForPaint }: ScenePlannerVisualScenarioContext,
@@ -84,7 +96,9 @@ export async function applyScenePlannerVisualScenario(
       throw new Error('Scene Planner history selection did not refill the editor');
     }
 
-    document.querySelector<HTMLButtonElement>('button[title="新方案"]')?.click();
+    const editor = document.querySelector<HTMLElement>('.pc-scene-editor');
+    if (!editor) throw new Error('Scene Planner editor is missing');
+    clickSceneMenuAction(editor, '新增', '新方案');
     await context.waitForPaint();
     if (sceneTitleInput()?.value || document.querySelector<HTMLTextAreaElement>('.pc-scene-brief')?.value) {
       throw new Error('Scene Planner new-plan action did not clear the active editor');
@@ -94,14 +108,15 @@ export async function applyScenePlannerVisualScenario(
     await context.waitForPaint();
     let activeRow = findPlanRow('当前场景');
     if (!activeRow?.classList.contains('active')) throw new Error('Scene Planner did not mark the selected plan active');
-    activeRow.querySelector<HTMLButtonElement>('button[title="删除"]')?.click();
+    clickSceneMenuAction(activeRow, '管理', '删除');
     await confirmScenePlanDeletion('取消', context);
     if (planner.plans.length !== 2 || !planner.getPlan('visual-scene-current')) {
       throw new Error('Cancelling Scene Planner deletion changed the plan collection');
     }
 
     activeRow = findPlanRow('当前场景');
-    activeRow?.querySelector<HTMLButtonElement>('button[title="删除"]')?.click();
+    if (!activeRow) throw new Error('Scene Planner active row disappeared before confirmed deletion');
+    clickSceneMenuAction(activeRow, '管理', '删除');
     await confirmScenePlanDeletion('删除', context);
     if (
       !(await context.waitForCondition(

@@ -107,18 +107,18 @@
         </button>
         <div v-if="charactersExpanded">
           <div class="pc-profile-add-row">
-            <ProfileEntryPicker
-              v-model="profileCharacterDraft"
-              :disabled-ids="linkedCharacterProfileIds()"
-              :empty-label="t`从资料表选择人物`"
-              :kinds="['character']"
-              :placeholder="t`从资料表选择人物`"
-              :show-open-button="false"
+            <ExternalProfileReferencePicker
+              :disabled-reference-keys="linkedCharacterProfileKeys()"
+              :identity-value="profileCharacterDraft.profileIdentityValue"
+              :mapping-id="profileCharacterDraft.profileMappingId"
+              @resolved="onProfileCharacterDraftResolved"
+              @update:identity-value="profileCharacterDraft.profileIdentityValue = $event"
+              @update:mapping-id="profileCharacterDraft.profileMappingId = $event"
             />
             <button
               class="pc-icon-btn"
               type="button"
-              :disabled="!profileCharacterDraft"
+              :disabled="!profileCharacterDraft.profileIdentityValue || !profileCharacterDraft.displayValue"
               :aria-label="t`添加关联人物`"
               :title="t`添加关联人物`"
               @click="addProfileCharacter"
@@ -150,7 +150,7 @@
                 <input
                   class="pc-field"
                   type="text"
-                  :disabled="isCharacterProfileLinked(character.profileEntryId)"
+                  :disabled="isCharacterProfileLinked(character)"
                   :value="character.name"
                   @change="renameCharacter(character.id, $event)"
                 />
@@ -164,12 +164,19 @@
                   <i class="fa-solid fa-trash"></i>
                 </button>
               </div>
-              <ProfileEntryPicker
-                :disabled-ids="linkedCharacterProfileIds(character.id)"
-                :kinds="['character']"
-                :model-value="character.profileEntryId"
-                :placeholder="t`关联人物资料`"
-                @update:model-value="onCharacterProfileChange(character.id, $event)"
+              <p
+                v-if="character.profileEntryId && !isCharacterProfileLinked(character)"
+                class="pc-profile-legacy-warning"
+              >
+                旧资料关联待重新选择
+              </p>
+              <ExternalProfileReferencePicker
+                :disabled-reference-keys="linkedCharacterProfileKeys(character.id)"
+                :identity-value="character.profileIdentityValue"
+                :mapping-id="character.profileMappingId"
+                @resolved="onCharacterProfileResolved(character.id, $event)"
+                @update:identity-value="onCharacterProfileIdentityChange(character.id, $event)"
+                @update:mapping-id="onCharacterProfileMappingChange(character.id, $event)"
               />
             </article>
           </div>
@@ -210,13 +217,7 @@
               :placeholder="t`关系，例如 父亲`"
               @keydown.enter.prevent="addLink"
             />
-            <button
-              class="pc-icon-btn"
-              type="button"
-              :aria-label="t`新增关系`"
-              :title="t`新增关系`"
-              @click="addLink"
-            >
+            <button class="pc-icon-btn" type="button" :aria-label="t`新增关系`" :title="t`新增关系`" @click="addLink">
               <i class="fa-solid fa-plus"></i>
             </button>
           </div>
@@ -358,6 +359,7 @@
           raw-editable
           :reparse-handler="reparsePreviewRaw"
           :reasoning="generationState.preview.generationRecord?.reasoning || ''"
+          reasoning-editable
           :scan-enabled="false"
           :source-label="generationState.preview.source.label"
           :text-provider-summary="textProviderSummary"
@@ -370,6 +372,7 @@
           @reparse="reparsePreviewRaw"
           @save="savePreview"
           @update:raw="generationState.preview.raw = $event"
+          @update:reasoning="updateGenerationRecordReasoning(generationState.preview, $event)"
         >
           <template #content>
             <section class="pc-preview-box">
@@ -403,15 +406,15 @@
 import EmptyState from '@/components/EmptyState.vue';
 import FailedDraftList from '@/components/FailedDraftList.vue';
 import FailedDraftRepairPage from '@/components/FailedDraftRepairPage.vue';
+import ExternalProfileReferencePicker from '@/components/ExternalProfileReferencePicker.vue';
 import GenerationPanel from '@/components/GenerationPanel.vue';
 import GenerationPreviewPanel from '@/components/GenerationPreviewPanel.vue';
-import ProfileEntryPicker from '@/components/ProfileEntryPicker.vue';
 import PreviewDraftNotice from '@/components/PreviewDraftNotice.vue';
 import { useSingleGenerationTaskSession } from '@/composables/useSingleGenerationTaskSession';
 import { getRegisteredPhoneGenerationAdapter } from '@/core/appRegistry';
 import { buildGenerationPreview, captureGenerationPrompt, generateContent } from '@/core/generationService';
 import { usePhoneStore } from '@/store/phone';
-import { useProfilesStore } from '@/apps/profiles/store';
+import { externalProfileReferenceKey, type ExternalProfileReferenceDraft } from '@/apps/profiles/profileReferences';
 import { usePromptStore } from '@/store/prompts';
 import { useSettingsStore } from '@/store/settings';
 import type { FailedGenerationDraft } from '@/type/generation';
@@ -421,12 +424,12 @@ import { usePreviewDraftPersistence } from '@/util/previewDrafts';
 import { formatGenerationReferences } from '@/util/references';
 import { useInvalidRouteFallback } from '@/util/routeFallback';
 import { formatTextProviderSummary } from '@/util/textProvider';
-import { useRelationshipStore, type RelationshipGeneratedResult } from './store';
+import { updateGenerationRecordReasoning } from '@/util/generationReasoning';
+import { useRelationshipStore, type RelationshipCharacter, type RelationshipGeneratedResult } from './store';
 import { parseRelationshipXmlResult } from './generation';
 import { storeToRefs } from 'pinia';
 
 const phone = usePhoneStore();
-const profiles = useProfilesStore();
 const relationship = useRelationshipStore();
 const prompts = usePromptStore();
 const settingsStore = useSettingsStore();
@@ -436,7 +439,11 @@ const { characters, failedDrafts, links } = storeToRefs(relationship);
 const { settings } = storeToRefs(settingsStore);
 const graphSvg = ref<SVGSVGElement | null>(null);
 const characterDraft = ref('');
-const profileCharacterDraft = ref('');
+const profileCharacterDraft = reactive({
+  displayValue: '',
+  profileIdentityValue: '',
+  profileMappingId: '',
+});
 const failedDraftRawOutput = ref('');
 const charactersExpanded = ref(true);
 const linksExpanded = ref(true);
@@ -648,29 +655,58 @@ function addCharacter() {
 }
 
 function addProfileCharacter() {
-  if (!profileCharacterDraft.value) return;
-  const existing = characters.value.find(character => character.profileEntryId === profileCharacterDraft.value);
-  const character = relationship.createCharacterFromProfile(profileCharacterDraft.value);
+  if (!profileCharacterDraft.profileIdentityValue || !profileCharacterDraft.profileMappingId) return;
+  const reference = {
+    profileIdentityValue: profileCharacterDraft.profileIdentityValue,
+    profileMappingId: profileCharacterDraft.profileMappingId,
+  };
+  const referenceKey = externalProfileReferenceKey(reference);
+  const existing = characters.value.find(
+    character => isCharacterProfileLinked(character) && externalProfileReferenceKey(character) === referenceKey,
+  );
+  const character = relationship.createCharacterFromProfile(reference, profileCharacterDraft.displayValue);
   if (!character) {
     toastr.warning('已有同名人物关联了其他资料');
     return;
   }
-  profileCharacterDraft.value = '';
+  profileCharacterDraft.displayValue = '';
+  profileCharacterDraft.profileIdentityValue = '';
+  profileCharacterDraft.profileMappingId = '';
   toastr.success(existing ? '该人物已经在关系网中' : '已从资料表添加人物');
 }
 
-function isCharacterProfileLinked(profileEntryId: string) {
-  return Boolean(profileEntryId && profiles.getEntry(profileEntryId));
+function onProfileCharacterDraftResolved(value: ExternalProfileReferenceDraft & { displayValue: string }) {
+  profileCharacterDraft.displayValue = value.displayValue;
+  profileCharacterDraft.profileIdentityValue = value.profileIdentityValue;
+  profileCharacterDraft.profileMappingId = value.profileMappingId;
 }
 
-function linkedCharacterProfileIds(exceptCharacterId = '') {
+function isCharacterProfileLinked(character: RelationshipCharacter) {
+  return Boolean(character.profileMappingId && character.profileIdentityValue);
+}
+
+function linkedCharacterProfileKeys(exceptCharacterId = '') {
   return characters.value
-    .filter(character => character.id !== exceptCharacterId && character.profileEntryId)
-    .map(character => character.profileEntryId);
+    .filter(character => character.id !== exceptCharacterId && isCharacterProfileLinked(character))
+    .map(character => externalProfileReferenceKey(character));
 }
 
-function onCharacterProfileChange(characterId: string, profileEntryId: string) {
-  if (relationship.linkCharacterProfile(characterId, profileEntryId)) return;
+function onCharacterProfileMappingChange(characterId: string, profileMappingId: string) {
+  relationship.setCharacterProfileDraft(characterId, { profileMappingId });
+}
+
+function onCharacterProfileIdentityChange(characterId: string, profileIdentityValue: string) {
+  if (!profileIdentityValue) {
+    relationship.setCharacterProfileDraft(characterId, { profileIdentityValue: '' });
+  }
+}
+
+function onCharacterProfileResolved(
+  characterId: string,
+  value: ExternalProfileReferenceDraft & { displayValue: string },
+) {
+  if (relationship.linkCharacterProfile(characterId, value, value.displayValue)) return;
+  relationship.setCharacterProfileDraft(characterId, { profileIdentityValue: '' });
   toastr.warning('这份人物资料已经关联到其他人物');
 }
 
@@ -712,11 +748,14 @@ async function removeLink(linkId: string) {
   if (!link) return;
   const fromName = characterById.value.get(link.fromId)?.name || '未知人物';
   const toName = characterById.value.get(link.toId)?.name || '未知人物';
-  const confirmed = await phone.confirmNotice(`要删除“${fromName} → ${toName}”的关系“${link.label || '未命名关系'}”吗？`, {
-    confirmLabel: '删除',
-    kind: 'warning',
-    title: '删除人物关系？',
-  });
+  const confirmed = await phone.confirmNotice(
+    `要删除“${fromName} → ${toName}”的关系“${link.label || '未命名关系'}”吗？`,
+    {
+      confirmLabel: '删除',
+      kind: 'warning',
+      title: '删除人物关系？',
+    },
+  );
   if (!confirmed) return;
   relationship.deleteLink(linkId);
 }
@@ -1221,6 +1260,13 @@ function stopGeneration() {
   border: 1px solid var(--pc-border);
   border-radius: var(--pc-control-radius);
   background: var(--pc-surface-strong);
+}
+
+.pc-profile-legacy-warning {
+  margin: 0;
+  color: var(--pc-danger);
+  font-size: 12px;
+  font-weight: 700;
 }
 
 .pc-relation-form {

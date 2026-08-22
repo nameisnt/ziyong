@@ -21,6 +21,7 @@ test('home layout drag has a real browser interaction contract', async () => {
   assert.match(harness, /Home folder rename was not persisted/);
   assert.match(harness, /Home folder removal did not preserve the one-item folder/);
   assert.match(harness, /Explicit one-App folder creation did not persist through the layout transaction/);
+  assert.match(harness, /Explicit folder fixture needs one visible App on the current page/);
   assert.match(harness, /Explicit folder creation left the home interaction locked/);
   assert.match(harness, /Folder dissolution left a modal backdrop or the App route locked/);
   assert.match(harness, /Folder dissolution left desktop dragging locked/);

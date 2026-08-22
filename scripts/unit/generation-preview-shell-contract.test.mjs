@@ -16,9 +16,12 @@ const [panel, page, failedPage, cardWriter, digest, relationship, customHost] = 
 ]);
 
 test('shared preview shell owns reasoning disclosure and raw-output semantics', () => {
-  assert.match(panel, /<ReasoningDisclosure v-if="!editingContent" :content="reasoning"\s*\/>/);
+  assert.match(
+    panel,
+    /<ReasoningDisclosure[\s\S]*?:content="reasoning"[\s\S]*?:editable="reasoningEditable"[\s\S]*?@update:content="emit\('update:reasoning', \$event\)"/u,
+  );
   assert.match(panel, /:raw-output-semantics="rawOutputSemantics"/);
-  assert.match(page, /:reasoning="reasoning"/);
+  assert.match(page, /v-model:reasoning="reasoning"/);
   assert.match(page, /:raw-output-semantics="rawOutputSemantics"/);
 });
 

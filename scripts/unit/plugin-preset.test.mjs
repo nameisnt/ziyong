@@ -60,6 +60,27 @@ test('legacy prompt_order controls effective order and switches', () => {
   ]);
 });
 
+test('hidden plugin presets stay out of selectors unless they are the current disabled value', () => {
+  const visible = record(legacyPreset());
+  const hidden = { ...visible, hidden: true, id: 'private-hidden', name: '隐藏预设' };
+
+  assert.deepEqual(model.buildPluginPresetSelectionOptions([visible, hidden], '').map(option => option.value), [
+    'plugin:private-1',
+  ]);
+  assert.deepEqual(
+    model.buildPluginPresetSelectionOptions([visible, hidden], 'plugin:private-hidden'),
+    [
+      { group: '插件预设', label: '测试预设', value: 'plugin:private-1' },
+      {
+        disabled: true,
+        group: '插件预设',
+        label: '隐藏预设（已隐藏，请重新选择）',
+        value: 'plugin:private-hidden',
+      },
+    ],
+  );
+});
+
 test('missing native user input is inserted once after chat history without moving post-history prompts', () => {
   const raw = legacyPreset();
   raw.prompts.push({

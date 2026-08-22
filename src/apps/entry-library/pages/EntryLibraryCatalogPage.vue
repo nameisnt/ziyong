@@ -1,27 +1,25 @@
 <template>
   <section class="pc-entry-library-page">
     <header class="pc-entry-library-head">
-      <div class="pc-entry-library-head-actions">
-        <ActionMenu label="工具" icon="fa-solid fa-screwdriver-wrench">
-          <button type="button" @click="$emit('open-transfer')">
-            <i class="fa-solid fa-arrow-right-arrow-left"></i><span>导入导出</span>
-          </button>
-          <button type="button" @click="$emit('open-dedupe')">
-            <i class="fa-solid fa-clone"></i><span>收藏查重</span>
-          </button>
-          <button type="button" @click="$emit('open-bindings')">
-            <i class="fa-solid fa-link"></i><span>分组绑定</span>
-          </button>
-        </ActionMenu>
-        <ActionMenu label="新增" icon="fa-solid fa-plus">
-          <button type="button" @click="$emit('open-manual')">
-            <i class="fa-solid fa-pen-to-square"></i><span>手动新建</span>
-          </button>
-          <button type="button" @click="$emit('open-collect')">
-            <i class="fa-solid fa-bookmark"></i><span>从预设或世界书收藏</span>
-          </button>
-        </ActionMenu>
-      </div>
+      <ActionMenu align="start" icon-only label="工具" icon="fa-solid fa-bars">
+        <button type="button" @click="$emit('open-transfer')">
+          <i class="fa-solid fa-arrow-right-arrow-left"></i><span>导入导出</span>
+        </button>
+        <button type="button" @click="$emit('open-dedupe')">
+          <i class="fa-solid fa-clone"></i><span>收藏查重</span>
+        </button>
+        <button type="button" @click="$emit('open-bindings')">
+          <i class="fa-solid fa-link"></i><span>分组绑定</span>
+        </button>
+      </ActionMenu>
+      <ActionMenu label="新增" icon="fa-solid fa-plus">
+        <button type="button" @click="$emit('open-manual')">
+          <i class="fa-solid fa-pen-to-square"></i><span>手动新建</span>
+        </button>
+        <button type="button" @click="$emit('open-collect')">
+          <i class="fa-solid fa-bookmark"></i><span>从预设或世界书收藏</span>
+        </button>
+      </ActionMenu>
     </header>
 
     <div class="pc-entry-library-create">
@@ -196,7 +194,6 @@ defineEmits<{
   gap: 12px;
 }
 .pc-entry-library-head,
-.pc-entry-library-head-actions,
 .pc-entry-library-create,
 .pc-entry-library-group-head,
 .pc-entry-library-group-actions,
@@ -208,10 +205,6 @@ defineEmits<{
 .pc-entry-library-head,
 .pc-entry-library-group-head {
   justify-content: space-between;
-}
-.pc-entry-library-head-actions {
-  margin-left: auto;
-  flex: 0 0 auto;
 }
 .pc-entry-library-create .pc-field {
   min-width: 0;
