@@ -15,7 +15,7 @@
 - 不要普通提交整个工作区。
 - 本项目本地工作区可能有缓存和临时文件；未跟踪文件只有命中脚本明确允许边界时才进入候选。
 - 使用临时 Git index 基于最新 `origin/main` 生成提交，不影响普通暂存区。
-- 本地 `HEAD` 必须与最新 `origin/main` 一致，避免覆盖远端的新提交。
+- 本地 `HEAD` 必须与最新 `origin/main` 一致，或是 `origin/main` 的后代；脚本不会覆盖已分叉的远端提交。本地领先且仍有后续工作区改动时，新候选提交会接在现有本地 `HEAD` 之后。
 
 ## 0. 推荐：直接运行安全脚本
 
@@ -43,6 +43,8 @@ scripts/safe-push-dist.ps1
 - 不会纳入参考拓展、备份、临时文件或其他未跟踪路径。
 - 不会删除本地工作区文件。
 - 如果本地 `main` 落后于 `origin/main`，会在构建前自动快进。
+- 如果本地 `main` 已领先且工作区还有后续改动，会保留既有本地提交，并以当前 `HEAD` 为父提交生成新的发布候选。
+- 如果本地 `main` 已领先且没有可发布的后续改动，会验证并直接推送既有 `HEAD`，不会改写提交。
 - 如果远端 Bundle 与本地 `dist/` 重叠，会先重置旧构建产物，快进后重新构建。
 - 如果本地与远端发生分叉、文件冲突或普通暂存区已有内容，会停止发布。
 - 推送成功后会同步本地 `main` 和普通 index，避免下次发布仍停留在旧提交。
@@ -53,6 +55,24 @@ scripts/safe-push-dist.ps1
 ```powershell
 .\scripts\safe-push-dist.ps1 -DryRun
 ```
+
+### 只取消 Git 跟踪、保留本地 ignored 目录
+
+这不是普通发布操作。只有已经单独确认退出跟踪范围时，才可以先在普通 index 或本地提交中完整删除跟踪关系，再显式传入精确的 `.gitignore` 目录：
+
+```powershell
+.\scripts\safe-push-dist.ps1 -DryRun -SkipBuild -UntrackIgnoredPath '可参考拓展'
+```
+
+不传 `-UntrackIgnoredPath` 时，ignored 目录即使在普通 index 中显示删除，也会继续从发布候选排除。传入后脚本仍会逐项确认：
+
+- 参数是 `.gitignore` 中无通配符的精确目录；
+- `origin/main` 仍跟踪目标文件；
+- 普通 index 已完整删除该目录，或本地领先提交已经完整删除；
+- 本地 HEAD 与远端在目标目录没有内容分叉；
+- 原文件仍在本地，并且 blob 与远端父提交完全一致。
+
+任一条件不满足都会停止。脚本只在临时发布 index 中执行 `git rm --cached`，不会删除本地目录。正式运行前必须先用 `-DryRun` 确认候选只有预期的 `D` 项、没有同目录 `A` 项。
 
 ## 1. 进入项目目录
 
@@ -182,6 +202,10 @@ gh auth login
 ### 远端被别人更新
 
 第 5 步脚本每次都会先 `git fetch origin main`，并以最新 `origin/main` 为父提交。通常可直接重跑。
+
+### 提示 `Local main is ahead` 且工作区不干净
+
+新版脚本允许这种正常情况：只要 `origin/main` 仍是本地 `HEAD` 的祖先，后续改动会成为本地 `HEAD` 的子提交。若实际已经分叉，脚本仍会停止，不能强推覆盖。
 
 ### 不小心普通 git add 了很多文件
 

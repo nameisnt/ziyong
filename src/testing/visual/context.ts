@@ -5,6 +5,15 @@ export async function waitForVisualPaint() {
   await new Promise<void>(resolve => requestAnimationFrame(() => requestAnimationFrame(() => resolve())));
 }
 
+export async function waitForVisualCondition(condition: () => boolean, timeout = 1000) {
+  const startedAt = performance.now();
+  while (!condition()) {
+    if (performance.now() - startedAt > timeout) return false;
+    await new Promise<void>(resolve => window.setTimeout(resolve, 20));
+  }
+  return true;
+}
+
 export function configureVisualPhoneSize(width = 360, height = 700) {
   const settings = useSettingsStore().settings;
   settings.interfaceSize.phoneWidth = width;

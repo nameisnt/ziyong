@@ -1,8 +1,8 @@
 {
   "version": 1,
   "defect": "D-BASELINE-002",
-  "generatedAt": "2026-08-22T00:00:00Z",
-  "scenarioCount": 288,
+  "generatedAt": "2026-08-22T13:03:27.730Z",
+  "scenarioCount": 303,
   "sizes": [
     "350x700",
     "390x844",
@@ -10,7 +10,7 @@
   ],
   "summary": {
     "fails": 0,
-    "runs": 864,
+    "runs": 909,
     "warnings": 0
   },
   "runs": [
@@ -161,7 +161,27 @@
     },
     {
       "findings": [],
-      "scenario": "app:preset-link",
+      "scenario": "app:game-2048",
+      "size": "350x700"
+    },
+    {
+      "findings": [],
+      "scenario": "app:game-gomoku",
+      "size": "350x700"
+    },
+    {
+      "findings": [],
+      "scenario": "app:game-guess-number",
+      "size": "350x700"
+    },
+    {
+      "findings": [],
+      "scenario": "app:game-minesweeper",
+      "size": "350x700"
+    },
+    {
+      "findings": [],
+      "scenario": "app:game-nonogram",
       "size": "350x700"
     },
     {
@@ -226,7 +246,27 @@
     },
     {
       "findings": [],
-      "scenario": "app:games",
+      "scenario": "app:game-reversi",
+      "size": "350x700"
+    },
+    {
+      "findings": [],
+      "scenario": "app:game-sliding-puzzle",
+      "size": "350x700"
+    },
+    {
+      "findings": [],
+      "scenario": "app:game-snake",
+      "size": "350x700"
+    },
+    {
+      "findings": [],
+      "scenario": "app:game-solitaire",
+      "size": "350x700"
+    },
+    {
+      "findings": [],
+      "scenario": "app:game-sudoku",
       "size": "350x700"
     },
     {
@@ -736,12 +776,47 @@
     },
     {
       "findings": [],
-      "scenario": "preset-link-auto-reload",
+      "scenario": "preset-editor-role-save",
       "size": "350x700"
     },
     {
       "findings": [],
-      "scenario": "preset-link-history",
+      "scenario": "preset-move-conflict",
+      "size": "350x700"
+    },
+    {
+      "findings": [],
+      "scenario": "preset-move-plugin-to-tavern",
+      "size": "350x700"
+    },
+    {
+      "findings": [],
+      "scenario": "preset-move-source-delete-failure",
+      "size": "350x700"
+    },
+    {
+      "findings": [],
+      "scenario": "preset-move-target-failure",
+      "size": "350x700"
+    },
+    {
+      "findings": [],
+      "scenario": "preset-move-tavern-to-plugin",
+      "size": "350x700"
+    },
+    {
+      "findings": [],
+      "scenario": "preset-move-verify-rollback",
+      "size": "350x700"
+    },
+    {
+      "findings": [],
+      "scenario": "preset-owner-current",
+      "size": "350x700"
+    },
+    {
+      "findings": [],
+      "scenario": "preset-owner-history",
       "size": "350x700"
     },
     {
@@ -1601,7 +1676,27 @@
     },
     {
       "findings": [],
-      "scenario": "app:preset-link",
+      "scenario": "app:game-2048",
+      "size": "390x844"
+    },
+    {
+      "findings": [],
+      "scenario": "app:game-gomoku",
+      "size": "390x844"
+    },
+    {
+      "findings": [],
+      "scenario": "app:game-guess-number",
+      "size": "390x844"
+    },
+    {
+      "findings": [],
+      "scenario": "app:game-minesweeper",
+      "size": "390x844"
+    },
+    {
+      "findings": [],
+      "scenario": "app:game-nonogram",
       "size": "390x844"
     },
     {
@@ -1666,7 +1761,27 @@
     },
     {
       "findings": [],
-      "scenario": "app:games",
+      "scenario": "app:game-reversi",
+      "size": "390x844"
+    },
+    {
+      "findings": [],
+      "scenario": "app:game-sliding-puzzle",
+      "size": "390x844"
+    },
+    {
+      "findings": [],
+      "scenario": "app:game-snake",
+      "size": "390x844"
+    },
+    {
+      "findings": [],
+      "scenario": "app:game-solitaire",
+      "size": "390x844"
+    },
+    {
+      "findings": [],
+      "scenario": "app:game-sudoku",
       "size": "390x844"
     },
     {
@@ -2176,12 +2291,47 @@
     },
     {
       "findings": [],
-      "scenario": "preset-link-auto-reload",
+      "scenario": "preset-editor-role-save",
       "size": "390x844"
     },
     {
       "findings": [],
-      "scenario": "preset-link-history",
+      "scenario": "preset-move-conflict",
+      "size": "390x844"
+    },
+    {
+      "findings": [],
+      "scenario": "preset-move-plugin-to-tavern",
+      "size": "390x844"
+    },
+    {
+      "findings": [],
+      "scenario": "preset-move-source-delete-failure",
+      "size": "390x844"
+    },
+    {
+      "findings": [],
+      "scenario": "preset-move-target-failure",
+      "size": "390x844"
+    },
+    {
+      "findings": [],
+      "scenario": "preset-move-tavern-to-plugin",
+      "size": "390x844"
+    },
+    {
+      "findings": [],
+      "scenario": "preset-move-verify-rollback",
+      "size": "390x844"
+    },
+    {
+      "findings": [],
+      "scenario": "preset-owner-current",
+      "size": "390x844"
+    },
+    {
+      "findings": [],
+      "scenario": "preset-owner-history",
       "size": "390x844"
     },
     {
@@ -3041,7 +3191,27 @@
     },
     {
       "findings": [],
-      "scenario": "app:preset-link",
+      "scenario": "app:game-2048",
+      "size": "430x900"
+    },
+    {
+      "findings": [],
+      "scenario": "app:game-gomoku",
+      "size": "430x900"
+    },
+    {
+      "findings": [],
+      "scenario": "app:game-guess-number",
+      "size": "430x900"
+    },
+    {
+      "findings": [],
+      "scenario": "app:game-minesweeper",
+      "size": "430x900"
+    },
+    {
+      "findings": [],
+      "scenario": "app:game-nonogram",
       "size": "430x900"
     },
     {
@@ -3106,7 +3276,27 @@
     },
     {
       "findings": [],
-      "scenario": "app:games",
+      "scenario": "app:game-reversi",
+      "size": "430x900"
+    },
+    {
+      "findings": [],
+      "scenario": "app:game-sliding-puzzle",
+      "size": "430x900"
+    },
+    {
+      "findings": [],
+      "scenario": "app:game-snake",
+      "size": "430x900"
+    },
+    {
+      "findings": [],
+      "scenario": "app:game-solitaire",
+      "size": "430x900"
+    },
+    {
+      "findings": [],
+      "scenario": "app:game-sudoku",
       "size": "430x900"
     },
     {
@@ -3616,12 +3806,47 @@
     },
     {
       "findings": [],
-      "scenario": "preset-link-auto-reload",
+      "scenario": "preset-editor-role-save",
       "size": "430x900"
     },
     {
       "findings": [],
-      "scenario": "preset-link-history",
+      "scenario": "preset-move-conflict",
+      "size": "430x900"
+    },
+    {
+      "findings": [],
+      "scenario": "preset-move-plugin-to-tavern",
+      "size": "430x900"
+    },
+    {
+      "findings": [],
+      "scenario": "preset-move-source-delete-failure",
+      "size": "430x900"
+    },
+    {
+      "findings": [],
+      "scenario": "preset-move-target-failure",
+      "size": "430x900"
+    },
+    {
+      "findings": [],
+      "scenario": "preset-move-tavern-to-plugin",
+      "size": "430x900"
+    },
+    {
+      "findings": [],
+      "scenario": "preset-move-verify-rollback",
+      "size": "430x900"
+    },
+    {
+      "findings": [],
+      "scenario": "preset-owner-current",
+      "size": "430x900"
+    },
+    {
+      "findings": [],
+      "scenario": "preset-owner-history",
       "size": "430x900"
     },
     {

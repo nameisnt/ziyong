@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import test from 'node:test';
 
-const source = await readFile(new URL('../../src/components/SummaryApp.vue', import.meta.url), 'utf8');
+const source = await readFile(new URL('../../src/apps/summary/SummaryApp.vue', import.meta.url), 'utf8');
 const catalog = await readFile(new URL('../../src/testing/visual/scenarioCatalog.ts', import.meta.url), 'utf8');
 const runner = await readFile(new URL('../ui-visual-check.mjs', import.meta.url), 'utf8');
 

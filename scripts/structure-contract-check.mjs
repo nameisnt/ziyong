@@ -51,87 +51,87 @@ const contentBookScenarios = await readFile(
   'utf8',
 );
 const theaterScenarios = await readFile(new URL('../src/testing/visual/theaterScenarios.ts', import.meta.url), 'utf8');
-const forumApp = await readFile(new URL('../src/components/ForumApp.vue', import.meta.url), 'utf8');
+const forumApp = await readFile(new URL('../src/apps/forum/ForumApp.vue', import.meta.url), 'utf8');
 const forumThreadGeneratePage = await readFile(
-  new URL('../src/components/forum/ForumThreadGeneratePage.vue', import.meta.url),
+  new URL('../src/apps/forum/ForumThreadGeneratePage.vue', import.meta.url),
   'utf8',
 );
 const forumRepliesGeneratePage = await readFile(
-  new URL('../src/components/forum/ForumRepliesGeneratePage.vue', import.meta.url),
+  new URL('../src/apps/forum/ForumRepliesGeneratePage.vue', import.meta.url),
   'utf8',
 );
 const forumThreadGenerationBoardSession = await readFile(
-  new URL('../src/components/forum/useForumThreadGenerationBoardSession.ts', import.meta.url),
+  new URL('../src/apps/forum/useForumThreadGenerationBoardSession.ts', import.meta.url),
   'utf8',
 );
 const forumBoardEditorSession = await readFile(
-  new URL('../src/components/forum/useForumBoardEditorSession.ts', import.meta.url),
+  new URL('../src/apps/forum/useForumBoardEditorSession.ts', import.meta.url),
   'utf8',
 );
 const forumThreadEditorSession = await readFile(
-  new URL('../src/components/forum/useForumThreadEditorSession.ts', import.meta.url),
+  new URL('../src/apps/forum/useForumThreadEditorSession.ts', import.meta.url),
   'utf8',
 );
 const forumDeletionSession = await readFile(
-  new URL('../src/components/forum/useForumDeletionSession.ts', import.meta.url),
+  new URL('../src/apps/forum/useForumDeletionSession.ts', import.meta.url),
   'utf8',
 );
 const forumGenerationActions = await readFile(
-  new URL('../src/components/forum/useForumGenerationActions.ts', import.meta.url),
+  new URL('../src/apps/forum/useForumGenerationActions.ts', import.meta.url),
   'utf8',
 );
 const forumFailedDraftRepair = await readFile(
   new URL('../src/composables/useForumFailedDraftRepair.ts', import.meta.url),
   'utf8',
 );
-const extrasApp = await readFile(new URL('../src/components/ExtrasApp.vue', import.meta.url), 'utf8');
-const summaryApp = await readFile(new URL('../src/components/SummaryApp.vue', import.meta.url), 'utf8');
+const extrasApp = await readFile(new URL('../src/apps/extras/ExtrasApp.vue', import.meta.url), 'utf8');
+const summaryApp = await readFile(new URL('../src/apps/summary/SummaryApp.vue', import.meta.url), 'utf8');
 const summaryBookSession = await readFile(
-  new URL('../src/components/summary/useSummaryBookSession.ts', import.meta.url),
+  new URL('../src/apps/summary/useSummaryBookSession.ts', import.meta.url),
   'utf8',
 );
 const summaryBatchSession = await readFile(
-  new URL('../src/components/summary/useSummaryBatchSession.ts', import.meta.url),
+  new URL('../src/apps/summary/useSummaryBatchSession.ts', import.meta.url),
   'utf8',
 );
 const summaryGenerationActions = await readFile(
-  new URL('../src/components/summary/useSummaryGenerationActions.ts', import.meta.url),
+  new URL('../src/apps/summary/useSummaryGenerationActions.ts', import.meta.url),
   'utf8',
 );
 const extrasBookEditorPage = await readFile(
-  new URL('../src/components/extras/ExtrasBookEditorPage.vue', import.meta.url),
+  new URL('../src/apps/extras/ExtrasBookEditorPage.vue', import.meta.url),
   'utf8',
 );
 const extrasChapterEditorSession = await readFile(
-  new URL('../src/components/extras/useExtrasChapterEditorSession.ts', import.meta.url),
+  new URL('../src/apps/extras/useExtrasChapterEditorSession.ts', import.meta.url),
   'utf8',
 );
 const extrasChapterGeneratePage = await readFile(
-  new URL('../src/components/extras/ExtrasChapterGeneratePage.vue', import.meta.url),
+  new URL('../src/apps/extras/ExtrasChapterGeneratePage.vue', import.meta.url),
   'utf8',
 );
 const extrasSummaryGeneratePage = await readFile(
-  new URL('../src/components/extras/ExtrasSummaryGeneratePage.vue', import.meta.url),
+  new URL('../src/apps/extras/ExtrasSummaryGeneratePage.vue', import.meta.url),
   'utf8',
 );
 const extrasChapterTypePromptSession = await readFile(
-  new URL('../src/components/extras/useExtrasChapterTypePromptSession.ts', import.meta.url),
+  new URL('../src/apps/extras/useExtrasChapterTypePromptSession.ts', import.meta.url),
   'utf8',
 );
 const extrasBookEditorSession = await readFile(
-  new URL('../src/components/extras/useExtrasBookEditorSession.ts', import.meta.url),
+  new URL('../src/apps/extras/useExtrasBookEditorSession.ts', import.meta.url),
   'utf8',
 );
 const extrasDeletionSession = await readFile(
-  new URL('../src/components/extras/useExtrasDeletionSession.ts', import.meta.url),
+  new URL('../src/apps/extras/useExtrasDeletionSession.ts', import.meta.url),
   'utf8',
 );
 const extrasSummaryEditorSession = await readFile(
-  new URL('../src/components/extras/useExtrasSummaryEditorSession.ts', import.meta.url),
+  new URL('../src/apps/extras/useExtrasSummaryEditorSession.ts', import.meta.url),
   'utf8',
 );
 const extrasSummaryPreviewSession = await readFile(
-  new URL('../src/components/extras/useExtrasSummaryPreviewSession.ts', import.meta.url),
+  new URL('../src/apps/extras/useExtrasSummaryPreviewSession.ts', import.meta.url),
   'utf8',
 );
 const extrasFailedDraftRepair = await readFile(
@@ -139,7 +139,7 @@ const extrasFailedDraftRepair = await readFile(
   'utf8',
 );
 const extrasGenerationActions = await readFile(
-  new URL('../src/components/extras/useExtrasGenerationActions.ts', import.meta.url),
+  new URL('../src/apps/extras/useExtrasGenerationActions.ts', import.meta.url),
   'utf8',
 );
 const workbenchApp = await readFile(new URL('../src/apps/workbench/WorkbenchApp.vue', import.meta.url), 'utf8');

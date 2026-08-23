@@ -17,7 +17,7 @@ const [
 ] = await Promise.all([
   readSource('src/apps/builtinPrompts.ts'),
   readSource('src/core/extrasGeneration.ts'),
-  readSource('src/components/ExtrasApp.vue'),
+  readSource('src/apps/extras/ExtrasApp.vue'),
   readSource('src/apps/digest/index.ts'),
   readSource('src/apps/digest/generation.ts'),
   readSource('src/core/summaryGeneration.ts'),

@@ -12,8 +12,8 @@ const expectedCounts = new Map([
 const sources = await Promise.all(
   [...expectedCounts].map(async ([name, expectedCount]) => ({
     expectedCount,
-    file: `src/components/forum/${name}`,
-    source: await readFile(new URL(`../../src/components/forum/${name}`, import.meta.url), 'utf8'),
+    file: `src/apps/forum/${name}`,
+    source: await readFile(new URL(`../../src/apps/forum/${name}`, import.meta.url), 'utf8'),
   })),
 );
 

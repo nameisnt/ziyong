@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import test from 'node:test';
 
-const source = await readFile(new URL('../../src/components/theater/TheaterMixedContent.vue', import.meta.url), 'utf8');
+const source = await readFile(new URL('../../src/apps/theater/TheaterMixedContent.vue', import.meta.url), 'utf8');
 
 test('theater text segments override standalone reader-body scrolling inside mixed content', () => {
   assert.match(

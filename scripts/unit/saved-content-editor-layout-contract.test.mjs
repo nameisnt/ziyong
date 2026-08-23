@@ -10,13 +10,13 @@ const files = {
   entryLibrary: await readFile(new URL('../../src/apps/entry-library/pages/EntryLibraryItemEditorPage.vue', import.meta.url), 'utf8'),
   worldbook: await readFile(new URL('../../src/apps/worldbook-link/pages/WorldbookEntryEditorPage.vue', import.meta.url), 'utf8'),
   worldSlots: await readFile(new URL('../../src/apps/world-slots/WorldSlotsApp.vue', import.meta.url), 'utf8'),
-  diary: await readFile(new URL('../../src/components/diary/DiaryEntryEditorPage.vue', import.meta.url), 'utf8'),
-  extrasChapter: await readFile(new URL('../../src/components/extras/ExtrasChapterEditorPage.vue', import.meta.url), 'utf8'),
-  extrasSummary: await readFile(new URL('../../src/components/extras/ExtrasSummaryEditorPage.vue', import.meta.url), 'utf8'),
-  forum: await readFile(new URL('../../src/components/forum/ForumThreadEditorPage.vue', import.meta.url), 'utf8'),
-  letters: await readFile(new URL('../../src/components/letters/LettersEntryEditorPage.vue', import.meta.url), 'utf8'),
-  summary: await readFile(new URL('../../src/components/summary/SummaryEntryEditorPage.vue', import.meta.url), 'utf8'),
-  theater: await readFile(new URL('../../src/components/theater/TheaterEntryEditorPage.vue', import.meta.url), 'utf8'),
+  diary: await readFile(new URL('../../src/apps/diary/DiaryEntryEditorPage.vue', import.meta.url), 'utf8'),
+  extrasChapter: await readFile(new URL('../../src/apps/extras/ExtrasChapterEditorPage.vue', import.meta.url), 'utf8'),
+  extrasSummary: await readFile(new URL('../../src/apps/extras/ExtrasSummaryEditorPage.vue', import.meta.url), 'utf8'),
+  forum: await readFile(new URL('../../src/apps/forum/ForumThreadEditorPage.vue', import.meta.url), 'utf8'),
+  letters: await readFile(new URL('../../src/apps/letters/LettersEntryEditorPage.vue', import.meta.url), 'utf8'),
+  summary: await readFile(new URL('../../src/apps/summary/SummaryEntryEditorPage.vue', import.meta.url), 'utf8'),
+  theater: await readFile(new URL('../../src/apps/theater/TheaterEntryEditorPage.vue', import.meta.url), 'utf8'),
 };
 
 test('saved entity editors use the shared remaining-height body layout', () => {

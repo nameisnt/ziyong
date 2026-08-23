@@ -16,20 +16,20 @@
 
 ## 当前方案
 
-- [15-仓库整理与发布收口方案](15-仓库整理与发布收口方案.md)：当前唯一实施方案；现阶段执行 `REPO00 → REPO01`。
+- [15-仓库整理与发布收口方案](15-仓库整理与发布收口方案.md)：当前唯一实施方案；`REPO00`—`REPO03` 已完成，下一批为 `REPO04`。
 
 没有列在这里的历史方案不能作为自动执行依据。
 
 ## 执行记录
 
 - [执行记录说明](execution/README.md)
-- [工作树归属](execution/00-工作树归属.md)
-- [缺陷台账](execution/01-缺陷台账.md)
-- [批次状态](execution/02-批次状态.md)
-- [需求追踪与能力矩阵](execution/03-需求追踪与能力矩阵.md)
-- [当前发布候选清单](execution/05-当前发布候选清单.md)
+- [工作树与保护边界](execution/current/worktree.md)
+- [当前缺陷](execution/current/defects.md)
+- [当前批次](execution/current/batches.md)
+- [当前需求追踪](execution/current/traceability.md)
+- [执行历史归档](execution/archive/README.md)
 
-`execution/` 是当前控制状态；历史方案中的“待办”“下一步”和“尚未完成”不能覆盖这里的较新状态。
+`execution/current/` 是唯一当前控制状态；`execution/archive/` 与历史方案中的“待办”“下一步”和“尚未完成”不能覆盖这里的较新状态。
 
 ## 历史方案
 

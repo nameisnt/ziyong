@@ -5,13 +5,13 @@ import test from 'node:test';
 
 const globalCss = await readFile(new URL('../../src/global.css', import.meta.url), 'utf8');
 const consumers = [
-  '../../src/components/extras/ExtrasChapterEditorPage.vue',
-  '../../src/components/extras/ExtrasSummaryEditorPage.vue',
-  '../../src/components/diary/DiaryEntryEditorPage.vue',
-  '../../src/components/letters/LettersEntryEditorPage.vue',
-  '../../src/components/forum/ForumThreadEditorPage.vue',
-  '../../src/components/summary/SummaryEntryEditorPage.vue',
-  '../../src/components/theater/TheaterEntryEditorPage.vue',
+  '../../src/apps/extras/ExtrasChapterEditorPage.vue',
+  '../../src/apps/extras/ExtrasSummaryEditorPage.vue',
+  '../../src/apps/diary/DiaryEntryEditorPage.vue',
+  '../../src/apps/letters/LettersEntryEditorPage.vue',
+  '../../src/apps/forum/ForumThreadEditorPage.vue',
+  '../../src/apps/summary/SummaryEntryEditorPage.vue',
+  '../../src/apps/theater/TheaterEntryEditorPage.vue',
   '../../src/apps/entry-library/pages/EntryLibraryItemEditorPage.vue',
   '../../src/apps/worldbook-link/pages/WorldbookEntryEditorPage.vue',
   '../../src/apps/digest/DigestApp.vue',

@@ -148,15 +148,15 @@
 </template>
 
 <script setup lang="ts">
-import LettersBookPage from '@/components/letters/LettersBookPage.vue';
-import LettersBookEditorPage from '@/components/letters/LettersBookEditorPage.vue';
-import LettersBaguPage from '@/components/letters/LettersBaguPage.vue';
-import LettersCatalogPage from '@/components/letters/LettersCatalogPage.vue';
-import LettersEntryEditorPage from '@/components/letters/LettersEntryEditorPage.vue';
-import LettersFailedDraftPage from '@/components/letters/LettersFailedDraftPage.vue';
-import LettersGeneratePage from '@/components/letters/LettersGeneratePage.vue';
-import LettersPreviewPage from '@/components/letters/LettersPreviewPage.vue';
-import LettersEntryDetailPage from '@/components/letters/LettersEntryDetailPage.vue';
+import LettersBookPage from '@/apps/letters/LettersBookPage.vue';
+import LettersBookEditorPage from '@/apps/letters/LettersBookEditorPage.vue';
+import LettersBaguPage from '@/apps/letters/LettersBaguPage.vue';
+import LettersCatalogPage from '@/apps/letters/LettersCatalogPage.vue';
+import LettersEntryEditorPage from '@/apps/letters/LettersEntryEditorPage.vue';
+import LettersFailedDraftPage from '@/apps/letters/LettersFailedDraftPage.vue';
+import LettersGeneratePage from '@/apps/letters/LettersGeneratePage.vue';
+import LettersPreviewPage from '@/apps/letters/LettersPreviewPage.vue';
+import LettersEntryDetailPage from '@/apps/letters/LettersEntryDetailPage.vue';
 import { useCatalogDetailNavigation } from '@/composables/useCatalogDetailNavigation';
 import { useDirectorySort } from '@/composables/useDirectorySort';
 import { useGenerationReplaySession } from '@/composables/useGenerationReplaySession';

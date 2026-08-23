@@ -8,9 +8,9 @@ const readSource = relativePath => readFile(new URL(`../../${relativePath}`, imp
 const [rawEditor, forumPreview, forumBoard, forumApp, builtinPrompts, forumGeneration, theaterGeneration, promptStore] =
   await Promise.all([
     readSource('src/components/RawOutputEditor.vue'),
-    readSource('src/components/forum/ForumPreviewPage.vue'),
-    readSource('src/components/forum/ForumBoardPage.vue'),
-    readSource('src/components/ForumApp.vue'),
+    readSource('src/apps/forum/ForumPreviewPage.vue'),
+    readSource('src/apps/forum/ForumBoardPage.vue'),
+    readSource('src/apps/forum/ForumApp.vue'),
     readSource('src/apps/builtinPrompts.ts'),
     readSource('src/core/forumGeneration.ts'),
     readSource('src/core/theaterGeneration.ts'),

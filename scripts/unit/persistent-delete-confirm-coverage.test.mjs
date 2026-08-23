@@ -9,7 +9,7 @@ async function source(path) {
 
 test('persisted Bagu rules and MVU history require the shared confirmation', async () => {
   const [bagu, mvu] = await Promise.all([
-    source('../../src/components/BaguApp.vue'),
+    source('../../src/apps/bagu/BaguApp.vue'),
     source('../../src/apps/mvu-modifier/MvuModifierApp.vue'),
   ]);
   assert.match(bagu, /async function removeRule[\s\S]{0,700}phone\.confirmNotice/u);

@@ -924,7 +924,7 @@ async function runInteractionChecks(page, scenario) {
       }
       await baguButton.click();
 
-      await page.getByRole('tab', { name: '原始输出', exact: true }).click();
+      await page.getByRole('tab', { name: '原文', exact: true }).click();
       const rawEditor = page.locator('.pc-raw-editor-area');
       await rawEditor.fill(
         '<result><board>视觉板块</board><title>论坛预览重解析成功</title><author>视觉楼主</author><content>论坛预览修复后的主楼正文。</content></result>',

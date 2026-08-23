@@ -92,7 +92,7 @@
 <script setup lang="ts">
 import CapsuleTag from '@/components/CapsuleTag.vue';
 import CatalogModal from '@/components/CatalogModal.vue';
-import TheaterMixedContent from '@/components/theater/TheaterMixedContent.vue';
+import TheaterMixedContent from '@/apps/theater/TheaterMixedContent.vue';
 import ReaderDetailShell from '@/components/ReaderDetailShell.vue';
 import VersionNavigator from '@/components/VersionNavigator.vue';
 import type { CatalogModalItem } from '@/type/catalog';

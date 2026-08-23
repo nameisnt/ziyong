@@ -216,7 +216,7 @@ export async function applyForumGenerationVisualScenario(name: string, context: 
     if (saveActions.length !== 1 || document.querySelector('.pc-preview-actions .pc-soft-btn')) {
       throw new Error('Forum preview footer must contain only the save action');
     }
-    const rawTab = viewTabs.find(button => button.textContent?.includes('原始输出'));
+    const rawTab = viewTabs.find(button => button.textContent?.includes('原文'));
     rawTab?.click();
     await context.waitForPaint();
     if (!document.querySelector('.pc-raw-editor') || !document.querySelector('.pc-raw-editor button')) {

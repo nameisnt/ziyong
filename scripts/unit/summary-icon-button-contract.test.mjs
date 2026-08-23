@@ -7,13 +7,13 @@ import { scanVueUiContracts } from '../ui-contract-check.mjs';
 
 const components = [
   {
-    file: 'src/components/summary/SummaryBookPage.vue',
-    url: new URL('../../src/components/summary/SummaryBookPage.vue', import.meta.url),
+    file: 'src/apps/summary/SummaryBookPage.vue',
+    url: new URL('../../src/apps/summary/SummaryBookPage.vue', import.meta.url),
     count: 2,
   },
   {
-    file: 'src/components/summary/SummaryImportPage.vue',
-    url: new URL('../../src/components/summary/SummaryImportPage.vue', import.meta.url),
+    file: 'src/apps/summary/SummaryImportPage.vue',
+    url: new URL('../../src/apps/summary/SummaryImportPage.vue', import.meta.url),
     count: 1,
   },
 ];

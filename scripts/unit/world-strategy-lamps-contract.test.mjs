@@ -5,6 +5,7 @@ import test from 'node:test';
 
 const catalog = readFileSync('src/testing/visual/scenarioCatalog.ts', 'utf8');
 const harness = readFileSync('src/testing/visual-harness.ts', 'utf8');
+const bootstrap = readFileSync('src/testing/visual-bootstrap.ts', 'utf8');
 
 test('world strategy lamps have one explicit two-consumer browser scenario', () => {
   assert.match(catalog, /['"]world-strategy-lamps['"]/);
@@ -16,6 +17,6 @@ test('world strategy lamps have one explicit two-consumer browser scenario', () 
 });
 
 test('the visual worldbook fixture declares both strategies explicitly', () => {
-  assert.match(harness, /constant:\s*true/);
-  assert.match(harness, /selective:\s*true/);
+  assert.match(bootstrap, /constant:\s*true/);
+  assert.match(bootstrap, /selective:\s*true/);
 });

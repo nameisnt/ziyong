@@ -7,12 +7,12 @@ const notice = await readFile(new URL('../../src/components/PreviewDraftNotice.v
 const persistence = await readFile(new URL('../../src/util/previewDrafts.ts', import.meta.url), 'utf8');
 const managerConsumers = await Promise.all(
   [
-    '../../src/components/diary/DiaryCatalogPage.vue',
-    '../../src/components/letters/LettersCatalogPage.vue',
-    '../../src/components/forum/ForumCatalogPage.vue',
-    '../../src/components/summary/SummaryCatalogPage.vue',
-    '../../src/components/theater/TheaterCatalogPage.vue',
-    '../../src/components/extras/ExtrasCatalogPage.vue',
+    '../../src/apps/diary/DiaryCatalogPage.vue',
+    '../../src/apps/letters/LettersCatalogPage.vue',
+    '../../src/apps/forum/ForumCatalogPage.vue',
+    '../../src/apps/summary/SummaryCatalogPage.vue',
+    '../../src/apps/theater/TheaterCatalogPage.vue',
+    '../../src/apps/extras/ExtrasCatalogPage.vue',
     '../../src/apps/profiles/pages/ProfilesCatalogPage.vue',
     '../../src/apps/storylines/StorylinesApp.vue',
     '../../src/apps/scene-planner/ScenePlannerApp.vue',

@@ -180,21 +180,21 @@
 </template>
 
 <script setup lang="ts">
-import SummaryBatchPage from '@/components/summary/SummaryBatchPage.vue';
-import SummaryBookPage from '@/components/summary/SummaryBookPage.vue';
-import SummaryBookEditorPage from '@/components/summary/SummaryBookEditorPage.vue';
-import SummaryBaguPage from '@/components/summary/SummaryBaguPage.vue';
-import SummaryCatalogPage from '@/components/summary/SummaryCatalogPage.vue';
+import SummaryBatchPage from '@/apps/summary/SummaryBatchPage.vue';
+import SummaryBookPage from '@/apps/summary/SummaryBookPage.vue';
+import SummaryBookEditorPage from '@/apps/summary/SummaryBookEditorPage.vue';
+import SummaryBaguPage from '@/apps/summary/SummaryBaguPage.vue';
+import SummaryCatalogPage from '@/apps/summary/SummaryCatalogPage.vue';
 import CreationModeModal, { type CreationModeOption } from '@/components/CreationModeModal.vue';
-import SummaryEntryDetailPage from '@/components/summary/SummaryEntryDetailPage.vue';
-import SummaryEntryEditorPage from '@/components/summary/SummaryEntryEditorPage.vue';
-import SummaryFailedDraftPage from '@/components/summary/SummaryFailedDraftPage.vue';
-import SummaryGeneratePage from '@/components/summary/SummaryGeneratePage.vue';
-import SummaryImportPage from '@/components/summary/SummaryImportPage.vue';
-import SummaryPreviewPage from '@/components/summary/SummaryPreviewPage.vue';
-import { useSummaryBookSession } from '@/components/summary/useSummaryBookSession';
-import { useSummaryBatchSession } from '@/components/summary/useSummaryBatchSession';
-import { useSummaryGenerationActions } from '@/components/summary/useSummaryGenerationActions';
+import SummaryEntryDetailPage from '@/apps/summary/SummaryEntryDetailPage.vue';
+import SummaryEntryEditorPage from '@/apps/summary/SummaryEntryEditorPage.vue';
+import SummaryFailedDraftPage from '@/apps/summary/SummaryFailedDraftPage.vue';
+import SummaryGeneratePage from '@/apps/summary/SummaryGeneratePage.vue';
+import SummaryImportPage from '@/apps/summary/SummaryImportPage.vue';
+import SummaryPreviewPage from '@/apps/summary/SummaryPreviewPage.vue';
+import { useSummaryBookSession } from '@/apps/summary/useSummaryBookSession';
+import { useSummaryBatchSession } from '@/apps/summary/useSummaryBatchSession';
+import { useSummaryGenerationActions } from '@/apps/summary/useSummaryGenerationActions';
 import { useCatalogDetailNavigation } from '@/composables/useCatalogDetailNavigation';
 import { useDirectorySort } from '@/composables/useDirectorySort';
 import { useSummaryImport } from '@/composables/useSummaryImport';

@@ -4,18 +4,18 @@ import { readFile } from 'node:fs/promises';
 import test from 'node:test';
 
 const files = [
-  'src/components/summary/useSummaryGenerationActions.ts',
-  'src/components/DiaryApp.vue',
-  'src/components/LettersApp.vue',
-  'src/components/TheaterApp.vue',
-  'src/components/forum/useForumGenerationActions.ts',
-  'src/components/extras/useExtrasGenerationActions.ts',
+  'src/apps/summary/useSummaryGenerationActions.ts',
+  'src/apps/diary/DiaryApp.vue',
+  'src/apps/letters/LettersApp.vue',
+  'src/apps/theater/TheaterApp.vue',
+  'src/apps/forum/useForumGenerationActions.ts',
+  'src/apps/extras/useExtrasGenerationActions.ts',
 ];
 const consumers = await Promise.all(
   files.map(async file => ({ file, source: await readFile(new URL(`../../${file}`, import.meta.url), 'utf8') })),
 );
 const summaryBatch = await readFile(
-  new URL('../../src/components/summary/useSummaryBatchSession.ts', import.meta.url),
+  new URL('../../src/apps/summary/useSummaryBatchSession.ts', import.meta.url),
   'utf8',
 );
 

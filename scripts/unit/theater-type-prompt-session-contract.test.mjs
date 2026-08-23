@@ -12,7 +12,7 @@ async function readMaybe(url) {
 }
 
 const formSource = await readMaybe(new URL('../../src/components/GenerationFormPage.vue', import.meta.url));
-const theaterSource = await readMaybe(new URL('../../src/components/TheaterApp.vue', import.meta.url));
+const theaterSource = await readMaybe(new URL('../../src/apps/theater/TheaterApp.vue', import.meta.url));
 const scenarioCatalogSource = await readMaybe(new URL('../../src/testing/visual/scenarioCatalog.ts', import.meta.url));
 const theaterScenarioSource = await readMaybe(new URL('../../src/testing/visual/theaterScenarios.ts', import.meta.url));
 

@@ -4,7 +4,7 @@ import { readFile } from 'node:fs/promises';
 import test from 'node:test';
 
 const chatSource = await readFile(new URL('../../src/apps/chat-insert/ChatInsertApp.vue', import.meta.url), 'utf8');
-const extrasSource = await readFile(new URL('../../src/components/extras/ExtrasBookEditorPage.vue', import.meta.url), 'utf8');
+const extrasSource = await readFile(new URL('../../src/apps/extras/ExtrasBookEditorPage.vue', import.meta.url), 'utf8');
 
 test('fixed short enum selects use pc-select without changing their behavior bindings', async () => {
   const failures = [];

@@ -5,8 +5,8 @@ import test from 'node:test';
 
 import { scanVueUiContracts } from '../ui-contract-check.mjs';
 
-const file = 'src/components/diary/DiaryBookPage.vue';
-const source = await readFile(new URL('../../src/components/diary/DiaryBookPage.vue', import.meta.url), 'utf8');
+const file = 'src/apps/diary/DiaryBookPage.vue';
+const source = await readFile(new URL('../../src/apps/diary/DiaryBookPage.vue', import.meta.url), 'utf8');
 
 test('every Diary book icon button has the same accessible name as its title', () => {
   const nameFindings = scanVueUiContracts(source, file).filter(finding => finding.ruleId === 'icon-button-aria-label');

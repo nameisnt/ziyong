@@ -11,9 +11,9 @@ async function readMaybe(url) {
   }
 }
 
-const catalogSource = await readMaybe(new URL('../../src/components/theater/TheaterCatalogPage.vue', import.meta.url));
-const theaterSource = await readMaybe(new URL('../../src/components/TheaterApp.vue', import.meta.url));
-const randomSource = await readMaybe(new URL('../../src/components/theater/theaterTypeRandom.ts', import.meta.url));
+const catalogSource = await readMaybe(new URL('../../src/apps/theater/TheaterCatalogPage.vue', import.meta.url));
+const theaterSource = await readMaybe(new URL('../../src/apps/theater/TheaterApp.vue', import.meta.url));
+const randomSource = await readMaybe(new URL('../../src/apps/theater/theaterTypeRandom.ts', import.meta.url));
 const scenarioCatalogSource = await readMaybe(new URL('../../src/testing/visual/scenarioCatalog.ts', import.meta.url));
 const theaterScenarioSource = await readMaybe(new URL('../../src/testing/visual/theaterScenarios.ts', import.meta.url));
 

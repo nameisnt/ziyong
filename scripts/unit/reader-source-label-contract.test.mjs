@@ -5,11 +5,11 @@ import test from 'node:test';
 
 const shellSource = await readFile(new URL('../../src/components/ReaderDetailShell.vue', import.meta.url), 'utf8');
 const consumers = [
-  ['diary', '../../src/components/diary/DiaryEntryDetailPage.vue'],
-  ['extras', '../../src/components/extras/ExtrasChapterDetailPage.vue'],
-  ['forum', '../../src/components/forum/ForumThreadDetailPage.vue'],
-  ['letters', '../../src/components/letters/LettersEntryDetailPage.vue'],
-  ['theater', '../../src/components/theater/TheaterEntryDetailPage.vue'],
+  ['diary', '../../src/apps/diary/DiaryEntryDetailPage.vue'],
+  ['extras', '../../src/apps/extras/ExtrasChapterDetailPage.vue'],
+  ['forum', '../../src/apps/forum/ForumThreadDetailPage.vue'],
+  ['letters', '../../src/apps/letters/LettersEntryDetailPage.vue'],
+  ['theater', '../../src/apps/theater/TheaterEntryDetailPage.vue'],
 ];
 
 test('reader shell owns one optional generation source label presentation', () => {

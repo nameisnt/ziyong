@@ -192,17 +192,17 @@
 </template>
 
 <script setup lang="ts">
-import DiaryBookPage from '@/components/diary/DiaryBookPage.vue';
-import DiaryBookEditorPage from '@/components/diary/DiaryBookEditorPage.vue';
-import DiaryBaguPage from '@/components/diary/DiaryBaguPage.vue';
-import DiaryBatchPage from '@/components/diary/DiaryBatchPage.vue';
-import DiaryCatalogPage from '@/components/diary/DiaryCatalogPage.vue';
+import DiaryBookPage from '@/apps/diary/DiaryBookPage.vue';
+import DiaryBookEditorPage from '@/apps/diary/DiaryBookEditorPage.vue';
+import DiaryBaguPage from '@/apps/diary/DiaryBaguPage.vue';
+import DiaryBatchPage from '@/apps/diary/DiaryBatchPage.vue';
+import DiaryCatalogPage from '@/apps/diary/DiaryCatalogPage.vue';
 import CreationModeModal, { type CreationModeOption } from '@/components/CreationModeModal.vue';
-import DiaryEntryDetailPage from '@/components/diary/DiaryEntryDetailPage.vue';
-import DiaryEntryEditorPage from '@/components/diary/DiaryEntryEditorPage.vue';
-import DiaryFailedDraftPage from '@/components/diary/DiaryFailedDraftPage.vue';
-import DiaryGeneratePage from '@/components/diary/DiaryGeneratePage.vue';
-import DiaryPreviewPage from '@/components/diary/DiaryPreviewPage.vue';
+import DiaryEntryDetailPage from '@/apps/diary/DiaryEntryDetailPage.vue';
+import DiaryEntryEditorPage from '@/apps/diary/DiaryEntryEditorPage.vue';
+import DiaryFailedDraftPage from '@/apps/diary/DiaryFailedDraftPage.vue';
+import DiaryGeneratePage from '@/apps/diary/DiaryGeneratePage.vue';
+import DiaryPreviewPage from '@/apps/diary/DiaryPreviewPage.vue';
 import { BUILTIN_DIARY_PRESET_SELECTION, resolveDiaryPresetSelection } from '@/apps/preset-manager/builtinDiaryPreset';
 import { useCatalogDetailNavigation } from '@/composables/useCatalogDetailNavigation';
 import { useDirectorySort } from '@/composables/useDirectorySort';

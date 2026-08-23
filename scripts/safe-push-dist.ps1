@@ -2,7 +2,8 @@ param(
   [string]$CommitMessage = '',
   [switch]$DryRun,
   [switch]$SkipBuild,
-  [switch]$ConfirmPush
+  [switch]$ConfirmPush,
+  [string[]]$UntrackIgnoredPath = @()
 )
 
 $ErrorActionPreference = 'Stop'
@@ -99,6 +100,37 @@ function Invoke-CheckedWithRetry {
 function Normalize-RemoteUrl {
   param([string]$Url)
   return ($Url.Trim() -replace '/$', '')
+}
+
+function Normalize-RepositoryPath {
+  param([string]$Path)
+  return (($Path.Trim() -replace '\\', '/') -replace '/+$', '')
+}
+
+function Get-TreePaths {
+  param(
+    [Parameter(Mandatory = $true)]
+    [string]$Commit,
+    [Parameter(Mandatory = $true)]
+    [string]$Path
+  )
+
+  $paths = @(& git -c core.quotepath=false ls-tree -r --name-only $Commit -- $Path)
+  if ($LASTEXITCODE -ne 0) {
+    throw "Failed to inspect tracked paths at $Commit under $Path."
+  }
+  return $paths
+}
+
+function Test-SamePathSet {
+  param(
+    [object[]]$Left = @(),
+    [object[]]$Right = @()
+  )
+
+  $leftKey = @($Left | Sort-Object) -join "`n"
+  $rightKey = @($Right | Sort-Object) -join "`n"
+  return $leftKey -ceq $rightKey
 }
 
 function Get-ThreeWayConflictPaths {
@@ -276,6 +308,8 @@ if (-not $DryRun) {
 $parent = Invoke-Capture -Command git -Arguments @('rev-parse', 'origin/main')
 $head = Invoke-Capture -Command git -Arguments @('rev-parse', 'HEAD')
 $pushExistingHead = $false
+$appendToLocalHead = $false
+$candidateParent = $parent
 if ($head -ne $parent) {
   & git merge-base --is-ancestor $parent $head
   $remoteAncestorExitCode = $LASTEXITCODE
@@ -288,16 +322,19 @@ if ($head -ne $parent) {
     if ($LASTEXITCODE -ne 0) {
       throw 'Failed to inspect untracked files before pushing the existing local HEAD.'
     }
-    if ($stagedDiffExitCode -ne 0 -or $worktreeDiffExitCode -ne 0 -or $untrackedForAheadPush.Count) {
-      throw 'Local main is ahead of origin/main, but the index or worktree is not clean. Commit or remove those changes before publishing the existing HEAD.'
+    if ($stagedDiffExitCode -eq 0 -and $worktreeDiffExitCode -eq 0 -and -not $untrackedForAheadPush.Count) {
+      $pushExistingHead = $true
+      Write-Host "Local main is ahead of origin/main; the existing HEAD will be verified and pushed without rewriting it." -ForegroundColor Yellow
+    } else {
+      $appendToLocalHead = $true
+      $candidateParent = $head
+      Write-Host "Local main is ahead of origin/main and has later workspace changes; the publish candidate will be committed on top of the existing local HEAD." -ForegroundColor Yellow
     }
-    $pushExistingHead = $true
-    Write-Host "Local main is ahead of origin/main; the existing HEAD will be verified and pushed without rewriting it." -ForegroundColor Yellow
   } elseif ($remoteAncestorExitCode -ne 1) {
     throw 'Failed to determine whether origin/main is an ancestor of local HEAD.'
   }
 }
-if ($head -ne $parent -and -not $pushExistingHead) {
+if ($head -ne $parent -and -not $pushExistingHead -and -not $appendToLocalHead) {
   & git diff --cached --quiet --exit-code
   $stagedDiffExitCode = $LASTEXITCODE
   if ($stagedDiffExitCode -eq 1) {
@@ -427,6 +464,91 @@ if ($head -ne $parent -and -not $pushExistingHead) {
   }
 }
 
+$normalizedExcludedTrackedPaths = @(
+  $excludedTrackedPaths |
+    ForEach-Object { Normalize-RepositoryPath -Path $_ } |
+    Where-Object { $_ } |
+    Sort-Object -Unique
+)
+$requestedUntrackPaths = @(
+  $UntrackIgnoredPath |
+    ForEach-Object { Normalize-RepositoryPath -Path $_ } |
+    Where-Object { $_ } |
+    Sort-Object -Unique
+)
+$approvedUntrackPaths = @()
+
+foreach ($path in $requestedUntrackPaths) {
+  if ($normalizedExcludedTrackedPaths -notcontains $path) {
+    throw "Requested untrack path is not an exact non-glob .gitignore entry: $path"
+  }
+
+  $parentPaths = @(Get-TreePaths -Commit $parent -Path $path)
+  if (-not $parentPaths.Count) {
+    throw "Requested untrack path has no tracked files in origin/main: $path"
+  }
+
+  $headPaths = @(Get-TreePaths -Commit $head -Path $path)
+  $indexPaths = @(& git -c core.quotepath=false ls-files -- $path)
+  if ($LASTEXITCODE -ne 0) {
+    throw "Failed to inspect the normal index under requested untrack path: $path"
+  }
+  if ($indexPaths.Count) {
+    throw "Requested untrack path is still present in the normal index. Stage or commit its complete removal first: $path"
+  }
+
+  if ($headPaths.Count) {
+    if (-not (Test-SamePathSet -Left $parentPaths -Right $headPaths)) {
+      throw "Requested untrack path differs between local HEAD and origin/main: $path"
+    }
+    & git diff --quiet --exit-code $parent $head -- $path
+    if ($LASTEXITCODE -ne 0) {
+      throw "Requested untrack path has content changes between local HEAD and origin/main: $path"
+    }
+    $stagedDeletedPaths = @(& git -c core.quotepath=false diff --cached --name-only --diff-filter=D HEAD -- $path)
+    if ($LASTEXITCODE -ne 0) {
+      throw "Failed to inspect staged removals under requested untrack path: $path"
+    }
+    if (-not (Test-SamePathSet -Left $parentPaths -Right $stagedDeletedPaths)) {
+      throw "Requested untrack path is not completely staged for removal: $path"
+    }
+  } else {
+    $committedDeletedPaths = @(& git -c core.quotepath=false diff --name-only --diff-filter=D $parent $head -- $path)
+    if ($LASTEXITCODE -ne 0) {
+      throw "Failed to inspect committed removals under requested untrack path: $path"
+    }
+    if (-not (Test-SamePathSet -Left $parentPaths -Right $committedDeletedPaths)) {
+      throw "Requested untrack path is not completely removed by local commits: $path"
+    }
+    $indexChanges = @(& git -c core.quotepath=false diff --cached --name-only HEAD -- $path)
+    if ($LASTEXITCODE -ne 0) {
+      throw "Failed to inspect normal-index changes under requested untrack path: $path"
+    }
+    if ($indexChanges.Count) {
+      throw "Requested untrack path has additional normal-index changes after its committed removal: $path"
+    }
+  }
+
+  foreach ($file in $parentPaths) {
+    if (-not (Test-Path -LiteralPath $file -PathType Leaf)) {
+      throw "A locally preserved file is missing under requested untrack path: $file"
+    }
+    $parentBlob = Invoke-Capture -Command git -Arguments @('rev-parse', "${parent}:$file")
+    $localBlob = Invoke-Capture -Command git -Arguments @('hash-object', '--', $file)
+    if ($parentBlob -ne $localBlob) {
+      throw "A locally preserved file differs from origin/main under requested untrack path: $file"
+    }
+  }
+
+  $approvedUntrackPaths += $path
+}
+
+if ($approvedUntrackPaths.Count) {
+  Write-Host ''
+  Write-Host 'Explicit ignored paths approved for tracked removal:' -ForegroundColor Yellow
+  $approvedUntrackPaths | ForEach-Object { Write-Host "  $_" -ForegroundColor Yellow }
+}
+
 if ($runBuild) {
   Invoke-Checked -Command pnpm -Arguments @('build')
 }
@@ -490,12 +612,16 @@ try {
   }
 
   $env:GIT_INDEX_FILE = $tmpIndex
-  Invoke-Checked -Command git -Arguments @('read-tree', $parent)
+  Invoke-Checked -Command git -Arguments @('read-tree', $candidateParent)
   Invoke-Checked -Command git -Arguments @('-c', 'core.safecrlf=false', 'add', '--update', '--', '.')
   foreach ($path in $allowedPublishPaths) {
     if (Test-Path -LiteralPath $path) {
       Invoke-Checked -Command git -Arguments @('-c', 'core.safecrlf=false', 'add', '--all', '--', $path)
     }
+  }
+
+  foreach ($path in $approvedUntrackPaths) {
+    Invoke-Checked -Command git -Arguments @('rm', '-r', '--cached', '--ignore-unmatch', '--', $path)
   }
 
   $trackedExclusions = @()
@@ -513,11 +639,17 @@ try {
     Invoke-Checked -Command git -Arguments $restoreArguments
   }
 
-  & git diff --cached --quiet --exit-code $parent
+  & git diff --cached --quiet --exit-code $candidateParent
   $diffExitCode = $LASTEXITCODE
   if ($diffExitCode -eq 0) {
-    Write-Host 'There are no tracked changes compared with origin/main. Nothing to push.' -ForegroundColor Yellow
-    exit 0
+    if ($appendToLocalHead) {
+      $pushExistingHead = $true
+      $head = $candidateParent
+      Write-Host 'No publishable workspace changes remain after exclusions; the existing local HEAD will be verified instead.' -ForegroundColor Yellow
+    } else {
+      Write-Host 'There are no tracked changes compared with the publish parent. Nothing to push.' -ForegroundColor Yellow
+      exit 0
+    }
   }
   if ($diffExitCode -ne 1) {
     throw 'Failed to compare tracked changes with origin/main.'
@@ -525,22 +657,22 @@ try {
 
   Write-Host ''
   Write-Host 'Tracked files that will be published:' -ForegroundColor Yellow
-  & git --no-pager diff --cached --name-status $parent
+  & git --no-pager diff --cached --name-status $candidateParent
   if ($LASTEXITCODE -ne 0) {
     throw 'Failed to show the staged file list.'
   }
 
   Write-Host ''
   Write-Host 'Diff summary:' -ForegroundColor Yellow
-  & git --no-pager diff --cached --stat $parent
+  & git --no-pager diff --cached --stat $candidateParent
   if ($LASTEXITCODE -ne 0) {
     throw 'Failed to show the staged diff.'
   }
 
   $tree = Invoke-Capture -Command git -Arguments @('write-tree')
-  $parentTree = Invoke-Capture -Command git -Arguments @('rev-parse', "$parent^{tree}")
-  if ($tree -eq $parentTree) {
-    Write-Host 'The generated tree is identical to origin/main. Nothing to push.' -ForegroundColor Yellow
+  $candidateParentTree = Invoke-Capture -Command git -Arguments @('rev-parse', "$candidateParent^{tree}")
+  if ($tree -eq $candidateParentTree -and -not $pushExistingHead) {
+    Write-Host 'The generated tree is identical to the publish parent. Nothing to push.' -ForegroundColor Yellow
     exit 0
   }
 
@@ -576,10 +708,10 @@ try {
     exit 0
   }
 
-  $commit = Invoke-Capture -Command git -Arguments @('commit-tree', $tree, '-p', $parent, '-m', $CommitMessage)
+  $commit = Invoke-Capture -Command git -Arguments @('commit-tree', $tree, '-p', $candidateParent, '-m', $CommitMessage)
   $actualParent = Invoke-Capture -Command git -Arguments @('rev-parse', "$commit^")
-  if ($actualParent -ne $parent) {
-    throw "Created commit parent mismatch. Expected $parent, got $actualParent."
+  if ($actualParent -ne $candidateParent) {
+    throw "Created commit parent mismatch. Expected $candidateParent, got $actualParent."
   }
 
   Write-Host ''
@@ -590,9 +722,9 @@ try {
   $env:GIT_INDEX_FILE = $originalIndex
   Invoke-Checked -Command git -Arguments @('read-tree', $commit)
   try {
-    Invoke-Checked -Command git -Arguments @('update-ref', 'refs/heads/main', $commit, $parent)
+    Invoke-Checked -Command git -Arguments @('update-ref', 'refs/heads/main', $commit, $candidateParent)
   } catch {
-    Invoke-Checked -Command git -Arguments @('read-tree', $parent)
+    Invoke-Checked -Command git -Arguments @('read-tree', $candidateParent)
     throw
   }
 

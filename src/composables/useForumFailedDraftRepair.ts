@@ -1,5 +1,5 @@
 import { materializeForumReplies } from '@/core/forumGeneration';
-import type { ForumGenerationPreview } from '@/components/forum/useForumPreviewSession';
+import type { ForumGenerationPreview } from '@/apps/forum/useForumPreviewSession';
 import { useForumStore } from '@/store/forum';
 import { usePhoneStore } from '@/store/phone';
 import type { FailedGenerationDraft } from '@/type/generation';

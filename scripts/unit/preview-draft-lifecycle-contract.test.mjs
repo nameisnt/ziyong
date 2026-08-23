@@ -7,19 +7,19 @@ const store = await readFile(new URL('../../src/store/previewDrafts.ts', import.
 const persistence = await readFile(new URL('../../src/util/previewDrafts.ts', import.meta.url), 'utf8');
 const startConsumers = {
   customApp: [await readFile(new URL('../../src/apps/app-builder/CustomAppHost.vue', import.meta.url), 'utf8'), /beginPreviewDraft\(\);/],
-  diary: [await readFile(new URL('../../src/components/DiaryApp.vue', import.meta.url), 'utf8'), /beginDiaryPreviewDraft\(\);/],
+  diary: [await readFile(new URL('../../src/apps/diary/DiaryApp.vue', import.meta.url), 'utf8'), /beginDiaryPreviewDraft\(\);/],
   digest: [await readFile(new URL('../../src/apps/digest/DigestApp.vue', import.meta.url), 'utf8'), /beginDigestPreviewDraft\(\);/],
-  letters: [await readFile(new URL('../../src/components/LettersApp.vue', import.meta.url), 'utf8'), /beginLettersPreviewDraft\(\);/],
+  letters: [await readFile(new URL('../../src/apps/letters/LettersApp.vue', import.meta.url), 'utf8'), /beginLettersPreviewDraft\(\);/],
   relationship: [await readFile(new URL('../../src/apps/relationship/RelationshipApp.vue', import.meta.url), 'utf8'), /beginRelationshipPreviewDraft\(\);/],
   scenePlanner: [await readFile(new URL('../../src/apps/scene-planner/ScenePlannerApp.vue', import.meta.url), 'utf8'), /beginScenePreviewDraft\(\);/],
   storylines: [await readFile(new URL('../../src/apps/storylines/StorylinesApp.vue', import.meta.url), 'utf8'), /beginStorylinePreviewDraft\(\);/],
-  theater: [await readFile(new URL('../../src/components/TheaterApp.vue', import.meta.url), 'utf8'), /beginTheaterPreviewDraft\(\);/],
+  theater: [await readFile(new URL('../../src/apps/theater/TheaterApp.vue', import.meta.url), 'utf8'), /beginTheaterPreviewDraft\(\);/],
   cardWriter: [await readFile(new URL('../../src/apps/card-writer/CardWriterApp.vue', import.meta.url), 'utf8'), /beginWriterPreviewDraft\(\);/],
 };
 const sharedActionConsumers = {
-  extras: [await readFile(new URL('../../src/components/extras/useExtrasGenerationActions.ts', import.meta.url), 'utf8'), /options\.beginChapterPreviewDraft\(\)[\s\S]*?options\.beginSummaryPreviewDraft\(\)/],
-  forum: [await readFile(new URL('../../src/components/forum/useForumGenerationActions.ts', import.meta.url), 'utf8'), /options\.beginPreviewDraft\(\)[\s\S]*?options\.beginPreviewDraft\(\)/],
-  summary: [await readFile(new URL('../../src/components/summary/useSummaryGenerationActions.ts', import.meta.url), 'utf8'), /options\.beginPreviewDraft\(\);/],
+  extras: [await readFile(new URL('../../src/apps/extras/useExtrasGenerationActions.ts', import.meta.url), 'utf8'), /options\.beginChapterPreviewDraft\(\)[\s\S]*?options\.beginSummaryPreviewDraft\(\)/],
+  forum: [await readFile(new URL('../../src/apps/forum/useForumGenerationActions.ts', import.meta.url), 'utf8'), /options\.beginPreviewDraft\(\)[\s\S]*?options\.beginPreviewDraft\(\)/],
+  summary: [await readFile(new URL('../../src/apps/summary/useSummaryGenerationActions.ts', import.meta.url), 'utf8'), /options\.beginPreviewDraft\(\);/],
 };
 
 test('multi-preview lifecycle has explicit create, update, select and active-only delete operations', () => {

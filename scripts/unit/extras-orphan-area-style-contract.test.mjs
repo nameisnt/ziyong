@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import test from 'node:test';
 
-const extras = await readFile(new URL('../../src/components/ExtrasApp.vue', import.meta.url), 'utf8');
+const extras = await readFile(new URL('../../src/apps/extras/ExtrasApp.vue', import.meta.url), 'utf8');
 const extrasScenarios = await readFile(
   new URL('../../src/testing/visual/extrasGenerationScenarios.ts', import.meta.url),
   'utf8',

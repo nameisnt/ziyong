@@ -4,7 +4,7 @@ import { readFile } from 'node:fs/promises';
 import test from 'node:test';
 
 const extrasSource = await readFile(
-  new URL('../../src/components/extras/ExtrasChapterGeneratePage.vue', import.meta.url),
+  new URL('../../src/apps/extras/ExtrasChapterGeneratePage.vue', import.meta.url),
   'utf8',
 );
 const promptsSource = await readFile(

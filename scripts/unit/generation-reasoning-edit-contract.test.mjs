@@ -10,18 +10,20 @@ const disclosure = await readSource('src/components/ReasoningDisclosure.vue');
 const panel = await readSource('src/components/GenerationPreviewPanel.vue');
 const page = await readSource('src/components/GenerationPreviewPage.vue');
 const wrappers = await Promise.all(
-  ['diary/DiaryPreviewPage.vue', 'summary/SummaryPreviewPage.vue', 'letters/LettersPreviewPage.vue'].map(path =>
-    readSource(`src/components/${path}`),
-  ),
+  [
+    'src/apps/diary/DiaryPreviewPage.vue',
+    'src/apps/summary/SummaryPreviewPage.vue',
+    'src/apps/letters/LettersPreviewPage.vue',
+  ].map(readSource),
 );
 const consumers = await Promise.all(
   [
-    'src/components/DiaryApp.vue',
-    'src/components/SummaryApp.vue',
-    'src/components/ExtrasApp.vue',
-    'src/components/TheaterApp.vue',
-    'src/components/LettersApp.vue',
-    'src/components/ForumApp.vue',
+    'src/apps/diary/DiaryApp.vue',
+    'src/apps/summary/SummaryApp.vue',
+    'src/apps/extras/ExtrasApp.vue',
+    'src/apps/theater/TheaterApp.vue',
+    'src/apps/letters/LettersApp.vue',
+    'src/apps/forum/ForumApp.vue',
     'src/apps/app-builder/CustomAppHost.vue',
     'src/apps/digest/DigestApp.vue',
     'src/apps/relationship/RelationshipApp.vue',
