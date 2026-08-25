@@ -1,7 +1,7 @@
 {
   "version": 2,
   "defect": "D-VISUAL-001",
-  "generatedAt": "2026-08-25T06:52:17.015Z",
+  "generatedAt": "2026-08-25T07:46:32.877Z",
   "scenarios": [
     "home",
     "home-tasks-dark",
@@ -17,7 +17,7 @@
   "evidence": [
     {
       "appearance": {
-        "screenshotPerceptualHash": "F0AAA8CC010173AA",
+        "screenshotPerceptualHash": "F0AAA884010173AA",
         "targets": [
           {
             "missing": false,
@@ -43,7 +43,7 @@
     },
     {
       "appearance": {
-        "screenshotPerceptualHash": "0C3D737373734C55",
+        "screenshotPerceptualHash": "0C3D737373C04C55",
         "targets": [
           {
             "missing": false,
@@ -70,7 +70,7 @@
     },
     {
       "appearance": {
-        "screenshotPerceptualHash": "7C7CE01377792120",
+        "screenshotPerceptualHash": "7C78E01375792122",
         "targets": [
           {
             "missing": false,
@@ -95,7 +95,7 @@
     },
     {
       "appearance": {
-        "screenshotPerceptualHash": "F878F01377272110",
+        "screenshotPerceptualHash": "FC74F09377072322",
         "targets": [
           {
             "missing": false,
@@ -140,7 +140,7 @@
     },
     {
       "appearance": {
-        "screenshotPerceptualHash": "F0AAB901010121AA",
+        "screenshotPerceptualHash": "F0AAD901010121AA",
         "targets": [
           {
             "missing": false,
@@ -193,7 +193,7 @@
     },
     {
       "appearance": {
-        "screenshotPerceptualHash": "7C78763231230080",
+        "screenshotPerceptualHash": "7C30362239230080",
         "targets": [
           {
             "missing": false,
@@ -218,7 +218,7 @@
     },
     {
       "appearance": {
-        "screenshotPerceptualHash": "F07C7662272300C0",
+        "screenshotPerceptualHash": "FC747630272300C0",
         "targets": [
           {
             "missing": false,
@@ -243,7 +243,7 @@
     },
     {
       "appearance": {
-        "screenshotPerceptualHash": "D0C8D80707010101",
+        "screenshotPerceptualHash": "F0C8D00707010101",
         "targets": [
           {
             "missing": false,
@@ -263,7 +263,7 @@
     },
     {
       "appearance": {
-        "screenshotPerceptualHash": "F0AAC501010101AA",
+        "screenshotPerceptualHash": "F1AAC501010101AA",
         "targets": [
           {
             "missing": false,
@@ -289,7 +289,7 @@
     },
     {
       "appearance": {
-        "screenshotPerceptualHash": "1C7D317900000055",
+        "screenshotPerceptualHash": "1C75337901000055",
         "targets": [
           {
             "missing": false,
@@ -316,7 +316,7 @@
     },
     {
       "appearance": {
-        "screenshotPerceptualHash": "EC702EEB71000040",
+        "screenshotPerceptualHash": "FC702E6B71000040",
         "targets": [
           {
             "missing": false,
@@ -341,7 +341,7 @@
     },
     {
       "appearance": {
-        "screenshotPerceptualHash": "F0F42EF123000040",
+        "screenshotPerceptualHash": "FCF02E6923000040",
         "targets": [
           {
             "missing": false,
@@ -366,7 +366,7 @@
     },
     {
       "appearance": {
-        "screenshotPerceptualHash": "F0F0620703010102",
+        "screenshotPerceptualHash": "B0D0310703010102",
         "targets": [
           {
             "missing": false,

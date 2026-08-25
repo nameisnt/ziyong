@@ -589,7 +589,7 @@ async function runInteractionChecks(page, scenario) {
     if (scenario === 'status-display-mvu') {
       const frame = page.frameLocator('.pc-status-display-app iframe');
       if ((await frame.locator('#status-mvu-bridge-result').textContent()) !== '正在城镇休息') {
-        findings.push({ severity: 'fail', message: 'MVU 状态栏网页没有读取到注入的当前 MVU 数据' });
+        findings.push({ severity: 'fail', message: 'MVU 状态栏网页没有通过酒馆助手接口读取当前变量' });
       }
       await frame.locator('#status-toggle').click();
       if ((await frame.locator('#status-action-result').textContent()) !== '已响应') {

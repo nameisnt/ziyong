@@ -1,5 +1,5 @@
 <template>
-  <div :class="['pc-frame-shell', { embedded }]">
+  <div :class="['pc-frame-shell', { embedded, frameless }]">
     <template v-if="shouldRender">
       <iframe
         ref="iframeEl"
@@ -32,7 +32,9 @@ const props = withDefaults(
     active?: boolean;
     content: string;
     embedded?: boolean;
-    mvuData?: Record<string, unknown> | null;
+    flushContent?: boolean;
+    frameless?: boolean;
+    hostBridge?: boolean;
     securityMode?: 'safe' | 'trusted';
     theme?: 'dark' | 'light';
     title?: string;
@@ -40,7 +42,9 @@ const props = withDefaults(
   {
     active: true,
     embedded: false,
-    mvuData: null,
+    flushContent: false,
+    frameless: false,
+    hostBridge: false,
     securityMode: 'trusted',
     theme: 'light',
     title: '',
@@ -62,12 +66,15 @@ let feedbackStreak = 0;
 let lastFeedbackDelta: number | null = null;
 let lastFeedbackViewport = 0;
 const channelId = `theater_frame_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
-const sandboxFlags = 'allow-scripts';
+const sandboxFlags = computed(() =>
+  props.hostBridge && props.securityMode === 'trusted' ? 'allow-scripts allow-same-origin' : 'allow-scripts',
+);
 
 const documentHtml = computed(() =>
   buildFrontendDocument(props.content, {
     channelId,
-    mvuData: props.mvuData,
+    flushContent: props.flushContent,
+    hostBridge: props.hostBridge,
     securityMode: props.securityMode,
     theme: props.theme,
     title: props.title,
@@ -80,7 +87,16 @@ const statusCopy = computed(() =>
 );
 
 watch(
-  () => [props.active, props.content, props.mvuData, props.securityMode, props.theme, props.title] as const,
+  () =>
+    [
+      props.active,
+      props.content,
+      props.flushContent,
+      props.hostBridge,
+      props.securityMode,
+      props.theme,
+      props.title,
+    ] as const,
   ([active], previousValue) => {
     const previousActive = previousValue?.[0];
     frameHeight.value = 320;
@@ -207,6 +223,12 @@ onBeforeUnmount(() => {
 
 .pc-frame-shell.embedded {
   margin-top: 0;
+}
+
+.pc-frame-shell.frameless {
+  border: 0;
+  border-radius: 0;
+  background: transparent;
 }
 
 .pc-frame {

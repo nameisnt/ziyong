@@ -413,14 +413,11 @@ async function applyScenario(name: VisualScenarioName, options: { height?: numbe
       '  <p id="status-mvu-bridge-result">未读取</p>',
       '</section>',
       '<script>',
-      'const latestStat = window.getLatestMvuStatData();',
-      "const directStat = window.Mvu.getMvuData({ type: 'message', message_id: 'latest' }).stat_data;",
-      'const aliasStat = window.MVU.stat();',
-      "document.getElementById('status-mvu-bridge-result').textContent =",
-      '  latestStat.角色.艾莉娅.状态 === directStat.角色.艾莉娅.状态 &&',
-      '  directStat.角色.艾莉娅.状态 === aliasStat.角色.艾莉娅.状态',
-      '    ? aliasStat.角色.艾莉娅.状态',
-      "    : '读取不一致';",
+      '(async () => {',
+      "  await waitGlobalInitialized('Mvu');",
+      "  const variables = await getVariables({ type: 'message', message_id: 'latest' });",
+      "  document.getElementById('status-mvu-bridge-result').textContent = variables.stat_data.角色.艾莉娅.状态;",
+      '})();',
       "document.getElementById('status-toggle').addEventListener('click', () => {",
       "  document.getElementById('status-action-result').textContent = '已响应';",
       '});',
@@ -431,7 +428,7 @@ async function applyScenario(name: VisualScenarioName, options: { height?: numbe
     resetPhoneToRoute('status-display', 'root', '状态栏');
     const rendered = await waitForVisualCondition(() => {
       const frame = document.querySelector<HTMLIFrameElement>('.pc-status-display-app iframe');
-      return Boolean(frame?.srcdoc.includes('正在城镇休息'));
+      return Boolean(frame?.srcdoc.includes('正在城镇休息') && frame.sandbox.contains('allow-same-origin'));
     });
     if (!rendered) throw new Error('Status display MVU template did not render inside the frontend frame');
     await waitForPaint();

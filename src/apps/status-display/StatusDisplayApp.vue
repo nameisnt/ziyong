@@ -15,7 +15,9 @@
       :active="true"
       :content="renderedHtml"
       embedded
-      :mvu-data="mvuSnapshot"
+      flush-content
+      frameless
+      :host-bridge="activeScheme.source === 'mvu'"
       :security-mode="activeScheme.source === 'mvu' ? 'trusted' : 'safe'"
       :theme="settingsStore.settings.theme"
       :title="activeScheme.name"
@@ -29,7 +31,7 @@
 </template>
 
 <script setup lang="ts">
-import { readMvuData, readMvuStatData, type MvuData } from '@/apps/mvu-modifier/api';
+import { readMvuData, readMvuStatData } from '@/apps/mvu-modifier/api';
 import { useRegexDisplayStore } from '@/apps/regex-display/store';
 import EmptyState from '@/components/EmptyState.vue';
 import FrontendFrame from '@/components/FrontendFrame.vue';
@@ -48,7 +50,6 @@ const regexDisplay = useRegexDisplayStore();
 const { configError, schemes } = storeToRefs(statusStore);
 const route = computed(() => phone.currentRoute);
 const loading = ref(false);
-const mvuSnapshot = ref<MvuData | null>(null);
 const renderedHtml = ref('');
 const errorMessage = ref('');
 let refreshRevision = 0;
@@ -88,15 +89,11 @@ async function loadMvuStatus(scheme: StatusDisplayScheme) {
       ? { type: 'message' as const, message_id: 'latest' as const }
       : { type: scheme.mvuScope };
   const data = await readMvuData(options);
-  return {
-    data,
-    html: renderMvuStatusTemplate(scheme.template, readMvuStatData(data)),
-  };
+  return renderMvuStatusTemplate(scheme.template, readMvuStatData(data));
 }
 
 async function refreshStatus() {
   const revision = ++refreshRevision;
-  mvuSnapshot.value = null;
   renderedHtml.value = '';
   errorMessage.value = '';
   if (!activeScheme.value) return;
@@ -110,11 +107,8 @@ async function refreshStatus() {
       const html = loadRegexStatus(activeScheme.value);
       if (revision === refreshRevision) renderedHtml.value = html;
     } else {
-      const result = await loadMvuStatus(activeScheme.value);
-      if (revision === refreshRevision) {
-        mvuSnapshot.value = result.data;
-        renderedHtml.value = result.html;
-      }
+      const html = await loadMvuStatus(activeScheme.value);
+      if (revision === refreshRevision) renderedHtml.value = html;
     }
   } catch (error) {
     if (revision === refreshRevision) errorMessage.value = error instanceof Error ? error.message : String(error);

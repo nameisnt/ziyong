@@ -14,16 +14,19 @@ const settingsModule = await readFile(
   'utf8',
 );
 const frontend = await readFile(new URL('../../src/util/theaterFrontend.ts', import.meta.url), 'utf8');
+const frontendFrame = await readFile(new URL('../../src/components/FrontendFrame.vue', import.meta.url), 'utf8');
 
 test('MVU status templates stay interactive while regex output remains safe', () => {
   assert.match(viewer, /:security-mode="activeScheme\.source === 'mvu' \? 'trusted' : 'safe'"/u);
-  assert.match(viewer, /:mvu-data="mvuSnapshot"/u);
+  assert.match(viewer, /:host-bridge="activeScheme\.source === 'mvu'"/u);
+  assert.match(viewer, /flush-content[\s\S]*?frameless/u);
   assert.match(settings, /:content="editorPreviewHtml"[\s\S]*?security-mode="trusted"/u);
-  assert.match(settings, /:mvu-data="editorMvuData"/u);
-  assert.match(frontend, /window\.getLatestMvuData = \(\) => data/u);
-  assert.match(frontend, /window\.getLatestMvuStatData = \(\) => statData/u);
-  assert.match(frontend, /window\.Mvu = \{ getMvuData: \(\) => data \}/u);
-  assert.match(frontend, /window\.MVU = \{ data: \(\) => data, stat: \(\) => statData \}/u);
+  assert.match(settings, /flush-content[\s\S]*?host-bridge/u);
+  assert.match(frontend, /window\.TavernHelper = helper/u);
+  assert.match(frontend, /window\[name\] = helper\[name\]\.bind\(helper\)/u);
+  assert.match(frontend, /window\.Mvu = parentWin\.__th_ufb_bridge__\?\.Mvu \|\| parentWin\.Mvu/u);
+  assert.match(frontendFrame, /'allow-scripts allow-same-origin' : 'allow-scripts'/u);
+  assert.doesNotMatch(viewer, /mvu-data|mvuSnapshot/u);
 });
 
 test('status viewer and settings are separate apps with one configuration owner', () => {

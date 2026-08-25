@@ -1,6 +1,7 @@
 export interface TheaterFrontendBuildOptions {
   channelId: string;
-  mvuData?: Record<string, unknown> | null;
+  flushContent?: boolean;
+  hostBridge?: boolean;
   securityMode?: 'safe' | 'trusted';
   theme: 'dark' | 'light';
   title?: string;
@@ -131,7 +132,7 @@ function createBaseStyle(theme: 'dark' | 'light') {
   ].join('\n');
 }
 
-function createLayoutGuardStyle() {
+function createLayoutGuardStyle(flushContent: boolean) {
   return [
     'html, body {',
     '  height: auto !important;',
@@ -145,7 +146,7 @@ function createLayoutGuardStyle() {
     '  display: flow-root;',
     '  width: 100%;',
     '  min-height: 0;',
-    '  padding: 16px;',
+    `  padding: ${flushContent ? '0' : '16px'};`,
     '  box-sizing: border-box;',
     '  background: var(--pc-frame-bg);',
     '}',
@@ -159,19 +160,26 @@ function escapeHtmlText(value: string) {
   return value.replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('>', '&gt;');
 }
 
-function createMvuSnapshotBridgeScript(mvuData: Record<string, unknown>) {
-  const serialized = JSON.stringify(mvuData)
-    .replaceAll('<', '\\u003c')
-    .replaceAll('>', '\\u003e')
-    .replaceAll('&', '\\u0026');
+function createHostBridgeScript() {
   return [
     '(() => {',
-    `  const data = ${serialized};`,
-    "  const statData = data && typeof data.stat_data === 'object' ? data.stat_data : {};",
-    '  window.getLatestMvuData = () => data;',
-    '  window.getLatestMvuStatData = () => statData;',
-    '  window.Mvu = { getMvuData: () => data };',
-    '  window.MVU = { data: () => data, stat: () => statData };',
+    '  const parentWin = window.parent;',
+    '  const helper = parentWin.TavernHelper;',
+    '  window.parentWin = parentWin;',
+    '  window.parentDoc = parentWin.document;',
+    "  for (const name of ['$', '_', 'toastr']) {",
+    '    if (parentWin[name] !== undefined) window[name] = parentWin[name];',
+    '  }',
+    '  window.TavernHelper = helper;',
+    '  if (helper) {',
+    '    for (const name of Object.keys(helper)) {',
+    "      if (typeof helper[name] === 'function' && window[name] === undefined) {",
+    '        window[name] = helper[name].bind(helper);',
+    '      }',
+    '    }',
+    '  }',
+    '  window.Mvu = parentWin.__th_ufb_bridge__?.Mvu || parentWin.Mvu;',
+    '  if (parentWin.MVU !== undefined) window.MVU = parentWin.MVU;',
     '})();',
   ].join('\n');
 }
@@ -270,9 +278,8 @@ export function buildFrontendDocument(rawHtml: string, options: TheaterFrontendB
   const title = options.title?.trim() || '小剧场';
   const nonce = `pc${options.channelId.replace(/[^A-Za-z0-9]/g, '')}`;
   const csp = securityMode === 'safe' ? createSafeFrontendCsp(nonce) : TRUSTED_FRONTEND_IFRAME_CSP;
-  const mvuBridge = options.mvuData
-    ? `  <script${securityMode === 'safe' ? ` nonce="${nonce}"` : ''}>${createMvuSnapshotBridgeScript(options.mvuData)}</script>`
-    : '';
+  const hostBridge =
+    options.hostBridge && securityMode === 'trusted' ? `  <script>${createHostBridgeScript()}</script>` : '';
 
   return [
     '<!doctype html>',
@@ -283,9 +290,9 @@ export function buildFrontendDocument(rawHtml: string, options: TheaterFrontendB
     `  <meta http-equiv="Content-Security-Policy" content="${csp}" />`,
     `  <title>${escapeHtmlText(title)}</title>`,
     `  <style>${createBaseStyle(options.theme)}</style>`,
-    mvuBridge,
+    hostBridge,
     sanitized.headHtml,
-    `  <style>${createLayoutGuardStyle()}</style>`,
+    `  <style>${createLayoutGuardStyle(options.flushContent ?? false)}</style>`,
     '</head>',
     '<body>',
     '  <main id="pc-frame-content">',

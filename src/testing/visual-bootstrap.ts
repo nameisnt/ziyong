@@ -275,6 +275,7 @@ export function setupVisualGlobals(): VisualGlobalFixtureControls {
         delete visualPresetStore[presetName];
         return true;
       },
+      getVariables: () => structuredClone(visualMvuData),
       getChatHistoryBrief: async () => visualBriefs,
       getChatHistoryDetail: async () => ({
         'visual-current.json': visualMessages,
@@ -318,6 +319,11 @@ export function setupVisualGlobals(): VisualGlobalFixtureControls {
         visualPresetStore[presetName] = structuredClone(updated);
         return structuredClone(updated);
       },
+      updateVariablesWith: async (updater: (data: typeof visualMvuData) => typeof visualMvuData) => {
+        visualMvuData = structuredClone(updater(structuredClone(visualMvuData)));
+        return structuredClone(visualMvuData);
+      },
+      waitGlobalInitialized: async (name: string) => (globalThis as Record<string, unknown>)[name],
     },
     createPreset: async (presetName: string, preset: Record<string, unknown>) => {
       if (!presetName || presetName === 'in_use' || visualPresetStore[presetName]) return false;

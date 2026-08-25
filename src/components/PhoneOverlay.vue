@@ -76,7 +76,10 @@
         </article>
       </div>
 
-      <main ref="screenEl" class="pc-screen">
+      <main
+        ref="screenEl"
+        :class="['pc-screen', { 'pc-screen-status-display': currentRoute.appId === 'status-display' }]"
+      >
         <PhoneHome
           v-if="currentRoute.appId === 'home'"
           :get-display-app-icon="getDisplayAppIcon"
@@ -413,8 +416,8 @@ onBeforeUnmount(() => {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 8px;
-  padding: 5px 14px;
+  gap: 6px;
+  padding: 4px 10px;
   background: color-mix(in srgb, var(--pc-surface) 88%, transparent);
   backdrop-filter: blur(20px);
   touch-action: none;
@@ -425,8 +428,8 @@ onBeforeUnmount(() => {
 
 .pc-top-left {
   display: flex;
-  min-width: 80px;
-  gap: 8px;
+  min-width: 70px;
+  gap: 6px;
   justify-content: flex-start;
   position: relative;
   z-index: 1;
@@ -438,8 +441,8 @@ onBeforeUnmount(() => {
 
 .pc-top-actions {
   display: flex;
-  min-width: 80px;
-  gap: 8px;
+  min-width: 70px;
+  gap: 6px;
   justify-content: flex-end;
   position: relative;
   z-index: 1;
@@ -448,10 +451,10 @@ onBeforeUnmount(() => {
 .pc-top-title {
   position: absolute;
   left: 50%;
-  max-width: calc(100% - 176px);
+  max-width: calc(100% - 152px);
   transform: translateX(-50%);
   text-align: center;
-  font-size: 14px;
+  font-size: 13px;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -469,8 +472,9 @@ onBeforeUnmount(() => {
 }
 
 .pc-topbar .pc-top-btn {
-  width: 36px;
-  height: 36px;
+  width: 32px;
+  height: 32px;
+  font-size: 13px;
 }
 
 .pc-top-btn.ghost {
@@ -481,7 +485,7 @@ onBeforeUnmount(() => {
 .pc-phone-notices {
   position: absolute;
   z-index: 80;
-  top: 48px;
+  top: 42px;
   right: 12px;
   left: 12px;
   display: grid;
@@ -599,6 +603,10 @@ onBeforeUnmount(() => {
   flex: 1;
   overflow: auto;
   padding: 8px 14px 16px;
+}
+
+.pc-screen.pc-screen-status-display {
+  padding: 0;
 }
 
 .pc-screen :deep(.pc-detail-card),
