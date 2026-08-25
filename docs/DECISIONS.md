@@ -164,7 +164,7 @@
 
 ## ADR-023 状态栏是当前聊天的实时投影
 
-决策：状态栏拆成两个 App。`status-display` 保留原 ID，只读取当前聊天绑定方案并实时渲染；`status-display-settings` 负责当前聊天方案选择、新建、编辑、复制、删除、正则配置、MVU 模板预览和配置备份。两者共享 `useStatusDisplayStore`，不复制方案数据。正则方案从后向前读取最新命中的可见 AI 原文并使用 `FrontendFrame` safe 模式渲染；MVU 方案读取 `Mvu.getMvuData()` 的 `stat_data`，用 `{{mvu:路径}}` 插入经过 HTML 转义的变量值，并以 trusted 模式保留插件内模板交互。
+决策：状态栏拆成两个 App。`status-display` 保留原 ID，只读取当前聊天绑定方案并实时渲染；`status-display-settings` 负责当前聊天方案选择、新建、编辑、复制、删除、正则配置、MVU 模板预览和配置备份。两者共享 `useStatusDisplayStore`，不复制方案数据。正则方案从后向前读取最新命中的可见 AI 原文并使用 `FrontendFrame` safe 模式渲染；MVU 方案读取完整 `Mvu.getMvuData()` 快照，既用 `{{mvu:路径}}` 插入经过 HTML 转义的变量值，也在用户网页脚本前注入只读 `Mvu.getMvuData()`、`getLatestMvuData()`、`getLatestMvuStatData()` 和 `MVU` 接口，并以 trusted 模式保留插件内模板交互。
 
 理由：状态栏随当前聊天和变量变化，不是需要保存、统计、收藏或迁移的一条内容记录；展示入口需要打开即看，配置入口则包含完整管理流程，拆分 UI 职责可以避免展示页被工具栏和编辑操作占用。共享 store 保留单一配置来源。正则结果来自聊天内容，继续禁用脚本；MVU 模板由用户在插件内维护，需要保留标签页、折叠和按钮等页面交互。
 

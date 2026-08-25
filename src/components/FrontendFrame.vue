@@ -32,6 +32,7 @@ const props = withDefaults(
     active?: boolean;
     content: string;
     embedded?: boolean;
+    mvuData?: Record<string, unknown> | null;
     securityMode?: 'safe' | 'trusted';
     theme?: 'dark' | 'light';
     title?: string;
@@ -39,6 +40,7 @@ const props = withDefaults(
   {
     active: true,
     embedded: false,
+    mvuData: null,
     securityMode: 'trusted',
     theme: 'light',
     title: '',
@@ -65,6 +67,7 @@ const sandboxFlags = 'allow-scripts';
 const documentHtml = computed(() =>
   buildFrontendDocument(props.content, {
     channelId,
+    mvuData: props.mvuData,
     securityMode: props.securityMode,
     theme: props.theme,
     title: props.title,
@@ -77,7 +80,7 @@ const statusCopy = computed(() =>
 );
 
 watch(
-  () => [props.active, props.content, props.securityMode, props.theme, props.title] as const,
+  () => [props.active, props.content, props.mvuData, props.securityMode, props.theme, props.title] as const,
   ([active], previousValue) => {
     const previousActive = previousValue?.[0];
     frameHeight.value = 320;
@@ -120,9 +123,7 @@ function followsFrameViewport(height: number, viewportHeight: number) {
 
   const delta = Math.round(height - viewportHeight);
   const repeatsSameDelta =
-    lastFeedbackDelta !== null &&
-    Math.abs(delta - lastFeedbackDelta) <= 2 &&
-    viewportHeight > lastFeedbackViewport + 1;
+    lastFeedbackDelta !== null && Math.abs(delta - lastFeedbackDelta) <= 2 && viewportHeight > lastFeedbackViewport + 1;
   feedbackStreak = repeatsSameDelta ? feedbackStreak + 1 : 0;
   lastFeedbackDelta = delta;
   lastFeedbackViewport = viewportHeight;

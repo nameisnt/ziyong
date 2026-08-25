@@ -87,7 +87,7 @@
 - 工作台：`src/apps/workbench/runner.ts` 监听生成与聊天事件；聊天切换采用“等待宿主加载 → 核对切换序号 → 同步当前 scope 基线 → 检查到期工作流”的流程。`store.ts` 保存每个工作流的 scope checkpoint、暂停运行和日志，界面实时投影累计层数与下一次触发。
 - 备份查重：`src/apps/recovery/model.ts` 生成完全相同、严格续长和 90% 相似分组，`store.ts` 在删除前重新下载复核，`RecoveryMaintenanceFlow.vue` 管理选择和确认。
 - 前端网页：`src/util/theaterFrontend.ts` 清理 HTML、保留完整页面或片段中的 head/style，并构造 iframe 文档；`FrontendFrame.vue` 根据子文档回报高度调整容器。
-- 状态栏：`src/apps/status-display/StatusDisplayApp.vue` 是纯展示入口，读取当前聊天绑定并在聊天事件后刷新；`StatusDisplaySettingsApp.vue` 由 `src/apps/status-display-settings/index.ts` 注册为独立设置 App，负责方案绑定、增删改复制、正则配置、MVU 编辑预览和备份。正则链为“可见 AI 原文倒序扫描 → 方案提取规则 → 方案显示规则 → safe iframe”；MVU 链为“`Mvu.getMvuData()` → `stat_data` → `{{mvu:路径}}` 模板替换 → trusted iframe”。
+- 状态栏：`src/apps/status-display/StatusDisplayApp.vue` 是纯展示入口，读取当前聊天绑定并在聊天事件后刷新；`StatusDisplaySettingsApp.vue` 由 `src/apps/status-display-settings/index.ts` 注册为独立设置 App，负责方案绑定、增删改复制、正则配置、MVU 编辑预览和备份。正则链为“可见 AI 原文倒序扫描 → 方案提取规则 → 方案显示规则 → safe iframe”；MVU 链为“`Mvu.getMvuData()` → 完整数据快照与 `stat_data` → `{{mvu:路径}}` 模板替换 → 在用户脚本前注入只读 `Mvu`/`MVU`/`getLatestMvuData` 接口 → trusted iframe”。
 - 中文转换：`src/util/chineseConversion.ts` 动态加载与酒馆助手繁简脚本相同的转换核心，详情壳统一提供转换操作。
 - 插件宏：`src/apps/macro-builder/` 生成参数化宏，`src/util/pluginMacros.ts` 解析，`generationService` 只在手机生成期间注册。
 - 助手脚本：`src/apps/script-manager/` 读取三类 TavernHelper 脚本树，展平根脚本与文件夹脚本；导出读取当前脚本树，删除按作用域调用 `updateScriptTreesWith()` 并保留文件夹节点。

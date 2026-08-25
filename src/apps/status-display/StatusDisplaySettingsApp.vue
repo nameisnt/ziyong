@@ -144,6 +144,7 @@
         <FrontendFrame
           :active="true"
           :content="editorPreviewHtml"
+          :mvu-data="editorMvuData"
           security-mode="trusted"
           :theme="settingsStore.settings.theme"
           title="状态栏预览"
@@ -159,7 +160,7 @@
 </template>
 
 <script setup lang="ts">
-import { readMvuData, readMvuStatData, type MvuScope, type MvuStatData } from '@/apps/mvu-modifier/api';
+import { readMvuData, readMvuStatData, type MvuData, type MvuScope, type MvuStatData } from '@/apps/mvu-modifier/api';
 import { useRegexDisplayStore } from '@/apps/regex-display/store';
 import EmptyState from '@/components/EmptyState.vue';
 import FrontendFrame from '@/components/FrontendFrame.vue';
@@ -183,6 +184,7 @@ const regexDisplay = useRegexDisplayStore();
 const { configError, schemes } = storeToRefs(statusStore);
 const route = computed(() => phone.currentRoute);
 const editorDraft = ref<StatusDisplayScheme | null>(null);
+const editorMvuData = ref<MvuData | null>(null);
 const editorStatData = ref<MvuStatData>({});
 const editorVariablesLoading = ref(false);
 const editorVariablesError = ref('');
@@ -230,12 +232,14 @@ function mvuScopeLabel(scope: MvuScope) {
 
 function createScheme() {
   editorDraft.value = createStatusDisplayScheme();
+  editorMvuData.value = null;
   editorStatData.value = {};
   phone.pushPage('editor', '新增状态方案', { schemeId: editorDraft.value.id });
 }
 
 function editScheme(scheme: StatusDisplayScheme) {
   editorDraft.value = klona(scheme);
+  editorMvuData.value = null;
   editorStatData.value = {};
   phone.pushPage('editor', '编辑状态方案', { schemeId: scheme.id });
   if (scheme.source === 'mvu') void loadEditorVariables();
@@ -314,8 +318,11 @@ async function loadEditorVariables() {
       editorDraft.value.mvuScope === 'message'
         ? { type: 'message' as const, message_id: 'latest' as const }
         : { type: editorDraft.value.mvuScope };
-    editorStatData.value = readMvuStatData(await readMvuData(options));
+    const data = await readMvuData(options);
+    editorMvuData.value = data;
+    editorStatData.value = readMvuStatData(data);
   } catch (error) {
+    editorMvuData.value = null;
     editorStatData.value = {};
     editorVariablesError.value = error instanceof Error ? error.message : String(error);
   } finally {

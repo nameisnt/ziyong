@@ -1,5 +1,6 @@
 export interface TheaterFrontendBuildOptions {
   channelId: string;
+  mvuData?: Record<string, unknown> | null;
   securityMode?: 'safe' | 'trusted';
   theme: 'dark' | 'light';
   title?: string;
@@ -158,6 +159,23 @@ function escapeHtmlText(value: string) {
   return value.replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('>', '&gt;');
 }
 
+function createMvuSnapshotBridgeScript(mvuData: Record<string, unknown>) {
+  const serialized = JSON.stringify(mvuData)
+    .replaceAll('<', '\\u003c')
+    .replaceAll('>', '\\u003e')
+    .replaceAll('&', '\\u0026');
+  return [
+    '(() => {',
+    `  const data = ${serialized};`,
+    "  const statData = data && typeof data.stat_data === 'object' ? data.stat_data : {};",
+    '  window.getLatestMvuData = () => data;',
+    '  window.getLatestMvuStatData = () => statData;',
+    '  window.Mvu = { getMvuData: () => data };',
+    '  window.MVU = { data: () => data, stat: () => statData };',
+    '})();',
+  ].join('\n');
+}
+
 function createResizeBridgeScript(channelId: string) {
   return [
     '(() => {',
@@ -252,6 +270,9 @@ export function buildFrontendDocument(rawHtml: string, options: TheaterFrontendB
   const title = options.title?.trim() || '小剧场';
   const nonce = `pc${options.channelId.replace(/[^A-Za-z0-9]/g, '')}`;
   const csp = securityMode === 'safe' ? createSafeFrontendCsp(nonce) : TRUSTED_FRONTEND_IFRAME_CSP;
+  const mvuBridge = options.mvuData
+    ? `  <script${securityMode === 'safe' ? ` nonce="${nonce}"` : ''}>${createMvuSnapshotBridgeScript(options.mvuData)}</script>`
+    : '';
 
   return [
     '<!doctype html>',
@@ -262,6 +283,7 @@ export function buildFrontendDocument(rawHtml: string, options: TheaterFrontendB
     `  <meta http-equiv="Content-Security-Policy" content="${csp}" />`,
     `  <title>${escapeHtmlText(title)}</title>`,
     `  <style>${createBaseStyle(options.theme)}</style>`,
+    mvuBridge,
     sanitized.headHtml,
     `  <style>${createLayoutGuardStyle()}</style>`,
     '</head>',

@@ -244,18 +244,20 @@ async function captureAppearanceEvidence(page, scenario, screenshotPath) {
   const contract = getAppearanceContract(scenario);
   if (!contract) return null;
 
-  const targets = await page.evaluate(currentContract =>
-    currentContract.targets.map(target => {
-      const element = document.querySelector(target.selector);
-      if (!element) return { missing: true, selector: target.selector, styles: {} };
-      const computed = getComputedStyle(element);
-      return {
-        missing: false,
-        selector: target.selector,
-        styles: Object.fromEntries(target.properties.map(property => [property, computed[property]])),
-      };
-    }),
-  contract);
+  const targets = await page.evaluate(
+    currentContract =>
+      currentContract.targets.map(target => {
+        const element = document.querySelector(target.selector);
+        if (!element) return { missing: true, selector: target.selector, styles: {} };
+        const computed = getComputedStyle(element);
+        return {
+          missing: false,
+          selector: target.selector,
+          styles: Object.fromEntries(target.properties.map(property => [property, computed[property]])),
+        };
+      }),
+    contract,
+  );
   const png = await readFile(screenshotPath);
   const screenshotPerceptualHash = await page.evaluate(async base64 => {
     const binary = atob(base64);
@@ -586,6 +588,9 @@ async function runInteractionChecks(page, scenario) {
   try {
     if (scenario === 'status-display-mvu') {
       const frame = page.frameLocator('.pc-status-display-app iframe');
+      if ((await frame.locator('#status-mvu-bridge-result').textContent()) !== '正在城镇休息') {
+        findings.push({ severity: 'fail', message: 'MVU 状态栏网页没有读取到注入的当前 MVU 数据' });
+      }
       await frame.locator('#status-toggle').click();
       if ((await frame.locator('#status-action-result').textContent()) !== '已响应') {
         findings.push({ severity: 'fail', message: 'MVU 状态栏网页按钮点击后没有执行模板脚本' });
@@ -892,9 +897,7 @@ async function runInteractionChecks(page, scenario) {
       if ((await editor.count()) !== 1) {
         findings.push({ severity: 'fail', message: '总结失败草稿没有保留可编辑的原始输出' });
       } else {
-        await editor.fill(
-          '<result><title>重新解析成功</title><content>修复 XML 后保留的总结正文。</content></result>',
-        );
+        await editor.fill('<result><title>重新解析成功</title><content>修复 XML 后保留的总结正文。</content></result>');
         await page.locator('.pc-failed-draft-page .pc-form-actions .pc-primary-btn').click();
         try {
           await page.locator('.pc-shared-generation-preview-page').waitFor({ state: 'visible' });
@@ -911,7 +914,10 @@ async function runInteractionChecks(page, scenario) {
             message: `总结原始输出修复后没有进入预览（disabled=${reparseDisabled}; value=${editorValue.slice(0, 100)}; feedback=${feedback.join(' | ').slice(0, 180)}）`,
           });
         }
-        const previewText = await page.locator('.pc-shared-generation-preview-page').textContent().catch(() => '');
+        const previewText = await page
+          .locator('.pc-shared-generation-preview-page')
+          .textContent()
+          .catch(() => '');
         if (!previewText.includes('重新解析成功') || !previewText.includes('修复 XML 后保留的总结正文')) {
           findings.push({ severity: 'fail', message: '总结重解析预览没有保留修复后的标题与正文' });
         }
@@ -938,7 +944,10 @@ async function runInteractionChecks(page, scenario) {
         '<result><board>视觉板块</board><title>论坛预览重解析成功</title><author>视觉楼主</author><content>论坛预览修复后的主楼正文。</content></result>',
       );
       await page.getByRole('button', { name: '重新解析', exact: true }).last().click();
-      const previewText = await page.locator('.pc-forum-preview-page').textContent().catch(() => '');
+      const previewText = await page
+        .locator('.pc-forum-preview-page')
+        .textContent()
+        .catch(() => '');
       if (!previewText.includes('论坛预览重解析成功') || !previewText.includes('论坛预览修复后的主楼正文')) {
         findings.push({ severity: 'fail', message: '论坛预览修改原始输出后重新解析没有更新主楼内容' });
       }
@@ -960,7 +969,9 @@ async function runInteractionChecks(page, scenario) {
         try {
           await preview.waitFor({ state: 'visible' });
         } catch {
-          const feedback = await page.locator('.toast-message, .pc-phone-notice, .pc-failed-draft-page').allTextContents();
+          const feedback = await page
+            .locator('.toast-message, .pc-phone-notice, .pc-failed-draft-page')
+            .allTextContents();
           findings.push({
             severity: 'fail',
             message: `${scenario} 修复原文后没有进入预览（feedback=${feedback.join(' | ').slice(0, 180)}）`,
@@ -1083,8 +1094,7 @@ async function main() {
     ];
     const requestedScenarios = contractScenarios.length ? [...new Set(contractScenarios)] : options.scenarios;
     fullScenarioRun = !requestedScenarios?.length || requestedScenarios.includes('all');
-    const scenarios =
-      fullScenarioRun ? harnessScenarios : requestedScenarios;
+    const scenarios = fullScenarioRun ? harnessScenarios : requestedScenarios;
 
     if (options.listOnly) {
       console.log(scenarios.join('\n'));

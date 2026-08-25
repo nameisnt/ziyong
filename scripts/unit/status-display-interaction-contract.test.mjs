@@ -13,10 +13,17 @@ const settingsModule = await readFile(
   new URL('../../src/apps/status-display-settings/index.ts', import.meta.url),
   'utf8',
 );
+const frontend = await readFile(new URL('../../src/util/theaterFrontend.ts', import.meta.url), 'utf8');
 
 test('MVU status templates stay interactive while regex output remains safe', () => {
   assert.match(viewer, /:security-mode="activeScheme\.source === 'mvu' \? 'trusted' : 'safe'"/u);
+  assert.match(viewer, /:mvu-data="mvuSnapshot"/u);
   assert.match(settings, /:content="editorPreviewHtml"[\s\S]*?security-mode="trusted"/u);
+  assert.match(settings, /:mvu-data="editorMvuData"/u);
+  assert.match(frontend, /window\.getLatestMvuData = \(\) => data/u);
+  assert.match(frontend, /window\.getLatestMvuStatData = \(\) => statData/u);
+  assert.match(frontend, /window\.Mvu = \{ getMvuData: \(\) => data \}/u);
+  assert.match(frontend, /window\.MVU = \{ data: \(\) => data, stat: \(\) => statData \}/u);
 });
 
 test('status viewer and settings are separate apps with one configuration owner', () => {
