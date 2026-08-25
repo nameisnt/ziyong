@@ -38,7 +38,7 @@
 - 当前 scope key 来自 SillyTavern 当前角色/群组和聊天 id，格式近似 `char:<owner>:chat:<chat>` 或 `group:<owner>:chat:<chat>`。
 - 切换聊天时，`phone.syncCurrentTavernScope()` 和各 App 的 `scopeSwitchHandler` 负责切换 store 数据。
 - 配置校验失败时，`useChatScopedDomain` 保留 `configError` 与 `rawConfig`，避免错误数据被静默覆盖。
-- `src/apps/status-display/store.ts` 在全局设置中保存状态方案和 `activeSchemeByScope`；聊天只保存方案选择关系，不保存渲染结果。
+- `src/apps/status-display/store.ts` 在全局设置中保存状态方案和 `activeSchemeByScope`；`status-display` 与 `status-display-settings` 共享该 store，聊天只保存方案选择关系，不保存渲染结果。
 
 ## 生成数据流
 
@@ -82,10 +82,12 @@
 
 - 预设：`src/apps/preset-manager/` 管理酒馆/插件预设及预设共享阅读规则，目录将当前酒馆预设置顶，并在 App 会话内按预设保留详情分组状态；`src/apps/preset-link/` 保存聊天 scope 绑定并在聊天切换时应用酒馆预设。
 - 批量目录：`BulkSelectionBar.vue`、`BulkSelectionCheckbox.vue` 和 `useBulkSelection.ts` 提供共享选择状态，业务 App 仍用各自 store 执行实际级联删除。
-- 世界书：`src/apps/worldbook-link/` 读取和编辑真实世界书，可保留源配置复制新条目，也可把条目复制为 Theater 类型提示词；`src/apps/world-slots/` 管理当前聊天槽位并同步固定世界书。
+- 世界书：`src/apps/worldbook-link/` 读取和编辑真实世界书，现代接口与旧格式接口都写回名称、正文、激活策略和插入位置；目录管理支持批量复制为 Theater 类型提示词，副本编辑保留源配置；`src/apps/world-slots/` 管理当前聊天槽位并同步固定世界书。
+- 正则：`src/apps/regex-display/store.ts` 保存分组、全局执行顺序、规则和各消费目标的绑定；`RegexDisplayApp.vue` 只提供分组目录、触摸/鼠标拖拽和弹窗编辑预览。Reader、Preset Manager、Status Display Settings 等消费界面直接读写各自绑定。
+- 工作台：`src/apps/workbench/runner.ts` 监听生成与聊天事件；聊天切换采用“等待宿主加载 → 核对切换序号 → 同步当前 scope 基线 → 检查到期工作流”的流程。`store.ts` 保存每个工作流的 scope checkpoint、暂停运行和日志，界面实时投影累计层数与下一次触发。
 - 备份查重：`src/apps/recovery/model.ts` 生成完全相同、严格续长和 90% 相似分组，`store.ts` 在删除前重新下载复核，`RecoveryMaintenanceFlow.vue` 管理选择和确认。
 - 前端网页：`src/util/theaterFrontend.ts` 清理 HTML、保留完整页面或片段中的 head/style，并构造 iframe 文档；`FrontendFrame.vue` 根据子文档回报高度调整容器。
-- 状态栏：`src/apps/status-display/` 管理正则/MVU 显示方案。正则链为“可见 AI 原文倒序扫描 → 方案提取规则 → 方案显示规则 → safe iframe”；MVU 链为“`Mvu.getMvuData()` → `stat_data` → `{{mvu:路径}}` 模板替换 → safe iframe”。
+- 状态栏：`src/apps/status-display/StatusDisplayApp.vue` 是纯展示入口，读取当前聊天绑定并在聊天事件后刷新；`StatusDisplaySettingsApp.vue` 由 `src/apps/status-display-settings/index.ts` 注册为独立设置 App，负责方案绑定、增删改复制、正则配置、MVU 编辑预览和备份。正则链为“可见 AI 原文倒序扫描 → 方案提取规则 → 方案显示规则 → safe iframe”；MVU 链为“`Mvu.getMvuData()` → `stat_data` → `{{mvu:路径}}` 模板替换 → trusted iframe”。
 - 中文转换：`src/util/chineseConversion.ts` 动态加载与酒馆助手繁简脚本相同的转换核心，详情壳统一提供转换操作。
 - 插件宏：`src/apps/macro-builder/` 生成参数化宏，`src/util/pluginMacros.ts` 解析，`generationService` 只在手机生成期间注册。
 - 助手脚本：`src/apps/script-manager/` 读取三类 TavernHelper 脚本树，展平根脚本与文件夹脚本；导出读取当前脚本树，删除按作用域调用 `updateScriptTreesWith()` 并保留文件夹节点。

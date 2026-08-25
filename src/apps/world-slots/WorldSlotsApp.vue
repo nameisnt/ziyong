@@ -28,7 +28,10 @@
           class="pc-list-row pc-slot-row"
           @click="openEditor(slot.id)"
         >
-          <span :class="['pc-world-entry-lamp', slot.strategyType === 'selective' ? 'green' : 'blue']" aria-hidden="true"></span>
+          <span
+            :class="['pc-world-entry-lamp', slot.strategyType === 'selective' ? 'green' : 'blue']"
+            aria-hidden="true"
+          ></span>
           <h3>{{ slot.title }}</h3>
           <strong :class="{ disabled: !slot.enabled }">{{ slot.enabled ? t`启用` : t`关闭` }}</strong>
         </article>
@@ -172,7 +175,7 @@
 
         <textarea
           v-model="draft.content"
-          class="pc-area pc-world-area pc-saved-content-area"
+          class="pc-area pc-area-long pc-world-area pc-saved-content-area"
           :placeholder="t`写入世界书的内容`"
         ></textarea>
         <ReferencePicker

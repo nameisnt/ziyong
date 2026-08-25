@@ -115,7 +115,15 @@ export function createVisualScenarioGroups(rootAppScenarios: string[]): VisualSc
       ],
     },
     { id: 'mvu', scenarios: ['mvu-modifier-tree', 'mvu-modifier-crud'] },
-    { id: 'status-display', scenarios: ['status-display-mvu', 'status-display-regex'] },
+    {
+      id: 'status-display',
+      scenarios: [
+        'status-display-mvu',
+        'status-display-regex',
+        'status-display-settings',
+        'status-display-settings-dark',
+      ],
+    },
     { id: 'regex-display', scenarios: ['regex-display-preview', 'regex-display-crud'] },
     { id: 'regex-wizard', scenarios: ['regex-wizard-fields', 'regex-wizard-test', 'regex-wizard-save'] },
     {

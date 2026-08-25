@@ -22,10 +22,10 @@ test('regex display CRUD has one dedicated browser scenario', () => {
   assert.match(scenario, /name !== 'regex-display-crud'/);
 });
 
-test('the regex display scenario covers usage, duplication, and confirmed deletion', () => {
+test('the regex display scenario covers modal editing, grouping, duplication, and confirmed deletion', () => {
   assert.match(scenario, /新增规则/);
-  assert.match(scenario, /使用设置/);
-  assert.match(scenario, /displayRuleIds\.includes/);
+  assert.match(scenario, /pc-regex-editor-dialog/);
+  assert.match(scenario, /addGroup\('视觉分组'\)/);
   assert.match(scenario, /复制规则/);
   assert.match(scenario, /删除规则/);
   assert.match(scenario, /pc-phone-notice-action/);

@@ -16,6 +16,7 @@ import { useForumStore } from '@/store/forum';
 import { useGenerationTaskStore } from '@/store/generationTasks';
 import { useLettersStore } from '@/store/letters';
 import { usePromptStore } from '@/store/prompts';
+import { usePhoneStore } from '@/store/phone';
 import { useSettingsStore } from '@/store/settings';
 import { useSummaryStore } from '@/store/summary';
 import { useTheaterStore } from '@/store/theater';
@@ -886,6 +887,7 @@ export async function runDueWorkbenchWorkflows() {
 let autoRunnerInstalled = false;
 let autoRunnerTimer: ReturnType<typeof window.setTimeout> | null = null;
 let autoRunnerStops: Array<ReturnType<typeof onTavernEvent>> = [];
+let chatChangeRevision = 0;
 const backgroundGenerationIds = new Set<string>();
 const anonymousGenerationKinds: boolean[] = [];
 
@@ -953,18 +955,32 @@ export function installWorkbenchAutoRunner() {
       return;
     scheduleRun();
   };
+  const handleChatChanged = () => {
+    const revision = ++chatChangeRevision;
+    if (autoRunnerTimer) window.clearTimeout(autoRunnerTimer);
+    autoRunnerTimer = window.setTimeout(() => {
+      autoRunnerTimer = null;
+      void (async () => {
+        await usePhoneStore().syncCurrentTavernScope(true, true);
+        if (revision !== chatChangeRevision) return;
+        useWorkbenchStore().syncCurrentScope(getCurrentChatScopeKey());
+        await runDueWorkbenchWorkflows();
+      })();
+    }, 1500);
+  };
 
   autoRunnerStops = [
     onTavernEvent('GENERATION_STARTED', handleGenerationStarted),
     onTavernEvent('GENERATION_ENDED', handleGenerationEnded),
     onTavernEvent('MESSAGE_RECEIVED', handleMessageFallback),
     onTavernEvent('MESSAGE_SWIPED', handleMessageFallback),
-    onTavernEvent('CHAT_CHANGED', scheduleRun),
+    onTavernEvent('CHAT_CHANGED', handleChatChanged),
   ];
   autoRunnerInstalled = true;
 }
 
 export function uninstallWorkbenchAutoRunner() {
+  chatChangeRevision += 1;
   autoRunnerStops.forEach(handle => handle.stop());
   autoRunnerStops = [];
   backgroundGenerationIds.clear();

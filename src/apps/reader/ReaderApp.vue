@@ -77,7 +77,7 @@
                 <span>{{ rule.name || t`未命名规则` }}</span>
               </label>
             </div>
-            <p v-else class="pc-rule-help">{{ t`在正则显示 App 中勾选“正文清理”后，可在这里多选。` }}</p>
+            <p v-else class="pc-rule-help">{{ t`正则资料库中还没有可用的替换规则。` }}</p>
           </details>
           <div class="pc-reader-visibility-row">
             <span>{{ t`显示用户输入` }}</span>
@@ -92,7 +92,7 @@
             </label>
           </div>
           <p v-if="!readerBodyRegexRules.length" class="pc-rule-help">
-            {{ t`正则显示 App 中勾选“楼层正文提取”的规则会显示在这里。` }}
+            {{ t`正则资料库中还没有可用的正文提取规则。` }}
           </p>
         </div>
       </section>
@@ -162,7 +162,9 @@
           <section v-if="activeSwipeCandidates.length > 1" class="pc-reader-swipe-selector" aria-label="候选回复">
             <div class="pc-reader-swipe-head">
               <strong>{{ t`候选回复` }}</strong>
-              <span>{{ t`当前酒馆选择` }} {{ activeMessage.activeSwipeIndex + 1 }}/{{ activeSwipeCandidates.length }}</span>
+              <span
+                >{{ t`当前酒馆选择` }} {{ activeMessage.activeSwipeIndex + 1 }}/{{ activeSwipeCandidates.length }}</span
+              >
             </div>
             <div class="pc-reader-swipe-options">
               <button
@@ -400,10 +402,12 @@ const activeSwipeCandidate = computed(
     activeSwipeCandidates.value[0] ??
     null,
 );
-const isViewingActiveSwipe = computed(
-  () => Boolean(activeMessage.value && activeSwipeCandidate.value?.index === activeMessage.value.activeSwipeIndex),
+const isViewingActiveSwipe = computed(() =>
+  Boolean(activeMessage.value && activeSwipeCandidate.value?.index === activeMessage.value.activeSwipeIndex),
 );
-const activeMessageBody = computed(() => (activeSwipeCandidate.value ? formatReaderBody(activeSwipeCandidate.value.body) : ''));
+const activeMessageBody = computed(() =>
+  activeSwipeCandidate.value ? formatReaderBody(activeSwipeCandidate.value.body) : '',
+);
 const readerBaguContent = computed(() => activeSwipeCandidate.value?.body || '');
 const messageCatalogItems = computed(() =>
   activeMessages.value.map(message => ({
@@ -860,10 +864,9 @@ async function saveReaderReasoning(reasoning: string) {
   if (swipes.length) {
     const swipesData = swipes.map((_, index) => ({ ...(sourceMessage.swipes_data?.[index] || {}) }));
     swipesData[swipeIndex] = { ...swipesData[swipeIndex], reasoning };
-    await setChatMessagesSafe(
-      [{ message_id: sourceMessage.message_id, swipes_data: swipesData }],
-      { refresh: 'affected' },
-    );
+    await setChatMessagesSafe([{ message_id: sourceMessage.message_id, swipes_data: swipesData }], {
+      refresh: 'affected',
+    });
   } else {
     await setChatMessagesSafe(
       [{ message_id: sourceMessage.message_id, extra: { ...sourceMessage.extra, reasoning } }],

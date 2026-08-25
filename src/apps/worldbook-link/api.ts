@@ -590,7 +590,7 @@ export function setWorldbookEntryEnabled(bookName: string, uid: number, enabled:
   return setWorldbookEntryStates(bookName, new Map([[uid, enabled]]), false);
 }
 
-export type WorldbookEntryEditorPatch = Pick<WorldbookEntry, 'content' | 'name' | 'position'>;
+export type WorldbookEntryEditorPatch = Pick<WorldbookEntry, 'content' | 'name' | 'position' | 'strategy'>;
 
 function rawPositionValue(type: WorldbookEntry['position']['type']) {
   return (
@@ -609,6 +609,27 @@ function rawPositionValue(type: WorldbookEntry['position']['type']) {
 
 function rawRoleValue(role: WorldbookEntry['position']['role']) {
   return ({ assistant: 2, system: 0, user: 1 } as const)[role];
+}
+
+function rawLogicValue(logic: WorldbookEntry['strategy']['keys_secondary']['logic']) {
+  return ({ and_all: 3, and_any: 0, not_all: 1, not_any: 2 } as const)[logic];
+}
+
+function applyRawEntryPatch(target: RawWorldbookEntry, patch: WorldbookEntryEditorPatch) {
+  target.comment = patch.name;
+  if ('name' in target) target.name = patch.name;
+  target.content = patch.content;
+  target.position = rawPositionValue(patch.position.type);
+  target.role = rawRoleValue(patch.position.role);
+  target.depth = patch.position.depth;
+  target.order = patch.position.order;
+  target.constant = patch.strategy.type === 'constant';
+  target.selective = patch.strategy.type === 'selective';
+  target.vectorized = patch.strategy.type === 'vectorized';
+  target.key = [...patch.strategy.keys];
+  target.keysecondary = [...patch.strategy.keys_secondary.keys];
+  target.selectiveLogic = rawLogicValue(patch.strategy.keys_secondary.logic);
+  target.scanDepth = patch.strategy.scan_depth === 'same_as_global' ? 0 : patch.strategy.scan_depth;
 }
 
 async function duplicateWorldbookEntryRaw(bookName: string, uid: number, patch: WorldbookEntryEditorPatch) {
@@ -634,13 +655,7 @@ async function duplicateWorldbookEntryRaw(bookName: string, uid: number, patch: 
   const copy = structuredClone(sourcePair[1] as RawWorldbookEntry);
   copy.uid = nextUid;
   if ('id' in copy) copy.id = nextUid;
-  copy.comment = patch.name;
-  if ('name' in copy) copy.name = patch.name;
-  copy.content = patch.content;
-  copy.position = rawPositionValue(patch.position.type);
-  copy.role = rawRoleValue(patch.position.role);
-  copy.depth = patch.position.depth;
-  copy.order = patch.position.order;
+  applyRawEntryPatch(copy, patch);
 
   if (Array.isArray(rawEntries)) rawEntries.push(copy);
   else (rawEntries as Record<string, unknown>)[String(nextUid)] = copy;
@@ -688,13 +703,7 @@ async function updateWorldbookEntryRaw(bookName: string, uid: number, patch: Wor
   });
   if (!targetPair) throw new Error(`世界书条目 #${uid} 已不存在`);
   const target = targetPair[1] as RawWorldbookEntry;
-  target.comment = patch.name;
-  if ('name' in target) target.name = patch.name;
-  target.content = patch.content;
-  target.position = rawPositionValue(patch.position.type);
-  target.role = rawRoleValue(patch.position.role);
-  target.depth = patch.position.depth;
-  target.order = patch.position.order;
+  applyRawEntryPatch(target, patch);
   await saveWorldInfo(bookName, book, true);
   await getOptionalGlobalFunction<() => Promise<void>>('updateWorldInfoList')?.();
   getOptionalGlobalFunction<(file: string, loadIfNotSelected?: boolean) => void>('reloadWorldInfoEditor')?.(
@@ -727,6 +736,14 @@ export async function updateWorldbookEntry(bookName: string, uid: number, patch:
               content: patch.content,
               name: patch.name,
               position: { ...patch.position },
+              strategy: {
+                ...patch.strategy,
+                keys: [...patch.strategy.keys],
+                keys_secondary: {
+                  ...patch.strategy.keys_secondary,
+                  keys: [...patch.strategy.keys_secondary.keys],
+                },
+              },
             };
           }),
         { render: 'immediate' },

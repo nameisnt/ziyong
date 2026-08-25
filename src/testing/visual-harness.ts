@@ -374,7 +374,8 @@ async function applyScenario(name: VisualScenarioName, options: { height?: numbe
       name === 'profiles-external-transfer-row-dark' ||
       name === 'profiles-external-mapping-editor-dark' ||
       name === 'preset-link-dark' ||
-      name === 'macro-builder-dark'
+      name === 'macro-builder-dark' ||
+      name === 'status-display-settings-dark'
       ? 'dark'
       : 'light',
   );
@@ -407,7 +408,14 @@ async function applyScenario(name: VisualScenarioName, options: { height?: numbe
       '  <div class="row"><span>好感度</span><strong>{{mvu:角色.艾莉娅.好感度}}</strong></div>',
       '  <div class="row"><span>当前状态</span><strong>{{mvu:角色.艾莉娅.状态}}</strong></div>',
       '  <div class="row"><span>金币</span><strong>{{mvu:背包.金币}}</strong></div>',
+      '  <button id="status-toggle" type="button">切换详情</button>',
+      '  <p id="status-action-result">未操作</p>',
       '</section>',
+      '<script>',
+      "document.getElementById('status-toggle').addEventListener('click', () => {",
+      "  document.getElementById('status-action-result').textContent = '已响应';",
+      '});',
+      '</script>',
     ].join('\n');
     statusDisplay.upsertScheme(scheme);
     statusDisplay.setActiveScheme(phone.currentTavernScopeKey, scheme.id);
@@ -421,13 +429,27 @@ async function applyScenario(name: VisualScenarioName, options: { height?: numbe
     return { name, route: phone.currentRoute };
   }
 
+  if (name === 'status-display-settings' || name === 'status-display-settings-dark') {
+    const { createStatusDisplayScheme, useStatusDisplayStore } = await import('@/apps/status-display/store');
+    const statusDisplay = useStatusDisplayStore();
+    statusDisplay.settings.schemes = [];
+    statusDisplay.settings.activeSchemeByScope = {};
+    const regexScheme = createStatusDisplayScheme('regex');
+    regexScheme.name = '正文状态';
+    const mvuScheme = createStatusDisplayScheme('mvu');
+    mvuScheme.name = '角色状态';
+    statusDisplay.upsertScheme(regexScheme);
+    statusDisplay.upsertScheme(mvuScheme);
+    statusDisplay.setActiveScheme(phone.currentTavernScopeKey, mvuScheme.id);
+    resetPhoneToRoute('status-display-settings', 'root', '状态栏设置');
+    await waitForPaint();
+    return { name, route: phone.currentRoute };
+  }
+
   if (name === 'status-display-regex') {
     const { createRegexDisplayRule, useRegexDisplayStore } = await import('@/apps/regex-display/store');
-    const {
-      createStatusDisplayScheme,
-      statusDisplayRegexTargetId,
-      useStatusDisplayStore,
-    } = await import('@/apps/status-display/store');
+    const { createStatusDisplayScheme, statusDisplayRegexTargetId, useStatusDisplayStore } =
+      await import('@/apps/status-display/store');
     const statusDisplay = useStatusDisplayStore();
     const regexDisplay = useRegexDisplayStore();
     statusDisplay.settings.schemes = [];
@@ -1120,7 +1142,7 @@ async function applyScenario(name: VisualScenarioName, options: { height?: numbe
       throw new Error('Explicit folder creation left the home interaction locked');
     }
 
-    document.querySelector<HTMLButtonElement>('.pc-home-folder-tools .pc-soft-btn.danger')?.click();
+    document.querySelector<HTMLButtonElement>('.pc-home-folder-head button[title="解散文件夹"]')?.click();
     await new Promise(resolve => window.setTimeout(resolve, 180));
     await waitForPaint();
     let releasedTile = document.querySelector<HTMLButtonElement>(`[data-home-token="${releasedAppId}"]`);
@@ -3863,14 +3885,13 @@ async function applyScenario(name: VisualScenarioName, options: { height?: numbe
   } else if (name === 'regex-display-preview') {
     resetPhoneToRoute('regex-display', 'root', '正则展示');
     await waitForPaint();
+    document.querySelector<HTMLButtonElement>('.pc-regex-rule-open')?.click();
+    await waitForPaint();
     const previewArea = document.querySelector<HTMLTextAreaElement>('.pc-area.preview-source');
     if (!previewArea) throw new Error('Regex display preview textarea is missing');
     const previewSection = previewArea.closest<HTMLElement>('.pc-regex-preview-section');
     const displayApp = previewArea.closest<HTMLElement>('.pc-regex-display-app');
     if (!previewSection || !displayApp) throw new Error('Regex display preview layout container is missing');
-    for (const child of displayApp.children) {
-      if (child !== previewSection) (child as HTMLElement).style.display = 'none';
-    }
     previewArea.scrollIntoView({ block: 'center' });
     await waitForPaint();
   } else if (name === 'regex-wizard-test') {

@@ -11,7 +11,9 @@
       />
 
       <div class="pc-compact-toolbar pc-directory-toolbar pc-workbench-toolbar">
-        <span class="pc-directory-count">{{ workflows.length }} {{ t`个工作流` }}</span>
+        <span class="pc-directory-count"
+          >{{ workflows.length }} {{ t`个工作流` }} · {{ currentAiReplyCount }} AI 层</span
+        >
         <button
           class="pc-icon-btn"
           type="button"
@@ -61,6 +63,7 @@
                 {{ workflow.steps.filter(step => step.enabled).length }} {{ t`步` }}</small
               >
               <small>{{ getWorkflowStatus(workflow) }}</small>
+              <small v-if="getWorkflowLastStatus(workflow)">{{ getWorkflowLastStatus(workflow) }}</small>
             </span>
             <i :class="isWorkflowOpen(workflow.id) ? 'fa-solid fa-chevron-up' : 'fa-solid fa-chevron-down'"></i>
           </button>
@@ -693,9 +696,15 @@ import { usePromptStore } from '@/store/prompts';
 import { useSettingsStore } from '@/store/settings';
 import { usePluginPresetStore } from '@/store/pluginPresets';
 import { getWorkbenchManualRunNotice, runWorkbenchWorkflow, supportedWorkbenchActions } from './runner';
-import { useWorkbenchStore, type WorkbenchInsertDraft, type WorkbenchStep, type WorkbenchWorkflow } from './store';
+import {
+  captureCurrentWorkbenchCheckpoint,
+  useWorkbenchStore,
+  type WorkbenchInsertDraft,
+  type WorkbenchStep,
+  type WorkbenchWorkflow,
+} from './store';
 import { applyChatInsert, formatChatInsertTemplate } from '@/util/chatInsert';
-import { getPresetNamesSafe } from '@/util/runtime';
+import { getPresetNamesSafe, onTavernEvent } from '@/util/runtime';
 import { storeToRefs } from 'pinia';
 import { buildPluginPresetSelectionOptions, pluginPresetIdFromSelection } from '@/apps/preset-manager/pluginPreset';
 
@@ -731,6 +740,16 @@ const collapsedStepIds = ref<string[]>([]);
 const insertDraftsOpen = ref(true);
 const logsOpen = ref(true);
 const tavernPresetNames = ref<string[]>([]);
+const statusRevision = ref(0);
+const statusEventStops = ['CHAT_CHANGED', 'GENERATION_ENDED', 'MESSAGE_RECEIVED', 'MESSAGE_SWIPED'].map(eventName =>
+  onTavernEvent(eventName, () => {
+    statusRevision.value += 1;
+  }),
+);
+const currentAiReplyCount = computed(() => {
+  void statusRevision.value;
+  return captureCurrentWorkbenchCheckpoint().lastAiReplyCount;
+});
 
 function resourceOptions<T extends { id: string }>(
   resources: T[],
@@ -1060,11 +1079,27 @@ function getActionLabel(appId: string, actionId: string) {
 }
 
 function getWorkflowStatus(workflow: WorkbenchWorkflow) {
+  void statusRevision.value;
+  const progress = workbench.getWorkflowProgress(workflow, phone.currentTavernScopeKey);
+  if (progress.pending) return '有暂停任务，等待继续';
   const delayLabel = workflow.delayAiReplies ? ` · 延后 ${workflow.delayAiReplies} 层` : '';
-  return `每 ${workflow.triggerAiReplies} 层${delayLabel}`;
+  return `已累计 ${progress.accumulatedAiReplies}/${workflow.triggerAiReplies} · 还差 ${progress.nextInAiReplies} 层${delayLabel}`;
+}
+
+function getWorkflowLastStatus(workflow: WorkbenchWorkflow) {
+  void statusRevision.value;
+  const progress = workbench.getWorkflowProgress(workflow, phone.currentTavernScopeKey);
+  const latestLog = logs.value.find(
+    log => log.workflowId === workflow.id && log.scopeKey === phone.currentTavernScopeKey,
+  );
+  if (latestLog?.status === 'failed') return `上次失败 · ${latestLog.message}`;
+  if (latestLog?.status === 'paused') return `上次暂停 · ${latestLog.message}`;
+  if (!progress.lastRunAt) return '从当前聊天位置开始计数';
+  return `上次成功 ${new Date(progress.lastRunAt).toLocaleString()}`;
 }
 
 onMounted(refreshTavernPresetNames);
+onBeforeUnmount(() => statusEventStops.forEach(stop => stop.stop()));
 </script>
 
 <style scoped>

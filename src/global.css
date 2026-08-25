@@ -433,10 +433,14 @@
 }
 
 .pc-phone-root .pc-saved-content-editor .pc-saved-content-area {
-  min-height: 0;
+  min-height: 160px;
   height: 100%;
   flex: 1 1 auto;
   resize: none;
+}
+
+.pc-phone-root .pc-saved-content-editor .pc-saved-content-area.pc-area-long {
+  min-height: 260px;
 }
 
 .pc-phone-root .pc-field-label {

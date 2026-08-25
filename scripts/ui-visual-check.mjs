@@ -584,6 +584,29 @@ async function runDomChecks(page) {
 async function runInteractionChecks(page, scenario) {
   const findings = [];
   try {
+    if (scenario === 'status-display-mvu') {
+      const frame = page.frameLocator('.pc-status-display-app iframe');
+      await frame.locator('#status-toggle').click();
+      if ((await frame.locator('#status-action-result').textContent()) !== '已响应') {
+        findings.push({ severity: 'fail', message: 'MVU 状态栏网页按钮点击后没有执行模板脚本' });
+      }
+    }
+
+    if (scenario === 'status-display-settings' || scenario === 'status-display-settings-dark') {
+      await page.locator('.pc-status-scheme-row [aria-label="复制方案"]').first().click();
+      if (!(await page.locator('.pc-compact-toolbar').getByText('3 个方案').count())) {
+        findings.push({ severity: 'fail', message: '状态栏设置复制按钮没有新增方案' });
+      }
+      await page.locator('.pc-status-scheme-main').first().click();
+      if (!(await page.locator('.pc-status-editor-page').count())) {
+        findings.push({ severity: 'fail', message: '状态栏方案点击后没有进入编辑页' });
+      }
+      await page.locator('.pc-status-editor-page .pc-form-actions .pc-soft-btn').click();
+      if (!(await page.locator('.pc-status-settings-page').count())) {
+        findings.push({ severity: 'fail', message: '状态栏编辑取消后没有返回设置页' });
+      }
+    }
+
     if (scenario === 'app:extras') {
       await page.locator('.pc-book-item').first().click();
       if ((await page.locator('.pc-extras-page').count()) === 0) {

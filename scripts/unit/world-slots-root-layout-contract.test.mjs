@@ -20,5 +20,10 @@ test('world slots keeps compact rows and the editor controls requested for narro
   assert.match(row, /slot\.enabled \? t`启用` : t`关闭`/u);
   assert.doesNotMatch(row, /<p|slot\.content|slot\.keys/u);
   assert.match(source, /class="pc-world-slot-name-row"[\s\S]*v-model="draft\.title"[\s\S]*v-model="draft\.enabled"/u);
-  assert.match(source, /class="pc-area pc-world-area pc-saved-content-area"/u);
+  assert.match(source, /v-model="draft\.strategyType"[\s\S]*class="pc-world-basic-grid"/u);
+  assert.match(
+    source,
+    /class="pc-world-basic-grid"[\s\S]*v-model="draft\.position"[\s\S]*v-model="draft\.insertionOrderText"/u,
+  );
+  assert.match(source, /class="[^"]*pc-area-long[^"]*pc-saved-content-area[^"]*"/u);
 });

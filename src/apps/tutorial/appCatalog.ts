@@ -60,7 +60,12 @@ export const tutorialAppGuides: TutorialAppGuide[] = [
     firstAction: '选择目标世界书和一键写卡、只生成人设或单独模块，再填写需要的角色素材。',
   },
   { appId: 'world-slots', groupId: 'tavern', firstAction: '新建当前聊天专用槽位，再同步到固定世界书。' },
-  { appId: 'status-display', groupId: 'tavern', firstAction: '新建正则或 MVU 方案，再配置网页显示内容。' },
+  { appId: 'status-display', groupId: 'tavern', firstAction: '打开后直接查看当前聊天绑定的状态栏。' },
+  {
+    appId: 'status-display-settings',
+    groupId: 'tavern',
+    firstAction: '选择当前聊天使用的方案，或新建正则和 MVU 状态方案。',
+  },
   { appId: 'mvu-modifier', groupId: 'tavern', firstAction: '展开变量树，编辑字段并点击该字段的保存。' },
   {
     appId: 'regex-display',

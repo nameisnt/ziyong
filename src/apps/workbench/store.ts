@@ -77,6 +77,14 @@ export const WorkbenchCheckpointSchema = z.object({
 });
 export type WorkbenchCheckpoint = z.infer<typeof WorkbenchCheckpointSchema>;
 
+export interface WorkbenchProgress {
+  accumulatedAiReplies: number;
+  currentAiReplies: number;
+  lastRunAt: string;
+  nextInAiReplies: number;
+  pending: boolean;
+}
+
 export const WorkbenchRunSourceSchema = z.object({
   fromStartEnd: z.number().int().nonnegative().optional(),
   mode: z.enum(['all', 'fromStart', 'range', 'recent']),
@@ -553,6 +561,44 @@ export const useWorkbenchStore = defineStore('workbench', () => {
     return eligibleCheckpoint.lastAiReplyCount - checkpoint.lastAiReplyCount >= workflow.triggerAiReplies;
   }
 
+  function syncCurrentScope(scopeKey = getCurrentChatScopeKey()) {
+    const currentCheckpoint = captureCurrentWorkbenchCheckpoint();
+    settings.value.workflows = settings.value.workflows.map(workflow => {
+      const checkpoint = workflow.checkpoints[scopeKey];
+      if (
+        checkpoint &&
+        currentCheckpoint.lastAiReplyCount >= checkpoint.lastAiReplyCount &&
+        currentCheckpoint.lastMessageId >= checkpoint.lastMessageId
+      )
+        return workflow;
+      const pendingRuns = { ...workflow.pendingRuns };
+      delete pendingRuns[scopeKey];
+      return {
+        ...workflow,
+        checkpoints: {
+          ...workflow.checkpoints,
+          [scopeKey]: currentCheckpoint,
+        },
+        pendingRuns,
+      };
+    });
+    runningWorkflowIds.value = [];
+  }
+
+  function getWorkflowProgress(workflow: WorkbenchWorkflow, scopeKey = getCurrentChatScopeKey()): WorkbenchProgress {
+    const current = captureCurrentWorkbenchCheckpoint();
+    const eligible = captureDelayedWorkbenchCheckpoint(workflow.delayAiReplies);
+    const checkpoint = workflow.checkpoints[scopeKey];
+    const accumulatedAiReplies = checkpoint ? Math.max(0, eligible.lastAiReplyCount - checkpoint.lastAiReplyCount) : 0;
+    return {
+      accumulatedAiReplies,
+      currentAiReplies: current.lastAiReplyCount,
+      lastRunAt: checkpoint?.hasSuccessfulRun ? checkpoint.lastRunAt : '',
+      nextInAiReplies: Math.max(0, workflow.triggerAiReplies - accumulatedAiReplies),
+      pending: Boolean(workflow.pendingRuns[scopeKey]),
+    };
+  }
+
   function getDueWorkflows(scopeKey = getCurrentChatScopeKey()) {
     return settings.value.workflows.filter(workflow => shouldRunWorkflow(workflow, scopeKey));
   }
@@ -609,6 +655,7 @@ export const useWorkbenchStore = defineStore('workbench', () => {
     deleteWorkflow,
     finishLog,
     getDueWorkflows,
+    getWorkflowProgress,
     getWorkflow,
     insertDrafts,
     isRunning,
@@ -623,6 +670,7 @@ export const useWorkbenchStore = defineStore('workbench', () => {
     shouldRunWorkflow,
     setCheckpoint,
     setPendingRun,
+    syncCurrentScope,
     updateStep,
     updateWorkflow,
     workflows,

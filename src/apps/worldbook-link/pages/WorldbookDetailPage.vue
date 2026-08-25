@@ -9,10 +9,28 @@
           status.profile ? `${status.profile.entries.filter(entry => entry.enabled).length} 个关联` : t`未关联`
         }}</span>
       </div>
-      <button class="pc-soft-btn compact" type="button" :disabled="busy" @click="$emit('rename-book')">
-        {{ t`修改书名` }}
-      </button>
+      <ActionMenu icon-only :label="t`管理`" icon="fa-solid fa-bars">
+        <button type="button" :disabled="busy" @click="$emit('rename-book')">
+          <i class="fa-solid fa-pen"></i><span>{{ t`修改书名` }}</span>
+        </button>
+        <button type="button" :disabled="busy || !visibleEntryCount" @click="$emit('start-bulk')">
+          <i class="fa-solid fa-masks-theater"></i><span>{{ t`批量转为小剧场类型` }}</span>
+        </button>
+      </ActionMenu>
     </header>
+
+    <BulkSelectionBar
+      v-if="bulkActive"
+      action-icon="fa-solid fa-masks-theater"
+      :action-label="t`转为小剧场`"
+      :all-selected="bulkAllSelected"
+      :empty-label="t`请选择要转换的条目`"
+      :selected-count="bulkSelectedCount"
+      :total-count="visibleEntryCount"
+      @apply="$emit('convert-selected')"
+      @cancel="$emit('cancel-bulk')"
+      @toggle-all="$emit('toggle-all')"
+    />
 
     <label class="pc-search-field pc-worldbook-search">
       <i class="fa-solid fa-magnifying-glass"></i>
@@ -82,9 +100,19 @@
             v-for="entry in section.entries"
             :key="entry.uid"
             class="pc-list-row pc-worldbook-entry"
-            :class="{ disabled: !entry.enabled }"
+            :class="{ disabled: !entry.enabled, selecting: bulkActive }"
           >
-            <button class="pc-worldbook-entry-open" type="button" @click="$emit('open-entry', entry)">
+            <BulkSelectionCheckbox
+              v-if="bulkActive"
+              :label="`选择${entry.name || `条目 #${entry.uid}`}`"
+              :model-value="bulkSelectedUids.has(entry.uid)"
+              @update:model-value="$emit('set-selected', entry.uid, $event)"
+            />
+            <button
+              class="pc-worldbook-entry-open"
+              type="button"
+              @click="bulkActive ? $emit('toggle-selected', entry.uid) : $emit('open-entry', entry)"
+            >
               <span
                 :class="['pc-worldbook-entry-lamp', entry.strategy.type === 'selective' ? 'green' : 'blue']"
                 aria-hidden="true"
@@ -93,9 +121,10 @@
                 <strong :title="entry.name || `条目 #${entry.uid}`">{{ entry.name || `条目 #${entry.uid}` }}</strong>
                 <small>{{ entryPositionSummary(entry) }}</small>
               </span>
-              <i class="fa-solid fa-chevron-right pc-worldbook-chevron"></i>
+              <i v-if="!bulkActive" class="fa-solid fa-chevron-right pc-worldbook-chevron"></i>
             </button>
             <button
+              v-if="!bulkActive"
               class="pc-icon-btn pc-worldbook-entry-copy-btn"
               type="button"
               :aria-label="t`复制条目`"
@@ -105,7 +134,12 @@
             >
               <i class="fa-solid fa-copy"></i>
             </button>
-            <label class="pc-toggle pc-worldbook-toggle" :title="entry.enabled ? t`停用条目` : t`启用条目`" @click.stop>
+            <label
+              v-if="!bulkActive"
+              class="pc-toggle pc-worldbook-toggle"
+              :title="entry.enabled ? t`停用条目` : t`启用条目`"
+              @click.stop
+            >
               <input
                 type="checkbox"
                 :aria-label="entry.enabled ? t`停用条目` : t`启用条目`"
@@ -125,6 +159,9 @@
 </template>
 
 <script setup lang="ts">
+import ActionMenu from '@/components/ActionMenu.vue';
+import BulkSelectionBar from '@/components/BulkSelectionBar.vue';
+import BulkSelectionCheckbox from '@/components/BulkSelectionCheckbox.vue';
 import EmptyState from '@/components/EmptyState.vue';
 import type { WorldbookLinkStatus } from '../store';
 
@@ -136,6 +173,10 @@ interface EntrySection {
 
 defineProps<{
   bookName: string;
+  bulkActive: boolean;
+  bulkAllSelected: boolean;
+  bulkSelectedCount: number;
+  bulkSelectedUids: Set<number>;
   busy: boolean;
   categoryLabel: string;
   entryBusyUids: Set<number>;
@@ -150,10 +191,16 @@ const query = defineModel<string>('query', { required: true });
 
 defineEmits<{
   'apply-profile': [];
+  'cancel-bulk': [];
   'capture-profile': [];
+  'convert-selected': [];
   'copy-entry': [entry: WorldbookEntry];
   'open-entry': [entry: WorldbookEntry];
   'rename-book': [];
+  'set-selected': [uid: number, selected: boolean];
+  'start-bulk': [];
+  'toggle-all': [];
+  'toggle-selected': [uid: number];
   'toggle-entry': [entry: WorldbookEntry, event: Event];
   unlink: [];
 }>();
@@ -280,6 +327,9 @@ defineEmits<{
 }
 .pc-worldbook-entry {
   grid-template-columns: minmax(0, 1fr) auto auto;
+}
+.pc-worldbook-entry.selecting {
+  grid-template-columns: auto minmax(0, 1fr);
 }
 .pc-worldbook-entry-copy-btn {
   width: 34px;

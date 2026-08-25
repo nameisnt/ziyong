@@ -195,41 +195,20 @@
             >
               {{ isOrganizing ? '完成' : '整理' }}
             </button>
+            <button
+              class="pc-icon-btn danger"
+              type="button"
+              :disabled="folderDissolving"
+              title="解散文件夹"
+              aria-label="解散文件夹"
+              @click="dissolveActiveHomeFolder"
+            >
+              <i class="fa-solid fa-folder-minus"></i>
+            </button>
             <button class="pc-icon-btn" type="button" title="关闭" aria-label="关闭" @click="closeHomeFolder">
               <i class="fa-solid fa-xmark"></i>
             </button>
           </header>
-          <div class="pc-home-folder-tools">
-            <select
-              class="pc-select pc-home-folder-icon-select"
-              :value="activeHomeFolder.iconAssetId"
-              :disabled="!settings.homeIconAssets.length"
-              @change="setActiveHomeFolderIcon(($event.target as HTMLSelectElement).value)"
-            >
-              <option value="" disabled>选择自定义图标</option>
-              <option v-for="asset in settings.homeIconAssets" :key="asset.id" :value="asset.id">
-                {{ asset.name }}
-              </option>
-            </select>
-            <button
-              v-if="activeHomeFolder.iconAssetId"
-              class="pc-icon-btn"
-              type="button"
-              title="清除自定义图标"
-              aria-label="清除自定义图标"
-              @click="setActiveHomeFolderIcon('')"
-            >
-              <i class="fa-solid fa-rotate-left"></i>
-            </button>
-            <button
-              class="pc-soft-btn compact danger"
-              type="button"
-              :disabled="folderDissolving"
-              @click="dissolveActiveHomeFolder"
-            >
-              解散
-            </button>
-          </div>
           <div class="pc-home-folder-grid">
             <article
               v-for="(app, index) in activeHomeFolderApps"
@@ -857,15 +836,6 @@ function renameActiveHomeFolder(name: string) {
   });
 }
 
-function setActiveHomeFolderIcon(iconAssetId: string) {
-  const folder = activeHomeFolder.value;
-  if (!folder) return;
-  settingsStore.setHomeLayout({
-    ...homeLayout.value,
-    folders: homeLayout.value.folders.map(item => (item.id === folder.id ? { ...item, iconAssetId } : item)),
-  });
-}
-
 function openFolderApp(appId: string) {
   if (isOrganizing.value || folderDrag.isDragging || Date.now() < suppressHomeClickUntil.value) return;
   const folderId = activeHomeFolderId.value;
@@ -1345,7 +1315,7 @@ onBeforeUnmount(resetHomeInteractionState);
   min-height: 0;
   overflow: hidden;
   display: grid;
-  grid-template-rows: auto auto minmax(0, 1fr);
+  grid-template-rows: auto minmax(0, 1fr);
   gap: 12px;
   transition:
     opacity 0.18s ease,
@@ -1358,15 +1328,6 @@ onBeforeUnmount(resetHomeInteractionState);
 .pc-home-folder-name {
   min-width: 0;
   flex: 1;
-}
-.pc-home-folder-tools {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-.pc-home-folder-icon-select {
-  min-width: 0;
-  flex: 1 1 auto;
 }
 .pc-home-folder-grid {
   min-height: 0;

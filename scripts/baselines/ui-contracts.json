@@ -52,13 +52,6 @@
     },
     {
       "count": 1,
-      "excerpt": ".pc-toggle-row, .pc-target-pill",
-      "file": "src/apps/regex-display/RegexDisplayApp.vue",
-      "message": "Scoped style overrides protected global control geometry.",
-      "ruleId": "protected-control-geometry"
-    },
-    {
-      "count": 1,
       "excerpt": ".pc-app-grid-item > span, .pc-selected-app-head > span",
       "file": "src/apps/theme/ThemeApp.vue",
       "message": "Scoped style overrides protected global control geometry.",

@@ -1,12 +1,19 @@
 <template>
   <div class="pc-bulk-selection-bar">
-    <span>{{ selectedCount ? `已选 ${selectedCount} / ${totalCount}` : `请选择要删除的记录，共 ${totalCount} 条` }}</span>
+    <span>{{
+      selectedCount ? `已选 ${selectedCount} / ${totalCount}` : emptyLabel || `请选择要删除的记录，共 ${totalCount} 条`
+    }}</span>
     <div class="pc-bulk-selection-actions">
       <button class="pc-soft-btn compact" type="button" :disabled="!totalCount" @click="$emit('toggle-all')">
         {{ allSelected ? '取消全选' : '全选' }}
       </button>
-      <button class="pc-soft-btn compact danger" type="button" :disabled="!selectedCount" @click="$emit('remove')">
-        <i class="fa-solid fa-trash"></i><span>删除所选</span>
+      <button
+        :class="['pc-soft-btn compact', { danger: !actionLabel }]"
+        type="button"
+        :disabled="!selectedCount"
+        @click="actionLabel ? $emit('apply') : $emit('remove')"
+      >
+        <i :class="actionIcon || 'fa-solid fa-trash'"></i><span>{{ actionLabel || '删除所选' }}</span>
       </button>
       <button class="pc-icon-btn" type="button" aria-label="退出批量选择" title="退出批量选择" @click="$emit('cancel')">
         <i class="fa-solid fa-xmark"></i>
@@ -17,13 +24,17 @@
 
 <script setup lang="ts">
 defineProps<{
+  actionIcon?: string;
+  actionLabel?: string;
   allSelected: boolean;
+  emptyLabel?: string;
   selectedCount: number;
   totalCount: number;
 }>();
 
 defineEmits<{
   cancel: [];
+  apply: [];
   remove: [];
   'toggle-all': [];
 }>();

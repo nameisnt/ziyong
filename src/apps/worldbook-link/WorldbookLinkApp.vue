@@ -30,6 +30,10 @@
       v-else-if="route.page === 'detail'"
       v-model:query="entryQuery"
       :book-name="detailBookName"
+      :bulk-active="entryBulkActive"
+      :bulk-all-selected="entryBulkAllSelected"
+      :bulk-selected-count="entryBulkSelectedIds.length"
+      :bulk-selected-uids="selectedEntryUids"
       :busy="busy"
       :category-label="activeCategoryLabel"
       :entry-busy-uids="entryBusyUids"
@@ -39,10 +43,16 @@
       :status="detailStatus"
       :visible-entry-count="visibleEntryCount"
       @apply-profile="applySavedProfile"
+      @cancel-bulk="cancelEntryBulk"
       @capture-profile="captureCurrentProfile"
+      @convert-selected="convertSelectedEntriesToTheaterTypes"
       @copy-entry="openEntryCopy"
       @open-entry="openEntryEditor"
       @rename-book="renameCurrentBook"
+      @set-selected="setEntrySelected"
+      @start-bulk="startEntryBulk"
+      @toggle-all="toggleAllEntries"
+      @toggle-selected="toggleEntrySelected"
       @toggle-entry="toggleWorldbookEntry"
       @unlink="unlinkCurrentBook"
     />
@@ -51,16 +61,19 @@
       v-else-if="route.page === 'entry' || route.page === 'copy'"
       v-model:content="entryDraft.content"
       v-model:depth="entryDraft.depth"
+      v-model:keys-text="entryDraft.keysText"
       v-model:name="entryDraft.name"
       v-model:order="entryDraft.order"
       v-model:position-type="entryDraft.positionType"
       v-model:role="entryDraft.role"
+      v-model:strategy-type="entryDraft.strategyType"
       :book-name="detailBookName"
       :busy="entryEditorBusy"
       :copying="route.page === 'copy'"
       :entry="editingEntry"
       :position-options="positionOptions"
       :role-options="roleOptions"
+      :strategy-options="strategyOptions"
       @back="phone.goBack()"
       @convert-to-theater="convertEditingEntryToTheaterType"
       @remove="removeEditingEntry"
@@ -71,6 +84,7 @@
 
 <script setup lang="ts">
 import EmptyState from '@/components/EmptyState.vue';
+import { useBulkSelection } from '@/composables/useBulkSelection';
 import { usePhoneStore } from '@/store/phone';
 import { usePromptStore } from '@/store/prompts';
 import {
@@ -124,10 +138,12 @@ const entryEditorBusy = ref(false);
 const entryDraft = reactive({
   content: '',
   depth: 4,
+  keysText: '',
   name: '',
   order: 100,
   positionType: 'before_character_definition' as WorldbookEntry['position']['type'],
   role: 'system' as WorldbookEntry['position']['role'],
+  strategyType: 'constant' as WorldbookEntry['strategy']['type'],
 });
 let globalMutationQueue: Promise<void> = Promise.resolve();
 const entryMutationQueues = new Map<string, Promise<void>>();
@@ -152,6 +168,11 @@ const roleOptions: Array<{ label: string; value: WorldbookEntry['position']['rol
   { label: '系统', value: 'system' },
   { label: '用户', value: 'user' },
   { label: 'AI', value: 'assistant' },
+];
+const strategyOptions: Array<{ label: string; value: WorldbookEntry['strategy']['type'] }> = [
+  { label: '常驻激活', value: 'constant' },
+  { label: '关键词触发', value: 'selective' },
+  { label: '向量化', value: 'vectorized' },
 ];
 const linkStateLabel = computed(() => {
   if (!detailStatus.value?.profile) return '未关联';
@@ -189,6 +210,19 @@ const visibleEntrySections = computed(() => {
 const visibleEntryCount = computed(() =>
   visibleEntrySections.value.reduce((sum, section) => sum + section.entries.length, 0),
 );
+const visibleEntryUids = computed(() =>
+  visibleEntrySections.value.flatMap(section => section.entries.map(entry => String(entry.uid))),
+);
+const {
+  active: entryBulkActive,
+  allSelected: entryBulkAllSelected,
+  cancel: cancelEntryBulk,
+  selectedIds: entryBulkSelectedIds,
+  setSelected: setEntryBulkSelected,
+  start: startEntryBulk,
+  toggleAll: toggleAllEntries,
+} = useBulkSelection(visibleEntryUids);
+const selectedEntryUids = computed(() => new Set(entryBulkSelectedIds.value.map(uid => Number(uid))));
 const emptyCategoryTitle = computed(
   () =>
     ({
@@ -210,6 +244,7 @@ watch(
     if (nextScopeKey === previousScopeKey) return;
     detailStatus.value = null;
     editingEntry.value = null;
+    cancelEntryBulk();
     entryQuery.value = '';
     searchQuery.value = '';
     if (route.value.appId !== 'worldbook-link') return;
@@ -276,6 +311,7 @@ function bookSubtitle(bookName: string) {
 }
 
 function openBook(bookName: string) {
+  cancelEntryBulk();
   entryQuery.value = '';
   phone.pushPage('detail', bookName, { bookName });
 }
@@ -437,10 +473,19 @@ function createEntryCopyName(entry: WorldbookEntry) {
 function setEntryDraft(entry: WorldbookEntry, copying = false) {
   entryDraft.content = entry.content;
   entryDraft.depth = entry.position.depth;
+  entryDraft.keysText = entry.strategy.keys.join('、');
   entryDraft.name = copying ? createEntryCopyName(entry) : entry.name || `条目 #${entry.uid}`;
   entryDraft.order = entry.position.order;
   entryDraft.positionType = entry.position.type;
   entryDraft.role = entry.position.role;
+  entryDraft.strategyType = entry.strategy.type;
+}
+
+function splitEntryKeys(value: string) {
+  return value
+    .split(/[，,、\n]/u)
+    .map(item => item.trim())
+    .filter(Boolean);
 }
 
 async function loadEntryEditor() {
@@ -459,6 +504,7 @@ async function loadEntryEditor() {
 }
 
 function buildEntryPatch() {
+  const strategy = editingEntry.value!.strategy;
   return {
     content: entryDraft.content,
     name: entryDraft.name.trim(),
@@ -467,6 +513,11 @@ function buildEntryPatch() {
       order: Math.round(Number(entryDraft.order) || 0),
       role: entryDraft.role,
       type: entryDraft.positionType,
+    },
+    strategy: {
+      ...strategy,
+      keys: splitEntryKeys(entryDraft.keysText),
+      type: entryDraft.strategyType,
     },
   };
 }
@@ -516,6 +567,33 @@ function convertEditingEntryToTheaterType() {
     prompt: entryDraft.content,
   });
   toastr.success(`已创建小剧场类型“${typePrompt.name}”`);
+}
+
+function setEntrySelected(uid: number, selected: boolean) {
+  setEntryBulkSelected(String(uid), selected);
+}
+
+function toggleEntrySelected(uid: number) {
+  setEntrySelected(uid, !selectedEntryUids.value.has(uid));
+}
+
+async function convertSelectedEntriesToTheaterTypes() {
+  const entries = (detailStatus.value?.currentEntries ?? []).filter(entry => selectedEntryUids.value.has(entry.uid));
+  if (!entries.length) return;
+  const confirmed = await phone.confirmNotice(`要把选中的 ${entries.length} 个世界书条目创建为小剧场类型吗？`, {
+    confirmLabel: '创建',
+    title: '批量转为小剧场类型',
+  });
+  if (!confirmed) return;
+  entries.forEach(entry => {
+    prompts.createTypePrompt({
+      domain: 'theater',
+      name: entry.name || `条目 #${entry.uid}`,
+      prompt: entry.content,
+    });
+  });
+  cancelEntryBulk();
+  toastr.success(`已创建 ${entries.length} 个小剧场类型`);
 }
 
 async function removeEditingEntry() {

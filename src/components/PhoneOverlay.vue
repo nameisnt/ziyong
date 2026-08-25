@@ -10,11 +10,7 @@
     :style="rootStyle"
     aria-label="功能性阅读器创作助手"
   >
-    <section
-      ref="shellEl"
-      class="pc-phone-shell"
-      :style="shellStyle"
-    >
+    <section ref="shellEl" class="pc-phone-shell" :style="shellStyle">
       <header
         ref="topbarEl"
         class="pc-topbar"
@@ -130,14 +126,7 @@ function requestPhoneBack() {
 }
 const settingsStore = useSettingsStore();
 const { settings } = storeToRefs(settingsStore);
-const {
-  canGoBack,
-  currentApp,
-  currentRoute,
-  currentTitle,
-  isOpen,
-  notices,
-} = storeToRefs(phone);
+const { canGoBack, currentApp, currentRoute, currentTitle, isOpen, notices } = storeToRefs(phone);
 const currentAppId = computed(() => currentRoute.value.appId);
 const { mountedAppId } = useDeferredAppMount(isOpen, currentAppId);
 const appMountReady = computed(
@@ -154,16 +143,8 @@ usePhoneRouteScroll({
   mountedAppId,
   screenEl,
 });
-const {
-  onPointerDown,
-  onPointerMove,
-  onPointerUp,
-  positionX,
-  positionY,
-  shellEl,
-  syncPositionFromSettings,
-  topbarEl,
-} = usePhoneWindowPosition(isOpen);
+const { onPointerDown, onPointerMove, onPointerUp, positionX, positionY, shellEl, syncPositionFromSettings, topbarEl } =
+  usePhoneWindowPosition(isOpen);
 const { scheduleTopTitleFit, topTitleEl } = usePhoneTitleFit({
   currentTitle,
   fontFamily: computed(() => settings.value.fontFamily),
@@ -359,7 +340,6 @@ onMounted(() => {
 onBeforeUnmount(() => {
   fileRepository.stopAutoSnapshots();
 });
-
 </script>
 
 <style scoped>
@@ -434,7 +414,7 @@ onBeforeUnmount(() => {
   align-items: center;
   justify-content: space-between;
   gap: 8px;
-  padding: 10px 14px 8px;
+  padding: 5px 14px;
   background: color-mix(in srgb, var(--pc-surface) 88%, transparent);
   backdrop-filter: blur(20px);
   touch-action: none;
@@ -501,7 +481,7 @@ onBeforeUnmount(() => {
 .pc-phone-notices {
   position: absolute;
   z-index: 80;
-  top: 56px;
+  top: 48px;
   right: 12px;
   left: 12px;
   display: grid;
@@ -679,8 +659,6 @@ onBeforeUnmount(() => {
   display: block;
   font-style: normal;
 }
-
-
 
 .pc-app-copy {
   margin-top: 14px;

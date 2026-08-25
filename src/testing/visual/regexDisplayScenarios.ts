@@ -1,6 +1,7 @@
 type RegexDisplayFixture = {
-  getUsage: (appId: string) => { displayRuleIds: string[] };
+  addGroup: (name: string) => { id: string };
   importBackup: (data: unknown) => void;
+  moveRuleToGroup: (ruleId: string, groupId: string) => void;
   rules: Array<{ id: string; name: string; operation: string; pattern: string; replacement: string }>;
 };
 
@@ -62,25 +63,14 @@ export async function applyRegexDisplayVisualScenario(
     throw new Error('Regex display rule edits did not persist to the store');
   }
 
-  const usageTab = findButton('使用设置', document.querySelector('.pc-regex-view-tabs') || document);
-  if (!usageTab) throw new Error('Regex display usage tab is missing');
-  usageTab.click();
+  const closeEditor = findButton('关闭', document.querySelector('.pc-regex-editor-dialog') || document);
+  if (!closeEditor) throw new Error('Regex display editor close action is missing');
+  closeEditor.click();
   await waitForPaint();
-  const usageOption = [...document.querySelectorAll<HTMLElement>('.pc-regex-target-option')].find(option =>
-    option.textContent?.includes('视觉显示规则'),
+  const editedRow = [...document.querySelectorAll<HTMLElement>('[data-regex-rule-id]')].find(row =>
+    row.textContent?.includes('视觉显示规则'),
   );
-  const usageCheckbox = usageOption?.querySelector<HTMLInputElement>('input[type="checkbox"]');
-  if (!usageCheckbox) throw new Error('Regex display reader usage checkbox is missing');
-  usageCheckbox.click();
-  if (!(await waitForCondition(() => regexDisplay.getUsage('reader').displayRuleIds.includes(editedRule.id)))) {
-    throw new Error('Regex display usage did not enable the edited rule for reader');
-  }
-
-  const rulesTab = findButton('规则库', document.querySelector('.pc-regex-view-tabs') || document);
-  if (!rulesTab) throw new Error('Regex display rules tab is missing');
-  rulesTab.click();
-  await waitForPaint();
-  const duplicateButton = findButton('复制规则', document.querySelector('.pc-regex-display-app') || document);
+  const duplicateButton = findButton('复制规则', editedRow || document);
   if (!duplicateButton) throw new Error('Regex display duplicate action is missing');
   duplicateButton.click();
   if (!(await waitForCondition(() => regexDisplay.rules.some(rule => rule.name === '视觉显示规则 副本')))) {
@@ -89,7 +79,23 @@ export async function applyRegexDisplayVisualScenario(
   const duplicate = regexDisplay.rules.find(rule => rule.name === '视觉显示规则 副本');
   if (!duplicate) throw new Error('Regex display duplicate is missing');
 
-  const deleteButton = findButton('删除规则', document.querySelector('.pc-regex-display-app') || document);
+  const closeDuplicateEditor = findButton('关闭', document.querySelector('.pc-regex-editor-dialog') || document);
+  closeDuplicateEditor?.click();
+  await waitForPaint();
+
+  const group = regexDisplay.addGroup('视觉分组');
+  regexDisplay.moveRuleToGroup(editedRule.id, group.id);
+  await waitForPaint();
+  const groupSection = [...document.querySelectorAll<HTMLElement>('[data-regex-group-id]')].find(
+    section => section.dataset.regexGroupId === group.id,
+  );
+  if (!groupSection?.textContent?.includes('视觉显示规则'))
+    throw new Error('Regex display grouping did not move the rule');
+
+  const duplicateRow = [...document.querySelectorAll<HTMLElement>('[data-regex-rule-id]')].find(
+    row => row.dataset.regexRuleId === duplicate.id,
+  );
+  const deleteButton = findButton('删除规则', duplicateRow || document);
   if (!deleteButton) throw new Error('Regex display delete action is missing');
   deleteButton.click();
   if (!(await waitForCondition(() => Boolean(document.querySelector('.pc-phone-notice-action'))))) {
@@ -106,14 +112,5 @@ export async function applyRegexDisplayVisualScenario(
   if (!regexDisplay.rules.some(rule => rule.id === editedRule.id)) {
     throw new Error('Regex display deleted the original rule with its duplicate');
   }
-  if (
-    !regexDisplay.getUsage('reader').displayRuleIds.includes(editedRule.id) ||
-    regexDisplay.getUsage('reader').displayRuleIds.includes(duplicate.id)
-  ) {
-    throw new Error('Regex display usage no longer matches the surviving original rule');
-  }
-
-  usageTab.click();
-  await waitForPaint();
   return true;
 }
