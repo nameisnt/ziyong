@@ -124,6 +124,7 @@ export function applyRecoveryVisualScenario(name: string, context: RecoveryScena
             ],
             rejected: [],
             scannedFiles: 2,
+            similarGroups: [],
           }
         : null,
     loaded: ['recovery-reader', 'recovery-confirm', 'recovery-result'].includes(name) ? loaded : null,

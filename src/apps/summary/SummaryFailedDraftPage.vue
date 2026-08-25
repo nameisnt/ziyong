@@ -2,11 +2,14 @@
   <FailedDraftRepairPage
     v-model:raw-output="rawOutput"
     raw-label="原始输出"
+    :regenerate-handler="regenerateHandler"
     :reparse-disabled="!books.length"
+    :reasoning="draft.generationRecord?.reasoning || ''"
     :source-label="draft.source.label"
     title="修复解析失败草稿"
     @delete="$emit('delete')"
     @reparse="$emit('reparse')"
+    @update:reasoning="$emit('update:reasoning', $event)"
   >
     <template #before-editor>
       <div class="pc-field-group">
@@ -38,11 +41,13 @@ import type { SummaryBook } from '@/type/summary';
 const props = defineProps<{
   books: SummaryBook[];
   draft: FailedGenerationDraft;
+  regenerateHandler: () => Promise<void> | void;
 }>();
 
 defineEmits<{
   delete: [];
   reparse: [];
+  'update:reasoning': [reasoning: string];
 }>();
 
 const rawOutput = defineModel<string>('rawOutput', { required: true });

@@ -1,26 +1,23 @@
 <template>
-  <section v-if="visibleTasks.length" class="pc-section-card pc-generation-task-center">
+  <section class="pc-section-card pc-generation-task-center">
     <header class="pc-task-center-head">
-      <button class="pc-task-center-toggle" type="button" @click="expanded = !expanded">
-        <span class="pc-task-center-title">
-          <i class="fa-solid fa-list-check"></i>
-          <strong>{{ t`生成任务` }}</strong>
-          <small>{{ statusSummary }}</small>
-        </span>
-        <i :class="expanded ? 'fa-solid fa-chevron-up' : 'fa-solid fa-chevron-down'"></i>
-      </button>
+      <span class="pc-task-center-title">
+        <i class="fa-solid fa-list-check"></i>
+        <strong>{{ t`生成任务` }}</strong>
+        <small>{{ statusSummary }}</small>
+      </span>
       <button
-        v-if="clearableTaskCount"
         class="pc-soft-btn compact"
         type="button"
+        :disabled="!clearableTaskCount"
         aria-label="清理已保存任务"
         @click="clearSavedTasks"
       >
-        清理 {{ clearableTaskCount }}
+        {{ clearableTaskCount ? `清理 ${clearableTaskCount}` : '清理' }}
       </button>
     </header>
 
-    <div v-if="expanded" class="pc-task-list">
+    <div class="pc-task-list">
       <article v-for="task in visibleTasks" :key="task.id" class="pc-task-row">
         <div class="pc-task-copy">
           <div class="pc-task-line">
@@ -128,10 +125,9 @@ import type { GenerationTask, GenerationTaskStatus } from '@/type/generationTask
 
 const generationTasks = useGenerationTaskStore();
 const phone = usePhoneStore();
-const expanded = ref(true);
 const expandedRawTaskId = ref('');
 
-const visibleTasks = computed(() => generationTasks.currentScopeTasks.slice(0, 5));
+const visibleTasks = computed(() => generationTasks.currentScopeTasks);
 const clearableTaskCount = computed(() => generationTasks.getClearableTasks().length);
 const statusSummary = computed(() => {
   const running = visibleTasks.value.filter(
@@ -151,7 +147,7 @@ const statusSummary = computed(() => {
 
 function doneCount(task: GenerationTask) {
   if (task.kind === 'single' && task.status === 'completed') return 1;
-  return Math.min(task.total, task.savedCount + task.draftCount);
+  return Math.min(task.total, task.previewCount + task.savedCount + task.draftCount);
 }
 
 function progressPercent(task: GenerationTask) {
@@ -166,7 +162,8 @@ function progressLabel(task: GenerationTask) {
     return task.status === 'running' ? '正在生成' : '等待开始';
   }
   const draft = task.draftCount ? ` · 草稿 ${task.draftCount}` : '';
-  return `${doneCount(task)}/${task.total} · 保存 ${task.savedCount}${draft}`;
+  const preview = task.previewCount ? ` · 待确认 ${task.previewCount}` : '';
+  return `${doneCount(task)}/${task.total} · 保存 ${task.savedCount}${preview}${draft}`;
 }
 
 function statusLabel(status: GenerationTaskStatus) {
@@ -232,18 +229,13 @@ function clearSavedTasks() {
   padding: 10px 12px;
 }
 
-.pc-task-center-toggle {
+.pc-task-center-title {
   min-width: 0;
   flex: 1 1 auto;
   display: flex;
   align-items: center;
-  justify-content: space-between;
   gap: 10px;
-  padding: 0;
-  border: 0;
-  background: transparent;
   color: var(--pc-text);
-  text-align: left;
 }
 
 .pc-task-center-head > .pc-soft-btn {
@@ -280,6 +272,9 @@ function clearSavedTasks() {
 }
 
 .pc-task-list {
+  min-height: 72px;
+  max-height: min(52vh, 420px);
+  overflow-y: auto;
   border-top: 1px solid var(--pc-border);
 }
 

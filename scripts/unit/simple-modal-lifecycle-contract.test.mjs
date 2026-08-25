@@ -7,9 +7,8 @@ const sources = Object.fromEntries(
   await Promise.all(
     [
       ['creation', '../../src/components/CreationModeModal.vue'],
-      ['reasoning', '../../src/components/ReasoningModal.vue'],
       ['preview', '../../src/components/GenerationPreviewPanel.vue'],
-      ['prompts', '../../src/components/PromptsApp.vue'],
+      ['prompts', '../../src/apps/prompts/PromptsApp.vue'],
     ].map(async ([key, path]) => [key, await readFile(new URL(path, import.meta.url), 'utf8')]),
   ),
 );
@@ -30,7 +29,6 @@ test('simple dialogs share modal focus, keyboard, phone-back and scroll-lock lif
 
   for (const evidence of ['ref="dialogRef"', 'tabindex="-1"', 'usePhoneModalLifecycle({']) {
     if (!sources.creation.includes(evidence)) failures.push(`CreationModeModal missing: ${evidence}`);
-    if (!sources.reasoning.includes(evidence)) failures.push(`ReasoningModal missing: ${evidence}`);
   }
   if (sources.creation.includes('useEventListener(window')) {
     failures.push('CreationModeModal still owns duplicate keyboard or phone-back listeners');

@@ -379,6 +379,7 @@
     <FailedDraftRepairPage
       v-else-if="route.page === 'failed-draft' && activeFailedDraft"
       v-model:raw-output="failedDraftRawOutput"
+      :regenerate-handler="regenerateFailedDraft"
       :raw-output-semantics="activeFailedDraft.rawOutputSemantics"
       :reasoning="activeFailedDraft.generationRecord?.reasoning || ''"
       :source-label="activeFailedDraft.source.label"
@@ -386,6 +387,7 @@
       :warnings="activeFailedDraft.warnings"
       @delete="removeFailedDraft(activeFailedDraft.id)"
       @reparse="reparseFailedDraft"
+      @update:reasoning="updateGenerationRecordReasoning(activeFailedDraft, $event)"
     />
 
     <EmptyState v-else :title="t`内容不存在`" />
@@ -408,6 +410,7 @@ import GenerationSourceFields from '@/components/GenerationSourceFields.vue';
 import PreviewDraftNotice from '@/components/PreviewDraftNotice.vue';
 import ReaderDetailShell from '@/components/ReaderDetailShell.vue';
 import { useSingleGenerationTaskSession } from '@/composables/useSingleGenerationTaskSession';
+import { useFailedDraftRegeneration } from '@/composables/useFailedDraftRegeneration';
 import { useRegexDisplayStore } from '@/apps/regex-display/store';
 import {
   getRegisteredPhoneGenerationAdapter,
@@ -1054,6 +1057,11 @@ function scrollToBottom() {
   const element = document.querySelector('.pc-custom-detail-page .pc-detail-content');
   element?.scrollTo({ top: element.scrollHeight, behavior: 'smooth' });
 }
+const regenerateFailedDraft = useFailedDraftRegeneration({
+  draft: () => activeFailedDraft.value,
+  rawOutput: failedDraftRawOutput,
+  reparse: reparseFailedDraft,
+});
 </script>
 
 <style scoped>

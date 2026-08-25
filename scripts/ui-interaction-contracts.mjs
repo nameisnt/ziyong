@@ -8,7 +8,6 @@ export const UI_INTERACTION_CONTRACTS = Object.freeze([
   Object.freeze({ id: 'reasoning-disclosure', scenario: 'card-writer-reasoning-modal' }),
   Object.freeze({ id: 'delete-unbind', scenario: 'content-version-interactions' }),
   Object.freeze({ id: 'persistence', scenario: 'content-directory-sort-persistence' }),
-  Object.freeze({ id: 'reader-edit-modal', scenario: 'reader-text-edit-modal' }),
   Object.freeze({ id: 'reparse-diary', scenario: 'diary-failed-draft-reparse' }),
   Object.freeze({ id: 'reparse-digest', scenario: 'digest-failed-draft-reparse' }),
   Object.freeze({ id: 'reparse-forum', scenario: 'forum-failed-draft-reparse' }),

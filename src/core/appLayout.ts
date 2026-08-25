@@ -9,9 +9,9 @@ const DEFAULT_HOME_FOLDERS = [
   { id: 'home_default_creation', name: '创作', appIds: ['diary', 'extras', 'theater', 'forum', 'letters', 'card-writer', 'scene-planner'] },
   { id: 'home_default_organize', name: '整理', appIds: ['summary', 'storylines', 'bagu', 'content-converter'] },
   { id: 'home_default_archive', name: '阅读档案', appIds: ['reader', 'archive', 'recovery', 'digest', 'chat-insert', 'stats'] },
-  { id: 'home_default_prompt', name: '设定提示', appIds: ['preset-manager', 'entry-library', 'worldbook-link', 'world-slots', 'mvu-modifier', 'regex-display', 'regex-wizard'] },
+  { id: 'home_default_prompt', name: '设定提示', appIds: ['preset-manager', 'preset-link', 'entry-library', 'worldbook-link', 'world-slots', 'status-display', 'mvu-modifier', 'regex-display', 'regex-wizard', 'macro-builder'] },
   { id: 'home_default_profiles', name: '资料关系', appIds: ['profiles', 'relationship', 'timekeeper'] },
-  { id: 'home_default_tools', name: '工具', appIds: ['workbench', 'app-builder', 'theme', 'file-repository'] },
+  { id: 'home_default_tools', name: '工具', appIds: ['workbench', 'app-builder', 'theme', 'file-repository', 'script-manager', 'extension-transfer'] },
   { id: 'home_default_games', name: '小游戏', appIds: MINI_GAME_APP_IDS },
 ];
 
@@ -174,7 +174,7 @@ export function normalizeHomeLayout(layout: HomeScreenLayout): HomeScreenLayout 
 
 export function migrateHomeLayoutDockCapacity(layout: HomeScreenLayout, dockCapacity = 4): HomeScreenLayout {
   const normalized = normalizeHomeLayout(layout);
-  const capacity = Math.min(4, Math.max(3, Math.trunc(dockCapacity)));
+  const capacity = Math.min(5, Math.max(3, Math.trunc(dockCapacity)));
   const dockOrder: string[] = [];
   const movedToDesktop: string[] = [];
   normalized.dockOrder.forEach(token => {

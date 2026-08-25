@@ -6,7 +6,7 @@ import test from 'node:test';
 import { scanVueUiContracts } from '../ui-contract-check.mjs';
 
 const expectedCounts = new Map([
-  ['EntryLibraryBindingsPage.vue', 2],
+  ['EntryLibraryBindingsPage.vue', 3],
   ['EntryLibraryCatalogPage.vue', 4],
   ['EntryLibraryDedupePage.vue', 1],
 ]);

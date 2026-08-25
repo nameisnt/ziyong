@@ -40,6 +40,7 @@
       :visible-entry-count="visibleEntryCount"
       @apply-profile="applySavedProfile"
       @capture-profile="captureCurrentProfile"
+      @copy-entry="openEntryCopy"
       @open-entry="openEntryEditor"
       @rename-book="renameCurrentBook"
       @toggle-entry="toggleWorldbookEntry"
@@ -47,7 +48,7 @@
     />
 
     <WorldbookEntryEditorPage
-      v-else-if="route.page === 'entry'"
+      v-else-if="route.page === 'entry' || route.page === 'copy'"
       v-model:content="entryDraft.content"
       v-model:depth="entryDraft.depth"
       v-model:name="entryDraft.name"
@@ -56,12 +57,14 @@
       v-model:role="entryDraft.role"
       :book-name="detailBookName"
       :busy="entryEditorBusy"
+      :copying="route.page === 'copy'"
       :entry="editingEntry"
       :position-options="positionOptions"
       :role-options="roleOptions"
       @back="phone.goBack()"
+      @convert-to-theater="convertEditingEntryToTheaterType"
       @remove="removeEditingEntry"
-      @save="saveEditingEntry"
+      @save="route.page === 'copy' ? saveEntryCopy() : saveEditingEntry()"
     />
   </section>
 </template>
@@ -69,8 +72,10 @@
 <script setup lang="ts">
 import EmptyState from '@/components/EmptyState.vue';
 import { usePhoneStore } from '@/store/phone';
+import { usePromptStore } from '@/store/prompts';
 import {
   deleteWorldbookEntry,
+  duplicateWorldbookEntry,
   getCurrentWorldbookGroups,
   renameWorldbookSafely,
   setGlobalWorldbookEnabled,
@@ -85,6 +90,7 @@ import WorldbookEntryEditorPage from './pages/WorldbookEntryEditorPage.vue';
 import { type WorldbookLinkStatus, useWorldbookLinkStore } from './store';
 
 const phone = usePhoneStore();
+const prompts = usePromptStore();
 const worldbookLinks = useWorldbookLinkStore();
 const route = computed(() => phone.currentRoute);
 const categories: Array<{ id: WorldbookCategoryId; label: string }> = [
@@ -209,7 +215,7 @@ watch(
     if (route.value.appId !== 'worldbook-link') return;
     if (route.value.page === 'root') void refresh();
     if (route.value.page === 'detail') void loadDetail();
-    if (route.value.page === 'entry') void loadEntryEditor();
+    if (route.value.page === 'entry' || route.value.page === 'copy') void loadEntryEditor();
   },
 );
 
@@ -221,7 +227,7 @@ watch(
     if (!phone.isViewingCurrentChat) return;
     if (route.value.page === 'root') void refresh();
     if (route.value.page === 'detail') void loadDetail();
-    if (route.value.page === 'entry') void loadEntryEditor();
+    if (route.value.page === 'entry' || route.value.page === 'copy') void loadEntryEditor();
   },
 );
 
@@ -232,7 +238,7 @@ watch(
     if (!phone.isViewingCurrentChat) return;
     if (page === 'root') void refresh();
     if (page === 'detail') void loadDetail();
-    if (page === 'entry') void loadEntryEditor();
+    if (page === 'entry' || page === 'copy') void loadEntryEditor();
   },
   { immediate: true },
 );
@@ -289,9 +295,9 @@ async function loadDetail() {
 
 async function returnToCurrentChat() {
   await phone.returnToCurrentScope();
-  if (route.value.page === 'detail' || route.value.page === 'entry') {
+  if (route.value.page === 'detail' || route.value.page === 'entry' || route.value.page === 'copy') {
     await loadDetail();
-    if (route.value.page === 'entry') await loadEntryEditor();
+    if (route.value.page === 'entry' || route.value.page === 'copy') await loadEntryEditor();
     return;
   }
   await refresh();
@@ -411,10 +417,27 @@ function openEntryEditor(entry: WorldbookEntry) {
   });
 }
 
-function setEntryDraft(entry: WorldbookEntry) {
+function openEntryCopy(entry: WorldbookEntry) {
+  phone.pushPage('copy', '复制世界书条目', {
+    bookName: detailBookName.value,
+    entryUid: String(entry.uid),
+  });
+}
+
+function createEntryCopyName(entry: WorldbookEntry) {
+  const sourceName = entry.name.trim() || `条目 #${entry.uid}`;
+  const baseName = `${sourceName} - 副本`;
+  const names = new Set(detailStatus.value?.currentEntries.map(item => item.name.trim()) ?? []);
+  if (!names.has(baseName)) return baseName;
+  let index = 2;
+  while (names.has(`${baseName} ${index}`)) index += 1;
+  return `${baseName} ${index}`;
+}
+
+function setEntryDraft(entry: WorldbookEntry, copying = false) {
   entryDraft.content = entry.content;
   entryDraft.depth = entry.position.depth;
-  entryDraft.name = entry.name || `条目 #${entry.uid}`;
+  entryDraft.name = copying ? createEntryCopyName(entry) : entry.name || `条目 #${entry.uid}`;
   entryDraft.order = entry.position.order;
   entryDraft.positionType = entry.position.type;
   entryDraft.role = entry.position.role;
@@ -429,10 +452,23 @@ async function loadEntryEditor() {
     if (!entry) throw new Error(`世界书条目 #${editingEntryUid.value} 已不存在`);
     detailStatus.value = status;
     editingEntry.value = entry;
-    setEntryDraft(entry);
+    setEntryDraft(entry, route.value.page === 'copy');
   } catch (error) {
     toastr.error(error instanceof Error ? error.message : '读取世界书条目失败');
   }
+}
+
+function buildEntryPatch() {
+  return {
+    content: entryDraft.content,
+    name: entryDraft.name.trim(),
+    position: {
+      depth: Math.max(0, Math.round(Number(entryDraft.depth) || 0)),
+      order: Math.round(Number(entryDraft.order) || 0),
+      role: entryDraft.role,
+      type: entryDraft.positionType,
+    },
+  };
 }
 
 async function saveEditingEntry() {
@@ -440,16 +476,7 @@ async function saveEditingEntry() {
   if (!entry || entryEditorBusy.value || !entryDraft.name.trim()) return;
   entryEditorBusy.value = true;
   try {
-    const entries = await updateWorldbookEntry(detailBookName.value, entry.uid, {
-      content: entryDraft.content,
-      name: entryDraft.name.trim(),
-      position: {
-        depth: Math.max(0, Math.round(Number(entryDraft.depth) || 0)),
-        order: Math.round(Number(entryDraft.order) || 0),
-        role: entryDraft.role,
-        type: entryDraft.positionType,
-      },
-    });
+    const entries = await updateWorldbookEntry(detailBookName.value, entry.uid, buildEntryPatch());
     const updated = entries.find(item => item.uid === entry.uid);
     if (updated) {
       editingEntry.value = updated;
@@ -461,6 +488,34 @@ async function saveEditingEntry() {
   } finally {
     entryEditorBusy.value = false;
   }
+}
+
+async function saveEntryCopy() {
+  const entry = editingEntry.value;
+  if (!entry || entryEditorBusy.value || !entryDraft.name.trim()) return;
+  entryEditorBusy.value = true;
+  try {
+    const entries = await duplicateWorldbookEntry(detailBookName.value, entry.uid, buildEntryPatch());
+    if (worldbookLinks.getProfile(currentScopeKey.value, detailBookName.value)) {
+      worldbookLinks.captureProfileFromEntries(currentScopeKey.value, detailBookName.value, entries);
+    }
+    await phone.goBack();
+    toastr.success('世界书条目副本已创建');
+  } catch (error) {
+    toastr.error(error instanceof Error ? error.message : '复制世界书条目失败');
+  } finally {
+    entryEditorBusy.value = false;
+  }
+}
+
+function convertEditingEntryToTheaterType() {
+  if (!editingEntry.value || !entryDraft.name.trim()) return;
+  const typePrompt = prompts.createTypePrompt({
+    domain: 'theater',
+    name: entryDraft.name,
+    prompt: entryDraft.content,
+  });
+  toastr.success(`已创建小剧场类型“${typePrompt.name}”`);
 }
 
 async function removeEditingEntry() {

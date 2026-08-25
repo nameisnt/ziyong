@@ -48,7 +48,6 @@
       @bottom="scrollToBottom"
       @delete="removeEntry(activeBook.id, activeEntry.id)"
       @edit="openEditEntry(activeBook.id, activeEntry.id, viewedLetterVersionId)"
-      @erase="overwriteLetterContent"
       @favorite="letters.toggleFavorite(activeBook.id, activeEntry.id)"
       @next="openEntry(activeBook.id, nextEntryId, true)"
       @previous="openEntry(activeBook.id, previousEntryId, true)"
@@ -57,6 +56,7 @@
       @select-version="selectLetterVersion"
       @select-catalog="selectCatalogEntry"
       @top="scrollToTop"
+      @update:reasoning="updateViewedLetterReasoning"
     />
 
     <LettersBaguPage
@@ -140,9 +140,12 @@
     <LettersFailedDraftPage
       v-else-if="route.page === 'failed-draft' && activeFailedDraft"
       v-model:raw-output="failedDraftRawOutput"
+      :regenerate-handler="regenerateFailedDraft"
+      :reasoning="activeFailedDraft.generationRecord?.reasoning || ''"
       :source-label="activeFailedDraft.source.label"
       @delete="removeFailedDraft(activeFailedDraft.id)"
       @reparse="reparseFailedDraft"
+      @update:reasoning="updateGenerationRecordReasoning(activeFailedDraft, $event)"
     />
   </section>
 </template>
@@ -160,6 +163,7 @@ import LettersEntryDetailPage from '@/apps/letters/LettersEntryDetailPage.vue';
 import { useCatalogDetailNavigation } from '@/composables/useCatalogDetailNavigation';
 import { useDirectorySort } from '@/composables/useDirectorySort';
 import { useGenerationReplaySession } from '@/composables/useGenerationReplaySession';
+import { useFailedDraftRegeneration } from '@/composables/useFailedDraftRegeneration';
 import { getRegisteredPhoneGenerationAdapter } from '@/core/appRegistry';
 import { useSingleGenerationTaskSession } from '@/composables/useSingleGenerationTaskSession';
 import { buildGenerationPreview, captureGenerationPrompt, generateContent } from '@/core/generationService';
@@ -342,6 +346,10 @@ const viewedLetterEntry = computed(() => {
       }
     : entry;
 });
+
+function updateViewedLetterReasoning(reasoning: string) {
+  updateGenerationRecordReasoning(viewedLetterVersion.value || activeEntry.value, reasoning);
+}
 const rewriteLetterEntry = computed(() => {
   const bookId = route.value.params?.bookId;
   const entryId = route.value.params?.rewriteEntryId;
@@ -722,26 +730,6 @@ function openLettersBaguScan() {
     entryId: activeEntry.value.id,
     ...(viewedLetterVersionId.value ? { versionId: viewedLetterVersionId.value } : {}),
   });
-}
-
-function overwriteLetterContent(content: string) {
-  const book = activeBook.value;
-  const entry = activeEntry.value;
-  if (!book || !entry) return;
-  const versionId = viewedLetterVersionId.value;
-  const result = versionId
-    ? letters.updateEntryVersion(book.id, entry.id, versionId, {
-        content,
-        format: viewedLetterEntry.value.format,
-        title: viewedLetterEntry.value.title,
-      })
-    : letters.updateEntry(book.id, entry.id, {
-        content,
-        format: viewedLetterEntry.value.format,
-        title: viewedLetterEntry.value.title,
-      });
-  if (!result) return;
-  toastr.success(versionId ? '已覆盖当前书信版本' : '已覆盖当前书信正文');
 }
 
 function selectCatalogEntry(entryId: string) {
@@ -1241,6 +1229,11 @@ function formatLabel(format: LetterFormat) {
   if (format === 'formal') return '正式信';
   return format.replace(/^custom:/, '') || '自定义书信';
 }
+const regenerateFailedDraft = useFailedDraftRegeneration({
+  draft: () => activeFailedDraft.value,
+  rawOutput: failedDraftRawOutput,
+  reparse: reparseFailedDraft,
+});
 </script>
 
 <style scoped>

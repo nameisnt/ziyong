@@ -3,10 +3,10 @@
     <article v-if="entry" class="pc-page-section pc-worldbook-entry-editor pc-saved-content-editor">
       <header class="pc-compact-toolbar pc-worldbook-entry-editor-head">
         <span :title="bookName">{{ bookName }}</span>
-        <strong>条目 #{{ entry.uid }}</strong>
+        <strong>{{ copying ? '复制条目' : `条目 #${entry.uid}` }}</strong>
       </header>
       <label class="pc-field-group"
-        ><span class="pc-field-label">条目名称</span
+        ><span class="pc-field-label">{{ copying ? '副本名称' : '条目名称' }}</span
         ><input v-model="name" class="pc-field" type="text" placeholder="条目名称"
       /></label>
       <label class="pc-field-group pc-worldbook-content-field pc-saved-content-field"
@@ -46,6 +46,7 @@
       </template>
       <div class="pc-form-actions pc-worldbook-entry-editor-actions">
         <button
+          v-if="!copying"
           class="pc-icon-btn danger"
           type="button"
           aria-label="删除条目"
@@ -55,9 +56,20 @@
         >
           <i class="fa-solid fa-trash"></i>
         </button>
-        <button class="pc-soft-btn" type="button" :disabled="busy" @click="$emit('back')">返回</button>
+        <button
+          v-if="!copying"
+          class="pc-soft-btn"
+          type="button"
+          :disabled="busy || !name.trim()"
+          @click="$emit('convert-to-theater')"
+        >
+          <i class="fa-solid fa-masks-theater"></i><span>转为小剧场类型</span>
+        </button>
+        <button class="pc-soft-btn" type="button" :disabled="busy" @click="$emit('back')">
+          {{ copying ? '取消' : '返回' }}
+        </button>
         <button class="pc-primary-btn" type="button" :disabled="busy || !name.trim()" @click="$emit('save')">
-          {{ busy ? '处理中' : '保存' }}
+          {{ busy ? '处理中' : copying ? '保存副本' : '保存' }}
         </button>
       </div>
     </article>
@@ -72,6 +84,7 @@ import SearchableCombobox from '@/components/SearchableCombobox.vue';
 defineProps<{
   bookName: string;
   busy: boolean;
+  copying?: boolean;
   entry: WorldbookEntry | null;
   positionOptions: Array<{ label: string; value: WorldbookEntry['position']['type'] }>;
   roleOptions: Array<{ label: string; value: WorldbookEntry['position']['role'] }>;
@@ -84,7 +97,7 @@ const order = defineModel<number>('order', { required: true });
 const positionType = defineModel<WorldbookEntry['position']['type']>('positionType', { required: true });
 const role = defineModel<WorldbookEntry['position']['role']>('role', { required: true });
 
-defineEmits<{ back: []; remove: []; save: [] }>();
+defineEmits<{ back: []; 'convert-to-theater': []; remove: []; save: [] }>();
 </script>
 
 <style scoped>

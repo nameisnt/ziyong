@@ -376,14 +376,49 @@
           toggle-title="展开来源聊天筛选"
           @update:model-value="libraryChatFilter = $event"
         />
+        <button
+          class="pc-icon-btn"
+          type="button"
+          :class="{ active: documentBulkMode }"
+          :disabled="!filteredDocuments.length"
+          aria-label="批量删除写卡成品"
+          title="批量删除写卡成品"
+          @click="documentBulkMode ? cancelDocumentBulk() : startDocumentBulk()"
+        >
+          <i class="fa-solid fa-list-check"></i>
+        </button>
       </header>
+      <BulkSelectionBar
+        v-if="documentBulkMode"
+        :all-selected="allDocumentsSelected"
+        :selected-count="selectedDocumentIds.length"
+        :total-count="filteredDocuments.length"
+        @cancel="cancelDocumentBulk"
+        @remove="deleteSelectedDocuments"
+        @toggle-all="toggleAllDocuments"
+      />
       <div v-if="filteredDocuments.length" class="pc-directory-list pc-card-writer-library">
         <article v-for="document in filteredDocuments" :key="document.id" class="pc-list-row pc-card-writer-document">
-          <button type="button" class="pc-card-writer-document-open" @click="openDocument(document)">
+          <BulkSelectionCheckbox
+            v-if="documentBulkMode"
+            :model-value="selectedDocumentIdSet.has(document.id)"
+            :label="`选择 ${document.title}`"
+            @update:model-value="setDocumentSelected(document.id, $event)"
+          />
+          <button
+            type="button"
+            class="pc-card-writer-document-open"
+            @click="
+              documentBulkMode
+                ? setDocumentSelected(document.id, !selectedDocumentIdSet.has(document.id))
+                : openDocument(document)
+            "
+          >
             <strong :title="document.title">{{ document.title }}</strong>
             <small :title="formatDocumentMeta(document)">{{ formatDocumentMeta(document) }}</small>
           </button>
           <button
+            v-if="!documentBulkMode"
             class="pc-icon-btn"
             type="button"
             aria-label="复制成品"
@@ -393,6 +428,7 @@
             <i class="fa-solid fa-copy"></i>
           </button>
           <button
+            v-if="!documentBulkMode"
             class="pc-icon-btn"
             type="button"
             aria-label="导入资料表"
@@ -402,6 +438,7 @@
             <i class="fa-solid fa-table-list"></i>
           </button>
           <button
+            v-if="!documentBulkMode"
             class="pc-icon-btn danger"
             type="button"
             aria-label="删除成品"
@@ -479,6 +516,8 @@
 </template>
 
 <script setup lang="ts">
+import BulkSelectionBar from '@/components/BulkSelectionBar.vue';
+import BulkSelectionCheckbox from '@/components/BulkSelectionCheckbox.vue';
 import EmptyState from '@/components/EmptyState.vue';
 import GenerationPanel from '@/components/GenerationPanel.vue';
 import GenerationPreviewPanel from '@/components/GenerationPreviewPanel.vue';
@@ -493,6 +532,7 @@ import {
 } from '@/apps/profiles/profileConsumerBridge';
 import { useExternalProfileMappingsStore } from '@/apps/profiles/profileMappings';
 import { useSingleGenerationTaskSession } from '@/composables/useSingleGenerationTaskSession';
+import { useBulkSelection } from '@/composables/useBulkSelection';
 import { usePreviewSession } from '@/composables/usePreviewSession';
 import { generateOrderedPromptContent, type RawOrderedPrompt } from '@/core/generationService';
 import {
@@ -696,6 +736,16 @@ const filteredDocuments = computed(() => {
   }
   return documents.value.filter(document => document.sourceScopeKey === libraryChatFilter.value);
 });
+const {
+  active: documentBulkMode,
+  allSelected: allDocumentsSelected,
+  cancel: cancelDocumentBulk,
+  selectedIds: selectedDocumentIds,
+  selectedIdSet: selectedDocumentIdSet,
+  setSelected: setDocumentSelected,
+  start: startDocumentBulk,
+  toggleAll: toggleAllDocuments,
+} = useBulkSelection(() => filteredDocuments.value.map(document => document.id));
 const selectedImportCount = computed(() => profileImportItems.value.filter(item => item.selected).length);
 const allImportItemsSelected = computed(
   () => Boolean(profileImportItems.value.length) && profileImportItems.value.every(item => item.selected),
@@ -1517,6 +1567,20 @@ async function deleteDocument(document: CardWriterDocument) {
   });
   if (!confirmed) return;
   writerStore.deleteDocument(document.id);
+}
+
+async function deleteSelectedDocuments() {
+  const selected = documents.value.filter(document => selectedDocumentIdSet.value.has(document.id));
+  if (!selected.length) return;
+  const confirmed = await phone.confirmNotice(`要删除所选 ${selected.length} 个写卡成品吗？`, {
+    confirmLabel: '删除所选',
+    kind: 'warning',
+    title: '批量删除写卡成品',
+  });
+  if (!confirmed) return;
+  selected.forEach(document => writerStore.deleteDocument(document.id));
+  cancelDocumentBulk();
+  toastr.success(`已删除 ${selected.length} 个写卡成品`);
 }
 
 function formatDate(value: string) {

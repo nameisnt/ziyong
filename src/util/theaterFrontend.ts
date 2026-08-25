@@ -148,6 +148,9 @@ function createLayoutGuardStyle() {
     '  box-sizing: border-box;',
     '  background: var(--pc-frame-bg);',
     '}',
+    '#pc-frame-content, #pc-frame-content * {',
+    '  overflow-y: visible !important;',
+    '}',
   ].join('\n');
 }
 
@@ -239,7 +242,7 @@ function sanitizeFrontendHtml(rawHtml: string, securityMode: 'safe' | 'trusted')
 
   return {
     bodyHtml: document.body.innerHTML.trim(),
-    headHtml: '',
+    headHtml: document.head.innerHTML.trim(),
   };
 }
 

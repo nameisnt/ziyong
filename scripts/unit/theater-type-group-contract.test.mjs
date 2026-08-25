@@ -13,8 +13,8 @@ async function readMaybe(url) {
 
 const storeSource = await readMaybe(new URL('../../src/store/prompts.ts', import.meta.url));
 const theaterSource = await readMaybe(new URL('../../src/apps/theater/TheaterApp.vue', import.meta.url));
-const promptsSource = await readMaybe(new URL('../../src/components/PromptsApp.vue', import.meta.url));
-const editorSource = await readMaybe(new URL('../../src/components/prompts/PromptTypeEditorPage.vue', import.meta.url));
+const promptsSource = await readMaybe(new URL('../../src/apps/prompts/PromptsApp.vue', import.meta.url));
+const editorSource = await readMaybe(new URL('../../src/apps/prompts/PromptTypeEditorPage.vue', import.meta.url));
 const groupFieldSource = await readMaybe(
   new URL('../../src/components/prompts/TheaterTypeGroupField.vue', import.meta.url),
 );

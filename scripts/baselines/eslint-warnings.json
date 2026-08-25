@@ -8,7 +8,7 @@
       "message": "'v-html' directive can lead to XSS attack."
     },
     {
-      "file": "src/components/ReaderApp.vue",
+      "file": "src/apps/reader/ReaderApp.vue",
       "ruleId": "import-x/no-nodejs-modules",
       "message": "Do not import Node.js builtin module \"@sillytavern/script\""
     },

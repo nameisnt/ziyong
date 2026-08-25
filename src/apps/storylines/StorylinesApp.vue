@@ -70,10 +70,50 @@
         </button>
       </nav>
 
+      <div class="pc-compact-toolbar pc-directory-toolbar pc-storylines-management-toolbar">
+        <span class="pc-directory-count">{{ currentBulkIds.length }} 条记录</span>
+        <button
+          class="pc-icon-btn"
+          type="button"
+          :class="{ active: bulkMode }"
+          :disabled="!currentBulkIds.length"
+          aria-label="批量删除当前列表"
+          title="批量删除"
+          @click="bulkMode ? cancelBulkSelection() : startBulkSelection()"
+        >
+          <i class="fa-solid fa-list-check"></i>
+        </button>
+      </div>
+      <BulkSelectionBar
+        v-if="bulkMode"
+        :all-selected="allBulkSelected"
+        :selected-count="bulkSelectedIds.length"
+        :total-count="currentBulkIds.length"
+        @cancel="cancelBulkSelection"
+        @remove="removeSelectedStorylineItems"
+        @toggle-all="toggleAllBulkSelection"
+      />
+
       <section v-if="activeTab === 'lines'" class="pc-directory-list pc-storylines-list">
         <EmptyState v-if="!storylines.lines.length" title="还没有梳理结果" />
-        <article v-for="line in storylines.lines" v-else :key="line.id" class="pc-list-row pc-storyline-item">
-          <button class="pc-storyline-item-main" type="button" @click="openItem('line', line.id)">
+        <article
+          v-for="line in storylines.lines"
+          v-else
+          :key="line.id"
+          class="pc-list-row pc-storyline-item"
+          :class="{ bulk: bulkMode }"
+        >
+          <BulkSelectionCheckbox
+            v-if="bulkMode"
+            :model-value="bulkSelectedIdSet.has(line.id)"
+            :label="`选择 ${line.title}`"
+            @update:model-value="setBulkSelected(line.id, $event)"
+          />
+          <button
+            class="pc-storyline-item-main"
+            type="button"
+            @click="bulkMode ? setBulkSelected(line.id, !bulkSelectedIdSet.has(line.id)) : openItem('line', line.id)"
+          >
             <span class="pc-storyline-item-copy">
               <span class="pc-storyline-meta">
                 {{ getStorylineKindLabel(line.kind) }} · {{ getStorylineStatusLabel(line.status) }}
@@ -87,7 +127,7 @@
             </span>
             <i class="fa-solid fa-chevron-right"></i>
           </button>
-          <button class="pc-detail-mini-btn" type="button" title="删除" @click="removeLine(line.id)">
+          <button v-if="!bulkMode" class="pc-detail-mini-btn" type="button" title="删除" @click="removeLine(line.id)">
             <i class="fa-solid fa-trash"></i>
           </button>
         </article>
@@ -95,8 +135,24 @@
 
       <section v-else-if="activeTab === 'beats'" class="pc-directory-list pc-storylines-list">
         <EmptyState v-if="!storylines.beats.length" title="还没有剧情节点" />
-        <article v-for="beat in storylines.beats" v-else :key="beat.id" class="pc-list-row pc-storyline-item">
-          <button class="pc-storyline-item-main" type="button" @click="openItem('beat', beat.id)">
+        <article
+          v-for="beat in storylines.beats"
+          v-else
+          :key="beat.id"
+          class="pc-list-row pc-storyline-item"
+          :class="{ bulk: bulkMode }"
+        >
+          <BulkSelectionCheckbox
+            v-if="bulkMode"
+            :model-value="bulkSelectedIdSet.has(beat.id)"
+            :label="`选择 ${beat.title}`"
+            @update:model-value="setBulkSelected(beat.id, $event)"
+          />
+          <button
+            class="pc-storyline-item-main"
+            type="button"
+            @click="bulkMode ? setBulkSelected(beat.id, !bulkSelectedIdSet.has(beat.id)) : openItem('beat', beat.id)"
+          >
             <span class="pc-storyline-item-copy">
               <span class="pc-storyline-meta">
                 {{ findLineTitle(beat.lineId) }} · {{ getBeatStatusLabel(beat.status) }}
@@ -106,7 +162,7 @@
             </span>
             <i class="fa-solid fa-chevron-right"></i>
           </button>
-          <button class="pc-detail-mini-btn" type="button" title="删除" @click="removeBeat(beat.id)">
+          <button v-if="!bulkMode" class="pc-detail-mini-btn" type="button" title="删除" @click="removeBeat(beat.id)">
             <i class="fa-solid fa-trash"></i>
           </button>
         </article>
@@ -114,8 +170,24 @@
 
       <section v-else class="pc-directory-list pc-storylines-list">
         <EmptyState v-if="!storylines.hooks.length" title="还没有识别到伏笔" />
-        <article v-for="hook in storylines.hooks" v-else :key="hook.id" class="pc-list-row pc-storyline-item">
-          <button class="pc-storyline-item-main" type="button" @click="openItem('hook', hook.id)">
+        <article
+          v-for="hook in storylines.hooks"
+          v-else
+          :key="hook.id"
+          class="pc-list-row pc-storyline-item"
+          :class="{ bulk: bulkMode }"
+        >
+          <BulkSelectionCheckbox
+            v-if="bulkMode"
+            :model-value="bulkSelectedIdSet.has(hook.id)"
+            :label="`选择 ${hook.title}`"
+            @update:model-value="setBulkSelected(hook.id, $event)"
+          />
+          <button
+            class="pc-storyline-item-main"
+            type="button"
+            @click="bulkMode ? setBulkSelected(hook.id, !bulkSelectedIdSet.has(hook.id)) : openItem('hook', hook.id)"
+          >
             <span class="pc-storyline-item-copy">
               <span class="pc-storyline-meta">
                 {{ getForeshadowStatusLabel(hook.status) }} · {{ findLineTitle(hook.lineId) || '未绑定剧情线' }}
@@ -125,7 +197,7 @@
             </span>
             <i class="fa-solid fa-chevron-right"></i>
           </button>
-          <button class="pc-detail-mini-btn" type="button" title="删除" @click="removeHook(hook.id)">
+          <button v-if="!bulkMode" class="pc-detail-mini-btn" type="button" title="删除" @click="removeHook(hook.id)">
             <i class="fa-solid fa-trash"></i>
           </button>
         </article>
@@ -237,6 +309,7 @@
     <FailedDraftRepairPage
       v-else-if="route.page === 'failed-draft' && activeFailedDraft"
       v-model:raw-output="failedDraftRawOutput"
+      :regenerate-handler="regenerateFailedDraft"
       :raw-output-semantics="activeFailedDraft.rawOutputSemantics"
       :reasoning="activeFailedDraft.generationRecord?.reasoning || ''"
       :source-label="activeFailedDraft.source.label"
@@ -244,6 +317,7 @@
       :warnings="activeFailedDraft.warnings"
       @delete="removeFailedDraft(activeFailedDraft.id)"
       @reparse="reparseFailedDraft"
+      @update:reasoning="updateGenerationRecordReasoning(activeFailedDraft, $event)"
     />
 
     <EmptyState v-else title="这条剧情记录无法打开">
@@ -254,6 +328,8 @@
 </template>
 
 <script setup lang="ts">
+import BulkSelectionBar from '@/components/BulkSelectionBar.vue';
+import BulkSelectionCheckbox from '@/components/BulkSelectionCheckbox.vue';
 import EmptyState from '@/components/EmptyState.vue';
 import FailedDraftList from '@/components/FailedDraftList.vue';
 import FailedDraftRepairPage from '@/components/FailedDraftRepairPage.vue';
@@ -261,6 +337,7 @@ import GenerationPanel from '@/components/GenerationPanel.vue';
 import GenerationPreviewPanel from '@/components/GenerationPreviewPanel.vue';
 import InfoHint from '@/components/InfoHint.vue';
 import PreviewDraftNotice from '@/components/PreviewDraftNotice.vue';
+import { useBulkSelection } from '@/composables/useBulkSelection';
 import { readExternalMappedRows } from '@/apps/profiles/profileConsumerBridge';
 import { useExternalProfileMappingsStore } from '@/apps/profiles/profileMappings';
 import {
@@ -269,6 +346,7 @@ import {
   type ExternalProfileReference,
 } from '@/apps/profiles/profileReferences';
 import { useSingleGenerationTaskSession } from '@/composables/useSingleGenerationTaskSession';
+import { useFailedDraftRegeneration } from '@/composables/useFailedDraftRegeneration';
 import { getRegisteredPhoneGenerationAdapter } from '@/core/appRegistry';
 import { captureGenerationPrompt, generateContent } from '@/core/generationService';
 import { usePhoneStore } from '@/store/phone';
@@ -322,6 +400,22 @@ const { books: summaryBooks } = storeToRefs(summary);
 const { failedDrafts } = storeToRefs(storylines);
 const route = computed(() => phone.currentRoute);
 const activeTab = ref<'beats' | 'hooks' | 'lines'>('lines');
+const currentBulkIds = computed(() => {
+  if (activeTab.value === 'lines') return storylines.lines.map(item => item.id);
+  if (activeTab.value === 'beats') return storylines.beats.map(item => item.id);
+  return storylines.hooks.map(item => item.id);
+});
+const {
+  active: bulkMode,
+  allSelected: allBulkSelected,
+  cancel: cancelBulkSelection,
+  selectedIds: bulkSelectedIds,
+  selectedIdSet: bulkSelectedIdSet,
+  setSelected: setBulkSelected,
+  start: startBulkSelection,
+  toggleAll: toggleAllBulkSelection,
+} = useBulkSelection(currentBulkIds);
+watch(activeTab, cancelBulkSelection);
 const summaryBookId = ref('');
 const selectedReferences = ref<GenerationReferenceItem[]>([]);
 const profileNames = ref<Record<string, string>>({});
@@ -924,6 +1018,27 @@ async function removeHook(hookId: string) {
   if (deletingActiveItem) returnToRoot();
   toastr.success('已删除伏笔');
 }
+
+async function removeSelectedStorylineItems() {
+  const selectedIds = [...bulkSelectedIds.value];
+  if (!selectedIds.length) return;
+  const label = activeTab.value === 'lines' ? '剧情线' : activeTab.value === 'beats' ? '节点' : '伏笔';
+  const confirmed = await phone.confirmNotice(`要删除所选 ${selectedIds.length} 个${label}吗？`, {
+    confirmLabel: '删除所选',
+    kind: 'warning',
+  });
+  if (!confirmed) return;
+  if (activeTab.value === 'lines') selectedIds.forEach(storylines.deleteLine);
+  else if (activeTab.value === 'beats') selectedIds.forEach(storylines.deleteBeat);
+  else selectedIds.forEach(storylines.deleteHook);
+  cancelBulkSelection();
+  toastr.success(`已删除 ${selectedIds.length} 个${label}`);
+}
+const regenerateFailedDraft = useFailedDraftRegeneration({
+  draft: () => activeFailedDraft.value,
+  rawOutput: failedDraftRawOutput,
+  reparse: reparseFailedDraft,
+});
 </script>
 
 <style scoped>
@@ -945,6 +1060,14 @@ async function removeHook(hookId: string) {
 
 .pc-storyline-item {
   grid-template-columns: minmax(0, 1fr) 32px;
+}
+
+.pc-storyline-item.bulk {
+  grid-template-columns: auto minmax(0, 1fr);
+}
+
+.pc-storylines-management-toolbar {
+  justify-content: space-between;
 }
 
 .pc-storyline-item-main {

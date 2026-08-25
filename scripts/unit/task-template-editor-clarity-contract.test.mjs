@@ -6,8 +6,8 @@ import test from 'node:test';
 const readSource = relativePath => readFile(new URL(`../../${relativePath}`, import.meta.url), 'utf8');
 
 const [editor, promptsApp, relationshipModule, relationshipGeneration] = await Promise.all([
-  readSource('src/components/prompts/PromptAppEditorPage.vue'),
-  readSource('src/components/PromptsApp.vue'),
+  readSource('src/apps/prompts/PromptAppEditorPage.vue'),
+  readSource('src/apps/prompts/PromptsApp.vue'),
   readSource('src/apps/relationship/index.ts'),
   readSource('src/apps/relationship/generation.ts'),
 ]);

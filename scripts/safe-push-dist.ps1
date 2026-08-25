@@ -7,6 +7,10 @@ param(
 )
 
 $ErrorActionPreference = 'Stop'
+$utf8Encoding = New-Object System.Text.UTF8Encoding($false)
+[Console]::InputEncoding = $utf8Encoding
+[Console]::OutputEncoding = $utf8Encoding
+$OutputEncoding = $utf8Encoding
 
 function Invoke-Checked {
   param(
@@ -168,12 +172,12 @@ function Get-ThreeWayConflictPaths {
       $checkPatch
     )
     $applyExitCode = $applyResult.ExitCode
-    $applyResult.Output | ForEach-Object { Write-Host $_ -ForegroundColor DarkGray }
     if ($applyExitCode -eq 0) {
       return @()
     }
+    $applyResult.Output | ForEach-Object { Write-Host $_ -ForegroundColor DarkGray }
 
-    $unmergedEntries = @(& git ls-files -u)
+    $unmergedEntries = @(& git -c core.quotepath=false ls-files -u)
     if ($LASTEXITCODE -ne 0) {
       throw 'Failed to inspect the temporary merge conflicts.'
     }
@@ -211,15 +215,19 @@ Write-Host 'Other untracked files are ignored.' -ForegroundColor Cyan
 Write-Host 'A temporary Git index is used. Existing staged changes are never overwritten.' -ForegroundColor Cyan
 Write-Host ''
 
-$currentRuleDocs = @(Get-ChildItem -LiteralPath 'docs' -File -Filter '07-*.md')
-if ($currentRuleDocs.Count -ne 1) {
-  throw "Expected exactly one current rule document matching docs/07-*.md, found $($currentRuleDocs.Count)."
-}
 $rootDocumentationPaths = @(
+  'docs/CURRENT.md',
+  'docs/DECISIONS.md',
+  'docs/CODEMAP.md'
+)
+$actualRootDocumentationPaths = @(
   Get-ChildItem -LiteralPath 'docs' -File -Filter '*.md' |
     Sort-Object Name |
     ForEach-Object { 'docs/' + $_.Name }
 )
+if (-not (Test-SamePathSet -Left $rootDocumentationPaths -Right $actualRootDocumentationPaths)) {
+  throw "docs/ must contain only CURRENT.md, DECISIONS.md, and CODEMAP.md. Found: $($actualRootDocumentationPaths -join ', ')"
+}
 
 $allowedNewExactPaths = @($rootDocumentationPaths) + @(
   'scripts/backup-contract-check.mjs',
@@ -235,13 +243,11 @@ $allowedNewExactPaths = @($rootDocumentationPaths) + @(
 $allowedNewPrefixes = @(
   'src/',
   'docs/archive/',
-  'docs/execution/',
   'scripts/baselines/',
   'scripts/unit/'
 )
 $allowedPublishPaths = @('src') + @($rootDocumentationPaths) + @(
   'docs/archive',
-  'docs/execution',
   'scripts/backup-contract-check.mjs',
   'scripts/check-eslint-baseline.mjs',
   'scripts/check-style-guard.ps1',
@@ -284,6 +290,18 @@ $excludedTrackedPaths = @(
     }
   }
 )
+$normalizedExcludedTrackedPaths = @(
+  $excludedTrackedPaths |
+    ForEach-Object { Normalize-RepositoryPath -Path $_ } |
+    Where-Object { $_ } |
+    Sort-Object -Unique
+)
+$requestedUntrackPaths = @(
+  $UntrackIgnoredPath |
+    ForEach-Object { Normalize-RepositoryPath -Path $_ } |
+    Where-Object { $_ } |
+    Sort-Object -Unique
+)
 
 $remoteUrl = Normalize-RemoteUrl (Invoke-Capture -Command git -Arguments @('remote', 'get-url', '--push', 'origin'))
 if ($expectedRemotes -notcontains $remoteUrl) {
@@ -310,6 +328,9 @@ $head = Invoke-Capture -Command git -Arguments @('rev-parse', 'HEAD')
 $pushExistingHead = $false
 $appendToLocalHead = $false
 $candidateParent = $parent
+$previewBehindWithoutSync = $false
+$localChangedFiles = @()
+$preservedExcludedStagedDeletions = @()
 if ($head -ne $parent) {
   & git merge-base --is-ancestor $parent $head
   $remoteAncestorExitCode = $LASTEXITCODE
@@ -335,14 +356,6 @@ if ($head -ne $parent) {
   }
 }
 if ($head -ne $parent -and -not $pushExistingHead -and -not $appendToLocalHead) {
-  & git diff --cached --quiet --exit-code
-  $stagedDiffExitCode = $LASTEXITCODE
-  if ($stagedDiffExitCode -eq 1) {
-    throw 'The normal staging area contains changes while main needs synchronization. Commit or unstage them before publishing.'
-  }
-  if ($stagedDiffExitCode -ne 0) {
-    throw 'Failed to inspect the normal staging area.'
-  }
   & git merge-base --is-ancestor $head $parent
   $ancestorExitCode = $LASTEXITCODE
   if ($ancestorExitCode -eq 1) {
@@ -352,15 +365,15 @@ if ($head -ne $parent -and -not $pushExistingHead -and -not $appendToLocalHead) 
     throw 'Failed to compare local main with origin/main.'
   }
 
-  $localChangedFiles = @(& git -c core.safecrlf=false diff --name-only HEAD --)
+  $localChangedFiles = @(& git -c core.quotepath=false -c core.safecrlf=false diff --name-only HEAD --)
   if ($LASTEXITCODE -ne 0) {
     throw 'Failed to inspect local tracked changes.'
   }
-  $localDeletedFiles = @(& git -c core.safecrlf=false diff --name-only --diff-filter=D HEAD --)
+  $localDeletedFiles = @(& git -c core.quotepath=false -c core.safecrlf=false diff --name-only --diff-filter=D HEAD --)
   if ($LASTEXITCODE -ne 0) {
     throw 'Failed to inspect locally deleted files.'
   }
-  $remoteChangedFiles = @(& git -c core.safecrlf=false diff --name-only $head $parent --)
+  $remoteChangedFiles = @(& git -c core.quotepath=false -c core.safecrlf=false diff --name-only $head $parent --)
   if ($LASTEXITCODE -ne 0) {
     throw 'Failed to inspect remote tracked changes.'
   }
@@ -370,11 +383,11 @@ if ($head -ne $parent -and -not $pushExistingHead -and -not $appendToLocalHead) 
     throw 'Local and remote dist changes overlap. Allow the script to rebuild before publishing.'
   }
 
-  $remoteAddedFiles = @(& git -c core.safecrlf=false diff --name-only --diff-filter=A $head $parent --)
+  $remoteAddedFiles = @(& git -c core.quotepath=false -c core.safecrlf=false diff --name-only --diff-filter=A $head $parent --)
   if ($LASTEXITCODE -ne 0) {
     throw 'Failed to inspect files added by the remote branch.'
   }
-  $untrackedBeforeSync = @(& git ls-files --others --exclude-standard)
+  $untrackedBeforeSync = @(& git -c core.quotepath=false ls-files --others --exclude-standard)
   if ($LASTEXITCODE -ne 0) {
     throw 'Failed to inspect untracked files before syncing main.'
   }
@@ -394,88 +407,131 @@ if ($head -ne $parent -and -not $pushExistingHead -and -not $appendToLocalHead) 
     Write-Host 'The current local versions of these files will be kept automatically.' -ForegroundColor Yellow
   }
 
-  Write-Host ''
-  Write-Host 'Local main is behind origin/main. Stashing tracked changes and fast-forwarding...' -ForegroundColor Yellow
-  $stashCommit = ''
-  & git diff --quiet --exit-code HEAD --
-  $trackedDiffExitCode = $LASTEXITCODE
-  if ($trackedDiffExitCode -eq 1) {
-    Invoke-Checked -Command git -Arguments @('stash', 'push', '--keep-index', '-m', 'safe-push-dist automatic sync')
-    $stashCommit = Invoke-Capture -Command git -Arguments @('rev-parse', 'refs/stash')
-  } elseif ($trackedDiffExitCode -ne 0) {
-    throw 'Failed to inspect tracked changes before syncing main.'
-  }
-
-  try {
-    Invoke-Checked -Command git -Arguments @('merge', '--ff-only', 'origin/main')
-  } catch {
-    if ($stashCommit) {
-      Write-Host 'Fast-forward failed. Your tracked changes remain stored in the automatic stash.' -ForegroundColor Red
-      Write-Host "Automatic stash commit: $stashCommit" -ForegroundColor DarkGray
-    }
-    throw
-  }
-
-  if ($stashCommit) {
-    Write-Host 'Reapplying local tracked changes...' -ForegroundColor Yellow
-    $stashApplyResult = Invoke-CaptureAllowFailure -Command git -Arguments @('stash', 'apply', $stashCommit)
-    $stashApplyExitCode = $stashApplyResult.ExitCode
-    $stashApplyResult.Output | ForEach-Object { Write-Host $_ }
-    $actualConflicts = @(& git diff --name-only --diff-filter=U)
+  if ($DryRun) {
+    $previewBehindWithoutSync = $true
+    Write-Host 'DryRun will preview the candidate on origin/main without changing the local branch or index.' -ForegroundColor Yellow
+  } else {
+    $stagedPaths = @(& git -c core.quotepath=false diff --cached --name-only HEAD --)
     if ($LASTEXITCODE -ne 0) {
-      throw 'Failed to inspect conflicts after applying the automatic stash.'
+      throw 'Failed to inspect the normal staging area.'
     }
-
-    if ($actualConflicts.Count) {
-      $unexpectedConflicts = @($actualConflicts | Where-Object { $preflightConflicts -notcontains $_ })
-      if ($unexpectedConflicts.Count) {
-        throw "Unexpected conflicts appeared while restoring local changes: $($unexpectedConflicts -join ', '). The automatic stash was kept."
-      }
-
-      foreach ($path in $actualConflicts) {
-        if ($localDeletedFiles -contains $path) {
-          Invoke-Checked -Command git -Arguments @('rm', '--', $path)
-        } else {
-          Invoke-Checked -Command git -Arguments @('checkout', '--theirs', '--', $path)
-          Invoke-Checked -Command git -Arguments @('add', '--', $path)
+    $stagedNonDeletions = @(& git -c core.quotepath=false diff --cached --name-only --diff-filter=ACMRTUXB HEAD --)
+    if ($LASTEXITCODE -ne 0) {
+      throw 'Failed to inspect staged change types.'
+    }
+    $stagedOutsideExcludedPaths = @()
+    foreach ($stagedPath in $stagedPaths) {
+      $isExcluded = $false
+      foreach ($excludedPath in $normalizedExcludedTrackedPaths) {
+        if ($stagedPath -eq $excludedPath -or $stagedPath.StartsWith("$excludedPath/")) {
+          $isExcluded = $true
+          break
         }
       }
-    } elseif ($stashApplyExitCode -ne 0) {
-      throw "Automatic stash apply failed without merge conflicts. The stash was kept at $stashCommit."
+      if (-not $isExcluded) {
+        $stagedOutsideExcludedPaths += $stagedPath
+      }
+    }
+    $blockingStagedPaths = @($stagedNonDeletions + $stagedOutsideExcludedPaths | Sort-Object -Unique)
+    if ($blockingStagedPaths.Count -gt 0) {
+      throw "The normal staging area contains publishable changes while main needs synchronization: $($blockingStagedPaths -join ', ')"
+    }
+    if ($stagedPaths.Count) {
+      Write-Host "Preserving $($stagedPaths.Count) staged removals from excluded paths while synchronizing main." -ForegroundColor Yellow
+    }
+    $stagedRemoteOverlaps = @($stagedPaths | Where-Object { $remoteChangedFiles -contains $_ })
+    if ($stagedRemoteOverlaps.Count) {
+      throw "Remote main also changed staged excluded removals: $($stagedRemoteOverlaps -join ', ')"
+    }
+    $preservedExcludedStagedDeletions = @(
+      $stagedPaths | Where-Object {
+        $stagedPath = $_
+        -not @(
+          $requestedUntrackPaths | Where-Object {
+            $stagedPath -eq $_ -or $stagedPath.StartsWith("$_/")
+          }
+        ).Count
+      }
+    )
+    if ($stagedPaths.Count) {
+      Invoke-Checked -Command git -Arguments (@('restore', '--staged', '--source=HEAD', '--') + $stagedPaths)
     }
 
-    $remainingConflicts = @(& git diff --name-only --diff-filter=U)
-    if ($LASTEXITCODE -ne 0 -or $remainingConflicts.Count) {
-      throw "Conflicts remain after restoring local changes. The automatic stash was kept at $stashCommit."
+    Write-Host ''
+    Write-Host 'Local main is behind origin/main. Stashing tracked changes and fast-forwarding...' -ForegroundColor Yellow
+    $stashCommit = ''
+    & git diff --quiet --exit-code HEAD --
+    $trackedDiffExitCode = $LASTEXITCODE
+    if ($trackedDiffExitCode -eq 1) {
+      Invoke-Checked -Command git -Arguments @('stash', 'push', '--keep-index', '-m', 'safe-push-dist automatic sync')
+      $stashCommit = Invoke-Capture -Command git -Arguments @('rev-parse', 'refs/stash')
+    } elseif ($trackedDiffExitCode -ne 0) {
+      throw 'Failed to inspect tracked changes before syncing main.'
     }
 
-    Invoke-Checked -Command git -Arguments @('restore', '--staged', '--source=HEAD', '--', '.')
-
-    $topStash = Invoke-Capture -Command git -Arguments @('rev-parse', 'refs/stash')
-    if ($topStash -ne $stashCommit) {
-      throw "The automatic stash is no longer at the top of the stash list. It was kept at $stashCommit."
+    try {
+      Invoke-Checked -Command git -Arguments @('merge', '--ff-only', 'origin/main')
+    } catch {
+      if ($stashCommit) {
+        Write-Host 'Fast-forward failed. Your tracked changes remain stored in the automatic stash.' -ForegroundColor Red
+        Write-Host "Automatic stash commit: $stashCommit" -ForegroundColor DarkGray
+      }
+      throw
     }
-    Invoke-Checked -Command git -Arguments @('stash', 'drop', 'stash@{0}')
-  }
 
-  $head = Invoke-Capture -Command git -Arguments @('rev-parse', 'HEAD')
-  if ($head -ne $parent) {
-    throw "Fast-forward finished at $head instead of expected origin/main $parent."
+    if ($stashCommit) {
+      Write-Host 'Reapplying local tracked changes...' -ForegroundColor Yellow
+      $stashApplyResult = Invoke-CaptureAllowFailure -Command git -Arguments @('stash', 'apply', $stashCommit)
+      $stashApplyExitCode = $stashApplyResult.ExitCode
+      $stashApplyResult.Output | ForEach-Object { Write-Host $_ }
+      $actualConflicts = @(& git -c core.quotepath=false diff --name-only --diff-filter=U)
+      if ($LASTEXITCODE -ne 0) {
+        throw 'Failed to inspect conflicts after applying the automatic stash.'
+      }
+
+      if ($actualConflicts.Count) {
+        $unexpectedConflicts = @($actualConflicts | Where-Object { $preflightConflicts -notcontains $_ })
+        if ($unexpectedConflicts.Count) {
+          throw "Unexpected conflicts appeared while restoring local changes: $($unexpectedConflicts -join ', '). The automatic stash was kept."
+        }
+
+        foreach ($path in $actualConflicts) {
+          if ($localDeletedFiles -contains $path) {
+            Invoke-Checked -Command git -Arguments @('rm', '--', $path)
+          } else {
+            Invoke-Checked -Command git -Arguments @('checkout', '--theirs', '--', $path)
+            Invoke-Checked -Command git -Arguments @('add', '--', $path)
+          }
+        }
+      } elseif ($stashApplyExitCode -ne 0) {
+        throw "Automatic stash apply failed without merge conflicts. The stash was kept at $stashCommit."
+      }
+
+      $remainingConflicts = @(& git -c core.quotepath=false diff --name-only --diff-filter=U)
+      if ($LASTEXITCODE -ne 0 -or $remainingConflicts.Count) {
+        throw "Conflicts remain after restoring local changes. The automatic stash was kept at $stashCommit."
+      }
+
+      Invoke-Checked -Command git -Arguments @('restore', '--staged', '--source=HEAD', '--', '.')
+
+      $topStash = Invoke-Capture -Command git -Arguments @('rev-parse', 'refs/stash')
+      if ($topStash -ne $stashCommit) {
+        throw "The automatic stash is no longer at the top of the stash list. It was kept at $stashCommit."
+      }
+      Invoke-Checked -Command git -Arguments @('stash', 'drop', 'stash@{0}')
+    }
+
+    if ($stagedPaths.Count) {
+      Invoke-Checked -Command git -Arguments (@('rm', '--cached', '--ignore-unmatch', '--') + $stagedPaths)
+    }
+
+    $head = Invoke-Capture -Command git -Arguments @('rev-parse', 'HEAD')
+    if ($head -ne $parent) {
+      throw "Fast-forward finished at $head instead of expected origin/main $parent."
+    }
   }
 }
 
-$normalizedExcludedTrackedPaths = @(
-  $excludedTrackedPaths |
-    ForEach-Object { Normalize-RepositoryPath -Path $_ } |
-    Where-Object { $_ } |
-    Sort-Object -Unique
-)
-$requestedUntrackPaths = @(
-  $UntrackIgnoredPath |
-    ForEach-Object { Normalize-RepositoryPath -Path $_ } |
-    Where-Object { $_ } |
-    Sort-Object -Unique
-)
 $approvedUntrackPaths = @()
 
 foreach ($path in $requestedUntrackPaths) {
@@ -613,10 +669,32 @@ try {
 
   $env:GIT_INDEX_FILE = $tmpIndex
   Invoke-Checked -Command git -Arguments @('read-tree', $candidateParent)
-  Invoke-Checked -Command git -Arguments @('-c', 'core.safecrlf=false', 'add', '--update', '--', '.')
-  foreach ($path in $allowedPublishPaths) {
-    if (Test-Path -LiteralPath $path) {
-      Invoke-Checked -Command git -Arguments @('-c', 'core.safecrlf=false', 'add', '--all', '--', $path)
+  if ($previewBehindWithoutSync) {
+    $previewLocalChangedFiles = @(
+      $localChangedFiles | Where-Object {
+        $localPath = $_
+        -not @(
+          $normalizedExcludedTrackedPaths | Where-Object {
+            $localPath -eq $_ -or $localPath.StartsWith("$_/")
+          }
+        ).Count
+      }
+    )
+    if ($previewLocalChangedFiles.Count) {
+      Invoke-Checked -Command git -Arguments (@('-c', 'core.safecrlf=false', 'add', '--all', '--') + $previewLocalChangedFiles)
+    }
+  } else {
+    Invoke-Checked -Command git -Arguments @('-c', 'core.safecrlf=false', 'add', '--update', '--', '.')
+  }
+  if ($previewBehindWithoutSync) {
+    if ($allowedUntrackedFiles.Count) {
+      Invoke-Checked -Command git -Arguments (@('-c', 'core.safecrlf=false', 'add', '--all', '--') + $allowedUntrackedFiles)
+    }
+  } else {
+    foreach ($path in $allowedPublishPaths) {
+      if (Test-Path -LiteralPath $path) {
+        Invoke-Checked -Command git -Arguments @('-c', 'core.safecrlf=false', 'add', '--all', '--', $path)
+      }
     }
   }
 
@@ -725,7 +803,13 @@ try {
     Invoke-Checked -Command git -Arguments @('update-ref', 'refs/heads/main', $commit, $candidateParent)
   } catch {
     Invoke-Checked -Command git -Arguments @('read-tree', $candidateParent)
+    if ($preservedExcludedStagedDeletions.Count) {
+      Invoke-Checked -Command git -Arguments (@('rm', '--cached', '--ignore-unmatch', '--') + $preservedExcludedStagedDeletions)
+    }
     throw
+  }
+  if ($preservedExcludedStagedDeletions.Count) {
+    Invoke-Checked -Command git -Arguments (@('rm', '--cached', '--ignore-unmatch', '--') + $preservedExcludedStagedDeletions)
   }
 
   Write-Host ''

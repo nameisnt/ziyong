@@ -611,6 +611,68 @@ function rawRoleValue(role: WorldbookEntry['position']['role']) {
   return ({ assistant: 2, system: 0, user: 1 } as const)[role];
 }
 
+async function duplicateWorldbookEntryRaw(bookName: string, uid: number, patch: WorldbookEntryEditorPatch) {
+  const saveWorldInfo =
+    getOptionalGlobalFunction<(name: string, data: unknown, immediately?: boolean) => Promise<void>>('saveWorldInfo');
+  if (!saveWorldInfo) throw new Error('当前酒馆环境没有开放世界书条目写入接口');
+  const { book } = await loadRawWorldbook(bookName);
+  const rawEntries = (book as RawWorldbook).entries;
+  const pairs = Array.isArray(rawEntries)
+    ? rawEntries.map((entry, index) => [String(index), entry] as const)
+    : Object.entries(rawEntries as object);
+  const sourcePair = pairs.find(([key, value]) => {
+    if (!value || typeof value !== 'object') return false;
+    return rawEntryUid(value as RawWorldbookEntry, key) === uid;
+  });
+  if (!sourcePair) throw new Error(`世界书条目 #${uid} 已不存在`);
+
+  const nextUid =
+    pairs.reduce((highest, [key, value]) => {
+      if (!value || typeof value !== 'object') return highest;
+      return Math.max(highest, rawEntryUid(value as RawWorldbookEntry, key) ?? -1);
+    }, -1) + 1;
+  const copy = structuredClone(sourcePair[1] as RawWorldbookEntry);
+  copy.uid = nextUid;
+  if ('id' in copy) copy.id = nextUid;
+  copy.comment = patch.name;
+  if ('name' in copy) copy.name = patch.name;
+  copy.content = patch.content;
+  copy.position = rawPositionValue(patch.position.type);
+  copy.role = rawRoleValue(patch.position.role);
+  copy.depth = patch.position.depth;
+  copy.order = patch.position.order;
+
+  if (Array.isArray(rawEntries)) rawEntries.push(copy);
+  else (rawEntries as Record<string, unknown>)[String(nextUid)] = copy;
+  await saveWorldInfo(bookName, book, true);
+  await getOptionalGlobalFunction<() => Promise<void>>('updateWorldInfoList')?.();
+  getOptionalGlobalFunction<(file: string, loadIfNotSelected?: boolean) => void>('reloadWorldInfoEditor')?.(
+    bookName,
+    false,
+  );
+  return getWorldbookEntries(bookName);
+}
+
+export async function duplicateWorldbookEntry(bookName: string, uid: number, patch: WorldbookEntryEditorPatch) {
+  const entries = await getWorldbookEntries(bookName);
+  const source = entries.find(entry => entry.uid === uid);
+  if (!source) throw new Error(`世界书条目 #${uid} 已不存在`);
+  const createEntries =
+    getOptionalGlobalFunction<
+      (name: string, entries: unknown[], options?: { render?: 'debounced' | 'immediate' }) => Promise<unknown>
+    >('createWorldbookEntries');
+  if (createEntries) {
+    try {
+      const { extra: _extra, uid: _uid, ...copy } = source;
+      await createEntries(bookName, [{ ...copy, ...patch, position: { ...patch.position } }], { render: 'immediate' });
+      return getWorldbookEntries(bookName);
+    } catch {
+      // Legacy imported books need their original entry shape preserved through the raw API.
+    }
+  }
+  return duplicateWorldbookEntryRaw(bookName, uid, patch);
+}
+
 async function updateWorldbookEntryRaw(bookName: string, uid: number, patch: WorldbookEntryEditorPatch) {
   const saveWorldInfo =
     getOptionalGlobalFunction<(name: string, data: unknown, immediately?: boolean) => Promise<void>>('saveWorldInfo');

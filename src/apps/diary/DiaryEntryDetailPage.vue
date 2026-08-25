@@ -4,22 +4,22 @@
       actions-class="five"
       :content="entry.content"
       display-app-id="diary"
-      eraser-enabled
       :favorite-active="entry.favorite"
       :next-disabled="!nextId"
       :previous-disabled="!previousId"
       :reasoning="entry.generationRecord?.reasoning"
+      reasoning-editable
       :source-label="entry.generationRecord?.replay.source.label"
       :title="entry.kind === 'read-reaction' ? `📖 ${entry.title}` : entry.title"
       @bagu="emit('bagu')"
       @bottom="emit('bottom')"
       @catalog="emit('update:catalogOpen', true)"
       @edit="emit('edit')"
-      @erase="emit('erase', $event)"
       @favorite="emit('favorite')"
       @next="emit('next')"
       @previous="emit('previous')"
       @top="emit('top')"
+      @update:reasoning="emit('update:reasoning', $event)"
     >
       <template v-if="entry.occurredAt" #meta>
         <div class="pc-detail-meta">
@@ -74,7 +74,6 @@ const emit = defineEmits<{
   bottom: [];
   delete: [];
   edit: [];
-  erase: [content: string];
   favorite: [];
   next: [];
   previous: [];
@@ -82,6 +81,7 @@ const emit = defineEmits<{
   selectCatalog: [entryId: string];
   top: [];
   'update:catalogOpen': [open: boolean];
+  'update:reasoning': [reasoning: string];
 }>();
 </script>
 

@@ -5,9 +5,13 @@ import test from 'node:test';
 
 const safePushSource = await readFile(new URL('../safe-push-dist.ps1', import.meta.url), 'utf8');
 
-test('safe push treats root markdown files as the explicit formal documentation boundary', () => {
-  assert.match(safePushSource, /\$rootDocumentationPaths\s*=/u);
+test('safe push treats the three current documents as the explicit publication boundary', () => {
+  assert.match(
+    safePushSource,
+    /\$rootDocumentationPaths\s*=\s*@\([\s\S]*'docs\/CURRENT\.md'[\s\S]*'docs\/DECISIONS\.md'[\s\S]*'docs\/CODEMAP\.md'[\s\S]*\)/u,
+  );
   assert.match(safePushSource, /Get-ChildItem\s+-LiteralPath\s+'docs'\s+-File\s+-Filter\s+'\*\.md'/u);
+  assert.match(safePushSource, /Test-SamePathSet -Left \$rootDocumentationPaths -Right \$actualRootDocumentationPaths/u);
   assert.match(safePushSource, /\$allowedNewExactPaths\s*=\s*@\(\$rootDocumentationPaths\)\s*\+\s*@\(/u);
   assert.match(
     safePushSource,
@@ -15,14 +19,16 @@ test('safe push treats root markdown files as the explicit formal documentation 
   );
   const prefixBlock = safePushSource.match(/\$allowedNewPrefixes\s*=\s*@\([\s\S]*?\n\)/u)?.[0] ?? '';
   assert.doesNotMatch(prefixBlock, /^\s*'docs\/',?\s*$/mu);
+  assert.doesNotMatch(safePushSource, /'docs\/execution(?:\/|')/u);
 });
 
-test('repository documentation has one lifecycle index', async () => {
-  const documentationIndex = await readFile(new URL('../../docs/README.md', import.meta.url), 'utf8');
-
-  assert.match(documentationIndex, /长期规范/u);
-  assert.match(documentationIndex, /当前方案/u);
-  assert.match(documentationIndex, /历史方案/u);
-  assert.match(documentationIndex, /执行记录/u);
-  assert.match(documentationIndex, /15-仓库整理与发布收口方案/u);
+test('repository documentation publishes only the three current context files', async () => {
+  const [current, decisions, codemap] = await Promise.all(
+    ['CURRENT.md', 'DECISIONS.md', 'CODEMAP.md'].map(name =>
+      readFile(new URL(`../../docs/${name}`, import.meta.url), 'utf8'),
+    ),
+  );
+  assert.match(current, /当前有效规则/u);
+  assert.match(decisions, /关键架构决策/u);
+  assert.match(codemap, /当前真实代码结构/u);
 });

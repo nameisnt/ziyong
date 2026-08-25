@@ -4,13 +4,13 @@ import { readFile } from 'node:fs/promises';
 import test from 'node:test';
 
 const phoneOverlay = await readFile(new URL('../../src/components/PhoneOverlay.vue', import.meta.url), 'utf8');
-const settingsApp = await readFile(new URL('../../src/components/SettingsApp.vue', import.meta.url), 'utf8');
+const settingsApp = await readFile(new URL('../../src/apps/settings/SettingsApp.vue', import.meta.url), 'utf8');
 const settingsGeneral = await readFile(
-  new URL('../../src/components/settings/SettingsGeneralPanel.vue', import.meta.url),
+  new URL('../../src/apps/settings/SettingsGeneralPanel.vue', import.meta.url),
   'utf8',
 );
 const dataManagement = await readFile(
-  new URL('../../src/components/settings/SettingsDataManagementPage.vue', import.meta.url),
+  new URL('../../src/apps/settings/SettingsDataManagementPage.vue', import.meta.url),
   'utf8',
 );
 

@@ -63,7 +63,7 @@ export function useSummaryBatchSession(options: SummaryBatchSessionOptions) {
     const resumeAvailable = Boolean(current && ['paused', 'interrupted'].includes(current.status));
     return {
       currentLabel: current?.currentLabel || '',
-      done: current?.savedCount || 0,
+      done: (current?.savedCount || 0) + (current?.previewCount || 0),
       error: current?.error || formError.value,
       failed: current?.draftCount || 0,
       generationId: current?.activeGenerationId || '',

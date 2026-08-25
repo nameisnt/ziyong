@@ -4,7 +4,7 @@ import { readFile } from 'node:fs/promises';
 import test from 'node:test';
 
 const readerSource = await readFile(
-  new URL('../../src/components/settings/SettingsReaderPanel.vue', import.meta.url),
+  new URL('../../src/apps/settings/SettingsReaderPanel.vue', import.meta.url),
   'utf8',
 );
 const themeSource = await readFile(new URL('../../src/apps/theme/ThemeApp.vue', import.meta.url), 'utf8');

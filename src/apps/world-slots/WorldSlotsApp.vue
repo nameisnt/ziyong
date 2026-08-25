@@ -3,37 +3,16 @@
     <section v-if="route.page === 'root'" class="pc-world-slots-page">
       <div class="pc-compact-toolbar pc-directory-toolbar pc-world-root-toolbar">
         <span class="pc-directory-count">{{ slots.length }} {{ t`个槽位` }}</span>
-        <button
-          class="pc-icon-btn primary"
-          type="button"
-          :title="t`新增槽位`"
-          :aria-label="t`新增槽位`"
-          @click="openEditor()"
-        >
-          <i class="fa-solid fa-plus"></i>
-        </button>
-      </div>
-
-      <section class="pc-page-section pc-world-card">
-        <div class="pc-book-heading">
-          <div>
-            <span class="pc-field-label">{{ t`固定世界书` }}</span>
-            <strong>{{ WORLD_SLOTS_BOOK_NAME }}</strong>
-          </div>
-          <button
-            class="pc-primary-btn compact"
-            type="button"
-            :disabled="isSyncing || !isCurrentChatScope"
-            @click="syncSlots"
-          >
+        <ActionMenu icon-only :label="t`管理`" icon="fa-solid fa-bars">
+          <button type="button" @click="openEditor()">
+            <i class="fa-solid fa-plus"></i><span>{{ t`新增槽位` }}</span>
+          </button>
+          <button type="button" :disabled="isSyncing || !isCurrentChatScope" @click="syncSlots">
             <i class="fa-solid fa-cloud-arrow-up"></i>
             <span>{{ isSyncing ? t`同步中` : t`立即同步` }}</span>
           </button>
-        </div>
-        <p v-if="!isCurrentChatScope">{{ t`正在查看历史聊天，不会覆盖酒馆当前聊天的世界书。` }}</p>
-        <p v-else-if="syncError" class="pc-sync-error">{{ syncError }}</p>
-        <p v-else>{{ syncHint }}</p>
-      </section>
+        </ActionMenu>
+      </div>
 
       <section class="pc-compact-toolbar pc-world-search-toolbar">
         <label class="pc-search-field">
@@ -59,7 +38,13 @@
 
     <section v-else-if="route.page === 'editor'" class="pc-world-slot-editor-page pc-saved-content-editor-page">
       <article class="pc-page-section pc-world-slot-editor pc-saved-content-editor">
-        <input v-model="draft.title" class="pc-field" type="text" :placeholder="t`槽位名称`" />
+        <div class="pc-world-slot-name-row">
+          <input v-model="draft.title" class="pc-field" type="text" :placeholder="t`槽位名称`" />
+          <label class="pc-toggle" :title="draft.enabled ? t`停用条目` : t`启用条目`">
+            <input v-model="draft.enabled" type="checkbox" :aria-label="draft.enabled ? t`停用条目` : t`启用条目`" />
+            <span aria-hidden="true"></span>
+          </label>
+        </div>
         <div class="pc-field-group pc-world-field-group">
           <span>{{ t`激活策略` }}</span>
           <SearchableCombobox
@@ -100,14 +85,6 @@
             <span>{{ t`消息身份` }}</span>
             <SearchableCombobox v-model="draft.role" :options="roleComboboxOptions" :placeholder="t`选择消息身份`" />
           </div>
-        </div>
-
-        <div class="pc-world-switch-row">
-          <strong>{{ t`启用条目` }}</strong>
-          <label class="pc-toggle" :title="draft.enabled ? t`停用条目` : t`启用条目`">
-            <input v-model="draft.enabled" type="checkbox" />
-            <span aria-hidden="true"></span>
-          </label>
         </div>
 
         <details class="pc-world-advanced">
@@ -248,6 +225,7 @@
 </template>
 
 <script setup lang="ts">
+import ActionMenu from '@/components/ActionMenu.vue';
 import EmptyState from '@/components/EmptyState.vue';
 import ReferencePicker from '@/components/ReferencePicker.vue';
 import SearchableCombobox from '@/components/SearchableCombobox.vue';
@@ -255,7 +233,6 @@ import { usePhoneStore } from '@/store/phone';
 import type { GenerationReferenceItem } from '@/util/references';
 import {
   getWorldSlotPositionLabel,
-  WORLD_SLOTS_BOOK_NAME,
   type WorldSlot,
   type WorldSlotLogic,
   type WorldSlotPosition,
@@ -270,7 +247,7 @@ import { storeToRefs } from 'pinia';
 
 const phone = usePhoneStore();
 const worldSlots = useWorldSlotsStore();
-const { isCurrentChatScope, slots, syncError, syncStatus } = storeToRefs(worldSlots);
+const { isCurrentChatScope, slots, syncStatus } = storeToRefs(worldSlots);
 const route = computed(() => phone.currentRoute);
 const query = ref('');
 const syncing = ref(false);
@@ -317,15 +294,6 @@ const filteredSlots = computed(() =>
   }),
 );
 const isSyncing = computed(() => syncing.value || syncStatus.value === 'syncing');
-const syncHint = computed(() => {
-  if (syncStatus.value === 'syncing') return '正在将当前聊天的槽位写入世界书…';
-  if (syncStatus.value === 'synced') {
-    return slots.value.length
-      ? `已自动同步 ${slots.value.length} 个槽位，并全局启用该世界书。`
-      : '当前聊天没有槽位，已清除上一个聊天的槽位条目。';
-  }
-  return '切换聊天或修改槽位后会自动同步，其他世界书条目不会被覆盖。';
-});
 
 watch(
   () => [route.value.appId, route.value.page, route.value.params?.slotId] as const,
@@ -579,36 +547,9 @@ async function syncSlots() {
   background: #2d9cdb;
 }
 
-.pc-world-card {
-  display: grid;
-  gap: 8px;
-  padding: 4px 0 12px;
-}
-
-.pc-world-card p,
 .pc-slot-row p,
 .pc-slot-row span {
   color: var(--pc-muted);
-}
-
-.pc-book-heading {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-}
-
-.pc-book-heading > div {
-  display: grid;
-  gap: 4px;
-}
-
-.pc-book-heading strong {
-  font-size: 17px;
-}
-
-.pc-world-card .pc-sync-error {
-  color: var(--pc-danger);
 }
 
 .pc-slot-list {
@@ -665,6 +606,13 @@ async function syncSlots() {
   display: grid;
   gap: 7px;
   min-width: 0;
+}
+
+.pc-world-slot-name-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 10px;
 }
 
 .pc-world-slots-page :deep(.pc-reference-picker) {
@@ -743,7 +691,7 @@ async function syncSlots() {
 }
 
 .pc-world-area {
-  min-height: 260px;
+  min-height: 340px;
 }
 
 .pc-world-import-controls {

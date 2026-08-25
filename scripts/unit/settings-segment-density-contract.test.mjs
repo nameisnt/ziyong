@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import test from 'node:test';
 
-const settingsSource = await readFile(new URL('../../src/components/SettingsApp.vue', import.meta.url), 'utf8');
+const settingsSource = await readFile(new URL('../../src/apps/settings/SettingsApp.vue', import.meta.url), 'utf8');
 const globalSource = await readFile(new URL('../../src/global.css', import.meta.url), 'utf8');
 
 function rulesFor(source, selector) {

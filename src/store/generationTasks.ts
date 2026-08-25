@@ -176,6 +176,7 @@ export const useGenerationTaskStore = defineStore('generationTasks', () => {
       id: createId('generation_task'),
       jobs: input.jobs ?? [],
       kind: input.kind,
+      previewCount: 0,
       rawOutput: '',
       rawOutputSemantics: 'original-v1',
       routePage: input.routePage ?? 'root',
@@ -261,17 +262,19 @@ export const useGenerationTaskStore = defineStore('generationTasks', () => {
     return task;
   }
 
-  function finishJob(taskId: string, jobIndex: number, status: 'saved' | 'draft', error = '') {
+  function finishJob(taskId: string, jobIndex: number, status: 'preview' | 'saved' | 'draft', error = '') {
     const task = getTask(taskId);
     if (!task || !task.jobs[jobIndex]) return null;
     const previousStatus = task.jobs[jobIndex].status;
     task.jobs[jobIndex].status = status;
     task.jobs[jobIndex].error = error;
     task.currentJobIndex = Math.min(jobIndex + 1, task.jobs.length);
-    if (previousStatus !== 'saved' && previousStatus !== 'draft') {
-      if (status === 'saved') task.savedCount += 1;
-      if (status === 'draft') task.draftCount += 1;
-    }
+    if (previousStatus === 'preview') task.previewCount = Math.max(0, task.previewCount - 1);
+    if (previousStatus === 'saved') task.savedCount = Math.max(0, task.savedCount - 1);
+    if (previousStatus === 'draft') task.draftCount = Math.max(0, task.draftCount - 1);
+    if (status === 'preview') task.previewCount += 1;
+    if (status === 'saved') task.savedCount += 1;
+    if (status === 'draft') task.draftCount += 1;
     task.updatedAt = nowIso();
     return task;
   }

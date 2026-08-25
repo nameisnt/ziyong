@@ -16,6 +16,7 @@ const PresetChatBindingSchema = z.object({
 export type PresetChatBinding = z.infer<typeof PresetChatBindingSchema>;
 
 const PresetReaderProfileSchema = z.object({
+  readerCleanupRuleIds: z.array(z.string()).default([]),
   readerContentRuleId: z.string().default(''),
   readerTitleRuleId: z.string().default(''),
   updatedAt: z.string().default(''),
@@ -77,6 +78,7 @@ function migrateLegacyReaderProfiles(
       if (binding.updatedAt.localeCompare(candidate.updatedAt) > 0) candidate.updatedAt = binding.updatedAt;
     } else {
       candidates.set(signature, {
+        readerCleanupRuleIds: [],
         readerContentRuleId,
         readerTitleRuleId,
         scopeKeys: [scopeKey],
@@ -190,6 +192,7 @@ export const usePresetLinkStore = defineStore('preset-link', () => {
     if (input.readerContentRuleId !== undefined || input.readerTitleRuleId !== undefined) {
       const existingProfile = getReaderProfile(presetName) ?? PresetReaderProfileSchema.parse({});
       saveReaderProfile(presetName, {
+        readerCleanupRuleIds: existingProfile.readerCleanupRuleIds,
         readerContentRuleId: input.readerContentRuleId ?? existingProfile.readerContentRuleId,
         readerTitleRuleId: input.readerTitleRuleId ?? existingProfile.readerTitleRuleId,
       });
@@ -200,10 +203,11 @@ export const usePresetLinkStore = defineStore('preset-link', () => {
 
   function saveReaderProfile(
     presetName: string,
-    input: Pick<PresetReaderProfile, 'readerContentRuleId' | 'readerTitleRuleId'>,
+    input: Pick<PresetReaderProfile, 'readerCleanupRuleIds' | 'readerContentRuleId' | 'readerTitleRuleId'>,
   ) {
     const normalizedPresetName = normalizePresetName(presetName);
     settings.value.readerProfiles[normalizedPresetName] = {
+      readerCleanupRuleIds: [...input.readerCleanupRuleIds],
       readerContentRuleId: input.readerContentRuleId.trim(),
       readerTitleRuleId: input.readerTitleRuleId.trim(),
       updatedAt: new Date().toISOString(),
@@ -219,6 +223,7 @@ export const usePresetLinkStore = defineStore('preset-link', () => {
     const normalizedPresetName = normalizePresetName(presetName);
     const existing = getReaderProfile(normalizedPresetName) ?? PresetReaderProfileSchema.parse({});
     return saveReaderProfile(normalizedPresetName, {
+      readerCleanupRuleIds: existing.readerCleanupRuleIds,
       readerContentRuleId: field === 'content' ? ruleId : existing.readerContentRuleId,
       readerTitleRuleId: field === 'title' ? ruleId : existing.readerTitleRuleId,
     });

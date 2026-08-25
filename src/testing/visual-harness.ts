@@ -27,11 +27,7 @@ import {
   waitForVisualPaint,
 } from '@/testing/visual/context';
 import { setupVisualGlobals } from '@/testing/visual-bootstrap';
-import {
-  openReaderCatalog,
-  openReaderTools,
-  toggleReaderFooter,
-} from '@/testing/visual/navigation/readerNavigation';
+import { openReaderCatalog, openReaderTools, toggleReaderFooter } from '@/testing/visual/navigation/readerNavigation';
 import { createGenerationTaskFixture } from '@/testing/visual/generationTaskFixtures';
 import { applyBusinessContentVisualScenario } from '@/testing/visual/businessContentScenarios';
 import { applyFileRepositoryVisualScenario } from '@/testing/visual/fileRepositoryScenarios';
@@ -44,6 +40,10 @@ import { applyChatInsertVisualScenario } from '@/testing/visual/chatInsertScenar
 import { applyAppBuilderVisualScenario } from '@/testing/visual/appBuilderScenarios';
 import { applyMvuModifierVisualScenario } from '@/testing/visual/mvuModifierScenarios';
 import { applyScenePlannerVisualScenario } from '@/testing/visual/scenePlannerScenarios';
+import {
+  applyManagementToolsVisualScenario,
+  prepareManagementToolsVisualRuntime,
+} from '@/testing/visual/managementToolsScenarios';
 import { seedArchiveFloorBackupFixture } from '@/testing/visual/archiveScenarios';
 import { useStorylinesStore } from '@/apps/storylines/store';
 import { useBaguStore } from '@/store/bagu';
@@ -115,10 +115,11 @@ const { ENTRY_LIBRARY_CONTENT_PLACEHOLDER, renderEntryLibraryBindingContent, use
 const {
   deleteTavernPresetPrompt,
   duplicateTavernPresetPrompt,
-  getCurrentTavernPresetName,
+  loadTavernPreset,
   readTavernPreset,
   reorderTavernPresetPrompts,
 } = await import('@/apps/preset-manager/api');
+const { getWorldbookEntries } = await import('@/apps/worldbook-link/api');
 const { applyTextProviderSelection } = await import('@/util/textProvider');
 const { buildExtraHistoryContext, getSummarizableChapters } = await import('@/util/extrasSummary');
 const { resolveExtraChapterGenerationRecords, synchronizeExtraChapterGenerationRecords } =
@@ -371,13 +372,110 @@ async function applyScenario(name: VisualScenarioName, options: { height?: numbe
       name === 'preview-draft-deferred-save-dark' ||
       name === 'profiles-external-dark' ||
       name === 'profiles-external-transfer-row-dark' ||
-      name === 'profiles-external-mapping-editor-dark'
+      name === 'profiles-external-mapping-editor-dark' ||
+      name === 'preset-link-dark' ||
+      name === 'macro-builder-dark'
       ? 'dark'
       : 'light',
   );
   const phone = usePhoneStore();
   await phone.goHome();
   phone.openPhone();
+
+  if (name === 'preset-link-dark' || name === 'macro-builder-dark') {
+    const appId = name === 'preset-link-dark' ? 'preset-link' : 'macro-builder';
+    resetPhoneToRoute(appId, 'root', appId === 'preset-link' ? '预设绑定' : '宏生成器');
+    await waitForPaint();
+    return { name, route: phone.currentRoute };
+  }
+
+  if (name === 'status-display-mvu') {
+    const { createStatusDisplayScheme, useStatusDisplayStore } = await import('@/apps/status-display/store');
+    const statusDisplay = useStatusDisplayStore();
+    statusDisplay.settings.schemes = [];
+    statusDisplay.settings.activeSchemeByScope = {};
+    const scheme = createStatusDisplayScheme('mvu');
+    scheme.name = '角色状态';
+    scheme.template = [
+      '<style>',
+      '.status { display: grid; gap: 10px; padding: 16px; }',
+      '.status h2 { margin: 0; font-size: 18px; }',
+      '.row { display: flex; justify-content: space-between; gap: 12px; padding-block: 8px; border-bottom: 1px solid var(--pc-frame-border); }',
+      '</style>',
+      '<section class="status">',
+      '  <h2>艾莉娅</h2>',
+      '  <div class="row"><span>好感度</span><strong>{{mvu:角色.艾莉娅.好感度}}</strong></div>',
+      '  <div class="row"><span>当前状态</span><strong>{{mvu:角色.艾莉娅.状态}}</strong></div>',
+      '  <div class="row"><span>金币</span><strong>{{mvu:背包.金币}}</strong></div>',
+      '</section>',
+    ].join('\n');
+    statusDisplay.upsertScheme(scheme);
+    statusDisplay.setActiveScheme(phone.currentTavernScopeKey, scheme.id);
+    resetPhoneToRoute('status-display', 'root', '状态栏');
+    const rendered = await waitForVisualCondition(() => {
+      const frame = document.querySelector<HTMLIFrameElement>('.pc-status-display-app iframe');
+      return Boolean(frame?.srcdoc.includes('正在城镇休息'));
+    });
+    if (!rendered) throw new Error('Status display MVU template did not render inside the frontend frame');
+    await waitForPaint();
+    return { name, route: phone.currentRoute };
+  }
+
+  if (name === 'status-display-regex') {
+    const { createRegexDisplayRule, useRegexDisplayStore } = await import('@/apps/regex-display/store');
+    const {
+      createStatusDisplayScheme,
+      statusDisplayRegexTargetId,
+      useStatusDisplayStore,
+    } = await import('@/apps/status-display/store');
+    const statusDisplay = useStatusDisplayStore();
+    const regexDisplay = useRegexDisplayStore();
+    statusDisplay.settings.schemes = [];
+    statusDisplay.settings.activeSchemeByScope = {};
+    const scheme = createStatusDisplayScheme('regex');
+    scheme.name = '正文状态';
+    statusDisplay.upsertScheme(scheme);
+    statusDisplay.setActiveScheme(phone.currentTavernScopeKey, scheme.id);
+    const extractRule = createRegexDisplayRule({
+      flags: 'i',
+      name: '提取正文状态',
+      operation: 'extract',
+      pattern: '<content>([\\s\\S]*?)</content>',
+      replacement: '$1',
+    });
+    const displayRule = createRegexDisplayRule({
+      flags: '',
+      name: '正文状态网页',
+      operation: 'replace',
+      pattern: '^([\\s\\S]+)$',
+      renderMode: 'html',
+      replacement:
+        '<style>.status { padding: 16px; line-height: 1.8; }.status strong { display: block; margin-bottom: 8px; }</style><section class="status"><strong>最新状态</strong><div>$1</div></section>',
+    });
+    regexDisplay.settings.rules = [extractRule, displayRule];
+    const usage = regexDisplay.getUsage(statusDisplayRegexTargetId(scheme.id));
+    usage.contentRuleId = extractRule.id;
+    usage.displayRuleIds = [displayRule.id];
+    resetPhoneToRoute('status-display', 'root', '状态栏');
+    const rendered = await waitForVisualCondition(() => {
+      const frame = document.querySelector<HTMLIFrameElement>('.pc-status-display-app iframe');
+      return Boolean(frame?.srcdoc.includes('另一条 AI 回复'));
+    });
+    if (!rendered) throw new Error('Status display regex rules did not render the latest matching assistant message');
+    await waitForPaint();
+    return { name, route: phone.currentRoute };
+  }
+
+  if (
+    await applyManagementToolsVisualScenario(name, {
+      resetPhoneToRoute,
+      waitForCondition: waitForVisualCondition,
+      waitForPaint,
+    })
+  ) {
+    await waitForPaint();
+    return { name, route: usePhoneStore().currentRoute };
+  }
 
   if (await applySettingsVisualScenario(name, { resetPhoneToRoute, waitForPaint })) {
     await waitForPaint();
@@ -2134,14 +2232,13 @@ async function applyScenario(name: VisualScenarioName, options: { height?: numbe
     rawToggle?.click();
     await waitForPaint();
 
-    const taskHead = document.querySelector<HTMLButtonElement>('.pc-task-center-toggle');
+    const taskHead = document.querySelector<HTMLElement>('.pc-task-center-head');
     if (!taskHead || !document.querySelector('.pc-task-list'))
       throw new Error('Generation TaskCenter header fixture is missing');
     dispatchHomeSwipe(taskHead, 90, 290, 72);
-    taskHead.click();
     await waitForPaint();
     if (!document.querySelector('.pc-task-list')) {
-      throw new Error('Generation task page swipe released into the TaskCenter toggle action');
+      throw new Error('Generation task page swipe hid the permanent task list');
     }
     await new Promise(resolve => window.setTimeout(resolve, 280));
 
@@ -2155,16 +2252,9 @@ async function applyScenario(name: VisualScenarioName, options: { height?: numbe
     await new Promise(resolve => window.setTimeout(resolve, 280));
     document.querySelector<HTMLButtonElement>('.pc-page-dot[title="第 1 页"]')?.click();
     await waitForPaint();
-    const restoredTaskHead = document.querySelector<HTMLButtonElement>('.pc-task-center-toggle');
-    restoredTaskHead?.click();
-    await waitForPaint();
-    if (!restoredTaskHead || document.querySelector('.pc-task-list')) {
-      throw new Error('Normal Generation TaskCenter header click was blocked after page navigation');
-    }
-    restoredTaskHead.click();
-    await waitForPaint();
-    if (!document.querySelector('.pc-task-list')) {
-      throw new Error('Normal Generation TaskCenter header click could not restore the task list');
+    const restoredTaskHead = document.querySelector<HTMLElement>('.pc-task-center-head');
+    if (!restoredTaskHead || !document.querySelector('.pc-task-list')) {
+      throw new Error('Generation TaskCenter did not remain expanded after page navigation');
     }
     const generationTaskStore = useGenerationTaskStore();
     const clearSavedButton = document.querySelector<HTMLButtonElement>('[aria-label="清理已保存任务"]');
@@ -2182,8 +2272,8 @@ async function applyScenario(name: VisualScenarioName, options: { height?: numbe
     ) {
       throw new Error('Saved-task cleanup removed a running, paused, or interrupted generation task');
     }
-    if (document.querySelector('[aria-label="清理已保存任务"]')) {
-      throw new Error('Generation TaskCenter kept an empty saved-task cleanup action visible');
+    if (!document.querySelector<HTMLButtonElement>('[aria-label="清理已保存任务"]')?.disabled) {
+      throw new Error('Generation TaskCenter did not keep a disabled cleanup action after clearing');
     }
   } else if (name === 'bagu-scan-actions' || name === 'bagu-scan-applied' || name === 'bagu-hit-details') {
     const templateText = '开头，这是一个漫长等待的眼神，结尾。';
@@ -2789,19 +2879,24 @@ async function applyScenario(name: VisualScenarioName, options: { height?: numbe
       throw new Error('Legacy world slot type filter is still visible');
     }
     const rootToolbar = document.querySelector<HTMLElement>('.pc-world-root-toolbar.pc-directory-toolbar');
-    const addSlot = rootToolbar?.querySelector<HTMLButtonElement>('button[title="新增槽位"]');
+    const managementTrigger = rootToolbar?.querySelector<HTMLElement>('.pc-action-menu > summary[aria-label="管理"]');
     const slotCount = rootToolbar?.querySelector<HTMLElement>('.pc-directory-count');
-    if (!rootToolbar || !addSlot || !slotCount) throw new Error('World slot root toolbar is incomplete');
+    if (!rootToolbar || !managementTrigger || !slotCount) throw new Error('World slot root toolbar is incomplete');
     const toolbarRect = rootToolbar.getBoundingClientRect();
-    const addRect = addSlot.getBoundingClientRect();
-    if (Math.abs(toolbarRect.right - addRect.right) > 1 || addRect.left <= slotCount.getBoundingClientRect().right) {
-      throw new Error('World slot add action is not aligned to the far right of the shared toolbar');
+    const triggerRect = managementTrigger.getBoundingClientRect();
+    if (
+      Math.abs(toolbarRect.right - triggerRect.right) > 1 ||
+      triggerRect.left <= slotCount.getBoundingClientRect().right
+    ) {
+      throw new Error('World slot management action is not aligned to the far right of the shared toolbar');
     }
-    const bookCard = document.querySelector<HTMLElement>('.pc-world-card');
-    const bookStyle = bookCard ? getComputedStyle(bookCard) : null;
-    if (!bookStyle || parseFloat(bookStyle.paddingTop) > 4 || parseFloat(bookStyle.paddingBottom) > 12) {
-      throw new Error('World slot fixed-book section kept excessive vertical padding');
+    managementTrigger.click();
+    await waitForPaint();
+    const menuText = rootToolbar.querySelector('.pc-action-menu-panel')?.textContent || '';
+    if (!menuText.includes('新增槽位') || !menuText.includes('立即同步')) {
+      throw new Error('World slot management menu does not expose add and sync actions');
     }
+    if (document.querySelector('.pc-world-card')) throw new Error('Removed fixed worldbook block is still visible');
     const slotsApp = document.querySelector<HTMLElement>('.pc-world-slots-app');
     if (!slotsApp || slotsApp.scrollWidth > slotsApp.clientWidth + 1) {
       throw new Error('Long world slot content expanded the App width');
@@ -3085,26 +3180,8 @@ async function applyScenario(name: VisualScenarioName, options: { height?: numbe
     resetPhoneToRoute('preset-manager', 'detail', '预设条目', { presetName: '简洁写作' });
     const loaded = await waitForVisualCondition(() => Boolean(document.querySelector('.pc-preset-owner')));
     if (!loaded) throw new Error('Preset ownership controls are missing from Tavern preset detail');
-    const reloadToggle = document.querySelector<HTMLInputElement>('.pc-preset-owner-option input');
-    if (!reloadToggle) throw new Error('Preset ownership regex reload toggle is missing');
-    reloadToggle.click();
-    const actions = [...document.querySelectorAll<HTMLButtonElement>('.pc-preset-owner-actions button')];
-    actions.find(button => button.textContent?.includes('绑定此预设'))?.click();
-    await waitForPaint();
-    const binding = usePresetLinkStore().getBinding(phone.viewingScopeKey);
-    if (binding?.presetName !== '简洁写作' || !binding.reloadRegex) {
-      throw new Error('Preset detail did not save the current chat binding');
-    }
-    const applyButton = actions.find(button => button.textContent?.includes('立即应用'));
-    if (!applyButton || applyButton.disabled) throw new Error('Preset detail apply action is missing or disabled');
-    applyButton.click();
-    const applied = await waitForVisualCondition(
-      () => getCurrentTavernPresetName() === '简洁写作' && !document.querySelector('.toast'),
-    );
-    if (!applied) {
-      throw new Error(
-        `Preset detail did not settle guarded regex reload: current=${getCurrentTavernPresetName()}, toast=${Boolean(document.querySelector('.toast'))}`,
-      );
+    if (document.body.textContent?.includes('绑定此预设') || document.body.textContent?.includes('立即应用')) {
+      throw new Error('Preset detail still exposes chat binding actions');
     }
     document.querySelector<HTMLButtonElement>('.pc-preset-owner-rule-action button')?.click();
     if (!usePresetLinkStore().getReaderProfile('简洁写作')) {
@@ -3113,23 +3190,14 @@ async function applyScenario(name: VisualScenarioName, options: { height?: numbe
   } else if (name === 'preset-owner-history') {
     useSettingsStore().setTheme('dark');
     const historyScopeKey = 'char:0:chat:visual-history';
-    usePresetLinkStore().saveBinding(historyScopeKey, {
-      presetName: '简洁写作',
-      readerContentRuleId: '',
-      readerTitleRuleId: '',
-      reloadRegex: true,
-    });
     await phone.setViewingScope(historyScopeKey, {
       chatTitle: '旧章节讨论',
       ownerName: '测试角色',
     });
     resetPhoneToRoute('preset-manager', 'detail', '预设条目', { presetName: '简洁写作' });
     const loaded = await waitForVisualCondition(() => Boolean(document.querySelector('.pc-preset-owner')));
-    const applyButton = [...document.querySelectorAll<HTMLButtonElement>('.pc-preset-owner-actions button')].find(
-      button => button.textContent?.includes('立即应用'),
-    );
-    if (!loaded || !applyButton?.disabled) {
-      throw new Error('Historical chat preset ownership state is missing or directly applicable');
+    if (!loaded || document.body.textContent?.includes('立即应用')) {
+      throw new Error('Historical chat preset detail did not keep the reading-rule-only boundary');
     }
   } else if (name === 'searchable-select' || name === 'searchable-select-dark-long') {
     useSettingsStore().setTheme(name === 'searchable-select-dark-long' ? 'dark' : 'light');
@@ -3855,6 +3923,7 @@ async function applyScenario(name: VisualScenarioName, options: { height?: numbe
     const appId = name.slice('app:'.length);
     const app = PHONE_APPS.find(item => item.id === appId);
     if (!app) throw new Error(`Unknown app visual scenario: ${name}`);
+    prepareManagementToolsVisualRuntime(appId);
     resetPhoneToRoute(app.id, app.defaultRoute, app.name);
     if (appId === 'card-writer') {
       await waitForPaint();
@@ -4125,17 +4194,43 @@ async function applyScenario(name: VisualScenarioName, options: { height?: numbe
     if (!returned || savedRole !== 'assistant') {
       throw new Error(`Saved preset prompt role did not persist: ${savedRole || 'missing'}`);
     }
-  } else if (name === 'preset-scroll-return') {
+  } else if (name === 'preset-scroll-return' || name === 'preset-scroll-return-dark') {
+    if (name.endsWith('-dark')) useSettingsStore().setTheme('dark');
+    await loadTavernPreset('简洁写作');
+    resetPhoneToRoute('preset-manager', 'root', '预设管理');
+    const tabsLoaded = await waitForVisualCondition(() =>
+      [...document.querySelectorAll<HTMLButtonElement>('.pc-preset-source-tabs .pc-segment-btn')].some(button =>
+        button.textContent?.includes('酒馆预设'),
+      ),
+    );
+    const tavernTab = [...document.querySelectorAll<HTMLButtonElement>('.pc-preset-source-tabs .pc-segment-btn')].find(
+      button => button.textContent?.includes('酒馆预设'),
+    );
+    if (!tabsLoaded || !tavernTab) throw new Error('Tavern preset source tab did not load');
+    tavernTab.click();
+    const catalogLoaded = await waitForVisualCondition(() =>
+      Boolean(document.querySelector('.pc-preset-current')?.textContent?.includes('当前：简洁写作')),
+    );
+    const firstPresetName = document.querySelector<HTMLElement>('.pc-preset-row strong')?.textContent?.trim();
+    if (!catalogLoaded || firstPresetName !== '简洁写作') {
+      throw new Error(`Current Tavern preset was not placed first: ${firstPresetName || 'missing'}`);
+    }
+    document.querySelectorAll('.toast').forEach(toast => toast.remove());
+    await loadTavernPreset('视觉预设');
     resetPhoneToRoute('preset-manager', 'detail', '预设条目', { presetName: '视觉预设' });
-    const loaded = await waitForVisualCondition(() => document.querySelectorAll('.pc-preset-prompt-main').length > 2);
-    if (!loaded) throw new Error('Preset detail did not load for scroll restoration');
+    const loaded = await waitForVisualCondition(() => Boolean(document.querySelector('.pc-preset-group-head')));
+    if (!loaded || document.querySelector('.pc-preset-group-body')) {
+      throw new Error('Preset detail did not start with its collapsed fixture group');
+    }
+    document.querySelector<HTMLButtonElement>('.pc-preset-group-head')?.click();
+    const expanded = await waitForVisualCondition(() => Boolean(document.querySelector('.pc-preset-group-body')));
+    if (!expanded) throw new Error('Preset group did not expand before opening its content');
     const page = document.querySelector<HTMLElement>('.pc-preset-page');
     if (!page) throw new Error('Preset detail scroll container is missing');
     page.scrollTop = Math.max(80, page.scrollHeight - page.clientHeight - 20);
     await waitForPaint();
     const expectedScrollTop = page.scrollTop;
-    const promptButtons = [...document.querySelectorAll<HTMLButtonElement>('.pc-preset-prompt-main')];
-    promptButtons[promptButtons.length - 1]?.click();
+    document.querySelector<HTMLButtonElement>('.pc-preset-group-body .pc-preset-prompt-main')?.click();
     const editorLoaded = await waitForVisualCondition(() => Boolean(document.querySelector('.pc-preset-editor-page')));
     if (!editorLoaded) throw new Error('Preset editor did not open for scroll restoration');
     await usePhoneStore().goBack();
@@ -4143,6 +4238,9 @@ async function applyScenario(name: VisualScenarioName, options: { height?: numbe
     if (!returned) throw new Error('Preset detail did not return from editor');
     await new Promise(resolve => window.setTimeout(resolve, 320));
     const restoredPage = document.querySelector<HTMLElement>('.pc-preset-page');
+    if (!document.querySelector('.pc-preset-group-body')) {
+      throw new Error('Expanded preset group collapsed after returning from its prompt');
+    }
     if (!restoredPage || restoredPage.scrollTop < Math.max(0, expectedScrollTop - 8)) {
       throw new Error(`Preset scroll position was not restored: ${restoredPage?.scrollTop ?? -1}/${expectedScrollTop}`);
     }
@@ -4358,6 +4456,41 @@ async function applyScenario(name: VisualScenarioName, options: { height?: numbe
       Boolean(document.querySelector('.pc-worldbook-entry-editor')),
     );
     if (!editorLoaded) throw new Error('Worldbook entry editor did not open');
+  } else if (name === 'worldbook-entry-copy' || name === 'worldbook-entry-copy-dark') {
+    if (name.endsWith('-dark')) useSettingsStore().setTheme('dark');
+    resetPhoneToRoute('worldbook-link', 'detail', '【视觉】旧格式世界书', { bookName: '【视觉】旧格式世界书' });
+    const loaded = await waitForVisualCondition(() => Boolean(document.querySelector('.pc-worldbook-entry-copy-btn')));
+    if (!loaded) throw new Error('Worldbook entry copy action did not load');
+    document.querySelector<HTMLButtonElement>('.pc-worldbook-entry-copy-btn')?.click();
+    const copyLoaded = await waitForVisualCondition(
+      () =>
+        usePhoneStore().currentRoute.page === 'copy' && Boolean(document.querySelector('.pc-worldbook-entry-editor')),
+    );
+    const copyName = document.querySelector<HTMLInputElement>('.pc-worldbook-entry-editor .pc-field')?.value;
+    if (!copyLoaded || copyName !== '缺少关键词数组的旧条目 - 副本') {
+      throw new Error(`Worldbook copy editor did not preload a distinct copy name: ${copyName || 'missing'}`);
+    }
+    const saveCopy = [
+      ...document.querySelectorAll<HTMLButtonElement>('.pc-worldbook-entry-editor-actions button'),
+    ].find(button => button.textContent?.trim() === '保存副本');
+    saveCopy?.click();
+    const returned = await waitForVisualCondition(
+      () =>
+        usePhoneStore().currentRoute.page === 'detail' && document.querySelectorAll('.pc-worldbook-entry').length === 3,
+    );
+    const entries = await getWorldbookEntries('【视觉】旧格式世界书');
+    const source = entries.find(entry => entry.uid === 1);
+    const copy = entries.find(entry => entry.name === '缺少关键词数组的旧条目 - 副本');
+    if (
+      !returned ||
+      !source ||
+      !copy ||
+      copy.enabled !== source.enabled ||
+      copy.strategy.type !== source.strategy.type ||
+      copy.content !== source.content
+    ) {
+      throw new Error('Copied worldbook entry did not preserve the source entry configuration');
+    }
   } else if (name === 'world-strategy-lamps') {
     const worldSlots = useWorldSlotsStore();
     await worldSlots.resetCurrentScope();

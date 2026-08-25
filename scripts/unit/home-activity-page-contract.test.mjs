@@ -4,12 +4,18 @@ import test from 'node:test';
 import { readFile } from 'node:fs/promises';
 
 const source = await readFile(new URL('../../src/components/PhoneHome.vue', import.meta.url), 'utf8');
+const activityPage = await readFile(new URL('../../src/components/home/HomeActivityPage.vue', import.meta.url), 'utf8');
+const layoutProjection = await readFile(
+  new URL('../../src/components/home/useHomeLayoutProjection.ts', import.meta.url),
+  'utf8',
+);
 const taskCenter = await readFile(new URL('../../src/components/GenerationTaskCenter.vue', import.meta.url), 'utf8');
 
 test('home reserves page zero for transient activity and defaults to the first desktop page', () => {
   assert.match(source, /const homePageIndex = ref\(1\)/u);
-  assert.match(source, /v-if="homePageIndex === 0" class="pc-home-activity-page"/u);
-  assert.match(source, /homePages\.value\[homePageIndex\.value - 1\]/u);
+  assert.match(source, /<HomeActivityPage :active="homePageIndex === 0" @open="openHomeActivityItem"/u);
+  assert.match(activityPage, /<section v-if="active" class="pc-home-activity-page"/u);
+  assert.match(layoutProjection, /homePages\.value\[homePageIndex\.value - 1\]/u);
   assert.match(source, /v-for="\(_, pageIndex\) in homePages\.length \+ 1"/u);
 });
 
@@ -28,12 +34,30 @@ test('activity routes drafts and recovery items through their registered app and
   assert.match(taskCenter, /generationTasks\.getClearableTasks\(\)/u);
   assert.match(taskCenter, /generationTasks\.clearPureSavedTasks\(\)/u);
   assert.match(taskCenter, /aria-label="清理已保存任务"/u);
-  assert.match(source, /item\.kind !== 'active-task'/u);
+  assert.match(taskCenter, /:disabled="!clearableTaskCount"/u);
+  assert.doesNotMatch(taskCenter, /slice\(0, 5\)|pc-task-center-toggle|v-if="visibleTasks\.length"/u);
+  assert.match(activityPage, /emit\('open', item\)/u);
+  assert.match(activityPage, /item\.kind !== 'active-task'/u);
 });
 
 test('late recovery-provider results cannot overwrite activity from a newer chat scope', () => {
-  assert.match(source, /const requestSequence = \+\+activityRefreshSequence;/u);
-  assert.match(source, /requestSequence !== activityRefreshSequence \|\| scopeKey !== viewingScopeKey\.value/u);
+  assert.match(activityPage, /const requestSequence = \+\+activityRefreshSequence;/u);
+  assert.match(activityPage, /requestSequence !== activityRefreshSequence \|\| scopeKey !== viewingScopeKey\.value/u);
+});
+
+test('activity page owns its asynchronous state without duplicating desktop state in PhoneHome', () => {
+  for (const evidence of [
+    'activityItems',
+    'activityRefreshSequence',
+    'getRegisteredPhoneGenerationRecoveryItems',
+    'usePreviewDraftStore',
+    'collectGenerationActivity',
+  ]) {
+    assert.match(activityPage, new RegExp(evidence, 'u'));
+    assert.doesNotMatch(source, new RegExp(evidence, 'u'));
+  }
+  assert.match(activityPage, /watch\(viewingScopeKey,[\s\S]*\{ immediate: true \}/u);
+  assert.match(activityPage, /watch\(\[\(\) => generationTasks\.currentScopeTasks, \(\) => previewDrafts\.drafts\]/u);
 });
 
 test('home organize mode is explicit and Dock rejects unsupported drops instead of displacing items', () => {

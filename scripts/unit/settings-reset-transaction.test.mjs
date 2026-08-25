@@ -103,7 +103,7 @@ test('reset rollback preserves the primary, external and settings restoration er
 test('settings clear and external worldbook resets consume the shared transactional contract', async () => {
   const [registry, panel, worldbook, worldSlots] = await Promise.all([
     readFile(new URL('../../src/core/appRegistry.ts', import.meta.url), 'utf8'),
-    readFile(new URL('../../src/components/settings/SettingsAdvancedPanel.vue', import.meta.url), 'utf8'),
+    readFile(new URL('../../src/apps/settings/SettingsAdvancedPanel.vue', import.meta.url), 'utf8'),
     readFile(new URL('../../src/apps/worldbook-link/store.ts', import.meta.url), 'utf8'),
     readFile(new URL('../../src/apps/world-slots/store.ts', import.meta.url), 'utf8'),
   ]);

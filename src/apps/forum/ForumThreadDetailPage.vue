@@ -3,20 +3,20 @@
     <ReaderDetailShell
       :content="displayedContent"
       display-app-id="forum"
-      eraser-enabled
       :favorite-active="favorite"
       next-disabled
       previous-disabled
       :reasoning="viewedGenerationRecord?.reasoning"
+      reasoning-editable
       :source-label="viewedGenerationRecord?.replay.source.label"
       :title="thread.title"
       @bagu="$emit('bagu')"
       @bottom="$emit('bottom')"
       @catalog="$emit('catalog')"
       @edit="$emit('edit')"
-      @erase="$emit('erase', $event)"
       @favorite="$emit('favorite')"
       @top="$emit('top')"
+      @update:reasoning="$emit('update:reasoning', $event)"
     >
       <template #kicker
         ><span class="pc-kicker">{{ boardName }}</span></template
@@ -98,13 +98,13 @@ defineEmits<{
   bottom: [];
   catalog: [];
   edit: [];
-  erase: [content: string];
   favorite: [];
   'generate-replies': [];
   remove: [];
   rewrite: [];
   'select-version': [versionId: string];
   top: [];
+  'update:reasoning': [reasoning: string];
 }>();
 </script>
 

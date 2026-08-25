@@ -88,10 +88,23 @@ export interface DuplicateScanResult {
   groupId: string;
   rejected: CleanupRejectedBackup[];
   scannedFiles: number;
+  similarGroups: SimilarBackupGroup[];
 }
 
 export interface ContainedBackupGroup {
   contained: DuplicateBackupFingerprint[];
+  id: string;
+  keeper: DuplicateBackupFingerprint;
+  reclaimBytes: number;
+}
+
+export interface SimilarBackupCandidate {
+  fingerprint: DuplicateBackupFingerprint;
+  similarity: number;
+}
+
+export interface SimilarBackupGroup {
+  candidates: SimilarBackupCandidate[];
   id: string;
   keeper: DuplicateBackupFingerprint;
   reclaimBytes: number;
@@ -328,6 +341,68 @@ export function createContainedBackupGroups(
       b.keeper.actualChatItems - a.keeper.actualChatItems ||
       b.keeper.summary.backupCreatedAt - a.keeper.summary.backupCreatedAt,
   );
+}
+
+export function getBackupMessageSimilarity(
+  left: DuplicateBackupFingerprint,
+  right: DuplicateBackupFingerprint,
+) {
+  const total = Math.max(left.messageHashes.length, right.messageHashes.length);
+  if (!total || left.summary.ownerKey !== right.summary.ownerKey) return 0;
+  const comparable = Math.min(left.messageHashes.length, right.messageHashes.length);
+  let matched = 0;
+  for (let index = 0; index < comparable; index += 1) {
+    if (left.messageHashes[index] === right.messageHashes[index]) matched += 1;
+  }
+  return matched / total;
+}
+
+export function createSimilarBackupGroups(
+  fingerprints: DuplicateBackupFingerprint[],
+  exactGroups: DuplicateBackupGroup[],
+  containedGroups: ContainedBackupGroup[],
+) {
+  const excluded = new Set([
+    ...exactGroups.flatMap(group => [group.keeper, ...group.duplicates].map(item => item.summary.fileName)),
+    ...containedGroups.flatMap(group => [group.keeper, ...group.contained].map(item => item.summary.fileName)),
+  ]);
+  const byOwner = new Map<string, DuplicateBackupFingerprint[]>();
+  fingerprints
+    .filter(item => item.summary.ownerKey && item.messageHashes.length && !excluded.has(item.summary.fileName))
+    .forEach(item => {
+      const values = byOwner.get(item.summary.ownerKey) ?? [];
+      values.push(item);
+      byOwner.set(item.summary.ownerKey, values);
+    });
+
+  const groups: SimilarBackupGroup[] = [];
+  byOwner.forEach(ownerItems => {
+    const ordered = [...ownerItems].sort(
+      (a, b) =>
+        b.summary.backupCreatedAt - a.summary.backupCreatedAt ||
+        b.actualChatItems - a.actualChatItems ||
+        b.summary.fileName.localeCompare(a.summary.fileName),
+    );
+    const assigned = new Set<string>();
+    ordered.forEach((keeper, keeperIndex) => {
+      if (assigned.has(keeper.summary.fileName)) return;
+      const candidates = ordered.slice(keeperIndex + 1).flatMap(fingerprint => {
+        if (assigned.has(fingerprint.summary.fileName)) return [];
+        const similarity = getBackupMessageSimilarity(keeper, fingerprint);
+        if (similarity < 0.9 || similarity >= 1) return [];
+        assigned.add(fingerprint.summary.fileName);
+        return [{ fingerprint, similarity }];
+      });
+      if (!candidates.length) return;
+      groups.push({
+        candidates,
+        id: `${keeper.summary.ownerKey}\0similar\0${keeper.summary.fileName}`,
+        keeper,
+        reclaimBytes: candidates.reduce((total, item) => total + item.fingerprint.byteLength, 0),
+      });
+    });
+  });
+  return groups;
 }
 
 export function normalizeSettingsSnapshotSummary(raw: unknown): SettingsSnapshotSummary | null {

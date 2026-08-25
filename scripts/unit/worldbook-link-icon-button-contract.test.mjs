@@ -7,7 +7,7 @@ import { scanVueUiContracts } from '../ui-contract-check.mjs';
 
 const expectedCounts = new Map([
   ['WorldbookCatalogPage.vue', 1],
-  ['WorldbookDetailPage.vue', 3],
+  ['WorldbookDetailPage.vue', 4],
   ['WorldbookEntryEditorPage.vue', 1],
 ]);
 const sources = await Promise.all(

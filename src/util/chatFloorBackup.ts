@@ -229,6 +229,13 @@ export async function deleteChatFloorBackup(key: string) {
   await runStore<undefined>('readwrite', store => store.delete(key));
 }
 
+export async function replaceChatFloorBackups(backups: ChatFloorBackup[]) {
+  const parsed = z.array(ChatFloorBackupSchema).parse(backups);
+  const current = await listChatFloorBackups();
+  for (const backup of current) await deleteChatFloorBackup(backup.key);
+  for (const backup of parsed) await saveChatFloorBackup(backup);
+}
+
 export async function captureCurrentChatFloorBackup(
   options: { force?: boolean } = {},
 ): Promise<ChatFloorBackupCaptureResult> {

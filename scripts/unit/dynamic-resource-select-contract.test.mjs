@@ -8,7 +8,7 @@ const extrasSource = await readFile(
   'utf8',
 );
 const promptsSource = await readFile(
-  new URL('../../src/components/prompts/PromptTypeEditorPage.vue', import.meta.url),
+  new URL('../../src/apps/prompts/PromptTypeEditorPage.vue', import.meta.url),
   'utf8',
 );
 const theaterGroupFieldSource = await readFile(

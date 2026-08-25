@@ -22,6 +22,13 @@ import {
   selectCurrentChatBackupDomains,
   selectGeneratedContentDomains,
 } from '@/util/backupPolicy';
+import {
+  ChatFloorBackupSchema,
+  listChatFloorBackups,
+  replaceChatFloorBackups,
+  type ChatFloorBackup,
+} from '@/util/chatFloorBackup';
+import { getOptionalGlobalFunction } from '@/util/runtime';
 // eslint-disable-next-line import-x/no-nodejs-modules
 import { getRequestHeaders, saveSettingsDebounced } from '@sillytavern/script';
 import { extension_settings } from '@sillytavern/scripts/extensions';
@@ -59,6 +66,7 @@ const backupDomainLabels: Record<string, string> = {
   'preview-drafts': '未保存预览',
   'preset-link': '预设绑定',
   'regex-display': '正则显示',
+  'status-display': '状态栏方案',
   relationship: '关系网',
   relationships: '关系网',
   summaries: '总结',
@@ -103,13 +111,17 @@ type StagedPhoneBackupDomainImport = {
 };
 
 type PreparedFullPhoneBackupImport = {
+  chatFloorBackups: ChatFloorBackup[];
+  data: z.infer<typeof PhoneBackupFullDataSchema>;
   embeddedPluginPresets: PluginPresetBackupBundle | null;
   homeIconAssets: Array<{ data: string; id: string; name: string }>;
   plan: PhoneBackupImportPlan;
   stagedDomains: StagedPhoneBackupDomainImport[];
   stagedSettings: Settings;
-  data: z.infer<typeof PhoneBackupFullDataSchema>;
+  worldbooks: PhoneBackupWorldbook[];
 };
+
+type PhoneBackupWorldbook = { entries: unknown[]; name: string };
 
 function decodeHomeIconBackupData(value: string) {
   let binary = '';
@@ -416,7 +428,14 @@ function sanitizeSettingsForJsonBackup(rawSettings: unknown) {
   return parsed;
 }
 
-export function buildPhoneBackup(options: { homeIconAssets?: Array<{ data: string; id: string; name: string }>; pluginPresets?: PluginPresetBackupBundle } = {}): PhoneBackup {
+export function buildPhoneBackup(
+  options: {
+    chatFloorBackups?: ChatFloorBackup[];
+    homeIconAssets?: Array<{ data: string; id: string; name: string }>;
+    pluginPresets?: PluginPresetBackupBundle;
+    worldbooks?: PhoneBackupWorldbook[];
+  } = {},
+): PhoneBackup {
   const scopeKey = getCurrentChatScopeKey();
   const registeredDomains = getRegisteredPhoneBackupDomains();
   const domains = Object.fromEntries(registeredDomains.map(domain => [domain.key, domain.exportData(scopeKey)]));
@@ -424,7 +443,7 @@ export function buildPhoneBackup(options: { homeIconAssets?: Array<{ data: strin
 
   return parsePrettified(PhoneBackupSchema, {
     backupKind: 'full',
-    schemaVersion: options.homeIconAssets ? 3 : pluginPresets ? 2 : 1,
+    schemaVersion: options.chatFloorBackups ? 4 : options.homeIconAssets ? 3 : pluginPresets ? 2 : 1,
     exportedAt: new Date().toISOString(),
     data: {
       settings: sanitizeSettingsForJsonBackup(_.get(extension_settings, setting_field, {})),
@@ -436,8 +455,39 @@ export function buildPhoneBackup(options: { homeIconAssets?: Array<{ data: strin
       domainVersions: Object.fromEntries(registeredDomains.map(domain => [domain.key, domain.schemaVersion])),
       ...(pluginPresets ? { pluginPresets } : {}),
       ...(options.homeIconAssets ? { homeIconAssets: options.homeIconAssets } : {}),
+      ...(options.chatFloorBackups
+        ? { chatFloorBackups: options.chatFloorBackups, worldbooks: options.worldbooks ?? [] }
+        : {}),
     },
   });
+}
+
+async function readAssociatedWorldbooks(backups: ChatFloorBackup[]) {
+  if (!backups.length) return [];
+  const getCharWorldbookNames = getOptionalGlobalFunction<
+    (characterName: string) => { additional: string[]; primary: string | null }
+  >('getCharWorldbookNames');
+  const getChatWorldbookName = getOptionalGlobalFunction<(chatName: 'current') => string | null>(
+    'getChatWorldbookName',
+  );
+  const names = new Set<string>();
+  backups
+    .filter(backup => backup.owner.kind === 'char')
+    .forEach(backup => {
+      try {
+        const binding = getCharWorldbookNames?.(backup.owner.displayName);
+        if (binding?.primary) names.add(binding.primary);
+        binding?.additional.forEach(name => names.add(name));
+      } catch {
+        // Orphaned chat backups still belong in the export even when their character card is gone.
+      }
+    });
+  const currentChatWorldbook = getChatWorldbookName?.('current');
+  if (currentChatWorldbook) names.add(currentChatWorldbook);
+  if (!names.size) return [];
+  const getWorldbook = getOptionalGlobalFunction<(name: string) => Promise<unknown[]>>('getWorldbook');
+  if (!getWorldbook) throw new Error('当前环境无法读取聊天关联的世界书');
+  return Promise.all([...names].map(async name => ({ entries: await getWorldbook(name), name })));
 }
 
 async function readHomeIconBackupAssets(settings: Settings) {
@@ -457,7 +507,13 @@ async function readHomeIconBackupAssets(settings: Settings) {
 export async function buildCompletePhoneBackup() {
   const presetStore = usePluginPresetStore();
   const settings = sanitizeSettingsForJsonBackup(_.get(extension_settings, setting_field, {}));
-  return buildPhoneBackup({ homeIconAssets: await readHomeIconBackupAssets(settings), pluginPresets: await presetStore.exportBackupBundle() });
+  const chatFloorBackups = await listChatFloorBackups();
+  return buildPhoneBackup({
+    chatFloorBackups,
+    homeIconAssets: await readHomeIconBackupAssets(settings),
+    pluginPresets: await presetStore.exportBackupBundle(),
+    worldbooks: await readAssociatedWorldbooks(chatFloorBackups),
+  });
 }
 
 export async function downloadPhoneBackup() {
@@ -625,8 +681,17 @@ function prepareFullPhoneBackupImport(
   });
   const stagedDomains = stageDomainImports(entries, data.domainVersions);
   const stagedSettings = sanitizeSettingsForJsonBackup(data.settings);
-  const homeIconAssets = backup.backupKind === 'full' && backup.schemaVersion === 3 ? backup.data.homeIconAssets : [];
-  if (backup.backupKind !== 'full' || backup.schemaVersion !== 3) {
+  const hasEmbeddedFiles = backup.backupKind === 'full' && (backup.schemaVersion === 3 || backup.schemaVersion === 4);
+  const homeIconAssets = hasEmbeddedFiles ? backup.data.homeIconAssets : [];
+  const chatFloorBackups =
+    backup.backupKind === 'full' && backup.schemaVersion === 4
+      ? z.array(ChatFloorBackupSchema).parse(backup.data.chatFloorBackups)
+      : [];
+  const worldbooks =
+    backup.backupKind === 'full' && backup.schemaVersion === 4
+      ? backup.data.worldbooks.map(worldbook => ({ entries: worldbook.entries, name: worldbook.name }))
+      : [];
+  if (!hasEmbeddedFiles) {
     stagedSettings.homeIconAssets = [];
     stagedSettings.visualTheme.appIconAssetIds = {};
     stagedSettings.themeProfiles.light.visualTheme.appIconAssetIds = {};
@@ -659,13 +724,17 @@ function prepareFullPhoneBackupImport(
   const plan = buildImportPlan('full', stagedDomains, coverage.missingDomains, coverage.unknownDomainKeys);
   if (embeddedPluginPresets) plan.domainsToReplace.unshift('插件预设');
   if (homeIconAssets.length) plan.domainsToReplace.unshift('首页图标资源');
+  if (chatFloorBackups.length) plan.domainsToReplace.unshift('聊天楼层备份');
+  if (worldbooks.length) plan.domainsToReplace.unshift('关联世界书');
   return {
+    chatFloorBackups,
     data,
     embeddedPluginPresets,
     homeIconAssets,
     plan,
     stagedDomains,
     stagedSettings,
+    worldbooks,
   };
 }
 
@@ -676,9 +745,44 @@ export function planPhoneFullBackupImport(
   return prepareFullPhoneBackupImport(backup, options).plan;
 }
 
+async function captureWorldbookSnapshot(worldbooks: PhoneBackupWorldbook[]) {
+  if (!worldbooks.length) return { existing: [] as PhoneBackupWorldbook[], missingNames: [] as string[] };
+  const getWorldbookNames = getOptionalGlobalFunction<() => string[]>('getWorldbookNames');
+  const getWorldbook = getOptionalGlobalFunction<(name: string) => Promise<unknown[]>>('getWorldbook');
+  if (!getWorldbookNames || !getWorldbook) throw new Error('当前环境无法恢复备份中的关联世界书');
+  const existingNames = new Set(getWorldbookNames());
+  const existing = await Promise.all(
+    worldbooks
+      .filter(worldbook => existingNames.has(worldbook.name))
+      .map(async worldbook => ({ entries: await getWorldbook(worldbook.name), name: worldbook.name })),
+  );
+  return {
+    existing,
+    missingNames: worldbooks.filter(worldbook => !existingNames.has(worldbook.name)).map(worldbook => worldbook.name),
+  };
+}
+
+async function replaceWorldbooks(worldbooks: PhoneBackupWorldbook[]) {
+  if (!worldbooks.length) return;
+  const replaceWorldbook = getOptionalGlobalFunction<
+    (name: string, entries: unknown[], options?: { render?: 'none' }) => Promise<boolean>
+  >('createOrReplaceWorldbook');
+  if (!replaceWorldbook) throw new Error('当前环境无法写入备份中的关联世界书');
+  for (const worldbook of worldbooks) await replaceWorldbook(worldbook.name, worldbook.entries, { render: 'none' });
+}
+
+async function restoreWorldbookSnapshot(snapshot: Awaited<ReturnType<typeof captureWorldbookSnapshot>>) {
+  await replaceWorldbooks(snapshot.existing);
+  if (!snapshot.missingNames.length) return;
+  const deleteWorldbook = getOptionalGlobalFunction<(name: string) => Promise<boolean>>('deleteWorldbook');
+  if (!deleteWorldbook) throw new Error('当前环境无法回滚新增的关联世界书');
+  for (const name of snapshot.missingNames) await deleteWorldbook(name);
+}
+
 export async function applyPhoneBackup(backup: PhoneBackup, options: { allowLegacy?: boolean } = {}) {
   const prepared = prepareFullPhoneBackupImport(backup, options);
-  const { data, embeddedPluginPresets, homeIconAssets, stagedDomains, stagedSettings } = prepared;
+  const { chatFloorBackups, data, embeddedPluginPresets, homeIconAssets, stagedDomains, stagedSettings, worldbooks } =
+    prepared;
 
   const commitSettings = () =>
     commitBackupImport(() => {
@@ -692,16 +796,24 @@ export async function applyPhoneBackup(backup: PhoneBackup, options: { allowLega
       });
     }, getRegisteredPhoneBackupRehydrateHandlers());
 
-  if (!embeddedPluginPresets && !homeIconAssets.length) {
+  if (!embeddedPluginPresets && !homeIconAssets.length && !chatFloorBackups.length && !worldbooks.length) {
     await commitSettings();
     return;
   }
 
   const presetStore = usePluginPresetStore();
   const currentPluginPresets = embeddedPluginPresets ? await presetStore.exportBackupBundle() : null;
+  const currentChatFloorBackups = chatFloorBackups.length ? await listChatFloorBackups() : [];
+  const currentWorldbooks = await captureWorldbookSnapshot(worldbooks);
   const uploadedPaths: string[] = [];
+  const restoreResources = async () => {
+    await Promise.all(uploadedPaths.map(deleteImportedHomeIcon));
+    if (embeddedPluginPresets && currentPluginPresets) await presetStore.replaceBackupBundle(currentPluginPresets);
+    if (chatFloorBackups.length) await replaceChatFloorBackups(currentChatFloorBackups);
+    await restoreWorldbookSnapshot(currentWorldbooks);
+  };
   await executeBackupResourceTransaction({
-    captureSnapshot: () => currentPluginPresets,
+    captureSnapshot: () => true,
     commitSettings,
     replaceResource: async () => {
       try {
@@ -712,15 +824,13 @@ export async function applyPhoneBackup(backup: PhoneBackup, options: { allowLega
           if (stagedAsset) stagedAsset.path = path;
         }
         if (embeddedPluginPresets) await presetStore.replaceBackupBundle(embeddedPluginPresets);
+        if (chatFloorBackups.length) await replaceChatFloorBackups(chatFloorBackups);
+        await replaceWorldbooks(worldbooks);
       } catch (error) {
-        await Promise.allSettled(uploadedPaths.map(deleteImportedHomeIcon));
+        await restoreResources();
         throw error;
       }
     },
-    restoreResource: async snapshot => {
-      const cleanup = Promise.all(uploadedPaths.map(deleteImportedHomeIcon));
-      const restorePresets = snapshot ? presetStore.replaceBackupBundle(snapshot) : Promise.resolve();
-      await Promise.all([cleanup, restorePresets]);
-    },
+    restoreResource: restoreResources,
   });
 }

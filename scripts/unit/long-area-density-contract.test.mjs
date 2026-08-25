@@ -5,9 +5,9 @@ import test from 'node:test';
 
 const files = {
   global: await readFile(new URL('../../src/global.css', import.meta.url), 'utf8'),
-  type: await readFile(new URL('../../src/components/prompts/PromptTypeEditorPage.vue', import.meta.url), 'utf8'),
-  output: await readFile(new URL('../../src/components/prompts/PromptOutputEditorPage.vue', import.meta.url), 'utf8'),
-  app: await readFile(new URL('../../src/components/prompts/PromptAppEditorPage.vue', import.meta.url), 'utf8'),
+  type: await readFile(new URL('../../src/apps/prompts/PromptTypeEditorPage.vue', import.meta.url), 'utf8'),
+  output: await readFile(new URL('../../src/apps/prompts/PromptOutputEditorPage.vue', import.meta.url), 'utf8'),
+  app: await readFile(new URL('../../src/apps/prompts/PromptAppEditorPage.vue', import.meta.url), 'utf8'),
 };
 
 function rulesFor(source, selector) {

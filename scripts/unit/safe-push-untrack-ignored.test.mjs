@@ -35,7 +35,9 @@ async function createFixture() {
   await mkdir(join(root, 'scripts'), { recursive: true });
   await mkdir(join(root, referenceDirectory), { recursive: true });
   await writeFile(join(root, '.gitignore'), `${referenceDirectory}/\n`, 'utf8');
-  await writeFile(join(root, 'docs', '07-rule.md'), '# Rule\n', 'utf8');
+  await writeFile(join(root, 'docs', 'CURRENT.md'), '# Current\n', 'utf8');
+  await writeFile(join(root, 'docs', 'DECISIONS.md'), '# Decisions\n', 'utf8');
+  await writeFile(join(root, 'docs', 'CODEMAP.md'), '# Codemap\n', 'utf8');
   await writeFile(join(root, 'dist', 'index.css'), 'body {}\n', 'utf8');
   await writeFile(join(root, 'dist', 'index.js'), 'export {};\n', 'utf8');
   await writeFile(join(root, referencePath), 'preserve me\n', 'utf8');
@@ -70,13 +72,24 @@ function runSafePush(root, ...extraArgs) {
   );
 }
 
+function runSafePushActual(root) {
+  const fixtureSafePushPath = join(root, 'scripts', 'safe-push-dist.ps1');
+  const invocation = `chcp 936>nul & powershell.exe -NoProfile -ExecutionPolicy Bypass -File ${fixtureSafePushPath} -SkipBuild`;
+  return run(
+    'cmd.exe',
+    ['/d', '/c', invocation],
+    root,
+    false,
+  );
+}
+
 test('ignored tracked removals stay excluded unless explicitly requested', async () => {
   const root = await createFixture();
   try {
     git(root, 'rm', '--cached', '--', referencePath);
     const result = runSafePush(root);
     assert.equal(result.status, 0, result.output);
-    assert.match(result.output, /There are no tracked changes compared with origin\/main/u);
+    assert.match(result.output, /There are no tracked changes compared with the publish parent/u);
     assert.equal(
       git(root, '-c', 'core.quotepath=false', 'diff', '--cached', '--name-only', '--diff-filter=D'),
       referencePath,
@@ -84,6 +97,68 @@ test('ignored tracked removals stay excluded unless explicitly requested', async
     assert.equal(await readFile(join(root, referencePath), 'utf8'), 'preserve me\n');
   } finally {
     await rm(root, { recursive: true, force: true });
+  }
+});
+
+test('remote-ahead dry run preserves staged ignored removals and the local branch', async () => {
+  const root = await createFixture();
+  try {
+    const localHead = git(root, 'rev-parse', 'HEAD');
+    await writeFile(join(root, 'docs', 'CURRENT.md'), '# Remote current\n', 'utf8');
+    git(root, 'add', '--', 'docs/CURRENT.md');
+    git(root, 'commit', '-m', 'remote update');
+    git(root, 'update-ref', 'refs/remotes/origin/main', 'HEAD');
+    git(root, 'reset', '--hard', localHead);
+
+    git(root, 'rm', '--cached', '--', referencePath);
+    await writeFile(join(root, 'docs', 'CODEMAP.md'), '# Local codemap\n', 'utf8');
+    const statusBefore = git(root, 'status', '--porcelain');
+    const indexTreeBefore = git(root, 'write-tree');
+
+    const result = runSafePush(root);
+    assert.equal(result.status, 0, result.output);
+    assert.match(result.output, /without changing the local branch or index/u);
+    assert.match(result.output, /M\s+docs\/CODEMAP\.md/u);
+    assert.doesNotMatch(result.output, /M\s+docs\/CURRENT\.md/u);
+    assert.doesNotMatch(result.output, /Falling back to direct application/u);
+    assert.match(result.output, /DryRun complete/u);
+    assert.equal(git(root, 'rev-parse', 'HEAD'), localHead);
+    assert.equal(git(root, 'write-tree'), indexTreeBefore);
+    assert.equal(git(root, 'status', '--porcelain'), statusBefore);
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
+});
+
+test('remote-ahead synchronization preserves staged ignored removals', async () => {
+  const root = await createFixture();
+  const remoteRoot = await mkdtemp(join(tmpdir(), 'safe-push-remote-'));
+  try {
+    const localHead = git(root, 'rev-parse', 'HEAD');
+    await writeFile(join(root, 'docs', 'CURRENT.md'), '# Remote current\n', 'utf8');
+    git(root, 'add', '--', 'docs/CURRENT.md');
+    git(root, 'commit', '-m', 'remote update');
+    const remoteHead = git(root, 'rev-parse', 'HEAD');
+
+    git(remoteRoot, 'init', '--bare');
+    git(root, 'push', remoteRoot, 'HEAD:refs/heads/main');
+    git(root, 'reset', '--hard', localHead);
+    git(root, 'remote', 'set-url', 'origin', remoteRoot);
+    git(root, 'remote', 'set-url', '--push', 'origin', 'https://github.com/nameisnt/ziyong.git');
+    git(root, 'rm', '--cached', '--', referencePath);
+
+    const result = runSafePushActual(root);
+    assert.equal(result.status, 0, result.output);
+    assert.match(result.output, /Preserving 1 staged removals from excluded paths/u);
+    assert.equal(git(root, 'rev-parse', 'HEAD'), remoteHead);
+    assert.equal(
+      git(root, '-c', 'core.quotepath=false', 'diff', '--cached', '--name-only', '--diff-filter=D'),
+      referencePath,
+    );
+    assert.equal(await readFile(join(root, referencePath), 'utf8'), 'preserve me\n');
+  } finally {
+    await rm(root, { recursive: true, force: true });
+    await rm(remoteRoot, { recursive: true, force: true });
   }
 });
 
@@ -124,24 +199,36 @@ test('explicit untracking also verifies a clean local-ahead commit before publis
 test('local-ahead HEAD accepts later tracked and allowed untracked workspace changes', async () => {
   const root = await createFixture();
   try {
-    await writeFile(join(root, 'docs', 'checkpoint.md'), '# Checkpoint\n', 'utf8');
-    git(root, 'add', '--', 'docs/checkpoint.md');
+    await mkdir(join(root, 'src'), { recursive: true });
+    await writeFile(join(root, 'src', 'checkpoint.ts'), 'export const checkpoint = true;\n', 'utf8');
+    git(root, 'add', '--', 'src/checkpoint.ts');
     git(root, 'commit', '-m', 'local checkpoint');
     const localHead = git(root, 'rev-parse', 'HEAD');
 
-    await writeFile(join(root, 'docs', '07-rule.md'), '# Updated rule\n', 'utf8');
-    await mkdir(join(root, 'src'), { recursive: true });
+    await writeFile(join(root, 'docs', 'CURRENT.md'), '# Updated current\n', 'utf8');
     await writeFile(join(root, 'src', 'new-feature.ts'), 'export const enabled = true;\n', 'utf8');
     const statusBefore = git(root, 'status', '--porcelain');
 
     const result = runSafePush(root);
     assert.equal(result.status, 0, result.output);
     assert.match(result.output, /committed on top of the existing local HEAD/u);
-    assert.match(result.output, /M\s+docs\/07-rule\.md/u);
+    assert.match(result.output, /M\s+docs\/CURRENT\.md/u);
     assert.match(result.output, /A\s+src\/new-feature\.ts/u);
     assert.match(result.output, /DryRun complete/u);
     assert.equal(git(root, 'rev-parse', 'HEAD'), localHead);
     assert.equal(git(root, 'status', '--porcelain'), statusBefore);
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
+});
+
+test('an extra root document is rejected instead of becoming current publication context', async () => {
+  const root = await createFixture();
+  try {
+    await writeFile(join(root, 'docs', 'OLD-PLAN.md'), '# Old plan\n', 'utf8');
+    const result = runSafePush(root);
+    assert.notEqual(result.status, 0);
+    assert.match(result.output, /docs\/ must contain only CURRENT\.md, DECISIONS\.md, and CODEMAP\.md/u);
   } finally {
     await rm(root, { recursive: true, force: true });
   }

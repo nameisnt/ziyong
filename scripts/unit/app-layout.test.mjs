@@ -180,6 +180,15 @@ test('dock migration keeps four apps and appends overflow and folder tokens to d
   assert.deepEqual(migrated.folders, [{ appIds: ['e'], id: 'keep', iconAssetId: '', name: '保留' }]);
 });
 
+test('dock migration accepts a configured fifth app', () => {
+  const migrated = migrateHomeLayoutDockCapacity(
+    { appOrder: [], dockOrder: ['a', 'b', 'c', 'd', 'e'], folders: [], version: 2 },
+    5,
+  );
+  assert.deepEqual(migrated.dockOrder, ['a', 'b', 'c', 'd', 'e']);
+  assert.deepEqual(migrated.appOrder, []);
+});
+
 test('explicit folder creation preserves selected desktop order and permits one app', () => {
   const created = createHomeFolder(
     { appOrder: ['a', 'b', 'c'], dockOrder: ['d'], folders: [], version: 2 },

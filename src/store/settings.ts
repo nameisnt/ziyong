@@ -214,8 +214,10 @@ function normalizeSettings(rawSettings: unknown) {
   }
 
   const nextSettings = validateInplace(Settings, source);
+  nextSettings.interfaceSize.dockColumns = Math.min(5, Math.max(3, nextSettings.interfaceSize.dockColumns));
   nextSettings.layout = migrateHomeLayoutDockCapacity(
     normalizeHomeLayout(nextSettings.layout.appOrder.length ? nextSettings.layout : buildDefaultHomeLayout()),
+    nextSettings.interfaceSize.dockColumns,
   );
   const seenHomeIconAssetIds = new Set<string>();
   nextSettings.homeIconAssets = nextSettings.homeIconAssets.filter(asset => {
@@ -236,7 +238,6 @@ function normalizeSettings(rawSettings: unknown) {
   nextSettings.layout.folders.forEach(folder => {
     if (!seenHomeIconAssetIds.has(folder.iconAssetId)) folder.iconAssetId = '';
   });
-  nextSettings.interfaceSize.dockColumns = Math.min(4, Math.max(3, nextSettings.interfaceSize.dockColumns));
   nextSettings.textProvider.contextWindow = null;
   nextSettings.textProvider.maxOutputTokens = null;
   const profileIds = new Set<string>();
@@ -272,8 +273,11 @@ export const useSettingsStore = defineStore('settings', () => {
 
   function persist(newSettings: typeof settings.value) {
     const nextSettings = validateInplace(Settings, klona(newSettings));
-    nextSettings.layout = migrateHomeLayoutDockCapacity(normalizeHomeLayout(nextSettings.layout));
-    nextSettings.interfaceSize.dockColumns = Math.min(4, Math.max(3, nextSettings.interfaceSize.dockColumns));
+    nextSettings.interfaceSize.dockColumns = Math.min(5, Math.max(3, nextSettings.interfaceSize.dockColumns));
+    nextSettings.layout = migrateHomeLayoutDockCapacity(
+      normalizeHomeLayout(nextSettings.layout),
+      nextSettings.interfaceSize.dockColumns,
+    );
     nextSettings.themeProfiles[nextSettings.theme] = captureThemeProfile(nextSettings);
     _.set(extension_settings, setting_field, nextSettings);
     void saveSettingsDebounced();
@@ -749,7 +753,7 @@ export const useSettingsStore = defineStore('settings', () => {
   }
 
   function setDockColumns(columns: number) {
-    settings.value.interfaceSize.dockColumns = Math.min(4, Math.max(3, Math.round(columns)));
+    settings.value.interfaceSize.dockColumns = Math.min(5, Math.max(3, Math.round(columns)));
   }
 
   function resetInterfaceSize() {

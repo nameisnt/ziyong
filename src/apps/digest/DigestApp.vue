@@ -74,6 +74,7 @@
         :next-disabled="!nextEntryId"
         :previous-disabled="!previousEntryId"
         :reasoning="activeEntry.generationRecord?.reasoning"
+        reasoning-editable
         :title="activeEntry.title"
         @bagu="openDigestBaguScan"
         @bottom="scrollToBottom"
@@ -83,6 +84,7 @@
         @next="openEntry(nextEntryId)"
         @previous="openEntry(previousEntryId)"
         @top="scrollToTop"
+        @update:reasoning="updateGenerationRecordReasoning(activeEntry, $event)"
       >
         <template #kicker>
           <span class="pc-kicker">{{
@@ -202,6 +204,7 @@
     <FailedDraftRepairPage
       v-else-if="route.page === 'failed-draft' && activeFailedDraft"
       v-model:raw-output="failedDraftRawOutput"
+      :regenerate-handler="regenerateFailedDraft"
       :raw-output-semantics="activeFailedDraft.rawOutputSemantics"
       :reasoning="activeFailedDraft.generationRecord?.reasoning || ''"
       :source-label="activeFailedDraft.source.label"
@@ -209,6 +212,7 @@
       :warnings="activeFailedDraft.warnings"
       @delete="removeFailedDraft(activeFailedDraft.id)"
       @reparse="reparseFailedDraft"
+      @update:reasoning="updateGenerationRecordReasoning(activeFailedDraft, $event)"
     />
   </section>
 </template>
@@ -225,6 +229,7 @@ import ItemTransferImportAction from '@/components/ItemTransferImportAction.vue'
 import PreviewDraftNotice from '@/components/PreviewDraftNotice.vue';
 import ReaderDetailShell from '@/components/ReaderDetailShell.vue';
 import { useSingleGenerationTaskSession } from '@/composables/useSingleGenerationTaskSession';
+import { useFailedDraftRegeneration } from '@/composables/useFailedDraftRegeneration';
 import { getRegisteredPhoneGenerationAdapter } from '@/core/appRegistry';
 import { buildGenerationPreview, captureGenerationPrompt, generateContent } from '@/core/generationService';
 import { usePhoneStore } from '@/store/phone';
@@ -691,6 +696,11 @@ function reparseFailedDraft() {
 function stopGeneration() {
   generationSession.stop();
 }
+const regenerateFailedDraft = useFailedDraftRegeneration({
+  draft: () => activeFailedDraft.value,
+  rawOutput: failedDraftRawOutput,
+  reparse: reparseFailedDraft,
+});
 </script>
 
 <style scoped>

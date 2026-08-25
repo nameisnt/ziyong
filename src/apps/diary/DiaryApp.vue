@@ -51,13 +51,13 @@
       @bottom="scrollToBottom"
       @delete="removeEntry(activeBook.id, activeEntry.id)"
       @edit="openEditEntry(activeBook.id, activeEntry.id)"
-      @erase="overwriteDiaryContent"
       @favorite="diary.toggleFavorite(activeBook.id, activeEntry.id)"
       @next="openEntry(activeBook.id, nextEntryId, true)"
       @previous="openEntry(activeBook.id, previousEntryId, true)"
       @read-reaction="openReadReaction(activeBook.id, activeEntry.id)"
       @select-catalog="selectCatalogEntry"
       @top="scrollToTop"
+      @update:reasoning="updateGenerationRecordReasoning(activeEntry, $event)"
     />
 
     <DiaryBaguPage
@@ -106,6 +106,14 @@
       @cancel="phone.goBack()"
       @generate="runGeneration"
       @stop="stopGeneration"
+    />
+
+    <BatchGenerationPreviewPage
+      v-else-if="route.page === 'batch-preview' && batchPreviewTask"
+      :items="batchPreviewItems"
+      kind="diary"
+      :save-handler="saveBatchPreview"
+      @back="returnFromBatchPreview"
     />
 
     <DiaryBatchPage
@@ -176,9 +184,12 @@
     <DiaryFailedDraftPage
       v-else-if="route.page === 'failed-draft' && activeFailedDraft"
       v-model:raw-output="failedDraftRawOutput"
+      :regenerate-handler="regenerateFailedDraft"
+      :reasoning="activeFailedDraft.generationRecord?.reasoning || ''"
       :source-label="activeFailedDraft.source.label"
       @delete="removeFailedDraft(activeFailedDraft.id)"
       @reparse="reparseFailedDraft"
+      @update:reasoning="updateGenerationRecordReasoning(activeFailedDraft, $event)"
     />
     <CreationModeModal
       :open="creationModeOpen"
@@ -197,6 +208,7 @@ import DiaryBookEditorPage from '@/apps/diary/DiaryBookEditorPage.vue';
 import DiaryBaguPage from '@/apps/diary/DiaryBaguPage.vue';
 import DiaryBatchPage from '@/apps/diary/DiaryBatchPage.vue';
 import DiaryCatalogPage from '@/apps/diary/DiaryCatalogPage.vue';
+import BatchGenerationPreviewPage from '@/components/BatchGenerationPreviewPage.vue';
 import CreationModeModal, { type CreationModeOption } from '@/components/CreationModeModal.vue';
 import DiaryEntryDetailPage from '@/apps/diary/DiaryEntryDetailPage.vue';
 import DiaryEntryEditorPage from '@/apps/diary/DiaryEntryEditorPage.vue';
@@ -206,14 +218,19 @@ import DiaryPreviewPage from '@/apps/diary/DiaryPreviewPage.vue';
 import { BUILTIN_DIARY_PRESET_SELECTION, resolveDiaryPresetSelection } from '@/apps/preset-manager/builtinDiaryPreset';
 import { useCatalogDetailNavigation } from '@/composables/useCatalogDetailNavigation';
 import { useDirectorySort } from '@/composables/useDirectorySort';
+import { useFailedDraftRegeneration } from '@/composables/useFailedDraftRegeneration';
 import { useSingleGenerationTaskSession } from '@/composables/useSingleGenerationTaskSession';
 import { getRegisteredPhoneGenerationAdapter } from '@/core/appRegistry';
 import { parseDiaryGeneratedResult } from '@/core/diaryGeneration';
 import { buildGenerationPreview, captureGenerationPrompt, generateContent } from '@/core/generationService';
 import {
   createManualBatchTask,
+  getManualBatchPreviews,
   resumeGenerationTask,
   runManualBatchTask,
+  saveManualBatchPreviews,
+  updateManualBatchPreviews,
+  type ManualBatchPreviewEdit,
   type ManualBatchTaskConfig,
 } from '@/core/manualBatchRunner';
 import { getCurrentChatScopeKey } from '@/store/chatScoped';
@@ -432,7 +449,7 @@ const batchState = computed(() => {
   const resumeAvailable = Boolean(task && ['paused', 'interrupted'].includes(task.status));
   return {
     currentLabel: task?.currentLabel || '',
-    done: task?.savedCount || 0,
+    done: (task?.savedCount || 0) + (task?.previewCount || 0),
     error: task?.error || batchFormError.value,
     failed: task?.draftCount || 0,
     generationId: task?.activeGenerationId || '',
@@ -444,6 +461,13 @@ const batchState = computed(() => {
     total: task?.total || 0,
   };
 });
+const batchPreviewTask = computed(() => {
+  const taskId = route.value.params?.taskId;
+  return taskId ? generationTasks.getTask(taskId) : batchTask.value;
+});
+const batchPreviewItems = computed(() =>
+  batchPreviewTask.value ? getManualBatchPreviews(batchPreviewTask.value.id) : [],
+);
 const batchInputsLocked = computed(() => batchState.value.running || batchState.value.resumeAvailable);
 const formattedReferences = computed(() => formatGenerationReferences(selectedReferences.value));
 const generationPromptPreview = computed(() => {
@@ -766,21 +790,6 @@ function openDiaryBaguScan() {
     bookId: activeBook.value.id,
     entryId: activeEntry.value.id,
   });
-}
-
-function overwriteDiaryContent(content: string) {
-  const book = activeBook.value;
-  const entry = activeEntry.value;
-  if (!book || !entry) return;
-  diary.updateEntry(book.id, entry.id, {
-    content,
-    directoryOrder: entry.directoryOrder,
-    kind: entry.kind,
-    occurredAt: entry.occurredAt,
-    readers: entry.readers,
-    title: entry.title,
-  });
-  toastr.success('已覆盖当前日记正文');
 }
 
 function selectCatalogEntry(entryId: string) {
@@ -1362,6 +1371,27 @@ function stopBatchGeneration() {
   if (batchTask.value) generationTasks.stopNow(batchTask.value.id);
 }
 
+function returnFromBatchPreview() {
+  const bookId = batchPreviewTask.value?.routeParams.bookId || '';
+  const book = bookId ? diary.getBook(bookId) : null;
+  phone.replacePage(book ? 'book' : 'root', book?.title || '角色书架', book ? { bookId } : undefined);
+}
+
+async function saveBatchPreview(edits: ManualBatchPreviewEdit[]) {
+  const task = batchPreviewTask.value;
+  if (!task) return;
+  updateManualBatchPreviews(task.id, edits);
+  try {
+    const result = await saveManualBatchPreviews(task.id);
+    if (!result) return;
+    const book = result.bookId ? diary.getBook(result.bookId) : null;
+    toastr.success(`已保存 ${result.savedCount} 篇日记`);
+    phone.replacePage(book ? 'book' : 'root', book?.title || '角色书架', book ? { bookId: book.id } : undefined);
+  } catch (error) {
+    toastr.error(error instanceof Error ? error.message : '批量保存失败');
+  }
+}
+
 async function removeFailedDraft(draftId: string) {
   const shouldDelete = await phone.confirmNotice('要删除这条解析失败草稿吗？原始输出也会一并移除。', {
     confirmLabel: '删除',
@@ -1514,6 +1544,11 @@ async function removeEntry(bookId: string, entryId: string) {
   phone.replacePage('book', book.title, { bookId });
   toastr.success('已删除日记');
 }
+const regenerateFailedDraft = useFailedDraftRegeneration({
+  draft: () => activeFailedDraft.value,
+  rawOutput: failedDraftRawOutput,
+  reparse: reparseFailedDraft,
+});
 </script>
 
 <style scoped>

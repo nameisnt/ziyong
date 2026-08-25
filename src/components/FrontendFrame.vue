@@ -8,7 +8,7 @@
         :sandbox="sandboxFlags"
         :srcdoc="documentHtml"
         :style="{ height: `${frameHeight}px` }"
-        title="小剧场前端渲染"
+        :title="title || '网页内容'"
         @load="handleLoad"
       ></iframe>
 

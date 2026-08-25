@@ -180,6 +180,30 @@ test('strict prefix containment requires the same JSONL metadata header', () => 
   assert.equal(recovery.isStrictMessagePrefix(short, long), false);
 });
 
+test('similar backup groups expose older files with at least 90 percent matching message positions', () => {
+  const newer = {
+    actualChatItems: 10,
+    byteLength: 200,
+    contentHash: 'newer',
+    headerHash: 'head',
+    messageHashes: ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i', 'j'],
+    summary: { ...summary('chat_nova_20260811-120000.jsonl'), chatItems: 10 },
+  };
+  const older = {
+    actualChatItems: 10,
+    byteLength: 180,
+    contentHash: 'older',
+    headerHash: 'head',
+    messageHashes: ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i', 'changed'],
+    summary: { ...summary('chat_nova_20260811-110000.jsonl'), chatItems: 10 },
+  };
+  const groups = recovery.createSimilarBackupGroups([older, newer], [], []);
+  assert.equal(groups.length, 1);
+  assert.equal(groups[0].keeper.summary.fileName, newer.summary.fileName);
+  assert.equal(groups[0].candidates[0].fingerprint.summary.fileName, older.summary.fileName);
+  assert.equal(groups[0].candidates[0].similarity, 0.9);
+});
+
 test('settings snapshot summaries reject unrelated or empty backup files', () => {
   assert.deepEqual(
     recovery.normalizeSettingsSnapshotSummary({

@@ -199,6 +199,10 @@ export const useRegexDisplayStore = defineStore('regex-display', () => {
     return ensureUsage(settings.value, appId);
   }
 
+  function deleteUsage(appId: string) {
+    delete settings.value.usages[appId];
+  }
+
   function setExtractionRule(appId: string, field: 'content' | 'title', ruleId: string) {
     const usage = ensureUsage(settings.value, appId);
     if (field === 'title') usage.titleRuleId = ruleId;
@@ -238,6 +242,7 @@ export const useRegexDisplayStore = defineStore('regex-display', () => {
     rules,
     addRule,
     deleteRule,
+    deleteUsage,
     duplicateRule,
     getUsage,
     importBackup,

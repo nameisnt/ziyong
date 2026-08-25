@@ -250,8 +250,7 @@ import EmptyState from '@/components/EmptyState.vue';
 import FrontendFrame from '@/components/FrontendFrame.vue';
 import InfoHint from '@/components/InfoHint.vue';
 import SearchableCombobox from '@/components/SearchableCombobox.vue';
-import { getRegisteredPhoneApps } from '@/core/appRegistry';
-import type { RegexRuleOperation } from '@/core/regexTargetRegistry';
+import { getRegexTargets, type RegexRuleOperation } from '@/core/regexTargetRegistry';
 import { usePhoneStore } from '@/store/phone';
 import { useSettingsStore } from '@/store/settings';
 import { applyRegexDisplayRules, extractWithRegexRules, getRegexRulesByOperation } from '@/util/regexDisplay';
@@ -284,7 +283,7 @@ const operationOptions: Array<{ label: string; value: RegexRuleOperation }> = [
   { label: '提取', value: 'extract' },
   { label: '替换', value: 'replace' },
 ];
-const appOptions = computed(() => getRegisteredPhoneApps().map(app => ({ label: app.name, value: app.id })));
+const appOptions = computed(() => getRegexTargets().map(target => ({ label: target.label, value: target.id })));
 const extractRules = computed(() => getRegexRulesByOperation(rules.value, 'extract'));
 const displayRules = computed(() => getRegexRulesByOperation(rules.value, 'replace'));
 const extractRuleOptions = computed(() => [

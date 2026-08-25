@@ -15,10 +15,10 @@ async function loadModule(relativePath) {
 
 const reasoning = await loadModule('../../src/util/messageReasoning.ts');
 const readerStoreSource = await readFile(new URL('../../src/store/reader.ts', import.meta.url), 'utf8');
-const readerAppSource = await readFile(new URL('../../src/components/ReaderApp.vue', import.meta.url), 'utf8');
-const archiveSource = await readFile(new URL('../../src/components/ChatArchiveApp.vue', import.meta.url), 'utf8');
+const readerAppSource = await readFile(new URL('../../src/apps/reader/ReaderApp.vue', import.meta.url), 'utf8');
+const archiveSource = await readFile(new URL('../../src/apps/archive/ChatArchiveApp.vue', import.meta.url), 'utf8');
 const archiveFloorBackupPageSource = await readFile(
-  new URL('../../src/components/archive/ChatArchiveFloorBackupPage.vue', import.meta.url),
+  new URL('../../src/apps/archive/ChatArchiveFloorBackupPage.vue', import.meta.url),
   'utf8',
 );
 

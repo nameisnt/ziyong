@@ -1,36 +1,12 @@
 <template>
   <section class="pc-home">
     <div class="pc-home-main">
-      <section class="pc-home-context">
-        <div class="pc-home-context-actions">
-          <ActionMenu align="start" icon-only label="操作" icon="fa-solid fa-bars">
-            <button type="button" @click="isOrganizing = !isOrganizing">
-              <i class="fa-solid fa-arrows-up-down-left-right"></i
-              ><span>{{ isOrganizing ? '完成整理' : '整理桌面' }}</span>
-            </button>
-            <button type="button" @click="openFolderCreator">
-              <i class="fa-solid fa-folder-plus"></i><span>新建文件夹</span>
-            </button>
-            <button type="button" :disabled="isViewingCurrentChat" @click="phone.returnToCurrentScope()">
-              <i class="fa-solid fa-location-crosshairs"></i><span>回到当前聊天</span>
-            </button>
-            <button
-              type="button"
-              :disabled="refreshingPhoneData || generationTasks.hasRunningTasks"
-              @click="refreshPhoneData"
-            >
-              <i :class="['fa-solid fa-rotate-right', { 'fa-spin': refreshingPhoneData }]"></i><span>刷新插件数据</span>
-            </button>
-          </ActionMenu>
-        </div>
-        <div class="pc-home-context-copy">
-          <span>{{ isViewingCurrentChat ? t`酒馆当前聊天` : t`历史聊天只读` }}</span>
-          <strong>{{ viewingScopeMeta.ownerName }} / {{ viewingScopeMeta.chatTitle }}</strong>
-        </div>
-        <div v-if="!isViewingCurrentChat" class="pc-home-context-quick-actions">
-          <button class="pc-soft-btn compact" type="button" @click.stop="jumpViewingChatToTavern">打开聊天</button>
-        </div>
-      </section>
+      <HomeContextBar
+        :is-organizing="isOrganizing"
+        @open-folder-creator="openFolderCreator"
+        @refreshed="refreshHomeArchiveDomains"
+        @toggle-organizing="isOrganizing = !isOrganizing"
+      />
 
       <section
         ref="homeGridEl"
@@ -41,30 +17,9 @@
         @pointermove="onHomeSwipePointerMove"
         @pointerup="onHomeSwipePointerUp"
       >
-        <section v-if="homePageIndex === 0" class="pc-home-activity-page">
-          <GenerationTaskCenter />
-          <section v-if="activityItems.length" class="pc-section-card pc-home-activity-list">
-            <header class="pc-section-head">
-              <strong>待处理内容</strong>
-              <small>{{ activityItems.length }} 项</small>
-            </header>
-            <button
-              v-for="item in activityItems"
-              :key="`${item.kind}:${item.appId}:${item.id}`"
-              class="pc-list-row"
-              type="button"
-              @click="openHomeActivityItem(item)"
-            >
-              <span class="pc-list-row-copy"
-                ><strong>{{ item.title }}</strong
-                ><small>{{ item.kind === 'preview-draft' ? '未保存预览' : '等待修复' }}</small></span
-              >
-              <i class="fa-solid fa-chevron-right"></i>
-            </button>
-          </section>
-        </section>
+        <HomeActivityPage :active="homePageIndex === 0" @open="openHomeActivityItem" />
         <section
-          v-else
+          v-if="homePageIndex !== 0"
           :class="['pc-grid', { sorting: appDrag.isDragging || isOrganizing }]"
           :style="{ '--pc-home-rows': settings.interfaceSize.homeRows }"
         >
@@ -248,13 +203,24 @@
             <select
               class="pc-select pc-home-folder-icon-select"
               :value="activeHomeFolder.iconAssetId"
+              :disabled="!settings.homeIconAssets.length"
               @change="setActiveHomeFolderIcon(($event.target as HTMLSelectElement).value)"
             >
-              <option value="">默认文件夹图标</option>
+              <option value="" disabled>选择自定义图标</option>
               <option v-for="asset in settings.homeIconAssets" :key="asset.id" :value="asset.id">
                 {{ asset.name }}
               </option>
             </select>
+            <button
+              v-if="activeHomeFolder.iconAssetId"
+              class="pc-icon-btn"
+              type="button"
+              title="清除自定义图标"
+              aria-label="清除自定义图标"
+              @click="setActiveHomeFolderIcon('')"
+            >
+              <i class="fa-solid fa-rotate-left"></i>
+            </button>
             <button
               class="pc-soft-btn compact danger"
               type="button"
@@ -350,38 +316,29 @@
 </template>
 
 <script setup lang="ts">
-import GenerationTaskCenter from '@/components/GenerationTaskCenter.vue';
 import AppIcon from '@/components/AppIcon.vue';
-import ActionMenu from '@/components/ActionMenu.vue';
-import { usePhoneModalLifecycle } from '@/composables/usePhoneModalLifecycle';
+import HomeActivityPage from '@/components/home/HomeActivityPage.vue';
+import HomeContextBar from '@/components/home/HomeContextBar.vue';
 import {
-  getRegisteredPhoneBackupRehydrateHandlers,
-  getRegisteredPhoneGenerationRecoveryItems,
-} from '@/core/appRegistry';
+  useHomeLayoutProjection,
+  type HomeDisplayItem,
+  type HomeGridDisplayItem,
+} from '@/components/home/useHomeLayoutProjection';
+import { usePhoneModalLifecycle } from '@/composables/usePhoneModalLifecycle';
 import {
   createHomeFolder,
   homeFolderToken,
   moveHomeLayoutItem,
-  normalizeHomeLayout,
   putHomeAppInFolder,
   readHomeFolderToken,
   reorderHomeFolderApp,
   removeHomeAppFromFolder,
 } from '@/core/appLayout';
-import { packHomeGridPages, type HomeGridPlacement } from '@/core/homeGridLayout';
-import { getPhoneApps, type PhoneAppDefinition } from '@/data/apps';
-import { useBaguStore } from '@/store/bagu';
-import { useGenerationTaskStore } from '@/store/generationTasks';
-import { usePreviewDraftStore } from '@/store/previewDrafts';
+import type { PhoneAppDefinition } from '@/data/apps';
 import { usePhoneStore } from '@/store/phone';
-import { usePromptStore } from '@/store/prompts';
-import { useReaderStore } from '@/store/reader';
-import { useRecoveryStore } from '@/store/recovery';
 import { useSettingsStore } from '@/store/settings';
-import { useStatsStore } from '@/store/stats';
 import { getChatArchiveDomains } from '@/util/chatArchive';
-import { jumpToTavernChat } from '@/util/tavernNavigation';
-import { collectGenerationActivity, type GenerationActivityItem } from '@/util/generationActivity';
+import type { GenerationActivityItem } from '@/util/generationActivity';
 import { storeToRefs } from 'pinia';
 
 type AppStyle = Record<string, string>;
@@ -392,20 +349,12 @@ const { getDisplayAppIcon, getDisplayAppIconAssetPath, getDisplayAppStyle } = de
   getDisplayAppStyle: (app: PhoneAppDefinition) => AppStyle;
 }>();
 
-const bagu = useBaguStore();
-const generationTasks = useGenerationTaskStore();
-const previewDrafts = usePreviewDraftStore();
 const phone = usePhoneStore();
-const prompts = usePromptStore();
-const reader = useReaderStore();
-const recovery = useRecoveryStore();
 const settingsStore = useSettingsStore();
-const stats = useStatsStore();
-const { currentRoute, isOpen, isViewingCurrentChat, viewingScopeKey, viewingScopeMeta } = storeToRefs(phone);
+const { currentRoute, isOpen, viewingScopeKey } = storeToRefs(phone);
 const { settings } = storeToRefs(settingsStore);
 const homeGridEl = ref<HTMLElement | null>(null);
 const homeDockEl = ref<HTMLElement | null>(null);
-const refreshingPhoneData = ref(false);
 const appDrag = reactive({
   itemToken: '',
   destination: 'home' as 'dock' | 'home',
@@ -440,8 +389,6 @@ const homeSwipe = reactive({
 const suppressHomeClickUntil = ref(0);
 const homePageIndex = ref(1);
 const isOrganizing = ref(false);
-const activityItems = ref<GenerationActivityItem[]>([]);
-let activityRefreshSequence = 0;
 const activeHomeFolderId = ref('');
 const homeFolderDialogRef = ref<HTMLElement | null>(null);
 const folderCreateDialogRef = ref<HTMLElement | null>(null);
@@ -454,56 +401,21 @@ let appDragLongPressTimer: ReturnType<typeof window.setTimeout> | null = null;
 let folderHoverTimer: ReturnType<typeof window.setTimeout> | null = null;
 let potentialFolderTargetToken = '';
 
-type HomeDisplayItem = {
-  app: PhoneAppDefinition | null;
-  folder: ReturnType<typeof normalizeHomeLayout>['folders'][number] | null;
-  token: string;
-};
-
-type HomeGridDisplayItem = HomeDisplayItem & HomeGridPlacement;
-
-const homeLayout = computed(() => normalizeHomeLayout(settings.value.layout));
-const phoneAppById = computed(() => new Map(getPhoneApps().map(app => [app.id, app])));
-const gridItems = computed(
-  () => homeLayout.value.appOrder.map(resolveHomeDisplayItem).filter(Boolean) as HomeDisplayItem[],
-);
-const dockItems = computed(
-  () => homeLayout.value.dockOrder.map(resolveHomeDisplayItem).filter(Boolean) as HomeDisplayItem[],
-);
-const homePages = computed(() => {
-  const itemByToken = new Map(gridItems.value.map(item => [item.token, item]));
-  return packHomeGridPages(
-    gridItems.value.map(item => ({ isFolder: Boolean(item.folder), token: item.token })),
-    settings.value.interfaceSize.homeColumns,
-    settings.value.interfaceSize.homeRows,
-  ).map(page =>
-    page.flatMap(placement => {
-      const item = itemByToken.get(placement.token);
-      return item ? [{ ...item, ...placement } satisfies HomeGridDisplayItem] : [];
-    }),
-  );
-});
-const currentHomePageItems = computed(() => homePages.value[homePageIndex.value - 1] ?? homePages.value[0] ?? []);
-const currentPageStartIndex = computed(() =>
-  homePages.value.slice(0, Math.max(0, homePageIndex.value - 1)).reduce((total, page) => total + page.length, 0),
-);
-const currentPageLastItemToken = computed(() => currentHomePageItems.value.at(-1)?.token || '');
-const activeHomeFolder = computed(
-  () => homeLayout.value.folders.find(folder => folder.id === activeHomeFolderId.value) ?? null,
-);
-const activeHomeFolderApps = computed(() =>
-  (activeHomeFolder.value?.appIds ?? []).flatMap(appId => {
-    const app = phoneAppById.value.get(appId);
-    return app ? [app] : [];
-  }),
-);
-const folderCreationApps = computed(() =>
-  homeLayout.value.appOrder.flatMap(token => {
-    if (readHomeFolderToken(token)) return [];
-    const app = phoneAppById.value.get(token);
-    return app ? [app] : [];
-  }),
-);
+const {
+  activeHomeFolder,
+  activeHomeFolderApps,
+  clampHomePageIndex,
+  currentHomePageItems,
+  currentPageLastItemToken,
+  currentPageStartIndex,
+  dockItems,
+  folderCreationApps,
+  getFolderApps,
+  getFolderRemainingApps,
+  getFolderShortcutApps,
+  homeLayout,
+  homePages,
+} = useHomeLayoutProjection(homePageIndex, activeHomeFolderId);
 const homeArchiveDomains = ref(getChatArchiveDomains(viewingScopeKey.value));
 const homeArchiveDomainByApp = computed(() => new Map(homeArchiveDomains.value.map(domain => [domain.appId, domain])));
 const insertBeforeItemToken = computed(() => {
@@ -530,29 +442,8 @@ usePhoneModalLifecycle({
   onClose: closeFolderCreator,
 });
 
-function resolveHomeDisplayItem(token: string): HomeDisplayItem | null {
-  const folderId = readHomeFolderToken(token);
-  if (folderId) {
-    const folder = homeLayout.value.folders.find(item => item.id === folderId);
-    return folder ? { app: null, folder, token } : null;
-  }
-  const app = phoneAppById.value.get(token);
-  return app ? { app, folder: null, token } : null;
-}
-
 function refreshHomeArchiveDomains() {
   homeArchiveDomains.value = getChatArchiveDomains(viewingScopeKey.value);
-}
-
-async function refreshActivityItems() {
-  const requestSequence = ++activityRefreshSequence;
-  const scopeKey = viewingScopeKey.value;
-  const recoveryItems = await getRegisteredPhoneGenerationRecoveryItems(scopeKey);
-  if (requestSequence !== activityRefreshSequence || scopeKey !== viewingScopeKey.value) return;
-  const drafts = previewDrafts.scopeKey === scopeKey ? previewDrafts.drafts : [];
-  activityItems.value = collectGenerationActivity(generationTasks.currentScopeTasks, drafts, recoveryItems).filter(
-    item => item.kind !== 'active-task',
-  );
 }
 
 function getHomeAppCount(app: PhoneAppDefinition) {
@@ -570,10 +461,6 @@ function formatHomeAppCount(app: PhoneAppDefinition) {
 
 function getHomeOrder() {
   return homeLayout.value.appOrder;
-}
-
-function clampHomePageIndex(pageIndex: number) {
-  return Math.max(0, Math.min(pageIndex, homePages.value.length));
 }
 
 function goHomePage(pageIndex: number) {
@@ -882,28 +769,13 @@ function openHomeActivityItem(item: GenerationActivityItem) {
 }
 
 function getFolderStyle(item: HomeDisplayItem) {
-  const firstApp = item.folder?.appIds.map(appId => phoneAppById.value.get(appId)).find(Boolean);
+  const firstApp = getFolderApps(item)[0];
   return firstApp ? getDisplayAppStyle(firstApp) : { '--app-accent': 'var(--pc-theme-accent)' };
 }
 
 function getFolderIconAssetPath(item: HomeDisplayItem) {
   const assetId = item.folder?.iconAssetId || '';
   return settings.value.homeIconAssets.find(asset => asset.id === assetId)?.path || '';
-}
-
-function getFolderApps(item: HomeDisplayItem) {
-  return (item.folder?.appIds ?? []).flatMap(appId => {
-    const app = phoneAppById.value.get(appId);
-    return app ? [app] : [];
-  });
-}
-
-function getFolderShortcutApps(item: HomeDisplayItem) {
-  return getFolderApps(item).slice(0, 3);
-}
-
-function getFolderRemainingApps(item: HomeDisplayItem) {
-  return getFolderApps(item).slice(3, 7);
 }
 
 function onFolderNestedPointerDown(event: PointerEvent) {
@@ -1122,44 +994,6 @@ async function dissolveActiveHomeFolder() {
   }
 }
 
-async function jumpViewingChatToTavern() {
-  if (isViewingCurrentChat.value) return;
-  const target = phone.getTavernJumpTarget();
-  if (!target) return toastr.warning('当前阅览没有对应的酒馆聊天');
-  try {
-    await jumpToTavernChat({ chatFile: target.chatId, characterId: target.characterId, ownerName: target.ownerName });
-    phone.closePhone();
-    window.setTimeout(() => void phone.syncCurrentTavernScope(true), 2400);
-    toastr.success('正在跳转到酒馆聊天');
-  } catch (caughtError) {
-    toastr.error(caughtError instanceof Error ? caughtError.message : '跳转酒馆聊天失败');
-  }
-}
-
-async function refreshPhoneData() {
-  if (refreshingPhoneData.value) return;
-  if (generationTasks.hasRunningTasks) return phone.noticeWarning('生成任务运行中，请暂停或等待任务完成后再刷新');
-  refreshingPhoneData.value = true;
-  await new Promise<void>(resolve => window.requestAnimationFrame(() => resolve()));
-  try {
-    settingsStore.rehydrateFromSettings();
-    prompts.rehydrateFromSettings();
-    bagu.rehydrateFromSettings();
-    recovery.rehydrateFromSettings();
-    reader.rehydrateFromSettings();
-    generationTasks.rehydrateFromSettings();
-    getRegisteredPhoneBackupRehydrateHandlers().forEach(handler => handler());
-    stats.refresh();
-    await nextTick();
-    refreshHomeArchiveDomains();
-    phone.noticeSuccess('插件数据已刷新');
-  } catch (caughtError) {
-    phone.noticeError(caughtError instanceof Error ? caughtError.message : '刷新插件数据失败');
-  } finally {
-    refreshingPhoneData.value = false;
-  }
-}
-
 watch(
   () => homePages.value.length,
   pageCount => {
@@ -1167,10 +1001,6 @@ watch(
   },
 );
 watch(viewingScopeKey, refreshHomeArchiveDomains);
-watch(viewingScopeKey, () => void refreshActivityItems(), { immediate: true });
-watch([() => generationTasks.currentScopeTasks, () => previewDrafts.drafts], () => void refreshActivityItems(), {
-  deep: true,
-});
 watch(
   () => currentRoute.value,
   async route => {
@@ -1216,65 +1046,6 @@ onBeforeUnmount(resetHomeInteractionState);
   min-height: 0;
   display: flex;
   flex-direction: column;
-}
-.pc-home-activity-page {
-  display: grid;
-  align-content: start;
-  gap: 12px;
-  min-height: 0;
-  overflow: auto;
-}
-.pc-home-activity-list {
-  display: grid;
-  gap: 8px;
-}
-.pc-home-activity-list .pc-section-head small {
-  color: var(--pc-muted);
-}
-.pc-home-context {
-  display: flex;
-  min-height: 46px;
-  align-items: center;
-  justify-content: space-between;
-  gap: 8px;
-  margin-bottom: 8px;
-  padding: 7px 10px;
-  border: 1px solid var(--pc-border);
-  border-radius: var(--pc-card-radius);
-  background: color-mix(in srgb, var(--pc-surface) 72%, transparent 28%);
-  backdrop-filter: blur(12px);
-}
-.pc-home-context-copy {
-  min-width: 0;
-  flex: 1 1 auto;
-  display: flex;
-  align-items: baseline;
-  gap: 6px;
-}
-.pc-home-context-copy span,
-.pc-home-context-copy strong {
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-.pc-home-context-copy span {
-  color: var(--pc-muted);
-  font-size: 12px;
-}
-.pc-home-context-copy strong {
-  min-width: 0;
-  flex: 1 1 auto;
-  font-size: 13px;
-}
-.pc-home-context-actions {
-  display: flex;
-  flex: 0 0 auto;
-  gap: 8px;
-}
-.pc-home-context-quick-actions {
-  display: flex;
-  flex: 0 0 auto;
-  gap: 8px;
 }
 .pc-grid {
   display: grid;

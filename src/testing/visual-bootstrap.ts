@@ -152,7 +152,7 @@ export function setupVisualGlobals(): VisualGlobalFixtureControls {
                 id: 'visual-group-writing',
                 name: '正文规则',
                 order: 0,
-                collapsed: false,
+                collapsed: true,
                 enabled: true,
               },
             ],

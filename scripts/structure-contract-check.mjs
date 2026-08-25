@@ -3,37 +3,37 @@ import assert from 'node:assert/strict';
 // eslint-disable-next-line import-x/no-nodejs-modules
 import { readFile } from 'node:fs/promises';
 
-const promptsApp = await readFile(new URL('../src/components/PromptsApp.vue', import.meta.url), 'utf8');
+const promptsApp = await readFile(new URL('../src/apps/prompts/PromptsApp.vue', import.meta.url), 'utf8');
 const transferPage = await readFile(
-  new URL('../src/components/prompts/PromptTransferPage.vue', import.meta.url),
+  new URL('../src/apps/prompts/PromptTransferPage.vue', import.meta.url),
   'utf8',
 );
 const appEditorPage = await readFile(
-  new URL('../src/components/prompts/PromptAppEditorPage.vue', import.meta.url),
+  new URL('../src/apps/prompts/PromptAppEditorPage.vue', import.meta.url),
   'utf8',
 );
 const outputEditorPage = await readFile(
-  new URL('../src/components/prompts/PromptOutputEditorPage.vue', import.meta.url),
+  new URL('../src/apps/prompts/PromptOutputEditorPage.vue', import.meta.url),
   'utf8',
 );
 const typeEditorPage = await readFile(
-  new URL('../src/components/prompts/PromptTypeEditorPage.vue', import.meta.url),
+  new URL('../src/apps/prompts/PromptTypeEditorPage.vue', import.meta.url),
   'utf8',
 );
 const groupEditorPage = await readFile(
-  new URL('../src/components/prompts/PromptGroupEditorPage.vue', import.meta.url),
+  new URL('../src/apps/prompts/PromptGroupEditorPage.vue', import.meta.url),
   'utf8',
 );
 const phraseEditorPage = await readFile(
-  new URL('../src/components/prompts/PromptPhraseEditorPage.vue', import.meta.url),
+  new URL('../src/apps/prompts/PromptPhraseEditorPage.vue', import.meta.url),
   'utf8',
 );
 const promptLibraryActions = await readFile(
-  new URL('../src/components/prompts/usePromptLibraryActions.ts', import.meta.url),
+  new URL('../src/apps/prompts/usePromptLibraryActions.ts', import.meta.url),
   'utf8',
 );
 const promptDefaultsSession = await readFile(
-  new URL('../src/components/prompts/usePromptDefaultsSession.ts', import.meta.url),
+  new URL('../src/apps/prompts/usePromptDefaultsSession.ts', import.meta.url),
   'utf8',
 );
 const visualHarness = await readFile(new URL('../src/testing/visual-harness.ts', import.meta.url), 'utf8');
@@ -151,7 +151,7 @@ const contentTransferOverlay = await readFile(
 );
 const phoneOverlay = await readFile(new URL('../src/components/PhoneOverlay.vue', import.meta.url), 'utf8');
 const settingsDataManagement = await readFile(
-  new URL('../src/components/settings/SettingsDataManagementPage.vue', import.meta.url),
+  new URL('../src/apps/settings/SettingsDataManagementPage.vue', import.meta.url),
   'utf8',
 );
 

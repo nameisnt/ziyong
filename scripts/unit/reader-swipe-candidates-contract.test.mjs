@@ -6,8 +6,8 @@ import test from 'node:test';
 const readSource = relativePath => readFile(new URL(`../../${relativePath}`, import.meta.url), 'utf8');
 const [readerStore, readerSession, readerApp, runtime, scenario] = await Promise.all([
   readSource('src/store/reader.ts'),
-  readSource('src/components/reader/useReaderChatSession.ts'),
-  readSource('src/components/ReaderApp.vue'),
+  readSource('src/apps/reader/useReaderChatSession.ts'),
+  readSource('src/apps/reader/ReaderApp.vue'),
   readSource('src/util/runtime.ts'),
   readSource('src/testing/visual/readerScenarios.ts'),
 ]);

@@ -130,28 +130,28 @@
     {
       "count": 1,
       "excerpt": ".pc-output-editor .pc-form-actions :is(.pc-soft-btn, .pc-primary-btn)",
-      "file": "src/components/prompts/PromptOutputEditorPage.vue",
+      "file": "src/apps/prompts/PromptOutputEditorPage.vue",
       "message": "Scoped style overrides protected global control geometry.",
       "ruleId": "protected-control-geometry"
     },
     {
       "count": 1,
       "excerpt": ".pc-transfer-actions .pc-soft-btn, .pc-transfer-actions .pc-primary-btn",
-      "file": "src/components/prompts/PromptTransferPage.vue",
+      "file": "src/apps/prompts/PromptTransferPage.vue",
       "message": "Scoped style overrides protected global control geometry.",
       "ruleId": "protected-control-geometry"
     },
     {
       "count": 1,
       "excerpt": ".pc-group-actions .pc-icon-btn",
-      "file": "src/components/PromptsApp.vue",
+      "file": "src/apps/prompts/PromptsApp.vue",
       "message": "Scoped style overrides protected global control geometry.",
       "ruleId": "protected-control-geometry"
     },
     {
       "count": 1,
       "excerpt": ".pc-prompt-detail-actions :is(.pc-soft-btn, .pc-primary-btn)",
-      "file": "src/components/PromptsApp.vue",
+      "file": "src/apps/prompts/PromptsApp.vue",
       "message": "Scoped style overrides protected global control geometry.",
       "ruleId": "protected-control-geometry"
     },
@@ -165,7 +165,7 @@
     {
       "count": 1,
       "excerpt": ".pc-field-note",
-      "file": "src/components/settings/SettingsConnectionPanel.vue",
+      "file": "src/apps/settings/SettingsConnectionPanel.vue",
       "message": "Scoped style overrides protected global control geometry.",
       "ruleId": "protected-control-geometry"
     },

@@ -10,11 +10,9 @@ const modalSources = await Promise.all(
     ['catalog', '../../src/components/CatalogModal.vue', '.pc-catalog-card'],
     ['creation', '../../src/components/CreationModeModal.vue', '.pc-creation-modal'],
     ['bagu', '../../src/components/BaguHitDetailsModal.vue', '.pc-bagu-hit-modal'],
-    ['reader', '../../src/components/ReaderTextEditModal.vue', '.pc-reader-edit-modal'],
-    ['reasoning', '../../src/components/ReasoningModal.vue', '.pc-reasoning-card'],
     ['transfer', '../../src/components/ContentTransferOverlay.vue', '.pc-content-transfer-dialog'],
     ['preview', '../../src/components/GenerationPreviewPanel.vue', '.pc-preview-dialog'],
-    ['prompts', '../../src/components/PromptsApp.vue', '.pc-prompt-detail-dialog'],
+    ['prompts', '../../src/apps/prompts/PromptsApp.vue', '.pc-prompt-detail-dialog'],
     ['phone', '../../src/components/PhoneHome.vue', '.pc-home-folder-dialog'],
   ].map(async ([key, path, selector]) => ({
     key,
@@ -67,7 +65,7 @@ test('every modal dialog consumes one opaque global theme surface', () => {
       }
     }
   }
-  if (consumerCount !== 11) failures.push(`expected 11 modal dialog consumers, found ${consumerCount}`);
+  if (consumerCount !== 9) failures.push(`expected 9 modal dialog consumers, found ${consumerCount}`);
 
   const sectionCardIndex = globalSource.indexOf('.pc-phone-root .pc-section-card');
   const modalDialogIndex = globalSource.indexOf('.pc-phone-root .pc-modal-dialog');

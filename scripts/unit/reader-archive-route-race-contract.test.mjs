@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import test from 'node:test';
 
-const source = await readFile(new URL('../../src/components/reader/useReaderChatSession.ts', import.meta.url), 'utf8');
+const source = await readFile(new URL('../../src/apps/reader/useReaderChatSession.ts', import.meta.url), 'utf8');
 
 test('Reader fallback navigation cannot replace a ChatArchive detail route after an async load', () => {
   assert.match(

@@ -26,7 +26,10 @@ test('shared preview shell owns reasoning disclosure and raw-output semantics', 
 });
 
 test('shared failed-draft shell owns reasoning, warnings, and raw-output semantics', () => {
-  assert.match(failedPage, /<ReasoningDisclosure :content="reasoning"\s*\/>/);
+  assert.match(
+    failedPage,
+    /<ReasoningDisclosure :content="reasoning" editable @update:content="\$emit\('update:reasoning', \$event\)"\s*\/>/,
+  );
   assert.match(failedPage, /v-if="warnings\.length"/);
   assert.match(failedPage, /:raw-output-semantics="rawOutputSemantics"/);
 });

@@ -3,11 +3,11 @@ import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import test from 'node:test';
 
-const root = await readFile(new URL('../../src/components/ChatArchiveApp.vue', import.meta.url), 'utf8');
-const page = await readFile(new URL('../../src/components/archive/ChatArchiveFloorBackupPage.vue', import.meta.url), 'utf8');
+const root = await readFile(new URL('../../src/apps/archive/ChatArchiveApp.vue', import.meta.url), 'utf8');
+const page = await readFile(new URL('../../src/apps/archive/ChatArchiveFloorBackupPage.vue', import.meta.url), 'utf8');
 
 test('ChatArchive delegates the floor backup reader view while retaining its transactions', () => {
-  assert.match(root, /import ChatArchiveFloorBackupPage from '@\/components\/archive\/ChatArchiveFloorBackupPage\.vue'/u);
+  assert.match(root, /import ChatArchiveFloorBackupPage from '@\/apps\/archive\/ChatArchiveFloorBackupPage\.vue'/u);
   assert.match(
     root,
     /<ChatArchiveFloorBackupPage[\s\S]*route\.page === 'floor-backup'[\s\S]*:backup="selectedFloorBackup"[\s\S]*:export-backup="exportSelectedFloorBackup"[\s\S]*:restore-backup="restoreSelectedFloorBackup"/u,

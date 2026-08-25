@@ -6,6 +6,17 @@
         <button
           class="pc-icon-btn"
           type="button"
+          :class="{ active: bulkMode }"
+          :disabled="!boards.length"
+          :title="t`批量删除`"
+          :aria-label="t`批量删除`"
+          @click="bulkMode ? cancelBulkSelection() : startBulkSelection()"
+        >
+          <i class="fa-solid fa-list-check"></i>
+        </button>
+        <button
+          class="pc-icon-btn"
+          type="button"
           :title="t`生成帖子`"
           :aria-label="t`生成帖子`"
           @click="$emit('generate-thread')"
@@ -24,14 +35,34 @@
       </div>
     </div>
 
+    <BulkSelectionBar
+      v-if="bulkMode"
+      :all-selected="allBulkSelected"
+      :selected-count="bulkSelectedIds.length"
+      :total-count="boards.length"
+      @cancel="cancelBulkSelection"
+      @remove="removeSelectedBoards"
+      @toggle-all="toggleAllBulkSelection"
+    />
+
     <EmptyState v-if="!boards.length" :title="t`还没有论坛板块`" />
     <div v-else class="pc-directory-list pc-board-list">
-      <article v-for="board in boards" :key="board.id" class="pc-list-row pc-board-row">
-        <button class="pc-board-main" type="button" @click="$emit('open-board', board.id)">
+      <article v-for="board in boards" :key="board.id" class="pc-list-row pc-board-row" :class="{ bulk: bulkMode }">
+        <BulkSelectionCheckbox
+          v-if="bulkMode"
+          :model-value="bulkSelectedIdSet.has(board.id)"
+          :label="`选择 ${board.name}`"
+          @update:model-value="setBulkSelected(board.id, $event)"
+        />
+        <button
+          class="pc-board-main"
+          type="button"
+          @click="bulkMode ? setBulkSelected(board.id, !bulkSelectedIdSet.has(board.id)) : $emit('open-board', board.id)"
+        >
           <strong>{{ board.name }}</strong>
           <p>{{ formatBoardMeta(board.threads.length) }}</p>
         </button>
-        <div class="pc-board-actions">
+        <div v-if="!bulkMode" class="pc-board-actions">
           <button
             class="pc-icon-btn"
             type="button"
@@ -71,14 +102,17 @@
 </template>
 
 <script setup lang="ts">
+import BulkSelectionBar from '@/components/BulkSelectionBar.vue';
+import BulkSelectionCheckbox from '@/components/BulkSelectionCheckbox.vue';
 import EmptyState from '@/components/EmptyState.vue';
 import FailedDraftList from '@/components/FailedDraftList.vue';
 import PreviewDraftNotice from '@/components/PreviewDraftNotice.vue';
+import { useBulkSelection } from '@/composables/useBulkSelection';
 import type { GenerationPreviewDraft } from '@/store/previewDrafts';
 import type { FailedGenerationDraft } from '@/type/generation';
 import type { ForumBoard } from '@/type/forum';
 
-defineProps<{
+const props = defineProps<{
   boards: ForumBoard[];
   failedDrafts: FailedGenerationDraft[];
   formatBoardMeta: (threadCount: number) => string;
@@ -87,7 +121,7 @@ defineProps<{
   previewDraft: GenerationPreviewDraft | null;
 }>();
 
-defineEmits<{
+const emit = defineEmits<{
   'create-board': [];
   'discard-preview': [id?: string];
   'edit-board': [boardId: string];
@@ -96,8 +130,26 @@ defineEmits<{
   'open-failed-draft': [draftId: string];
   'open-preview': [id?: string];
   'remove-board': [boardId: string];
+  'remove-boards': [boardIds: string[]];
   'remove-failed-draft': [draftId: string];
 }>();
+
+const {
+  active: bulkMode,
+  allSelected: allBulkSelected,
+  cancel: cancelBulkSelection,
+  selectedIds: bulkSelectedIds,
+  selectedIdSet: bulkSelectedIdSet,
+  setSelected: setBulkSelected,
+  start: startBulkSelection,
+  toggleAll: toggleAllBulkSelection,
+} = useBulkSelection(() => props.boards.map(board => board.id));
+
+function removeSelectedBoards() {
+  if (!bulkSelectedIds.value.length) return;
+  emit('remove-boards', [...bulkSelectedIds.value]);
+  cancelBulkSelection();
+}
 </script>
 
 <style scoped>
@@ -136,5 +188,9 @@ defineEmits<{
   display: flex;
   align-items: center;
   gap: 8px;
+}
+
+.pc-board-row.bulk {
+  grid-template-columns: auto minmax(0, 1fr);
 }
 </style>

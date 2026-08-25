@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import test from 'node:test';
 
-const source = await readFile(new URL('../../src/components/PromptsApp.vue', import.meta.url), 'utf8');
+const source = await readFile(new URL('../../src/apps/prompts/PromptsApp.vue', import.meta.url), 'utf8');
 
 test('Prompts parent has no orphan textarea height rules', () => {
   const template = source.slice(source.indexOf('<template>'), source.indexOf('<script setup'));

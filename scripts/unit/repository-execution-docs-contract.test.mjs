@@ -1,81 +1,52 @@
 /* eslint-disable import-x/no-nodejs-modules */
 import assert from 'node:assert/strict';
-import { access, readFile } from 'node:fs/promises';
+import { access, readdir, readFile } from 'node:fs/promises';
 import test from 'node:test';
 
-const readRepositoryFile = relativePath =>
-  readFile(new URL(`../../${relativePath}`, import.meta.url), 'utf8');
+const docsRoot = new URL('../../docs/', import.meta.url);
+const currentNames = ['CODEMAP.md', 'CURRENT.md', 'DECISIONS.md'];
 
-const currentPaths = [
-  'docs/execution/current/worktree.md',
-  'docs/execution/current/defects.md',
-  'docs/execution/current/batches.md',
-  'docs/execution/current/traceability.md',
-];
+test('documentation exposes exactly three current markdown entry points', async () => {
+  const rootEntries = await readdir(docsRoot, { withFileTypes: true });
+  const rootMarkdown = rootEntries
+    .filter(entry => entry.isFile() && entry.name.endsWith('.md'))
+    .map(entry => entry.name)
+    .sort();
+  assert.deepEqual(rootMarkdown, currentNames);
 
-const legacyNames = [
-  '00-工作树归属.md',
-  '01-缺陷台账.md',
-  '02-批次状态.md',
-  '03-需求追踪与能力矩阵.md',
-  '04-U01组件族清单.md',
-  '05-当前发布候选清单.md',
-];
-
-test('execution documentation has one compact current state and one complete history slice', async () => {
-  const currentFiles = await Promise.all(currentPaths.map(readRepositoryFile));
-  assert.equal(currentFiles.length, 4);
-  assert.match(currentFiles[0], /dbb4bca/u);
-  assert.match(currentFiles[1], /D-REPO-PUBLISH-003/u);
-  assert.match(currentFiles[2], /REPO03/u);
-  assert.match(currentFiles[3], /REPO04/u);
-
-  const archivedFiles = await Promise.all(
-    legacyNames.map(name =>
-      readRepositoryFile(`docs/execution/archive/2026-pre-repository-cleanup/${name}`),
-    ),
+  const [codemap, current, decisions] = await Promise.all(
+    currentNames.map(name => readFile(new URL(name, docsRoot), 'utf8')),
   );
-  assert.match(archivedFiles[0], /二百四十三、REPO03/u);
-  assert.match(archivedFiles[1], /D-GEN-REASON-EDIT-01/u);
-  assert.match(archivedFiles[2], /REPOCHECKPOINT01/u);
-  assert.match(archivedFiles[3], /方案 15 仓库整理追踪/u);
-  assert.match(archivedFiles[4], /U01 图标按钮名称组件族清单/u);
-  assert.match(archivedFiles[5], /冻结时 40 个未跟踪文件逐项归属/u);
+  assert.match(codemap, /当前真实代码结构|当前源码/u);
+  assert.match(current, /只以 `CURRENT\.md`、`DECISIONS\.md`、`CODEMAP\.md`/u);
+  assert.ok((current.match(/^\d+\./gmu) ?? []).length <= 50);
+  assert.match(decisions, /ADR-001 文档入口收敛为三份当前文件/u);
 });
 
-test('legacy numbered entries are redirects instead of a second current state', async () => {
-  const legacyFiles = await Promise.all(
-    legacyNames.map(name => readRepositoryFile(`docs/execution/${name}`)),
-  );
-  legacyFiles.forEach((source, index) => {
-    assert.match(source, /archive\/2026-pre-repository-cleanup/u, legacyNames[index]);
-    assert.ok(source.split(/\r?\n/u).length <= 10, legacyNames[index]);
-  });
+test('superseded documentation is archived and explicitly excluded from construction context', async () => {
+  const archive = new URL('archive/', docsRoot);
+  await access(archive);
+  const archiveEntries = await readdir(archive);
+  assert.ok(archiveEntries.length > 0);
 
-  const executionIndex = await readRepositoryFile('docs/execution/README.md');
-  currentPaths.forEach(path => {
-    assert.match(executionIndex, new RegExp(path.replace('docs/execution/', '').replace('.', '\\.')));
-  });
-  assert.match(executionIndex, /archive\/README\.md/u);
+  const [codemap, current, decisions] = await Promise.all(
+    currentNames.map(name => readFile(new URL(name, docsRoot), 'utf8')),
+  );
+  for (const source of [current, decisions, codemap]) {
+    assert.match(source, /archive/u);
+  }
+  assert.match(current, /不作为施工依据/u);
+  assert.match(decisions, /不得作为施工依据/u);
+  assert.match(codemap, /不得直接执行/u);
 });
 
-test('current, redirect and archive index links all resolve', async () => {
-  const linkedDocumentPaths = [
-    'docs/execution/README.md',
-    ...currentPaths,
-    ...legacyNames.map(name => `docs/execution/${name}`),
-    'docs/execution/archive/README.md',
-    'docs/execution/archive/2026-pre-repository-cleanup/README.md',
-  ];
-
-  for (const documentPath of linkedDocumentPaths) {
-    const documentUrl = new URL(`../../${documentPath}`, import.meta.url);
+test('local links in the three current documents resolve', async () => {
+  for (const name of currentNames) {
+    const documentUrl = new URL(name, docsRoot);
     const source = await readFile(documentUrl, 'utf8');
     const targets = [...source.matchAll(/\[[^\]]+\]\(([^)]+)\)/gu)].map(match => match[1]);
     for (const target of targets) {
-      if (/^(?:https?:|mailto:|#)/u.test(target)) {
-        continue;
-      }
+      if (/^(?:https?:|mailto:|#)/u.test(target)) continue;
       await access(new URL(target, documentUrl));
     }
   }

@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import test from 'node:test';
 
-const source = await readFile(new URL('../../src/components/PromptsApp.vue', import.meta.url), 'utf8');
+const source = await readFile(new URL('../../src/apps/prompts/PromptsApp.vue', import.meta.url), 'utf8');
 
 function rulesFor(selector) {
   return [...source.matchAll(/([^{}]+)\{([^{}]*)\}/g)]

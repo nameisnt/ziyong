@@ -26,7 +26,7 @@ test('every recovery icon button has the same accessible name as its title', () 
       .map(match => match[0])
       .filter(tag => /\bclass="[^"]*\bpc-icon-btn\b[^"]*"/.test(tag)),
   );
-  assert.equal(iconButtons.length, 6);
+  assert.equal(iconButtons.length, 7);
 
   for (const tag of iconButtons) {
     const title = tag.match(/\s(:?)title="([^"]+)"/);

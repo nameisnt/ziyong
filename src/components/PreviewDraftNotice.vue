@@ -30,23 +30,27 @@
         <button
           v-for="item in drafts"
           :key="item.id"
-          :class="['pc-preview-draft-manager-item', { active: selectedDraftId === item.id }]"
+          :class="['pc-preview-draft-manager-item', { active: selectedDraftIdSet.has(item.id) }]"
           type="button"
           role="option"
-          :aria-selected="selectedDraftId === item.id"
+          :aria-selected="selectedDraftIdSet.has(item.id)"
           :data-draft-id="item.id"
-          @click="selectedDraftId = item.id"
+          @click="toggleDraftSelection(item.id)"
         >
+          <i :class="selectedDraftIdSet.has(item.id) ? 'fa-solid fa-square-check' : 'fa-regular fa-square'"></i>
           <strong :title="item.title">{{ item.title }}</strong>
           <span>{{ formatUpdatedAt(item.updatedAt) }}</span>
         </button>
       </div>
 
       <footer class="pc-form-actions">
-        <button class="pc-soft-btn danger" type="button" :disabled="!selectedDraft" @click="confirmDiscardSelected">
+        <button class="pc-soft-btn" type="button" :disabled="!drafts.length" @click="toggleAllDrafts">
+          {{ selectedDraftIds.length === drafts.length ? '取消全选' : '全选' }}
+        </button>
+        <button class="pc-soft-btn danger" type="button" :disabled="!selectedDraftIds.length" @click="confirmDiscardSelected">
           删除所选
         </button>
-        <button class="pc-primary-btn" type="button" :disabled="!selectedDraft" @click="openSelected">
+        <button class="pc-primary-btn" type="button" :disabled="selectedDraftIds.length !== 1" @click="openSelected">
           继续所选
         </button>
       </footer>
@@ -74,12 +78,15 @@ const phone = usePhoneStore();
 const previewDrafts = usePreviewDraftStore();
 const managerDialogRef = ref<HTMLElement | null>(null);
 const managerOpen = ref(false);
-const selectedDraftId = ref('');
+const selectedDraftIds = ref<string[]>([]);
 const drafts = computed(() => {
   if (!props.draft) return [];
   return previewDrafts.getPreviewDrafts(props.draft.appId, props.draft.page);
 });
-const selectedDraft = computed(() => drafts.value.find(item => item.id === selectedDraftId.value) ?? null);
+const selectedDraftIdSet = computed(() => new Set(selectedDraftIds.value));
+const selectedDraft = computed(() =>
+  selectedDraftIds.value.length === 1 ? drafts.value.find(item => item.id === selectedDraftIds.value[0]) ?? null : null,
+);
 
 usePhoneModalLifecycle({
   dialogRef: managerDialogRef,
@@ -88,7 +95,7 @@ usePhoneModalLifecycle({
 });
 
 function openManager() {
-  selectedDraftId.value = drafts.value[0]?.id ?? '';
+  selectedDraftIds.value = drafts.value[0] ? [drafts.value[0].id] : [];
   managerOpen.value = true;
 }
 
@@ -103,16 +110,26 @@ function openSelected() {
 }
 
 async function confirmDiscardSelected() {
-  const selected = selectedDraft.value;
-  if (!selected) return;
-  const confirmed = await phone.confirmNotice(`要删除未保存预览“${selected.title || '未命名草稿'}”吗？`, {
+  const selected = drafts.value.filter(item => selectedDraftIdSet.value.has(item.id));
+  if (!selected.length) return;
+  const confirmed = await phone.confirmNotice(`要删除所选 ${selected.length} 份未保存预览吗？`, {
     confirmLabel: '删除',
     kind: 'warning',
   });
   if (!confirmed) return;
-  emit('discard', selected.id);
-  if (selectedDraftId.value === selected.id) selectedDraftId.value = drafts.value.find(item => item.id !== selected.id)?.id ?? '';
-  if (!drafts.value.length || (drafts.value.length === 1 && drafts.value[0]?.id === selected.id)) closeManager();
+  selected.forEach(item => emit('discard', item.id));
+  selectedDraftIds.value = [];
+  closeManager();
+}
+
+function toggleDraftSelection(draftId: string) {
+  selectedDraftIds.value = selectedDraftIdSet.value.has(draftId)
+    ? selectedDraftIds.value.filter(id => id !== draftId)
+    : [...selectedDraftIds.value, draftId];
+}
+
+function toggleAllDrafts() {
+  selectedDraftIds.value = selectedDraftIds.value.length === drafts.value.length ? [] : drafts.value.map(item => item.id);
 }
 
 function formatUpdatedAt(value: string) {
@@ -178,13 +195,20 @@ function formatUpdatedAt(value: string) {
   display: grid;
   width: 100%;
   min-width: 0;
-  gap: 3px;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 3px 8px;
   border: 1px solid var(--pc-border);
   border-radius: var(--pc-control-radius);
   background: var(--pc-surface);
   color: var(--pc-text);
   padding: 10px;
   text-align: left;
+}
+
+.pc-preview-draft-manager-item > i {
+  grid-row: 1 / 3;
+  align-self: center;
+  color: var(--pc-theme-accent);
 }
 
 .pc-preview-draft-manager-item.active {

@@ -18,6 +18,22 @@ test('opening a Tavern preset clears stale plugin route identity', () => {
   assert.match(openSource, /presetSource:\s*'tavern'/u);
 });
 
+test('preset catalog places the current Tavern preset first without mutating source order', () => {
+  const visibleStart = appSource.indexOf('const visiblePresetNames = computed');
+  const visibleEnd = appSource.indexOf('\nconst editorDirty', visibleStart);
+  const visibleSource = appSource.slice(visibleStart, visibleEnd);
+
+  assert.match(visibleSource, /names\.indexOf\(loadedPresetName\.value\)/u);
+  assert.match(visibleSource, /\.\.\.presetNames\.value/u);
+  assert.match(visibleSource, /names\.slice\(0, currentIndex\)/u);
+});
+
+test('preset detail keeps group expansion state per preset while nested prompt pages reload', () => {
+  assert.match(appSource, /collapsedGroupsByPreset = new Map<string, Map<string, boolean>>/u);
+  assert.match(appSource, /saved\?\.get\(node\.group\.id\) \?\? node\.group\.collapsed/u);
+  assert.match(appSource, /saved\.set\(groupId, next\.has\(groupId\)\)/u);
+});
+
 test('renaming a Tavern preset is refused before any unsafe host mutation can select it', () => {
   const renameStart = source.indexOf('export async function renameTavernPreset');
   const deleteStart = source.indexOf('export async function deleteTavernPreset');

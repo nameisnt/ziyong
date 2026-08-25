@@ -8,12 +8,19 @@ import { scanVueUiContracts } from '../ui-contract-check.mjs';
 const file = 'src/apps/scene-planner/ScenePlannerApp.vue';
 const source = await readFile(new URL('../../src/apps/scene-planner/ScenePlannerApp.vue', import.meta.url), 'utf8');
 
-test('Scene Planner does not reintroduce unlabeled icon-only actions', () => {
+test('Scene Planner icon-only actions keep matching accessible names', () => {
   const nameFindings = scanVueUiContracts(source, file).filter(finding => finding.ruleId === 'icon-button-aria-label');
   assert.deepEqual(nameFindings, []);
 
   const iconButtons = [...source.matchAll(/<button\b(?:[^>"']|"[^"]*"|'[^']*')*>/g)]
     .map(match => match[0])
     .filter(tag => /\bclass="[^"]*\bpc-icon-btn\b[^"]*"/.test(tag));
-  assert.equal(iconButtons.length, 0, file);
+  assert.equal(iconButtons.length, 1, file);
+  for (const tag of iconButtons) {
+    const title = tag.match(/\s(:?)title="([^"]+)"/);
+    const ariaLabel = tag.match(/\s(:?)aria-label="([^"]+)"/);
+    assert.ok(title, `missing title in ${file}: ${tag}`);
+    assert.ok(ariaLabel, `missing aria-label in ${file}: ${tag}`);
+    assert.deepEqual(ariaLabel.slice(1), title.slice(1), file);
+  }
 });

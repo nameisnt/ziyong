@@ -77,7 +77,6 @@
       @continue="openGenerateChapter(activeBook.id)"
       @delete="removeChapter(activeBook.id, activeChapter.id)"
       @edit="openEditChapter(activeBook.id, activeChapter.id, viewedChapterVersionId)"
-      @erase="overwriteExtrasContent"
       @favorite="extras.toggleFavorite(activeBook.id, activeChapter.id)"
       @next="openChapter(activeBook.id, chapterNextId || '', true)"
       @previous="openChapter(activeBook.id, chapterPrevId || '', true)"
@@ -85,6 +84,7 @@
       @select-catalog="selectCatalogChapter"
       @select-version="selectChapterVersion"
       @top="scrollToTop"
+      @update:reasoning="updateViewedChapterReasoning"
     />
 
     <BaguDetailPage
@@ -185,6 +185,7 @@
     <FailedDraftRepairPage
       v-else-if="route.page === 'failed-draft' && activeFailedDraft"
       v-model:raw-output="failedDraftRawOutput"
+      :regenerate-handler="regenerateFailedDraft"
       :raw-output-semantics="activeFailedDraft.rawOutputSemantics"
       :reasoning="activeFailedDraft.generationRecord?.reasoning || ''"
       placeholder="在这里修 XML 结构或补 content。"
@@ -193,6 +194,7 @@
       :warnings="activeFailedDraft.warnings"
       @delete="removeFailedDraft(activeFailedDraft.id)"
       @reparse="reparseFailedDraft"
+      @update:reasoning="updateGenerationRecordReasoning(activeFailedDraft, $event)"
     />
   </section>
 </template>
@@ -220,6 +222,7 @@ import { useExtrasChapterView } from '@/apps/extras/useExtrasChapterView';
 import { useExtrasGenerationState } from '@/apps/extras/useExtrasGenerationState';
 import { useExtrasGenerationActions } from '@/apps/extras/useExtrasGenerationActions';
 import { useExtrasFailedDraftRepair } from '@/composables/useExtrasFailedDraftRepair';
+import { useFailedDraftRegeneration } from '@/composables/useFailedDraftRegeneration';
 import { useGenerationReplaySession } from '@/composables/useGenerationReplaySession';
 import { getRegisteredPhoneGenerationAdapter } from '@/core/appRegistry';
 import { type ExtraChapterGenerationIntent, type ExtraChapterGenerationMode } from '@/core/extrasGeneration';
@@ -435,6 +438,12 @@ const viewedChapter = computed(() => {
     ? { ...chapter, content: version.content, generationRecord: version.generationRecord, title: version.title }
     : chapter;
 });
+
+function updateViewedChapterReasoning(reasoning: string) {
+  const generationRecord =
+    viewedChapterVersion.value?.generationRecord || activeChapter.value?.generationRecords.at(-1);
+  updateGenerationRecordReasoning({ generationRecord }, reasoning);
+}
 const activeSummary = computed(() => {
   const bookId = route.value.params?.bookId;
   const summaryId = route.value.params?.summaryId;
@@ -1096,18 +1105,6 @@ function openExtrasBaguScan() {
   });
 }
 
-function overwriteExtrasContent(content: string) {
-  const book = activeBook.value;
-  const chapter = activeChapter.value;
-  if (!book || !chapter) return;
-  const versionId = viewedChapterVersionId.value;
-  const result = versionId
-    ? extras.updateChapterVersion(book.id, chapter.id, versionId, { content, title: viewedChapter.value.title })
-    : extras.updateChapter(book.id, chapter.id, { content, title: viewedChapter.value.title });
-  if (!result) return;
-  toastr.success(versionId ? '已覆盖当前番外版本' : '已覆盖当前番外正文');
-}
-
 function selectCatalogChapter(chapterId: string) {
   if (!activeBook.value) return;
   showCatalogModal.value = false;
@@ -1226,6 +1223,11 @@ function formatCoveredChaptersForBook(book: typeof activeBook.value, ids: string
     .map(chapter => `第 ${chapter.chapterNumber} 章`);
   return titles.join('、') || '未关联章节';
 }
+const regenerateFailedDraft = useFailedDraftRegeneration({
+  draft: () => activeFailedDraft.value,
+  rawOutput: failedDraftRawOutput,
+  reparse: reparseFailedDraft,
+});
 </script>
 
 <style scoped>

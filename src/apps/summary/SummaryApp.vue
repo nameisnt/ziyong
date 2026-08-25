@@ -52,12 +52,12 @@
       @bottom="scrollToBottom"
       @delete="removeEntry(activeBook.id, activeEntry.id)"
       @edit="openEditEntry(activeBook.id, activeEntry.id)"
-      @erase="overwriteSummaryContent"
       @favorite="summary.toggleFavorite(activeBook.id, activeEntry.id)"
       @next="openEntry(activeBook.id, nextEntryId, true)"
       @previous="openEntry(activeBook.id, previousEntryId, true)"
       @select-catalog="selectCatalogEntry"
       @top="scrollToTop"
+      @update:reasoning="updateGenerationRecordReasoning(activeEntry, $event)"
     />
 
     <SummaryBaguPage
@@ -120,6 +120,14 @@
       @stop="stopGeneration"
     />
 
+    <BatchGenerationPreviewPage
+      v-else-if="route.page === 'batch-preview' && batchPreviewTask"
+      :items="batchPreviewItems"
+      kind="summary"
+      :save-handler="saveBatchPreview"
+      @back="returnFromBatchPreview"
+    />
+
     <SummaryBatchPage
       v-else-if="route.page === 'batch-generate'"
       v-model:book-id="batchDraft.bookId"
@@ -165,8 +173,10 @@
       v-model:target-book-id="failedDraftTargetBookId"
       :books="books"
       :draft="activeFailedDraft"
+      :regenerate-handler="regenerateFailedDraft"
       @delete="removeFailedDraft(activeFailedDraft.id)"
       @reparse="reparseFailedDraft"
+      @update:reasoning="updateGenerationRecordReasoning(activeFailedDraft, $event)"
     />
     <CreationModeModal
       :open="creationModeOpen"
@@ -185,6 +195,7 @@ import SummaryBookPage from '@/apps/summary/SummaryBookPage.vue';
 import SummaryBookEditorPage from '@/apps/summary/SummaryBookEditorPage.vue';
 import SummaryBaguPage from '@/apps/summary/SummaryBaguPage.vue';
 import SummaryCatalogPage from '@/apps/summary/SummaryCatalogPage.vue';
+import BatchGenerationPreviewPage from '@/components/BatchGenerationPreviewPage.vue';
 import CreationModeModal, { type CreationModeOption } from '@/components/CreationModeModal.vue';
 import SummaryEntryDetailPage from '@/apps/summary/SummaryEntryDetailPage.vue';
 import SummaryEntryEditorPage from '@/apps/summary/SummaryEntryEditorPage.vue';
@@ -197,10 +208,18 @@ import { useSummaryBatchSession } from '@/apps/summary/useSummaryBatchSession';
 import { useSummaryGenerationActions } from '@/apps/summary/useSummaryGenerationActions';
 import { useCatalogDetailNavigation } from '@/composables/useCatalogDetailNavigation';
 import { useDirectorySort } from '@/composables/useDirectorySort';
+import { useFailedDraftRegeneration } from '@/composables/useFailedDraftRegeneration';
 import { useSummaryImport } from '@/composables/useSummaryImport';
 import { getRegisteredPhoneGenerationAdapter } from '@/core/appRegistry';
 import { buildGenerationPreview, captureGenerationPrompt } from '@/core/generationService';
-import type { ManualBatchTaskConfig } from '@/core/manualBatchRunner';
+import {
+  getManualBatchPreviews,
+  saveManualBatchPreviews,
+  updateManualBatchPreviews,
+  type ManualBatchPreviewEdit,
+  type ManualBatchTaskConfig,
+} from '@/core/manualBatchRunner';
+import { useGenerationTaskStore } from '@/store/generationTasks';
 import { usePhoneStore } from '@/store/phone';
 import { usePromptStore } from '@/store/prompts';
 import { useRecoveryStore } from '@/store/recovery';
@@ -228,6 +247,7 @@ const prompts = usePromptStore();
 const recovery = useRecoveryStore();
 const settingsStore = useSettingsStore();
 const summary = useSummaryStore();
+const generationTasks = useGenerationTaskStore();
 const summaryGenerationAdapter = getRegisteredPhoneGenerationAdapter('summary', 'generate');
 const { books, failedDrafts } = storeToRefs(summary);
 const { currentRoute: route } = storeToRefs(phone);
@@ -374,6 +394,34 @@ const {
   formattedReferences,
   getRouteBookId: () => route.value.params?.bookId || '',
 });
+const batchPreviewTask = computed(() => {
+  const taskId = route.value.params?.taskId;
+  return taskId ? generationTasks.getTask(taskId) : batchTask.value;
+});
+const batchPreviewItems = computed(() =>
+  batchPreviewTask.value ? getManualBatchPreviews(batchPreviewTask.value.id) : [],
+);
+
+function returnFromBatchPreview() {
+  const bookId = batchPreviewTask.value?.routeParams.bookId || '';
+  const book = bookId ? summary.getBook(bookId) : null;
+  phone.replacePage(book ? 'book' : 'root', book?.title || '总结', book ? { bookId } : undefined);
+}
+
+async function saveBatchPreview(edits: ManualBatchPreviewEdit[]) {
+  const task = batchPreviewTask.value;
+  if (!task) return;
+  updateManualBatchPreviews(task.id, edits);
+  try {
+    const result = await saveManualBatchPreviews(task.id);
+    if (!result) return;
+    const book = result.bookId ? summary.getBook(result.bookId) : null;
+    toastr.success(`已保存 ${result.savedCount} 条总结`);
+    phone.replacePage(book ? 'book' : 'root', book?.title || '总结', book ? { bookId: book.id } : undefined);
+  } catch (error) {
+    toastr.error(error instanceof Error ? error.message : '批量保存失败');
+  }
+}
 
 const {
   error: generationError,
@@ -610,19 +658,6 @@ function openSummaryBaguScan() {
   });
 }
 
-function overwriteSummaryContent(content: string) {
-  const book = activeBook.value;
-  const entry = activeEntry.value;
-  if (!book || !entry) return;
-  summary.updateEntry(book.id, entry.id, {
-    content,
-    directoryOrder: entry.directoryOrder,
-    rangeLabel: entry.rangeLabel,
-    title: entry.title,
-  });
-  toastr.success('已覆盖当前总结正文');
-}
-
 function selectCatalogEntry(entryId: string) {
   if (!activeBook.value) return;
   showCatalogModal.value = false;
@@ -834,6 +869,11 @@ async function removeEntry(bookId: string, entryId: string) {
   phone.replacePage('book', book.title, { bookId });
   toastr.success('已删除总结条目');
 }
+const regenerateFailedDraft = useFailedDraftRegeneration({
+  draft: () => activeFailedDraft.value,
+  rawOutput: failedDraftRawOutput,
+  reparse: reparseFailedDraft,
+});
 </script>
 
 <style scoped>

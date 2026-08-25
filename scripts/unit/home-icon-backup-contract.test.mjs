@@ -9,13 +9,22 @@ const settingsType = await readFile(new URL('../../src/type/settings.ts', import
 const settingsStore = await readFile(new URL('../../src/store/settings.ts', import.meta.url), 'utf8');
 const appIcon = await readFile(new URL('../../src/components/AppIcon.vue', import.meta.url), 'utf8');
 
-test('full backup v3 embeds icon bytes while v1 and v2 remain declared', () => {
+test('full backup v3 embeds icon bytes while older versions remain declared', () => {
   assert.match(backupType, /PhoneBackupFullDataV3Schema/u);
   assert.match(backupType, /schemaVersion:\s*z\.literal\(1\)/u);
   assert.match(backupType, /schemaVersion:\s*z\.literal\(2\)/u);
   assert.match(backupType, /schemaVersion:\s*z\.literal\(3\)/u);
   assert.match(backupUtil, /readHomeIconBackupAssets/u);
   assert.match(backupUtil, /homeIconAssets:\s*await readHomeIconBackupAssets/u);
+});
+
+test('full backup v4 embeds nonempty chat floor backups and associated worldbooks', () => {
+  assert.match(backupType, /PhoneBackupFullDataV4Schema/u);
+  assert.match(backupType, /schemaVersion:\s*z\.literal\(4\)/u);
+  assert.match(backupUtil, /chatFloorBackups/u);
+  assert.match(backupUtil, /readAssociatedWorldbooks/u);
+  assert.match(backupUtil, /replaceChatFloorBackups/u);
+  assert.match(backupUtil, /replaceWorldbooks/u);
 });
 
 test('icon import validates identity and rolls uploaded files back when commit fails', () => {

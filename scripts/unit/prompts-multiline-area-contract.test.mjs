@@ -6,7 +6,7 @@ import test from 'node:test';
 const catalog = await readFile(new URL('../../src/testing/visual/scenarioCatalog.ts', import.meta.url), 'utf8');
 const globalSource = await readFile(new URL('../../src/global.css', import.meta.url), 'utf8');
 const phraseEditor = await readFile(
-  new URL('../../src/components/prompts/PromptPhraseEditorPage.vue', import.meta.url),
+  new URL('../../src/apps/prompts/PromptPhraseEditorPage.vue', import.meta.url),
   'utf8',
 );
 const scenarios = await readFile(new URL('../../src/testing/visual/promptsScenarios.ts', import.meta.url), 'utf8');

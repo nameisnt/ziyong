@@ -54,6 +54,19 @@ export function useForumDeletionSession(options: {
     options.notifySuccess('已删除板块');
   }
 
+  async function removeBoards(boardIds: string[]) {
+    const selected = boardIds.map(boardId => forum.getBoard(boardId)).filter((board): board is ForumBoard => Boolean(board));
+    if (!selected.length) return;
+    const threadCount = selected.reduce((sum, board) => sum + board.threads.length, 0);
+    const shouldDelete = await options.confirmDelete(
+      `要删除所选 ${selected.length} 个板块及其中 ${threadCount} 个帖子吗？回复也会一起删除。`,
+      '删除所选',
+    );
+    if (!shouldDelete) return;
+    selected.forEach(board => forum.deleteBoard(board.id));
+    options.notifySuccess(`已删除 ${selected.length} 个板块`);
+  }
+
   async function removeThread(boardId: string, threadId: string) {
     const thread = forum.getThread(boardId, threadId);
     if (thread && thread.versions.length > 1) {
@@ -76,5 +89,5 @@ export function useForumDeletionSession(options: {
     options.notifySuccess('已删帖');
   }
 
-  return { removeBoard, removeForumVersion, removeThread };
+  return { removeBoard, removeBoards, removeForumVersion, removeThread };
 }

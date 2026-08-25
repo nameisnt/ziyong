@@ -11,6 +11,12 @@
         <button type="button" @click="$emit('open-bindings')">
           <i class="fa-solid fa-link"></i><span>分组绑定</span>
         </button>
+        <button type="button" :disabled="!itemCount" @click="startBulkSelection('items')">
+          <i class="fa-solid fa-list-check"></i><span>批量删除收藏</span>
+        </button>
+        <button type="button" :disabled="!sections.length" @click="startBulkSelection('groups')">
+          <i class="fa-solid fa-folder-minus"></i><span>批量删除分组</span>
+        </button>
       </ActionMenu>
       <ActionMenu label="新增" icon="fa-solid fa-plus">
         <button type="button" @click="$emit('open-manual')">
@@ -42,6 +48,16 @@
       </button>
     </div>
 
+    <BulkSelectionBar
+      v-if="bulkMode"
+      :all-selected="allBulkSelected"
+      :selected-count="bulkSelectedIds.length"
+      :total-count="currentBulkIds.length"
+      @cancel="cancelBulkSelection"
+      @remove="removeBulkSelection"
+      @toggle-all="toggleAllBulkSelection"
+    />
+
     <label v-if="itemCount" class="pc-search-field">
       <i class="fa-solid fa-magnifying-glass"></i>
       <input v-model="query" type="search" placeholder="搜索收藏名称或内容" />
@@ -50,14 +66,28 @@
     <div v-if="sections.length" class="pc-entry-library-groups">
       <section v-for="section in sections" :key="section.group.id" class="pc-entry-library-group">
         <header class="pc-entry-library-group-head">
-          <button class="pc-entry-library-group-toggle" type="button" @click="$emit('toggle-group', section.group.id)">
+          <BulkSelectionCheckbox
+            v-if="bulkMode && bulkTarget === 'groups'"
+            :model-value="bulkSelectedIdSet.has(section.group.id)"
+            :label="`选择分组 ${section.group.name}`"
+            @update:model-value="setBulkSelected(section.group.id, $event)"
+          />
+          <button
+            class="pc-entry-library-group-toggle"
+            type="button"
+            @click="
+              bulkMode && bulkTarget === 'groups'
+                ? setBulkSelected(section.group.id, !bulkSelectedIdSet.has(section.group.id))
+                : $emit('toggle-group', section.group.id)
+            "
+          >
             <i class="fa-solid fa-chevron-right" :class="{ expanded: section.open }"></i>
             <span
               ><strong>{{ section.group.name }}</strong
               ><small>{{ section.items.length }} 条</small></span
             >
           </button>
-          <div class="pc-entry-library-group-actions">
+          <div v-if="!(bulkMode && bulkTarget === 'groups')" class="pc-entry-library-group-actions">
             <label class="pc-toggle" :title="section.enableState === 'all' ? '全部停用' : '全部启用'">
               <input
                 type="checkbox"
@@ -98,12 +128,19 @@
             }"
             :data-entry-group-id="section.group.id"
             :data-entry-item-id="item.id"
-            @pointerdown="$emit('item-pointer-down', $event, item.id, section.group.id)"
-            @pointermove="$emit('item-pointer-move', $event)"
-            @pointerup="$emit('item-pointer-up', $event)"
-            @pointercancel="$emit('item-pointer-cancel', $event)"
+            @pointerdown="bulkMode || $emit('item-pointer-down', $event, item.id, section.group.id)"
+            @pointermove="bulkMode || $emit('item-pointer-move', $event)"
+            @pointerup="bulkMode || $emit('item-pointer-up', $event)"
+            @pointercancel="bulkMode || $emit('item-pointer-cancel', $event)"
           >
+            <BulkSelectionCheckbox
+              v-if="bulkMode && bulkTarget === 'items'"
+              :model-value="bulkSelectedIdSet.has(item.id)"
+              :label="`选择 ${item.title}`"
+              @update:model-value="setBulkSelected(item.id, $event)"
+            />
             <button
+              v-else
               class="pc-icon-btn pc-entry-drag-handle"
               type="button"
               :disabled="Boolean(query.trim())"
@@ -113,10 +150,18 @@
             >
               <i class="fa-solid fa-grip-lines"></i>
             </button>
-            <button class="pc-entry-library-item-main" type="button" @click="$emit('open-item', item.id)">
+            <button
+              class="pc-entry-library-item-main"
+              type="button"
+              @click="
+                bulkMode && bulkTarget === 'items'
+                  ? setBulkSelected(item.id, !bulkSelectedIdSet.has(item.id))
+                  : $emit('open-item', item.id)
+              "
+            >
               <strong>{{ item.title }}</strong>
             </button>
-            <div class="pc-entry-library-item-actions">
+            <div v-if="!(bulkMode && bulkTarget === 'items')" class="pc-entry-library-item-actions">
               <label class="pc-toggle" :title="item.enabled ? '停用条目' : '启用条目'"
                 ><input
                   type="checkbox"
@@ -147,7 +192,10 @@
 
 <script setup lang="ts">
 import ActionMenu from '@/components/ActionMenu.vue';
+import BulkSelectionBar from '@/components/BulkSelectionBar.vue';
+import BulkSelectionCheckbox from '@/components/BulkSelectionCheckbox.vue';
 import EmptyState from '@/components/EmptyState.vue';
+import { useBulkSelection } from '@/composables/useBulkSelection';
 import type { EntryLibraryGroup, EntryLibraryItem } from '../store';
 
 type CatalogSection = {
@@ -157,17 +205,19 @@ type CatalogSection = {
   open: boolean;
   totalItems: number;
 };
-defineProps<{
+const props = defineProps<{
   itemCount: number;
   itemDrag: { groupId: string; insertBeforeItemId: string; isDragging: boolean; itemId: string };
   sections: CatalogSection[];
 }>();
 const groupName = defineModel<string>('groupName', { required: true });
 const query = defineModel<string>('query', { required: true });
-defineEmits<{
+const emit = defineEmits<{
   'create-group': [];
   'delete-group': [groupId: string];
+  'delete-groups': [groupIds: string[]];
   'delete-item': [itemId: string];
+  'delete-items': [itemIds: string[]];
   'item-pointer-cancel': [event: PointerEvent];
   'item-pointer-down': [event: PointerEvent, itemId: string, groupId: string];
   'item-pointer-move': [event: PointerEvent];
@@ -182,6 +232,34 @@ defineEmits<{
   'toggle-group-enabled': [groupId: string, enabled: boolean];
   'toggle-item': [itemId: string, enabled: boolean];
 }>();
+const bulkTarget = ref<'groups' | 'items'>('items');
+const currentBulkIds = computed(() =>
+  bulkTarget.value === 'groups'
+    ? props.sections.map(section => section.group.id)
+    : props.sections.flatMap(section => section.items.map(item => item.id)),
+);
+const {
+  active: bulkMode,
+  allSelected: allBulkSelected,
+  cancel: cancelBulkSelection,
+  selectedIds: bulkSelectedIds,
+  selectedIdSet: bulkSelectedIdSet,
+  setSelected: setBulkSelected,
+  start,
+  toggleAll: toggleAllBulkSelection,
+} = useBulkSelection(currentBulkIds);
+
+function startBulkSelection(target: 'groups' | 'items') {
+  bulkTarget.value = target;
+  start();
+}
+
+function removeBulkSelection() {
+  if (!bulkSelectedIds.value.length) return;
+  if (bulkTarget.value === 'groups') emit('delete-groups', [...bulkSelectedIds.value]);
+  else emit('delete-items', [...bulkSelectedIds.value]);
+  cancelBulkSelection();
+}
 </script>
 
 <style scoped>

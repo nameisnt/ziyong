@@ -22,6 +22,8 @@ import {
   assertCleanupThreshold,
   createContainedBackupGroups,
   createDuplicateBackupGroups,
+  createSimilarBackupGroups,
+  getBackupMessageSimilarity,
   isCleanupCandidate,
   isStrictMessagePrefix,
   parseChatBackupJsonl,
@@ -548,12 +550,14 @@ export const useChatRecoveryStore = defineStore('chat-recovery', () => {
       };
       await Promise.all(Array.from({ length: Math.min(4, candidates.length) }, () => worker()));
       const groups = createDuplicateBackupGroups(fingerprints);
+      const containedGroups = createContainedBackupGroups(fingerprints, groups);
       const result: DuplicateScanResult = {
-        containedGroups: createContainedBackupGroups(fingerprints, groups),
+        containedGroups,
         groups,
         groupId,
         rejected,
         scannedFiles: candidates.length,
+        similarGroups: createSimilarBackupGroups(fingerprints, groups, containedGroups),
       };
       duplicateScanResult.value = result;
       return result;
@@ -611,6 +615,69 @@ export const useChatRecoveryStore = defineStore('chat-recovery', () => {
             result.failed.push({
               reason: caughtError instanceof Error ? caughtError.message : '删除较短备份失败',
               summary: item.fingerprint.summary,
+            });
+          }
+        }
+      }
+      duplicateDeleteResult.value = result;
+      await refresh();
+      return result;
+    } finally {
+      duplicateDeleting.value = false;
+    }
+  }
+
+  function findSimilarCandidate(fileName: string) {
+    for (const group of duplicateScanResult.value?.similarGroups ?? []) {
+      const candidate = group.candidates.find(item => item.fingerprint.summary.fileName === fileName);
+      if (candidate) return { candidate, group };
+    }
+    return null;
+  }
+
+  async function deleteSimilarBackups(fileNames: string[]) {
+    if (managementBusy.value) throw new Error('已有备份扫描或删除任务正在执行');
+    const scan = duplicateScanResult.value;
+    if (!scan) throw new Error('请先扫描相似备份');
+    const selected = [...new Set(fileNames)].map(findSimilarCandidate).filter(item => Boolean(item));
+    if (!selected.length) throw new Error('没有选择要删除的相似备份');
+    duplicateDeleting.value = true;
+    const result: DuplicateDeleteResult = { deleted: [], failed: [], reclaimedBytes: 0 };
+    try {
+      for (const group of scan.similarGroups) {
+        const candidates = selected.filter(item => item?.group.id === group.id);
+        if (!candidates.length) continue;
+        let keeper: DuplicateBackupFingerprint;
+        try {
+          const current = backups.value.find(item => item.fileName === group.keeper.summary.fileName);
+          if (!current) throw new Error('预定保留的相似备份已经不存在，整组未删除');
+          keeper = await fingerprintBackup(current);
+        } catch (caughtError) {
+          const reason = caughtError instanceof Error ? caughtError.message : '无法复核保留备份';
+          candidates.forEach(item => {
+            if (item) result.failed.push({ reason, summary: item.candidate.fingerprint.summary });
+          });
+          continue;
+        }
+        for (const item of candidates) {
+          if (!item) continue;
+          try {
+            const current = backups.value.find(
+              backup => backup.fileName === item.candidate.fingerprint.summary.fileName,
+            );
+            if (!current) throw new Error('相似备份已经不存在，未执行删除');
+            const latest = await fingerprintBackup(current);
+            if (getBackupMessageSimilarity(latest, keeper) < 0.9) {
+              throw new Error('备份不再满足 90% 相似条件，未执行删除');
+            }
+            await deleteNativeChatBackup(current);
+            result.deleted.push(current);
+            result.reclaimedBytes += latest.byteLength;
+            removeBackupSummary(current.fileName);
+          } catch (caughtError) {
+            result.failed.push({
+              reason: caughtError instanceof Error ? caughtError.message : '删除相似备份失败',
+              summary: item.candidate.fingerprint.summary,
             });
           }
         }
@@ -789,6 +856,7 @@ export const useChatRecoveryStore = defineStore('chat-recovery', () => {
     deleteCleanupCandidates,
     deleteContainedBackups,
     deleteDuplicateBackups,
+    deleteSimilarBackups,
     deleteSettingsSnapshot,
     deleteSettingsSnapshots,
     deletingFileName,

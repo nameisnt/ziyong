@@ -4,22 +4,22 @@
       actions-class="six"
       :content="chapter.content"
       display-app-id="extras"
-      eraser-enabled
       :favorite-active="chapter.favorite"
       :next-disabled="!nextId"
       :previous-disabled="!previousId"
       :reasoning="viewedGenerationRecord?.reasoning"
+      reasoning-editable
       :source-label="viewedGenerationRecord?.replay?.source.label || viewedGenerationRecord?.sourceLabel"
       :title="`第 ${chapter.chapterNumber} 章 · ${chapter.title}`"
       @bagu="emit('bagu')"
       @bottom="emit('bottom')"
       @catalog="emit('update:catalogOpen', true)"
       @edit="emit('edit')"
-      @erase="emit('erase', $event)"
       @favorite="emit('favorite')"
       @next="emit('next')"
       @previous="emit('previous')"
       @top="emit('top')"
+      @update:reasoning="emit('update:reasoning', $event)"
     >
       <template #version-navigation>
         <VersionNavigator
@@ -91,7 +91,6 @@ const emit = defineEmits<{
   continue: [];
   delete: [];
   edit: [];
-  erase: [content: string];
   favorite: [];
   next: [];
   previous: [];
@@ -100,6 +99,7 @@ const emit = defineEmits<{
   selectCatalog: [chapterId: string];
   top: [];
   'update:catalogOpen': [open: boolean];
+  'update:reasoning': [reasoning: string];
 }>();
 </script>
 

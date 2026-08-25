@@ -18,6 +18,7 @@ import { createHiddenGenerationRecord } from '@/util/hiddenGenerationRecord';
 import { buildSourceSelection, type SummaryGenerationSourceMode } from '@/util/generationSource';
 import { ensureCurrentScopeRecovery } from '@/util/generationVisibility';
 import { cleanGenerationOutput } from '@/util/generationOutputCleaning';
+import { PLUGIN_MACRO_PATTERN, replacePluginMacros, resolvePluginMacro } from '@/util/pluginMacros';
 import { mergeGenerationReasoning, normalizeGenerationResponse } from '@/util/generationResult';
 import type { GenerationReferenceItem } from '@/util/references';
 import {
@@ -119,6 +120,7 @@ export type GenerateContentOptions = {
   rateLimitRpm?: number;
   referenceItems?: GenerationReferenceItem[];
   references?: string;
+  replay?: GenerationReplaySnapshot;
   source: GenerationSourceInput;
   textProvider: TextProviderSettings;
 };
@@ -314,6 +316,11 @@ async function runWithPhoneUserInputMacro<TResult>(
   try {
     signal?.throwIfAborted();
     macroRegistrations.push(registerMacroLikeSafe(PHONE_USER_INPUT_MACRO_PATTERN, () => phoneUserInput));
+    macroRegistrations.push(
+      registerMacroLikeSafe(PLUGIN_MACRO_PATTERN, (_context, _substring, kind, query) =>
+        resolvePluginMacro(String(kind), String(query)),
+      ),
+    );
     for (const [name, value] of Object.entries(variables)) {
       if (!/^[\w.-]+$/u.test(name) || name.toLocaleLowerCase() === 'phoneuserinput') continue;
       const escapedName = name.replace(/[.*+?^${}()|[\]\\]/gu, '\\$&');
@@ -335,7 +342,7 @@ function captureWithPhoneUserInput(
   signal?: AbortSignal,
 ) {
   const replaceRegisteredMacros = (content: string) => {
-    let result = content.replace(PHONE_USER_INPUT_MACRO_PATTERN, () => phoneUserInput);
+    let result = replacePluginMacros(content.replace(PHONE_USER_INPUT_MACRO_PATTERN, () => phoneUserInput));
     for (const [name, value] of Object.entries(variables)) {
       if (!/^[\w.-]+$/u.test(name)) continue;
       const escapedName = name.replace(/[.*+?^${}()|[\]\\]/gu, '\\$&');
@@ -433,7 +440,7 @@ function assertViewingCurrentChatForGeneration() {
 function prepareGenerationRequest<TConfig, TResult, TSaveResult = { entityId: string }>(
   adapter: GenerationAdapter<TConfig, TResult, TSaveResult>,
   config: TConfig,
-  options: Pick<GenerateContentOptions, 'generationDefaults' | 'references' | 'source' | 'textProvider'>,
+  options: Pick<GenerateContentOptions, 'generationDefaults' | 'references' | 'replay' | 'source' | 'textProvider'>,
   generationId: string,
   textProvider = resolveTextProviderSettings(options.textProvider),
 ) {
@@ -444,36 +451,47 @@ function prepareGenerationRequest<TConfig, TResult, TSaveResult = { entityId: st
     throw new Error('当前聊天里没有可见楼层，暂时不能生成内容');
   }
 
-  const source = buildSourceSelection({
-    chatIdAtGeneration: String(SillyTavern.getCurrentChatId?.() || SillyTavern.chatId || ''),
-    fromStartEnd: options.source.fromStartEnd,
-    mode: options.source.mode,
-    rangeText: options.source.rangeText,
-    recentCount: options.source.recentCount,
-    singleMessageId: options.source.singleMessageId,
-    scopeId,
-    visibleMessages,
-  });
+  const source = options.replay
+    ? {
+        maxChatHistory: options.replay.source.mode === 'none' ? 0 : ('all' as const),
+        requiresVisibilityTransaction: false,
+        selection: { ...options.replay.source },
+      }
+    : buildSourceSelection({
+        chatIdAtGeneration: String(SillyTavern.getCurrentChatId?.() || SillyTavern.chatId || ''),
+        fromStartEnd: options.source.fromStartEnd,
+        mode: options.source.mode,
+        rangeText: options.source.rangeText,
+        recentCount: options.source.recentCount,
+        singleMessageId: options.source.singleMessageId,
+        scopeId,
+        visibleMessages,
+      });
 
-  const baseRequest = adapter.buildRequest(parsedConfig);
+  const baseRequest = options.replay ? { ...options.replay.request } : adapter.buildRequest(parsedConfig);
   const prompts = usePromptStore();
-  const taskInstruction = prompts.resolveTaskTemplate(
-    `${adapter.appId}.${adapter.actionId}`,
-    baseRequest.taskTemplateVariables,
-    baseRequest.taskInstruction,
-  );
+  const taskInstruction = options.replay
+    ? baseRequest.taskInstruction
+    : prompts.resolveTaskTemplate(
+        `${adapter.appId}.${adapter.actionId}`,
+        baseRequest.taskTemplateVariables,
+        baseRequest.taskInstruction,
+      );
   const explicitReferences = options.references?.trim() || '';
   const generationAliases = useGenerationAliasesStore();
-  const request = applyGenerationAliases(
-    {
-      ...baseRequest,
-      taskInstruction,
-      references: [baseRequest.references?.trim() || '', explicitReferences].filter(Boolean).join('\n\n'),
-    } satisfies GenerationRequestParts,
-    generationAliases,
-  );
-  const formUserInput =
-    isRecord(parsedConfig) && typeof parsedConfig.userRequirement === 'string'
+  const request = options.replay
+    ? ({ ...baseRequest } satisfies GenerationRequestParts)
+    : applyGenerationAliases(
+        {
+          ...baseRequest,
+          taskInstruction,
+          references: [baseRequest.references?.trim() || '', explicitReferences].filter(Boolean).join('\n\n'),
+        } satisfies GenerationRequestParts,
+        generationAliases,
+      );
+  const formUserInput = options.replay
+    ? request.userRequirement || ''
+    : isRecord(parsedConfig) && typeof parsedConfig.userRequirement === 'string'
       ? replaceGenerationAliases(parsedConfig.userRequirement, generationAliases) || ''
       : '';
   const phoneUserInput = buildPhoneUserInput(request, formUserInput);
@@ -481,7 +499,7 @@ function prepareGenerationRequest<TConfig, TResult, TSaveResult = { entityId: st
   const chatTail = buildGenerationChatTail(request);
   const chatHistoryPrompts = buildSelectedChatHistoryPrompts(source.selection, visibleMessages, chatTail);
   const customApi = buildCustomApiConfig(textProvider);
-  const presetSelection = resolveGenerationPresetName(options);
+  const presetSelection = options.replay?.tavernPresetName || resolveGenerationPresetName(options);
   const pluginPresetId = pluginPresetIdFromSelection(presetSelection || '');
   const pluginPresetRecord = pluginPresetId ? usePluginPresetStore().getById(pluginPresetId) : null;
   if (pluginPresetId && !pluginPresetRecord) throw new Error('本次选择的插件预设已经不存在，请重新选择');
@@ -776,7 +794,9 @@ export async function generateContent<TConfig, TResult, TSaveResult = { entityId
   config: TConfig,
   requestedOptions: GenerateContentOptions,
 ): Promise<GenerationExecutionResult<TResult, TSaveResult>> {
-  const options = applyInteractiveGenerationOverride(adapter.appId, requestedOptions);
+  const options = requestedOptions.replay
+    ? requestedOptions
+    : applyInteractiveGenerationOverride(adapter.appId, requestedOptions);
   assertViewingCurrentChatForGeneration();
   const scopeId = getCurrentChatScopeKey();
   const recoveryResult = await ensureCurrentScopeRecovery(scopeId);
@@ -930,6 +950,55 @@ export async function generateContent<TConfig, TResult, TSaveResult = { entityId
     },
     textProvider,
   });
+}
+
+export async function regenerateFailedGenerationDraft<TConfig, TResult, TSaveResult = { entityId: string }>(
+  adapter: GenerationAdapter<TConfig, TResult, TSaveResult>,
+  draft: FailedGenerationDraft,
+  options: {
+    lifecycle?: GenerationLifecycle;
+    rateLimitRpm?: number;
+    stream?: boolean;
+  } = {},
+) {
+  const replay = draft.generationRecord?.replay;
+  if (!replay) throw new Error('这条旧草稿没有生成快照，无法重新调用模型');
+  const settings = useSettingsStore().settings;
+  const result = await generateContent(adapter, replay.config as TConfig, {
+    createFailedDraft(input) {
+      Object.assign(draft, input);
+      return draft;
+    },
+    generationDefaults: {
+      resultMode: 'preview',
+      stream: options.stream ?? settings.generation.stream,
+      tavernPresetName: replay.tavernPresetName,
+    },
+    lifecycle: options.lifecycle,
+    rateLimitRpm: options.rateLimitRpm,
+    referenceItems: replay.references,
+    references: replay.request.references,
+    replay,
+    source: {
+      ...replay.sourceInput,
+      mode: replay.source.mode,
+    },
+    textProvider: applyTextProviderSelection(settings.textProvider, replay.connectionSelection),
+  });
+
+  if (result.status !== 'failed') {
+    Object.assign(draft, {
+      actionId: adapter.actionId,
+      appId: adapter.appId,
+      context: { ...replay.config },
+      generationRecord: result.generationRecord,
+      rawOutput: result.rawOutput,
+      rawOutputSemantics: result.rawOutputSemantics,
+      source: result.source,
+      warnings: result.warnings,
+    });
+  }
+  return result;
 }
 
 export function buildGenerationPreview<TConfig, TResult, TSaveResult = { entityId: string }>(

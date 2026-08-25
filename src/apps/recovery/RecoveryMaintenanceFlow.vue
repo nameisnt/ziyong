@@ -3,12 +3,12 @@
     <section v-if="route.page === 'duplicates'" class="pc-recovery-page">
       <article class="pc-section-card pc-recovery-duplicate-config">
         <div class="pc-section-head">
-          <strong>完全一致查重</strong>
+          <strong>聊天备份查重</strong>
           <span>{{ duplicateScopeLabel }}</span>
         </div>
         <p class="pc-recovery-safety-note">
           <i class="fa-solid fa-shield-halved"></i>
-          只匹配同一角色分组内原始 JSONL 字节长度和 SHA-256 都完全一致的文件。每组固定保留备份时间最新的一份。
+          同时查找完全相同、严格续长和逐楼内容至少 90% 相同的备份。每组固定保护备份时间最新的一份。
         </p>
         <button
           class="pc-primary-btn"
@@ -36,7 +36,7 @@
           <span>{{ duplicateSelectedNames.length }}/{{ duplicateCandidateCount }} 份已选</span>
         </div>
         <div
-          v-if="duplicateCandidateCount + containedCandidateCount"
+          v-if="duplicateCandidateCount + containedCandidateCount + similarCandidateCount"
           class="pc-form-actions pc-recovery-selection-actions"
         >
           <button class="pc-soft-btn" type="button" @click="selectAllDuplicateCandidates">全选非保护项</button>
@@ -184,6 +184,74 @@
           }}
         </button>
       </article>
+
+      <article
+        v-if="recovery.duplicateScanResult?.similarGroups.length"
+        class="pc-section-card pc-recovery-duplicate-results"
+      >
+        <div class="pc-section-head">
+          <strong>90% 相似候选</strong>
+          <span>{{ similarSelectedNames.length }}/{{ similarCandidateCount }} 份已选</span>
+        </div>
+        <p class="pc-recovery-safety-note">
+          <i class="fa-solid fa-scale-balanced"></i>
+          按相同位置逐楼比较，匹配楼层达到较长备份的 90% 时列入候选；删除前会重新下载复核。
+        </p>
+        <div class="pc-recovery-duplicate-list">
+          <section
+            v-for="group in recovery.duplicateScanResult.similarGroups"
+            :key="group.id"
+            class="pc-recovery-duplicate-group"
+          >
+            <div class="pc-section-head">
+              <strong>保留最新相似版</strong>
+              <span>可释放 {{ props.formatBytes(group.reclaimBytes) }}</span>
+            </div>
+            <button
+              class="pc-recovery-duplicate-keeper"
+              type="button"
+              :disabled="recovery.managementBusy"
+              @click="props.openBackup(group.keeper.summary)"
+            >
+              <i class="fa-solid fa-shield"></i>
+              <span class="pc-list-row-copy">
+                <strong>保留 · {{ props.formatBackupCreatedAt(group.keeper.summary) }}</strong>
+                <small>{{ group.keeper.summary.fileName }} · {{ group.keeper.actualChatItems }} 层</small>
+              </span>
+              <i class="fa-solid fa-chevron-right"></i>
+            </button>
+            <div
+              v-for="item in group.candidates"
+              :key="item.fingerprint.summary.fileName"
+              class="pc-recovery-cleanup-item"
+            >
+              <input
+                type="checkbox"
+                :checked="similarSelectedNames.includes(item.fingerprint.summary.fileName)"
+                @change="toggleSimilarCandidate(item.fingerprint.summary.fileName)"
+              />
+              <button
+                class="pc-list-row-copy pc-recovery-candidate-open"
+                type="button"
+                :disabled="recovery.managementBusy"
+                @click.stop="props.openBackup(item.fingerprint.summary)"
+              >
+                <strong>{{ Math.round(item.similarity * 100) }}% 相同</strong>
+                <small>{{ item.fingerprint.summary.fileName }} · {{ item.fingerprint.actualChatItems }} 层</small>
+              </button>
+              <i class="fa-solid fa-chevron-right"></i>
+            </div>
+          </section>
+        </div>
+        <button
+          class="pc-soft-btn danger"
+          type="button"
+          :disabled="!similarSelectedNames.length || recovery.duplicateDeleting"
+          @click="confirmSimilarDelete"
+        >
+          {{ recovery.duplicateDeleting ? '正在逐份复核并删除…' : `删除选中的 ${similarSelectedNames.length} 份相似备份` }}
+        </button>
+      </article>
     </section>
 
     <section v-else-if="route.page === 'cleanup'" class="pc-recovery-page">
@@ -303,6 +371,7 @@ const cleanupThreshold = ref(0);
 const cleanupSelectedNames = ref<string[]>([]);
 const duplicateSelectedNames = ref<string[]>([]);
 const containedSelectedNames = ref<string[]>([]);
+const similarSelectedNames = ref<string[]>([]);
 const cleanupScopeGroup = computed(
   () => recovery.groups.find(group => group.id === route.value.params?.groupId) ?? null,
 );
@@ -316,6 +385,9 @@ const duplicateCandidateCount = computed(() =>
 );
 const containedCandidateCount = computed(() =>
   (recovery.duplicateScanResult?.containedGroups ?? []).reduce((total, group) => total + group.contained.length, 0),
+);
+const similarCandidateCount = computed(() =>
+  (recovery.duplicateScanResult?.similarGroups ?? []).reduce((total, group) => total + group.candidates.length, 0),
 );
 const duplicateScanButtonLabel = computed(() => {
   if (!recovery.duplicateScanning) return '扫描完全相同的备份';
@@ -348,6 +420,7 @@ watch(
     if (page === 'duplicates' && !recovery.duplicateScanResult) {
       duplicateSelectedNames.value = [];
       containedSelectedNames.value = [];
+      similarSelectedNames.value = [];
     }
     if (page === 'cleanup' && !recovery.cleanupScanResult) {
       cleanupThreshold.value = 0;
@@ -365,6 +438,9 @@ watch(
       );
       containedSelectedNames.value = result.containedGroups.flatMap(group =>
         group.contained.map(item => item.summary.fileName),
+      );
+      similarSelectedNames.value = result.similarGroups.flatMap(group =>
+        group.candidates.map(item => item.fingerprint.summary.fileName),
       );
     }
   },
@@ -386,6 +462,12 @@ function toggleContainedCandidate(fileName: string) {
     : [...containedSelectedNames.value, fileName];
 }
 
+function toggleSimilarCandidate(fileName: string) {
+  similarSelectedNames.value = similarSelectedNames.value.includes(fileName)
+    ? similarSelectedNames.value.filter(name => name !== fileName)
+    : [...similarSelectedNames.value, fileName];
+}
+
 function selectAllDuplicateCandidates() {
   const scan = recovery.duplicateScanResult;
   if (!scan) return;
@@ -393,11 +475,36 @@ function selectAllDuplicateCandidates() {
   containedSelectedNames.value = scan.containedGroups.flatMap(group =>
     group.contained.map(item => item.summary.fileName),
   );
+  similarSelectedNames.value = scan.similarGroups.flatMap(group =>
+    group.candidates.map(item => item.fingerprint.summary.fileName),
+  );
 }
 
 function clearDuplicateCandidates() {
   duplicateSelectedNames.value = [];
   containedSelectedNames.value = [];
+  similarSelectedNames.value = [];
+}
+
+async function confirmSimilarDelete() {
+  if (!recovery.duplicateScanResult || !similarSelectedNames.value.length) return;
+  const confirmed = await phone.confirmNotice(
+    `将永久删除 ${similarSelectedNames.value.length} 份至少 90% 相同的旧聊天备份。每组最新备份会保留，删除前会重新下载复核。`,
+    {
+      confirmLabel: `删除 ${similarSelectedNames.value.length} 份相似备份`,
+      kind: 'warning',
+      title: '确认删除相似备份',
+    },
+  );
+  if (!confirmed) return;
+  try {
+    const result = await recovery.deleteSimilarBackups(similarSelectedNames.value);
+    similarSelectedNames.value = result.failed.map(item => item.summary.fileName);
+    if (result.failed.length) toastr.warning(`已删除 ${result.deleted.length} 份，${result.failed.length} 份失败或跳过`);
+    else toastr.success(`已删除 ${result.deleted.length} 份相似聊天备份`);
+  } catch (error) {
+    toastr.error(error instanceof Error ? error.message : '删除相似聊天备份失败');
+  }
 }
 
 async function confirmContainedDelete() {
@@ -430,6 +537,9 @@ async function scanDuplicates() {
     duplicateSelectedNames.value = result.groups.flatMap(group => group.duplicates.map(item => item.summary.fileName));
     containedSelectedNames.value = result.containedGroups.flatMap(group =>
       group.contained.map(item => item.summary.fileName),
+    );
+    similarSelectedNames.value = result.similarGroups.flatMap(group =>
+      group.candidates.map(item => item.fingerprint.summary.fileName),
     );
   } catch (error) {
     toastr.error(error instanceof Error ? error.message : '扫描重复备份失败');

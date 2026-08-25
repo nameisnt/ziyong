@@ -115,6 +115,7 @@ export function createVisualScenarioGroups(rootAppScenarios: string[]): VisualSc
       ],
     },
     { id: 'mvu', scenarios: ['mvu-modifier-tree', 'mvu-modifier-crud'] },
+    { id: 'status-display', scenarios: ['status-display-mvu', 'status-display-regex'] },
     { id: 'regex-display', scenarios: ['regex-display-preview', 'regex-display-crud'] },
     { id: 'regex-wizard', scenarios: ['regex-wizard-fields', 'regex-wizard-test', 'regex-wizard-save'] },
     {
@@ -155,7 +156,13 @@ export function createVisualScenarioGroups(rootAppScenarios: string[]): VisualSc
     },
     {
       id: 'worldbook',
-      scenarios: ['worldbook-link-legacy-entry', 'worldbook-entry-editor', 'world-strategy-lamps'],
+      scenarios: [
+        'worldbook-link-legacy-entry',
+        'worldbook-entry-editor',
+        'worldbook-entry-copy',
+        'worldbook-entry-copy-dark',
+        'world-strategy-lamps',
+      ],
     },
     {
       id: 'forum',
@@ -191,6 +198,7 @@ export function createVisualScenarioGroups(rootAppScenarios: string[]): VisualSc
         'preset-editor',
         'preset-editor-role-save',
         'preset-scroll-return',
+        'preset-scroll-return-dark',
         'preset-move-tavern-to-plugin',
         'preset-move-plugin-to-tavern',
         'preset-move-conflict',
@@ -199,13 +207,18 @@ export function createVisualScenarioGroups(rootAppScenarios: string[]): VisualSc
         'preset-move-source-delete-failure',
       ],
     },
+    { id: 'preset-link', scenarios: ['preset-link-dark'] },
+    { id: 'macro-builder', scenarios: ['macro-builder-dark'] },
+    {
+      id: 'management-tools',
+      scenarios: ['script-manager', 'script-manager-dark', 'extension-transfer', 'extension-transfer-import-dark'],
+    },
     {
       id: 'reader',
       scenarios: [
         'reader-detail',
         'reader-reasoning',
         'reader-swipe-candidates',
-        'reader-text-edit-modal',
         'reader-theme-appearance',
         'reader-catalog',
         'reader-footer-persistence',

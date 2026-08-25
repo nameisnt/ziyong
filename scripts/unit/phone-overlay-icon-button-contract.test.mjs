@@ -15,7 +15,7 @@ test('every Phone Home icon button has the same accessible name as its title', (
   const iconButtons = [...source.matchAll(/<button\b[\s\S]*?>/g)]
     .map(match => match[0])
     .filter(tag => /\bclass="[^"]*\bpc-icon-btn\b[^"]*"/.test(tag));
-  assert.equal(iconButtons.length, 2, file);
+  assert.equal(iconButtons.length, 3, file);
 
   for (const tag of iconButtons) {
     const title = tag.match(/\s(:?)title="([^"]+)"/);

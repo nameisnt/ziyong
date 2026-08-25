@@ -3,9 +3,9 @@ import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import test from 'node:test';
 
-const root = await readFile(new URL('../../src/components/ChatArchiveApp.vue', import.meta.url), 'utf8');
-const session = await readFile(new URL('../../src/components/archive/useChatArchiveCatalogSession.ts', import.meta.url), 'utf8');
-const list = await readFile(new URL('../../src/components/archive/ChatArchiveChatList.vue', import.meta.url), 'utf8');
+const root = await readFile(new URL('../../src/apps/archive/ChatArchiveApp.vue', import.meta.url), 'utf8');
+const session = await readFile(new URL('../../src/apps/archive/useChatArchiveCatalogSession.ts', import.meta.url), 'utf8');
+const list = await readFile(new URL('../../src/apps/archive/ChatArchiveChatList.vue', import.meta.url), 'utf8');
 
 test('current archive page reuses one read-only catalog path for list and random browsing', () => {
   assert.match(root, /pc-section-card pc-current-backup-status/u);

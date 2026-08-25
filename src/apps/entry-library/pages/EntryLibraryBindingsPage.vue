@@ -48,14 +48,49 @@
         </button>
       </div>
     </article>
+    <div class="pc-compact-toolbar pc-directory-toolbar">
+      <span class="pc-directory-count">{{ bindings.length }} 条绑定</span>
+      <button
+        class="pc-icon-btn"
+        type="button"
+        :class="{ active: bulkMode }"
+        :disabled="!bindings.length"
+        aria-label="批量删除绑定"
+        title="批量删除绑定"
+        @click="bulkMode ? cancelBulkSelection() : startBulkSelection()"
+      >
+        <i class="fa-solid fa-list-check"></i>
+      </button>
+    </div>
+    <BulkSelectionBar
+      v-if="bulkMode"
+      :all-selected="allBulkSelected"
+      :selected-count="bulkSelectedIds.length"
+      :total-count="bindings.length"
+      @cancel="cancelBulkSelection"
+      @remove="removeSelectedBindings"
+      @toggle-all="toggleAllBulkSelection"
+    />
     <div class="pc-entry-binding-list">
-      <article v-for="binding in bindings" :key="binding.id" class="pc-list-row pc-entry-binding-row">
+      <article
+        v-for="binding in bindings"
+        :key="binding.id"
+        class="pc-list-row pc-entry-binding-row"
+        :class="{ bulk: bulkMode }"
+      >
+        <BulkSelectionCheckbox
+          v-if="bulkMode"
+          :model-value="bulkSelectedIdSet.has(binding.id)"
+          :label="`选择 ${binding.targetPromptName}`"
+          @update:model-value="setBulkSelected(binding.id, $event)"
+        />
         <div>
           <strong>{{ binding.targetPromptName }}</strong
           ><small>{{ binding.presetName }} · {{ groupNames[binding.groupId] || '分组已删除' }}</small
           ><small>{{ compact(binding.contentTemplate) }}</small>
         </div>
         <button
+          v-if="!bulkMode"
           class="pc-icon-btn"
           type="button"
           :disabled="syncingIds.includes(binding.id)"
@@ -65,6 +100,7 @@
         >
           <i class="fa-solid fa-rotate"></i></button
         ><button
+          v-if="!bulkMode"
           class="pc-icon-btn danger"
           type="button"
           title="删除绑定"
@@ -79,8 +115,11 @@
   </section>
 </template>
 <script setup lang="ts">
+import BulkSelectionBar from '@/components/BulkSelectionBar.vue';
+import BulkSelectionCheckbox from '@/components/BulkSelectionCheckbox.vue';
 import EmptyState from '@/components/EmptyState.vue';
 import SearchableCombobox from '@/components/SearchableCombobox.vue';
+import { useBulkSelection } from '@/composables/useBulkSelection';
 import type { EntryLibraryBinding, EntryLibraryGroup } from '../store';
 import type { EntryLibraryBindingPromptOption } from '../types';
 const props = defineProps<{
@@ -100,6 +139,7 @@ const promptKey = defineModel<string>('promptKey', { required: true });
 const emit = defineEmits<{
   create: [];
   'delete-binding': [bindingId: string];
+  'delete-bindings': [bindingIds: string[]];
   'load-content': [];
   'load-prompts': [];
   sync: [bindingId: string];
@@ -110,6 +150,22 @@ const promptOptions = computed(() =>
 );
 const groupOptions = computed(() => props.groups.map(group => ({ label: group.name, value: group.id })));
 const templateField = ref<HTMLTextAreaElement | null>(null);
+const {
+  active: bulkMode,
+  allSelected: allBulkSelected,
+  cancel: cancelBulkSelection,
+  selectedIds: bulkSelectedIds,
+  selectedIdSet: bulkSelectedIdSet,
+  setSelected: setBulkSelected,
+  start: startBulkSelection,
+  toggleAll: toggleAllBulkSelection,
+} = useBulkSelection(() => props.bindings.map(binding => binding.id));
+
+function removeSelectedBindings() {
+  if (!bulkSelectedIds.value.length) return;
+  emit('delete-bindings', [...bulkSelectedIds.value]);
+  cancelBulkSelection();
+}
 function selectPreset(value: string) {
   presetName.value = value;
   emit('load-prompts');
@@ -158,6 +214,9 @@ function compact(content: string) {
   align-items: center;
   gap: 8px;
   padding: 10px 12px;
+}
+.pc-entry-binding-row.bulk {
+  grid-template-columns: auto minmax(0, 1fr);
 }
 .pc-entry-binding-row > div {
   display: grid;

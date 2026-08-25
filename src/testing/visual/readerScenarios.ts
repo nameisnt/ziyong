@@ -6,7 +6,6 @@ export const readerScenarioNames = [
   'reader-detail',
   'reader-reasoning',
   'reader-swipe-candidates',
-  'reader-text-edit-modal',
   'reader-theme-appearance',
   'reader-footer-persistence',
   'reader-catalog',
@@ -22,31 +21,6 @@ type ReaderScenarioContext = {
   waitForCondition: (condition: () => boolean, timeout?: number) => Promise<boolean>;
   waitForPaint: () => Promise<void>;
 };
-
-function selectReaderText() {
-  const content = document.querySelector<HTMLElement>('.pc-reader-content');
-  if (!content) throw new Error('Reader text edit content is missing');
-  const body = content.querySelector<HTMLElement>('p, li, blockquote');
-  if (!body) throw new Error('Reader text edit fixture did not render a body block');
-  const walker = document.createTreeWalker(body, NodeFilter.SHOW_TEXT);
-  let node = walker.nextNode();
-  while (node) {
-    const value = node.textContent || '';
-    const trimmed = value.trim();
-    if (trimmed.length >= 4) {
-      const start = value.indexOf(trimmed);
-      const range = document.createRange();
-      range.setStart(node, start);
-      range.setEnd(node, start + Math.min(4, trimmed.length));
-      const selection = window.getSelection();
-      selection?.removeAllRanges();
-      selection?.addRange(range);
-      return;
-    }
-    node = walker.nextNode();
-  }
-  throw new Error('Reader text edit fixture did not render selectable text');
-}
 
 async function loadFirstReaderMessage() {
   const reader = useReaderStore();
@@ -140,42 +114,10 @@ export async function applyReaderVisualScenario(name: string, context: ReaderSce
     }
     await context.openReaderTools();
     const writeActions = [...document.querySelectorAll<HTMLButtonElement>('.pc-reader-tool-menu button')].filter(button =>
-      /八股检测|创建分支|编辑正文|删除文字|摘抄|收藏/u.test(button.textContent?.trim() || ''),
+      /八股检测|创建分支|编辑正文|摘抄|收藏/u.test(button.textContent?.trim() || ''),
     );
     if (writeActions.some(button => !button.disabled)) {
       throw new Error('Non-active swipe must disable every content-writing reader tool');
-    }
-  } else if (name === 'reader-text-edit-modal') {
-    const message = await loadFirstReaderMessage();
-    if (!message) throw new Error('Reader text edit fixture did not create a message');
-    context.resetPhoneToRoute('reader', 'detail', message.title, { messageId: message.id });
-    const contentLoaded = await context.waitForCondition(
-      () => Boolean(document.querySelector('.pc-reader-content')),
-      2_000,
-    );
-    if (!contentLoaded) throw new Error('Reader text edit content did not finish loading');
-    selectReaderText();
-    await context.openReaderTools();
-    const editButton = [...document.querySelectorAll<HTMLButtonElement>('.pc-reader-tool-menu button')].find(button =>
-      button.textContent?.includes('删除文字'),
-    );
-    if (!editButton || editButton.disabled) throw new Error('Reader text edit action is missing or read-only');
-    editButton.click();
-    const modalOpened = await context.waitForCondition(
-      () => Boolean(document.querySelector('.pc-reader-edit-modal')),
-      2_000,
-    );
-    if (!modalOpened) throw new Error('Reader text edit modal did not open from the selected fixture text');
-    if (!document.querySelector<HTMLButtonElement>('.pc-reader-edit-head .pc-icon-btn[title="关闭"]')) {
-      throw new Error('Reader text edit modal close action is missing');
-    }
-    await context.waitForPaint();
-    const textarea = document.querySelector<HTMLTextAreaElement>('.pc-reader-edit-modal textarea');
-    if (!textarea || document.activeElement !== textarea) {
-      throw new Error('Reader single-occurrence edit did not preserve textarea focus');
-    }
-    if (textarea.selectionEnd - textarea.selectionStart !== 4) {
-      throw new Error('Reader single-occurrence edit did not preserve the selected source range');
     }
   } else if (name === 'reader-theme-appearance') {
     const settingsStore = useSettingsStore();

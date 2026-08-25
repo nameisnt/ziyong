@@ -264,6 +264,7 @@
     <FailedDraftRepairPage
       v-else-if="route.page === 'failed-draft' && activeFailedDraft"
       v-model:raw-output="failedDraftRawOutput"
+      :regenerate-handler="regenerateFailedDraft"
       :raw-output-semantics="activeFailedDraft.rawOutputSemantics"
       :reasoning="activeFailedDraft.generationRecord?.reasoning || ''"
       :reparse-disabled="!selectedRepairMappingId"
@@ -272,6 +273,7 @@
       :warnings="activeFailedDraft.warnings"
       @delete="removeFailedDraft(activeFailedDraft.id)"
       @reparse="reparseFailedDraft"
+      @update:reasoning="updateGenerationRecordReasoning(activeFailedDraft, $event)"
     >
       <template #before-editor>
         <label class="pc-field-group">
@@ -311,8 +313,10 @@ import FailedDraftRepairPage from '@/components/FailedDraftRepairPage.vue';
 import ItemTransferImportAction from '@/components/ItemTransferImportAction.vue';
 import ReaderDetailShell from '@/components/ReaderDetailShell.vue';
 import SearchableCombobox from '@/components/SearchableCombobox.vue';
+import { useFailedDraftRegeneration } from '@/composables/useFailedDraftRegeneration';
 import { usePhoneStore } from '@/store/phone';
 import { onTavernEvent } from '@/util/runtime';
+import { updateGenerationRecordReasoning } from '@/util/generationReasoning';
 import type { FailedGenerationDraft } from '@/type/generation';
 import ProfileMappingsPage from './ProfileMappingsPage.vue';
 import { createExternalProfilesRepository } from './externalCrud';
@@ -606,6 +610,11 @@ onUnmounted(() => {
   stopChatChanged = null;
   stopBridge?.stop();
   stopBridge = null;
+});
+const regenerateFailedDraft = useFailedDraftRegeneration({
+  draft: () => activeFailedDraft.value,
+  rawOutput: failedDraftRawOutput,
+  reparse: reparseFailedDraft,
 });
 </script>
 

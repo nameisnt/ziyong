@@ -4,7 +4,7 @@ import { readFile } from 'node:fs/promises';
 import test from 'node:test';
 
 const consumers = [
-  ['chat archive scope migration', '../../src/components/ChatArchiveApp.vue'],
+  ['chat archive scope migration', '../../src/apps/archive/ChatArchiveApp.vue'],
 ];
 
 test('destructive app actions do not bypass the shared phone confirmation', async () => {

@@ -177,6 +177,17 @@
           <span class="pc-head-actions">
             <InfoHint :text="peopleHelpText" />
             <button
+              class="pc-icon-btn"
+              type="button"
+              :class="{ active: peopleBulkMode }"
+              :disabled="!settings.people.length"
+              :aria-label="t`批量删除人物`"
+              :title="t`批量删除人物`"
+              @click="peopleBulkMode ? cancelPeopleBulk() : startPeopleBulk()"
+            >
+              <i class="fa-solid fa-list-check"></i>
+            </button>
+            <button
               class="pc-icon-btn primary"
               type="button"
               :aria-label="t`新增人物`"
@@ -187,6 +198,16 @@
             </button>
           </span>
         </div>
+
+        <BulkSelectionBar
+          v-if="peopleBulkMode"
+          :all-selected="allPeopleSelected"
+          :selected-count="selectedPeopleIds.length"
+          :total-count="settings.people.length"
+          @cancel="cancelPeopleBulk"
+          @remove="deleteSelectedPeople"
+          @toggle-all="toggleAllPeople"
+        />
 
         <div class="pc-asset-field pc-profile-mapping-select">
           <SearchableCombobox
@@ -273,7 +294,14 @@
             <div class="pc-person-foot">
               <span>{{ t`当前` }} {{ timekeeper.formatAge(timekeeper.getAgeAt(person, settings.current)) }}</span>
               <span>{{ t`推进后` }} {{ timekeeper.formatAge(timekeeper.getAgeAt(person, nextDate)) }}</span>
+              <BulkSelectionCheckbox
+                v-if="peopleBulkMode"
+                :model-value="selectedPeopleIdSet.has(person.id)"
+                :label="`选择 ${person.name}`"
+                @update:model-value="setPersonSelected(person.id, $event)"
+              />
               <button
+                v-else
                 class="pc-icon-btn danger"
                 type="button"
                 :aria-label="t`删除`"
@@ -337,6 +365,8 @@
 </template>
 
 <script setup lang="ts">
+import BulkSelectionBar from '@/components/BulkSelectionBar.vue';
+import BulkSelectionCheckbox from '@/components/BulkSelectionCheckbox.vue';
 import EmptyState from '@/components/EmptyState.vue';
 import ConfigurationRecoveryNotice from '@/components/ConfigurationRecoveryNotice.vue';
 import InfoHint from '@/components/InfoHint.vue';
@@ -345,6 +375,7 @@ import { useExternalProfileMappingsStore } from '@/apps/profiles/profileMappings
 import { usePhoneStore } from '@/store/phone';
 import { useSettingsStore } from '@/store/settings';
 import { appendToTavernInput } from '@/util/tavernInput';
+import { useBulkSelection } from '@/composables/useBulkSelection';
 import { GREGORIAN_CALENDAR, useTimekeeperStore, type TimekeeperDate } from './store';
 import { storeToRefs } from 'pinia';
 
@@ -354,6 +385,16 @@ const profileMappings = useExternalProfileMappingsStore();
 const settingsStore = useSettingsStore();
 const { configError, externalProfileError, mappedCalendarRows, mappedPersonRows, nextDate, rawConfig, settings } =
   storeToRefs(timekeeper);
+const {
+  active: peopleBulkMode,
+  allSelected: allPeopleSelected,
+  cancel: cancelPeopleBulk,
+  selectedIds: selectedPeopleIds,
+  selectedIdSet: selectedPeopleIdSet,
+  setSelected: setPersonSelected,
+  start: startPeopleBulk,
+  toggleAll: toggleAllPeople,
+} = useBulkSelection(() => settings.value.people.map(person => person.id));
 const promptText = computed(() => timekeeper.buildPromptText());
 const calendarHelpText =
   '公历会自动计算大小月和闰年；手动历法可以填写统一天数或用逗号分开每个月。保存后的历法模板可在所有聊天中选择。';
@@ -493,6 +534,24 @@ async function deletePerson(personId: string) {
     toastr.success(`已删除“${person.name}”${person.profileIdentityValue ? '及对应外部资料' : ''}`);
   } catch (error) {
     toastr.warning(error instanceof Error ? error.message : '删除人物失败');
+  }
+}
+
+async function deleteSelectedPeople() {
+  const selected = settings.value.people.filter(person => selectedPeopleIdSet.value.has(person.id));
+  if (!selected.length) return;
+  const externalCount = selected.filter(person => person.profileIdentityValue).length;
+  const confirmed = await phone.confirmNotice(
+    `删除所选 ${selected.length} 个人物吗？${externalCount ? `其中 ${externalCount} 条关联的外部人物资料也会删除。` : ''}`,
+    { confirmLabel: '删除所选', kind: 'warning', title: '批量删除人物' },
+  );
+  if (!confirmed) return;
+  try {
+    for (const person of selected) await timekeeper.deletePerson(person.id, true);
+    cancelPeopleBulk();
+    toastr.success(`已删除 ${selected.length} 个人物`);
+  } catch (error) {
+    toastr.warning(error instanceof Error ? error.message : '批量删除人物失败');
   }
 }
 

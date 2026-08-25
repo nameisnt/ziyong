@@ -3,15 +3,16 @@ import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import test from 'node:test';
 
-const [home, harness] = await Promise.all([
+const [home, layoutProjection, harness] = await Promise.all([
   readFile(new URL('../../src/components/PhoneHome.vue', import.meta.url), 'utf8'),
+  readFile(new URL('../../src/components/home/useHomeLayoutProjection.ts', import.meta.url), 'utf8'),
   readFile(new URL('../../src/testing/visual-harness.ts', import.meta.url), 'utf8'),
 ]);
 
 test('desktop folders expose exactly three direct shortcuts and one full-folder preview', () => {
   assert.match(home, /class="pc-home-folder-tile"|pc-app-tile pc-home-folder-tile/u);
-  assert.match(home, /getFolderApps\(item\)\.slice\(0, 3\)/u);
-  assert.match(home, /getFolderApps\(item\)\.slice\(3, 7\)/u);
+  assert.match(layoutProjection, /getFolderApps\(item\)\.slice\(0, 3\)/u);
+  assert.match(layoutProjection, /getFolderApps\(item\)\.slice\(3, 7\)/u);
   assert.match(home, /class="pc-home-folder-shortcut"[\s\S]*@click\.stop="openFolderShortcut\(app\.id\)"/u);
   assert.match(home, /class="pc-home-folder-more"[\s\S]*@click\.stop="openHomeFolderItem\(item\)"/u);
 });

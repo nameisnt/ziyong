@@ -2,7 +2,7 @@
   "version": 1,
   "defect": "D-BASELINE-002",
   "generatedAt": "2026-08-22T13:03:27.730Z",
-  "scenarioCount": 303,
+  "scenarioCount": 314,
   "sizes": [
     "350x700",
     "390x844",
@@ -10,7 +10,7 @@
   ],
   "summary": {
     "fails": 0,
-    "runs": 909,
+    "runs": 942,
     "warnings": 0
   },
   "runs": [
@@ -626,6 +626,16 @@
     },
     {
       "findings": [],
+      "scenario": "status-display-mvu",
+      "size": "350x700"
+    },
+    {
+      "findings": [],
+      "scenario": "status-display-regex",
+      "size": "350x700"
+    },
+    {
+      "findings": [],
       "scenario": "regex-display-preview",
       "size": "350x700"
     },
@@ -767,6 +777,16 @@
     {
       "findings": [],
       "scenario": "worldbook-entry-editor",
+      "size": "350x700"
+    },
+    {
+      "findings": [],
+      "scenario": "worldbook-entry-copy",
+      "size": "350x700"
+    },
+    {
+      "findings": [],
+      "scenario": "worldbook-entry-copy-dark",
       "size": "350x700"
     },
     {
@@ -932,6 +952,11 @@
     {
       "findings": [],
       "scenario": "preset-scroll-return",
+      "size": "350x700"
+    },
+    {
+      "findings": [],
+      "scenario": "preset-scroll-return-dark",
       "size": "350x700"
     },
     {
@@ -2141,6 +2166,16 @@
     },
     {
       "findings": [],
+      "scenario": "status-display-mvu",
+      "size": "390x844"
+    },
+    {
+      "findings": [],
+      "scenario": "status-display-regex",
+      "size": "390x844"
+    },
+    {
+      "findings": [],
       "scenario": "regex-display-preview",
       "size": "390x844"
     },
@@ -2282,6 +2317,16 @@
     {
       "findings": [],
       "scenario": "worldbook-entry-editor",
+      "size": "390x844"
+    },
+    {
+      "findings": [],
+      "scenario": "worldbook-entry-copy",
+      "size": "390x844"
+    },
+    {
+      "findings": [],
+      "scenario": "worldbook-entry-copy-dark",
       "size": "390x844"
     },
     {
@@ -2447,6 +2492,11 @@
     {
       "findings": [],
       "scenario": "preset-scroll-return",
+      "size": "390x844"
+    },
+    {
+      "findings": [],
+      "scenario": "preset-scroll-return-dark",
       "size": "390x844"
     },
     {
@@ -3656,6 +3706,16 @@
     },
     {
       "findings": [],
+      "scenario": "status-display-mvu",
+      "size": "430x900"
+    },
+    {
+      "findings": [],
+      "scenario": "status-display-regex",
+      "size": "430x900"
+    },
+    {
+      "findings": [],
       "scenario": "regex-display-preview",
       "size": "430x900"
     },
@@ -3797,6 +3857,16 @@
     {
       "findings": [],
       "scenario": "worldbook-entry-editor",
+      "size": "430x900"
+    },
+    {
+      "findings": [],
+      "scenario": "worldbook-entry-copy",
+      "size": "430x900"
+    },
+    {
+      "findings": [],
+      "scenario": "worldbook-entry-copy-dark",
       "size": "430x900"
     },
     {
@@ -3962,6 +4032,11 @@
     {
       "findings": [],
       "scenario": "preset-scroll-return",
+      "size": "430x900"
+    },
+    {
+      "findings": [],
+      "scenario": "preset-scroll-return-dark",
       "size": "430x900"
     },
     {
@@ -4557,6 +4632,96 @@
     {
       "findings": [],
       "scenario": "profiles-external-dark",
+      "size": "430x900"
+    },
+    {
+      "findings": [],
+      "scenario": "app:script-manager",
+      "size": "350x700"
+    },
+    {
+      "findings": [],
+      "scenario": "app:extension-transfer",
+      "size": "350x700"
+    },
+    {
+      "findings": [],
+      "scenario": "script-manager",
+      "size": "350x700"
+    },
+    {
+      "findings": [],
+      "scenario": "script-manager-dark",
+      "size": "350x700"
+    },
+    {
+      "findings": [],
+      "scenario": "extension-transfer",
+      "size": "350x700"
+    },
+    {
+      "findings": [],
+      "scenario": "extension-transfer-import-dark",
+      "size": "350x700"
+    },
+    {
+      "findings": [],
+      "scenario": "app:script-manager",
+      "size": "390x844"
+    },
+    {
+      "findings": [],
+      "scenario": "app:extension-transfer",
+      "size": "390x844"
+    },
+    {
+      "findings": [],
+      "scenario": "script-manager",
+      "size": "390x844"
+    },
+    {
+      "findings": [],
+      "scenario": "script-manager-dark",
+      "size": "390x844"
+    },
+    {
+      "findings": [],
+      "scenario": "extension-transfer",
+      "size": "390x844"
+    },
+    {
+      "findings": [],
+      "scenario": "extension-transfer-import-dark",
+      "size": "390x844"
+    },
+    {
+      "findings": [],
+      "scenario": "app:script-manager",
+      "size": "430x900"
+    },
+    {
+      "findings": [],
+      "scenario": "app:extension-transfer",
+      "size": "430x900"
+    },
+    {
+      "findings": [],
+      "scenario": "script-manager",
+      "size": "430x900"
+    },
+    {
+      "findings": [],
+      "scenario": "script-manager-dark",
+      "size": "430x900"
+    },
+    {
+      "findings": [],
+      "scenario": "extension-transfer",
+      "size": "430x900"
+    },
+    {
+      "findings": [],
+      "scenario": "extension-transfer-import-dark",
       "size": "430x900"
     }
   ]

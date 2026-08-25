@@ -6,16 +6,14 @@ import test from 'node:test';
 import { scanVueUiContracts } from '../ui-contract-check.mjs';
 
 const expectedCounts = new Map([
-  ['ReaderApp.vue', 2],
-  ['ReaderDetailShell.vue', 1],
-  ['ReaderTextEditModal.vue', 1],
-  ['ReasoningModal.vue', 1],
+  ['apps/reader/ReaderApp.vue', 2],
+  ['components/ReaderDetailShell.vue', 1],
 ]);
 const sources = await Promise.all(
   [...expectedCounts].map(async ([name, expectedCount]) => ({
     expectedCount,
-    file: `src/components/${name}`,
-    source: await readFile(new URL(`../../src/components/${name}`, import.meta.url), 'utf8'),
+    file: `src/${name}`,
+    source: await readFile(new URL(`../../src/${name}`, import.meta.url), 'utf8'),
   })),
 );
 

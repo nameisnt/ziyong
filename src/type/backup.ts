@@ -9,6 +9,7 @@ import { LettersScopeDataSchema } from '@/type/letter';
 import { Settings } from '@/type/settings';
 import { SummaryScopeDataSchema } from '@/type/summary';
 import { TheaterScopeDataSchema } from '@/type/theater';
+import { ChatFloorBackupSchema } from '@/util/chatFloorBackup';
 
 function createEnvelopeSchema<T extends z.ZodTypeAny>(scopeSchema: T) {
   return z
@@ -89,6 +90,16 @@ export const PhoneBackupFullDataV3Schema = PhoneBackupFullDataV2Schema.extend({
   homeIconAssets: z.array(HomeIconAssetBackupSchema).default([]),
 });
 
+export const PhoneBackupWorldbookSchema = z.object({
+  entries: z.array(z.unknown()),
+  name: z.string().min(1),
+});
+
+export const PhoneBackupFullDataV4Schema = PhoneBackupFullDataV3Schema.extend({
+  chatFloorBackups: z.array(ChatFloorBackupSchema).default([]),
+  worldbooks: z.array(PhoneBackupWorldbookSchema).default([]),
+});
+
 const PhoneBackupCurrentChatDataSchema = z.object({
   domains: z.record(z.string(), z.unknown()).default({}),
   domainVersions: z.record(z.string(), z.number().int().positive()).default({}),
@@ -125,6 +136,11 @@ export const PhoneBackupSchema = z.union([
     schemaVersion: z.literal(3),
   }),
   PhoneBackupBaseSchema.extend({
+    backupKind: z.literal('full'),
+    data: PhoneBackupFullDataV4Schema,
+    schemaVersion: z.literal(4),
+  }),
+  PhoneBackupBaseSchema.extend({
     backupKind: z.literal('current-chat'),
     data: PhoneBackupCurrentChatDataSchema,
     schemaVersion: z.literal(1),
@@ -148,7 +164,6 @@ export function isFullPhoneBackup(backup: PhoneBackup): backup is PhoneFullBacku
 }
 
 export function getEmbeddedPluginPresets(backup: PhoneBackup): PluginPresetBackupBundle | null {
-  return backup.backupKind === 'full' && (backup.schemaVersion === 2 || backup.schemaVersion === 3)
-    ? backup.data.pluginPresets
-    : null;
+  if (backup.backupKind !== 'full' || backup.schemaVersion === 1) return null;
+  return backup.data.pluginPresets;
 }

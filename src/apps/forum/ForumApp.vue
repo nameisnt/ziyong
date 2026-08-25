@@ -16,6 +16,7 @@
       @open-failed-draft="openFailedDraft"
       @open-preview="openForumPreviewDraft"
       @remove-board="removeBoard"
+      @remove-boards="removeBoards"
       @remove-failed-draft="removeFailedDraft"
     />
 
@@ -78,13 +79,13 @@
       @bottom="scrollForumDetail('bottom')"
       @catalog="phone.goBack()"
       @edit="openEditThread(activeBoard.id, activeThread.id, viewedForumVersionId)"
-      @erase="overwriteForumContent"
       @favorite="forum.toggleFavorite(activeBoard.id, activeThread.id)"
       @generate-replies="openGenerateReplies(activeBoard.id, activeThread.id)"
       @remove="removeThread(activeBoard.id, activeThread.id)"
       @rewrite="openRewriteThread"
       @select-version="selectForumVersion"
       @top="scrollForumDetail('top')"
+      @update:reasoning="updateViewedForumReasoning"
     />
 
     <BaguDetailPage
@@ -162,6 +163,7 @@
     <FailedDraftRepairPage
       v-else-if="route.page === 'failed-draft' && activeFailedDraft"
       v-model:raw-output="failedDraftRawOutput"
+      :regenerate-handler="regenerateFailedDraft"
       :raw-output-semantics="activeFailedDraft.rawOutputSemantics"
       :reasoning="activeFailedDraft.generationRecord?.reasoning || ''"
       placeholder="在这里修 XML 结构或补字段。"
@@ -170,6 +172,7 @@
       :warnings="activeFailedDraft.warnings"
       @delete="removeFailedDraft(activeFailedDraft.id)"
       @reparse="reparseFailedDraft"
+      @update:reasoning="updateGenerationRecordReasoning(activeFailedDraft, $event)"
     />
   </section>
 </template>
@@ -192,6 +195,7 @@ import { useForumThreadEditorSession } from '@/apps/forum/useForumThreadEditorSe
 import { useForumPreviewSession, type ForumGenerationPreview } from '@/apps/forum/useForumPreviewSession';
 import { useForumGenerationActions } from '@/apps/forum/useForumGenerationActions';
 import { useForumFailedDraftRepair } from '@/composables/useForumFailedDraftRepair';
+import { useFailedDraftRegeneration } from '@/composables/useFailedDraftRegeneration';
 import { useGenerationReplaySession } from '@/composables/useGenerationReplaySession';
 import type { ForumThreadGenerateConfig } from '@/core/forumGeneration';
 import { getRegisteredPhoneGenerationAdapter } from '@/core/appRegistry';
@@ -381,6 +385,10 @@ const viewedForumThread = computed(() => {
       }
     : thread;
 });
+
+function updateViewedForumReasoning(reasoning: string) {
+  updateGenerationRecordReasoning(viewedForumVersion.value || activeThread.value, reasoning);
+}
 const displayedForumContent = computed(() => {
   const content = viewedForumThread.value?.content || '';
   const rules = getRegexRulesByIds(regexDisplay.rules, regexDisplay.getUsage('forum').displayRuleIds, 'replace');
@@ -430,7 +438,7 @@ const threadEditorSession = useForumThreadEditorSession(threadDraft, {
 });
 const selectThreadEditorBoardType = threadEditorSession.selectBoardType;
 const submitThread = threadEditorSession.submit;
-const { removeBoard, removeForumVersion, removeThread } = useForumDeletionSession({
+const { removeBoard, removeBoards, removeForumVersion, removeThread } = useForumDeletionSession({
   confirmDelete: (message, confirmLabel) => phone.confirmNotice(message, { confirmLabel, kind: 'warning' }),
   getActiveBoard: () => activeBoard.value,
   getActiveThread: () => activeThread.value,
@@ -773,25 +781,6 @@ function scrollForumDetail(position: 'bottom' | 'top') {
   content.scrollTo({ behavior: 'smooth', top: position === 'top' ? 0 : content.scrollHeight });
 }
 
-function overwriteForumContent(content: string) {
-  const board = activeBoard.value;
-  const thread = activeThread.value;
-  if (!board || !thread) return;
-  const versionId = viewedForumVersionId.value;
-  const result = versionId
-    ? forum.updateThreadVersion(board.id, thread.id, versionId, {
-        author: viewedForumThread.value.author,
-        content,
-        title: viewedForumThread.value.title,
-      })
-    : forum.updateThread(board.id, thread.id, {
-        author: viewedForumThread.value.author,
-        content,
-        title: viewedForumThread.value.title,
-      });
-  if (result) toastr.success(versionId ? '已覆盖当前论坛版本' : '已覆盖当前论坛正文');
-}
-
 function openGenerateReplies(boardId: string, threadId: string) {
   phone.pushPage('generate-replies', '生成回复', {
     boardId,
@@ -963,6 +952,11 @@ const replyGenerationState = computed(() => ({
   rawOutput: replySession.rawOutput.value,
   running: replySession.running.value,
 }));
+const regenerateFailedDraft = useFailedDraftRegeneration({
+  draft: () => activeFailedDraft.value,
+  rawOutput: failedDraftRawOutput,
+  reparse: reparseFailedDraft,
+});
 </script>
 
 <style scoped>

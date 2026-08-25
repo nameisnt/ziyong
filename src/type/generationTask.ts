@@ -13,7 +13,7 @@ export const GenerationTaskStatusSchema = z.enum([
 ]);
 export type GenerationTaskStatus = z.infer<typeof GenerationTaskStatusSchema>;
 
-export const GenerationTaskJobStatusSchema = z.enum(['pending', 'running', 'saved', 'draft']);
+export const GenerationTaskJobStatusSchema = z.enum(['pending', 'running', 'preview', 'saved', 'draft']);
 export type GenerationTaskJobStatus = z.infer<typeof GenerationTaskJobStatusSchema>;
 
 export const GenerationTaskJobSchema = z.object({
@@ -57,6 +57,7 @@ export const GenerationTaskSchema = z
     id: z.string(),
     jobs: z.array(GenerationTaskJobSchema).default([]),
     kind: GenerationTaskKindSchema,
+    previewCount: z.number().int().nonnegative().default(0),
     rawOutput: z.string().default(''),
     rawOutputSemantics: RawOutputSemanticsSchema.default('legacy-unknown'),
     routePage: z.string().default('root'),

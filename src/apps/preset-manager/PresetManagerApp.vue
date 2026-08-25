@@ -140,6 +140,7 @@ const errorMessage = ref('');
 const switchingPreset = ref('');
 const busyPromptIds = ref(new Set<string>());
 const collapsedGroupIds = ref(new Set<string>());
+const collapsedGroupsByPreset = new Map<string, Map<string, boolean>>();
 const editorDraft = ref('');
 const editorNameDraft = ref('');
 const editorRoleDraft = ref<TavernPresetPrompt['role']>('system');
@@ -217,8 +218,13 @@ const displayNodes = computed(() => {
 });
 const visiblePresetNames = computed(() => {
   const keyword = presetQuery.value.trim().toLocaleLowerCase();
-  if (!keyword) return presetNames.value;
-  return presetNames.value.filter(name => name.toLocaleLowerCase().includes(keyword));
+  const names = keyword
+    ? presetNames.value.filter(name => name.toLocaleLowerCase().includes(keyword))
+    : [...presetNames.value];
+  const currentIndex = names.indexOf(loadedPresetName.value);
+  if (currentIndex <= 0) return names;
+  const currentName = names[currentIndex]!;
+  return [currentName, ...names.slice(0, currentIndex), ...names.slice(currentIndex + 1)];
 });
 const editorDirty = computed(() =>
   activePrompt.value
@@ -237,12 +243,17 @@ function setBusyPrompt(promptId: string, busy: boolean) {
 }
 
 function syncCollapsedGroups() {
+  const stateKey = isPluginDetail.value ? `plugin:${detailPluginPresetId.value}` : `tavern:${detailPresetName.value}`;
+  const saved = collapsedGroupsByPreset.get(stateKey);
   const collapsed = new Set<string>();
-  for (const node of displayNodes.value) {
-    if (node.type === 'group' && node.group.collapsed) {
-      collapsed.add(node.group.id);
-    }
+  const nextState = new Map<string, boolean>();
+  for (const node of activePreset.value ? buildPresetDisplayNodes(activePreset.value) : []) {
+    if (node.type !== 'group') continue;
+    const isCollapsed = saved?.get(node.group.id) ?? node.group.collapsed;
+    nextState.set(node.group.id, isCollapsed);
+    if (isCollapsed) collapsed.add(node.group.id);
   }
+  collapsedGroupsByPreset.set(stateKey, nextState);
   collapsedGroupIds.value = collapsed;
 }
 
@@ -606,6 +617,10 @@ function toggleGroup(groupId: string) {
   if (next.has(groupId)) next.delete(groupId);
   else next.add(groupId);
   collapsedGroupIds.value = next;
+  const stateKey = isPluginDetail.value ? `plugin:${detailPluginPresetId.value}` : `tavern:${detailPresetName.value}`;
+  const saved = collapsedGroupsByPreset.get(stateKey) ?? new Map<string, boolean>();
+  saved.set(groupId, next.has(groupId));
+  collapsedGroupsByPreset.set(stateKey, saved);
 }
 
 function resetPromptDrag() {

@@ -61,7 +61,6 @@
       @bagu="openTheaterBaguScan"
       @bottom="scrollToBottom"
       @edit="openEditEntry(activeEntry.id, viewedEntryVersionId)"
-      @erase="overwriteTheaterContent"
       @favorite="theater.toggleFavorite(activeEntry.id)"
       @filter-type="filterTheaterRecords"
       @navigate-blocked="handleFrameNavigateBlocked"
@@ -73,6 +72,7 @@
       @select-version="selectTheaterVersion"
       @split-version="splitCurrentTheaterVersion"
       @top="scrollToTop"
+      @update:reasoning="updateViewedTheaterReasoning"
     />
 
     <BaguDetailPage
@@ -205,6 +205,7 @@
     <FailedDraftRepairPage
       v-else-if="route.page === 'failed-draft' && activeFailedDraft"
       v-model:raw-output="failedDraftRawOutput"
+      :regenerate-handler="regenerateFailedDraft"
       :raw-output-semantics="activeFailedDraft.rawOutputSemantics"
       :reasoning="activeFailedDraft.generationRecord?.reasoning || ''"
       :source-label="activeFailedDraft.source.label"
@@ -212,6 +213,7 @@
       :warnings="activeFailedDraft.warnings"
       @delete="removeFailedDraft(activeFailedDraft.id)"
       @reparse="reparseFailedDraft"
+      @update:reasoning="updateGenerationRecordReasoning(activeFailedDraft, $event)"
     />
 
     <section v-else class="pc-theater-page">
@@ -235,6 +237,7 @@ import TheaterHistoryPage from '@/apps/theater/TheaterHistoryPage.vue';
 import TheaterMixedContent from '@/apps/theater/TheaterMixedContent.vue';
 import { pickVisibleTheaterType } from '@/apps/theater/theaterTypeRandom';
 import { useGenerationReplaySession } from '@/composables/useGenerationReplaySession';
+import { useFailedDraftRegeneration } from '@/composables/useFailedDraftRegeneration';
 import { useSingleGenerationTaskSession } from '@/composables/useSingleGenerationTaskSession';
 import { getRegisteredPhoneGenerationAdapter } from '@/core/appRegistry';
 import { buildGenerationPreview, captureGenerationPrompt, generateContent } from '@/core/generationService';
@@ -400,6 +403,10 @@ const viewedEntry = computed(() => {
       }
     : entry;
 });
+
+function updateViewedTheaterReasoning(reasoning: string) {
+  updateGenerationRecordReasoning(viewedEntryVersion.value || activeEntry.value, reasoning);
+}
 const rewriteTargetEntry = computed(() => {
   const entryId = route.value.params?.rewriteEntryId;
   return entryId ? theater.getEntry(entryId) : null;
@@ -868,25 +875,6 @@ function openTheaterBaguScan() {
     entryId: activeEntry.value.id,
     ...(viewedEntryVersionId.value ? { versionId: viewedEntryVersionId.value } : {}),
   });
-}
-
-function overwriteTheaterContent(content: string) {
-  const entry = activeEntry.value;
-  if (!entry) return;
-  const versionId = viewedEntryVersionId.value;
-  const result = versionId
-    ? theater.updateEntryVersion(entry.id, versionId, {
-        content,
-        renderMode: viewedEntry.value.renderMode,
-        title: viewedEntry.value.title,
-      })
-    : theater.updateEntry(entry.id, {
-        content,
-        renderMode: viewedEntry.value.renderMode,
-        title: viewedEntry.value.title,
-      });
-  if (!result) return;
-  toastr.success(versionId ? '已覆盖当前小剧场版本' : '已覆盖当前小剧场正文');
 }
 
 function selectCatalogEntry(entryId: string) {
@@ -1383,6 +1371,11 @@ function reparseFailedDraft() {
 function handleFrameNavigateBlocked() {
   toastr.warning('检测到 Frontend 视图尝试重新加载，已按安全策略卸载 iframe');
 }
+const regenerateFailedDraft = useFailedDraftRegeneration({
+  draft: () => activeFailedDraft.value,
+  rawOutput: failedDraftRawOutput,
+  reparse: reparseFailedDraft,
+});
 </script>
 
 <style scoped>

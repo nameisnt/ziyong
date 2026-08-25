@@ -9,6 +9,17 @@
         <button
           class="pc-icon-btn"
           type="button"
+          :class="{ active: bulkMode }"
+          :disabled="!filteredDefinitions.length"
+          :title="t`批量删除`"
+          :aria-label="t`批量删除`"
+          @click="bulkMode ? cancelBulkSelection() : startBulkSelection()"
+        >
+          <i class="fa-solid fa-list-check"></i>
+        </button>
+        <button
+          class="pc-icon-btn"
+          type="button"
           :title="t`导入 App`"
           :aria-label="t`导入 App`"
           @click="importInput?.click()"
@@ -28,9 +39,38 @@
         />
       </div>
 
+      <BulkSelectionBar
+        v-if="bulkMode"
+        :all-selected="allBulkSelected"
+        :selected-count="bulkSelectedIds.length"
+        :total-count="filteredDefinitions.length"
+        @cancel="cancelBulkSelection"
+        @remove="deleteSelectedApps"
+        @toggle-all="toggleAllBulkSelection"
+      />
+
       <div v-if="filteredDefinitions.length" class="pc-app-builder-list">
-        <article v-for="definition in filteredDefinitions" :key="definition.id" class="pc-list-row pc-app-builder-row">
-          <button class="pc-app-builder-main" type="button" @click="openDefinitionEditor(definition.id)">
+        <article
+          v-for="definition in filteredDefinitions"
+          :key="definition.id"
+          class="pc-list-row pc-app-builder-row"
+          :class="{ bulk: bulkMode }"
+        >
+          <BulkSelectionCheckbox
+            v-if="bulkMode"
+            :model-value="bulkSelectedIdSet.has(definition.id)"
+            :label="`选择 ${definition.name}`"
+            @update:model-value="setBulkSelected(definition.id, $event)"
+          />
+          <button
+            class="pc-app-builder-main"
+            type="button"
+            @click="
+              bulkMode
+                ? setBulkSelected(definition.id, !bulkSelectedIdSet.has(definition.id))
+                : openDefinitionEditor(definition.id)
+            "
+          >
             <span class="pc-app-builder-icon" :style="{ '--pc-builder-accent': customAppAccent(definition.id) }">
               <i class="fa-solid" :class="definition.icon"></i>
             </span>
@@ -40,7 +80,7 @@
             </span>
             <i class="fa-solid fa-chevron-right"></i>
           </button>
-          <div class="pc-app-builder-actions">
+          <div v-if="!bulkMode" class="pc-app-builder-actions">
             <button
               class="pc-icon-btn"
               type="button"
@@ -234,9 +274,12 @@
 </template>
 
 <script setup lang="ts">
+import BulkSelectionBar from '@/components/BulkSelectionBar.vue';
+import BulkSelectionCheckbox from '@/components/BulkSelectionCheckbox.vue';
 import EmptyState from '@/components/EmptyState.vue';
 import InfoHint from '@/components/InfoHint.vue';
 import SearchableCombobox from '@/components/SearchableCombobox.vue';
+import { useBulkSelection } from '@/composables/useBulkSelection';
 import { usePhoneStore } from '@/store/phone';
 import { usePromptStore } from '@/store/prompts';
 import { useRegexDisplayStore } from '@/apps/regex-display/store';
@@ -312,6 +355,16 @@ const filteredDefinitions = computed(() => {
     `${definition.name} ${definition.description}`.toLowerCase().includes(normalized),
   );
 });
+const {
+  active: bulkMode,
+  allSelected: allBulkSelected,
+  cancel: cancelBulkSelection,
+  selectedIds: bulkSelectedIds,
+  selectedIdSet: bulkSelectedIdSet,
+  setSelected: setBulkSelected,
+  start: startBulkSelection,
+  toggleAll: toggleAllBulkSelection,
+} = useBulkSelection(() => filteredDefinitions.value.map(definition => definition.id));
 
 watch(
   () => route.value,
@@ -499,6 +552,20 @@ async function deleteApp(appId: string) {
   customApps.deleteDefinition(appId);
   toastr.success('自制 App 已删除');
 }
+
+async function deleteSelectedApps() {
+  const selected = definitions.value.filter(definition => bulkSelectedIdSet.value.has(definition.id));
+  if (!selected.length) return;
+  const contentCount = selected.reduce((sum, definition) => sum + customApps.getEntries(definition.id).length, 0);
+  const confirmed = await phone.confirmNotice(
+    `确认删除所选 ${selected.length} 个自制 App 及其中 ${contentCount} 条内容吗？`,
+    { confirmLabel: '删除所选', kind: 'warning', title: '批量删除自制 App' },
+  );
+  if (!confirmed) return;
+  selected.forEach(definition => customApps.deleteDefinition(definition.id));
+  cancelBulkSelection();
+  toastr.success(`已删除 ${selected.length} 个自制 App`);
+}
 </script>
 
 <style scoped>
@@ -515,13 +582,17 @@ async function deleteApp(appId: string) {
 
 .pc-app-builder-toolbar {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) auto auto;
+  grid-template-columns: minmax(0, 1fr) auto auto auto;
   gap: 8px;
   align-items: center;
 }
 
 .pc-app-builder-row {
   padding: 10px;
+}
+
+.pc-app-builder-row.bulk {
+  grid-template-columns: auto minmax(0, 1fr);
 }
 
 .pc-app-builder-main,

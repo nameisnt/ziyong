@@ -28,8 +28,8 @@ test('visual harness delegates shared waiting and reader DOM navigation', () => 
 });
 
 test('navigation extraction keeps the registered visual evidence cardinality', () => {
-  assert.equal(visualBaseline.scenarioCount, 303);
-  assert.equal(visualBaseline.runs.length, 909);
+  assert.equal(visualBaseline.scenarioCount, 314);
+  assert.equal(visualBaseline.runs.length, 942);
   assert.deepEqual(visualBaseline.sizes, ['350x700', '390x844', '430x900']);
   assert.equal(appearanceBaseline.evidence.length, 15);
 });

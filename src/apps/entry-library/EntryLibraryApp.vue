@@ -9,7 +9,9 @@
       :sections="catalogSections"
       @create-group="createGroup"
       @delete-group="deleteGroup"
+      @delete-groups="deleteGroups"
       @delete-item="deleteItem"
+      @delete-items="deleteItems"
       @item-pointer-cancel="onItemPointerCancel"
       @item-pointer-down="onItemPointerDown"
       @item-pointer-move="onItemPointerMove"
@@ -81,6 +83,7 @@
       :syncing-ids="syncingBindingIds"
       @create="createBinding"
       @delete-binding="deleteBinding"
+      @delete-bindings="deleteBindings"
       @load-content="loadBindingPromptContent"
       @load-prompts="loadBindingPrompts"
       @sync="syncBinding"
@@ -259,6 +262,31 @@ async function deleteItem(itemId: string) {
     title: '删除收藏',
   });
   if (confirmed) library.deleteItem(itemId);
+}
+
+async function deleteGroups(groupIds: string[]) {
+  const selected = groups.value.filter(group => groupIds.includes(group.id));
+  if (!selected.length) return;
+  const itemCount = selected.reduce((sum, group) => sum + library.getGroupItems(group.id).length, 0);
+  const confirmed = await phone.confirmNotice(
+    `删除所选 ${selected.length} 个分组及其中 ${itemCount} 条收藏？相关预设绑定也会删除。`,
+    { confirmLabel: '删除所选', kind: 'warning', title: '批量删除收藏分组' },
+  );
+  if (!confirmed) return;
+  selected.forEach(group => library.deleteGroup(group.id));
+  toastr.success(`已删除 ${selected.length} 个分组`);
+}
+
+async function deleteItems(itemIds: string[]) {
+  const selected = items.value.filter(item => itemIds.includes(item.id));
+  if (!selected.length) return;
+  const confirmed = await phone.confirmNotice(
+    `删除所选 ${selected.length} 条收藏？原始预设或世界书条目不会被删除。`,
+    { confirmLabel: '删除所选', kind: 'warning', title: '批量删除收藏' },
+  );
+  if (!confirmed) return;
+  selected.forEach(item => library.deleteItem(item.id));
+  toastr.success(`已删除 ${selected.length} 条收藏`);
 }
 
 function openCollect() {
@@ -633,6 +661,19 @@ async function deleteBinding(bindingId: string) {
     library.deleteBinding(bindingId);
     loadBindingPrompts();
   }
+}
+
+async function deleteBindings(bindingIds: string[]) {
+  const selected = bindings.value.filter(binding => bindingIds.includes(binding.id));
+  if (!selected.length) return;
+  const confirmed = await phone.confirmNotice(
+    `删除所选 ${selected.length} 条分组绑定？预设条目会保留最后一次同步的内容。`,
+    { confirmLabel: '删除所选', kind: 'warning', title: '批量删除分组绑定' },
+  );
+  if (!confirmed) return;
+  selected.forEach(binding => library.deleteBinding(binding.id));
+  loadBindingPrompts();
+  toastr.success(`已删除 ${selected.length} 条分组绑定`);
 }
 
 function saveEditor() {

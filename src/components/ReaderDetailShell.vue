@@ -13,9 +13,13 @@
       <slot name="kicker"></slot>
       <template v-if="customContent">
         <article class="pc-detail-content pc-reader-content pc-reader-custom-content">
-          <ReasoningDisclosure :content="reasoning" />
+          <ReasoningDisclosure
+            :content="displayReasoning"
+            :editable="reasoningEditable"
+            @update:content="emit('update:reasoning', $event)"
+          />
           <header class="pc-reader-document-head">
-            <h1>{{ title }}</h1>
+            <h1>{{ displayTitle }}</h1>
             <slot name="meta"></slot>
             <span v-if="sourceLabel" class="pc-reader-source-label">{{ sourceLabel }}</span>
           </header>
@@ -24,9 +28,13 @@
           <slot name="after-content"></slot>
         </article>
       </template>
-      <ReaderContent v-else :content="displayContent" :formatted="contentFormatted" :title="title">
+      <ReaderContent v-else :content="displayContent" :formatted="contentFormatted" :title="displayTitle">
         <template #before-header>
-          <ReasoningDisclosure :content="reasoning" />
+          <ReasoningDisclosure
+            :content="displayReasoning"
+            :editable="reasoningEditable"
+            @update:content="emit('update:reasoning', $event)"
+          />
         </template>
         <template #meta>
           <slot name="meta"></slot>
@@ -90,6 +98,16 @@
           <i class="fa-solid fa-filter-circle-xmark"></i><span>{{ baguLabel }}</span>
         </button>
         <button
+          v-if="simplifyEnabled"
+          class="pc-soft-btn"
+          type="button"
+          :disabled="simplifying"
+          @click="toggleSimplified"
+        >
+          <i class="fa-solid fa-language"></i
+          ><span>{{ simplifying ? '加载中' : simplified ? '显示原文' : '繁转简' }}</span>
+        </button>
+        <button
           v-if="favoriteEnabled"
           :class="['pc-soft-btn', { active: favoriteActive }]"
           type="button"
@@ -105,15 +123,6 @@
           @click="runToolAction('branch')"
         >
           <i class="fa-solid fa-code-branch"></i><span>{{ branchLabel }}</span>
-        </button>
-        <button
-          v-if="eraserEnabled"
-          class="pc-soft-btn"
-          type="button"
-          :disabled="eraserDisabled"
-          @click="openTextEditor"
-        >
-          <i class="fa-solid fa-eraser"></i><span>{{ eraserLabel }}</span>
         </button>
         <button
           v-if="editEnabled"
@@ -134,14 +143,6 @@
       </div>
     </div>
 
-    <ReaderTextEditModal
-      :occurrences="textOccurrences"
-      :open="textEditOpen"
-      :selected-text="selectedText"
-      @close="textEditOpen = false"
-      @save="saveTextEdit"
-    />
-
     <slot name="overlays"></slot>
   </div>
 </template>
@@ -151,12 +152,11 @@ import DetailFooter from '@/components/DetailFooter.vue';
 import ItemTransferExportButton from '@/components/ItemTransferExportButton.vue';
 import ReaderContent from '@/components/ReaderContent.vue';
 import ReasoningDisclosure from '@/components/ReasoningDisclosure.vue';
-import ReaderTextEditModal from '@/components/ReaderTextEditModal.vue';
 import { getRegisteredPhoneApp } from '@/core/appRegistry';
 import { useRegexDisplayStore } from '@/apps/regex-display/store';
 import { usePhoneStore } from '@/store/phone';
+import { loadChineseConverter } from '@/util/chineseConversion';
 import { applyRegexDisplayRules, getRegexRulesByIds } from '@/util/regexDisplay';
-import { findReaderTextOccurrences, type ReaderTextOccurrence } from '@/util/readerTextEdit';
 
 const props = withDefaults(
   defineProps<{
@@ -171,9 +171,6 @@ const props = withDefaults(
     contentFormatted?: boolean;
     customContent?: boolean;
     displayAppId?: string;
-    eraserDisabled?: boolean;
-    eraserEnabled?: boolean;
-    eraserLabel?: string;
     editDisabled?: boolean;
     editEnabled?: boolean;
     editLabel?: string;
@@ -188,6 +185,8 @@ const props = withDefaults(
     previousDisabled?: boolean;
     previousLabel?: string;
     reasoning?: string;
+    reasoningEditable?: boolean;
+    simplifyEnabled?: boolean;
     sourceLabel?: string;
     title: string;
   }>(),
@@ -203,9 +202,6 @@ const props = withDefaults(
     contentFormatted: false,
     customContent: false,
     displayAppId: '',
-    eraserDisabled: false,
-    eraserEnabled: false,
-    eraserLabel: '修改句子',
     editDisabled: false,
     editEnabled: true,
     editLabel: '编辑',
@@ -220,6 +216,8 @@ const props = withDefaults(
     previousDisabled: false,
     previousLabel: '上一章',
     reasoning: '',
+    reasoningEditable: false,
+    simplifyEnabled: true,
     sourceLabel: '',
   },
 );
@@ -230,11 +228,11 @@ const emit = defineEmits<{
   (event: 'branch'): void;
   (event: 'catalog'): void;
   (event: 'edit'): void;
-  (event: 'erase', content: string): void;
   (event: 'favorite'): void;
   (event: 'next'): void;
   (event: 'previous'): void;
   (event: 'top'): void;
+  (event: 'update:reasoning', value: string): void;
 }>();
 
 const regexDisplay = useRegexDisplayStore();
@@ -255,18 +253,17 @@ const displayRules = computed(() => {
   if (!props.displayAppId) return [];
   return getRegexRulesByIds(regexDisplay.rules, regexDisplay.getUsage(props.displayAppId).displayRuleIds, 'replace');
 });
-const displayContent = computed(() => applyRegexDisplayRules(props.content, displayRules.value).content);
+const simplified = ref(false);
+const simplifying = ref(false);
+const simplifyText = shallowRef<(text: string) => string>(text => text);
+const displayContent = computed(() => {
+  const content = applyRegexDisplayRules(props.content, displayRules.value).content;
+  return simplified.value ? simplifyText.value(content) : content;
+});
+const displayReasoning = computed(() => (simplified.value ? simplifyText.value(props.reasoning) : props.reasoning));
+const displayTitle = computed(() => (simplified.value ? simplifyText.value(props.title) : props.title));
 
-watch(
-  () => props.content,
-  async () => {
-    const scroller = shellEl.value?.querySelector<HTMLElement>('.pc-reader-content');
-    if (!scroller) return;
-    const scrollTop = scroller.scrollTop;
-    await nextTick();
-    scroller.scrollTop = Math.min(scrollTop, Math.max(0, scroller.scrollHeight - scroller.clientHeight));
-  },
-);
+watch([() => props.content, () => props.title], () => void scrollContentToTop());
 
 const footerVisible = ref(false);
 const effectiveFooterVisible = computed(() => props.footerAlwaysVisible || footerVisible.value);
@@ -275,15 +272,12 @@ const toolVisible = computed(
     props.baguEnabled ||
     props.favoriteEnabled ||
     props.branchEnabled ||
-    props.eraserEnabled ||
     props.editEnabled ||
+    props.simplifyEnabled ||
     itemTransferAvailable.value ||
     Boolean(slots.actions || slots['version-navigation']),
 );
 const toolMenuOpen = ref(false);
-const textEditOpen = ref(false);
-const selectedText = ref('');
-const textOccurrences = ref<ReaderTextOccurrence[]>([]);
 const shellEl = ref<HTMLElement | null>(null);
 const toolEl = ref<HTMLElement | null>(null);
 const toolPosition = reactive({ x: -1, y: -1 });
@@ -385,6 +379,15 @@ function toggleFooter() {
 
 function runFooterAction(event: 'bottom' | 'catalog' | 'next' | 'previous' | 'top') {
   emit(event);
+  if (event === 'catalog' || event === 'next' || event === 'previous' || event === 'top') {
+    void scrollContentToTop();
+  }
+}
+
+async function scrollContentToTop() {
+  await nextTick();
+  const scroller = shellEl.value?.querySelector<HTMLElement>('.pc-reader-content');
+  if (scroller) scroller.scrollTop = 0;
 }
 
 function clampToolPosition(x = toolPosition.x, y = toolPosition.y) {
@@ -460,44 +463,20 @@ function runToolAction(event: 'bagu' | 'branch' | 'edit' | 'favorite') {
   emit(event);
 }
 
-function openTextEditor() {
-  const selection = window.getSelection();
-  if (!selection || selection.rangeCount !== 1 || selection.isCollapsed) {
-    toastr.warning('请先在当前正文里选中要修改的文字');
+async function toggleSimplified() {
+  if (simplified.value) {
+    simplified.value = false;
     return;
   }
-  const range = selection.getRangeAt(0);
-  const ancestor = range.commonAncestorContainer;
-  const element = ancestor.nodeType === Node.ELEMENT_NODE ? (ancestor as Element) : ancestor.parentElement;
-  const content = shellEl.value?.querySelector('.pc-reader-content');
-  if (!element || !content?.contains(element)) {
-    toastr.warning('请只选择当前正文中的文字');
-    return;
+  simplifying.value = true;
+  try {
+    simplifyText.value = (await loadChineseConverter()).toSimplified;
+    simplified.value = true;
+  } catch (error) {
+    toastr.error(`繁简转换加载失败：${error instanceof Error ? error.message : String(error)}`);
+  } finally {
+    simplifying.value = false;
   }
-  const text = selection.toString();
-  const occurrences = findReaderTextOccurrences(props.content, text);
-  if (!occurrences.length) {
-    toastr.error('这是显示替换结果，无法安全写回原文');
-    return;
-  }
-  selectedText.value = text;
-  textOccurrences.value = occurrences;
-  textEditOpen.value = true;
-}
-
-function saveTextEdit(payload: { occurrence: ReaderTextOccurrence; replacement: string }) {
-  const occurrence = payload.occurrence;
-  if (props.content.slice(occurrence.offset, occurrence.offset + selectedText.value.length) !== selectedText.value) {
-    toastr.warning('正文在编辑期间已经变化，已停止保存');
-    textEditOpen.value = false;
-    return;
-  }
-  const content = `${props.content.slice(0, occurrence.sentenceStart)}${payload.replacement}${props.content.slice(
-    occurrence.sentenceEnd,
-  )}`;
-  emit('erase', content);
-  textEditOpen.value = false;
-  window.getSelection()?.removeAllRanges();
 }
 
 let toolResizeObserver: ResizeObserver | null = null;

@@ -6,22 +6,22 @@
       :content="viewedEntry.content"
       custom-content
       display-app-id="theater"
-      eraser-enabled
       :favorite-active="entry.favorite"
       :next-disabled="!nextEntryId"
       :previous-disabled="!previousEntryId"
       :reasoning="viewedEntry.generationRecord?.reasoning"
+      reasoning-editable
       :source-label="viewedEntry.generationRecord?.replay.source.label"
       :title="viewedEntry.title"
       @bagu="$emit('bagu')"
       @bottom="$emit('bottom')"
       @catalog="catalogOpen = true"
       @edit="$emit('edit')"
-      @erase="$emit('erase', $event)"
       @favorite="$emit('favorite')"
       @next="$emit('next')"
       @previous="$emit('previous')"
       @top="$emit('top')"
+      @update:reasoning="$emit('update:reasoning', $event)"
     >
       <template #version-navigation>
         <VersionNavigator
@@ -117,7 +117,6 @@ defineEmits<{
   bagu: [];
   bottom: [];
   edit: [];
-  erase: [content: string];
   favorite: [];
   'filter-type': [label: string];
   'navigate-blocked': [];
@@ -129,6 +128,7 @@ defineEmits<{
   'select-version': [versionId: string];
   'split-version': [];
   top: [];
+  'update:reasoning': [reasoning: string];
 }>();
 </script>
 

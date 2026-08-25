@@ -15,7 +15,7 @@ const [model, store, backup, manager, catalog, detail, provider, settings, workb
   readSource('src/apps/preset-manager/pages/PresetCatalogPage.vue'),
   readSource('src/apps/preset-manager/pages/PresetDetailPage.vue'),
   readSource('src/components/GenerationProviderFields.vue'),
-  readSource('src/components/settings/SettingsConnectionPanel.vue'),
+  readSource('src/apps/settings/SettingsConnectionPanel.vue'),
   readSource('src/apps/workbench/WorkbenchApp.vue'),
 ]);
 

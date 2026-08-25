@@ -220,13 +220,12 @@ export function generateRegexWizardRule(draft: RegexWizardDraft): GeneratedRegex
   } else {
     const boundaries = buildBoundaryPattern(draft);
     const inner = contentPattern(true, draft.allowEmpty);
-    blockPattern = `${boundaries.start}${gap}(?<content>${inner})${gap}${boundaries.end}`;
-    if (draft.purpose === 'extract-content') replacement = '$<content>';
+    blockPattern = `${boundaries.start}${gap}(${inner})${gap}${boundaries.end}`;
+    if (draft.purpose === 'extract-content') replacement = '$1';
   }
 
   if (draft.purpose === 'extract-block') {
-    blockPattern = `(?<block>${blockPattern})`;
-    replacement = '$<block>';
+    replacement = '$&';
   }
 
   const flags = `${draft.occurrence === 'all' ? 'g' : ''}${draft.caseInsensitive ? 'i' : ''}${

@@ -73,8 +73,30 @@
       <article class="pc-page-section pc-scene-history">
         <div class="pc-section-head">
           <strong>历史方案</strong>
-          <span>{{ planner.plans.length }}</span>
+          <div class="pc-scene-history-head-actions">
+            <span>{{ planner.plans.length }}</span>
+            <button
+              class="pc-icon-btn"
+              type="button"
+              :class="{ active: bulkMode }"
+              :disabled="!planner.plans.length"
+              aria-label="批量删除场景方案"
+              title="批量删除场景方案"
+              @click="bulkMode ? cancelBulkSelection() : startBulkSelection()"
+            >
+              <i class="fa-solid fa-list-check"></i>
+            </button>
+          </div>
         </div>
+        <BulkSelectionBar
+          v-if="bulkMode"
+          :all-selected="allBulkSelected"
+          :selected-count="bulkSelectedIds.length"
+          :total-count="planner.plans.length"
+          @cancel="cancelBulkSelection"
+          @remove="removeSelectedPlans"
+          @toggle-all="toggleAllBulkSelection"
+        />
         <EmptyState v-if="!planner.plans.length" compact title="还没有场景方案" />
         <div v-else class="pc-directory-list pc-scene-history-list">
           <article
@@ -82,13 +104,23 @@
             :key="plan.id"
             :class="['pc-list-row', 'pc-scene-history-item', { active: activePlanId === plan.id }]"
           >
-            <ActionMenu align="start" icon-only label="管理" icon="fa-solid fa-ellipsis">
+            <BulkSelectionCheckbox
+              v-if="bulkMode"
+              :model-value="bulkSelectedIdSet.has(plan.id)"
+              :label="`选择 ${plan.title}`"
+              @update:model-value="setBulkSelected(plan.id, $event)"
+            />
+            <ActionMenu v-else align="start" icon-only label="管理" icon="fa-solid fa-ellipsis">
               <ItemTransferExportButton app-id="scene-planner" :params="{ planId: plan.id }" />
               <button class="danger" type="button" @click="removePlan(plan.id)">
                 <i class="fa-solid fa-trash"></i>删除
               </button>
             </ActionMenu>
-            <button class="pc-scene-history-main" type="button" @click="openPlan(plan.id)">
+            <button
+              class="pc-scene-history-main"
+              type="button"
+              @click="bulkMode ? setBulkSelected(plan.id, !bulkSelectedIdSet.has(plan.id)) : openPlan(plan.id)"
+            >
               <strong>{{ plan.title }}</strong>
               <span>{{ getScenePlanStatusLabel(plan.status) }} · {{ plan.updatedAt.slice(0, 10) }}</span>
             </button>
@@ -149,6 +181,7 @@
     <FailedDraftRepairPage
       v-else-if="route.page === 'failed-draft' && activeFailedDraft"
       v-model:raw-output="failedDraftRawOutput"
+      :regenerate-handler="regenerateFailedDraft"
       :raw-output-semantics="activeFailedDraft.rawOutputSemantics"
       :reasoning="activeFailedDraft.generationRecord?.reasoning || ''"
       :source-label="activeFailedDraft.source.label"
@@ -156,12 +189,15 @@
       :warnings="activeFailedDraft.warnings"
       @delete="removeFailedDraft(activeFailedDraft.id)"
       @reparse="reparseFailedDraft"
+      @update:reasoning="updateGenerationRecordReasoning(activeFailedDraft, $event)"
     />
   </section>
 </template>
 
 <script setup lang="ts">
 import ActionMenu from '@/components/ActionMenu.vue';
+import BulkSelectionBar from '@/components/BulkSelectionBar.vue';
+import BulkSelectionCheckbox from '@/components/BulkSelectionCheckbox.vue';
 import EmptyState from '@/components/EmptyState.vue';
 import FailedDraftList from '@/components/FailedDraftList.vue';
 import FailedDraftRepairPage from '@/components/FailedDraftRepairPage.vue';
@@ -170,7 +206,9 @@ import GenerationPreviewPanel from '@/components/GenerationPreviewPanel.vue';
 import ItemTransferExportButton from '@/components/ItemTransferExportButton.vue';
 import ItemTransferImportAction from '@/components/ItemTransferImportAction.vue';
 import PreviewDraftNotice from '@/components/PreviewDraftNotice.vue';
+import { useBulkSelection } from '@/composables/useBulkSelection';
 import { useSingleGenerationTaskSession } from '@/composables/useSingleGenerationTaskSession';
+import { useFailedDraftRegeneration } from '@/composables/useFailedDraftRegeneration';
 import { getRegisteredPhoneGenerationAdapter } from '@/core/appRegistry';
 import { captureGenerationPrompt, generateContent } from '@/core/generationService';
 import { usePhoneStore } from '@/store/phone';
@@ -214,6 +252,16 @@ const { settings } = storeToRefs(settingsStore);
 const route = computed(() => phone.currentRoute);
 const { failedDrafts } = storeToRefs(planner);
 const activePlanId = ref('');
+const {
+  active: bulkMode,
+  allSelected: allBulkSelected,
+  cancel: cancelBulkSelection,
+  selectedIds: bulkSelectedIds,
+  selectedIdSet: bulkSelectedIdSet,
+  setSelected: setBulkSelected,
+  start: startBulkSelection,
+  toggleAll: toggleAllBulkSelection,
+} = useBulkSelection(() => planner.plans.map(plan => plan.id));
 const selectedReferences = ref<GenerationReferenceItem[]>([]);
 const draft = reactive({
   avoidNote: '',
@@ -542,6 +590,25 @@ async function removePlan(planId: string) {
   if (activePlanId.value === planId) newPlan();
   toastr.success('已删除场景方案');
 }
+
+async function removeSelectedPlans() {
+  const selected = planner.plans.filter(plan => bulkSelectedIdSet.value.has(plan.id));
+  if (!selected.length) return;
+  const confirmed = await phone.confirmNotice(`要删除所选 ${selected.length} 个场景方案吗？`, {
+    confirmLabel: '删除所选',
+    kind: 'warning',
+  });
+  if (!confirmed) return;
+  selected.forEach(plan => planner.deletePlan(plan.id));
+  if (selected.some(plan => plan.id === activePlanId.value)) newPlan();
+  cancelBulkSelection();
+  toastr.success(`已删除 ${selected.length} 个场景方案`);
+}
+const regenerateFailedDraft = useFailedDraftRegeneration({
+  draft: () => activeFailedDraft.value,
+  rawOutput: failedDraftRawOutput,
+  reparse: reparseFailedDraft,
+});
 </script>
 
 <style scoped>
@@ -569,6 +636,12 @@ async function removePlan(planId: string) {
 
 .pc-scene-history-item {
   grid-template-columns: auto minmax(0, 1fr);
+}
+
+.pc-scene-history-head-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
 }
 
 .pc-scene-brief {

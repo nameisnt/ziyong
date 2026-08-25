@@ -694,21 +694,6 @@ async function runInteractionChecks(page, scenario) {
       }
     }
 
-    if (scenario === 'reader-text-edit-modal') {
-      const dialog = page.locator('.pc-reader-edit-modal');
-      const mask = page.locator('.pc-reader-edit-mask');
-      const screen = page.locator('.pc-screen');
-      if ((await screen.evaluate(element => element.style.overflow)) !== 'hidden') {
-        findings.push({ severity: 'fail', message: '阅读文字编辑打开后没有锁定背景滚动' });
-      }
-      await page.keyboard.press('Escape');
-      if ((await mask.count()) > 0) findings.push({ severity: 'fail', message: 'Escape 没有关闭阅读文字编辑' });
-      if ((await screen.evaluate(element => element.style.overflow)) === 'hidden') {
-        findings.push({ severity: 'fail', message: '阅读文字编辑关闭后没有恢复背景滚动' });
-      }
-
-    }
-
     if (scenario === 'content-transfer-dialog') {
       const dialog = page.locator('.pc-content-transfer-dialog');
       const backdrop = page.locator('.pc-content-transfer-backdrop');

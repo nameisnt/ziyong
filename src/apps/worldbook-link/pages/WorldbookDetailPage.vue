@@ -95,6 +95,16 @@
               </span>
               <i class="fa-solid fa-chevron-right pc-worldbook-chevron"></i>
             </button>
+            <button
+              class="pc-icon-btn pc-worldbook-entry-copy-btn"
+              type="button"
+              :aria-label="t`复制条目`"
+              :disabled="entryBusyUids.has(entry.uid)"
+              :title="t`复制条目`"
+              @click="$emit('copy-entry', entry)"
+            >
+              <i class="fa-solid fa-copy"></i>
+            </button>
             <label class="pc-toggle pc-worldbook-toggle" :title="entry.enabled ? t`停用条目` : t`启用条目`" @click.stop>
               <input
                 type="checkbox"
@@ -141,6 +151,7 @@ const query = defineModel<string>('query', { required: true });
 defineEmits<{
   'apply-profile': [];
   'capture-profile': [];
+  'copy-entry': [entry: WorldbookEntry];
   'open-entry': [entry: WorldbookEntry];
   'rename-book': [];
   'toggle-entry': [entry: WorldbookEntry, event: Event];
@@ -268,7 +279,13 @@ defineEmits<{
   font-size: 12px;
 }
 .pc-worldbook-entry {
-  grid-template-columns: minmax(0, 1fr) auto;
+  grid-template-columns: minmax(0, 1fr) auto auto;
+}
+.pc-worldbook-entry-copy-btn {
+  width: 34px;
+  min-width: 34px;
+  height: 34px;
+  min-height: 34px;
 }
 .pc-worldbook-entry-open {
   display: flex;

@@ -127,6 +127,17 @@
             <i class="fa-solid fa-broom"></i>
           </button>
           <button
+            v-if="!backupSelection.active.value"
+            class="pc-icon-btn"
+            type="button"
+            :disabled="recovery.managementBusy || !activeGroup.backups.length"
+            title="批量删除备份"
+            aria-label="批量删除备份"
+            @click="backupSelection.start"
+          >
+            <i class="fa-solid fa-list-check"></i>
+          </button>
+          <button
             class="pc-icon-btn"
             type="button"
             :disabled="recovery.loading || recovery.managementBusy"
@@ -141,9 +152,24 @@
       <p class="pc-recovery-group-note">
         {{ activeGroup.label }} · 最近 {{ formatDate(activeGroup.backups[0]?.lastMessageAt) }}
       </p>
+      <BulkSelectionBar
+        v-if="backupSelection.active.value"
+        :all-selected="backupSelection.allSelected.value"
+        :selected-count="backupSelection.selectedIds.value.length"
+        :total-count="activeGroup.backups.length"
+        @cancel="backupSelection.cancel"
+        @remove="deleteSelectedBackups"
+        @toggle-all="backupSelection.toggleAll"
+      />
       <EmptyState v-if="!activeGroup.backups.length" title="这个角色没有聊天备份" />
       <div v-else class="pc-directory-list">
         <div v-for="backup in activeGroup.backups" :key="backup.fileName" class="pc-recovery-backup-row">
+          <BulkSelectionCheckbox
+            v-if="backupSelection.active.value"
+            :checked="backupSelection.selectedIdSet.value.has(backup.fileName)"
+            :label="`选择 ${backup.fileName}`"
+            @update:checked="backupSelection.setSelected(backup.fileName, $event)"
+          />
           <button
             class="pc-list-row pc-recovery-backup-open"
             type="button"
@@ -161,6 +187,7 @@
             <i class="fa-solid fa-chevron-right"></i>
           </button>
           <button
+            v-if="!backupSelection.active.value"
             class="pc-icon-btn danger"
             type="button"
             :disabled="recovery.managementBusy"
@@ -197,12 +224,15 @@
 </template>
 
 <script setup lang="ts">
+import BulkSelectionBar from '@/components/BulkSelectionBar.vue';
+import BulkSelectionCheckbox from '@/components/BulkSelectionCheckbox.vue';
 import EmptyState from '@/components/EmptyState.vue';
 import RecoveryMaintenanceFlow from '@/apps/recovery/RecoveryMaintenanceFlow.vue';
 import RecoveryReadImportFlow from '@/apps/recovery/RecoveryReadImportFlow.vue';
 import RecoverySettingsFlow from '@/apps/recovery/RecoverySettingsFlow.vue';
 import type { ChatBackupGroup, ChatBackupSummary } from '@/apps/recovery/model';
 import { useChatRecoveryStore } from '@/apps/recovery/store';
+import { useBulkSelection } from '@/composables/useBulkSelection';
 import { usePhoneStore } from '@/store/phone';
 
 const phone = usePhoneStore();
@@ -212,6 +242,7 @@ const query = ref('');
 const sortMode = ref<'character' | 'recent'>('recent');
 
 const activeGroup = computed(() => recovery.groups.find(group => group.id === route.value.params?.groupId) ?? null);
+const backupSelection = useBulkSelection(() => activeGroup.value?.backups.map(backup => backup.fileName) ?? []);
 const filteredGroups = computed(() => {
   const needle = query.value.trim().toLocaleLowerCase();
   const groups = recovery.groups.filter(
@@ -239,6 +270,7 @@ watch(
   () => route.value.page,
   page => {
     if (!['reader', 'confirm', 'result'].includes(page)) recovery.releaseActiveBackup();
+    if (page !== 'group') backupSelection.cancel();
   },
   { immediate: true },
 );
@@ -317,6 +349,28 @@ async function confirmDeleteBackup(summary: ChatBackupSummary, navigateWhenGroup
   } catch (error) {
     toastr.error(error instanceof Error ? error.message : '删除聊天备份失败');
     return false;
+  }
+}
+
+async function deleteSelectedBackups() {
+  const selected = activeGroup.value?.backups.filter(backup =>
+    backupSelection.selectedIdSet.value.has(backup.fileName),
+  );
+  if (!selected?.length) return;
+  const confirmed = await phone.confirmNotice(
+    `永久删除所选 ${selected.length} 份聊天备份？此操作不会删除已有聊天。`,
+    { confirmLabel: '永久删除所选', kind: 'warning', title: '批量删除聊天备份' },
+  );
+  if (!confirmed) return;
+  try {
+    for (const backup of selected) await recovery.deleteBackup(backup);
+    backupSelection.cancel();
+    toastr.success(`已删除 ${selected.length} 份聊天备份`);
+    if (!recovery.groups.some(group => group.id === route.value.params?.groupId)) {
+      phone.replacePage('root', '酒馆备份管理');
+    }
+  } catch (error) {
+    toastr.error(error instanceof Error ? error.message : '批量删除聊天备份失败');
   }
 }
 
