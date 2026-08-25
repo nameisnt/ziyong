@@ -1,4 +1,5 @@
 {
+<<<<<<< HEAD
   "name": "sillytavern-phone-extension",
   "version": "1.0.0",
   "scripts": {
@@ -22,6 +23,15 @@
     "ui:contracts": "node scripts/ui-contract-check.mjs",
     "test:unit": "node --test scripts/unit/*.test.mjs",
     "ui:check": "node scripts/ui-visual-check.mjs",
+=======
+  "name": "<插件名称>",
+  "version": "1.0.0",
+  "scripts": {
+    "build": "vite build",
+    "watch": "vite build --watch --mode development",
+    "format": "prettier --write \"src/**/*.{ts,tsx,js,jsx,css,scss,html,vue}\"",
+    "lint": "eslint",
+>>>>>>> a5b9d5fa09489da971f8abba1664ce02a1e4eabb
     "lint:fix": "eslint --fix"
   },
   "browserslist": [
@@ -29,7 +39,10 @@
   ],
   "devDependencies": {
     "@eslint/js": "^9.39.5",
+<<<<<<< HEAD
     "@fortawesome/fontawesome-free": "^7.3.1",
+=======
+>>>>>>> a5b9d5fa09489da971f8abba1664ce02a1e4eabb
     "@popperjs/core": "^2.11.8",
     "@tailwindcss/postcss": "^4.3.3",
     "@types/jquery": "^3.5.34",
@@ -51,11 +64,18 @@
     "eslint-plugin-vue": "^10.10.0",
     "globals": "^16.5.0",
     "highlight.js": "^11.12.0",
+<<<<<<< HEAD
     "playwright": "^1.62.1",
+=======
+>>>>>>> a5b9d5fa09489da971f8abba1664ce02a1e4eabb
     "postcss-load-config": "^6.0.1",
     "postcss-loader": "^8.2.1",
     "postcss-minify": "^1.2.0",
     "prettier": "^3.9.6",
+<<<<<<< HEAD
+=======
+    "ts-node": "^10.9.2",
+>>>>>>> a5b9d5fa09489da971f8abba1664ce02a1e4eabb
     "tslib": "^2.8.1",
     "typescript": "6.0.0-dev.20250807",
     "typescript-eslint": "^8.68.0",
@@ -69,13 +89,19 @@
     "yaml": "^2.9.0"
   },
   "dependencies": {
+<<<<<<< HEAD
     "@korziee/klondike": "0.0.5",
+=======
+>>>>>>> a5b9d5fa09489da971f8abba1664ce02a1e4eabb
     "@vueuse/components": "^13.9.0",
     "@vueuse/core": "^13.9.0",
     "@vueuse/integrations": "^13.9.0",
     "@vueuse/shared": "^13.9.0",
     "klona": "^2.0.6",
+<<<<<<< HEAD
     "lodash": "4.17.21",
+=======
+>>>>>>> a5b9d5fa09489da971f8abba1664ce02a1e4eabb
     "pinia": "^3.0.4",
     "tailwindcss": "^4.3.3",
     "type-fest": "^4.41.0",
