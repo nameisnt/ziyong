@@ -21,7 +21,10 @@ test('assistant script manager prunes scripts through the current scope tree and
     scriptModel,
     /result\.push\(\{ \.\.\.node, scripts: node\.scripts\.filter\(script => !ids\.has\(script\.id\)\) \}\)/u,
   );
-  assert.match(scriptApi, /updateScriptTreesWith\(trees => pruneScriptTrees\(trees, ids\), \{ type: scope\.id \}\)/u);
+  assert.match(scriptApi, /updateTrees\(trees => pruneScriptTrees\(trees, ids\), \{ type: scope\.id \}\)/u);
+  assert.match(scriptApi, /getOptionalGlobalFunction<GetScriptTrees>\('getScriptTrees'\)/u);
+  assert.match(scriptApi, /getOptionalGlobalFunction<UpdateScriptTrees>\('updateScriptTreesWith'\)/u);
+  assert.doesNotMatch(scriptApi, /typeof getScriptTrees|typeof updateScriptTreesWith/u);
   assert.doesNotMatch(scriptApi, /replaceScriptTrees/u);
   assert.match(scriptApp, /<BulkSelectionBar/u);
   assert.match(scriptApp, /phone\.confirmNotice/u);

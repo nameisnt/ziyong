@@ -1,14 +1,24 @@
+import { getOptionalGlobalFunction } from '@/util/runtime';
 import { flattenScriptTrees, pruneScriptTrees, SCRIPT_SCOPES, type ScriptListItem, type ScriptScope } from './model';
 
-function assertScriptApi() {
-  if (typeof getScriptTrees !== 'function' || typeof updateScriptTreesWith !== 'function') {
+type GetScriptTrees = (options: { type: ScriptScope }) => ScriptTree[];
+type UpdateScriptTrees = (
+  updater: (trees: ScriptTree[]) => TypeFest.PartialDeep<ScriptTree>[],
+  options: { type: ScriptScope },
+) => ScriptTree[];
+
+function requireScriptApi() {
+  const getTrees = getOptionalGlobalFunction<GetScriptTrees>('getScriptTrees');
+  const updateTrees = getOptionalGlobalFunction<UpdateScriptTrees>('updateScriptTreesWith');
+  if (!getTrees || !updateTrees) {
     throw new Error('酒馆助手脚本接口不可用');
   }
+  return { getTrees, updateTrees };
 }
 
 export function readAllScriptTrees() {
-  assertScriptApi();
-  return Object.fromEntries(SCRIPT_SCOPES.map(scope => [scope.id, getScriptTrees({ type: scope.id })])) as Record<
+  const { getTrees } = requireScriptApi();
+  return Object.fromEntries(SCRIPT_SCOPES.map(scope => [scope.id, getTrees({ type: scope.id })])) as Record<
     ScriptScope,
     ScriptTree[]
   >;
@@ -22,10 +32,10 @@ export function listAssistantScripts(): ScriptListItem[] {
 }
 
 export function removeAssistantScripts(items: ScriptListItem[]) {
-  assertScriptApi();
+  const { updateTrees } = requireScriptApi();
   for (const scope of SCRIPT_SCOPES) {
     const ids = new Set(items.filter(item => item.scope === scope.id).map(item => item.id));
     if (!ids.size) continue;
-    updateScriptTreesWith(trees => pruneScriptTrees(trees, ids), { type: scope.id });
+    updateTrees(trees => pruneScriptTrees(trees, ids), { type: scope.id });
   }
 }
