@@ -352,7 +352,6 @@ onActivated(refreshInstalled);
   align-content: start;
   gap: 12px;
   min-height: 100%;
-  padding: 14px;
 }
 
 .pc-extension-tabs {

@@ -1,16 +1,16 @@
 export const ExternalProfileReferenceSchema = z.object({
-  profileIdentityValue: z.string().trim().min(1),
-  profileMappingId: z.string().trim().min(1),
+  profileRowIndex: z.number().int().min(1),
+  profileSheetKey: z.string().trim().min(1),
 });
 
 export type ExternalProfileReference = z.infer<typeof ExternalProfileReferenceSchema>;
 export type ExternalProfileReferenceDraft = {
-  profileIdentityValue: string;
-  profileMappingId: string;
+  profileRowIndex: number;
+  profileSheetKey: string;
 };
 
 export function externalProfileReferenceKey(reference: ExternalProfileReferenceDraft) {
-  return `${reference.profileMappingId}\u0000${reference.profileIdentityValue}`;
+  return `${reference.profileSheetKey}\u0000${reference.profileRowIndex}`;
 }
 
 export function cleanExternalProfileReferences(references: ExternalProfileReferenceDraft[]) {

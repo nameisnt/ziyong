@@ -6,7 +6,7 @@ import test from 'node:test';
 const registry = await readFile(new URL('../../src/core/appRegistry.ts', import.meta.url), 'utf8');
 const transfer = await readFile(new URL('../../src/util/itemTransfer.ts', import.meta.url), 'utf8');
 const providers = await readFile(new URL('../../src/item-transfer/providers.ts', import.meta.url), 'utf8');
-const profileProvider = await readFile(new URL('../../src/apps/profiles/itemTransfer.ts', import.meta.url), 'utf8');
+const profilesIndex = await readFile(new URL('../../src/apps/profiles/index.ts', import.meta.url), 'utf8');
 
 test('item transfer is an explicit App capability with one versioned file envelope', () => {
   assert.match(registry, /export interface PhoneItemTransferProvider/u);
@@ -29,7 +29,7 @@ test('copy import remaps nested ids while replacement stays conflict-gated and t
   assert.match(transfer, /provider\.importTransaction === 'provider-owned'/u);
 });
 
-test('the first item batch registers exactly the nine approved detail object types', () => {
+test('item transfer registers the eight plugin-owned detail object types', () => {
   for (const type of [
     'summary-entry',
     'diary-entry',
@@ -42,6 +42,5 @@ test('the first item batch registers exactly the nine approved detail object typ
   ]) {
     assert.match(providers, new RegExp(`itemType: '${type}'`, 'u'));
   }
-  assert.match(profileProvider, /itemType: 'external-profile-row'/u);
-  assert.doesNotMatch(profileProvider, /useProfilesStore|ProfileEntrySchema/u);
+  assert.doesNotMatch(profilesIndex, /itemTransferProvider/u);
 });

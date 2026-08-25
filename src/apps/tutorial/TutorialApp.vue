@@ -199,7 +199,6 @@ async function copyCode(code: string) {
   min-height: 100%;
   flex-direction: column;
   gap: 14px;
-  padding: 14px;
 }
 
 .pc-tutorial-missing-page {

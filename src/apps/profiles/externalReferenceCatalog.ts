@@ -1,76 +1,48 @@
-import { readExternalMappedRows } from './profileConsumerBridge';
 import type { PhoneReferenceProviderResult, PhoneReferenceTreeNode } from '@/core/appRegistry';
-import type { ExternalProfileMapping } from './profileMappings';
+import { getExternalProfileRowLabel, readExternalProfileTables, type ExternalProfileTable } from './externalBridge';
 
-type ExternalProfileRowReader = typeof readExternalMappedRows;
-
-export function externalProfileReferenceId(mappingId: string, identityValue: string) {
-  return `profiles:external:${encodeURIComponent(mappingId)}:${encodeURIComponent(identityValue)}`;
+export function externalProfileReferenceId(sheetKey: string, rowIndex: number) {
+  return `profiles:external:${encodeURIComponent(sheetKey)}:${rowIndex}`;
 }
 
-function buildReferenceContent(
-  mapping: ExternalProfileMapping,
-  row: ReturnType<ExternalProfileRowReader>[number],
-) {
-  const title = row.displayValue.trim() || row.identityValue.trim();
-  const fieldLines = mapping.fields
-    .map(field => {
-      const value = row.fields[field.key]?.trim() || '';
-      return value ? `${field.label}：${value}` : '';
+function buildReferenceContent(table: ExternalProfileTable, row: ExternalProfileTable['rows'][number]) {
+  const title = getExternalProfileRowLabel(table, row);
+  const fieldLines = table.columns
+    .map(column => {
+      const value = row.cells[column.index]?.trim() || '';
+      return value ? `${column.label}：${value}` : '';
     })
     .filter(Boolean);
   return [`## ${title}`, ...fieldLines].join('\n');
 }
 
-export function createExternalProfileReferenceCatalog(
-  mappings: ExternalProfileMapping[],
-  readRows: ExternalProfileRowReader = readExternalMappedRows,
-): PhoneReferenceProviderResult {
-  const warnings: string[] = [];
-  const mappingNodes: PhoneReferenceTreeNode[] = [];
-
-  mappings.forEach(mapping => {
-    try {
-      const children: PhoneReferenceTreeNode[] = readRows(mapping).map(row => {
-        const title = row.displayValue.trim() || row.identityValue.trim();
-        const id = externalProfileReferenceId(mapping.id, row.identityValue);
+export function createExternalProfileReferenceCatalog(): PhoneReferenceProviderResult {
+  const tableNodes: PhoneReferenceTreeNode[] = readExternalProfileTables()
+    .map(table => {
+      const children: PhoneReferenceTreeNode[] = table.rows.map(row => {
+        const title = getExternalProfileRowLabel(table, row);
+        const id = externalProfileReferenceId(table.key, row.index);
         return {
           id,
           item: {
-            content: buildReferenceContent(mapping, row),
+            content: buildReferenceContent(table, row),
             id,
-            sourcePath: ['资料表', mapping.name],
+            sourcePath: ['资料表', table.name],
             title,
-            updatedAt: mapping.updatedAt,
+            updatedAt: '',
           },
           kind: 'leaf',
         };
       });
-      if (children.length) {
-        mappingNodes.push({
-          children,
-          id: `profiles:mapping:${encodeURIComponent(mapping.id)}`,
-          kind: 'branch',
-          label: mapping.name,
-        });
-      }
-    } catch (error) {
-      const message = error instanceof Error ? error.message : String(error);
-      warnings.push(`映射“${mapping.name}”：${message}`);
-    }
-  });
+      return children.length
+        ? ({ children, id: `profiles:table:${encodeURIComponent(table.key)}`, kind: 'branch', label: table.name } as const)
+        : null;
+    })
+    .filter((node): node is NonNullable<typeof node> => Boolean(node));
 
   return {
-    nodes: mappingNodes.length
-      ? [
-          {
-            children: mappingNodes,
-            id: 'app:profiles',
-            kind: 'branch',
-            label: '资料表',
-          },
-        ]
+    nodes: tableNodes.length
+      ? [{ children: tableNodes, id: 'app:profiles', kind: 'branch', label: '资料表' }]
       : [],
-    warnings,
   };
 }

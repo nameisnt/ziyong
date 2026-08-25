@@ -4,9 +4,6 @@
       <div class="pc-compact-toolbar pc-directory-toolbar pc-external-profiles-toolbar">
         <span class="pc-directory-count">{{ tableCountLabel }}</span>
         <div class="pc-external-profiles-actions">
-          <button class="pc-icon-btn" type="button" title="资料映射" aria-label="资料映射" @click="openMappings">
-            <i class="fa-solid fa-link"></i>
-          </button>
           <button
             class="pc-icon-btn"
             type="button"
@@ -91,15 +88,30 @@
       </EmptyState>
     </section>
 
-    <ProfileMappingsPage
-      v-else-if="route.page === 'mappings' || route.page === 'mapping-editor'"
-      :tables="state.tables"
-    />
-
     <section v-else-if="route.page === 'table'" class="pc-external-profiles-page pc-external-profile-detail">
       <div class="pc-compact-toolbar pc-directory-toolbar pc-external-profiles-toolbar">
         <span class="pc-directory-count">{{ activeTableCountLabel }}</span>
         <div class="pc-external-profiles-actions">
+          <div class="pc-segment pc-external-profile-layout-toggle" aria-label="资料卡片排列方式">
+            <button
+              :class="['pc-segment-btn', { active: externalProfilesLayout === 'horizontal' }]"
+              type="button"
+              title="横向卡片"
+              aria-label="横向卡片"
+              @click="settingsStore.setExternalProfilesLayout('horizontal')"
+            >
+              <i class="fa-solid fa-table-columns"></i>
+            </button>
+            <button
+              :class="['pc-segment-btn', { active: externalProfilesLayout === 'vertical' }]"
+              type="button"
+              title="竖向卡片"
+              aria-label="竖向卡片"
+              @click="settingsStore.setExternalProfilesLayout('vertical')"
+            >
+              <i class="fa-solid fa-list"></i>
+            </button>
+          </div>
           <button
             class="pc-icon-btn"
             type="button"
@@ -123,33 +135,6 @@
         </div>
       </div>
 
-      <div v-if="activeTableMappings.length" class="pc-external-profile-mapping-row">
-        <label class="pc-field-group">
-          <span class="pc-field-label">当前资料映射</span>
-          <select v-model="selectedTableMappingId" class="pc-select" aria-label="当前资料映射">
-            <option v-for="mapping in activeTableMappings" :key="mapping.id" :value="mapping.id">
-              {{ mapping.name }}
-            </option>
-          </select>
-        </label>
-        <ItemTransferImportAction
-          v-if="activeTableMapping"
-          app-id="profiles"
-          button-class="pc-icon-btn"
-          icon-only
-          label="导入单行资料"
-          :params="{ mappingId: activeTableMapping.id }"
-          @imported="refresh"
-        />
-      </div>
-      <div v-else-if="activeTable" class="pc-status-card warning pc-external-profile-mapping-warning">
-        <div>
-          <strong>当前表还没有资料映射</strong>
-          <p>先设置身份列、显示列和业务字段，才能导入、打开或导出单行资料。</p>
-        </div>
-        <button class="pc-soft-btn compact" type="button" @click="openMappings">设置映射</button>
-      </div>
-
       <label v-if="activeTable?.rows.length" class="pc-search-field">
         <i class="fa-solid fa-magnifying-glass"></i>
         <input v-model="rowQuery" type="search" placeholder="搜索当前表格" />
@@ -157,39 +142,31 @@
 
       <div
         v-if="activeTable && filteredRows.length && activeTable.columns.length"
-        class="pc-external-profile-grid-wrap"
+        :class="['pc-external-profile-card-track', `is-${externalProfilesLayout}`]"
       >
-        <div
-          class="pc-external-profile-grid"
-          :style="{
-            '--pc-external-profile-grid': externalGridTemplate,
-            '--pc-external-profile-min-width': `${externalTableMinWidth}px`,
-          }"
+        <button
+          v-for="row in filteredRows"
+          :key="row.id"
+          class="pc-section-card pc-external-profile-data-card"
+          type="button"
+          @click="openRow(row)"
         >
-          <div class="pc-external-profile-grid-header" role="row">
-            <span v-for="column in activeTable.columns" :key="column.index" role="columnheader">
-              {{ column.label }}
-            </span>
-          </div>
-          <button
-            v-for="row in filteredRows"
-            :key="row.id"
-            class="pc-external-profile-grid-row"
-            type="button"
-            :disabled="!activeTableMapping"
-            @click="openMappedRow(row)"
-          >
-            <span
-              v-for="column in activeTable.columns"
-              :key="column.index"
-              class="pc-external-profile-grid-cell"
-              role="cell"
-              :title="row.cells[column.index]"
-            >
-              {{ row.cells[column.index] || '—' }}
-            </span>
-          </button>
-        </div>
+          <header>
+            <span>#{{ row.index }}</span>
+            <strong>{{ externalProfileRowIdentifier(activeTable, row) }}</strong>
+            <i class="fa-solid fa-chevron-right"></i>
+          </header>
+          <dl>
+            <div v-for="column in activeTableCardColumns" :key="column.index">
+              <dt>{{ column.label }}</dt>
+              <dd>
+                <span :class="{ 'is-compact': isCompactExternalProfileValue(row.cells[column.index]) }">
+                  {{ row.cells[column.index] || '—' }}
+                </span>
+              </dd>
+            </div>
+          </dl>
+        </button>
       </div>
 
       <EmptyState v-else-if="state.status === 'loading'" title="正在刷新当前表…" />
@@ -227,7 +204,7 @@
       </EmptyState>
     </section>
 
-    <section v-else-if="route.page === 'row' && activeMappedRow" class="pc-external-profile-row-detail">
+    <section v-else-if="route.page === 'row' && activeRow" class="pc-external-profile-row-detail">
       <ReaderDetailShell
         :bagu-enabled="false"
         catalog-label="表格"
@@ -237,24 +214,24 @@
         :favorite-enabled="false"
         next-label="下一行"
         previous-label="上一行"
-        :next-disabled="!nextMappedRowIdentity"
-        :previous-disabled="!previousMappedRowIdentity"
-        :title="activeMappedRow.displayValue || activeMappedRow.identityValue"
+        :next-disabled="!nextRow"
+        :previous-disabled="!previousRow"
+        :title="activeRowTable ? getExternalProfileRowLabel(activeRowTable, activeRow) : `第 ${activeRow.index} 行`"
         @catalog="returnToActiveTable"
-        @next="openMappedIdentity(nextMappedRowIdentity)"
-        @previous="openMappedIdentity(previousMappedRowIdentity)"
+        @next="openRow(nextRow!)"
+        @previous="openRow(previousRow!)"
       >
         <template #kicker>
-          <span class="pc-kicker"><i class="fa-solid fa-table"></i>{{ activeRowMapping?.name }}</span>
+          <span class="pc-kicker"><i class="fa-solid fa-table"></i>{{ activeRowTable?.name }}</span>
         </template>
         <template #meta>
-          <span class="pc-reader-source-label">身份：{{ activeMappedRow.identityValue }}</span>
+          <span class="pc-reader-source-label">第 {{ activeRow.index }} 行</span>
         </template>
         <template #content>
           <dl class="pc-external-profile-row-fields">
-            <template v-for="field in activeMappedFields" :key="field.key">
-              <dt>{{ field.label }}</dt>
-              <dd>{{ field.value || '—' }}</dd>
+            <template v-for="column in activeRowTable?.columns || []" :key="column.index">
+              <dt>{{ column.label }}</dt>
+              <dd>{{ activeRow.cells[column.index] || '—' }}</dd>
             </template>
           </dl>
         </template>
@@ -267,7 +244,7 @@
       :regenerate-handler="regenerateFailedDraft"
       :raw-output-semantics="activeFailedDraft.rawOutputSemantics"
       :reasoning="activeFailedDraft.generationRecord?.reasoning || ''"
-      :reparse-disabled="!selectedRepairMappingId"
+      :reparse-disabled="!selectedRepairSheetKey || !selectedRepairTitleColumn"
       :source-label="activeFailedDraft.source.label"
       title="修复资料生成草稿"
       :warnings="activeFailedDraft.warnings"
@@ -277,12 +254,21 @@
     >
       <template #before-editor>
         <label class="pc-field-group">
-          <span class="pc-field-label">保存到外部资料映射</span>
+          <span class="pc-field-label">保存到外部资料表</span>
           <SearchableCombobox
-            v-model="selectedRepairMappingId"
-            input-label="选择外部资料映射"
-            :options="repairMappingOptions"
-            placeholder="请选择外部资料映射"
+            v-model="selectedRepairSheetKey"
+            input-label="选择外部资料表"
+            :options="repairTableOptions"
+            placeholder="请选择外部资料表"
+          />
+        </label>
+        <label class="pc-field-group">
+          <span class="pc-field-label">标题列</span>
+          <SearchableCombobox
+            v-model="selectedRepairTitleColumn"
+            input-label="选择标题列"
+            :options="repairColumnOptions"
+            placeholder="请选择标题列"
           />
         </label>
         <article v-if="repairPreview" class="pc-section-card pc-external-profile-repair-preview">
@@ -310,42 +296,40 @@
 import EmptyState from '@/components/EmptyState.vue';
 import FailedDraftList from '@/components/FailedDraftList.vue';
 import FailedDraftRepairPage from '@/components/FailedDraftRepairPage.vue';
-import ItemTransferImportAction from '@/components/ItemTransferImportAction.vue';
 import ReaderDetailShell from '@/components/ReaderDetailShell.vue';
 import SearchableCombobox from '@/components/SearchableCombobox.vue';
 import { useFailedDraftRegeneration } from '@/composables/useFailedDraftRegeneration';
 import { usePhoneStore } from '@/store/phone';
+import { useSettingsStore } from '@/store/settings';
 import { onTavernEvent } from '@/util/runtime';
 import { updateGenerationRecordReasoning } from '@/util/generationReasoning';
 import type { FailedGenerationDraft } from '@/type/generation';
-import ProfileMappingsPage from './ProfileMappingsPage.vue';
 import { createExternalProfilesRepository } from './externalCrud';
-import { readExternalMappedRows } from './profileConsumerBridge';
 import { buildExternalProfileGenerationValues, parseProfileXmlResult, type ProfileXmlResult } from './generation';
 import { useExternalProfileGenerationStore } from './generationDrafts';
-import { useExternalProfileMappingsStore, type ExternalProfileMapping } from './profileMappings';
 import {
   createExternalProfilesBridge,
+  getExternalProfileRowLabel,
+  isExternalProfileIdentifierColumn,
   type ExternalProfileRow,
   type ExternalProfileTable,
   type ExternalProfilesViewState,
 } from './externalBridge';
 
 const phone = usePhoneStore();
+const settingsStore = useSettingsStore();
 const externalGeneration = useExternalProfileGenerationStore();
-const mappingsStore = useExternalProfileMappingsStore();
 const repository = createExternalProfilesRepository();
 const route = computed(() => phone.currentRoute);
 const bridge = createExternalProfilesBridge();
 const state = ref<ExternalProfilesViewState>(bridge.getState());
 const catalogQuery = ref('');
 const rowQuery = ref('');
-const selectedTableMappingId = ref('');
 const failedDraftRawOutput = ref('');
-const selectedRepairMappingId = ref('');
+const selectedRepairSheetKey = ref('');
+const selectedRepairTitleColumn = ref('');
 const repairPreview = ref<ProfileXmlResult | null>(null);
 const { failedDrafts: externalFailedDrafts } = storeToRefs(externalGeneration);
-const { mappings } = storeToRefs(mappingsStore);
 let stopChatChanged: null | { stop: () => void } = null;
 let stopBridge: null | { stop: () => void } = null;
 
@@ -353,59 +337,36 @@ const activeTable = computed(() => {
   const sheetKey = route.value.params?.sheetKey || '';
   return state.value.tables.find(table => table.key === sheetKey) ?? null;
 });
-const activeTableMappings = computed(() => {
-  const table = activeTable.value;
-  if (!table) return [];
-  return mappings.value.filter(mapping => mapping.sheetKey === table.key && mapping.tableName === table.name);
+const activeRowTable = computed(() => {
+  const sheetKey = route.value.params?.sheetKey || '';
+  return state.value.tables.find(table => table.key === sheetKey) ?? null;
 });
-const activeTableMapping = computed(
-  () => activeTableMappings.value.find(mapping => mapping.id === selectedTableMappingId.value) ?? null,
-);
-const activeRowMapping = computed(() => mappingsStore.getMapping(route.value.params?.mappingId || ''));
-const activeMappedRows = computed(() => {
-  const mapping = activeRowMapping.value;
-  if (!mapping) return [];
-  try {
-    return readExternalMappedRows(mapping);
-  } catch {
-    return [];
-  }
+const activeRow = computed(() => {
+  const rowIndex = Number(route.value.params?.rowIndex || 0);
+  return activeRowTable.value?.rows.find(row => row.index === rowIndex) ?? null;
 });
-const activeMappedRow = computed(() => {
-  const identityValue = (route.value.params?.identityValue || '').trim();
-  return activeMappedRows.value.find(row => row.identityValue.trim() === identityValue) ?? null;
-});
-const activeMappedFields = computed(() => {
-  const mapping = activeRowMapping.value;
-  const row = activeMappedRow.value;
-  if (!mapping || !row) return [];
-  return mapping.fields.map(field => ({ key: field.key, label: field.label, value: row.fields[field.key] || '' }));
-});
-const activeMappedRowIndex = computed(() =>
-  activeMappedRow.value
-    ? activeMappedRows.value.findIndex(row => row.identityValue === activeMappedRow.value?.identityValue)
-    : -1,
+const activeRowPosition = computed(
+  () => activeRowTable.value?.rows.findIndex(row => row.index === activeRow.value?.index) ?? -1,
 );
-const previousMappedRowIdentity = computed(
-  () => activeMappedRows.value[activeMappedRowIndex.value - 1]?.identityValue || '',
-);
-const nextMappedRowIdentity = computed(
-  () => activeMappedRows.value[activeMappedRowIndex.value + 1]?.identityValue || '',
-);
+const previousRow = computed(() => activeRowTable.value?.rows[activeRowPosition.value - 1] ?? null);
+const nextRow = computed(() => activeRowTable.value?.rows[activeRowPosition.value + 1] ?? null);
 const activeFailedDraft = computed(() => {
   const draftId = route.value.params?.draftId || '';
   return externalGeneration.getFailedDraft(draftId);
 });
-const repairMappingOptions = computed(() => [
-  { label: '请选择外部资料映射', value: '' },
-  ...mappings.value.map(mapping => ({ label: `${mapping.name} · ${mapping.tableName}`, value: mapping.id })),
-]);
+const repairTable = computed(
+  () => state.value.tables.find(table => table.key === selectedRepairSheetKey.value) ?? null,
+);
+const repairTableOptions = computed(() => state.value.tables.map(table => ({ label: table.name, value: table.key })));
+const repairColumnOptions = computed(() =>
+  (repairTable.value?.columns ?? []).map(column => ({ label: column.label, value: column.sourceLabel })),
+);
 const repairPreviewFields = computed(() => {
   const preview = repairPreview.value;
-  const mapping = mappingsStore.getMapping(selectedRepairMappingId.value);
-  if (!preview || !mapping) return [];
-  return mapping.fields
-    .map(field => ({ key: field.key, label: field.label, value: preview.fields[field.key] || '' }))
+  const table = repairTable.value;
+  if (!preview || !table) return [];
+  return table.columns
+    .map(column => ({ key: column.index, label: column.label, value: preview.fields[column.sourceLabel] || '' }))
     .filter(field => field.value);
 });
 const normalizedCatalogQuery = computed(() => catalogQuery.value.trim().toLocaleLowerCase());
@@ -421,6 +382,10 @@ const filteredRows = computed(() => {
   if (!query) return rows;
   return rows.filter(row => row.cells.join(' ').toLocaleLowerCase().includes(query));
 });
+const externalProfilesLayout = computed(() => settingsStore.settings.externalProfilesLayout);
+const activeTableCardColumns = computed(() =>
+  (activeTable.value?.columns ?? []).filter(column => !isExternalProfileIdentifierColumn(column)),
+);
 const tableCountLabel = computed(() => {
   if (state.value.status === 'loading') return '读取中';
   if (state.value.status !== 'ready') return '外部资料表';
@@ -429,12 +394,15 @@ const tableCountLabel = computed(() => {
 const activeTableCountLabel = computed(() =>
   activeTable.value ? `${activeTable.value.rows.length} 行 · ${activeTable.value.columns.length} 列` : '外部资料表',
 );
-const externalGridTemplate = computed(() =>
-  activeTable.value?.columns.length
-    ? `repeat(${activeTable.value.columns.length}, minmax(120px, 1fr))`
-    : 'minmax(0, 1fr)',
-);
-const externalTableMinWidth = computed(() => Math.max(0, (activeTable.value?.columns.length ?? 0) * 120));
+
+function externalProfileRowIdentifier(table: ExternalProfileTable, row: ExternalProfileRow) {
+  const column = table.columns.find(isExternalProfileIdentifierColumn);
+  return (column ? row.cells[column.index] : '') || getExternalProfileRowLabel(table, row);
+}
+
+function isCompactExternalProfileValue(value: string) {
+  return Boolean(value) && value.length <= 18 && !value.includes('\n');
+}
 
 function refresh() {
   bridge.refresh();
@@ -445,43 +413,24 @@ function openTable(table: ExternalProfileTable) {
   phone.pushRoute('profiles', 'table', table.name, { sheetKey: table.key });
 }
 
-function rowIdentity(row: ExternalProfileRow, mapping: ExternalProfileMapping) {
-  const identityColumn = activeTable.value?.columns.find(column => column.sourceLabel === mapping.identityColumn);
-  return identityColumn ? (row.cells[identityColumn.index] || '').trim() : '';
-}
-
-function openMappedRow(row: ExternalProfileRow) {
-  const mapping = activeTableMapping.value;
-  if (!mapping) return;
-  const identityValue = rowIdentity(row, mapping);
-  if (!identityValue) return void toastr.warning('当前行没有有效身份值，无法打开');
-  phone.pushRoute('profiles', 'row', row.cells.find(Boolean) || identityValue, {
-    identityValue,
-    mappingId: mapping.id,
-    sheetKey: mapping.sheetKey,
-  });
-}
-
-function openMappedIdentity(identityValue: string) {
-  const mapping = activeRowMapping.value;
-  if (!mapping || !identityValue) return;
-  const row = activeMappedRows.value.find(candidate => candidate.identityValue === identityValue);
-  phone.replacePage('row', row?.displayValue || identityValue, {
-    identityValue,
-    mappingId: mapping.id,
-    sheetKey: mapping.sheetKey,
-  });
+function openRow(row: ExternalProfileRow) {
+  const table = activeTable.value ?? activeRowTable.value;
+  if (!table) return;
+  const params = {
+    rowIndex: String(row.index),
+    sheetKey: table.key,
+  };
+  if (route.value.page === 'row') {
+    phone.replacePage('row', getExternalProfileRowLabel(table, row), params);
+    return;
+  }
+  phone.pushRoute('profiles', 'row', getExternalProfileRowLabel(table, row), params);
 }
 
 function returnToActiveTable() {
-  const mapping = activeRowMapping.value;
-  if (!mapping) return returnToCatalog();
-  selectedTableMappingId.value = mapping.id;
-  phone.replacePage('table', mapping.tableName, { sheetKey: mapping.sheetKey });
-}
-
-function openMappings() {
-  phone.pushRoute('profiles', 'mappings', '资料映射');
+  const table = activeRowTable.value;
+  if (!table) return returnToCatalog();
+  phone.replacePage('table', table.name, { sheetKey: table.key });
 }
 
 function getFailedDraftTitle(draft: FailedGenerationDraft) {
@@ -491,9 +440,8 @@ function getFailedDraftTitle(draft: FailedGenerationDraft) {
 }
 
 function getFailedDraftContext(draft: FailedGenerationDraft) {
-  const mappingId = typeof draft.context.mappingId === 'string' ? draft.context.mappingId : '';
-  const mapping = mappingsStore.getMapping(mappingId);
-  return mapping ? `${mapping.name} · ${mapping.tableName}` : '资料映射已失效，请重新选择';
+  const sheetKey = typeof draft.context.sheetKey === 'string' ? draft.context.sheetKey : '';
+  return state.value.tables.find(table => table.key === sheetKey)?.name || '请选择保存目标';
 }
 
 function openFailedDraft(draftId: string) {
@@ -514,7 +462,8 @@ async function removeFailedDraft(draftId: string) {
 function reparseFailedDraft() {
   const draft = activeFailedDraft.value;
   if (!draft) return;
-  if (!selectedRepairMappingId.value) return void toastr.warning('请先选择外部资料映射');
+  if (!selectedRepairSheetKey.value || !selectedRepairTitleColumn.value)
+    return void toastr.warning('请先选择目标表和标题列');
   const parsed = parseProfileXmlResult(failedDraftRawOutput.value);
   if (!parsed.ok) {
     externalGeneration.updateFailedDraft(draft.id, {
@@ -536,18 +485,18 @@ function reparseFailedDraft() {
 async function saveRepairedDraft() {
   const draft = activeFailedDraft.value;
   const preview = repairPreview.value;
-  const mapping = mappingsStore.getMapping(selectedRepairMappingId.value);
-  if (!draft || !preview || !mapping) return void toastr.warning('请先完成解析并选择有效映射');
-  const identityRecordId = draft.generationRecord?.id || draft.id;
+  const table = repairTable.value;
+  if (!draft || !preview || !table || !selectedRepairTitleColumn.value)
+    return void toastr.warning('请先完成解析并选择目标表和标题列');
   try {
-    await repository.insertMappedRow(mapping, {
-      ...buildExternalProfileGenerationValues(preview, mapping),
-      identityValue: `profile-generation:${identityRecordId}`,
-    });
+    await repository.insertRow(
+      table.key,
+      buildExternalProfileGenerationValues(preview, table, selectedRepairTitleColumn.value),
+    );
     externalGeneration.deleteFailedDraft(draft.id);
     refresh();
     toastr.success('已保存到外部资料表');
-    phone.replacePage('table', mapping.tableName, { sheetKey: mapping.sheetKey });
+    phone.replacePage('table', table.name, { sheetKey: table.key });
   } catch (error) {
     toastr.error(error instanceof Error ? error.message : '外部资料保存失败');
   }
@@ -570,18 +519,9 @@ watch(
   () => [route.value.appId, route.value.page] as const,
   ([appId, page]) => {
     if (appId !== 'profiles') return;
-    if (!['root', 'table', 'row', 'mappings', 'mapping-editor', 'failed-draft'].includes(page)) {
+    if (!['root', 'table', 'row', 'failed-draft'].includes(page)) {
       phone.replacePage('root', '资料表');
     }
-  },
-  { immediate: true },
-);
-
-watch(
-  () => [activeTable.value?.key, activeTableMappings.value.map(mapping => mapping.id).join('|')] as const,
-  () => {
-    if (activeTableMappings.value.some(mapping => mapping.id === selectedTableMappingId.value)) return;
-    selectedTableMappingId.value = activeTableMappings.value[0]?.id || '';
   },
   { immediate: true },
 );
@@ -591,8 +531,9 @@ watch(
   () => {
     const draft = activeFailedDraft.value;
     failedDraftRawOutput.value = draft?.rawOutput || '';
-    const draftMappingId = typeof draft?.context.mappingId === 'string' ? draft.context.mappingId : '';
-    selectedRepairMappingId.value = mappingsStore.getMapping(draftMappingId) ? draftMappingId : '';
+    const draftSheetKey = typeof draft?.context.sheetKey === 'string' ? draft.context.sheetKey : '';
+    selectedRepairSheetKey.value = draftSheetKey;
+    selectedRepairTitleColumn.value = typeof draft?.context.titleColumn === 'string' ? draft.context.titleColumn : '';
     repairPreview.value = null;
   },
   { immediate: true },
@@ -670,84 +611,94 @@ const regenerateFailedDraft = useFailedDraftRegeneration({
 .pc-external-profile-chevron {
   color: var(--pc-muted);
 }
-.pc-external-profile-grid-wrap {
+.pc-external-profile-layout-toggle {
+  flex: 0 0 auto;
+}
+.pc-external-profile-layout-toggle > button {
+  width: 34px;
+  min-width: 34px;
+  padding-inline: 0;
+}
+.pc-external-profile-card-track {
+  display: grid;
   min-width: 0;
+  gap: 12px;
+}
+.pc-external-profile-card-track.is-horizontal {
+  grid-auto-columns: clamp(270px, 82%, 360px);
+  grid-auto-flow: column;
   overflow-x: auto;
-  border: 1px solid var(--pc-border);
-  border-radius: var(--pc-card-radius);
-  background: var(--pc-surface);
+  overscroll-behavior-inline: contain;
+  padding: 2px 2px 10px;
+  scroll-padding-inline: 2px;
+  scroll-snap-type: inline proximity;
 }
-.pc-external-profile-mapping-row {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
-  align-items: end;
-  gap: 8px;
+.pc-external-profile-card-track.is-vertical {
+  grid-template-columns: minmax(0, 1fr);
 }
-.pc-external-profile-mapping-row .pc-field-group {
-  min-width: 0;
-}
-.pc-external-profile-mapping-warning {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
-  align-items: center;
-  gap: 10px;
-}
-.pc-external-profile-mapping-warning p {
-  margin: 3px 0 0;
-}
-.pc-external-profile-grid {
-  display: grid;
-  width: max(100%, var(--pc-external-profile-min-width, 0px));
-  min-width: var(--pc-external-profile-min-width, 0px);
-}
-.pc-external-profile-grid-header,
-.pc-external-profile-grid-row {
-  display: grid;
-  grid-template-columns: var(--pc-external-profile-grid, minmax(0, 1fr));
-}
-.pc-external-profile-grid-header {
-  position: sticky;
-  z-index: 1;
-  top: 0;
-  border-bottom: 1px solid var(--pc-border);
-  background: color-mix(in srgb, var(--pc-surface-strong) 88%, var(--pc-theme-accent) 12%);
-  color: var(--pc-muted);
-  font-size: 12px;
-  font-weight: 800;
-}
-.pc-external-profile-grid-row {
+.pc-external-profile-data-card {
   width: 100%;
-  /* ui-reuse-allow: PROFILEBRIDGE02F semantic row button keeps the existing external-grid layout. */
+  min-width: 0;
+  align-content: start;
+  /* ui-reuse-allow: PROFILECARD01 interactive section cards reset native button appearance. */
   appearance: none;
-  border: 0;
-  border-bottom: 1px solid var(--pc-border);
-  background: transparent;
   color: inherit;
   cursor: pointer;
   font: inherit;
-  padding: 0;
+  text-align: left;
 }
-.pc-external-profile-grid-row:disabled {
-  cursor: default;
+.pc-external-profile-card-track.is-horizontal .pc-external-profile-data-card {
+  scroll-snap-align: start;
 }
-.pc-external-profile-grid-row:not(:disabled):hover,
-.pc-external-profile-grid-row:not(:disabled):focus-visible {
-  background: color-mix(in srgb, var(--pc-theme-accent) 7%, transparent);
+.pc-external-profile-data-card:hover,
+.pc-external-profile-data-card:focus-visible {
+  border-color: color-mix(in srgb, var(--pc-theme-accent) 50%, var(--pc-border) 50%);
+  background: color-mix(in srgb, var(--pc-theme-accent) 7%, var(--pc-surface) 93%);
 }
-.pc-external-profile-grid-row:last-child {
-  border-bottom: 0;
+.pc-external-profile-data-card > header {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 10px;
+  margin: -14px -14px 0;
+  padding: 10px 14px;
+  background: color-mix(in srgb, var(--pc-surface-strong) 88%, var(--pc-theme-accent) 12%);
 }
-.pc-external-profile-grid-header span,
-.pc-external-profile-grid-cell {
+.pc-external-profile-data-card > header span,
+.pc-external-profile-data-card > header i {
+  color: var(--pc-muted);
+}
+.pc-external-profile-data-card > header strong {
   min-width: 0;
   overflow: hidden;
-  padding: 10px 12px;
-  text-align: left;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
-.pc-external-profile-grid-cell:first-child {
-  font-weight: 800;
+.pc-external-profile-data-card dl {
+  display: grid;
+  gap: 11px;
+  margin: 0;
+}
+.pc-external-profile-data-card dl > div {
+  display: grid;
+  grid-template-columns: minmax(68px, auto) minmax(0, 1fr);
+  align-items: start;
+  gap: 10px;
+}
+.pc-external-profile-data-card dt {
+  color: var(--pc-muted);
+}
+.pc-external-profile-data-card dd {
+  min-width: 0;
+  margin: 0;
+  overflow-wrap: anywhere;
+  white-space: pre-wrap;
+}
+.pc-external-profile-data-card dd > span.is-compact {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: var(--pc-surface-strong);
 }
 .pc-external-profile-empty-action {
   margin-top: 12px;

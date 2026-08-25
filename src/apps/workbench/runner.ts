@@ -7,8 +7,7 @@ import {
 } from '@/core/generationService';
 import { useDigestStore } from '@/apps/digest/store';
 import { useExternalProfileGenerationStore } from '@/apps/profiles/generationDrafts';
-import { readExternalMappedRows } from '@/apps/profiles/profileConsumerBridge';
-import { useExternalProfileMappingsStore } from '@/apps/profiles/profileMappings';
+import { readExternalProfileTables } from '@/apps/profiles/externalBridge';
 import { useRelationshipStore } from '@/apps/relationship/store';
 import { useDiaryStore } from '@/store/diary';
 import { useExtrasStore } from '@/store/extras';
@@ -75,10 +74,8 @@ function stepHasExistingContent(step: WorkbenchStep) {
     return relationship.data.characters.length > 0 || relationship.data.links.length > 0;
   }
   if (step.appId === 'profiles') {
-    const mapping = useExternalProfileMappingsStore().getMapping(step.config.profileMappingId);
-    if (!mapping) return false;
     try {
-      return readExternalMappedRows(mapping).length > 0;
+      return readExternalProfileTables().find(table => table.key === step.config.profileSheetKey)?.rows.length !== 0;
     } catch {
       return false;
     }
@@ -340,12 +337,15 @@ function buildStepConfig(step: WorkbenchStep) {
   }
 
   if (step.appId === 'profiles') {
-    const mapping = useExternalProfileMappingsStore().getMapping(step.config.profileMappingId);
-    if (!mapping) throw new Error('资料步骤需要重新选择有效的外部资料映射');
+    const table = readExternalProfileTables().find(candidate => candidate.key === step.config.profileSheetKey);
+    if (!table) throw new Error('资料步骤需要选择有效的外部资料表');
+    if (!table.columns.some(column => column.sourceLabel === step.config.profileTitleColumn))
+      throw new Error('资料步骤需要选择有效的标题列');
     return {
       appPrompt: getPrompt('profiles'),
-      mappingId: mapping.id,
       outputFormat: getOutputFormat('profiles.generate'),
+      sheetKey: table.key,
+      titleColumn: step.config.profileTitleColumn,
       titleHint: step.config.profileTitleHint,
       userRequirement: requirement,
     };

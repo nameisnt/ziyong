@@ -1,12 +1,5 @@
 import { useChatScopedDomain } from '@/store/chatScoped';
 import { useSettingsStore } from '@/store/settings';
-import { createExternalProfilesRepository } from '@/apps/profiles/externalCrud';
-import {
-  assertExternalMappingFields,
-  readExternalMappedRows,
-  type ExternalMappedProfileRow,
-} from '@/apps/profiles/profileConsumerBridge';
-import { useExternalProfileMappingsStore } from '@/apps/profiles/profileMappings';
 import { TimekeeperCalendarTemplateSchema, type TimekeeperCalendarTemplate } from '@/type/settings';
 import { validateInplace } from '@/util/zod';
 
@@ -22,9 +15,6 @@ export type TimekeeperDate = z.infer<typeof TimekeeperDateSchema>;
 const TimekeeperPersonSchema = z.object({
   id: z.string(),
   name: z.string().default('未命名人物'),
-  profileEntryId: z.string().default(''),
-  profileIdentityValue: z.string().default(''),
-  profileMappingId: z.string().default(''),
   selected: z.boolean().default(true),
   birth: TimekeeperDateSchema.default(() => TimekeeperDateSchema.parse({})),
 });
@@ -39,13 +29,9 @@ export type TimekeeperDelta = z.infer<typeof TimekeeperDeltaSchema>;
 
 export const TimekeeperSettingsSchema = z.object({
   calendar: TimekeeperCalendarTemplateSchema.default(() => createManualCalendar()),
-  calendarProfileEntryId: z.string().default(''),
-  calendarProfileIdentityValue: z.string().default(''),
-  calendarProfileMappingId: z.string().default(''),
   current: TimekeeperDateSchema.default(() => TimekeeperDateSchema.parse({})),
   delta: TimekeeperDeltaSchema.default(() => TimekeeperDeltaSchema.parse({})),
   people: z.array(TimekeeperPersonSchema).default([]),
-  personProfileMappingId: z.string().default(''),
   updateCurrentOnConfirm: z.boolean().default(true),
 });
 export type TimekeeperSettings = z.infer<typeof TimekeeperSettingsSchema>;
@@ -93,12 +79,6 @@ export function parseProfileBirthDate(text: string): TimekeeperDate | null {
     month: values[1],
     year: values[0],
   };
-}
-
-function serializeBirthDate(date: TimekeeperDate) {
-  return `${Math.max(1, Math.round(date.year))}-${String(Math.max(1, Math.round(date.month))).padStart(2, '0')}-${String(
-    Math.max(1, Math.round(date.day)),
-  ).padStart(2, '0')}`;
 }
 
 function clampNumber(value: number, min: number, max: number) {
@@ -315,8 +295,6 @@ function diffDates(from: TimekeeperDate, to: TimekeeperDate, calendar: Timekeepe
 }
 
 export const useTimekeeperStore = defineStore('timekeeper', () => {
-  const profileMappings = useExternalProfileMappingsStore();
-  const profileRepository = createExternalProfilesRepository();
   const settingsStore = useSettingsStore();
   const {
     data: settings,
@@ -337,15 +315,6 @@ export const useTimekeeperStore = defineStore('timekeeper', () => {
 
   const nextDate = computed(() => addDelta(settings.value.current, settings.value.delta, settings.value.calendar));
   const selectedPeople = computed(() => settings.value.people.filter(person => person.selected));
-  const mappedPersonRows = ref<ExternalMappedProfileRow[]>([]);
-  const mappedCalendarRows = ref<ExternalMappedProfileRow[]>([]);
-  const externalProfileError = ref('');
-
-  function getMappedBirthDate(row: ExternalMappedProfileRow) {
-    const value = row.fields.birthDate?.trim();
-    return value ? parseProfileBirthDate(`出生日期：${value}`) : null;
-  }
-
   function createDefaultBirth() {
     return normalizeDate(
       {
@@ -356,117 +325,6 @@ export const useTimekeeperStore = defineStore('timekeeper', () => {
       settings.value.calendar,
     );
   }
-
-  function syncProfilePeople() {
-    const mappingId = settings.value.personProfileMappingId;
-    if (!mappingId) return;
-    const identities = new Set(mappedPersonRows.value.map(row => row.identityValue.trim()).filter(Boolean));
-    mappedPersonRows.value
-      .filter(row => row.identityValue.trim())
-      .forEach(row => {
-        const identityValue = row.identityValue.trim();
-        const existing = settings.value.people.find(
-          person => person.profileMappingId === mappingId && person.profileIdentityValue === identityValue,
-        );
-        if (existing) {
-          existing.name = row.displayValue.trim() || existing.name;
-          const birth = getMappedBirthDate(row);
-          if (birth) existing.birth = normalizeDate(birth, settings.value.calendar);
-          existing.selected = Boolean(birth);
-          return;
-        }
-        settings.value.people.push({
-          birth: normalizeDate(getMappedBirthDate(row) ?? createDefaultBirth(), settings.value.calendar),
-          id: createId('time_person'),
-          name: row.displayValue.trim() || identityValue,
-          profileEntryId: '',
-          profileIdentityValue: identityValue,
-          profileMappingId: mappingId,
-          selected: Boolean(getMappedBirthDate(row)),
-        });
-      });
-    settings.value.people = settings.value.people.filter(
-      person => person.profileMappingId !== mappingId || identities.has(person.profileIdentityValue),
-    );
-  }
-
-  function getProfileCalendar(profileIdentityValue: string) {
-    const row = mappedCalendarRows.value.find(item => item.identityValue === profileIdentityValue);
-    if (!row) return null;
-    const name = row.fields.calendarName?.trim();
-    const eraName = row.fields.calendarEraName?.trim();
-    const monthsPerYear = Number(row.fields.calendarMonthsPerYear?.match(/\d+/u)?.[0]);
-    const monthDaysText = row.fields.calendarMonthDays?.trim();
-    if (!name && !eraName && !monthsPerYear && !monthDaysText) return null;
-    return normalizeCalendar({
-      eraName: eraName || name || '世界历',
-      id: `external-calendar:${encodeURIComponent(profileIdentityValue)}`,
-      kind: 'fixed',
-      monthDaysText: monthDaysText || '30',
-      monthsPerYear: monthsPerYear || 12,
-      name: name || `${row.displayValue || profileIdentityValue}历法`,
-    });
-  }
-
-  function syncProfileCalendar() {
-    if (settings.value.calendarProfileIdentityValue) {
-      const linked = getProfileCalendar(settings.value.calendarProfileIdentityValue);
-      if (linked) settings.value.calendar = linked;
-      else settings.value.calendarProfileIdentityValue = '';
-      return;
-    }
-    const available = mappedCalendarRows.value
-      .map(row => getProfileCalendar(row.identityValue))
-      .filter((calendar): calendar is TimekeeperCalendarTemplate => Boolean(calendar));
-    if (available.length !== 1) return;
-    settings.value.calendarProfileIdentityValue = decodeURIComponent(
-      available[0].id.replace(/^external-calendar:/u, ''),
-    );
-    settings.value.calendar = available[0];
-  }
-
-  async function refreshMappedProfiles() {
-    externalProfileError.value = '';
-    try {
-      const personMappingId = settings.value.personProfileMappingId;
-      if (personMappingId) {
-        const mapping = profileMappings.getMapping(personMappingId);
-        if (!mapping) throw new Error('人物资料映射已经不存在');
-        assertExternalMappingFields(mapping, ['birthDate']);
-        mappedPersonRows.value = readExternalMappedRows(mapping);
-        syncProfilePeople();
-      } else {
-        mappedPersonRows.value = [];
-      }
-
-      const calendarMappingId = settings.value.calendarProfileMappingId;
-      if (calendarMappingId) {
-        const mapping = profileMappings.getMapping(calendarMappingId);
-        if (!mapping) throw new Error('历法资料映射已经不存在');
-        assertExternalMappingFields(mapping, [
-          'calendarName',
-          'calendarEraName',
-          'calendarMonthsPerYear',
-          'calendarMonthDays',
-        ]);
-        mappedCalendarRows.value = readExternalMappedRows(mapping);
-        syncProfileCalendar();
-      } else {
-        mappedCalendarRows.value = [];
-      }
-    } catch (error) {
-      externalProfileError.value = error instanceof Error ? error.message : '读取外部资料失败';
-    }
-  }
-
-  watch(
-    () => `${profileMappings.scopeKey}|${scopeKey.value}|${settings.value.personProfileMappingId}|${settings.value.calendarProfileMappingId}`,
-    () => {
-      if (profileMappings.scopeKey !== scopeKey.value) return;
-      void refreshMappedProfiles();
-    },
-    { immediate: true },
-  );
 
   function formatDate(date: TimekeeperDate) {
     const normalized = normalizeDate(date, settings.value.calendar);
@@ -503,32 +361,7 @@ export const useTimekeeperStore = defineStore('timekeeper', () => {
     }));
   }
 
-  async function syncPersonProfile(personId: string) {
-    const person = settings.value.people.find(item => item.id === personId);
-    if (!person?.profileMappingId || !person.profileIdentityValue) return false;
-    const mapping = profileMappings.getMapping(person.profileMappingId);
-    if (!mapping) throw new Error('人物资料映射已经不存在');
-    assertExternalMappingFields(mapping, ['birthDate']);
-    await profileRepository.updateMappedRow(mapping, person.profileIdentityValue, {
-      displayValue: person.name,
-      fields: { birthDate: serializeBirthDate(person.birth) },
-    });
-    return true;
-  }
-
   function selectCalendar(calendarId: string) {
-    if (calendarId.startsWith('external-calendar:')) {
-      const profileIdentityValue = decodeURIComponent(calendarId.slice('external-calendar:'.length));
-      const calendar = getProfileCalendar(profileIdentityValue);
-      if (!calendar) return;
-      settings.value.calendarProfileEntryId = '';
-      settings.value.calendarProfileIdentityValue = profileIdentityValue;
-      settings.value.calendar = calendar;
-      normalizeCurrentDates();
-      return;
-    }
-    settings.value.calendarProfileEntryId = '';
-    settings.value.calendarProfileIdentityValue = '';
     if (calendarId === GREGORIAN_CALENDAR.id) {
       settings.value.calendar = { ...GREGORIAN_CALENDAR };
       normalizeCurrentDates();
@@ -582,27 +415,13 @@ export const useTimekeeperStore = defineStore('timekeeper', () => {
     return lines.join('\n');
   }
 
-  async function createPerson() {
+  function createPerson() {
     const name = `人物 ${settings.value.people.length + 1}`;
     const birth = createDefaultBirth();
     const id = createId('time_person');
-    const mappingId = settings.value.personProfileMappingId;
-    if (mappingId) {
-      const mapping = profileMappings.getMapping(mappingId);
-      if (!mapping) throw new Error('人物资料映射已经不存在');
-      assertExternalMappingFields(mapping, ['birthDate']);
-      await profileRepository.insertMappedRow(mapping, {
-        displayValue: name,
-        fields: { birthDate: serializeBirthDate(birth) },
-        identityValue: id,
-      });
-    }
     const person: TimekeeperPerson = {
       id,
       name,
-      profileEntryId: '',
-      profileIdentityValue: mappingId ? id : '',
-      profileMappingId: mappingId,
       selected: true,
       birth,
     };
@@ -610,34 +429,7 @@ export const useTimekeeperStore = defineStore('timekeeper', () => {
     return person;
   }
 
-  function linkPersonProfile(personId: string, profileIdentityValue: string) {
-    const person = settings.value.people.find(item => item.id === personId);
-    if (!person) return { birthImported: false, ok: false };
-    if (!profileIdentityValue) {
-      person.profileEntryId = '';
-      person.profileIdentityValue = '';
-      person.profileMappingId = '';
-      return { birthImported: false, ok: true };
-    }
-    const mappingId = settings.value.personProfileMappingId;
-    const row = mappedPersonRows.value.find(item => item.identityValue === profileIdentityValue);
-    if (!mappingId || !row) return { birthImported: false, ok: false };
-    person.profileEntryId = '';
-    person.profileIdentityValue = row.identityValue;
-    person.profileMappingId = mappingId;
-    person.name = row.displayValue.trim() || row.identityValue;
-    const birth = getMappedBirthDate(row);
-    if (birth) person.birth = normalizeDate(birth, settings.value.calendar);
-    return { birthImported: Boolean(birth), ok: true };
-  }
-
-  async function deletePerson(personId: string, deleteProfile = true) {
-    const person = settings.value.people.find(item => item.id === personId);
-    if (deleteProfile && person?.profileMappingId && person.profileIdentityValue) {
-      const mapping = profileMappings.getMapping(person.profileMappingId);
-      if (!mapping) throw new Error('人物资料映射已经不存在');
-      await profileRepository.deleteMappedRow(mapping, person.profileIdentityValue);
-    }
+  function deletePerson(personId: string) {
     settings.value.people = settings.value.people.filter(person => person.id !== personId);
   }
 
@@ -651,27 +443,19 @@ export const useTimekeeperStore = defineStore('timekeeper', () => {
     createPerson,
     deleteCalendarTemplate,
     deletePerson,
-    externalProfileError,
     formatAge,
     formatDate,
     formatDuration,
     getAgeAt,
     getDaysInMonth,
-    getProfileCalendar,
-    linkPersonProfile,
-    mappedCalendarRows,
-    mappedPersonRows,
     nextDate,
     normalizeCurrentDates,
     rehydrateFromSettings,
-    refreshMappedProfiles,
     resetCurrentScope,
     saveCurrentCalendarAsTemplate,
     selectCalendar,
     selectedPeople,
     settings,
-    syncPersonProfile,
-    syncProfilePeople,
     scopeKey,
     switchScope,
   };

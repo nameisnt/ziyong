@@ -559,7 +559,6 @@ watch(
   display: grid;
   align-content: start;
   gap: 14px;
-  padding: 14px;
 }
 
 .pc-regex-wizard-form,

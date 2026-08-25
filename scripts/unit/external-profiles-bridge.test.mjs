@@ -43,6 +43,7 @@ test('external profiles normalize sheet headers and rows without creating phone 
     ['row_id', '姓名', '姓名（2）', '第 4 列'],
   );
   assert.deepEqual(tables[0].rows[0].cells, ['1', '李沐晨', '别名', '{"status":"在场"}']);
+  assert.equal(bridgeModule.getExternalProfileRowLabel(tables[0], tables[0].rows[0]), '李沐晨');
   assert.equal(tables[0].rows[1].cells[3], '[无法读取的结构化内容]');
   assert.equal(tables[0].key, 'sheet_people');
   assert.equal(tables[0].uid, 'people');
@@ -111,10 +112,10 @@ test('external profiles bridge exposes missing and read errors without fallback 
   assert.match(broken.getState().message, /外部读取失败/u);
 });
 
-test('Profiles App keeps external tables on the read bridge and limits legacy access to draft recovery', () => {
+test('Profiles App reads and writes external tables without legacy phone profile entries', () => {
   assert.match(profilesApp, /createExternalProfilesBridge\(\)/u);
+  assert.match(profilesApp, /createExternalProfilesRepository\(\)/u);
   assert.match(profilesApp, /onTavernEvent\('CHAT_CHANGED', refresh\)/u);
   assert.match(profilesApp, /stopBridge\?\.stop\(\)/u);
   assert.doesNotMatch(profilesApp, /legacyProfiles\.(?:entries|tables|createEntry|updateEntry|deleteEntry)/u);
-  assert.doesNotMatch(profilesApp, /updateCell|updateRow|insertRow|deleteRow|importTableAsJson/u);
 });

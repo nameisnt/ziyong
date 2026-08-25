@@ -54,6 +54,7 @@
           <SearchableCombobox
             v-if="field.kind === 'select'"
             :model-value="String(values[field.key] ?? '')"
+            :input-label="field.label"
             :options="field.options || []"
             :placeholder="field.placeholder || `选择或搜索${field.label}`"
             @update:model-value="values[field.key] = $event"

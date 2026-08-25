@@ -338,8 +338,7 @@ import GenerationPreviewPanel from '@/components/GenerationPreviewPanel.vue';
 import InfoHint from '@/components/InfoHint.vue';
 import PreviewDraftNotice from '@/components/PreviewDraftNotice.vue';
 import { useBulkSelection } from '@/composables/useBulkSelection';
-import { readExternalMappedRows } from '@/apps/profiles/profileConsumerBridge';
-import { useExternalProfileMappingsStore } from '@/apps/profiles/profileMappings';
+import { getExternalProfileRowLabel, readExternalProfileTables } from '@/apps/profiles/externalBridge';
 import {
   cleanExternalProfileReferences,
   externalProfileReferenceKey,
@@ -386,7 +385,6 @@ type StorylinePreview = {
 };
 
 const phone = usePhoneStore();
-const profileMappings = useExternalProfileMappingsStore();
 const prompts = usePromptStore();
 const settingsStore = useSettingsStore();
 const summary = useSummaryStore();
@@ -514,8 +512,7 @@ watch(
       .flatMap(item => item.relatedProfiles)
       .map(externalProfileReferenceKey)
       .join('|');
-    const mappings = profileMappings.mappings.map(mapping => `${mapping.id}:${mapping.updatedAt}`).join('|');
-    return `${profileMappings.scopeKey}|${mappings}|${references}`;
+    return references;
   },
   () => refreshProfileNames(),
   { immediate: true },
@@ -644,17 +641,14 @@ function refreshProfileNames() {
   profileNames.value = {};
   profileReadError.value = '';
   const references = [...storylines.lines, ...storylines.hooks].flatMap(item => item.relatedProfiles);
-  const mappingIds = [...new Set(references.map(reference => reference.profileMappingId).filter(Boolean))];
-  if (!mappingIds.length) return;
+  if (!references.length) return;
   try {
-    mappingIds.forEach(mappingId => {
-      const mapping = profileMappings.getMapping(mappingId);
-      if (!mapping) throw new Error('关联的资料映射已经不存在');
-      readExternalMappedRows(mapping).forEach(row => {
-        profileNames.value[
-          externalProfileReferenceKey({ profileIdentityValue: row.identityValue, profileMappingId: mappingId })
-        ] = row.displayValue.trim() || row.identityValue;
-      });
+    const tables = readExternalProfileTables();
+    references.forEach(reference => {
+      const table = tables.find(candidate => candidate.key === reference.profileSheetKey);
+      const row = table?.rows.find(candidate => candidate.index === reference.profileRowIndex);
+      if (!table || !row) return;
+      profileNames.value[externalProfileReferenceKey(reference)] = getExternalProfileRowLabel(table, row);
     });
   } catch (error) {
     profileReadError.value = error instanceof Error ? error.message : '读取关联资料失败';
@@ -685,9 +679,13 @@ function openActiveEditor() {
 }
 
 function openProfile(profile: ExternalProfileReference) {
-  const mapping = profileMappings.getMapping(profile.profileMappingId);
-  if (!mapping) return void toastr.warning('关联的资料映射已经不存在');
-  phone.pushRoute('profiles', 'table', mapping.name, { sheetKey: mapping.sheetKey });
+  const table = readExternalProfileTables().find(candidate => candidate.key === profile.profileSheetKey);
+  const row = table?.rows.find(candidate => candidate.index === profile.profileRowIndex);
+  if (!table || !row) return void toastr.warning('关联的资料已经不存在');
+  phone.pushRoute('profiles', 'row', getExternalProfileRowLabel(table, row), {
+    rowIndex: String(row.index),
+    sheetKey: table.key,
+  });
 }
 
 function returnToRoot() {

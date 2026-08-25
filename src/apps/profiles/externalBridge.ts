@@ -22,6 +22,18 @@ export type ExternalProfileTable = {
   uid: string;
 };
 
+export function isExternalProfileIdentifierColumn(column: ExternalProfileColumn) {
+  return /^(?:row[_\s-]?id|id|uid)$/iu.test(column.label.trim());
+}
+
+export function getExternalProfileRowLabel(table: ExternalProfileTable, row: ExternalProfileRow) {
+  const value = row.cells.find((cell, index) => {
+    const column = table.columns[index];
+    return cell && column && !isExternalProfileIdentifierColumn(column);
+  });
+  return value || row.cells.find(Boolean) || `第 ${row.index} 行`;
+}
+
 export type ExternalProfilesViewState = {
   canOpenVisualizer: boolean;
   message: string;
@@ -104,6 +116,12 @@ export function normalizeExternalProfilesData(rawData: unknown): ExternalProfile
 export function resolveExternalProfilesApi(): ExternalProfilesApi | null {
   const api = getOptionalGlobalValue<ExternalProfilesApi>('AutoCardUpdaterAPI');
   return api && typeof api.exportTableAsJson === 'function' ? api : null;
+}
+
+export function readExternalProfileTables() {
+  const api = resolveExternalProfilesApi();
+  if (!api) throw new Error('未检测到外部数据库 API');
+  return normalizeExternalProfilesData(api.exportTableAsJson());
 }
 
 function initialState(): ExternalProfilesViewState {

@@ -81,11 +81,31 @@ export function resolvePluginMacro(kind: string, query: string) {
 }
 
 export function replacePluginMacros(content: string) {
-  return content.replace(PLUGIN_MACRO_PATTERN, (_match, kind: string, query: string) => resolvePluginMacro(kind, query));
+  return content.replace(PLUGIN_MACRO_PATTERN, (_match, kind: string, query: string) =>
+    resolvePluginMacro(kind, query),
+  );
+}
+
+function encodeReadableMacroValue(value: string) {
+  const escapes: Record<string, string> = {
+    '%': '%25',
+    '&': '%26',
+    '+': '%2B',
+    '=': '%3D',
+    '{': '%7B',
+    '}': '%7D',
+    '\r': '%0D',
+    '\n': '%0A',
+  };
+  return value.replace(/[%&+={}\r\n]/gu, character => escapes[character]!);
 }
 
 export function buildPluginMacro(kind: PluginMacroKind, values: Record<string, boolean | number | string>) {
-  const params = new URLSearchParams();
-  Object.entries(values).forEach(([key, value]) => params.set(key, typeof value === 'boolean' ? (value ? '1' : '0') : String(value)));
-  return `{{phone:${kind}?${params.toString()}}}`;
+  const query = Object.entries(values)
+    .map(
+      ([key, value]) =>
+        `${key}=${encodeReadableMacroValue(typeof value === 'boolean' ? (value ? '1' : '0') : String(value))}`,
+    )
+    .join('&');
+  return `{{phone:${kind}?${query}}}`;
 }

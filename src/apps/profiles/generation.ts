@@ -2,11 +2,12 @@ import type { GenerationAdapter, XmlParseResult } from '@/type/generation';
 import { parsePrettified } from '@/util/zod';
 import { parseConfiguredOutput } from '@/util/outputParsing';
 import { parseTaggedOutputCandidates } from '@/util/parseCandidates';
-import type { ExternalProfileMapping } from './profileMappings';
+import type { ExternalProfileTable } from './externalBridge';
 
 export const ProfileGenerateConfigSchema = z.object({
   appPrompt: z.string(),
-  mappingId: z.string().min(1, '请选择外部资料映射'),
+  sheetKey: z.string().min(1, '请选择外部资料表'),
+  titleColumn: z.string().min(1, '请选择标题列'),
   outputFormat: z.string(),
   titleHint: z.string().default(''),
   userRequirement: z.string().default(''),
@@ -141,41 +142,46 @@ export function parseProfileXmlResult(raw: string): XmlParseResult<ProfileXmlRes
 }
 
 type ProfileGenerationDependencies = {
-  getMapping: (mappingId: string) => ExternalProfileMapping | null;
-  insertMappedRow: (
-    mapping: ExternalProfileMapping,
-    values: {
-      displayValue: string;
-      fields: Record<string, string>;
-      identityValue: string;
-    },
-  ) => Promise<number> | number;
+  getTables: () => ExternalProfileTable[];
+  insertRow: (sheetKey: string, values: Record<string, unknown>) => Promise<number> | number;
 };
 
-function requireMapping(dependencies: ProfileGenerationDependencies, mappingId: string) {
-  const mapping = dependencies.getMapping(mappingId);
-  if (!mapping) throw new Error('请选择有效的外部资料映射');
-  return mapping;
+function requireTable(dependencies: ProfileGenerationDependencies, sheetKey: string) {
+  const table = dependencies.getTables().find(candidate => candidate.key === sheetKey);
+  if (!table) throw new Error('请选择有效的外部资料表');
+  return table;
 }
 
-function createFieldInstruction(mapping: ExternalProfileMapping) {
-  if (!mapping.fields.length) return '';
+function requireTitleColumn(table: ExternalProfileTable, titleColumn: string) {
+  const column = table.columns.find(candidate => candidate.sourceLabel === titleColumn);
+  if (!column) throw new Error('请选择有效的标题列');
+  return column;
+}
+
+function createFieldInstruction(table: ExternalProfileTable, titleColumn: string) {
+  const columns = table.columns.filter(column => column.sourceLabel && column.sourceLabel !== titleColumn);
+  if (!columns.length) return '';
   return [
-    '请按以下显式映射字段填写 <fields> 中的 <field id="字段id">字段值</field>；只填写上下文可确认的信息，未知可留空：',
-    ...mapping.fields.map(field => `- ${field.label}（id=${field.key}）`),
+    '请按以下外部表列名填写 <fields> 中的 <field id="列名">字段值</field>；只填写上下文可确认的信息，未知可留空：',
+    ...columns.map(column => `- ${column.label}（id=${column.sourceLabel}）`),
   ].join('\n');
 }
 
-export function buildExternalProfileGenerationValues(result: ProfileXmlResult, mapping: ExternalProfileMapping) {
-  const allowedFieldKeys = new Set(mapping.fields.map(field => field.key));
+export function buildExternalProfileGenerationValues(
+  result: ProfileXmlResult,
+  table: ExternalProfileTable,
+  titleColumn: string,
+) {
+  requireTitleColumn(table, titleColumn);
+  const allowedFieldKeys = new Set(table.columns.map(column => column.sourceLabel).filter(Boolean));
   const fields = Object.fromEntries(
     Object.entries(result.fields).filter(([fieldKey]) => allowedFieldKeys.has(fieldKey)),
   );
   if (allowedFieldKeys.has('summary') && result.summary.trim()) fields.summary = result.summary.trim();
   if (allowedFieldKeys.has('tags') && result.tags.length) fields.tags = result.tags.join('、');
   return {
-    displayValue: result.title.trim(),
-    fields,
+    ...fields,
+    [titleColumn]: result.title.trim(),
   };
 }
 
@@ -185,14 +191,14 @@ export function createProfileGenerationAdapter(dependencies: ProfileGenerationDe
     actionId: 'generate',
     configSchema: ProfileGenerateConfigSchema,
     buildRequest(config) {
-      const mapping = requireMapping(dependencies, config.mappingId);
-      const fieldInstruction = createFieldInstruction(mapping);
+      const table = requireTable(dependencies, config.sheetKey);
+      requireTitleColumn(table, config.titleColumn);
+      const fieldInstruction = createFieldInstruction(table, config.titleColumn);
       return {
         appPrompt: config.appPrompt,
         outputFormat: config.outputFormat,
         taskInstruction: [
-          `目标资料映射：${mapping.name}`,
-          `目标外部表：${mapping.tableName}`,
+          `目标外部表：${table.name}`,
           fieldInstruction,
           config.titleHint.trim() ? `标题或对象名：${config.titleHint.trim()}` : '',
         ]
@@ -201,8 +207,7 @@ export function createProfileGenerationAdapter(dependencies: ProfileGenerationDe
         taskTemplateVariables: {
           fieldInstruction,
           kindInstruction: '',
-          mappingName: mapping.name,
-          tableName: mapping.tableName,
+          tableName: table.name,
           titleInstruction: config.titleHint.trim() ? `标题或对象名：${config.titleHint.trim()}` : '',
         },
         userRequirement: config.userRequirement,
@@ -215,21 +220,22 @@ export function createProfileGenerationAdapter(dependencies: ProfileGenerationDe
     },
     preserveSaveFailure: true,
     async save(result, context) {
-      const mapping = requireMapping(dependencies, context.config.mappingId);
+      const table = requireTable(dependencies, context.config.sheetKey);
+      requireTitleColumn(table, context.config.titleColumn);
       const entityId = `profile-generation:${context.generationRecord.id}`;
-      const rowIndex = await dependencies.insertMappedRow(mapping, {
-        ...buildExternalProfileGenerationValues(result, mapping),
-        identityValue: entityId,
-      });
+      const rowIndex = await dependencies.insertRow(
+        table.key,
+        buildExternalProfileGenerationValues(result, table, context.config.titleColumn),
+      );
       return {
         entityId,
-        mappingId: mapping.id,
+        sheetKey: table.key,
         rowIndex,
       };
     },
   } satisfies GenerationAdapter<
     ProfileGenerateConfig,
     ProfileXmlResult,
-    { entityId: string; mappingId: string; rowIndex: number }
+    { entityId: string; sheetKey: string; rowIndex: number }
   >;
 }

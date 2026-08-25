@@ -109,16 +109,16 @@
           <div class="pc-profile-add-row">
             <ExternalProfileReferencePicker
               :disabled-reference-keys="linkedCharacterProfileKeys()"
-              :identity-value="profileCharacterDraft.profileIdentityValue"
-              :mapping-id="profileCharacterDraft.profileMappingId"
+              :row-index="profileCharacterDraft.profileRowIndex"
+              :sheet-key="profileCharacterDraft.profileSheetKey"
               @resolved="onProfileCharacterDraftResolved"
-              @update:identity-value="profileCharacterDraft.profileIdentityValue = $event"
-              @update:mapping-id="profileCharacterDraft.profileMappingId = $event"
+              @update:row-index="profileCharacterDraft.profileRowIndex = $event"
+              @update:sheet-key="profileCharacterDraft.profileSheetKey = $event"
             />
             <button
               class="pc-icon-btn"
               type="button"
-              :disabled="!profileCharacterDraft.profileIdentityValue || !profileCharacterDraft.displayValue"
+              :disabled="!profileCharacterDraft.profileRowIndex || !profileCharacterDraft.displayValue"
               :aria-label="t`添加关联人物`"
               :title="t`添加关联人物`"
               @click="addProfileCharacter"
@@ -172,11 +172,11 @@
               </p>
               <ExternalProfileReferencePicker
                 :disabled-reference-keys="linkedCharacterProfileKeys(character.id)"
-                :identity-value="character.profileIdentityValue"
-                :mapping-id="character.profileMappingId"
+                :row-index="character.profileRowIndex"
+                :sheet-key="character.profileSheetKey"
                 @resolved="onCharacterProfileResolved(character.id, $event)"
-                @update:identity-value="onCharacterProfileIdentityChange(character.id, $event)"
-                @update:mapping-id="onCharacterProfileMappingChange(character.id, $event)"
+                @update:row-index="onCharacterProfileRowChange(character.id, $event)"
+                @update:sheet-key="onCharacterProfileTableChange(character.id, $event)"
               />
             </article>
           </div>
@@ -444,8 +444,8 @@ const graphSvg = ref<SVGSVGElement | null>(null);
 const characterDraft = ref('');
 const profileCharacterDraft = reactive({
   displayValue: '',
-  profileIdentityValue: '',
-  profileMappingId: '',
+  profileRowIndex: 0,
+  profileSheetKey: '',
 });
 const failedDraftRawOutput = ref('');
 const charactersExpanded = ref(true);
@@ -658,10 +658,10 @@ function addCharacter() {
 }
 
 function addProfileCharacter() {
-  if (!profileCharacterDraft.profileIdentityValue || !profileCharacterDraft.profileMappingId) return;
+  if (!profileCharacterDraft.profileRowIndex || !profileCharacterDraft.profileSheetKey) return;
   const reference = {
-    profileIdentityValue: profileCharacterDraft.profileIdentityValue,
-    profileMappingId: profileCharacterDraft.profileMappingId,
+    profileRowIndex: profileCharacterDraft.profileRowIndex,
+    profileSheetKey: profileCharacterDraft.profileSheetKey,
   };
   const referenceKey = externalProfileReferenceKey(reference);
   const existing = characters.value.find(
@@ -673,19 +673,19 @@ function addProfileCharacter() {
     return;
   }
   profileCharacterDraft.displayValue = '';
-  profileCharacterDraft.profileIdentityValue = '';
-  profileCharacterDraft.profileMappingId = '';
+  profileCharacterDraft.profileRowIndex = 0;
+  profileCharacterDraft.profileSheetKey = '';
   toastr.success(existing ? '该人物已经在关系网中' : '已从资料表添加人物');
 }
 
 function onProfileCharacterDraftResolved(value: ExternalProfileReferenceDraft & { displayValue: string }) {
   profileCharacterDraft.displayValue = value.displayValue;
-  profileCharacterDraft.profileIdentityValue = value.profileIdentityValue;
-  profileCharacterDraft.profileMappingId = value.profileMappingId;
+  profileCharacterDraft.profileRowIndex = value.profileRowIndex;
+  profileCharacterDraft.profileSheetKey = value.profileSheetKey;
 }
 
 function isCharacterProfileLinked(character: RelationshipCharacter) {
-  return Boolean(character.profileMappingId && character.profileIdentityValue);
+  return Boolean(character.profileSheetKey && character.profileRowIndex);
 }
 
 function linkedCharacterProfileKeys(exceptCharacterId = '') {
@@ -694,13 +694,13 @@ function linkedCharacterProfileKeys(exceptCharacterId = '') {
     .map(character => externalProfileReferenceKey(character));
 }
 
-function onCharacterProfileMappingChange(characterId: string, profileMappingId: string) {
-  relationship.setCharacterProfileDraft(characterId, { profileMappingId });
+function onCharacterProfileTableChange(characterId: string, profileSheetKey: string) {
+  relationship.setCharacterProfileDraft(characterId, { profileSheetKey });
 }
 
-function onCharacterProfileIdentityChange(characterId: string, profileIdentityValue: string) {
-  if (!profileIdentityValue) {
-    relationship.setCharacterProfileDraft(characterId, { profileIdentityValue: '' });
+function onCharacterProfileRowChange(characterId: string, profileRowIndex: number) {
+  if (!profileRowIndex) {
+    relationship.setCharacterProfileDraft(characterId, { profileRowIndex: 0 });
   }
 }
 
@@ -709,7 +709,7 @@ function onCharacterProfileResolved(
   value: ExternalProfileReferenceDraft & { displayValue: string },
 ) {
   if (relationship.linkCharacterProfile(characterId, value, value.displayValue)) return;
-  relationship.setCharacterProfileDraft(characterId, { profileIdentityValue: '' });
+  relationship.setCharacterProfileDraft(characterId, { profileRowIndex: 0 });
   toastr.warning('这份人物资料已经关联到其他人物');
 }
 

@@ -30,11 +30,8 @@ const WorkbenchStepConfigPersistedSchema = z.object({
   letterReceiverName: z.string().default(''),
   letterRecentCount: z.number().int().min(0).max(20).default(6),
   letterSenderName: z.string().default(''),
-  profileMappingId: z.string().default(''),
-  profileKind: z
-    .enum(['character', 'location', 'organization', 'item', 'world', 'rule', 'event', 'timeline', 'note'])
-    .default('character'),
-  profileTableId: z.string().default(''),
+  profileSheetKey: z.string().default(''),
+  profileTitleColumn: z.string().default(''),
   profileTitleHint: z.string().default(''),
   relationshipCharacterNames: z.string().default(''),
   summaryBookId: z.string().default(''),

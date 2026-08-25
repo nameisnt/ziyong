@@ -461,12 +461,12 @@
     },
     {
       "findings": [],
-      "scenario": "card-writer-profile-mapping-import",
+      "scenario": "card-writer-profile-direct-import",
       "size": "350x700"
     },
     {
       "findings": [],
-      "scenario": "card-writer-profile-mapping-import-dark",
+      "scenario": "card-writer-profile-direct-import-dark",
       "size": "350x700"
     },
     {
@@ -2001,12 +2001,12 @@
     },
     {
       "findings": [],
-      "scenario": "card-writer-profile-mapping-import",
+      "scenario": "card-writer-profile-direct-import",
       "size": "390x844"
     },
     {
       "findings": [],
-      "scenario": "card-writer-profile-mapping-import-dark",
+      "scenario": "card-writer-profile-direct-import-dark",
       "size": "390x844"
     },
     {
@@ -3541,12 +3541,12 @@
     },
     {
       "findings": [],
-      "scenario": "card-writer-profile-mapping-import",
+      "scenario": "card-writer-profile-direct-import",
       "size": "430x900"
     },
     {
       "findings": [],
-      "scenario": "card-writer-profile-mapping-import-dark",
+      "scenario": "card-writer-profile-direct-import-dark",
       "size": "430x900"
     },
     {

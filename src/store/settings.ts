@@ -299,6 +299,10 @@ export const useSettingsStore = defineStore('settings', () => {
     applyThemeProfile(settings.value, settings.value.themeProfiles[theme]);
   }
 
+  function setExternalProfilesLayout(layout: PhoneSettings['externalProfilesLayout']) {
+    settings.value.externalProfilesLayout = layout;
+  }
+
   function setVisualAccentColor(color: string) {
     settings.value.visualTheme.accentColor = color.trim() || '#007aff';
   }
@@ -375,16 +379,18 @@ export const useSettingsStore = defineStore('settings', () => {
     await validateImageFile(file, '图片图标');
     const extension = getFileExtension(file);
     const bytes = new Uint8Array(await file.arrayBuffer());
-    const path = await uploadUserFile(`phone-icon-${Date.now()}-${Math.random().toString(36).slice(2, 8)}.${extension}`, bytes);
+    const path = await uploadUserFile(
+      `phone-icon-${Date.now()}-${Math.random().toString(36).slice(2, 8)}.${extension}`,
+      bytes,
+    );
     const asset = { id: createId('home_icon'), name: file.name, path };
     settings.value.homeIconAssets.push(asset);
     return asset;
   }
 
   function getHomeIconAssetReferenceCount(assetId: string) {
-    const inactiveProfile = settings.value.theme === 'light'
-      ? settings.value.themeProfiles.dark
-      : settings.value.themeProfiles.light;
+    const inactiveProfile =
+      settings.value.theme === 'light' ? settings.value.themeProfiles.dark : settings.value.themeProfiles.light;
     return (
       Object.values(settings.value.visualTheme.appIconAssetIds).filter(value => value === assetId).length +
       Object.values(inactiveProfile.visualTheme.appIconAssetIds).filter(value => value === assetId).length +
@@ -600,7 +606,7 @@ export const useSettingsStore = defineStore('settings', () => {
             syncSelectedWallpaper(null);
           }
         }
-      }
+      },
     });
   }
 
@@ -962,6 +968,7 @@ export const useSettingsStore = defineStore('settings', () => {
     uploadHomeIconAsset,
     setActiveExternalApiProfile,
     setExternalApiProfilePreset,
+    setExternalProfilesLayout,
     setTheme,
     setAppThemeOverride,
     setVisualAccentColor,

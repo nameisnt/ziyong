@@ -489,11 +489,11 @@
           <span v-if="findImportConflict(item)" class="pc-card-writer-import-conflict">已存在</span>
           <SearchableCombobox
             class="pc-card-writer-import-mapping"
-            input-label="目标资料映射"
-            :model-value="item.mappingId"
-            :options="profileMappingOptions"
-            placeholder="选择资料映射"
-            @update:model-value="onImportMappingChange(item, $event)"
+            input-label="目标资料表"
+            :model-value="item.sheetKey"
+            :options="profileTableOptions"
+            placeholder="选择资料表"
+            @update:model-value="onImportTableChange(item, $event)"
           />
         </article>
       </div>
@@ -525,12 +525,7 @@ import InfoHint from '@/components/InfoHint.vue';
 import PreviewDraftNotice from '@/components/PreviewDraftNotice.vue';
 import SearchableCombobox from '@/components/SearchableCombobox.vue';
 import { createExternalProfilesRepository } from '@/apps/profiles/externalCrud';
-import {
-  assertExternalMappingFields,
-  readExternalMappedRows,
-  type ExternalMappedProfileRow,
-} from '@/apps/profiles/profileConsumerBridge';
-import { useExternalProfileMappingsStore } from '@/apps/profiles/profileMappings';
+import { readExternalProfileTables, type ExternalProfileTable } from '@/apps/profiles/externalBridge';
 import { useSingleGenerationTaskSession } from '@/composables/useSingleGenerationTaskSession';
 import { useBulkSelection } from '@/composables/useBulkSelection';
 import { usePreviewSession } from '@/composables/usePreviewSession';
@@ -602,7 +597,6 @@ const phone = usePhoneStore();
 const settingsStore = useSettingsStore();
 const generationAliases = useGenerationAliasesStore();
 const writerStore = useCardWriterStore();
-const profileMappings = useExternalProfileMappingsStore();
 const profileRepository = createExternalProfilesRepository();
 const previewDraftStore = usePreviewDraftStore();
 const generationSession = useSingleGenerationTaskSession({
@@ -635,9 +629,9 @@ const activeDocumentId = ref('');
 const libraryChatFilter = ref('__all__');
 const importDocumentId = ref('');
 const importConflictMode = ref<'copy' | 'skip' | 'update'>('update');
-type CardWriterProfileImportItem = { candidate: CardWriterImportCandidate; mappingId: string; selected: boolean };
+type CardWriterProfileImportItem = { candidate: CardWriterImportCandidate; selected: boolean; sheetKey: string };
 const profileImportItems = ref<CardWriterProfileImportItem[]>([]);
-const profileImportRows = ref<Record<string, ExternalMappedProfileRow[]>>({});
+const profileImportTables = ref<ExternalProfileTable[]>([]);
 const profileImportError = ref('');
 const importConflictOptions = [
   { label: '更新', value: 'update' as const },
@@ -750,11 +744,10 @@ const selectedImportCount = computed(() => profileImportItems.value.filter(item 
 const allImportItemsSelected = computed(
   () => Boolean(profileImportItems.value.length) && profileImportItems.value.every(item => item.selected),
 );
-const profileMappingOptions = computed(() =>
-  profileMappings.mappings.map(mapping => ({
-    disabled: !mapping.fields.some(field => field.key === 'details'),
-    label: mapping.name,
-    value: mapping.id,
+const profileTableOptions = computed(() =>
+  profileImportTables.value.map(table => ({
+    label: table.name,
+    value: table.key,
   })),
 );
 const completedStageCount = computed(() => stageStates.value.filter(stage => stage.status === 'completed').length);
@@ -1307,58 +1300,44 @@ function profileKindLabel(kind: CardWriterProfileKind) {
   return { character: '人物', event: '事件', world: '世界观' }[kind];
 }
 
-function defaultProfileMappingId() {
-  const compatible = profileMappings.mappings.filter(mapping => mapping.fields.some(field => field.key === 'details'));
-  return compatible.length === 1 ? compatible[0]!.id : '';
-}
-
 async function openProfileImport(document: CardWriterDocument) {
   importDocumentId.value = document.id;
   const stages = document.stages.length
     ? document.stages.filter(stage => stage.status === 'completed' && stage.content.trim())
     : [{ content: document.content, id: 'saved-document', label: document.taskLabel }];
-  const mappingId = defaultProfileMappingId();
+  await refreshProfileImportTables();
+  const sheetKey = profileImportTables.value.length === 1 ? profileImportTables.value[0]!.key : '';
   profileImportItems.value = parseCardWriterProfileCandidates(stages).map(candidate => ({
     candidate,
-    mappingId,
     selected: true,
+    sheetKey,
   }));
-  profileImportRows.value = {};
   profileImportError.value = '';
   phone.pushPage('profile-import', '导入资料表', { documentId: document.id });
-  if (mappingId) await refreshProfileImportRows(mappingId);
 }
 
-function candidateIdentity(candidate: CardWriterImportCandidate) {
-  return `${importDocumentId.value}:${candidate.sourceKey}`;
+function getImportTable(sheetKey: string) {
+  return profileImportTables.value.find(table => table.key === sheetKey) ?? null;
 }
 
 function findImportConflict(item: CardWriterProfileImportItem) {
-  return (
-    profileImportRows.value[item.mappingId]?.find(
-      row => row.identityValue.trim() === candidateIdentity(item.candidate),
-    ) ?? null
-  );
+  const table = getImportTable(item.sheetKey);
+  const titleColumn = table?.columns[0];
+  if (!table || !titleColumn) return null;
+  return table.rows.find(row => row.cells[titleColumn.index]?.trim() === item.candidate.title.trim()) ?? null;
 }
 
-async function refreshProfileImportRows(mappingId: string) {
-  const mapping = profileMappings.getMapping(mappingId);
-  if (!mapping) return;
+async function refreshProfileImportTables() {
   try {
-    assertExternalMappingFields(mapping, ['details']);
-    profileImportRows.value = {
-      ...profileImportRows.value,
-      [mappingId]: readExternalMappedRows(mapping),
-    };
+    profileImportTables.value = readExternalProfileTables();
     profileImportError.value = '';
   } catch (error) {
     profileImportError.value = error instanceof Error ? error.message : '读取外部资料失败';
   }
 }
 
-async function onImportMappingChange(item: CardWriterProfileImportItem, mappingId: string) {
-  item.mappingId = mappingId;
-  if (mappingId) await refreshProfileImportRows(mappingId);
+function onImportTableChange(item: CardWriterProfileImportItem, sheetKey: string) {
+  item.sheetKey = sheetKey;
 }
 
 function toggleAllImportItems() {
@@ -1368,55 +1347,47 @@ function toggleAllImportItems() {
   });
 }
 
-function createCopyTitle(candidate: CardWriterImportCandidate, mappingId: string) {
-  const titles = new Set((profileImportRows.value[mappingId] ?? []).map(row => row.displayValue));
+function createCopyTitle(candidate: CardWriterImportCandidate, table: ExternalProfileTable) {
+  const titleColumn = table.columns[0];
+  const titles = new Set(table.rows.map(row => (titleColumn ? row.cells[titleColumn.index] : '')));
   if (!titles.has(candidate.title)) return candidate.title;
   let index = 2;
   while (titles.has(`${candidate.title}（${index}）`)) index += 1;
   return `${candidate.title}（${index}）`;
 }
 
-function candidateMappedFields(candidate: CardWriterImportCandidate, mappingId: string) {
-  const mapping = profileMappings.getMapping(mappingId);
-  if (!mapping) throw new Error(`“${candidate.title}”没有选择有效的资料映射`);
-  assertExternalMappingFields(mapping, ['details']);
-  const mappedKeys = new Set(mapping.fields.map(field => field.key));
+function candidateRowValues(candidate: CardWriterImportCandidate, table: ExternalProfileTable, title: string) {
+  const titleColumn = table.columns[0];
+  if (!titleColumn?.sourceLabel) throw new Error(`“${table.name}”没有可写入的标题列`);
+  const columns = new Set(table.columns.map(column => column.sourceLabel).filter(Boolean));
   return {
-    fields: Object.fromEntries(Object.entries(candidate.fields).filter(([key]) => mappedKeys.has(key))),
-    mapping,
+    ...Object.fromEntries(Object.entries(candidate.fields).filter(([key]) => columns.has(key))),
+    [titleColumn.sourceLabel]: title,
   };
 }
 
 async function importCandidate(item: CardWriterProfileImportItem) {
-  const { candidate, mappingId } = item;
+  const { candidate, sheetKey } = item;
+  const table = getImportTable(sheetKey);
+  if (!table) throw new Error(`“${candidate.title}”没有选择有效的资料表`);
   const conflict = findImportConflict(item);
-  const { fields, mapping } = candidateMappedFields(candidate, mappingId);
   if (conflict && importConflictMode.value === 'skip') return 'skipped';
   if (conflict && importConflictMode.value === 'update') {
-    await profileRepository.updateMappedRow(mapping, conflict.identityValue, {
-      displayValue: candidate.title,
-      fields,
-    });
+    await profileRepository.updateRow(sheetKey, conflict.index, candidateRowValues(candidate, table, candidate.title));
     return 'updated';
   }
-  await profileRepository.insertMappedRow(mapping, {
-    displayValue: conflict ? createCopyTitle(candidate, mappingId) : candidate.title,
-    fields,
-    identityValue: conflict
-      ? `${candidateIdentity(candidate)}:copy:${Date.now()}_${Math.random().toString(36).slice(2, 7)}`
-      : candidateIdentity(candidate),
-  });
+  const title = conflict ? createCopyTitle(candidate, table) : candidate.title;
+  await profileRepository.insertRow(sheetKey, candidateRowValues(candidate, table, title));
   return 'created';
 }
 
 async function importSelectedProfiles() {
   const selected = profileImportItems.value.filter(item => item.selected);
-  if (selected.some(item => !item.mappingId)) {
-    toastr.warning('请为每个选中项目选择资料映射');
+  if (selected.some(item => !item.sheetKey)) {
+    toastr.warning('请为每个选中项目选择资料表');
     return;
   }
-  const mappingIds = [...new Set(selected.map(item => item.mappingId))];
-  await Promise.all(mappingIds.map(refreshProfileImportRows));
+  await refreshProfileImportTables();
   if (profileImportError.value) {
     toastr.warning(profileImportError.value);
     return;

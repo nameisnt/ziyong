@@ -90,11 +90,9 @@ const { useLettersStore } = await import('@/store/letters');
 const { useTheaterStore } = await import('@/store/theater');
 const { WorkbenchStepConfigSchema, useWorkbenchStore } = await import('@/apps/workbench/store');
 const { profilesField, runLegacyProfilesCleanup } = await import('@/apps/profiles/legacyCleanup');
-const { useExternalProfileMappingsStore } = await import('@/apps/profiles/profileMappings');
 const { useExternalProfileGenerationStore } = await import('@/apps/profiles/generationDrafts');
 const { usePresetLinkStore } = await import('@/apps/preset-link/store');
 const { useWorldSlotsStore, worldSlotsField } = await import('@/apps/world-slots/store');
-const { useTimekeeperStore } = await import('@/apps/timekeeper/store');
 const { useFileRepositoryStore } = await import('@/store/fileRepository');
 const { usePluginPresetStore } = await import('@/store/pluginPresets');
 const { useRelationshipStore } = await import('@/apps/relationship/store');
@@ -371,8 +369,6 @@ async function applyScenario(name: VisualScenarioName, options: { height?: numbe
     name === 'diary-entry-editor-dark' ||
       name === 'preview-draft-deferred-save-dark' ||
       name === 'profiles-external-dark' ||
-      name === 'profiles-external-transfer-row-dark' ||
-      name === 'profiles-external-mapping-editor-dark' ||
       name === 'preset-link-dark' ||
       name === 'macro-builder-dark' ||
       name === 'status-display-settings-dark'
@@ -1406,7 +1402,6 @@ async function applyScenario(name: VisualScenarioName, options: { height?: numbe
     name === 'storylines-profile-reference-dark'
   ) {
     const isProfileReference = name.startsWith('storylines-profile-reference');
-    let profileMappingId = '';
     if (isProfileReference) {
       useSettingsStore().setTheme(name.endsWith('-dark') ? 'dark' : 'light');
       const visualGlobal = globalThis as typeof globalThis & { AutoCardUpdaterAPI?: Record<string, unknown> };
@@ -1424,16 +1419,6 @@ async function applyScenario(name: VisualScenarioName, options: { height?: numbe
           },
         }),
       };
-      const mappings = useExternalProfileMappingsStore();
-      mappings.resetCurrentScope();
-      profileMappingId = mappings.createMapping({
-        displayColumn: '姓名',
-        fields: [],
-        identityColumn: 'row_id',
-        name: '人物资料',
-        sheetKey: 'sheet_people',
-        tableName: '人物表',
-      }).id;
     }
     const storylines = useStorylinesStore();
     storylines.resetCurrentScope();
@@ -1490,10 +1475,11 @@ async function applyScenario(name: VisualScenarioName, options: { height?: numbe
         option.click();
         await waitForPaint();
       };
-      await selectProfileOption(combos[0], '人物资料');
+      await selectProfileOption(combos[0], '人物表');
       picker = document.querySelector<HTMLElement>('.pc-storyline-profile-row .pc-external-profile-picker');
       combos = picker?.querySelectorAll<HTMLElement>('.pc-combobox');
-      if (!picker || !combos || combos.length !== 2) throw new Error('Storyline profile row disappeared after mapping');
+      if (!picker || !combos || combos.length !== 2)
+        throw new Error('Storyline profile row disappeared after table selection');
       await selectProfileOption(combos[1], '林见夏');
       [...document.querySelectorAll<HTMLButtonElement>('.pc-storyline-editor-card .pc-form-actions button')]
         .find(button => button.textContent?.includes('保存'))
@@ -1504,13 +1490,13 @@ async function applyScenario(name: VisualScenarioName, options: { height?: numbe
           return Boolean(
             saved?.relatedProfileIds.includes('legacy-profile-id') &&
             saved.relatedProfiles.some(
-              profile => profile.profileMappingId === profileMappingId && profile.profileIdentityValue === 'person-1',
+              profile => profile.profileSheetKey === 'sheet_people' && profile.profileRowIndex === 1,
             ) &&
             usePhoneStore().currentRoute.page === 'detail',
           );
         }))
       ) {
-        throw new Error('Storyline profile reference did not preserve legacy ids and save the new identity');
+        throw new Error('Storyline profile reference did not preserve legacy ids and save the selected row');
       }
       await waitForPaint();
       const detailText = document.querySelector('.pc-storyline-detail-page')?.textContent || '';
@@ -2706,19 +2692,6 @@ async function applyScenario(name: VisualScenarioName, options: { height?: numbe
         },
       }),
     };
-    const mappingStore = useExternalProfileMappingsStore();
-    mappingStore.data.mappings = [];
-    mappingStore.createMapping({
-      displayColumn: '姓名',
-      fields: [
-        { column: '摘要', key: 'summary', label: '摘要' },
-        { column: '人物详情', key: 'details', label: '人物详情' },
-      ],
-      identityColumn: 'row_id',
-      name: '人物资料',
-      sheetKey: 'sheet_people',
-      tableName: '重要人物表',
-    });
     const profileReference = getRegisteredPhoneAppReferenceTrees()
       .flatMap(root => (root.kind === 'branch' ? root.children : [root]))
       .flatMap(node => (node.kind === 'branch' ? node.children : [node]))
@@ -2726,10 +2699,10 @@ async function applyScenario(name: VisualScenarioName, options: { height?: numbe
     if (
       !profileReference ||
       profileReference.kind !== 'leaf' ||
-      profileReference.item.content.includes('不能进入引用') ||
+      !profileReference.item.content.includes('未映射备注：不能进入引用') ||
       !profileReference.item.content.includes('人物详情：她在雨夜留下了一封没有署名的信。')
     ) {
-      throw new Error('External profile reference did not keep the explicit mapping boundary');
+      throw new Error('External profile reference did not include the direct table columns');
     }
     const library = useEntryLibraryStore();
     library.importBackup({
@@ -2829,18 +2802,18 @@ async function applyScenario(name: VisualScenarioName, options: { height?: numbe
       option.textContent?.includes('林见夏'),
     );
     if (!profileOption) {
-      let mappingGroup = [...document.querySelectorAll<HTMLButtonElement>('.pc-reference-node.branch')].find(button =>
-        button.textContent?.includes('人物资料'),
+      let tableGroup = [...document.querySelectorAll<HTMLButtonElement>('.pc-reference-node.branch')].find(button =>
+        button.textContent?.includes('重要人物表'),
       );
-      if (!mappingGroup) {
+      if (!tableGroup) {
         profilesRoot.click();
         await waitForPaint();
-        mappingGroup = [...document.querySelectorAll<HTMLButtonElement>('.pc-reference-node.branch')].find(button =>
-          button.textContent?.includes('人物资料'),
+        tableGroup = [...document.querySelectorAll<HTMLButtonElement>('.pc-reference-node.branch')].find(button =>
+          button.textContent?.includes('重要人物表'),
         );
       }
-      if (!mappingGroup) throw new Error('External profile mapping group is missing from the reference picker');
-      mappingGroup.click();
+      if (!tableGroup) throw new Error('External profile table group is missing from the reference picker');
+      tableGroup.click();
       await waitForPaint();
       profileOption = [...document.querySelectorAll<HTMLElement>('.pc-reference-node.leaf')].find(option =>
         option.textContent?.includes('林见夏'),
@@ -2853,42 +2826,6 @@ async function applyScenario(name: VisualScenarioName, options: { height?: numbe
     await waitForPaint();
     if (titleField.value !== '林见夏' || contentArea.value !== profileReference.item.content.trim()) {
       throw new Error('Merged profile reference did not preserve its title and prefix-free content');
-    }
-  } else if (name === 'world-slots-profile-reference-warning-dark') {
-    useSettingsStore().setTheme('dark');
-    const visualGlobal = globalThis as typeof globalThis & { AutoCardUpdaterAPI?: Record<string, unknown> };
-    visualGlobal.AutoCardUpdaterAPI = {
-      exportTableAsJson: () => ({
-        mate: { type: 'chatSheets', version: 1 },
-        sheet_people: {
-          content: [
-            ['row_id', '姓名', '摘要'],
-            ['duplicate', '林见夏', '第一条'],
-            ['duplicate', '周临川', '第二条'],
-          ],
-          name: '重要人物表',
-          uid: 'important_people',
-        },
-      }),
-    };
-    const mappingStore = useExternalProfileMappingsStore();
-    mappingStore.data.mappings = [];
-    mappingStore.createMapping({
-      displayColumn: '姓名',
-      fields: [{ column: '摘要', key: 'summary', label: '摘要' }],
-      identityColumn: 'row_id',
-      name: '重复身份资料',
-      sheetKey: 'sheet_people',
-      tableName: '重要人物表',
-    });
-    resetPhoneToRoute('world-slots', 'editor', '新增槽位');
-    await waitForPaint();
-    document.querySelector<HTMLButtonElement>('.pc-reference-toggle')?.click();
-    await waitForPaint();
-    const warning = document.querySelector<HTMLElement>('.pc-reference-warning');
-    const refresh = warning?.querySelector<HTMLButtonElement>('button');
-    if (!warning?.textContent?.includes('身份值“duplicate”命中 2 行') || refresh?.title !== '刷新引用') {
-      throw new Error('External profile reference warning did not expose the mapping failure and refresh action');
     }
   } else if (name === 'world-slots-root-cleanup' || name === 'world-slots-root-cleanup-dark') {
     useSettingsStore().setTheme(name.endsWith('-dark') ? 'dark' : 'light');
@@ -3442,16 +3379,6 @@ async function applyScenario(name: VisualScenarioName, options: { height?: numbe
           return externalConversionData.sheet_notes.content.length - 1;
         },
       };
-      const mappings = useExternalProfileMappingsStore();
-      mappings.resetCurrentScope();
-      mappings.createMapping({
-        displayColumn: '标题',
-        fields: [{ column: '正文', key: 'content', label: '正文' }],
-        identityColumn: 'row_id',
-        name: '片段资料',
-        sheetKey: 'sheet_notes',
-        tableName: '片段资料表',
-      });
     }
     if (name.endsWith('-dark')) useSettingsStore().setTheme('dark');
     resetPhoneToRoute(appId, 'convert', '转换内容', {
@@ -3477,18 +3404,22 @@ async function applyScenario(name: VisualScenarioName, options: { height?: numbe
         if (!profilesOption) throw new Error('Profiles conversion target option was not rendered');
         profilesOption.click();
         await waitForPaint();
-        const fieldComboboxes = document.querySelectorAll<HTMLElement>(
-          '.pc-conversion-panel .pc-field-group .pc-combobox',
-        );
-        const contentFieldCombobox = fieldComboboxes[fieldComboboxes.length - 1];
-        contentFieldCombobox?.querySelector<HTMLInputElement>('.pc-combobox-input')?.click();
-        await waitForPaint();
-        const contentOption = [
-          ...(contentFieldCombobox?.querySelectorAll<HTMLButtonElement>('.pc-combobox-option') ?? []),
-        ].find(button => button.textContent?.includes('正文'));
-        if (!contentOption) throw new Error('Mapped content field option was not rendered');
-        contentOption.click();
-        await waitForPaint();
+        const selectConversionField = async (inputLabel: string, optionLabel: string) => {
+          const input = document.querySelector<HTMLInputElement>(
+            `.pc-conversion-panel input[aria-label="${inputLabel}"]`,
+          );
+          const combo = input?.closest<HTMLElement>('.pc-combobox');
+          input?.click();
+          await waitForPaint();
+          const option = [...(combo?.querySelectorAll<HTMLButtonElement>('.pc-combobox-option') ?? [])].find(button =>
+            button.textContent?.includes(optionLabel),
+          );
+          if (!option) throw new Error(`Profiles conversion option was not rendered: ${inputLabel}/${optionLabel}`);
+          option.click();
+          await waitForPaint();
+        };
+        await selectConversionField('标题写入列', '标题');
+        await selectConversionField('正文写入列', '正文');
       }
       const confirmButton = [...document.querySelectorAll<HTMLButtonElement>('button')].find(button =>
         button.textContent?.includes('确认转换'),
@@ -3503,14 +3434,14 @@ async function applyScenario(name: VisualScenarioName, options: { height?: numbe
       const expectedTargetCount = name === 'custom-app-conversion-merge' ? 1 : 2;
       const targetIds = new Set(sourceEntries.flatMap(entry => entry.conversions[0]?.targetEntryIds ?? []));
       if (targetIds.size !== expectedTargetCount) {
-        throw new Error('Custom app conversion target mapping did not match the selected batch mode');
+        throw new Error('Custom app conversion target count did not match the selected batch mode');
       }
       const status = document.querySelector<HTMLElement>('.pc-status-card.success');
       if (!status?.textContent?.includes('转换完成')) {
         throw new Error('Custom app conversion did not reach its completion state');
       }
       if (isProfilesConversion && externalConversionData?.sheet_notes.content.length !== 3) {
-        throw new Error('Mapped Profiles conversion did not insert one external row per source');
+        throw new Error('Profiles conversion did not insert one external row per source');
       }
     }
   } else if (name === 'preview-session-navigation') {
@@ -3730,12 +3661,12 @@ async function applyScenario(name: VisualScenarioName, options: { height?: numbe
     }
     useSettingsStore().setTheme('light');
     await waitForPaint();
-  } else if (name === 'card-writer-profile-mapping-import' || name === 'card-writer-profile-mapping-import-dark') {
+  } else if (name === 'card-writer-profile-direct-import' || name === 'card-writer-profile-direct-import-dark') {
     const visualGlobal = globalThis as typeof globalThis & { AutoCardUpdaterAPI?: Record<string, unknown> };
     const data = {
       mate: { type: 'chatSheets' },
       sheet_people: {
-        content: [['row_id', '姓名', '正文', '出生日期']],
+        content: [['姓名', 'details', 'birthDate']],
         name: '人物表',
         uid: 'people',
       },
@@ -3751,19 +3682,6 @@ async function applyScenario(name: VisualScenarioName, options: { height?: numbe
       updateRow: () => true,
       deleteRow: () => true,
     };
-    const mappings = useExternalProfileMappingsStore();
-    mappings.resetCurrentScope();
-    mappings.createMapping({
-      displayColumn: '姓名',
-      fields: [
-        { column: '正文', key: 'details', label: '正文' },
-        { column: '出生日期', key: 'birthDate', label: '出生日期' },
-      ],
-      identityColumn: 'row_id',
-      name: '写卡人物资料',
-      sheetKey: 'sheet_people',
-      tableName: '人物表',
-    });
     const { useCardWriterStore } = await import('@/apps/card-writer/store');
     const writer = useCardWriterStore();
     writer.settings.documents = [];
@@ -3801,12 +3719,10 @@ async function applyScenario(name: VisualScenarioName, options: { height?: numbe
     const imported = await waitForVisualCondition(() => data.sheet_people.content.length === 2);
     if (
       !imported ||
-      data.sheet_people.content[1]?.[1] !== '林见夏' ||
-      data.sheet_people.content[1]?.[3] !== '2002-03-04'
+      data.sheet_people.content[1]?.[0] !== '林见夏' ||
+      data.sheet_people.content[1]?.[2] !== '2002-03-04'
     ) {
-      throw new Error(
-        `Card writer did not insert the mapped external row: ${JSON.stringify(data.sheet_people.content)}`,
-      );
+      throw new Error(`Card writer did not insert the external row: ${JSON.stringify(data.sheet_people.content)}`);
     }
     const returnedToLibrary = await waitForVisualCondition(() => phone.currentRoute.page === 'library');
     if (!returnedToLibrary) throw new Error('Card writer did not return to its library after external import');
@@ -4348,132 +4264,6 @@ async function applyScenario(name: VisualScenarioName, options: { height?: numbe
       return Boolean(current && !current.disabled && !current.checked);
     });
     if (!toggled) throw new Error('Legacy worldbook enabled/disable fields were not updated together');
-  } else if (name === 'timekeeper-profile-sync' || name === 'timekeeper-profile-sync-dark') {
-    const visualGlobal = globalThis as typeof globalThis & { AutoCardUpdaterAPI?: Record<string, unknown> };
-    const data = {
-      mate: { type: 'chatSheets' },
-      sheet_people: {
-        content: [
-          ['row_id', '姓名', '出生日期'],
-          ['p-1', '既有人物', '2001-02-03'],
-        ],
-        name: '人物表',
-        uid: 'people',
-      },
-    };
-    const findTable = (tableName: string) =>
-      Object.values(data).find((value): value is { content: string[][]; name: string; uid: string } =>
-        Boolean(value && typeof value === 'object' && 'name' in value && value.name === tableName),
-      );
-    visualGlobal.AutoCardUpdaterAPI = {
-      deleteRow: (tableName: string, rowIndex: number) => {
-        const table = findTable(tableName);
-        if (!table || rowIndex < 1 || rowIndex >= table.content.length) return false;
-        table.content.splice(rowIndex, 1);
-        return true;
-      },
-      exportTableAsJson: () => data,
-      insertRow: (tableName: string, values: Record<string, unknown>) => {
-        const table = findTable(tableName);
-        if (!table) return -1;
-        const header = table.content[0] ?? [];
-        table.content.push(header.map(column => String(values[column] ?? '')));
-        return table.content.length - 1;
-      },
-      updateRow: (tableName: string, rowIndex: number, values: Record<string, unknown>) => {
-        const table = findTable(tableName);
-        const header = table?.content[0] ?? [];
-        const row = table?.content[rowIndex];
-        if (!table || !row) return false;
-        Object.entries(values).forEach(([column, value]) => {
-          const columnIndex = header.indexOf(column);
-          if (columnIndex >= 0) row[columnIndex] = String(value ?? '');
-        });
-        return true;
-      },
-    };
-    const mappings = useExternalProfileMappingsStore();
-    mappings.resetCurrentScope();
-    const personMapping = mappings.createMapping({
-      displayColumn: '姓名',
-      fields: [{ column: '出生日期', key: 'birthDate', label: '出生日期' }],
-      identityColumn: 'row_id',
-      name: '人物资料',
-      sheetKey: 'sheet_people',
-      tableName: '人物表',
-    });
-    const timekeeper = useTimekeeperStore();
-    timekeeper.resetCurrentScope();
-    timekeeper.settings.personProfileMappingId = personMapping.id;
-    await timekeeper.refreshMappedProfiles();
-    if (name.endsWith('-dark')) useSettingsStore().setTheme('dark');
-    resetPhoneToRoute('timekeeper', 'root', '时间确认');
-    await waitForPaint();
-    if (
-      timekeeper.settings.people.length !== 1 ||
-      timekeeper.settings.people[0]?.profileIdentityValue !== 'p-1' ||
-      document.querySelector<HTMLInputElement>('.pc-person-card .pc-field.name')?.value !== '既有人物'
-    ) {
-      throw new Error(
-        `Timekeeper did not read the existing character profile exactly once: people=${timekeeper.settings.people
-          .map(person => `${person.name}:${person.profileIdentityValue}`)
-          .join(
-            '|',
-          )}; expected=p-1; mappingScope=${mappings.scopeKey}; timekeeperScope=${timekeeper.scopeKey}; cards=${document.querySelectorAll('.pc-person-card').length}`,
-      );
-    }
-
-    document.querySelector<HTMLButtonElement>('.pc-section-head button[title="新增人物"]')?.click();
-    const personCreated = await waitForVisualCondition(() => timekeeper.settings.people.length === 2);
-    const createdPerson = timekeeper.settings.people.find(person => person.profileIdentityValue !== 'p-1');
-    if (!personCreated || !createdPerson || data.sheet_people.content.length !== 3) {
-      throw new Error('Adding a timekeeper person did not create exactly one external mapped row');
-    }
-
-    const createdCard = [...document.querySelectorAll<HTMLElement>('.pc-person-card')].find(card =>
-      card.querySelector<HTMLInputElement>('.pc-field.name')?.value.includes('人物 2'),
-    );
-    const nameInput = createdCard?.querySelector<HTMLInputElement>('.pc-field.name');
-    const birthInputs = createdCard?.querySelectorAll<HTMLInputElement>('.pc-number-field .pc-field');
-    if (!createdCard || !nameInput || birthInputs?.length !== 3) {
-      throw new Error('The newly created timekeeper person editor is incomplete');
-    }
-    nameInput.value = '联动人物';
-    nameInput.dispatchEvent(new Event('input', { bubbles: true }));
-    nameInput.dispatchEvent(new Event('change', { bubbles: true }));
-    for (const [index, value] of ['2005', '6', '7'].entries()) {
-      const currentCard = [...document.querySelectorAll<HTMLElement>('.pc-person-card')].find(
-        card => card.querySelector<HTMLInputElement>('.pc-field.name')?.value === '联动人物',
-      );
-      const input = currentCard?.querySelectorAll<HTMLInputElement>('.pc-number-field .pc-field')[index];
-      if (!input) throw new Error(`Timekeeper birth input ${index + 1} disappeared after synchronization`);
-      input.value = value;
-      input.dispatchEvent(new Event('input', { bubbles: true }));
-      input.dispatchEvent(new Event('change', { bubbles: true }));
-      await waitForPaint();
-    }
-    const updatedRow = data.sheet_people.content.find(row => row[0] === createdPerson.profileIdentityValue);
-    if (updatedRow?.[1] !== '联动人物' || updatedRow[2] !== '2005-06-07') {
-      throw new Error(
-        `Editing a timekeeper person did not synchronize name and birthDate to its external row: row=${updatedRow?.join(':')}; person=${createdPerson.name}:${createdPerson.birth.year}-${createdPerson.birth.month}-${createdPerson.birth.day}`,
-      );
-    }
-
-    createdCard.querySelector<HTMLButtonElement>('.pc-icon-btn.danger[title="删除"]')?.click();
-    await waitForPaint();
-    const confirmDelete = [...document.querySelectorAll<HTMLButtonElement>('.pc-phone-notice-action')].find(button =>
-      button.textContent?.includes('删除人物及资料'),
-    );
-    if (!confirmDelete) throw new Error('Timekeeper linked profile deletion confirmation is missing');
-    confirmDelete.click();
-    await waitForVisualCondition(() => !timekeeper.settings.people.some(person => person.id === createdPerson.id));
-    if (
-      timekeeper.settings.people.some(person => person.id === createdPerson.id) ||
-      data.sheet_people.content.some(row => row[0] === createdPerson.profileIdentityValue) ||
-      !data.sheet_people.content.some(row => row[0] === 'p-1')
-    ) {
-      throw new Error('Confirming timekeeper deletion did not remove only the linked person and external row');
-    }
   } else if (name === 'worldbook-entry-editor') {
     resetPhoneToRoute('worldbook-link', 'detail', '【视觉】旧格式世界书', { bookName: '【视觉】旧格式世界书' });
     const loaded = await waitForVisualCondition(() => Boolean(document.querySelector('.pc-worldbook-entry-open')));
@@ -5554,172 +5344,65 @@ async function applyScenario(name: VisualScenarioName, options: { height?: numbe
     }
 
     const failedDraftScenario = name === 'profiles-external-failed-draft';
-    const transferScenario =
-      name === 'profiles-external-transfer-table' ||
-      name === 'profiles-external-transfer-import' ||
-      name === 'profiles-external-transfer-row-dark';
-    const mappingScenario = name.startsWith('profiles-external-mapping') || failedDraftScenario || transferScenario;
-    if (mappingScenario) {
-      const { useExternalProfileMappingsStore } = await import('@/apps/profiles/profileMappings');
-      const mappingStore = useExternalProfileMappingsStore();
-      mappingStore.data.mappings = [];
-      if (name === 'profiles-external-mappings' || failedDraftScenario || transferScenario) {
-        const mapping = mappingStore.createMapping({
-          displayColumn: '姓名',
-          fields: failedDraftScenario
-            ? [
-                { column: '身份', key: 'summary', label: '摘要' },
-                { column: '出生日期', key: 'details', label: '人物详情' },
-              ]
-            : [{ column: '出生日期', key: 'birthDate', label: '出生日期' }],
-          identityColumn: 'row_id',
-          name: '人物基础资料',
-          sheetKey: 'sheet_people',
-          tableName: '重要人物表',
-        });
-        if (failedDraftScenario) {
-          const draftInput = {
-            actionId: 'generate',
-            appId: 'profiles',
-            context: { mappingId: mapping.id, titleHint: '李沐晨' },
-            rawOutput: [
-              '<result>',
-              '  <title>李沐晨</title>',
-              '  <summary>调查旧案的学生</summary>',
-              '  <fields><field id="details">在雨夜追查一封旧信。</field></fields>',
-              '</result>',
-            ].join('\n'),
-            rawOutputSemantics: 'original-v1' as const,
-            source: {
-              chatIdAtGeneration: 'visual-chat',
-              label: '不使用聊天楼层',
-              messageIds: [],
-              mode: 'none' as const,
-              ranges: [],
-              scopeId: getCurrentChatScopeKey(),
-              sortKey: 0,
-            },
-            warnings: ['视觉夹具：等待重新解析'],
-          };
-          useExternalProfileGenerationStore().data.failedDrafts = [];
-          const draft = useExternalProfileGenerationStore().createFailedDraft(draftInput);
-          resetPhoneToRoute('profiles', 'failed-draft', '修复资料生成草稿', {
-            draftId: draft.id,
-            draftSource: 'external',
-          });
-        }
-      }
-    }
-
-    const tableScenario =
-      name === 'profiles-external-table' ||
-      name === 'profiles-external-long-table' ||
-      name === 'profiles-external-transfer-table' ||
-      name === 'profiles-external-transfer-import';
-    const mappingEditorScenario =
-      name === 'profiles-external-mapping-editor' ||
-      name === 'profiles-external-mapping-editor-dark' ||
-      name === 'profiles-external-mapping-crud';
-    const routePage = failedDraftScenario
-      ? 'failed-draft'
-      : name === 'profiles-external-transfer-row-dark'
-        ? 'row'
-        : name === 'profiles-external-mapping-crud'
-          ? 'mappings'
-          : mappingEditorScenario
-            ? 'mapping-editor'
-            : name === 'profiles-external-mappings'
-              ? 'mappings'
-              : tableScenario
-                ? 'table'
-                : 'root';
-    if (!failedDraftScenario)
+    const tableScenario = name === 'profiles-external-table' || name === 'profiles-external-long-table';
+    if (failedDraftScenario) {
+      const draftInput = {
+        actionId: 'generate',
+        appId: 'profiles',
+        context: { sheetKey: 'sheet_people', titleColumn: '姓名', titleHint: '李沐晨' },
+        rawOutput: [
+          '<result>',
+          '  <title>李沐晨</title>',
+          '  <summary>调查旧案的学生</summary>',
+          '  <fields><field id="身份">在雨夜追查一封旧信。</field></fields>',
+          '</result>',
+        ].join('\n'),
+        rawOutputSemantics: 'original-v1' as const,
+        source: {
+          chatIdAtGeneration: 'visual-chat',
+          label: '不使用聊天楼层',
+          messageIds: [],
+          mode: 'none' as const,
+          ranges: [],
+          scopeId: getCurrentChatScopeKey(),
+          sortKey: 0,
+        },
+        warnings: ['视觉夹具：等待重新解析'],
+      };
+      useExternalProfileGenerationStore().data.failedDrafts = [];
+      const draft = useExternalProfileGenerationStore().createFailedDraft(draftInput);
+      resetPhoneToRoute('profiles', 'failed-draft', '修复资料生成草稿', {
+        draftId: draft.id,
+        draftSource: 'external',
+      });
+    } else {
       resetPhoneToRoute(
         'profiles',
-        routePage,
-        name === 'profiles-external-mapping-crud'
-          ? '资料映射'
-          : mappingEditorScenario
-            ? '新建资料映射'
-            : name === 'profiles-external-mappings'
-              ? '资料映射'
-              : tableScenario
-                ? name === 'profiles-external-long-table'
-                  ? '多字段长表格'
-                  : '重要人物表'
-                : name === 'profiles-external-transfer-row-dark'
-                  ? '李沐晨'
-                  : '资料表',
-        name === 'profiles-external-mapping-crud'
-          ? undefined
-          : mappingEditorScenario
-            ? { mappingId: 'new' }
-            : name === 'profiles-external-transfer-row-dark'
-              ? {
-                  identityValue: '1',
-                  mappingId: useExternalProfileMappingsStore().mappings[0]?.id || '',
-                  sheetKey: 'sheet_people',
-                }
-              : tableScenario
-                ? { sheetKey: name === 'profiles-external-long-table' ? 'sheet_long' : 'sheet_people' }
-                : undefined,
+        tableScenario ? 'table' : 'root',
+        tableScenario ? (name === 'profiles-external-long-table' ? '多字段长表格' : '重要人物表') : '资料表',
+        tableScenario
+          ? { sheetKey: name === 'profiles-external-long-table' ? 'sheet_long' : 'sheet_people' }
+          : undefined,
       );
+    }
     await waitForPaint();
 
-    if (name === 'profiles-external-transfer-table') {
-      const mappingSelect = document.querySelector<HTMLSelectElement>('.pc-external-profile-mapping-row .pc-select');
-      const importButton = document.querySelector<HTMLButtonElement>('[aria-label="导入单行资料"]');
-      const firstRow = document.querySelector<HTMLButtonElement>('.pc-external-profile-grid-row');
-      if (!mappingSelect?.value || !importButton || !firstRow || firstRow.disabled) {
-        throw new Error('External Profiles transfer table did not expose mapped import and row actions');
+    if (name === 'profiles-external-table') {
+      if (!document.querySelector('.pc-external-profile-card-track.is-horizontal')) {
+        throw new Error('External Profiles did not default to horizontal cards');
       }
-    }
-
-    if (name === 'profiles-external-transfer-import') {
-      const mapping = useExternalProfileMappingsStore().mappings[0];
-      const importButton = document.querySelector<HTMLButtonElement>('[aria-label="导入单行资料"]');
-      if (!mapping || !importButton) throw new Error('External Profiles transfer import entry is missing');
-      importButton.click();
+      document.querySelector<HTMLButtonElement>('button[title="竖向卡片"]')?.click();
       await waitForPaint();
-      const input = document.querySelector<HTMLInputElement>('.pc-item-transfer-dialog input[type="file"]');
-      if (!input) throw new Error('External Profiles transfer file input is missing');
-      const payload = {
-        appId: 'profiles',
-        data: {
-          item: { displayValue: '李沐晨', fields: { birthDate: '1998-04-16' }, identityValue: '1' },
-          source: {
-            fields: [{ key: 'birthDate', label: '出生日期' }],
-            mappingName: '人物基础资料',
-            tableName: '重要人物表',
-          },
-        },
-        exportedAt: '2026-08-22T00:00:00.000Z',
-        format: 'sillytavern-phone-item-transfer',
-        itemId: '1',
-        itemSchemaVersion: 1,
-        itemType: 'external-profile-row',
-        title: '李沐晨',
-        version: 1,
-      };
-      const file = new File([JSON.stringify(payload)], 'external-profile-row.json', { type: 'application/json' });
-      Object.defineProperty(input, 'files', { configurable: true, value: [file] });
-      input.dispatchEvent(new Event('change', { bubbles: true }));
-      const previewVisible = await waitForVisualCondition(
-        () => document.querySelectorAll('.pc-item-transfer-dialog .pc-segment-btn').length === 2,
-      );
-      if (!previewVisible || !document.body.textContent?.includes('人物基础资料 · 重要人物表')) {
-        throw new Error('External Profiles transfer preview did not show target and conflict actions');
+      if (
+        !document.querySelector('.pc-external-profile-card-track.is-vertical') ||
+        useSettingsStore().settings.externalProfilesLayout !== 'vertical'
+      ) {
+        throw new Error('External Profiles vertical card mode did not persist');
       }
-    }
-
-    if (name === 'profiles-external-transfer-row-dark') {
-      if (!document.body.textContent?.includes('出生日期') || !document.body.textContent?.includes('1998-04-16')) {
-        throw new Error('External Profiles row detail did not render mapped fields');
-      }
-      document.querySelector<HTMLButtonElement>('.pc-reader-tool-trigger')?.click();
+      document.querySelector<HTMLButtonElement>('button[title="横向卡片"]')?.click();
       await waitForPaint();
-      if (!document.querySelector<HTMLButtonElement>('[aria-label="导出本条"]')) {
-        throw new Error('External Profiles row detail did not expose single-row export');
+      if (!document.querySelector('.pc-external-profile-card-track.is-horizontal')) {
+        throw new Error('External Profiles did not return to horizontal cards');
       }
     }
 
@@ -5732,56 +5415,6 @@ async function applyScenario(name: VisualScenarioName, options: { height?: numbe
       await waitForPaint();
       if (!document.querySelector('.pc-external-profile-repair-preview')) {
         throw new Error('External profile failed draft did not expose a confirmation preview');
-      }
-    }
-
-    if (mappingEditorScenario) {
-      if (name === 'profiles-external-mapping-crud') {
-        const createButton = document.querySelector<HTMLButtonElement>('[aria-label="新建资料映射"]');
-        createButton?.click();
-        await waitForPaint();
-      }
-      const nameInput = document.querySelector<HTMLInputElement>('.pc-profile-mapping-editor input.pc-field');
-      const tableSelect = document.querySelector<HTMLSelectElement>('.pc-profile-mapping-editor select.pc-select');
-      if (!nameInput || !tableSelect) throw new Error('External Profiles mapping editor fields did not render');
-      nameInput.value = '人物基础资料';
-      nameInput.dispatchEvent(new Event('input', { bubbles: true }));
-      tableSelect.value = 'sheet_people';
-      tableSelect.dispatchEvent(new Event('change', { bubbles: true }));
-      await waitForPaint();
-      const selects = [...document.querySelectorAll<HTMLSelectElement>('.pc-profile-mapping-editor select.pc-select')];
-      const identitySelect = selects[1];
-      const displaySelect = selects[2];
-      if (!identitySelect || !displaySelect)
-        throw new Error('External Profiles identity/display selectors did not render');
-      identitySelect.value = 'row_id';
-      identitySelect.dispatchEvent(new Event('change', { bubbles: true }));
-      displaySelect.value = '姓名';
-      displaySelect.dispatchEvent(new Event('change', { bubbles: true }));
-      const addField = document.querySelector<HTMLButtonElement>('[aria-label="增加业务字段"]');
-      addField?.click();
-      await waitForPaint();
-      const fieldInputs = [...document.querySelectorAll<HTMLInputElement>('.pc-profile-field-row input.pc-field')];
-      const fieldSelect = document.querySelector<HTMLSelectElement>('.pc-profile-field-row select.pc-select');
-      if (fieldInputs.length !== 2 || !fieldSelect)
-        throw new Error('External Profiles business field editor did not render');
-      fieldInputs[0].value = 'birthDate';
-      fieldInputs[0].dispatchEvent(new Event('input', { bubbles: true }));
-      fieldInputs[1].value = '出生日期';
-      fieldInputs[1].dispatchEvent(new Event('input', { bubbles: true }));
-      fieldSelect.value = '出生日期';
-      fieldSelect.dispatchEvent(new Event('change', { bubbles: true }));
-      await waitForPaint();
-
-      if (name === 'profiles-external-mapping-crud') {
-        const saveButton = [
-          ...document.querySelectorAll<HTMLButtonElement>('.pc-profile-mapping-editor .pc-form-actions button'),
-        ].find(button => button.textContent?.includes('保存映射'));
-        saveButton?.click();
-        await waitForPaint();
-        if (!document.body.textContent?.includes('人物基础资料') || usePhoneStore().currentRoute.page !== 'mappings') {
-          throw new Error('External Profiles mapping save did not return to the mapping catalog');
-        }
       }
     }
 
@@ -5806,14 +5439,6 @@ async function applyScenario(name: VisualScenarioName, options: { height?: numbe
     if (name === 'profiles-external-catalog') {
       const firstTable = document.querySelector<HTMLButtonElement>('.pc-external-profile-table-row');
       if (!firstTable) throw new Error('External Profiles catalog did not render table rows');
-      const mappingButton = document.querySelector<HTMLButtonElement>('[aria-label="资料映射"]');
-      mappingButton?.click();
-      await waitForPaint();
-      if (usePhoneStore().currentRoute.page !== 'mappings') {
-        throw new Error('External Profiles mapping button did not open the mapping catalog');
-      }
-      usePhoneStore().goBack();
-      await waitForPaint();
       const openButton = document.querySelector<HTMLButtonElement>('.pc-external-profiles-actions .pc-soft-btn');
       openButton?.click();
       if (openCount !== 1) throw new Error('External Profiles full database button did not call openVisualizer');

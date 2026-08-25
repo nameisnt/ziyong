@@ -20,7 +20,6 @@ test('all approved A-group list surfaces expose item import', () => {
     ['src/apps/theater/TheaterCatalogPage.vue', 'app-id="theater"'],
     ['src/apps/letters/LettersBookPage.vue', 'app-id="letters"'],
     ['src/apps/digest/DigestApp.vue', 'app-id="digest"'],
-    ['src/apps/profiles/ProfilesApp.vue', 'app-id="profiles"'],
     ['src/apps/scene-planner/ScenePlannerApp.vue', 'app-id="scene-planner"'],
   ];
   for (const [path, marker] of cases) {
@@ -30,12 +29,7 @@ test('all approved A-group list surfaces expose item import', () => {
   }
 });
 
-test('profile row detail and scene plan expose item-specific export context', () => {
-  const profiles = read('src/apps/profiles/ProfilesApp.vue');
-  assert.match(profiles, /route\.page === 'row'/);
-  assert.match(profiles, /display-app-id="profiles"/);
-  assert.match(profiles, /identityValue/);
-  assert.match(profiles, /mappingId/);
+test('scene plan exposes item-specific export context', () => {
   const scene = read('src/apps/scene-planner/ScenePlannerApp.vue');
   assert.match(scene, /ItemTransferExportButton/);
   assert.match(scene, /planId:\s*plan\.id/);

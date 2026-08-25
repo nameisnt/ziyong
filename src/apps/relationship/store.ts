@@ -13,8 +13,8 @@ export const RelationshipCharacterSchema = z.object({
   id: z.string(),
   name: z.string(),
   profileEntryId: z.string().default(''),
-  profileIdentityValue: z.string().default(''),
-  profileMappingId: z.string().default(''),
+  profileRowIndex: z.number().int().min(0).default(0),
+  profileSheetKey: z.string().default(''),
   x: z.number().default(160),
   y: z.number().default(130),
   createdAt: z.string(),
@@ -120,8 +120,8 @@ export const useRelationshipStore = defineStore('relationship', () => {
       id: createId('relationship_character'),
       name: normalized,
       profileEntryId: '',
-      profileIdentityValue: profile?.profileIdentityValue || '',
-      profileMappingId: profile?.profileMappingId || '',
+      profileRowIndex: profile?.profileRowIndex || 0,
+      profileSheetKey: profile?.profileSheetKey || '',
       createdAt: timestamp,
       updatedAt: timestamp,
     };
@@ -131,21 +131,21 @@ export const useRelationshipStore = defineStore('relationship', () => {
 
   function createCharacterFromProfile(profile: ExternalProfileReferenceDraft, displayName: string) {
     const name = normalizeName(displayName);
-    if (!profile.profileMappingId || !profile.profileIdentityValue || !name) return null;
+    if (!profile.profileSheetKey || !profile.profileRowIndex || !name) return null;
     const referenceKey = externalProfileReferenceKey(profile);
     const linked = data.value.characters.find(
       character =>
-        character.profileMappingId &&
-        character.profileIdentityValue &&
+        character.profileSheetKey &&
+        character.profileRowIndex &&
         externalProfileReferenceKey(character) === referenceKey,
     );
     if (linked) return linked;
     const sameName = findCharacterByName(name);
     if (sameName) {
-      if (sameName.profileMappingId && sameName.profileIdentityValue) return null;
+      if (sameName.profileSheetKey && sameName.profileRowIndex) return null;
       sameName.profileEntryId = '';
-      sameName.profileIdentityValue = profile.profileIdentityValue;
-      sameName.profileMappingId = profile.profileMappingId;
+      sameName.profileRowIndex = profile.profileRowIndex;
+      sameName.profileSheetKey = profile.profileSheetKey;
       sameName.name = name;
       sameName.updatedAt = nowIso();
       return sameName;
@@ -156,12 +156,12 @@ export const useRelationshipStore = defineStore('relationship', () => {
   function setCharacterProfileDraft(characterId: string, patch: Partial<ExternalProfileReferenceDraft>) {
     const character = getCharacter(characterId);
     if (!character) return false;
-    if (typeof patch.profileMappingId === 'string') {
-      character.profileMappingId = patch.profileMappingId;
-      character.profileIdentityValue = '';
-      if (!patch.profileMappingId) character.profileEntryId = '';
+    if (typeof patch.profileSheetKey === 'string') {
+      character.profileSheetKey = patch.profileSheetKey;
+      character.profileRowIndex = 0;
+      if (!patch.profileSheetKey) character.profileEntryId = '';
     }
-    if (typeof patch.profileIdentityValue === 'string') character.profileIdentityValue = patch.profileIdentityValue;
+    if (typeof patch.profileRowIndex === 'number') character.profileRowIndex = patch.profileRowIndex;
     character.updatedAt = nowIso();
     return true;
   }
@@ -173,10 +173,10 @@ export const useRelationshipStore = defineStore('relationship', () => {
   ) {
     const character = getCharacter(characterId);
     if (!character) return false;
-    if (!profile?.profileMappingId || !profile.profileIdentityValue) {
+    if (!profile?.profileSheetKey || !profile.profileRowIndex) {
       character.profileEntryId = '';
-      character.profileIdentityValue = '';
-      character.profileMappingId = '';
+      character.profileRowIndex = 0;
+      character.profileSheetKey = '';
       character.updatedAt = nowIso();
       return true;
     }
@@ -184,14 +184,14 @@ export const useRelationshipStore = defineStore('relationship', () => {
     const duplicate = data.value.characters.find(
       item =>
         item.id !== characterId &&
-        item.profileMappingId &&
-        item.profileIdentityValue &&
+        item.profileSheetKey &&
+        item.profileRowIndex &&
         externalProfileReferenceKey(item) === referenceKey,
     );
     if (duplicate) return false;
     character.profileEntryId = '';
-    character.profileIdentityValue = profile.profileIdentityValue;
-    character.profileMappingId = profile.profileMappingId;
+    character.profileRowIndex = profile.profileRowIndex;
+    character.profileSheetKey = profile.profileSheetKey;
     const normalizedName = normalizeName(displayName);
     if (normalizedName) character.name = normalizedName;
     character.updatedAt = nowIso();

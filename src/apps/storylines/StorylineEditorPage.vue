@@ -125,10 +125,10 @@
           <div v-for="(profile, index) in draft.relatedProfiles" :key="index" class="pc-storyline-profile-row">
             <ExternalProfileReferencePicker
               :disabled-reference-keys="disabledProfileKeys(index)"
-              :identity-value="profile.profileIdentityValue"
-              :mapping-id="profile.profileMappingId"
-              @update:identity-value="profile.profileIdentityValue = $event"
-              @update:mapping-id="profile.profileMappingId = $event"
+              :row-index="profile.profileRowIndex"
+              :sheet-key="profile.profileSheetKey"
+              @update:row-index="profile.profileRowIndex = $event"
+              @update:sheet-key="profile.profileSheetKey = $event"
             />
             <button class="pc-icon-btn danger" type="button" title="移除关联" aria-label="移除关联" @click="removeRelatedProfile(index)">
               <i class="fa-solid fa-xmark"></i>
@@ -169,7 +169,7 @@ const itemLabel = computed(() => ({ beat: '节点', hook: '伏笔', line: '剧�
 const hookLineOptions = computed(() => [{ label: '不绑定剧情线', value: '' }, ...props.lineOptions]);
 
 function addRelatedProfile() {
-  draft.value.relatedProfiles.push({ profileIdentityValue: '', profileMappingId: '' });
+  draft.value.relatedProfiles.push({ profileRowIndex: 0, profileSheetKey: '' });
 }
 
 function removeRelatedProfile(index: number) {
@@ -180,7 +180,7 @@ function disabledProfileKeys(index: number) {
   return draft.value.relatedProfiles
     .filter(
       (profile, itemIndex) =>
-        itemIndex !== index && profile.profileMappingId && profile.profileIdentityValue,
+        itemIndex !== index && profile.profileSheetKey && profile.profileRowIndex,
     )
     .map(profile => externalProfileReferenceKey(profile));
 }

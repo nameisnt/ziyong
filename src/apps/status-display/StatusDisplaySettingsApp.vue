@@ -352,11 +352,6 @@ async function insertMvuVariable(path: string) {
   gap: 14px;
 }
 
-.pc-status-settings-page,
-.pc-status-editor-page {
-  padding: 14px;
-}
-
 .pc-status-variable-panel header,
 .pc-status-scheme-row {
   display: flex;

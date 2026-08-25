@@ -12,8 +12,7 @@ import { createHiddenGenerationRecord } from '@/util/hiddenGenerationRecord';
 import { getChatMessagesSafe } from '@/util/runtime';
 import type { GenerationReplaySnapshot, SourceSelection } from '@/type/generation';
 import { createExternalProfilesRepository } from '@/apps/profiles/externalCrud';
-import { assertExternalMappingFields } from '@/apps/profiles/profileConsumerBridge';
-import { useExternalProfileMappingsStore } from '@/apps/profiles/profileMappings';
+import { readExternalProfileTables } from '@/apps/profiles/externalBridge';
 import { useDigestStore } from '@/apps/digest/store';
 import { useEntryLibraryStore } from '@/apps/entry-library/store';
 import { useWorldSlotsStore, worldSlotPositionOptions } from '@/apps/world-slots/store';
@@ -573,59 +572,62 @@ export function createProfilesContentReceiver(): PhoneContentReceiver {
     scope: 'chat',
     batchModes: ['separate', 'merge'],
     createDraft() {
-      const mappings = useExternalProfileMappingsStore();
-      const compatible = mappings.mappings.filter(mapping => mapping.fields.length);
-      return { contentField: '', mappingId: compatible.length === 1 ? compatible[0]!.id : '' };
+      const tables = readExternalProfileTables();
+      return { contentColumn: '', sheetKey: tables.length === 1 ? tables[0]!.key : '', titleColumn: '' };
     },
     fields(context) {
-      const mappings = useExternalProfileMappingsStore();
-      const mapping = mappings.getMapping(textValue(context, 'mappingId'));
-      const fieldOptions = (mapping?.fields ?? []).map(field => ({ label: field.label, value: field.key }));
+      const tables = readExternalProfileTables();
+      const table = tables.find(item => item.key === textValue(context, 'sheetKey'));
+      const columnOptions = (table?.columns ?? []).map(column => ({ label: column.label, value: column.sourceLabel }));
       return [
         {
-          key: 'mappingId',
+          key: 'sheetKey',
           kind: 'select',
-          label: '目标资料映射',
-          options: mappings.mappings.map(item => ({
-            disabled: !item.fields.length,
+          label: '目标资料表',
+          options: tables.map(item => ({
             label: item.name,
-            value: item.id,
+            value: item.key,
           })),
           required: true,
         },
         {
-          key: 'contentField',
+          key: 'titleColumn',
           kind: 'select',
-          label: '正文写入字段',
-          options: fieldOptions,
+          label: '标题写入列',
+          options: columnOptions,
+          required: true,
+        },
+        {
+          key: 'contentColumn',
+          kind: 'select',
+          label: '正文写入列',
+          options: columnOptions,
           required: true,
         },
       ];
     },
     async receive(context) {
-      const mappings = useExternalProfileMappingsStore();
       const repository = createExternalProfilesRepository();
-      const mapping = mappings.getMapping(textValue(context, 'mappingId'));
-      if (!mapping) throw new Error('请选择有效的资料映射');
-      const contentField = textValue(context, 'contentField');
-      if (!contentField) throw new Error('请选择正文写入字段');
-      assertExternalMappingFields(mapping, [contentField]);
-      const conversionId = `${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
-      const identityValues: string[] = [];
-      for (const [index, source] of context.sources.entries()) {
+      const tables = readExternalProfileTables();
+      const sheetKey = textValue(context, 'sheetKey');
+      const table = tables.find(item => item.key === sheetKey);
+      if (!table) throw new Error('请选择有效的资料表');
+      const titleColumn = textValue(context, 'titleColumn');
+      const contentColumn = textValue(context, 'contentColumn');
+      if (!titleColumn || !contentColumn) throw new Error('请选择标题列和正文列');
+      const rowIndices: string[] = [];
+      for (const source of context.sources) {
         const content = stripFrontendMarkup(source);
-        const identityValue = `${source.appId}:${source.entryId}:${conversionId}:${index + 1}`;
-        await repository.insertMappedRow(mapping, {
-          displayValue: sourceTitle(source, '未命名资料'),
-          fields: { [contentField]: content },
-          identityValue,
+        const rowIndex = await repository.insertRow(sheetKey, {
+          [contentColumn]: content,
+          [titleColumn]: sourceTitle(source, '未命名资料'),
         });
-        identityValues.push(identityValue);
+        rowIndices.push(String(rowIndex));
       }
       return result(
-        identityValues,
-        `已转换 ${identityValues.length} 条资料`,
-        { page: 'table', params: { sheetKey: mapping.sheetKey }, title: mapping.tableName },
+        rowIndices,
+        `已转换 ${rowIndices.length} 条资料`,
+        { page: 'table', params: { sheetKey: table.key }, title: table.name },
       );
     },
   };

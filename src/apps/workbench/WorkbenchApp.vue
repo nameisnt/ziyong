@@ -570,19 +570,21 @@
                 <div v-else-if="step.appId === 'profiles'" class="pc-step-config">
                   <div class="pc-form-grid">
                     <label class="pc-field-group">
-                      <span>{{ t`资料映射` }}</span>
+                      <span>{{ t`外部资料表` }}</span>
                       <SearchableCombobox
-                        v-model="step.config.profileMappingId"
-                        input-label="选择外部资料映射"
-                        :options="
-                          resourceOptions(
-                            profileMappings,
-                            step.config.profileMappingId,
-                            '请选择外部资料映射',
-                            mapping => `${mapping.name} · ${mapping.tableName}`,
-                          )
-                        "
-                        placeholder="请选择外部资料映射"
+                        v-model="step.config.profileSheetKey"
+                        input-label="选择外部资料表"
+                        :options="profileTableOptions"
+                        placeholder="请选择外部资料表"
+                      />
+                    </label>
+                    <label class="pc-field-group">
+                      <span>{{ t`标题列` }}</span>
+                      <SearchableCombobox
+                        v-model="step.config.profileTitleColumn"
+                        input-label="选择标题列"
+                        :options="profileColumnOptions(step.config.profileSheetKey)"
+                        placeholder="请选择标题列"
                       />
                     </label>
                     <label class="pc-field-group">
@@ -594,13 +596,6 @@
                         :placeholder="t`可留空`"
                       />
                     </label>
-                  </div>
-                  <div
-                    v-if="!step.config.profileMappingId && step.config.profileTableId"
-                    class="pc-status-card warning"
-                  >
-                    <strong>{{ t`旧资料目标待重新选择` }}</strong>
-                    <p>{{ t`旧目标信息会保留，但不会自动猜成外部资料映射。` }}</p>
                   </div>
                 </div>
 
@@ -684,7 +679,7 @@
 import EmptyState from '@/components/EmptyState.vue';
 import ConfigurationRecoveryNotice from '@/components/ConfigurationRecoveryNotice.vue';
 import SearchableCombobox from '@/components/SearchableCombobox.vue';
-import { useExternalProfileMappingsStore } from '@/apps/profiles/profileMappings';
+import { readExternalProfileTables, type ExternalProfileTable } from '@/apps/profiles/externalBridge';
 import { usePhoneStore } from '@/store/phone';
 import { useGenerationTaskStore } from '@/store/generationTasks';
 import { useSummaryStore } from '@/store/summary';
@@ -721,7 +716,7 @@ const { books: diaryBooks } = storeToRefs(useDiaryStore());
 const { books: extrasBooks } = storeToRefs(useExtrasStore());
 const { boards: forumBoards } = storeToRefs(useForumStore());
 const { books: letterBooks } = storeToRefs(useLettersStore());
-const { mappings: profileMappings } = storeToRefs(useExternalProfileMappingsStore());
+const profileTables = ref<ExternalProfileTable[]>([]);
 const promptStore = usePromptStore();
 const { typePromptGroups, typePrompts } = storeToRefs(promptStore);
 const extrasTypePrompts = computed(() => typePrompts.value.filter(prompt => prompt.domain === 'extras'));
@@ -733,6 +728,13 @@ const workbenchActionOptions = computed(() =>
     value: `${action.appId}/${action.actionId}`,
   })),
 );
+const profileTableOptions = computed(() => profileTables.value.map(table => ({ label: table.name, value: table.key })));
+function profileColumnOptions(sheetKey: string) {
+  return (profileTables.value.find(table => table.key === sheetKey)?.columns ?? []).map(column => ({
+    label: column.label,
+    value: column.sourceLabel,
+  }));
+}
 const openWorkflowIds = ref<string[]>([]);
 const selectedActions = reactive<Record<string, string>>({});
 const customTriggerWorkflowIds = ref<string[]>([]);
@@ -1098,7 +1100,14 @@ function getWorkflowLastStatus(workflow: WorkbenchWorkflow) {
   return `上次成功 ${new Date(progress.lastRunAt).toLocaleString()}`;
 }
 
-onMounted(refreshTavernPresetNames);
+onMounted(() => {
+  refreshTavernPresetNames();
+  try {
+    profileTables.value = readExternalProfileTables();
+  } catch {
+    profileTables.value = [];
+  }
+});
 onBeforeUnmount(() => statusEventStops.forEach(stop => stop.stop()));
 </script>
 

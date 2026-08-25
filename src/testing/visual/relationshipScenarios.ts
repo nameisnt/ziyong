@@ -2,8 +2,8 @@ type RelationshipStoreFixture = {
   characters: Array<{
     id: string;
     name: string;
-    profileIdentityValue?: string;
-    profileMappingId?: string;
+    profileRowIndex?: number;
+    profileSheetKey?: string;
   }>;
   links: Array<{ id: string; label: string }>;
   resetCurrentScope: () => void | Promise<void>;
@@ -84,7 +84,6 @@ export async function applyRelationshipVisualScenario(
   await relationship.resetCurrentScope();
   if (name.startsWith('relationship-profile-reference')) {
     const { useSettingsStore } = await import('@/store/settings');
-    const { useExternalProfileMappingsStore } = await import('@/apps/profiles/profileMappings');
     useSettingsStore().setTheme(name.endsWith('-dark') ? 'dark' : 'light');
     const visualGlobal = globalThis as typeof globalThis & { AutoCardUpdaterAPI?: Record<string, unknown> };
     visualGlobal.AutoCardUpdaterAPI = {
@@ -101,22 +100,13 @@ export async function applyRelationshipVisualScenario(
         },
       }),
     };
-    const mappings = useExternalProfileMappingsStore();
-    mappings.resetCurrentScope();
-    mappings.createMapping({
-      displayColumn: '姓名',
-      fields: [],
-      identityColumn: 'row_id',
-      name: '人物资料',
-      sheetKey: 'sheet_people',
-      tableName: '人物表',
-    });
     resetPhoneToRoute('relationship', 'root', '关系网');
     await waitForPaint();
     const picker = document.querySelector<HTMLElement>('.pc-profile-add-row .pc-external-profile-picker');
-    const combos = picker?.querySelectorAll<HTMLElement>('.pc-combobox');
+    let combos = picker?.querySelectorAll<HTMLElement>('.pc-combobox');
     if (!picker || !combos || combos.length !== 2) throw new Error('Relationship external profile picker is missing');
-    await selectComboboxOption(combos[0], '人物资料', waitForPaint);
+    await selectComboboxOption(combos[0], '人物表', waitForPaint);
+    combos = picker.querySelectorAll<HTMLElement>('.pc-combobox');
     await selectComboboxOption(combos[1], '林见夏', waitForPaint);
     findButtonByTitle('添加关联人物', document.querySelector('.pc-profile-add-row') || document)?.click();
     if (
@@ -124,12 +114,12 @@ export async function applyRelationshipVisualScenario(
         relationship.characters.some(
           character =>
             character.name === '林见夏' &&
-            character.profileMappingId &&
-            character.profileIdentityValue === 'person-1',
+            character.profileSheetKey === 'sheet_people' &&
+            character.profileRowIndex === 1,
         ),
       ))
     ) {
-      throw new Error('Relationship external profile selection did not persist its mapping identity');
+      throw new Error('Relationship external profile selection did not persist its table row');
     }
     await waitForPaint();
     return true;

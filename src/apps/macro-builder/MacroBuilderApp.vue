@@ -98,7 +98,13 @@
       <header>
         <strong>生成的宏</strong>
         <div>
-          <button class="pc-icon-btn" type="button" title="重新测试" aria-label="重新测试" @click="previewRevision += 1">
+          <button
+            class="pc-icon-btn"
+            type="button"
+            title="重新测试"
+            aria-label="重新测试"
+            @click="previewRevision += 1"
+          >
             <i class="fa-solid fa-dice"></i>
           </button>
           <button class="pc-icon-btn primary" type="button" title="复制宏" aria-label="复制宏" @click="copyMacro">
@@ -127,23 +133,23 @@ const assign = reactive({ items: '身份 1\n身份 2\n身份 3\n身份 4', repea
 const generatedMacro = computed(() => {
   if (mode.value === 'dice') {
     return buildPluginMacro('dice', {
-      failure: dice.failure,
-      max: dice.maximum,
       min: dice.minimum,
+      max: dice.maximum,
       op: dice.operation,
-      success: dice.success,
       target: dice.target,
+      success: dice.success,
+      failure: dice.failure,
     });
   }
   if (mode.value === 'pick') {
     return buildPluginMacro('pick', {
-      items: pick.items,
-      max: pick.maximum,
       min: pick.minimum,
+      max: pick.maximum,
       repeat: pick.repeat,
+      items: pick.items,
     });
   }
-  return buildPluginMacro('assign', { items: assign.items, repeat: assign.repeat, roles: assign.roles });
+  return buildPluginMacro('assign', { roles: assign.roles, items: assign.items, repeat: assign.repeat });
 });
 const previewResult = computed(() => {
   void previewRevision.value;
@@ -162,9 +168,6 @@ async function copyMacro() {
 .pc-macro-builder-result {
   display: grid;
   gap: 12px;
-}
-.pc-macro-builder-app {
-  padding: 14px;
 }
 .pc-macro-builder-tabs > button {
   min-width: 0;

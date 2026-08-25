@@ -1,6 +1,5 @@
 import ProfilesApp from './ProfilesApp.vue';
 import { createProfilesContentReceiver } from '@/apps/contentReceivers';
-import { profilesItemTransferProvider } from './itemTransfer';
 import { createProfileGenerationAdapter } from './generation';
 import { createExternalProfileReferenceCatalog } from './externalReferenceCatalog';
 import {
@@ -10,11 +9,6 @@ import {
 } from './generationDrafts';
 import { createExternalProfilesRepository } from './externalCrud';
 import { runLegacyProfilesCleanup } from './legacyCleanup';
-import {
-  ExternalProfileMappingsScopeDataSchema,
-  profileMappingsField,
-  useExternalProfileMappingsStore,
-} from './profileMappings';
 import { objectListField, textField, textListField, xmlParser } from '@/apps/outputDefinitions';
 import { definePhoneApp } from '@/core/appRegistry';
 import { getCurrentChatScopeKey, readChatScopedEnvelope } from '@/store/chatScoped';
@@ -33,19 +27,6 @@ export default definePhoneApp({
   defaultOrder: 69,
   contentReceiver: createProfilesContentReceiver(),
   backupDomains: [
-    {
-      category: 'configuration',
-      key: 'profile-bridge-mappings',
-      exportData: currentScopeKey =>
-        readChatScopedEnvelope(profileMappingsField, currentScopeKey || getCurrentChatScopeKey()),
-      importData: data => {
-        _.set(extension_settings, profileMappingsField, data);
-      },
-      rehydrateFromSettings: () => useExternalProfileMappingsStore().rehydrateFromSettings(),
-      schema: createChatScopedBackupSchema(ExternalProfileMappingsScopeDataSchema),
-      schemaVersion: 1,
-      scope: 'chat',
-    },
     {
       category: 'content',
       key: 'external-profile-generation-drafts',
@@ -66,11 +47,10 @@ export default definePhoneApp({
       actionId: 'generate',
       label: '生成资料卡片',
       createAdapter: () => {
-        const mappings = useExternalProfileMappingsStore();
         const repository = createExternalProfilesRepository();
         return createProfileGenerationAdapter({
-          getMapping: mappingId => mappings.getMapping(mappingId),
-          insertMappedRow: (mapping, values) => repository.insertMappedRow(mapping, values),
+          getTables: () => repository.readCurrent().tables,
+          insertRow: (sheetKey, values) => repository.insertRow(sheetKey, values),
         });
       },
     },
@@ -88,19 +68,16 @@ export default definePhoneApp({
       title: typeof draft.context.titleHint === 'string' ? draft.context.titleHint : '待修复资料草稿',
     }));
   },
-  itemTransferProvider: profilesItemTransferProvider,
   taskTemplateDefinitions: [
     {
       actionId: 'generate',
       label: '生成资料卡片',
       defaultTemplate: [
-        '目标资料映射：{{mappingName}}',
         '目标外部表：{{tableName}}',
         '{{fieldInstruction}}',
         '{{titleInstruction}}',
       ].join('\n'),
       variables: [
-        { key: 'mappingName', label: '资料映射名' },
         { key: 'tableName', label: '外部资料表名' },
         { key: 'fieldInstruction', label: '完整启用字段要求（程序生成）' },
         { key: 'titleInstruction', label: '完整标题提示（程序生成）' },
@@ -146,13 +123,11 @@ export default definePhoneApp({
       ],
     },
   ],
-  referenceProvider: () => createExternalProfileReferenceCatalog(useExternalProfileMappingsStore().mappings),
+  referenceProvider: () => createExternalProfileReferenceCatalog(),
   resetCurrentScope: () => {
-    useExternalProfileMappingsStore().resetCurrentScope();
     useExternalProfileGenerationStore().resetCurrentScope();
   },
   scopeSwitchHandler: scopeKey => {
-    useExternalProfileMappingsStore().switchScope(scopeKey);
     useExternalProfileGenerationStore().switchScope(scopeKey);
   },
 });
