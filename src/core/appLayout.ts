@@ -6,13 +6,46 @@ export const homeFolderToken = (folderId: string) => `folder:${folderId}`;
 
 const DEFAULT_DOCK_APP_IDS = ['favorites', 'prompts', 'tutorial', 'settings'];
 const DEFAULT_HOME_FOLDERS = [
-  { id: 'home_default_creation', name: '阅读与记录', appIds: ['reader', 'diary', 'extras', 'theater', 'forum', 'letters'] },
+  {
+    id: 'home_default_creation',
+    name: '阅读与记录',
+    appIds: ['reader', 'diary', 'extras', 'theater', 'forum', 'letters'],
+  },
   { id: 'home_default_generation', name: '生成', appIds: ['card-writer', 'scene-planner', 'summary', 'storylines'] },
   { id: 'home_default_organize', name: '内容整理', appIds: ['bagu', 'content-converter', 'digest', 'stats'] },
-  { id: 'home_default_prompt', name: '预设与世界书', appIds: ['preset-manager', 'preset-link', 'worldbook-link', 'world-slots'] },
-  { id: 'home_default_tavern', name: '酒馆工具', appIds: ['status-display', 'status-display-settings', 'mvu-modifier', 'extension-transfer', 'script-manager', 'chat-insert', 'recovery'] },
+  {
+    id: 'home_default_prompt',
+    name: '预设与世界书',
+    appIds: ['preset-manager', 'preset-link', 'worldbook-link', 'world-slots'],
+  },
+  {
+    id: 'home_default_tavern',
+    name: '酒馆工具',
+    appIds: [
+      'status-display',
+      'status-display-settings',
+      'mvu-modifier',
+      'extension-transfer',
+      'script-manager',
+      'chat-insert',
+      'recovery',
+    ],
+  },
   { id: 'home_default_profiles', name: '资料关系', appIds: ['profiles', 'relationship', 'timekeeper'] },
-  { id: 'home_default_tools', name: '插件工具', appIds: ['workbench', 'app-builder', 'theme', 'file-repository', 'entry-library', 'regex-display', 'regex-wizard', 'macro-builder'] },
+  {
+    id: 'home_default_tools',
+    name: '插件工具',
+    appIds: [
+      'workbench',
+      'app-builder',
+      'theme',
+      'file-repository',
+      'entry-library',
+      'regex-display',
+      'regex-wizard',
+      'macro-builder',
+    ],
+  },
   { id: 'home_default_games', name: '小游戏', appIds: MINI_GAME_APP_IDS },
 ];
 
@@ -112,10 +145,7 @@ function migratePaperHomeLayout(layout: HomeScreenLayout, knownIds: Set<string>)
   const folders = DEFAULT_HOME_FOLDERS.flatMap(folder => {
     const appIds = folder.appIds.filter(
       appId =>
-        knownIds.has(appId) &&
-        !customFolderAppIds.has(appId) &&
-        !dockAppIds.has(appId) &&
-        !standaloneAppIds.has(appId),
+        knownIds.has(appId) && !customFolderAppIds.has(appId) && !dockAppIds.has(appId) && !standaloneAppIds.has(appId),
     );
     return appIds.length ? [{ ...folder, appIds, iconAssetId: '' }] : [];
   });
@@ -191,7 +221,7 @@ export function normalizeHomeLayout(layout: HomeScreenLayout): HomeScreenLayout 
       appIds,
       id: folder.id || `home_folder_${index + 1}`,
       iconAssetId: folder.iconAssetId || '',
-      name: folder.name.trim() || '文件夹',
+      name: folder.name.trim() || '分组',
     });
   });
 
@@ -277,7 +307,7 @@ export function putHomeAppInFolder(layout: HomeScreenLayout, appId: string, targ
     folder.appIds.push(appId);
   } else {
     const id = `home_folder_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`;
-    folders.push({ appIds: [targetToken, appId], id, iconAssetId: '', name: '文件夹' });
+    folders.push({ appIds: [targetToken, appId], id, iconAssetId: '', name: '分组' });
     folderToken = homeFolderToken(id);
   }
   const targetWasDock = normalized.dockOrder.includes(targetToken);
@@ -288,10 +318,7 @@ export function putHomeAppInFolder(layout: HomeScreenLayout, appId: string, targ
   return normalizeHomeLayout({ ...normalized, appOrder, dockOrder, folders });
 }
 
-export function createHomeFolder(
-  layout: HomeScreenLayout,
-  input: { appIds: string[]; id: string; name: string },
-) {
+export function createHomeFolder(layout: HomeScreenLayout, input: { appIds: string[]; id: string; name: string }) {
   const normalized = normalizeHomeLayout(layout);
   const selectedIds = [...new Set(input.appIds)].filter(appId => normalized.appOrder.includes(appId));
   if (!selectedIds.length || !input.id.trim()) return normalized;
@@ -303,7 +330,7 @@ export function createHomeFolder(
     appOrder,
     folders: [
       ...normalized.folders,
-      { appIds: selectedIds, iconAssetId: '', id: input.id, name: input.name.trim() || '文件夹' },
+      { appIds: selectedIds, iconAssetId: '', id: input.id, name: input.name.trim() || '分组' },
     ],
   });
 }

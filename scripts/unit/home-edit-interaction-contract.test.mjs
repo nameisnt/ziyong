@@ -12,7 +12,7 @@ test('home status keeps low-frequency actions in the shared action menu', () => 
   const actionIndex = contextBar.indexOf('<ActionMenu');
   const contextCopyIndex = contextBar.indexOf('<div class="pc-home-context-copy">');
   assert.ok(actionIndex >= 0 && actionIndex < contextCopyIndex, 'the menu trigger must precede the chat label');
-  assert.match(contextBar, />新建文件夹</u);
+  assert.match(contextBar, />新建分组</u);
   assert.doesNotMatch(contextBar, /class="pc-home-context-btn"/u);
 });
 
@@ -22,8 +22,14 @@ test('folder management exposes explicit creation and pointer reordering', () =>
   assert.match(home, /onFolderAppPointerDown/u);
   assert.match(home, /onFolderAppPointerMove/u);
   assert.match(home, /pc-home-folder-app\[data-folder-index\][\s\S]*getBoundingClientRect/u);
-  assert.doesNotMatch(home, /elementFromPoint\(event\.clientX, event\.clientY\)\?\.closest<HTMLElement>\('\[data-folder-index\]'\)/u);
-  assert.match(home, /class="pc-icon-btn pc-home-folder-remove"[\s\S]*@pointerdown\.stop[\s\S]*@click\.stop="removeFolderApp/u);
+  assert.doesNotMatch(
+    home,
+    /elementFromPoint\(event\.clientX, event\.clientY\)\?\.closest<HTMLElement>\('\[data-folder-index\]'\)/u,
+  );
+  assert.match(
+    home,
+    /class="pc-icon-btn pc-home-folder-remove"[\s\S]*@pointerdown\.stop[\s\S]*@click\.stop="removeFolderApp/u,
+  );
   assert.match(home, /folderCreateAppIds/u);
   assert.doesNotMatch(home, /title="前移"|title="后移"/u);
 });

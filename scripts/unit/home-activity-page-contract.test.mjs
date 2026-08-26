@@ -11,18 +11,21 @@ const layoutProjection = await readFile(
 );
 const taskCenter = await readFile(new URL('../../src/components/GenerationTaskCenter.vue', import.meta.url), 'utf8');
 
-test('home keeps activity above the first desktop page', () => {
-  assert.match(source, /const homePageIndex = ref\(1\)/u);
+test('home keeps activity above search and group navigation', () => {
   assert.match(source, /<HomeActivityPage :active="true" @open="openHomeActivityItem"/u);
   assert.match(activityPage, /<section v-if="active" class="pc-home-activity-page"/u);
-  assert.match(layoutProjection, /homePages\.value\[homePageIndex\.value - 1\]/u);
-  assert.match(source, /v-for="\(_, pageIndex\) in homePages"/u);
-  assert.match(source, /\.pc-task-list, input, textarea/u);
+  assert.match(source, /class="pc-search-field pc-home-search"/u);
+  assert.match(source, /class="pc-home-group-tabs"/u);
+  assert.doesNotMatch(layoutProjection, /homePages|homePageIndex/u);
 });
 
-test('activity is never a drag destination and home re-entry restores the recorded source page', () => {
-  assert.match(source, /nextPage < 1 \|\| nextPage > homePages\.value\.length/u);
-  assert.match(source, /homePageIndex\.value = clampHomePageIndex\(route\.homeSource\?\.pageIndex \?\? 1\)/u);
+test('activity is never a drag destination and home re-entry restores the recorded source group', () => {
+  assert.doesNotMatch(source, /pc-home-activity-page[^\n]*data-home-token/u);
+  assert.match(
+    source,
+    /activeHomeGroupId\.value = homeGroups\.value\.some\(group => group\.id === route\.homeSource\?\.folderId\)/u,
+  );
+  assert.match(source, /activeHomeFolderId\.value = ''/u);
 });
 
 test('activity routes drafts and recovery items through their registered app and keeps saved-task cleanup in TaskCenter', () => {
@@ -64,8 +67,8 @@ test('activity page owns its asynchronous state without duplicating desktop stat
 test('home organize mode is explicit and Dock rejects unsupported drops instead of displacing items', () => {
   assert.match(source, /isOrganizing = ref\(false\)/u);
   assert.match(source, /\{\{ isOrganizing \? '完成' : '整理' \}\}/u);
-  assert.match(source, /Dock 只能放置 App，文件夹请留在主界面/u);
+  assert.match(source, /Dock 只能放置 App，分组请留在主界面/u);
   assert.match(source, /Dock 已满，请先移出一个 App/u);
   assert.match(source, /height: calc\(100% - 20px\)/u);
-  assert.match(source, /event\.button !== 0 \|\| homePages\.value\.length < 1 \|\| isOrganizing\.value/u);
+  assert.match(source, /event\.button !== 0/u);
 });

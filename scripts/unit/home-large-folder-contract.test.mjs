@@ -9,17 +9,20 @@ const [home, layoutProjection, harness] = await Promise.all([
   readFile(new URL('../../src/testing/visual-harness.ts', import.meta.url), 'utf8'),
 ]);
 
-test('desktop folders expose exactly three direct shortcuts and one full-folder preview', () => {
-  assert.match(home, /class="pc-home-folder-tile"|pc-app-tile pc-home-folder-tile/u);
-  assert.match(layoutProjection, /getFolderApps\(item\)\.slice\(0, 3\)/u);
-  assert.match(layoutProjection, /getFolderApps\(item\)\.slice\(3, 7\)/u);
-  assert.match(home, /class="pc-home-folder-shortcut"[\s\S]*@click\.stop="openFolderShortcut\(app\.id\)"/u);
-  assert.match(home, /class="pc-home-folder-more"[\s\S]*@click\.stop="openHomeFolderItem\(item\)"/u);
+test('saved folders render as group tabs with full direct App grids', () => {
+  assert.match(home, /class="pc-home-group-tabs"/u);
+  assert.match(home, /v-for="group in homeGroups"/u);
+  assert.match(home, /class="pc-home-app-grid"/u);
+  assert.match(home, /apps: activeHomeGroupApps\.value/u);
+  assert.match(home, /title: '独立 App'/u);
+  assert.doesNotMatch(home, /pc-home-folder-tile|pc-page-dot|pc-home-folder-shortcut/u);
+  assert.doesNotMatch(layoutProjection, /packHomeGridPages|getFolderShortcutApps|getFolderRemainingApps/u);
 });
 
-test('large folder browser scenario verifies geometry and both navigation paths', () => {
-  assert.match(harness, /Large home folder does not expose three shortcuts and a remaining-App preview/u);
-  assert.match(harness, /Compact home folder does not occupy a 2x1 grid area/u);
-  assert.match(harness, /Large home folder shortcut did not open its App directly/u);
-  assert.match(harness, /Large home folder remaining preview did not open the full folder/u);
+test('home browser scenario verifies group switching, search, direct opening and management', () => {
+  assert.match(harness, /Home did not render the saved folders as direct group tabs/u);
+  assert.match(harness, /Selected home group did not expose every App directly/u);
+  assert.match(harness, /Home group source was not restored without reopening its management dialog/u);
+  assert.match(harness, /Home App search did not find the independent chat archive/u);
+  assert.match(harness, /Home group management action did not open the selected group/u);
 });

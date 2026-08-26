@@ -237,7 +237,7 @@ const DEFAULT_VISUAL_THEME_SETTINGS: VisualThemeSettings = {
   textColor: '',
 };
 
-function createDefaultThemeProfile(): ThemeAppearanceProfile {
+function createDefaultThemeProfile(theme: ThemeMode): ThemeAppearanceProfile {
   return {
     fontFamily: '',
     readerFontFamily: '',
@@ -246,6 +246,7 @@ function createDefaultThemeProfile(): ThemeAppearanceProfile {
       appAccentOverrides: {},
       appIconAssetIds: {},
       appIconOverrides: {},
+      paperTextureId: theme === 'dark' ? 'cardstock' : 'a4',
     },
   };
 }
@@ -267,8 +268,8 @@ export const Settings = z
     generation: GenerationDefaultsSchema.default(() => ({ ...DEFAULT_GENERATION_SETTINGS })),
     interfaceSize: InterfaceSizeSettingsSchema.default(() => ({ ...DEFAULT_INTERFACE_SIZE_SETTINGS })),
     themeProfiles: ThemeProfilesSchema.default(() => ({
-      light: createDefaultThemeProfile(),
-      dark: createDefaultThemeProfile(),
+      light: createDefaultThemeProfile('light'),
+      dark: createDefaultThemeProfile('dark'),
     })),
     visualTheme: VisualThemeSettingsSchema.default(() => ({
       ...DEFAULT_VISUAL_THEME_SETTINGS,
@@ -304,8 +305,8 @@ export const Settings = z
     generation: { ...DEFAULT_GENERATION_SETTINGS },
     interfaceSize: { ...DEFAULT_INTERFACE_SIZE_SETTINGS },
     themeProfiles: {
-      light: createDefaultThemeProfile(),
-      dark: createDefaultThemeProfile(),
+      light: createDefaultThemeProfile('light'),
+      dark: createDefaultThemeProfile('dark'),
     },
     visualTheme: {
       ...DEFAULT_VISUAL_THEME_SETTINGS,

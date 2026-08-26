@@ -196,8 +196,15 @@ function normalizeSettings(rawSettings: unknown) {
     applyThemeProfile(nextSettings, nextSettings.themeProfiles[nextSettings.theme]);
   } else {
     const migratedProfile = captureThemeProfile(nextSettings);
-    nextSettings.themeProfiles.light = klona(migratedProfile);
-    nextSettings.themeProfiles.dark = klona(migratedProfile);
+    nextSettings.themeProfiles.light = {
+      ...klona(migratedProfile),
+      visualTheme: { ...klona(migratedProfile.visualTheme), paperTextureId: 'a4' },
+    };
+    nextSettings.themeProfiles.dark = {
+      ...klona(migratedProfile),
+      visualTheme: { ...klona(migratedProfile.visualTheme), paperTextureId: 'cardstock' },
+    };
+    applyThemeProfile(nextSettings, nextSettings.themeProfiles[nextSettings.theme]);
   }
   return nextSettings;
 }

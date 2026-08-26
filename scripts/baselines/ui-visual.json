@@ -2,7 +2,7 @@
   "version": 1,
   "defect": "D-BASELINE-002",
   "generatedAt": "2026-08-22T13:03:27.730Z",
-  "scenarioCount": 314,
+  "scenarioCount": 315,
   "sizes": [
     "350x700",
     "390x844",
@@ -10,7 +10,7 @@
   ],
   "summary": {
     "fails": 0,
-    "runs": 942,
+    "runs": 945,
     "warnings": 0
   },
   "runs": [
@@ -4722,6 +4722,21 @@
     {
       "findings": [],
       "scenario": "extension-transfer-import-dark",
+      "size": "430x900"
+    },
+    {
+      "findings": [],
+      "scenario": "settings-generation",
+      "size": "350x700"
+    },
+    {
+      "findings": [],
+      "scenario": "settings-generation",
+      "size": "390x844"
+    },
+    {
+      "findings": [],
+      "scenario": "settings-generation",
       "size": "430x900"
     }
   ]

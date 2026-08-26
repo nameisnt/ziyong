@@ -764,128 +764,83 @@ async function applyScenario(name: VisualScenarioName, options: { height?: numbe
     ) {
       throw new Error('Native reader launcher does not match SillyTavern menu structure or position');
     }
-    const folderTile = document.querySelector<HTMLElement>('.pc-home-folder-tile');
-    const shortcuts = folderTile?.querySelectorAll<HTMLButtonElement>('.pc-home-folder-shortcut');
-    const remainingPreview = folderTile?.querySelectorAll('.pc-home-folder-mini-icon');
-    const moreButton = folderTile?.querySelector<HTMLButtonElement>('.pc-home-folder-more');
-    if (!folderTile || shortcuts?.length !== 3 || !remainingPreview?.length || !moreButton) {
-      throw new Error('Large home folder does not expose three shortcuts and a remaining-App preview');
+    const groupTabs = [...document.querySelectorAll<HTMLButtonElement>('.pc-home-group-tabs .pc-segment-btn')];
+    if (
+      groupTabs.length !== settings.settings.layout.folders.length ||
+      document.querySelector('.pc-home-folder-tile, .pc-page-dot')
+    ) {
+      throw new Error('Home did not render the saved folders as direct group tabs');
     }
-    const folderStyle = getComputedStyle(folderTile);
-    if (folderStyle.gridColumnEnd !== 'span 2' || folderStyle.gridRowEnd !== 'span 1') {
-      throw new Error('Compact home folder does not occupy a 2x1 grid area');
+    const activeGroupId = groupTabs.find(tab => tab.classList.contains('active'))?.dataset.homeToken?.slice(7) || '';
+    const activeGroup = settings.settings.layout.folders.find(folder => folder.id === activeGroupId);
+    const activeGrid = document.querySelector<HTMLElement>('.pc-home-app-section .pc-home-app-grid');
+    if (!activeGroup || activeGrid?.querySelectorAll('.pc-app-tile').length !== activeGroup.appIds.length) {
+      throw new Error('Selected home group did not expose every App directly');
     }
-    const shortcutAppId = settings.settings.layout.folders[0]?.appIds[0] || '';
-    const firstDesktopSourcePage = document.querySelector<HTMLButtonElement>('.pc-page-dot.active')?.title || '';
-    shortcuts[0]?.click();
+
+    const firstGroupApp = activeGrid?.querySelector<HTMLButtonElement>('.pc-app-tile');
+    const firstGroupAppId = activeGroup.appIds[0] || '';
+    firstGroupApp?.click();
     await waitForPaint();
-    if (!shortcutAppId || phone.currentRoute.appId !== shortcutAppId) {
-      throw new Error('Large home folder shortcut did not open its App directly');
+    if (!firstGroupAppId || phone.currentRoute.appId !== firstGroupAppId) {
+      throw new Error('Home group App did not open directly');
     }
     await phone.goBack();
     await waitForPaint();
-    if (document.querySelector<HTMLButtonElement>('.pc-page-dot.active')?.title !== firstDesktopSourcePage) {
-      throw new Error('First desktop page source was not restored');
+    if (
+      !document
+        .querySelector<HTMLButtonElement>(`[data-home-token="folder:${activeGroupId}"]`)
+        ?.classList.contains('active') ||
+      document.querySelector('.pc-home-folder-dialog')
+    ) {
+      throw new Error('Home group source was not restored without reopening its management dialog');
     }
-
-    const alternatePageDot = [...document.querySelectorAll<HTMLButtonElement>('.pc-page-dot')].find(
-      dot => dot.title === '第 2 页',
-    );
-    alternatePageDot?.click();
-    await waitForPaint();
-    const alternatePageShortcut = document.querySelector<HTMLButtonElement>('.pc-home-folder-shortcut');
-    if (!alternatePageDot || !alternatePageShortcut) throw new Error('Alternate-page source fixture is missing');
-    alternatePageShortcut.click();
-    await waitForPaint();
-    await phone.goBack();
-    await waitForPaint();
-    if (document.querySelector<HTMLButtonElement>('.pc-page-dot.active')?.title !== '第 2 页') {
-      throw new Error('Alternate desktop page source was not restored');
-    }
-
-    document.querySelector<HTMLButtonElement>('.pc-home-folder-more')?.click();
-    await waitForPaint();
-    if (!document.querySelector('.pc-home-folder-dialog')) {
-      throw new Error('Large home folder remaining preview did not open the full folder');
-    }
-    document.querySelector<HTMLButtonElement>('.pc-home-folder-head button[title="关闭"]')?.click();
-    await waitForPaint();
 
     const gameFolder = settings.settings.layout.folders.find(folder => folder.name === '小游戏');
-    if (!gameFolder || gameFolder.appIds.length !== 10) {
-      throw new Error('Default desktop does not contain one ten-App minigame folder');
-    }
-    let gameFolderTile = document.querySelector<HTMLElement>(`[data-home-token="folder:${gameFolder.id}"]`);
-    if (!gameFolderTile) {
-      const pageDots = [...document.querySelectorAll<HTMLButtonElement>('.pc-page-dot')];
-      for (const pageDot of pageDots.slice(1)) {
-        pageDot.click();
-        await waitForPaint();
-        gameFolderTile = document.querySelector<HTMLElement>(`[data-home-token="folder:${gameFolder.id}"]`);
-        if (gameFolderTile) break;
-      }
-    }
-    if (!gameFolderTile) throw new Error('Minigame folder is missing from the desktop');
-    const gameFolderSourcePage = document.querySelector<HTMLButtonElement>('.pc-page-dot.active')?.title || '';
-    gameFolderTile.querySelector<HTMLButtonElement>('.pc-home-folder-more')?.click();
+    const gameTab = gameFolder
+      ? document.querySelector<HTMLButtonElement>(`[data-home-token="folder:${gameFolder.id}"]`)
+      : null;
+    gameTab?.click();
     await waitForPaint();
-    const gameFolderApps = [...document.querySelectorAll<HTMLElement>('.pc-home-folder-app')];
-    if (gameFolderApps.length !== 10) throw new Error('Minigame folder did not expose all ten direct App entries');
-    gameFolderApps[0]?.querySelector<HTMLButtonElement>('button')?.click();
+    const gameGrid = document.querySelector<HTMLElement>('.pc-home-app-section .pc-home-app-grid');
+    if (!gameFolder || gameFolder.appIds.length !== 10 || gameGrid?.querySelectorAll('.pc-app-tile').length !== 10) {
+      throw new Error('Minigame group did not expose all ten App entries');
+    }
+    gameGrid.querySelector<HTMLButtonElement>('.pc-app-tile')?.click();
     await waitForPaint();
     if (phone.currentRoute.appId !== 'game-2048' || !document.querySelector('.pc-game2048-board')) {
-      throw new Error('Minigame folder entry did not open 2048 directly');
+      throw new Error('Minigame group entry did not open 2048 directly');
     }
-    await phone.goBack();
-    await waitForPaint();
-    if (String(phone.currentRoute.appId) !== 'home')
-      throw new Error('Minigame direct App did not return to the desktop');
-    if (document.querySelector<HTMLButtonElement>('.pc-page-dot.active')?.title !== gameFolderSourcePage) {
-      throw new Error('Home source page was not restored');
-    }
-    if (!document.querySelector('.pc-home-folder-dialog')) throw new Error('Home source folder was not restored');
-
-    const restoredFolderApp = document.querySelector<HTMLButtonElement>('.pc-home-folder-app > button');
-    restoredFolderApp?.click();
-    await waitForPaint();
     phone.pushPage('visual-detail', '视觉详情');
     await phone.goBack();
     if (phone.currentRoute.page !== 'root') throw new Error('Nested App detail did not return to its root');
-    await phone.goBack();
-    await waitForPaint();
-    if (!document.querySelector('.pc-home-folder-dialog'))
-      throw new Error('Nested App root did not restore its source folder');
-
-    document.querySelector<HTMLButtonElement>('.pc-home-folder-app > button')?.click();
-    await waitForPaint();
     await phone.closePhone({ skipConfirm: true });
     phone.openPhone();
     if (phone.currentRoute.appId !== 'game-2048') throw new Error('Closed phone lost its App route');
     await phone.goBack();
     await waitForPaint();
-    if (!document.querySelector('.pc-home-folder-dialog')) throw new Error('Closed phone lost its source folder');
+    if (!gameTab?.classList.contains('active') || document.querySelector('.pc-home-folder-dialog')) {
+      throw new Error('Closed phone did not restore the source group');
+    }
 
-    document.querySelector<HTMLButtonElement>('.pc-home-folder-app > button')?.click();
+    const search = document.querySelector<HTMLInputElement>('.pc-home-search input');
+    if (!search) throw new Error('Home App search is missing');
+    search.value = '聊天档案';
+    search.dispatchEvent(new Event('input', { bubbles: true }));
     await waitForPaint();
-    await phone.goHome();
-    await waitForPaint();
-    if (
-      document.querySelector<HTMLButtonElement>('.pc-page-dot.active')?.title !== '第 1 页' ||
-      document.querySelector('.pc-home-folder-dialog')
-    ) {
-      throw new Error('Home action did not reset the desktop source');
+    const searchResults = [...document.querySelectorAll<HTMLButtonElement>('.pc-home-app-grid .pc-app-tile')];
+    if (searchResults.length !== 1 || !searchResults[0]?.textContent?.includes('聊天档案')) {
+      throw new Error('Home App search did not find the independent chat archive');
     }
-    document.querySelector<HTMLButtonElement>('.pc-page-dot[title="第 1 页"]')?.click();
+    search.value = '';
+    search.dispatchEvent(new Event('input', { bubbles: true }));
     await waitForPaint();
-    phone.recordHomeSource({ pageIndex: 1 });
-    phone.openApp('settings');
+    document.querySelector<HTMLButtonElement>('.pc-home-group-bar > .pc-soft-btn')?.click();
     await waitForPaint();
-    await phone.goBack();
-    await waitForPaint();
-    if (document.querySelector<HTMLButtonElement>('.pc-page-dot.active')?.title !== '第 1 页') {
-      throw new Error('First desktop page source was not restored');
+    if (!document.querySelector('.pc-home-folder-dialog')) {
+      throw new Error('Home group management action did not open the selected group');
     }
-    await phone.goHome();
+    document.querySelector<HTMLButtonElement>('.pc-home-folder-head button[title="关闭"]')?.click();
     await waitForPaint();
   } else if (name === 'home-five-columns') {
     const settings = useSettingsStore();
@@ -893,7 +848,7 @@ async function applyScenario(name: VisualScenarioName, options: { height?: numbe
     settings.setHomeColumns(5);
     await phone.goHome();
     await waitForPaint();
-    const grid = document.querySelector<HTMLElement>('.pc-home-grid-wrap .pc-grid');
+    const grid = document.querySelector<HTMLElement>('.pc-home-grid-wrap .pc-home-app-grid');
     const tile = document.querySelector<HTMLElement>('.pc-home-grid-wrap .pc-app-tile');
     const label = tile?.querySelector<HTMLElement>('strong');
     if (!grid || !tile || !label) throw new Error('Five-column home layout did not render App tiles');
@@ -917,7 +872,7 @@ async function applyScenario(name: VisualScenarioName, options: { height?: numbe
     await phone.goHome();
     await waitForPaint();
 
-    const tiles = [...document.querySelectorAll<HTMLButtonElement>('.pc-home-grid-wrap .pc-app-tile')];
+    const tiles = [...document.querySelectorAll<HTMLButtonElement>('.pc-home-grid-wrap .pc-app-tile[data-home-token]')];
     const source = tiles[0];
     const target = tiles[1];
     const sourceToken = source?.dataset.homeToken || '';
@@ -966,10 +921,11 @@ async function applyScenario(name: VisualScenarioName, options: { height?: numbe
       item => item.appIds.includes(sourceToken) && item.appIds.includes(targetToken),
     );
     if (!folder) throw new Error('Home drag did not create the expected folder');
-    const folderTile = document.querySelector<HTMLButtonElement>(`[data-home-token="folder:${folder.id}"]`);
-    if (!folderTile) throw new Error('Home drag folder is missing from the rendered grid');
+    const folderTab = document.querySelector<HTMLButtonElement>(`[data-home-token="folder:${folder.id}"]`);
+    if (!folderTab) throw new Error('Home drag group is missing from the group tabs');
     await new Promise(resolve => window.setTimeout(resolve, 280));
-    folderTile.click();
+    folderTab.click();
+    document.querySelector<HTMLButtonElement>('.pc-home-group-bar > .pc-soft-btn')?.click();
     await waitForPaint();
 
     const nameInput = document.querySelector<HTMLInputElement>('.pc-home-folder-name');
@@ -1083,16 +1039,16 @@ async function applyScenario(name: VisualScenarioName, options: { height?: numbe
 
     document.querySelector<HTMLButtonElement>('.pc-home-folder-head button[title="关闭"]')?.click();
     await waitForPaint();
-    const visibleFolderCandidate = [
-      ...document.querySelectorAll<HTMLButtonElement>('.pc-home-grid-wrap .pc-app-tile'),
-    ].find(tile => !tile.dataset.homeToken?.startsWith('folder:'));
+    const visibleFolderCandidate = document.querySelector<HTMLButtonElement>(
+      '.pc-home-grid-wrap .pc-app-tile[data-home-token]',
+    );
     const visibleFolderCandidateName = visibleFolderCandidate?.querySelector('strong')?.textContent?.trim();
     if (!visibleFolderCandidateName)
       throw new Error('Explicit folder fixture needs one visible App on the current page');
     document.querySelector<HTMLDetailsElement>('.pc-home-context-actions .pc-action-menu > summary')?.click();
     await waitForPaint();
     const newFolderButton = [...document.querySelectorAll<HTMLButtonElement>('.pc-action-menu-panel button')].find(
-      button => button.textContent?.includes('新建文件夹'),
+      button => button.textContent?.includes('新建分组'),
     );
     if (!newFolderButton) throw new Error('Home action menu omitted explicit folder creation');
     newFolderButton.click();
@@ -1122,40 +1078,23 @@ async function applyScenario(name: VisualScenarioName, options: { height?: numbe
     const releasedAppId = explicitFolder.appIds[0];
     document.querySelector<HTMLButtonElement>('.pc-home-folder-head button[title="关闭"]')?.click();
     await waitForPaint();
-    let explicitFolderTile = document.querySelector<HTMLButtonElement>(
+    const explicitFolderTab = document.querySelector<HTMLButtonElement>(
       `[data-home-token="folder:${explicitFolder.id}"]`,
     );
-    if (!explicitFolderTile) {
-      for (const pageDot of document.querySelectorAll<HTMLButtonElement>('.pc-page-dot')) {
-        pageDot.click();
-        await waitForPaint();
-        explicitFolderTile = document.querySelector<HTMLButtonElement>(
-          `[data-home-token="folder:${explicitFolder.id}"]`,
-        );
-        if (explicitFolderTile) break;
-      }
+    if (!explicitFolderTab) {
+      throw new Error(`Explicit group tab is absent after creating ${visibleFolderCandidateName}`);
     }
-    if (!explicitFolderTile) {
-      throw new Error(`Explicit folder tile is absent from every page after creating ${visibleFolderCandidateName}`);
-    }
-    explicitFolderTile?.click();
+    explicitFolderTab.click();
+    document.querySelector<HTMLButtonElement>('.pc-home-group-bar > .pc-soft-btn')?.click();
     await waitForPaint();
     if (!document.querySelector('.pc-home-folder-dialog')) {
       throw new Error('Explicit folder creation left the home interaction locked');
     }
 
-    document.querySelector<HTMLButtonElement>('.pc-home-folder-head button[title="解散文件夹"]')?.click();
+    document.querySelector<HTMLButtonElement>('.pc-home-folder-head button[title="解散分组"]')?.click();
     await new Promise(resolve => window.setTimeout(resolve, 180));
     await waitForPaint();
-    let releasedTile = document.querySelector<HTMLButtonElement>(`[data-home-token="${releasedAppId}"]`);
-    if (!releasedTile) {
-      for (const pageDot of document.querySelectorAll<HTMLButtonElement>('.pc-page-dot')) {
-        pageDot.click();
-        await waitForPaint();
-        releasedTile = document.querySelector<HTMLButtonElement>(`[data-home-token="${releasedAppId}"]`);
-        if (releasedTile) break;
-      }
-    }
+    const releasedTile = document.querySelector<HTMLButtonElement>(`[data-home-token="${releasedAppId}"]`);
     releasedTile?.click();
     await waitForPaint();
     if (
@@ -1169,9 +1108,9 @@ async function applyScenario(name: VisualScenarioName, options: { height?: numbe
     await phone.goHome();
     await waitForPaint();
     const movableTile = document.querySelector<HTMLButtonElement>(`[data-home-token="${releasedAppId}"]`);
-    const moveBeforeTile = [...document.querySelectorAll<HTMLButtonElement>('.pc-home-grid-wrap .pc-app-tile')].find(
-      tile => tile.dataset.homeToken !== releasedAppId,
-    );
+    const moveBeforeTile = [
+      ...document.querySelectorAll<HTMLButtonElement>('.pc-home-grid-wrap .pc-app-tile[data-home-token]'),
+    ].find(tile => tile.dataset.homeToken !== releasedAppId);
     if (!movableTile || !moveBeforeTile) throw new Error('Post-dissolution drag fixture needs two desktop items');
     Object.defineProperties(movableTile, {
       releasePointerCapture: { configurable: true, value: () => undefined },
@@ -1209,7 +1148,8 @@ async function applyScenario(name: VisualScenarioName, options: { height?: numbe
       }),
     );
     await waitForPaint();
-    if (settings.settings.layout.appOrder[0] !== releasedAppId) {
+    const independentOrder = settings.settings.layout.appOrder.filter(token => !token.startsWith('folder:'));
+    if (independentOrder.indexOf(releasedAppId) >= independentOrder.indexOf(moveBeforeTile.dataset.homeToken || '')) {
       throw new Error('Folder dissolution left desktop dragging locked');
     }
   } else if (
@@ -2205,8 +2145,8 @@ async function applyScenario(name: VisualScenarioName, options: { height?: numbe
     createGenerationTaskFixture();
     await phone.goHome();
     await waitForPaint();
-    document.querySelector<HTMLButtonElement>('.pc-page-dot')?.click();
-    await waitForPaint();
+    const sourceGroupToken =
+      document.querySelector<HTMLButtonElement>('.pc-home-group-tabs .active')?.dataset.homeToken;
     const singleTaskRow = [...document.querySelectorAll<HTMLElement>('.pc-task-row')].find(row =>
       row.textContent?.includes('剧情梳理 · 单次生成'),
     );
@@ -2240,8 +2180,10 @@ async function applyScenario(name: VisualScenarioName, options: { height?: numbe
     };
     dispatchHomeSwipe(rawArea, 300, 90, 71);
     await waitForPaint();
-    if (document.querySelector<HTMLButtonElement>('.pc-page-dot.active')?.title !== '第 1 页') {
-      throw new Error('Generation task raw editor incorrectly started a desktop page swipe');
+    if (
+      document.querySelector<HTMLButtonElement>('.pc-home-group-tabs .active')?.dataset.homeToken !== sourceGroupToken
+    ) {
+      throw new Error('Generation task raw editor incorrectly changed the active home group');
     }
     rawToggle?.click();
     await waitForPaint();
@@ -2260,12 +2202,12 @@ async function applyScenario(name: VisualScenarioName, options: { height?: numbe
     if (!taskCopy) throw new Error('Generation task swipe surface fixture is missing');
     dispatchHomeSwipe(taskCopy, 300, 90, 73);
     await waitForPaint();
-    if (document.querySelector<HTMLButtonElement>('.pc-page-dot.active')?.title !== '第 1 页') {
-      throw new Error('Generation task horizontal scroll incorrectly changed the desktop page');
+    if (
+      document.querySelector<HTMLButtonElement>('.pc-home-group-tabs .active')?.dataset.homeToken !== sourceGroupToken
+    ) {
+      throw new Error('Generation task horizontal scroll incorrectly changed the active home group');
     }
     await new Promise(resolve => window.setTimeout(resolve, 280));
-    document.querySelector<HTMLButtonElement>('.pc-page-dot[title="第 1 页"]')?.click();
-    await waitForPaint();
     const restoredTaskHead = document.querySelector<HTMLElement>('.pc-task-center-head');
     if (!restoredTaskHead || !document.querySelector('.pc-task-list')) {
       throw new Error('Generation TaskCenter did not remain expanded after page navigation');

@@ -33,7 +33,7 @@ const gameIds = [
 
 test('every independent minigame has a dedicated play scenario', () => {
   for (const gameId of gameIds) assert.match(catalog, new RegExp(`game-${gameId}-play`));
-  assert.match(harness, /Default desktop does not contain one ten-App minigame folder/);
+  assert.match(harness, /Minigame group did not expose all ten App entries/);
   assert.match(harness, /applyMinigameVisualScenario/);
 });
 

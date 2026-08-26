@@ -16,14 +16,12 @@ test('home source context belongs to the shared navigation route instead of App-
   assert.doesNotMatch(phoneHome, /route\.appId !== 'home'[\s\S]{0,260}homePageIndex\.value = 1/);
 });
 
-test('the formal home scenario verifies folder, page, nested detail, close-reopen and Home semantics', () => {
+test('the formal home scenario verifies group source, nested detail and close-reopen semantics', () => {
   for (const evidence of [
-    'Home source page was not restored',
-    'Home source folder was not restored',
-    'First desktop page source was not restored',
+    'Home group source was not restored without reopening its management dialog',
+    'Closed phone did not restore the source group',
     'Nested App detail did not return to its root',
     'Closed phone lost its App route',
-    'Home action did not reset the desktop source',
   ]) {
     assert.match(harness, new RegExp(evidence));
   }

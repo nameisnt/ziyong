@@ -1,7 +1,7 @@
 {
   "version": 2,
   "defect": "D-VISUAL-001",
-  "generatedAt": "2026-08-26T05:21:35.772Z",
+  "generatedAt": "2026-08-26T10:11:29.506Z",
   "scenarios": [
     "home",
     "home-tasks-dark",
@@ -17,7 +17,7 @@
   "evidence": [
     {
       "appearance": {
-        "screenshotPerceptualHash": "F08300CCCCCCC4AA",
+        "screenshotPerceptualHash": "F0830082ABABA223",
         "targets": [
           {
             "missing": false,
@@ -31,7 +31,7 @@
           },
           {
             "missing": false,
-            "selector": ".pc-home-grid-wrap .pc-grid",
+            "selector": ".pc-home-grid-wrap .pc-home-app-grid",
             "styles": {
               "gridTemplateColumns": "75px 75px 75px 75px"
             }
@@ -43,7 +43,7 @@
     },
     {
       "appearance": {
-        "screenshotPerceptualHash": "8CFCCCCC8E8E8E54",
+        "screenshotPerceptualHash": "0F7CCD7855D55CF0",
         "targets": [
           {
             "missing": false,
@@ -70,7 +70,7 @@
     },
     {
       "appearance": {
-        "screenshotPerceptualHash": "CCF090D0E03E3C7C",
+        "screenshotPerceptualHash": "5C71D02377792180",
         "targets": [
           {
             "missing": false,
@@ -95,7 +95,7 @@
     },
     {
       "appearance": {
-        "screenshotPerceptualHash": "F8F090D0E00E3D7C",
+        "screenshotPerceptualHash": "FC71D02377172110",
         "targets": [
           {
             "missing": false,
@@ -140,7 +140,7 @@
     },
     {
       "appearance": {
-        "screenshotPerceptualHash": "F083DCCCCCD401AA",
+        "screenshotPerceptualHash": "F08301ABABA303AA",
         "targets": [
           {
             "missing": false,
@@ -154,7 +154,7 @@
           },
           {
             "missing": false,
-            "selector": ".pc-home-grid-wrap .pc-grid",
+            "selector": ".pc-home-grid-wrap .pc-home-app-grid",
             "styles": {
               "gridTemplateColumns": "85px 85px 85px 85px"
             }
@@ -166,7 +166,7 @@
     },
     {
       "appearance": {
-        "screenshotPerceptualHash": "DCF8D8A8A8AA00D4",
+        "screenshotPerceptualHash": "1C785B5555D87055",
         "targets": [
           {
             "missing": false,
@@ -193,7 +193,7 @@
     },
     {
       "appearance": {
-        "screenshotPerceptualHash": "D4F0F4E80E180000",
+        "screenshotPerceptualHash": "5433763331230000",
         "targets": [
           {
             "missing": false,
@@ -218,7 +218,7 @@
     },
     {
       "appearance": {
-        "screenshotPerceptualHash": "F0F0F4E807180000",
+        "screenshotPerceptualHash": "F033763307230000",
         "targets": [
           {
             "missing": false,
@@ -263,7 +263,7 @@
     },
     {
       "appearance": {
-        "screenshotPerceptualHash": "E083088C8C0000AA",
+        "screenshotPerceptualHash": "E08303ABAA2000AA",
         "targets": [
           {
             "missing": false,
@@ -277,7 +277,7 @@
           },
           {
             "missing": false,
-            "selector": ".pc-home-grid-wrap .pc-grid",
+            "selector": ".pc-home-grid-wrap .pc-home-app-grid",
             "styles": {
               "gridTemplateColumns": "95px 95px 95px 95px"
             }
@@ -289,7 +289,7 @@
     },
     {
       "appearance": {
-        "screenshotPerceptualHash": "9CF8C8CC8CCC00D4",
+        "screenshotPerceptualHash": "1C78D3DCDCE0E055",
         "targets": [
           {
             "missing": false,
@@ -316,7 +316,7 @@
     },
     {
       "appearance": {
-        "screenshotPerceptualHash": "CCF0ECE83F000082",
+        "screenshotPerceptualHash": "CC712FF171410000",
         "targets": [
           {
             "missing": false,
@@ -341,7 +341,7 @@
     },
     {
       "appearance": {
-        "screenshotPerceptualHash": "CCF0ECE81F000082",
+        "screenshotPerceptualHash": "E4712FF123410000",
         "targets": [
           {
             "missing": false,

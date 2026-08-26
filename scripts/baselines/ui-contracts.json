@@ -157,13 +157,6 @@
     },
     {
       "count": 1,
-      "excerpt": ".pc-field-note",
-      "file": "src/apps/settings/SettingsConnectionPanel.vue",
-      "message": "Scoped style overrides protected global control geometry.",
-      "ruleId": "protected-control-geometry"
-    },
-    {
-      "count": 1,
       "excerpt": ".pc-segment",
       "file": "src/Panel.vue",
       "message": "Scoped style overrides protected global control geometry.",

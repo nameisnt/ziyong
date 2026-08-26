@@ -646,6 +646,104 @@
   white-space: nowrap;
 }
 
+.pc-phone-root .pc-settings-list {
+  display: grid;
+}
+
+.pc-phone-root .pc-setting-row {
+  display: grid;
+  min-height: 52px;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 12px;
+  padding: 8px 0;
+  border-bottom: 1px solid var(--pc-border);
+}
+
+.pc-phone-root .pc-setting-row:last-child {
+  border-bottom: 0;
+}
+
+.pc-phone-root button.pc-setting-row {
+  width: 100%;
+  border-top: 0;
+  border-right: 0;
+  border-left: 0;
+  background: transparent;
+  color: var(--pc-text);
+  text-align: left;
+  cursor: pointer;
+}
+
+.pc-phone-root .pc-setting-row > strong,
+.pc-phone-root .pc-setting-label {
+  min-width: 0;
+  color: var(--pc-text);
+  font-size: 14px;
+  font-weight: 800;
+}
+
+.pc-phone-root .pc-setting-control {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.pc-phone-root .pc-setting-value {
+  min-width: 62px;
+  color: var(--pc-muted);
+  font-size: 13px;
+  font-weight: 700;
+  text-align: right;
+}
+
+.pc-phone-root .pc-range-number {
+  display: grid;
+  width: min(250px, 64vw);
+  grid-template-columns: minmax(72px, 1fr) 72px;
+  align-items: center;
+  gap: 8px;
+}
+
+.pc-phone-root .pc-range-number input[type='range'] {
+  min-width: 0;
+}
+
+.pc-phone-root .pc-range-number .pc-field {
+  width: 72px;
+  text-align: center;
+}
+
+.pc-phone-root .pc-stepper {
+  display: grid;
+  grid-template-columns: 36px 42px 36px;
+  align-items: center;
+  overflow: hidden;
+  border: 1px solid var(--pc-border);
+  border-radius: var(--pc-control-radius);
+  background: var(--pc-surface);
+}
+
+.pc-phone-root .pc-stepper button {
+  width: 36px;
+  height: 36px;
+  border: 0;
+  background: transparent;
+  color: var(--pc-text);
+  cursor: pointer;
+}
+
+.pc-phone-root .pc-stepper output {
+  display: grid;
+  height: 36px;
+  place-items: center;
+  border-right: 1px solid var(--pc-border);
+  border-left: 1px solid var(--pc-border);
+  font-weight: 800;
+}
+
 .pc-phone-root .pc-inline-control-grid {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));

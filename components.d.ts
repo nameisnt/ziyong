@@ -57,6 +57,7 @@ declare module 'vue' {
     ReferencePicker: typeof import('./src/components/ReferencePicker.vue')['default']
     SearchableCombobox: typeof import('./src/components/SearchableCombobox.vue')['default']
     SearchableSelectOverlay: typeof import('./src/components/SearchableSelectOverlay.vue')['default']
+    StepperControl: typeof import('./src/components/StepperControl.vue')['default']
     TavernPromptCapture: typeof import('./src/components/TavernPromptCapture.vue')['default']
     TheaterTypeGroupField: typeof import('./src/components/prompts/TheaterTypeGroupField.vue')['default']
     VersionNavigator: typeof import('./src/components/VersionNavigator.vue')['default']

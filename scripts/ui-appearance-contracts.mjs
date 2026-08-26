@@ -8,7 +8,7 @@ export const UI_APPEARANCE_CONTRACTS = Object.freeze([
       }),
       Object.freeze({
         properties: Object.freeze(['gridTemplateColumns']),
-        selector: '.pc-home-grid-wrap .pc-grid',
+        selector: '.pc-home-grid-wrap .pc-home-app-grid',
       }),
     ]),
   }),

@@ -29,19 +29,20 @@ test('complex dialogs share lifecycle without bypassing busy guards', () => {
     ['phone', 'homeFolderDialogRef'],
   ]) {
     const explicitRegistration = sources[key].includes(`dialogRef: ${refName}`);
-    const shorthandRegistration = refName === 'dialogRef' && /usePhoneModalLifecycle\(\{\s*dialogRef,/.test(sources[key]);
+    const shorthandRegistration =
+      refName === 'dialogRef' && /usePhoneModalLifecycle\(\{\s*dialogRef,/.test(sources[key]);
     if (!explicitRegistration && !shorthandRegistration) failures.push(`${key} does not register ${refName}`);
   }
   if (sources.bagu.includes('useEventListener(window') || sources.bagu.includes('dialogEl.value?.focus')) {
     failures.push('Bagu modal still owns duplicate key or focus lifecycle');
   }
 
-  for (const evidence of ['function close()', 'if (!busy.value) emit(\'close\')', 'onClose: close']) {
+  for (const evidence of ['function close()', "if (!busy.value) emit('close')", 'onClose: close']) {
     if (!sources.transfer.includes(evidence)) failures.push(`Content transfer busy close guard missing: ${evidence}`);
   }
   for (const evidence of [
     'ref="homeFolderDialogRef"',
-    'aria-label="主界面文件夹"',
+    'aria-label="主页分组管理"',
     'tabindex="-1"',
     'isOpen: () => Boolean(activeHomeFolder.value)',
     'onClose: closeHomeFolder',
@@ -50,7 +51,8 @@ test('complex dialogs share lifecycle without bypassing busy guards', () => {
   }
 
   for (const scenario of ['bagu-hit-details', 'content-transfer-dialog']) {
-    if (!interactionContracts.includes(`scenario: '${scenario}'`)) failures.push(`${scenario} is not a formal interaction`);
+    if (!interactionContracts.includes(`scenario: '${scenario}'`))
+      failures.push(`${scenario} is not a formal interaction`);
     if (!runnerSource.includes(`scenario === '${scenario}'`)) failures.push(`${scenario} has no lifecycle assertions`);
   }
 

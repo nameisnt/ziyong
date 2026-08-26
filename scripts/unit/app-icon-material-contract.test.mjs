@@ -10,11 +10,11 @@ const [globalCss, home, overlay, theme] = await Promise.all([
   readFile(new URL('../../src/apps/theme/ThemeApp.vue', import.meta.url), 'utf8'),
 ]);
 
-test('one shared material styles home, Dock, folder and theme-preview App icons', () => {
+test('one shared material styles home, Dock, group management and theme-preview App icons', () => {
   assert.match(globalCss, /\.pc-phone-root \.pc-app-icon-material\s*\{/u);
   assert.match(globalCss, /\.pc-app-icon-material::before/u);
   assert.match(globalCss, /\.pc-app-icon-material:has\(> img\)/u);
-  assert.ok((home.match(/pc-app-icon-material/gu) || []).length >= 5);
+  assert.ok((home.match(/pc-app-icon-material/gu) || []).length >= 4);
   assert.match(theme, /pc-preview-app-icon pc-app-icon-material/u);
 });
 

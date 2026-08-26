@@ -2,141 +2,83 @@
   <section class="pc-home">
     <div class="pc-home-main">
       <HomeContextBar
-        :is-organizing="isOrganizing"
         @open-folder-creator="openFolderCreator"
         @refreshed="refreshHomeArchiveDomains"
-        @toggle-organizing="isOrganizing = !isOrganizing"
+        @toggle-organizing="manageActiveHomeGroup"
       />
 
-      <section
-        ref="homeGridEl"
-        class="pc-home-grid-wrap"
-        @click.capture="onHomeSwipeClickCapture"
-        @pointercancel="onHomeSwipePointerCancel"
-        @pointerdown="onHomeSwipePointerDown"
-        @pointermove="onHomeSwipePointerMove"
-        @pointerup="onHomeSwipePointerUp"
-      >
+      <section ref="homeGridEl" class="pc-home-grid-wrap" @click.capture="onHomeSwipeClickCapture">
         <HomeActivityPage :active="true" @open="openHomeActivityItem" />
-        <section
-          :class="['pc-grid', { sorting: appDrag.isDragging || isOrganizing }]"
-          :style="{ '--pc-home-rows': settings.interfaceSize.homeRows }"
-        >
-          <template v-for="item in currentHomePageItems" :key="item.token">
-            <article
-              v-if="item.folder"
-              :class="[
-                'pc-app-tile pc-home-folder-tile',
-                {
-                  dragging: appDrag.itemToken === item.token && appDrag.isDragging,
-                  'folder-target': appDrag.folderTargetToken === item.token,
-                  'insert-before': insertBeforeItemToken === item.token,
-                  'insert-end': insertBeforeItemToken === '__end__' && currentPageLastItemToken === item.token,
-                },
-              ]"
-              :data-home-token="item.token"
-              :style="[getFolderStyle(item), getHomeGridPlacementStyle(item), getHomeTileDragStyle(item)]"
-              @click="openHomeFolderItem(item)"
-              @pointercancel="onAppPointerCancel"
-              @pointerdown="onAppPointerDown($event, item.token)"
-              @pointermove="onAppPointerMove"
-              @pointerup="onAppPointerUp"
-            >
-              <div class="pc-home-folder-preview">
-                <button
-                  v-for="app in getFolderShortcutApps(item)"
-                  :key="app.id"
-                  class="pc-home-folder-shortcut"
-                  type="button"
-                  :title="app.name"
-                  :aria-label="`打开 ${app.name}`"
-                  :style="getDisplayAppStyle(app)"
-                  @click.stop="openFolderShortcut(app.id)"
-                  @pointerdown="onFolderNestedPointerDown"
-                >
-                  <span class="pc-app-icon pc-app-icon-material">
-                    <AppIcon :asset-path="getDisplayAppIconAssetPath(app)" :icon="getDisplayAppIcon(app)" />
-                  </span>
-                </button>
-                <button
-                  class="pc-home-folder-more"
-                  type="button"
-                  :title="`打开 ${item.folder.name}`"
-                  :aria-label="`打开 ${item.folder.name}，共 ${item.folder.appIds.length} 个 App`"
-                  @click.stop="openHomeFolderItem(item)"
-                  @pointerdown="onFolderNestedPointerDown"
-                >
-                  <span v-if="getFolderRemainingApps(item).length" class="pc-home-folder-more-grid">
-                    <span
-                      v-for="app in getFolderRemainingApps(item)"
-                      :key="app.id"
-                      class="pc-home-folder-mini-icon pc-app-icon-material"
-                      :style="getDisplayAppStyle(app)"
-                    >
-                      <AppIcon :asset-path="getDisplayAppIconAssetPath(app)" :icon="getDisplayAppIcon(app)" />
-                    </span>
-                  </span>
-                  <i v-else class="fa-solid fa-folder-open"></i>
-                  <small>{{ item.folder.appIds.length > 3 ? `+${item.folder.appIds.length - 3}` : '全部' }}</small>
-                </button>
-              </div>
-              <button
-                class="pc-home-folder-title"
-                type="button"
-                :title="`打开 ${item.folder.name}`"
-                @click.stop="openHomeFolderItem(item)"
-                @pointerdown="onFolderNestedPointerDown"
-              >
-                <span v-if="getFolderIconAssetPath(item)" class="pc-home-folder-title-icon">
-                  <AppIcon :asset-path="getFolderIconAssetPath(item)" icon="fa-folder" />
-                </span>
-                <strong>{{ item.folder.name }}</strong>
-                <span class="pc-app-count-badge">{{ item.folder.appIds.length }}</span>
-              </button>
-            </article>
+        <label class="pc-search-field pc-home-search">
+          <i class="fa-solid fa-magnifying-glass"></i>
+          <input v-model="appSearch" placeholder="搜索 App" />
+          <button
+            v-if="appSearch"
+            class="pc-icon-btn"
+            type="button"
+            title="清除搜索"
+            aria-label="清除搜索"
+            @click="appSearch = ''"
+          >
+            <i class="fa-solid fa-xmark"></i>
+          </button>
+        </label>
 
+        <div v-if="homeGroups.length" class="pc-home-group-bar">
+          <nav class="pc-home-group-tabs" aria-label="主页分组">
             <button
-              v-else-if="item.app"
-              type="button"
+              v-for="group in homeGroups"
+              :key="group.id"
               :class="[
-                'pc-app-tile',
+                'pc-segment-btn compact',
                 {
-                  dragging: appDrag.itemToken === item.token && appDrag.isDragging,
-                  'folder-target': appDrag.folderTargetToken === item.token,
-                  'insert-before': insertBeforeItemToken === item.token,
-                  'insert-end': insertBeforeItemToken === '__end__' && currentPageLastItemToken === item.token,
+                  active: group.id === activeHomeGroupId,
+                  'folder-target': appDrag.folderTargetToken === homeFolderToken(group.id),
                 },
               ]"
-              :data-home-token="item.token"
-              :style="[getDisplayAppStyle(item.app), getHomeGridPlacementStyle(item), getHomeTileDragStyle(item)]"
-              @click="openHomeItem(item)"
-              @pointercancel="onAppPointerCancel"
-              @pointerdown="onAppPointerDown($event, item.token)"
-              @pointermove="onAppPointerMove"
-              @pointerup="onAppPointerUp"
+              type="button"
+              :data-home-token="homeFolderToken(group.id)"
+              @click="activeHomeGroupId = group.id"
+            >
+              {{ group.name }}
+            </button>
+          </nav>
+          <button class="pc-soft-btn compact" type="button" @click="manageActiveHomeGroup">
+            <i class="fa-solid fa-sliders"></i><span>管理分组</span>
+          </button>
+        </div>
+
+        <section v-for="section in homeSections" :key="section.id" class="pc-home-app-section">
+          <div v-if="section.title" class="pc-section-head pc-home-section-head">
+            <strong>{{ section.title }}</strong
+            ><span>{{ `${section.apps.length} 个 App` }}</span>
+          </div>
+          <div class="pc-home-app-grid">
+            <button
+              v-for="app in section.apps"
+              :key="app.id"
+              type="button"
+              :class="['pc-app-tile', { dragging: appDrag.itemToken === app.id && appDrag.isDragging }]"
+              :data-home-token="section.draggable ? app.id : undefined"
+              :style="[
+                getDisplayAppStyle(app),
+                section.draggable ? getHomeTileDragStyle({ app, folder: null, token: app.id }) : {},
+              ]"
+              @click="openHomeApp(app.id, section.folderId)"
+              @pointercancel="section.draggable && onAppPointerCancel($event)"
+              @pointerdown="section.draggable && onAppPointerDown($event, app.id)"
+              @pointermove="section.draggable && onAppPointerMove($event)"
+              @pointerup="section.draggable && onAppPointerUp($event)"
             >
               <span class="pc-app-icon pc-app-icon-material">
-                <AppIcon :asset-path="getDisplayAppIconAssetPath(item.app)" :icon="getDisplayAppIcon(item.app)" />
-                <span v-if="getHomeAppCount(item.app)" class="pc-app-count-badge">
-                  {{ formatHomeAppCount(item.app) }}
-                </span>
+                <AppIcon :asset-path="getDisplayAppIconAssetPath(app)" :icon="getDisplayAppIcon(app)" />
+                <span v-if="getHomeAppCount(app)" class="pc-app-count-badge">{{ formatHomeAppCount(app) }}</span>
               </span>
-              <strong :title="item.app.name">{{ item.app.name }}</strong>
+              <strong :title="app.name">{{ app.name }}</strong>
             </button>
-          </template>
+          </div>
         </section>
-
-        <div v-if="homePages.length > 1" class="pc-page-dots">
-          <button
-            v-for="(_, pageIndex) in homePages"
-            :key="pageIndex"
-            :class="['pc-page-dot', { active: pageIndex + 1 === homePageIndex }]"
-            type="button"
-            :title="`第 ${pageIndex + 1} 页`"
-            @click="homePageIndex = pageIndex + 1"
-            @pointerenter="switchDragPage(pageIndex + 1)"
-          ></button>
-        </div>
+        <EmptyState v-if="!homeSections.some(section => section.apps.length)" compact title="没有匹配的 App" />
       </section>
     </div>
 
@@ -176,7 +118,7 @@
           class="pc-section-card pc-modal-dialog pc-home-folder-dialog"
           role="dialog"
           aria-modal="true"
-          aria-label="主界面文件夹"
+          aria-label="主页分组管理"
           tabindex="-1"
         >
           <header class="pc-section-head pc-home-folder-head">
@@ -198,8 +140,8 @@
               class="pc-icon-btn danger"
               type="button"
               :disabled="folderDissolving"
-              title="解散文件夹"
-              aria-label="解散文件夹"
+              title="解散分组"
+              aria-label="解散分组"
               @click="dissolveActiveHomeFolder"
             >
               <i class="fa-solid fa-folder-minus"></i>
@@ -260,14 +202,14 @@
           class="pc-section-card pc-modal-dialog pc-home-folder-create-dialog"
           role="dialog"
           aria-modal="true"
-          aria-label="新建文件夹"
+          aria-label="新建分组"
           tabindex="-1"
           @submit.prevent="createSelectedHomeFolder"
         >
-          <header class="pc-section-head"><strong>新建文件夹</strong></header>
+          <header class="pc-section-head"><strong>新建分组</strong></header>
           <label class="pc-field-group">
             <span class="pc-field-label">名称</span>
-            <input v-model="folderCreateName" class="pc-field" maxlength="24" placeholder="文件夹名称" />
+            <input v-model="folderCreateName" class="pc-field" maxlength="24" placeholder="分组名称" />
           </label>
           <fieldset class="pc-home-folder-picker">
             <legend>选择 App（至少一个）</legend>
@@ -295,13 +237,10 @@
 
 <script setup lang="ts">
 import AppIcon from '@/components/AppIcon.vue';
+import EmptyState from '@/components/EmptyState.vue';
 import HomeActivityPage from '@/components/home/HomeActivityPage.vue';
 import HomeContextBar from '@/components/home/HomeContextBar.vue';
-import {
-  useHomeLayoutProjection,
-  type HomeDisplayItem,
-  type HomeGridDisplayItem,
-} from '@/components/home/useHomeLayoutProjection';
+import { useHomeLayoutProjection, type HomeDisplayItem } from '@/components/home/useHomeLayoutProjection';
 import { usePhoneModalLifecycle } from '@/composables/usePhoneModalLifecycle';
 import {
   createHomeFolder,
@@ -312,7 +251,7 @@ import {
   reorderHomeFolderApp,
   removeHomeAppFromFolder,
 } from '@/core/appLayout';
-import type { PhoneAppDefinition } from '@/data/apps';
+import { getPhoneApps, type PhoneAppDefinition } from '@/data/apps';
 import { usePhoneStore } from '@/store/phone';
 import { useSettingsStore } from '@/store/settings';
 import { getChatArchiveDomains } from '@/util/chatArchive';
@@ -357,15 +296,9 @@ const folderDrag = reactive({
   startY: 0,
   targetIndex: -1,
 });
-const homeSwipe = reactive({
-  pointerId: null as number | null,
-  startX: 0,
-  startY: 0,
-  swiping: false,
-  tracking: false,
-});
 const suppressHomeClickUntil = ref(0);
-const homePageIndex = ref(1);
+const activeHomeGroupId = ref('');
+const appSearch = ref('');
 const isOrganizing = ref(false);
 const activeHomeFolderId = ref('');
 const homeFolderDialogRef = ref<HTMLElement | null>(null);
@@ -374,7 +307,6 @@ const folderCreateOpen = ref(false);
 const folderCreateName = ref('');
 const folderCreateAppIds = ref<string[]>([]);
 const folderDissolving = ref(false);
-let dragPageTimer: ReturnType<typeof window.setTimeout> | null = null;
 let appDragLongPressTimer: ReturnType<typeof window.setTimeout> | null = null;
 let folderHoverTimer: ReturnType<typeof window.setTimeout> | null = null;
 let potentialFolderTargetToken = '';
@@ -382,31 +314,61 @@ let potentialFolderTargetToken = '';
 const {
   activeHomeFolder,
   activeHomeFolderApps,
-  clampHomePageIndex,
-  currentHomePageItems,
-  currentPageLastItemToken,
-  currentPageStartIndex,
   dockItems,
   folderCreationApps,
   getFolderApps,
-  getFolderRemainingApps,
-  getFolderShortcutApps,
   homeLayout,
-  homePages,
-} = useHomeLayoutProjection(homePageIndex, activeHomeFolderId);
+  phoneAppById,
+} = useHomeLayoutProjection(activeHomeFolderId);
+const homeGroups = computed(() => homeLayout.value.folders);
+const activeHomeGroup = computed(
+  () => homeGroups.value.find(group => group.id === activeHomeGroupId.value) ?? homeGroups.value[0] ?? null,
+);
+const activeHomeGroupApps = computed(() =>
+  (activeHomeGroup.value?.appIds ?? []).flatMap(appId => {
+    const app = phoneAppById.value.get(appId);
+    return app ? [app] : [];
+  }),
+);
+const standaloneHomeApps = computed(() =>
+  homeLayout.value.appOrder.flatMap(token => {
+    if (readHomeFolderToken(token)) return [];
+    const app = phoneAppById.value.get(token);
+    return app ? [app] : [];
+  }),
+);
+const homeSections = computed(() => {
+  const query = appSearch.value.trim().toLocaleLowerCase();
+  if (query) {
+    return [
+      {
+        apps: getPhoneApps().filter(app => `${app.name} ${app.id}`.toLocaleLowerCase().includes(query)),
+        draggable: false,
+        folderId: '',
+        id: 'search',
+        title: '搜索结果',
+      },
+    ].filter(section => section.apps.length);
+  }
+  return [
+    {
+      apps: activeHomeGroupApps.value,
+      draggable: false,
+      folderId: activeHomeGroup.value?.id ?? '',
+      id: `group:${activeHomeGroup.value?.id ?? 'none'}`,
+      title: '',
+    },
+    {
+      apps: standaloneHomeApps.value,
+      draggable: true,
+      folderId: '',
+      id: 'standalone',
+      title: '独立 App',
+    },
+  ].filter(section => section.apps.length);
+});
 const homeArchiveDomains = ref(getChatArchiveDomains(viewingScopeKey.value));
 const homeArchiveDomainByApp = computed(() => new Map(homeArchiveDomains.value.map(domain => [domain.appId, domain])));
-const insertBeforeItemToken = computed(() => {
-  if (!appDrag.isDragging || !appDrag.itemToken || appDrag.destination === 'dock') return '';
-  const order = homeLayout.value.appOrder.filter(id => id !== appDrag.itemToken);
-  if (appDrag.insertIndex < 0) return '';
-  const currentPageIds = currentHomePageItems.value.map(item => item.token).filter(id => id !== appDrag.itemToken);
-  const currentPageIndexes = currentPageIds.map(token => order.indexOf(token)).filter(index => index >= 0);
-  const currentPageEnd = currentPageIndexes.length ? Math.max(...currentPageIndexes) + 1 : 0;
-  if (currentPageIds.length && appDrag.insertIndex >= currentPageEnd) return '__end__';
-  if (appDrag.insertIndex >= order.length) return '__end__';
-  return order[appDrag.insertIndex] || '';
-});
 
 usePhoneModalLifecycle({
   dialogRef: homeFolderDialogRef,
@@ -441,10 +403,6 @@ function getHomeOrder() {
   return homeLayout.value.appOrder;
 }
 
-function goHomePage(pageIndex: number) {
-  homePageIndex.value = clampHomePageIndex(pageIndex);
-}
-
 function clearAppDragLongPressTimer() {
   if (!appDragLongPressTimer) return;
   window.clearTimeout(appDragLongPressTimer);
@@ -467,10 +425,6 @@ function resetAppDrag() {
   appDrag.pointerId = null;
   appDrag.startX = 0;
   appDrag.startY = 0;
-  if (dragPageTimer) {
-    window.clearTimeout(dragPageTimer);
-    dragPageTimer = null;
-  }
 }
 
 function getHomeTileDragStyle(item: HomeDisplayItem): AppStyle {
@@ -478,13 +432,6 @@ function getHomeTileDragStyle(item: HomeDisplayItem): AppStyle {
   return {
     '--pc-drag-x': `${appDrag.deltaX}px`,
     '--pc-drag-y': `${appDrag.deltaY}px`,
-  };
-}
-
-function getHomeGridPlacementStyle(item: HomeGridDisplayItem): AppStyle {
-  return {
-    'grid-column': `${item.column} / span ${item.columnSpan}`,
-    'grid-row': `${item.row} / span ${item.rowSpan}`,
   };
 }
 
@@ -499,14 +446,6 @@ function scheduleFolderTarget(token: string) {
     if (potentialFolderTargetToken === token && appDrag.isDragging) appDrag.folderTargetToken = token;
     folderHoverTimer = null;
   }, 380);
-}
-
-function resetHomeSwipe() {
-  homeSwipe.pointerId = null;
-  homeSwipe.startX = 0;
-  homeSwipe.startY = 0;
-  homeSwipe.swiping = false;
-  homeSwipe.tracking = false;
 }
 
 function resolveInsertIndex(clientX: number, clientY: number) {
@@ -526,43 +465,8 @@ function resolveInsertIndex(clientX: number, clientY: number) {
     const isBeforeInRow = clientY >= rect.top && clientY <= rect.bottom && clientX < centerX;
     if (isBeforeRow || isBeforeInRow) return Math.max(0, order.indexOf(tile.dataset.homeToken || ''));
   }
-  const pageIndexes = currentHomePageItems.value.map(item => order.indexOf(item.token)).filter(index => index >= 0);
+  const pageIndexes = standaloneHomeApps.value.map(app => order.indexOf(app.id)).filter(index => index >= 0);
   return pageIndexes.length ? Math.max(...pageIndexes) + 1 : order.length;
-}
-
-function switchDragPage(pageIndex: number) {
-  if (!appDrag.isDragging) return;
-  goHomePage(pageIndex);
-}
-
-function scheduleDragPageSwitch(direction: -1 | 1) {
-  const nextPage = homePageIndex.value + direction;
-  if (nextPage < 1 || nextPage > homePages.value.length || dragPageTimer) return;
-  dragPageTimer = window.setTimeout(() => {
-    goHomePage(nextPage);
-    const order = getHomeOrder().filter(token => token !== appDrag.itemToken);
-    const pageIndexes = (homePages.value[nextPage - 1] ?? [])
-      .map(item => order.indexOf(item.token))
-      .filter(index => index >= 0);
-    appDrag.insertIndex = pageIndexes.length
-      ? direction > 0
-        ? Math.min(...pageIndexes)
-        : Math.max(...pageIndexes) + 1
-      : order.length;
-    dragPageTimer = null;
-  }, 420);
-}
-
-function updateDragPageSwitch(clientX: number) {
-  if (!homeGridEl.value || homePages.value.length <= 1) return;
-  const rect = homeGridEl.value.getBoundingClientRect();
-  const edgeSize = Math.min(54, rect.width * 0.22);
-  if (clientX < rect.left + edgeSize) return scheduleDragPageSwitch(-1);
-  if (clientX > rect.right - edgeSize) return scheduleDragPageSwitch(1);
-  if (dragPageTimer) {
-    window.clearTimeout(dragPageTimer);
-    dragPageTimer = null;
-  }
 }
 
 function onAppPointerDown(event: PointerEvent, appId: string) {
@@ -611,7 +515,17 @@ function onAppPointerMove(event: PointerEvent) {
   appDrag.destination = inDock ? 'dock' : 'home';
   let folderCandidate = '';
   if (!readHomeFolderToken(appDrag.itemToken)) {
-    const target = document.elementFromPoint(event.clientX, event.clientY)?.closest<HTMLElement>('[data-home-token]');
+    const target = [...(homeGridEl.value?.querySelectorAll<HTMLElement>('[data-home-token]') ?? [])]
+      .filter(item => item.dataset.homeToken !== appDrag.itemToken)
+      .find(item => {
+        const rect = item.getBoundingClientRect();
+        return (
+          event.clientX >= rect.left &&
+          event.clientX <= rect.right &&
+          event.clientY >= rect.top &&
+          event.clientY <= rect.bottom
+        );
+      });
     const targetToken = target?.dataset.homeToken || '';
     if (targetToken && targetToken !== appDrag.itemToken) {
       const rect = target.getBoundingClientRect();
@@ -632,7 +546,6 @@ function onAppPointerMove(event: PointerEvent) {
     if (appDrag.insertIndex < 0) appDrag.insertIndex = dockTiles.length;
     return;
   }
-  updateDragPageSwitch(event.clientX);
   appDrag.insertIndex = resolveInsertIndex(event.clientX, event.clientY);
 }
 
@@ -640,7 +553,7 @@ function commitAppDrag() {
   if (!appDrag.itemToken || !appDrag.isDragging) return;
   if (appDrag.destination === 'dock') {
     if (readHomeFolderToken(appDrag.itemToken)) {
-      phone.noticeWarning('Dock 只能放置 App，文件夹请留在主界面');
+      phone.noticeWarning('Dock 只能放置 App，分组请留在主界面');
       return;
     }
     const isAlreadyDocked = homeLayout.value.dockOrder.includes(appDrag.itemToken);
@@ -676,55 +589,6 @@ function onAppPointerCancel(event: PointerEvent) {
   resetAppDrag();
 }
 
-function onHomeSwipePointerDown(event: PointerEvent) {
-  if (event.button !== 0 || homePages.value.length < 1 || isOrganizing.value) return;
-  const target = event.target;
-  if (
-    target instanceof Element &&
-    target.closest(
-      '.pc-page-dots, .pc-home-context, .pc-home-dock, .pc-task-list, input, textarea, select, [contenteditable="true"], .pc-native-select-anchor',
-    )
-  )
-    return;
-  homeSwipe.pointerId = event.pointerId;
-  homeSwipe.startX = event.clientX;
-  homeSwipe.startY = event.clientY;
-  homeSwipe.swiping = false;
-  homeSwipe.tracking = true;
-}
-
-function onHomeSwipePointerMove(event: PointerEvent) {
-  if (!homeSwipe.tracking || homeSwipe.pointerId !== event.pointerId) return;
-  if (appDrag.longPressReady || appDrag.isDragging) return resetHomeSwipe();
-  const deltaX = event.clientX - homeSwipe.startX;
-  const deltaY = event.clientY - homeSwipe.startY;
-  const absX = Math.abs(deltaX);
-  const absY = Math.abs(deltaY);
-  if (!homeSwipe.swiping && absX > 12 && absX > absY * 1.25) {
-    homeSwipe.swiping = true;
-    clearAppDragLongPressTimer();
-  }
-  if (homeSwipe.swiping) event.preventDefault();
-}
-
-function onHomeSwipePointerUp(event: PointerEvent) {
-  if (!homeSwipe.tracking || homeSwipe.pointerId !== event.pointerId) return;
-  const deltaX = event.clientX - homeSwipe.startX;
-  const deltaY = event.clientY - homeSwipe.startY;
-  const absX = Math.abs(deltaX);
-  const absY = Math.abs(deltaY);
-  if (homeSwipe.swiping && absX >= 48 && absX > absY * 1.25) {
-    goHomePage(homePageIndex.value + (deltaX < 0 ? 1 : -1));
-    suppressHomeClickUntil.value = Date.now() + 250;
-    event.preventDefault();
-  }
-  resetHomeSwipe();
-}
-
-function onHomeSwipePointerCancel(event: PointerEvent) {
-  if (homeSwipe.pointerId === event.pointerId) resetHomeSwipe();
-}
-
 function onHomeSwipeClickCapture(event: MouseEvent) {
   if (Date.now() >= suppressHomeClickUntil.value) return;
   event.preventDefault();
@@ -732,7 +596,7 @@ function onHomeSwipeClickCapture(event: MouseEvent) {
 }
 
 function rememberHomeSource(folderId = '') {
-  phone.recordHomeSource({ folderId: folderId || undefined, pageIndex: homePageIndex.value });
+  phone.recordHomeSource({ folderId: folderId || undefined, pageIndex: 1 });
 }
 
 function openHomeApp(appId: string, folderId = '') {
@@ -756,20 +620,6 @@ function getFolderIconAssetPath(item: HomeDisplayItem) {
   return settings.value.homeIconAssets.find(asset => asset.id === assetId)?.path || '';
 }
 
-function onFolderNestedPointerDown(event: PointerEvent) {
-  if (!isOrganizing.value) event.stopPropagation();
-}
-
-function openHomeFolderItem(item: HomeDisplayItem) {
-  if (appDrag.isDragging || Date.now() < suppressHomeClickUntil.value) return;
-  openHomeItem(item);
-}
-
-function openFolderShortcut(appId: string) {
-  if (isOrganizing.value || appDrag.isDragging || Date.now() < suppressHomeClickUntil.value) return;
-  openHomeApp(appId);
-}
-
 function openHomeItem(item: HomeDisplayItem) {
   if (Date.now() < suppressHomeClickUntil.value) return;
   if (item.folder) activeHomeFolderId.value = item.folder.id;
@@ -779,7 +629,6 @@ function openHomeItem(item: HomeDisplayItem) {
 function resetHomeInteractionState() {
   resetAppDrag();
   resetFolderDrag();
-  resetHomeSwipe();
   suppressHomeClickUntil.value = 0;
   isOrganizing.value = false;
   folderDissolving.value = false;
@@ -795,6 +644,13 @@ function openFolderCreator() {
   folderCreateName.value = '';
   folderCreateAppIds.value = [];
   folderCreateOpen.value = true;
+}
+
+function manageActiveHomeGroup() {
+  const group = activeHomeGroup.value;
+  if (!group) return openFolderCreator();
+  activeHomeFolderId.value = group.id;
+  isOrganizing.value = true;
 }
 
 function closeFolderCreator() {
@@ -830,7 +686,7 @@ function renameActiveHomeFolder(name: string) {
   settingsStore.setHomeLayout({
     ...homeLayout.value,
     folders: homeLayout.value.folders.map(item =>
-      item.id === folder.id ? { ...item, name: name.trim() || '文件夹' } : item,
+      item.id === folder.id ? { ...item, name: name.trim() || '分组' } : item,
     ),
   });
 }
@@ -918,12 +774,7 @@ function removeFolderApp(appId: string) {
   const folder = activeHomeFolder.value;
   if (!folder) return;
   settingsStore.setHomeLayout(
-    removeHomeAppFromFolder(
-      homeLayout.value,
-      folder.id,
-      appId,
-      currentPageStartIndex.value + currentHomePageItems.value.length,
-    ),
+    removeHomeAppFromFolder(homeLayout.value, folder.id, appId, homeLayout.value.appOrder.length),
   );
   if (!settings.value.layout.folders.some(item => item.id === folder.id)) closeHomeFolder();
 }
@@ -956,7 +807,7 @@ async function dissolveActiveHomeFolder() {
       folders: homeLayout.value.folders.filter(item => item.id !== folder.id),
     });
   } catch (caughtError) {
-    phone.noticeError(caughtError instanceof Error ? caughtError.message : '解散文件夹失败');
+    phone.noticeError(caughtError instanceof Error ? caughtError.message : '解散分组失败');
   } finally {
     resetHomeInteractionState();
     activeHomeFolderId.value = '';
@@ -964,10 +815,13 @@ async function dissolveActiveHomeFolder() {
 }
 
 watch(
-  () => homePages.value.length,
-  pageCount => {
-    homePageIndex.value = Math.min(Math.max(1, homePageIndex.value), Math.max(1, pageCount));
+  () => homeGroups.value.map(group => group.id).join('|'),
+  () => {
+    if (!homeGroups.value.some(group => group.id === activeHomeGroupId.value)) {
+      activeHomeGroupId.value = homeGroups.value[0]?.id ?? '';
+    }
   },
+  { immediate: true },
 );
 watch(viewingScopeKey, refreshHomeArchiveDomains);
 watch(
@@ -979,11 +833,11 @@ watch(
       folderCreateOpen.value = false;
       return;
     }
-    homePageIndex.value = clampHomePageIndex(route.homeSource?.pageIndex ?? 1);
-    await nextTick();
-    activeHomeFolderId.value = homeLayout.value.folders.some(folder => folder.id === route.homeSource?.folderId)
+    activeHomeGroupId.value = homeGroups.value.some(group => group.id === route.homeSource?.folderId)
       ? route.homeSource?.folderId || ''
-      : '';
+      : activeHomeGroupId.value || homeGroups.value[0]?.id || '';
+    await nextTick();
+    activeHomeFolderId.value = '';
     refreshHomeArchiveDomains();
   },
   { deep: true, immediate: true },
@@ -1016,13 +870,6 @@ onBeforeUnmount(resetHomeInteractionState);
   display: flex;
   flex-direction: column;
 }
-.pc-grid {
-  display: grid;
-  grid-template-columns: repeat(var(--pc-home-columns), minmax(0, 1fr));
-  grid-template-rows: repeat(var(--pc-home-rows), 88px);
-  gap: 8px;
-  align-content: start;
-}
 .pc-home-grid-wrap {
   flex: 1 1 auto;
   display: flex;
@@ -1038,13 +885,61 @@ onBeforeUnmount(resetHomeInteractionState);
   flex: 0 0 auto;
   max-height: 220px;
 }
+.pc-home-search {
+  flex: 0 0 auto;
+}
+.pc-home-group-bar {
+  display: flex;
+  min-width: 0;
+  flex: 0 0 auto;
+  align-items: center;
+  gap: 8px;
+  border-bottom: 1px solid var(--pc-border);
+  padding-bottom: 8px;
+}
+.pc-home-group-tabs {
+  display: flex;
+  min-width: 0;
+  flex: 1 1 auto;
+  gap: 4px;
+  overflow-x: auto;
+  overflow-y: hidden;
+  scrollbar-width: none;
+}
+.pc-home-group-tabs::-webkit-scrollbar {
+  display: none;
+}
+.pc-home-group-tabs .pc-segment-btn {
+  flex: 0 0 auto;
+  white-space: nowrap;
+}
+.pc-home-group-tabs .pc-segment-btn.folder-target {
+  outline: 2px solid var(--pc-theme-accent);
+  outline-offset: -2px;
+}
+.pc-home-group-bar > .pc-soft-btn {
+  flex: 0 0 auto;
+}
+.pc-home-app-section {
+  display: grid;
+  flex: 0 0 auto;
+  gap: 8px;
+}
+.pc-home-section-head {
+  padding-inline: 2px;
+}
+.pc-home-app-grid {
+  display: grid;
+  grid-template-columns: repeat(var(--pc-home-columns), minmax(0, 1fr));
+  align-content: start;
+  gap: 14px 8px;
+}
 .pc-app-tile {
   min-width: 0;
-  min-height: 0;
-  height: 100%;
+  min-height: 74px;
   border: 0;
   border-radius: var(--pc-card-radius);
-  padding: 8px 6px;
+  padding: 6px 4px;
   background: transparent;
   box-shadow: none;
   color: var(--pc-text);
@@ -1089,127 +984,7 @@ onBeforeUnmount(resetHomeInteractionState);
   object-fit: cover;
   border-radius: inherit;
 }
-.pc-home-folder-tile {
-  position: relative;
-  display: grid;
-  grid-template-rows: minmax(0, 1fr) auto;
-  gap: 2px;
-  overflow: hidden;
-  border: 1px solid var(--pc-border);
-  padding: 7px;
-  background: color-mix(in srgb, var(--pc-bg) 88%, var(--pc-surface-strong) 12%);
-  box-shadow: none;
-}
-.pc-home-folder-preview {
-  min-width: 0;
-  min-height: 0;
-  display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-  grid-template-rows: minmax(0, 1fr);
-  gap: 4px;
-}
-.pc-home-folder-shortcut,
-.pc-home-folder-more,
-.pc-home-folder-title {
-  min-width: 0;
-  border: 0;
-  color: var(--pc-text);
-  cursor: pointer;
-}
-.pc-home-folder-shortcut {
-  display: grid;
-  place-items: center;
-  border-radius: var(--pc-icon-radius);
-  background: transparent;
-}
-.pc-home-folder-shortcut .pc-app-icon {
-  width: 30px;
-  height: 30px;
-  margin: 0;
-  font-size: 14px;
-}
-.pc-home-folder-shortcut:active,
-.pc-home-folder-more:active {
-  transform: scale(0.96);
-}
-.pc-home-folder-more {
-  display: grid;
-  place-items: center;
-  align-content: center;
-  gap: 2px;
-  border: 1px solid color-mix(in srgb, var(--pc-border) 82%, transparent 18%);
-  border-radius: var(--pc-icon-radius);
-  background: color-mix(in srgb, var(--pc-surface-strong) 76%, transparent 24%);
-}
-.pc-home-folder-more > i {
-  color: var(--pc-accent);
-  font-size: 18px;
-}
-.pc-home-folder-more small {
-  color: var(--pc-muted);
-  font-size: 9px;
-  font-weight: 800;
-  line-height: 1;
-}
-.pc-home-folder-more-grid {
-  width: 28px;
-  height: 28px;
-  display: grid;
-  grid-template-columns: repeat(2, 1fr);
-  grid-template-rows: repeat(2, 1fr);
-  gap: 2px;
-}
-.pc-home-folder-mini-icon {
-  min-width: 0;
-  display: grid;
-  place-items: center;
-  overflow: hidden;
-  border-radius: 5px;
-  font-size: 7px;
-}
-.pc-home-folder-mini-icon :deep(img) {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-}
-.pc-home-folder-title {
-  position: relative;
-  display: flex;
-  align-items: center;
-  justify-content: flex-start;
-  gap: 5px;
-  overflow: visible;
-  padding: 0 2px;
-  background: transparent;
-}
-.pc-home-folder-title strong {
-  min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  font-size: 11px;
-  line-height: 18px;
-}
-.pc-home-folder-title-icon {
-  width: 18px;
-  height: 18px;
-  flex: 0 0 auto;
-  display: grid;
-  place-items: center;
-  overflow: hidden;
-  border-radius: 5px;
-  color: var(--pc-accent);
-}
-.pc-home-folder-title-icon :deep(img) {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-}
-.pc-home-folder-title .pc-app-count-badge {
-  top: -2px;
-  right: 0;
-}
-:global(.pc-phone-root[data-home-columns='5'] .pc-grid) {
+:global(.pc-phone-root[data-home-columns='5'] .pc-home-app-grid) {
   gap: 4px;
 }
 :global(.pc-phone-root[data-home-columns='5'] .pc-app-tile) {
@@ -1239,26 +1014,6 @@ onBeforeUnmount(resetHomeInteractionState);
   font-weight: 800;
   line-height: 1;
   box-sizing: border-box;
-}
-.pc-page-dots {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 7px;
-  min-height: 20px;
-}
-.pc-page-dot {
-  width: 7px;
-  height: 7px;
-  border: 0;
-  border-radius: 999px;
-  padding: 0;
-  background: color-mix(in srgb, var(--pc-muted) 42%, transparent 58%);
-  cursor: pointer;
-}
-.pc-page-dot.active {
-  width: 18px;
-  background: var(--pc-dock-active);
 }
 .pc-home-dock {
   display: grid;
@@ -1293,9 +1048,6 @@ onBeforeUnmount(resetHomeInteractionState);
   line-height: 1.15;
   text-overflow: ellipsis;
   white-space: nowrap;
-}
-.pc-grid.sorting .pc-app-tile {
-  cursor: grabbing;
 }
 .pc-app-tile.dragging,
 .pc-dock-tile.dragging {

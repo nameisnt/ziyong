@@ -22,7 +22,7 @@ test('HomeContextBar exclusively owns chat status markup styles and side effects
 });
 
 test('context bar uses three narrow one-way events without receiving writable home state', () => {
-  assert.match(contextBar, /defineProps<\{\s*isOrganizing: boolean;/u);
+  assert.doesNotMatch(contextBar, /defineProps/u);
   for (const eventName of ['open-folder-creator', 'refreshed', 'toggle-organizing']) {
     assert.match(contextBar, new RegExp(`'${eventName}'`, 'u'));
     assert.match(home, new RegExp(`@${eventName}=`, 'u'));
@@ -55,5 +55,8 @@ test('refresh and tavern jump preserve the established side effect order and par
     contextBar,
     /jumpToTavernChat\(\{ chatFile: target\.chatId, characterId: target\.characterId, ownerName: target\.ownerName \}\)/u,
   );
-  assert.match(contextBar, /phone\.closePhone\(\);\s*window\.setTimeout\(\(\) => void phone\.syncCurrentTavernScope\(true\), 2400\)/u);
+  assert.match(
+    contextBar,
+    /phone\.closePhone\(\);\s*window\.setTimeout\(\(\) => void phone\.syncCurrentTavernScope\(true\), 2400\)/u,
+  );
 });

@@ -11,6 +11,7 @@ export const settingsScenarioNames = [
   'settings-data-management-dark',
   'settings-interface',
   'settings-reader-font',
+  'settings-generation',
   'settings-theme-persistence',
   'settings-connection',
   'settings-connection-external',
@@ -32,30 +33,25 @@ export async function applySettingsVisualScenario(name: string, context: Setting
   if (name === 'settings') context.resetPhoneToRoute('settings', 'root', '设置');
   else if (name === 'settings-data-management' || name === 'settings-data-management-dark') {
     settings.setTheme(name.endsWith('-dark') ? 'dark' : 'light');
-    context.resetPhoneToRoute('settings', 'root', '设置');
-    await context.waitForPaint();
-    const dataEntry = [...document.querySelectorAll<HTMLButtonElement>('.pc-settings-entry')].find(button =>
-      button.textContent?.includes('数据管理'),
-    );
-    if (!dataEntry) throw new Error('Settings data-management entry is missing');
-    dataEntry.click();
+    context.resetPhoneToRoute('settings', 'root', '设置', { tab: 'data' });
     await context.waitForPaint();
     if (!document.querySelector('.pc-data-management-page')) {
-      throw new Error('Settings data-management page did not open');
+      throw new Error('Settings data category did not open');
     }
-  }
-  else if (name === 'settings-interface') context.resetPhoneToRoute('settings', 'root', '设置', { tab: 'interface' });
+  } else if (name === 'settings-interface') context.resetPhoneToRoute('settings', 'root', '设置', { tab: 'interface' });
   else if (name === 'settings-reader-font') {
     const fontId = 'visual-reader-font';
     settings.settings.customFont.fonts = [
-      { id: fontId, name: '需要在阅读器设置中完整显示的超长已导入字体名称', path: 'user/files/visual-reader-font.woff2' },
+      {
+        id: fontId,
+        name: '需要在阅读器设置中完整显示的超长已导入字体名称',
+        path: 'user/files/visual-reader-font.woff2',
+      },
     ];
     settings.setReaderFontFamily('');
     context.resetPhoneToRoute('settings', 'root', '设置', { tab: 'reader' });
     await context.waitForPaint();
-    const fontGroup = [...document.querySelectorAll<HTMLElement>('.pc-field-group')].find(group =>
-      group.textContent?.includes('阅读器字体'),
-    );
+    const fontGroup = document.querySelector<HTMLElement>('.pc-reader-font-row');
     if (!fontGroup) throw new Error('Reader settings font control is missing');
     fontGroup.scrollIntoView({ block: 'center' });
     const input = fontGroup.querySelector<HTMLInputElement>('.pc-combobox-input');
@@ -80,15 +76,15 @@ export async function applySettingsVisualScenario(name: string, context: Setting
         throw new Error('Reader font selector could not search the imported font');
       }
     }
-  }
-  else if (name === 'settings-theme-persistence') {
+  } else if (name === 'settings-generation') {
+    context.resetPhoneToRoute('settings', 'root', '设置', { tab: 'generation' });
+  } else if (name === 'settings-theme-persistence') {
     settings.resetInterfaceSize();
     context.resetPhoneToRoute('settings', 'root', '设置', { tab: 'interface' });
     await context.waitForPaint();
-    const columnsSelect = document.querySelector<HTMLSelectElement>('select[aria-label="主界面图标列数"]');
-    if (!columnsSelect) throw new Error('Settings interface column control is missing');
-    columnsSelect.value = '5';
-    columnsSelect.dispatchEvent(new Event('change', { bubbles: true }));
+    const increaseColumns = document.querySelector<HTMLButtonElement>('button[aria-label="图标列数加一"]');
+    if (!increaseColumns) throw new Error('Settings interface column control is missing');
+    increaseColumns.click();
     await context.waitForPaint();
     const interfaceSnapshot = klona(extension_settings[setting_field]) as typeof settings.settings;
     if (interfaceSnapshot?.interfaceSize?.homeColumns !== 5) {
@@ -99,7 +95,8 @@ export async function applySettingsVisualScenario(name: string, context: Setting
     extension_settings[setting_field] = interfaceSnapshot;
     settings.rehydrateFromSettings();
     await context.waitForPaint();
-    if (settings.settings.interfaceSize.homeColumns !== 5 || columnsSelect.value !== '5') {
+    const columnsOutput = document.querySelector<HTMLOutputElement>('output[aria-label="图标列数"]');
+    if (settings.settings.interfaceSize.homeColumns !== 5 || columnsOutput?.textContent?.trim() !== '5') {
       throw new Error('Settings interface value did not survive rehydrate');
     }
 
@@ -119,8 +116,8 @@ export async function applySettingsVisualScenario(name: string, context: Setting
     await context.waitForPaint();
     const activePackName = document.querySelector<HTMLButtonElement>('.pc-theme-pack-btn.active')?.textContent?.trim();
     if (activePackName !== selectedName) throw new Error('Theme pack did not survive rehydrate');
-  }
-  else if (name === 'settings-connection') context.resetPhoneToRoute('settings', 'root', '设置', { tab: 'connection' });
+  } else if (name === 'settings-connection')
+    context.resetPhoneToRoute('settings', 'root', '设置', { tab: 'connection' });
   else if (name === 'settings-connection-external') {
     settings.settings.textProvider.externalProfiles = [];
     const profile = settings.createExternalApiProfile('custom');
@@ -128,16 +125,20 @@ export async function applySettingsVisualScenario(name: string, context: Setting
     profile.apiUrl = 'https://api.example.com/v1';
     context.resetPhoneToRoute('settings', 'root', '设置', { tab: 'connection' });
     await context.waitForPaint();
-    Array.from(document.querySelectorAll<HTMLElement>('.pc-field-label'))
-      .find(element => element.textContent?.includes('外部 API 配置'))
-      ?.scrollIntoView({ block: 'start' });
+    const profileEntry = [...document.querySelectorAll<HTMLButtonElement>('.pc-setting-row')].find(button =>
+      button.textContent?.includes('视觉测试 API'),
+    );
+    if (!profileEntry) throw new Error('External API profile entry is missing');
+    profileEntry.click();
+    await context.waitForPaint();
+    if (!document.querySelector('.pc-external-api-page')) throw new Error('External API editor did not open');
   } else if (name === 'settings-connection-dark') {
     settings.setTheme('dark');
     context.resetPhoneToRoute('settings', 'root', '设置', { tab: 'connection' });
     await context.waitForPaint();
-    const tabs = [...document.querySelectorAll<HTMLButtonElement>('.pc-settings-tabs .pc-segment-btn')];
-    if (!tabs.length || tabs.some(tab => tab.scrollWidth > tab.clientWidth + 1)) {
-      throw new Error('Settings tabs overflow or wrap in the narrow phone layout');
+    const category = document.querySelector<HTMLSelectElement>('.pc-settings-category .pc-select');
+    if (!category || category.scrollWidth > category.clientWidth + 1) {
+      throw new Error('Settings category selector overflows the narrow phone layout');
     }
   } else if (name === 'settings-advanced') context.resetPhoneToRoute('settings', 'root', '设置', { tab: 'advanced' });
   else if (name === 'theme-home-icon-assets') {
@@ -199,8 +200,7 @@ export async function applySettingsVisualScenario(name: string, context: Setting
       button.textContent?.includes(app.name),
     );
     if (!homeTile?.querySelector('img')) throw new Error('Image icon was not rendered on the home grid');
-  }
-  else {
+  } else {
     const hostThemeOverride = document.createElement('style');
     hostThemeOverride.id = 'visual-host-theme-override';
     hostThemeOverride.textContent = `

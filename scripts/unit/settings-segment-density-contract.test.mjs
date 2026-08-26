@@ -12,24 +12,21 @@ function rulesFor(source, selector) {
     .map(match => match[2]);
 }
 
-function declarationsFor(body) {
-  return Object.fromEntries(
-    [...body.matchAll(/(?:^|;)\s*([a-zA-Z-]+)\s*:\s*([^;{}]+)/g)].map(match => [match[1], match[2].trim()]),
-  );
-}
-
-test('settings categories use a flat horizontally scrollable paper navigation', () => {
-  const localRules = rulesFor(settingsSource, '.pc-settings-tabs .pc-segment-btn');
-  assert.equal(localRules.length, 1, 'settings tabs must keep one responsive layout rule');
-  assert.deepEqual(declarationsFor(localRules[0]), {
-    flex: '0 0 auto',
-    gap: '5px',
-    'white-space': 'nowrap',
-  });
-  assert.match(settingsSource, /\.pc-settings-tabs\s*\{[^}]*overflow-x:\s*auto/u);
-  assert.doesNotMatch(settingsSource, /grid-template-columns:\s*repeat\(5/u);
+test('settings categories use one compact selector while segmented controls keep shared density', () => {
+  const localRules = rulesFor(settingsSource, '.pc-settings-category');
+  assert.equal(localRules.length, 1, 'settings category selector must keep one responsive layout rule');
+  assert.match(settingsSource, /<select v-model="activeSettingsTab" class="pc-select"/u);
+  assert.match(settingsSource, /id: 'generation', label: '生成'/u);
+  assert.match(settingsSource, /id: 'data', label: '数据'/u);
+  assert.doesNotMatch(settingsSource, /pc-settings-tabs/u);
 
   const globalRules = rulesFor(globalSource, '.pc-phone-root .pc-segment-btn');
-  assert.ok(globalRules.some(rule => /min-height:\s*30px/.test(rule)), 'global segment height must remain 30px');
-  assert.ok(globalRules.some(rule => /font-size:\s*13px/.test(rule)), 'global segment text must remain 13px');
+  assert.ok(
+    globalRules.some(rule => /min-height:\s*30px/.test(rule)),
+    'global segment height must remain 30px',
+  );
+  assert.ok(
+    globalRules.some(rule => /font-size:\s*13px/.test(rule)),
+    'global segment text must remain 13px',
+  );
 });

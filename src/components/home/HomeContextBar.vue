@@ -3,11 +3,10 @@
     <div class="pc-home-context-actions">
       <ActionMenu align="start" icon-only label="操作" icon="fa-solid fa-bars">
         <button type="button" @click="emit('toggle-organizing')">
-          <i class="fa-solid fa-arrows-up-down-left-right"></i
-          ><span>{{ isOrganizing ? '完成整理' : '整理桌面' }}</span>
+          <i class="fa-solid fa-sliders"></i><span>管理当前分组</span>
         </button>
         <button type="button" @click="emit('open-folder-creator')">
-          <i class="fa-solid fa-folder-plus"></i><span>新建文件夹</span>
+          <i class="fa-solid fa-folder-plus"></i><span>新建分组</span>
         </button>
         <button type="button" :disabled="isViewingCurrentChat" @click="phone.returnToCurrentScope()">
           <i class="fa-solid fa-location-crosshairs"></i><span>回到当前聊天</span>
@@ -44,10 +43,6 @@ import { useSettingsStore } from '@/store/settings';
 import { useStatsStore } from '@/store/stats';
 import { jumpToTavernChat } from '@/util/tavernNavigation';
 import { storeToRefs } from 'pinia';
-
-defineProps<{
-  isOrganizing: boolean;
-}>();
 
 const emit = defineEmits<{
   'open-folder-creator': [];

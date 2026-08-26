@@ -105,6 +105,7 @@ export function createVisualScenarioGroups(rootAppScenarios: string[]): VisualSc
         'settings-data-management-dark',
         'settings-interface',
         'settings-reader-font',
+        'settings-generation',
         'settings-theme-persistence',
         'settings-connection',
         'settings-connection-external',

@@ -16,7 +16,7 @@ test('PhoneOverlay delegates the complete home and folder surface to PhoneHome',
     'HomeDisplayItem',
     'appDrag',
     'onAppPointerDown',
-    'onHomeSwipePointerDown',
+    'activeHomeGroupId',
     'dissolveActiveHomeFolder',
   ]) {
     assert.doesNotMatch(root, new RegExp(homeOwner, 'u'), `${homeOwner} leaked back into PhoneOverlay`);

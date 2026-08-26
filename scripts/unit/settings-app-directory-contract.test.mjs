@@ -5,7 +5,7 @@ import test from 'node:test';
 
 const source = relativePath => readFile(new URL(`../../${relativePath}`, import.meta.url), 'utf8');
 
-test('settings owns its root and six panels while backup and reset services remain shared', async () => {
+test('settings owns its root, compact categories and external API subpage while services remain shared', async () => {
   const files = (await readdir(new URL('../../src/apps/settings/', import.meta.url)))
     .filter(file => file.endsWith('.vue') || file.endsWith('.ts'))
     .sort();
@@ -15,7 +15,8 @@ test('settings owns its root and six panels while backup and reset services rema
     'SettingsApp.vue',
     'SettingsConnectionPanel.vue',
     'SettingsDataManagementPage.vue',
-    'SettingsGeneralPanel.vue',
+    'SettingsExternalApiPage.vue',
+    'SettingsGenerationPanel.vue',
     'SettingsInterfacePanel.vue',
     'SettingsReaderPanel.vue',
   ]);
