@@ -69,6 +69,8 @@
 13. resultMode 为 `save` 时调用 `adapter.save()`；保存失败且 adapter 要求保留时也进入 failed draft。
 14. 成功结果保存 hidden generation record、replay snapshot、source selection、raw output semantics。
 
+`src/store/generationTasks.ts` 持久化任务运行记录；`GenerationTaskCenter.vue` 固定显示当前聊天任务并横向滚动。批量清理只删除已完成且没有失败草稿的通知记录，业务保存内容和 `src/store/previewDrafts.ts` 中的预览不受影响。
+
 ## 备份、恢复与迁移
 
 - `src/util/backup.ts`：完整备份、当前聊天备份、导入计划、导入执行、生成内容清空。
@@ -144,7 +146,7 @@
 - `src/data/paperTextures.ts` 注册 A4 白纸、宣纸、羊皮纸和黑色卡纸纹理；`src/apps/theme/themeCatalog.ts` 独占主题预设、主题包、字体、图标、颜色和圆角静态目录。
 - `src/core/appLayout.ts` 维护首页八个默认分组、独立聊天档案和四项 Dock，并将旧默认布局迁移到 layout v3；用户自建文件夹继续保留。
 - `ReaderDetailShell.vue` 固定显示详情上下文栏，`VersionNavigator.vue` 在栏内切换版本；可拖动工具菜单只承载正文操作，底部 `DetailFooter` 负责上条/目录/下条和置顶置底。
-- `src/apps/settings/*` 管理界面尺寸、阅读、生成连接、数据管理和高级设置。
+- `src/apps/settings/*` 使用可横向滚动的平面分类栏和纸面列表，管理界面尺寸与图标密度、阅读、生成连接、数据管理和高级设置；界面页不再暴露旧分页主页的行数/每页容量。
 - 共享组件包括
   `GenerationPanel`、`GenerationPreviewPanel`、`BatchGenerationPreviewPage`、`ReferencePicker`、`BaguScanPanel`、`ReaderDetailShell`、`BulkSelectionBar`、`DetailFooter`、`EmptyState`、`ActionMenu`
   等。

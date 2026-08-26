@@ -2271,9 +2271,9 @@ async function applyScenario(name: VisualScenarioName, options: { height?: numbe
       throw new Error('Generation TaskCenter did not remain expanded after page navigation');
     }
     const generationTaskStore = useGenerationTaskStore();
-    const clearSavedButton = document.querySelector<HTMLButtonElement>('[aria-label="清理已保存任务"]');
-    if (generationTaskStore.getClearableTasks().length !== 1 || !clearSavedButton?.textContent?.includes('清理 1')) {
-      throw new Error('Generation TaskCenter did not expose the saved-task cleanup count in its header');
+    const clearSavedButton = document.querySelector<HTMLButtonElement>('[aria-label="清理已完成通知"]');
+    if (generationTaskStore.getClearableTasks().length !== 2 || !clearSavedButton?.textContent?.includes('清理 2')) {
+      throw new Error('Generation TaskCenter did not expose the completed-notification cleanup count in its header');
     }
     clearSavedButton.click();
     await waitForPaint();
@@ -2286,7 +2286,7 @@ async function applyScenario(name: VisualScenarioName, options: { height?: numbe
     ) {
       throw new Error('Saved-task cleanup removed a running, paused, or interrupted generation task');
     }
-    if (!document.querySelector<HTMLButtonElement>('[aria-label="清理已保存任务"]')?.disabled) {
+    if (!document.querySelector<HTMLButtonElement>('[aria-label="清理已完成通知"]')?.disabled) {
       throw new Error('Generation TaskCenter did not keep a disabled cleanup action after clearing');
     }
   } else if (name === 'bagu-scan-actions' || name === 'bagu-scan-applied' || name === 'bagu-hit-details') {

@@ -33,8 +33,8 @@ test('activity routes drafts and recovery items through their registered app and
   );
   assert.doesNotMatch(source, /clearSavedTaskRecords|pc-home-saved-tasks/u);
   assert.match(taskCenter, /generationTasks\.getClearableTasks\(\)/u);
-  assert.match(taskCenter, /generationTasks\.clearPureSavedTasks\(\)/u);
-  assert.match(taskCenter, /aria-label="清理已保存任务"/u);
+  assert.match(taskCenter, /generationTasks\.clearCompletedNotifications\(\)/u);
+  assert.match(taskCenter, /aria-label="清理已完成通知"/u);
   assert.match(taskCenter, /:disabled="!clearableTaskCount"/u);
   assert.doesNotMatch(taskCenter, /slice\(0, 5\)|pc-task-center-toggle|v-if="visibleTasks\.length"/u);
   assert.match(activityPage, /emit\('open', item\)/u);

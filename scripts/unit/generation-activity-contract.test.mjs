@@ -14,12 +14,11 @@ test('recovery providers expose stable read-only items through the app registry'
   assert.match(registry, /unique\.set\(`\$\{item\.appId\}:\$\{item\.id\}`/u);
 });
 
-test('only completed saved task records can enter the shared clear operation', () => {
-  assert.match(tasks, /export function isPureSavedGenerationTask/u);
-  assert.match(tasks, /task\.status !== 'completed' \|\| task\.draftCount !== 0/u);
-  assert.match(tasks, /config\.data\.resultState === 'saved'/u);
-  assert.match(tasks, /task\.jobs\.every\(job => job\.status === 'saved'\)/u);
-  assert.match(tasks, /function clearPureSavedTasks/u);
+test('completed notifications without failed drafts can enter the shared clear operation', () => {
+  assert.match(tasks, /export function isClearableGenerationNotification/u);
+  assert.match(tasks, /task\.status === 'completed' && task\.draftCount === 0/u);
+  assert.match(tasks, /function clearCompletedNotifications/u);
+  assert.doesNotMatch(tasks, /config\.data\.resultState === 'saved'/u);
 });
 
 test('activity aggregation does not invent task-to-draft links', () => {

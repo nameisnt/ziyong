@@ -10,7 +10,7 @@
         class="pc-soft-btn compact"
         type="button"
         :disabled="!clearableTaskCount"
-        aria-label="清理已保存任务"
+        aria-label="清理已完成通知"
         @click="clearSavedTasks"
       >
         {{ clearableTaskCount ? `清理 ${clearableTaskCount}` : '清理' }}
@@ -206,9 +206,9 @@ function discard(taskId: string) {
 }
 
 function clearSavedTasks() {
-  const clearedTaskIds = generationTasks.clearPureSavedTasks();
+  const clearedTaskIds = generationTasks.clearCompletedNotifications();
   if (!clearedTaskIds.length) return;
-  phone.noticeSuccess(`已清理 ${clearedTaskIds.length} 条已保存任务记录`);
+  phone.noticeSuccess(`已清理 ${clearedTaskIds.length} 条已完成通知`);
 }
 </script>
 

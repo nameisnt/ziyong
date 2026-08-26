@@ -3,7 +3,6 @@ import { stripRetiredMediaGenerationTasks } from '@/core/retiredMedia';
 import {
   GenerationTaskSchema,
   GenerationTaskSettingsSchema,
-  SingleGenerationTaskConfigSchema,
   type GenerationTask,
   type GenerationTaskJob,
   type GenerationTaskKind,
@@ -25,13 +24,8 @@ const rawOutputTimers = new Map<string, number>();
 const RAW_OUTPUT_PERSIST_INTERVAL_MS = 500;
 const MAX_TERMINAL_TASKS = 40;
 
-export function isPureSavedGenerationTask(task: GenerationTask) {
-  if (task.status !== 'completed' || task.draftCount !== 0) return false;
-  if (task.kind === 'single') {
-    const config = SingleGenerationTaskConfigSchema.safeParse(task.config);
-    return config.success && config.data.resultState === 'saved';
-  }
-  return task.total > 0 && task.jobs.length === task.total && task.jobs.every(job => job.status === 'saved');
+export function isClearableGenerationNotification(task: GenerationTask) {
+  return task.status === 'completed' && task.draftCount === 0;
 }
 
 function nowIso() {
@@ -335,10 +329,10 @@ export const useGenerationTaskStore = defineStore('generationTasks', () => {
   }
 
   function getClearableTasks(scopeKey = getCurrentChatScopeKey()) {
-    return settings.value.tasks.filter(task => task.scopeKey === scopeKey && isPureSavedGenerationTask(task));
+    return settings.value.tasks.filter(task => task.scopeKey === scopeKey && isClearableGenerationNotification(task));
   }
 
-  function clearPureSavedTasks(scopeKey = getCurrentChatScopeKey()) {
+  function clearCompletedNotifications(scopeKey = getCurrentChatScopeKey()) {
     const taskIds = getClearableTasks(scopeKey).map(task => task.id);
     taskIds.forEach(taskId => removeTask(taskId));
     return taskIds;
@@ -396,7 +390,7 @@ export const useGenerationTaskStore = defineStore('generationTasks', () => {
     beginExecution,
     cancelTask,
     clearScopeTasks,
-    clearPureSavedTasks,
+    clearCompletedNotifications,
     commitRawOutput,
     completeTask,
     createTask,

@@ -85,12 +85,10 @@ export async function applySettingsVisualScenario(name: string, context: Setting
     settings.resetInterfaceSize();
     context.resetPhoneToRoute('settings', 'root', '设置', { tab: 'interface' });
     await context.waitForPaint();
-    const columnsInput = [...document.querySelectorAll<HTMLLabelElement>('.pc-inline-control')]
-      .find(label => label.querySelector('span')?.textContent?.trim() === '列')
-      ?.querySelector<HTMLInputElement>('input');
-    if (!columnsInput) throw new Error('Settings interface column control is missing');
-    columnsInput.value = '5';
-    columnsInput.dispatchEvent(new Event('change', { bubbles: true }));
+    const columnsSelect = document.querySelector<HTMLSelectElement>('select[aria-label="主界面图标列数"]');
+    if (!columnsSelect) throw new Error('Settings interface column control is missing');
+    columnsSelect.value = '5';
+    columnsSelect.dispatchEvent(new Event('change', { bubbles: true }));
     await context.waitForPaint();
     const interfaceSnapshot = klona(extension_settings[setting_field]) as typeof settings.settings;
     if (interfaceSnapshot?.interfaceSize?.homeColumns !== 5) {
@@ -101,7 +99,7 @@ export async function applySettingsVisualScenario(name: string, context: Setting
     extension_settings[setting_field] = interfaceSnapshot;
     settings.rehydrateFromSettings();
     await context.waitForPaint();
-    if (settings.settings.interfaceSize.homeColumns !== 5 || columnsInput.value !== '5') {
+    if (settings.settings.interfaceSize.homeColumns !== 5 || columnsSelect.value !== '5') {
       throw new Error('Settings interface value did not survive rehydrate');
     }
 

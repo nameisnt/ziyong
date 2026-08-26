@@ -98,6 +98,29 @@ export function createGenerationTaskFixture() {
     status: 'completed',
   });
 
+  const savedPreview = tasks.createTask({
+    appId: 'theater',
+    config: {
+      actionId: 'visual-preview-saved-later',
+      resultPage: 'preview',
+      resultParams: {},
+      resultState: 'preview',
+      resultTitle: '生成预览',
+      sourcePage: 'generate',
+      sourceParams: {},
+    },
+    kind: 'single',
+    routePage: 'preview',
+    title: '小剧场 · 预览后保存',
+    total: 1,
+  });
+  tasks.patchTask(savedPreview.id, {
+    currentJobIndex: 1,
+    currentLabel: '小剧场已生成，等待确认',
+    finishedAt: '2026-08-22T00:01:00.000Z',
+    status: 'completed',
+  });
+
   const stopped = tasks.createTask({
     appId: 'storylines',
     config: {

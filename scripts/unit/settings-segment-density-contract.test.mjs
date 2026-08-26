@@ -18,25 +18,16 @@ function declarationsFor(body) {
   );
 }
 
-test('settings five-column tabs inherit global density at every viewport width', () => {
+test('settings categories use a flat horizontally scrollable paper navigation', () => {
   const localRules = rulesFor(settingsSource, '.pc-settings-tabs .pc-segment-btn');
-  assert.equal(localRules.length, 2, 'settings tabs must keep one base layout rule and one narrow layout rule');
-
-  const protectedDensity = /^(?:font-size|height|min-height|max-height|line-height|padding(?:-[a-z]+)*|border-radius)$/;
-  const densityOverrides = localRules.flatMap((rule, index) =>
-    Object.entries(declarationsFor(rule))
-      .filter(([property]) => protectedDensity.test(property))
-      .map(([property, value]) => `rule ${index + 1}: ${property}: ${value}`),
-  );
-  assert.deepEqual(densityOverrides, [], 'settings tabs must not override protected global density');
-
+  assert.equal(localRules.length, 1, 'settings tabs must keep one responsive layout rule');
   assert.deepEqual(declarationsFor(localRules[0]), {
-    'min-width': '0',
-    'min-inline-size': '0',
-    gap: '3px',
+    flex: '0 0 auto',
+    gap: '5px',
     'white-space': 'nowrap',
   });
-  assert.deepEqual(declarationsFor(localRules[1]), { gap: '2px' });
+  assert.match(settingsSource, /\.pc-settings-tabs\s*\{[^}]*overflow-x:\s*auto/u);
+  assert.doesNotMatch(settingsSource, /grid-template-columns:\s*repeat\(5/u);
 
   const globalRules = rulesFor(globalSource, '.pc-phone-root .pc-segment-btn');
   assert.ok(globalRules.some(rule => /min-height:\s*30px/.test(rule)), 'global segment height must remain 30px');

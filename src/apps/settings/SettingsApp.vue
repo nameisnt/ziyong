@@ -6,7 +6,7 @@
         <button
           v-for="tab in settingsTabs"
           :key="tab.id"
-          :class="['pc-segment-btn', { active: activeSettingsTab === tab.id }]"
+          :class="['pc-segment-btn', 'compact', { active: activeSettingsTab === tab.id }]"
           type="button"
           @click="activeSettingsTab = tab.id"
         >
@@ -63,34 +63,28 @@ watch(
   height: 100%;
   min-height: 0;
   flex-direction: column;
-  gap: 8px;
   overflow: hidden;
 }
 .pc-settings-tabs {
   z-index: 2;
-  display: grid;
+  display: flex;
   flex: 0 0 auto;
-  grid-template-columns: repeat(5, minmax(0, 1fr));
-  gap: 3px;
-  border: 1px solid var(--pc-border);
-  border-radius: var(--pc-card-radius);
-  padding: 5px;
-  background: color-mix(in srgb, var(--pc-surface) 88%, transparent);
-  backdrop-filter: blur(10px);
+  gap: 2px;
+  overflow-x: auto;
+  overflow-y: hidden;
+  border-bottom: 1px solid var(--pc-border);
+  scrollbar-width: none;
 }
 .pc-settings-tabs .pc-segment-btn {
-  min-width: 0;
-  min-inline-size: 0;
-  gap: 3px;
+  flex: 0 0 auto;
+  gap: 5px;
   white-space: nowrap;
+}
+.pc-settings-tabs::-webkit-scrollbar {
+  display: none;
 }
 .pc-settings-tabs .pc-segment-btn span {
   white-space: nowrap;
-}
-@media (max-width: 380px) {
-  .pc-settings-tabs .pc-segment-btn {
-    gap: 2px;
-  }
 }
 .pc-settings-panels {
   display: flex;
@@ -99,7 +93,7 @@ watch(
   flex-direction: column;
   overflow-x: hidden;
   overflow-y: auto;
-  padding-bottom: 8px;
+  padding: 14px 0 8px;
   overscroll-behavior: contain;
   touch-action: pan-y;
   -webkit-overflow-scrolling: touch;
