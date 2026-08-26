@@ -115,9 +115,8 @@ async function refreshPhoneData() {
   margin-bottom: 8px;
   padding: 7px 10px;
   border: 1px solid var(--pc-border);
-  border-radius: var(--pc-card-radius);
-  background: color-mix(in srgb, var(--pc-surface) 72%, transparent 28%);
-  backdrop-filter: blur(12px);
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--pc-bg) 92%, var(--pc-surface-strong) 8%);
 }
 .pc-home-context-copy {
   min-width: 0;

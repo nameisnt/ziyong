@@ -10,7 +10,6 @@ import {
   ThemeMode,
   ThemeProfilesSchema,
   VisualThemeSettingsSchema,
-  WallpaperSettingsSchema,
 } from '@/type/settings';
 import { parsePrettified } from '@/util/zod';
 import { extension_settings } from '@sillytavern/scripts/extensions';
@@ -23,7 +22,6 @@ export const ThemeBackupSchema = z.object({
   theme: ThemeMode.optional(),
   themeProfiles: ThemeProfilesSchema.optional(),
   visualTheme: VisualThemeSettingsSchema.optional(),
-  wallpaper: WallpaperSettingsSchema.optional(),
 });
 
 function readThemeBackupData() {
@@ -36,7 +34,6 @@ function readThemeBackupData() {
     theme: settings.theme,
     themeProfiles: settings.themeProfiles,
     visualTheme: settings.visualTheme,
-    wallpaper: settings.wallpaper,
   };
 }
 

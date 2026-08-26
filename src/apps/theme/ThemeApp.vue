@@ -310,7 +310,7 @@
 
       <section class="pc-page-section">
         <div class="pc-section-head">
-          <strong>{{ t`字体与背景` }}</strong>
+          <strong>{{ t`字体与纸张` }}</strong>
           <button
             class="pc-icon-btn"
             type="button"
@@ -322,13 +322,13 @@
           </button>
         </div>
         <label class="pc-select-field">
-          <span class="pc-field-label">{{ t`壁纸` }}</span>
+          <span class="pc-field-label">{{ t`纸张材质` }}</span>
           <SearchableCombobox
-            :model-value="wallpaperSelectionValue"
-            input-label="选择壁纸"
-            :options="wallpaperSelectionOptions"
-            placeholder="默认背景"
-            @update:model-value="onWallpaperSelect"
+            :model-value="settings.visualTheme.paperTextureId"
+            input-label="选择纸张材质"
+            :options="paperTextureOptions"
+            placeholder="A4 白纸"
+            @update:model-value="onPaperTextureSelect"
           />
         </label>
         <label class="pc-select-field">
@@ -393,10 +393,10 @@ import InfoHint from '@/components/InfoHint.vue';
 import AppIcon from '@/components/AppIcon.vue';
 import SearchableCombobox from '@/components/SearchableCombobox.vue';
 import { getPhoneApps, type PhoneAppDefinition } from '@/data/apps';
-import { WALLPAPER_PRESETS, getWallpaperPreset } from '@/data/wallpapers';
+import { getPaperTexture, PAPER_TEXTURES } from '@/data/paperTextures';
 import { usePhoneStore } from '@/store/phone';
 import { useSettingsStore } from '@/store/settings';
-import { VisualThemeSettingsSchema, type ThemeAppearanceProfile } from '@/type/settings';
+import { VisualThemeSettingsSchema, type PaperTextureId, type ThemeAppearanceProfile } from '@/type/settings';
 import { storeToRefs } from 'pinia';
 import {
   builtinIconPacks,
@@ -438,36 +438,7 @@ const selectedCustomFont = computed(
 const fontSelectionValue = computed(() =>
   selectedCustomFont.value ? `custom:${selectedCustomFont.value.id}` : settings.value.fontFamily,
 );
-const selectedCustomWallpaper = computed(() => {
-  if (settings.value.wallpaper.mode !== 'custom') return null;
-  return (
-    settings.value.wallpaper.customWallpapers.find(item => item.id === settings.value.wallpaper.selectedCustomId) ??
-    settings.value.wallpaper.customWallpapers.find(item => item.path === settings.value.wallpaper.customPath) ??
-    null
-  );
-});
-const wallpaperSelectionValue = computed(() => {
-  if (settings.value.wallpaper.mode === 'preset') return `preset:${settings.value.wallpaper.presetId}`;
-  if (settings.value.wallpaper.mode === 'custom')
-    return `custom:${selectedCustomWallpaper.value?.id || settings.value.wallpaper.selectedCustomId}`;
-  return 'none';
-});
-const wallpaperSelectionOptions = computed(() => {
-  const selected = wallpaperSelectionValue.value;
-  const options = [
-    { label: '默认背景', value: 'none' },
-    ...WALLPAPER_PRESETS.map(preset => ({ group: '预设壁纸', label: preset.name, value: `preset:${preset.id}` })),
-    ...settings.value.wallpaper.customWallpapers.map(wallpaper => ({
-      group: '自定义壁纸',
-      label: wallpaper.name,
-      value: `custom:${wallpaper.id}`,
-    })),
-  ];
-  if (!options.some(option => option.value === selected)) {
-    options.unshift({ label: '当前壁纸资源已失效', value: selected });
-  }
-  return options;
-});
+const paperTextureOptions = PAPER_TEXTURES.map(texture => ({ label: texture.name, value: texture.id }));
 function createFontSelectionOptions(selected: string) {
   const options = [
     ...fontOptions,
@@ -489,17 +460,12 @@ const iconStyleId = computed<IconStyleId>(() => {
   return 'native';
 });
 const previewStyle = computed(() => {
-  const wallpaper =
-    settings.value.wallpaper.mode === 'preset' ? getWallpaperPreset(settings.value.wallpaper.presetId)?.background : '';
-  const customPath = selectedCustomWallpaper.value?.path || settings.value.wallpaper.customPath;
-  const backgroundImage =
-    settings.value.wallpaper.mode === 'custom' && customPath
-      ? `url("/${encodeURI(customPath.replace(/^\/+/, ''))}")`
-      : wallpaper || 'none';
+  const texture = getPaperTexture(settings.value.visualTheme.paperTextureId);
   return {
     backgroundColor:
       settings.value.visualTheme.backgroundColor || (settings.value.theme === 'dark' ? '#1c1c1e' : '#f2f2f7'),
-    backgroundImage,
+    backgroundImage: `url("${texture.url}")`,
+    backgroundSize: '256px 256px',
     color: settings.value.visualTheme.textColor || (settings.value.theme === 'dark' ? '#f5f5f7' : '#1c1c1e'),
   };
 });
@@ -521,9 +487,6 @@ function createThemePackProfile(preset: ThemePreset, iconStyle: IconStyleId): Th
     fontFamily: '',
     readerFontFamily: '',
     visualTheme,
-    wallpaperMode: 'none',
-    wallpaperPresetId: 'aurora',
-    wallpaperCustomId: '',
   };
 }
 
@@ -531,11 +494,6 @@ function applyThemePackProfile(profile: ThemeAppearanceProfile) {
   settings.value.fontFamily = profile.fontFamily;
   settings.value.reader.fontFamily = profile.readerFontFamily;
   settings.value.visualTheme = klona(profile.visualTheme);
-  settings.value.wallpaper.mode = profile.wallpaperMode;
-  settings.value.wallpaper.presetId = profile.wallpaperPresetId;
-  settings.value.wallpaper.selectedCustomId = '';
-  settings.value.wallpaper.customPath = '';
-  settings.value.wallpaper.customName = '';
 }
 
 function isThemePackActive(pack: ThemePack) {
@@ -708,6 +666,10 @@ function onFontSelect(value: string) {
   else settingsStore.setFontFamily(value);
 }
 
+function onPaperTextureSelect(value: string) {
+  settings.value.visualTheme.paperTextureId = value as PaperTextureId;
+}
+
 async function onThemeFontSelected(event: Event) {
   const input = event.target as HTMLInputElement;
   const file = input.files?.[0];
@@ -722,12 +684,6 @@ async function onThemeFontSelected(event: Event) {
   }
 }
 
-async function onWallpaperSelect(value: string) {
-  if (value === 'none') await settingsStore.clearWallpaperSelection();
-  else if (value.startsWith('preset:')) await settingsStore.selectWallpaperPreset(value.slice('preset:'.length));
-  else if (value.startsWith('custom:')) settingsStore.selectCustomWallpaper(value.slice('custom:'.length));
-}
-
 async function resetCurrentTheme() {
   const confirmed = await phone.confirmNotice(
     `恢复${settings.value.theme === 'light' ? '日间' : '夜间'}方案的默认外观吗？`,
@@ -740,22 +696,16 @@ async function resetCurrentTheme() {
   settingsStore.resetVisualTheme();
   settingsStore.resetFontFamily();
   settingsStore.setReaderFontFamily('');
-  await settingsStore.clearWallpaperSelection();
   toastr.success('已恢复当前方案默认值');
 }
 
 function exportTheme() {
   const payload = {
-    version: 2,
+    version: 3,
     theme: settings.value.theme,
     fontFamily: settings.value.fontFamily,
     readerFontFamily: settings.value.reader.fontFamily,
     visualTheme: settings.value.visualTheme,
-    wallpaper: {
-      mode: settings.value.wallpaper.mode,
-      presetId: settings.value.wallpaper.presetId,
-      selectedCustomId: settings.value.wallpaper.selectedCustomId,
-    },
   };
   const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
   const url = URL.createObjectURL(blob);
@@ -816,19 +766,12 @@ async function onThemeSelected(event: Event) {
       fontFamily?: unknown;
       readerFontFamily?: unknown;
       visualTheme?: unknown;
-      wallpaper?: { mode?: unknown; presetId?: unknown; selectedCustomId?: unknown };
     };
     const visualTheme = normalizeImportedVisualTheme(parsed.visualTheme);
     if (!visualTheme) throw new Error('主题文件格式不正确');
     settings.value.visualTheme = visualTheme;
     if (typeof parsed.fontFamily === 'string') settingsStore.setFontFamily(parsed.fontFamily);
     if (typeof parsed.readerFontFamily === 'string') settingsStore.setReaderFontFamily(parsed.readerFontFamily);
-    if (parsed.wallpaper?.mode === 'none') await settingsStore.clearWallpaperSelection();
-    else if (parsed.wallpaper?.mode === 'preset' && typeof parsed.wallpaper.presetId === 'string')
-      await settingsStore.selectWallpaperPreset(parsed.wallpaper.presetId);
-    else if (parsed.wallpaper?.mode === 'custom' && typeof parsed.wallpaper.selectedCustomId === 'string') {
-      settingsStore.selectCustomWallpaper(parsed.wallpaper.selectedCustomId);
-    }
     toastr.success(`已导入到${settings.value.theme === 'light' ? '日间' : '夜间'}方案`);
   } catch (caughtError) {
     toastr.error(caughtError instanceof Error ? caughtError.message : '导入主题失败');

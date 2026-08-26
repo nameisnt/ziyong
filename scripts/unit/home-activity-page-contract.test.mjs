@@ -11,12 +11,13 @@ const layoutProjection = await readFile(
 );
 const taskCenter = await readFile(new URL('../../src/components/GenerationTaskCenter.vue', import.meta.url), 'utf8');
 
-test('home reserves page zero for transient activity and defaults to the first desktop page', () => {
+test('home keeps activity above the first desktop page', () => {
   assert.match(source, /const homePageIndex = ref\(1\)/u);
-  assert.match(source, /<HomeActivityPage :active="homePageIndex === 0" @open="openHomeActivityItem"/u);
+  assert.match(source, /<HomeActivityPage :active="true" @open="openHomeActivityItem"/u);
   assert.match(activityPage, /<section v-if="active" class="pc-home-activity-page"/u);
   assert.match(layoutProjection, /homePages\.value\[homePageIndex\.value - 1\]/u);
-  assert.match(source, /v-for="\(_, pageIndex\) in homePages\.length \+ 1"/u);
+  assert.match(source, /v-for="\(_, pageIndex\) in homePages"/u);
+  assert.match(source, /\.pc-task-list, input, textarea/u);
 });
 
 test('activity is never a drag destination and home re-entry restores the recorded source page', () => {

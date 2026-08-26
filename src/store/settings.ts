@@ -1,11 +1,9 @@
 import { buildDefaultHomeLayout, migrateHomeLayoutDockCapacity, normalizeHomeLayout } from '@/core/appLayout';
 import { stripRetiredMediaPhoneSettings } from '@/core/retiredMedia';
-import { WALLPAPER_PRESETS } from '@/data/wallpapers';
 import {
   setting_field,
   Settings,
   type CustomFontItem,
-  type CustomWallpaperSettings,
   type ExternalApiPresetId,
   type Settings as PhoneSettings,
   type TimekeeperCalendarTemplate,
@@ -35,45 +33,7 @@ function getCustomFontIdFromFamily(fontFamily: string) {
   return fontFamily.slice(CUSTOM_FONT_FAMILY_PREFIX.length + 1);
 }
 
-function normalizeCustomAssets(nextSettings: PhoneSettings) {
-  const wallpaperItems: CustomWallpaperSettings[] = [];
-  const wallpaperPaths = new Set<string>();
-  const pushWallpaper = (item: Partial<CustomWallpaperSettings>) => {
-    const path = item.path?.trim() || '';
-    if (!path || wallpaperPaths.has(path)) return;
-    wallpaperPaths.add(path);
-    wallpaperItems.push({
-      id: item.id?.trim() || createId('wallpaper'),
-      name: item.name?.trim() || path.split('/').pop() || '自定义壁纸',
-      path,
-    });
-  };
-
-  const customWallpapers = Array.isArray(nextSettings.wallpaper.customWallpapers)
-    ? nextSettings.wallpaper.customWallpapers
-    : [];
-  customWallpapers.forEach(pushWallpaper);
-  pushWallpaper({
-    name: nextSettings.wallpaper.customName,
-    path: nextSettings.wallpaper.customPath,
-  });
-  nextSettings.wallpaper.customWallpapers = wallpaperItems;
-
-  const selectedWallpaper =
-    wallpaperItems.find(item => item.id === nextSettings.wallpaper.selectedCustomId) ??
-    wallpaperItems.find(item => item.path === nextSettings.wallpaper.customPath) ??
-    null;
-  if (selectedWallpaper) {
-    nextSettings.wallpaper.selectedCustomId = selectedWallpaper.id;
-    nextSettings.wallpaper.customPath = selectedWallpaper.path;
-    nextSettings.wallpaper.customName = selectedWallpaper.name;
-  } else {
-    nextSettings.wallpaper.selectedCustomId = '';
-    nextSettings.wallpaper.customPath = '';
-    nextSettings.wallpaper.customName = '';
-    if (nextSettings.wallpaper.mode === 'custom') nextSettings.wallpaper.mode = 'none';
-  }
-
+function normalizeCustomFonts(nextSettings: PhoneSettings) {
   const fontItems: CustomFontItem[] = [];
   const fontPaths = new Set<string>();
   const pushFont = (item: Partial<CustomFontItem>) => {
@@ -132,9 +92,6 @@ function captureThemeProfile(nextSettings: PhoneSettings): ThemeAppearanceProfil
     fontFamily: nextSettings.fontFamily,
     readerFontFamily: nextSettings.reader.fontFamily,
     visualTheme: klona(nextSettings.visualTheme),
-    wallpaperMode: nextSettings.wallpaper.mode,
-    wallpaperPresetId: nextSettings.wallpaper.presetId,
-    wallpaperCustomId: nextSettings.wallpaper.selectedCustomId,
   };
 }
 
@@ -142,21 +99,6 @@ function applyThemeProfile(nextSettings: PhoneSettings, profile: ThemeAppearance
   nextSettings.fontFamily = profile.fontFamily;
   nextSettings.reader.fontFamily = profile.readerFontFamily;
   nextSettings.visualTheme = klona(profile.visualTheme);
-  nextSettings.wallpaper.mode = profile.wallpaperMode;
-  nextSettings.wallpaper.presetId = profile.wallpaperPresetId;
-
-  const customWallpaper =
-    nextSettings.wallpaper.customWallpapers.find(item => item.id === profile.wallpaperCustomId) ?? null;
-  if (profile.wallpaperMode === 'custom' && customWallpaper) {
-    nextSettings.wallpaper.selectedCustomId = customWallpaper.id;
-    nextSettings.wallpaper.customPath = customWallpaper.path;
-    nextSettings.wallpaper.customName = customWallpaper.name;
-  } else {
-    nextSettings.wallpaper.selectedCustomId = '';
-    nextSettings.wallpaper.customPath = '';
-    nextSettings.wallpaper.customName = '';
-    if (profile.wallpaperMode === 'custom') nextSettings.wallpaper.mode = 'none';
-  }
 }
 
 function hasStoredThemeProfiles(rawSettings: unknown) {
@@ -168,14 +110,6 @@ function hasStoredThemeProfiles(rawSettings: unknown) {
 }
 
 function normalizeThemeProfileAssets(nextSettings: PhoneSettings, profile: ThemeAppearanceProfile) {
-  if (
-    profile.wallpaperMode === 'custom' &&
-    !nextSettings.wallpaper.customWallpapers.some(item => item.id === profile.wallpaperCustomId)
-  ) {
-    profile.wallpaperMode = profile.wallpaperPresetId ? 'preset' : 'none';
-    profile.wallpaperCustomId = '';
-  }
-
   const hasFontFamily = (fontFamily: string) => {
     if (!fontFamily.startsWith(`${CUSTOM_FONT_FAMILY_PREFIX}_`)) return true;
     return nextSettings.customFont.fonts.some(item => fontFamily === getCustomFontFamily(item.id));
@@ -255,7 +189,7 @@ function normalizeSettings(rawSettings: unknown) {
   if (!profileIds.has(nextSettings.textProvider.activeExternalProfileId)) {
     nextSettings.textProvider.activeExternalProfileId = nextSettings.textProvider.externalProfiles[0]?.id ?? '';
   }
-  normalizeCustomAssets(nextSettings);
+  normalizeCustomFonts(nextSettings);
   if (hadThemeProfiles) {
     normalizeThemeProfileAssets(nextSettings, nextSettings.themeProfiles.light);
     normalizeThemeProfileAssets(nextSettings, nextSettings.themeProfiles.dark);
@@ -358,6 +292,7 @@ export const useSettingsStore = defineStore('settings', () => {
       hintColor: '#2d9cdb',
       iconRadius: 14,
       mutedTextColor: '',
+      paperTextureId: settings.value.theme === 'dark' ? 'cardstock' : 'a4',
       primaryTextColor: '#ffffff',
       readerTextColor: '',
       softButtonColor: '',
@@ -367,16 +302,12 @@ export const useSettingsStore = defineStore('settings', () => {
     };
   }
 
-  function getCustomWallpaper(wallpaperId: string) {
-    return settings.value.wallpaper.customWallpapers.find(item => item.id === wallpaperId) ?? null;
-  }
-
   function getHomeIconAsset(assetId: string) {
     return settings.value.homeIconAssets.find(asset => asset.id === assetId) ?? null;
   }
 
   async function uploadHomeIconAsset(file: File) {
-    await validateImageFile(file, '图片图标');
+    await validateImageFile(file);
     const extension = getFileExtension(file);
     const bytes = new Uint8Array(await file.arrayBuffer());
     const path = await uploadUserFile(
@@ -411,38 +342,6 @@ export const useSettingsStore = defineStore('settings', () => {
     });
   }
 
-  function syncSelectedWallpaper(item: CustomWallpaperSettings | null) {
-    settings.value.wallpaper.selectedCustomId = item?.id || '';
-    settings.value.wallpaper.customPath = item?.path || '';
-    settings.value.wallpaper.customName = item?.name || '';
-  }
-
-  async function selectWallpaperPreset(presetId: string) {
-    if (!WALLPAPER_PRESETS.some(item => item.id === presetId)) return;
-    settings.value.wallpaper.mode = 'preset';
-    settings.value.wallpaper.presetId = presetId;
-  }
-
-  async function clearWallpaperSelection() {
-    settings.value.wallpaper.mode = 'none';
-  }
-
-  function selectCustomWallpaper(wallpaperId: string) {
-    const item = getCustomWallpaper(wallpaperId);
-    if (!item) return;
-    settings.value.wallpaper.mode = 'custom';
-    syncSelectedWallpaper(item);
-  }
-
-  function renameCustomWallpaper(wallpaperId: string, name: string) {
-    const item = getCustomWallpaper(wallpaperId);
-    if (!item) return;
-    item.name = name.trim() || item.name;
-    if (settings.value.wallpaper.selectedCustomId === wallpaperId) {
-      syncSelectedWallpaper(item);
-    }
-  }
-
   function setFontFamily(fontFamily: string) {
     settings.value.fontFamily = fontFamily.trim();
   }
@@ -465,17 +364,17 @@ export const useSettingsStore = defineStore('settings', () => {
     return '';
   }
 
-  async function validateImageFile(file: File, label: '图片图标' | '壁纸') {
+  async function validateImageFile(file: File) {
     const allowedTypes = new Set(['image/png', 'image/jpeg', 'image/webp', 'image/gif']);
     const extension = getFileExtension(file);
     const allowedExtensions = new Set(['png', 'jpg', 'jpeg', 'webp', 'gif']);
 
     if (!allowedTypes.has(file.type) || !allowedExtensions.has(extension)) {
-      throw new Error(`${label}仅支持 PNG / JPEG / WebP / GIF`);
+      throw new Error('图片图标仅支持 PNG / JPEG / WebP / GIF');
     }
 
     if (file.size > 10 * 1024 * 1024) {
-      throw new Error(`${label}文件不能超过 10 MiB`);
+      throw new Error('图片图标文件不能超过 10 MiB');
     }
 
     const objectUrl = URL.createObjectURL(file);
@@ -483,12 +382,12 @@ export const useSettingsStore = defineStore('settings', () => {
       const image = await new Promise<HTMLImageElement>((resolve, reject) => {
         const img = new Image();
         img.onload = () => resolve(img);
-        img.onerror = () => reject(new Error(`${label}无法解码`));
+        img.onerror = () => reject(new Error('图片图标无法解码'));
         img.src = objectUrl;
       });
 
       if (image.naturalWidth > 8192 || image.naturalHeight > 8192) {
-        throw new Error(`${label}分辨率不能超过 8192×8192`);
+        throw new Error('图片图标分辨率不能超过 8192×8192');
       }
     } finally {
       URL.revokeObjectURL(objectUrl);
@@ -560,54 +459,6 @@ export const useSettingsStore = defineStore('settings', () => {
     if (!response.ok && response.status !== 404) {
       throw new Error(`文件删除失败：HTTP ${response.status}`);
     }
-  }
-
-  async function uploadCustomWallpaper(file: File) {
-    await validateImageFile(file, '壁纸');
-    const extension = getFileExtension(file);
-    const fileName = `phone-wallpaper-${Date.now()}-${Math.random().toString(36).slice(2, 8)}.${extension}`;
-    const bytes = new Uint8Array(await file.arrayBuffer());
-    const path = await uploadUserFile(fileName, bytes);
-    const item = {
-      id: createId('wallpaper'),
-      name: file.name,
-      path,
-    };
-
-    settings.value.wallpaper.customWallpapers.push(item);
-    settings.value.wallpaper.mode = 'custom';
-    settings.value.wallpaper.presetId = settings.value.wallpaper.presetId || 'aurora';
-    syncSelectedWallpaper(item);
-  }
-
-  async function clearCustomWallpaper() {
-    const selectedId = settings.value.wallpaper.selectedCustomId;
-    if (!selectedId) return;
-    await deleteCustomWallpaper(selectedId);
-  }
-
-  async function deleteCustomWallpaper(wallpaperId: string) {
-    const item = getCustomWallpaper(wallpaperId);
-    if (!item) return;
-
-    await commitSettingsResourceDeletion({
-      deleteResource: () => deleteUserFile(item.path),
-      removeReference: () => {
-        settings.value.wallpaper.customWallpapers = settings.value.wallpaper.customWallpapers.filter(
-          wallpaper => wallpaper.id !== wallpaperId,
-        );
-        if (settings.value.wallpaper.selectedCustomId === wallpaperId) {
-          const nextItem = settings.value.wallpaper.customWallpapers[0] ?? null;
-          if (nextItem) {
-            settings.value.wallpaper.mode = 'custom';
-            syncSelectedWallpaper(nextItem);
-          } else {
-            settings.value.wallpaper.mode = 'none';
-            syncSelectedWallpaper(null);
-          }
-        }
-      },
-    });
   }
 
   function getCustomFont(fontId: string) {
@@ -918,8 +769,6 @@ export const useSettingsStore = defineStore('settings', () => {
   return {
     settings,
     clearCustomFont,
-    clearCustomWallpaper,
-    clearWallpaperSelection,
     createExternalApiProfile,
     createTimekeeperCalendarTemplate,
     deleteExternalApiProfile,
@@ -936,18 +785,14 @@ export const useSettingsStore = defineStore('settings', () => {
     resetTextProvider,
     resetVisualTheme,
     deleteCustomFont,
-    deleteCustomWallpaper,
     deleteHomeIconAsset,
     getCustomFontFamily,
     getHomeIconAsset,
     getHomeIconAssetReferenceCount,
     renameCustomFont,
-    renameCustomWallpaper,
     renameExternalApiProfile,
     selectCustomFont,
     selectCustomFontAsset,
-    selectCustomWallpaper,
-    selectWallpaperPreset,
     setFloatBallPosition,
     setFontFamily,
     setDockColumns,
@@ -975,7 +820,6 @@ export const useSettingsStore = defineStore('settings', () => {
     setVisualRadius,
     toggleTheme,
     uploadCustomFont,
-    uploadCustomWallpaper,
     reorderHomeApps,
   };
 });

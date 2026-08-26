@@ -772,8 +772,8 @@ async function applyScenario(name: VisualScenarioName, options: { height?: numbe
       throw new Error('Large home folder does not expose three shortcuts and a remaining-App preview');
     }
     const folderStyle = getComputedStyle(folderTile);
-    if (folderStyle.gridColumnEnd !== 'span 2' || folderStyle.gridRowEnd !== 'span 2') {
-      throw new Error('Large home folder does not occupy a 2x2 grid area');
+    if (folderStyle.gridColumnEnd !== 'span 2' || folderStyle.gridRowEnd !== 'span 1') {
+      throw new Error('Compact home folder does not occupy a 2x1 grid area');
     }
     const shortcutAppId = settings.settings.layout.folders[0]?.appIds[0] || '';
     const firstDesktopSourcePage = document.querySelector<HTMLButtonElement>('.pc-page-dot.active')?.title || '';
@@ -788,19 +788,19 @@ async function applyScenario(name: VisualScenarioName, options: { height?: numbe
       throw new Error('First desktop page source was not restored');
     }
 
-    const thirdPageDot = [...document.querySelectorAll<HTMLButtonElement>('.pc-page-dot')].find(
-      dot => dot.title === '第 3 页',
+    const alternatePageDot = [...document.querySelectorAll<HTMLButtonElement>('.pc-page-dot')].find(
+      dot => dot.title === '第 2 页',
     );
-    thirdPageDot?.click();
+    alternatePageDot?.click();
     await waitForPaint();
-    const thirdPageShortcut = document.querySelector<HTMLButtonElement>('.pc-home-folder-shortcut');
-    if (!thirdPageDot || !thirdPageShortcut) throw new Error('Third-page source fixture is missing');
-    thirdPageShortcut.click();
+    const alternatePageShortcut = document.querySelector<HTMLButtonElement>('.pc-home-folder-shortcut');
+    if (!alternatePageDot || !alternatePageShortcut) throw new Error('Alternate-page source fixture is missing');
+    alternatePageShortcut.click();
     await waitForPaint();
     await phone.goBack();
     await waitForPaint();
-    if (document.querySelector<HTMLButtonElement>('.pc-page-dot.active')?.title !== '第 3 页') {
-      throw new Error('Third desktop page source was not restored');
+    if (document.querySelector<HTMLButtonElement>('.pc-page-dot.active')?.title !== '第 2 页') {
+      throw new Error('Alternate desktop page source was not restored');
     }
 
     document.querySelector<HTMLButtonElement>('.pc-home-folder-more')?.click();
@@ -870,20 +870,20 @@ async function applyScenario(name: VisualScenarioName, options: { height?: numbe
     await phone.goHome();
     await waitForPaint();
     if (
-      document.querySelector<HTMLButtonElement>('.pc-page-dot.active')?.title !== '第 2 页' ||
+      document.querySelector<HTMLButtonElement>('.pc-page-dot.active')?.title !== '第 1 页' ||
       document.querySelector('.pc-home-folder-dialog')
     ) {
       throw new Error('Home action did not reset the desktop source');
     }
     document.querySelector<HTMLButtonElement>('.pc-page-dot[title="第 1 页"]')?.click();
     await waitForPaint();
-    phone.recordHomeSource({ pageIndex: 0 });
+    phone.recordHomeSource({ pageIndex: 1 });
     phone.openApp('settings');
     await waitForPaint();
     await phone.goBack();
     await waitForPaint();
     if (document.querySelector<HTMLButtonElement>('.pc-page-dot.active')?.title !== '第 1 页') {
-      throw new Error('Activity page source was not restored');
+      throw new Error('First desktop page source was not restored');
     }
     await phone.goHome();
     await waitForPaint();
@@ -910,7 +910,7 @@ async function applyScenario(name: VisualScenarioName, options: { height?: numbe
       appOrder: ['diary', 'extras'],
       dockOrder: ['favorites', 'prompts', 'tutorial', 'settings'],
       folders: [],
-      version: 2,
+      version: 3,
     });
     settings.setHomeColumns(4);
     settings.setHomeRows(3);
@@ -2260,8 +2260,8 @@ async function applyScenario(name: VisualScenarioName, options: { height?: numbe
     if (!taskCopy) throw new Error('Generation task swipe surface fixture is missing');
     dispatchHomeSwipe(taskCopy, 300, 90, 73);
     await waitForPaint();
-    if (document.querySelector<HTMLButtonElement>('.pc-page-dot.active')?.title !== '第 2 页') {
-      throw new Error('Generation task card could not swipe back to the default desktop page');
+    if (document.querySelector<HTMLButtonElement>('.pc-page-dot.active')?.title !== '第 1 页') {
+      throw new Error('Generation task horizontal scroll incorrectly changed the desktop page');
     }
     await new Promise(resolve => window.setTimeout(resolve, 280));
     document.querySelector<HTMLButtonElement>('.pc-page-dot[title="第 1 页"]')?.click();
@@ -4454,21 +4454,18 @@ async function applyScenario(name: VisualScenarioName, options: { height?: numbe
       versionId: saved.version.id,
     });
     await waitForPaint();
-    await openReaderTools();
-    const input = document.querySelector<HTMLInputElement>('.pc-version-navigator .pc-version-index-input');
-    if (!input) throw new Error('Version stepper input is missing from its isolated scenario');
-    if (input.value !== '2') throw new Error(`Version stepper scenario opened the wrong index: ${input.value}`);
-    const styles = getComputedStyle(input);
-    if (
-      styles.width !== '42px' ||
-      styles.height !== '42px' ||
-      styles.minHeight !== '42px' ||
-      styles.lineHeight !== '40px' ||
-      styles.textAlign !== 'center'
-    ) {
-      throw new Error(
-        `Version index semantic changed: ${styles.width}/${styles.height}/${styles.minHeight}/${styles.lineHeight}/${styles.textAlign}`,
-      );
+    const navigator = document.querySelector<HTMLElement>('.pc-version-navigator');
+    const status = navigator?.querySelector<HTMLElement>('.pc-version-status');
+    const buttons = navigator?.querySelectorAll<HTMLButtonElement>('.pc-version-step');
+    if (!navigator || !status || buttons?.length !== 2) {
+      throw new Error('Compact version navigator is missing from its isolated scenario');
+    }
+    if (status.textContent?.trim() !== '2 / 2') {
+      throw new Error(`Version navigator opened the wrong index: ${status.textContent?.trim()}`);
+    }
+    const buttonStyles = getComputedStyle(buttons[0]);
+    if (buttonStyles.width !== '30px' || buttonStyles.height !== '30px') {
+      throw new Error(`Version step button size changed: ${buttonStyles.width}/${buttonStyles.height}`);
     }
   } else if (name === 'content-versions') {
     const extras = useExtrasStore();
@@ -4587,15 +4584,14 @@ async function applyScenario(name: VisualScenarioName, options: { height?: numbe
     );
     if (!wrappedToOriginal) throw new Error('Last version did not cycle back to the first version');
 
-    const versionInput = document.querySelector<HTMLInputElement>('.pc-version-navigator input[type="number"]');
-    if (!versionInput) throw new Error('Version navigator did not expose numeric jump input');
-    versionInput.value = '2';
-    versionInput.dispatchEvent(new Event('input', { bubbles: true }));
-    versionInput.dispatchEvent(new Event('blur'));
-    const jumpedToCandidate = await waitForVisualCondition(
+    nextButton.click();
+    const returnedToCandidate = await waitForVisualCondition(
       () => usePhoneStore().currentRoute.params?.versionId === saved.version.id,
     );
-    if (!jumpedToCandidate) throw new Error('Numeric version jump did not select the requested version');
+    if (!returnedToCandidate) throw new Error('Repeated next-version action did not select the candidate version');
+    if (document.querySelector<HTMLElement>('.pc-version-status')?.textContent?.trim() !== '2 / 2') {
+      throw new Error('Version navigator count did not follow the selected version');
+    }
 
     if (chapter.activeVersionId !== saved.version.id || chapter.content !== saved.version.content) {
       throw new Error('Version selection did not immediately activate the viewed chapter');

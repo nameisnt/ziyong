@@ -217,7 +217,8 @@ function clearSavedTasks() {
   margin-bottom: 12px;
   padding: 0;
   overflow: hidden;
-  background: color-mix(in srgb, var(--pc-surface) 86%, transparent 14%);
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--pc-bg) 90%, var(--pc-surface-strong) 10%);
 }
 
 .pc-task-center-head {
@@ -272,21 +273,26 @@ function clearSavedTasks() {
 }
 
 .pc-task-list {
+  display: flex;
+  gap: 8px;
   min-height: 72px;
-  max-height: min(52vh, 420px);
-  overflow-y: auto;
+  padding: 8px;
+  overflow-x: auto;
+  overflow-y: hidden;
   border-top: 1px solid var(--pc-border);
+  scroll-snap-type: x proximity;
 }
 
 .pc-task-row {
+  flex: 0 0 min(240px, calc(100% - 20px));
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto;
   gap: 10px;
-  padding: 11px 12px;
-}
-
-.pc-task-row + .pc-task-row {
-  border-top: 1px solid var(--pc-border);
+  padding: 10px;
+  border: 1px solid var(--pc-border);
+  border-radius: 6px;
+  background: var(--pc-surface);
+  scroll-snap-align: start;
 }
 
 .pc-task-copy {

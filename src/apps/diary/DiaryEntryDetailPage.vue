@@ -3,6 +3,7 @@
     <ReaderDetailShell
       actions-class="five"
       :content="entry.content"
+      :context-label="entry.kind === 'read-reaction' ? t`阅读感想` : t`日记`"
       display-app-id="diary"
       :favorite-active="entry.favorite"
       :next-disabled="!nextId"
@@ -11,6 +12,7 @@
       reasoning-editable
       :source-label="entry.generationRecord?.replay.source.label"
       :title="entry.kind === 'read-reaction' ? `📖 ${entry.title}` : entry.title"
+      :updated-at="entry.updatedAt"
       @bagu="emit('bagu')"
       @bottom="emit('bottom')"
       @catalog="emit('update:catalogOpen', true)"

@@ -56,6 +56,9 @@ export const HomeIconAssetSchema = z.object({
 });
 export type HomeIconAsset = z.infer<typeof HomeIconAssetSchema>;
 
+export const PaperTextureIdSchema = z.enum(['a4', 'xuan', 'parchment', 'cardstock']);
+export type PaperTextureId = z.infer<typeof PaperTextureIdSchema>;
+
 export const VisualThemeSettingsSchema = z.object({
   accentColor: z.string().default('#007aff'),
   appAccentOverrides: z.record(z.string(), z.string()).default({}),
@@ -73,6 +76,7 @@ export const VisualThemeSettingsSchema = z.object({
   hintColor: z.string().default('#2d9cdb'),
   iconRadius: z.number().min(8).max(24).default(14),
   mutedTextColor: z.string().default(''),
+  paperTextureId: PaperTextureIdSchema.default('a4'),
   primaryTextColor: z.string().default('#ffffff'),
   readerTextColor: z.string().default(''),
   softButtonColor: z.string().default(''),
@@ -132,30 +136,10 @@ export const TimekeeperCalendarTemplateSchema = z.object({
 });
 export type TimekeeperCalendarTemplate = z.infer<typeof TimekeeperCalendarTemplateSchema>;
 
-export const CustomWallpaperSettingsSchema = z.object({
-  id: z.string(),
-  path: z.string(),
-  name: z.string(),
-});
-export type CustomWallpaperSettings = z.infer<typeof CustomWallpaperSettingsSchema>;
-
-export const WallpaperSettingsSchema = z.object({
-  mode: z.enum(['none', 'preset', 'custom']).default('none'),
-  presetId: z.string().default('aurora'),
-  customPath: z.string().default(''),
-  customName: z.string().default(''),
-  customWallpapers: z.array(CustomWallpaperSettingsSchema).default([]),
-  selectedCustomId: z.string().default(''),
-});
-export type WallpaperSettings = z.infer<typeof WallpaperSettingsSchema>;
-
 export const ThemeAppearanceProfileSchema = z.object({
   fontFamily: z.string().default(''),
   readerFontFamily: z.string().default(''),
   visualTheme: VisualThemeSettingsSchema,
-  wallpaperMode: z.enum(['none', 'preset', 'custom']).default('none'),
-  wallpaperPresetId: z.string().default('aurora'),
-  wallpaperCustomId: z.string().default(''),
 });
 export type ThemeAppearanceProfile = z.infer<typeof ThemeAppearanceProfileSchema>;
 
@@ -185,15 +169,6 @@ const DEFAULT_CUSTOM_FONT_SETTINGS: CustomFontSettings = {
   name: '',
   fonts: [],
   selectedFontId: '',
-};
-
-const DEFAULT_WALLPAPER_SETTINGS: WallpaperSettings = {
-  mode: 'none',
-  presetId: 'aurora',
-  customPath: '',
-  customName: '',
-  customWallpapers: [],
-  selectedCustomId: '',
 };
 
 const DEFAULT_GENERATION_SETTINGS: GenerationDefaults = {
@@ -253,6 +228,7 @@ const DEFAULT_VISUAL_THEME_SETTINGS: VisualThemeSettings = {
   hintColor: '#2d9cdb',
   iconRadius: 14,
   mutedTextColor: '',
+  paperTextureId: 'a4',
   primaryTextColor: '#ffffff',
   readerTextColor: '',
   softButtonColor: '',
@@ -271,9 +247,6 @@ function createDefaultThemeProfile(): ThemeAppearanceProfile {
       appIconAssetIds: {},
       appIconOverrides: {},
     },
-    wallpaperMode: 'none',
-    wallpaperPresetId: 'aurora',
-    wallpaperCustomId: '',
   };
 }
 
@@ -291,7 +264,6 @@ export const Settings = z
     theme: ThemeMode.default('light'),
     fontFamily: z.string().default(''),
     customFont: CustomFontSettingsSchema.default(() => ({ ...DEFAULT_CUSTOM_FONT_SETTINGS, fonts: [] })),
-    wallpaper: WallpaperSettingsSchema.default(() => ({ ...DEFAULT_WALLPAPER_SETTINGS, customWallpapers: [] })),
     generation: GenerationDefaultsSchema.default(() => ({ ...DEFAULT_GENERATION_SETTINGS })),
     interfaceSize: InterfaceSizeSettingsSchema.default(() => ({ ...DEFAULT_INTERFACE_SIZE_SETTINGS })),
     themeProfiles: ThemeProfilesSchema.default(() => ({
@@ -329,7 +301,6 @@ export const Settings = z
     theme: 'light' as const,
     fontFamily: '',
     customFont: { ...DEFAULT_CUSTOM_FONT_SETTINGS, fonts: [] },
-    wallpaper: { ...DEFAULT_WALLPAPER_SETTINGS, customWallpapers: [] },
     generation: { ...DEFAULT_GENERATION_SETTINGS },
     interfaceSize: { ...DEFAULT_INTERFACE_SIZE_SETTINGS },
     themeProfiles: {

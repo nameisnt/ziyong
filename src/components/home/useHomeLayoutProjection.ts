@@ -88,7 +88,7 @@ export function useHomeLayoutProjection(homePageIndex: Ref<number>, activeHomeFo
   }
 
   function clampHomePageIndex(pageIndex: number) {
-    return Math.max(0, Math.min(pageIndex, homePages.value.length));
+    return Math.max(1, Math.min(pageIndex, Math.max(1, homePages.value.length)));
   }
 
   return {

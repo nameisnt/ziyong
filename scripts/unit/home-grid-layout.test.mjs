@@ -30,7 +30,7 @@ function assertNoOverlap(page, columns, rows) {
   });
 }
 
-test('home grid packs Apps as 1x1 and folders as indivisible 2x2 placements', () => {
+test('home grid packs Apps as 1x1 and folders as compact 2x1 placements', () => {
   const pages = packHomeGridPages(
     [
       { isFolder: true, token: 'folder:a' },
@@ -47,11 +47,11 @@ test('home grid packs Apps as 1x1 and folders as indivisible 2x2 placements', ()
   pages.forEach(page => assertNoOverlap(page, 4, 3));
   pages.flat().filter(item => item.token.startsWith('folder:')).forEach(item => {
     assert.equal(item.columnSpan, 2);
-    assert.equal(item.rowSpan, 2);
+    assert.equal(item.rowSpan, 1);
   });
 });
 
-test('narrow two-row pages move whole folders instead of splitting their cells', () => {
+test('narrow two-row pages fit two compact folders and two Apps without overlap', () => {
   const pages = packHomeGridPages(
     [
       { isFolder: true, token: 'folder:a' },
@@ -62,8 +62,7 @@ test('narrow two-row pages move whole folders instead of splitting their cells',
     3,
     2,
   );
-  assert.equal(pages.length, 2);
+  assert.equal(pages.length, 1);
   pages.forEach(page => assertNoOverlap(page, 3, 2));
-  assert.deepEqual(pages[0].map(item => item.token), ['folder:a']);
-  assert.deepEqual(pages[1].map(item => item.token), ['folder:b', 'app:a', 'app:b']);
+  assert.deepEqual(pages[0].map(item => item.token), ['folder:a', 'folder:b', 'app:a', 'app:b']);
 });

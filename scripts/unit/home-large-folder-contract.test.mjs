@@ -19,7 +19,7 @@ test('desktop folders expose exactly three direct shortcuts and one full-folder 
 
 test('large folder browser scenario verifies geometry and both navigation paths', () => {
   assert.match(harness, /Large home folder does not expose three shortcuts and a remaining-App preview/u);
-  assert.match(harness, /Large home folder does not occupy a 2x2 grid area/u);
+  assert.match(harness, /Compact home folder does not occupy a 2x1 grid area/u);
   assert.match(harness, /Large home folder shortcut did not open its App directly/u);
   assert.match(harness, /Large home folder remaining preview did not open the full folder/u);
 });

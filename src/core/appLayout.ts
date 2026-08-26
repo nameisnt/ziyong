@@ -6,14 +6,25 @@ export const homeFolderToken = (folderId: string) => `folder:${folderId}`;
 
 const DEFAULT_DOCK_APP_IDS = ['favorites', 'prompts', 'tutorial', 'settings'];
 const DEFAULT_HOME_FOLDERS = [
-  { id: 'home_default_creation', name: '创作', appIds: ['diary', 'extras', 'theater', 'forum', 'letters', 'card-writer', 'scene-planner'] },
-  { id: 'home_default_organize', name: '整理', appIds: ['summary', 'storylines', 'bagu', 'content-converter'] },
-  { id: 'home_default_archive', name: '阅读档案', appIds: ['reader', 'archive', 'recovery', 'digest', 'chat-insert', 'stats'] },
-  { id: 'home_default_prompt', name: '设定提示', appIds: ['preset-manager', 'preset-link', 'entry-library', 'worldbook-link', 'world-slots', 'status-display', 'status-display-settings', 'mvu-modifier', 'regex-display', 'regex-wizard', 'macro-builder'] },
+  { id: 'home_default_creation', name: '阅读与记录', appIds: ['reader', 'diary', 'extras', 'theater', 'forum', 'letters'] },
+  { id: 'home_default_generation', name: '生成', appIds: ['card-writer', 'scene-planner', 'summary', 'storylines'] },
+  { id: 'home_default_organize', name: '内容整理', appIds: ['bagu', 'content-converter', 'digest', 'stats'] },
+  { id: 'home_default_prompt', name: '预设与世界书', appIds: ['preset-manager', 'preset-link', 'worldbook-link', 'world-slots'] },
+  { id: 'home_default_tavern', name: '酒馆工具', appIds: ['status-display', 'status-display-settings', 'mvu-modifier', 'extension-transfer', 'script-manager', 'chat-insert', 'recovery'] },
   { id: 'home_default_profiles', name: '资料关系', appIds: ['profiles', 'relationship', 'timekeeper'] },
-  { id: 'home_default_tools', name: '工具', appIds: ['workbench', 'app-builder', 'theme', 'file-repository', 'script-manager', 'extension-transfer'] },
+  { id: 'home_default_tools', name: '插件工具', appIds: ['workbench', 'app-builder', 'theme', 'file-repository', 'entry-library', 'regex-display', 'regex-wizard', 'macro-builder'] },
   { id: 'home_default_games', name: '小游戏', appIds: MINI_GAME_APP_IDS },
 ];
+
+const LEGACY_DEFAULT_FOLDER_IDS = new Set([
+  'home_default_creation',
+  'home_default_organize',
+  'home_default_archive',
+  'home_default_prompt',
+  'home_default_profiles',
+  'home_default_tools',
+  'home_default_games',
+]);
 
 const LEGACY_GAMES_APP_ID = 'games';
 const DEFAULT_GAMES_FOLDER_ID = 'home_default_games';
@@ -90,6 +101,46 @@ function migrateLegacyGamesLayout(layout: HomeScreenLayout, knownIds: Set<string
   return { ...layout, appOrder, dockOrder, folders: sourceFolders };
 }
 
+function migratePaperHomeLayout(layout: HomeScreenLayout, knownIds: Set<string>): HomeScreenLayout {
+  if (layout.version >= 3) return layout;
+  const legacyFolders = layout.folders.filter(folder => LEGACY_DEFAULT_FOLDER_IDS.has(folder.id));
+  if (!legacyFolders.length) return { ...layout, version: 3 };
+  const customFolders = layout.folders.filter(folder => !LEGACY_DEFAULT_FOLDER_IDS.has(folder.id));
+  const customFolderAppIds = new Set(customFolders.flatMap(folder => folder.appIds));
+  const dockAppIds = new Set(layout.dockOrder);
+  const standaloneAppIds = new Set(layout.appOrder.filter(token => knownIds.has(token)));
+  const folders = DEFAULT_HOME_FOLDERS.flatMap(folder => {
+    const appIds = folder.appIds.filter(
+      appId =>
+        knownIds.has(appId) &&
+        !customFolderAppIds.has(appId) &&
+        !dockAppIds.has(appId) &&
+        !standaloneAppIds.has(appId),
+    );
+    return appIds.length ? [{ ...folder, appIds, iconAssetId: '' }] : [];
+  });
+  const groupedAppIds = new Set(folders.flatMap(folder => folder.appIds));
+  const oldFolderTokens = new Set(legacyFolders.map(folder => homeFolderToken(folder.id)));
+  const appOrder = layout.appOrder.filter(token => !oldFolderTokens.has(token) && !groupedAppIds.has(token));
+  const folderTokens = folders.map(folder => homeFolderToken(folder.id));
+  const firstLegacyFolderIndex = layout.appOrder.findIndex(token => oldFolderTokens.has(token));
+  const insertionIndex =
+    firstLegacyFolderIndex < 0
+      ? 0
+      : layout.appOrder
+          .slice(0, firstLegacyFolderIndex)
+          .filter(token => !oldFolderTokens.has(token) && !groupedAppIds.has(token)).length;
+  const archiveToken =
+    knownIds.has('archive') &&
+    !customFolderAppIds.has('archive') &&
+    !dockAppIds.has('archive') &&
+    !appOrder.includes('archive')
+      ? ['archive']
+      : [];
+  appOrder.splice(insertionIndex, 0, ...folderTokens, ...archiveToken);
+  return { ...layout, appOrder, folders: [...folders, ...customFolders], version: 3 };
+}
+
 export function readHomeFolderToken(token: string) {
   return token.startsWith('folder:') ? token.slice('folder:'.length) : '';
 }
@@ -119,15 +170,16 @@ export function buildDefaultHomeLayout(): HomeScreenLayout {
     appOrder: [...folders.map(folder => homeFolderToken(folder.id)), ...remainingAppIds],
     dockOrder: resolvedDockOrder,
     folders,
-    version: 2,
+    version: 3,
   };
 }
 
 export function normalizeHomeLayout(layout: HomeScreenLayout): HomeScreenLayout {
   const registered = getRegisteredPhoneApps();
   const knownIds = new Set(registered.map(app => app.id));
-  const sourceLayout = migrateLegacyGamesLayout(layout, knownIds);
-  const legacy = sourceLayout.version < 2;
+  const legacy = layout.version < 2;
+  const paperMigratedLayout = migratePaperHomeLayout(layout, knownIds);
+  const sourceLayout = migrateLegacyGamesLayout(paperMigratedLayout, knownIds);
   const claimed = new Set<string>();
   const folders: HomeFolder[] = [];
 
@@ -169,7 +221,7 @@ export function normalizeHomeLayout(layout: HomeScreenLayout): HomeScreenLayout 
     const token = homeFolderToken(folder.id);
     if (!dockSet.has(token) && !appOrder.includes(token)) appOrder.push(token);
   });
-  return { appOrder, dockOrder, folders, version: 2 };
+  return { appOrder, dockOrder, folders, version: 3 };
 }
 
 export function migrateHomeLayoutDockCapacity(layout: HomeScreenLayout, dockCapacity = 4): HomeScreenLayout {

@@ -67,6 +67,7 @@
       <ReaderDetailShell
         catalog-label="列表"
         :content="activeEntry.content"
+        :context-label="activeEntry.sourceLabel || (activeEntry.kind === 'ai' ? t`AI 摘抄` : t`手动摘抄`)"
         display-app-id="digest"
         :favorite-active="activeEntry.favorite"
         next-label="下一条"
@@ -76,6 +77,7 @@
         :reasoning="activeEntry.generationRecord?.reasoning"
         reasoning-editable
         :title="activeEntry.title"
+        :updated-at="activeEntry.updatedAt"
         @bagu="openDigestBaguScan"
         @bottom="scrollToBottom"
         @catalog="phone.replacePage('root', '摘抄')"

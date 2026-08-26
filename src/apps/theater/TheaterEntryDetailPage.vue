@@ -4,6 +4,7 @@
       ref="readerShell"
       actions-class="six"
       :content="viewedEntry.content"
+      :context-label="entry.typeName || t`未分类小剧场`"
       custom-content
       display-app-id="theater"
       :favorite-active="entry.favorite"
@@ -13,6 +14,8 @@
       reasoning-editable
       :source-label="viewedEntry.generationRecord?.replay.source.label"
       :title="viewedEntry.title"
+      :updated-at="entry.updatedAt"
+      :version-count="entry.versions.length"
       @bagu="$emit('bagu')"
       @bottom="$emit('bottom')"
       @catalog="catalogOpen = true"

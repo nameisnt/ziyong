@@ -11,7 +11,7 @@
 - `src/App.vue`：把设置面板 Teleport 到 `#extensions_settings2`，把菜单入口 Teleport 到 `#extensionsMenu` 下的
   `#pc_reader_wand_container`，把 `PhoneOverlay` 和 `FloatingBall`
   Teleport 到 body；监听聊天切换、聊天改名、楼层备份和生成可见性恢复。
-- `src/components/PhoneOverlay.vue`：手机壳、顶栏、通知、路由组件渲染、主题变量、字体、壁纸、窗口位置和 App KeepAlive。
+- `src/components/PhoneOverlay.vue`：手机壳、顶栏、通知、路由组件渲染、主题变量、字体、纸张纹理、窗口位置和 App KeepAlive。
 - `src/store/phone.ts`：手机打开/关闭、路由栈、返回保护、预览离开确认、通知、当前酒馆 scope、查看 scope 与 scope
   switch。
 
@@ -140,8 +140,10 @@
 - `src/global.css` 定义全局 `pc-*` 控件、卡片、表单、阅读、生成和详情基础样式。
 - `PhoneOverlay.vue` 的 `.pc-screen`
   统一提供普通 App 页面外边距；业务 App 根页面只负责布局，状态栏展示页通过专用零边距屏幕承载网页。
-- `PhoneOverlay.vue` 根据 settings 注入主题 CSS 变量、字体、阅读器尺寸、壁纸和 App 图标样式。
-- `src/apps/theme/themeCatalog.ts` 独占主题预设、主题包、字体、图标、颜色和圆角静态目录。
+- `PhoneOverlay.vue` 根据 settings 注入主题 CSS 变量、字体、阅读器尺寸、内置纸张纹理和 App 图标样式。
+- `src/data/paperTextures.ts` 注册 A4 白纸、宣纸、羊皮纸和黑色卡纸纹理；`src/apps/theme/themeCatalog.ts` 独占主题预设、主题包、字体、图标、颜色和圆角静态目录。
+- `src/core/appLayout.ts` 维护首页八个默认分组、独立聊天档案和四项 Dock，并将旧默认布局迁移到 layout v3；用户自建文件夹继续保留。
+- `ReaderDetailShell.vue` 固定显示详情上下文栏，`VersionNavigator.vue` 在栏内切换版本；可拖动工具菜单只承载正文操作，底部 `DetailFooter` 负责上条/目录/下条和置顶置底。
 - `src/apps/settings/*` 管理界面尺寸、阅读、生成连接、数据管理和高级设置。
 - 共享组件包括
   `GenerationPanel`、`GenerationPreviewPanel`、`BatchGenerationPreviewPage`、`ReferencePicker`、`BaguScanPanel`、`ReaderDetailShell`、`BulkSelectionBar`、`DetailFooter`、`EmptyState`、`ActionMenu`

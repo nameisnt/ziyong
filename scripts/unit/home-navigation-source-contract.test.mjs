@@ -20,7 +20,7 @@ test('the formal home scenario verifies folder, page, nested detail, close-reope
   for (const evidence of [
     'Home source page was not restored',
     'Home source folder was not restored',
-    'Activity page source was not restored',
+    'First desktop page source was not restored',
     'Nested App detail did not return to its root',
     'Closed phone lost its App route',
     'Home action did not reset the desktop source',

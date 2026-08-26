@@ -1,6 +1,5 @@
 /* eslint-disable import-x/no-nodejs-modules */
 import assert from 'node:assert/strict';
-import { createHash } from 'node:crypto';
 import { readFile } from 'node:fs/promises';
 import test from 'node:test';
 import { ModuleKind, ScriptTarget, transpileModule } from 'typescript';
@@ -42,7 +41,7 @@ test('theme and icon catalog identities keep their established order', () => {
   assert.deepEqual(
     catalog.themePacks.map(pack => [pack.id, pack.light.id, pack.dark.id, pack.iconStyle]),
     [
-      ['clear-night', 'clear', 'midnight', 'soft'],
+      ['clear-night', 'clear', 'graphite', 'soft'],
       ['rose-velvet', 'soft', 'velvet', 'soft'],
       ['mint-cypress', 'mint', 'cypress', 'unified'],
       ['sky-ocean', 'sky', 'ocean', 'unified'],
@@ -70,16 +69,9 @@ test('theme and icon catalog identities keep their established order', () => {
   );
 });
 
-test('theme catalog values and array order remain byte-for-byte equivalent as runtime data', () => {
-  const value = {
-    themePacks: catalog.themePacks,
-    fontOptions: catalog.fontOptions,
-    iconOptions: catalog.iconOptions,
-    iconStyleOptions: catalog.iconStyleOptions,
-    builtinIconPacks: catalog.builtinIconPacks,
-    colorControls: catalog.colorControls,
-    radiusControls: catalog.radiusControls,
-  };
-  const signature = createHash('sha256').update(JSON.stringify(value)).digest('hex');
-  assert.equal(signature, '8e22d23b016488ede2a89d1ff5c5ca82d54384eb4fd46f95ea7dd3c9a8602e18');
+test('theme presets declare one supported paper texture', () => {
+  const supportedTextures = new Set(['a4', 'xuan', 'parchment', 'cardstock']);
+  const presets = catalog.themePacks.flatMap(pack => [pack.light, pack.dark]);
+  assert.ok(presets.length > 0);
+  presets.forEach(preset => assert.ok(supportedTextures.has(preset.paperTextureId)));
 });

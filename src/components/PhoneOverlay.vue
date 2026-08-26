@@ -112,7 +112,7 @@ import { usePhoneToastrBridge } from '@/composables/usePhoneToastrBridge';
 import { usePhoneWindowPosition } from '@/composables/usePhoneWindowPosition';
 import { getRegisteredPhoneAppComponent } from '@/core/appRegistry';
 import type { PhoneAppDefinition } from '@/data/apps';
-import { getWallpaperPreset } from '@/data/wallpapers';
+import { getPaperTexture } from '@/data/paperTextures';
 import { useFileRepositoryStore } from '@/store/fileRepository';
 import { usePhoneStore } from '@/store/phone';
 import { getCustomFontFamily, useSettingsStore } from '@/store/settings';
@@ -199,6 +199,7 @@ function cssColor(value: string) {
 const rootStyle = computed(() => {
   const visualTheme = settings.value.visualTheme;
   const dark = settings.value.theme === 'dark';
+  const paperTexture = getPaperTexture(visualTheme.paperTextureId);
   return {
     '--pc-bg': cssColor(visualTheme.backgroundColor),
     '--pc-surface': cssColor(visualTheme.surfaceColor),
@@ -206,6 +207,7 @@ const rootStyle = computed(() => {
     '--pc-border': cssColor(visualTheme.borderColor),
     '--pc-text': cssColor(visualTheme.textColor),
     '--pc-muted': cssColor(visualTheme.mutedTextColor),
+    '--pc-paper-texture': `url("${paperTexture.url}")`,
     '--pc-card-radius': `${visualTheme.cardRadius}px`,
     '--pc-font-sans': toFontStack(settings.value.fontFamily, 'var(--pc-font-sans-default)'),
     '--pc-control-radius': `${visualTheme.controlRadius}px`,
@@ -236,45 +238,13 @@ const rootStyle = computed(() => {
 });
 
 const shellStyle = computed(() => {
-  const highlightLayer =
-    'radial-gradient(circle at top, color-mix(in srgb, var(--pc-theme-accent) 18%, transparent 82%), transparent 30%)';
-  const baseLayer = 'linear-gradient(180deg, color-mix(in srgb, var(--pc-bg) 88%, white 12%), var(--pc-bg))';
-  const baseStyle = {
+  return {
+    backgroundColor: 'var(--pc-bg)',
+    backgroundImage: 'var(--pc-paper-texture)',
+    backgroundRepeat: 'repeat',
+    backgroundSize: '256px 256px',
     height: `${settings.value.interfaceSize.phoneHeight}px`,
     width: `${settings.value.interfaceSize.phoneWidth}px`,
-  };
-
-  const customWallpaper =
-    settings.value.wallpaper.customWallpapers.find(item => item.id === settings.value.wallpaper.selectedCustomId) ??
-    settings.value.wallpaper.customWallpapers.find(item => item.path === settings.value.wallpaper.customPath) ??
-    null;
-  const customWallpaperPath = customWallpaper?.path || settings.value.wallpaper.customPath;
-
-  if (settings.value.wallpaper.mode === 'custom' && customWallpaperPath.trim()) {
-    const path = customWallpaperPath.replace(/^\/+/, '');
-    const overlayOpacity = settings.value.theme === 'dark' ? '0.34' : '0.16';
-    return {
-      ...baseStyle,
-      backgroundImage: `linear-gradient(180deg, rgba(12, 15, 22, ${overlayOpacity}), rgba(12, 15, 22, ${overlayOpacity})), url("/${encodeURI(path)}"), ${baseLayer}`,
-      backgroundSize: 'cover, cover, cover',
-      backgroundPosition: 'center, center, center',
-      backgroundRepeat: 'no-repeat, no-repeat, no-repeat',
-    };
-  }
-
-  if (settings.value.wallpaper.mode === 'preset') {
-    const preset = getWallpaperPreset(settings.value.wallpaper.presetId);
-    if (preset) {
-      return {
-        ...baseStyle,
-        backgroundImage: `${highlightLayer}, ${preset.background}, ${baseLayer}`,
-      };
-    }
-  }
-
-  return {
-    ...baseStyle,
-    backgroundImage: `${highlightLayer}, ${baseLayer}`,
   };
 });
 
@@ -400,12 +370,13 @@ onBeforeUnmount(() => {
   height: 700px;
   max-width: 100vw;
   max-height: 100vh;
-  border-radius: calc(var(--pc-card-radius) + 24px);
+  border-radius: 14px;
   overflow: hidden;
-  background:
-    radial-gradient(circle at top, rgba(0, 122, 255, 0.16), transparent 30%),
-    linear-gradient(180deg, color-mix(in srgb, var(--pc-bg) 88%, white 12%), var(--pc-bg));
-  box-shadow: 0 18px 48px rgba(0, 0, 0, 0.24);
+  background-color: var(--pc-bg);
+  background-image: var(--pc-paper-texture);
+  background-repeat: repeat;
+  background-size: 256px 256px;
+  box-shadow: 0 14px 36px rgba(0, 0, 0, 0.2);
   border: 1px solid var(--pc-border);
   display: flex;
   flex-direction: column;
@@ -418,8 +389,9 @@ onBeforeUnmount(() => {
   justify-content: space-between;
   gap: 6px;
   padding: 4px 10px;
-  background: color-mix(in srgb, var(--pc-surface) 88%, transparent);
-  backdrop-filter: blur(20px);
+  min-height: 48px;
+  border-bottom: 1px solid var(--pc-border);
+  background: color-mix(in srgb, var(--pc-bg) 94%, var(--pc-surface-strong) 6%);
   touch-action: none;
   cursor: grab;
   user-select: none;
@@ -602,7 +574,7 @@ onBeforeUnmount(() => {
 .pc-screen {
   flex: 1;
   overflow: auto;
-  padding: 8px 14px 16px;
+  padding: 8px 12px 12px;
 }
 
 .pc-screen.pc-screen-status-display {
@@ -638,7 +610,6 @@ onBeforeUnmount(() => {
   border-radius: var(--pc-card-radius);
   background: color-mix(in srgb, var(--pc-surface) 72%, transparent 28%);
   border: 1px solid var(--pc-border);
-  backdrop-filter: blur(12px);
 }
 
 .pc-kicker {
@@ -692,7 +663,7 @@ onBeforeUnmount(() => {
 
 @media (max-width: 640px) {
   .pc-phone-shell {
-    border-radius: 28px;
+    border-radius: 12px;
   }
 
   .pc-check-grid {

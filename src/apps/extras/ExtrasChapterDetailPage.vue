@@ -3,6 +3,7 @@
     <ReaderDetailShell
       actions-class="six"
       :content="chapter.content"
+      :context-label="`番外 · 第 ${chapter.chapterNumber} 章`"
       display-app-id="extras"
       :favorite-active="chapter.favorite"
       :next-disabled="!nextId"
@@ -11,6 +12,8 @@
       reasoning-editable
       :source-label="viewedGenerationRecord?.replay?.source.label || viewedGenerationRecord?.sourceLabel"
       :title="`第 ${chapter.chapterNumber} 章 · ${chapter.title}`"
+      :updated-at="chapter.updatedAt"
+      :version-count="versions.length"
       @bagu="emit('bagu')"
       @bottom="emit('bottom')"
       @catalog="emit('update:catalogOpen', true)"

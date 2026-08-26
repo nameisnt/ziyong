@@ -400,13 +400,6 @@ function sanitizeSettingsForJsonBackup(rawSettings: unknown) {
   parsed.textProvider.externalProfiles.forEach(profile => {
     profile.apiKey = '';
   });
-  if (parsed.wallpaper.mode === 'custom') {
-    parsed.wallpaper.mode = parsed.wallpaper.presetId ? 'preset' : 'none';
-  }
-  parsed.wallpaper.customPath = '';
-  parsed.wallpaper.customName = '';
-  parsed.wallpaper.customWallpapers = [];
-  parsed.wallpaper.selectedCustomId = '';
   parsed.customFont = {
     fonts: [],
     name: '',
@@ -418,10 +411,6 @@ function sanitizeSettingsForJsonBackup(rawSettings: unknown) {
   }
   (['light', 'dark'] as const).forEach(mode => {
     const profile = parsed.themeProfiles[mode];
-    if (profile.wallpaperMode === 'custom') {
-      profile.wallpaperMode = profile.wallpaperPresetId ? 'preset' : 'none';
-    }
-    profile.wallpaperCustomId = '';
     if (profile.fontFamily.startsWith('TavernPhoneImportedFont')) profile.fontFamily = '';
     if (profile.readerFontFamily.startsWith('TavernPhoneImportedFont')) profile.readerFontFamily = '';
   });

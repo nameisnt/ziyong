@@ -1,7 +1,7 @@
 {
   "version": 2,
   "defect": "D-VISUAL-001",
-  "generatedAt": "2026-08-25T07:46:32.877Z",
+  "generatedAt": "2026-08-26T05:21:35.772Z",
   "scenarios": [
     "home",
     "home-tasks-dark",
@@ -17,13 +17,13 @@
   "evidence": [
     {
       "appearance": {
-        "screenshotPerceptualHash": "F0AAA884010173AA",
+        "screenshotPerceptualHash": "F08300CCCCCCC4AA",
         "targets": [
           {
             "missing": false,
             "selector": ".pc-phone-shell",
             "styles": {
-              "backgroundColor": "rgba(0, 0, 0, 0)",
+              "backgroundColor": "rgb(242, 242, 247)",
               "color": "rgb(28, 28, 30)",
               "fontFamily": "-apple-system, BlinkMacSystemFont, \"Segoe UI\", Roboto, \"Helvetica Neue\", Arial, \"Noto Sans SC\", sans-serif",
               "fontSize": "16px"
@@ -33,7 +33,7 @@
             "missing": false,
             "selector": ".pc-home-grid-wrap .pc-grid",
             "styles": {
-              "gridTemplateColumns": "72.5px 72.5px 72.5px 72.5px"
+              "gridTemplateColumns": "75px 75px 75px 75px"
             }
           }
         ]
@@ -43,13 +43,13 @@
     },
     {
       "appearance": {
-        "screenshotPerceptualHash": "0C3D737373C04C55",
+        "screenshotPerceptualHash": "8CFCCCCC8E8E8E54",
         "targets": [
           {
             "missing": false,
             "selector": ".pc-phone-shell",
             "styles": {
-              "backgroundColor": "rgba(0, 0, 0, 0)",
+              "backgroundColor": "rgb(28, 28, 30)",
               "color": "rgb(245, 245, 247)",
               "fontFamily": "-apple-system, BlinkMacSystemFont, \"Segoe UI\", Roboto, \"Helvetica Neue\", Arial, \"Noto Sans SC\", sans-serif",
               "fontSize": "16px"
@@ -59,7 +59,7 @@
             "missing": false,
             "selector": ".pc-generation-task-center",
             "styles": {
-              "backgroundColor": "color(srgb 1 1 1 / 0.067451)",
+              "backgroundColor": "color(srgb 0.121668 0.121668 0.129407 / 0.912157)",
               "color": "rgb(245, 245, 247)"
             }
           }
@@ -70,7 +70,7 @@
     },
     {
       "appearance": {
-        "screenshotPerceptualHash": "7C78E01375792122",
+        "screenshotPerceptualHash": "CCF090D0E03E3C7C",
         "targets": [
           {
             "missing": false,
@@ -95,7 +95,7 @@
     },
     {
       "appearance": {
-        "screenshotPerceptualHash": "FC74F09377072322",
+        "screenshotPerceptualHash": "F8F090D0E00E3D7C",
         "targets": [
           {
             "missing": false,
@@ -120,7 +120,7 @@
     },
     {
       "appearance": {
-        "screenshotPerceptualHash": "D0F0860F07010101",
+        "screenshotPerceptualHash": "1290840743012901",
         "targets": [
           {
             "missing": false,
@@ -140,13 +140,13 @@
     },
     {
       "appearance": {
-        "screenshotPerceptualHash": "F0AAD901010121AA",
+        "screenshotPerceptualHash": "F083DCCCCCD401AA",
         "targets": [
           {
             "missing": false,
             "selector": ".pc-phone-shell",
             "styles": {
-              "backgroundColor": "rgba(0, 0, 0, 0)",
+              "backgroundColor": "rgb(242, 242, 247)",
               "color": "rgb(28, 28, 30)",
               "fontFamily": "-apple-system, BlinkMacSystemFont, \"Segoe UI\", Roboto, \"Helvetica Neue\", Arial, \"Noto Sans SC\", sans-serif",
               "fontSize": "16px"
@@ -156,7 +156,7 @@
             "missing": false,
             "selector": ".pc-home-grid-wrap .pc-grid",
             "styles": {
-              "gridTemplateColumns": "82.5px 82.5px 82.5px 82.5px"
+              "gridTemplateColumns": "85px 85px 85px 85px"
             }
           }
         ]
@@ -166,13 +166,13 @@
     },
     {
       "appearance": {
-        "screenshotPerceptualHash": "1C3D335B23000055",
+        "screenshotPerceptualHash": "DCF8D8A8A8AA00D4",
         "targets": [
           {
             "missing": false,
             "selector": ".pc-phone-shell",
             "styles": {
-              "backgroundColor": "rgba(0, 0, 0, 0)",
+              "backgroundColor": "rgb(28, 28, 30)",
               "color": "rgb(245, 245, 247)",
               "fontFamily": "-apple-system, BlinkMacSystemFont, \"Segoe UI\", Roboto, \"Helvetica Neue\", Arial, \"Noto Sans SC\", sans-serif",
               "fontSize": "16px"
@@ -182,7 +182,7 @@
             "missing": false,
             "selector": ".pc-generation-task-center",
             "styles": {
-              "backgroundColor": "color(srgb 1 1 1 / 0.067451)",
+              "backgroundColor": "color(srgb 0.121668 0.121668 0.129407 / 0.912157)",
               "color": "rgb(245, 245, 247)"
             }
           }
@@ -193,7 +193,7 @@
     },
     {
       "appearance": {
-        "screenshotPerceptualHash": "7C30362239230080",
+        "screenshotPerceptualHash": "D4F0F4E80E180000",
         "targets": [
           {
             "missing": false,
@@ -218,7 +218,7 @@
     },
     {
       "appearance": {
-        "screenshotPerceptualHash": "FC747630272300C0",
+        "screenshotPerceptualHash": "F0F0F4E807180000",
         "targets": [
           {
             "missing": false,
@@ -243,7 +243,7 @@
     },
     {
       "appearance": {
-        "screenshotPerceptualHash": "F0C8D00707010101",
+        "screenshotPerceptualHash": "10D81C4303210101",
         "targets": [
           {
             "missing": false,
@@ -263,13 +263,13 @@
     },
     {
       "appearance": {
-        "screenshotPerceptualHash": "F1AAC501010101AA",
+        "screenshotPerceptualHash": "E083088C8C0000AA",
         "targets": [
           {
             "missing": false,
             "selector": ".pc-phone-shell",
             "styles": {
-              "backgroundColor": "rgba(0, 0, 0, 0)",
+              "backgroundColor": "rgb(242, 242, 247)",
               "color": "rgb(28, 28, 30)",
               "fontFamily": "-apple-system, BlinkMacSystemFont, \"Segoe UI\", Roboto, \"Helvetica Neue\", Arial, \"Noto Sans SC\", sans-serif",
               "fontSize": "16px"
@@ -279,7 +279,7 @@
             "missing": false,
             "selector": ".pc-home-grid-wrap .pc-grid",
             "styles": {
-              "gridTemplateColumns": "92.5px 92.5px 92.5px 92.5px"
+              "gridTemplateColumns": "95px 95px 95px 95px"
             }
           }
         ]
@@ -289,13 +289,13 @@
     },
     {
       "appearance": {
-        "screenshotPerceptualHash": "1C75337901000055",
+        "screenshotPerceptualHash": "9CF8C8CC8CCC00D4",
         "targets": [
           {
             "missing": false,
             "selector": ".pc-phone-shell",
             "styles": {
-              "backgroundColor": "rgba(0, 0, 0, 0)",
+              "backgroundColor": "rgb(28, 28, 30)",
               "color": "rgb(245, 245, 247)",
               "fontFamily": "-apple-system, BlinkMacSystemFont, \"Segoe UI\", Roboto, \"Helvetica Neue\", Arial, \"Noto Sans SC\", sans-serif",
               "fontSize": "16px"
@@ -305,7 +305,7 @@
             "missing": false,
             "selector": ".pc-generation-task-center",
             "styles": {
-              "backgroundColor": "color(srgb 1 1 1 / 0.067451)",
+              "backgroundColor": "color(srgb 0.121668 0.121668 0.129407 / 0.912157)",
               "color": "rgb(245, 245, 247)"
             }
           }
@@ -316,7 +316,7 @@
     },
     {
       "appearance": {
-        "screenshotPerceptualHash": "FC702E6B71000040",
+        "screenshotPerceptualHash": "CCF0ECE83F000082",
         "targets": [
           {
             "missing": false,
@@ -341,7 +341,7 @@
     },
     {
       "appearance": {
-        "screenshotPerceptualHash": "FCF02E6923000040",
+        "screenshotPerceptualHash": "CCF0ECE81F000082",
         "targets": [
           {
             "missing": false,
@@ -366,7 +366,7 @@
     },
     {
       "appearance": {
-        "screenshotPerceptualHash": "B0D0310703010102",
+        "screenshotPerceptualHash": "2190D10703000082",
         "targets": [
           {
             "missing": false,

@@ -2,6 +2,7 @@
   <section class="pc-summary-page pc-summary-detail-page">
     <ReaderDetailShell
       :content="entry.content"
+      :context-label="entry.rangeLabel"
       display-app-id="summary"
       :favorite-active="entry.favorite"
       :next-disabled="!nextId"
@@ -9,6 +10,7 @@
       :reasoning="entry.generationRecord?.reasoning"
       reasoning-editable
       :title="entry.title"
+      :updated-at="entry.updatedAt"
       @bagu="emit('bagu')"
       @bottom="emit('bottom')"
       @catalog="emit('update:catalogOpen', true)"

@@ -255,15 +255,6 @@
   text-align: center;
 }
 
-.pc-phone-root .pc-field.pc-version-index-input {
-  width: 42px;
-  height: 42px;
-  min-height: 42px;
-  padding: 0 8px;
-  line-height: 40px;
-  text-align: center;
-}
-
 #tavern-phone-root.pc-phone-root[data-theme='light']
   :is(
     input:not([type='checkbox']):not([type='radio']):not([type='range']):not([type='color']):not([type='button']):not(

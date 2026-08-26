@@ -3,6 +3,7 @@
     <ReaderDetailShell
       actions-class="six"
       :content="entry.content"
+      :context-label="`${entry.sender.name} → ${entry.receiver.name}`"
       display-app-id="letters"
       :favorite-active="entry.favorite"
       :next-disabled="!nextId"
@@ -11,6 +12,8 @@
       reasoning-editable
       :source-label="viewedGenerationRecord?.replay.source.label"
       :title="entry.title"
+      :updated-at="entry.updatedAt"
+      :version-count="versions.length"
       @bagu="emit('bagu')"
       @bottom="emit('bottom')"
       @catalog="emit('update:catalogOpen', true)"

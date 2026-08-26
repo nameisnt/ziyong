@@ -49,7 +49,7 @@ export function packHomeGridPages(items: HomeGridInput[], columns: number, rows:
 
   items.forEach(item => {
     const columnSpan = item.isFolder ? 2 : 1;
-    const rowSpan = item.isFolder ? 2 : 1;
+    const rowSpan = 1;
     let position = findOpenPosition(occupied, columnSpan, rowSpan);
     if (!position) {
       pages.push(page);

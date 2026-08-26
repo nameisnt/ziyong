@@ -9,6 +9,16 @@
     @touchmove.passive="hideFooter"
     @wheel.passive="hideFooter"
   >
+    <div v-if="contextBarVisible" class="pc-reader-context-bar">
+      <div class="pc-reader-context-meta">
+        <span v-if="contextLabel">{{ contextLabel }}</span>
+        <span v-if="versionCount > 0">{{ versionCount }} 个版本</span>
+        <span v-if="updatedAt">更新于 {{ formatUpdatedAt(updatedAt) }}</span>
+        <slot name="detail-context"></slot>
+      </div>
+      <slot name="version-navigation"></slot>
+    </div>
+
     <article class="pc-detail-card pc-reader-detail-card">
       <slot name="kicker"></slot>
       <template v-if="customContent">
@@ -93,7 +103,6 @@
         @click.stop
         @pointerdown.stop
       >
-        <slot name="version-navigation"></slot>
         <button v-if="baguEnabled" class="pc-soft-btn" type="button" @click="runToolAction('bagu')">
           <i class="fa-solid fa-filter-circle-xmark"></i><span>{{ baguLabel }}</span>
         </button>
@@ -169,6 +178,7 @@ const props = withDefaults(
     catalogLabel?: string;
     content?: string;
     contentFormatted?: boolean;
+    contextLabel?: string;
     customContent?: boolean;
     displayAppId?: string;
     editDisabled?: boolean;
@@ -189,6 +199,8 @@ const props = withDefaults(
     simplifyEnabled?: boolean;
     sourceLabel?: string;
     title: string;
+    updatedAt?: string;
+    versionCount?: number;
   }>(),
   {
     actionsClass: '',
@@ -200,6 +212,7 @@ const props = withDefaults(
     catalogLabel: '目录',
     content: '',
     contentFormatted: false,
+    contextLabel: '',
     customContent: false,
     displayAppId: '',
     editDisabled: false,
@@ -219,6 +232,8 @@ const props = withDefaults(
     reasoningEditable: false,
     simplifyEnabled: true,
     sourceLabel: '',
+    updatedAt: '',
+    versionCount: 0,
   },
 );
 
@@ -238,6 +253,9 @@ const emit = defineEmits<{
 const regexDisplay = useRegexDisplayStore();
 const phone = usePhoneStore();
 const slots = useSlots();
+const contextBarVisible = computed(
+  () => Boolean(props.contextLabel || props.updatedAt || props.versionCount > 0 || slots['detail-context'] || slots['version-navigation']),
+);
 const itemTransferParams = computed(() => phone.currentRoute.params || {});
 const itemTransferAvailable = computed(() => {
   if (!props.displayAppId) return false;
@@ -275,7 +293,7 @@ const toolVisible = computed(
     props.editEnabled ||
     props.simplifyEnabled ||
     itemTransferAvailable.value ||
-    Boolean(slots.actions || slots['version-navigation']),
+    Boolean(slots.actions),
 );
 const toolMenuOpen = ref(false);
 const shellEl = ref<HTMLElement | null>(null);
@@ -394,8 +412,8 @@ function clampToolPosition(x = toolPosition.x, y = toolPosition.y) {
   const shell = shellEl.value;
   const tool = toolEl.value;
   if (!shell) return;
-  const width = tool?.offsetWidth || 46;
-  const height = tool?.offsetHeight || 46;
+  const width = tool?.offsetWidth || 40;
+  const height = tool?.offsetHeight || 40;
   toolPosition.x = Math.min(Math.max(6, x), Math.max(6, shell.clientWidth - width - 6));
   toolPosition.y = Math.min(Math.max(6, y), Math.max(6, shell.clientHeight - height - 6));
 }
@@ -463,6 +481,14 @@ function runToolAction(event: 'bagu' | 'branch' | 'edit' | 'favorite') {
   emit(event);
 }
 
+function formatUpdatedAt(value: string) {
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return value;
+  const today = new Date();
+  if (date.toDateString() === today.toDateString()) return '今天';
+  return date.toLocaleDateString('zh-CN', { month: 'numeric', day: 'numeric' });
+}
+
 async function toggleSimplified() {
   if (simplified.value) {
     simplified.value = false;
@@ -502,6 +528,43 @@ defineExpose({ hideFooter, toggleFooter });
   height: 100%;
   min-height: 0;
   overflow: hidden;
+}
+
+.pc-reader-context-bar {
+  display: flex;
+  flex: 0 0 42px;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  min-width: 0;
+  padding: 0 8px;
+  border-bottom: 1px solid var(--pc-border);
+  background: var(--pc-surface);
+}
+
+.pc-reader-context-meta {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: 0;
+  overflow: hidden;
+  color: var(--pc-muted);
+  font-size: 12px;
+  white-space: nowrap;
+}
+
+.pc-reader-context-meta > * {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.pc-reader-context-meta > * + *::before {
+  margin: 0 6px;
+  content: '\00b7';
+}
+
+.pc-reader-context-bar :deep(.pc-version-navigator) {
+  flex: 0 0 auto;
 }
 
 .pc-reader-detail-card {
@@ -572,13 +635,13 @@ defineExpose({ hideFooter, toggleFooter });
 .pc-reader-tool {
   position: absolute;
   z-index: 7;
-  width: 46px;
-  height: 46px;
+  width: 40px;
+  height: 40px;
 }
 
 .pc-reader-tool-trigger {
-  width: 46px;
-  height: 46px;
+  width: 40px;
+  height: 40px;
   border: 2px solid var(--pc-theme-accent);
   background: var(--pc-form-control-bg);
   color: var(--pc-form-control-text);
@@ -659,12 +722,4 @@ defineExpose({ hideFooter, toggleFooter });
   text-align: center;
 }
 
-.pc-reader-tool-menu :deep(.pc-version-navigator) {
-  grid-column: 1 / -1;
-  width: 100%;
-  margin: 0;
-  padding: 0;
-  border: 0;
-  background: var(--pc-form-control-bg);
-}
 </style>

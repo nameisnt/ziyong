@@ -17,9 +17,8 @@
         @pointermove="onHomeSwipePointerMove"
         @pointerup="onHomeSwipePointerUp"
       >
-        <HomeActivityPage :active="homePageIndex === 0" @open="openHomeActivityItem" />
+        <HomeActivityPage :active="true" @open="openHomeActivityItem" />
         <section
-          v-if="homePageIndex !== 0"
           :class="['pc-grid', { sorting: appDrag.isDragging || isOrganizing }]"
           :style="{ '--pc-home-rows': settings.interfaceSize.homeRows }"
         >
@@ -127,15 +126,15 @@
           </template>
         </section>
 
-        <div v-if="homePages.length >= 1" class="pc-page-dots">
+        <div v-if="homePages.length > 1" class="pc-page-dots">
           <button
-            v-for="(_, pageIndex) in homePages.length + 1"
+            v-for="(_, pageIndex) in homePages"
             :key="pageIndex"
-            :class="['pc-page-dot', { active: pageIndex === homePageIndex }]"
+            :class="['pc-page-dot', { active: pageIndex + 1 === homePageIndex }]"
             type="button"
             :title="`第 ${pageIndex + 1} 页`"
-            @click="homePageIndex = pageIndex"
-            @pointerenter="switchDragPage(pageIndex)"
+            @click="homePageIndex = pageIndex + 1"
+            @pointerenter="switchDragPage(pageIndex + 1)"
           ></button>
         </div>
       </section>
@@ -683,7 +682,7 @@ function onHomeSwipePointerDown(event: PointerEvent) {
   if (
     target instanceof Element &&
     target.closest(
-      '.pc-page-dots, .pc-home-context, .pc-home-dock, input, textarea, select, [contenteditable="true"], .pc-native-select-anchor',
+      '.pc-page-dots, .pc-home-context, .pc-home-dock, .pc-task-list, input, textarea, select, [contenteditable="true"], .pc-native-select-anchor',
     )
   )
     return;
@@ -967,7 +966,7 @@ async function dissolveActiveHomeFolder() {
 watch(
   () => homePages.value.length,
   pageCount => {
-    homePageIndex.value = Math.min(Math.max(0, homePageIndex.value), Math.max(1, pageCount));
+    homePageIndex.value = Math.min(Math.max(1, homePageIndex.value), Math.max(1, pageCount));
   },
 );
 watch(viewingScopeKey, refreshHomeArchiveDomains);
@@ -1020,19 +1019,24 @@ onBeforeUnmount(resetHomeInteractionState);
 .pc-grid {
   display: grid;
   grid-template-columns: repeat(var(--pc-home-columns), minmax(0, 1fr));
-  grid-template-rows: repeat(var(--pc-home-rows), 82px);
-  gap: 10px;
+  grid-template-rows: repeat(var(--pc-home-rows), 88px);
+  gap: 8px;
   align-content: start;
 }
 .pc-home-grid-wrap {
   flex: 1 1 auto;
-  display: grid;
-  grid-template-rows: minmax(0, 1fr) auto;
+  display: flex;
+  flex-direction: column;
   min-height: 0;
   gap: 10px;
+  overflow-y: auto;
   touch-action: pan-y;
   user-select: none;
   -webkit-user-select: none;
+}
+.pc-home-grid-wrap :deep(.pc-home-activity-page) {
+  flex: 0 0 auto;
+  max-height: 220px;
 }
 .pc-app-tile {
   min-width: 0;
@@ -1089,20 +1093,20 @@ onBeforeUnmount(resetHomeInteractionState);
   position: relative;
   display: grid;
   grid-template-rows: minmax(0, 1fr) auto;
-  gap: 6px;
+  gap: 2px;
   overflow: hidden;
   border: 1px solid var(--pc-border);
-  padding: 9px;
-  background: color-mix(in srgb, var(--pc-surface) 78%, transparent 22%);
-  box-shadow: 0 10px 22px color-mix(in srgb, var(--pc-text) 10%, transparent 90%);
+  padding: 7px;
+  background: color-mix(in srgb, var(--pc-bg) 88%, var(--pc-surface-strong) 12%);
+  box-shadow: none;
 }
 .pc-home-folder-preview {
   min-width: 0;
   min-height: 0;
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  grid-template-rows: repeat(2, minmax(0, 1fr));
-  gap: 6px;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-template-rows: minmax(0, 1fr);
+  gap: 4px;
 }
 .pc-home-folder-shortcut,
 .pc-home-folder-more,
@@ -1119,8 +1123,8 @@ onBeforeUnmount(resetHomeInteractionState);
   background: transparent;
 }
 .pc-home-folder-shortcut .pc-app-icon {
-  width: 38px;
-  height: 38px;
+  width: 30px;
+  height: 30px;
   margin: 0;
   font-size: 14px;
 }
@@ -1148,8 +1152,8 @@ onBeforeUnmount(resetHomeInteractionState);
   line-height: 1;
 }
 .pc-home-folder-more-grid {
-  width: 36px;
-  height: 36px;
+  width: 28px;
+  height: 28px;
   display: grid;
   grid-template-columns: repeat(2, 1fr);
   grid-template-rows: repeat(2, 1fr);
@@ -1172,10 +1176,10 @@ onBeforeUnmount(resetHomeInteractionState);
   position: relative;
   display: flex;
   align-items: center;
-  justify-content: center;
+  justify-content: flex-start;
   gap: 5px;
   overflow: visible;
-  padding: 0 16px;
+  padding: 0 2px;
   background: transparent;
 }
 .pc-home-folder-title strong {
@@ -1260,11 +1264,11 @@ onBeforeUnmount(resetHomeInteractionState);
   display: grid;
   grid-template-columns: repeat(var(--pc-dock-columns), minmax(0, 1fr));
   gap: 8px;
-  padding: 10px;
-  border: 1px solid var(--pc-border);
-  border-radius: calc(var(--pc-card-radius) + 4px);
-  background: color-mix(in srgb, var(--pc-dock-bg) 82%, transparent 18%);
-  backdrop-filter: blur(18px);
+  padding: 8px 6px 6px;
+  border: 0;
+  border-top: 1px solid var(--pc-border);
+  border-radius: 0;
+  background: color-mix(in srgb, var(--pc-bg) 94%, var(--pc-dock-bg) 6%);
 }
 .pc-dock-tile {
   min-width: 0;

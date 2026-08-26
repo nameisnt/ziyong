@@ -2,6 +2,7 @@
   <section class="pc-forum-thread-detail-page">
     <ReaderDetailShell
       :content="displayedContent"
+      :context-label="boardName"
       display-app-id="forum"
       :favorite-active="favorite"
       next-disabled
@@ -10,6 +11,8 @@
       reasoning-editable
       :source-label="viewedGenerationRecord?.replay.source.label"
       :title="thread.title"
+      :updated-at="thread.updatedAt"
+      :version-count="versions.length"
       @bagu="$emit('bagu')"
       @bottom="$emit('bottom')"
       @catalog="$emit('catalog')"

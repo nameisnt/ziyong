@@ -49,7 +49,7 @@ test('legacy desktop layout migrates default dock ownership once', () => {
   const layout = normalizeHomeLayout({ appOrder: ['e', 'c', 'a', 'b', 'd'], dockOrder: [], folders: [], version: 1 });
   assert.deepEqual(layout.dockOrder, ['c', 'd']);
   assert.deepEqual(layout.appOrder, ['e', 'a', 'b']);
-  assert.equal(layout.version, 2);
+  assert.equal(layout.version, 3);
   assert.deepEqual(buildDefaultHomeLayout().dockOrder, ['c', 'd']);
 });
 
@@ -86,7 +86,9 @@ test('normalization keeps a single-app folder instead of silently dissolving it'
 
 test('recommended default grouping is declared by stable app IDs, with unknown apps left outside folders', async () => {
   const source = await readFile(new URL('../../src/core/appLayout.ts', import.meta.url), 'utf8');
-  assert.match(source, /name: '创作', appIds: \['diary', 'extras', 'theater', 'forum', 'letters', 'card-writer', 'scene-planner'\]/u);
+  assert.match(source, /name: '阅读与记录', appIds: \['reader', 'diary', 'extras', 'theater', 'forum', 'letters'\]/u);
+  assert.match(source, /name: '生成', appIds: \['card-writer', 'scene-planner', 'summary', 'storylines'\]/u);
+  assert.match(source, /name: '酒馆工具', appIds: \['status-display', 'status-display-settings', 'mvu-modifier'/u);
   assert.match(source, /name: '小游戏', appIds: MINI_GAME_APP_IDS/u);
   assert.match(source, /filter\(appId => !resolvedDockOrder\.includes\(appId\) && !folderAppIds\.has\(appId\)\)/u);
 });
