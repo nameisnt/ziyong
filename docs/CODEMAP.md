@@ -110,7 +110,8 @@
 - 批量目录：`BulkSelectionBar.vue`、`BulkSelectionCheckbox.vue` 和 `useBulkSelection.ts`
   提供共享选择状态，业务 App 仍用各自 store 执行实际级联删除。
 - 世界书：`src/apps/worldbook-link/`
-  读取和编辑真实世界书，现代接口与旧格式接口都写回名称、正文、激活策略和插入位置；目录管理支持批量复制为 Theater 类型提示词，副本编辑保留源配置；`src/apps/world-slots/`
+  读取和编辑真实世界书，现代接口与旧格式接口都写回名称、正文、激活策略和插入位置；`src/store/worldbookCatalogGroups.ts`
+  在插件设置中保存世界书和书内条目的两级显示分组，改名、复制、删除时同步目录元数据；目录管理支持批量复制为 Theater 类型提示词，副本编辑保留源配置；`src/apps/world-slots/`
   管理当前聊天槽位并同步固定世界书。
 - 正则：`src/apps/regex-display/store.ts` 保存分组、全局执行顺序、规则和各消费目标的绑定；`RegexDisplayApp.vue`
   只提供分组目录、触摸/鼠标拖拽和弹窗编辑预览。Reader、Preset Manager、Status Display
@@ -129,7 +130,7 @@
 - 备份查重：`src/apps/recovery/model.ts` 生成完全相同、严格续长和 90% 相似分组，`store.ts`
   在删除前重新下载复核，`RecoveryMaintenanceFlow.vue` 管理选择和确认。
 - 前端网页：`src/util/theaterFrontend.ts`
-  清理 HTML、保留完整页面或片段中的 head/style，并构造 iframe 文档；`FrontendFrame.vue` 根据子文档回报高度调整容器。
+  清理 HTML、保留完整页面或片段中的 head/style，并构造 iframe 文档；`FrontendFrame.vue` 根据子文档回报高度调整容器。小剧场 HTML 使用 `flush-content`，网页内容边缘不再注入共享 16px 内边距。
 - 状态栏：`src/apps/status-display/StatusDisplayApp.vue`
   是纯展示入口，读取当前聊天绑定并在聊天事件后刷新；`StatusDisplaySettingsApp.vue` 由
   `src/apps/status-display-settings/index.ts`
@@ -141,15 +142,15 @@
   保留普通 Unicode 文本，仅转义宏参数分隔符和换行，用 `URLSearchParams`
   解析；身份分配按 placement 输出“候选 身份”或“身份 候选”，不添加冒号；`generationService` 只在手机生成期间注册。
 - 助手脚本：`src/apps/script-manager/`
-  读取三类 TavernHelper 脚本树，展平根脚本与文件夹脚本；批量分组移动真实树节点，插件内整包导入导出原始 global、preset、character 树，删除和写回按作用域调用 TavernHelper
-  ScriptTree API。
+  读取三类 TavernHelper 脚本树，`model.ts` 将每个作用域组织为真实文件夹与“未分组”目录；`api.ts`
+  通过 ScriptTree API 新建、重命名、移动和删除真实树节点。插件整包导入导出 global、preset、character 三类树；单文件夹直接读写酒馆助手原生 `ScriptFolder` JSON，原生导入会换新 id 并以停用状态写入当前目标作用域。
 - 扩展迁移：`src/apps/extension-transfer/` 调用 SillyTavern
   `/api/extensions/discover`、`/version`、`/install`、`/update`；导入清单先经 Zod 解析并进入预览，安装范围逐项选择；安装或更新全部结束后只刷新一次扩展目录，不刷新页面。备注名、安装网页和功能介绍保存在
   `sillytavern_phone_extension_metadata`。
 
 ## UI 与主题
 
-- `src/global.css` 定义全局 `pc-*` 控件、卡片、表单、阅读、生成和详情基础样式。
+- `src/global.css` 定义全局 `pc-*` 控件、卡片、表单、阅读、生成和详情基础样式；同一 App 语义图标在 A4、宣纸、羊皮纸和黑色卡纸下分别使用现代、墨迹、压印和蜡笔笔触渲染。
 - `PhoneOverlay.vue` 的 `.pc-screen`
   统一提供普通 App 页面外边距；业务 App 根页面只负责布局，状态栏展示页通过专用零边距屏幕承载网页。
 - `PhoneOverlay.vue` 根据 settings 注入主题 CSS 变量、字体、阅读器尺寸、内置纸张纹理和 App 图标样式。
@@ -164,7 +165,8 @@
   使用单行分类选择器装配界面、阅读、生成、连接、数据和高级面板；`SettingsGenerationPanel.vue`
   管理生成默认值，`SettingsConnectionPanel.vue` 管理文本通道和外部配置目录，`SettingsExternalApiPage.vue`
   负责外部 API 二级编辑；`SettingsInterfacePanel.vue`
-  使用紧凑行管理窗口、图标密度和悬浮球，旧分页主页的行数/每页容量及 Dock 数量不再暴露。
+  使用紧凑行管理窗口、图标密度和悬浮球，旧分页主页的行数/每页容量及 Dock 数量不再暴露；`SettingsDataManagementPage.vue`
+  以当前聊天和全部保存作用域两列统计各 App 条目，并保留完整/当前备份操作。
 - 共享组件包括
   `GenerationPanel`、`GenerationPreviewPanel`、`BatchGenerationPreviewPage`、`ReferencePicker`、`BaguScanPanel`、`ReaderDetailShell`、`BulkSelectionBar`、`DetailFooter`、`EmptyState`、`ActionMenu`
   等。

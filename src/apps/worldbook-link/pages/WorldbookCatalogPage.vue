@@ -3,6 +3,15 @@
     <header class="pc-compact-toolbar pc-directory-toolbar pc-worldbook-head">
       <span class="pc-directory-count">{{ visibleBookCount }} {{ t`本世界书` }}</span>
       <button
+        class="pc-icon-btn"
+        type="button"
+        :aria-label="t`新建世界书分组`"
+        :title="t`新建世界书分组`"
+        @click="$emit('create-group')"
+      >
+        <i class="fa-solid fa-folder-plus"></i>
+      </button>
+      <button
         class="pc-icon-btn pc-worldbook-refresh"
         type="button"
         :aria-label="t`刷新`"
@@ -50,6 +59,15 @@
                 <strong>{{ bookName }}</strong>
                 <small>{{ bookSubtitle(bookName) }}</small>
               </span>
+            </button>
+            <button
+              class="pc-icon-btn"
+              type="button"
+              :aria-label="t`设置世界书分组`"
+              :title="t`设置世界书分组`"
+              @click="$emit('assign-book', bookName)"
+            >
+              <i class="fa-solid fa-folder"></i>
             </button>
             <label
               v-if="activeCategory === 'global'"
@@ -106,6 +124,8 @@ const activeCategory = defineModel<WorldbookCategoryId>('activeCategory', { requ
 const query = defineModel<string>('query', { required: true });
 
 defineEmits<{
+  'assign-book': [bookName: string];
+  'create-group': [];
   'open-book': [bookName: string];
   refresh: [];
   'toggle-global': [bookName: string, event: Event];
@@ -170,7 +190,7 @@ defineEmits<{
 }
 
 .pc-worldbook-row {
-  grid-template-columns: minmax(0, 1fr) auto;
+  grid-template-columns: minmax(0, 1fr) auto auto;
 }
 
 .pc-worldbook-open {

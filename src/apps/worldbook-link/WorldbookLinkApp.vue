@@ -21,6 +21,8 @@
       :refreshing="refreshing"
       :sections="visibleBookSections"
       :visible-book-count="visibleBookCount"
+      @assign-book="assignBookGroup"
+      @create-group="createBookGroup"
       @open-book="openBook"
       @refresh="refresh"
       @toggle-global="toggleGlobalWorldbook"
@@ -43,10 +45,12 @@
       :status="detailStatus"
       :visible-entry-count="visibleEntryCount"
       @apply-profile="applySavedProfile"
+      @assign-entry-group="assignEntryGroup"
       @cancel-bulk="cancelEntryBulk"
       @capture-profile="captureCurrentProfile"
       @convert-selected="convertSelectedEntriesToTheaterTypes"
       @copy-entry="openEntryCopy"
+      @create-entry-group="createEntryGroup"
       @open-entry="openEntryEditor"
       @rename-book="renameCurrentBook"
       @set-selected="setEntrySelected"
@@ -87,6 +91,7 @@ import EmptyState from '@/components/EmptyState.vue';
 import { useBulkSelection } from '@/composables/useBulkSelection';
 import { usePhoneStore } from '@/store/phone';
 import { usePromptStore } from '@/store/prompts';
+import { useWorldbookCatalogGroupStore } from '@/store/worldbookCatalogGroups';
 import {
   deleteWorldbookEntry,
   duplicateWorldbookEntry,
@@ -106,6 +111,7 @@ import { type WorldbookLinkStatus, useWorldbookLinkStore } from './store';
 const phone = usePhoneStore();
 const prompts = usePromptStore();
 const worldbookLinks = useWorldbookLinkStore();
+const catalogGroups = useWorldbookCatalogGroupStore();
 const route = computed(() => phone.currentRoute);
 const categories: Array<{ id: WorldbookCategoryId; label: string }> = [
   { id: 'global', label: '全局' },
@@ -184,13 +190,12 @@ const visibleBookSections = computed(() => {
     if (!keyword) return names;
     return names.filter(name => name.toLocaleLowerCase().includes(keyword));
   };
-  if (activeCategory.value === 'global') {
-    return [
-      { books: filterBooks(groups.globalEnabled), id: 'global-enabled', label: '全局已启用' },
-      { books: filterBooks(groups.globalDisabled), id: 'global-disabled', label: '全局未启用' },
-    ];
-  }
-  return [{ books: filterBooks(groups[activeCategory.value]), id: activeCategory.value, label: '' }];
+  const grouped = new Map<string, string[]>();
+  filterBooks(groups[activeCategory.value]).forEach(bookName => {
+    const group = catalogGroups.bookGroupOf(bookName) || '未分组';
+    grouped.set(group, [...(grouped.get(group) || []), bookName]);
+  });
+  return [...grouped].map(([label, books]) => ({ books, id: `${activeCategory.value}:${label}`, label }));
 });
 const visibleBookCount = computed(() =>
   visibleBookSections.value.reduce((sum, section) => sum + section.books.length, 0),
@@ -202,10 +207,16 @@ const visibleEntrySections = computed(() => {
       if (!keyword) return true;
       return (entry.name || `条目 #${entry.uid}`).toLocaleLowerCase().includes(keyword);
     }) ?? [];
-  return [
-    { entries: entries.filter(entry => entry.enabled), id: 'enabled', label: '已启用' },
-    { entries: entries.filter(entry => !entry.enabled), id: 'disabled', label: '未启用' },
-  ];
+  const grouped = new Map<string, WorldbookEntry[]>();
+  entries.forEach(entry => {
+    const group = catalogGroups.entryGroupOf(detailBookName.value, entry.uid) || '未分组';
+    grouped.set(group, [...(grouped.get(group) || []), entry]);
+  });
+  return [...grouped].map(([label, groupedEntries]) => ({
+    entries: groupedEntries,
+    id: `${detailBookName.value}:${label}`,
+    label,
+  }));
 });
 const visibleEntryCount = computed(() =>
   visibleEntrySections.value.reduce((sum, section) => sum + section.entries.length, 0),
@@ -316,6 +327,40 @@ function openBook(bookName: string) {
   phone.pushPage('detail', bookName, { bookName });
 }
 
+async function createBookGroup() {
+  const name = await phone.promptNotice('输入新的世界书分组名称。', {
+    confirmLabel: '创建',
+    title: '新建世界书分组',
+  });
+  if (name?.trim()) catalogGroups.createBookGroup(name);
+}
+
+async function assignBookGroup(bookName: string) {
+  const name = await phone.promptNotice('输入分组名称；输入 - 移到未分组。', {
+    confirmLabel: '保存',
+    initialValue: catalogGroups.bookGroupOf(bookName),
+    title: '设置世界书分组',
+  });
+  if (name !== null) catalogGroups.assignBook(bookName, name);
+}
+
+async function createEntryGroup() {
+  const name = await phone.promptNotice('输入新的条目分组名称。', {
+    confirmLabel: '创建',
+    title: '新建条目分组',
+  });
+  if (name?.trim()) catalogGroups.createEntryGroup(detailBookName.value, name);
+}
+
+async function assignEntryGroup(entry: WorldbookEntry) {
+  const name = await phone.promptNotice('输入分组名称；输入 - 移到未分组。', {
+    confirmLabel: '保存',
+    initialValue: catalogGroups.entryGroupOf(detailBookName.value, entry.uid),
+    title: '设置条目分组',
+  });
+  if (name !== null) catalogGroups.assignEntry(detailBookName.value, entry.uid, name);
+}
+
 async function loadDetail() {
   if (!phone.isViewingCurrentChat) return;
   const scopeKey = currentScopeKey.value;
@@ -400,6 +445,7 @@ async function renameCurrentBook() {
   try {
     await renameWorldbookSafely(oldName, newName);
     const migrated = worldbookLinks.migrateWorldbookName(oldName, newName);
+    catalogGroups.migrateBook(oldName, newName);
     entryQuery.value = '';
     phone.replacePage('detail', newName, { bookName: newName });
     await refresh();
@@ -546,7 +592,10 @@ async function saveEntryCopy() {
   if (!entry || entryEditorBusy.value || !entryDraft.name.trim()) return;
   entryEditorBusy.value = true;
   try {
+    const previousUids = new Set(detailStatus.value?.currentEntries.map(item => item.uid) ?? []);
     const entries = await duplicateWorldbookEntry(detailBookName.value, entry.uid, buildEntryPatch());
+    const copied = entries.find(item => !previousUids.has(item.uid));
+    if (copied) catalogGroups.copyEntryGroup(detailBookName.value, entry.uid, copied.uid);
     if (worldbookLinks.getProfile(currentScopeKey.value, detailBookName.value)) {
       worldbookLinks.captureProfileFromEntries(currentScopeKey.value, detailBookName.value, entries);
     }
@@ -608,6 +657,7 @@ async function removeEditingEntry() {
   try {
     await deleteWorldbookEntry(detailBookName.value, entry.uid);
     worldbookLinks.removeEntryReferences(detailBookName.value, entry.uid);
+    catalogGroups.removeEntry(detailBookName.value, entry.uid);
     editingEntry.value = null;
     await phone.goBack();
     toastr.success('世界书条目已删除');

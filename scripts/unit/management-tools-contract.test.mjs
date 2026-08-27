@@ -26,7 +26,12 @@ test('assistant script manager prunes scripts through the current scope tree and
   assert.match(scriptApi, /getOptionalGlobalFunction<UpdateScriptTrees>\('updateScriptTreesWith'\)/u);
   assert.doesNotMatch(scriptApi, /typeof getScriptTrees|typeof updateScriptTreesWith/u);
   assert.match(scriptApi, /moveAssistantScriptsToFolder/u);
+  assert.match(scriptApi, /createAssistantScriptFolder/u);
+  assert.match(scriptApi, /renameAssistantScriptFolder/u);
+  assert.match(scriptModel, /groupScriptTrees/u);
   assert.match(scriptApp, /<BulkSelectionBar/u);
+  assert.match(scriptApp, /v-for="group in section\.groups"/u);
+  assert.doesNotMatch(scriptApp, /<small>\{\{ item\.folder/u);
   assert.match(scriptApp, /phone\.confirmNotice/u);
 });
 
@@ -34,9 +39,12 @@ test('assistant script manager round-trips all scoped trees through the plugin b
   assert.match(scriptApi, /script_trees: readAllScriptTrees\(\)/u);
   assert.match(scriptApi, /getOptionalGlobalFunction<ReplaceScriptTrees>\('replaceScriptTrees'\)/u);
   assert.match(scriptApi, /replaceTrees\(trees, \{ type: scope\.id \}\)/u);
-  assert.match(scriptApp, /importAssistantScriptBundle/u);
-  assert.match(scriptApp, /导入全部/u);
-  assert.match(scriptApp, /scripts: selected\.map/u);
+  assert.match(scriptApi, /importAssistantScriptBundle/u);
+  assert.match(scriptApp, /importAssistantScriptFile/u);
+  assert.match(scriptApi, /prepareImportedTree/u);
+  assert.match(scriptApi, /structuredClone\(folder\)/u);
+  assert.match(scriptApp, /酒馆助手脚本文件夹-/u);
+  assert.match(scriptApp, /导出全部/u);
 });
 
 test('extension transfer parses legacy scope and previews each installation scope', () => {

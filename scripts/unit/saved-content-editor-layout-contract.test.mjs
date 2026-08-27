@@ -44,3 +44,16 @@ test('saved entity editors use the shared remaining-height body layout', () => {
   }
   assert.deepEqual(failures, []);
 });
+
+test('worldbook editor keeps its long body above a separate footer', () => {
+  const source = files.worldbook;
+  assert.match(source, /class="pc-worldbook-entry-editor-body"/u);
+  assert.match(source, /\.pc-worldbook-entry-editor-body\s*\{[^}]*overflow-y:\s*auto/su);
+  assert.match(source, /\.pc-worldbook-content-field\s*\{[^}]*min-height:\s*300px/su);
+  assert.match(source, /\.pc-worldbook-entry-editor-actions\s*\{[^}]*flex:\s*0 0 auto/su);
+  assert.ok(
+    source.indexOf('class="pc-worldbook-entry-editor-body"') <
+      source.indexOf('class="pc-form-actions pc-worldbook-entry-editor-actions"'),
+    'worldbook footer must follow the scrollable editor body',
+  );
+});

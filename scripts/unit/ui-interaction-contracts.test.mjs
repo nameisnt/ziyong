@@ -27,7 +27,6 @@ const expectedContracts = {
   'reparse-theater': 'theater-failed-draft',
   'settings-persistence': 'settings-theme-persistence',
   toggle: 'extras-chapter-detail',
-  'transfer-modal': 'content-transfer-dialog',
 };
 
 test('the shared interaction contract has exactly one representative scenario for every required action', () => {

@@ -122,6 +122,35 @@
   text-shadow: none;
 }
 
+.pc-phone-root[data-paper='a4'] .pc-app-icon-material > i {
+  filter: none;
+  -webkit-text-stroke: 0;
+}
+
+.pc-phone-root[data-paper='xuan'] .pc-app-icon-material > i {
+  opacity: 0.88;
+  filter: contrast(1.18);
+  text-shadow:
+    0.7px 0 currentColor,
+    -0.4px 0.5px color-mix(in srgb, currentColor 48%, transparent 52%);
+}
+
+.pc-phone-root[data-paper='parchment'] .pc-app-icon-material > i {
+  filter: sepia(0.34) contrast(1.08);
+  text-shadow:
+    0 1px color-mix(in srgb, #fff4d0 62%, transparent 38%),
+    0 -1px color-mix(in srgb, #3c2619 38%, transparent 62%);
+  -webkit-text-stroke: 0.35px color-mix(in srgb, #3c2619 52%, transparent 48%);
+}
+
+.pc-phone-root[data-paper='cardstock'] .pc-app-icon-material > i {
+  filter: contrast(1.12);
+  text-shadow:
+    1px 0 color-mix(in srgb, white 34%, transparent 66%),
+    -1px 1px color-mix(in srgb, var(--pc-icon-material-accent) 58%, transparent 42%);
+  -webkit-text-stroke: 0.7px color-mix(in srgb, white 32%, transparent 68%);
+}
+
 .pc-phone-root .pc-soft-btn,
 .pc-phone-root .pc-primary-btn,
 .pc-phone-root .pc-segment-btn,
@@ -643,7 +672,7 @@
 
 .pc-phone-root .pc-directory-toolbar {
   min-height: 44px;
-  padding-bottom: 10px;
+  padding-bottom: 4px;
   border-bottom: 1px solid var(--pc-border);
 }
 

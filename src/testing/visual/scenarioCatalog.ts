@@ -51,7 +51,6 @@ export function createVisualScenarioGroups(rootAppScenarios: string[]): VisualSc
         'custom-app-save-flow',
         'custom-app-definition-crud',
         'custom-app-generation-background',
-        'content-transfer-dialog',
       ],
     },
     {

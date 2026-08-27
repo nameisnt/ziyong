@@ -4,13 +4,11 @@ import { readFile } from 'node:fs/promises';
 import test from 'node:test';
 
 const globalSource = await readFile(new URL('../../src/global.css', import.meta.url), 'utf8');
-const harnessSource = await readFile(new URL('../../src/testing/visual-harness.ts', import.meta.url), 'utf8');
 const modalSources = await Promise.all(
   [
     ['catalog', '../../src/components/CatalogModal.vue', '.pc-catalog-card'],
     ['creation', '../../src/components/CreationModeModal.vue', '.pc-creation-modal'],
     ['bagu', '../../src/components/BaguHitDetailsModal.vue', '.pc-bagu-hit-modal'],
-    ['transfer', '../../src/components/ContentTransferOverlay.vue', '.pc-content-transfer-dialog'],
     ['preview', '../../src/components/GenerationPreviewPanel.vue', '.pc-preview-dialog'],
     ['prompts', '../../src/apps/prompts/PromptsApp.vue', '.pc-prompt-detail-dialog'],
     ['phone', '../../src/components/PhoneHome.vue', '.pc-home-group-manager-dialog'],
@@ -74,20 +72,12 @@ test('every modal dialog consumes one opaque global theme surface', () => {
       }
     }
   }
-  if (consumerCount !== 8) failures.push(`expected 8 modal dialog consumers, found ${consumerCount}`);
+  if (consumerCount !== 7) failures.push(`expected 7 modal dialog consumers, found ${consumerCount}`);
 
   const sectionCardIndex = globalSource.indexOf('.pc-phone-root .pc-section-card');
   const modalDialogIndex = globalSource.indexOf('.pc-phone-root .pc-modal-dialog');
   if (sectionCardIndex < 0 || modalDialogIndex <= sectionCardIndex) {
     failures.push('global modal dialog must follow section-card so its opaque background wins at equal specificity');
-  }
-
-  const transferBranch = harnessSource.split("name === 'content-transfer-dialog'")[1]?.split('} else if (')[0] ?? '';
-  if (!transferBranch.includes("useSettingsStore().setTheme('dark')")) {
-    failures.push('content-transfer visual scenario does not force the dark theme');
-  }
-  if (!transferBranch.includes('backgroundAlpha < 0.99')) {
-    failures.push('content-transfer visual scenario does not assert an opaque computed background');
   }
 
   assert.deepEqual(failures, []);

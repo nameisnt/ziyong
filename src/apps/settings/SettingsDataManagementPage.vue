@@ -1,28 +1,6 @@
 <template>
   <div class="pc-settings-panel-stack pc-data-management-page">
     <section class="pc-page-section">
-      <div class="pc-section-head">
-        <div>
-          <strong>App 内容</strong>
-          <span class="pc-context-meta">选择 App 后管理它的整体内容</span>
-        </div>
-      </div>
-      <div v-if="transferApps.length" class="pc-transfer-app-field">
-        <SearchableCombobox
-          :model-value="selectedTransferAppId"
-          input-label="选择 App"
-          :options="transferAppOptions"
-          placeholder="选择 App"
-          @update:model-value="selectedTransferAppId = $event"
-        />
-        <button class="pc-soft-btn" type="button" :disabled="!selectedTransferApp" @click="contentTransferOpen = true">
-          管理内容
-        </button>
-      </div>
-      <EmptyState v-else icon="fa-solid fa-box-open" title="暂无可迁移的 App 内容" />
-    </section>
-
-    <section class="pc-page-section">
       <div class="pc-row pc-row-top">
         <div>
           <strong>备份与恢复</strong>
@@ -30,13 +8,18 @@
         </div>
         <span class="pc-tag">{{ formatSize(approxBytes) }}</span>
       </div>
-      <div class="pc-data-grid">
-        <article v-for="domain in currentContentCards" :key="domain.id" class="pc-data-card">
-          <span>{{ domain.label }}</span><strong>{{ domain.current.items }}</strong>
-        </article>
-        <article v-if="!currentContentCards.length" class="pc-data-card">
-          <span>创作内容</span><strong>0</strong>
-        </article>
+      <div class="pc-data-table" role="table" aria-label="App 内容统计">
+        <div class="pc-data-table-row head" role="row">
+          <span role="columnheader">App</span>
+          <span role="columnheader">当前</span>
+          <span role="columnheader">全部</span>
+        </div>
+        <div v-for="domain in contentRows" :key="domain.id" class="pc-data-table-row" role="row">
+          <strong role="cell">{{ domain.label }}</strong>
+          <span role="cell">{{ domain.current.items }}</span>
+          <span role="cell">{{ domain.overview.items }}</span>
+        </div>
+        <div v-if="!contentRows.length" class="pc-data-table-empty">暂无已保存内容</div>
       </div>
       <div class="pc-data-action-grid">
         <button class="pc-soft-btn" type="button" title="导出手机配置、内容与插件预设" @click="downloadBackup">
@@ -61,22 +44,11 @@
       />
     </section>
 
-    <ContentTransferOverlay
-      v-if="selectedTransferApp"
-      :app-name="selectedTransferApp.name"
-      :domains="selectedTransferApp.domains"
-      :open="contentTransferOpen"
-      @close="contentTransferOpen = false"
-    />
   </div>
 </template>
 
 <script setup lang="ts">
-import ContentTransferOverlay from '@/components/ContentTransferOverlay.vue';
-import EmptyState from '@/components/EmptyState.vue';
-import SearchableCombobox from '@/components/SearchableCombobox.vue';
 import {
-  getRegisteredPhoneApps,
   getRegisteredPhoneBackupDomains,
   getRegisteredPhoneContentStats,
   type PhoneContentStatsContribution,
@@ -104,7 +76,6 @@ import {
   type PhoneBackupScopeOption,
 } from '@/util/backup';
 import { parseChatScopeKey } from '@/util/chatArchive';
-import { getAppContentTransferDomains } from '@/util/contentTransfer';
 import { getOptionalGlobalValue } from '@/util/runtime';
 
 const bagu = useBaguStore();
@@ -117,8 +88,6 @@ const recovery = useRecoveryStore();
 const settingsStore = useSettingsStore();
 const backupInputEl = ref<HTMLInputElement | null>(null);
 const backupImportMode = ref<'full' | 'scope'>('scope');
-const contentTransferOpen = ref(false);
-const selectedTransferAppId = ref('');
 const currentScopeKey = computed(() => getCurrentChatScopeKey());
 
 type CurrentContentCard = PhoneContentStatsContribution & {
@@ -128,15 +97,6 @@ type CurrentContentCard = PhoneContentStatsContribution & {
   label: string;
 };
 
-const transferApps = computed(() =>
-  getRegisteredPhoneApps()
-    .map(app => ({ domains: getAppContentTransferDomains(app.id), id: app.id, name: app.name }))
-    .filter(app => app.domains.length > 0),
-);
-const transferAppOptions = computed(() => transferApps.value.map(app => ({ label: app.name, value: app.id })));
-const selectedTransferApp = computed(
-  () => transferApps.value.find(app => app.id === selectedTransferAppId.value) ?? transferApps.value[0] ?? null,
-);
 const currentChatLabel = computed(() => {
   const scope = parseChatScopeKey(currentScopeKey.value);
   const owner =
@@ -146,7 +106,7 @@ const currentChatLabel = computed(() => {
   const chat = scope.chatId && scope.chatId !== '__no_chat__' ? scope.chatId : '未识别到聊天文件';
   return `酒馆当前：${owner} / ${chat}`;
 });
-const currentContentCards = computed<CurrentContentCard[]>(() =>
+const contentRows = computed<CurrentContentCard[]>(() =>
   getRegisteredPhoneContentStats(currentScopeKey.value)
     .map(contribution => ({
       ...contribution,
@@ -155,7 +115,7 @@ const currentContentCards = computed<CurrentContentCard[]>(() =>
       itemLabel: contribution.domain.itemLabel,
       label: contribution.domain.label,
     }))
-    .filter(item => item.current.collections || item.current.items || item.current.chars),
+    .filter(item => item.current.items || item.overview.items),
 );
 const approxBytes = computed(
   () =>
@@ -166,14 +126,6 @@ const approxBytes = computed(
         ),
       ),
     ]).size,
-);
-
-watch(
-  transferApps,
-  apps => {
-    if (!apps.some(app => app.id === selectedTransferAppId.value)) selectedTransferAppId.value = apps[0]?.id ?? '';
-  },
-  { immediate: true },
 );
 
 function formatSize(bytes: number) {
@@ -301,12 +253,6 @@ async function onBackupSelected(event: Event) {
   touch-action: pan-y;
   -webkit-overflow-scrolling: touch;
 }
-.pc-transfer-app-field {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
-  align-items: end;
-  gap: 8px;
-}
 .pc-row {
   display: flex;
   align-items: center;
@@ -326,31 +272,33 @@ async function onBackupSelected(event: Event) {
   font-size: 12px;
   line-height: 1.45;
 }
-.pc-data-grid {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 8px;
-}
-.pc-data-card {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 8px;
+.pc-data-table {
+  overflow: hidden;
   border: 1px solid var(--pc-border);
   border-radius: var(--pc-control-radius);
-  padding: 10px;
   background: var(--pc-surface-strong);
 }
-.pc-data-card span {
-  overflow: hidden;
+.pc-data-table-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 64px 64px;
+  align-items: center;
+  min-height: var(--pc-control-height);
+  padding: 0 12px;
+}
+.pc-data-table-row + .pc-data-table-row {
+  border-top: 1px solid var(--pc-border);
+}
+.pc-data-table-row > :not(:first-child) {
+  text-align: center;
+}
+.pc-data-table-row.head {
   color: var(--pc-muted);
   font-size: 12px;
-  text-overflow: ellipsis;
-  white-space: nowrap;
 }
-.pc-data-card strong {
-  font-size: 20px;
-  line-height: 1;
+.pc-data-table-empty {
+  padding: 14px 12px;
+  color: var(--pc-muted);
+  text-align: center;
 }
 .pc-data-action-grid {
   display: grid;
@@ -363,10 +311,5 @@ async function onBackupSelected(event: Event) {
   padding: 4px 8px;
   background: color-mix(in srgb, var(--pc-theme-accent) 18%, var(--pc-surface-strong) 82%);
   font-size: 11px;
-}
-@media (max-width: 420px) {
-  .pc-data-grid {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
 }
 </style>

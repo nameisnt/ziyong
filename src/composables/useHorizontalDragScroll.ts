@@ -12,19 +12,24 @@ export function useHorizontalDragScroll(target: Ref<HTMLElement | null>) {
     startX = event.clientX;
     startScrollLeft = target.value.scrollLeft;
     dragged = false;
-    target.value.setPointerCapture(event.pointerId);
   }
 
   function onPointerMove(event: PointerEvent) {
     if (pointerId !== event.pointerId || !target.value) return;
     const delta = event.clientX - startX;
-    if (Math.abs(delta) > 4) dragged = true;
-    if (dragged) target.value.scrollLeft = startScrollLeft - delta;
+    if (Math.abs(delta) > 4 && !dragged) {
+      dragged = true;
+      target.value.setPointerCapture(event.pointerId);
+    }
+    if (dragged) {
+      target.value.scrollLeft = startScrollLeft - delta;
+      event.preventDefault();
+    }
   }
 
   function onPointerUp(event: PointerEvent) {
     if (pointerId !== event.pointerId || !target.value) return;
-    target.value.releasePointerCapture(event.pointerId);
+    if (target.value.hasPointerCapture(event.pointerId)) target.value.releasePointerCapture(event.pointerId);
     pointerId = null;
   }
 

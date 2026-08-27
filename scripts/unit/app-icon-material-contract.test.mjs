@@ -24,3 +24,12 @@ test('material colors derive from existing App theme variables without a new set
   assert.match(theme, /'--pc-icon-material-accent':\s*accent/u);
   assert.doesNotMatch(globalCss, /animation:\s*[^;]*(shine|glow|liquid|glass)/iu);
 });
+
+test('each paper theme gives the shared semantic glyph its own rendering profile', () => {
+  for (const paper of ['a4', 'xuan', 'parchment', 'cardstock']) {
+    assert.match(globalCss, new RegExp(`data-paper='${paper}'\\] \\.pc-app-icon-material > i`, 'u'));
+  }
+  assert.match(globalCss, /data-paper='xuan'[\s\S]*?filter:\s*contrast/u);
+  assert.match(globalCss, /data-paper='parchment'[\s\S]*?filter:\s*sepia/u);
+  assert.match(globalCss, /data-paper='cardstock'[\s\S]*?-webkit-text-stroke/u);
+});

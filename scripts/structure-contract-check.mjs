@@ -144,11 +144,6 @@ const extrasGenerationActions = await readFile(
 );
 const workbenchApp = await readFile(new URL('../src/apps/workbench/WorkbenchApp.vue', import.meta.url), 'utf8');
 const tavernNavigation = await readFile(new URL('../src/util/tavernNavigation.ts', import.meta.url), 'utf8');
-const contentTransfer = await readFile(new URL('../src/util/contentTransfer.ts', import.meta.url), 'utf8');
-const contentTransferOverlay = await readFile(
-  new URL('../src/components/ContentTransferOverlay.vue', import.meta.url),
-  'utf8',
-);
 const phoneOverlay = await readFile(new URL('../src/components/PhoneOverlay.vue', import.meta.url), 'utf8');
 const settingsDataManagement = await readFile(
   new URL('../src/apps/settings/SettingsDataManagementPage.vue', import.meta.url),
@@ -374,18 +369,7 @@ assert.match(extrasGenerationActions, /generateContent\(/);
 assert.match(workbenchApp, /:options="workbenchActionOptions"/);
 assert.doesNotMatch(workbenchApp, /<select[\s\S]{0,300}supportedWorkbenchActions/);
 
-assert.match(contentTransfer, /domain\.scope === 'chat'/);
-assert.match(contentTransfer, /executeBackupImportTransaction/);
-assert.match(contentTransfer, /restoreSnapshot:\s*snapshot\s*=>\s*domain\.importData\(snapshot\)/);
-assert.doesNotMatch(contentTransfer, /catch\s*\(error\)\s*\{\s*domain\.importData\(beforeRaw\)/s);
-assert.match(contentTransfer, /domain\.category !== 'draft'/);
-assert.match(contentTransfer, /payload\.schemaVersion > domain\.schemaVersion/);
-assert.match(contentTransferOverlay, /创建副本/);
-assert.match(contentTransferOverlay, /合并/);
-assert.match(contentTransferOverlay, /覆盖/);
-assert.match(contentTransferOverlay, /props\.domains\.some/);
 assert.doesNotMatch(phoneOverlay, /<ContentTransferOverlay/);
-assert.match(settingsDataManagement, /<ContentTransferOverlay/);
-assert.match(settingsDataManagement, /:domains="selectedTransferApp\.domains"/);
+assert.doesNotMatch(settingsDataManagement, /<ContentTransferOverlay|getAppContentTransferDomains/);
 
 console.log('Structure split safeguards are present.');

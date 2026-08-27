@@ -4,6 +4,7 @@
       <FrontendFrame
         v-if="segment.kind === 'html'"
         embedded
+        flush-content
         :active="active"
         :content="segment.content"
         :theme="theme"

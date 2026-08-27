@@ -722,37 +722,6 @@ async function runInteractionChecks(page, scenario) {
       }
     }
 
-    if (scenario === 'content-transfer-dialog') {
-      const dialog = page.locator('.pc-content-transfer-dialog');
-      const backdrop = page.locator('.pc-content-transfer-backdrop');
-      const screen = page.locator('.pc-screen');
-      const trigger = page.locator('.pc-transfer-app-field .pc-soft-btn', { hasText: '管理内容' });
-      if ((await screen.evaluate(element => element.style.overflow)) !== 'hidden') {
-        findings.push({ severity: 'fail', message: '内容迁移打开后没有锁定背景滚动' });
-      }
-      await dialog.locator('.pc-section-head .pc-icon-btn').click();
-      if ((await backdrop.count()) > 0) findings.push({ severity: 'fail', message: '内容迁移关闭按钮没有关闭弹窗' });
-
-      await trigger.click();
-      await dialog.waitFor({ state: 'visible' });
-      if (!(await dialog.evaluate(element => element === document.activeElement))) {
-        findings.push({ severity: 'fail', message: '内容迁移重新打开后没有获得初始焦点' });
-      }
-      await page.keyboard.press('Escape');
-      if ((await backdrop.count()) > 0) findings.push({ severity: 'fail', message: 'Escape 没有关闭内容迁移' });
-
-      await trigger.click();
-      await page.evaluate(() => window.dispatchEvent(new Event('phone-before-back', { cancelable: true })));
-      if ((await backdrop.count()) > 0) findings.push({ severity: 'fail', message: '手机返回没有关闭内容迁移' });
-
-      await trigger.click();
-      await backdrop.click({ position: { x: 10, y: 100 } });
-      if ((await backdrop.count()) > 0) findings.push({ severity: 'fail', message: '点击遮罩没有关闭内容迁移' });
-      if ((await screen.evaluate(element => element.style.overflow)) === 'hidden') {
-        findings.push({ severity: 'fail', message: '内容迁移关闭后没有恢复背景滚动' });
-      }
-    }
-
     if (scenario === 'entry-library-action-menu') {
       const menu = page.locator('.pc-entry-library-head .pc-action-menu').first();
       const summary = menu.locator('summary');

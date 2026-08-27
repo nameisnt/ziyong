@@ -1,6 +1,6 @@
 <template>
   <section class="pc-worldbook-detail-page">
-    <header class="pc-directory-toolbar pc-worldbook-detail-head">
+    <header class="pc-compact-toolbar pc-directory-toolbar pc-worldbook-detail-head">
       <div v-if="status" class="pc-worldbook-metrics">
         <span class="category">{{ categoryLabel }}</span>
         <span>{{ status.currentEntries.length }} {{ t`个条目` }}</span>
@@ -10,6 +10,9 @@
         }}</span>
       </div>
       <ActionMenu icon-only :label="t`管理`" icon="fa-solid fa-bars">
+        <button type="button" :disabled="busy" @click="$emit('create-entry-group')">
+          <i class="fa-solid fa-folder-plus"></i><span>{{ t`新建条目分组` }}</span>
+        </button>
         <button type="button" :disabled="busy" @click="$emit('rename-book')">
           <i class="fa-solid fa-pen"></i><span>{{ t`修改书名` }}</span>
         </button>
@@ -125,6 +128,17 @@
             </button>
             <button
               v-if="!bulkActive"
+              class="pc-icon-btn pc-worldbook-entry-group-btn"
+              type="button"
+              :aria-label="t`设置条目分组`"
+              :disabled="entryBusyUids.has(entry.uid)"
+              :title="t`设置条目分组`"
+              @click="$emit('assign-entry-group', entry)"
+            >
+              <i class="fa-solid fa-folder"></i>
+            </button>
+            <button
+              v-if="!bulkActive"
               class="pc-icon-btn pc-worldbook-entry-copy-btn"
               type="button"
               :aria-label="t`复制条目`"
@@ -191,10 +205,12 @@ const query = defineModel<string>('query', { required: true });
 
 defineEmits<{
   'apply-profile': [];
+  'assign-entry-group': [entry: WorldbookEntry];
   'cancel-bulk': [];
   'capture-profile': [];
   'convert-selected': [];
   'copy-entry': [entry: WorldbookEntry];
+  'create-entry-group': [];
   'open-entry': [entry: WorldbookEntry];
   'rename-book': [];
   'set-selected': [uid: number, selected: boolean];
@@ -326,12 +342,13 @@ defineEmits<{
   font-size: 12px;
 }
 .pc-worldbook-entry {
-  grid-template-columns: minmax(0, 1fr) auto auto;
+  grid-template-columns: minmax(0, 1fr) auto auto auto;
 }
 .pc-worldbook-entry.selecting {
   grid-template-columns: auto minmax(0, 1fr);
 }
-.pc-worldbook-entry-copy-btn {
+.pc-worldbook-entry-copy-btn,
+.pc-worldbook-entry-group-btn {
   width: 34px;
   min-width: 34px;
   height: 34px;

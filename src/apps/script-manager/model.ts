@@ -11,6 +11,20 @@ export interface ScriptListItem {
   script: ScriptLeaf;
 }
 
+export interface ScriptFolderGroup {
+  folder: ScriptFolder | null;
+  key: string;
+  name: string;
+  scope: ScriptScope;
+  scripts: ScriptListItem[];
+}
+
+export interface ScriptScopeCatalog {
+  groups: ScriptFolderGroup[];
+  label: string;
+  scope: ScriptScope;
+}
+
 export const SCRIPT_SCOPES: Array<{ id: ScriptScope; label: string }> = [
   { id: 'global', label: '全局' },
   { id: 'preset', label: '预设' },
@@ -35,6 +49,33 @@ export function flattenScriptTrees(trees: ScriptTree[], scope: ScriptScope): Scr
       script,
     }));
   });
+}
+
+export function groupScriptTrees(trees: ScriptTree[], scope: ScriptScope): ScriptFolderGroup[] {
+  const groups: ScriptFolderGroup[] = [];
+  let ungrouped: ScriptFolderGroup | null = null;
+  for (const node of trees) {
+    if (node.type === 'folder') {
+      groups.push({
+        folder: node,
+        key: `${scope}:folder:${node.id}`,
+        name: node.name,
+        scope,
+        scripts: flattenScriptTrees([node], scope),
+      });
+      continue;
+    }
+    ungrouped ??= {
+      folder: null,
+      key: `${scope}:ungrouped`,
+      name: '未分组',
+      scope,
+      scripts: [],
+    };
+    ungrouped.scripts.push(...flattenScriptTrees([node], scope));
+    if (!groups.includes(ungrouped)) groups.push(ungrouped);
+  }
+  return groups;
 }
 
 export function pruneScriptTrees(trees: ScriptTree[], ids: Set<string>): ScriptTree[] {

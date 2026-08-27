@@ -24,7 +24,6 @@ declare module 'vue' {
     CatalogModal: typeof import('./src/components/CatalogModal.vue')['default']
     ConfigurationRecoveryNotice: typeof import('./src/components/ConfigurationRecoveryNotice.vue')['default']
     ContentConversionPanel: typeof import('./src/components/ContentConversionPanel.vue')['default']
-    ContentTransferOverlay: typeof import('./src/components/ContentTransferOverlay.vue')['default']
     ContentVersionBadge: typeof import('./src/components/ContentVersionBadge.vue')['default']
     CreationModeModal: typeof import('./src/components/CreationModeModal.vue')['default']
     DetailFooter: typeof import('./src/components/DetailFooter.vue')['default']

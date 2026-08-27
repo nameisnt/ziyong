@@ -459,6 +459,10 @@ function onAppPointerDown(event: PointerEvent, appId: string) {
   appDrag.longPressReady = false;
   clearAppDragLongPressTimer();
   (event.currentTarget as HTMLElement).setPointerCapture?.(event.pointerId);
+  if (event.pointerType === 'mouse') {
+    appDrag.longPressReady = true;
+    return;
+  }
   appDragLongPressTimer = window.setTimeout(() => {
     if (appDrag.pointerId !== event.pointerId || appDrag.itemToken !== appId) return;
     appDrag.longPressReady = true;
@@ -552,7 +556,6 @@ function commitAppDrag() {
 function onAppPointerUp(event: PointerEvent) {
   if (appDrag.pointerId !== event.pointerId) return;
   (event.currentTarget as HTMLElement).releasePointerCapture?.(event.pointerId);
-  if (appDrag.longPressReady || appDrag.isDragging) suppressHomeClickUntil.value = Date.now() + 250;
   commitAppDrag();
   resetAppDrag();
 }
@@ -755,7 +758,6 @@ function onFolderAppPointerUp(event: PointerEvent) {
     );
     suppressHomeClickUntil.value = Date.now() + 250;
   }
-  if (folderDrag.longPressReady) suppressHomeClickUntil.value = Date.now() + 250;
   resetFolderDrag();
 }
 

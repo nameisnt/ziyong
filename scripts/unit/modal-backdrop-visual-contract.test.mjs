@@ -9,7 +9,6 @@ const modalSources = await Promise.all(
     ['catalog', '../../src/components/CatalogModal.vue', '.pc-catalog-mask'],
     ['creation', '../../src/components/CreationModeModal.vue', '.pc-creation-modal-mask'],
     ['bagu', '../../src/components/BaguHitDetailsModal.vue', '.pc-bagu-hit-modal-mask'],
-    ['transfer', '../../src/components/ContentTransferOverlay.vue', '.pc-content-transfer-backdrop'],
     ['preview', '../../src/components/GenerationPreviewPanel.vue', '.pc-preview-dialog-backdrop'],
     ['prompts', '../../src/apps/prompts/PromptsApp.vue', '.pc-prompt-detail-backdrop'],
     ['phone', '../../src/components/PhoneHome.vue', '.pc-home-group-manager-backdrop'],
@@ -67,7 +66,7 @@ test('every modal backdrop consumes one global structural and theme rule', () =>
       }
     }
   }
-  if (consumerCount !== 8) failures.push(`expected 8 modal backdrop consumers, found ${consumerCount}`);
+  if (consumerCount !== 7) failures.push(`expected 7 modal backdrop consumers, found ${consumerCount}`);
 
   const expectedVariables = {
     bagu: '--pc-modal-z: 70',

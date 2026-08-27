@@ -5,6 +5,10 @@ import test from 'node:test';
 
 const home = await readFile(new URL('../../src/components/PhoneHome.vue', import.meta.url), 'utf8');
 const contextBar = await readFile(new URL('../../src/components/home/HomeContextBar.vue', import.meta.url), 'utf8');
+const horizontalDrag = await readFile(
+  new URL('../../src/composables/useHorizontalDragScroll.ts', import.meta.url),
+  'utf8',
+);
 const layout = await readFile(new URL('../../src/core/appLayout.ts', import.meta.url), 'utf8');
 
 test('home status keeps low-frequency actions in the shared action menu', () => {
@@ -40,6 +44,18 @@ test('group tabs swipe horizontally and drag motion follows the home contract', 
   assert.match(home, /Transition name="pc-home-folder"/u);
   assert.match(home, /prefers-reduced-motion:\s*reduce/u);
   assert.match(home, /translate3d\(var\(--pc-drag-x/u);
+});
+
+test('desktop group tabs and Apps preserve clicks until a real drag starts', () => {
+  const pointerDownBody = horizontalDrag.match(/function onPointerDown\(event: PointerEvent\) \{([\s\S]*?)\n {2}\}/u)?.[1] || '';
+  const folderPointerUpBody = home.match(/function onFolderAppPointerUp\(event: PointerEvent\) \{([\s\S]*?)\n\}/u)?.[1] || '';
+  assert.doesNotMatch(pointerDownBody, /setPointerCapture/u);
+  assert.match(horizontalDrag, /Math\.abs\(delta\) > 4 && !dragged[\s\S]*setPointerCapture/u);
+  assert.match(home, /event\.pointerType === 'mouse'[\s\S]*appDrag\.longPressReady = true/u);
+  assert.match(folderPointerUpBody, /folderDrag\.isDragging/u);
+  assert.match(folderPointerUpBody, /suppressHomeClickUntil\.value = Date\.now\(\) \+ 250/u);
+  assert.doesNotMatch(home, /if \(folderDrag\.longPressReady\) suppressHomeClickUntil/u);
+  assert.doesNotMatch(home, /if \(appDrag\.longPressReady \|\| appDrag\.isDragging\) suppressHomeClickUntil/u);
 });
 
 test('closing group management releases every transient manager state', () => {

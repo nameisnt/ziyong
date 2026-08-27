@@ -17,7 +17,6 @@ export const UI_INTERACTION_CONTRACTS = Object.freeze([
   Object.freeze({ id: 'reparse-theater', scenario: 'theater-failed-draft' }),
   Object.freeze({ id: 'settings-persistence', scenario: 'settings-theme-persistence' }),
   Object.freeze({ id: 'toggle', scenario: 'extras-chapter-detail' }),
-  Object.freeze({ id: 'transfer-modal', scenario: 'content-transfer-dialog' }),
 ]);
 
 export function getInteractionContractScenarios() {

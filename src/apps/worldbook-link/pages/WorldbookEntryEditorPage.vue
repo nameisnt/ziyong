@@ -1,73 +1,75 @@
 <template>
   <section class="pc-worldbook-entry-editor-page pc-saved-content-editor-page">
     <article v-if="entry" class="pc-page-section pc-worldbook-entry-editor pc-saved-content-editor">
-      <header class="pc-compact-toolbar pc-worldbook-entry-editor-head">
-        <span :title="bookName">{{ bookName }}</span>
-        <strong>{{ copying ? '复制条目' : `条目 #${entry.uid}` }}</strong>
-      </header>
-      <label class="pc-field-group"
-        ><span class="pc-field-label">{{ copying ? '副本名称' : '条目名称' }}</span
-        ><input v-model="name" class="pc-field" type="text" placeholder="条目名称"
-      /></label>
-      <div class="pc-field-group">
-        <span class="pc-field-label">激活策略</span>
-        <SearchableCombobox
-          :model-value="strategyType"
-          :options="strategyOptions"
-          input-label="选择激活策略"
-          placeholder="选择激活策略"
-          toggle-title="展开激活策略"
-          @update:model-value="strategyType = $event as WorldbookEntry['strategy']['type']"
-        />
-      </div>
-      <label v-if="strategyType === 'selective'" class="pc-field-group">
-        <span class="pc-field-label">主关键词</span>
-        <input v-model="keysText" class="pc-field" type="text" placeholder="用逗号分隔" />
-      </label>
-      <div class="pc-worldbook-basic-grid">
+      <div class="pc-worldbook-entry-editor-body">
+        <header class="pc-compact-toolbar pc-worldbook-entry-editor-head">
+          <span :title="bookName">{{ bookName }}</span>
+          <strong>{{ copying ? '复制条目' : `条目 #${entry.uid}` }}</strong>
+        </header>
+        <label class="pc-field-group"
+          ><span class="pc-field-label">{{ copying ? '副本名称' : '条目名称' }}</span
+          ><input v-model="name" class="pc-field" type="text" placeholder="条目名称"
+        /></label>
         <div class="pc-field-group">
-          <span class="pc-field-label">插入位置</span>
+          <span class="pc-field-label">激活策略</span>
           <SearchableCombobox
-            :model-value="positionType"
-            :options="positionOptions"
-            input-label="选择插入位置"
-            placeholder="选择插入位置"
-            toggle-title="展开插入位置"
-            @update:model-value="positionType = $event as WorldbookEntry['position']['type']"
+            :model-value="strategyType"
+            :options="strategyOptions"
+            input-label="选择激活策略"
+            placeholder="选择激活策略"
+            toggle-title="展开激活策略"
+            @update:model-value="strategyType = $event as WorldbookEntry['strategy']['type']"
           />
         </div>
-        <label class="pc-field-group"
-          ><span class="pc-field-label">插入顺序</span
-          ><input v-model.number="order" class="pc-field" type="number" inputmode="numeric" step="1"
-        /></label>
-      </div>
-      <template v-if="positionType === 'at_depth'">
+        <label v-if="strategyType === 'selective'" class="pc-field-group">
+          <span class="pc-field-label">主关键词</span>
+          <input v-model="keysText" class="pc-field" type="text" placeholder="用逗号分隔" />
+        </label>
         <div class="pc-worldbook-basic-grid">
-          <label class="pc-field-group"
-            ><span class="pc-field-label">插入深度</span
-            ><input v-model.number="depth" class="pc-field" type="number" inputmode="numeric" min="0" step="1"
-          /></label>
           <div class="pc-field-group">
-            <span class="pc-field-label">消息身份</span>
+            <span class="pc-field-label">插入位置</span>
             <SearchableCombobox
-              :model-value="role"
-              :options="roleOptions"
-              input-label="选择消息身份"
-              placeholder="选择消息身份"
-              toggle-title="展开消息身份"
-              @update:model-value="role = $event as WorldbookEntry['position']['role']"
+              :model-value="positionType"
+              :options="positionOptions"
+              input-label="选择插入位置"
+              placeholder="选择插入位置"
+              toggle-title="展开插入位置"
+              @update:model-value="positionType = $event as WorldbookEntry['position']['type']"
             />
           </div>
+          <label class="pc-field-group"
+            ><span class="pc-field-label">插入顺序</span
+            ><input v-model.number="order" class="pc-field" type="number" inputmode="numeric" step="1"
+          /></label>
         </div>
-      </template>
-      <label class="pc-field-group pc-worldbook-content-field pc-saved-content-field"
-        ><span class="pc-field-label">条目内容</span
-        ><textarea
-          v-model="content"
-          class="pc-area pc-area-long pc-saved-content-area"
-          placeholder="世界书条目内容"
-        ></textarea>
-      </label>
+        <template v-if="positionType === 'at_depth'">
+          <div class="pc-worldbook-basic-grid">
+            <label class="pc-field-group"
+              ><span class="pc-field-label">插入深度</span
+              ><input v-model.number="depth" class="pc-field" type="number" inputmode="numeric" min="0" step="1"
+            /></label>
+            <div class="pc-field-group">
+              <span class="pc-field-label">消息身份</span>
+              <SearchableCombobox
+                :model-value="role"
+                :options="roleOptions"
+                input-label="选择消息身份"
+                placeholder="选择消息身份"
+                toggle-title="展开消息身份"
+                @update:model-value="role = $event as WorldbookEntry['position']['role']"
+              />
+            </div>
+          </div>
+        </template>
+        <label class="pc-field-group pc-worldbook-content-field pc-saved-content-field"
+          ><span class="pc-field-label">条目内容</span
+          ><textarea
+            v-model="content"
+            class="pc-area pc-area-long pc-saved-content-area"
+            placeholder="世界书条目内容"
+          ></textarea>
+        </label>
+      </div>
       <div class="pc-form-actions pc-worldbook-entry-editor-actions">
         <button
           v-if="!copying"
@@ -131,6 +133,18 @@ defineEmits<{ back: []; 'convert-to-theater': []; remove: []; save: [] }>();
 .pc-worldbook-entry-editor-page {
   min-height: 100%;
 }
+.pc-worldbook-entry-editor {
+  overflow: hidden;
+}
+.pc-worldbook-entry-editor-body {
+  display: flex;
+  min-height: 0;
+  flex: 1 1 auto;
+  flex-direction: column;
+  gap: 12px;
+  overflow-y: auto;
+  padding-bottom: 4px;
+}
 .pc-worldbook-entry-editor-head {
   display: flex;
   justify-content: space-between;
@@ -148,7 +162,12 @@ defineEmits<{ back: []; 'convert-to-theater': []; remove: []; save: [] }>();
   grid-template-columns: minmax(0, 1.5fr) minmax(96px, 0.5fr);
   gap: 10px;
 }
+.pc-worldbook-content-field {
+  min-height: 300px;
+  flex: 1 0 300px;
+}
 .pc-worldbook-entry-editor-actions {
+  flex: 0 0 auto;
   margin-top: 0;
   padding-top: 4px;
 }

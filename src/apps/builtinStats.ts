@@ -81,16 +81,6 @@ function toContentOverview(accumulator: ContentAccumulator, scopeCount: number):
   };
 }
 
-function getScopeOwnerPrefix(scopeKey: string) {
-  const marker = ':chat:';
-  const index = scopeKey.lastIndexOf(marker);
-  return index >= 0 ? scopeKey.slice(0, index + marker.length) : `${scopeKey}:`;
-}
-
-function isCurrentOwnerScope(scopeKey: string, currentScopeKey: string) {
-  return scopeKey.startsWith(getScopeOwnerPrefix(currentScopeKey));
-}
-
 function formatContentWarning(domainLabel: string, scopeKey: string, caughtError: unknown) {
   const message = caughtError instanceof Error ? caughtError.message.split('\n')[0] : String(caughtError);
   return `${domainLabel} ${scopeKey}：${message}`;
@@ -106,8 +96,6 @@ function createContentStatsProvider<T>(definition: ContentDomainDefinition<T>) {
     const envelope = readChatScopedEnvelope(definition.field, currentScopeKey);
 
     Object.entries(envelope.scopes).forEach(([scopeKey, rawScopeData]) => {
-      if (!isCurrentOwnerScope(scopeKey, currentScopeKey)) return;
-
       try {
         const scopeData = parsePrettified(definition.schema, rawScopeData);
         const scopeContent = definition.collectScope(scopeData);

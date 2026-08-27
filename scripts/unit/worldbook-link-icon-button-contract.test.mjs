@@ -6,8 +6,8 @@ import test from 'node:test';
 import { scanVueUiContracts } from '../ui-contract-check.mjs';
 
 const expectedCounts = new Map([
-  ['WorldbookCatalogPage.vue', 1],
-  ['WorldbookDetailPage.vue', 4],
+  ['WorldbookCatalogPage.vue', 3],
+  ['WorldbookDetailPage.vue', 5],
   ['WorldbookEntryEditorPage.vue', 1],
 ]);
 const sources = await Promise.all(
@@ -38,4 +38,9 @@ test('every Worldbook Link icon button has the same accessible name as its title
       assert.deepEqual(ariaLabel.slice(1), title.slice(1), file);
     }
   }
+});
+
+test('worldbook detail keeps its management menu in the shared compact toolbar row', () => {
+  const detail = sources.find(item => item.file.endsWith('WorldbookDetailPage.vue'))?.source ?? '';
+  assert.match(detail, /class="pc-compact-toolbar pc-directory-toolbar pc-worldbook-detail-head"/u);
 });
