@@ -214,7 +214,7 @@ function clearSavedTasks() {
 
 <style scoped>
 .pc-generation-task-center {
-  margin-bottom: 12px;
+  margin-bottom: 0;
   padding: 0;
   overflow: hidden;
   border-radius: 8px;
@@ -223,11 +223,11 @@ function clearSavedTasks() {
 
 .pc-task-center-head {
   width: 100%;
-  min-height: 46px;
+  min-height: 38px;
   display: flex;
   align-items: center;
-  gap: 10px;
-  padding: 10px 12px;
+  gap: 8px;
+  padding: 5px 8px;
 }
 
 .pc-task-center-title {
@@ -275,8 +275,8 @@ function clearSavedTasks() {
 .pc-task-list {
   display: flex;
   gap: 8px;
-  min-height: 72px;
-  padding: 8px;
+  min-height: 66px;
+  padding: 6px;
   overflow-x: auto;
   overflow-y: hidden;
   border-top: 1px solid var(--pc-border);
@@ -287,8 +287,8 @@ function clearSavedTasks() {
   flex: 0 0 min(240px, calc(100% - 20px));
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto;
-  gap: 10px;
-  padding: 10px;
+  gap: 8px;
+  padding: 8px;
   border: 1px solid var(--pc-border);
   border-radius: 6px;
   background: var(--pc-surface);

@@ -29,11 +29,12 @@ export function useHomeLayoutProjection(activeHomeFolderId: Ref<string>) {
     }),
   );
   const folderCreationApps = computed(() =>
-    homeLayout.value.appOrder.flatMap(token => {
-      if (readHomeFolderToken(token)) return [];
-      const app = phoneAppById.value.get(token);
-      return app ? [app] : [];
-    }),
+    homeLayout.value.folders.flatMap(folder =>
+      folder.appIds.flatMap(appId => {
+        const app = phoneAppById.value.get(appId);
+        return app ? [app] : [];
+      }),
+    ),
   );
 
   function resolveHomeDisplayItem(token: string): HomeDisplayItem | null {

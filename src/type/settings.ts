@@ -203,7 +203,7 @@ const DEFAULT_DIRECTORY_SORT_SETTINGS: DirectorySortSettings = {
 };
 
 const DEFAULT_INTERFACE_SIZE_SETTINGS: InterfaceSizeSettings = {
-  dockColumns: 4,
+  dockColumns: 5,
   homeColumns: 4,
   homeRows: 3,
   phoneHeight: 700,

@@ -15,7 +15,7 @@ const expectedContracts = {
   close: 'prompts-task-detail',
   'creation-modal': 'diary-creation-mode',
   'delete-unbind': 'content-version-interactions',
-  'home-layout-drag': 'home-layout-drag',
+  'home-group-management': 'home',
   persistence: 'content-directory-sort-persistence',
   'reasoning-disclosure': 'card-writer-reasoning-modal',
   'reparse-diary': 'diary-failed-draft-reparse',

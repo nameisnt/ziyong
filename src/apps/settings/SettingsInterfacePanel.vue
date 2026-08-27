@@ -59,16 +59,6 @@
             @update:value="settingsStore.setHomeColumns"
           />
         </div>
-        <div class="pc-setting-row">
-          <strong>Dock 数量</strong>
-          <StepperControl
-            :value="settings.interfaceSize.dockColumns"
-            :min="3"
-            :max="5"
-            label="Dock 数量"
-            @update:value="settingsStore.setDockColumns"
-          />
-        </div>
         <button class="pc-setting-row" type="button" @click="settingsStore.resetPhoneWindowPosition()">
           <strong>重置手机位置</strong>
           <i class="fa-solid fa-location-crosshairs" aria-hidden="true"></i>

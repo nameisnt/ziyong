@@ -14,7 +14,7 @@ test('saved folders render as group tabs with full direct App grids', () => {
   assert.match(home, /v-for="group in homeGroups"/u);
   assert.match(home, /class="pc-home-app-grid"/u);
   assert.match(home, /apps: activeHomeGroupApps\.value/u);
-  assert.match(home, /title: '独立 App'/u);
+  assert.doesNotMatch(home, /独立 App|standaloneHomeApps/u);
   assert.doesNotMatch(home, /pc-home-folder-tile|pc-page-dot|pc-home-folder-shortcut/u);
   assert.doesNotMatch(layoutProjection, /packHomeGridPages|getFolderShortcutApps|getFolderRemainingApps/u);
 });
@@ -23,6 +23,6 @@ test('home browser scenario verifies group switching, search, direct opening and
   assert.match(harness, /Home did not render the saved folders as direct group tabs/u);
   assert.match(harness, /Selected home group did not expose every App directly/u);
   assert.match(harness, /Home group source was not restored without reopening its management dialog/u);
-  assert.match(harness, /Home App search did not find the independent chat archive/u);
+  assert.match(harness, /Home App search did not find chat archive in the fixed Dock/u);
   assert.match(harness, /Home group management action did not open the selected group/u);
 });

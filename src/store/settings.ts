@@ -148,7 +148,7 @@ function normalizeSettings(rawSettings: unknown) {
   }
 
   const nextSettings = validateInplace(Settings, source);
-  nextSettings.interfaceSize.dockColumns = Math.min(5, Math.max(3, nextSettings.interfaceSize.dockColumns));
+  nextSettings.interfaceSize.dockColumns = 5;
   nextSettings.layout = migrateHomeLayoutDockCapacity(
     normalizeHomeLayout(nextSettings.layout.appOrder.length ? nextSettings.layout : buildDefaultHomeLayout()),
     nextSettings.interfaceSize.dockColumns,
@@ -214,7 +214,7 @@ export const useSettingsStore = defineStore('settings', () => {
 
   function persist(newSettings: typeof settings.value) {
     const nextSettings = validateInplace(Settings, klona(newSettings));
-    nextSettings.interfaceSize.dockColumns = Math.min(5, Math.max(3, nextSettings.interfaceSize.dockColumns));
+    nextSettings.interfaceSize.dockColumns = 5;
     nextSettings.layout = migrateHomeLayoutDockCapacity(
       normalizeHomeLayout(nextSettings.layout),
       nextSettings.interfaceSize.dockColumns,
@@ -616,13 +616,9 @@ export const useSettingsStore = defineStore('settings', () => {
     settings.value.interfaceSize.homeRows = Math.min(5, Math.max(2, Math.round(rows)));
   }
 
-  function setDockColumns(columns: number) {
-    settings.value.interfaceSize.dockColumns = Math.min(5, Math.max(3, Math.round(columns)));
-  }
-
   function resetInterfaceSize() {
     settings.value.interfaceSize = {
-      dockColumns: 4,
+      dockColumns: 5,
       homeColumns: 4,
       homeRows: 3,
       phoneHeight: 700,
@@ -802,7 +798,6 @@ export const useSettingsStore = defineStore('settings', () => {
     selectCustomFontAsset,
     setFloatBallPosition,
     setFontFamily,
-    setDockColumns,
     setHomeColumns,
     setHomeRows,
     setPhoneWindowPosition,

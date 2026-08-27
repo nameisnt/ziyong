@@ -10,8 +10,6 @@ export function createVisualScenarioGroups(rootAppScenarios: string[]): VisualSc
       scenarios: [
         'home',
         'home-five-columns',
-        'home-layout-drag',
-        'home-layout-drag-dark',
         'home-tasks',
         'home-tasks-dark',
         ...rootAppScenarios,

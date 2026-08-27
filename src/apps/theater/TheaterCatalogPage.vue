@@ -188,9 +188,9 @@ defineEmits<{
 
 .pc-search {
   width: 100%;
-  height: 40px;
-  min-height: 40px;
-  padding: 11px 12px;
+  height: 36px;
+  min-height: 36px;
+  padding: 8px 10px;
   border: 0.5px solid var(--pc-border);
   border-radius: 10px;
   outline: none;

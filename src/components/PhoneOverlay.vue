@@ -387,9 +387,9 @@ onBeforeUnmount(() => {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 6px;
-  padding: 4px 10px;
-  min-height: 48px;
+  gap: 4px;
+  padding: 3px 8px;
+  min-height: 40px;
   border-bottom: 1px solid var(--pc-border);
   background: color-mix(in srgb, var(--pc-bg) 94%, var(--pc-surface-strong) 6%);
   touch-action: none;
@@ -400,8 +400,8 @@ onBeforeUnmount(() => {
 
 .pc-top-left {
   display: flex;
-  min-width: 70px;
-  gap: 6px;
+  min-width: 60px;
+  gap: 4px;
   justify-content: flex-start;
   position: relative;
   z-index: 1;
@@ -413,8 +413,8 @@ onBeforeUnmount(() => {
 
 .pc-top-actions {
   display: flex;
-  min-width: 70px;
-  gap: 6px;
+  min-width: 60px;
+  gap: 4px;
   justify-content: flex-end;
   position: relative;
   z-index: 1;
@@ -423,10 +423,10 @@ onBeforeUnmount(() => {
 .pc-top-title {
   position: absolute;
   left: 50%;
-  max-width: calc(100% - 152px);
+  max-width: calc(100% - 132px);
   transform: translateX(-50%);
   text-align: center;
-  font-size: 13px;
+  font-size: 12px;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -444,9 +444,9 @@ onBeforeUnmount(() => {
 }
 
 .pc-topbar .pc-top-btn {
-  width: 32px;
-  height: 32px;
-  font-size: 13px;
+  width: 28px;
+  height: 28px;
+  font-size: 12px;
 }
 
 .pc-top-btn.ghost {
@@ -457,7 +457,7 @@ onBeforeUnmount(() => {
 .pc-phone-notices {
   position: absolute;
   z-index: 80;
-  top: 42px;
+  top: 36px;
   right: 12px;
   left: 12px;
   display: grid;
@@ -574,7 +574,7 @@ onBeforeUnmount(() => {
 .pc-screen {
   flex: 1;
   overflow: auto;
-  padding: 8px 12px 12px;
+  padding: 6px 8px 8px;
 }
 
 .pc-screen.pc-screen-status-display {

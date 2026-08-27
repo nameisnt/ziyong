@@ -103,15 +103,12 @@ async function refreshPhoneData() {
 <style scoped>
 .pc-home-context {
   display: flex;
-  min-height: 46px;
+  min-height: 34px;
   align-items: center;
   justify-content: space-between;
-  gap: 8px;
-  margin-bottom: 8px;
-  padding: 7px 10px;
-  border: 1px solid var(--pc-border);
-  border-radius: 8px;
-  background: color-mix(in srgb, var(--pc-bg) 92%, var(--pc-surface-strong) 8%);
+  gap: 6px;
+  margin-bottom: 6px;
+  padding: 0;
 }
 .pc-home-context-copy {
   min-width: 0;
@@ -128,12 +125,12 @@ async function refreshPhoneData() {
 }
 .pc-home-context-copy span {
   color: var(--pc-muted);
-  font-size: 12px;
+  font-size: 11px;
 }
 .pc-home-context-copy strong {
   min-width: 0;
   flex: 1 1 auto;
-  font-size: 13px;
+  font-size: 12px;
 }
 .pc-home-context-actions {
   display: flex;

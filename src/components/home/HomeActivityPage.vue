@@ -68,7 +68,7 @@ watch([() => generationTasks.currentScopeTasks, () => previewDrafts.drafts], () 
 .pc-home-activity-page {
   display: grid;
   align-content: start;
-  gap: 12px;
+  gap: 8px;
   min-height: 0;
   overflow: auto;
   touch-action: pan-y;
@@ -76,7 +76,7 @@ watch([() => generationTasks.currentScopeTasks, () => previewDrafts.drafts], () 
 
 .pc-home-activity-list {
   display: grid;
-  gap: 8px;
+  gap: 6px;
 }
 
 .pc-home-activity-list .pc-section-head small {

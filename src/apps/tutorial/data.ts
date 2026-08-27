@@ -97,7 +97,7 @@ export const tutorialArticles: TutorialArticle[] = [
       {
         type: 'paragraph',
         title: '移动和整理 App',
-        text: '长按 App 图标后可以拖动排序，也可以拖到其他分页。首页行数、列数、Dock 数量以及 App 显示顺序可以在设置中调整；部分工具不常用时可以隐藏，数据不会因此删除。',
+        text: '主页按功能分组显示 App，可在分组管理中重命名、调整组内顺序、新建或解散分组。聊天档案、收藏、提示词、教程和设置固定在底部 Dock；界面设置可调整主页图标列数。',
       },
       {
         type: 'paragraph',

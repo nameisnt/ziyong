@@ -10,7 +10,10 @@
     </button>
 
     <div v-if="open" class="pc-reference-body">
-      <input v-model="query" class="pc-field" type="text" :placeholder="t`搜索标题或内容`" />
+      <label class="pc-search-field">
+        <i class="fa-solid fa-magnifying-glass"></i>
+        <input v-model="query" type="search" :placeholder="t`搜索标题或内容`" />
+      </label>
       <slot name="actions"></slot>
 
       <div v-if="referenceCatalog.warnings.length" class="pc-reference-warning" role="status">

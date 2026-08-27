@@ -137,6 +137,7 @@
               {{ isOrganizing ? '完成' : '整理' }}
             </button>
             <button
+              v-if="activeHomeFolder.id !== 'home_default_tools'"
               class="pc-icon-btn danger"
               type="button"
               :disabled="folderDissolving"
@@ -175,11 +176,11 @@
                 <strong>{{ app.name }}</strong>
               </button>
               <button
-                v-if="isOrganizing"
+                v-if="isOrganizing && activeHomeFolder.id !== 'home_default_tools'"
                 class="pc-icon-btn pc-home-folder-remove"
                 type="button"
-                title="移出到主界面"
-                aria-label="移出到主界面"
+                title="移到插件工具"
+                aria-label="移到插件工具"
                 @pointerdown.stop
                 @click.stop="removeFolderApp(app.id)"
               >
@@ -330,13 +331,6 @@ const activeHomeGroupApps = computed(() =>
     return app ? [app] : [];
   }),
 );
-const standaloneHomeApps = computed(() =>
-  homeLayout.value.appOrder.flatMap(token => {
-    if (readHomeFolderToken(token)) return [];
-    const app = phoneAppById.value.get(token);
-    return app ? [app] : [];
-  }),
-);
 const homeSections = computed(() => {
   const query = appSearch.value.trim().toLocaleLowerCase();
   if (query) {
@@ -357,13 +351,6 @@ const homeSections = computed(() => {
       folderId: activeHomeGroup.value?.id ?? '',
       id: `group:${activeHomeGroup.value?.id ?? 'none'}`,
       title: '',
-    },
-    {
-      apps: standaloneHomeApps.value,
-      draggable: true,
-      folderId: '',
-      id: 'standalone',
-      title: '独立 App',
     },
   ].filter(section => section.apps.length);
 });
@@ -465,8 +452,7 @@ function resolveInsertIndex(clientX: number, clientY: number) {
     const isBeforeInRow = clientY >= rect.top && clientY <= rect.bottom && clientX < centerX;
     if (isBeforeRow || isBeforeInRow) return Math.max(0, order.indexOf(tile.dataset.homeToken || ''));
   }
-  const pageIndexes = standaloneHomeApps.value.map(app => order.indexOf(app.id)).filter(index => index >= 0);
-  return pageIndexes.length ? Math.max(...pageIndexes) + 1 : order.length;
+  return order.length;
 }
 
 function onAppPointerDown(event: PointerEvent, appId: string) {
@@ -861,7 +847,7 @@ onBeforeUnmount(resetHomeInteractionState);
   min-height: 100%;
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: 6px;
   padding-bottom: 0;
 }
 .pc-home-main {
@@ -875,7 +861,7 @@ onBeforeUnmount(resetHomeInteractionState);
   display: flex;
   flex-direction: column;
   min-height: 0;
-  gap: 10px;
+  gap: 6px;
   overflow-y: auto;
   touch-action: pan-y;
   user-select: none;
@@ -893,9 +879,9 @@ onBeforeUnmount(resetHomeInteractionState);
   min-width: 0;
   flex: 0 0 auto;
   align-items: center;
-  gap: 8px;
+  gap: 6px;
   border-bottom: 1px solid var(--pc-border);
-  padding-bottom: 8px;
+  padding-bottom: 6px;
 }
 .pc-home-group-tabs {
   display: flex;
@@ -923,7 +909,7 @@ onBeforeUnmount(resetHomeInteractionState);
 .pc-home-app-section {
   display: grid;
   flex: 0 0 auto;
-  gap: 8px;
+  gap: 6px;
 }
 .pc-home-section-head {
   padding-inline: 2px;
@@ -932,7 +918,7 @@ onBeforeUnmount(resetHomeInteractionState);
   display: grid;
   grid-template-columns: repeat(var(--pc-home-columns), minmax(0, 1fr));
   align-content: start;
-  gap: 14px 8px;
+  gap: 10px 6px;
 }
 .pc-app-tile {
   min-width: 0;
@@ -1018,8 +1004,8 @@ onBeforeUnmount(resetHomeInteractionState);
 .pc-home-dock {
   display: grid;
   grid-template-columns: repeat(var(--pc-dock-columns), minmax(0, 1fr));
-  gap: 8px;
-  padding: 8px 6px 6px;
+  gap: 5px;
+  padding: 4px 4px 3px;
   border: 0;
   border-top: 1px solid var(--pc-border);
   border-radius: 0;

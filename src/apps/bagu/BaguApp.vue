@@ -475,7 +475,7 @@ onBeforeUnmount(commitAllReplacementDrafts);
 .pc-rule-search input {
   width: 100%;
   min-width: 0;
-  height: 42px;
+  height: 36px;
   border: 0;
   background: transparent;
   color: var(--pc-text);

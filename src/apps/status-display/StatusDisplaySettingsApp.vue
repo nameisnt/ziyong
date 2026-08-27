@@ -124,7 +124,10 @@
             <i class="fa-solid fa-rotate-right" :class="{ 'fa-spin': editorVariablesLoading }"></i>
           </button>
         </header>
-        <input v-model="variableQuery" class="pc-field" type="search" placeholder="搜索变量路径或值" />
+        <label class="pc-search-field">
+          <i class="fa-solid fa-magnifying-glass"></i>
+          <input v-model="variableQuery" type="search" placeholder="搜索变量路径或值" />
+        </label>
         <div v-if="filteredEditorVariables.length" class="pc-status-variable-list">
           <button
             v-for="item in filteredEditorVariables"
