@@ -19,7 +19,6 @@ export type HomeScreenLayout = z.infer<typeof HomeScreenLayoutSchema>;
 
 export const ReaderAppearanceSchema = z.object({
   backgroundColor: z.string().default(''),
-  backgroundImage: z.string().default(''),
   blankLineBetweenLines: z.boolean().default(true),
   firstLineIndent: z.boolean().default(false),
   fontFamily: z.string().default(''),
@@ -184,7 +183,6 @@ const DEFAULT_GENERATION_SETTINGS: GenerationDefaults = {
 
 const DEFAULT_READER_SETTINGS: ReaderAppearance = {
   backgroundColor: '',
-  backgroundImage: '',
   blankLineBetweenLines: true,
   firstLineIndent: false,
   fontFamily: '',

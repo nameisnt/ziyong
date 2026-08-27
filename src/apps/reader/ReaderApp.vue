@@ -191,6 +191,22 @@
             <i class="fa-solid fa-highlighter"></i>
             <span>{{ t`摘抄` }}</span>
           </button>
+          <button
+            v-if="phone.isViewingCurrentChat"
+            class="pc-soft-btn"
+            type="button"
+            :title="t`发送用户消息`"
+            @click="openReaderSendComposer"
+          >
+            <i class="fa-solid fa-paper-plane"></i>
+            <span>{{ t`发送` }}</span>
+          </button>
+          <form v-if="readerSendComposerOpen" class="pc-reader-send-composer" @submit.prevent="sendReaderMessage">
+            <input v-model="readerSendDraft" class="pc-field" :placeholder="t`输入发送内容`" />
+            <button class="pc-primary-btn" type="submit" :disabled="!readerSendDraft.trim()">
+              <i class="fa-solid fa-paper-plane"></i><span>{{ t`发送` }}</span>
+            </button>
+          </form>
         </template>
         <template #overlays>
           <CatalogModal
@@ -276,6 +292,7 @@ import {
 } from '@/util/runtime';
 import { getCurrentChatScopeKey, isPlaceholderChatScopeKey } from '@/store/chatScoped';
 import { resolveReaderBodySourceRange, type ReaderBodySourceRange } from '@/util/readerRegex';
+import { getTavernInputValue, sendTavernInput } from '@/util/tavernInput';
 import { characters, getCharacters, getPastCharacterChats } from '@sillytavern/script';
 import { storeToRefs } from 'pinia';
 
@@ -314,6 +331,8 @@ const showCatalogModal = ref(false);
 const rulesOpen = ref(true);
 const messageBodyEl = ref<HTMLElement | null>(null);
 const readerEditDraft = ref('');
+const readerSendComposerOpen = ref(false);
+const readerSendDraft = ref('');
 const branching = ref(false);
 let pendingBranchSourceScopeKey = '';
 let pendingBranchExpiresAt = 0;
@@ -810,6 +829,20 @@ function resetReaderEditDraft() {
   readerEditDraft.value = activeMessage.value?.body || '';
 }
 
+function openReaderSendComposer() {
+  readerSendDraft.value = getTavernInputValue();
+  readerSendComposerOpen.value = true;
+}
+
+function sendReaderMessage() {
+  if (!sendTavernInput(readerSendDraft.value)) {
+    toastr.error('酒馆发送入口不可用');
+    return;
+  }
+  readerSendDraft.value = '';
+  readerSendComposerOpen.value = false;
+}
+
 function returnToReaderDetail() {
   if (!activeMessage.value) return;
   phone.replacePage('detail', activeMessage.value.title, {
@@ -934,6 +967,13 @@ function formatReaderBody(value: string) {
 
 .pc-reader-detail-page {
   gap: 10px;
+}
+
+.pc-reader-send-composer {
+  display: grid;
+  grid-column: 1 / -1;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 6px;
 }
 
 .pc-reader-bagu-page {

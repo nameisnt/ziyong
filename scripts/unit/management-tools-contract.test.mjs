@@ -25,15 +25,18 @@ test('assistant script manager prunes scripts through the current scope tree and
   assert.match(scriptApi, /getOptionalGlobalFunction<GetScriptTrees>\('getScriptTrees'\)/u);
   assert.match(scriptApi, /getOptionalGlobalFunction<UpdateScriptTrees>\('updateScriptTreesWith'\)/u);
   assert.doesNotMatch(scriptApi, /typeof getScriptTrees|typeof updateScriptTreesWith/u);
-  assert.doesNotMatch(scriptApi, /replaceScriptTrees/u);
+  assert.match(scriptApi, /moveAssistantScriptsToFolder/u);
   assert.match(scriptApp, /<BulkSelectionBar/u);
   assert.match(scriptApp, /phone\.confirmNotice/u);
 });
 
-test('assistant script manager exports the current trees without adding an unsupported restore path', () => {
-  assert.match(scriptApp, /script_trees: readAllScriptTrees\(\)/u);
+test('assistant script manager round-trips all scoped trees through the plugin bundle', () => {
+  assert.match(scriptApi, /script_trees: readAllScriptTrees\(\)/u);
+  assert.match(scriptApi, /getOptionalGlobalFunction<ReplaceScriptTrees>\('replaceScriptTrees'\)/u);
+  assert.match(scriptApi, /replaceTrees\(trees, \{ type: scope\.id \}\)/u);
+  assert.match(scriptApp, /importAssistantScriptBundle/u);
+  assert.match(scriptApp, /导入全部/u);
   assert.match(scriptApp, /scripts: selected\.map/u);
-  assert.doesNotMatch(scriptApp, /导入脚本|replaceScriptTrees/u);
 });
 
 test('extension transfer parses legacy scope and previews each installation scope', () => {
@@ -42,12 +45,15 @@ test('extension transfer parses legacy scope and previews each installation scop
   assert.match(extensionApp, /parseExtensionManifest/u);
 });
 
-test('extension installation never downgrades global scope and only reloads on explicit action', () => {
+test('extension installation and updates retain scope and refresh the list once after each batch', () => {
   assert.match(extensionApi, /global: item\.scope === 'global'/u);
   assert.doesNotMatch(extensionApi, /downgrade|重试|tryInstall\(false\)/u);
   assert.match(extensionApp, /phone\.confirmNotice/u);
-  assert.match(extensionApp, /@click="reloadTavern"/u);
-  assert.match(extensionApp, /function reloadTavern\(\)[\s\S]*location\.reload\(\)/u);
-  assert.doesNotMatch(extensionApp, /onActivated\(reloadTavern\)|reloadTavern\(\);/u);
-  assert.equal(extensionApp.match(/location\.reload\(\)/gu)?.length, 1);
+  assert.match(
+    extensionApp,
+    /for \(const row of rows\) await updateThirdPartyExtension\(row\);[\s\S]*await refreshInstalled\(\)/u,
+  );
+  assert.match(extensionApp, /await runInstallWorkers\(rows\);[\s\S]*await refreshInstalled\(\)/u);
+  assert.match(extensionApp, /sillytavern_phone_extension_metadata/u);
+  assert.doesNotMatch(extensionApp, /location\.reload\(\)/u);
 });

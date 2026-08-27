@@ -111,16 +111,6 @@
           />
         </label>
       </div>
-      <label class="pc-field-group">
-        <span class="pc-field-label">阅读背景图片地址</span>
-        <input
-          class="pc-field"
-          :value="settings.reader.backgroundImage"
-          placeholder="https://…、data:image/… 或站内 / 路径"
-          @change="settingsStore.setReaderBackgroundImage(inputValue($event))"
-        />
-      </label>
-      <button class="pc-soft-btn compact" type="button" @click="clearBackground">清除阅读背景</button>
     </section>
 
     <section class="pc-page-section">
@@ -248,10 +238,6 @@ function inputValue(event: Event) {
 }
 function checkedValue(event: Event) {
   return (event.target as HTMLInputElement).checked;
-}
-function clearBackground() {
-  settingsStore.setReaderBackgroundColor('');
-  settingsStore.setReaderBackgroundImage('');
 }
 function resetReaderSettings() {
   settingsStore.resetReaderAppearance();

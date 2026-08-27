@@ -62,7 +62,9 @@ export async function listInstalledThirdPartyExtensions(): Promise<InstalledExte
       try {
         const version = await readVersion(target.name, target.scope);
         result[index] = {
+          alias: '',
           branch: version.currentBranchName?.trim() ?? '',
+          description: '',
           error: '',
           key: `${target.scope}:${target.name}`,
           name: target.name,
@@ -71,7 +73,9 @@ export async function listInstalledThirdPartyExtensions(): Promise<InstalledExte
         };
       } catch (error) {
         result[index] = {
+          alias: '',
           branch: '',
+          description: '',
           error: error instanceof Error ? error.message : String(error),
           key: `${target.scope}:${target.name}`,
           name: target.name,
@@ -100,4 +104,11 @@ export async function installThirdPartyExtension(item: ExtensionManifestItem): P
     throw new ExtensionRequestError(detail || `HTTP ${response.status}`, response.status);
   }
   return 'installed';
+}
+
+export async function updateThirdPartyExtension(item: ExtensionManifestItem) {
+  await request('/api/extensions/update', {
+    body: JSON.stringify({ extensionName: item.name, global: item.scope === 'global' }),
+    method: 'POST',
+  });
 }

@@ -1,300 +1,129 @@
 <template>
   <section class="pc-relationship-app">
     <section v-if="route.page === 'root'" class="pc-relationship-page">
-      <div class="pc-compact-toolbar pc-directory-toolbar pc-relationship-toolbar">
-        <span class="pc-directory-count">{{ characters.length }} {{ t`人物` }} · {{ links.length }} {{ t`关系` }}</span>
+      <div class="pc-compact-toolbar pc-directory-toolbar">
+        <span class="pc-directory-count">{{ characters.length }} 人物 · {{ links.length }} 关系</span>
         <button
           class="pc-icon-btn primary"
           type="button"
-          :aria-label="t`AI 识别关系`"
-          :title="t`AI 识别关系`"
+          title="AI 识别关系"
+          aria-label="AI 识别关系"
           @click="openGenerate"
         >
           <i class="fa-solid fa-wand-magic-sparkles"></i>
         </button>
       </div>
 
-      <article class="pc-graph-card">
-        <EmptyState v-if="!characters.length" compact :title="t`还没有人物`" />
-        <template v-else>
-          <div class="pc-relationship-viewbar">
-            <SearchableCombobox
-              v-model="perspectiveCharacterId"
-              :empty-label="t`没有匹配的人物`"
-              :input-label="t`选择关系视角人物`"
-              :options="characterOptions"
-              :placeholder="t`选择人物`"
-              :toggle-title="t`展开人物列表`"
-            />
-            <div class="pc-view-segment">
-              <button
-                :class="['pc-view-btn', { active: relationViewMode === 'all' }]"
-                type="button"
-                @click="relationViewMode = 'all'"
-              >
-                all
-              </button>
-              <button
-                :class="['pc-view-btn', { active: relationViewMode === 'from' }]"
-                type="button"
-                @click="relationViewMode = 'from'"
-              >
-                {{ t`他是` }}
-              </button>
-              <button
-                :class="['pc-view-btn', { active: relationViewMode === 'to' }]"
-                type="button"
-                @click="relationViewMode = 'to'"
-              >
-                {{ t`是他` }}
-              </button>
-            </div>
-          </div>
-          <svg
-            ref="graphSvg"
-            class="pc-relationship-graph"
-            :viewBox="graphViewBox"
-            @pointermove="onGraphPointerMove"
-            @pointerup="onGraphPointerUp"
-            @pointercancel="onGraphPointerUp"
-          >
-            <defs>
-              <marker id="pc-relationship-arrow" markerHeight="5" markerWidth="6" orient="auto" refX="5.6" refY="2.5">
-                <path d="M0,0 L6,2.5 L0,5 Z"></path>
-              </marker>
-            </defs>
+      <section class="pc-section-card pc-relationship-graph-card">
+        <MermaidRelationshipGraph :characters="characters" :links="links" />
+      </section>
 
-            <g v-for="view in relationViews" :key="view.id" class="pc-relation-line">
-              <line :x1="view.x1" :x2="view.x2" :y1="view.y1" :y2="view.y2"></line>
-              <rect
-                class="pc-relation-label-bg"
-                :height="20"
-                :rx="8"
-                :width="view.labelWidth"
-                :x="view.labelX - view.labelWidth / 2"
-                :y="view.labelY - 15"
-              ></rect>
-              <text :x="view.labelX" :y="view.labelY">{{ view.label }}</text>
-            </g>
-
-            <g
-              v-for="character in characters"
-              :key="character.id"
-              class="pc-character-node"
-              :class="{ dragging: drag.characterId === character.id }"
-              :transform="`translate(${character.x} ${character.y})`"
-              @pointerdown.stop="onNodePointerDown($event, character.id)"
-            >
-              <circle r="24"></circle>
-              <text y="5">{{ character.name }}</text>
-            </g>
-          </svg>
-          <div class="pc-graph-zoom-row">
-            <span>{{ t`视图比例` }}</span>
-            <input v-model.number="graphZoom" type="range" min="50" max="100" step="5" />
-            <input v-model.number="graphZoom" class="pc-zoom-number" type="number" min="50" max="100" step="5" />
-          </div>
-        </template>
-      </article>
-
-      <article class="pc-page-section pc-relationship-editor-section">
+      <section class="pc-page-section">
         <button class="pc-section-toggle" type="button" @click="charactersExpanded = !charactersExpanded">
-          <strong>{{ t`人物` }}</strong>
+          <strong>人物</strong>
           <span class="pc-section-meta">
-            <span>{{ characters.length }} {{ t`个` }}</span>
+            <span>{{ characters.length }} 个</span>
             <i :class="['fa-solid', charactersExpanded ? 'fa-chevron-up' : 'fa-chevron-down']"></i>
           </span>
         </button>
-        <div v-if="charactersExpanded">
-          <div class="pc-profile-add-row">
-            <ExternalProfileReferencePicker
-              :disabled-reference-keys="linkedCharacterProfileKeys()"
-              :row-index="profileCharacterDraft.profileRowIndex"
-              :sheet-key="profileCharacterDraft.profileSheetKey"
-              @resolved="onProfileCharacterDraftResolved"
-              @update:row-index="profileCharacterDraft.profileRowIndex = $event"
-              @update:sheet-key="profileCharacterDraft.profileSheetKey = $event"
-            />
-            <button
-              class="pc-icon-btn"
-              type="button"
-              :disabled="!profileCharacterDraft.profileRowIndex || !profileCharacterDraft.displayValue"
-              :aria-label="t`添加关联人物`"
-              :title="t`添加关联人物`"
-              @click="addProfileCharacter"
-            >
-              <i class="fa-solid fa-link"></i>
-            </button>
-          </div>
+        <div v-if="charactersExpanded" class="pc-relationship-section-body">
           <div class="pc-inline-form">
             <input
               v-model="characterDraft"
               class="pc-field"
               type="text"
-              :placeholder="t`人物名字`"
+              placeholder="人物名字"
               @keydown.enter.prevent="addCharacter"
             />
-            <button
-              class="pc-icon-btn"
-              type="button"
-              :aria-label="t`新增人物`"
-              :title="t`新增人物`"
-              @click="addCharacter"
-            >
+            <button class="pc-icon-btn" type="button" title="新增人物" aria-label="新增人物" @click="addCharacter">
               <i class="fa-solid fa-plus"></i>
             </button>
           </div>
           <div v-if="characters.length" class="pc-compact-list">
-            <article v-for="character in characters" :key="character.id" class="pc-character-editor-row">
-              <div class="pc-compact-row">
-                <input
-                  class="pc-field"
-                  type="text"
-                  :disabled="isCharacterProfileLinked(character)"
-                  :value="character.name"
-                  @change="renameCharacter(character.id, $event)"
-                />
-                <button
-                  class="pc-icon-btn danger"
-                  type="button"
-                  :aria-label="t`删除`"
-                  :title="t`删除`"
-                  @click="removeCharacter(character.id)"
-                >
-                  <i class="fa-solid fa-trash"></i>
-                </button>
-              </div>
-              <p
-                v-if="character.profileEntryId && !isCharacterProfileLinked(character)"
-                class="pc-profile-legacy-warning"
-              >
-                旧资料关联待重新选择
-              </p>
-              <ExternalProfileReferencePicker
-                :disabled-reference-keys="linkedCharacterProfileKeys(character.id)"
-                :row-index="character.profileRowIndex"
-                :sheet-key="character.profileSheetKey"
-                @resolved="onCharacterProfileResolved(character.id, $event)"
-                @update:row-index="onCharacterProfileRowChange(character.id, $event)"
-                @update:sheet-key="onCharacterProfileTableChange(character.id, $event)"
+            <article v-for="character in characters" :key="character.id" class="pc-compact-row">
+              <input
+                class="pc-field"
+                type="text"
+                :value="character.name"
+                @change="renameCharacter(character.id, $event)"
               />
+              <button
+                class="pc-icon-btn danger"
+                type="button"
+                title="删除"
+                aria-label="删除"
+                @click="removeCharacter(character.id)"
+              >
+                <i class="fa-solid fa-trash"></i>
+              </button>
             </article>
           </div>
         </div>
-      </article>
+      </section>
 
-      <article class="pc-page-section pc-relationship-editor-section">
+      <section class="pc-page-section">
         <button class="pc-section-toggle" type="button" @click="linksExpanded = !linksExpanded">
-          <strong>{{ t`单向关系` }}</strong>
+          <strong>单向关系</strong>
           <span class="pc-section-meta">
-            <span>{{ links.length }} {{ t`条` }}</span>
+            <span>{{ links.length }} 条</span>
             <i :class="['fa-solid', linksExpanded ? 'fa-chevron-up' : 'fa-chevron-down']"></i>
           </span>
         </button>
-        <div v-if="linksExpanded">
+        <div v-if="linksExpanded" class="pc-relationship-section-body">
           <div class="pc-relation-form">
             <SearchableCombobox
               v-model="linkDraft.fromId"
-              :empty-label="t`没有匹配的人物`"
-              :input-label="t`选择关系起点人物`"
               :options="characterOptions"
-              :placeholder="t`谁`"
-              :toggle-title="t`展开人物列表`"
+              input-label="选择关系起点人物"
+              placeholder="谁"
             />
-            <span class="pc-relation-word">{{ t`是` }}</span>
+            <span>是</span>
             <SearchableCombobox
               v-model="linkDraft.toId"
-              :empty-label="t`没有匹配的人物`"
-              :input-label="t`选择关系目标人物`"
               :options="characterOptions"
-              :placeholder="t`谁的`"
-              :toggle-title="t`展开人物列表`"
+              input-label="选择关系目标人物"
+              placeholder="谁的"
             />
             <input
               v-model="linkDraft.label"
               class="pc-field"
               type="text"
-              :placeholder="t`关系，例如 父亲`"
+              placeholder="关系，例如 父亲"
               @keydown.enter.prevent="addLink"
             />
-            <button class="pc-icon-btn" type="button" :aria-label="t`新增关系`" :title="t`新增关系`" @click="addLink">
+            <button class="pc-icon-btn" type="button" title="新增关系" aria-label="新增关系" @click="addLink">
               <i class="fa-solid fa-plus"></i>
             </button>
           </div>
-
-          <div v-if="links.length" class="pc-list-filter">
-            <SearchableCombobox
-              v-model="linkFilterCharacterId"
-              :empty-label="t`没有匹配的人物`"
-              :input-label="t`筛选人物`"
-              :options="characterFilterOptions"
-              :placeholder="t`全部人物`"
-              :toggle-title="t`展开人物列表`"
-            />
-            <div class="pc-view-segment compact">
-              <button
-                :class="['pc-view-btn', { active: linkFilterMode === 'all' }]"
-                type="button"
-                @click="linkFilterMode = 'all'"
-              >
-                all
-              </button>
-              <button
-                :class="['pc-view-btn', { active: linkFilterMode === 'from' }]"
-                type="button"
-                @click="linkFilterMode = 'from'"
-              >
-                {{ t`他是` }}
-              </button>
-              <button
-                :class="['pc-view-btn', { active: linkFilterMode === 'to' }]"
-                type="button"
-                @click="linkFilterMode = 'to'"
-              >
-                {{ t`是他` }}
-              </button>
-            </div>
-          </div>
-
-          <div v-if="filteredLinks.length" class="pc-compact-list">
-            <article v-for="link in filteredLinks" :key="link.id" class="pc-relation-row">
+          <div v-if="links.length" class="pc-compact-list">
+            <article v-for="link in links" :key="link.id" class="pc-relation-row">
               <SearchableCombobox
-                :empty-label="t`没有匹配的人物`"
-                :input-label="t`修改关系起点人物`"
                 :model-value="link.fromId"
                 :options="characterOptions"
-                :toggle-title="t`展开人物列表`"
+                input-label="修改关系起点人物"
                 @update:model-value="relationship.updateLink(link.id, { fromId: $event })"
               />
-              <span class="pc-relation-word">{{ t`是` }}</span>
+              <span>是</span>
               <SearchableCombobox
-                :empty-label="t`没有匹配的人物`"
-                :input-label="t`修改关系目标人物`"
                 :model-value="link.toId"
                 :options="characterOptions"
-                :toggle-title="t`展开人物列表`"
+                input-label="修改关系目标人物"
                 @update:model-value="relationship.updateLink(link.id, { toId: $event })"
               />
-              <input
-                class="pc-field"
-                type="text"
-                :value="link.label"
-                @change="relationship.updateLink(link.id, { label: ($event.target as HTMLInputElement).value })"
-              />
+              <input class="pc-field" type="text" :value="link.label" @change="updateLinkLabel(link.id, $event)" />
               <button
                 class="pc-icon-btn danger"
                 type="button"
-                :aria-label="t`删除`"
-                :title="t`删除`"
+                title="删除"
+                aria-label="删除"
                 @click="removeLink(link.id)"
               >
                 <i class="fa-solid fa-xmark"></i>
               </button>
             </article>
           </div>
-          <EmptyState v-else-if="links.length" compact :title="t`没有匹配的关系`" />
         </div>
-      </article>
+      </section>
 
       <FailedDraftList
         :drafts="failedDrafts"
@@ -303,7 +132,6 @@
         @open="openFailedDraft"
         @remove="removeFailedDraft"
       />
-
       <PreviewDraftNotice
         :draft="relationshipPreviewDraft"
         @discard="discardRelationshipPreviewDraft"
@@ -313,79 +141,56 @@
     </section>
 
     <section v-else-if="route.page === 'generate'" class="pc-relationship-page">
-      <article class="pc-relationship-generate-form">
-        <input
-          v-model="generationDraft.characterNames"
-          class="pc-field"
-          type="text"
-          :placeholder="t`角色名，用逗号分隔，例如 沐辞, 谢无咎`"
-        />
-        <GenerationPanel
-          :capture="captureRelationshipPrompt"
-          :capture-reset-key="relationshipPromptPreview"
-          :error="generationError"
-          :from-start-end="generationDraft.fromStartEnd"
-          :range-text="generationDraft.rangeText"
-          :raw-output="generationRawOutput"
-          :recent-count="generationDraft.recentCount"
-          :references="selectedReferences"
-          :running="generationRunning"
-          :single-message-id="generationDraft.singleMessageId"
-          :source-mode="settings.generation.sourceMode"
-          :user-requirement="generationDraft.userRequirement"
-          requirement-placeholder="例如：只判断当前明确关系；不确定的关系不要写。"
-          @cancel="phone.goBack()"
-          @generate="runGeneration"
-          @stop="stopGeneration"
-          @update:from-start-end="generationDraft.fromStartEnd = $event"
-          @update:range-text="generationDraft.rangeText = $event"
-          @update:recent-count="generationDraft.recentCount = $event"
-          @update:references="selectedReferences = $event"
-          @update:single-message-id="generationDraft.singleMessageId = $event"
-          @update:source-mode="settings.generation.sourceMode = $event"
-          @update:user-requirement="generationDraft.userRequirement = $event"
-        />
-      </article>
+      <input v-model="generationDraft.characterNames" class="pc-field" type="text" placeholder="角色名，用逗号分隔" />
+      <GenerationPanel
+        :capture="captureRelationshipPrompt"
+        :capture-reset-key="relationshipPromptPreview"
+        :error="generationError"
+        :from-start-end="generationDraft.fromStartEnd"
+        :range-text="generationDraft.rangeText"
+        :raw-output="generationRawOutput"
+        :recent-count="generationDraft.recentCount"
+        :references="selectedReferences"
+        :running="generationRunning"
+        :single-message-id="generationDraft.singleMessageId"
+        :source-mode="settings.generation.sourceMode"
+        :user-requirement="generationDraft.userRequirement"
+        requirement-placeholder="例如：只判断当前明确关系；不确定的关系不要写。"
+        @cancel="phone.goBack()"
+        @generate="runGeneration"
+        @stop="stopGeneration"
+        @update:from-start-end="generationDraft.fromStartEnd = $event"
+        @update:range-text="generationDraft.rangeText = $event"
+        @update:recent-count="generationDraft.recentCount = $event"
+        @update:references="selectedReferences = $event"
+        @update:single-message-id="generationDraft.singleMessageId = $event"
+        @update:source-mode="settings.generation.sourceMode = $event"
+        @update:user-requirement="generationDraft.userRequirement = $event"
+      />
     </section>
 
-    <section
-      v-else-if="route.page === 'preview' && generationState.preview"
-      class="pc-relationship-page pc-generation-preview-page"
-    >
-      <article class="pc-detail-card pc-generation-preview-card">
-        <GenerationPreviewPanel
-          :content="relationshipPreviewText"
-          :raw="generationState.preview.raw"
-          raw-editable
-          :reparse-handler="reparsePreviewRaw"
-          :reasoning="generationState.preview.generationRecord?.reasoning || ''"
-          reasoning-editable
-          :scan-enabled="false"
-          :source-label="generationState.preview.source.label"
-          :text-provider-summary="textProviderSummary"
-          title="关系预览"
-          :warnings="generationState.preview.warnings"
-          content-label="关系结果"
-          :editable="false"
-          save-label="合并到关系网"
-          @back="returnToGenerate"
-          @reparse="reparsePreviewRaw"
-          @save="savePreview"
-          @update:raw="generationState.preview.raw = $event"
-          @update:reasoning="updateGenerationRecordReasoning(generationState.preview, $event)"
-        >
-          <template #content>
-            <section class="pc-preview-box">
-              <strong>{{ t`人物` }}</strong>
-              <p>{{ generationState.preview.data.characters.join('、') || t`无新增人物` }}</p>
-              <strong>{{ t`关系` }}</strong>
-              <p v-for="(relation, index) in generationState.preview.data.relations" :key="index">
-                {{ relation.from }} 是 {{ relation.to }} 的 {{ relation.label }}
-              </p>
-            </section>
-          </template>
-        </GenerationPreviewPanel>
-      </article>
+    <section v-else-if="route.page === 'preview' && generationState.preview" class="pc-relationship-page">
+      <GenerationPreviewPanel
+        :content="relationshipPreviewText"
+        :raw="generationState.preview.raw"
+        raw-editable
+        :reparse-handler="reparsePreviewRaw"
+        :reasoning="generationState.preview.generationRecord?.reasoning || ''"
+        reasoning-editable
+        :scan-enabled="false"
+        :source-label="generationState.preview.source.label"
+        :text-provider-summary="textProviderSummary"
+        title="关系预览"
+        :warnings="generationState.preview.warnings"
+        content-label="关系结果"
+        :editable="false"
+        save-label="合并到关系网"
+        @back="returnToGenerate"
+        @reparse="reparsePreviewRaw"
+        @save="savePreview"
+        @update:raw="generationState.preview.raw = $event"
+        @update:reasoning="updateGenerationRecordReasoning(generationState.preview, $event)"
+      />
     </section>
 
     <FailedDraftRepairPage
@@ -405,32 +210,30 @@
 </template>
 
 <script setup lang="ts">
-import EmptyState from '@/components/EmptyState.vue';
+import MermaidRelationshipGraph from '@/apps/relationship/MermaidRelationshipGraph.vue';
 import FailedDraftList from '@/components/FailedDraftList.vue';
 import FailedDraftRepairPage from '@/components/FailedDraftRepairPage.vue';
-import ExternalProfileReferencePicker from '@/components/ExternalProfileReferencePicker.vue';
 import GenerationPanel from '@/components/GenerationPanel.vue';
 import GenerationPreviewPanel from '@/components/GenerationPreviewPanel.vue';
 import PreviewDraftNotice from '@/components/PreviewDraftNotice.vue';
-import { useSingleGenerationTaskSession } from '@/composables/useSingleGenerationTaskSession';
+import SearchableCombobox from '@/components/SearchableCombobox.vue';
 import { useFailedDraftRegeneration } from '@/composables/useFailedDraftRegeneration';
+import { useSingleGenerationTaskSession } from '@/composables/useSingleGenerationTaskSession';
 import { getRegisteredPhoneGenerationAdapter } from '@/core/appRegistry';
 import { buildGenerationPreview, captureGenerationPrompt, generateContent } from '@/core/generationService';
 import { usePhoneStore } from '@/store/phone';
-import { externalProfileReferenceKey, type ExternalProfileReferenceDraft } from '@/apps/profiles/profileReferences';
 import { usePromptStore } from '@/store/prompts';
 import { useSettingsStore } from '@/store/settings';
 import type { FailedGenerationDraft } from '@/type/generation';
 import type { GenerationTask } from '@/type/generationTask';
-import type { GenerationReferenceItem } from '@/util/references';
+import { updateGenerationRecordReasoning } from '@/util/generationReasoning';
 import { usePreviewDraftPersistence } from '@/util/previewDrafts';
-import { formatGenerationReferences } from '@/util/references';
+import { formatGenerationReferences, type GenerationReferenceItem } from '@/util/references';
 import { useInvalidRouteFallback } from '@/util/routeFallback';
 import { formatTextProviderSummary } from '@/util/textProvider';
-import { updateGenerationRecordReasoning } from '@/util/generationReasoning';
-import { useRelationshipStore, type RelationshipCharacter, type RelationshipGeneratedResult } from './store';
-import { parseRelationshipXmlResult } from './generation';
 import { storeToRefs } from 'pinia';
+import { parseRelationshipXmlResult } from './generation';
+import { useRelationshipStore, type RelationshipGeneratedResult } from './store';
 
 const phone = usePhoneStore();
 const relationship = useRelationshipStore();
@@ -440,31 +243,12 @@ const adapter = getRegisteredPhoneGenerationAdapter('relationship', 'generate');
 const { currentRoute: route } = storeToRefs(phone);
 const { characters, failedDrafts, links } = storeToRefs(relationship);
 const { settings } = storeToRefs(settingsStore);
-const graphSvg = ref<SVGSVGElement | null>(null);
 const characterDraft = ref('');
-const profileCharacterDraft = reactive({
-  displayValue: '',
-  profileRowIndex: 0,
-  profileSheetKey: '',
-});
 const failedDraftRawOutput = ref('');
 const charactersExpanded = ref(true);
 const linksExpanded = ref(true);
 const selectedReferences = ref<GenerationReferenceItem[]>([]);
-const perspectiveCharacterId = ref('');
-const relationViewMode = ref<'all' | 'from' | 'to'>('all');
-const graphZoom = ref(100);
-const linkFilterCharacterId = ref('');
-const linkFilterMode = ref<'all' | 'from' | 'to'>('all');
-const linkDraft = reactive({
-  fromId: '',
-  toId: '',
-  label: '',
-});
-const drag = reactive({
-  characterId: '',
-  pointerId: null as number | null,
-});
+const linkDraft = reactive({ fromId: '', label: '', toId: '' });
 const generationDraft = reactive({
   characterNames: '',
   fromStartEnd: 20,
@@ -477,6 +261,7 @@ const generationState = reactive({
   preview: null as null | {
     data: RelationshipGeneratedResult;
     draftId: null | string;
+    generationRecord?: FailedGenerationDraft['generationRecord'];
     raw: string;
     source: { label: string };
     warnings: string[];
@@ -514,7 +299,6 @@ const characterById = computed(() => new Map(characters.value.map(character => [
 const characterOptions = computed(() =>
   characters.value.map(character => ({ label: character.name, value: character.id })),
 );
-const characterFilterOptions = computed(() => [{ label: '全部人物', value: '' }, ...characterOptions.value]);
 const activeFailedDraft = computed(() =>
   route.value.params?.draftId ? relationship.getFailedDraft(route.value.params.draftId) : null,
 );
@@ -523,66 +307,6 @@ const textProviderSummary = computed(() =>
   settings.value.textProvider.mode === 'external'
     ? formatTextProviderSummary(settings.value.textProvider)
     : '跟随酒馆当前模型',
-);
-const normalizedGraphZoom = computed(() => Math.min(100, Math.max(50, Number(graphZoom.value) || 100)));
-const graphViewBox = computed(() => {
-  const scale = 100 / normalizedGraphZoom.value;
-  const width = 320 * scale;
-  const height = 260 * scale;
-  return `${(320 - width) / 2} ${(260 - height) / 2} ${width} ${height}`;
-});
-const visibleLinks = computed(() => {
-  if (!perspectiveCharacterId.value || relationViewMode.value === 'all') return links.value;
-  if (relationViewMode.value === 'from') {
-    return links.value.filter(link => link.fromId === perspectiveCharacterId.value);
-  }
-  return links.value.filter(link => link.toId === perspectiveCharacterId.value);
-});
-const filteredLinks = computed(() => {
-  if (!linkFilterCharacterId.value || linkFilterMode.value === 'all') return links.value;
-  if (linkFilterMode.value === 'from') {
-    return links.value.filter(link => link.fromId === linkFilterCharacterId.value);
-  }
-  return links.value.filter(link => link.toId === linkFilterCharacterId.value);
-});
-const relationViews = computed(() =>
-  visibleLinks.value
-    .map(link => {
-      const from = characterById.value.get(link.fromId);
-      const to = characterById.value.get(link.toId);
-      if (!from || !to) return null;
-
-      const dx = to.x - from.x;
-      const dy = to.y - from.y;
-      const length = Math.max(1, Math.hypot(dx, dy));
-      const unitX = dx / length;
-      const unitY = dy / length;
-      const reverse = visibleLinks.value.some(item => item.fromId === link.toId && item.toId === link.fromId);
-      const first = from.x < to.x || (from.x === to.x && from.y <= to.y) ? from : to;
-      const second = first.id === from.id ? to : from;
-      const pairDx = second.x - first.x;
-      const pairDy = second.y - first.y;
-      const pairLength = Math.max(1, Math.hypot(pairDx, pairDy));
-      const pairNormalX = -(pairDy / pairLength);
-      const pairNormalY = pairDx / pairLength;
-      const side = reverse ? (link.fromId === first.id ? -1 : 1) : 0;
-      const labelSide = reverse ? side : -1;
-      const lineOffset = reverse ? side * 14 : 0;
-      const labelOffset = labelSide * 34;
-      const labelWidth = Math.min(104, Math.max(34, link.label.length * 13 + 18));
-      return {
-        id: link.id,
-        label: link.label,
-        labelWidth,
-        labelX: (from.x + to.x) / 2 + pairNormalX * labelOffset,
-        labelY: (from.y + to.y) / 2 + pairNormalY * labelOffset + 4,
-        x1: from.x + unitX * 28 + pairNormalX * lineOffset,
-        x2: to.x - unitX * 32 + pairNormalX * lineOffset,
-        y1: from.y + unitY * 28 + pairNormalY * lineOffset,
-        y2: to.y - unitY * 32 + pairNormalY * lineOffset,
-      };
-    })
-    .filter((view): view is NonNullable<typeof view> => Boolean(view)),
 );
 const relationshipPromptPreview = computed(() => {
   try {
@@ -602,20 +326,6 @@ const relationshipPreviewText = computed(() => {
 });
 
 watch(
-  characters,
-  nextCharacters => {
-    if (nextCharacters.some(character => character.id === perspectiveCharacterId.value)) return;
-    perspectiveCharacterId.value = nextCharacters[0]?.id || '';
-  },
-  { immediate: true },
-);
-
-watch(graphZoom, nextZoom => {
-  const clamped = Math.min(100, Math.max(50, Number(nextZoom) || 100));
-  if (clamped !== nextZoom) graphZoom.value = clamped;
-});
-
-watch(
   () => route.value,
   current => {
     if (current.appId !== 'relationship') return;
@@ -625,9 +335,7 @@ watch(
       generationDraft.userRequirement = '';
       generationState.preview = null;
     }
-    if (current.page === 'failed-draft') {
-      failedDraftRawOutput.value = activeFailedDraft.value?.rawOutput || '';
-    }
+    if (current.page === 'failed-draft') failedDraftRawOutput.value = activeFailedDraft.value?.rawOutput || '';
   },
 );
 
@@ -642,10 +350,7 @@ useInvalidRouteFallback({
     current.appId === 'relationship' &&
     ((current.page === 'preview' && !current.hasPreview) ||
       (current.page === 'failed-draft' && !current.hasFailedDraft)),
-  fallback: () => {
-    if (route.value.appId !== 'relationship') return;
-    phone.replacePage('root', '关系网');
-  },
+  fallback: () => phone.replacePage('root', '关系网'),
 });
 
 function addCharacter() {
@@ -657,171 +362,69 @@ function addCharacter() {
   characterDraft.value = '';
 }
 
-function addProfileCharacter() {
-  if (!profileCharacterDraft.profileRowIndex || !profileCharacterDraft.profileSheetKey) return;
-  const reference = {
-    profileRowIndex: profileCharacterDraft.profileRowIndex,
-    profileSheetKey: profileCharacterDraft.profileSheetKey,
-  };
-  const referenceKey = externalProfileReferenceKey(reference);
-  const existing = characters.value.find(
-    character => isCharacterProfileLinked(character) && externalProfileReferenceKey(character) === referenceKey,
-  );
-  const character = relationship.createCharacterFromProfile(reference, profileCharacterDraft.displayValue);
-  if (!character) {
-    toastr.warning('已有同名人物关联了其他资料');
-    return;
-  }
-  profileCharacterDraft.displayValue = '';
-  profileCharacterDraft.profileRowIndex = 0;
-  profileCharacterDraft.profileSheetKey = '';
-  toastr.success(existing ? '该人物已经在关系网中' : '已从资料表添加人物');
-}
-
-function onProfileCharacterDraftResolved(value: ExternalProfileReferenceDraft & { displayValue: string }) {
-  profileCharacterDraft.displayValue = value.displayValue;
-  profileCharacterDraft.profileRowIndex = value.profileRowIndex;
-  profileCharacterDraft.profileSheetKey = value.profileSheetKey;
-}
-
-function isCharacterProfileLinked(character: RelationshipCharacter) {
-  return Boolean(character.profileSheetKey && character.profileRowIndex);
-}
-
-function linkedCharacterProfileKeys(exceptCharacterId = '') {
-  return characters.value
-    .filter(character => character.id !== exceptCharacterId && isCharacterProfileLinked(character))
-    .map(character => externalProfileReferenceKey(character));
-}
-
-function onCharacterProfileTableChange(characterId: string, profileSheetKey: string) {
-  relationship.setCharacterProfileDraft(characterId, { profileSheetKey });
-}
-
-function onCharacterProfileRowChange(characterId: string, profileRowIndex: number) {
-  if (!profileRowIndex) {
-    relationship.setCharacterProfileDraft(characterId, { profileRowIndex: 0 });
-  }
-}
-
-function onCharacterProfileResolved(
-  characterId: string,
-  value: ExternalProfileReferenceDraft & { displayValue: string },
-) {
-  if (relationship.linkCharacterProfile(characterId, value, value.displayValue)) return;
-  relationship.setCharacterProfileDraft(characterId, { profileRowIndex: 0 });
-  toastr.warning('这份人物资料已经关联到其他人物');
-}
-
 function renameCharacter(characterId: string, event: Event) {
-  const target = event.target as HTMLInputElement | null;
+  const target = event.target as HTMLInputElement;
   const character = relationship.getCharacter(characterId);
-  if (!target || !character) return;
-
   const name = target.value.trim();
-  if (!name) {
-    toastr.warning('人物名字不能为空，请修改后再保存');
-    target.value = character.name;
-    return;
-  }
-
   const duplicate = relationship.findDuplicateCharacterName(name, characterId);
-  if (duplicate) {
-    toastr.warning(`已经有名为“${duplicate.name}”的人物，请换一个名字`);
-    target.value = character.name;
+  if (!character || !name || duplicate) {
+    target.value = character?.name || '';
+    toastr.warning(duplicate ? `已经有名为“${duplicate.name}”的人物` : '人物名字不能为空');
     return;
   }
-
   relationship.updateCharacter(characterId, { name });
 }
 
 async function removeCharacter(characterId: string) {
   const character = relationship.getCharacter(characterId);
-  if (!character) return;
-  const shouldDelete = await phone.confirmNotice(`要删除人物“${character.name}”和相关关系吗？`, {
-    confirmLabel: '删除',
-    kind: 'warning',
-  });
-  if (!shouldDelete) return;
+  if (
+    !character ||
+    !(await phone.confirmNotice(`要删除人物“${character.name}”和相关关系吗？`, {
+      confirmLabel: '删除',
+      kind: 'warning',
+    }))
+  )
+    return;
   relationship.deleteCharacter(characterId);
 }
 
-async function removeLink(linkId: string) {
-  const link = links.value.find(item => item.id === linkId);
-  if (!link) return;
-  const fromName = characterById.value.get(link.fromId)?.name || '未知人物';
-  const toName = characterById.value.get(link.toId)?.name || '未知人物';
-  const confirmed = await phone.confirmNotice(
-    `要删除“${fromName} → ${toName}”的关系“${link.label || '未命名关系'}”吗？`,
-    {
-      confirmLabel: '删除',
-      kind: 'warning',
-      title: '删除人物关系？',
-    },
-  );
-  if (!confirmed) return;
-  relationship.deleteLink(linkId);
-}
-
 function addLink() {
-  const link = relationship.upsertLink(linkDraft.fromId, linkDraft.toId, linkDraft.label);
-  if (!link) {
+  if (!relationship.upsertLink(linkDraft.fromId, linkDraft.toId, linkDraft.label)) {
     toastr.warning('请选择两个人物，并填写关系');
     return;
   }
   linkDraft.label = '';
 }
 
+function updateLinkLabel(linkId: string, event: Event) {
+  relationship.updateLink(linkId, { label: (event.target as HTMLInputElement).value });
+}
+
+async function removeLink(linkId: string) {
+  const link = relationship.getLink(linkId);
+  if (!link) return;
+  const from = characterById.value.get(link.fromId)?.name || '未知人物';
+  const to = characterById.value.get(link.toId)?.name || '未知人物';
+  if (!(await phone.confirmNotice(`要删除“${from} → ${to}”的关系吗？`, { confirmLabel: '删除', kind: 'warning' })))
+    return;
+  relationship.deleteLink(linkId);
+}
+
 function openGenerate() {
   phone.pushPage('generate', 'AI 关系识别');
 }
-
 function openFailedDraft(draftId: string) {
-  if (!relationship.getFailedDraft(draftId)) return;
-  phone.pushPage('failed-draft', '解析失败草稿', { draftId });
+  if (relationship.getFailedDraft(draftId)) phone.pushPage('failed-draft', '解析失败草稿', { draftId });
 }
-
 function failedDraftTitle() {
   return '未解析关系';
 }
-
 function failedDraftSourceLabel(draft: FailedGenerationDraft) {
   return draft.source.label;
 }
-
-function getSvgPoint(event: PointerEvent) {
-  const svg = graphSvg.value;
-  const matrix = svg?.getScreenCTM()?.inverse();
-  if (!svg || !matrix) return null;
-  const point = svg.createSVGPoint();
-  point.x = event.clientX;
-  point.y = event.clientY;
-  return point.matrixTransform(matrix);
-}
-
-function onNodePointerDown(event: PointerEvent, characterId: string) {
-  drag.characterId = characterId;
-  drag.pointerId = event.pointerId;
-  (event.currentTarget as SVGElement).setPointerCapture?.(event.pointerId);
-}
-
-function onGraphPointerMove(event: PointerEvent) {
-  if (drag.pointerId !== event.pointerId || !drag.characterId) return;
-  const point = getSvgPoint(event);
-  if (!point) return;
-  relationship.updateCharacter(drag.characterId, { x: point.x, y: point.y });
-}
-
-function onGraphPointerUp(event: PointerEvent) {
-  if (drag.pointerId !== event.pointerId) return;
-  drag.characterId = '';
-  drag.pointerId = null;
-}
-
 function buildRelationshipOutputFormat() {
   return prompts.resolveOutputFormat('relationship.generate');
 }
-
 function buildGenerationConfig() {
   return {
     appPrompt: prompts.appPrompts.relationship,
@@ -830,7 +433,6 @@ function buildGenerationConfig() {
     userRequirement: generationDraft.userRequirement,
   };
 }
-
 function getGenerationOptions() {
   return {
     generationDefaults: {
@@ -849,7 +451,6 @@ function getGenerationOptions() {
     textProvider: settings.value.textProvider,
   };
 }
-
 function captureRelationshipPrompt() {
   return captureGenerationPrompt(adapter, buildGenerationConfig(), getGenerationOptions());
 }
@@ -868,7 +469,6 @@ async function runGeneration() {
       createFailedDraft: input => relationship.createFailedDraft(input),
       lifecycle: generationSession.lifecycle(task.id),
     });
-
     if (result.status === 'failed') {
       generationSession.complete(task.id, {
         currentLabel: '解析失败草稿已保留',
@@ -877,13 +477,9 @@ async function runGeneration() {
         resultState: 'failed-draft',
         resultTitle: '解析失败草稿',
       });
-      toastr.warning('XML 解析失败，已保存失败草稿');
-      void phone.presentGeneratedPage('relationship', 'failed-draft', '解析失败草稿', {
-        draftId: result.draft.id,
-      });
+      void phone.presentGeneratedPage('relationship', 'failed-draft', '解析失败草稿', { draftId: result.draft.id });
       return;
     }
-
     if (result.status === 'saved') {
       generationSession.complete(task.id, {
         currentLabel: '关系网已合并',
@@ -891,14 +487,13 @@ async function runGeneration() {
         resultState: 'saved',
         resultTitle: '关系网',
       });
-      toastr.success('已合并关系网');
       void phone.presentGeneratedPage('relationship', 'root', '关系网');
       return;
     }
-
     generationState.preview = {
       data: result.data,
       draftId: null,
+      generationRecord: result.generationRecord,
       raw: result.rawOutput,
       source: { label: result.source.label },
       warnings: result.warnings,
@@ -911,20 +506,17 @@ async function runGeneration() {
       resultTitle: '关系预览',
     });
     void phone.presentGeneratedPage('relationship', 'preview', '关系预览');
-  } catch (caughtError) {
-    if (task) generationSession.fail(task.id, caughtError);
-    else toastr.error(caughtError instanceof Error ? caughtError.message : '生成关系失败');
+  } catch (error) {
+    if (task) generationSession.fail(task.id, error);
+    else toastr.error(error instanceof Error ? error.message : '生成关系失败');
   }
 }
 
 function returnToGenerate() {
-  if (generationState.preview?.draftId) {
+  if (generationState.preview?.draftId)
     phone.replacePage('failed-draft', '解析失败草稿', { draftId: generationState.preview.draftId });
-    return;
-  }
-  phone.replacePage('generate', 'AI 关系识别');
+  else phone.replacePage('generate', 'AI 关系识别');
 }
-
 function savePreview() {
   const preview = generationState.preview;
   if (!preview) return;
@@ -932,74 +524,34 @@ function savePreview() {
   if (preview.draftId) relationship.deleteFailedDraft(preview.draftId);
   clearRelationshipPreviewDraft();
   generationState.preview = null;
-  toastr.success('已合并关系网');
   phone.replacePage('root', '关系网');
 }
-
 function reparsePreviewRaw() {
   const preview = generationState.preview;
-  if (!preview) return false;
-  const rawOutput = preview.raw;
-  if (!rawOutput.trim()) {
-    toastr.warning('先补一点可解析的 XML 内容');
-    return false;
-  }
-
-  const parsed = parseRelationshipXmlResult(rawOutput);
-  if (!parsed.ok) {
-    preview.raw = rawOutput;
-    preview.warnings = parsed.warnings;
-    toastr.warning(parsed.warnings.join('；') || '还是没能解析成功');
-    return false;
-  }
-
-  preview.data = parsed.data;
-  preview.raw = rawOutput;
+  if (!preview?.raw.trim()) return false;
+  const parsed = parseRelationshipXmlResult(preview.raw);
   preview.warnings = parsed.warnings;
-  toastr.success('已按原始输出重新解析');
+  if (!parsed.ok) return false;
+  preview.data = parsed.data;
   return true;
 }
-
 async function removeFailedDraft(draftId: string) {
-  const shouldDelete = await phone.confirmNotice('要删除这条解析失败草稿吗？原始输出也会一并移除。', {
-    confirmLabel: '删除',
-    kind: 'warning',
-  });
-  if (!shouldDelete) return;
+  if (!(await phone.confirmNotice('要删除这条解析失败草稿吗？', { confirmLabel: '删除', kind: 'warning' }))) return;
   relationship.deleteFailedDraft(draftId);
   failedDraftRawOutput.value = '';
   if (route.value.page === 'failed-draft') phone.replacePage('root', '关系网');
-  toastr.success('已删除失败草稿');
 }
-
 function reparseFailedDraft() {
   const draft = activeFailedDraft.value;
-  if (!draft) return;
-  const rawOutput = failedDraftRawOutput.value;
-  if (!rawOutput.trim()) {
-    toastr.warning('先补一点可解析的 XML 内容');
-    return;
-  }
-
-  const parsed = parseRelationshipXmlResult(rawOutput);
-  if (!parsed.ok) {
-    relationship.updateFailedDraft(draft.id, {
-      rawOutput,
-      warnings: parsed.warnings,
-    });
-    failedDraftRawOutput.value = rawOutput;
-    toastr.warning(parsed.warnings.join('；') || '还是没能解析成功');
-    return;
-  }
-
-  relationship.updateFailedDraft(draft.id, {
-    rawOutput,
-    warnings: parsed.warnings,
-  });
+  if (!draft || !failedDraftRawOutput.value.trim()) return;
+  const parsed = parseRelationshipXmlResult(failedDraftRawOutput.value);
+  relationship.updateFailedDraft(draft.id, { rawOutput: failedDraftRawOutput.value, warnings: parsed.warnings });
+  if (!parsed.ok) return;
   generationState.preview = {
     data: parsed.data,
     draftId: null,
-    raw: rawOutput,
+    generationRecord: draft.generationRecord,
+    raw: failedDraftRawOutput.value,
     source: { label: draft.source.label },
     warnings: parsed.warnings,
   };
@@ -1008,7 +560,6 @@ function reparseFailedDraft() {
   failedDraftRawOutput.value = '';
   phone.replacePage('preview', '关系预览');
 }
-
 function stopGeneration() {
   generationSession.stop();
 }
@@ -1024,341 +575,40 @@ const regenerateFailedDraft = useFailedDraftRegeneration({
 .pc-relationship-page {
   min-height: 100%;
 }
-
-.pc-relationship-page {
-  display: flex;
-  flex-direction: column;
-  gap: 14px;
+.pc-relationship-page,
+.pc-relationship-section-body {
+  display: grid;
+  gap: 8px;
 }
-
-.pc-graph-card,
-.pc-detail-card {
-  border: 1px solid var(--pc-border);
-  border-radius: var(--pc-card-radius);
-  background: color-mix(in srgb, var(--pc-surface) 72%, transparent 28%);
-  backdrop-filter: blur(12px);
-  padding: 14px;
+.pc-relationship-graph-card {
+  padding: 4px;
 }
-
-.pc-form-actions,
 .pc-inline-form,
 .pc-compact-row,
-.pc-relation-row {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 10px;
-}
-
-.pc-detail-card h2 {
-  margin: 0;
-  font-size: 20px;
-  line-height: 1.25;
-}
-
-.pc-relationship-viewbar {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
-  gap: 10px;
-  margin-bottom: 10px;
-}
-
-.pc-relationship-viewbar:has(.pc-view-segment) {
-  align-items: center;
-}
-
-.pc-relationship-viewbar .pc-field,
-.pc-relationship-viewbar .pc-combobox {
-  min-width: 0;
-}
-
-.pc-view-segment {
-  display: inline-grid;
-  grid-template-columns: repeat(3, minmax(0, auto));
-  gap: 4px;
-  height: 40px;
-  padding: 4px;
-  border-radius: 999px;
-  background: var(--pc-surface-strong);
-}
-
-.pc-view-segment.compact {
-  width: 100%;
-}
-
-.pc-view-btn {
-  border: 0;
-  border-radius: 999px;
-  background: transparent;
-  color: var(--pc-text);
-  cursor: pointer;
-  padding: 0 10px;
-  white-space: nowrap;
-}
-
-.pc-view-btn.active {
-  background: color-mix(in srgb, #3d8bfd 22%, var(--pc-surface) 78%);
-  color: var(--pc-text);
-}
-
-@media (max-width: 640px) {
-  .pc-relationship-viewbar,
-  .pc-list-filter {
-    grid-template-columns: 1fr;
-  }
-
-  .pc-view-segment {
-    width: 100%;
-  }
-}
-
-.pc-graph-zoom-row {
-  display: grid;
-  grid-template-columns: auto minmax(0, 1fr) 62px;
-  align-items: center;
-  gap: 10px;
-  margin-top: 10px;
-  color: var(--pc-muted);
-  font-size: 12px;
-  font-weight: 700;
-}
-
-.pc-graph-zoom-row input[type='range'] {
-  width: 100%;
-}
-
-.pc-zoom-number {
-  width: 62px;
-  border: 1px solid var(--pc-border);
-  border-radius: 12px;
-  background: var(--pc-surface-strong);
-  color: var(--pc-text);
-  padding: 8px 6px;
-  text-align: center;
-}
-
-.pc-section-toggle {
-  width: 100%;
-  border: 0;
-  background: transparent;
-  color: var(--pc-text);
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  padding: 0;
-  text-align: left;
-}
-
-.pc-section-toggle > strong {
-  min-width: 0;
-  font-size: 18px;
-  line-height: 1.2;
-}
-
-.pc-section-meta {
-  display: inline-flex;
-  align-items: center;
-  gap: 10px;
-  color: var(--pc-muted);
-  font-size: 13px;
-  font-weight: 700;
-}
-
-.pc-section-meta i {
-  width: 36px;
-  height: 36px;
-  border-radius: 999px;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  flex: 0 0 auto;
-  background: var(--pc-surface-strong);
-}
-
-.pc-relationship-graph {
-  display: block;
-  width: 100%;
-  aspect-ratio: 16 / 13;
-  border-radius: min(var(--pc-card-radius), 8px);
-  background: color-mix(in srgb, var(--pc-surface-strong) 72%, transparent 28%);
-  touch-action: none;
-}
-
-.pc-relationship-graph marker path {
-  fill: color-mix(in srgb, #3d8bfd 78%, var(--pc-text) 22%);
-}
-
-.pc-relation-line line {
-  stroke: color-mix(in srgb, #3d8bfd 70%, var(--pc-text) 30%);
-  stroke-linecap: round;
-  stroke-width: 1.8;
-  marker-end: url(#pc-relationship-arrow);
-}
-
-.pc-relation-line text {
-  fill: var(--pc-text);
-  font-size: 11px;
-  font-weight: 700;
-  pointer-events: none;
-  text-anchor: middle;
-}
-
-.pc-relation-label-bg {
-  fill: color-mix(in srgb, var(--pc-surface-strong) 92%, white 8%);
-  opacity: 0.78;
-  pointer-events: none;
-  stroke: color-mix(in srgb, var(--pc-border) 70%, transparent 30%);
-  stroke-width: 1;
-}
-
-.pc-character-node {
-  cursor: grab;
-}
-
-.pc-character-node.dragging {
-  cursor: grabbing;
-}
-
-.pc-character-node circle {
-  fill: color-mix(in srgb, #34c759 16%, var(--pc-surface-strong) 84%);
-  stroke: color-mix(in srgb, #34c759 72%, var(--pc-border) 28%);
-  stroke-width: 2;
-}
-
-.pc-character-node text {
-  fill: var(--pc-text);
-  font-size: 12px;
-  font-weight: 700;
-  pointer-events: none;
-  text-anchor: middle;
-}
-
-.pc-relationship-generate-form {
-  display: grid;
-  gap: 12px;
-}
-
-.pc-raw-output .pc-area {
-  margin-top: 12px;
-}
-
-.pc-inline-form,
-.pc-profile-add-row,
-.pc-relation-form,
-.pc-list-filter,
-.pc-compact-list,
-.pc-preview-box,
-.pc-raw-output {
-  margin-top: 12px;
-}
-
-.pc-profile-add-row {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) 40px;
-  gap: 8px;
-  align-items: center;
-}
-
-.pc-character-editor-row {
-  display: grid;
-  gap: 8px;
-  padding: 10px;
-  border: 1px solid var(--pc-border);
-  border-radius: var(--pc-control-radius);
-  background: var(--pc-surface-strong);
-}
-
-.pc-profile-legacy-warning {
-  margin: 0;
-  color: var(--pc-danger);
-  font-size: 12px;
-  font-weight: 700;
-}
-
+.pc-relation-row,
 .pc-relation-form {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
-  align-items: center;
-  gap: 10px;
-}
-
-.pc-relation-form > input {
-  grid-column: 1 / 3;
-}
-
-.pc-list-filter {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
-  gap: 10px;
-  align-items: center;
-}
-
-.pc-compact-list {
   display: flex;
-  flex-direction: column;
+  align-items: center;
   gap: 8px;
 }
-
+.pc-inline-form .pc-field,
+.pc-compact-row .pc-field {
+  min-width: 0;
+  flex: 1;
+}
+.pc-relation-form,
 .pc-relation-row {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr) minmax(0, 1fr) auto;
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr) minmax(90px, 1fr) auto;
 }
-
-.pc-relation-word,
-.pc-detail-meta,
-.pc-preview-box p,
-.pc-status-card p {
-  color: var(--pc-muted);
-}
-
-.pc-relation-word {
-  white-space: nowrap;
-  font-weight: 700;
-}
-
-.pc-preview-box,
-.pc-status-card {
-  border: 1px solid var(--pc-border);
-  border-radius: min(var(--pc-card-radius), 8px);
-  background: var(--pc-surface-strong);
-  padding: 14px;
-}
-
-.pc-preview-box strong {
-  display: block;
-  margin-top: 10px;
-}
-
-.pc-preview-box strong:first-child {
-  margin-top: 0;
-}
-
-.pc-preview-box p {
-  margin: 7px 0 0;
-  white-space: pre-wrap;
-}
-
-.pc-status-card.warning {
-  border-color: color-mix(in srgb, #f5a623 42%, var(--pc-border) 58%);
-}
-
-.pc-detail-meta {
-  display: flex;
-  justify-content: space-between;
-  gap: 10px;
-  font-size: 12px;
-}
-
-.pc-relationship-actions {
-  margin-top: 16px;
-  justify-content: flex-end;
-}
-
-.pc-raw-area {
-  min-height: 180px;
-  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
-  font-size: 12px;
+@media (max-width: 390px) {
+  .pc-relation-form,
+  .pc-relation-row {
+    grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr) auto;
+  }
+  .pc-relation-form > .pc-field,
+  .pc-relation-row > .pc-field {
+    grid-column: 1 / 4;
+  }
 }
 </style>

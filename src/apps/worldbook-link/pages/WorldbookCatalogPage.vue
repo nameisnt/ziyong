@@ -126,14 +126,6 @@ defineEmits<{
   gap: 12px;
 }
 
-.pc-worldbook-refresh {
-  width: 32px;
-  min-width: 32px;
-  height: 32px;
-  min-height: 32px;
-  padding: 0;
-}
-
 .pc-worldbook-tabs {
   display: grid;
   grid-template-columns: repeat(5, minmax(0, 1fr));

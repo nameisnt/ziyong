@@ -14,10 +14,11 @@ test('recovery providers expose stable read-only items through the app registry'
   assert.match(registry, /unique\.set\(`\$\{item\.appId\}:\$\{item\.id\}`/u);
 });
 
-test('completed notifications without failed drafts can enter the shared clear operation', () => {
+test('all terminal notifications can enter the shared clear operation', () => {
   assert.match(tasks, /export function isClearableGenerationNotification/u);
-  assert.match(tasks, /task\.status === 'completed' && task\.draftCount === 0/u);
+  assert.match(tasks, /terminalStatuses\.has\(task\.status\)/u);
   assert.match(tasks, /function clearCompletedNotifications/u);
+  assert.doesNotMatch(tasks, /task\.draftCount === 0/u);
   assert.doesNotMatch(tasks, /config\.data\.resultState === 'saved'/u);
 });
 

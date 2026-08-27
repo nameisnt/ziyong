@@ -149,8 +149,8 @@ defineEmits<{ back: []; 'convert-to-theater': []; remove: []; save: [] }>();
   gap: 10px;
 }
 .pc-worldbook-entry-editor-actions {
-  margin-top: auto;
-  padding-top: 10px;
+  margin-top: 0;
+  padding-top: 4px;
 }
 .pc-soft-btn.danger {
   color: var(--pc-danger);

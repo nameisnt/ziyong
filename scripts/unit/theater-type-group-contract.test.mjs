@@ -38,14 +38,14 @@ test('prompt store exposes one domain-scoped batch group mutation without editin
   assert.match(storeSource, /moveTypePromptsToGroup,/u);
 });
 
-test('theater generation and prompt editor reuse one group field while existing types stay read-only', () => {
+test('theater generation and prompt editor reuse one editable group field', () => {
   assert.match(groupFieldSource, /SearchableCombobox/u);
   assert.match(groupFieldSource, /createTypePromptGroup\('theater'/u);
   assert.match(editorSource, /TheaterTypeGroupField/u);
   assert.match(theaterSource, /TheaterTypeGroupField/u);
   assert.match(theaterSource, /v-model="generationDraft\.typeGroupId"/u);
-  assert.match(theaterSource, /selectedGenerationTypeGroupName/u);
-  assert.match(theaterSource, /readonly/u);
+  assert.match(theaterSource, /v-else-if="selectedGenerationTypePrompt"/u);
+  assert.match(theaterSource, /generationTypePromptChanged/u);
 });
 
 test('prompt type organizer supports explicit multi-select and one batch move only', () => {

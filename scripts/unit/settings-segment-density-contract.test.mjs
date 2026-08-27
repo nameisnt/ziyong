@@ -22,8 +22,8 @@ test('settings categories use one compact selector while segmented controls keep
 
   const globalRules = rulesFor(globalSource, '.pc-phone-root .pc-segment-btn');
   assert.ok(
-    globalRules.some(rule => /min-height:\s*30px/.test(rule)),
-    'global segment height must remain 30px',
+    globalRules.some(rule => /min-height:\s*28px/.test(rule)),
+    'global segment height must remain 28px',
   );
   assert.ok(
     globalRules.some(rule => /font-size:\s*13px/.test(rule)),

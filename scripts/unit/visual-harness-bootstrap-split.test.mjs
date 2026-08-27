@@ -17,10 +17,7 @@ test('visual bootstrap is the single owner of global fixture installation', () =
   assert.ok(html.indexOf('visual-bootstrap.ts') < html.indexOf('visual-harness.ts'));
 
   assert.match(harness, /import \{ setupVisualGlobals \} from '@\/testing\/visual-bootstrap'/u);
-  assert.match(
-    harness,
-    /const \{ setReaderFixtureReasoning, setReaderFixtureSwipes \} = setupVisualGlobals\(\);/u,
-  );
+  assert.match(harness, /const \{ setReaderFixtureReasoning, setReaderFixtureSwipes \} = setupVisualGlobals\(\);/u);
   assert.doesNotMatch(harness, /function (?:getByPath|setByPath|setupVisualGlobals)/u);
   assert.doesNotMatch(harness, /Object\.assign\(globalThis/u);
 
@@ -33,8 +30,8 @@ test('visual bootstrap is the single owner of global fixture installation', () =
 });
 
 test('bootstrap extraction keeps the registered visual evidence cardinality', () => {
-  assert.equal(visualBaseline.scenarioCount, 314);
-  assert.equal(visualBaseline.runs.length, 942);
+  assert.equal(visualBaseline.scenarioCount, 315);
+  assert.equal(visualBaseline.runs.length, 945);
   assert.deepEqual(visualBaseline.sizes, ['350x700', '390x844', '430x900']);
   assert.equal(appearanceBaseline.evidence.length, 15);
 });

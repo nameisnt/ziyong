@@ -1,7 +1,7 @@
 {
   "version": 2,
   "defect": "D-VISUAL-001",
-  "generatedAt": "2026-08-26T10:11:29.506Z",
+  "generatedAt": "2026-08-27T04:23:16.047Z",
   "scenarios": [
     "home",
     "home-tasks-dark",
@@ -17,7 +17,7 @@
   "evidence": [
     {
       "appearance": {
-        "screenshotPerceptualHash": "F0830082ABABA223",
+        "screenshotPerceptualHash": "F083812B2B282835",
         "targets": [
           {
             "missing": false,
@@ -33,7 +33,7 @@
             "missing": false,
             "selector": ".pc-home-grid-wrap .pc-home-app-grid",
             "styles": {
-              "gridTemplateColumns": "75px 75px 75px 75px"
+              "gridTemplateColumns": "78.5px 78.5px 78.5px 78.5px"
             }
           }
         ]
@@ -43,7 +43,7 @@
     },
     {
       "appearance": {
-        "screenshotPerceptualHash": "0F7CCD7855D55CF0",
+        "screenshotPerceptualHash": "0CFCEDD4D4DC40B2",
         "targets": [
           {
             "missing": false,
@@ -70,7 +70,7 @@
     },
     {
       "appearance": {
-        "screenshotPerceptualHash": "5C71D02377792180",
+        "screenshotPerceptualHash": "7C71703375712120",
         "targets": [
           {
             "missing": false,
@@ -95,7 +95,7 @@
     },
     {
       "appearance": {
-        "screenshotPerceptualHash": "FC71D02377172110",
+        "screenshotPerceptualHash": "FC71703375772131",
         "targets": [
           {
             "missing": false,
@@ -120,7 +120,7 @@
     },
     {
       "appearance": {
-        "screenshotPerceptualHash": "1290840743012901",
+        "screenshotPerceptualHash": "12308E2343012901",
         "targets": [
           {
             "missing": false,
@@ -140,7 +140,7 @@
     },
     {
       "appearance": {
-        "screenshotPerceptualHash": "F08301ABABA303AA",
+        "screenshotPerceptualHash": "E1012BAB2A300194",
         "targets": [
           {
             "missing": false,
@@ -156,7 +156,7 @@
             "missing": false,
             "selector": ".pc-home-grid-wrap .pc-home-app-grid",
             "styles": {
-              "gridTemplateColumns": "85px 85px 85px 85px"
+              "gridTemplateColumns": "88.5px 88.5px 88.5px 88.5px"
             }
           }
         ]
@@ -166,7 +166,7 @@
     },
     {
       "appearance": {
-        "screenshotPerceptualHash": "1C785B5555D87055",
+        "screenshotPerceptualHash": "1CDBD5555800002B",
         "targets": [
           {
             "missing": false,
@@ -193,7 +193,7 @@
     },
     {
       "appearance": {
-        "screenshotPerceptualHash": "5433763331230000",
+        "screenshotPerceptualHash": "7C23F63370230000",
         "targets": [
           {
             "missing": false,
@@ -218,7 +218,7 @@
     },
     {
       "appearance": {
-        "screenshotPerceptualHash": "F033763307230000",
+        "screenshotPerceptualHash": "FC23F6332F230000",
         "targets": [
           {
             "missing": false,
@@ -243,7 +243,7 @@
     },
     {
       "appearance": {
-        "screenshotPerceptualHash": "10D81C4303210101",
+        "screenshotPerceptualHash": "33D8084103210101",
         "targets": [
           {
             "missing": false,
@@ -263,7 +263,7 @@
     },
     {
       "appearance": {
-        "screenshotPerceptualHash": "E08303ABAA2000AA",
+        "screenshotPerceptualHash": "E100342B28000015",
         "targets": [
           {
             "missing": false,
@@ -279,7 +279,7 @@
             "missing": false,
             "selector": ".pc-home-grid-wrap .pc-home-app-grid",
             "styles": {
-              "gridTemplateColumns": "95px 95px 95px 95px"
+              "gridTemplateColumns": "98.5px 98.5px 98.5px 98.5px"
             }
           }
         ]
@@ -289,7 +289,7 @@
     },
     {
       "appearance": {
-        "screenshotPerceptualHash": "1C78D3DCDCE0E055",
+        "screenshotPerceptualHash": "5CDACFD4D84100AB",
         "targets": [
           {
             "missing": false,
@@ -316,7 +316,7 @@
     },
     {
       "appearance": {
-        "screenshotPerceptualHash": "CC712FF171410000",
+        "screenshotPerceptualHash": "FCE16EF370010000",
         "targets": [
           {
             "missing": false,
@@ -341,7 +341,7 @@
     },
     {
       "appearance": {
-        "screenshotPerceptualHash": "E4712FF123410000",
+        "screenshotPerceptualHash": "FCE16EF323010000",
         "targets": [
           {
             "missing": false,
@@ -366,7 +366,7 @@
     },
     {
       "appearance": {
-        "screenshotPerceptualHash": "2190D10703000082",
+        "screenshotPerceptualHash": "3190510303000082",
         "targets": [
           {
             "missing": false,

@@ -1,5 +1,5 @@
 <template>
-  <article class="pc-detail-content pc-rendered-markdown pc-reader-content" :style="readerBackgroundStyle">
+  <article class="pc-detail-content pc-rendered-markdown pc-reader-content">
     <slot name="before-header"></slot>
     <header v-if="title || $slots.meta" class="pc-reader-document-head">
       <h1 v-if="title">{{ title }}</h1>
@@ -42,14 +42,6 @@ const displayContent = computed(() => {
 });
 
 const renderedContent = computed(() => renderMarkdown(displayContent.value));
-const readerBackgroundStyle = computed(() => {
-  const source = settings.value.reader.backgroundImage.trim();
-  const allowed = /^(?:https?:|data:image\/|blob:|\/)/i.test(source);
-  return {
-    backgroundColor: 'var(--pc-reader-background, transparent)',
-    backgroundImage: allowed ? `url(${JSON.stringify(source)})` : undefined,
-  };
-});
 </script>
 
 <style scoped>

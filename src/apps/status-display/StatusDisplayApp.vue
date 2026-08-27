@@ -1,6 +1,17 @@
 <template>
   <section class="pc-status-display-app">
-    <nav v-if="enabledSchemes.length > 1" class="pc-segment pc-status-tabs" aria-label="状态栏方案">
+    <nav
+      v-if="enabledSchemes.length > 1"
+      ref="statusTabsEl"
+      class="pc-segment pc-status-tabs"
+      aria-label="状态栏方案"
+      @click.capture="horizontalDrag.onClickCapture"
+      @pointercancel="horizontalDrag.onPointerCancel"
+      @pointerdown="horizontalDrag.onPointerDown"
+      @pointermove="horizontalDrag.onPointerMove"
+      @pointerup="horizontalDrag.onPointerUp"
+      @wheel="horizontalDrag.onWheel"
+    >
       <button
         v-for="scheme in enabledSchemes"
         :key="scheme.id"
@@ -43,6 +54,7 @@
 </template>
 
 <script setup lang="ts">
+import { useHorizontalDragScroll } from '@/composables/useHorizontalDragScroll';
 import { readMvuData, readMvuStatData } from '@/apps/mvu-modifier/api';
 import { useRegexDisplayStore } from '@/apps/regex-display/store';
 import EmptyState from '@/components/EmptyState.vue';
@@ -64,6 +76,8 @@ const route = computed(() => phone.currentRoute);
 const loading = ref(false);
 const renderedHtml = ref('');
 const errorMessage = ref('');
+const statusTabsEl = ref<HTMLElement | null>(null);
+const horizontalDrag = useHorizontalDragScroll(statusTabsEl);
 let refreshRevision = 0;
 let eventStops: Array<{ stop: () => void }> = [];
 

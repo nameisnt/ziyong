@@ -20,6 +20,7 @@ test('retired profile and reasoning components stay absent while their live repl
   assert.match(generationPreview, /from '@\/components\/ReasoningDisclosure\.vue'/u);
   assert.match(failedDraft, /from '@\/components\/ReasoningDisclosure\.vue'/u);
   assert.match(readerDetail, /from '@\/components\/ReasoningDisclosure\.vue'/u);
-  assert.match(relationship, /from '@\/components\/ExternalProfileReferencePicker\.vue'/u);
+  assert.match(relationship, /from '@\/apps\/relationship\/MermaidRelationshipGraph\.vue'/u);
+  assert.doesNotMatch(relationship, /ExternalProfileReferencePicker/u);
   assert.match(storyline, /from '@\/components\/ExternalProfileReferencePicker\.vue'/u);
 });

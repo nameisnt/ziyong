@@ -64,9 +64,11 @@
           />
           <span v-else class="pc-extension-check-spacer"></span>
           <span class="pc-list-row-copy pc-extension-copy">
-            <strong>{{ item.name }}</strong>
-            <small v-if="item.url">{{ item.url }}</small>
-            <small v-else>{{ item.error || '没有可导出的仓库地址' }}</small>
+            <button class="pc-extension-detail-trigger" type="button" @click="openDetail(item)">
+              <strong>{{ item.alias || item.name }}</strong>
+            </button>
+            <small v-if="item.description">{{ item.description }}</small>
+            <small v-else-if="item.error">{{ item.error }}</small>
           </span>
           <span class="pc-list-row-meta">{{ scopeLabel(item.scope) }}</span>
         </article>
@@ -74,6 +76,14 @@
       <EmptyState v-else :title="loading ? '正在读取扩展列表' : query.trim() ? '没有匹配的扩展' : '没有第三方扩展'" />
 
       <div class="pc-form-actions">
+        <button
+          class="pc-soft-btn"
+          type="button"
+          :disabled="!selectedInstalledKeys.length || updating"
+          @click="updateSelected"
+        >
+          <i class="fa-solid fa-rotate"></i><span>{{ updating ? '正在更新' : '更新所选' }}</span>
+        </button>
         <button class="pc-primary-btn" type="button" :disabled="!selectedInstalledKeys.length" @click="exportManifest">
           <i class="fa-solid fa-download"></i><span>导出所选</span>
         </button>
@@ -115,8 +125,8 @@
           />
           <span v-else class="pc-extension-check-spacer"></span>
           <span class="pc-list-row-copy pc-extension-copy">
-            <strong>{{ row.name }}</strong>
-            <small>{{ row.url || '清单中没有仓库地址' }}</small>
+            <strong>{{ row.alias || row.name }}</strong>
+            <small v-if="row.description">{{ row.description }}</small>
             <small v-if="row.branch">分支：{{ row.branch }}</small>
             <small v-if="row.message" :class="{ 'pc-extension-error': row.status === 'failed' }">{{
               row.message
@@ -136,9 +146,6 @@
       <EmptyState v-else-if="!importError" title="选择清单后在这里预览扩展" />
 
       <div v-if="importRows.length" class="pc-form-actions">
-        <button v-if="installedCount" class="pc-soft-btn" type="button" @click="reloadTavern">
-          <i class="fa-solid fa-rotate"></i><span>刷新酒馆</span>
-        </button>
         <button
           class="pc-primary-btn"
           type="button"
@@ -149,6 +156,29 @@
         </button>
       </div>
     </template>
+
+    <section v-if="detailDraft" class="pc-section-card pc-extension-detail">
+      <header class="pc-compact-toolbar">
+        <strong>扩展详情</strong>
+        <button class="pc-icon-btn" type="button" title="关闭" aria-label="关闭" @click="detailDraft = null">
+          <i class="fa-solid fa-xmark"></i>
+        </button>
+      </header>
+      <label class="pc-field-group"
+        ><span class="pc-field-label">名称</span><input class="pc-field" :value="detailDraft.name" readonly
+      /></label>
+      <label class="pc-field-group"
+        ><span class="pc-field-label">备注名</span><input v-model="detailDraft.alias" class="pc-field"
+      /></label>
+      <label class="pc-field-group"
+        ><span class="pc-field-label">安装网页</span><input v-model="detailDraft.url" class="pc-field"
+      /></label>
+      <label class="pc-field-group"
+        ><span class="pc-field-label">功能介绍</span
+        ><textarea v-model="detailDraft.description" class="pc-area compact"></textarea>
+      </label>
+      <div class="pc-form-actions"><button class="pc-primary-btn" type="button" @click="saveDetail">保存</button></div>
+    </section>
   </section>
 </template>
 
@@ -156,10 +186,14 @@
 import BulkSelectionCheckbox from '@/components/BulkSelectionCheckbox.vue';
 import EmptyState from '@/components/EmptyState.vue';
 import { usePhoneStore } from '@/store/phone';
+// eslint-disable-next-line import-x/no-nodejs-modules
+import { saveSettingsDebounced } from '@sillytavern/script';
+import { extension_settings } from '@sillytavern/scripts/extensions';
 import {
   ExtensionRequestError,
   installThirdPartyExtension,
   listInstalledThirdPartyExtensions,
+  updateThirdPartyExtension,
   type InstalledExtension,
 } from './api';
 import { parseExtensionManifest, type ExtensionManifestItem, type ExtensionScope } from './model';
@@ -183,10 +217,15 @@ const importFilename = ref('');
 const importError = ref('');
 const importRows = ref<ImportRow[]>([]);
 const installing = ref(false);
+const updating = ref(false);
+const detailDraft = ref<InstalledExtension | null>(null);
+const metadataField = 'sillytavern_phone_extension_metadata';
 
 const visibleInstalled = computed(() => {
   const keyword = query.value.trim().toLocaleLowerCase();
-  return installed.value.filter(item => !keyword || `${item.name}\n${item.url}`.toLocaleLowerCase().includes(keyword));
+  return installed.value.filter(
+    item => !keyword || `${item.alias}\n${item.name}\n${item.description}`.toLocaleLowerCase().includes(keyword),
+  );
 });
 const exportableInstalled = computed(() => visibleInstalled.value.filter(item => item.url));
 const allInstalledSelected = computed(
@@ -200,7 +239,13 @@ const allImportSelected = computed(
     Boolean(importRows.value.some(row => row.url)) &&
     importRows.value.filter(row => row.url).every(row => row.selected),
 );
-const installedCount = computed(() => importRows.value.filter(row => row.status === 'installed').length);
+
+function readMetadata() {
+  const value = _.get(extension_settings, metadataField, {});
+  return value && typeof value === 'object'
+    ? (value as Record<string, { alias?: string; description?: string; url?: string }>)
+    : {};
+}
 
 function scopeLabel(scope: ExtensionScope) {
   return scope === 'global' ? '全局' : '本地';
@@ -210,7 +255,13 @@ async function refreshInstalled() {
   loading.value = true;
   loadError.value = '';
   try {
-    installed.value = await listInstalledThirdPartyExtensions();
+    const metadata = readMetadata();
+    installed.value = (await listInstalledThirdPartyExtensions()).map(item => ({
+      ...item,
+      alias: metadata[item.key]?.alias?.trim() || '',
+      description: metadata[item.key]?.description?.trim() || '',
+      url: metadata[item.key]?.url?.trim() || item.url,
+    }));
     selectedInstalledKeys.value = installed.value.filter(item => item.url).map(item => item.key);
   } catch (error) {
     installed.value = [];
@@ -251,10 +302,48 @@ function exportManifest() {
   const selected = installed.value.filter(item => item.url && selectedInstalledKeys.value.includes(item.key));
   downloadJson('sillytavern-extensions-backup.json', {
     exportedAt: new Date().toISOString(),
-    extensions: selected.map(({ branch, name, scope, url }) => ({ branch, name, scope, url })),
+    extensions: selected.map(({ alias, branch, description, name, scope, url }) => ({
+      alias,
+      branch,
+      description,
+      name,
+      scope,
+      url,
+    })),
     schemaVersion: 1,
   });
   toastr.success(`已导出 ${selected.length} 个扩展`);
+}
+
+function openDetail(item: InstalledExtension) {
+  detailDraft.value = { ...item };
+}
+
+function saveDetail() {
+  const draft = detailDraft.value;
+  if (!draft) return;
+  const metadata = readMetadata();
+  metadata[draft.key] = { alias: draft.alias.trim(), description: draft.description.trim(), url: draft.url.trim() };
+  _.set(extension_settings, metadataField, metadata);
+  void saveSettingsDebounced();
+  const item = installed.value.find(candidate => candidate.key === draft.key);
+  if (item) Object.assign(item, draft);
+  detailDraft.value = null;
+}
+
+async function updateSelected() {
+  const rows = installed.value.filter(item => selectedInstalledKeys.value.includes(item.key));
+  if (!rows.length) return;
+  updating.value = true;
+  try {
+    for (const row of rows) await updateThirdPartyExtension(row);
+    await refreshInstalled();
+    toastr.success(`已更新 ${rows.length} 个扩展`);
+  } catch (error) {
+    toastr.error(error instanceof Error ? error.message : String(error));
+  } finally {
+    updating.value = false;
+  }
 }
 
 async function readImportFile(event: Event) {
@@ -334,13 +423,10 @@ async function installSelected() {
     const message = `安装结束：成功 ${rows.length - failed - skipped}，跳过 ${skipped}，失败 ${failed}`;
     if (failed) toastr.warning(message);
     else toastr.success(message);
+    await refreshInstalled();
   } finally {
     installing.value = false;
   }
-}
-
-function reloadTavern() {
-  location.reload();
 }
 
 onActivated(refreshInstalled);
@@ -400,7 +486,20 @@ onActivated(refreshInstalled);
 }
 
 .pc-extension-error {
-  color: var(--pc-danger) !important;
+  color: var(--pc-danger);
+}
+.pc-extension-detail {
+  display: grid;
+  gap: 8px;
+}
+.pc-extension-detail-trigger {
+  min-width: 0;
+  border: 0;
+  padding: 0;
+  background: none;
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
 }
 
 @media (max-width: 370px) {

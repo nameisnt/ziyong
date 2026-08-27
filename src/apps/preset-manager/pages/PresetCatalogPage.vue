@@ -14,8 +14,13 @@
         当前：{{ loadedPresetName || '未读取到预设' }}
       </span>
       <span v-else class="pc-directory-count">
-        {{ pluginPresets.length }} 个私有预设<template v-if="hiddenPluginPresetCount"> · {{ hiddenPluginPresetCount }} 隐藏</template>
+        {{ pluginPresets.length }} 个私有预设<template v-if="hiddenPluginPresetCount">
+          · {{ hiddenPluginPresetCount }} 隐藏</template
+        >
       </span>
+      <button class="pc-icon-btn" type="button" title="新建预设分组" aria-label="新建预设分组" @click="createGroup">
+        <i class="fa-solid fa-folder-plus"></i>
+      </button>
       <button
         v-if="source === 'tavern'"
         class="pc-icon-btn"
@@ -72,49 +77,76 @@
       v-if="source === 'tavern' && !errorMessage && visiblePresetNames.length"
       class="pc-directory-list pc-preset-list"
     >
-      <article
-        v-for="presetName in visiblePresetNames"
-        :key="presetName"
-        class="pc-list-row pc-preset-row"
-        :class="{ current: presetName === loadedPresetName }"
-      >
-        <button class="pc-preset-open" type="button" @click="$emit('open', presetName)">
+      <article v-if="visibleCurrentPreset" :key="visibleCurrentPreset" class="pc-list-row pc-preset-row current">
+        <button class="pc-preset-open" type="button" @click="$emit('open', visibleCurrentPreset)">
           <span class="pc-preset-copy">
-            <strong :title="presetName">{{ presetName }}</strong>
+            <strong :title="visibleCurrentPreset">{{ visibleCurrentPreset }}</strong>
+            <small>当前使用</small>
           </span>
         </button>
-        <button
-          class="pc-icon-btn pc-preset-use"
-          type="button"
-          :class="{ active: presetName === loadedPresetName }"
-          :disabled="switchingPreset === presetName || presetName === loadedPresetName"
-          :title="presetName === loadedPresetName ? '当前使用' : '使用这个预设'"
-          :aria-label="presetName === loadedPresetName ? '当前使用' : '使用这个预设'"
-          @click="$emit('switch-preset', presetName)"
-        >
-          <i :class="presetName === loadedPresetName ? 'fa-solid fa-check' : 'fa-solid fa-play'"></i>
-        </button>
+        <span class="pc-icon-btn pc-preset-use active" title="当前使用" aria-label="当前使用">
+          <i class="fa-solid fa-check"></i>
+        </span>
       </article>
+      <section v-for="group in groupedTavernPresets" :key="group.name" class="pc-preset-catalog-group">
+        <strong class="pc-preset-group-label">{{ group.name }}</strong>
+        <article v-for="presetName in group.items" :key="presetName" class="pc-list-row pc-preset-row">
+          <button class="pc-preset-open" type="button" @click="$emit('open', presetName)">
+            <span class="pc-preset-copy"
+              ><strong :title="presetName">{{ presetName }}</strong></span
+            >
+          </button>
+          <button
+            class="pc-icon-btn"
+            type="button"
+            title="设置分组"
+            aria-label="设置分组"
+            @click="assignPreset('tavern', presetName)"
+          >
+            <i class="fa-solid fa-folder"></i>
+          </button>
+          <button
+            class="pc-icon-btn pc-preset-use"
+            type="button"
+            :disabled="switchingPreset === presetName"
+            title="使用这个预设"
+            aria-label="使用这个预设"
+            @click="$emit('switch-preset', presetName)"
+          >
+            <i class="fa-solid fa-play"></i>
+          </button>
+        </article>
+      </section>
     </div>
     <div v-else-if="source === 'plugin' && visiblePluginPresets.length" class="pc-directory-list pc-preset-list">
-      <article
-        v-for="preset in visiblePluginPresets"
-        :key="preset.id"
-        class="pc-list-row pc-preset-row"
-        :class="{ disabled: preset.hidden }"
-      >
-        <button class="pc-preset-open" type="button" @click="$emit('open-plugin', preset.id)">
-          <span class="pc-preset-copy">
-            <strong :title="preset.name">{{ preset.name }}</strong>
-            <small>
-              <template v-if="preset.builtIn">内置 · </template>
-              <template v-if="preset.hidden">已隐藏 · </template>
-              {{ preset.sourceFormat === 'legacy' ? '兼容格式' : '现代格式' }}
-            </small>
-          </span>
-          <i class="fa-solid fa-chevron-right"></i>
-        </button>
-      </article>
+      <section v-for="group in groupedPluginPresets" :key="group.name" class="pc-preset-catalog-group">
+        <strong class="pc-preset-group-label">{{ group.name }}</strong>
+        <article
+          v-for="preset in group.items"
+          :key="preset.id"
+          class="pc-list-row pc-preset-row"
+          :class="{ disabled: preset.hidden }"
+        >
+          <button class="pc-preset-open" type="button" @click="$emit('open-plugin', preset.id)">
+            <span class="pc-preset-copy"
+              ><strong :title="preset.name">{{ preset.name }}</strong
+              ><small
+                ><template v-if="preset.builtIn">内置 · </template><template v-if="preset.hidden">已隐藏 · </template
+                >{{ preset.sourceFormat === 'legacy' ? '兼容格式' : '现代格式' }}</small
+              ></span
+            ><i class="fa-solid fa-chevron-right"></i>
+          </button>
+          <button
+            class="pc-icon-btn"
+            type="button"
+            title="设置分组"
+            aria-label="设置分组"
+            @click="assignPreset('plugin', preset.id)"
+          >
+            <i class="fa-solid fa-folder"></i>
+          </button>
+        </article>
+      </section>
     </div>
     <EmptyState
       v-else-if="!loading && (source === 'plugin' ? !pluginErrorMessage : !errorMessage)"
@@ -125,6 +157,8 @@
 
 <script setup lang="ts">
 import EmptyState from '@/components/EmptyState.vue';
+import { usePhoneStore } from '@/store/phone';
+import { usePresetCatalogGroupStore, type PresetCatalogSource } from '@/store/presetCatalogGroups';
 import type { PluginPresetRecord } from '../pluginPreset';
 
 const props = defineProps<{
@@ -142,6 +176,8 @@ const query = defineModel<string>('query', { required: true });
 const showHidden = defineModel<boolean>('showHidden', { required: true });
 const source = defineModel<'plugin' | 'tavern'>('source', { required: true });
 const fileInput = ref<HTMLInputElement | null>(null);
+const phone = usePhoneStore();
+const presetGroups = usePresetCatalogGroupStore();
 const hiddenPluginPresetCount = computed(() => props.pluginPresets.filter(item => item.hidden).length);
 const catalogPluginPresets = computed(() =>
   showHidden.value ? props.pluginPresets : props.pluginPresets.filter(item => !item.hidden),
@@ -152,14 +188,35 @@ const visiblePluginPresets = computed(() => {
     ? catalogPluginPresets.value.filter(item => item.name.toLocaleLowerCase().includes(keyword))
     : catalogPluginPresets.value;
 });
+const visibleCurrentPreset = computed(() =>
+  source.value === 'tavern' && props.visiblePresetNames.includes(props.loadedPresetName) ? props.loadedPresetName : '',
+);
+function grouped<T>(items: T[], sourceId: PresetCatalogSource, idOf: (item: T) => string) {
+  const groups = new Map<string, T[]>();
+  items.forEach(item => {
+    const name = presetGroups.groupOf(sourceId, idOf(item)) || '未分组';
+    groups.set(name, [...(groups.get(name) || []), item]);
+  });
+  return [...groups].map(([name, groupedItems]) => ({ items: groupedItems, name }));
+}
+const groupedTavernPresets = computed(() =>
+  grouped(
+    props.visiblePresetNames.filter(name => name !== props.loadedPresetName),
+    'tavern',
+    name => name,
+  ),
+);
+const groupedPluginPresets = computed(() => grouped(visiblePluginPresets.value, 'plugin', item => item.id));
 const emptyTitle = computed(() => {
   if (source.value === 'plugin') {
-    if (!showHidden.value && hiddenPluginPresetCount.value === props.pluginPresets.length && props.pluginPresets.length) {
+    if (
+      !showHidden.value &&
+      hiddenPluginPresetCount.value === props.pluginPresets.length &&
+      props.pluginPresets.length
+    ) {
       return '插件预设均已隐藏，可点击眼睛查看';
     }
-    return catalogPluginPresets.value.length && query.value.trim()
-      ? '没有找到匹配的插件预设'
-      : '还没有导入插件预设';
+    return catalogPluginPresets.value.length && query.value.trim() ? '没有找到匹配的插件预设' : '还没有导入插件预设';
   }
   return props.presetNames.length && query.value.trim() ? '没有找到匹配的预设' : '没有可用的酒馆预设';
 });
@@ -177,6 +234,21 @@ function importFile(event: Event) {
   const file = input.files?.[0];
   input.value = '';
   if (file) emit('import', file);
+}
+
+async function createGroup() {
+  const name = await phone.promptNotice('输入新的预设分组名称。', { confirmLabel: '创建', title: '新建预设分组' });
+  if (name?.trim()) presetGroups.createGroup(name);
+}
+
+async function assignPreset(sourceId: PresetCatalogSource, id: string) {
+  const current = presetGroups.groupOf(sourceId, id);
+  const name = await phone.promptNotice('输入分组名称；输入 - 移到未分组。', {
+    confirmLabel: '保存',
+    initialValue: current,
+    title: '设置预设分组',
+  });
+  if (name !== null) presetGroups.assign(sourceId, id, name);
 }
 </script>
 
@@ -199,7 +271,16 @@ function importFile(event: Event) {
   grid-template-columns: repeat(2, minmax(0, 1fr));
 }
 .pc-preset-row {
-  grid-template-columns: minmax(0, 1fr) auto;
+  grid-template-columns: minmax(0, 1fr) auto auto;
+}
+.pc-preset-catalog-group {
+  display: grid;
+  gap: 4px;
+}
+.pc-preset-group-label {
+  padding: 4px 2px;
+  color: var(--pc-muted);
+  font-size: 12px;
 }
 .pc-preset-row.current {
   color: var(--pc-theme-accent);

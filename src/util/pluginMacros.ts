@@ -63,11 +63,12 @@ function resolveAssign(params: URLSearchParams) {
   const items = readList(params, 'items');
   if (!roles.length || !items.length) return '';
   const repeat = params.get('repeat') === '1';
+  const placement = params.get('placement') === 'before' ? 'before' : 'after';
   const available = shuffled(items);
   return roles
     .flatMap((role, index) => {
       const item = repeat ? items[randomInteger(0, items.length - 1)] : available[index];
-      return item ? [`${role}：${item}`] : [];
+      return item ? [placement === 'before' ? `${item} ${role}` : `${role} ${item}`] : [];
     })
     .join(params.get('separator') || '；');
 }

@@ -17,7 +17,16 @@
       </button>
     </header>
 
-    <div class="pc-task-list">
+    <div
+      ref="taskListEl"
+      class="pc-task-list"
+      @click.capture="horizontalDrag.onClickCapture"
+      @pointercancel="horizontalDrag.onPointerCancel"
+      @pointerdown="horizontalDrag.onPointerDown"
+      @pointermove="horizontalDrag.onPointerMove"
+      @pointerup="horizontalDrag.onPointerUp"
+      @wheel="horizontalDrag.onWheel"
+    >
       <article v-for="task in visibleTasks" :key="task.id" class="pc-task-row">
         <div class="pc-task-copy">
           <div class="pc-task-line">
@@ -122,10 +131,13 @@ import { discardGenerationTask, resumeGenerationTask } from '@/core/manualBatchR
 import { useGenerationTaskStore } from '@/store/generationTasks';
 import { usePhoneStore } from '@/store/phone';
 import type { GenerationTask, GenerationTaskStatus } from '@/type/generationTask';
+import { useHorizontalDragScroll } from '@/composables/useHorizontalDragScroll';
 
 const generationTasks = useGenerationTaskStore();
 const phone = usePhoneStore();
 const expandedRawTaskId = ref('');
+const taskListEl = ref<HTMLElement | null>(null);
+const horizontalDrag = useHorizontalDragScroll(taskListEl);
 
 const visibleTasks = computed(() => generationTasks.currentScopeTasks);
 const clearableTaskCount = computed(() => generationTasks.getClearableTasks().length);
@@ -227,7 +239,7 @@ function clearSavedTasks() {
   display: flex;
   align-items: center;
   gap: 8px;
-  padding: 5px 8px;
+  padding: 4px 8px;
 }
 
 .pc-task-center-title {
@@ -276,11 +288,18 @@ function clearSavedTasks() {
   display: flex;
   gap: 8px;
   min-height: 66px;
-  padding: 6px;
+  padding: 4px 6px;
   overflow-x: auto;
   overflow-y: hidden;
   border-top: 1px solid var(--pc-border);
   scroll-snap-type: x proximity;
+  cursor: grab;
+  touch-action: pan-y;
+  user-select: none;
+}
+
+.pc-task-list:active {
+  cursor: grabbing;
 }
 
 .pc-task-row {
@@ -288,7 +307,7 @@ function clearSavedTasks() {
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto;
   gap: 8px;
-  padding: 8px;
+  padding: 6px 8px;
   border: 1px solid var(--pc-border);
   border-radius: 6px;
   background: var(--pc-surface);
@@ -355,8 +374,8 @@ function clearSavedTasks() {
 }
 
 .pc-task-actions .pc-icon-btn {
-  width: 34px;
-  height: 34px;
+  width: 28px;
+  height: 28px;
 }
 
 @media (max-width: 420px) {

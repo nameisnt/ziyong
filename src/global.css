@@ -75,6 +75,53 @@
   opacity: 0.24;
 }
 
+.pc-phone-root[data-paper='a4'] .pc-app-icon-material {
+  border-color: color-mix(in srgb, var(--pc-icon-material-accent) 38%, var(--pc-border) 62%);
+  background: color-mix(in srgb, white 88%, var(--pc-icon-material-accent) 12%);
+  box-shadow: 0 2px 5px color-mix(in srgb, var(--pc-text) 12%, transparent 88%);
+  color: color-mix(in srgb, var(--pc-icon-material-accent) 78%, #111111 22%);
+}
+
+.pc-phone-root[data-paper='xuan'] .pc-app-icon-material {
+  border-color: color-mix(in srgb, var(--pc-text) 28%, transparent 72%);
+  border-radius: 6px;
+  background-color: color-mix(in srgb, var(--pc-surface) 64%, transparent 36%);
+  background-image: var(--pc-paper-texture);
+  background-size: 160px 160px;
+  box-shadow: 1px 2px 3px color-mix(in srgb, var(--pc-text) 14%, transparent 86%);
+  color: color-mix(in srgb, var(--pc-text) 82%, var(--pc-icon-material-accent) 18%);
+}
+
+.pc-phone-root[data-paper='parchment'] .pc-app-icon-material {
+  border-color: color-mix(in srgb, #5b381f 54%, var(--pc-border) 46%);
+  border-radius: 8px;
+  background-color: #d6ae72;
+  background-image: var(--pc-paper-texture);
+  background-size: 150px 150px;
+  box-shadow:
+    inset 0 0 0 1px color-mix(in srgb, #fff4d0 42%, transparent 58%),
+    0 3px 5px color-mix(in srgb, #3c2619 24%, transparent 76%);
+  color: #4a2d1a;
+}
+
+.pc-phone-root[data-paper='cardstock'] .pc-app-icon-material {
+  border: 2px solid color-mix(in srgb, var(--pc-icon-material-accent) 76%, white 24%);
+  border-radius: 5px;
+  background-color: #1c1b1f;
+  background-image: var(--pc-paper-texture);
+  background-size: 180px 180px;
+  box-shadow: 2px 2px 0 color-mix(in srgb, var(--pc-icon-material-accent) 48%, transparent 52%);
+  color: color-mix(in srgb, var(--pc-icon-material-accent) 62%, white 38%);
+}
+
+.pc-phone-root[data-paper] .pc-app-icon-material::before {
+  display: none;
+}
+
+.pc-phone-root[data-paper] .pc-app-icon-material > i {
+  text-shadow: none;
+}
+
 .pc-phone-root .pc-soft-btn,
 .pc-phone-root .pc-primary-btn,
 .pc-phone-root .pc-segment-btn,
@@ -90,12 +137,12 @@
 
 .pc-phone-root .pc-soft-btn,
 .pc-phone-root .pc-primary-btn {
-  min-height: 34px;
+  min-height: 28px;
   font-size: 13px;
 }
 
 .pc-phone-root .pc-segment-btn {
-  min-height: 30px;
+  min-height: 28px;
   font-size: 13px;
 }
 
@@ -160,9 +207,9 @@
 }
 
 .pc-phone-root .pc-icon-btn {
-  width: 34px;
-  height: 34px;
-  font-size: 13px;
+  width: 28px;
+  height: 28px;
+  font-size: 12px;
 }
 
 .pc-phone-root .pc-primary-btn {
@@ -503,10 +550,17 @@
 .pc-phone-root .pc-section-card {
   display: grid;
   gap: 12px;
-  padding: 14px;
   border: 1px solid var(--pc-border);
   border-radius: var(--pc-card-radius);
   background: color-mix(in srgb, var(--pc-surface) 72%, transparent 28%);
+}
+
+.pc-phone-root .pc-section-card {
+  padding: 8px 10px;
+}
+
+.pc-phone-root .pc-editor-card {
+  padding: 10px 12px;
 }
 
 .pc-phone-root .pc-modal-backdrop {
@@ -529,7 +583,7 @@
 .pc-phone-root .pc-page-section {
   display: grid;
   gap: 12px;
-  padding: 16px 0;
+  padding: 8px 0;
   border-bottom: 1px solid var(--pc-border);
 }
 
@@ -805,9 +859,9 @@
 }
 
 .pc-phone-root.pc-phone-root .pc-toggle {
-  --pc-toggle-width: 52px;
-  --pc-toggle-height: 30px;
-  --pc-toggle-thumb-size: 24px;
+  --pc-toggle-width: 42px;
+  --pc-toggle-height: 24px;
+  --pc-toggle-thumb-size: 18px;
   --pc-toggle-gap: 3px;
 
   position: relative;

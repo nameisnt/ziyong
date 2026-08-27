@@ -7,13 +7,7 @@ export function createVisualScenarioGroups(rootAppScenarios: string[]): VisualSc
   return [
     {
       id: 'shell',
-      scenarios: [
-        'home',
-        'home-five-columns',
-        'home-tasks',
-        'home-tasks-dark',
-        ...rootAppScenarios,
-      ],
+      scenarios: ['home', 'home-five-columns', 'home-tasks', 'home-tasks-dark', ...rootAppScenarios],
     },
     {
       id: 'generation',
@@ -254,12 +248,7 @@ export function createVisualScenarioGroups(rootAppScenarios: string[]): VisualSc
     },
     {
       id: 'relationship',
-      scenarios: [
-        'relationship-generation-background',
-        'relationship-crud',
-        'relationship-profile-reference',
-        'relationship-profile-reference-dark',
-      ],
+      scenarios: ['relationship-generation-background', 'relationship-crud'],
     },
     { id: 'file-repository', scenarios: ['file-repository-operations'] },
     {

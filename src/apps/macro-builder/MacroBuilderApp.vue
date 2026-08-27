@@ -91,6 +91,22 @@
             <span aria-hidden="true"></span>
           </label>
         </div>
+        <div class="pc-segment" aria-label="身份候选位置">
+          <button
+            :class="['pc-segment-btn', { active: assign.placement === 'before' }]"
+            type="button"
+            @click="assign.placement = 'before'"
+          >
+            候选在前
+          </button>
+          <button
+            :class="['pc-segment-btn', { active: assign.placement === 'after' }]"
+            type="button"
+            @click="assign.placement = 'after'"
+          >
+            候选在后
+          </button>
+        </div>
       </template>
     </section>
 
@@ -131,7 +147,12 @@ const mode = ref<PluginMacroKind>('dice');
 const previewRevision = ref(0);
 const dice = reactive({ failure: '失败', maximum: 100, minimum: 0, operation: 'gte', success: '成功', target: 60 });
 const pick = reactive({ items: '角色甲\n角色乙\n角色丙', maximum: 3, minimum: 1, repeat: false });
-const assign = reactive({ items: '身份 1\n身份 2\n身份 3\n身份 4', repeat: false, roles: 'A 身份\nB 身份' });
+const assign = reactive({
+  items: '身份 1\n身份 2\n身份 3\n身份 4',
+  placement: 'after' as 'after' | 'before',
+  repeat: false,
+  roles: '{{char}}\n{{user}}',
+});
 
 const generatedMacro = computed(() => {
   if (mode.value === 'dice') {
@@ -152,7 +173,12 @@ const generatedMacro = computed(() => {
       items: pick.items,
     });
   }
-  return buildPluginMacro('assign', { roles: assign.roles, items: assign.items, repeat: assign.repeat });
+  return buildPluginMacro('assign', {
+    roles: assign.roles,
+    items: assign.items,
+    placement: assign.placement,
+    repeat: assign.repeat,
+  });
 });
 const previewResult = computed(() => {
   void previewRevision.value;
@@ -180,10 +206,6 @@ async function copyMacro() {
 .pc-macro-builder-tabs > button {
   min-width: 0;
   flex: 1;
-}
-.pc-macro-builder-form,
-.pc-macro-builder-result {
-  padding: 14px;
 }
 .pc-macro-builder-grid {
   display: grid;

@@ -905,7 +905,16 @@ async function applyScenario(name: VisualScenarioName, options: { height?: numbe
       }
     }
     await new Promise(resolve => window.setTimeout(resolve, 260));
-    document.querySelector<HTMLButtonElement>('.pc-home-group-bar > .pc-icon-btn')?.click();
+    const currentActionMenu = document.querySelector<HTMLDetailsElement>('.pc-home-context-actions .pc-action-menu');
+    const currentActionTrigger = currentActionMenu?.querySelector<HTMLElement>('summary');
+    if (!currentActionMenu || !currentActionTrigger) throw new Error('Home action menu disappeared after navigation');
+    currentActionTrigger.click();
+    await waitForPaint();
+    const manageGroupAction = [
+      ...currentActionMenu.querySelectorAll<HTMLButtonElement>('.pc-action-menu-panel button'),
+    ].find(button => button.textContent?.includes('管理当前分组'));
+    if (!manageGroupAction) throw new Error('Home action menu omitted group management');
+    manageGroupAction.click();
     await waitForPaint();
     const groupManager = document.querySelector<HTMLElement>('.pc-home-group-manager-dialog');
     const groupManagerRows = groupManager?.querySelectorAll('.pc-home-group-manager-row') ?? [];
@@ -1596,11 +1605,10 @@ async function applyScenario(name: VisualScenarioName, options: { height?: numbe
     useSettingsStore().setTheme('dark');
     resetPhoneToRoute('settings', 'root', '设置');
     await waitForPaint();
-    const dataEntry = [...document.querySelectorAll<HTMLButtonElement>('.pc-settings-entry')].find(button =>
-      button.textContent?.includes('数据管理'),
-    );
-    if (!dataEntry) throw new Error('Settings data-management entry is missing');
-    dataEntry.click();
+    const category = document.querySelector<HTMLSelectElement>('.pc-settings-category select');
+    if (!category) throw new Error('Settings category selector is missing');
+    category.value = 'data';
+    category.dispatchEvent(new Event('change', { bubbles: true }));
     await waitForPaint();
     const appInput = document.querySelector<HTMLInputElement>('.pc-transfer-app-field .pc-combobox-input');
     if (!appInput) throw new Error('App content transfer selector is missing');

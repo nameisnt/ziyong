@@ -25,7 +25,7 @@ const RAW_OUTPUT_PERSIST_INTERVAL_MS = 500;
 const MAX_TERMINAL_TASKS = 40;
 
 export function isClearableGenerationNotification(task: GenerationTask) {
-  return task.status === 'completed' && task.draftCount === 0;
+  return terminalStatuses.has(task.status);
 }
 
 function nowIso() {

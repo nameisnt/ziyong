@@ -23,7 +23,13 @@ for (const item of cases) item.source = await readFile(new URL(item.file, import
 
 function rulesFor(source, selector) {
   return [...source.matchAll(/([^{}]+)\{([^{}]*)\}/g)]
-    .filter(match => match[1].replaceAll(/\/\*[\s\S]*?\*\//g, '').trim().split(',').some(item => item.trim() === selector))
+    .filter(match =>
+      match[1]
+        .replaceAll(/\/\*[\s\S]*?\*\//g, '')
+        .trim()
+        .split(',')
+        .some(item => item.trim() === selector),
+    )
     .map(match => ({ body: match[2], prelude: match[1] }));
 }
 
@@ -40,12 +46,22 @@ test('special segment layouts have numbered reasons without overriding global de
     const rules = rulesFor(item.source, item.selector);
     assert.equal(rules.length, 1, `${item.label} must have exactly one scoped rule`);
     if (!/ui-reuse-allow:\s*D-UI-TABS-008\b/.test(rules[0].prelude)) missingAllowances.push(item.label);
-    assert.deepEqual(declarationsFor(rules[0].body), item.declarations, `${item.label} declarations must stay layout-only`);
+    assert.deepEqual(
+      declarationsFor(rules[0].body),
+      item.declarations,
+      `${item.label} declarations must stay layout-only`,
+    );
   }
 
   assert.deepEqual(missingAllowances, [], 'each special layout must document its D-UI-TABS-008 business reason');
 
   const globalRules = rulesFor(globalSource, '.pc-phone-root .pc-segment-btn');
-  assert.ok(globalRules.some(rule => /min-height:\s*30px/.test(rule.body)), 'global segment height must remain 30px');
-  assert.ok(globalRules.some(rule => /font-size:\s*13px/.test(rule.body)), 'global segment text must remain 13px');
+  assert.ok(
+    globalRules.some(rule => /min-height:\s*28px/.test(rule.body)),
+    'global segment height must remain 28px',
+  );
+  assert.ok(
+    globalRules.some(rule => /font-size:\s*13px/.test(rule.body)),
+    'global segment text must remain 13px',
+  );
 });

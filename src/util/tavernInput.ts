@@ -48,6 +48,28 @@ export function findTavernInputElement(): TavernInputElement | null {
   return null;
 }
 
+export function getTavernInputValue() {
+  return findTavernInputElement()?.value ?? '';
+}
+
+export function sendTavernInput(text: string) {
+  const input = findTavernInputElement();
+  const value = text.trim();
+  if (!input || !value) return false;
+
+  input.value = value;
+  input.dispatchEvent(new Event('input', { bubbles: true }));
+  input.dispatchEvent(new Event('change', { bubbles: true }));
+
+  for (const nextDocument of getReachableDocuments()) {
+    const sendButton = nextDocument.querySelector<HTMLElement>('#send_but');
+    if (!sendButton) continue;
+    sendButton.click();
+    return true;
+  }
+  return false;
+}
+
 function resolveSeparator(currentValue: string, nextText: string, separator: AppendToTavernInputOptions['separator']) {
   if (!currentValue || currentValue.endsWith(' ') || currentValue.endsWith('\n') || !nextText) return '';
   if (separator === 'newline') return '\n';

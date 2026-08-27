@@ -21,7 +21,10 @@ test('regex wizard purpose uses the global segment density while keeping its thr
   const localRules = rulesFor(componentSource, '.pc-regex-wizard-purpose .pc-segment-btn');
   const globalRules = rulesFor(globalSource, '.pc-phone-root .pc-segment-btn');
 
-  assert.ok(localRules.some(rule => /min-width:\s*0/.test(rule)), 'the three-column buttons must remain shrinkable');
+  assert.ok(
+    localRules.some(rule => /min-width:\s*0/.test(rule)),
+    'the three-column buttons must remain shrinkable',
+  );
   assert.ok(
     localRules.every(rule => !/font-size\s*:/.test(rule)),
     'standard segment text must inherit the global font size',
@@ -34,6 +37,12 @@ test('regex wizard purpose uses the global segment density while keeping its thr
     localRules.every(rule => !/padding(?:-[a-z]+)*\s*:/.test(rule)),
     'standard segment padding must inherit the global spacing',
   );
-  assert.ok(globalRules.some(rule => /min-height:\s*30px/.test(rule)), 'global segment height must remain 30px');
-  assert.ok(globalRules.some(rule => /font-size:\s*13px/.test(rule)), 'global segment text must remain 13px');
+  assert.ok(
+    globalRules.some(rule => /min-height:\s*28px/.test(rule)),
+    'global segment height must remain 28px',
+  );
+  assert.ok(
+    globalRules.some(rule => /font-size:\s*13px/.test(rule)),
+    'global segment text must remain 13px',
+  );
 });

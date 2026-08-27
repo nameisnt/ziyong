@@ -127,16 +127,11 @@
           v-model="generationDraft.typeGroupId"
           :disabled="generationRunning"
         />
-        <div v-else-if="selectedGenerationTypePrompt" class="pc-field-group">
-          <span class="pc-field-label">所属分组</span>
-          <input
-            class="pc-field"
-            type="text"
-            :value="selectedGenerationTypeGroupName"
-            aria-label="当前小剧场类型所属分组"
-            readonly
-          />
-        </div>
+        <TheaterTypeGroupField
+          v-else-if="selectedGenerationTypePrompt"
+          v-model="generationDraft.typeGroupId"
+          :disabled="generationRunning"
+        />
         <div class="pc-field-group pc-theater-type-prompt-field">
           <div class="pc-field-head">
             <span class="pc-field-label">{{ showGenerationCustomTypeField ? t`类型提示词` : t`本次类型提示词` }}</span>
@@ -164,6 +159,10 @@
             <span></span>
           </label>
         </div>
+        <button class="pc-soft-btn" type="button" :disabled="generationRunning" @click="openMacroBuilder">
+          <i class="fa-solid fa-wand-magic-sparkles"></i>
+          <span>{{ t`宏生成器` }}</span>
+        </button>
         <p v-if="legacyTypePromptNotice" class="pc-theater-type-notice">
           <i class="fa-solid fa-circle-info"></i>
           <span>{{ legacyTypePromptNotice }}</span>
@@ -459,10 +458,6 @@ const selectedEditorTypePrompt = computed(() => (draft.typeId ? prompts.getTypeP
 const selectedGenerationTypePrompt = computed(() =>
   generationDraft.typeId ? prompts.getTypePrompt(generationDraft.typeId) : null,
 );
-const selectedGenerationTypeGroupName = computed(() => {
-  const groupId = selectedGenerationTypePrompt.value?.groupId || '';
-  return theaterTypePromptGroups.value.find(group => group.id === groupId)?.name || '未分组';
-});
 const theaterTypeComboboxOptions = computed(() => [
   { label: '+ 自定义', value: CUSTOM_THEATER_TYPE_VALUE },
   ...theaterTypePrompts.value.map(typePrompt => ({
@@ -536,7 +531,11 @@ const generationTypeChoice = computed({
 const showGenerationCustomTypeField = computed(() => generationCustomTypeSelected.value);
 const generationTypePromptChanged = computed(() => {
   const selected = selectedGenerationTypePrompt.value;
-  return Boolean(selected && generationDraft.typePrompt.trim() !== selected.prompt.trim());
+  return Boolean(
+    selected &&
+    (generationDraft.typePrompt.trim() !== selected.prompt.trim() ||
+      generationDraft.typeGroupId !== (selected.groupId || '')),
+  );
 });
 const customTypeNameConflict = computed(() => {
   if (!generationCustomTypeSelected.value) return null;
@@ -1060,7 +1059,7 @@ function saveExistingGenerationTypePrompt() {
   if (!selected || !generationTypePromptChanged.value) return;
   const updated = prompts.updateTypePrompt(selected.id, {
     domain: 'theater',
-    groupId: selected.groupId || '',
+    groupId: generationDraft.typeGroupId,
     name: selected.name,
     prompt: generationDraft.typePrompt,
   });
@@ -1070,6 +1069,10 @@ function saveExistingGenerationTypePrompt() {
   }
   generationDraft.typePrompt = updated.prompt;
   toastr.success(`已更新类型库中的“${updated.name}”`);
+}
+
+function openMacroBuilder() {
+  phone.pushRoute('macro-builder', 'root', '宏生成器');
 }
 
 function saveCustomGenerationTypePrompt() {

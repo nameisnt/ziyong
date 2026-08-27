@@ -11,7 +11,8 @@
 - `src/App.vue`：把设置面板 Teleport 到 `#extensions_settings2`，把菜单入口 Teleport 到 `#extensionsMenu` 下的
   `#pc_reader_wand_container`，把 `PhoneOverlay` 和 `FloatingBall`
   Teleport 到 body；监听聊天切换、聊天改名、楼层备份和生成可见性恢复。
-- `src/components/PhoneOverlay.vue`：手机壳、顶栏、通知、路由组件渲染、主题变量、字体、纸张纹理、窗口位置和 App KeepAlive。
+- `src/components/PhoneOverlay.vue`：手机壳、顶栏、通知、路由组件渲染、主题变量、字体、纸张纹理、窗口位置和 App
+  KeepAlive。
 - `src/store/phone.ts`：手机打开/关闭、路由栈、返回保护、预览离开确认、通知、当前酒馆 scope、查看 scope 与 scope
   switch。
 
@@ -24,7 +25,8 @@
 - `src/apps/*/index.ts`：独立 App 注册入口，例如
   `app-builder`、`card-writer`、`entry-library`、`macro-builder`、`preset-link`、`preset-manager`、`profiles`、`recovery`、`world-slots`、`worldbook-link`
   等。
-- `src/core/appLayout.ts`：默认首页分组、固定五项 Dock、组内排序、批量换组、新建分组、内部 folder token、layout v4 一次迁移和 normalization；未归类 App 自动进入插件工具，持久化字段仍名为 `folders`，界面统一称“分组”。
+- `src/core/appLayout.ts`：默认首页分组、固定五项 Dock、组内排序、批量换组、新建分组、内部 folder token、layout
+  v4 一次迁移和 normalization；未归类 App 自动进入插件工具，持久化字段仍名为 `folders`，界面统一称“分组”。
 
 ## 目录结构
 
@@ -70,7 +72,9 @@
 13. resultMode 为 `save` 时调用 `adapter.save()`；保存失败且 adapter 要求保留时也进入 failed draft。
 14. 成功结果保存 hidden generation record、replay snapshot、source selection、raw output semantics。
 
-`src/store/generationTasks.ts` 持久化任务运行记录；`GenerationTaskCenter.vue` 固定显示当前聊天任务并横向滚动。批量清理只删除已完成且没有失败草稿的通知记录，业务保存内容和 `src/store/previewDrafts.ts` 中的预览不受影响。
+`src/store/generationTasks.ts` 持久化任务运行记录；`GenerationTaskCenter.vue`
+固定显示当前聊天任务并支持触摸、滚轮和鼠标拖动横向浏览。批量清理删除当前聊天的全部终态通知记录，业务保存内容、`src/store/previewDrafts.ts`
+中的预览和各 App 失败草稿不受影响。
 
 ## 备份、恢复与迁移
 
@@ -100,7 +104,8 @@
 ## 当前专项流程
 
 - 预设：`src/apps/preset-manager/`
-  管理酒馆/插件预设及预设共享阅读规则，目录将当前酒馆预设置顶，并在 App 会话内按预设保留详情分组状态；`src/apps/preset-link/`
+  管理酒馆/插件预设及预设共享阅读规则，目录将当前酒馆预设置顶；`src/store/presetCatalogGroups.ts`
+  单独保存目录分组与预设分配，并在 App 会话内按预设保留详情展开和滚动状态；`src/apps/preset-link/`
   保存聊天 scope 绑定并在聊天切换时应用酒馆预设。
 - 批量目录：`BulkSelectionBar.vue`、`BulkSelectionCheckbox.vue` 和 `useBulkSelection.ts`
   提供共享选择状态，业务 App 仍用各自 store 执行实际级联删除。
@@ -118,6 +123,9 @@
   按真实列展示横向或竖向资料卡片和详情，显示偏好由全局 settings 持久化。`profileReferences.ts`、`ExternalProfileReferencePicker.vue`
   和 `externalReferenceCatalog.ts` 以 `sheetKey + rowIndex`
   传递引用；`generation.ts`、内容转换、卡片写作和工作台在各自写入界面选择目标表与真实列名。系统不存在资料映射 store 或中间行模型，时间确认只维护插件内人物与日历。
+- 关系网：`src/apps/relationship/store.ts`
+  使用独立聊天作用域字段保存人物与单向关系，并在首次读取时清除旧关系字段；`MermaidRelationshipGraph.vue`
+  把当前人物和关系生成 `flowchart LR`，由 Mermaid 自动计算布局。该流程不读取资料表、不保存节点坐标。
 - 备份查重：`src/apps/recovery/model.ts` 生成完全相同、严格续长和 90% 相似分组，`store.ts`
   在删除前重新下载复核，`RecoveryMaintenanceFlow.vue` 管理选择和确认。
 - 前端网页：`src/util/theaterFrontend.ts`
@@ -130,13 +138,14 @@
   在用户脚本前转发酒馆助手宿主接口 → 仅状态栏启用的同源 trusted iframe”。
 - 中文转换：`src/util/chineseConversion.ts` 动态加载与酒馆助手繁简脚本相同的转换核心，详情壳统一提供转换操作。
 - 插件宏：`src/apps/macro-builder/` 生成参数化宏；`src/util/pluginMacros.ts`
-  保留普通 Unicode 文本，仅转义宏参数分隔符和换行，并用 `URLSearchParams` 同时解析新旧宏；`generationService`
-  只在手机生成期间注册。
+  保留普通 Unicode 文本，仅转义宏参数分隔符和换行，用 `URLSearchParams`
+  解析；身份分配按 placement 输出“候选 身份”或“身份 候选”，不添加冒号；`generationService` 只在手机生成期间注册。
 - 助手脚本：`src/apps/script-manager/`
-  读取三类 TavernHelper 脚本树，展平根脚本与文件夹脚本；导出读取当前脚本树，删除按作用域调用 `updateScriptTreesWith()`
-  并保留文件夹节点。
+  读取三类 TavernHelper 脚本树，展平根脚本与文件夹脚本；批量分组移动真实树节点，插件内整包导入导出原始 global、preset、character 树，删除和写回按作用域调用 TavernHelper
+  ScriptTree API。
 - 扩展迁移：`src/apps/extension-transfer/` 调用 SillyTavern
-  `/api/extensions/discover`、`/version`、`/install`；导入清单先经 Zod 解析并进入预览，安装范围逐项选择，结果留在页面并由用户决定是否刷新。
+  `/api/extensions/discover`、`/version`、`/install`、`/update`；导入清单先经 Zod 解析并进入预览，安装范围逐项选择；安装或更新全部结束后只刷新一次扩展目录，不刷新页面。备注名、安装网页和功能介绍保存在
+  `sillytavern_phone_extension_metadata`。
 
 ## UI 与主题
 
@@ -144,10 +153,18 @@
 - `PhoneOverlay.vue` 的 `.pc-screen`
   统一提供普通 App 页面外边距；业务 App 根页面只负责布局，状态栏展示页通过专用零边距屏幕承载网页。
 - `PhoneOverlay.vue` 根据 settings 注入主题 CSS 变量、字体、阅读器尺寸、内置纸张纹理和 App 图标样式。
-- `src/data/paperTextures.ts` 注册 A4 白纸、宣纸、羊皮纸和黑色卡纸纹理；`src/apps/theme/themeCatalog.ts` 独占主题预设、主题包、字体、图标、颜色和圆角静态目录。
-- `src/core/appLayout.ts` 维护首页八个默认分组和聊天档案/收藏/提示词/教程/设置五项 Dock，并将旧布局一次重建为 layout v4；`PhoneHome.vue` 将 `folders` 投影为可横向触摸滚动的标签，不使用分页、文件夹预览卡或独立 App 区，v4 内用户自建分组继续保留，组内顺序直接在主页拖拽，跨组调整通过多选管理弹窗完成。
-- `ReaderDetailShell.vue` 固定显示详情上下文栏，`VersionNavigator.vue` 在栏内切换版本；可拖动工具菜单只承载正文操作，底部 `DetailFooter` 负责上条/目录/下条和置顶置底。
-- `src/apps/settings/SettingsApp.vue` 使用单行分类选择器装配界面、阅读、生成、连接、数据和高级面板；`SettingsGenerationPanel.vue` 管理生成默认值，`SettingsConnectionPanel.vue` 管理文本通道和外部配置目录，`SettingsExternalApiPage.vue` 负责外部 API 二级编辑；`SettingsInterfacePanel.vue` 使用紧凑行管理窗口、图标密度和悬浮球，旧分页主页的行数/每页容量及 Dock 数量不再暴露。
+- `src/data/paperTextures.ts` 注册 A4 白纸、宣纸、羊皮纸和黑色卡纸纹理；`src/apps/theme/themeCatalog.ts`
+  独占主题预设、主题包、字体、图标、颜色和圆角静态目录。
+- `src/core/appLayout.ts` 维护首页八个默认分组和聊天档案/收藏/提示词/教程/设置五项 Dock，并将旧布局一次重建为 layout
+  v4；`PhoneHome.vue` 将 `folders`
+  投影为可横向触摸滚动的标签，不使用分页、文件夹预览卡或独立 App 区，v4 内用户自建分组继续保留，组内顺序直接在主页拖拽，跨组调整通过多选管理弹窗完成。
+- `ReaderDetailShell.vue` 固定显示详情上下文栏，`VersionNavigator.vue`
+  在栏内切换版本；可拖动工具菜单只承载正文操作，底部 `DetailFooter` 负责上条/目录/下条和置顶置底。
+- `src/apps/settings/SettingsApp.vue`
+  使用单行分类选择器装配界面、阅读、生成、连接、数据和高级面板；`SettingsGenerationPanel.vue`
+  管理生成默认值，`SettingsConnectionPanel.vue` 管理文本通道和外部配置目录，`SettingsExternalApiPage.vue`
+  负责外部 API 二级编辑；`SettingsInterfacePanel.vue`
+  使用紧凑行管理窗口、图标密度和悬浮球，旧分页主页的行数/每页容量及 Dock 数量不再暴露。
 - 共享组件包括
   `GenerationPanel`、`GenerationPreviewPanel`、`BatchGenerationPreviewPage`、`ReferencePicker`、`BaguScanPanel`、`ReaderDetailShell`、`BulkSelectionBar`、`DetailFooter`、`EmptyState`、`ActionMenu`
   等。

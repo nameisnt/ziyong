@@ -4,6 +4,7 @@
     id="tavern-phone-root"
     class="pc-phone-root"
     :data-home-columns="settings.interfaceSize.homeColumns"
+    :data-paper="settings.visualTheme.paperTextureId"
     :data-reader-blank-lines="settings.reader.blankLineBetweenLines ? 'true' : 'false'"
     :data-reader-indent="settings.reader.firstLineIndent ? 'true' : 'false'"
     :data-theme="settings.theme"
@@ -574,7 +575,7 @@ onBeforeUnmount(() => {
 .pc-screen {
   flex: 1;
   overflow: auto;
-  padding: 6px 8px 8px;
+  padding: 4px 8px;
 }
 
 .pc-screen.pc-screen-status-display {

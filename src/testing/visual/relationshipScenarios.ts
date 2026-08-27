@@ -2,8 +2,6 @@ type RelationshipStoreFixture = {
   characters: Array<{
     id: string;
     name: string;
-    profileRowIndex?: number;
-    profileSheetKey?: string;
   }>;
   links: Array<{ id: string; label: string }>;
   resetCurrentScope: () => void | Promise<void>;
@@ -46,12 +44,7 @@ async function selectComboboxOption(root: HTMLElement, label: string, waitForPai
   await waitForPaint();
 }
 
-async function createLink(
-  from: string,
-  to: string,
-  label: string,
-  waitForPaint: () => Promise<void>,
-) {
+async function createLink(from: string, to: string, label: string, waitForPaint: () => Promise<void>) {
   let form = document.querySelector<HTMLElement>('.pc-relation-form');
   if (!form) throw new Error('Relationship create form is missing');
   let combos = form.querySelectorAll<HTMLElement>('.pc-combobox');
@@ -72,58 +65,10 @@ export async function applyRelationshipVisualScenario(
   name: string,
   { getRelationship, resetPhoneToRoute, waitForCondition, waitForPaint }: RelationshipVisualContext,
 ) {
-  if (
-    name !== 'relationship-crud' &&
-    name !== 'relationship-profile-reference' &&
-    name !== 'relationship-profile-reference-dark'
-  ) {
-    return false;
-  }
+  if (name !== 'relationship-crud') return false;
 
   const relationship = getRelationship();
   await relationship.resetCurrentScope();
-  if (name.startsWith('relationship-profile-reference')) {
-    const { useSettingsStore } = await import('@/store/settings');
-    useSettingsStore().setTheme(name.endsWith('-dark') ? 'dark' : 'light');
-    const visualGlobal = globalThis as typeof globalThis & { AutoCardUpdaterAPI?: Record<string, unknown> };
-    visualGlobal.AutoCardUpdaterAPI = {
-      exportTableAsJson: () => ({
-        mate: { type: 'chatSheets' },
-        sheet_people: {
-          content: [
-            ['row_id', '姓名'],
-            ['person-1', '林见夏'],
-            ['person-2', '周临川'],
-          ],
-          name: '人物表',
-          uid: 'people',
-        },
-      }),
-    };
-    resetPhoneToRoute('relationship', 'root', '关系网');
-    await waitForPaint();
-    const picker = document.querySelector<HTMLElement>('.pc-profile-add-row .pc-external-profile-picker');
-    let combos = picker?.querySelectorAll<HTMLElement>('.pc-combobox');
-    if (!picker || !combos || combos.length !== 2) throw new Error('Relationship external profile picker is missing');
-    await selectComboboxOption(combos[0], '人物表', waitForPaint);
-    combos = picker.querySelectorAll<HTMLElement>('.pc-combobox');
-    await selectComboboxOption(combos[1], '林见夏', waitForPaint);
-    findButtonByTitle('添加关联人物', document.querySelector('.pc-profile-add-row') || document)?.click();
-    if (
-      !(await waitForCondition(() =>
-        relationship.characters.some(
-          character =>
-            character.name === '林见夏' &&
-            character.profileSheetKey === 'sheet_people' &&
-            character.profileRowIndex === 1,
-        ),
-      ))
-    ) {
-      throw new Error('Relationship external profile selection did not persist its table row');
-    }
-    await waitForPaint();
-    return true;
-  }
 
   resetPhoneToRoute('relationship', 'root', '关系网');
   await waitForPaint();
@@ -137,8 +82,8 @@ export async function applyRelationshipVisualScenario(
   }
   if (relationship.characters.length !== 2) throw new Error('Relationship UI did not create two characters');
 
-  const firstRow = [...document.querySelectorAll<HTMLElement>('.pc-character-editor-row')].find(row =>
-    row.querySelector<HTMLInputElement>(':scope .pc-compact-row > input.pc-field')?.value === '甲',
+  const firstRow = [...document.querySelectorAll<HTMLElement>('.pc-character-editor-row')].find(
+    row => row.querySelector<HTMLInputElement>(':scope .pc-compact-row > input.pc-field')?.value === '甲',
   );
   const firstName = firstRow?.querySelector<HTMLInputElement>(':scope .pc-compact-row > input.pc-field');
   if (!firstName) throw new Error('Relationship character rename input is missing');
@@ -178,8 +123,8 @@ export async function applyRelationshipVisualScenario(
   if (!(await waitForCondition(() => relationship.links.length === 1))) {
     throw new Error('Relationship fixture could not recreate a link for cascade deletion');
   }
-  const renamedRow = [...document.querySelectorAll<HTMLElement>('.pc-character-editor-row')].find(row =>
-    row.querySelector<HTMLInputElement>(':scope .pc-compact-row > input.pc-field')?.value === '甲改名',
+  const renamedRow = [...document.querySelectorAll<HTMLElement>('.pc-character-editor-row')].find(
+    row => row.querySelector<HTMLInputElement>(':scope .pc-compact-row > input.pc-field')?.value === '甲改名',
   );
   findButtonByTitle('删除', renamedRow || document)?.click();
   if (
@@ -192,11 +137,7 @@ export async function applyRelationshipVisualScenario(
     throw new Error('Relationship character cascade delete confirmation is missing');
   }
   clickNoticeAction('删除');
-  if (
-    !(await waitForCondition(() =>
-      relationship.characters.length === 1 && relationship.links.length === 0,
-    ))
-  ) {
+  if (!(await waitForCondition(() => relationship.characters.length === 1 && relationship.links.length === 0))) {
     throw new Error('Relationship character deletion did not cascade to its directed links');
   }
   await waitForPaint();

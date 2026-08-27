@@ -564,10 +564,6 @@ export const useSettingsStore = defineStore('settings', () => {
     settings.value.reader.backgroundColor = color.trim();
   }
 
-  function setReaderBackgroundImage(image: string) {
-    settings.value.reader.backgroundImage = image.trim();
-  }
-
   function setReaderFontFamily(fontFamily: string) {
     settings.value.reader.fontFamily = fontFamily.trim();
   }
@@ -587,7 +583,6 @@ export const useSettingsStore = defineStore('settings', () => {
   function resetReaderAppearance() {
     settings.value.reader = {
       backgroundColor: '',
-      backgroundImage: '',
       blankLineBetweenLines: true,
       firstLineIndent: false,
       fontFamily: '',
@@ -805,7 +800,6 @@ export const useSettingsStore = defineStore('settings', () => {
     setPhoneWindowWidth,
     setReaderBlankLineBetweenLines,
     setReaderBackgroundColor,
-    setReaderBackgroundImage,
     setReaderFirstLineIndent,
     setReaderFontFamily,
     setReaderFontSize,

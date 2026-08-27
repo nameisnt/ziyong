@@ -58,14 +58,22 @@ test('pick and assign macros honor random counts and non-repeating pools', () =>
 
     const assign = macros.buildPluginMacro('assign', {
       items: '身份1\n身份2\n身份3',
+      placement: 'after',
       repeat: false,
       roles: 'A\nB',
     });
-    const values = macros
-      .replacePluginMacros(assign)
-      .split('；')
-      .map(item => item.split('：')[1]);
+    const assigned = macros.replacePluginMacros(assign);
+    assert.doesNotMatch(assigned, /：/u);
+    const values = assigned.split('；').map(item => item.split(' ')[1]);
     assert.equal(new Set(values).size, 2);
+
+    const before = macros.buildPluginMacro('assign', {
+      items: '身份1',
+      placement: 'before',
+      repeat: false,
+      roles: '{{char}}',
+    });
+    assert.equal(macros.replacePluginMacros(before), '身份1 {{char}}');
   } finally {
     Math.random = originalRandom;
   }

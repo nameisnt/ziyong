@@ -6,6 +6,16 @@
         <button
           class="pc-icon-btn"
           type="button"
+          title="导入全部"
+          aria-label="导入全部"
+          :disabled="loading"
+          @click="fileInput?.click()"
+        >
+          <i class="fa-solid fa-upload"></i>
+        </button>
+        <button
+          class="pc-icon-btn"
+          type="button"
           title="导出全部"
           aria-label="导出全部"
           :disabled="loading"
@@ -27,6 +37,7 @@
           <i class="fa-solid fa-rotate" :class="{ 'fa-spin': loading }"></i>
         </button>
       </div>
+      <input ref="fileInput" hidden type="file" accept="application/json,.json" @change="importAll" />
     </header>
 
     <template v-else>
@@ -41,6 +52,14 @@
       <div class="pc-script-selection-actions">
         <button class="pc-soft-btn compact" type="button" :disabled="!visibleItems.length" @click="invertVisible">
           反选
+        </button>
+        <button
+          class="pc-soft-btn compact"
+          type="button"
+          :disabled="!selection.selectedIds.value.length"
+          @click="groupSelected"
+        >
+          <i class="fa-solid fa-folder-plus"></i><span>分组</span>
         </button>
         <button
           class="pc-soft-btn compact"
@@ -99,7 +118,13 @@ import BulkSelectionCheckbox from '@/components/BulkSelectionCheckbox.vue';
 import EmptyState from '@/components/EmptyState.vue';
 import { useBulkSelection } from '@/composables/useBulkSelection';
 import { usePhoneStore } from '@/store/phone';
-import { listAssistantScripts, readAllScriptTrees, removeAssistantScripts } from './api';
+import {
+  createAssistantScriptBundle,
+  importAssistantScriptBundle,
+  listAssistantScripts,
+  moveAssistantScriptsToFolder,
+  removeAssistantScripts,
+} from './api';
 import { SCRIPT_SCOPES, scriptScopeLabel, type ScriptListItem, type ScriptScope } from './model';
 
 const phone = usePhoneStore();
@@ -108,6 +133,7 @@ const loading = ref(false);
 const errorMessage = ref('');
 const query = ref('');
 const scopeFilter = ref<'all' | ScriptScope>('all');
+const fileInput = ref<HTMLInputElement | null>(null);
 const scopeOptions: Array<{ id: 'all' | ScriptScope; label: string }> = [
   { id: 'all', label: '全部' },
   ...SCRIPT_SCOPES,
@@ -161,14 +187,36 @@ function dateTag() {
 
 function exportAll() {
   try {
-    downloadJson(`助手脚本_全部_${dateTag()}.json`, {
-      exported_at: new Date().toISOString(),
-      script_trees: readAllScriptTrees(),
-    });
+    downloadJson(`助手脚本_全部_${dateTag()}.json`, createAssistantScriptBundle());
     toastr.success('已导出全部助手脚本');
   } catch (error) {
     toastr.error(error instanceof Error ? error.message : String(error));
   }
+}
+
+async function importAll(event: Event) {
+  const input = event.target as HTMLInputElement;
+  const file = input.files?.[0];
+  input.value = '';
+  if (!file) return;
+  try {
+    const value = JSON.parse((await file.text()).replace(/^\uFEFF/u, '')) as unknown;
+    importAssistantScriptBundle(value);
+    refresh();
+    toastr.success('已导入全部助手脚本');
+  } catch (error) {
+    toastr.error(error instanceof Error ? error.message : String(error));
+  }
+}
+
+async function groupSelected() {
+  const name = await phone.promptNotice('输入脚本分组名称。所选脚本会在各自作用域内进入同名文件夹。', {
+    confirmLabel: '分组',
+    title: '脚本分组',
+  });
+  if (!name?.trim()) return;
+  moveAssistantScriptsToFolder(selectedItems.value, name);
+  refresh();
 }
 
 function exportSelected() {

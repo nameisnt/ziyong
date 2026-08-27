@@ -1,22 +1,17 @@
 import { useChatScopedDomain } from '@/store/chatScoped';
-import {
-  externalProfileReferenceKey,
-  type ExternalProfileReferenceDraft,
-} from '@/apps/profiles/profileReferences';
 import { createFailedDraftCollection } from '@/store/failedDrafts';
 import type { FailedGenerationDraft } from '@/type/generation';
 import { validateInplace } from '@/util/zod';
+// eslint-disable-next-line import-x/no-nodejs-modules
+import { saveSettingsDebounced } from '@sillytavern/script';
+import { extension_settings } from '@sillytavern/scripts/extensions';
 
-export const relationshipField = 'sillytavern_phone_relationships';
+const legacyRelationshipField = 'sillytavern_phone_relationships';
+export const relationshipField = 'sillytavern_phone_relationships_mermaid';
 
 export const RelationshipCharacterSchema = z.object({
   id: z.string(),
   name: z.string(),
-  profileEntryId: z.string().default(''),
-  profileRowIndex: z.number().int().min(0).default(0),
-  profileSheetKey: z.string().default(''),
-  x: z.number().default(160),
-  y: z.number().default(130),
   createdAt: z.string(),
   updatedAt: z.string(),
 });
@@ -41,11 +36,7 @@ export type RelationshipScopeData = z.infer<typeof RelationshipScopeDataSchema>;
 
 export type RelationshipGeneratedResult = {
   characters: string[];
-  relations: Array<{
-    from: string;
-    label: string;
-    to: string;
-  }>;
+  relations: Array<{ from: string; label: string; to: string }>;
 };
 
 function nowIso() {
@@ -61,19 +52,15 @@ function normalizeName(name: string) {
 }
 
 function characterKey(name: string) {
-  return normalizeName(name).toLowerCase();
-}
-
-function getAutoPosition(index: number, total: number) {
-  const count = Math.max(total, 4);
-  const angle = (Math.PI * 2 * index) / count - Math.PI / 2;
-  return {
-    x: Math.round(160 + Math.cos(angle) * 96),
-    y: Math.round(130 + Math.sin(angle) * 76),
-  };
+  return normalizeName(name).toLocaleLowerCase();
 }
 
 export const useRelationshipStore = defineStore('relationship', () => {
+  if (_.has(extension_settings, legacyRelationshipField)) {
+    _.unset(extension_settings, legacyRelationshipField);
+    void saveSettingsDebounced();
+  }
+
   const { data, rehydrateFromSettings, resetCurrentScope, scopeKey, switchScope } = useChatScopedDomain({
     field: relationshipField,
     schema: RelationshipScopeDataSchema,
@@ -107,21 +94,15 @@ export const useRelationshipStore = defineStore('relationship', () => {
     );
   }
 
-  function createCharacter(name: string, profile: ExternalProfileReferenceDraft | null = null) {
+  function createCharacter(name: string) {
     const normalized = normalizeName(name);
     if (!normalized) return null;
     const existing = findCharacterByName(normalized);
     if (existing) return existing;
-
     const timestamp = nowIso();
-    const position = getAutoPosition(data.value.characters.length, data.value.characters.length + 1);
     const character: RelationshipCharacter = {
-      ...position,
       id: createId('relationship_character'),
       name: normalized,
-      profileEntryId: '',
-      profileRowIndex: profile?.profileRowIndex || 0,
-      profileSheetKey: profile?.profileSheetKey || '',
       createdAt: timestamp,
       updatedAt: timestamp,
     };
@@ -129,84 +110,11 @@ export const useRelationshipStore = defineStore('relationship', () => {
     return character;
   }
 
-  function createCharacterFromProfile(profile: ExternalProfileReferenceDraft, displayName: string) {
-    const name = normalizeName(displayName);
-    if (!profile.profileSheetKey || !profile.profileRowIndex || !name) return null;
-    const referenceKey = externalProfileReferenceKey(profile);
-    const linked = data.value.characters.find(
-      character =>
-        character.profileSheetKey &&
-        character.profileRowIndex &&
-        externalProfileReferenceKey(character) === referenceKey,
-    );
-    if (linked) return linked;
-    const sameName = findCharacterByName(name);
-    if (sameName) {
-      if (sameName.profileSheetKey && sameName.profileRowIndex) return null;
-      sameName.profileEntryId = '';
-      sameName.profileRowIndex = profile.profileRowIndex;
-      sameName.profileSheetKey = profile.profileSheetKey;
-      sameName.name = name;
-      sameName.updatedAt = nowIso();
-      return sameName;
-    }
-    return createCharacter(name, profile);
-  }
-
-  function setCharacterProfileDraft(characterId: string, patch: Partial<ExternalProfileReferenceDraft>) {
+  function updateCharacter(characterId: string, input: Partial<Pick<RelationshipCharacter, 'name'>>) {
     const character = getCharacter(characterId);
-    if (!character) return false;
-    if (typeof patch.profileSheetKey === 'string') {
-      character.profileSheetKey = patch.profileSheetKey;
-      character.profileRowIndex = 0;
-      if (!patch.profileSheetKey) character.profileEntryId = '';
-    }
-    if (typeof patch.profileRowIndex === 'number') character.profileRowIndex = patch.profileRowIndex;
-    character.updatedAt = nowIso();
-    return true;
-  }
-
-  function linkCharacterProfile(
-    characterId: string,
-    profile: ExternalProfileReferenceDraft | null,
-    displayName = '',
-  ) {
-    const character = getCharacter(characterId);
-    if (!character) return false;
-    if (!profile?.profileSheetKey || !profile.profileRowIndex) {
-      character.profileEntryId = '';
-      character.profileRowIndex = 0;
-      character.profileSheetKey = '';
-      character.updatedAt = nowIso();
-      return true;
-    }
-    const referenceKey = externalProfileReferenceKey(profile);
-    const duplicate = data.value.characters.find(
-      item =>
-        item.id !== characterId &&
-        item.profileSheetKey &&
-        item.profileRowIndex &&
-        externalProfileReferenceKey(item) === referenceKey,
-    );
-    if (duplicate) return false;
-    character.profileEntryId = '';
-    character.profileRowIndex = profile.profileRowIndex;
-    character.profileSheetKey = profile.profileSheetKey;
-    const normalizedName = normalizeName(displayName);
-    if (normalizedName) character.name = normalizedName;
-    character.updatedAt = nowIso();
-    return true;
-  }
-
-  function updateCharacter(characterId: string, input: Partial<Pick<RelationshipCharacter, 'name' | 'x' | 'y'>>) {
-    const character = getCharacter(characterId);
-    if (!character) return null;
-    if (typeof input.name === 'string') {
-      const normalized = normalizeName(input.name);
-      if (normalized) character.name = normalized;
-    }
-    if (typeof input.x === 'number') character.x = Math.min(306, Math.max(14, Math.round(input.x)));
-    if (typeof input.y === 'number') character.y = Math.min(246, Math.max(14, Math.round(input.y)));
+    const name = input.name?.trim();
+    if (!character || !name) return null;
+    character.name = name;
     character.updatedAt = nowIso();
     return character;
   }
@@ -220,21 +128,16 @@ export const useRelationshipStore = defineStore('relationship', () => {
     return data.value.links.find(link => link.id === linkId) ?? null;
   }
 
-  function findLink(fromId: string, toId: string) {
-    return data.value.links.find(link => link.fromId === fromId && link.toId === toId) ?? null;
-  }
-
   function upsertLink(fromId: string, toId: string, label: string) {
     const normalized = label.trim();
     if (!fromId || !toId || fromId === toId || !normalized) return null;
-    const existing = findLink(fromId, toId);
+    const existing = data.value.links.find(link => link.fromId === fromId && link.toId === toId);
     const timestamp = nowIso();
     if (existing) {
       existing.label = normalized;
       existing.updatedAt = timestamp;
       return existing;
     }
-
     const link: RelationshipLink = {
       id: createId('relationship_link'),
       fromId,
@@ -250,14 +153,11 @@ export const useRelationshipStore = defineStore('relationship', () => {
   function updateLink(linkId: string, input: Partial<Pick<RelationshipLink, 'fromId' | 'label' | 'toId'>>) {
     const link = getLink(linkId);
     if (!link) return null;
-    const nextFromId = input.fromId || link.fromId;
-    const nextToId = input.toId || link.toId;
-    const nextLabel = typeof input.label === 'string' ? input.label.trim() : link.label;
-    if (!nextFromId || !nextToId || nextFromId === nextToId || !nextLabel) return null;
-    link.fromId = nextFromId;
-    link.toId = nextToId;
-    link.label = nextLabel;
-    link.updatedAt = nowIso();
+    const fromId = input.fromId || link.fromId;
+    const toId = input.toId || link.toId;
+    const label = typeof input.label === 'string' ? input.label.trim() : link.label;
+    if (!fromId || !toId || fromId === toId || !label) return null;
+    Object.assign(link, { fromId, toId, label, updatedAt: nowIso() });
     return link;
   }
 
@@ -268,16 +168,14 @@ export const useRelationshipStore = defineStore('relationship', () => {
   function mergeGenerated(result: RelationshipGeneratedResult) {
     const createdCharacters: RelationshipCharacter[] = [];
     const changedLinks: RelationshipLink[] = [];
-    const names = [...result.characters, ...result.relations.flatMap(relation => [relation.from, relation.to])]
+    [...result.characters, ...result.relations.flatMap(relation => [relation.from, relation.to])]
       .map(normalizeName)
-      .filter(Boolean);
-
-    names.forEach(name => {
-      const before = findCharacterByName(name);
-      const character = createCharacter(name);
-      if (character && !before) createdCharacters.push(character);
-    });
-
+      .filter(Boolean)
+      .forEach(name => {
+        const before = findCharacterByName(name);
+        const character = createCharacter(name);
+        if (character && !before) createdCharacters.push(character);
+      });
     result.relations.forEach(relation => {
       const from = findCharacterByName(relation.from);
       const to = findCharacterByName(relation.to);
@@ -285,18 +183,13 @@ export const useRelationshipStore = defineStore('relationship', () => {
       const link = upsertLink(from.id, to.id, relation.label);
       if (link) changedLinks.push(link);
     });
-
-    return {
-      characters: createdCharacters,
-      links: changedLinks,
-    };
+    return { characters: createdCharacters, links: changedLinks };
   }
 
   return {
     ...failedDraftCollection,
     characters,
     createCharacter,
-    createCharacterFromProfile,
     data,
     deleteCharacter,
     deleteLink,
@@ -304,12 +197,10 @@ export const useRelationshipStore = defineStore('relationship', () => {
     getCharacter,
     getLink,
     links,
-    linkCharacterProfile,
     mergeGenerated,
     rehydrateFromSettings,
     resetCurrentScope,
     scopeKey,
-    setCharacterProfileDraft,
     switchScope,
     updateCharacter,
     updateLink,

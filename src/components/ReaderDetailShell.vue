@@ -641,13 +641,13 @@ defineExpose({ hideFooter, toggleFooter });
 .pc-reader-tool {
   position: absolute;
   z-index: 7;
-  width: 40px;
-  height: 40px;
+  width: 36px;
+  height: 36px;
 }
 
 .pc-reader-tool-trigger {
-  width: 32px;
-  height: 32px;
+  width: 28px;
+  height: 28px;
   margin: 4px;
   border: 1px solid var(--pc-theme-accent);
   background: var(--pc-form-control-bg);
