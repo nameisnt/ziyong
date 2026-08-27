@@ -36,7 +36,10 @@ async function loadAppLayout({ includeMiniGames = false } = {}) {
       const getRegisteredPhoneApp = id => apps.find(app => app.id === id);`,
     )
     .replace("import type { HomeFolder, HomeScreenLayout } from '@/type/settings';", '')
-    .replace("import { MINI_GAME_APP_IDS } from '@/data/miniGameApps';", `const MINI_GAME_APP_IDS = ${JSON.stringify(miniGameIds)};`);
+    .replace(
+      "import { MINI_GAME_APP_IDS } from '@/data/miniGameApps';",
+      `const MINI_GAME_APP_IDS = ${JSON.stringify(miniGameIds)};`,
+    );
   const output = ts.transpileModule(source, {
     compilerOptions: { module: ts.ModuleKind.ESNext, target: ts.ScriptTarget.ES2022 },
     fileName: 'appLayout.ts',
@@ -48,6 +51,7 @@ const {
   buildDefaultHomeLayout,
   createHomeFolder,
   homeFolderToken,
+  moveHomeAppsToFolder,
   moveHomeLayoutItem,
   normalizeHomeLayout,
   putHomeAppInFolder,
@@ -60,7 +64,10 @@ test('legacy layouts reset once to grouped layout v4 with the fixed Dock', () =>
   const layout = normalizeHomeLayout({ appOrder: ['a'], dockOrder: ['favorites'], folders: [], version: 3 });
   assert.equal(layout.version, 4);
   assert.deepEqual(layout.dockOrder, ['archive', 'favorites', 'prompts', 'tutorial', 'settings']);
-  assert.deepEqual(layout.appOrder, layout.folders.map(folder => homeFolderToken(folder.id)));
+  assert.deepEqual(
+    layout.appOrder,
+    layout.folders.map(folder => homeFolderToken(folder.id)),
+  );
   assert.deepEqual(layout.folders.find(folder => folder.id === 'home_default_tools')?.appIds, ['a', 'b', 'c']);
   assert.deepEqual(buildDefaultHomeLayout(), layout);
 });
@@ -112,6 +119,18 @@ test('explicit group creation moves selected apps out of their existing groups',
     created.folders.flatMap(folder => folder.appIds).filter(appId => appId === 'a' || appId === 'c').length,
     2,
   );
+});
+
+test('group management moves every selected app to one existing group', () => {
+  const created = createHomeFolder(buildDefaultHomeLayout(), {
+    appIds: ['a', 'b'],
+    id: 'custom',
+    name: '我的分组',
+  });
+  const targetId = created.folders.find(folder => folder.id !== 'custom' && folder.appIds.includes('c'))?.id;
+  const moved = moveHomeAppsToFolder(created, ['a', 'c'], targetId);
+  assert.deepEqual(moved.folders.find(folder => folder.id === 'custom')?.appIds, ['b']);
+  assert.deepEqual(moved.folders.find(folder => folder.id === targetId)?.appIds.slice(-2), ['a', 'c']);
 });
 
 test('folder reordering and removal remain inside grouped layout', () => {

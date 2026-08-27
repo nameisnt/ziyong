@@ -112,7 +112,9 @@ export function normalizeHomeLayout(layout: HomeScreenLayout): HomeScreenLayout 
   const requiredDockIds = getDefaultDockOrder();
   const requiredDockSet = new Set(requiredDockIds);
   const dockOrder = [
-    ...layout.dockOrder.filter((appId, index) => requiredDockSet.has(appId) && layout.dockOrder.indexOf(appId) === index),
+    ...layout.dockOrder.filter(
+      (appId, index) => requiredDockSet.has(appId) && layout.dockOrder.indexOf(appId) === index,
+    ),
     ...requiredDockIds.filter(appId => !layout.dockOrder.includes(appId)),
   ];
   const claimed = new Set(dockOrder);
@@ -201,6 +203,26 @@ export function createHomeFolder(layout: HomeScreenLayout, input: { appIds: stri
   return normalizeHomeLayout({ ...normalized, appOrder, folders });
 }
 
+export function moveHomeAppsToFolder(layout: HomeScreenLayout, appIds: string[], targetFolderId: string) {
+  const normalized = normalizeHomeLayout(layout);
+  const targetFolder = normalized.folders.find(folder => folder.id === targetFolderId);
+  if (!targetFolder) return normalized;
+  const groupedIds = new Set(normalized.folders.flatMap(folder => folder.appIds));
+  const selectedIds = [...new Set(appIds)].filter(appId => groupedIds.has(appId));
+  if (!selectedIds.length) return normalized;
+  const selectedSet = new Set(selectedIds);
+  const folders = normalized.folders
+    .map(folder => ({
+      ...folder,
+      appIds: [
+        ...folder.appIds.filter(appId => !selectedSet.has(appId)),
+        ...(folder.id === targetFolderId ? selectedIds : []),
+      ],
+    }))
+    .filter(folder => folder.appIds.length);
+  return normalizeHomeLayout({ ...normalized, folders });
+}
+
 export function reorderHomeFolderApp(layout: HomeScreenLayout, folderId: string, appId: string, targetIndex: number) {
   const normalized = normalizeHomeLayout(layout);
   return normalizeHomeLayout({
@@ -214,12 +236,7 @@ export function reorderHomeFolderApp(layout: HomeScreenLayout, folderId: string,
   });
 }
 
-export function removeHomeAppFromFolder(
-  layout: HomeScreenLayout,
-  folderId: string,
-  appId: string,
-  _homeIndex: number,
-) {
+export function removeHomeAppFromFolder(layout: HomeScreenLayout, folderId: string, appId: string, _homeIndex: number) {
   const normalized = normalizeHomeLayout(layout);
   if (folderId === FALLBACK_FOLDER_ID) return normalized;
   const folders = normalized.folders

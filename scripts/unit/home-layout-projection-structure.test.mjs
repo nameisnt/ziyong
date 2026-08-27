@@ -15,31 +15,29 @@ test('home layout projection owns the complete read-only desktop projection', ()
     'const homeLayout = computed',
     'const phoneAppById = computed',
     'const dockItems = computed',
-    'const activeHomeFolder = computed',
     'function resolveHomeDisplayItem',
   ]) {
     assert.ok(projection.includes(evidence), `${evidence} is missing from the layout projection`);
     assert.ok(!home.includes(evidence), `${evidence} is duplicated in PhoneHome`);
   }
-  assert.match(home, /useHomeLayoutProjection\(activeHomeFolderId\)/u);
+  assert.match(home, /useHomeLayoutProjection\(\)/u);
 });
 
 test('projection reuses the existing pure layout utilities without changing their ownership', () => {
   assert.match(projection, /normalizeHomeLayout\(settings\.value\.layout\)/u);
-  assert.match(projection, /export function useHomeLayoutProjection\(activeHomeFolderId: Ref<string>\)/u);
+  assert.match(projection, /export function useHomeLayoutProjection\(\)/u);
   assert.doesNotMatch(projection, /packHomeGridPages|homePageIndex|homePages/u);
   assert.doesNotMatch(projection, /setHomeLayout|createHomeFolder|moveHomeLayoutItem|putHomeAppInFolder/u);
 });
 
 test('PhoneHome keeps every writable interaction and route boundary', () => {
   for (const evidence of [
-    "const activeHomeFolderId = ref('')",
     'const appDrag = reactive',
     'const folderDrag = reactive',
     'const activeHomeGroupId = ref',
     'function commitAppDrag',
     'function createSelectedHomeFolder',
-    'async function dissolveActiveHomeFolder',
+    'function moveSelectedApps',
     'settingsStore.setHomeLayout',
   ]) {
     assert.ok(home.includes(evidence), `${evidence} is missing from PhoneHome`);

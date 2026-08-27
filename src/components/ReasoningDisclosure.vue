@@ -32,6 +32,7 @@
 </template>
 
 <script setup lang="ts">
+import { cleanSavedGenerationReasoning } from '@/util/generationReasoning';
 import { renderMarkdown } from '@/util/markdown';
 
 const props = withDefaults(
@@ -72,6 +73,7 @@ function cancelEdit() {
 }
 
 function applyEdit() {
+  draft.value = cleanSavedGenerationReasoning(draft.value);
   emit('update:content', draft.value);
   editing.value = false;
 }

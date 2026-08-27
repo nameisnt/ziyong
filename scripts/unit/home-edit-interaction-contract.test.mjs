@@ -16,41 +16,45 @@ test('home status keeps low-frequency actions in the shared action menu', () => 
   assert.doesNotMatch(contextBar, /class="pc-home-context-btn"/u);
 });
 
-test('folder management exposes explicit creation and pointer reordering', () => {
+test('group management assigns selected Apps and keeps ordering on the home grid', () => {
   assert.match(layout, /export function createHomeFolder/u);
+  assert.match(layout, /export function moveHomeAppsToFolder/u);
   assert.match(layout, /export function reorderHomeFolderApp/u);
+  assert.match(home, /<BulkSelectionCheckbox/u);
+  assert.match(home, /@click="moveSelectedApps"/u);
+  assert.match(home, /@click="createSelectedHomeFolder"/u);
+  assert.match(home, /class="pc-select" aria-label="目标分组"/u);
   assert.match(home, /onFolderAppPointerDown/u);
   assert.match(home, /onFolderAppPointerMove/u);
-  assert.match(home, /pc-home-folder-app\[data-folder-index\][\s\S]*getBoundingClientRect/u);
+  assert.match(home, /pc-app-tile\[data-folder-index\][\s\S]*getBoundingClientRect/u);
   assert.doesNotMatch(
     home,
     /elementFromPoint\(event\.clientX, event\.clientY\)\?\.closest<HTMLElement>\('\[data-folder-index\]'\)/u,
   );
-  assert.match(
-    home,
-    /class="pc-icon-btn pc-home-folder-remove"[\s\S]*@pointerdown\.stop[\s\S]*@click\.stop="removeFolderApp/u,
-  );
-  assert.match(home, /folderCreateAppIds/u);
-  assert.doesNotMatch(home, /title="前移"|title="后移"/u);
+  assert.doesNotMatch(home, /pc-home-folder-remove|renameActiveHomeFolder|dissolveActiveHomeFolder/u);
 });
 
-test('folder density and functional motion follow the home contract', () => {
+test('group tabs swipe horizontally and drag motion follows the home contract', () => {
   assert.match(home, /grid-template-columns:\s*repeat\(var\(--pc-home-columns\)/u);
+  assert.match(home, /\.pc-home-group-tabs\s*\{[\s\S]*overflow-x:\s*auto[\s\S]*touch-action:\s*pan-x/u);
   assert.match(home, /Transition name="pc-home-folder"/u);
   assert.match(home, /prefers-reduced-motion:\s*reduce/u);
   assert.match(home, /translate3d\(var\(--pc-drag-x/u);
 });
 
-test('folder creation and dissolution always release transient home interaction state', () => {
-  const createFolderBody = home.match(/function createSelectedHomeFolder\(\) \{([\s\S]*?)\n\}/u)?.[1] || '';
-  assert.doesNotMatch(createFolderBody, /isOrganizing\.value\s*=\s*true/u);
-  assert.match(createFolderBody, /resetHomeInteractionState\(\)/u);
-
-  const closeFolderBody = home.match(/function closeHomeFolder\(\) \{([\s\S]*?)\n\}/u)?.[1] || '';
-  assert.match(closeFolderBody, /resetHomeInteractionState\(\)/u);
-
-  const dissolveFolderBody = home.match(/async function dissolveActiveHomeFolder\(\) \{([\s\S]*?)\n\}/u)?.[1] || '';
-  assert.match(dissolveFolderBody, /try\s*\{/u);
-  assert.match(dissolveFolderBody, /finally\s*\{/u);
-  assert.match(dissolveFolderBody, /resetHomeInteractionState\(\)/u);
+test('closing group management releases every transient manager state', () => {
+  const closeBody = home.match(/function closeFolderCreator\(\) \{([\s\S]*?)\n\}/u)?.[1] || '';
+  for (const evidence of [
+    'folderCreateOpen.value = false',
+    "folderCreateName.value = ''",
+    'folderCreateAppIds.value = []',
+    "folderManagerQuery.value = ''",
+    'folderNewGroupOpen.value = false',
+    "folderTargetId.value = ''",
+  ]) {
+    assert.match(
+      closeBody,
+      new RegExp(evidence.replaceAll('.', '\\.').replaceAll('[', '\\[').replaceAll(']', '\\]'), 'u'),
+    );
+  }
 });

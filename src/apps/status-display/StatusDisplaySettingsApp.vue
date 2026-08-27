@@ -4,10 +4,21 @@
       <span>{{ configError }}</span>
     </div>
 
-    <label v-if="schemes.length" class="pc-field-group">
-      <span class="pc-field-label">当前聊天显示方案</span>
-      <SearchableCombobox v-model="activeSchemeId" :options="schemeOptions" placeholder="选择状态方案" />
-    </label>
+    <section v-if="schemes.length" class="pc-status-enabled-panel">
+      <header class="pc-section-head">
+        <strong>当前聊天启用</strong>
+        <span>{{ `${enabledSchemeIds.length} 个` }}</span>
+      </header>
+      <label v-for="scheme in schemes" :key="scheme.id" class="pc-list-row pc-status-enable-row">
+        <input
+          type="checkbox"
+          :checked="enabledSchemeIds.includes(scheme.id)"
+          @change="toggleEnabledScheme(scheme.id, ($event.target as HTMLInputElement).checked)"
+        />
+        <i class="fa-solid" :class="scheme.source === 'mvu' ? 'fa-database' : 'fa-code'"></i>
+        <span>{{ scheme.name }}</span>
+      </label>
+    </section>
 
     <section class="pc-compact-toolbar">
       <span>{{ `${schemes.length} 个方案` }}</span>
@@ -194,17 +205,7 @@ const editorVariablesError = ref('');
 const variableQuery = ref('');
 const templateArea = ref<HTMLTextAreaElement | null>(null);
 
-const activeSchemeId = computed({
-  get: () => statusStore.getActiveSchemeId(phone.currentTavernScopeKey),
-  set: schemeId => statusStore.setActiveScheme(phone.currentTavernScopeKey, schemeId),
-});
-const schemeOptions = computed(() =>
-  schemes.value.map(scheme => ({
-    group: scheme.source === 'mvu' ? 'MVU 变量' : '固定文字',
-    label: scheme.name,
-    value: scheme.id,
-  })),
-);
+const enabledSchemeIds = computed(() => statusStore.getEnabledSchemeIds(phone.currentTavernScopeKey));
 const mvuScopeOptions = [
   { label: '最新消息', value: 'message' },
   { label: '当前聊天', value: 'chat' },
@@ -237,6 +238,13 @@ function createScheme() {
   editorDraft.value = createStatusDisplayScheme();
   editorStatData.value = {};
   phone.pushPage('editor', '新增状态方案', { schemeId: editorDraft.value.id });
+}
+
+function toggleEnabledScheme(schemeId: string, enabled: boolean) {
+  statusStore.setEnabledSchemeIds(
+    phone.currentTavernScopeKey,
+    enabled ? [...enabledSchemeIds.value, schemeId] : enabledSchemeIds.value.filter(id => id !== schemeId),
+  );
 }
 
 function editScheme(scheme: StatusDisplayScheme) {
@@ -353,6 +361,25 @@ async function insertMvuVariable(path: string) {
 .pc-status-editor-preview {
   display: grid;
   gap: 14px;
+}
+
+.pc-status-enabled-panel {
+  display: grid;
+  border-block: 1px solid var(--pc-border);
+}
+
+.pc-status-enabled-panel > header {
+  padding: 8px 4px;
+}
+
+.pc-status-enable-row {
+  grid-template-columns: auto auto minmax(0, 1fr);
+}
+
+.pc-status-enable-row input {
+  width: 18px;
+  height: 18px;
+  accent-color: var(--pc-theme-accent);
 }
 
 .pc-status-variable-panel header,

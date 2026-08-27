@@ -1103,19 +1103,24 @@ async function runGeneration() {
   if (!saveCustomGenerationTypePrompt()) return;
   beginTheaterPreviewDraft();
   generationState.preview = null;
+  const generationTarget = {
+    entryId: rewriteTargetEntry.value?.id || '',
+    mode: theaterGenerationMode.value,
+    versionId: rewriteTargetVersion.value?.id || '',
+  };
   let task: GenerationTask | null = null;
   try {
     task = generationSession.create({
-      sourceParams: rewriteTargetEntry.value?.id ? { entryId: rewriteTargetEntry.value.id } : {},
-      title: theaterGenerationMode.value === 'rewrite' ? '重新生成小剧场' : '生成小剧场 · 单次生成',
+      sourceParams: generationTarget.entryId ? { entryId: generationTarget.entryId } : {},
+      title: generationTarget.mode === 'rewrite' ? '重新生成小剧场' : '生成小剧场 · 单次生成',
     });
     const result = await generateContent(
       theaterGenerationAdapter,
       {
         appPrompt: theaterGenerationAppPrompt.value,
-        entryId: rewriteTargetEntry.value?.id || '',
+        entryId: generationTarget.entryId,
         existingContent: '',
-        mode: theaterGenerationMode.value,
+        mode: generationTarget.mode,
         outputFormat: buildOutputFormat(),
         renderMode: 'markdown',
         typeId: generationDraft.typeId,
@@ -1169,7 +1174,7 @@ async function runGeneration() {
         resultState: 'saved',
         resultTitle: result.data.title,
       });
-      toastr.success(theaterGenerationMode.value === 'rewrite' ? '已保存并切换到小剧场新版本' : '已生成并保存小剧场');
+      toastr.success(generationTarget.mode === 'rewrite' ? '已保存并切换到小剧场新版本' : '已生成并保存小剧场');
       void phone.presentGeneratedPage('theater', 'entry', result.data.title, {
         entryId: result.saved.entry.id,
         ...(result.saved.versionId ? { versionId: result.saved.versionId } : {}),
@@ -1186,10 +1191,10 @@ async function runGeneration() {
         label: result.source.label,
       },
       title: result.data.title,
-      mode: theaterGenerationMode.value,
+      mode: generationTarget.mode,
       generationRecord: result.generationRecord,
-      targetEntryId: rewriteTargetEntry.value?.id || '',
-      targetVersionId: rewriteTargetVersion.value?.id || '',
+      targetEntryId: generationTarget.entryId,
+      targetVersionId: generationTarget.versionId,
       typeId: generationDraft.typeId || undefined,
       typeName: generationDraft.typeName.trim() || '未分类小剧场',
       warnings: result.warnings,

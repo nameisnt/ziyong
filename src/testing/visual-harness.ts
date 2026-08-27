@@ -397,10 +397,12 @@ async function applyScenario(name: VisualScenarioName, options: { height?: numbe
       '<style>',
       '.status { display: grid; gap: 10px; padding: 16px; }',
       '.status h2 { margin: 0; font-size: 18px; }',
+      '.status-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; }',
+      '.status-avatar { width: 32px; height: 32px; object-fit: cover; border-radius: 4px; }',
       '.row { display: flex; justify-content: space-between; gap: 12px; padding-block: 8px; border-bottom: 1px solid var(--pc-frame-border); }',
       '</style>',
       '<section class="status">',
-      '  <h2>艾莉娅</h2>',
+      '  <div class="status-head"><h2>艾莉娅</h2><img id="status-image" class="status-avatar" src="/a4.jpg" alt="状态图片"></div>',
       '  <div class="row"><span>好感度</span><strong>{{mvu:角色.艾莉娅.好感度}}</strong></div>',
       '  <div class="row"><span>当前状态</span><strong>{{mvu:角色.艾莉娅.状态}}</strong></div>',
       '  <div class="row"><span>金币</span><strong>{{mvu:背包.金币}}</strong></div>',
@@ -420,11 +422,21 @@ async function applyScenario(name: VisualScenarioName, options: { height?: numbe
       '</script>',
     ].join('\n');
     statusDisplay.upsertScheme(scheme);
+    const secondaryScheme = createStatusDisplayScheme('mvu');
+    secondaryScheme.name = '背包状态';
+    secondaryScheme.template = '<section style="padding:12px">金币：{{mvu:背包.金币}}</section>';
+    statusDisplay.upsertScheme(secondaryScheme);
+    statusDisplay.setActiveScheme(phone.currentTavernScopeKey, secondaryScheme.id);
     statusDisplay.setActiveScheme(phone.currentTavernScopeKey, scheme.id);
     resetPhoneToRoute('status-display', 'root', '状态栏');
     const rendered = await waitForVisualCondition(() => {
       const frame = document.querySelector<HTMLIFrameElement>('.pc-status-display-app iframe');
-      return Boolean(frame?.srcdoc.includes('正在城镇休息') && frame.sandbox.contains('allow-same-origin'));
+      return Boolean(
+        frame?.srcdoc.includes('正在城镇休息') &&
+        frame.sandbox.contains('allow-same-origin') &&
+        (frame.contentDocument?.querySelector<HTMLImageElement>('#status-image')?.naturalWidth || 0) > 0 &&
+        document.querySelectorAll('.pc-status-tabs .pc-segment-btn').length === 2,
+      );
     });
     if (!rendered) throw new Error('Status display MVU template did not render inside the frontend frame');
     await waitForPaint();
@@ -771,6 +783,17 @@ async function applyScenario(name: VisualScenarioName, options: { height?: numbe
     ) {
       throw new Error('Home did not render the saved folders as direct group tabs');
     }
+    const groupTabBar = document.querySelector<HTMLElement>('.pc-home-group-tabs');
+    if (!groupTabBar || getComputedStyle(groupTabBar).touchAction !== 'pan-x') {
+      throw new Error('Home group tabs do not expose horizontal touch scrolling');
+    }
+    const maxGroupTabScroll = groupTabBar.scrollWidth - groupTabBar.clientWidth;
+    if (maxGroupTabScroll > 0) {
+      groupTabBar.scrollLeft = maxGroupTabScroll;
+      await waitForPaint();
+      if (groupTabBar.scrollLeft === 0) throw new Error('Home group tabs cannot scroll horizontally');
+      groupTabBar.scrollLeft = 0;
+    }
     const activeGroupId = groupTabs.find(tab => tab.classList.contains('active'))?.dataset.homeToken?.slice(7) || '';
     const activeGroup = settings.settings.layout.folders.find(folder => folder.id === activeGroupId);
     const activeGrid = document.querySelector<HTMLElement>('.pc-home-app-section .pc-home-app-grid');
@@ -791,7 +814,7 @@ async function applyScenario(name: VisualScenarioName, options: { height?: numbe
       !document
         .querySelector<HTMLButtonElement>(`[data-home-token="folder:${activeGroupId}"]`)
         ?.classList.contains('active') ||
-      document.querySelector('.pc-home-folder-dialog')
+      document.querySelector('.pc-home-group-manager-dialog')
     ) {
       throw new Error('Home group source was not restored without reopening its management dialog');
     }
@@ -819,7 +842,7 @@ async function applyScenario(name: VisualScenarioName, options: { height?: numbe
     if (phone.currentRoute.appId !== 'game-2048') throw new Error('Closed phone lost its App route');
     await phone.goBack();
     await waitForPaint();
-    if (!gameTab?.classList.contains('active') || document.querySelector('.pc-home-folder-dialog')) {
+    if (!gameTab?.classList.contains('active') || document.querySelector('.pc-home-group-manager-dialog')) {
       throw new Error('Closed phone did not restore the source group');
     }
 
@@ -835,12 +858,80 @@ async function applyScenario(name: VisualScenarioName, options: { height?: numbe
     search.value = '';
     search.dispatchEvent(new Event('input', { bubbles: true }));
     await waitForPaint();
-    document.querySelector<HTMLButtonElement>('.pc-home-group-bar > .pc-soft-btn')?.click();
-    await waitForPaint();
-    if (!document.querySelector('.pc-home-folder-dialog')) {
-      throw new Error('Home group management action did not open the selected group');
+    const reorderedGrid = document.querySelector<HTMLElement>('.pc-home-app-section .pc-home-app-grid');
+    const reorderedTiles = [...(reorderedGrid?.querySelectorAll<HTMLButtonElement>('.pc-app-tile') ?? [])];
+    const reorderedFolder = settings.settings.layout.folders.find(folder => folder.id === gameFolder?.id);
+    const originalFirstId = reorderedFolder?.appIds[0];
+    if (reorderedTiles.length > 1 && reorderedFolder && originalFirstId) {
+      const sourceRect = reorderedTiles[0].getBoundingClientRect();
+      const targetRect = reorderedTiles[1].getBoundingClientRect();
+      const pointerId = 81;
+      const sourceTile = reorderedTiles[0];
+      const setPointerCapture = sourceTile.setPointerCapture;
+      const releasePointerCapture = sourceTile.releasePointerCapture;
+      sourceTile.setPointerCapture = () => undefined;
+      sourceTile.releasePointerCapture = () => undefined;
+      sourceTile.dispatchEvent(
+        new PointerEvent('pointerdown', {
+          bubbles: true,
+          button: 0,
+          clientX: sourceRect.left + sourceRect.width / 2,
+          clientY: sourceRect.top + sourceRect.height / 2,
+          pointerId,
+        }),
+      );
+      await new Promise(resolve => window.setTimeout(resolve, 340));
+      sourceTile.dispatchEvent(
+        new PointerEvent('pointermove', {
+          bubbles: true,
+          clientX: targetRect.left + targetRect.width / 2,
+          clientY: targetRect.top + targetRect.height / 2,
+          pointerId,
+        }),
+      );
+      sourceTile.dispatchEvent(
+        new PointerEvent('pointerup', {
+          bubbles: true,
+          clientX: targetRect.left + targetRect.width / 2,
+          clientY: targetRect.top + targetRect.height / 2,
+          pointerId,
+        }),
+      );
+      sourceTile.setPointerCapture = setPointerCapture;
+      sourceTile.releasePointerCapture = releasePointerCapture;
+      await waitForPaint();
+      if (settings.settings.layout.folders.find(folder => folder.id === gameFolder.id)?.appIds[0] === originalFirstId) {
+        throw new Error('Home group App long-press drag did not reorder the active group');
+      }
     }
-    document.querySelector<HTMLButtonElement>('.pc-home-folder-head button[title="关闭"]')?.click();
+    await new Promise(resolve => window.setTimeout(resolve, 260));
+    document.querySelector<HTMLButtonElement>('.pc-home-group-bar > .pc-icon-btn')?.click();
+    await waitForPaint();
+    const groupManager = document.querySelector<HTMLElement>('.pc-home-group-manager-dialog');
+    const groupManagerRows = groupManager?.querySelectorAll('.pc-home-group-manager-row') ?? [];
+    const expectedManagerRows = settings.settings.layout.folders.flatMap(folder => folder.appIds).length;
+    if (!groupManager || groupManagerRows.length !== expectedManagerRows) {
+      throw new Error(
+        `Home group management did not open the App assignment list: dialog=${Boolean(groupManager)}, rows=${groupManagerRows.length}, expected=${expectedManagerRows}`,
+      );
+    }
+    groupManagerRows[0]?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+    await waitForPaint();
+    if (!groupManager.textContent?.includes('已选 1')) {
+      throw new Error('Home group management cannot select an App for reassignment');
+    }
+    const selectedManagerAppId = (groupManagerRows[0] as HTMLElement | undefined)?.dataset.appId;
+    groupManager.querySelector<HTMLButtonElement>('.pc-home-group-manager-actions .pc-primary-btn')?.click();
+    await waitForPaint();
+    if (
+      !selectedManagerAppId ||
+      !settings.settings.layout.folders
+        .find(folder => folder.id === gameFolder?.id)
+        ?.appIds.includes(selectedManagerAppId)
+    ) {
+      throw new Error('Home group management did not move the selected App to the target group');
+    }
+    document.querySelector<HTMLButtonElement>('.pc-home-group-manager-head button[title="关闭"]')?.click();
     await waitForPaint();
   } else if (name === 'home-five-columns') {
     const settings = useSettingsStore();

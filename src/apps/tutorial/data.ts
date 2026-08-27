@@ -97,7 +97,7 @@ export const tutorialArticles: TutorialArticle[] = [
       {
         type: 'paragraph',
         title: '移动和整理 App',
-        text: '主页按功能分组显示 App，可在分组管理中重命名、调整组内顺序、新建或解散分组。聊天档案、收藏、提示词、教程和设置固定在底部 Dock；界面设置可调整主页图标列数。',
+        text: '主页按功能分组显示 App，分组标签可左右滑动；长按 App 可调整当前分组内顺序，管理分组可多选 App 后移动到已有分组或新建分组。聊天档案、收藏、提示词、教程和设置固定在底部 Dock；界面设置可调整主页图标列数。',
       },
       {
         type: 'paragraph',

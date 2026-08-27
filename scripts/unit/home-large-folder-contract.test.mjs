@@ -19,10 +19,13 @@ test('saved folders render as group tabs with full direct App grids', () => {
   assert.doesNotMatch(layoutProjection, /packHomeGridPages|getFolderShortcutApps|getFolderRemainingApps/u);
 });
 
-test('home browser scenario verifies group switching, search, direct opening and management', () => {
+test('home browser scenario verifies group switching, search, drag, swipe and management', () => {
   assert.match(harness, /Home did not render the saved folders as direct group tabs/u);
+  assert.match(harness, /Home group tabs cannot scroll horizontally/u);
   assert.match(harness, /Selected home group did not expose every App directly/u);
   assert.match(harness, /Home group source was not restored without reopening its management dialog/u);
   assert.match(harness, /Home App search did not find chat archive in the fixed Dock/u);
-  assert.match(harness, /Home group management action did not open the selected group/u);
+  assert.match(harness, /Home group App long-press drag did not reorder the active group/u);
+  assert.match(harness, /Home group management did not open the App assignment list/u);
+  assert.match(harness, /Home group management did not move the selected App to the target group/u);
 });

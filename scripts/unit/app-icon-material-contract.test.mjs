@@ -14,7 +14,7 @@ test('one shared material styles home, Dock, group management and theme-preview 
   assert.match(globalCss, /\.pc-phone-root \.pc-app-icon-material\s*\{/u);
   assert.match(globalCss, /\.pc-app-icon-material::before/u);
   assert.match(globalCss, /\.pc-app-icon-material:has\(> img\)/u);
-  assert.ok((home.match(/pc-app-icon-material/gu) || []).length >= 4);
+  assert.ok((home.match(/pc-app-icon-material/gu) || []).length >= 3);
   assert.match(theme, /pc-preview-app-icon pc-app-icon-material/u);
 });
 

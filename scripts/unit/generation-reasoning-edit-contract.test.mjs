@@ -74,3 +74,17 @@ test('generation reasoning helper mutates only an existing generation record', a
   assert.equal(target.generationRecord.reasoning, '新内容');
   assert.equal(helper.updateGenerationRecordReasoning({}, '不会创建'), false);
 });
+
+test('reasoning save cleanup removes only fixed chat completion envelope lines', async () => {
+  const source = await readSource('src/util/generationReasoning.ts');
+  const compiled = transpileModule(source, {
+    compilerOptions: { module: ModuleKind.ESNext, target: ScriptTarget.ES2022 },
+  }).outputText;
+  const helper = await import(`data:text/javascript;base64,${Buffer.from(compiled).toString('base64')}`);
+  const envelope =
+    '{{"id":"chatcmpl-1","object":"chat.completion.chunk","created":1,"model":"test","choices":[{"index":0,"delta":{},"finish_reason":null}]}}';
+  assert.equal(helper.cleanSavedGenerationReasoning(`保留内容\n${envelope}\n继续保留`), '保留内容\n继续保留');
+  assert.equal(helper.cleanSavedGenerationReasoning(envelope.slice(1, -1)), '');
+  assert.equal(helper.cleanSavedGenerationReasoning('{"model":"正文示例"}'), '{"model":"正文示例"}');
+  assert.match(disclosure, /cleanSavedGenerationReasoning\(draft\.value\)/u);
+});

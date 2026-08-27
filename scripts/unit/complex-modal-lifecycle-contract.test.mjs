@@ -26,7 +26,7 @@ test('complex dialogs share lifecycle without bypassing busy guards', () => {
   for (const [key, refName] of [
     ['bagu', 'dialogEl'],
     ['transfer', 'dialogRef'],
-    ['phone', 'homeFolderDialogRef'],
+    ['phone', 'folderCreateDialogRef'],
   ]) {
     const explicitRegistration = sources[key].includes(`dialogRef: ${refName}`);
     const shorthandRegistration =
@@ -41,11 +41,11 @@ test('complex dialogs share lifecycle without bypassing busy guards', () => {
     if (!sources.transfer.includes(evidence)) failures.push(`Content transfer busy close guard missing: ${evidence}`);
   }
   for (const evidence of [
-    'ref="homeFolderDialogRef"',
-    'aria-label="主页分组管理"',
+    'ref="folderCreateDialogRef"',
+    'aria-label="管理分组"',
     'tabindex="-1"',
-    'isOpen: () => Boolean(activeHomeFolder.value)',
-    'onClose: closeHomeFolder',
+    'isOpen: () => folderCreateOpen.value',
+    'onClose: closeFolderCreator',
   ]) {
     if (!sources.phone.includes(evidence)) failures.push(`Home folder dialog lifecycle missing: ${evidence}`);
   }

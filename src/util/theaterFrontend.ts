@@ -10,8 +10,8 @@ export interface TheaterFrontendBuildOptions {
 const FRONTEND_FRAME_SOURCE = 'st-phone-theater';
 const TRUSTED_FRONTEND_IFRAME_CSP = [
   "default-src 'none'",
-  'img-src https: data: blob:',
-  'media-src https: data: blob:',
+  "img-src 'self' http: https: data: blob:",
+  "media-src 'self' http: https: data: blob:",
   'font-src https: data:',
   "style-src 'unsafe-inline' https:",
   "script-src 'unsafe-inline' https:",
@@ -25,8 +25,8 @@ const TRUSTED_FRONTEND_IFRAME_CSP = [
 function createSafeFrontendCsp(nonce: string) {
   return [
     "default-src 'none'",
-    'img-src https: data: blob:',
-    'media-src https: data: blob:',
+    "img-src 'self' http: https: data: blob:",
+    "media-src 'self' http: https: data: blob:",
     'font-src https: data:',
     "style-src 'unsafe-inline' https:",
     `script-src 'nonce-${nonce}'`,

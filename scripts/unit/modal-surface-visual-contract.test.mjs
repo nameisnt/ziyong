@@ -13,7 +13,7 @@ const modalSources = await Promise.all(
     ['transfer', '../../src/components/ContentTransferOverlay.vue', '.pc-content-transfer-dialog'],
     ['preview', '../../src/components/GenerationPreviewPanel.vue', '.pc-preview-dialog'],
     ['prompts', '../../src/apps/prompts/PromptsApp.vue', '.pc-prompt-detail-dialog'],
-    ['phone', '../../src/components/PhoneHome.vue', '.pc-home-folder-dialog'],
+    ['phone', '../../src/components/PhoneHome.vue', '.pc-home-group-manager-dialog'],
   ].map(async ([key, path, selector]) => ({
     key,
     selector,
@@ -51,7 +51,8 @@ test('every modal dialog consumes one opaque global theme surface', () => {
       outline: 'none',
     };
     for (const [property, value] of Object.entries(expected)) {
-      if (declarations[property] !== value) failures.push(`global dialog ${property} is ${declarations[property] ?? 'missing'}`);
+      if (declarations[property] !== value)
+        failures.push(`global dialog ${property} is ${declarations[property] ?? 'missing'}`);
     }
   }
 
@@ -60,12 +61,20 @@ test('every modal dialog consumes one opaque global theme surface', () => {
     consumerCount += (source.match(/class="[^"]*\bpc-modal-dialog\b[^"]*"/g) ?? []).length;
     for (const body of rulesFor(scopedStyleFor(source), selector)) {
       const declarations = declarationsFor(body);
-      for (const property of ['border', 'border-color', 'background', 'box-shadow', 'outline', 'opacity', 'backdrop-filter']) {
+      for (const property of [
+        'border',
+        'border-color',
+        'background',
+        'box-shadow',
+        'outline',
+        'opacity',
+        'backdrop-filter',
+      ]) {
         if (property in declarations) failures.push(`${key} still owns shared dialog ${property}`);
       }
     }
   }
-  if (consumerCount !== 9) failures.push(`expected 9 modal dialog consumers, found ${consumerCount}`);
+  if (consumerCount !== 8) failures.push(`expected 8 modal dialog consumers, found ${consumerCount}`);
 
   const sectionCardIndex = globalSource.indexOf('.pc-phone-root .pc-section-card');
   const modalDialogIndex = globalSource.indexOf('.pc-phone-root .pc-modal-dialog');

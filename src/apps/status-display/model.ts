@@ -22,7 +22,7 @@ function formatMvuValue(value: unknown) {
 
 export function renderMvuStatusTemplate(template: string, statData: MvuStatData) {
   return template.replace(/\{\{\s*mvu:([^{}]+?)\s*\}\}/g, (_match, rawPath: string) => {
-    return escapeHtml(formatMvuValue(_.get(statData, rawPath.trim())));
+    return formatMvuValue(_.get(statData, rawPath.trim()));
   });
 }
 

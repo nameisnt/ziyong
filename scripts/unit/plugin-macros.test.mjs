@@ -72,10 +72,14 @@ test('pick and assign macros honor random counts and non-repeating pools', () =>
 });
 
 test('plugin macros are registered only inside the phone generation lifecycle', () => {
-  assert.match(generationService, /registerMacroLikeSafe\(PLUGIN_MACRO_PATTERN/u);
+  assert.match(generationService, /registerMacroLikeSafe\(\s*PLUGIN_MACRO_PATTERN/u);
   assert.match(
     generationService,
     /macroRegistrations\.reverse\(\)\.forEach\(registration => registration\.stop\(\)\)/u,
   );
   assert.match(generationService, /replacePluginMacros/u);
+  assert.match(
+    generationService,
+    /replaceGenerationAliases\(\s*resolvePluginMacro\(String\(kind\), String\(query\)\),\s*aliases/u,
+  );
 });

@@ -25,7 +25,7 @@ test('activity is never a drag destination and home re-entry restores the record
     source,
     /activeHomeGroupId\.value = homeGroups\.value\.some\(group => group\.id === route\.homeSource\?\.folderId\)/u,
   );
-  assert.match(source, /activeHomeFolderId\.value = ''/u);
+  assert.doesNotMatch(source, /activeHomeFolderId/u);
 });
 
 test('activity routes drafts and recovery items through their registered app and keeps saved-task cleanup in TaskCenter', () => {
@@ -64,11 +64,12 @@ test('activity page owns its asynchronous state without duplicating desktop stat
   assert.match(activityPage, /watch\(\[\(\) => generationTasks\.currentScopeTasks, \(\) => previewDrafts\.drafts\]/u);
 });
 
-test('home organize mode is explicit and Dock rejects unsupported drops instead of displacing items', () => {
-  assert.match(source, /isOrganizing = ref\(false\)/u);
-  assert.match(source, /\{\{ isOrganizing \? '完成' : '整理' \}\}/u);
+test('home grid owns direct group reordering and Dock rejects unsupported drops', () => {
+  assert.match(source, /onFolderAppPointerDown\(\$event, app\.id, index, section\.folderId\)/u);
+  assert.match(source, /reorderHomeFolderApp\(homeLayout\.value, folder\.id, folderDrag\.appId/u);
+  assert.doesNotMatch(source, /isOrganizing/u);
   assert.match(source, /Dock 只能放置 App，分组请留在主界面/u);
   assert.match(source, /Dock 已满，请先移出一个 App/u);
-  assert.match(source, /height: calc\(100% - 20px\)/u);
+  assert.match(source, /touch-action: pan-x/u);
   assert.match(source, /event\.button !== 0/u);
 });

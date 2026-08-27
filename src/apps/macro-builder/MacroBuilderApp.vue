@@ -122,8 +122,11 @@
 </template>
 
 <script setup lang="ts">
+import { useGenerationAliasesStore } from '@/store/generationAliases';
+import { replaceGenerationAliases, resolveGenerationIdentityAliases } from '@/util/generationAliases';
 import { buildPluginMacro, replacePluginMacros, type PluginMacroKind } from '@/util/pluginMacros';
 
+const generationAliases = useGenerationAliasesStore();
 const mode = ref<PluginMacroKind>('dice');
 const previewRevision = ref(0);
 const dice = reactive({ failure: '失败', maximum: 100, minimum: 0, operation: 'gte', success: '成功', target: 60 });
@@ -153,7 +156,12 @@ const generatedMacro = computed(() => {
 });
 const previewResult = computed(() => {
   void previewRevision.value;
-  return replacePluginMacros(generatedMacro.value);
+  return (
+    replaceGenerationAliases(
+      replacePluginMacros(generatedMacro.value),
+      resolveGenerationIdentityAliases(generationAliases),
+    ) || ''
+  );
 });
 
 async function copyMacro() {

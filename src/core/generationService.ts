@@ -13,7 +13,11 @@ import type {
   GenerationRequestParts,
 } from '@/type/generation';
 import { buildGenerationChatTail, buildGenerationUserInput, buildPhoneUserInput } from '@/util/generation';
-import { applyGenerationAliases, replaceGenerationAliases } from '@/util/generationAliases';
+import {
+  applyGenerationAliases,
+  replaceGenerationAliases,
+  resolveGenerationIdentityAliases,
+} from '@/util/generationAliases';
 import { createHiddenGenerationRecord } from '@/util/hiddenGenerationRecord';
 import { buildSourceSelection, type SummaryGenerationSourceMode } from '@/util/generationSource';
 import { ensureCurrentScopeRecovery } from '@/util/generationVisibility';
@@ -315,10 +319,13 @@ async function runWithPhoneUserInputMacro<TResult>(
   const macroRegistrations: Array<{ stop: () => void }> = [];
   try {
     signal?.throwIfAborted();
+    const aliases = resolveGenerationIdentityAliases(useGenerationAliasesStore());
     macroRegistrations.push(registerMacroLikeSafe(PHONE_USER_INPUT_MACRO_PATTERN, () => phoneUserInput));
     macroRegistrations.push(
-      registerMacroLikeSafe(PLUGIN_MACRO_PATTERN, (_context, _substring, kind, query) =>
-        resolvePluginMacro(String(kind), String(query)),
+      registerMacroLikeSafe(
+        PLUGIN_MACRO_PATTERN,
+        (_context, _substring, kind, query) =>
+          replaceGenerationAliases(resolvePluginMacro(String(kind), String(query)), aliases) || '',
       ),
     );
     for (const [name, value] of Object.entries(variables)) {
@@ -342,7 +349,12 @@ function captureWithPhoneUserInput(
   signal?: AbortSignal,
 ) {
   const replaceRegisteredMacros = (content: string) => {
-    let result = replacePluginMacros(content.replace(PHONE_USER_INPUT_MACRO_PATTERN, () => phoneUserInput));
+    const aliases = resolveGenerationIdentityAliases(useGenerationAliasesStore());
+    let result =
+      replaceGenerationAliases(
+        replacePluginMacros(content.replace(PHONE_USER_INPUT_MACRO_PATTERN, () => phoneUserInput)),
+        aliases,
+      ) || '';
     for (const [name, value] of Object.entries(variables)) {
       if (!/^[\w.-]+$/u.test(name)) continue;
       const escapedName = name.replace(/[.*+?^${}()|[\]\\]/gu, '\\$&');
@@ -783,7 +795,13 @@ export async function generateOrderedPromptContent(options: {
       const cleanedOutput = normalizeAndCleanGenerationResult(result);
       const rawOutput = cleanedOutput.originalOutput;
       options.lifecycle?.onRawOutput?.(rawOutput);
-      return { generationId, rawOutput, rawOutputSemantics: 'original-v1' as const, reasoning: cleanedOutput.reasoning, textProvider };
+      return {
+        generationId,
+        rawOutput,
+        rawOutputSemantics: 'original-v1' as const,
+        reasoning: cleanedOutput.reasoning,
+        textProvider,
+      };
     },
     textProvider,
   });
@@ -899,10 +917,7 @@ export async function generateContent<TConfig, TResult, TSaveResult = { entityId
           });
         } catch (error) {
           if (!adapter.preserveSaveFailure) throw error;
-          const warnings = [
-            ...parsed.warnings,
-            `保存失败：${error instanceof Error ? error.message : String(error)}`,
-          ];
+          const warnings = [...parsed.warnings, `保存失败：${error instanceof Error ? error.message : String(error)}`];
           const draft = options.createFailedDraft({
             actionId: adapter.actionId,
             appId: adapter.appId,

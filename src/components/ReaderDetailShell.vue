@@ -253,8 +253,14 @@ const emit = defineEmits<{
 const regexDisplay = useRegexDisplayStore();
 const phone = usePhoneStore();
 const slots = useSlots();
-const contextBarVisible = computed(
-  () => Boolean(props.contextLabel || props.updatedAt || props.versionCount > 0 || slots['detail-context'] || slots['version-navigation']),
+const contextBarVisible = computed(() =>
+  Boolean(
+    props.contextLabel ||
+    props.updatedAt ||
+    props.versionCount > 0 ||
+    slots['detail-context'] ||
+    slots['version-navigation'],
+  ),
 );
 const itemTransferParams = computed(() => phone.currentRoute.params || {});
 const itemTransferAvailable = computed(() => {
@@ -532,12 +538,12 @@ defineExpose({ hideFooter, toggleFooter });
 
 .pc-reader-context-bar {
   display: flex;
-  flex: 0 0 42px;
+  flex: 0 0 auto;
   align-items: center;
   justify-content: space-between;
   gap: 8px;
   min-width: 0;
-  padding: 0 8px;
+  padding: 4px 6px;
   border-bottom: 1px solid var(--pc-border);
   background: var(--pc-surface);
 }
@@ -640,15 +646,17 @@ defineExpose({ hideFooter, toggleFooter });
 }
 
 .pc-reader-tool-trigger {
-  width: 40px;
-  height: 40px;
-  border: 2px solid var(--pc-theme-accent);
+  width: 32px;
+  height: 32px;
+  margin: 4px;
+  border: 1px solid var(--pc-theme-accent);
   background: var(--pc-form-control-bg);
   color: var(--pc-form-control-text);
   box-shadow:
     0 0 0 2px var(--pc-form-control-bg),
     0 7px 20px color-mix(in srgb, var(--pc-text) 26%, transparent 74%);
   touch-action: none;
+  font-size: 13px;
 }
 
 .pc-reader-tool.dragging .pc-reader-tool-trigger {
@@ -721,5 +729,4 @@ defineExpose({ hideFooter, toggleFooter });
   width: 16px;
   text-align: center;
 }
-
 </style>

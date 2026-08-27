@@ -1,5 +1,17 @@
 <template>
   <section class="pc-status-display-app">
+    <nav v-if="enabledSchemes.length > 1" class="pc-segment pc-status-tabs" aria-label="状态栏方案">
+      <button
+        v-for="scheme in enabledSchemes"
+        :key="scheme.id"
+        :class="['pc-segment-btn', 'compact', { active: scheme.id === activeSchemeId }]"
+        type="button"
+        @click="selectScheme(scheme.id)"
+      >
+        {{ scheme.name }}
+      </button>
+    </nav>
+
     <div v-if="configError" class="pc-error-list pc-status-feedback">
       <span>{{ configError }}</span>
     </div>
@@ -17,13 +29,13 @@
       embedded
       flush-content
       frameless
-      :host-bridge="activeScheme.source === 'mvu'"
-      :security-mode="activeScheme.source === 'mvu' ? 'trusted' : 'safe'"
+      host-bridge
+      security-mode="trusted"
       :theme="settingsStore.settings.theme"
       :title="activeScheme.name"
     />
     <div v-else class="pc-status-feedback">
-      <EmptyState title="还没有状态方案">
+      <EmptyState :title="schemes.length ? '当前聊天未启用状态方案' : '还没有状态方案'">
         <button class="pc-primary-btn compact" type="button" @click="openSettings">打开状态栏设置</button>
       </EmptyState>
     </div>
@@ -56,10 +68,18 @@ let refreshRevision = 0;
 let eventStops: Array<{ stop: () => void }> = [];
 
 const activeSchemeId = computed(() => statusStore.getActiveSchemeId(phone.currentTavernScopeKey));
-const activeScheme = computed(() => schemes.value.find(scheme => scheme.id === activeSchemeId.value) ?? null);
+const enabledSchemes = computed(() => {
+  const enabledIds = new Set(statusStore.getEnabledSchemeIds(phone.currentTavernScopeKey));
+  return schemes.value.filter(scheme => enabledIds.has(scheme.id));
+});
+const activeScheme = computed(() => enabledSchemes.value.find(scheme => scheme.id === activeSchemeId.value) ?? null);
 
 function openSettings() {
   phone.pushRoute('status-display-settings', 'root', '状态栏设置');
+}
+
+function selectScheme(schemeId: string) {
+  statusStore.setActiveScheme(phone.currentTavernScopeKey, schemeId);
 }
 
 function loadRegexStatus(scheme: StatusDisplayScheme) {
@@ -146,6 +166,30 @@ onUnmounted(() => {
 <style scoped>
 .pc-status-display-app {
   min-height: 100%;
+}
+
+.pc-status-tabs {
+  display: flex;
+  width: 100%;
+  max-width: 100%;
+  gap: 2px;
+  padding: 4px 6px;
+  overflow-x: auto;
+  overflow-y: hidden;
+  border-radius: 0;
+  overscroll-behavior-inline: contain;
+  scrollbar-width: none;
+  touch-action: pan-x;
+  -webkit-overflow-scrolling: touch;
+}
+
+.pc-status-tabs::-webkit-scrollbar {
+  display: none;
+}
+
+.pc-status-tabs > button {
+  flex: 0 0 auto;
+  white-space: nowrap;
 }
 
 .pc-status-feedback {

@@ -24,14 +24,14 @@
 - `src/apps/*/index.ts`：独立 App 注册入口，例如
   `app-builder`、`card-writer`、`entry-library`、`macro-builder`、`preset-link`、`preset-manager`、`profiles`、`recovery`、`world-slots`、`worldbook-link`
   等。
-- `src/core/appLayout.ts`：默认首页分组、固定五项 Dock、组内排序、内部 folder token、layout v4 一次迁移和 normalization；未归类 App 自动进入插件工具，持久化字段仍名为 `folders`，界面统一称“分组”。
+- `src/core/appLayout.ts`：默认首页分组、固定五项 Dock、组内排序、批量换组、新建分组、内部 folder token、layout v4 一次迁移和 normalization；未归类 App 自动进入插件工具，持久化字段仍名为 `folders`，界面统一称“分组”。
 
 ## 目录结构
 
 - `src/apps/<domain>/`：业务 App 根组件、专属页面、域内 store/generation/api/composable。
 - `src/components/`：跨业务共享 UI、手机壳内部组件、生成/阅读/详情/引用/迁移/弹层控件。
 - `src/components/home/`：`PhoneHome` 的已拆分内部模块，包括活动页、只读布局投影和顶部上下文条。
-- `src/components/PhoneHome.vue`：首页按当前聊天、固定任务区、搜索、横向分组标签、当前分组完整 App 网格和固定 Dock 渲染；分组管理复用原弹窗，来源路由只恢复选中分组。
+- `src/components/PhoneHome.vue`：首页按当前聊天、固定任务区、搜索、横向触控分组标签、当前分组完整 App 网格和固定 Dock 渲染；主页网格长按拖拽调整组内顺序，管理弹窗多选 App 后换组或新建分组，来源路由只恢复选中分组。
 - `src/store/`：跨域 Pinia store 和共享持久化 store。
 - `src/core/`：注册、生命周期、生成服务、布局、运行器和跨域核心服务。
 - `src/util/`：SillyTavern 运行时包装、备份/迁移、生成辅助、阅读解析、聊天作用域、内容转换等共享工具。
@@ -145,7 +145,7 @@
   统一提供普通 App 页面外边距；业务 App 根页面只负责布局，状态栏展示页通过专用零边距屏幕承载网页。
 - `PhoneOverlay.vue` 根据 settings 注入主题 CSS 变量、字体、阅读器尺寸、内置纸张纹理和 App 图标样式。
 - `src/data/paperTextures.ts` 注册 A4 白纸、宣纸、羊皮纸和黑色卡纸纹理；`src/apps/theme/themeCatalog.ts` 独占主题预设、主题包、字体、图标、颜色和圆角静态目录。
-- `src/core/appLayout.ts` 维护首页八个默认分组和聊天档案/收藏/提示词/教程/设置五项 Dock，并将旧布局一次重建为 layout v4；`PhoneHome.vue` 将 `folders` 投影为横向标签，不使用分页、文件夹预览卡或独立 App 区，v4 内用户自建分组继续保留。
+- `src/core/appLayout.ts` 维护首页八个默认分组和聊天档案/收藏/提示词/教程/设置五项 Dock，并将旧布局一次重建为 layout v4；`PhoneHome.vue` 将 `folders` 投影为可横向触摸滚动的标签，不使用分页、文件夹预览卡或独立 App 区，v4 内用户自建分组继续保留，组内顺序直接在主页拖拽，跨组调整通过多选管理弹窗完成。
 - `ReaderDetailShell.vue` 固定显示详情上下文栏，`VersionNavigator.vue` 在栏内切换版本；可拖动工具菜单只承载正文操作，底部 `DetailFooter` 负责上条/目录/下条和置顶置底。
 - `src/apps/settings/SettingsApp.vue` 使用单行分类选择器装配界面、阅读、生成、连接、数据和高级面板；`SettingsGenerationPanel.vue` 管理生成默认值，`SettingsConnectionPanel.vue` 管理文本通道和外部配置目录，`SettingsExternalApiPage.vue` 负责外部 API 二级编辑；`SettingsInterfacePanel.vue` 使用紧凑行管理窗口、图标密度和悬浮球，旧分页主页的行数/每页容量及 Dock 数量不再暴露。
 - 共享组件包括

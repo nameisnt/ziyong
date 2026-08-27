@@ -2,7 +2,6 @@ import { normalizeHomeLayout, readHomeFolderToken } from '@/core/appLayout';
 import { getPhoneApps, type PhoneAppDefinition } from '@/data/apps';
 import { useSettingsStore } from '@/store/settings';
 import { storeToRefs } from 'pinia';
-import type { Ref } from 'vue';
 
 export type HomeDisplayItem = {
   app: PhoneAppDefinition | null;
@@ -10,7 +9,7 @@ export type HomeDisplayItem = {
   token: string;
 };
 
-export function useHomeLayoutProjection(activeHomeFolderId: Ref<string>) {
+export function useHomeLayoutProjection() {
   const settingsStore = useSettingsStore();
   const { settings } = storeToRefs(settingsStore);
 
@@ -18,15 +17,6 @@ export function useHomeLayoutProjection(activeHomeFolderId: Ref<string>) {
   const phoneAppById = computed(() => new Map(getPhoneApps().map(app => [app.id, app])));
   const dockItems = computed(
     () => homeLayout.value.dockOrder.map(resolveHomeDisplayItem).filter(Boolean) as HomeDisplayItem[],
-  );
-  const activeHomeFolder = computed(
-    () => homeLayout.value.folders.find(folder => folder.id === activeHomeFolderId.value) ?? null,
-  );
-  const activeHomeFolderApps = computed(() =>
-    (activeHomeFolder.value?.appIds ?? []).flatMap(appId => {
-      const app = phoneAppById.value.get(appId);
-      return app ? [app] : [];
-    }),
   );
   const folderCreationApps = computed(() =>
     homeLayout.value.folders.flatMap(folder =>
@@ -55,8 +45,6 @@ export function useHomeLayoutProjection(activeHomeFolderId: Ref<string>) {
   }
 
   return {
-    activeHomeFolder,
-    activeHomeFolderApps,
     dockItems,
     folderCreationApps,
     getFolderApps,

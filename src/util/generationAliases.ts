@@ -1,8 +1,19 @@
 import type { GenerationRequestParts } from '@/type/generation';
+import { getOptionalGlobalFunction, getOptionalGlobalValue } from '@/util/runtime';
 
 export interface GenerationAliases {
   charReplacement: string;
   userReplacement: string;
+}
+
+export function resolveGenerationIdentityAliases(aliases: GenerationAliases): GenerationAliases {
+  return {
+    charReplacement:
+      aliases.charReplacement.trim() ||
+      getOptionalGlobalFunction<() => string | null | undefined>('getCurrentCharacterName')?.()?.trim() ||
+      '',
+    userReplacement: aliases.userReplacement.trim() || String(getOptionalGlobalValue('name1') || '').trim(),
+  };
 }
 
 export function replaceGenerationAliases(text: string | undefined, aliases: GenerationAliases) {

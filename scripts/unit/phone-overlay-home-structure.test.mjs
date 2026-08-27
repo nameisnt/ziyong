@@ -12,12 +12,12 @@ test('PhoneOverlay delegates the complete home and folder surface to PhoneHome',
   assert.match(root, /<PhoneHome[\s\S]*:get-display-app-icon[\s\S]*:get-display-app-style/u);
 
   for (const homeOwner of [
-    'pc-home-folder-dialog',
+    'pc-home-group-manager-dialog',
     'HomeDisplayItem',
     'appDrag',
     'onAppPointerDown',
     'activeHomeGroupId',
-    'dissolveActiveHomeFolder',
+    'moveSelectedApps',
   ]) {
     assert.doesNotMatch(root, new RegExp(homeOwner, 'u'), `${homeOwner} leaked back into PhoneOverlay`);
     assert.match(home, new RegExp(homeOwner, 'u'), `${homeOwner} is missing from PhoneHome`);

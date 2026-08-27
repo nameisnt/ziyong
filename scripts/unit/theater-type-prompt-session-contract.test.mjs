@@ -43,6 +43,18 @@ test('theater rewrite prioritizes replay text and explicitly handles both legacy
   assert.match(theaterSource, /重新选择类型或填写本次类型提示词/u);
 });
 
+test('theater generation freezes rewrite ownership before awaiting the result', () => {
+  const runStart = theaterSource.indexOf('async function runGeneration()');
+  const runEnd = theaterSource.indexOf('\nfunction savePreview()', runStart);
+  const runSource = theaterSource.slice(runStart, runEnd);
+  const targetIndex = runSource.indexOf('const generationTarget =');
+  const awaitIndex = runSource.indexOf('await generateContent(');
+  assert.ok(targetIndex >= 0 && targetIndex < awaitIndex);
+  assert.match(runSource, /mode: generationTarget\.mode/u);
+  assert.match(runSource, /targetEntryId: generationTarget\.entryId/u);
+  assert.match(runSource, /targetVersionId: generationTarget\.versionId/u);
+});
+
 test('theater type prompt lifecycle has an isolated browser scenario', () => {
   assert.match(scenarioCatalogSource, /theater-type-prompt-session/u);
   assert.match(theaterScenarioSource, /name === 'theater-type-prompt-session'/u);

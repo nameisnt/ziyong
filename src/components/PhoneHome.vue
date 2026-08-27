@@ -33,7 +33,6 @@
                 'pc-segment-btn compact',
                 {
                   active: group.id === activeHomeGroupId,
-                  'folder-target': appDrag.folderTargetToken === homeFolderToken(group.id),
                 },
               ]"
               type="button"
@@ -43,8 +42,14 @@
               {{ group.name }}
             </button>
           </nav>
-          <button class="pc-soft-btn compact" type="button" @click="manageActiveHomeGroup">
-            <i class="fa-solid fa-sliders"></i><span>管理分组</span>
+          <button
+            class="pc-icon-btn"
+            type="button"
+            title="管理分组"
+            aria-label="管理分组"
+            @click="manageActiveHomeGroup"
+          >
+            <i class="fa-solid fa-sliders"></i>
           </button>
         </div>
 
@@ -55,20 +60,24 @@
           </div>
           <div class="pc-home-app-grid">
             <button
-              v-for="app in section.apps"
+              v-for="(app, index) in section.apps"
               :key="app.id"
               type="button"
-              :class="['pc-app-tile', { dragging: appDrag.itemToken === app.id && appDrag.isDragging }]"
-              :data-home-token="section.draggable ? app.id : undefined"
-              :style="[
-                getDisplayAppStyle(app),
-                section.draggable ? getHomeTileDragStyle({ app, folder: null, token: app.id }) : {},
+              :class="[
+                'pc-app-tile',
+                {
+                  dragging: section.draggable && folderDrag.appId === app.id && folderDrag.isDragging,
+                  'drop-target': section.draggable && folderDrag.isDragging && folderDrag.targetIndex === index,
+                },
               ]"
+              :data-folder-id="section.draggable ? section.folderId : undefined"
+              :data-folder-index="section.draggable ? index : undefined"
+              :style="[getDisplayAppStyle(app), section.draggable ? getFolderTileDragStyle(app.id) : {}]"
               @click="openHomeApp(app.id, section.folderId)"
-              @pointercancel="section.draggable && onAppPointerCancel($event)"
-              @pointerdown="section.draggable && onAppPointerDown($event, app.id)"
-              @pointermove="section.draggable && onAppPointerMove($event)"
-              @pointerup="section.draggable && onAppPointerUp($event)"
+              @pointercancel="section.draggable && onFolderAppPointerCancel($event)"
+              @pointerdown="section.draggable && onFolderAppPointerDown($event, app.id, index, section.folderId)"
+              @pointermove="section.draggable && onFolderAppPointerMove($event)"
+              @pointerup="section.draggable && onFolderAppPointerUp($event)"
             >
               <span class="pc-app-icon pc-app-icon-material">
                 <AppIcon :asset-path="getDisplayAppIconAssetPath(app)" :icon="getDisplayAppIcon(app)" />
@@ -109,128 +118,107 @@
 
     <Transition name="pc-home-folder">
       <section
-        v-if="activeHomeFolder"
-        :class="['pc-modal-backdrop pc-home-folder-backdrop', { dissolving: folderDissolving }]"
-        @click.self="closeHomeFolder"
-      >
-        <article
-          ref="homeFolderDialogRef"
-          class="pc-section-card pc-modal-dialog pc-home-folder-dialog"
-          role="dialog"
-          aria-modal="true"
-          aria-label="主页分组管理"
-          tabindex="-1"
-        >
-          <header class="pc-section-head pc-home-folder-head">
-            <input
-              :value="activeHomeFolder.name"
-              class="pc-field pc-home-folder-name"
-              maxlength="24"
-              @change="renameActiveHomeFolder(($event.target as HTMLInputElement).value)"
-            />
-            <button
-              class="pc-soft-btn compact"
-              type="button"
-              :aria-pressed="isOrganizing"
-              @click="isOrganizing = !isOrganizing"
-            >
-              {{ isOrganizing ? '完成' : '整理' }}
-            </button>
-            <button
-              v-if="activeHomeFolder.id !== 'home_default_tools'"
-              class="pc-icon-btn danger"
-              type="button"
-              :disabled="folderDissolving"
-              title="解散分组"
-              aria-label="解散分组"
-              @click="dissolveActiveHomeFolder"
-            >
-              <i class="fa-solid fa-folder-minus"></i>
-            </button>
-            <button class="pc-icon-btn" type="button" title="关闭" aria-label="关闭" @click="closeHomeFolder">
-              <i class="fa-solid fa-xmark"></i>
-            </button>
-          </header>
-          <div class="pc-home-folder-grid">
-            <article
-              v-for="(app, index) in activeHomeFolderApps"
-              :key="app.id"
-              :class="[
-                'pc-home-folder-app',
-                {
-                  dragging: folderDrag.appId === app.id && folderDrag.isDragging,
-                  'drop-target': folderDrag.isDragging && folderDrag.targetIndex === index,
-                },
-              ]"
-              :data-folder-index="index"
-              :style="getFolderTileDragStyle(app.id)"
-              @pointercancel="onFolderAppPointerCancel"
-              @pointerdown="onFolderAppPointerDown($event, app.id, index)"
-              @pointermove="onFolderAppPointerMove"
-              @pointerup="onFolderAppPointerUp"
-            >
-              <button type="button" :style="getDisplayAppStyle(app)" @click="openFolderApp(app.id)">
-                <span class="pc-app-icon pc-app-icon-material"
-                  ><AppIcon :asset-path="getDisplayAppIconAssetPath(app)" :icon="getDisplayAppIcon(app)"
-                /></span>
-                <strong>{{ app.name }}</strong>
-              </button>
-              <button
-                v-if="isOrganizing && activeHomeFolder.id !== 'home_default_tools'"
-                class="pc-icon-btn pc-home-folder-remove"
-                type="button"
-                title="移到插件工具"
-                aria-label="移到插件工具"
-                @pointerdown.stop
-                @click.stop="removeFolderApp(app.id)"
-              >
-                <i class="fa-solid fa-arrow-up-right-from-square"></i>
-              </button>
-            </article>
-          </div>
-        </article>
-      </section>
-    </Transition>
-
-    <Transition name="pc-home-folder">
-      <section
         v-if="folderCreateOpen"
-        class="pc-modal-backdrop pc-home-folder-create-backdrop"
+        class="pc-modal-backdrop pc-home-group-manager-backdrop"
         @click.self="closeFolderCreator"
       >
-        <form
+        <article
           ref="folderCreateDialogRef"
-          class="pc-section-card pc-modal-dialog pc-home-folder-create-dialog"
+          class="pc-modal-dialog pc-home-group-manager-dialog"
           role="dialog"
           aria-modal="true"
-          aria-label="新建分组"
+          aria-label="管理分组"
           tabindex="-1"
-          @submit.prevent="createSelectedHomeFolder"
         >
-          <header class="pc-section-head"><strong>新建分组</strong></header>
-          <label class="pc-field-group">
-            <span class="pc-field-label">名称</span>
-            <input v-model="folderCreateName" class="pc-field" maxlength="24" placeholder="分组名称" />
+          <header class="pc-section-head pc-home-group-manager-head">
+            <span>
+              <strong>管理分组</strong>
+              <small>{{
+                folderCreateAppIds.length ? `已选 ${folderCreateAppIds.length}` : '选择 App 后移动或新建分组'
+              }}</small>
+            </span>
+            <div>
+              <button
+                class="pc-soft-btn compact"
+                type="button"
+                :disabled="!filteredFolderManagerApps.length"
+                @click="toggleAllFolderManagerApps"
+              >
+                {{ allVisibleManagerAppsSelected ? '取消全选' : '全选' }}
+              </button>
+              <button class="pc-icon-btn" type="button" title="关闭" aria-label="关闭" @click="closeFolderCreator">
+                <i class="fa-solid fa-xmark"></i>
+              </button>
+            </div>
+          </header>
+
+          <label class="pc-search-field">
+            <i class="fa-solid fa-magnifying-glass"></i>
+            <input v-model="folderManagerQuery" type="search" placeholder="搜索 App" />
           </label>
-          <fieldset class="pc-home-folder-picker">
-            <legend>选择 App（至少一个）</legend>
-            <label v-for="app in folderCreationApps" :key="app.id" class="pc-home-folder-choice">
-              <input
-                type="checkbox"
-                :checked="folderCreateAppIds.includes(app.id)"
-                @change="toggleFolderCreateApp(app.id)"
+
+          <div class="pc-home-group-manager-list">
+            <div
+              v-for="app in filteredFolderManagerApps"
+              :key="app.id"
+              class="pc-home-group-manager-row"
+              :data-app-id="app.id"
+              @click="toggleFolderCreateApp(app.id)"
+            >
+              <BulkSelectionCheckbox
+                :model-value="folderCreateAppIds.includes(app.id)"
+                :label="`选择${app.name}`"
+                @update:model-value="toggleFolderCreateApp(app.id)"
               />
-              <span class="pc-app-icon pc-app-icon-material"
-                ><AppIcon :asset-path="getDisplayAppIconAssetPath(app)" :icon="getDisplayAppIcon(app)"
-              /></span>
-              <strong>{{ app.name }}</strong>
-            </label>
-          </fieldset>
-          <footer class="pc-form-actions">
-            <button class="pc-soft-btn" type="button" @click="closeFolderCreator">取消</button>
-            <button class="pc-primary-btn" type="submit" :disabled="!folderCreateAppIds.length">创建</button>
+              <span class="pc-app-icon pc-app-icon-material">
+                <AppIcon :asset-path="getDisplayAppIconAssetPath(app)" :icon="getDisplayAppIcon(app)" />
+              </span>
+              <span>
+                <strong>{{ app.name }}</strong>
+                <small>{{ getAppGroupName(app.id) }}</small>
+              </span>
+            </div>
+            <EmptyState v-if="!filteredFolderManagerApps.length" compact title="没有匹配的 App" />
+          </div>
+
+          <footer class="pc-home-group-manager-actions">
+            <template v-if="folderNewGroupOpen">
+              <input v-model="folderCreateName" class="pc-field" maxlength="24" placeholder="新分组名称" />
+              <button class="pc-soft-btn" type="button" @click="folderNewGroupOpen = false">取消</button>
+              <button
+                class="pc-primary-btn"
+                type="button"
+                :disabled="!folderCreateAppIds.length || !folderCreateName.trim()"
+                @click="createSelectedHomeFolder"
+              >
+                创建并移入
+              </button>
+            </template>
+            <template v-else>
+              <select v-model="folderTargetId" class="pc-select" aria-label="目标分组">
+                <option v-for="group in homeGroups" :key="group.id" :value="group.id">{{ group.name }}</option>
+              </select>
+              <button
+                class="pc-icon-btn"
+                type="button"
+                title="新建分组"
+                aria-label="新建分组"
+                :disabled="!folderCreateAppIds.length"
+                @click="folderNewGroupOpen = true"
+              >
+                <i class="fa-solid fa-folder-plus"></i>
+              </button>
+              <button
+                class="pc-primary-btn"
+                type="button"
+                :disabled="!folderCreateAppIds.length || !folderTargetId"
+                @click="moveSelectedApps"
+              >
+                移动所选
+              </button>
+            </template>
           </footer>
-        </form>
+        </article>
       </section>
     </Transition>
   </section>
@@ -238,6 +226,7 @@
 
 <script setup lang="ts">
 import AppIcon from '@/components/AppIcon.vue';
+import BulkSelectionCheckbox from '@/components/BulkSelectionCheckbox.vue';
 import EmptyState from '@/components/EmptyState.vue';
 import HomeActivityPage from '@/components/home/HomeActivityPage.vue';
 import HomeContextBar from '@/components/home/HomeContextBar.vue';
@@ -246,11 +235,11 @@ import { usePhoneModalLifecycle } from '@/composables/usePhoneModalLifecycle';
 import {
   createHomeFolder,
   homeFolderToken,
+  moveHomeAppsToFolder,
   moveHomeLayoutItem,
   putHomeAppInFolder,
   readHomeFolderToken,
   reorderHomeFolderApp,
-  removeHomeAppFromFolder,
 } from '@/core/appLayout';
 import { getPhoneApps, type PhoneAppDefinition } from '@/data/apps';
 import { usePhoneStore } from '@/store/phone';
@@ -290,7 +279,9 @@ const folderDrag = reactive({
   appId: '',
   deltaX: 0,
   deltaY: 0,
+  folderId: '',
   isDragging: false,
+  longPressReady: false,
   pointerId: null as number | null,
   sourceIndex: -1,
   startX: 0,
@@ -300,27 +291,19 @@ const folderDrag = reactive({
 const suppressHomeClickUntil = ref(0);
 const activeHomeGroupId = ref('');
 const appSearch = ref('');
-const isOrganizing = ref(false);
-const activeHomeFolderId = ref('');
-const homeFolderDialogRef = ref<HTMLElement | null>(null);
 const folderCreateDialogRef = ref<HTMLElement | null>(null);
 const folderCreateOpen = ref(false);
 const folderCreateName = ref('');
 const folderCreateAppIds = ref<string[]>([]);
-const folderDissolving = ref(false);
+const folderManagerQuery = ref('');
+const folderNewGroupOpen = ref(false);
+const folderTargetId = ref('');
 let appDragLongPressTimer: ReturnType<typeof window.setTimeout> | null = null;
+let folderDragLongPressTimer: ReturnType<typeof window.setTimeout> | null = null;
 let folderHoverTimer: ReturnType<typeof window.setTimeout> | null = null;
 let potentialFolderTargetToken = '';
 
-const {
-  activeHomeFolder,
-  activeHomeFolderApps,
-  dockItems,
-  folderCreationApps,
-  getFolderApps,
-  homeLayout,
-  phoneAppById,
-} = useHomeLayoutProjection(activeHomeFolderId);
+const { dockItems, folderCreationApps, getFolderApps, homeLayout, phoneAppById } = useHomeLayoutProjection();
 const homeGroups = computed(() => homeLayout.value.folders);
 const activeHomeGroup = computed(
   () => homeGroups.value.find(group => group.id === activeHomeGroupId.value) ?? homeGroups.value[0] ?? null,
@@ -330,6 +313,15 @@ const activeHomeGroupApps = computed(() =>
     const app = phoneAppById.value.get(appId);
     return app ? [app] : [];
   }),
+);
+const filteredFolderManagerApps = computed(() => {
+  const query = folderManagerQuery.value.trim().toLocaleLowerCase();
+  return folderCreationApps.value.filter(app => !query || `${app.name} ${app.id}`.toLocaleLowerCase().includes(query));
+});
+const allVisibleManagerAppsSelected = computed(
+  () =>
+    Boolean(filteredFolderManagerApps.value.length) &&
+    filteredFolderManagerApps.value.every(app => folderCreateAppIds.value.includes(app.id)),
 );
 const homeSections = computed(() => {
   const query = appSearch.value.trim().toLocaleLowerCase();
@@ -347,7 +339,7 @@ const homeSections = computed(() => {
   return [
     {
       apps: activeHomeGroupApps.value,
-      draggable: false,
+      draggable: true,
       folderId: activeHomeGroup.value?.id ?? '',
       id: `group:${activeHomeGroup.value?.id ?? 'none'}`,
       title: '',
@@ -356,12 +348,6 @@ const homeSections = computed(() => {
 });
 const homeArchiveDomains = ref(getChatArchiveDomains(viewingScopeKey.value));
 const homeArchiveDomainByApp = computed(() => new Map(homeArchiveDomains.value.map(domain => [domain.appId, domain])));
-
-usePhoneModalLifecycle({
-  dialogRef: homeFolderDialogRef,
-  isOpen: () => Boolean(activeHomeFolder.value),
-  onClose: closeHomeFolder,
-});
 
 usePhoneModalLifecycle({
   dialogRef: folderCreateDialogRef,
@@ -466,14 +452,12 @@ function onAppPointerDown(event: PointerEvent, appId: string) {
   appDrag.deltaY = 0;
   appDrag.insertIndex = Math.max(0, getHomeOrder().indexOf(appId));
   appDrag.isDragging = false;
-  appDrag.longPressReady = isOrganizing.value;
+  appDrag.longPressReady = false;
   clearAppDragLongPressTimer();
   (event.currentTarget as HTMLElement).setPointerCapture?.(event.pointerId);
-  if (isOrganizing.value) return;
   appDragLongPressTimer = window.setTimeout(() => {
     if (appDrag.pointerId !== event.pointerId || appDrag.itemToken !== appId) return;
     appDrag.longPressReady = true;
-    isOrganizing.value = true;
     appDragLongPressTimer = null;
   }, 360);
 }
@@ -608,7 +592,7 @@ function getFolderIconAssetPath(item: HomeDisplayItem) {
 
 function openHomeItem(item: HomeDisplayItem) {
   if (Date.now() < suppressHomeClickUntil.value) return;
-  if (item.folder) activeHomeFolderId.value = item.folder.id;
+  if (item.folder) activeHomeGroupId.value = item.folder.id;
   else if (item.app) openHomeApp(item.app.id);
 }
 
@@ -616,33 +600,25 @@ function resetHomeInteractionState() {
   resetAppDrag();
   resetFolderDrag();
   suppressHomeClickUntil.value = 0;
-  isOrganizing.value = false;
-  folderDissolving.value = false;
-}
-
-function closeHomeFolder() {
-  if (folderDissolving.value) return;
-  resetHomeInteractionState();
-  activeHomeFolderId.value = '';
 }
 
 function openFolderCreator() {
-  folderCreateName.value = '';
-  folderCreateAppIds.value = [];
-  folderCreateOpen.value = true;
+  manageActiveHomeGroup();
+  folderNewGroupOpen.value = true;
 }
 
 function manageActiveHomeGroup() {
-  const group = activeHomeGroup.value;
-  if (!group) return openFolderCreator();
-  activeHomeFolderId.value = group.id;
-  isOrganizing.value = true;
+  folderTargetId.value = activeHomeGroup.value?.id ?? homeGroups.value[0]?.id ?? '';
+  folderCreateOpen.value = true;
 }
 
 function closeFolderCreator() {
   folderCreateOpen.value = false;
   folderCreateName.value = '';
   folderCreateAppIds.value = [];
+  folderManagerQuery.value = '';
+  folderNewGroupOpen.value = false;
+  folderTargetId.value = '';
 }
 
 function toggleFolderCreateApp(appId: string) {
@@ -651,8 +627,28 @@ function toggleFolderCreateApp(appId: string) {
     : [...folderCreateAppIds.value, appId];
 }
 
+function toggleAllFolderManagerApps() {
+  const visibleIds = filteredFolderManagerApps.value.map(app => app.id);
+  if (allVisibleManagerAppsSelected.value) {
+    folderCreateAppIds.value = folderCreateAppIds.value.filter(appId => !visibleIds.includes(appId));
+    return;
+  }
+  folderCreateAppIds.value = [...new Set([...folderCreateAppIds.value, ...visibleIds])];
+}
+
+function getAppGroupName(appId: string) {
+  return homeGroups.value.find(group => group.appIds.includes(appId))?.name ?? '未分组';
+}
+
+function moveSelectedApps() {
+  if (!folderCreateAppIds.value.length || !folderTargetId.value) return;
+  settingsStore.setHomeLayout(moveHomeAppsToFolder(homeLayout.value, folderCreateAppIds.value, folderTargetId.value));
+  activeHomeGroupId.value = folderTargetId.value;
+  folderCreateAppIds.value = [];
+}
+
 function createSelectedHomeFolder() {
-  if (!folderCreateAppIds.value.length) return;
+  if (!folderCreateAppIds.value.length || !folderCreateName.value.trim()) return;
   const id = `home_folder_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`;
   settingsStore.setHomeLayout(
     createHomeFolder(homeLayout.value, {
@@ -661,34 +657,22 @@ function createSelectedHomeFolder() {
       name: folderCreateName.value,
     }),
   );
-  closeFolderCreator();
-  resetHomeInteractionState();
-  activeHomeFolderId.value = id;
-}
-
-function renameActiveHomeFolder(name: string) {
-  const folder = activeHomeFolder.value;
-  if (!folder) return;
-  settingsStore.setHomeLayout({
-    ...homeLayout.value,
-    folders: homeLayout.value.folders.map(item =>
-      item.id === folder.id ? { ...item, name: name.trim() || '分组' } : item,
-    ),
-  });
-}
-
-function openFolderApp(appId: string) {
-  if (isOrganizing.value || folderDrag.isDragging || Date.now() < suppressHomeClickUntil.value) return;
-  const folderId = activeHomeFolderId.value;
-  closeHomeFolder();
-  openHomeApp(appId, folderId);
+  activeHomeGroupId.value = id;
+  folderTargetId.value = id;
+  folderCreateAppIds.value = [];
+  folderCreateName.value = '';
+  folderNewGroupOpen.value = false;
 }
 
 function resetFolderDrag() {
+  if (folderDragLongPressTimer) window.clearTimeout(folderDragLongPressTimer);
+  folderDragLongPressTimer = null;
   folderDrag.appId = '';
   folderDrag.deltaX = 0;
   folderDrag.deltaY = 0;
+  folderDrag.folderId = '';
   folderDrag.isDragging = false;
+  folderDrag.longPressReady = false;
   folderDrag.pointerId = null;
   folderDrag.sourceIndex = -1;
   folderDrag.startX = 0;
@@ -704,25 +688,41 @@ function getFolderTileDragStyle(appId: string): AppStyle {
   };
 }
 
-function onFolderAppPointerDown(event: PointerEvent, appId: string, index: number) {
-  if (!isOrganizing.value || event.button !== 0) return;
+function onFolderAppPointerDown(event: PointerEvent, appId: string, index: number, folderId: string) {
+  if (event.button !== 0 || !folderId) return;
+  resetFolderDrag();
   folderDrag.appId = appId;
+  folderDrag.folderId = folderId;
   folderDrag.pointerId = event.pointerId;
   folderDrag.sourceIndex = index;
   folderDrag.targetIndex = index;
   folderDrag.startX = event.clientX;
   folderDrag.startY = event.clientY;
   (event.currentTarget as HTMLElement).setPointerCapture?.(event.pointerId);
+  folderDragLongPressTimer = window.setTimeout(() => {
+    if (folderDrag.pointerId !== event.pointerId || folderDrag.appId !== appId) return;
+    folderDrag.longPressReady = true;
+    folderDragLongPressTimer = null;
+  }, 320);
 }
 
 function onFolderAppPointerMove(event: PointerEvent) {
   if (folderDrag.pointerId !== event.pointerId || !folderDrag.appId) return;
   folderDrag.deltaX = event.clientX - folderDrag.startX;
   folderDrag.deltaY = event.clientY - folderDrag.startY;
-  if (!folderDrag.isDragging && Math.hypot(folderDrag.deltaX, folderDrag.deltaY) > 6) folderDrag.isDragging = true;
+  const distance = Math.hypot(folderDrag.deltaX, folderDrag.deltaY);
+  if (!folderDrag.longPressReady) {
+    if (distance > 8 && folderDragLongPressTimer) {
+      window.clearTimeout(folderDragLongPressTimer);
+      folderDragLongPressTimer = null;
+    }
+    return;
+  }
+  if (!folderDrag.isDragging && distance > 6) folderDrag.isDragging = true;
   if (!folderDrag.isDragging) return;
   event.preventDefault();
-  const target = [...document.querySelectorAll<HTMLElement>('.pc-home-folder-app[data-folder-index]')]
+  const target = [...document.querySelectorAll<HTMLElement>('.pc-app-tile[data-folder-index]')]
+    .filter(item => item.dataset.folderId === folderDrag.folderId)
     .filter(item => Number(item.dataset.folderIndex) !== folderDrag.sourceIndex)
     .find(item => {
       const rect = item.getBoundingClientRect();
@@ -740,13 +740,14 @@ function onFolderAppPointerMove(event: PointerEvent) {
 function onFolderAppPointerUp(event: PointerEvent) {
   if (folderDrag.pointerId !== event.pointerId) return;
   (event.currentTarget as HTMLElement).releasePointerCapture?.(event.pointerId);
-  const folder = activeHomeFolder.value;
+  const folder = homeLayout.value.folders.find(item => item.id === folderDrag.folderId);
   if (folder && folderDrag.isDragging && folderDrag.targetIndex >= 0) {
     settingsStore.setHomeLayout(
       reorderHomeFolderApp(homeLayout.value, folder.id, folderDrag.appId, folderDrag.targetIndex),
     );
     suppressHomeClickUntil.value = Date.now() + 250;
   }
+  if (folderDrag.longPressReady) suppressHomeClickUntil.value = Date.now() + 250;
   resetFolderDrag();
 }
 
@@ -754,50 +755,6 @@ function onFolderAppPointerCancel(event: PointerEvent) {
   if (folderDrag.pointerId !== event.pointerId) return;
   (event.currentTarget as HTMLElement).releasePointerCapture?.(event.pointerId);
   resetFolderDrag();
-}
-
-function removeFolderApp(appId: string) {
-  const folder = activeHomeFolder.value;
-  if (!folder) return;
-  settingsStore.setHomeLayout(
-    removeHomeAppFromFolder(homeLayout.value, folder.id, appId, homeLayout.value.appOrder.length),
-  );
-  if (!settings.value.layout.folders.some(item => item.id === folder.id)) closeHomeFolder();
-}
-
-async function dissolveActiveHomeFolder() {
-  const folder = activeHomeFolder.value;
-  if (!folder || folderDissolving.value) return;
-  folderDissolving.value = true;
-  try {
-    const reduceMotion = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches ?? false;
-    await new Promise(resolve => window.setTimeout(resolve, reduceMotion ? 0 : 160));
-    const token = homeFolderToken(folder.id);
-    const appOrder = homeLayout.value.appOrder.filter(item => item !== token);
-    const dockOrder = homeLayout.value.dockOrder.filter(item => item !== token);
-    const wasDocked = homeLayout.value.dockOrder.includes(token);
-    const target = wasDocked ? dockOrder : appOrder;
-    const sourceOrder = wasDocked ? homeLayout.value.dockOrder : homeLayout.value.appOrder;
-    const index = Math.max(0, sourceOrder.indexOf(token));
-    if (wasDocked) {
-      const [firstAppId, ...remainingAppIds] = folder.appIds;
-      if (firstAppId) dockOrder.splice(index, 0, firstAppId);
-      appOrder.unshift(...remainingAppIds);
-    } else {
-      target.splice(index, 0, ...folder.appIds);
-    }
-    settingsStore.setHomeLayout({
-      ...homeLayout.value,
-      appOrder,
-      dockOrder,
-      folders: homeLayout.value.folders.filter(item => item.id !== folder.id),
-    });
-  } catch (caughtError) {
-    phone.noticeError(caughtError instanceof Error ? caughtError.message : '解散分组失败');
-  } finally {
-    resetHomeInteractionState();
-    activeHomeFolderId.value = '';
-  }
 }
 
 watch(
@@ -815,15 +772,13 @@ watch(
   async route => {
     if (route.appId !== 'home') {
       resetHomeInteractionState();
-      activeHomeFolderId.value = '';
-      folderCreateOpen.value = false;
+      closeFolderCreator();
       return;
     }
     activeHomeGroupId.value = homeGroups.value.some(group => group.id === route.homeSource?.folderId)
       ? route.homeSource?.folderId || ''
       : activeHomeGroupId.value || homeGroups.value[0]?.id || '';
     await nextTick();
-    activeHomeFolderId.value = '';
     refreshHomeArchiveDomains();
   },
   { deep: true, immediate: true },
@@ -831,8 +786,7 @@ watch(
 watch(isOpen, async nextIsOpen => {
   if (!nextIsOpen) {
     resetHomeInteractionState();
-    activeHomeFolderId.value = '';
-    folderCreateOpen.value = false;
+    closeFolderCreator();
     return;
   }
   await nextTick();
@@ -863,7 +817,7 @@ onBeforeUnmount(resetHomeInteractionState);
   min-height: 0;
   gap: 6px;
   overflow-y: auto;
-  touch-action: pan-y;
+  touch-action: auto;
   user-select: none;
   -webkit-user-select: none;
 }
@@ -890,7 +844,10 @@ onBeforeUnmount(resetHomeInteractionState);
   gap: 4px;
   overflow-x: auto;
   overflow-y: hidden;
+  overscroll-behavior-inline: contain;
   scrollbar-width: none;
+  touch-action: pan-x;
+  -webkit-overflow-scrolling: touch;
 }
 .pc-home-group-tabs::-webkit-scrollbar {
   display: none;
@@ -899,11 +856,7 @@ onBeforeUnmount(resetHomeInteractionState);
   flex: 0 0 auto;
   white-space: nowrap;
 }
-.pc-home-group-tabs .pc-segment-btn.folder-target {
-  outline: 2px solid var(--pc-theme-accent);
-  outline-offset: -2px;
-}
-.pc-home-group-bar > .pc-soft-btn {
+.pc-home-group-bar > .pc-icon-btn {
   flex: 0 0 auto;
 }
 .pc-home-app-section {
@@ -1042,170 +995,102 @@ onBeforeUnmount(resetHomeInteractionState);
   transform: translate3d(var(--pc-drag-x, 0), var(--pc-drag-y, 0), 0) scale(1.04);
   box-shadow: 0 12px 26px color-mix(in srgb, var(--pc-text) 18%, transparent 82%);
 }
-.pc-app-tile.folder-target {
-  transform: scale(1.06);
-  filter: brightness(1.08);
+.pc-app-tile.drop-target:not(.dragging) {
+  opacity: 0.7;
+  transform: scale(0.94);
 }
-.pc-home-folder-backdrop {
+.pc-home-group-manager-backdrop {
   --pc-modal-z: 30;
-  backdrop-filter: blur(8px);
-  transition: opacity 0.18s ease;
 }
-.pc-home-folder-dialog {
+.pc-home-group-manager-dialog {
   width: min(100%, 430px);
-  height: calc(100% - 20px);
+  height: calc(100% - 8px);
   min-height: 0;
   overflow: hidden;
   display: grid;
-  grid-template-rows: auto minmax(0, 1fr);
-  gap: 12px;
+  grid-template-rows: auto auto minmax(0, 1fr) auto;
+  gap: 8px;
+  padding: 12px;
   transition:
     opacity 0.18s ease,
     transform 0.18s ease;
   transform-origin: center;
 }
-.pc-home-folder-head {
+.pc-home-group-manager-head {
   flex-wrap: nowrap;
 }
-.pc-home-folder-name {
-  min-width: 0;
-  flex: 1;
-}
-.pc-home-folder-grid {
-  min-height: 0;
-  overflow-y: auto;
+.pc-home-group-manager-head > span {
   display: grid;
-  grid-template-columns: repeat(var(--pc-home-columns), minmax(0, 1fr));
-  align-content: start;
-  gap: 14px 8px;
-  padding: 4px;
-}
-.pc-home-folder-app,
-.pc-home-folder-app > button {
   min-width: 0;
+  gap: 2px;
 }
-.pc-home-folder-app {
-  position: relative;
-  border-radius: var(--pc-card-radius);
-  touch-action: none;
-  transition:
-    opacity 0.18s ease,
-    transform 0.18s ease;
+.pc-home-group-manager-head small,
+.pc-home-group-manager-row small {
+  color: var(--pc-muted);
+  font-size: 11px;
 }
-.pc-home-folder-app > button {
-  width: 100%;
-  border: 0;
-  background: transparent;
-  color: var(--pc-text);
-  display: grid;
-  justify-items: center;
+.pc-home-group-manager-head > div {
+  display: flex;
+  flex: 0 0 auto;
+  align-items: center;
   gap: 6px;
 }
-.pc-home-folder-app strong {
-  width: 100%;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  font-size: 11px;
-}
-.pc-home-folder-app.dragging {
-  z-index: 2;
-  opacity: 0.8;
-  transform: translate3d(var(--pc-drag-x, 0), var(--pc-drag-y, 0), 0) scale(1.04);
-}
-.pc-home-folder-app.drop-target:not(.dragging) {
-  transform: scale(0.94);
-  opacity: 0.7;
-}
-.pc-home-folder-remove {
-  position: absolute;
-  top: -4px;
-  right: 0;
-  width: 26px;
-  height: 26px;
-  font-size: 11px;
-}
-.pc-home-folder-create-backdrop {
-  --pc-modal-z: 32;
-}
-.pc-home-folder-create-dialog {
-  width: min(100%, 400px);
-  max-height: calc(100% - 24px);
-  min-height: 0;
-  overflow: hidden;
-  grid-template-rows: auto auto minmax(0, 1fr) auto;
-}
-.pc-home-folder-picker {
+.pc-home-group-manager-list {
   min-width: 0;
   min-height: 0;
   overflow-y: auto;
   display: grid;
-  grid-template-columns: repeat(var(--pc-home-columns), minmax(0, 1fr));
   align-content: start;
-  gap: 8px;
-  margin: 0;
-  border: 1px solid var(--pc-border);
-  border-radius: var(--pc-control-radius);
-  padding: 10px;
 }
-.pc-home-folder-picker legend {
-  padding: 0 5px;
-  color: var(--pc-muted);
-  font-size: 12px;
-  font-weight: 700;
-}
-.pc-home-folder-choice {
-  min-width: 0;
-  position: relative;
+.pc-home-group-manager-row {
   display: grid;
-  justify-items: center;
-  gap: 5px;
-  border: 1px solid transparent;
-  border-radius: var(--pc-control-radius);
-  padding: 8px 2px;
+  grid-template-columns: auto auto minmax(0, 1fr);
+  min-height: 58px;
+  align-items: center;
+  gap: 8px;
+  border-bottom: 1px solid var(--pc-border);
   cursor: pointer;
 }
-.pc-home-folder-choice:has(input:checked) {
-  border-color: var(--pc-theme-accent);
-  background: color-mix(in srgb, var(--pc-theme-accent) 10%, transparent 90%);
+.pc-home-group-manager-row > .pc-app-icon {
+  width: 36px;
+  height: 36px;
+  margin: 0;
+  font-size: 14px;
 }
-.pc-home-folder-choice input {
-  position: absolute;
-  top: 4px;
-  right: 4px;
+.pc-home-group-manager-row > span:last-child {
+  display: grid;
+  min-width: 0;
+  gap: 2px;
 }
-.pc-home-folder-choice .pc-app-icon {
-  margin-bottom: 0;
-}
-.pc-home-folder-choice strong {
-  max-width: 100%;
+.pc-home-group-manager-row strong {
+  width: 100%;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  font-size: 10px;
+}
+.pc-home-group-manager-actions {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto auto;
+  gap: 8px;
+  border-top: 1px solid var(--pc-border);
+  padding-top: 8px;
 }
 .pc-home-folder-enter-active,
 .pc-home-folder-leave-active {
   transition: opacity 0.18s ease;
 }
-.pc-home-folder-enter-active .pc-home-folder-dialog,
-.pc-home-folder-leave-active .pc-home-folder-dialog,
-.pc-home-folder-enter-active .pc-home-folder-create-dialog,
-.pc-home-folder-leave-active .pc-home-folder-create-dialog {
+.pc-home-folder-enter-active .pc-home-group-manager-dialog,
+.pc-home-folder-leave-active .pc-home-group-manager-dialog {
   transition:
     opacity 0.18s ease,
     transform 0.18s ease;
 }
 .pc-home-folder-enter-from,
-.pc-home-folder-leave-to,
-.pc-home-folder-backdrop.dissolving {
+.pc-home-folder-leave-to {
   opacity: 0;
 }
-.pc-home-folder-enter-from .pc-home-folder-dialog,
-.pc-home-folder-leave-to .pc-home-folder-dialog,
-.pc-home-folder-enter-from .pc-home-folder-create-dialog,
-.pc-home-folder-leave-to .pc-home-folder-create-dialog,
-.pc-home-folder-backdrop.dissolving .pc-home-folder-dialog {
+.pc-home-folder-enter-from .pc-home-group-manager-dialog,
+.pc-home-folder-leave-to .pc-home-group-manager-dialog {
   opacity: 0;
   transform: scale(0.94);
 }
@@ -1232,15 +1117,12 @@ onBeforeUnmount(resetHomeInteractionState);
 }
 @media (prefers-reduced-motion: reduce) {
   .pc-app-tile,
-  .pc-home-folder-app,
-  .pc-home-folder-backdrop,
-  .pc-home-folder-dialog,
+  .pc-home-group-manager-backdrop,
+  .pc-home-group-manager-dialog,
   .pc-home-folder-enter-active,
   .pc-home-folder-leave-active,
-  .pc-home-folder-enter-active .pc-home-folder-dialog,
-  .pc-home-folder-leave-active .pc-home-folder-dialog,
-  .pc-home-folder-enter-active .pc-home-folder-create-dialog,
-  .pc-home-folder-leave-active .pc-home-folder-create-dialog {
+  .pc-home-folder-enter-active .pc-home-group-manager-dialog,
+  .pc-home-folder-leave-active .pc-home-group-manager-dialog {
     transition-duration: 0.01ms;
   }
 }

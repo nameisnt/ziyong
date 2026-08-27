@@ -17,6 +17,7 @@ export type StatusDisplayScheme = z.infer<typeof StatusDisplaySchemeSchema>;
 
 export const StatusDisplaySettingsSchema = z.object({
   activeSchemeByScope: z.record(z.string(), z.string()).default({}),
+  enabledSchemeIdsByScope: z.record(z.string(), z.array(z.string())).default({}),
   schemes: z.array(StatusDisplaySchemeSchema).default([]),
   version: z.literal(1).default(1),
 });
@@ -70,13 +71,37 @@ export const useStatusDisplayStore = defineStore('statusDisplay', () => {
 
   const schemes = computed(() => settings.value.schemes);
 
-  function getActiveSchemeId(scopeKey: string) {
+  function getEnabledSchemeIds(scopeKey: string) {
+    const schemeIds = new Set(settings.value.schemes.map(scheme => scheme.id));
+    const configured = settings.value.enabledSchemeIdsByScope[scopeKey];
+    if (configured) return configured.filter(id => schemeIds.has(id));
     const selected = settings.value.activeSchemeByScope[scopeKey];
-    return settings.value.schemes.some(scheme => scheme.id === selected) ? selected : settings.value.schemes[0]?.id || '';
+    if (selected && schemeIds.has(selected)) return [selected];
+    return settings.value.schemes[0] ? [settings.value.schemes[0].id] : [];
+  }
+
+  function getActiveSchemeId(scopeKey: string) {
+    const enabledIds = getEnabledSchemeIds(scopeKey);
+    const selected = settings.value.activeSchemeByScope[scopeKey];
+    return enabledIds.includes(selected) ? selected : enabledIds[0] || '';
   }
 
   function setActiveScheme(scopeKey: string, schemeId: string) {
+    const enabledIds = getEnabledSchemeIds(scopeKey);
+    if (!enabledIds.includes(schemeId)) {
+      settings.value.enabledSchemeIdsByScope[scopeKey] = [...enabledIds, schemeId];
+    }
     settings.value.activeSchemeByScope[scopeKey] = schemeId;
+  }
+
+  function setEnabledSchemeIds(scopeKey: string, schemeIds: string[]) {
+    const existingIds = new Set(settings.value.schemes.map(scheme => scheme.id));
+    const enabledIds = [...new Set(schemeIds)].filter(id => existingIds.has(id));
+    settings.value.enabledSchemeIdsByScope[scopeKey] = enabledIds;
+    if (!enabledIds.includes(settings.value.activeSchemeByScope[scopeKey])) {
+      if (enabledIds[0]) settings.value.activeSchemeByScope[scopeKey] = enabledIds[0];
+      else delete settings.value.activeSchemeByScope[scopeKey];
+    }
   }
 
   function upsertScheme(input: StatusDisplayScheme) {
@@ -89,6 +114,9 @@ export const useStatusDisplayStore = defineStore('statusDisplay', () => {
 
   function deleteScheme(schemeId: string) {
     settings.value.schemes = settings.value.schemes.filter(scheme => scheme.id !== schemeId);
+    Object.entries(settings.value.enabledSchemeIdsByScope).forEach(([scopeKey, enabledIds]) => {
+      settings.value.enabledSchemeIdsByScope[scopeKey] = enabledIds.filter(id => id !== schemeId);
+    });
     Object.entries(settings.value.activeSchemeByScope).forEach(([scopeKey, activeId]) => {
       if (activeId === schemeId) delete settings.value.activeSchemeByScope[scopeKey];
     });
@@ -106,10 +134,12 @@ export const useStatusDisplayStore = defineStore('statusDisplay', () => {
     configError,
     deleteScheme,
     getActiveSchemeId,
+    getEnabledSchemeIds,
     rawConfig,
     rehydrateFromSettings,
     schemes,
     setActiveScheme,
+    setEnabledSchemeIds,
     settings,
     upsertScheme,
   };
