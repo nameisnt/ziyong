@@ -22,8 +22,10 @@ test('preview and test textareas inherit the shared 160px area height', () => {
   if (!rulesFor(globalSource, '.pc-phone-root .pc-area').some(body => /min-height\s*:\s*160px/.test(body))) {
     failures.push('shared textarea does not define min-height: 160px');
   }
-  if (hasMinHeight(display, '.pc-area.preview-source')) failures.push('regex display preview still overrides min-height');
-  if (hasMinHeight(wizard, '.pc-regex-wizard-test .pc-area')) failures.push('regex wizard test still overrides min-height');
+  if (hasMinHeight(display, '.pc-area.preview-source'))
+    failures.push('regex display preview still overrides min-height');
+  if (hasMinHeight(wizard, '.pc-regex-wizard-test .pc-area'))
+    failures.push('regex wizard test still overrides min-height');
   if (!rulesFor(wizard, '.pc-regex-wizard-test .pc-area').some(body => /font-family\s*:/.test(body))) {
     failures.push('regex wizard test lost its monospace font identity');
   }

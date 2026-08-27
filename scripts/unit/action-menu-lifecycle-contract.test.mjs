@@ -35,7 +35,8 @@ test('shared action menu closes through every navigation path and contains long 
   const panel = declarationsFor(panelRules.at(-1) ?? '');
   if (!panel['max-width']?.includes('220px')) failures.push('ActionMenu panel has no narrow-screen width cap');
   if (!panel['max-height']) failures.push('ActionMenu panel has no viewport height cap');
-  if (panel['overflow-y'] !== 'auto') failures.push('ActionMenu panel cannot scroll when options exceed the height cap');
+  if (panel['overflow-y'] !== 'auto')
+    failures.push('ActionMenu panel cannot scroll when options exceed the height cap');
 
   const buttonRules = rulesFor(componentSource, '.pc-action-menu-panel :deep(button)');
   const button = declarationsFor(buttonRules.at(-1) ?? '');
@@ -52,13 +53,14 @@ test('shared action menu closes through every navigation path and contains long 
   ]) {
     if (!actionMenuScenario.includes(evidence)) failures.push(`real long-option fixture missing: ${evidence}`);
   }
-  if (actionMenuScenario.includes("setAttribute('open'")) failures.push('ActionMenu visual fixture still bypasses summary');
+  if (actionMenuScenario.includes("setAttribute('open'"))
+    failures.push('ActionMenu visual fixture still bypasses summary');
 
   for (const evidence of [
     "scenario === 'entry-library-action-menu'",
     "page.keyboard.press('Escape')",
     "new Event('phone-before-back'",
-    "page.mouse.click(2, 2)",
+    'page.mouse.click(2, 2)',
     'ActionMenu 执行可用动作后没有关闭',
   ]) {
     if (!runnerSource.includes(evidence)) failures.push(`ActionMenu interaction evidence missing: ${evidence}`);

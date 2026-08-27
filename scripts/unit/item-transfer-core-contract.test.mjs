@@ -29,7 +29,7 @@ test('copy import remaps nested ids while replacement stays conflict-gated and t
   assert.match(transfer, /provider\.importTransaction === 'provider-owned'/u);
 });
 
-test('item transfer registers the eight plugin-owned detail object types', () => {
+test('item transfer registers the seven plugin-owned detail object types', () => {
   for (const type of [
     'summary-entry',
     'diary-entry',
@@ -38,7 +38,6 @@ test('item transfer registers the eight plugin-owned detail object types', () =>
     'theater-entry',
     'letter-entry',
     'digest-entry',
-    'scene-plan',
   ]) {
     assert.match(providers, new RegExp(`itemType: '${type}'`, 'u'));
   }

@@ -4,7 +4,10 @@ import { readFile } from 'node:fs/promises';
 import test from 'node:test';
 
 const globalSource = await readFile(new URL('../../src/global.css', import.meta.url), 'utf8');
-const outputEditor = await readFile(new URL('../../src/apps/prompts/PromptOutputEditorPage.vue', import.meta.url), 'utf8');
+const outputEditor = await readFile(
+  new URL('../../src/apps/prompts/PromptOutputEditorPage.vue', import.meta.url),
+  'utf8',
+);
 const scenarios = await readFile(new URL('../../src/testing/visual/promptsScenarios.ts', import.meta.url), 'utf8');
 
 function rulesFor(source, selector) {
@@ -25,8 +28,10 @@ test('prompt parser sample uses the explicit shared 160px preview area', () => {
   if (!/v-model="draft\.sample"\s+class="pc-area pc-area-preview"/.test(outputEditor)) {
     failures.push('parser sample still uses compact instead of pc-area-preview');
   }
-  if (!scenarios.includes('Prompt output editor did not reveal its parser test sample') ||
-      !scenarios.includes("style.display = 'none'")) {
+  if (
+    !scenarios.includes('Prompt output editor did not reveal its parser test sample') ||
+    !scenarios.includes("style.display = 'none'")
+  ) {
     failures.push('output editor visual scenario does not expose the parser sample');
   }
 

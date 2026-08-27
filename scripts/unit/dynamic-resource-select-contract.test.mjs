@@ -15,38 +15,33 @@ const theaterGroupFieldSource = await readFile(
   new URL('../../src/components/prompts/TheaterTypeGroupField.vue', import.meta.url),
   'utf8',
 );
-const storylinesSource = await readFile(
-  new URL('../../src/apps/storylines/StorylineEditorPage.vue', import.meta.url),
-  'utf8',
-);
-
 function openingTags(source, tagName) {
   return [...source.matchAll(new RegExp(`<${tagName}\\b[\\s\\S]*?>`, 'g'))].map(match => match[0]);
 }
 
-test('user-grown regex, group and storyline resources use searchable selectors with preserved empty semantics', () => {
+test('user-grown regex and group resources use searchable selectors with preserved empty semantics', () => {
   const failures = [];
   const targets = [
     { binding: 'chapterDraft.summaryRuleId', count: 1, source: extrasSource },
     { binding: 'groupId', count: 1, source: theaterGroupFieldSource },
-    { binding: 'draft.lineId', count: 2, source: storylinesSource },
   ];
 
   for (const target of targets) {
-    const nativeTargets = openingTags(target.source, 'select').filter(tag => tag.includes(`v-model="${target.binding}"`));
+    const nativeTargets = openingTags(target.source, 'select').filter(tag =>
+      tag.includes(`v-model="${target.binding}"`),
+    );
     const searchableTargets = openingTags(target.source, 'SearchableCombobox').filter(tag =>
       tag.includes(`v-model="${target.binding}"`),
     );
     if (nativeTargets.length) failures.push(`${target.binding} still uses ${nativeTargets.length} native select(s)`);
     if (searchableTargets.length !== target.count) {
-      failures.push(`${target.binding} expected ${target.count} searchable selector(s), found ${searchableTargets.length}`);
+      failures.push(
+        `${target.binding} expected ${target.count} searchable selector(s), found ${searchableTargets.length}`,
+      );
     }
   }
 
-  for (const [source, label] of [
-    [theaterGroupFieldSource, 'shared Theater group field'],
-    [storylinesSource, 'storyline editor'],
-  ]) {
+  for (const [source, label] of [[theaterGroupFieldSource, 'shared Theater group field']]) {
     if (!source.includes("import SearchableCombobox from '@/components/SearchableCombobox.vue';")) {
       failures.push(`${label} does not import SearchableCombobox`);
     }
@@ -58,11 +53,8 @@ test('user-grown regex, group and storyline resources use searchable selectors w
     ':disabled="generationState.running"',
     'groupOptions',
     "label: '未分组', value: ''",
-    'hookLineOptions',
-    "label: '不绑定剧情线', value: ''",
-    ':options="lineOptions"',
   ]) {
-    if (!`${extrasSource}\n${promptsSource}\n${theaterGroupFieldSource}\n${storylinesSource}`.includes(evidence)) {
+    if (!`${extrasSource}\n${promptsSource}\n${theaterGroupFieldSource}`.includes(evidence)) {
       failures.push(`dynamic selector semantics missing: ${evidence}`);
     }
   }

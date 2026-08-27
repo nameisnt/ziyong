@@ -5,7 +5,8 @@ import test from 'node:test';
 
 const harness = await readFile(new URL('../../src/testing/visual-harness.ts', import.meta.url), 'utf8');
 const fixture = await readFile(new URL('../../src/testing/visual/archiveScenarios.ts', import.meta.url), 'utf8');
-const scenario = harness.match(/\} else if \(name === 'archive-floor-backup'\) \{([\s\S]*?)\n {2}\} else if/u)?.[1] ?? '';
+const scenario =
+  harness.match(/\} else if \(name === 'archive-floor-backup'\) \{([\s\S]*?)\n {2}\} else if/u)?.[1] ?? '';
 
 test('archive floor backup scenario always seeds and opens a readable backup', () => {
   assert.match(fixture, /buildChatFloorBackupKey/u);

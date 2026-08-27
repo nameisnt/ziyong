@@ -53,7 +53,10 @@ test('preview-drafts v1 and v2 backups migrate every scope and keep chat envelop
   assert.equal(migrated.legacyScopeMigrations['char:old:chat:1'], 'char:new:chat:1');
   assert.equal(migrated.scopes['char:new:chat:1'].schemaVersion, 3);
   assert.equal(migrated.scopes['char:new:chat:2'].schemaVersion, 3);
-  const v2 = migration.migratePreviewDraftsBackupData({ scopes: { current: { schemaVersion: 2, drafts: [v1Draft] } } }, 2);
+  const v2 = migration.migratePreviewDraftsBackupData(
+    { scopes: { current: { schemaVersion: 2, drafts: [v1Draft] } } },
+    2,
+  );
   assert.equal(v2.scopes.current.schemaVersion, 3);
   assert.throws(() => migration.migratePreviewDraftsBackupData({}, 3), /不支持从 preview-drafts v3 迁移/);
 });
@@ -62,6 +65,12 @@ test('store and backup domain register v3 with explicit raw-output semantics', (
   assert.match(storeSource, /id:\s*z\.string\(\)\.min\(1\)/);
   assert.match(storeSource, /rawOutputSemantics:\s*RawOutputSemanticsSchema\.default\('legacy-unknown'\)/);
   assert.match(storeSource, /schemaVersion:\s*z\.literal\(3\)/);
-  assert.match(storeSource, /z\.preprocess\(raw => \{[\s\S]*?stripRetiredMediaPreviewDrafts\(raw\);[\s\S]*?return migratePreviewDraftScopeData\(raw\);/);
-  assert.match(backupSource, /key:\s*'preview-drafts'[\s\S]*?migrateImport:\s*migratePreviewDraftsBackupData[\s\S]*?schemaVersion:\s*3/);
+  assert.match(
+    storeSource,
+    /z\.preprocess\(raw => \{[\s\S]*?stripRetiredMediaPreviewDrafts\(raw\);[\s\S]*?return migratePreviewDraftScopeData\(raw\);/,
+  );
+  assert.match(
+    backupSource,
+    /key:\s*'preview-drafts'[\s\S]*?migrateImport:\s*migratePreviewDraftsBackupData[\s\S]*?schemaVersion:\s*3/,
+  );
 });

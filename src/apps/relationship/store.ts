@@ -2,11 +2,7 @@ import { useChatScopedDomain } from '@/store/chatScoped';
 import { createFailedDraftCollection } from '@/store/failedDrafts';
 import type { FailedGenerationDraft } from '@/type/generation';
 import { validateInplace } from '@/util/zod';
-// eslint-disable-next-line import-x/no-nodejs-modules
-import { saveSettingsDebounced } from '@sillytavern/script';
-import { extension_settings } from '@sillytavern/scripts/extensions';
 
-const legacyRelationshipField = 'sillytavern_phone_relationships';
 export const relationshipField = 'sillytavern_phone_relationships_mermaid';
 
 export const RelationshipCharacterSchema = z.object({
@@ -56,11 +52,6 @@ function characterKey(name: string) {
 }
 
 export const useRelationshipStore = defineStore('relationship', () => {
-  if (_.has(extension_settings, legacyRelationshipField)) {
-    _.unset(extension_settings, legacyRelationshipField);
-    void saveSettingsDebounced();
-  }
-
   const { data, rehydrateFromSettings, resetCurrentScope, scopeKey, switchScope } = useChatScopedDomain({
     field: relationshipField,
     schema: RelationshipScopeDataSchema,

@@ -6,7 +6,10 @@ import test from 'node:test';
 import { scanVueUiContracts } from '../ui-contract-check.mjs';
 
 const file = 'src/apps/preset-manager/pages/PresetOwnershipPanel.vue';
-const source = await readFile(new URL('../../src/apps/preset-manager/pages/PresetOwnershipPanel.vue', import.meta.url), 'utf8');
+const source = await readFile(
+  new URL('../../src/apps/preset-manager/pages/PresetOwnershipPanel.vue', import.meta.url),
+  'utf8',
+);
 
 test('the preset ownership panel does not introduce unlabeled icon-only actions', () => {
   const nameFindings = scanVueUiContracts(source, file).filter(finding => finding.ruleId === 'icon-button-aria-label');

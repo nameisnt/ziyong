@@ -22,7 +22,9 @@ function hasMinHeight(source, selector) {
 
 test('ordinary long text editors share one explicit 260px area semantic', () => {
   const failures = [];
-  if (!rulesFor(files.global, '.pc-phone-root .pc-area.pc-area-long').some(body => /min-height\s*:\s*260px/.test(body))) {
+  if (
+    !rulesFor(files.global, '.pc-phone-root .pc-area.pc-area-long').some(body => /min-height\s*:\s*260px/.test(body))
+  ) {
     failures.push('global long area does not define 260px');
   }
   const consumers = [
@@ -30,11 +32,11 @@ test('ordinary long text editors share one explicit 260px area semantic', () => 
     ['output format', files.output, /v-model="draft\.outputFormat"[^>]*class="[^"]*pc-area-long/],
     ['app prompt', files.app, /v-model="draft"[^>]*class="[^"]*pc-area-long/],
   ];
-  for (const [label, source, pattern] of consumers) if (!pattern.test(source)) failures.push(`${label} does not use pc-area-long`);
+  for (const [label, source, pattern] of consumers)
+    if (!pattern.test(source)) failures.push(`${label} does not use pc-area-long`);
 
-  const localRules = [
-    ['app prompt', files.app, '.pc-app-prompt-editor-area'],
-  ];
-  for (const [label, source, selector] of localRules) if (hasMinHeight(source, selector)) failures.push(`${label} keeps a local min-height`);
+  const localRules = [['app prompt', files.app, '.pc-app-prompt-editor-area']];
+  for (const [label, source, selector] of localRules)
+    if (hasMinHeight(source, selector)) failures.push(`${label} keeps a local min-height`);
   assert.deepEqual(failures, []);
 });

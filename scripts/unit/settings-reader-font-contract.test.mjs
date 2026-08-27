@@ -20,7 +20,7 @@ test('reader settings expose imported fonts through the shared searchable select
     ':options="readerFontSelectionOptions"',
     'settings.value.customFont.fonts.map',
     "group: '自定义字体'",
-    "value: `custom:${font.id}`",
+    'value: `custom:${font.id}`',
     'settingsStore.getCustomFontFamily(value.slice',
     "label: '当前字体资源已失效'",
   ]) {
@@ -32,7 +32,8 @@ test('reader settings expose imported fonts through the shared searchable select
     'readerFontSelectionValue',
     'onReaderFontSelect',
   ]) {
-    if (themeSource.includes(deadReaderDraft)) failures.push(`ThemeApp still owns unused reader draft: ${deadReaderDraft}`);
+    if (themeSource.includes(deadReaderDraft))
+      failures.push(`ThemeApp still owns unused reader draft: ${deadReaderDraft}`);
   }
   assert.deepEqual(failures, []);
 });

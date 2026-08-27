@@ -70,7 +70,10 @@
             <small v-if="item.description">{{ item.description }}</small>
             <small v-else-if="item.error">{{ item.error }}</small>
           </span>
-          <span class="pc-list-row-meta">{{ scopeLabel(item.scope) }}</span>
+          <span class="pc-extension-status" :data-status="item.updateStatus">
+            <strong>{{ updateStatusLabel(item.updateStatus) }}</strong>
+            <small>{{ scopeLabel(item.scope) }}</small>
+          </span>
         </article>
       </div>
       <EmptyState v-else :title="loading ? '正在读取扩展列表' : query.trim() ? '没有匹配的扩展' : '没有第三方扩展'" />
@@ -79,7 +82,7 @@
         <button
           class="pc-soft-btn"
           type="button"
-          :disabled="!selectedInstalledKeys.length || updating"
+          :disabled="!selectedUpdateRows.length || updating"
           @click="updateSelected"
         >
           <i class="fa-solid fa-rotate"></i><span>{{ updating ? '正在更新' : '更新所选' }}</span>
@@ -157,27 +160,32 @@
       </div>
     </template>
 
-    <section v-if="detailDraft" class="pc-section-card pc-extension-detail">
-      <header class="pc-compact-toolbar">
-        <strong>扩展详情</strong>
-        <button class="pc-icon-btn" type="button" title="关闭" aria-label="关闭" @click="detailDraft = null">
-          <i class="fa-solid fa-xmark"></i>
-        </button>
-      </header>
-      <label class="pc-field-group"
-        ><span class="pc-field-label">名称</span><input class="pc-field" :value="detailDraft.name" readonly
-      /></label>
-      <label class="pc-field-group"
-        ><span class="pc-field-label">备注名</span><input v-model="detailDraft.alias" class="pc-field"
-      /></label>
-      <label class="pc-field-group"
-        ><span class="pc-field-label">安装网页</span><input v-model="detailDraft.url" class="pc-field"
-      /></label>
-      <label class="pc-field-group"
-        ><span class="pc-field-label">功能介绍</span
-        ><textarea v-model="detailDraft.description" class="pc-area compact"></textarea>
-      </label>
-      <div class="pc-form-actions"><button class="pc-primary-btn" type="button" @click="saveDetail">保存</button></div>
+    <section v-if="detailDraft" class="pc-modal-backdrop pc-extension-detail-backdrop" @click.self="detailDraft = null">
+      <article class="pc-modal-dialog pc-extension-detail" role="dialog" aria-modal="true" aria-label="扩展详情">
+        <header class="pc-compact-toolbar">
+          <strong>扩展详情</strong>
+          <button class="pc-icon-btn" type="button" title="关闭" aria-label="关闭" @click="detailDraft = null">
+            <i class="fa-solid fa-xmark"></i>
+          </button>
+        </header>
+        <label class="pc-field-group"
+          ><span class="pc-field-label">名称</span><input class="pc-field" :value="detailDraft.name" readonly
+        /></label>
+        <label class="pc-field-group"
+          ><span class="pc-field-label">备注名</span><input v-model="detailDraft.alias" class="pc-field"
+        /></label>
+        <label class="pc-field-group"
+          ><span class="pc-field-label">安装网页</span><input v-model="detailDraft.url" class="pc-field"
+        /></label>
+        <label class="pc-field-group"
+          ><span class="pc-field-label">功能介绍</span
+          ><textarea v-model="detailDraft.description" class="pc-area compact"></textarea>
+        </label>
+        <div class="pc-form-actions">
+          <button class="pc-soft-btn" type="button" @click="detailDraft = null">取消</button>
+          <button class="pc-primary-btn" type="button" @click="saveDetail">保存</button>
+        </div>
+      </article>
     </section>
   </section>
 </template>
@@ -194,6 +202,7 @@ import {
   installThirdPartyExtension,
   listInstalledThirdPartyExtensions,
   updateThirdPartyExtension,
+  type ExtensionUpdateStatus,
   type InstalledExtension,
 } from './api';
 import { parseExtensionManifest, type ExtensionManifestItem, type ExtensionScope } from './model';
@@ -233,6 +242,11 @@ const allInstalledSelected = computed(
     Boolean(exportableInstalled.value.length) &&
     exportableInstalled.value.every(item => selectedInstalledKeys.value.includes(item.key)),
 );
+const selectedUpdateRows = computed(() =>
+  installed.value.filter(
+    item => item.updateStatus === 'update-available' && selectedInstalledKeys.value.includes(item.key),
+  ),
+);
 const selectedImportRows = computed(() => importRows.value.filter(row => row.selected && row.url));
 const allImportSelected = computed(
   () =>
@@ -249,6 +263,12 @@ function readMetadata() {
 
 function scopeLabel(scope: ExtensionScope) {
   return scope === 'global' ? '全局' : '本地';
+}
+
+function updateStatusLabel(status: ExtensionUpdateStatus) {
+  if (status === 'update-available') return '可更新';
+  if (status === 'current') return '已是最新';
+  return '无法检查';
 }
 
 async function refreshInstalled() {
@@ -332,7 +352,7 @@ function saveDetail() {
 }
 
 async function updateSelected() {
-  const rows = installed.value.filter(item => selectedInstalledKeys.value.includes(item.key));
+  const rows = selectedUpdateRows.value;
   if (!rows.length) return;
   updating.value = true;
   try {
@@ -488,9 +508,41 @@ onActivated(refreshInstalled);
 .pc-extension-error {
   color: var(--pc-danger);
 }
+
+.pc-extension-status {
+  display: grid;
+  justify-items: end;
+  gap: 2px;
+  font-size: 11px;
+  white-space: nowrap;
+}
+
+.pc-extension-status strong {
+  color: var(--pc-muted);
+}
+
+.pc-extension-status[data-status='update-available'] strong {
+  color: var(--pc-theme-accent);
+}
+
+.pc-extension-status[data-status='unavailable'] strong {
+  color: var(--pc-danger);
+}
+
+.pc-extension-status small {
+  color: var(--pc-muted);
+}
+
+.pc-extension-detail-backdrop {
+  z-index: 30;
+}
+
 .pc-extension-detail {
   display: grid;
+  width: min(100%, 430px);
+  max-height: min(620px, calc(100% - 24px));
   gap: 8px;
+  overflow-y: auto;
 }
 .pc-extension-detail-trigger {
   min-width: 0;

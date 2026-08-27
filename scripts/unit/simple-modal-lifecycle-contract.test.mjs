@@ -55,8 +55,9 @@ test('simple dialogs share modal focus, keyboard, phone-back and scroll-lock lif
     contentBookScenarios.indexOf("name === 'diary-creation-mode'"),
     contentBookScenarios.indexOf("name === 'diary-book'"),
   );
-  if (!diaryScenario.includes("resetPhoneToRoute('diary', 'root'")) failures.push('diary modal fixture does not start at root');
-  if (!diaryScenario.includes(".pc-diary-catalog-page .pc-book-item") || !diaryScenario.includes('.click()')) {
+  if (!diaryScenario.includes("resetPhoneToRoute('diary', 'root'"))
+    failures.push('diary modal fixture does not start at root');
+  if (!diaryScenario.includes('.pc-diary-catalog-page .pc-book-item') || !diaryScenario.includes('.click()')) {
     failures.push('diary modal fixture does not use the real create action');
   }
 

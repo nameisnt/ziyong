@@ -1,16 +1,12 @@
 {
   "version": 1,
   "defect": "D-BASELINE-002",
-  "generatedAt": "2026-08-22T13:03:27.730Z",
-  "scenarioCount": 315,
-  "sizes": [
-    "350x700",
-    "390x844",
-    "430x900"
-  ],
+  "generatedAt": "2026-08-22T13:03:27.73Z",
+  "scenarioCount": 304,
+  "sizes": ["350x700", "390x844", "430x900"],
   "summary": {
     "fails": 0,
-    "runs": 945,
+    "runs": 912,
     "warnings": 0
   },
   "runs": [
@@ -86,16 +82,6 @@
     },
     {
       "findings": [],
-      "scenario": "app:scene-planner",
-      "size": "350x700"
-    },
-    {
-      "findings": [],
-      "scenario": "app:storylines",
-      "size": "350x700"
-    },
-    {
-      "findings": [],
       "scenario": "app:relationship",
       "size": "350x700"
     },
@@ -657,51 +643,6 @@
     {
       "findings": [],
       "scenario": "regex-wizard-save",
-      "size": "350x700"
-    },
-    {
-      "findings": [],
-      "scenario": "storylines-detail",
-      "size": "350x700"
-    },
-    {
-      "findings": [],
-      "scenario": "storylines-editor",
-      "size": "350x700"
-    },
-    {
-      "findings": [],
-      "scenario": "storylines-profile-reference",
-      "size": "350x700"
-    },
-    {
-      "findings": [],
-      "scenario": "storylines-profile-reference-dark",
-      "size": "350x700"
-    },
-    {
-      "findings": [],
-      "scenario": "storylines-generation-background",
-      "size": "350x700"
-    },
-    {
-      "findings": [],
-      "scenario": "storylines-generation-failed-background",
-      "size": "350x700"
-    },
-    {
-      "findings": [],
-      "scenario": "storylines-failed-draft-reparse",
-      "size": "350x700"
-    },
-    {
-      "findings": [],
-      "scenario": "scene-planner-generation-background",
-      "size": "350x700"
-    },
-    {
-      "findings": [],
-      "scenario": "scene-planner-history",
       "size": "350x700"
     },
     {
@@ -1626,16 +1567,6 @@
     },
     {
       "findings": [],
-      "scenario": "app:scene-planner",
-      "size": "390x844"
-    },
-    {
-      "findings": [],
-      "scenario": "app:storylines",
-      "size": "390x844"
-    },
-    {
-      "findings": [],
       "scenario": "app:relationship",
       "size": "390x844"
     },
@@ -2197,51 +2128,6 @@
     {
       "findings": [],
       "scenario": "regex-wizard-save",
-      "size": "390x844"
-    },
-    {
-      "findings": [],
-      "scenario": "storylines-detail",
-      "size": "390x844"
-    },
-    {
-      "findings": [],
-      "scenario": "storylines-editor",
-      "size": "390x844"
-    },
-    {
-      "findings": [],
-      "scenario": "storylines-profile-reference",
-      "size": "390x844"
-    },
-    {
-      "findings": [],
-      "scenario": "storylines-profile-reference-dark",
-      "size": "390x844"
-    },
-    {
-      "findings": [],
-      "scenario": "storylines-generation-background",
-      "size": "390x844"
-    },
-    {
-      "findings": [],
-      "scenario": "storylines-generation-failed-background",
-      "size": "390x844"
-    },
-    {
-      "findings": [],
-      "scenario": "storylines-failed-draft-reparse",
-      "size": "390x844"
-    },
-    {
-      "findings": [],
-      "scenario": "scene-planner-generation-background",
-      "size": "390x844"
-    },
-    {
-      "findings": [],
-      "scenario": "scene-planner-history",
       "size": "390x844"
     },
     {
@@ -3166,16 +3052,6 @@
     },
     {
       "findings": [],
-      "scenario": "app:scene-planner",
-      "size": "430x900"
-    },
-    {
-      "findings": [],
-      "scenario": "app:storylines",
-      "size": "430x900"
-    },
-    {
-      "findings": [],
       "scenario": "app:relationship",
       "size": "430x900"
     },
@@ -3737,51 +3613,6 @@
     {
       "findings": [],
       "scenario": "regex-wizard-save",
-      "size": "430x900"
-    },
-    {
-      "findings": [],
-      "scenario": "storylines-detail",
-      "size": "430x900"
-    },
-    {
-      "findings": [],
-      "scenario": "storylines-editor",
-      "size": "430x900"
-    },
-    {
-      "findings": [],
-      "scenario": "storylines-profile-reference",
-      "size": "430x900"
-    },
-    {
-      "findings": [],
-      "scenario": "storylines-profile-reference-dark",
-      "size": "430x900"
-    },
-    {
-      "findings": [],
-      "scenario": "storylines-generation-background",
-      "size": "430x900"
-    },
-    {
-      "findings": [],
-      "scenario": "storylines-generation-failed-background",
-      "size": "430x900"
-    },
-    {
-      "findings": [],
-      "scenario": "storylines-failed-draft-reparse",
-      "size": "430x900"
-    },
-    {
-      "findings": [],
-      "scenario": "scene-planner-generation-background",
-      "size": "430x900"
-    },
-    {
-      "findings": [],
-      "scenario": "scene-planner-history",
       "size": "430x900"
     },
     {

@@ -96,6 +96,8 @@ export function prepareManagementToolsVisualRuntime(appId: string) {
       return new Response(
         JSON.stringify({
           currentBranchName: body.extensionName?.includes('long') ? 'release-long-branch' : 'main',
+          currentCommitHash: '0123456789abcdef',
+          isUpToDate: body.extensionName?.includes('long'),
           remoteUrl: `https://github.com/example/${body.extensionName || 'extension'}.git`,
         }),
         { headers: { 'Content-Type': 'application/json' }, status: 200 },

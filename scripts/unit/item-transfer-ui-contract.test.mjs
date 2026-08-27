@@ -20,17 +20,10 @@ test('all approved A-group list surfaces expose item import', () => {
     ['src/apps/theater/TheaterCatalogPage.vue', 'app-id="theater"'],
     ['src/apps/letters/LettersBookPage.vue', 'app-id="letters"'],
     ['src/apps/digest/DigestApp.vue', 'app-id="digest"'],
-    ['src/apps/scene-planner/ScenePlannerApp.vue', 'app-id="scene-planner"'],
   ];
   for (const [path, marker] of cases) {
     const source = read(path);
     assert.match(source, /ItemTransferImportAction/, path);
     assert.ok(source.includes(marker), `${path} must bind ${marker}`);
   }
-});
-
-test('scene plan exposes item-specific export context', () => {
-  const scene = read('src/apps/scene-planner/ScenePlannerApp.vue');
-  assert.match(scene, /ItemTransferExportButton/);
-  assert.match(scene, /planId:\s*plan\.id/);
 });

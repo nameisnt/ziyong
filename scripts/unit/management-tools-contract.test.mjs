@@ -65,3 +65,13 @@ test('extension installation and updates retain scope and refresh the list once 
   assert.match(extensionApp, /sillytavern_phone_extension_metadata/u);
   assert.doesNotMatch(extensionApp, /location\.reload\(\)/u);
 });
+
+test('extension transfer exposes update availability and opens details in a modal', () => {
+  assert.match(extensionApi, /updateStatus: ExtensionUpdateStatus/u);
+  assert.match(extensionApi, /version\.isUpToDate === false/u);
+  assert.match(extensionApp, /可更新/u);
+  assert.match(extensionApp, /已是最新/u);
+  assert.match(extensionApp, /无法检查/u);
+  assert.match(extensionApp, /pc-modal-backdrop pc-extension-detail-backdrop/u);
+  assert.match(extensionApp, /role="dialog" aria-modal="true"/u);
+});

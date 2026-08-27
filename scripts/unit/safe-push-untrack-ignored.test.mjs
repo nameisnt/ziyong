@@ -57,30 +57,18 @@ async function createFixture() {
 function runSafePush(root, ...extraArgs) {
   const fixtureSafePushPath = join(root, 'scripts', 'safe-push-dist.ps1');
   const quotePowerShell = value => `'${value.replaceAll("'", "''")}'`;
-  const forwardedArgs = extraArgs
-    .map(value => (value.startsWith('-') ? value : quotePowerShell(value)))
-    .join(' ');
+  const forwardedArgs = extraArgs.map(value => (value.startsWith('-') ? value : quotePowerShell(value))).join(' ');
   const invocation = [
     `Set-Location -LiteralPath ${quotePowerShell(root)}`,
     `& ${quotePowerShell(fixtureSafePushPath)} -DryRun -SkipBuild ${forwardedArgs}`,
   ].join('; ');
-  return run(
-    'powershell',
-    ['-NoProfile', '-ExecutionPolicy', 'Bypass', '-Command', invocation],
-    root,
-    false,
-  );
+  return run('powershell', ['-NoProfile', '-ExecutionPolicy', 'Bypass', '-Command', invocation], root, false);
 }
 
 function runSafePushActual(root) {
   const fixtureSafePushPath = join(root, 'scripts', 'safe-push-dist.ps1');
   const invocation = `chcp 936>nul & powershell.exe -NoProfile -ExecutionPolicy Bypass -File ${fixtureSafePushPath} -SkipBuild`;
-  return run(
-    'cmd.exe',
-    ['/d', '/c', invocation],
-    root,
-    false,
-  );
+  return run('cmd.exe', ['/d', '/c', invocation], root, false);
 }
 
 test('ignored tracked removals stay excluded unless explicitly requested', async () => {

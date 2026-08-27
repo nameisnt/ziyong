@@ -14,7 +14,6 @@ test('retired profile and reasoning components stay absent while their live repl
   const failedDraft = await source('src/components/FailedDraftRepairPage.vue');
   const readerDetail = await source('src/components/ReaderDetailShell.vue');
   const relationship = await source('src/apps/relationship/RelationshipApp.vue');
-  const storyline = await source('src/apps/storylines/StorylineEditorPage.vue');
 
   assert.doesNotMatch(declarations, /ProfileEntryPicker|ReasoningModal/u);
   assert.match(generationPreview, /from '@\/components\/ReasoningDisclosure\.vue'/u);
@@ -22,5 +21,4 @@ test('retired profile and reasoning components stay absent while their live repl
   assert.match(readerDetail, /from '@\/components\/ReasoningDisclosure\.vue'/u);
   assert.match(relationship, /from '@\/apps\/relationship\/MermaidRelationshipGraph\.vue'/u);
   assert.doesNotMatch(relationship, /ExternalProfileReferencePicker/u);
-  assert.match(storyline, /from '@\/components\/ExternalProfileReferencePicker\.vue'/u);
 });

@@ -84,10 +84,7 @@ test('line fields are matched inside one outer tag and repeated names keep their
     { ...wizard.createRegexWizardField(1), label: '第二项', multiline: false, tagName: '固定字段' },
   ];
   const generated = wizard.generateRegexWizardRule(draft);
-  const tested = wizard.testRegexWizardRule(
-    generated,
-    '<aa>\n固定字段：第一段内容\n固定字段: 第二段内容\n</aa>',
-  );
+  const tested = wizard.testRegexWizardRule(generated, '<aa>\n固定字段：第一段内容\n固定字段: 第二段内容\n</aa>');
 
   assert.equal(tested.error, '');
   assert.equal(tested.matches.length, 1);

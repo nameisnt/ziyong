@@ -12,7 +12,6 @@ export const UI_INTERACTION_CONTRACTS = Object.freeze([
   Object.freeze({ id: 'reparse-digest', scenario: 'digest-failed-draft-reparse' }),
   Object.freeze({ id: 'reparse-forum', scenario: 'forum-failed-draft-reparse' }),
   Object.freeze({ id: 'reparse-letters', scenario: 'letters-failed-draft-reparse' }),
-  Object.freeze({ id: 'reparse-storylines', scenario: 'storylines-failed-draft-reparse' }),
   Object.freeze({ id: 'reparse-summary', scenario: 'summary-failed-draft-reparse' }),
   Object.freeze({ id: 'reparse-theater', scenario: 'theater-failed-draft' }),
   Object.freeze({ id: 'settings-persistence', scenario: 'settings-theme-persistence' }),

@@ -91,7 +91,6 @@ test('a rollback failure preserves both the original and rollback errors', async
       },
       restoreSnapshot: () => undefined,
     }),
-    error =>
-      error instanceof AggregateError && error.errors.includes(primary) && error.errors.includes(rollback),
+    error => error instanceof AggregateError && error.errors.includes(primary) && error.errors.includes(rollback),
   );
 });

@@ -39,13 +39,11 @@ import { applyWorkbenchVisualScenario } from '@/testing/visual/workbenchScenario
 import { applyChatInsertVisualScenario } from '@/testing/visual/chatInsertScenarios';
 import { applyAppBuilderVisualScenario } from '@/testing/visual/appBuilderScenarios';
 import { applyMvuModifierVisualScenario } from '@/testing/visual/mvuModifierScenarios';
-import { applyScenePlannerVisualScenario } from '@/testing/visual/scenePlannerScenarios';
 import {
   applyManagementToolsVisualScenario,
   prepareManagementToolsVisualRuntime,
 } from '@/testing/visual/managementToolsScenarios';
 import { seedArchiveFloorBackupFixture } from '@/testing/visual/archiveScenarios';
-import { useStorylinesStore } from '@/apps/storylines/store';
 import { useBaguStore } from '@/store/bagu';
 import { useGenerationTaskStore } from '@/store/generationTasks';
 import { computed, effectScope, nextTick, ref } from 'vue';
@@ -562,17 +560,6 @@ async function applyScenario(name: VisualScenarioName, options: { height?: numbe
     return { name, route: usePhoneStore().currentRoute };
   }
 
-  if (
-    await applyScenePlannerVisualScenario(name, {
-      resetPhoneToRoute,
-      waitForCondition: waitForVisualCondition,
-      waitForPaint,
-    })
-  ) {
-    await waitForPaint();
-    return { name, route: usePhoneStore().currentRoute };
-  }
-
   if (applyBusinessContentVisualScenario(name, { resetPhoneToRoute })) {
     await waitForPaint();
     return { name, route: usePhoneStore().currentRoute };
@@ -959,102 +946,6 @@ async function applyScenario(name: VisualScenarioName, options: { height?: numbe
       throw new Error('Five-column App label does not reserve enough width for five Chinese characters');
     }
   } else if (
-    name === 'storylines-generation-background' ||
-    name === 'storylines-generation-failed-background' ||
-    name === 'scene-planner-generation-background'
-  ) {
-    const isStorylines = name.startsWith('storylines-generation-');
-    const isFailedResult = name === 'storylines-generation-failed-background';
-    const appId = isStorylines ? 'storylines' : 'scene-planner';
-    const actionId = isStorylines ? 'extract' : 'generate';
-    const output = isFailedResult
-      ? '<result><line><summary>离页后完成，但故意缺少必填标题以进入失败草稿。</summary></line></result>'
-      : isStorylines
-        ? [
-            '<result>',
-            '  <line>',
-            '    <title>离页后完成的剧情线</title>',
-            '    <kind>main</kind>',
-            '    <status>active</status>',
-            '    <summary>请求在来源页面卸载后继续完成。</summary>',
-            '    <goal>验证持久任务会话</goal>',
-            '    <stakes>不得被卸载钩子停止</stakes>',
-            '  </line>',
-            '</result>',
-          ].join('\n')
-        : [
-            '<result>',
-            '  <title>离页后完成的下一章</title>',
-            '  <analysis>请求在场景编排页面卸载后继续运行，并把结果保存到原预览事实源。</analysis>',
-            '  <prompt>请续写下一章正文，让角色在雨夜车站确认彼此的误会仍未解除。</prompt>',
-            '</result>',
-          ].join('\n');
-    const generationTasks = useGenerationTaskStore();
-    generationTasks.tasks.slice().forEach(task => generationTasks.removeTask(task.id));
-    const previewDrafts = usePreviewDraftStore();
-    previewDrafts.deleteAppPreviewDrafts(appId);
-    const settingsStore = useSettingsStore();
-    settingsStore.settings.generation.resultMode = isStorylines ? 'preview' : 'save';
-    settingsStore.settings.generation.rpmLimit = 0;
-    settingsStore.settings.generation.stream = false;
-    settingsStore.settings.textProvider.mode = 'tavern';
-    const visualRuntime = globalThis as typeof globalThis & {
-      generate?: (config: Record<string, unknown>) => Promise<string>;
-      generateRaw?: (config: Record<string, unknown>) => Promise<string>;
-    };
-    const mockGenerate = async () => {
-      await new Promise<void>(resolve => window.setTimeout(resolve, 120));
-      return output;
-    };
-    visualRuntime.generate = mockGenerate;
-    visualRuntime.generateRaw = mockGenerate;
-
-    resetPhoneToRoute(appId, isStorylines ? 'generate' : 'root', isStorylines ? '梳理剧情' : '场景编排');
-    await waitForPaint();
-    if (!isStorylines) {
-      const brief = document.querySelector<HTMLTextAreaElement>('.pc-scene-brief');
-      if (!brief) throw new Error('Scene planner brief input is missing');
-      brief.value = '让两人在雨夜车站再次相遇，但暂时不要和解。';
-      brief.dispatchEvent(new Event('input', { bubbles: true }));
-    }
-    const generateButton = document.querySelector<HTMLButtonElement>('.pc-generation-actions .pc-primary-btn');
-    if (!generateButton) throw new Error(`${appId} shared generation action is missing`);
-    generateButton.click();
-    const started = await waitForVisualCondition(
-      () => generationTasks.getSingleTask(appId, actionId)?.status === 'running',
-      1500,
-    );
-    if (!started) {
-      const failedStart = generationTasks.getSingleTask(appId, actionId);
-      throw new Error(
-        `${appId} single generation task did not enter running state: status=${failedStart?.status ?? 'missing'}, error=${failedStart?.error ?? ''}`,
-      );
-    }
-    await phone.goHome();
-    await waitForPaint();
-    if (document.querySelector(`.pc-${appId}-app`)) throw new Error(`${appId} source App did not unmount`);
-
-    const completed = await waitForVisualCondition(
-      () => generationTasks.getSingleTask(appId, actionId)?.status === 'completed',
-      2500,
-    );
-    delete (visualRuntime as { generate?: (config: Record<string, unknown>) => Promise<string> }).generate;
-    delete (visualRuntime as { generateRaw?: (config: Record<string, unknown>) => Promise<string> }).generateRaw;
-    const task = generationTasks.getSingleTask(appId, actionId);
-    const expectedPage = isFailedResult ? 'failed-draft' : 'preview';
-    const persistedResult = isFailedResult
-      ? useStorylinesStore().failedDrafts.some(draft => draft.rawOutput.includes('故意缺少必填标题'))
-      : Boolean(previewDrafts.getPreviewDraft(appId, 'preview'));
-    if (
-      !completed ||
-      task?.routePage !== expectedPage ||
-      !task.rawOutput.includes('离页后完成') ||
-      !persistedResult ||
-      phone.currentRoute.appId === appId
-    ) {
-      throw new Error(`${appId} did not finish into its persisted preview after leaving the source App`);
-    }
-  } else if (
     name === 'digest-generation-background' ||
     name === 'relationship-generation-background' ||
     name === 'summary-generation-background' ||
@@ -1140,188 +1031,6 @@ async function applyScenario(name: VisualScenarioName, options: { height?: numbe
       phone.currentRoute.appId === appId
     ) {
       throw new Error(`${appId} did not finish into its persisted preview after leaving the source App`);
-    }
-  } else if (
-    name === 'storylines-detail' ||
-    name === 'storylines-editor' ||
-    name === 'storylines-profile-reference' ||
-    name === 'storylines-profile-reference-dark'
-  ) {
-    const isProfileReference = name.startsWith('storylines-profile-reference');
-    if (isProfileReference) {
-      useSettingsStore().setTheme(name.endsWith('-dark') ? 'dark' : 'light');
-      const visualGlobal = globalThis as typeof globalThis & { AutoCardUpdaterAPI?: Record<string, unknown> };
-      visualGlobal.AutoCardUpdaterAPI = {
-        exportTableAsJson: () => ({
-          mate: { type: 'chatSheets' },
-          sheet_people: {
-            content: [
-              ['row_id', '姓名'],
-              ['person-1', '林见夏'],
-              ['person-2', '周临川'],
-            ],
-            name: '人物表',
-            uid: 'people',
-          },
-        }),
-      };
-    }
-    const storylines = useStorylinesStore();
-    storylines.resetCurrentScope();
-    const line = storylines.createLine({
-      goal: '查明旧港仓库失火的真正原因。',
-      kind: 'main',
-      stakes: '证据一旦被销毁，周临川将永远无法洗清嫌疑。',
-      status: 'active',
-      summary: '众人沿着失踪钥匙追查旧港火灾，并发现证词相互矛盾。',
-      tags: ['旧港', '调查'],
-      title: '旧港火灾真相',
-      ...(isProfileReference ? { relatedProfileIds: ['legacy-profile-id'] } : {}),
-    });
-    storylines.createLine({
-      goal: '确认动态剧情线选择器可以搜索并完整辨识长名称。',
-      kind: 'branch',
-      stakes: '错误绑定会让后续剧情节点归入另一条支线。',
-      status: 'planned',
-      summary: '用于选择器视觉回归的第二条剧情线。',
-      tags: ['选择器'],
-      title: '这是一条需要在窄屏选择器中完整显示的超长用户剧情线名称',
-    });
-    storylines.createBeat({
-      lineId: line.id,
-      order: 0,
-      status: 'done',
-      summary: '主角在仓库废墟里找到一枚不属于管理员的钥匙齿。',
-      title: '发现钥匙齿',
-    });
-    const hook = storylines.createHook({
-      lineId: line.id,
-      payoff: '钥匙最终被证明属于伪造证词的巡夜人。',
-      seed: '火灾当晚，备用钥匙从值班室无故失踪。',
-      status: 'ready',
-      tags: ['钥匙'],
-      title: '失踪的备用钥匙',
-    });
-
-    if (isProfileReference) {
-      resetPhoneToRoute('storylines', 'editor', '编辑剧情线', { id: line.id, kind: 'line' });
-      await waitForPaint();
-      document.querySelector<HTMLButtonElement>('.pc-storyline-profile-editor button[title="增加关联资料"]')?.click();
-      await waitForPaint();
-      let picker = document.querySelector<HTMLElement>('.pc-storyline-profile-row .pc-external-profile-picker');
-      let combos = picker?.querySelectorAll<HTMLElement>('.pc-combobox');
-      if (!picker || !combos || combos.length !== 2) throw new Error('Storyline external profile picker is missing');
-      const selectProfileOption = async (combo: HTMLElement, label: string) => {
-        combo.querySelector<HTMLInputElement>('.pc-combobox-input')?.click();
-        await waitForPaint();
-        const option = [...combo.querySelectorAll<HTMLButtonElement>('.pc-combobox-option')].find(button =>
-          button.textContent?.includes(label),
-        );
-        if (!option) throw new Error(`Storyline external profile option is missing: ${label}`);
-        option.click();
-        await waitForPaint();
-      };
-      await selectProfileOption(combos[0], '人物表');
-      picker = document.querySelector<HTMLElement>('.pc-storyline-profile-row .pc-external-profile-picker');
-      combos = picker?.querySelectorAll<HTMLElement>('.pc-combobox');
-      if (!picker || !combos || combos.length !== 2)
-        throw new Error('Storyline profile row disappeared after table selection');
-      await selectProfileOption(combos[1], '林见夏');
-      [...document.querySelectorAll<HTMLButtonElement>('.pc-storyline-editor-card .pc-form-actions button')]
-        .find(button => button.textContent?.includes('保存'))
-        ?.click();
-      if (
-        !(await waitForVisualCondition(() => {
-          const saved = storylines.getLine(line.id);
-          return Boolean(
-            saved?.relatedProfileIds.includes('legacy-profile-id') &&
-            saved.relatedProfiles.some(
-              profile => profile.profileSheetKey === 'sheet_people' && profile.profileRowIndex === 1,
-            ) &&
-            usePhoneStore().currentRoute.page === 'detail',
-          );
-        }))
-      ) {
-        throw new Error('Storyline profile reference did not preserve legacy ids and save the selected row');
-      }
-      await waitForPaint();
-      const detailText = document.querySelector('.pc-storyline-detail-page')?.textContent || '';
-      if (!detailText.includes('林见夏') || !detailText.includes('旧资料关联待重新选择')) {
-        throw new Error('Storyline detail did not show new and unresolved legacy profile references');
-      }
-      return { name, route: usePhoneStore().currentRoute };
-    }
-
-    resetPhoneToRoute('storylines', 'detail', '失效剧情记录', { id: 'missing', kind: 'line' });
-    await waitForPaint();
-    if (!document.body.textContent?.includes('这条剧情记录无法打开')) {
-      throw new Error('Missing storyline detail route rendered a blank page');
-    }
-
-    resetPhoneToRoute('storylines', 'root', '剧情梳理');
-    await waitForPaint();
-    const lineButton = [...document.querySelectorAll<HTMLButtonElement>('.pc-storyline-item-main')].find(button =>
-      button.textContent?.includes(line.title),
-    );
-    if (!lineButton) throw new Error('Storyline list item is not interactive');
-    lineButton.click();
-    await waitForPaint();
-    const lineDetailText =
-      document.querySelector('.pc-storyline-detail-page .pc-reader-detail-card')?.textContent || '';
-    if (!lineDetailText.includes(line.goal) || !lineDetailText.includes(line.stakes)) {
-      throw new Error('Storyline detail omitted goal or stakes');
-    }
-
-    const hookButton = [
-      ...document.querySelectorAll<HTMLButtonElement>('.pc-storyline-detail-section .pc-list-row'),
-    ].find(button => button.textContent?.includes(hook.title));
-    if (!hookButton) throw new Error('Storyline detail did not link its foreshadowing item');
-    hookButton.click();
-    await waitForPaint();
-    const hookDetailText =
-      document.querySelector('.pc-storyline-detail-page .pc-reader-detail-card')?.textContent || '';
-    if (!hookDetailText.includes(hook.seed) || !hookDetailText.includes(hook.payoff)) {
-      throw new Error('Foreshadowing detail did not show seed and payoff separately');
-    }
-
-    if (name === 'storylines-editor') {
-      const openDetailEditor = async () => {
-        document.querySelector<HTMLButtonElement>('.pc-storyline-detail-page .pc-reader-tool-trigger')?.click();
-        await waitForPaint();
-        [...document.querySelectorAll<HTMLButtonElement>('.pc-storyline-detail-page .pc-reader-tool-menu button')]
-          .find(button => button.textContent?.includes('编辑'))
-          ?.click();
-        await waitForPaint();
-      };
-      await openDetailEditor();
-      const editor = document.querySelector<HTMLElement>('.pc-storyline-editor-card');
-      const payoffField = [...(editor?.querySelectorAll<HTMLTextAreaElement>('textarea') ?? [])].find(
-        field => field.value === hook.payoff,
-      );
-      if (!editor || !payoffField) throw new Error('Foreshadowing editor did not load the complete record');
-      payoffField.value = '巡夜人承认自己调换钥匙并伪造了值班记录。';
-      payoffField.dispatchEvent(new Event('input', { bubbles: true }));
-      [...editor.querySelectorAll<HTMLButtonElement>('button')]
-        .find(button => button.textContent?.includes('保存'))
-        ?.click();
-      await waitForPaint();
-      if (storylines.getHook(hook.id)?.payoff !== payoffField.value || usePhoneStore().currentRoute.page !== 'detail') {
-        throw new Error('Foreshadowing editor did not save and return to detail');
-      }
-      await openDetailEditor();
-      const lineControl = [...document.querySelectorAll<HTMLElement>('.pc-storyline-editor-card .pc-field-group')].find(
-        group => group.textContent?.includes('所属剧情线'),
-      );
-      if (!lineControl) {
-        throw new Error('Foreshadowing editor did not render its storyline selector');
-      }
-      lineControl.scrollIntoView({ block: 'center' });
-      const lineInput = lineControl.querySelector<HTMLInputElement>('.pc-combobox-input');
-      lineInput?.click();
-      await waitForPaint();
-      if (lineInput && !document.querySelector('.pc-combobox-menu')?.textContent?.includes('超长用户剧情线名称')) {
-        throw new Error('Storyline combobox omitted the user-created long storyline');
-      }
     }
   } else if (name === 'custom-app-extract-rules') {
     const { CustomAppDefinitionsSettingsSchema, customAppDefinitionsField } = await import('@/apps/app-builder/schema');

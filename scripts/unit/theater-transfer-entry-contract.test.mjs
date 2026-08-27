@@ -3,18 +3,9 @@ import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import test from 'node:test';
 
-const catalog = await readFile(
-  new URL('../../src/apps/theater/TheaterCatalogPage.vue', import.meta.url),
-  'utf8',
-);
-const history = await readFile(
-  new URL('../../src/apps/theater/TheaterHistoryPage.vue', import.meta.url),
-  'utf8',
-);
-const detail = await readFile(
-  new URL('../../src/apps/theater/TheaterEntryDetailPage.vue', import.meta.url),
-  'utf8',
-);
+const catalog = await readFile(new URL('../../src/apps/theater/TheaterCatalogPage.vue', import.meta.url), 'utf8');
+const history = await readFile(new URL('../../src/apps/theater/TheaterHistoryPage.vue', import.meta.url), 'utf8');
+const detail = await readFile(new URL('../../src/apps/theater/TheaterEntryDetailPage.vue', import.meta.url), 'utf8');
 const scenario = await readFile(new URL('../../src/testing/visual/theaterScenarios.ts', import.meta.url), 'utf8');
 const scenarioCatalog = await readFile(new URL('../../src/testing/visual/scenarioCatalog.ts', import.meta.url), 'utf8');
 

@@ -3,10 +3,7 @@ import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import test from 'node:test';
 
-import {
-  UI_INTERACTION_CONTRACTS,
-  getInteractionContractScenarios,
-} from '../ui-interaction-contracts.mjs';
+import { UI_INTERACTION_CONTRACTS, getInteractionContractScenarios } from '../ui-interaction-contracts.mjs';
 
 const expectedContracts = {
   back: 'tutorial-scroll-return',
@@ -22,7 +19,6 @@ const expectedContracts = {
   'reparse-digest': 'digest-failed-draft-reparse',
   'reparse-forum': 'forum-failed-draft-reparse',
   'reparse-letters': 'letters-failed-draft-reparse',
-  'reparse-storylines': 'storylines-failed-draft-reparse',
   'reparse-summary': 'summary-failed-draft-reparse',
   'reparse-theater': 'theater-failed-draft',
   'settings-persistence': 'settings-theme-persistence',
@@ -36,7 +32,10 @@ test('the shared interaction contract has exactly one representative scenario fo
 
   assert.deepEqual(actualContracts, expectedContracts);
   assert.equal(new Set(getInteractionContractScenarios()).size, UI_INTERACTION_CONTRACTS.length);
-  assert.deepEqual(getInteractionContractScenarios(), UI_INTERACTION_CONTRACTS.map(contract => contract.scenario));
+  assert.deepEqual(
+    getInteractionContractScenarios(),
+    UI_INTERACTION_CONTRACTS.map(contract => contract.scenario),
+  );
 });
 
 test('every representative interaction scenario exists in the visual harness catalog', async () => {

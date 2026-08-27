@@ -100,14 +100,45 @@ test('duplicate backup groups keep the newest exact file and never cross owner o
   const otherOwner = summary('chat_zod_20260811-120000.jsonl');
   const changed = summary('chat_nova_20260811-130000.jsonl');
   const groups = recovery.createDuplicateBackupGroups([
-    { actualChatItems: 2, byteLength: 2048, contentHash: 'same', headerHash: 'head', messageHashes: ['a', 'b'], summary: older },
-    { actualChatItems: 2, byteLength: 2048, contentHash: 'same', headerHash: 'head', messageHashes: ['a', 'b'], summary: newest },
-    { actualChatItems: 2, byteLength: 2048, contentHash: 'same', headerHash: 'head', messageHashes: ['a', 'b'], summary: otherOwner },
-    { actualChatItems: 2, byteLength: 2048, contentHash: 'changed', headerHash: 'head', messageHashes: ['a', 'c'], summary: changed },
+    {
+      actualChatItems: 2,
+      byteLength: 2048,
+      contentHash: 'same',
+      headerHash: 'head',
+      messageHashes: ['a', 'b'],
+      summary: older,
+    },
+    {
+      actualChatItems: 2,
+      byteLength: 2048,
+      contentHash: 'same',
+      headerHash: 'head',
+      messageHashes: ['a', 'b'],
+      summary: newest,
+    },
+    {
+      actualChatItems: 2,
+      byteLength: 2048,
+      contentHash: 'same',
+      headerHash: 'head',
+      messageHashes: ['a', 'b'],
+      summary: otherOwner,
+    },
+    {
+      actualChatItems: 2,
+      byteLength: 2048,
+      contentHash: 'changed',
+      headerHash: 'head',
+      messageHashes: ['a', 'c'],
+      summary: changed,
+    },
   ]);
   assert.equal(groups.length, 1);
   assert.equal(groups[0].keeper.summary.fileName, newest.fileName);
-  assert.deepEqual(groups[0].duplicates.map(item => item.summary.fileName), [older.fileName]);
+  assert.deepEqual(
+    groups[0].duplicates.map(item => item.summary.fileName),
+    [older.fileName],
+  );
   assert.equal(groups[0].reclaimBytes, 2048);
 });
 
@@ -116,8 +147,22 @@ test('unknown, mismatched, or empty fingerprints never become duplicate deletion
   const second = summary('chat_nova_20260811-110000.jsonl');
   assert.deepEqual(
     recovery.createDuplicateBackupGroups([
-      { actualChatItems: 1, byteLength: 2048, contentHash: 'same', headerHash: 'head', messageHashes: ['a'], summary: first },
-      { actualChatItems: 2, byteLength: 2048, contentHash: 'same', headerHash: 'head', messageHashes: ['a', 'b'], summary: second },
+      {
+        actualChatItems: 1,
+        byteLength: 2048,
+        contentHash: 'same',
+        headerHash: 'head',
+        messageHashes: ['a'],
+        summary: first,
+      },
+      {
+        actualChatItems: 2,
+        byteLength: 2048,
+        contentHash: 'same',
+        headerHash: 'head',
+        messageHashes: ['a', 'b'],
+        summary: second,
+      },
     ]),
     [],
   );
@@ -136,7 +181,14 @@ test('strict prefix containment keeps the longest continuation and rejects branc
   const branch = { ...summary('chat_nova_20260811-120000.jsonl'), chatItems: 4 };
   const empty = { ...summary('chat_nova_20260811-090000.jsonl'), chatItems: 0 };
   const groups = recovery.createContainedBackupGroups([
-    { actualChatItems: 2, byteLength: 100, contentHash: 'short', headerHash: 'head', messageHashes: ['a', 'b'], summary: short },
+    {
+      actualChatItems: 2,
+      byteLength: 100,
+      contentHash: 'short',
+      headerHash: 'head',
+      messageHashes: ['a', 'b'],
+      summary: short,
+    },
     {
       actualChatItems: 4,
       byteLength: 200,
@@ -157,7 +209,10 @@ test('strict prefix containment keeps the longest continuation and rejects branc
   ]);
   assert.equal(groups.length, 1);
   assert.equal(groups[0].keeper.summary.fileName, long.fileName);
-  assert.deepEqual(groups[0].contained.map(item => item.summary.fileName), [short.fileName]);
+  assert.deepEqual(
+    groups[0].contained.map(item => item.summary.fileName),
+    [short.fileName],
+  );
 });
 
 test('strict prefix containment requires the same JSONL metadata header', () => {
@@ -242,7 +297,10 @@ test('settings duplicate groups keep the newest byte-identical snapshot', () => 
   ]);
   assert.equal(groups.length, 1);
   assert.equal(groups[0].keeper.summary.name, newest.name);
-  assert.deepEqual(groups[0].duplicates.map(item => item.summary.name), [older.name]);
+  assert.deepEqual(
+    groups[0].duplicates.map(item => item.summary.name),
+    [older.name],
+  );
   assert.equal(groups[0].reclaimBytes, older.size);
 });
 

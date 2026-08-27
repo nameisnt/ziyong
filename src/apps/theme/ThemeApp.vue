@@ -75,13 +75,14 @@
 
       <button class="pc-list-row pc-theme-entry" type="button" @click="openView('icons')">
         <span class="pc-entry-icon-stack" aria-hidden="true">
-          <i
+          <span
             v-for="app in previewApps.slice(0, 4)"
             :key="app.id"
-            class="fa-solid"
-            :class="getAppIcon(app)"
+            class="pc-app-icon-material"
             :style="getAppPreviewStyle(app)"
-          ></i>
+          >
+            <AppIcon :asset-path="getAppIconAssetPath(app)" :icon="getAppIcon(app)" />
+          </span>
         </span>
         <span class="pc-entry-copy">
           <strong>{{ t`图标风格` }}</strong>
@@ -122,7 +123,7 @@
             @click="applyBuiltinIconPack(pack)"
           >
             <span class="pc-icon-pack-preview" aria-hidden="true">
-              <i v-for="icon in pack.previewIcons" :key="icon" class="fa-solid" :class="icon"></i>
+              <AppIcon v-for="icon in pack.previewIcons" :key="icon" :icon="icon" />
             </span>
             <span>
               <strong>{{ pack.name }}</strong>
@@ -145,9 +146,9 @@
             @click="applyIconStyle(option.id)"
           >
             <span class="pc-style-icons" :class="`style-${option.id}`">
-              <i class="fa-solid fa-book"></i>
-              <i class="fa-solid fa-comments"></i>
-              <i class="fa-solid fa-image"></i>
+              <AppIcon icon="fa-book" />
+              <AppIcon icon="fa-comments" />
+              <AppIcon icon="fa-image" />
             </span>
             <strong>{{ option.name }}</strong>
           </button>
@@ -169,7 +170,9 @@
             :title="app.name"
             @click="selectedAppId = app.id"
           >
-            <span :style="getAppPreviewStyle(app)"><AppIcon :asset-path="getAppIconAssetPath(app)" :icon="getAppIcon(app)" /></span>
+            <span :style="getAppPreviewStyle(app)"
+              ><AppIcon :asset-path="getAppIconAssetPath(app)" :icon="getAppIcon(app)"
+            /></span>
             <small>{{ app.name }}</small>
           </button>
         </div>
@@ -202,7 +205,7 @@
               :title="icon"
               @click="setAppIcon(selectedApp.id, icon)"
             >
-              <i class="fa-solid" :class="icon"></i>
+              <AppIcon :icon="icon" />
             </button>
           </div>
 
@@ -218,9 +221,15 @@
           </label>
           <label class="pc-inline-field">
             <span class="pc-field-label">图片图标</span>
-            <select class="pc-select" :value="settings.visualTheme.appIconAssetIds[selectedApp.id] || ''" @change="setAppIconAsset(selectedApp.id, $event)">
+            <select
+              class="pc-select"
+              :value="settings.visualTheme.appIconAssetIds[selectedApp.id] || ''"
+              @change="setAppIconAsset(selectedApp.id, $event)"
+            >
               <option value="">使用字体图标</option>
-              <option v-for="asset in settings.homeIconAssets" :key="asset.id" :value="asset.id">{{ asset.name }}</option>
+              <option v-for="asset in settings.homeIconAssets" :key="asset.id" :value="asset.id">
+                {{ asset.name }}
+              </option>
             </select>
           </label>
           <div class="pc-form-actions">
@@ -235,7 +244,13 @@
             >
               <i class="fa-solid fa-trash"></i><span>删除图片</span>
             </button>
-            <input ref="homeIconInputEl" hidden type="file" accept="image/png,image/jpeg,image/webp,image/gif" @change="uploadHomeIcon" />
+            <input
+              ref="homeIconInputEl"
+              hidden
+              type="file"
+              accept="image/png,image/jpeg,image/webp,image/gif"
+              @change="uploadHomeIcon"
+            />
           </div>
           <label class="pc-inline-field">
             <span class="pc-field-label">{{ t`图标颜色` }}</span>
@@ -970,7 +985,7 @@ async function onThemeSelected(event: Event) {
   gap: 4px;
 }
 
-.pc-entry-icon-stack i {
+.pc-entry-icon-stack > span {
   display: grid;
   width: 24px;
   height: 24px;
@@ -978,6 +993,11 @@ async function onThemeSelected(event: Event) {
   border-radius: max(6px, calc(var(--pc-icon-radius) - 4px));
   background: var(--preview-app-bg);
   color: var(--preview-app-accent);
+}
+
+.pc-entry-icon-stack :is(i, svg) {
+  width: 12px;
+  height: 12px;
   font-size: 11px;
 }
 
@@ -1038,7 +1058,7 @@ async function onThemeSelected(event: Event) {
   gap: 3px;
 }
 
-.pc-icon-pack-preview i {
+.pc-icon-pack-preview :is(i, svg) {
   display: grid;
   width: 16px;
   height: 16px;
@@ -1107,7 +1127,7 @@ async function onThemeSelected(event: Event) {
   gap: 4px;
 }
 
-.pc-style-icons i {
+.pc-style-icons :is(i, svg) {
   display: grid;
   width: 25px;
   height: 25px;
@@ -1118,13 +1138,13 @@ async function onThemeSelected(event: Event) {
   font-size: 11px;
 }
 
-.pc-style-icons.style-native i:nth-child(2) {
+.pc-style-icons.style-native :is(i, svg):nth-child(2) {
   color: #34a853;
 }
-.pc-style-icons.style-native i:nth-child(3) {
+.pc-style-icons.style-native :is(i, svg):nth-child(3) {
   color: #ef476f;
 }
-.pc-style-icons.style-unified i {
+.pc-style-icons.style-unified :is(i, svg) {
   background: var(--pc-theme-accent);
   color: var(--pc-primary-text);
 }

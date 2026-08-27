@@ -64,7 +64,13 @@ test('external profiles bridge registers one update callback, rereads, opens and
       exportCount += 1;
       return {
         mate: { type: 'chatSheets' },
-        sheet_main: { name: '状态表', content: [['row_id', '状态'], [1, exportCount === 1 ? '初始' : '更新']] },
+        sheet_main: {
+          name: '状态表',
+          content: [
+            ['row_id', '状态'],
+            [1, exportCount === 1 ? '初始' : '更新'],
+          ],
+        },
       };
     },
     openVisualizer() {

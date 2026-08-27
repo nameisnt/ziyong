@@ -43,12 +43,18 @@ test('home grid packs Apps as 1x1 and folders as compact 2x1 placements', () => 
     3,
   );
   assert.ok(pages.length >= 1);
-  assert.deepEqual(pages.flat().map(item => item.token), ['folder:a', 'app:a', 'folder:b', 'app:b', 'app:c']);
+  assert.deepEqual(
+    pages.flat().map(item => item.token),
+    ['folder:a', 'app:a', 'folder:b', 'app:b', 'app:c'],
+  );
   pages.forEach(page => assertNoOverlap(page, 4, 3));
-  pages.flat().filter(item => item.token.startsWith('folder:')).forEach(item => {
-    assert.equal(item.columnSpan, 2);
-    assert.equal(item.rowSpan, 1);
-  });
+  pages
+    .flat()
+    .filter(item => item.token.startsWith('folder:'))
+    .forEach(item => {
+      assert.equal(item.columnSpan, 2);
+      assert.equal(item.rowSpan, 1);
+    });
 });
 
 test('narrow two-row pages fit two compact folders and two Apps without overlap', () => {
@@ -64,5 +70,8 @@ test('narrow two-row pages fit two compact folders and two Apps without overlap'
   );
   assert.equal(pages.length, 1);
   pages.forEach(page => assertNoOverlap(page, 3, 2));
-  assert.deepEqual(pages[0].map(item => item.token), ['folder:a', 'folder:b', 'app:a', 'app:b']);
+  assert.deepEqual(
+    pages[0].map(item => item.token),
+    ['folder:a', 'folder:b', 'app:a', 'app:b'],
+  );
 });

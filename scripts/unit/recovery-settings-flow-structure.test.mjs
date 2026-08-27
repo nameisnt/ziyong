@@ -28,8 +28,16 @@ test('RecoveryApp delegates settings snapshot list and duplicate cleanup to one 
     'toggleSettingsDuplicateCandidate',
     'confirmSettingsDuplicateDelete',
   ]) {
-    assert.doesNotMatch(root, new RegExp(legacyOwner.replaceAll('.', '\\.').replaceAll('(', '\\('), 'u'), `${legacyOwner} leaked back into RecoveryApp`);
-    assert.match(owner, new RegExp(legacyOwner.replaceAll('.', '\\.').replaceAll('(', '\\('), 'u'), `${legacyOwner} is missing from RecoverySettingsFlow`);
+    assert.doesNotMatch(
+      root,
+      new RegExp(legacyOwner.replaceAll('.', '\\.').replaceAll('(', '\\('), 'u'),
+      `${legacyOwner} leaked back into RecoveryApp`,
+    );
+    assert.match(
+      owner,
+      new RegExp(legacyOwner.replaceAll('.', '\\.').replaceAll('(', '\\('), 'u'),
+      `${legacyOwner} is missing from RecoverySettingsFlow`,
+    );
   }
 
   assert.match(root, /function openSettingsSnapshots\(\)[\s\S]*phone\.pushPage\('settings-snapshots', '设置快照'\)/u);

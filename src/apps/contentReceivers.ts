@@ -16,14 +16,6 @@ import { readExternalProfileTables } from '@/apps/profiles/externalBridge';
 import { useDigestStore } from '@/apps/digest/store';
 import { useEntryLibraryStore } from '@/apps/entry-library/store';
 import { useWorldSlotsStore, worldSlotPositionOptions } from '@/apps/world-slots/store';
-import {
-  storylineKindOptions,
-  storylineStatusOptions,
-  useStorylinesStore,
-  type StorylineKind,
-  type StorylineStatus,
-} from '@/apps/storylines/store';
-import { scenePlanStatusOptions, useScenePlannerStore, type ScenePlanStatus } from '@/apps/scene-planner/store';
 import { useSummaryStore } from '@/store/summary';
 import { useDiaryStore } from '@/store/diary';
 import { useExtrasStore } from '@/store/extras';
@@ -72,11 +64,7 @@ function sourceTitle(source: PhoneContentConversionSource, fallback: string) {
 function activeSwipeText(message: ReturnType<typeof getChatMessagesSafe>[number]) {
   const record = message as Record<string, unknown>;
   const data = record.data && typeof record.data === 'object' ? (record.data as Record<string, unknown>) : null;
-  const swipes = Array.isArray(record.swipes)
-    ? record.swipes
-    : data && Array.isArray(data.swipes)
-      ? data.swipes
-      : [];
+  const swipes = Array.isArray(record.swipes) ? record.swipes : data && Array.isArray(data.swipes) ? data.swipes : [];
   const rawSwipeIndex = typeof record.swipe_id === 'number' ? record.swipe_id : data?.swipe_id;
   const activeSwipeIndex = typeof rawSwipeIndex === 'number' && Number.isInteger(rawSwipeIndex) ? rawSwipeIndex : 0;
   const activeSwipe = swipes[activeSwipeIndex];
@@ -624,11 +612,11 @@ export function createProfilesContentReceiver(): PhoneContentReceiver {
         });
         rowIndices.push(String(rowIndex));
       }
-      return result(
-        rowIndices,
-        `已转换 ${rowIndices.length} 条资料`,
-        { page: 'table', params: { sheetKey: table.key }, title: table.name },
-      );
+      return result(rowIndices, `已转换 ${rowIndices.length} 条资料`, {
+        page: 'table',
+        params: { sheetKey: table.key },
+        title: table.name,
+      });
     },
   };
 }
@@ -773,107 +761,6 @@ export function createWorldSlotsContentReceiver(): PhoneContentReceiver {
         first && slots.length === 1
           ? { page: 'editor', params: { slotId: first.id }, title: first.title }
           : { page: 'root', title: '世界书槽位' },
-      );
-    },
-  };
-}
-
-export function createStorylinesContentReceiver(): PhoneContentReceiver {
-  return {
-    scope: 'chat',
-    batchModes: ['separate', 'merge'],
-    createDraft() {
-      return { kind: 'branch', status: 'planned' };
-    },
-    fields() {
-      return [
-        {
-          key: 'kind',
-          kind: 'select',
-          label: '剧情线类型',
-          options: storylineKindOptions.map(option => ({ label: option.label, value: option.id })),
-        },
-        {
-          key: 'status',
-          kind: 'select',
-          label: '状态',
-          options: storylineStatusOptions.map(option => ({ label: option.label, value: option.id })),
-        },
-      ];
-    },
-    receive(context) {
-      const storylines = useStorylinesStore();
-      const kind = textValue(context, 'kind');
-      const status = textValue(context, 'status');
-      const entries = context.sources.map(source =>
-        storylines.createLine({
-          kind: storylineKindOptions.some(option => option.id === kind) ? (kind as StorylineKind) : 'branch',
-          status: storylineStatusOptions.some(option => option.id === status) ? (status as StorylineStatus) : 'planned',
-          summary: stripFrontendMarkup(source),
-          tags: source.tags,
-          title: sourceTitle(source, '未命名剧情线'),
-        }),
-      );
-      return result(
-        entries.map(entry => entry.id),
-        `已转换 ${entries.length} 条剧情线`,
-        {
-          page: 'root',
-          title: '剧情线',
-        },
-      );
-    },
-  };
-}
-
-export function createScenePlannerContentReceiver(): PhoneContentReceiver {
-  return {
-    scope: 'chat',
-    batchModes: ['separate', 'merge'],
-    createDraft() {
-      return { contentField: 'brief', status: 'draft' };
-    },
-    fields() {
-      return [
-        {
-          key: 'contentField',
-          kind: 'select',
-          label: '正文写入位置',
-          options: [
-            { label: '用户想法', value: 'brief' },
-            { label: '下一章提示词', value: 'prompt' },
-            { label: '分析', value: 'analysis' },
-          ],
-        },
-        {
-          key: 'status',
-          kind: 'select',
-          label: '状态',
-          options: scenePlanStatusOptions.map(option => ({ label: option.label, value: option.id })),
-        },
-      ];
-    },
-    receive(context) {
-      const planner = useScenePlannerStore();
-      const contentField = textValue(context, 'contentField');
-      const status = textValue(context, 'status');
-      const entries = context.sources.map(source => {
-        const content = stripFrontendMarkup(source);
-        return planner.createPlan({
-          analysis: contentField === 'analysis' ? content : '',
-          brief: contentField === 'brief' ? content : '',
-          prompt: contentField === 'prompt' ? content : '',
-          status: scenePlanStatusOptions.some(option => option.id === status) ? (status as ScenePlanStatus) : 'draft',
-          title: sourceTitle(source, '未命名场景'),
-        });
-      });
-      return result(
-        entries.map(entry => entry.id),
-        `已转换 ${entries.length} 个场景方案`,
-        {
-          page: 'root',
-          title: '场景编排',
-        },
       );
     },
   };

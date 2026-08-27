@@ -14,9 +14,7 @@ async function readMaybe(url) {
 const catalog = await readMaybe(new URL('../../src/testing/visual/scenarioCatalog.ts', import.meta.url));
 const harness = await readMaybe(new URL('../../src/testing/visual-harness.ts', import.meta.url));
 const scenario = await readMaybe(new URL('../../src/testing/visual/presetManagerScenarios.ts', import.meta.url));
-const memoryFileService = await readMaybe(
-  new URL('../../src/testing/visual/memoryFileService.ts', import.meta.url),
-);
+const memoryFileService = await readMaybe(new URL('../../src/testing/visual/memoryFileService.ts', import.meta.url));
 
 test('plugin preset lifecycle has one isolated browser scenario', () => {
   assert.match(catalog, /plugin-preset-lifecycle/);

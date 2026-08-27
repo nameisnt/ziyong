@@ -4,14 +4,20 @@ import { readFile } from 'node:fs/promises';
 import test from 'node:test';
 
 const root = await readFile(new URL('../../src/apps/archive/ChatArchiveApp.vue', import.meta.url), 'utf8');
-const session = await readFile(new URL('../../src/apps/archive/useChatArchiveCatalogSession.ts', import.meta.url), 'utf8');
+const session = await readFile(
+  new URL('../../src/apps/archive/useChatArchiveCatalogSession.ts', import.meta.url),
+  'utf8',
+);
 
 test('ChatArchive delegates catalog loading, grouping and selection to one internal session', () => {
   assert.match(
     root,
     /import \{[\s\S]*?useChatArchiveCatalogSession[\s\S]*?\} from '@\/apps\/archive\/useChatArchiveCatalogSession'/u,
   );
-  assert.match(root, /const \{[\s\S]*activeOwner[\s\S]*currentChatRow[\s\S]*loadCharacters[\s\S]*refreshSelectedChatRow[\s\S]*\} = useChatArchiveCatalogSession\(\)/u);
+  assert.match(
+    root,
+    /const \{[\s\S]*activeOwner[\s\S]*currentChatRow[\s\S]*loadCharacters[\s\S]*refreshSelectedChatRow[\s\S]*\} = useChatArchiveCatalogSession\(\)/u,
+  );
 
   for (const legacyOwner of [
     'interface ArchiveOwner',

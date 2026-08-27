@@ -25,6 +25,8 @@ test('settings owns its root, compact categories and external API subpage while 
   const root = await source('src/apps/settings/SettingsApp.vue');
   const advanced = await source('src/apps/settings/SettingsAdvancedPanel.vue');
   const dataManagement = await source('src/apps/settings/SettingsDataManagementPage.vue');
+  const interfacePanel = await source('src/apps/settings/SettingsInterfacePanel.vue');
+  const appRoot = await source('src/App.vue');
 
   assert.match(builtin, /from '@\/apps\/settings\/SettingsApp\.vue'/u);
   assert.match(root, /from '\.\/SettingsAdvancedPanel\.vue'/u);
@@ -34,9 +36,15 @@ test('settings owns its root, compact categories and external API subpage while 
   assert.match(dataManagement, /applyPhoneBackup/u);
   assert.match(dataManagement, /downloadPhoneBackup/u);
   assert.match(dataManagement, /importPhoneBackupScopeToCurrentChat/u);
+  assert.match(interfacePanel, /@click="restoreHomeLayout"/u);
+  assert.match(interfacePanel, /settingsStore\.resetHomeLayout\(\)/u);
+  assert.match(interfacePanel, /toastr\.success\('主页布局已恢复默认'\)/u);
+  assert.doesNotMatch(appRoot, /extensions_settings2|@\/Panel\.vue|<Panel/u);
+  assert.match(appRoot, /#pc_reader_wand_container/u);
 
   await access(new URL('../../src/util/backup.ts', import.meta.url));
   await access(new URL('../../src/util/settingsResetTransaction.ts', import.meta.url));
+  await assert.rejects(access(new URL('../../src/Panel.vue', import.meta.url)));
   await assert.rejects(access(new URL('../../src/components/SettingsApp.vue', import.meta.url)));
   await assert.rejects(access(new URL('../../src/components/settings/', import.meta.url)));
 });

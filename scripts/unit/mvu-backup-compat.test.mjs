@@ -61,8 +61,5 @@ test('legacy MVU storage is copied once without deleting the old keys', async ()
   assert.equal(migrated.version, 1);
   assert.deepEqual(migrated.favorites.character_a[0].path, ['hp']);
   assert.equal(migrated.history.chat_a[0].newValue, 2);
-  assert.deepEqual(reads.sort(), [
-    'sillytavern_phone_mvu_favorites',
-    'sillytavern_phone_mvu_history',
-  ]);
+  assert.deepEqual(reads.sort(), ['sillytavern_phone_mvu_favorites', 'sillytavern_phone_mvu_history']);
 });

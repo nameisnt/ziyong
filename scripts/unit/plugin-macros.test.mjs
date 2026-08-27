@@ -91,3 +91,12 @@ test('plugin macros are registered only inside the phone generation lifecycle', 
     /replaceGenerationAliases\(\s*resolvePluginMacro\(String\(kind\), String\(query\)\),\s*aliases/u,
   );
 });
+
+test('plugin preset prompts use the resolved user and character aliases', () => {
+  assert.match(generationService, /resolveGenerationIdentityAliases\(useGenerationAliasesStore\(\)\)/u);
+  assert.match(
+    generationService,
+    /buildPluginPresetOrderedPrompts\(pluginPresetRecord, generationMacroVariables\)\.map\(prompt/u,
+  );
+  assert.match(generationService, /replaceGenerationAliases\(prompt\.content, generationAliases\)/u);
+});

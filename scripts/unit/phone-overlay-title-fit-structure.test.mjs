@@ -8,7 +8,10 @@ const owner = await readFile(new URL('../../src/composables/usePhoneTitleFit.ts'
 
 test('PhoneOverlay delegates title measurement and listeners to one internal composable', () => {
   assert.match(root, /import \{ usePhoneTitleFit \} from '@\/composables\/usePhoneTitleFit'/u);
-  assert.match(root, /usePhoneTitleFit\(\{[\s\S]*currentTitle,[\s\S]*fontFamily:[\s\S]*isOpen,[\s\S]*topbarEl,[\s\S]*\}\)/u);
+  assert.match(
+    root,
+    /usePhoneTitleFit\(\{[\s\S]*currentTitle,[\s\S]*fontFamily:[\s\S]*isOpen,[\s\S]*topbarEl,[\s\S]*\}\)/u,
+  );
 
   for (const legacyOwner of ['titleFitFrame', 'titleResizeObserver', 'fitTopTitle']) {
     assert.doesNotMatch(root, new RegExp(`\\b${legacyOwner}\\b`, 'u'), `${legacyOwner} leaked back into PhoneOverlay`);

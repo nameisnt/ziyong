@@ -31,7 +31,10 @@ test('manual full backup v2 embeds plugin presets while v1 remains supported', (
   assert.match(backupType, /records:\s*z\.array/);
   assert.match(backupUtil, /async function buildCompletePhoneBackup/);
   assert.match(backupUtil, /await\s+presetStore\.exportBackupBundle\(\)/);
-  assert.match(backupUtil, /schemaVersion:\s*options\.chatFloorBackups\s*\?\s*4\s*:\s*options\.homeIconAssets\s*\?\s*3/);
+  assert.match(
+    backupUtil,
+    /schemaVersion:\s*options\.chatFloorBackups\s*\?\s*4\s*:\s*options\.homeIconAssets\s*\?\s*3/,
+  );
   assert.match(backupUtil, /embeddedPluginPresets/);
   assert.match(backupUtil, /executeBackupResourceTransaction/);
   assert.match(settingsPanel, /async function downloadBackup\(\)/);

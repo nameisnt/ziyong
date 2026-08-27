@@ -27,11 +27,7 @@ test('all active media App modules are removed from auto registration', async ()
 
 test('retired media cleanup owns exact fields and shared-record pruning', async () => {
   const cleanup = await readSource('src/core/retiredMedia.ts');
-  for (const field of [
-    'sillytavern_phone_media',
-    'sillytavern_phone_comfy',
-    'sillytavern_phone_cloud_media',
-  ]) {
+  for (const field of ['sillytavern_phone_media', 'sillytavern_phone_comfy', 'sillytavern_phone_cloud_media']) {
     assert.match(cleanup, new RegExp(field));
   }
   assert.match(cleanup, /purgeRetiredMediaExtensionData/u);
@@ -157,17 +153,18 @@ test('cleanup deletes retired data without deleting unrelated app data and is id
 });
 
 test('active layout, prompts and workbench no longer expose media integration', async () => {
-  const [layout, prompts, workbench, runner, tutorialCatalog, tutorialData, theme, visualCatalog, visualBaseline] = await Promise.all([
-    readSource('src/core/appLayout.ts'),
-    readSource('src/store/prompts.ts'),
-    readSource('src/apps/workbench/WorkbenchApp.vue'),
-    readSource('src/apps/workbench/runner.ts'),
-    readSource('src/apps/tutorial/appCatalog.ts'),
-    readSource('src/apps/tutorial/data.ts'),
-    readSource('src/apps/theme/ThemeApp.vue'),
-    readSource('src/testing/visual/scenarioCatalog.ts'),
-    readSource('scripts/baselines/ui-visual.json'),
-  ]);
+  const [layout, prompts, workbench, runner, tutorialCatalog, tutorialData, theme, visualCatalog, visualBaseline] =
+    await Promise.all([
+      readSource('src/core/appLayout.ts'),
+      readSource('src/store/prompts.ts'),
+      readSource('src/apps/workbench/WorkbenchApp.vue'),
+      readSource('src/apps/workbench/runner.ts'),
+      readSource('src/apps/tutorial/appCatalog.ts'),
+      readSource('src/apps/tutorial/data.ts'),
+      readSource('src/apps/theme/ThemeApp.vue'),
+      readSource('src/testing/visual/scenarioCatalog.ts'),
+      readSource('scripts/baselines/ui-visual.json'),
+    ]);
   assert.doesNotMatch(layout, /home_default_media|媒体工具/u);
   assert.doesNotMatch(prompts, /legacyComfy|currentCloudMedia|comfy\.generate|cloud-media\.generate/u);
   assert.doesNotMatch(workbench, /comfyWorkflowId|ComfyUI|useComfyStore/u);

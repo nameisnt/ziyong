@@ -8,9 +8,9 @@
 - `src/panel.ts`：薄入口，只调用 `initPhoneLifecycle()`。
 - `src/core/phoneLifecycle.ts`：创建或复用 DOM root，注册 App，创建 Vue + Pinia，挂载 `App.vue`，安装 workbench auto
   runner 和 native launcher。
-- `src/App.vue`：把设置面板 Teleport 到 `#extensions_settings2`，把菜单入口 Teleport 到 `#extensionsMenu` 下的
-  `#pc_reader_wand_container`，把 `PhoneOverlay` 和 `FloatingBall`
+- `src/App.vue`：把菜单入口 Teleport 到 `#extensionsMenu` 下的 `#pc_reader_wand_container`，把 `PhoneOverlay` 和 `FloatingBall`
   Teleport 到 body；监听聊天切换、聊天改名、楼层备份和生成可见性恢复。
+- 酒馆原生拓展程序设置页不挂载插件配置面板；主题、悬浮球和主页布局设置统一由手机内部设置 App 管理。
 - `src/components/PhoneOverlay.vue`：手机壳、顶栏、通知、路由组件渲染、主题变量、字体、纸张纹理、窗口位置和 App
   KeepAlive。
 - `src/store/phone.ts`：手机打开/关闭、路由栈、返回保护、预览离开确认、通知、当前酒馆 scope、查看 scope 与 scope
@@ -37,6 +37,7 @@
 - `src/store/`：跨域 Pinia store 和共享持久化 store。
 - `src/core/`：注册、生命周期、生成服务、布局、运行器和跨域核心服务。
 - `src/util/`：SillyTavern 运行时包装、备份/迁移、生成辅助、阅读解析、聊天作用域、内容转换等共享工具。
+- `src/util/retiredDataCleanup.ts`：插件启动时删除已退役场景编排、剧情梳理和旧资料关系字段，不做旧数据迁移。
 - `src/type/`：Zod schema 和共享类型。
 - `src/testing/visual/` 与 `scripts/unit/`：视觉场景、运行夹具和契约测试。
 - `dist/`：正式扩展构建产物。
@@ -62,12 +63,12 @@
 4. `adapter.configSchema` 校验 config。
 5. `buildSourceSelection()` 读取可见聊天楼层，生成来源 selection。
 6. `adapter.buildRequest()` 生成 App 上下文、任务、提示词、类型提示词、用户要求和输出格式。
-7. `usePromptStore()` 套用任务模板，`generationAliases` 替换当前聊天称呼。
+7. `usePromptStore()` 套用任务模板；任务、类型提示词和插件预设 prompt 都使用当前聊天解析后的 `generationAliases` 替换 `<user>`、`<char>`、`{{user}}`、`{{char}}`。
 8. 根据设置选择酒馆通道或外部 OpenAI-compatible API；可选插件预设会构建 ordered prompts。
 9. 统一处理 generation id、abort controller、流式输出、RPM 限速、重试和生成事件识别。
 10. `generationService` 临时注册 `phoneUserInput`、动作变量和 `src/util/pluginMacros.ts`
     的插件私有随机宏；任务结束统一注销。
-11. 输出先规范化，再按设置清理思维链，保留 original output 与 reasoning。
+11. 输出先规范化，再按设置分离思维链；reasoning 写入生成记录前自动清除固定 OpenAI 流式响应外壳，正文和 original output 保持原样。
 12. `adapter.parse()` 解析结构化结果；失败则创建 failed draft。
 13. resultMode 为 `save` 时调用 `adapter.save()`；保存失败且 adapter 要求保留时也进入 failed draft。
 14. 成功结果保存 hidden generation record、replay snapshot、source selection、raw output semantics。
@@ -125,7 +126,7 @@
   和 `externalReferenceCatalog.ts` 以 `sheetKey + rowIndex`
   传递引用；`generation.ts`、内容转换、卡片写作和工作台在各自写入界面选择目标表与真实列名。系统不存在资料映射 store 或中间行模型，时间确认只维护插件内人物与日历。
 - 关系网：`src/apps/relationship/store.ts`
-  使用独立聊天作用域字段保存人物与单向关系，并在首次读取时清除旧关系字段；`MermaidRelationshipGraph.vue`
+  使用独立聊天作用域字段保存人物与单向关系；旧关系字段由启动清理统一删除；`MermaidRelationshipGraph.vue`
   把当前人物和关系生成 `flowchart LR`，由 Mermaid 自动计算布局。该流程不读取资料表、不保存节点坐标。
 - 备份查重：`src/apps/recovery/model.ts` 生成完全相同、严格续长和 90% 相似分组，`store.ts`
   在删除前重新下载复核，`RecoveryMaintenanceFlow.vue` 管理选择和确认。
@@ -146,11 +147,12 @@
   通过 ScriptTree API 新建、重命名、移动和删除真实树节点。插件整包导入导出 global、preset、character 三类树；单文件夹直接读写酒馆助手原生 `ScriptFolder` JSON，原生导入会换新 id 并以停用状态写入当前目标作用域。
 - 扩展迁移：`src/apps/extension-transfer/` 调用 SillyTavern
   `/api/extensions/discover`、`/version`、`/install`、`/update`；导入清单先经 Zod 解析并进入预览，安装范围逐项选择；安装或更新全部结束后只刷新一次扩展目录，不刷新页面。备注名、安装网页和功能介绍保存在
-  `sillytavern_phone_extension_metadata`。
+  `sillytavern_phone_extension_metadata`。版本检查结果分为可更新、已是最新、无法检查三态，批量更新只处理可更新项，详情在弹窗中编辑。
 
 ## UI 与主题
 
-- `src/global.css` 定义全局 `pc-*` 控件、卡片、表单、阅读、生成和详情基础样式；同一 App 语义图标在 A4、宣纸、羊皮纸和黑色卡纸下分别使用现代、墨迹、压印和蜡笔笔触渲染。
+- `src/data/appSvgIcons.ts` 保存 App 语义 SVG 路径和现有 Font Awesome 类名映射；`AppIcon.vue` 统一用于首页、Dock、分组管理和主题预览，上传图片优先、SVG 次之、未映射类名回退 Font Awesome。
+- `src/global.css` 定义全局 `pc-*` 控件、卡片、表单、阅读、生成和详情基础样式；同一 SVG 在 A4、宣纸、羊皮纸和黑色卡纸下分别使用现代、墨迹、压印和蜡笔笔触渲染。
 - `PhoneOverlay.vue` 的 `.pc-screen`
   统一提供普通 App 页面外边距；业务 App 根页面只负责布局，状态栏展示页通过专用零边距屏幕承载网页。
 - `PhoneOverlay.vue` 根据 settings 注入主题 CSS 变量、字体、阅读器尺寸、内置纸张纹理和 App 图标样式。

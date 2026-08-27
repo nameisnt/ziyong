@@ -34,10 +34,16 @@ test('search inputs reuse the shared search field instead of redrawing pc-field'
   for (const target of targets) {
     const source = await readFile(new URL(target.file, import.meta.url), 'utf8');
     const label = target.file.split('/').at(-1);
-    const wrapperPattern = new RegExp(`class="[^"]*pc-search-field[^"]*${target.wrapper}|class="[^"]*${target.wrapper}[^"]*pc-search-field`);
+    const wrapperPattern = new RegExp(
+      `class="[^"]*pc-search-field[^"]*${target.wrapper}|class="[^"]*${target.wrapper}[^"]*pc-search-field`,
+    );
 
     if (!wrapperPattern.test(source)) failures.push(`${label} does not reuse pc-search-field on ${target.wrapper}`);
-    if (new RegExp(`<input[^>]*class="[^"]*pc-field[^"]*"[^>]*type="search"|<input[^>]*type="search"[^>]*class="[^"]*pc-field`).test(source)) {
+    if (
+      new RegExp(
+        `<input[^>]*class="[^"]*pc-field[^"]*"[^>]*type="search"|<input[^>]*type="search"[^>]*class="[^"]*pc-field`,
+      ).test(source)
+    ) {
       failures.push(`${label} still applies pc-field to its shared search input`);
     }
 

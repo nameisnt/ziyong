@@ -17,13 +17,16 @@ test('version navigator exposes compact previous and next actions with a current
     'selectOffset(-1)',
     'selectOffset(1)',
   ]) {
-    if (!componentSource.includes(behavior)) failures.push(`version navigator behavior contract is missing: ${behavior}`);
+    if (!componentSource.includes(behavior))
+      failures.push(`version navigator behavior contract is missing: ${behavior}`);
   }
 
   if (componentSource.includes('type="number"')) failures.push('version navigator restored the removed numeric input');
 
-  if (!catalogSource.includes("'version-navigator-stepper'")) failures.push('isolated version-stepper scenario is not registered');
-  if (!harnessSource.includes("name === 'version-navigator-stepper'")) failures.push('isolated version-stepper scenario has no harness branch');
+  if (!catalogSource.includes("'version-navigator-stepper'"))
+    failures.push('isolated version-stepper scenario is not registered');
+  if (!harnessSource.includes("name === 'version-navigator-stepper'"))
+    failures.push('isolated version-stepper scenario has no harness branch');
 
   assert.deepEqual(failures, []);
 });

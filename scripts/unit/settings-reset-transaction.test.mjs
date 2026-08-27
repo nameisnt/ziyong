@@ -22,10 +22,7 @@ test('phone app resets run sequentially and persist only after every handler suc
   const calls = [];
   await executePhoneAppResetTransaction({
     captureSnapshot: () => ({ before: true }),
-    handlers: [
-      async () => calls.push('reset-a'),
-      async () => calls.push('reset-b'),
-    ],
+    handlers: [async () => calls.push('reset-a'), async () => calls.push('reset-b')],
     persist: async () => calls.push('persist'),
     rehydrate: () => calls.push('rehydrate'),
     restoreSnapshot: () => calls.push('restore'),

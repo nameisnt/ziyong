@@ -32,8 +32,16 @@ test('RecoveryApp delegates duplicate and cleanup maintenance to one page owner'
     'toggleCleanupCandidate',
     'confirmCleanupDelete',
   ]) {
-    assert.doesNotMatch(root, new RegExp(legacyOwner.replaceAll('.', '\\.').replaceAll('(', '\\('), 'u'), `${legacyOwner} leaked back into RecoveryApp`);
-    assert.match(owner, new RegExp(legacyOwner.replaceAll('.', '\\.').replaceAll('(', '\\('), 'u'), `${legacyOwner} is missing from RecoveryMaintenanceFlow`);
+    assert.doesNotMatch(
+      root,
+      new RegExp(legacyOwner.replaceAll('.', '\\.').replaceAll('(', '\\('), 'u'),
+      `${legacyOwner} leaked back into RecoveryApp`,
+    );
+    assert.match(
+      owner,
+      new RegExp(legacyOwner.replaceAll('.', '\\.').replaceAll('(', '\\('), 'u'),
+      `${legacyOwner} is missing from RecoveryMaintenanceFlow`,
+    );
   }
 
   assert.match(owner, /useChatRecoveryStore\(\)/u);

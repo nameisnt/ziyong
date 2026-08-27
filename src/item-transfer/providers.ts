@@ -4,12 +4,6 @@ import {
   type PhoneItemTransferRoute,
 } from '@/core/appRegistry';
 import { DigestEntrySchema, DigestScopeDataSchema, useDigestStore, type DigestEntry } from '@/apps/digest/store';
-import {
-  ScenePlanSchema,
-  ScenePlannerScopeDataSchema,
-  useScenePlannerStore,
-  type ScenePlan,
-} from '@/apps/scene-planner/store';
 import { useDiaryStore } from '@/store/diary';
 import { useExtrasStore } from '@/store/extras';
 import { useForumStore } from '@/store/forum';
@@ -322,26 +316,4 @@ export const digestItemTransferProvider = createCollectionProvider<DigestEntry>(
   itemType: 'digest-entry',
   restoreSnapshot: snapshot => (useDigestStore().data = parsePrettified(DigestScopeDataSchema, snapshot)),
   route: item => ({ page: 'entry', params: { entryId: item.id }, title: item.title }),
-});
-
-export const scenePlannerItemTransferProvider = createCollectionProvider<ScenePlan>({
-  captureSnapshot: () => klona(useScenePlannerStore().data),
-  exportItem: params => {
-    const item = useScenePlannerStore().getPlan(params.planId || '');
-    return item ? { item } : null;
-  },
-  getTarget: () => {
-    const store = useScenePlannerStore();
-    return {
-      id: 'scene-planner',
-      items: store.plans,
-      label: '历史方案',
-      replaceItems: items => (store.data.plans = items),
-    };
-  },
-  itemLabel: '场景方案',
-  itemSchema: ScenePlanSchema,
-  itemType: 'scene-plan',
-  restoreSnapshot: snapshot => (useScenePlannerStore().data = parsePrettified(ScenePlannerScopeDataSchema, snapshot)),
-  route: item => ({ page: 'root', params: { planId: item.id }, title: '场景编排' }),
 });

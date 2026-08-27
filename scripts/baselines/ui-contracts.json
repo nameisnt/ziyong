@@ -154,55 +154,6 @@
       "file": "src/components/ReaderDetailShell.vue",
       "message": "Scoped style overrides protected global control geometry.",
       "ruleId": "protected-control-geometry"
-    },
-    {
-      "count": 1,
-      "excerpt": ".pc-segment",
-      "file": "src/Panel.vue",
-      "message": "Scoped style overrides protected global control geometry.",
-      "ruleId": "protected-control-geometry"
-    },
-    {
-      "count": 1,
-      "excerpt": ".pc-segment-btn",
-      "file": "src/Panel.vue",
-      "message": "Scoped style overrides protected global control geometry.",
-      "ruleId": "protected-control-geometry"
-    },
-    {
-      "count": 1,
-      "excerpt": ".pc-toggle span",
-      "file": "src/Panel.vue",
-      "message": "Scoped style overrides protected global control geometry.",
-      "ruleId": "protected-control-geometry"
-    },
-    {
-      "count": 1,
-      "excerpt": ".pc-toggle span::after",
-      "file": "src/Panel.vue",
-      "message": "Scoped style overrides protected global control geometry.",
-      "ruleId": "protected-control-geometry"
-    },
-    {
-      "count": 1,
-      "excerpt": ".pc-segment-btn.active",
-      "file": "src/Panel.vue",
-      "message": "Scoped style applies a hard-coded theme color to a protected global control.",
-      "ruleId": "protected-control-theme-color"
-    },
-    {
-      "count": 1,
-      "excerpt": ".pc-toggle span::after",
-      "file": "src/Panel.vue",
-      "message": "Scoped style applies a hard-coded theme color to a protected global control.",
-      "ruleId": "protected-control-theme-color"
-    },
-    {
-      "count": 1,
-      "excerpt": ".pc-toggle input:checked + span",
-      "file": "src/Panel.vue",
-      "message": "Scoped style applies a hard-coded theme color to a protected global control.",
-      "ruleId": "protected-control-theme-color"
     }
   ],
   "version": 1

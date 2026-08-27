@@ -16,7 +16,6 @@ const scenarios = [
   'forum-failed-draft-reparse',
   'letters-failed-draft-reparse',
   'digest-failed-draft-reparse',
-  'storylines-failed-draft-reparse',
 ];
 
 test('all independent business failed-draft parsers have a real reparse scenario', () => {
@@ -31,5 +30,4 @@ test('new reparse scenarios are owned by their business-domain fixtures', () => 
   assert.match(contentBooks, /letters-failed-draft-reparse/);
   assert.match(forum, /forum-failed-draft-reparse/);
   assert.match(business, /digest-failed-draft-reparse/);
-  assert.match(business, /storylines-failed-draft-reparse/);
 });

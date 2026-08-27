@@ -15,7 +15,10 @@ test('fixed short enum selects use pc-select without changing their behavior bin
   ];
 
   for (const target of targets) {
-    const select = target.source.match(new RegExp(`<select(?=[^>]*${target.binding.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')})[^>]*>`))?.[0] || '';
+    const select =
+      target.source.match(
+        new RegExp(`<select(?=[^>]*${target.binding.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')})[^>]*>`),
+      )?.[0] || '';
     if (!select) {
       failures.push(`missing fixed select: ${target.binding}`);
       continue;
@@ -32,13 +35,14 @@ test('fixed short enum selects use pc-select without changing their behavior bin
   assert.match(globalCss, /\.pc-phone-root \.pc-select\.pc-select-compact\s*\{[^}]*max-width:\s*100%;/su);
 
   for (const behavior of [
-    'settings.mode.startsWith(\'append\')',
+    "settings.mode.startsWith('append')",
     ':disabled="generationState.running"',
     'value="new-end"',
     'value="assistant"',
     'value="新开一本书"',
   ]) {
-    if (!`${chatSource}\n${extrasSource}`.includes(behavior)) failures.push(`fixed select behavior changed: ${behavior}`);
+    if (!`${chatSource}\n${extrasSource}`.includes(behavior))
+      failures.push(`fixed select behavior changed: ${behavior}`);
   }
 
   assert.deepEqual(failures, []);

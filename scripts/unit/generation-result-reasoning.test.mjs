@@ -106,7 +106,10 @@ test('generation result keeps readable diagnostics for unknown and circular top-
 });
 
 test('generation result preserves both provider reasoning and cleaned XML reasoning without duplicating identical text', () => {
-  assert.equal(result.mergeGenerationReasoning('外部思维链', '<think>XML 思维链</think>'), '外部思维链\n\n<think>XML 思维链</think>');
+  assert.equal(
+    result.mergeGenerationReasoning('外部思维链', '<think>XML 思维链</think>'),
+    '外部思维链\n\n<think>XML 思维链</think>',
+  );
   assert.equal(result.mergeGenerationReasoning('相同内容', '相同内容'), '相同内容');
 });
 
@@ -114,6 +117,9 @@ test('generation service records the separated reasoning while streaming only co
   assert.match(generationService, /normalizeGenerationResponse\(data\)/u);
   assert.match(generationService, /reasoning\s*\+=\s*delta\.reasoning/u);
   assert.match(generationService, /mergeGenerationReasoning\(normalized\.reasoning, cleanedOutput\.removedContent\)/u);
-  assert.match(generationService, /generationRecord\.reasoning = cleanedOutput\.reasoning/u);
+  assert.match(
+    generationService,
+    /generationRecord\.reasoning = cleanSavedGenerationReasoning\(cleanedOutput\.reasoning\)/u,
+  );
   assert.doesNotMatch(generationService, /typeof payload === 'string' \? payload : String\(payload \?\? ''\)/u);
 });

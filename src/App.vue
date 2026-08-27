@@ -1,8 +1,4 @@
 <template>
-  <Teleport v-if="settingsTargetReady" to="#extensions_settings2">
-    <Panel />
-  </Teleport>
-
   <Teleport v-if="menuTargetReady" to="#pc_reader_wand_container">
     <div
       id="pc-menu-entry"
@@ -29,7 +25,6 @@
 <script setup lang="ts">
 import FloatingBall from '@/components/FloatingBall.vue';
 import PhoneOverlay from '@/components/PhoneOverlay.vue';
-import Panel from '@/Panel.vue';
 import { useWorldSlotsStore } from '@/apps/world-slots/store';
 import { getCurrentChatScopeKey } from '@/store/chatScoped';
 import { usePhoneStore } from '@/store/phone';
@@ -37,10 +32,11 @@ import { migratePhoneChatRename, type TavernChatRenamedEvent } from '@/util/chat
 import { startChatFloorBackupService } from '@/util/chatFloorBackup';
 import { ensureCurrentScopeRecovery } from '@/util/generationVisibility';
 import { hasVisibilityTransactionRuntime, onTavernEvent } from '@/util/runtime';
+import { cleanupRetiredPhoneData } from '@/util/retiredDataCleanup';
 
+cleanupRetiredPhoneData();
 const phone = usePhoneStore();
 const worldSlots = useWorldSlotsStore();
-const settingsTargetReady = ref(false);
 const menuTargetReady = ref(false);
 let stopChatChanged: { stop: () => void } | null = null;
 let stopChatRenamed: { stop: () => void } | null = null;
@@ -66,7 +62,6 @@ async function tryRecoverCurrentScope() {
 }
 
 function syncTeleportTargets() {
-  settingsTargetReady.value = Boolean(document.querySelector('#extensions_settings2'));
   const menu = document.querySelector<HTMLElement>('#extensionsMenu');
   if (!menu) {
     menuTargetReady.value = false;

@@ -12,7 +12,6 @@ const [
   digestModule,
   digestGeneration,
   summaryGeneration,
-  scenePlannerModule,
   promptStore,
 ] = await Promise.all([
   readSource('src/apps/builtinPrompts.ts'),
@@ -21,7 +20,6 @@ const [
   readSource('src/apps/digest/index.ts'),
   readSource('src/apps/digest/generation.ts'),
   readSource('src/core/summaryGeneration.ts'),
-  readSource('src/apps/scene-planner/index.ts'),
   readSource('src/store/prompts.ts'),
 ]);
 
@@ -51,9 +49,4 @@ test('task default coverage migration runs once for old installations', () => {
   assert.match(promptStore, /!\('digest\.generate' in settings\.taskTemplates\)/);
   assert.match(promptStore, /settings\.taskTemplates\['extras\.chapter-generate'\] = currentExtrasChapterTaskTemplate/);
   assert.match(promptStore, /settings\.taskTemplates\['summary\.generate'\] = currentSummaryTaskTemplate/);
-});
-
-test('scene planner uses one generation action label', () => {
-  assert.equal((scenePlannerModule.match(/label: '生成场景方案'/g) ?? []).length, 2);
-  assert.doesNotMatch(scenePlannerModule, /label: '生成提示词'/);
 });

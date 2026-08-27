@@ -11,7 +11,10 @@ test('safe push treats the three current documents as the explicit publication b
     /\$rootDocumentationPaths\s*=\s*@\([\s\S]*'docs\/CURRENT\.md'[\s\S]*'docs\/DECISIONS\.md'[\s\S]*'docs\/CODEMAP\.md'[\s\S]*\)/u,
   );
   assert.match(safePushSource, /Get-ChildItem\s+-LiteralPath\s+'docs'\s+-File\s+-Filter\s+'\*\.md'/u);
-  assert.match(safePushSource, /Test-SamePathSet -Left \$rootDocumentationPaths -Right \$actualRootDocumentationPaths/u);
+  assert.match(
+    safePushSource,
+    /Test-SamePathSet -Left \$rootDocumentationPaths -Right \$actualRootDocumentationPaths/u,
+  );
   assert.match(safePushSource, /\$allowedNewExactPaths\s*=\s*@\(\$rootDocumentationPaths\)\s*\+\s*@\(/u);
   assert.match(
     safePushSource,

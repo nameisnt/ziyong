@@ -29,7 +29,11 @@ test('prompt variants use shared option buttons instead of segment navigation', 
   ) {
     failures.push('prompt variants are not exposed as a labelled same-page option group');
   }
-  if (!/:class="\['pc-soft-btn', 'pc-prompt-variant-option', \{ active: activeAppPrompt\.openKey === item\.openKey \}\]"/.test(source)) {
+  if (
+    !/:class="\['pc-soft-btn', 'pc-prompt-variant-option', \{ active: activeAppPrompt\.openKey === item\.openKey \}\]"/.test(
+      source,
+    )
+  ) {
     failures.push('prompt variants are not using the shared soft option button');
   }
   if (/pc-prompt-variant-grid[\s\S]*?:class="\['pc-segment-btn'/.test(source)) {

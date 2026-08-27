@@ -7,8 +7,14 @@ const global = await readFile(new URL('../../src/global.css', import.meta.url), 
 const files = {
   customApp: await readFile(new URL('../../src/apps/app-builder/CustomAppHost.vue', import.meta.url), 'utf8'),
   digest: await readFile(new URL('../../src/apps/digest/DigestApp.vue', import.meta.url), 'utf8'),
-  entryLibrary: await readFile(new URL('../../src/apps/entry-library/pages/EntryLibraryItemEditorPage.vue', import.meta.url), 'utf8'),
-  worldbook: await readFile(new URL('../../src/apps/worldbook-link/pages/WorldbookEntryEditorPage.vue', import.meta.url), 'utf8'),
+  entryLibrary: await readFile(
+    new URL('../../src/apps/entry-library/pages/EntryLibraryItemEditorPage.vue', import.meta.url),
+    'utf8',
+  ),
+  worldbook: await readFile(
+    new URL('../../src/apps/worldbook-link/pages/WorldbookEntryEditorPage.vue', import.meta.url),
+    'utf8',
+  ),
   worldSlots: await readFile(new URL('../../src/apps/world-slots/WorldSlotsApp.vue', import.meta.url), 'utf8'),
   diary: await readFile(new URL('../../src/apps/diary/DiaryEntryEditorPage.vue', import.meta.url), 'utf8'),
   extrasChapter: await readFile(new URL('../../src/apps/extras/ExtrasChapterEditorPage.vue', import.meta.url), 'utf8'),
@@ -22,7 +28,10 @@ const files = {
 test('saved entity editors use the shared remaining-height body layout', () => {
   assert.match(global, /\.pc-saved-content-editor-page\s*\{[^}]*height:\s*100%/s);
   assert.match(global, /\.pc-saved-content-editor\s*\{[^}]*display:\s*flex[^}]*flex-direction:\s*column/s);
-  assert.match(global, /\.pc-saved-content-editor\s+\.pc-saved-content-area\s*\{[^}]*height:\s*100%[^}]*resize:\s*none/s);
+  assert.match(
+    global,
+    /\.pc-saved-content-editor\s+\.pc-saved-content-area\s*\{[^}]*height:\s*100%[^}]*resize:\s*none/s,
+  );
 
   const failures = [];
   for (const [label, source] of Object.entries(files)) {
@@ -30,7 +39,8 @@ test('saved entity editors use the shared remaining-height body layout', () => {
     if (!source.includes('pc-saved-content-editor')) failures.push(`${label} has no editor container layout`);
     if (!source.includes('pc-saved-content-area')) failures.push(`${label} body is not marked as saved content`);
 
-    const pageClassList = source.match(/class="([^"]*\bpc-saved-content-editor-page\b[^"]*)"/u)?.[1].split(/\s+/u) ?? [];
+    const pageClassList =
+      source.match(/class="([^"]*\bpc-saved-content-editor-page\b[^"]*)"/u)?.[1].split(/\s+/u) ?? [];
     const localPageClass = pageClassList.find(className => className !== 'pc-saved-content-editor-page');
     if (localPageClass) {
       const escapedClass = localPageClass.replace(/[.*+?^${}()|[\]\\]/gu, '\\$&');

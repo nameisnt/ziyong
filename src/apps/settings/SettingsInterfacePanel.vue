@@ -59,6 +59,10 @@
             @update:value="settingsStore.setHomeColumns"
           />
         </div>
+        <button class="pc-setting-row" type="button" @click="restoreHomeLayout">
+          <strong>重置主页布局</strong>
+          <i class="fa-solid fa-arrow-rotate-left" aria-hidden="true"></i>
+        </button>
         <button class="pc-setting-row" type="button" @click="settingsStore.resetPhoneWindowPosition()">
           <strong>重置手机位置</strong>
           <i class="fa-solid fa-location-crosshairs" aria-hidden="true"></i>
@@ -146,6 +150,10 @@ function fitViewport() {
 function resetWindowSize() {
   settingsStore.setPhoneWindowWidth(360);
   settingsStore.setPhoneWindowHeight(700);
+}
+function restoreHomeLayout() {
+  settingsStore.resetHomeLayout();
+  toastr.success('主页布局已恢复默认');
 }
 function updateSize(id: 'height' | 'width', value: number) {
   if (id === 'width') settingsStore.setPhoneWindowWidth(value);

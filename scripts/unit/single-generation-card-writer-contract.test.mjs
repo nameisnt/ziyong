@@ -3,10 +3,7 @@ import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import test from 'node:test';
 
-const source = await readFile(
-  new URL('../../src/apps/card-writer/CardWriterApp.vue', import.meta.url),
-  'utf8',
-);
+const source = await readFile(new URL('../../src/apps/card-writer/CardWriterApp.vue', import.meta.url), 'utf8');
 const session = await readFile(
   new URL('../../src/composables/useSingleGenerationTaskSession.ts', import.meta.url),
   'utf8',

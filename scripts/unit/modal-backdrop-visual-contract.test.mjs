@@ -52,7 +52,8 @@ test('every modal backdrop consumes one global structural and theme rule', () =>
       'z-index': 'var(--pc-modal-z, 60)',
     };
     for (const [property, value] of Object.entries(expected)) {
-      if (declarations[property] !== value) failures.push(`global backdrop ${property} is ${declarations[property] ?? 'missing'}`);
+      if (declarations[property] !== value)
+        failures.push(`global backdrop ${property} is ${declarations[property] ?? 'missing'}`);
     }
   }
 

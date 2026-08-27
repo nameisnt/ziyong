@@ -34,7 +34,11 @@ test('Workbench field labels inherit shared typography and keep only local spaci
   if (
     !sharedRules.some(body => {
       const declarations = declarationsFor(body);
-      return declarations.color === 'var(--pc-muted)' && declarations['font-size'] === '12px' && declarations['font-weight'] === '800';
+      return (
+        declarations.color === 'var(--pc-muted)' &&
+        declarations['font-size'] === '12px' &&
+        declarations['font-weight'] === '800'
+      );
     })
   ) {
     failures.push('the shared direct-child field label typography contract is missing');

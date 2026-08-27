@@ -9,12 +9,17 @@ interface DiscoveredExtension {
 
 interface ExtensionVersion {
   currentBranchName?: string;
+  currentCommitHash?: string;
+  isUpToDate?: boolean;
   remoteUrl?: string;
 }
+
+export type ExtensionUpdateStatus = 'update-available' | 'current' | 'unavailable';
 
 export interface InstalledExtension extends ExtensionManifestItem {
   error: string;
   key: string;
+  updateStatus: ExtensionUpdateStatus;
 }
 
 export class ExtensionRequestError extends Error {
@@ -69,6 +74,11 @@ export async function listInstalledThirdPartyExtensions(): Promise<InstalledExte
           key: `${target.scope}:${target.name}`,
           name: target.name,
           scope: target.scope,
+          updateStatus: version.currentCommitHash
+            ? version.isUpToDate === false
+              ? 'update-available'
+              : 'current'
+            : 'unavailable',
           url: version.remoteUrl?.trim() ?? '',
         };
       } catch (error) {
@@ -80,6 +90,7 @@ export async function listInstalledThirdPartyExtensions(): Promise<InstalledExte
           key: `${target.scope}:${target.name}`,
           name: target.name,
           scope: target.scope,
+          updateStatus: 'unavailable',
           url: '',
         };
       }

@@ -27,13 +27,16 @@ test('shared searchable options expose complete long labels and formal close/key
   } else {
     const declarations = declarationsFor(optionRules[0]);
     if (declarations['white-space'] !== 'normal') failures.push('combobox option labels are not allowed to wrap');
-    if (declarations['overflow-wrap'] !== 'anywhere') failures.push('combobox option labels cannot break an overlong token');
+    if (declarations['overflow-wrap'] !== 'anywhere')
+      failures.push('combobox option labels cannot break an overlong token');
     for (const property of ['overflow', 'text-overflow']) {
-      if (property in declarations) failures.push(`combobox option labels still force ${property}: ${declarations[property]}`);
+      if (property in declarations)
+        failures.push(`combobox option labels still force ${property}: ${declarations[property]}`);
     }
   }
 
-  if (!catalogSource.includes("'searchable-select-dark-long'")) failures.push('dark long-option scenario is not registered');
+  if (!catalogSource.includes("'searchable-select-dark-long'"))
+    failures.push('dark long-option scenario is not registered');
   for (const evidence of [
     "name === 'searchable-select-dark-long'",
     "key: 'ArrowDown'",
@@ -53,8 +56,18 @@ test('dynamic searchable selects stay full width with compact internal controls'
   const toggleRules = rulesFor(componentSource, '.pc-combobox-toggle');
   const optionRules = rulesFor(componentSource, '.pc-combobox-option');
 
-  assert.match(componentSource, /\.pc-combobox\s*\{[^}]*width:\s*100%;/su, 'dynamic combobox must keep the parent width');
-  assert.ok(inputRules.some(rule => /padding-right:\s*40px/.test(rule)), 'input must reserve only the compact toggle width');
+  assert.match(
+    componentSource,
+    /\.pc-combobox\s*\{[^}]*width:\s*100%;/su,
+    'dynamic combobox must keep the parent width',
+  );
+  assert.ok(
+    inputRules.some(rule => /padding-right:\s*40px/.test(rule)),
+    'input must reserve only the compact toggle width',
+  );
   assert.ok(toggleRules.some(rule => /width:\s*30px/.test(rule) && /height:\s*30px/.test(rule)));
-  assert.ok(optionRules.some(rule => /min-height:\s*34px/.test(rule)), 'dynamic options must use compact row height');
+  assert.ok(
+    optionRules.some(rule => /min-height:\s*34px/.test(rule)),
+    'dynamic options must use compact row height',
+  );
 });

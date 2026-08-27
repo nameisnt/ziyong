@@ -43,7 +43,7 @@ export function createGenerationTaskFixture() {
     status: 'paused',
   });
   const interrupted = tasks.createTask({
-    appId: 'storylines',
+    appId: 'digest',
     config: {
       actionId: 'generate',
       resultPage: '',
@@ -55,12 +55,12 @@ export function createGenerationTaskFixture() {
     },
     kind: 'single',
     routePage: 'generate',
-    title: '剧情梳理 · 单次生成',
+    title: '摘抄 · 单次生成',
     total: 1,
   });
   tasks.patchTask(interrupted.id, {
     currentLabel: '请求已中断',
-    rawOutput: '<storylines>\n  <line title="风暴前夜">已保留的部分原始输出</line>\n</storylines>',
+    rawOutput: '<result>\n  <title>风暴前夜</title>\n  <content>已保留的部分原始输出</content>\n</result>',
     status: 'running',
   });
   const rehydrated = normalizePersistedGenerationTasks({ tasks: [klona(tasks.getTask(interrupted.id))] }).tasks[0];
@@ -122,7 +122,7 @@ export function createGenerationTaskFixture() {
   });
 
   const stopped = tasks.createTask({
-    appId: 'storylines',
+    appId: 'digest',
     config: {
       actionId: 'stop-contract',
       resultPage: '',

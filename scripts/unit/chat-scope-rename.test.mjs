@@ -23,10 +23,7 @@ async function loadChatScopeRename() {
          return { kind: marker === 'chat' ? kind : 'unknown', ownerId, chatId: chatId || '' };
        };`,
     )
-    .replace(
-      "import { getOptionalGlobalValue } from '@/util/runtime';",
-      'const getOptionalGlobalValue = () => null;',
-    )
+    .replace("import { getOptionalGlobalValue } from '@/util/runtime';", 'const getOptionalGlobalValue = () => null;')
     .replace(
       "import { saveSettingsDebounced } from '@sillytavern/script';",
       'const saveSettingsDebounced = () => { globalThis.__chatScopeSaveCalls += 1; };',

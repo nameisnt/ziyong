@@ -3,10 +3,7 @@ import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import test from 'node:test';
 
-const source = await readFile(
-  new URL('../../src/apps/app-builder/CustomAppHost.vue', import.meta.url),
-  'utf8',
-);
+const source = await readFile(new URL('../../src/apps/app-builder/CustomAppHost.vue', import.meta.url), 'utf8');
 
 test('GEN02E custom host uses its mounted dynamic app id as the durable single-task identity', () => {
   assert.match(source, /useSingleGenerationTaskSession/);

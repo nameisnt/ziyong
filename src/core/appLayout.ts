@@ -13,7 +13,7 @@ const DEFAULT_HOME_FOLDERS = [
     name: '阅读与记录',
     appIds: ['reader', 'diary', 'extras', 'theater', 'forum', 'letters'],
   },
-  { id: 'home_default_generation', name: '生成', appIds: ['card-writer', 'scene-planner', 'summary', 'storylines'] },
+  { id: 'home_default_generation', name: '生成', appIds: ['card-writer', 'summary'] },
   { id: 'home_default_organize', name: '内容整理', appIds: ['bagu', 'content-converter', 'digest', 'stats'] },
   {
     id: 'home_default_prompt',

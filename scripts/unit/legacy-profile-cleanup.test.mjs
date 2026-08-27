@@ -4,10 +4,7 @@ import { readFile } from 'node:fs/promises';
 import test from 'node:test';
 import ts from 'typescript';
 
-const cleanupSource = await readFile(
-  new URL('../../src/apps/profiles/legacyCleanup.ts', import.meta.url),
-  'utf8',
-);
+const cleanupSource = await readFile(new URL('../../src/apps/profiles/legacyCleanup.ts', import.meta.url), 'utf8');
 const profilesIndex = await readFile(new URL('../../src/apps/profiles/index.ts', import.meta.url), 'utf8');
 const profilesApp = await readFile(new URL('../../src/apps/profiles/ProfilesApp.vue', import.meta.url), 'utf8');
 const worldSlotsStore = await readFile(new URL('../../src/apps/world-slots/store.ts', import.meta.url), 'utf8');
@@ -35,10 +32,7 @@ const executableSource = cleanupSource
   )
   .replace(/\/\/ eslint-disable-next-line import-x\/no-nodejs-modules\r?\n/u, '')
   .replace("import { saveSettingsDebounced } from '@sillytavern/script';", 'const saveSettingsDebounced = () => {};')
-  .replace(
-    "import { extension_settings } from '@sillytavern/scripts/extensions';",
-    'const extension_settings = {};',
-  );
+  .replace("import { extension_settings } from '@sillytavern/scripts/extensions';", 'const extension_settings = {};');
 globalThis.__safeParseProfiles = safeParseProfiles;
 globalThis.klona = structuredClone;
 const cleanup = await import(
@@ -138,10 +132,7 @@ test('malformed related data aborts the plan without mutating either input', () 
   };
   const beforeProfiles = structuredClone(rawProfiles);
   const beforeWorldSlots = structuredClone(rawWorldSlots);
-  assert.throws(
-    () => cleanup.planLegacyProfilesCleanup(rawProfiles, rawWorldSlots, 'scope-a'),
-    /旧资料.*无法解析/u,
-  );
+  assert.throws(() => cleanup.planLegacyProfilesCleanup(rawProfiles, rawWorldSlots, 'scope-a'), /旧资料.*无法解析/u);
   assert.deepEqual(rawProfiles, beforeProfiles);
   assert.deepEqual(rawWorldSlots, beforeWorldSlots);
 });

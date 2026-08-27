@@ -54,9 +54,21 @@
   pointer-events: none;
 }
 
-.pc-phone-root .pc-app-icon-material > :is(i, img) {
+.pc-phone-root .pc-app-icon-material > :is(i, img, svg) {
   position: relative;
   z-index: 2;
+}
+
+.pc-phone-root .pc-svg-app-icon {
+  width: 54%;
+  height: 54%;
+  overflow: visible;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: var(--pc-svg-icon-stroke, 1.8);
+  stroke-linecap: var(--pc-svg-icon-linecap, round);
+  stroke-linejoin: round;
+  vector-effect: non-scaling-stroke;
 }
 
 .pc-phone-root .pc-app-icon-material > i {
@@ -127,12 +139,24 @@
   -webkit-text-stroke: 0;
 }
 
+.pc-phone-root[data-paper='a4'] .pc-svg-app-icon {
+  --pc-svg-icon-stroke: 1.75;
+  --pc-svg-icon-linecap: round;
+}
+
 .pc-phone-root[data-paper='xuan'] .pc-app-icon-material > i {
   opacity: 0.88;
   filter: contrast(1.18);
   text-shadow:
     0.7px 0 currentColor,
     -0.4px 0.5px color-mix(in srgb, currentColor 48%, transparent 52%);
+}
+
+.pc-phone-root[data-paper='xuan'] .pc-svg-app-icon {
+  --pc-svg-icon-stroke: 2.15;
+  --pc-svg-icon-linecap: round;
+  opacity: 0.88;
+  filter: contrast(1.18) drop-shadow(0.55px 0 currentColor);
 }
 
 .pc-phone-root[data-paper='parchment'] .pc-app-icon-material > i {
@@ -143,12 +167,24 @@
   -webkit-text-stroke: 0.35px color-mix(in srgb, #3c2619 52%, transparent 48%);
 }
 
+.pc-phone-root[data-paper='parchment'] .pc-svg-app-icon {
+  --pc-svg-icon-stroke: 1.7;
+  --pc-svg-icon-linecap: square;
+  filter: sepia(0.35) drop-shadow(0 0.55px color-mix(in srgb, #3c2619 44%, transparent 56%));
+}
+
 .pc-phone-root[data-paper='cardstock'] .pc-app-icon-material > i {
   filter: contrast(1.12);
   text-shadow:
     1px 0 color-mix(in srgb, white 34%, transparent 66%),
     -1px 1px color-mix(in srgb, var(--pc-icon-material-accent) 58%, transparent 42%);
   -webkit-text-stroke: 0.7px color-mix(in srgb, white 32%, transparent 68%);
+}
+
+.pc-phone-root[data-paper='cardstock'] .pc-svg-app-icon {
+  --pc-svg-icon-stroke: 2.35;
+  --pc-svg-icon-linecap: round;
+  filter: contrast(1.12) drop-shadow(0.8px 0 color-mix(in srgb, white 28%, transparent 72%));
 }
 
 .pc-phone-root .pc-soft-btn,
@@ -1071,8 +1107,7 @@
     .pc-digest-app,
     .pc-profiles-app,
     .pc-media-generate-app,
-    .pc-storylines-app,
-    .pc-scene-planner-app
+    .pc-relationship-app
   ) {
   height: 100%;
   min-height: 0;

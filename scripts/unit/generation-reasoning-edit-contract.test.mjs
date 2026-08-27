@@ -9,6 +9,7 @@ const readSource = relativePath => readFile(new URL(`../../${relativePath}`, imp
 const disclosure = await readSource('src/components/ReasoningDisclosure.vue');
 const panel = await readSource('src/components/GenerationPreviewPanel.vue');
 const page = await readSource('src/components/GenerationPreviewPage.vue');
+const generationService = await readSource('src/core/generationService.ts');
 const wrappers = await Promise.all(
   [
     'src/apps/diary/DiaryPreviewPage.vue',
@@ -27,8 +28,6 @@ const consumers = await Promise.all(
     'src/apps/app-builder/CustomAppHost.vue',
     'src/apps/digest/DigestApp.vue',
     'src/apps/relationship/RelationshipApp.vue',
-    'src/apps/scene-planner/ScenePlannerApp.vue',
-    'src/apps/storylines/StorylinesApp.vue',
   ].map(readSource),
 );
 
@@ -87,4 +86,8 @@ test('reasoning save cleanup removes only fixed chat completion envelope lines',
   assert.equal(helper.cleanSavedGenerationReasoning(envelope.slice(1, -1)), '');
   assert.equal(helper.cleanSavedGenerationReasoning('{"model":"正文示例"}'), '{"model":"正文示例"}');
   assert.match(disclosure, /cleanSavedGenerationReasoning\(draft\.value\)/u);
+  assert.match(
+    generationService,
+    /generationRecord\.reasoning = cleanSavedGenerationReasoning\(cleanedOutput\.reasoning\)/u,
+  );
 });

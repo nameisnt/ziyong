@@ -19,7 +19,11 @@ function rulesFor(source, selector) {
 
 test('quick phrases and format templates use the shared 120px multiline area', () => {
   const failures = [];
-  if (!rulesFor(globalSource, '.pc-phone-root .pc-area.pc-area-multiline').some(body => /min-height\s*:\s*120px/.test(body))) {
+  if (
+    !rulesFor(globalSource, '.pc-phone-root .pc-area.pc-area-multiline').some(body =>
+      /min-height\s*:\s*120px/.test(body),
+    )
+  ) {
     failures.push('shared multiline area does not define 120px');
   }
   if (!/class="pc-area pc-area-multiline"/.test(phraseEditor) || /class="pc-area compact"/.test(phraseEditor)) {

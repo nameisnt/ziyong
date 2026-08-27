@@ -22,6 +22,7 @@ import { createHiddenGenerationRecord } from '@/util/hiddenGenerationRecord';
 import { buildSourceSelection, type SummaryGenerationSourceMode } from '@/util/generationSource';
 import { ensureCurrentScopeRecovery } from '@/util/generationVisibility';
 import { cleanGenerationOutput } from '@/util/generationOutputCleaning';
+import { cleanSavedGenerationReasoning } from '@/util/generationReasoning';
 import { PLUGIN_MACRO_PATTERN, replacePluginMacros, resolvePluginMacro } from '@/util/pluginMacros';
 import { mergeGenerationReasoning, normalizeGenerationResponse } from '@/util/generationResult';
 import type { GenerationReferenceItem } from '@/util/references';
@@ -490,7 +491,7 @@ function prepareGenerationRequest<TConfig, TResult, TSaveResult = { entityId: st
         baseRequest.taskInstruction,
       );
   const explicitReferences = options.references?.trim() || '';
-  const generationAliases = useGenerationAliasesStore();
+  const generationAliases = resolveGenerationIdentityAliases(useGenerationAliasesStore());
   const request = options.replay
     ? ({ ...baseRequest } satisfies GenerationRequestParts)
     : applyGenerationAliases(
@@ -517,7 +518,7 @@ function prepareGenerationRequest<TConfig, TResult, TSaveResult = { entityId: st
   if (pluginPresetId && !pluginPresetRecord) throw new Error('本次选择的插件预设已经不存在，请重新选择');
   const generationMacroVariables = {
     ...(baseRequest.taskTemplateVariables || {}),
-    taskInstruction,
+    taskInstruction: taskInstruction || '',
   };
   const generateConfig = cleanGenerateConfig({
     custom_api: customApi,
@@ -530,7 +531,11 @@ function prepareGenerationRequest<TConfig, TResult, TSaveResult = { entityId: st
       },
     },
     ordered_prompts: pluginPresetRecord
-      ? buildPluginPresetOrderedPrompts(pluginPresetRecord, generationMacroVariables)
+      ? buildPluginPresetOrderedPrompts(pluginPresetRecord, generationMacroVariables).map(prompt =>
+          typeof prompt === 'string'
+            ? prompt
+            : { ...prompt, content: replaceGenerationAliases(prompt.content, generationAliases) || '' },
+        )
       : undefined,
     preset_name: pluginPresetRecord ? undefined : presetSelection,
     should_silence: true,
@@ -874,7 +879,9 @@ export async function generateContent<TConfig, TResult, TSaveResult = { entityId
       const cleanedOutput = normalizeAndCleanGenerationResult(result);
       const rawOutput = cleanedOutput.originalOutput;
       const parseInput = cleanedOutput.content;
-      if (cleanedOutput.reasoning) generationRecord.reasoning = cleanedOutput.reasoning;
+      if (cleanedOutput.reasoning) {
+        generationRecord.reasoning = cleanSavedGenerationReasoning(cleanedOutput.reasoning);
+      }
       options.lifecycle?.onRawOutput?.(rawOutput);
 
       const parsed = adapter.parse(parseInput, prepared.parsedConfig);

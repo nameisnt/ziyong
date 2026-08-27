@@ -31,12 +31,18 @@ function createSchemaStub() {
 async function loadChatInsertStore(settings, saveCalls) {
   let source = await readFile(new URL('../../src/apps/chat-insert/store.ts', import.meta.url), 'utf8');
   source = source
-    .replace("import { saveSettingsDebounced } from '@sillytavern/script';", 'const saveSettingsDebounced = () => { globalThis.__saveCalls.count += 1; };')
+    .replace(
+      "import { saveSettingsDebounced } from '@sillytavern/script';",
+      'const saveSettingsDebounced = () => { globalThis.__saveCalls.count += 1; };',
+    )
     .replace(
       "import { extension_settings } from '@sillytavern/scripts/extensions';",
       'const extension_settings = globalThis.__extensionSettings;',
     )
-    .replace(/export const ChatInsertSettingsSchema = z\.object\([\s\S]*?\n\}\);/, 'const ChatInsertSettingsSchema = globalThis.__schemaStub;')
+    .replace(
+      /export const ChatInsertSettingsSchema = z\.object\([\s\S]*?\n\}\);/,
+      'const ChatInsertSettingsSchema = globalThis.__schemaStub;',
+    )
     .replace(
       "export const useChatInsertStore = defineStore('chat-insert', () => {",
       "const useChatInsertStore = defineStore('chat-insert', () => {",

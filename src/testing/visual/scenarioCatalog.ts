@@ -119,19 +119,6 @@ export function createVisualScenarioGroups(rootAppScenarios: string[]): VisualSc
     { id: 'regex-display', scenarios: ['regex-display-preview', 'regex-display-crud'] },
     { id: 'regex-wizard', scenarios: ['regex-wizard-fields', 'regex-wizard-test', 'regex-wizard-save'] },
     {
-      id: 'storylines',
-      scenarios: [
-        'storylines-detail',
-        'storylines-editor',
-        'storylines-profile-reference',
-        'storylines-profile-reference-dark',
-        'storylines-generation-background',
-        'storylines-generation-failed-background',
-        'storylines-failed-draft-reparse',
-      ],
-    },
-    { id: 'scene-planner', scenarios: ['scene-planner-generation-background', 'scene-planner-history'] },
-    {
       id: 'entry-library',
       scenarios: [
         'entry-library-action-menu',

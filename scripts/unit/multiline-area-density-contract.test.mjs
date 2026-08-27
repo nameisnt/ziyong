@@ -35,10 +35,26 @@ test('multiline template, requirement, range and summary areas share one explici
 
   const markupTargets = [
     ['chat insert template', files.chatInsert, /v-model="settings\.template"\s+class="pc-area pc-area-multiline"/],
-    ['entry binding template', files.entryBindings, /v-model="contentTemplate"[\s\S]*?class="pc-area pc-area-multiline"/],
-    ['extras chapter summary', files.extras, /v-model="chapterGenerationState\.preview\.summary"\s+class="pc-area pc-area-multiline"/],
-    ['forum board prompt', files.forumThread, /v-model="draft\.boardTypePrompt"[\s\S]*?class="pc-area pc-area-multiline"/],
-    ['generation requirement', files.generationPanel, /:value="userRequirement"[\s\S]*?class="pc-area pc-area-multiline"/],
+    [
+      'entry binding template',
+      files.entryBindings,
+      /v-model="contentTemplate"[\s\S]*?class="pc-area pc-area-multiline"/,
+    ],
+    [
+      'extras chapter summary',
+      files.extras,
+      /v-model="chapterGenerationState\.preview\.summary"\s+class="pc-area pc-area-multiline"/,
+    ],
+    [
+      'forum board prompt',
+      files.forumThread,
+      /v-model="draft\.boardTypePrompt"[\s\S]*?class="pc-area pc-area-multiline"/,
+    ],
+    [
+      'generation requirement',
+      files.generationPanel,
+      /:value="userRequirement"[\s\S]*?class="pc-area pc-area-multiline"/,
+    ],
     ['custom source range', files.generationSource, /:value="rangeText"[\s\S]*?class="pc-area pc-area-multiline"/],
   ];
   for (const [label, source, pattern] of markupTargets) {

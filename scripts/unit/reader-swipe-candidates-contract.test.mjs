@@ -18,7 +18,10 @@ test('Reader loads and normalizes every swipe while retaining the Tavern active 
   assert.match(readerStore, /activeSwipeIndex: number;/u);
   assert.match(readerStore, /swipeCandidates: ReaderSwipeCandidate\[\];/u);
   assert.match(readerStore, /extractSwipeCandidates/u);
-  assert.match(runtime, /options\?\.include_swipes \? \{ swipe_id: swipeId, swipes, swipes_data: swipesData, swipes_info: swipesInfo \}/u);
+  assert.match(
+    runtime,
+    /options\?\.include_swipes \? \{ swipe_id: swipeId, swipes, swipes_data: swipesData, swipes_info: swipesInfo \}/u,
+  );
 });
 
 test('Reader swipe selection remains page-local and suppresses write-capable tools for non-active candidates', () => {

@@ -15,8 +15,14 @@ test('separate reader conversion resolves the exact previous user floor and its 
 });
 
 test('extras and theater conversion persist the requirement through their existing generation records', () => {
-  const extrasReceiver = source.match(/export function createExtrasContentReceiver[\s\S]*?export function createDiaryContentReceiver/u)?.[0] ?? '';
-  const theaterReceiver = source.match(/export function createTheaterContentReceiver[\s\S]*?export function createForumContentReceiver/u)?.[0] ?? '';
+  const extrasReceiver =
+    source.match(
+      /export function createExtrasContentReceiver[\s\S]*?export function createDiaryContentReceiver/u,
+    )?.[0] ?? '';
+  const theaterReceiver =
+    source.match(
+      /export function createTheaterContentReceiver[\s\S]*?export function createForumContentReceiver/u,
+    )?.[0] ?? '';
 
   assert.match(extrasReceiver, /createExtraChapterGenerationRecord/u);
   assert.match(extrasReceiver, /generationRecord/u);

@@ -42,11 +42,6 @@ const businessFailedDraftReparseScenarios = Object.freeze({
     raw: '<result><title>重新解析成功</title><content>修复 XML 后保留的书信正文。</content></result>',
     title: '重新解析成功',
   },
-  'storylines-failed-draft-reparse': {
-    content: '修复后保留的剧情线概述。',
-    raw: '<result><line><title>重新解析成功</title><kind>main</kind><status>active</status><summary>修复后保留的剧情线概述。</summary></line></result>',
-    title: '重新解析成功',
-  },
 });
 let stopActiveCheck = null;
 

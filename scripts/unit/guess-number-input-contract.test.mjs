@@ -3,7 +3,10 @@ import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import test from 'node:test';
 
-const componentSource = await readFile(new URL('../../src/apps/game-2048/GuessNumberGame.vue', import.meta.url), 'utf8');
+const componentSource = await readFile(
+  new URL('../../src/apps/game-2048/GuessNumberGame.vue', import.meta.url),
+  'utf8',
+);
 const globalSource = await readFile(new URL('../../src/global.css', import.meta.url), 'utf8');
 const catalogSource = await readFile(new URL('../../src/testing/visual/scenarioCatalog.ts', import.meta.url), 'utf8');
 const harnessSource = await readFile(new URL('../../src/testing/visual-harness.ts', import.meta.url), 'utf8');
@@ -55,8 +58,10 @@ test('guess-number input uses its shared game-number semantic without redrawing 
     if (!componentSource.includes(behavior)) failures.push(`guess-number behavior contract is missing: ${behavior}`);
   }
 
-  if (!catalogSource.includes("'game-guess-number-input'")) failures.push('isolated guess-number scenario is not registered');
-  if (!harnessSource.includes("name === 'game-guess-number-input'")) failures.push('isolated guess-number scenario has no harness branch');
+  if (!catalogSource.includes("'game-guess-number-input'"))
+    failures.push('isolated guess-number scenario is not registered');
+  if (!harnessSource.includes("name === 'game-guess-number-input'"))
+    failures.push('isolated guess-number scenario has no harness branch');
 
   assert.deepEqual(failures, []);
 });
@@ -76,7 +81,7 @@ test('guess-number stats reserve room for the longer status and verify visible t
     });
   }
 
-  if (!minigameScenarioSource.includes(".pc-guess-number-stats :is(span, strong)")) {
+  if (!minigameScenarioSource.includes('.pc-guess-number-stats :is(span, strong)')) {
     failures.push('guess-number play scenario does not inspect every visible stats label and value');
   }
   if (!minigameScenarioSource.includes('item.scrollWidth > item.clientWidth + 1')) {

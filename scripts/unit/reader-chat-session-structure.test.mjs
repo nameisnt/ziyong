@@ -21,13 +21,29 @@ test('ReaderApp delegates chat loading to one session while detail writes stay i
     'isHistoryBriefMatch',
     'resolveViewingCharacterId',
   ]) {
-    assert.doesNotMatch(root, new RegExp(`(?:const|let|function|async function) ${legacyOwner}\\b`, 'u'), `${legacyOwner} leaked back into ReaderApp`);
-    assert.match(owner, new RegExp(`\\b${legacyOwner}\\b`, 'u'), `${legacyOwner} is missing from the chat session owner`);
+    assert.doesNotMatch(
+      root,
+      new RegExp(`(?:const|let|function|async function) ${legacyOwner}\\b`, 'u'),
+      `${legacyOwner} leaked back into ReaderApp`,
+    );
+    assert.match(
+      owner,
+      new RegExp(`\\b${legacyOwner}\\b`, 'u'),
+      `${legacyOwner} is missing from the chat session owner`,
+    );
   }
 
   for (const runtimeCall of ['getPastCharacterChats', 'getChatHistoryDetailSafe']) {
-    assert.doesNotMatch(root, new RegExp(`\\b${runtimeCall}\\(`, 'u'), `${runtimeCall} call leaked back into ReaderApp`);
-    assert.match(owner, new RegExp(`\\b${runtimeCall}\\b`, 'u'), `${runtimeCall} is missing from the chat session owner`);
+    assert.doesNotMatch(
+      root,
+      new RegExp(`\\b${runtimeCall}\\(`, 'u'),
+      `${runtimeCall} call leaked back into ReaderApp`,
+    );
+    assert.match(
+      owner,
+      new RegExp(`\\b${runtimeCall}\\b`, 'u'),
+      `${runtimeCall} is missing from the chat session owner`,
+    );
   }
 
   assert.match(root, /async function saveReaderReasoning[\s\S]*getChatMessagesSafe\('0-\{\{lastMessageId\}\}'/u);
