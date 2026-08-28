@@ -6,6 +6,7 @@ import { ModuleKind, ScriptTarget, transpileModule } from 'typescript';
 
 const source = await readFile(new URL('../../src/data/appSvgIcons.ts', import.meta.url), 'utf8');
 const identitySource = await readFile(new URL('../../src/data/appIdentitySvgIcons.ts', import.meta.url), 'utf8');
+const identityImageSource = await readFile(new URL('../../src/data/appIdentityImageIcons.ts', import.meta.url), 'utf8');
 const appIcon = await readFile(new URL('../../src/components/AppIcon.vue', import.meta.url), 'utf8');
 const home = await readFile(new URL('../../src/components/PhoneHome.vue', import.meta.url), 'utf8');
 const theme = await readFile(new URL('../../src/apps/theme/ThemeApp.vue', import.meta.url), 'utf8');
@@ -100,14 +101,37 @@ test('home App entries resolve through the shared SVG icon library', () => {
 
 test('custom assets and icon overrides keep priority over built-in App identity SVGs', () => {
   const imageIndex = appIcon.indexOf('<img v-if="source && !failed"');
-  const identityIndex = appIcon.indexOf('v-else-if="identityIcon"');
+  const identityImageIndex = appIcon.indexOf('v-for="(url, paper) in identityImages"');
+  const identityIndex = appIcon.indexOf('<svg v-if="identityIcon"');
   const genericSvgIndex = appIcon.indexOf('v-else-if="svgPaths"');
   const fontAwesomeIndex = appIcon.indexOf('<i v-else');
 
-  assert.ok(imageIndex >= 0 && imageIndex < identityIndex);
+  assert.ok(imageIndex >= 0 && imageIndex < identityImageIndex);
+  assert.ok(identityImageIndex < identityIndex);
   assert.ok(identityIndex < genericSvgIndex);
   assert.ok(genericSvgIndex < fontAwesomeIndex);
   assert.match(appIcon, /props\.icon !== props\.defaultIcon/u);
+});
+
+test('paper image identities use transparent 192px PNGs with SVG fallback', async () => {
+  const imageAppIds = ['preset-link', 'preset-manager', 'world-slots', 'worldbook-link'];
+  const papers = ['xuan', 'parchment', 'cardstock'];
+
+  assert.match(identityImageSource, /import\.meta\.glob\('\.\.\/assets\/app-icons\/\*\*\/\*\.png'/u);
+  assert.match(appIcon, /getAppIdentityImageIcon/u);
+  assert.match(appIcon, /pc-app-identity-image/u);
+  assert.match(globalCss, /pc-app-identity-image-xuan/u);
+  assert.match(globalCss, /pc-app-identity-image-parchment/u);
+  assert.match(globalCss, /pc-app-identity-image-cardstock/u);
+
+  for (const paper of papers) {
+    for (const appId of imageAppIds) {
+      const png = await readFile(new URL(`../../src/assets/app-icons/${paper}/${appId}.png`, import.meta.url));
+      assert.equal(png.readUInt32BE(16), 192, `${paper}/${appId}: width`);
+      assert.equal(png.readUInt32BE(20), 192, `${paper}/${appId}: height`);
+      assert.equal(png[25], 6, `${paper}/${appId}: RGBA color type`);
+    }
+  }
 });
 
 test('home, Dock, group management and theme App previews pass identity context', () => {

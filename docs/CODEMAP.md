@@ -156,10 +156,11 @@
 
 ## UI 与主题
 
-- `src/data/appSvgIcons.ts` 保存 App 语义 SVG 路径和现有 Font Awesome 类名映射；`AppIcon.vue`
-  统一用于首页、Dock、分组管理和主题预览，上传图片优先、SVG 次之、未映射类名回退 Font Awesome。
+- `src/data/appSvgIcons.ts` 保存 App 语义 SVG 路径和现有 Font Awesome 类名映射；`src/data/appIdentityImageIcons.ts`
+  从 `src/assets/app-icons/<paper>/` 加载按 App id 命名的主题 PNG；`AppIcon.vue`
+  统一用于首页、Dock、分组管理和主题预览，优先级为上传图片、当前纸张主题 PNG、语义 SVG、Font Awesome。
 - `src/global.css` 定义全局 `pc-*`
-  控件、卡片、表单、阅读、生成和详情基础样式；同一 SVG 在 A4、宣纸、羊皮纸和黑色卡纸下分别使用现代、墨迹、压印和蜡笔笔触渲染。
+  控件、卡片、表单、阅读、生成和详情基础样式；A4 使用现代 SVG，宣纸、羊皮纸和黑色卡纸切换到各自主题图片，缺图时继续显示语义 SVG。
 - `PhoneOverlay.vue` 的 `.pc-screen`
   统一提供普通 App 页面外边距；业务 App 根页面只负责布局，状态栏展示页通过专用零边距屏幕承载网页。
 - `PhoneOverlay.vue` 根据 settings 注入主题 CSS 变量、字体、阅读器尺寸、内置纸张纹理和 App 图标样式。
