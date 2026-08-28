@@ -92,6 +92,22 @@
   stroke-width: var(--pc-app-svg-accent-width, 1.9);
 }
 
+.pc-phone-root .pc-svg-icon-fill {
+  fill: currentColor;
+  stroke: none;
+}
+
+.pc-phone-root .pc-svg-paper-variant {
+  display: none;
+}
+
+.pc-phone-root[data-paper='a4'] .pc-svg-paper-variant-a4,
+.pc-phone-root[data-paper='xuan'] .pc-svg-paper-variant-xuan,
+.pc-phone-root[data-paper='parchment'] .pc-svg-paper-variant-parchment,
+.pc-phone-root[data-paper='cardstock'] .pc-svg-paper-variant-cardstock {
+  display: block;
+}
+
 .pc-phone-root .pc-svg-icon-echo {
   display: none;
   opacity: var(--pc-app-svg-echo-opacity, 0);
@@ -199,6 +215,10 @@
   stroke-dasharray: 6.5 0.55;
 }
 
+.pc-phone-root[data-paper='xuan'] .pc-svg-paper-variant-xuan .pc-svg-icon-fill {
+  opacity: 0.28;
+}
+
 .pc-phone-root[data-paper='parchment'] .pc-app-icon-material > i {
   filter: sepia(0.34) contrast(1.08);
   text-shadow:
@@ -241,6 +261,14 @@
 
 .pc-phone-root[data-paper='cardstock'] .pc-svg-icon-secondary {
   stroke-dasharray: 4.8 0.45;
+}
+
+.pc-phone-root[data-paper='cardstock'] .pc-svg-paper-variant-cardstock .pc-svg-icon-fill {
+  opacity: 0.52;
+}
+
+.pc-phone-root[data-paper='cardstock'] .pc-svg-paper-variant-cardstock .pc-svg-icon-secondary {
+  stroke: var(--pc-icon-material-base);
 }
 
 .pc-phone-root .pc-soft-btn,

@@ -71,6 +71,24 @@ const expectedIdentityIds = [
   'worldbook-link',
 ].sort();
 
+const showcaseIdentityIds = [
+  'macro-builder',
+  'preset-link',
+  'preset-manager',
+  'reader',
+  'script-manager',
+  'theater',
+  'world-slots',
+  'worldbook-link',
+];
+
+function assertArtworkPaths(appId, artwork, label) {
+  assert.ok(artwork.primary.length, `${appId}/${label}: primary`);
+  for (const channel of ['primary', 'secondary', 'accent', 'fills']) {
+    for (const path of artwork[channel] ?? []) assert.match(path, /^M/u, `${appId}/${label}/${channel}: ${path}`);
+  }
+}
+
 test('home App entries resolve through the shared SVG icon library', () => {
   for (const icon of ['fa-briefcase', 'fa-book', 'fa-comments', 'fa-id-card', 'fa-sliders', 'fa-folder']) {
     assert.ok(library.getAppSvgIcon(icon), icon);
@@ -107,6 +125,12 @@ test('paper themes apply distinct SVG stroke treatments', () => {
   assert.match(globalCss, /\.pc-svg-icon-secondary/u);
   assert.match(globalCss, /\.pc-svg-icon-accent/u);
   assert.match(globalCss, /\.pc-svg-icon-echo/u);
+  assert.match(globalCss, /\.pc-svg-icon-fill/u);
+  assert.match(globalCss, /\.pc-svg-paper-variant-a4/u);
+  assert.match(globalCss, /\.pc-svg-paper-variant-xuan/u);
+  assert.match(globalCss, /\.pc-svg-paper-variant-parchment/u);
+  assert.match(globalCss, /\.pc-svg-paper-variant-cardstock/u);
+  assert.match(appIcon, /identityIcon\.paperVariants\[paper\]/u);
 });
 
 test('all built-in Apps have unique identity SVG geometry', () => {
@@ -117,11 +141,19 @@ test('all built-in Apps have unique identity SVG geometry', () => {
   assert.equal(new Set(signatures).size, entries.length);
 
   entries.forEach(([appId, definition]) => {
-    assert.ok(definition.primary.length, `${appId}: primary`);
-    Object.values(definition)
-      .flat()
-      .forEach(path => assert.match(path, /^M/u, `${appId}: ${path}`));
+    assertArtworkPaths(appId, definition, 'base');
   });
+});
+
+test('eight showcase Apps have four genuinely separate paper artworks', () => {
+  for (const appId of showcaseIdentityIds) {
+    const variants = identityLibrary.APP_IDENTITY_SVG_ICONS[appId].paperVariants;
+    assert.deepEqual(Object.keys(variants).sort(), ['a4', 'cardstock', 'parchment', 'xuan'], appId);
+    for (const [paper, artwork] of Object.entries(variants)) assertArtworkPaths(appId, artwork, paper);
+    assert.equal(new Set(Object.values(variants).map(artwork => JSON.stringify(artwork))).size, 4, appId);
+    assert.ok(variants.xuan.fills?.length, `${appId}/xuan: fills`);
+    assert.ok(variants.cardstock.fills?.length, `${appId}/cardstock: fills`);
+  }
 });
 
 test('identity SVGs define four separate paper stroke profiles', () => {
