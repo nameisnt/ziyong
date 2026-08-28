@@ -108,9 +108,10 @@ store、插件预设和资源文件；中途失败若不回滚会造成设置与
 
 ## ADR-013 发布产物继续跟踪但需授权构建
 
-决策：`dist/index.js`、`dist/index.css` 是正式发布产物并继续跟踪；正式 `pnpm build`、提交和推送分别属于授权边界。
+决策：`dist/` 下由正式构建生成的脚本、样式和静态资源是一个完整发布单元并继续跟踪；安全推送不得只发布 `index.js` 和
+`index.css`。正式 `pnpm build`、提交和推送分别属于授权边界。
 
-理由：SillyTavern 扩展发布依赖 dist；但构建会改写受跟踪产物，提交/推送会改变远端状态。
+理由：SillyTavern 扩展发布依赖 dist，脚本中的相对资源 URL 还要求图片等文件与入口脚本共同存在；但构建会改写受跟踪产物，提交/推送会改变远端状态。
 
 影响：本地验证可用 `build:check` 到 `tmp/build-check`；正式产物更新必须按用户授权执行。
 
@@ -339,8 +340,8 @@ JSON。目录直接按真实文件夹显示，分组新建、重命名和脚本�
 ## ADR-041 App 入口统一使用语义图标库
 
 决策：`AppIcon.vue` 统一把 App 的 Font Awesome 类名映射到 `src/data/appSvgIcons.ts`
-的语义 SVG 路径；A4 使用现代 SVG，宣纸、羊皮纸和黑色卡纸优先使用
-`src/assets/app-icons/<paper>/` 下按 App id 命名的独立 PNG，缺少对应图片时回退语义 SVG，未收录类名才回退 Font Awesome。用户上传图标始终具有最高优先级。
+的语义 SVG 路径；A4 使用现代 SVG，宣纸、羊皮纸和黑色卡纸优先使用 `src/assets/app-icons/<paper>/` 下按 App
+id 命名的独立 PNG，缺少对应图片时回退语义 SVG，未收录类名才回退 Font Awesome。用户上传图标始终具有最高优先级。
 
 理由：首页、Dock、分组管理和主题预览需要使用同一入口和 App 语义；独立图片才能稳定表达水墨、羽毛笔古旧画和蜡笔画的材质差异，SVG 回退则允许图片资源按功能分批补齐。工作台等普通 App 入口也走该链路。
 

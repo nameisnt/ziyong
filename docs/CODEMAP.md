@@ -40,7 +40,7 @@
 - `src/util/retiredDataCleanup.ts`：插件启动时删除已退役场景编排、剧情梳理和旧资料关系字段，不做旧数据迁移。
 - `src/type/`：Zod schema 和共享类型。
 - `src/testing/visual/` 与 `scripts/unit/`：视觉场景、运行夹具和契约测试。
-- `dist/`：正式扩展构建产物。
+- `dist/`：正式扩展构建产物；入口脚本、样式和入口引用的图片等静态资源必须作为一个完整目录发布。
 
 ## 状态与持久化
 
@@ -156,8 +156,8 @@
 
 ## UI 与主题
 
-- `src/data/appSvgIcons.ts` 保存 App 语义 SVG 路径和现有 Font Awesome 类名映射；`src/data/appIdentityImageIcons.ts`
-  从 `src/assets/app-icons/<paper>/` 加载按 App id 命名的主题 PNG；`AppIcon.vue`
+- `src/data/appSvgIcons.ts` 保存 App 语义 SVG 路径和现有 Font Awesome 类名映射；`src/data/appIdentityImageIcons.ts` 从
+  `src/assets/app-icons/<paper>/` 加载按 App id 命名的主题 PNG；`AppIcon.vue`
   统一用于首页、Dock、分组管理和主题预览，优先级为上传图片、当前纸张主题 PNG、语义 SVG、Font Awesome。
 - `src/global.css` 定义全局 `pc-*`
   控件、卡片、表单、阅读、生成和详情基础样式；A4 使用现代 SVG，宣纸、羊皮纸和黑色卡纸切换到各自主题图片，缺图时继续显示语义 SVG。
@@ -189,7 +189,8 @@
 - `pnpm build:check`：构建到 `tmp/build-check`，用于验证不改正式 dist。
 - `pnpm verify:ui`：三尺寸交互和外观视觉检查。
 - `pnpm verify:full`：静态、临时构建、三尺寸完整视觉。
-- `pnpm build`：正式生成 `dist/index.js`、`dist/index.css`，属于发布产物更新。
+- `pnpm build`：正式生成 `dist/index.js`、`dist/index.css`
+  和入口引用的静态资源，属于发布产物更新；`scripts/safe-push-dist.ps1` 将完整 `dist/` 加入临时发布索引。
 
 ## 当前文档归档
 

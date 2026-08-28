@@ -210,6 +210,19 @@ test('local-ahead HEAD accepts later tracked and allowed untracked workspace cha
   }
 });
 
+test('new build assets under dist are included in the publish candidate', async () => {
+  const root = await createFixture();
+  try {
+    await writeFile(join(root, 'dist', 'theme-icon.png'), 'generated image\n', 'utf8');
+    const result = runSafePush(root);
+    assert.equal(result.status, 0, result.output);
+    assert.match(result.output, /A\s+dist\/theme-icon\.png/u);
+    assert.match(result.output, /DryRun complete/u);
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
+});
+
 test('an extra root document is rejected instead of becoming current publication context', async () => {
   const root = await createFixture();
   try {

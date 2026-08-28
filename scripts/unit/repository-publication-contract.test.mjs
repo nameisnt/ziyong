@@ -18,8 +18,9 @@ test('safe push treats the three current documents as the explicit publication b
   assert.match(safePushSource, /\$allowedNewExactPaths\s*=\s*@\(\$rootDocumentationPaths\)\s*\+\s*@\(/u);
   assert.match(
     safePushSource,
-    /\$allowedPublishPaths\s*=\s*@\('src'\)\s*\+\s*@\(\$rootDocumentationPaths\)\s*\+\s*@\(/u,
+    /\$allowedPublishPaths\s*=\s*@\('src', 'dist'\)\s*\+\s*@\(\$rootDocumentationPaths\)\s*\+\s*@\(/u,
   );
+  assert.match(safePushSource, /\$allowedNewPrefixes\s*=\s*@\([\s\S]*'dist\/'/u);
   const prefixBlock = safePushSource.match(/\$allowedNewPrefixes\s*=\s*@\([\s\S]*?\n\)/u)?.[0] ?? '';
   assert.doesNotMatch(prefixBlock, /^\s*'docs\/',?\s*$/mu);
   assert.doesNotMatch(safePushSource, /'docs\/execution(?:\/|')/u);

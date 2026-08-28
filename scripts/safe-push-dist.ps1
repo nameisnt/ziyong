@@ -242,11 +242,12 @@ $allowedNewExactPaths = @($rootDocumentationPaths) + @(
 )
 $allowedNewPrefixes = @(
   'src/',
+  'dist/',
   'docs/archive/',
   'scripts/baselines/',
   'scripts/unit/'
 )
-$allowedPublishPaths = @('src') + @($rootDocumentationPaths) + @(
+$allowedPublishPaths = @('src', 'dist') + @($rootDocumentationPaths) + @(
   'docs/archive',
   'scripts/backup-contract-check.mjs',
   'scripts/check-eslint-baseline.mjs',
