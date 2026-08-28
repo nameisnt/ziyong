@@ -9,7 +9,7 @@ import {
   reorderPluginPresetPrompts,
   type PluginPresetRecord,
 } from '@/apps/preset-manager/pluginPreset';
-import type { TavernPresetPrompt, TavernPresetPromptCopyInput } from '@/apps/preset-manager/api';
+import type { TavernPreset, TavernPresetPrompt, TavernPresetPromptCopyInput } from '@/apps/preset-manager/api';
 import { BUILTIN_DIARY_PRESET_ID, createBuiltinDiaryPresetRecord } from '@/apps/preset-manager/builtinDiaryPreset';
 // eslint-disable-next-line import-x/no-nodejs-modules
 import { getRequestHeaders, saveSettingsDebounced } from '@sillytavern/script';
@@ -380,6 +380,16 @@ export const usePluginPresetStore = defineStore('pluginPresets', () => {
     return readPluginPreset(requireById(id));
   }
 
+  async function updatePromptGroups(id: string, update: (preset: TavernPreset) => void) {
+    await mutateRecord(id, record => {
+      const preset = readPluginPreset(record);
+      update(preset);
+      record.raw.extensions = klona(preset.extensions);
+      record.updatedAt = new Date().toISOString();
+    });
+    return readPluginPreset(requireById(id));
+  }
+
   async function removePrompt(id: string, promptId: string) {
     await mutateRecord(id, item => deletePluginPresetPrompt(item, promptId));
     return readPluginPreset(requireById(id));
@@ -476,6 +486,7 @@ export const usePluginPresetStore = defineStore('pluginPresets', () => {
     setDefaultApps,
     setHidden,
     updatePrompt,
+    updatePromptGroups,
     whenReady: () => initialLoad,
   };
 });

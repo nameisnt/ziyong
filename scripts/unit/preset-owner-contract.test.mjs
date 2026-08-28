@@ -9,6 +9,7 @@ const detail = await readFile(new URL('src/apps/preset-manager/pages/PresetDetai
 const ownership = await readFile(new URL('src/apps/preset-manager/pages/PresetOwnershipPanel.vue', root), 'utf8');
 const editor = await readFile(new URL('src/apps/preset-manager/pages/PresetPromptEditorPage.vue', root), 'utf8');
 const api = await readFile(new URL('src/apps/preset-manager/api.ts', root), 'utf8');
+const pluginStore = await readFile(new URL('src/store/pluginPresets.ts', root), 'utf8');
 const managerIndex = await readFile(new URL('src/apps/preset-manager/index.ts', root), 'utf8');
 const link = await readFile(new URL('src/apps/preset-link/PresetLinkApp.vue', root), 'utf8');
 const linkIndex = await readFile(new URL('src/apps/preset-link/index.ts', root), 'utf8');
@@ -18,6 +19,8 @@ test('preset management owns reading rules and preset link independently owns ch
   assert.match(detail, /PresetOwnershipPanel/u);
   assert.match(detail, /v-if="[^"]*!pluginPreset"/u);
   assert.match(ownership, /readerCleanupRuleIds/u);
+  assert.match(ownership, /<details class="pc-section-card pc-preset-owner">/u);
+  assert.doesNotMatch(ownership, /<details class="pc-section-card pc-preset-owner" open>/u);
   assert.doesNotMatch(ownership, /saveBinding|removeBinding/u);
   assert.doesNotMatch(managerIndex, /key: 'preset-link'|scopeSwitchHandler:/u);
   assert.match(link, /saveBinding/u);
@@ -27,6 +30,24 @@ test('preset management owns reading rules and preset link independently owns ch
   assert.match(layout, /'preset-manager', 'preset-link'/u);
   await access(new URL('src/apps/preset-link/index.ts', root));
   await access(new URL('src/apps/preset-link/PresetLinkApp.vue', root));
+});
+
+test('preset details manage prompt groups inside preset metadata for tavern and plugin presets', () => {
+  const managementMenu = detail.slice(detail.indexOf('<ActionMenu'), detail.indexOf('</ActionMenu>'));
+  assert.ok(managementMenu.indexOf('管理条目分组') < managementMenu.indexOf('预设改名'));
+  assert.doesNotMatch(detail, /pc-preset-detail-actions/u);
+  assert.match(detail, /assign-prompt-group/u);
+  assert.match(detail, /create-prompt-group/u);
+  assert.match(detail, /delete-prompt-group/u);
+  assert.match(detail, /rename-prompt-group/u);
+  assert.match(manager, /updateTavernPresetPromptGroups/u);
+  assert.match(manager, /pluginPresets\.updatePromptGroups/u);
+  assert.match(api, /presetPromptGroups/u);
+  assert.match(api, /export function assignPresetPromptGroup/u);
+  assert.match(api, /export function createPresetPromptGroup/u);
+  assert.match(api, /export function deletePresetPromptGroup/u);
+  assert.match(api, /export function renamePresetPromptGroup/u);
+  assert.match(pluginStore, /updatePromptGroups/u);
 });
 
 test('saved preset prompts edit name, role, enabled state, and content through existing mutation paths', () => {

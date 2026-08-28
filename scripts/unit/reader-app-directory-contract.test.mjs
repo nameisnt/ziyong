@@ -18,6 +18,12 @@ test('reader owns its root and chat session while shared reading surfaces remain
   assert.match(root, /from '@\/components\/ReaderDetailShell\.vue'/u);
   assert.match(root, /from '@\/components\/CatalogModal\.vue'/u);
   assert.match(root, /from '@\/components\/BaguScanPanel\.vue'/u);
+  assert.match(root, /activeMessageIndex\.value === activeMessages\.value\.length - 1/u);
+  assert.match(root, /class="pc-area pc-reader-send-area"/u);
+  assert.match(root, /rows="7"/u);
+  assert.match(root, /fa-solid fa-xmark"><\/i><span>\{\{ t`关闭` \}\}<\/span>/u);
+  assert.match(root, /sendTavernInput\(readerSendDraft\.value\)/u);
+  assert.doesNotMatch(root, /class="pc-reader-send-composer"/u);
 
   await access(new URL('../../src/components/ReaderDetailShell.vue', import.meta.url));
   await access(new URL('../../src/components/CatalogModal.vue', import.meta.url));

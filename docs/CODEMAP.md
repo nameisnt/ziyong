@@ -8,8 +8,8 @@
 - `src/panel.ts`：薄入口，只调用 `initPhoneLifecycle()`。
 - `src/core/phoneLifecycle.ts`：创建或复用 DOM root，注册 App，创建 Vue + Pinia，挂载 `App.vue`，安装 workbench auto
   runner 和 native launcher。
-- `src/App.vue`：把菜单入口 Teleport 到 `#extensionsMenu` 下的 `#pc_reader_wand_container`，把 `PhoneOverlay` 和 `FloatingBall`
-  Teleport 到 body；监听聊天切换、聊天改名、楼层备份和生成可见性恢复。
+- `src/App.vue`：把菜单入口 Teleport 到 `#extensionsMenu` 下的 `#pc_reader_wand_container`，把 `PhoneOverlay` 和
+  `FloatingBall` Teleport 到 body；监听聊天切换、聊天改名、楼层备份和生成可见性恢复。
 - 酒馆原生拓展程序设置页不挂载插件配置面板；主题、悬浮球和主页布局设置统一由手机内部设置 App 管理。
 - `src/components/PhoneOverlay.vue`：手机壳、顶栏、通知、路由组件渲染、主题变量、字体、纸张纹理、窗口位置和 App
   KeepAlive。
@@ -63,12 +63,14 @@
 4. `adapter.configSchema` 校验 config。
 5. `buildSourceSelection()` 读取可见聊天楼层，生成来源 selection。
 6. `adapter.buildRequest()` 生成 App 上下文、任务、提示词、类型提示词、用户要求和输出格式。
-7. `usePromptStore()` 套用任务模板；任务、类型提示词和插件预设 prompt 都使用当前聊天解析后的 `generationAliases` 替换 `<user>`、`<char>`、`{{user}}`、`{{char}}`。
+7. `usePromptStore()` 套用任务模板；任务、类型提示词和插件预设 prompt 都使用当前聊天解析后的 `generationAliases` 替换
+   `<user>`、`<char>`、`{{user}}`、`{{char}}`。
 8. 根据设置选择酒馆通道或外部 OpenAI-compatible API；可选插件预设会构建 ordered prompts。
 9. 统一处理 generation id、abort controller、流式输出、RPM 限速、重试和生成事件识别。
 10. `generationService` 临时注册 `phoneUserInput`、动作变量和 `src/util/pluginMacros.ts`
     的插件私有随机宏；任务结束统一注销。
-11. 输出先规范化，再按设置分离思维链；reasoning 写入生成记录前自动清除固定 OpenAI 流式响应外壳，正文和 original output 保持原样。
+11. 输出先规范化，再按设置分离思维链；reasoning 写入生成记录前自动清除固定 OpenAI 流式响应外壳，正文和 original
+    output 保持原样。
 12. `adapter.parse()` 解析结构化结果；失败则创建 failed draft。
 13. resultMode 为 `save` 时调用 `adapter.save()`；保存失败且 adapter 要求保留时也进入 failed draft。
 14. 成功结果保存 hidden generation record、replay snapshot、source selection、raw output semantics。
@@ -104,8 +106,9 @@
 
 ## 当前专项流程
 
-- 预设：`src/apps/preset-manager/`
-  管理酒馆/插件预设及预设共享阅读规则，目录将当前酒馆预设置顶；`src/store/presetCatalogGroups.ts`
+- 预设：`src/apps/preset-manager/` 管理酒馆/插件预设、预设内部 `baibaiToolkit.presetPromptGroups`
+  条目分组及默认折叠的预设共享阅读规则，目录将当前酒馆预设置顶；数组来源的插件预设没有分组时保持数组导出，存在分组时导出完整对象以保留
+  `extensions`；`src/store/presetCatalogGroups.ts`
   单独保存目录分组与预设分配，并在 App 会话内按预设保留详情展开和滚动状态；`src/apps/preset-link/`
   保存聊天 scope 绑定并在聊天切换时应用酒馆预设。
 - 批量目录：`BulkSelectionBar.vue`、`BulkSelectionCheckbox.vue` 和 `useBulkSelection.ts`
@@ -131,7 +134,8 @@
 - 备份查重：`src/apps/recovery/model.ts` 生成完全相同、严格续长和 90% 相似分组，`store.ts`
   在删除前重新下载复核，`RecoveryMaintenanceFlow.vue` 管理选择和确认。
 - 前端网页：`src/util/theaterFrontend.ts`
-  清理 HTML、保留完整页面或片段中的 head/style，并构造 iframe 文档；`FrontendFrame.vue` 根据子文档回报高度调整容器。小剧场 HTML 使用 `flush-content`，网页内容边缘不再注入共享 16px 内边距。
+  清理 HTML、保留完整页面或片段中的 head/style，并构造 iframe 文档；`FrontendFrame.vue`
+  根据子文档回报高度调整容器。小剧场 HTML 使用 `flush-content`，网页内容边缘不再注入共享 16px 内边距。
 - 状态栏：`src/apps/status-display/StatusDisplayApp.vue`
   是纯展示入口，读取当前聊天绑定并在聊天事件后刷新；`StatusDisplaySettingsApp.vue` 由
   `src/apps/status-display-settings/index.ts`
@@ -142,17 +146,20 @@
 - 插件宏：`src/apps/macro-builder/` 生成参数化宏；`src/util/pluginMacros.ts`
   保留普通 Unicode 文本，仅转义宏参数分隔符和换行，用 `URLSearchParams`
   解析；身份分配按 placement 输出“候选 身份”或“身份 候选”，不添加冒号；`generationService` 只在手机生成期间注册。
-- 助手脚本：`src/apps/script-manager/`
-  读取三类 TavernHelper 脚本树，`model.ts` 将每个作用域组织为真实文件夹与“未分组”目录；`api.ts`
-  通过 ScriptTree API 新建、重命名、移动和删除真实树节点。插件整包导入导出 global、preset、character 三类树；单文件夹直接读写酒馆助手原生 `ScriptFolder` JSON，原生导入会换新 id 并以停用状态写入当前目标作用域。
+- 助手脚本：`src/apps/script-manager/` 读取三类 TavernHelper 脚本树，`model.ts`
+  将每个作用域组织为真实文件夹与“未分组”目录；`api.ts` 通过 ScriptTree
+  API 新建、重命名、移动和删除真实树节点。插件整包导入导出 global、preset、character 三类树；单文件夹直接读写酒馆助手原生
+  `ScriptFolder` JSON，原生导入会换新 id 并以停用状态写入当前目标作用域。
 - 扩展迁移：`src/apps/extension-transfer/` 调用 SillyTavern
   `/api/extensions/discover`、`/version`、`/install`、`/update`；导入清单先经 Zod 解析并进入预览，安装范围逐项选择；安装或更新全部结束后只刷新一次扩展目录，不刷新页面。备注名、安装网页和功能介绍保存在
   `sillytavern_phone_extension_metadata`。版本检查结果分为可更新、已是最新、无法检查三态，批量更新只处理可更新项，详情在弹窗中编辑。
 
 ## UI 与主题
 
-- `src/data/appSvgIcons.ts` 保存 App 语义 SVG 路径和现有 Font Awesome 类名映射；`AppIcon.vue` 统一用于首页、Dock、分组管理和主题预览，上传图片优先、SVG 次之、未映射类名回退 Font Awesome。
-- `src/global.css` 定义全局 `pc-*` 控件、卡片、表单、阅读、生成和详情基础样式；同一 SVG 在 A4、宣纸、羊皮纸和黑色卡纸下分别使用现代、墨迹、压印和蜡笔笔触渲染。
+- `src/data/appSvgIcons.ts` 保存 App 语义 SVG 路径和现有 Font Awesome 类名映射；`AppIcon.vue`
+  统一用于首页、Dock、分组管理和主题预览，上传图片优先、SVG 次之、未映射类名回退 Font Awesome。
+- `src/global.css` 定义全局 `pc-*`
+  控件、卡片、表单、阅读、生成和详情基础样式；同一 SVG 在 A4、宣纸、羊皮纸和黑色卡纸下分别使用现代、墨迹、压印和蜡笔笔触渲染。
 - `PhoneOverlay.vue` 的 `.pc-screen`
   统一提供普通 App 页面外边距；业务 App 根页面只负责布局，状态栏展示页通过专用零边距屏幕承载网页。
 - `PhoneOverlay.vue` 根据 settings 注入主题 CSS 变量、字体、阅读器尺寸、内置纸张纹理和 App 图标样式。
@@ -162,7 +169,8 @@
   v4；`PhoneHome.vue` 将 `folders`
   投影为可横向触摸滚动的标签，不使用分页、文件夹预览卡或独立 App 区，v4 内用户自建分组继续保留，组内顺序直接在主页拖拽，跨组调整通过多选管理弹窗完成。
 - `ReaderDetailShell.vue` 固定显示详情上下文栏，`VersionNavigator.vue`
-  在栏内切换版本；可拖动工具菜单只承载正文操作，底部 `DetailFooter` 负责上条/目录/下条和置顶置底。
+  在栏内切换版本；可拖动工具菜单使用与顶栏一致的紧凑操作高度并只承载正文操作，底部 `DetailFooter`
+  负责上条/目录/下条和置顶置底。阅读聊天只在最后一楼提供酒馆原生发送入口，输入使用多行弹窗。
 - `src/apps/settings/SettingsApp.vue`
   使用单行分类选择器装配界面、阅读、生成、连接、数据和高级面板；`SettingsGenerationPanel.vue`
   管理生成默认值，`SettingsConnectionPanel.vue` 管理文本通道和外部配置目录，`SettingsExternalApiPage.vue`

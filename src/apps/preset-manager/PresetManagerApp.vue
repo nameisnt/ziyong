@@ -40,9 +40,14 @@
       :preset-movable="detailPresetMovable"
       :preset="activePreset"
       :preset-name="detailPresetName"
+      :prompt-group-ids="promptGroupIds"
+      :prompt-groups="promptGroups"
       :prompt-drag="promptDrag"
       :switching-preset="switchingPreset"
       @copy-prompt="openPromptCopy"
+      @assign-prompt-group="assignPromptToGroup"
+      @create-prompt-group="createPromptGroup"
+      @delete-prompt-group="deletePromptGroup"
       @drag-cancel="cancelPromptDrag"
       @drag-end="finishPromptDrag"
       @drag-move="movePromptDrag"
@@ -52,6 +57,7 @@
       @move-preset="movePreset"
       @open-prompt="openPromptEditor"
       @rename-preset="renamePreset"
+      @rename-prompt-group="renamePromptGroup"
       @switch-preset="switchPreset"
       @toggle-group="toggleGroup"
       @toggle-preset-visibility="togglePresetVisibility"
@@ -97,17 +103,25 @@ import { usePhoneStore } from '@/store/phone';
 import { usePluginPresetStore } from '@/store/pluginPresets';
 import { storeToRefs } from 'pinia';
 import {
+  assignPresetPromptGroup,
   buildPresetDisplayNodes,
+  createPresetPromptGroup,
+  createPresetPromptGroupId,
   createTavernPreset,
+  deletePresetPromptGroup,
   deleteTavernPreset,
   deleteTavernPresetPrompt,
   duplicateTavernPresetPrompt,
   getCurrentTavernPresetName,
   listTavernPresets,
+  listPresetPromptGroups,
   loadTavernPreset,
   readTavernPreset,
   reorderTavernPresetPrompts,
+  renamePresetPromptGroup,
+  updateTavernPresetPromptGroups,
   updateTavernPresetPrompt,
+  type BaibaiPresetGroup,
   type TavernPreset,
   type TavernPresetPrompt,
 } from './api';
@@ -205,6 +219,7 @@ const promptGroupIds = computed(() => {
   }
   return result;
 });
+const promptGroups = computed(() => (activePreset.value ? listPresetPromptGroups(activePreset.value) : []));
 const displayNodes = computed(() => {
   if (!activePreset.value) return [];
   const nodes = buildPresetDisplayNodes(activePreset.value);
@@ -610,6 +625,71 @@ async function togglePrompt(prompt: TavernPresetPrompt, enabled: boolean) {
   } finally {
     setBusyPrompt(prompt.id, false);
   }
+}
+
+async function savePromptGroupMutation(update: (preset: TavernPreset) => void, successMessage: string) {
+  if (!activePreset.value || mutationBusy.value) return;
+  saving.value = true;
+  try {
+    if (isPluginDetail.value) {
+      activePreset.value = await pluginPresets.updatePromptGroups(detailPluginPresetId.value, update);
+      syncCollapsedGroups();
+      toastr.success(successMessage);
+      return;
+    }
+    const result = await updateTavernPresetPromptGroups(detailPresetName.value, update);
+    activePreset.value = result.preset;
+    syncCollapsedGroups();
+    if (result.liveSynced) toastr.success(successMessage);
+    else toastr.warning(`${successMessage}，但当前生效副本刷新失败；重新切换预设后会生效`);
+  } catch (error) {
+    toastr.error(error instanceof Error ? error.message : String(error));
+  } finally {
+    saving.value = false;
+  }
+}
+
+async function createPromptGroup() {
+  const name = await phone.promptNotice('输入新的条目分组名称。', {
+    confirmLabel: '创建',
+    title: '新建条目分组',
+  });
+  if (!name?.trim()) return;
+  const groupId = createPresetPromptGroupId();
+  await savePromptGroupMutation(
+    preset => createPresetPromptGroup(preset, name, groupId),
+    `已创建条目分组“${name.trim()}”`,
+  );
+}
+
+async function renamePromptGroup(group: BaibaiPresetGroup) {
+  const name = await phone.promptNotice('输入新的条目分组名称。', {
+    confirmLabel: '改名',
+    initialValue: group.name,
+    title: '条目分组改名',
+  });
+  if (!name?.trim() || name.trim() === group.name) return;
+  await savePromptGroupMutation(
+    preset => renamePresetPromptGroup(preset, group.id, name),
+    `条目分组已改名为“${name.trim()}”`,
+  );
+}
+
+async function deletePromptGroup(group: BaibaiPresetGroup) {
+  const promptCount = [...promptGroupIds.value.values()].filter(groupId => groupId === group.id).length;
+  const confirmed = await phone.confirmNotice(
+    `删除条目分组“${group.name}”吗？其中 ${promptCount} 个条目会移到未分组。`,
+    { confirmLabel: '删除', kind: 'warning', title: '删除条目分组' },
+  );
+  if (!confirmed) return;
+  await savePromptGroupMutation(preset => deletePresetPromptGroup(preset, group.id), '条目分组已删除');
+}
+
+async function assignPromptToGroup(prompt: TavernPresetPrompt, groupId: string) {
+  await savePromptGroupMutation(
+    preset => assignPresetPromptGroup(preset, prompt.id, groupId),
+    groupId ? '条目分组已更新' : '条目已移到未分组',
+  );
 }
 
 function toggleGroup(groupId: string) {

@@ -153,12 +153,46 @@ test('editing and reordering legacy prompts updates the exported prompt_order wi
   assert.equal(exported.prompts.find(prompt => prompt.identifier === 'task').name, '视角任务');
 });
 
-test('raw array imports export as an array and duplicate identifiers are rejected', () => {
+test('raw array imports keep array exports until prompt groups require an object envelope', () => {
   const imported = model.normalizePluginPresetImport([{ id: 'one', name: 'One', content: '1', role: 'system' }]);
   const modernRecord = { ...record(imported.raw, 'array'), sourceFormat: 'modern' };
   assert.ok(Array.isArray(model.exportPluginPreset(modernRecord)));
+  modernRecord.raw.extensions = {
+    baibaiToolkit: {
+      presetPromptGroups: {
+        groups: [{ collapsed: false, enabled: true, id: 'group-1', name: '正文' }],
+        prompts: { one: { groupId: 'group-1' } },
+      },
+    },
+  };
+  const groupedExport = model.exportPluginPreset(modernRecord);
+  assert.equal(Array.isArray(groupedExport), false);
+  assert.equal(groupedExport.extensions.baibaiToolkit.presetPromptGroups.prompts.one.groupId, 'group-1');
   assert.throws(
     () => model.normalizePluginPresetImport({ prompts: [{ identifier: 'x' }, { identifier: 'x' }] }),
     /重复标识/u,
   );
+});
+
+test('duplicating and deleting plugin prompts keeps prompt group metadata in sync', () => {
+  const raw = legacyPreset();
+  raw.extensions = {
+    baibaiToolkit: {
+      presetPromptGroups: {
+        groups: [{ collapsed: false, enabled: true, id: 'group-1', name: '正文' }],
+        prompts: { main: { groupId: 'group-1' } },
+      },
+    },
+  };
+  const presetRecord = record(raw);
+  const copiedId = model.duplicatePluginPresetPrompt(presetRecord, 'main', {
+    content: 'B',
+    enabled: false,
+    name: '主提示副本',
+    role: 'system',
+  });
+  const groupPrompts = presetRecord.raw.extensions.baibaiToolkit.presetPromptGroups.prompts;
+  assert.equal(groupPrompts[copiedId].groupId, 'group-1');
+  model.deletePluginPresetPrompt(presetRecord, copiedId);
+  assert.equal(groupPrompts[copiedId], undefined);
 });

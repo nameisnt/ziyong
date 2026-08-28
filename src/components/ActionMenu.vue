@@ -95,7 +95,7 @@ onBeforeUnmount(() => {
 
 .pc-action-menu-panel {
   position: absolute;
-  top: calc(100% + 8px);
+  top: calc(100% + 6px);
   right: 0;
   z-index: 5;
   display: grid;
@@ -104,8 +104,8 @@ onBeforeUnmount(() => {
   max-width: 220px;
   max-height: 320px;
   overflow-y: auto;
-  gap: 4px;
-  padding: 6px;
+  gap: 2px;
+  padding: 4px;
   border: 1px solid var(--pc-border);
   border-radius: var(--pc-control-radius);
   background: var(--pc-form-control-bg);
@@ -116,20 +116,28 @@ onBeforeUnmount(() => {
 .pc-action-menu-panel :deep(button) {
   /* ui-reuse-allow: menu rows are option items, not standalone action buttons. */
   display: flex;
-  min-height: 38px;
+  min-height: 28px;
   align-items: center;
-  gap: 10px;
+  gap: 8px;
   border: 0;
   border-radius: calc(var(--pc-control-radius) - 4px);
-  padding: 9px 12px;
+  padding: 5px 8px;
   background: transparent;
   color: var(--pc-form-control-text);
   cursor: pointer;
-  font-weight: 750;
-  line-height: 1.35;
+  font-size: 13px;
+  font-weight: 700;
+  line-height: 1.25;
   text-align: left;
   overflow-wrap: anywhere;
   white-space: normal;
+}
+
+.pc-action-menu-panel :deep(button > i) {
+  width: 14px;
+  flex: 0 0 14px;
+  font-size: 12px;
+  text-align: center;
 }
 
 .pc-action-menu.align-start .pc-action-menu-panel {

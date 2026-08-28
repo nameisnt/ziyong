@@ -192,7 +192,7 @@
             <span>{{ t`摘抄` }}</span>
           </button>
           <button
-            v-if="phone.isViewingCurrentChat"
+            v-if="canSendReaderMessage"
             class="pc-soft-btn"
             type="button"
             :title="t`发送用户消息`"
@@ -201,12 +201,6 @@
             <i class="fa-solid fa-paper-plane"></i>
             <span>{{ t`发送` }}</span>
           </button>
-          <form v-if="readerSendComposerOpen" class="pc-reader-send-composer" @submit.prevent="sendReaderMessage">
-            <input v-model="readerSendDraft" class="pc-field" :placeholder="t`输入发送内容`" />
-            <button class="pc-primary-btn" type="submit" :disabled="!readerSendDraft.trim()">
-              <i class="fa-solid fa-paper-plane"></i><span>{{ t`发送` }}</span>
-            </button>
-          </form>
         </template>
         <template #overlays>
           <CatalogModal
@@ -252,6 +246,53 @@
         </div>
       </article>
     </section>
+
+    <Teleport to="#tavern-phone-root .pc-phone-shell">
+      <section
+        v-if="readerSendComposerOpen"
+        class="pc-modal-backdrop pc-reader-send-backdrop"
+        role="presentation"
+        @click.self="closeReaderSendComposer"
+      >
+        <form
+          ref="readerSendDialogRef"
+          class="pc-section-card pc-modal-dialog pc-reader-send-dialog"
+          role="dialog"
+          aria-modal="true"
+          aria-label="发送用户消息"
+          tabindex="-1"
+          @submit.prevent="sendReaderMessage"
+        >
+          <header class="pc-compact-toolbar">
+            <strong>{{ t`发送用户消息` }}</strong>
+            <button
+              class="pc-icon-btn"
+              type="button"
+              :title="t`关闭`"
+              :aria-label="t`关闭`"
+              @click="closeReaderSendComposer"
+            >
+              <i class="fa-solid fa-xmark"></i>
+            </button>
+          </header>
+          <textarea
+            ref="readerSendAreaRef"
+            v-model="readerSendDraft"
+            class="pc-area pc-reader-send-area"
+            rows="7"
+            :placeholder="t`输入要发送给酒馆的用户消息`"
+          ></textarea>
+          <div class="pc-form-actions">
+            <button class="pc-soft-btn" type="button" @click="closeReaderSendComposer">
+              <i class="fa-solid fa-xmark"></i><span>{{ t`关闭` }}</span>
+            </button>
+            <button class="pc-primary-btn" type="submit" :disabled="!readerSendDraft.trim()">
+              <i class="fa-solid fa-paper-plane"></i><span>{{ t`发送` }}</span>
+            </button>
+          </div>
+        </form>
+      </section>
+    </Teleport>
   </section>
 </template>
 
@@ -261,6 +302,7 @@ import BaguScanPanel from '@/components/BaguScanPanel.vue';
 import EmptyState from '@/components/EmptyState.vue';
 import ReaderDetailShell from '@/components/ReaderDetailShell.vue';
 import { useReaderChatSession } from '@/apps/reader/useReaderChatSession';
+import { usePhoneModalLifecycle } from '@/composables/usePhoneModalLifecycle';
 import SearchableCombobox from '@/components/SearchableCombobox.vue';
 import {
   defaultReaderBodyRule,
@@ -333,6 +375,8 @@ const messageBodyEl = ref<HTMLElement | null>(null);
 const readerEditDraft = ref('');
 const readerSendComposerOpen = ref(false);
 const readerSendDraft = ref('');
+const readerSendDialogRef = ref<HTMLElement | null>(null);
+const readerSendAreaRef = ref<HTMLTextAreaElement | null>(null);
 const branching = ref(false);
 let pendingBranchSourceScopeKey = '';
 let pendingBranchExpiresAt = 0;
@@ -441,6 +485,12 @@ const previousMessageId = computed(() =>
 );
 const nextMessageId = computed(() =>
   activeMessageIndex.value >= 0 ? activeMessages.value[activeMessageIndex.value + 1]?.id || '' : '',
+);
+const canSendReaderMessage = computed(
+  () =>
+    phone.isViewingCurrentChat &&
+    activeMessageIndex.value >= 0 &&
+    activeMessageIndex.value === activeMessages.value.length - 1,
 );
 const activeMessageFavorite = computed(() =>
   activeMessage.value ? reader.getFavorite(phone.viewingScopeKey, activeMessage.value.id) : null,
@@ -830,8 +880,14 @@ function resetReaderEditDraft() {
 }
 
 function openReaderSendComposer() {
+  if (!canSendReaderMessage.value) return;
   readerSendDraft.value = getTavernInputValue();
   readerSendComposerOpen.value = true;
+  void nextTick(() => readerSendAreaRef.value?.focus());
+}
+
+function closeReaderSendComposer() {
+  readerSendComposerOpen.value = false;
 }
 
 function sendReaderMessage() {
@@ -842,6 +898,12 @@ function sendReaderMessage() {
   readerSendDraft.value = '';
   readerSendComposerOpen.value = false;
 }
+
+usePhoneModalLifecycle({
+  dialogRef: readerSendDialogRef,
+  isOpen: () => readerSendComposerOpen.value,
+  onClose: closeReaderSendComposer,
+});
 
 function returnToReaderDetail() {
   if (!activeMessage.value) return;
@@ -969,11 +1031,28 @@ function formatReaderBody(value: string) {
   gap: 10px;
 }
 
-.pc-reader-send-composer {
+.pc-reader-send-backdrop {
+  --pc-modal-z: 72;
+}
+
+.pc-reader-send-dialog {
   display: grid;
-  grid-column: 1 / -1;
-  grid-template-columns: minmax(0, 1fr) auto;
-  gap: 6px;
+  width: min(100%, 340px);
+  gap: 10px;
+  padding: 12px;
+}
+
+.pc-reader-send-dialog > header {
+  justify-content: space-between;
+}
+
+.pc-reader-send-area {
+  min-height: 150px;
+  resize: vertical;
+}
+
+.pc-reader-send-dialog > .pc-form-actions {
+  justify-content: flex-end;
 }
 
 .pc-reader-bagu-page {

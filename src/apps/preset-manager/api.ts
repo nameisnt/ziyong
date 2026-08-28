@@ -35,6 +35,11 @@ export type BaibaiPresetGroup = {
   name: string;
 };
 
+type BaibaiPresetGroupState = {
+  groups: Record<string, unknown>[];
+  prompts: Record<string, unknown>;
+};
+
 export type PresetDisplayNode =
   | {
       prompt: TavernPresetPrompt;
@@ -478,6 +483,98 @@ function readBaibaiGroupState(preset: TavernPreset) {
     groups,
     prompts: state.prompts as Record<string, unknown>,
   };
+}
+
+function ensureBaibaiGroupState(preset: TavernPreset): BaibaiPresetGroupState {
+  let toolkit = preset.extensions.baibaiToolkit;
+  if (!toolkit || typeof toolkit !== 'object' || Array.isArray(toolkit)) {
+    toolkit = {};
+    preset.extensions.baibaiToolkit = toolkit;
+  }
+  const toolkitRecord = toolkit as Record<string, unknown>;
+  let rawState = toolkitRecord.presetPromptGroups;
+  if (!rawState || typeof rawState !== 'object' || Array.isArray(rawState)) {
+    rawState = { groups: [], prompts: {} };
+    toolkitRecord.presetPromptGroups = rawState;
+  }
+  const state = rawState as Record<string, unknown>;
+  if (!Array.isArray(state.groups)) state.groups = [];
+  if (!state.prompts || typeof state.prompts !== 'object' || Array.isArray(state.prompts)) state.prompts = {};
+  return state as BaibaiPresetGroupState;
+}
+
+export function listPresetPromptGroups(preset: TavernPreset) {
+  return readBaibaiGroupState(preset)?.groups ?? [];
+}
+
+export function createPresetPromptGroupId() {
+  return `phone_preset_group_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+}
+
+export function createPresetPromptGroup(preset: TavernPreset, name: string, groupId: string) {
+  const normalizedName = name.trim();
+  if (!normalizedName) throw new Error('分组名称不能为空');
+  const state = ensureBaibaiGroupState(preset);
+  if (state.groups.some(group => String(group.id || '') === groupId)) throw new Error('条目分组标识重复');
+  state.groups.push({ collapsed: false, enabled: true, id: groupId, name: normalizedName });
+}
+
+export function renamePresetPromptGroup(preset: TavernPreset, groupId: string, name: string) {
+  const normalizedName = name.trim();
+  if (!normalizedName) throw new Error('分组名称不能为空');
+  const state = ensureBaibaiGroupState(preset);
+  const group = state.groups.find(item => String(item.id || '') === groupId);
+  if (!group) throw new Error('这个条目分组已经不存在');
+  group.name = normalizedName;
+}
+
+export function deletePresetPromptGroup(preset: TavernPreset, groupId: string) {
+  const state = ensureBaibaiGroupState(preset);
+  const index = state.groups.findIndex(item => String(item.id || '') === groupId);
+  if (index < 0) throw new Error('这个条目分组已经不存在');
+  state.groups.splice(index, 1);
+  Object.entries(state.prompts).forEach(([promptId, rawMeta]) => {
+    if (!rawMeta || typeof rawMeta !== 'object' || Array.isArray(rawMeta)) return;
+    const meta = rawMeta as Record<string, unknown>;
+    if (String(meta.groupId || '') !== groupId) return;
+    delete meta.groupId;
+    if (!Object.keys(meta).length) delete state.prompts[promptId];
+  });
+}
+
+export function assignPresetPromptGroup(preset: TavernPreset, promptId: string, groupId: string) {
+  if (!preset.prompts.some(prompt => prompt.id === promptId)) throw new Error('这个预设条目已经不存在');
+  const state = ensureBaibaiGroupState(preset);
+  if (groupId && !state.groups.some(group => String(group.id || '') === groupId)) {
+    throw new Error('目标条目分组已经不存在');
+  }
+  const current = state.prompts[promptId];
+  const meta: Record<string, unknown> =
+    current && typeof current === 'object' && !Array.isArray(current) ? (current as Record<string, unknown>) : {};
+  if (groupId) meta.groupId = groupId;
+  else delete meta.groupId;
+  if (Object.keys(meta).length) state.prompts[promptId] = meta;
+  else delete state.prompts[promptId];
+}
+
+export async function updateTavernPresetPromptGroups(presetName: string, update: (preset: TavernPreset) => void) {
+  return enqueuePresetMutation(presetName, async () => {
+    const updatePresetWith = requirePresetFunction<UpdatePresetFn>('updatePresetWith');
+    const applyUpdate = (preset: TavernPreset) => {
+      update(preset);
+      return preset;
+    };
+    const stored = assertPreset(await updatePresetWith(presetName, applyUpdate, { render: 'none' }));
+    let liveSynced = true;
+    if (getCurrentTavernPresetName() === presetName) {
+      try {
+        await updatePresetWith('in_use', applyUpdate, { render: 'immediate' });
+      } catch {
+        liveSynced = false;
+      }
+    }
+    return { liveSynced, preset: stored };
+  });
 }
 
 export function buildPresetDisplayNodes(preset: TavernPreset): PresetDisplayNode[] {

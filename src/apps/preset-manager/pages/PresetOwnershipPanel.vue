@@ -1,70 +1,76 @@
 <template>
-  <section class="pc-section-card pc-preset-owner">
-    <header class="pc-preset-owner-head">
+  <details class="pc-section-card pc-preset-owner">
+    <summary class="pc-preset-owner-head">
       <div>
         <strong>阅读规则</strong>
         <span>预设共享</span>
       </div>
+      <i class="fa-solid fa-chevron-right" aria-hidden="true"></i>
+    </summary>
+
+    <div class="pc-preset-owner-body">
       <InfoHint text="使用此预设阅读聊天时，标题提取、正文提取和正文清理会采用这里的设置。" />
-    </header>
 
-    <div v-if="readerMigrationConflict" class="pc-preset-owner-conflict">
-      <span>旧数据中有 {{ readerMigrationConflict.candidates.length }} 套不同阅读规则，请选择一套后保存。</span>
-      <div>
-        <button
-          v-for="(candidate, index) in readerMigrationConflict.candidates"
-          :key="`${candidate.readerTitleRuleId}-${candidate.readerContentRuleId}`"
-          class="pc-soft-btn compact"
-          type="button"
-          @click="adoptReaderCandidate(candidate)"
-        >
-          候选 {{ index + 1 }} · {{ readerRuleName(candidate.readerTitleRuleId, '全局标题') }} /
-          {{ readerRuleName(candidate.readerContentRuleId, '全局正文') }}
-        </button>
+      <div v-if="readerMigrationConflict" class="pc-preset-owner-conflict">
+        <span>旧数据中有 {{ readerMigrationConflict.candidates.length }} 套不同阅读规则，请选择一套后保存。</span>
+        <div>
+          <button
+            v-for="(candidate, index) in readerMigrationConflict.candidates"
+            :key="`${candidate.readerTitleRuleId}-${candidate.readerContentRuleId}`"
+            class="pc-soft-btn compact"
+            type="button"
+            @click="adoptReaderCandidate(candidate)"
+          >
+            候选 {{ index + 1 }} · {{ readerRuleName(candidate.readerTitleRuleId, '全局标题') }} /
+            {{ readerRuleName(candidate.readerContentRuleId, '全局正文') }}
+          </button>
+        </div>
       </div>
-    </div>
 
-    <div class="pc-preset-owner-rules">
-      <label class="pc-field-group">
-        <span class="pc-field-label">阅读标题规则</span>
-        <SearchableCombobox
-          v-model="draftReaderTitleRuleId"
-          :options="readerTitleRuleOptions"
-          placeholder="跟随全局阅读规则"
-        />
-      </label>
-      <label class="pc-field-group">
-        <span class="pc-field-label">阅读正文规则</span>
-        <SearchableCombobox
-          v-model="draftReaderContentRuleId"
-          :options="readerContentRuleOptions"
-          placeholder="跟随全局阅读规则"
-        />
-      </label>
-    </div>
-
-    <details class="pc-preset-cleanup" open>
-      <summary>
-        <span>正文清理</span>
-        <small>{{ draftReaderCleanupRuleIds.length ? `已选 ${draftReaderCleanupRuleIds.length} 条` : '未选择' }}</small>
-      </summary>
-      <div v-if="readerCleanupRules.length" class="pc-preset-cleanup-list">
-        <label v-for="rule in readerCleanupRules" :key="rule.id" class="pc-preset-cleanup-item">
-          <input
-            type="checkbox"
-            :checked="draftReaderCleanupRuleIds.includes(rule.id)"
-            @change="toggleCleanupRule(rule.id, ($event.target as HTMLInputElement).checked)"
+      <div class="pc-preset-owner-rules">
+        <label class="pc-field-group">
+          <span class="pc-field-label">阅读标题规则</span>
+          <SearchableCombobox
+            v-model="draftReaderTitleRuleId"
+            :options="readerTitleRuleOptions"
+            placeholder="跟随全局阅读规则"
           />
-          <span>{{ rule.name || '未命名规则' }}</span>
+        </label>
+        <label class="pc-field-group">
+          <span class="pc-field-label">阅读正文规则</span>
+          <SearchableCombobox
+            v-model="draftReaderContentRuleId"
+            :options="readerContentRuleOptions"
+            placeholder="跟随全局阅读规则"
+          />
         </label>
       </div>
-      <p v-else>正则显示中标记为“正文清理”的规则会显示在这里。</p>
-    </details>
 
-    <div class="pc-form-actions pc-preset-owner-rule-action">
-      <button class="pc-primary-btn" type="button" @click="saveReaderProfile">保存阅读规则</button>
+      <details class="pc-preset-cleanup" open>
+        <summary>
+          <span>正文清理</span>
+          <small>{{
+            draftReaderCleanupRuleIds.length ? `已选 ${draftReaderCleanupRuleIds.length} 条` : '未选择'
+          }}</small>
+        </summary>
+        <div v-if="readerCleanupRules.length" class="pc-preset-cleanup-list">
+          <label v-for="rule in readerCleanupRules" :key="rule.id" class="pc-preset-cleanup-item">
+            <input
+              type="checkbox"
+              :checked="draftReaderCleanupRuleIds.includes(rule.id)"
+              @change="toggleCleanupRule(rule.id, ($event.target as HTMLInputElement).checked)"
+            />
+            <span>{{ rule.name || '未命名规则' }}</span>
+          </label>
+        </div>
+        <p v-else>正则显示中标记为“正文清理”的规则会显示在这里。</p>
+      </details>
+
+      <div class="pc-form-actions pc-preset-owner-rule-action">
+        <button class="pc-primary-btn" type="button" @click="saveReaderProfile">保存阅读规则</button>
+      </div>
     </div>
-  </section>
+  </details>
 </template>
 
 <script setup lang="ts">
@@ -138,15 +144,20 @@ watch([() => props.presetName, () => presetLinks.revision], refresh, { immediate
 
 <style scoped>
 .pc-preset-owner {
-  display: grid;
-  gap: 10px;
   padding: 12px;
+}
+.pc-preset-owner > summary {
+  list-style: none;
+}
+.pc-preset-owner > summary::-webkit-details-marker {
+  display: none;
 }
 .pc-preset-owner-head {
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 10px;
+  cursor: pointer;
 }
 .pc-preset-owner-head > div {
   display: grid;
@@ -158,6 +169,19 @@ watch([() => props.presetName, () => presetLinks.revision], refresh, { immediate
 .pc-preset-cleanup p {
   color: var(--pc-muted);
   font-size: 12px;
+}
+.pc-preset-owner-head > i {
+  color: var(--pc-muted);
+  font-size: 12px;
+  transition: transform 0.16s ease;
+}
+.pc-preset-owner[open] > .pc-preset-owner-head > i {
+  transform: rotate(90deg);
+}
+.pc-preset-owner-body {
+  display: grid;
+  gap: 10px;
+  padding-top: 10px;
 }
 .pc-preset-owner-rules {
   display: grid;

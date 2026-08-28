@@ -40,6 +40,9 @@ test('shared action menu closes through every navigation path and contains long 
 
   const buttonRules = rulesFor(componentSource, '.pc-action-menu-panel :deep(button)');
   const button = declarationsFor(buttonRules.at(-1) ?? '');
+  if (button['min-height'] !== '28px') failures.push('ActionMenu options do not match the 28px top-bar control height');
+  if (button['font-size'] !== '13px') failures.push('ActionMenu option text does not match compact controls');
+  if (button.padding !== '5px 8px') failures.push('ActionMenu option padding is not compact');
   if (button['white-space'] !== 'normal') failures.push('ActionMenu option labels are not allowed to wrap');
   if (button['overflow-wrap'] !== 'anywhere') failures.push('ActionMenu option labels cannot break an overlong token');
 

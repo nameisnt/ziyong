@@ -3,6 +3,9 @@
     <header class="pc-compact-toolbar pc-directory-toolbar pc-preset-detail-head">
       <div class="pc-directory-leading">
         <ActionMenu align="start" icon-only label="管理" icon="fa-solid fa-bars">
+          <button type="button" :disabled="mutationBusy" @click="groupManagerOpen = true">
+            <i class="fa-solid fa-folder-tree"></i><span>管理条目分组</span>
+          </button>
           <button type="button" :disabled="mutationBusy" @click="$emit('rename-preset')">
             <i class="fa-solid fa-pen"></i><span>预设改名</span>
           </button>
@@ -143,17 +146,110 @@
       />
     </div>
     <EmptyState v-else-if="loading" title="正在读取预设" />
+
+    <Teleport to="#tavern-phone-root .pc-phone-shell">
+      <section
+        v-if="groupManagerOpen && preset"
+        class="pc-modal-backdrop pc-preset-group-manager-backdrop"
+        role="presentation"
+        @click.self="groupManagerOpen = false"
+      >
+        <article
+          ref="groupManagerDialogRef"
+          class="pc-section-card pc-modal-dialog pc-preset-group-manager-dialog"
+          role="dialog"
+          aria-modal="true"
+          aria-label="管理预设条目分组"
+          tabindex="-1"
+        >
+          <header class="pc-compact-toolbar pc-preset-group-manager-head">
+            <strong>条目分组</strong>
+            <div>
+              <button
+                class="pc-icon-btn primary"
+                type="button"
+                :disabled="mutationBusy"
+                title="新建条目分组"
+                aria-label="新建条目分组"
+                @click="$emit('create-prompt-group')"
+              >
+                <i class="fa-solid fa-folder-plus"></i>
+              </button>
+              <button
+                class="pc-icon-btn"
+                type="button"
+                title="关闭"
+                aria-label="关闭"
+                @click="groupManagerOpen = false"
+              >
+                <i class="fa-solid fa-xmark"></i>
+              </button>
+            </div>
+          </header>
+
+          <div class="pc-preset-group-manager-body">
+            <section class="pc-preset-managed-groups">
+              <div v-for="group in promptGroups" :key="group.id" class="pc-preset-managed-group-row">
+                <span>
+                  <strong>{{ group.name }}</strong>
+                  <small>{{ groupPromptCount(group.id) }} 个条目</small>
+                </span>
+                <button
+                  class="pc-icon-btn"
+                  type="button"
+                  :disabled="mutationBusy"
+                  title="分组改名"
+                  aria-label="分组改名"
+                  @click="$emit('rename-prompt-group', group)"
+                >
+                  <i class="fa-solid fa-pen"></i>
+                </button>
+                <button
+                  class="pc-icon-btn danger"
+                  type="button"
+                  :disabled="mutationBusy"
+                  title="删除分组"
+                  aria-label="删除分组"
+                  @click="$emit('delete-prompt-group', group)"
+                >
+                  <i class="fa-solid fa-trash"></i>
+                </button>
+              </div>
+              <EmptyState v-if="!promptGroups.length" title="还没有条目分组" />
+            </section>
+
+            <section class="pc-preset-group-assignments">
+              <strong>条目归类</strong>
+              <label v-for="prompt in preset.prompts" :key="prompt.id" class="pc-preset-group-assignment-row">
+                <span>{{ prompt.name || prompt.id }}</span>
+                <select
+                  class="pc-select"
+                  :value="promptGroupIds.get(prompt.id) || ''"
+                  :disabled="mutationBusy"
+                  :aria-label="`${prompt.name || prompt.id}所属分组`"
+                  @change="$emit('assign-prompt-group', prompt, ($event.target as HTMLSelectElement).value)"
+                >
+                  <option value="">未分组</option>
+                  <option v-for="group in promptGroups" :key="group.id" :value="group.id">{{ group.name }}</option>
+                </select>
+              </label>
+            </section>
+          </div>
+        </article>
+      </section>
+    </Teleport>
   </section>
 </template>
 
 <script setup lang="ts">
 import EmptyState from '@/components/EmptyState.vue';
 import ActionMenu from '@/components/ActionMenu.vue';
-import type { PresetDisplayNode, TavernPreset, TavernPresetPrompt } from '../api';
+import { usePhoneModalLifecycle } from '@/composables/usePhoneModalLifecycle';
+import type { BaibaiPresetGroup, PresetDisplayNode, TavernPreset, TavernPresetPrompt } from '../api';
 import PresetOwnershipPanel from './PresetOwnershipPanel.vue';
 import PresetPromptRow from '../PresetPromptRow.vue';
 
-defineProps<{
+const props = defineProps<{
   busyPromptIds: Set<string>;
   collapsedGroupIds: Set<string>;
   defaultAppIds: string[];
@@ -171,6 +267,8 @@ defineProps<{
   presetDeletable: boolean;
   presetMovable: boolean;
   presetName: string;
+  promptGroupIds: Map<string, string>;
+  promptGroups: BaibaiPresetGroup[];
   promptDrag: { insertBeforeId: string; isDragging: boolean; promptId: string };
   switchingPreset: string;
 }>();
@@ -178,7 +276,10 @@ defineProps<{
 const enabledOnly = defineModel<boolean>('enabledOnly', { required: true });
 
 defineEmits<{
+  'assign-prompt-group': [prompt: TavernPresetPrompt, groupId: string];
   'copy-prompt': [prompt: TavernPresetPrompt];
+  'create-prompt-group': [];
+  'delete-prompt-group': [group: BaibaiPresetGroup];
   'drag-cancel': [event: PointerEvent];
   'drag-end': [event: PointerEvent];
   'drag-move': [event: PointerEvent];
@@ -188,6 +289,7 @@ defineEmits<{
   'move-preset': [];
   'open-prompt': [prompt: TavernPresetPrompt];
   'rename-preset': [];
+  'rename-prompt-group': [group: BaibaiPresetGroup];
   'switch-preset': [presetName: string];
   'toggle-group': [groupId: string];
   'toggle-preset-visibility': [];
@@ -196,6 +298,21 @@ defineEmits<{
 }>();
 
 const pageEl = ref<HTMLElement | null>(null);
+const groupManagerOpen = ref(false);
+const groupManagerDialogRef = ref<HTMLElement | null>(null);
+
+usePhoneModalLifecycle({
+  dialogRef: groupManagerDialogRef,
+  isOpen: () => groupManagerOpen.value,
+  onClose: () => {
+    groupManagerOpen.value = false;
+  },
+});
+
+function groupPromptCount(groupId: string) {
+  return [...props.promptGroupIds.values()].filter(value => value === groupId).length;
+}
+
 defineExpose({ getScrollElement: () => pageEl.value });
 </script>
 
@@ -321,5 +438,76 @@ defineExpose({ getScrollElement: () => pageEl.value });
 .pc-preset-group-body {
   padding-left: 12px;
   border-left: 2px solid color-mix(in srgb, var(--pc-theme-accent) 24%, var(--pc-border) 76%);
+}
+.pc-preset-group-manager-backdrop {
+  --pc-modal-z: 72;
+}
+.pc-preset-group-manager-dialog {
+  display: grid;
+  width: min(100%, 390px);
+  max-height: min(78%, 680px);
+  grid-template-rows: auto minmax(0, 1fr);
+  gap: 10px;
+  padding: 10px;
+  overflow: hidden;
+}
+.pc-preset-group-manager-head,
+.pc-preset-group-manager-head > div,
+.pc-preset-managed-group-row,
+.pc-preset-group-assignment-row {
+  display: flex;
+  align-items: center;
+}
+.pc-preset-group-manager-head {
+  justify-content: space-between;
+}
+.pc-preset-group-manager-head > div {
+  gap: 6px;
+}
+.pc-preset-group-manager-body {
+  min-height: 0;
+  overflow-y: auto;
+}
+.pc-preset-managed-groups,
+.pc-preset-group-assignments {
+  display: grid;
+}
+.pc-preset-managed-group-row,
+.pc-preset-group-assignment-row {
+  min-height: 40px;
+  gap: 6px;
+  border-bottom: 1px solid var(--pc-border);
+}
+.pc-preset-managed-group-row > span {
+  display: grid;
+  min-width: 0;
+  flex: 1;
+  gap: 2px;
+}
+.pc-preset-managed-group-row :is(strong, small),
+.pc-preset-group-assignment-row > span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.pc-preset-managed-group-row small {
+  color: var(--pc-muted);
+  font-size: 11px;
+}
+.pc-preset-group-assignments {
+  gap: 0;
+  padding-top: 12px;
+}
+.pc-preset-group-assignment-row {
+  justify-content: space-between;
+}
+.pc-preset-group-assignment-row > span {
+  min-width: 0;
+  flex: 1;
+  font-size: 13px;
+  font-weight: 700;
+}
+.pc-preset-group-assignment-row > .pc-select {
+  width: min(44%, 150px);
 }
 </style>

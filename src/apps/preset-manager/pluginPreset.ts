@@ -18,7 +18,6 @@ export type PluginPresetRecord = {
   updatedAt: string;
 };
 
-
 type LegacyOrderItem = { enabled?: boolean; identifier?: unknown };
 type LegacyOrderRecord = { character_id?: unknown; order?: LegacyOrderItem[] };
 
@@ -56,15 +55,24 @@ function normalizeRole(value: unknown): TavernPresetPrompt['role'] {
 }
 
 function promptIdentifier(prompt: Record<string, unknown>, format: PluginPresetSourceFormat) {
-  return String(format === 'legacy' ? prompt.identifier ?? prompt.id ?? '' : prompt.id ?? prompt.identifier ?? '').trim();
+  return String(
+    format === 'legacy' ? (prompt.identifier ?? prompt.id ?? '') : (prompt.id ?? prompt.identifier ?? ''),
+  ).trim();
 }
 
 function getRawPrompts(raw: Record<string, unknown>) {
   return Array.isArray(raw.prompts) ? raw.prompts.filter(isRecord) : [];
 }
 
+function getPromptGroupMetadata(raw: Record<string, unknown>) {
+  const extensions = isRecord(raw.extensions) ? raw.extensions : null;
+  const toolkit = extensions && isRecord(extensions.baibaiToolkit) ? extensions.baibaiToolkit : null;
+  const state = toolkit && isRecord(toolkit.presetPromptGroups) ? toolkit.presetPromptGroups : null;
+  return state && isRecord(state.prompts) ? state.prompts : null;
+}
+
 function getLegacyOrderRecords(raw: Record<string, unknown>) {
-  return Array.isArray(raw.prompt_order) ? raw.prompt_order.filter(isRecord) as LegacyOrderRecord[] : [];
+  return Array.isArray(raw.prompt_order) ? (raw.prompt_order.filter(isRecord) as LegacyOrderRecord[]) : [];
 }
 
 function getEffectiveLegacyOrderRecord(raw: Record<string, unknown>) {
@@ -113,7 +121,7 @@ export function detectPluginPresetFormat(raw: Record<string, unknown>): PluginPr
 }
 
 export function normalizePluginPresetImport(value: unknown) {
-  const sourceRoot = Array.isArray(value) ? 'array' as const : 'object' as const;
+  const sourceRoot = Array.isArray(value) ? ('array' as const) : ('object' as const);
   const raw = Array.isArray(value) ? { prompts: value } : value;
   if (!isRecord(raw)) throw new Error('导入文件不是有效的预设 JSON');
   const sourceFormat = detectPluginPresetFormat(raw);
@@ -203,7 +211,9 @@ export function reorderPluginPresetPrompts(record: PluginPresetRecord, orderedPr
   if (record.sourceFormat === 'legacy') {
     const orderRecord = getEffectiveLegacyOrderRecord(record.raw);
     if (orderRecord) {
-      const enabledById = new Map((orderRecord.order ?? []).map(item => [String(item.identifier ?? ''), item.enabled !== false]));
+      const enabledById = new Map(
+        (orderRecord.order ?? []).map(item => [String(item.identifier ?? ''), item.enabled !== false]),
+      );
       orderRecord.order = orderedPromptIds.map(identifier => ({
         enabled: enabledById.get(identifier) ?? findRawPrompt(record, identifier).enabled !== false,
         identifier,
@@ -223,6 +233,8 @@ export function deletePluginPresetPrompt(record: PluginPresetRecord, promptId: s
       orderRecord.order = (orderRecord.order ?? []).filter(item => String(item.identifier ?? '') !== promptId);
     });
   }
+  const groupMetadata = getPromptGroupMetadata(record.raw);
+  if (groupMetadata) delete groupMetadata[promptId];
   record.updatedAt = new Date().toISOString();
 }
 
@@ -248,38 +260,55 @@ export function duplicatePluginPresetPrompt(
     const orderRecord = getEffectiveLegacyOrderRecord(record.raw);
     const order = orderRecord?.order ?? [];
     const orderIndex = order.findIndex(item => String(item.identifier ?? '') === sourcePromptId);
-    order.splice(orderIndex < 0 ? order.length : orderIndex + 1, 0, { enabled: input.enabled ?? false, identifier: id });
+    order.splice(orderIndex < 0 ? order.length : orderIndex + 1, 0, {
+      enabled: input.enabled ?? false,
+      identifier: id,
+    });
     if (orderRecord) orderRecord.order = order;
   }
+  const groupMetadata = getPromptGroupMetadata(record.raw);
+  const sourceGroupMetadata = groupMetadata?.[sourcePromptId];
+  if (groupMetadata && isRecord(sourceGroupMetadata)) groupMetadata[id] = cloneRecord(sourceGroupMetadata);
   record.updatedAt = new Date().toISOString();
   return id;
 }
 
 export function exportPluginPreset(record: PluginPresetRecord) {
   const raw = cloneRecord(record.raw);
-  return record.sourceRoot === 'array' && Array.isArray(raw.prompts) ? raw.prompts : raw;
+  const extensions = isRecord(raw.extensions) ? raw.extensions : null;
+  const toolkit = extensions && isRecord(extensions.baibaiToolkit) ? extensions.baibaiToolkit : null;
+  const groupState = toolkit && isRecord(toolkit.presetPromptGroups) ? toolkit.presetPromptGroups : null;
+  const hasPromptGroups = Boolean(
+    groupState &&
+    ((Array.isArray(groupState.groups) && groupState.groups.length > 0) ||
+      (isRecord(groupState.prompts) && Object.keys(groupState.prompts).length > 0)),
+  );
+  return record.sourceRoot === 'array' && Array.isArray(raw.prompts) && !hasPromptGroups ? raw.prompts : raw;
 }
 
 export function buildPluginPresetOrderedPrompts(
   record: PluginPresetRecord,
   variables: Record<string, string> = {},
 ): Array<RawOrderedPrompt | string> {
-  const orderedPrompts = readPluginPreset(record).prompts.reduce<Array<RawOrderedPrompt | string>>((ordered, prompt) => {
-    if (!prompt.enabled) return ordered;
-    const placeholder = PLACEHOLDER_BY_ID[prompt.id];
-    if (placeholder) {
-      ordered.push(placeholder);
+  const orderedPrompts = readPluginPreset(record).prompts.reduce<Array<RawOrderedPrompt | string>>(
+    (ordered, prompt) => {
+      if (!prompt.enabled) return ordered;
+      const placeholder = PLACEHOLDER_BY_ID[prompt.id];
+      if (placeholder) {
+        ordered.push(placeholder);
+        return ordered;
+      }
+      let content = prompt.content?.trim() || '';
+      for (const [name, value] of Object.entries(variables)) {
+        if (!/^[\w.-]+$/u.test(name)) continue;
+        const escapedName = name.replace(/[.*+?^${}()|[\]\\]/gu, '\\$&');
+        content = content.replace(new RegExp(`\\{\\{\\s*${escapedName}\\s*\\}\\}`, 'giu'), () => value);
+      }
+      if (content) ordered.push({ content, role: prompt.role });
       return ordered;
-    }
-    let content = prompt.content?.trim() || '';
-    for (const [name, value] of Object.entries(variables)) {
-      if (!/^[\w.-]+$/u.test(name)) continue;
-      const escapedName = name.replace(/[.*+?^${}()|[\]\\]/gu, '\\$&');
-      content = content.replace(new RegExp(`\\{\\{\\s*${escapedName}\\s*\\}\\}`, 'giu'), () => value);
-    }
-    if (content) ordered.push({ content, role: prompt.role });
-    return ordered;
-  }, []);
+    },
+    [],
+  );
 
   // 酒馆聊天预设通常没有 userInput 标记：本轮输入原本由聊天生成流程自动接在
   // Chat History 后。插件私有预设使用 generateRaw，必须显式补回这个占位符，
