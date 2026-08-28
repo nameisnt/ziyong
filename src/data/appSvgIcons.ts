@@ -1,3 +1,14 @@
+export {
+  APP_IDENTITY_SVG_ICON_IDS,
+  APP_IDENTITY_SVG_ICONS,
+  APP_SVG_STROKE_PROFILES,
+  getAppIdentitySvgIcon,
+  type AppIdentitySvgIconDefinition,
+  type AppIdentitySvgIconId,
+  type AppSvgPaper,
+  type AppSvgStrokeProfile,
+} from './appIdentitySvgIcons';
+
 export type AppSvgIconDefinition = readonly string[];
 
 const icons = {

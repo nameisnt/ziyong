@@ -39,7 +39,12 @@
             :style="getAppPreviewStyle(app)"
             :title="app.name"
           >
-            <AppIcon :asset-path="getAppIconAssetPath(app)" :icon="getAppIcon(app)" />
+            <AppIcon
+              :app-id="app.id"
+              :asset-path="getAppIconAssetPath(app)"
+              :default-icon="app.icon"
+              :icon="getAppIcon(app)"
+            />
           </span>
         </div>
       </section>
@@ -81,7 +86,12 @@
             class="pc-app-icon-material"
             :style="getAppPreviewStyle(app)"
           >
-            <AppIcon :asset-path="getAppIconAssetPath(app)" :icon="getAppIcon(app)" />
+            <AppIcon
+              :app-id="app.id"
+              :asset-path="getAppIconAssetPath(app)"
+              :default-icon="app.icon"
+              :icon="getAppIcon(app)"
+            />
           </span>
         </span>
         <span class="pc-entry-copy">
@@ -170,9 +180,14 @@
             :title="app.name"
             @click="selectedAppId = app.id"
           >
-            <span :style="getAppPreviewStyle(app)"
-              ><AppIcon :asset-path="getAppIconAssetPath(app)" :icon="getAppIcon(app)"
-            /></span>
+            <span :style="getAppPreviewStyle(app)">
+              <AppIcon
+                :app-id="app.id"
+                :asset-path="getAppIconAssetPath(app)"
+                :default-icon="app.icon"
+                :icon="getAppIcon(app)"
+              />
+            </span>
             <small>{{ app.name }}</small>
           </button>
         </div>
@@ -180,7 +195,12 @@
         <div v-if="selectedApp" class="pc-selected-icon-editor">
           <div class="pc-selected-app-head">
             <span :style="getAppPreviewStyle(selectedApp)">
-              <AppIcon :asset-path="getAppIconAssetPath(selectedApp)" :icon="getAppIcon(selectedApp)" />
+              <AppIcon
+                :app-id="selectedApp.id"
+                :asset-path="getAppIconAssetPath(selectedApp)"
+                :default-icon="selectedApp.icon"
+                :icon="getAppIcon(selectedApp)"
+              />
             </span>
             <div>
               <strong>{{ selectedApp.name }}</strong>

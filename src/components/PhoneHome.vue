@@ -81,7 +81,12 @@
               @pointerup="section.draggable && onFolderAppPointerUp($event)"
             >
               <span class="pc-app-icon pc-app-icon-material">
-                <AppIcon :asset-path="getDisplayAppIconAssetPath(app)" :icon="getDisplayAppIcon(app)" />
+                <AppIcon
+                  :app-id="app.id"
+                  :asset-path="getDisplayAppIconAssetPath(app)"
+                  :default-icon="app.icon"
+                  :icon="getDisplayAppIcon(app)"
+                />
                 <span v-if="getHomeAppCount(app)" class="pc-app-count-badge">{{ formatHomeAppCount(app) }}</span>
               </span>
               <strong :title="app.name">{{ app.name }}</strong>
@@ -108,7 +113,9 @@
       >
         <span class="pc-app-icon pc-app-icon-material">
           <AppIcon
+            :app-id="item.app?.id"
             :asset-path="item.app ? getDisplayAppIconAssetPath(item.app) : getFolderIconAssetPath(item)"
+            :default-icon="item.app?.icon"
             :icon="item.app ? getDisplayAppIcon(item.app) : 'fa-folder'"
           />
           <span v-if="item.folder" class="pc-app-count-badge">{{ item.folder.appIds.length }}</span>
@@ -172,7 +179,12 @@
                 @update:model-value="toggleFolderCreateApp(app.id)"
               />
               <span class="pc-app-icon pc-app-icon-material">
-                <AppIcon :asset-path="getDisplayAppIconAssetPath(app)" :icon="getDisplayAppIcon(app)" />
+                <AppIcon
+                  :app-id="app.id"
+                  :asset-path="getDisplayAppIconAssetPath(app)"
+                  :default-icon="app.icon"
+                  :icon="getDisplayAppIcon(app)"
+                />
               </span>
               <span>
                 <strong>{{ app.name }}</strong>

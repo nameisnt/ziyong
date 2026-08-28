@@ -113,6 +113,7 @@ import { usePhoneToastrBridge } from '@/composables/usePhoneToastrBridge';
 import { usePhoneWindowPosition } from '@/composables/usePhoneWindowPosition';
 import { getRegisteredPhoneAppComponent } from '@/core/appRegistry';
 import type { PhoneAppDefinition } from '@/data/apps';
+import { APP_SVG_STROKE_PROFILES } from '@/data/appSvgIcons';
 import { getPaperTexture } from '@/data/paperTextures';
 import { useFileRepositoryStore } from '@/store/fileRepository';
 import { usePhoneStore } from '@/store/phone';
@@ -201,6 +202,7 @@ const rootStyle = computed(() => {
   const visualTheme = settings.value.visualTheme;
   const dark = settings.value.theme === 'dark';
   const paperTexture = getPaperTexture(visualTheme.paperTextureId);
+  const appSvgStroke = APP_SVG_STROKE_PROFILES[visualTheme.paperTextureId];
   return {
     '--pc-bg': cssColor(visualTheme.backgroundColor),
     '--pc-surface': cssColor(visualTheme.surfaceColor),
@@ -219,6 +221,14 @@ const rootStyle = computed(() => {
     '--pc-form-control-text': dark ? '#f5f5f7' : '#1c1c1e',
     '--pc-hint': cssColor(visualTheme.hintColor),
     '--pc-icon-radius': `${visualTheme.iconRadius}px`,
+    '--pc-app-svg-primary-width': String(appSvgStroke.primaryWidth),
+    '--pc-app-svg-detail-width': String(appSvgStroke.detailWidth),
+    '--pc-app-svg-accent-width': String(appSvgStroke.accentWidth),
+    '--pc-app-svg-linecap': appSvgStroke.linecap,
+    '--pc-app-svg-echo-width': String(appSvgStroke.echo?.width ?? 0),
+    '--pc-app-svg-echo-opacity': String(appSvgStroke.echo?.opacity ?? 0),
+    '--pc-app-svg-echo-x': `${appSvgStroke.echo?.dx ?? 0}px`,
+    '--pc-app-svg-echo-y': `${appSvgStroke.echo?.dy ?? 0}px`,
     '--pc-primary-text': cssColor(visualTheme.primaryTextColor),
     '--pc-reader-font-family': toFontStack(settings.value.reader.fontFamily, 'var(--pc-font-sans)'),
     '--pc-reader-background': cssColor(settings.value.reader.backgroundColor) || 'transparent',

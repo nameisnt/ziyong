@@ -25,6 +25,14 @@ test('material colors derive from existing App theme variables without a new set
   assert.doesNotMatch(globalCss, /animation:\s*[^;]*(shine|glow|liquid|glass)/iu);
 });
 
+test('paper identity strokes are injected by the shared overlay theme', () => {
+  assert.match(overlay, /APP_SVG_STROKE_PROFILES\[visualTheme\.paperTextureId\]/u);
+  assert.match(overlay, /'--pc-app-svg-primary-width'/u);
+  assert.match(overlay, /'--pc-app-svg-detail-width'/u);
+  assert.match(overlay, /'--pc-app-svg-accent-width'/u);
+  assert.match(overlay, /'--pc-app-svg-echo-opacity'/u);
+});
+
 test('each paper theme gives the shared semantic glyph its own rendering profile', () => {
   for (const paper of ['a4', 'xuan', 'parchment', 'cardstock']) {
     assert.match(globalCss, new RegExp(`data-paper='${paper}'\\] \\.pc-app-icon-material > i`, 'u'));
@@ -32,4 +40,7 @@ test('each paper theme gives the shared semantic glyph its own rendering profile
   assert.match(globalCss, /data-paper='xuan'[\s\S]*?filter:\s*contrast/u);
   assert.match(globalCss, /data-paper='parchment'[\s\S]*?filter:\s*sepia/u);
   assert.match(globalCss, /data-paper='cardstock'[\s\S]*?-webkit-text-stroke/u);
+  for (const paper of ['xuan', 'parchment', 'cardstock']) {
+    assert.match(globalCss, new RegExp(`data-paper='${paper}'\\] \\.pc-svg-icon-echo`, 'u'));
+  }
 });

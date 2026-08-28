@@ -265,15 +265,6 @@
         >
           <header class="pc-compact-toolbar">
             <strong>{{ t`发送用户消息` }}</strong>
-            <button
-              class="pc-icon-btn"
-              type="button"
-              :title="t`关闭`"
-              :aria-label="t`关闭`"
-              @click="closeReaderSendComposer"
-            >
-              <i class="fa-solid fa-xmark"></i>
-            </button>
           </header>
           <textarea
             ref="readerSendAreaRef"
