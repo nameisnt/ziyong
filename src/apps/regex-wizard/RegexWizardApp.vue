@@ -247,16 +247,18 @@
     <article class="pc-section-card pc-regex-wizard-test">
       <header>
         <div>
-          <strong>示例测试</strong>
+          <strong>
+            示例测试
+            <InfoHint
+              :text="
+                draft.mode === 'fields' && draft.fieldStructure === 'line'
+                  ? '先匹配外层标签，再按当前列表顺序匹配“字段名：内容”；同名字段也按顺序区分。每个字段可单独设为可选。'
+                  : '多个固定字段按当前顺序匹配；每个字段可单独设为可选。下方“第一个/全部”只控制原文里有多个区块时取几个。'
+              "
+            />
+          </strong>
           <small>{{ testSummary }}</small>
         </div>
-        <InfoHint
-          :text="
-            draft.mode === 'fields' && draft.fieldStructure === 'line'
-              ? '先匹配外层标签，再按当前列表顺序匹配“字段名：内容”；同名字段也按顺序区分。每个字段可单独设为可选。'
-              : '多个固定字段按当前顺序匹配；每个字段可单独设为可选。下方“第一个/全部”只控制原文里有多个区块时取几个。'
-          "
-        />
       </header>
       <textarea v-model="sampleInput" class="pc-area" placeholder="粘贴一段真实原文，立即查看是否命中。"></textarea>
       <div v-if="generationError || testResult.error" class="pc-regex-wizard-error">
@@ -281,8 +283,10 @@
 
     <article class="pc-section-card pc-regex-wizard-result">
       <header>
-        <strong>生成结果</strong>
-        <InfoHint text="正则替换 App 使用不带两侧 / / 的表达式主体。" />
+        <strong>
+          生成结果
+          <InfoHint text="正则替换 App 使用不带两侧 / / 的表达式主体。" />
+        </strong>
       </header>
 
       <div class="pc-regex-wizard-code-row">

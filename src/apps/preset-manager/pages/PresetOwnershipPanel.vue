@@ -2,15 +2,15 @@
   <details class="pc-section-card pc-preset-owner">
     <summary class="pc-preset-owner-head">
       <div>
-        <strong>阅读规则</strong>
-        <span>预设共享</span>
+        <strong>
+          阅读规则
+          <InfoHint text="使用此预设阅读聊天时，标题提取、正文提取和正文清理会采用这里的设置。" />
+        </strong>
       </div>
       <i class="fa-solid fa-chevron-right" aria-hidden="true"></i>
     </summary>
 
     <div class="pc-preset-owner-body">
-      <InfoHint text="使用此预设阅读聊天时，标题提取、正文提取和正文清理会采用这里的设置。" />
-
       <div v-if="readerMigrationConflict" class="pc-preset-owner-conflict">
         <span>旧数据中有 {{ readerMigrationConflict.candidates.length }} 套不同阅读规则，请选择一套后保存。</span>
         <div>
@@ -164,7 +164,6 @@ watch([() => props.presetName, () => presetLinks.revision], refresh, { immediate
   min-width: 0;
   gap: 2px;
 }
-.pc-preset-owner-head span,
 .pc-preset-cleanup small,
 .pc-preset-cleanup p {
   color: var(--pc-muted);

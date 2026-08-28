@@ -299,8 +299,10 @@
 
       <article class="pc-page-section">
         <div class="pc-section-head">
-          <strong>{{ t`写入预览` }}</strong>
-          <InfoHint :text="previewHelpText" />
+          <strong>
+            {{ t`写入预览` }}
+            <InfoHint :text="previewHelpText" />
+          </strong>
         </div>
         <pre class="pc-preview">{{ promptText }}</pre>
         <div class="pc-form-actions pc-time-actions">

@@ -72,8 +72,10 @@
 
     <section class="pc-page-section">
       <div class="pc-section-head">
-        <strong>悬浮球</strong>
-        <InfoHint text="关闭手机后显示在页面右下角，可拖拽打开。" />
+        <strong>
+          悬浮球
+          <InfoHint text="关闭手机后显示在页面右下角，可拖拽打开。" />
+        </strong>
       </div>
       <div class="pc-settings-list">
         <label class="pc-setting-row">

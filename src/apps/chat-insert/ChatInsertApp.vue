@@ -46,8 +46,10 @@
 
       <article class="pc-page-section">
         <div class="pc-section-head">
-          <strong>{{ t`引用内容` }}</strong>
-          <InfoHint :text="referenceHelpText" />
+          <strong>
+            {{ t`引用内容` }}
+            <InfoHint :text="referenceHelpText" />
+          </strong>
         </div>
         <ReferencePicker v-model="selectedReferences" />
         <div v-if="placeholderTokens.length" class="pc-placeholder-list">

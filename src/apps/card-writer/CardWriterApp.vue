@@ -455,11 +455,13 @@
     <section v-else-if="route.page === 'profile-import'" class="pc-card-writer-page">
       <article class="pc-section-card pc-card-writer-import-summary">
         <div>
-          <span class="pc-kicker">导入目标</span>
+          <span class="pc-kicker">
+            导入目标
+            <InfoHint text="成品按 XML 标签拆分。世界观区域、详情和事件会成为独立资料；同名人物的基础与性格会合并。" />
+          </span>
           <strong>{{ phone.viewingScopeMeta.ownerName }} / {{ phone.viewingScopeMeta.chatTitle }}</strong>
           <small>只会写入上方聊天的资料表，不会改动写卡成品或创建聊天文件。</small>
         </div>
-        <InfoHint text="成品按 XML 标签拆分。世界观区域、详情和事件会成为独立资料；同名人物的基础与性格会合并。" />
       </article>
 
       <div class="pc-field-group">

@@ -157,10 +157,12 @@
       <article class="pc-page-section">
         <div class="pc-app-builder-section-head">
           <div>
-            <strong>{{ t`数据范围` }}</strong>
+            <strong>
+              {{ t`数据范围` }}
+              <InfoHint :text="t`已有内容时切换范围会把这个 App 的全部内容迁移到新范围。`" />
+            </strong>
             <small>{{ draft.dataScope === 'chat' ? t`不同聊天分别保存` : t`所有聊天共用内容` }}</small>
           </div>
-          <InfoHint :text="t`已有内容时切换范围会把这个 App 的全部内容迁移到新范围。`" />
         </div>
         <div class="pc-app-builder-segment">
           <button
