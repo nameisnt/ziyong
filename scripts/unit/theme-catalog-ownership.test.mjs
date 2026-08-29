@@ -6,7 +6,12 @@ import { ModuleKind, ScriptTarget, transpileModule } from 'typescript';
 
 const appPath = new URL('../../src/apps/theme/ThemeApp.vue', import.meta.url);
 const catalogPath = new URL('../../src/apps/theme/themeCatalog.ts', import.meta.url);
-const [appSource, catalogSource] = await Promise.all([readFile(appPath, 'utf8'), readFile(catalogPath, 'utf8')]);
+const settingsStorePath = new URL('../../src/store/settings.ts', import.meta.url);
+const [appSource, catalogSource, settingsStoreSource] = await Promise.all([
+  readFile(appPath, 'utf8'),
+  readFile(catalogPath, 'utf8'),
+  readFile(settingsStorePath, 'utf8'),
+]);
 const catalogModule = transpileModule(catalogSource, {
   compilerOptions: { module: ModuleKind.ESNext, target: ScriptTarget.ES2022 },
 }).outputText;
@@ -70,8 +75,26 @@ test('theme and icon catalog identities keep their established order', () => {
 });
 
 test('theme presets declare one supported paper texture', () => {
-  const supportedTextures = new Set(['a4', 'xuan', 'parchment', 'cardstock']);
+  const supportedTextures = new Set([
+    'a4',
+    'graphite',
+    'parchment',
+    'velvet',
+    'xuan',
+    'cypress',
+    'sky',
+    'ocean',
+    'cardstock',
+  ]);
   const presets = catalog.themePacks.flatMap(pack => [pack.light, pack.dark]);
   assert.ok(presets.length > 0);
   presets.forEach(preset => assert.ok(supportedTextures.has(preset.paperTextureId)));
+});
+
+test('legacy built-in theme profiles migrate paper identity without rewriting custom colors', () => {
+  assert.match(settingsStoreSource, /visualTheme\.paperTextureId === 'a4' && background === '#eaf6ff'/u);
+  for (const paper of ['ocean', 'cypress', 'graphite', 'velvet']) {
+    assert.match(settingsStoreSource, new RegExp(`'#[0-9a-f]{6}': '${paper}'`, 'u'));
+  }
+  assert.match(settingsStoreSource, /\?\? 'cardstock'/u);
 });

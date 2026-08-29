@@ -60,7 +60,14 @@
             :style="{ '--pc-prompt-accent': group.accent }"
             @click="openAppPromptGroup(group.appId)"
           >
-            <span class="pc-app-prompt-icon"><i class="fa-solid" :class="group.icon"></i></span>
+            <span class="pc-app-prompt-icon">
+              <AppIcon
+                :app-id="group.appId"
+                :asset-path="group.assetPath"
+                :default-icon="group.defaultIcon"
+                :icon="group.icon"
+              />
+            </span>
             <strong>{{ group.label }}</strong>
             <small>{{ group.items.length }}</small>
           </button>
@@ -78,7 +85,14 @@
             :style="{ '--pc-prompt-accent': group.accent }"
             @click="openTaskPromptGroup(group.appId)"
           >
-            <span class="pc-app-prompt-icon"><i class="fa-solid" :class="group.icon"></i></span>
+            <span class="pc-app-prompt-icon">
+              <AppIcon
+                :app-id="group.appId"
+                :asset-path="group.assetPath"
+                :default-icon="group.defaultIcon"
+                :icon="group.icon"
+              />
+            </span>
             <strong>{{ group.label }}</strong>
             <small>{{ group.items.length }}</small>
           </button>
@@ -615,7 +629,12 @@
           <header class="pc-prompt-detail-head">
             <div class="pc-app-prompt-dialog-title">
               <span class="pc-app-prompt-icon" :style="{ '--pc-prompt-accent': activeAppPromptGroup.accent }">
-                <i class="fa-solid" :class="activeAppPromptGroup.icon"></i>
+                <AppIcon
+                  :app-id="activeAppPromptGroup.appId"
+                  :asset-path="activeAppPromptGroup.assetPath"
+                  :default-icon="activeAppPromptGroup.defaultIcon"
+                  :icon="activeAppPromptGroup.icon"
+                />
               </span>
               <div>
                 <span class="pc-kicker">{{ activeAppPromptGroup.label }}</span>
@@ -734,6 +753,7 @@
 </template>
 
 <script setup lang="ts">
+import AppIcon from '@/components/AppIcon.vue';
 import ActionMenu from '@/components/ActionMenu.vue';
 import BulkSelectionBar from '@/components/BulkSelectionBar.vue';
 import BulkSelectionCheckbox from '@/components/BulkSelectionCheckbox.vue';
@@ -756,11 +776,14 @@ import {
 } from '@/core/appRegistry';
 import { usePhoneStore } from '@/store/phone';
 import { usePromptStore, type QuickPhrase } from '@/store/prompts';
+import { useSettingsStore } from '@/store/settings';
 import { storeToRefs } from 'pinia';
 
 const phone = usePhoneStore();
 const prompts = usePromptStore();
+const settingsStore = useSettingsStore();
 const { currentRoute: route } = storeToRefs(phone);
+const { settings } = storeToRefs(settingsStore);
 const {
   appPromptDefinitions,
   appPrompts,
@@ -889,7 +912,12 @@ const appPromptGroups = computed(() =>
     .map(app => ({
       accent: app.accent,
       appId: app.id,
-      icon: app.icon,
+      assetPath:
+        settings.value.homeIconAssets.find(
+          asset => asset.id === (settings.value.visualTheme.appIconAssetIds[app.id] || ''),
+        )?.path || '',
+      defaultIcon: app.icon,
+      icon: settings.value.visualTheme.appIconOverrides[app.id] || app.icon,
       items: [
         ...(app.promptDefinitions ?? []).map(definition => createAppPromptCard(app.id, app.name, 'app', definition)),
         ...(app.specialPromptDefinitions ?? []).map(definition =>
@@ -906,7 +934,12 @@ const taskPromptGroups = computed(() =>
     .map(app => ({
       accent: app.accent,
       appId: app.id,
-      icon: app.icon,
+      assetPath:
+        settings.value.homeIconAssets.find(
+          asset => asset.id === (settings.value.visualTheme.appIconAssetIds[app.id] || ''),
+        )?.path || '',
+      defaultIcon: app.icon,
+      icon: settings.value.visualTheme.appIconOverrides[app.id] || app.icon,
       items: taskTemplateDefinitions.value
         .filter(definition => definition.appId === app.id)
         .map(definition => createTaskPromptCard(app.id, app.name, definition)),
@@ -1476,8 +1509,15 @@ async function copyText(text: string, successMessage: string) {
   display: grid;
   place-items: center;
   border-radius: var(--pc-icon-radius);
-  background: color-mix(in srgb, var(--pc-prompt-accent) 18%, var(--pc-surface-strong) 82%);
+  border: 1px solid color-mix(in srgb, var(--pc-prompt-accent) 28%, var(--pc-border) 72%);
+  background: var(--pc-surface-strong);
   color: var(--pc-prompt-accent);
+}
+
+.pc-app-prompt-icon :deep(img) {
+  width: 90%;
+  height: 90%;
+  object-fit: contain;
 }
 
 .pc-app-prompt-tile strong {

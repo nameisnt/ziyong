@@ -812,7 +812,6 @@ const summaryEditorChapters = computed(() => {
 const shelfBooks = computed(() =>
   books.value.map(book => ({
     count: book.chapters.length,
-    gradient: 'linear-gradient(180deg, #f472b6 0%, #fb7185 100%)',
     icon: 'fa-solid fa-book',
     id: book.id,
     subtitle: `${book.typeName} · ${book.chapters.length} 章`,

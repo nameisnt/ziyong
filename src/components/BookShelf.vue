@@ -2,7 +2,7 @@
   <div class="pc-bookshelf" :class="variant">
     <div v-for="row in rows" :key="row[0]?.id" class="pc-shelf-row">
       <button v-for="book in row" :key="book.id" class="pc-book-item" type="button" @click="$emit('select', book.id)">
-        <span class="pc-book-cover" :style="{ background: book.gradient }">
+        <span class="pc-book-cover" :data-paper="paper">
           <i :class="book.icon"></i>
           <b>{{ book.count }}</b>
         </span>
@@ -23,9 +23,10 @@
 </template>
 
 <script setup lang="ts">
+import { useSettingsStore } from '@/store/settings';
+
 interface BookShelfCard {
   count: number | string;
-  gradient: string;
   icon: string;
   id: string;
   subtitle: string;
@@ -47,6 +48,8 @@ const props = withDefaults(
     variant: 'diary',
   },
 );
+const settingsStore = useSettingsStore();
+const paper = computed(() => settingsStore.settings.visualTheme.paperTextureId);
 
 defineEmits<{
   create: [];
@@ -105,8 +108,65 @@ const rows = computed(() => {
   box-shadow:
     -2px 0 5px rgba(0, 0, 0, 0.18),
     2px 4px 8px rgba(0, 0, 0, 0.12);
-  color: #fff;
+  border: 1px solid var(--pc-border);
+  background-color: var(--pc-surface-strong);
+  background-image: var(--pc-paper-texture);
+  background-size: 180px 180px;
+  color: var(--pc-text);
   font-size: 24px;
+}
+
+.pc-book-cover[data-paper='a4'] {
+  border-color: color-mix(in srgb, var(--pc-accent) 24%, var(--pc-border) 76%);
+  background-image:
+    linear-gradient(90deg, transparent 0 14%, color-mix(in srgb, var(--pc-accent) 16%, transparent 84%) 14% 17%, transparent 17%),
+    var(--pc-paper-texture);
+  color: color-mix(in srgb, var(--pc-accent) 68%, var(--pc-text) 32%);
+}
+
+.pc-book-cover[data-paper='graphite'] {
+  border-color: color-mix(in srgb, #d8dde3 42%, var(--pc-border) 58%);
+  background-color: #202226;
+  color: #e5e7eb;
+}
+
+.pc-book-cover[data-paper='parchment'] {
+  border-color: #73502f;
+  background-color: #d6ae72;
+  color: #4a2d1a;
+}
+
+.pc-book-cover[data-paper='velvet'] {
+  border-color: #b78745;
+  background-color: #3b182b;
+  color: #e3bd78;
+}
+
+.pc-book-cover[data-paper='xuan'] {
+  border-color: color-mix(in srgb, var(--pc-text) 34%, var(--pc-border) 66%);
+  background-color: #eeeade;
+  color: #1d2925;
+}
+
+.pc-book-cover[data-paper='cypress'] {
+  border-color: #668f7d;
+  background-color: #10241f;
+  color: #d9eee4;
+}
+
+.pc-book-cover[data-paper='sky'] {
+  border-color: color-mix(in srgb, var(--pc-accent) 42%, var(--pc-border) 58%);
+  background-color: #dff2ff;
+  background-image:
+    linear-gradient(145deg, transparent 0 64%, rgba(244, 114, 182, 0.13) 64% 74%, transparent 74%),
+    var(--pc-paper-texture);
+  color: #16557b;
+}
+
+.pc-book-cover:is([data-paper='ocean'], [data-paper='cardstock']) {
+  border-color: color-mix(in srgb, var(--pc-accent) 62%, white 38%);
+  background-color: var(--pc-bg);
+  color: color-mix(in srgb, var(--pc-accent) 65%, white 35%);
 }
 
 .extras .pc-book-cover {

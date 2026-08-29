@@ -118,6 +118,23 @@ function normalizeThemeProfileAssets(nextSettings: PhoneSettings, profile: Theme
   if (!hasFontFamily(profile.readerFontFamily)) profile.readerFontFamily = '';
 }
 
+function migrateBuiltinThemePaper(profile: ThemeAppearanceProfile) {
+  const visualTheme = profile.visualTheme;
+  const background = visualTheme.backgroundColor.trim().toLowerCase();
+  if (visualTheme.paperTextureId === 'a4' && background === '#eaf6ff') {
+    visualTheme.paperTextureId = 'sky';
+    return;
+  }
+  if (visualTheme.paperTextureId !== 'cardstock') return;
+  const paperByBackground = {
+    '#071923': 'ocean',
+    '#10241f': 'cypress',
+    '#18191b': 'graphite',
+    '#25131f': 'velvet',
+  } as const;
+  visualTheme.paperTextureId = paperByBackground[background as keyof typeof paperByBackground] ?? 'cardstock';
+}
+
 function normalizeSettings(rawSettings: unknown) {
   const hadThemeProfiles = hasStoredThemeProfiles(rawSettings);
   const source = rawSettings && typeof rawSettings === 'object' ? (klona(rawSettings) as Record<string, unknown>) : {};
@@ -191,6 +208,8 @@ function normalizeSettings(rawSettings: unknown) {
   }
   normalizeCustomFonts(nextSettings);
   if (hadThemeProfiles) {
+    migrateBuiltinThemePaper(nextSettings.themeProfiles.light);
+    migrateBuiltinThemePaper(nextSettings.themeProfiles.dark);
     normalizeThemeProfileAssets(nextSettings, nextSettings.themeProfiles.light);
     normalizeThemeProfileAssets(nextSettings, nextSettings.themeProfiles.dark);
     applyThemeProfile(nextSettings, nextSettings.themeProfiles[nextSettings.theme]);
@@ -202,7 +221,7 @@ function normalizeSettings(rawSettings: unknown) {
     };
     nextSettings.themeProfiles.dark = {
       ...klona(migratedProfile),
-      visualTheme: { ...klona(migratedProfile.visualTheme), paperTextureId: 'cardstock' },
+      visualTheme: { ...klona(migratedProfile.visualTheme), paperTextureId: 'graphite' },
     };
     applyThemeProfile(nextSettings, nextSettings.themeProfiles[nextSettings.theme]);
   }

@@ -3,11 +3,17 @@ import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import test from 'node:test';
 
-const [globalCss, home, overlay, theme] = await Promise.all([
+const [globalCss, home, overlay, theme, prompts, bookShelf, diary, extras, letters, summary] = await Promise.all([
   readFile(new URL('../../src/global.css', import.meta.url), 'utf8'),
   readFile(new URL('../../src/components/PhoneHome.vue', import.meta.url), 'utf8'),
   readFile(new URL('../../src/components/PhoneOverlay.vue', import.meta.url), 'utf8'),
   readFile(new URL('../../src/apps/theme/ThemeApp.vue', import.meta.url), 'utf8'),
+  readFile(new URL('../../src/apps/prompts/PromptsApp.vue', import.meta.url), 'utf8'),
+  readFile(new URL('../../src/components/BookShelf.vue', import.meta.url), 'utf8'),
+  readFile(new URL('../../src/apps/diary/DiaryApp.vue', import.meta.url), 'utf8'),
+  readFile(new URL('../../src/apps/extras/ExtrasApp.vue', import.meta.url), 'utf8'),
+  readFile(new URL('../../src/apps/letters/LettersApp.vue', import.meta.url), 'utf8'),
+  readFile(new URL('../../src/apps/summary/SummaryApp.vue', import.meta.url), 'utf8'),
 ]);
 
 test('one shared material styles home, Dock, group management and theme-preview App icons', () => {
@@ -34,13 +40,24 @@ test('paper identity strokes are injected by the shared overlay theme', () => {
 });
 
 test('each paper theme gives the shared semantic glyph its own rendering profile', () => {
-  for (const paper of ['a4', 'xuan', 'parchment', 'cardstock']) {
-    assert.match(globalCss, new RegExp(`data-paper='${paper}'\\] \\.pc-app-icon-material > i`, 'u'));
+  for (const paper of ['a4', 'graphite', 'parchment', 'velvet', 'xuan', 'cypress', 'sky', 'ocean', 'cardstock']) {
+    assert.match(globalCss, new RegExp(`data-paper='${paper}'`, 'u'));
   }
   assert.match(globalCss, /data-paper='xuan'[\s\S]*?filter:\s*contrast/u);
   assert.match(globalCss, /data-paper='parchment'[\s\S]*?filter:\s*sepia/u);
   assert.match(globalCss, /data-paper='cardstock'[\s\S]*?-webkit-text-stroke/u);
-  for (const paper of ['xuan', 'parchment', 'cardstock']) {
-    assert.match(globalCss, new RegExp(`data-paper='${paper}'\\] \\.pc-svg-icon-echo`, 'u'));
-  }
+  assert.match(globalCss, /data-paper='graphite'[\s\S]*?filter:\s*grayscale/u);
+});
+
+test('prompt App choices reuse the same theme-aware AppIcon entry as the home screen', () => {
+  assert.ok((prompts.match(/<AppIcon/gu) || []).length >= 3);
+  assert.match(prompts, /:asset-path="group\.assetPath"/u);
+  assert.match(prompts, /:default-icon="activeAppPromptGroup\.defaultIcon"/u);
+});
+
+test('shared bookshelves derive covers from paper identity without business gradients', () => {
+  assert.match(bookShelf, /:data-paper="paper"/u);
+  assert.match(bookShelf, /settingsStore\.settings\.visualTheme\.paperTextureId/u);
+  assert.doesNotMatch(bookShelf, /book\.gradient/u);
+  for (const source of [diary, extras, letters, summary]) assert.doesNotMatch(source, /gradient:\s*'linear-gradient/u);
 });

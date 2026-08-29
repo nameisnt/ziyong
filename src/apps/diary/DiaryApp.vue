@@ -631,7 +631,6 @@ const {
 const shelfBooks = computed(() =>
   books.value.map(book => ({
     count: book.entries.length,
-    gradient: 'linear-gradient(180deg, #4c8dff 0%, #6f6bff 100%)',
     icon: 'fa-solid fa-book-open',
     id: book.id,
     subtitle: `${book.entries.length} 篇`,

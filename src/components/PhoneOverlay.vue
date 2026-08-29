@@ -200,7 +200,6 @@ function cssColor(value: string) {
 
 const rootStyle = computed(() => {
   const visualTheme = settings.value.visualTheme;
-  const dark = settings.value.theme === 'dark';
   const paperTexture = getPaperTexture(visualTheme.paperTextureId);
   const appSvgStroke = APP_SVG_STROKE_PROFILES[visualTheme.paperTextureId];
   return {
@@ -217,8 +216,8 @@ const rootStyle = computed(() => {
     '--pc-danger': cssColor(visualTheme.dangerColor),
     '--pc-dock-bg': cssColor(visualTheme.dockColor),
     '--pc-dock-active': cssColor(visualTheme.dockActiveColor),
-    '--pc-form-control-bg': dark ? '#2c2c2e' : '#ffffff',
-    '--pc-form-control-text': dark ? '#f5f5f7' : '#1c1c1e',
+    '--pc-form-control-bg': cssColor(visualTheme.surfaceStrongColor),
+    '--pc-form-control-text': cssColor(visualTheme.textColor),
     '--pc-hint': cssColor(visualTheme.hintColor),
     '--pc-icon-radius': `${visualTheme.iconRadius}px`,
     '--pc-app-svg-primary-width': String(appSvgStroke.primaryWidth),

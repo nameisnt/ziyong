@@ -5,7 +5,16 @@ export type AppIdentitySvgArtwork = {
   secondary?: readonly string[];
 };
 
-export type AppSvgPaper = 'a4' | 'cardstock' | 'parchment' | 'xuan';
+export type AppSvgPaper =
+  | 'a4'
+  | 'graphite'
+  | 'parchment'
+  | 'velvet'
+  | 'xuan'
+  | 'cypress'
+  | 'sky'
+  | 'ocean'
+  | 'cardstock';
 
 export type AppIdentitySvgIconDefinition = AppIdentitySvgArtwork & {
   paperVariants?: Partial<Record<AppSvgPaper, AppIdentitySvgArtwork>>;
@@ -46,6 +55,46 @@ export const APP_SVG_STROKE_PROFILES = {
     texture: 'engraved',
   },
   cardstock: {
+    accentWidth: 2.75,
+    detailWidth: 1.7,
+    echo: { dx: -0.45, dy: 0.35, opacity: 0.3, width: 3 },
+    linecap: 'round',
+    primaryWidth: 2.3,
+    texture: 'crayon',
+  },
+  graphite: {
+    accentWidth: 1.9,
+    detailWidth: 1.35,
+    echo: { dx: 0.25, dy: 0.2, opacity: 0.18, width: 2.1 },
+    linecap: 'round',
+    primaryWidth: 1.8,
+    texture: 'clean',
+  },
+  velvet: {
+    accentWidth: 1.85,
+    detailWidth: 1.15,
+    echo: { dx: 0.4, dy: 0.35, opacity: 0.18, width: 1.25 },
+    linecap: 'square',
+    primaryWidth: 1.55,
+    texture: 'engraved',
+  },
+  cypress: {
+    accentWidth: 2.45,
+    detailWidth: 1.25,
+    echo: { dx: 0.35, dy: 0.2, opacity: 0.2, width: 2.7 },
+    linecap: 'round',
+    primaryWidth: 2.05,
+    texture: 'ink',
+  },
+  sky: {
+    accentWidth: 2.55,
+    detailWidth: 1.55,
+    echo: { dx: -0.35, dy: 0.3, opacity: 0.22, width: 2.7 },
+    linecap: 'round',
+    primaryWidth: 2.15,
+    texture: 'crayon',
+  },
+  ocean: {
     accentWidth: 2.75,
     detailWidth: 1.7,
     echo: { dx: -0.45, dy: 0.35, opacity: 0.3, width: 3 },

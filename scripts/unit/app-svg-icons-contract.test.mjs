@@ -114,7 +114,7 @@ test('custom assets and icon overrides keep priority over built-in App identity 
 });
 
 test('paper image identities use transparent 192px PNGs with SVG fallback', async () => {
-  const papers = ['xuan', 'parchment', 'cardstock'];
+  const papers = ['xuan', 'parchment', 'cardstock', 'graphite', 'velvet', 'cypress', 'sky', 'ocean'];
 
   assert.match(identityImageSource, /import\.meta\.glob\('\.\.\/assets\/app-icons\/\*\*\/\*\.png'/u);
   assert.match(appIcon, /getAppIdentityImageIcon/u);
@@ -173,12 +173,26 @@ test('eight showcase Apps have four genuinely separate paper artworks', () => {
   }
 });
 
-test('identity SVGs define four separate paper stroke profiles', () => {
+test('identity SVGs define every supported paper stroke profile', () => {
   const profiles = identityLibrary.APP_SVG_STROKE_PROFILES;
-  assert.deepEqual(Object.keys(profiles).sort(), ['a4', 'cardstock', 'parchment', 'xuan']);
+  assert.deepEqual(Object.keys(profiles).sort(), [
+    'a4',
+    'cardstock',
+    'cypress',
+    'graphite',
+    'ocean',
+    'parchment',
+    'sky',
+    'velvet',
+    'xuan',
+  ]);
   assert.deepEqual(
     new Set(Object.values(profiles).map(profile => profile.texture)),
     new Set(['clean', 'crayon', 'engraved', 'ink']),
   );
-  assert.equal(new Set(Object.values(profiles).map(profile => JSON.stringify(profile))).size, 4);
+  assert.equal(profiles.graphite.texture, 'clean');
+  assert.equal(profiles.velvet.texture, 'engraved');
+  assert.equal(profiles.cypress.texture, 'ink');
+  assert.equal(profiles.sky.texture, 'crayon');
+  assert.equal(profiles.ocean.texture, 'crayon');
 });

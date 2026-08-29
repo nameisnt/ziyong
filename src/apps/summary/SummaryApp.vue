@@ -350,7 +350,6 @@ const sortedActiveBookEntries = computed(() =>
 const shelfBooks = computed(() =>
   books.value.map(book => ({
     count: book.entries.length,
-    gradient: 'linear-gradient(180deg, #0ea5e9 0%, #22c55e 100%)',
     icon: 'fa-solid fa-layer-group',
     id: book.id,
     subtitle: `${book.entries.length} 条`,

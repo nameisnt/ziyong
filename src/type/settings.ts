@@ -55,7 +55,17 @@ export const HomeIconAssetSchema = z.object({
 });
 export type HomeIconAsset = z.infer<typeof HomeIconAssetSchema>;
 
-export const PaperTextureIdSchema = z.enum(['a4', 'xuan', 'parchment', 'cardstock']);
+export const PaperTextureIdSchema = z.enum([
+  'a4',
+  'graphite',
+  'parchment',
+  'velvet',
+  'xuan',
+  'cypress',
+  'sky',
+  'ocean',
+  'cardstock',
+]);
 export type PaperTextureId = z.infer<typeof PaperTextureIdSchema>;
 
 export const VisualThemeSettingsSchema = z.object({
@@ -244,7 +254,7 @@ function createDefaultThemeProfile(theme: ThemeMode): ThemeAppearanceProfile {
       appAccentOverrides: {},
       appIconAssetIds: {},
       appIconOverrides: {},
-      paperTextureId: theme === 'dark' ? 'cardstock' : 'a4',
+      paperTextureId: theme === 'dark' ? 'graphite' : 'a4',
     },
   };
 }
