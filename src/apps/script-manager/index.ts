@@ -1,5 +1,5 @@
 import { definePhoneApp } from '@/core/appRegistry';
-import ScriptManagerApp from './ScriptManagerApp.vue';
+const ScriptManagerApp = defineAsyncComponent(() => import('./ScriptManagerApp.vue'));
 
 export default definePhoneApp({
   id: 'script-manager',

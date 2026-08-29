@@ -1,5 +1,6 @@
 import { getCurrentChatScopeKey, parseChatScopeKey } from '@/store/chatScoped';
 import type { TavernChatRenamedEvent } from '@/util/chatScopeRename';
+import { cancelIdleTask, type IdleTaskHandle, scheduleIdleTask } from '@/util/idleTask';
 import { getChatMessagesSafe, getOptionalGlobalFunction, getOptionalGlobalValue, onTavernEvent } from '@/util/runtime';
 
 const DATABASE_NAME = 'sillytavern-phone-chat-floor-backups';
@@ -99,6 +100,18 @@ async function runStore<T>(mode: IDBTransactionMode, action: (store: IDBObjectSt
     const result = await requestToPromise(request);
     await completed;
     return result;
+  } finally {
+    database.close();
+  }
+}
+
+async function runStoreTransaction(mode: IDBTransactionMode, action: (store: IDBObjectStore) => void) {
+  const database = await openDatabase();
+  try {
+    const transaction = database.transaction(STORE_NAME, mode);
+    const completed = transactionToPromise(transaction);
+    action(transaction.objectStore(STORE_NAME));
+    await completed;
   } finally {
     database.close();
   }
@@ -231,9 +244,11 @@ export async function deleteChatFloorBackup(key: string) {
 
 export async function replaceChatFloorBackups(backups: ChatFloorBackup[]) {
   const parsed = z.array(ChatFloorBackupSchema).parse(backups);
-  const current = await listChatFloorBackups();
-  for (const backup of current) await deleteChatFloorBackup(backup.key);
-  for (const backup of parsed) await saveChatFloorBackup(backup);
+  parsed.forEach(assertBackupIdentity);
+  await runStoreTransaction('readwrite', store => {
+    store.clear();
+    parsed.forEach(backup => store.put(backup));
+  });
 }
 
 export async function captureCurrentChatFloorBackup(
@@ -402,14 +417,20 @@ export async function migrateChatFloorBackupRename(event: TavernChatRenamedEvent
 
 export function startChatFloorBackupService() {
   let timer: ReturnType<typeof window.setTimeout> | null = null;
+  let idleHandle: IdleTaskHandle | null = null;
   const schedule = () => {
     if (timer !== null) window.clearTimeout(timer);
+    cancelIdleTask(idleHandle);
+    idleHandle = null;
     timer = window.setTimeout(() => {
       timer = null;
-      void captureCurrentChatFloorBackup().catch(error => {
-        console.warn('[功能性阅读器] 自动保存聊天楼层备份失败', error);
-      });
-    }, 900);
+      idleHandle = scheduleIdleTask(() => {
+        idleHandle = null;
+        void captureCurrentChatFloorBackup().catch(error => {
+          console.warn('[功能性阅读器] 自动保存聊天楼层备份失败', error);
+        });
+      }, 3000);
+    }, 2000);
   };
   const eventNames = [
     'CHAT_CHANGED',
@@ -417,8 +438,6 @@ export function startChatFloorBackupService() {
     'MESSAGE_RECEIVED',
     'MESSAGE_EDITED',
     'MESSAGE_SWIPED',
-    'CHARACTER_MESSAGE_RENDERED',
-    'USER_MESSAGE_RENDERED',
   ];
   const handles = eventNames.map(name => onTavernEvent(name, schedule));
   handles.push(
@@ -433,6 +452,8 @@ export function startChatFloorBackupService() {
     stop() {
       if (timer !== null) window.clearTimeout(timer);
       timer = null;
+      cancelIdleTask(idleHandle);
+      idleHandle = null;
       handles.forEach(handle => handle.stop());
     },
   };

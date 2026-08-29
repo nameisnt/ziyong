@@ -1,4 +1,4 @@
-import RegexWizardApp from './RegexWizardApp.vue';
+const RegexWizardApp = defineAsyncComponent(() => import('./RegexWizardApp.vue'));
 import { definePhoneApp } from '@/core/appRegistry';
 
 export default definePhoneApp({

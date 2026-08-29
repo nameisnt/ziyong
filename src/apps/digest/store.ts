@@ -38,7 +38,8 @@ function createId(prefix: string) {
 }
 
 export const useDigestStore = defineStore('digest', () => {
-  const { data, rehydrateFromSettings, resetCurrentScope, scopeKey, switchScope } = useChatScopedDomain({
+  const { data, flushCurrentScope, rehydrateFromSettings, resetCurrentScope, scopeKey, switchScope } =
+    useChatScopedDomain({
     field: digestField,
     schema: DigestScopeDataSchema,
     createDefault: () => validateInplace(DigestScopeDataSchema, {}),
@@ -155,6 +156,7 @@ export const useDigestStore = defineStore('digest', () => {
     data,
     deleteEntry,
     entries,
+    flushCurrentScope,
     getEntry,
     rehydrateFromSettings,
     resetCurrentScope,

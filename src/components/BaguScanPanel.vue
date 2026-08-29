@@ -113,13 +113,14 @@ import {
   buildBaguSentenceReplacement,
   type BaguHit,
   type BaguSentenceGroup,
+  type BaguWritebackResult,
   groupBaguHitsBySentence,
   scanTextWithBaguRules,
 } from '@/util/bagu';
 import { storeToRefs } from 'pinia';
 
 const props = defineProps<{
-  applyHandler?: (content: string) => boolean | Promise<boolean>;
+  applyHandler?: (content: string) => BaguWritebackResult | Promise<BaguWritebackResult>;
   autoScan?: boolean;
   content: string;
   ruleTypes?: BaguRule['type'][];
@@ -261,9 +262,9 @@ async function commitContent(nextContent: string, successMessage: string, record
   writing.value = true;
   try {
     if (props.applyHandler) {
-      const applied = await props.applyHandler(nextContent);
-      if (!applied) {
-        phone.noticeError('正文写回失败，请返回后重试');
+      const appliedContent = await props.applyHandler(nextContent);
+      if (appliedContent === false || appliedContent.trim() !== nextContent.trim()) {
+        phone.noticeError('正文写回未生效，修改内容已保留');
         return false;
       }
     } else {

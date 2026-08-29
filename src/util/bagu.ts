@@ -39,6 +39,8 @@ export interface BaguApplyResult {
   text: string;
 }
 
+export type BaguWritebackResult = string | false;
+
 const sentenceBreaks = new Set(['。', '！', '？', '；', '!', '?', ';', '\n']);
 const deleteTokens = new Set(['删除', '(删除)', '（删除）']);
 

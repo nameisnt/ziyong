@@ -1,4 +1,4 @@
-import WorldbookLinkApp from './WorldbookLinkApp.vue';
+const WorldbookLinkApp = defineAsyncComponent(() => import('./WorldbookLinkApp.vue'));
 import { useWorldbookLinkStore, WorldbookLinkSettingsSchema, worldbookLinkField } from './store';
 import { definePhoneApp } from '@/core/appRegistry';
 import { extension_settings } from '@sillytavern/scripts/extensions';

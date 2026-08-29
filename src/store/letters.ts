@@ -54,7 +54,8 @@ function buildDefaultBookTitle(participants: CharacterRef[]) {
 }
 
 export const useLettersStore = defineStore('letters', () => {
-  const { data, rehydrateFromSettings, resetCurrentScope, scopeKey, switchScope } = useChatScopedDomain({
+  const { data, flushCurrentScope, rehydrateFromSettings, resetCurrentScope, scopeKey, switchScope } =
+    useChatScopedDomain({
     field: lettersField,
     schema: LettersScopeDataSchema,
     createDefault: () => validateInplace(LettersScopeDataSchema, {}),
@@ -319,6 +320,7 @@ export const useLettersStore = defineStore('letters', () => {
     ensureBook,
     failedDrafts,
     findBookByParticipants,
+    flushCurrentScope,
     getBook,
     getEntry,
     getFailedDraft,

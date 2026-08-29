@@ -61,7 +61,8 @@ test('activity page owns its asynchronous state without duplicating desktop stat
     assert.doesNotMatch(source, new RegExp(evidence, 'u'));
   }
   assert.match(activityPage, /watch\(viewingScopeKey,[\s\S]*\{ immediate: true \}/u);
-  assert.match(activityPage, /watch\(\[\(\) => generationTasks\.currentScopeTasks, \(\) => previewDrafts\.drafts\]/u);
+  assert.match(activityPage, /watch\(\[taskActivityRevision, draftActivityRevision\]/u);
+  assert.doesNotMatch(activityPage, /deep:\s*true/u);
 });
 
 test('home grid owns direct group reordering and Dock rejects unsupported drops', () => {

@@ -82,13 +82,13 @@
         :class="['pc-screen', { 'pc-screen-status-display': currentRoute.appId === 'status-display' }]"
       >
         <PhoneHome
-          v-if="currentRoute.appId === 'home'"
+          v-if="isOpen && currentRoute.appId === 'home'"
           :get-display-app-icon="getDisplayAppIcon"
           :get-display-app-icon-asset-path="getDisplayAppIconAssetPath"
           :get-display-app-style="getDisplayAppStyle"
         />
 
-        <KeepAlive>
+        <KeepAlive :max="3">
           <component :is="currentAppComponent" v-if="isOpen && currentAppComponent" :key="currentRoute.appId" />
         </KeepAlive>
 

@@ -1,4 +1,4 @@
-import ChatInsertApp from './ChatInsertApp.vue';
+const ChatInsertApp = defineAsyncComponent(() => import('./ChatInsertApp.vue'));
 import { ChatInsertSettingsSchema, chatInsertField, useChatInsertStore } from './store';
 import { definePhoneApp } from '@/core/appRegistry';
 import { extension_settings } from '@sillytavern/scripts/extensions';

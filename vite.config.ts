@@ -32,7 +32,7 @@ export default defineConfig(({ mode }) => {
     vue({
       features: {
         optionsAPI: false,
-        prodDevtools: process.env.CI !== 'true',
+        prodDevtools: visualMode,
         prodHydrationMismatchDetails: false,
       },
     }),
@@ -45,6 +45,7 @@ export default defineConfig(({ mode }) => {
         '@vueuse/core',
         { from: '@sillytavern/scripts/i18n', imports: ['t'] },
         { from: 'klona', imports: ['klona'] },
+        { from: 'toastr', imports: [['default', 'toastr']] },
         { from: 'vue-final-modal', imports: ['useModal'] },
         { from: 'zod', imports: ['z'] },
       ],

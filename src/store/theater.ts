@@ -23,6 +23,7 @@ function createId(prefix: string) {
 export const useTheaterStore = defineStore('theater', () => {
   const {
     data,
+    flushCurrentScope,
     rehydrateFromSettings: rehydrateScopeFromSettings,
     resetCurrentScope,
     scopeKey,
@@ -284,6 +285,7 @@ export const useTheaterStore = defineStore('theater', () => {
     deleteFailedDraft,
     entries,
     failedDrafts,
+    flushCurrentScope,
     getEntry,
     getFailedDraft,
     rehydrateFromSettings,

@@ -1,4 +1,4 @@
-import ProfilesApp from './ProfilesApp.vue';
+const ProfilesApp = defineAsyncComponent(() => import('./ProfilesApp.vue'));
 import { createProfilesContentReceiver } from '@/apps/contentReceivers';
 import { createProfileGenerationAdapter } from './generation';
 import { createExternalProfileReferenceCatalog } from './externalReferenceCatalog';

@@ -27,7 +27,7 @@ test('diary root and domain files have one app-owned directory without wiring th
 
   const builtin = await source('src/apps/builtin.ts');
   const root = await source('src/apps/diary/DiaryApp.vue');
-  assert.match(builtin, /from '@\/apps\/diary\/DiaryApp\.vue'/u);
+  assert.match(builtin, /import\('@\/apps\/diary\/DiaryApp\.vue'\)/u);
   assert.equal([...root.matchAll(/from '@\/apps\/diary\/Diary[^']+\.vue'/gu)].length, 10);
   assert.doesNotMatch(root, /DiaryCreationModePage/u);
 

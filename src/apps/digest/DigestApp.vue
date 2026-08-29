@@ -471,7 +471,9 @@ function applyDigestBaguContent(content: string) {
     tags: [...activeEntry.value.tags],
     title: activeEntry.value.title,
   });
-  return Boolean(entry);
+  if (!entry) return false;
+  digest.flushCurrentScope();
+  return entry.content;
 }
 
 async function removeEntry(entryId: string) {

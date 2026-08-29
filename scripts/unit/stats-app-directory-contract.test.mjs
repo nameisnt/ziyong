@@ -14,7 +14,7 @@ test('stats has one app-owned root without moving its aggregation store', async 
 
   const builtin = await source('src/apps/builtin.ts');
   const root = await source('src/apps/stats/StatsApp.vue');
-  assert.match(builtin, /from '@\/apps\/stats\/StatsApp\.vue'/u);
+  assert.match(builtin, /import\('@\/apps\/stats\/StatsApp\.vue'\)/u);
   assert.match(root, /from '@\/store\/stats'/u);
 
   await assert.rejects(access(new URL('../../src/components/StatsApp.vue', import.meta.url)));

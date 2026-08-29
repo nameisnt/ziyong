@@ -2,6 +2,7 @@ import { usePluginPresetStore } from '@/store/pluginPresets';
 import type { PluginPresetRecord } from '@/apps/preset-manager/pluginPreset';
 import { getEmbeddedPluginPresets, PhoneBackupSchema, type PhoneBackup } from '@/type/backup';
 import { applyPhoneBackup, buildPhoneBackup } from '@/util/backup';
+import { cancelIdleTask, type IdleTaskHandle, scheduleIdleTask } from '@/util/idleTask';
 import { parsePrettified } from '@/util/zod';
 // eslint-disable-next-line import-x/no-nodejs-modules
 import { getRequestHeaders, saveSettingsDebounced } from '@sillytavern/script';
@@ -37,7 +38,8 @@ interface FileRepositorySnapshotPayload {
 }
 
 const DEFAULT_MANIFEST_PATH = 'user/files/phone-file-repository-manifest.json';
-const AUTO_INTERVAL_MS = 2 * 60 * 1000;
+const AUTO_INTERVAL_MS = 5 * 60 * 1000;
+const AUTO_INITIAL_DELAY_MS = 60 * 1000;
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return Boolean(value) && typeof value === 'object' && !Array.isArray(value);
@@ -160,6 +162,7 @@ export const useFileRepositoryStore = defineStore('fileRepository', () => {
   const lastError = ref('');
   let intervalId: ReturnType<typeof window.setInterval> | null = null;
   let initialTimer: ReturnType<typeof window.setTimeout> | null = null;
+  let idleHandle: IdleTaskHandle | null = null;
 
   const snapshots = computed(() =>
     [...settings.value.snapshots].sort((left, right) => right.createdAt.localeCompare(left.createdAt)),
@@ -347,20 +350,29 @@ export const useFileRepositoryStore = defineStore('fileRepository', () => {
   function startAutoSnapshots() {
     if (intervalId !== null) return;
     void initialize();
+
+    const scheduleSnapshot = () => {
+      if (!settings.value.autoEnabled || document.visibilityState === 'hidden' || idleHandle !== null) return;
+      idleHandle = scheduleIdleTask(() => {
+        idleHandle = null;
+        void createSnapshot('自动快照', false).catch(() => undefined);
+      }, 10000);
+    };
+
     initialTimer = window.setTimeout(() => {
-      if (settings.value.autoEnabled) void createSnapshot('自动快照', false).catch(() => undefined);
-    }, 15000);
-    intervalId = window.setInterval(() => {
-      if (!settings.value.autoEnabled || document.visibilityState === 'hidden') return;
-      void createSnapshot('自动快照', false).catch(() => undefined);
-    }, AUTO_INTERVAL_MS);
+      initialTimer = null;
+      scheduleSnapshot();
+    }, AUTO_INITIAL_DELAY_MS);
+    intervalId = window.setInterval(scheduleSnapshot, AUTO_INTERVAL_MS);
   }
 
   function stopAutoSnapshots() {
     if (initialTimer !== null) window.clearTimeout(initialTimer);
     if (intervalId !== null) window.clearInterval(intervalId);
+    cancelIdleTask(idleHandle);
     initialTimer = null;
     intervalId = null;
+    idleHandle = null;
   }
 
   return {

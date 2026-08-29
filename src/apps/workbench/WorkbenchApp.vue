@@ -762,11 +762,19 @@ const tavernPresetNames = ref<string[]>([]);
 const statusRevision = ref(0);
 const copyModalOpen = ref(false);
 const copySources = computed(() => workbench.getCopySourceScopes());
-const statusEventStops = ['CHAT_CHANGED', 'GENERATION_ENDED', 'MESSAGE_RECEIVED', 'MESSAGE_SWIPED'].map(eventName =>
-  onTavernEvent(eventName, () => {
-    statusRevision.value += 1;
-  }),
-);
+let statusEventStops: Array<{ stop: () => void }> = [];
+function startStatusEvents() {
+  if (statusEventStops.length) return;
+  statusEventStops = ['CHAT_CHANGED', 'GENERATION_ENDED', 'MESSAGE_RECEIVED', 'MESSAGE_SWIPED'].map(eventName =>
+    onTavernEvent(eventName, () => {
+      statusRevision.value += 1;
+    }),
+  );
+}
+function stopStatusEvents() {
+  statusEventStops.forEach(stop => stop.stop());
+  statusEventStops = [];
+}
 const currentAiReplyCount = computed(() => {
   void statusRevision.value;
   return captureCurrentWorkbenchCheckpoint().lastAiReplyCount;
@@ -1135,7 +1143,9 @@ onMounted(() => {
     profileTables.value = [];
   }
 });
-onBeforeUnmount(() => statusEventStops.forEach(stop => stop.stop()));
+onActivated(startStatusEvents);
+onDeactivated(stopStatusEvents);
+onBeforeUnmount(stopStatusEvents);
 </script>
 
 <style scoped>

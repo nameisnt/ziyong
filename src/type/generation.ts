@@ -1,3 +1,10 @@
+import type { TextProviderSelection } from '@/util/textProvider';
+
+const TextProviderSelectionSchema = z
+  .string()
+  .refine(value => value === 'inherit' || value === 'tavern' || value.startsWith('external:'))
+  .transform(value => value as TextProviderSelection);
+
 export const GenerationRangeSchema = z.object({
   start: z.number().int().nonnegative(),
   end: z.number().int().nonnegative(),
@@ -42,10 +49,7 @@ export const GenerationReplayReferenceSchema = z.object({
 
 export const GenerationReplaySnapshotSchema = z.object({
   config: z.record(z.string(), z.unknown()).default({}),
-  connectionSelection: z
-    .string()
-    .refine(value => value === 'inherit' || value === 'tavern' || value.startsWith('external:'))
-    .default('inherit'),
+  connectionSelection: TextProviderSelectionSchema.default('inherit'),
   references: z.array(GenerationReplayReferenceSchema).default([]),
   request: GenerationRequestPartsSchema,
   source: SourceSelectionSchema,

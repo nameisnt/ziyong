@@ -21,11 +21,14 @@ const normalizeSettingsSource = timekeeper.slice(
   timekeeper.indexOf('const TimekeeperStorageSchema'),
 );
 assert.doesNotMatch(normalizeSettingsSource, /catch \{/);
-for (const source of [chatInsert, workbench]) {
-  assert.match(source, /if \(configError\.value\) return;/);
-  assert.match(source, /function resetCorruptedSettings/);
-  assert.match(source, /rawConfig/);
-}
+assert.match(chatInsert, /if \(configError\.value\) return;/);
+assert.match(chatInsert, /function resetCorruptedSettings/);
+assert.match(chatInsert, /rawConfig/);
+assert.match(workbench, /const chatDomain = useChatScopedDomain\(\{/);
+assert.match(workbench, /const configError = chatDomain\.configError;/);
+assert.match(workbench, /const rawConfig = chatDomain\.rawConfig;/);
+assert.match(workbench, /chatDomain\.rehydrateFromSettings\(\)/);
+assert.match(workbench, /chatDomain\.resetCurrentScope\(\)/);
 assert.match(notice, /原始数据仍保留在本地/);
 assert.match(notice, /导出原始数据/);
 

@@ -25,7 +25,7 @@ test('letters root and domain pages have one app-owned directory', async () => {
 
   const builtin = await source('src/apps/builtin.ts');
   const root = await source('src/apps/letters/LettersApp.vue');
-  assert.match(builtin, /from '@\/apps\/letters\/LettersApp\.vue'/u);
+  assert.match(builtin, /import\('@\/apps\/letters\/LettersApp\.vue'\)/u);
   assert.equal([...root.matchAll(/from '@\/apps\/letters\/Letters[^']+\.vue'/gu)].length, 9);
 
   await assert.rejects(access(new URL('../../src/components/LettersApp.vue', import.meta.url)));

@@ -1083,7 +1083,9 @@ function applyExtrasBaguContent(content: string) {
         content,
         title: activeChapter.value.title,
       });
-  return Boolean(chapter);
+  if (!chapter) return false;
+  extras.flushCurrentScope();
+  return versionId ? chapter.versions.find(version => version.id === versionId)?.content || false : chapter.content;
 }
 
 function openChapter(bookId: string, chapterId: string, replaceCurrent = false) {

@@ -20,7 +20,7 @@ powershell -ExecutionPolicy Bypass -File scripts/check-ui-reuse.ps1
 pnpm ui:check
 ```
 
-构建产物为 `dist/index.js` 和 `dist/index.css`。发布脚本会构建项目并安全提交当前所有已跟踪改动，未跟踪文件不会进入提交：
+构建产物为完整的 `dist/` 目录，包括 `index.js`、`index.css`、按需页面 chunk 和静态资源。发布脚本会构建项目并安全提交当前所有已跟踪改动，并纳入新生成的 `dist/` 文件；其他未跟踪文件不会进入提交：
 
 ```powershell
 powershell -ExecutionPolicy Bypass -File scripts/safe-push-dist.ps1

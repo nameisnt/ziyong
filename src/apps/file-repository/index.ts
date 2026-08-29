@@ -1,5 +1,5 @@
 import { definePhoneApp } from '@/core/appRegistry';
-import FileRepositoryApp from './FileRepositoryApp.vue';
+const FileRepositoryApp = defineAsyncComponent(() => import('./FileRepositoryApp.vue'));
 
 export default definePhoneApp({
   id: 'file-repository',

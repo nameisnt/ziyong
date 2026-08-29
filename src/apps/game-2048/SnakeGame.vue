@@ -250,15 +250,20 @@ function restartTimer() {
   timer = window.setInterval(step, speedMs.value);
 }
 
-onMounted(() => {
+function startRuntime() {
   restartTimer();
   window.addEventListener('keydown', onKeydown);
-});
+}
 
-onUnmounted(() => {
+function stopRuntime() {
   if (timer) window.clearInterval(timer);
+  timer = null;
   window.removeEventListener('keydown', onKeydown);
-});
+}
+
+onActivated(startRuntime);
+onDeactivated(stopRuntime);
+onUnmounted(stopRuntime);
 </script>
 
 <style scoped>

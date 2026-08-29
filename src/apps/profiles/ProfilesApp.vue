@@ -539,19 +539,24 @@ watch(
   { immediate: true },
 );
 
-onMounted(() => {
+function startRuntime() {
+  if (stopBridge || stopChatChanged) return;
   stopBridge = bridge.start(nextState => {
     state.value = nextState;
   });
   stopChatChanged = onTavernEvent('CHAT_CHANGED', refresh);
-});
+}
 
-onUnmounted(() => {
+function stopRuntime() {
   stopChatChanged?.stop();
   stopChatChanged = null;
   stopBridge?.stop();
   stopBridge = null;
-});
+}
+
+onActivated(startRuntime);
+onDeactivated(stopRuntime);
+onUnmounted(stopRuntime);
 const regenerateFailedDraft = useFailedDraftRegeneration({
   draft: () => activeFailedDraft.value,
   rawOutput: failedDraftRawOutput,

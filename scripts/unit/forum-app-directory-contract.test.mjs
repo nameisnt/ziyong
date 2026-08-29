@@ -32,7 +32,7 @@ test('forum root and domain files have one app-owned directory with one external
   const builtin = await source('src/apps/builtin.ts');
   const root = await source('src/apps/forum/ForumApp.vue');
   const failedDraftRepair = await source('src/composables/useForumFailedDraftRepair.ts');
-  assert.match(builtin, /from '@\/apps\/forum\/ForumApp\.vue'/u);
+  assert.match(builtin, /import\('@\/apps\/forum\/ForumApp\.vue'\)/u);
   assert.equal([...root.matchAll(/from '@\/apps\/forum\/[^']+'/gu)].length, 14);
   assert.match(
     failedDraftRepair,

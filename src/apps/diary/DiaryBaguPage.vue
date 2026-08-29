@@ -10,9 +10,10 @@
 <script setup lang="ts">
 import BaguDetailPage from '@/components/BaguDetailPage.vue';
 import type { DiaryEntry } from '@/type/diary';
+import type { BaguWritebackResult } from '@/util/bagu';
 
 defineProps<{
-  applyHandler: (content: string) => boolean | Promise<boolean>;
+  applyHandler: (content: string) => BaguWritebackResult | Promise<BaguWritebackResult>;
   entry: DiaryEntry;
 }>();
 </script>

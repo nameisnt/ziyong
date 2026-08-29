@@ -45,6 +45,6 @@ test('settings keep stable icon assets and reject deletion while referenced', ()
 test('legacy full backup import removes every image reference and rendering keeps the font icon fallback', () => {
   assert.match(backupUtil, /themeProfiles\.light\.visualTheme\.appIconAssetIds\s*=\s*\{\}/u);
   assert.match(backupUtil, /themeProfiles\.dark\.visualTheme\.appIconAssetIds\s*=\s*\{\}/u);
-  assert.match(appIcon, /@error="failed = true"/u);
+  assert.match(appIcon, /@error="sourceFailed = true"/u);
   assert.match(appIcon, /<i v-else class="fa-solid"/u);
 });

@@ -1596,7 +1596,7 @@ async function applyScenario(name: VisualScenarioName, options: { height?: numbe
     const sourceGroupToken =
       document.querySelector<HTMLButtonElement>('.pc-home-group-tabs .active')?.dataset.homeToken;
     const singleTaskRow = [...document.querySelectorAll<HTMLElement>('.pc-task-row')].find(row =>
-      row.textContent?.includes('剧情梳理 · 单次生成'),
+      row.textContent?.includes('摘抄 · 单次生成'),
     );
     if (!singleTaskRow) throw new Error('Single interrupted generation task is missing from TaskCenter');
     if (singleTaskRow.querySelector('[aria-label="继续任务"]')) {
@@ -1607,7 +1607,7 @@ async function applyScenario(name: VisualScenarioName, options: { height?: numbe
     rawToggle.click();
     await waitForPaint();
     const expandedSingleTaskRow = [...document.querySelectorAll<HTMLElement>('.pc-task-row')].find(row =>
-      row.textContent?.includes('剧情梳理 · 单次生成'),
+      row.textContent?.includes('摘抄 · 单次生成'),
     );
     const rawArea = expandedSingleTaskRow?.querySelector<HTMLTextAreaElement>('.pc-task-raw-area');
     if (

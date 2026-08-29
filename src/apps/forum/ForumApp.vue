@@ -806,7 +806,9 @@ function applyForumBaguContent(content: string) {
   const thread = versionId
     ? forum.updateThreadVersion(activeBoard.value.id, activeThread.value.id, versionId, input)
     : forum.updateThread(activeBoard.value.id, activeThread.value.id, input);
-  return Boolean(thread);
+  if (!thread) return false;
+  forum.flushCurrentScope();
+  return versionId ? thread.versions.find(version => version.id === versionId)?.content || false : thread.content;
 }
 
 function openForumBaguScan() {

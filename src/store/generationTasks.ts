@@ -19,9 +19,17 @@ export const generationTasksField = 'sillytavern_phone_generation_tasks';
 
 const executingTaskIds = new Set<string>();
 const terminalStatuses = new Set<GenerationTaskStatus>(['completed', 'cancelled', 'failed']);
+const rawOutputFlushStatuses = new Set<GenerationTaskStatus>([
+  'paused',
+  'interrupted',
+  'completed',
+  'cancelled',
+  'failed',
+]);
 const pendingRawOutputs = new Map<string, string>();
 const rawOutputTimers = new Map<string, number>();
-const RAW_OUTPUT_PERSIST_INTERVAL_MS = 500;
+const RAW_OUTPUT_PERSIST_INTERVAL_MS = 1500;
+const SETTINGS_PERSIST_DELAY_MS = 120;
 const MAX_TERMINAL_TASKS = 40;
 
 export function isClearableGenerationNotification(task: GenerationTask) {
@@ -103,13 +111,22 @@ export const useGenerationTaskStore = defineStore('generationTasks', () => {
     settings.value.tasks.some(task => task.status === 'running' || task.status === 'pause-requested'),
   );
 
+  let persistTimer: ReturnType<typeof window.setTimeout> | null = null;
+
   function persist() {
+    if (persistTimer !== null) window.clearTimeout(persistTimer);
+    persistTimer = null;
     const parsed = validateInplace(GenerationTaskSettingsSchema, klona(settings.value));
     _.set(extension_settings, generationTasksField, parsed);
     void saveSettingsDebounced();
   }
 
-  watch(settings, persist, { deep: true });
+  function schedulePersist() {
+    if (persistTimer !== null) window.clearTimeout(persistTimer);
+    persistTimer = window.setTimeout(persist, SETTINGS_PERSIST_DELAY_MS);
+  }
+
+  watch(settings, schedulePersist, { deep: true });
 
   function getTask(taskId: string) {
     return settings.value.tasks.find(task => task.id === taskId) ?? null;
@@ -197,6 +214,7 @@ export const useGenerationTaskStore = defineStore('generationTasks', () => {
   }
 
   function setStatus(taskId: string, status: GenerationTaskStatus, error = '') {
+    if (rawOutputFlushStatuses.has(status)) commitRawOutput(taskId);
     const task = patchTask(taskId, {
       activeGenerationId: status === 'running' ? getTask(taskId)?.activeGenerationId || '' : '',
       error,
@@ -245,6 +263,10 @@ export const useGenerationTaskStore = defineStore('generationTasks', () => {
     return getTask(taskId);
   }
 
+  function commitAllRawOutputs() {
+    [...pendingRawOutputs.keys()].forEach(commitRawOutput);
+  }
+
   function startJob(taskId: string, jobIndex: number, label: string) {
     const task = getTask(taskId);
     if (!task || !task.jobs[jobIndex]) return null;
@@ -286,7 +308,6 @@ export const useGenerationTaskStore = defineStore('generationTasks', () => {
     if (!task || terminalStatuses.has(task.status)) return;
     if (task.activeGenerationId) stopGenerationByIdSafe(task.activeGenerationId);
     if (task.kind === 'single') {
-      commitRawOutput(taskId);
       setStatus(taskId, 'cancelled', '已停止单次生成，已保留原始输出');
       return;
     }
@@ -303,6 +324,7 @@ export const useGenerationTaskStore = defineStore('generationTasks', () => {
   function completeTask(taskId: string) {
     const task = getTask(taskId);
     if (!task) return;
+    commitRawOutput(taskId);
     patchTask(taskId, {
       activeGenerationId: '',
       currentJobIndex: task.jobs.length || task.total,
@@ -382,6 +404,8 @@ export const useGenerationTaskStore = defineStore('generationTasks', () => {
   });
 
   onScopeDispose(() => {
+    commitAllRawOutputs();
+    persist();
     stopChatChanged.stop();
   });
 

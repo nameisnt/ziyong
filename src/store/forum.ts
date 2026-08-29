@@ -32,7 +32,8 @@ function normalizeName(name: string) {
 type ForumBoardInput = Pick<ForumBoard, 'name'> & Partial<Pick<ForumBoard, 'typeId' | 'typeName' | 'typePrompt'>>;
 
 export const useForumStore = defineStore('forum', () => {
-  const { data, rehydrateFromSettings, resetCurrentScope, scopeKey, switchScope } = useChatScopedDomain({
+  const { data, flushCurrentScope, rehydrateFromSettings, resetCurrentScope, scopeKey, switchScope } =
+    useChatScopedDomain({
     field: forumField,
     schema: ForumScopeDataSchema,
     createDefault: () => validateInplace(ForumScopeDataSchema, {}),
@@ -392,6 +393,7 @@ export const useForumStore = defineStore('forum', () => {
     ensureBoard,
     failedDrafts,
     findBoardByName,
+    flushCurrentScope,
     getBoard,
     getFailedDraft,
     getReply,

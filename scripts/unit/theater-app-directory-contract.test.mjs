@@ -23,7 +23,7 @@ test('theater root and domain files have one app-owned directory', async () => {
   const builtin = await source('src/apps/builtin.ts');
   const root = await source('src/apps/theater/TheaterApp.vue');
   const detail = await source('src/apps/theater/TheaterEntryDetailPage.vue');
-  assert.match(builtin, /from '@\/apps\/theater\/TheaterApp\.vue'/u);
+  assert.match(builtin, /import\('@\/apps\/theater\/TheaterApp\.vue'\)/u);
   assert.equal([...root.matchAll(/from '@\/apps\/theater\/[^']+'/gu)].length, 6);
   assert.match(detail, /from '@\/apps\/theater\/TheaterMixedContent\.vue'/u);
 

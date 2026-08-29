@@ -1,4 +1,4 @@
-import RelationshipApp from './RelationshipApp.vue';
+const RelationshipApp = defineAsyncComponent(() => import('./RelationshipApp.vue'));
 import {
   relationshipField,
   RelationshipScopeDataSchema,

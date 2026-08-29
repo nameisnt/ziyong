@@ -14,7 +14,7 @@ test('bagu owns only its rule-manager root while scan surfaces remain shared', a
 
   const builtin = await source('src/apps/builtin.ts');
   const root = await source('src/apps/bagu/BaguApp.vue');
-  assert.match(builtin, /from '@\/apps\/bagu\/BaguApp\.vue'/u);
+  assert.match(builtin, /import\('@\/apps\/bagu\/BaguApp\.vue'\)/u);
   assert.match(root, /from '@\/store\/bagu'/u);
   assert.match(root, /from '@\/store\/phone'/u);
 

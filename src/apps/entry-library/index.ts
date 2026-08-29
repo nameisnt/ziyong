@@ -1,4 +1,4 @@
-import EntryLibraryApp from './EntryLibraryApp.vue';
+const EntryLibraryApp = defineAsyncComponent(() => import('./EntryLibraryApp.vue'));
 import { createEntryLibraryContentReceiver } from '@/apps/contentReceivers';
 import { entryLibraryField, EntryLibrarySettingsSchema, useEntryLibraryStore } from './store';
 import { definePhoneApp, type PhoneReferenceTreeNode } from '@/core/appRegistry';

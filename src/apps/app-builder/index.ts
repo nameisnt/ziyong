@@ -1,4 +1,4 @@
-import AppBuilderApp from './AppBuilderApp.vue';
+const AppBuilderApp = defineAsyncComponent(() => import('./AppBuilderApp.vue'));
 import { createCustomAppRuntimeModules } from './runtimeModules';
 import {
   CustomAppContentDataSchema,

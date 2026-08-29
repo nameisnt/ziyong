@@ -1,5 +1,5 @@
 import { definePhoneApp } from '@/core/appRegistry';
-import ExtensionTransferApp from './ExtensionTransferApp.vue';
+const ExtensionTransferApp = defineAsyncComponent(() => import('./ExtensionTransferApp.vue'));
 
 export default definePhoneApp({
   id: 'extension-transfer',

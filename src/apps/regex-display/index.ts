@@ -1,6 +1,6 @@
 import { definePhoneApp } from '@/core/appRegistry';
 import { extension_settings } from '@sillytavern/scripts/extensions';
-import RegexDisplayApp from './RegexDisplayApp.vue';
+const RegexDisplayApp = defineAsyncComponent(() => import('./RegexDisplayApp.vue'));
 import { RegexDisplaySettingsSchema, regexDisplayField, useRegexDisplayStore } from './store';
 
 export default definePhoneApp({

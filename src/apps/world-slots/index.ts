@@ -1,4 +1,4 @@
-import WorldSlotsApp from './WorldSlotsApp.vue';
+const WorldSlotsApp = defineAsyncComponent(() => import('./WorldSlotsApp.vue'));
 import { createWorldSlotsContentReceiver } from '@/apps/contentReceivers';
 import { worldSlotsField, WorldSlotsScopeDataSchema, useWorldSlotsStore, type WorldSlot } from './store';
 import {

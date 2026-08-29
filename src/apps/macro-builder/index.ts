@@ -1,5 +1,5 @@
 import { definePhoneApp } from '@/core/appRegistry';
-import MacroBuilderApp from './MacroBuilderApp.vue';
+const MacroBuilderApp = defineAsyncComponent(() => import('./MacroBuilderApp.vue'));
 
 export default definePhoneApp({
   id: 'macro-builder',

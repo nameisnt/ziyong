@@ -1,5 +1,5 @@
 import { definePhoneApp } from '@/core/appRegistry';
-import StatusDisplayApp from './StatusDisplayApp.vue';
+const StatusDisplayApp = defineAsyncComponent(() => import('./StatusDisplayApp.vue'));
 
 export default definePhoneApp({
   id: 'status-display',

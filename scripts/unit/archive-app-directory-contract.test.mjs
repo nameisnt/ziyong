@@ -19,7 +19,7 @@ test('archive owns its root and three exclusive files without moving runtime ser
 
   const builtin = await source('src/apps/builtin.ts');
   const root = await source('src/apps/archive/ChatArchiveApp.vue');
-  assert.match(builtin, /from '@\/apps\/archive\/ChatArchiveApp\.vue'/u);
+  assert.match(builtin, /import\('@\/apps\/archive\/ChatArchiveApp\.vue'\)/u);
   assert.match(root, /from '@\/store\/generationTasks'/u);
   assert.match(root, /from '@\/store\/phone'/u);
   assert.match(root, /from '@\/util\/tavernNavigation'/u);

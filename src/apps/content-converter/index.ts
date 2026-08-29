@@ -1,5 +1,5 @@
 import { definePhoneApp } from '@/core/appRegistry';
-import ContentConverterApp from './ContentConverterApp.vue';
+const ContentConverterApp = defineAsyncComponent(() => import('./ContentConverterApp.vue'));
 import {
   ContentConversionHistorySettingsSchema,
   contentConversionHistoryField,

@@ -1,5 +1,5 @@
 import { definePhoneApp } from '@/core/appRegistry';
-import PresetManagerApp from './PresetManagerApp.vue';
+const PresetManagerApp = defineAsyncComponent(() => import('./PresetManagerApp.vue'));
 
 export default definePhoneApp({
   id: 'preset-manager',

@@ -1,4 +1,4 @@
-import WorkbenchApp from './WorkbenchApp.vue';
+const WorkbenchApp = defineAsyncComponent(() => import('./WorkbenchApp.vue'));
 import { useWorkbenchStore, WorkbenchSettingsSchema } from './store';
 import { definePhoneApp } from '@/core/appRegistry';
 import { getCurrentChatScopeKey, readChatScopedEnvelope } from '@/store/chatScoped';

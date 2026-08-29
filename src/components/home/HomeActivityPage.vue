@@ -46,6 +46,17 @@ const previewDrafts = usePreviewDraftStore();
 const { viewingScopeKey } = storeToRefs(phone);
 const activityItems = ref<GenerationActivityItem[]>([]);
 let activityRefreshSequence = 0;
+const taskActivityRevision = computed(() =>
+  generationTasks.currentScopeTasks
+    .map(task => {
+      const isStreaming = task.status === 'running' || task.status === 'pause-requested';
+      return `${task.id}:${task.status}:${isStreaming ? '' : task.updatedAt}`;
+    })
+    .join('|'),
+);
+const draftActivityRevision = computed(() =>
+  previewDrafts.drafts.map(draft => `${draft.id}:${draft.updatedAt}`).join('|'),
+);
 
 async function refreshActivityItems() {
   const requestSequence = ++activityRefreshSequence;
@@ -59,9 +70,7 @@ async function refreshActivityItems() {
 }
 
 watch(viewingScopeKey, () => void refreshActivityItems(), { immediate: true });
-watch([() => generationTasks.currentScopeTasks, () => previewDrafts.drafts], () => void refreshActivityItems(), {
-  deep: true,
-});
+watch([taskActivityRevision, draftActivityRevision], () => void refreshActivityItems());
 </script>
 
 <style scoped>

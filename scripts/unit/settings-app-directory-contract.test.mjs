@@ -28,7 +28,7 @@ test('settings owns its root, compact categories and external API subpage while 
   const interfacePanel = await source('src/apps/settings/SettingsInterfacePanel.vue');
   const appRoot = await source('src/App.vue');
 
-  assert.match(builtin, /from '@\/apps\/settings\/SettingsApp\.vue'/u);
+  assert.match(builtin, /import\('@\/apps\/settings\/SettingsApp\.vue'\)/u);
   assert.match(root, /from '\.\/SettingsAdvancedPanel\.vue'/u);
   assert.match(root, /from '\.\/SettingsDataManagementPage\.vue'/u);
   assert.match(advanced, /executePhoneAppResetTransaction/u);

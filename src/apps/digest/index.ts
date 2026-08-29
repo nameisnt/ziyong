@@ -1,4 +1,4 @@
-import DigestApp from './DigestApp.vue';
+const DigestApp = defineAsyncComponent(() => import('./DigestApp.vue'));
 import { createDigestContentReceiver } from '@/apps/contentReceivers';
 import { digestField, DigestScopeDataSchema, useDigestStore, type DigestEntry } from './store';
 import { createDigestGenerationAdapter } from './generation';

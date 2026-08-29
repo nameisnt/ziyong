@@ -10,9 +10,10 @@
 
 <script setup lang="ts">
 import BaguScanPanel from '@/components/BaguScanPanel.vue';
+import type { BaguWritebackResult } from '@/util/bagu';
 
 defineProps<{
-  applyHandler: (content: string) => boolean | Promise<boolean>;
+  applyHandler: (content: string) => BaguWritebackResult | Promise<BaguWritebackResult>;
   content: string;
   meta?: string;
   title: string;

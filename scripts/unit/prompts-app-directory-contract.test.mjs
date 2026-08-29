@@ -25,7 +25,7 @@ test('prompts owns its root and exclusive files while the theater group field re
   const builtin = await source('src/apps/builtin.ts');
   const editor = await source('src/apps/prompts/PromptTypeEditorPage.vue');
   const theater = await source('src/apps/theater/TheaterApp.vue');
-  assert.match(builtin, /from '@\/apps\/prompts\/PromptsApp\.vue'/u);
+  assert.match(builtin, /import\('@\/apps\/prompts\/PromptsApp\.vue'\)/u);
   assert.match(editor, /from '@\/components\/prompts\/TheaterTypeGroupField\.vue'/u);
   assert.match(theater, /from '@\/components\/prompts\/TheaterTypeGroupField\.vue'/u);
 

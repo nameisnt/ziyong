@@ -212,6 +212,7 @@ export function useChatScopedDomain<T>(options: { field: string; schema: ZodType
   const hydrating = ref(false);
   const configError = ref('');
   const rawConfig = shallowRef<unknown>(undefined);
+  let persistTimer: ReturnType<typeof window.setTimeout> | null = null;
 
   function parseScopeData(raw: unknown, targetScopeKey: string, defaultData: T) {
     try {
@@ -283,6 +284,8 @@ export function useChatScopedDomain<T>(options: { field: string; schema: ZodType
   }
 
   function persistCurrentScope() {
+    if (persistTimer !== null) window.clearTimeout(persistTimer);
+    persistTimer = null;
     if (configError.value) return;
     const parsed = parsePrettified(options.schema, klona(data.value));
     envelope.value.scopes = {
@@ -290,6 +293,11 @@ export function useChatScopedDomain<T>(options: { field: string; schema: ZodType
       [scopeKey.value]: parsed,
     };
     persistEnvelope();
+  }
+
+  function schedulePersistCurrentScope() {
+    if (persistTimer !== null) window.clearTimeout(persistTimer);
+    persistTimer = window.setTimeout(persistCurrentScope, 120);
   }
 
   function switchScope(nextScopeKey: string) {
@@ -329,7 +337,7 @@ export function useChatScopedDomain<T>(options: { field: string; schema: ZodType
     data,
     () => {
       if (hydrating.value) return;
-      persistCurrentScope();
+      schedulePersistCurrentScope();
     },
     { deep: true },
   );
@@ -338,6 +346,7 @@ export function useChatScopedDomain<T>(options: { field: string; schema: ZodType
     switchScope(getCurrentChatScopeKey());
   });
   onScopeDispose(() => {
+    if (persistTimer !== null) persistCurrentScope();
     stopChatChanged.stop();
   });
 
@@ -346,6 +355,7 @@ export function useChatScopedDomain<T>(options: { field: string; schema: ZodType
   return {
     configError,
     data,
+    flushCurrentScope: persistCurrentScope,
     getScopeData,
     rawConfig,
     rehydrateFromSettings,

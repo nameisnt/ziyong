@@ -158,13 +158,17 @@ function onKeydown(event: KeyboardEvent) {
   game.move(direction);
 }
 
-onMounted(() => {
+function startRuntime() {
   window.addEventListener('keydown', onKeydown);
-});
+}
 
-onUnmounted(() => {
+function stopRuntime() {
   window.removeEventListener('keydown', onKeydown);
-});
+}
+
+onActivated(startRuntime);
+onDeactivated(stopRuntime);
+onUnmounted(stopRuntime);
 </script>
 
 <style scoped>

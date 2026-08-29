@@ -709,7 +709,9 @@ function applySummaryBaguContent(content: string) {
     rangeLabel: activeEntry.value.rangeLabel,
     title: activeEntry.value.title,
   });
-  return Boolean(entry);
+  if (!entry) return false;
+  summary.flushCurrentScope();
+  return entry.content;
 }
 
 function buildSummaryOutputFormat() {

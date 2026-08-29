@@ -815,7 +815,9 @@ function applyLettersBaguContent(content: string) {
   const entry = versionId
     ? letters.updateEntryVersion(activeBook.value.id, activeEntry.value.id, versionId, input)
     : letters.updateEntry(activeBook.value.id, activeEntry.value.id, input);
-  return Boolean(entry);
+  if (!entry) return false;
+  letters.flushCurrentScope();
+  return versionId ? entry.versions.find(version => version.id === versionId)?.content || false : entry.content;
 }
 
 async function removeBook(bookId: string) {

@@ -72,24 +72,10 @@
 }
 
 .pc-phone-root .pc-app-identity-image {
-  display: none;
+  display: block;
   width: 86%;
   height: 86%;
   object-fit: contain;
-}
-
-.pc-phone-root[data-paper='xuan'] .pc-app-identity-image-xuan,
-.pc-phone-root[data-paper='parchment'] .pc-app-identity-image-parchment,
-.pc-phone-root[data-paper='cardstock'] .pc-app-identity-image-cardstock {
-  display: block;
-}
-
-.pc-phone-root[data-paper='xuan'] .pc-app-icon-material:has(> .pc-app-identity-image-xuan) > .pc-svg-app-icon,
-.pc-phone-root[data-paper='parchment'] .pc-app-icon-material:has(> .pc-app-identity-image-parchment) > .pc-svg-app-icon,
-.pc-phone-root[data-paper='cardstock']
-  .pc-app-icon-material:has(> .pc-app-identity-image-cardstock)
-  > .pc-svg-app-icon {
-  display: none;
 }
 
 .pc-phone-root .pc-identity-svg-app-icon {
@@ -119,13 +105,6 @@
 }
 
 .pc-phone-root .pc-svg-paper-variant {
-  display: none;
-}
-
-.pc-phone-root[data-paper='a4'] .pc-svg-paper-variant-a4,
-.pc-phone-root[data-paper='xuan'] .pc-svg-paper-variant-xuan,
-.pc-phone-root[data-paper='parchment'] .pc-svg-paper-variant-parchment,
-.pc-phone-root[data-paper='cardstock'] .pc-svg-paper-variant-cardstock {
   display: block;
 }
 

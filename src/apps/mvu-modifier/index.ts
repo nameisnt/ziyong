@@ -1,4 +1,4 @@
-import MvuModifierApp from './MvuModifierApp.vue';
+const MvuModifierApp = defineAsyncComponent(() => import('./MvuModifierApp.vue'));
 import { definePhoneApp } from '@/core/appRegistry';
 import {
   MvuModifierSettingsSchema,

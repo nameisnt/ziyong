@@ -1,4 +1,4 @@
-import RecoveryApp from '@/apps/recovery/RecoveryApp.vue';
+const RecoveryApp = defineAsyncComponent(() => import('@/apps/recovery/RecoveryApp.vue'));
 import { definePhoneApp } from '@/core/appRegistry';
 
 export default definePhoneApp({

@@ -1,6 +1,6 @@
 import { definePhoneApp } from '@/core/appRegistry';
 import { extension_settings } from '@sillytavern/scripts/extensions';
-import PresetLinkApp from './PresetLinkApp.vue';
+const PresetLinkApp = defineAsyncComponent(() => import('./PresetLinkApp.vue'));
 import { PresetLinkSettingsSchema, presetLinkField, usePresetLinkStore } from './store';
 
 export default definePhoneApp({

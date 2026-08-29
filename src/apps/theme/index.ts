@@ -1,4 +1,4 @@
-import ThemeApp from './ThemeApp.vue';
+const ThemeApp = defineAsyncComponent(() => import('./ThemeApp.vue'));
 import { definePhoneApp } from '@/core/appRegistry';
 import { useSettingsStore } from '@/store/settings';
 import {

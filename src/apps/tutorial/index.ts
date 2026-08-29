@@ -1,5 +1,5 @@
 import { definePhoneApp } from '@/core/appRegistry';
-import TutorialApp from './TutorialApp.vue';
+const TutorialApp = defineAsyncComponent(() => import('./TutorialApp.vue'));
 
 export default definePhoneApp({
   id: 'tutorial',

@@ -1,4 +1,4 @@
-import Game2048App from './Game2048App.vue';
+const Game2048App = defineAsyncComponent(() => import('./Game2048App.vue'));
 import { miniGameFields } from './fields';
 import { MiniGamesBackupSchema } from './backupSchemas';
 import { useGame2048Store } from './store';

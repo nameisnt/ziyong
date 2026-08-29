@@ -4,9 +4,10 @@
 
 <script setup lang="ts">
 import BaguDetailPage from '@/components/BaguDetailPage.vue';
+import type { BaguWritebackResult } from '@/util/bagu';
 
 defineProps<{
-  applyHandler: (content: string) => boolean | Promise<boolean>;
+  applyHandler: (content: string) => BaguWritebackResult | Promise<BaguWritebackResult>;
   content: string;
   rangeLabel: string;
   title: string;

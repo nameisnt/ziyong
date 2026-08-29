@@ -1034,7 +1034,9 @@ function applyTheaterBaguContent(content: string) {
   const entry = versionId
     ? theater.updateEntryVersion(activeEntry.value.id, versionId, input)
     : theater.updateEntry(activeEntry.value.id, input);
-  return Boolean(entry);
+  if (!entry) return false;
+  theater.flushCurrentScope();
+  return versionId ? entry.versions.find(version => version.id === versionId)?.content || false : entry.content;
 }
 
 function buildOutputFormat() {

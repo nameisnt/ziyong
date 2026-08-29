@@ -100,9 +100,9 @@ test('home App entries resolve through the shared SVG icon library', () => {
 });
 
 test('custom assets and icon overrides keep priority over built-in App identity SVGs', () => {
-  const imageIndex = appIcon.indexOf('<img v-if="source && !failed"');
-  const identityImageIndex = appIcon.indexOf('v-for="(url, paper) in identityImages"');
-  const identityIndex = appIcon.indexOf('<svg v-if="identityIcon"');
+  const imageIndex = appIcon.indexOf('v-if="source && !sourceFailed"');
+  const identityImageIndex = appIcon.indexOf('v-if="identityImage && !identityImageFailed"');
+  const identityIndex = appIcon.indexOf('v-else-if="identityIcon"');
   const genericSvgIndex = appIcon.indexOf('v-else-if="svgPaths"');
   const fontAwesomeIndex = appIcon.indexOf('<i v-else');
 
@@ -119,9 +119,9 @@ test('paper image identities use transparent 192px PNGs with SVG fallback', asyn
   assert.match(identityImageSource, /import\.meta\.glob\('\.\.\/assets\/app-icons\/\*\*\/\*\.png'/u);
   assert.match(appIcon, /getAppIdentityImageIcon/u);
   assert.match(appIcon, /pc-app-identity-image/u);
-  assert.match(globalCss, /pc-app-identity-image-xuan/u);
-  assert.match(globalCss, /pc-app-identity-image-parchment/u);
-  assert.match(globalCss, /pc-app-identity-image-cardstock/u);
+  assert.match(appIcon, /paper\.value === 'a4'/u);
+  assert.match(appIcon, /\?\.\[paper\.value as AppImagePaper\]/u);
+  assert.doesNotMatch(appIcon, /v-for="\(url, paper\) in identityImages"/u);
 
   for (const paper of papers) {
     for (const appId of expectedIdentityIds) {
@@ -141,19 +141,13 @@ test('home, Dock, group management and theme App previews pass identity context'
 });
 
 test('paper themes apply distinct SVG stroke treatments', () => {
-  for (const paper of ['a4', 'xuan', 'parchment', 'cardstock']) {
-    assert.match(globalCss, new RegExp(`data-paper='${paper}'[^}]*pc-svg-app-icon`, 'su'));
-  }
   assert.match(globalCss, /\.pc-svg-icon-primary/u);
   assert.match(globalCss, /\.pc-svg-icon-secondary/u);
   assert.match(globalCss, /\.pc-svg-icon-accent/u);
   assert.match(globalCss, /\.pc-svg-icon-echo/u);
   assert.match(globalCss, /\.pc-svg-icon-fill/u);
-  assert.match(globalCss, /\.pc-svg-paper-variant-a4/u);
-  assert.match(globalCss, /\.pc-svg-paper-variant-xuan/u);
-  assert.match(globalCss, /\.pc-svg-paper-variant-parchment/u);
-  assert.match(globalCss, /\.pc-svg-paper-variant-cardstock/u);
-  assert.match(appIcon, /identityIcon\.paperVariants\[paper\]/u);
+  assert.match(appIcon, /icon\?\.paperVariants\?\.\[paper\.value\] \?\? icon/u);
+  assert.match(appIcon, /`pc-svg-paper-variant-\$\{paper\}`/u);
 });
 
 test('all built-in Apps have unique identity SVG geometry', () => {

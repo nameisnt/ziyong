@@ -234,10 +234,14 @@ function newGame() {
   save();
 }
 
-onMounted(scheduleAi);
-onUnmounted(() => {
+function stopAi() {
   if (aiTimer) window.clearTimeout(aiTimer);
-});
+  aiTimer = null;
+}
+
+onActivated(scheduleAi);
+onDeactivated(stopAi);
+onUnmounted(stopAi);
 </script>
 
 <style scoped>

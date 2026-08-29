@@ -14,7 +14,7 @@ test('favorites has one app-owned root without moving its cross-domain providers
 
   const builtin = await source('src/apps/builtin.ts');
   const root = await source('src/apps/favorites/FavoritesApp.vue');
-  assert.match(builtin, /from '@\/apps\/favorites\/FavoritesApp\.vue'/u);
+  assert.match(builtin, /import\('@\/apps\/favorites\/FavoritesApp\.vue'\)/u);
   assert.match(root, /from '@\/core\/appRegistry'/u);
   assert.match(root, /from '@\/store\/favorites'/u);
 

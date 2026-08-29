@@ -14,7 +14,7 @@ test('reader owns its root and chat session while shared reading surfaces remain
 
   const builtin = await source('src/apps/builtin.ts');
   const root = await source('src/apps/reader/ReaderApp.vue');
-  assert.match(builtin, /from '@\/apps\/reader\/ReaderApp\.vue'/u);
+  assert.match(builtin, /import\('@\/apps\/reader\/ReaderApp\.vue'\)/u);
   assert.match(root, /from '@\/components\/ReaderDetailShell\.vue'/u);
   assert.match(root, /from '@\/components\/CatalogModal\.vue'/u);
   assert.match(root, /from '@\/components\/BaguScanPanel\.vue'/u);

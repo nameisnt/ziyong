@@ -1,4 +1,4 @@
-import CardWriterApp from './CardWriterApp.vue';
+const CardWriterApp = defineAsyncComponent(() => import('./CardWriterApp.vue'));
 import { createCardWriterReferenceTree } from './references';
 import { CardWriterSettingsSchema, cardWriterField, useCardWriterStore } from './store';
 import { definePhoneApp } from '@/core/appRegistry';

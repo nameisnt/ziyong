@@ -1524,7 +1524,9 @@ function applyDiaryBaguContent(content: string) {
     readers: activeEntry.value.readers,
     title: activeEntry.value.title,
   });
-  return Boolean(entry);
+  if (!entry) return false;
+  diary.flushCurrentScope();
+  return entry.content;
 }
 
 async function removeEntry(bookId: string, entryId: string) {

@@ -42,6 +42,7 @@ let stopChatChanged: { stop: () => void } | null = null;
 let stopChatRenamed: { stop: () => void } | null = null;
 let stopChatFloorBackup: { stop: () => void } | null = null;
 let targetObserver: MutationObserver | null = null;
+let menuTarget: HTMLElement | null = null;
 
 async function tryRecoverCurrentScope() {
   if (!hasVisibilityTransactionRuntime()) return;
@@ -62,6 +63,10 @@ async function tryRecoverCurrentScope() {
 }
 
 function syncTeleportTargets() {
+  if (menuTarget?.isConnected && menuTarget.closest('#extensionsMenu')) {
+    menuTargetReady.value = true;
+    return;
+  }
   const menu = document.querySelector<HTMLElement>('#extensionsMenu');
   if (!menu) {
     menuTargetReady.value = false;
@@ -77,6 +82,7 @@ function syncTeleportTargets() {
     if (dataBankContainer) dataBankContainer.insertAdjacentElement('afterend', target);
     else menu.prepend(target);
   }
+  menuTarget = target;
   menuTargetReady.value = true;
 }
 
@@ -110,6 +116,7 @@ onUnmounted(() => {
   stopChatRenamed = null;
   targetObserver?.disconnect();
   targetObserver = null;
-  document.querySelector('#pc_reader_wand_container')?.remove();
+  menuTarget?.remove();
+  menuTarget = null;
 });
 </script>

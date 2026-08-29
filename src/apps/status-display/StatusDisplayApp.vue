@@ -35,7 +35,7 @@
     </div>
     <FrontendFrame
       v-else-if="activeScheme && renderedHtml"
-      :active="true"
+      :active="isActive"
       :content="renderedHtml"
       embedded
       flush-content
@@ -78,7 +78,9 @@ const renderedHtml = ref('');
 const errorMessage = ref('');
 const statusTabsEl = ref<HTMLElement | null>(null);
 const horizontalDrag = useHorizontalDragScroll(statusTabsEl);
+const isActive = ref(false);
 let refreshRevision = 0;
+let refreshScheduled = false;
 let eventStops: Array<{ stop: () => void }> = [];
 
 const activeSchemeId = computed(() => statusStore.getActiveSchemeId(phone.currentTavernScopeKey));
@@ -151,30 +153,46 @@ async function refreshStatus() {
   }
 }
 
+function scheduleStatusRefresh() {
+  if (refreshScheduled) return;
+  refreshScheduled = true;
+  queueMicrotask(() => {
+    refreshScheduled = false;
+    if (!isActive.value || route.value.appId !== 'status-display' || route.value.page !== 'root') return;
+    void refreshStatus();
+  });
+}
+
 watch(
   () => [route.value.appId, route.value.page, activeSchemeId.value, phone.currentTavernScopeKey] as const,
   ([appId, page]) => {
-    if (appId === 'status-display' && page === 'root') void refreshStatus();
+    if (appId === 'status-display' && page === 'root') scheduleStatusRefresh();
   },
   { immediate: true },
 );
 
-onActivated(() => {
-  if (route.value.appId === 'status-display' && route.value.page === 'root') void refreshStatus();
-});
-
-onMounted(() => {
+function startRuntime() {
+  if (eventStops.length) return;
+  isActive.value = true;
   eventStops = ['MESSAGE_RECEIVED', 'MESSAGE_UPDATED', 'GENERATION_ENDED', 'CHAT_CHANGED'].map(name =>
     onTavernEvent(name, () => {
-      if (route.value.appId === 'status-display' && route.value.page === 'root') void refreshStatus();
+      scheduleStatusRefresh();
     }),
   );
-});
+  scheduleStatusRefresh();
+}
 
-onUnmounted(() => {
+function stopRuntime() {
+  isActive.value = false;
+  refreshScheduled = false;
+  refreshRevision += 1;
   eventStops.forEach(stop => stop.stop());
   eventStops = [];
-});
+}
+
+onActivated(startRuntime);
+onDeactivated(stopRuntime);
+onUnmounted(stopRuntime);
 </script>
 
 <style scoped>

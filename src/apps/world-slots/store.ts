@@ -252,6 +252,7 @@ export const useWorldSlotsStore = defineStore('world-slots', () => {
   const syncStatus = ref<WorldSlotsSyncStatus>('idle');
   const lastSyncedAt = ref('');
   let autoSyncStarted = false;
+  let autoSyncTimer: ReturnType<typeof window.setTimeout> | null = null;
   let syncRequestId = 0;
   let syncTail: Promise<void> = Promise.resolve();
 
@@ -378,6 +379,8 @@ export const useWorldSlotsStore = defineStore('world-slots', () => {
         ? (klona(loaded) as { entries?: Record<string, WorldBookEntry>; name?: string })
         : { entries: {}, name: bookName };
     const entries = book.entries && typeof book.entries === 'object' ? book.entries : {};
+    const originalEntries = klona(entries);
+    const originalName = book.name;
     const entryIdBySlot = new Map<string, number>();
     const currentSlotIds = new Set(slotSnapshot.map(slot => slot.id));
     const retainedSlotIds = new Set<string>();
@@ -404,22 +407,30 @@ export const useWorldSlotsStore = defineStore('world-slots', () => {
     slotSnapshot.forEach(slot => {
       const existingId = entryIdBySlot.get(slot.id);
       const entryId = typeof existingId === 'number' ? existingId : nextEntryId(entries);
-      if (typeof existingId === 'number') updated += 1;
-      else created += 1;
-      entries[String(entryId)] = createWorldEntry(slot, entryId);
+      const nextEntry = createWorldEntry(slot, entryId);
+      if (typeof existingId === 'number') {
+        if (!_.isEqual(entries[String(entryId)], nextEntry)) updated += 1;
+      } else {
+        created += 1;
+      }
+      entries[String(entryId)] = nextEntry;
     });
 
     if (!isRequestCurrent(requestId, targetScopeKey)) return skippedResult();
     book.name = book.name || bookName;
     book.entries = entries;
-    await saveWorldInfo(bookName, book, true);
-    await updateWorldInfoList?.();
+    const bookChanged = !loaded || originalName !== book.name || !_.isEqual(originalEntries, entries);
+    if (bookChanged) {
+      await saveWorldInfo(bookName, book, true);
+      await updateWorldInfoList?.();
+    }
 
     const globalNames = cleanList(getGlobalWorldbookNames());
-    if (!globalNames.includes(bookName)) {
+    const bindingChanged = !globalNames.includes(bookName);
+    if (bindingChanged) {
       await rebindGlobalWorldbooks([...globalNames, bookName]);
     }
-    reloadWorldInfoEditor?.(bookName, false);
+    if (bookChanged || bindingChanged) reloadWorldInfoEditor?.(bookName, false);
 
     if (isRequestCurrent(requestId, targetScopeKey)) {
       const syncedEntryIds = new Map<string, number>();
@@ -486,7 +497,11 @@ export const useWorldSlotsStore = defineStore('world-slots', () => {
 
   function queueAutoSync() {
     if (!autoSyncStarted || !isCurrentChatScope.value) return;
-    void autoSyncToWorldBook();
+    if (autoSyncTimer !== null) window.clearTimeout(autoSyncTimer);
+    autoSyncTimer = window.setTimeout(() => {
+      autoSyncTimer = null;
+      void autoSyncToWorldBook();
+    }, 250);
   }
 
   function startAutoSync() {

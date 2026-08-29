@@ -18,7 +18,8 @@ function perspectiveKey(ref: CharacterRef) {
 }
 
 export const useDiaryStore = defineStore('diary', () => {
-  const { data, rehydrateFromSettings, resetCurrentScope, scopeKey, switchScope } = useChatScopedDomain({
+  const { data, flushCurrentScope, rehydrateFromSettings, resetCurrentScope, scopeKey, switchScope } =
+    useChatScopedDomain({
     field: diaryField,
     schema: DiaryScopeDataSchema,
     createDefault: () => validateInplace(DiaryScopeDataSchema, {}),
@@ -177,6 +178,7 @@ export const useDiaryStore = defineStore('diary', () => {
     ensureBook,
     failedDrafts,
     findBookByPerspective,
+    flushCurrentScope,
     getFailedDraft,
     getBook,
     getEntry,

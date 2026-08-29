@@ -1,5 +1,5 @@
 import { extension_settings } from '@sillytavern/scripts/extensions';
-import StatusDisplaySettingsApp from '@/apps/status-display/StatusDisplaySettingsApp.vue';
+const StatusDisplaySettingsApp = defineAsyncComponent(() => import('@/apps/status-display/StatusDisplaySettingsApp.vue'));
 import {
   readStatusDisplaySettingsSnapshot,
   StatusDisplaySettingsSchema,

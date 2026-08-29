@@ -842,6 +842,7 @@ async function applyReaderBaguContent(content: string) {
     throw new Error('历史聊天只读，请先切回当前聊天再应用检测结果');
   }
 
+  const sourceMessageId = activeMessage.value.sourceMessageId;
   const nextRawText = replaceReaderBodyInRaw(
     activeMessage.value.rawText,
     activeMessage.value.sourceBody,
@@ -855,15 +856,16 @@ async function applyReaderBaguContent(content: string) {
   await setChatMessagesSafe(
     [
       {
-        message_id: activeMessage.value.sourceMessageId,
+        message_id: sourceMessageId,
         message: nextRawText,
       },
     ],
     { refresh: 'affected' },
   );
   await saveChatIfAvailable();
+  const storedMessage = getChatMessagesSafe(sourceMessageId, { include_swipes: true })[0];
   await loadCurrentChat(true);
-  return true;
+  return storedMessage?.message === nextRawText ? content : false;
 }
 
 function resetReaderEditDraft() {

@@ -38,7 +38,8 @@ function normalizeChapterNumbers(chapters: ExtraChapter[]) {
 }
 
 export const useExtrasStore = defineStore('extras', () => {
-  const { data, rehydrateFromSettings, resetCurrentScope, scopeKey, switchScope } = useChatScopedDomain({
+  const { data, flushCurrentScope, rehydrateFromSettings, resetCurrentScope, scopeKey, switchScope } =
+    useChatScopedDomain({
     field: extrasField,
     schema: ExtraScopeDataSchema,
     createDefault: () => validateInplace(ExtraScopeDataSchema, {}),
@@ -354,6 +355,7 @@ export const useExtrasStore = defineStore('extras', () => {
     deleteChapterVersion,
     deleteSummary,
     failedDrafts,
+    flushCurrentScope,
     getFailedDraft,
     getBook,
     getChapter,

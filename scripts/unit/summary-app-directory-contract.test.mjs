@@ -31,7 +31,7 @@ test('summary root, pages and sessions have one app-owned directory without wiri
 
   const builtin = await source('src/apps/builtin.ts');
   const root = await source('src/apps/summary/SummaryApp.vue');
-  assert.match(builtin, /from '@\/apps\/summary\/SummaryApp\.vue'/u);
+  assert.match(builtin, /import\('@\/apps\/summary\/SummaryApp\.vue'\)/u);
   assert.equal([...root.matchAll(/from '@\/apps\/summary\/[^']+'/gu)].length, 14);
   assert.doesNotMatch(root, /SummaryCreationModePage/u);
 

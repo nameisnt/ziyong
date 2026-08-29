@@ -14,7 +14,8 @@ function createId(prefix: string) {
 }
 
 export const useSummaryStore = defineStore('summary', () => {
-  const { data, rehydrateFromSettings, resetCurrentScope, scopeKey, switchScope } = useChatScopedDomain({
+  const { data, flushCurrentScope, rehydrateFromSettings, resetCurrentScope, scopeKey, switchScope } =
+    useChatScopedDomain({
     field: summaryField,
     schema: SummaryScopeDataSchema,
     createDefault: () => validateInplace(SummaryScopeDataSchema, {}),
@@ -155,6 +156,7 @@ export const useSummaryStore = defineStore('summary', () => {
     deleteBook,
     deleteEntry,
     failedDrafts,
+    flushCurrentScope,
     getBook,
     getEntry,
     getFailedDraft,

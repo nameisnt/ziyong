@@ -1,4 +1,4 @@
-import TimekeeperApp from './TimekeeperApp.vue';
+const TimekeeperApp = defineAsyncComponent(() => import('./TimekeeperApp.vue'));
 import { TimekeeperSettingsSchema, timekeeperField, useTimekeeperStore } from './store';
 import { definePhoneApp } from '@/core/appRegistry';
 import { getCurrentChatScopeKey, readChatScopedEnvelope } from '@/store/chatScoped';
