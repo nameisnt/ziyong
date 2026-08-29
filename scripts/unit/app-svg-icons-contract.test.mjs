@@ -11,6 +11,8 @@ const appIcon = await readFile(new URL('../../src/components/AppIcon.vue', impor
 const home = await readFile(new URL('../../src/components/PhoneHome.vue', import.meta.url), 'utf8');
 const theme = await readFile(new URL('../../src/apps/theme/ThemeApp.vue', import.meta.url), 'utf8');
 const globalCss = await readFile(new URL('../../src/global.css', import.meta.url), 'utf8');
+const generator = await readFile(new URL('../generate-theme-image-variants.ps1', import.meta.url), 'utf8');
+const modernGenerator = await readFile(new URL('../generate-modern-app-icons.mjs', import.meta.url), 'utf8');
 const compiled = transpileModule(source.replace(/export \{[\s\S]*?\} from '\.\/appIdentitySvgIcons';\s*/u, ''), {
   compilerOptions: { module: ModuleKind.ESNext, target: ScriptTarget.ES2022 },
 }).outputText;
@@ -114,12 +116,12 @@ test('custom assets and icon overrides keep priority over built-in App identity 
 });
 
 test('paper image identities use transparent 192px PNGs with SVG fallback', async () => {
-  const papers = ['xuan', 'parchment', 'cardstock', 'graphite', 'velvet', 'cypress', 'sky', 'ocean'];
+  const papers = ['a4', 'graphite', 'parchment', 'velvet', 'xuan', 'cypress', 'sky', 'ocean', 'cardstock'];
 
   assert.match(identityImageSource, /import\.meta\.glob\('\.\.\/assets\/app-icons\/\*\*\/\*\.png'/u);
   assert.match(appIcon, /getAppIdentityImageIcon/u);
   assert.match(appIcon, /pc-app-identity-image/u);
-  assert.match(appIcon, /paper\.value === 'a4'/u);
+  assert.doesNotMatch(appIcon, /paper\.value === 'a4'/u);
   assert.match(appIcon, /\?\.\[paper\.value as AppImagePaper\]/u);
   assert.doesNotMatch(appIcon, /v-for="\(url, paper\) in identityImages"/u);
 
@@ -171,6 +173,16 @@ test('eight showcase Apps have four genuinely separate paper artworks', () => {
     assert.ok(variants.xuan.fills?.length, `${appId}/xuan: fills`);
     assert.ok(variants.cardstock.fills?.length, `${appId}/cardstock: fills`);
   }
+});
+
+test('derived theme artwork uses the matching day source set', () => {
+  assert.match(generator, /Name = 'graphite'; Source = 'a4'/u);
+  assert.match(generator, /Name = 'velvet'; Source = 'parchment'/u);
+  assert.match(generator, /Name = 'cypress'; Source = 'xuan'/u);
+  assert.match(generator, /Name = 'sky'; Source = 'cardstock'/u);
+  assert.match(generator, /Name = 'ocean'; Source = 'cardstock'/u);
+  assert.doesNotMatch(generator, /Name = 'sky'; Source = 'parchment'/u);
+  assert.match(modernGenerator, /definition\.paperVariants\?\.a4 \?\? definition/u);
 });
 
 test('identity SVGs define every supported paper stroke profile', () => {

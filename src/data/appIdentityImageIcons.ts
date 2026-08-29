@@ -1,6 +1,6 @@
 import type { AppSvgPaper } from './appIdentitySvgIcons';
 
-export type AppImagePaper = Exclude<AppSvgPaper, 'a4'>;
+export type AppImagePaper = AppSvgPaper;
 
 const imageModules = import.meta.glob('../assets/app-icons/**/*.png', {
   eager: true,
@@ -12,7 +12,7 @@ const appIdentityImageIcons: Record<string, Partial<Record<AppImagePaper, string
 
 for (const [path, url] of Object.entries(imageModules)) {
   const match = path.match(
-    /\/app-icons\/(graphite|parchment|velvet|xuan|cypress|sky|ocean|cardstock)\/([^/]+)\.png$/u,
+    /\/app-icons\/(a4|graphite|parchment|velvet|xuan|cypress|sky|ocean|cardstock)\/([^/]+)\.png$/u,
   );
   if (!match) continue;
   const [, paper, appId] = match as [string, AppImagePaper, string];

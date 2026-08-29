@@ -318,7 +318,7 @@ export const useSettingsStore = defineStore('settings', () => {
       hintColor: '#2d9cdb',
       iconRadius: 14,
       mutedTextColor: '',
-      paperTextureId: settings.value.theme === 'dark' ? 'cardstock' : 'a4',
+      paperTextureId: settings.value.theme === 'dark' ? 'graphite' : 'a4',
       primaryTextColor: '#ffffff',
       readerTextColor: '',
       softButtonColor: '',

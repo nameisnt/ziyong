@@ -343,15 +343,15 @@ JSON。目录直接按真实文件夹显示，分组新建、重命名和脚本�
 ## ADR-041 App 入口统一使用语义图标库
 
 决策：`AppIcon.vue` 统一把 App 的 Font Awesome 类名映射到 `src/data/appSvgIcons.ts`
-的语义 SVG 路径；A4 使用现代 SVG，其余八个兼容纸张键优先使用 `src/assets/app-icons/<paper>/` 下按 App
-id 命名的独立 192px 透明 PNG，当前全部 49 个注册 App 均具备对应图片；未来新增 App 缺少对应图片时回退语义 SVG，未收录类名才回退 Font
+的语义 SVG 路径；九个当前与兼容纸张键优先使用 `src/assets/app-icons/<paper>/` 下按 App
+id 命名的 192px 透明 PNG，当前全部 49 个注册 App 均具备对应图片；A4 由语义 SVG 渲染为现代印刷母版，石墨黑纸从 A4 派生，羊皮纸/暗红皮革、宣纸/松柏夜墨、彩色纸页/深海卡纸分别共享古旧、墨绘和蜡笔构图。未来新增 App 缺少对应图片时回退语义 SVG，未收录类名才回退 Font
 Awesome。用户上传图标始终具有最高优先级。提示词 App 目录和详情头也复用该入口；共享书架从当前纸张派生封面材质，业务 App 不再提供固定渐变封面。
 
 理由：首页、Dock、分组管理和主题预览需要使用同一入口和 App 语义；独立图片才能稳定表达水墨、羽毛笔古旧画和蜡笔画的材质差异，SVG 回退则允许图片资源按功能分批补齐。工作台等普通 App 入口也走该链路。
 
 影响：批量源图经 `scripts/process-app-icon-batch.ps1` 去底、裁切和统一尺寸，派生主题资源由
 `scripts/generate-theme-image-variants.ps1` 生成，`scripts/validate-app-image-icons.ps1`
-校验八套图片文件集、透明角、主体覆盖率和绿幕残留；新增注册 App 时必须同时补齐 SVG 身份和各纸张图片。
+校验九套图片文件集、透明角、主体覆盖率和绿幕残留；`scripts/generate-modern-app-icons.mjs` 负责现代 A4 母版，`scripts/generate-theme-image-variants.ps1` 负责夜间和彩纸派生；新增注册 App 时必须同时补齐 SVG 身份和各纸张图片。
 
 ## ADR-042 思维链在生成记录建立时自动清理
 

@@ -169,11 +169,11 @@
 - `src/data/appSvgIcons.ts` 保存 App 语义 SVG 路径和现有 Font Awesome 类名映射；`src/data/appIdentityImageIcons.ts` 从
   `src/assets/app-icons/<paper>/` 加载按 App id 命名的主题 PNG；`AppIcon.vue`
   统一用于首页、Dock、分组管理、主题预览和提示词 App 入口，优先级为上传图片、当前纸张主题 PNG、语义 SVG、Font Awesome；单个入口只创建当前纸张的一份图片或 SVG 节点。
-- `src/assets/app-icons/{xuan,parchment,cardstock,graphite,velvet,cypress,sky,ocean}/`
+- `src/assets/app-icons/{a4,graphite,parchment,velvet,xuan,cypress,sky,ocean,cardstock}/`
   各保存当前 49 个注册 App 的 192px 透明 PNG；`scripts/process-app-icon-batch.ps1`
-  负责绿幕去除、裁切和尺寸归一，`scripts/generate-theme-image-variants.ps1` 生成主题派生资源，`scripts/validate-app-image-icons.ps1` 负责完整性与像素级资源检查。
+  负责绿幕去除、裁切和尺寸归一，`scripts/generate-modern-app-icons.mjs` 从语义 SVG 渲染 A4 现代印刷母版，`scripts/generate-theme-image-variants.ps1` 生成石墨和其他主题派生资源，`scripts/validate-app-image-icons.ps1` 负责完整性与像素级资源检查。
 - `src/global.css` 定义全局 `pc-*`
-  控件、卡片、表单、阅读、生成和详情基础样式；A4 使用现代 SVG，其余主题切换到各自图片，缺图时继续显示语义 SVG。
+  控件、卡片、表单、阅读、生成和详情基础样式；全部当前主题切换到对应图片，缺图时继续显示语义 SVG。
 - `src/components/BookShelf.vue` 从当前纸张选择封面材质和色板；日记、总结、番外和书信只提供语义图标，不再写死业务渐变色。
 - `PhoneOverlay.vue` 的 `.pc-screen`
   统一提供普通 App 页面外边距；业务 App 根页面只负责布局，状态栏展示页通过专用零边距屏幕承载网页。

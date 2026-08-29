@@ -98,3 +98,7 @@ test('legacy built-in theme profiles migrate paper identity without rewriting cu
   }
   assert.match(settingsStoreSource, /\?\? 'cardstock'/u);
 });
+
+test('visual theme reset keeps the modern A4 and graphite pair', () => {
+  assert.match(settingsStoreSource, /paperTextureId: settings\.value\.theme === 'dark' \? 'graphite' : 'a4'/u);
+});

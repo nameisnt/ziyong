@@ -1,11 +1,5 @@
 <template>
-  <img
-    v-if="source && !sourceFailed"
-    :src="source"
-    alt=""
-    decoding="async"
-    @error="sourceFailed = true"
-  />
+  <img v-if="source && !sourceFailed" :src="source" alt="" decoding="async" @error="sourceFailed = true" />
   <template v-else>
     <img
       v-if="identityImage && !identityImageFailed"
@@ -63,7 +57,7 @@ const identityIcon = computed(() => {
   return icon?.paperVariants?.[paper.value] ?? icon;
 });
 const identityImage = computed(() => {
-  if (!props.appId || !props.defaultIcon || props.icon !== props.defaultIcon || paper.value === 'a4') return '';
+  if (!props.appId || !props.defaultIcon || props.icon !== props.defaultIcon) return '';
   return getAppIdentityImageIcon(props.appId)?.[paper.value as AppImagePaper] ?? '';
 });
 const svgPaths = computed(() => getAppSvgIcon(props.icon));

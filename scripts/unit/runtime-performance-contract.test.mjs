@@ -43,6 +43,7 @@ test('hidden and cached phone pages stop expensive foreground work', async () =>
 test('App icons render only the selected paper image', async () => {
   const appIcon = await source('src/components/AppIcon.vue');
   assert.match(appIcon, /v-if="identityImage && !identityImageFailed"/u);
-  assert.match(appIcon, /paper\.value === 'a4'/u);
+  assert.match(appIcon, /getAppIdentityImageIcon\(props\.appId\)\?\.\[paper\.value as AppImagePaper\]/u);
+  assert.doesNotMatch(appIcon, /paper\.value === 'a4'/u);
   assert.doesNotMatch(appIcon, /v-for="\(url, paper\) in identityImages"/u);
 });

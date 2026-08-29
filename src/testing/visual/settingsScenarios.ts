@@ -19,8 +19,14 @@ export const settingsScenarioNames = [
   'settings-advanced',
   'theme-form-control-isolation',
   'theme-home-icon-assets',
+  'theme-home-a4',
+  'theme-home-graphite',
   'theme-home-xuan',
+  'theme-home-cypress',
   'theme-home-parchment',
+  'theme-home-velvet',
+  'theme-home-sky',
+  'theme-home-ocean',
   'theme-home-cardstock',
 ] as const;
 
@@ -144,9 +150,10 @@ export async function applySettingsVisualScenario(name: string, context: Setting
       throw new Error('Settings category selector overflows the narrow phone layout');
     }
   } else if (name === 'settings-advanced') context.resetPhoneToRoute('settings', 'root', '设置', { tab: 'advanced' });
-  else if (name === 'theme-home-xuan' || name === 'theme-home-parchment' || name === 'theme-home-cardstock') {
-    const paper = name.slice('theme-home-'.length) as 'cardstock' | 'parchment' | 'xuan';
-    settings.setTheme(paper === 'cardstock' ? 'dark' : 'light');
+  else if (name.startsWith('theme-home-') && name !== 'theme-home-icon-assets') {
+    const paper = name.slice('theme-home-'.length) as
+      'a4' | 'cardstock' | 'cypress' | 'graphite' | 'ocean' | 'parchment' | 'sky' | 'velvet' | 'xuan';
+    settings.setTheme(['cardstock', 'cypress', 'graphite', 'ocean', 'velvet'].includes(paper) ? 'dark' : 'light');
     settings.settings.visualTheme.paperTextureId = paper;
     context.resetPhoneToRoute('home', 'root', '主页');
   } else if (name === 'theme-home-icon-assets') {
