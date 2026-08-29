@@ -56,6 +56,17 @@ async function confirmPromptDeletion(context: PromptsScenarioContext) {
 }
 
 export async function applyPromptsVisualScenario(name: string, context: PromptsScenarioContext) {
+  if (name === 'prompts-app-list' || name === 'prompts-app-list-dark') {
+    const settings = useSettingsStore();
+    settings.setTheme(name.endsWith('-dark') ? 'dark' : 'light');
+    context.resetPhoneToRoute('prompts', 'root', '提示词');
+    await context.waitForPaint();
+    if (!document.querySelector('.pc-app-prompt-grid .pc-app-prompt-tile')) {
+      throw new Error('Prompt App choices did not render');
+    }
+    return true;
+  }
+
   if (name === 'prompts-type-group-batch') {
     const prompts = usePromptStore();
     prompts.resetDefaults();

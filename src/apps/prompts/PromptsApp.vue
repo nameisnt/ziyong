@@ -1495,12 +1495,30 @@ async function copyText(text: string, successMessage: string) {
   min-width: 0;
   min-height: 78px;
   padding: 8px 4px 7px;
-  border: 1px solid var(--pc-border);
+  border: 0;
   border-radius: var(--pc-control-radius);
-  background: color-mix(in srgb, var(--pc-prompt-accent) 8%, var(--pc-surface-strong) 92%);
+  background: transparent;
   color: var(--pc-text);
   cursor: pointer;
   text-align: center;
+  transition:
+    background 0.16s ease,
+    transform 0.16s ease;
+}
+
+@media (hover: hover) {
+  .pc-app-prompt-tile:hover {
+    background: color-mix(in srgb, var(--pc-theme-accent) 7%, transparent 93%);
+  }
+}
+
+.pc-app-prompt-tile:focus-visible {
+  outline: 2px solid var(--pc-theme-accent);
+  outline-offset: -2px;
+}
+
+.pc-app-prompt-tile:active {
+  transform: scale(0.98);
 }
 
 .pc-app-prompt-icon {

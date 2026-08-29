@@ -10,6 +10,8 @@ export const settingsScenarioNames = [
   'settings-data-management',
   'settings-data-management-dark',
   'settings-interface',
+  'settings-interface-app-labels',
+  'settings-interface-app-labels-dark',
   'settings-reader-font',
   'settings-generation',
   'settings-theme-persistence',
@@ -48,7 +50,35 @@ export async function applySettingsVisualScenario(name: string, context: Setting
       throw new Error('Settings data category did not open');
     }
   } else if (name === 'settings-interface') context.resetPhoneToRoute('settings', 'root', '设置', { tab: 'interface' });
-  else if (name === 'settings-reader-font') {
+  else if (name === 'settings-interface-app-labels' || name === 'settings-interface-app-labels-dark') {
+    settings.setTheme(name.endsWith('-dark') ? 'dark' : 'light');
+    settings.settings.showHomeAppLabels = true;
+    context.resetPhoneToRoute('settings', 'root', '设置', { tab: 'interface' });
+    await context.waitForPaint();
+    const toggle = document.querySelector<HTMLInputElement>('input[aria-label="显示 App 名称"]');
+    if (!toggle) throw new Error('Settings interface App label toggle is missing');
+    toggle.click();
+    await context.waitForPaint();
+    if (settings.settings.showHomeAppLabels) throw new Error('Settings interface App label toggle did not update');
+    const snapshot = klona(extension_settings[setting_field]) as typeof settings.settings;
+    if (snapshot?.showHomeAppLabels !== false)
+      throw new Error('Settings interface App label preference was not persisted');
+    settings.settings.showHomeAppLabels = true;
+    extension_settings[setting_field] = snapshot;
+    settings.rehydrateFromSettings();
+    await context.waitForPaint();
+    if (settings.settings.showHomeAppLabels)
+      throw new Error('Settings interface App label preference did not rehydrate');
+    context.resetPhoneToRoute('home', 'root', '主页');
+    await context.waitForPaint();
+    const tiles = [...document.querySelectorAll<HTMLButtonElement>('.pc-app-tile, .pc-dock-tile')];
+    if (!tiles.length || tiles.some(tile => !tile.getAttribute('aria-label'))) {
+      throw new Error('Hidden App labels removed the accessible App name');
+    }
+    if (document.querySelector('.pc-app-tile .pc-app-label, .pc-dock-tile .pc-app-label')) {
+      throw new Error('Home App labels remained visible after disabling them');
+    }
+  } else if (name === 'settings-reader-font') {
     const fontId = 'visual-reader-font';
     settings.settings.customFont.fonts = [
       {

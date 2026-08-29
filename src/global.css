@@ -131,6 +131,25 @@
   opacity: 0.24;
 }
 
+/* Built-in paper artwork carries its own silhouette; home navigation should not frame it again. */
+.pc-phone-root .pc-home :is(.pc-app-tile, .pc-dock-tile) .pc-app-icon-material:has(> .pc-app-identity-image),
+.pc-phone-root .pc-app-prompt-icon:has(> .pc-app-identity-image) {
+  overflow: visible;
+  border: 0;
+  background: transparent;
+  box-shadow: none;
+}
+
+.pc-phone-root
+  :is(
+    .pc-home :is(.pc-app-tile, .pc-dock-tile) .pc-app-icon-material,
+    .pc-app-prompt-icon
+  )
+  > .pc-app-identity-image {
+  width: 100%;
+  height: 100%;
+}
+
 .pc-phone-root[data-paper='a4'] .pc-app-icon-material {
   border-color: color-mix(in srgb, var(--pc-icon-material-accent) 38%, var(--pc-border) 62%);
   background: color-mix(in srgb, white 88%, var(--pc-icon-material-accent) 12%);

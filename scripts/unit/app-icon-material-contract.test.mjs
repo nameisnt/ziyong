@@ -55,6 +55,19 @@ test('prompt App choices reuse the same theme-aware AppIcon entry as the home sc
   assert.match(prompts, /:default-icon="activeAppPromptGroup\.defaultIcon"/u);
 });
 
+test('paper artwork stays unframed on home navigation and prompt App choices', () => {
+  assert.match(
+    globalCss,
+    /\.pc-home :is\(\.pc-app-tile, \.pc-dock-tile\)[\s\S]*?:has\(> \.pc-app-identity-image\)[\s\S]*?border:\s*0;[\s\S]*?background:\s*transparent;[\s\S]*?box-shadow:\s*none;/u,
+  );
+  assert.match(globalCss, /\.pc-app-prompt-icon:has\(> \.pc-app-identity-image\)/u);
+  assert.match(
+    prompts,
+    /\.pc-app-prompt-tile\s*\{[\s\S]*?border:\s*0;[\s\S]*?background:\s*transparent;/u,
+  );
+  assert.match(prompts, /\.pc-app-prompt-tile:focus-visible/u);
+});
+
 test('shared bookshelves derive covers from paper identity without business gradients', () => {
   assert.match(bookShelf, /:data-paper="paper"/u);
   assert.match(bookShelf, /settingsStore\.settings\.visualTheme\.paperTextureId/u);

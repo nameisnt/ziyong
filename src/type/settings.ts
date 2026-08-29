@@ -299,6 +299,7 @@ export const Settings = z
     floatBallY: z.number().nullable().default(null),
     phoneWindowX: z.number().nullable().default(null),
     phoneWindowY: z.number().nullable().default(null),
+    showHomeAppLabels: z.boolean().default(true),
     layout: HomeScreenLayoutSchema.default(() => ({
       appOrder: [],
       dockOrder: [],
@@ -336,6 +337,7 @@ export const Settings = z
     floatBallY: null,
     phoneWindowX: null,
     phoneWindowY: null,
+    showHomeAppLabels: true,
     layout: { appOrder: [], dockOrder: [], folders: [], version: 1 },
   }));
 

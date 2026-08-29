@@ -59,6 +59,13 @@
             @update:value="settingsStore.setHomeColumns"
           />
         </div>
+        <label class="pc-setting-row">
+          <strong>显示 App 名称</strong>
+          <span class="pc-toggle">
+            <input v-model="settings.showHomeAppLabels" type="checkbox" aria-label="显示 App 名称" />
+            <span></span>
+          </span>
+        </label>
         <button class="pc-setting-row" type="button" @click="restoreHomeLayout">
           <strong>重置主页布局</strong>
           <i class="fa-solid fa-arrow-rotate-left" aria-hidden="true"></i>

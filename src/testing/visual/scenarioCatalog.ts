@@ -95,6 +95,8 @@ export function createVisualScenarioGroups(rootAppScenarios: string[]): VisualSc
         'settings-data-management',
         'settings-data-management-dark',
         'settings-interface',
+        'settings-interface-app-labels',
+        'settings-interface-app-labels-dark',
         'settings-reader-font',
         'settings-generation',
         'settings-theme-persistence',
@@ -286,6 +288,8 @@ export function createVisualScenarioGroups(rootAppScenarios: string[]): VisualSc
     {
       id: 'prompts',
       scenarios: [
+        'prompts-app-list',
+        'prompts-app-list-dark',
         'prompts-app-detail',
         'prompts-task-detail',
         'prompts-task-editor',

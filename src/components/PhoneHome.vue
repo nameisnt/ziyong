@@ -1,5 +1,5 @@
 <template>
-  <section class="pc-home">
+  <section :class="['pc-home', { 'labels-hidden': !settings.showHomeAppLabels }]">
     <div class="pc-home-main">
       <HomeContextBar
         @open-folder-creator="openFolderCreator"
@@ -73,6 +73,7 @@
               ]"
               :data-folder-id="section.draggable ? section.folderId : undefined"
               :data-folder-index="section.draggable ? index : undefined"
+              :aria-label="app.name"
               :style="[getDisplayAppStyle(app), section.draggable ? getFolderTileDragStyle(app.id) : {}]"
               @click="openHomeApp(app.id, section.folderId)"
               @pointercancel="section.draggable && onFolderAppPointerCancel($event)"
@@ -89,7 +90,7 @@
                 />
                 <span v-if="getHomeAppCount(app)" class="pc-app-count-badge">{{ formatHomeAppCount(app) }}</span>
               </span>
-              <strong :title="app.name">{{ app.name }}</strong>
+              <strong v-if="settings.showHomeAppLabels" class="pc-app-label" :title="app.name">{{ app.name }}</strong>
             </button>
           </div>
         </section>
@@ -104,6 +105,7 @@
         :class="['pc-dock-tile', { dragging: appDrag.itemToken === item.token && appDrag.isDragging }]"
         type="button"
         :data-home-token="item.token"
+        :aria-label="item.app?.name || item.folder?.name"
         :style="[item.app ? getDisplayAppStyle(item.app) : getFolderStyle(item), getHomeTileDragStyle(item)]"
         @click="openHomeItem(item)"
         @pointercancel="onAppPointerCancel"
@@ -120,7 +122,9 @@
           />
           <span v-if="item.folder" class="pc-app-count-badge">{{ item.folder.appIds.length }}</span>
         </span>
-        <strong>{{ item.app?.name || item.folder?.name }}</strong>
+        <strong v-if="settings.showHomeAppLabels" class="pc-app-label">{{
+          item.app?.name || item.folder?.name
+        }}</strong>
       </button>
     </nav>
 
@@ -920,6 +924,11 @@ onBeforeUnmount(resetHomeInteractionState);
 .pc-app-tile:hover {
   background: transparent;
 }
+.pc-app-tile:focus-visible,
+.pc-dock-tile:focus-visible {
+  outline: 2px solid var(--pc-theme-accent);
+  outline-offset: -2px;
+}
 .pc-app-tile:active {
   transform: scale(0.98);
 }
@@ -949,6 +958,17 @@ onBeforeUnmount(resetHomeInteractionState);
   height: 100%;
   object-fit: cover;
   border-radius: inherit;
+}
+.pc-home.labels-hidden .pc-home-app-grid {
+  row-gap: 6px;
+}
+.pc-home.labels-hidden .pc-app-tile {
+  min-height: 56px;
+  padding-block: 4px;
+}
+.pc-home.labels-hidden .pc-app-tile .pc-app-icon,
+.pc-home.labels-hidden .pc-dock-tile .pc-app-icon {
+  margin-bottom: 0;
 }
 :global(.pc-phone-root[data-home-columns='5'] .pc-home-app-grid) {
   gap: 4px;
