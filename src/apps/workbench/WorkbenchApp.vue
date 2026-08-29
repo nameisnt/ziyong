@@ -17,6 +17,15 @@
         <button
           class="pc-icon-btn"
           type="button"
+          :aria-label="t`复制其他聊天的工作流`"
+          :title="t`复制其他聊天的工作流`"
+          @click="copyModalOpen = true"
+        >
+          <i class="fa-solid fa-copy"></i>
+        </button>
+        <button
+          class="pc-icon-btn"
+          type="button"
           :aria-label="t`新建流程`"
           :title="t`新建流程`"
           @click="createWorkflow"
@@ -672,6 +681,13 @@
         </div>
       </article>
     </section>
+
+    <WorkbenchCopyModal
+      :open="copyModalOpen"
+      :sources="copySources"
+      @close="copyModalOpen = false"
+      @copy="copyWorkflows"
+    />
   </section>
 </template>
 
@@ -679,6 +695,7 @@
 import EmptyState from '@/components/EmptyState.vue';
 import ConfigurationRecoveryNotice from '@/components/ConfigurationRecoveryNotice.vue';
 import SearchableCombobox from '@/components/SearchableCombobox.vue';
+import WorkbenchCopyModal from './WorkbenchCopyModal.vue';
 import { readExternalProfileTables, type ExternalProfileTable } from '@/apps/profiles/externalBridge';
 import { usePhoneStore } from '@/store/phone';
 import { useGenerationTaskStore } from '@/store/generationTasks';
@@ -743,6 +760,8 @@ const insertDraftsOpen = ref(true);
 const logsOpen = ref(true);
 const tavernPresetNames = ref<string[]>([]);
 const statusRevision = ref(0);
+const copyModalOpen = ref(false);
+const copySources = computed(() => workbench.getCopySourceScopes());
 const statusEventStops = ['CHAT_CHANGED', 'GENERATION_ENDED', 'MESSAGE_RECEIVED', 'MESSAGE_SWIPED'].map(eventName =>
   onTavernEvent(eventName, () => {
     statusRevision.value += 1;
@@ -845,6 +864,14 @@ function createWorkflow() {
   const workflow = workbench.createWorkflow();
   openWorkflowIds.value = [workflow.id, ...openWorkflowIds.value];
   selectedActions[workflow.id] = '';
+}
+
+function copyWorkflows(sourceScopeKey: string, workflowIds: string[]) {
+  const copied = workbench.copyWorkflowsFromScope(sourceScopeKey, workflowIds);
+  copyModalOpen.value = false;
+  if (!copied.length) return;
+  openWorkflowIds.value = [copied[0].id, ...openWorkflowIds.value];
+  toastr.success(`已复制 ${copied.length} 个工作流，请检查后启用`);
 }
 
 function updateWorkflowName(workflowId: string, name: string) {

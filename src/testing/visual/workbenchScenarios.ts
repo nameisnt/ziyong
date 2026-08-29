@@ -1,4 +1,6 @@
 import { useWorkbenchStore } from '@/apps/workbench/store';
+import { getCurrentChatScopeKey } from '@/store/chatScoped';
+import { useSettingsStore } from '@/store/settings';
 
 type WorkbenchVisualScenarioContext = {
   resetPhoneToRoute: (appId: string, page: string, title: string, params?: Record<string, string>) => void;
@@ -50,6 +52,55 @@ async function confirmWorkbenchDeletion(context: WorkbenchVisualScenarioContext)
 }
 
 export async function applyWorkbenchVisualScenario(name: string, context: WorkbenchVisualScenarioContext) {
+  if (name === 'workbench-copy' || name === 'workbench-copy-dark') {
+    useSettingsStore().setTheme(name.endsWith('-dark') ? 'dark' : 'light');
+    const workbench = useWorkbenchStore();
+    const currentScopeKey = getCurrentChatScopeKey();
+    const sourceScopeKey = 'char:visual:chat:旧聊天工作流';
+    workbench.switchScope(sourceScopeKey);
+    workbench.settings.insertDrafts = [];
+    workbench.settings.logs = [];
+    workbench.settings.workflows = [];
+    const sourceWorkflow = workbench.createWorkflow('日记自动整理');
+    const sourceStep = workbench.addStep(sourceWorkflow.id, { actionId: 'generate', appId: 'diary' });
+    sourceStep.config.diaryBookId = 'old-book';
+    sourceStep.config.diaryPerspectiveName = '旧主角';
+    workbench.switchScope(currentScopeKey);
+    workbench.settings.insertDrafts = [];
+    workbench.settings.logs = [];
+    workbench.settings.workflows = [];
+    context.resetPhoneToRoute('workbench', 'root', '工作台');
+    await context.waitForPaint();
+
+    findButtonByTitle('复制其他聊天的工作流')?.click();
+    if (!(await context.waitForCondition(() => Boolean(document.querySelector('.pc-workbench-copy-dialog'))))) {
+      throw new Error('Workbench copy dialog did not open');
+    }
+    const checkbox = document.querySelector<HTMLInputElement>('.pc-workbench-copy-list input[type="checkbox"]');
+    if (!checkbox) throw new Error('Workbench copy dialog did not render a workflow option');
+    checkbox.click();
+    await context.waitForPaint();
+    const copyButton = [...document.querySelectorAll<HTMLButtonElement>('.pc-workbench-copy-dialog button')].find(
+      button => button.textContent?.includes('复制到当前聊天') && !button.disabled,
+    );
+    if (!copyButton) throw new Error('Workbench copy action did not become available');
+    copyButton?.click();
+    if (!(await context.waitForCondition(() => workbench.settings.workflows.length === 1))) {
+      throw new Error('Workbench copy action did not create a workflow');
+    }
+    const copied = workbench.settings.workflows[0];
+    if (copied.enabled || copied.steps[0]?.config.diaryPerspectiveName || copied.steps[0]?.config.diaryBookId) {
+      throw new Error('Workbench copied chat-specific fields or enabled state');
+    }
+    await context.waitForPaint();
+    findButtonByTitle('复制其他聊天的工作流')?.click();
+    if (!(await context.waitForCondition(() => Boolean(document.querySelector('.pc-workbench-copy-dialog'))))) {
+      throw new Error('Workbench copy dialog did not reopen');
+    }
+    await context.waitForPaint();
+    return true;
+  }
+
   if (name === 'workbench-profile-step') {
     const workbench = useWorkbenchStore();
     workbench.settings.insertDrafts = [];

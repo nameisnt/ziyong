@@ -1,6 +1,6 @@
-import { getCurrentChatScopeKey } from '@/store/chatScoped';
-import { stripRetiredMediaWorkbenchSettings } from '@/core/retiredMedia';
-import { getChatMessagesSafe, onTavernEvent } from '@/util/runtime';
+import { getCurrentChatScopeKey, parseChatScopeKey, useChatScopedDomain } from '@/store/chatScoped';
+import { useGenerationTaskStore } from '@/store/generationTasks';
+import { getChatMessagesSafe } from '@/util/runtime';
 import { validateInplace } from '@/util/zod';
 // eslint-disable-next-line import-x/no-nodejs-modules
 import { saveSettingsDebounced } from '@sillytavern/script';
@@ -164,54 +164,20 @@ function createId(prefix: string) {
   return `${prefix}_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
 }
 
-type SettingsReadResult = { data: WorkbenchSettings; error: string; rawData: unknown };
+function isChatScopedEnvelope(raw: unknown) {
+  return Boolean(raw && typeof raw === 'object' && (raw as Record<string, unknown>).__chatScoped === true);
+}
 
-function readSettings(raw: unknown): SettingsReadResult {
-  const rawData = klona(raw);
-  const normalizedRaw = klona(typeof raw === 'undefined' ? {} : raw);
-  stripRetiredMediaWorkbenchSettings(normalizedRaw);
-  const parsedResult = WorkbenchSettingsSchema.safeParse(normalizedRaw);
-  if (!parsedResult.success) {
-    return {
-      data: WorkbenchSettingsSchema.parse({}),
-      error: `工作台配置校验失败：${parsedResult.error.issues[0]?.message ?? '数据格式无效'}`,
-      rawData,
-    };
-  }
-  try {
-    const source = normalizedRaw && typeof normalizedRaw === 'object' ? normalizedRaw : {};
-    const rawWorkflows = Array.isArray((source as Record<string, unknown>).workflows)
-      ? ((source as Record<string, unknown>).workflows as Array<Record<string, unknown>>)
-      : [];
-    const parsed = parsedResult.data;
-    const scopeKey = getCurrentChatScopeKey();
-    parsed.workflows.forEach(workflow => {
-      const rawWorkflow = rawWorkflows.find(item => item.id === workflow.id);
-      const rawCheckpoints =
-        rawWorkflow?.checkpoints && typeof rawWorkflow.checkpoints === 'object'
-          ? (rawWorkflow.checkpoints as Record<string, unknown>)
-          : {};
-      const rawCheckpoint =
-        rawCheckpoints[scopeKey] && typeof rawCheckpoints[scopeKey] === 'object'
-          ? (rawCheckpoints[scopeKey] as Record<string, unknown>)
-          : null;
-      if (workflow.checkpoints[scopeKey] && rawCheckpoint && !('lastMessageId' in rawCheckpoint)) {
-        workflow.checkpoints[scopeKey].lastMessageId = getCurrentLastVisibleMessageId();
-      }
-      if (workflow.checkpoints[scopeKey] && rawCheckpoint && !('hasSuccessfulRun' in rawCheckpoint)) {
-        workflow.checkpoints[scopeKey].hasSuccessfulRun = parsed.logs.some(
-          log => log.workflowId === workflow.id && log.scopeKey === scopeKey && log.status === 'success',
-        );
-      }
-    });
-    return { data: parsed, error: '', rawData };
-  } catch (error) {
-    return {
-      data: WorkbenchSettingsSchema.parse({}),
-      error: `工作台配置迁移失败：${error instanceof Error ? error.message : '数据格式无效'}`,
-      rawData,
-    };
-  }
+function discardLegacyGlobalWorkbenchSettings() {
+  const raw = _.get(extension_settings, workbenchField);
+  if (typeof raw === 'undefined' || isChatScopedEnvelope(raw)) return false;
+  _.set(extension_settings, workbenchField, {
+    __chatScoped: true,
+    legacyScopeMigrations: {},
+    scopes: {},
+  });
+  void saveSettingsDebounced();
+  return true;
 }
 
 function getCurrentVisibleAssistantMessages() {
@@ -254,33 +220,34 @@ export function captureDelayedWorkbenchCheckpoint(delayAiReplies: number): Workb
 }
 
 export const useWorkbenchStore = defineStore('workbench', () => {
-  const initial = readSettings(_.get(extension_settings, workbenchField));
-  const settings = ref<WorkbenchSettings>(initial.data);
-  const configError = ref(initial.error);
-  const rawConfig = shallowRef(initial.rawData);
+  const discardedLegacySettings = discardLegacyGlobalWorkbenchSettings();
+  const chatDomain = useChatScopedDomain({
+    field: workbenchField,
+    schema: WorkbenchSettingsSchema,
+    createDefault: () => WorkbenchSettingsSchema.parse({}),
+  });
+  const settings = chatDomain.data;
+  const configError = chatDomain.configError;
+  const rawConfig = chatDomain.rawConfig;
+  const scopeKey = chatDomain.scopeKey;
   const runningWorkflowIds = ref<string[]>([]);
+
+  if (discardedLegacySettings) {
+    const generationTasks = useGenerationTaskStore();
+    generationTasks.tasks.filter(task => task.kind === 'workbench').forEach(task => generationTasks.removeTask(task.id));
+  }
 
   const workflows = computed(() => settings.value.workflows);
   const logs = computed(() => settings.value.logs);
   const insertDrafts = computed(() => settings.value.insertDrafts);
   const isRunning = computed(() => runningWorkflowIds.value.length > 0);
 
-  function persist() {
-    if (configError.value) return;
-    const parsed = readSettings(klona(settings.value));
-    if (parsed.error) throw new Error(parsed.error);
-    _.set(extension_settings, workbenchField, parsed.data);
-    void saveSettingsDebounced();
-  }
-
-  watch(settings, persist, { deep: true });
-
   function createWorkflow(name = '') {
-    const scopeKey = getCurrentChatScopeKey();
+    const currentScopeKey = scopeKey.value;
     const workflow: WorkbenchWorkflow = {
       apiMode: 'inherit',
       checkpoints: {
-        [scopeKey]: captureCurrentWorkbenchCheckpoint(),
+        [currentScopeKey]: captureCurrentWorkbenchCheckpoint(),
       },
       delayAiReplies: 0,
       enabled: true,
@@ -298,6 +265,69 @@ export const useWorkbenchStore = defineStore('workbench', () => {
     };
     settings.value.workflows = [workflow, ...settings.value.workflows];
     return workflow;
+  }
+
+  function getCopySourceScopes() {
+    return chatDomain.scopeKeys.value.flatMap(sourceScopeKey => {
+      if (sourceScopeKey === scopeKey.value) return [];
+      const source = chatDomain.getScopeData(sourceScopeKey);
+      if (!source?.workflows.length) return [];
+      const parsed = parseChatScopeKey(sourceScopeKey);
+      return [
+        {
+          label: [parsed.ownerId, parsed.chatId].filter(Boolean).join(' / ') || sourceScopeKey,
+          scopeKey: sourceScopeKey,
+          workflows: source.workflows.map(workflow => ({
+            id: workflow.id,
+            name: workflow.name,
+            stepCount: workflow.steps.length,
+          })),
+        },
+      ];
+    });
+  }
+
+  function copyWorkflowsFromScope(sourceScopeKey: string, workflowIds: string[]) {
+    const source = chatDomain.getScopeData(sourceScopeKey);
+    if (!source) return [];
+    const selectedIds = new Set(workflowIds);
+    const currentScopeKey = scopeKey.value;
+    const copied = source.workflows
+      .filter(workflow => selectedIds.has(workflow.id))
+      .map(workflow => ({
+        ...klona(workflow),
+        checkpoints: { [currentScopeKey]: captureCurrentWorkbenchCheckpoint() },
+        enabled: false,
+        id: createId('workbench_workflow'),
+        name: `${workflow.name}（副本）`,
+        pendingRuns: {},
+        steps: workflow.steps.map(step => ({
+          ...klona(step),
+          config: {
+            ...klona(step.config),
+            diaryBookId: '',
+            diaryBookTitle: '',
+            diaryOccurredAt: '',
+            diaryPerspectiveName: '',
+            extrasBookId: '',
+            forumBoardId: '',
+            forumBoardName: '工作台',
+            letterBookId: '',
+            letterBookTitle: '',
+            letterReceiverName: '',
+            letterSenderName: '',
+            profileSheetKey: '',
+            profileTitleColumn: '',
+            profileTitleHint: '',
+            relationshipCharacterNames: '',
+            summaryBookId: '',
+            theaterParticipants: '',
+          },
+          id: createId('workbench_step'),
+        })),
+      }));
+    settings.value.workflows = [...copied, ...settings.value.workflows];
+    return copied;
   }
 
   function updateWorkflow(
@@ -538,6 +568,7 @@ export const useWorkbenchStore = defineStore('workbench', () => {
   }
 
   function shouldRunWorkflow(workflow: WorkbenchWorkflow, scopeKey = getCurrentChatScopeKey()) {
+    if (scopeKey !== chatDomain.scopeKey.value) return false;
     if (!workflow.enabled || !workflow.steps.some(step => step.enabled)) return false;
     if (runningWorkflowIds.value.includes(workflow.id)) return false;
     if (workflow.pendingRuns[scopeKey]) return true;
@@ -559,6 +590,7 @@ export const useWorkbenchStore = defineStore('workbench', () => {
   }
 
   function syncCurrentScope(scopeKey = getCurrentChatScopeKey()) {
+    if (scopeKey !== chatDomain.scopeKey.value) return;
     const currentCheckpoint = captureCurrentWorkbenchCheckpoint();
     settings.value.workflows = settings.value.workflows.map(workflow => {
       const checkpoint = workflow.checkpoints[scopeKey];
@@ -597,53 +629,36 @@ export const useWorkbenchStore = defineStore('workbench', () => {
   }
 
   function getDueWorkflows(scopeKey = getCurrentChatScopeKey()) {
+    if (scopeKey !== chatDomain.scopeKey.value) return [];
     return settings.value.workflows.filter(workflow => shouldRunWorkflow(workflow, scopeKey));
   }
 
   function rehydrateFromSettings() {
-    const next = readSettings(_.get(extension_settings, workbenchField));
-    configError.value = next.error;
-    rawConfig.value = next.rawData;
-    settings.value = next.data;
+    chatDomain.rehydrateFromSettings();
     runningWorkflowIds.value = [];
   }
 
   function resetCorruptedSettings() {
-    configError.value = '';
-    rawConfig.value = undefined;
-    settings.value = WorkbenchSettingsSchema.parse({});
-    persist();
-  }
-
-  function resetCurrentScope(scopeKey = getCurrentChatScopeKey()) {
-    settings.value.workflows = settings.value.workflows.map(workflow => {
-      const checkpoints = { ...workflow.checkpoints };
-      const pendingRuns = { ...workflow.pendingRuns };
-      delete checkpoints[scopeKey];
-      delete pendingRuns[scopeKey];
-      return {
-        ...workflow,
-        checkpoints,
-        pendingRuns,
-      };
-    });
-    settings.value.logs = settings.value.logs.filter(log => log.scopeKey !== scopeKey);
-    settings.value.insertDrafts = settings.value.insertDrafts.filter(draft => draft.scopeKey !== scopeKey);
+    chatDomain.resetCurrentScope();
     runningWorkflowIds.value = [];
   }
 
-  const stopChatChanged = onTavernEvent('CHAT_CHANGED', () => {
+  function resetCurrentScope() {
+    chatDomain.resetCurrentScope();
     runningWorkflowIds.value = [];
-  });
-  onScopeDispose(() => {
-    stopChatChanged.stop();
-  });
+  }
+
+  function switchScope(nextScopeKey: string) {
+    chatDomain.switchScope(nextScopeKey);
+    runningWorkflowIds.value = [];
+  }
 
   return {
     configError,
     addStep,
     clearLogs,
     clearPendingRun,
+    copyWorkflowsFromScope,
     createLog,
     createInsertDraft,
     createWorkflow,
@@ -651,6 +666,7 @@ export const useWorkbenchStore = defineStore('workbench', () => {
     deleteStep,
     deleteWorkflow,
     finishLog,
+    getCopySourceScopes,
     getDueWorkflows,
     getWorkflowProgress,
     getWorkflow,
@@ -668,6 +684,7 @@ export const useWorkbenchStore = defineStore('workbench', () => {
     setCheckpoint,
     setPendingRun,
     syncCurrentScope,
+    switchScope,
     updateStep,
     updateWorkflow,
     workflows,

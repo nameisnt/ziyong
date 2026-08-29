@@ -104,6 +104,9 @@ export function createVisualScenarioGroups(rootAppScenarios: string[]): VisualSc
         'settings-advanced',
         'theme-form-control-isolation',
         'theme-home-icon-assets',
+        'theme-home-xuan',
+        'theme-home-parchment',
+        'theme-home-cardstock',
       ],
     },
     { id: 'mvu', scenarios: ['mvu-modifier-tree', 'mvu-modifier-crud'] },
@@ -338,7 +341,14 @@ export function createVisualScenarioGroups(rootAppScenarios: string[]): VisualSc
     },
     {
       id: 'workbench',
-      scenarios: ['workbench-logs', 'workbench-forum-step', 'workbench-profile-step', 'workbench-crud'],
+      scenarios: [
+        'workbench-logs',
+        'workbench-forum-step',
+        'workbench-profile-step',
+        'workbench-crud',
+        'workbench-copy',
+        'workbench-copy-dark',
+      ],
     },
     {
       id: 'profiles',

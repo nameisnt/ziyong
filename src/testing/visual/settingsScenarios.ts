@@ -19,6 +19,9 @@ export const settingsScenarioNames = [
   'settings-advanced',
   'theme-form-control-isolation',
   'theme-home-icon-assets',
+  'theme-home-xuan',
+  'theme-home-parchment',
+  'theme-home-cardstock',
 ] as const;
 
 type SettingsScenarioContext = {
@@ -141,7 +144,12 @@ export async function applySettingsVisualScenario(name: string, context: Setting
       throw new Error('Settings category selector overflows the narrow phone layout');
     }
   } else if (name === 'settings-advanced') context.resetPhoneToRoute('settings', 'root', '设置', { tab: 'advanced' });
-  else if (name === 'theme-home-icon-assets') {
+  else if (name === 'theme-home-xuan' || name === 'theme-home-parchment' || name === 'theme-home-cardstock') {
+    const paper = name.slice('theme-home-'.length) as 'cardstock' | 'parchment' | 'xuan';
+    settings.setTheme(paper === 'cardstock' ? 'dark' : 'light');
+    settings.settings.visualTheme.paperTextureId = paper;
+    context.resetPhoneToRoute('home', 'root', '主页');
+  } else if (name === 'theme-home-icon-assets') {
     const fileService = installMemoryFileService();
     context.resetPhoneToRoute('theme', 'root', '主题');
     await context.waitForPaint();

@@ -120,9 +120,10 @@
 - 正则：`src/apps/regex-display/store.ts` 保存分组、全局执行顺序、规则和各消费目标的绑定；`RegexDisplayApp.vue`
   只提供分组目录、触摸/鼠标拖拽和弹窗编辑预览。Reader、Preset Manager、Status Display
   Settings 等消费界面直接读写各自绑定。
-- 工作台：`src/apps/workbench/runner.ts`
-  监听生成与聊天事件；聊天切换采用“等待宿主加载 → 核对切换序号 → 同步当前 scope 基线 → 检查到期工作流”的流程。`store.ts`
-  保存每个工作流的 scope checkpoint、暂停运行和日志，界面实时投影累计层数与下一次触发。
+- 工作台：`src/apps/workbench/store.ts` 通过 `useChatScopedDomain`
+  按聊天保存完整工作流、启用状态、checkpoint、待执行快照、日志和插入草稿；首次读取旧全局格式时直接清空旧工作台数据及关联生成任务。`WorkbenchCopyModal.vue`
+  读取其他已保存 scope 的工作流并批量复制，副本停用且清除聊天专属目标与人物字段。`runner.ts`
+  监听生成与聊天事件；聊天切换采用“等待宿主加载 → 核对切换序号 → 切换工作台 scope → 同步当前聊天基线 → 检查到期工作流”的流程。
 - 外部资料：`src/apps/profiles/externalBridge.ts` 从 `AutoCardUpdaterAPI` 读取真实表结构；`externalCrud.ts`
   按表键和行号直接增删改，`ProfilesApp.vue`
   按真实列展示横向或竖向资料卡片和详情，显示偏好由全局 settings 持久化。`profileReferences.ts`、`ExternalProfileReferencePicker.vue`
@@ -159,6 +160,9 @@
 - `src/data/appSvgIcons.ts` 保存 App 语义 SVG 路径和现有 Font Awesome 类名映射；`src/data/appIdentityImageIcons.ts` 从
   `src/assets/app-icons/<paper>/` 加载按 App id 命名的主题 PNG；`AppIcon.vue`
   统一用于首页、Dock、分组管理和主题预览，优先级为上传图片、当前纸张主题 PNG、语义 SVG、Font Awesome。
+- `src/assets/app-icons/{xuan,parchment,cardstock}/`
+  各保存当前 49 个注册 App 的 192px 透明 PNG；`scripts/process-app-icon-batch.ps1`
+  负责绿幕去除、裁切和尺寸归一，`scripts/validate-app-image-icons.ps1` 负责完整性与像素级资源检查。
 - `src/global.css` 定义全局 `pc-*`
   控件、卡片、表单、阅读、生成和详情基础样式；A4 使用现代 SVG，宣纸、羊皮纸和黑色卡纸切换到各自主题图片，缺图时继续显示语义 SVG。
 - `PhoneOverlay.vue` 的 `.pc-screen`

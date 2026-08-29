@@ -114,7 +114,6 @@ test('custom assets and icon overrides keep priority over built-in App identity 
 });
 
 test('paper image identities use transparent 192px PNGs with SVG fallback', async () => {
-  const imageAppIds = ['preset-link', 'preset-manager', 'world-slots', 'worldbook-link'];
   const papers = ['xuan', 'parchment', 'cardstock'];
 
   assert.match(identityImageSource, /import\.meta\.glob\('\.\.\/assets\/app-icons\/\*\*\/\*\.png'/u);
@@ -125,7 +124,7 @@ test('paper image identities use transparent 192px PNGs with SVG fallback', asyn
   assert.match(globalCss, /pc-app-identity-image-cardstock/u);
 
   for (const paper of papers) {
-    for (const appId of imageAppIds) {
+    for (const appId of expectedIdentityIds) {
       const png = await readFile(new URL(`../../src/assets/app-icons/${paper}/${appId}.png`, import.meta.url));
       assert.equal(png.readUInt32BE(16), 192, `${paper}/${appId}: width`);
       assert.equal(png.readUInt32BE(20), 192, `${paper}/${appId}: height`);

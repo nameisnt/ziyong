@@ -261,6 +261,17 @@ export function useChatScopedDomain<T>(options: { field: string; schema: ZodType
   }
 
   const data = ref<T>(loadScopeData(scopeKey.value));
+  const scopeKeys = computed(() => Object.keys(envelope.value.scopes));
+
+  function getScopeData(targetScopeKey: string) {
+    const raw = envelope.value.scopes[targetScopeKey];
+    if (typeof raw === 'undefined') return null;
+    try {
+      return parsePrettified(options.schema, klona(raw));
+    } catch {
+      return null;
+    }
+  }
 
   function persistEnvelope() {
     _.set(extension_settings, options.field, {
@@ -335,10 +346,12 @@ export function useChatScopedDomain<T>(options: { field: string; schema: ZodType
   return {
     configError,
     data,
+    getScopeData,
     rawConfig,
     rehydrateFromSettings,
     resetCurrentScope,
     scopeKey,
+    scopeKeys,
     switchScope,
   };
 }

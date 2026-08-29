@@ -1,7 +1,18 @@
 import WorkbenchApp from './WorkbenchApp.vue';
 import { useWorkbenchStore, WorkbenchSettingsSchema } from './store';
 import { definePhoneApp } from '@/core/appRegistry';
+import { getCurrentChatScopeKey, readChatScopedEnvelope } from '@/store/chatScoped';
+import { createChatScopedBackupSchema } from '@/type/backup';
 import { extension_settings } from '@sillytavern/scripts/extensions';
+
+function migrateWorkbenchBackupData(data: unknown) {
+  if (data && typeof data === 'object' && (data as Record<string, unknown>).__chatScoped === true) return data;
+  return {
+    __chatScoped: true,
+    legacyScopeMigrations: {},
+    scopes: {},
+  };
+}
 
 export default definePhoneApp({
   id: 'workbench',
@@ -13,19 +24,21 @@ export default definePhoneApp({
   defaultOrder: 65,
   component: WorkbenchApp,
   resetCurrentScope: () => useWorkbenchStore().resetCurrentScope(),
+  scopeSwitchHandler: scopeKey => useWorkbenchStore().switchScope(scopeKey),
   backupDomains: [
     {
       category: 'configuration',
       key: 'workbench',
-      exportData: () => _.get(extension_settings, 'sillytavern_phone_workbench', {}),
+      exportData: currentScopeKey =>
+        readChatScopedEnvelope('sillytavern_phone_workbench', currentScopeKey || getCurrentChatScopeKey()),
       importData: data => {
         _.set(extension_settings, 'sillytavern_phone_workbench', data);
       },
       rehydrateFromSettings: () => useWorkbenchStore().rehydrateFromSettings(),
-      schema: WorkbenchSettingsSchema,
-      schemaVersion: 2,
-      migrateImport: data => data,
-      scope: 'global',
+      schema: createChatScopedBackupSchema(WorkbenchSettingsSchema),
+      schemaVersion: 3,
+      migrateImport: migrateWorkbenchBackupData,
+      scope: 'chat',
     },
   ],
 });
