@@ -189,12 +189,11 @@ defineEmits<{
   align-content: flex-start;
   flex-wrap: wrap;
   gap: 8px;
-  padding: 10px;
+  padding: 8px 0;
   overflow-y: auto;
   overscroll-behavior: contain;
-  border: 0.5px solid var(--pc-border);
-  border-radius: 12px;
-  background: var(--pc-bg);
+  border-block: 1px solid color-mix(in srgb, var(--pc-border) 72%, transparent 28%);
+  background: transparent;
 }
 
 .pc-theater-type-group {

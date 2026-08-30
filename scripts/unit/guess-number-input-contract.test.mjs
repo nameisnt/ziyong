@@ -7,6 +7,7 @@ const componentSource = await readFile(
   new URL('../../src/apps/game-2048/GuessNumberGame.vue', import.meta.url),
   'utf8',
 );
+const schemaSource = await readFile(new URL('../../src/apps/game-2048/backupSchemas.ts', import.meta.url), 'utf8');
 const globalSource = await readFile(new URL('../../src/global.css', import.meta.url), 'utf8');
 const catalogSource = await readFile(new URL('../../src/testing/visual/scenarioCatalog.ts', import.meta.url), 'utf8');
 const harnessSource = await readFile(new URL('../../src/testing/visual-harness.ts', import.meta.url), 'utf8');
@@ -51,7 +52,7 @@ test('guess-number input uses its shared game-number semantic without redrawing 
   for (const behavior of [
     'v-model="draft"',
     'inputmode="numeric"',
-    'maxlength="4"',
+    ':maxlength="state.digitCount"',
     '@input="sanitizeDraft"',
     '@submit.prevent="submitGuess"',
   ]) {
@@ -64,6 +65,19 @@ test('guess-number input uses its shared game-number semantic without redrawing 
     failures.push('isolated guess-number scenario has no harness branch');
 
   assert.deepEqual(failures, []);
+});
+
+test('guess-number supports selectable lengths and varied persisted feedback', () => {
+  assert.match(componentSource, /aria-label="猜数字位数"/u);
+  assert.match(componentSource, /const digitOptions: DigitCount\[\] = \[3, 4, 5, 6\]/u);
+  assert.match(schemaSource, /comment: z\.string\(\)\.default\(''\)/u);
+  assert.match(componentSource, /state\.value\.guesses\.push\(\{ bulls, comment, cows, value: guess \}\)/u);
+  assert.match(componentSource, /comment !== previous/u);
+
+  for (const kind of ['close', 'firstHit', 'firstMiss', 'improved', 'same', 'won', 'worse']) {
+    const block = componentSource.match(new RegExp(`\\n  ${kind}: \\[([\\s\\S]*?)\\n  \\],`, 'u'))?.[1] ?? '';
+    assert.ok((block.match(/'[^']+'/gu) || []).length >= 4, `${kind} should provide at least four comments`);
+  }
 });
 
 test('guess-number stats reserve room for the longer status and verify visible text', () => {

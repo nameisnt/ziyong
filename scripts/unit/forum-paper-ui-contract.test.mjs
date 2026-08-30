@@ -13,6 +13,7 @@ const [phoneOverlay, themeApp, globalCss, detailPage, previewPage, replyList] = 
   readSource('src/apps/forum/ForumPreviewPage.vue'),
   readSource('src/apps/forum/ForumReplyList.vue'),
 ]);
+const readerSettings = await readSource('src/apps/settings/SettingsReaderPanel.vue');
 
 test('paper shell and theme preview cover one texture without tiled seams', () => {
   assert.match(phoneOverlay, /backgroundRepeat: 'no-repeat'/u);
@@ -35,4 +36,11 @@ test('forum detail and preview share a flat floor list with an original-poster f
   assert.match(replyList, /parentFloor\(reply\.parentReplyId\)/u);
   assert.doesNotMatch(detailPage, /pc-reply-card/u);
   assert.doesNotMatch(previewPage, /pc-reply-card/u);
+});
+
+test('forum replies share the reader paragraph-spacing formatter', () => {
+  assert.match(readerSettings, /每段空行/u);
+  assert.doesNotMatch(readerSettings, /每行空行/u);
+  assert.match(replyList, /formatReaderContent\(content, settings\.value\.reader\)/u);
+  assert.match(replyList, /formatReplyContent\(reply\.content\)/u);
 });

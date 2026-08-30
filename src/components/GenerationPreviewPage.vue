@@ -1,34 +1,32 @@
 <template>
   <section class="pc-shared-generation-preview-page pc-generation-preview-page">
-    <article class="pc-section-card pc-detail-card pc-generation-preview-card">
-      <GenerationPreviewPanel
-        v-model:reasoning="reasoning"
-        :content="content"
-        :raw="raw"
-        :raw-output-semantics="rawOutputSemantics"
-        raw-editable
-        :reparse-handler="reparseHandler"
-        reasoning-editable
-        :save-label="saveLabel"
-        :scan-enabled="scanEnabled"
-        :source-label="sourceLabel"
-        :text-provider-summary="textProviderSummary"
-        :title="title"
-        :warnings="warnings"
-        @back="$emit('back')"
-        @reparse="$emit('reparse')"
-        @save="$emit('save')"
-        @update:content="content = $event"
-        @update:raw="raw = $event"
-      >
-        <template v-if="$slots.content" #content="slotProps">
-          <slot name="content" v-bind="slotProps"></slot>
-        </template>
-        <template v-if="$slots.afterContent" #after-content>
-          <slot name="afterContent"></slot>
-        </template>
-      </GenerationPreviewPanel>
-    </article>
+    <GenerationPreviewPanel
+      v-model:reasoning="reasoning"
+      :content="content"
+      :raw="raw"
+      :raw-output-semantics="rawOutputSemantics"
+      raw-editable
+      :reparse-handler="reparseHandler"
+      reasoning-editable
+      :save-label="saveLabel"
+      :scan-enabled="scanEnabled"
+      :source-label="sourceLabel"
+      :text-provider-summary="textProviderSummary"
+      :title="title"
+      :warnings="warnings"
+      @back="$emit('back')"
+      @reparse="$emit('reparse')"
+      @save="$emit('save')"
+      @update:content="content = $event"
+      @update:raw="raw = $event"
+    >
+      <template v-if="$slots.content" #content="slotProps">
+        <slot name="content" v-bind="slotProps"></slot>
+      </template>
+      <template v-if="$slots.afterContent" #after-content>
+        <slot name="afterContent"></slot>
+      </template>
+    </GenerationPreviewPanel>
   </section>
 </template>
 
@@ -55,6 +53,7 @@ const reasoning = defineModel<string>('reasoning', { default: '' });
 
 <style scoped>
 .pc-shared-generation-preview-page {
+  height: 100%;
   min-height: 100%;
 }
 </style>

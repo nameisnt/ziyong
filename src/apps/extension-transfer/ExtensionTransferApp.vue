@@ -19,7 +19,7 @@
       </button>
     </nav>
 
-    <template v-if="activeTab === 'export'">
+    <section v-if="activeTab === 'export'" class="pc-extension-tab-panel pc-extension-export-panel">
       <header class="pc-compact-toolbar pc-directory-toolbar">
         <span class="pc-directory-count">{{ installed.length }} 个第三方扩展</span>
         <button
@@ -51,32 +51,34 @@
         </button>
       </div>
 
-      <EmptyState v-if="loadError" title="无法读取扩展列表"
-        ><p>{{ loadError }}</p></EmptyState
-      >
-      <div v-else-if="visibleInstalled.length" class="pc-directory-list">
-        <article v-for="item in visibleInstalled" :key="item.key" class="pc-list-row pc-extension-row">
-          <BulkSelectionCheckbox
-            v-if="item.url"
-            :label="`选择扩展 ${item.name}`"
-            :model-value="selectedInstalledKeys.includes(item.key)"
-            @update:model-value="setInstalledSelected(item.key, $event)"
-          />
-          <span v-else class="pc-extension-check-spacer"></span>
-          <span class="pc-list-row-copy pc-extension-copy">
-            <button class="pc-extension-detail-trigger" type="button" @click="openDetail(item)">
-              <strong>{{ item.alias || item.name }}</strong>
-            </button>
-            <small v-if="item.description">{{ item.description }}</small>
-            <small v-else-if="item.error">{{ item.error }}</small>
-          </span>
-          <span class="pc-extension-status" :data-status="item.updateStatus">
-            <strong>{{ updateStatusLabel(item.updateStatus) }}</strong>
-            <small>{{ scopeLabel(item.scope) }}</small>
-          </span>
-        </article>
+      <div class="pc-extension-list-viewport">
+        <EmptyState v-if="loadError" title="无法读取扩展列表"
+          ><p>{{ loadError }}</p></EmptyState
+        >
+        <div v-else-if="visibleInstalled.length" class="pc-directory-list">
+          <article v-for="item in visibleInstalled" :key="item.key" class="pc-list-row pc-extension-row">
+            <BulkSelectionCheckbox
+              v-if="item.url"
+              :label="`选择扩展 ${item.name}`"
+              :model-value="selectedInstalledKeys.includes(item.key)"
+              @update:model-value="setInstalledSelected(item.key, $event)"
+            />
+            <span v-else class="pc-extension-check-spacer"></span>
+            <span class="pc-list-row-copy pc-extension-copy">
+              <button class="pc-extension-detail-trigger" type="button" @click="openDetail(item)">
+                <strong>{{ item.alias || item.name }}</strong>
+              </button>
+              <small v-if="item.description">{{ item.description }}</small>
+              <small v-else-if="item.error">{{ item.error }}</small>
+            </span>
+            <span class="pc-extension-status" :data-status="item.updateStatus">
+              <strong>{{ updateStatusLabel(item.updateStatus) }}</strong>
+              <small>{{ scopeLabel(item.scope) }}</small>
+            </span>
+          </article>
+        </div>
+        <EmptyState v-else :title="loading ? '正在读取扩展列表' : query.trim() ? '没有匹配的扩展' : '没有第三方扩展'" />
       </div>
-      <EmptyState v-else :title="loading ? '正在读取扩展列表' : query.trim() ? '没有匹配的扩展' : '没有第三方扩展'" />
 
       <div class="pc-form-actions">
         <button
@@ -91,9 +93,9 @@
           <i class="fa-solid fa-download"></i><span>导出所选</span>
         </button>
       </div>
-    </template>
+    </section>
 
-    <template v-else>
+    <section v-else class="pc-extension-tab-panel pc-extension-import-panel">
       <section class="pc-page-section pc-extension-file-picker">
         <input
           ref="fileInput"
@@ -115,38 +117,40 @@
         </button>
       </div>
 
-      <EmptyState v-if="importError" title="清单无法读取"
-        ><p>{{ importError }}</p></EmptyState
-      >
-      <div v-else-if="importRows.length" class="pc-directory-list">
-        <article v-for="row in importRows" :key="row.key" class="pc-list-row pc-extension-import-row">
-          <BulkSelectionCheckbox
-            v-if="row.url && !installing"
-            :label="`选择扩展 ${row.name}`"
-            :model-value="row.selected"
-            @update:model-value="row.selected = $event"
-          />
-          <span v-else class="pc-extension-check-spacer"></span>
-          <span class="pc-list-row-copy pc-extension-copy">
-            <strong>{{ row.alias || row.name }}</strong>
-            <small v-if="row.description">{{ row.description }}</small>
-            <small v-if="row.branch">分支：{{ row.branch }}</small>
-            <small v-if="row.message" :class="{ 'pc-extension-error': row.status === 'failed' }">{{
-              row.message
-            }}</small>
-          </span>
-          <select
-            v-model="row.scope"
-            class="pc-select pc-extension-scope"
-            :disabled="installing"
-            :aria-label="`${row.name} 安装范围`"
-          >
-            <option value="local">本地</option>
-            <option value="global">全局</option>
-          </select>
-        </article>
+      <div class="pc-extension-list-viewport">
+        <EmptyState v-if="importError" title="清单无法读取"
+          ><p>{{ importError }}</p></EmptyState
+        >
+        <div v-else-if="importRows.length" class="pc-directory-list">
+          <article v-for="row in importRows" :key="row.key" class="pc-list-row pc-extension-import-row">
+            <BulkSelectionCheckbox
+              v-if="row.url && !installing"
+              :label="`选择扩展 ${row.name}`"
+              :model-value="row.selected"
+              @update:model-value="row.selected = $event"
+            />
+            <span v-else class="pc-extension-check-spacer"></span>
+            <span class="pc-list-row-copy pc-extension-copy">
+              <strong>{{ row.alias || row.name }}</strong>
+              <small v-if="row.description">{{ row.description }}</small>
+              <small v-if="row.branch">分支：{{ row.branch }}</small>
+              <small v-if="row.message" :class="{ 'pc-extension-error': row.status === 'failed' }">{{
+                row.message
+              }}</small>
+            </span>
+            <select
+              v-model="row.scope"
+              class="pc-select pc-extension-scope"
+              :disabled="installing"
+              :aria-label="`${row.name} 安装范围`"
+            >
+              <option value="local">本地</option>
+              <option value="global">全局</option>
+            </select>
+          </article>
+        </div>
+        <EmptyState v-else-if="!importError" title="选择清单后在这里预览扩展" />
       </div>
-      <EmptyState v-else-if="!importError" title="选择清单后在这里预览扩展" />
 
       <div v-if="importRows.length" class="pc-form-actions">
         <button
@@ -158,7 +162,7 @@
           <i class="fa-solid fa-download"></i><span>{{ installing ? '正在安装' : '安装所选' }}</span>
         </button>
       </div>
-    </template>
+    </section>
 
     <section v-if="detailDraft" class="pc-modal-backdrop pc-extension-detail-backdrop" @click.self="detailDraft = null">
       <article class="pc-modal-dialog pc-extension-detail" role="dialog" aria-modal="true" aria-label="扩展详情">
@@ -455,9 +459,31 @@ onActivated(refreshInstalled);
 <style scoped>
 .pc-extension-transfer-app {
   display: grid;
-  align-content: start;
+  grid-template-rows: auto minmax(0, 1fr);
   gap: 12px;
-  min-height: 100%;
+  height: 100%;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.pc-extension-tab-panel {
+  display: grid;
+  min-height: 0;
+  gap: 12px;
+}
+
+.pc-extension-export-panel {
+  grid-template-rows: auto auto auto minmax(0, 1fr) auto;
+}
+
+.pc-extension-import-panel {
+  grid-template-rows: auto auto minmax(0, 1fr) auto;
+}
+
+.pc-extension-list-viewport {
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
 }
 
 .pc-extension-tabs {
@@ -545,13 +571,24 @@ onActivated(refreshInstalled);
   overflow-y: auto;
 }
 .pc-extension-detail-trigger {
+  display: block;
+  width: 100%;
   min-width: 0;
+  overflow: hidden;
   border: 0;
   padding: 0;
   background: none;
   color: inherit;
   text-align: left;
+  text-overflow: ellipsis;
+  white-space: nowrap;
   cursor: pointer;
+}
+
+.pc-extension-detail-trigger strong {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 @media (max-width: 370px) {

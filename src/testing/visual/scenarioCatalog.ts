@@ -31,7 +31,6 @@ export function createVisualScenarioGroups(rootAppScenarios: string[]): VisualSc
         'game-snake-play',
         'game-minesweeper-play',
         'game-sudoku-play',
-        'game-nonogram-play',
         'game-sliding-puzzle-play',
         'game-guess-number-play',
         'game-gomoku-play',

@@ -41,7 +41,7 @@
           <i class="fa-solid fa-reply"></i>
           {{ `回复 #${parentFloor(reply.parentReplyId)}` }}
         </p>
-        <p class="pc-forum-floor-content">{{ reply.content }}</p>
+        <p class="pc-forum-floor-content">{{ formatReplyContent(reply.content) }}</p>
       </article>
     </div>
   </section>
@@ -50,6 +50,9 @@
 <script setup lang="ts">
 import CapsuleTag from '@/components/CapsuleTag.vue';
 import EmptyState from '@/components/EmptyState.vue';
+import { useSettingsStore } from '@/store/settings';
+import { formatReaderContent } from '@/util/readerContent';
+import { storeToRefs } from 'pinia';
 
 interface ForumReplyListItem {
   author: string;
@@ -74,6 +77,7 @@ const props = withDefaults(
 );
 
 const filter = ref<'all' | 'op'>('all');
+const { settings } = storeToRefs(useSettingsStore());
 const hasOriginalPosterReplies = computed(() => props.replies.some(reply => reply.isOriginalPoster));
 const visibleReplies = computed(() =>
   filter.value === 'op' ? props.replies.filter(reply => reply.isOriginalPoster) : props.replies,
@@ -82,6 +86,10 @@ const floorById = computed(() => new Map(props.replies.flatMap(reply => (reply.i
 
 function parentFloor(parentReplyId?: string) {
   return parentReplyId ? floorById.value.get(parentReplyId) : undefined;
+}
+
+function formatReplyContent(content: string) {
+  return formatReaderContent(content, settings.value.reader);
 }
 
 watch(

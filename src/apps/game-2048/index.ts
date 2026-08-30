@@ -9,7 +9,16 @@ import {
   type PhoneBackupDomain,
 } from '@/core/appRegistry';
 import { MINI_GAME_APPS } from '@/data/miniGameApps';
+// SillyTavern exposes this browser runtime module through the extension bundler.
+// eslint-disable-next-line import-x/no-nodejs-modules
+import { saveSettingsDebounced } from '@sillytavern/script';
 import { extension_settings } from '@sillytavern/scripts/extensions';
+
+const retiredNonogramField = 'sillytavern_phone_game_nonogram';
+if (retiredNonogramField in extension_settings) {
+  delete extension_settings[retiredNonogramField];
+  void saveSettingsDebounced();
+}
 
 const backupDomain: PhoneBackupDomain = {
   category: 'configuration',

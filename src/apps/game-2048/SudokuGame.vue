@@ -55,8 +55,8 @@
         <span>{{ t`提示` }}</span>
       </button>
       <button class="pc-primary-btn" type="button" @click="nextPuzzle">
-        <i class="fa-solid fa-forward"></i>
-        <span>{{ t`换题` }}</span>
+        <i class="fa-solid fa-wand-magic-sparkles"></i>
+        <span>{{ t`生成新题` }}</span>
       </button>
       <InfoHint
         :label="t`数独说明`"
@@ -311,7 +311,7 @@ function nextPuzzle() {
 }
 
 .pc-sudoku-cell.given {
-  background: color-mix(in srgb, var(--pc-theme-accent) 12%, var(--pc-surface-strong) 88%);
+  background: color-mix(in srgb, var(--pc-theme-accent) 7%, var(--pc-surface-strong) 93%);
 }
 
 .pc-sudoku-cell.active {

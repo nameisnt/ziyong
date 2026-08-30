@@ -3,7 +3,6 @@ export const miniGameFields = {
   guessNumber: 'sillytavern_phone_game_guess_number',
   gomoku: 'sillytavern_phone_game_gomoku',
   minesweeper: 'sillytavern_phone_game_minesweeper',
-  nonogram: 'sillytavern_phone_game_nonogram',
   reversi: 'sillytavern_phone_game_reversi',
   snake: 'sillytavern_phone_game_snake',
   slidingPuzzle: 'sillytavern_phone_game_sliding_puzzle',

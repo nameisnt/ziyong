@@ -108,10 +108,9 @@ async function capturePrompt() {
   width: 100%;
   min-width: 0;
   box-sizing: border-box;
-  border: 1px solid var(--pc-border);
-  border-radius: min(var(--pc-card-radius), 8px);
-  background: var(--pc-surface-strong);
-  padding: 14px;
+  border-block: 1px solid var(--pc-border);
+  background: transparent;
+  padding: 10px 0;
 }
 
 .pc-capture-head,
@@ -174,7 +173,7 @@ async function capturePrompt() {
   display: inline-flex;
   align-items: center;
   padding: 0 9px;
-  background: var(--pc-surface-strong);
+  background: var(--pc-soft-button-bg);
   color: var(--pc-muted);
   font-size: 12px;
 }
@@ -200,8 +199,8 @@ async function capturePrompt() {
 .pc-capture-message {
   overflow: hidden;
   border: 1px solid var(--pc-border);
-  border-radius: 14px;
-  background: var(--pc-surface-strong);
+  border-radius: min(var(--pc-control-radius), 8px);
+  background: color-mix(in srgb, var(--pc-surface) 72%, transparent 28%);
 }
 
 .pc-capture-message-head {
@@ -228,7 +227,7 @@ async function capturePrompt() {
   border: 0;
   border-top: 1px solid var(--pc-border);
   border-radius: 0;
-  background: var(--pc-surface);
+  background: color-mix(in srgb, var(--pc-surface) 82%, transparent 18%);
   color: var(--pc-text);
   font-family: var(--pc-font-sans);
   font-size: 12px;

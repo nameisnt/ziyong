@@ -72,7 +72,7 @@
             ></textarea>
           </section>
 
-          <section class="pc-section-card pc-extras-summary-options">
+          <section class="pc-page-section pc-extras-summary-options">
             <div class="pc-section-head">
               <strong>{{ t`番外摘要` }}</strong>
               <label class="pc-toggle" :title="chapterDraft.parseSummary ? t`关闭摘要解析` : t`开启摘要解析`">

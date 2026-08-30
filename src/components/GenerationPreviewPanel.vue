@@ -379,7 +379,7 @@ function goRawFromNotice() {
   min-height: 100%;
   padding: 16px;
   border-radius: min(var(--pc-card-radius), 8px);
-  background: var(--pc-surface-strong);
+  background: color-mix(in srgb, var(--pc-surface-strong) 84%, transparent 16%);
   white-space: pre-wrap;
   color: var(--pc-reader-text, var(--pc-text));
   font-family: var(--pc-reader-font-family, inherit);

@@ -215,20 +215,12 @@
     </section>
 
     <section v-else-if="route.page === 'bagu-scan' && activeMessage" class="pc-reader-page pc-reader-bagu-page">
-      <article class="pc-message-card pc-reader-bagu-card">
-        <div class="pc-message-head pc-reader-detail-head">
-          <div class="pc-reader-detail-title">
-            <strong>{{ activeMessage.title }}</strong>
-          </div>
-          <span v-if="activeMessage.isHidden" class="pc-hidden-pill">{{ t`隐藏` }}</span>
-        </div>
-        <BaguScanPanel
-          auto-scan
-          class="pc-reader-bagu-scan-panel"
-          :content="readerBaguContent"
-          :apply-handler="applyReaderBaguContent"
-        />
-      </article>
+      <BaguDetailPage
+        :apply-handler="applyReaderBaguContent"
+        :content="readerBaguContent"
+        :meta="activeMessage.isHidden ? t`隐藏` : ''"
+        :title="activeMessage.title"
+      />
     </section>
 
     <section v-else-if="route.page === 'edit' && activeMessage" class="pc-reader-page pc-reader-edit-page">
@@ -289,7 +281,7 @@
 
 <script setup lang="ts">
 import CatalogModal from '@/components/CatalogModal.vue';
-import BaguScanPanel from '@/components/BaguScanPanel.vue';
+import BaguDetailPage from '@/components/BaguDetailPage.vue';
 import EmptyState from '@/components/EmptyState.vue';
 import ReaderDetailShell from '@/components/ReaderDetailShell.vue';
 import { useReaderChatSession } from '@/apps/reader/useReaderChatSession';
@@ -1053,14 +1045,6 @@ function formatReaderBody(value: string) {
 
 .pc-reader-edit-page {
   min-height: 0;
-}
-
-.pc-reader-bagu-card {
-  padding: 14px;
-}
-
-.pc-reader-bagu-scan-panel {
-  margin-top: 14px;
 }
 
 .pc-reader-edit-card {

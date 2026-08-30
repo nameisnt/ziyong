@@ -1,7 +1,14 @@
 <template>
   <div class="pc-bookshelf" :class="variant">
     <div v-for="row in rows" :key="row[0]?.id" class="pc-shelf-row">
-      <button v-for="book in row" :key="book.id" class="pc-book-item" type="button" @click="$emit('select', book.id)">
+      <button
+        v-for="book in row"
+        :key="book.id"
+        :class="['pc-book-item', { opening: openingBookId === book.id }]"
+        type="button"
+        :disabled="Boolean(openingBookId)"
+        @click="openBook(book.id)"
+      >
         <span class="pc-book-cover" :data-paper="paper">
           <i :class="book.icon"></i>
           <b>{{ book.count }}</b>
@@ -12,7 +19,7 @@
     </div>
     <div v-if="showCreate" class="pc-shelf-row">
       <button class="pc-book-item" type="button" @click="$emit('create')">
-        <span class="pc-book-cover pc-add-cover">
+        <span class="pc-book-cover pc-add-cover" :data-paper="paper">
           <i class="fa-solid fa-plus"></i>
         </span>
         <span class="pc-book-title">{{ createLabel }}</span>
@@ -50,11 +57,30 @@ const props = withDefaults(
 );
 const settingsStore = useSettingsStore();
 const paper = computed(() => settingsStore.settings.visualTheme.paperTextureId);
+const openingBookId = ref('');
+let openTimer: number | undefined;
 
-defineEmits<{
+const emit = defineEmits<{
   create: [];
   select: [id: string];
 }>();
+
+function openBook(id: string) {
+  if (openingBookId.value) return;
+  if (window.matchMedia?.('(prefers-reduced-motion: reduce)').matches) {
+    emit('select', id);
+    return;
+  }
+  openingBookId.value = id;
+  openTimer = window.setTimeout(() => {
+    openingBookId.value = '';
+    emit('select', id);
+  }, 210);
+}
+
+onScopeDispose(() => {
+  if (openTimer !== undefined) window.clearTimeout(openTimer);
+});
 
 const rows = computed(() => {
   const result: BookShelfCard[][] = [];
@@ -95,6 +121,11 @@ const rows = computed(() => {
   background: transparent;
   color: var(--pc-text);
   cursor: pointer;
+  perspective: 360px;
+}
+
+.pc-book-item:disabled {
+  cursor: default;
 }
 
 .pc-book-cover {
@@ -114,12 +145,29 @@ const rows = computed(() => {
   background-size: 180px 180px;
   color: var(--pc-text);
   font-size: 24px;
+  transform-origin: left center;
+  transform-style: preserve-3d;
+  transition:
+    transform 0.21s ease-out,
+    box-shadow 0.21s ease-out;
+}
+
+.pc-book-item.opening .pc-book-cover {
+  transform: translateX(3px) rotateY(-28deg);
+  box-shadow:
+    -1px 0 2px rgba(0, 0, 0, 0.12),
+    8px 5px 12px rgba(0, 0, 0, 0.18);
 }
 
 .pc-book-cover[data-paper='a4'] {
   border-color: color-mix(in srgb, var(--pc-accent) 24%, var(--pc-border) 76%);
   background-image:
-    linear-gradient(90deg, transparent 0 14%, color-mix(in srgb, var(--pc-accent) 16%, transparent 84%) 14% 17%, transparent 17%),
+    linear-gradient(
+      90deg,
+      transparent 0 14%,
+      color-mix(in srgb, var(--pc-accent) 16%, transparent 84%) 14% 17%,
+      transparent 17%
+    ),
     var(--pc-paper-texture);
   color: color-mix(in srgb, var(--pc-accent) 68%, var(--pc-text) 32%);
 }
@@ -193,10 +241,14 @@ const rows = computed(() => {
 }
 
 .pc-add-cover {
-  border: 1px dashed var(--pc-border);
-  background: var(--pc-surface-strong);
+  border-style: dashed;
   box-shadow: none;
-  color: var(--pc-muted);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .pc-book-cover {
+    transition: none;
+  }
 }
 
 .pc-book-title,

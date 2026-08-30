@@ -6,15 +6,7 @@ export type AppIdentitySvgArtwork = {
 };
 
 export type AppSvgPaper =
-  | 'a4'
-  | 'graphite'
-  | 'parchment'
-  | 'velvet'
-  | 'xuan'
-  | 'cypress'
-  | 'sky'
-  | 'ocean'
-  | 'cardstock';
+  'a4' | 'graphite' | 'parchment' | 'velvet' | 'xuan' | 'cypress' | 'sky' | 'ocean' | 'cardstock';
 
 export type AppIdentitySvgIconDefinition = AppIdentitySvgArtwork & {
   paperVariants?: Partial<Record<AppSvgPaper, AppIdentitySvgArtwork>>;
@@ -563,11 +555,6 @@ export const APP_IDENTITY_SVG_ICONS = {
   'game-sudoku': {
     primary: ['M3 3h18v18H3z', 'M9 3v18', 'M15 3v18', 'M3 9h18', 'M3 15h18'],
     secondary: ['M5 6h.01', 'M12 6h.01', 'M18 12h.01', 'M6 18h.01', 'M12 12h.01'],
-  },
-  'game-nonogram': {
-    primary: ['M8 8h13v13H8z', 'M12.3 8v13', 'M16.7 8v13', 'M8 12.3h13', 'M8 16.7h13'],
-    secondary: ['M3 11h2', 'M3 15h3', 'M3 19h2', 'M11 3v2', 'M15 3v3', 'M19 3v2'],
-    accent: ['M8 8h4.3v4.3H8z', 'M16.7 12.3H21v4.4h-4.3z', 'M12.3 16.7h4.4V21h-4.4z'],
   },
   'game-sliding-puzzle': {
     primary: ['M3 3h18v18H3z', 'M3 9h18', 'M3 15h12', 'M9 3v18', 'M15 3v12'],

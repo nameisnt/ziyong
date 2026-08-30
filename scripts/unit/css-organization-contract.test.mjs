@@ -39,10 +39,15 @@ test('shared search wrappers own a single transparent-inner control surface', ()
   assert.doesNotMatch(favorites, /^\.favorite-select\s*\{/mu);
 });
 
-test('form controls keep their mode-specific contrast instead of inheriting paper surface colors', () => {
+test('form controls follow light paper surfaces while retaining dark mode contrast', () => {
   const rootStyle = phoneOverlay.match(/const rootStyle = computed\(\(\) => \{([\s\S]*?)\n\}\);/u)?.[1] ?? '';
 
-  assert.doesNotMatch(rootStyle, /--pc-form-control-(?:bg|text)/u);
+  assert.match(rootStyle, /const darkTheme = settings\.value\.theme === 'dark'/u);
+  assert.match(
+    rootStyle,
+    /'--pc-form-control-bg':\s*darkTheme \? '#2c2c2e' : cssColor\(visualTheme\.surfaceStrongColor\)/u,
+  );
+  assert.match(rootStyle, /'--pc-form-control-text':\s*darkTheme \? '#f5f5f7' : cssColor\(visualTheme\.textColor\)/u);
   assert.match(phoneOverlay, /\.pc-phone-root\[data-theme='light'\][\s\S]*--pc-form-control-bg:\s*#ffffff/u);
   assert.match(phoneOverlay, /\.pc-phone-root\[data-theme='dark'\][\s\S]*--pc-form-control-bg:\s*#2c2c2e/u);
 });

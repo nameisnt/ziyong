@@ -1,13 +1,22 @@
 import { Game2048SettingsSchema } from './store';
 
 const GuessSchema = z.object({
-  bulls: z.number().int().min(0).max(4),
-  cows: z.number().int().min(0).max(4),
-  value: z.string().regex(/^\d{4}$/),
+  bulls: z.number().int().min(0).max(6),
+  comment: z.string().default(''),
+  cows: z.number().int().min(0).max(6),
+  value: z.string().regex(/^\d{3,6}$/),
 });
 export const GuessNumberSchema = z.object({
-  answer: z.string().regex(/^[1-9]\d{3}$/),
-  best: z.number().int().nonnegative().default(0),
+  answer: z.string().regex(/^[1-9]\d{2,5}$/),
+  bestByDigits: z
+    .object({
+      3: z.number().int().nonnegative().default(0),
+      4: z.number().int().nonnegative().default(0),
+      5: z.number().int().nonnegative().default(0),
+      6: z.number().int().nonnegative().default(0),
+    })
+    .default({ 3: 0, 4: 0, 5: 0, 6: 0 }),
+  digitCount: z.union([z.literal(3), z.literal(4), z.literal(5), z.literal(6)]).default(4),
   guesses: z.array(GuessSchema).max(100),
   status: z.enum(['playing', 'won']).default('playing'),
 });
@@ -38,14 +47,6 @@ export const MinesweeperSchema = z.object({
   difficulty: z.enum(['easy', 'hard', 'normal']).default('normal'),
   status: z.enum(['lost', 'playing', 'ready', 'won']).default('ready'),
   wins: z.number().int().nonnegative().default(0),
-});
-
-export const NonogramSchema = z.object({
-  marks: z.array(z.number().int().min(0).max(2)).max(225),
-  moves: z.number().int().nonnegative().default(0),
-  size: z.enum(['large', 'medium', 'small']).default('small'),
-  solution: z.array(z.boolean()).max(225),
-  status: z.enum(['done', 'playing']).default('playing'),
 });
 
 const ReversiBoardSchema = z.array(z.union([z.literal(0), z.literal(1), z.literal(2)])).length(64);
@@ -132,7 +133,6 @@ export const MiniGamesBackupSchema = z.object({
   gomoku: GomokuSchema,
   guessNumber: GuessNumberSchema,
   minesweeper: MinesweeperSchema,
-  nonogram: NonogramSchema,
   reversi: ReversiSchema,
   slidingPuzzle: SlidingPuzzleSchema,
   snake: SnakeSchema,

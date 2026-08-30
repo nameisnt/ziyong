@@ -181,7 +181,7 @@ function setSize(boardSize: BoardSize) {
   align-self: center;
   border: 1px solid var(--pc-border);
   border-radius: var(--pc-card-radius);
-  background: color-mix(in srgb, var(--pc-theme-accent) 12%, var(--pc-surface-strong) 88%);
+  background: color-mix(in srgb, var(--pc-text) 6%, var(--pc-surface-strong) 94%);
   gap: 7px;
   padding: 8px;
 }

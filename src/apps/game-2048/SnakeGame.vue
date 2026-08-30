@@ -276,14 +276,14 @@ onUnmounted(stopRuntime);
   align-self: center;
   border: 1px solid var(--pc-border);
   border-radius: var(--pc-card-radius);
-  background: color-mix(in srgb, var(--pc-theme-accent) 10%, var(--pc-surface-strong) 90%);
+  background: color-mix(in srgb, var(--pc-text) 6%, var(--pc-surface-strong) 94%);
   padding: 8px;
   touch-action: none;
 }
 
 .pc-snake-cell {
   border-radius: 4px;
-  background: color-mix(in srgb, var(--pc-surface) 65%, transparent 35%);
+  background: color-mix(in srgb, var(--pc-surface) 82%, transparent 18%);
 }
 
 .pc-snake-cell[data-kind='body'],

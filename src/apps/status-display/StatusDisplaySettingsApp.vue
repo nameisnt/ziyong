@@ -82,7 +82,7 @@
       </button>
     </div>
 
-    <section v-if="editorDraft.source === 'regex'" class="pc-section-card pc-status-regex-settings">
+    <section v-if="editorDraft.source === 'regex'" class="pc-page-section pc-status-regex-settings">
       <label class="pc-field-group">
         <span class="pc-field-label">状态文字提取</span>
         <SearchableCombobox

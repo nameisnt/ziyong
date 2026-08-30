@@ -280,11 +280,15 @@ function handleCell(id: number) {
   display: grid;
   grid-template-columns: repeat(var(--mine-board-size), minmax(0, 1fr));
   grid-template-rows: repeat(var(--mine-board-size), minmax(0, 1fr));
-  gap: 3px;
+  gap: 2px;
   width: min(100%, 420px);
   aspect-ratio: 1;
   margin: 0 auto;
   overflow: hidden;
+  border: 1px solid var(--pc-border);
+  border-radius: var(--pc-card-radius);
+  background: color-mix(in srgb, var(--pc-text) 6%, var(--pc-surface-strong) 94%);
+  padding: 4px;
 }
 
 .pc-mine-cell {
@@ -293,7 +297,7 @@ function handleCell(id: number) {
   min-height: 0;
   place-items: center;
   border: 1px solid var(--pc-border);
-  border-radius: 6px;
+  border-radius: calc(var(--pc-control-radius) - 3px);
   background: var(--pc-surface-strong);
   color: var(--pc-text);
   cursor: pointer;
@@ -305,7 +309,7 @@ function handleCell(id: number) {
 }
 
 .pc-mine-cell[data-open='true'] {
-  background: color-mix(in srgb, var(--pc-theme-accent) 9%, var(--pc-surface) 91%);
+  background: color-mix(in srgb, var(--pc-text) 4%, var(--pc-surface) 96%);
   color: var(--pc-theme-accent);
 }
 

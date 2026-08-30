@@ -82,7 +82,7 @@
           </span>
         </label>
         <label class="pc-setting-row">
-          <strong>每行空行</strong>
+          <strong>每段空行</strong>
           <span class="pc-toggle">
             <input
               :checked="settings.reader.blankLineBetweenLines"

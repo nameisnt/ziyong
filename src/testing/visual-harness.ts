@@ -812,8 +812,8 @@ async function applyScenario(name: VisualScenarioName, options: { height?: numbe
     gameTab?.click();
     await waitForPaint();
     const gameGrid = document.querySelector<HTMLElement>('.pc-home-app-section .pc-home-app-grid');
-    if (!gameFolder || gameFolder.appIds.length !== 10 || gameGrid?.querySelectorAll('.pc-app-tile').length !== 10) {
-      throw new Error('Minigame group did not expose all ten App entries');
+    if (!gameFolder || gameFolder.appIds.length !== 9 || gameGrid?.querySelectorAll('.pc-app-tile').length !== 9) {
+      throw new Error('Minigame group did not expose all nine App entries');
     }
     gameGrid.querySelector<HTMLButtonElement>('.pc-app-tile')?.click();
     await waitForPaint();

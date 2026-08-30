@@ -60,6 +60,10 @@
             <i class="fa-solid fa-rotate-left"></i>
             <span>{{ t`撤回` }}</span>
           </button>
+          <button class="pc-primary-btn" type="button" @click="game.startNewGame()">
+            <i class="fa-solid fa-rotate-right"></i>
+            <span>{{ t`重开` }}</span>
+          </button>
           <InfoHint :label="t`2048 说明`" :text="t`在棋盘上滑动，或使用电脑方向键移动数字；相同数字相撞后会合并。`" />
         </div>
       </template>
@@ -67,7 +71,6 @@
       <SnakeGame v-else-if="activeGame === 'snake'" />
       <MinesweeperGame v-else-if="activeGame === 'minesweeper'" />
       <SudokuGame v-else-if="activeGame === 'sudoku'" />
-      <NonogramGame v-else-if="activeGame === 'nonogram'" />
       <SlidingPuzzleGame v-else-if="activeGame === 'sliding-puzzle'" />
       <GuessNumberGame v-else-if="activeGame === 'guess-number'" />
       <GomokuGame v-else-if="activeGame === 'gomoku'" />
@@ -82,7 +85,6 @@ import InfoHint from '@/components/InfoHint.vue';
 import GomokuGame from './GomokuGame.vue';
 import GuessNumberGame from './GuessNumberGame.vue';
 import MinesweeperGame from './MinesweeperGame.vue';
-import NonogramGame from './NonogramGame.vue';
 import ReversiGame from './ReversiGame.vue';
 import SnakeGame from './SnakeGame.vue';
 import SlidingPuzzleGame from './SlidingPuzzleGame.vue';
@@ -109,12 +111,10 @@ const statusTitle = computed(() => (status.value === 'won' ? t`合成 2048 了` 
 
 function tileStyle(value: number) {
   const rank = Math.max(1, Math.log2(value));
-  const hue = Math.round((rank * 34 + 18) % 360);
-  const saturation = Math.min(86, 48 + rank * 4);
-  const lightness = Math.max(42, 82 - rank * 4);
+  const intensity = Math.min(92, 5 + rank * 8);
   return {
-    '--tile-bg': `hsl(${hue} ${saturation}% ${lightness}%)`,
-    '--tile-text': lightness < 58 ? 'var(--pc-primary-text)' : 'var(--pc-text)',
+    '--tile-bg': `color-mix(in srgb, var(--pc-theme-accent) ${intensity}%, var(--pc-surface-strong) ${100 - intensity}%)`,
+    '--tile-text': rank >= 7 ? 'var(--pc-primary-text)' : 'var(--pc-text)',
   };
 }
 
@@ -186,7 +186,11 @@ onUnmounted(stopRuntime);
 .pc-game2048-score-grid {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 8px;
+  gap: 0;
+  overflow: hidden;
+  border: 1px solid var(--pc-border);
+  border-radius: var(--pc-card-radius);
+  background: color-mix(in srgb, var(--pc-surface-strong) 82%, transparent 18%);
 }
 
 .pc-game2048-score-card {
@@ -195,10 +199,13 @@ onUnmounted(stopRuntime);
   justify-content: space-between;
   gap: 6px;
   min-width: 0;
-  border: 1px solid var(--pc-border);
-  border-radius: var(--pc-card-radius);
-  background: var(--pc-surface-strong);
-  padding: 10px 12px;
+  border: 0;
+  background: transparent;
+  padding: 8px 10px;
+}
+
+.pc-game2048-score-card + .pc-game2048-score-card {
+  border-left: 1px solid var(--pc-border);
 }
 
 .pc-game2048-score-card span {
@@ -224,7 +231,7 @@ onUnmounted(stopRuntime);
   border: 1px solid var(--pc-border);
   border-radius: calc(var(--pc-card-radius) + 2px);
   outline: none;
-  background: color-mix(in srgb, var(--pc-theme-accent) 10%, var(--pc-surface-strong) 90%);
+  background: color-mix(in srgb, var(--pc-text) 6%, var(--pc-surface-strong) 94%);
   padding: 8px;
   touch-action: none;
   user-select: none;
@@ -237,7 +244,7 @@ onUnmounted(stopRuntime);
   min-height: 0;
   place-items: center;
   border-radius: calc(var(--pc-control-radius) - 2px);
-  background: color-mix(in srgb, var(--pc-surface) 62%, transparent 38%);
+  background: color-mix(in srgb, var(--pc-surface) 78%, transparent 22%);
   overflow: hidden;
 }
 
@@ -269,6 +276,13 @@ onUnmounted(stopRuntime);
   justify-content: flex-end;
 }
 
+.pc-game2048-actions > .pc-primary-btn,
+.pc-game2048-actions > .pc-soft-btn {
+  flex: 1 1 0;
+  min-inline-size: 0;
+  white-space: nowrap;
+}
+
 .pc-game2048-status-actions > .pc-primary-btn,
 .pc-game2048-status-actions > .pc-soft-btn {
   flex: 1 1 0;
@@ -281,14 +295,18 @@ onUnmounted(stopRuntime);
 .pc-minigame-panel {
   display: flex;
   flex-direction: column;
-  gap: 14px;
+  gap: 12px;
   min-width: 0;
 }
 
 .pc-minigame-stats {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 8px;
+  gap: 0;
+  overflow: hidden;
+  border: 1px solid var(--pc-border);
+  border-radius: var(--pc-card-radius);
+  background: color-mix(in srgb, var(--pc-surface-strong) 82%, transparent 18%);
 }
 
 .pc-minigame-stats article {
@@ -297,10 +315,13 @@ onUnmounted(stopRuntime);
   justify-content: space-between;
   gap: 6px;
   min-width: 0;
-  border: 1px solid var(--pc-border);
-  border-radius: var(--pc-card-radius);
-  background: var(--pc-surface-strong);
-  padding: 10px 12px;
+  border: 0;
+  background: transparent;
+  padding: 8px 10px;
+}
+
+.pc-minigame-stats article + article {
+  border-left: 1px solid var(--pc-border);
 }
 
 .pc-minigame-stats span {
@@ -338,11 +359,6 @@ onUnmounted(stopRuntime);
 
 .pc-minigame-stats-four {
   grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 0;
-  overflow: hidden;
-  border: 1px solid var(--pc-border);
-  border-radius: var(--pc-card-radius);
-  background: var(--pc-surface-strong);
 }
 
 .pc-minigame-stats-four article {

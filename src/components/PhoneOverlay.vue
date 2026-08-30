@@ -200,12 +200,15 @@ function cssColor(value: string) {
 
 const rootStyle = computed(() => {
   const visualTheme = settings.value.visualTheme;
+  const darkTheme = settings.value.theme === 'dark';
   const paperTexture = getPaperTexture(visualTheme.paperTextureId);
   const appSvgStroke = APP_SVG_STROKE_PROFILES[visualTheme.paperTextureId];
   return {
     '--pc-bg': cssColor(visualTheme.backgroundColor),
     '--pc-surface': cssColor(visualTheme.surfaceColor),
     '--pc-surface-strong': cssColor(visualTheme.surfaceStrongColor),
+    '--pc-form-control-bg': darkTheme ? '#2c2c2e' : cssColor(visualTheme.surfaceStrongColor),
+    '--pc-form-control-text': darkTheme ? '#f5f5f7' : cssColor(visualTheme.textColor),
     '--pc-border': cssColor(visualTheme.borderColor),
     '--pc-text': cssColor(visualTheme.textColor),
     '--pc-muted': cssColor(visualTheme.mutedTextColor),

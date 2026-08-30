@@ -1,11 +1,6 @@
 <template>
   <Teleport to="#tavern-phone-root .pc-phone-shell">
-    <div
-      v-if="open"
-      class="pc-modal-backdrop pc-bagu-hit-modal-mask"
-      role="presentation"
-      @click.self="emit('close')"
-    >
+    <div v-if="open" class="pc-modal-backdrop pc-bagu-hit-modal-mask" role="presentation" @click.self="emit('close')">
       <section
         ref="dialogEl"
         class="pc-section-card pc-modal-dialog pc-bagu-hit-modal"
@@ -109,7 +104,6 @@ const sentenceSegments = computed(() => {
   }
   return segments;
 });
-
 </script>
 
 <style scoped>
@@ -160,7 +154,7 @@ const sentenceSegments = computed(() => {
   margin: 0;
   border-radius: 12px;
   padding: 10px 12px;
-  background: var(--pc-surface-strong);
+  background: var(--pc-form-control-bg);
   line-height: 1.6;
   overflow-wrap: anywhere;
 }
@@ -174,17 +168,17 @@ const sentenceSegments = computed(() => {
 
 .pc-bagu-hit-modal-list {
   display: grid;
-  gap: 8px;
+  gap: 0;
   margin-top: 10px;
+  border-top: 1px solid var(--pc-border);
 }
 
 .pc-bagu-hit-modal-item {
   display: grid;
   gap: 8px;
-  border: 1px solid var(--pc-border);
-  border-radius: 12px;
-  padding: 9px 10px;
-  background: var(--pc-surface-strong);
+  border-bottom: 1px solid var(--pc-border);
+  padding: 10px 0;
+  background: transparent;
 }
 
 .pc-bagu-hit-modal-change {

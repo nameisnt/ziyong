@@ -351,7 +351,7 @@ onScopeDispose(stopNavigationGuard);
 .pc-bagu-hit-card,
 .pc-bagu-empty {
   border: 1px solid var(--pc-border);
-  background: var(--pc-surface);
+  background: color-mix(in srgb, var(--pc-surface) 72%, transparent 28%);
   border-radius: min(var(--pc-card-radius), 8px);
 }
 
@@ -397,7 +397,7 @@ onScopeDispose(stopNavigationGuard);
 
 .pc-mini-btn {
   border: 0;
-  background: var(--pc-surface-strong);
+  background: var(--pc-soft-button-bg);
   color: var(--pc-text);
   cursor: pointer;
   border-radius: 10px;
@@ -431,14 +431,14 @@ onScopeDispose(stopNavigationGuard);
   min-height: 34px;
   border: 1px solid var(--pc-border);
   border-radius: 12px;
-  background: var(--pc-surface-strong);
+  background: var(--pc-soft-button-bg);
   color: var(--pc-muted);
   cursor: pointer;
   font-weight: 800;
 }
 
 .pc-filter-btn.active {
-  background: color-mix(in srgb, #ef476f 14%, var(--pc-surface-strong) 86%);
+  background: color-mix(in srgb, #ef476f 14%, var(--pc-soft-button-bg) 86%);
   color: var(--pc-text);
 }
 
@@ -557,7 +557,7 @@ onScopeDispose(stopNavigationGuard);
   min-height: 58px;
   border: 1px solid var(--pc-border);
   border-radius: 12px;
-  background: var(--pc-surface-strong);
+  background: var(--pc-form-control-bg);
   color: var(--pc-text);
   padding: 10px 12px;
   resize: vertical;

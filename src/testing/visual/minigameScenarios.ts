@@ -14,7 +14,6 @@ const gameByScenario: Record<string, MiniGameId> = {
   'game-gomoku-play': 'gomoku',
   'game-guess-number-play': 'guess-number',
   'game-minesweeper-play': 'minesweeper',
-  'game-nonogram-play': 'nonogram',
   'game-reversi-play': 'reversi',
   'game-sliding-puzzle-play': 'sliding-puzzle',
   'game-snake-play': 'snake',
@@ -27,7 +26,6 @@ const fieldByGame: Record<MiniGameId, string> = {
   gomoku: miniGameFields.gomoku,
   'guess-number': miniGameFields.guessNumber,
   minesweeper: miniGameFields.minesweeper,
-  nonogram: miniGameFields.nonogram,
   reversi: miniGameFields.reversi,
   'sliding-puzzle': miniGameFields.slidingPuzzle,
   snake: miniGameFields.snake,
@@ -91,6 +89,15 @@ export async function applyMinigameVisualScenario(name: string, context: Minigam
     if (!(await context.waitForCondition(() => game.moves === 0 && !game.canUndo))) {
       throw new Error('2048 undo did not restore the previous board');
     }
+    for (const key of ['ArrowLeft', 'ArrowUp', 'ArrowRight', 'ArrowDown']) {
+      window.dispatchEvent(new KeyboardEvent('keydown', { bubbles: true, key }));
+      await context.waitForPaint();
+      if (game.moves > 0) break;
+    }
+    findButton('重开', document.querySelector('.pc-game2048-actions') || document)?.click();
+    if (!(await context.waitForCondition(() => game.moves === 0 && game.score === 0 && !game.canUndo))) {
+      throw new Error('2048 restart did not reset the active round');
+    }
     return true;
   }
 
@@ -103,7 +110,9 @@ export async function applyMinigameVisualScenario(name: string, context: Minigam
     if (!fast || !start) throw new Error('Snake speed or start action is missing');
     fast.click();
     start.click();
-    if (!(await context.waitForCondition(() => setting(field)?.speed === 'fast' && setting(field)?.status === 'running'))) {
+    if (
+      !(await context.waitForCondition(() => setting(field)?.speed === 'fast' && setting(field)?.status === 'running'))
+    ) {
       throw new Error('Snake start did not persist speed and running state');
     }
     findButton('暂停', document.querySelector('.pc-minigame-actions') || document)?.click();
@@ -139,17 +148,10 @@ export async function applyMinigameVisualScenario(name: string, context: Minigam
     if (!(await context.waitForCondition(() => setting(field)?.board?.[index] === 1))) {
       throw new Error('Sudoku number entry did not persist');
     }
-    return true;
-  }
-
-  if (gameId === 'nonogram') {
-    const cell = document.querySelector<HTMLButtonElement>('.pc-nonogram-cell');
-    if (!cell) throw new Error('Nonogram cell is missing');
-    cell.click();
-    if (!(await context.waitForCondition(() => setting(field)?.marks?.[0] === 1))) {
-      throw new Error('Nonogram fill action did not persist');
+    findButton('生成新题', document.querySelector('.pc-minigame-actions') || document)?.click();
+    if (!(await context.waitForCondition(() => setting(field)?.puzzleNumber === 2))) {
+      throw new Error('Sudoku local generator did not create and persist a new puzzle');
     }
-    if (cell.dataset.mark !== '1') throw new Error('Nonogram filled cell did not update visually');
     return true;
   }
 
@@ -168,17 +170,27 @@ export async function applyMinigameVisualScenario(name: string, context: Minigam
     if (statTexts.length !== 6) throw new Error('Guess number stats are incomplete');
     const clippedStats = statTexts.filter(item => item.scrollWidth > item.clientWidth + 1);
     if (clippedStats.length) {
-      throw new Error(`Guess number stats are truncated: ${clippedStats.map(item => item.textContent?.trim()).join(', ')}`);
+      throw new Error(
+        `Guess number stats are truncated: ${clippedStats.map(item => item.textContent?.trim()).join(', ')}`,
+      );
     }
     const input = document.querySelector<HTMLInputElement>('.pc-guess-number-input');
     const submit = document.querySelector<HTMLButtonElement>('.pc-guess-form .pc-primary-btn');
-    if (!input || !submit) throw new Error('Guess number form is incomplete');
-    setInputValue(input, '1234');
+    const sixDigits = findButton('6 位', document.querySelector('[aria-label="猜数字位数"]') || document);
+    if (!input || !submit || !sixDigits) throw new Error('Guess number form or digit selector is incomplete');
+    sixDigits.click();
+    if (!(await context.waitForCondition(() => setting(field)?.digitCount === 6))) {
+      throw new Error('Guess number digit selection did not persist');
+    }
+    setInputValue(input, '123456');
     submit.click();
-    if (!(await context.waitForCondition(() => setting(field)?.guesses?.[0]?.value === '1234'))) {
+    if (!(await context.waitForCondition(() => setting(field)?.guesses?.[0]?.value === '123456'))) {
       throw new Error('Guess number submission did not persist');
     }
-    if (!document.querySelector('.pc-guess-history')?.textContent?.includes('1234')) {
+    if (
+      !setting(field)?.guesses?.[0]?.comment ||
+      !document.querySelector('.pc-guess-history')?.textContent?.includes('123456')
+    ) {
       throw new Error('Guess number history did not render the submitted guess');
     }
     return true;

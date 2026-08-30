@@ -58,7 +58,7 @@ defineEmits<{
   min-height: 32px;
   border: 0;
   border-radius: 999px;
-  background: var(--pc-surface-strong);
+  background: var(--pc-soft-button-bg);
   color: var(--pc-text);
   cursor: default;
   font-size: 12px;
@@ -84,7 +84,7 @@ button.pc-capsule-tag {
   height: 18px;
   place-items: center;
   border-radius: 999px;
-  background: var(--pc-bg);
+  background: color-mix(in srgb, var(--pc-text) 8%, transparent 92%);
   color: var(--pc-muted);
   font-size: 10px;
   font-weight: 800;
@@ -99,7 +99,7 @@ button.pc-capsule-tag {
 
 .pc-capsule-tag.active,
 button.pc-capsule-tag:hover {
-  background: color-mix(in srgb, var(--pc-theme-accent) 18%, var(--pc-surface-strong) 82%);
+  background: color-mix(in srgb, var(--pc-theme-accent) 18%, var(--pc-soft-button-bg) 82%);
   color: var(--pc-theme-accent);
 }
 

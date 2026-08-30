@@ -1,6 +1,6 @@
 <template>
   <section class="pc-regex-wizard-app">
-    <article class="pc-section-card pc-regex-wizard-form">
+    <article class="pc-page-section pc-regex-wizard-form">
       <div class="pc-regex-wizard-section">
         <strong class="pc-regex-wizard-step-title">1. 需要什么结果</strong>
         <div class="pc-segment pc-regex-wizard-purpose">
@@ -244,7 +244,7 @@
       </details>
     </article>
 
-    <article class="pc-section-card pc-regex-wizard-test">
+    <article class="pc-page-section pc-regex-wizard-test">
       <header>
         <div>
           <strong>
@@ -281,7 +281,7 @@
       </div>
     </article>
 
-    <article class="pc-section-card pc-regex-wizard-result">
+    <article class="pc-page-section pc-regex-wizard-result">
       <header>
         <strong>
           生成结果
@@ -358,7 +358,7 @@
       </div>
     </article>
 
-    <article class="pc-section-card pc-regex-wizard-save">
+    <article class="pc-page-section pc-regex-wizard-save">
       <label class="pc-field-group">
         <span class="pc-field-label">规则名称</span>
         <input v-model="ruleName" class="pc-field" placeholder="例如：提取 content 正文" />

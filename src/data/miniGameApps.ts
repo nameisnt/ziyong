@@ -3,7 +3,6 @@ export const MINI_GAME_APPS = [
   { appId: 'game-snake', description: '滑动吃点', gameId: 'snake', icon: 'fa-route', name: '贪吃蛇' },
   { appId: 'game-minesweeper', description: '排雷开格', gameId: 'minesweeper', icon: 'fa-bomb', name: '扫雷' },
   { appId: 'game-sudoku', description: '填数解题', gameId: 'sudoku', icon: 'fa-border-all', name: '数独' },
-  { appId: 'game-nonogram', description: '看数填格', gameId: 'nonogram', icon: 'fa-table-cells', name: '数织' },
   {
     appId: 'game-sliding-puzzle',
     description: '移动排序',

@@ -23,7 +23,6 @@ const gameIds = [
   'snake',
   'minesweeper',
   'sudoku',
-  'nonogram',
   'sliding-puzzle',
   'guess-number',
   'gomoku',
@@ -33,11 +32,11 @@ const gameIds = [
 
 test('every independent minigame has a dedicated play scenario', () => {
   for (const gameId of gameIds) assert.match(catalog, new RegExp(`game-${gameId}-play`));
-  assert.match(harness, /Minigame group did not expose all ten App entries/);
+  assert.match(harness, /Minigame group did not expose all nine App entries/);
   assert.match(harness, /applyMinigameVisualScenario/);
 });
 
-test('the minigame fixture isolates all ten durable fields and real board actions', () => {
+test('the minigame fixture isolates all nine durable fields and real board actions', () => {
   for (const gameId of gameIds) assert.match(scenario, new RegExp(`'${gameId}'`));
   assert.match(scenario, /miniGameFields/);
   assert.match(scenario, /extension_settings/);
@@ -46,11 +45,12 @@ test('the minigame fixture isolates all ten durable fields and real board action
   assert.match(scenario, /pc-solitaire-card-slot\.stock/);
 });
 
-test('all ten minigames are registered as direct apps without a legacy aggregate route', () => {
+test('all nine minigames are registered as direct apps without a legacy aggregate route', () => {
   for (const gameId of gameIds) assert.match(definitions, new RegExp(`appId: 'game-${gameId}'`));
   assert.match(registration, /registerPhoneAppProvider/);
   assert.doesNotMatch(registration, /id: 'games'/);
   assert.match(component, /getMiniGameIdByAppId\(currentRoute\.value\.appId\)/);
+  assert.match(component, /<span>\{\{ t`重开` \}\}<\/span>/u);
   assert.doesNotMatch(component, /openMiniGame|pushPage\('play'/);
   assert.match(scenario, /resetPhoneToRoute\(gameDefinition\.appId, 'root', gameDefinition\.name\)/);
 });

@@ -121,7 +121,6 @@ export const tutorialAppGuides: TutorialAppGuide[] = [
   { appId: 'game-snake', groupId: 'media', firstAction: '选择速度后开始，滑动控制贪吃蛇方向。' },
   { appId: 'game-minesweeper', groupId: 'media', firstAction: '选择翻开或插旗模式，再点击棋盘格。' },
   { appId: 'game-sudoku', groupId: 'media', firstAction: '选择空格，再使用数字键盘填数。' },
-  { appId: 'game-nonogram', groupId: 'media', firstAction: '根据行列提示填充或排除格子。' },
   { appId: 'game-sliding-puzzle', groupId: 'media', firstAction: '移动相邻数字块，把数字恢复为顺序。' },
   { appId: 'game-guess-number', groupId: 'media', firstAction: '输入四位数字，根据提示继续推理。' },
   { appId: 'game-gomoku', groupId: 'media', firstAction: '点击棋盘落子，与电脑进行五子棋对局。' },

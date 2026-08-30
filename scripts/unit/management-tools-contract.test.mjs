@@ -75,3 +75,11 @@ test('extension transfer exposes update availability and opens details in a moda
   assert.match(extensionApp, /pc-modal-backdrop pc-extension-detail-backdrop/u);
   assert.match(extensionApp, /role="dialog" aria-modal="true"/u);
 });
+
+test('extension transfer scrolls only the extension list and keeps batch actions outside it', () => {
+  assert.ok((extensionApp.match(/class="pc-extension-list-viewport"/gu) || []).length >= 2);
+  assert.match(extensionApp, /\.pc-extension-transfer-app\s*\{[\s\S]*grid-template-rows:\s*auto minmax\(0, 1fr\)/u);
+  assert.match(extensionApp, /\.pc-extension-list-viewport\s*\{[\s\S]*overflow-y:\s*auto/u);
+  assert.match(extensionApp, /\.pc-extension-detail-trigger\s*\{[\s\S]*text-overflow:\s*ellipsis/u);
+  assert.match(extensionApp, /class="pc-extension-list-viewport"[\s\S]*?<div class="pc-form-actions">/u);
+});

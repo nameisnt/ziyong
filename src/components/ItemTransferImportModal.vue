@@ -22,7 +22,7 @@
         <button v-if="!payload" class="pc-soft-btn" type="button" @click="inputEl?.click()">选择单条内容文件</button>
         <input ref="inputEl" class="pc-hidden-input" type="file" accept="application/json,.json" @change="readFile" />
 
-        <article v-if="preview" class="pc-section-card pc-item-transfer-preview">
+        <article v-if="preview" class="pc-item-transfer-preview">
           <span class="pc-kicker">{{ fileName }}</span>
           <strong>{{ preview.title }}</strong>
           <p v-if="preview.description">{{ preview.description }}</p>
@@ -173,6 +173,8 @@ async function applyImport() {
 .pc-item-transfer-preview {
   display: grid;
   gap: 6px;
+  padding-block: 10px;
+  border-block: 1px solid var(--pc-border);
 }
 .pc-item-transfer-preview p {
   color: var(--pc-muted);

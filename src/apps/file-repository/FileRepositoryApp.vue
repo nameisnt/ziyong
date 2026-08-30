@@ -1,7 +1,7 @@
 <template>
   <section class="pc-file-repository">
     <template v-if="route.page === 'root'">
-      <article class="pc-section-card pc-repository-settings">
+      <article class="pc-page-section pc-repository-settings">
         <div class="pc-repository-setting-row">
           <span>
             <strong>自动文件快照</strong>
@@ -72,7 +72,7 @@
       <EmptyState v-if="detailLoading" title="正在读取快照" />
       <EmptyState v-else-if="!activeSnapshot" title="这个快照已经不存在" />
       <template v-else>
-        <article class="pc-section-card pc-repository-detail">
+        <article class="pc-page-section pc-repository-detail">
           <div class="pc-repository-detail-head">
             <span>
               <strong>{{ formatDate(activeSnapshot.createdAt) }}</strong>

@@ -12,7 +12,7 @@
       </button>
     </div>
 
-    <section class="pc-section-card pc-macro-builder-form">
+    <section class="pc-page-section pc-macro-builder-form">
       <template v-if="mode === 'dice'">
         <div class="pc-macro-builder-grid">
           <label class="pc-field-group">
@@ -110,7 +110,7 @@
       </template>
     </section>
 
-    <section class="pc-section-card pc-macro-builder-result">
+    <section class="pc-page-section pc-macro-builder-result">
       <header>
         <strong>生成的宏</strong>
         <div>

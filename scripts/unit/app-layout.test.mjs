@@ -11,7 +11,6 @@ async function loadAppLayout({ includeMiniGames = false } = {}) {
     'game-snake',
     'game-minesweeper',
     'game-sudoku',
-    'game-nonogram',
     'game-sliding-puzzle',
     'game-guess-number',
     'game-gomoku',
@@ -146,7 +145,7 @@ test('folder reordering remains inside grouped layout', () => {
 test('all minigames occupy one dedicated default group', () => {
   const layout = normalizeMiniGameLayout({ appOrder: [], dockOrder: [], folders: [], version: 3 });
   const folder = layout.folders.find(item => item.name === '小游戏');
-  assert.equal(folder?.appIds.length, 10);
+  assert.equal(folder?.appIds.length, 9);
   assert.equal(layout.appOrder.filter(token => token === homeFolderToken(folder.id)).length, 1);
 });
 

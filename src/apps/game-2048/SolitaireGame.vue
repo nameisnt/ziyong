@@ -406,7 +406,7 @@ function rankLabel(card: Card) {
   align-items: center;
   justify-content: center;
   border: 3px solid var(--pc-surface-strong);
-  background: color-mix(in srgb, var(--pc-theme-accent) 68%, var(--pc-text) 32%);
+  background: color-mix(in srgb, var(--pc-theme-accent) 52%, var(--pc-text) 48%);
   color: var(--pc-primary-text);
 }
 

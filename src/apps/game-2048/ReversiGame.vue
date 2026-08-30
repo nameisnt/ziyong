@@ -265,7 +265,7 @@ onUnmounted(stopAi);
   min-height: 0;
   place-items: center;
   border: 1px solid color-mix(in srgb, var(--pc-text) 24%, var(--pc-border) 76%);
-  background: color-mix(in srgb, var(--pc-theme-accent) 18%, var(--pc-surface-strong) 82%);
+  background: color-mix(in srgb, var(--pc-text) 7%, var(--pc-surface-strong) 93%);
   cursor: pointer;
   padding: 0;
 }
@@ -282,13 +282,14 @@ onUnmounted(stopAi);
 }
 
 .pc-reversi-cell[data-piece='1'] .pc-reversi-piece {
-  background: var(--pc-text);
+  /* Piece colors represent players and must not invert with the paper theme. */
+  background: #171717;
 }
 
 .pc-reversi-cell[data-piece='2'] .pc-reversi-piece {
-  background: var(--pc-surface);
+  background: #f7f7f5;
   box-shadow:
-    inset 0 0 0 1px var(--pc-border),
+    inset 0 0 0 1px #8a8a86,
     0 2px 5px rgba(0, 0, 0, 0.14);
 }
 

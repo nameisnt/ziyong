@@ -109,20 +109,12 @@
     </section>
 
     <section v-else-if="route.page === 'bagu-scan' && activeEntry" class="pc-digest-page">
-      <article class="pc-detail-card">
-        <span class="pc-kicker">{{
-          activeEntry.sourceLabel || (activeEntry.kind === 'ai' ? t`AI 摘抄` : t`手动摘抄`)
-        }}</span>
-        <div class="pc-detail-title-row">
-          <h2>{{ activeEntry.title }}</h2>
-        </div>
-        <BaguScanPanel
-          auto-scan
-          class="pc-detail-bagu-panel"
-          :content="activeEntry.content"
-          :apply-handler="applyDigestBaguContent"
-        />
-      </article>
+      <BaguDetailPage
+        :apply-handler="applyDigestBaguContent"
+        :content="activeEntry.content"
+        :meta="activeEntry.sourceLabel || (activeEntry.kind === 'ai' ? t`AI 摘抄` : t`手动摘抄`)"
+        :title="activeEntry.title"
+      />
     </section>
 
     <section v-else-if="route.page === 'editor'" class="pc-digest-page pc-saved-content-editor-page">
@@ -180,27 +172,25 @@
       v-else-if="route.page === 'preview' && generationState.preview"
       class="pc-digest-page pc-generation-preview-page"
     >
-      <article class="pc-detail-card pc-generation-preview-card">
-        <GenerationPreviewPanel
-          :content="generationState.preview.content"
-          :raw="generationState.preview.raw"
-          raw-editable
-          :reparse-handler="reparsePreviewRaw"
-          :reasoning="generationState.preview.generationRecord?.reasoning || ''"
-          reasoning-editable
-          :source-label="generationState.preview.source.label"
-          :text-provider-summary="textProviderSummary"
-          :title="generationState.preview.title"
-          :warnings="generationState.preview.warnings"
-          save-label="保存摘抄"
-          @back="returnToGenerate"
-          @reparse="reparsePreviewRaw"
-          @save="savePreview"
-          @update:content="generationState.preview.content = $event"
-          @update:raw="generationState.preview.raw = $event"
-          @update:reasoning="updateGenerationRecordReasoning(generationState.preview, $event)"
-        />
-      </article>
+      <GenerationPreviewPanel
+        :content="generationState.preview.content"
+        :raw="generationState.preview.raw"
+        raw-editable
+        :reparse-handler="reparsePreviewRaw"
+        :reasoning="generationState.preview.generationRecord?.reasoning || ''"
+        reasoning-editable
+        :source-label="generationState.preview.source.label"
+        :text-provider-summary="textProviderSummary"
+        :title="generationState.preview.title"
+        :warnings="generationState.preview.warnings"
+        save-label="保存摘抄"
+        @back="returnToGenerate"
+        @reparse="reparsePreviewRaw"
+        @save="savePreview"
+        @update:content="generationState.preview.content = $event"
+        @update:raw="generationState.preview.raw = $event"
+        @update:reasoning="updateGenerationRecordReasoning(generationState.preview, $event)"
+      />
     </section>
 
     <FailedDraftRepairPage
@@ -221,7 +211,7 @@
 
 <script setup lang="ts">
 import ActionMenu from '@/components/ActionMenu.vue';
-import BaguScanPanel from '@/components/BaguScanPanel.vue';
+import BaguDetailPage from '@/components/BaguDetailPage.vue';
 import EmptyState from '@/components/EmptyState.vue';
 import FailedDraftList from '@/components/FailedDraftList.vue';
 import FailedDraftRepairPage from '@/components/FailedDraftRepairPage.vue';
@@ -725,25 +715,11 @@ const regenerateFailedDraft = useFailedDraftRegeneration({
   overflow: hidden;
 }
 
-.pc-detail-card {
-  border: 1px solid var(--pc-border);
-  border-radius: min(var(--pc-card-radius), 8px);
-  background: color-mix(in srgb, var(--pc-surface) 72%, transparent 28%);
-  backdrop-filter: blur(12px);
-  padding: 14px;
-}
-
 .pc-hero-actions {
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 10px;
-}
-
-.pc-detail-card h2 {
-  margin: 0;
-  font-size: 20px;
-  line-height: 1.25;
 }
 
 .pc-source-box summary,

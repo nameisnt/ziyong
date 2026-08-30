@@ -61,16 +61,23 @@ test('paper artwork stays unframed on home navigation and prompt App choices', (
     /\.pc-home :is\(\.pc-app-tile, \.pc-dock-tile\)[\s\S]*?:has\(> \.pc-app-identity-image\)[\s\S]*?border:\s*0;[\s\S]*?background:\s*transparent;[\s\S]*?box-shadow:\s*none;/u,
   );
   assert.match(globalCss, /\.pc-app-prompt-icon:has\(> \.pc-app-identity-image\)/u);
-  assert.match(
-    prompts,
-    /\.pc-app-prompt-tile\s*\{[\s\S]*?border:\s*0;[\s\S]*?background:\s*transparent;/u,
-  );
+  assert.match(prompts, /\.pc-app-prompt-tile\s*\{[\s\S]*?border:\s*0;[\s\S]*?background:\s*transparent;/u);
   assert.match(prompts, /\.pc-app-prompt-tile:focus-visible/u);
 });
 
 test('shared bookshelves derive covers from paper identity without business gradients', () => {
-  assert.match(bookShelf, /:data-paper="paper"/u);
+  assert.ok((bookShelf.match(/:data-paper="paper"/gu) || []).length >= 2);
+  assert.match(bookShelf, /pc-book-cover pc-add-cover" :data-paper="paper"/u);
+  assert.match(bookShelf, /\.pc-add-cover\s*\{[\s\S]*?border-style:\s*dashed;[\s\S]*?box-shadow:\s*none;/u);
+  assert.doesNotMatch(bookShelf, /\.pc-add-cover\s*\{[\s\S]*?background:\s*var\(--pc-surface-strong\)/u);
   assert.match(bookShelf, /settingsStore\.settings\.visualTheme\.paperTextureId/u);
   assert.doesNotMatch(bookShelf, /book\.gradient/u);
   for (const source of [diary, extras, letters, summary]) assert.doesNotMatch(source, /gradient:\s*'linear-gradient/u);
+});
+
+test('bookshelves play a short reduced-motion-aware opening transition before navigation', () => {
+  assert.match(bookShelf, /openingBookId\.value = id/u);
+  assert.match(bookShelf, /prefers-reduced-motion:\s*reduce/u);
+  assert.match(bookShelf, /window\.setTimeout\(\(\) => \{[\s\S]*emit\('select', id\);[\s\S]*\}, 210\)/u);
+  assert.match(bookShelf, /\.pc-book-item\.opening \.pc-book-cover\s*\{[\s\S]*rotateY\(-28deg\)/u);
 });

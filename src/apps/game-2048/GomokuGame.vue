@@ -280,7 +280,7 @@ function placeBlack(index: number) {
   aspect-ratio: 1;
   margin: 0 auto;
   border: 1px solid var(--pc-border);
-  background: color-mix(in srgb, var(--pc-theme-accent) 28%, var(--pc-surface-strong) 72%);
+  background: color-mix(in srgb, var(--pc-text) 8%, var(--pc-surface-strong) 92%);
   padding: 6px;
 }
 
@@ -309,13 +309,14 @@ function placeBlack(index: number) {
 }
 
 .pc-gomoku-cell[data-stone='1'] .pc-gomoku-stone {
-  background: var(--pc-text);
+  /* Stone colors represent players and must not invert with the paper theme. */
+  background: #171717;
 }
 
 .pc-gomoku-cell[data-stone='2'] .pc-gomoku-stone {
-  background: var(--pc-surface);
+  background: #f7f7f5;
   box-shadow:
-    inset 0 0 0 1px var(--pc-border),
+    inset 0 0 0 1px #8a8a86,
     0 2px 5px rgba(0, 0, 0, 0.14);
 }
 

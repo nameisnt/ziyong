@@ -17,7 +17,7 @@
       </button>
     </div>
 
-    <section class="pc-section-card pc-preset-link-panel">
+    <section class="pc-page-section pc-preset-link-panel">
       <div class="pc-preset-link-status">
         <span>已绑定预设</span>
         <strong>{{ binding?.presetName || '未绑定' }}</strong>
@@ -156,9 +156,6 @@ onMounted(refreshPresets);
   align-items: center;
   justify-content: space-between;
   gap: 12px;
-}
-.pc-preset-link-panel {
-  padding: 14px;
 }
 .pc-preset-link-status {
   gap: 3px;

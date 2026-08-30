@@ -1,7 +1,7 @@
 {
   "version": 2,
   "defect": "D-VISUAL-001",
-  "generatedAt": "2026-08-27T04:23:16.047Z",
+  "generatedAt": "2026-08-30T04:31:13.526Z",
   "scenarios": [
     "home",
     "home-tasks-dark",
@@ -70,7 +70,7 @@
     },
     {
       "appearance": {
-        "screenshotPerceptualHash": "7C78703765712112",
+        "screenshotPerceptualHash": "7C78703775F02111",
         "targets": [
           {
             "missing": false,
@@ -95,7 +95,7 @@
     },
     {
       "appearance": {
-        "screenshotPerceptualHash": "7C78703767772122",
+        "screenshotPerceptualHash": "7C78703775F02111",
         "targets": [
           {
             "missing": false,
@@ -193,7 +193,7 @@
     },
     {
       "appearance": {
-        "screenshotPerceptualHash": "7C23F62171232020",
+        "screenshotPerceptualHash": "7C23F621F8232020",
         "targets": [
           {
             "missing": false,
@@ -218,7 +218,7 @@
     },
     {
       "appearance": {
-        "screenshotPerceptualHash": "7C23F6212F232020",
+        "screenshotPerceptualHash": "7C23F621F8232020",
         "targets": [
           {
             "missing": false,
@@ -316,7 +316,7 @@
     },
     {
       "appearance": {
-        "screenshotPerceptualHash": "FC622EF360012020",
+        "screenshotPerceptualHash": "FC622EF3E0202020",
         "targets": [
           {
             "missing": false,
@@ -341,7 +341,7 @@
     },
     {
       "appearance": {
-        "screenshotPerceptualHash": "FC622EF303012020",
+        "screenshotPerceptualHash": "FC622EF3E0202020",
         "targets": [
           {
             "missing": false,

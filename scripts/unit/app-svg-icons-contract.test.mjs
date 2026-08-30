@@ -41,7 +41,6 @@ const expectedIdentityIds = [
   'game-gomoku',
   'game-guess-number',
   'game-minesweeper',
-  'game-nonogram',
   'game-reversi',
   'game-sliding-puzzle',
   'game-snake',
