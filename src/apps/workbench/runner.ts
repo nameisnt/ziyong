@@ -886,7 +886,6 @@ export async function runDueWorkbenchWorkflows() {
 
 let autoRunnerInstalled = false;
 let autoRunnerTimer: ReturnType<typeof window.setTimeout> | null = null;
-let autoRunnerStops: Array<ReturnType<typeof onTavernEvent>> = [];
 let chatChangeRevision = 0;
 const backgroundGenerationIds = new Set<string>();
 const anonymousGenerationKinds: boolean[] = [];
@@ -969,25 +968,10 @@ export function installWorkbenchAutoRunner() {
     }, 1500);
   };
 
-  autoRunnerStops = [
-    onTavernEvent('GENERATION_STARTED', handleGenerationStarted),
-    onTavernEvent('GENERATION_ENDED', handleGenerationEnded),
-    onTavernEvent('MESSAGE_RECEIVED', handleMessageFallback),
-    onTavernEvent('MESSAGE_SWIPED', handleMessageFallback),
-    onTavernEvent('CHAT_CHANGED', handleChatChanged),
-  ];
+  onTavernEvent('GENERATION_STARTED', handleGenerationStarted);
+  onTavernEvent('GENERATION_ENDED', handleGenerationEnded);
+  onTavernEvent('MESSAGE_RECEIVED', handleMessageFallback);
+  onTavernEvent('MESSAGE_SWIPED', handleMessageFallback);
+  onTavernEvent('CHAT_CHANGED', handleChatChanged);
   autoRunnerInstalled = true;
-}
-
-export function uninstallWorkbenchAutoRunner() {
-  chatChangeRevision += 1;
-  autoRunnerStops.forEach(handle => handle.stop());
-  autoRunnerStops = [];
-  backgroundGenerationIds.clear();
-  anonymousGenerationKinds.length = 0;
-  if (autoRunnerTimer) {
-    window.clearTimeout(autoRunnerTimer);
-    autoRunnerTimer = null;
-  }
-  autoRunnerInstalled = false;
 }

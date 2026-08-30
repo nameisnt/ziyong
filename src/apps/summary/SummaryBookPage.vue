@@ -1,5 +1,5 @@
 <template>
-  <section class="pc-summary-book-page">
+  <section class="pc-summary-book-page pc-page-stack">
     <div class="pc-compact-toolbar pc-directory-toolbar">
       <div class="pc-directory-leading">
         <ActionMenu align="start" icon-only label="管理" icon="fa-solid fa-bars">
@@ -14,7 +14,13 @@
         <span class="pc-directory-count">{{ book.entries.length }} 条总结</span>
       </div>
       <div class="pc-directory-actions pc-summary-book-toolbar">
-        <button class="pc-icon-btn primary" type="button" title="生成总结" aria-label="生成总结" @click="$emit('generate')">
+        <button
+          class="pc-icon-btn primary"
+          type="button"
+          title="生成总结"
+          aria-label="生成总结"
+          @click="$emit('generate')"
+        >
           <i class="fa-solid fa-wand-magic-sparkles"></i>
         </button>
         <button
@@ -85,12 +91,3 @@ defineEmits<{
   'toggle-sort': [];
 }>();
 </script>
-
-<style scoped>
-.pc-summary-book-page {
-  display: flex;
-  min-height: 100%;
-  flex-direction: column;
-  gap: 14px;
-}
-</style>

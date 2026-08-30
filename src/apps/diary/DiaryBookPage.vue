@@ -1,5 +1,5 @@
 <template>
-  <section class="pc-diary-book-page">
+  <section class="pc-diary-book-page pc-page-stack">
     <div class="pc-compact-toolbar pc-directory-toolbar">
       <div class="pc-directory-leading">
         <ActionMenu align="start" icon-only label="管理" icon="fa-solid fa-bars">
@@ -12,7 +12,13 @@
         <span class="pc-directory-count">{{ book.perspective.name }} · {{ entries.length }} 篇</span>
       </div>
       <div class="pc-directory-actions pc-diary-book-toolbar">
-        <button class="pc-icon-btn primary" type="button" aria-label="生成日记" title="生成日记" @click="$emit('generate')">
+        <button
+          class="pc-icon-btn primary"
+          type="button"
+          aria-label="生成日记"
+          title="生成日记"
+          @click="$emit('generate')"
+        >
           <i class="fa-solid fa-wand-magic-sparkles"></i>
         </button>
         <button class="pc-icon-btn" type="button" aria-label="批量生成" title="批量生成" @click="$emit('batch')">
@@ -91,13 +97,6 @@ const query = defineModel<string>('query', { required: true });
 </script>
 
 <style scoped>
-.pc-diary-book-page {
-  display: flex;
-  min-height: 100%;
-  flex-direction: column;
-  gap: 14px;
-}
-
 .pc-diary-entry-row strong {
   min-width: 0;
   overflow: hidden;

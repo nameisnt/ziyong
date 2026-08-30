@@ -1,5 +1,5 @@
 <template>
-  <section class="pc-summary-page pc-summary-detail-page">
+  <section class="pc-summary-page pc-summary-detail-page pc-page-stack">
     <ReaderDetailShell
       :content="entry.content"
       :context-label="entry.rangeLabel"
@@ -73,13 +73,6 @@ const emit = defineEmits<{
 </script>
 
 <style scoped>
-.pc-summary-page {
-  display: flex;
-  min-height: 100%;
-  flex-direction: column;
-  gap: 14px;
-}
-
 .pc-summary-detail-page {
   height: 100%;
   min-height: 0;

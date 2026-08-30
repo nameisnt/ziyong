@@ -153,6 +153,7 @@ const entryDraft = reactive({
 });
 let globalMutationQueue: Promise<void> = Promise.resolve();
 const entryMutationQueues = new Map<string, Promise<void>>();
+let entryLoadRevision = 0;
 
 const currentScopeKey = computed(() => phone.currentTavernScopeKey);
 const activeCategoryLabel = computed(
@@ -534,17 +535,42 @@ function splitEntryKeys(value: string) {
     .filter(Boolean);
 }
 
+function isEntryEditorRequestCurrent(
+  requestId: number,
+  scopeKey: string,
+  bookName: string,
+  entryUid: number,
+  page: string,
+) {
+  return (
+    requestId === entryLoadRevision &&
+    phone.isViewingCurrentChat &&
+    currentScopeKey.value === scopeKey &&
+    route.value.appId === 'worldbook-link' &&
+    route.value.page === page &&
+    detailBookName.value === bookName &&
+    editingEntryUid.value === entryUid
+  );
+}
+
 async function loadEntryEditor() {
   if (!phone.isViewingCurrentChat || !Number.isFinite(editingEntryUid.value)) return;
+  const requestId = ++entryLoadRevision;
+  const scopeKey = currentScopeKey.value;
+  const bookName = detailBookName.value;
+  const entryUid = editingEntryUid.value;
+  const page = route.value.page;
   editingEntry.value = null;
   try {
-    const status = await worldbookLinks.getStatus(currentScopeKey.value, detailBookName.value);
-    const entry = status.currentEntries.find(item => item.uid === editingEntryUid.value);
-    if (!entry) throw new Error(`世界书条目 #${editingEntryUid.value} 已不存在`);
+    const status = await worldbookLinks.getStatus(scopeKey, bookName);
+    if (!isEntryEditorRequestCurrent(requestId, scopeKey, bookName, entryUid, page)) return;
+    const entry = status.currentEntries.find(item => item.uid === entryUid);
+    if (!entry) throw new Error(`世界书条目 #${entryUid} 已不存在`);
     detailStatus.value = status;
     editingEntry.value = entry;
-    setEntryDraft(entry, route.value.page === 'copy');
+    setEntryDraft(entry, page === 'copy');
   } catch (error) {
+    if (!isEntryEditorRequestCurrent(requestId, scopeKey, bookName, entryUid, page)) return;
     toastr.error(error instanceof Error ? error.message : '读取世界书条目失败');
   }
 }
@@ -571,16 +597,24 @@ function buildEntryPatch() {
 async function saveEditingEntry() {
   const entry = editingEntry.value;
   if (!entry || entryEditorBusy.value || !entryDraft.name.trim()) return;
+  const requestId = entryLoadRevision;
+  const scopeKey = currentScopeKey.value;
+  const bookName = detailBookName.value;
+  const entryUid = entry.uid;
+  const page = route.value.page;
+  const patch = buildEntryPatch();
   entryEditorBusy.value = true;
   try {
-    const entries = await updateWorldbookEntry(detailBookName.value, entry.uid, buildEntryPatch());
-    const updated = entries.find(item => item.uid === entry.uid);
+    const entries = await updateWorldbookEntry(bookName, entry.uid, patch);
+    if (!isEntryEditorRequestCurrent(requestId, scopeKey, bookName, entryUid, page)) return;
+    const updated = entries.find(item => item.uid === entryUid);
     if (updated) {
       editingEntry.value = updated;
       setEntryDraft(updated);
     }
     toastr.success('世界书条目已保存');
   } catch (error) {
+    if (!isEntryEditorRequestCurrent(requestId, scopeKey, bookName, entryUid, page)) return;
     toastr.error(error instanceof Error ? error.message : '保存世界书条目失败');
   } finally {
     entryEditorBusy.value = false;
@@ -590,18 +624,26 @@ async function saveEditingEntry() {
 async function saveEntryCopy() {
   const entry = editingEntry.value;
   if (!entry || entryEditorBusy.value || !entryDraft.name.trim()) return;
+  const requestId = entryLoadRevision;
+  const scopeKey = currentScopeKey.value;
+  const bookName = detailBookName.value;
+  const entryUid = entry.uid;
+  const page = route.value.page;
+  const patch = buildEntryPatch();
   entryEditorBusy.value = true;
   try {
     const previousUids = new Set(detailStatus.value?.currentEntries.map(item => item.uid) ?? []);
-    const entries = await duplicateWorldbookEntry(detailBookName.value, entry.uid, buildEntryPatch());
+    const entries = await duplicateWorldbookEntry(bookName, entry.uid, patch);
+    if (!isEntryEditorRequestCurrent(requestId, scopeKey, bookName, entryUid, page)) return;
     const copied = entries.find(item => !previousUids.has(item.uid));
-    if (copied) catalogGroups.copyEntryGroup(detailBookName.value, entry.uid, copied.uid);
-    if (worldbookLinks.getProfile(currentScopeKey.value, detailBookName.value)) {
-      worldbookLinks.captureProfileFromEntries(currentScopeKey.value, detailBookName.value, entries);
+    if (copied) catalogGroups.copyEntryGroup(bookName, entry.uid, copied.uid);
+    if (worldbookLinks.getProfile(scopeKey, bookName)) {
+      worldbookLinks.captureProfileFromEntries(scopeKey, bookName, entries);
     }
     await phone.goBack();
     toastr.success('世界书条目副本已创建');
   } catch (error) {
+    if (!isEntryEditorRequestCurrent(requestId, scopeKey, bookName, entryUid, page)) return;
     toastr.error(error instanceof Error ? error.message : '复制世界书条目失败');
   } finally {
     entryEditorBusy.value = false;

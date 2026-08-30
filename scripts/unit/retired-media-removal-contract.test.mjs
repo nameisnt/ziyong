@@ -11,10 +11,10 @@ async function readSource(path) {
 const retiredIds = ['comfy', 'media', 'cloud-media', 'gallery', 'music', 'video'];
 
 async function loadCleanup() {
-  const source = await readSource('src/core/retiredMedia.ts');
+  const source = await readSource('src/core/currentDataVersion.ts');
   const output = transpileModule(source, {
     compilerOptions: { module: ModuleKind.ESNext, target: ScriptTarget.ES2022 },
-    fileName: 'retiredMedia.ts',
+    fileName: 'currentDataVersion.ts',
   }).outputText;
   return import(`data:text/javascript;base64,${Buffer.from(output).toString('base64')}`);
 }
@@ -25,20 +25,20 @@ test('all active media App modules are removed from auto registration', async ()
   }
 });
 
-test('retired media cleanup owns exact fields and shared-record pruning', async () => {
-  const cleanup = await readSource('src/core/retiredMedia.ts');
+test('current data-version cleanup owns exact retired fields and shared-record pruning', async () => {
+  const cleanup = await readSource('src/core/currentDataVersion.ts');
   for (const field of ['sillytavern_phone_media', 'sillytavern_phone_comfy', 'sillytavern_phone_cloud_media']) {
     assert.match(cleanup, new RegExp(field));
   }
-  assert.match(cleanup, /purgeRetiredMediaExtensionData/u);
-  assert.match(cleanup, /stripRetiredMediaPromptSettings/u);
-  assert.match(cleanup, /stripRetiredMediaWorkbenchSettings/u);
-  assert.match(cleanup, /stripRetiredMediaGenerationTasks/u);
-  assert.match(cleanup, /stripRetiredMediaPreviewDrafts/u);
+  assert.match(cleanup, /applyCurrentPhoneDataVersion/u);
+  assert.match(cleanup, /cleanPromptSettings/u);
+  assert.match(cleanup, /cleanWorkbenchSettings/u);
+  assert.match(cleanup, /cleanGenerationTasks/u);
+  assert.match(cleanup, /cleanPreviewDrafts/u);
 });
 
-test('cleanup deletes retired data without deleting unrelated app data and is idempotent', async () => {
-  const { purgeRetiredMediaExtensionData, stripRetiredMediaPreviewDrafts } = await loadCleanup();
+test('version upgrade deletes retired data without deleting unrelated app data and is idempotent', async () => {
+  const { applyCurrentPhoneDataVersion, CURRENT_PHONE_DATA_VERSION } = await loadCleanup();
   const extensionSettings = {
     sillytavern_phone_media: { items: [{ id: 'old-media' }] },
     sillytavern_phone_comfy: { workflows: [{ id: 'old-comfy' }] },
@@ -108,7 +108,7 @@ test('cleanup deletes retired data without deleting unrelated app data and is id
     unrelated: { keep: true },
   };
 
-  assert.equal(purgeRetiredMediaExtensionData(extensionSettings), true);
+  assert.equal(applyCurrentPhoneDataVersion(extensionSettings), true);
   assert.equal('sillytavern_phone_media' in extensionSettings, false);
   assert.deepEqual(extensionSettings.unrelated, { keep: true });
   assert.deepEqual(extensionSettings.sillytavern_phone_prompt_settings.appPrompts, { diary: 'keep' });
@@ -139,17 +139,8 @@ test('cleanup deletes retired data without deleting unrelated app data and is id
     appIconAssetIds: { forum: 'keep' },
     appIconOverrides: { settings: 'keep' },
   });
-  assert.equal(purgeRetiredMediaExtensionData(extensionSettings), false);
-
-  const importedScope = {
-    drafts: [
-      { appId: 'video', id: 'remove' },
-      { appId: 'theater', id: 'keep' },
-    ],
-    schemaVersion: 3,
-  };
-  assert.equal(stripRetiredMediaPreviewDrafts(importedScope), true);
-  assert.deepEqual(importedScope.drafts, [{ appId: 'theater', id: 'keep' }]);
+  assert.equal(extensionSettings.sillytavern_phone_data_version, CURRENT_PHONE_DATA_VERSION);
+  assert.equal(applyCurrentPhoneDataVersion(extensionSettings), false);
 });
 
 test('active layout, prompts and workbench no longer expose media integration', async () => {

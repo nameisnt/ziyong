@@ -1,18 +1,7 @@
 import { getCurrentChatScopeKey } from '@/store/chatScoped';
 import { useRecoveryStore } from '@/store/recovery';
 import type { PendingVisibilityRecovery } from '@/type/recovery';
-import {
-  getChatMessagesSafe,
-  getOptionalGlobalFunction,
-  onTavernEvent,
-  setChatMessagesSafe,
-  stopGenerationByIdSafe,
-} from '@/util/runtime';
-import { acquireSendGuard } from '@/util/sendGuard';
-
-function nowIso() {
-  return new Date().toISOString();
-}
+import { getChatMessagesSafe, getOptionalGlobalFunction, setChatMessagesSafe } from '@/util/runtime';
 
 function getAllChatMessages() {
   return getChatMessagesSafe('0-{{lastMessageId}}', { hide_state: 'all' });
@@ -25,18 +14,6 @@ async function hashMessageIdentity(message: Pick<ChatMessage, 'message' | 'name'
   return Array.from(new Uint8Array(buffer))
     .map(item => item.toString(16).padStart(2, '0'))
     .join('');
-}
-
-async function createRecoverySnapshot(messages: ChatMessage[]) {
-  return Promise.all(
-    messages.map(async message => ({
-      contentHash: await hashMessageIdentity(message),
-      isHidden: message.is_hidden,
-      messageId: message.message_id,
-      name: message.name,
-      role: message.role,
-    })),
-  );
 }
 
 async function restoreRecoveryIfSafe(item: PendingVisibilityRecovery) {
@@ -125,99 +102,4 @@ export async function ensureCurrentScopeRecovery(
   }
 
   return result;
-}
-
-export async function runWithVisibilityTransaction<T>(options: {
-  generationId: string;
-  scopeId: string;
-  selectedMessageIds: number[];
-  task: () => Promise<T>;
-}) {
-  const recovery = useRecoveryStore();
-  const allMessages = getAllChatMessages();
-  const visibleMessageIds = new Set(
-    allMessages.filter(message => !message.is_hidden).map(message => message.message_id),
-  );
-  const selectedMessageIds = new Set(options.selectedMessageIds.filter(messageId => visibleMessageIds.has(messageId)));
-  if (!selectedMessageIds.size) {
-    throw new Error('来源范围内没有可用的可见楼层');
-  }
-
-  const toHide = allMessages
-    .filter(message => !message.is_hidden && !selectedMessageIds.has(message.message_id))
-    .map(message => ({
-      is_hidden: true,
-      message_id: message.message_id,
-    }));
-
-  if (!toHide.length) {
-    return options.task();
-  }
-
-  const assertSelectedMessagesVisible = () => {
-    const actualVisibleIds = getChatMessagesSafe('0-{{lastMessageId}}', { hide_state: 'unhidden' }).map(
-      message => message.message_id,
-    );
-    const expectedIds = [...selectedMessageIds].sort((left, right) => left - right);
-    const actualIds = actualVisibleIds.sort((left, right) => left - right);
-    const sameLength = actualIds.length === expectedIds.length;
-    const sameIds = sameLength && actualIds.every((messageId, index) => messageId === expectedIds[index]);
-    if (!sameIds) {
-      throw new Error(
-        `来源楼层隐藏未生效，期望可见楼层：${expectedIds.join(', ')}；实际可见楼层：${actualIds.join(', ')}`,
-      );
-    }
-  };
-
-  const recoveryItem: PendingVisibilityRecovery = {
-    createdAt: nowIso(),
-    generationId: options.generationId,
-    messages: await createRecoverySnapshot(allMessages),
-    scopeId: options.scopeId,
-  };
-  await recovery.setRecovery(recoveryItem);
-
-  let scopeChanged = false;
-  const stopChatChanged = onTavernEvent('CHAT_CHANGED', () => {
-    if (getCurrentChatScopeKey() === options.scopeId) return;
-    scopeChanged = true;
-    stopGenerationByIdSafe(options.generationId);
-  });
-  const sendGuard = acquireSendGuard('手机生成进行中，请先等待当前任务完成');
-
-  let taskResult: T | undefined;
-  let taskError: unknown;
-  let restoreError: Error | null = null;
-
-  try {
-    await setChatMessagesSafe(toHide, { refresh: 'none' });
-    assertSelectedMessagesVisible();
-    taskResult = await options.task();
-  } catch (error) {
-    taskError = error;
-  } finally {
-    stopChatChanged.stop();
-    sendGuard.release();
-
-    if (!scopeChanged) {
-      const restoreResult = await ensureCurrentScopeRecovery(options.scopeId, { discardInvalidRecovery: false });
-      if (restoreResult.status !== 'none' && restoreResult.status !== 'restored') {
-        restoreError = new Error(restoreResult.message);
-      }
-    }
-  }
-
-  if (taskError) {
-    throw taskError;
-  }
-
-  if (scopeChanged) {
-    throw new Error('生成期间聊天已切换，来源恢复日志已保留，请回到原聊天后处理');
-  }
-
-  if (restoreError) {
-    throw restoreError;
-  }
-
-  return taskResult as T;
 }

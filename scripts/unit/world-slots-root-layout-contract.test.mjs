@@ -17,8 +17,10 @@ test('world slots keeps compact rows and the editor controls requested for narro
   const row = source.match(/<article[\s\S]*?v-for="slot in filteredSlots"[\s\S]*?<\/article>/u)?.[0] ?? '';
   assert.match(row, /pc-world-entry-lamp/u);
   assert.match(row, /<h3>\{\{ slot\.title \}\}<\/h3>/u);
-  assert.match(row, /slot\.enabled \? t`启用` : t`关闭`/u);
+  assert.match(row, /class="pc-toggle"[\s\S]*@click\.stop/u);
+  assert.match(row, /:checked="slot\.enabled"[\s\S]*@change="toggleSlot\(slot\.id, \$event\)"/u);
   assert.doesNotMatch(row, /<p|slot\.content|slot\.keys/u);
+  assert.match(source, /worldSlots\.setSlotEnabled\(slotId, \(event\.target as HTMLInputElement\)\.checked\)/u);
   assert.match(source, /class="pc-world-slot-name-row"[\s\S]*v-model="draft\.title"[\s\S]*v-model="draft\.enabled"/u);
   assert.match(source, /v-model="draft\.strategyType"[\s\S]*class="pc-world-basic-grid"/u);
   assert.match(

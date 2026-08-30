@@ -310,9 +310,6 @@ async function deleteSelectedFont() {
   grid-template-columns: repeat(4, 40px);
   gap: 4px;
 }
-.pc-icon-btn.danger {
-  color: var(--pc-danger);
-}
 @media (max-width: 420px) {
   .pc-font-assets {
     grid-template-columns: minmax(0, 1fr);

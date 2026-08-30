@@ -87,10 +87,9 @@ const { usePreviewDraftPersistence } = await import('@/util/previewDrafts');
 const { useLettersStore } = await import('@/store/letters');
 const { useTheaterStore } = await import('@/store/theater');
 const { WorkbenchStepConfigSchema, useWorkbenchStore } = await import('@/apps/workbench/store');
-const { profilesField, runLegacyProfilesCleanup } = await import('@/apps/profiles/legacyCleanup');
 const { useExternalProfileGenerationStore } = await import('@/apps/profiles/generationDrafts');
 const { usePresetLinkStore } = await import('@/apps/preset-link/store');
-const { useWorldSlotsStore, worldSlotsField } = await import('@/apps/world-slots/store');
+const { useWorldSlotsStore } = await import('@/apps/world-slots/store');
 const { useFileRepositoryStore } = await import('@/store/fileRepository');
 const { usePluginPresetStore } = await import('@/store/pluginPresets');
 const { useRelationshipStore } = await import('@/apps/relationship/store');
@@ -1500,60 +1499,6 @@ async function applyScenario(name: VisualScenarioName, options: { height?: numbe
     await phone.goHome();
   } else if (name === 'legacy-data-migrations') {
     const timestamp = '2026-07-31T00:00:00.000Z';
-    const scopeKey = getCurrentChatScopeKey();
-    _.set(extension_settings, profilesField, {
-      __chatScoped: true,
-      legacyScopeMigrations: {},
-      scopes: {
-        [scopeKey]: {
-          entries: [
-            {
-              content: '旧版资料正文',
-              createdAt: timestamp,
-              fields: { identity: '调查员' },
-              id: 'legacy-profile',
-              kind: 'character',
-              summary: '旧版摘要',
-              tableId: 'profile_table_character',
-              tags: ['旧数据'],
-              title: '旧版人物',
-              updatedAt: timestamp,
-            },
-          ],
-          tables: [],
-        },
-      },
-    });
-    _.set(extension_settings, worldSlotsField, {
-      __chatScoped: true,
-      legacyScopeMigrations: {},
-      scopes: {
-        [scopeKey]: {
-          bookName: '旧自定义世界书',
-          slots: [
-            {
-              content: '旧槽位正文',
-              createdAt: timestamp,
-              id: 'legacy-slot',
-              profileEntryIds: ['legacy-profile'],
-              title: '旧槽位',
-              type: 'relationship',
-              updatedAt: timestamp,
-            },
-          ],
-        },
-      },
-    });
-
-    const cleanupResult = runLegacyProfilesCleanup();
-    if (
-      !cleanupResult.deleted ||
-      cleanupResult.embeddedEntries !== 1 ||
-      typeof _.get(extension_settings, profilesField) !== 'undefined'
-    ) {
-      throw new Error(`Legacy profile cleanup did not delete the old domain: ${cleanupResult.error}`);
-    }
-
     const board = ForumBoardSchema.parse({
       createdAt: timestamp,
       description: '旧板块说明',
@@ -1568,24 +1513,6 @@ async function applyScenario(name: VisualScenarioName, options: { height?: numbe
     const stepConfig = WorkbenchStepConfigSchema.parse({ forumBoardDescription: '旧工作台板块说明' });
     if (stepConfig.forumBoardTypePrompt !== '旧工作台板块说明' || 'forumBoardDescription' in stepConfig) {
       throw new Error('Legacy workbench board description was not migrated to the type prompt');
-    }
-
-    const worldSlots = useWorldSlotsStore();
-    worldSlots.rehydrateFromSettings();
-    const migratedSlot = worldSlots.getSlot('legacy-slot');
-    const rawWorldEnvelope = _.get(extension_settings, worldSlotsField) as
-      { scopes?: Record<string, unknown> } | undefined;
-    const rawWorldScope = rawWorldEnvelope?.scopes?.[scopeKey] as Record<string, unknown> | undefined;
-    const rawSlot = Array.isArray(rawWorldScope?.slots) ? (rawWorldScope.slots[0] as Record<string, unknown>) : null;
-    if (
-      !migratedSlot?.content.includes('旧版人物') ||
-      !migratedSlot.content.includes('旧版资料正文') ||
-      !rawSlot ||
-      'profileEntryIds' in rawSlot ||
-      'type' in rawSlot ||
-      'bookName' in (rawWorldScope ?? {})
-    ) {
-      throw new Error('Legacy world slot fields were not migrated into the current slot content');
     }
     await phone.goHome();
   } else if (name === 'home-tasks' || name === 'home-tasks-dark') {
@@ -2233,6 +2160,15 @@ async function applyScenario(name: VisualScenarioName, options: { height?: numbe
     if (document.querySelector('.pc-world-search-toolbar select, .pc-world-search-toolbar .pc-combobox')) {
       throw new Error('Legacy world slot type filter is still visible');
     }
+    const slotToggle = document.querySelector<HTMLInputElement>('.pc-slot-row .pc-toggle input');
+    const slot = worldSlots.slots[0];
+    if (!slotToggle || !slot) throw new Error('World slot directory toggle is missing');
+    slotToggle.click();
+    await waitForPaint();
+    if (slot.enabled || slotToggle.checked) throw new Error('World slot directory toggle did not disable the slot');
+    slotToggle.click();
+    await waitForPaint();
+    if (!slot.enabled || !slotToggle.checked) throw new Error('World slot directory toggle did not restore the slot');
     const rootToolbar = document.querySelector<HTMLElement>('.pc-world-root-toolbar.pc-directory-toolbar');
     const managementTrigger = rootToolbar?.querySelector<HTMLElement>('.pc-action-menu > summary[aria-label="管理"]');
     const slotCount = rootToolbar?.querySelector<HTMLElement>('.pc-directory-count');

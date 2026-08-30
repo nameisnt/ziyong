@@ -141,10 +141,7 @@
 }
 
 .pc-phone-root
-  :is(
-    .pc-home :is(.pc-app-tile, .pc-dock-tile) .pc-app-icon-material,
-    .pc-app-prompt-icon
-  )
+  :is(.pc-home :is(.pc-app-tile, .pc-dock-tile) .pc-app-icon-material, .pc-app-prompt-icon)
   > .pc-app-identity-image {
   width: 100%;
   height: 100%;
@@ -444,7 +441,7 @@
 
 .pc-phone-root .pc-soft-btn,
 .pc-phone-root .pc-icon-btn {
-  background: var(--pc-soft-button-bg);
+  background: color-mix(in srgb, var(--pc-soft-button-bg) 58%, transparent 42%);
   color: var(--pc-text);
 }
 
@@ -471,7 +468,11 @@
 .pc-phone-root .pc-soft-btn.active,
 .pc-phone-root .pc-icon-btn.active,
 .pc-phone-root .pc-segment-btn.active {
-  background: color-mix(in srgb, var(--pc-theme-accent) 20%, var(--pc-soft-button-bg) 80%);
+  background: color-mix(
+    in srgb,
+    var(--pc-theme-accent) 20%,
+    color-mix(in srgb, var(--pc-soft-button-bg) 58%, transparent 42%) 80%
+  );
   color: var(--pc-theme-accent);
 }
 
@@ -482,7 +483,7 @@
 
 .pc-phone-root .pc-soft-btn.danger:hover,
 .pc-phone-root .pc-icon-btn.danger:hover {
-  background: color-mix(in srgb, var(--pc-danger) 16%, var(--pc-soft-button-bg) 84%);
+  background: color-mix(in srgb, var(--pc-danger) 16%, transparent 84%);
 }
 
 .pc-phone-root .pc-field,
@@ -526,7 +527,7 @@
   :is(
     input:not([type='checkbox']):not([type='radio']):not([type='range']):not([type='color']):not([type='button']):not(
         [type='submit']
-      ):not([type='reset']):not([type='image']):not([type='hidden']),
+      ):not([type='reset']):not([type='image']):not([type='hidden']):not([type='search']),
     select,
     textarea
   ) {
@@ -566,7 +567,7 @@
   :is(
     input:not([type='checkbox']):not([type='radio']):not([type='range']):not([type='color']):not([type='button']):not(
         [type='submit']
-      ):not([type='reset']):not([type='image']):not([type='hidden']),
+      ):not([type='reset']):not([type='image']):not([type='hidden']):not([type='search']),
     select,
     textarea
   ) {
@@ -621,7 +622,7 @@
   gap: 8px;
   padding: 0 10px;
   border-radius: var(--pc-control-radius);
-  background: var(--pc-surface-strong);
+  background: color-mix(in srgb, var(--pc-surface-strong) 72%, transparent 28%);
   color: var(--pc-muted);
 }
 
@@ -798,6 +799,29 @@
   background: var(--pc-bg);
   box-shadow: 0 18px 44px color-mix(in srgb, var(--pc-text) 22%, transparent 78%);
   outline: none;
+}
+
+.pc-phone-root .pc-app-fill {
+  height: 100%;
+  min-height: 0;
+}
+
+.pc-phone-root .pc-page-stack {
+  display: flex;
+  min-height: 100%;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.pc-phone-root .pc-page-grid {
+  display: grid;
+  min-height: 100%;
+  align-content: start;
+  gap: 14px;
+}
+
+.pc-phone-root .pc-page-grid.pc-page-grid-compact {
+  gap: 12px;
 }
 
 .pc-phone-root .pc-page-section {
@@ -1473,95 +1497,4 @@
 
 .pc-phone-root .pc-screen {
   position: relative;
-}
-
-.pc-phone-root .pc-detail-footer {
-  position: static;
-  flex: 0 0 auto;
-  z-index: 2;
-  display: flex;
-  flex-direction: column;
-  gap: 7px;
-  margin-top: 0;
-  padding: 6px;
-  border: 1px solid var(--pc-border);
-  border-bottom: 0;
-  border-radius: var(--pc-card-radius);
-  background: var(--pc-form-control-bg);
-  box-shadow: 0 -8px 18px color-mix(in srgb, var(--pc-text) 10%, transparent 90%);
-}
-
-.pc-phone-root .pc-detail-nav,
-.pc-phone-root .pc-detail-actions {
-  display: grid;
-  gap: 7px;
-  margin-top: 0;
-}
-
-.pc-phone-root .pc-detail-nav {
-  grid-template-columns: repeat(5, minmax(0, 1fr));
-}
-
-.pc-phone-root .pc-detail-actions {
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-}
-
-.pc-phone-root .pc-detail-actions.three {
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-}
-
-.pc-phone-root .pc-detail-actions.five {
-  grid-template-columns: repeat(5, minmax(0, 1fr));
-}
-
-.pc-phone-root .pc-detail-actions.six {
-  grid-template-columns: repeat(6, minmax(0, 1fr));
-}
-
-.pc-phone-root .pc-detail-actions.seven {
-  grid-template-columns: repeat(7, minmax(0, 1fr));
-}
-
-.pc-phone-root .pc-detail-nav .pc-soft-btn,
-.pc-phone-root .pc-detail-actions .pc-soft-btn {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 5px;
-  width: 100%;
-  min-width: 0;
-  height: 34px;
-  padding: 0 8px;
-  border-radius: calc(var(--pc-control-radius) - 4px);
-  font-size: 12px;
-}
-
-.pc-phone-root .pc-detail-nav .pc-soft-btn span {
-  min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.pc-phone-root .pc-detail-nav .pc-soft-btn.icon-only span,
-.pc-phone-root .pc-detail-actions .pc-soft-btn span {
-  display: none;
-}
-
-.pc-phone-root .pc-detail-nav .pc-soft-btn:disabled,
-.pc-phone-root .pc-detail-actions .pc-soft-btn:disabled {
-  opacity: 0.46;
-  cursor: default;
-}
-
-.pc-phone-root .pc-detail-actions .pc-soft-btn.active {
-  background: color-mix(in srgb, var(--pc-danger) 14%, var(--pc-surface-strong) 86%);
-}
-
-.pc-phone-root .pc-detail-actions .pc-soft-btn.active i {
-  color: var(--pc-danger);
-}
-
-.pc-phone-root .pc-detail-actions .pc-soft-btn.danger {
-  color: var(--pc-danger);
 }

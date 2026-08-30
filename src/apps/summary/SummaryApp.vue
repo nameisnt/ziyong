@@ -1,5 +1,5 @@
 <template>
-  <section class="pc-summary-app">
+  <section class="pc-summary-app pc-app-fill">
     <SummaryCatalogPage
       v-if="route.page === 'root'"
       :failed-drafts="failedDrafts"
@@ -876,10 +876,3 @@ const regenerateFailedDraft = useFailedDraftRegeneration({
   reparse: reparseFailedDraft,
 });
 </script>
-
-<style scoped>
-.pc-summary-app {
-  height: 100%;
-  min-height: 0;
-}
-</style>

@@ -8,7 +8,6 @@
 
       <div class="pc-compact-toolbar pc-directory-toolbar favorites-toolbar">
         <SearchableCombobox
-          class="favorite-select"
           :model-value="filter"
           :options="filterOptions"
           :placeholder="t`选择或搜索类型`"
@@ -121,37 +120,12 @@ function getTypeAccent(appId: FavoriteItem['appId']) {
   min-height: 0;
 }
 
-.pc-search {
-  width: 100%;
-  height: 32px;
-  min-height: 32px;
-  border: 1px solid var(--pc-border);
-  border-radius: 10px;
-  background: var(--pc-surface-strong);
-  color: var(--pc-text);
-  padding: 7px 10px;
-  font-size: 12px;
-}
-
 .favorites-toolbar {
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto;
   align-items: center;
   gap: 10px;
   margin: 0;
-}
-
-.favorite-select {
-  width: 100%;
-  min-width: 0;
-  height: 38px;
-  border: 1px solid var(--pc-border);
-  border-radius: 999px;
-  background: var(--pc-surface-strong);
-  color: var(--pc-text);
-  cursor: pointer;
-  padding: 0 34px 0 14px;
-  font-size: 12px;
 }
 
 .favorites-toolbar span {

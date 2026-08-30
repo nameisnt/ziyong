@@ -1,5 +1,5 @@
 <template>
-  <section class="pc-letters-app">
+  <section class="pc-letters-app pc-app-fill">
     <LettersCatalogPage
       v-if="route.page === 'root'"
       :failed-drafts="failedDrafts"
@@ -1236,10 +1236,3 @@ const regenerateFailedDraft = useFailedDraftRegeneration({
   reparse: reparseFailedDraft,
 });
 </script>
-
-<style scoped>
-.pc-letters-app {
-  height: 100%;
-  min-height: 0;
-}
-</style>

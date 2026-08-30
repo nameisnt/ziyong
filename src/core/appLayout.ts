@@ -235,15 +235,3 @@ export function reorderHomeFolderApp(layout: HomeScreenLayout, folderId: string,
     }),
   });
 }
-
-export function removeHomeAppFromFolder(layout: HomeScreenLayout, folderId: string, appId: string, _homeIndex: number) {
-  const normalized = normalizeHomeLayout(layout);
-  if (folderId === FALLBACK_FOLDER_ID) return normalized;
-  const folders = normalized.folders
-    .map(folder =>
-      folder.id === folderId ? { ...folder, appIds: folder.appIds.filter(id => id !== appId) } : { ...folder },
-    )
-    .filter(folder => folder.appIds.length);
-  addAppsToFallbackFolder(folders, [appId]);
-  return normalizeHomeLayout({ ...normalized, folders });
-}

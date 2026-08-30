@@ -1,5 +1,5 @@
 <template>
-  <section class="pc-diary-catalog-page">
+  <section class="pc-diary-catalog-page pc-page-stack">
     <PreviewDraftNotice
       :draft="previewDraft"
       @discard="$emit('discard-preview', $event)"
@@ -57,12 +57,3 @@ defineEmits<{
   'remove-failed-draft': [draftId: string];
 }>();
 </script>
-
-<style scoped>
-.pc-diary-catalog-page {
-  display: flex;
-  min-height: 100%;
-  flex-direction: column;
-  gap: 14px;
-}
-</style>

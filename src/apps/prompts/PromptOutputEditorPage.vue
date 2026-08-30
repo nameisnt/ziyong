@@ -1,5 +1,5 @@
 <template>
-  <section class="pc-prompts-page">
+  <section class="pc-prompts-page pc-page-stack">
     <div class="pc-prompts-editor pc-output-editor">
       <label class="pc-field-group">
         <span>{{ t`输出格式` }}</span>
@@ -177,13 +177,6 @@ watch(() => props.definition, loadDraft, { immediate: true });
 </script>
 
 <style scoped>
-.pc-prompts-page {
-  display: flex;
-  min-height: 100%;
-  flex-direction: column;
-  gap: 14px;
-}
-
 .pc-prompts-editor {
   display: grid;
   gap: 14px;

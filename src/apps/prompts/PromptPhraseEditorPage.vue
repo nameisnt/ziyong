@@ -1,5 +1,5 @@
 <template>
-  <section class="pc-prompts-page">
+  <section class="pc-prompts-page pc-page-stack">
     <div class="pc-prompts-editor">
       <textarea v-model="text" class="pc-area pc-area-multiline" :placeholder="placeholder" />
       <div class="pc-form-actions">
@@ -46,13 +46,6 @@ watch(
 </script>
 
 <style scoped>
-.pc-prompts-page {
-  display: flex;
-  min-height: 100%;
-  flex-direction: column;
-  gap: 14px;
-}
-
 .pc-prompts-editor {
   display: grid;
   gap: 14px;

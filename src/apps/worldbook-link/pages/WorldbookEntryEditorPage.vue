@@ -171,7 +171,4 @@ defineEmits<{ back: []; 'convert-to-theater': []; remove: []; save: [] }>();
   margin-top: 0;
   padding-top: 4px;
 }
-.pc-soft-btn.danger {
-  color: var(--pc-danger);
-}
 </style>

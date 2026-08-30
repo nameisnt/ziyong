@@ -22,12 +22,14 @@ assert.match(types, /backupKind: z\.literal\('full'\)/);
 assert.match(types, /backupKind: z\.literal\('current-chat'\)/);
 assert.match(
   types,
-  /domainVersions: z\.record\(z\.string\(\), z\.number\(\)\.int\(\)\.positive\(\)\)\.default\(\{\}\)/,
+  /domainVersions: z\.record\(z\.string\(\), z\.number\(\)\.int\(\)\.positive\(\)\)/,
 );
+assert.doesNotMatch(types, /PhoneBackupLegacyDataSchema|getPhoneBackupKind/);
 assert.match(backup, /backupKind: 'full'/);
 assert.match(backup, /backupKind: 'current-chat'/);
 assert.match(backup, /selectCurrentChatBackupDomains\(registeredDomains\)/);
-assert.match(backup, /assertFullBackupImportAllowed\(backup\.backupKind \?\? 'legacy'/);
+assert.match(backup, /assertFullBackupImportAllowed\(backup\.backupKind\)/);
+assert.match(backup, /sourceVersion !== entry\.domain\.schemaVersion/);
 assert.match(backup, /selectGeneratedContentDomains\(getRegisteredPhoneBackupDomains\(\)\)/);
 assert.match(backupPolicy, /当前聊天备份不能执行完整恢复/);
 assert.match(backupPolicy, /domain\.scope === 'chat' && \(domain\.category === 'content' \|\| domain\.category === 'draft'\)/);
@@ -37,7 +39,7 @@ assert.match(backup, /executeBackupImportTransaction/);
 assert.match(backup, /restoreSnapshot: restoreExtensionSettings/);
 assert.match(backupTransaction, /options\.rehydrate\(\)/);
 assert.match(backupTransaction, /options\.restoreSnapshot\(snapshot\)/);
-assert.match(backup, /entry\.domain\.schema\.safeParse\(sourceData\)/);
+assert.match(backup, /entry\.domain\.schema\.safeParse\(entry\.data\)/);
 assert.match(backup, /export function planPhoneFullBackupImport/);
 assert.match(backup, /export function planPhoneBackupScopeImport/);
 assert.match(backup, /missingDomainLabels/);

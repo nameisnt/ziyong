@@ -1,9 +1,15 @@
 <template>
-  <section class="pc-letters-book-page">
+  <section class="pc-letters-book-page pc-page-stack">
     <div class="pc-compact-toolbar pc-directory-toolbar">
       <span class="pc-directory-count">{{ entries.length }} 封书信</span>
       <div class="pc-directory-actions">
-        <button class="pc-icon-btn primary" type="button" title="生成回信" aria-label="生成回信" @click="$emit('generate')">
+        <button
+          class="pc-icon-btn primary"
+          type="button"
+          title="生成回信"
+          aria-label="生成回信"
+          @click="$emit('generate')"
+        >
           <i class="fa-solid fa-wand-magic-sparkles"></i>
         </button>
         <ActionMenu label="管理" icon="fa-solid fa-bars">
@@ -70,12 +76,3 @@ defineEmits<{
 
 const query = defineModel<string>('query', { required: true });
 </script>
-
-<style scoped>
-.pc-letters-book-page {
-  display: flex;
-  min-height: 100%;
-  flex-direction: column;
-  gap: 14px;
-}
-</style>

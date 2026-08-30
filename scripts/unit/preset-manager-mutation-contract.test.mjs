@@ -34,17 +34,8 @@ test('preset detail keeps group expansion state per preset while nested prompt p
   assert.match(appSource, /saved\.set\(groupId, next\.has\(groupId\)\)/u);
 });
 
-test('renaming a Tavern preset is refused before any unsafe host mutation can select it', () => {
-  const renameStart = source.indexOf('export async function renameTavernPreset');
-  const deleteStart = source.indexOf('export async function deleteTavernPreset');
-  const renameSource = source.slice(renameStart, deleteStart);
-
-  assert.match(renameSource, /当前酒馆没有不切换预设、不导入正则的安全改名接口/u);
-  assert.doesNotMatch(renameSource, /manager\?\.renamePreset/u);
-  assert.doesNotMatch(renameSource, /await manager\.renamePreset/u);
-  assert.doesNotMatch(renameSource, /await\s+(?:helper\.)?renamePreset\(sourceName, targetName\)/u);
-  assert.doesNotMatch(renameSource, /savePreset/u);
-  assert.doesNotMatch(renameSource, /loadTavernPreset|selectPreset/u);
+test('Tavern preset rename is refused in the UI without retaining an unreachable API', () => {
+  assert.doesNotMatch(source, /export async function renameTavernPreset/u);
   const handlerStart = appSource.indexOf('async function renamePreset()');
   const handlerEnd = appSource.indexOf('\nasync function removePreset()', handlerStart);
   const handlerSource = appSource.slice(handlerStart, handlerEnd);

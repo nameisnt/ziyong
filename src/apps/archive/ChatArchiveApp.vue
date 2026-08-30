@@ -313,10 +313,7 @@ import { areChatScopeKeysEquivalent } from '@/store/chatScoped';
 import { useGenerationTaskStore } from '@/store/generationTasks';
 import { usePhoneStore } from '@/store/phone';
 import { getChatScopeMigrationSourceKeys, migratePhoneChatScopes } from '@/util/chatScopeRename';
-import {
-  createChatArchiveDomainReader,
-  normalizeChatArchiveId,
-} from '@/util/chatArchive';
+import { createChatArchiveDomainReader, normalizeChatArchiveId } from '@/util/chatArchive';
 import { jumpToTavernChat } from '@/util/tavernNavigation';
 import {
   captureCurrentChatFloorBackup,
@@ -854,9 +851,6 @@ async function migrateSelectedChatToCurrent() {
 .pc-owner-main {
   min-width: 0;
   flex: 1 1 auto;
-}
-
-.pc-owner-main {
   display: grid;
   gap: 2px;
 }

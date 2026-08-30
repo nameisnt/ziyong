@@ -1,5 +1,5 @@
 <template>
-  <section class="pc-entry-library-app">
+  <section class="pc-entry-library-app pc-app-fill">
     <EntryLibraryCatalogPage
       v-if="route.page === 'root'"
       v-model:group-name="newGroupName"
@@ -280,10 +280,11 @@ async function deleteGroups(groupIds: string[]) {
 async function deleteItems(itemIds: string[]) {
   const selected = items.value.filter(item => itemIds.includes(item.id));
   if (!selected.length) return;
-  const confirmed = await phone.confirmNotice(
-    `删除所选 ${selected.length} 条收藏？原始预设或世界书条目不会被删除。`,
-    { confirmLabel: '删除所选', kind: 'warning', title: '批量删除收藏' },
-  );
+  const confirmed = await phone.confirmNotice(`删除所选 ${selected.length} 条收藏？原始预设或世界书条目不会被删除。`, {
+    confirmLabel: '删除所选',
+    kind: 'warning',
+    title: '批量删除收藏',
+  });
   if (!confirmed) return;
   selected.forEach(item => library.deleteItem(item.id));
   toastr.success(`已删除 ${selected.length} 条收藏`);
@@ -732,10 +733,3 @@ onBeforeUnmount(() => {
   clearItemDragLongPressTimer();
 });
 </script>
-
-<style scoped>
-.pc-entry-library-app {
-  height: 100%;
-  min-height: 0;
-}
-</style>

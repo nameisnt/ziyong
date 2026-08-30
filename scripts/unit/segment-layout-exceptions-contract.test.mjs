@@ -6,12 +6,6 @@ import test from 'node:test';
 const globalSource = await readFile(new URL('../../src/global.css', import.meta.url), 'utf8');
 const cases = [
   {
-    declarations: { width: '40px', 'min-width': '40px', 'padding-inline': '0' },
-    file: '../../src/apps/profiles/pages/ProfilesCatalogPage.vue',
-    label: 'profiles fixed-width icon view toggle',
-    selector: '.pc-profile-view-toggle .pc-segment-btn',
-  },
-  {
     declarations: { 'min-width': '0', 'padding-inline': '6px' },
     file: '../../src/apps/worldbook-link/pages/WorldbookCatalogPage.vue',
     label: 'worldbook five-column category layout',

@@ -255,10 +255,6 @@ async function openImportedChat() {
   display: flex;
   min-height: 0;
   flex-direction: column;
-}
-
-.pc-recovery-flow,
-.pc-recovery-page {
   flex: 1 1 auto;
 }
 

@@ -62,7 +62,6 @@ import { usePromptStore } from '@/store/prompts';
 import { useReaderStore } from '@/store/reader';
 import { useRecoveryStore } from '@/store/recovery';
 import { useSettingsStore } from '@/store/settings';
-import { getPhoneBackupKind } from '@/type/backup';
 import {
   applyPhoneBackup,
   downloadCurrentChatPhoneBackup,
@@ -194,26 +193,15 @@ async function onBackupSelected(event: Event) {
     const backup = await parsePhoneBackupFile(file);
     if (generationTasks.hasRunningTasks) return void toastr.warning('请先暂停正在运行的生成任务，再恢复备份');
     if (backupImportMode.value === 'full') {
-      const backupKind = getPhoneBackupKind(backup);
-      if (backupKind === 'current-chat') throw new Error('这是一份当前聊天备份，只能使用“导入到当前聊天”');
-      if (
-        backupKind === 'legacy' &&
-        !(await phone.confirmNotice(
-          '这是一份旧版备份，文件未标注“完整”或“当前聊天”。请仅在确认它包含完整设置和所有数据时继续恢复。',
-          { confirmLabel: '确认按完整备份恢复', kind: 'warning' },
-        ))
-      )
-        return;
+      if (backup.backupKind === 'current-chat') throw new Error('这是一份当前聊天备份，只能使用“导入到当前聊天”');
       if (
         !(await phone.confirmNotice(
-          `要完整恢复这份手机备份吗？\n${formatBackupImportPlan(
-            planPhoneFullBackupImport(backup, { allowLegacy: backupKind === 'legacy' }),
-          )}`,
+          `要完整恢复这份手机备份吗？\n${formatBackupImportPlan(planPhoneFullBackupImport(backup))}`,
           { confirmLabel: '恢复', kind: 'warning' },
         ))
       )
         return;
-      await applyPhoneBackup(backup, { allowLegacy: backupKind === 'legacy' });
+      await applyPhoneBackup(backup);
       rehydrateImportedData();
       toastr.success('已完整恢复手机备份');
       return;

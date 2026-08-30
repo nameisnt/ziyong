@@ -1,7 +1,7 @@
 import AppRoot from '@/App.vue';
-import { installWorkbenchAutoRunner, uninstallWorkbenchAutoRunner } from '@/apps/workbench/runner';
+import { installWorkbenchAutoRunner } from '@/apps/workbench/runner';
+import { applyCurrentPhoneDataVersion } from '@/core/currentDataVersion';
 import { ensureNativeLauncher, syncNativeLauncherVisibility } from '@/core/nativeLauncher';
-import { purgeRetiredMediaExtensionData } from '@/core/retiredMedia';
 import { ensurePhoneAppsRegistered } from '@/data/apps';
 import { usePhoneStore } from '@/store/phone';
 // eslint-disable-next-line import-x/no-nodejs-modules
@@ -59,7 +59,7 @@ function ensureRoot() {
 }
 
 export function initPhoneLifecycle() {
-  if (purgeRetiredMediaExtensionData(extension_settings as Record<string, unknown>)) {
+  if (applyCurrentPhoneDataVersion(extension_settings as Record<string, unknown>)) {
     void saveSettingsDebounced();
   }
   ensurePhoneAppsRegistered();
@@ -96,15 +96,4 @@ export function initPhoneLifecycle() {
     toastr?.error?.(`功能性阅读器初始化失败：${message}`);
   }
   return state;
-}
-
-export function destroyPhoneLifecycle() {
-  const state = getPluginState();
-  uninstallWorkbenchAutoRunner();
-  state.app?.unmount();
-  eventClearAll();
-  state.root?.remove();
-  state.app = null;
-  state.root = null;
-  state.initialized = false;
 }

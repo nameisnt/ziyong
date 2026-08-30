@@ -53,6 +53,9 @@ export type PresetLinkSettings = {
   version: 2;
 };
 
+type PresetApplyResult = { applied: boolean; changed: boolean; reloaded: boolean };
+type PresetScopeRequest = { scopeKey: string; sequence: number };
+
 function compareUpdatedAt(left: string, right: string) {
   return right.localeCompare(left);
 }
@@ -139,7 +142,10 @@ export const usePresetLinkStore = defineStore('preset-link', () => {
   const applying = ref(false);
   const lastAppliedScopeKey = ref('');
   const revision = ref(0);
-  let sequence = 0;
+  let scopeSequence = 0;
+  let presetMutationTail: Promise<void> = Promise.resolve();
+  let pendingScopeRequest: PresetScopeRequest | null = null;
+  let scopeWorker: Promise<void> | null = null;
   let recentReloadKey = '';
   let recentReloadExpiresAt = 0;
 
@@ -253,7 +259,8 @@ export const usePresetLinkStore = defineStore('preset-link', () => {
     scopeKey: string,
     input: Pick<PresetChatBinding, 'presetName' | 'reloadRegex'>,
     forceReload: boolean,
-  ) {
+    isCurrent = () => areChatScopeKeysEquivalent(scopeKey, getCurrentChatScopeKey()),
+  ): Promise<PresetApplyResult> {
     assertScope(scopeKey);
     if (!areChatScopeKeysEquivalent(scopeKey, getCurrentChatScopeKey())) {
       throw new Error('只能把预设应用到酒馆当前打开的聊天');
@@ -270,10 +277,18 @@ export const usePresetLinkStore = defineStore('preset-link', () => {
 
     try {
       if (changed) await loadTavernPreset(presetName);
+      if (!isCurrent()) {
+        noticeGuard?.restore();
+        return { applied: false, changed: false, reloaded: false };
+      }
       if (shouldReload) {
         recentReloadKey = reloadKey;
         recentReloadExpiresAt = Date.now() + 4_000;
         await reloadCurrentChatForPresetRegex();
+        if (!isCurrent()) {
+          noticeGuard?.restore();
+          return { applied: false, changed: false, reloaded: false };
+        }
         reloaded = true;
         noticeGuard?.dismiss();
       }
@@ -290,7 +305,16 @@ export const usePresetLinkStore = defineStore('preset-link', () => {
 
     lastAppliedScopeKey.value = scopeKey;
     revision.value += 1;
-    return { changed, reloaded };
+    return { applied: true, changed, reloaded };
+  }
+
+  function enqueuePresetMutation<T>(operation: () => Promise<T>) {
+    const task = presetMutationTail.then(operation);
+    presetMutationTail = task.then(
+      () => undefined,
+      () => undefined,
+    );
+    return task;
   }
 
   async function applySelection(
@@ -298,28 +322,66 @@ export const usePresetLinkStore = defineStore('preset-link', () => {
     input: Pick<PresetChatBinding, 'presetName' | 'reloadRegex'>,
     forceReload = true,
   ) {
-    return applyPresetSelection(scopeKey, input, forceReload);
+    return enqueuePresetMutation(() => applyPresetSelection(scopeKey, input, forceReload));
   }
 
-  async function applyScope(scopeKey: string, forceReload = false) {
+  async function applyScopeNow(
+    scopeKey: string,
+    forceReload = false,
+    isCurrent = () => areChatScopeKeysEquivalent(scopeKey, getCurrentChatScopeKey()),
+  ) {
     const binding = getBinding(scopeKey);
-    if (!binding?.presetName) return { changed: false, reloaded: false };
-    return applyPresetSelection(scopeKey, binding, forceReload);
+    if (!binding?.presetName) return { applied: true, changed: false, reloaded: false };
+    return applyPresetSelection(scopeKey, binding, forceReload, isCurrent);
   }
 
-  async function switchScope(scopeKey: string) {
-    if (!areChatScopeKeysEquivalent(scopeKey, getCurrentChatScopeKey())) return;
-    const currentSequence = ++sequence;
+  function applyScope(scopeKey: string, forceReload = false) {
+    return enqueuePresetMutation(() => applyScopeNow(scopeKey, forceReload));
+  }
+
+  function isScopeRequestCurrent(request: PresetScopeRequest) {
+    return (
+      request.sequence === scopeSequence &&
+      areChatScopeKeysEquivalent(request.scopeKey, getCurrentChatScopeKey())
+    );
+  }
+
+  async function drainScopeRequests() {
     applying.value = true;
     try {
-      await new Promise<void>(resolve => window.setTimeout(resolve, 180));
-      if (currentSequence !== sequence || !areChatScopeKeysEquivalent(scopeKey, getCurrentChatScopeKey())) return;
-      await applyScope(scopeKey);
-    } catch (error) {
-      toastr.warning(`当前聊天的预设绑定未应用：${error instanceof Error ? error.message : String(error)}`);
+      while (pendingScopeRequest) {
+        const request = pendingScopeRequest;
+        pendingScopeRequest = null;
+        await new Promise<void>(resolve => window.setTimeout(resolve, 180));
+        if (!isScopeRequestCurrent(request)) continue;
+        try {
+          await enqueuePresetMutation(() =>
+            applyScopeNow(request.scopeKey, false, () => isScopeRequestCurrent(request)),
+          );
+        } catch (error) {
+          if (!isScopeRequestCurrent(request)) continue;
+          toastr.warning(`当前聊天的预设绑定未应用：${error instanceof Error ? error.message : String(error)}`);
+        }
+      }
     } finally {
-      if (currentSequence === sequence) applying.value = false;
+      applying.value = false;
     }
+  }
+
+  function startScopeWorker() {
+    if (!scopeWorker) {
+      scopeWorker = drainScopeRequests().finally(() => {
+        scopeWorker = null;
+        if (pendingScopeRequest) void startScopeWorker();
+      });
+    }
+    return scopeWorker;
+  }
+
+  function switchScope(scopeKey: string) {
+    if (!areChatScopeKeysEquivalent(scopeKey, getCurrentChatScopeKey())) return Promise.resolve();
+    pendingScopeRequest = { scopeKey, sequence: ++scopeSequence };
+    return startScopeWorker();
   }
 
   function resetCurrentScope() {

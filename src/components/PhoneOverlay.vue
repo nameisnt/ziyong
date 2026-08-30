@@ -216,8 +216,6 @@ const rootStyle = computed(() => {
     '--pc-danger': cssColor(visualTheme.dangerColor),
     '--pc-dock-bg': cssColor(visualTheme.dockColor),
     '--pc-dock-active': cssColor(visualTheme.dockActiveColor),
-    '--pc-form-control-bg': cssColor(visualTheme.surfaceStrongColor),
-    '--pc-form-control-text': cssColor(visualTheme.textColor),
     '--pc-hint': cssColor(visualTheme.hintColor),
     '--pc-icon-radius': `${visualTheme.iconRadius}px`,
     '--pc-app-svg-primary-width': String(appSvgStroke.primaryWidth),
@@ -251,8 +249,9 @@ const shellStyle = computed(() => {
   return {
     backgroundColor: 'var(--pc-bg)',
     backgroundImage: 'var(--pc-paper-texture)',
-    backgroundRepeat: 'repeat',
-    backgroundSize: '256px 256px',
+    backgroundPosition: 'center',
+    backgroundRepeat: 'no-repeat',
+    backgroundSize: 'cover',
     height: `${settings.value.interfaceSize.phoneHeight}px`,
     width: `${settings.value.interfaceSize.phoneWidth}px`,
   };
@@ -384,8 +383,9 @@ onBeforeUnmount(() => {
   overflow: hidden;
   background-color: var(--pc-bg);
   background-image: var(--pc-paper-texture);
-  background-repeat: repeat;
-  background-size: 256px 256px;
+  background-position: center;
+  background-repeat: no-repeat;
+  background-size: cover;
   box-shadow: 0 14px 36px rgba(0, 0, 0, 0.2);
   border: 1px solid var(--pc-border);
   display: flex;
@@ -448,7 +448,7 @@ onBeforeUnmount(() => {
   height: 40px;
   border: 0;
   border-radius: var(--pc-control-radius);
-  background: var(--pc-surface-strong);
+  background: color-mix(in srgb, var(--pc-soft-button-bg) 58%, transparent 42%);
   color: var(--pc-text);
   cursor: pointer;
 }
@@ -637,47 +637,9 @@ onBeforeUnmount(() => {
   line-height: 1.25;
 }
 
-.pc-app-copy p,
-.pc-check-card p {
-  margin: 8px 0 0;
-  color: var(--pc-muted);
-  line-height: 1.45;
-}
-
-.pc-check-card strong {
-  display: block;
-  font-style: normal;
-}
-
-.pc-app-copy {
-  margin-top: 14px;
-  padding: 16px 18px;
-  border-radius: var(--pc-card-radius);
-  background: var(--pc-surface);
-  border: 1px solid var(--pc-border);
-}
-
-.pc-check-grid {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 12px;
-  margin-top: 14px;
-}
-
-.pc-check-card {
-  padding: 16px;
-  border-radius: var(--pc-card-radius);
-  background: var(--pc-surface);
-  border: 1px solid var(--pc-border);
-}
-
 @media (max-width: 640px) {
   .pc-phone-shell {
     border-radius: 12px;
-  }
-
-  .pc-check-grid {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }
 </style>

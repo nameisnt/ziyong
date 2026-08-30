@@ -1,7 +1,10 @@
 <template>
-  <section class="pc-theater-catalog-page">
+  <section class="pc-theater-catalog-page pc-page-grid">
     <div class="pc-toolbar">
-      <input v-model="query" class="pc-search" type="text" :placeholder="t`搜索类型或历史内容...`" />
+      <label class="pc-search-field">
+        <i class="fa-solid fa-magnifying-glass"></i>
+        <input v-model="query" type="search" :placeholder="t`搜索类型或历史内容...`" />
+      </label>
       <div class="pc-theater-record-row">
         <button class="pc-soft-btn compact" type="button" :disabled="!entryCount" @click="$emit('open-history')">
           <i class="fa-solid fa-clock-rotate-left"></i>
@@ -157,13 +160,6 @@ defineEmits<{
 </script>
 
 <style scoped>
-.pc-theater-catalog-page {
-  display: grid;
-  min-height: 100%;
-  align-content: start;
-  gap: 14px;
-}
-
 .pc-toolbar {
   display: grid;
   grid-template-columns: minmax(0, 1fr);
@@ -184,20 +180,6 @@ defineEmits<{
 
 .pc-theater-type-toolbar > .pc-segment {
   min-width: 0;
-}
-
-.pc-search {
-  width: 100%;
-  height: 36px;
-  min-height: 36px;
-  padding: 8px 10px;
-  border: 0.5px solid var(--pc-border);
-  border-radius: 10px;
-  outline: none;
-  background: var(--pc-bg);
-  color: var(--pc-text);
-  font-size: 14px;
-  line-height: normal;
 }
 
 .pc-tag-cloud {

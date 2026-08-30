@@ -15,7 +15,7 @@ if (-not (Test-Path -LiteralPath $srcRoot)) {
 $patterns = @(
   @{
     Name = "Scoped style repeats global UI classes"
-    Regex = "^\s*\.(pc-primary-btn|pc-soft-btn|pc-icon-btn|pc-segment|pc-segment-btn|pc-field|pc-select|pc-area|pc-field-group|pc-field-label|pc-section-card|pc-editor-card|pc-form-actions|pc-toggle)\s*\{"
+    Regex = "^\s*\.(pc-primary-btn|pc-soft-btn|pc-icon-btn|pc-segment|pc-segment-btn|pc-field|pc-select|pc-area|pc-field-group|pc-field-label|pc-search-field|pc-section-card|pc-editor-card|pc-form-actions|pc-toggle|pc-app-fill|pc-page-stack|pc-page-grid)\s*\{"
     Severity = "warn"
   },
   @{

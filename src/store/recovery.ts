@@ -11,17 +11,18 @@ export const useRecoveryStore = defineStore('recovery', () => {
 
   async function persist(nextData: typeof data.value) {
     const parsed = validateInplace(PendingVisibilityRecoveryMapSchema, klona(nextData));
+    const hadPrevious = Object.hasOwn(extension_settings, recoveryField);
+    const previous = _.get(extension_settings, recoveryField);
     _.set(extension_settings, recoveryField, parsed);
-    await Promise.resolve(saveSettingsDebounced());
+    try {
+      await Promise.resolve(saveSettingsDebounced());
+    } catch (error) {
+      if (hadPrevious) _.set(extension_settings, recoveryField, previous);
+      else delete extension_settings[recoveryField];
+      throw error;
+    }
+    return parsed;
   }
-
-  watch(
-    data,
-    nextData => {
-      void persist(nextData);
-    },
-    { deep: true },
-  );
 
   const entries = computed(() =>
     Object.values(data.value).sort(
@@ -30,24 +31,23 @@ export const useRecoveryStore = defineStore('recovery', () => {
   );
 
   async function setRecovery(item: PendingVisibilityRecovery) {
-    data.value = {
+    const nextData = {
       ...data.value,
       [item.scopeId]: item,
     };
-    await persist(data.value);
+    data.value = await persist(nextData);
   }
 
   async function deleteRecovery(scopeId: string) {
     if (!(scopeId in data.value)) return;
     const nextData = { ...data.value };
     delete nextData[scopeId];
-    data.value = nextData;
-    await persist(data.value);
+    data.value = await persist(nextData);
   }
 
   async function clearAllRecoveries() {
-    data.value = {};
-    await persist(data.value);
+    const nextData = {};
+    data.value = await persist(nextData);
   }
 
   function rehydrateFromSettings() {

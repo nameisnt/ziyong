@@ -18,21 +18,10 @@ import {
   type PhoneContentStatsContribution,
   type PhoneReferenceTreeNode,
 } from '@/core/appRegistry';
-import { registerRegexTargetProvider } from '@/core/regexTargetRegistry';
 import { readChatScopedEnvelope } from '@/store/chatScoped';
 import { usePhoneStore } from '@/store/phone';
 import { parsePrettified } from '@/util/zod';
 import { extension_settings } from '@sillytavern/scripts/extensions';
-
-registerRegexTargetProvider(() =>
-  readCustomAppDefinitionsSnapshot().map(definition => ({
-    appId: definition.id,
-    fields: ['title', 'content'],
-    id: definition.id,
-    label: definition.name,
-    operations: ['extract', 'replace'],
-  })),
-);
 
 function createReferenceTree(appId: string, appName: string): PhoneReferenceTreeNode {
   const customApps = useCustomAppsStore();

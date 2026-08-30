@@ -1,5 +1,5 @@
 <template>
-  <section class="pc-prompts-page">
+  <section class="pc-prompts-page pc-page-stack">
     <div class="pc-prompts-editor">
       <input v-model="name" class="pc-field" type="text" :placeholder="t`分组名称`" />
       <div class="pc-form-actions">
@@ -43,13 +43,6 @@ watch(
 </script>
 
 <style scoped>
-.pc-prompts-page {
-  display: flex;
-  min-height: 100%;
-  flex-direction: column;
-  gap: 14px;
-}
-
 .pc-prompts-editor {
   display: grid;
   gap: 14px;

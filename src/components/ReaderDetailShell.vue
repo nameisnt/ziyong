@@ -545,7 +545,7 @@ defineExpose({ hideFooter, toggleFooter });
   min-width: 0;
   padding: 4px 6px;
   border-bottom: 1px solid var(--pc-border);
-  background: var(--pc-surface);
+  background: color-mix(in srgb, var(--pc-surface) 62%, transparent 38%);
 }
 
 .pc-reader-context-meta {

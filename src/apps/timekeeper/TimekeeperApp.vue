@@ -197,12 +197,7 @@
           <article v-for="person in settings.people" :key="person.id" class="pc-person-card">
             <label class="pc-check-row">
               <input v-model="person.selected" type="checkbox" />
-              <input
-                v-model="person.name"
-                class="pc-field name"
-                type="text"
-                :placeholder="t`人物名称`"
-              />
+              <input v-model="person.name" class="pc-field name" type="text" :placeholder="t`人物名称`" />
             </label>
             <input
               v-if="settings.calendar.kind === 'gregorian'"
@@ -442,10 +437,11 @@ async function createPerson() {
 async function deletePerson(personId: string) {
   const person = settings.value.people.find(item => item.id === personId);
   if (!person) return;
-  const confirmed = await phone.confirmNotice(
-    `删除“${person.name}”吗？`,
-    { confirmLabel: '删除人物', kind: 'warning', title: '删除人物' },
-  );
+  const confirmed = await phone.confirmNotice(`删除“${person.name}”吗？`, {
+    confirmLabel: '删除人物',
+    kind: 'warning',
+    title: '删除人物',
+  });
   if (!confirmed) return;
   try {
     await timekeeper.deletePerson(personId);
@@ -458,10 +454,11 @@ async function deletePerson(personId: string) {
 async function deleteSelectedPeople() {
   const selected = settings.value.people.filter(person => selectedPeopleIdSet.value.has(person.id));
   if (!selected.length) return;
-  const confirmed = await phone.confirmNotice(
-    `删除所选 ${selected.length} 个人物吗？`,
-    { confirmLabel: '删除所选', kind: 'warning', title: '批量删除人物' },
-  );
+  const confirmed = await phone.confirmNotice(`删除所选 ${selected.length} 个人物吗？`, {
+    confirmLabel: '删除所选',
+    kind: 'warning',
+    title: '批量删除人物',
+  });
   if (!confirmed) return;
   try {
     for (const person of selected) await timekeeper.deletePerson(person.id);
@@ -594,8 +591,7 @@ async function copyPrompt() {
 
 .pc-time-hero,
 .pc-head-actions,
-.pc-person-foot,
-.pc-switch-row {
+.pc-person-foot {
   display: flex;
   align-items: center;
   justify-content: space-between;

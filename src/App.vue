@@ -32,9 +32,7 @@ import { migratePhoneChatRename, type TavernChatRenamedEvent } from '@/util/chat
 import { startChatFloorBackupService } from '@/util/chatFloorBackup';
 import { ensureCurrentScopeRecovery } from '@/util/generationVisibility';
 import { hasVisibilityTransactionRuntime, onTavernEvent } from '@/util/runtime';
-import { cleanupRetiredPhoneData } from '@/util/retiredDataCleanup';
 
-cleanupRetiredPhoneData();
 const phone = usePhoneStore();
 const worldSlots = useWorldSlotsStore();
 const menuTargetReady = ref(false);
@@ -60,6 +58,13 @@ async function tryRecoverCurrentScope() {
   if (result.status === 'identity_mismatch' || result.status === 'scope_changed') {
     toastr.warning(result.message);
   }
+}
+
+function scheduleCurrentScopeRecovery() {
+  void tryRecoverCurrentScope().catch(error => {
+    console.error('[手机恢复] 自动恢复失败', error);
+    toastr.error(`自动恢复失败：${error instanceof Error ? error.message : String(error)}`);
+  });
 }
 
 function syncTeleportTargets() {
@@ -95,10 +100,10 @@ onMounted(() => {
     childList: true,
     subtree: true,
   });
-  void tryRecoverCurrentScope();
+  scheduleCurrentScopeRecovery();
 
   stopChatChanged = onTavernEvent('CHAT_CHANGED', () => {
-    void tryRecoverCurrentScope();
+    scheduleCurrentScopeRecovery();
   });
   stopChatRenamed = onTavernEvent('CHAT_RENAMED', payload => {
     const result = migratePhoneChatRename((payload ?? {}) as TavernChatRenamedEvent);

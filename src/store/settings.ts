@@ -1,5 +1,4 @@
 import { buildDefaultHomeLayout, migrateHomeLayoutDockCapacity, normalizeHomeLayout } from '@/core/appLayout';
-import { stripRetiredMediaPhoneSettings } from '@/core/retiredMedia';
 import {
   setting_field,
   Settings,
@@ -138,7 +137,6 @@ function migrateBuiltinThemePaper(profile: ThemeAppearanceProfile) {
 function normalizeSettings(rawSettings: unknown) {
   const hadThemeProfiles = hasStoredThemeProfiles(rawSettings);
   const source = rawSettings && typeof rawSettings === 'object' ? (klona(rawSettings) as Record<string, unknown>) : {};
-  stripRetiredMediaPhoneSettings(source);
   const rawTextProvider =
     source.textProvider && typeof source.textProvider === 'object'
       ? (source.textProvider as Record<string, unknown>)

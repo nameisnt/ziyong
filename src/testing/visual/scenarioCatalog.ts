@@ -173,6 +173,7 @@ export function createVisualScenarioGroups(rootAppScenarios: string[]): VisualSc
         'forum-failed-draft',
         'forum-failed-draft-reparse',
         'forum-thread',
+        'forum-thread-dark',
         'forum-thread-editor',
         'forum-generate-replies',
         'forum-preview',

@@ -1,5 +1,5 @@
 <template>
-  <section class="pc-forum-board-page">
+  <section class="pc-forum-board-page pc-page-stack">
     <div class="pc-compact-toolbar pc-directory-toolbar pc-forum-board-toolbar">
       <span class="pc-directory-count">{{ threads.length }} 个主题帖</span>
       <div class="pc-directory-actions pc-hero-actions">
@@ -13,7 +13,9 @@
           <i class="fa-solid fa-wand-magic-sparkles"></i>
         </button>
         <ActionMenu :label="t`新增`" icon="fa-solid fa-plus">
-          <button type="button" @click="$emit('create-thread')"><i class="fa-solid fa-file-circle-plus"></i>{{ t`发帖` }}</button>
+          <button type="button" @click="$emit('create-thread')">
+            <i class="fa-solid fa-file-circle-plus"></i>{{ t`发帖` }}
+          </button>
           <ItemTransferImportAction app-id="forum" :params="{ boardId }" :label="t`导入单个帖子`" />
         </ActionMenu>
       </div>
@@ -69,13 +71,6 @@ defineEmits<{
 </script>
 
 <style scoped>
-.pc-forum-board-page {
-  display: flex;
-  min-height: 100%;
-  flex-direction: column;
-  gap: 14px;
-}
-
 .pc-hero-actions,
 .pc-entry-head {
   display: flex;
@@ -117,5 +112,4 @@ defineEmits<{
 .pc-favorite-chip i[data-active='true'] {
   color: var(--pc-theme-accent);
 }
-
 </style>

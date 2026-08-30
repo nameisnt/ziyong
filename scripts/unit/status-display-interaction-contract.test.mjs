@@ -48,5 +48,5 @@ test('status viewer and settings are separate apps with one configuration owner'
   assert.match(settings, /function deleteScheme\(/u);
   assert.doesNotMatch(viewerModule, /backupDomains|registerRegexTargetProvider/u);
   assert.match(settingsModule, /backupDomains/u);
-  assert.match(settingsModule, /registerRegexTargetProvider/u);
+  assert.doesNotMatch(settingsModule, /registerRegexTargetProvider|regexTargetRegistry/u);
 });

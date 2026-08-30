@@ -50,7 +50,6 @@ test('single-action and creation menus are not mechanically moved into the left 
     'src/apps/forum/ForumBoardPage.vue',
     'src/apps/digest/DigestApp.vue',
     'src/apps/entry-library/pages/EntryLibraryCatalogPage.vue',
-    'src/apps/profiles/pages/ProfilesCatalogPage.vue',
   ]) {
     const source = await read(path);
     assert.doesNotMatch(source, /<ActionMenu[^>]*icon-only[^>]*label=(?:"新增"|"?[^>]*新增)/u, path);

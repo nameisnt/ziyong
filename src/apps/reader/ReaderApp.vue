@@ -1,5 +1,5 @@
 <template>
-  <section class="pc-reader-app">
+  <section class="pc-reader-app pc-app-fill">
     <section v-if="route.page === 'root'" class="pc-reader-page">
       <div class="pc-compact-toolbar pc-reader-hero pc-chat-hero">
         <div class="pc-list-row-copy">
@@ -1008,7 +1008,6 @@ function formatReaderBody(value: string) {
 </script>
 
 <style scoped>
-.pc-reader-app,
 .pc-reader-page {
   height: 100%;
   min-height: 0;
@@ -1093,12 +1092,8 @@ function formatReaderBody(value: string) {
   white-space: nowrap;
 }
 
-.pc-settings-card,
 .pc-error-card,
-.pc-accordion-item,
-.pc-brief-card,
 .pc-message-card,
-.pc-rule-card,
 .pc-rule-panel {
   border: 1px solid var(--pc-border);
   background: color-mix(in srgb, var(--pc-surface) 72%, transparent 28%);
@@ -1106,31 +1101,15 @@ function formatReaderBody(value: string) {
   backdrop-filter: blur(12px);
 }
 
-.pc-settings-card,
 .pc-error-card,
-.pc-settings-head,
-.pc-toolbar-actions,
-.pc-inline-actions,
-.pc-inline-grid,
-.pc-message-head,
-.pc-search-field,
-.pc-rule-head,
-.pc-accordion-head,
-.pc-character-main {
+.pc-message-head {
   display: flex;
   align-items: center;
   gap: 10px;
 }
 
-.pc-settings-head,
-.pc-message-head,
-.pc-rule-head,
-.pc-accordion-head {
+.pc-message-head {
   justify-content: space-between;
-}
-
-.pc-home-tools {
-  padding: 10px 14px;
 }
 
 .pc-chat-hero {
@@ -1159,13 +1138,6 @@ function formatReaderBody(value: string) {
   flex: 0 0 auto;
 }
 
-.pc-icon-btn.danger {
-  color: var(--pc-danger);
-}
-
-.pc-preset-list,
-.pc-accordion-list,
-.pc-brief-list,
 .pc-message-list {
   position: relative;
   z-index: 1;
@@ -1174,8 +1146,6 @@ function formatReaderBody(value: string) {
   gap: 10px;
 }
 
-.pc-rule-card,
-.pc-brief-card,
 .pc-message-card {
   padding: 14px;
 }
@@ -1219,12 +1189,6 @@ function formatReaderBody(value: string) {
   margin-top: 3px;
   color: var(--pc-muted);
   font-size: 12px;
-}
-
-.pc-rule-select {
-  flex: 0 1 132px;
-  min-width: 112px;
-  margin-top: 0;
 }
 
 .pc-rule-body {
@@ -1306,13 +1270,6 @@ function formatReaderBody(value: string) {
   font-weight: 700;
 }
 
-.pc-rule-toolbar {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 10px;
-}
-
 .pc-rule-help {
   margin: 0;
   color: var(--pc-muted);
@@ -1321,42 +1278,10 @@ function formatReaderBody(value: string) {
   text-align: right;
 }
 
-.pc-rule-section {
-  border-radius: min(var(--pc-control-radius), 8px);
-  background: var(--pc-surface-strong);
-  padding: 12px;
-}
-
-.pc-rule-head {
-  width: 100%;
-  border: 0;
-  background: transparent;
-  color: var(--pc-text);
-  cursor: pointer;
-  padding: 0;
-}
-
-.pc-rule-fields {
-  margin-top: 10px;
-}
-
-.pc-rule-grid,
-.pc-inline-rules {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 12px;
-}
-
-.pc-name-field {
-  margin-top: 0;
-}
-
-.pc-reader-app :is(.pc-field, .pc-select) {
+.pc-reader-app .pc-field {
   margin-top: 12px;
 }
 
-.pc-accordion-head,
-.pc-brief-main,
 .pc-message-main {
   position: relative;
   z-index: 1;
@@ -1370,111 +1295,11 @@ function formatReaderBody(value: string) {
   touch-action: manipulation;
 }
 
-.pc-accordion-item {
-  overflow: hidden;
-}
-
-.pc-accordion-head {
-  padding: 16px 18px;
-}
-
-.pc-accordion-body {
-  padding: 0 14px 14px;
-}
-
-.pc-reader-picker {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr);
-  gap: 12px;
-}
-
-.pc-picker-panel {
-  overflow: hidden;
-  border: 1px solid var(--pc-border);
-  border-radius: min(var(--pc-card-radius), 8px);
-  background: color-mix(in srgb, var(--pc-surface) 86%, transparent 14%);
-}
-
-.pc-picker-head {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  padding: 12px 14px 8px;
-}
-
-.pc-picker-head span {
-  min-width: 32px;
-  height: 24px;
-  border-radius: 999px;
-  display: grid;
-  place-items: center;
-  background: var(--pc-surface-strong);
-  color: var(--pc-text);
-  font-size: 12px;
-}
-
-.pc-picker-head strong {
-  min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.pc-character-scroll,
-.pc-brief-scroll {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  max-height: 214px;
-  overflow: auto;
-  padding: 0 10px 12px;
-}
-
-.pc-character-row {
-  width: 100%;
-  min-height: 58px;
-  border: 1px solid transparent;
-  border-radius: min(var(--pc-card-radius), 8px);
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 10px;
-  padding: 9px 12px;
-  background: var(--pc-surface-strong);
-  color: var(--pc-text);
-  text-align: left;
-}
-
-.pc-character-main {
-  flex: 1 1 auto;
-  min-width: 0;
-}
-
-.pc-character-row.active {
-  border-color: color-mix(in srgb, var(--pc-theme-accent) 34%, transparent 66%);
-  background: color-mix(in srgb, var(--pc-theme-accent) 12%, var(--pc-surface-strong) 88%);
-}
-
-.pc-character-avatar {
-  width: 40px;
-  height: 40px;
-  border-radius: 14px;
-  display: grid;
-  place-items: center;
-  background: color-mix(in srgb, var(--pc-theme-accent) 16%, var(--pc-surface) 84%);
-  color: var(--pc-theme-accent);
-  font-weight: 700;
-}
-
-.pc-character-copy strong,
-.pc-brief-main strong,
 .pc-message-head strong,
 .pc-error-card strong {
   display: block;
 }
 
-.pc-character-copy,
 .pc-message-head > div {
   flex: 1 1 auto;
   min-width: 0;
@@ -1494,8 +1319,6 @@ function formatReaderBody(value: string) {
   white-space: nowrap;
 }
 
-.pc-character-copy strong,
-.pc-brief-main strong,
 .pc-message-head strong {
   overflow: hidden;
   text-overflow: ellipsis;
@@ -1510,70 +1333,8 @@ function formatReaderBody(value: string) {
   font-size: 11px;
 }
 
-.pc-message-body {
-  flex: 1 1 auto;
-  margin-top: 14px;
-  padding: 16px;
-  border-radius: min(var(--pc-card-radius), 8px);
-  background: var(--pc-surface-strong);
-  color: var(--pc-reader-text, var(--pc-text));
-  font-family: var(--pc-reader-font-family);
-  font-size: var(--pc-reader-font-size);
-  line-height: var(--pc-reader-line-height);
-  min-height: 0;
-  overflow: auto;
-}
-
-.pc-message-body :deep(*) {
-  font-family: inherit;
-}
-
-.pc-message-body.indent :deep(p) {
-  text-indent: 2em;
-}
-
-.pc-message-detail-card {
-  flex: 1 1 auto;
-  min-height: 0;
-  padding: 14px;
-  display: flex;
-  flex-direction: column;
-  font-family: var(--pc-reader-font-family);
-}
-
-.pc-message-detail-card .pc-message-head strong {
-  font-family: inherit;
-}
-
-.pc-message-detail-card .pc-reader-detail-head {
-  position: relative;
-  justify-content: center;
-  padding: 2px 42px 0;
-  text-align: center;
-}
-
 .pc-reader-detail-title {
   min-width: 0;
-}
-
-.pc-message-detail-card .pc-reader-detail-title strong {
-  overflow: visible;
-  text-overflow: clip;
-  white-space: normal;
-  overflow-wrap: anywhere;
-}
-
-.pc-message-detail-card .pc-reader-detail-title p {
-  margin: 6px 0 0;
-  color: color-mix(in srgb, var(--pc-text) 58%, transparent 42%);
-  font-size: 12px;
-  line-height: 1.35;
-}
-
-.pc-message-detail-card .pc-hidden-pill {
-  position: absolute;
-  top: 2px;
-  right: 0;
 }
 
 .pc-reader-swipe-selector {
@@ -1606,45 +1367,5 @@ function formatReaderBody(value: string) {
 
 .pc-reader-swipe-options {
   flex-wrap: wrap;
-}
-
-.pc-rendered-markdown > * {
-  margin: 0 0 0.78em;
-}
-
-.pc-rendered-markdown > *:last-child {
-  margin-bottom: 0;
-}
-
-.pc-rendered-markdown h3,
-.pc-rendered-markdown h4,
-.pc-rendered-markdown h5,
-.pc-rendered-markdown h6 {
-  font-size: 1.05em;
-  line-height: 1.45;
-}
-
-.pc-rendered-markdown ul,
-.pc-rendered-markdown ol {
-  padding-left: 1.3em;
-}
-
-.pc-rendered-markdown blockquote {
-  padding-left: 0.9em;
-  border-left: 3px solid color-mix(in srgb, var(--pc-theme-accent) 40%, transparent 60%);
-  color: var(--pc-muted);
-}
-
-.pc-rendered-markdown pre {
-  overflow: auto;
-  padding: 10px;
-  border-radius: 12px;
-  background: color-mix(in srgb, var(--pc-text) 8%, transparent 92%);
-  font-size: 0.88em;
-}
-
-.pc-number-field {
-  display: flex;
-  flex-direction: column;
 }
 </style>

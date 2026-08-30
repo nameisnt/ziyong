@@ -1,5 +1,5 @@
 <template>
-  <section class="pc-mvu-app">
+  <section class="pc-mvu-app pc-page-stack">
     <div class="pc-mvu-top-actions">
       <button
         class="pc-icon-btn"
@@ -230,13 +230,9 @@ import {
   setMvuPathValue,
 } from './model';
 import EmptyState from '@/components/EmptyState.vue';
-import { getCurrentChatScopeKey } from '@/store/chatScoped';
-import {
-  useMvuModifierPersistenceStore,
-  type MvuChangeRecord,
-} from '@/store/mvuModifier';
+import { areChatScopeKeysEquivalent, getCurrentChatScopeKey } from '@/store/chatScoped';
+import { useMvuModifierPersistenceStore, type MvuChangeRecord } from '@/store/mvuModifier';
 import { usePhoneStore } from '@/store/phone';
-import { onTavernEvent } from '@/util/runtime';
 import { storeToRefs } from 'pinia';
 
 const HISTORY_LIMIT = 30;
@@ -260,14 +256,18 @@ const redoStack = ref<MvuStatData[]>([]);
 const expandedKeys = ref<string[]>([]);
 const editingKey = ref<null | string>(null);
 const query = ref('');
+const contextVersion = ref(0);
 const loading = ref(false);
-const busy = ref(false);
+const savingContextVersion = ref<number | null>(null);
+const busy = computed(() => loading.value || savingContextVersion.value === contextVersion.value);
 const errorMessage = ref('');
 const showSourceSettings = ref(false);
 const showHistory = ref(false);
 const favoritesExpanded = ref(true);
-const contextVersion = ref(0);
-let stopChatChanged: { stop: () => void } | null = null;
+let mvuLoadWorker: Promise<void> | null = null;
+let mvuLoadPending = false;
+let mvuLoadForce = false;
+let saveRevision = 0;
 
 const currentOptions = computed<MvuOptions>(() => {
   if (scope.value !== 'message') return { type: scope.value };
@@ -312,28 +312,63 @@ function matchesQuery(label: string, value: unknown, keyword: string): boolean {
   return Object.entries(value).some(([childLabel, childValue]) => matchesQuery(childLabel, childValue, keyword));
 }
 
-async function loadData(force = false) {
-  if (!phone.isViewingCurrentChat || busy.value) return;
-  loading.value = !sourceData.value;
-  busy.value = true;
-  errorMessage.value = '';
+function isMvuContextCurrent(requestVersion: number, requestScopeKey: string) {
+  return (
+    requestVersion === contextVersion.value &&
+    phone.isViewingCurrentChat &&
+    areChatScopeKeysEquivalent(requestScopeKey, activeChatKey.value)
+  );
+}
+
+async function drainMvuLoads() {
+  loading.value = true;
   try {
-    const data = await readMvuData(currentOptions.value);
-    const nextStatData = readMvuStatData(data);
-    if (force || !sameData(statData.value, nextStatData)) {
-      sourceData.value = data;
-      statData.value = nextStatData;
-      undoStack.value = [];
-      redoStack.value = [];
-      editingKey.value = null;
+    while (mvuLoadPending) {
+      const force = mvuLoadForce;
+      mvuLoadPending = false;
+      mvuLoadForce = false;
+      const requestVersion = contextVersion.value;
+      const requestScopeKey = activeChatKey.value;
+
+      try {
+        const requestOptions = currentOptions.value;
+        if (isMvuContextCurrent(requestVersion, requestScopeKey)) errorMessage.value = '';
+        const data = await readMvuData(requestOptions);
+        if (!isMvuContextCurrent(requestVersion, requestScopeKey)) continue;
+        const nextStatData = readMvuStatData(data);
+        if (force || !sameData(statData.value, nextStatData)) {
+          sourceData.value = data;
+          statData.value = nextStatData;
+          undoStack.value = [];
+          redoStack.value = [];
+          editingKey.value = null;
+        }
+      } catch (error) {
+        if (!isMvuContextCurrent(requestVersion, requestScopeKey)) continue;
+        if (!sourceData.value) statData.value = {};
+        errorMessage.value = error instanceof Error ? error.message : String(error);
+      }
     }
-  } catch (error) {
-    if (!sourceData.value) statData.value = {};
-    errorMessage.value = error instanceof Error ? error.message : String(error);
   } finally {
     loading.value = false;
-    busy.value = false;
   }
+}
+
+function startMvuLoadWorker() {
+  if (!mvuLoadWorker) {
+    mvuLoadWorker = drainMvuLoads().finally(() => {
+      mvuLoadWorker = null;
+      if (mvuLoadPending) void startMvuLoadWorker();
+    });
+  }
+  return mvuLoadWorker;
+}
+
+function loadData(force = false) {
+  if (!phone.isViewingCurrentChat) return Promise.resolve();
+  mvuLoadPending = true;
+  mvuLoadForce ||= force;
+  return startMvuLoadWorker();
 }
 
 async function changeScope(nextScope: MvuScope) {
@@ -346,19 +381,27 @@ async function changeScope(nextScope: MvuScope) {
 
 async function persistSnapshot(next: MvuStatData) {
   if (!sourceData.value) return false;
+  const requestVersion = contextVersion.value;
+  const requestScopeKey = activeChatKey.value;
+  const requestId = ++saveRevision;
+  const source = sourceData.value;
   const previous = cloneMvuStatData(statData.value);
-  busy.value = true;
+  savingContextVersion.value = requestVersion;
   statData.value = cloneMvuStatData(next);
   try {
-    sourceData.value = await replaceMvuStatData(sourceData.value, next, currentOptions.value);
+    const requestOptions = currentOptions.value;
+    const updatedSource = await replaceMvuStatData(source, next, requestOptions);
+    if (!isMvuContextCurrent(requestVersion, requestScopeKey)) return false;
+    sourceData.value = updatedSource;
     errorMessage.value = '';
     return true;
   } catch (error) {
+    if (!isMvuContextCurrent(requestVersion, requestScopeKey)) return false;
     statData.value = previous;
     toastr.error(error instanceof Error ? error.message : String(error));
     return false;
   } finally {
-    busy.value = false;
+    if (requestId === saveRevision) savingContextVersion.value = null;
   }
 }
 
@@ -551,29 +594,28 @@ function handleChatChanged() {
 watch(
   () => phone.isViewingCurrentChat,
   isCurrent => {
-    if (isCurrent && !sourceData.value && !busy.value) void loadData(true);
+    if (isCurrent && !sourceData.value) void loadData(true);
+  },
+);
+
+watch(
+  () => phone.currentTavernScopeKey,
+  (scopeKey, previousScopeKey) => {
+    if (scopeKey !== previousScopeKey) handleChatChanged();
   },
 );
 
 onMounted(() => {
   if (phone.isViewingCurrentChat) void loadData(true);
-  stopChatChanged = onTavernEvent('CHAT_CHANGED', handleChatChanged);
 });
 
 onUnmounted(() => {
-  stopChatChanged?.stop();
-  stopChatChanged = null;
+  contextVersion.value += 1;
+  mvuLoadPending = false;
 });
 </script>
 
 <style scoped>
-.pc-mvu-app {
-  display: flex;
-  min-height: 100%;
-  flex-direction: column;
-  gap: 14px;
-}
-
 .pc-mvu-section-head,
 .pc-mvu-favorite-row,
 .pc-mvu-history-row > div,

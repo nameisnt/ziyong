@@ -41,11 +41,9 @@ test('clear generated content excludes every configuration domain', () => {
   );
 });
 
-test('current-chat and unconfirmed legacy backups cannot run full restore', () => {
+test('current-chat backups cannot run full restore', () => {
   assert.throws(() => assertFullBackupImportAllowed('current-chat'), /不能执行完整恢复/);
-  assert.throws(() => assertFullBackupImportAllowed('legacy'), /旧版备份缺少文件类型/);
   assert.doesNotThrow(() => assertFullBackupImportAllowed('full'));
-  assert.doesNotThrow(() => assertFullBackupImportAllowed('legacy', true));
 });
 
 test('missing registered domains and unknown backup domains remain explicit', () => {

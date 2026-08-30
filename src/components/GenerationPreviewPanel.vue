@@ -367,9 +367,6 @@ function goRawFromNotice() {
   align-items: center;
   justify-content: space-between;
   gap: 10px;
-}
-
-.pc-detail-meta {
   color: var(--pc-muted);
 }
 

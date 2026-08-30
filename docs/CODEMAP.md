@@ -21,7 +21,8 @@
 - `src/core/appRegistry.ts`：`PhoneAppModule`
   类型和注册表；提供 App、组件、备份域、生成动作、提示词、引用、收藏、统计、内容转换、恢复项等聚合查询。
 - `src/data/apps.ts`：先注册 `BUILTIN_PHONE_APP_MODULES`，再自动加载 `src/apps/*/index.ts`；最后执行教程目录校验。
-- `src/apps/builtin.ts`：显式组合核心内置 App：`summary`、`diary`、`extras`、`forum`、`theater`、`letters`、`workbench`、`favorites`、`prompts`、`stats`、`archive`、`reader`、`recovery`、`bagu`、`settings`；页面组件使用 `defineAsyncComponent` 动态导入。
+- `src/apps/builtin.ts`：显式组合核心内置 App：`summary`、`diary`、`extras`、`forum`、`theater`、`letters`、`workbench`、`favorites`、`prompts`、`stats`、`archive`、`reader`、`recovery`、`bagu`、`settings`；页面组件使用
+  `defineAsyncComponent` 动态导入。
 - `src/apps/*/index.ts`：独立 App 注册入口，例如
   `app-builder`、`card-writer`、`entry-library`、`macro-builder`、`preset-link`、`preset-manager`、`profiles`、`recovery`、`world-slots`、`worldbook-link`
   等；注册模块及能力提供者同步加载，根页面组件按首次打开加载。
@@ -50,11 +51,13 @@
 - 当前 scope key 来自 SillyTavern 当前角色/群组和聊天 id，格式近似 `char:<owner>:chat:<chat>` 或
   `group:<owner>:chat:<chat>`。
 - 切换聊天时，`phone.syncCurrentTavernScope()` 和各 App 的 `scopeSwitchHandler` 负责切换 store 数据。
-- 配置校验失败时，`useChatScopedDomain` 保留 `configError` 与 `rawConfig`，阻止自动持久化默认值，并提供重新读取和明确重置；工作台等业务 store 直接委托并暴露该共享恢复边界，不重复实现持久化保护。
+- 配置校验失败时，`useChatScopedDomain` 保留 `configError` 与
+  `rawConfig`，阻止自动持久化默认值，并提供重新读取和明确重置；工作台等业务 store 直接委托并暴露该共享恢复边界，不重复实现持久化保护。
 - `useChatScopedDomain` 将连续深层修改合并 120ms 后校验并写入，聊天切换和 store 销毁前强制落盘，并通过
   `flushCurrentScope()` 供八股应用等显式正文写回立即落盘；全局 settings 保持同步写入，保证主题与布局立即可见。
 - `src/apps/status-display/store.ts` 在全局设置中保存状态方案和 `activeSchemeByScope`；`status-display` 与
-  `status-display-settings` 共享该 store，聊天只保存方案选择关系，不保存渲染结果；展示页把监听、激活和酒馆事件产生的同轮刷新请求合并到一个微任务。
+  `status-display-settings`
+  共享该 store，聊天只保存方案选择关系，不保存渲染结果；展示页把监听、激活和酒馆事件产生的同轮刷新请求合并到一个微任务。
 
 ## 生成数据流
 
@@ -100,7 +103,8 @@
 - `src/util/contentTransfer.ts`：按备份域导出/导入内容，支持 copy/merge/replace，并按 chat/global scope 处理。
 - `src/util/itemTransfer.ts` 与
   `src/item-transfer/providers.ts`：单条内容迁移，支持 copy/replace、schema 版本、预览冲突和失败回滚。
-- `src/util/chatFloorBackup.ts`：用 IndexedDB 保存当前聊天楼层备份，支持单份导出、删除、身份校验、恢复到当前聊天，以及完整备份资源替换；整库替换先校验全部记录，再在单个 `readwrite` 事务中清空和写入；消息事件合并 2 秒并在浏览器空闲期捕获，不重复监听渲染完成事件。
+- `src/util/chatFloorBackup.ts`：用 IndexedDB 保存当前聊天楼层备份，支持单份导出、删除、身份校验、恢复到当前聊天，以及完整备份资源替换；整库替换先校验全部记录，再在单个
+  `readwrite` 事务中清空和写入；消息事件合并 2 秒并在浏览器空闲期捕获，不重复监听渲染完成事件。
 - `src/util/idleTask.ts`：统一调度和取消空闲任务；支持 `requestIdleCallback` 时使用空闲回调，否则回退到零延迟定时任务。
 - `src/store/fileRepository.ts`：插件文件仓库自动快照与恢复，属于本地版本保护流；首次自动快照延后 60 秒，之后每 5 分钟在页面可见且浏览器空闲时执行，并与楼层备份共用空闲调度器。
 
@@ -132,7 +136,8 @@
 - 工作台：`src/apps/workbench/store.ts` 通过 `useChatScopedDomain`
   按聊天保存完整工作流、启用状态、checkpoint、待执行快照、日志和插入草稿；首次读取旧全局格式时直接清空旧工作台数据及关联生成任务。`WorkbenchCopyModal.vue`
   读取其他已保存 scope 的工作流并批量复制，副本停用且清除聊天专属目标与人物字段。`runner.ts`
-  监听生成与聊天事件；聊天切换采用“等待宿主加载 → 核对切换序号 → 切换工作台 scope → 同步当前聊天基线 → 检查到期工作流”的流程。
+  监听生成与聊天事件；聊天切换采用“等待宿主加载 → 核对切换序号 → 切换工作台 scope
+  → 同步当前聊天基线 → 检查到期工作流”的流程。
 - 外部资料：`src/apps/profiles/externalBridge.ts` 从 `AutoCardUpdaterAPI` 读取真实表结构；`externalCrud.ts`
   按表键和行号直接增删改，`ProfilesApp.vue`
   按真实列展示横向或竖向资料卡片和详情，显示偏好由全局 settings 持久化。`profileReferences.ts`、`ExternalProfileReferencePicker.vue`
@@ -168,16 +173,21 @@
 
 - `src/data/appSvgIcons.ts` 保存 App 语义 SVG 路径和现有 Font Awesome 类名映射；`src/data/appIdentityImageIcons.ts` 从
   `src/assets/app-icons/<paper>/` 加载按 App id 命名的主题 PNG；`AppIcon.vue`
-  统一用于首页、Dock、分组管理、主题预览和提示词 App 入口，优先级为上传图片、当前纸张主题 PNG、语义 SVG、Font Awesome；单个入口只创建当前纸张的一份图片或 SVG 节点。
+  统一用于首页、Dock、分组管理、主题预览和提示词 App 入口，优先级为上传图片、当前纸张主题 PNG、语义 SVG、Font
+  Awesome；单个入口只创建当前纸张的一份图片或 SVG 节点。
 - `src/assets/app-icons/{a4,graphite,parchment,velvet,xuan,cypress,sky,ocean,cardstock}/`
   各保存当前 49 个注册 App 的 192px 透明 PNG；`scripts/process-app-icon-batch.ps1`
-  负责绿幕去除、裁切和尺寸归一，`scripts/generate-modern-app-icons.mjs` 从语义 SVG 渲染 A4 现代印刷母版，`scripts/generate-theme-image-variants.ps1` 生成石墨和其他主题派生资源，`scripts/validate-app-image-icons.ps1` 负责完整性与像素级资源检查。
+  负责绿幕去除、裁切和尺寸归一，`scripts/generate-modern-app-icons.mjs`
+  从语义 SVG 渲染 A4 现代印刷母版，`scripts/generate-theme-image-variants.ps1`
+  生成石墨和其他主题派生资源，`scripts/validate-app-image-icons.ps1` 负责完整性与像素级资源检查。
 - `src/global.css` 定义全局 `pc-*`
   控件、卡片、表单、阅读、生成和详情基础样式；全部当前主题切换到对应图片，缺图时继续显示语义 SVG。
-- `src/components/BookShelf.vue` 从当前纸张选择封面材质和色板；日记、总结、番外和书信只提供语义图标，不再写死业务渐变色。
+- `src/components/BookShelf.vue`
+  从当前纸张选择封面材质和色板；日记、总结、番外和书信只提供语义图标，不再写死业务渐变色。
 - `PhoneOverlay.vue` 的 `.pc-screen`
   统一提供普通 App 页面外边距；业务 App 根页面只负责布局，状态栏展示页通过专用零边距屏幕承载网页。
-- `PhoneOverlay.vue` 根据 settings 注入主题 CSS 变量、字体、阅读器尺寸、内置纸张纹理和 App 图标样式。
+- `PhoneOverlay.vue`
+  根据 settings 注入主题 CSS 变量、字体、阅读器尺寸、内置纸张纹理和 App 图标样式；整页纹理以单张图片居中覆盖，不重复铺设。
 - `src/data/paperTextures.ts` 注册四组主题包的独立日夜纸纹，并保留旧版黑卡纸兼容；`src/apps/theme/themeCatalog.ts`
   独占主题预设、主题包、字体、图标、颜色和圆角静态目录。
 - `src/core/appLayout.ts` 维护首页八个默认分组和聊天档案/收藏/提示词/教程/设置五项 Dock，并将旧布局一次重建为 layout
@@ -186,6 +196,10 @@
 - `ReaderDetailShell.vue` 固定显示详情上下文栏，`VersionNavigator.vue`
   在栏内切换版本；可拖动工具菜单使用与顶栏一致的紧凑操作高度并只承载正文操作，底部 `DetailFooter`
   负责上条/目录/下条和置顶置底。阅读聊天只在最后一楼提供酒馆原生发送入口，输入使用多行弹窗。
+- `src/apps/forum/ForumReplyList.vue`
+  是论坛详情与生成预览共用的扁平楼层列表，负责楼层分隔、楼主筛选和现有父回复楼层提示；`ForumThreadDetailPage.vue` 与
+  `ForumPreviewPage.vue` 不再各自维护回复卡片。论坛输出格式和解析仍由 `builtinPrompts.ts`、`core/forumGeneration.ts` 与
+  `util/generation.ts` 负责，当前未随 UI 调整。
 - `src/apps/settings/SettingsApp.vue`
   使用单行分类选择器装配界面、阅读、生成、连接、数据和高级面板；`SettingsGenerationPanel.vue`
   管理生成默认值，`SettingsConnectionPanel.vue` 管理文本通道和外部配置目录，`SettingsExternalApiPage.vue`
@@ -203,8 +217,8 @@
 - `pnpm build:check`：构建到 `tmp/build-check`，用于验证不改正式 dist。
 - `pnpm verify:ui`：三尺寸交互和外观视觉检查。
 - `pnpm verify:full`：静态、临时构建、三尺寸完整视觉。
-- `pnpm build`：正式生成 `dist/index.js`、`dist/index.css`、按需页面 JS/CSS chunk
-  和静态资源，属于发布产物更新；`scripts/safe-push-dist.ps1` 将完整 `dist/` 加入临时发布索引。
+- `pnpm build`：正式生成 `dist/index.js`、`dist/index.css`、按需页面 JS/CSS
+  chunk 和静态资源，属于发布产物更新；`scripts/safe-push-dist.ps1` 将完整 `dist/` 加入临时发布索引。
 
 ## 当前文档归档
 

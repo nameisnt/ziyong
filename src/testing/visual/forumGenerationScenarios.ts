@@ -1,5 +1,6 @@
 import { useForumStore } from '@/store/forum';
 import { usePreviewDraftStore } from '@/store/previewDrafts';
+import { useSettingsStore } from '@/store/settings';
 import type { HiddenGenerationRecord } from '@/type/generation';
 import { buildItemTransfer, importItemTransfer } from '@/util/itemTransfer';
 
@@ -23,14 +24,20 @@ export function createForumFixture() {
     title: '视觉测试帖子：按钮不应该被拉高，正文也不应该横向溢出',
   });
   if (!longThread) throw new Error('Forum visual fixture did not create a thread');
+  const firstReply = forum.createReply(board.id, longThread.thread.id, {
+    author: '一楼',
+    content: '第一条回复，只显示楼层，不显示现实时间。',
+    isOriginalPoster: false,
+  });
+  if (!firstReply) throw new Error('Forum visual fixture did not create its first reply');
   forum.appendReplies(board.id, longThread.thread.id, [
-    { author: '一楼', content: '第一条回复，只显示楼层，不显示现实时间。', isOriginalPoster: false },
     {
       author: '二楼',
       content: '第二条回复，文字稍微长一点，用来检测回复卡片换行和底部按钮。',
       isOriginalPoster: false,
+      parentReplyId: firstReply.id,
     },
-    { author: '三楼', content: '第三条回复。', isOriginalPoster: false },
+    { author: '楼主', content: '楼主补充回复，用于检查只看楼主筛选。', isOriginalPoster: true },
   ]);
   return {
     board,
@@ -134,10 +141,19 @@ export async function applyForumGenerationVisualScenario(name: string, context: 
     name === 'forum-board-editor' ||
     name === 'forum-bagu' ||
     name === 'forum-thread' ||
+    name === 'forum-thread-dark' ||
     name === 'forum-thread-editor'
   ) {
+    const settings = useSettingsStore();
+    if (name === 'forum-thread-dark') {
+      settings.setTheme('dark');
+      settings.settings.visualTheme.paperTextureId = 'graphite';
+    } else if (name === 'forum-thread') {
+      settings.setTheme('light');
+      settings.settings.visualTheme.paperTextureId = 'a4';
+    }
     const { board, thread } = createForumFixture();
-    if (name === 'forum-thread') {
+    if (name === 'forum-thread' || name === 'forum-thread-dark') {
       thread.generationRecord = context.createHiddenGenerationRecord('generate-thread', '论坛来源可视化夹具');
     }
     const page =
@@ -145,7 +161,7 @@ export async function applyForumGenerationVisualScenario(name: string, context: 
         ? 'board-editor'
         : name === 'forum-bagu'
           ? 'bagu-scan'
-          : name === 'forum-thread'
+          : name === 'forum-thread' || name === 'forum-thread-dark'
             ? 'thread'
             : 'thread-editor';
     const title =
@@ -153,7 +169,7 @@ export async function applyForumGenerationVisualScenario(name: string, context: 
         ? '编辑板块'
         : name === 'forum-bagu'
           ? '八股检测'
-          : name === 'forum-thread'
+          : name === 'forum-thread' || name === 'forum-thread-dark'
             ? thread.title
             : '编辑帖子';
     context.resetPhoneToRoute(
@@ -162,11 +178,32 @@ export async function applyForumGenerationVisualScenario(name: string, context: 
       title,
       name === 'forum-board-editor' ? { boardId: board.id } : { boardId: board.id, threadId: thread.id },
     );
-    if (name === 'forum-thread') {
+    if (name === 'forum-thread' || name === 'forum-thread-dark') {
       await context.waitForPaint();
       if (!document.querySelector('.pc-reader-source-label')?.textContent?.includes('最近 7 楼')) {
         throw new Error('Forum detail omitted its generation source label');
       }
+      if (document.querySelector('.pc-reply-card')) throw new Error('Forum detail still renders white reply cards');
+      const filterButtons = [...document.querySelectorAll<HTMLButtonElement>('.pc-forum-replies .pc-segment-btn')];
+      const onlyOriginalPoster = filterButtons.find(button => button.textContent?.includes('只看楼主'));
+      const showAll = filterButtons.find(button => button.textContent?.includes('全部'));
+      if (!onlyOriginalPoster || !showAll) throw new Error('Forum original-poster filter is missing');
+      onlyOriginalPoster.click();
+      await context.waitForPaint();
+      const filteredFloors = [...document.querySelectorAll<HTMLElement>('.pc-forum-floor')];
+      if (filteredFloors.length !== 1 || !filteredFloors[0]?.textContent?.includes('楼主补充回复')) {
+        throw new Error('Forum original-poster filter did not keep only original-poster replies');
+      }
+      showAll.click();
+      await context.waitForPaint();
+      if (document.querySelectorAll('.pc-forum-floor').length !== 3) {
+        throw new Error('Forum all-replies filter did not restore every floor');
+      }
+      if (!document.querySelector('.pc-forum-reply-target')?.textContent?.includes('回复 #1')) {
+        throw new Error('Forum reply target metadata is missing');
+      }
+      document.querySelector('.pc-forum-replies')?.scrollIntoView({ block: 'start' });
+      await context.waitForPaint();
     }
   } else if (name === 'forum-failed-draft' || name === 'forum-failed-draft-reparse') {
     forum.resetCurrentScope();

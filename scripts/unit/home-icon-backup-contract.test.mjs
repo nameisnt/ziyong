@@ -9,17 +9,14 @@ const settingsType = await readFile(new URL('../../src/type/settings.ts', import
 const settingsStore = await readFile(new URL('../../src/store/settings.ts', import.meta.url), 'utf8');
 const appIcon = await readFile(new URL('../../src/components/AppIcon.vue', import.meta.url), 'utf8');
 
-test('full backup v3 embeds icon bytes while older versions remain declared', () => {
-  assert.match(backupType, /PhoneBackupFullDataV3Schema/u);
-  assert.match(backupType, /schemaVersion:\s*z\.literal\(1\)/u);
-  assert.match(backupType, /schemaVersion:\s*z\.literal\(2\)/u);
-  assert.match(backupType, /schemaVersion:\s*z\.literal\(3\)/u);
+test('current full backup embeds icon bytes', () => {
+  assert.match(backupType, /homeIconAssets:\s*z\.array\(HomeIconAssetBackupSchema\)/u);
   assert.match(backupUtil, /readHomeIconBackupAssets/u);
   assert.match(backupUtil, /homeIconAssets:\s*await readHomeIconBackupAssets/u);
 });
 
-test('full backup v4 embeds nonempty chat floor backups and associated worldbooks', () => {
-  assert.match(backupType, /PhoneBackupFullDataV4Schema/u);
+test('current full backup embeds chat floor backups and associated worldbooks', () => {
+  assert.match(backupType, /PhoneBackupFullDataSchema/u);
   assert.match(backupType, /schemaVersion:\s*z\.literal\(4\)/u);
   assert.match(backupUtil, /chatFloorBackups/u);
   assert.match(backupUtil, /readAssociatedWorldbooks/u);
@@ -42,9 +39,7 @@ test('settings keep stable icon assets and reject deletion while referenced', ()
   assert.match(settingsStore, /解除引用后才能删除/u);
 });
 
-test('legacy full backup import removes every image reference and rendering keeps the font icon fallback', () => {
-  assert.match(backupUtil, /themeProfiles\.light\.visualTheme\.appIconAssetIds\s*=\s*\{\}/u);
-  assert.match(backupUtil, /themeProfiles\.dark\.visualTheme\.appIconAssetIds\s*=\s*\{\}/u);
+test('rendering keeps the font icon fallback when an imported image fails', () => {
   assert.match(appIcon, /@error="sourceFailed = true"/u);
   assert.match(appIcon, /<i v-else class="fa-solid"/u);
 });

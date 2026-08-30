@@ -1,5 +1,5 @@
 <template>
-  <section class="pc-prompts-page">
+  <section class="pc-prompts-page pc-page-stack">
     <div class="pc-prompts-editor">
       <div class="pc-chip-row">
         <button
@@ -61,16 +61,8 @@ watch([() => props.domains, () => props.prompt], loadDraft, { immediate: true })
 </script>
 
 <style scoped>
-.pc-prompts-page {
-  display: flex;
-  min-height: 100%;
-  flex-direction: column;
-  gap: 14px;
-}
-
 .pc-prompts-editor {
   display: grid;
   gap: 14px;
 }
-
 </style>

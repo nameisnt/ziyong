@@ -170,7 +170,7 @@ type PreparedChatPhoneBackupImport = {
 };
 
 function getBackupDomainData(backup: PhoneBackup, key: string) {
-  return backup.data.domains[key] ?? _.get(backup.data, key);
+  return backup.data.domains[key];
 }
 
 function createEmptyEnvelope(): ChatScopedBackupEnvelope {
@@ -203,15 +203,12 @@ function stageDomainImports(
 ): StagedPhoneBackupDomainImport[] {
   return entries.map(entry => {
     const sourceVersion = domainVersions[entry.domain.key] ?? 1;
-    if (sourceVersion > entry.domain.schemaVersion) {
-      throw new Error(`备份域“${entry.domain.key}”版本 ${sourceVersion} 高于当前支持的 ${entry.domain.schemaVersion}`);
+    if (sourceVersion !== entry.domain.schemaVersion) {
+      throw new Error(
+        `备份域“${entry.domain.key}”版本 ${sourceVersion} 与当前版本 ${entry.domain.schemaVersion} 不一致`,
+      );
     }
-    if (sourceVersion < entry.domain.schemaVersion && !entry.domain.migrateImport) {
-      throw new Error(`备份域“${entry.domain.key}”缺少从版本 ${sourceVersion} 的迁移`);
-    }
-    const sourceData =
-      sourceVersion < entry.domain.schemaVersion ? entry.domain.migrateImport!(entry.data, sourceVersion) : entry.data;
-    const parsed = entry.domain.schema.safeParse(sourceData);
+    const parsed = entry.domain.schema.safeParse(entry.data);
     if (!parsed.success) {
       throw new Error(`备份域“${entry.domain.key}”校验失败：${parsed.error.issues[0]?.message ?? '数据格式无效'}`);
     }
@@ -428,11 +425,13 @@ export function buildPhoneBackup(
   const scopeKey = getCurrentChatScopeKey();
   const registeredDomains = getRegisteredPhoneBackupDomains();
   const domains = Object.fromEntries(registeredDomains.map(domain => [domain.key, domain.exportData(scopeKey)]));
-  const pluginPresets = options.pluginPresets ? klona(options.pluginPresets) : null;
+  const pluginPresets = options.pluginPresets
+    ? klona(options.pluginPresets)
+    : { appDefaults: {}, records: [] };
 
   return parsePrettified(PhoneBackupSchema, {
     backupKind: 'full',
-    schemaVersion: options.chatFloorBackups ? 4 : options.homeIconAssets ? 3 : pluginPresets ? 2 : 1,
+    schemaVersion: 4,
     exportedAt: new Date().toISOString(),
     data: {
       settings: sanitizeSettingsForJsonBackup(_.get(extension_settings, setting_field, {})),
@@ -442,11 +441,10 @@ export function buildPhoneBackup(
       recoveries: _.get(extension_settings, recoveryField, {}),
       domains,
       domainVersions: Object.fromEntries(registeredDomains.map(domain => [domain.key, domain.schemaVersion])),
-      ...(pluginPresets ? { pluginPresets } : {}),
-      ...(options.homeIconAssets ? { homeIconAssets: options.homeIconAssets } : {}),
-      ...(options.chatFloorBackups
-        ? { chatFloorBackups: options.chatFloorBackups, worldbooks: options.worldbooks ?? [] }
-        : {}),
+      pluginPresets,
+      homeIconAssets: options.homeIconAssets ?? [],
+      chatFloorBackups: options.chatFloorBackups ?? [],
+      worldbooks: options.worldbooks ?? [],
     },
   });
 }
@@ -656,13 +654,11 @@ export async function clearAllPhoneGeneratedContent() {
   }, getDomainRehydrateHandlers(stagedDomains));
 }
 
-function prepareFullPhoneBackupImport(
-  backup: PhoneBackup,
-  options: { allowLegacy?: boolean } = {},
-): PreparedFullPhoneBackupImport {
-  assertFullBackupImportAllowed(backup.backupKind ?? 'legacy', options.allowLegacy);
+function prepareFullPhoneBackupImport(backup: PhoneBackup): PreparedFullPhoneBackupImport {
+  assertFullBackupImportAllowed(backup.backupKind);
+  if (!isFullPhoneBackup(backup)) throw new Error('当前聊天备份不能执行完整恢复，请使用“导入到当前聊天”');
 
-  const data = isFullPhoneBackup(backup) ? backup.data : parsePrettified(PhoneBackupFullDataSchema, backup.data);
+  const data = backup.data;
   const registeredDomains = getRegisteredPhoneBackupDomains();
   const entries = registeredDomains.flatMap(domain => {
     const domainData = getBackupDomainData(backup, domain.key);
@@ -670,40 +666,25 @@ function prepareFullPhoneBackupImport(
   });
   const stagedDomains = stageDomainImports(entries, data.domainVersions);
   const stagedSettings = sanitizeSettingsForJsonBackup(data.settings);
-  const hasEmbeddedFiles = backup.backupKind === 'full' && (backup.schemaVersion === 3 || backup.schemaVersion === 4);
-  const homeIconAssets = hasEmbeddedFiles ? backup.data.homeIconAssets : [];
-  const chatFloorBackups =
-    backup.backupKind === 'full' && backup.schemaVersion === 4
-      ? z.array(ChatFloorBackupSchema).parse(backup.data.chatFloorBackups)
-      : [];
-  const worldbooks =
-    backup.backupKind === 'full' && backup.schemaVersion === 4
-      ? backup.data.worldbooks.map(worldbook => ({ entries: worldbook.entries, name: worldbook.name }))
-      : [];
-  if (!hasEmbeddedFiles) {
-    stagedSettings.homeIconAssets = [];
-    stagedSettings.visualTheme.appIconAssetIds = {};
-    stagedSettings.themeProfiles.light.visualTheme.appIconAssetIds = {};
-    stagedSettings.themeProfiles.dark.visualTheme.appIconAssetIds = {};
-    stagedSettings.layout.folders.forEach(folder => { folder.iconAssetId = ''; });
-  } else {
-    const settingsIds = [...new Set(stagedSettings.homeIconAssets.map(asset => asset.id))].sort();
-    const backupIds = [...new Set(homeIconAssets.map(asset => asset.id))].sort();
-    if (
-      settingsIds.length !== stagedSettings.homeIconAssets.length ||
-      backupIds.length !== homeIconAssets.length ||
-      settingsIds.join('\n') !== backupIds.join('\n')
-    ) throw new Error('图标资源清单与设置引用不一致');
-    const knownAssetIds = new Set(settingsIds);
-    const referencedAssetIds = [
-      ...Object.values(stagedSettings.visualTheme.appIconAssetIds),
-      ...Object.values(stagedSettings.themeProfiles.light.visualTheme.appIconAssetIds),
-      ...Object.values(stagedSettings.themeProfiles.dark.visualTheme.appIconAssetIds),
-      ...stagedSettings.layout.folders.map(folder => folder.iconAssetId),
-    ].filter(Boolean);
-    if (referencedAssetIds.some(assetId => !knownAssetIds.has(assetId))) throw new Error('图标资源引用指向不存在的资源');
-    homeIconAssets.forEach(asset => decodeHomeIconBackupData(asset.data));
-  }
+  const homeIconAssets = backup.data.homeIconAssets;
+  const chatFloorBackups = z.array(ChatFloorBackupSchema).parse(backup.data.chatFloorBackups);
+  const worldbooks = backup.data.worldbooks.map(worldbook => ({ entries: worldbook.entries, name: worldbook.name }));
+  const settingsIds = [...new Set(stagedSettings.homeIconAssets.map(asset => asset.id))].sort();
+  const backupIds = [...new Set(homeIconAssets.map(asset => asset.id))].sort();
+  if (
+    settingsIds.length !== stagedSettings.homeIconAssets.length ||
+    backupIds.length !== homeIconAssets.length ||
+    settingsIds.join('\n') !== backupIds.join('\n')
+  ) throw new Error('图标资源清单与设置引用不一致');
+  const knownAssetIds = new Set(settingsIds);
+  const referencedAssetIds = [
+    ...Object.values(stagedSettings.visualTheme.appIconAssetIds),
+    ...Object.values(stagedSettings.themeProfiles.light.visualTheme.appIconAssetIds),
+    ...Object.values(stagedSettings.themeProfiles.dark.visualTheme.appIconAssetIds),
+    ...stagedSettings.layout.folders.map(folder => folder.iconAssetId),
+  ].filter(Boolean);
+  if (referencedAssetIds.some(assetId => !knownAssetIds.has(assetId))) throw new Error('图标资源引用指向不存在的资源');
+  homeIconAssets.forEach(asset => decodeHomeIconBackupData(asset.data));
   const coverage = analyzeBackupDomainCoverage(
     registeredDomains,
     stagedDomains.map(({ domain }) => domain.key),
@@ -727,11 +708,8 @@ function prepareFullPhoneBackupImport(
   };
 }
 
-export function planPhoneFullBackupImport(
-  backup: PhoneBackup,
-  options: { allowLegacy?: boolean } = {},
-): PhoneBackupImportPlan {
-  return prepareFullPhoneBackupImport(backup, options).plan;
+export function planPhoneFullBackupImport(backup: PhoneBackup): PhoneBackupImportPlan {
+  return prepareFullPhoneBackupImport(backup).plan;
 }
 
 async function captureWorldbookSnapshot(worldbooks: PhoneBackupWorldbook[]) {
@@ -768,8 +746,8 @@ async function restoreWorldbookSnapshot(snapshot: Awaited<ReturnType<typeof capt
   for (const name of snapshot.missingNames) await deleteWorldbook(name);
 }
 
-export async function applyPhoneBackup(backup: PhoneBackup, options: { allowLegacy?: boolean } = {}) {
-  const prepared = prepareFullPhoneBackupImport(backup, options);
+export async function applyPhoneBackup(backup: PhoneBackup) {
+  const prepared = prepareFullPhoneBackupImport(backup);
   const { chatFloorBackups, data, embeddedPluginPresets, homeIconAssets, stagedDomains, stagedSettings, worldbooks } =
     prepared;
 

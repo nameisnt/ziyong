@@ -1,6 +1,5 @@
 import { getOptionalGlobalFunction } from '@/util/runtime';
 import {
-  flattenScriptTrees,
   groupScriptTrees,
   pruneScriptTrees,
   SCRIPT_SCOPES,
@@ -31,11 +30,6 @@ export function readAllScriptTrees() {
     ScriptScope,
     ScriptTree[]
   >;
-}
-
-export function listAssistantScripts(): ScriptListItem[] {
-  const trees = readAllScriptTrees();
-  return SCRIPT_SCOPES.flatMap(scope => flattenScriptTrees(trees[scope.id], scope.id));
 }
 
 export function listAssistantScriptCatalog(): ScriptScopeCatalog[] {
@@ -139,6 +133,29 @@ export function renameAssistantScriptFolder(scope: ScriptScope, folderId: string
   const { updateTrees } = requireScriptApi();
   updateTrees(
     trees => trees.map(node => (node.type === 'folder' && node.id === folderId ? { ...node, name } : node)),
+    { type: scope },
+  );
+}
+
+export function setAssistantScriptFolderEnabled(scope: ScriptScope, folderId: string, enabled: boolean) {
+  const { updateTrees } = requireScriptApi();
+  updateTrees(
+    trees => trees.map(node => (node.type === 'folder' && node.id === folderId ? { ...node, enabled } : node)),
+    { type: scope },
+  );
+}
+
+export function setAssistantScriptEnabled(scope: ScriptScope, scriptId: string, enabled: boolean) {
+  const { updateTrees } = requireScriptApi();
+  updateTrees(
+    trees =>
+      trees.map(node => {
+        if (node.type === 'script') return node.id === scriptId ? { ...node, enabled } : node;
+        return {
+          ...node,
+          scripts: node.scripts.map(script => (script.id === scriptId ? { ...script, enabled } : script)),
+        };
+      }),
     { type: scope },
   );
 }

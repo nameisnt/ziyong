@@ -81,10 +81,22 @@
             <i v-if="activeSnapshot.protected" class="fa-solid fa-shield-halved" title="受保护"></i>
           </div>
           <dl v-if="detailPayload" class="pc-repository-metrics">
-            <div><dt>数据域</dt><dd>{{ detailDomainCount }}</dd></div>
-            <div><dt>私有预设</dt><dd>{{ detailPayload.pluginPresets.length }}</dd></div>
-            <div><dt>文件大小</dt><dd>{{ formatBytes(activeSnapshot.size) }}</dd></div>
-            <div><dt>校验摘要</dt><dd :title="activeSnapshot.checksum">{{ activeSnapshot.checksum.slice(0, 10) }}</dd></div>
+            <div>
+              <dt>数据域</dt>
+              <dd>{{ detailDomainCount }}</dd>
+            </div>
+            <div>
+              <dt>私有预设</dt>
+              <dd>{{ detailPayload.pluginPresets.length }}</dd>
+            </div>
+            <div>
+              <dt>文件大小</dt>
+              <dd>{{ formatBytes(activeSnapshot.size) }}</dd>
+            </div>
+            <div>
+              <dt>校验摘要</dt>
+              <dd :title="activeSnapshot.checksum">{{ activeSnapshot.checksum.slice(0, 10) }}</dd>
+            </div>
           </dl>
         </article>
 
@@ -104,7 +116,12 @@
           >
             <i class="fa-solid fa-trash"></i><span>删除</span>
           </button>
-          <button class="pc-primary-btn" type="button" :disabled="repository.busy || !detailPayload" @click="restoreActive">
+          <button
+            class="pc-primary-btn"
+            type="button"
+            :disabled="repository.busy || !detailPayload"
+            @click="restoreActive"
+          >
             <i class="fa-solid fa-clock-rotate-left"></i><span>恢复此版本</span>
           </button>
         </div>
@@ -125,7 +142,9 @@ const fileInput = ref<HTMLInputElement | null>(null);
 const detailLoading = ref(false);
 const detailPayload = ref<Awaited<ReturnType<typeof repository.readSnapshot>> | null>(null);
 const activeSnapshotId = computed(() => route.value.params?.snapshotId || '');
-const activeSnapshot = computed(() => repository.snapshots.find(snapshot => snapshot.id === activeSnapshotId.value) ?? null);
+const activeSnapshot = computed(
+  () => repository.snapshots.find(snapshot => snapshot.id === activeSnapshotId.value) ?? null,
+);
 const detailDomainCount = computed(() => Object.keys(detailPayload.value?.backup.data.domains ?? {}).length);
 
 function formatDate(value: string) {
@@ -355,9 +374,5 @@ onMounted(() => void repository.initialize());
   font-weight: 800;
   text-overflow: ellipsis;
   white-space: nowrap;
-}
-
-.pc-soft-btn.danger {
-  color: var(--pc-danger);
 }
 </style>

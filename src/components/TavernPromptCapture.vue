@@ -157,13 +157,9 @@ async function capturePrompt() {
 
 .pc-capture-error {
   margin: 0;
-  color: var(--pc-muted);
+  color: var(--pc-danger);
   font-size: 12px;
   line-height: 1.45;
-}
-
-.pc-capture-error {
-  color: var(--pc-danger);
 }
 
 .pc-capture-meta {

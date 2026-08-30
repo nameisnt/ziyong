@@ -55,7 +55,6 @@ const {
   moveHomeLayoutItem,
   normalizeHomeLayout,
   putHomeAppInFolder,
-  removeHomeAppFromFolder,
   reorderHomeFolderApp,
 } = await loadAppLayout();
 const { normalizeHomeLayout: normalizeMiniGameLayout } = await loadAppLayout({ includeMiniGames: true });
@@ -133,7 +132,7 @@ test('group management moves every selected app to one existing group', () => {
   assert.deepEqual(moved.folders.find(folder => folder.id === targetId)?.appIds.slice(-2), ['a', 'c']);
 });
 
-test('folder reordering and removal remain inside grouped layout', () => {
+test('folder reordering remains inside grouped layout', () => {
   const created = createHomeFolder(buildDefaultHomeLayout(), {
     appIds: ['a', 'b'],
     id: 'custom',
@@ -141,10 +140,7 @@ test('folder reordering and removal remain inside grouped layout', () => {
   });
   const reordered = reorderHomeFolderApp(created, 'custom', 'a', 1);
   assert.deepEqual(reordered.folders.find(folder => folder.id === 'custom')?.appIds, ['b', 'a']);
-  const removed = removeHomeAppFromFolder(reordered, 'custom', 'b', 0);
-  assert.deepEqual(removed.folders.find(folder => folder.id === 'custom')?.appIds, ['a']);
-  assert.ok(removed.folders.find(folder => folder.id === 'home_default_tools')?.appIds.includes('b'));
-  assert.ok(removed.appOrder.every(token => token.startsWith('folder:')));
+  assert.ok(reordered.appOrder.every(token => token.startsWith('folder:')));
 });
 
 test('all minigames occupy one dedicated default group', () => {

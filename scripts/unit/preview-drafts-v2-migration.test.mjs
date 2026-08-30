@@ -67,7 +67,7 @@ test('store and backup domain register v3 with explicit raw-output semantics', (
   assert.match(storeSource, /schemaVersion:\s*z\.literal\(3\)/);
   assert.match(
     storeSource,
-    /z\.preprocess\(raw => \{[\s\S]*?stripRetiredMediaPreviewDrafts\(raw\);[\s\S]*?return migratePreviewDraftScopeData\(raw\);/,
+    /z\.preprocess\(raw => \{[\s\S]*?return migratePreviewDraftScopeData\(raw\);/,
   );
   assert.match(
     backupSource,

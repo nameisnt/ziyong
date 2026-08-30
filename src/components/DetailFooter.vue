@@ -1,6 +1,6 @@
 <template>
   <div class="pc-detail-footer">
-    <div class="pc-detail-nav">
+    <div v-if="showNavigation" class="pc-detail-nav">
       <button
         class="pc-soft-btn icon-only"
         type="button"
@@ -50,6 +50,7 @@ withDefaults(
     nextLabel?: string;
     previousDisabled?: boolean;
     previousLabel?: string;
+    showNavigation?: boolean;
     topLabel?: string;
   }>(),
   {
@@ -60,6 +61,7 @@ withDefaults(
     nextLabel: '下一章',
     previousDisabled: false,
     previousLabel: '上一章',
+    showNavigation: true,
     topLabel: '置顶',
   },
 );
@@ -86,7 +88,7 @@ defineEmits<{
   border: 1px solid var(--pc-border);
   border-bottom: 0;
   border-radius: min(var(--pc-control-radius), 8px);
-  background: var(--pc-form-control-bg);
+  background: color-mix(in srgb, var(--pc-form-control-bg) 78%, transparent 22%);
   box-shadow: 0 -8px 18px color-mix(in srgb, var(--pc-text) 10%, transparent 90%);
 }
 
@@ -109,6 +111,22 @@ defineEmits<{
   grid-template-columns: repeat(auto-fit, minmax(34px, 1fr));
 }
 
+.pc-detail-actions.three {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.pc-detail-actions.five {
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+}
+
+.pc-detail-actions.six {
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+}
+
+.pc-detail-actions.seven {
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+}
+
 .pc-detail-nav .pc-soft-btn,
 .pc-detail-actions :deep(.pc-soft-btn) {
   /* ui-reuse-allow: footer normalizes slotted buttons from mixed callers. */
@@ -126,7 +144,7 @@ defineEmits<{
   border: 0;
   border-radius: 12px;
   padding: 0 8px;
-  background: var(--pc-surface-strong);
+  background: color-mix(in srgb, var(--pc-soft-button-bg) 58%, transparent 42%);
   color: var(--pc-text);
   cursor: pointer;
   font: inherit;
@@ -153,7 +171,7 @@ defineEmits<{
 }
 
 .pc-detail-actions :deep(.pc-soft-btn.active) {
-  background: color-mix(in srgb, var(--pc-danger) 14%, var(--pc-surface-strong) 86%);
+  background: color-mix(in srgb, var(--pc-danger) 14%, transparent 86%);
 }
 
 .pc-detail-actions :deep(.pc-soft-btn.active i) {

@@ -15,7 +15,7 @@ const catalog = await readMaybe(new URL('../../src/testing/visual/scenarioCatalo
 const harness = await readMaybe(new URL('../../src/testing/visual-harness.ts', import.meta.url));
 const scenario = await readMaybe(new URL('../../src/testing/visual/relationshipScenarios.ts', import.meta.url));
 const store = await readMaybe(new URL('../../src/apps/relationship/store.ts', import.meta.url));
-const retiredCleanup = await readMaybe(new URL('../../src/util/retiredDataCleanup.ts', import.meta.url));
+const retiredCleanup = await readMaybe(new URL('../../src/core/currentDataVersion.ts', import.meta.url));
 const graph = await readMaybe(new URL('../../src/apps/relationship/MermaidRelationshipGraph.vue', import.meta.url));
 
 test('relationship local CRUD has one dedicated browser scenario', () => {
@@ -28,7 +28,7 @@ test('relationship local CRUD has one dedicated browser scenario', () => {
 test('relationship data is independent from external profiles and uses Mermaid layout', () => {
   assert.match(store, /sillytavern_phone_relationships_mermaid/u);
   assert.match(retiredCleanup, /sillytavern_phone_relationships/u);
-  assert.match(retiredCleanup, /delete settings\[field\]/u);
+  assert.match(retiredCleanup, /delete record\[key\]/u);
   assert.doesNotMatch(store, /profileSheetKey|profileRowIndex/u);
   assert.match(graph, /flowchart LR/u);
   assert.match(graph, /mermaid\.render/u);

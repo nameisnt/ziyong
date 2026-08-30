@@ -1,30 +1,11 @@
 import { extension_settings } from '@sillytavern/scripts/extensions';
 const StatusDisplaySettingsApp = defineAsyncComponent(() => import('@/apps/status-display/StatusDisplaySettingsApp.vue'));
 import {
-  readStatusDisplaySettingsSnapshot,
   StatusDisplaySettingsSchema,
   statusDisplayField,
-  statusDisplayRegexTargetId,
   useStatusDisplayStore,
 } from '@/apps/status-display/store';
 import { definePhoneApp } from '@/core/appRegistry';
-import { registerRegexTargetProvider, type RegexTargetDefinition } from '@/core/regexTargetRegistry';
-
-registerRegexTargetProvider((): RegexTargetDefinition[] =>
-  readStatusDisplaySettingsSnapshot().schemes.flatMap(scheme =>
-    scheme.source === 'regex'
-      ? [
-          {
-            appId: 'status-display-settings',
-            fields: ['content'],
-            id: statusDisplayRegexTargetId(scheme.id),
-            label: `状态栏 · ${scheme.name}`,
-            operations: ['extract', 'replace'],
-          },
-        ]
-      : [],
-  ),
-);
 
 export default definePhoneApp({
   id: 'status-display-settings',

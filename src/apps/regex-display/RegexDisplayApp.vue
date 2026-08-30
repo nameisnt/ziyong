@@ -84,6 +84,15 @@
           <button class="pc-regex-rule-open" type="button" @click="openRuleEditor(rule.id)">
             <strong>{{ rule.name || t`未命名规则` }}</strong>
           </button>
+          <label class="pc-toggle" :title="rule.enabled ? t`停用规则` : t`启用规则`" @click.stop>
+            <input
+              type="checkbox"
+              :aria-label="rule.enabled ? t`停用规则` : t`启用规则`"
+              :checked="rule.enabled"
+              @change="toggleRuleEnabled(rule.id, $event)"
+            />
+            <span aria-hidden="true"></span>
+          </label>
           <button
             class="pc-icon-btn"
             type="button"
@@ -280,6 +289,10 @@ function closeRuleEditor() {
   activeRuleId.value = '';
 }
 
+function toggleRuleEnabled(ruleId: string, event: Event) {
+  regexDisplay.setRuleEnabled(ruleId, (event.target as HTMLInputElement).checked);
+}
+
 function addNewRule(groupId: string) {
   const rule = regexDisplay.addRule({ groupId });
   openRuleEditor(rule.id);
@@ -444,7 +457,7 @@ onBeforeUnmount(() => {
   gap: 4px;
 }
 .pc-regex-rule-row {
-  grid-template-columns: auto minmax(0, 1fr) auto auto;
+  grid-template-columns: auto minmax(0, 1fr) auto auto auto;
 }
 .pc-regex-rule-row.dragging {
   opacity: 0.55;

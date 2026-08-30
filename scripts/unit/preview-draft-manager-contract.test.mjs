@@ -13,7 +13,6 @@ const managerConsumers = await Promise.all(
     '../../src/apps/summary/SummaryCatalogPage.vue',
     '../../src/apps/theater/TheaterCatalogPage.vue',
     '../../src/apps/extras/ExtrasCatalogPage.vue',
-    '../../src/apps/profiles/pages/ProfilesCatalogPage.vue',
     '../../src/apps/digest/DigestApp.vue',
     '../../src/apps/relationship/RelationshipApp.vue',
     '../../src/apps/app-builder/CustomAppHost.vue',

@@ -1,6 +1,6 @@
 <template>
   <section class="pc-tutorial-app">
-    <section v-if="route.page === 'root'" class="pc-tutorial-page">
+    <section v-if="route.page === 'root'" class="pc-tutorial-page pc-page-stack">
       <label class="pc-search-field pc-tutorial-search">
         <i class="fa-solid fa-magnifying-glass"></i>
         <input v-model="searchQuery" type="search" placeholder="搜索功能、操作或问题" />
@@ -44,7 +44,10 @@
       <EmptyState v-else title="没有找到匹配的教程" />
     </section>
 
-    <section v-else-if="route.page === 'article' && activeArticle" class="pc-tutorial-page pc-tutorial-article-page">
+    <section
+      v-else-if="route.page === 'article' && activeArticle"
+      class="pc-tutorial-page pc-tutorial-article-page pc-page-stack"
+    >
       <header class="pc-tutorial-article-head">
         <span class="pc-kicker">{{ categoryLabel(activeArticle.category) }}</span>
         <h2>{{ activeArticle.title }}</h2>
@@ -92,7 +95,7 @@
       </div>
     </section>
 
-    <section v-else class="pc-tutorial-page pc-tutorial-missing-page">
+    <section v-else class="pc-tutorial-page pc-tutorial-missing-page pc-page-stack">
       <EmptyState :title="route.page === 'article' ? '这篇教程不存在' : '教程页面不存在'">
         <p>教程内容可能已经更新，请返回教程首页重新选择。</p>
         <button class="pc-primary-btn" type="button" @click="phone.openApp('tutorial')">
@@ -192,13 +195,6 @@ async function copyCode(code: string) {
 <style scoped>
 .pc-tutorial-app {
   min-height: 100%;
-}
-
-.pc-tutorial-page {
-  display: flex;
-  min-height: 100%;
-  flex-direction: column;
-  gap: 14px;
 }
 
 .pc-tutorial-missing-page {

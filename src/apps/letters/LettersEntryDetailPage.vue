@@ -1,5 +1,5 @@
 <template>
-  <section class="pc-letters-page pc-letters-detail-page">
+  <section class="pc-letters-page pc-letters-detail-page pc-page-stack">
     <ReaderDetailShell
       actions-class="six"
       :content="entry.content"
@@ -105,13 +105,6 @@ const emit = defineEmits<{
 </script>
 
 <style scoped>
-.pc-letters-page {
-  display: flex;
-  min-height: 100%;
-  flex-direction: column;
-  gap: 14px;
-}
-
 .pc-letters-detail-page {
   height: 100%;
   min-height: 0;

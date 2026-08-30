@@ -1,6 +1,6 @@
 import { getCurrentWorldbookGroups, getWorldbookEntries, setWorldbookEntryStates } from './api';
 import type { PhoneAppResetContext } from '@/core/appRegistry';
-import { getCurrentChatScopeKey, isPlaceholderChatScopeKey } from '@/store/chatScoped';
+import { areChatScopeKeysEquivalent, getCurrentChatScopeKey, isPlaceholderChatScopeKey } from '@/store/chatScoped';
 import { validateInplace } from '@/util/zod';
 // eslint-disable-next-line import-x/no-nodejs-modules
 import { saveSettingsDebounced } from '@sillytavern/script';
@@ -28,6 +28,7 @@ export const WorldbookLinkSettingsSchema = z.object({
   version: z.literal(1).default(1),
 });
 export type WorldbookLinkSettings = z.infer<typeof WorldbookLinkSettingsSchema>;
+type WorldbookScopeRequest = { scopeKey: string; sequence: number };
 
 export interface WorldbookLinkStatus {
   currentEntries: WorldbookEntry[];
@@ -77,6 +78,9 @@ export const useWorldbookLinkStore = defineStore('worldbook-link', () => {
   const lastAppliedScopeKey = ref('');
   const scopeApplyRevision = ref(0);
   let scopeSequence = 0;
+  let worldbookMutationTail: Promise<void> = Promise.resolve();
+  let pendingScopeRequest: WorldbookScopeRequest | null = null;
+  let scopeWorker: Promise<void> | null = null;
 
   watch(
     settings,
@@ -123,36 +127,70 @@ export const useWorldbookLinkStore = defineStore('worldbook-link', () => {
     return getStatus(scopeKey, bookName, entries);
   }
 
-  async function applyProfile(scopeKey: string, bookName: string) {
+  async function applyProfileNow(scopeKey: string, bookName: string, isCurrent = () => true) {
     assertUsableChatScope(scopeKey);
     const profile = getProfile(scopeKey, bookName);
     if (!profile) throw new Error('当前聊天还没有保存这本世界书的条目配置');
     const before = await getWorldbookEntries(bookName);
+    if (!isCurrent()) return null;
     mergeUnknownBaselineEntries(bookName, before);
     const result = await setWorldbookEntryStates(bookName, stateMap(profile), true);
+    if (!isCurrent()) return null;
     settings.value.activeScopes[bookName] = scopeKey;
     return { ...result, status: getStatus(scopeKey, bookName, result.entries) };
   }
 
-  async function restoreBaseline(bookName: string) {
+  async function restoreBaselineNow(bookName: string, isCurrent = () => true) {
     const baseline = settings.value.baselines[bookName];
     if (!baseline) {
+      const entries = await getWorldbookEntries(bookName);
+      if (!isCurrent()) return null;
       delete settings.value.activeScopes[bookName];
-      return { changed: 0, entries: await getWorldbookEntries(bookName) };
+      return { changed: 0, entries };
     }
     const result = await setWorldbookEntryStates(bookName, stateMap(baseline), false);
+    if (!isCurrent()) return null;
     delete settings.value.activeScopes[bookName];
     return result;
   }
 
-  async function removeProfile(scopeKey: string, bookName: string) {
+  async function removeProfileNow(scopeKey: string, bookName: string) {
     if (settings.value.activeScopes[bookName] === scopeKey) {
-      await restoreBaseline(bookName);
+      await restoreBaselineNow(bookName);
     }
     const profiles = settings.value.profiles[scopeKey];
     if (!profiles) return;
     delete profiles[bookName];
     if (!Object.keys(profiles).length) delete settings.value.profiles[scopeKey];
+  }
+
+  function enqueueWorldbookMutation<T>(operation: () => Promise<T>) {
+    const task = worldbookMutationTail.then(operation);
+    worldbookMutationTail = task.then(
+      () => undefined,
+      () => undefined,
+    );
+    return task;
+  }
+
+  function applyProfile(scopeKey: string, bookName: string) {
+    return enqueueWorldbookMutation(async () => {
+      const result = await applyProfileNow(scopeKey, bookName);
+      if (!result) throw new Error('当前聊天已经切换');
+      return result;
+    });
+  }
+
+  function restoreBaseline(bookName: string) {
+    return enqueueWorldbookMutation(async () => {
+      const result = await restoreBaselineNow(bookName);
+      if (!result) throw new Error('当前聊天已经切换');
+      return result;
+    });
+  }
+
+  function removeProfile(scopeKey: string, bookName: string) {
+    return enqueueWorldbookMutation(() => removeProfileNow(scopeKey, bookName));
   }
 
   function inheritProfiles(sourceScopeKey: string, targetScopeKey: string) {
@@ -231,25 +269,29 @@ export const useWorldbookLinkStore = defineStore('worldbook-link', () => {
     };
   }
 
-  async function applyScope(scopeKey: string) {
+  async function applyScopeNow(scopeKey: string, isCurrent: () => boolean) {
     const boundBooks = currentBoundBookNames();
     const targetProfiles = settings.value.profiles[scopeKey] ?? {};
     const previousBooks = Object.keys(settings.value.activeScopes);
     const failures = new Map<string, string>();
 
     for (const bookName of previousBooks) {
+      if (!isCurrent()) return false;
       if (boundBooks.has(bookName) && targetProfiles[bookName]) continue;
       try {
-        await restoreBaseline(bookName);
+        await restoreBaselineNow(bookName, isCurrent);
+        if (!isCurrent()) return false;
       } catch (error) {
         failures.set(bookName, error instanceof Error ? error.message : '恢复原始状态失败');
       }
     }
 
     for (const bookName of boundBooks) {
+      if (!isCurrent()) return false;
       if (!targetProfiles[bookName]) continue;
       try {
-        await applyProfile(scopeKey, bookName);
+        await applyProfileNow(scopeKey, bookName, isCurrent);
+        if (!isCurrent()) return false;
       } catch (error) {
         failures.set(bookName, error instanceof Error ? error.message : '应用聊天配置失败');
       }
@@ -258,25 +300,55 @@ export const useWorldbookLinkStore = defineStore('worldbook-link', () => {
     if (failures.size) {
       throw new Error([...failures.entries()].map(([bookName, message]) => `${bookName}（${message}）`).join('、'));
     }
+    return true;
   }
 
-  async function switchScope(scopeKey: string) {
-    if (scopeKey !== getCurrentChatScopeKey()) return;
-    const sequence = ++scopeSequence;
-    for (let attempt = 0; attempt < 3; attempt += 1) {
-      await waitForBindings(attempt === 0 ? 900 : 700);
-      if (sequence !== scopeSequence || scopeKey !== getCurrentChatScopeKey()) return;
-      try {
-        await applyScope(scopeKey);
-        lastAppliedScopeKey.value = scopeKey;
-        scopeApplyRevision.value += 1;
-        return;
-      } catch (error) {
-        if (attempt < 2) continue;
-        const message = error instanceof Error ? error.message : '世界书绑定尚未就绪';
-        toastr.warning(`当前聊天的世界书联动未应用：${message}`);
+  function isScopeRequestCurrent(request: WorldbookScopeRequest) {
+    return (
+      request.sequence === scopeSequence &&
+      areChatScopeKeysEquivalent(request.scopeKey, getCurrentChatScopeKey())
+    );
+  }
+
+  async function drainScopeRequests() {
+    while (pendingScopeRequest) {
+      const request = pendingScopeRequest;
+      pendingScopeRequest = null;
+      for (let attempt = 0; attempt < 3; attempt += 1) {
+        await waitForBindings(attempt === 0 ? 900 : 700);
+        if (!isScopeRequestCurrent(request)) break;
+        try {
+          const applied = await enqueueWorldbookMutation(() =>
+            applyScopeNow(request.scopeKey, () => isScopeRequestCurrent(request)),
+          );
+          if (!applied || !isScopeRequestCurrent(request)) break;
+          lastAppliedScopeKey.value = request.scopeKey;
+          scopeApplyRevision.value += 1;
+          break;
+        } catch (error) {
+          if (!isScopeRequestCurrent(request)) break;
+          if (attempt < 2) continue;
+          const message = error instanceof Error ? error.message : '世界书绑定尚未就绪';
+          toastr.warning(`当前聊天的世界书联动未应用：${message}`);
+        }
       }
     }
+  }
+
+  function startScopeWorker() {
+    if (!scopeWorker) {
+      scopeWorker = drainScopeRequests().finally(() => {
+        scopeWorker = null;
+        if (pendingScopeRequest) void startScopeWorker();
+      });
+    }
+    return scopeWorker;
+  }
+
+  function switchScope(scopeKey: string) {
+    if (!areChatScopeKeysEquivalent(scopeKey, getCurrentChatScopeKey())) return Promise.resolve();
+    pendingScopeRequest = { scopeKey, sequence: ++scopeSequence };
+    return startScopeWorker();
   }
 
   async function resetCurrentScope(transaction: PhoneAppResetContext) {

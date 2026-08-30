@@ -188,17 +188,6 @@ export async function loadTavernPreset(presetName: string) {
   }
 }
 
-export async function renameTavernPreset(oldName: string, newName: string) {
-  const sourceName = oldName.trim();
-  const targetName = newName.trim();
-  if (!sourceName || !targetName) throw new Error('预设名称不能为空');
-  if (sourceName === targetName) return { current: getCurrentTavernPresetName() === sourceName };
-  if (listTavernPresets().includes(targetName)) throw new Error(`已经存在名为“${targetName}”的预设`);
-  // 当前宿主的 renamePreset 会加载目标预设，并可能触发内置正则导入；
-  // manager.renamePreset 又依赖会被弹窗流程污染的当前选择，均不满足原子改名契约。
-  throw new Error('当前酒馆没有不切换预设、不导入正则的安全改名接口；插件已阻止本次操作');
-}
-
 export async function deleteTavernPreset(presetName: string) {
   const name = presetName.trim();
   if (!name) throw new Error('预设名称不能为空');

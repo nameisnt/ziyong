@@ -1,5 +1,5 @@
 <template>
-  <section class="pc-entry-library-page">
+  <section class="pc-entry-library-page pc-page-grid pc-page-grid-compact">
     <header class="pc-entry-library-head">
       <ActionMenu align="start" icon-only label="工具" icon="fa-solid fa-bars">
         <button type="button" @click="$emit('open-transfer')">
@@ -263,7 +263,6 @@ function removeBulkSelection() {
 </script>
 
 <style scoped>
-.pc-entry-library-page,
 .pc-entry-library-groups,
 .pc-entry-library-items {
   display: grid;

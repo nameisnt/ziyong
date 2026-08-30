@@ -1,5 +1,4 @@
 import { useChatScopedDomain } from '@/store/chatScoped';
-import { stripRetiredMediaPreviewDrafts } from '@/core/retiredMedia';
 import { RawOutputSemanticsSchema } from '@/type/generation';
 import { migratePreviewDraftScopeData } from '@/util/previewDraftMigration';
 import { validateInplace } from '@/util/zod';
@@ -27,7 +26,6 @@ export const PreviewDraftScopeDataSchema = z.object({
 });
 
 const PreviewDraftScopeDataInputSchema = z.preprocess(raw => {
-  stripRetiredMediaPreviewDrafts(raw);
   return migratePreviewDraftScopeData(raw);
 }, PreviewDraftScopeDataSchema);
 

@@ -8,14 +8,11 @@ import {
   useExternalProfileGenerationStore,
 } from './generationDrafts';
 import { createExternalProfilesRepository } from './externalCrud';
-import { runLegacyProfilesCleanup } from './legacyCleanup';
 import { objectListField, textField, textListField, xmlParser } from '@/apps/outputDefinitions';
 import { definePhoneApp } from '@/core/appRegistry';
 import { getCurrentChatScopeKey, readChatScopedEnvelope } from '@/store/chatScoped';
 import { extension_settings } from '@sillytavern/scripts/extensions';
 import { createChatScopedBackupSchema } from '@/type/backup';
-
-runLegacyProfilesCleanup();
 
 export default definePhoneApp({
   id: 'profiles',

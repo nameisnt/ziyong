@@ -5,7 +5,7 @@ import test from 'node:test';
 
 const source = relativePath => readFile(new URL(`../../${relativePath}`, import.meta.url), 'utf8');
 
-test('summary root, pages and sessions have one app-owned directory without wiring the unused page', async () => {
+test('summary root, live pages and sessions have one app-owned directory', async () => {
   const files = (await readdir(new URL('../../src/apps/summary/', import.meta.url)))
     .filter(file => file.endsWith('.vue') || file.endsWith('.ts'))
     .sort();
@@ -17,7 +17,6 @@ test('summary root, pages and sessions have one app-owned directory without wiri
     'SummaryBookEditorPage.vue',
     'SummaryBookPage.vue',
     'SummaryCatalogPage.vue',
-    'SummaryCreationModePage.vue',
     'SummaryEntryDetailPage.vue',
     'SummaryEntryEditorPage.vue',
     'SummaryFailedDraftPage.vue',
@@ -33,8 +32,6 @@ test('summary root, pages and sessions have one app-owned directory without wiri
   const root = await source('src/apps/summary/SummaryApp.vue');
   assert.match(builtin, /import\('@\/apps\/summary\/SummaryApp\.vue'\)/u);
   assert.equal([...root.matchAll(/from '@\/apps\/summary\/[^']+'/gu)].length, 14);
-  assert.doesNotMatch(root, /SummaryCreationModePage/u);
-
   await assert.rejects(access(new URL('../../src/components/SummaryApp.vue', import.meta.url)));
   await assert.rejects(access(new URL('../../src/components/summary/', import.meta.url)));
 });

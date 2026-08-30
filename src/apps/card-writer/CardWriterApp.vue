@@ -1787,8 +1787,7 @@ onMounted(() => {
   gap: 10px;
 }
 
-.pc-card-writer-progress header span,
-.pc-card-writer-count {
+.pc-card-writer-progress header span {
   color: var(--pc-muted);
   font-size: 12px;
   font-weight: 700;

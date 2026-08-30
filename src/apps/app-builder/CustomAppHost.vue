@@ -1206,11 +1206,6 @@ const regenerateFailedDraft = useFailedDraftRegeneration({
   min-width: 0;
 }
 
-.pc-context-meta {
-  color: var(--pc-muted);
-  font-size: 12px;
-}
-
 .pc-custom-selection-actions {
   position: sticky;
   z-index: 4;

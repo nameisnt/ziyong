@@ -290,27 +290,6 @@ export function buildBaguSentenceReplacement(group: BaguSentenceGroup, hits = gr
   return replacement;
 }
 
-export function applyBaguHits(text: string, hits: BaguHit[]): BaguApplyResult {
-  const orderedHits = [...hits]
-    .filter(hit => hit.replacementStart >= 0 && hit.replacementEnd > hit.replacementStart)
-    .sort(
-      (left, right) => right.replacementStart - left.replacementStart || right.replacementEnd - left.replacementEnd,
-    );
-  let nextText = text;
-  let appliedCount = 0;
-  let reservedStart = Number.POSITIVE_INFINITY;
-
-  orderedHits.forEach(hit => {
-    if (hit.replacementEnd > reservedStart) return;
-    if (nextText.slice(hit.replacementStart, hit.replacementEnd) !== hit.originalText) return;
-    nextText = `${nextText.slice(0, hit.replacementStart)}${hit.replacement}${nextText.slice(hit.replacementEnd)}`;
-    reservedStart = hit.replacementStart;
-    appliedCount += 1;
-  });
-
-  return { appliedCount, text: nextText };
-}
-
 export function applyBaguSentenceEdits(text: string, edits: BaguSentenceEdit[]): BaguApplyResult {
   const orderedEdits = [...edits]
     .filter(edit => edit.start >= 0 && edit.end > edit.start && edit.replacement !== edit.originalText)

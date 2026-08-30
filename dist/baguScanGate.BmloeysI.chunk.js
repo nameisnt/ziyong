@@ -1,1 +1,0 @@
-import{u as e,cv as n,de as t}from'./index.js';function r(r,i=['replacement']){const c=e(),o=r.trim();if(!o)return c.noticeWarning('没有可检测的正文'),!1;const s=n().enabledRules.filter(e=>i.includes(e.type));return!!t(o,s).length||(c.noticeInfo('没有命中八股规则'),!1)}export{r as c};

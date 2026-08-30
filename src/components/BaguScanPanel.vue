@@ -27,7 +27,7 @@
     </div>
 
     <div v-if="hasScanned" class="pc-bagu-result-tools">
-      <label class="pc-bagu-search">
+      <label class="pc-search-field pc-bagu-search">
         <i class="fa-solid fa-magnifying-glass"></i>
         <input v-model="hitQuery" type="search" :placeholder="t`搜索命中、规则或替换内容`" />
       </label>
@@ -374,9 +374,6 @@ onScopeDispose(stopNavigationGuard);
   display: flex;
   gap: 6px;
   justify-content: flex-end;
-}
-
-.pc-bagu-scan-actions {
   flex-wrap: nowrap;
   width: 100%;
   max-width: 100%;
@@ -403,9 +400,6 @@ onScopeDispose(stopNavigationGuard);
   background: var(--pc-surface-strong);
   color: var(--pc-text);
   cursor: pointer;
-}
-
-.pc-mini-btn {
   border-radius: 10px;
   padding: 7px 10px;
   font-size: 12px;
@@ -423,32 +417,7 @@ onScopeDispose(stopNavigationGuard);
 }
 
 .pc-bagu-search {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  border: 1px solid var(--pc-border);
-  border-radius: 14px;
-  background: var(--pc-surface-strong);
-  padding: 0 10px;
-}
-
-.pc-bagu-search i {
-  color: var(--pc-muted);
-  font-size: 12px;
-}
-
-.pc-bagu-search input {
-  width: 100%;
-  min-width: 0;
-  height: 36px;
-  border: 0;
-  background: transparent;
-  color: var(--pc-text);
-  outline: none;
-}
-
-.pc-bagu-search input::placeholder {
-  color: var(--pc-muted);
+  margin: 0;
 }
 
 .pc-bagu-filter-row {

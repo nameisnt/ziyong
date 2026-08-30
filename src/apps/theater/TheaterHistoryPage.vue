@@ -1,5 +1,5 @@
 <template>
-  <section class="pc-theater-history-page">
+  <section class="pc-theater-history-page pc-page-grid">
     <div class="pc-compact-toolbar">
       <label class="pc-search-field">
         <i class="fa-solid fa-magnifying-glass"></i>
@@ -98,13 +98,6 @@ defineEmits<{
 </script>
 
 <style scoped>
-.pc-theater-history-page {
-  display: grid;
-  min-height: 100%;
-  align-content: start;
-  gap: 14px;
-}
-
 .pc-history-tag-panel {
   display: grid;
   gap: 10px;

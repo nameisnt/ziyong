@@ -1,5 +1,5 @@
 <template>
-  <section class="pc-theater-app">
+  <section class="pc-theater-app pc-app-fill">
     <TheaterCatalogPage
       v-if="route.page === 'root'"
       v-model:custom-type-name="customTypeName"
@@ -1394,27 +1394,10 @@ const regenerateFailedDraft = useFailedDraftRegeneration({
   min-height: 100%;
 }
 
-.pc-theater-app {
-  height: 100%;
-  min-height: 0;
-}
-
 .pc-theater-page {
   display: grid;
   align-content: start;
   gap: 14px;
-}
-
-.pc-mode-selector {
-  max-width: 100%;
-}
-
-.pc-preview-render-toolbar {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 10px;
-  margin-bottom: 12px;
 }
 
 .pc-detail-content {

@@ -1,5 +1,5 @@
 <template>
-  <section class="pc-diary-app">
+  <section class="pc-diary-app pc-app-fill">
     <DiaryCatalogPage
       v-if="route.page === 'root'"
       :failed-drafts="failedDrafts"
@@ -1551,10 +1551,3 @@ const regenerateFailedDraft = useFailedDraftRegeneration({
   reparse: reparseFailedDraft,
 });
 </script>
-
-<style scoped>
-.pc-diary-app {
-  height: 100%;
-  min-height: 0;
-}
-</style>

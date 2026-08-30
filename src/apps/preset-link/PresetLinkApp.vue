@@ -117,6 +117,7 @@ async function applyPreset() {
       { presetName: draftPresetName.value, reloadRegex: draftReloadRegex.value },
       true,
     );
+    if (!result.applied) return;
     loadedPresetName.value = getCurrentTavernPresetName();
     toastr.success(result.reloaded ? '已应用预设并重新加载聊天' : result.changed ? '已应用预设' : '当前已使用此预设');
   } catch (error) {

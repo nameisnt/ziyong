@@ -247,7 +247,7 @@ function clearSavedTasks() {
   flex: 1 1 auto;
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 8px;
   color: var(--pc-text);
 }
 
@@ -255,7 +255,6 @@ function clearSavedTasks() {
   flex: 0 0 auto;
 }
 
-.pc-task-center-title,
 .pc-task-line,
 .pc-task-actions {
   display: flex;
@@ -273,11 +272,6 @@ function clearSavedTasks() {
 .pc-task-raw-area {
   font-family: var(--pc-mono-font, ui-monospace, SFMono-Regular, Consolas, monospace);
   font-size: 12px;
-}
-
-.pc-task-center-title {
-  min-width: 0;
-  gap: 8px;
 }
 
 .pc-task-center-title small {

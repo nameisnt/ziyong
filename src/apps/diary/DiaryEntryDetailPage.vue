@@ -1,5 +1,5 @@
 <template>
-  <section class="pc-diary-page pc-diary-detail-page">
+  <section class="pc-diary-page pc-diary-detail-page pc-page-stack">
     <ReaderDetailShell
       actions-class="five"
       :content="entry.content"
@@ -88,13 +88,6 @@ const emit = defineEmits<{
 </script>
 
 <style scoped>
-.pc-diary-page {
-  display: flex;
-  min-height: 100%;
-  flex-direction: column;
-  gap: 14px;
-}
-
 .pc-diary-detail-page {
   height: 100%;
   min-height: 0;

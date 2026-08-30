@@ -500,7 +500,9 @@ const previewStyle = computed(() => {
     backgroundColor:
       settings.value.visualTheme.backgroundColor || (settings.value.theme === 'dark' ? '#1c1c1e' : '#f2f2f7'),
     backgroundImage: `url("${texture.url}")`,
-    backgroundSize: '256px 256px',
+    backgroundPosition: 'center',
+    backgroundRepeat: 'no-repeat',
+    backgroundSize: 'cover',
     color: settings.value.visualTheme.textColor || (settings.value.theme === 'dark' ? '#f5f5f7' : '#1c1c1e'),
   };
 });

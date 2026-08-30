@@ -1,5 +1,5 @@
 <template>
-  <section class="pc-extras-catalog-page">
+  <section class="pc-extras-catalog-page pc-page-stack">
     <BookShelf
       :books="shelfBooks"
       create-label="生成"
@@ -66,12 +66,3 @@ defineEmits<{
   'remove-failed-draft': [draftId: string];
 }>();
 </script>
-
-<style scoped>
-.pc-extras-catalog-page {
-  display: flex;
-  min-height: 100%;
-  flex-direction: column;
-  gap: 14px;
-}
-</style>

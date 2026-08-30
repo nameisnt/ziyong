@@ -60,34 +60,10 @@ export const PluginPresetBackupBundleSchema = z.object({
 });
 export type PluginPresetBackupBundle = z.infer<typeof PluginPresetBackupBundleSchema>;
 
-export const PhoneBackupFullDataSchema = z.object({
-  settings: Settings,
-  prompts: PromptSettingsSchema,
-  bagu: BaguSettingsSchema,
-  reader: ChatReaderSettingsSchema,
-  recoveries: PendingVisibilityRecoveryMapSchema,
-  domains: z.record(z.string(), z.unknown()).default({}),
-  domainVersions: z.record(z.string(), z.number().int().positive()).default({}),
-  summaries: SummaryEnvelopeSchema.optional(),
-  diaries: DiaryEnvelopeSchema.optional(),
-  extras: ExtrasEnvelopeSchema.optional(),
-  forum: ForumEnvelopeSchema.optional(),
-  letters: LettersEnvelopeSchema.optional(),
-  theater: TheaterEnvelopeSchema.optional(),
-});
-
-export const PhoneBackupFullDataV2Schema = PhoneBackupFullDataSchema.extend({
-  pluginPresets: PluginPresetBackupBundleSchema,
-});
-
 export const HomeIconAssetBackupSchema = z.object({
   data: z.string(),
   id: z.string(),
   name: z.string(),
-});
-
-export const PhoneBackupFullDataV3Schema = PhoneBackupFullDataV2Schema.extend({
-  homeIconAssets: z.array(HomeIconAssetBackupSchema).default([]),
 });
 
 export const PhoneBackupWorldbookSchema = z.object({
@@ -95,49 +71,29 @@ export const PhoneBackupWorldbookSchema = z.object({
   name: z.string().min(1),
 });
 
-export const PhoneBackupFullDataV4Schema = PhoneBackupFullDataV3Schema.extend({
-  chatFloorBackups: z.array(ChatFloorBackupSchema).default([]),
-  worldbooks: z.array(PhoneBackupWorldbookSchema).default([]),
+export const PhoneBackupFullDataSchema = z.object({
+  bagu: BaguSettingsSchema,
+  chatFloorBackups: z.array(ChatFloorBackupSchema),
+  domains: z.record(z.string(), z.unknown()),
+  domainVersions: z.record(z.string(), z.number().int().positive()),
+  homeIconAssets: z.array(HomeIconAssetBackupSchema),
+  pluginPresets: PluginPresetBackupBundleSchema,
+  prompts: PromptSettingsSchema,
+  reader: ChatReaderSettingsSchema,
+  recoveries: PendingVisibilityRecoveryMapSchema,
+  settings: Settings,
+  worldbooks: z.array(PhoneBackupWorldbookSchema),
 });
 
 const PhoneBackupCurrentChatDataSchema = z.object({
-  domains: z.record(z.string(), z.unknown()).default({}),
-  domainVersions: z.record(z.string(), z.number().int().positive()).default({}),
-});
-
-const PhoneBackupLegacyDataSchema = PhoneBackupCurrentChatDataSchema.extend({
-  bagu: BaguSettingsSchema.optional(),
-  prompts: PromptSettingsSchema.optional(),
-  reader: ChatReaderSettingsSchema.optional(),
-  recoveries: PendingVisibilityRecoveryMapSchema.optional(),
-  settings: Settings.optional(),
-  summaries: SummaryEnvelopeSchema.optional(),
-  diaries: DiaryEnvelopeSchema.optional(),
-  extras: ExtrasEnvelopeSchema.optional(),
-  forum: ForumEnvelopeSchema.optional(),
-  letters: LettersEnvelopeSchema.optional(),
-  theater: TheaterEnvelopeSchema.optional(),
+  domains: z.record(z.string(), z.unknown()),
+  domainVersions: z.record(z.string(), z.number().int().positive()),
 });
 
 export const PhoneBackupSchema = z.union([
   PhoneBackupBaseSchema.extend({
     backupKind: z.literal('full'),
     data: PhoneBackupFullDataSchema,
-    schemaVersion: z.literal(1),
-  }),
-  PhoneBackupBaseSchema.extend({
-    backupKind: z.literal('full'),
-    data: PhoneBackupFullDataV2Schema,
-    schemaVersion: z.literal(2),
-  }),
-  PhoneBackupBaseSchema.extend({
-    backupKind: z.literal('full'),
-    data: PhoneBackupFullDataV3Schema,
-    schemaVersion: z.literal(3),
-  }),
-  PhoneBackupBaseSchema.extend({
-    backupKind: z.literal('full'),
-    data: PhoneBackupFullDataV4Schema,
     schemaVersion: z.literal(4),
   }),
   PhoneBackupBaseSchema.extend({
@@ -145,25 +101,15 @@ export const PhoneBackupSchema = z.union([
     data: PhoneBackupCurrentChatDataSchema,
     schemaVersion: z.literal(1),
   }),
-  PhoneBackupBaseSchema.extend({
-    backupKind: z.undefined().optional(),
-    data: PhoneBackupLegacyDataSchema,
-    schemaVersion: z.literal(1),
-  }),
 ]);
 export type PhoneBackup = z.infer<typeof PhoneBackupSchema>;
-export type PhoneBackupKind = Exclude<PhoneBackup['backupKind'], undefined>;
+export type PhoneBackupKind = PhoneBackup['backupKind'];
 export type PhoneFullBackup = Extract<PhoneBackup, { backupKind: 'full' }>;
-
-export function getPhoneBackupKind(backup: PhoneBackup): PhoneBackupKind | 'legacy' {
-  return backup.backupKind ?? 'legacy';
-}
 
 export function isFullPhoneBackup(backup: PhoneBackup): backup is PhoneFullBackup {
   return backup.backupKind === 'full';
 }
 
 export function getEmbeddedPluginPresets(backup: PhoneBackup): PluginPresetBackupBundle | null {
-  if (backup.backupKind !== 'full' || backup.schemaVersion === 1) return null;
-  return backup.data.pluginPresets;
+  return backup.backupKind === 'full' ? backup.data.pluginPresets : null;
 }

@@ -14,6 +14,20 @@
         </ActionMenu>
       </div>
 
+      <div v-if="syncStatus === 'error' && syncError" class="pc-world-sync-error" role="alert">
+        <span><i class="fa-solid fa-triangle-exclamation"></i>{{ syncError }}</span>
+        <button
+          class="pc-icon-btn compact"
+          type="button"
+          :disabled="isSyncing || !isCurrentChatScope"
+          :title="t`重试同步`"
+          :aria-label="t`重试同步`"
+          @click="syncSlots"
+        >
+          <i class="fa-solid fa-rotate"></i>
+        </button>
+      </div>
+
       <section class="pc-compact-toolbar pc-world-search-toolbar">
         <label class="pc-search-field">
           <i class="fa-solid fa-magnifying-glass"></i>
@@ -33,7 +47,15 @@
             aria-hidden="true"
           ></span>
           <h3>{{ slot.title }}</h3>
-          <strong :class="{ disabled: !slot.enabled }">{{ slot.enabled ? t`启用` : t`关闭` }}</strong>
+          <label class="pc-toggle" :title="slot.enabled ? t`停用条目` : t`启用条目`" @click.stop>
+            <input
+              type="checkbox"
+              :aria-label="slot.enabled ? t`停用条目` : t`启用条目`"
+              :checked="slot.enabled"
+              @change="toggleSlot(slot.id, $event)"
+            />
+            <span aria-hidden="true"></span>
+          </label>
         </article>
       </div>
       <EmptyState v-else :title="slots.length ? t`没有匹配的槽位` : t`还没有槽位`" />
@@ -250,7 +272,7 @@ import { storeToRefs } from 'pinia';
 
 const phone = usePhoneStore();
 const worldSlots = useWorldSlotsStore();
-const { isCurrentChatScope, slots, syncStatus } = storeToRefs(worldSlots);
+const { isCurrentChatScope, slots, syncError, syncStatus } = storeToRefs(worldSlots);
 const route = computed(() => phone.currentRoute);
 const query = ref('');
 const syncing = ref(false);
@@ -338,6 +360,10 @@ function fillDraft(slot: WorldSlot | null) {
 
 function openEditor(slotId?: string) {
   phone.pushPage('editor', slotId ? '编辑槽位' : '新增槽位', slotId ? { slotId } : {});
+}
+
+function toggleSlot(slotId: string, event: Event) {
+  worldSlots.setSlotEnabled(slotId, (event.target as HTMLInputElement).checked);
 }
 
 function saveDraft() {
@@ -511,6 +537,26 @@ async function syncSlots() {
   max-width: 100%;
 }
 
+.pc-world-sync-error {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 6px 8px;
+  border: 1px solid color-mix(in srgb, var(--pc-danger) 45%, var(--pc-border));
+  border-radius: 6px;
+  color: var(--pc-danger);
+  background: color-mix(in srgb, var(--pc-danger) 7%, var(--pc-surface));
+}
+
+.pc-world-sync-error > span {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: 6px;
+  overflow-wrap: anywhere;
+}
+
 .pc-slot-row {
   align-items: center;
 }
@@ -521,15 +567,6 @@ async function syncSlots() {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-}
-
-.pc-slot-row > strong {
-  color: var(--pc-theme-accent);
-  font-size: 12px;
-}
-
-.pc-slot-row > strong.disabled {
-  color: var(--pc-muted);
 }
 
 .pc-world-entry-lamp {
@@ -593,16 +630,6 @@ async function syncSlots() {
   -webkit-line-clamp: 2;
   line-height: 1.45;
   overflow-wrap: anywhere;
-}
-
-.pc-slot-row strong {
-  flex: 0 0 auto;
-  color: var(--pc-theme-accent);
-  font-size: 12px;
-}
-
-.pc-slot-row strong.disabled {
-  color: var(--pc-muted);
 }
 
 .pc-world-field-group {

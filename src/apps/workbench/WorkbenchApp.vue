@@ -67,15 +67,21 @@
           <button class="pc-workflow-title" type="button" @click="toggleWorkflow(workflow.id)">
             <span>
               <strong>{{ workflow.name }}</strong>
-              <small
-                >{{ workflow.enabled ? t`自动触发` : t`已停用` }} ·
-                {{ workflow.steps.filter(step => step.enabled).length }} {{ t`步` }}</small
-              >
+              <small>{{ workflow.steps.filter(step => step.enabled).length }} {{ t`步` }}</small>
               <small>{{ getWorkflowStatus(workflow) }}</small>
               <small v-if="getWorkflowLastStatus(workflow)">{{ getWorkflowLastStatus(workflow) }}</small>
             </span>
             <i :class="isWorkflowOpen(workflow.id) ? 'fa-solid fa-chevron-up' : 'fa-solid fa-chevron-down'"></i>
           </button>
+          <label class="pc-toggle" :title="workflow.enabled ? t`停用工作流` : t`启用工作流`" @click.stop>
+            <input
+              type="checkbox"
+              :aria-label="workflow.enabled ? t`停用工作流` : t`启用工作流`"
+              :checked="workflow.enabled"
+              @change="toggleWorkflowEnabled(workflow.id, $event)"
+            />
+            <span aria-hidden="true"></span>
+          </label>
         </div>
 
         <div v-if="isWorkflowOpen(workflow.id)" class="pc-workflow-body">
@@ -174,15 +180,6 @@
           <label v-if="workflow.sourceMode === 'recent'" class="pc-field-group">
             <span>{{ t`最近楼层数` }}</span>
             <input v-model.number="workflow.recentCount" class="pc-field" min="1" max="200" type="number" />
-          </label>
-
-          <label class="pc-switch-row">
-            <input
-              type="checkbox"
-              :checked="workflow.enabled"
-              @change="workbench.updateWorkflow(workflow.id, { enabled: ($event.target as HTMLInputElement).checked })"
-            />
-            <span>{{ t`启用自动触发` }}</span>
           </label>
 
           <label class="pc-switch-row">
@@ -886,6 +883,10 @@ function updateWorkflowName(workflowId: string, name: string) {
   workbench.updateWorkflow(workflowId, { name });
 }
 
+function toggleWorkflowEnabled(workflowId: string, event: Event) {
+  workbench.updateWorkflow(workflowId, { enabled: (event.target as HTMLInputElement).checked });
+}
+
 function updateTrigger(workflowId: string, value: string) {
   workbench.updateWorkflow(workflowId, { triggerAiReplies: Number(value) || 1 });
 }
@@ -1180,6 +1181,13 @@ onBeforeUnmount(stopStatusEvents);
   gap: 12px;
   padding: 0 0 10px;
   text-align: left;
+}
+
+.pc-workflow-head {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 8px;
 }
 
 .pc-log-head {

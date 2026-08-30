@@ -1,0 +1,1 @@
+import{u as n,cv as e,d5 as t}from'./panel.BGYkspVB.chunk.js';function r(r,c=['replacement']){const i=n(),o=r.trim();if(!o)return i.noticeWarning('没有可检测的正文'),!1;const s=e().enabledRules.filter(n=>c.includes(n.type));return!!t(o,s).length||(i.noticeInfo('没有命中八股规则'),!1)}export{r as c};

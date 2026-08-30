@@ -1,5 +1,5 @@
 <template>
-  <section class="pc-batch-preview-page">
+  <section class="pc-batch-preview-page pc-page-stack">
     <header class="pc-batch-preview-head">
       <div>
         <span class="pc-kicker">{{ kind === 'diary' ? '批量日记' : '批量总结' }}</span>
@@ -23,11 +23,7 @@
           <span class="pc-field-label">时间</span>
           <input v-model="draft.occurredAt" class="pc-field" type="text" />
         </label>
-        <ReasoningDisclosure
-          :content="draft.reasoning"
-          editable
-          @update:content="draft.reasoning = $event"
-        />
+        <ReasoningDisclosure :content="draft.reasoning" editable @update:content="draft.reasoning = $event" />
         <label class="pc-field-group">
           <span class="pc-field-label">正文</span>
           <textarea v-model="draft.content" class="pc-area pc-batch-preview-content"></textarea>
@@ -61,10 +57,7 @@
 <script setup lang="ts">
 import EmptyState from '@/components/EmptyState.vue';
 import ReasoningDisclosure from '@/components/ReasoningDisclosure.vue';
-import type {
-  ManualBatchPreviewEdit,
-  ManualBatchPreviewItem,
-} from '@/core/manualBatchRunner';
+import type { ManualBatchPreviewEdit, ManualBatchPreviewItem } from '@/core/manualBatchRunner';
 
 const props = defineProps<{
   items: ManualBatchPreviewItem[];
@@ -107,13 +100,6 @@ async function saveAll() {
 </script>
 
 <style scoped>
-.pc-batch-preview-page {
-  display: flex;
-  min-height: 100%;
-  flex-direction: column;
-  gap: 14px;
-}
-
 .pc-batch-preview-head,
 .pc-batch-preview-item-head {
   display: flex;

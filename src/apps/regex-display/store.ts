@@ -235,6 +235,13 @@ export const useRegexDisplayStore = defineStore('regex-display', () => {
     });
   }
 
+  function setRuleEnabled(ruleId: string, enabled: boolean) {
+    const rule = settings.value.rules.find(item => item.id === ruleId);
+    if (!rule) return null;
+    rule.enabled = enabled;
+    return rule;
+  }
+
   function getUsage(appId: string) {
     return ensureUsage(settings.value, appId);
   }
@@ -360,5 +367,6 @@ export const useRegexDisplayStore = defineStore('regex-display', () => {
     rehydrateFromSettings,
     setDisplayRuleEnabled,
     setExtractionRule,
+    setRuleEnabled,
   };
 });

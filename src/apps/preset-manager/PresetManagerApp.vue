@@ -1,5 +1,5 @@
 <template>
-  <section class="pc-preset-manager">
+  <section class="pc-preset-manager pc-app-fill">
     <PresetCatalogPage
       v-if="route.page === 'root'"
       v-model:query="presetQuery"
@@ -956,10 +956,3 @@ watch(
   { immediate: true },
 );
 </script>
-
-<style scoped>
-.pc-preset-manager {
-  height: 100%;
-  min-height: 0;
-}
-</style>

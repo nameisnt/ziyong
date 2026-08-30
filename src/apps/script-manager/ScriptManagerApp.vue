@@ -113,6 +113,15 @@
               <span>{{ group.scripts.length }}</span>
             </button>
             <div v-if="group.folder && !selection.active.value" class="pc-directory-actions">
+              <label class="pc-toggle" :title="group.folder.enabled ? '停用文件夹' : '启用文件夹'" @click.stop>
+                <input
+                  type="checkbox"
+                  :aria-label="group.folder.enabled ? '停用文件夹' : '启用文件夹'"
+                  :checked="group.folder.enabled"
+                  @change="toggleFolderEnabled(group, $event)"
+                />
+                <span aria-hidden="true"></span>
+              </label>
               <button class="pc-icon-btn" type="button" title="重命名分组" aria-label="重命名分组" @click="renameGroup(group)">
                 <i class="fa-solid fa-pen"></i>
               </button>
@@ -132,6 +141,20 @@
               <span class="pc-list-row-copy">
                 <strong>{{ item.name }}</strong>
               </span>
+              <label
+                v-if="!selection.active.value"
+                class="pc-toggle"
+                :title="item.script.enabled ? '停用脚本' : '启用脚本'"
+                @click.stop
+              >
+                <input
+                  type="checkbox"
+                  :aria-label="item.script.enabled ? '停用脚本' : '启用脚本'"
+                  :checked="item.script.enabled"
+                  @change="toggleScriptEnabled(item, $event)"
+                />
+                <span aria-hidden="true"></span>
+              </label>
             </article>
             <EmptyState v-if="!group.scripts.length" title="空文件夹" />
           </div>
@@ -157,6 +180,8 @@ import {
   moveAssistantScriptsToFolder,
   removeAssistantScripts,
   renameAssistantScriptFolder,
+  setAssistantScriptEnabled,
+  setAssistantScriptFolderEnabled,
 } from './api';
 import {
   SCRIPT_SCOPES,
@@ -322,6 +347,29 @@ async function renameGroup(group: ScriptFolderGroup) {
   }
 }
 
+function toggleFolderEnabled(group: ScriptFolderGroup, event: Event) {
+  if (!group.folder) return;
+  const input = event.target as HTMLInputElement;
+  try {
+    setAssistantScriptFolderEnabled(group.scope, group.folder.id, input.checked);
+    refresh();
+  } catch (error) {
+    input.checked = !input.checked;
+    toastr.error(error instanceof Error ? error.message : String(error));
+  }
+}
+
+function toggleScriptEnabled(item: ScriptListItem, event: Event) {
+  const input = event.target as HTMLInputElement;
+  try {
+    setAssistantScriptEnabled(item.scope, item.id, input.checked);
+    refresh();
+  } catch (error) {
+    input.checked = !input.checked;
+    toastr.error(error instanceof Error ? error.message : String(error));
+  }
+}
+
 async function groupSelected() {
   const name = await phone.promptNotice('输入已有或新的分组名称。所选脚本会在各自作用域内移入同名文件夹。', {
     confirmLabel: '移动',
@@ -434,7 +482,7 @@ onActivated(refresh);
 }
 
 .pc-script-row {
-  grid-template-columns: minmax(0, 1fr);
+  grid-template-columns: minmax(0, 1fr) auto;
   min-height: 44px;
   padding: 6px 0;
 }

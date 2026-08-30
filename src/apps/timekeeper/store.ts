@@ -69,18 +69,6 @@ function getTodayDefaultDate() {
   };
 }
 
-export function parseProfileBirthDate(text: string): TimekeeperDate | null {
-  const line = /出生日期\s*[：:]\s*([^\r\n]*)/.exec(text)?.[1] ?? '';
-  const normalized = line.replace(/[０-９]/g, digit => String.fromCharCode(digit.charCodeAt(0) - 0xfee0));
-  const values = normalized.match(/\d+/g)?.slice(0, 3).map(Number) ?? [];
-  if (values.length < 3 || values.some(value => !Number.isFinite(value) || value < 1)) return null;
-  return {
-    day: values[2],
-    month: values[1],
-    year: values[0],
-  };
-}
-
 function clampNumber(value: number, min: number, max: number) {
   if (!Number.isFinite(value)) return min;
   return Math.min(max, Math.max(min, Math.round(value)));

@@ -1,5 +1,5 @@
 <template>
-  <section class="pc-entry-library-page">
+  <section class="pc-entry-library-page pc-page-grid pc-page-grid-compact">
     <article class="pc-section-card pc-entry-dedupe-summary">
       <strong>80% 内容相似查重</strong><span>{{ pairs.length }} 组疑似重复</span>
     </article>
@@ -40,12 +40,6 @@ function compact(content: string) {
 }
 </script>
 <style scoped>
-.pc-entry-library-page {
-  display: grid;
-  min-height: 100%;
-  align-content: start;
-  gap: 12px;
-}
 .pc-entry-dedupe-summary {
   display: flex;
   justify-content: space-between;

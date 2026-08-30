@@ -254,6 +254,7 @@ export const useWorldSlotsStore = defineStore('world-slots', () => {
   let autoSyncStarted = false;
   let autoSyncTimer: ReturnType<typeof window.setTimeout> | null = null;
   let syncRequestId = 0;
+  let scopeSyncSequence = 0;
   let syncTail: Promise<void> = Promise.resolve();
 
   const slots = computed(() =>
@@ -324,6 +325,15 @@ export const useWorldSlotsStore = defineStore('world-slots', () => {
     slot.sticky = input.sticky;
     slot.cooldown = input.cooldown;
     slot.delay = input.delay;
+    slot.updatedAt = nowIso();
+    queueAutoSync();
+    return slot;
+  }
+
+  function setSlotEnabled(slotId: string, enabled: boolean) {
+    const slot = getSlot(slotId);
+    if (!slot || slot.enabled === enabled) return slot;
+    slot.enabled = enabled;
     slot.updatedAt = nowIso();
     queueAutoSync();
     return slot;
@@ -424,6 +434,7 @@ export const useWorldSlotsStore = defineStore('world-slots', () => {
       await saveWorldInfo(bookName, book, true);
       await updateWorldInfoList?.();
     }
+    if (!isRequestCurrent(requestId, targetScopeKey)) return skippedResult();
 
     const globalNames = cleanList(getGlobalWorldbookNames());
     const bindingChanged = !globalNames.includes(bookName);
@@ -507,7 +518,46 @@ export const useWorldSlotsStore = defineStore('world-slots', () => {
   function startAutoSync() {
     if (autoSyncStarted) return;
     autoSyncStarted = true;
-    queueAutoSync();
+    void syncScopeWithRetry(scopeKey.value);
+  }
+
+  function waitForWorldbookRuntime(delayMs: number) {
+    return new Promise<void>(resolve => window.setTimeout(resolve, delayMs));
+  }
+
+  async function syncScopeWithRetry(targetScopeKey: string) {
+    if (!autoSyncStarted || !areChatScopeKeysEquivalent(targetScopeKey, getCurrentChatScopeKey())) return;
+    const sequence = ++scopeSyncSequence;
+    syncRequestId += 1;
+    if (autoSyncTimer !== null) {
+      window.clearTimeout(autoSyncTimer);
+      autoSyncTimer = null;
+    }
+    syncStatus.value = 'idle';
+    syncError.value = '';
+
+    let lastError: unknown = null;
+    for (let attempt = 0; attempt < 3; attempt += 1) {
+      await waitForWorldbookRuntime(attempt === 0 ? 900 : 700);
+      if (
+        sequence !== scopeSyncSequence ||
+        !areChatScopeKeysEquivalent(scopeKey.value, targetScopeKey) ||
+        !areChatScopeKeysEquivalent(targetScopeKey, getCurrentChatScopeKey())
+      ) {
+        return;
+      }
+      try {
+        const result = await syncToWorldBook();
+        if (!result.skipped) return;
+      } catch (error) {
+        lastError = error;
+      }
+    }
+
+    if (sequence !== scopeSyncSequence || !lastError) return;
+    const message = lastError instanceof Error ? lastError.message : '世界书运行时尚未就绪';
+    console.error('[功能性阅读器] 当前聊天的世界书槽位未自动同步', lastError);
+    toastr.warning(`当前聊天的世界书槽位未自动同步：${message}`);
   }
 
   function rehydrateFromSettings() {
@@ -562,11 +612,10 @@ export const useWorldSlotsStore = defineStore('world-slots', () => {
     if (externalSnapshot) await syncToWorldBook();
   }
 
-  function switchScope(nextScopeKey: string) {
+  async function switchScope(nextScopeKey: string) {
     switchScopedData(nextScopeKey);
+    await syncScopeWithRetry(scopeKey.value);
   }
-
-  watch(scopeKey, queueAutoSync);
 
   return {
     autoSyncToWorldBook,
@@ -580,6 +629,7 @@ export const useWorldSlotsStore = defineStore('world-slots', () => {
     rehydrateFromSettings,
     resetCurrentScope,
     scopeKey,
+    setSlotEnabled,
     slots,
     startAutoSync,
     switchScope,

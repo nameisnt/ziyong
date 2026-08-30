@@ -303,7 +303,10 @@
               <strong>{{ group.name }}</strong>
               <i :class="isPhraseGroupOpen(group.id) ? 'fa-solid fa-chevron-up' : 'fa-solid fa-chevron-down'"></i>
             </button>
-            <div v-if="!(promptBulkMode && promptBulkTarget === 'phrase-groups')" class="pc-inline-actions pc-group-actions">
+            <div
+              v-if="!(promptBulkMode && promptBulkTarget === 'phrase-groups')"
+              class="pc-inline-actions pc-group-actions"
+            >
               <button
                 class="pc-icon-btn"
                 type="button"
@@ -454,7 +457,10 @@
               <strong>{{ group.name }}</strong>
               <i :class="isTemplateGroupOpen(group.id) ? 'fa-solid fa-chevron-up' : 'fa-solid fa-chevron-down'"></i>
             </button>
-            <div v-if="!(promptBulkMode && promptBulkTarget === 'template-groups')" class="pc-inline-actions pc-group-actions">
+            <div
+              v-if="!(promptBulkMode && promptBulkTarget === 'template-groups')"
+              class="pc-inline-actions pc-group-actions"
+            >
               <button
                 class="pc-icon-btn"
                 type="button"
@@ -851,7 +857,8 @@ const quickTemplateCount = computed(() =>
 );
 const promptBulkIds = computed(() => {
   if (promptBulkTarget.value === 'phrase-groups') return quickPhraseGroups.value.map(group => group.id);
-  if (promptBulkTarget.value === 'phrases') return quickPhraseGroups.value.flatMap(group => group.phrases.map(item => item.id));
+  if (promptBulkTarget.value === 'phrases')
+    return quickPhraseGroups.value.flatMap(group => group.phrases.map(item => item.id));
   if (promptBulkTarget.value === 'template-groups') return quickTemplateGroups.value.map(group => group.id);
   return quickTemplateGroups.value.flatMap(group => group.phrases.map(item => item.id));
 });
@@ -1250,7 +1257,9 @@ async function removePromptBulkSelection() {
     );
   } else {
     quickTemplateGroups.value.forEach(group =>
-      group.phrases.filter(item => ids.includes(item.id)).forEach(item => prompts.deleteQuickTemplate(group.id, item.id)),
+      group.phrases
+        .filter(item => ids.includes(item.id))
+        .forEach(item => prompts.deleteQuickTemplate(group.id, item.id)),
     );
   }
   cancelPromptBulk();
@@ -1383,11 +1392,6 @@ async function copyText(text: string, successMessage: string) {
   overflow: visible;
 }
 
-.pc-prompts-editor {
-  display: grid;
-  gap: 14px;
-}
-
 .pc-stack {
   position: relative;
   z-index: 1;
@@ -1453,30 +1457,10 @@ async function copyText(text: string, successMessage: string) {
   height: 34px;
 }
 
-.pc-tab-btn,
-.pc-accordion-head,
 .pc-accordion-title-button {
   border: 0;
   cursor: pointer;
   color: var(--pc-text);
-}
-
-.pc-tab-btn {
-  border-radius: 999px;
-  padding: 7px 10px;
-  min-width: 72px;
-  height: 34px;
-  font-size: 13px;
-  white-space: nowrap;
-}
-
-.pc-tab-btn,
-.pc-type-pill {
-  background: var(--pc-surface-strong);
-}
-
-.pc-tab-btn.active {
-  background: color-mix(in srgb, var(--pc-theme-accent) 18%, var(--pc-surface-strong) 82%);
 }
 
 .pc-app-prompt-grid {
@@ -1742,7 +1726,6 @@ async function copyText(text: string, successMessage: string) {
 }
 
 .pc-card-head strong,
-.pc-accordion-head,
 .pc-accordion-title-button {
   width: 100%;
   background: transparent;
@@ -1754,7 +1737,6 @@ async function copyText(text: string, successMessage: string) {
   text-align: left;
 }
 
-.pc-accordion-head i,
 .pc-accordion-title-button i {
   flex: 0 0 auto;
   color: var(--pc-muted);
@@ -1780,13 +1762,6 @@ async function copyText(text: string, successMessage: string) {
 
 .pc-card-head .pc-accordion-title-button {
   flex: 1 1 auto;
-}
-
-.pc-nested-stack {
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-  margin-top: 12px;
 }
 
 .pc-prompts-menu-anchor {
@@ -1863,77 +1838,6 @@ async function copyText(text: string, successMessage: string) {
   color: var(--pc-muted);
 }
 
-.pc-output-panel {
-  margin-top: 12px;
-  border-radius: min(var(--pc-card-radius), 8px);
-  background: var(--pc-surface-strong);
-  overflow: hidden;
-}
-
-.pc-output-toggle {
-  width: 100%;
-  border: 0;
-  background: transparent;
-  color: var(--pc-text);
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 10px;
-  padding: 12px 14px;
-}
-
-.pc-output-toggle i {
-  color: var(--pc-muted);
-  font-size: 12px;
-}
-
-.pc-output-list {
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-  padding: 0 12px 12px;
-}
-
-.pc-output-card {
-  border: 1px solid var(--pc-border);
-  border-radius: 14px;
-  background: color-mix(in srgb, var(--pc-surface) 72%, transparent 28%);
-  padding: 12px;
-}
-
-.pc-output-card strong {
-  display: block;
-  margin-bottom: 8px;
-}
-
-.pc-output-card pre {
-  overflow: auto;
-  margin: 0;
-  white-space: pre-wrap;
-  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
-  font-size: 12px;
-  line-height: 1.55;
-}
-
-.pc-prompts-app :is(.pc-area, .pc-field) {
-  margin-top: 14px;
-}
-
-.pc-type-pill {
-  border-radius: 999px;
-  padding: 4px 8px;
-  font-size: 11px;
-}
-
-.pc-type-pill[data-domain='extras'] {
-  color: var(--pc-theme-accent);
-}
-
-.pc-type-pill[data-domain='theater'] {
-  color: var(--pc-theme-accent);
-}
-
 .pc-prewrap,
 .pc-phrase-card p {
   white-space: pre-wrap;
@@ -1952,10 +1856,6 @@ async function copyText(text: string, successMessage: string) {
 
 .pc-phrase-card.bulk {
   grid-template-columns: auto minmax(0, 1fr);
-}
-
-.pc-icon-btn.danger {
-  color: var(--pc-danger);
 }
 
 .pc-prompts-app .pc-form-actions {

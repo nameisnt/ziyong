@@ -23,18 +23,15 @@ const settingsPanel = await readMaybe(
 );
 const repositoryStore = await readMaybe(new URL('../../src/store/fileRepository.ts', import.meta.url));
 
-test('manual full backup v2 embeds plugin presets while v1 remains supported', () => {
-  assert.match(backupType, /PhoneBackupFullDataV2Schema/);
-  assert.match(backupType, /schemaVersion:\s*z\.literal\(2\)/);
+test('current full backup embeds plugin presets', () => {
+  assert.match(backupType, /PhoneBackupFullDataSchema/);
+  assert.match(backupType, /backupKind:\s*z\.literal\('full'\)[\s\S]*schemaVersion:\s*z\.literal\(4\)/);
   assert.match(backupType, /PluginPresetBackupBundleSchema/);
   assert.match(backupType, /appDefaults:\s*z\.record/);
   assert.match(backupType, /records:\s*z\.array/);
   assert.match(backupUtil, /async function buildCompletePhoneBackup/);
   assert.match(backupUtil, /await\s+presetStore\.exportBackupBundle\(\)/);
-  assert.match(
-    backupUtil,
-    /schemaVersion:\s*options\.chatFloorBackups\s*\?\s*4\s*:\s*options\.homeIconAssets\s*\?\s*3/,
-  );
+  assert.match(backupUtil, /schemaVersion:\s*4/);
   assert.match(backupUtil, /embeddedPluginPresets/);
   assert.match(backupUtil, /executeBackupResourceTransaction/);
   assert.match(settingsPanel, /async function downloadBackup\(\)/);

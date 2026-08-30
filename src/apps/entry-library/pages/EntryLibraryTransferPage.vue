@@ -1,5 +1,5 @@
 <template>
-  <section class="pc-entry-library-page">
+  <section class="pc-entry-library-page pc-page-grid pc-page-grid-compact">
     <article class="pc-page-section pc-entry-transfer-card">
       <div>
         <strong>导出条目库</strong
@@ -38,12 +38,6 @@ defineEmits<{ export: []; import: [event: Event] }>();
 const fileField = ref<HTMLInputElement | null>(null);
 </script>
 <style scoped>
-.pc-entry-library-page {
-  display: grid;
-  min-height: 100%;
-  align-content: start;
-  gap: 12px;
-}
 .pc-entry-transfer-card {
   display: grid;
   gap: 14px;

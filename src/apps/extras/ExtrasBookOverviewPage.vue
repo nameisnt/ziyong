@@ -1,5 +1,5 @@
 <template>
-  <section class="pc-extras-page">
+  <section class="pc-extras-page pc-page-stack">
     <div class="pc-compact-toolbar pc-directory-toolbar">
       <div class="pc-directory-leading">
         <ActionMenu align="start" icon-only :label="t`管理`" icon="fa-solid fa-bars">
@@ -143,13 +143,6 @@ function formatCoveredChapters(ids: string[]) {
 </script>
 
 <style scoped>
-.pc-extras-page {
-  display: flex;
-  min-height: 100%;
-  flex-direction: column;
-  gap: 14px;
-}
-
 .pc-summary-section {
   padding-block: 4px 12px;
   border-block: 1px solid var(--pc-border);

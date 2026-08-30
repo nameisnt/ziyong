@@ -223,8 +223,4 @@ async function clearAllGeneratedContent() {
 .pc-danger-card {
   border-color: color-mix(in srgb, var(--pc-danger) 32%, var(--pc-border));
 }
-.pc-soft-btn.danger,
-.pc-icon-btn.danger {
-  color: var(--pc-danger);
-}
 </style>

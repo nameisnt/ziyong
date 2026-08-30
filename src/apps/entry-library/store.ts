@@ -158,6 +158,9 @@ export const useEntryLibraryStore = defineStore('entry-library', () => {
   const settings = ref<EntryLibrarySettings>(readSettings(_.get(extension_settings, entryLibraryField, {})));
   const syncingBindingIds = ref<string[]>([]);
   const syncTimers = new Map<string, number>();
+  let entryLibrarySyncTail: Promise<void> = Promise.resolve();
+  const bindingSyncRevisions = new Map<string, number>();
+  const bindingSyncPromises = new Map<string, Promise<void>>();
 
   watch(
     settings,
@@ -203,19 +206,40 @@ export const useEntryLibraryStore = defineStore('entry-library', () => {
       .join('\n\n');
   }
 
-  async function syncBinding(bindingId: string) {
+  async function syncBindingNow(bindingId: string) {
     const binding = bindings.value.find(item => item.id === bindingId);
     if (!binding) return;
+    await syncPresetLibraryBinding(
+      binding,
+      renderEntryLibraryBindingContent(binding.contentTemplate, buildGroupContent(binding.groupId)),
+    );
+    binding.updatedAt = nowIso();
+  }
+
+  function syncBinding(bindingId: string) {
+    bindingSyncRevisions.set(bindingId, (bindingSyncRevisions.get(bindingId) ?? 0) + 1);
+    const existing = bindingSyncPromises.get(bindingId);
+    if (existing) return existing;
+
     syncingBindingIds.value = [...new Set([...syncingBindingIds.value, bindingId])];
-    try {
-      await syncPresetLibraryBinding(
-        binding,
-        renderEntryLibraryBindingContent(binding.contentTemplate, buildGroupContent(binding.groupId)),
-      );
-      binding.updatedAt = nowIso();
-    } finally {
+    const task = entryLibrarySyncTail.then(async () => {
+      let appliedRevision = 0;
+      while (appliedRevision !== bindingSyncRevisions.get(bindingId)) {
+        appliedRevision = bindingSyncRevisions.get(bindingId) ?? 0;
+        await syncBindingNow(bindingId);
+      }
+    });
+    entryLibrarySyncTail = task.then(
+      () => undefined,
+      () => undefined,
+    );
+    const tracked = task.finally(() => {
+      bindingSyncPromises.delete(bindingId);
+      bindingSyncRevisions.delete(bindingId);
       syncingBindingIds.value = syncingBindingIds.value.filter(id => id !== bindingId);
-    }
+    });
+    bindingSyncPromises.set(bindingId, tracked);
+    return tracked;
   }
 
   async function syncGroup(groupId: string) {

@@ -1,5 +1,5 @@
 <template>
-  <section class="pc-entry-library-page">
+  <section class="pc-entry-library-page pc-page-grid pc-page-grid-compact">
     <article class="pc-page-section pc-entry-binding-editor">
       <div class="pc-field-group">
         <span>目标预设</span>
@@ -191,7 +191,6 @@ function compact(content: string) {
 }
 </script>
 <style scoped>
-.pc-entry-library-page,
 .pc-entry-binding-list {
   display: grid;
   min-height: 100%;

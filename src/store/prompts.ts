@@ -7,7 +7,6 @@ import {
   type PhoneOutputParserField,
   type PhonePromptOutputFormat,
 } from '@/core/appRegistry';
-import { stripRetiredMediaPromptSettings } from '@/core/retiredMedia';
 import { parsePrettified, validateInplace } from '@/util/zod';
 import type { ZodType } from 'zod';
 // eslint-disable-next-line import-x/no-nodejs-modules
@@ -294,7 +293,6 @@ const legacyRelationshipTaskTemplate = '{{focusInstruction}}';
 const currentRelationshipTaskTemplate = '请重点判断以下范围内角色之间的当前单向关系：{{characterScope}}。';
 
 function ensureRegisteredPromptDefaults(settings: PromptSettings) {
-  stripRetiredMediaPromptSettings(settings);
   const needsTaskTemplateCoverageMigration = !('digest.generate' in settings.taskTemplates);
   const previousExtrasPrompt = settings.appPrompts.extras?.trim() || '';
   const hadExtrasContinuePrompt = 'extrasContinue' in settings.appPrompts;
@@ -407,7 +405,6 @@ function createDefaultPromptSettings(): PromptSettings {
 
 export const usePromptStore = defineStore('prompts', () => {
   const initialData = validateInplace(PromptSettingsSchema, _.get(extension_settings, promptField, {}));
-  stripRetiredMediaPromptSettings(initialData);
   const data = ref(initialData);
 
   function persist(nextData: typeof data.value) {
@@ -641,7 +638,6 @@ export const usePromptStore = defineStore('prompts', () => {
       }
       data.value.quickTemplateGroups = klona(transfer.sections.quickTemplateGroups);
     }
-    stripRetiredMediaPromptSettings(data.value);
   }
 
   function getTypePrompt(promptId: string) {

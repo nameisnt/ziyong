@@ -1,5 +1,5 @@
 <template>
-  <section class="pc-digest-app">
+  <section class="pc-digest-app pc-app-fill">
     <section v-if="route.page === 'root'" class="pc-digest-page">
       <div class="pc-compact-toolbar pc-directory-toolbar pc-digest-toolbar">
         <span class="pc-directory-count">{{ entries.length }} {{ t`条摘录` }}</span>
@@ -713,11 +713,6 @@ const regenerateFailedDraft = useFailedDraftRegeneration({
   min-height: 100%;
 }
 
-.pc-digest-app {
-  height: 100%;
-  min-height: 0;
-}
-
 .pc-digest-page {
   display: flex;
   flex-direction: column;
@@ -751,58 +746,11 @@ const regenerateFailedDraft = useFailedDraftRegeneration({
   line-height: 1.25;
 }
 
-.pc-entry-main {
-  width: 100%;
-  border: 0;
-  background: transparent;
-  color: var(--pc-text);
-  cursor: pointer;
-  text-align: left;
-}
-
-.pc-entry-head {
-  display: flex;
-  min-width: 0;
-  align-items: center;
-  justify-content: space-between;
-  gap: 10px;
-}
-
-.pc-entry-head strong {
-  flex: 1 1 auto;
-}
-
-.pc-entry-head .pc-entry-order {
-  flex: 0 0 auto;
-  font-size: 12px;
-  white-space: nowrap;
-}
-
-.pc-entry-main strong,
-.pc-entry-main span {
-  display: block;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.pc-entry-main span,
-.pc-entry-main p,
 .pc-source-box summary,
 .pc-source-box p {
   color: var(--pc-muted);
 }
 
-.pc-entry-main p {
-  display: -webkit-box;
-  margin: 8px 0 0;
-  overflow: hidden;
-  -webkit-box-orient: vertical;
-  -webkit-line-clamp: 3;
-  white-space: pre-wrap;
-}
-
-.pc-detail-content,
 .pc-source-box {
   margin-top: 14px;
   border-radius: min(var(--pc-control-radius), 8px);
@@ -811,29 +759,10 @@ const regenerateFailedDraft = useFailedDraftRegeneration({
   white-space: pre-wrap;
 }
 
-.pc-digest-detail-page .pc-detail-card {
-  display: flex;
-  flex: 1 1 auto;
-  min-height: 0;
-  flex-direction: column;
-}
-
-.pc-digest-detail-page .pc-detail-content {
-  flex: 1 1 auto;
-  min-height: 0;
-  overflow: auto;
-}
-
 .pc-digest-detail-page .pc-source-box {
   flex: 0 0 auto;
   max-height: 120px;
   overflow: auto;
-}
-
-.pc-raw-area {
-  min-height: 180px;
-  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
-  font-size: 12px;
 }
 
 .pc-source-box p {
@@ -844,10 +773,6 @@ const regenerateFailedDraft = useFailedDraftRegeneration({
 .pc-digest-editor-section > .pc-area,
 .pc-digest-editor-section > .pc-field-group {
   margin-top: 12px;
-}
-
-.pc-soft-btn.active {
-  color: var(--pc-danger);
 }
 
 .pc-digest-actions {

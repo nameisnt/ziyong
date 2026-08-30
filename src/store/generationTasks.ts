@@ -1,5 +1,4 @@
 import { getCurrentChatScopeKey } from '@/store/chatScoped';
-import { stripRetiredMediaGenerationTasks } from '@/core/retiredMedia';
 import {
   GenerationTaskSchema,
   GenerationTaskSettingsSchema,
@@ -46,7 +45,6 @@ function createId(prefix: string) {
 
 export function normalizePersistedGenerationTasks(raw: unknown): GenerationTaskSettings {
   const parsed = validateInplace(GenerationTaskSettingsSchema, raw);
-  stripRetiredMediaGenerationTasks(parsed);
   parsed.tasks = parsed.tasks.map(task => {
     if (!['queued', 'running', 'pause-requested'].includes(task.status)) return task;
     const isSingle = task.kind === 'single';

@@ -149,8 +149,4 @@ defineEmits<{
   flex-wrap: wrap;
   gap: 8px;
 }
-
-.pc-soft-btn.danger {
-  color: var(--pc-danger);
-}
 </style>

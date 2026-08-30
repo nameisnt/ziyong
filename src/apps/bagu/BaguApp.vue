@@ -461,39 +461,13 @@ onBeforeUnmount(commitAllReplacementDrafts);
 }
 
 .pc-rule-search {
-  display: flex;
-  align-items: center;
-  gap: 10px;
   margin-bottom: 4px;
-}
-
-.pc-rule-search i {
-  color: var(--pc-muted);
-  font-size: 13px;
-}
-
-.pc-rule-search input {
-  width: 100%;
-  min-width: 0;
-  height: 36px;
-  border: 0;
-  background: transparent;
-  color: var(--pc-text);
-  font-weight: 700;
-  outline: none;
-}
-
-.pc-rule-search input::placeholder {
-  color: var(--pc-muted);
 }
 
 .pc-section-toggle {
   border: 0;
   color: var(--pc-text);
   cursor: pointer;
-}
-
-.pc-section-toggle {
   display: inline-flex;
   align-items: center;
   gap: 8px;

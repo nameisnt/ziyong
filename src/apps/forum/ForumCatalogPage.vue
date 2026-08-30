@@ -1,5 +1,5 @@
 <template>
-  <section class="pc-forum-catalog-page">
+  <section class="pc-forum-catalog-page pc-page-stack">
     <div class="pc-compact-toolbar pc-directory-toolbar">
       <span class="pc-directory-count">{{ boards.length }} 个板块</span>
       <div class="pc-directory-actions pc-forum-actions">
@@ -57,7 +57,9 @@
         <button
           class="pc-board-main"
           type="button"
-          @click="bulkMode ? setBulkSelected(board.id, !bulkSelectedIdSet.has(board.id)) : $emit('open-board', board.id)"
+          @click="
+            bulkMode ? setBulkSelected(board.id, !bulkSelectedIdSet.has(board.id)) : $emit('open-board', board.id)
+          "
         >
           <strong>{{ board.name }}</strong>
           <p>{{ formatBoardMeta(board.threads.length) }}</p>
@@ -153,13 +155,6 @@ function removeSelectedBoards() {
 </script>
 
 <style scoped>
-.pc-forum-catalog-page {
-  display: flex;
-  min-height: 100%;
-  flex-direction: column;
-  gap: 14px;
-}
-
 .pc-board-main {
   width: 100%;
   min-width: 0;

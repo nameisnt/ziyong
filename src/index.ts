@@ -1,6 +1,6 @@
 import '@/global.css';
 import { ensureNativeLauncher } from '@/core/nativeLauncher';
-import { initPanel } from '@/panel';
+import { scheduleIdleTask } from '@/util/idleTask';
 
 const BUILD_MARKER = '2026-07-27-audit-fixes';
 
@@ -13,23 +13,29 @@ declare global {
 }
 
 let panelLoaded = false;
+let panelLoadPromise: Promise<void> | null = null;
 
 function getErrorMessage(error: unknown) {
   return error instanceof Error ? error.message : String(error);
 }
 
 function loadPanel() {
-  try {
-    if (!panelLoaded) {
+  if (panelLoaded) return Promise.resolve();
+  if (panelLoadPromise) return panelLoadPromise;
+
+  panelLoadPromise = import('@/panel')
+    .then(({ initPanel }) => {
+      if (panelLoaded) return;
       initPanel();
       panelLoaded = true;
-    }
-    return Promise.resolve();
-  } catch (error) {
-    console.error('[功能性阅读器] 入口加载失败', error);
-    toastr?.error?.(`功能性阅读器入口加载失败：${getErrorMessage(error)}`);
-    return Promise.reject(error);
-  }
+    })
+    .catch(error => {
+      panelLoadPromise = null;
+      console.error('[功能性阅读器] 入口加载失败', error);
+      toastr?.error?.(`功能性阅读器入口加载失败：${getErrorMessage(error)}`);
+      throw error;
+    });
+  return panelLoadPromise;
 }
 
 async function openFromEmergencyLauncher(event?: Event) {
@@ -48,7 +54,7 @@ async function openFromEmergencyLauncher(event?: Event) {
 function boot() {
   window.__sillytavernPhoneBuild__ = BUILD_MARKER;
   ensureNativeLauncher(openFromEmergencyLauncher, BUILD_MARKER);
-  void loadPanel();
+  scheduleIdleTask(() => void loadPanel().catch(() => undefined), 1500);
 }
 
 if (document.readyState === 'loading') {
