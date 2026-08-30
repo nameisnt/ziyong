@@ -8,6 +8,7 @@ import type { XmlParseResult } from '@/type/generation';
 import {
   diagnoseTaggedRoot,
   extractJsonOutputCandidates,
+  extractRepairableTaggedOutputCandidates,
   extractTaggedOutputCandidates,
   getIncompleteTaggedRootWarning,
   selectBestParsedCandidate,
@@ -240,7 +241,10 @@ function getOutputCandidates(raw: string, config: PhoneOutputParserDefinition) {
   }
   if (config.kind === 'json') return extractJsonOutputCandidates(raw);
   const rootName = config.rootPath?.trim();
-  return rootName ? extractTaggedOutputCandidates(raw, rootName) : [{ index: 0, raw: stripOutputCodeFence(raw) }];
+  if (!rootName) return [{ index: 0, raw: stripOutputCodeFence(raw) }];
+  return config.kind === 'xml'
+    ? extractRepairableTaggedOutputCandidates(raw, rootName)
+    : extractTaggedOutputCandidates(raw, rootName);
 }
 
 function parseSingleOutputWithConfig(raw: string, config: PhoneOutputParserDefinition): DeclarativeParseResult {
@@ -312,7 +316,9 @@ export function parseOutputWithConfig(raw: string, config: PhoneOutputParserDefi
   );
   if (selected) {
     const incompleteWarning =
-      rootName && config.kind !== 'json' ? getIncompleteTaggedRootWarning(raw, rootName, candidates.length) : '';
+      rootName && config.kind !== 'json' && !candidates.some(candidate => candidate.repair)
+        ? getIncompleteTaggedRootWarning(raw, rootName, candidates.length)
+        : '';
     const warnings = [...new Set([...selected.warnings, incompleteWarning].filter(Boolean))];
     return selected.ok
       ? { data: selected.data as Record<string, unknown>, ok: true, warnings }
@@ -378,7 +384,9 @@ export function parseConfiguredOutput<T>(
   }
 
   const incompleteWarning =
-    rootName && parser.kind !== 'json' ? getIncompleteTaggedRootWarning(raw, rootName, candidates.length) : '';
+    rootName && parser.kind !== 'json' && !candidates.some(candidate => candidate.repair)
+      ? getIncompleteTaggedRootWarning(raw, rootName, candidates.length)
+      : '';
   if (selected.ok) {
     return {
       data: selected.data as T,

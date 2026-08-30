@@ -438,10 +438,11 @@ onBeforeUnmount(commitAllReplacementDrafts);
 .pc-bagu-page {
   display: grid;
   align-content: start;
-  gap: 14px;
+  gap: 0;
 }
 
 .pc-bagu-panel {
+  gap: 8px;
   overflow: hidden;
 }
 
@@ -457,7 +458,6 @@ onBeforeUnmount(commitAllReplacementDrafts);
   align-items: center;
   justify-content: space-between;
   gap: 10px;
-  padding-bottom: 12px;
 }
 
 .pc-rule-search {
@@ -504,7 +504,6 @@ onBeforeUnmount(commitAllReplacementDrafts);
 .pc-rule-table {
   display: grid;
   gap: 10px;
-  padding-top: 14px;
 }
 
 .pc-rule-row {

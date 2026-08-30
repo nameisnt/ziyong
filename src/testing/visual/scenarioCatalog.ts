@@ -122,6 +122,7 @@ export function createVisualScenarioGroups(rootAppScenarios: string[]): VisualSc
       scenarios: [
         'status-display-mvu',
         'status-display-regex',
+        'status-display-regex-dark',
         'status-display-settings',
         'status-display-settings-dark',
       ],
@@ -232,6 +233,8 @@ export function createVisualScenarioGroups(rootAppScenarios: string[]): VisualSc
       scenarios: [
         'diary-batch',
         'diary-creation-mode',
+        'diary-perspective-alias',
+        'diary-perspective-alias-dark',
         'diary-book',
         'diary-entry-editor',
         'diary-entry-editor-dark',

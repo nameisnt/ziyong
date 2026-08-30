@@ -40,6 +40,15 @@ test('status viewer exposes enabled schemes as horizontally scrollable tabs', ()
   assert.match(settings, /toggleEnabledScheme/u);
 });
 
+test('status viewer can select historical regex and MVU message floors', () => {
+  assert.match(viewer, /class="pc-status-floor-picker"/u);
+  assert.match(viewer, /class="pc-select"/u);
+  assert.match(viewer, /matches\.reverse\(\)/u);
+  assert.match(viewer, /regexFloorHtml\.get\(messageId\)/u);
+  assert.match(viewer, /message_id: selectedFloorId\.value \?\? \('latest' as const\)/u);
+  assert.match(viewer, /function selectFloor\(event: Event\)/u);
+});
+
 test('status viewer and settings are separate apps with one configuration owner', () => {
   assert.match(viewer, /pushRoute\('status-display-settings', 'root', '状态栏设置'\)/u);
   assert.doesNotMatch(viewer, /SearchableCombobox|createScheme|deleteScheme/u);

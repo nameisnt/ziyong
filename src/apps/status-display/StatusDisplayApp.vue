@@ -33,18 +33,27 @@
         <button class="pc-soft-btn" type="button" @click="openSettings">打开状态栏设置</button>
       </EmptyState>
     </div>
-    <FrontendFrame
-      v-else-if="activeScheme && renderedHtml"
-      :active="isActive"
-      :content="renderedHtml"
-      embedded
-      flush-content
-      frameless
-      host-bridge
-      security-mode="trusted"
-      :theme="settingsStore.settings.theme"
-      :title="activeScheme.name"
-    />
+    <div v-else-if="activeScheme && renderedHtml" class="pc-status-content">
+      <FrontendFrame
+        :active="isActive"
+        :content="renderedHtml"
+        embedded
+        flush-content
+        frameless
+        host-bridge
+        security-mode="trusted"
+        :theme="settingsStore.settings.theme"
+        :title="activeScheme.name"
+      />
+      <label v-if="floorOptions.length" class="pc-status-floor-picker">
+        <span class="pc-field-label">查看楼层</span>
+        <select class="pc-select" :value="selectedFloorId ?? ''" aria-label="查看历史状态楼层" @change="selectFloor">
+          <option v-for="(floor, index) in floorOptions" :key="floor.messageId" :value="floor.messageId">
+            第 {{ floor.messageId }} 楼{{ index === 0 ? '（最新）' : '' }}
+          </option>
+        </select>
+      </label>
+    </div>
     <div v-else class="pc-status-feedback">
       <EmptyState :title="schemes.length ? '当前聊天未启用状态方案' : '还没有状态方案'">
         <button class="pc-primary-btn compact" type="button" @click="openSettings">打开状态栏设置</button>
@@ -82,6 +91,18 @@ const isActive = ref(false);
 let refreshRevision = 0;
 let refreshScheduled = false;
 let eventStops: Array<{ stop: () => void }> = [];
+let regexFloorHtml = new Map<number, string>();
+
+type StatusFloorOption = {
+  messageId: number;
+};
+
+type RenderedStatusFloor = StatusFloorOption & {
+  html: string;
+};
+
+const floorOptions = ref<StatusFloorOption[]>([]);
+const selectedFloorId = ref<number | null>(null);
 
 const activeSchemeId = computed(() => statusStore.getActiveSchemeId(phone.currentTavernScopeKey));
 const enabledSchemes = computed(() => {
@@ -98,14 +119,42 @@ function selectScheme(schemeId: string) {
   statusStore.setActiveScheme(phone.currentTavernScopeKey, schemeId);
 }
 
+function setFloorOptions(nextOptions: StatusFloorOption[]) {
+  const previousLatestId = floorOptions.value[0]?.messageId ?? null;
+  const wasViewingLatest = selectedFloorId.value === null || selectedFloorId.value === previousLatestId;
+  floorOptions.value = nextOptions;
+
+  if (!nextOptions.length) {
+    selectedFloorId.value = null;
+    return;
+  }
+  if (wasViewingLatest || !nextOptions.some(floor => floor.messageId === selectedFloorId.value)) {
+    selectedFloorId.value = nextOptions[0]?.messageId ?? null;
+  }
+}
+
+function selectFloor(event: Event) {
+  const messageId = Number((event.target as HTMLSelectElement).value);
+  if (!Number.isInteger(messageId) || messageId === selectedFloorId.value) return;
+  selectedFloorId.value = messageId;
+  const cachedHtml = activeScheme.value?.source === 'regex' ? regexFloorHtml.get(messageId) : undefined;
+  if (cachedHtml) {
+    renderedHtml.value = cachedHtml;
+    errorMessage.value = '';
+    return;
+  }
+  scheduleStatusRefresh();
+}
+
 function loadRegexStatus(scheme: StatusDisplayScheme) {
   const usage = regexDisplay.getUsage(statusDisplayRegexTargetId(scheme.id));
   const extractRules = getRegexRulesByIds(regexDisplay.rules, [usage.contentRuleId], 'extract');
   if (!extractRules.length) throw new Error('还没有配置状态文字提取规则');
   const displayRules = getRegexRulesByIds(regexDisplay.rules, usage.displayRuleIds, 'replace');
   const messages = getChatMessagesSafe('0-{{lastMessageId}}', { hide_state: 'unhidden' });
+  const matches: RenderedStatusFloor[] = [];
 
-  for (const message of [...messages].reverse()) {
+  for (const message of messages) {
     if (message.role !== 'assistant' || !message.message.trim()) continue;
     const extracted = extractWithRegexRules(message.message, extractRules);
     if (extracted.errors.length) throw new Error(extracted.errors.join('；'));
@@ -113,16 +162,33 @@ function loadRegexStatus(scheme: StatusDisplayScheme) {
     const displayed = applyRegexDisplayRules(extracted.content, displayRules);
     if (displayed.errors.length) throw new Error(displayed.errors.join('；'));
     const renderMode = displayed.applied.length ? displayed.renderMode : extracted.renderMode;
-    return renderMode === 'html' ? displayed.content : renderTextStatus(displayed.content);
+    matches.push({
+      html: renderMode === 'html' ? displayed.content : renderTextStatus(displayed.content),
+      messageId: message.message_id,
+    });
   }
-  throw new Error('当前聊天没有命中状态格式的消息');
+  matches.reverse();
+  regexFloorHtml = new Map(matches.map(floor => [floor.messageId, floor.html]));
+  setFloorOptions(matches);
+  const selected = matches.find(floor => floor.messageId === selectedFloorId.value) ?? matches[0];
+  if (!selected) throw new Error('当前聊天没有命中状态格式的消息');
+  return selected.html;
 }
 
 async function loadMvuStatus(scheme: StatusDisplayScheme) {
   if (!scheme.template.trim()) throw new Error('当前方案还没有网页模板');
+  if (scheme.mvuScope === 'message') {
+    const options = getChatMessagesSafe('0-{{lastMessageId}}', { hide_state: 'unhidden' })
+      .filter(message => message.role === 'assistant' && message.message.trim())
+      .map(message => ({ messageId: message.message_id }))
+      .reverse();
+    setFloorOptions(options);
+  } else {
+    setFloorOptions([]);
+  }
   const options =
     scheme.mvuScope === 'message'
-      ? { type: 'message' as const, message_id: 'latest' as const }
+      ? { type: 'message' as const, message_id: selectedFloorId.value ?? ('latest' as const) }
       : { type: scheme.mvuScope };
   const data = await readMvuData(options);
   return renderMvuStatusTemplate(scheme.template, readMvuStatData(data));
@@ -165,7 +231,12 @@ function scheduleStatusRefresh() {
 
 watch(
   () => [route.value.appId, route.value.page, activeSchemeId.value, phone.currentTavernScopeKey] as const,
-  ([appId, page]) => {
+  ([appId, page, schemeId, scopeKey], previous) => {
+    if (!previous || schemeId !== previous[2] || scopeKey !== previous[3]) {
+      floorOptions.value = [];
+      selectedFloorId.value = null;
+      regexFloorHtml = new Map();
+    }
     if (appId === 'status-display' && page === 'root') scheduleStatusRefresh();
   },
   { immediate: true },
@@ -198,6 +269,24 @@ onUnmounted(stopRuntime);
 <style scoped>
 .pc-status-display-app {
   min-height: 100%;
+}
+
+.pc-status-content {
+  min-height: 100%;
+}
+
+.pc-status-floor-picker {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: center;
+  gap: 8px;
+  padding: 4px 8px;
+  border-top: 1px solid var(--pc-border);
+}
+
+.pc-status-floor-picker .pc-field-label {
+  margin: 0;
+  white-space: nowrap;
 }
 
 .pc-status-tabs {

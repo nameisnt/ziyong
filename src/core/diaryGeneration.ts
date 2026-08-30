@@ -4,12 +4,7 @@ import { GenerationRequestPartsSchema } from '@/type/generation';
 import { parseSimpleXmlResult } from '@/util/generation';
 import { parseConfiguredOutput } from '@/util/outputParsing';
 import { getSourceLastFloor } from '@/util/sourceFloor';
-import {
-  diagnoseTaggedRoot,
-  extractTaggedOutputCandidates,
-  getIncompleteTaggedRootWarning,
-  selectBestParsedCandidate,
-} from '@/util/parseCandidates';
+import { parseTaggedOutputCandidates } from '@/util/parseCandidates';
 import { parsePrettified } from '@/util/zod';
 
 export const DiaryGenerateConfigSchema = z.object({
@@ -108,27 +103,11 @@ function parseDiaryCandidate(raw: string): XmlParseResult<DiaryGeneratedResult> 
 }
 
 export function parseDiaryGeneratedResult(raw: string, fallbackOccurredAt = ''): XmlParseResult<DiaryGeneratedResult> {
-  const diaryCandidates = extractTaggedOutputCandidates(raw, '日记');
-  const selected = selectBestParsedCandidate(
-    raw,
-    diaryCandidates,
-    candidate => parseDiaryCandidate(candidate.raw),
-    ' <日记> ',
-  );
-  if (selected) {
-    const incompleteWarning = getIncompleteTaggedRootWarning(raw, '日记', diaryCandidates.length);
-    return {
-      ...selected,
-      warnings: [...new Set([...selected.warnings, incompleteWarning].filter(Boolean))],
-    };
-  }
+  const parsedDiary = parseTaggedOutputCandidates(raw, '日记', parseDiaryCandidate);
+  if (parsedDiary.ok) return parsedDiary;
 
   if (/<日记(?:\s|>)/i.test(raw) || /<\/日记\s*>/i.test(raw)) {
-    return {
-      ok: false,
-      raw,
-      warnings: diagnoseTaggedRoot(raw, '日记'),
-    };
+    return parsedDiary;
   }
 
   const parsed = parseSimpleXmlResult(raw);

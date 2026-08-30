@@ -25,3 +25,10 @@ test('every Bagu rule-manager icon button has the same accessible name as its ti
     assert.deepEqual(ariaLabel.slice(1), title.slice(1), file);
   }
 });
+
+test('Bagu sections do not stack redundant vertical spacing around their headers', () => {
+  assert.match(source, /\.pc-bagu-page\s*\{[\s\S]*?gap:\s*0;/u);
+  assert.match(source, /\.pc-bagu-panel\s*\{[\s\S]*?gap:\s*8px;/u);
+  assert.doesNotMatch(source, /\.pc-panel-head\s*\{[^}]*padding-bottom/u);
+  assert.doesNotMatch(source, /\.pc-rule-table\s*\{[^}]*padding-top/u);
+});

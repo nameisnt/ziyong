@@ -38,6 +38,21 @@
       <span v-for="cell in cells" :key="cell.key" class="pc-snake-cell" :data-kind="cell.kind"></span>
     </section>
 
+    <div class="pc-snake-direction-pad" role="group" aria-label="贪吃蛇方向控制">
+      <button class="pc-icon-btn up" type="button" title="向上" aria-label="向上" @click="setDirection('up')">
+        <i class="fa-solid fa-arrow-up"></i>
+      </button>
+      <button class="pc-icon-btn left" type="button" title="向左" aria-label="向左" @click="setDirection('left')">
+        <i class="fa-solid fa-arrow-left"></i>
+      </button>
+      <button class="pc-icon-btn down" type="button" title="向下" aria-label="向下" @click="setDirection('down')">
+        <i class="fa-solid fa-arrow-down"></i>
+      </button>
+      <button class="pc-icon-btn right" type="button" title="向右" aria-label="向右" @click="setDirection('right')">
+        <i class="fa-solid fa-arrow-right"></i>
+      </button>
+    </div>
+
     <article v-if="state.status === 'lost' || state.status === 'paused'" class="pc-section-card pc-minigame-message">
       <strong>{{ statusTitle }}</strong>
     </article>
@@ -298,5 +313,32 @@ onUnmounted(stopRuntime);
 .pc-snake-cell[data-kind='food'] {
   background: var(--pc-danger);
   border-radius: 999px;
+}
+
+.pc-snake-direction-pad {
+  display: grid;
+  grid-template-columns: repeat(3, 28px);
+  grid-template-rows: repeat(2, 28px);
+  align-self: center;
+  gap: 4px;
+}
+
+.pc-snake-direction-pad .up {
+  grid-column: 2;
+}
+
+.pc-snake-direction-pad .left {
+  grid-column: 1;
+  grid-row: 2;
+}
+
+.pc-snake-direction-pad .down {
+  grid-column: 2;
+  grid-row: 2;
+}
+
+.pc-snake-direction-pad .right {
+  grid-column: 3;
+  grid-row: 2;
 }
 </style>

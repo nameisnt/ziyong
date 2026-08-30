@@ -125,8 +125,10 @@
       :can-save="batchPreviewTask.status === 'completed'"
       :items="batchPreviewItems"
       kind="summary"
+      :parse-handler="parseSimpleXmlResult"
       :save-handler="saveBatchPreview"
       @back="returnFromBatchPreview"
+      @change="updateBatchPreview"
     />
 
     <SummaryBatchPage
@@ -413,9 +415,7 @@ function openBatchProgressPreview() {
   });
 }
 
-function returnFromBatchPreview(edits: ManualBatchPreviewEdit[]) {
-  const task = batchPreviewTask.value;
-  if (task) updateManualBatchPreviews(task.id, edits);
+function returnFromBatchPreview() {
   if (route.value.params?.batchOrigin === 'generate') {
     void phone.goBack();
     return;
@@ -423,6 +423,11 @@ function returnFromBatchPreview(edits: ManualBatchPreviewEdit[]) {
   const bookId = batchPreviewTask.value?.routeParams.bookId || '';
   const book = bookId ? summary.getBook(bookId) : null;
   phone.replacePage(book ? 'book' : 'root', book?.title || '总结', book ? { bookId } : undefined);
+}
+
+function updateBatchPreview(edits: ManualBatchPreviewEdit[]) {
+  const task = batchPreviewTask.value;
+  if (task) updateManualBatchPreviews(task.id, edits);
 }
 
 async function saveBatchPreview(edits: ManualBatchPreviewEdit[]) {

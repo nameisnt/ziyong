@@ -370,6 +370,7 @@ async function applyScenario(name: VisualScenarioName, options: { height?: numbe
       name === 'profiles-external-dark' ||
       name === 'preset-link-dark' ||
       name === 'macro-builder-dark' ||
+      name === 'status-display-regex-dark' ||
       name === 'status-display-settings-dark'
       ? 'dark'
       : 'light',
@@ -459,7 +460,7 @@ async function applyScenario(name: VisualScenarioName, options: { height?: numbe
     return { name, route: phone.currentRoute };
   }
 
-  if (name === 'status-display-regex') {
+  if (name === 'status-display-regex' || name === 'status-display-regex-dark') {
     const { createRegexDisplayRule, useRegexDisplayStore } = await import('@/apps/regex-display/store');
     const { createStatusDisplayScheme, statusDisplayRegexTargetId, useStatusDisplayStore } =
       await import('@/apps/status-display/store');
@@ -494,9 +495,19 @@ async function applyScenario(name: VisualScenarioName, options: { height?: numbe
     resetPhoneToRoute('status-display', 'root', '状态栏');
     const rendered = await waitForVisualCondition(() => {
       const frame = document.querySelector<HTMLIFrameElement>('.pc-status-display-app iframe');
-      return Boolean(frame?.srcdoc.includes('另一条 AI 回复'));
+      const floorSelect = document.querySelector<HTMLSelectElement>('.pc-status-floor-picker .pc-select');
+      return Boolean(frame?.srcdoc.includes('另一条 AI 回复') && floorSelect?.options.length === 2);
     });
     if (!rendered) throw new Error('Status display regex rules did not render the latest matching assistant message');
+    const floorSelect = document.querySelector<HTMLSelectElement>('.pc-status-floor-picker .pc-select');
+    if (!floorSelect) throw new Error('Status display history floor selector did not render');
+    floorSelect.value = '1';
+    floorSelect.dispatchEvent(new Event('change', { bubbles: true }));
+    const historicalRendered = await waitForVisualCondition(() => {
+      const frame = document.querySelector<HTMLIFrameElement>('.pc-status-display-app iframe');
+      return Boolean(frame?.srcdoc.includes('这是第一段正文'));
+    });
+    if (!historicalRendered) throw new Error('Status display did not switch to the selected historical floor');
     await waitForPaint();
     return { name, route: phone.currentRoute };
   }
@@ -920,9 +931,9 @@ async function applyScenario(name: VisualScenarioName, options: { height?: numbe
     ) {
       throw new Error('Home group management did not identify the active group');
     }
-    const allAppsScope = [...groupManager.querySelectorAll<HTMLButtonElement>('.pc-home-group-manager-scope button')].find(
-      button => button.textContent?.trim() === '全部 App',
-    );
+    const allAppsScope = [
+      ...groupManager.querySelectorAll<HTMLButtonElement>('.pc-home-group-manager-scope button'),
+    ].find(button => button.textContent?.trim() === '全部 App');
     allAppsScope?.click();
     await waitForPaint();
     const allManagerRows = groupManager.querySelectorAll('.pc-home-group-manager-row');
@@ -932,9 +943,9 @@ async function applyScenario(name: VisualScenarioName, options: { height?: numbe
     }
     allManagerRows[0]?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
     await waitForPaint();
-    const currentGroupScope = [...groupManager.querySelectorAll<HTMLButtonElement>('.pc-home-group-manager-scope button')].find(
-      button => button.textContent?.trim() === '本组',
-    );
+    const currentGroupScope = [
+      ...groupManager.querySelectorAll<HTMLButtonElement>('.pc-home-group-manager-scope button'),
+    ].find(button => button.textContent?.trim() === '本组');
     currentGroupScope?.click();
     await waitForPaint();
     if (groupManager.textContent?.includes('已选 1')) {
@@ -2367,8 +2378,20 @@ async function applyScenario(name: VisualScenarioName, options: { height?: numbe
       ?.click();
     await waitForPaint();
   } else if (name === 'mvu-modifier-tree') {
-    useSettingsStore().setTheme('light');
+    const mvuSettings = useSettingsStore();
+    mvuSettings.setTheme('light');
     resetPhoneToRoute('mvu-modifier', 'root', 'MVU 修改器');
+    await waitForPaint();
+    const mvuSearchInput = document.querySelector<HTMLInputElement>('.pc-mvu-app .pc-search-field input');
+    if (!mvuSearchInput || getComputedStyle(mvuSearchInput).backgroundColor !== 'rgba(0, 0, 0, 0)') {
+      throw new Error('MVU search input did not keep the shared transparent inner surface in light mode');
+    }
+    mvuSettings.setTheme('dark');
+    await waitForPaint();
+    if (getComputedStyle(mvuSearchInput).backgroundColor !== 'rgba(0, 0, 0, 0)') {
+      throw new Error('MVU search input did not keep the shared transparent inner surface in dark mode');
+    }
+    mvuSettings.setTheme('light');
     await waitForPaint();
     const worldRow = [...document.querySelectorAll<HTMLButtonElement>('.pc-mvu-tree-main')].find(button =>
       button.textContent?.includes('世界'),
@@ -3678,11 +3701,17 @@ async function applyScenario(name: VisualScenarioName, options: { height?: numbe
     confirm?.click();
     if (
       !(await waitForVisualCondition(() => {
-        const toggles = [...document.querySelectorAll<HTMLInputElement>('.pc-worldbook-entry .pc-toggle input')];
-        return toggles.length === 2 && !toggles[0]?.checked && toggles[1]?.checked;
+        const rows = [...document.querySelectorAll<HTMLElement>('.pc-worldbook-entry')];
+        const toggles = rows.map(row => row.querySelector<HTMLInputElement>('.pc-toggle input'));
+        return (
+          rows.length === 2 &&
+          Boolean(rows[0]?.textContent?.includes('显式关键词触发条目')) &&
+          Boolean(toggles[0]?.checked) &&
+          !toggles[1]?.checked
+        );
       }))
     ) {
-      throw new Error('Worldbook single-select switches did not update together');
+      throw new Error('Worldbook single-select did not move the retained enabled entry to the group start');
     }
     const entries = await getWorldbookEntries('【视觉】旧格式世界书');
     if (

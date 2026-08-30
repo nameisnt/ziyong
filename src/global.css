@@ -639,8 +639,10 @@
   height: 100%;
   border: 0;
   outline: 0;
-  background: transparent;
-  color: var(--pc-text);
+  background: transparent !important;
+  background-color: transparent !important;
+  color: var(--pc-form-control-text, var(--pc-text)) !important;
+  -webkit-text-fill-color: var(--pc-form-control-text, var(--pc-text));
 }
 
 .pc-phone-root .pc-search-field > input::placeholder {

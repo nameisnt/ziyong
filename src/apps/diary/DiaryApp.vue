@@ -113,8 +113,10 @@
       :can-save="batchPreviewTask.status === 'completed'"
       :items="batchPreviewItems"
       kind="diary"
+      :parse-handler="parseDiaryGeneratedResult"
       :save-handler="saveBatchPreview"
       @back="returnFromBatchPreview"
+      @change="updateBatchPreview"
     />
 
     <DiaryBatchPage
@@ -237,12 +239,14 @@ import {
 } from '@/core/manualBatchRunner';
 import { getCurrentChatScopeKey } from '@/store/chatScoped';
 import { useDiaryStore } from '@/store/diary';
+import { useGenerationAliasesStore } from '@/store/generationAliases';
 import { useGenerationTaskStore } from '@/store/generationTasks';
 import { usePhoneStore } from '@/store/phone';
 import { usePluginPresetStore } from '@/store/pluginPresets';
 import { usePromptStore } from '@/store/prompts';
 import { useSettingsStore } from '@/store/settings';
 import { canOpenBaguScan } from '@/util/baguScanGate';
+import { replaceGenerationAliases, resolveGenerationIdentityAliases } from '@/util/generationAliases';
 import { formatGenerationReferences, type GenerationReferenceItem } from '@/util/references';
 import { usePreviewDraftPersistence } from '@/util/previewDrafts';
 import { useInvalidRouteFallback } from '@/util/routeFallback';
@@ -263,6 +267,7 @@ import { storeToRefs } from 'pinia';
 const diary = useDiaryStore();
 const diaryGenerationAdapter = getRegisteredPhoneGenerationAdapter('diary', 'generate');
 const diaryReadReactionAdapter = getRegisteredPhoneGenerationAdapter('diary', 'read-reaction');
+const generationAliases = useGenerationAliasesStore();
 const generationTasks = useGenerationTaskStore();
 const phone = usePhoneStore();
 const pluginPresets = usePluginPresetStore();
@@ -378,7 +383,13 @@ const {
   page: 'preview',
   route,
   setPreview: preview => {
-    generationState.preview = preview;
+    generationState.preview = preview
+      ? {
+          ...preview,
+          bookTitle: resolveDiaryIdentityName(preview.bookTitle),
+          perspective: resolveDiaryPerspective(preview.perspective),
+        }
+      : null;
   },
   title: () => (generationState.preview?.action === 'read-reaction' ? '阅读反应预览' : '日记预览'),
 });
@@ -422,20 +433,38 @@ const activeFailedDraft = computed(() => {
   const draftId = route.value.params?.draftId;
   return draftId ? diary.getFailedDraft(draftId) : null;
 });
+
+function resolveDiaryIdentityName(name: string) {
+  const aliases = resolveGenerationIdentityAliases(generationAliases);
+  return (replaceGenerationAliases(name, aliases) || name).trim();
+}
+
+function resolveDiaryPerspective(perspective: CharacterRef): CharacterRef {
+  return { ...perspective, name: resolveDiaryIdentityName(perspective.name) };
+}
+
 const generationPerspective = computed(() => {
   const fromBook = activeBook.value?.perspective;
-  if (fromBook?.name) return fromBook;
+  if (fromBook?.name) return resolveDiaryPerspective(fromBook);
   const name = generationDraft.perspectiveName.trim();
-  return name ? { name } : null;
+  return name ? { name: resolveDiaryIdentityName(name) } : null;
 });
-const generationTargetBookTitle = computed(() => activeBook.value?.title || generationDraft.bookTitle.trim());
+const generationTargetBookTitle = computed(() =>
+  resolveDiaryIdentityName(activeBook.value?.title || generationDraft.bookTitle.trim()),
+);
 const batchPerspective = computed(() => {
   const fromBook = activeBook.value?.perspective;
-  if (fromBook?.name) return fromBook;
+  if (fromBook?.name) return resolveDiaryPerspective(fromBook);
   const name = batchDraft.perspectiveName.trim();
-  return name ? { name } : null;
+  return name ? { name: resolveDiaryIdentityName(name) } : null;
 });
-const batchTargetBookTitle = computed(() => activeBook.value?.title || batchDraft.bookTitle.trim());
+const batchTargetBookTitle = computed(() =>
+  resolveDiaryIdentityName(activeBook.value?.title || batchDraft.bookTitle.trim()),
+);
+const reactionPerspective = computed(() => {
+  const name = reactionDraft.readerName.trim();
+  return name ? ({ name: resolveDiaryIdentityName(name) } satisfies CharacterRef) : null;
+});
 const batchTask = computed(
   () =>
     generationTasks.tasks.find(
@@ -510,7 +539,7 @@ const generationPromptPreview = computed(() => {
 });
 const reactionPromptPreview = computed(() => {
   if (!activeEntry.value) return '未选择日记';
-  const readerName = reactionDraft.readerName.trim() || '阅读者';
+  const readerName = reactionPerspective.value?.name || '阅读者';
   try {
     return buildGenerationPreview(
       diaryReadReactionAdapter,
@@ -581,7 +610,7 @@ function captureDiaryPrompt() {
 
 function captureReactionPrompt() {
   if (!activeEntry.value) return Promise.reject(new Error('未选择日记'));
-  const readerName = reactionDraft.readerName.trim() || '阅读者';
+  const readerName = reactionPerspective.value?.name || '阅读者';
   return captureGenerationPrompt(
     diaryReadReactionAdapter,
     {
@@ -639,6 +668,14 @@ const shelfBooks = computed(() =>
     subtitle: `${book.entries.length} 篇`,
     title: book.title,
   })),
+);
+
+watch(
+  () => [route.value.appId, diary.scopeKey, generationAliases.charReplacement, generationAliases.userReplacement],
+  ([appId]) => {
+    if (appId === 'diary') diary.resolvePerspectiveAliases(resolveDiaryIdentityName);
+  },
+  { immediate: true },
 );
 
 watch(
@@ -839,7 +876,7 @@ function parseReaders(raw: string): CharacterRef[] | undefined {
     .split(',')
     .map(item => item.trim())
     .filter(Boolean)
-    .map(name => ({ name }));
+    .map(name => ({ name: resolveDiaryIdentityName(name) }));
   return items.length ? items : undefined;
 }
 
@@ -1116,6 +1153,7 @@ async function runGeneration() {
 
 async function runBatchGeneration() {
   const existingTask = batchTask.value;
+  if (existingTask) resolveBatchTaskIdentity(existingTask);
   if (existingTask && ['paused', 'interrupted'].includes(existingTask.status)) {
     await resumeGenerationTask(existingTask.id);
     return;
@@ -1165,13 +1203,25 @@ async function runBatchGeneration() {
   await runManualBatchTask(task.id);
 }
 
+function resolveBatchTaskIdentity(task: GenerationTask) {
+  const config = task.config as ManualBatchTaskConfig;
+  if (!config.perspective?.name) return;
+  const perspective = resolveDiaryPerspective(config.perspective);
+  const bookTitle = resolveDiaryIdentityName(config.bookTitle || '');
+  if (perspective.name === config.perspective.name && bookTitle === (config.bookTitle || '')) return;
+  generationTasks.patchTask(task.id, {
+    config: { ...config, bookTitle, perspective },
+    title: resolveDiaryIdentityName(task.title),
+  });
+}
+
 function resetBatchProgress() {
   if (batchTask.value) generationTasks.removeTask(batchTask.value.id);
   batchFormError.value = '';
 }
 
 function hydrateBatchDraft(config: ManualBatchTaskConfig) {
-  batchDraft.bookTitle = config.bookTitle || '';
+  batchDraft.bookTitle = resolveDiaryIdentityName(config.bookTitle || '');
   batchDraft.connectionSelection = getCurrentTextProviderSelection(config.textProvider);
   batchDraft.floorMode = config.floorMode || 'custom';
   batchDraft.floorText = config.floorText || '';
@@ -1179,7 +1229,7 @@ function hydrateBatchDraft(config: ManualBatchTaskConfig) {
   batchDraft.groupSize = config.groupSize ?? 5;
   batchDraft.includeAi = config.includeAi ?? true;
   batchDraft.includeUser = config.includeUser ?? true;
-  batchDraft.perspectiveName = config.perspective?.name || '';
+  batchDraft.perspectiveName = config.perspective ? resolveDiaryPerspective(config.perspective).name : '';
   batchDraft.rpmLimit = config.rpmLimit;
   batchDraft.tavernPresetName = config.tavernPresetName;
   batchDraft.userRequirement = config.userRequirement;
@@ -1199,13 +1249,13 @@ async function runReadReactionGeneration() {
     toastr.error(error instanceof Error ? error.message : '无法建立阅读反应任务');
     return;
   }
-  const readerName = reactionDraft.readerName.trim();
-  if (!readerName) {
+  const targetPerspective = reactionPerspective.value;
+  if (!targetPerspective) {
     reactionGenerationSession.fail(task.id, new Error('请先填写阅读者名字'));
     return;
   }
 
-  const targetPerspective: CharacterRef = { name: readerName };
+  const readerName = targetPerspective.name;
   const targetBook = diary.findBookByPerspective(targetPerspective);
 
   beginDiaryPreviewDraft();
@@ -1383,9 +1433,7 @@ function openBatchProgressPreview() {
   });
 }
 
-function returnFromBatchPreview(edits: ManualBatchPreviewEdit[]) {
-  const task = batchPreviewTask.value;
-  if (task) updateManualBatchPreviews(task.id, edits);
+function returnFromBatchPreview() {
   if (route.value.params?.batchOrigin === 'generate') {
     void phone.goBack();
     return;
@@ -1393,6 +1441,11 @@ function returnFromBatchPreview(edits: ManualBatchPreviewEdit[]) {
   const bookId = batchPreviewTask.value?.routeParams.bookId || '';
   const book = bookId ? diary.getBook(bookId) : null;
   phone.replacePage(book ? 'book' : 'root', book?.title || '角色书架', book ? { bookId } : undefined);
+}
+
+function updateBatchPreview(edits: ManualBatchPreviewEdit[]) {
+  const task = batchPreviewTask.value;
+  if (task) updateManualBatchPreviews(task.id, edits);
 }
 
 async function saveBatchPreview(edits: ManualBatchPreviewEdit[]) {
@@ -1446,13 +1499,14 @@ function reparseFailedDraft() {
   }
 
   const bookId = typeof draft.context.bookId === 'string' ? draft.context.bookId : '';
-  const bookTitle = typeof draft.context.bookTitle === 'string' ? draft.context.bookTitle : '';
+  const bookTitle =
+    typeof draft.context.bookTitle === 'string' ? resolveDiaryIdentityName(draft.context.bookTitle) : '';
   const occurredAt = typeof draft.context.occurredAt === 'string' ? draft.context.occurredAt : '';
   const perspective =
     typeof draft.context.perspective === 'object' &&
     draft.context.perspective &&
     typeof (draft.context.perspective as CharacterRef).name === 'string'
-      ? (draft.context.perspective as CharacterRef)
+      ? resolveDiaryPerspective(draft.context.perspective as CharacterRef)
       : null;
   const isReaction = draft.actionId === 'read-reaction';
   if (!isReaction && bookId && !diary.getBook(bookId)) {
@@ -1472,6 +1526,7 @@ function reparseFailedDraft() {
     rawOutput,
     warnings: parsed.warnings,
   });
+  const storedPerspective = diary.getBook(bookId)?.perspective;
   generationState.preview = {
     action: isReaction ? 'read-reaction' : 'generate',
     bookId,
@@ -1480,7 +1535,8 @@ function reparseFailedDraft() {
     draftId: null,
     generationRecord: draft.generationRecord,
     occurredAt: parsed.data.occurredAt || occurredAt,
-    perspective: perspective || diary.getBook(bookId)?.perspective || { name: '当前视角' },
+    perspective: perspective ||
+      (storedPerspective ? resolveDiaryPerspective(storedPerspective) : null) || { name: '当前视角' },
     raw: rawOutput,
     sourceBookId: typeof draft.context.sourceBookId === 'string' ? draft.context.sourceBookId : bookId,
     sourceEntryId: typeof draft.context.sourceEntryId === 'string' ? draft.context.sourceEntryId : '',
@@ -1521,8 +1577,10 @@ function submitEntry() {
   if (!draft.perspectiveName.trim() && !activeBook.value) return;
   const result = diary.createEntry({
     bookId: route.value.params?.bookId,
-    bookTitle: draft.bookTitle,
-    perspective: activeBook.value?.perspective || { name: draft.perspectiveName.trim() },
+    bookTitle: resolveDiaryIdentityName(draft.bookTitle),
+    perspective: activeBook.value
+      ? resolveDiaryPerspective(activeBook.value.perspective)
+      : { name: resolveDiaryIdentityName(draft.perspectiveName) },
     title: draft.title,
     content: draft.content,
     occurredAt: draft.occurredAt,
@@ -1564,9 +1622,41 @@ async function removeEntry(bookId: string, entryId: string) {
   phone.replacePage('book', book.title, { bookId });
   toastr.success('已删除日记');
 }
-const regenerateFailedDraft = useFailedDraftRegeneration({
+const regenerateFailedDraftBase = useFailedDraftRegeneration({
   draft: () => activeFailedDraft.value,
   rawOutput: failedDraftRawOutput,
   reparse: reparseFailedDraft,
 });
+
+async function regenerateFailedDraft() {
+  const draft = activeFailedDraft.value;
+  if (draft) {
+    const contextPerspective = draft.context.perspective;
+    if (
+      contextPerspective &&
+      typeof contextPerspective === 'object' &&
+      typeof (contextPerspective as CharacterRef).name === 'string'
+    ) {
+      draft.context.perspective = resolveDiaryPerspective(contextPerspective as CharacterRef);
+    }
+    if (typeof draft.context.bookTitle === 'string') {
+      draft.context.bookTitle = resolveDiaryIdentityName(draft.context.bookTitle);
+    }
+
+    const replayConfig = draft.generationRecord?.replay.config;
+    const replayPerspective = replayConfig?.perspective;
+    if (
+      replayConfig &&
+      replayPerspective &&
+      typeof replayPerspective === 'object' &&
+      typeof (replayPerspective as CharacterRef).name === 'string'
+    ) {
+      replayConfig.perspective = resolveDiaryPerspective(replayPerspective as CharacterRef);
+      if (typeof replayConfig.bookTitle === 'string') {
+        replayConfig.bookTitle = resolveDiaryIdentityName(replayConfig.bookTitle);
+      }
+    }
+  }
+  await regenerateFailedDraftBase();
+}
 </script>

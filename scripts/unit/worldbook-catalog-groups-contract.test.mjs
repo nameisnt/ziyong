@@ -32,6 +32,12 @@ test('single-select worldbook groups update their entry states in one batch', ()
   assert.match(app, /catalogGroups\.setEntryGroupMode/u);
 });
 
+test('enabled worldbooks and entries stay first inside their display groups', () => {
+  assert.match(app, /function enabledFirst<T>/u);
+  assert.match(app, /enabledFirst\(books, isGlobalEnabled\)/u);
+  assert.match(app, /enabledFirst\(groupedEntries, entry => entry\.enabled\)/u);
+});
+
 test('rename, copy and delete keep display-group metadata aligned', () => {
   assert.match(app, /catalogGroups\.migrateBook\(oldName, newName\)/u);
   assert.match(app, /catalogGroups\.copyEntryGroup/u);

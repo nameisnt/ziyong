@@ -64,6 +64,7 @@
     <section class="pc-preview-panel">
       <div v-if="activeView === 'preview'" class="pc-preview-view">
         <div class="pc-preview-body">
+          <slot v-if="!editingContent" name="before-content"></slot>
           <ReasoningDisclosure
             v-if="!editingContent"
             :content="reasoning"

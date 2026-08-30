@@ -26,7 +26,18 @@ test('manual batch pages expose completed previews while generation continues', 
 test('live preview keeps edits, locks early saving and avoids completion navigation duplication', () => {
   assert.match(preview, /const currentDrafts = new Map/u);
   assert.match(preview, /emit\('back', getEdits\(\)\)/u);
-  assert.match(preview, /整批完成后保存/u);
+  assert.match(preview, /完成后保存/u);
+  assert.match(preview, /GenerationPreviewPanel/u);
+  assert.match(preview, /\[思\]/u);
+  assert.match(preview, /有思维链/u);
+  assert.match(preview, /无思维链/u);
+  assert.match(preview, /parseHandler/u);
+  assert.match(preview, /registerNavigationGuard/u);
+  assert.match(preview, /emit\('change', getEdits\(\)\)/u);
+  assert.match(diaryApp, /:parse-handler="parseDiaryGeneratedResult"/u);
+  assert.match(summaryApp, /:parse-handler="parseSimpleXmlResult"/u);
+  assert.match(diaryApp, /@change="updateBatchPreview"/u);
+  assert.match(summaryApp, /@change="updateBatchPreview"/u);
   assert.match(runner, /const alreadyViewingPreview/u);
   assert.match(runner, /if \(!alreadyViewingPreview\)/u);
 });

@@ -115,6 +115,12 @@ export async function applyMinigameVisualScenario(name: string, context: Minigam
     ) {
       throw new Error('Snake start did not persist speed and running state');
     }
+    const down = findButton('向下', document.querySelector('[aria-label="贪吃蛇方向控制"]') || document);
+    if (!down) throw new Error('Snake direction pad is missing');
+    down.click();
+    if (!(await context.waitForCondition(() => setting(field)?.direction === 'down'))) {
+      throw new Error('Snake direction pad did not change the active direction');
+    }
     findButton('暂停', document.querySelector('.pc-minigame-actions') || document)?.click();
     if (!(await context.waitForCondition(() => setting(field)?.status === 'paused'))) {
       throw new Error('Snake pause did not persist');

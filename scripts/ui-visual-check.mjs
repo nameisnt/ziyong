@@ -24,7 +24,7 @@ const defaultSizes = [
 const businessFailedDraftReparseScenarios = Object.freeze({
   'diary-failed-draft-reparse': {
     content: '修复 XML 后保留的日记正文。',
-    raw: '<result><title>重新解析成功</title><content>修复 XML 后保留的日记正文。</content></result>',
+    raw: '<日记>\n标题：重新解析成功\n时间：第四日\n内容：修复 XML 后保留的日记正文。',
     title: '重新解析成功',
   },
   'digest-failed-draft-reparse': {
@@ -608,16 +608,39 @@ async function runInteractionChecks(page, scenario) {
       if (!(await previewPage.count())) {
         findings.push({ severity: 'fail', message: '批量生成中无法打开已完成预览' });
       } else {
-        const titleField = previewPage.locator('input.pc-field').first();
-        await titleField.fill('修改后的中途预览');
-        const saveButton = previewPage.getByRole('button', { name: '整批完成后保存' });
+        const saveButton = previewPage.getByRole('button', { name: '完成后保存（1）' });
         if (!(await saveButton.isDisabled())) {
           findings.push({ severity: 'fail', message: '批量未完成时错误开放了整批保存' });
         }
+        await previewPage.getByRole('tab', { name: '有思维链 1' }).click();
+        const previewRow = previewPage.getByRole('button', { name: /\[思\]\s*第一批预览/u });
+        await previewRow.click();
+        if (!(await previewPage.locator('.pc-generation-preview').count())) {
+          findings.push({ severity: 'fail', message: '批量预览条目没有打开共享完整预览界面' });
+        }
+        const titleField = previewPage.locator('input.pc-field').first();
+        await titleField.fill('修改后的中途预览');
+        await previewPage.getByRole('button', { name: '完成修改' }).click();
         await previewPage.getByRole('button', { name: '返回' }).click();
         await page.getByRole('button', { name: '查看预览（1）' }).click();
-        if ((await page.locator('.pc-batch-preview-page input.pc-field').first().inputValue()) !== '修改后的中途预览') {
+        const reopenedRow = page.getByRole('button', { name: /\[思\]\s*修改后的中途预览/u });
+        if (!(await reopenedRow.count())) {
           findings.push({ severity: 'fail', message: '离开中途预览后没有保留编辑内容' });
+        }
+        await reopenedRow.click();
+        await previewPage.locator('input.pc-field').first().fill('顶栏返回保留修改');
+        await page.locator('.pc-topbar [aria-label="返回"]').click();
+        const backPersistedRow = page.getByRole('button', { name: /\[思\]\s*顶栏返回保留修改/u });
+        if (!(await backPersistedRow.count())) {
+          findings.push({ severity: 'fail', message: '单条完整预览使用顶栏返回时没有保留修改' });
+        }
+        await page.getByRole('button', { name: '切换为夜间模式' }).click();
+        if ((await page.locator('.pc-phone-root').getAttribute('data-theme')) !== 'dark') {
+          findings.push({ severity: 'fail', message: '批量预览无法切换到夜间主题' });
+        }
+        await backPersistedRow.click();
+        if (!(await page.locator('.pc-batch-preview-detail .pc-generation-preview').count())) {
+          findings.push({ severity: 'fail', message: '夜间主题下批量条目完整预览不可用' });
         }
       }
     }
@@ -932,7 +955,7 @@ async function runInteractionChecks(page, scenario) {
       if ((await editor.count()) !== 1) {
         findings.push({ severity: 'fail', message: '总结失败草稿没有保留可编辑的原始输出' });
       } else {
-        await editor.fill('<result><title>重新解析成功</title><content>修复 XML 后保留的总结正文。</content></result>');
+        await editor.fill('<result><title>重新解析成功</title><content>修复 XML 后保留的总结正文。</content>');
         await page.locator('.pc-failed-draft-page .pc-form-actions .pc-primary-btn').click();
         try {
           await page.locator('.pc-shared-generation-preview-page').waitFor({ state: 'visible' });

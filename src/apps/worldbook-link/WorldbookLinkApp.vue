@@ -190,6 +190,11 @@ const linkStateLabel = computed(() => {
   if (!detailStatus.value?.profile) return '未关联';
   return detailStatus.value.matchesCurrent ? '已关联' : '状态不同';
 });
+
+function enabledFirst<T>(items: T[], isEnabled: (item: T) => boolean) {
+  return [...items].sort((left, right) => Number(isEnabled(right)) - Number(isEnabled(left)));
+}
+
 const visibleBookSections = computed(() => {
   const filterBooks = (names: string[]) => {
     const keyword = searchQuery.value.trim().toLocaleLowerCase();
@@ -201,7 +206,11 @@ const visibleBookSections = computed(() => {
     const group = catalogGroups.bookGroupOf(bookName) || '未分组';
     grouped.set(group, [...(grouped.get(group) || []), bookName]);
   });
-  return [...grouped].map(([label, books]) => ({ books, id: `${activeCategory.value}:${label}`, label }));
+  return [...grouped].map(([label, books]) => ({
+    books: activeCategory.value === 'global' ? enabledFirst(books, isGlobalEnabled) : books,
+    id: `${activeCategory.value}:${label}`,
+    label,
+  }));
 });
 const visibleBookCount = computed(() =>
   visibleBookSections.value.reduce((sum, section) => sum + section.books.length, 0),
@@ -219,7 +228,7 @@ const visibleEntrySections = computed(() => {
     grouped.set(group, [...(grouped.get(group) || []), entry]);
   });
   return [...grouped].map(([label, groupedEntries]) => ({
-    entries: groupedEntries,
+    entries: enabledFirst(groupedEntries, entry => entry.enabled),
     id: `${detailBookName.value}:${label}`,
     label,
   }));

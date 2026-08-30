@@ -17,6 +17,7 @@ const scenario = await readMaybe(new URL('../../src/testing/visual/minigameScena
 const definitions = await readMaybe(new URL('../../src/data/miniGameApps.ts', import.meta.url));
 const registration = await readMaybe(new URL('../../src/apps/game-2048/index.ts', import.meta.url));
 const component = await readMaybe(new URL('../../src/apps/game-2048/Game2048App.vue', import.meta.url));
+const snake = await readMaybe(new URL('../../src/apps/game-2048/SnakeGame.vue', import.meta.url));
 
 const gameIds = [
   '2048',
@@ -53,4 +54,8 @@ test('all nine minigames are registered as direct apps without a legacy aggregat
   assert.match(component, /<span>\{\{ t`重开` \}\}<\/span>/u);
   assert.doesNotMatch(component, /openMiniGame|pushPage\('play'/);
   assert.match(scenario, /resetPhoneToRoute\(gameDefinition\.appId, 'root', gameDefinition\.name\)/);
+  assert.match(snake, /aria-label="贪吃蛇方向控制"/u);
+  for (const direction of ['up', 'down', 'left', 'right']) {
+    assert.match(snake, new RegExp(`@click="setDirection\\('${direction}'\\)"`, 'u'));
+  }
 });

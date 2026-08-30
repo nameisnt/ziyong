@@ -2,6 +2,11 @@ import type { XmlParseResult } from '@/type/generation';
 
 export interface OutputCandidate {
   index: number;
+  repair?: {
+    closing: boolean;
+    opening: boolean;
+    rootName: string;
+  };
   raw: string;
 }
 
@@ -27,6 +32,32 @@ export function extractTaggedOutputCandidates(raw: string, rootName: string): Ou
     index,
     raw: match[0],
   }));
+}
+
+export function createTaggedRootRepairCandidates(raw: string, rootName: string): OutputCandidate[] {
+  const normalized = stripOutputCodeFence(raw);
+  const root = rootName.trim();
+  if (!normalized || !root) return [];
+
+  const escapedRoot = escapeRegExp(root);
+  const openingCount = normalized.match(new RegExp(`<${escapedRoot}(?:\\s[^>]*)?>`, 'gi'))?.length || 0;
+  const closingCount = normalized.match(new RegExp(`</${escapedRoot}\\s*>`, 'gi'))?.length || 0;
+  if (openingCount > 1 || closingCount > 1 || (openingCount === 1 && closingCount === 1)) return [];
+
+  const opening = openingCount === 0;
+  const closing = closingCount === 0;
+  return [
+    {
+      index: 0,
+      raw: `${opening ? `<${root}>` : ''}${normalized}${closing ? `</${root}>` : ''}`,
+      repair: { closing, opening, rootName: root },
+    },
+  ];
+}
+
+export function extractRepairableTaggedOutputCandidates(raw: string, rootName: string): OutputCandidate[] {
+  const complete = extractTaggedOutputCandidates(raw, rootName);
+  return complete.length ? complete : createTaggedRootRepairCandidates(raw, rootName);
 }
 
 export function diagnoseTaggedRoot(raw: string, rootName: string) {
@@ -134,6 +165,16 @@ function uniqueWarnings(warnings: string[]) {
   return [...new Set(warnings.filter(Boolean))];
 }
 
+function getRepairWarning(candidate: OutputCandidate, succeeded: boolean) {
+  if (!candidate.repair) return '';
+  const repaired = [candidate.repair.opening ? '开始标签' : '', candidate.repair.closing ? '结束标签' : '']
+    .filter(Boolean)
+    .join('和');
+  return succeeded
+    ? `已自动补全 <${candidate.repair.rootName}> ${repaired}`
+    : `自动补全 <${candidate.repair.rootName}> ${repaired}后仍未通过格式校验`;
+}
+
 export function selectBestParsedCandidate<T>(
   raw: string,
   candidates: OutputCandidate[],
@@ -144,7 +185,13 @@ export function selectBestParsedCandidate<T>(
 
   const attempts = candidates.map(candidate => ({
     candidate,
-    parsed: parse(candidate),
+    parsed: (() => {
+      const parsed = parse(candidate);
+      return {
+        ...parsed,
+        warnings: uniqueWarnings([getRepairWarning(candidate, parsed.ok), ...parsed.warnings]),
+      };
+    })(),
   }));
   const successes = attempts
     .filter(
@@ -195,10 +242,13 @@ export function parseTaggedOutputCandidates<T>(
   rootName: string,
   parse: (candidateRaw: string) => XmlParseResult<T>,
 ): XmlParseResult<T> {
-  const candidates = extractTaggedOutputCandidates(raw, rootName);
+  const completeCandidates = extractTaggedOutputCandidates(raw, rootName);
+  const candidates = completeCandidates.length ? completeCandidates : createTaggedRootRepairCandidates(raw, rootName);
   const selected = selectBestParsedCandidate(raw, candidates, candidate => parse(candidate.raw), ` <${rootName}> `);
   if (selected) {
-    const incompleteWarning = getIncompleteTaggedRootWarning(raw, rootName, candidates.length);
+    const incompleteWarning = completeCandidates.length
+      ? getIncompleteTaggedRootWarning(raw, rootName, completeCandidates.length)
+      : '';
     return {
       ...selected,
       warnings: [...new Set([...selected.warnings, incompleteWarning].filter(Boolean))],

@@ -20,10 +20,10 @@ function perspectiveKey(ref: CharacterRef) {
 export const useDiaryStore = defineStore('diary', () => {
   const { data, flushCurrentScope, rehydrateFromSettings, resetCurrentScope, scopeKey, switchScope } =
     useChatScopedDomain({
-    field: diaryField,
-    schema: DiaryScopeDataSchema,
-    createDefault: () => validateInplace(DiaryScopeDataSchema, {}),
-  });
+      field: diaryField,
+      schema: DiaryScopeDataSchema,
+      createDefault: () => validateInplace(DiaryScopeDataSchema, {}),
+    });
 
   const books = computed(() => data.value.books);
   const { createFailedDraft, deleteFailedDraft, failedDrafts, getFailedDraft, updateFailedDraft } =
@@ -65,6 +65,40 @@ export const useDiaryStore = defineStore('diary', () => {
   function findBookByPerspective(perspective: CharacterRef) {
     const key = perspectiveKey(perspective);
     return books.value.find(book => perspectiveKey(book.perspective) === key) ?? null;
+  }
+
+  function resolvePerspectiveAliases(resolveName: (name: string) => string) {
+    let repaired = 0;
+    let skipped = 0;
+
+    for (const book of data.value.books) {
+      const sourceName = book.perspective.name.trim();
+      const resolvedName = resolveName(sourceName).trim();
+      if (!resolvedName || resolvedName === sourceName) continue;
+
+      const duplicate = data.value.books.some(
+        candidate =>
+          candidate.id !== book.id &&
+          candidate.perspective.name.trim().toLocaleLowerCase() === resolvedName.toLocaleLowerCase(),
+      );
+      if (duplicate) {
+        skipped += 1;
+        continue;
+      }
+
+      book.perspective = { ...book.perspective, name: resolvedName };
+      if (book.title.trim() === `${sourceName}的日记`) book.title = `${resolvedName}的日记`;
+      book.entries.forEach(entry => {
+        entry.perspective = { ...entry.perspective, name: resolveName(entry.perspective.name).trim() };
+        if (entry.readers) {
+          entry.readers = entry.readers.map(reader => ({ ...reader, name: resolveName(reader.name).trim() }));
+        }
+      });
+      book.updatedAt = nowIso();
+      repaired += 1;
+    }
+
+    return { repaired, skipped };
   }
 
   function ensureBook(perspective: CharacterRef, title?: string) {
@@ -184,6 +218,7 @@ export const useDiaryStore = defineStore('diary', () => {
     getEntry,
     renameBook,
     rehydrateFromSettings,
+    resolvePerspectiveAliases,
     resetCurrentScope,
     scopeKey,
     switchScope,

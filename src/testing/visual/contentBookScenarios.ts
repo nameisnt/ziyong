@@ -1,7 +1,9 @@
 import { useDiaryStore } from '@/store/diary';
+import { useGenerationAliasesStore } from '@/store/generationAliases';
 import { useGenerationTaskStore } from '@/store/generationTasks';
 import { useLettersStore } from '@/store/letters';
 import { usePreviewDraftStore } from '@/store/previewDrafts';
+import { useSettingsStore } from '@/store/settings';
 import { useSummaryStore } from '@/store/summary';
 import type { HiddenGenerationRecord } from '@/type/generation';
 import { buildItemTransfer, previewItemTransfer } from '@/util/itemTransfer';
@@ -93,7 +95,9 @@ export async function applyContentBookVisualScenario(name: string, dependencies:
     const book = createSummaryFixture();
     resetPhoneToRoute('summary', 'book', book.title, { bookId: book.id });
     await waitForPaint();
-    document.querySelector<HTMLButtonElement>('.pc-summary-book-page > .pc-directory-toolbar .pc-action-menu > summary')?.click();
+    document
+      .querySelector<HTMLButtonElement>('.pc-summary-book-page > .pc-directory-toolbar .pc-action-menu > summary')
+      ?.click();
     await waitForPaint();
     const importButton = [
       ...document.querySelectorAll<HTMLButtonElement>('.pc-summary-book-page > .pc-directory-toolbar button'),
@@ -106,7 +110,8 @@ export async function applyContentBookVisualScenario(name: string, dependencies:
     }
     const fileInput = document.querySelector<HTMLInputElement>('.pc-item-transfer-dialog input[type="file"]');
     const sourceEntry = book.entries[0];
-    if (!fileInput || !sourceEntry) throw new Error('Summary import dialog did not expose its file input or fixture item');
+    if (!fileInput || !sourceEntry)
+      throw new Error('Summary import dialog did not expose its file input or fixture item');
     const file = new File(
       [JSON.stringify(buildItemTransfer('summary', { bookId: book.id, entryId: sourceEntry.id }))],
       'summary-item.json',
@@ -135,8 +140,8 @@ export async function applyContentBookVisualScenario(name: string, dependencies:
       await waitForPaint();
       document.querySelector<HTMLButtonElement>('.pc-reader-tool-trigger')?.click();
       await waitForPaint();
-      const exportButton = [...document.querySelectorAll<HTMLButtonElement>('.pc-reader-tool-menu button')].find(button =>
-        button.textContent?.includes('导出本条'),
+      const exportButton = [...document.querySelectorAll<HTMLButtonElement>('.pc-reader-tool-menu button')].find(
+        button => button.textContent?.includes('导出本条'),
       );
       if (!exportButton) throw new Error('Summary detail did not expose its single-item export action');
       const payload = buildItemTransfer('summary', { bookId: book.id, entryId: entry.id });
@@ -151,6 +156,7 @@ export async function applyContentBookVisualScenario(name: string, dependencies:
     const book = createSummaryFixture();
     if (name === 'summary-batch') {
       const generationRecord = dependencies.createHiddenGenerationRecord('generate', '批量中途预览');
+      generationRecord.reasoning = '先整理楼层事件，再归纳本段剧情推进。';
       const firstJobId = 'visual_summary_batch_1_5';
       const tasks = useGenerationTaskStore();
       const task = tasks.createTask({
@@ -163,7 +169,8 @@ export async function applyContentBookVisualScenario(name: string, dependencies:
               generationRecord,
               jobId: firstJobId,
               label: '第 1-5 楼',
-              rawOutput: '<summary><title>第一批预览</title><content>第一批已经生成，但整批任务仍在继续。</content></summary>',
+              rawOutput:
+                '<result><title>第一批预览</title><content>第一批已经生成，但整批任务仍在继续。</content></result>',
               rawOutputSemantics: 'original-v1',
               replay: generationRecord.replay,
               source: generationRecord.replay.source,
@@ -249,6 +256,56 @@ export async function applyContentBookVisualScenario(name: string, dependencies:
       warnings: ['缺少结束标签'],
     });
     resetPhoneToRoute('summary', 'failed-draft', '解析失败草稿', { bookId: book.id, draftId: draft.id });
+  } else if (name === 'diary-perspective-alias' || name === 'diary-perspective-alias-dark') {
+    const diary = useDiaryStore();
+    const aliases = useGenerationAliasesStore();
+    useSettingsStore().setTheme(name.endsWith('-dark') ? 'dark' : 'light');
+    diary.resetCurrentScope();
+    aliases.charReplacement = '';
+    const book = diary.ensureBook({ name: '{{char}}' });
+    const created = diary.createEntry({
+      bookId: book.id,
+      content: '用于确认旧日记视角宏会修正为当前角色名。',
+      kind: 'normal',
+      occurredAt: '',
+      perspective: { name: '{{char}}' },
+      readers: [{ name: '{{char}}' }],
+      title: '视角宏修复',
+    });
+    if (!created) throw new Error('Diary perspective alias fixture did not create its entry');
+    const entryId = created.entry.id;
+    resetPhoneToRoute('diary', 'root', '日记');
+    if (
+      !(await waitForCondition(() => {
+        const currentBook = diary.getBook(book.id);
+        const currentEntry = currentBook?.entries.find(candidate => candidate.id === entryId);
+        return (
+          currentBook?.title === '测试角色的日记' &&
+          currentBook.perspective.name === '测试角色' &&
+          currentEntry?.perspective.name === '测试角色' &&
+          currentEntry.readers?.[0]?.name === '测试角色' &&
+          Boolean(document.querySelector('.pc-bookshelf')?.textContent?.includes('测试角色的日记'))
+        );
+      }))
+    ) {
+      const currentBook = diary.getBook(book.id);
+      const currentEntry = currentBook?.entries.find(candidate => candidate.id === entryId);
+      throw new Error(
+        `Diary perspective alias did not repair the stored book and entry identity: ${JSON.stringify({
+          alias: aliases.charReplacement,
+          book: currentBook
+            ? {
+                entryPerspective: currentEntry?.perspective.name,
+                perspective: currentBook.perspective.name,
+                reader: currentEntry?.readers?.[0]?.name,
+                title: currentBook.title,
+              }
+            : null,
+          scopeKey: diary.scopeKey,
+          shelf: document.querySelector('.pc-bookshelf')?.textContent?.trim() || '',
+        })}`,
+      );
+    }
   } else if (name === 'diary-creation-mode' || name === 'diary-batch') {
     if (name === 'diary-batch') {
       resetPhoneToRoute('diary', 'batch-generate', '批量生成日记');

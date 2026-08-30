@@ -55,7 +55,10 @@ export type ManualBatchPreviewItem = {
   warnings: string[];
 };
 
-export type ManualBatchPreviewEdit = Pick<ManualBatchPreviewItem, 'content' | 'jobId' | 'title'> & {
+export type ManualBatchPreviewEdit = Pick<
+  ManualBatchPreviewItem,
+  'content' | 'jobId' | 'rawOutput' | 'title' | 'warnings'
+> & {
   occurredAt?: string;
   reasoning: string;
 };
@@ -150,7 +153,9 @@ export function updateManualBatchPreviews(taskId: string, edits: ManualBatchPrev
               content: patch.content,
               generationRecord: { ...item.generationRecord, reasoning: patch.reasoning },
               occurredAt: patch.occurredAt,
+              rawOutput: patch.rawOutput,
               title: patch.title,
+              warnings: [...patch.warnings],
             }
           : item;
       }),

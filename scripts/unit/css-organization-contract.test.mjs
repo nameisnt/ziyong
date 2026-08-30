@@ -29,8 +29,9 @@ const [globalCss, detailFooter, theaterCatalog, baguScan, favorites, phoneOverla
 ]);
 
 test('shared search wrappers own a single transparent-inner control surface', () => {
-  assert.match(globalCss, /\.pc-search-field > input \{[\s\S]*background: transparent;/u);
-  assert.doesNotMatch(globalCss, /\.pc-search-field > input \{[^}]*background[^;]*!important;/u);
+  assert.match(globalCss, /\.pc-search-field > input \{[\s\S]*background: transparent !important;/u);
+  assert.match(globalCss, /\.pc-search-field > input \{[\s\S]*background-color: transparent !important;/u);
+  assert.match(globalCss, /\.pc-search-field > input \{[\s\S]*color: var\(--pc-form-control-text/u);
   assert.match(globalCss, /:not\(\[type='search'\]\)/u);
   assert.match(theaterCatalog, /class="pc-search-field"/u);
   assert.match(baguScan, /class="pc-search-field pc-bagu-search"/u);
