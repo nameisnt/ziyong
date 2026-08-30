@@ -66,6 +66,7 @@ export function useSummaryBatchSession(options: SummaryBatchSessionOptions) {
       done: (current?.savedCount || 0) + (current?.previewCount || 0),
       error: current?.error || formError.value,
       failed: current?.draftCount || 0,
+      previewCount: current?.previewCount || 0,
       generationId: current?.activeGenerationId || '',
       nextJobIndex: current?.currentJobIndex || 0,
       rawOutput: current?.rawOutput || '',

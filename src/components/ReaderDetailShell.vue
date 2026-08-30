@@ -635,6 +635,7 @@ defineExpose({ hideFooter, toggleFooter });
 }
 
 .pc-reader-detail-shell :deep(.pc-reader-content) {
+  padding-inline: var(--pc-reader-side-padding, 0px);
   padding-bottom: 64px;
 }
 
@@ -650,10 +651,10 @@ defineExpose({ hideFooter, toggleFooter });
   height: 28px;
   margin: 4px;
   border: 1px solid var(--pc-theme-accent);
-  background: var(--pc-form-control-bg);
+  background: var(--pc-form-control-popup-bg);
   color: var(--pc-form-control-text);
   box-shadow:
-    0 0 0 2px var(--pc-form-control-bg),
+    0 0 0 2px var(--pc-form-control-popup-bg),
     0 7px 20px color-mix(in srgb, var(--pc-text) 26%, transparent 74%);
   touch-action: none;
   font-size: 13px;
@@ -675,9 +676,9 @@ defineExpose({ hideFooter, toggleFooter });
   max-height: 420px;
   padding: 6px;
   overflow: auto;
-  border: 1px solid color-mix(in srgb, var(--pc-form-control-text) 20%, var(--pc-form-control-bg) 80%);
+  border: 1px solid color-mix(in srgb, var(--pc-form-control-text) 20%, var(--pc-form-control-popup-bg) 80%);
   border-radius: var(--pc-control-radius);
-  background: var(--pc-form-control-bg);
+  background: var(--pc-form-control-popup-bg);
   color: var(--pc-form-control-text);
   box-shadow: 0 10px 28px color-mix(in srgb, var(--pc-text) 28%, transparent 72%);
 }
@@ -700,8 +701,8 @@ defineExpose({ hideFooter, toggleFooter });
   min-width: 0;
   min-height: 28px;
   padding-inline: 6px;
-  border: 1px solid color-mix(in srgb, var(--pc-form-control-text) 14%, var(--pc-form-control-bg) 86%);
-  background: color-mix(in srgb, var(--pc-form-control-text) 10%, var(--pc-form-control-bg) 90%);
+  border: 1px solid color-mix(in srgb, var(--pc-form-control-text) 14%, var(--pc-form-control-popup-bg) 86%);
+  background: color-mix(in srgb, var(--pc-form-control-text) 10%, var(--pc-form-control-popup-bg) 90%);
   color: var(--pc-form-control-text);
   font-size: 12px;
   white-space: nowrap;
@@ -714,8 +715,8 @@ defineExpose({ hideFooter, toggleFooter });
 }
 
 .pc-reader-tool-menu :deep(.pc-soft-btn.active) {
-  border-color: color-mix(in srgb, var(--pc-theme-accent) 52%, var(--pc-form-control-bg) 48%);
-  background: color-mix(in srgb, var(--pc-theme-accent) 22%, var(--pc-form-control-bg) 78%);
+  border-color: color-mix(in srgb, var(--pc-theme-accent) 52%, var(--pc-form-control-popup-bg) 48%);
+  background: color-mix(in srgb, var(--pc-theme-accent) 22%, var(--pc-form-control-popup-bg) 78%);
   color: var(--pc-theme-accent);
 }
 

@@ -1,4 +1,5 @@
 import { useDiaryStore } from '@/store/diary';
+import { useGenerationTaskStore } from '@/store/generationTasks';
 import { useLettersStore } from '@/store/letters';
 import { usePreviewDraftStore } from '@/store/previewDrafts';
 import { useSummaryStore } from '@/store/summary';
@@ -148,6 +149,63 @@ export async function applyContentBookVisualScenario(name: string, dependencies:
     }
   } else if (name === 'summary-import' || name === 'summary-generate' || name === 'summary-batch') {
     const book = createSummaryFixture();
+    if (name === 'summary-batch') {
+      const generationRecord = dependencies.createHiddenGenerationRecord('generate', '批量中途预览');
+      const firstJobId = 'visual_summary_batch_1_5';
+      const tasks = useGenerationTaskStore();
+      const task = tasks.createTask({
+        appId: 'summary',
+        config: {
+          bookId: book.id,
+          previews: [
+            {
+              content: '第一批已经生成，但整批任务仍在继续。',
+              generationRecord,
+              jobId: firstJobId,
+              label: '第 1-5 楼',
+              rawOutput: '<summary><title>第一批预览</title><content>第一批已经生成，但整批任务仍在继续。</content></summary>',
+              rawOutputSemantics: 'original-v1',
+              replay: generationRecord.replay,
+              source: generationRecord.replay.source,
+              title: '第一批预览',
+              warnings: [],
+            },
+          ],
+        },
+        jobs: [
+          {
+            error: '',
+            fromStartEnd: 0,
+            id: firstJobId,
+            label: '第 1-5 楼',
+            mode: 'range',
+            rangeText: '1-5',
+            singleMessageId: 0,
+            status: 'preview',
+          },
+          {
+            error: '',
+            fromStartEnd: 0,
+            id: 'visual_summary_batch_6_10',
+            label: '第 6-10 楼',
+            mode: 'range',
+            rangeText: '6-10',
+            singleMessageId: 0,
+            status: 'pending',
+          },
+        ],
+        kind: 'summary-batch',
+        routePage: 'batch-generate',
+        routeParams: { bookId: book.id },
+        title: `批量总结 · ${book.title}`,
+      });
+      tasks.patchTask(task.id, {
+        currentJobIndex: 1,
+        currentLabel: '第 6-10 楼',
+        previewCount: 1,
+        status: 'running',
+      });
+    }
     const page =
       name === 'summary-import' ? 'import-chat' : name === 'summary-generate' ? 'generate' : 'batch-generate';
     const title =

@@ -10,6 +10,9 @@
         }}</span>
       </div>
       <ActionMenu icon-only :label="t`管理`" icon="fa-solid fa-bars">
+        <button type="button" :disabled="busy" @click="entryGroupManagerOpen = true">
+          <i class="fa-solid fa-folder-tree"></i><span>{{ t`管理条目分组` }}</span>
+        </button>
         <button type="button" :disabled="busy" @click="$emit('create-entry-group')">
           <i class="fa-solid fa-folder-plus"></i><span>{{ t`新建条目分组` }}</span>
         </button>
@@ -169,6 +172,94 @@
       <EmptyState v-if="!visibleEntryCount" :title="query.trim() ? t`没有找到匹配的条目` : t`这本世界书没有条目`" />
     </template>
     <EmptyState v-else :title="t`正在读取世界书条目`" />
+
+    <Teleport to="#tavern-phone-root .pc-phone-shell">
+      <section
+        v-if="entryGroupManagerOpen"
+        class="pc-modal-backdrop pc-worldbook-group-manager-backdrop"
+        role="presentation"
+        @click.self="entryGroupManagerOpen = false"
+      >
+        <article
+          ref="entryGroupManagerDialogRef"
+          class="pc-section-card pc-modal-dialog pc-worldbook-group-manager-dialog"
+          role="dialog"
+          aria-modal="true"
+          aria-label="管理世界书条目分组"
+          tabindex="-1"
+        >
+          <header class="pc-compact-toolbar pc-worldbook-group-manager-head">
+            <strong>条目分组</strong>
+            <div>
+              <button
+                class="pc-icon-btn primary"
+                type="button"
+                :disabled="busy"
+                title="新建条目分组"
+                aria-label="新建条目分组"
+                @click="$emit('create-entry-group')"
+              >
+                <i class="fa-solid fa-folder-plus"></i>
+              </button>
+              <button
+                class="pc-icon-btn"
+                type="button"
+                title="关闭"
+                aria-label="关闭"
+                @click="entryGroupManagerOpen = false"
+              >
+                <i class="fa-solid fa-xmark"></i>
+              </button>
+            </div>
+          </header>
+          <div class="pc-worldbook-group-manager-body">
+            <section v-for="group in entryGroups" :key="group.name" class="pc-worldbook-managed-group">
+              <header>
+                <strong>{{ group.name }}</strong>
+                <small>{{ group.entries.length }} 个条目</small>
+              </header>
+              <div class="pc-worldbook-group-mode-row">
+                <span class="pc-field-label">选择方式</span>
+                <div class="pc-segment" aria-label="条目分组选择方式">
+                  <button
+                    :class="['pc-segment-btn', 'compact', { active: group.selectionMode === 'single' }]"
+                    type="button"
+                    :disabled="busy"
+                    @click="requestGroupMode(group, 'single')"
+                  >
+                    单选
+                  </button>
+                  <button
+                    :class="['pc-segment-btn', 'compact', { active: group.selectionMode === 'multiple' }]"
+                    type="button"
+                    :disabled="busy"
+                    @click="requestGroupMode(group, 'multiple')"
+                  >
+                    复选
+                  </button>
+                </div>
+              </div>
+              <section v-if="singleSelectionGroupName === group.name" class="pc-worldbook-single-selection">
+                <strong>保留一个已启用条目</strong>
+                <label>
+                  <input v-model="retainedEntryUid" type="radio" :value="null" />
+                  <span>全部关闭</span>
+                </label>
+                <label v-for="entry in enabledGroupEntries(group)" :key="entry.uid">
+                  <input v-model="retainedEntryUid" type="radio" :value="entry.uid" />
+                  <span>{{ entry.name || `条目 #${entry.uid}` }}</span>
+                </label>
+                <div class="pc-form-actions">
+                  <button class="pc-soft-btn" type="button" @click="cancelSingleSelection">取消</button>
+                  <button class="pc-primary-btn" type="button" @click="confirmSingleSelection(group)">确定</button>
+                </div>
+              </section>
+            </section>
+            <EmptyState v-if="!entryGroups.length" title="还没有条目分组" />
+          </div>
+        </article>
+      </section>
+    </Teleport>
   </section>
 </template>
 
@@ -177,12 +268,20 @@ import ActionMenu from '@/components/ActionMenu.vue';
 import BulkSelectionBar from '@/components/BulkSelectionBar.vue';
 import BulkSelectionCheckbox from '@/components/BulkSelectionCheckbox.vue';
 import EmptyState from '@/components/EmptyState.vue';
+import { usePhoneModalLifecycle } from '@/composables/usePhoneModalLifecycle';
+import type { WorldbookEntryGroupSelectionMode } from '@/store/worldbookCatalogGroups';
 import type { WorldbookLinkStatus } from '../store';
 
 interface EntrySection {
   entries: WorldbookEntry[];
   id: string;
   label: string;
+}
+
+interface ManagedEntryGroup {
+  entries: WorldbookEntry[];
+  name: string;
+  selectionMode: WorldbookEntryGroupSelectionMode;
 }
 
 defineProps<{
@@ -194,6 +293,7 @@ defineProps<{
   busy: boolean;
   categoryLabel: string;
   entryBusyUids: Set<number>;
+  entryGroups: ManagedEntryGroup[];
   entryPositionSummary: (entry: WorldbookEntry) => string;
   linkStateLabel: string;
   sections: EntrySection[];
@@ -203,7 +303,7 @@ defineProps<{
 
 const query = defineModel<string>('query', { required: true });
 
-defineEmits<{
+const emit = defineEmits<{
   'apply-profile': [];
   'assign-entry-group': [entry: WorldbookEntry];
   'cancel-bulk': [];
@@ -218,8 +318,47 @@ defineEmits<{
   'toggle-all': [];
   'toggle-selected': [uid: number];
   'toggle-entry': [entry: WorldbookEntry, event: Event];
+  'update-entry-group-mode': [groupName: string, mode: WorldbookEntryGroupSelectionMode, retainedUid?: number | null];
   unlink: [];
 }>();
+
+const entryGroupManagerOpen = ref(false);
+const entryGroupManagerDialogRef = ref<HTMLElement | null>(null);
+const retainedEntryUid = ref<number | null>(null);
+const singleSelectionGroupName = ref('');
+
+usePhoneModalLifecycle({
+  dialogRef: entryGroupManagerDialogRef,
+  isOpen: () => entryGroupManagerOpen.value,
+  onClose: () => {
+    entryGroupManagerOpen.value = false;
+  },
+});
+
+function enabledGroupEntries(group: ManagedEntryGroup) {
+  return group.entries.filter(entry => entry.enabled);
+}
+
+function requestGroupMode(group: ManagedEntryGroup, mode: WorldbookEntryGroupSelectionMode) {
+  if (group.selectionMode === mode) return;
+  const enabledEntries = enabledGroupEntries(group);
+  if (mode === 'single' && enabledEntries.length > 1) {
+    singleSelectionGroupName.value = group.name;
+    retainedEntryUid.value = enabledEntries[0]?.uid ?? null;
+    return;
+  }
+  emit('update-entry-group-mode', group.name, mode);
+}
+
+function cancelSingleSelection() {
+  singleSelectionGroupName.value = '';
+  retainedEntryUid.value = null;
+}
+
+function confirmSingleSelection(group: ManagedEntryGroup) {
+  emit('update-entry-group-mode', group.name, 'single', retainedEntryUid.value);
+  cancelSingleSelection();
+}
 </script>
 
 <style scoped>
@@ -389,5 +528,78 @@ defineEmits<{
 }
 .pc-worldbook-entry.disabled .pc-worldbook-entry-copy strong {
   color: var(--pc-muted);
+}
+.pc-worldbook-group-manager-backdrop {
+  --pc-modal-z: 72;
+}
+.pc-worldbook-group-manager-dialog {
+  display: grid;
+  width: min(100%, 390px);
+  max-height: min(78%, 680px);
+  grid-template-rows: auto minmax(0, 1fr);
+  gap: 10px;
+  padding: 10px;
+  overflow: hidden;
+}
+.pc-worldbook-group-manager-head,
+.pc-worldbook-group-manager-head > div,
+.pc-worldbook-managed-group > header,
+.pc-worldbook-group-mode-row {
+  display: flex;
+  align-items: center;
+}
+.pc-worldbook-group-manager-head,
+.pc-worldbook-managed-group > header,
+.pc-worldbook-group-mode-row {
+  justify-content: space-between;
+}
+.pc-worldbook-group-manager-head > div {
+  gap: 6px;
+}
+.pc-worldbook-group-manager-body {
+  min-height: 0;
+  overflow-y: auto;
+}
+.pc-worldbook-managed-group {
+  display: grid;
+  gap: 8px;
+  padding: 10px 0;
+  border-bottom: 1px solid var(--pc-border);
+}
+.pc-worldbook-managed-group small {
+  color: var(--pc-muted);
+  font-size: 11px;
+}
+.pc-worldbook-group-mode-row {
+  gap: 8px;
+}
+.pc-worldbook-group-mode-row .pc-segment {
+  width: min(210px, 70%);
+}
+.pc-worldbook-single-selection {
+  display: grid;
+  gap: 7px;
+  padding: 9px;
+  border: 1px solid var(--pc-border);
+  border-radius: min(var(--pc-control-radius), 8px);
+  background: var(--pc-surface);
+}
+.pc-worldbook-single-selection > label {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+}
+.pc-worldbook-single-selection input {
+  width: 15px;
+  height: 15px;
+  margin: 0;
+  accent-color: var(--pc-theme-accent);
+}
+.pc-worldbook-single-selection label span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 </style>

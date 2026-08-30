@@ -27,4 +27,6 @@ test('the regex wizard scenario proves rule, reader binding, and library use one
   assert.match(scenario, /保存到规则库/);
   assert.match(scenario, /getUsage\('reader'\)\.contentRuleId/);
   assert.match(scenario, /pc-regex-display-app/);
+  assert.match(scenario, /pc-regex-rule-row\[data-regex-rule-id/);
+  assert.match(scenario, /pc-regex-editor-dialog/);
 });

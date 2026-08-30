@@ -581,6 +581,47 @@ async function runDomChecks(page) {
 async function runInteractionChecks(page, scenario) {
   const findings = [];
   try {
+    if (scenario === 'home') {
+      const groupTabs = page.locator('.pc-home-group-tabs .pc-segment-btn');
+      if ((await groupTabs.count()) > 1) {
+        const targetTab = groupTabs.nth(1);
+        const targetToken = await targetTab.getAttribute('data-home-token');
+        await targetTab.click();
+        if (!(await targetTab.evaluate(element => element.classList.contains('active')))) {
+          findings.push({ severity: 'fail', message: '主页分组标签不能通过真实鼠标点击切换' });
+        }
+
+        const firstApp = page.locator('.pc-home-app-section .pc-app-tile').first();
+        await firstApp.click();
+        await page.locator('[aria-label="返回"]').click();
+        const restoredTab = page.locator(`[data-home-token="${targetToken}"]`);
+        if (!(await restoredTab.evaluate(element => element.classList.contains('active')))) {
+          findings.push({ severity: 'fail', message: '主页 App 点击或来源分组恢复失败' });
+        }
+      }
+    }
+
+    if (scenario === 'summary-batch') {
+      const previewEntry = page.getByRole('button', { name: '查看预览（1）' });
+      await previewEntry.click();
+      const previewPage = page.locator('.pc-batch-preview-page');
+      if (!(await previewPage.count())) {
+        findings.push({ severity: 'fail', message: '批量生成中无法打开已完成预览' });
+      } else {
+        const titleField = previewPage.locator('input.pc-field').first();
+        await titleField.fill('修改后的中途预览');
+        const saveButton = previewPage.getByRole('button', { name: '整批完成后保存' });
+        if (!(await saveButton.isDisabled())) {
+          findings.push({ severity: 'fail', message: '批量未完成时错误开放了整批保存' });
+        }
+        await previewPage.getByRole('button', { name: '返回' }).click();
+        await page.getByRole('button', { name: '查看预览（1）' }).click();
+        if ((await page.locator('.pc-batch-preview-page input.pc-field').first().inputValue()) !== '修改后的中途预览') {
+          findings.push({ severity: 'fail', message: '离开中途预览后没有保留编辑内容' });
+        }
+      }
+    }
+
     if (scenario === 'profiles-external-long-table') {
       const track = page.locator('.pc-external-profile-card-track.is-horizontal');
       const box = await track.boundingBox();

@@ -14,12 +14,22 @@ test('worldbooks and their entries use plugin-private display groups', () => {
   assert.match(store, /sillytavern_phone_worldbook_catalog_groups/u);
   assert.match(store, /bookAssignments/u);
   assert.match(store, /entryAssignments/u);
+  assert.match(store, /entryGroupModes/u);
   assert.match(app, /catalogGroups\.bookGroupOf/u);
   assert.match(app, /catalogGroups\.entryGroupOf/u);
   assert.match(catalog, /新建世界书分组/u);
   assert.match(catalog, /设置世界书分组/u);
   assert.match(detail, /新建条目分组/u);
   assert.match(detail, /设置条目分组/u);
+  assert.match(detail, /管理条目分组/u);
+  assert.match(detail, /单选/u);
+  assert.match(detail, /复选/u);
+});
+
+test('single-select worldbook groups update their entry states in one batch', () => {
+  assert.match(app, /setWorldbookEntryStates\(bookName, states, false\)/u);
+  assert.match(app, /catalogGroups\.entryGroupMode/u);
+  assert.match(app, /catalogGroups\.setEntryGroupMode/u);
 });
 
 test('rename, copy and delete keep display-group metadata aligned', () => {

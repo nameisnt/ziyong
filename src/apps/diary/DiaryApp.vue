@@ -110,6 +110,7 @@
 
     <BatchGenerationPreviewPage
       v-else-if="route.page === 'batch-preview' && batchPreviewTask"
+      :can-save="batchPreviewTask.status === 'completed'"
       :items="batchPreviewItems"
       kind="diary"
       :save-handler="saveBatchPreview"
@@ -136,6 +137,7 @@
       :state="batchState"
       @cancel="phone.goBack()"
       @generate="runBatchGeneration"
+      @preview="openBatchProgressPreview"
       @reset="resetBatchProgress"
       @stop="stopBatchGeneration"
     />
@@ -452,6 +454,7 @@ const batchState = computed(() => {
     done: (task?.savedCount || 0) + (task?.previewCount || 0),
     error: task?.error || batchFormError.value,
     failed: task?.draftCount || 0,
+    previewCount: task?.previewCount || 0,
     generationId: task?.activeGenerationId || '',
     nextJobIndex: task?.currentJobIndex || 0,
     rawOutput: task?.rawOutput || '',
@@ -1370,7 +1373,23 @@ function stopBatchGeneration() {
   if (batchTask.value) generationTasks.stopNow(batchTask.value.id);
 }
 
-function returnFromBatchPreview() {
+function openBatchProgressPreview() {
+  const task = batchTask.value;
+  if (!task?.previewCount) return;
+  phone.pushPage('batch-preview', '批量生成预览', {
+    ...task.routeParams,
+    batchOrigin: 'generate',
+    taskId: task.id,
+  });
+}
+
+function returnFromBatchPreview(edits: ManualBatchPreviewEdit[]) {
+  const task = batchPreviewTask.value;
+  if (task) updateManualBatchPreviews(task.id, edits);
+  if (route.value.params?.batchOrigin === 'generate') {
+    void phone.goBack();
+    return;
+  }
   const bookId = batchPreviewTask.value?.routeParams.bookId || '';
   const book = bookId ? diary.getBook(bookId) : null;
   phone.replacePage(book ? 'book' : 'root', book?.title || '角色书架', book ? { bookId } : undefined);

@@ -7,7 +7,10 @@ type WorldbookCatalogGroupSettings = {
   bookGroups: string[];
   entryAssignments: Record<string, Record<string, string>>;
   entryGroups: Record<string, string[]>;
+  entryGroupModes: Record<string, Record<string, WorldbookEntryGroupSelectionMode>>;
 };
+
+export type WorldbookEntryGroupSelectionMode = 'multiple' | 'single';
 
 const field = 'sillytavern_phone_worldbook_catalog_groups';
 
@@ -19,6 +22,8 @@ function readSettings(): WorldbookCatalogGroupSettings {
     entryAssignments:
       raw.entryAssignments && typeof raw.entryAssignments === 'object' ? structuredClone(raw.entryAssignments) : {},
     entryGroups: raw.entryGroups && typeof raw.entryGroups === 'object' ? structuredClone(raw.entryGroups) : {},
+    entryGroupModes:
+      raw.entryGroupModes && typeof raw.entryGroupModes === 'object' ? structuredClone(raw.entryGroupModes) : {},
   };
 }
 
@@ -82,6 +87,16 @@ export const useWorldbookCatalogGroupStore = defineStore('worldbookCatalogGroups
     }
   }
 
+  function entryGroupMode(bookName: string, groupName: string): WorldbookEntryGroupSelectionMode {
+    return settings.value.entryGroupModes[bookName]?.[groupName] === 'single' ? 'single' : 'multiple';
+  }
+
+  function setEntryGroupMode(bookName: string, groupName: string, mode: WorldbookEntryGroupSelectionMode) {
+    const modes = (settings.value.entryGroupModes[bookName] ??= {});
+    modes[groupName] = mode;
+    persist();
+  }
+
   function copyEntryGroup(bookName: string, sourceUid: number, targetUid: number) {
     const group = entryGroupOf(bookName, sourceUid);
     if (group) assignEntry(bookName, targetUid, group);
@@ -99,10 +114,14 @@ export const useWorldbookCatalogGroupStore = defineStore('worldbookCatalogGroups
     if (bookGroup) settings.value.bookAssignments[newName] = bookGroup;
     delete settings.value.bookAssignments[oldName];
     if (settings.value.entryGroups[oldName]) settings.value.entryGroups[newName] = settings.value.entryGroups[oldName];
+    if (settings.value.entryGroupModes[oldName]) {
+      settings.value.entryGroupModes[newName] = settings.value.entryGroupModes[oldName];
+    }
     if (settings.value.entryAssignments[oldName]) {
       settings.value.entryAssignments[newName] = settings.value.entryAssignments[oldName];
     }
     delete settings.value.entryGroups[oldName];
+    delete settings.value.entryGroupModes[oldName];
     delete settings.value.entryAssignments[oldName];
     persist();
   }
@@ -116,8 +135,10 @@ export const useWorldbookCatalogGroupStore = defineStore('worldbookCatalogGroups
     createBookGroup,
     createEntryGroup,
     entryGroupOf,
+    entryGroupMode,
     entryGroups: (bookName: string) => settings.value.entryGroups[bookName] ?? [],
     migrateBook,
     removeEntry,
+    setEntryGroupMode,
   };
 });

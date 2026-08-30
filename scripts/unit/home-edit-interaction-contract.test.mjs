@@ -23,11 +23,16 @@ test('home status keeps low-frequency actions in the shared action menu', () => 
 test('group management assigns selected Apps and keeps ordering on the home grid', () => {
   assert.match(layout, /export function createHomeFolder/u);
   assert.match(layout, /export function moveHomeAppsToFolder/u);
+  assert.match(layout, /export function renameHomeFolder/u);
   assert.match(layout, /export function reorderHomeFolderApp/u);
   assert.match(home, /<BulkSelectionCheckbox/u);
   assert.match(home, /@click="moveSelectedApps"/u);
   assert.match(home, /@click="createSelectedHomeFolder"/u);
-  assert.match(home, /class="pc-select" aria-label="目标分组"/u);
+  assert.match(home, /v-model="managedHomeGroupId"[\s\S]*aria-label="当前管理分组"/u);
+  assert.match(home, /v-model="folderMoveTargetId" class="pc-select" aria-label="目标分组"/u);
+  assert.match(home, /@click="renameManagedHomeGroup"/u);
+  assert.match(home, />\s*本组\s*</u);
+  assert.match(home, />\s*全部 App\s*</u);
   assert.match(home, /onFolderAppPointerDown/u);
   assert.match(home, /onFolderAppPointerMove/u);
   assert.match(home, /pc-app-tile\[data-folder-index\][\s\S]*getBoundingClientRect/u);
@@ -35,7 +40,7 @@ test('group management assigns selected Apps and keeps ordering on the home grid
     home,
     /elementFromPoint\(event\.clientX, event\.clientY\)\?\.closest<HTMLElement>\('\[data-folder-index\]'\)/u,
   );
-  assert.doesNotMatch(home, /pc-home-folder-remove|renameActiveHomeFolder|dissolveActiveHomeFolder/u);
+  assert.doesNotMatch(home, /pc-home-folder-remove|dissolveActiveHomeFolder/u);
 });
 
 test('group tabs swipe horizontally and drag motion follows the home contract', () => {
@@ -68,7 +73,8 @@ test('closing group management releases every transient manager state', () => {
     'folderCreateAppIds.value = []',
     "folderManagerQuery.value = ''",
     'folderNewGroupOpen.value = false',
-    "folderTargetId.value = ''",
+    "folderMoveTargetId.value = ''",
+    "managedHomeGroupId.value = ''",
   ]) {
     assert.match(
       closeBody,

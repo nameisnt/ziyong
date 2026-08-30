@@ -13,7 +13,7 @@
       ></iframe>
 
       <p v-if="heightLimited" class="pc-frame-height-note" role="status">
-        网页高度异常，已停止自动扩张；其余内容可在网页内滚动查看。
+        网页高度异常，已停止自动调整；其余内容可在网页内滚动查看。
       </p>
     </template>
 
@@ -31,6 +31,7 @@ const props = withDefaults(
   defineProps<{
     active?: boolean;
     content: string;
+    documentFlow?: boolean;
     embedded?: boolean;
     flushContent?: boolean;
     frameless?: boolean;
@@ -41,6 +42,7 @@ const props = withDefaults(
   }>(),
   {
     active: true,
+    documentFlow: false,
     embedded: false,
     flushContent: false,
     frameless: false,
@@ -64,6 +66,7 @@ const heightLimited = ref(false);
 const loadCount = ref(0);
 let feedbackStreak = 0;
 let lastFeedbackDelta: number | null = null;
+let lastFeedbackRatio: number | null = null;
 let lastFeedbackViewport = 0;
 const channelId = `theater_frame_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
 const sandboxFlags = computed(() =>
@@ -73,6 +76,7 @@ const sandboxFlags = computed(() =>
 const documentHtml = computed(() =>
   buildFrontendDocument(props.content, {
     channelId,
+    documentFlow: props.documentFlow,
     flushContent: props.flushContent,
     hostBridge: props.hostBridge,
     securityMode: props.securityMode,
@@ -91,6 +95,7 @@ watch(
     [
       props.active,
       props.content,
+      props.documentFlow,
       props.flushContent,
       props.hostBridge,
       props.securityMode,
@@ -126,22 +131,29 @@ function resetHeightFeedback() {
   heightLimited.value = false;
   feedbackStreak = 0;
   lastFeedbackDelta = null;
+  lastFeedbackRatio = null;
   lastFeedbackViewport = 0;
 }
 
 function followsFrameViewport(height: number, viewportHeight: number) {
-  if (Math.abs(viewportHeight - frameHeight.value) > 2 || height <= viewportHeight) {
+  if (Math.abs(viewportHeight - frameHeight.value) > 2 || viewportHeight <= 0) {
     feedbackStreak = 0;
     lastFeedbackDelta = null;
+    lastFeedbackRatio = null;
     lastFeedbackViewport = viewportHeight;
     return false;
   }
 
   const delta = Math.round(height - viewportHeight);
+  const ratio = height / viewportHeight;
+  const viewportChanged = Math.abs(viewportHeight - lastFeedbackViewport) > 1;
   const repeatsSameDelta =
-    lastFeedbackDelta !== null && Math.abs(delta - lastFeedbackDelta) <= 2 && viewportHeight > lastFeedbackViewport + 1;
-  feedbackStreak = repeatsSameDelta ? feedbackStreak + 1 : 0;
+    lastFeedbackDelta !== null && Math.abs(delta - lastFeedbackDelta) <= 2 && viewportChanged;
+  const repeatsSameRatio =
+    lastFeedbackRatio !== null && Math.abs(ratio - lastFeedbackRatio) <= 0.015 && viewportChanged;
+  feedbackStreak = repeatsSameDelta || repeatsSameRatio ? feedbackStreak + 1 : 0;
   lastFeedbackDelta = delta;
+  lastFeedbackRatio = ratio;
   lastFeedbackViewport = viewportHeight;
   return feedbackStreak >= 1;
 }

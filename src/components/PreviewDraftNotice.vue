@@ -95,7 +95,7 @@ usePhoneModalLifecycle({
 });
 
 function openManager() {
-  selectedDraftIds.value = drafts.value[0] ? [drafts.value[0].id] : [];
+  selectedDraftIds.value = [];
   managerOpen.value = true;
 }
 

@@ -28,4 +28,5 @@ export default definePhoneApp({
   component: WorldbookLinkApp,
   resetCurrentScope: transaction => useWorldbookLinkStore().resetCurrentScope(transaction),
   scopeSwitchHandler: scopeKey => useWorldbookLinkStore().switchScope(scopeKey),
+  scopeSwitchMode: 'always',
 });

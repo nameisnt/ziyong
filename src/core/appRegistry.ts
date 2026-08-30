@@ -355,6 +355,7 @@ export interface PhoneAppModule extends PhoneAppDefinition {
   referenceProvider?: PhoneReferenceProvider;
   resetCurrentScope?: PhoneAppResetHandler;
   scopeSwitchHandler?: PhoneScopeSwitchHandler;
+  scopeSwitchMode?: 'always' | 'on-open';
   specialPromptDefinitions?: PhonePromptDefinition[];
   taskTemplateDefinitions?: PhoneTaskTemplateDefinition[];
   typePromptDomains?: PhoneTypePromptDomain[];
@@ -458,13 +459,20 @@ export function getRegisteredPhoneAppResetHandlers() {
     );
 }
 
-export function getRegisteredPhoneAppScopeSwitchHandlers() {
+export function getRegisteredPhoneAppScopeSwitchHandlers(appId: string) {
   return getRegisteredPhoneApps()
     .map(module => ({
       app: module,
       switchScope: module.scopeSwitchHandler,
     }))
-    .filter((item): item is { app: PhoneAppModule; switchScope: PhoneScopeSwitchHandler } => Boolean(item.switchScope));
+    .filter(
+      (item): item is { app: PhoneAppModule; switchScope: PhoneScopeSwitchHandler } =>
+        Boolean(item.switchScope) && (item.app.scopeSwitchMode === 'always' || item.app.id === appId),
+    );
+}
+
+export function getRegisteredPhoneAppScopeSwitchHandler(appId: string) {
+  return getRegisteredPhoneApp(appId)?.scopeSwitchHandler ?? null;
 }
 
 function isPhoneReferenceProviderResult(value: PhoneReferenceProviderOutput): value is PhoneReferenceProviderResult {

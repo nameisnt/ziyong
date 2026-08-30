@@ -37,6 +37,7 @@ export async function applyReaderVisualScenario(name: string, context: ReaderSce
   if (name === 'reader-detail') {
     const settingsStore = useSettingsStore();
     settingsStore.settings.theme = 'dark';
+    settingsStore.setReaderSidePadding(24);
     const message = await loadFirstReaderMessage();
     if (!message) throw new Error('Reader visual fixture did not create a message');
     context.resetPhoneToRoute('reader', 'detail', message.title, { messageId: message.id });
@@ -50,6 +51,11 @@ export async function applyReaderVisualScenario(name: string, context: ReaderSce
     if (!trigger || !menu) throw new Error('Reader tool menu did not stay open');
     if (getComputedStyle(trigger).backgroundColor !== 'rgb(44, 44, 46)') {
       throw new Error('Reader tool trigger is not opaque in dark mode');
+    }
+    const readerContent = document.querySelector<HTMLElement>('.pc-reader-content');
+    const readerContentStyle = readerContent ? getComputedStyle(readerContent) : null;
+    if (readerContentStyle?.paddingLeft !== '24px' || readerContentStyle.paddingRight !== '24px') {
+      throw new Error('Reader side padding did not reach the dark detail content');
     }
     const menuStyle = getComputedStyle(menu);
     if (menuStyle.backgroundColor !== 'rgb(44, 44, 46)' || menuStyle.gridTemplateColumns.split(' ').length !== 2) {
@@ -65,6 +71,7 @@ export async function applyReaderVisualScenario(name: string, context: ReaderSce
     ) {
       throw new Error('Reader tool actions must all expose a two-to-four-character label');
     }
+    settingsStore.setReaderSidePadding(0);
   } else if (name === 'reader-reasoning') {
     context.setReaderFixtureReasoning('<thinking>先核对楼层事实，再整理正文。</thinking>');
     const message = await loadFirstReaderMessage();
@@ -113,8 +120,8 @@ export async function applyReaderVisualScenario(name: string, context: ReaderSce
       throw new Error('Reader swipe selector did not switch only the local preview');
     }
     await context.openReaderTools();
-    const writeActions = [...document.querySelectorAll<HTMLButtonElement>('.pc-reader-tool-menu button')].filter(button =>
-      /八股检测|创建分支|编辑正文|摘抄|收藏/u.test(button.textContent?.trim() || ''),
+    const writeActions = [...document.querySelectorAll<HTMLButtonElement>('.pc-reader-tool-menu button')].filter(
+      button => /八股检测|创建分支|编辑正文|摘抄|收藏/u.test(button.textContent?.trim() || ''),
     );
     if (writeActions.some(button => !button.disabled)) {
       throw new Error('Non-active swipe must disable every content-writing reader tool');
@@ -122,6 +129,7 @@ export async function applyReaderVisualScenario(name: string, context: ReaderSce
   } else if (name === 'reader-theme-appearance') {
     const settingsStore = useSettingsStore();
     settingsStore.settings.reader.fontFamily = 'Courier New, monospace';
+    settingsStore.setReaderSidePadding(24);
     settingsStore.settings.visualTheme.readerTextColor = '#7b3fe4';
     const message = await loadFirstReaderMessage();
     if (!message) throw new Error('Reader appearance fixture did not create a message');
@@ -140,10 +148,14 @@ export async function applyReaderVisualScenario(name: string, context: ReaderSce
     if (appearance.color !== 'rgb(123, 63, 228)') {
       throw new Error('Reader text color did not reach the rendered content');
     }
+    if (appearance.paddingLeft !== '24px' || appearance.paddingRight !== '24px') {
+      throw new Error('Reader side padding did not reach the light detail content');
+    }
     const renderedText = content.querySelector<HTMLElement>('h1, h2, h3, p, li, blockquote');
     if (!renderedText || !getComputedStyle(renderedText).fontFamily.toLowerCase().includes('courier new')) {
       throw new Error('Reader font family did not reach nested rendered text');
     }
+    settingsStore.setReaderSidePadding(0);
   } else if (name === 'reader-footer-persistence') {
     const phone = usePhoneStore();
     const message = await loadFirstReaderMessage();

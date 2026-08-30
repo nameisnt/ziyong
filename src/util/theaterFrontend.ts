@@ -1,5 +1,6 @@
 export interface TheaterFrontendBuildOptions {
   channelId: string;
+  documentFlow?: boolean;
   flushContent?: boolean;
   hostBridge?: boolean;
   securityMode?: 'safe' | 'trusted';
@@ -132,7 +133,7 @@ function createBaseStyle(theme: 'dark' | 'light') {
   ].join('\n');
 }
 
-function createLayoutGuardStyle(flushContent: boolean) {
+function createLayoutGuardStyle(flushContent: boolean, documentFlow: boolean) {
   return [
     'html, body {',
     '  height: auto !important;',
@@ -153,6 +154,15 @@ function createLayoutGuardStyle(flushContent: boolean) {
     '#pc-frame-content, #pc-frame-content * {',
     '  overflow-y: visible !important;',
     '}',
+    ...(documentFlow
+      ? [
+          '#pc-frame-content > * {',
+          '  height: auto !important;',
+          '  min-height: 0 !important;',
+          '  max-height: none !important;',
+          '}',
+        ]
+      : []),
   ].join('\n');
 }
 
@@ -292,7 +302,7 @@ export function buildFrontendDocument(rawHtml: string, options: TheaterFrontendB
     `  <style>${createBaseStyle(options.theme)}</style>`,
     hostBridge,
     sanitized.headHtml,
-    `  <style>${createLayoutGuardStyle(options.flushContent ?? false)}</style>`,
+    `  <style>${createLayoutGuardStyle(options.flushContent ?? false, options.documentFlow ?? false)}</style>`,
     '</head>',
     '<body>',
     '  <main id="pc-frame-content">',

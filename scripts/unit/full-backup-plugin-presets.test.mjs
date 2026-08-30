@@ -50,6 +50,8 @@ test('plugin preset replacement and repository boundaries remain transactional',
   assert.match(repositoryStore, /const backup = buildPhoneBackup\(\)/);
   assert.match(repositoryStore, /await\s+presetStore\.exportBackupRecords\(\)/);
   assert.match(repositoryStore, /getEmbeddedPluginPresets\(backup\)/);
+  assert.match(repositoryStore, /embeddedPluginPresets\.records\.length/);
+  assert.match(repositoryStore, /Object\.keys\(embeddedPluginPresets\.appDefaults\)\.length/);
   assert.doesNotMatch(repositoryStore, /buildCompletePhoneBackup/);
 });
 

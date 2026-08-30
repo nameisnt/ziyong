@@ -114,12 +114,14 @@ import { usePhoneStore } from '@/store/phone';
 import TutorialAppDirectory from './TutorialAppDirectory.vue';
 import { getTutorialAppDirectorySearchText } from './appCatalog';
 import { tutorialArticles, tutorialCategories, type TutorialArticle, type TutorialCategoryId } from './data';
+import { assertTutorialRegistry } from './validation';
 
 const phone = usePhoneStore();
 const route = computed(() => phone.currentRoute);
 const activeCategory = ref<'all' | TutorialCategoryId>('all');
 const searchQuery = ref('');
 const appDefinitions = getPhoneAppDefinitions();
+assertTutorialRegistry(appDefinitions, tutorialArticles, tutorialCategories);
 const appDirectorySearchText = getTutorialAppDirectorySearchText(appDefinitions);
 const normalizedSearchQuery = computed(() => searchQuery.value.trim().toLocaleLowerCase());
 

@@ -39,6 +39,7 @@
       :busy="busy"
       :category-label="activeCategoryLabel"
       :entry-busy-uids="entryBusyUids"
+      :entry-groups="managedEntryGroups"
       :entry-position-summary="entryPositionSummary"
       :link-state-label="linkStateLabel"
       :sections="visibleEntrySections"
@@ -58,6 +59,7 @@
       @toggle-all="toggleAllEntries"
       @toggle-selected="toggleEntrySelected"
       @toggle-entry="toggleWorldbookEntry"
+      @update-entry-group-mode="updateEntryGroupMode"
       @unlink="unlinkCurrentBook"
     />
 
@@ -91,14 +93,17 @@ import EmptyState from '@/components/EmptyState.vue';
 import { useBulkSelection } from '@/composables/useBulkSelection';
 import { usePhoneStore } from '@/store/phone';
 import { usePromptStore } from '@/store/prompts';
-import { useWorldbookCatalogGroupStore } from '@/store/worldbookCatalogGroups';
+import {
+  type WorldbookEntryGroupSelectionMode,
+  useWorldbookCatalogGroupStore,
+} from '@/store/worldbookCatalogGroups';
 import {
   deleteWorldbookEntry,
   duplicateWorldbookEntry,
   getCurrentWorldbookGroups,
   renameWorldbookSafely,
   setGlobalWorldbookEnabled,
-  setWorldbookEntryEnabled,
+  setWorldbookEntryStates,
   updateWorldbookEntry,
   type CurrentWorldbookGroups,
   type WorldbookCategoryId,
@@ -219,6 +224,15 @@ const visibleEntrySections = computed(() => {
     label,
   }));
 });
+const managedEntryGroups = computed(() =>
+  catalogGroups.entryGroups(detailBookName.value).map(name => ({
+    entries: (detailStatus.value?.currentEntries ?? []).filter(
+      entry => catalogGroups.entryGroupOf(detailBookName.value, entry.uid) === name,
+    ),
+    name,
+    selectionMode: catalogGroups.entryGroupMode(detailBookName.value, name),
+  })),
+);
 const visibleEntryCount = computed(() =>
   visibleEntrySections.value.reduce((sum, section) => sum + section.entries.length, 0),
 );
@@ -359,7 +373,21 @@ async function assignEntryGroup(entry: WorldbookEntry) {
     initialValue: catalogGroups.entryGroupOf(detailBookName.value, entry.uid),
     title: '设置条目分组',
   });
-  if (name !== null) catalogGroups.assignEntry(detailBookName.value, entry.uid, name);
+  if (name === null) return;
+  const groupName = !name.trim() || name.trim() === '-' ? '' : name.trim();
+  try {
+    if (groupName && entry.enabled && catalogGroups.entryGroupMode(detailBookName.value, groupName) === 'single') {
+      const states = new Map<number, boolean>();
+      (detailStatus.value?.currentEntries ?? []).forEach(item => {
+        if (catalogGroups.entryGroupOf(detailBookName.value, item.uid) === groupName) states.set(item.uid, false);
+      });
+      states.set(entry.uid, true);
+      await commitEntryStates(detailBookName.value, currentScopeKey.value, states);
+    }
+    catalogGroups.assignEntry(detailBookName.value, entry.uid, name);
+  } catch (error) {
+    toastr.error(error instanceof Error ? error.message : '设置条目分组失败');
+  }
 }
 
 async function loadDetail() {
@@ -633,10 +661,22 @@ async function saveEntryCopy() {
   entryEditorBusy.value = true;
   try {
     const previousUids = new Set(detailStatus.value?.currentEntries.map(item => item.uid) ?? []);
-    const entries = await duplicateWorldbookEntry(bookName, entry.uid, patch);
+    let entries = await duplicateWorldbookEntry(bookName, entry.uid, patch);
     if (!isEntryEditorRequestCurrent(requestId, scopeKey, bookName, entryUid, page)) return;
     const copied = entries.find(item => !previousUids.has(item.uid));
-    if (copied) catalogGroups.copyEntryGroup(bookName, entry.uid, copied.uid);
+    if (copied) {
+      const groupName = catalogGroups.entryGroupOf(bookName, entry.uid);
+      if (groupName && copied.enabled && catalogGroups.entryGroupMode(bookName, groupName) === 'single') {
+        const states = new Map<number, boolean>();
+        entries.forEach(item => {
+          if (item.uid === copied.uid || catalogGroups.entryGroupOf(bookName, item.uid) === groupName) {
+            states.set(item.uid, item.uid === copied.uid);
+          }
+        });
+        entries = (await commitEntryStates(bookName, scopeKey, states)).entries;
+      }
+      catalogGroups.copyEntryGroup(bookName, entry.uid, copied.uid);
+    }
     if (worldbookLinks.getProfile(scopeKey, bookName)) {
       worldbookLinks.captureProfileFromEntries(scopeKey, bookName, entries);
     }
@@ -714,30 +754,74 @@ async function toggleWorldbookEntry(entry: WorldbookEntry, event: Event) {
   const input = event.target as HTMLInputElement;
   const enabled = input.checked;
   const bookName = detailBookName.value;
-  const scopeKey = currentScopeKey.value;
-  entryBusyUids.value = new Set([...entryBusyUids.value, entry.uid]);
-  const previous = entryMutationQueues.get(bookName) ?? Promise.resolve();
-  const mutation = previous.then(async () => {
-    const result = await setWorldbookEntryEnabled(bookName, entry.uid, enabled);
-    const status = worldbookLinks.getProfile(scopeKey, bookName)
-      ? worldbookLinks.captureProfileFromEntries(scopeKey, bookName, result.entries)
-      : await worldbookLinks.getStatus(scopeKey, bookName, result.entries);
-    if (detailBookName.value === bookName) detailStatus.value = status;
-  });
-  entryMutationQueues.set(
-    bookName,
-    mutation.catch(() => undefined),
-  );
+  const states = new Map<number, boolean>([[entry.uid, enabled]]);
+  const groupName = catalogGroups.entryGroupOf(bookName, entry.uid);
+  if (enabled && groupName && catalogGroups.entryGroupMode(bookName, groupName) === 'single') {
+    (detailStatus.value?.currentEntries ?? []).forEach(item => {
+      if (catalogGroups.entryGroupOf(bookName, item.uid) === groupName) states.set(item.uid, item.uid === entry.uid);
+    });
+  }
 
   try {
-    await mutation;
+    await commitEntryStates(bookName, currentScopeKey.value, states);
   } catch (error) {
     input.checked = entry.enabled;
     toastr.error(error instanceof Error ? error.message : '更新条目状态失败');
+  }
+}
+
+async function commitEntryStates(bookName: string, scopeKey: string, states: Map<number, boolean>) {
+  const affectedUids = [...states.keys()];
+  entryBusyUids.value = new Set([...entryBusyUids.value, ...affectedUids]);
+  const previous = entryMutationQueues.get(bookName) ?? Promise.resolve();
+  const mutation = previous.catch(() => undefined).then(async () => {
+    const result = await setWorldbookEntryStates(bookName, states, false);
+    const status = worldbookLinks.getProfile(scopeKey, bookName)
+      ? worldbookLinks.captureProfileFromEntries(scopeKey, bookName, result.entries)
+      : await worldbookLinks.getStatus(scopeKey, bookName, result.entries);
+    if (currentScopeKey.value === scopeKey && detailBookName.value === bookName) detailStatus.value = status;
+    return result;
+  });
+  const settled = mutation.then(() => undefined, () => undefined);
+  entryMutationQueues.set(bookName, settled);
+  void settled.finally(() => {
+    if (entryMutationQueues.get(bookName) === settled) entryMutationQueues.delete(bookName);
+  });
+
+  try {
+    return await mutation;
   } finally {
     const next = new Set(entryBusyUids.value);
-    next.delete(entry.uid);
+    affectedUids.forEach(uid => next.delete(uid));
     entryBusyUids.value = next;
+  }
+}
+
+async function updateEntryGroupMode(
+  groupName: string,
+  mode: WorldbookEntryGroupSelectionMode,
+  retainedUid?: number | null,
+) {
+  try {
+    if (catalogGroups.entryGroupMode(detailBookName.value, groupName) === mode) return;
+    if (mode === 'single') {
+      const entries = (detailStatus.value?.currentEntries ?? []).filter(
+        entry => catalogGroups.entryGroupOf(detailBookName.value, entry.uid) === groupName,
+      );
+      const enabledEntries = entries.filter(entry => entry.enabled);
+      if (retainedUid === undefined && enabledEntries.length > 1) {
+        toastr.error('切换单选前需要选择一个保留的启用条目');
+        return;
+      }
+      if (retainedUid !== undefined) {
+        const states = new Map(entries.map(entry => [entry.uid, entry.uid === retainedUid]));
+        await commitEntryStates(detailBookName.value, currentScopeKey.value, states);
+      }
+    }
+    catalogGroups.setEntryGroupMode(detailBookName.value, groupName, mode);
+    toastr.success(mode === 'single' ? '条目分组已设为单选' : '条目分组已设为复选');
+  } catch (error) {
+    toastr.error(error instanceof Error ? error.message : '更新条目分组选择方式失败');
   }
 }
 </script>

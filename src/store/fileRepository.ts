@@ -1,8 +1,10 @@
-import { usePluginPresetStore } from '@/store/pluginPresets';
 import type { PluginPresetRecord } from '@/apps/preset-manager/pluginPreset';
+import { useGenerationTaskStore } from '@/store/generationTasks';
+import { usePluginPresetStore } from '@/store/pluginPresets';
 import { getEmbeddedPluginPresets, PhoneBackupSchema, type PhoneBackup } from '@/type/backup';
 import { applyPhoneBackup, buildPhoneBackup } from '@/util/backup';
 import { cancelIdleTask, type IdleTaskHandle, scheduleIdleTask } from '@/util/idleTask';
+import { onTavernEvent } from '@/util/runtime';
 import { parsePrettified } from '@/util/zod';
 // eslint-disable-next-line import-x/no-nodejs-modules
 import { getRequestHeaders, saveSettingsDebounced } from '@sillytavern/script';
@@ -40,6 +42,7 @@ interface FileRepositorySnapshotPayload {
 const DEFAULT_MANIFEST_PATH = 'user/files/phone-file-repository-manifest.json';
 const AUTO_INTERVAL_MS = 5 * 60 * 1000;
 const AUTO_INITIAL_DELAY_MS = 60 * 1000;
+const AUTO_RETRY_MS = 30 * 1000;
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return Boolean(value) && typeof value === 'object' && !Array.isArray(value);
@@ -139,7 +142,11 @@ function snapshotId() {
 function normalizePayload(value: unknown): FileRepositorySnapshotPayload {
   if (!isRecord(value) || value.repositorySchemaVersion !== 1) throw new Error('不是受支持的插件文件仓库快照');
   const backup = parsePrettified(PhoneBackupSchema, value.backup);
-  if (getEmbeddedPluginPresets(backup)) {
+  const embeddedPluginPresets = getEmbeddedPluginPresets(backup);
+  if (
+    embeddedPluginPresets &&
+    (embeddedPluginPresets.records.length || Object.keys(embeddedPluginPresets.appDefaults).length)
+  ) {
     throw new Error('文件仓库快照不能嵌套手工完整备份 v2，请使用设置中的“完整恢复”');
   }
   const pluginPresets = Array.isArray(value.pluginPresets)
@@ -156,6 +163,7 @@ function normalizePayload(value: unknown): FileRepositorySnapshotPayload {
 }
 
 export const useFileRepositoryStore = defineStore('fileRepository', () => {
+  const generationTasks = useGenerationTaskStore();
   const settings = ref(normalizeSettings(_.get(extension_settings, fileRepositoryField, {})));
   const busy = ref(false);
   const initialized = ref(false);
@@ -163,10 +171,32 @@ export const useFileRepositoryStore = defineStore('fileRepository', () => {
   let intervalId: ReturnType<typeof window.setInterval> | null = null;
   let initialTimer: ReturnType<typeof window.setTimeout> | null = null;
   let idleHandle: IdleTaskHandle | null = null;
+  let activeGenerationCount = 0;
+  let generationEventStops: Array<{ stop: () => void }> = [];
+  let lastSnapshotReferences: Map<string, unknown> | null = null;
 
   const snapshots = computed(() =>
     [...settings.value.snapshots].sort((left, right) => right.createdAt.localeCompare(left.createdAt)),
   );
+
+  function captureTrackedDataReferences() {
+    return new Map(
+      Object.entries(extension_settings).filter(
+        ([key]) => key.startsWith('sillytavern_phone') && key !== fileRepositoryField,
+      ),
+    );
+  }
+
+  function trackedDataChanged() {
+    if (!lastSnapshotReferences) return true;
+    const current = captureTrackedDataReferences();
+    if (current.size !== lastSnapshotReferences.size) return true;
+    return [...current].some(([key, value]) => !Object.is(lastSnapshotReferences?.get(key), value));
+  }
+
+  function generationIsActive() {
+    return activeGenerationCount > 0 || generationTasks.hasRunningTasks;
+  }
 
   function persistIndex() {
     _.set(extension_settings, fileRepositoryField, cloneJsonValue(settings.value));
@@ -193,7 +223,11 @@ export const useFileRepositoryStore = defineStore('fileRepository', () => {
     try {
       const raw = await readJson(settings.value.manifestPath || DEFAULT_MANIFEST_PATH);
       const manifest = normalizeSettings(raw);
-      settings.value = { ...settings.value, ...manifest, manifestPath: settings.value.manifestPath || DEFAULT_MANIFEST_PATH };
+      settings.value = {
+        ...settings.value,
+        ...manifest,
+        manifestPath: settings.value.manifestPath || DEFAULT_MANIFEST_PATH,
+      };
       persistIndex();
     } catch (error) {
       // First use and a missing manifest are both normal; the first snapshot creates it.
@@ -222,12 +256,16 @@ export const useFileRepositoryStore = defineStore('fileRepository', () => {
     lastError.value = '';
     try {
       await initialize();
+      const snapshotReferences = captureTrackedDataReferences();
       const presetStore = usePluginPresetStore();
       const backup = buildPhoneBackup();
       const pluginPresets = await presetStore.exportBackupRecords();
       const checksum = await checksumText(JSON.stringify({ data: backup.data, pluginPresets }));
       const latest = snapshots.value[0];
-      if (!force && latest?.checksum === checksum) return latest;
+      if (!force && latest?.checksum === checksum) {
+        lastSnapshotReferences = snapshotReferences;
+        return latest;
+      }
 
       const id = snapshotId();
       const createdAt = new Date().toISOString();
@@ -252,6 +290,7 @@ export const useFileRepositoryStore = defineStore('fileRepository', () => {
       settings.value.snapshots.push(snapshot);
       await saveManifest();
       await pruneSnapshots();
+      lastSnapshotReferences = snapshotReferences;
       return snapshot;
     } catch (error) {
       lastError.value = error instanceof Error ? error.message : String(error);
@@ -330,7 +369,9 @@ export const useFileRepositoryStore = defineStore('fileRepository', () => {
 
   async function importSnapshot(file: File) {
     const payload = normalizePayload(JSON.parse((await file.text()).replace(/^\uFEFF/u, '')));
-    const checksum = payload.checksum || (await checksumText(JSON.stringify({ data: payload.backup.data, pluginPresets: payload.pluginPresets })));
+    const checksum =
+      payload.checksum ||
+      (await checksumText(JSON.stringify({ data: payload.backup.data, pluginPresets: payload.pluginPresets })));
     const id = snapshotId();
     const uploaded = await uploadJson(`phone-repository-${id}.json`, { ...payload, checksum });
     const snapshot: FileRepositorySnapshot = {
@@ -351,11 +392,42 @@ export const useFileRepositoryStore = defineStore('fileRepository', () => {
     if (intervalId !== null) return;
     void initialize();
 
+    generationEventStops = [
+      onTavernEvent('GENERATION_STARTED', () => {
+        activeGenerationCount += 1;
+      }),
+      onTavernEvent('GENERATION_ENDED', () => {
+        activeGenerationCount = Math.max(0, activeGenerationCount - 1);
+      }),
+    ];
+
+    const scheduleRetry = () => {
+      if (initialTimer !== null) return;
+      initialTimer = window.setTimeout(() => {
+        initialTimer = null;
+        scheduleSnapshot();
+      }, AUTO_RETRY_MS);
+    };
+
     const scheduleSnapshot = () => {
       if (!settings.value.autoEnabled || document.visibilityState === 'hidden' || idleHandle !== null) return;
+      if (generationIsActive()) {
+        scheduleRetry();
+        return;
+      }
+      if (!trackedDataChanged()) return;
       idleHandle = scheduleIdleTask(() => {
         idleHandle = null;
-        void createSnapshot('自动快照', false).catch(() => undefined);
+        if (generationIsActive()) {
+          scheduleRetry();
+          return;
+        }
+        if (!trackedDataChanged()) return;
+        void createSnapshot('自动快照', false)
+          .then(snapshot => {
+            if (!snapshot) scheduleRetry();
+          })
+          .catch(() => scheduleRetry());
       }, 10000);
     };
 
@@ -373,6 +445,9 @@ export const useFileRepositoryStore = defineStore('fileRepository', () => {
     initialTimer = null;
     intervalId = null;
     idleHandle = null;
+    activeGenerationCount = 0;
+    generationEventStops.forEach(stop => stop.stop());
+    generationEventStops = [];
   }
 
   return {

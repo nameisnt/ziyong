@@ -114,7 +114,13 @@
 
       <div v-if="state.running || state.total" class="pc-status-card">
         <strong>{{ state.running ? '批量生成中' : state.resumeAvailable ? '批量已暂停' : '批量生成完成' }}</strong>
-        <p>{{ progressLabel }}</p>
+        <div class="pc-compact-toolbar">
+          <p>{{ progressLabel }}</p>
+          <button v-if="state.previewCount" class="pc-soft-btn" type="button" @click="$emit('preview')">
+            <i class="fa-solid fa-eye"></i>
+            <span>查看预览（{{ state.previewCount }}）</span>
+          </button>
+        </div>
       </div>
 
       <div v-if="state.error" class="pc-status-card danger">
@@ -157,6 +163,7 @@ interface SummaryBatchState {
   done: number;
   error: string;
   failed: number;
+  previewCount: number;
   rawOutput: string;
   resumeAvailable: boolean;
   running: boolean;
@@ -173,6 +180,7 @@ const props = defineProps<{
 defineEmits<{
   cancel: [];
   generate: [];
+  preview: [];
   reset: [];
   stop: [];
 }>();

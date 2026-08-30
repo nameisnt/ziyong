@@ -122,6 +122,7 @@
 
     <BatchGenerationPreviewPage
       v-else-if="route.page === 'batch-preview' && batchPreviewTask"
+      :can-save="batchPreviewTask.status === 'completed'"
       :items="batchPreviewItems"
       kind="summary"
       :save-handler="saveBatchPreview"
@@ -147,6 +148,7 @@
       :state="batchState"
       @cancel="phone.goBack()"
       @generate="runBatchGeneration"
+      @preview="openBatchProgressPreview"
       @reset="resetBatchProgress"
       @stop="stopBatchGeneration"
     />
@@ -401,7 +403,23 @@ const batchPreviewItems = computed(() =>
   batchPreviewTask.value ? getManualBatchPreviews(batchPreviewTask.value.id) : [],
 );
 
-function returnFromBatchPreview() {
+function openBatchProgressPreview() {
+  const task = batchTask.value;
+  if (!task?.previewCount) return;
+  phone.pushPage('batch-preview', '批量生成预览', {
+    ...task.routeParams,
+    batchOrigin: 'generate',
+    taskId: task.id,
+  });
+}
+
+function returnFromBatchPreview(edits: ManualBatchPreviewEdit[]) {
+  const task = batchPreviewTask.value;
+  if (task) updateManualBatchPreviews(task.id, edits);
+  if (route.value.params?.batchOrigin === 'generate') {
+    void phone.goBack();
+    return;
+  }
   const bookId = batchPreviewTask.value?.routeParams.bookId || '';
   const book = bookId ? summary.getBook(bookId) : null;
   phone.replacePage(book ? 'book' : 'root', book?.title || '总结', book ? { bookId } : undefined);

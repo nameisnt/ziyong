@@ -21,21 +21,41 @@
         @pointercancel="onPointerUp"
       >
         <div class="pc-top-left">
-          <button v-if="canGoBack" class="pc-top-btn" type="button" @click.stop="requestPhoneBack">
+          <button
+            v-if="canGoBack"
+            class="pc-top-btn"
+            type="button"
+            title="返回"
+            aria-label="返回"
+            @click.stop="requestPhoneBack"
+          >
             <i class="fa-solid fa-arrow-left"></i>
           </button>
           <span v-else class="pc-top-btn ghost" aria-hidden="true"></span>
-          <button v-if="currentRoute.appId !== 'home'" class="pc-top-btn" type="button" @click.stop="phone.goHome()">
+          <button
+            v-if="currentRoute.appId !== 'home'"
+            class="pc-top-btn"
+            type="button"
+            title="回到主页"
+            aria-label="回到主页"
+            @click.stop="phone.goHome()"
+          >
             <i class="fa-solid fa-house"></i>
           </button>
           <span v-else class="pc-top-btn ghost" aria-hidden="true"></span>
         </div>
         <strong ref="topTitleEl" class="pc-top-title">{{ currentTitle }}</strong>
         <div class="pc-top-actions">
-          <button class="pc-top-btn" type="button" @click.stop="settingsStore.toggleTheme()">
+          <button
+            class="pc-top-btn"
+            type="button"
+            :title="settings.theme === 'light' ? '切换为夜间模式' : '切换为日间模式'"
+            :aria-label="settings.theme === 'light' ? '切换为夜间模式' : '切换为日间模式'"
+            @click.stop="settingsStore.toggleTheme()"
+          >
             <i class="fa-solid" :class="settings.theme === 'light' ? 'fa-moon' : 'fa-sun'"></i>
           </button>
-          <button class="pc-top-btn" type="button" @click.stop="phone.closePhone()">
+          <button class="pc-top-btn" type="button" title="关闭" aria-label="关闭" @click.stop="phone.closePhone()">
             <i class="fa-solid fa-xmark"></i>
           </button>
         </div>
@@ -236,6 +256,7 @@ const rootStyle = computed(() => {
     '--pc-reader-background': cssColor(settings.value.reader.backgroundColor) || 'transparent',
     '--pc-reader-font-size': `${settings.value.reader.fontSize}px`,
     '--pc-reader-line-height': String(settings.value.reader.lineHeight),
+    '--pc-reader-side-padding': `${settings.value.reader.sidePadding}px`,
     '--pc-reader-text': cssColor(visualTheme.readerTextColor) || 'var(--pc-text)',
     '--pc-reader-scale': String(settings.value.interfaceSize.readerScale / 100),
     '--pc-reader-body-min-height': `${Math.round(180 * (settings.value.interfaceSize.readerScale / 100))}px`,

@@ -60,6 +60,21 @@
             <span class="pc-setting-value">{{ settings.reader.lineHeight.toFixed(1) }}</span>
           </div>
         </div>
+        <div class="pc-setting-row">
+          <strong>左右边距</strong>
+          <div class="pc-setting-control pc-reader-range">
+            <input
+              :value="settings.reader.sidePadding"
+              aria-label="正文左右边距"
+              type="range"
+              min="0"
+              max="32"
+              step="2"
+              @input="settingsStore.setReaderSidePadding(numberValue($event))"
+            />
+            <span class="pc-setting-value">{{ settings.reader.sidePadding }}px</span>
+          </div>
+        </div>
         <div class="pc-setting-row pc-reader-font-row">
           <strong>阅读字体</strong>
           <SearchableCombobox

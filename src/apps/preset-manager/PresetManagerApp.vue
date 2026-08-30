@@ -45,7 +45,6 @@
       :prompt-drag="promptDrag"
       :switching-preset="switchingPreset"
       @copy-prompt="openPromptCopy"
-      @assign-prompt-group="assignPromptToGroup"
       @create-prompt-group="createPromptGroup"
       @delete-prompt-group="deletePromptGroup"
       @drag-cancel="cancelPromptDrag"
@@ -58,6 +57,8 @@
       @open-prompt="openPromptEditor"
       @rename-preset="renamePreset"
       @rename-prompt-group="renamePromptGroup"
+      @update-prompt-group-mode="updatePromptGroupMode"
+      @update-prompt-group-range="updatePromptGroupRange"
       @switch-preset="switchPreset"
       @toggle-group="toggleGroup"
       @toggle-preset-visibility="togglePresetVisibility"
@@ -103,7 +104,6 @@ import { usePhoneStore } from '@/store/phone';
 import { usePluginPresetStore } from '@/store/pluginPresets';
 import { storeToRefs } from 'pinia';
 import {
-  assignPresetPromptGroup,
   buildPresetDisplayNodes,
   createPresetPromptGroup,
   createPresetPromptGroupId,
@@ -119,6 +119,9 @@ import {
   readTavernPreset,
   reorderTavernPresetPrompts,
   renamePresetPromptGroup,
+  updatePresetPromptGroupRange,
+  updatePresetPromptGroupSelectionMode,
+  updatePresetPromptSelection,
   updateTavernPresetPromptGroups,
   updateTavernPresetPrompt,
   type BaibaiPresetGroup,
@@ -612,10 +615,14 @@ async function togglePrompt(prompt: TavernPresetPrompt, enabled: boolean) {
   setBusyPrompt(prompt.id, true);
   try {
     if (isPluginDetail.value) {
-      activePreset.value = await pluginPresets.updatePrompt(detailPluginPresetId.value, prompt.id, { enabled });
+      activePreset.value = await pluginPresets.updatePromptGroups(detailPluginPresetId.value, preset =>
+        updatePresetPromptSelection(preset, prompt.id, enabled),
+      );
       return;
     }
-    const result = await updateTavernPresetPrompt(detailPresetName.value, prompt.id, { enabled });
+    const result = await updateTavernPresetPromptGroups(detailPresetName.value, preset =>
+      updatePresetPromptSelection(preset, prompt.id, enabled),
+    );
     activePreset.value = result.preset;
     if (!result.liveSynced) {
       toastr.warning('条目已经保存，但当前生效副本刷新失败；重新切换预设后会生效');
@@ -685,10 +692,21 @@ async function deletePromptGroup(group: BaibaiPresetGroup) {
   await savePromptGroupMutation(preset => deletePresetPromptGroup(preset, group.id), '条目分组已删除');
 }
 
-async function assignPromptToGroup(prompt: TavernPresetPrompt, groupId: string) {
+async function updatePromptGroupRange(group: BaibaiPresetGroup, startPromptId: string, endPromptId: string) {
   await savePromptGroupMutation(
-    preset => assignPresetPromptGroup(preset, prompt.id, groupId),
-    groupId ? '条目分组已更新' : '条目已移到未分组',
+    preset => updatePresetPromptGroupRange(preset, group.id, startPromptId, endPromptId),
+    startPromptId && endPromptId ? '条目分组范围已更新' : '条目分组范围已清除',
+  );
+}
+
+async function updatePromptGroupMode(
+  group: BaibaiPresetGroup,
+  selectionMode: BaibaiPresetGroup['selectionMode'],
+  retainedPromptId?: string,
+) {
+  await savePromptGroupMutation(
+    preset => updatePresetPromptGroupSelectionMode(preset, group.id, selectionMode, retainedPromptId),
+    selectionMode === 'single' ? '条目分组已设为单选' : '条目分组已设为复选',
   );
 }
 

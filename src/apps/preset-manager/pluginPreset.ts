@@ -1,5 +1,13 @@
 import type { RawOrderedPrompt } from '@/core/generationService';
 import type { TavernPreset, TavernPresetPrompt, TavernPresetPromptCopyInput } from './api';
+import {
+  applyPresetPromptSelection,
+  extendPresetPromptGroupAfterDuplicate,
+  hasPresetPromptGroups,
+  rebasePresetPromptGroupRanges,
+  removePresetPromptBoundaryGroups,
+  writePresetPromptGroups,
+} from './promptGroups';
 
 export const PLUGIN_PRESET_SELECTION_PREFIX = 'plugin:';
 
@@ -62,13 +70,6 @@ function promptIdentifier(prompt: Record<string, unknown>, format: PluginPresetS
 
 function getRawPrompts(raw: Record<string, unknown>) {
   return Array.isArray(raw.prompts) ? raw.prompts.filter(isRecord) : [];
-}
-
-function getPromptGroupMetadata(raw: Record<string, unknown>) {
-  const extensions = isRecord(raw.extensions) ? raw.extensions : null;
-  const toolkit = extensions && isRecord(extensions.baibaiToolkit) ? extensions.baibaiToolkit : null;
-  const state = toolkit && isRecord(toolkit.presetPromptGroups) ? toolkit.presetPromptGroups : null;
-  return state && isRecord(state.prompts) ? state.prompts : null;
 }
 
 function getLegacyOrderRecords(raw: Record<string, unknown>) {
@@ -199,6 +200,7 @@ export function patchPluginPresetPrompt(
 export function reorderPluginPresetPrompts(record: PluginPresetRecord, orderedPromptIds: string[]) {
   const prompts = getRawPrompts(record.raw);
   const currentIds = prompts.map(prompt => promptIdentifier(prompt, record.sourceFormat));
+  const previousPromptIds = readPluginPreset(record).prompts.map(prompt => prompt.id);
   if (
     currentIds.length !== orderedPromptIds.length ||
     new Set(orderedPromptIds).size !== orderedPromptIds.length ||
@@ -207,6 +209,7 @@ export function reorderPluginPresetPrompts(record: PluginPresetRecord, orderedPr
     throw new Error('插件预设条目已经发生变化，请刷新后再排序');
   }
   const byId = new Map(prompts.map(prompt => [promptIdentifier(prompt, record.sourceFormat), prompt]));
+  rebasePresetPromptGroupRanges(record.raw, previousPromptIds, orderedPromptIds);
   record.raw.prompts = orderedPromptIds.map(id => byId.get(id) as Record<string, unknown>);
   if (record.sourceFormat === 'legacy') {
     const orderRecord = getEffectiveLegacyOrderRecord(record.raw);
@@ -225,6 +228,11 @@ export function reorderPluginPresetPrompts(record: PluginPresetRecord, orderedPr
 
 export function deletePluginPresetPrompt(record: PluginPresetRecord, promptId: string) {
   findRawPrompt(record, promptId);
+  removePresetPromptBoundaryGroups(
+    record.raw,
+    readPluginPreset(record).prompts.map(prompt => prompt.id),
+    promptId,
+  );
   record.raw.prompts = getRawPrompts(record.raw).filter(
     prompt => promptIdentifier(prompt, record.sourceFormat) !== promptId,
   );
@@ -233,8 +241,6 @@ export function deletePluginPresetPrompt(record: PluginPresetRecord, promptId: s
       orderRecord.order = (orderRecord.order ?? []).filter(item => String(item.identifier ?? '') !== promptId);
     });
   }
-  const groupMetadata = getPromptGroupMetadata(record.raw);
-  if (groupMetadata) delete groupMetadata[promptId];
   record.updatedAt = new Date().toISOString();
 }
 
@@ -266,24 +272,31 @@ export function duplicatePluginPresetPrompt(
     });
     if (orderRecord) orderRecord.order = order;
   }
-  const groupMetadata = getPromptGroupMetadata(record.raw);
-  const sourceGroupMetadata = groupMetadata?.[sourcePromptId];
-  if (groupMetadata && isRecord(sourceGroupMetadata)) groupMetadata[id] = cloneRecord(sourceGroupMetadata);
+  extendPresetPromptGroupAfterDuplicate(
+    record.raw,
+    readPluginPreset(record).prompts.map(prompt => prompt.id),
+    sourcePromptId,
+    id,
+  );
+  if (input.enabled) {
+    const preset = readPluginPreset(record);
+    applyPresetPromptSelection(preset, preset.prompts, id, true);
+    preset.prompts.forEach(prompt => patchPluginPresetPrompt(record, prompt.id, { enabled: prompt.enabled }));
+  }
   record.updatedAt = new Date().toISOString();
   return id;
 }
 
 export function exportPluginPreset(record: PluginPresetRecord) {
   const raw = cloneRecord(record.raw);
-  const extensions = isRecord(raw.extensions) ? raw.extensions : null;
-  const toolkit = extensions && isRecord(extensions.baibaiToolkit) ? extensions.baibaiToolkit : null;
-  const groupState = toolkit && isRecord(toolkit.presetPromptGroups) ? toolkit.presetPromptGroups : null;
-  const hasPromptGroups = Boolean(
-    groupState &&
-    ((Array.isArray(groupState.groups) && groupState.groups.length > 0) ||
-      (isRecord(groupState.prompts) && Object.keys(groupState.prompts).length > 0)),
-  );
-  return record.sourceRoot === 'array' && Array.isArray(raw.prompts) && !hasPromptGroups ? raw.prompts : raw;
+  const grouped = hasPresetPromptGroups(raw);
+  if (grouped) {
+    writePresetPromptGroups(
+      raw,
+      readPluginPreset({ ...record, raw }).prompts.map(prompt => prompt.id),
+    );
+  }
+  return record.sourceRoot === 'array' && Array.isArray(raw.prompts) && !grouped ? raw.prompts : raw;
 }
 
 export function buildPluginPresetOrderedPrompts(

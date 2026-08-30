@@ -154,6 +154,8 @@ export function createVisualScenarioGroups(rootAppScenarios: string[]): VisualSc
       id: 'worldbook',
       scenarios: [
         'worldbook-link-legacy-entry',
+        'worldbook-entry-group-selection',
+        'worldbook-entry-group-selection-dark',
         'worldbook-entry-editor',
         'worldbook-entry-copy',
         'worldbook-entry-copy-dark',
@@ -185,6 +187,8 @@ export function createVisualScenarioGroups(rootAppScenarios: string[]): VisualSc
       id: 'preset-manager',
       scenarios: [
         'preset-builtin-diary',
+        'preset-prompt-range-groups',
+        'preset-prompt-range-groups-dark',
         'plugin-preset-lifecycle',
         'plugin-preset-visibility',
         'preset-owner-current',

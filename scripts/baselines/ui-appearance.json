@@ -1,7 +1,7 @@
 {
   "version": 2,
   "defect": "D-VISUAL-001",
-  "generatedAt": "2026-08-30T04:31:13.526Z",
+  "generatedAt": "2026-08-30T07:29:00.145Z",
   "scenarios": [
     "home",
     "home-tasks-dark",
@@ -17,7 +17,7 @@
   "evidence": [
     {
       "appearance": {
-        "screenshotPerceptualHash": "E08381EBABE8A855",
+        "screenshotPerceptualHash": "E08385EB29222055",
         "targets": [
           {
             "missing": false,
@@ -43,7 +43,7 @@
     },
     {
       "appearance": {
-        "screenshotPerceptualHash": "0D7C75D5D4DC108A",
+        "screenshotPerceptualHash": "1F7C6DD5D4DC108A",
         "targets": [
           {
             "missing": false,
@@ -70,13 +70,13 @@
     },
     {
       "appearance": {
-        "screenshotPerceptualHash": "7C78703775F02111",
+        "screenshotPerceptualHash": "7C70703775F02111",
         "targets": [
           {
             "missing": false,
             "selector": ".pc-field",
             "styles": {
-              "backgroundColor": "rgb(44, 44, 46)",
+              "backgroundColor": "color(srgb 0.172549 0.172549 0.180392 / 0.62)",
               "color": "rgb(245, 245, 247)"
             }
           },
@@ -95,13 +95,13 @@
     },
     {
       "appearance": {
-        "screenshotPerceptualHash": "7C78703775F02111",
+        "screenshotPerceptualHash": "7C70703775F02111",
         "targets": [
           {
             "missing": false,
             "selector": ".pc-area",
             "styles": {
-              "backgroundColor": "rgb(44, 44, 46)",
+              "backgroundColor": "color(srgb 0.172549 0.172549 0.180392 / 0.62)",
               "color": "rgb(245, 245, 247)"
             }
           },
@@ -140,7 +140,7 @@
     },
     {
       "appearance": {
-        "screenshotPerceptualHash": "E1012BAB2B3000D4",
+        "screenshotPerceptualHash": "E1012B2B232000D4",
         "targets": [
           {
             "missing": false,
@@ -193,13 +193,13 @@
     },
     {
       "appearance": {
-        "screenshotPerceptualHash": "7C23F621F8232020",
+        "screenshotPerceptualHash": "7C21FE23F8232020",
         "targets": [
           {
             "missing": false,
             "selector": ".pc-field",
             "styles": {
-              "backgroundColor": "rgb(44, 44, 46)",
+              "backgroundColor": "color(srgb 0.172549 0.172549 0.180392 / 0.62)",
               "color": "rgb(245, 245, 247)"
             }
           },
@@ -218,13 +218,13 @@
     },
     {
       "appearance": {
-        "screenshotPerceptualHash": "7C23F621F8232020",
+        "screenshotPerceptualHash": "7C21FE23F8232020",
         "targets": [
           {
             "missing": false,
             "selector": ".pc-area",
             "styles": {
-              "backgroundColor": "rgb(44, 44, 46)",
+              "backgroundColor": "color(srgb 0.172549 0.172549 0.180392 / 0.62)",
               "color": "rgb(245, 245, 247)"
             }
           },
@@ -263,7 +263,7 @@
     },
     {
       "appearance": {
-        "screenshotPerceptualHash": "E1003BABA8002054",
+        "screenshotPerceptualHash": "E1013B2B21002054",
         "targets": [
           {
             "missing": false,
@@ -289,7 +289,7 @@
     },
     {
       "appearance": {
-        "screenshotPerceptualHash": "1CDB4FDC9C2020EB",
+        "screenshotPerceptualHash": "1CDB4BDC9C2020EB",
         "targets": [
           {
             "missing": false,
@@ -316,13 +316,13 @@
     },
     {
       "appearance": {
-        "screenshotPerceptualHash": "FC622EF3E0202020",
+        "screenshotPerceptualHash": "FCF16FF3E0202020",
         "targets": [
           {
             "missing": false,
             "selector": ".pc-field",
             "styles": {
-              "backgroundColor": "rgb(44, 44, 46)",
+              "backgroundColor": "color(srgb 0.172549 0.172549 0.180392 / 0.62)",
               "color": "rgb(245, 245, 247)"
             }
           },
@@ -341,13 +341,13 @@
     },
     {
       "appearance": {
-        "screenshotPerceptualHash": "FC622EF3E0202020",
+        "screenshotPerceptualHash": "FCF16FF3E0202020",
         "targets": [
           {
             "missing": false,
             "selector": ".pc-area",
             "styles": {
-              "backgroundColor": "rgb(44, 44, 46)",
+              "backgroundColor": "color(srgb 0.172549 0.172549 0.180392 / 0.62)",
               "color": "rgb(245, 245, 247)"
             }
           },

@@ -3,6 +3,7 @@
     <template v-for="(segment, index) in segments" :key="`${segment.kind}:${index}`">
       <FrontendFrame
         v-if="segment.kind === 'html'"
+        document-flow
         embedded
         flush-content
         :active="active"

@@ -113,7 +113,13 @@
 
       <div v-if="state.running || state.total" class="pc-status-card">
         <strong>{{ state.running ? '批量生成中' : state.resumeAvailable ? '批量已暂停' : '批量生成完成' }}</strong>
-        <p>{{ progressLabel }}</p>
+        <div class="pc-compact-toolbar">
+          <p>{{ progressLabel }}</p>
+          <button v-if="state.previewCount" class="pc-soft-btn" type="button" @click="$emit('preview')">
+            <i class="fa-solid fa-eye"></i>
+            <span>查看预览（{{ state.previewCount }}）</span>
+          </button>
+        </div>
       </div>
       <div v-if="state.error" class="pc-status-card danger">
         <strong>{{ state.stopRequested ? '批量已停止' : '生成失败' }}</strong>
@@ -153,6 +159,7 @@ interface DiaryBatchState {
   done: number;
   error: string;
   failed: number;
+  previewCount: number;
   rawOutput: string;
   resumeAvailable: boolean;
   running: boolean;
@@ -166,7 +173,7 @@ const props = defineProps<{
   state: DiaryBatchState;
 }>();
 
-defineEmits<{ cancel: []; generate: []; reset: []; stop: [] }>();
+defineEmits<{ cancel: []; generate: []; preview: []; reset: []; stop: [] }>();
 
 const bookTitle = defineModel<string>('bookTitle', { required: true });
 const connectionSelection = defineModel<TextProviderSelection>('connectionSelection', { required: true });

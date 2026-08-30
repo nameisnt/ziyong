@@ -92,6 +92,7 @@ const { usePresetLinkStore } = await import('@/apps/preset-link/store');
 const { useWorldSlotsStore } = await import('@/apps/world-slots/store');
 const { useFileRepositoryStore } = await import('@/store/fileRepository');
 const { usePluginPresetStore } = await import('@/store/pluginPresets');
+const { useWorldbookCatalogGroupStore } = await import('@/store/worldbookCatalogGroups');
 const { useRelationshipStore } = await import('@/apps/relationship/store');
 const { useRegexDisplayStore } = await import('@/apps/regex-display/store');
 const { getCurrentChatScopeKey } = await import('@/store/chatScoped');
@@ -114,6 +115,7 @@ const {
   readTavernPreset,
   reorderTavernPresetPrompts,
 } = await import('@/apps/preset-manager/api');
+const { buildPresetPromptGroupIds, readPresetPromptGroups } = await import('@/apps/preset-manager/promptGroups');
 const { getWorldbookEntries } = await import('@/apps/worldbook-link/api');
 const { applyTextProviderSelection } = await import('@/util/textProvider');
 const { buildExtraHistoryContext, getSummarizableChapters } = await import('@/util/extrasSummary');
@@ -904,25 +906,86 @@ async function applyScenario(name: VisualScenarioName, options: { height?: numbe
     await waitForPaint();
     const groupManager = document.querySelector<HTMLElement>('.pc-home-group-manager-dialog');
     const groupManagerRows = groupManager?.querySelectorAll('.pc-home-group-manager-row') ?? [];
-    const expectedManagerRows = settings.settings.layout.folders.flatMap(folder => folder.appIds).length;
+    const managedGroupSelect = groupManager?.querySelector<HTMLSelectElement>('select[aria-label="当前管理分组"]');
+    const expectedManagerRows = settings.settings.layout.folders.find(folder => folder.id === managedGroupSelect?.value)
+      ?.appIds.length;
     if (!groupManager || groupManagerRows.length !== expectedManagerRows) {
       throw new Error(
         `Home group management did not open the App assignment list: dialog=${Boolean(groupManager)}, rows=${groupManagerRows.length}, expected=${expectedManagerRows}`,
       );
     }
-    groupManagerRows[0]?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+    if (
+      managedGroupSelect?.value !== gameFolder?.id ||
+      !managedGroupSelect.selectedOptions[0]?.textContent?.includes('小游戏')
+    ) {
+      throw new Error('Home group management did not identify the active group');
+    }
+    const allAppsScope = [...groupManager.querySelectorAll<HTMLButtonElement>('.pc-home-group-manager-scope button')].find(
+      button => button.textContent?.trim() === '全部 App',
+    );
+    allAppsScope?.click();
+    await waitForPaint();
+    const allManagerRows = groupManager.querySelectorAll('.pc-home-group-manager-row');
+    const expectedAllManagerRows = settings.settings.layout.folders.flatMap(folder => folder.appIds).length;
+    if (allManagerRows.length !== expectedAllManagerRows) {
+      throw new Error('Home group management did not expose the complete App range');
+    }
+    allManagerRows[0]?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+    await waitForPaint();
+    const currentGroupScope = [...groupManager.querySelectorAll<HTMLButtonElement>('.pc-home-group-manager-scope button')].find(
+      button => button.textContent?.trim() === '本组',
+    );
+    currentGroupScope?.click();
+    await waitForPaint();
+    if (groupManager.textContent?.includes('已选 1')) {
+      throw new Error('Home group management retained a hidden selection after changing App range');
+    }
+    groupManager.querySelector<HTMLButtonElement>('button[aria-label="重命名分组"]')?.click();
+    await waitForPaint();
+    const renameInput = groupManager.querySelector<HTMLInputElement>('input[aria-label="分组名称"]');
+    if (!renameInput) throw new Error('Home group management did not expose group rename');
+    renameInput.value = '小游戏测试';
+    renameInput.dispatchEvent(new Event('input', { bubbles: true }));
+    await waitForPaint();
+    groupManager.querySelector<HTMLButtonElement>('.pc-home-group-rename-row .pc-primary-btn')?.click();
+    await waitForPaint();
+    if (
+      settings.settings.layout.folders.find(folder => folder.id === gameFolder.id)?.name !== '小游戏测试' ||
+      !document.querySelector(`[data-home-token="folder:${gameFolder.id}"]`)?.textContent?.includes('小游戏测试')
+    ) {
+      throw new Error('Home group rename did not update the saved group and home tab');
+    }
+    groupManager.querySelector<HTMLButtonElement>('button[aria-label="重命名分组"]')?.click();
+    await waitForPaint();
+    const restoreNameInput = groupManager.querySelector<HTMLInputElement>('input[aria-label="分组名称"]');
+    if (!restoreNameInput) throw new Error('Home group rename could not be reopened');
+    restoreNameInput.value = '小游戏';
+    restoreNameInput.dispatchEvent(new Event('input', { bubbles: true }));
+    await waitForPaint();
+    groupManager.querySelector<HTMLButtonElement>('.pc-home-group-rename-row .pc-primary-btn')?.click();
+    await waitForPaint();
+    settings.setTheme('dark');
+    await waitForPaint();
+    const darkManagerSelect = groupManager.querySelector<HTMLElement>('select[aria-label="当前管理分组"]');
+    if (!darkManagerSelect || getComputedStyle(darkManagerSelect).backgroundColor === 'rgb(255, 255, 255)') {
+      throw new Error('Home group management controls did not adapt to dark mode');
+    }
+    settings.setTheme('light');
+    await waitForPaint();
+    const currentManagerRows = groupManager.querySelectorAll('.pc-home-group-manager-row');
+    currentManagerRows[0]?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
     await waitForPaint();
     if (!groupManager.textContent?.includes('已选 1')) {
       throw new Error('Home group management cannot select an App for reassignment');
     }
-    const selectedManagerAppId = (groupManagerRows[0] as HTMLElement | undefined)?.dataset.appId;
+    const selectedManagerAppId = (currentManagerRows[0] as HTMLElement | undefined)?.dataset.appId;
+    const moveTarget = groupManager.querySelector<HTMLSelectElement>('select[aria-label="目标分组"]')?.value;
     groupManager.querySelector<HTMLButtonElement>('.pc-home-group-manager-actions .pc-primary-btn')?.click();
     await waitForPaint();
     if (
       !selectedManagerAppId ||
-      !settings.settings.layout.folders
-        .find(folder => folder.id === gameFolder?.id)
-        ?.appIds.includes(selectedManagerAppId)
+      !moveTarget ||
+      !settings.settings.layout.folders.find(folder => folder.id === moveTarget)?.appIds.includes(selectedManagerAppId)
     ) {
       throw new Error('Home group management did not move the selected App to the target group');
     }
@@ -3405,12 +3468,9 @@ async function applyScenario(name: VisualScenarioName, options: { height?: numbe
     if (preset.prompts[sourceIndex + 1]?.id !== copied.copiedPromptId) {
       throw new Error('Copied preset prompt was not inserted below its source');
     }
-    const groupPrompts = (
-      (preset.extensions.baibaiToolkit as Record<string, unknown>)?.presetPromptGroups as {
-        prompts?: Record<string, { groupId?: string }>;
-      }
-    )?.prompts;
-    if (groupPrompts?.[copied.copiedPromptId]?.groupId !== 'visual-group-writing') {
+    const copiedPromptIds = preset.prompts.map(prompt => prompt.id);
+    const copiedGroupIds = buildPresetPromptGroupIds(readPresetPromptGroups(preset, copiedPromptIds), copiedPromptIds);
+    if (copiedGroupIds.get(copied.copiedPromptId) !== 'visual-group-writing') {
       throw new Error('Copied preset prompt did not inherit its source group');
     }
     const reorderedIds = preset.prompts.map(prompt => prompt.id);
@@ -3422,13 +3482,9 @@ async function applyScenario(name: VisualScenarioName, options: { height?: numbe
     if (preset.prompts.some(prompt => prompt.id === 'visual-format')) {
       throw new Error('Deleted preset prompt remained in the prompt list');
     }
-    const metadataAfterDelete = (
-      (preset.extensions.baibaiToolkit as Record<string, unknown>)?.presetPromptGroups as {
-        prompts?: Record<string, { groupId?: string }>;
-      }
-    )?.prompts;
-    if (metadataAfterDelete?.['visual-format']) {
-      throw new Error('Deleted preset prompt remained in BaiBai group metadata');
+    const remainingPromptIds = preset.prompts.map(prompt => prompt.id);
+    if (readPresetPromptGroups(preset, remainingPromptIds).some(group => group.id === 'visual-group-writing')) {
+      throw new Error('Deleting a preset group boundary did not dissolve its range');
     }
     resetPhoneToRoute('preset-manager', 'detail', '预设条目', { presetName: '视觉预设' });
   } else if (name === 'preset-copy-editor') {
@@ -3590,6 +3646,53 @@ async function applyScenario(name: VisualScenarioName, options: { height?: numbe
       return Boolean(current && !current.disabled && !current.checked);
     });
     if (!toggled) throw new Error('Legacy worldbook enabled/disable fields were not updated together');
+  } else if (name === 'worldbook-entry-group-selection' || name === 'worldbook-entry-group-selection-dark') {
+    if (name.endsWith('-dark')) useSettingsStore().setTheme('dark');
+    const catalogGroups = useWorldbookCatalogGroupStore();
+    catalogGroups.createEntryGroup('【视觉】旧格式世界书', '剧情阶段');
+    catalogGroups.assignEntry('【视觉】旧格式世界书', 1, '剧情阶段');
+    catalogGroups.assignEntry('【视觉】旧格式世界书', 2, '剧情阶段');
+    resetPhoneToRoute('worldbook-link', 'detail', '【视觉】旧格式世界书', { bookName: '【视觉】旧格式世界书' });
+    if (!(await waitForVisualCondition(() => document.querySelectorAll('.pc-worldbook-entry').length === 2))) {
+      throw new Error('Worldbook entry group fixture did not load');
+    }
+    document.querySelector<HTMLDetailsElement>('.pc-worldbook-detail-head .pc-action-menu > summary')?.click();
+    const manageGroups = [...document.querySelectorAll<HTMLButtonElement>('.pc-action-menu-panel button')].find(
+      button => button.textContent?.includes('管理条目分组'),
+    );
+    manageGroups?.click();
+    if (!(await waitForVisualCondition(() => Boolean(document.querySelector('.pc-worldbook-group-manager-dialog'))))) {
+      throw new Error('Worldbook entry group manager did not open');
+    }
+    const singleButton = [...document.querySelectorAll<HTMLButtonElement>('.pc-worldbook-managed-group button')].find(
+      button => button.textContent?.trim() === '单选',
+    );
+    singleButton?.click();
+    if (!(await waitForVisualCondition(() => Boolean(document.querySelector('.pc-worldbook-single-selection'))))) {
+      throw new Error('Worldbook single-select retention picker did not open');
+    }
+    document.querySelector<HTMLInputElement>('.pc-worldbook-single-selection input[value="2"]')?.click();
+    const confirm = [...document.querySelectorAll<HTMLButtonElement>('.pc-worldbook-single-selection button')].find(
+      button => button.textContent?.trim() === '确定',
+    );
+    confirm?.click();
+    if (
+      !(await waitForVisualCondition(() => {
+        const toggles = [...document.querySelectorAll<HTMLInputElement>('.pc-worldbook-entry .pc-toggle input')];
+        return toggles.length === 2 && !toggles[0]?.checked && toggles[1]?.checked;
+      }))
+    ) {
+      throw new Error('Worldbook single-select switches did not update together');
+    }
+    const entries = await getWorldbookEntries('【视觉】旧格式世界书');
+    if (
+      entries
+        .filter(entry => entry.enabled)
+        .map(entry => entry.uid)
+        .join(',') !== '2'
+    ) {
+      throw new Error('Worldbook single-select mode did not retain exactly one enabled entry');
+    }
   } else if (name === 'worldbook-entry-editor') {
     resetPhoneToRoute('worldbook-link', 'detail', '【视觉】旧格式世界书', { bookName: '【视觉】旧格式世界书' });
     const loaded = await waitForVisualCondition(() => Boolean(document.querySelector('.pc-worldbook-entry-open')));
@@ -3793,6 +3896,45 @@ async function applyScenario(name: VisualScenarioName, options: { height?: numbe
     if (buttonStyles.width !== '30px' || buttonStyles.height !== '30px') {
       throw new Error(`Version step button size changed: ${buttonStyles.width}/${buttonStyles.height}`);
     }
+    status.click();
+    await waitForPaint();
+    const firstJumpInput = navigator.querySelector<HTMLInputElement>('.pc-version-index-input');
+    if (!firstJumpInput) throw new Error('Clicking the version count did not open the inline index input');
+    firstJumpInput.value = '1';
+    firstJumpInput.dispatchEvent(new Event('input', { bubbles: true }));
+    firstJumpInput.dispatchEvent(new KeyboardEvent('keydown', { bubbles: true, key: 'Enter' }));
+    const originalVersion = chapter.versions[0];
+    if (
+      !originalVersion ||
+      !(await waitForVisualCondition(() => usePhoneStore().currentRoute.params?.versionId === originalVersion.id))
+    ) {
+      throw new Error('Entering the first version index did not activate the original version');
+    }
+    document.querySelector<HTMLButtonElement>('.pc-version-status')?.click();
+    await waitForPaint();
+    const secondJumpInput = document.querySelector<HTMLInputElement>('.pc-version-index-input');
+    if (!secondJumpInput) throw new Error('Version index input did not reopen after the first jump');
+    secondJumpInput.value = '2';
+    secondJumpInput.dispatchEvent(new Event('input', { bubbles: true }));
+    secondJumpInput.dispatchEvent(new KeyboardEvent('keydown', { bubbles: true, key: 'Enter' }));
+    if (!(await waitForVisualCondition(() => usePhoneStore().currentRoute.params?.versionId === saved.version.id))) {
+      throw new Error('Entering the second version index did not restore the generated version');
+    }
+    if (document.querySelector<HTMLElement>('.pc-version-status')?.textContent?.trim() !== '2 / 2') {
+      throw new Error('Version index status did not follow the inline jump');
+    }
+    const settingsStore = useSettingsStore();
+    settingsStore.setTheme('dark');
+    await waitForPaint();
+    document.querySelector<HTMLButtonElement>('.pc-version-status')?.click();
+    await waitForPaint();
+    const darkIndexInput = document.querySelector<HTMLElement>('.pc-version-index-input');
+    if (!darkIndexInput || getComputedStyle(darkIndexInput).backgroundColor === 'rgb(255, 255, 255)') {
+      throw new Error('Version index input did not adapt to dark mode');
+    }
+    darkIndexInput.dispatchEvent(new KeyboardEvent('keydown', { bubbles: true, key: 'Escape' }));
+    settingsStore.setTheme('light');
+    await waitForPaint();
   } else if (name === 'content-versions') {
     const extras = useExtrasStore();
     const extraBook = createLegacyExtrasFixture();
@@ -4398,6 +4540,7 @@ async function applyScenario(name: VisualScenarioName, options: { height?: numbe
     const staleExtrasManagerItem = managerItems.find(item => item.dataset.draftId === staleExtrasDraft.id);
     if (!staleExtrasManagerItem) throw new Error('Preview draft manager did not expose the older draft title');
     staleExtrasManagerItem.click();
+    await waitForPaint();
     document.querySelector<HTMLButtonElement>('.pc-preview-draft-manager .pc-primary-btn')?.click();
     await waitForPaint();
     if (usePhoneStore().currentRoute.page !== 'chapter-preview') {
@@ -4416,9 +4559,10 @@ async function applyScenario(name: VisualScenarioName, options: { height?: numbe
     );
     if (!deleteTarget) throw new Error('Preview draft manager lost the selected older draft');
     deleteTarget.click();
+    await waitForPaint();
     document.querySelector<HTMLButtonElement>('.pc-preview-draft-manager .pc-soft-btn.danger')?.click();
     await waitForPaint();
-    const deleteNotice = usePhoneStore().notices.find(notice => notice.message.includes('要删除未保存预览'));
+    const deleteNotice = usePhoneStore().notices.find(notice => notice.message.includes('要删除所选 1 份未保存预览'));
     if (!deleteNotice) throw new Error('Preview draft deletion did not require confirmation');
     usePhoneStore().chooseNoticeAction(deleteNotice.id, 'confirm');
     await waitForPaint();

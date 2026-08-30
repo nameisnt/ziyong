@@ -579,6 +579,9 @@ const regenerateFailedDraft = useFailedDraftRegeneration({
   display: grid;
   gap: 8px;
 }
+.pc-relationship-page {
+  align-content: start;
+}
 .pc-relationship-graph-card {
   padding: 4px;
 }

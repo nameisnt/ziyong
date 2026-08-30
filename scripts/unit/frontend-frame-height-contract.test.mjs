@@ -18,12 +18,19 @@ test('frontend shell neutralizes document-height feedback while preserving natur
   assert.match(frontend, /html, body \{[\s\S]*?height: auto !important;[\s\S]*?min-height: 0 !important;/u);
   assert.match(frontend, /#pc-frame-content \{[\s\S]*?display: flow-root;[\s\S]*?box-sizing: border-box;/u);
   assert.match(frontend, /viewportHeight: window\.innerHeight/u);
+  assert.match(frontend, /documentFlow/u);
+  assert.match(
+    frontend,
+    /#pc-frame-content > \* \{[\s\S]*?height: auto !important;[\s\S]*?max-height: none !important;/u,
+  );
 });
 
-test('frontend frame rejects repeated viewport-following growth and exposes the limited state', () => {
+test('frontend frame rejects repeated viewport-following growth or shrinkage and exposes the limited state', () => {
   assert.match(frame, /heightLimited/u);
   assert.match(frame, /viewportHeight/u);
   assert.match(frame, /feedbackStreak/u);
-  assert.match(frame, /网页高度异常，已停止自动扩张/u);
+  assert.match(frame, /lastFeedbackRatio/u);
+  assert.match(frame, /repeatsSameDelta \|\| repeatsSameRatio/u);
+  assert.match(frame, /网页高度异常，已停止自动调整/u);
   assert.match(frame, /if \(nextHeight === frameHeight\.value\) return;/u);
 });

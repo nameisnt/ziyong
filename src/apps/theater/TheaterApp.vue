@@ -247,7 +247,7 @@ import { useTheaterStore } from '@/store/theater';
 import type { CharacterRef } from '@/type/diary';
 import type { FailedGenerationDraft, GenerationReplaySnapshot, HiddenGenerationRecord } from '@/type/generation';
 import type { GenerationTask } from '@/type/generationTask';
-import type { TheaterRenderMode } from '@/type/theater';
+import type { TheaterEntry, TheaterRenderMode } from '@/type/theater';
 import { canOpenBaguScan } from '@/util/baguScanGate';
 import { useDetailScroll } from '@/util/detailScroll';
 import { parseTheaterXmlResult } from '@/util/generation';
@@ -426,10 +426,15 @@ const rewriteGenerationReplay = computed(() =>
       ? resolveHiddenGenerationReplay(rewriteTargetEntry.value)
       : undefined,
 );
+
+function getActiveVersionCreatedAt(entry: TheaterEntry) {
+  return resolveContentVersion(entry.versions, entry.activeVersionId)?.createdAt || entry.createdAt;
+}
+
 const detailEntries = computed(() =>
   [...entries.value].sort((left, right) => {
-    const compare = left.createdAt.localeCompare(right.createdAt);
-    return sortDesc.value ? -compare : compare;
+    const compare = getActiveVersionCreatedAt(left).localeCompare(getActiveVersionCreatedAt(right));
+    return (sortDesc.value ? -compare : compare) || left.id.localeCompare(right.id);
   }),
 );
 const activeEntryIndex = computed(() =>
@@ -604,7 +609,7 @@ const visibleTypePrompts = computed(() => {
 const filteredEntries = computed(() => {
   const normalized = query.value.trim().toLowerCase();
   const activeTypeKeys = selectedHistoryTypeKeys.value;
-  const source = entries.value.filter(entry => {
+  return detailEntries.value.filter(entry => {
     const typeKey = entry.typeName.trim() || '未分类小剧场';
     if (activeTypeKeys.size && !activeTypeKeys.has(typeKey)) return false;
     if (!normalized) return true;
@@ -613,11 +618,6 @@ const filteredEntries = computed(() => {
       entry.typeName.toLowerCase().includes(normalized) ||
       entry.participants.some(item => item.name.toLowerCase().includes(normalized))
     );
-  });
-
-  return [...source].sort((left, right) => {
-    const compare = left.createdAt.localeCompare(right.createdAt);
-    return sortDesc.value ? -compare : compare;
   });
 });
 const generationPromptPreview = computed(() => {

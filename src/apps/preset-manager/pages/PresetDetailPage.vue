@@ -189,50 +189,108 @@
 
           <div class="pc-preset-group-manager-body">
             <section class="pc-preset-managed-groups">
-              <div v-for="group in promptGroups" :key="group.id" class="pc-preset-managed-group-row">
-                <span>
-                  <strong>{{ group.name }}</strong>
-                  <small>{{ groupPromptCount(group.id) }} 个条目</small>
-                </span>
+              <article v-for="group in promptGroups" :key="group.id" class="pc-preset-managed-group-row">
+                <header class="pc-preset-managed-group-head">
+                  <span>
+                    <strong>{{ group.name }}</strong>
+                    <small>{{ groupPromptCount(group.id) }} 个条目</small>
+                  </span>
+                  <button
+                    class="pc-icon-btn"
+                    type="button"
+                    :disabled="mutationBusy"
+                    title="分组改名"
+                    aria-label="分组改名"
+                    @click="$emit('rename-prompt-group', group)"
+                  >
+                    <i class="fa-solid fa-pen"></i>
+                  </button>
+                  <button
+                    class="pc-icon-btn danger"
+                    type="button"
+                    :disabled="mutationBusy"
+                    title="删除分组"
+                    aria-label="删除分组"
+                    @click="$emit('delete-prompt-group', group)"
+                  >
+                    <i class="fa-solid fa-trash"></i>
+                  </button>
+                </header>
+                <div class="pc-preset-group-mode-row">
+                  <span class="pc-field-label">选择方式</span>
+                  <div class="pc-segment" aria-label="条目分组选择方式">
+                    <button
+                      :class="['pc-segment-btn', 'compact', { active: group.selectionMode === 'single' }]"
+                      type="button"
+                      :disabled="mutationBusy"
+                      @click="requestGroupMode(group, 'single')"
+                    >
+                      单选
+                    </button>
+                    <button
+                      :class="['pc-segment-btn', 'compact', { active: group.selectionMode === 'multiple' }]"
+                      type="button"
+                      :disabled="mutationBusy"
+                      @click="requestGroupMode(group, 'multiple')"
+                    >
+                      复选
+                    </button>
+                  </div>
+                </div>
+                <section v-if="singleSelectionGroupId === group.id" class="pc-preset-single-selection">
+                  <strong>保留一个已启用条目</strong>
+                  <label>
+                    <input v-model="retainedPromptId" type="radio" value="" />
+                    <span>全部关闭</span>
+                  </label>
+                  <label v-for="prompt in enabledGroupPrompts(group.id)" :key="prompt.id">
+                    <input v-model="retainedPromptId" type="radio" :value="prompt.id" />
+                    <span>{{ prompt.name || prompt.id }}</span>
+                  </label>
+                  <div class="pc-form-actions">
+                    <button class="pc-soft-btn" type="button" @click="cancelSingleSelection">取消</button>
+                    <button class="pc-primary-btn" type="button" @click="confirmSingleSelection(group)">确定</button>
+                  </div>
+                </section>
+                <div class="pc-preset-group-range-grid">
+                  <div class="pc-field-group">
+                    <span class="pc-field-label">开始条目</span>
+                    <SearchableCombobox
+                      :model-value="group.startPromptId"
+                      :options="promptBoundaryOptions"
+                      placeholder="选择开始条目"
+                      input-label="选择分组开始条目"
+                      :disabled="mutationBusy"
+                      @update:model-value="
+                        $emit('update-prompt-group-range', group, $event, group.endPromptId || $event)
+                      "
+                    />
+                  </div>
+                  <div class="pc-field-group">
+                    <span class="pc-field-label">结束条目</span>
+                    <SearchableCombobox
+                      :model-value="group.endPromptId"
+                      :options="promptBoundaryOptions"
+                      placeholder="选择结束条目"
+                      input-label="选择分组结束条目"
+                      :disabled="mutationBusy"
+                      @update:model-value="
+                        $emit('update-prompt-group-range', group, group.startPromptId || $event, $event)
+                      "
+                    />
+                  </div>
+                </div>
                 <button
-                  class="pc-icon-btn"
+                  v-if="group.startPromptId || group.endPromptId"
+                  class="pc-soft-btn pc-preset-clear-group-range"
                   type="button"
                   :disabled="mutationBusy"
-                  title="分组改名"
-                  aria-label="分组改名"
-                  @click="$emit('rename-prompt-group', group)"
+                  @click="$emit('update-prompt-group-range', group, '', '')"
                 >
-                  <i class="fa-solid fa-pen"></i>
+                  <i class="fa-solid fa-xmark"></i><span>清除范围</span>
                 </button>
-                <button
-                  class="pc-icon-btn danger"
-                  type="button"
-                  :disabled="mutationBusy"
-                  title="删除分组"
-                  aria-label="删除分组"
-                  @click="$emit('delete-prompt-group', group)"
-                >
-                  <i class="fa-solid fa-trash"></i>
-                </button>
-              </div>
+              </article>
               <EmptyState v-if="!promptGroups.length" title="还没有条目分组" />
-            </section>
-
-            <section class="pc-preset-group-assignments">
-              <strong>条目归类</strong>
-              <label v-for="prompt in preset.prompts" :key="prompt.id" class="pc-preset-group-assignment-row">
-                <span>{{ prompt.name || prompt.id }}</span>
-                <select
-                  class="pc-select"
-                  :value="promptGroupIds.get(prompt.id) || ''"
-                  :disabled="mutationBusy"
-                  :aria-label="`${prompt.name || prompt.id}所属分组`"
-                  @change="$emit('assign-prompt-group', prompt, ($event.target as HTMLSelectElement).value)"
-                >
-                  <option value="">未分组</option>
-                  <option v-for="group in promptGroups" :key="group.id" :value="group.id">{{ group.name }}</option>
-                </select>
-              </label>
             </section>
           </div>
         </article>
@@ -244,6 +302,7 @@
 <script setup lang="ts">
 import EmptyState from '@/components/EmptyState.vue';
 import ActionMenu from '@/components/ActionMenu.vue';
+import SearchableCombobox from '@/components/SearchableCombobox.vue';
 import { usePhoneModalLifecycle } from '@/composables/usePhoneModalLifecycle';
 import type { BaibaiPresetGroup, PresetDisplayNode, TavernPreset, TavernPresetPrompt } from '../api';
 import PresetOwnershipPanel from './PresetOwnershipPanel.vue';
@@ -275,8 +334,7 @@ const props = defineProps<{
 
 const enabledOnly = defineModel<boolean>('enabledOnly', { required: true });
 
-defineEmits<{
-  'assign-prompt-group': [prompt: TavernPresetPrompt, groupId: string];
+const emit = defineEmits<{
   'copy-prompt': [prompt: TavernPresetPrompt];
   'create-prompt-group': [];
   'delete-prompt-group': [group: BaibaiPresetGroup];
@@ -290,6 +348,12 @@ defineEmits<{
   'open-prompt': [prompt: TavernPresetPrompt];
   'rename-preset': [];
   'rename-prompt-group': [group: BaibaiPresetGroup];
+  'update-prompt-group-mode': [
+    group: BaibaiPresetGroup,
+    selectionMode: BaibaiPresetGroup['selectionMode'],
+    retainedPromptId?: string,
+  ];
+  'update-prompt-group-range': [group: BaibaiPresetGroup, startPromptId: string, endPromptId: string];
   'switch-preset': [presetName: string];
   'toggle-group': [groupId: string];
   'toggle-preset-visibility': [];
@@ -300,6 +364,14 @@ defineEmits<{
 const pageEl = ref<HTMLElement | null>(null);
 const groupManagerOpen = ref(false);
 const groupManagerDialogRef = ref<HTMLElement | null>(null);
+const retainedPromptId = ref('');
+const singleSelectionGroupId = ref('');
+const promptBoundaryOptions = computed(() =>
+  (props.preset?.prompts ?? []).map((prompt, index) => ({
+    label: `${index + 1}. ${prompt.name || prompt.id}`,
+    value: prompt.id,
+  })),
+);
 
 usePhoneModalLifecycle({
   dialogRef: groupManagerDialogRef,
@@ -311,6 +383,35 @@ usePhoneModalLifecycle({
 
 function groupPromptCount(groupId: string) {
   return [...props.promptGroupIds.values()].filter(value => value === groupId).length;
+}
+
+function enabledGroupPrompts(groupId: string) {
+  return (props.preset?.prompts ?? []).filter(
+    prompt => props.promptGroupIds.get(prompt.id) === groupId && prompt.enabled,
+  );
+}
+
+function requestGroupMode(group: BaibaiPresetGroup, selectionMode: BaibaiPresetGroup['selectionMode']) {
+  if (group.selectionMode === selectionMode) return;
+  if (selectionMode === 'single') {
+    const enabledPrompts = enabledGroupPrompts(group.id);
+    if (enabledPrompts.length > 1) {
+      singleSelectionGroupId.value = group.id;
+      retainedPromptId.value = enabledPrompts[0]?.id ?? '';
+      return;
+    }
+  }
+  emit('update-prompt-group-mode', group, selectionMode);
+}
+
+function cancelSingleSelection() {
+  singleSelectionGroupId.value = '';
+  retainedPromptId.value = '';
+}
+
+function confirmSingleSelection(group: BaibaiPresetGroup) {
+  emit('update-prompt-group-mode', group, 'single', retainedPromptId.value);
+  cancelSingleSelection();
 }
 
 defineExpose({ getScrollElement: () => pageEl.value });
@@ -453,8 +554,7 @@ defineExpose({ getScrollElement: () => pageEl.value });
 }
 .pc-preset-group-manager-head,
 .pc-preset-group-manager-head > div,
-.pc-preset-managed-group-row,
-.pc-preset-group-assignment-row {
+.pc-preset-managed-group-head {
   display: flex;
   align-items: center;
 }
@@ -468,46 +568,79 @@ defineExpose({ getScrollElement: () => pageEl.value });
   min-height: 0;
   overflow-y: auto;
 }
-.pc-preset-managed-groups,
-.pc-preset-group-assignments {
+.pc-preset-managed-groups {
   display: grid;
 }
-.pc-preset-managed-group-row,
-.pc-preset-group-assignment-row {
-  min-height: 40px;
-  gap: 6px;
+.pc-preset-managed-group-row {
+  display: grid;
+  gap: 8px;
+  padding: 10px 0;
   border-bottom: 1px solid var(--pc-border);
 }
-.pc-preset-managed-group-row > span {
+.pc-preset-managed-group-head {
+  gap: 6px;
+}
+.pc-preset-managed-group-head > span {
   display: grid;
   min-width: 0;
   flex: 1;
   gap: 2px;
 }
-.pc-preset-managed-group-row :is(strong, small),
-.pc-preset-group-assignment-row > span {
+.pc-preset-managed-group-head :is(strong, small) {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
-.pc-preset-managed-group-row small {
+.pc-preset-managed-group-head small {
   color: var(--pc-muted);
   font-size: 11px;
 }
-.pc-preset-group-assignments {
-  gap: 0;
-  padding-top: 12px;
+.pc-preset-group-range-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
 }
-.pc-preset-group-assignment-row {
+.pc-preset-group-mode-row {
+  display: flex;
+  align-items: center;
   justify-content: space-between;
+  gap: 8px;
 }
-.pc-preset-group-assignment-row > span {
+.pc-preset-group-mode-row .pc-segment {
+  width: min(210px, 70%);
+}
+.pc-preset-single-selection {
+  display: grid;
+  gap: 7px;
+  padding: 9px;
+  border: 1px solid var(--pc-border);
+  border-radius: min(var(--pc-control-radius), 8px);
+  background: var(--pc-surface);
+}
+.pc-preset-single-selection > label {
+  display: flex;
   min-width: 0;
-  flex: 1;
+  align-items: center;
+  gap: 8px;
   font-size: 13px;
-  font-weight: 700;
 }
-.pc-preset-group-assignment-row > .pc-select {
-  width: min(44%, 150px);
+.pc-preset-single-selection input {
+  width: 15px;
+  height: 15px;
+  margin: 0;
+  accent-color: var(--pc-theme-accent);
+}
+.pc-preset-single-selection label span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.pc-preset-clear-group-range {
+  justify-self: end;
+}
+@media (max-width: 350px) {
+  .pc-preset-group-range-grid {
+    grid-template-columns: 1fr;
+  }
 }
 </style>

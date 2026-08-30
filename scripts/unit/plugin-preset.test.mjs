@@ -5,12 +5,21 @@ import test from 'node:test';
 import ts from 'typescript';
 
 const source = await readFile(new URL('../../src/apps/preset-manager/pluginPreset.ts', import.meta.url), 'utf8');
+const promptGroupsSource = await readFile(
+  new URL('../../src/apps/preset-manager/promptGroups.ts', import.meta.url),
+  'utf8',
+);
 const builtinDiaryRaw = JSON.parse(
   await readFile(new URL('../../%E6%97%A5%E8%AE%B0%20(1).json', import.meta.url), 'utf8'),
 );
-const compiled = ts.transpileModule(source, {
-  compilerOptions: { module: ts.ModuleKind.ESNext, target: ts.ScriptTarget.ES2022 },
-}).outputText;
+const compilerOptions = { module: ts.ModuleKind.ESNext, target: ts.ScriptTarget.ES2022 };
+const promptGroupsCompiled = ts.transpileModule(promptGroupsSource, { compilerOptions }).outputText;
+const promptGroupsUrl = `data:text/javascript;base64,${Buffer.from(promptGroupsCompiled).toString('base64')}`;
+const compiled = ts
+  .transpileModule(source, {
+    compilerOptions,
+  })
+  .outputText.replace(/from ['"]\.\/promptGroups['"]/u, `from '${promptGroupsUrl}'`);
 const model = await import(`data:text/javascript;base64,${Buffer.from(compiled).toString('base64')}`);
 
 function legacyPreset() {
@@ -167,14 +176,27 @@ test('raw array imports keep array exports until prompt groups require an object
   };
   const groupedExport = model.exportPluginPreset(modernRecord);
   assert.equal(Array.isArray(groupedExport), false);
-  assert.equal(groupedExport.extensions.baibaiToolkit.presetPromptGroups.prompts.one.groupId, 'group-1');
+  assert.deepEqual(groupedExport.extensions.baibaiToolkit.presetPromptGroups, {
+    groups: [
+      {
+        collapsed: false,
+        enabled: true,
+        endPromptId: 'one',
+        id: 'group-1',
+        name: '正文',
+        selectionMode: 'multiple',
+        startPromptId: 'one',
+      },
+    ],
+    version: 2,
+  });
   assert.throws(
     () => model.normalizePluginPresetImport({ prompts: [{ identifier: 'x' }, { identifier: 'x' }] }),
     /重复标识/u,
   );
 });
 
-test('duplicating and deleting plugin prompts keeps prompt group metadata in sync', () => {
+test('duplicating a range end extends the group and deleting a boundary dissolves it', () => {
   const raw = legacyPreset();
   raw.extensions = {
     baibaiToolkit: {
@@ -191,8 +213,13 @@ test('duplicating and deleting plugin prompts keeps prompt group metadata in syn
     name: '主提示副本',
     role: 'system',
   });
-  const groupPrompts = presetRecord.raw.extensions.baibaiToolkit.presetPromptGroups.prompts;
-  assert.equal(groupPrompts[copiedId].groupId, 'group-1');
+  const groupState = presetRecord.raw.extensions.baibaiToolkit.presetPromptGroups;
+  assert.equal(groupState.groups[0].startPromptId, 'main');
+  assert.equal(groupState.groups[0].endPromptId, copiedId);
+  assert.equal(groupState.prompts, undefined);
+  model.reorderPluginPresetPrompts(presetRecord, ['task', copiedId, 'main', 'chatHistory']);
+  assert.equal(presetRecord.raw.extensions.baibaiToolkit.presetPromptGroups.groups[0].startPromptId, copiedId);
+  assert.equal(presetRecord.raw.extensions.baibaiToolkit.presetPromptGroups.groups[0].endPromptId, 'main');
   model.deletePluginPresetPrompt(presetRecord, copiedId);
-  assert.equal(groupPrompts[copiedId], undefined);
+  assert.deepEqual(presetRecord.raw.extensions.baibaiToolkit.presetPromptGroups.groups, []);
 });

@@ -146,7 +146,7 @@
             <span>
               <strong>管理分组</strong>
               <small>{{
-                folderCreateAppIds.length ? `已选 ${folderCreateAppIds.length}` : '选择 App 后移动或新建分组'
+                folderCreateAppIds.length ? `已选 ${folderCreateAppIds.length}` : '管理当前分组中的 App'
               }}</small>
             </span>
             <div>
@@ -163,6 +163,70 @@
               </button>
             </div>
           </header>
+
+          <section class="pc-home-group-manager-current">
+            <span class="pc-field-label">当前分组</span>
+            <div v-if="folderRenameOpen" class="pc-home-group-rename-row">
+              <input
+                v-model="folderRenameName"
+                class="pc-field"
+                maxlength="24"
+                aria-label="分组名称"
+                @keydown.enter.prevent="renameManagedHomeGroup"
+                @keydown.esc.prevent="cancelHomeGroupRename"
+              />
+              <button class="pc-soft-btn" type="button" @click="cancelHomeGroupRename">取消</button>
+              <button
+                class="pc-primary-btn"
+                type="button"
+                :disabled="!canRenameManagedGroup"
+                @click="renameManagedHomeGroup"
+              >
+                保存
+              </button>
+            </div>
+            <div v-else class="pc-home-group-current-row">
+              <select
+                v-model="managedHomeGroupId"
+                class="pc-select"
+                aria-label="当前管理分组"
+                @change="switchManagedHomeGroup"
+              >
+                <option v-for="group in homeGroups" :key="group.id" :value="group.id">
+                  {{ group.name }} · {{ group.appIds.length }} 个 App
+                </option>
+              </select>
+              <button
+                class="pc-icon-btn"
+                type="button"
+                title="重命名分组"
+                aria-label="重命名分组"
+                @click="startHomeGroupRename"
+              >
+                <i class="fa-solid fa-pen"></i>
+              </button>
+            </div>
+            <small v-if="folderRenameOpen && folderRenameError" class="pc-home-group-rename-error">{{
+              folderRenameError
+            }}</small>
+          </section>
+
+          <div class="pc-segment pc-home-group-manager-scope" role="group" aria-label="App 范围">
+            <button
+              :class="['pc-segment-btn', 'compact', { active: folderManagerScope === 'group' }]"
+              type="button"
+              @click="setFolderManagerScope('group')"
+            >
+              本组
+            </button>
+            <button
+              :class="['pc-segment-btn', 'compact', { active: folderManagerScope === 'all' }]"
+              type="button"
+              @click="setFolderManagerScope('all')"
+            >
+              全部 App
+            </button>
+          </div>
 
           <label class="pc-search-field">
             <i class="fa-solid fa-magnifying-glass"></i>
@@ -192,7 +256,7 @@
               </span>
               <span>
                 <strong>{{ app.name }}</strong>
-                <small>{{ getAppGroupName(app.id) }}</small>
+                <small v-if="folderManagerScope === 'all'">{{ getAppGroupName(app.id) }}</small>
               </span>
             </div>
             <EmptyState v-if="!filteredFolderManagerApps.length" compact title="没有匹配的 App" />
@@ -212,9 +276,14 @@
               </button>
             </template>
             <template v-else>
-              <select v-model="folderTargetId" class="pc-select" aria-label="目标分组">
-                <option v-for="group in homeGroups" :key="group.id" :value="group.id">{{ group.name }}</option>
-              </select>
+              <label class="pc-home-group-move-target">
+                <span class="pc-field-label">移动到</span>
+                <select v-model="folderMoveTargetId" class="pc-select" aria-label="目标分组">
+                  <option v-for="group in folderMoveTargetGroups" :key="group.id" :value="group.id">
+                    {{ group.name }}
+                  </option>
+                </select>
+              </label>
               <button
                 class="pc-icon-btn"
                 type="button"
@@ -228,7 +297,7 @@
               <button
                 class="pc-primary-btn"
                 type="button"
-                :disabled="!folderCreateAppIds.length || !folderTargetId"
+                :disabled="!folderCreateAppIds.length || !folderMoveTargetId"
                 @click="moveSelectedApps"
               >
                 移动所选
@@ -257,6 +326,7 @@ import {
   moveHomeLayoutItem,
   putHomeAppInFolder,
   readHomeFolderToken,
+  renameHomeFolder,
   reorderHomeFolderApp,
 } from '@/core/appLayout';
 import { getPhoneApps, type PhoneAppDefinition } from '@/data/apps';
@@ -316,8 +386,12 @@ const folderCreateOpen = ref(false);
 const folderCreateName = ref('');
 const folderCreateAppIds = ref<string[]>([]);
 const folderManagerQuery = ref('');
+const folderManagerScope = ref<'all' | 'group'>('group');
+const folderMoveTargetId = ref('');
 const folderNewGroupOpen = ref(false);
-const folderTargetId = ref('');
+const folderRenameName = ref('');
+const folderRenameOpen = ref(false);
+const managedHomeGroupId = ref('');
 let appDragLongPressTimer: ReturnType<typeof window.setTimeout> | null = null;
 let folderDragLongPressTimer: ReturnType<typeof window.setTimeout> | null = null;
 let folderHoverTimer: ReturnType<typeof window.setTimeout> | null = null;
@@ -328,6 +402,12 @@ const homeGroups = computed(() => homeLayout.value.folders);
 const activeHomeGroup = computed(
   () => homeGroups.value.find(group => group.id === activeHomeGroupId.value) ?? homeGroups.value[0] ?? null,
 );
+const managedHomeGroup = computed(
+  () => homeGroups.value.find(group => group.id === managedHomeGroupId.value) ?? homeGroups.value[0] ?? null,
+);
+const folderMoveTargetGroups = computed(() =>
+  homeGroups.value.filter(group => group.id !== managedHomeGroup.value?.id),
+);
 const activeHomeGroupApps = computed(() =>
   (activeHomeGroup.value?.appIds ?? []).flatMap(appId => {
     const app = phoneAppById.value.get(appId);
@@ -336,8 +416,32 @@ const activeHomeGroupApps = computed(() =>
 );
 const filteredFolderManagerApps = computed(() => {
   const query = folderManagerQuery.value.trim().toLocaleLowerCase();
-  return folderCreationApps.value.filter(app => !query || `${app.name} ${app.id}`.toLocaleLowerCase().includes(query));
+  const managedAppIds = new Set(managedHomeGroup.value?.appIds ?? []);
+  return folderCreationApps.value.filter(
+    app =>
+      (folderManagerScope.value === 'all' || managedAppIds.has(app.id)) &&
+      (!query || `${app.name} ${app.id}`.toLocaleLowerCase().includes(query)),
+  );
 });
+const folderRenameError = computed(() => {
+  const nextName = folderRenameName.value.trim();
+  if (!nextName) return '请输入分组名称';
+  if (
+    homeGroups.value.some(
+      group =>
+        group.id !== managedHomeGroup.value?.id && group.name.toLocaleLowerCase() === nextName.toLocaleLowerCase(),
+    )
+  ) {
+    return '分组名称已存在';
+  }
+  return '';
+});
+const canRenameManagedGroup = computed(
+  () =>
+    Boolean(managedHomeGroup.value) &&
+    !folderRenameError.value &&
+    folderRenameName.value.trim() !== managedHomeGroup.value?.name,
+);
 const allVisibleManagerAppsSelected = computed(
   () =>
     Boolean(filteredFolderManagerApps.value.length) &&
@@ -631,7 +735,8 @@ function openFolderCreator() {
 }
 
 function manageActiveHomeGroup() {
-  folderTargetId.value = activeHomeGroup.value?.id ?? homeGroups.value[0]?.id ?? '';
+  managedHomeGroupId.value = activeHomeGroup.value?.id ?? homeGroups.value[0]?.id ?? '';
+  folderMoveTargetId.value = folderMoveTargetGroups.value[0]?.id ?? '';
   folderCreateOpen.value = true;
 }
 
@@ -640,8 +745,44 @@ function closeFolderCreator() {
   folderCreateName.value = '';
   folderCreateAppIds.value = [];
   folderManagerQuery.value = '';
+  folderManagerScope.value = 'group';
+  folderMoveTargetId.value = '';
   folderNewGroupOpen.value = false;
-  folderTargetId.value = '';
+  folderRenameName.value = '';
+  folderRenameOpen.value = false;
+  managedHomeGroupId.value = '';
+}
+
+function switchManagedHomeGroup() {
+  activeHomeGroupId.value = managedHomeGroupId.value;
+  folderCreateAppIds.value = [];
+  folderRenameOpen.value = false;
+  folderRenameName.value = '';
+  if (!folderMoveTargetGroups.value.some(group => group.id === folderMoveTargetId.value)) {
+    folderMoveTargetId.value = folderMoveTargetGroups.value[0]?.id ?? '';
+  }
+}
+
+function setFolderManagerScope(scope: 'all' | 'group') {
+  if (folderManagerScope.value === scope) return;
+  folderManagerScope.value = scope;
+  folderCreateAppIds.value = [];
+}
+
+function startHomeGroupRename() {
+  folderRenameName.value = managedHomeGroup.value?.name ?? '';
+  folderRenameOpen.value = true;
+}
+
+function cancelHomeGroupRename() {
+  folderRenameOpen.value = false;
+  folderRenameName.value = '';
+}
+
+function renameManagedHomeGroup() {
+  if (!managedHomeGroup.value || !canRenameManagedGroup.value) return;
+  settingsStore.setHomeLayout(renameHomeFolder(homeLayout.value, managedHomeGroup.value.id, folderRenameName.value));
+  cancelHomeGroupRename();
 }
 
 function toggleFolderCreateApp(appId: string) {
@@ -664,10 +805,14 @@ function getAppGroupName(appId: string) {
 }
 
 function moveSelectedApps() {
-  if (!folderCreateAppIds.value.length || !folderTargetId.value) return;
-  settingsStore.setHomeLayout(moveHomeAppsToFolder(homeLayout.value, folderCreateAppIds.value, folderTargetId.value));
-  activeHomeGroupId.value = folderTargetId.value;
+  if (!folderCreateAppIds.value.length || !folderMoveTargetId.value) return;
+  settingsStore.setHomeLayout(
+    moveHomeAppsToFolder(homeLayout.value, folderCreateAppIds.value, folderMoveTargetId.value),
+  );
+  activeHomeGroupId.value = folderMoveTargetId.value;
+  managedHomeGroupId.value = folderMoveTargetId.value;
   folderCreateAppIds.value = [];
+  folderMoveTargetId.value = folderMoveTargetGroups.value[0]?.id ?? '';
 }
 
 function createSelectedHomeFolder() {
@@ -681,7 +826,8 @@ function createSelectedHomeFolder() {
     }),
   );
   activeHomeGroupId.value = id;
-  folderTargetId.value = id;
+  managedHomeGroupId.value = id;
+  folderMoveTargetId.value = folderMoveTargetGroups.value[0]?.id ?? '';
   folderCreateAppIds.value = [];
   folderCreateName.value = '';
   folderNewGroupOpen.value = false;
@@ -1055,7 +1201,7 @@ onBeforeUnmount(resetHomeInteractionState);
   min-height: 0;
   overflow: hidden;
   display: grid;
-  grid-template-rows: auto auto minmax(0, 1fr) auto;
+  grid-template-rows: auto auto auto auto minmax(0, 1fr) auto;
   gap: 8px;
   padding: 12px;
   transition:
@@ -1081,6 +1227,27 @@ onBeforeUnmount(resetHomeInteractionState);
   flex: 0 0 auto;
   align-items: center;
   gap: 6px;
+}
+.pc-home-group-manager-current {
+  display: grid;
+  gap: 4px;
+}
+.pc-home-group-current-row,
+.pc-home-group-rename-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 6px;
+}
+.pc-home-group-rename-row {
+  grid-template-columns: minmax(0, 1fr) auto auto;
+}
+.pc-home-group-rename-error {
+  color: var(--pc-danger);
+  font-size: 11px;
+}
+.pc-home-group-manager-scope {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
 }
 .pc-home-group-manager-list {
   min-width: 0;
@@ -1118,9 +1285,15 @@ onBeforeUnmount(resetHomeInteractionState);
 .pc-home-group-manager-actions {
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto auto;
+  align-items: end;
   gap: 8px;
   border-top: 1px solid var(--pc-border);
   padding-top: 8px;
+}
+.pc-home-group-move-target {
+  display: grid;
+  min-width: 0;
+  gap: 3px;
 }
 .pc-home-folder-enter-active,
 .pc-home-folder-leave-active {

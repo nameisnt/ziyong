@@ -54,6 +54,7 @@ const {
   moveHomeLayoutItem,
   normalizeHomeLayout,
   putHomeAppInFolder,
+  renameHomeFolder,
   reorderHomeFolderApp,
 } = await loadAppLayout();
 const { normalizeHomeLayout: normalizeMiniGameLayout } = await loadAppLayout({ includeMiniGames: true });
@@ -129,6 +130,30 @@ test('group management moves every selected app to one existing group', () => {
   const moved = moveHomeAppsToFolder(created, ['a', 'c'], targetId);
   assert.deepEqual(moved.folders.find(folder => folder.id === 'custom')?.appIds, ['b']);
   assert.deepEqual(moved.folders.find(folder => folder.id === targetId)?.appIds.slice(-2), ['a', 'c']);
+});
+
+test('renaming a group preserves its identity, apps, icon, and order', () => {
+  const layout = normalizeHomeLayout({
+    appOrder: [homeFolderToken('one'), homeFolderToken('two')],
+    dockOrder: ['archive', 'favorites', 'prompts', 'tutorial', 'settings'],
+    folders: [
+      { appIds: ['a', 'b'], iconAssetId: 'paper', id: 'one', name: '原分组' },
+      { appIds: ['c'], iconAssetId: '', id: 'two', name: '第二组' },
+    ],
+    version: 4,
+  });
+  const renamed = renameHomeFolder(layout, 'one', '  新分组  ');
+  assert.deepEqual(renamed.appOrder, layout.appOrder);
+  assert.deepEqual(
+    renamed.folders.find(folder => folder.id === 'one'),
+    {
+      appIds: ['a', 'b'],
+      iconAssetId: 'paper',
+      id: 'one',
+      name: '新分组',
+    },
+  );
+  assert.deepEqual(renameHomeFolder(renamed, 'one', '第二组'), renamed);
 });
 
 test('folder reordering remains inside grouped layout', () => {

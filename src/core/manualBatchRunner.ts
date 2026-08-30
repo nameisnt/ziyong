@@ -330,10 +330,17 @@ export async function runManualBatchTask(taskId: string) {
       toastr.success(`批量生成完成，共 ${completed.previewCount} 项等待确认`);
     }
     if (completed.previewCount) {
-      void usePhoneStore().presentGeneratedPage(completed.appId, 'batch-preview', '批量生成预览', {
-        ...completed.routeParams,
-        taskId,
-      });
+      const phone = usePhoneStore();
+      const alreadyViewingPreview =
+        phone.currentRoute.appId === completed.appId &&
+        phone.currentRoute.page === 'batch-preview' &&
+        phone.currentRoute.params?.taskId === taskId;
+      if (!alreadyViewingPreview) {
+        void phone.presentGeneratedPage(completed.appId, 'batch-preview', '批量生成预览', {
+          ...completed.routeParams,
+          taskId,
+        });
+      }
     }
   } finally {
     tasks.setActiveGeneration(taskId, '');

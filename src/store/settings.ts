@@ -589,6 +589,10 @@ export const useSettingsStore = defineStore('settings', () => {
     settings.value.reader.lineHeight = Math.min(2.2, Math.max(1.4, Math.round(lineHeight * 10) / 10));
   }
 
+  function setReaderSidePadding(sidePadding: number) {
+    settings.value.reader.sidePadding = Math.min(32, Math.max(0, Math.round(sidePadding / 2) * 2));
+  }
+
   function setReaderFirstLineIndent(enabled: boolean) {
     settings.value.reader.firstLineIndent = enabled;
   }
@@ -605,6 +609,7 @@ export const useSettingsStore = defineStore('settings', () => {
       fontFamily: '',
       fontSize: 16,
       lineHeight: 1.6,
+      sidePadding: 0,
     };
   }
 
@@ -821,6 +826,7 @@ export const useSettingsStore = defineStore('settings', () => {
     setReaderFontFamily,
     setReaderFontSize,
     setReaderLineHeight,
+    setReaderSidePadding,
     setReaderScale,
     setTextProviderApiUrl,
     uploadHomeIconAsset,

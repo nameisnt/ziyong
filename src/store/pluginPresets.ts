@@ -385,6 +385,7 @@ export const usePluginPresetStore = defineStore('pluginPresets', () => {
       const preset = readPluginPreset(record);
       update(preset);
       record.raw.extensions = klona(preset.extensions);
+      preset.prompts.forEach(prompt => patchPluginPresetPrompt(record, prompt.id, { enabled: prompt.enabled }));
       record.updatedAt = new Date().toISOString();
     });
     return readPluginPreset(requireById(id));

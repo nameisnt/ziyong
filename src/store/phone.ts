@@ -1,5 +1,5 @@
 import { getPhoneApp } from '@/core/appLayout';
-import { getRegisteredPhoneAppScopeSwitchHandlers } from '@/core/appRegistry';
+import { getRegisteredPhoneAppScopeSwitchHandler, getRegisteredPhoneAppScopeSwitchHandlers } from '@/core/appRegistry';
 import { areChatScopeKeysEquivalent, getCurrentChatScopeKey, isPlaceholderChatScopeKey } from '@/store/chatScoped';
 import { getOptionalGlobalFunction, getOptionalGlobalValue, onTavernEvent } from '@/util/runtime';
 
@@ -162,7 +162,17 @@ export const usePhoneStore = defineStore('phone', () => {
   }
 
   async function applyViewingScope(scopeKey: string) {
-    await Promise.all(getRegisteredPhoneAppScopeSwitchHandlers().map(item => item.switchScope(scopeKey)));
+    await Promise.all(
+      getRegisteredPhoneAppScopeSwitchHandlers(currentRoute.value.appId).map(item => item.switchScope(scopeKey)),
+    );
+  }
+
+  function activateAppScope(appId: string) {
+    const switchScope = getRegisteredPhoneAppScopeSwitchHandler(appId);
+    if (!switchScope) return;
+    void Promise.resolve(switchScope(viewingScopeKey.value)).catch(error => {
+      noticeError(`切换 App 聊天范围失败：${error instanceof Error ? error.message : String(error)}`);
+    });
   }
 
   async function setViewingScope(scopeKey: string, meta?: Partial<PhoneViewingScopeMeta>, forceApply = false) {
@@ -293,6 +303,7 @@ export const usePhoneStore = defineStore('phone', () => {
     if (!(await confirmNavigationLeave(options))) return;
     if (stack.value.length > 1) {
       stack.value = stack.value.slice(0, -1);
+      activateAppScope(currentRoute.value.appId);
       return;
     }
     closePhoneNow();
@@ -318,6 +329,7 @@ export const usePhoneStore = defineStore('phone', () => {
     isOpen.value = true;
 
     if (currentRoute.value.appId === appId && currentRoute.value.page === app.defaultRoute) return;
+    activateAppScope(appId);
     stack.value = [...stack.value, { appId, page: app.defaultRoute, title: app.name }];
   }
 
@@ -331,6 +343,7 @@ export const usePhoneStore = defineStore('phone', () => {
     const app = getPhoneApp(appId);
     if (!app) return;
     isOpen.value = true;
+    activateAppScope(appId);
     stack.value = [...stack.value, { appId, page, title, params, origin }];
   }
 
@@ -360,6 +373,7 @@ export const usePhoneStore = defineStore('phone', () => {
     const app = getPhoneApp(appId);
     if (!app) return;
     isOpen.value = true;
+    activateAppScope(appId);
     stack.value = [...stack.value.slice(0, -1), { appId, page, title, params }];
   }
 

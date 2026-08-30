@@ -30,9 +30,12 @@ test('relationship and timekeeper reuse shared disclosures and themed surfaces',
   assert.match(relationship, /<details class="pc-page-section pc-relationship-disclosure" open>/u);
   assert.match(relationship, /class="pc-compact-row pc-character-editor-row"/u);
   assert.doesNotMatch(relationship, /pc-section-toggle/u);
+  assert.match(relationship, /\.pc-relationship-page\s*\{\s*align-content:\s*start;/u);
   assert.match(mermaidGraph, /getImageData\(0, 0, 1, 1\)/u);
   assert.doesNotMatch(mermaidGraph, /primaryColor:\s*'var\(/u);
   assert.match(timekeeper, /class="pc-editor-card pc-person-card"/u);
   assert.match(timekeeper, /<details class="pc-page-section pc-time-disclosure">/u);
+  assert.match(timekeeper, /\.pc-timekeeper-page\s*\{[\s\S]*?gap:\s*0;/u);
+  assert.doesNotMatch(timekeeper, /\.pc-(?:grid|people-list|advance-btn)[^{]*\{[^}]*margin-top:/u);
   assert.match(timekeeper, /background:\s*var\(--pc-form-control-bg\)/u);
 });

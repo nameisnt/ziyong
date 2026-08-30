@@ -173,4 +173,5 @@ export default definePhoneApp({
   referenceProvider: createWorldSlotsReferenceTree,
   resetCurrentScope: transaction => useWorldSlotsStore().resetCurrentScope(transaction),
   scopeSwitchHandler: scopeKey => useWorldSlotsStore().switchScope(scopeKey),
+  scopeSwitchMode: 'always',
 });

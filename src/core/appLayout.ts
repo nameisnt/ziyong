@@ -203,6 +203,23 @@ export function createHomeFolder(layout: HomeScreenLayout, input: { appIds: stri
   return normalizeHomeLayout({ ...normalized, appOrder, folders });
 }
 
+export function renameHomeFolder(layout: HomeScreenLayout, folderId: string, name: string) {
+  const normalized = normalizeHomeLayout(layout);
+  const nextName = name.trim();
+  if (
+    !nextName ||
+    normalized.folders.some(
+      folder => folder.id !== folderId && folder.name.toLocaleLowerCase() === nextName.toLocaleLowerCase(),
+    )
+  ) {
+    return normalized;
+  }
+  return normalizeHomeLayout({
+    ...normalized,
+    folders: normalized.folders.map(folder => (folder.id === folderId ? { ...folder, name: nextName } : folder)),
+  });
+}
+
 export function moveHomeAppsToFolder(layout: HomeScreenLayout, appIds: string[], targetFolderId: string) {
   const normalized = normalizeHomeLayout(layout);
   const targetFolder = normalized.folders.find(folder => folder.id === targetFolderId);

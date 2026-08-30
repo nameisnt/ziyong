@@ -9,6 +9,7 @@ const detail = await readFile(new URL('src/apps/preset-manager/pages/PresetDetai
 const ownership = await readFile(new URL('src/apps/preset-manager/pages/PresetOwnershipPanel.vue', root), 'utf8');
 const editor = await readFile(new URL('src/apps/preset-manager/pages/PresetPromptEditorPage.vue', root), 'utf8');
 const api = await readFile(new URL('src/apps/preset-manager/api.ts', root), 'utf8');
+const promptGroups = await readFile(new URL('src/apps/preset-manager/promptGroups.ts', root), 'utf8');
 const pluginStore = await readFile(new URL('src/store/pluginPresets.ts', root), 'utf8');
 const managerIndex = await readFile(new URL('src/apps/preset-manager/index.ts', root), 'utf8');
 const link = await readFile(new URL('src/apps/preset-link/PresetLinkApp.vue', root), 'utf8');
@@ -36,14 +37,17 @@ test('preset details manage prompt groups inside preset metadata for tavern and 
   const managementMenu = detail.slice(detail.indexOf('<ActionMenu'), detail.indexOf('</ActionMenu>'));
   assert.ok(managementMenu.indexOf('管理条目分组') < managementMenu.indexOf('预设改名'));
   assert.doesNotMatch(detail, /pc-preset-detail-actions/u);
-  assert.match(detail, /assign-prompt-group/u);
+  assert.match(detail, /update-prompt-group-range/u);
+  assert.match(detail, /开始条目/u);
+  assert.match(detail, /结束条目/u);
+  assert.doesNotMatch(detail, /条目归类|assign-prompt-group/u);
   assert.match(detail, /create-prompt-group/u);
   assert.match(detail, /delete-prompt-group/u);
   assert.match(detail, /rename-prompt-group/u);
   assert.match(manager, /updateTavernPresetPromptGroups/u);
   assert.match(manager, /pluginPresets\.updatePromptGroups/u);
-  assert.match(api, /presetPromptGroups/u);
-  assert.match(api, /export function assignPresetPromptGroup/u);
+  assert.match(promptGroups, /presetPromptGroups/u);
+  assert.match(api, /export function updatePresetPromptGroupRange/u);
   assert.match(api, /export function createPresetPromptGroup/u);
   assert.match(api, /export function deletePresetPromptGroup/u);
   assert.match(api, /export function renamePresetPromptGroup/u);

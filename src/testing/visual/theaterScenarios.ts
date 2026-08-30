@@ -2,8 +2,10 @@ import { useSettingsStore } from '@/store/settings';
 import { usePhoneStore } from '@/store/phone';
 import { usePromptStore } from '@/store/prompts';
 import { useTheaterStore } from '@/store/theater';
+import { parseCssColorChannels } from '@/testing/visual/cssColor';
 import type { HiddenGenerationRecord } from '@/type/generation';
 import { buildItemTransfer } from '@/util/itemTransfer';
+import { getFrontendFrameSource } from '@/util/theaterFrontend';
 
 interface TheaterScenarioContext {
   createHiddenGenerationRecord: (
@@ -53,9 +55,11 @@ export async function applyTheaterVisualScenario(name: string, context: TheaterS
 
     resetPhoneToRoute('theater', 'generate', '小剧场配置', { typeId: prompt.id });
     await waitForPaint();
-    const readOnlyGroup = document.querySelector<HTMLInputElement>('input[aria-label="当前小剧场类型所属分组"]');
-    if (!readOnlyGroup?.readOnly || readOnlyGroup.value !== group.name) {
-      throw new Error('Existing Theater type did not show its read-only group');
+    const editableGroup = document.querySelector<HTMLInputElement>(
+      '.pc-theater-type-group-field .pc-combobox-input',
+    );
+    if (!editableGroup || editableGroup.readOnly || editableGroup.value !== group.name) {
+      throw new Error('Existing Theater type did not show its editable group');
     }
 
     resetPhoneToRoute('theater', 'generate', '自定义小剧场类型', { customTypeName: '视觉自定义类型' });
@@ -259,7 +263,7 @@ export async function applyTheaterVisualScenario(name: string, context: TheaterS
     settingsStore.setTheme('dark');
     settingsStore.settings.visualTheme.backgroundColor = '#242129';
     settingsStore.settings.visualTheme.surfaceColor = 'rgba(255, 255, 255, 0.08)';
-    settingsStore.settings.visualTheme.surfaceStrongColor = '#ffffff';
+    settingsStore.settings.visualTheme.surfaceStrongColor = '#2c2c2e';
     settingsStore.settings.visualTheme.textColor = '#f5f5f7';
     resetPhoneToRoute('theater', 'generate', '小剧场配置');
     await waitForPaint();
@@ -267,10 +271,12 @@ export async function applyTheaterVisualScenario(name: string, context: TheaterS
     if (textareas.length < 2) throw new Error('Theater dark input fixture is incomplete');
     textareas.forEach(textarea => {
       const style = getComputedStyle(textarea);
-      const background = style.backgroundColor.replace(/\s+/g, '');
-      const color = style.color.replace(/\s+/g, '');
-      if (background !== 'rgb(44,44,46)' || color !== 'rgb(245,245,247)')
-        throw new Error(`Theater dark input colors are invalid: ${background} / ${color}`);
+      const background = parseCssColorChannels(style.backgroundColor);
+      const color = parseCssColorChannels(style.color);
+      const matches = (actual: number[], expected: number[]) =>
+        actual.length === expected.length && actual.every((channel, index) => Math.abs(channel - expected[index]) < 1);
+      if (!matches(background, [44, 44, 46]) || !matches(color, [245, 245, 247]))
+        throw new Error(`Theater dark input colors are invalid: ${style.backgroundColor} / ${style.color}`);
     });
     const advanced = document.querySelector<HTMLDetailsElement>('.pc-generation-advanced');
     if (!advanced) throw new Error('Theater dark generation settings are missing');
@@ -337,6 +343,26 @@ export async function applyTheaterVisualScenario(name: string, context: TheaterS
     if (stableFrameHeight > initialFrameHeight + 2 || stableFrameHeight > 700) {
       throw new Error(`Theater frontend frame kept growing after content settled: ${initialFrameHeight} -> ${stableFrameHeight}`);
     }
+    const channelId = frontendFrame.srcdoc.match(/const CHANNEL_ID = ([^;]+);/)?.[1];
+    if (!channelId) throw new Error('Theater frontend frame channel is missing');
+    const postViewportFollowingHeight = (viewportHeight: number) => {
+      window.dispatchEvent(
+        new MessageEvent('message', {
+          data: {
+            channelId: JSON.parse(channelId),
+            height: viewportHeight + 32,
+            source: getFrontendFrameSource(),
+            type: 'height',
+            viewportHeight,
+          },
+          source: frontendFrame.contentWindow,
+        }),
+      );
+    };
+    postViewportFollowingHeight(stableFrameHeight);
+    await waitForPaint();
+    postViewportFollowingHeight(frontendFrame.getBoundingClientRect().height);
+    await waitForPaint();
     if (!document.querySelector('.pc-frame-height-note')) {
       throw new Error('Theater frontend viewport feedback was not reported as a limited-height state');
     }
@@ -468,7 +494,7 @@ export async function applyTheaterVisualScenario(name: string, context: TheaterS
 
       resetPhoneToRoute('theater', 'root', '小剧场');
       await waitForPaint();
-      const search = document.querySelector<HTMLInputElement>('.pc-theater-catalog-page .pc-search');
+      const search = document.querySelector<HTMLInputElement>('.pc-theater-catalog-page .pc-search-field input');
       if (!search) throw new Error('Theater random search field is missing');
       search.value = searchPrompt.name;
       search.dispatchEvent(new Event('input', { bubbles: true }));
@@ -480,7 +506,7 @@ export async function applyTheaterVisualScenario(name: string, context: TheaterS
 
       resetPhoneToRoute('theater', 'root', '小剧场');
       await waitForPaint();
-      const emptySearch = document.querySelector<HTMLInputElement>('.pc-theater-catalog-page .pc-search');
+      const emptySearch = document.querySelector<HTMLInputElement>('.pc-theater-catalog-page .pc-search-field input');
       if (!emptySearch) throw new Error('Theater random empty-pool search field is missing');
       emptySearch.value = '__pc_no_visible_theater_type__';
       emptySearch.dispatchEvent(new Event('input', { bubbles: true }));
@@ -494,7 +520,7 @@ export async function applyTheaterVisualScenario(name: string, context: TheaterS
 
     resetPhoneToRoute('theater', 'root', '小剧场');
     await waitForPaint();
-    const finalSearch = document.querySelector<HTMLInputElement>('.pc-theater-catalog-page .pc-search');
+    const finalSearch = document.querySelector<HTMLInputElement>('.pc-theater-catalog-page .pc-search-field input');
     if (!finalSearch) throw new Error('Theater random final search field is missing');
     finalSearch.value = '';
     finalSearch.dispatchEvent(new Event('input', { bubbles: true }));

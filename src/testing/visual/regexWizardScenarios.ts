@@ -70,15 +70,15 @@ export async function applyRegexWizardVisualScenario(
   if (!(await waitForCondition(() => Boolean(document.querySelector('.pc-regex-display-app'))))) {
     throw new Error('Regex wizard did not open the regex library after saving');
   }
-  const ruleSelector = document.querySelector<HTMLInputElement>('.pc-regex-display-app .pc-combobox-input');
-  if (!ruleSelector) throw new Error('Regex library rule selector is missing');
-  ruleSelector.click();
-  await waitForPaint();
-  const savedOption = [...document.querySelectorAll<HTMLButtonElement>('.pc-combobox-option')].find(button =>
-    button.textContent?.includes('视觉阅读正文规则'),
+  const savedRow = document.querySelector<HTMLElement>(
+    `.pc-regex-rule-row[data-regex-rule-id="${CSS.escape(savedRule.id)}"]`,
   );
-  if (!savedOption) throw new Error('Saved regex wizard rule is missing from the regex library');
-  savedOption.click();
+  if (!savedRow) throw new Error('Saved regex wizard rule is missing from the regex library');
+  savedRow.querySelector<HTMLButtonElement>('.pc-regex-rule-open')?.click();
   await waitForPaint();
+  const editorTitle = document.querySelector<HTMLElement>('.pc-regex-editor-dialog .pc-regex-editor-head strong');
+  if (editorTitle?.textContent?.trim() !== '视觉阅读正文规则') {
+    throw new Error('Saved regex wizard rule did not open in the regex library editor');
+  }
   return true;
 }

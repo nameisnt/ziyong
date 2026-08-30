@@ -4,6 +4,19 @@ import {
   getOptionalGlobalValue,
   getPresetNamesSafe,
 } from '@/util/runtime';
+import {
+  applyPresetPromptSelection,
+  buildPresetPromptGroupIds,
+  extendPresetPromptGroupAfterDuplicate,
+  readPresetPromptGroups,
+  rebasePresetPromptGroupRanges,
+  removePresetPromptBoundaryGroups,
+  setPresetPromptGroupRange,
+  setPresetPromptGroupSelectionMode,
+  writePresetPromptGroups,
+  type PresetPromptGroupRange,
+  type PresetPromptGroupSelectionMode,
+} from './promptGroups';
 
 export type TavernPresetPrompt = {
   content?: string;
@@ -28,17 +41,7 @@ export type TavernPreset = {
   [key: string]: unknown;
 };
 
-export type BaibaiPresetGroup = {
-  collapsed: boolean;
-  enabled: boolean;
-  id: string;
-  name: string;
-};
-
-type BaibaiPresetGroupState = {
-  groups: Record<string, unknown>[];
-  prompts: Record<string, unknown>;
-};
+export type BaibaiPresetGroup = PresetPromptGroupRange;
 
 export type PresetDisplayNode =
   | {
@@ -221,15 +224,6 @@ function patchPrompt(
   return preset;
 }
 
-function getBaibaiPromptGroupMetadata(preset: TavernPreset) {
-  const toolkit = preset.extensions.baibaiToolkit;
-  if (!toolkit || typeof toolkit !== 'object') return null;
-  const state = (toolkit as Record<string, unknown>).presetPromptGroups;
-  if (!state || typeof state !== 'object') return null;
-  const prompts = (state as Record<string, unknown>).prompts;
-  return prompts && typeof prompts === 'object' ? (prompts as Record<string, unknown>) : null;
-}
-
 function normalizeInChatPromptOrder(preset: TavernPreset) {
   const groupIndexes = new Map<string, number>();
   for (const prompt of preset.prompts) {
@@ -272,12 +266,13 @@ function insertCopiedPrompt(preset: TavernPreset, sourcePromptId: string, copied
     throw new Error('复制条目的标识发生冲突，请重试');
   }
   preset.prompts.splice(sourceIndex + 1, 0, structuredClone(copiedPrompt));
-
-  const groupMetadata = getBaibaiPromptGroupMetadata(preset);
-  const sourceMetadata = groupMetadata?.[sourcePromptId];
-  if (groupMetadata && sourceMetadata && typeof sourceMetadata === 'object') {
-    groupMetadata[copiedPrompt.id] = structuredClone(sourceMetadata);
-  }
+  extendPresetPromptGroupAfterDuplicate(
+    preset,
+    preset.prompts.map(prompt => prompt.id),
+    sourcePromptId,
+    copiedPrompt.id,
+  );
+  if (copiedPrompt.enabled) applyPresetPromptSelection(preset, preset.prompts, copiedPrompt.id, true);
   normalizeInChatPromptOrder(preset);
   return preset;
 }
@@ -285,9 +280,12 @@ function insertCopiedPrompt(preset: TavernPreset, sourcePromptId: string, copied
 function removePrompt(preset: TavernPreset, promptId: string) {
   const promptIndex = preset.prompts.findIndex(prompt => prompt.id === promptId);
   if (promptIndex < 0) throw new Error('这个预设条目已经不存在，请刷新后重试');
+  removePresetPromptBoundaryGroups(
+    preset,
+    preset.prompts.map(prompt => prompt.id),
+    promptId,
+  );
   preset.prompts.splice(promptIndex, 1);
-  const groupMetadata = getBaibaiPromptGroupMetadata(preset);
-  if (groupMetadata) delete groupMetadata[promptId];
   normalizeInChatPromptOrder(preset);
   return preset;
 }
@@ -302,6 +300,7 @@ function reorderPrompts(preset: TavernPreset, orderedPromptIds: string[]) {
     throw new Error('预设条目已经发生变化，请刷新后再排序');
   }
   const promptById = new Map(preset.prompts.map(prompt => [prompt.id, prompt]));
+  rebasePresetPromptGroupRanges(preset, currentIds, orderedPromptIds);
   preset.prompts = orderedPromptIds.map(promptId => promptById.get(promptId) as TavernPresetPrompt);
   normalizeInChatPromptOrder(preset);
   return preset;
@@ -441,59 +440,11 @@ export async function reorderTavernPresetPrompts(presetName: string, orderedProm
   });
 }
 
-function readBaibaiGroupState(preset: TavernPreset) {
-  const toolkit = preset.extensions.baibaiToolkit;
-  if (!toolkit || typeof toolkit !== 'object') return null;
-  const rawState = (toolkit as Record<string, unknown>).presetPromptGroups;
-  if (!rawState || typeof rawState !== 'object') return null;
-
-  const state = rawState as {
-    groups?: unknown;
-    prompts?: unknown;
-  };
-  if (!Array.isArray(state.groups) || !state.prompts || typeof state.prompts !== 'object') return null;
-
-  const groups = state.groups
-    .filter((item): item is Record<string, unknown> => Boolean(item && typeof item === 'object'))
-    .map((item, index): BaibaiPresetGroup | null => {
-      const id = String(item.id || '').trim();
-      if (!id) return null;
-      return {
-        collapsed: Boolean(item.collapsed),
-        enabled: item.enabled !== false,
-        id,
-        name: String(item.name || `分组 ${index + 1}`),
-      };
-    })
-    .filter((item): item is BaibaiPresetGroup => Boolean(item));
-
-  if (!groups.length) return null;
-  return {
-    groups,
-    prompts: state.prompts as Record<string, unknown>,
-  };
-}
-
-function ensureBaibaiGroupState(preset: TavernPreset): BaibaiPresetGroupState {
-  let toolkit = preset.extensions.baibaiToolkit;
-  if (!toolkit || typeof toolkit !== 'object' || Array.isArray(toolkit)) {
-    toolkit = {};
-    preset.extensions.baibaiToolkit = toolkit;
-  }
-  const toolkitRecord = toolkit as Record<string, unknown>;
-  let rawState = toolkitRecord.presetPromptGroups;
-  if (!rawState || typeof rawState !== 'object' || Array.isArray(rawState)) {
-    rawState = { groups: [], prompts: {} };
-    toolkitRecord.presetPromptGroups = rawState;
-  }
-  const state = rawState as Record<string, unknown>;
-  if (!Array.isArray(state.groups)) state.groups = [];
-  if (!state.prompts || typeof state.prompts !== 'object' || Array.isArray(state.prompts)) state.prompts = {};
-  return state as BaibaiPresetGroupState;
-}
-
 export function listPresetPromptGroups(preset: TavernPreset) {
-  return readBaibaiGroupState(preset)?.groups ?? [];
+  return readPresetPromptGroups(
+    preset,
+    preset.prompts.map(prompt => prompt.id),
+  );
 }
 
 export function createPresetPromptGroupId() {
@@ -503,47 +454,74 @@ export function createPresetPromptGroupId() {
 export function createPresetPromptGroup(preset: TavernPreset, name: string, groupId: string) {
   const normalizedName = name.trim();
   if (!normalizedName) throw new Error('分组名称不能为空');
-  const state = ensureBaibaiGroupState(preset);
-  if (state.groups.some(group => String(group.id || '') === groupId)) throw new Error('条目分组标识重复');
-  state.groups.push({ collapsed: false, enabled: true, id: groupId, name: normalizedName });
+  const state = writePresetPromptGroups(
+    preset,
+    preset.prompts.map(prompt => prompt.id),
+  );
+  if (state.groups.some(group => group.id === groupId)) throw new Error('条目分组标识重复');
+  state.groups.push({
+    collapsed: false,
+    enabled: true,
+    endPromptId: '',
+    id: groupId,
+    name: normalizedName,
+    selectionMode: 'multiple',
+    startPromptId: '',
+  });
 }
 
 export function renamePresetPromptGroup(preset: TavernPreset, groupId: string, name: string) {
   const normalizedName = name.trim();
   if (!normalizedName) throw new Error('分组名称不能为空');
-  const state = ensureBaibaiGroupState(preset);
-  const group = state.groups.find(item => String(item.id || '') === groupId);
+  const state = writePresetPromptGroups(
+    preset,
+    preset.prompts.map(prompt => prompt.id),
+  );
+  const group = state.groups.find(item => item.id === groupId);
   if (!group) throw new Error('这个条目分组已经不存在');
   group.name = normalizedName;
 }
 
 export function deletePresetPromptGroup(preset: TavernPreset, groupId: string) {
-  const state = ensureBaibaiGroupState(preset);
-  const index = state.groups.findIndex(item => String(item.id || '') === groupId);
+  const state = writePresetPromptGroups(
+    preset,
+    preset.prompts.map(prompt => prompt.id),
+  );
+  const index = state.groups.findIndex(item => item.id === groupId);
   if (index < 0) throw new Error('这个条目分组已经不存在');
   state.groups.splice(index, 1);
-  Object.entries(state.prompts).forEach(([promptId, rawMeta]) => {
-    if (!rawMeta || typeof rawMeta !== 'object' || Array.isArray(rawMeta)) return;
-    const meta = rawMeta as Record<string, unknown>;
-    if (String(meta.groupId || '') !== groupId) return;
-    delete meta.groupId;
-    if (!Object.keys(meta).length) delete state.prompts[promptId];
-  });
 }
 
-export function assignPresetPromptGroup(preset: TavernPreset, promptId: string, groupId: string) {
-  if (!preset.prompts.some(prompt => prompt.id === promptId)) throw new Error('这个预设条目已经不存在');
-  const state = ensureBaibaiGroupState(preset);
-  if (groupId && !state.groups.some(group => String(group.id || '') === groupId)) {
-    throw new Error('目标条目分组已经不存在');
+export function updatePresetPromptGroupRange(
+  preset: TavernPreset,
+  groupId: string,
+  startPromptId: string,
+  endPromptId: string,
+) {
+  setPresetPromptGroupRange(
+    preset,
+    preset.prompts.map(prompt => prompt.id),
+    groupId,
+    startPromptId,
+    endPromptId,
+  );
+  const group = listPresetPromptGroups(preset).find(item => item.id === groupId);
+  if (group?.selectionMode === 'single') {
+    setPresetPromptGroupSelectionMode(preset, preset.prompts, groupId, 'single');
   }
-  const current = state.prompts[promptId];
-  const meta: Record<string, unknown> =
-    current && typeof current === 'object' && !Array.isArray(current) ? (current as Record<string, unknown>) : {};
-  if (groupId) meta.groupId = groupId;
-  else delete meta.groupId;
-  if (Object.keys(meta).length) state.prompts[promptId] = meta;
-  else delete state.prompts[promptId];
+}
+
+export function updatePresetPromptSelection(preset: TavernPreset, promptId: string, enabled: boolean) {
+  applyPresetPromptSelection(preset, preset.prompts, promptId, enabled);
+}
+
+export function updatePresetPromptGroupSelectionMode(
+  preset: TavernPreset,
+  groupId: string,
+  selectionMode: PresetPromptGroupSelectionMode,
+  retainedPromptId?: string,
+) {
+  setPresetPromptGroupSelectionMode(preset, preset.prompts, groupId, selectionMode, retainedPromptId);
 }
 
 export async function updateTavernPresetPromptGroups(presetName: string, update: (preset: TavernPreset) => void) {
@@ -567,20 +545,14 @@ export async function updateTavernPresetPromptGroups(presetName: string, update:
 }
 
 export function buildPresetDisplayNodes(preset: TavernPreset): PresetDisplayNode[] {
-  const groupState = readBaibaiGroupState(preset);
-  if (!groupState) {
+  const promptIds = preset.prompts.map(prompt => prompt.id);
+  const groups = readPresetPromptGroups(preset, promptIds);
+  if (!groups.length) {
     return preset.prompts.map(prompt => ({ prompt, type: 'prompt' }));
   }
 
-  const groupById = new Map(groupState.groups.map(group => [group.id, group]));
-  const promptGroupIds = new Map<string, string>();
-  for (const [promptId, rawMeta] of Object.entries(groupState.prompts)) {
-    if (!rawMeta || typeof rawMeta !== 'object') continue;
-    const groupId = String((rawMeta as Record<string, unknown>).groupId || '');
-    if (groupById.has(groupId)) {
-      promptGroupIds.set(promptId, groupId);
-    }
-  }
+  const groupById = new Map(groups.map(group => [group.id, group]));
+  const promptGroupIds = buildPresetPromptGroupIds(groups, promptIds);
 
   if (!promptGroupIds.size) {
     return preset.prompts.map(prompt => ({ prompt, type: 'prompt' }));

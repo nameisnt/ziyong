@@ -24,6 +24,7 @@ export const ReaderAppearanceSchema = z.object({
   fontFamily: z.string().default(''),
   fontSize: z.number().min(14).max(24).default(16),
   lineHeight: z.number().min(1.4).max(2.2).default(1.6),
+  sidePadding: z.number().int().min(0).max(32).default(0),
 });
 export type ReaderAppearance = z.infer<typeof ReaderAppearanceSchema>;
 
@@ -198,6 +199,7 @@ const DEFAULT_READER_SETTINGS: ReaderAppearance = {
   fontFamily: '',
   fontSize: 16,
   lineHeight: 1.6,
+  sidePadding: 0,
 };
 
 const DEFAULT_DIRECTORY_SORT_SETTINGS: DirectorySortSettings = {

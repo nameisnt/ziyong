@@ -541,7 +541,7 @@ async function copyPrompt() {
 .pc-timekeeper-page {
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: 0;
 }
 
 .pc-timekeeper-page details > summary {
@@ -562,13 +562,6 @@ async function copyPrompt() {
 .pc-timekeeper-page details[open] > summary > i,
 .pc-calendar-card[open] summary i {
   transform: rotate(180deg);
-}
-
-.pc-calendar-select,
-.pc-calendar-card > .pc-field,
-.pc-date-field,
-.pc-calendar-summary {
-  margin-top: 12px;
 }
 
 .pc-calendar-select {
@@ -622,10 +615,6 @@ async function copyPrompt() {
   font-size: 12px;
 }
 
-.pc-grid {
-  margin-top: 12px;
-}
-
 .pc-field.name {
   margin: 0;
 }
@@ -634,7 +623,6 @@ async function copyPrompt() {
   display: flex;
   flex-direction: column;
   gap: 10px;
-  margin-top: 12px;
 }
 
 .pc-person-card {
@@ -655,11 +643,10 @@ async function copyPrompt() {
 
 .pc-advance-btn {
   width: 100%;
-  margin-top: 14px;
 }
 
 .pc-preview {
-  margin: 12px 0 0;
+  margin: 0;
   white-space: pre-wrap;
   border-radius: min(var(--pc-control-radius), 8px);
   border: 1px solid var(--pc-border);
@@ -672,6 +659,6 @@ async function copyPrompt() {
 
 .pc-time-actions {
   justify-content: flex-end;
-  margin-top: 14px;
+  margin-top: 0;
 }
 </style>

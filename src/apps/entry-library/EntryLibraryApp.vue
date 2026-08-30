@@ -105,7 +105,12 @@
 
 <script setup lang="ts">
 import { isCollectablePresetPrompt } from './api';
-import { ENTRY_LIBRARY_CONTENT_PLACEHOLDER, useEntryLibraryStore, type DuplicateEntryPair } from './store';
+import {
+  ENTRY_LIBRARY_CONTENT_PLACEHOLDER,
+  useEntryLibraryStore,
+  type DuplicateEntryPair,
+  type EntryLibraryItem,
+} from './store';
 import { listTavernPresets, readTavernPreset, type TavernPresetPrompt } from '@/apps/preset-manager/api';
 import { getWorldbookEntries } from '@/apps/worldbook-link/api';
 import { usePhoneStore } from '@/store/phone';
@@ -170,20 +175,25 @@ const editOrderMax = computed(() => {
   const editingInTargetGroup = editingItem.value?.groupId === editGroupId.value;
   return Math.max(1, count + (editingInTargetGroup ? 0 : 1));
 });
-const visibleGroups = computed(() => {
+const catalogSections = computed(() => {
   const keyword = libraryQuery.value.trim().toLocaleLowerCase();
-  if (!keyword) return groups.value;
-  return groups.value.filter(group => visibleGroupItems(group.id).length);
+  return groups.value.flatMap(group => {
+    const groupItems = library.getGroupItems(group.id);
+    const visibleItems = keyword
+      ? groupItems.filter(item => `${item.title}\n${item.content}`.toLocaleLowerCase().includes(keyword))
+      : groupItems;
+    if (keyword && !visibleItems.length) return [];
+    return [
+      {
+        enableState: groupEnableState(groupItems),
+        group,
+        items: visibleItems,
+        open: isGroupOpen(group.id),
+        totalItems: groupItems.length,
+      },
+    ];
+  });
 });
-const catalogSections = computed(() =>
-  visibleGroups.value.map(group => ({
-    enableState: groupEnableState(group.id),
-    group,
-    items: visibleGroupItems(group.id),
-    open: isGroupOpen(group.id),
-    totalItems: library.getGroupItems(group.id).length,
-  })),
-);
 const filteredSourceEntries = computed(() => {
   const keyword = sourceQuery.value.trim().toLocaleLowerCase();
   if (!keyword) return sourceEntries.value;
@@ -203,15 +213,7 @@ function compactContent(content: string, max = 96) {
   return compact.length > max ? `${compact.slice(0, max)}...` : compact;
 }
 
-function visibleGroupItems(groupId: string) {
-  const keyword = libraryQuery.value.trim().toLocaleLowerCase();
-  const groupItems = library.getGroupItems(groupId);
-  if (!keyword) return groupItems;
-  return groupItems.filter(item => `${item.title}\n${item.content}`.toLocaleLowerCase().includes(keyword));
-}
-
-function groupEnableState(groupId: string) {
-  const groupItems = library.getGroupItems(groupId);
+function groupEnableState(groupItems: EntryLibraryItem[]) {
   if (!groupItems.length || groupItems.every(item => !item.enabled)) return 'none';
   if (groupItems.every(item => item.enabled)) return 'all';
   return 'mixed';

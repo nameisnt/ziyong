@@ -42,13 +42,13 @@
     </div>
 
     <div class="pc-form-actions">
-      <button class="pc-soft-btn" type="button" :disabled="saving" @click="$emit('back')">
+      <button class="pc-soft-btn" type="button" :disabled="saving" @click="returnToBatch">
         <i class="fa-solid fa-arrow-left"></i>
         <span>返回</span>
       </button>
-      <button class="pc-primary-btn" type="button" :disabled="saving || !drafts.length" @click="saveAll">
+      <button class="pc-primary-btn" type="button" :disabled="saving || !canSave || !drafts.length" @click="saveAll">
         <i class="fa-solid fa-floppy-disk"></i>
-        <span>{{ saving ? '保存中' : '保存整批' }}</span>
+        <span>{{ saving ? '保存中' : canSave ? '保存整批' : '整批完成后保存' }}</span>
       </button>
     </div>
   </section>
@@ -60,12 +60,13 @@ import ReasoningDisclosure from '@/components/ReasoningDisclosure.vue';
 import type { ManualBatchPreviewEdit, ManualBatchPreviewItem } from '@/core/manualBatchRunner';
 
 const props = defineProps<{
+  canSave?: boolean;
   items: ManualBatchPreviewItem[];
   kind: 'diary' | 'summary';
   saveHandler: (edits: ManualBatchPreviewEdit[]) => Promise<void>;
 }>();
 
-defineEmits<{ back: [] }>();
+const emit = defineEmits<{ back: [edits: ManualBatchPreviewEdit[]] }>();
 
 type BatchPreviewDraft = ManualBatchPreviewEdit & Pick<ManualBatchPreviewItem, 'label' | 'rawOutput' | 'warnings'>;
 
@@ -75,24 +76,49 @@ const saving = ref(false);
 watch(
   () => props.items,
   items => {
-    drafts.value = items.map(item => ({
-      content: item.content,
-      jobId: item.jobId,
-      label: item.label,
-      occurredAt: item.occurredAt,
-      rawOutput: item.rawOutput,
-      reasoning: item.generationRecord.reasoning || '',
-      title: item.title,
-      warnings: [...item.warnings],
-    }));
+    const currentDrafts = new Map(drafts.value.map(draft => [draft.jobId, draft]));
+    drafts.value = items.map(item => {
+      const current = currentDrafts.get(item.jobId);
+      return current
+        ? {
+            ...current,
+            label: item.label,
+            rawOutput: item.rawOutput,
+            warnings: [...item.warnings],
+          }
+        : {
+            content: item.content,
+            jobId: item.jobId,
+            label: item.label,
+            occurredAt: item.occurredAt,
+            rawOutput: item.rawOutput,
+            reasoning: item.generationRecord.reasoning || '',
+            title: item.title,
+            warnings: [...item.warnings],
+          };
+    });
   },
   { immediate: true },
 );
 
+function getEdits(): ManualBatchPreviewEdit[] {
+  return drafts.value.map(draft => ({
+    content: draft.content,
+    jobId: draft.jobId,
+    occurredAt: draft.occurredAt,
+    reasoning: draft.reasoning,
+    title: draft.title,
+  }));
+}
+
+function returnToBatch() {
+  emit('back', getEdits());
+}
+
 async function saveAll() {
   saving.value = true;
   try {
-    await props.saveHandler(drafts.value);
+    await props.saveHandler(getEdits());
   } finally {
     saving.value = false;
   }

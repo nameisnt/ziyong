@@ -1,5 +1,6 @@
 import { getRegisteredPhoneApps } from '@/core/appRegistry';
 import { useSettingsStore } from '@/store/settings';
+import { parseCssColorChannels } from '@/testing/visual/cssColor';
 import { installMemoryFileService } from '@/testing/visual/memoryFileService';
 import { setting_field } from '@/type/settings';
 import { extension_settings } from '@sillytavern/scripts/extensions';
@@ -260,15 +261,10 @@ export async function applySettingsVisualScenario(name: string, context: Setting
     await context.waitForPaint();
     const control = document.querySelector<HTMLTextAreaElement>('.pc-theater-app textarea.pc-area');
     if (!control) throw new Error('Theme isolation fixture did not render a form control');
-    const channels = (value: string) =>
-      value
-        .match(/\d+(?:\.\d+)?/g)
-        ?.slice(0, 3)
-        .map(Number) ?? [];
     const assertContrast = (theme: 'dark' | 'light') => {
       const style = getComputedStyle(control);
-      const background = channels(style.backgroundColor);
-      const text = channels(style.color);
+      const background = parseCssColorChannels(style.backgroundColor);
+      const text = parseCssColorChannels(style.color);
       if (background.length !== 3 || text.length !== 3)
         throw new Error(
           `Theme isolation returned unreadable computed colors: ${style.backgroundColor} / ${style.color}`,

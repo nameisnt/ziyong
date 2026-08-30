@@ -12,4 +12,5 @@ test('theater text segments override standalone reader-body scrolling inside mix
   );
   assert.match(source, /<FrontendFrame[\s\S]*?embedded/u, 'HTML blocks keep the existing embedded frame bridge');
   assert.match(source, /<FrontendFrame[\s\S]*?flush-content/u, 'HTML blocks do not add shared frame padding');
+  assert.match(source, /<FrontendFrame[\s\S]*?document-flow/u, 'HTML blocks use document-flow height measurement');
 });

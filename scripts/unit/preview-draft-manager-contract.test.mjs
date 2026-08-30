@@ -28,6 +28,7 @@ test('preview draft notice is the shared count, latest-continue and manager entr
   assert.match(notice, /discard: \[id: string\]/);
   assert.match(notice, /phone\.confirmNotice\(/);
   assert.match(notice, /usePhoneModalLifecycle/);
+  assert.match(notice, /function openManager\(\) \{\s*selectedDraftIds\.value = \[\];/);
 });
 
 test('preview persistence can explicitly select or delete only a manager-selected id', () => {

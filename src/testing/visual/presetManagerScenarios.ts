@@ -1,5 +1,6 @@
 import { installMemoryFileService } from './memoryFileService';
 import { movePresetTransactional, PresetMigrationError } from '@/apps/preset-manager/presetMigration';
+import { useSettingsStore } from '@/store/settings';
 
 type PluginPresetFixture = {
   builtIn?: boolean;
@@ -134,6 +135,111 @@ export async function applyPresetManagerVisualScenario(
   name: string,
   { getPluginPresets, resetPhoneToRoute, waitForCondition, waitForPaint }: PresetManagerVisualContext,
 ) {
+  if (name === 'preset-prompt-range-groups' || name === 'preset-prompt-range-groups-dark') {
+    useSettingsStore().setTheme(name.endsWith('-dark') ? 'dark' : 'light');
+    installMemoryFileService();
+    const pluginPresets = getPluginPresets();
+    await pluginPresets.whenReady();
+    const imported = await pluginPresets.importPreset(
+      {
+        prompts: ['开场', '承接', '发展', '收尾'].map((promptName, index) => ({
+          content: `${promptName}内容`,
+          enabled: true,
+          id: `range-${index + 1}`,
+          name: promptName,
+          role: 'system',
+        })),
+      },
+      `__pc_test__区间分组_${Date.now()}.json`,
+    );
+    resetPhoneToRoute('preset-manager', 'detail', '插件预设条目', {
+      presetId: imported.id,
+      presetSource: 'plugin',
+    });
+    if (!(await waitForCondition(() => Boolean(document.querySelector('.pc-preset-nodes'))))) {
+      throw new Error('Preset range fixture detail did not open');
+    }
+
+    openPresetManagementMenu();
+    findButton('管理条目分组', document.querySelector('.pc-action-menu-panel') || document)?.click();
+    if (!(await waitForElement('.pc-preset-group-manager-dialog'))) {
+      throw new Error('Preset range group manager did not open');
+    }
+    document.querySelector<HTMLButtonElement>('button[aria-label="新建条目分组"]')?.click();
+    if (!(await waitForElement('.pc-phone-notice-input')))
+      throw new Error('Preset range group name prompt did not open');
+    const nameInput = document.querySelector<HTMLInputElement>('.pc-phone-notice-input');
+    if (!nameInput) throw new Error('Preset range group name input is missing');
+    nameInput.value = '正文区间';
+    nameInput.dispatchEvent(new Event('input', { bubbles: true }));
+    clickNoticeAction('创建');
+    if (!(await waitForCondition(() => Boolean(document.querySelector('.pc-preset-managed-group-row'))))) {
+      throw new Error('Preset range group was not created');
+    }
+
+    const readRangeState = () =>
+      (
+        ((imported.raw.extensions as Record<string, unknown>).baibaiToolkit as Record<string, unknown>)
+          .presetPromptGroups as {
+            groups: Array<{ endPromptId: string; selectionMode?: string; startPromptId: string }>;
+          }
+      ).groups[0];
+    let rangeToggles = document.querySelectorAll<HTMLButtonElement>('.pc-preset-group-range-grid .pc-combobox-toggle');
+    rangeToggles[0]?.click();
+    if (!(await waitForCondition(() => document.querySelectorAll('.pc-combobox-option').length === 4))) {
+      throw new Error('Preset range start options did not open');
+    }
+    document.querySelectorAll<HTMLButtonElement>('.pc-combobox-option')[0]?.click();
+    if (!(await waitForCondition(() => readRangeState()?.startPromptId === 'range-1'))) {
+      throw new Error('Preset range start boundary did not persist');
+    }
+
+    if (
+      !(await waitForCondition(() => {
+        const toggles = document.querySelectorAll<HTMLButtonElement>('.pc-preset-group-range-grid .pc-combobox-toggle');
+        return toggles.length === 2 && toggles[1]?.disabled === false;
+      }))
+    ) {
+      throw new Error('Preset range controls did not unlock after saving the start boundary');
+    }
+    rangeToggles = document.querySelectorAll<HTMLButtonElement>('.pc-preset-group-range-grid .pc-combobox-toggle');
+    rangeToggles[1]?.click();
+    if (!(await waitForCondition(() => document.querySelectorAll('.pc-combobox-option').length === 4))) {
+      throw new Error('Preset range end options did not open');
+    }
+    document.querySelectorAll<HTMLButtonElement>('.pc-combobox-option')[2]?.click();
+    if (
+      !(await waitForCondition(() =>
+        Boolean(document.querySelector('.pc-preset-managed-group-row')?.textContent?.includes('3 个条目')),
+      ))
+    ) {
+      throw new Error('Preset range did not include every prompt between its boundaries');
+    }
+    const range = readRangeState();
+    if (range?.startPromptId !== 'range-1' || range.endPromptId !== 'range-3') {
+      throw new Error('Preset range boundaries were not persisted');
+    }
+    const groupRow = document.querySelector('.pc-preset-managed-group-row');
+    findButton('单选', groupRow || document)?.click();
+    if (!(await waitForElement('.pc-preset-single-selection'))) {
+      throw new Error('Preset single-select retention picker did not open');
+    }
+    document.querySelector<HTMLInputElement>('.pc-preset-single-selection input[value="range-2"]')?.click();
+    findButton('确定', document.querySelector('.pc-preset-single-selection') || document)?.click();
+    if (
+      !(await waitForCondition(() => {
+        const enabled = (imported.raw.prompts as Array<{ enabled?: boolean; id?: unknown }>)
+          .filter(prompt => prompt.enabled !== false)
+          .map(prompt => String(prompt.id ?? ''));
+        return readRangeState()?.selectionMode === 'single' && enabled.join(',') === 'range-2,range-4';
+      }))
+    ) {
+      throw new Error('Preset single-select mode did not retain exactly one grouped prompt');
+    }
+    await waitForPaint();
+    return true;
+  }
+
   if (name === 'plugin-preset-visibility') {
     installMemoryFileService();
     const pluginPresets = getPluginPresets();

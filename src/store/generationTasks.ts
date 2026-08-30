@@ -27,7 +27,7 @@ const rawOutputFlushStatuses = new Set<GenerationTaskStatus>([
 ]);
 const pendingRawOutputs = new Map<string, string>();
 const rawOutputTimers = new Map<string, number>();
-const RAW_OUTPUT_PERSIST_INTERVAL_MS = 1500;
+const RAW_OUTPUT_PERSIST_INTERVAL_MS = 5000;
 const SETTINGS_PERSIST_DELAY_MS = 120;
 const MAX_TERMINAL_TASKS = 40;
 
@@ -124,8 +124,6 @@ export const useGenerationTaskStore = defineStore('generationTasks', () => {
     persistTimer = window.setTimeout(persist, SETTINGS_PERSIST_DELAY_MS);
   }
 
-  watch(settings, schedulePersist, { deep: true });
-
   function getTask(taskId: string) {
     return settings.value.tasks.find(task => task.id === taskId) ?? null;
   }
@@ -201,6 +199,7 @@ export const useGenerationTaskStore = defineStore('generationTasks', () => {
     const active = allTasks.filter(item => !terminalStatuses.has(item.status));
     const terminal = allTasks.filter(item => terminalStatuses.has(item.status)).slice(0, MAX_TERMINAL_TASKS);
     settings.value.tasks = [...active, ...terminal];
+    schedulePersist();
     return task;
   }
 
@@ -208,6 +207,7 @@ export const useGenerationTaskStore = defineStore('generationTasks', () => {
     const task = getTask(taskId);
     if (!task) return null;
     Object.assign(task, patch, { updatedAt: nowIso() });
+    schedulePersist();
     return task;
   }
 
@@ -273,6 +273,7 @@ export const useGenerationTaskStore = defineStore('generationTasks', () => {
     task.jobs[jobIndex].error = '';
     task.jobs[jobIndex].status = 'running';
     task.updatedAt = nowIso();
+    schedulePersist();
     return task;
   }
 
@@ -290,6 +291,7 @@ export const useGenerationTaskStore = defineStore('generationTasks', () => {
     if (status === 'saved') task.savedCount += 1;
     if (status === 'draft') task.draftCount += 1;
     task.updatedAt = nowIso();
+    schedulePersist();
     return task;
   }
 
@@ -299,6 +301,7 @@ export const useGenerationTaskStore = defineStore('generationTasks', () => {
     task.status = 'pause-requested';
     task.error = '将在当前生成完成后暂停';
     task.updatedAt = nowIso();
+    schedulePersist();
   }
 
   function stopNow(taskId: string) {
@@ -342,6 +345,7 @@ export const useGenerationTaskStore = defineStore('generationTasks', () => {
     pendingRawOutputs.delete(taskId);
     executingTaskIds.delete(taskId);
     settings.value.tasks = settings.value.tasks.filter(item => item.id !== taskId);
+    schedulePersist();
   }
 
   function clearScopeTasks(scopeKey = getCurrentChatScopeKey()) {
@@ -381,6 +385,7 @@ export const useGenerationTaskStore = defineStore('generationTasks', () => {
     settings.value = normalizePersistedGenerationTasks(_.get(extension_settings, generationTasksField, {}));
     currentScopeKey.value = getCurrentChatScopeKey();
     executingTaskIds.clear();
+    schedulePersist();
   }
 
   const stopChatChanged = onTavernEvent('CHAT_CHANGED', () => {
