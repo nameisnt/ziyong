@@ -581,6 +581,36 @@ async function runDomChecks(page) {
 async function runInteractionChecks(page, scenario) {
   const findings = [];
   try {
+    if (scenario === 'profiles-external-long-table') {
+      const track = page.locator('.pc-external-profile-card-track.is-horizontal');
+      const box = await track.boundingBox();
+      if (!box) {
+        findings.push({ severity: 'fail', message: '资料表横向卡片轨道不可见' });
+      } else {
+        const initialScroll = await track.evaluate(element => element.scrollLeft);
+        await page.mouse.move(box.x + box.width * 0.75, box.y + Math.min(80, box.height / 2));
+        await page.mouse.down();
+        await page.mouse.move(box.x + box.width * 0.25, box.y + Math.min(80, box.height / 2), { steps: 8 });
+        await page.mouse.up();
+        await page.waitForTimeout(80);
+        const draggedScroll = await track.evaluate(element => element.scrollLeft);
+        if (draggedScroll <= initialScroll + 20) {
+          findings.push({ severity: 'fail', message: '资料表横向卡片不能通过桌面鼠标拖动' });
+        }
+        if ((await page.locator('.pc-external-profile-row-detail').count()) > 0) {
+          findings.push({ severity: 'fail', message: '资料表横向拖动后误打开了资料详情' });
+        }
+        await track.hover();
+        const beforeWheel = await track.evaluate(element => element.scrollLeft);
+        await page.mouse.wheel(0, 180);
+        await page.waitForTimeout(80);
+        const afterWheel = await track.evaluate(element => element.scrollLeft);
+        if (afterWheel <= beforeWheel) {
+          findings.push({ severity: 'fail', message: '资料表没有把桌面滚轮转换为横向滚动' });
+        }
+      }
+    }
+
     if (scenario === 'status-display-mvu') {
       const frame = page.frameLocator('.pc-status-display-app iframe');
       if ((await frame.locator('#status-mvu-bridge-result').textContent()) !== '正在城镇休息') {

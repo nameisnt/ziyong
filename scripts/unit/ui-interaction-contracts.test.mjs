@@ -14,6 +14,7 @@ const expectedContracts = {
   'delete-unbind': 'content-version-interactions',
   'home-group-management': 'home',
   persistence: 'content-directory-sort-persistence',
+  'profiles-horizontal-drag': 'profiles-external-long-table',
   'reasoning-disclosure': 'card-writer-reasoning-modal',
   'reparse-diary': 'diary-failed-draft-reparse',
   'reparse-digest': 'digest-failed-draft-reparse',

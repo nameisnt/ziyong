@@ -1,5 +1,5 @@
 <template>
-  <div class="pc-mermaid-relationship">
+  <div ref="graphRootEl" :class="['pc-mermaid-relationship', { 'is-empty': !characters.length }]">
     <EmptyState v-if="!characters.length" compact title="还没有人物" />
     <div v-else-if="errorMessage" class="pc-error-list">
       <span>{{ errorMessage }}</span>
@@ -24,6 +24,7 @@ const MERMAID_URL = 'https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.esm.mi
 const svg = ref('');
 const rendering = ref(false);
 const errorMessage = ref('');
+const graphRootEl = ref<HTMLElement | null>(null);
 let revision = 0;
 
 type MermaidApi = {
@@ -56,6 +57,27 @@ function buildSource() {
   return lines.join('\n');
 }
 
+function resolveThemeColor(variable: string, fallback: string) {
+  if (!graphRootEl.value) return fallback;
+  const probe = document.createElement('span');
+  probe.style.color = `var(${variable})`;
+  graphRootEl.value.append(probe);
+  const color = getComputedStyle(probe).color;
+  probe.remove();
+  if (!color) return fallback;
+
+  const canvas = document.createElement('canvas');
+  canvas.width = 1;
+  canvas.height = 1;
+  const context = canvas.getContext('2d');
+  if (!context) return fallback;
+  context.clearRect(0, 0, 1, 1);
+  context.fillStyle = color;
+  context.fillRect(0, 0, 1, 1);
+  const [red, green, blue, alpha] = context.getImageData(0, 0, 1, 1).data;
+  return `rgba(${red}, ${green}, ${blue}, ${alpha / 255})`;
+}
+
 async function renderGraph() {
   const current = ++revision;
   if (!props.characters.length) {
@@ -72,12 +94,12 @@ async function renderGraph() {
       startOnLoad: false,
       theme: 'base',
       themeVariables: {
-        edgeLabelBackground: 'transparent',
+        edgeLabelBackground: resolveThemeColor('--pc-form-control-popup-bg', '#ffffff'),
         fontFamily: 'inherit',
-        lineColor: 'currentColor',
-        primaryBorderColor: 'currentColor',
-        primaryColor: 'transparent',
-        primaryTextColor: 'currentColor',
+        lineColor: resolveThemeColor('--pc-muted', '#6b7280'),
+        primaryBorderColor: resolveThemeColor('--pc-theme-accent', '#0a84ff'),
+        primaryColor: resolveThemeColor('--pc-form-control-bg', '#ffffff'),
+        primaryTextColor: resolveThemeColor('--pc-text', '#1c1c1e'),
       },
     });
     const result = await mermaid.render(`pc_relationship_${Date.now()}_${current}`, buildSource());
@@ -89,14 +111,20 @@ async function renderGraph() {
   }
 }
 
-watch(() => [props.characters, props.links], renderGraph, { deep: true, immediate: true });
+watch(() => [props.characters, props.links], renderGraph, { deep: true });
+onMounted(renderGraph);
 </script>
 
 <style scoped>
 .pc-mermaid-relationship {
-  min-height: 220px;
   overflow: auto;
   color: var(--pc-text);
+}
+.pc-mermaid-relationship:not(.is-empty) {
+  min-height: 220px;
+}
+.pc-mermaid-relationship.is-empty {
+  min-height: 0;
 }
 .pc-mermaid-loading {
   display: grid;

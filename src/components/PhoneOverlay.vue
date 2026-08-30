@@ -203,11 +203,13 @@ const rootStyle = computed(() => {
   const darkTheme = settings.value.theme === 'dark';
   const paperTexture = getPaperTexture(visualTheme.paperTextureId);
   const appSvgStroke = APP_SVG_STROKE_PROFILES[visualTheme.paperTextureId];
+  const strongSurface = cssColor(visualTheme.surfaceStrongColor) || (darkTheme ? '#2c2c2e' : '#ffffff');
   return {
     '--pc-bg': cssColor(visualTheme.backgroundColor),
     '--pc-surface': cssColor(visualTheme.surfaceColor),
     '--pc-surface-strong': cssColor(visualTheme.surfaceStrongColor),
-    '--pc-form-control-bg': darkTheme ? '#2c2c2e' : cssColor(visualTheme.surfaceStrongColor),
+    '--pc-form-control-bg': `color-mix(in srgb, ${strongSurface} 62%, transparent 38%)`,
+    '--pc-form-control-popup-bg': strongSurface,
     '--pc-form-control-text': darkTheme ? '#f5f5f7' : cssColor(visualTheme.textColor),
     '--pc-border': cssColor(visualTheme.borderColor),
     '--pc-text': cssColor(visualTheme.textColor),
@@ -354,6 +356,7 @@ onBeforeUnmount(() => {
   --pc-hint: #2d9cdb;
   --pc-primary-text: #ffffff;
   --pc-form-control-bg: #ffffff;
+  --pc-form-control-popup-bg: #ffffff;
   --pc-form-control-text: #1c1c1e;
   --pc-soft-button-bg: rgba(255, 255, 255, 0.96);
 }
@@ -372,6 +375,7 @@ onBeforeUnmount(() => {
   --pc-hint: #45caff;
   --pc-primary-text: #ffffff;
   --pc-form-control-bg: #2c2c2e;
+  --pc-form-control-popup-bg: #2c2c2e;
   --pc-form-control-text: #f5f5f7;
   --pc-soft-button-bg: rgba(255, 255, 255, 0.12);
 }

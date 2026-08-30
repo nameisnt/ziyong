@@ -540,6 +540,7 @@
 
 #tavern-phone-root.pc-phone-root[data-theme='light'] :is(select option, select optgroup) {
   color-scheme: light;
+  background-color: var(--pc-form-control-popup-bg);
   color: var(--pc-form-control-text) !important;
 }
 
@@ -559,7 +560,7 @@
 
 #tavern-phone-root.pc-phone-root[data-theme='light']
   :is(.pc-combobox-menu, .pc-combobox-option:not(.active):not(.selected)) {
-  background-color: var(--pc-form-control-bg) !important;
+  background-color: var(--pc-form-control-popup-bg) !important;
   color: var(--pc-form-control-text) !important;
 }
 
@@ -581,7 +582,7 @@
 
 #tavern-phone-root.pc-phone-root[data-theme='dark'] :is(select option, select optgroup) {
   color-scheme: dark;
-  background-color: var(--pc-form-control-bg) !important;
+  background-color: var(--pc-form-control-popup-bg) !important;
   color: var(--pc-form-control-text) !important;
 }
 
@@ -601,7 +602,7 @@
 
 #tavern-phone-root.pc-phone-root[data-theme='dark']
   :is(.pc-combobox-menu, .pc-combobox-option:not(.active):not(.selected)) {
-  background-color: var(--pc-form-control-bg) !important;
+  background-color: var(--pc-form-control-popup-bg) !important;
   color: var(--pc-form-control-text) !important;
 }
 
@@ -622,7 +623,8 @@
   gap: 8px;
   padding: 0 10px;
   border-radius: var(--pc-control-radius);
-  background: color-mix(in srgb, var(--pc-surface-strong) 72%, transparent 28%);
+  border: 1px solid var(--pc-border);
+  background: var(--pc-form-control-bg);
   color: var(--pc-muted);
 }
 

@@ -25,7 +25,8 @@ test('paper shell and theme preview cover one texture without tiled seams', () =
 
 test('shared soft controls reveal the paper surface instead of using opaque button slabs', () => {
   assert.match(globalCss, /var\(--pc-soft-button-bg\) 58%, transparent 42%/u);
-  assert.match(globalCss, /var\(--pc-surface-strong\) 72%, transparent 28%/u);
+  assert.match(globalCss, /\.pc-search-field\s*\{[\s\S]*background:\s*var\(--pc-form-control-bg\)/u);
+  assert.match(phoneOverlay, /strongSurface\} 62%, transparent 38%/u);
 });
 
 test('forum detail and preview share a flat floor list with an original-poster filter', () => {

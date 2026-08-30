@@ -39,7 +39,7 @@ test('the relationship scenario covers editing and both confirmed deletion level
   assert.match(scenario, /新增人物/);
   assert.match(scenario, /新增关系/);
   assert.match(scenario, /pc-relation-row/);
-  assert.match(scenario, /删除人物关系/);
+  assert.match(scenario, /甲改名 → 乙/);
   assert.match(scenario, /和相关关系吗/);
   assert.match(scenario, /relationship\.links\.length === 0/);
 });

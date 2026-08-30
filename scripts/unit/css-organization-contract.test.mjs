@@ -39,17 +39,21 @@ test('shared search wrappers own a single transparent-inner control surface', ()
   assert.doesNotMatch(favorites, /^\.favorite-select\s*\{/mu);
 });
 
-test('form controls follow light paper surfaces while retaining dark mode contrast', () => {
+test('form controls keep paper texture visible while popup surfaces remain readable', () => {
   const rootStyle = phoneOverlay.match(/const rootStyle = computed\(\(\) => \{([\s\S]*?)\n\}\);/u)?.[1] ?? '';
 
   assert.match(rootStyle, /const darkTheme = settings\.value\.theme === 'dark'/u);
+  assert.match(rootStyle, /const strongSurface = cssColor\(visualTheme\.surfaceStrongColor\)/u);
   assert.match(
     rootStyle,
-    /'--pc-form-control-bg':\s*darkTheme \? '#2c2c2e' : cssColor\(visualTheme\.surfaceStrongColor\)/u,
+    /'--pc-form-control-bg':\s*`color-mix\(in srgb, \$\{strongSurface\} 62%, transparent 38%\)`/u,
   );
+  assert.match(rootStyle, /'--pc-form-control-popup-bg':\s*strongSurface/u);
   assert.match(rootStyle, /'--pc-form-control-text':\s*darkTheme \? '#f5f5f7' : cssColor\(visualTheme\.textColor\)/u);
   assert.match(phoneOverlay, /\.pc-phone-root\[data-theme='light'\][\s\S]*--pc-form-control-bg:\s*#ffffff/u);
   assert.match(phoneOverlay, /\.pc-phone-root\[data-theme='dark'\][\s\S]*--pc-form-control-bg:\s*#2c2c2e/u);
+  assert.match(globalCss, /\.pc-search-field\s*\{[\s\S]*background:\s*var\(--pc-form-control-bg\)/u);
+  assert.match(globalCss, /select option, select optgroup[\s\S]*var\(--pc-form-control-popup-bg\)/u);
 });
 
 test('DetailFooter is the only owner of detail footer layout and action columns', () => {

@@ -194,9 +194,13 @@
         <EmptyState v-if="!settings.people.length" compact :title="t`还没有人物`" />
 
         <div v-else class="pc-people-list">
-          <article v-for="person in settings.people" :key="person.id" class="pc-person-card">
+          <article v-for="person in settings.people" :key="person.id" class="pc-editor-card pc-person-card">
             <label class="pc-check-row">
-              <input v-model="person.selected" type="checkbox" />
+              <BulkSelectionCheckbox
+                :model-value="person.selected"
+                :label="`${person.name || '未命名人物'}参与时间计算`"
+                @update:model-value="person.selected = $event"
+              />
               <input v-model="person.name" class="pc-field name" type="text" :placeholder="t`人物名称`" />
             </label>
             <input
@@ -292,13 +296,14 @@
         </button>
       </article>
 
-      <article class="pc-page-section">
-        <div class="pc-section-head">
+      <details class="pc-page-section pc-time-disclosure">
+        <summary class="pc-section-head">
           <strong>
             {{ t`写入预览` }}
             <InfoHint :text="previewHelpText" />
           </strong>
-        </div>
+          <i class="fa-solid fa-chevron-down"></i>
+        </summary>
         <pre class="pc-preview">{{ promptText }}</pre>
         <div class="pc-form-actions pc-time-actions">
           <button class="pc-soft-btn" type="button" @click="copyPrompt">
@@ -310,7 +315,7 @@
             <span>{{ t`写入输入框` }}</span>
           </button>
         </div>
-      </article>
+      </details>
     </section>
   </section>
 </template>
@@ -536,23 +541,25 @@ async function copyPrompt() {
 .pc-timekeeper-page {
   display: flex;
   flex-direction: column;
-  gap: 14px;
+  gap: 12px;
 }
 
-.pc-calendar-card summary {
+.pc-timekeeper-page details > summary {
   cursor: pointer;
   list-style: none;
 }
 
-.pc-calendar-card summary::-webkit-details-marker {
+.pc-timekeeper-page details > summary::-webkit-details-marker {
   display: none;
 }
 
+.pc-timekeeper-page details > summary > i,
 .pc-calendar-card summary i {
   color: var(--pc-muted);
   transition: transform 0.16s ease;
 }
 
+.pc-timekeeper-page details[open] > summary > i,
 .pc-calendar-card[open] summary i {
   transform: rotate(180deg);
 }
@@ -581,7 +588,7 @@ async function copyPrompt() {
   gap: 4px;
   padding: 12px;
   border-radius: var(--pc-control-radius);
-  background: var(--pc-surface-strong);
+  background: var(--pc-form-control-bg);
 }
 
 .pc-calendar-summary span {
@@ -633,16 +640,12 @@ async function copyPrompt() {
 .pc-person-card {
   display: grid;
   gap: 10px;
-  border: 1px solid var(--pc-border);
-  border-radius: var(--pc-control-radius);
-  background: var(--pc-surface-strong);
-  padding: 12px;
 }
 
 .pc-check-row {
   display: grid;
-  grid-template-columns: 18px minmax(0, 1fr);
-  gap: 10px;
+  grid-template-columns: 28px minmax(0, 1fr);
+  gap: 8px;
   align-items: center;
 }
 
@@ -659,7 +662,8 @@ async function copyPrompt() {
   margin: 12px 0 0;
   white-space: pre-wrap;
   border-radius: min(var(--pc-control-radius), 8px);
-  background: var(--pc-surface-strong);
+  border: 1px solid var(--pc-border);
+  background: var(--pc-form-control-bg);
   color: var(--pc-text);
   padding: 12px;
   font-family: inherit;

@@ -301,7 +301,7 @@ defineExpose({ focusAndOpen });
   overflow-y: auto;
   border: 1px solid var(--pc-border);
   border-radius: 12px;
-  background: var(--pc-bg);
+  background: var(--pc-form-control-popup-bg, var(--pc-surface-strong));
   box-shadow: 0 10px 28px rgba(0, 0, 0, 0.16);
   padding: 4px;
 }

@@ -14,19 +14,19 @@
         </button>
       </div>
 
-      <section class="pc-section-card pc-relationship-graph-card">
+      <section :class="['pc-section-card pc-relationship-graph-card', { 'is-empty': !characters.length }]">
         <MermaidRelationshipGraph :characters="characters" :links="links" />
       </section>
 
-      <section class="pc-page-section">
-        <button class="pc-section-toggle" type="button" @click="charactersExpanded = !charactersExpanded">
+      <details class="pc-page-section pc-relationship-disclosure" open>
+        <summary class="pc-section-head">
           <strong>人物</strong>
-          <span class="pc-section-meta">
+          <span class="pc-relationship-summary-meta">
             <span>{{ characters.length }} 个</span>
-            <i :class="['fa-solid', charactersExpanded ? 'fa-chevron-up' : 'fa-chevron-down']"></i>
+            <i class="fa-solid fa-chevron-down"></i>
           </span>
-        </button>
-        <div v-if="charactersExpanded" class="pc-relationship-section-body">
+        </summary>
+        <div class="pc-relationship-section-body">
           <div class="pc-inline-form">
             <input
               v-model="characterDraft"
@@ -40,7 +40,7 @@
             </button>
           </div>
           <div v-if="characters.length" class="pc-compact-list">
-            <article v-for="character in characters" :key="character.id" class="pc-compact-row">
+            <article v-for="character in characters" :key="character.id" class="pc-compact-row pc-character-editor-row">
               <input
                 class="pc-field"
                 type="text"
@@ -59,18 +59,19 @@
             </article>
           </div>
         </div>
-      </section>
+      </details>
 
-      <section class="pc-page-section">
-        <button class="pc-section-toggle" type="button" @click="linksExpanded = !linksExpanded">
+      <details class="pc-page-section pc-relationship-disclosure">
+        <summary class="pc-section-head">
           <strong>单向关系</strong>
-          <span class="pc-section-meta">
+          <span class="pc-relationship-summary-meta">
             <span>{{ links.length }} 条</span>
-            <i :class="['fa-solid', linksExpanded ? 'fa-chevron-up' : 'fa-chevron-down']"></i>
+            <i class="fa-solid fa-chevron-down"></i>
           </span>
-        </button>
-        <div v-if="linksExpanded" class="pc-relationship-section-body">
-          <div class="pc-relation-form">
+        </summary>
+        <div class="pc-relationship-section-body">
+          <EmptyState v-if="characters.length < 2" compact title="至少添加两个人物后再建立关系" />
+          <div v-else class="pc-relation-form">
             <SearchableCombobox
               v-model="linkDraft.fromId"
               :options="characterOptions"
@@ -123,7 +124,7 @@
             </article>
           </div>
         </div>
-      </section>
+      </details>
 
       <FailedDraftList
         :drafts="failedDrafts"
@@ -245,8 +246,6 @@ const { characters, failedDrafts, links } = storeToRefs(relationship);
 const { settings } = storeToRefs(settingsStore);
 const characterDraft = ref('');
 const failedDraftRawOutput = ref('');
-const charactersExpanded = ref(true);
-const linksExpanded = ref(true);
 const selectedReferences = ref<GenerationReferenceItem[]>([]);
 const linkDraft = reactive({ fromId: '', label: '', toId: '' });
 const generationDraft = reactive({
@@ -583,6 +582,29 @@ const regenerateFailedDraft = useFailedDraftRegeneration({
 .pc-relationship-graph-card {
   padding: 4px;
 }
+.pc-relationship-graph-card.is-empty {
+  padding: 6px;
+}
+.pc-relationship-disclosure > summary {
+  cursor: pointer;
+  list-style: none;
+}
+.pc-relationship-disclosure > summary::-webkit-details-marker {
+  display: none;
+}
+.pc-relationship-summary-meta {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--pc-muted);
+  font-size: 12px;
+}
+.pc-relationship-summary-meta i {
+  transition: transform 0.16s ease;
+}
+.pc-relationship-disclosure[open] .pc-relationship-summary-meta i {
+  transform: rotate(180deg);
+}
 .pc-inline-form,
 .pc-compact-row,
 .pc-relation-row,
@@ -600,6 +622,15 @@ const regenerateFailedDraft = useFailedDraftRegeneration({
 .pc-relation-row {
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr) minmax(90px, 1fr) auto;
+}
+.pc-compact-list {
+  display: grid;
+  gap: 8px;
+}
+.pc-compact-row,
+.pc-relation-row {
+  padding-top: 8px;
+  border-top: 1px solid var(--pc-border);
 }
 @media (max-width: 390px) {
   .pc-relation-form,

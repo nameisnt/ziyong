@@ -142,7 +142,14 @@
 
       <div
         v-if="activeTable && filteredRows.length && activeTable.columns.length"
+        ref="profileCardTrackEl"
         :class="['pc-external-profile-card-track', `is-${externalProfilesLayout}`]"
+        @click.capture="externalProfilesLayout === 'horizontal' && profileCardDrag.onClickCapture($event)"
+        @pointercancel="externalProfilesLayout === 'horizontal' && profileCardDrag.onPointerCancel($event)"
+        @pointerdown="externalProfilesLayout === 'horizontal' && profileCardDrag.onPointerDown($event)"
+        @pointermove="externalProfilesLayout === 'horizontal' && profileCardDrag.onPointerMove($event)"
+        @pointerup="externalProfilesLayout === 'horizontal' && profileCardDrag.onPointerUp($event)"
+        @wheel="externalProfilesLayout === 'horizontal' && profileCardDrag.onWheel($event)"
       >
         <button
           v-for="row in filteredRows"
@@ -299,6 +306,7 @@ import FailedDraftRepairPage from '@/components/FailedDraftRepairPage.vue';
 import ReaderDetailShell from '@/components/ReaderDetailShell.vue';
 import SearchableCombobox from '@/components/SearchableCombobox.vue';
 import { useFailedDraftRegeneration } from '@/composables/useFailedDraftRegeneration';
+import { useHorizontalDragScroll } from '@/composables/useHorizontalDragScroll';
 import { usePhoneStore } from '@/store/phone';
 import { useSettingsStore } from '@/store/settings';
 import { onTavernEvent } from '@/util/runtime';
@@ -325,6 +333,8 @@ const bridge = createExternalProfilesBridge();
 const state = ref<ExternalProfilesViewState>(bridge.getState());
 const catalogQuery = ref('');
 const rowQuery = ref('');
+const profileCardTrackEl = ref<HTMLElement | null>(null);
+const profileCardDrag = useHorizontalDragScroll(profileCardTrackEl);
 const failedDraftRawOutput = ref('');
 const selectedRepairSheetKey = ref('');
 const selectedRepairTitleColumn = ref('');
@@ -637,6 +647,7 @@ const regenerateFailedDraft = useFailedDraftRegeneration({
   padding: 2px 2px 10px;
   scroll-padding-inline: 2px;
   scroll-snap-type: inline proximity;
+  user-select: none;
 }
 .pc-external-profile-card-track.is-vertical {
   grid-template-columns: minmax(0, 1fr);
@@ -653,7 +664,11 @@ const regenerateFailedDraft = useFailedDraftRegeneration({
   text-align: left;
 }
 .pc-external-profile-card-track.is-horizontal .pc-external-profile-data-card {
+  cursor: grab;
   scroll-snap-align: start;
+}
+.pc-external-profile-card-track.is-horizontal .pc-external-profile-data-card:active {
+  cursor: grabbing;
 }
 .pc-external-profile-data-card:hover,
 .pc-external-profile-data-card:focus-visible {
@@ -667,7 +682,8 @@ const regenerateFailedDraft = useFailedDraftRegeneration({
   gap: 10px;
   margin: -14px -14px 0;
   padding: 10px 14px;
-  background: color-mix(in srgb, var(--pc-surface-strong) 88%, var(--pc-theme-accent) 12%);
+  border-bottom: 1px solid var(--pc-border);
+  background: color-mix(in srgb, var(--pc-theme-accent) 8%, transparent 92%);
 }
 .pc-external-profile-data-card > header span,
 .pc-external-profile-data-card > header i {
@@ -703,7 +719,7 @@ const regenerateFailedDraft = useFailedDraftRegeneration({
   display: inline-block;
   padding: 2px 8px;
   border-radius: 999px;
-  background: var(--pc-surface-strong);
+  background: var(--pc-form-control-bg);
 }
 .pc-external-profile-empty-action {
   margin-top: 12px;

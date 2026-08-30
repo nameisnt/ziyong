@@ -83,9 +83,9 @@ export async function applyRelationshipVisualScenario(
   if (relationship.characters.length !== 2) throw new Error('Relationship UI did not create two characters');
 
   const firstRow = [...document.querySelectorAll<HTMLElement>('.pc-character-editor-row')].find(
-    row => row.querySelector<HTMLInputElement>(':scope .pc-compact-row > input.pc-field')?.value === '甲',
+    row => row.querySelector<HTMLInputElement>(':scope > input.pc-field')?.value === '甲',
   );
-  const firstName = firstRow?.querySelector<HTMLInputElement>(':scope .pc-compact-row > input.pc-field');
+  const firstName = firstRow?.querySelector<HTMLInputElement>(':scope > input.pc-field');
   if (!firstName) throw new Error('Relationship character rename input is missing');
   setInputValue(firstName, '甲改名', 'change');
   if (!(await waitForCondition(() => relationship.characters.some(character => character.name === '甲改名')))) {
@@ -108,7 +108,7 @@ export async function applyRelationshipVisualScenario(
   if (
     !(await waitForCondition(() =>
       [...document.querySelectorAll<HTMLElement>('.pc-phone-notice')].some(notice =>
-        notice.textContent?.includes('删除人物关系'),
+        notice.textContent?.includes('甲改名 → 乙'),
       ),
     ))
   ) {
@@ -124,7 +124,7 @@ export async function applyRelationshipVisualScenario(
     throw new Error('Relationship fixture could not recreate a link for cascade deletion');
   }
   const renamedRow = [...document.querySelectorAll<HTMLElement>('.pc-character-editor-row')].find(
-    row => row.querySelector<HTMLInputElement>(':scope .pc-compact-row > input.pc-field')?.value === '甲改名',
+    row => row.querySelector<HTMLInputElement>(':scope > input.pc-field')?.value === '甲改名',
   );
   findButtonByTitle('删除', renamedRow || document)?.click();
   if (
