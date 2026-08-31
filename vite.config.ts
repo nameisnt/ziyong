@@ -16,12 +16,10 @@ const externals = {
 } as const;
 
 const publicPathIndex = __dirname.lastIndexOf('public');
-const relative_sillytavern_path = publicPathIndex >= 0
-  ? path.relative(
-      path.join(__dirname, 'dist'),
-      __dirname.substring(0, publicPathIndex + 'public'.length),
-    )
-  : '../../../../../';
+const relative_sillytavern_path =
+  publicPathIndex >= 0
+    ? path.relative(path.join(__dirname, 'dist'), __dirname.substring(0, publicPathIndex + 'public'.length))
+    : '../../../../../';
 
 export default defineConfig(({ mode }) => {
   const visualMode = mode === 'visual';
@@ -29,99 +27,100 @@ export default defineConfig(({ mode }) => {
   return {
     base: './',
     plugins: [
-    vue({
-      features: {
-        optionsAPI: false,
-        prodDevtools: visualMode,
-        prodHydrationMismatchDetails: false,
-      },
-    }),
-    unpluginAutoImport({
-      dts: true,
-      dtsMode: 'overwrite',
-      imports: [
-        'vue',
-        'pinia',
-        '@vueuse/core',
-        { from: '@sillytavern/scripts/i18n', imports: ['t'] },
-        { from: 'klona', imports: ['klona'] },
-        { from: 'toastr', imports: [['default', 'toastr']] },
-        { from: 'vue-final-modal', imports: ['useModal'] },
-        { from: 'zod', imports: ['z'] },
-      ],
-      dirs: [{ glob: './src/panel/composable', types: true }],
-    }),
-    unpluginVueComponents({
-      dts: true,
-      syncMode: 'overwrite',
-      // globs: ['src/panel/component/*.vue'],
-      resolvers: [VueUseComponentsResolver(), VueUseDirectiveResolver()],
-    }),
-    !visualMode && {
-      name: 'sillytavern_resolver',
-      enforce: 'pre',
-      resolveId(id) {
-        if (id.startsWith('@sillytavern/')) {
-          return {
-            id: path.join(relative_sillytavern_path, id.replace('@sillytavern/', '')).replaceAll('\\', '/') + '.js',
-            external: true,
-          };
-        }
-      },
-    },
-    pluginExternal({
-      externals: libname => {
-        if (libname in externals) {
-          return externals[libname as keyof typeof externals];
-        }
-      },
-    }),
-  ].filter(Boolean),
-
-  resolve: {
-    alias: {
-      '@': path.resolve(__dirname, 'src'),
-      ...(visualMode
-        ? {
-            '@sillytavern/script': path.resolve(__dirname, 'src/testing/sillytavern-script.ts'),
-            '@sillytavern/scripts/extensions': path.resolve(__dirname, 'src/testing/sillytavern-extensions.ts'),
-            '@sillytavern/scripts/i18n': path.resolve(__dirname, 'src/testing/sillytavern-i18n.ts'),
+      vue({
+        features: {
+          optionsAPI: false,
+          prodDevtools: visualMode,
+          prodHydrationMismatchDetails: false,
+        },
+      }),
+      unpluginAutoImport({
+        dts: true,
+        dtsMode: 'overwrite',
+        imports: [
+          'vue',
+          'pinia',
+          '@vueuse/core',
+          { from: '@sillytavern/scripts/i18n', imports: ['t'] },
+          { from: 'klona', imports: ['klona'] },
+          { from: 'toastr', imports: [['default', 'toastr']] },
+          { from: 'vue-final-modal', imports: ['useModal'] },
+          { from: 'zod', imports: ['z'] },
+        ],
+        dirs: [{ glob: './src/panel/composable', types: true }],
+      }),
+      unpluginVueComponents({
+        dts: true,
+        syncMode: 'overwrite',
+        // globs: ['src/panel/component/*.vue'],
+        resolvers: [VueUseComponentsResolver(), VueUseDirectiveResolver()],
+      }),
+      !visualMode && {
+        name: 'sillytavern_resolver',
+        enforce: 'pre',
+        resolveId(id) {
+          if (id.startsWith('@sillytavern/')) {
+            return {
+              id: path.join(relative_sillytavern_path, id.replace('@sillytavern/', '')).replaceAll('\\', '/') + '.js',
+              external: true,
+            };
           }
-        : {}),
-    },
-  },
+        },
+      },
+      pluginExternal({
+        externals: libname => {
+          if (libname in externals) {
+            return externals[libname as keyof typeof externals];
+          }
+        },
+      }),
+    ].filter(Boolean),
 
-  build: {
-    rollupOptions: {
-      input: 'src/index.ts',
-      output: {
-        format: 'es',
-        entryFileNames: '[name].js',
-        chunkFileNames: '[name].[hash].chunk.js',
-        assetFileNames: '[name].[ext]',
-        preserveModules: false,
+    resolve: {
+      alias: {
+        '@': path.resolve(__dirname, 'src'),
+        ...(visualMode
+          ? {
+              '@sillytavern/script': path.resolve(__dirname, 'src/testing/sillytavern-script.ts'),
+              '@sillytavern/scripts/extensions': path.resolve(__dirname, 'src/testing/sillytavern-extensions.ts'),
+              '@sillytavern/scripts/i18n': path.resolve(__dirname, 'src/testing/sillytavern-i18n.ts'),
+              toastr: path.resolve(__dirname, 'src/testing/visual-toastr.ts'),
+            }
+          : {}),
       },
     },
 
-    outDir: 'dist',
-    emptyOutDir: true,
+    build: {
+      rollupOptions: {
+        input: 'src/index.ts',
+        output: {
+          format: 'es',
+          entryFileNames: '[name].js',
+          chunkFileNames: '[name].[hash].chunk.js',
+          assetFileNames: '[name].[ext]',
+          preserveModules: false,
+        },
+      },
 
-    sourcemap: false,
+      outDir: 'dist',
+      emptyOutDir: true,
 
-    minify: mode === 'production' ? 'terser' : false,
-    terserOptions:
-      mode === 'production'
-        ? {
-            format: { quote_style: 1 },
-            mangle: { reserved: ['_', 'toastr', 'YAML', '$', 'z'] },
-          }
-        : {
-            format: { beautify: true, indent_level: 2 },
-            compress: false,
-            mangle: false,
-          },
+      sourcemap: false,
 
-    target: 'esnext',
-  },
+      minify: mode === 'production' ? 'terser' : false,
+      terserOptions:
+        mode === 'production'
+          ? {
+              format: { quote_style: 1 },
+              mangle: { reserved: ['_', 'toastr', 'YAML', '$', 'z'] },
+            }
+          : {
+              format: { beautify: true, indent_level: 2 },
+              compress: false,
+              mangle: false,
+            },
+
+      target: 'esnext',
+    },
   };
 });

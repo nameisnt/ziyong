@@ -1,4 +1,4 @@
-export const CURRENT_PHONE_DATA_VERSION = 1;
+export const CURRENT_PHONE_DATA_VERSION = 2;
 
 const PHONE_DATA_VERSION_FIELD = 'sillytavern_phone_data_version';
 const RETIRED_APP_IDS = new Set(['comfy', 'media', 'cloud-media', 'gallery', 'music', 'video']);
@@ -16,6 +16,7 @@ const PHONE_SETTINGS_FIELD = 'sillytavern_phone';
 const PROMPT_SETTINGS_FIELD = 'sillytavern_phone_prompt_settings';
 const GENERATION_TASKS_FIELD = 'sillytavern_phone_generation_tasks';
 const PREVIEW_DRAFTS_FIELD = 'sillytavern_phone_preview_drafts';
+const THEATER_FIELD = 'sillytavern_phone_theater';
 const WORKBENCH_FIELD = 'sillytavern_phone_workbench';
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -81,6 +82,7 @@ function cleanWorkbenchRun(run: unknown, removedStepIds: Set<string>) {
   const steps = Array.isArray(run.steps) ? run.steps : [];
   steps.forEach(step => {
     if (isRecord(step) && step.appId === 'comfy' && typeof step.id === 'string') removedIds.add(step.id);
+    cleanTheaterWorkbenchStep(step);
   });
   filterArray(run, 'steps', item => !isRecord(item) || item.appId !== 'comfy');
   filterArray(run, 'failedStepIds', item => typeof item !== 'string' || !removedIds.has(item));
@@ -88,10 +90,16 @@ function cleanWorkbenchRun(run: unknown, removedStepIds: Set<string>) {
   if (isRecord(failedDraftIds)) removedIds.forEach(stepId => deleteKey(failedDraftIds, stepId));
 }
 
-function cleanWorkbenchSettings(raw: unknown) {
+function cleanTheaterWorkbenchStep(step: unknown) {
+  if (!isRecord(step) || step.appId !== 'theater' || !isRecord(step.config)) return;
+  deleteKey(step.config, 'theaterParticipants');
+}
+
+function cleanWorkbenchScope(raw: unknown) {
   if (!isRecord(raw) || !Array.isArray(raw.workflows)) return;
   raw.workflows = raw.workflows.flatMap(workflow => {
     if (!isRecord(workflow) || !Array.isArray(workflow.steps)) return [workflow];
+    workflow.steps.forEach(cleanTheaterWorkbenchStep);
     const removedStepIds = new Set(
       workflow.steps.flatMap(step =>
         isRecord(step) && step.appId === 'comfy' && typeof step.id === 'string' ? [step.id] : [],
@@ -105,6 +113,58 @@ function cleanWorkbenchSettings(raw: unknown) {
     }
     return nextSteps.length ? [workflow] : [];
   });
+}
+
+function forEachStoredScope(raw: unknown, callback: (scope: Record<string, unknown>) => void) {
+  if (!isRecord(raw)) return;
+  if (raw.__chatScoped === true && isRecord(raw.scopes)) {
+    Object.values(raw.scopes).forEach(scope => {
+      if (isRecord(scope)) callback(scope);
+    });
+    return;
+  }
+  callback(raw);
+}
+
+function cleanWorkbenchSettings(raw: unknown) {
+  forEachStoredScope(raw, cleanWorkbenchScope);
+}
+
+function cleanTheaterReplay(raw: unknown) {
+  if (!isRecord(raw) || !isRecord(raw.config)) return;
+  deleteKey(raw.config, 'participants');
+}
+
+function cleanTheaterGenerationRecord(raw: unknown) {
+  if (!isRecord(raw)) return;
+  cleanTheaterReplay(raw.replay);
+}
+
+function cleanTheaterVersion(raw: unknown) {
+  if (!isRecord(raw)) return;
+  deleteKey(raw, 'participants');
+  cleanTheaterReplay(raw.generationReplay);
+  cleanTheaterGenerationRecord(raw.generationRecord);
+}
+
+function cleanTheaterEntry(raw: unknown) {
+  if (!isRecord(raw)) return;
+  cleanTheaterVersion(raw);
+  if (Array.isArray(raw.versions)) raw.versions.forEach(cleanTheaterVersion);
+}
+
+function cleanTheaterScope(raw: Record<string, unknown>) {
+  if (Array.isArray(raw.entries)) raw.entries.forEach(cleanTheaterEntry);
+  if (!Array.isArray(raw.failedDrafts)) return;
+  raw.failedDrafts.forEach(draft => {
+    if (!isRecord(draft)) return;
+    if (isRecord(draft.context)) deleteKey(draft.context, 'participants');
+    cleanTheaterGenerationRecord(draft.generationRecord);
+  });
+}
+
+function cleanTheaterSettings(raw: unknown) {
+  forEachStoredScope(raw, cleanTheaterScope);
 }
 
 function cleanThemeAppReferences(raw: unknown) {
@@ -149,6 +209,7 @@ export function applyCurrentPhoneDataVersion(extensionSettings: Record<string, u
   cleanPromptSettings(extensionSettings[PROMPT_SETTINGS_FIELD]);
   cleanGenerationTasks(extensionSettings[GENERATION_TASKS_FIELD]);
   cleanPreviewDrafts(extensionSettings[PREVIEW_DRAFTS_FIELD]);
+  cleanTheaterSettings(extensionSettings[THEATER_FIELD]);
   cleanWorkbenchSettings(extensionSettings[WORKBENCH_FIELD]);
   cleanPhoneSettings(extensionSettings[PHONE_SETTINGS_FIELD]);
   extensionSettings[PHONE_DATA_VERSION_FIELD] = CURRENT_PHONE_DATA_VERSION;

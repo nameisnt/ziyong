@@ -66,6 +66,7 @@
         <i class="fa-solid fa-rotate-right"></i>
         <span>{{ t`重开` }}</span>
       </button>
+      <MiniGameSoundButton />
       <InfoHint
         :label="t`贪吃蛇说明`"
         :text="t`在棋盘上滑动，或使用电脑方向键改变方向。吃到红点会增加长度，撞墙或撞到自己则结束。`"
@@ -76,6 +77,8 @@
 
 <script setup lang="ts">
 import InfoHint from '@/components/InfoHint.vue';
+import MiniGameSoundButton from './MiniGameSoundButton.vue';
+import { playMiniGameSound } from './miniGameAudio';
 import { miniGameFields } from './fields';
 import { readMiniGameSettings, writeMiniGameSettings } from './miniGameStorage';
 import { SnakeSchema } from './backupSchemas';
@@ -160,12 +163,14 @@ function newGame() {
   state.value = { ...initialState(state.value.best), speed: state.value.speed };
   queuedDirection.value = state.value.direction;
   save();
+  playMiniGameSound('reset');
 }
 
 function setSpeed(speed: SnakeSpeed) {
   state.value.speed = speed;
   restartTimer();
   save();
+  playMiniGameSound('select');
 }
 
 function isOpposite(next: Direction, current: Direction) {
@@ -180,6 +185,7 @@ function isOpposite(next: Direction, current: Direction) {
 function setDirection(direction: Direction) {
   if (isOpposite(direction, state.value.direction)) return;
   queuedDirection.value = direction;
+  playMiniGameSound('select');
 }
 
 function nextHead(head: Point, direction: Direction) {
@@ -201,6 +207,7 @@ function step() {
   if (hitWall || hitSelf) {
     state.value.status = 'lost';
     save();
+    playMiniGameSound('fail');
     return;
   }
   const ate = next.x === state.value.food.x && next.y === state.value.food.y;
@@ -216,12 +223,14 @@ function step() {
     snake,
   };
   save();
+  if (ate) playMiniGameSound('success');
 }
 
 function toggleRun() {
   if (state.value.status === 'lost') newGame();
   state.value.status = state.value.status === 'running' ? 'paused' : 'running';
   save();
+  playMiniGameSound('select');
 }
 
 function directionFromDelta(deltaX: number, deltaY: number): Direction | null {

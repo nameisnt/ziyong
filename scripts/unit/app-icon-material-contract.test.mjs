@@ -46,7 +46,9 @@ test('each paper theme gives the shared semantic glyph its own rendering profile
   assert.match(globalCss, /data-paper='xuan'[\s\S]*?filter:\s*contrast/u);
   assert.match(globalCss, /data-paper='parchment'[\s\S]*?filter:\s*sepia/u);
   assert.match(globalCss, /data-paper='cardstock'[\s\S]*?-webkit-text-stroke/u);
-  assert.match(globalCss, /data-paper='graphite'[\s\S]*?filter:\s*grayscale/u);
+  assert.match(globalCss, /data-paper='graphite'[\s\S]*?filter:\s*brightness/u);
+  assert.match(globalCss, /data-paper='graphite'[\s\S]*?var\(--pc-icon-material-accent\)/u);
+  assert.doesNotMatch(globalCss, /data-paper='graphite'[\s\S]*?filter:\s*grayscale/u);
 });
 
 test('prompt App choices reuse the same theme-aware AppIcon entry as the home screen', () => {

@@ -244,7 +244,6 @@ import { usePhoneStore } from '@/store/phone';
 import { usePromptStore } from '@/store/prompts';
 import { useSettingsStore } from '@/store/settings';
 import { useTheaterStore } from '@/store/theater';
-import type { CharacterRef } from '@/type/diary';
 import type { FailedGenerationDraft, GenerationReplaySnapshot, HiddenGenerationRecord } from '@/type/generation';
 import type { GenerationTask } from '@/type/generationTask';
 import type { TheaterEntry, TheaterRenderMode } from '@/type/theater';
@@ -297,7 +296,6 @@ const customTypeOpen = ref(false);
 const customTypeName = ref('');
 const draft = reactive({
   content: '',
-  participants: '',
   renderMode: 'markdown' as TheaterRenderMode,
   title: '',
   typeId: '',
@@ -613,11 +611,7 @@ const filteredEntries = computed(() => {
     const typeKey = entry.typeName.trim() || '未分类小剧场';
     if (activeTypeKeys.size && !activeTypeKeys.has(typeKey)) return false;
     if (!normalized) return true;
-    return (
-      entry.title.toLowerCase().includes(normalized) ||
-      entry.typeName.toLowerCase().includes(normalized) ||
-      entry.participants.some(item => item.name.toLowerCase().includes(normalized))
-    );
+    return entry.title.toLowerCase().includes(normalized) || entry.typeName.toLowerCase().includes(normalized);
   });
 });
 const generationPromptPreview = computed(() => {
@@ -701,7 +695,6 @@ watch(
     if (current.page !== 'generate' && current.page !== 'preview') replaySession.release();
     if (current.page === 'editor') {
       draft.content = viewedEntry.value?.content || '';
-      draft.participants = participantsToText(activeEntry.value?.participants || []);
       draft.renderMode = viewedEntry.value?.renderMode || 'markdown';
       draft.title = viewedEntry.value?.title || '';
       draft.typeId = activeEntry.value?.typeId || '';
@@ -780,25 +773,6 @@ useInvalidRouteFallback({
     phone.replacePage(entries.value.length ? 'history' : 'root', entries.value.length ? '小剧场记录' : '小剧场');
   },
 });
-
-function participantsToText(participants: CharacterRef[]) {
-  return participants.map(item => item.name).join('，');
-}
-
-function parseParticipants(raw: string) {
-  const seen = new Set<string>();
-  return raw
-    .split(/[\n,，]/g)
-    .map(item => item.trim())
-    .filter(Boolean)
-    .filter(item => {
-      const key = item.toLowerCase();
-      if (seen.has(key)) return false;
-      seen.add(key);
-      return true;
-    })
-    .map(name => ({ name }));
-}
 
 function draftContextSummary(context: Record<string, unknown>) {
   return typeof context.typeName === 'string' && context.typeName.trim() ? context.typeName : '未分类小剧场';
@@ -985,7 +959,6 @@ function openFailedDraft(draftId: string) {
 function submitEntry() {
   const input = {
     content: draft.content,
-    participants: parseParticipants(draft.participants),
     renderMode: 'markdown' as const,
     title: draft.title,
     typeId: draft.typeId,
@@ -1004,7 +977,6 @@ function submitEntry() {
     if (!entry) return;
     if (versionId) {
       theater.updateEntryMetadata(entry.id, {
-        participants: input.participants,
         typeId: input.typeId,
         typeName: input.typeName,
       });
@@ -1024,7 +996,6 @@ function applyTheaterBaguContent(content: string) {
   if (!activeEntry.value || !viewedEntry.value) return false;
   const input = {
     content,
-    participants: [...activeEntry.value.participants],
     renderMode: viewedEntry.value.renderMode,
     title: viewedEntry.value.title,
     typeId: activeEntry.value.typeId,
@@ -1237,7 +1208,6 @@ function savePreview() {
           generationRecord:
             preview.generationRecord ||
             (preview.replay ? createHiddenGenerationRecord('generate', preview.replay) : undefined),
-          participants: [],
           renderMode: 'markdown',
           title: preview.title,
           typeId: preview.typeId,

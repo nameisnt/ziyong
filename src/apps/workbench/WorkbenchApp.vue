@@ -503,12 +503,6 @@
                     type="text"
                     :placeholder="t`自定义类型名称`"
                   />
-                  <input
-                    v-model="step.config.theaterParticipants"
-                    class="pc-field"
-                    type="text"
-                    :placeholder="t`参与角色，用逗号分隔`"
-                  />
                 </div>
 
                 <div v-else-if="step.appId === 'letters'" class="pc-step-config">

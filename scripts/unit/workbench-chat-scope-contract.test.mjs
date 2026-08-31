@@ -39,7 +39,6 @@ test('cross-chat workflow copies are disabled and clear chat-specific targets an
     'profileSheetKey',
     'relationshipCharacterNames',
     'summaryBookId',
-    'theaterParticipants',
   ]) {
     assert.match(store, new RegExp(`${field}: ''`, 'u'));
   }

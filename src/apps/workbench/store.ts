@@ -35,7 +35,6 @@ const WorkbenchStepConfigPersistedSchema = z.object({
   profileTitleHint: z.string().default(''),
   relationshipCharacterNames: z.string().default(''),
   summaryBookId: z.string().default(''),
-  theaterParticipants: z.string().default(''),
   theaterRenderMode: z.enum(['markdown', 'frontend']).default('markdown'),
   theaterTypeId: z.string().default(''),
   theaterTypeName: z.string().default(''),
@@ -234,7 +233,9 @@ export const useWorkbenchStore = defineStore('workbench', () => {
 
   if (discardedLegacySettings) {
     const generationTasks = useGenerationTaskStore();
-    generationTasks.tasks.filter(task => task.kind === 'workbench').forEach(task => generationTasks.removeTask(task.id));
+    generationTasks.tasks
+      .filter(task => task.kind === 'workbench')
+      .forEach(task => generationTasks.removeTask(task.id));
   }
 
   const workflows = computed(() => settings.value.workflows);
@@ -321,7 +322,6 @@ export const useWorkbenchStore = defineStore('workbench', () => {
             profileTitleHint: '',
             relationshipCharacterNames: '',
             summaryBookId: '',
-            theaterParticipants: '',
           },
           id: createId('workbench_step'),
         })),

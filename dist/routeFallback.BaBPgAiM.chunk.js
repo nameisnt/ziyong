@@ -1,1 +1,0 @@
-import{w as a,G as i}from'./panel.Cih_yZNC.chunk.js';function s(s){a(s.source,async a=>{if(!s.isInvalid(a))return;await i();const n=s.source();s.isInvalid(n)&&await s.fallback(n)},{immediate:!0})}export{s as u};

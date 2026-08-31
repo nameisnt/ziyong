@@ -58,6 +58,7 @@
         <i class="fa-solid fa-wand-magic-sparkles"></i>
         <span>{{ t`生成新题` }}</span>
       </button>
+      <MiniGameSoundButton />
       <InfoHint
         :label="t`数独说明`"
         :text="t`每一行、每一列和每个 3×3 宫都需要填入不重复的 1 至 9。每次换题都会生成一局新的唯一解题目。`"
@@ -68,6 +69,8 @@
 
 <script setup lang="ts">
 import InfoHint from '@/components/InfoHint.vue';
+import MiniGameSoundButton from './MiniGameSoundButton.vue';
+import { playMiniGameSound } from './miniGameAudio';
 import { miniGameFields } from './fields';
 import { readMiniGameSettings, writeMiniGameSettings } from './miniGameStorage';
 import { SudokuSchema } from './backupSchemas';
@@ -234,10 +237,12 @@ function checkDone() {
 
 function setNumber(number: number) {
   if (selected.value === null || givens.value[selected.value]) return;
-  if (number && number !== state.value.solution[selected.value]) state.value.mistakes += 1;
+  const incorrect = Boolean(number && number !== state.value.solution[selected.value]);
+  if (incorrect) state.value.mistakes += 1;
   state.value.board[selected.value] = number;
   checkDone();
   save();
+  playMiniGameSound(state.value.status === 'done' ? 'success' : incorrect ? 'fail' : 'move');
 }
 
 function fillHint() {
@@ -255,6 +260,7 @@ function fillHint() {
   state.value.hints += 1;
   checkDone();
   save();
+  playMiniGameSound(state.value.status === 'done' ? 'success' : 'select');
 }
 
 function resetPuzzle() {
@@ -267,12 +273,14 @@ function resetPuzzle() {
   };
   selected.value = null;
   save();
+  playMiniGameSound('reset');
 }
 
 function nextPuzzle() {
   state.value = createState(state.value.puzzleNumber + 1);
   selected.value = null;
   save();
+  playMiniGameSound('reset');
 }
 </script>
 

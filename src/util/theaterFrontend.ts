@@ -150,16 +150,15 @@ function createLayoutGuardStyle(flushContent: boolean, documentFlow: boolean) {
     `  padding: ${flushContent ? '0' : '16px'};`,
     '  box-sizing: border-box;',
     '  background: var(--pc-frame-bg);',
-    '}',
-    '#pc-frame-content, #pc-frame-content * {',
     '  overflow-y: visible !important;',
     '}',
     ...(documentFlow
       ? [
-          '#pc-frame-content > * {',
+          '#pc-frame-content > [data-pc-frame-flow-root] {',
           '  height: auto !important;',
           '  min-height: 0 !important;',
           '  max-height: none !important;',
+          '  overflow-y: visible !important;',
           '}',
         ]
       : []),
@@ -194,16 +193,28 @@ function createHostBridgeScript() {
   ].join('\n');
 }
 
-function createResizeBridgeScript(channelId: string) {
+function createResizeBridgeScript(channelId: string, documentFlow: boolean) {
   return [
     '(() => {',
     `  const CHANNEL_ID = ${JSON.stringify(channelId)};`,
     `  const SOURCE = ${JSON.stringify(FRONTEND_FRAME_SOURCE)};`,
+    `  const DOCUMENT_FLOW = ${JSON.stringify(documentFlow)};`,
     "  const content = document.getElementById('pc-frame-content');",
     '  let heightQueued = false;',
     '  let lastHeight = -1;',
+    '  const syncDocumentFlowRoots = () => {',
+    '    if (!DOCUMENT_FLOW || !content) return;',
+    '    for (const child of content.children) {',
+    '      const position = getComputedStyle(child).position;',
+    "      const shouldFlow = position === 'static' || position === 'relative';",
+    "      if (child.hasAttribute('data-pc-frame-flow-root') !== shouldFlow) {",
+    "        child.toggleAttribute('data-pc-frame-flow-root', shouldFlow);",
+    '      }',
+    '    }',
+    '  };',
     '  const postHeight = () => {',
     '    if (!content) return;',
+    '    syncDocumentFlowRoots();',
     '    const bounds = content.getBoundingClientRect();',
     '    const height = Math.max(',
     '      content.scrollHeight || 0,',
@@ -248,7 +259,10 @@ function createResizeBridgeScript(channelId: string) {
     '    if (content) resizeObserver.observe(content);',
     '  }',
     '  if (typeof MutationObserver === "function") {',
-    '    const mutationObserver = new MutationObserver(queueHeight);',
+    '    const mutationObserver = new MutationObserver(() => {',
+    '      syncDocumentFlowRoots();',
+    '      queueHeight();',
+    '    });',
     '    if (content) mutationObserver.observe(content, {',
     '      attributes: true,',
     '      characterData: true,',
@@ -258,6 +272,7 @@ function createResizeBridgeScript(channelId: string) {
     '  }',
     '  setTimeout(queueHeight, 80);',
     '  setTimeout(queueHeight, 320);',
+    '  syncDocumentFlowRoots();',
     '  queueHeight();',
     '})();',
   ].join('\n');
@@ -308,7 +323,7 @@ export function buildFrontendDocument(rawHtml: string, options: TheaterFrontendB
     '  <main id="pc-frame-content">',
     sanitized.bodyHtml,
     '  </main>',
-    `  <script${securityMode === 'safe' ? ` nonce="${nonce}"` : ''}>${createResizeBridgeScript(options.channelId)}</script>`,
+    `  <script${securityMode === 'safe' ? ` nonce="${nonce}"` : ''}>${createResizeBridgeScript(options.channelId, options.documentFlow ?? false)}</script>`,
     '</body>',
     '</html>',
   ]

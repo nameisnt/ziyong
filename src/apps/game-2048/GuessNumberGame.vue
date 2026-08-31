@@ -61,6 +61,7 @@
       <button class="pc-primary-btn" type="button" @click="newGame">
         <i class="fa-solid fa-rotate-right"></i><span>{{ t`新一局` }}</span>
       </button>
+      <MiniGameSoundButton />
       <InfoHint
         :label="t`猜数字说明`"
         :text="`答案由 ${state.digitCount} 个不重复数字组成，首位不会是 0。A 表示数字和位置都正确，B 表示数字正确但位置不对。`"
@@ -72,6 +73,8 @@
 <script setup lang="ts">
 import InfoHint from '@/components/InfoHint.vue';
 import { usePhoneStore } from '@/store/phone';
+import MiniGameSoundButton from './MiniGameSoundButton.vue';
+import { playMiniGameSound } from './miniGameAudio';
 import { miniGameFields } from './fields';
 import { readMiniGameSettings, writeMiniGameSettings } from './miniGameStorage';
 import { GuessNumberSchema } from './backupSchemas';
@@ -194,10 +197,12 @@ function submitGuess() {
     new Set(guess).size !== state.value.digitCount
   ) {
     phone.noticeWarning(`请输入 ${state.value.digitCount} 个不重复数字`);
+    playMiniGameSound('fail');
     return;
   }
   if (state.value.guesses.some(item => item.value === guess)) {
     phone.noticeWarning(t`这个数字已经猜过了`);
+    playMiniGameSound('fail');
     return;
   }
   const bulls = [...guess].filter((value, index) => state.value.answer[index] === value).length;
@@ -214,12 +219,14 @@ function submitGuess() {
     }
   }
   save();
+  playMiniGameSound(state.value.status === 'won' ? 'success' : 'move');
 }
 
 function newGame() {
   state.value = createState(state.value.digitCount, state.value.bestByDigits);
   draft.value = '';
   save();
+  playMiniGameSound('reset');
 }
 
 function setDigitCount(digitCount: DigitCount) {
@@ -227,6 +234,7 @@ function setDigitCount(digitCount: DigitCount) {
   state.value = createState(digitCount, state.value.bestByDigits);
   draft.value = '';
   save();
+  playMiniGameSound('reset');
 }
 </script>
 

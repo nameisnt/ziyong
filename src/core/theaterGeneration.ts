@@ -5,7 +5,6 @@ import {
   type SimpleXmlResult,
 } from '@/type/generation';
 import type { TheaterEntry } from '@/type/theater';
-import { CharacterRefSchema } from '@/type/diary';
 import { parseTheaterXmlResult } from '@/util/generation';
 import { parseConfiguredOutput } from '@/util/outputParsing';
 import { parsePrettified } from '@/util/zod';
@@ -16,7 +15,6 @@ export const TheaterGenerateConfigSchema = z.object({
   existingContent: z.string().default(''),
   mode: z.enum(['create', 'rewrite']).default('create'),
   outputFormat: z.string(),
-  participants: z.array(CharacterRefSchema).default([]),
   renderMode: z.enum(['markdown', 'frontend']).default('markdown'),
   typeId: z.string().default(''),
   typeName: z.string().default(''),
@@ -27,7 +25,7 @@ export type TheaterGenerateConfig = z.infer<typeof TheaterGenerateConfigSchema>;
 
 export function createTheaterGenerationAdapter(theaterStore: {
   createEntry: (
-    input: Pick<TheaterEntry, 'title' | 'content' | 'participants' | 'renderMode' | 'typeName'> &
+    input: Pick<TheaterEntry, 'title' | 'content' | 'renderMode' | 'typeName'> &
       Partial<Pick<TheaterEntry, 'generationRecord' | 'generationReplay' | 'typeId'>>,
   ) => TheaterEntry;
   appendEntryVersion: (
@@ -79,7 +77,6 @@ export function createTheaterGenerationAdapter(theaterStore: {
       const entry = theaterStore.createEntry({
         content: result.content,
         generationRecord: context.generationRecord,
-        participants: context.config.participants,
         renderMode: 'markdown',
         title: result.title,
         typeId: context.config.typeId,

@@ -42,12 +42,7 @@
         <span class="pc-kicker">{{ kind === 'diary' ? '批量日记' : '批量总结' }}</span>
         <h2>批量生成预览</h2>
       </div>
-      <button
-        class="pc-primary-btn"
-        type="button"
-        :disabled="saving || !canSave || !drafts.length"
-        @click="saveAll"
-      >
+      <button class="pc-primary-btn" type="button" :disabled="saving || !canSave || !drafts.length" @click="saveAll">
         <i class="fa-solid fa-floppy-disk"></i>
         <span>{{ saveButtonLabel }}</span>
       </button>
@@ -127,8 +122,7 @@ const emit = defineEmits<{
 }>();
 
 type ReasoningFilter = 'all' | 'with' | 'without';
-type BatchPreviewDraft = ManualBatchPreviewEdit &
-  Pick<ManualBatchPreviewItem, 'label' | 'rawOutputSemantics'>;
+type BatchPreviewDraft = ManualBatchPreviewEdit & Pick<ManualBatchPreviewItem, 'label' | 'rawOutputSemantics'>;
 
 const activeJobId = ref('');
 const drafts = ref<BatchPreviewDraft[]>([]);
@@ -295,8 +289,8 @@ onBeforeUnmount(() => {
   color: var(--pc-theme-accent);
 }
 
-.pc-batch-preview-warning {
-  color: var(--pc-danger) !important;
+.pc-batch-preview-row .pc-list-row-copy > .pc-batch-preview-warning {
+  color: var(--pc-danger);
 }
 
 .pc-batch-preview-detail {

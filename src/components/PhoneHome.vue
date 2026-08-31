@@ -25,17 +25,7 @@
         </label>
 
         <div v-if="homeGroups.length" class="pc-home-group-bar">
-          <nav
-            ref="homeGroupTabsEl"
-            class="pc-home-group-tabs"
-            aria-label="主页分组"
-            @click.capture="homeGroupScroll.onClickCapture"
-            @pointerdown="homeGroupScroll.onPointerDown"
-            @pointermove="homeGroupScroll.onPointerMove"
-            @pointerup="homeGroupScroll.onPointerUp"
-            @pointercancel="homeGroupScroll.onPointerCancel"
-            @wheel="homeGroupScroll.onWheel"
-          >
+          <HorizontalScrollFrame as="nav" class="pc-home-group-tabs" aria-label="主页分组">
             <button
               v-for="group in homeGroups"
               :key="group.id"
@@ -51,7 +41,7 @@
             >
               {{ group.name }}
             </button>
-          </nav>
+          </HorizontalScrollFrame>
         </div>
 
         <section v-for="section in homeSections" :key="section.id" class="pc-home-app-section">
@@ -314,10 +304,10 @@
 import AppIcon from '@/components/AppIcon.vue';
 import BulkSelectionCheckbox from '@/components/BulkSelectionCheckbox.vue';
 import EmptyState from '@/components/EmptyState.vue';
+import HorizontalScrollFrame from '@/components/HorizontalScrollFrame.vue';
 import HomeActivityPage from '@/components/home/HomeActivityPage.vue';
 import HomeContextBar from '@/components/home/HomeContextBar.vue';
 import { useHomeLayoutProjection, type HomeDisplayItem } from '@/components/home/useHomeLayoutProjection';
-import { useHorizontalDragScroll } from '@/composables/useHorizontalDragScroll';
 import { usePhoneModalLifecycle } from '@/composables/usePhoneModalLifecycle';
 import {
   createHomeFolder,
@@ -350,8 +340,6 @@ const { currentRoute, isOpen, viewingScopeKey } = storeToRefs(phone);
 const { settings } = storeToRefs(settingsStore);
 const homeGridEl = ref<HTMLElement | null>(null);
 const homeDockEl = ref<HTMLElement | null>(null);
-const homeGroupTabsEl = ref<HTMLElement | null>(null);
-const homeGroupScroll = useHorizontalDragScroll(homeGroupTabsEl);
 const appDrag = reactive({
   itemToken: '',
   destination: 'home' as 'dock' | 'home',
@@ -1009,7 +997,7 @@ onBeforeUnmount(resetHomeInteractionState);
   border-bottom: 1px solid var(--pc-border);
   padding-bottom: 6px;
 }
-.pc-home-group-tabs {
+:deep(.pc-home-group-tabs) {
   display: flex;
   min-width: 0;
   flex: 1 1 auto;
@@ -1023,13 +1011,13 @@ onBeforeUnmount(resetHomeInteractionState);
   -webkit-overflow-scrolling: touch;
 }
 
-.pc-home-group-tabs:active {
+:deep(.pc-home-group-tabs:active) {
   cursor: grabbing;
 }
-.pc-home-group-tabs::-webkit-scrollbar {
+:deep(.pc-home-group-tabs::-webkit-scrollbar) {
   display: none;
 }
-.pc-home-group-tabs .pc-segment-btn {
+:deep(.pc-home-group-tabs .pc-segment-btn) {
   flex: 0 0 auto;
   white-space: nowrap;
 }

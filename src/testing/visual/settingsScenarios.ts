@@ -163,15 +163,17 @@ export async function applySettingsVisualScenario(name: string, context: Setting
     const profile = settings.createExternalApiProfile('custom');
     profile.name = '视觉测试 API';
     profile.apiUrl = 'https://api.example.com/v1';
+    settings.resetTextProvider();
     context.resetPhoneToRoute('settings', 'root', '设置', { tab: 'connection' });
     await context.waitForPaint();
-    const profileEntry = [...document.querySelectorAll<HTMLButtonElement>('.pc-setting-row')].find(button =>
-      button.textContent?.includes('视觉测试 API'),
-    );
-    if (!profileEntry) throw new Error('External API profile entry is missing');
-    profileEntry.click();
+    const profileEdit = document.querySelector<HTMLButtonElement>('[aria-label="编辑 视觉测试 API"]');
+    if (!profileEdit) throw new Error('External API profile edit action is missing');
+    profileEdit.click();
     await context.waitForPaint();
     if (!document.querySelector('.pc-external-api-page')) throw new Error('External API editor did not open');
+    if (settings.settings.textProvider.mode !== 'tavern') {
+      throw new Error('Opening an external API profile unexpectedly changed the default API');
+    }
   } else if (name === 'settings-connection-dark') {
     settings.setTheme('dark');
     context.resetPhoneToRoute('settings', 'root', '设置', { tab: 'connection' });

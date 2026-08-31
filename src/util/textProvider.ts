@@ -2,6 +2,7 @@ import type { ExternalApiPresetId, ExternalApiProfile, TextProviderSettings } fr
 
 export type TextProviderSelection = 'inherit' | 'tavern' | `external:${string}`;
 export type ConcreteTextProviderSelection = Exclude<TextProviderSelection, 'inherit'>;
+export type TextProviderSelectionOption = { label: string; value: ConcreteTextProviderSelection };
 
 export type ExternalApiPreset = {
   apiUrl: string;
@@ -99,6 +100,29 @@ export function formatTextProviderSummary(settings: TextProviderSettings) {
 export function getCurrentTextProviderSelection(settings: TextProviderSettings): ConcreteTextProviderSelection {
   const resolved = resolveTextProviderSettings(settings);
   return resolved.mode === 'external' && resolved.profileId ? `external:${resolved.profileId}` : 'tavern';
+}
+
+export function buildTextProviderSelectionOptions(
+  settings: TextProviderSettings,
+  currentSelection?: TextProviderSelection,
+): TextProviderSelectionOption[] {
+  const selectedExternal = currentSelection?.startsWith('external:')
+    ? (currentSelection as `external:${string}`)
+    : '';
+  const options: TextProviderSelectionOption[] = [
+    { label: '酒馆当前 API', value: 'tavern' },
+    ...settings.externalProfiles.map(profile => ({
+      label: profile.name,
+      value: `external:${profile.id}` as const,
+    })),
+  ];
+  if (
+    selectedExternal &&
+    !settings.externalProfiles.some(profile => `external:${profile.id}` === selectedExternal)
+  ) {
+    options.push({ label: '连接配置已失效', value: selectedExternal });
+  }
+  return options;
 }
 
 export function applyTextProviderSelection(

@@ -45,7 +45,7 @@ test('group management assigns selected Apps and keeps ordering on the home grid
 
 test('group tabs swipe horizontally and drag motion follows the home contract', () => {
   assert.match(home, /grid-template-columns:\s*repeat\(var\(--pc-home-columns\)/u);
-  assert.match(home, /\.pc-home-group-tabs\s*\{[\s\S]*overflow-x:\s*auto[\s\S]*touch-action:\s*pan-x/u);
+  assert.match(home, /:deep\(\.pc-home-group-tabs\)\s*\{[\s\S]*overflow-x:\s*auto[\s\S]*touch-action:\s*pan-x/u);
   assert.match(home, /Transition name="pc-home-folder"/u);
   assert.match(home, /prefers-reduced-motion:\s*reduce/u);
   assert.match(home, /translate3d\(var\(--pc-drag-x/u);

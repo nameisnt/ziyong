@@ -53,6 +53,7 @@
       <button class="pc-primary-btn" type="button" @click="newPuzzle">
         <i class="fa-solid fa-shuffle"></i><span>{{ t`新一局` }}</span>
       </button>
+      <MiniGameSoundButton />
       <InfoHint
         :label="t`数字华容道说明`"
         :text="
@@ -65,6 +66,8 @@
 
 <script setup lang="ts">
 import InfoHint from '@/components/InfoHint.vue';
+import MiniGameSoundButton from './MiniGameSoundButton.vue';
+import { playMiniGameSound } from './miniGameAudio';
 import { miniGameFields } from './fields';
 import { readMiniGameSettings, writeMiniGameSettings } from './miniGameStorage';
 import { SlidingPuzzleSchema } from './backupSchemas';
@@ -152,6 +155,7 @@ function moveTile(index: number) {
     if (!best || state.value.moves < best) state.value.best[state.value.size] = state.value.moves;
   }
   save();
+  playMiniGameSound(state.value.status === 'done' ? 'success' : 'move');
 }
 
 function resetPuzzle() {
@@ -159,16 +163,19 @@ function resetPuzzle() {
   state.value.moves = 0;
   state.value.status = 'playing';
   save();
+  playMiniGameSound('reset');
 }
 
 function newPuzzle() {
   state.value = createState(state.value.size, state.value.best);
   save();
+  playMiniGameSound('reset');
 }
 
 function setSize(boardSize: BoardSize) {
   state.value = createState(boardSize, state.value.best);
   save();
+  playMiniGameSound('reset');
 }
 </script>
 

@@ -644,15 +644,13 @@ export const useSettingsStore = defineStore('settings', () => {
     };
   }
 
-  function setTextProviderApiUrl(apiUrl: string) {
-    const profile = settings.value.textProvider.externalProfiles.find(
-      item => item.id === settings.value.textProvider.activeExternalProfileId,
-    );
+  function setTextProviderApiUrl(apiUrl: string, profileId = settings.value.textProvider.activeExternalProfileId) {
+    const profile = settings.value.textProvider.externalProfiles.find(item => item.id === profileId);
     if (!profile || profile.presetId !== 'custom') return;
     profile.apiUrl = normalizeExternalApiUrl(apiUrl);
   }
 
-  function createExternalApiProfile(presetId: ExternalApiPresetId = 'custom') {
+  function createExternalApiProfile(presetId: ExternalApiPresetId = 'custom', activate = true) {
     const preset = getExternalApiPreset(presetId);
     const existingNames = new Set(settings.value.textProvider.externalProfiles.map(profile => profile.name));
     const baseName = preset?.label || '外部 API';
@@ -671,8 +669,10 @@ export const useSettingsStore = defineStore('settings', () => {
       presetId,
     };
     settings.value.textProvider.externalProfiles = [...settings.value.textProvider.externalProfiles, profile];
-    settings.value.textProvider.activeExternalProfileId = profile.id;
-    settings.value.textProvider.mode = 'external';
+    if (activate) {
+      settings.value.textProvider.activeExternalProfileId = profile.id;
+      settings.value.textProvider.mode = 'external';
+    }
     return profile;
   }
 
@@ -682,6 +682,7 @@ export const useSettingsStore = defineStore('settings', () => {
     );
     if (settings.value.textProvider.activeExternalProfileId === profileId) {
       settings.value.textProvider.activeExternalProfileId = settings.value.textProvider.externalProfiles[0]?.id ?? '';
+      settings.value.textProvider.mode = 'tavern';
     }
     if (!settings.value.textProvider.externalProfiles.length) {
       settings.value.textProvider.mode = 'tavern';

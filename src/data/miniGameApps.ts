@@ -31,7 +31,3 @@ export const MINI_GAME_APPS = [
 export type MiniGameId = (typeof MINI_GAME_APPS)[number]['gameId'];
 
 export const MINI_GAME_APP_IDS = MINI_GAME_APPS.map(game => game.appId);
-
-export function getMiniGameIdByAppId(appId: string): MiniGameId | null {
-  return MINI_GAME_APPS.find(game => game.appId === appId)?.gameId ?? null;
-}

@@ -149,7 +149,7 @@ export function createTheaterFavoriteItems(): PhoneFavoriteItem[] {
       title: entry.title,
       preview: compactPreview(entry.content),
       bookTitle: '小剧场',
-      subtitle: `${entry.typeName} · ${entry.participants.map(item => item.name).join('、') || '未指定参与角色'}`,
+      subtitle: entry.typeName,
       updatedAt: entry.updatedAt,
       exists: () => Boolean(theater.getEntry(entry.id)),
       open: () => phone.pushRoute('theater', 'entry', entry.title, { entryId: entry.id }, 'favorites'),

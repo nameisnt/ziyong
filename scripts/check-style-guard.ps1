@@ -7,7 +7,8 @@ $ErrorActionPreference = "Stop"
 $projectRoot = Resolve-Path -LiteralPath $Root
 $srcRoot = Join-Path $projectRoot "src"
 $globalCssPath = Join-Path $srcRoot "global.css"
-$allowedGlobalImportantCount = 20
+# Includes three required .pc-search-field overrides that isolate its inner input from Tavern host styles.
+$allowedGlobalImportantCount = 23
 $allowedHighSpecificityRootCount = 0
 $violations = New-Object System.Collections.Generic.List[string]
 

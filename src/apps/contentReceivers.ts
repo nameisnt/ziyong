@@ -444,19 +444,14 @@ export function createTheaterContentReceiver(): PhoneContentReceiver {
     batchModes: ['separate', 'merge'],
     createDraft() {
       return {
-        participants: '',
         typeName: '内容转换',
       };
     },
     fields() {
-      return [
-        { key: 'typeName', kind: 'text', label: '小剧场类型', placeholder: '可留空' },
-        { key: 'participants', kind: 'text', label: '参与角色', placeholder: '使用逗号分隔' },
-      ];
+      return [{ key: 'typeName', kind: 'text', label: '小剧场类型', placeholder: '可留空' }];
     },
     receive(context) {
       const theater = useTheaterStore();
-      const participants = splitList(textValue(context, 'participants')).map(name => ({ name }));
       const requirements = resolveFloorConversionRequirements(context);
       const entries = context.sources.map(source => {
         const userRequirement = requirements.get(source) || '';
@@ -466,7 +461,6 @@ export function createTheaterContentReceiver(): PhoneContentReceiver {
           existingContent: '',
           mode: 'create',
           outputFormat: '',
-          participants,
           renderMode: 'markdown',
           typeId: '',
           typeName: textValue(context, 'typeName') || '未分类小剧场',
@@ -478,7 +472,6 @@ export function createTheaterContentReceiver(): PhoneContentReceiver {
           content:
             source.displayMode === 'frontend' ? wrapLegacyTheaterFrontend(source.content) : stripFrontendMarkup(source),
           generationRecord: replay ? createHiddenGenerationRecord('generate', replay) : undefined,
-          participants,
           renderMode: 'markdown',
           title: sourceTitle(source, '未命名小剧场'),
           typeName: textValue(context, 'typeName') || '未分类小剧场',

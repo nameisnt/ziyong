@@ -121,6 +121,7 @@ export function createVisualScenarioGroups(rootAppScenarios: string[]): VisualSc
       id: 'status-display',
       scenarios: [
         'status-display-mvu',
+        'status-display-mvu-dark',
         'status-display-regex',
         'status-display-regex-dark',
         'status-display-settings',

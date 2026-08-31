@@ -42,6 +42,7 @@
       <button class="pc-primary-btn" type="button" @click="newGame">
         <i class="fa-solid fa-rotate-right"></i><span>{{ t`新一局` }}</span>
       </button>
+      <MiniGameSoundButton />
       <InfoHint
         :label="t`黑白棋说明`"
         :text="t`你执黑先行。落子时必须夹住至少一枚白棋，被夹住的棋子会翻为黑色；双方都无法落子时，棋子较多者获胜。`"
@@ -52,6 +53,8 @@
 
 <script setup lang="ts">
 import InfoHint from '@/components/InfoHint.vue';
+import MiniGameSoundButton from './MiniGameSoundButton.vue';
+import { playMiniGameSound } from './miniGameAudio';
 import { miniGameFields } from './fields';
 import { readMiniGameSettings, writeMiniGameSettings } from './miniGameStorage';
 import { ReversiSchema } from './backupSchemas';
@@ -161,6 +164,7 @@ function finishGame() {
   if (black > white) state.value.wins += 1;
   else if (white > black) state.value.losses += 1;
   else state.value.draws += 1;
+  playMiniGameSound(black > white ? 'success' : white > black ? 'fail' : 'select');
 }
 
 function continueAfter(player: Player) {
@@ -180,6 +184,7 @@ function playHuman(index: number) {
   if (state.value.status !== 'playing' || state.value.turn !== 1) return;
   state.value.previous = snapshot();
   if (!applyMove(index, 1)) return;
+  playMiniGameSound('move');
   continueAfter(1);
   save();
   scheduleAi();
@@ -203,7 +208,10 @@ function scheduleAi() {
   aiTimer = window.setTimeout(() => {
     const moves = [...legalMoves(state.value.board, 2).entries()];
     const choice = moves.sort((left, right) => aiScore(right[0], right[1]) - aiScore(left[0], left[1]))[0];
-    if (choice) applyMove(choice[0], 2);
+    if (choice) {
+      applyMove(choice[0], 2);
+      playMiniGameSound('move');
+    }
     continueAfter(2);
     save();
     if (state.value.turn === 2) scheduleAi();
@@ -226,12 +234,14 @@ function undoTurn() {
     wins: previous.wins,
   };
   save();
+  playMiniGameSound('select');
 }
 
 function newGame() {
   if (aiTimer) window.clearTimeout(aiTimer);
   state.value = createState(state.value.wins, state.value.losses, state.value.draws);
   save();
+  playMiniGameSound('reset');
 }
 
 function stopAi() {

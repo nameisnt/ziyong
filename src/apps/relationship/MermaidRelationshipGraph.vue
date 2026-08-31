@@ -1,10 +1,19 @@
 <template>
   <div ref="graphRootEl" :class="['pc-mermaid-relationship', { 'is-empty': !characters.length }]">
     <EmptyState v-if="!characters.length" compact title="还没有人物" />
-    <div v-else-if="errorMessage" class="pc-error-list">
-      <span>{{ errorMessage }}</span>
+    <div v-else-if="errorMessage" class="pc-mermaid-state pc-mermaid-error" role="alert">
+      <i class="fa-solid fa-triangle-exclamation"></i>
+      <strong>关系图加载失败</strong>
+      <small>{{ errorMessage }}</small>
+      <button class="pc-soft-btn" type="button" @click="renderGraph">
+        <i class="fa-solid fa-rotate-right"></i>
+        <span>重新加载</span>
+      </button>
     </div>
-    <div v-else-if="rendering" class="pc-mermaid-loading"><i class="fa-solid fa-spinner fa-spin"></i></div>
+    <div v-else-if="rendering" class="pc-mermaid-state pc-mermaid-loading" role="status">
+      <i class="fa-solid fa-spinner fa-spin"></i>
+      <span>正在加载关系图</span>
+    </div>
     <!-- Mermaid returns its own strict-mode SVG. -->
     <!-- eslint-disable-next-line vue/no-v-html -->
     <div v-else class="pc-mermaid-canvas" v-html="svg"></div>
@@ -20,7 +29,6 @@ const props = defineProps<{
   links: RelationshipLink[];
 }>();
 
-const MERMAID_URL = 'https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.esm.min.mjs';
 const svg = ref('');
 const rendering = ref(false);
 const errorMessage = ref('');
@@ -35,7 +43,12 @@ type MermaidApi = {
 let mermaidPromise: Promise<MermaidApi> | null = null;
 
 function loadMermaid() {
-  mermaidPromise ??= import(/* @vite-ignore */ MERMAID_URL).then(module => module.default as MermaidApi);
+  mermaidPromise ??= import('mermaid')
+    .then(module => module.default as unknown as MermaidApi)
+    .catch(error => {
+      mermaidPromise = null;
+      throw error;
+    });
   return mermaidPromise;
 }
 
@@ -126,11 +139,25 @@ onMounted(renderGraph);
 .pc-mermaid-relationship.is-empty {
   min-height: 0;
 }
-.pc-mermaid-loading {
+.pc-mermaid-state {
   display: grid;
   min-height: 220px;
   place-items: center;
+  align-content: center;
+  gap: 10px;
+  padding: 20px;
   color: var(--pc-muted);
+  text-align: center;
+}
+.pc-mermaid-state strong {
+  color: var(--pc-text);
+}
+.pc-mermaid-state small {
+  max-width: 100%;
+  overflow-wrap: anywhere;
+}
+.pc-mermaid-error > i {
+  color: var(--pc-danger);
 }
 .pc-mermaid-canvas {
   min-width: max-content;

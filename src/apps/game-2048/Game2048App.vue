@@ -1,103 +1,82 @@
 <template>
   <section class="pc-game2048-app">
     <section class="pc-game2048-page">
-      <template v-if="activeGame === '2048'">
-        <section class="pc-game2048-score-grid">
-          <article class="pc-game2048-score-card">
-            <span>{{ t`分数` }}</span>
-            <strong>{{ score }}</strong>
-          </article>
-          <article class="pc-game2048-score-card">
-            <span>{{ t`最高` }}</span>
-            <strong>{{ bestScore }}</strong>
-          </article>
-          <article class="pc-game2048-score-card">
-            <span>{{ t`步数` }}</span>
-            <strong>{{ moves }}</strong>
-          </article>
-          <article class="pc-game2048-score-card">
-            <span>{{ t`最大` }}</span>
-            <strong>{{ maxTile }}</strong>
-          </article>
-        </section>
-
-        <section
-          class="pc-game2048-board"
-          tabindex="0"
-          :aria-label="t`2048 棋盘`"
-          @pointercancel="resetPointer"
-          @pointerdown="onPointerDown"
-          @pointerup="onPointerUp"
-        >
-          <div v-for="cell in cells" :key="cell.key" class="pc-game2048-cell">
-            <span
-              v-if="cell.value"
-              class="pc-game2048-tile"
-              :data-large="cell.value >= 1024"
-              :style="tileStyle(cell.value)"
-            >
-              {{ cell.value }}
-            </span>
-          </div>
-        </section>
-
-        <article v-if="status !== 'playing'" class="pc-section-card pc-game2048-status">
-          <strong>{{ statusTitle }}</strong>
-          <div class="pc-form-actions pc-game2048-status-actions">
-            <button v-if="isPausedOnWin" class="pc-soft-btn" type="button" @click="game.continueAfterWin()">
-              <i class="fa-solid fa-play"></i>
-              <span>{{ t`继续挑战` }}</span>
-            </button>
-            <button class="pc-primary-btn" type="button" @click="game.startNewGame()">
-              <i class="fa-solid fa-rotate-right"></i>
-              <span>{{ t`再来一局` }}</span>
-            </button>
-          </div>
+      <section class="pc-game2048-score-grid">
+        <article class="pc-game2048-score-card">
+          <span>{{ t`分数` }}</span>
+          <strong>{{ score }}</strong>
         </article>
+        <article class="pc-game2048-score-card">
+          <span>{{ t`最高` }}</span>
+          <strong>{{ bestScore }}</strong>
+        </article>
+        <article class="pc-game2048-score-card">
+          <span>{{ t`步数` }}</span>
+          <strong>{{ moves }}</strong>
+        </article>
+        <article class="pc-game2048-score-card">
+          <span>{{ t`最大` }}</span>
+          <strong>{{ maxTile }}</strong>
+        </article>
+      </section>
 
-        <div class="pc-form-actions pc-game2048-actions">
-          <button class="pc-soft-btn" type="button" :disabled="!canUndo" @click="game.undo()">
-            <i class="fa-solid fa-rotate-left"></i>
-            <span>{{ t`撤回` }}</span>
-          </button>
-          <button class="pc-primary-btn" type="button" @click="game.startNewGame()">
-            <i class="fa-solid fa-rotate-right"></i>
-            <span>{{ t`重开` }}</span>
-          </button>
-          <InfoHint :label="t`2048 说明`" :text="t`在棋盘上滑动，或使用电脑方向键移动数字；相同数字相撞后会合并。`" />
+      <section
+        class="pc-game2048-board"
+        tabindex="0"
+        :aria-label="t`2048 棋盘`"
+        @pointercancel="resetPointer"
+        @pointerdown="onPointerDown"
+        @pointerup="onPointerUp"
+      >
+        <div v-for="cell in cells" :key="cell.key" class="pc-game2048-cell">
+          <span
+            v-if="cell.value"
+            class="pc-game2048-tile"
+            :data-large="cell.value >= 1024"
+            :style="tileStyle(cell.value)"
+          >
+            {{ cell.value }}
+          </span>
         </div>
-      </template>
+      </section>
 
-      <SnakeGame v-else-if="activeGame === 'snake'" />
-      <MinesweeperGame v-else-if="activeGame === 'minesweeper'" />
-      <SudokuGame v-else-if="activeGame === 'sudoku'" />
-      <SlidingPuzzleGame v-else-if="activeGame === 'sliding-puzzle'" />
-      <GuessNumberGame v-else-if="activeGame === 'guess-number'" />
-      <GomokuGame v-else-if="activeGame === 'gomoku'" />
-      <ReversiGame v-else-if="activeGame === 'reversi'" />
-      <SolitaireGame v-else-if="activeGame === 'solitaire'" />
+      <article v-if="status !== 'playing'" class="pc-section-card pc-game2048-status">
+        <strong>{{ statusTitle }}</strong>
+        <div class="pc-form-actions pc-game2048-status-actions">
+          <button v-if="isPausedOnWin" class="pc-soft-btn" type="button" @click="continueAfterWin">
+            <i class="fa-solid fa-play"></i>
+            <span>{{ t`继续挑战` }}</span>
+          </button>
+          <button class="pc-primary-btn" type="button" @click="startNewGame">
+            <i class="fa-solid fa-rotate-right"></i>
+            <span>{{ t`再来一局` }}</span>
+          </button>
+        </div>
+      </article>
+
+      <div class="pc-form-actions pc-game2048-actions">
+        <button class="pc-soft-btn" type="button" :disabled="!canUndo" @click="undo">
+          <i class="fa-solid fa-rotate-left"></i>
+          <span>{{ t`撤回` }}</span>
+        </button>
+        <button class="pc-primary-btn" type="button" @click="startNewGame">
+          <i class="fa-solid fa-rotate-right"></i>
+          <span>{{ t`重开` }}</span>
+        </button>
+        <MiniGameSoundButton />
+        <InfoHint :label="t`2048 说明`" :text="t`在棋盘上滑动，或使用电脑方向键移动数字；相同数字相撞后会合并。`" />
+      </div>
     </section>
   </section>
 </template>
 
 <script setup lang="ts">
 import InfoHint from '@/components/InfoHint.vue';
-import GomokuGame from './GomokuGame.vue';
-import GuessNumberGame from './GuessNumberGame.vue';
-import MinesweeperGame from './MinesweeperGame.vue';
-import ReversiGame from './ReversiGame.vue';
-import SnakeGame from './SnakeGame.vue';
-import SlidingPuzzleGame from './SlidingPuzzleGame.vue';
-import SolitaireGame from './SolitaireGame.vue';
-import SudokuGame from './SudokuGame.vue';
+import MiniGameSoundButton from './MiniGameSoundButton.vue';
+import { playMiniGameSound } from './miniGameAudio';
 import { useGame2048Store, type Game2048Direction } from './store';
-import { getMiniGameIdByAppId } from '@/data/miniGameApps';
-import { usePhoneStore } from '@/store/phone';
 import { storeToRefs } from 'pinia';
 
-const phone = usePhoneStore();
-const { currentRoute } = storeToRefs(phone);
-const activeGame = computed(() => getMiniGameIdByAppId(currentRoute.value.appId));
 const game = useGame2048Store();
 const { bestScore, board, canUndo, isPausedOnWin, moves, score, status } = storeToRefs(game);
 const pointerStart = ref<{ x: number; y: number } | null>(null);
@@ -130,6 +109,26 @@ function resetPointer() {
   pointerStart.value = null;
 }
 
+function move(direction: Game2048Direction) {
+  if (!game.move(direction)) return;
+  playMiniGameSound(status.value === 'won' ? 'success' : status.value === 'lost' ? 'fail' : 'move');
+}
+
+function startNewGame() {
+  game.startNewGame();
+  playMiniGameSound('reset');
+}
+
+function continueAfterWin() {
+  game.continueAfterWin();
+  playMiniGameSound('select');
+}
+
+function undo() {
+  game.undo();
+  playMiniGameSound('select');
+}
+
 function onPointerDown(event: PointerEvent) {
   pointerStart.value = { x: event.clientX, y: event.clientY };
 }
@@ -139,11 +138,10 @@ function onPointerUp(event: PointerEvent) {
   pointerStart.value = null;
   if (!start) return;
   const direction = moveFromDelta(event.clientX - start.x, event.clientY - start.y);
-  if (direction) game.move(direction);
+  if (direction) move(direction);
 }
 
 function onKeydown(event: KeyboardEvent) {
-  if (activeGame.value !== '2048') return;
   const target = event.target as HTMLElement | null;
   if (target && ['INPUT', 'SELECT', 'TEXTAREA'].includes(target.tagName)) return;
   const keyMap: Record<string, Game2048Direction | undefined> = {
@@ -155,7 +153,7 @@ function onKeydown(event: KeyboardEvent) {
   const direction = keyMap[event.key];
   if (!direction) return;
   event.preventDefault();
-  game.move(direction);
+  move(direction);
 }
 
 function startRuntime() {
@@ -288,106 +286,5 @@ onUnmounted(stopRuntime);
   flex: 1 1 0;
   min-inline-size: 0;
   white-space: nowrap;
-}
-</style>
-
-<style>
-.pc-minigame-panel {
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-  min-width: 0;
-}
-
-.pc-minigame-stats {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 0;
-  overflow: hidden;
-  border: 1px solid var(--pc-border);
-  border-radius: var(--pc-card-radius);
-  background: color-mix(in srgb, var(--pc-surface-strong) 82%, transparent 18%);
-}
-
-.pc-minigame-stats article {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 6px;
-  min-width: 0;
-  border: 0;
-  background: transparent;
-  padding: 8px 10px;
-}
-
-.pc-minigame-stats article + article {
-  border-left: 1px solid var(--pc-border);
-}
-
-.pc-minigame-stats span {
-  overflow: hidden;
-  color: var(--pc-muted);
-  font-size: 12px;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.pc-minigame-stats strong {
-  overflow: hidden;
-  font-size: 17px;
-  line-height: 1;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.pc-minigame-message {
-  display: grid;
-  gap: 8px;
-}
-
-.pc-minigame-actions {
-  flex-wrap: nowrap;
-  justify-content: flex-end;
-}
-
-.pc-minigame-actions > .pc-primary-btn,
-.pc-minigame-actions > .pc-soft-btn {
-  flex: 1 1 0;
-  min-inline-size: 0;
-  white-space: nowrap;
-}
-
-.pc-minigame-stats-four {
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-}
-
-.pc-minigame-stats-four article {
-  border: 0;
-  border-radius: 0;
-  background: transparent;
-  padding-inline: 8px;
-}
-
-.pc-minigame-stats-four article + article {
-  border-left: 1px solid var(--pc-border);
-}
-
-.pc-minigame-segment {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 8px;
-}
-
-.pc-minigame-segment-three {
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-}
-
-.pc-minigame-segment .pc-segment-btn {
-  justify-content: center;
-}
-
-.pc-minigame-segment .pc-segment-btn.active {
-  background: color-mix(in srgb, var(--pc-theme-accent) 18%, var(--pc-surface-strong) 82%);
-  color: var(--pc-theme-accent);
 }
 </style>

@@ -282,12 +282,13 @@ defineExpose({ focusAndOpen });
 
 .pc-combobox-toggle {
   position: absolute;
-  top: 50%;
+  top: 0;
   right: 3px;
+  bottom: 0;
   width: 30px;
   height: 30px;
   min-width: 30px;
-  transform: translateY(-50%);
+  margin-block: auto;
 }
 
 .pc-combobox-menu {

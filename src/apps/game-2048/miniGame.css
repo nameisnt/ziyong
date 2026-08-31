@@ -1,0 +1,98 @@
+.pc-minigame-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  min-width: 0;
+}
+
+.pc-minigame-stats {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0;
+  overflow: hidden;
+  border: 1px solid var(--pc-border);
+  border-radius: var(--pc-card-radius);
+  background: color-mix(in srgb, var(--pc-surface-strong) 82%, transparent 18%);
+}
+
+.pc-minigame-stats article {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+  min-width: 0;
+  border: 0;
+  background: transparent;
+  padding: 8px 10px;
+}
+
+.pc-minigame-stats article + article {
+  border-left: 1px solid var(--pc-border);
+}
+
+.pc-minigame-stats span {
+  overflow: hidden;
+  color: var(--pc-muted);
+  font-size: 12px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.pc-minigame-stats strong {
+  overflow: hidden;
+  font-size: 17px;
+  line-height: 1;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.pc-minigame-message {
+  display: grid;
+  gap: 8px;
+}
+
+.pc-minigame-actions {
+  flex-wrap: nowrap;
+  justify-content: flex-end;
+}
+
+.pc-minigame-actions > .pc-primary-btn,
+.pc-minigame-actions > .pc-soft-btn {
+  flex: 1 1 0;
+  min-inline-size: 0;
+  white-space: nowrap;
+}
+
+.pc-minigame-stats-four {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+.pc-minigame-stats-four article {
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  padding-inline: 8px;
+}
+
+.pc-minigame-stats-four article + article {
+  border-left: 1px solid var(--pc-border);
+}
+
+.pc-minigame-segment {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.pc-minigame-segment-three {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.pc-minigame-segment .pc-segment-btn {
+  justify-content: center;
+}
+
+.pc-minigame-segment .pc-segment-btn.active {
+  background: color-mix(in srgb, var(--pc-theme-accent) 18%, var(--pc-surface-strong) 82%);
+  color: var(--pc-theme-accent);
+}

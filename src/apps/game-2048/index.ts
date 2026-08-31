@@ -1,4 +1,4 @@
-const Game2048App = defineAsyncComponent(() => import('./Game2048App.vue'));
+import './miniGame.css';
 import { miniGameFields } from './fields';
 import { MiniGamesBackupSchema } from './backupSchemas';
 import { useGame2048Store } from './store';
@@ -19,6 +19,18 @@ if (retiredNonogramField in extension_settings) {
   delete extension_settings[retiredNonogramField];
   void saveSettingsDebounced();
 }
+
+const miniGameComponents = {
+  '2048': defineAsyncComponent(() => import('./Game2048App.vue')),
+  gomoku: defineAsyncComponent(() => import('./GomokuGame.vue')),
+  'guess-number': defineAsyncComponent(() => import('./GuessNumberGame.vue')),
+  minesweeper: defineAsyncComponent(() => import('./MinesweeperGame.vue')),
+  reversi: defineAsyncComponent(() => import('./ReversiGame.vue')),
+  'sliding-puzzle': defineAsyncComponent(() => import('./SlidingPuzzleGame.vue')),
+  snake: defineAsyncComponent(() => import('./SnakeGame.vue')),
+  solitaire: defineAsyncComponent(() => import('./SolitaireGame.vue')),
+  sudoku: defineAsyncComponent(() => import('./SudokuGame.vue')),
+};
 
 const backupDomain: PhoneBackupDomain = {
   category: 'configuration',
@@ -46,7 +58,7 @@ const miniGameModules: PhoneAppModule[] = MINI_GAME_APPS.map((game, index) =>
     defaultRoute: 'root',
     defaultOrder: 145 + index,
     backupDomains: index === 0 ? [backupDomain] : undefined,
-    component: Game2048App,
+    component: miniGameComponents[game.gameId],
   }),
 );
 

@@ -136,13 +136,6 @@ function ensureExtrasBook() {
   );
 }
 
-function parseNameList(text: string) {
-  return text
-    .split(/[,，、\n]/g)
-    .map(item => item.trim())
-    .filter(Boolean);
-}
-
 function getRecentLettersContext(bookId: string, count: number) {
   const book = useLettersStore().getBook(bookId);
   if (!book || count <= 0) return '';
@@ -284,7 +277,6 @@ function buildStepConfig(step: WorkbenchStep) {
     return {
       appPrompt: getPrompt('theater'),
       outputFormat: getOutputFormat('theater.generate'),
-      participants: parseNameList(step.config.theaterParticipants).map(name => ({ name })),
       renderMode: 'markdown',
       typeId: selectedType?.id || '',
       typeName: selectedType?.name || step.config.theaterTypeName,

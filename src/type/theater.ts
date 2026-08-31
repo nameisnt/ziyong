@@ -1,4 +1,3 @@
-import { CharacterRefSchema } from '@/type/diary';
 import {
   FailedGenerationDraftSchema,
   GenerationReplaySnapshotSchema,
@@ -25,7 +24,6 @@ export const TheaterEntrySchema = z.object({
   updatedAt: z.string(),
   typeId: z.string().optional(),
   typeName: z.string(),
-  participants: z.array(CharacterRefSchema).default([]),
   renderMode: TheaterRenderModeSchema.default('markdown'),
   generationRecord: HiddenGenerationRecordSchema.optional(),
   generationReplay: GenerationReplaySnapshotSchema.optional(),

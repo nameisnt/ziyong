@@ -71,7 +71,7 @@ export const useTheaterStore = defineStore('theater', () => {
   }
 
   function createEntry(
-    input: Pick<TheaterEntry, 'title' | 'content' | 'participants' | 'renderMode' | 'typeName'> &
+    input: Pick<TheaterEntry, 'title' | 'content' | 'renderMode' | 'typeName'> &
       Partial<Pick<TheaterEntry, 'generationRecord' | 'generationReplay' | 'typeId'>>,
   ) {
     const timestamp = nowIso();
@@ -84,7 +84,6 @@ export const useTheaterStore = defineStore('theater', () => {
       updatedAt: timestamp,
       typeId: input.typeId?.trim() || undefined,
       typeName: input.typeName.trim() || '未分类小剧场',
-      participants: [...input.participants],
       renderMode: input.renderMode,
       generationRecord: input.generationRecord,
       generationReplay: input.generationReplay,
@@ -97,8 +96,7 @@ export const useTheaterStore = defineStore('theater', () => {
 
   function updateEntry(
     entryId: string,
-    input: Pick<TheaterEntry, 'title' | 'content' | 'participants' | 'renderMode' | 'typeName'> &
-      Partial<Pick<TheaterEntry, 'typeId'>>,
+    input: Pick<TheaterEntry, 'title' | 'content' | 'renderMode' | 'typeName'> & Partial<Pick<TheaterEntry, 'typeId'>>,
   ) {
     const entry = getEntry(entryId);
     if (!entry) return null;
@@ -106,7 +104,6 @@ export const useTheaterStore = defineStore('theater', () => {
     entry.content = input.content.trim();
     entry.typeId = input.typeId?.trim() || undefined;
     entry.typeName = input.typeName.trim() || entry.typeName;
-    entry.participants = [...input.participants];
     entry.renderMode = input.renderMode;
     const activeVersion = resolveContentVersion(entry.versions, entry.activeVersionId);
     if (activeVersion) {
@@ -222,7 +219,6 @@ export const useTheaterStore = defineStore('theater', () => {
       updatedAt: timestamp,
       typeId: entry.typeId,
       typeName: entry.typeName,
-      participants: [...entry.participants],
       renderMode: version.renderMode,
       generationRecord: version.generationRecord,
       generationReplay: version.generationReplay,
@@ -243,13 +239,12 @@ export const useTheaterStore = defineStore('theater', () => {
 
   function updateEntryMetadata(
     entryId: string,
-    input: Pick<TheaterEntry, 'participants' | 'typeName'> & Partial<Pick<TheaterEntry, 'typeId'>>,
+    input: Pick<TheaterEntry, 'typeName'> & Partial<Pick<TheaterEntry, 'typeId'>>,
   ) {
     const entry = getEntry(entryId);
     if (!entry) return null;
     entry.typeId = input.typeId?.trim() || undefined;
     entry.typeName = input.typeName.trim() || entry.typeName;
-    entry.participants = [...input.participants];
     entry.updatedAt = nowIso();
     return entry;
   }

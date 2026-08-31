@@ -76,6 +76,7 @@
     "@vueuse/shared": "^13.9.0",
     "klona": "^2.0.6",
     "lodash": "4.17.21",
+    "mermaid": "^11.17.2",
     "pinia": "^3.0.4",
     "tailwindcss": "^4.3.3",
     "type-fest": "^4.41.0",

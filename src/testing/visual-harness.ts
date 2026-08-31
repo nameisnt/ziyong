@@ -203,7 +203,6 @@ function createTheaterBaguFixture() {
       { length: 12 },
       (_, index) => `第${index + 1}句，他仿佛听见雨声靠近，忍不住微微一愣，眼中闪过一丝迟疑。`,
     ).join(''),
-    participants: [{ name: 'Nova' }, { name: 'Zod' }],
     renderMode: 'markdown',
     title: '八股检测布局测试',
     typeName: '对话体',
@@ -370,6 +369,7 @@ async function applyScenario(name: VisualScenarioName, options: { height?: numbe
       name === 'profiles-external-dark' ||
       name === 'preset-link-dark' ||
       name === 'macro-builder-dark' ||
+      name === 'status-display-mvu-dark' ||
       name === 'status-display-regex-dark' ||
       name === 'status-display-settings-dark'
       ? 'dark'
@@ -386,7 +386,7 @@ async function applyScenario(name: VisualScenarioName, options: { height?: numbe
     return { name, route: phone.currentRoute };
   }
 
-  if (name === 'status-display-mvu') {
+  if (name === 'status-display-mvu' || name === 'status-display-mvu-dark') {
     const { createStatusDisplayScheme, useStatusDisplayStore } = await import('@/apps/status-display/store');
     const statusDisplay = useStatusDisplayStore();
     statusDisplay.settings.schemes = [];
@@ -400,6 +400,12 @@ async function applyScenario(name: VisualScenarioName, options: { height?: numbe
       '.status-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; }',
       '.status-avatar { width: 32px; height: 32px; object-fit: cover; border-radius: 4px; }',
       '.row { display: flex; justify-content: space-between; gap: 12px; padding-block: 8px; border-bottom: 1px solid var(--pc-frame-border); }',
+      '.status-modal { display: none; position: fixed; inset: 0; z-index: 10; align-items: center; justify-content: center; padding: 12px; background: rgba(0, 0, 0, .46); }',
+      '.status-modal.open { display: flex; }',
+      '.status-dialog { width: min(280px, 100%); max-height: 180px; overflow: hidden; padding: 10px; border-radius: 6px; background: var(--pc-frame-bg); }',
+      '.status-dialog-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; }',
+      '.status-modal-body { height: 92px; overflow-y: auto; overscroll-behavior: contain; }',
+      '.status-modal-body p { margin: 0; padding: 7px 0; border-bottom: 1px solid var(--pc-frame-border); }',
       '</style>',
       '<section class="status">',
       '  <div class="status-head"><h2>艾莉娅</h2><img id="status-image" class="status-avatar" src="/a4.jpg" alt="状态图片"></div>',
@@ -409,6 +415,14 @@ async function applyScenario(name: VisualScenarioName, options: { height?: numbe
       '  <button id="status-toggle" type="button">切换详情</button>',
       '  <p id="status-action-result">未操作</p>',
       '  <p id="status-mvu-bridge-result">未读取</p>',
+      '  <div id="status-modal" class="status-modal" role="dialog" aria-modal="true">',
+      '    <section class="status-dialog">',
+      '      <div class="status-dialog-head"><strong>历史详情</strong><button id="status-modal-close" type="button">关闭</button></div>',
+      '      <div id="status-modal-body" class="status-modal-body">',
+      ...Array.from({ length: 10 }, (_, index) => `        <p>状态记录 ${index + 1}</p>`),
+      '      </div>',
+      '    </section>',
+      '  </div>',
       '</section>',
       '<script>',
       '(async () => {',
@@ -418,6 +432,10 @@ async function applyScenario(name: VisualScenarioName, options: { height?: numbe
       '})();',
       "document.getElementById('status-toggle').addEventListener('click', () => {",
       "  document.getElementById('status-action-result').textContent = '已响应';",
+      "  document.getElementById('status-modal').classList.add('open');",
+      '});',
+      "document.getElementById('status-modal-close').addEventListener('click', () => {",
+      "  document.getElementById('status-modal').classList.remove('open');",
       '});',
       '</script>',
     ].join('\n');
@@ -439,6 +457,32 @@ async function applyScenario(name: VisualScenarioName, options: { height?: numbe
       );
     });
     if (!rendered) throw new Error('Status display MVU template did not render inside the frontend frame');
+    const frame = document.querySelector<HTMLIFrameElement>('.pc-status-display-app iframe');
+    const frameDocument = frame?.contentDocument;
+    const openModalButton = frameDocument?.querySelector<HTMLButtonElement>('#status-toggle');
+    const modal = frameDocument?.querySelector<HTMLElement>('#status-modal');
+    const modalBody = frameDocument?.querySelector<HTMLElement>('#status-modal-body');
+    if (!frame || !frameDocument || !openModalButton || !modal || !modalBody) {
+      throw new Error('Status display modal scroll fixture did not render');
+    }
+    await new Promise<void>(resolve => window.setTimeout(resolve, 360));
+    await waitForPaint();
+    const frameHeightBeforeModal = frame.getBoundingClientRect().height;
+    openModalButton.click();
+    await waitForPaint();
+    if (
+      !modal.classList.contains('open') ||
+      getComputedStyle(modalBody).overflowY !== 'auto' ||
+      modalBody.scrollHeight <= modalBody.clientHeight
+    ) {
+      throw new Error('Frontend layout guard overrode the rendered modal scroll container');
+    }
+    modalBody.scrollTop = modalBody.scrollHeight;
+    await waitForPaint();
+    if (modalBody.scrollTop <= 0 || Math.abs(frame.getBoundingClientRect().height - frameHeightBeforeModal) > 2) {
+      throw new Error('Rendered modal cannot scroll independently without resizing its iframe');
+    }
+    frameDocument.querySelector<HTMLButtonElement>('#status-modal-close')?.click();
     await waitForPaint();
     return { name, route: phone.currentRoute };
   }
@@ -1622,10 +1666,30 @@ async function applyScenario(name: VisualScenarioName, options: { height?: numbe
 
     const dispatchHomeSwipe = (target: Element, startX: number, endX: number, pointerId: number) => {
       target.dispatchEvent(
-        new PointerEvent('pointerdown', { bubbles: true, button: 0, clientX: startX, clientY: 260, pointerId }),
+        new PointerEvent('pointerdown', {
+          bubbles: true,
+          button: 0,
+          clientX: startX,
+          clientY: 260,
+          pointerId,
+        }),
       );
-      target.dispatchEvent(new PointerEvent('pointermove', { bubbles: true, clientX: endX, clientY: 264, pointerId }));
-      target.dispatchEvent(new PointerEvent('pointerup', { bubbles: true, clientX: endX, clientY: 264, pointerId }));
+      target.dispatchEvent(
+        new PointerEvent('pointermove', {
+          bubbles: true,
+          clientX: endX,
+          clientY: 264,
+          pointerId,
+        }),
+      );
+      target.dispatchEvent(
+        new PointerEvent('pointerup', {
+          bubbles: true,
+          clientX: endX,
+          clientY: 264,
+          pointerId,
+        }),
+      );
     };
     dispatchHomeSwipe(rawArea, 300, 90, 71);
     await waitForPaint();
@@ -1648,7 +1712,21 @@ async function applyScenario(name: VisualScenarioName, options: { height?: numbe
     await new Promise(resolve => window.setTimeout(resolve, 280));
 
     const taskCopy = document.querySelector<HTMLElement>('.pc-task-copy');
-    if (!taskCopy) throw new Error('Generation task swipe surface fixture is missing');
+    const taskList = document.querySelector<HTMLElement>('.pc-task-list');
+    if (!taskCopy || !taskList) throw new Error('Generation task swipe surface fixture is missing');
+    if (taskList.scrollWidth <= taskList.clientWidth) {
+      throw new Error(
+        `Generation task fixture did not overflow horizontally: tag=${taskList.tagName}, class=${taskList.className}, scrollWidth=${taskList.scrollWidth}, clientWidth=${taskList.clientWidth}, rows=${taskList.querySelectorAll('.pc-task-row').length}, firstRowWidth=${taskList.querySelector<HTMLElement>('.pc-task-row')?.offsetWidth ?? 0}, firstChildClass=${(taskList.firstElementChild as HTMLElement | null)?.className ?? ''}`,
+      );
+    }
+    taskList.scrollLeft = 0;
+    taskList.dispatchEvent(new WheelEvent('wheel', { bubbles: true, deltaX: 180 }));
+    await waitForPaint();
+    if (taskList.scrollLeft <= 0) {
+      throw new Error(
+        `Generation task horizontal wheel did not move the task list: scrollWidth=${taskList.scrollWidth}, clientWidth=${taskList.clientWidth}`,
+      );
+    }
     dispatchHomeSwipe(taskCopy, 300, 90, 73);
     await waitForPaint();
     if (
@@ -2302,7 +2380,6 @@ async function applyScenario(name: VisualScenarioName, options: { height?: numbe
     theater.resetCurrentScope();
     theater.createEntry({
       content: '小剧场批量正文。',
-      participants: [],
       renderMode: 'markdown',
       title: '小剧场批量条目',
       typeName: '批量素材',
@@ -2622,10 +2699,28 @@ async function applyScenario(name: VisualScenarioName, options: { height?: numbe
     await waitForPaint();
     const combobox = document.querySelector<HTMLElement>('.pc-entry-item-editor .pc-combobox');
     if (!combobox) throw new Error('Searchable select fixture is missing its combobox');
-    combobox.querySelector<HTMLInputElement>('.pc-combobox-input')?.click();
-    await waitForPaint();
     const search = combobox.querySelector<HTMLInputElement>('.pc-combobox-input');
-    if (!search || !combobox.querySelector('.pc-combobox-menu')) {
+    const toggle = combobox.querySelector<HTMLButtonElement>('.pc-combobox-toggle');
+    if (!search || !toggle) throw new Error('Shared searchable selector controls are missing');
+    const enabledToggleTop = toggle.getBoundingClientRect().top;
+    search.disabled = true;
+    toggle.disabled = true;
+    await waitForPaint();
+    const disabledInputRect = search.getBoundingClientRect();
+    const disabledToggleRect = toggle.getBoundingClientRect();
+    if (
+      Math.abs(disabledToggleRect.top - enabledToggleTop) > 1 ||
+      Math.abs(
+        disabledToggleRect.top + disabledToggleRect.height / 2 - (disabledInputRect.top + disabledInputRect.height / 2),
+      ) > 1
+    ) {
+      throw new Error('Disabled searchable selector toggle moved away from the input center');
+    }
+    search.disabled = false;
+    toggle.disabled = false;
+    search.click();
+    await waitForPaint();
+    if (!combobox.querySelector('.pc-combobox-menu')) {
       throw new Error('Shared searchable selector did not open in place');
     }
     search.value = '目标';
@@ -3997,16 +4092,11 @@ async function applyScenario(name: VisualScenarioName, options: { height?: numbe
       throw new Error('Theater active rewrite version did not update the ordering timestamp');
     }
     theater.updateEntryMetadata(theaterEntry.id, {
-      participants: [{ name: '候选编辑参与者' }],
       typeId: 'visual-type-edited',
       typeName: '候选编辑类型',
     });
-    if (
-      theaterEntry.typeId !== 'visual-type-edited' ||
-      theaterEntry.typeName !== '候选编辑类型' ||
-      theaterEntry.participants[0]?.name !== '候选编辑参与者'
-    ) {
-      throw new Error('Theater version editor did not preserve shared type and participant fields');
+    if (theaterEntry.typeId !== 'visual-type-edited' || theaterEntry.typeName !== '候选编辑类型') {
+      throw new Error('Theater version editor did not preserve shared type fields');
     }
 
     const letters = useLettersStore();

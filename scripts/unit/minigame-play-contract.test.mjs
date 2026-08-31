@@ -18,6 +18,7 @@ const definitions = await readMaybe(new URL('../../src/data/miniGameApps.ts', im
 const registration = await readMaybe(new URL('../../src/apps/game-2048/index.ts', import.meta.url));
 const component = await readMaybe(new URL('../../src/apps/game-2048/Game2048App.vue', import.meta.url));
 const snake = await readMaybe(new URL('../../src/apps/game-2048/SnakeGame.vue', import.meta.url));
+const audio = await readMaybe(new URL('../../src/apps/game-2048/miniGameAudio.ts', import.meta.url));
 
 const gameIds = [
   '2048',
@@ -46,16 +47,51 @@ test('the minigame fixture isolates all nine durable fields and real board actio
   assert.match(scenario, /pc-solitaire-card-slot\.stock/);
 });
 
-test('all nine minigames are registered as direct apps without a legacy aggregate route', () => {
+test('all nine minigames are registered as direct, independently loaded apps', () => {
   for (const gameId of gameIds) assert.match(definitions, new RegExp(`appId: 'game-${gameId}'`));
   assert.match(registration, /registerPhoneAppProvider/);
   assert.doesNotMatch(registration, /id: 'games'/);
-  assert.match(component, /getMiniGameIdByAppId\(currentRoute\.value\.appId\)/);
+  assert.equal((registration.match(/defineAsyncComponent\(\(\) => import\(/gu) || []).length, gameIds.length);
+  for (const name of [
+    'Game2048App',
+    'GomokuGame',
+    'GuessNumberGame',
+    'MinesweeperGame',
+    'ReversiGame',
+    'SlidingPuzzleGame',
+    'SnakeGame',
+    'SolitaireGame',
+    'SudokuGame',
+  ]) {
+    assert.match(registration, new RegExp(`import\\('./${name}\\.vue'\\)`));
+  }
+  assert.doesNotMatch(component, /SnakeGame|MinesweeperGame|getMiniGameIdByAppId/u);
   assert.match(component, /<span>\{\{ t`重开` \}\}<\/span>/u);
   assert.doesNotMatch(component, /openMiniGame|pushPage\('play'/);
   assert.match(scenario, /resetPhoneToRoute\(gameDefinition\.appId, 'root', gameDefinition\.name\)/);
   assert.match(snake, /aria-label="贪吃蛇方向控制"/u);
   for (const direction of ['up', 'down', 'left', 'right']) {
     assert.match(snake, new RegExp(`@click="setDirection\\('${direction}'\\)"`, 'u'));
+  }
+});
+
+test('all minigames share synthesized audio and expose one mute control', async () => {
+  assert.match(audio, /new AudioContext\(\)/u);
+  assert.match(audio, /export function playMiniGameSound/u);
+  const files = [
+    'Game2048App.vue',
+    'SnakeGame.vue',
+    'MinesweeperGame.vue',
+    'SudokuGame.vue',
+    'SlidingPuzzleGame.vue',
+    'GuessNumberGame.vue',
+    'GomokuGame.vue',
+    'ReversiGame.vue',
+    'SolitaireGame.vue',
+  ];
+  for (const file of files) {
+    const source = await readMaybe(new URL(`../../src/apps/game-2048/${file}`, import.meta.url));
+    assert.match(source, /<MiniGameSoundButton\s*\/>/u, file);
+    assert.match(source, /playMiniGameSound/u, file);
   }
 });

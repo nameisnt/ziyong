@@ -123,7 +123,7 @@ export function createTheaterArchiveProvider(): PhoneArchiveProvider {
       const data = TheaterScopeDataSchema.parse(TheaterScopeDataSchema.safeParse(raw).success ? raw : {});
       const entries = data.entries.map(entry => ({
         id: entry.id,
-        subtitle: `${entry.typeName} · ${entry.participants.map(item => item.name).join('、') || '未指定参与角色'}`,
+        subtitle: entry.typeName,
         title: entry.title,
       }));
       return makeDomain('theater', '小剧场', '合集', '篇', data.entries.length ? 1 : 0, entries);

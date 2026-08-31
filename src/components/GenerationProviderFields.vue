@@ -48,7 +48,7 @@ import { buildPluginPresetSelectionOptions, pluginPresetIdFromSelection } from '
 import { usePluginPresetStore } from '@/store/pluginPresets';
 import { useSettingsStore } from '@/store/settings';
 import { getPresetNamesSafe } from '@/util/runtime';
-import type { TextProviderSelection } from '@/util/textProvider';
+import { buildTextProviderSelectionOptions, type TextProviderSelection } from '@/util/textProvider';
 import { storeToRefs } from 'pinia';
 
 const props = withDefaults(
@@ -79,17 +79,9 @@ const tavernPresetNames = ref<string[]>([]);
 const refreshingPresetNames = ref(false);
 let refreshFeedbackTimer: number | undefined;
 
-const connectionOptions = computed(() => [
-  { label: '酒馆当前 API', value: 'tavern' },
-  ...settings.value.textProvider.externalProfiles.map(profile => ({
-    label: profile.name,
-    value: `external:${profile.id}`,
-  })),
-  ...(props.connectionSelection.startsWith('external:') &&
-  !settings.value.textProvider.externalProfiles.some(profile => `external:${profile.id}` === props.connectionSelection)
-    ? [{ label: '连接配置已失效', value: props.connectionSelection }]
-    : []),
-]);
+const connectionOptions = computed(() =>
+  buildTextProviderSelectionOptions(settings.value.textProvider, props.connectionSelection),
+);
 
 const presetOptions = computed(() => [
   { label: '跟随酒馆当前预设', value: '' },

@@ -67,6 +67,14 @@ test('dynamic searchable selects stay full width with compact internal controls'
   );
   assert.ok(toggleRules.some(rule => /width:\s*30px/.test(rule) && /height:\s*30px/.test(rule)));
   assert.ok(
+    toggleRules.some(rule => /top:\s*0/.test(rule) && /bottom:\s*0/.test(rule) && /margin-block:\s*auto/.test(rule)),
+    'toggle must stay vertically centered when shared button states change transform',
+  );
+  assert.ok(
+    toggleRules.every(rule => !/transform:/.test(rule)),
+    'toggle positioning must not depend on transform',
+  );
+  assert.ok(
     optionRules.some(rule => /min-height:\s*34px/.test(rule)),
     'dynamic options must use compact row height',
   );

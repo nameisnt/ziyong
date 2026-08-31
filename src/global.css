@@ -195,7 +195,7 @@
   background-image: var(--pc-paper-texture);
   background-size: 180px 180px;
   box-shadow: 1px 2px 4px color-mix(in srgb, black 42%, transparent 58%);
-  color: #e5e7eb;
+  color: color-mix(in srgb, #f4f6f8 82%, var(--pc-icon-material-accent) 18%);
 }
 
 .pc-phone-root[data-paper='sky'] .pc-app-icon-material {
@@ -325,18 +325,24 @@
 }
 
 .pc-phone-root[data-paper='graphite'] .pc-app-icon-material > i {
-  filter: grayscale(1) contrast(1.12);
+  filter: brightness(1.08) contrast(1.16);
   -webkit-text-stroke: 0.25px color-mix(in srgb, white 32%, transparent 68%);
 }
 
 .pc-phone-root[data-paper='graphite'] .pc-svg-app-icon {
   --pc-svg-icon-stroke: 1.9;
   --pc-svg-icon-linecap: round;
-  filter: grayscale(1) contrast(1.12);
+  filter: brightness(1.08) contrast(1.16)
+    drop-shadow(0 0 2px color-mix(in srgb, var(--pc-icon-material-accent) 34%, transparent 66%));
 }
 
 .pc-phone-root[data-paper='graphite'] .pc-svg-icon-echo {
   display: block;
+}
+
+.pc-phone-root[data-paper='graphite'] .pc-app-identity-image {
+  filter: brightness(1.2) contrast(1.14)
+    drop-shadow(0 0 3px color-mix(in srgb, var(--pc-icon-material-accent) 38%, transparent 62%));
 }
 
 .pc-phone-root .pc-soft-btn,

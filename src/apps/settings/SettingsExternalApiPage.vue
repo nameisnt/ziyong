@@ -94,7 +94,12 @@ const { settings } = storeToRefs(settingsStore);
 const apiKeyVisible = ref(false);
 const externalModelLoading = ref(false);
 const externalModelOptions = ref<string[]>([]);
-const activeExternalProfile = computed(() => getActiveExternalApiProfile(settings.value.textProvider));
+const editingProfileId = computed(() => phone.currentRoute.params?.profileId || '');
+const activeExternalProfile = computed(
+  () =>
+    settings.value.textProvider.externalProfiles.find(profile => profile.id === editingProfileId.value) ??
+    getActiveExternalApiProfile(settings.value.textProvider),
+);
 const resolvedExternalApiUrl = computed(() =>
   activeExternalProfile.value ? resolveExternalApiProfileUrl(activeExternalProfile.value) : '',
 );
@@ -135,7 +140,7 @@ function onPresetChange(event: Event) {
   externalModelOptions.value = [];
 }
 function onApiUrlChange(event: Event) {
-  settingsStore.setTextProviderApiUrl((event.target as HTMLInputElement).value);
+  settingsStore.setTextProviderApiUrl((event.target as HTMLInputElement).value, activeExternalProfile.value!.id);
   externalModelOptions.value = activeExternalProfile.value!.model.trim()
     ? [activeExternalProfile.value!.model.trim()]
     : [];

@@ -34,7 +34,7 @@ export const tutorialAppGuides: TutorialAppGuide[] = [
   {
     appId: 'theater',
     groupId: 'creative',
-    firstAction: '选择类型和参与角色；保存后可重写版本或把当前版本拆成独立小剧场。',
+    firstAction: '选择类型并生成内容；保存后可重写版本或把当前版本拆成独立小剧场。',
   },
   { appId: 'letters', groupId: 'creative', firstAction: '选择发信人与收信人，已有往来可以直接继续回信。' },
 

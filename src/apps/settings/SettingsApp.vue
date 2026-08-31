@@ -40,7 +40,7 @@ const settingsTabs = [
   { icon: 'fa-solid fa-mobile-screen', id: 'interface', label: '界面' },
   { icon: 'fa-solid fa-book-open', id: 'reader', label: '阅读' },
   { icon: 'fa-solid fa-wand-magic-sparkles', id: 'generation', label: '生成' },
-  { icon: 'fa-solid fa-plug', id: 'connection', label: '连接' },
+  { icon: 'fa-solid fa-plug', id: 'connection', label: 'API 设置' },
   { icon: 'fa-solid fa-database', id: 'data', label: '数据' },
   { icon: 'fa-solid fa-sliders', id: 'advanced', label: '高级' },
 ] as const;

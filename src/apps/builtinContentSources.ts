@@ -130,7 +130,7 @@ export function createTheaterContentSources(): PhoneContentConversionSource[] {
     displayMode: 'markdown',
     entryId: entry.id,
     sourceLabel: entry.typeName,
-    tags: [...entry.participants.map(participant => participant.name), entry.typeName].filter(Boolean),
+    tags: [entry.typeName].filter(Boolean),
     title: entry.title,
   }));
 }

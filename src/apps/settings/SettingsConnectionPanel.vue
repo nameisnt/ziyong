@@ -2,38 +2,7 @@
   <div class="pc-settings-panel-stack">
     <section class="pc-page-section">
       <div class="pc-section-head">
-        <strong>文本通道</strong>
-        <button
-          class="pc-icon-btn"
-          type="button"
-          title="恢复文本通道默认值"
-          aria-label="恢复文本通道默认值"
-          @click="settingsStore.resetTextProvider()"
-        >
-          <i class="fa-solid fa-rotate-left"></i>
-        </button>
-      </div>
-      <div class="pc-segment">
-        <button
-          :class="['pc-segment-btn', { active: settings.textProvider.mode === 'tavern' }]"
-          type="button"
-          @click="settings.textProvider.mode = 'tavern'"
-        >
-          酒馆当前 API
-        </button>
-        <button
-          :class="['pc-segment-btn', { active: settings.textProvider.mode === 'external' }]"
-          type="button"
-          @click="enableExternalMode"
-        >
-          外部兼容 API
-        </button>
-      </div>
-    </section>
-
-    <section v-if="settings.textProvider.mode === 'external'" class="pc-page-section">
-      <div class="pc-section-head">
-        <strong>外部 API 配置</strong>
+        <strong>选择默认 API</strong>
         <button
           class="pc-icon-btn"
           type="button"
@@ -44,25 +13,50 @@
           <i class="fa-solid fa-plus"></i>
         </button>
       </div>
+
       <div class="pc-settings-list">
-        <button
-          v-for="profile in settings.textProvider.externalProfiles"
-          :key="profile.id"
-          class="pc-setting-row"
-          type="button"
-          @click="openProfile(profile.id)"
-        >
-          <strong>{{ profile.name }}</strong>
+        <button class="pc-setting-row" type="button" @click="settingsStore.resetTextProvider()">
+          <span class="pc-list-row-copy">
+            <strong>酒馆当前 API</strong>
+            <small>跟随酒馆当前 API / 模型</small>
+          </span>
           <span class="pc-setting-control">
             <i
-              v-if="profile.id === settings.textProvider.activeExternalProfileId"
+              v-if="settings.textProvider.mode === 'tavern'"
               class="fa-solid fa-check pc-active-mark"
               title="正在使用"
               aria-label="正在使用"
             ></i>
-            <i class="fa-solid fa-chevron-right" aria-hidden="true"></i>
           </span>
         </button>
+
+        <div
+          v-for="profile in settings.textProvider.externalProfiles"
+          :key="profile.id"
+          class="pc-setting-row pc-api-profile-row"
+        >
+          <button class="pc-api-profile-select" type="button" @click="selectProfile(profile.id)">
+            <span class="pc-list-row-copy">
+              <strong>{{ profile.name }}</strong>
+              <small>{{ profileSummary(profile) }}</small>
+            </span>
+            <i
+              v-if="isSelectedProfile(profile.id)"
+              class="fa-solid fa-check pc-active-mark"
+              title="正在使用"
+              aria-label="正在使用"
+            ></i>
+          </button>
+          <button
+            class="pc-icon-btn pc-api-profile-edit"
+            type="button"
+            :title="`编辑 ${profile.name}`"
+            :aria-label="`编辑 ${profile.name}`"
+            @click="openProfile(profile.id)"
+          >
+            <i class="fa-solid fa-chevron-right"></i>
+          </button>
+        </div>
       </div>
     </section>
   </div>
@@ -71,23 +65,31 @@
 <script setup lang="ts">
 import { usePhoneStore } from '@/store/phone';
 import { useSettingsStore } from '@/store/settings';
+import type { ExternalApiProfile } from '@/type/settings';
+import { getExternalApiPreset } from '@/util/textProvider';
 import { storeToRefs } from 'pinia';
 
 const phone = usePhoneStore();
 const settingsStore = useSettingsStore();
 const { settings } = storeToRefs(settingsStore);
 
-function enableExternalMode() {
-  if (!settings.value.textProvider.externalProfiles.length) createExternalProfile();
-  else settings.value.textProvider.mode = 'external';
-}
 function createExternalProfile() {
-  settingsStore.createExternalApiProfile('custom');
-  phone.pushPage('external-api', '外部 API 配置');
+  const profile = settingsStore.createExternalApiProfile('custom', false);
+  phone.pushPage('external-api', '外部 API 配置', { profileId: profile.id });
 }
 function openProfile(profileId: string) {
+  phone.pushPage('external-api', '外部 API 配置', { profileId });
+}
+function selectProfile(profileId: string) {
   settingsStore.setActiveExternalApiProfile(profileId);
-  phone.pushPage('external-api', '外部 API 配置');
+}
+function isSelectedProfile(profileId: string) {
+  return (
+    settings.value.textProvider.mode === 'external' && settings.value.textProvider.activeExternalProfileId === profileId
+  );
+}
+function profileSummary(profile: ExternalApiProfile) {
+  return `${getExternalApiPreset(profile.presetId)?.label || '外部 API'} · ${profile.model.trim() || '未选择模型'}`;
 }
 </script>
 
@@ -95,10 +97,27 @@ function openProfile(profileId: string) {
 .pc-settings-panel-stack {
   display: grid;
 }
-.pc-setting-control > i {
-  color: var(--pc-muted);
+
+.pc-api-profile-row {
+  grid-template-columns: minmax(0, 1fr) auto;
 }
-.pc-setting-control .pc-active-mark {
+
+.pc-api-profile-select {
+  display: grid;
+  min-width: 0;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 8px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--pc-text);
+  text-align: left;
+  cursor: pointer;
+}
+
+.pc-api-profile-edit,
+.pc-active-mark {
   color: var(--pc-theme-accent);
 }
 </style>

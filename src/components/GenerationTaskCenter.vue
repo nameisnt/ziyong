@@ -17,16 +17,7 @@
       </button>
     </header>
 
-    <div
-      ref="taskListEl"
-      class="pc-task-list"
-      @click.capture="horizontalDrag.onClickCapture"
-      @pointercancel="horizontalDrag.onPointerCancel"
-      @pointerdown="horizontalDrag.onPointerDown"
-      @pointermove="horizontalDrag.onPointerMove"
-      @pointerup="horizontalDrag.onPointerUp"
-      @wheel="horizontalDrag.onWheel"
-    >
+    <HorizontalScrollFrame class="pc-task-list">
       <article v-for="task in visibleTasks" :key="task.id" class="pc-task-row">
         <div class="pc-task-copy">
           <div class="pc-task-line">
@@ -122,22 +113,20 @@
           </button>
         </div>
       </article>
-    </div>
+    </HorizontalScrollFrame>
   </section>
 </template>
 
 <script setup lang="ts">
 import { discardGenerationTask, resumeGenerationTask } from '@/core/manualBatchRunner';
+import HorizontalScrollFrame from '@/components/HorizontalScrollFrame.vue';
 import { useGenerationTaskStore } from '@/store/generationTasks';
 import { usePhoneStore } from '@/store/phone';
 import type { GenerationTask, GenerationTaskStatus } from '@/type/generationTask';
-import { useHorizontalDragScroll } from '@/composables/useHorizontalDragScroll';
 
 const generationTasks = useGenerationTaskStore();
 const phone = usePhoneStore();
 const expandedRawTaskId = ref('');
-const taskListEl = ref<HTMLElement | null>(null);
-const horizontalDrag = useHorizontalDragScroll(taskListEl);
 
 const visibleTasks = computed(() => generationTasks.currentScopeTasks);
 const clearableTaskCount = computed(() => generationTasks.getClearableTasks().length);
@@ -278,7 +267,7 @@ function clearSavedTasks() {
   color: var(--pc-muted);
 }
 
-.pc-task-list {
+:deep(.pc-task-list) {
   display: flex;
   gap: 8px;
   min-height: 66px;
@@ -288,11 +277,11 @@ function clearSavedTasks() {
   border-top: 1px solid var(--pc-border);
   scroll-snap-type: x proximity;
   cursor: grab;
-  touch-action: pan-y;
+  touch-action: pan-x pan-y;
   user-select: none;
 }
 
-.pc-task-list:active {
+:deep(.pc-task-list:active) {
   cursor: grabbing;
 }
 

@@ -21,8 +21,11 @@ test('frontend shell neutralizes document-height feedback while preserving natur
   assert.match(frontend, /documentFlow/u);
   assert.match(
     frontend,
-    /#pc-frame-content > \* \{[\s\S]*?height: auto !important;[\s\S]*?max-height: none !important;/u,
+    /#pc-frame-content > \[data-pc-frame-flow-root\] \{[\s\S]*?height: auto !important;[\s\S]*?max-height: none !important;/u,
   );
+  assert.match(frontend, /getComputedStyle\(child\)\.position/u);
+  assert.match(frontend, /position === 'static' \|\| position === 'relative'/u);
+  assert.doesNotMatch(frontend, /#pc-frame-content, #pc-frame-content \*/u);
 });
 
 test('frontend frame rejects repeated viewport-following growth or shrinkage and exposes the limited state', () => {

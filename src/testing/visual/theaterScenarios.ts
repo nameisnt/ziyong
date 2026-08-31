@@ -23,7 +23,6 @@ export function createTheaterFixture() {
   theater.resetCurrentScope();
   const firstEntry = theater.createEntry({
     content: '后台灯光还没有完全亮起，角色们在幕布后完成一场短暂而轻快的对话。',
-    participants: [{ name: 'Nova' }, { name: 'Zod' }],
     renderMode: 'markdown',
     title: '【直播】问心台满月宴：全仙门都在等一个笑点',
     typeId: 'prompt_type_theater_funny',
@@ -31,7 +30,6 @@ export function createTheaterFixture() {
   });
   theater.createEntry({
     content: '两人把争执藏进一句普通的问候里，直到雨声替他们把停顿说出口。',
-    participants: [{ name: 'Kaios' }, { name: 'Mira' }],
     renderMode: 'markdown',
     title: '雨夜后台，谢幕之后',
     typeId: 'prompt_type_theater_dialogue',
@@ -55,9 +53,7 @@ export async function applyTheaterVisualScenario(name: string, context: TheaterS
 
     resetPhoneToRoute('theater', 'generate', '小剧场配置', { typeId: prompt.id });
     await waitForPaint();
-    const editableGroup = document.querySelector<HTMLInputElement>(
-      '.pc-theater-type-group-field .pc-combobox-input',
-    );
+    const editableGroup = document.querySelector<HTMLInputElement>('.pc-theater-type-group-field .pc-combobox-input');
     if (!editableGroup || editableGroup.readOnly || editableGroup.value !== group.name) {
       throw new Error('Existing Theater type did not show its editable group');
     }
@@ -106,7 +102,6 @@ export async function applyTheaterVisualScenario(name: string, context: TheaterS
         typeName: prompt.name,
         typePrompt: historicalPrompt,
       }),
-      participants: [],
       renderMode: 'markdown',
       title: '版本提示词回放',
       typeId: prompt.id,
@@ -127,7 +122,8 @@ export async function applyTheaterVisualScenario(name: string, context: TheaterS
     const explicitSave = [...document.querySelectorAll<HTMLButtonElement>('.pc-theater-type-prompt-field button')].find(
       button => button.textContent?.includes('保存到类型库'),
     );
-    if (!explicitSave || explicitSave.disabled) throw new Error('Modified replay prompt did not enable explicit library save');
+    if (!explicitSave || explicitSave.disabled)
+      throw new Error('Modified replay prompt did not enable explicit library save');
     explicitSave.click();
     await waitForPaint();
     if (prompts.getTypePrompt(prompt.id)?.prompt !== historicalPrompt) {
@@ -139,13 +135,16 @@ export async function applyTheaterVisualScenario(name: string, context: TheaterS
     const saveNewToggle = document.querySelector<HTMLInputElement>(
       '.pc-theater-type-library-option input[type="checkbox"]',
     );
-    if (!saveNewToggle || saveNewToggle.checked || !document.querySelector('.pc-theater-type-library-option')?.textContent?.includes('保存为新类型')) {
+    if (
+      !saveNewToggle ||
+      saveNewToggle.checked ||
+      !document.querySelector('.pc-theater-type-library-option')?.textContent?.includes('保存为新类型')
+    ) {
       throw new Error('Custom Theater type did not expose an opt-in unchecked library save');
     }
 
     const legacyValid = theater.createEntry({
       content: '旧条目有效类型夹具。',
-      participants: [],
       renderMode: 'markdown',
       title: '旧条目有效类型',
       typeId: prompt.id,
@@ -159,11 +158,11 @@ export async function applyTheaterVisualScenario(name: string, context: TheaterS
     if (!validNotice?.textContent?.includes('旧版本没有生成回放') || validPrompt?.value !== historicalPrompt) {
       throw new Error('Legacy Theater entry did not explicitly load the current type library');
     }
-    if (!validGenerate || validGenerate.disabled) throw new Error('Valid legacy Theater type incorrectly blocked generation');
+    if (!validGenerate || validGenerate.disabled)
+      throw new Error('Valid legacy Theater type incorrectly blocked generation');
 
     const legacyMissing = theater.createEntry({
       content: '旧条目失效类型夹具。',
-      participants: [],
       renderMode: 'markdown',
       title: '旧条目失效类型',
       typeId: '__pc_deleted_theater_type__',
@@ -198,7 +197,6 @@ export async function applyTheaterVisualScenario(name: string, context: TheaterS
         typeName: '历史自定义类型',
         typePrompt: deletedReplayPrompt,
       }),
-      participants: [],
       renderMode: 'markdown',
       title: '删除类型后的版本回放',
       typeId: '__pc_deleted_replay_type__',
@@ -311,7 +309,6 @@ export async function applyTheaterVisualScenario(name: string, context: TheaterS
     const entry = theater.createEntry({
       content:
         '围栏前普通文字\n```html\n<!doctype html><html><head><style>.viewport-card{min-height:100vh;padding:12px;box-sizing:border-box}</style></head><body><main class="viewport-card"><button type="button">网页内部按钮</button><p>网页渲染正文</p></main></body></html>\n```\n围栏后普通文字',
-      participants: [],
       renderMode: 'markdown',
       title: '混合网页渲染测试',
       typeName: '网页测试',
@@ -341,7 +338,9 @@ export async function applyTheaterVisualScenario(name: string, context: TheaterS
     await new Promise(resolve => window.setTimeout(resolve, 1700));
     const stableFrameHeight = frontendFrame.getBoundingClientRect().height;
     if (stableFrameHeight > initialFrameHeight + 2 || stableFrameHeight > 700) {
-      throw new Error(`Theater frontend frame kept growing after content settled: ${initialFrameHeight} -> ${stableFrameHeight}`);
+      throw new Error(
+        `Theater frontend frame kept growing after content settled: ${initialFrameHeight} -> ${stableFrameHeight}`,
+      );
     }
     const channelId = frontendFrame.srcdoc.match(/const CHANNEL_ID = ([^;]+);/)?.[1];
     if (!channelId) throw new Error('Theater frontend frame channel is missing');
@@ -386,7 +385,6 @@ export async function applyTheaterVisualScenario(name: string, context: TheaterS
     Array.from({ length: 18 }, (_, index) =>
       theater.createEntry({
         content: `标签筛选测试正文 ${index + 1}`,
-        participants: [],
         renderMode: 'markdown',
         title: `标签筛选测试 ${index + 1}`,
         typeName: `类型 ${index + 1}`,
@@ -418,7 +416,11 @@ export async function applyTheaterVisualScenario(name: string, context: TheaterS
       input.dispatchEvent(new Event('change', { bubbles: true }));
     };
     upload(new File(['not-json'], 'invalid-theater-item.json', { type: 'application/json' }));
-    if (!(await waitForCondition(() => Boolean(document.querySelector('.pc-item-transfer-dialog .pc-status-card.warning'))))) {
+    if (
+      !(await waitForCondition(() =>
+        Boolean(document.querySelector('.pc-item-transfer-dialog .pc-status-card.warning')),
+      ))
+    ) {
       throw new Error('Theater single-item import did not retain an invalid-file error');
     }
 
@@ -455,7 +457,6 @@ export async function applyTheaterVisualScenario(name: string, context: TheaterS
     if (!recentPrompt || !searchPrompt) throw new Error('Theater random fixture needs at least two visible types');
     theater.createEntry({
       content: '随机类型最近使用夹具。',
-      participants: [],
       renderMode: 'markdown',
       title: '随机类型最近记录',
       typeId: recentPrompt.id,
@@ -468,7 +469,8 @@ export async function applyTheaterVisualScenario(name: string, context: TheaterS
       resetPhoneToRoute('theater', 'root', '小剧场');
       await waitForPaint();
       const recentDice = document.querySelector<HTMLButtonElement>('button[aria-label="随机选择当前可见类型"]');
-      if (!recentDice || recentDice.disabled) throw new Error('Recent Theater type pool did not enable its dice action');
+      if (!recentDice || recentDice.disabled)
+        throw new Error('Recent Theater type pool did not enable its dice action');
       recentDice.click();
       if (!(await waitForCondition(() => phone.currentRoute.page === 'generate'))) {
         throw new Error('Recent Theater type dice did not enter generation');
@@ -524,8 +526,8 @@ export async function applyTheaterVisualScenario(name: string, context: TheaterS
     if (!finalSearch) throw new Error('Theater random final search field is missing');
     finalSearch.value = '';
     finalSearch.dispatchEvent(new Event('input', { bubbles: true }));
-    const finalAllButton = [...document.querySelectorAll<HTMLButtonElement>('.pc-theater-type-view button')].find(button =>
-      button.textContent?.includes('全部类型'),
+    const finalAllButton = [...document.querySelectorAll<HTMLButtonElement>('.pc-theater-type-view button')].find(
+      button => button.textContent?.includes('全部类型'),
     );
     finalAllButton?.click();
     useSettingsStore().setTheme('dark');

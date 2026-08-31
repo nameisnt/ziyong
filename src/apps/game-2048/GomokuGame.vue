@@ -57,6 +57,7 @@
         <i class="fa-solid fa-rotate-right"></i>
         <span>{{ t`新一局` }}</span>
       </button>
+      <MiniGameSoundButton />
       <InfoHint
         :label="t`五子棋说明`"
         :text="t`你执黑先行，横、竖或斜线率先连成五子即可获胜。切换棋盘大小会开始新的一局。`"
@@ -67,6 +68,8 @@
 
 <script setup lang="ts">
 import InfoHint from '@/components/InfoHint.vue';
+import MiniGameSoundButton from './MiniGameSoundButton.vue';
+import { playMiniGameSound } from './miniGameAudio';
 import { miniGameFields } from './fields';
 import { readMiniGameSettings, writeMiniGameSettings } from './miniGameStorage';
 import { GomokuSchema } from './backupSchemas';
@@ -127,11 +130,13 @@ function save() {
 function newGame() {
   state.value = createState(state.value.blackWins, state.value.whiteWins, state.value.boardSize);
   save();
+  playMiniGameSound('reset');
 }
 
 function setBoardSize(boardSize: BoardSize) {
   state.value = createState(state.value.blackWins, state.value.whiteWins, boardSize);
   save();
+  playMiniGameSound('reset');
 }
 
 function createSnapshot(): z.infer<typeof GomokuSnapshotSchema> {
@@ -157,6 +162,7 @@ function undo() {
     whiteWins: previous.whiteWins,
   };
   save();
+  playMiniGameSound('select');
 }
 
 function xy(index: number) {
@@ -262,6 +268,9 @@ function placeBlack(index: number) {
     whiteWins: state.value.whiteWins + (status === 'whiteWin' ? 1 : 0),
   };
   save();
+  playMiniGameSound(
+    state.value.status === 'blackWin' ? 'success' : state.value.status === 'whiteWin' ? 'fail' : 'move',
+  );
 }
 </script>
 

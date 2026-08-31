@@ -42,6 +42,7 @@ declare module 'vue' {
     GenerationTaskCenter: typeof import('./src/components/GenerationTaskCenter.vue')['default']
     HomeActivityPage: typeof import('./src/components/home/HomeActivityPage.vue')['default']
     HomeContextBar: typeof import('./src/components/home/HomeContextBar.vue')['default']
+    HorizontalScrollFrame: typeof import('./src/components/HorizontalScrollFrame.vue')['default']
     InfoHint: typeof import('./src/components/InfoHint.vue')['default']
     ItemTransferExportButton: typeof import('./src/components/ItemTransferExportButton.vue')['default']
     ItemTransferImportAction: typeof import('./src/components/ItemTransferImportAction.vue')['default']

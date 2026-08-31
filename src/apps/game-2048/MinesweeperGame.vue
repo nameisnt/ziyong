@@ -80,6 +80,7 @@
         <i class="fa-solid fa-rotate-right"></i>
         <span>{{ t`新一局` }}</span>
       </button>
+      <MiniGameSoundButton />
       <InfoHint
         :label="t`扫雷说明`"
         :text="t`翻开所有安全格即可获胜。第一次翻开会保护当前格及相邻格；手机上可切换翻开和插旗模式。`"
@@ -90,6 +91,8 @@
 
 <script setup lang="ts">
 import InfoHint from '@/components/InfoHint.vue';
+import MiniGameSoundButton from './MiniGameSoundButton.vue';
+import { playMiniGameSound } from './miniGameAudio';
 import { miniGameFields } from './fields';
 import { readMiniGameSettings, writeMiniGameSettings } from './miniGameStorage';
 import { MinesweeperSchema } from './backupSchemas';
@@ -204,16 +207,19 @@ function createMinedBoard(firstId: number) {
 function newGame() {
   state.value = createEmptyState(state.value.boardSize, state.value.difficulty, state.value.wins);
   save();
+  playMiniGameSound('reset');
 }
 
 function setDifficulty(difficulty: MineDifficulty) {
   state.value = createEmptyState(state.value.boardSize, difficulty, state.value.wins);
   save();
+  playMiniGameSound('reset');
 }
 
 function setBoardSize(boardSize: BoardSize) {
   state.value = createEmptyState(boardSize, state.value.difficulty, state.value.wins);
   save();
+  playMiniGameSound('reset');
 }
 
 function toggleFlag(id: number) {
@@ -221,6 +227,7 @@ function toggleFlag(id: number) {
   if (!cell || cell.open || state.value.status === 'lost' || state.value.status === 'won') return;
   cell.flag = !cell.flag;
   save();
+  playMiniGameSound('select');
 }
 
 function floodOpen(cells: Cell[], startId: number) {
@@ -254,6 +261,7 @@ function openCell(id: number) {
   if (cell.mine) {
     state.value.status = 'lost';
     save();
+    playMiniGameSound('fail');
     return;
   }
   floodOpen(state.value.cells, id);
@@ -262,6 +270,7 @@ function openCell(id: number) {
     state.value.wins += 1;
   }
   save();
+  playMiniGameSound(state.value.status === 'won' ? 'success' : 'move');
 }
 
 function handleCell(id: number) {

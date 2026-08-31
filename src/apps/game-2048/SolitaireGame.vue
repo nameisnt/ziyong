@@ -89,6 +89,7 @@
       <button class="pc-primary-btn" type="button" @click="newGame">
         <i class="fa-solid fa-shuffle"></i><span>{{ t`新一局` }}</span>
       </button>
+      <MiniGameSoundButton />
       <InfoHint
         :label="t`纸牌接龙说明`"
         :text="
@@ -106,6 +107,8 @@ import { KlondikeGame, Move } from '@korziee/klondike';
 import type { Card } from '@korziee/klondike/lib/classes/Card';
 import type { ISerializedKlondikeGame } from '@korziee/klondike/lib/classes/KlondikeGame';
 import type { TSuit } from '@korziee/klondike/lib/types/TSuit';
+import MiniGameSoundButton from './MiniGameSoundButton.vue';
+import { playMiniGameSound } from './miniGameAudio';
 import { miniGameFields } from './fields';
 import { readMiniGameSettings, writeMiniGameSettings } from './miniGameStorage';
 import { SolitaireSchema } from './backupSchemas';
@@ -181,6 +184,7 @@ function finishMove() {
     state.value.wins += 1;
   }
   save();
+  playMiniGameSound(state.value.completed ? 'success' : 'move');
 }
 
 function selectedCards() {
@@ -213,6 +217,7 @@ function moveFromSelection(to: 'foundation' | 'tableau', toPile?: number) {
   const validation = game.value.validateMove(move);
   if (!validation.valid) {
     phone.noticeWarning(t`这组牌不能放到这里`, { timeoutMs: 1800 });
+    playMiniGameSound('fail');
     return false;
   }
   beginMove();
@@ -230,6 +235,7 @@ function drawCard() {
 function selectWaste() {
   if (!wasteTop.value) return;
   selected.value = selected.value?.from === 'waste' ? null : { from: 'waste' };
+  playMiniGameSound('select');
 }
 
 function moveWasteToFoundation() {
@@ -245,13 +251,17 @@ function selectOrMoveFoundation(suit: TSuit) {
       const [card] = selectedCards();
       if (!card || card.getSuit() !== suit) {
         phone.noticeWarning(t`请放到对应花色的基础堆`, { timeoutMs: 1800 });
+        playMiniGameSound('fail');
         return;
       }
       moveFromSelection('foundation');
     }
     return;
   }
-  if (game.value.foundation.getPileForSuit(suit).getTopCard()) selected.value = { from: 'foundation', suit };
+  if (game.value.foundation.getPileForSuit(suit).getTopCard()) {
+    selected.value = { from: 'foundation', suit };
+    playMiniGameSound('select');
+  }
 }
 
 function selectOrMoveTableauCard(pileIndex: number, cardIndex: number) {
@@ -268,6 +278,7 @@ function selectOrMoveTableauCard(pileIndex: number, cardIndex: number) {
     selected.value?.from === 'tableau' && selected.value.pile === next.pile && selected.value.start === next.start
       ? null
       : next;
+  playMiniGameSound('select');
 }
 
 function moveSelectionToTableau(pileIndex: number) {
@@ -294,6 +305,7 @@ function undoMove() {
   selected.value = null;
   revision.value += 1;
   save();
+  playMiniGameSound('select');
 }
 
 function newGame() {
@@ -309,6 +321,7 @@ function newGame() {
   selected.value = null;
   revision.value += 1;
   save();
+  playMiniGameSound('reset');
 }
 
 function isSelectedTableauCard(pileIndex: number, cardIndex: number) {
