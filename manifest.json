@@ -1,13 +1,23 @@
 {
+<<<<<<< HEAD
   "display_name": "功能性阅读器",
+=======
+  "display_name": "<插件名称>",
+>>>>>>> ab902309b708d7a7f3ccc6c4fd5c2f5d672fe5e4
   "loading_order": 120,
   "requires": [],
   "optional": [],
   "js": "dist/index.js",
   "css": "dist/index.css",
+<<<<<<< HEAD
   "author": "闲余",
   "version": "1.0.0",
   "homePage": "https://github.com/nameisnt/ziyong",
+=======
+  "author": "<作者名称>",
+  "version": "1.0.0",
+  "homePage": "<仓库URL>",
+>>>>>>> ab902309b708d7a7f3ccc6c4fd5c2f5d672fe5e4
   "auto_update": true,
   "i18n": {
     "en": "i18n/en.json"
