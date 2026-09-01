@@ -15,7 +15,7 @@ async function loadChatScopeRename() {
       /import \{[\s\S]*?\} from '@\/store\/chatScoped';/,
       `const buildChatScopeKey = (kind, ownerId, chatId) => \
         \`${'${kind}'}:${'${ownerId}'}:chat:${'${chatId}'}\`;
-       const getCurrentChatScopeKey = () => 'char:visual:chat:new';
+       const getCurrentChatScopeKey = () => globalThis.__chatScopeCurrentScope;
        const getCurrentOwnerAliases = () => ['visual'];
        const normalizeChatScopeId = value => String(value).replace(/\\.jsonl$/, '');
        const parseChatScopeKey = value => {
@@ -23,7 +23,10 @@ async function loadChatScopeRename() {
          return { kind: marker === 'chat' ? kind : 'unknown', ownerId, chatId: chatId || '' };
        };`,
     )
-    .replace("import { getOptionalGlobalValue } from '@/util/runtime';", 'const getOptionalGlobalValue = () => null;')
+    .replace(
+      "import { getOptionalGlobalValue } from '@/util/runtime';",
+      "const getOptionalGlobalValue = name => name === 'characters' ? globalThis.__chatScopeCharacters : null;",
+    )
     .replace(
       "import { saveSettingsDebounced } from '@sillytavern/script';",
       'const saveSettingsDebounced = () => { globalThis.__chatScopeSaveCalls += 1; };',
@@ -44,7 +47,9 @@ async function loadChatScopeRename() {
 
 globalThis.__chatScopeSaveCalls = 0;
 globalThis.__chatScopeSettings = {};
-const { migratePhoneChatScopes } = await loadChatScopeRename();
+globalThis.__chatScopeCurrentScope = 'char:visual:chat:new';
+globalThis.__chatScopeCharacters = [];
+const { migratePhoneChatRename, migratePhoneChatScopes } = await loadChatScopeRename();
 
 function resetSettings(value) {
   Object.keys(globalThis.__chatScopeSettings).forEach(key => delete globalThis.__chatScopeSettings[key]);
@@ -97,4 +102,53 @@ test('chat scope rename does not persist when no registered phone field referenc
   assert.equal(result.replacements, 0);
   assert.equal(globalThis.__chatScopeSaveCalls, 0);
   assert.equal(globalThis.__chatScopeSettings.unrelated_setting.reference, source);
+});
+
+test('non-current character rename uses the avatar scope used when that chat is opened', () => {
+  globalThis.__chatScopeCurrentScope = 'char:9:chat:unrelated';
+  globalThis.__chatScopeCharacters = [{ avatar: 'visual.png', name: 'Visual' }];
+  resetSettings({
+    sillytavern_phone_diaries: {
+      scopes: {
+        'char:0:chat:old': { entries: [{ title: '旧聊天日记' }] },
+      },
+    },
+  });
+
+  const result = migratePhoneChatRename({
+    avatarId: 'visual.png',
+    newFileName: 'new.jsonl',
+    oldFileName: 'old.jsonl',
+  });
+
+  assert.equal(result.migrated, true);
+  assert.equal(result.targetScopeKey, 'char:visual.png:chat:new');
+  assert.deepEqual(globalThis.__chatScopeSettings.sillytavern_phone_diaries.scopes['char:visual.png:chat:new'], {
+    entries: [{ title: '旧聊天日记' }],
+  });
+  assert.equal(globalThis.__chatScopeSettings.sillytavern_phone_diaries.scopes['char:0:chat:old'], undefined);
+});
+
+test('current character rename preserves the active owner while the native request is still resolving', () => {
+  globalThis.__chatScopeCurrentScope = 'char:visual.png:chat:old';
+  globalThis.__chatScopeCharacters = [{ avatar: 'visual.png', name: 'Visual' }];
+  resetSettings({
+    sillytavern_phone_reader: {
+      scopes: {
+        'char:visual.png:chat:old': { favorites: ['entry-1'] },
+      },
+    },
+  });
+
+  const result = migratePhoneChatRename({
+    avatarId: 'visual.png',
+    newFileName: 'new.jsonl',
+    oldFileName: 'old.jsonl',
+  });
+
+  assert.equal(result.migrated, true);
+  assert.equal(result.targetScopeKey, 'char:visual.png:chat:new');
+  assert.deepEqual(globalThis.__chatScopeSettings.sillytavern_phone_reader.scopes, {
+    'char:visual.png:chat:new': { favorites: ['entry-1'] },
+  });
 });

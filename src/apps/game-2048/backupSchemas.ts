@@ -128,14 +128,20 @@ export const SudokuSchema = z.object({
   status: z.enum(['done', 'playing']).default('playing'),
 });
 
+const EmptyGameSettingsSchema = z.object({}).strict().transform(() => undefined);
+
+function optionalGameSettings<T extends z.ZodTypeAny>(schema: T) {
+  return z.union([schema, EmptyGameSettingsSchema]).optional();
+}
+
 export const MiniGamesBackupSchema = z.object({
-  game2048: Game2048SettingsSchema,
-  gomoku: GomokuSchema,
-  guessNumber: GuessNumberSchema,
-  minesweeper: MinesweeperSchema,
-  reversi: ReversiSchema,
-  slidingPuzzle: SlidingPuzzleSchema,
-  snake: SnakeSchema,
-  solitaire: SolitaireSchema,
-  sudoku: SudokuSchema,
+  game2048: optionalGameSettings(Game2048SettingsSchema),
+  gomoku: optionalGameSettings(GomokuSchema),
+  guessNumber: optionalGameSettings(GuessNumberSchema),
+  minesweeper: optionalGameSettings(MinesweeperSchema),
+  reversi: optionalGameSettings(ReversiSchema),
+  slidingPuzzle: optionalGameSettings(SlidingPuzzleSchema),
+  snake: optionalGameSettings(SnakeSchema),
+  solitaire: optionalGameSettings(SolitaireSchema),
+  sudoku: optionalGameSettings(SudokuSchema),
 });

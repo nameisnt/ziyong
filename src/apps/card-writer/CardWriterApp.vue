@@ -1729,8 +1729,12 @@ onMounted(() => {
 }
 
 .pc-card-writer-field-error {
+  min-width: 0;
+  max-width: 100%;
   color: var(--pc-danger);
   font-size: 12px;
+  overflow-wrap: anywhere;
+  word-break: break-word;
 }
 
 .pc-card-writer-experience-options {
@@ -1839,9 +1843,13 @@ onMounted(() => {
 }
 
 .pc-card-writer-import-error {
+  min-width: 0;
+  max-width: 100%;
   margin: 0;
   color: var(--pc-danger);
   font-size: 12px;
+  overflow-wrap: anywhere;
+  word-break: break-word;
 }
 
 .pc-card-writer-import-conflict {

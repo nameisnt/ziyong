@@ -155,10 +155,14 @@ async function capturePrompt() {
 }
 
 .pc-capture-error {
+  min-width: 0;
+  max-width: 100%;
   margin: 0;
   color: var(--pc-danger);
   font-size: 12px;
   line-height: 1.45;
+  overflow-wrap: anywhere;
+  word-break: break-word;
 }
 
 .pc-capture-meta {

@@ -49,6 +49,12 @@ test('replacing floor backups clears and writes inside one transaction', () => {
   assert.doesNotMatch(replacement, /listChatFloorBackups|deleteChatFloorBackup|saveChatFloorBackup/u);
 });
 
+test('unchanged floor backups compare normalized messages before cloning stored records', () => {
+  assert.match(floorBackup, /function sameCurrentMessages/u);
+  assert.match(floorBackup, /if \(existing && sameCurrentMessages\(existing\.messages, currentMessages\)\)/u);
+  assert.match(floorBackup, /messages: currentMessages\.map\(toBackupMessage\)/u);
+});
+
 test('generation tasks flush throttled raw output before stopping or disposal', () => {
   assert.match(generationTasks, /rawOutputFlushStatuses\.has\(status\)\) commitRawOutput\(taskId\)/u);
   assert.match(generationTasks, /function completeTask[\s\S]*?commitRawOutput\(taskId\)/u);

@@ -33,6 +33,7 @@ import { getOptionalGlobalFunction } from '@/util/runtime';
 import { getRequestHeaders, saveSettingsDebounced } from '@sillytavern/script';
 import { extension_settings } from '@sillytavern/scripts/extensions';
 import { setting_field, Settings } from '@/type/settings';
+import { preserveExternalProfileApiKeys } from '@/util/backupSecrets';
 import { migrateHomeLayoutDockCapacity } from '@/core/appLayout';
 
 export interface PhoneBackupScopeOption {
@@ -666,6 +667,11 @@ function prepareFullPhoneBackupImport(backup: PhoneBackup): PreparedFullPhoneBac
   });
   const stagedDomains = stageDomainImports(entries, data.domainVersions);
   const stagedSettings = sanitizeSettingsForJsonBackup(data.settings);
+  const localSettings = parsePrettified(Settings, klona(_.get(extension_settings, setting_field, {})));
+  preserveExternalProfileApiKeys(
+    stagedSettings.textProvider.externalProfiles,
+    localSettings.textProvider.externalProfiles,
+  );
   const homeIconAssets = backup.data.homeIconAssets;
   const chatFloorBackups = z.array(ChatFloorBackupSchema).parse(backup.data.chatFloorBackups);
   const worldbooks = backup.data.worldbooks.map(worldbook => ({ entries: worldbook.entries, name: worldbook.name }));

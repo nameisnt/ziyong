@@ -366,6 +366,63 @@ function createWorldbookEntryPayload(entry: WorldbookEntryDraft, index: number) 
   };
 }
 
+function comparableWorldbookEntry(entry: WorldbookEntry) {
+  return {
+    content: entry.content,
+    effect: entry.effect,
+    enabled: entry.enabled,
+    name: entry.name,
+    position: entry.position,
+    probability: entry.probability,
+    recursion: entry.recursion,
+    strategy: entry.strategy,
+    uid: entry.uid,
+  };
+}
+
+function worldbookEntriesEqual(left: WorldbookEntry[], right: WorldbookEntry[]) {
+  return JSON.stringify(left.map(comparableWorldbookEntry)) === JSON.stringify(right.map(comparableWorldbookEntry));
+}
+
+function entryMatchesDraft(entry: WorldbookEntry, draft: WorldbookEntryDraft, index: number) {
+  return (
+    entry.content === draft.content &&
+    entry.name === draft.name &&
+    entry.position.order === (draft.order ?? 100 + index) &&
+    entry.position.type === (draft.position ?? 'after_character_definition')
+  );
+}
+
+function entryMatchesPatch(entry: WorldbookEntry, patch: WorldbookEntryEditorPatch) {
+  return (
+    entry.content === patch.content &&
+    entry.name === patch.name &&
+    entry.position.type === patch.position.type &&
+    entry.position.role === patch.position.role &&
+    entry.position.depth === patch.position.depth &&
+    entry.position.order === patch.position.order &&
+    entry.strategy.type === patch.strategy.type &&
+    entry.strategy.scan_depth === patch.strategy.scan_depth &&
+    JSON.stringify(entry.strategy.keys) === JSON.stringify(patch.strategy.keys) &&
+    entry.strategy.keys_secondary.logic === patch.strategy.keys_secondary.logic &&
+    JSON.stringify(entry.strategy.keys_secondary.keys) === JSON.stringify(patch.strategy.keys_secondary.keys)
+  );
+}
+
+function worldbookWriteUncertain(action: string, error: unknown) {
+  return new Error(`${action}的实际结果无法确认，已停止再次写入：${describeError(error)}`);
+}
+
+async function verifyRawWorldbookAfterFailure(bookName: string, action: string, writeError: unknown) {
+  try {
+    return (await loadRawWorldbook(bookName)).entries;
+  } catch (verificationError) {
+    throw new Error(
+      `${action}失败后无法核验实际结果，已停止再次写入：${describeError(writeError)}；核验失败：${describeError(verificationError)}`,
+    );
+  }
+}
+
 async function appendWorldbookEntriesRaw(bookName: string, entries: WorldbookEntryDraft[]) {
   const loadWorldInfo = getOptionalGlobalFunction<(name: string) => Promise<unknown>>('loadWorldInfo');
   const saveWorldInfo =
@@ -448,11 +505,29 @@ export async function appendWorldbookEntries(bookName: string, drafts: Worldbook
       (name: string, entries: unknown[], options?: { render?: 'debounced' | 'immediate' }) => Promise<unknown>
     >('createWorldbookEntries');
   if (createEntries) {
+    let before: WorldbookEntry[];
+    try {
+      before = (await loadRawWorldbook(normalizedName)).entries;
+    } catch {
+      await appendWorldbookEntriesRaw(normalizedName, entries);
+      return entries.length;
+    }
     try {
       await createEntries(normalizedName, entries.map(createWorldbookEntryPayload), { render: 'immediate' });
       return entries.length;
-    } catch {
-      // Legacy imported books can fail helper normalization; preserve them through the raw API instead.
+    } catch (error) {
+      const after = await verifyRawWorldbookAfterFailure(normalizedName, '新增世界书条目', error);
+      const beforeUids = new Set(before.map(entry => entry.uid));
+      const additions = after.filter(entry => !beforeUids.has(entry.uid));
+      const remaining = [...additions];
+      const committed = entries.every((entry, index) => {
+        const matchIndex = remaining.findIndex(candidate => entryMatchesDraft(candidate, entry, index));
+        if (matchIndex < 0) return false;
+        remaining.splice(matchIndex, 1);
+        return true;
+      });
+      if (committed && !remaining.length) return entries.length;
+      if (!worldbookEntriesEqual(before, after)) throw worldbookWriteUncertain('新增世界书条目', error);
     }
   }
   await appendWorldbookEntriesRaw(normalizedName, entries);
@@ -528,6 +603,7 @@ export async function setWorldbookEntryStates(bookName: string, states: Map<numb
     >('updateWorldbookWith');
   let changed = 0;
   if (updateWorldbook) {
+    const before = (await loadRawWorldbook(bookName)).entries;
     try {
       const entries = await updateWorldbook(
         bookName,
@@ -541,8 +617,22 @@ export async function setWorldbookEntryStates(bookName: string, states: Map<numb
         { render: 'immediate' },
       );
       return { changed, entries };
-    } catch {
+    } catch (error) {
       changed = 0;
+      const after = await verifyRawWorldbookAfterFailure(bookName, '更新世界书条目状态', error);
+      const sameEntrySet =
+        before.length === after.length && before.every(entry => after.some(candidate => candidate.uid === entry.uid));
+      const committed =
+        sameEntrySet &&
+        [...states].every(([uid, enabled]) => after.find(entry => entry.uid === uid)?.enabled === enabled) &&
+        (!disableUnknown || after.every(entry => states.has(entry.uid) || !entry.enabled));
+      if (committed) {
+        changed = before.filter(
+          entry => after.find(candidate => candidate.uid === entry.uid)?.enabled !== entry.enabled,
+        ).length;
+        return { changed, entries: after };
+      }
+      if (!worldbookEntriesEqual(before, after)) throw worldbookWriteUncertain('更新世界书条目状态', error);
     }
   }
 
@@ -669,7 +759,7 @@ async function duplicateWorldbookEntryRaw(bookName: string, uid: number, patch: 
 }
 
 export async function duplicateWorldbookEntry(bookName: string, uid: number, patch: WorldbookEntryEditorPatch) {
-  const entries = await getWorldbookEntries(bookName);
+  const entries = (await loadRawWorldbook(bookName)).entries;
   const source = entries.find(entry => entry.uid === uid);
   if (!source) throw new Error(`世界书条目 #${uid} 已不存在`);
   const createEntries =
@@ -681,8 +771,12 @@ export async function duplicateWorldbookEntry(bookName: string, uid: number, pat
       const { extra: _extra, uid: _uid, ...copy } = source;
       await createEntries(bookName, [{ ...copy, ...patch, position: { ...patch.position } }], { render: 'immediate' });
       return getWorldbookEntries(bookName);
-    } catch {
-      // Legacy imported books need their original entry shape preserved through the raw API.
+    } catch (error) {
+      const after = await verifyRawWorldbookAfterFailure(bookName, '复制世界书条目', error);
+      const beforeUids = new Set(entries.map(entry => entry.uid));
+      const additions = after.filter(entry => !beforeUids.has(entry.uid));
+      if (additions.length === 1 && entryMatchesPatch(additions[0], patch)) return after;
+      if (!worldbookEntriesEqual(entries, after)) throw worldbookWriteUncertain('复制世界书条目', error);
     }
   }
   return duplicateWorldbookEntryRaw(bookName, uid, patch);
@@ -723,6 +817,8 @@ export async function updateWorldbookEntry(bookName: string, uid: number, patch:
       ) => Promise<WorldbookEntry[]>
     >('updateWorldbookWith');
   if (updateWorldbook) {
+    const before = (await loadRawWorldbook(bookName)).entries;
+    if (!before.some(entry => entry.uid === uid)) throw new Error(`世界书条目 #${uid} 已不存在`);
     try {
       let found = false;
       const entries = await updateWorldbook(
@@ -752,6 +848,10 @@ export async function updateWorldbookEntry(bookName: string, uid: number, patch:
       return entries;
     } catch (error) {
       if (error instanceof Error && error.message.includes('已不存在')) throw error;
+      const after = await verifyRawWorldbookAfterFailure(bookName, '更新世界书条目', error);
+      const target = after.find(entry => entry.uid === uid);
+      if (target && entryMatchesPatch(target, patch)) return after;
+      if (!worldbookEntriesEqual(before, after)) throw worldbookWriteUncertain('更新世界书条目', error);
     }
   }
   return updateWorldbookEntryRaw(bookName, uid, patch);
@@ -767,6 +867,8 @@ export async function deleteWorldbookEntry(bookName: string, uid: number) {
       ) => Promise<WorldbookEntry[]>
     >('updateWorldbookWith');
   if (updateWorldbook) {
+    const before = (await loadRawWorldbook(bookName)).entries;
+    if (!before.some(entry => entry.uid === uid)) throw new Error(`世界书条目 #${uid} 已不存在`);
     try {
       let found = false;
       const entries = await updateWorldbook(
@@ -783,6 +885,9 @@ export async function deleteWorldbookEntry(bookName: string, uid: number) {
       return entries;
     } catch (error) {
       if (error instanceof Error && error.message.includes('已不存在')) throw error;
+      const after = await verifyRawWorldbookAfterFailure(bookName, '删除世界书条目', error);
+      if (!after.some(entry => entry.uid === uid)) return after;
+      if (!worldbookEntriesEqual(before, after)) throw worldbookWriteUncertain('删除世界书条目', error);
     }
   }
 

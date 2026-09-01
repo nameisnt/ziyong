@@ -253,8 +253,12 @@ watch(() => props.definition, loadDraft, { immediate: true });
 }
 
 .pc-output-test-error {
+  min-width: 0;
+  max-width: 100%;
   margin: 0;
   color: var(--pc-danger);
   white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  word-break: break-word;
 }
 </style>

@@ -212,6 +212,7 @@ export const usePhoneStore = defineStore('phone', () => {
     if (index < 0) return null;
     const owner = viewingScopeKey.value.slice(0, index);
     const ownerSeparator = owner.indexOf(':');
+    const kind = ownerSeparator >= 0 ? owner.slice(0, ownerSeparator) : 'char';
     const ownerId = ownerSeparator >= 0 ? owner.slice(ownerSeparator + 1) : owner;
     const characterId = Number(ownerId);
     const chatId = viewingScopeKey.value.slice(index + marker.length);
@@ -219,6 +220,8 @@ export const usePhoneStore = defineStore('phone', () => {
     return {
       chatId,
       characterId: Number.isInteger(characterId) && characterId >= 0 ? characterId : null,
+      kind: kind === 'group' ? ('group' as const) : ('char' as const),
+      ownerId,
       ownerName: viewingScopeMeta.value.ownerName,
       scopeKey: viewingScopeKey.value,
     };

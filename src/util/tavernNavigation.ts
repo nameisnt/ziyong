@@ -87,6 +87,12 @@ function getCurrentChatId(tavernWindow = getTavernWindow()) {
   return normalizeChatFileName(context?.chatId ?? record.chatId ?? getOptionalGlobalValue('chatId'));
 }
 
+function getCurrentGroupId(tavernWindow = getTavernWindow()) {
+  const record = tavernWindow as Window & Record<string, unknown>;
+  const context = getTavernContext(tavernWindow);
+  return context?.groupId ?? record.selected_group ?? getOptionalGlobalValue('selected_group');
+}
+
 async function waitForTavernState(predicate: () => boolean, failureMessage: string) {
   const deadline = Date.now() + CHAT_SWITCH_TIMEOUT_MS;
   while (Date.now() < deadline) {
@@ -143,14 +149,44 @@ async function openTavernCharacterChat(chatFile: string) {
   );
 }
 
+async function openTavernGroupChat(groupId: string, chatFile: string) {
+  const tavernWindow = getTavernWindow();
+  const record = tavernWindow as Window & Record<string, unknown>;
+  const context = getTavernContext(tavernWindow);
+  const openGroupChat = context?.openGroupChat ?? record.openGroupChat ?? getOptionalGlobalFunction('openGroupChat');
+  if (typeof openGroupChat !== 'function') throw new Error('无法调用酒馆原生群聊打开接口');
+  const groups = Array.isArray(context?.groups) ? context.groups : Array.isArray(record.groups) ? record.groups : [];
+  const group = groups.find(item => {
+    if (!item || typeof item !== 'object') return false;
+    return String((item as Record<string, unknown>).id) === groupId;
+  }) as Record<string, unknown> | undefined;
+  if (!group) throw new Error('酒馆中已经找不到这个群组');
+
+  const normalizedChatFile = normalizeChatFileName(chatFile);
+  await openGroupChat.call(context ?? record, group.id, normalizedChatFile);
+  await waitForTavernState(
+    () => String(getCurrentGroupId(tavernWindow)) === groupId && getCurrentChatId(tavernWindow) === normalizedChatFile,
+    '酒馆未确认目标群聊已打开，请检查群组和聊天文件是否仍然存在',
+  );
+}
+
 export async function jumpToTavernChat(input: {
   avatar?: string;
   chatFile: string;
   characterId?: number | null;
+  groupId?: string;
+  kind?: 'char' | 'group';
   ownerName?: string;
 }) {
   if (!input.chatFile || input.chatFile === '__no_chat__') {
     throw new Error('旧数据没有对应的酒馆聊天文件，无法直接跳转');
+  }
+
+  if (input.kind === 'group') {
+    const groupId = input.groupId?.trim();
+    if (!groupId) throw new Error('旧群聊数据缺少群组标识，无法直接跳转');
+    await openTavernGroupChat(groupId, input.chatFile);
+    return;
   }
 
   const targetId = resolveCharacterIndex(input);

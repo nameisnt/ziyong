@@ -32,6 +32,9 @@ test('live preview keeps edits, locks early saving and avoids completion navigat
   assert.match(preview, /有思维链/u);
   assert.match(preview, /无思维链/u);
   assert.match(preview, /parseHandler/u);
+  assert.match(preview, /cleanGenerationOutput\(draft\.rawOutput/u);
+  assert.match(preview, /props\.parseHandler\(cleanedOutput\.content/u);
+  assert.match(preview, /mergeGenerationReasoning\(draft\.reasoning, cleanedOutput\.removedContent\)/u);
   assert.match(preview, /registerNavigationGuard/u);
   assert.match(preview, /emit\('change', getEdits\(\)\)/u);
   assert.match(diaryApp, /:parse-handler="parseDiaryGeneratedResult"/u);

@@ -229,6 +229,8 @@ function getBarWidth(value: number) {
 
 .pc-error-card,
 .pc-warning-card {
+  min-width: 0;
+  max-width: 100%;
   border: 1px solid var(--pc-border);
   border-radius: var(--pc-card-radius);
   background: color-mix(in srgb, var(--pc-surface) 72%, transparent 28%);
@@ -281,6 +283,13 @@ function getBarWidth(value: number) {
 .pc-warning-card strong {
   display: block;
   margin-bottom: 6px;
+}
+
+.pc-error-card p,
+.pc-warning-card p {
+  min-width: 0;
+  overflow-wrap: anywhere;
+  word-break: break-word;
 }
 
 .pc-error-card,

@@ -6,6 +6,8 @@ import test from 'node:test';
 const root = await readFile(new URL('../../src/apps/reader/ReaderApp.vue', import.meta.url), 'utf8');
 const owner = await readFile(new URL('../../src/apps/reader/useReaderChatSession.ts', import.meta.url), 'utf8');
 const library = await readFile(new URL('../../src/apps/reader/useReaderLibrarySession.ts', import.meta.url), 'utf8');
+const history = await readFile(new URL('../../src/util/tavernChatHistory.ts', import.meta.url), 'utf8');
+const readerStore = await readFile(new URL('../../src/store/reader.ts', import.meta.url), 'utf8');
 
 test('ReaderApp delegates chat loading to one session while detail writes stay in the root coordinator', () => {
   assert.match(root, /import \{ useReaderChatSession, type ReaderChatTarget \} from '@\/apps\/reader\/useReaderChatSession'/u);
@@ -33,7 +35,7 @@ test('ReaderApp delegates chat loading to one session while detail writes stay i
     );
   }
 
-  for (const runtimeCall of ['getPastCharacterChats', 'getChatHistoryDetailSafe']) {
+  for (const runtimeCall of ['getPastCharacterChats', 'getCharacterChatHistory']) {
     assert.doesNotMatch(
       root,
       new RegExp(`\\b${runtimeCall}\\(`, 'u'),
@@ -52,6 +54,13 @@ test('ReaderApp delegates chat loading to one session while detail writes stay i
   assert.match(owner, /loadSerial !== readerLoadSerial/u);
   assert.match(owner, /options\.target\.value\?\.scopeKey !== scopeKeyAtStart/u);
   assert.match(owner, /phone\.replacePage\('detail'/u);
+  assert.doesNotMatch(owner, /Object\.values\(result\)\[0\]/u);
+  assert.match(history, /fetch\('\/api\/chats\/get'/u);
+  assert.match(history, /avatar_url: avatar/u);
+  assert.match(history, /ch_name: name/u);
+  assert.match(history, /return raw\.slice\(1\)/u);
+  assert.doesNotMatch(history, /\bcharacters\b/u);
+  assert.match(owner, /avatar: target\.ownerAvatar, name: target\.ownerName/u);
 });
 
 test('Reader library loads character shelves and chat books lazily without switching the phone viewing scope', () => {
@@ -66,6 +75,12 @@ test('Reader library loads character shelves and chat books lazily without switc
   assert.match(library, /chatId: context\?\.chatId \?\? currentScope\.value\.chatId/u);
   assert.match(root, /currentChatId: currentReaderChatId/u);
   assert.match(library, /title: normalizeChatArchiveId\(brief\.title\) \|\| chatId/u);
+  assert.match(library, /brief !== null && brief\.messageCount !== 0/u);
+  assert.match(readerStore, /\['chat_items', 'mes_cnt', 'messageCount', 'message_count', 'count'\]/u);
+  assert.match(root, /loadReaderBooks\(owner, true\)/u);
+  assert.match(root, /onTavernChatRename\(/u);
+  assert.match(root, /resetReaderBooks\(\)/u);
+  assert.match(root, /ownerAvatar: owner\.avatar/u);
   assert.doesNotMatch(root, /phone\.setViewingScope/u);
   assert.doesNotMatch(library, /phone\.setViewingScope/u);
 });

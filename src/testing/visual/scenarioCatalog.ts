@@ -236,6 +236,8 @@ export function createVisualScenarioGroups(rootAppScenarios: string[]): VisualSc
         'diary-creation-mode',
         'diary-perspective-alias',
         'diary-perspective-alias-dark',
+        'diary-bookshelf-responsive',
+        'diary-bookshelf-responsive-dark',
         'diary-book',
         'diary-entry-editor',
         'diary-entry-editor-dark',

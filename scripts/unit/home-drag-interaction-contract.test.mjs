@@ -17,6 +17,8 @@ test('home group management has a real browser interaction contract', async () =
   assert.match(harness, /Home group tabs cannot scroll horizontally/u);
   assert.match(harness, /Home group App long-press drag did not reorder the active group/u);
   assert.match(harness, /Home group management did not open the App assignment list/u);
+  assert.match(harness, /Home group previous action did not preserve and reorder the active group/u);
+  assert.match(harness, /Home group next action did not restore the saved group order/u);
   assert.match(harness, /Home group management did not move the selected App to the target group/u);
   assert.match(harness, /Home group source was not restored without reopening its management dialog/u);
 });

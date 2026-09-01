@@ -365,6 +365,7 @@ async function applyScenario(name: VisualScenarioName, options: { height?: numbe
   document.querySelector('#visual-host-theme-override')?.remove();
   useSettingsStore().setTheme(
     name === 'diary-entry-editor-dark' ||
+      name === 'diary-bookshelf-responsive-dark' ||
       name === 'preview-draft-deferred-save-dark' ||
       name === 'profiles-external-dark' ||
       name === 'preset-link-dark' ||
@@ -974,6 +975,28 @@ async function applyScenario(name: VisualScenarioName, options: { height?: numbe
       !managedGroupSelect.selectedOptions[0]?.textContent?.includes('小游戏')
     ) {
       throw new Error('Home group management did not identify the active group');
+    }
+    const originalGroupOrder = [...settings.settings.layout.appOrder];
+    const managedGroupToken = `folder:${gameFolder.id}`;
+    const originalGroupIndex = originalGroupOrder.indexOf(managedGroupToken);
+    const moveGroupPrevious = groupManager.querySelector<HTMLButtonElement>('button[aria-label="分组前移"]');
+    const moveGroupNext = groupManager.querySelector<HTMLButtonElement>('button[aria-label="分组后移"]');
+    if (!moveGroupPrevious || !moveGroupNext || moveGroupPrevious.disabled || originalGroupIndex <= 0) {
+      throw new Error('Home group management did not expose usable group order controls');
+    }
+    moveGroupPrevious.click();
+    await waitForPaint();
+    if (
+      settings.settings.layout.appOrder.indexOf(managedGroupToken) !== originalGroupIndex - 1 ||
+      managedGroupSelect.value !== gameFolder.id ||
+      !document.querySelector(`[data-home-token="${managedGroupToken}"]`)?.classList.contains('active')
+    ) {
+      throw new Error('Home group previous action did not preserve and reorder the active group');
+    }
+    moveGroupNext.click();
+    await waitForPaint();
+    if (settings.settings.layout.appOrder.join('|') !== originalGroupOrder.join('|')) {
+      throw new Error('Home group next action did not restore the saved group order');
     }
     const allAppsScope = [
       ...groupManager.querySelectorAll<HTMLButtonElement>('.pc-home-group-manager-scope button'),

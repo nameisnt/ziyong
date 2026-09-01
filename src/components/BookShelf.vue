@@ -1,13 +1,18 @@
 <template>
   <div ref="shelfEl" class="pc-bookshelf" :class="variant">
-    <div v-for="row in rows" :key="row[0]?.key" class="pc-shelf-row" :style="{ '--pc-shelf-column-count': row.length }">
+    <div
+      v-for="row in rows"
+      :key="row[0]?.key"
+      class="pc-shelf-row"
+      :style="{ '--pc-shelf-column-count': columnCount }"
+    >
       <button
         v-for="item in row"
         :key="item.key"
         :class="['pc-book-item', { opening: item.kind === 'book' && openingBookId === item.book.id }]"
         type="button"
         :disabled="Boolean(openingBookId)"
-        @click="item.kind === 'create' ? emit('create') : openBook(item.book.id)"
+        @click="item.kind === 'create' ? emit('create') : openBook(item.book.id, $event)"
       >
         <span :class="['pc-book-cover', { 'pc-add-cover': item.kind === 'create' }]" :data-paper="paper">
           <img
@@ -27,6 +32,25 @@
       </button>
     </div>
   </div>
+
+  <Teleport v-if="openingBook && bookTransitionStyle" to="#tavern-phone-root .pc-phone-shell">
+    <div :class="['pc-book-transition-layer', `is-${openingPhase}`]" aria-hidden="true">
+      <div class="pc-book-transition-volume" :style="bookTransitionStyle">
+        <span class="pc-book-transition-page"></span>
+        <span class="pc-book-cover pc-book-transition-cover" :data-paper="paper">
+          <img
+            v-if="openingBook.coverUrl && !failedCoverIds.has(openingBook.id)"
+            class="pc-book-cover-image"
+            :src="openingBook.coverUrl"
+            alt=""
+            @error="failedCoverIds.add(openingBook.id)"
+          />
+          <i v-else :class="openingBook.icon"></i>
+          <b v-if="String(openingBook.count)">{{ openingBook.count }}</b>
+        </span>
+      </div>
+    </div>
+  </Teleport>
 </template>
 
 <script setup lang="ts">
@@ -63,8 +87,21 @@ const paper = computed(() => settingsStore.settings.visualTheme.paperTextureId);
 const shelfEl = ref<HTMLElement | null>(null);
 const columnCount = ref(3);
 const openingBookId = ref('');
+const openingPhase = ref<'idle' | 'lifting' | 'turning'>('idle');
+const bookTransitionMetrics = ref<{
+  height: number;
+  left: number;
+  targetHeight: number;
+  targetLeft: number;
+  targetTop: number;
+  targetWidth: number;
+  top: number;
+  width: number;
+} | null>(null);
 const failedCoverIds = reactive(new Set<string>());
 let openTimer: number | undefined;
+let turnTimer: number | undefined;
+let liftFrame: number | undefined;
 let shelfObserver: ResizeObserver | undefined;
 
 const emit = defineEmits<{
@@ -72,21 +109,72 @@ const emit = defineEmits<{
   select: [id: string];
 }>();
 
-function openBook(id: string) {
+const openingBook = computed(() => props.books.find(book => book.id === openingBookId.value) ?? null);
+const bookTransitionStyle = computed(() => {
+  const metrics = bookTransitionMetrics.value;
+  if (!metrics) return null;
+  return {
+    '--pc-book-start-height': `${metrics.height}px`,
+    '--pc-book-start-left': `${metrics.left}px`,
+    '--pc-book-start-top': `${metrics.top}px`,
+    '--pc-book-start-width': `${metrics.width}px`,
+    '--pc-book-target-height': `${metrics.targetHeight}px`,
+    '--pc-book-target-left': `${metrics.targetLeft}px`,
+    '--pc-book-target-top': `${metrics.targetTop}px`,
+    '--pc-book-target-width': `${metrics.targetWidth}px`,
+  };
+});
+
+function openBook(id: string, event: MouseEvent) {
   if (openingBookId.value) return;
   if (window.matchMedia?.('(prefers-reduced-motion: reduce)').matches) {
     emit('select', id);
     return;
   }
+
+  const button = event.currentTarget as HTMLElement;
+  const cover = button.querySelector<HTMLElement>('.pc-book-cover');
+  const shell = button.closest<HTMLElement>('.pc-phone-shell');
+  if (!cover || !shell) {
+    emit('select', id);
+    return;
+  }
+  const coverBounds = cover.getBoundingClientRect();
+  const shellBounds = shell.getBoundingClientRect();
+  const aspectRatio = coverBounds.width / coverBounds.height;
+  const targetWidth = Math.min(shellBounds.width * 0.9, shellBounds.height * 0.76 * aspectRatio);
+  const targetHeight = targetWidth / aspectRatio;
+
+  bookTransitionMetrics.value = {
+    height: coverBounds.height,
+    left: coverBounds.left - shellBounds.left,
+    targetHeight,
+    targetLeft: shellBounds.width / 2,
+    targetTop: (shellBounds.height - targetHeight) / 2,
+    targetWidth,
+    top: coverBounds.top - shellBounds.top,
+    width: coverBounds.width,
+  };
   openingBookId.value = id;
+  openingPhase.value = 'idle';
+  liftFrame = window.requestAnimationFrame(() => {
+    openingPhase.value = 'lifting';
+  });
+  turnTimer = window.setTimeout(() => {
+    openingPhase.value = 'turning';
+  }, 170);
   openTimer = window.setTimeout(() => {
     openingBookId.value = '';
+    openingPhase.value = 'idle';
+    bookTransitionMetrics.value = null;
     emit('select', id);
-  }, 210);
+  }, 540);
 }
 
 onScopeDispose(() => {
   if (openTimer !== undefined) window.clearTimeout(openTimer);
+  if (turnTimer !== undefined) window.clearTimeout(turnTimer);
+  if (liftFrame !== undefined) window.cancelAnimationFrame(liftFrame);
   shelfObserver?.disconnect();
 });
 
@@ -150,6 +238,10 @@ onMounted(() => {
   cursor: default;
 }
 
+.pc-book-item.opening .pc-book-cover {
+  opacity: 0;
+}
+
 .pc-book-cover {
   position: relative;
   display: grid;
@@ -172,13 +264,6 @@ onMounted(() => {
   transition:
     transform 0.21s ease-out,
     box-shadow 0.21s ease-out;
-}
-
-.pc-book-item.opening .pc-book-cover {
-  transform: translateX(3px) rotateY(-28deg);
-  box-shadow:
-    -1px 0 2px rgba(0, 0, 0, 0.12),
-    8px 5px 12px rgba(0, 0, 0, 0.18);
 }
 
 .pc-book-cover[data-paper='a4'] {
@@ -273,6 +358,72 @@ onMounted(() => {
 .pc-add-cover {
   border-style: dashed;
   box-shadow: none;
+}
+
+.pc-book-transition-layer {
+  position: absolute;
+  z-index: 100;
+  inset: 0;
+  overflow: hidden;
+  pointer-events: auto;
+  perspective: 1200px;
+}
+
+.pc-book-transition-volume {
+  position: absolute;
+  top: var(--pc-book-start-top);
+  left: var(--pc-book-start-left);
+  width: var(--pc-book-start-width);
+  height: var(--pc-book-start-height);
+  transform-style: preserve-3d;
+  transition:
+    top 0.17s cubic-bezier(0.2, 0.78, 0.22, 1),
+    left 0.17s cubic-bezier(0.2, 0.78, 0.22, 1),
+    width 0.17s cubic-bezier(0.2, 0.78, 0.22, 1),
+    height 0.17s cubic-bezier(0.2, 0.78, 0.22, 1);
+}
+
+.pc-book-transition-layer:is(.is-lifting, .is-turning) .pc-book-transition-volume {
+  top: var(--pc-book-target-top);
+  left: var(--pc-book-target-left);
+  width: var(--pc-book-target-width);
+  height: var(--pc-book-target-height);
+}
+
+.pc-book-transition-page {
+  position: absolute;
+  z-index: 1;
+  inset: 0;
+  border: 1px solid var(--pc-border);
+  border-radius: 4px 10px 10px 4px;
+  background-color: var(--pc-bg);
+  background-image: var(--pc-paper-texture);
+  background-position: center;
+  background-size: cover;
+  box-shadow: 8px 8px 28px rgba(0, 0, 0, 0.18);
+  opacity: 0;
+  transition: opacity 0.12s ease-out;
+}
+
+.pc-book-transition-cover {
+  position: absolute;
+  z-index: 2;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  backface-visibility: visible;
+  transition:
+    transform 0.34s cubic-bezier(0.3, 0.72, 0.2, 1),
+    box-shadow 0.34s ease-out;
+}
+
+.pc-book-transition-layer.is-turning .pc-book-transition-page {
+  opacity: 1;
+}
+
+.pc-book-transition-layer.is-turning .pc-book-transition-cover {
+  transform: rotateY(-162deg);
+  box-shadow: -12px 8px 28px rgba(0, 0, 0, 0.22);
 }
 
 @media (prefers-reduced-motion: reduce) {

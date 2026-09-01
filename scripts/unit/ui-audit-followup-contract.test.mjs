@@ -22,7 +22,8 @@ test('home categories and generation tasks share one discoverable horizontal scr
   assert.match(horizontalFrame, /aria-label="向右浏览"/u);
   assert.match(horizontalDrag, /canScrollBackward/u);
   assert.match(horizontalDrag, /canScrollForward/u);
-  assert.match(horizontalDrag, /event\.shiftKey/u);
+  assert.match(horizontalDrag, /horizontalGesture \? event\.deltaX : event\.deltaY/u);
+  assert.match(horizontalDrag, /if \(target\.value\.scrollLeft !== previous\) event\.preventDefault\(\)/u);
   assert.match(taskCenter, /touch-action:\s*pan-x pan-y/u);
 });
 

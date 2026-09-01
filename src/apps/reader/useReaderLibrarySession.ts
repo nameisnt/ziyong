@@ -4,6 +4,7 @@ import { buildChatScopeKey, normalizeChatArchiveId, parseChatScopeKey } from '@/
 import { getOptionalGlobalFunction, getOptionalGlobalValue } from '@/util/runtime';
 
 export interface ReaderLibraryOwner {
+  avatar: string;
   avatarUrl: string;
   characterId: number;
   id: string;
@@ -96,7 +97,7 @@ export function useReaderLibrarySession(options: {
       const rawBriefs = await options.getPastCharacterChats(owner.characterId);
       const normalized = (rawBriefs || [])
         .map(normalizeBrief)
-        .filter((brief): brief is ChatHistoryBriefItem => Boolean(brief));
+        .filter((brief): brief is ChatHistoryBriefItem => brief !== null && brief.messageCount !== 0);
       const nextBooks = new Map<string, ReaderLibraryBook>();
       normalized.forEach(brief => {
         const chatId = normalizeChatArchiveId(brief.fileName);
@@ -148,6 +149,7 @@ export function useReaderLibrarySession(options: {
     const name = typeof record.name === 'string' && record.name.trim() ? record.name.trim() : `角色 ${characterId + 1}`;
     const avatar = typeof record.avatar === 'string' ? record.avatar.trim() : '';
     return {
+      avatar,
       avatarUrl: resolveAvatarUrl(avatar),
       characterId,
       id: `reader_owner_${characterId}`,

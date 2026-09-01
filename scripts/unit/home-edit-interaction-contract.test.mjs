@@ -24,6 +24,7 @@ test('group management assigns selected Apps and keeps ordering on the home grid
   assert.match(layout, /export function createHomeFolder/u);
   assert.match(layout, /export function moveHomeAppsToFolder/u);
   assert.match(layout, /export function renameHomeFolder/u);
+  assert.match(layout, /export function moveHomeFolder/u);
   assert.match(layout, /export function reorderHomeFolderApp/u);
   assert.match(home, /<BulkSelectionCheckbox/u);
   assert.match(home, /@click="moveSelectedApps"/u);
@@ -31,6 +32,8 @@ test('group management assigns selected Apps and keeps ordering on the home grid
   assert.match(home, /v-model="managedHomeGroupId"[\s\S]*aria-label="当前管理分组"/u);
   assert.match(home, /v-model="folderMoveTargetId" class="pc-select" aria-label="目标分组"/u);
   assert.match(home, /@click="renameManagedHomeGroup"/u);
+  assert.match(home, /aria-label="分组前移"[\s\S]*@click="moveManagedHomeGroup\(-1\)"/u);
+  assert.match(home, /aria-label="分组后移"[\s\S]*@click="moveManagedHomeGroup\(1\)"/u);
   assert.match(home, />\s*本组\s*</u);
   assert.match(home, />\s*全部 App\s*</u);
   assert.match(home, /onFolderAppPointerDown/u);

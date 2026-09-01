@@ -23,7 +23,8 @@ test('plugin preset visibility is optional and round-trips through index, files,
   assert.match(model, /hidden\?: boolean/u);
   assert.match(backup, /PluginPresetBackupRecordSchema[\s\S]*?hidden:\s*z\.boolean\(\)\.optional\(\)/u);
   assert.match(store, /hidden:\s*item\.hidden === true/u);
-  assert.match(store, /version:\s*4/u);
+  assert.match(store, /version:\s*5/u);
+  assert.match(store, /pendingDeletes:/u);
   assert.match(store, /async function setHidden/u);
   assert.match(store, /getDefaultAppIds\(id\)/u);
   assert.match(store, /内置插件预设/u);

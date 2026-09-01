@@ -29,3 +29,10 @@ test('worldbook copy preserves source fields and assigns a new raw uid', () => {
   assert.match(duplicateSource, /rawEntries\.push\(copy\)/u);
   assert.match(duplicateSource, /createWorldbookEntries/u);
 });
+
+test('worldbook helper failures are verified before any raw fallback write', () => {
+  assert.match(apiSource, /verifyRawWorldbookAfterFailure/u);
+  assert.match(apiSource, /worldbookEntriesEqual\(before, after\)/u);
+  assert.match(apiSource, /entryMatchesPatch\(additions\[0\], patch\)/u);
+  assert.match(apiSource, /实际结果无法确认，已停止再次写入/u);
+});

@@ -129,6 +129,10 @@ test('Profiles App reads and writes external tables without legacy phone profile
   assert.match(profilesApp, /stopBridge\?\.stop\(\)/u);
   assert.match(profilesApp, /repository\.updateRow/u);
   assert.match(profilesApp, /JSON\.stringify\(currentRow\.cells\) !== JSON\.stringify\(rowEditOriginalCells\.value\)/u);
+  assert.match(profilesApp, /externalProfileColumnWriteIssue/u);
+  assert.match(profilesApp, /原表头为空，外部数据库无法安全定位此列/u);
+  assert.match(profilesApp, /原表头“\$\{column\.sourceLabel\}”重复/u);
+  assert.match(profilesApp, /<strong>\{\{ getExternalProfileRowLabel\(activeTable, row\) \}\}<\/strong>/u);
   assert.match(profilesApp, /route\.page === 'row-edit'/u);
   assert.doesNotMatch(profilesApp, /legacyProfiles\.(?:entries|tables|createEntry|updateEntry|deleteEntry)/u);
 });

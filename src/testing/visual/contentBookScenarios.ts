@@ -155,6 +155,9 @@ export async function applyContentBookVisualScenario(name: string, dependencies:
   } else if (name === 'summary-import' || name === 'summary-generate' || name === 'summary-batch') {
     const book = createSummaryFixture();
     if (name === 'summary-batch') {
+      const generationSettings = useSettingsStore().settings.generation;
+      generationSettings.outputCleaningEnabled = true;
+      generationSettings.outputCleaningEndTags = '</think>';
       const generationRecord = dependencies.createHiddenGenerationRecord('generate', '批量中途预览');
       generationRecord.reasoning = '先整理楼层事件，再归纳本段剧情推进。';
       const firstJobId = 'visual_summary_batch_1_5';
@@ -305,6 +308,16 @@ export async function applyContentBookVisualScenario(name: string, dependencies:
           shelf: document.querySelector('.pc-bookshelf')?.textContent?.trim() || '',
         })}`,
       );
+    }
+  } else if (name === 'diary-bookshelf-responsive' || name === 'diary-bookshelf-responsive-dark') {
+    const diary = useDiaryStore();
+    diary.resetCurrentScope();
+    for (const name of ['林见夏', '周临川', '闻溪', '沈砚', '许棠', '程叙', '姜遥', '顾舟', '陆青']) {
+      diary.ensureBook({ name }, `${name}的日记`);
+    }
+    resetPhoneToRoute('diary', 'root', '日记');
+    if (!(await waitForCondition(() => document.querySelectorAll('.pc-bookshelf .pc-book-item').length === 10))) {
+      throw new Error('Responsive bookshelf fixture did not render nine books and the create entry');
     }
   } else if (name === 'diary-creation-mode' || name === 'diary-batch') {
     if (name === 'diary-batch') {

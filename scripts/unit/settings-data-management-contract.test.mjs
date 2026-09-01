@@ -9,6 +9,7 @@ const dataManagement = await readFile(
   new URL('../../src/apps/settings/SettingsDataManagementPage.vue', import.meta.url),
   'utf8',
 );
+const favoritesStore = await readFile(new URL('../../src/store/favorites.ts', import.meta.url), 'utf8');
 
 test('settings data management uses one current/all table without an app transfer selector', () => {
   assert.doesNotMatch(phoneOverlay, /aria-label="内容迁移"|ContentTransferOverlay|getAppContentTransferDomains/u);
@@ -33,4 +34,13 @@ test('backup and restore actions move together and keep their explicit labels', 
   assert.match(dataManagement, /downloadCurrentChatPhoneBackup/u);
   assert.match(dataManagement, /importPhoneBackupScopeToCurrentChat/u);
   assert.match(dataManagement, /applyPhoneBackup/u);
+});
+
+test('backup rehydration can reset transient favorites selection state', () => {
+  assert.match(dataManagement, /favorites\.clearSelection\(\)/u);
+  assert.match(favoritesStore, /function clearSelection\(\)/u);
+  assert.match(favoritesStore, /filter\.value = 'all'/u);
+  assert.match(favoritesStore, /query\.value = ''/u);
+  assert.match(favoritesStore, /listScrollTop\.value = 0/u);
+  assert.match(favoritesStore, /clearSelection,/u);
 });

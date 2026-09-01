@@ -780,10 +780,14 @@
 .pc-phone-root .pc-editor-card,
 .pc-phone-root .pc-section-card {
   display: grid;
+  min-width: 0;
+  max-width: 100%;
   gap: 12px;
   border: 1px solid var(--pc-border);
   border-radius: var(--pc-card-radius);
   background: color-mix(in srgb, var(--pc-surface) 72%, transparent 28%);
+  overflow-wrap: anywhere;
+  word-break: break-word;
 }
 
 .pc-phone-root .pc-section-card {
@@ -814,11 +818,15 @@
 .pc-phone-root .pc-app-fill {
   height: 100%;
   min-height: 0;
+  min-width: 0;
+  max-width: 100%;
 }
 
 .pc-phone-root .pc-page-stack {
   display: flex;
   min-height: 100%;
+  min-width: 0;
+  max-width: 100%;
   flex-direction: column;
   gap: 14px;
 }
@@ -826,6 +834,9 @@
 .pc-phone-root .pc-page-grid {
   display: grid;
   min-height: 100%;
+  min-width: 0;
+  max-width: 100%;
+  grid-template-columns: minmax(0, 1fr);
   align-content: start;
   gap: 14px;
 }
@@ -836,9 +847,25 @@
 
 .pc-phone-root .pc-page-section {
   display: grid;
+  min-width: 0;
+  grid-template-columns: minmax(0, 1fr);
   gap: 12px;
   padding: 8px 0;
   border-bottom: 1px solid var(--pc-border);
+}
+
+.pc-phone-root .pc-status-card {
+  min-width: 0;
+  max-width: 100%;
+}
+
+.pc-phone-root .pc-status-card > * {
+  min-width: 0;
+}
+
+.pc-phone-root .pc-status-card p {
+  overflow-wrap: anywhere;
+  word-break: break-word;
 }
 
 .pc-phone-root .pc-page-section:first-child {
@@ -950,8 +977,22 @@
 
 .pc-phone-root .pc-list-row-copy small,
 .pc-phone-root .pc-list-row-meta {
+  min-width: 0;
   color: var(--pc-muted);
   font-size: 12px;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+
+.pc-phone-root .pc-error-list {
+  display: grid;
+  min-width: 0;
+  max-width: 100%;
+  gap: 4px;
+  color: var(--pc-danger);
+  font-size: 12px;
+  overflow-wrap: anywhere;
+  word-break: break-word;
 }
 
 .pc-phone-root .pc-list-row-meta {

@@ -1437,14 +1437,25 @@ async function copyText(text: string, successMessage: string) {
   font-size: 12px;
 }
 
+.pc-task-variable-summary > span > span {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
 .pc-task-variable-summary {
   display: grid;
   width: 100%;
 }
 
 .pc-task-variable-summary code {
+  flex: 0 1 46%;
+  min-width: 0;
+  max-width: 46%;
   color: var(--pc-theme-accent);
   font-size: 11px;
+  overflow-wrap: anywhere;
+  word-break: break-word;
 }
 
 .pc-group-actions {

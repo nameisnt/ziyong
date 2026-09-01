@@ -9,7 +9,9 @@ test('bookshelf derives evenly distributed rows from its measured container widt
   assert.match(source, /new ResizeObserver/u);
   assert.match(source, /Math\.floor\(\(width \+ 15\) \/ 99\)/u);
   assert.match(source, /shelfItems\.value\.length; index \+= columnCount\.value/u);
+  assert.match(source, /'--pc-shelf-column-count': columnCount/u);
   assert.match(source, /repeat\(var\(--pc-shelf-column-count\), minmax\(0, 1fr\)\)/u);
+  assert.doesNotMatch(source, /'--pc-shelf-column-count': row\.length/u);
   assert.doesNotMatch(source, /index \+= 3/u);
 });
 

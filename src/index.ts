@@ -1,6 +1,5 @@
 import '@/global.css';
 import { ensureNativeLauncher } from '@/core/nativeLauncher';
-import { scheduleIdleTask } from '@/util/idleTask';
 
 const BUILD_MARKER = '2026-07-27-audit-fixes';
 
@@ -54,7 +53,6 @@ async function openFromEmergencyLauncher(event?: Event) {
 function boot() {
   window.__sillytavernPhoneBuild__ = BUILD_MARKER;
   ensureNativeLauncher(openFromEmergencyLauncher, BUILD_MARKER);
-  scheduleIdleTask(() => void loadPanel().catch(() => undefined), 1500);
 }
 
 if (document.readyState === 'loading') {

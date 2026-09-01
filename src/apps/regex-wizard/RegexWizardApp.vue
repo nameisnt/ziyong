@@ -746,9 +746,13 @@ watch(
 }
 
 .pc-regex-wizard-error {
+  min-width: 0;
+  max-width: 100%;
   color: var(--pc-danger);
   font-size: 12px;
   line-height: 1.5;
+  overflow-wrap: anywhere;
+  word-break: break-word;
 }
 
 .pc-regex-wizard-match-list {

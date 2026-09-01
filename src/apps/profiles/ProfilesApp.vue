@@ -155,7 +155,7 @@
           <button class="pc-external-profile-card-open" type="button" @click="openRow(row)">
             <header>
               <span>#{{ row.index }}</span>
-              <strong>{{ externalProfileRowIdentifier(activeTable, row) }}</strong>
+              <strong>{{ getExternalProfileRowLabel(activeTable, row) }}</strong>
               <i class="fa-solid fa-chevron-right"></i>
             </header>
             <dl>
@@ -271,16 +271,18 @@
             v-if="isMultilineEditField(column.index)"
             v-model="rowEditDraft[column.index]"
             class="pc-area compact"
-            :disabled="isExternalProfileIdentifierColumn(column) || rowEditSaving"
+            :disabled="Boolean(externalProfileColumnWriteIssue(activeRowTable, column)) || rowEditSaving"
           ></textarea>
           <input
             v-else
             v-model="rowEditDraft[column.index]"
             class="pc-field"
             type="text"
-            :disabled="isExternalProfileIdentifierColumn(column) || rowEditSaving"
+            :disabled="Boolean(externalProfileColumnWriteIssue(activeRowTable, column)) || rowEditSaving"
           />
-          <small v-if="isExternalProfileIdentifierColumn(column)" class="pc-help-text">标识列由外部数据库管理</small>
+          <small v-if="externalProfileColumnWriteIssue(activeRowTable, column)" class="pc-help-text">
+            {{ externalProfileColumnWriteIssue(activeRowTable, column) }}
+          </small>
         </label>
       </section>
 
@@ -455,9 +457,13 @@ const activeTableCountLabel = computed(() =>
   activeTable.value ? `${activeTable.value.rows.length} 行 · ${activeTable.value.columns.length} 列` : '外部资料表',
 );
 
-function externalProfileRowIdentifier(table: ExternalProfileTable, row: ExternalProfileRow) {
-  const column = table.columns.find(isExternalProfileIdentifierColumn);
-  return (column ? row.cells[column.index] : '') || getExternalProfileRowLabel(table, row);
+function externalProfileColumnWriteIssue(table: ExternalProfileTable, column: ExternalProfileTable['columns'][number]) {
+  if (isExternalProfileIdentifierColumn(column)) return '标识列由外部数据库管理';
+  if (!column.sourceLabel) return '原表头为空，外部数据库无法安全定位此列';
+  if (table.columns.filter(candidate => candidate.sourceLabel === column.sourceLabel).length > 1) {
+    return `原表头“${column.sourceLabel}”重复，外部数据库无法安全定位此列`;
+  }
+  return '';
 }
 
 function isCompactExternalProfileValue(value: string) {
@@ -524,7 +530,7 @@ async function saveRowEdit() {
 
     const values = Object.fromEntries(
       table.columns
-        .filter(column => column.sourceLabel && !isExternalProfileIdentifierColumn(column))
+        .filter(column => !externalProfileColumnWriteIssue(table, column))
         .map(column => [column.sourceLabel, rowEditDraft.value[column.index] || '']),
     );
     await repository.updateRow(table.key, row.index, values);

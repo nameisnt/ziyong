@@ -312,7 +312,11 @@ import {
 import { areChatScopeKeysEquivalent } from '@/store/chatScoped';
 import { useGenerationTaskStore } from '@/store/generationTasks';
 import { usePhoneStore } from '@/store/phone';
-import { getChatScopeMigrationSourceKeys, migratePhoneChatScopes } from '@/util/chatScopeRename';
+import {
+  getChatScopeMigrationSourceKeys,
+  migratePhoneChatScopes,
+  type TavernChatRenamedEvent,
+} from '@/util/chatScopeRename';
 import { createChatArchiveDomainReader, normalizeChatArchiveId } from '@/util/chatArchive';
 import { jumpToTavernChat } from '@/util/tavernNavigation';
 import {
@@ -327,6 +331,7 @@ import {
   type ChatFloorBackup,
 } from '@/util/chatFloorBackup';
 import { renameTavernCharacterChat } from '@/util/tavernChatRename';
+import { onTavernChatRename } from '@/util/tavernChatRenameObserver';
 import { storeToRefs } from 'pinia';
 
 const phone = usePhoneStore();
@@ -372,6 +377,8 @@ const currentBackupIsLonger = computed(() =>
   Boolean(currentFloorBackup.value && currentFloorBackup.value.messages.length > getCurrentChatFloorMessageCount()),
 );
 const selectedFloorBackup = computed(() => selectedChat.value?.floorBackup ?? null);
+const stopNativeChatRename = onTavernChatRename(payload => refreshArchiveAfterNativeChatRename(payload));
+onBeforeUnmount(() => stopNativeChatRename.stop());
 const floorBackupSummary = computed(() => {
   const backup = selectedFloorBackup.value;
   if (!backup)
@@ -636,15 +643,16 @@ async function renameSelectedChat() {
   const owner = activeOwner.value;
   const chat = selectedChat.value;
   if (!owner || !chat || owner.kind !== 'char' || owner.characterId === null) return;
+  const currentName = normalizeChatArchiveId(chat.title);
   const requested = await phone.promptNotice('输入新的酒馆聊天名。改名成功后，手机内容与本地楼层备份会一起迁移。', {
     confirmLabel: '改名',
-    initialValue: chat.title,
+    initialValue: currentName,
     placeholder: '聊天名',
     title: '聊天改名',
   });
   const newName = requested?.trim();
-  if (!newName || newName === chat.title) return;
-  const confirmed = await phone.confirmNotice(`确认把“${chat.title}”改名为“${newName}”吗？`, {
+  if (!newName || normalizeChatArchiveId(newName) === currentName) return;
+  const confirmed = await phone.confirmNotice(`确认把“${currentName}”改名为“${newName}”吗？`, {
     confirmLabel: '确认改名',
     kind: 'warning',
   });
@@ -674,6 +682,40 @@ async function renameSelectedChat() {
   } catch (caughtError) {
     toastr.error(caughtError instanceof Error ? caughtError.message : '聊天改名失败');
   }
+}
+
+function isRenameForOwner(owner: ArchiveOwner, payload: TavernChatRenamedEvent) {
+  if (owner.kind !== 'char' || !payload.avatarId) return false;
+  const avatar = payload.avatarId.trim().toLowerCase();
+  const avatarWithoutExtension = avatar.replace(/\.[^/.]+$/, '');
+  return [...owner.aliases, owner.avatar].some(alias => {
+    const normalized = alias.trim().toLowerCase();
+    return normalized === avatar || normalized.replace(/\.[^/.]+$/, '') === avatarWithoutExtension;
+  });
+}
+
+async function refreshArchiveAfterNativeChatRename(payload: TavernChatRenamedEvent) {
+  const owner = activeOwner.value;
+  const oldChatId = normalizeChatArchiveId(payload.oldFileName ?? '');
+  const newChatId = normalizeChatArchiveId(payload.newFileName ?? '');
+  if (!owner || !oldChatId || !newChatId || !isRenameForOwner(owner, payload)) return;
+
+  const ownerKey = owner.key;
+  const selectedPage = route.value.page;
+  const selectedChatId = normalizeChatArchiveId(route.value.params?.chatKey ?? selectedChat.value?.key ?? '');
+  const shouldFollowRename =
+    (selectedPage === 'detail' || selectedPage === 'floor-backup') && selectedChatId === oldChatId;
+  await loadCharacters(true);
+  if (activeOwner.value?.key !== ownerKey) return;
+  await loadChatsForActiveOwner(true);
+  if (!shouldFollowRename) return;
+
+  const renamedChat = chatRows.value.find(item => item.key === newChatId) ?? null;
+  selectedChat.value = renamedChat;
+  selectedDomains.value = renamedChat?.domains ?? [];
+  if (!renamedChat) return;
+  await phone.setViewingScope(renamedChat.scopeKey, { chatTitle: renamedChat.title, ownerName: owner.name }, true);
+  phone.replacePage(selectedPage, renamedChat.title, { chatKey: renamedChat.key, ownerKey });
 }
 
 async function jumpSelectedChatToTavern() {

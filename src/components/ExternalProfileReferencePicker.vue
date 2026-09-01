@@ -121,8 +121,12 @@ watch(() => props.sheetKey, refresh, { immediate: true });
   gap: 8px;
 }
 .pc-external-profile-error {
+  min-width: 0;
+  max-width: 100%;
   margin: 0;
   color: var(--pc-danger);
   font-size: 12px;
+  overflow-wrap: anywhere;
+  word-break: break-word;
 }
 </style>

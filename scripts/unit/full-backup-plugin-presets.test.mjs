@@ -46,6 +46,15 @@ test('plugin preset replacement and repository boundaries remain transactional',
   assert.match(pluginPresetStore, /replaceBackupBundle/);
   assert.match(pluginPresetStore, /loadError\.value/);
   assert.match(pluginPresetStore, /const records = await exportBackupRecords\(\)/);
+  assert.match(pluginPresetStore, /pendingDeletes\.value = \[\.\.\.new Set/u);
+  assert.match(pluginPresetStore, /cleanupResults = await Promise\.allSettled/u);
+  assert.doesNotMatch(
+    pluginPresetStore.slice(
+      pluginPresetStore.indexOf('async function saveRecord'),
+      pluginPresetStore.indexOf('function getById'),
+    ),
+    /deleteRecordFile/u,
+  );
   assert.match(repositoryStore, /repositorySchemaVersion:\s*1/);
   assert.match(repositoryStore, /const backup = buildPhoneBackup\(\)/);
   assert.match(repositoryStore, /await\s+presetStore\.exportBackupRecords\(\)/);

@@ -15,6 +15,8 @@ type UpdateScriptTrees = (
 ) => ScriptTree[];
 type ReplaceScriptTrees = (trees: TypeFest.PartialDeep<ScriptTree>[], options: { type: ScriptScope }) => void;
 
+type ScriptScopeChanges = Partial<Record<ScriptScope, ScriptTree[]>>;
+
 function requireScriptApi() {
   const getTrees = getOptionalGlobalFunction<GetScriptTrees>('getScriptTrees');
   const updateTrees = getOptionalGlobalFunction<UpdateScriptTrees>('updateScriptTreesWith');
@@ -22,6 +24,52 @@ function requireScriptApi() {
     throw new Error('酒馆助手脚本接口不可用');
   }
   return { getTrees, updateTrees };
+}
+
+function isScriptTree(value: unknown): value is ScriptTree {
+  if (!value || typeof value !== 'object') return false;
+  const node = value as Partial<ScriptTree>;
+  if (node.type === 'script') return true;
+  return (
+    node.type === 'folder' && Array.isArray(node.scripts) && node.scripts.every(script => script?.type === 'script')
+  );
+}
+
+function runScriptScopeTransaction(buildChanges: (snapshot: Record<ScriptScope, ScriptTree[]>) => ScriptScopeChanges) {
+  const { getTrees } = requireScriptApi();
+  const replaceTrees = getOptionalGlobalFunction<ReplaceScriptTrees>('replaceScriptTrees');
+  if (!replaceTrees) throw new Error('酒馆助手脚本替换接口不可用');
+
+  const snapshot = Object.fromEntries(
+    SCRIPT_SCOPES.map(scope => [scope.id, structuredClone(getTrees({ type: scope.id }))]),
+  ) as Record<ScriptScope, ScriptTree[]>;
+  const changes = buildChanges(structuredClone(snapshot));
+  for (const scope of SCRIPT_SCOPES) {
+    const trees = changes[scope.id];
+    if (trees && !trees.every(isScriptTree)) throw new Error(`${scope.label}脚本树格式无效`);
+  }
+
+  const applied: ScriptScope[] = [];
+  try {
+    for (const scope of SCRIPT_SCOPES) {
+      const trees = changes[scope.id];
+      if (!trees) continue;
+      replaceTrees(trees, { type: scope.id });
+      applied.push(scope.id);
+    }
+  } catch (error) {
+    const rollbackErrors: unknown[] = [];
+    for (const scope of applied.reverse()) {
+      try {
+        replaceTrees(snapshot[scope], { type: scope });
+      } catch (rollbackError) {
+        rollbackErrors.push(rollbackError);
+      }
+    }
+    if (rollbackErrors.length)
+      throw new AggregateError([error, ...rollbackErrors], '助手脚本写入失败，且部分作用域回滚失败');
+    throw error;
+  }
 }
 
 export function readAllScriptTrees() {
@@ -42,12 +90,14 @@ export function listAssistantScriptCatalog(): ScriptScopeCatalog[] {
 }
 
 export function removeAssistantScripts(items: ScriptListItem[]) {
-  const { updateTrees } = requireScriptApi();
-  for (const scope of SCRIPT_SCOPES) {
-    const ids = new Set(items.filter(item => item.scope === scope.id).map(item => item.id));
-    if (!ids.size) continue;
-    updateTrees(trees => pruneScriptTrees(trees, ids), { type: scope.id });
-  }
+  runScriptScopeTransaction(snapshot =>
+    Object.fromEntries(
+      SCRIPT_SCOPES.flatMap(scope => {
+        const ids = new Set(items.filter(item => item.scope === scope.id).map(item => item.id));
+        return ids.size ? [[scope.id, pruneScriptTrees(snapshot[scope.id], ids)]] : [];
+      }),
+    ),
+  );
 }
 
 export type AssistantScriptBundle = {
@@ -64,23 +114,18 @@ export function importAssistantScriptBundle(value: unknown) {
   if (bundle?.format !== 'sillytavern-phone-script-bundle-v1' || !bundle.script_trees) {
     throw new Error('不是本插件导出的助手脚本文件');
   }
-  const replaceTrees = getOptionalGlobalFunction<ReplaceScriptTrees>('replaceScriptTrees');
-  if (!replaceTrees) throw new Error('酒馆助手脚本替换接口不可用');
+  const changes: ScriptScopeChanges = {};
   for (const scope of SCRIPT_SCOPES) {
     const trees = bundle.script_trees[scope.id];
     if (!Array.isArray(trees)) throw new Error(`缺少${scope.label}脚本树`);
-    replaceTrees(trees, { type: scope.id });
+    if (!trees.every(isScriptTree)) throw new Error(`${scope.label}脚本树格式无效`);
+    changes[scope.id] = structuredClone(trees);
   }
+  runScriptScopeTransaction(() => changes);
 }
 
 function createScriptTreeId(type: ScriptTree['type']) {
   return `phone_import_${type}_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
-}
-
-function isScriptTree(value: unknown): value is ScriptTree {
-  if (!value || typeof value !== 'object') return false;
-  const node = value as Partial<ScriptTree>;
-  return node.type === 'script' || (node.type === 'folder' && Array.isArray(node.scripts));
 }
 
 function prepareImportedTree(value: ScriptTree): ScriptTree {
@@ -131,10 +176,9 @@ export function renameAssistantScriptFolder(scope: ScriptScope, folderId: string
   const name = folderName.trim();
   if (!name) throw new Error('分组名称不能为空');
   const { updateTrees } = requireScriptApi();
-  updateTrees(
-    trees => trees.map(node => (node.type === 'folder' && node.id === folderId ? { ...node, name } : node)),
-    { type: scope },
-  );
+  updateTrees(trees => trees.map(node => (node.type === 'folder' && node.id === folderId ? { ...node, name } : node)), {
+    type: scope,
+  });
 }
 
 export function setAssistantScriptFolderEnabled(scope: ScriptScope, folderId: string, enabled: boolean) {
@@ -171,14 +215,13 @@ export function getAssistantScriptFolder(scope: ScriptScope, folderId: string) {
 export function moveAssistantScriptsToFolder(items: ScriptListItem[], folderName: string) {
   const name = folderName.trim();
   if (!name) throw new Error('分组名称不能为空');
-  const { updateTrees } = requireScriptApi();
-  for (const scope of SCRIPT_SCOPES) {
-    const selected = items.filter(item => item.scope === scope.id);
-    if (!selected.length) continue;
-    const ids = new Set(selected.map(item => item.id));
-    updateTrees(
-      trees => {
-        const next = pruneScriptTrees(trees, ids);
+  runScriptScopeTransaction(snapshot =>
+    Object.fromEntries(
+      SCRIPT_SCOPES.flatMap(scope => {
+        const selected = items.filter(item => item.scope === scope.id);
+        if (!selected.length) return [];
+        const ids = new Set(selected.map(item => item.id));
+        const next = pruneScriptTrees(snapshot[scope.id], ids);
         const target = next.find((node): node is ScriptFolder => node.type === 'folder' && node.name === name);
         if (target) target.scripts.push(...selected.map(item => item.script));
         else {
@@ -192,9 +235,8 @@ export function moveAssistantScriptsToFolder(items: ScriptListItem[], folderName
             type: 'folder',
           });
         }
-        return next;
-      },
-      { type: scope.id },
-    );
-  }
+        return [[scope.id, next]];
+      }),
+    ),
+  );
 }

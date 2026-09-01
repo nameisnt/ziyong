@@ -90,21 +90,27 @@ function rewriteScopeReferences(
 function getCharacterAliases(avatarId: string) {
   const aliases = new Set<string>();
   const normalizedAvatar = avatarId.trim();
-  [normalizedAvatar, normalizedAvatar.replace(/\.[^/.]+$/, '')].filter(Boolean).forEach(alias => aliases.add(alias));
 
   const characters = getOptionalGlobalValue<unknown[]>('characters');
-  if (!Array.isArray(characters)) return aliases;
+  if (!Array.isArray(characters)) {
+    [normalizedAvatar, normalizedAvatar.replace(/\.[^/.]+$/, '')].filter(Boolean).forEach(alias => aliases.add(alias));
+    return aliases;
+  }
   const characterIndex = characters.findIndex(character => {
     if (!isRecord(character)) return false;
     return typeof character.avatar === 'string' && character.avatar.trim() === normalizedAvatar;
   });
-  if (characterIndex < 0) return aliases;
+  if (characterIndex < 0) {
+    [normalizedAvatar, normalizedAvatar.replace(/\.[^/.]+$/, '')].filter(Boolean).forEach(alias => aliases.add(alias));
+    return aliases;
+  }
 
   aliases.add(String(characterIndex));
   const character = characters[characterIndex];
   if (isRecord(character) && typeof character.name === 'string' && character.name.trim()) {
     aliases.add(character.name.trim());
   }
+  [normalizedAvatar, normalizedAvatar.replace(/\.[^/.]+$/, '')].filter(Boolean).forEach(alias => aliases.add(alias));
   return aliases;
 }
 
@@ -119,15 +125,20 @@ function getRenameScopeKeys(event: TavernChatRenamedEvent) {
   const kind = groupId ? 'group' : 'char';
   const aliases = groupId ? new Set([groupId]) : getCharacterAliases(event.avatarId ?? '');
 
-  if (currentScope.kind === kind && currentScope.chatId === newChatId) {
+  const isCurrentRename =
+    currentScope.kind === kind && (currentScope.chatId === oldChatId || currentScope.chatId === newChatId);
+  if (isCurrentRename) {
     getCurrentOwnerAliases(currentScope).forEach(alias => aliases.add(alias));
   }
   if (!aliases.size || (kind === 'char' && aliases.size === 1 && aliases.has(''))) return null;
 
-  const targetScopeKey =
-    currentScope.kind === kind && currentScope.chatId === newChatId
-      ? currentScopeKey
-      : buildChatScopeKey(kind, [...aliases][0], newChatId);
+  const avatarId = (event.avatarId ?? '').trim();
+  const targetOwnerId = isCurrentRename
+    ? currentScope.ownerId
+    : kind === 'group'
+      ? groupId
+      : avatarId || [...aliases][0];
+  const targetScopeKey = buildChatScopeKey(kind, targetOwnerId, newChatId);
   const sourceScopeKeys = [...aliases].map(alias => buildChatScopeKey(kind, alias, oldChatId));
   return { sourceScopeKeys, targetScopeKey };
 }

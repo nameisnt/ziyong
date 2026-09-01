@@ -80,6 +80,10 @@ test('shared bookshelves derive covers from paper identity without business grad
 test('bookshelves play a short reduced-motion-aware opening transition before navigation', () => {
   assert.match(bookShelf, /openingBookId\.value = id/u);
   assert.match(bookShelf, /prefers-reduced-motion:\s*reduce/u);
-  assert.match(bookShelf, /window\.setTimeout\(\(\) => \{[\s\S]*emit\('select', id\);[\s\S]*\}, 210\)/u);
-  assert.match(bookShelf, /\.pc-book-item\.opening \.pc-book-cover\s*\{[\s\S]*rotateY\(-28deg\)/u);
+  assert.match(bookShelf, /targetLeft: shellBounds\.width \/ 2/u);
+  assert.match(bookShelf, /window\.setTimeout\(\(\) => \{[\s\S]*emit\('select', id\);[\s\S]*\}, 540\)/u);
+  assert.match(
+    bookShelf,
+    /\.pc-book-transition-layer\.is-turning \.pc-book-transition-cover\s*\{[\s\S]*rotateY\(-162deg\)/u,
+  );
 });

@@ -145,7 +145,12 @@ export function normalizeHomeLayout(layout: HomeScreenLayout): HomeScreenLayout 
     const token = homeFolderToken(folder.id);
     if (!appOrder.includes(token)) appOrder.push(token);
   });
-  return { appOrder, dockOrder, folders, version: HOME_LAYOUT_VERSION };
+  const folderById = new Map(folders.map(folder => [folder.id, folder]));
+  const orderedFolders = appOrder.flatMap(token => {
+    const folder = folderById.get(readHomeFolderToken(token));
+    return folder ? [folder] : [];
+  });
+  return { appOrder, dockOrder, folders: orderedFolders, version: HOME_LAYOUT_VERSION };
 }
 
 export function migrateHomeLayoutDockCapacity(layout: HomeScreenLayout, _dockCapacity = 5): HomeScreenLayout {
@@ -218,6 +223,17 @@ export function renameHomeFolder(layout: HomeScreenLayout, folderId: string, nam
     ...normalized,
     folders: normalized.folders.map(folder => (folder.id === folderId ? { ...folder, name: nextName } : folder)),
   });
+}
+
+export function moveHomeFolder(layout: HomeScreenLayout, folderId: string, direction: -1 | 1) {
+  const normalized = normalizeHomeLayout(layout);
+  const token = homeFolderToken(folderId);
+  const currentIndex = normalized.appOrder.indexOf(token);
+  const targetIndex = currentIndex + direction;
+  if (currentIndex < 0 || targetIndex < 0 || targetIndex >= normalized.appOrder.length) return normalized;
+  const appOrder = [...normalized.appOrder];
+  [appOrder[currentIndex], appOrder[targetIndex]] = [appOrder[targetIndex], appOrder[currentIndex]];
+  return normalizeHomeLayout({ ...normalized, appOrder });
 }
 
 export function moveHomeAppsToFolder(layout: HomeScreenLayout, appIds: string[], targetFolderId: string) {

@@ -28,7 +28,8 @@ import PhoneOverlay from '@/components/PhoneOverlay.vue';
 import { useWorldSlotsStore } from '@/apps/world-slots/store';
 import { getCurrentChatScopeKey } from '@/store/chatScoped';
 import { usePhoneStore } from '@/store/phone';
-import { migratePhoneChatRename, type TavernChatRenamedEvent } from '@/util/chatScopeRename';
+import { migratePhoneChatRename } from '@/util/chatScopeRename';
+import { onTavernChatRename } from '@/util/tavernChatRenameObserver';
 import { startChatFloorBackupService } from '@/util/chatFloorBackup';
 import { ensureCurrentScopeRecovery } from '@/util/generationVisibility';
 import { hasVisibilityTransactionRuntime, onTavernEvent } from '@/util/runtime';
@@ -105,8 +106,8 @@ onMounted(() => {
   stopChatChanged = onTavernEvent('CHAT_CHANGED', () => {
     scheduleCurrentScopeRecovery();
   });
-  stopChatRenamed = onTavernEvent('CHAT_RENAMED', payload => {
-    const result = migratePhoneChatRename((payload ?? {}) as TavernChatRenamedEvent);
+  stopChatRenamed = onTavernChatRename(payload => {
+    const result = migratePhoneChatRename(payload);
     if (!result.migrated) return;
     void phone.syncCurrentTavernScope(true, true);
   });

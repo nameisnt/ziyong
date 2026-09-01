@@ -46,3 +46,11 @@ test('ChatArchive delegates catalog loading, grouping and selection to one inter
     assert.doesNotMatch(session, new RegExp(`(?:async )?function ${retainedTransaction}`, 'u'));
   }
 });
+
+test('ChatArchive refreshes its selected route after a native chat rename', () => {
+  assert.match(root, /onTavernChatRename\(payload => refreshArchiveAfterNativeChatRename\(payload\)\)/u);
+  assert.match(root, /normalizeChatArchiveId\(route\.value\.params\?\.chatKey \?\? selectedChat\.value\?\.key \?\? ''\)/u);
+  assert.match(root, /selectedPage === 'detail' \|\| selectedPage === 'floor-backup'/u);
+  assert.match(root, /await loadCharacters\(true\)/u);
+  assert.match(root, /phone\.replacePage\(selectedPage, renamedChat\.title/u);
+});

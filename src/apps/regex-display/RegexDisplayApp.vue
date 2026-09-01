@@ -550,12 +550,6 @@ onBeforeUnmount(() => {
   white-space: pre-wrap;
   overflow-wrap: anywhere;
 }
-.pc-error-list {
-  display: grid;
-  gap: 4px;
-  color: var(--pc-danger);
-  font-size: 12px;
-}
 @media (max-width: 390px) {
   .pc-regex-editor-basic-grid,
   .pc-inline-grid.two-cols {

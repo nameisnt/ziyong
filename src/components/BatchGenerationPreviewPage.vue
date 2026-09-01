@@ -100,7 +100,11 @@ import EmptyState from '@/components/EmptyState.vue';
 import GenerationPreviewPanel from '@/components/GenerationPreviewPanel.vue';
 import type { ManualBatchPreviewEdit, ManualBatchPreviewItem } from '@/core/manualBatchRunner';
 import { usePhoneStore } from '@/store/phone';
+import { useSettingsStore } from '@/store/settings';
 import type { XmlParseResult } from '@/type/generation';
+import { cleanGenerationOutput } from '@/util/generationOutputCleaning';
+import { cleanSavedGenerationReasoning } from '@/util/generationReasoning';
+import { mergeGenerationReasoning } from '@/util/generationResult';
 
 type BatchPreviewParsedData = {
   content: string;
@@ -129,6 +133,7 @@ const drafts = ref<BatchPreviewDraft[]>([]);
 const phone = usePhoneStore();
 const reasoningFilter = ref<ReasoningFilter>('all');
 const saving = ref(false);
+const settingsStore = useSettingsStore();
 
 const activeDraft = computed(() => drafts.value.find(draft => draft.jobId === activeJobId.value) || null);
 const reasoningCount = computed(() => drafts.value.filter(hasReasoning).length);
@@ -217,13 +222,21 @@ function reparseActiveDraft() {
     return false;
   }
 
-  const parsed = props.parseHandler(draft.rawOutput, draft.occurredAt);
+  const generation = settingsStore.settings.generation;
+  const cleanedOutput = cleanGenerationOutput(draft.rawOutput, {
+    enabled: generation.outputCleaningEnabled,
+    endTags: generation.outputCleaningEndTags,
+  });
+  const parsed = props.parseHandler(cleanedOutput.content, draft.occurredAt);
   draft.warnings = [...parsed.warnings];
   if (!parsed.ok) {
     toastr.warning(parsed.warnings.join('；') || '还是没能解析成功');
     return false;
   }
 
+  draft.reasoning = cleanSavedGenerationReasoning(
+    mergeGenerationReasoning(draft.reasoning, cleanedOutput.removedContent),
+  );
   draft.content = parsed.data.content;
   draft.title = parsed.data.title;
   if (props.kind === 'diary') draft.occurredAt = parsed.data.occurredAt || '';

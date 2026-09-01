@@ -21,7 +21,8 @@ test('assistant script manager prunes scripts through the current scope tree and
     scriptModel,
     /result\.push\(\{ \.\.\.node, scripts: node\.scripts\.filter\(script => !ids\.has\(script\.id\)\) \}\)/u,
   );
-  assert.match(scriptApi, /updateTrees\(trees => pruneScriptTrees\(trees, ids\), \{ type: scope\.id \}\)/u);
+  assert.match(scriptApi, /runScriptScopeTransaction\(snapshot =>/u);
+  assert.match(scriptApi, /pruneScriptTrees\(snapshot\[scope\.id\], ids\)/u);
   assert.match(scriptApi, /getOptionalGlobalFunction<GetScriptTrees>\('getScriptTrees'\)/u);
   assert.match(scriptApi, /getOptionalGlobalFunction<UpdateScriptTrees>\('updateScriptTreesWith'\)/u);
   assert.doesNotMatch(scriptApi, /typeof getScriptTrees|typeof updateScriptTreesWith/u);
@@ -39,6 +40,8 @@ test('assistant script manager round-trips all scoped trees through the plugin b
   assert.match(scriptApi, /script_trees: readAllScriptTrees\(\)/u);
   assert.match(scriptApi, /getOptionalGlobalFunction<ReplaceScriptTrees>\('replaceScriptTrees'\)/u);
   assert.match(scriptApi, /replaceTrees\(trees, \{ type: scope\.id \}\)/u);
+  assert.match(scriptApi, /replaceTrees\(snapshot\[scope\], \{ type: scope \}\)/u);
+  assert.match(scriptApi, /new AggregateError\(\[error, \.\.\.rollbackErrors\]/u);
   assert.match(scriptApi, /importAssistantScriptBundle/u);
   assert.match(scriptApp, /importAssistantScriptFile/u);
   assert.match(scriptApi, /prepareImportedTree/u);
@@ -63,6 +66,10 @@ test('extension installation and updates retain scope and refresh the list once 
   );
   assert.match(extensionApp, /await runInstallWorkers\(rows\);[\s\S]*await refreshInstalled\(\)/u);
   assert.match(extensionApp, /sillytavern_phone_extension_metadata/u);
+  assert.match(extensionApp, /notifyExtensionReloadRequired\('扩展更新完成'/u);
+  assert.match(extensionApp, /if \(installedCount\) notifyExtensionReloadRequired\('扩展安装完成'/u);
+  assert.match(extensionApp, /请手动刷新整个 SillyTavern 页面，让扩展重新加载/u);
+  assert.match(extensionApp, /timeoutMs: 0/u);
   assert.doesNotMatch(extensionApp, /location\.reload\(\)/u);
 });
 

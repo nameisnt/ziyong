@@ -394,6 +394,7 @@ import { getCurrentChatScopeKey, isPlaceholderChatScopeKey } from '@/store/chatS
 import { buildChatScopeKey, normalizeChatArchiveId, parseChatScopeKey } from '@/util/chatArchive';
 import { resolveReaderBodySourceRange, type ReaderBodySourceRange } from '@/util/readerRegex';
 import { getTavernInputValue, sendTavernInput } from '@/util/tavernInput';
+import { onTavernChatRename } from '@/util/tavernChatRenameObserver';
 import { characters, getCharacters, getPastCharacterChats } from '@sillytavern/script';
 import { storeToRefs } from 'pinia';
 
@@ -479,6 +480,7 @@ const currentReaderTarget = computed<ReaderChatTarget | null>(() => {
     chatId: currentReaderChatId.value,
     chatTitle: currentReaderChatId.value || '当前聊天',
     isCurrent: true,
+    ownerAvatar: currentReaderOwner.value?.avatar || '',
     ownerName: currentReaderOwner.value?.name || '当前角色',
     scopeKey: phone.currentTavernScopeKey,
   };
@@ -508,6 +510,7 @@ const selectedReaderTarget = computed<ReaderChatTarget | null>(() => {
     chatId,
     chatTitle: route.value.params?.chatTitle || chatId,
     isCurrent: false,
+    ownerAvatar: route.value.params?.ownerAvatar || '',
     ownerName: route.value.params?.ownerName || '历史角色',
     scopeKey: buildChatScopeKey('char', String(characterId), chatId),
   };
@@ -769,7 +772,7 @@ watch(
       await loadReaderOwners();
       const characterId = Number(current.params?.characterId);
       const owner = readerOwners.value.find(item => item.characterId === characterId);
-      if (owner) await loadReaderBooks(owner);
+      if (owner) await loadReaderBooks(owner, true);
       return;
     }
     if (current.page === 'catalog' || current.page === 'detail' || current.page === 'bagu-scan' || current.page === 'edit') {
@@ -796,16 +799,29 @@ watch(
 const stopChatChanged = onTavernEvent('CHAT_CHANGED', () => {
   syncCurrentTavernPresetName();
   applyPendingBranchInheritance();
-  void loadReaderOwners(true);
+  void refreshReaderLibraryRoute();
   if (selectedReaderTarget.value?.isCurrent) {
     resetReaderChatSession();
     void loadCurrentChat(true);
   }
 });
+const stopChatRenamed = onTavernChatRename(() => {
+  void refreshReaderLibraryRoute();
+});
 
 onScopeDispose(() => {
   stopChatChanged.stop();
+  stopChatRenamed.stop();
 });
+
+async function refreshReaderLibraryRoute() {
+  resetReaderBooks();
+  await loadReaderOwners(true);
+  if (route.value.appId !== 'reader' || route.value.page !== 'shelf') return;
+  const characterId = Number(route.value.params?.characterId);
+  const owner = readerOwners.value.find(item => item.characterId === characterId);
+  if (owner) await loadReaderBooks(owner, true);
+}
 
 async function refreshLibrary() {
   resetReaderBooks();
@@ -843,6 +859,7 @@ function openReaderHistoryBook(chatId: string) {
     characterId: String(owner.characterId),
     chatId: book.chatId,
     chatTitle: book.title,
+    ownerAvatar: owner.avatar,
     ownerName: owner.name,
     readerTarget: 'history',
   });
@@ -866,6 +883,7 @@ function withReaderTargetParams(params: Record<string, string> = {}) {
     characterId: String(target.characterId),
     chatId: target.chatId,
     chatTitle: target.chatTitle,
+    ownerAvatar: target.ownerAvatar,
     ownerName: target.ownerName,
     readerTarget: 'history',
     ...params,
@@ -1343,6 +1361,8 @@ function formatReaderBody(value: string) {
 .pc-error-card,
 .pc-message-card,
 .pc-rule-panel {
+  min-width: 0;
+  max-width: 100%;
   border: 1px solid var(--pc-border);
   background: color-mix(in srgb, var(--pc-surface) 72%, transparent 28%);
   border-radius: min(var(--pc-card-radius), 8px);
@@ -1365,6 +1385,9 @@ function formatReaderBody(value: string) {
 }
 
 .pc-error-card p {
+  min-width: 0;
+  overflow-wrap: anywhere;
+  word-break: break-word;
   color: var(--pc-text);
 }
 

@@ -16,6 +16,7 @@ const harness = await readMaybe(new URL('../../src/testing/visual-harness.ts', i
 const scenario = await readMaybe(new URL('../../src/testing/visual/minigameScenarios.ts', import.meta.url));
 const definitions = await readMaybe(new URL('../../src/data/miniGameApps.ts', import.meta.url));
 const registration = await readMaybe(new URL('../../src/apps/game-2048/index.ts', import.meta.url));
+const backupSchemas = await readMaybe(new URL('../../src/apps/game-2048/backupSchemas.ts', import.meta.url));
 const component = await readMaybe(new URL('../../src/apps/game-2048/Game2048App.vue', import.meta.url));
 const snake = await readMaybe(new URL('../../src/apps/game-2048/SnakeGame.vue', import.meta.url));
 const audio = await readMaybe(new URL('../../src/apps/game-2048/miniGameAudio.ts', import.meta.url));
@@ -45,6 +46,13 @@ test('the minigame fixture isolates all nine durable fields and real board actio
   assert.match(scenario, /pc-game2048-board/);
   assert.match(scenario, /pc-mine-cell/);
   assert.match(scenario, /pc-solitaire-card-slot\.stock/);
+});
+
+test('minigame backups round-trip games that have never been initialized', () => {
+  assert.match(backupSchemas, /EmptyGameSettingsSchema/u);
+  assert.match(backupSchemas, /optionalGameSettings/u);
+  assert.match(registration, /hasOwnProperty\.call\(extension_settings, field\)/u);
+  assert.match(registration, /_\.unset\(extension_settings, field\)/u);
 });
 
 test('all nine minigames are registered as direct, independently loaded apps', () => {

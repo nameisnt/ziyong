@@ -23,6 +23,14 @@ withDefaults(
 </script>
 
 <style scoped>
+.pc-empty,
+.pc-mini-empty {
+  min-width: 0;
+  max-width: 100%;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+
 .pc-empty {
   display: grid;
   place-items: center;
@@ -36,6 +44,8 @@ withDefaults(
 }
 
 .pc-empty strong {
+  min-width: 0;
+  max-width: 100%;
   color: var(--pc-text);
   font-size: 16px;
 }

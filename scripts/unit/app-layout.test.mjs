@@ -50,6 +50,7 @@ const {
   buildDefaultHomeLayout,
   createHomeFolder,
   homeFolderToken,
+  moveHomeFolder,
   moveHomeAppsToFolder,
   moveHomeLayoutItem,
   normalizeHomeLayout,
@@ -154,6 +155,26 @@ test('renaming a group preserves its identity, apps, icon, and order', () => {
     },
   );
   assert.deepEqual(renameHomeFolder(renamed, 'one', '第二组'), renamed);
+});
+
+test('moving a home group keeps appOrder and folder rendering order aligned', () => {
+  const layout = normalizeHomeLayout({
+    appOrder: [homeFolderToken('one'), homeFolderToken('two')],
+    dockOrder: ['archive', 'favorites', 'prompts', 'tutorial', 'settings'],
+    folders: [
+      { appIds: ['a', 'b'], id: 'one', name: '一' },
+      { appIds: ['c'], id: 'two', name: '二' },
+    ],
+    version: 4,
+  });
+  const moved = moveHomeFolder(layout, 'two', -1);
+  assert.deepEqual(moved.appOrder, [homeFolderToken('two'), homeFolderToken('one')]);
+  assert.deepEqual(
+    moved.folders.map(folder => folder.id),
+    ['two', 'one'],
+  );
+  assert.deepEqual(moved.folders.find(folder => folder.id === 'two')?.appIds, ['c']);
+  assert.deepEqual(moveHomeFolder(moved, 'two', -1), moved);
 });
 
 test('folder reordering remains inside grouped layout', () => {

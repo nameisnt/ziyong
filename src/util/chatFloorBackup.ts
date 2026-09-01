@@ -2,6 +2,7 @@ import { getCurrentChatScopeKey, parseChatScopeKey } from '@/store/chatScoped';
 import type { TavernChatRenamedEvent } from '@/util/chatScopeRename';
 import { cancelIdleTask, type IdleTaskHandle, scheduleIdleTask } from '@/util/idleTask';
 import { getChatMessagesSafe, getOptionalGlobalFunction, getOptionalGlobalValue, onTavernEvent } from '@/util/runtime';
+import { onTavernChatRename } from '@/util/tavernChatRenameObserver';
 
 const DATABASE_NAME = 'sillytavern-phone-chat-floor-backups';
 const DATABASE_VERSION = 1;
@@ -193,26 +194,44 @@ function getCurrentIdentity() {
   } as const;
 }
 
-function readCurrentMessages(): ChatFloorBackupMessage[] {
-  return getChatMessagesSafe('0-{{lastMessageId}}', { hide_state: 'all' })
-    .filter(message => message.role === 'user' || message.role === 'assistant')
-    .map(message => ({
-      data: cloneJsonRecord(message.data),
-      extra: cloneJsonRecord(message.extra),
-      isHidden: Boolean(message.is_hidden),
-      message: message.message,
-      messageId: message.message_id,
-      name: message.name || '',
-      role: message.role as 'assistant' | 'user',
-    }));
+type CurrentChatMessage = ReturnType<typeof getChatMessagesSafe>[number];
+
+function readCurrentMessageSource() {
+  return getChatMessagesSafe('0-{{lastMessageId}}', { hide_state: 'all' }).filter(
+    message => message.role === 'user' || message.role === 'assistant',
+  );
+}
+
+function toBackupMessage(message: CurrentChatMessage): ChatFloorBackupMessage {
+  return {
+    data: cloneJsonRecord(message.data),
+    extra: cloneJsonRecord(message.extra),
+    isHidden: Boolean(message.is_hidden),
+    message: message.message,
+    messageId: message.message_id,
+    name: message.name || '',
+    role: message.role as 'assistant' | 'user',
+  };
 }
 
 export function getCurrentChatFloorMessageCount() {
-  return readCurrentMessages().length;
+  return readCurrentMessageSource().length;
 }
 
-function sameMessages(left: ChatFloorBackupMessage[], right: ChatFloorBackupMessage[]) {
-  return JSON.stringify(left) === JSON.stringify(right);
+function sameCurrentMessages(left: ChatFloorBackupMessage[], right: CurrentChatMessage[]) {
+  if (left.length !== right.length) return false;
+  return left.every((message, index) => {
+    const current = right[index];
+    return (
+      message.isHidden === Boolean(current.is_hidden) &&
+      message.message === current.message &&
+      message.messageId === current.message_id &&
+      message.name === (current.name || '') &&
+      message.role === current.role &&
+      JSON.stringify(message.data) === JSON.stringify(current.data) &&
+      JSON.stringify(message.extra) === JSON.stringify(current.extra)
+    );
+  });
 }
 
 export async function listChatFloorBackups() {
@@ -256,15 +275,17 @@ export async function captureCurrentChatFloorBackup(
 ): Promise<ChatFloorBackupCaptureResult> {
   const identity = getCurrentIdentity();
   if (!identity) return { backup: null, status: 'unavailable' };
-  const messages = readCurrentMessages();
-  if (!messages.length) return { backup: null, status: 'empty' };
+  const currentMessages = readCurrentMessageSource();
+  if (!currentMessages.length) return { backup: null, status: 'empty' };
 
   const key = buildChatFloorBackupKey(identity.ownerKind, identity.stableId, identity.chatId);
   const existing = await getChatFloorBackup(key);
-  if (existing && existing.messages.length > messages.length && !options.force) {
-    return { backup: existing, currentMessageCount: messages.length, status: 'protected-smaller' };
+  if (existing && existing.messages.length > currentMessages.length && !options.force) {
+    return { backup: existing, currentMessageCount: currentMessages.length, status: 'protected-smaller' };
   }
-  if (existing && sameMessages(existing.messages, messages)) return { backup: existing, status: 'unchanged' };
+  if (existing && sameCurrentMessages(existing.messages, currentMessages)) {
+    return { backup: existing, status: 'unchanged' };
+  }
 
   const now = new Date().toISOString();
   const backup = ChatFloorBackupSchema.parse({
@@ -272,7 +293,7 @@ export async function captureCurrentChatFloorBackup(
     createdAt: existing?.createdAt ?? now,
     key,
     kind: FILE_KIND,
-    messages,
+    messages: currentMessages.map(toBackupMessage),
     owner: {
       avatar: identity.avatar,
       displayName: identity.displayName,
@@ -347,7 +368,7 @@ export async function restoreChatFloorBackupToCurrent(backup: ChatFloorBackup) {
   if (!identity) throw new Error('当前没有可识别的酒馆聊天');
   const currentKey = buildChatFloorBackupKey(identity.ownerKind, identity.stableId, identity.chatId);
   if (currentKey !== backup.key) throw new Error('当前酒馆聊天与这份楼层备份不一致，已停止插入');
-  if (readCurrentMessages().length) throw new Error('当前聊天并非空聊天，不能插入楼层备份');
+  if (readCurrentMessageSource().length) throw new Error('当前聊天并非空聊天，不能插入楼层备份');
 
   const createChatMessages = getOptionalGlobalFunction<
     (
@@ -432,19 +453,17 @@ export function startChatFloorBackupService() {
       }, 3000);
     }, 2000);
   };
-  const eventNames = [
-    'CHAT_CHANGED',
-    'MESSAGE_SENT',
-    'MESSAGE_RECEIVED',
-    'MESSAGE_EDITED',
-    'MESSAGE_SWIPED',
-  ];
+  const eventNames = ['CHAT_CHANGED', 'MESSAGE_SENT', 'MESSAGE_RECEIVED', 'MESSAGE_EDITED', 'MESSAGE_SWIPED'];
   const handles = eventNames.map(name => onTavernEvent(name, schedule));
   handles.push(
-    onTavernEvent('CHAT_RENAMED', payload => {
-      void migrateChatFloorBackupRename((payload ?? {}) as TavernChatRenamedEvent)
-        .catch(error => console.warn('[功能性阅读器] 迁移改名聊天的楼层备份失败', error))
-        .finally(schedule);
+    onTavernChatRename(async payload => {
+      try {
+        await migrateChatFloorBackupRename(payload);
+      } catch (error) {
+        console.warn('[功能性阅读器] 迁移改名聊天的楼层备份失败', error);
+      } finally {
+        schedule();
+      }
     }),
   );
   schedule();

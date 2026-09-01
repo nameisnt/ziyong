@@ -35,11 +35,20 @@ const miniGameComponents = {
 const backupDomain: PhoneBackupDomain = {
   category: 'configuration',
   key: 'mini-games',
-  exportData: () => _.mapValues(miniGameFields, field => _.get(extension_settings, field, {})),
+  exportData: () =>
+    Object.fromEntries(
+      Object.entries(miniGameFields).flatMap(([key, field]) =>
+        Object.prototype.hasOwnProperty.call(extension_settings, field)
+          ? [[key, _.get(extension_settings, field)]]
+          : [],
+      ),
+    ),
   importData: data => {
     if (!data || typeof data !== 'object') return;
     Object.entries(miniGameFields).forEach(([key, field]) => {
-      _.set(extension_settings, field, _.get(data, key, {}));
+      const value = _.get(data, key);
+      if (typeof value === 'undefined') _.unset(extension_settings, field);
+      else _.set(extension_settings, field, value);
     });
   },
   rehydrateFromSettings: () => useGame2048Store().rehydrateFromSettings(),

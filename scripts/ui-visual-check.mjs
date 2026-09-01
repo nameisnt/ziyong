@@ -618,6 +618,24 @@ async function runInteractionChecks(page, scenario) {
         if (!(await previewPage.locator('.pc-generation-preview').count())) {
           findings.push({ severity: 'fail', message: '批量预览条目没有打开共享完整预览界面' });
         }
+        const reasoningDisclosure = previewPage.locator('.pc-reasoning-disclosure');
+        await reasoningDisclosure.locator('summary').click();
+        await reasoningDisclosure.getByRole('button', { name: '编辑' }).click();
+        await reasoningDisclosure.getByRole('button', { name: '清空' }).click();
+        await reasoningDisclosure.getByRole('button', { name: '应用' }).click();
+        await previewPage.getByRole('tab', { name: '原文' }).click();
+        await previewPage
+          .locator('.pc-raw-editor-area')
+          .fill(
+            '<think>重新解析补回的思维链</think>\n<result><title>重新解析后的标题</title><content>重新解析后的正文。</content></result>',
+          );
+        await previewPage.getByRole('button', { name: '重新解析', exact: true }).click();
+        if (
+          (await previewPage.locator('input.pc-field').first().inputValue()) !== '重新解析后的标题' ||
+          !(await previewPage.locator('.pc-reasoning-disclosure').textContent())?.includes('重新解析补回的思维链')
+        ) {
+          findings.push({ severity: 'fail', message: '批量重新解析没有从原始输出恢复思维链与解析结果' });
+        }
         const titleField = previewPage.locator('input.pc-field').first();
         await titleField.fill('修改后的中途预览');
         await previewPage.getByRole('button', { name: '完成修改' }).click();
@@ -642,6 +660,42 @@ async function runInteractionChecks(page, scenario) {
         if (!(await page.locator('.pc-batch-preview-detail .pc-generation-preview').count())) {
           findings.push({ severity: 'fail', message: '夜间主题下批量条目完整预览不可用' });
         }
+      }
+    }
+
+    if (scenario === 'diary-bookshelf-responsive' || scenario === 'diary-bookshelf-responsive-dark') {
+      const rows = page.locator('.pc-bookshelf .pc-shelf-row');
+      const rowCount = await rows.count();
+      const columnCounts = await rows.evaluateAll(elements =>
+        elements.map(element => Number(getComputedStyle(element).getPropertyValue('--pc-shelf-column-count'))),
+      );
+      const itemCounts = await rows.evaluateAll(elements => elements.map(element => element.children.length));
+      if (rowCount < 2 || new Set(columnCounts).size !== 1 || itemCounts.at(-1) >= columnCounts[0]) {
+        findings.push({ severity: 'fail', message: '书架末行没有保留与完整行一致的固定列轨' });
+      }
+
+      const firstBook = page.locator('.pc-bookshelf .pc-book-item').first();
+      const initialCover = await firstBook.locator('.pc-book-cover').boundingBox();
+      await firstBook.click();
+      await page.waitForTimeout(230);
+      const transition = page.locator('.pc-book-transition-layer.is-turning');
+      const transitionVolume = transition.locator('.pc-book-transition-volume');
+      const transitionCover = transition.locator('.pc-book-transition-cover');
+      const expandedCover = await transitionVolume.boundingBox();
+      const coverTransform = await transitionCover
+        .evaluate(element => getComputedStyle(element).transform)
+        .catch(() => 'none');
+      if (
+        !initialCover ||
+        !expandedCover ||
+        expandedCover.width < initialCover.width * 2 ||
+        coverTransform === 'none'
+      ) {
+        findings.push({ severity: 'fail', message: '书籍点击后没有完成大幅放大与封面翻转阶段' });
+      }
+      await page.waitForTimeout(380);
+      if ((await page.locator('.pc-diary-book-page').count()) !== 1 || (await transition.count()) !== 0) {
+        findings.push({ severity: 'fail', message: '翻书动画结束后没有进入对应书架详情' });
       }
     }
 

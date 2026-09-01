@@ -74,7 +74,7 @@ export function useHorizontalDragScroll(target: Ref<HTMLElement | null>) {
   function onWheel(event: WheelEvent) {
     if (!target.value || target.value.scrollWidth <= target.value.clientWidth) return;
     const horizontalGesture = Math.abs(event.deltaX) >= Math.abs(event.deltaY);
-    const delta = horizontalGesture ? event.deltaX : event.shiftKey ? event.deltaY : 0;
+    const delta = horizontalGesture ? event.deltaX : event.deltaY;
     if (!delta) return;
     const previous = target.value.scrollLeft;
     target.value.scrollLeft += delta;

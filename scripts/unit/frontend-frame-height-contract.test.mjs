@@ -40,6 +40,8 @@ test('frontend frame rejects repeated viewport-following growth or shrinkage and
 
 test('frontend frame repairs collapsed generated layouts and reports remaining layout or runtime failures', () => {
   assert.match(frontend, /getVisualHeight/u);
+  assert.match(frontend, /flowHeight <= 80 \? Math\.max\(flowHeight, getVisualHeight\(\)\) : flowHeight/u);
+  assert.match(frontend, /attributeFilter: \["class", "style", "hidden", "open"\]/u);
   assert.match(frontend, /data-pc-frame-collapsed/u);
   assert.match(frontend, /type: 'layout-state'/u);
   assert.match(frontend, /type: 'runtime-error'/u);

@@ -47,12 +47,19 @@ export const useFavoritesStore = defineStore('favorites', () => {
     listScrollTop.value = Math.max(0, top);
   }
 
+  function clearSelection() {
+    filter.value = 'all';
+    query.value = '';
+    listScrollTop.value = 0;
+  }
+
   function removeFavorite(item: FavoriteItem) {
     item.removeFavorite?.();
   }
 
   return {
     allItems,
+    clearSelection,
     counts,
     filter,
     listScrollTop,

@@ -225,7 +225,7 @@ export function normalizeBrief(raw: unknown, index: number): ChatHistoryBriefIte
     fileName,
     title: pickString(record, ['title', 'file_name', 'fileName', 'name', 'chat']) || fileName,
     updatedAt: pickString(record, ['last_mes', 'updatedAt', 'create_date', 'date_last_chat', 'date_added']),
-    messageCount: pickNumber(record, ['mes_cnt', 'messageCount', 'message_count', 'count']),
+    messageCount: pickNumber(record, ['chat_items', 'mes_cnt', 'messageCount', 'message_count', 'count']),
     preview: compactPreview(pickString(record, ['mes', 'preview', 'snippet', 'last_mes'])),
     raw,
   };

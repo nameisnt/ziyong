@@ -199,6 +199,34 @@
             <small v-if="folderRenameOpen && folderRenameError" class="pc-home-group-rename-error">{{
               folderRenameError
             }}</small>
+            <div v-if="managedHomeGroup" class="pc-home-group-order-row">
+              <span class="pc-field-label">分组顺序</span>
+              <div class="pc-home-group-order-controls">
+                <button
+                  class="pc-icon-btn"
+                  type="button"
+                  title="分组前移"
+                  aria-label="分组前移"
+                  :disabled="managedHomeGroupIndex <= 0"
+                  @click="moveManagedHomeGroup(-1)"
+                >
+                  <i class="fa-solid fa-arrow-left"></i>
+                </button>
+                <span class="pc-home-group-order-position" aria-live="polite">
+                  {{ managedHomeGroupIndex + 1 }} / {{ homeGroups.length }}
+                </span>
+                <button
+                  class="pc-icon-btn"
+                  type="button"
+                  title="分组后移"
+                  aria-label="分组后移"
+                  :disabled="managedHomeGroupIndex >= homeGroups.length - 1"
+                  @click="moveManagedHomeGroup(1)"
+                >
+                  <i class="fa-solid fa-arrow-right"></i>
+                </button>
+              </div>
+            </div>
           </section>
 
           <div class="pc-segment pc-home-group-manager-scope" role="group" aria-label="App 范围">
@@ -312,6 +340,7 @@ import { usePhoneModalLifecycle } from '@/composables/usePhoneModalLifecycle';
 import {
   createHomeFolder,
   homeFolderToken,
+  moveHomeFolder,
   moveHomeAppsToFolder,
   moveHomeLayoutItem,
   putHomeAppInFolder,
@@ -392,6 +421,9 @@ const activeHomeGroup = computed(
 );
 const managedHomeGroup = computed(
   () => homeGroups.value.find(group => group.id === managedHomeGroupId.value) ?? homeGroups.value[0] ?? null,
+);
+const managedHomeGroupIndex = computed(() =>
+  managedHomeGroup.value ? homeGroups.value.findIndex(group => group.id === managedHomeGroup.value?.id) : -1,
 );
 const folderMoveTargetGroups = computed(() =>
   homeGroups.value.filter(group => group.id !== managedHomeGroup.value?.id),
@@ -771,6 +803,11 @@ function renameManagedHomeGroup() {
   if (!managedHomeGroup.value || !canRenameManagedGroup.value) return;
   settingsStore.setHomeLayout(renameHomeFolder(homeLayout.value, managedHomeGroup.value.id, folderRenameName.value));
   cancelHomeGroupRename();
+}
+
+function moveManagedHomeGroup(direction: -1 | 1) {
+  if (!managedHomeGroup.value) return;
+  settingsStore.setHomeLayout(moveHomeFolder(homeLayout.value, managedHomeGroup.value.id, direction));
 }
 
 function toggleFolderCreateApp(appId: string) {
@@ -1232,6 +1269,28 @@ onBeforeUnmount(resetHomeInteractionState);
 .pc-home-group-rename-error {
   color: var(--pc-danger);
   font-size: 11px;
+}
+.pc-home-group-order-row {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+.pc-home-group-order-row > .pc-field-label {
+  margin: 0;
+}
+.pc-home-group-order-controls {
+  display: grid;
+  grid-template-columns: auto minmax(48px, auto) auto;
+  align-items: center;
+  gap: 6px;
+}
+.pc-home-group-order-position {
+  color: var(--pc-muted);
+  font-size: 12px;
+  font-weight: 700;
+  text-align: center;
 }
 .pc-home-group-manager-scope {
   display: grid;

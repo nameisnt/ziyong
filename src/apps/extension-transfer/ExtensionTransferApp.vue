@@ -275,6 +275,13 @@ function updateStatusLabel(status: ExtensionUpdateStatus) {
   return '无法检查';
 }
 
+function notifyExtensionReloadRequired(title: string, message: string) {
+  phone.noticeInfo(`${message}。请手动刷新整个 SillyTavern 页面，让扩展重新加载。`, {
+    timeoutMs: 0,
+    title,
+  });
+}
+
 async function refreshInstalled() {
   loading.value = true;
   loadError.value = '';
@@ -362,7 +369,7 @@ async function updateSelected() {
   try {
     for (const row of rows) await updateThirdPartyExtension(row);
     await refreshInstalled();
-    toastr.success(`已更新 ${rows.length} 个扩展`);
+    notifyExtensionReloadRequired('扩展更新完成', `已更新 ${rows.length} 个扩展`);
   } catch (error) {
     toastr.error(error instanceof Error ? error.message : String(error));
   } finally {
@@ -444,9 +451,11 @@ async function installSelected() {
     await runInstallWorkers(rows);
     const failed = rows.filter(row => row.status === 'failed').length;
     const skipped = rows.filter(row => row.status === 'skipped').length;
-    const message = `安装结束：成功 ${rows.length - failed - skipped}，跳过 ${skipped}，失败 ${failed}`;
+    const installedCount = rows.length - failed - skipped;
+    const message = `安装结束：成功 ${installedCount}，跳过 ${skipped}，失败 ${failed}`;
     if (failed) toastr.warning(message);
-    else toastr.success(message);
+    else if (!installedCount) toastr.success(message);
+    if (installedCount) notifyExtensionReloadRequired('扩展安装完成', message);
     await refreshInstalled();
   } finally {
     installing.value = false;

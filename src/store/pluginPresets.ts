@@ -113,6 +113,12 @@ function readStoredAppDefaults() {
   );
 }
 
+function readStoredPendingDeletes() {
+  const raw = _.get(extension_settings, pluginPresetField, {});
+  if (!isRecord(raw) || !Array.isArray(raw.pendingDeletes)) return [];
+  return [...new Set(raw.pendingDeletes.map(path => normalizeFilePath(String(path || ''))).filter(Boolean))];
+}
+
 function createId() {
   return `plugin_preset_${Date.now()}_${Math.random().toString(36).slice(2, 9)}`;
 }
@@ -121,23 +127,43 @@ export const usePluginPresetStore = defineStore('pluginPresets', () => {
   const items = ref<PluginPresetRecord[]>([createBuiltinDiaryPresetRecord()]);
   const paths = ref<Record<string, string>>({});
   const appDefaults = ref<Record<string, string>>(readStoredAppDefaults());
+  const indexOrder = ref<string[]>([]);
   const loading = ref(false);
   const loadError = ref('');
+  const pendingDeletes = ref<string[]>(readStoredPendingDeletes());
+  const unavailableEntries = ref<StoredPluginPresetIndex[]>([]);
 
   function writeIndex() {
-    const stored = items.value.map(item => ({
-      builtIn: item.builtIn === true,
-      createdAt: item.createdAt,
-      hidden: item.hidden === true,
-      id: item.id,
-      name: item.name,
-      path: paths.value[item.id] || '',
-      sourceFileName: item.sourceFileName,
-      sourceFormat: item.sourceFormat,
-      sourceRoot: item.sourceRoot,
-      updatedAt: item.updatedAt,
-    }));
-    _.set(extension_settings, pluginPresetField, { appDefaults: appDefaults.value, items: stored, version: 4 });
+    const storedById = new Map<string, StoredPluginPresetIndex>();
+    unavailableEntries.value.forEach(entry => storedById.set(entry.id, entry));
+    items.value.forEach(item => {
+      const path = paths.value[item.id] || '';
+      storedById.set(item.id, {
+        builtIn: item.builtIn === true,
+        createdAt: item.createdAt,
+        hidden: item.hidden === true,
+        id: item.id,
+        name: item.name,
+        path,
+        raw: path ? undefined : klona(item.raw),
+        sourceFileName: item.sourceFileName,
+        sourceFormat: item.sourceFormat,
+        sourceRoot: item.sourceRoot,
+        updatedAt: item.updatedAt,
+      });
+    });
+    const orderedIds = [...new Set([...indexOrder.value, ...storedById.keys()])];
+    const stored = orderedIds.flatMap(id => {
+      const entry = storedById.get(id);
+      return entry ? [entry] : [];
+    });
+    indexOrder.value = stored.map(entry => entry.id);
+    _.set(extension_settings, pluginPresetField, {
+      appDefaults: appDefaults.value,
+      items: stored,
+      pendingDeletes: pendingDeletes.value,
+      version: 5,
+    });
   }
 
   function persistIndex() {
@@ -149,7 +175,7 @@ export const usePluginPresetStore = defineStore('pluginPresets', () => {
     const oldPath = paths.value[record.id] || '';
     const nextPath = await uploadRecordFile(record);
     paths.value[record.id] = nextPath;
-    if (oldPath && oldPath !== nextPath) void deleteRecordFile(oldPath).catch(() => undefined);
+    if (oldPath && oldPath !== nextPath) pendingDeletes.value = [...new Set([...pendingDeletes.value, oldPath])];
     persistIndex();
   }
 
@@ -257,9 +283,10 @@ export const usePluginPresetStore = defineStore('pluginPresets', () => {
     if (id === BUILTIN_DIARY_PRESET_ID) throw new Error('内置日记预设不能删除，可以编辑、改名或导出');
     const index = items.value.findIndex(item => item.id === id);
     if (index < 0) throw new Error('插件预设已经不存在');
-    await deleteRecordFile(paths.value[id] || '');
+    const oldPath = paths.value[id] || '';
     items.value.splice(index, 1);
     delete paths.value[id];
+    if (oldPath) pendingDeletes.value = [...new Set([...pendingDeletes.value, oldPath])];
     appDefaults.value = Object.fromEntries(
       Object.entries(appDefaults.value).filter(([, linkedPresetId]) => linkedPresetId !== id),
     );
@@ -324,9 +351,12 @@ export const usePluginPresetStore = defineStore('pluginPresets', () => {
 
     const previous = {
       appDefaults: klona(appDefaults.value),
+      indexOrder: [...indexOrder.value],
       items: klona(items.value),
       paths: { ...paths.value },
+      pendingDeletes: [...pendingDeletes.value],
       rawIndex: klona(_.get(extension_settings, pluginPresetField)),
+      unavailableEntries: klona(unavailableEntries.value),
     };
     const availableIds = new Set(normalized.map(record => record.id));
     const nextAppDefaults = Object.fromEntries(
@@ -339,6 +369,11 @@ export const usePluginPresetStore = defineStore('pluginPresets', () => {
           items.value = normalized;
           paths.value = nextPaths;
           appDefaults.value = nextAppDefaults;
+          indexOrder.value = normalized.map(record => record.id);
+          unavailableEntries.value = [];
+          pendingDeletes.value = [
+            ...new Set([...pendingDeletes.value, ...Object.values(previous.paths).filter(Boolean)]),
+          ];
           writeIndex();
         },
         persist: () => saveSettingsDebounced(),
@@ -347,6 +382,9 @@ export const usePluginPresetStore = defineStore('pluginPresets', () => {
           items.value = snapshot.items;
           paths.value = snapshot.paths;
           appDefaults.value = snapshot.appDefaults;
+          indexOrder.value = snapshot.indexOrder;
+          pendingDeletes.value = snapshot.pendingDeletes;
+          unavailableEntries.value = snapshot.unavailableEntries;
           if (typeof snapshot.rawIndex === 'undefined') _.unset(extension_settings, pluginPresetField);
           else _.set(extension_settings, pluginPresetField, snapshot.rawIndex);
         },
@@ -359,7 +397,6 @@ export const usePluginPresetStore = defineStore('pluginPresets', () => {
       }
       throw error;
     }
-    await Promise.allSettled(Object.values(previous.paths).map(path => deleteRecordFile(path)));
   }
 
   function replaceBackupBundle(bundle: PluginPresetBackupBundle) {
@@ -409,6 +446,8 @@ export const usePluginPresetStore = defineStore('pluginPresets', () => {
       const loaded: PluginPresetRecord[] = [];
       const loadedPaths: Record<string, string> = {};
       const errors: string[] = [];
+      const unavailable: StoredPluginPresetIndex[] = [];
+      indexOrder.value = stored.map(entry => entry.id);
       for (const entry of stored) {
         try {
           let record: PluginPresetRecord;
@@ -434,28 +473,36 @@ export const usePluginPresetStore = defineStore('pluginPresets', () => {
           }
           loaded.push(record);
         } catch (error) {
+          unavailable.push(entry);
           errors.push(`${entry.name}：${error instanceof Error ? error.message : String(error)}`);
         }
       }
       if (!loaded.some(record => record.id === BUILTIN_DIARY_PRESET_ID)) {
         const builtin = createBuiltinDiaryPresetRecord();
         loaded.unshift(builtin);
-        if (!errors.length) {
-          try {
-            loadedPaths[builtin.id] = await uploadRecordFile(builtin);
-          } catch (error) {
-            errors.push(`日记（内置）：${error instanceof Error ? error.message : String(error)}`);
-          }
+        indexOrder.value = [builtin.id, ...indexOrder.value];
+        try {
+          loadedPaths[builtin.id] = await uploadRecordFile(builtin);
+        } catch (error) {
+          errors.push(`日记（内置）：${error instanceof Error ? error.message : String(error)}`);
         }
       }
       items.value = loaded;
       paths.value = loadedPaths;
-      const availableIds = new Set(loaded.map(record => record.id));
+      unavailableEntries.value = unavailable;
+      const availableIds = new Set([...loaded.map(record => record.id), ...unavailable.map(entry => entry.id)]);
       appDefaults.value = Object.fromEntries(
         Object.entries(appDefaults.value).filter(([, presetId]) => availableIds.has(presetId)),
       );
-      if (errors.length) loadError.value = errors.join('\n');
-      else persistIndex();
+      if (errors.length) {
+        loadError.value = errors.join('\n');
+      } else {
+        const referencedPaths = new Set(Object.values(loadedPaths));
+        const cleanupPaths = pendingDeletes.value.filter(path => !referencedPaths.has(path));
+        const cleanupResults = await Promise.allSettled(cleanupPaths.map(path => deleteRecordFile(path)));
+        pendingDeletes.value = cleanupPaths.filter((_, index) => cleanupResults[index].status === 'rejected');
+      }
+      persistIndex();
     } finally {
       loading.value = false;
     }

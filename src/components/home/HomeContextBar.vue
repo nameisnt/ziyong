@@ -66,7 +66,13 @@ async function jumpViewingChatToTavern() {
   const target = phone.getTavernJumpTarget();
   if (!target) return toastr.warning('当前阅览没有对应的酒馆聊天');
   try {
-    await jumpToTavernChat({ chatFile: target.chatId, characterId: target.characterId, ownerName: target.ownerName });
+    await jumpToTavernChat({
+      chatFile: target.chatId,
+      characterId: target.characterId,
+      groupId: target.kind === 'group' ? target.ownerId : undefined,
+      kind: target.kind,
+      ownerName: target.ownerName,
+    });
     phone.closePhone();
     window.setTimeout(() => void phone.syncCurrentTavernScope(true), 2400);
     toastr.success('正在跳转到酒馆聊天');

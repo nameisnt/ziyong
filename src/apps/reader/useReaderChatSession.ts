@@ -2,7 +2,8 @@ import { normalizeBrief, normalizeArchivedMessage, type ChatReaderRegexRule, typ
 import { usePhoneStore } from '@/store/phone';
 import { normalizeChatArchiveId } from '@/util/chatArchive';
 import { resolveReaderBodySourceRange, transformReaderMessages } from '@/util/readerRegex';
-import { getChatHistoryDetailSafe, getChatMessagesSafe } from '@/util/runtime';
+import { getChatMessagesSafe } from '@/util/runtime';
+import { getCharacterChatHistory } from '@/util/tavernChatHistory';
 import type { ComputedRef } from 'vue';
 
 export function useReaderChatSession(options: {
@@ -147,14 +148,7 @@ export function useReaderChatSession(options: {
       throw new Error('无法找到这个历史聊天文件');
     }
 
-    const result = await getChatHistoryDetailSafe([brief.raw], false);
-    const detailArray =
-      result && typeof result === 'object'
-        ? (Object.entries(result).find(([key]) => normalizeChatArchiveId(key) === targetChatId)?.[1] ??
-          Object.values(result)[0])
-        : null;
-    if (!Array.isArray(detailArray)) return [];
-    return detailArray;
+    return getCharacterChatHistory({ avatar: target.ownerAvatar, name: target.ownerName }, brief.fileName);
   }
 
   function isHistoryBriefMatch(brief: NonNullable<ReturnType<typeof normalizeBrief>>, targetChatId: string) {
@@ -178,6 +172,7 @@ export interface ReaderChatTarget {
   chatId: string;
   chatTitle: string;
   isCurrent: boolean;
+  ownerAvatar: string;
   ownerName: string;
   scopeKey: string;
 }
