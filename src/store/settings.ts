@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 import { buildDefaultHomeLayout, migrateHomeLayoutDockCapacity, normalizeHomeLayout } from '@/core/appLayout';
 import {
   setting_field,
@@ -240,10 +241,20 @@ export const useSettingsStore = defineStore('settings', () => {
     _.set(extension_settings, setting_field, nextSettings);
     void saveSettingsDebounced();
   }
+=======
+import { setting_field, Settings } from '@/type/settings';
+import { validateInplace } from '@/util/zod';
+import { saveSettingsDebounced } from '@sillytavern/script';
+import { extension_settings } from '@sillytavern/scripts/extensions';
+
+export const useSettingsStore = defineStore('settings', () => {
+  const settings = ref(validateInplace(Settings, _.get(extension_settings, setting_field)));
+>>>>>>> 155aef882148eb5d140b5d419f123039d4238e5d
 
   watch(
     settings,
     new_settings => {
+<<<<<<< HEAD
       persist(new_settings);
     },
     { deep: true },
@@ -841,5 +852,14 @@ export const useSettingsStore = defineStore('settings', () => {
     toggleTheme,
     uploadCustomFont,
     reorderHomeApps,
+=======
+      _.set(extension_settings, setting_field, klona(new_settings)); // 用 klona 克隆对象从而去除 proxy 层
+      saveSettingsDebounced();
+    },
+    { deep: true },
+  );
+  return {
+    settings,
+>>>>>>> 155aef882148eb5d140b5d419f123039d4238e5d
   };
 });
