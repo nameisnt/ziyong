@@ -1,14 +1,52 @@
 export const NATIVE_LAUNCHER_ID = 'phone-creative-native-launcher';
 
+const LAUNCHER_SIZE = 48;
+const LAUNCHER_EDGE_GAP = 18;
+const LAUNCHER_BOTTOM_GAP = 86;
+
 let openHandler: ((event?: Event) => void) | null = null;
+
+function getVisualViewportBounds() {
+  const viewport = window.visualViewport;
+  return {
+    height: viewport?.height ?? window.innerHeight,
+    left: viewport?.offsetLeft ?? 0,
+    top: viewport?.offsetTop ?? 0,
+    width: viewport?.width ?? window.innerWidth,
+  };
+}
+
+function getDefaultLauncherPosition() {
+  const viewport = getVisualViewportBounds();
+  return {
+    left: viewport.left + viewport.width - LAUNCHER_SIZE - LAUNCHER_EDGE_GAP,
+    top: viewport.top + viewport.height - LAUNCHER_SIZE - LAUNCHER_BOTTOM_GAP,
+  };
+}
+
+function clampLauncherPosition(left: number, top: number) {
+  const viewport = getVisualViewportBounds();
+  const minLeft = viewport.left + 8;
+  const minTop = viewport.top + 8;
+  return {
+    left: Math.min(Math.max(minLeft, left), Math.max(minLeft, viewport.left + viewport.width - LAUNCHER_SIZE - 8)),
+    top: Math.min(Math.max(minTop, top), Math.max(minTop, viewport.top + viewport.height - LAUNCHER_SIZE - 8)),
+  };
+}
+
+function placeLauncher(launcher: HTMLButtonElement, position: { left: number; top: number }) {
+  launcher.style.left = `${Math.round(position.left)}px`;
+  launcher.style.top = `${Math.round(position.top)}px`;
+}
 
 export function syncNativeLauncherVisibility() {
   const launcher = document.getElementById(NATIVE_LAUNCHER_ID) as HTMLButtonElement | null;
   const phoneRoot = document.querySelector<HTMLElement>('.pc-phone-root');
   const floatBall = document.querySelector<HTMLElement>('.pc-float-ball');
+  const menuEntry = document.getElementById('pc-menu-entry');
   const phoneVisible = Boolean(phoneRoot && phoneRoot.offsetParent !== null);
-  const floatBallReady = Boolean(floatBall);
-  if (launcher) launcher.style.display = phoneVisible || floatBallReady ? 'none' : 'grid';
+  const floatBallVisible = Boolean(floatBall && floatBall.offsetParent !== null);
+  if (launcher) launcher.style.display = phoneVisible || floatBallVisible || menuEntry ? 'none' : 'grid';
 }
 
 export function ensureNativeLauncher(onOpen?: (event?: Event) => void, buildMarker?: string) {
@@ -29,11 +67,9 @@ export function ensureNativeLauncher(onOpen?: (event?: Event) => void, buildMark
   launcher.innerHTML = '<i class="fa-solid fa-mobile-screen-button" aria-hidden="true"></i>';
   launcher.style.cssText = [
     'position:fixed',
-    'right:18px',
-    'bottom:86px',
     'z-index:2147483600',
-    'width:48px',
-    'height:48px',
+    `width:${LAUNCHER_SIZE}px`,
+    `height:${LAUNCHER_SIZE}px`,
     'display:grid',
     'place-items:center',
     'border:0',
@@ -47,14 +83,26 @@ export function ensureNativeLauncher(onOpen?: (event?: Event) => void, buildMark
     'touch-action:none',
     'pointer-events:auto',
   ].join(';');
+  placeLauncher(launcher, getDefaultLauncherPosition());
 
   let pointerId: number | null = null;
   let startX = 0;
   let startY = 0;
-  let startRight = 18;
-  let startBottom = 86;
+  let startLeft = 0;
+  let startTop = 0;
   let moved = false;
+  let manuallyPositioned = false;
   let suppressClickUntil = 0;
+
+  const syncPosition = () => {
+    const current = manuallyPositioned
+      ? {
+          left: Number.parseFloat(launcher.style.left),
+          top: Number.parseFloat(launcher.style.top),
+        }
+      : getDefaultLauncherPosition();
+    placeLauncher(launcher, clampLauncherPosition(current.left, current.top));
+  };
 
   const openPhone = (event?: Event) => {
     event?.preventDefault();
@@ -69,8 +117,8 @@ export function ensureNativeLauncher(onOpen?: (event?: Event) => void, buildMark
     pointerId = event.pointerId;
     startX = event.clientX;
     startY = event.clientY;
-    startRight = Number.parseInt(launcher.style.right, 10) || 18;
-    startBottom = Number.parseInt(launcher.style.bottom, 10) || 86;
+    startLeft = Number.parseFloat(launcher.style.left);
+    startTop = Number.parseFloat(launcher.style.top);
     moved = false;
     launcher.setPointerCapture?.(event.pointerId);
   });
@@ -80,11 +128,8 @@ export function ensureNativeLauncher(onOpen?: (event?: Event) => void, buildMark
     const deltaY = event.clientY - startY;
     if (!moved && Math.hypot(deltaX, deltaY) > 8) moved = true;
     if (!moved) return;
-    const size = 48;
-    const nextRight = Math.min(Math.max(8, startRight - deltaX), Math.max(8, window.innerWidth - size - 8));
-    const nextBottom = Math.min(Math.max(8, startBottom - deltaY), Math.max(8, window.innerHeight - size - 8));
-    launcher.style.right = `${Math.round(nextRight)}px`;
-    launcher.style.bottom = `${Math.round(nextBottom)}px`;
+    manuallyPositioned = true;
+    placeLauncher(launcher, clampLauncherPosition(startLeft + deltaX, startTop + deltaY));
   });
   launcher.addEventListener('pointerup', event => {
     if (pointerId !== event.pointerId) return;
@@ -101,8 +146,13 @@ export function ensureNativeLauncher(onOpen?: (event?: Event) => void, buildMark
     pointerId = null;
     moved = false;
   });
+  window.addEventListener('resize', syncPosition);
+  window.addEventListener('orientationchange', syncPosition);
+  window.visualViewport?.addEventListener('resize', syncPosition);
+  window.visualViewport?.addEventListener('scroll', syncPosition);
 
   document.body.appendChild(launcher);
+  syncPosition();
   syncNativeLauncherVisibility();
   return launcher;
 }

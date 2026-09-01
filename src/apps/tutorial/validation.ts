@@ -14,6 +14,7 @@ export function validateTutorialRegistry(
 ) {
   const errors = validateTutorialAppCatalog(apps);
   const categoryIds = new Set(categories.filter(category => category.id !== 'all').map(category => category.id));
+  const appIds = new Set(apps.map(app => app.id));
   const articleCounts = new Map<string, number>();
   let directoryBlockCount = 0;
 
@@ -28,6 +29,9 @@ export function validateTutorialRegistry(
     if (!article.summary.trim()) errors.push(`教程文章 ${article.id} 缺少摘要`);
     if (!article.blocks.length) errors.push(`教程文章 ${article.id} 没有正文块`);
     if (!categoryIds.has(article.category)) errors.push(`教程文章 ${article.id} 使用了未知分类：${article.category}`);
+    article.relatedAppIds?.forEach(appId => {
+      if (!appIds.has(appId)) errors.push(`教程文章 ${article.id} 关联了不存在的 App：${appId}`);
+    });
     directoryBlockCount += article.blocks.filter(block => block.type === 'app-directory').length;
   });
 

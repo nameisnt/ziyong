@@ -1,8 +1,8 @@
 <template>
   <section class="pc-tutorial-directory">
     <label class="pc-search-field pc-tutorial-directory-search">
-      <i class="fa-solid fa-magnifying-glass"></i>
-      <input v-model="query" type="search" :placeholder="t`搜索 App 名称、用途或第一步`" />
+      <i class="fa-solid fa-magnifying-glass" aria-hidden="true"></i>
+      <input v-model="query" type="search" :aria-label="t`搜索 App`" :placeholder="t`搜索 App 名称、用途或第一步`" />
     </label>
 
     <div v-if="visibleItemCount" class="pc-tutorial-directory-groups">
@@ -75,15 +75,22 @@ const visibleGroups = computed(() => {
 const visibleItemCount = computed(() => visibleGroups.value.reduce((total, group) => total + group.items.length, 0));
 
 function isGroupOpen(groupId: TutorialAppGroupId) {
-  return Boolean(query.value.trim()) || openGroupIds.value.includes(groupId);
+  return openGroupIds.value.includes(groupId);
 }
 
 function toggleGroup(groupId: TutorialAppGroupId) {
-  if (query.value.trim()) return;
   openGroupIds.value = openGroupIds.value.includes(groupId)
     ? openGroupIds.value.filter(id => id !== groupId)
     : [...openGroupIds.value, groupId];
 }
+
+watch(
+  () => query.value.trim().toLocaleLowerCase(),
+  keyword => {
+    if (!keyword) return;
+    openGroupIds.value = visibleGroups.value.map(group => group.id);
+  },
+);
 </script>
 
 <style scoped>

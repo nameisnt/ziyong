@@ -1,0 +1,1 @@
+import{v as s}from'./panel.v_M9QjXK.chunk.js';import{saveSettingsDebounced as t}from'../../../../../script.js';import{extension_settings as r}from'../../../../../scripts/extensions.js';function o(s,t,o){const e=t.safeParse(_.get(r,s,{}));return e.success?e.data:o()}function e(o,e,n){_.set(r,o,s(e,n)),t()}export{o as r,e as w};

@@ -27,7 +27,7 @@ export const tutorialAppGroups: Array<{ id: TutorialAppGroupId; label: string }>
 ];
 
 export const tutorialAppGuides: TutorialAppGuide[] = [
-  { appId: 'summary', groupId: 'creative', firstAction: '点击生成书脊，再选择提取、单条或批量并确认来源。' },
+  { appId: 'summary', groupId: 'creative', firstAction: '点击新建总结，再选择提取、单条或批量并确认来源。' },
   { appId: 'diary', groupId: 'creative', firstAction: '点击生成书脊选择单篇或批量，已有日记还可生成角色反应。' },
   { appId: 'extras', groupId: 'creative', firstAction: '新开一本或进入目标章节，再选择续写、重写或章节总结。' },
   { appId: 'forum', groupId: 'creative', firstAction: '先确定板块名和板块类型提示词，再生成帖子或继续回帖。' },
@@ -38,7 +38,7 @@ export const tutorialAppGuides: TutorialAppGuide[] = [
   },
   { appId: 'letters', groupId: 'creative', firstAction: '选择发信人与收信人，已有往来可以直接继续回信。' },
 
-  { appId: 'digest', groupId: 'planning', firstAction: '手动新建摘抄，或在阅读聊天中选中文字后加入。' },
+  { appId: 'digest', groupId: 'planning', firstAction: '手动新建摘抄，或在聊天书库中选中文字后加入。' },
   { appId: 'profiles', groupId: 'planning', firstAction: '选择资料类型，再手动编辑或让 AI 从聊天中提取。' },
   { appId: 'relationship', groupId: 'planning', firstAction: '创建关系时分别确认起点、终点和单向态度。' },
   { appId: 'timekeeper', groupId: 'planning', firstAction: '先统一当前世界时间，再记录生日、年龄并换算。' },
@@ -87,11 +87,15 @@ export const tutorialAppGuides: TutorialAppGuide[] = [
   {
     appId: 'content-converter',
     groupId: 'tavern',
-    firstAction: '选择阅读聊天或其他 App 内容，再选择目标 App，逐条转换或合并保存。',
+    firstAction: '选择聊天书库或其他 App 内容，再选择目标 App，逐条转换或合并保存。',
   },
   { appId: 'bagu', groupId: 'tavern', firstAction: '配置词汇和句式规则，再到正文扫描并选择修复。' },
 
-  { appId: 'reader', groupId: 'automation', firstAction: '选择聊天进入连续阅读，轻点正文中部打开导航工具。' },
+  {
+    appId: 'reader',
+    groupId: 'automation',
+    firstAction: '先进入角色书架，再选择一本聊天书籍连续阅读。',
+  },
   {
     appId: 'recovery',
     groupId: 'automation',
@@ -118,11 +122,11 @@ export const tutorialAppGuides: TutorialAppGuide[] = [
     firstAction: '导出第三方扩展清单，或选择清单预览安装范围后批量安装。',
   },
   { appId: 'game-2048', groupId: 'media', firstAction: '滑动或使用方向键合并相同数字。' },
-  { appId: 'game-snake', groupId: 'media', firstAction: '选择速度后开始，滑动控制贪吃蛇方向。' },
+  { appId: 'game-snake', groupId: 'media', firstAction: '选择速度后开始，用方向键、方向按钮或滑动控制。' },
   { appId: 'game-minesweeper', groupId: 'media', firstAction: '选择翻开或插旗模式，再点击棋盘格。' },
   { appId: 'game-sudoku', groupId: 'media', firstAction: '选择空格，再使用数字键盘填数。' },
   { appId: 'game-sliding-puzzle', groupId: 'media', firstAction: '移动相邻数字块，把数字恢复为顺序。' },
-  { appId: 'game-guess-number', groupId: 'media', firstAction: '输入四位数字，根据提示继续推理。' },
+  { appId: 'game-guess-number', groupId: 'media', firstAction: '选择 3 至 6 位难度，再根据 A/B 提示继续推理。' },
   { appId: 'game-gomoku', groupId: 'media', firstAction: '点击棋盘落子，与电脑进行五子棋对局。' },
   { appId: 'game-reversi', groupId: 'media', firstAction: '选择合法位置落子并翻转对方棋子。' },
   { appId: 'game-solitaire', groupId: 'media', firstAction: '点击牌库发牌，按接龙规则整理牌组。' },

@@ -12,7 +12,8 @@ test('phone panel loads once through a shared dynamic import', () => {
   assert.match(entry, /await loadPanel\(\)/u);
 });
 
-test('automatic initialization keeps the panel unloaded until the launcher is used', () => {
-  assert.doesNotMatch(entry, /scheduleIdleTask/u);
+test('automatic initialization loads the panel through shared idle scheduling', () => {
+  assert.match(entry, /import \{ scheduleIdleTask \} from '@\/util\/idleTask'/u);
+  assert.match(entry, /scheduleIdleTask\(\(\) => void loadPanel\(\)\.catch/u);
   assert.doesNotMatch(entry, /ensureNativeLauncher\([\s\S]*?\n\s*void loadPanel\(\);/u);
 });
