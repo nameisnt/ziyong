@@ -37,7 +37,7 @@ export async function createReaderContentSources(): Promise<PhoneContentConversi
   );
   return sourceMessages.map((message, index) => ({
     appId: 'reader',
-    appName: '阅读聊天',
+    appName: '聊天书库',
     content: transformed[index]?.body || message.rawText,
     displayMode: 'markdown',
     entryId: message.id,

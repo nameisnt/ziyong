@@ -66,6 +66,25 @@ export async function applyExtrasGenerationVisualScenario(name: string, context:
   if (name === 'extras-book-generate') {
     context.resetPhoneToRoute('extras', 'book-editor', '新建番外');
     await context.waitForPaint();
+    const typeSelector = document.querySelector<HTMLInputElement>('.pc-combobox-input');
+    if (!typeSelector) throw new Error('Extras type selector is missing');
+    typeSelector.click();
+    await context.waitForPaint();
+    const customOption = [...document.querySelectorAll<HTMLButtonElement>('.pc-combobox-option')].find(button =>
+      button.textContent?.includes('+ 自定义'),
+    );
+    if (!customOption) throw new Error('Extras custom type option is missing');
+    customOption.click();
+    await context.waitForPaint();
+    const customName = document.querySelector<HTMLInputElement>('input[placeholder="自定义类型名称"]');
+    const groupField = document.querySelector('.pc-theater-type-group-field');
+    const saveSection = [...document.querySelectorAll<HTMLElement>('.pc-section-head')].find(section =>
+      section.textContent?.includes('保存到类型库'),
+    );
+    const saveToggle = saveSection?.querySelector<HTMLInputElement>('input[type="checkbox"]');
+    if (!customName || !groupField || !saveToggle?.checked) {
+      throw new Error('Extras custom type did not expose its name, group, and default library save');
+    }
     const screen = document.querySelector<HTMLElement>('.pc-screen');
     screen?.scrollTo({ top: screen.scrollHeight });
     return true;
@@ -88,8 +107,8 @@ export async function applyExtrasGenerationVisualScenario(name: string, context:
     if (!parseToggle) throw new Error('Extras summary parser toggle is missing');
     if (!parseToggle.checked) parseToggle.click();
     await context.waitForPaint();
-    const ruleGroup = [...document.querySelectorAll<HTMLElement>('.pc-extras-summary-options .pc-field-group')].find(group =>
-      group.textContent?.includes('摘要提取规则'),
+    const ruleGroup = [...document.querySelectorAll<HTMLElement>('.pc-extras-summary-options .pc-field-group')].find(
+      group => group.textContent?.includes('摘要提取规则'),
     );
     const ruleControl = ruleGroup?.querySelector<HTMLElement>('select, .pc-combobox');
     if (!ruleControl) throw new Error('Extras summary rule selector is missing');

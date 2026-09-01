@@ -22,7 +22,7 @@ test('generation form exposes one optional disabled pass-through without changin
   assert.match(formSource, /:generate-disabled="generateDisabled"/u);
 });
 
-test('theater generation never writes the type library unless an explicit control requests it', () => {
+test('theater generation defaults explicit custom types to the library while preserving a one-off opt-out', () => {
   const runStart = theaterSource.indexOf('async function runGeneration()');
   const runEnd = theaterSource.indexOf('\nfunction savePreview()', runStart);
   const runSource = theaterSource.slice(runStart, runEnd);
@@ -31,7 +31,11 @@ test('theater generation never writes the type library unless an explicit contro
   assert.match(theaterSource, /saveExistingGenerationTypePrompt/u);
   assert.match(theaterSource, /saveCustomTypeToLibrary/u);
   assert.match(theaterSource, /保存到类型库/u);
-  assert.match(theaterSource, /保存为新类型/u);
+  assert.match(theaterSource, /function startCustomGenerationType\(\)[\s\S]*saveCustomTypeToLibrary\.value = true/u);
+  assert.match(
+    theaterSource,
+    /generationCustomTypeSelected\.value = Boolean\(customTypeName && !initialTypePrompt\);[\s\S]*saveCustomTypeToLibrary\.value = generationCustomTypeSelected\.value/u,
+  );
 });
 
 test('theater rewrite prioritizes replay text and explicitly handles both legacy fallback states', () => {
@@ -59,5 +63,4 @@ test('theater type prompt lifecycle has an isolated browser scenario', () => {
   assert.match(scenarioCatalogSource, /theater-type-prompt-session/u);
   assert.match(theaterScenarioSource, /name === 'theater-type-prompt-session'/u);
   assert.match(theaterScenarioSource, /保存到类型库/u);
-  assert.match(theaterScenarioSource, /保存为新类型/u);
 });

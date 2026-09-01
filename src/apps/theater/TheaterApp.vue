@@ -153,8 +153,8 @@
           ></textarea>
         </div>
         <div v-if="showGenerationCustomTypeField" class="pc-theater-type-library-option">
-          <span>{{ t`保存为新类型` }}</span>
-          <label class="pc-toggle" title="保存为新类型">
+          <span>{{ t`保存到类型库` }}</span>
+          <label class="pc-toggle" title="保存到类型库">
             <input v-model="saveCustomTypeToLibrary" type="checkbox" :disabled="generationRunning" />
             <span></span>
           </label>
@@ -716,7 +716,7 @@ watch(
       generationDraft.typePrompt = initialTypePrompt?.prompt || '';
       generationDraft.userRequirement = '';
       generationCustomTypeSelected.value = Boolean(customTypeName && !initialTypePrompt);
-      saveCustomTypeToLibrary.value = false;
+      saveCustomTypeToLibrary.value = generationCustomTypeSelected.value;
       legacyTypePromptNotice.value = '';
       legacyTypeSelectionRequired.value = false;
       generationState.preview = null;
@@ -799,7 +799,7 @@ function selectGenerationTypePrompt(promptId: string) {
 
 function startCustomGenerationType() {
   generationCustomTypeSelected.value = true;
-  saveCustomTypeToLibrary.value = false;
+  saveCustomTypeToLibrary.value = true;
   legacyTypePromptNotice.value = '';
   legacyTypeSelectionRequired.value = false;
   generationDraft.typeId = '';

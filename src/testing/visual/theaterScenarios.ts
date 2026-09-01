@@ -137,10 +137,10 @@ export async function applyTheaterVisualScenario(name: string, context: TheaterS
     );
     if (
       !saveNewToggle ||
-      saveNewToggle.checked ||
-      !document.querySelector('.pc-theater-type-library-option')?.textContent?.includes('保存为新类型')
+      !saveNewToggle.checked ||
+      !document.querySelector('.pc-theater-type-library-option')?.textContent?.includes('保存到类型库')
     ) {
-      throw new Error('Custom Theater type did not expose an opt-in unchecked library save');
+      throw new Error('Explicit custom Theater type did not default its library save on');
     }
 
     const legacyValid = theater.createEntry({
@@ -211,9 +211,10 @@ export async function applyTheaterVisualScenario(name: string, context: TheaterS
       document.querySelector<HTMLTextAreaElement>('.pc-theater-type-prompt-field textarea')?.value !==
         deletedReplayPrompt ||
       document.querySelector<HTMLButtonElement>('.pc-generation-actions .pc-primary-btn')?.disabled ||
-      !document.querySelector('.pc-theater-type-library-option')?.textContent?.includes('保存为新类型')
+      !document.querySelector('.pc-theater-type-library-option')?.textContent?.includes('保存到类型库') ||
+      document.querySelector<HTMLInputElement>('.pc-theater-type-library-option input[type="checkbox"]')?.checked
     ) {
-      throw new Error('Deleted Theater type did not retain its replay prompt as a usable custom draft');
+      throw new Error('Deleted Theater type did not remain a usable one-off replay draft');
     }
     useSettingsStore().setTheme('dark');
     document.querySelector('.pc-theater-type-prompt-field')?.scrollIntoView({ block: 'center' });

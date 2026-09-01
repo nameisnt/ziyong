@@ -7,6 +7,7 @@
         :capture-reset-key="captureResetKey"
         :error="generationState.error"
         :from-start-end="chapterDraft.fromStartEnd"
+        :generate-disabled="Boolean(typeBlockingMessage)"
         :range-text="chapterDraft.rangeText"
         :raw-output="generationState.rawOutput"
         :recent-count="chapterDraft.recentCount"
@@ -64,12 +65,41 @@
               type="text"
               :placeholder="t`自定义类型名称`"
             />
-            <textarea
-              v-model="chapterDraft.typePrompt"
-              class="pc-area compact"
+            <TheaterTypeGroupField
+              v-if="showCustomTypeField || selectedTypeValue"
+              v-model="chapterDraft.typeGroupId"
               :disabled="generationState.running"
-              :placeholder="t`本次生成使用的番外类型提示词`"
-            ></textarea>
+              domain="extras"
+              subject-label="番外类型"
+            />
+            <div class="pc-field-group">
+              <div class="pc-field-head">
+                <span class="pc-field-label">{{ showCustomTypeField ? t`类型提示词` : t`本次类型提示词` }}</span>
+                <button
+                  v-if="selectedTypeValue && !showCustomTypeField"
+                  class="pc-soft-btn compact"
+                  type="button"
+                  :disabled="generationState.running || !typePromptChanged"
+                  @click="emit('saveExistingType')"
+                >
+                  {{ t`保存到类型库` }}
+                </button>
+              </div>
+              <textarea
+                v-model="chapterDraft.typePrompt"
+                class="pc-area compact"
+                :disabled="generationState.running"
+                :placeholder="t`本次生成使用的番外类型提示词`"
+              ></textarea>
+            </div>
+            <div v-if="showCustomTypeField" class="pc-section-head">
+              <span>{{ t`保存到类型库` }}</span>
+              <label class="pc-toggle" title="保存到类型库">
+                <input v-model="saveCustomTypeToLibrary" type="checkbox" :disabled="generationState.running" />
+                <span></span>
+              </label>
+            </div>
+            <p v-if="typeBlockingMessage" class="pc-help-text warning">{{ typeBlockingMessage }}</p>
           </section>
 
           <section class="pc-page-section pc-extras-summary-options">
@@ -128,6 +158,7 @@
 <script setup lang="ts">
 import GenerationPanel from '@/components/GenerationPanel.vue';
 import SearchableCombobox from '@/components/SearchableCombobox.vue';
+import TheaterTypeGroupField from '@/components/prompts/TheaterTypeGroupField.vue';
 import type { ExtraChapterGenerationIntent, ExtraChapterGenerationMode } from '@/core/extrasGeneration';
 import type { SummaryGenerationSourceMode } from '@/util/generationSource';
 import type { GenerationReferenceItem } from '@/util/references';
@@ -140,6 +171,7 @@ const chapterDraft = defineModel<{
   rangeText: string;
   recentCount: number;
   singleMessageId: number;
+  typeGroupId: string;
   parseSummary: boolean;
   removeSummaryBlock: boolean;
   summaryFormatHint: string;
@@ -149,6 +181,7 @@ const chapterDraft = defineModel<{
   typePrompt: string;
   userRequirement: string;
 }>('chapterDraft', { required: true });
+const saveCustomTypeToLibrary = defineModel<boolean>('saveCustomTypeToLibrary', { required: true });
 const references = defineModel<GenerationReferenceItem[]>('references', { required: true });
 const sourceMode = defineModel<SummaryGenerationSourceMode>('sourceMode', { required: true });
 
@@ -160,6 +193,8 @@ const props = defineProps<{
   showCustomTypeField: boolean;
   summaryRuleOptions: Array<{ label: string; value: string }>;
   typeOptions: Array<{ label: string; value: string }>;
+  typeBlockingMessage: string;
+  typePromptChanged: boolean;
 }>();
 
 const summaryRuleSelectOptions = computed(() => [
@@ -170,6 +205,7 @@ const summaryRuleSelectOptions = computed(() => [
 const emit = defineEmits<{
   cancel: [];
   generate: [];
+  saveExistingType: [];
   selectType: [value: string];
   stop: [];
   syncIntent: [];

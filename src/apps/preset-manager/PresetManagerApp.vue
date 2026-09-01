@@ -30,7 +30,7 @@
       :loaded-preset-name="loadedPresetName"
       :loading="loading"
       :mutation-busy="mutationBusy"
-      :move-preset-label="isPluginDetail ? '移到酒馆预设' : '移到插件预设'"
+      :move-preset-label="isPluginDetail ? '移到酒馆预设' : '复制到插件预设'"
       :plugin-preset="isPluginDetail"
       :plugin-preset-built-in="detailPluginPreset?.builtIn === true"
       :plugin-preset-hidden="detailPluginPreset?.hidden === true"
@@ -128,7 +128,7 @@ import {
   type TavernPreset,
   type TavernPresetPrompt,
 } from './api';
-import { movePresetTransactional, PresetMigrationError } from './presetMigration';
+import { copyPresetTransactional, movePresetTransactional, PresetMigrationError } from './presetMigration';
 import PresetCatalogPage from './pages/PresetCatalogPage.vue';
 import PresetDetailPage from './pages/PresetDetailPage.vue';
 import PresetPromptCopyPage from './pages/PresetPromptCopyPage.vue';
@@ -200,10 +200,8 @@ const defaultAppOptions = computed(() => {
 const detailDefaultAppIds = computed(() =>
   isPluginDetail.value ? pluginPresets.getDefaultAppIds(detailPluginPresetId.value) : [],
 );
-const detailPresetMovable = computed(() =>
-  isPluginDetail.value
-    ? detailPluginPresetId.value !== BUILTIN_DIARY_PRESET_ID
-    : getCurrentTavernPresetName() !== detailPresetName.value,
+const detailPresetMovable = computed(
+  () => !isPluginDetail.value || detailPluginPresetId.value !== BUILTIN_DIARY_PRESET_ID,
 );
 const activePromptId = computed(() => route.value.params?.promptId || '');
 const copySourcePromptId = computed(() => route.value.params?.sourcePromptId || '');
@@ -528,16 +526,19 @@ async function movePreset() {
   const sourceName = detailPresetName.value.trim();
   if (!sourceName || mutationBusy.value || !detailPresetMovable.value) return;
   const targetOwner = isPluginDetail.value ? '酒馆预设' : '插件预设';
-  const requested = await phone.promptNotice(`输入移动到${targetOwner}后使用的名称。`, {
+  const actionLabel = isPluginDetail.value ? '移动' : '复制';
+  const requested = await phone.promptNotice(`输入${actionLabel}到${targetOwner}后使用的名称。`, {
     confirmLabel: '继续',
     initialValue: sourceName,
-    title: `移到${targetOwner}`,
+    title: `${actionLabel}到${targetOwner}`,
   });
   const targetName = requested?.trim() || '';
   if (!targetName) return;
   const confirmed = await phone.confirmNotice(
-    `确认把“${sourceName}”移到${targetOwner}吗？目标创建并校验成功后，才会删除来源。`,
-    { confirmLabel: '移动', kind: 'warning' },
+    isPluginDetail.value
+      ? `确认把“${sourceName}”移到${targetOwner}吗？目标创建并校验成功后，才会删除来源。`
+      : `确认把“${sourceName}”复制到${targetOwner}吗？酒馆来源及其引用都会保留。`,
+    { confirmLabel: actionLabel, kind: isPluginDetail.value ? 'warning' : 'default' },
   );
   if (!confirmed || mutationBusy.value) return;
 
@@ -570,7 +571,7 @@ async function movePreset() {
     }
 
     let targetId = '';
-    await movePresetTransactional({
+    await copyPresetTransactional({
       createTarget: async preset => {
         const imported = await pluginPresets.importPreset(preset, `${targetName}.json`);
         targetId = imported.id;
@@ -580,25 +581,22 @@ async function movePreset() {
           throw new Error(`插件预设名称“${targetName}”在创建时发生冲突`);
         }
       },
-      deleteSource: () => deleteTavernPreset(sourceName),
       deleteTarget: async () => {
         if (targetId) await pluginPresets.deletePreset(targetId);
       },
       readSource: () => readTavernPresetTransferPayload(sourceName),
       readTarget: () => readPluginPresetTransferPayload(targetId),
-      sourceDeletable: getCurrentTavernPresetName() !== detailPresetName.value,
       sourceName,
       targetExists: name => pluginPresetItems.value.some(item => item.name === name),
       targetName,
     });
-    const removed = presetLinks.removePresetReferences(sourceName) + entryLibrary.removePresetReferences(sourceName);
     activePreset.value = null;
     presetSource.value = 'plugin';
     phone.replaceRoute('preset-manager', 'detail', '插件预设条目', {
       presetId: targetId,
       presetSource: 'plugin',
     });
-    toastr.success(`已移到插件预设“${targetName}”，并清理 ${removed} 处酒馆预设引用`);
+    toastr.success(`已复制到插件预设“${targetName}”，酒馆来源保持不变`);
   } catch (error) {
     if (error instanceof PresetMigrationError && error.stage === 'source-delete') {
       toastr.error('目标预设已创建并校验，但来源删除失败；两边都还在');

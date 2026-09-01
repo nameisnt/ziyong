@@ -40,7 +40,8 @@ test('prompt store exposes one domain-scoped batch group mutation without editin
 
 test('theater generation and prompt editor reuse one editable group field', () => {
   assert.match(groupFieldSource, /SearchableCombobox/u);
-  assert.match(groupFieldSource, /createTypePromptGroup\('theater'/u);
+  assert.match(groupFieldSource, /domain: 'theater'/u);
+  assert.match(groupFieldSource, /createTypePromptGroup\(props\.domain/u);
   assert.match(editorSource, /TheaterTypeGroupField/u);
   assert.match(theaterSource, /TheaterTypeGroupField/u);
   assert.match(theaterSource, /v-model="generationDraft\.typeGroupId"/u);

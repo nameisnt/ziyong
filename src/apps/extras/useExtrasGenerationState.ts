@@ -13,6 +13,7 @@ export function useExtrasGenerationState() {
     removeSummaryBlock: false,
     summaryFormatHint: '请在章节结果中额外输出 <summary>番外摘要</summary>，摘要应概括关键事件和人物状态。',
     summaryRuleId: '',
+    typeGroupId: '',
     typeId: '',
     typeName: '',
     typePrompt: '',

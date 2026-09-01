@@ -4,6 +4,8 @@ import { useExtrasStore } from '@/store/extras';
 import { useForumStore } from '@/store/forum';
 import { useLettersStore } from '@/store/letters';
 import { usePhoneStore } from '@/store/phone';
+import { areChatScopeKeysEquivalent } from '@/store/chatScoped';
+import { parseChatScopeKey } from '@/util/chatArchive';
 import { useReaderStore } from '@/store/reader';
 import { useSummaryStore } from '@/store/summary';
 import { useTheaterStore } from '@/store/theater';
@@ -200,14 +202,25 @@ export function createReaderFavoriteItems(): PhoneFavoriteItem[] {
     entryId: favorite.messageId,
     title: favorite.title,
     preview: compactPreview(favorite.content),
-    bookTitle: favorite.scopeTitle || '阅读聊天',
+    bookTitle: favorite.scopeTitle || '聊天书库',
     subtitle: favorite.sourceLabel,
     updatedAt: favorite.updatedAt || favorite.createdAt,
     exists: () => Boolean(reader.settings.favorites.find(item => item.id === favorite.id)),
     open: () => {
-      void phone.setViewingScope(favorite.scopeKey, { chatTitle: favorite.scopeTitle }).then(() => {
-        phone.pushRoute('reader', 'detail', favorite.title, { messageId: favorite.messageId }, 'favorites');
-      });
+      const scope = parseChatScopeKey(favorite.scopeKey);
+      const isCurrent = areChatScopeKeysEquivalent(favorite.scopeKey, phone.currentTavernScopeKey);
+      const characterId = Number(scope.ownerId);
+      const params: Record<string, string> = { messageId: favorite.messageId, readerTarget: 'current' };
+      if (!isCurrent && scope.kind === 'char' && Number.isInteger(characterId)) {
+        Object.assign(params, {
+          characterId: String(characterId),
+          chatId: scope.chatId,
+          chatTitle: favorite.scopeTitle,
+          ownerName: '历史角色',
+          readerTarget: 'history',
+        });
+      }
+      phone.pushRoute('reader', 'detail', favorite.title, params, 'favorites');
     },
     removeFavorite: () => reader.removeFavorite(favorite.id),
   }));

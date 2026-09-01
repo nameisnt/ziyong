@@ -4925,6 +4925,24 @@ async function applyScenario(name: VisualScenarioName, options: { height?: numbe
         },
         registerTableUpdateCallback: (callback: (value: unknown) => void) => callbacks.add(callback),
         unregisterTableUpdateCallback: (callback: (value: unknown) => void) => callbacks.delete(callback),
+        updateRow:
+          name === 'profiles-external-table'
+            ? (tableName: string, rowIndex: number, values: Record<string, unknown>) => {
+                const sheet = Object.values(data).find(value => {
+                  return Boolean(
+                    value && typeof value === 'object' && (value as { name?: unknown }).name === tableName,
+                  );
+                }) as { content?: unknown[][] } | undefined;
+                const header = sheet?.content?.[0];
+                const row = sheet?.content?.[rowIndex];
+                if (!header || !row) return false;
+                Object.entries(values).forEach(([label, value]) => {
+                  const columnIndex = header.indexOf(label);
+                  if (columnIndex >= 0) row[columnIndex] = value;
+                });
+                return true;
+              }
+            : undefined,
       };
     }
 
@@ -4989,6 +5007,32 @@ async function applyScenario(name: VisualScenarioName, options: { height?: numbe
       if (!document.querySelector('.pc-external-profile-card-track.is-horizontal')) {
         throw new Error('External Profiles did not return to horizontal cards');
       }
+      const editButton = document.querySelector<HTMLButtonElement>('button[title="快速编辑"]');
+      if (!editButton) throw new Error('External Profiles did not expose quick edit for updateRow');
+      editButton.click();
+      if (!(await waitForVisualCondition(() => usePhoneStore().currentRoute.page === 'row-edit'))) {
+        throw new Error('External Profiles quick edit did not open the editor');
+      }
+      const firstEditable = document.querySelector<HTMLInputElement>(
+        '.pc-external-profile-row-editor input:not(:disabled)',
+      );
+      if (!firstEditable) throw new Error('External Profiles quick edit has no editable field');
+      firstEditable.value = '李沐晨（已编辑）';
+      firstEditable.dispatchEvent(new Event('input', { bubbles: true }));
+      const saveButton = [...document.querySelectorAll<HTMLButtonElement>('.pc-form-actions button')].find(button =>
+        button.textContent?.includes('保存修改'),
+      );
+      if (!saveButton) throw new Error('External Profiles quick edit save action is missing');
+      saveButton.click();
+      if (
+        !(await waitForVisualCondition(
+          () => usePhoneStore().currentRoute.page === 'row' && document.body.textContent?.includes('李沐晨（已编辑）'),
+        ))
+      ) {
+        throw new Error('External Profiles quick edit did not write and reread the row');
+      }
+      resetPhoneToRoute('profiles', 'table', '重要人物表', { sheetKey: 'sheet_people' });
+      await waitForPaint();
     }
 
     if (failedDraftScenario) {

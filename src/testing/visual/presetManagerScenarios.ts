@@ -56,7 +56,7 @@ function getVisualTavernPresetApi() {
   };
 }
 
-async function submitMoveDialog(targetName: string) {
+async function submitTransferDialog(targetName: string, actionLabel = '移动') {
   if (!(await waitForElement('.pc-phone-notice-input'))) throw new Error('Preset move name prompt did not open');
   const input = document.querySelector<HTMLInputElement>('.pc-phone-notice-input');
   if (!input) throw new Error('Preset move target input is missing');
@@ -64,11 +64,11 @@ async function submitMoveDialog(targetName: string) {
   input.dispatchEvent(new Event('input', { bubbles: true }));
   clickNoticeAction('继续');
   const startedAt = performance.now();
-  while (!findButton('移动', document.querySelector('.pc-phone-notice') || document)) {
+  while (!findButton(actionLabel, document.querySelector('.pc-phone-notice') || document)) {
     if (performance.now() - startedAt > 1000) throw new Error('Preset move confirmation did not open');
     await new Promise<void>(resolve => window.setTimeout(resolve, 20));
   }
-  clickNoticeAction('移动');
+  clickNoticeAction(actionLabel);
 }
 
 async function waitForElement(selector: string) {
@@ -181,8 +181,8 @@ export async function applyPresetManagerVisualScenario(
       (
         ((imported.raw.extensions as Record<string, unknown>).baibaiToolkit as Record<string, unknown>)
           .presetPromptGroups as {
-            groups: Array<{ endPromptId: string; selectionMode?: string; startPromptId: string }>;
-          }
+          groups: Array<{ endPromptId: string; selectionMode?: string; startPromptId: string }>;
+        }
       ).groups[0];
     let rangeToggles = document.querySelectorAll<HTMLButtonElement>('.pc-preset-group-range-grid .pc-combobox-toggle');
     rangeToggles[0]?.click();
@@ -353,8 +353,8 @@ export async function applyPresetManagerVisualScenario(
         throw new Error('Tavern preset detail did not open for migration');
       }
       document.querySelector<HTMLElement>('.pc-action-menu > summary[aria-label="管理"]')?.click();
-      findButton('移到插件预设', document.querySelector('.pc-action-menu-panel') || document)?.click();
-      await submitMoveDialog(targetName);
+      findButton('复制到插件预设', document.querySelector('.pc-action-menu-panel') || document)?.click();
+      await submitTransferDialog(targetName, '复制');
       if (
         !(await waitForCondition(
           () =>
@@ -371,6 +371,9 @@ export async function applyPresetManagerVisualScenario(
       }
       if ((target?.raw.settings as Record<string, unknown> | undefined)?.max_context !== 0) {
         throw new Error('Tavern-to-plugin migration did not normalize Tavern null numeric settings');
+      }
+      if (!tavernApi.TavernHelper.getPreset(sourceName)) {
+        throw new Error('Tavern-to-plugin copy removed its Tavern source');
       }
     } else if (name === 'preset-move-plugin-to-tavern') {
       const builtin = pluginPresets.items[0];
@@ -394,7 +397,7 @@ export async function applyPresetManagerVisualScenario(
       }
       document.querySelector<HTMLElement>('.pc-action-menu > summary[aria-label="管理"]')?.click();
       findButton('移到酒馆预设', document.querySelector('.pc-action-menu-panel') || document)?.click();
-      await submitMoveDialog(targetName);
+      await submitTransferDialog(targetName);
       if (
         !(await waitForCondition(
           () =>

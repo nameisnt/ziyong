@@ -10,7 +10,7 @@ const manager = await readFile(new URL('src/apps/preset-manager/PresetManagerApp
 const detail = await readFile(new URL('src/apps/preset-manager/pages/PresetDetailPage.vue', root), 'utf8');
 const harness = await readFile(new URL('src/testing/visual-harness.ts', root), 'utf8');
 
-test('preset movement uses create, read-back verification, then source deletion with explicit partial state', () => {
+test('preset transfer shares target verification while copy preserves its source', () => {
   assert.match(migration, /createTarget/u);
   assert.match(migration, /readTarget/u);
   assert.match(migration, /verifyPresetPayload/u);
@@ -19,15 +19,19 @@ test('preset movement uses create, read-back verification, then source deletion 
   assert.match(migration, /sourceRemoved/u);
   assert.match(migration, /deleteTarget/u);
   assert.match(migration, /targetRemoved/u);
+  assert.match(migration, /copyPresetTransactional/u);
+  assert.match(migration, /sourceRemoved: false/u);
   assert.ok(migration.indexOf('createTarget') < migration.indexOf('readTarget'));
   assert.ok(migration.indexOf('readTarget') < migration.indexOf('deleteSource'));
 });
 
-test('preset detail exposes one direction-specific move action and protects current or built-in sources', () => {
+test('preset detail copies Tavern presets and only protects built-in plugin move sources', () => {
   assert.match(detail, /movePresetLabel/u);
   assert.match(detail, /@click="\$emit\('move-preset'\)"/u);
   assert.match(manager, /detailPresetMovable/u);
-  assert.match(manager, /getCurrentTavernPresetName\(\) !== detailPresetName\.value/u);
+  assert.match(manager, /复制到插件预设/u);
+  assert.match(manager, /copyPresetTransactional/u);
+  assert.doesNotMatch(manager, /getCurrentTavernPresetName\(\) !== detailPresetName\.value/u);
   assert.match(manager, /detailPluginPresetId\.value !== BUILTIN_DIARY_PRESET_ID/u);
   assert.match(manager, /movePresetTransactional/u);
   assert.match(manager, /目标预设已创建并校验，但来源删除失败/u);

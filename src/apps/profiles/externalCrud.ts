@@ -1,8 +1,4 @@
-import {
-  normalizeExternalProfilesData,
-  resolveExternalProfilesApi,
-  type ExternalProfilesApi,
-} from './externalBridge';
+import { normalizeExternalProfilesData, resolveExternalProfilesApi, type ExternalProfilesApi } from './externalBridge';
 
 export type ExternalProfilesCrudApi = ExternalProfilesApi & {
   deleteRow?: (tableName: string, rowIndex: number) => boolean | Promise<boolean>;

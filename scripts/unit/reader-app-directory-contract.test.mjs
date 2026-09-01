@@ -10,7 +10,7 @@ test('reader owns its root and chat session while shared reading surfaces remain
     .filter(file => file.endsWith('.vue') || file.endsWith('.ts'))
     .sort();
 
-  assert.deepEqual(files, ['ReaderApp.vue', 'useReaderChatSession.ts']);
+  assert.deepEqual(files, ['ReaderApp.vue', 'useReaderChatSession.ts', 'useReaderLibrarySession.ts']);
 
   const builtin = await source('src/apps/builtin.ts');
   const root = await source('src/apps/reader/ReaderApp.vue');
@@ -18,6 +18,8 @@ test('reader owns its root and chat session while shared reading surfaces remain
   assert.match(root, /from '@\/components\/ReaderDetailShell\.vue'/u);
   assert.match(root, /from '@\/components\/CatalogModal\.vue'/u);
   assert.match(root, /from '@\/components\/BaguDetailPage\.vue'/u);
+  assert.match(root, /from '@\/components\/BookShelf\.vue'/u);
+  assert.match(root, /from '@\/apps\/reader\/useReaderLibrarySession'/u);
   assert.match(root, /activeMessageIndex\.value === activeMessages\.value\.length - 1/u);
   assert.match(root, /class="pc-area pc-reader-send-area"/u);
   assert.match(root, /rows="7"/u);

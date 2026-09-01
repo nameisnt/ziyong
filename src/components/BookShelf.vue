@@ -1,29 +1,29 @@
 <template>
-  <div class="pc-bookshelf" :class="variant">
-    <div v-for="row in rows" :key="row[0]?.id" class="pc-shelf-row">
+  <div ref="shelfEl" class="pc-bookshelf" :class="variant">
+    <div v-for="row in rows" :key="row[0]?.key" class="pc-shelf-row" :style="{ '--pc-shelf-column-count': row.length }">
       <button
-        v-for="book in row"
-        :key="book.id"
-        :class="['pc-book-item', { opening: openingBookId === book.id }]"
+        v-for="item in row"
+        :key="item.key"
+        :class="['pc-book-item', { opening: item.kind === 'book' && openingBookId === item.book.id }]"
         type="button"
         :disabled="Boolean(openingBookId)"
-        @click="openBook(book.id)"
+        @click="item.kind === 'create' ? emit('create') : openBook(item.book.id)"
       >
-        <span class="pc-book-cover" :data-paper="paper">
-          <i :class="book.icon"></i>
-          <b>{{ book.count }}</b>
+        <span :class="['pc-book-cover', { 'pc-add-cover': item.kind === 'create' }]" :data-paper="paper">
+          <img
+            v-if="item.kind === 'book' && item.book.coverUrl && !failedCoverIds.has(item.book.id)"
+            class="pc-book-cover-image"
+            :src="item.book.coverUrl"
+            :alt="item.book.title"
+            @error="failedCoverIds.add(item.book.id)"
+          />
+          <i v-else :class="item.kind === 'create' ? 'fa-solid fa-plus' : item.book.icon"></i>
+          <b v-if="item.kind === 'book' && String(item.book.count)">{{ item.book.count }}</b>
         </span>
-        <span class="pc-book-title">{{ book.title }}</span>
-        <small>{{ book.subtitle }}</small>
-      </button>
-    </div>
-    <div v-if="showCreate" class="pc-shelf-row">
-      <button class="pc-book-item" type="button" @click="$emit('create')">
-        <span class="pc-book-cover pc-add-cover" :data-paper="paper">
-          <i class="fa-solid fa-plus"></i>
-        </span>
-        <span class="pc-book-title">{{ createLabel }}</span>
-        <small>{{ createSubtitle }}</small>
+        <span class="pc-book-title">{{ item.kind === 'create' ? createLabel : item.book.title }}</span>
+        <small v-if="item.kind === 'create' ? createSubtitle : item.book.subtitle">
+          {{ item.kind === 'create' ? createSubtitle : item.book.subtitle }}
+        </small>
       </button>
     </div>
   </div>
@@ -34,11 +34,14 @@ import { useSettingsStore } from '@/store/settings';
 
 interface BookShelfCard {
   count: number | string;
+  coverUrl?: string;
   icon: string;
   id: string;
   subtitle: string;
   title: string;
 }
+
+type ShelfItem = { book: BookShelfCard; key: string; kind: 'book' } | { key: string; kind: 'create' };
 
 const props = withDefaults(
   defineProps<{
@@ -57,8 +60,12 @@ const props = withDefaults(
 );
 const settingsStore = useSettingsStore();
 const paper = computed(() => settingsStore.settings.visualTheme.paperTextureId);
+const shelfEl = ref<HTMLElement | null>(null);
+const columnCount = ref(3);
 const openingBookId = ref('');
+const failedCoverIds = reactive(new Set<string>());
 let openTimer: number | undefined;
+let shelfObserver: ResizeObserver | undefined;
 
 const emit = defineEmits<{
   create: [];
@@ -80,14 +87,34 @@ function openBook(id: string) {
 
 onScopeDispose(() => {
   if (openTimer !== undefined) window.clearTimeout(openTimer);
+  shelfObserver?.disconnect();
 });
 
+const shelfItems = computed<ShelfItem[]>(() => [
+  ...props.books.map(book => ({ book, key: `book:${book.id}`, kind: 'book' as const })),
+  ...(props.showCreate ? [{ key: 'create', kind: 'create' as const }] : []),
+]);
+
 const rows = computed(() => {
-  const result: BookShelfCard[][] = [];
-  for (let index = 0; index < props.books.length; index += 3) {
-    result.push(props.books.slice(index, index + 3));
+  const result: ShelfItem[][] = [];
+  for (let index = 0; index < shelfItems.value.length; index += columnCount.value) {
+    result.push(shelfItems.value.slice(index, index + columnCount.value));
   }
   return result;
+});
+
+function updateColumnCount(width: number) {
+  columnCount.value = Math.max(1, Math.floor((width + 15) / 99));
+}
+
+onMounted(() => {
+  if (!shelfEl.value) return;
+  updateColumnCount(shelfEl.value.clientWidth);
+  shelfObserver = new ResizeObserver(entries => {
+    const width = entries[0]?.contentRect.width;
+    if (width) updateColumnCount(width);
+  });
+  shelfObserver.observe(shelfEl.value);
 });
 </script>
 
@@ -99,22 +126,17 @@ const rows = computed(() => {
 }
 
 .pc-shelf-row {
-  display: flex;
+  display: grid;
+  grid-template-columns: repeat(var(--pc-shelf-column-count), minmax(0, 1fr));
   gap: 15px;
-  overflow-x: auto;
   padding: 0 2px 12px;
   border-bottom: 4px solid color-mix(in srgb, var(--pc-border) 70%, transparent 30%);
-  scrollbar-width: none;
-}
-
-.pc-shelf-row::-webkit-scrollbar {
-  display: none;
 }
 
 .pc-book-item {
   display: grid;
-  width: 84px;
-  flex: 0 0 auto;
+  width: 100%;
+  min-width: 0;
   justify-items: center;
   gap: 6px;
   border: 0;
@@ -238,6 +260,14 @@ const rows = computed(() => {
   right: 6px;
   bottom: 5px;
   font-size: 10px;
+}
+
+.pc-book-cover-image {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
 }
 
 .pc-add-cover {

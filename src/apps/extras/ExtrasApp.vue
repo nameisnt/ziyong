@@ -23,6 +23,7 @@
       v-model:book-title="bookDraft.title"
       v-model:chapter-draft="chapterGenerationDraft"
       v-model:references="selectedReferences"
+      v-model:save-custom-type-to-library="saveCustomTypeToLibrary"
       v-model:source-mode="settings.generation.sourceMode"
       :capture="captureNewBookPrompt"
       :capture-reset-key="newBookPromptPreview"
@@ -30,10 +31,13 @@
       :generation-state="chapterGenerationViewState"
       :selected-type-value="selectedChapterTypeValue"
       :show-custom-type-field="showChapterCustomTypeField"
+      :type-blocking-message="chapterTypeBlockingMessage"
       :type-options="chapterTypeOptions"
+      :type-prompt-changed="chapterTypePromptChanged"
       @cancel="phone.goBack()"
       @generate="submitBookAndGenerate"
       @save="submitBook"
+      @save-existing-type="saveExistingChapterTypePrompt"
       @select-type="selectChapterTypeValue"
       @stop="stopChapterGeneration"
     />
@@ -98,6 +102,7 @@
       v-else-if="route.page === 'chapter-generate' && activeBook"
       v-model:chapter-draft="chapterGenerationDraft"
       v-model:references="selectedReferences"
+      v-model:save-custom-type-to-library="saveCustomTypeToLibrary"
       v-model:source-mode="settings.generation.sourceMode"
       :capture="captureChapterPrompt"
       :capture-reset-key="chapterPromptPreview"
@@ -105,9 +110,12 @@
       :selected-type-value="selectedChapterTypeValue"
       :show-custom-type-field="showChapterCustomTypeField"
       :summary-rule-options="summaryRuleOptions"
+      :type-blocking-message="chapterTypeBlockingMessage"
       :type-options="chapterTypeOptions"
+      :type-prompt-changed="chapterTypePromptChanged"
       @cancel="phone.goBack()"
       @generate="runChapterGeneration"
+      @save-existing-type="saveExistingChapterTypePrompt"
       @select-type="selectChapterTypeValue"
       @stop="stopChapterGeneration"
       @sync-intent="syncChapterGenerationMode"
@@ -398,14 +406,27 @@ const { reparseRaw: reparseSummaryPreviewRaw, savePreview: saveSummaryPreview } 
 const {
   currentTypePrompt: currentChapterTypePrompt,
   findExtraTypePromptByName,
+  saveCustomTypeToLibrary,
+  saveExistingTypePrompt: saveExistingChapterTypePromptRecord,
   saveTypePrompt: saveChapterTypePrompt,
   selectedTypeValue: selectedChapterTypeValue,
   selectTypeValue: selectChapterTypeValue,
   showCustomTypeField: showChapterCustomTypeField,
   syncCustomSelectionFromDraft,
+  typeBlockingMessage: chapterTypeBlockingMessage,
   typeOptions: chapterTypeOptions,
+  typePromptChanged: chapterTypePromptChanged,
 } = useExtrasChapterTypePromptSession(chapterGenerationDraft);
 const formattedReferences = computed(() => formatGenerationReferences(selectedReferences.value));
+
+function saveExistingChapterTypePrompt() {
+  const updated = saveExistingChapterTypePromptRecord();
+  if (!updated) {
+    toastr.warning('类型提示词已不存在或没有需要保存的修改');
+    return;
+  }
+  toastr.success(`已更新类型库中的“${updated.name}”`);
+}
 
 function getChapterAppPrompt(intent: ExtraChapterGenerationIntent) {
   if (intent === '新开一本书') return prompts.appPrompts.extras;
@@ -500,6 +521,7 @@ const {
   summaryGenerationDraft: generationDraft,
   summaryGenerationState: generationState,
   viewedChapterVersion,
+  typeBlockingMessage: chapterTypeBlockingMessage,
 });
 const chapterGenerationViewState = computed(() => ({
   error: chapterSession.error.value,
@@ -971,15 +993,17 @@ function resetChapterGenerationDraft(mode: typeof chapterGenerationDraft.mode) {
       title: book.title,
       typeId: prompt.id,
       typeName: book.typeName || prompt.name,
+      typePrompt: '',
     });
   }
   chapterGenerationDraft.mode = mode;
   chapterGenerationDraft.generationIntent = mode === '新开一本书' ? '新开一本书' : '续写上一章';
   chapterGenerationDraft.rangeText = '';
   chapterGenerationDraft.singleMessageId = 0;
+  chapterGenerationDraft.typeGroupId = prompt?.groupId || '';
   chapterGenerationDraft.typeId = prompt?.id || '';
   chapterGenerationDraft.typeName = book?.typeName || prompt?.name || '';
-  chapterGenerationDraft.typePrompt = prompt?.prompt || '';
+  chapterGenerationDraft.typePrompt = prompt?.prompt || book?.typePrompt || '';
   chapterGenerationDraft.userRequirement = '';
   if (mode === '续写上一章' && book) {
     const previousChapter = [...book.chapters].sort((left, right) => left.chapterNumber - right.chapterNumber).at(-1);
@@ -1003,6 +1027,7 @@ function resetChapterGenerationDraft(mode: typeof chapterGenerationDraft.mode) {
     chapterGenerationDraft.typeId = generationRecord.typeId;
     chapterGenerationDraft.typeName = generationRecord.typeName;
     chapterGenerationDraft.typePrompt = generationRecord.typePrompt;
+    chapterGenerationDraft.typeGroupId = prompts.getTypePrompt(generationRecord.typeId)?.groupId || '';
     chapterGenerationDraft.userRequirement = generationRecord.userRequirement;
     selectedReferences.value = resolveSavedGenerationReferences(generationRecord.references);
     const legacyRangeText = formatMessageIdsAsRanges(generationRecord.sourceMessageIds);

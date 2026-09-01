@@ -15,6 +15,13 @@
       <p v-if="heightLimited" class="pc-frame-height-note" role="status">
         网页高度异常，已停止自动调整；其余内容可在网页内滚动查看。
       </p>
+      <p v-if="layoutCompatibilityState === 'applied'" class="pc-frame-height-note" role="status">
+        检测到网页布局折叠，已应用兼容显示。
+      </p>
+      <p v-else-if="layoutCompatibilityState === 'failed'" class="pc-frame-height-note warning" role="alert">
+        网页内容仍被生成样式隐藏，请切换源码检查布局规则。
+      </p>
+      <p v-if="runtimeError" class="pc-frame-height-note warning" role="alert">网页脚本执行失败：{{ runtimeError }}</p>
     </template>
 
     <div v-else class="pc-frame-status">
@@ -63,6 +70,8 @@ const frameHeight = ref(320);
 const frameRevision = ref(0);
 const blocked = ref(false);
 const heightLimited = ref(false);
+const layoutCompatibilityState = ref<'' | 'applied' | 'failed'>('');
+const runtimeError = ref('');
 const loadCount = ref(0);
 let feedbackStreak = 0;
 let lastFeedbackDelta: number | null = null;
@@ -129,6 +138,8 @@ function clampHeight(height: number) {
 
 function resetHeightFeedback() {
   heightLimited.value = false;
+  layoutCompatibilityState.value = '';
+  runtimeError.value = '';
   feedbackStreak = 0;
   lastFeedbackDelta = null;
   lastFeedbackRatio = null;
@@ -147,8 +158,7 @@ function followsFrameViewport(height: number, viewportHeight: number) {
   const delta = Math.round(height - viewportHeight);
   const ratio = height / viewportHeight;
   const viewportChanged = Math.abs(viewportHeight - lastFeedbackViewport) > 1;
-  const repeatsSameDelta =
-    lastFeedbackDelta !== null && Math.abs(delta - lastFeedbackDelta) <= 2 && viewportChanged;
+  const repeatsSameDelta = lastFeedbackDelta !== null && Math.abs(delta - lastFeedbackDelta) <= 2 && viewportChanged;
   const repeatsSameRatio =
     lastFeedbackRatio !== null && Math.abs(ratio - lastFeedbackRatio) <= 0.015 && viewportChanged;
   feedbackStreak = repeatsSameDelta || repeatsSameRatio ? feedbackStreak + 1 : 0;
@@ -190,6 +200,16 @@ function handleMessage(event: MessageEvent) {
     const relativeY = shellRect.height > 0 ? (viewportY - shellRect.top) / shellRect.height : -1;
     if (relativeY < 0.2 || relativeY > 0.8) return;
     emit('readerTap');
+    return;
+  }
+  if (type === 'layout-state') {
+    const state = (payload as { state?: unknown }).state;
+    if (state === 'applied' || state === 'failed') layoutCompatibilityState.value = state;
+    return;
+  }
+  if (type === 'runtime-error') {
+    const message = (payload as { message?: unknown }).message;
+    runtimeError.value = typeof message === 'string' ? message.slice(0, 240) : '未知脚本错误';
     return;
   }
   if (type !== 'height') return;
@@ -257,6 +277,10 @@ onBeforeUnmount(() => {
   color: var(--pc-muted);
   font-size: 12px;
   line-height: 1.4;
+}
+
+.pc-frame-height-note.warning {
+  color: var(--pc-danger);
 }
 
 .pc-frame-status {

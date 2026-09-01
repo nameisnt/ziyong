@@ -40,10 +40,10 @@ function normalizeChapterNumbers(chapters: ExtraChapter[]) {
 export const useExtrasStore = defineStore('extras', () => {
   const { data, flushCurrentScope, rehydrateFromSettings, resetCurrentScope, scopeKey, switchScope } =
     useChatScopedDomain({
-    field: extrasField,
-    schema: ExtraScopeDataSchema,
-    createDefault: () => validateInplace(ExtraScopeDataSchema, {}),
-  });
+      field: extrasField,
+      schema: ExtraScopeDataSchema,
+      createDefault: () => validateInplace(ExtraScopeDataSchema, {}),
+    });
 
   const books = computed(() => data.value.books);
   const { createFailedDraft, deleteFailedDraft, failedDrafts, getFailedDraft, updateFailedDraft } =
@@ -70,12 +70,15 @@ export const useExtrasStore = defineStore('extras', () => {
     return getBook(bookId)?.summaries.find(summary => summary.id === summaryId) ?? null;
   }
 
-  function createBook(input: Pick<ExtraBook, 'title' | 'typeName'> & Partial<Pick<ExtraBook, 'typeId'>>) {
+  function createBook(
+    input: Pick<ExtraBook, 'title' | 'typeName'> & Partial<Pick<ExtraBook, 'typeId' | 'typePrompt'>>,
+  ) {
     const timestamp = nowIso();
     const book: ExtraBook = {
       id: createId('extra_book'),
       typeId: input.typeId?.trim() || undefined,
       typeName: input.typeName.trim() || '未分类番外',
+      typePrompt: input.typePrompt?.trim() || '',
       title: input.title.trim() || '未命名番外',
       chapters: [],
       summaries: [],
@@ -88,12 +91,13 @@ export const useExtrasStore = defineStore('extras', () => {
 
   function updateBook(
     bookId: string,
-    input: Pick<ExtraBook, 'title' | 'typeName'> & Partial<Pick<ExtraBook, 'typeId'>>,
+    input: Pick<ExtraBook, 'title' | 'typeName'> & Partial<Pick<ExtraBook, 'typeId' | 'typePrompt'>>,
   ) {
     const book = getBook(bookId);
     if (!book) return null;
     book.typeId = input.typeId?.trim() || undefined;
     book.typeName = input.typeName.trim() || book.typeName;
+    if (input.typePrompt !== undefined) book.typePrompt = input.typePrompt.trim();
     book.title = input.title.trim() || book.title;
     book.updatedAt = nowIso();
     return book;

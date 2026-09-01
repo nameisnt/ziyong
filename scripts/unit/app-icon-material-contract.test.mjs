@@ -68,8 +68,8 @@ test('paper artwork stays unframed on home navigation and prompt App choices', (
 });
 
 test('shared bookshelves derive covers from paper identity without business gradients', () => {
-  assert.ok((bookShelf.match(/:data-paper="paper"/gu) || []).length >= 2);
-  assert.match(bookShelf, /pc-book-cover pc-add-cover" :data-paper="paper"/u);
+  assert.match(bookShelf, /\['pc-book-cover', \{ 'pc-add-cover': item\.kind === 'create' \}\]/u);
+  assert.match(bookShelf, /:data-paper="paper"/u);
   assert.match(bookShelf, /\.pc-add-cover\s*\{[\s\S]*?border-style:\s*dashed;[\s\S]*?box-shadow:\s*none;/u);
   assert.doesNotMatch(bookShelf, /\.pc-add-cover\s*\{[\s\S]*?background:\s*var\(--pc-surface-strong\)/u);
   assert.match(bookShelf, /settingsStore\.settings\.visualTheme\.paperTextureId/u);

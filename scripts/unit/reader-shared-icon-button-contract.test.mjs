@@ -6,7 +6,7 @@ import test from 'node:test';
 import { scanVueUiContracts } from '../ui-contract-check.mjs';
 
 const expectedCounts = new Map([
-  ['apps/reader/ReaderApp.vue', 2],
+  ['apps/reader/ReaderApp.vue', 4],
   ['components/ReaderDetailShell.vue', 1],
 ]);
 const sources = await Promise.all(

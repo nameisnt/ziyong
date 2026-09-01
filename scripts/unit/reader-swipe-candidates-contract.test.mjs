@@ -27,9 +27,9 @@ test('Reader loads and normalizes every swipe while retaining the Tavern active 
 test('Reader swipe selection remains page-local and suppresses write-capable tools for non-active candidates', () => {
   assert.match(readerApp, /const selectedSwipeIndex = ref\(0\)/u);
   assert.match(readerApp, /const isViewingActiveSwipe = computed/u);
-  assert.match(readerApp, /:bagu-enabled="isViewingActiveSwipe"/u);
+  assert.match(readerApp, /:bagu-enabled="isReadingCurrentChat && isViewingActiveSwipe"/u);
   assert.match(readerApp, /:favorite-enabled="isViewingActiveSwipe"/u);
-  assert.match(readerApp, /v-if="isViewingActiveSwipe"/u);
+  assert.match(readerApp, /v-if="isReadingCurrentChat && isViewingActiveSwipe"/u);
   assert.match(scenario, /reader-swipe-candidates/u);
   assert.match(scenario, /Non-active swipe must disable every content-writing reader tool/u);
 });

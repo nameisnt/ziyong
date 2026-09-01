@@ -30,34 +30,37 @@ import SearchableCombobox from '@/components/SearchableCombobox.vue';
 import { usePhoneStore } from '@/store/phone';
 import { usePromptStore } from '@/store/prompts';
 
-withDefaults(
+const groupId = defineModel<string>({ required: true });
+const props = withDefaults(
   defineProps<{
     disabled?: boolean;
+    domain?: string;
     label?: string;
+    subjectLabel?: string;
   }>(),
   {
     disabled: false,
+    domain: 'theater',
     label: '所属分组',
+    subjectLabel: '小剧场类型',
   },
 );
-
-const groupId = defineModel<string>({ required: true });
 const phone = usePhoneStore();
 const prompts = usePromptStore();
 const groupOptions = computed(() => [
   { label: '未分组', value: '' },
   ...prompts.typePromptGroups
-    .filter(group => group.domain === 'theater')
+    .filter(group => group.domain === props.domain)
     .map(group => ({ label: group.name, value: group.id })),
 ]);
 
 async function createGroup() {
-  const name = await phone.promptNotice('输入新的小剧场类型分组名称。', {
+  const name = await phone.promptNotice(`输入新的${props.subjectLabel}分组名称。`, {
     confirmLabel: '创建',
     placeholder: '例如：论坛与社交媒体',
     title: '新建分组',
   });
   if (!name?.trim()) return;
-  groupId.value = prompts.createTypePromptGroup('theater', name).id;
+  groupId.value = prompts.createTypePromptGroup(props.domain, name).id;
 }
 </script>

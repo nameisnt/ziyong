@@ -1,10 +1,5 @@
 export type PresetMigrationStage =
-  | 'conflict'
-  | 'source-protected'
-  | 'target-create'
-  | 'target-verify'
-  | 'target-rollback'
-  | 'source-delete';
+  'conflict' | 'source-protected' | 'target-create' | 'target-verify' | 'target-rollback' | 'source-delete';
 
 export class PresetMigrationError extends Error {
   readonly sourceRemoved: boolean;
@@ -31,23 +26,28 @@ export class PresetMigrationError extends Error {
   }
 }
 
-export interface PresetMigrationSteps<TPayload> {
+export interface PresetCopySteps<TPayload> {
   createTarget: (payload: TPayload, targetName: string) => void | Promise<void>;
   readTarget: (targetName: string) => TPayload | Promise<TPayload>;
-  deleteSource: () => void | Promise<void>;
   deleteTarget: (targetName: string) => void | Promise<void>;
   readSource: () => TPayload | Promise<TPayload>;
-  sourceDeletable: boolean;
   sourceName: string;
   targetExists: (targetName: string) => boolean | Promise<boolean>;
   targetName: string;
 }
 
+export interface PresetMigrationSteps<TPayload> extends PresetCopySteps<TPayload> {
+  deleteSource: () => void | Promise<void>;
+  sourceDeletable: boolean;
+}
+
 function isPayloadSubset(expected: unknown, actual: unknown): boolean {
   if (Array.isArray(expected)) {
-    return Array.isArray(actual) &&
+    return (
+      Array.isArray(actual) &&
       expected.length === actual.length &&
-      expected.every((item, index) => isPayloadSubset(item, actual[index]));
+      expected.every((item, index) => isPayloadSubset(item, actual[index]))
+    );
   }
   if (expected && typeof expected === 'object') {
     if (!actual || typeof actual !== 'object' || Array.isArray(actual)) return false;
@@ -62,14 +62,11 @@ export function verifyPresetPayload(expected: unknown, actual: unknown) {
   return isPayloadSubset(expected, actual);
 }
 
-export async function movePresetTransactional<TPayload>(steps: PresetMigrationSteps<TPayload>) {
+async function createVerifiedPresetTarget<TPayload>(steps: PresetCopySteps<TPayload>) {
   const sourceName = steps.sourceName.trim();
   const targetName = steps.targetName.trim();
   if (!sourceName || !targetName) {
     throw new PresetMigrationError('来源名称和目标名称不能为空', { stage: 'conflict' });
-  }
-  if (!steps.sourceDeletable) {
-    throw new PresetMigrationError('这个来源预设受保护，不能移动', { stage: 'source-protected' });
   }
   if (await steps.targetExists(targetName)) {
     throw new PresetMigrationError(`目标中已经存在预设“${targetName}”`, { stage: 'conflict' });
@@ -122,6 +119,26 @@ export async function movePresetTransactional<TPayload>(steps: PresetMigrationSt
       targetRemoved: true,
     });
   }
+
+  return { sourceName, targetName };
+}
+
+export async function copyPresetTransactional<TPayload>(steps: PresetCopySteps<TPayload>) {
+  const { sourceName, targetName } = await createVerifiedPresetTarget(steps);
+  return {
+    sourceName,
+    sourceRemoved: false,
+    targetCreated: true,
+    targetName,
+    targetRemoved: false,
+  } as const;
+}
+
+export async function movePresetTransactional<TPayload>(steps: PresetMigrationSteps<TPayload>) {
+  if (!steps.sourceDeletable) {
+    throw new PresetMigrationError('这个来源预设受保护，不能移动', { stage: 'source-protected' });
+  }
+  const { sourceName, targetName } = await createVerifiedPresetTarget(steps);
 
   try {
     await steps.deleteSource();

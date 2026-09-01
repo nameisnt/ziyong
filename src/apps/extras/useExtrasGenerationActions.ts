@@ -39,6 +39,7 @@ interface ExtrasGenerationActionsOptions {
   selectedReferences: Ref<GenerationReferenceItem[]>;
   summaryGenerationDraft: GenerationSession['summaryGenerationDraft'];
   summaryGenerationState: GenerationSession['summaryGenerationState'];
+  typeBlockingMessage: ComputedRef<string>;
   viewedChapterVersion: ComputedRef<{ id: string } | null>;
 }
 
@@ -75,6 +76,10 @@ export function useExtrasGenerationActions(options: ExtrasGenerationActionsOptio
   async function runChapterGenerationForBook(bookId: string, book: ExtraBook, chapterId = '') {
     const draft = options.chapterGenerationDraft;
     const state = options.chapterGenerationState;
+    if (options.typeBlockingMessage.value) {
+      toastr.warning(options.typeBlockingMessage.value);
+      return;
+    }
     let task: GenerationTask | null = null;
     try {
       task = chapterSession.create({
@@ -98,6 +103,14 @@ export function useExtrasGenerationActions(options: ExtrasGenerationActionsOptio
         title: book.title,
         typeId: savedTypePrompt.id,
         typeName: savedTypePrompt.name,
+        typePrompt: '',
+      });
+    } else if (!draft.typeId) {
+      extras.updateBook(bookId, {
+        title: book.title,
+        typeId: undefined,
+        typeName: draft.typeName,
+        typePrompt: draft.typePrompt,
       });
     }
 

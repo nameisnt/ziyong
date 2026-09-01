@@ -37,3 +37,13 @@ test('frontend frame rejects repeated viewport-following growth or shrinkage and
   assert.match(frame, /网页高度异常，已停止自动调整/u);
   assert.match(frame, /if \(nextHeight === frameHeight\.value\) return;/u);
 });
+
+test('frontend frame repairs collapsed generated layouts and reports remaining layout or runtime failures', () => {
+  assert.match(frontend, /getVisualHeight/u);
+  assert.match(frontend, /data-pc-frame-collapsed/u);
+  assert.match(frontend, /type: 'layout-state'/u);
+  assert.match(frontend, /type: 'runtime-error'/u);
+  assert.match(frame, /layoutCompatibilityState/u);
+  assert.match(frame, /网页内容仍被生成样式隐藏/u);
+  assert.match(frame, /网页脚本执行失败/u);
+});

@@ -1,6 +1,79 @@
 <template>
   <section class="pc-reader-app pc-app-fill">
-    <section v-if="route.page === 'root'" class="pc-reader-page">
+    <section v-if="route.page === 'root'" class="pc-reader-page pc-reader-library-page">
+      <div class="pc-compact-toolbar pc-reader-library-toolbar">
+        <label class="pc-search-field pc-reader-library-search">
+          <i class="fa-solid fa-magnifying-glass"></i>
+          <input v-model="ownerQuery" type="search" :placeholder="t`搜索角色书架`" />
+        </label>
+        <button
+          class="pc-icon-btn"
+          type="button"
+          :aria-label="t`刷新角色书架`"
+          :disabled="loadingOwners"
+          :title="t`刷新角色书架`"
+          @click="refreshLibrary"
+        >
+          <i :class="['fa-solid fa-rotate-right', { spinning: loadingOwners }]"></i>
+        </button>
+      </div>
+
+      <div v-if="libraryError" class="pc-error-card">
+        <strong>{{ t`读取失败` }}</strong>
+        <p>{{ libraryError }}</p>
+      </div>
+
+      <section v-if="currentReaderBook.length" class="pc-reader-library-section">
+        <strong class="pc-reader-library-heading">{{ t`继续阅读` }}</strong>
+        <BookShelf :books="currentReaderBook" :show-create="false" @select="openCurrentReaderBook" />
+      </section>
+
+      <section class="pc-reader-library-section">
+        <strong class="pc-reader-library-heading">{{ t`角色书架` }}</strong>
+        <EmptyState
+          v-if="!visibleReaderOwners.length && !loadingOwners"
+          :title="ownerQuery.trim() ? t`没有匹配的角色书架` : t`没有可阅读的角色卡`"
+        />
+        <BookShelf
+          v-else
+          :books="readerOwnerCards"
+          :show-create="false"
+          @select="openReaderOwner"
+        />
+      </section>
+    </section>
+
+    <section v-else-if="route.page === 'shelf'" class="pc-reader-page pc-reader-library-page">
+      <div class="pc-compact-toolbar pc-reader-library-toolbar">
+        <label class="pc-search-field pc-reader-library-search">
+          <i class="fa-solid fa-magnifying-glass"></i>
+          <input v-model="bookQuery" type="search" :placeholder="t`搜索聊天书籍`" />
+        </label>
+        <button
+          class="pc-icon-btn"
+          type="button"
+          :aria-label="t`刷新聊天书籍`"
+          :disabled="loadingBooks"
+          :title="t`刷新聊天书籍`"
+          @click="refreshActiveReaderShelf"
+        >
+          <i :class="['fa-solid fa-rotate-right', { spinning: loadingBooks }]"></i>
+        </button>
+      </div>
+
+      <div v-if="libraryError" class="pc-error-card">
+        <strong>{{ t`读取失败` }}</strong>
+        <p>{{ libraryError }}</p>
+      </div>
+
+      <EmptyState
+        v-if="!visibleReaderBooks.length && !loadingBooks"
+        :title="bookQuery.trim() ? t`没有匹配的聊天书籍` : t`这个角色还没有聊天`"
+      />
+      <BookShelf v-else :books="readerBookCards" :show-create="false" @select="openReaderHistoryBook" />
+    </section>
+
+    <section v-else-if="route.page === 'catalog'" class="pc-reader-page">
       <div class="pc-compact-toolbar pc-reader-hero pc-chat-hero">
         <div class="pc-list-row-copy">
           <strong>{{ currentChatTitle }}</strong>
@@ -126,22 +199,22 @@
 
     <section v-else-if="route.page === 'detail' && activeMessage" class="pc-reader-page pc-reader-detail-page">
       <ReaderDetailShell
-        :actions-class="phone.isViewingCurrentChat ? 'six' : 'five'"
-        :bagu-enabled="isViewingActiveSwipe"
+        :actions-class="isReadingCurrentChat ? 'six' : 'five'"
+        :bagu-enabled="isReadingCurrentChat && isViewingActiveSwipe"
         :branch-disabled="branching || !isViewingActiveSwipe"
-        :branch-enabled="phone.isViewingCurrentChat && isViewingActiveSwipe"
+        :branch-enabled="isReadingCurrentChat && isViewingActiveSwipe"
         :branch-label="branching ? t`创建中` : t`创建分支`"
         :content="activeMessageBody"
         content-formatted
         display-app-id="reader"
-        :edit-disabled="!phone.isViewingCurrentChat || !isViewingActiveSwipe"
+        :edit-disabled="!isReadingCurrentChat || !isViewingActiveSwipe"
         :edit-label="t`编辑正文`"
         :favorite-active="Boolean(activeMessageFavorite)"
         :favorite-enabled="isViewingActiveSwipe"
         :next-disabled="!nextMessageId"
         :previous-disabled="!previousMessageId"
         :reasoning="activeSwipeCandidate?.reasoning || ''"
-        :reasoning-editable="phone.isViewingCurrentChat && isViewingActiveSwipe"
+        :reasoning-editable="isReadingCurrentChat && isViewingActiveSwipe"
         :title="activeSwipeCandidate?.title || activeMessage.title"
         @bagu="openReaderBaguScan"
         @bottom="scrollToBottom"
@@ -182,7 +255,7 @@
         </template>
         <template #actions>
           <button
-            v-if="isViewingActiveSwipe"
+            v-if="isReadingCurrentChat && isViewingActiveSwipe"
             class="pc-soft-btn"
             type="button"
             :title="t`选中文字加入摘抄`"
@@ -282,9 +355,11 @@
 <script setup lang="ts">
 import CatalogModal from '@/components/CatalogModal.vue';
 import BaguDetailPage from '@/components/BaguDetailPage.vue';
+import BookShelf from '@/components/BookShelf.vue';
 import EmptyState from '@/components/EmptyState.vue';
 import ReaderDetailShell from '@/components/ReaderDetailShell.vue';
-import { useReaderChatSession } from '@/apps/reader/useReaderChatSession';
+import { useReaderChatSession, type ReaderChatTarget } from '@/apps/reader/useReaderChatSession';
+import { useReaderLibrarySession } from '@/apps/reader/useReaderLibrarySession';
 import { usePhoneModalLifecycle } from '@/composables/usePhoneModalLifecycle';
 import SearchableCombobox from '@/components/SearchableCombobox.vue';
 import {
@@ -316,6 +391,7 @@ import {
   setChatMessagesSafe,
 } from '@/util/runtime';
 import { getCurrentChatScopeKey, isPlaceholderChatScopeKey } from '@/store/chatScoped';
+import { buildChatScopeKey, normalizeChatArchiveId, parseChatScopeKey } from '@/util/chatArchive';
 import { resolveReaderBodySourceRange, type ReaderBodySourceRange } from '@/util/readerRegex';
 import { getTavernInputValue, sendTavernInput } from '@/util/tavernInput';
 import { characters, getCharacters, getPastCharacterChats } from '@sillytavern/script';
@@ -341,10 +417,108 @@ const fallbackRoute = Object.freeze({
 const route = computed(() => phone.currentRoute ?? fallbackRoute);
 const readerSettings = computed(() => reader.settings ?? fallbackSettings);
 const globalReaderRegexUsage = computed(() => regexDisplay.getUsage('reader'));
-const readerBinding = computed(() => presetLinks.getBinding(phone.viewingScopeKey));
+const ownerQuery = ref('');
+const bookQuery = ref('');
+const {
+  books: readerBooks,
+  currentChatId: currentReaderChatId,
+  currentOwner: currentReaderOwner,
+  error: libraryError,
+  loadBooks: loadReaderBooks,
+  loadOwners: loadReaderOwners,
+  loadingBooks,
+  loadingOwners,
+  owners: readerOwners,
+  resetBooks: resetReaderBooks,
+} = useReaderLibrarySession({
+  getCharacterRecords: () => characters,
+  getCharacters,
+  getPastCharacterChats,
+});
+const activeReaderOwner = computed(() => {
+  const characterId = Number(route.value.params?.characterId);
+  return Number.isInteger(characterId)
+    ? readerOwners.value.find(owner => owner.characterId === characterId) ?? null
+    : null;
+});
+const visibleReaderOwners = computed(() => {
+  const keyword = ownerQuery.value.trim().toLocaleLowerCase();
+  return readerOwners.value.filter(owner => !keyword || owner.name.toLocaleLowerCase().includes(keyword));
+});
+const visibleReaderBooks = computed(() => {
+  const keyword = bookQuery.value.trim().toLocaleLowerCase();
+  return readerBooks.value.filter(book => !keyword || book.title.toLocaleLowerCase().includes(keyword));
+});
+const readerOwnerCards = computed(() =>
+  visibleReaderOwners.value.map(owner => ({
+    count: '',
+    coverUrl: owner.avatarUrl,
+    icon: owner.avatarUrl ? '' : 'fa-solid fa-user',
+    id: owner.id,
+    subtitle: '',
+    title: owner.name,
+  })),
+);
+const readerBookCards = computed(() =>
+  visibleReaderBooks.value.map(book => ({
+    count: book.messageCount ?? '',
+    icon: book.isCurrent ? 'fa-solid fa-book-open' : 'fa-solid fa-book',
+    id: book.chatId,
+    subtitle: book.isCurrent ? '当前聊天' : '',
+    title: book.title,
+  })),
+);
+const currentScope = computed(() => parseChatScopeKey(phone.currentTavernScopeKey));
+const currentReaderTarget = computed<ReaderChatTarget | null>(() => {
+  const scope = currentScope.value;
+  if (!currentReaderChatId.value || currentReaderChatId.value === '__no_chat__') return null;
+  return {
+    characterId:
+      currentReaderOwner.value?.characterId ??
+      (scope.kind === 'char' && Number.isInteger(Number(scope.ownerId)) ? Number(scope.ownerId) : null),
+    chatId: currentReaderChatId.value,
+    chatTitle: currentReaderChatId.value || '当前聊天',
+    isCurrent: true,
+    ownerName: currentReaderOwner.value?.name || '当前角色',
+    scopeKey: phone.currentTavernScopeKey,
+  };
+});
+const currentReaderBook = computed(() => {
+  const target = currentReaderTarget.value;
+  if (!target) return [];
+  return [
+    {
+      count: '',
+      icon: 'fa-solid fa-book-open',
+      id: 'reader_current_chat',
+      subtitle: target.ownerName,
+      title: target.chatTitle,
+    },
+  ];
+});
+const selectedReaderTarget = computed<ReaderChatTarget | null>(() => {
+  const readingPage = ['catalog', 'detail', 'bagu-scan', 'edit'].includes(route.value.page);
+  if (!readingPage) return null;
+  if (route.value.params?.readerTarget !== 'history') return currentReaderTarget.value;
+  const characterId = Number(route.value.params?.characterId);
+  const chatId = normalizeChatArchiveId(route.value.params?.chatId || '');
+  if (!Number.isInteger(characterId) || characterId < 0 || !chatId) return null;
+  return {
+    characterId,
+    chatId,
+    chatTitle: route.value.params?.chatTitle || chatId,
+    isCurrent: false,
+    ownerName: route.value.params?.ownerName || '历史角色',
+    scopeKey: buildChatScopeKey('char', String(characterId), chatId),
+  };
+});
+const isReadingCurrentChat = computed(() => Boolean(selectedReaderTarget.value?.isCurrent));
+const readerBinding = computed(() =>
+  presetLinks.getBinding(selectedReaderTarget.value?.scopeKey || phone.currentTavernScopeKey),
+);
 const currentTavernPresetName = ref(getCurrentTavernPresetName());
 const effectiveReaderPresetName = computed(
-  () => readerBinding.value?.presetName || (phone.isViewingCurrentChat ? currentTavernPresetName.value : ''),
+  () => readerBinding.value?.presetName || (isReadingCurrentChat.value ? currentTavernPresetName.value : ''),
 );
 const readerPresetProfile = computed(() => presetLinks.getReaderProfile(effectiveReaderPresetName.value));
 const readerRegexUsage = computed(() => ({
@@ -364,11 +538,10 @@ const branching = ref(false);
 let pendingBranchSourceScopeKey = '';
 let pendingBranchExpiresAt = 0;
 const { scrollToBottom, scrollToTop } = useDetailScroll(messageBodyEl, '.pc-reader-detail-page .pc-reader-content');
-const currentChatTitle = computed(
-  () =>
-    phone.viewingScopeMeta.chatTitle || String(SillyTavern.getCurrentChatId?.() || SillyTavern.chatId || '当前聊天'),
+const currentChatTitle = computed(() => selectedReaderTarget.value?.chatTitle || '聊天目录');
+const readerScopeLabel = computed(() =>
+  selectedReaderTarget.value?.isCurrent ? '当前聊天' : selectedReaderTarget.value?.ownerName || '历史聊天',
 );
-const readerScopeLabel = computed(() => (phone.isViewingCurrentChat ? '当前聊天' : '选中聊天'));
 
 const defaultTitleRule: ChatReaderRegexRule = { find: '', flags: '', replace: '' };
 const readerTitleRegexRules = computed(() => getRegexRulesByOperation(regexDisplayRules.value, 'extract'));
@@ -427,12 +600,11 @@ const { currentMessages, error, loadingDetail, loadCurrentChat, resetReaderChatS
   activeTitleRule,
   applyReaderCleanupRules,
   contentRuleId,
-  getCharacterRecords: () => characters,
-  getCharacters,
   getPastCharacterChats,
   normalizeTitle,
   readerSettings,
   syncCurrentTavernPresetName,
+  target: selectedReaderTarget,
 });
 const activeMessages = computed(() => currentMessages.value);
 const activeMessage = computed(() => {
@@ -471,12 +643,14 @@ const nextMessageId = computed(() =>
 );
 const canSendReaderMessage = computed(
   () =>
-    phone.isViewingCurrentChat &&
+    isReadingCurrentChat.value &&
     activeMessageIndex.value >= 0 &&
     activeMessageIndex.value === activeMessages.value.length - 1,
 );
 const activeMessageFavorite = computed(() =>
-  activeMessage.value ? reader.getFavorite(phone.viewingScopeKey, activeMessage.value.id) : null,
+  activeMessage.value && selectedReaderTarget.value
+    ? reader.getFavorite(selectedReaderTarget.value.scopeKey, activeMessage.value.id)
+    : null,
 );
 const reloadActiveChatDebounced = useDebounceFn(() => {
   void reloadActiveChat();
@@ -585,14 +759,20 @@ watch(
 
 watch(
   () => route.value,
-  current => {
+  async current => {
     if (current.appId !== 'reader') return;
-    if (
-      current.page === 'root' ||
-      current.page === 'detail' ||
-      current.page === 'bagu-scan' ||
-      current.page === 'edit'
-    ) {
+    if (current.page === 'root') {
+      await loadReaderOwners();
+      return;
+    }
+    if (current.page === 'shelf') {
+      await loadReaderOwners();
+      const characterId = Number(current.params?.characterId);
+      const owner = readerOwners.value.find(item => item.characterId === characterId);
+      if (owner) await loadReaderBooks(owner);
+      return;
+    }
+    if (current.page === 'catalog' || current.page === 'detail' || current.page === 'bagu-scan' || current.page === 'edit') {
       void loadCurrentChat();
     }
     if (current.page === 'edit') {
@@ -603,10 +783,11 @@ watch(
 );
 
 watch(
-  () => phone.viewingScopeKey,
-  () => {
+  () => selectedReaderTarget.value?.scopeKey || '',
+  (scopeKey, previousScopeKey) => {
+    if (scopeKey === previousScopeKey) return;
     resetReaderChatSession();
-    if (route.value.appId === 'reader') {
+    if (route.value.appId === 'reader' && scopeKey) {
       void loadCurrentChat(true);
     }
   },
@@ -615,8 +796,9 @@ watch(
 const stopChatChanged = onTavernEvent('CHAT_CHANGED', () => {
   syncCurrentTavernPresetName();
   applyPendingBranchInheritance();
-  resetReaderChatSession();
-  if (route.value.appId === 'reader') {
+  void loadReaderOwners(true);
+  if (selectedReaderTarget.value?.isCurrent) {
+    resetReaderChatSession();
     void loadCurrentChat(true);
   }
 });
@@ -625,15 +807,69 @@ onScopeDispose(() => {
   stopChatChanged.stop();
 });
 
+async function refreshLibrary() {
+  resetReaderBooks();
+  await loadReaderOwners(true);
+}
+
+async function refreshActiveReaderShelf() {
+  if (!activeReaderOwner.value) return;
+  await loadReaderBooks(activeReaderOwner.value, true);
+}
+
+function openReaderOwner(ownerId: string) {
+  const owner = readerOwners.value.find(item => item.id === ownerId);
+  if (!owner) return;
+  bookQuery.value = '';
+  resetReaderBooks();
+  phone.pushPage('shelf', owner.name, { characterId: String(owner.characterId) });
+}
+
+function openCurrentReaderBook() {
+  const target = currentReaderTarget.value;
+  if (!target) return;
+  phone.pushPage('catalog', target.chatTitle, { readerTarget: 'current' });
+}
+
+function openReaderHistoryBook(chatId: string) {
+  const owner = activeReaderOwner.value;
+  const book = readerBooks.value.find(item => item.chatId === chatId);
+  if (!owner || !book) return;
+  if (book.isCurrent) {
+    openCurrentReaderBook();
+    return;
+  }
+  phone.pushPage('catalog', book.title, {
+    characterId: String(owner.characterId),
+    chatId: book.chatId,
+    chatTitle: book.title,
+    ownerName: owner.name,
+    readerTarget: 'history',
+  });
+}
+
 function openMessage(messageId: string, replaceCurrent = false) {
   if (!messageId) return;
   const message = activeMessages.value.find(item => item.id === messageId);
   if (!message) return;
   showCatalogModal.value = false;
-  const params = { messageId };
+  const params = withReaderTargetParams({ messageId });
   if (replaceCurrent) phone.replacePage('detail', message.title, params);
   else phone.pushPage('detail', message.title, params);
   void nextTick(() => scrollToTop('auto'));
+}
+
+function withReaderTargetParams(params: Record<string, string> = {}) {
+  const target = selectedReaderTarget.value;
+  if (!target || target.isCurrent) return { readerTarget: 'current', ...params };
+  return {
+    characterId: String(target.characterId),
+    chatId: target.chatId,
+    chatTitle: target.chatTitle,
+    ownerName: target.ownerName,
+    readerTarget: 'history',
+    ...params,
+  };
 }
 
 function openAdjacentMessage(messageId: string) {
@@ -642,23 +878,23 @@ function openAdjacentMessage(messageId: string) {
 }
 
 function openReaderBaguScan() {
-  if (!activeMessage.value || !isViewingActiveSwipe.value) return;
+  if (!activeMessage.value || !isReadingCurrentChat.value || !isViewingActiveSwipe.value) return;
   if (!canOpenBaguScan(readerBaguContent.value)) return;
-  phone.pushPage('bagu-scan', '八股检测', {
+  phone.pushPage('bagu-scan', '八股检测', withReaderTargetParams({
     messageId: activeMessage.value.id,
-  });
+  }));
 }
 
 function openReaderEditor() {
   if (!activeMessage.value || !isViewingActiveSwipe.value) return;
-  if (!phone.isViewingCurrentChat) {
+  if (!isReadingCurrentChat.value) {
     toastr.warning('历史聊天只读，请先切回酒馆当前聊天再编辑');
     return;
   }
   readerEditDraft.value = activeMessage.value.body;
-  phone.pushPage('edit', '编辑正文', {
+  phone.pushPage('edit', '编辑正文', withReaderTargetParams({
     messageId: activeMessage.value.id,
-  });
+  }));
 }
 
 function clearPendingBranch() {
@@ -688,7 +924,7 @@ function applyPendingBranchInheritance() {
 
 async function createReaderBranch() {
   if (!activeMessage.value || branching.value) return;
-  if (!phone.isViewingCurrentChat) {
+  if (!isReadingCurrentChat.value) {
     toastr.warning('历史聊天只读，请先切回酒馆当前聊天再创建分支');
     return;
   }
@@ -730,7 +966,8 @@ function getActiveMessageSourceLabel() {
 }
 
 function saveSelectionToDigest() {
-  if (!activeMessage.value || !activeSwipeCandidate.value || !isViewingActiveSwipe.value) return;
+  if (!activeMessage.value || !activeSwipeCandidate.value || !isReadingCurrentChat.value || !isViewingActiveSwipe.value)
+    return;
   const selection = window.getSelection();
   const selectedText = selection?.toString().trim() || '';
   if (!selectedText) {
@@ -767,11 +1004,11 @@ function saveSelectionToDigest() {
 }
 
 function toggleActiveMessageFavorite() {
-  if (!activeMessage.value || !isViewingActiveSwipe.value) return;
+  if (!activeMessage.value || !selectedReaderTarget.value || !isViewingActiveSwipe.value) return;
   const result = reader.toggleFavorite({
     content: activeMessage.value.rawText,
     messageId: activeMessage.value.id,
-    scopeKey: phone.viewingScopeKey,
+    scopeKey: selectedReaderTarget.value.scopeKey,
     scopeTitle: currentChatTitle.value,
     sourceLabel: getActiveMessageSourceLabel(),
     sourceMessageId: activeMessage.value.sourceMessageId,
@@ -830,7 +1067,7 @@ function applyReaderCleanupRules(body: string) {
 
 async function applyReaderBaguContent(content: string) {
   if (!activeMessage.value || !isViewingActiveSwipe.value) return false;
-  if (!phone.isViewingCurrentChat) {
+  if (!isReadingCurrentChat.value) {
     throw new Error('历史聊天只读，请先切回当前聊天再应用检测结果');
   }
 
@@ -892,14 +1129,14 @@ usePhoneModalLifecycle({
 
 function returnToReaderDetail() {
   if (!activeMessage.value) return;
-  phone.replacePage('detail', activeMessage.value.title, {
+  phone.replacePage('detail', activeMessage.value.title, withReaderTargetParams({
     messageId: activeMessage.value.id,
-  });
+  }));
 }
 
 async function saveReaderEdit() {
   if (!activeMessage.value) return;
-  if (!phone.isViewingCurrentChat) {
+  if (!isReadingCurrentChat.value) {
     toastr.warning('历史聊天只读，请先切回酒馆当前聊天再编辑');
     return;
   }
@@ -928,12 +1165,16 @@ async function saveReaderEdit() {
   await saveChatIfAvailable();
   await loadCurrentChat(true);
   const updatedMessage = activeMessages.value.find(item => item.id === messageId);
-  phone.replacePage('detail', updatedMessage?.title || activeMessage.value?.title || '阅读详情', { messageId });
+  phone.replacePage(
+    'detail',
+    updatedMessage?.title || activeMessage.value?.title || '阅读详情',
+    withReaderTargetParams({ messageId }),
+  );
   toastr.success('已更新原聊天楼层');
 }
 
 async function saveReaderReasoning(reasoning: string) {
-  if (!activeMessage.value || !phone.isViewingCurrentChat || !isViewingActiveSwipe.value) return;
+  if (!activeMessage.value || !isReadingCurrentChat.value || !isViewingActiveSwipe.value) return;
   const sourceMessage = getChatMessagesSafe('0-{{lastMessageId}}', { include_swipes: true }).find(
     message => message.message_id === activeMessage.value?.sourceMessageId,
   );
@@ -962,7 +1203,7 @@ async function refreshCurrentChat() {
 }
 
 async function reloadActiveChat() {
-  if (route.value.page !== 'root' && route.value.page !== 'detail') return;
+  if (route.value.page !== 'catalog' && route.value.page !== 'detail') return;
   await loadCurrentChat(true);
 }
 
@@ -1009,6 +1250,29 @@ function formatReaderBody(value: string) {
   display: flex;
   flex-direction: column;
   gap: 14px;
+}
+
+.pc-reader-library-page {
+  overflow-y: auto;
+}
+
+.pc-reader-library-toolbar {
+  align-items: center;
+}
+
+.pc-reader-library-search {
+  min-width: 0;
+  flex: 1 1 auto;
+}
+
+.pc-reader-library-section {
+  display: grid;
+  gap: 8px;
+}
+
+.pc-reader-library-heading {
+  padding-inline: 2px;
+  font-size: 14px;
 }
 
 .pc-reader-detail-page {

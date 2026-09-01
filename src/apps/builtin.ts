@@ -341,9 +341,9 @@ export const BUILTIN_PHONE_APP_MODULES: PhoneAppModule[] = [
   }),
   definePhoneApp({
     id: 'reader',
-    name: '阅读聊天',
+    name: '聊天书库',
     icon: 'fa-glasses',
-    description: '整段阅读与替换视图',
+    description: '按角色书架阅读聊天',
     accent: '#9b5de5',
     defaultRoute: 'root',
     defaultOrder: 100,

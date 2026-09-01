@@ -83,12 +83,16 @@ test('external profiles bridge registers one update callback, rereads, opens and
       assert.equal(nextCallback, callback);
       unregisterCount += 1;
     },
+    updateRow() {
+      return true;
+    },
   };
   const states = [];
   const bridge = bridgeModule.createExternalProfilesBridge(() => api);
   const handle = bridge.start(state => states.push(state));
 
   assert.equal(bridge.getState().status, 'ready');
+  assert.equal(bridge.getState().canUpdateRows, true);
   assert.equal(bridge.getState().tables[0].rows[0].cells[1], '初始');
   callback({ stale: '回调参数不作为事实来源' });
   assert.equal(bridge.getState().tables[0].rows[0].cells[1], '更新');
@@ -123,5 +127,8 @@ test('Profiles App reads and writes external tables without legacy phone profile
   assert.match(profilesApp, /createExternalProfilesRepository\(\)/u);
   assert.match(profilesApp, /onTavernEvent\('CHAT_CHANGED', refresh\)/u);
   assert.match(profilesApp, /stopBridge\?\.stop\(\)/u);
+  assert.match(profilesApp, /repository\.updateRow/u);
+  assert.match(profilesApp, /JSON\.stringify\(currentRow\.cells\) !== JSON\.stringify\(rowEditOriginalCells\.value\)/u);
+  assert.match(profilesApp, /route\.page === 'row-edit'/u);
   assert.doesNotMatch(profilesApp, /legacyProfiles\.(?:entries|tables|createEntry|updateEntry|deleteEntry)/u);
 });

@@ -10,6 +10,7 @@ export interface ExtrasBookEditorDraft {
 export interface ExtrasBookGenerationDraft {
   typeId: string;
   typeName: string;
+  typePrompt: string;
 }
 
 export function useExtrasBookEditorSession(
@@ -30,6 +31,7 @@ export function useExtrasBookEditorSession(
       title,
       typeId: options.getEditingBook()?.typeId || generationDraft.typeId || undefined,
       typeName: bookDraft.typeName.trim() || generationDraft.typeName.trim() || '未分类番外',
+      typePrompt: generationDraft.typeId ? '' : generationDraft.typePrompt,
     };
   }
 

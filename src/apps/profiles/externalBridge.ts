@@ -36,6 +36,7 @@ export function getExternalProfileRowLabel(table: ExternalProfileTable, row: Ext
 
 export type ExternalProfilesViewState = {
   canOpenVisualizer: boolean;
+  canUpdateRows: boolean;
   message: string;
   status: ExternalProfilesStatus;
   subscriptionWarning: string;
@@ -47,6 +48,7 @@ export type ExternalProfilesApi = {
   openVisualizer?: () => Promise<unknown> | unknown;
   registerTableUpdateCallback?: (callback: (data: unknown) => void) => void;
   unregisterTableUpdateCallback?: (callback: (data: unknown) => void) => void;
+  updateRow?: (tableName: string, rowIndex: number, data: Record<string, unknown>) => boolean | Promise<boolean>;
 };
 
 type ExternalProfilesListener = (state: ExternalProfilesViewState) => void;
@@ -127,6 +129,7 @@ export function readExternalProfileTables() {
 function initialState(): ExternalProfilesViewState {
   return {
     canOpenVisualizer: false,
+    canUpdateRows: false,
     message: '',
     status: 'idle',
     subscriptionWarning: '',
@@ -181,6 +184,7 @@ export function createExternalProfilesBridge(resolveApi: ExternalProfilesApiReso
       detachApi();
       return publish({
         canOpenVisualizer: false,
+        canUpdateRows: false,
         message: '未检测到 SP·数据库/newshujuku，请确认外部插件已经加载。',
         status: 'missing',
         subscriptionWarning: '',
@@ -193,6 +197,7 @@ export function createExternalProfilesBridge(resolveApi: ExternalProfilesApiReso
       const tables = normalizeExternalProfilesData(api.exportTableAsJson());
       return publish({
         canOpenVisualizer: typeof api.openVisualizer === 'function',
+        canUpdateRows: typeof api.updateRow === 'function',
         message: '',
         status: 'ready',
         subscriptionWarning,
@@ -201,6 +206,7 @@ export function createExternalProfilesBridge(resolveApi: ExternalProfilesApiReso
     } catch (error) {
       return publish({
         canOpenVisualizer: typeof api.openVisualizer === 'function',
+        canUpdateRows: typeof api.updateRow === 'function',
         message: error instanceof Error ? error.message : '读取外部数据库失败',
         status: 'error',
         subscriptionWarning,

@@ -151,29 +151,35 @@
         @pointerup="externalProfilesLayout === 'horizontal' && profileCardDrag.onPointerUp($event)"
         @wheel="externalProfilesLayout === 'horizontal' && profileCardDrag.onWheel($event)"
       >
-        <button
-          v-for="row in filteredRows"
-          :key="row.id"
-          class="pc-section-card pc-external-profile-data-card"
-          type="button"
-          @click="openRow(row)"
-        >
-          <header>
-            <span>#{{ row.index }}</span>
-            <strong>{{ externalProfileRowIdentifier(activeTable, row) }}</strong>
-            <i class="fa-solid fa-chevron-right"></i>
-          </header>
-          <dl>
-            <div v-for="column in activeTableCardColumns" :key="column.index">
-              <dt>{{ column.label }}</dt>
-              <dd>
-                <span :class="{ 'is-compact': isCompactExternalProfileValue(row.cells[column.index]) }">
-                  {{ row.cells[column.index] || '—' }}
-                </span>
-              </dd>
-            </div>
-          </dl>
-        </button>
+        <article v-for="row in filteredRows" :key="row.id" class="pc-section-card pc-external-profile-data-card">
+          <button class="pc-external-profile-card-open" type="button" @click="openRow(row)">
+            <header>
+              <span>#{{ row.index }}</span>
+              <strong>{{ externalProfileRowIdentifier(activeTable, row) }}</strong>
+              <i class="fa-solid fa-chevron-right"></i>
+            </header>
+            <dl>
+              <div v-for="column in activeTableCardColumns" :key="column.index">
+                <dt>{{ column.label }}</dt>
+                <dd>
+                  <span :class="{ 'is-compact': isCompactExternalProfileValue(row.cells[column.index]) }">
+                    {{ row.cells[column.index] || '—' }}
+                  </span>
+                </dd>
+              </div>
+            </dl>
+          </button>
+          <button
+            v-if="state.canUpdateRows"
+            class="pc-icon-btn compact pc-external-profile-card-edit"
+            type="button"
+            title="快速编辑"
+            aria-label="快速编辑"
+            @click="openRowEditor(row)"
+          >
+            <i class="fa-solid fa-pen"></i>
+          </button>
+        </article>
       </div>
 
       <EmptyState v-else-if="state.status === 'loading'" title="正在刷新当前表…" />
@@ -217,7 +223,7 @@
         catalog-label="表格"
         custom-content
         display-app-id="profiles"
-        :edit-enabled="false"
+        :edit-enabled="state.canUpdateRows"
         :favorite-enabled="false"
         next-label="下一行"
         previous-label="上一行"
@@ -225,6 +231,7 @@
         :previous-disabled="!previousRow"
         :title="activeRowTable ? getExternalProfileRowLabel(activeRowTable, activeRow) : `第 ${activeRow.index} 行`"
         @catalog="returnToActiveTable"
+        @edit="openRowEditor(activeRow)"
         @next="openRow(nextRow!)"
         @previous="openRow(previousRow!)"
       >
@@ -244,6 +251,46 @@
         </template>
       </ReaderDetailShell>
     </section>
+
+    <form
+      v-else-if="route.page === 'row-edit' && activeRow && activeRowTable"
+      class="pc-external-profile-row-editor"
+      @submit.prevent="saveRowEdit"
+    >
+      <section class="pc-page-section">
+        <div class="pc-section-heading">
+          <div>
+            <h2>快速编辑</h2>
+            <p>{{ activeRowTable.name }} · 第 {{ activeRow.index }} 行</p>
+          </div>
+        </div>
+
+        <label v-for="column in activeRowTable.columns" :key="column.index" class="pc-field-group">
+          <span class="pc-field-label">{{ column.label }}</span>
+          <textarea
+            v-if="isMultilineEditField(column.index)"
+            v-model="rowEditDraft[column.index]"
+            class="pc-area compact"
+            :disabled="isExternalProfileIdentifierColumn(column) || rowEditSaving"
+          ></textarea>
+          <input
+            v-else
+            v-model="rowEditDraft[column.index]"
+            class="pc-field"
+            type="text"
+            :disabled="isExternalProfileIdentifierColumn(column) || rowEditSaving"
+          />
+          <small v-if="isExternalProfileIdentifierColumn(column)" class="pc-help-text">标识列由外部数据库管理</small>
+        </label>
+      </section>
+
+      <div class="pc-form-actions">
+        <button class="pc-soft-btn" type="button" :disabled="rowEditSaving" @click="cancelRowEdit">取消</button>
+        <button class="pc-primary-btn" type="submit" :disabled="rowEditSaving">
+          {{ rowEditSaving ? '保存中' : '保存修改' }}
+        </button>
+      </div>
+    </form>
 
     <FailedDraftRepairPage
       v-else-if="route.page === 'failed-draft' && activeFailedDraft"
@@ -339,6 +386,9 @@ const failedDraftRawOutput = ref('');
 const selectedRepairSheetKey = ref('');
 const selectedRepairTitleColumn = ref('');
 const repairPreview = ref<ProfileXmlResult | null>(null);
+const rowEditDraft = ref<string[]>([]);
+const rowEditOriginalCells = ref<string[]>([]);
+const rowEditSaving = ref(false);
 const { failedDrafts: externalFailedDrafts } = storeToRefs(externalGeneration);
 let stopChatChanged: null | { stop: () => void } = null;
 let stopBridge: null | { stop: () => void } = null;
@@ -437,6 +487,60 @@ function openRow(row: ExternalProfileRow) {
   phone.pushRoute('profiles', 'row', getExternalProfileRowLabel(table, row), params);
 }
 
+function openRowEditor(row: ExternalProfileRow) {
+  const table = activeTable.value ?? activeRowTable.value;
+  if (!table || !state.value.canUpdateRows) return;
+  rowEditDraft.value = [...row.cells];
+  rowEditOriginalCells.value = [...row.cells];
+  phone.pushRoute('profiles', 'row-edit', `编辑 ${getExternalProfileRowLabel(table, row)}`, {
+    rowIndex: String(row.index),
+    sheetKey: table.key,
+  });
+}
+
+function isMultilineEditField(columnIndex: number) {
+  const value = rowEditDraft.value[columnIndex] || '';
+  return value.includes('\n') || value.length > 80;
+}
+
+function cancelRowEdit() {
+  if (rowEditSaving.value) return;
+  phone.goBack();
+}
+
+async function saveRowEdit() {
+  const table = activeRowTable.value;
+  const row = activeRow.value;
+  if (!table || !row || rowEditSaving.value) return;
+
+  rowEditSaving.value = true;
+  try {
+    const currentTable = repository.readCurrent().tables.find(candidate => candidate.key === table.key);
+    const currentRow = currentTable?.rows.find(candidate => candidate.index === row.index);
+    if (!currentRow) throw new Error('这条资料已不存在');
+    if (JSON.stringify(currentRow.cells) !== JSON.stringify(rowEditOriginalCells.value)) {
+      throw new Error('这条资料已在外部发生变化，请返回刷新后再编辑');
+    }
+
+    const values = Object.fromEntries(
+      table.columns
+        .filter(column => column.sourceLabel && !isExternalProfileIdentifierColumn(column))
+        .map(column => [column.sourceLabel, rowEditDraft.value[column.index] || '']),
+    );
+    await repository.updateRow(table.key, row.index, values);
+    bridge.refresh();
+    phone.replacePage('row', getExternalProfileRowLabel(table, { ...row, cells: rowEditDraft.value }), {
+      rowIndex: String(row.index),
+      sheetKey: table.key,
+    });
+    toastr.success('资料已更新');
+  } catch (error) {
+    toastr.error(error instanceof Error ? error.message : '资料更新失败');
+  } finally {
+    rowEditSaving.value = false;
+  }
+}
+
 function returnToActiveTable() {
   const table = activeRowTable.value;
   if (!table) return returnToCatalog();
@@ -529,7 +633,7 @@ watch(
   () => [route.value.appId, route.value.page] as const,
   ([appId, page]) => {
     if (appId !== 'profiles') return;
-    if (!['root', 'table', 'row', 'failed-draft'].includes(page)) {
+    if (!['root', 'table', 'row', 'row-edit', 'failed-draft'].includes(page)) {
       phone.replacePage('root', '资料表');
     }
   },
@@ -653,10 +757,18 @@ const regenerateFailedDraft = useFailedDraftRegeneration({
   grid-template-columns: minmax(0, 1fr);
 }
 .pc-external-profile-data-card {
+  position: relative;
   width: 100%;
   min-width: 0;
   align-content: start;
-  /* ui-reuse-allow: PROFILECARD01 interactive section cards reset native button appearance. */
+}
+.pc-external-profile-card-open {
+  display: grid;
+  width: 100%;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  /* ui-reuse-allow: PROFILECARD01 the whole data preview is the row-open hit area. */
   appearance: none;
   color: inherit;
   cursor: pointer;
@@ -671,11 +783,11 @@ const regenerateFailedDraft = useFailedDraftRegeneration({
   cursor: grabbing;
 }
 .pc-external-profile-data-card:hover,
-.pc-external-profile-data-card:focus-visible {
+.pc-external-profile-data-card:has(.pc-external-profile-card-open:focus-visible) {
   border-color: color-mix(in srgb, var(--pc-theme-accent) 50%, var(--pc-border) 50%);
   background: color-mix(in srgb, var(--pc-theme-accent) 7%, var(--pc-surface) 93%);
 }
-.pc-external-profile-data-card > header {
+.pc-external-profile-card-open > header {
   display: grid;
   grid-template-columns: auto minmax(0, 1fr) auto;
   align-items: center;
@@ -685,22 +797,22 @@ const regenerateFailedDraft = useFailedDraftRegeneration({
   border-bottom: 1px solid var(--pc-border);
   background: color-mix(in srgb, var(--pc-theme-accent) 8%, transparent 92%);
 }
-.pc-external-profile-data-card > header span,
-.pc-external-profile-data-card > header i {
+.pc-external-profile-card-open > header span,
+.pc-external-profile-card-open > header i {
   color: var(--pc-muted);
 }
-.pc-external-profile-data-card > header strong {
+.pc-external-profile-card-open > header strong {
   min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
-.pc-external-profile-data-card dl {
+.pc-external-profile-card-open dl {
   display: grid;
   gap: 11px;
   margin: 0;
 }
-.pc-external-profile-data-card dl > div {
+.pc-external-profile-card-open dl > div {
   display: grid;
   grid-template-columns: minmax(68px, auto) minmax(0, 1fr);
   align-items: start;
@@ -721,6 +833,12 @@ const regenerateFailedDraft = useFailedDraftRegeneration({
   border-radius: 999px;
   background: var(--pc-form-control-bg);
 }
+.pc-external-profile-card-edit {
+  position: absolute;
+  top: 4px;
+  right: 40px;
+  z-index: 1;
+}
 .pc-external-profile-empty-action {
   margin-top: 12px;
 }
@@ -736,6 +854,16 @@ const regenerateFailedDraft = useFailedDraftRegeneration({
 .pc-external-profile-row-detail {
   height: 100%;
   min-height: 0;
+}
+.pc-external-profile-row-editor {
+  display: grid;
+  align-content: start;
+  min-height: 100%;
+  gap: 16px;
+}
+.pc-external-profile-row-editor .pc-page-section {
+  display: grid;
+  gap: 14px;
 }
 .pc-external-profile-row-detail .pc-kicker {
   display: inline-flex;

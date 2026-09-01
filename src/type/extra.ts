@@ -77,6 +77,7 @@ export const ExtraBookSchema = z.object({
   id: z.string(),
   typeId: z.string().optional(),
   typeName: z.string(),
+  typePrompt: z.string().default(''),
   title: z.string(),
   outline: z.string().optional(),
   chapters: z.array(ExtraChapterSchema).default([]),
