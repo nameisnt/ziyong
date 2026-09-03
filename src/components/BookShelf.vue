@@ -19,7 +19,7 @@
             v-if="item.kind === 'book' && item.book.coverUrl && !failedCoverIds.has(item.book.id)"
             class="pc-book-cover-image"
             :src="item.book.coverUrl"
-            :alt="item.book.title"
+            alt=""
             @error="failedCoverIds.add(item.book.id)"
           />
           <i v-else :class="item.kind === 'create' ? 'fa-solid fa-plus' : item.book.icon"></i>

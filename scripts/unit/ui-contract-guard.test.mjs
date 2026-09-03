@@ -89,6 +89,17 @@ test('unscoped global styles are not mistaken for App-local overrides', () => {
   assert.deepEqual(ruleIds(source), []);
 });
 
+test('local class names that only start with a protected class are not rejected', () => {
+  const source = `
+    <template><div /></template>
+    <style scoped>
+    .pc-selected-icon-editor { padding-top: 12px; }
+    .pc-field-help { font-size: 12px; }
+    </style>
+  `;
+  assert.deepEqual(ruleIds(source), []);
+});
+
 test('the legacy baseline allows exact old counts but rejects additions and stale entries', () => {
   const legacy = scanVueUiContracts(
     `<template><button class="pc-icon-btn" type="button" title="旧按钮" @click="run"><i /></button></template>`,

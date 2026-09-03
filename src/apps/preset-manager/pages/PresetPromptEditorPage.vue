@@ -108,11 +108,13 @@ defineEmits<{ back: []; remove: []; save: [] }>();
   font-size: 12px;
   font-weight: 700;
 }
+/* ui-reuse-allow: UI-PRESET-EDITOR-001 editor body consumes the remaining page height. */
 .pc-preset-editor .pc-area {
   min-height: 0;
   flex: 1;
   resize: none;
 }
+/* ui-reuse-allow: UI-PRESET-ACTIONS-001 editor actions stay on one compact row. */
 .pc-preset-editor .pc-form-actions {
   padding-top: 8px;
   flex-wrap: nowrap;

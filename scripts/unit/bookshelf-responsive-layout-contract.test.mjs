@@ -20,3 +20,13 @@ test('bookshelf places the create entry in the same responsive sequence as saved
   assert.match(source, /item\.kind === 'create' \? emit\('create'\)/u);
   assert.doesNotMatch(source, /v-if="showCreate" class="pc-shelf-row"/u);
 });
+
+test('bookshelf cover images remain decorative inside their labelled buttons', () => {
+  const coverImages = [...source.matchAll(/<img[\s\S]*?class="pc-book-cover-image"[\s\S]*?\/>/gu)].map(match => match[0]);
+
+  assert.equal(coverImages.length, 2);
+  for (const image of coverImages) {
+    assert.match(image, /\salt=""/u);
+    assert.doesNotMatch(image, /:alt=/u);
+  }
+});

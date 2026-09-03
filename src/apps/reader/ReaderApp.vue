@@ -799,15 +799,18 @@ watch(
 const stopChatChanged = onTavernEvent('CHAT_CHANGED', () => {
   syncCurrentTavernPresetName();
   applyPendingBranchInheritance();
-  void refreshReaderLibraryRoute();
-  if (selectedReaderTarget.value?.isCurrent) {
-    resetReaderChatSession();
-    void loadCurrentChat(true);
-  }
 });
 const stopChatRenamed = onTavernChatRename(() => {
   void refreshReaderLibraryRoute();
 });
+
+watch(
+  () => phone.currentTavernScopeKey,
+  (scopeKey, previousScopeKey) => {
+    if (scopeKey === previousScopeKey) return;
+    void refreshReaderLibraryRoute();
+  },
+);
 
 onScopeDispose(() => {
   stopChatChanged.stop();
@@ -1418,7 +1421,7 @@ function formatReaderBody(value: string) {
 }
 
 .pc-message-card {
-  padding: 14px;
+  padding: 0;
 }
 
 .pc-rule-panel {
@@ -1557,8 +1560,10 @@ function formatReaderBody(value: string) {
   position: relative;
   z-index: 1;
   width: 100%;
+  padding: 14px;
   text-align: left;
   border: 0;
+  border-radius: inherit;
   background: transparent;
   color: var(--pc-text);
   cursor: pointer;

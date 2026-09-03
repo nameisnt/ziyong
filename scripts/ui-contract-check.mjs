@@ -240,7 +240,7 @@ function scanScopedStyles(source, file) {
       const comments = [...ruleMatch[1].matchAll(/\/\*([\s\S]*?)\*\//g)].map(match => match[1].trim());
       const selector = ruleMatch[1].replaceAll(/\/\*[\s\S]*?\*\//g, '').trim();
       if (!selector || selector.startsWith('@')) continue;
-      if (!protectedControlClasses.some(className => selector.includes(`.${className}`))) continue;
+      if (!protectedControlClasses.some(className => new RegExp(`\\.${className}(?![\\w-])`).test(selector))) continue;
       if (hasNumberedAllowance(comments)) continue;
 
       const declarations = parseDeclarations(ruleMatch[2]);

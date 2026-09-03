@@ -663,6 +663,7 @@ async function copyCode(code: string) {
   font-weight: 800;
 }
 
+/* ui-reuse-allow: UI-TUTORIAL-CODE-001 copy action is embedded in a compact code header. */
 .pc-tutorial-code .pc-icon-btn {
   width: 32px;
   height: 32px;

@@ -127,9 +127,10 @@ defineEmits<{
   grid-template-columns: repeat(7, minmax(0, 1fr));
 }
 
+/* ui-reuse-allow: UI-DETAIL-FOOTER-001 normalizes slotted buttons from mixed callers. */
 .pc-detail-nav .pc-soft-btn,
 .pc-detail-actions :deep(.pc-soft-btn) {
-  /* ui-reuse-allow: footer normalizes slotted buttons from mixed callers. */
+  /* ui-reuse-allow: UI-DETAIL-FOOTER-001 normalizes slotted buttons from mixed callers. */
   appearance: none;
   -webkit-appearance: none;
   display: inline-flex;

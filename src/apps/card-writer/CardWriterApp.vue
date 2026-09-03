@@ -1743,6 +1743,7 @@ onMounted(() => {
   gap: 4px;
 }
 
+/* ui-reuse-allow: UI-CARD-WRITER-001 five fixed columns require compact option labels. */
 .pc-card-writer-experience-options .pc-soft-btn {
   min-width: 0;
   min-height: 32px;

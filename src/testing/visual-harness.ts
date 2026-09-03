@@ -3729,6 +3729,14 @@ async function applyScenario(name: VisualScenarioName, options: { height?: numbe
     await waitForPaint();
     const screen = document.querySelector<HTMLElement>('.pc-screen');
     if (!screen) throw new Error('Tutorial scroll fixture could not find the phone screen');
+    const collapsedGroups = [...document.querySelectorAll<HTMLButtonElement>('.pc-tutorial-group-toggle')].filter(
+      toggle => toggle.getAttribute('aria-expanded') === 'false',
+    );
+    for (const toggle of collapsedGroups) {
+      if (screen.scrollHeight - screen.clientHeight >= 100) break;
+      toggle.click();
+      await waitForPaint();
+    }
     screen.scrollTop = Math.min(360, screen.scrollHeight - screen.clientHeight);
     const expectedScrollTop = screen.scrollTop;
     if (expectedScrollTop < 100) throw new Error('Tutorial root was not tall enough to verify scroll restoration');

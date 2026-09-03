@@ -693,6 +693,7 @@ defineExpose({ hideFooter, toggleFooter });
   bottom: calc(100% + 7px);
 }
 
+/* ui-reuse-allow: UI-READER-TOOLS-001 popup commands use compact full-width menu rows. */
 .pc-reader-tool-menu > .pc-soft-btn,
 .pc-reader-tool-menu :deep(.pc-soft-btn),
 .pc-reader-tool-menu :deep(.pc-primary-btn) {

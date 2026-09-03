@@ -445,6 +445,7 @@ function confirmSingleSelection(group: ManagedEntryGroup) {
   justify-content: flex-end;
   gap: 6px;
 }
+/* ui-reuse-allow: UI-WORLDBOOK-TOOLBAR-001 toolbar actions share its compact 32px row. */
 .pc-worldbook-link-actions .pc-icon-btn {
   width: 32px;
   min-width: 32px;

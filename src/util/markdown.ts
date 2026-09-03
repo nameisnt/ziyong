@@ -1,5 +1,3 @@
-const blockTags = new Set(['blockquote', 'ol', 'pre', 'ul']);
-
 function escapeHtml(value: string) {
   return value
     .replace(/&/g, '&amp;')
@@ -23,9 +21,9 @@ function flushParagraph(lines: string[], output: string[]) {
   lines.length = 0;
 }
 
-function flushList(lines: string[], output: string[]) {
+function flushList(lines: string[], output: string[], tag: 'ol' | 'ul') {
   if (!lines.length) return;
-  output.push(`<ul>${lines.map(line => `<li>${renderInline(line)}</li>`).join('')}</ul>`);
+  output.push(`<${tag}>${lines.map(line => `<li>${renderInline(line)}</li>`).join('')}</${tag}>`);
   lines.length = 0;
 }
 
@@ -40,6 +38,13 @@ export function renderMarkdown(value: string) {
   const listLines: string[] = [];
   const lines = source.split('\n');
   let codeLines: string[] | null = null;
+  let listTag: 'ol' | 'ul' | null = null;
+
+  const flushActiveList = () => {
+    if (!listTag) return;
+    flushList(listLines, output, listTag);
+    listTag = null;
+  };
 
   for (const rawLine of lines) {
     const line = rawLine.trimEnd();
@@ -50,7 +55,7 @@ export function renderMarkdown(value: string) {
         codeLines = null;
       } else {
         flushParagraph(paragraphLines, output);
-        flushList(listLines, output);
+        flushActiveList();
         codeLines = [];
       }
       continue;
@@ -63,14 +68,14 @@ export function renderMarkdown(value: string) {
 
     if (!line.trim()) {
       flushParagraph(paragraphLines, output);
-      flushList(listLines, output);
+      flushActiveList();
       continue;
     }
 
     const heading = /^(#{1,4})\s+(.+)$/.exec(line);
     if (heading) {
       flushParagraph(paragraphLines, output);
-      flushList(listLines, output);
+      flushActiveList();
       const level = Math.min(heading[1].length + 2, 6);
       output.push(`<h${level}>${renderInline(heading[2])}</h${level}>`);
       continue;
@@ -79,7 +84,7 @@ export function renderMarkdown(value: string) {
     const quote = /^>\s?(.+)$/.exec(line);
     if (quote) {
       flushParagraph(paragraphLines, output);
-      flushList(listLines, output);
+      flushActiveList();
       output.push(`<blockquote>${renderInline(quote[1])}</blockquote>`);
       continue;
     }
@@ -87,6 +92,8 @@ export function renderMarkdown(value: string) {
     const list = /^[-*]\s+(.+)$/.exec(line);
     if (list) {
       flushParagraph(paragraphLines, output);
+      if (listTag && listTag !== 'ul') flushActiveList();
+      listTag = 'ul';
       listLines.push(list[1]);
       continue;
     }
@@ -94,23 +101,19 @@ export function renderMarkdown(value: string) {
     const ordered = /^\d+[.)]\s+(.+)$/.exec(line);
     if (ordered) {
       flushParagraph(paragraphLines, output);
-      flushList(listLines, output);
-      output.push(`<ol><li>${renderInline(ordered[1])}</li></ol>`);
+      if (listTag && listTag !== 'ol') flushActiveList();
+      listTag = 'ol';
+      listLines.push(ordered[1]);
       continue;
     }
 
-    flushList(listLines, output);
+    flushActiveList();
     paragraphLines.push(line);
   }
 
   if (codeLines) output.push(`<pre><code>${escapeHtml(codeLines.join('\n'))}</code></pre>`);
   flushParagraph(paragraphLines, output);
-  flushList(listLines, output);
+  flushActiveList();
 
-  return output
-    .map(block => {
-      const match = /^<([a-z0-9]+)/i.exec(block);
-      return match && blockTags.has(match[1]) ? block : block;
-    })
-    .join('');
+  return output.join('');
 }

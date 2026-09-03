@@ -7,7 +7,7 @@
   "css": "dist/index.css",
   "author": "闲余",
   "version": "1.0.1",
-  "homePage": "https://github.com/nameisnt/ziyong",
+  "homePage": "https://github.com/nameisnt/ziyong-dist",
   "auto_update": true,
   "i18n": {
     "en": "i18n/en.json"

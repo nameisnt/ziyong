@@ -337,6 +337,7 @@ function nextPuzzle() {
   gap: 8px;
 }
 
+/* ui-reuse-allow: UI-SUDOKU-PAD-001 keypad cells must fill five equal columns. */
 .pc-sudoku-pad .pc-soft-btn {
   justify-content: center;
   min-width: 0;

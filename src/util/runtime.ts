@@ -431,15 +431,12 @@ export function getLastMessageIdSafe() {
 }
 
 export function generateSafe(config: Record<string, unknown>) {
-  const fn = requiredGlobalFunction<(config: Record<string, unknown>) => Promise<unknown>>('generate');
+  const fn = requiredTavernHelperMethod<(config: Record<string, unknown>) => Promise<unknown>>('generate');
   return fn(config);
 }
 
 export function generateRawSafe(config: Record<string, unknown>) {
-  const fn = getOptionalGlobalFunction<(config: Record<string, unknown>) => Promise<unknown>>('generateRaw');
-  if (!fn) {
-    throw new Error('未检测到酒馆助手 generateRaw 接口，无法在不写入酒馆楼层的情况下生成');
-  }
+  const fn = requiredTavernHelperMethod<(config: Record<string, unknown>) => Promise<unknown>>('generateRaw');
   return fn(config);
 }
 

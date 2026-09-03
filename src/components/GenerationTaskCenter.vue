@@ -356,6 +356,7 @@ function clearSavedTasks() {
   gap: 5px;
 }
 
+/* ui-reuse-allow: UI-TASK-ACTIONS-001 task rows reserve a fixed compact action cluster. */
 .pc-task-actions .pc-icon-btn {
   width: 28px;
   height: 28px;

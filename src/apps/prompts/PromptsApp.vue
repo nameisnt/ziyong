@@ -1463,6 +1463,7 @@ async function copyText(text: string, successMessage: string) {
   gap: 6px;
 }
 
+/* ui-reuse-allow: UI-PROMPT-GROUP-001 group actions fit the compact accordion heading. */
 .pc-group-actions .pc-icon-btn {
   width: 34px;
   height: 34px;
@@ -1731,6 +1732,7 @@ async function copyText(text: string, successMessage: string) {
   grid-template-columns: repeat(3, minmax(0, 1fr));
 }
 
+/* ui-reuse-allow: UI-PROMPT-DETAIL-001 detail actions share three equal narrow columns. */
 .pc-prompt-detail-actions :is(.pc-soft-btn, .pc-primary-btn) {
   min-inline-size: 0;
   padding-inline: 10px;

@@ -1,7 +1,7 @@
 import { normalizeBrief, type ChatHistoryBriefItem } from '@/store/reader';
 import { usePhoneStore } from '@/store/phone';
 import { buildChatScopeKey, normalizeChatArchiveId, parseChatScopeKey } from '@/util/chatArchive';
-import { getOptionalGlobalFunction, getOptionalGlobalValue } from '@/util/runtime';
+import { getOptionalGlobalFunction } from '@/util/runtime';
 
 export interface ReaderLibraryOwner {
   avatar: string;
@@ -37,29 +37,14 @@ export function useReaderLibrarySession(options: {
   let bookLoadSerial = 0;
 
   const currentScope = computed(() => parseChatScopeKey(phone.currentTavernScopeKey));
-  const currentTavernContext = computed(() => {
-    const context = getOptionalGlobalValue<{
-      getContext?: () => { characterId?: number | string | null; chatId?: number | string | null };
-    }>('SillyTavern')?.getContext?.();
-    return {
-      characterId: context?.characterId,
-      chatId: context?.chatId ?? currentScope.value.chatId,
-    };
-  });
+  const currentOwner = computed(() => owners.value.find(isCurrentReaderOwner) ?? null);
   const currentCharacterId = computed(() => {
-    const contextId = Number(currentTavernContext.value?.characterId);
-    if (Number.isInteger(contextId) && contextId >= 0) return contextId;
+    if (currentOwner.value) return currentOwner.value.characterId;
     if (currentScope.value.kind !== 'char') return null;
     const scopeId = Number(currentScope.value.ownerId);
     return Number.isInteger(scopeId) && scopeId >= 0 ? scopeId : null;
   });
-  const currentChatId = computed(() =>
-    normalizeChatArchiveId(String(currentTavernContext.value.chatId ?? '')),
-  );
-  const currentOwner = computed(() => {
-    if (currentCharacterId.value === null) return null;
-    return owners.value.find(owner => owner.characterId === currentCharacterId.value) ?? null;
-  });
+  const currentChatId = computed(() => normalizeChatArchiveId(currentScope.value.chatId));
 
   async function loadOwners(force = false) {
     if (owners.value.length && !force) return owners.value;
@@ -71,10 +56,9 @@ export function useReaderLibrarySession(options: {
       const records = options.getCharacterRecords();
       const nextOwners = (Array.isArray(records) ? records : []).map(createOwner);
       if (loadSerial !== ownerLoadSerial) return owners.value;
-      const activeCharacterId = currentCharacterId.value ?? -1;
       owners.value = nextOwners.sort(
         (left, right) =>
-          Number(right.characterId === activeCharacterId) - Number(left.characterId === activeCharacterId) ||
+          Number(isCurrentReaderOwner(right)) - Number(isCurrentReaderOwner(left)) ||
           left.name.localeCompare(right.name, 'zh-CN'),
       );
       return owners.value;
@@ -158,6 +142,16 @@ export function useReaderLibrarySession(options: {
     };
   }
 
+  function isCurrentReaderOwner(owner: ReaderLibraryOwner) {
+    if (currentScope.value.kind !== 'char') return false;
+    const activeOwnerId = normalizeOwnerAlias(currentScope.value.ownerId);
+    if (!activeOwnerId) return false;
+    const avatarFileName = owner.avatar.split(/[\\/]/).pop() || '';
+    return [String(owner.characterId), owner.name, owner.avatar, avatarFileName, avatarFileName.replace(/\.[^/.]+$/, '')]
+      .map(normalizeOwnerAlias)
+      .includes(activeOwnerId);
+  }
+
   function createBook(characterId: number, chatId: string, brief: ChatHistoryBriefItem): ReaderLibraryBook {
     const isCurrent = currentCharacterId.value === characterId && currentChatId.value === chatId;
     return {
@@ -208,4 +202,8 @@ function firstDisplayCharacter(value: string) {
 function timestamp(value: string) {
   const parsed = Date.parse(value);
   return Number.isFinite(parsed) ? parsed : 0;
+}
+
+function normalizeOwnerAlias(value: string) {
+  return value.trim().replaceAll('\\', '/').toLocaleLowerCase();
 }

@@ -208,6 +208,7 @@ watch(
   line-height: 1.5;
 }
 
+/* ui-reuse-allow: UI-TUTORIAL-DIRECTORY-001 row action matches the compact directory density. */
 .pc-tutorial-directory-row .pc-icon-btn {
   width: 34px;
   height: 34px;

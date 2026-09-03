@@ -15,6 +15,8 @@ const externals = {
   '@popperjs/core': 'Popper',
 } as const;
 
+const imageAssetExtensions = new Set(['.avif', '.gif', '.jpeg', '.jpg', '.png', '.svg', '.webp']);
+
 const publicPathIndex = __dirname.lastIndexOf('public');
 const relative_sillytavern_path =
   publicPathIndex >= 0
@@ -97,7 +99,10 @@ export default defineConfig(({ mode }) => {
           format: 'es',
           entryFileNames: '[name].js',
           chunkFileNames: '[name].[hash].chunk.js',
-          assetFileNames: '[name].[ext]',
+          assetFileNames: assetInfo =>
+            imageAssetExtensions.has(path.extname(assetInfo.names[0] || '').toLowerCase())
+              ? 'images/[name].[ext]'
+              : '[name].[ext]',
           preserveModules: false,
         },
       },

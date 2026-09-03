@@ -387,6 +387,7 @@ onScopeDispose(stopNavigationGuard);
   display: none;
 }
 
+/* ui-reuse-allow: UI-BAGU-ACTIONS-001 scan actions remain horizontally browsable on narrow screens. */
 .pc-bagu-scan-actions > :is(.pc-soft-btn, .pc-primary-btn) {
   flex: 1 0 68px;
   min-inline-size: 0;

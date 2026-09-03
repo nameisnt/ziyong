@@ -148,6 +148,7 @@ async function importSelected(event: Event) {
   margin-top: 18px;
 }
 
+/* ui-reuse-allow: UI-PROMPT-TRANSFER-001 two transfer actions fill equal grid columns. */
 .pc-transfer-actions .pc-soft-btn,
 .pc-transfer-actions .pc-primary-btn {
   width: 100%;

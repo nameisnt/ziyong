@@ -63,16 +63,20 @@ test('ReaderApp delegates chat loading to one session while detail writes stay i
   assert.match(owner, /avatar: target\.ownerAvatar, name: target\.ownerName/u);
 });
 
-test('Reader library loads character shelves and chat books lazily without switching the phone viewing scope', () => {
+test('Reader library follows the reactive Tavern scope and keeps current and historical book routes separate', () => {
   assert.match(root, /useReaderLibrarySession/u);
   assert.match(root, /route\.page === 'shelf'/u);
   assert.match(root, /route\.page === 'catalog'/u);
   assert.match(library, /async function loadOwners/u);
   assert.match(library, /async function loadBooks/u);
   assert.match(library, /getPastCharacterChats\(owner\.characterId\)/u);
-  assert.match(library, /getOptionalGlobalValue<[\s\S]*>\('SillyTavern'\)\?\.getContext\?\.\(\)/u);
+  assert.doesNotMatch(library, /getContext\?\.\(\)/u);
+  assert.doesNotMatch(library, /getOptionalGlobalValue/u);
+  assert.match(library, /const currentScope = computed\(\(\) => parseChatScopeKey\(phone\.currentTavernScopeKey\)\)/u);
+  assert.match(library, /const currentOwner = computed\(\(\) => owners\.value\.find\(isCurrentReaderOwner\) \?\? null\)/u);
+  assert.match(library, /String\(owner\.characterId\), owner\.name, owner\.avatar, avatarFileName/u);
   assert.match(library, /currentCharacterId\.value === owner\.characterId/u);
-  assert.match(library, /chatId: context\?\.chatId \?\? currentScope\.value\.chatId/u);
+  assert.match(library, /const currentChatId = computed\(\(\) => normalizeChatArchiveId\(currentScope\.value\.chatId\)\)/u);
   assert.match(root, /currentChatId: currentReaderChatId/u);
   assert.match(library, /title: normalizeChatArchiveId\(brief\.title\) \|\| chatId/u);
   assert.match(library, /brief !== null && brief\.messageCount !== 0/u);
@@ -80,7 +84,13 @@ test('Reader library loads character shelves and chat books lazily without switc
   assert.match(root, /loadReaderBooks\(owner, true\)/u);
   assert.match(root, /onTavernChatRename\(/u);
   assert.match(root, /resetReaderBooks\(\)/u);
+  assert.match(
+    root,
+    /watch\(\s*\(\) => phone\.currentTavernScopeKey,[\s\S]*?refreshReaderLibraryRoute\(\);[\s\S]*?\);/u,
+  );
   assert.match(root, /ownerAvatar: owner\.avatar/u);
+  assert.match(root, /if \(book\.isCurrent\) \{\s*openCurrentReaderBook\(\);\s*return;\s*\}/u);
+  assert.match(root, /readerTarget: 'history'/u);
   assert.doesNotMatch(root, /phone\.setViewingScope/u);
   assert.doesNotMatch(library, /phone\.setViewingScope/u);
 });

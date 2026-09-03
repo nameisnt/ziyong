@@ -7,7 +7,7 @@
 在 SillyTavern 的扩展管理器中选择“安装扩展”，填入本仓库地址：
 
 ```text
-https://github.com/nameisnt/ziyong
+https://github.com/nameisnt/ziyong-dist
 ```
 
 安装或更新完成后刷新 SillyTavern 页面。部分预设、世界书和自定义宏功能需要酒馆助手提供对应接口；接口不可用时不影响其余独立功能。

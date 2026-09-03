@@ -30,8 +30,8 @@ test('visual bootstrap is the single owner of global fixture installation', () =
 });
 
 test('bootstrap extraction keeps the registered visual evidence cardinality', () => {
-  assert.equal(visualBaseline.scenarioCount, 302);
-  assert.equal(visualBaseline.runs.length, 906);
+  assert.equal(visualBaseline.scenarioCount, 304);
+  assert.equal(visualBaseline.runs.length, 912);
   assert.deepEqual(visualBaseline.sizes, ['350x700', '390x844', '430x900']);
   assert.equal(appearanceBaseline.evidence.length, 15);
 });

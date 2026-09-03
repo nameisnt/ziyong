@@ -1303,6 +1303,7 @@ onBeforeUnmount(stopStatusEvents);
   gap: 6px;
 }
 
+/* ui-reuse-allow: UI-WORKBENCH-STEP-001 step actions fit one fixed row without wrapping. */
 .pc-step-actions .pc-icon-btn {
   width: 34px;
   height: 34px;

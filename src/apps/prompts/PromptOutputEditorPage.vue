@@ -235,6 +235,7 @@ watch(() => props.definition, loadDraft, { immediate: true });
   grid-template-columns: repeat(3, minmax(0, 1fr));
 }
 
+/* ui-reuse-allow: UI-PROMPT-OUTPUT-001 three editor actions must share the narrow row. */
 .pc-output-editor .pc-form-actions :is(.pc-soft-btn, .pc-primary-btn) {
   min-width: 0;
   padding-inline: 8px;
