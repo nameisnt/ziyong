@@ -1,5 +1,6 @@
 declare const hljs: typeof import('highlight.js').default;
 declare const Popper: typeof import('@popperjs/core');
+<<<<<<< HEAD
 
 declare namespace TypeFest {
   type LiteralUnion<LiteralType, BaseType extends Primitive = string> = import('type-fest').LiteralUnion<LiteralType, BaseType>;
@@ -45,3 +46,5 @@ declare module '@sillytavern/script' {
 declare module '@sillytavern/scripts/extensions' {
   export const extension_settings: Record<string, unknown>;
 }
+=======
+>>>>>>> a0f2d7e74fb108e07d4995dcd3d34e41d8e77f41

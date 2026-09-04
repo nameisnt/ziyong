@@ -15,6 +15,7 @@ const externals = {
   '@popperjs/core': 'Popper',
 } as const;
 
+<<<<<<< HEAD
 const imageAssetExtensions = new Set(['.avif', '.gif', '.jpeg', '.jpg', '.png', '.svg', '.webp']);
 
 const publicPathIndex = __dirname.lastIndexOf('public');
@@ -28,11 +29,23 @@ export default defineConfig(({ mode }) => {
 
   return {
     base: './',
+=======
+const relative_sillytavern_path = path.relative(
+  path.join(__dirname, 'dist'),
+  __dirname.substring(0, __dirname.lastIndexOf('public') + 6),
+);
+
+export default defineConfig(({ mode }) => ({
+>>>>>>> a0f2d7e74fb108e07d4995dcd3d34e41d8e77f41
     plugins: [
       vue({
         features: {
           optionsAPI: false,
+<<<<<<< HEAD
           prodDevtools: visualMode,
+=======
+        prodDevtools: process.env.CI !== 'true',
+>>>>>>> a0f2d7e74fb108e07d4995dcd3d34e41d8e77f41
           prodHydrationMismatchDetails: false,
         },
       }),
@@ -45,7 +58,10 @@ export default defineConfig(({ mode }) => {
           '@vueuse/core',
           { from: '@sillytavern/scripts/i18n', imports: ['t'] },
           { from: 'klona', imports: ['klona'] },
+<<<<<<< HEAD
           { from: 'toastr', imports: [['default', 'toastr']] },
+=======
+>>>>>>> a0f2d7e74fb108e07d4995dcd3d34e41d8e77f41
           { from: 'vue-final-modal', imports: ['useModal'] },
           { from: 'zod', imports: ['z'] },
         ],
@@ -57,7 +73,11 @@ export default defineConfig(({ mode }) => {
         // globs: ['src/panel/component/*.vue'],
         resolvers: [VueUseComponentsResolver(), VueUseDirectiveResolver()],
       }),
+<<<<<<< HEAD
       !visualMode && {
+=======
+    {
+>>>>>>> a0f2d7e74fb108e07d4995dcd3d34e41d8e77f41
         name: 'sillytavern_resolver',
         enforce: 'pre',
         resolveId(id) {
@@ -76,11 +96,16 @@ export default defineConfig(({ mode }) => {
           }
         },
       }),
+<<<<<<< HEAD
     ].filter(Boolean),
+=======
+  ],
+>>>>>>> a0f2d7e74fb108e07d4995dcd3d34e41d8e77f41
 
     resolve: {
       alias: {
         '@': path.resolve(__dirname, 'src'),
+<<<<<<< HEAD
         ...(visualMode
           ? {
               '@sillytavern/script': path.resolve(__dirname, 'src/testing/sillytavern-script.ts'),
@@ -89,6 +114,8 @@ export default defineConfig(({ mode }) => {
               toastr: path.resolve(__dirname, 'src/testing/visual-toastr.ts'),
             }
           : {}),
+=======
+>>>>>>> a0f2d7e74fb108e07d4995dcd3d34e41d8e77f41
       },
     },
 
@@ -99,18 +126,28 @@ export default defineConfig(({ mode }) => {
           format: 'es',
           entryFileNames: '[name].js',
           chunkFileNames: '[name].[hash].chunk.js',
+<<<<<<< HEAD
           assetFileNames: assetInfo =>
             imageAssetExtensions.has(path.extname(assetInfo.names[0] || '').toLowerCase())
               ? 'images/[name].[ext]'
               : '[name].[ext]',
+=======
+        assetFileNames: '[name].[ext]',
+>>>>>>> a0f2d7e74fb108e07d4995dcd3d34e41d8e77f41
           preserveModules: false,
         },
       },
 
       outDir: 'dist',
+<<<<<<< HEAD
       emptyOutDir: true,
 
       sourcemap: false,
+=======
+    emptyOutDir: false,
+
+    sourcemap: mode === 'production' ? true : 'inline',
+>>>>>>> a0f2d7e74fb108e07d4995dcd3d34e41d8e77f41
 
       minify: mode === 'production' ? 'terser' : false,
       terserOptions:
@@ -127,5 +164,9 @@ export default defineConfig(({ mode }) => {
 
       target: 'esnext',
     },
+<<<<<<< HEAD
   };
 });
+=======
+}));
+>>>>>>> a0f2d7e74fb108e07d4995dcd3d34e41d8e77f41
