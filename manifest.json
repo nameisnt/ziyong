@@ -1,13 +1,23 @@
 {
+<<<<<<< HEAD
   "display_name": "功能性阅读器",
+=======
+  "display_name": "<插件名称>",
+>>>>>>> 1ca256efb083b39bc0e190b951d84e7eeb602823
   "loading_order": 120,
   "requires": [],
   "optional": [],
   "js": "dist/index.js",
   "css": "dist/index.css",
+<<<<<<< HEAD
   "author": "闲余",
   "version": "1.0.1",
   "homePage": "https://github.com/nameisnt/ziyong-dist",
+=======
+  "author": "<作者名称>",
+  "version": "1.0.0",
+  "homePage": "<仓库URL>",
+>>>>>>> 1ca256efb083b39bc0e190b951d84e7eeb602823
   "auto_update": true,
   "i18n": {
     "en": "i18n/en.json"

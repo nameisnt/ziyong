@@ -115,7 +115,10 @@ declare global {
   const toRef: typeof import('vue').toRef
   const toRefs: typeof import('vue').toRefs
   const toValue: typeof import('vue').toValue
+<<<<<<< HEAD
   const toastr: typeof import('toastr').default
+=======
+>>>>>>> 1ca256efb083b39bc0e190b951d84e7eeb602823
   const triggerRef: typeof import('vue').triggerRef
   const tryOnBeforeMount: typeof import('@vueuse/core').tryOnBeforeMount
   const tryOnBeforeUnmount: typeof import('@vueuse/core').tryOnBeforeUnmount
