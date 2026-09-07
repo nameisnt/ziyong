@@ -204,7 +204,6 @@ import { useForumStore } from '@/store/forum';
 import { usePhoneStore } from '@/store/phone';
 import { usePromptStore } from '@/store/prompts';
 import { useSettingsStore } from '@/store/settings';
-import { useRegexDisplayStore } from '@/apps/regex-display/store';
 import type { FailedGenerationDraft } from '@/type/generation';
 import { type ForumThread, resolveForumBoardTypeName, resolveForumBoardTypePrompt } from '@/type/forum';
 import { canOpenBaguScan } from '@/util/baguScanGate';
@@ -213,7 +212,6 @@ import { resolveHiddenGenerationReplay } from '@/util/hiddenGenerationRecord';
 import { usePreviewDraftPersistence } from '@/util/previewDrafts';
 import { formatGenerationReferences, type GenerationReferenceItem } from '@/util/references';
 import { resolveContentVersion } from '@/util/contentVersions';
-import { applyRegexDisplayRules, getRegexRulesByIds } from '@/util/regexDisplay';
 import { useInvalidRouteFallback } from '@/util/routeFallback';
 import { updateGenerationRecordReasoning } from '@/util/generationReasoning';
 import { storeToRefs } from 'pinia';
@@ -226,7 +224,6 @@ const forum = useForumStore();
 const phone = usePhoneStore();
 const prompts = usePromptStore();
 const settingsStore = useSettingsStore();
-const regexDisplay = useRegexDisplayStore();
 const forumThreadGenerationAdapter = getRegisteredPhoneGenerationAdapter('forum', 'generate-thread');
 const forumReplyGenerationAdapter = getRegisteredPhoneGenerationAdapter('forum', 'generate-replies');
 const { boards, failedDrafts } = storeToRefs(forum);
@@ -389,11 +386,7 @@ const viewedForumThread = computed(() => {
 function updateViewedForumReasoning(reasoning: string) {
   updateGenerationRecordReasoning(viewedForumVersion.value || activeThread.value, reasoning);
 }
-const displayedForumContent = computed(() => {
-  const content = viewedForumThread.value?.content || '';
-  const rules = getRegexRulesByIds(regexDisplay.rules, regexDisplay.getUsage('forum').displayRuleIds, 'replace');
-  return applyRegexDisplayRules(content, rules).content;
-});
+const displayedForumContent = computed(() => viewedForumThread.value?.content || '');
 const rewriteForumThread = computed(() => {
   const boardId = route.value.params?.boardId;
   const threadId = route.value.params?.rewriteThreadId;

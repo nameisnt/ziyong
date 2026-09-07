@@ -135,7 +135,7 @@ export async function applyPresetManagerVisualScenario(
   name: string,
   { getPluginPresets, resetPhoneToRoute, waitForCondition, waitForPaint }: PresetManagerVisualContext,
 ) {
-  if (name === 'preset-prompt-range-groups' || name === 'preset-prompt-range-groups-dark') {
+  if (name.startsWith('preset-prompt-range-groups') || name.startsWith('preset-notice-focus')) {
     useSettingsStore().setTheme(name.endsWith('-dark') ? 'dark' : 'light');
     installMemoryFileService();
     const pluginPresets = getPluginPresets();
@@ -165,9 +165,18 @@ export async function applyPresetManagerVisualScenario(
     if (!(await waitForElement('.pc-preset-group-manager-dialog'))) {
       throw new Error('Preset range group manager did not open');
     }
-    document.querySelector<HTMLButtonElement>('button[aria-label="新建条目分组"]')?.click();
+    const createGroup = document.querySelector<HTMLButtonElement>('button[aria-label="新建条目分组"]');
+    createGroup?.focus();
+    createGroup?.click();
     if (!(await waitForElement('.pc-phone-notice-input')))
       throw new Error('Preset range group name prompt did not open');
+    if (name.startsWith('preset-notice-focus')) {
+      await waitForPaint();
+      if (document.activeElement !== document.querySelector('.pc-phone-notice-input')) {
+        throw new Error('Preset group notice did not initially focus its input');
+      }
+      return true;
+    }
     const nameInput = document.querySelector<HTMLInputElement>('.pc-phone-notice-input');
     if (!nameInput) throw new Error('Preset range group name input is missing');
     nameInput.value = '正文区间';

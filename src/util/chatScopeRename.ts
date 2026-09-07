@@ -7,6 +7,7 @@ import {
   parseChatScopeKey,
 } from '@/store/chatScoped';
 import { getOptionalGlobalValue } from '@/util/runtime';
+import { migrateReaderRegexUsages } from '@/util/regexDisplay';
 // eslint-disable-next-line import-x/no-nodejs-modules
 import { saveSettingsDebounced } from '@sillytavern/script';
 import { extension_settings } from '@sillytavern/scripts/extensions';
@@ -166,6 +167,10 @@ export function migratePhoneChatScopes(
   Object.keys(extension_settings)
     .filter(isPhoneSettingField)
     .forEach(field => {
+      const setting: unknown = extension_settings[field];
+      if (field === 'sillytavern_phone_regex_display' && isRecord(setting) && isRecord(setting.usages)) {
+        replacements += migrateReaderRegexUsages(setting.usages, normalizedSources, targetScopeKey);
+      }
       const result = rewriteScopeReferences(extension_settings[field], normalizedSources, targetScopeKey);
       extension_settings[field] = result.value;
       replacements += result.replacements;

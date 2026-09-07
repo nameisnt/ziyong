@@ -1,5 +1,6 @@
 import '@fortawesome/fontawesome-free/css/all.min.css';
 import '@/global.css';
+import statusPreviewImage from '@/assets/paper/a4.jpg';
 import type { PhoneRoute } from '@/store/phone';
 import type { ExtraChapterGenerationRecord } from '@/type/extra';
 import { createVisualScenarioGroups, flattenVisualScenarioGroups } from '@/testing/visual/scenarioCatalog';
@@ -142,14 +143,14 @@ const visualPhoneUserInput = buildPhoneUserInput(
 if (
   visualPhoneUserInput !==
   [
-    '请严格以林见夏的第一人称口吻书写这篇日记，不要写成旁白总结。\n日记发生或写作时间：当晚',
     'App 预设',
+    '请严格以林见夏的第一人称口吻书写这篇日记，不要写成旁白总结。\n日记发生或写作时间：当晚',
     '类型预设',
     '追加要求',
     '输出格式',
   ].join('\n\n')
 ) {
-  throw new Error('{{phoneUserInput}} 没有按任务、App、类型、追加要求、输出格式的顺序组成');
+  throw new Error('{{phoneUserInput}} 没有按 App、任务、类型、追加要求、输出格式的顺序组成');
 }
 if (visualPhoneUserInput.includes('不应进入宏的引用')) {
   throw new Error('{{phoneUserInput}} 不应包含引用内容');
@@ -409,7 +410,7 @@ async function applyScenario(name: VisualScenarioName, options: { height?: numbe
       '.status-modal-body p { margin: 0; padding: 7px 0; border-bottom: 1px solid var(--pc-frame-border); }',
       '</style>',
       '<section class="status">',
-      '  <div class="status-head"><h2>艾莉娅</h2><img id="status-image" class="status-avatar" src="/a4.jpg" alt="状态图片"></div>',
+      `  <div class="status-head"><h2>艾莉娅</h2><img id="status-image" class="status-avatar" src="${statusPreviewImage}" alt="状态图片"></div>`,
       '  <div class="row"><span>好感度</span><strong>{{mvu:角色.艾莉娅.好感度}}</strong></div>',
       '  <div class="row"><span>当前状态</span><strong>{{mvu:角色.艾莉娅.状态}}</strong></div>',
       '  <div class="row"><span>金币</span><strong>{{mvu:背包.金币}}</strong></div>',
@@ -3755,7 +3756,7 @@ async function applyScenario(name: VisualScenarioName, options: { height?: numbe
     search.value = '中间内容';
     search.dispatchEvent(new Event('input', { bubbles: true }));
     await waitForPaint();
-    const snippet = document.querySelector<HTMLElement>('.pc-tutorial-match');
+    const snippet = document.querySelector<HTMLElement>('.pc-tutorial-row-copy small mark');
     if (!snippet?.textContent?.includes('中间内容')) {
       throw new Error('Tutorial search did not expose a matching body snippet');
     }

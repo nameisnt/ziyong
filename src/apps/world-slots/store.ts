@@ -149,16 +149,13 @@ export function getWorldSlotPositionLabel(position: WorldSlotPosition) {
   return worldSlotPositionOptions.find(option => option.id === position)?.label || '角色定义前';
 }
 
-function getSlotMarker(slotId: string) {
-  return `sillytavern_phone_world_slot:${slotId}`;
-}
-
 function getEntrySlotId(entry: WorldBookEntry) {
   if (typeof entry.sillytavernPhoneSlotId === 'string' && entry.sillytavernPhoneSlotId.trim()) {
     return entry.sillytavernPhoneSlotId.trim();
   }
   const extensionId = entry.extensions?.sillytavernPhoneSlotId;
   if (typeof extensionId === 'string' && extensionId.trim()) return extensionId.trim();
+  // Legacy entries may identify their slot only through the visible name.
   const comment = typeof entry.comment === 'string' ? entry.comment : '';
   const match = comment.match(/\[sillytavern_phone_world_slot:([^\]]+)\]/);
   return match?.[1] || '';
@@ -193,7 +190,7 @@ function createWorldEntry(slot: WorldSlot, entryId: number): WorldBookEntry {
     uid: entryId,
     key: slot.keys,
     keysecondary: slot.secondaryKeys,
-    comment: `[${getSlotMarker(slot.id)}] ${slot.title}`,
+    comment: slot.title,
     content: slot.content.trim(),
     constant: !selective,
     vectorized: false,

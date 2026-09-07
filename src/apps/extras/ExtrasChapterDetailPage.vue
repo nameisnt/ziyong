@@ -5,6 +5,8 @@
       :content="chapter.content"
       :context-label="`番外 · 第 ${chapter.chapterNumber} 章`"
       display-app-id="extras"
+      :display-identity="[chapter.id, viewedVersionId]"
+      :display-versions="versions"
       :favorite-active="chapter.favorite"
       :next-disabled="!nextId"
       :previous-disabled="!previousId"

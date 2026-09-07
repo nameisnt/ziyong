@@ -1,4 +1,5 @@
 import { useChatScopedDomain } from '@/store/chatScoped';
+import { useRegexDisplayStore } from '@/apps/regex-display/store';
 import { createFailedDraftCollection } from '@/store/failedDrafts';
 import { HiddenGenerationRecordSchema, type FailedGenerationDraft } from '@/type/generation';
 import { validateInplace } from '@/util/zod';
@@ -141,6 +142,7 @@ export const useDigestStore = defineStore('digest', () => {
 
   function deleteEntry(entryId: string) {
     data.value.entries = data.value.entries.filter(entry => entry.id !== entryId);
+    useRegexDisplayStore().deleteContentUsages('digest', [entryId]);
   }
 
   function toggleFavorite(entryId: string) {

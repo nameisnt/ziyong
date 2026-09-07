@@ -46,6 +46,10 @@ export interface VisualGlobalFixtureControls {
 }
 
 export function setupVisualGlobals(): VisualGlobalFixtureControls {
+  const generationRuntime = globalThis as unknown as Record<
+    'generate' | 'generateRaw',
+    (config: Record<string, unknown>) => Promise<unknown>
+  >;
   let visualMvuData = {
     initialized_lorebooks: { 视觉世界书: [1] },
     stat_data: {
@@ -268,6 +272,9 @@ export function setupVisualGlobals(): VisualGlobalFixtureControls {
       groupId: '',
     },
     TavernHelper: {
+      // Generation scenarios install their mocks on globalThis; expose the actual helper API too.
+      generate: (config: Record<string, unknown>) => generationRuntime.generate(config),
+      generateRaw: (config: Record<string, unknown>) => generationRuntime.generateRaw(config),
       deletePreset: async (presetName: string) => {
         if (!visualPresetStore[presetName] || presetName === visualLoadedPresetName || presetName === 'in_use') {
           return false;

@@ -43,5 +43,6 @@ test('forum replies share the reader paragraph-spacing formatter', () => {
   assert.match(readerSettings, /每段空行/u);
   assert.doesNotMatch(readerSettings, /每行空行/u);
   assert.match(replyList, /formatReaderContent\(content, settings\.value\.reader\)/u);
-  assert.match(replyList, /formatReplyContent\(reply\.content\)/u);
+  assert.match(replyList, /formatReplyContent\(reply\)/u);
+  assert.match(replyList, /applyRegexDisplayRules\(reply\.content/u);
 });

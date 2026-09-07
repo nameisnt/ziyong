@@ -207,6 +207,7 @@
         :content="activeMessageBody"
         content-formatted
         display-app-id="reader"
+        :display-identity="selectedReaderTarget && activeSwipeCandidate ? [selectedReaderTarget.scopeKey, activeMessage.id, activeSwipeCandidate.index] : []"
         :edit-disabled="!isReadingCurrentChat || !isViewingActiveSwipe"
         :edit-label="t`编辑正文`"
         :favorite-active="Boolean(activeMessageFavorite)"
@@ -1113,7 +1114,7 @@ async function applyReaderBaguContent(content: string) {
     { refresh: 'affected' },
   );
   await saveChatIfAvailable();
-  const storedMessage = getChatMessagesSafe(sourceMessageId, { include_swipes: true })[0];
+  const storedMessage = getChatMessagesSafe(sourceMessageId, { include_swipes: false })[0];
   await loadCurrentChat(true);
   return storedMessage?.message === nextRawText ? content : false;
 }

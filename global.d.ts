@@ -45,3 +45,7 @@ declare module '@sillytavern/script' {
 declare module '@sillytavern/scripts/extensions' {
   export const extension_settings: Record<string, unknown>;
 }
+
+declare module '@sillytavern/scripts/i18n' {
+  export function t(strings: TemplateStringsArray, ...values: unknown[]): string;
+}

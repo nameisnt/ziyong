@@ -196,6 +196,7 @@ async function loadMvuStatus(scheme: StatusDisplayScheme) {
 
 async function refreshStatus() {
   const revision = ++refreshRevision;
+  loading.value = false;
   renderedHtml.value = '';
   errorMessage.value = '';
   if (!activeScheme.value) return;

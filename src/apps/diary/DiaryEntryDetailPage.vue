@@ -5,6 +5,7 @@
       :content="entry.content"
       :context-label="entry.kind === 'read-reaction' ? t`阅读感想` : t`日记`"
       display-app-id="diary"
+      :display-identity="[entry.id]"
       :favorite-active="entry.favorite"
       :next-disabled="!nextId"
       :previous-disabled="!previousId"

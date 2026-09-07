@@ -1,4 +1,5 @@
 import { useChatScopedDomain } from '@/store/chatScoped';
+import { useRegexDisplayStore } from '@/apps/regex-display/store';
 import { createFailedDraftCollection } from '@/store/failedDrafts';
 import {
   ExtraScopeDataSchema,
@@ -104,6 +105,7 @@ export const useExtrasStore = defineStore('extras', () => {
   }
 
   function deleteBook(bookId: string) {
+    getBook(bookId)?.chapters.forEach(chapter => useRegexDisplayStore().deleteContentUsages('extras', [chapter.id]));
     data.value.books = data.value.books.filter(book => book.id !== bookId);
   }
 
@@ -180,6 +182,7 @@ export const useExtrasStore = defineStore('extras', () => {
       title: input.title.trim() || chapter.title,
     });
     chapter.versions = [...state.versions, version];
+    useRegexDisplayStore().migrateOriginalUsage('extras', chapter.id, state.versions);
     const timestamp = nowIso();
     chapter.activeVersionId = version.id;
     chapter.title = version.title;
@@ -232,6 +235,7 @@ export const useExtrasStore = defineStore('extras', () => {
     if (!book || !chapter) return null;
     const state = removeContentVersion(chapter.versions, chapter.activeVersionId, versionId);
     if (!state) return null;
+    useRegexDisplayStore().deleteContentUsages('extras', [chapterId, versionId]);
     const timestamp = nowIso();
     chapter.versions = state.versions;
     chapter.generationRecords = resolveExtraChapterGenerationRecords(chapter).slice(-10);
@@ -246,6 +250,7 @@ export const useExtrasStore = defineStore('extras', () => {
   function deleteChapter(bookId: string, chapterId: string) {
     const book = getBook(bookId);
     if (!book) return;
+    useRegexDisplayStore().deleteContentUsages('extras', [chapterId]);
     book.chapters = normalizeChapterNumbers(book.chapters.filter(chapter => chapter.id !== chapterId));
     book.summaries = book.summaries
       .filter(summary => summary.autoChapterId !== chapterId)

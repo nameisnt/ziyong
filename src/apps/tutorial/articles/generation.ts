@@ -130,7 +130,7 @@ export const generationTutorialArticles: TutorialArticle[] = [
           '先放入被选中的可见聊天楼层，并保留每层的用户或 AI 角色。',
           '再在覆盖历史末尾放入 App 上下文和引用内容。番外续写时，这里通常是选中楼层之后的前几章或章节总结，再接引用资料。',
           '覆盖聊天历史到引用内容为止；随后酒馆按原生预设语义追加本轮 user_input。',
-          '本轮 user_input 依次包含任务模板、App 预设、类型预设、追加要求和输出格式，空白区段自动省略。',
+          '本轮 user_input 依次包含 App 预设、任务模板、类型预设、追加要求和输出格式，空白区段自动省略。',
           '预设条目和世界书仍按它们在酒馆中的角色、深度和插入位置参与整体组装，因此不一定全部位于聊天历史之前。',
         ],
       },
@@ -157,7 +157,7 @@ export const generationTutorialArticles: TutorialArticle[] = [
       {
         type: 'paragraph',
         title: '{{phoneUserInput}} 只负责额外插入',
-        text: '本轮原生 user_input 不再依赖预设必须放置 {{phoneUserInput}}。这个宏仍然可用：预设中每出现一次，就会额外展开一次“任务模板 → App 预设 → 类型预设 → 追加要求 → 输出格式”。有意重复可以放多次；无意重复会让要求和格式出现多份。',
+        text: '本轮原生 user_input 不再依赖预设必须放置 {{phoneUserInput}}。这个宏仍然可用：预设中每出现一次，就会额外展开一次“App 预设 → 任务模板 → 类型预设 → 追加要求 → 输出格式”。有意重复可以放多次；无意重复会让要求和格式出现多份。',
       },
       {
         type: 'paragraph',

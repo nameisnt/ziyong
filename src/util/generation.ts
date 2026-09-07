@@ -85,8 +85,8 @@ function parseResultCandidates<T>(raw: string, parse: (candidateRaw: string) => 
 export function buildGenerationUserInput(parts: GenerationRequestParts) {
   const parsed = parsePrettified(GenerationRequestPartsSchema, parts);
   return [
-    normalizeSegment(parsed.taskInstruction),
     normalizeSegment(parsed.appPrompt),
+    normalizeSegment(parsed.taskInstruction),
     normalizeSegment(parsed.typePrompt),
     normalizeSegment(parsed.userRequirement),
     normalizeSegment(parsed.outputFormat),
@@ -103,8 +103,8 @@ export function buildGenerationChatTail(parts: GenerationRequestParts) {
 export function buildPhoneUserInput(parts: GenerationRequestParts, formUserInput: string) {
   const parsed = parsePrettified(GenerationRequestPartsSchema, parts);
   return [
-    normalizeSegment(parsed.taskInstruction),
     normalizeSegment(parsed.appPrompt),
+    normalizeSegment(parsed.taskInstruction),
     normalizeSegment(parsed.typePrompt),
     normalizeSegment(formUserInput),
     normalizeSegment(parsed.outputFormat),

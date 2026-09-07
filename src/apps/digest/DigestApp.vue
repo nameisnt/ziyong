@@ -69,6 +69,7 @@
         :content="activeEntry.content"
         :context-label="activeEntry.sourceLabel || (activeEntry.kind === 'ai' ? t`AI 摘抄` : t`手动摘抄`)"
         display-app-id="digest"
+        :display-identity="[activeEntry.id]"
         :favorite-active="activeEntry.favorite"
         next-label="下一条"
         previous-label="上一条"

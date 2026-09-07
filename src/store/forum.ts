@@ -1,4 +1,5 @@
 import { useChatScopedDomain } from '@/store/chatScoped';
+import { useRegexDisplayStore } from '@/apps/regex-display/store';
 import { createFailedDraftCollection } from '@/store/failedDrafts';
 import {
   type ForumBoard,
@@ -97,6 +98,7 @@ export const useForumStore = defineStore('forum', () => {
   }
 
   function deleteBoard(boardId: string) {
+    getBoard(boardId)?.threads.forEach(thread => useRegexDisplayStore().deleteContentUsages('forum', [thread.id]));
     data.value.boards = data.value.boards.filter(board => board.id !== boardId);
   }
 
@@ -179,6 +181,7 @@ export const useForumStore = defineStore('forum', () => {
       title: input.title.trim() || thread.title,
     });
     thread.versions = [...state.versions, version];
+    useRegexDisplayStore().migrateOriginalUsage('forum', thread.id, state.versions);
     const timestamp = nowIso();
     thread.activeVersionId = version.id;
     thread.author = version.author;
@@ -240,6 +243,7 @@ export const useForumStore = defineStore('forum', () => {
     if (!board || !thread) return null;
     const state = removeContentVersion(thread.versions, thread.activeVersionId, versionId);
     if (!state) return null;
+    useRegexDisplayStore().deleteContentUsages('forum', [threadId, versionId]);
     const timestamp = nowIso();
     thread.versions = state.versions;
     thread.activeVersionId = state.activeVersionId;
@@ -257,6 +261,7 @@ export const useForumStore = defineStore('forum', () => {
   function deleteThread(boardId: string, threadId: string) {
     const board = getBoard(boardId);
     if (!board) return;
+    useRegexDisplayStore().deleteContentUsages('forum', [threadId]);
     board.threads = board.threads.filter(thread => thread.id !== threadId);
     board.updatedAt = nowIso();
   }
@@ -358,6 +363,11 @@ export const useForumStore = defineStore('forum', () => {
     if (!board || !thread) return;
     const version = versionId ? thread.versions.find(item => item.id === versionId) : null;
     const replies = version?.replies || thread.replies;
+    useRegexDisplayStore().deleteContentUsages('forum-reply', [
+      threadId,
+      version?.id || thread.activeVersionId,
+      replyId,
+    ]);
     const nextReplies = replies
       .filter(reply => reply.id !== replyId)
       .map(reply => (reply.parentReplyId === replyId ? { ...reply, parentReplyId: undefined } : reply));

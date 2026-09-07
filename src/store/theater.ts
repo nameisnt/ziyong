@@ -1,4 +1,5 @@
 import { useChatScopedDomain } from '@/store/chatScoped';
+import { useRegexDisplayStore } from '@/apps/regex-display/store';
 import { createFailedDraftCollection } from '@/store/failedDrafts';
 import { TheaterScopeDataSchema, type TheaterEntry, type TheaterEntryVersion } from '@/type/theater';
 import {
@@ -143,6 +144,7 @@ export const useTheaterStore = defineStore('theater', () => {
       title: input.title.trim() || entry.title,
     });
     entry.versions = [...state.versions, version];
+    useRegexDisplayStore().migrateOriginalUsage('theater', entry.id, state.versions);
     entry.activeVersionId = version.id;
     entry.title = version.title;
     entry.content = version.content;
@@ -192,6 +194,7 @@ export const useTheaterStore = defineStore('theater', () => {
     if (!entry) return null;
     const state = removeContentVersion(entry.versions, entry.activeVersionId, versionId);
     if (!state) return null;
+    useRegexDisplayStore().deleteContentUsages('theater', [entryId, versionId]);
     entry.versions = state.versions;
     entry.activeVersionId = state.activeVersionId;
     entry.title = state.activeVersion.title;
@@ -209,6 +212,7 @@ export const useTheaterStore = defineStore('theater', () => {
     if (!entry || !version || entry.versions.length <= 1) return null;
     const remaining = removeContentVersion(entry.versions, entry.activeVersionId, versionId);
     if (!remaining) return null;
+    useRegexDisplayStore().deleteContentUsages('theater', [entryId, versionId]);
     const timestamp = nowIso();
     const splitEntry: TheaterEntry = {
       id: createId('theater_entry'),
@@ -251,6 +255,7 @@ export const useTheaterStore = defineStore('theater', () => {
 
   function deleteEntry(entryId: string) {
     data.value.entries = data.value.entries.filter(entry => entry.id !== entryId);
+    useRegexDisplayStore().deleteContentUsages('theater', [entryId]);
   }
 
   function toggleFavorite(entryId: string) {

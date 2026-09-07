@@ -116,13 +116,15 @@
 
     <section v-else-if="route.page === 'entry' && activeEntry" class="pc-custom-page pc-custom-detail-page">
       <ReaderDetailShell
-        :content="displayActiveEntry?.content || ''"
+        :content="activeEntry.content"
+        :display-app-id="definition.id"
+        :display-identity="[activeEntry.id]"
         :custom-content="definition.display.mode !== 'markdown'"
         :favorite-active="activeEntry.favorite"
         :footer-always-visible="definition.display.mode === 'frontend'"
         :next-disabled="!nextEntryId"
         :previous-disabled="!previousEntryId"
-        :title="displayActiveEntry?.title || activeEntry.title"
+        :title="activeEntry.title"
         @bottom="scrollToBottom"
         @catalog="phone.replacePage('root', definition.name)"
         @edit="openEditor(activeEntry.id)"
@@ -142,16 +144,16 @@
             </button>
           </div>
         </template>
-        <template v-if="definition.display.mode !== 'markdown'" #content>
+        <template v-if="definition.display.mode !== 'markdown'" #content="{ displayContent }">
           <FrontendFrame
             v-if="definition.display.mode === 'frontend'"
             :active="true"
-            :content="displayActiveEntry?.content || activeEntry.content"
+            :content="displayContent"
             security-mode="safe"
             :theme="settings.theme"
             :title="activeEntry.title"
           />
-          <pre v-else class="pc-custom-plain-text">{{ displayActiveEntry?.content || activeEntry.content }}</pre>
+          <pre v-else class="pc-custom-plain-text">{{ displayContent }}</pre>
         </template>
         <template #after-content>
           <details v-if="activeEntry.sourceText" class="pc-source-box">
@@ -427,7 +429,7 @@ import { storeToRefs } from 'pinia';
 import { buildSourceSelection, type SummaryGenerationSourceMode } from '@/util/generationSource';
 import { parseSimpleXmlResult } from '@/util/generation';
 import { usePreviewDraftPersistence } from '@/util/previewDrafts';
-import { applyRegexDisplayRules, extractWithRegexRules, getRegexRulesByIds } from '@/util/regexDisplay';
+import { extractWithRegexRules, getRegexRulesByIds } from '@/util/regexDisplay';
 import { formatGenerationReferences, type GenerationReferenceItem } from '@/util/references';
 import { getChatMessagesSafe } from '@/util/runtime';
 import { getSourceLastFloor } from '@/util/sourceFloor';
@@ -521,13 +523,8 @@ const orderedEntries = computed(() => {
 });
 const filteredEntries = computed(() => {
   const normalized = query.value.trim().toLowerCase();
-  const displayed = orderedEntries.value.map(entry => ({
-    ...entry,
-    title: entry.title,
-    content: applyRegexDisplayRules(entry.content, replacementRules.value).content,
-  }));
-  if (!normalized) return displayed;
-  return displayed.filter(entry =>
+  if (!normalized) return orderedEntries.value;
+  return orderedEntries.value.filter(entry =>
     `${entry.title} ${entry.content} ${entry.tags.join(' ')}`.toLowerCase().includes(normalized),
   );
 });
@@ -559,17 +556,6 @@ const conversionSources = computed<PhoneContentConversionSource[]>(() => {
         },
       ];
     });
-});
-const regexUsage = computed(() => (definition.value ? regexDisplay.getUsage(definition.value.id) : null));
-const replacementRules = computed(() =>
-  regexUsage.value ? getRegexRulesByIds(regexDisplay.rules, regexUsage.value.displayRuleIds, 'replace') : [],
-);
-const displayActiveEntry = computed(() => {
-  if (!activeEntry.value) return null;
-  return {
-    ...activeEntry.value,
-    content: applyRegexDisplayRules(activeEntry.value.content, replacementRules.value).content,
-  };
 });
 const editingEntry = computed(() => (route.value.page === 'editor' ? activeEntry.value : null));
 const activeEntryIndex = computed(() => orderedEntries.value.findIndex(entry => entry.id === activeEntry.value?.id));

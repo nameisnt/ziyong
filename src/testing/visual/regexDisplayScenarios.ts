@@ -1,3 +1,5 @@
+import { applyContentRegexScenario } from './contentRegexScenarios';
+
 type RegexDisplayFixture = {
   addGroup: (name: string) => { id: string };
   importBackup: (data: unknown) => void;
@@ -35,6 +37,7 @@ export async function applyRegexDisplayVisualScenario(
   name: string,
   { getRegexDisplay, resetPhoneToRoute, waitForCondition, waitForPaint }: RegexDisplayVisualContext,
 ) {
+  if (await applyContentRegexScenario(name, { resetPhoneToRoute, waitForCondition, waitForPaint })) return true;
   if (name !== 'regex-display-crud') return false;
 
   const regexDisplay = getRegexDisplay();

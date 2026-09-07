@@ -2,6 +2,8 @@
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import test from 'node:test';
+import { runInNewContext } from 'node:vm';
+import { ScriptTarget, transpileModule } from 'typescript';
 
 const source = relativePath => readFile(new URL(`../../${relativePath}`, import.meta.url), 'utf8');
 
@@ -46,10 +48,36 @@ test('stored-content Bagu handlers flush their chat scope and return the updated
 
 test('reader Bagu verifies the Tavern floor before reporting success', async () => {
   const reader = functionSource(await source('src/apps/reader/ReaderApp.vue'), 'applyReaderBaguContent');
-  const reread = reader.indexOf('getChatMessagesSafe(sourceMessageId, { include_swipes: true })[0]');
+  const reread = reader.indexOf('getChatMessagesSafe(sourceMessageId, { include_swipes: false })[0]');
   const result = reader.indexOf('storedMessage?.message === nextRawText ? content : false');
 
   assert.ok(reread >= 0, 'reader Bagu does not reread the written Tavern floor');
   assert.ok(result > reread, 'reader Bagu returns success before verifying the written Tavern floor');
   assert.doesNotMatch(reader, /return true;/u);
+});
+
+test('reader Bagu accepts a written current swipe and rejects an unchanged floor', async () => {
+  const handler = functionSource(await source('src/apps/reader/ReaderApp.vue'), 'applyReaderBaguContent');
+  const compiled = transpileModule(`async ${handler}`, {
+    compilerOptions: { target: ScriptTarget.ES2022 },
+  }).outputText;
+
+  for (const writeSucceeds of [true, false]) {
+    let stored = 'before';
+    const run = runInNewContext(`${compiled}\napplyReaderBaguContent`, {
+      activeMessage: { value: { sourceMessageId: '2', rawText: 'before', sourceBody: 'before' } },
+      isViewingActiveSwipe: { value: true },
+      isReadingCurrentChat: { value: true },
+      replaceReaderBodyInRaw: (_raw, _body, content) => content,
+      setChatMessagesSafe: async ([message]) => {
+        if (writeSucceeds) stored = message.message;
+      },
+      saveChatIfAvailable: async () => {},
+      getChatMessagesSafe: (_id, options) => options.include_swipes
+        ? [{ swipe_id: 1, swipes: ['another version', stored] }]
+        : [{ message: stored }],
+      loadCurrentChat: async () => {},
+    });
+    assert.equal(await run('after'), writeSucceeds ? 'after' : false);
+  }
 });

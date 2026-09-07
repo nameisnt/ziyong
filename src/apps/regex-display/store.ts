@@ -1,4 +1,5 @@
 import type { RegexDisplayRenderMode } from '@/util/regexDisplay';
+import { deleteContentRegexUsages, migrateOriginalRegexUsages, moveRegexRulesToGroup } from '@/util/regexDisplay';
 import { validateInplace } from '@/util/zod';
 // eslint-disable-next-line import-x/no-nodejs-modules
 import { saveSettingsDebounced } from '@sillytavern/script';
@@ -205,6 +206,13 @@ export const useRegexDisplayStore = defineStore('regex-display', () => {
     return rule;
   }
 
+  function addRules(partials: Partial<RegexDisplayRule>[]) {
+    const created = partials.map(partial => createRegexDisplayRule(partial));
+    settings.value.rules.push(...created);
+    normalizeRuleOrder();
+    return created;
+  }
+
   function duplicateRule(ruleId: string) {
     const source = settings.value.rules.find(rule => rule.id === ruleId);
     if (!source) return addRule();
@@ -248,6 +256,11 @@ export const useRegexDisplayStore = defineStore('regex-display', () => {
 
   function deleteUsage(appId: string) {
     delete settings.value.usages[appId];
+  }
+
+  function deleteContentUsages(appId: string, identity: readonly (string | number)[]) {
+    deleteContentRegexUsages(settings.value.usages, appId, identity);
+    if (appId === 'forum') deleteContentRegexUsages(settings.value.usages, 'forum-reply', identity);
   }
 
   function setExtractionRule(appId: string, field: 'content' | 'title', ruleId: string) {
@@ -299,6 +312,12 @@ export const useRegexDisplayStore = defineStore('regex-display', () => {
     normalizeRuleOrder();
   }
 
+  function moveRulesToGroup(ruleIds: string[], groupId: string) {
+    if (groupId && !settings.value.groups.some(group => group.id === groupId)) throw new Error('目标分组不存在');
+    settings.value.rules = moveRegexRulesToGroup(settings.value.rules, ruleIds, groupId);
+    normalizeRuleOrder();
+  }
+
   function addGroup(name = '新分组') {
     const group: RegexDisplayGroup = {
       id: createGroupId(),
@@ -343,6 +362,14 @@ export const useRegexDisplayStore = defineStore('regex-display', () => {
     settings.value = readSettings(data);
   }
 
+  function migrateOriginalUsage(
+    appId: string,
+    entryId: string | number,
+    versions: readonly { id: string; origin: string }[],
+  ) {
+    migrateOriginalRegexUsages(settings.value.usages, appId, entryId, versions);
+  }
+
   function rehydrateFromSettings() {
     settings.value = readSettings(_.get(extension_settings, regexDisplayField, {}));
   }
@@ -353,16 +380,20 @@ export const useRegexDisplayStore = defineStore('regex-display', () => {
     groups,
     addGroup,
     addRule,
+    addRules,
     deleteGroup,
     deleteRule,
     deleteUsage,
+    deleteContentUsages,
     duplicateRule,
     getUsage,
     importBackup,
+    migrateOriginalUsage,
     moveGroup,
     moveRule,
     moveRuleBefore,
     moveRuleToGroup,
+    moveRulesToGroup,
     renameGroup,
     rehydrateFromSettings,
     setDisplayRuleEnabled,

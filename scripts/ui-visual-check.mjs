@@ -581,6 +581,98 @@ async function runDomChecks(page) {
 async function runInteractionChecks(page, scenario) {
   const findings = [];
   try {
+    if (scenario.startsWith('preset-notice-focus')) {
+      const parent = page.locator('.pc-preset-group-manager-dialog');
+      const trigger = parent.getByRole('button', { name: '新建条目分组', exact: true });
+      const notice = page.locator('.pc-phone-notice[role="dialog"]');
+      const input = notice.locator('input');
+      const cancel = notice.getByRole('button', { name: '取消', exact: true });
+      const create = notice.getByRole('button', { name: '创建', exact: true });
+      let focusStep = 0;
+      const assertFocused = async locator => {
+        focusStep += 1;
+        try {
+          await page.waitForFunction(el => document.activeElement === el, await locator.elementHandle());
+        } catch {
+          const expected = await locator.evaluate(el => el.outerHTML.slice(0, 220));
+          const active = await page.evaluate(() => document.activeElement?.outerHTML.slice(0, 220));
+          throw new Error(`Notice focus step ${focusStep}; expected ${expected}; actual ${active}`);
+        }
+      };
+      // Screenshot preparation blurs focus; reopen through the real trigger before testing autofocus.
+      await cancel.click();
+      await notice.waitFor({ state: 'detached' });
+      await trigger.click();
+      await assertFocused(input);
+      await page.keyboard.press('Tab');
+      await assertFocused(cancel);
+      await page.keyboard.press('Tab');
+      await assertFocused(create);
+      await page.keyboard.press('Tab');
+      await assertFocused(input);
+      await page.keyboard.press('Shift+Tab');
+      await assertFocused(create);
+      await page.keyboard.press('Escape');
+      await notice.waitFor({ state: 'detached' });
+      await assertFocused(trigger);
+      await trigger.click();
+      await input.fill('Keyboard group');
+      await page.keyboard.press('Enter');
+      await notice.waitFor({ state: 'detached' });
+      await parent.locator('.pc-preset-managed-group-row').filter({ hasText: 'Keyboard group' }).waitFor();
+      await page.waitForFunction(el => el.contains(document.activeElement), await parent.elementHandle());
+      await trigger.click();
+      await input.waitFor();
+      await page.evaluate(() => window.dispatchEvent(new Event('phone-before-back', { cancelable: true })));
+      await notice.waitFor({ state: 'detached' });
+      await assertFocused(trigger);
+      const deleteGroup = parent.getByRole('button', { name: '删除分组', exact: true });
+      await deleteGroup.click();
+      await notice.waitFor();
+      await page.keyboard.press('Tab');
+      await assertFocused(cancel);
+      await page.keyboard.press('Shift+Tab');
+      await assertFocused(notice.getByRole('button', { name: '删除', exact: true }));
+      await page.keyboard.press('Escape');
+      await notice.waitFor({ state: 'detached' });
+      await assertFocused(deleteGroup);
+      await deleteGroup.click();
+      await notice.getByRole('button', { name: '删除', exact: true }).focus();
+      await page.keyboard.press('Enter');
+      await notice.waitFor({ state: 'detached' });
+      await parent.locator('.pc-preset-managed-group-row').waitFor({ state: 'detached' });
+      await parent.getByRole('button', { name: '关闭', exact: true }).click();
+      await parent.waitFor({ state: 'detached' });
+    }
+    if (scenario.startsWith('content-regex-import') || scenario.startsWith('content-regex-selection')) {
+      const dialog = page.locator(scenario.includes('import') ? '.pc-regex-import-dialog' : '.pc-content-regex-dialog');
+      const close = dialog.getByRole('button', { name: '关闭', exact: true });
+      const last = dialog.locator('.pc-form-actions button').last();
+      await last.focus();
+      await page.keyboard.press('Tab');
+      if (!(await close.evaluate(element => element === document.activeElement)))
+        throw new Error('Tab escaped the modal instead of wrapping');
+      await page.keyboard.press('Shift+Tab');
+      if (!(await last.evaluate(element => element === document.activeElement)))
+        throw new Error('Shift+Tab escaped the modal instead of wrapping');
+      if (scenario.includes('import')) {
+        const source = dialog.getByRole('combobox', { name: '酒馆正则来源' });
+        await source.click();
+        await page.keyboard.press('Escape');
+        if (!(await dialog.count()) || (await source.getAttribute('aria-expanded')) === 'true')
+          throw new Error('Dropdown Escape should close only the dropdown');
+      }
+      await page.keyboard.press('Escape');
+      await dialog.waitFor({ state: 'detached' });
+      await page.waitForFunction(() => document.querySelector('.pc-phone-shell')?.contains(document.activeElement));
+      if (scenario.includes('import')) {
+        const trigger = page.getByRole('button', { name: '导入酒馆正则', exact: true });
+        await trigger.click();
+        await page.keyboard.press('Escape');
+        await dialog.waitFor({ state: 'detached' });
+        await page.waitForFunction(element => element === document.activeElement, await trigger.elementHandle());
+      }
+    }
     if (scenario === 'home') {
       const groupTabs = page.locator('.pc-home-group-tabs .pc-segment-btn');
       if ((await groupTabs.count()) > 1) {

@@ -1,5 +1,124 @@
 export type RegexDisplayRenderMode = 'html' | 'text';
 
+export function contentRegexUsageKey(appId: string, identity: (string | number)[]) {
+  return identity.length ? `content:${JSON.stringify([appId, ...identity])}` : '';
+}
+
+function parseContentRegexUsageKey(key: string): (string | number)[] | null {
+  if (!key.startsWith('content:')) return null;
+  try {
+    const value: unknown = JSON.parse(key.slice('content:'.length));
+    return Array.isArray(value) && value.every(item => typeof item === 'string' || typeof item === 'number')
+      ? value
+      : null;
+  } catch {
+    return null;
+  }
+}
+
+function moveUsage<T>(usages: Record<string, T>, source: string, target: string) {
+  if (!Object.hasOwn(usages, target)) usages[target] = usages[source];
+  delete usages[source];
+}
+
+export function deleteContentRegexUsages<T>(
+  usages: Record<string, T>,
+  appId: string,
+  identity: readonly (string | number)[],
+) {
+  for (const key of Object.keys(usages)) {
+    const parts = parseContentRegexUsageKey(key);
+    if (!parts || parts[0] !== appId || parts.length < identity.length + 1) continue;
+    if (identity.every((value, index) => parts[index + 1] === value)) delete usages[key];
+  }
+}
+
+export function migrateOriginalRegexUsages<T>(
+  usages: Record<string, T>,
+  appId: string,
+  entryId: string | number,
+  versions: readonly { id: string; origin: string }[],
+) {
+  const originals = versions.filter(version => version.origin === 'original');
+  if (originals.length !== 1) return;
+  // Only the original inherits unversioned selections, including its forum replies.
+  for (const key of Object.keys(usages)) {
+    const parts = parseContentRegexUsageKey(key);
+    if (!parts || parts[1] !== entryId || parts[2] !== '') continue;
+    if (
+      !(parts[0] === appId && parts.length === 3) &&
+      !(appId === 'forum' && parts[0] === 'forum-reply' && parts.length === 4)
+    )
+      continue;
+    parts[2] = originals[0].id;
+    moveUsage(usages, key, contentRegexUsageKey(String(parts[0]), parts.slice(1)));
+  }
+}
+
+export function migrateReaderRegexUsages<T>(usages: Record<string, T>, sources: readonly string[], target: string) {
+  let replacements = 0;
+  for (const key of Object.keys(usages)) {
+    const parts = parseContentRegexUsageKey(key);
+    if (
+      !parts ||
+      parts.length !== 4 ||
+      parts[0] !== 'reader' ||
+      typeof parts[1] !== 'string' ||
+      parts[1] === target ||
+      !sources.includes(parts[1])
+    )
+      continue;
+    parts[1] = target;
+    moveUsage(usages, key, contentRegexUsageKey('reader', parts.slice(1)));
+    replacements++;
+  }
+  return replacements;
+}
+
+export function parseTavernRegexImport(payload: unknown) {
+  const items = Array.isArray(payload) ? payload : [payload];
+  return items.map((item, index) => {
+    if (!item || typeof item !== 'object' || Array.isArray(item)) throw new Error(`第 ${index + 1} 条不是正则对象`);
+    const raw = item as Record<string, unknown>;
+    // Tavern JSON exports and TavernHelper expose different field names.
+    const name = raw.scriptName ?? raw.script_name;
+    const pattern = raw.findRegex ?? raw.find_regex;
+    const replacement = raw.replaceString ?? raw.replace_string;
+    if (typeof name !== 'string' || typeof pattern !== 'string' || !pattern.trim() || typeof replacement !== 'string') {
+      throw new Error(`第 ${index + 1} 条缺少名称、匹配式或替换式`);
+    }
+    const literal = pattern.match(/^\/([\s\S]*)\/([dgimsuvy]*)$/);
+    const source = literal ? literal[1] : pattern;
+    const flags = literal ? literal[2] : '';
+    let expression: RegExp;
+    try {
+      expression = new RegExp(source, flags);
+    } catch (error) {
+      throw new Error(`${name}：${error instanceof Error ? error.message : String(error)}`);
+    }
+    // Keep delimiters so execution cannot trim meaningful boundary whitespace.
+    return {
+      name,
+      pattern: literal ? pattern : expression.toString(),
+      flags,
+      replacement,
+      operation: 'replace' as const,
+    };
+  });
+}
+
+export function moveRegexRulesToGroup<T extends { id: string; groupId: string }>(
+  rules: T[],
+  ids: string[],
+  groupId: string,
+) {
+  const selected = new Set(ids);
+  return [
+    ...rules.filter(rule => !selected.has(rule.id)),
+    ...rules.filter(rule => selected.has(rule.id)).map(rule => ({ ...rule, groupId })),
+  ];
+}
+
 export interface RegexDisplayRuleLike {
   enabled?: boolean;
   flags: string;

@@ -39,6 +39,8 @@ export default defineConfig(({ mode }) => {
       unpluginAutoImport({
         dts: true,
         dtsMode: 'overwrite',
+        // @types/toastr already declares the global; keep the runtime auto-import.
+        ignoreDts: ['toastr'],
         imports: [
           'vue',
           'pinia',

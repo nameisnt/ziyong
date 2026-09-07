@@ -5,6 +5,8 @@
       :content="entry.content"
       :context-label="`${entry.sender.name} → ${entry.receiver.name}`"
       display-app-id="letters"
+      :display-identity="[entry.id, viewedVersionId]"
+      :display-versions="versions"
       :favorite-active="entry.favorite"
       :next-disabled="!nextId"
       :previous-disabled="!previousId"

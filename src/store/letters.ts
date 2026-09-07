@@ -1,4 +1,5 @@
 import { useChatScopedDomain } from '@/store/chatScoped';
+import { useRegexDisplayStore } from '@/apps/regex-display/store';
 import { createFailedDraftCollection } from '@/store/failedDrafts';
 import type { CharacterRef } from '@/type/diary';
 import { type LetterBook, type LetterEntry, type LetterEntryVersion, LettersScopeDataSchema } from '@/type/letter';
@@ -107,6 +108,7 @@ export const useLettersStore = defineStore('letters', () => {
   }
 
   function deleteBook(bookId: string) {
+    getBook(bookId)?.entries.forEach(entry => useRegexDisplayStore().deleteContentUsages('letters', [entry.id]));
     data.value.books = data.value.books.filter(book => book.id !== bookId);
   }
 
@@ -209,6 +211,7 @@ export const useLettersStore = defineStore('letters', () => {
       title: input.title.trim() || entry.title,
     });
     entry.versions = [...state.versions, version];
+    useRegexDisplayStore().migrateOriginalUsage('letters', entry.id, state.versions);
     const timestamp = nowIso();
     entry.activeVersionId = version.id;
     entry.title = version.title;
@@ -277,6 +280,7 @@ export const useLettersStore = defineStore('letters', () => {
     if (!book || !entry) return null;
     const state = removeContentVersion(entry.versions, entry.activeVersionId, versionId);
     if (!state) return null;
+    useRegexDisplayStore().deleteContentUsages('letters', [entryId, versionId]);
     const timestamp = nowIso();
     entry.versions = state.versions;
     entry.activeVersionId = state.activeVersionId;
@@ -293,6 +297,7 @@ export const useLettersStore = defineStore('letters', () => {
   function deleteEntry(bookId: string, entryId: string) {
     const book = getBook(bookId);
     if (!book) return;
+    useRegexDisplayStore().deleteContentUsages('letters', [entryId]);
     book.entries = book.entries.filter(entry => entry.id !== entryId);
     book.updatedAt = nowIso();
   }

@@ -1083,8 +1083,8 @@ export function buildGenerationPreview<TConfig, TResult, TSaveResult = { entityI
   appendPreviewSection(previewLines, '引用内容', options.references);
   appendPreviewSection(previewLines, 'App 上下文', prepared.request.context);
   appendPreviewSection(previewLines, '聊天记录结尾内容', prepared.chatTail);
-  appendPreviewSection(previewLines, '本次任务', prepared.request.taskInstruction);
   appendPreviewSection(previewLines, 'App 预设', prepared.request.appPrompt);
+  appendPreviewSection(previewLines, '本次任务', prepared.request.taskInstruction);
   appendPreviewSection(previewLines, '类型预设', prepared.request.typePrompt);
   appendPreviewSection(previewLines, '追加要求', prepared.request.userRequirement);
   appendPreviewSection(previewLines, '输出格式', prepared.request.outputFormat);

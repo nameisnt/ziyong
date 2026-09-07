@@ -36,20 +36,39 @@
             <CapsuleTag v-if="reply.isOriginalPoster" active compact :interactive="false" label="楼主" />
           </div>
           <span class="pc-forum-floor-number">{{ `#${reply.floor}` }}</span>
+          <button
+            v-if="regexIdentity.length && reply.id"
+            class="pc-icon-btn"
+            type="button"
+            title="本条回复正则替换"
+            aria-label="本条回复正则替换"
+            @click="editingReplyId = reply.id"
+          >
+            <i class="fa-solid fa-code"></i>
+          </button>
         </header>
         <p v-if="parentFloor(reply.parentReplyId)" class="pc-forum-reply-target">
           <i class="fa-solid fa-reply"></i>
           {{ `回复 #${parentFloor(reply.parentReplyId)}` }}
         </p>
-        <p class="pc-forum-floor-content">{{ formatReplyContent(reply.content) }}</p>
+        <p class="pc-forum-floor-content">{{ formatReplyContent(reply) }}</p>
       </article>
     </div>
+    <ContentRegexModal
+      v-if="editingReply"
+      :usage-key="replyUsageKey(editingReply.id!)"
+      :content="editingReply.content"
+      @close="editingReplyId = ''"
+    />
   </section>
 </template>
 
 <script setup lang="ts">
 import CapsuleTag from '@/components/CapsuleTag.vue';
 import EmptyState from '@/components/EmptyState.vue';
+import ContentRegexModal from '@/components/ContentRegexModal.vue';
+import { useRegexDisplayStore } from '@/apps/regex-display/store';
+import { applyRegexDisplayRules, contentRegexUsageKey, getRegexRulesByIds } from '@/util/regexDisplay';
 import { useSettingsStore } from '@/store/settings';
 import { formatReaderContent } from '@/util/readerContent';
 import { storeToRefs } from 'pinia';
@@ -69,14 +88,28 @@ const props = withDefaults(
     emptyTitle?: string;
     replies: ForumReplyListItem[];
     title?: string;
+    regexIdentity?: string[];
   }>(),
   {
     emptyTitle: '还没有回复。',
     title: '回复',
+    regexIdentity: () => [],
   },
 );
 
 const filter = ref<'all' | 'op'>('all');
+const regexDisplay = useRegexDisplayStore();
+const editingReplyId = ref('');
+const editingReply = computed(() => props.replies.find(reply => reply.id === editingReplyId.value));
+watch(
+  () => props.regexIdentity.join('\n'),
+  () => {
+    editingReplyId.value = '';
+  },
+);
+function replyUsageKey(id: string) {
+  return contentRegexUsageKey('forum-reply', [...props.regexIdentity, id]);
+}
 const { settings } = storeToRefs(useSettingsStore());
 const hasOriginalPosterReplies = computed(() => props.replies.some(reply => reply.isOriginalPoster));
 const visibleReplies = computed(() =>
@@ -88,7 +121,12 @@ function parentFloor(parentReplyId?: string) {
   return parentReplyId ? floorById.value.get(parentReplyId) : undefined;
 }
 
-function formatReplyContent(content: string) {
+function formatReplyContent(reply: ForumReplyListItem) {
+  const ids =
+    props.regexIdentity.length && reply.id
+      ? (regexDisplay.settings.usages[replyUsageKey(reply.id)]?.displayRuleIds ?? [])
+      : [];
+  const content = applyRegexDisplayRules(reply.content, getRegexRulesByIds(regexDisplay.rules, ids, 'replace')).content;
   return formatReaderContent(content, settings.value.reader);
 }
 

@@ -4,6 +4,8 @@
       :content="displayedContent"
       :context-label="boardName"
       display-app-id="forum"
+      :display-identity="[thread.id, viewedVersionId]"
+      :display-versions="versions"
       :favorite-active="favorite"
       next-disabled
       previous-disabled
@@ -38,7 +40,7 @@
         />
       </template>
       <template #after-content>
-        <ForumReplyList :replies="replies" />
+        <ForumReplyList :replies="replies" :regex-identity="[thread.id, viewedVersionId]" />
       </template>
       <template #actions>
         <button class="pc-soft-btn" type="button" @click="$emit('generate-replies')">

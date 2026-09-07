@@ -1,4 +1,5 @@
 import { getCurrentChatScopeKey, readChatScopedEnvelope, useChatScopedDomain } from '@/store/chatScoped';
+import { useRegexDisplayStore } from '@/apps/regex-display/store';
 import { parsePrettified } from '@/util/zod';
 import type { FailedGenerationDraft } from '@/type/generation';
 // eslint-disable-next-line import-x/no-nodejs-modules
@@ -185,6 +186,7 @@ export const useCustomAppsStore = defineStore('custom-apps', () => {
     if (!definition) return;
     const data = getData(definition);
     data.entries = data.entries.filter(entry => entry.id !== entryId);
+    useRegexDisplayStore().deleteContentUsages(appId, [entryId]);
   }
 
   function toggleFavorite(appId: string, entryId: string) {
@@ -278,6 +280,7 @@ export const useCustomAppsStore = defineStore('custom-apps', () => {
     });
     _.set(extension_settings, customAppChatDataField, envelope);
     chatDomain.rehydrateFromSettings();
+    useRegexDisplayStore().deleteContentUsages(appId, []);
   }
 
   function rehydrateFromSettings() {

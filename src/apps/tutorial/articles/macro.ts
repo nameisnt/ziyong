@@ -58,7 +58,7 @@ export const macroTutorialArticles: TutorialArticle[] = [
       {
         type: 'paragraph',
         title: '包含内容',
-        text: '依次包含本次任务 taskInstruction、App 预设、类型预设、生成页填写的追加要求和输出格式。空白区段会自动省略；预设中再次放入这个宏时，这些内容会按设计重复发送。',
+        text: '依次包含 App 预设、本次任务 taskInstruction、类型预设、生成页填写的追加要求和输出格式。空白区段会自动省略；预设中再次放入这个宏时，这些内容会按设计重复发送。',
       },
       {
         type: 'paragraph',
@@ -68,7 +68,7 @@ export const macroTutorialArticles: TutorialArticle[] = [
       {
         type: 'note',
         title: '容易混淆',
-        text: '{{lastUserMessage}} 指酒馆聊天中的最后一条用户消息；{{phoneUserInput}} 指手机整理出的任务、App 规则、类型、追加要求和格式。酒馆仍会原生追加本轮 user_input，宏只用于预设需要额外重复这组内容时。',
+        text: '{{lastUserMessage}} 指酒馆聊天中的最后一条用户消息；{{phoneUserInput}} 指手机整理出的 App 规则、任务、类型、追加要求和格式。酒馆仍会原生追加本轮 user_input，宏只用于预设需要额外重复这组内容时。',
       },
     ],
   },

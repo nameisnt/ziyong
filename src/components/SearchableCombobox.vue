@@ -234,7 +234,7 @@ function handleKeydown(event: KeyboardEvent) {
     if (props.allowCustom) closeMenu();
     return;
   }
-  if (event.key === 'Escape') {
+  if (event.key === 'Escape' && isOpen.value) {
     event.preventDefault();
     closeMenu();
   }

@@ -3,6 +3,25 @@
     <header class="pc-compact-toolbar pc-directory-toolbar pc-regex-toolbar">
       <span class="pc-directory-count">{{ rules.length }} {{ t`条规则` }}</span>
       <InfoHint :text="t`提取规则创建内容，替换规则按列表顺序处理显示结果。`" />
+      <button
+        class="pc-icon-btn"
+        type="button"
+        title="导入酒馆正则"
+        aria-label="导入酒馆正则"
+        @click="importOpen = true"
+      >
+        <i class="fa-solid fa-file-import"></i>
+      </button>
+      <button
+        class="pc-icon-btn"
+        type="button"
+        title="批量移动规则"
+        aria-label="批量移动规则"
+        :disabled="!rules.length"
+        @click="bulk.start"
+      >
+        <i class="fa-solid fa-list-check"></i>
+      </button>
       <ActionMenu icon-only :label="t`新增`" icon="fa-solid fa-plus">
         <button type="button" @click="addNewRule('')">
           <i class="fa-solid fa-file-circle-plus"></i><span>{{ t`新增规则` }}</span>
@@ -12,6 +31,21 @@
         </button>
       </ActionMenu>
     </header>
+
+    <template v-if="bulk.active.value">
+      <SearchableCombobox v-model="bulkGroupId" :options="groupOptions" input-label="移动到分组" />
+      <BulkSelectionBar
+        :selected-count="bulk.selectedIds.value.length"
+        :total-count="rules.length"
+        :all-selected="bulk.allSelected.value"
+        empty-label="选择要移动的规则"
+        action-label="移动所选"
+        action-icon="fa-solid fa-folder-open"
+        @toggle-all="bulk.toggleAll"
+        @cancel="bulk.cancel"
+        @apply="moveSelected"
+      />
+    </template>
 
     <section
       v-for="section in ruleSections"
@@ -67,7 +101,14 @@
           @dragover.prevent
           @drop.stop="dropRuleBefore(rule.id)"
         >
+          <BulkSelectionCheckbox
+            v-if="bulk.active.value"
+            :label="`选择 ${rule.name}`"
+            :model-value="bulk.selectedIdSet.value.has(rule.id)"
+            @update:model-value="bulk.setSelected(rule.id, $event)"
+          />
           <span
+            v-else
             class="pc-regex-drag-handle"
             draggable="true"
             :title="t`拖拽排序`"
@@ -116,6 +157,7 @@
     </section>
 
     <EmptyState v-if="!rules.length" :title="t`还没有正则规则`" />
+    <RegexImportModal v-if="importOpen" @close="importOpen = false" />
 
     <section v-if="activeRule" class="pc-modal-backdrop pc-regex-editor-backdrop" @click.self="closeRuleEditor">
       <article class="pc-section-card pc-modal-dialog pc-regex-editor-dialog" role="dialog" aria-modal="true">
@@ -228,6 +270,10 @@
 
 <script setup lang="ts">
 import ActionMenu from '@/components/ActionMenu.vue';
+import BulkSelectionBar from '@/components/BulkSelectionBar.vue';
+import BulkSelectionCheckbox from '@/components/BulkSelectionCheckbox.vue';
+import { useBulkSelection } from '@/composables/useBulkSelection';
+import RegexImportModal from './RegexImportModal.vue';
 import EmptyState from '@/components/EmptyState.vue';
 import FrontendFrame from '@/components/FrontendFrame.vue';
 import InfoHint from '@/components/InfoHint.vue';
@@ -243,6 +289,18 @@ const phone = usePhoneStore();
 const settingsStore = useSettingsStore();
 const { groups, rules, settings } = storeToRefs(regexDisplay);
 const activeRuleId = ref('');
+const importOpen = ref(false);
+const bulkGroupId = ref('');
+const bulk = useBulkSelection(() => rules.value.map(rule => rule.id));
+function moveSelected() {
+  try {
+    regexDisplay.moveRulesToGroup(bulk.selectedIds.value, bulkGroupId.value);
+    toastr.success(`已移动 ${bulk.selectedIds.value.length} 条规则`);
+    bulk.cancel();
+  } catch (error) {
+    toastr.error(error instanceof Error ? error.message : String(error));
+  }
+}
 const draggingRuleId = ref('');
 const pointerDrag = reactive({ pointerId: -1, startX: 0, startY: 0, active: false });
 

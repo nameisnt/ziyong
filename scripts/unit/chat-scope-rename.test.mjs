@@ -5,8 +5,14 @@ import test from 'node:test';
 import ts from 'typescript';
 
 async function loadChatScopeRename() {
+  const regexSource = await readFile(new URL('../../src/util/regexDisplay.ts', import.meta.url), 'utf8');
+  const regexCode = ts.transpileModule(regexSource, {
+    compilerOptions: { module: ts.ModuleKind.ESNext, target: ts.ScriptTarget.ES2022 },
+  }).outputText;
+  const regexUrl = `data:text/javascript;base64,${Buffer.from(regexCode).toString('base64')}`;
   let source = await readFile(new URL('../../src/util/chatScopeRename.ts', import.meta.url), 'utf8');
   source = source
+    .replace("from '@/util/regexDisplay'", `from '${regexUrl}'`)
     .replace(
       "import { getRegisteredPhoneBackupRehydrateHandlers } from '@/core/appRegistry';",
       'const getRegisteredPhoneBackupRehydrateHandlers = () => [];',
@@ -56,6 +62,17 @@ function resetSettings(value) {
   Object.assign(globalThis.__chatScopeSettings, value);
   globalThis.__chatScopeSaveCalls = 0;
 }
+
+test('reader-only regex rename persists even without other scoped data', () => {
+  const source = 'char:visual:chat:old';
+  const target = 'char:visual:chat:new';
+  const key = scope => `content:${JSON.stringify(['reader', scope, 0, 2])}`;
+  const selection = { displayRuleIds: ['r'], contentRuleId: '', titleRuleId: '' };
+  resetSettings({ sillytavern_phone_regex_display: { usages: { [key(source)]: selection } } });
+  assert.equal(migratePhoneChatScopes([source], target).migrated, true);
+  assert.equal(globalThis.__chatScopeSaveCalls, 1);
+  assert.deepEqual(globalThis.__chatScopeSettings.sillytavern_phone_regex_display.usages, { [key(target)]: selection });
+});
 
 test('chat scope rename moves phone data and references while leaving non-phone settings untouched', () => {
   const source = 'char:visual:chat:old';

@@ -19,9 +19,9 @@ test('catalog modal uses one shared focus, keyboard, phone-back and scroll-lock 
     'usePhoneModalLifecycle',
     'modalStack',
     "'phone-before-back'",
-    "event.key !== 'Escape'",
+    "event.key === 'Escape'",
     "screen.style.overflow = 'hidden'",
-    'dialogRef.value?.focus',
+    'options.initialFocus?.() || options.dialogRef.value',
   ]) {
     if (!lifecycleSource.includes(evidence)) failures.push(`shared modal lifecycle missing: ${evidence}`);
   }

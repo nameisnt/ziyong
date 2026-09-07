@@ -7,6 +7,8 @@
       :context-label="entry.typeName || t`未分类小剧场`"
       custom-content
       display-app-id="theater"
+      :display-identity="[entry.id, viewedVersionId]"
+      :display-versions="entry.versions"
       :favorite-active="entry.favorite"
       :next-disabled="!nextEntryId"
       :previous-disabled="!previousEntryId"

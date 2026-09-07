@@ -19,6 +19,7 @@
       <slot name="version-navigation"></slot>
     </div>
 
+    <RegexErrorDisclosure :errors="displayResult.errors" />
     <article class="pc-detail-card pc-reader-detail-card">
       <slot name="kicker"></slot>
       <template v-if="customContent">
@@ -107,6 +108,17 @@
           <i class="fa-solid fa-filter-circle-xmark"></i><span>{{ baguLabel }}</span>
         </button>
         <button
+          v-if="regexUsageKey"
+          class="pc-soft-btn"
+          type="button"
+          @click="
+            regexOpen = true;
+            toolMenuOpen = false;
+          "
+        >
+          <i class="fa-solid fa-code"></i><span>正则替换</span>
+        </button>
+        <button
           v-if="simplifyEnabled"
           class="pc-soft-btn"
           type="button"
@@ -152,12 +164,20 @@
       </div>
     </div>
 
+    <ContentRegexModal
+      v-if="regexOpen && regexUsageKey"
+      :usage-key="regexUsageKey"
+      :content="content"
+      @close="regexOpen = false"
+    />
     <slot name="overlays"></slot>
   </div>
 </template>
 
 <script setup lang="ts">
 import DetailFooter from '@/components/DetailFooter.vue';
+import ContentRegexModal from '@/components/ContentRegexModal.vue';
+import RegexErrorDisclosure from '@/components/RegexErrorDisclosure.vue';
 import ItemTransferExportButton from '@/components/ItemTransferExportButton.vue';
 import ReaderContent from '@/components/ReaderContent.vue';
 import ReasoningDisclosure from '@/components/ReasoningDisclosure.vue';
@@ -165,7 +185,7 @@ import { getRegisteredPhoneApp } from '@/core/appRegistry';
 import { useRegexDisplayStore } from '@/apps/regex-display/store';
 import { usePhoneStore } from '@/store/phone';
 import { loadChineseConverter } from '@/util/chineseConversion';
-import { applyRegexDisplayRules, getRegexRulesByIds } from '@/util/regexDisplay';
+import { applyRegexDisplayRules, contentRegexUsageKey, getRegexRulesByIds } from '@/util/regexDisplay';
 
 const props = withDefaults(
   defineProps<{
@@ -181,6 +201,8 @@ const props = withDefaults(
     contextLabel?: string;
     customContent?: boolean;
     displayAppId?: string;
+    displayIdentity?: (string | number)[];
+    displayVersions?: { id: string; origin: string }[];
     editDisabled?: boolean;
     editEnabled?: boolean;
     editLabel?: string;
@@ -215,6 +237,8 @@ const props = withDefaults(
     contextLabel: '',
     customContent: false,
     displayAppId: '',
+    displayIdentity: () => [],
+    displayVersions: () => [],
     editDisabled: false,
     editEnabled: true,
     editLabel: '编辑',
@@ -273,15 +297,31 @@ const itemTransferAvailable = computed(() => {
     return false;
   }
 });
-const displayRules = computed(() => {
-  if (!props.displayAppId) return [];
-  return getRegexRulesByIds(regexDisplay.rules, regexDisplay.getUsage(props.displayAppId).displayRuleIds, 'replace');
+const regexOpen = ref(false);
+const regexUsageKey = computed(() => contentRegexUsageKey(props.displayAppId, props.displayIdentity));
+watch(
+  () => [props.displayAppId, props.displayIdentity[0], props.displayVersions] as const,
+  ([appId, entryId, versions]) => {
+    if (entryId !== undefined) regexDisplay.migrateOriginalUsage(appId, entryId, versions);
+  },
+  { immediate: true },
+);
+watch(regexUsageKey, () => {
+  regexOpen.value = false;
 });
+const displayRules = computed(() =>
+  getRegexRulesByIds(
+    regexDisplay.rules,
+    regexDisplay.settings.usages[regexUsageKey.value]?.displayRuleIds ?? [],
+    'replace',
+  ),
+);
 const simplified = ref(false);
 const simplifying = ref(false);
 const simplifyText = shallowRef<(text: string) => string>(text => text);
+const displayResult = computed(() => applyRegexDisplayRules(props.content, displayRules.value));
 const displayContent = computed(() => {
-  const content = applyRegexDisplayRules(props.content, displayRules.value).content;
+  const content = displayResult.value.content;
   return simplified.value ? simplifyText.value(content) : content;
 });
 const displayReasoning = computed(() => (simplified.value ? simplifyText.value(props.reasoning) : props.reasoning));
@@ -298,6 +338,7 @@ const toolVisible = computed(
     props.branchEnabled ||
     props.editEnabled ||
     props.simplifyEnabled ||
+    Boolean(regexUsageKey.value) ||
     itemTransferAvailable.value ||
     Boolean(slots.actions),
 );

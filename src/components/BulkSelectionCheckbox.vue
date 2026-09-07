@@ -4,6 +4,7 @@
       type="checkbox"
       :aria-label="label"
       :checked="modelValue"
+      :disabled="disabled"
       @change="$emit('update:modelValue', ($event.target as HTMLInputElement).checked)"
     />
     <span aria-hidden="true"><i class="fa-solid fa-check"></i></span>
@@ -14,9 +15,10 @@
 withDefaults(
   defineProps<{
     label?: string;
+    disabled?: boolean;
     modelValue: boolean;
   }>(),
-  { label: '选择记录' },
+  { label: '选择记录', disabled: false },
 );
 
 defineEmits<{ 'update:modelValue': [selected: boolean] }>();

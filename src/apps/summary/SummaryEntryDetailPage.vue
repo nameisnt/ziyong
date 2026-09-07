@@ -4,6 +4,7 @@
       :content="entry.content"
       :context-label="entry.rangeLabel"
       display-app-id="summary"
+      :display-identity="[entry.id]"
       :favorite-active="entry.favorite"
       :next-disabled="!nextId"
       :previous-disabled="!previousId"
