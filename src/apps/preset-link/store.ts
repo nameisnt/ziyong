@@ -1,4 +1,11 @@
-import { getCurrentTavernPresetName, loadTavernPreset } from '@/apps/preset-manager/api';
+import { getCurrentTavernPresetName, loadTavernPreset, readTavernPreset } from '@/apps/preset-manager/api';
+import {
+  checkPromptStates,
+  missingPromptIds,
+  snapshotPromptStates,
+  writeLivePromptStates,
+  type PresetPromptStates,
+} from './promptSwitches';
 import { createPresetRegexNoticeGuard, getEnabledPresetRegexCount, reloadCurrentChatForPresetRegex } from './api';
 import { areChatScopeKeysEquivalent, getCurrentChatScopeKey, isPlaceholderChatScopeKey } from '@/store/chatScoped';
 import { validateInplace } from '@/util/zod';
@@ -11,6 +18,7 @@ export const presetLinkField = 'sillytavern_phone_preset_links';
 const PresetChatBindingSchema = z.object({
   presetName: z.string().default(''),
   reloadRegex: z.boolean().default(false),
+  promptStates: z.record(z.string(), z.boolean()).optional(),
   updatedAt: z.string().default(''),
 });
 export type PresetChatBinding = z.infer<typeof PresetChatBindingSchema>;
@@ -40,6 +48,12 @@ const LegacyPresetChatBindingSchema = PresetChatBindingSchema.extend({
 });
 
 export const PresetLinkSettingsSchema = z.object({
+  activePromptOverride: z
+    .object({
+      presetName: z.string(),
+      states: z.record(z.string(), z.boolean()),
+    })
+    .optional(),
   bindings: z.record(z.string(), LegacyPresetChatBindingSchema).default({}),
   readerMigrationConflicts: z.array(PresetReaderMigrationConflictSchema).default([]),
   readerProfiles: z.record(z.string(), PresetReaderProfileSchema).default({}),
@@ -47,13 +61,14 @@ export const PresetLinkSettingsSchema = z.object({
 });
 
 export type PresetLinkSettings = {
+  activePromptOverride?: { presetName: string; states: PresetPromptStates };
   bindings: Record<string, PresetChatBinding>;
   readerMigrationConflicts: PresetReaderMigrationConflict[];
   readerProfiles: Record<string, PresetReaderProfile>;
   version: 2;
 };
 
-type PresetApplyResult = { applied: boolean; changed: boolean; reloaded: boolean };
+type PresetApplyResult = { applied: boolean; changed: boolean; reloaded: boolean; missingPromptIds?: string[] };
 type PresetScopeRequest = { scopeKey: string; sequence: number };
 
 function compareUpdatedAt(left: string, right: string) {
@@ -109,6 +124,7 @@ function readSettings(raw: unknown): PresetLinkSettings {
   const parsed = validateInplace(PresetLinkSettingsSchema, raw && typeof raw === 'object' ? raw : {});
   const migrated = migrateLegacyReaderProfiles(parsed.bindings, parsed.readerProfiles);
   return {
+    ...(parsed.activePromptOverride ? { activePromptOverride: parsed.activePromptOverride } : {}),
     bindings: Object.fromEntries(
       Object.entries(parsed.bindings).map(([scopeKey, binding]) => [scopeKey, PresetChatBindingSchema.parse(binding)]),
     ),
@@ -184,15 +200,18 @@ export const usePresetLinkStore = defineStore('preset-link', () => {
   function saveBinding(
     scopeKey: string,
     input: Pick<PresetChatBinding, 'presetName' | 'reloadRegex'> &
+      Pick<PresetChatBinding, 'promptStates'> &
       Partial<Pick<PresetReaderProfile, 'readerContentRuleId' | 'readerTitleRuleId'>>,
   ) {
     assertScope(scopeKey);
     const presetName = normalizePresetName(input.presetName);
+    if (input.promptStates) checkPromptStates(readTavernPreset(presetName), input.promptStates);
     const existingEntry = resolveBindingEntry(scopeKey);
     if (existingEntry && existingEntry[0] !== scopeKey) delete settings.value.bindings[existingEntry[0]];
     settings.value.bindings[scopeKey] = {
       presetName,
       reloadRegex: input.reloadRegex,
+      ...(input.promptStates ? { promptStates: { ...input.promptStates } } : {}),
       updatedAt: new Date().toISOString(),
     };
     if (input.readerContentRuleId !== undefined || input.readerTitleRuleId !== undefined) {
@@ -235,12 +254,43 @@ export const usePresetLinkStore = defineStore('preset-link', () => {
     });
   }
 
-  function removeBinding(scopeKey = getCurrentChatScopeKey()) {
-    const storedScopeKey = resolveBindingEntry(scopeKey)?.[0] ?? scopeKey;
-    if (!settings.value.bindings[storedScopeKey]) return false;
-    delete settings.value.bindings[storedScopeKey];
-    revision.value += 1;
-    return true;
+  async function removeBinding(scopeKey = getCurrentChatScopeKey()) {
+    return enqueuePresetMutation(async () => {
+      const storedScopeKey = resolveBindingEntry(scopeKey)?.[0] ?? scopeKey;
+      if (!settings.value.bindings[storedScopeKey]) return false;
+      if (areChatScopeKeysEquivalent(scopeKey, getCurrentChatScopeKey())) {
+        await restorePromptOverride(() => areChatScopeKeysEquivalent(scopeKey, getCurrentChatScopeKey()));
+      }
+      delete settings.value.bindings[storedScopeKey];
+      revision.value += 1;
+      return true;
+    });
+  }
+
+  async function restorePromptOverride(isCurrent: () => boolean) {
+    const active = settings.value.activePromptOverride;
+    if (!active || !isCurrent()) return;
+    if (getCurrentTavernPresetName() === active.presetName) {
+      if (!(await writeLivePromptStates(active.states, isCurrent))) return;
+    }
+    delete settings.value.activePromptOverride;
+  }
+
+  async function applyPromptOverride(states: PresetPromptStates, presetName: string, isCurrent: () => boolean) {
+    const live = readTavernPreset('in_use');
+    const source = readTavernPreset(presetName);
+    const desired = { ...snapshotPromptStates(source), ...states };
+    checkPromptStates(live, desired);
+    const before = snapshotPromptStates(live);
+    const restore = Object.fromEntries(
+      Object.entries(before).filter(([id, enabled]) => Object.hasOwn(desired, id) && desired[id] !== enabled),
+    );
+    if (Object.keys(restore).length) {
+      // Persist before the host write: a reload or failed write must not lose the restoration state.
+      settings.value.activePromptOverride = { presetName, states: restore };
+      await writeLivePromptStates(desired, isCurrent);
+    }
+    return missingPromptIds(live, states);
   }
 
   function inheritBinding(sourceScopeKey: string, targetScopeKey: string) {
@@ -257,11 +307,12 @@ export const usePresetLinkStore = defineStore('preset-link', () => {
 
   async function applyPresetSelection(
     scopeKey: string,
-    input: Pick<PresetChatBinding, 'presetName' | 'reloadRegex'>,
+    input: Pick<PresetChatBinding, 'presetName' | 'reloadRegex' | 'promptStates'>,
     forceReload: boolean,
     isCurrent = () => areChatScopeKeysEquivalent(scopeKey, getCurrentChatScopeKey()),
   ): Promise<PresetApplyResult> {
     assertScope(scopeKey);
+    if (!isCurrent()) return { applied: false, changed: false, reloaded: false };
     if (!areChatScopeKeysEquivalent(scopeKey, getCurrentChatScopeKey())) {
       throw new Error('只能把预设应用到酒馆当前打开的聊天');
     }
@@ -274,12 +325,22 @@ export const usePresetLinkStore = defineStore('preset-link', () => {
       !reloadBlocked && input.reloadRegex && (changed || forceReload) && getEnabledPresetRegexCount(presetName) > 0;
     const noticeGuard = changed && shouldReload ? createPresetRegexNoticeGuard(presetName) : null;
     let reloaded = false;
+    let missing: string[] = [];
 
     try {
+      if (input.promptStates) checkPromptStates(readTavernPreset(presetName), input.promptStates);
+      await restorePromptOverride(isCurrent);
+      if (!isCurrent() || getCurrentTavernPresetName() !== currentPresetName)
+        return { applied: false, changed: false, reloaded: false };
       if (changed) await loadTavernPreset(presetName);
       if (!isCurrent()) {
         noticeGuard?.restore();
         return { applied: false, changed: false, reloaded: false };
+      }
+      if (input.promptStates) {
+        missing = await applyPromptOverride(input.promptStates, presetName, isCurrent);
+        if (!isCurrent() || getCurrentTavernPresetName() !== presetName)
+          return { applied: false, changed: false, reloaded: false };
       }
       if (shouldReload) {
         recentReloadKey = reloadKey;
@@ -305,7 +366,8 @@ export const usePresetLinkStore = defineStore('preset-link', () => {
 
     lastAppliedScopeKey.value = scopeKey;
     revision.value += 1;
-    return { applied: true, changed, reloaded };
+    if (missing.length) toastr.warning(`预设绑定中有 ${missing.length} 个条目已不存在，请检查条目开关`);
+    return { applied: true, changed, reloaded, missingPromptIds: missing };
   }
 
   function enqueuePresetMutation<T>(operation: () => Promise<T>) {
@@ -319,7 +381,7 @@ export const usePresetLinkStore = defineStore('preset-link', () => {
 
   async function applySelection(
     scopeKey: string,
-    input: Pick<PresetChatBinding, 'presetName' | 'reloadRegex'>,
+    input: Pick<PresetChatBinding, 'presetName' | 'reloadRegex' | 'promptStates'>,
     forceReload = true,
   ) {
     return enqueuePresetMutation(() => applyPresetSelection(scopeKey, input, forceReload));
@@ -331,7 +393,10 @@ export const usePresetLinkStore = defineStore('preset-link', () => {
     isCurrent = () => areChatScopeKeysEquivalent(scopeKey, getCurrentChatScopeKey()),
   ) {
     const binding = getBinding(scopeKey);
-    if (!binding?.presetName) return { applied: true, changed: false, reloaded: false };
+    if (!binding?.presetName) {
+      await restorePromptOverride(isCurrent);
+      return { applied: isCurrent(), changed: false, reloaded: false };
+    }
     return applyPresetSelection(scopeKey, binding, forceReload, isCurrent);
   }
 
@@ -340,10 +405,7 @@ export const usePresetLinkStore = defineStore('preset-link', () => {
   }
 
   function isScopeRequestCurrent(request: PresetScopeRequest) {
-    return (
-      request.sequence === scopeSequence &&
-      areChatScopeKeysEquivalent(request.scopeKey, getCurrentChatScopeKey())
-    );
+    return request.sequence === scopeSequence && areChatScopeKeysEquivalent(request.scopeKey, getCurrentChatScopeKey());
   }
 
   async function drainScopeRequests() {
@@ -384,14 +446,16 @@ export const usePresetLinkStore = defineStore('preset-link', () => {
     return startScopeWorker();
   }
 
-  function resetCurrentScope() {
-    removeBinding(getCurrentChatScopeKey());
+  async function resetCurrentScope() {
+    await removeBinding(getCurrentChatScopeKey());
   }
 
   function migratePresetReferences(oldName: string, newName: string) {
     const source = oldName.trim();
     const target = newName.trim();
     if (!source || !target || source === target) return 0;
+    if (settings.value.activePromptOverride?.presetName === source)
+      settings.value.activePromptOverride.presetName = target;
     let changed = 0;
     Object.values(settings.value.bindings).forEach(binding => {
       if (binding.presetName !== source) return;

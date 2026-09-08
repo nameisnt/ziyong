@@ -33,6 +33,7 @@ import { createGenerationTaskFixture } from '@/testing/visual/generationTaskFixt
 import { applyBusinessContentVisualScenario } from '@/testing/visual/businessContentScenarios';
 import { applyFileRepositoryVisualScenario } from '@/testing/visual/fileRepositoryScenarios';
 import { applyPresetManagerVisualScenario } from '@/testing/visual/presetManagerScenarios';
+import { applyPresetBindingVisualScenario } from '@/testing/visual/presetBindingScenarios';
 import { applyRelationshipVisualScenario } from '@/testing/visual/relationshipScenarios';
 import { applyRegexWizardVisualScenario } from '@/testing/visual/regexWizardScenarios';
 import { applyRegexDisplayVisualScenario } from '@/testing/visual/regexDisplayScenarios';
@@ -380,6 +381,10 @@ async function applyScenario(name: VisualScenarioName, options: { height?: numbe
   const phone = usePhoneStore();
   await phone.goHome();
   phone.openPhone();
+
+  if (await applyPresetBindingVisualScenario(name, { resetPhoneToRoute, waitForCondition: waitForVisualCondition, waitForPaint })) {
+    return { name, route: phone.currentRoute };
+  }
 
   if (name === 'preset-link-dark' || name === 'macro-builder-dark') {
     const appId = name === 'preset-link-dark' ? 'preset-link' : 'macro-builder';

@@ -224,7 +224,7 @@ export function createVisualScenarioGroups(rootAppScenarios: string[]): VisualSc
         'preset-move-source-delete-failure',
       ],
     },
-    { id: 'preset-link', scenarios: ['preset-link-dark'] },
+    { id: 'preset-link', scenarios: ['preset-link-dark', 'preset-binding-switches', 'preset-binding-switches-dark'] },
     { id: 'macro-builder', scenarios: ['macro-builder-dark'] },
     {
       id: 'management-tools',
