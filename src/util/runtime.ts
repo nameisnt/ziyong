@@ -275,7 +275,7 @@ export function formatAsTavernRegexedStringSafe(
   }
 }
 
-function getSillyTavernContext() {
+export function getSillyTavernContext() {
   for (const record of getRuntimeRecords()) {
     const value = record.SillyTavern;
     if (!value || typeof value !== 'object') continue;

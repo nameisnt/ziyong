@@ -4,6 +4,7 @@ import { applyCurrentPhoneDataVersion } from '@/core/currentDataVersion';
 import { ensureNativeLauncher, syncNativeLauncherVisibility } from '@/core/nativeLauncher';
 import { ensurePhoneAppsRegistered } from '@/data/apps';
 import { usePhoneStore } from '@/store/phone';
+import { useGenerationAliasesStore } from '@/store/generationAliases';
 // eslint-disable-next-line import-x/no-nodejs-modules
 import { saveSettingsDebounced } from '@sillytavern/script';
 import { extension_settings } from '@sillytavern/scripts/extensions';
@@ -80,6 +81,7 @@ export function initPhoneLifecycle() {
     app.use(i18n);
     app.mount(root);
     const phone = usePhoneStore(pinia);
+    useGenerationAliasesStore(pinia);
     window.__sillytavernPhoneOpen__ = () => {
       phone.openPhone();
       window.setTimeout(syncNativeLauncherVisibility, 0);

@@ -34,6 +34,7 @@ import { applyBusinessContentVisualScenario } from '@/testing/visual/businessCon
 import { applyFileRepositoryVisualScenario } from '@/testing/visual/fileRepositoryScenarios';
 import { applyPresetManagerVisualScenario } from '@/testing/visual/presetManagerScenarios';
 import { applyPresetBindingVisualScenario } from '@/testing/visual/presetBindingScenarios';
+import { applyTavernAliasVisualScenario } from '@/testing/visual/tavernAliasScenarios';
 import { applyRelationshipVisualScenario } from '@/testing/visual/relationshipScenarios';
 import { applyRegexWizardVisualScenario } from '@/testing/visual/regexWizardScenarios';
 import { applyRegexDisplayVisualScenario } from '@/testing/visual/regexDisplayScenarios';
@@ -574,6 +575,9 @@ async function applyScenario(name: VisualScenarioName, options: { height?: numbe
     return { name, route: usePhoneStore().currentRoute };
   }
 
+  if (await applyTavernAliasVisualScenario(name, resetPhoneToRoute)) {
+    return { name, route: phone.currentRoute };
+  }
   if (await applySettingsVisualScenario(name, { resetPhoneToRoute, waitForPaint })) {
     await waitForPaint();
     return { name, route: usePhoneStore().currentRoute };

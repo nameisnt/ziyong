@@ -107,7 +107,7 @@
       </label>
     </section>
 
-    <section class="pc-page-section">
+    <section class="pc-page-section pc-settings-chat-aliases">
       <div class="pc-section-head">
         <strong>当前聊天称呼</strong>
         <button
@@ -120,6 +120,26 @@
           <i class="fa-solid fa-right-left"></i>
         </button>
       </div>
+      <div class="pc-setting-row">
+        <strong
+          >应用于酒馆当前聊天
+          <InfoHint
+            text="仅保存于当前聊天，默认关闭。开启后，生成、显示及其他宏解析使用这里的称呼；不修改角色卡或预设源文件。留空沿用酒馆名字。"
+        /></strong>
+        <label class="pc-toggle">
+          <input
+            :checked="applyToTavern"
+            :disabled="Boolean(tavernAliasUnavailableReason) && !applyToTavern"
+            type="checkbox"
+            aria-label="应用于酒馆当前聊天"
+            @change="setTavernAliases(($event.target as HTMLInputElement).checked)"
+          />
+          <span aria-hidden="true"></span>
+        </label>
+      </div>
+      <p v-if="tavernAliasUnavailableReason" class="pc-list-row-meta" role="status">
+        {{ tavernAliasUnavailableReason }}
+      </p>
       <div class="pc-settings-alias-grid">
         <label class="pc-field-group"
           ><span class="pc-field-label"><code v-text="'{{char}}'"></code> 替换</span
@@ -148,7 +168,7 @@ const aliases = useGenerationAliasesStore();
 const settingsStore = useSettingsStore();
 const pluginPresets = usePluginPresetStore();
 const { settings } = storeToRefs(settingsStore);
-const { charReplacement, userReplacement } = storeToRefs(aliases);
+const { charReplacement, userReplacement, applyToTavern, tavernAliasUnavailableReason } = storeToRefs(aliases);
 const { items: pluginPresetItems } = storeToRefs(pluginPresets);
 const tavernPresetNames = ref<string[]>([]);
 const tavernPresetOptions = computed(() => {
@@ -165,6 +185,14 @@ const tavernPresetOptions = computed(() => {
 function swapGenerationAliases() {
   [charReplacement.value, userReplacement.value] = [userReplacement.value, charReplacement.value];
 }
+function setTavernAliases(enabled: boolean) {
+  aliases.refreshTavernAliasSupport();
+  if (enabled && tavernAliasUnavailableReason.value) {
+    toastr.warning(tavernAliasUnavailableReason.value);
+    return;
+  }
+  applyToTavern.value = enabled;
+}
 function refreshTavernPresetNames() {
   tavernPresetNames.value = getPresetNamesSafe();
   const selected = settings.value.generation.tavernPresetName.trim();
@@ -172,6 +200,8 @@ function refreshTavernPresetNames() {
     tavernPresetNames.value.unshift(selected);
 }
 onMounted(refreshTavernPresetNames);
+onMounted(aliases.refreshTavernAliasSupport);
+onActivated(aliases.refreshTavernAliasSupport);
 </script>
 
 <style scoped>
