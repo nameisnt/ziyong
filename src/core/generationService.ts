@@ -20,6 +20,14 @@ import {
 } from '@/util/generationAliases';
 import { createHiddenGenerationRecord } from '@/util/hiddenGenerationRecord';
 import { buildSourceSelection, type SummaryGenerationSourceMode } from '@/util/generationSource';
+import {
+  describeGenerationMvu,
+  findGenerationMvuSnapshot,
+  replaceGenerationMvuMacros,
+  type GenerationMvuSnapshot,
+  type MvuMessage,
+} from '@/util/generationMvu';
+import { withGenerationMvu } from '@/util/generationMvuRuntime';
 import { ensureCurrentScopeRecovery } from '@/util/generationVisibility';
 import { cleanGenerationOutput } from '@/util/generationOutputCleaning';
 import { cleanSavedGenerationReasoning } from '@/util/generationReasoning';
@@ -42,6 +50,7 @@ import {
   getLoadedPresetNameSafe,
   getSelectedPresetNameSafe,
   getSelectedPresetPreviewSafe,
+  getSillyTavernContext,
   onRuntimeEvent,
   registerGenerationAbortController,
   registerMacroLikeSafe,
@@ -207,6 +216,7 @@ function buildSelectedChatHistoryPrompts(
   },
   visibleMessages: ChatMessage[],
   chatTail: string,
+  mvuSnapshot: GenerationMvuSnapshot | null,
 ) {
   const selectedMessages = selection.messageIds
     .map(messageId => visibleMessages.find(message => message.message_id === messageId))
@@ -215,7 +225,7 @@ function buildSelectedChatHistoryPrompts(
   const prompts: RawOrderedPrompt[] = selectedMessages
     .map((message, index) => ({
       content: formatAsTavernRegexedStringSafe(
-        message.message,
+        mvuSnapshot ? replaceGenerationMvuMacros(message.message, mvuSnapshot) : message.message,
         message.role === 'user' ? 'user_input' : 'ai_output',
         'prompt',
         { depth: selectedMessages.length - index - 1 },
@@ -348,6 +358,7 @@ function captureWithPhoneUserInput(
   phoneUserInput: string,
   variables: Record<string, string> = {},
   signal?: AbortSignal,
+  mvuSnapshot: GenerationMvuSnapshot | null = null,
 ) {
   const replaceRegisteredMacros = (content: string) => {
     const aliases = resolveGenerationIdentityAliases(useGenerationAliasesStore());
@@ -366,7 +377,10 @@ function captureWithPhoneUserInput(
   return runWithPhoneUserInputMacro(
     phoneUserInput,
     variables,
-    () => captureTavernPromptPreview(generateConfig, 15000, signal, replaceRegisteredMacros),
+    () =>
+      withGenerationMvu(generateConfig, mvuSnapshot, config =>
+        captureTavernPromptPreview(config, 15000, signal, replaceRegisteredMacros),
+      ),
     signal,
   );
 }
@@ -376,8 +390,14 @@ function generateWithPhoneUserInput(
   phoneUserInput: string,
   variables: Record<string, string> = {},
   signal?: AbortSignal,
+  mvuSnapshot: GenerationMvuSnapshot | null = null,
 ) {
-  return runWithPhoneUserInputMacro(phoneUserInput, variables, () => generateSafe(generateConfig), signal);
+  return runWithPhoneUserInputMacro(
+    phoneUserInput,
+    variables,
+    () => withGenerationMvu(generateConfig, mvuSnapshot, generateSafe),
+    signal,
+  );
 }
 
 function generateWithPluginPreset(
@@ -385,8 +405,14 @@ function generateWithPluginPreset(
   phoneUserInput: string,
   variables: Record<string, string>,
   signal?: AbortSignal,
+  mvuSnapshot: GenerationMvuSnapshot | null = null,
 ) {
-  return runWithPhoneUserInputMacro(phoneUserInput, variables, () => generateRawSafe(generateConfig), signal);
+  return runWithPhoneUserInputMacro(
+    phoneUserInput,
+    variables,
+    () => withGenerationMvu(generateConfig, mvuSnapshot, generateRawSafe),
+    signal,
+  );
 }
 
 function createGenerationId(appId: string) {
@@ -459,7 +485,7 @@ function prepareGenerationRequest<TConfig, TResult, TSaveResult = { entityId: st
 ) {
   const parsedConfig = parsePrettified(adapter.configSchema, config);
   const scopeId = getCurrentChatScopeKey();
-  const visibleMessages = getChatMessagesSafe('0-{{lastMessageId}}', { hide_state: 'unhidden' });
+  const visibleMessages = getChatMessagesSafe('0-{{lastMessageId}}').filter(message => !message.is_hidden);
   if (!visibleMessages.length && options.source.mode !== 'none') {
     throw new Error('当前聊天里没有可见楼层，暂时不能生成内容');
   }
@@ -481,6 +507,12 @@ function prepareGenerationRequest<TConfig, TResult, TSaveResult = { entityId: st
         visibleMessages,
       });
 
+  const chat = getSillyTavernContext()?.chat;
+  const selectedMvu = findGenerationMvuSnapshot(
+    Array.isArray(chat) ? (chat as MvuMessage[]) : [],
+    source.selection.messageIds,
+  );
+  const mvuSnapshot = selectedMvu ? structuredClone(selectedMvu) : null;
   const baseRequest = options.replay ? { ...options.replay.request } : adapter.buildRequest(parsedConfig);
   const prompts = usePromptStore();
   const taskInstruction = options.replay
@@ -510,7 +542,7 @@ function prepareGenerationRequest<TConfig, TResult, TSaveResult = { entityId: st
   const phoneUserInput = buildPhoneUserInput(request, formUserInput);
   const userInput = buildGenerationUserInput(request);
   const chatTail = buildGenerationChatTail(request);
-  const chatHistoryPrompts = buildSelectedChatHistoryPrompts(source.selection, visibleMessages, chatTail);
+  const chatHistoryPrompts = buildSelectedChatHistoryPrompts(source.selection, visibleMessages, chatTail, mvuSnapshot);
   const customApi = buildCustomApiConfig(textProvider);
   const presetSelection = options.replay?.tavernPresetName || resolveGenerationPresetName(options);
   const pluginPresetId = pluginPresetIdFromSelection(presetSelection || '');
@@ -546,6 +578,7 @@ function prepareGenerationRequest<TConfig, TResult, TSaveResult = { entityId: st
   return {
     chatTail,
     generateConfig,
+    mvuSnapshot,
     parsedConfig,
     phoneUserInput,
     generationMacroVariables,
@@ -697,6 +730,7 @@ async function generateFromCapturedOrderedPrompts(
   variables: Record<string, string>,
   abortSignal: AbortSignal,
   onRawOutput?: (rawOutput: string) => void,
+  mvuSnapshot: GenerationMvuSnapshot | null = null,
 ) {
   abortSignal.throwIfAborted();
   const captured = await captureWithPhoneUserInput(
@@ -708,6 +742,7 @@ async function generateFromCapturedOrderedPrompts(
     phoneUserInput,
     variables,
     abortSignal,
+    mvuSnapshot,
   );
   abortSignal.throwIfAborted();
   const orderedPrompts = buildOrderedPromptsFromCapturedMessages(captured.messages);
@@ -852,12 +887,14 @@ export async function generateContent<TConfig, TResult, TSaveResult = { entityId
               prepared.generationMacroVariables,
               abortSignal,
               options.lifecycle?.onRawOutput,
+              prepared.mvuSnapshot,
             )
           : await generateWithPluginPreset(
               prepared.generateConfig,
               prepared.phoneUserInput,
               prepared.generationMacroVariables,
               abortSignal,
+              prepared.mvuSnapshot,
             )
         : textProvider.mode === 'tavern'
           ? await generateWithPhoneUserInput(
@@ -865,6 +902,7 @@ export async function generateContent<TConfig, TResult, TSaveResult = { entityId
               prepared.phoneUserInput,
               prepared.generationMacroVariables,
               abortSignal,
+              prepared.mvuSnapshot,
             )
           : await generateFromCapturedOrderedPrompts(
               prepared.generateConfig,
@@ -873,6 +911,7 @@ export async function generateContent<TConfig, TResult, TSaveResult = { entityId
               prepared.generationMacroVariables,
               abortSignal,
               options.lifecycle?.onRawOutput,
+              prepared.mvuSnapshot,
             );
 
       abortSignal.throwIfAborted();
@@ -1081,6 +1120,7 @@ export function buildGenerationPreview<TConfig, TResult, TSaveResult = { entityI
     buildSelectedSourcePreview(prepared.source.selection, prepared.visibleMessages),
   );
   appendPreviewSection(previewLines, '引用内容', options.references);
+  appendPreviewSection(previewLines, 'MVU 来源', describeGenerationMvu(prepared.mvuSnapshot));
   appendPreviewSection(previewLines, 'App 上下文', prepared.request.context);
   appendPreviewSection(previewLines, '聊天记录结尾内容', prepared.chatTail);
   appendPreviewSection(previewLines, 'App 预设', prepared.request.appPrompt);
@@ -1122,6 +1162,8 @@ export async function captureGenerationPrompt<TConfig, TResult, TSaveResult = { 
       },
       prepared.phoneUserInput,
       prepared.generationMacroVariables,
+      undefined,
+      prepared.mvuSnapshot,
     );
 
   try {

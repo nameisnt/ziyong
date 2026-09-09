@@ -60,10 +60,14 @@
         @input="onRangeTextInput"
       ></textarea>
     </div>
+    <small v-if="mvuSourceLabel" class="pc-field-label" role="status">{{ mvuSourceLabel }}</small>
   </div>
 </template>
 
 <script setup lang="ts">
+import { describeGenerationMvu, findGenerationMvuSnapshot, type MvuMessage } from '@/util/generationMvu';
+import { buildSourceSelection } from '@/util/generationSource';
+import { getChatMessagesSafe, getSillyTavernContext, onTavernEvent } from '@/util/runtime';
 type SourceMode = 'none' | 'latest' | 'fromStart' | 'all' | 'single' | 'recent' | 'range';
 
 const props = withDefaults(
@@ -91,6 +95,38 @@ const emit = defineEmits<{
 }>();
 
 const labelText = computed(() => props.label || '来源楼层模式');
+const chatRevision = ref(0);
+const mvuSourceLabel = computed(() => {
+  void chatRevision.value;
+  if (props.mode === 'none') return '';
+  const chat = getSillyTavernContext()?.chat;
+  if (!Array.isArray(chat) || !chat.some(message => message.variables)) return '';
+  try {
+    const source = buildSourceSelection({
+      ...props,
+      scopeId: '',
+      chatIdAtGeneration: '',
+      visibleMessages: getChatMessagesSafe('0-{{lastMessageId}}').filter(message => !message.is_hidden),
+    });
+    return describeGenerationMvu(findGenerationMvuSnapshot(chat as MvuMessage[], source.selection.messageIds));
+  } catch {
+    // Incomplete range input is validated by the generation action.
+    return '';
+  }
+});
+const chatListeners = [
+  'CHAT_CHANGED',
+  'MESSAGE_SENT',
+  'MESSAGE_RECEIVED',
+  'MESSAGE_UPDATED',
+  'MESSAGE_DELETED',
+  'MESSAGE_SWIPED',
+].map(name =>
+  onTavernEvent(name, () => {
+    chatRevision.value++;
+  }),
+);
+onBeforeUnmount(() => chatListeners.forEach(listener => listener.stop()));
 
 function normalizeNumber(value: string, fallback: number) {
   const parsed = Number(value);

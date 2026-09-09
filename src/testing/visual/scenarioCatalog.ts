@@ -371,6 +371,8 @@ export function createVisualScenarioGroups(rootAppScenarios: string[]): VisualSc
         'theater-generate',
         'theater-generation-background',
         'theater-source-range',
+        'theater-mvu-source',
+        'theater-mvu-source-dark',
         'theater-rewrite-generate',
         'theater-generate-dark-inputs',
         'theater-editor',

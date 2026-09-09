@@ -1,6 +1,7 @@
 type StopHandle = { stop: () => void };
 type EventListener = (...args: unknown[]) => void;
 type EventSourceLike = {
+  makeFirst?: (eventName: string, listener: EventListener) => void;
   makeLast?: (eventName: string, listener: EventListener) => void;
   off?: (eventName: string, listener: EventListener) => void;
   on?: (eventName: string, listener: EventListener) => void;

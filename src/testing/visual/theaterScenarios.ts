@@ -6,6 +6,7 @@ import { parseCssColorChannels } from '@/testing/visual/cssColor';
 import type { HiddenGenerationRecord } from '@/type/generation';
 import { buildItemTransfer } from '@/util/itemTransfer';
 import { getFrontendFrameSource } from '@/util/theaterFrontend';
+import { getSillyTavernContext } from '@/util/runtime';
 
 interface TheaterScenarioContext {
   createHiddenGenerationRecord: (
@@ -219,7 +220,14 @@ export async function applyTheaterVisualScenario(name: string, context: TheaterS
     useSettingsStore().setTheme('dark');
     document.querySelector('.pc-theater-type-prompt-field')?.scrollIntoView({ block: 'center' });
     await waitForPaint();
-  } else if (name === 'theater-source-range') {
+  } else if (name === 'theater-source-range' || name.startsWith('theater-mvu-source')) {
+    const isMvuScenario = name.startsWith('theater-mvu-source');
+    if (isMvuScenario) {
+      const chat = getSillyTavernContext()?.chat;
+      if (!Array.isArray(chat) || !chat[2]) throw new Error('MVU source fixture has no message 2');
+      Object.assign(chat[2], { variables: { 0: { stat_data: { points: 1000 } } } });
+      useSettingsStore().setTheme(name.endsWith('-dark') ? 'dark' : 'light');
+    }
     resetPhoneToRoute('theater', 'generate', '自定义楼层范围');
     await waitForPaint();
     const advanced = document.querySelector<HTMLDetailsElement>('.pc-generation-advanced');
@@ -235,10 +243,28 @@ export async function applyTheaterVisualScenario(name: string, context: TheaterS
     await waitForPaint();
     const range = document.querySelector<HTMLTextAreaElement>('.pc-source-fields .pc-area');
     if (!range) throw new Error('Theater custom source range is missing');
-    range.value = '0-5, 0-10, 0-15';
+    range.value = isMvuScenario ? '0-2' : '0-5, 0-10, 0-15';
     range.dispatchEvent(new Event('input', { bubbles: true }));
     range.scrollIntoView({ block: 'center' });
     await waitForPaint();
+    if (isMvuScenario) {
+      const label = () => document.querySelector('.pc-source-fields [role="status"]')?.textContent || '';
+      if (label() !== 'MVU：第 2 层') throw new Error(`Incorrect exact MVU source: ${label()}`);
+      range.value = '0';
+      range.dispatchEvent(new Event('input', { bubbles: true }));
+      await waitForPaint();
+      if (!label().includes('目标第 0 层快照缺失，使用最近快照'))
+        throw new Error(`Incorrect nearest MVU source: ${label()}`);
+      sourceMode.value = 'none';
+      sourceMode.dispatchEvent(new Event('change', { bubbles: true }));
+      await waitForPaint();
+      if (label()) throw new Error('No-floor generation retained a historical MVU label');
+      sourceMode.value = 'range';
+      sourceMode.dispatchEvent(new Event('change', { bubbles: true }));
+      await waitForPaint();
+      document.querySelector('.pc-source-fields [role="status"]')?.scrollIntoView({ block: 'center' });
+      await waitForPaint();
+    }
   } else if (name === 'theater-rewrite-generate') {
     const entry = createTheaterFixture();
     const requirement = '小剧场当前版本的隐藏追加要求。';
