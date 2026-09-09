@@ -38,6 +38,7 @@ import { applyTavernAliasVisualScenario } from '@/testing/visual/tavernAliasScen
 import { applyStatusScopeVisualScenario } from '@/testing/visual/statusScopeScenarios';
 import { applyStatusWebVisualScenario } from '@/testing/visual/statusWebScenarios';
 import { applyReleaseVisualScenario } from '@/testing/visual/releaseScenarios';
+import { applyNativePresetVisualScenario } from '@/testing/visual/nativePresetScenarios';
 import { applyRelationshipVisualScenario } from '@/testing/visual/relationshipScenarios';
 import { applyRegexWizardVisualScenario } from '@/testing/visual/regexWizardScenarios';
 import { applyRegexDisplayVisualScenario } from '@/testing/visual/regexDisplayScenarios';
@@ -579,6 +580,7 @@ async function applyScenario(name: VisualScenarioName, options: { height?: numbe
   }
 
   if (await applyStatusWebVisualScenario(name)) return { name, route: phone.currentRoute };
+  if (await applyNativePresetVisualScenario(name)) return { name, route: phone.currentRoute };
   if (await applyReleaseVisualScenario(name)) return { name, route: phone.currentRoute };
   if (await applyStatusScopeVisualScenario(name, resetPhoneToRoute)) {
     return { name, route: phone.currentRoute };

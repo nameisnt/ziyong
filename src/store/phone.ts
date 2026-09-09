@@ -234,7 +234,7 @@ export const usePhoneStore = defineStore('phone', () => {
   function openPhone() {
     isOpen.value = true;
     if (acknowledgeRelease(extension_settings)) {
-      noticeInfo(`本版更新说明可在设置的“版本与更新”中查看。`, {
+      noticeInfo(`本版更新说明可在设置的“更新”标签页中查看。`, {
         title: `功能性阅读器 ${RUNNING_VERSION}`,
       });
       void saveSettingsDebounced();

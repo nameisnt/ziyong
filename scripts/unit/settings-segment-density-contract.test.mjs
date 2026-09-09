@@ -12,13 +12,16 @@ function rulesFor(source, selector) {
     .map(match => match[2]);
 }
 
-test('settings categories use one compact selector while segmented controls keep shared density', () => {
-  const localRules = rulesFor(settingsSource, '.pc-settings-category');
+test('settings categories use visible two-row tabs while segmented controls keep shared density', () => {
+  const localRules = rulesFor(settingsSource, '.pc-settings-tabs');
   assert.equal(localRules.length, 1, 'settings category selector must keep one responsive layout rule');
-  assert.match(settingsSource, /<select v-model="activeSettingsTab" class="pc-select"/u);
+  assert.match(settingsSource, /role="tablist"/u);
+  assert.match(settingsSource, /grid-template-columns: repeat\(4, minmax\(0, 1fr\)\)/u);
+  assert.match(settingsSource, /settingsTabIds\.includes\(tab\) \? tab : 'release'/u);
+  assert.match(settingsSource, /id: 'release', label: '更新'/u);
+  assert.doesNotMatch(settingsSource, /<select\b/u);
   assert.match(settingsSource, /id: 'generation', label: '生成'/u);
   assert.match(settingsSource, /id: 'data', label: '数据'/u);
-  assert.doesNotMatch(settingsSource, /pc-settings-tabs/u);
 
   const globalRules = rulesFor(globalSource, '.pc-phone-root .pc-segment-btn');
   assert.ok(

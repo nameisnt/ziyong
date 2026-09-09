@@ -1,4 +1,7 @@
-import { getRegisteredPhoneBackupRehydrateHandlers } from '@/core/appRegistry';
+import {
+  getRegisteredPhoneAppScopeRenameHandlers,
+  getRegisteredPhoneBackupRehydrateHandlers,
+} from '@/core/appRegistry';
 import {
   buildChatScopeKey,
   getCurrentChatScopeKey,
@@ -176,6 +179,7 @@ export function migratePhoneChatScopes(
       replacements += result.replacements;
     });
 
+  getRegisteredPhoneAppScopeRenameHandlers().forEach(handler => handler(normalizedSources, targetScopeKey));
   if (replacements) {
     void saveSettingsDebounced();
     rehydratePhoneStores();

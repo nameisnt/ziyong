@@ -183,6 +183,7 @@ export interface PhoneGenerationAction {
 
 export type PhoneGenerationProvider = () => PhoneGenerationAction[];
 export type PhoneScopeSwitchHandler = (scopeKey: string) => void | Promise<void>;
+export type PhoneScopeRenameHandler = (sourceScopeKeys: readonly string[], targetScopeKey: string) => void;
 
 /** A read-only recovery target exposed by an App without leaking its store implementation. */
 export interface PhoneGenerationRecoveryItem {
@@ -355,6 +356,7 @@ export interface PhoneAppModule extends PhoneAppDefinition {
   referenceProvider?: PhoneReferenceProvider;
   resetCurrentScope?: PhoneAppResetHandler;
   scopeSwitchHandler?: PhoneScopeSwitchHandler;
+  scopeRenameHandler?: PhoneScopeRenameHandler;
   scopeSwitchMode?: 'always' | 'on-open';
   specialPromptDefinitions?: PhonePromptDefinition[];
   taskTemplateDefinitions?: PhoneTaskTemplateDefinition[];
@@ -473,6 +475,12 @@ export function getRegisteredPhoneAppScopeSwitchHandlers(appId: string) {
 
 export function getRegisteredPhoneAppScopeSwitchHandler(appId: string) {
   return getRegisteredPhoneApp(appId)?.scopeSwitchHandler ?? null;
+}
+
+export function getRegisteredPhoneAppScopeRenameHandlers() {
+  return getRegisteredPhoneApps()
+    .map(app => app.scopeRenameHandler)
+    .filter((handler): handler is PhoneScopeRenameHandler => Boolean(handler));
 }
 
 function isPhoneReferenceProviderResult(value: PhoneReferenceProviderOutput): value is PhoneReferenceProviderResult {

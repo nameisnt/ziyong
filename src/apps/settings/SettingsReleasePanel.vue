@@ -15,20 +15,36 @@
         </button>
       </div>
     </section>
-    <section class="pc-page-section">
-      <div class="pc-section-head">
-        <strong>本版更新</strong><span>{{ RUNNING_VERSION }}</span>
-      </div>
-      <ul>
-        <li v-for="note in RELEASE_NOTES" :key="note">{{ note }}</li>
-      </ul>
+    <section
+      v-for="release in RELEASE_HISTORY"
+      :key="release.version"
+      class="pc-page-section"
+      :data-release-version="release.version"
+    >
+      <template v-if="release.version === RUNNING_VERSION">
+        <div class="pc-section-head">
+          <strong>本版更新</strong><span>{{ release.version }}</span>
+        </div>
+        <ul>
+          <li v-for="note in release.notes" :key="note">{{ note }}</li>
+        </ul>
+      </template>
+      <details v-else class="pc-release-history">
+        <summary class="pc-section-head pc-soft-btn">
+          <strong><i class="fa-solid fa-chevron-right" aria-hidden="true"></i>历史更新</strong>
+          <span>{{ release.version }}</span>
+        </summary>
+        <ul>
+          <li v-for="note in release.notes" :key="note">{{ note }}</li>
+        </ul>
+      </details>
     </section>
   </div>
 </template>
 
 <script setup lang="ts">
 import { checkExtensionUpdate, type ExtensionUpdateStatus } from '@/apps/extension-transfer/api';
-import { RELEASE_NOTES, RUNNING_VERSION } from '@/core/releaseInfo';
+import { RELEASE_HISTORY, RUNNING_VERSION } from '@/core/releaseInfo';
 import { usePhoneStore } from '@/store/phone';
 
 const phone = usePhoneStore();
@@ -78,5 +94,21 @@ function openUpdater() {
 }
 .pc-release-panel li + li {
   margin-top: 10px;
+}
+.pc-release-history > summary {
+  width: 100%;
+  list-style: none;
+}
+.pc-release-history > summary::-webkit-details-marker {
+  display: none;
+}
+.pc-release-history > summary i {
+  margin-right: 8px;
+}
+.pc-release-history[open] > summary i {
+  transform: rotate(90deg);
+}
+.pc-release-history[open] > ul {
+  padding-top: 12px;
 }
 </style>

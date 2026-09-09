@@ -14,8 +14,9 @@ async function loadChatScopeRename() {
   source = source
     .replace("from '@/util/regexDisplay'", `from '${regexUrl}'`)
     .replace(
-      "import { getRegisteredPhoneBackupRehydrateHandlers } from '@/core/appRegistry';",
-      'const getRegisteredPhoneBackupRehydrateHandlers = () => [];',
+      /import \{\s*getRegisteredPhoneAppScopeRenameHandlers,\s*getRegisteredPhoneBackupRehydrateHandlers,\s*\} from '@\/core\/appRegistry';/u,
+      `const getRegisteredPhoneBackupRehydrateHandlers = () => [];
+       const getRegisteredPhoneAppScopeRenameHandlers = () => [(sources, target) => globalThis.__chatScopeRenames.push([sources, target])];`,
     )
     .replace(
       /import \{[\s\S]*?\} from '@\/store\/chatScoped';/,
@@ -55,13 +56,25 @@ globalThis.__chatScopeSaveCalls = 0;
 globalThis.__chatScopeSettings = {};
 globalThis.__chatScopeCurrentScope = 'char:visual:chat:new';
 globalThis.__chatScopeCharacters = [];
+globalThis.__chatScopeRenames = [];
 const { migratePhoneChatRename, migratePhoneChatScopes } = await loadChatScopeRename();
 
 function resetSettings(value) {
   Object.keys(globalThis.__chatScopeSettings).forEach(key => delete globalThis.__chatScopeSettings[key]);
   Object.assign(globalThis.__chatScopeSettings, value);
   globalThis.__chatScopeSaveCalls = 0;
+  globalThis.__chatScopeRenames = [];
 }
+
+test('runtime rename identity is notified even without persisted replacements', () => {
+  resetSettings({});
+  const source = 'char:visual:chat:old',
+    target = 'char:visual:chat:new';
+  const result = migratePhoneChatScopes([source], target);
+  assert.equal(result.migrated, false);
+  assert.deepEqual(globalThis.__chatScopeRenames, [[[source], target]]);
+  assert.equal(globalThis.__chatScopeSaveCalls, 0);
+});
 
 test('status private ownership and bindings follow chat rename without changing scheme or regex IDs', () => {
   const source = 'char:visual:chat:old';

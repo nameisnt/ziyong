@@ -49,3 +49,7 @@ declare module '@sillytavern/scripts/extensions' {
 declare module '@sillytavern/scripts/i18n' {
   export function t(strings: TemplateStringsArray, ...values: unknown[]): string;
 }
+
+declare module '@sillytavern/scripts/openai' {
+  export const promptManager: import('./src/apps/preset-manager/nativeToggle').NativePromptManager | null;
+}

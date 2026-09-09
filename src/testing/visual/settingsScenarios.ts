@@ -5,9 +5,12 @@ import { installMemoryFileService } from '@/testing/visual/memoryFileService';
 import { setting_field } from '@/type/settings';
 import { extension_settings } from '@sillytavern/scripts/extensions';
 import { klona } from 'klona';
+import { usePhoneStore } from '@/store/phone';
 
 export const settingsScenarioNames = [
   'settings',
+  'settings-tabs',
+  'settings-tabs-dark',
   'settings-data-management',
   'settings-data-management-dark',
   'settings-interface',
@@ -42,7 +45,40 @@ export async function applySettingsVisualScenario(name: string, context: Setting
   if (!settingsScenarioNames.includes(name as (typeof settingsScenarioNames)[number])) return false;
   const settings = useSettingsStore();
 
-  if (name === 'settings') context.resetPhoneToRoute('settings', 'root', '设置');
+  if (name.startsWith('settings-tabs')) {
+    const phone = usePhoneStore();
+    phone.clearNotices();
+    settings.setTheme(name.endsWith('-dark') ? 'dark' : 'light');
+    context.resetPhoneToRoute('settings', 'root', '设置');
+    await context.waitForPaint();
+    const tabs = () => [...document.querySelectorAll<HTMLButtonElement>('.pc-settings-tabs [role="tab"]')];
+    if (tabs().length !== 7 || tabs()[0].textContent?.trim() !== '更新' || !document.querySelector('.pc-release-panel'))
+      throw new Error('Updates must be first and default');
+    const rows = new Set(tabs().map(tab => Math.round(tab.getBoundingClientRect().top)));
+    if (rows.size !== 2) throw new Error('Settings tabs should occupy exactly two visible rows');
+    for (const tab of tabs()) {
+      tab.click();
+      await context.waitForPaint();
+      if (
+        tab.getAttribute('aria-selected') !== 'true' ||
+        phone.currentRoute.params?.tab !== tab.id.replace('pc-settings-tab-', '')
+      )
+        throw new Error('Settings tab click did not preserve the route');
+      const rect = tab.getBoundingClientRect();
+      if (tab.scrollWidth > tab.clientWidth + 1 || rect.width <= 0) throw new Error('Settings tab text overflow');
+    }
+    const last = tabs().at(-1)!;
+    last.dispatchEvent(new KeyboardEvent('keydown', { key: 'Home', bubbles: true }));
+    await context.waitForPaint();
+    if (!document.querySelector('.pc-release-panel') || document.activeElement !== tabs()[0])
+      throw new Error('Settings keyboard navigation failed');
+    phone.pushRoute('tutorial', 'root', '教程');
+    await context.waitForPaint();
+    await phone.goBack();
+    await context.waitForPaint();
+    if (!document.querySelector('.pc-release-panel')) throw new Error('Returning lost settings selection');
+    phone.clearNotices();
+  } else if (name === 'settings') context.resetPhoneToRoute('settings', 'root', '设置');
   else if (name === 'settings-data-management' || name === 'settings-data-management-dark') {
     settings.setTheme(name.endsWith('-dark') ? 'dark' : 'light');
     context.resetPhoneToRoute('settings', 'root', '设置', { tab: 'data' });
@@ -178,7 +214,7 @@ export async function applySettingsVisualScenario(name: string, context: Setting
     settings.setTheme('dark');
     context.resetPhoneToRoute('settings', 'root', '设置', { tab: 'connection' });
     await context.waitForPaint();
-    const category = document.querySelector<HTMLSelectElement>('.pc-settings-category .pc-select');
+    const category = document.querySelector<HTMLElement>('.pc-settings-tabs');
     if (!category || category.scrollWidth > category.clientWidth + 1) {
       throw new Error('Settings category selector overflows the narrow phone layout');
     }

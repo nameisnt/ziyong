@@ -1,6 +1,7 @@
 import { getCurrentTavernPresetName, loadTavernPreset, readTavernPreset } from '@/apps/preset-manager/api';
 import {
   checkPromptStates,
+  expandSingleGroupRestore,
   missingPromptIds,
   snapshotPromptStates,
   writeLivePromptStates,
@@ -159,7 +160,11 @@ export const usePresetLinkStore = defineStore('preset-link', () => {
   const lastAppliedScopeKey = ref('');
   const revision = ref(0);
   let scopeSequence = 0;
+  // One visit includes rename aliases until the host adopts the new name.
+  // Track attempts, not successes, so navigation cannot retry/reset a binding.
+  let scopeVisitKeys: string[] = [];
   let presetMutationTail: Promise<void> = Promise.resolve();
+  let presetMutationActive = false;
   let pendingScopeRequest: PresetScopeRequest | null = null;
   let scopeWorker: Promise<void> | null = null;
   let recentReloadKey = '';
@@ -271,6 +276,7 @@ export const usePresetLinkStore = defineStore('preset-link', () => {
     const active = settings.value.activePromptOverride;
     if (!active || !isCurrent()) return;
     if (getCurrentTavernPresetName() === active.presetName) {
+      checkPromptStates(readTavernPreset('in_use'), active.states, true);
       if (!(await writeLivePromptStates(active.states, isCurrent))) return;
     }
     delete settings.value.activePromptOverride;
@@ -287,10 +293,26 @@ export const usePresetLinkStore = defineStore('preset-link', () => {
     );
     if (Object.keys(restore).length) {
       // Persist before the host write: a reload or failed write must not lose the restoration state.
-      settings.value.activePromptOverride = { presetName, states: restore };
+      settings.value.activePromptOverride = { presetName, states: expandSingleGroupRestore(live, restore) };
       await writeLivePromptStates(desired, isCurrent);
     }
     return missingPromptIds(live, states);
+  }
+
+  function retainNativeGroupRestore(states: PresetPromptStates) {
+    if (presetMutationActive || applying.value) throw new Error('正在应用预设绑定，请稍后再切换条目');
+    const active = settings.value.activePromptOverride;
+    const presetName = getCurrentTavernPresetName();
+    if (!active) {
+      const binding = getBinding(getCurrentChatScopeKey());
+      if (binding?.presetName === presetName && binding.promptStates) {
+        settings.value.activePromptOverride = { presetName, states: { ...states } };
+      }
+      return;
+    }
+    if (active.presetName !== presetName) return;
+    // Keep the pre-binding values already captured; include newly touched peers before the native click.
+    active.states = { ...states, ...active.states };
   }
 
   function inheritBinding(sourceScopeKey: string, targetScopeKey: string) {
@@ -371,7 +393,14 @@ export const usePresetLinkStore = defineStore('preset-link', () => {
   }
 
   function enqueuePresetMutation<T>(operation: () => Promise<T>) {
-    const task = presetMutationTail.then(operation);
+    const task = presetMutationTail.then(async () => {
+      presetMutationActive = true;
+      try {
+        return await operation();
+      } finally {
+        presetMutationActive = false;
+      }
+    });
     presetMutationTail = task.then(
       () => undefined,
       () => undefined,
@@ -384,7 +413,11 @@ export const usePresetLinkStore = defineStore('preset-link', () => {
     input: Pick<PresetChatBinding, 'presetName' | 'reloadRegex' | 'promptStates'>,
     forceReload = true,
   ) {
-    return enqueuePresetMutation(() => applyPresetSelection(scopeKey, input, forceReload));
+    const request = beginExplicitScopeRequest(scopeKey);
+    if (!request) return { applied: false, changed: false, reloaded: false };
+    return enqueuePresetMutation(() =>
+      applyPresetSelection(getCurrentChatScopeKey(), input, forceReload, () => isScopeRequestCurrent(request)),
+    );
   }
 
   async function applyScopeNow(
@@ -401,11 +434,27 @@ export const usePresetLinkStore = defineStore('preset-link', () => {
   }
 
   function applyScope(scopeKey: string, forceReload = false) {
-    return enqueuePresetMutation(() => applyScopeNow(scopeKey, forceReload));
+    const request = beginExplicitScopeRequest(scopeKey);
+    if (!request) return Promise.resolve({ applied: false, changed: false, reloaded: false });
+    return enqueuePresetMutation(() =>
+      applyScopeNow(getCurrentChatScopeKey(), forceReload, () => isScopeRequestCurrent(request)),
+    );
+  }
+
+  function isVisitedScope(scopeKey: string) {
+    return scopeVisitKeys.some(key => areChatScopeKeysEquivalent(key, scopeKey));
+  }
+
+  function beginExplicitScopeRequest(scopeKey: string) {
+    assertScope(scopeKey);
+    if (!areChatScopeKeysEquivalent(scopeKey, getCurrentChatScopeKey())) return null;
+    if (!isVisitedScope(scopeKey)) scopeVisitKeys = [scopeKey];
+    pendingScopeRequest = null;
+    return { scopeKey, sequence: ++scopeSequence };
   }
 
   function isScopeRequestCurrent(request: PresetScopeRequest) {
-    return request.sequence === scopeSequence && areChatScopeKeysEquivalent(request.scopeKey, getCurrentChatScopeKey());
+    return request.sequence === scopeSequence && isVisitedScope(getCurrentChatScopeKey());
   }
 
   async function drainScopeRequests() {
@@ -418,7 +467,7 @@ export const usePresetLinkStore = defineStore('preset-link', () => {
         if (!isScopeRequestCurrent(request)) continue;
         try {
           await enqueuePresetMutation(() =>
-            applyScopeNow(request.scopeKey, false, () => isScopeRequestCurrent(request)),
+            applyScopeNow(getCurrentChatScopeKey(), false, () => isScopeRequestCurrent(request)),
           );
         } catch (error) {
           if (!isScopeRequestCurrent(request)) continue;
@@ -441,9 +490,21 @@ export const usePresetLinkStore = defineStore('preset-link', () => {
   }
 
   function switchScope(scopeKey: string) {
-    if (!areChatScopeKeysEquivalent(scopeKey, getCurrentChatScopeKey())) return Promise.resolve();
+    if (isPlaceholderChatScopeKey(scopeKey) || !areChatScopeKeysEquivalent(scopeKey, getCurrentChatScopeKey()))
+      return Promise.resolve();
+    if (isVisitedScope(scopeKey)) {
+      if (areChatScopeKeysEquivalent(scopeVisitKeys[0]!, scopeKey)) scopeVisitKeys = [scopeKey];
+      return scopeWorker ?? Promise.resolve();
+    }
+    scopeVisitKeys = [scopeKey];
     pendingScopeRequest = { scopeKey, sequence: ++scopeSequence };
     return startScopeWorker();
+  }
+
+  function renameScope(sourceScopeKeys: readonly string[], targetScopeKey: string) {
+    if (!scopeVisitKeys.some(key => sourceScopeKeys.includes(key))) return;
+    scopeVisitKeys = [...new Set([targetScopeKey, ...scopeVisitKeys, ...sourceScopeKeys])];
+    if (sourceScopeKeys.includes(lastAppliedScopeKey.value)) lastAppliedScopeKey.value = targetScopeKey;
   }
 
   async function resetCurrentScope() {
@@ -505,6 +566,7 @@ export const usePresetLinkStore = defineStore('preset-link', () => {
   }
 
   return {
+    retainNativeGroupRestore,
     applySelection,
     applyScope,
     applying,
@@ -518,6 +580,7 @@ export const usePresetLinkStore = defineStore('preset-link', () => {
     migratePresetReferences,
     removeBinding,
     removePresetReferences,
+    renameScope,
     resetCurrentScope,
     revision,
     saveBinding,

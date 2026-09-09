@@ -21,6 +21,7 @@ type PromptGroupRoot = {
 
 type PromptGroupState = {
   groups: PresetPromptGroupRange[];
+  nativeToggleEnabled?: boolean;
   version: 2;
 };
 
@@ -101,10 +102,26 @@ export function writePresetPromptGroups(root: PromptGroupRoot, promptIds: string
   const toolkit = extensions.baibaiToolkit as Record<string, unknown>;
   const state: PromptGroupState = {
     groups: readPresetPromptGroups(root, promptIds),
+    ...(rawPromptGroupState(root)?.nativeToggleEnabled === true ? { nativeToggleEnabled: true } : {}),
     version: 2,
   };
   toolkit.presetPromptGroups = state;
   return state;
+}
+
+export function isNativePromptGroupingEnabled(root: PromptGroupRoot) {
+  return rawPromptGroupState(root)?.nativeToggleEnabled === true;
+}
+
+export function setNativePromptGroupingEnabled(root: PromptGroupRoot, promptIds: string[], enabled: boolean) {
+  writePresetPromptGroups(root, promptIds).nativeToggleEnabled = enabled;
+}
+
+export function getSinglePromptGroupMembers(root: PromptGroupRoot, promptIds: string[], promptId: string) {
+  const groups = readPresetPromptGroups(root, promptIds);
+  const groupId = buildPresetPromptGroupIds(groups, promptIds).get(promptId);
+  const group = groups.find(item => item.id === groupId);
+  return group?.selectionMode === 'single' ? groupPromptIds(group, promptIds) : [];
 }
 
 export function buildPresetPromptGroupIds(groups: PresetPromptGroupRange[], promptIds: string[]) {

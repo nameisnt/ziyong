@@ -28,5 +28,6 @@ export default definePhoneApp({
   component: PresetLinkApp,
   resetCurrentScope: () => usePresetLinkStore().resetCurrentScope(),
   scopeSwitchHandler: scopeKey => usePresetLinkStore().switchScope(scopeKey),
+  scopeRenameHandler: (sources, target) => usePresetLinkStore().renameScope(sources, target),
   scopeSwitchMode: 'always',
 });

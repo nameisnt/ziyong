@@ -17,7 +17,7 @@
   switch。
 
 - `src/core/releaseInfo.ts`：从打包时的 manifest 取得运行版本、维护本版说明与全局已提示版本；`phone.openPhone()` 只进行本地一次提示。
-- `src/apps/settings/SettingsReleasePanel.vue`：设置的“版本与更新”；手动调用 `extension-transfer/api.ts` 按实际安装目录和范围检查本插件，安装操作仍进入扩展迁移。
+- `src/apps/settings/SettingsReleasePanel.vue`：设置的首个“更新”标签页；手动调用 `extension-transfer/api.ts` 按实际安装目录和范围检查本插件，安装操作仍进入扩展迁移。
 
 ## App 注册
 
@@ -54,6 +54,7 @@
 - 当前 scope key 来自 SillyTavern 当前角色/群组和聊天 id，格式近似 `char:<owner>:chat:<chat>` 或
   `group:<owner>:chat:<chat>`。
 - 切换聊天时，`phone.syncCurrentTavernScope()` 和各 App 的 `scopeSwitchHandler` 负责切换 store 数据。
+- 预设绑定在 store 中按当前聊天访问去重，显式应用绕过去重并取消旧的排队申请；`chatScopeRename.ts` 通过注册表 `scopeRenameHandler` 通知改名身份，改名不算切换聊天。
 - 配置校验失败时，`useChatScopedDomain` 保留 `configError` 与
   `rawConfig`，阻止自动持久化默认值，并提供重新读取和明确重置；工作台等业务 store 直接委托并暴露该共享恢复边界，不重复实现持久化保护。
 - `useChatScopedDomain` 将连续深层修改合并 120ms 后校验并写入，聊天切换和 store 销毁前强制落盘，并通过
@@ -127,6 +128,7 @@
   `extensions`；`src/store/presetCatalogGroups.ts`
   单独保存目录分组与预设分配，并在 App 会话内按预设保留详情展开和滚动状态；`src/apps/preset-link/`
   保存聊天 scope 绑定并在聊天切换时应用酒馆预设。
+  `nativeGroups.ts` 在插件生命周期内安装 `nativeToggle.ts` 的原生点击接入，`PresetNativeGrouping.vue` 配置原生联动和冲突保留项；分组仍以 `promptGroups.ts` 为权威。`preset-link/promptSwitches.ts` 扩展完整单选组恢复快照，store 在手动操作前记录新增受影响条目。
 - 批量目录：`BulkSelectionBar.vue`、`BulkSelectionCheckbox.vue` 和 `useBulkSelection.ts`
   提供共享选择状态，业务 App 仍用各自 store 执行实际级联删除。
 - 世界书：`src/apps/worldbook-link/`
@@ -205,7 +207,7 @@
   `ForumPreviewPage.vue` 不再各自维护回复卡片。论坛输出格式和解析仍由 `builtinPrompts.ts`、`core/forumGeneration.ts` 与
   `util/generation.ts` 负责，当前未随 UI 调整。
 - `src/apps/settings/SettingsApp.vue`
-  使用单行分类选择器装配界面、阅读、生成、连接、数据和高级面板；`SettingsGenerationPanel.vue`
+  使用两行可见标签页装配更新、界面、阅读、生成、API 设置、数据和高级面板；默认更新，明确入口及返回使用路由中的 tab。`SettingsGenerationPanel.vue`
   管理生成默认值，`SettingsConnectionPanel.vue` 管理文本通道和外部配置目录，`SettingsExternalApiPage.vue`
   负责外部 API 二级编辑；`SettingsInterfacePanel.vue`
   使用紧凑行管理窗口、图标密度和悬浮球，旧分页主页的行数/每页容量及 Dock 数量不再暴露；`SettingsDataManagementPage.vue`

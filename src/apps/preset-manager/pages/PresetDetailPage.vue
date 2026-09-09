@@ -188,6 +188,13 @@
           </header>
 
           <div class="pc-preset-group-manager-body">
+            <PresetNativeGrouping
+              v-if="!pluginPreset"
+              :preset="preset"
+              :preset-name="presetName"
+              :disabled="mutationBusy"
+              @change="(enabled, retained) => emit('native-grouping', enabled, retained)"
+            />
             <section class="pc-preset-managed-groups">
               <article v-for="group in promptGroups" :key="group.id" class="pc-preset-managed-group-row">
                 <header class="pc-preset-managed-group-head">
@@ -307,6 +314,7 @@ import { usePhoneModalLifecycle } from '@/composables/usePhoneModalLifecycle';
 import type { BaibaiPresetGroup, PresetDisplayNode, TavernPreset, TavernPresetPrompt } from '../api';
 import PresetOwnershipPanel from './PresetOwnershipPanel.vue';
 import PresetPromptRow from '../PresetPromptRow.vue';
+import PresetNativeGrouping from '../PresetNativeGrouping.vue';
 
 const props = defineProps<{
   busyPromptIds: Set<string>;
@@ -335,6 +343,7 @@ const props = defineProps<{
 const enabledOnly = defineModel<boolean>('enabledOnly', { required: true });
 
 const emit = defineEmits<{
+  'native-grouping': [enabled: boolean, retained: Record<string, string>];
   'copy-prompt': [prompt: TavernPresetPrompt];
   'create-prompt-group': [];
   'delete-prompt-group': [group: BaibaiPresetGroup];

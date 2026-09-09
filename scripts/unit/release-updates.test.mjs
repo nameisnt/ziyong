@@ -13,13 +13,39 @@ const source = (await readFile(new URL('../../src/core/releaseInfo.ts', import.m
 const code = transpileModule(source, {
   compilerOptions: { module: ModuleKind.ESNext, target: ScriptTarget.ES2022 },
 }).outputText;
-const { RUNNING_VERSION, acknowledgeRelease, RELEASE_SEEN_FIELD } = await import(
+const { RUNNING_VERSION, acknowledgeRelease, RELEASE_SEEN_FIELD, RELEASE_HISTORY } = await import(
   `data:text/javascript;base64,${Buffer.from(code).toString('base64')}`
 );
 
 test('public manifests agree and runtime version comes from the bundled manifest', () => {
   assert.equal(manifest.version, pkg.version);
   assert.equal(RUNNING_VERSION, manifest.version);
+  assert.equal(RELEASE_HISTORY[0].version, RUNNING_VERSION);
+  const notes = RELEASE_HISTORY.find(release => release.version === '1.2.0').notes;
+  assert.ok(notes.some(note => note.includes('酒馆原生开关')));
+  assert.ok(notes.some(note => note.includes('两行可见标签页')));
+  assert.ok(notes.some(note => note.includes('同一聊天重载不再重置')));
+});
+
+test('release history has unique descending versions and preserves the published 1.1.0 notes', () => {
+  const versions = RELEASE_HISTORY.map(release => release.version);
+  assert.equal(new Set(versions).size, versions.length);
+  for (let i = 0; i < versions.length; i++) {
+    assert.match(versions[i], /^\d+\.\d+\.\d+$/u);
+    assert.ok(RELEASE_HISTORY[i].notes.length > 0);
+    if (!i) continue;
+    const newer = versions[i - 1].split('.').map(Number),
+      older = versions[i].split('.').map(Number);
+    const different = newer.findIndex((part, index) => part !== older[index]);
+    assert.ok(different >= 0 && newer[different] > older[different]);
+  }
+  assert.deepEqual(RELEASE_HISTORY.find(release => release.version === '1.1.0').notes, [
+    '状态栏方案默认仅当前聊天可用，可主动开启跨聊天共用；共用方案仍需在各聊天中手动启用。',
+    '旧状态栏方案按原绑定聊天转为私有，多聊天绑定分别保留独立副本；没有当前聊天时暂缓处理。',
+    '修复手动保存的 MVU 状态栏网页加载失败，支持内嵌 data 模块，补齐 MVU、楼层和事件桥接；切换楼层、聊天或关闭网页时清理桥接监听器，其他生成网页限制不变。',
+    '插件内的角色和用户替换称呼可选择用于酒馆普通聊天，默认关闭，仅当前聊天生效，需启用酒馆新版宏引擎。',
+    '设置新增版本与更新，可查看本版说明并手动检查更新。',
+  ]);
 });
 
 test('notice is once per release, independent of chat, with numeric version ordering', () => {
@@ -27,6 +53,8 @@ test('notice is once per release, independent of chat, with numeric version orde
   assert.equal(acknowledgeRelease(settings, '1.1.0'), true);
   assert.equal(settings[RELEASE_SEEN_FIELD], '1.1.0');
   assert.equal(acknowledgeRelease(settings, '1.1.0'), false);
+  assert.equal(acknowledgeRelease(settings, '1.2.0'), true);
+  assert.equal(acknowledgeRelease(settings, '1.2.0'), false);
   assert.equal(acknowledgeRelease(settings, '1.0.1'), false);
   assert.equal(acknowledgeRelease(settings, '1.10.0'), true);
   assert.equal(acknowledgeRelease(settings, '1.9.0'), false);

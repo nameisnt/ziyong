@@ -47,22 +47,25 @@ const makePreset = () => ({
   })),
 });
 
-function fixture() {
+function fixture(equivalent = (a, b) => a === b) {
   let scope = 'A',
     selected = 'P',
     live = makePreset(),
     fail = false,
     ignore = false,
-    beforeWrite;
+    beforeWrite,
+    reloadChat;
   const presets = { P: makePreset(), Q: makePreset() },
     writes = [],
-    warnings = [];
+    warnings = [],
+    loads = [];
   const settings = {};
   const api = {
     buildPresetDisplayNodes,
     getCurrentTavernPresetName: () => selected,
     readTavernPreset: name => clone(name === 'in_use' ? live : presets[name]),
     loadTavernPreset: async name => {
+      loads.push(name);
       selected = name;
       live = clone(presets[name]);
     },
@@ -89,12 +92,12 @@ function fixture() {
         './promptSwitches': helper,
         './api': {
           createPresetRegexNoticeGuard: () => null,
-          getEnabledPresetRegexCount: () => 0,
-          reloadCurrentChatForPresetRegex: async () => {},
+          getEnabledPresetRegexCount: () => (reloadChat ? 1 : 0),
+          reloadCurrentChatForPresetRegex: async () => reloadChat?.(),
         },
         '@/store/chatScoped': {
           getCurrentChatScopeKey: () => scope,
-          areChatScopeKeysEquivalent: (a, b) => a === b,
+          areChatScopeKeysEquivalent: equivalent,
           isPlaceholderChatScopeKey: key => !key,
         },
         '@/util/zod': { validateInplace: (schema, value) => schema.parse(value) },
@@ -121,6 +124,7 @@ function fixture() {
     presets,
     writes,
     warnings,
+    loads,
     live: () => live,
     scope: value => {
       scope = value;
@@ -134,6 +138,9 @@ function fixture() {
     beforeWrite: value => {
       beforeWrite = value;
     },
+    reloadChat: value => {
+      reloadChat = value;
+    },
     mutate: callback => callback(live),
   };
 }
@@ -142,6 +149,372 @@ const statesB = { first: false, third: true, body: true };
 const bind = (store, scope, states, presetName = 'P') =>
   store.saveBinding(scope, { presetName, reloadRegex: false, promptStates: states });
 const current = f => clone(f.helper.snapshotPromptStates(f.live()));
+
+test('same-chat page visits and reload notifications preserve manual switches and preset choice', async () => {
+  const f = fixture();
+  bind(f.store, 'A', statesA);
+  await f.store.switchScope('A');
+  f.mutate(live => {
+    live.prompts[2].enabled = true;
+  });
+  const count = f.writes.length;
+  for (let i = 0; i < 4; i++) await f.store.switchScope('A');
+  assert.equal(f.writes.length, count);
+  assert.equal(f.live().prompts[2].enabled, true);
+  await f.api.loadTavernPreset('Q');
+  await f.store.switchScope('A');
+  assert.equal(f.api.getCurrentTavernPresetName(), 'Q');
+  assert.deepEqual(f.loads, ['Q']);
+  await f.store.applySelection('A', f.store.getBinding('A'), false);
+  assert.equal(f.api.getCurrentTavernPresetName(), 'P');
+  assert.deepEqual(current(f), statesA);
+});
+
+test('saving on an unbound visit does not apply until explicit Apply or a new chat visit', async () => {
+  const f = fixture();
+  await f.store.switchScope('A');
+  const original = current(f);
+  bind(f.store, 'A', statesA);
+  await f.store.switchScope('A');
+  assert.deepEqual(current(f), original);
+  assert.equal(f.writes.length, 0);
+  await f.store.applySelection('A', f.store.getBinding('A'), false);
+  bind(f.store, 'A', statesB);
+  await f.store.switchScope('A');
+  assert.deepEqual(current(f), statesA);
+  f.scope('B');
+  await f.store.switchScope('B');
+  f.scope('A');
+  await f.store.switchScope('A');
+  assert.deepEqual(current(f), statesB);
+});
+
+test('removal and rebinding in the same chat do not cause an automatic application', async () => {
+  const f = fixture();
+  bind(f.store, 'A', statesA);
+  await f.store.switchScope('A');
+  await f.store.removeBinding('A');
+  const restored = current(f),
+    count = f.writes.length;
+  bind(f.store, 'A', statesB);
+  await f.store.switchScope('A');
+  assert.deepEqual(current(f), restored);
+  assert.equal(f.writes.length, count);
+});
+
+test('failed automatic attempts report once, preserve recovery and retry only explicitly or on reentry', async () => {
+  const f = fixture();
+  bind(f.store, 'A', statesA);
+  f.fail(true);
+  await f.store.switchScope('A');
+  assert.equal(f.warnings.length, 1);
+  assert.ok(f.store.settings.value.activePromptOverride);
+  f.fail(false);
+  await f.store.switchScope('A');
+  assert.equal(f.writes.length, 0);
+  assert.equal(f.warnings.length, 1);
+  await f.store.applySelection('A', f.store.getBinding('A'), false);
+  assert.deepEqual(current(f), statesA);
+});
+
+test('fresh store initializes once; data rehydration alone does not reapply', async () => {
+  const f = fixture();
+  bind(f.store, 'A', statesA);
+  await f.store.switchScope('A');
+  f.mutate(live => {
+    live.prompts[2].enabled = true;
+  });
+  const raw = clone(f.store.settings.value);
+  f.store.importBackup(raw);
+  await f.store.switchScope('A');
+  assert.equal(f.live().prompts[2].enabled, true);
+  const restarted = f.create(raw);
+  await restarted.switchScope('A');
+  assert.deepEqual(current(f), statesA);
+  f.mutate(live => {
+    live.prompts[2].enabled = true;
+  });
+  restarted.rehydrateFromSettings();
+  await restarted.switchScope('A');
+  assert.equal(f.live().prompts[2].enabled, true);
+});
+
+test('duplicate in-flight notifications join the worker without cancelling or reapplying', async () => {
+  const f = fixture();
+  bind(f.store, 'A', statesA);
+  let resume;
+  f.beforeWrite(
+    () =>
+      new Promise(resolve => {
+        resume = resolve;
+      }),
+  );
+  const pending = f.store.switchScope('A');
+  while (!resume) await new Promise(resolve => setImmediate(resolve));
+  const repeated = f.store.switchScope('A');
+  f.beforeWrite(undefined);
+  resume();
+  await Promise.all([pending, repeated]);
+  assert.deepEqual(current(f), statesA);
+  assert.equal(f.writes.length, 1);
+});
+
+test('explicit Apply supersedes a queued automatic request, including a regex reload notification', async () => {
+  const f = fixture();
+  bind(f.store, 'A', statesA);
+  const pending = f.store.switchScope('A');
+  let reloads = 0;
+  f.reloadChat(() => {
+    reloads++;
+    void f.store.switchScope('A');
+  });
+  await f.store.applySelection('A', { presetName: 'P', reloadRegex: true, promptStates: statesB });
+  await pending;
+  assert.deepEqual(current(f), statesB);
+  assert.equal(reloads, 1);
+  assert.equal(f.writes.length, 1);
+});
+
+test('rapid A/B/A visits and historical browsing only apply to the actual latest chat', async () => {
+  const f = fixture();
+  bind(f.store, 'A', statesA);
+  bind(f.store, 'B', statesB);
+  const a = f.store.switchScope('A');
+  f.scope('B');
+  const b = f.store.switchScope('B');
+  f.scope('A');
+  const final = f.store.switchScope('A');
+  await Promise.all([a, b, final]);
+  assert.deepEqual(current(f), statesA);
+  const count = f.writes.length;
+  await f.store.switchScope('B');
+  assert.equal((await f.store.applySelection('B', f.store.getBinding('B'), false)).applied, false);
+  assert.equal(f.writes.length, count);
+});
+
+test('placeholder readiness and equivalent owner aliases do not create extra chat visits', async () => {
+  const f = fixture((a, b) => a.replace('alias-A', 'A') === b.replace('alias-A', 'A'));
+  bind(f.store, 'A', statesA);
+  f.scope('');
+  await f.store.switchScope('');
+  assert.equal(f.warnings.length, 0);
+  f.scope('A');
+  await f.store.switchScope('A');
+  f.mutate(live => {
+    live.prompts[2].enabled = true;
+  });
+  f.scope('alias-A');
+  await f.store.switchScope('alias-A');
+  assert.equal(f.live().prompts[2].enabled, true);
+});
+
+function renameBinding(f, oldName, newName) {
+  const raw = clone(f.store.settings.value);
+  if (raw.bindings[oldName]) {
+    raw.bindings[newName] = raw.bindings[oldName];
+    delete raw.bindings[oldName];
+  }
+  f.store.renameScope([oldName], newName);
+  f.store.importBackup(raw);
+}
+
+test('native and plugin rename preserve manual switches before and after host identity changes', async () => {
+  for (const hostAlreadyChanged of [false, true]) {
+    const f = fixture();
+    bind(f.store, 'A', statesA);
+    await f.store.switchScope('A');
+    f.mutate(live => {
+      live.prompts[2].enabled = true;
+    });
+    const count = f.writes.length;
+    if (hostAlreadyChanged) f.scope('Renamed');
+    renameBinding(f, 'A', 'Renamed');
+    await f.store.switchScope(hostAlreadyChanged ? 'Renamed' : 'A');
+    f.scope('Renamed');
+    await f.store.switchScope('Renamed');
+    assert.equal(f.writes.length, count);
+    assert.equal(f.live().prompts[2].enabled, true);
+    assert.deepEqual(clone(f.store.getBinding('Renamed').promptStates), statesA);
+    await f.store.applySelection('Renamed', f.store.getBinding('Renamed'), false);
+    assert.deepEqual(current(f), statesA);
+    f.scope('B');
+    await f.store.switchScope('B');
+    f.scope('Renamed');
+    await f.store.switchScope('Renamed');
+    assert.deepEqual(current(f), statesA);
+  }
+});
+
+test('rename before pending apply uses the new binding key without another automatic request', async () => {
+  const f = fixture();
+  bind(f.store, 'A', statesA);
+  const pending = f.store.switchScope('A');
+  renameBinding(f, 'A', 'Renamed');
+  f.scope('Renamed');
+  await f.store.switchScope('Renamed');
+  await pending;
+  assert.deepEqual(current(f), statesA);
+  assert.equal(f.writes.length, 1);
+});
+
+test('rename during a host write preserves the active request and ignores unrelated historical renames', async () => {
+  const f = fixture();
+  bind(f.store, 'A', statesA);
+  let resume;
+  f.beforeWrite(
+    () =>
+      new Promise(resolve => {
+        resume = resolve;
+      }),
+  );
+  const pending = f.store.switchScope('A');
+  while (!resume) await new Promise(resolve => setImmediate(resolve));
+  renameBinding(f, 'A', 'Renamed');
+  f.scope('Renamed');
+  const repeated = f.store.switchScope('Renamed');
+  f.beforeWrite(undefined);
+  resume();
+  await Promise.all([pending, repeated]);
+  assert.deepEqual(current(f), statesA);
+  assert.equal(f.writes.length, 1);
+  f.mutate(live => {
+    live.prompts[2].enabled = true;
+  });
+  f.store.renameScope(['B'], 'Historical');
+  await f.store.switchScope('Renamed');
+  assert.equal(f.live().prompts[2].enabled, true);
+});
+
+test('lifecycle initialization and both rename routes use the shared preset visit boundary', async () => {
+  const lifecycle = await read('core/phoneLifecycle.ts');
+  assert.match(lifecycle, /usePresetLinkStore\(pinia\)\.switchScope\(phone\.currentTavernScopeKey\)/u);
+  const index = await read('apps/preset-link/index.ts');
+  assert.match(
+    index,
+    /scopeRenameHandler: \(sources, target\) => usePresetLinkStore\(\)\.renameScope\(sources, target\)/u,
+  );
+  assert.match(await read('App.vue'), /migratePhoneChatRename\(payload\)/u);
+  assert.match(await read('util/tavernChatRename.ts'), /migratePhoneChatRename\(event\)/u);
+});
+
+test('rename of an unbound visit still suppresses reapply; a reused old filename is a new visit', async () => {
+  const f = fixture();
+  await f.store.switchScope('A');
+  renameBinding(f, 'A', 'Renamed');
+  f.scope('Renamed');
+  await f.store.switchScope('Renamed');
+  bind(f.store, 'Renamed', statesA);
+  await f.store.switchScope('Renamed');
+  assert.equal(f.writes.length, 0);
+  bind(f.store, 'A', statesB);
+  f.scope('A');
+  await f.store.switchScope('A');
+  assert.deepEqual(current(f), statesB);
+});
+
+function singleGroup(f) {
+  const metadata = {
+    baibaiToolkit: {
+      presetPromptGroups: {
+        version: 2,
+        groups: [
+          {
+            id: 'view',
+            name: 'View',
+            startPromptId: 'first',
+            endPromptId: 'body',
+            selectionMode: 'single',
+          },
+        ],
+      },
+    },
+  };
+  f.presets.P.extensions = clone(metadata);
+  f.presets.P.prompts[2].enabled = false;
+  f.mutate(live => {
+    live.extensions = clone(metadata);
+    live.prompts[2].enabled = false;
+  });
+}
+
+test('restoration includes every single-group peer after a native manual selection', async () => {
+  const f = fixture();
+  singleGroup(f);
+  bind(f.store, 'A', { first: false, third: true, body: false });
+  await f.store.applyScope('A');
+  f.store.retainNativeGroupRestore(current(f));
+  f.mutate(live =>
+    live.prompts.forEach(prompt => {
+      prompt.enabled = prompt.id === 'body';
+    }),
+  );
+  assert.deepEqual(clone(f.store.getBinding('A').promptStates), { first: false, third: true, body: false });
+  await f.store.removeBinding('A');
+  assert.deepEqual(current(f), { first: true, third: false, body: false });
+});
+
+test('a binding initially equal to the source captures its first manually touched group', async () => {
+  const f = fixture();
+  singleGroup(f);
+  bind(f.store, 'A', { first: true, third: false, body: false });
+  await f.store.applyScope('A');
+  assert.equal(f.store.settings.value.activePromptOverride, undefined);
+  f.store.retainNativeGroupRestore(current(f));
+  f.mutate(live =>
+    live.prompts.forEach(prompt => {
+      prompt.enabled = prompt.id === 'body';
+    }),
+  );
+  f.scope('C');
+  await f.store.switchScope('C');
+  assert.deepEqual(current(f), { first: true, third: false, body: false });
+});
+
+test('native edits cannot interleave with an in-flight binding write', async () => {
+  const f = fixture();
+  singleGroup(f);
+  bind(f.store, 'A', { first: false, third: true, body: false });
+  let resume;
+  f.beforeWrite(
+    () =>
+      new Promise(resolve => {
+        resume = resolve;
+      }),
+  );
+  const pending = f.store.applyScope('A');
+  try {
+    while (!resume) await new Promise(resolve => setImmediate(resolve));
+    assert.throws(() => f.store.retainNativeGroupRestore(current(f)), /正在应用预设绑定/);
+  } finally {
+    resume();
+    await pending;
+  }
+  assert.doesNotThrow(() => f.store.retainNativeGroupRestore(current(f)));
+});
+
+test('restoration validation checks affected groups without blocking on unrelated switches', () => {
+  const f = fixture();
+  const preset = makePreset();
+  preset.extensions = {
+    baibaiToolkit: {
+      presetPromptGroups: {
+        version: 2,
+        groups: [
+          {
+            id: 'g',
+            name: 'Other group',
+            startPromptId: 'first',
+            endPromptId: 'third',
+            selectionMode: 'single',
+          },
+        ],
+      },
+    },
+  };
+  preset.prompts[1].enabled = true;
+  assert.doesNotThrow(() => f.helper.checkPromptStates(preset, { body: false }, true));
+  assert.throws(() => f.helper.checkPromptStates(preset, { first: true }, true), /只能启用一个/);
+});
 
 test('same preset restores each chat combination repeatedly without changing source content or order', async () => {
   const f = fixture(),

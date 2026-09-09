@@ -12,9 +12,22 @@ export function snapshotPromptStates(preset: TavernPreset): PresetPromptStates {
   return Object.fromEntries(preset.prompts.map(prompt => [prompt.id, prompt.enabled]));
 }
 
-export function checkPromptStates(preset: TavernPreset, states: PresetPromptStates) {
+export function expandSingleGroupRestore(preset: TavernPreset, states: PresetPromptStates) {
+  const restore = { ...states };
   for (const node of buildPresetDisplayNodes(preset)) {
     if (node.type !== 'group' || node.group.selectionMode !== 'single') continue;
+    if (!node.prompts.some(prompt => Object.hasOwn(states, prompt.id))) continue;
+    for (const prompt of node.prompts) {
+      if (!Object.hasOwn(restore, prompt.id)) restore[prompt.id] = prompt.enabled;
+    }
+  }
+  return restore;
+}
+
+export function checkPromptStates(preset: TavernPreset, states: PresetPromptStates, affectedOnly = false) {
+  for (const node of buildPresetDisplayNodes(preset)) {
+    if (node.type !== 'group' || node.group.selectionMode !== 'single') continue;
+    if (affectedOnly && !node.prompts.some(prompt => Object.hasOwn(states, prompt.id))) continue;
     if (node.prompts.filter(prompt => states[prompt.id] ?? prompt.enabled).length > 1) {
       throw new Error(`单选分组“${node.group.name}”只能启用一个条目，请调整开关后保存`);
     }

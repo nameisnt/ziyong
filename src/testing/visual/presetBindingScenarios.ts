@@ -116,6 +116,9 @@ export async function applyPresetBindingVisualScenario(name: string, context: Co
     links.getBinding(usePhoneStore().viewingScopeKey)?.promptStates?.third !== true
   )
     throw new Error('Temporary apply overwrote editor or saved binding');
+  await usePhoneStore().syncCurrentTavernScope(true, true);
+  if (!runtime.TavernHelper.getPreset('in_use').prompts[0]?.enabled)
+    throw new Error('Same-chat synchronization reset temporary switches');
   details.querySelector<HTMLInputElement>('input[aria-label="绑定条目开关"]')!.click();
   await waitForPaint();
   if (!input('第一人称').disabled || !details.querySelector('.pc-binding-switch-list'))
@@ -183,6 +186,13 @@ export async function applyPresetBindingVisualScenario(name: string, context: Co
   await waitForPaint();
   if (links.getBinding(phone.viewingScopeKey)?.presetName !== '未加载的测试预设')
     throw new Error('Unloaded preset binding failed');
+  const liveBeforeNavigation = JSON.stringify(runtime.TavernHelper.getPreset('in_use'));
+  await phone.goHome();
+  phone.openApp('preset-link');
+  await waitForPaint();
+  await links.switchScope(phone.viewingScopeKey);
+  if (JSON.stringify(runtime.TavernHelper.getPreset('in_use')) !== liveBeforeNavigation)
+    throw new Error('Opening binding settings applied a saved preset without explicit Apply');
   if (JSON.stringify(runtime.TavernHelper.getPreset(presetName)) !== original) throw new Error('Source preset changed');
   phone.clearNotices();
   document.querySelector<HTMLElement>('.pc-phone-body')?.scrollTo(0, 0);

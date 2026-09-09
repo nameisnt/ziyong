@@ -1,6 +1,6 @@
 {
   "name": "sillytavern-phone-extension",
-  "version": "1.1.0",
+  "version": "1.2.0",
   "scripts": {
     "build": "vite build",
     "build:check": "vite build --outDir tmp/build-check --emptyOutDir",

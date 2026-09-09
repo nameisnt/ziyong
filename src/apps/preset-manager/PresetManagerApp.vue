@@ -63,6 +63,7 @@
       @toggle-group="toggleGroup"
       @toggle-preset-visibility="togglePresetVisibility"
       @toggle-prompt="togglePrompt"
+      @native-grouping="saveNativeGrouping"
       @toggle-default-app="toggleDefaultApp"
     />
 
@@ -133,6 +134,7 @@ import PresetCatalogPage from './pages/PresetCatalogPage.vue';
 import PresetDetailPage from './pages/PresetDetailPage.vue';
 import PresetPromptCopyPage from './pages/PresetPromptCopyPage.vue';
 import PresetPromptEditorPage from './pages/PresetPromptEditorPage.vue';
+import { configureNativeGrouping } from './nativeConfiguration';
 
 const phone = usePhoneStore();
 const entryLibrary = useEntryLibraryStore();
@@ -664,6 +666,19 @@ async function createPromptGroup() {
   await savePromptGroupMutation(
     preset => createPresetPromptGroup(preset, name, groupId),
     `已创建条目分组“${name.trim()}”`,
+  );
+}
+
+async function saveNativeGrouping(enabled: boolean, retained: Record<string, string>) {
+  const name = detailPresetName.value;
+  await savePromptGroupMutation(
+    preset => {
+      if (enabled && getCurrentTavernPresetName() === name) {
+        configureNativeGrouping(structuredClone(readTavernPreset('in_use')), enabled, retained);
+      }
+      configureNativeGrouping(preset, enabled, retained);
+    },
+    enabled ? '已开启酒馆条目分组联动' : '已关闭酒馆条目分组联动',
   );
 }
 
