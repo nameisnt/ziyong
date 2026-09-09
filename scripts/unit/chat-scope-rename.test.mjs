@@ -63,6 +63,28 @@ function resetSettings(value) {
   globalThis.__chatScopeSaveCalls = 0;
 }
 
+test('status private ownership and bindings follow chat rename without changing scheme or regex IDs', () => {
+  const source = 'char:visual:chat:old';
+  const target = 'char:visual:chat:new';
+  resetSettings({
+    sillytavern_phone_status_display: {
+      schemes: [{ id: 'status-private', ownerScopeKey: source, shared: false }],
+      activeSchemeByScope: { [source]: 'status-private' },
+      enabledSchemeIdsByScope: { [source]: ['status-private'] },
+    },
+    sillytavern_phone_regex_display: { usages: { 'status-display:status-private': { contentRuleId: 'r' } } },
+  });
+  migratePhoneChatScopes([source], target);
+  const status = globalThis.__chatScopeSettings.sillytavern_phone_status_display;
+  assert.equal(status.schemes[0].ownerScopeKey, target);
+  assert.equal(status.schemes[0].id, 'status-private');
+  assert.deepEqual(status.enabledSchemeIdsByScope, { [target]: ['status-private'] });
+  assert.equal(status.activeSchemeByScope[target], 'status-private');
+  assert.deepEqual(globalThis.__chatScopeSettings.sillytavern_phone_regex_display.usages, {
+    'status-display:status-private': { contentRuleId: 'r' },
+  });
+});
+
 test('reader-only regex rename persists even without other scoped data', () => {
   const source = 'char:visual:chat:old';
   const target = 'char:visual:chat:new';

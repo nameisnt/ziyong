@@ -1,4 +1,8 @@
 import { getPhoneApp } from '@/core/appLayout';
+import { acknowledgeRelease, RUNNING_VERSION } from '@/core/releaseInfo';
+// eslint-disable-next-line import-x/no-nodejs-modules
+import { saveSettingsDebounced } from '@sillytavern/script';
+import { extension_settings } from '@sillytavern/scripts/extensions';
 import { getRegisteredPhoneAppScopeSwitchHandler, getRegisteredPhoneAppScopeSwitchHandlers } from '@/core/appRegistry';
 import { areChatScopeKeysEquivalent, getCurrentChatScopeKey, isPlaceholderChatScopeKey } from '@/store/chatScoped';
 import { getOptionalGlobalFunction, getOptionalGlobalValue, onTavernEvent } from '@/util/runtime';
@@ -229,6 +233,12 @@ export const usePhoneStore = defineStore('phone', () => {
 
   function openPhone() {
     isOpen.value = true;
+    if (acknowledgeRelease(extension_settings)) {
+      noticeInfo(`本版更新说明可在设置的“版本与更新”中查看。`, {
+        title: `功能性阅读器 ${RUNNING_VERSION}`,
+      });
+      void saveSettingsDebounced();
+    }
     void syncCurrentTavernScope();
   }
 

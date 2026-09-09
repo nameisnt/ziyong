@@ -35,6 +35,9 @@ import { applyFileRepositoryVisualScenario } from '@/testing/visual/fileReposito
 import { applyPresetManagerVisualScenario } from '@/testing/visual/presetManagerScenarios';
 import { applyPresetBindingVisualScenario } from '@/testing/visual/presetBindingScenarios';
 import { applyTavernAliasVisualScenario } from '@/testing/visual/tavernAliasScenarios';
+import { applyStatusScopeVisualScenario } from '@/testing/visual/statusScopeScenarios';
+import { applyStatusWebVisualScenario } from '@/testing/visual/statusWebScenarios';
+import { applyReleaseVisualScenario } from '@/testing/visual/releaseScenarios';
 import { applyRelationshipVisualScenario } from '@/testing/visual/relationshipScenarios';
 import { applyRegexWizardVisualScenario } from '@/testing/visual/regexWizardScenarios';
 import { applyRegexDisplayVisualScenario } from '@/testing/visual/regexDisplayScenarios';
@@ -459,7 +462,7 @@ async function applyScenario(name: VisualScenarioName, options: { height?: numbe
       const frame = document.querySelector<HTMLIFrameElement>('.pc-status-display-app iframe');
       return Boolean(
         frame?.srcdoc.includes('正在城镇休息') &&
-        frame.sandbox.contains('allow-same-origin') &&
+        !frame.hasAttribute('sandbox') &&
         (frame.contentDocument?.querySelector<HTMLImageElement>('#status-image')?.naturalWidth || 0) > 0 &&
         document.querySelectorAll('.pc-status-tabs .pc-segment-btn').length === 2,
       );
@@ -575,6 +578,11 @@ async function applyScenario(name: VisualScenarioName, options: { height?: numbe
     return { name, route: usePhoneStore().currentRoute };
   }
 
+  if (await applyStatusWebVisualScenario(name)) return { name, route: phone.currentRoute };
+  if (await applyReleaseVisualScenario(name)) return { name, route: phone.currentRoute };
+  if (await applyStatusScopeVisualScenario(name, resetPhoneToRoute)) {
+    return { name, route: phone.currentRoute };
+  }
   if (await applyTavernAliasVisualScenario(name, resetPhoneToRoute)) {
     return { name, route: phone.currentRoute };
   }

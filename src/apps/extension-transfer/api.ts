@@ -47,6 +47,21 @@ async function readVersion(name: string, scope: ExtensionScope) {
   return (await response.json()) as ExtensionVersion;
 }
 
+export async function checkExtensionUpdate(moduleUrl: string): Promise<ExtensionUpdateStatus> {
+  const segments = new URL(moduleUrl).pathname.split('/');
+  const marker = segments.indexOf('third-party');
+  const name = marker >= 0 ? decodeURIComponent(segments[marker + 1] || '') : '';
+  if (!name) throw new Error('无法识别本插件的安装目录，请在酒馆扩展菜单中检查更新。');
+  const response = await request('/api/extensions/discover');
+  const discovered = (await response.json()) as DiscoveredExtension[];
+  const target = discovered.find(item => item.name === `third-party/${name}`);
+  if (!target) throw new Error('酒馆未返回本插件的安装信息，请在酒馆扩展菜单中检查更新。');
+  const scope = target.type.toLocaleLowerCase() === 'global' ? 'global' : 'local';
+  const version = await readVersion(name, scope);
+  if (!version.currentCommitHash || typeof version.isUpToDate !== 'boolean') return 'unavailable';
+  return version.isUpToDate ? 'current' : 'update-available';
+}
+
 export async function listInstalledThirdPartyExtensions(): Promise<InstalledExtension[]> {
   const response = await request('/api/extensions/discover');
   const discovered = (await response.json()) as DiscoveredExtension[];

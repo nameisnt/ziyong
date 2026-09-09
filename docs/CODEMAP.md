@@ -16,6 +16,9 @@
 - `src/store/phone.ts`：手机打开/关闭、路由栈、返回保护、预览离开确认、通知、当前酒馆 scope、查看 scope 与 scope
   switch。
 
+- `src/core/releaseInfo.ts`：从打包时的 manifest 取得运行版本、维护本版说明与全局已提示版本；`phone.openPhone()` 只进行本地一次提示。
+- `src/apps/settings/SettingsReleasePanel.vue`：设置的“版本与更新”；手动调用 `extension-transfer/api.ts` 按实际安装目录和范围检查本插件，安装操作仍进入扩展迁移。
+
 ## App 注册
 
 - `src/core/appRegistry.ts`：`PhoneAppModule`
@@ -55,9 +58,9 @@
   `rawConfig`，阻止自动持久化默认值，并提供重新读取和明确重置；工作台等业务 store 直接委托并暴露该共享恢复边界，不重复实现持久化保护。
 - `useChatScopedDomain` 将连续深层修改合并 120ms 后校验并写入，聊天切换和 store 销毁前强制落盘，并通过
   `flushCurrentScope()` 供八股应用等显式正文写回立即落盘；全局 settings 保持同步写入，保证主题与布局立即可见。
-- `src/apps/status-display/store.ts` 在全局设置中保存状态方案和 `activeSchemeByScope`；`status-display` 与
+- `src/apps/status-display/store.ts` 在全局设置中保存状态方案、`ownerScopeKey`/`shared` 和按聊天的启用/选中关系；`status-display` 与
   `status-display-settings`
-  共享该 store，聊天只保存方案选择关系，不保存渲染结果；展示页把监听、激活和酒馆事件产生的同轮刷新请求合并到一个微任务。
+  共享该 store，默认只显示当前聊天的私有方案及显式共用方案，不自动启用任何未绑定方案，不保存渲染结果；`schemeScope.ts` 负责可见性与旧方案拆分，迁移副本同步复制正则选用关系。展示页把监听、激活和酒馆事件产生的同轮刷新请求合并到一个微任务。
 
 ## 生成数据流
 
@@ -155,8 +158,9 @@
   是纯展示入口，读取当前聊天绑定并在聊天事件后刷新；`StatusDisplaySettingsApp.vue` 由
   `src/apps/status-display-settings/index.ts`
   注册为独立设置 App，负责方案绑定、增删改复制、正则配置、MVU 编辑预览和备份。正则链为“可见 AI 原文倒序扫描 → 方案提取规则 → 方案显示规则 →
-  safe iframe”；MVU 链为“`Mvu.getMvuData()` → `stat_data` → `{{mvu:路径}}` 模板替换 → `FrontendFrame`
-  在用户脚本前转发酒馆助手宿主接口 → 仅状态栏启用的同源 trusted iframe”。
+  trusted iframe”；MVU 链为“`Mvu.getMvuData()` → `stat_data` → `{{mvu:路径}}` 模板替换 → `FrontendFrame`
+  的专用 status 模式”。手动 MVU 网页不注入 CSP/sandbox、不删除网页节点，支持内嵌 data 模块；其他网页的 safe/trusted 行为不变。
+- `src/util/statusFrameRuntime.ts`：复用 MVU resolver 与酒馆事件 API，向状态 iframe 提供 ST、当前楼层、最新楼层、初始化和事件桥接；当前楼层由 App 的 `statusContext` 传入，切换聊天/楼层重新挂载，设置预览使用 latest。事件订阅由 frame 实例持有并在销毁时解除，不更改父页面接口或用户脚本的显式 latest。
 - 中文转换：`src/util/chineseConversion.ts` 动态加载与酒馆助手繁简脚本相同的转换核心，详情壳统一提供转换操作。
 - 插件宏：`src/apps/macro-builder/` 生成参数化宏；`src/util/pluginMacros.ts`
   保留普通 Unicode 文本，仅转义宏参数分隔符和换行，用 `URLSearchParams`

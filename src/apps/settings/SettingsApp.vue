@@ -15,6 +15,7 @@
         <SettingsGenerationPanel v-else-if="activeSettingsTab === 'generation'" />
         <SettingsConnectionPanel v-else-if="activeSettingsTab === 'connection'" />
         <SettingsDataManagementPage v-else-if="activeSettingsTab === 'data'" />
+        <SettingsReleasePanel v-else-if="activeSettingsTab === 'release'" />
         <SettingsAdvancedPanel v-else />
       </div>
     </template>
@@ -29,10 +30,11 @@ import SettingsExternalApiPage from './SettingsExternalApiPage.vue';
 import SettingsGenerationPanel from './SettingsGenerationPanel.vue';
 import SettingsInterfacePanel from './SettingsInterfacePanel.vue';
 import SettingsReaderPanel from './SettingsReaderPanel.vue';
+import SettingsReleasePanel from './SettingsReleasePanel.vue';
 import { usePhoneStore } from '@/store/phone';
 import { storeToRefs } from 'pinia';
 
-type SettingsTabId = 'advanced' | 'connection' | 'data' | 'generation' | 'interface' | 'reader';
+type SettingsTabId = 'advanced' | 'connection' | 'data' | 'generation' | 'interface' | 'reader' | 'release';
 const phone = usePhoneStore();
 const { currentRoute } = storeToRefs(phone);
 const activeSettingsTab = ref<SettingsTabId>('interface');
@@ -43,6 +45,7 @@ const settingsTabs = [
   { icon: 'fa-solid fa-plug', id: 'connection', label: 'API 设置' },
   { icon: 'fa-solid fa-database', id: 'data', label: '数据' },
   { icon: 'fa-solid fa-sliders', id: 'advanced', label: '高级' },
+  { icon: 'fa-solid fa-circle-info', id: 'release', label: '版本与更新' },
 ] as const;
 const settingsTabIds = settingsTabs.map(tab => tab.id);
 const activeTab = computed(() => settingsTabs.find(tab => tab.id === activeSettingsTab.value) ?? settingsTabs[0]);

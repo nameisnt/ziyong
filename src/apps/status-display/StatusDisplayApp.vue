@@ -41,7 +41,12 @@
         flush-content
         frameless
         host-bridge
-        security-mode="trusted"
+        :security-mode="activeScheme.source === 'mvu' ? 'status' : 'trusted'"
+        :status-context="
+          activeScheme.source === 'mvu'
+            ? { scopeKey: phone.currentTavernScopeKey, messageId: selectedFloorId ?? 'latest' }
+            : undefined
+        "
         :theme="settingsStore.settings.theme"
         :title="activeScheme.name"
       />
@@ -80,7 +85,8 @@ const phone = usePhoneStore();
 const settingsStore = useSettingsStore();
 const statusStore = useStatusDisplayStore();
 const regexDisplay = useRegexDisplayStore();
-const { configError, schemes } = storeToRefs(statusStore);
+const { configError } = storeToRefs(statusStore);
+const schemes = computed(() => statusStore.getVisibleSchemes(phone.currentTavernScopeKey));
 const route = computed(() => phone.currentRoute);
 const loading = ref(false);
 const renderedHtml = ref('');

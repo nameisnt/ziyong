@@ -1,6 +1,16 @@
 // eslint-disable-next-line import-x/no-nodejs-modules
 import { saveSettingsDebounced } from '@sillytavern/script';
 import { extension_settings } from '@sillytavern/scripts/extensions';
+import { getCurrentChatScopeKey, isPlaceholderChatScopeKey } from '@/store/chatScoped';
+import { onTavernEvent } from '@/util/runtime';
+import { regexDisplayField, useRegexDisplayStore } from '@/apps/regex-display/store';
+import {
+  getEnabledStatusSchemes,
+  getSchemeBindingScopes,
+  getVisibleStatusSchemes,
+  migrateLegacySchemes,
+  restrictSchemeBindings,
+} from './schemeScope';
 
 export const statusDisplayField = 'sillytavern_phone_status_display';
 
@@ -9,6 +19,8 @@ export const StatusDisplaySchemeSchema = z.object({
   id: z.string(),
   mvuScope: z.enum(['message', 'chat', 'character', 'global']).default('message'),
   name: z.string().default('新状态栏'),
+  ownerScopeKey: z.string().default(''),
+  shared: z.boolean().default(false),
   source: z.enum(['regex', 'mvu']).default('regex'),
   template: z.string().default(''),
   updatedAt: z.string(),
@@ -33,6 +45,7 @@ export function createStatusDisplayScheme(source: StatusDisplayScheme['source'] 
     createdAt: timestamp,
     id: `status_scheme_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
     mvuScope: 'message',
+    ownerScopeKey: currentStatusScope(),
     name: source === 'mvu' ? 'MVU 状态栏' : '正则状态栏',
     source,
     template:
@@ -41,6 +54,11 @@ export function createStatusDisplayScheme(source: StatusDisplayScheme['source'] 
         : '',
     updatedAt: timestamp,
   });
+}
+
+function currentStatusScope() {
+  const scope = getCurrentChatScopeKey();
+  return isPlaceholderChatScopeKey(scope) ? '' : scope;
 }
 
 function parseSettings(raw: unknown) {
@@ -71,13 +89,33 @@ export const useStatusDisplayStore = defineStore('statusDisplay', () => {
 
   const schemes = computed(() => settings.value.schemes);
 
+  function migrateLegacy() {
+    const scope = currentStatusScope();
+    if (configError.value || !scope || !settings.value.schemes.some(scheme => !scheme.ownerScopeKey)) return;
+    const copies = migrateLegacySchemes(settings.value, scope);
+    if (copies.length) {
+      const regex = useRegexDisplayStore();
+      regex.rehydrateFromSettings();
+      copies.forEach(({ sourceId, targetId }) => {
+        const usage = regex.settings.usages[statusDisplayRegexTargetId(sourceId)];
+        if (usage) regex.settings.usages[statusDisplayRegexTargetId(targetId)] = klona(usage);
+      });
+      // Backup rehydration may run regex after status; publish both domains together.
+      _.set(extension_settings, regexDisplayField, klona(regex.settings));
+    }
+    _.set(extension_settings, statusDisplayField, klona(settings.value));
+    void saveSettingsDebounced();
+  }
+  migrateLegacy();
+  const stopChatChanged = onTavernEvent('CHAT_CHANGED', migrateLegacy);
+  onScopeDispose(() => stopChatChanged.stop());
+
+  function getVisibleSchemes(scopeKey: string) {
+    return getVisibleStatusSchemes(settings.value, isPlaceholderChatScopeKey(scopeKey) ? '' : scopeKey);
+  }
+
   function getEnabledSchemeIds(scopeKey: string) {
-    const schemeIds = new Set(settings.value.schemes.map(scheme => scheme.id));
-    const configured = settings.value.enabledSchemeIdsByScope[scopeKey];
-    if (configured) return configured.filter(id => schemeIds.has(id));
-    const selected = settings.value.activeSchemeByScope[scopeKey];
-    if (selected && schemeIds.has(selected)) return [selected];
-    return settings.value.schemes[0] ? [settings.value.schemes[0].id] : [];
+    return getEnabledStatusSchemes(settings.value, isPlaceholderChatScopeKey(scopeKey) ? '' : scopeKey);
   }
 
   function getActiveSchemeId(scopeKey: string) {
@@ -87,6 +125,7 @@ export const useStatusDisplayStore = defineStore('statusDisplay', () => {
   }
 
   function setActiveScheme(scopeKey: string, schemeId: string) {
+    if (!getVisibleSchemes(scopeKey).some(scheme => scheme.id === schemeId)) return;
     const enabledIds = getEnabledSchemeIds(scopeKey);
     if (!enabledIds.includes(schemeId)) {
       settings.value.enabledSchemeIdsByScope[scopeKey] = [...enabledIds, schemeId];
@@ -95,7 +134,7 @@ export const useStatusDisplayStore = defineStore('statusDisplay', () => {
   }
 
   function setEnabledSchemeIds(scopeKey: string, schemeIds: string[]) {
-    const existingIds = new Set(settings.value.schemes.map(scheme => scheme.id));
+    const existingIds = new Set(getVisibleSchemes(scopeKey).map(scheme => scheme.id));
     const enabledIds = [...new Set(schemeIds)].filter(id => existingIds.has(id));
     settings.value.enabledSchemeIdsByScope[scopeKey] = enabledIds;
     if (!enabledIds.includes(settings.value.activeSchemeByScope[scopeKey])) {
@@ -105,7 +144,17 @@ export const useStatusDisplayStore = defineStore('statusDisplay', () => {
   }
 
   function upsertScheme(input: StatusDisplayScheme) {
-    const scheme = StatusDisplaySchemeSchema.parse({ ...klona(input), updatedAt: new Date().toISOString() });
+    const scope = currentStatusScope();
+    if (!scope) throw new Error('请先打开聊天再保存状态方案');
+    const existing = settings.value.schemes.find(item => item.id === input.id);
+    if (existing && !getVisibleSchemes(scope).some(item => item.id === input.id))
+      throw new Error('此方案不属于当前聊天');
+    const scheme = StatusDisplaySchemeSchema.parse({
+      ...klona(input),
+      ownerScopeKey: input.shared ? existing?.ownerScopeKey || scope : scope,
+      updatedAt: new Date().toISOString(),
+    });
+    if (existing?.shared && !scheme.shared) restrictSchemeBindings(settings.value, scheme.id, scope);
     const index = settings.value.schemes.findIndex(item => item.id === scheme.id);
     if (index >= 0) settings.value.schemes[index] = scheme;
     else settings.value.schemes.push(scheme);
@@ -128,6 +177,7 @@ export const useStatusDisplayStore = defineStore('statusDisplay', () => {
     configError.value = next.success ? '' : next.error.issues[0]?.message || '状态栏配置格式无效';
     rawConfig.value = klona(nextRaw);
     settings.value = next.success ? next.data : StatusDisplaySettingsSchema.parse({});
+    migrateLegacy();
   }
 
   return {
@@ -135,6 +185,8 @@ export const useStatusDisplayStore = defineStore('statusDisplay', () => {
     deleteScheme,
     getActiveSchemeId,
     getEnabledSchemeIds,
+    getVisibleSchemes,
+    getBindingScopes: (schemeId: string) => getSchemeBindingScopes(settings.value, schemeId),
     rawConfig,
     rehydrateFromSettings,
     schemes,

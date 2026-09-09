@@ -2,7 +2,7 @@
   <div :class="['pc-frame-shell', { embedded, frameless }]">
     <template v-if="shouldRender">
       <iframe
-        ref="iframeEl"
+        :ref="setIframeElement"
         :key="frameRevision"
         class="pc-frame"
         :sandbox="sandboxFlags"
@@ -32,7 +32,9 @@
 </template>
 
 <script setup lang="ts">
-import { buildFrontendDocument, getFrontendFrameSource } from '@/util/theaterFrontend';
+import { buildFrontendDocument, getFrontendFrameSource, type FrontendSecurityMode } from '@/util/theaterFrontend';
+import { createStatusFrameHost, type StatusFrameContext, type StatusFrameElement } from '@/util/statusFrameRuntime';
+import type { ComponentPublicInstance } from 'vue';
 
 const props = withDefaults(
   defineProps<{
@@ -43,7 +45,8 @@ const props = withDefaults(
     flushContent?: boolean;
     frameless?: boolean;
     hostBridge?: boolean;
-    securityMode?: 'safe' | 'trusted';
+    securityMode?: FrontendSecurityMode;
+    statusContext?: StatusFrameContext;
     theme?: 'dark' | 'light';
     title?: string;
   }>(),
@@ -55,6 +58,7 @@ const props = withDefaults(
     frameless: false,
     hostBridge: false,
     securityMode: 'trusted',
+    statusContext: undefined,
     theme: 'light',
     title: '',
   },
@@ -65,7 +69,17 @@ const emit = defineEmits<{
   readerTap: [];
 }>();
 
-const iframeEl = ref<HTMLIFrameElement | null>(null);
+const iframeEl = shallowRef<StatusFrameElement | null>(null);
+
+function setIframeElement(element: Element | ComponentPublicInstance | null) {
+  const next = element as StatusFrameElement | null;
+  if (next === iframeEl.value) return;
+  iframeEl.value?.__pcStatusHost?.dispose();
+  iframeEl.value = next;
+  if (next && props.securityMode === 'status' && props.statusContext) {
+    next.__pcStatusHost = createStatusFrameHost(props.statusContext.messageId);
+  }
+}
 const frameHeight = ref(320);
 const frameRevision = ref(0);
 const blocked = ref(false);
@@ -79,7 +93,11 @@ let lastFeedbackRatio: number | null = null;
 let lastFeedbackViewport = 0;
 const channelId = `theater_frame_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
 const sandboxFlags = computed(() =>
-  props.hostBridge && props.securityMode === 'trusted' ? 'allow-scripts allow-same-origin' : 'allow-scripts',
+  props.securityMode === 'status'
+    ? undefined
+    : props.hostBridge && props.securityMode === 'trusted'
+      ? 'allow-scripts allow-same-origin'
+      : 'allow-scripts',
 );
 
 const documentHtml = computed(() =>
@@ -110,6 +128,8 @@ watch(
       props.securityMode,
       props.theme,
       props.title,
+      props.statusContext?.scopeKey,
+      props.statusContext?.messageId,
     ] as const,
   ([active], previousValue) => {
     const previousActive = previousValue?.[0];
@@ -240,6 +260,7 @@ onMounted(() => {
 });
 
 onBeforeUnmount(() => {
+  iframeEl.value?.__pcStatusHost?.dispose();
   window.removeEventListener('message', handleMessage);
 });
 </script>

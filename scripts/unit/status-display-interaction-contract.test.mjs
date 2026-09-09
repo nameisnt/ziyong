@@ -17,15 +17,17 @@ const frontend = await readFile(new URL('../../src/util/theaterFrontend.ts', imp
 const frontendFrame = await readFile(new URL('../../src/components/FrontendFrame.vue', import.meta.url), 'utf8');
 
 test('status templates stay interactive and allow direct HTML values', async () => {
-  assert.match(viewer, /security-mode="trusted"/u);
+  assert.match(viewer, /:security-mode="activeScheme.source === 'mvu' \? 'status' : 'trusted'"/u);
   assert.match(viewer, /host-bridge/u);
   assert.match(viewer, /flush-content[\s\S]*?frameless/u);
-  assert.match(settings, /:content="editorPreviewHtml"[\s\S]*?security-mode="trusted"/u);
+  assert.match(settings, /:content="editorPreviewHtml"[\s\S]*?security-mode="status"/u);
+  assert.match(viewer, /:status-context=/u);
+  assert.match(settings, /:status-context=/u);
   assert.match(settings, /flush-content[\s\S]*?host-bridge/u);
   assert.match(frontend, /window\.TavernHelper = helper/u);
   assert.match(frontend, /window\[name\] = helper\[name\]\.bind\(helper\)/u);
   assert.match(frontend, /window\.Mvu = parentWin\.__th_ufb_bridge__\?\.Mvu \|\| parentWin\.Mvu/u);
-  assert.match(frontendFrame, /'allow-scripts allow-same-origin' : 'allow-scripts'/u);
+  assert.match(frontendFrame, /'allow-scripts allow-same-origin'\s*:\s*'allow-scripts'/u);
   assert.match(frontend, /img-src 'self' http: https: data: blob:/u);
   assert.doesNotMatch(viewer, /mvu-data|mvuSnapshot/u);
   const model = await readFile(new URL('../../src/apps/status-display/model.ts', import.meta.url), 'utf8');

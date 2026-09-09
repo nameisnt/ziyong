@@ -19,6 +19,7 @@ test('settings owns its root, compact categories and external API subpage while 
     'SettingsGenerationPanel.vue',
     'SettingsInterfacePanel.vue',
     'SettingsReaderPanel.vue',
+    'SettingsReleasePanel.vue',
   ]);
 
   const builtin = await source('src/apps/builtin.ts');

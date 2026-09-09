@@ -22,7 +22,14 @@
 
     <section class="pc-compact-toolbar">
       <span>{{ `${schemes.length} 个方案` }}</span>
-      <button class="pc-icon-btn primary" type="button" title="新增方案" aria-label="新增方案" @click="createScheme">
+      <button
+        class="pc-icon-btn primary"
+        type="button"
+        title="新增方案"
+        aria-label="新增方案"
+        :disabled="!hasCurrentChat"
+        @click="createScheme"
+      >
         <i class="fa-solid fa-plus"></i>
       </button>
     </section>
@@ -56,7 +63,7 @@
         </button>
       </article>
     </div>
-    <EmptyState v-else title="还没有状态方案" />
+    <EmptyState v-else :title="hasCurrentChat ? '当前聊天还没有状态方案' : '请先打开聊天'" />
   </section>
 
   <section v-else-if="route.page === 'editor' && editorDraft" class="pc-status-editor-page">
@@ -64,6 +71,16 @@
       <span class="pc-field-label">方案名称</span>
       <input v-model="editorDraft.name" class="pc-field" type="text" />
     </label>
+
+    <div class="pc-setting-row">
+      <strong
+        >跨聊天共用 <InfoHint text="关闭时仅当前聊天可用；开启后其他聊天可自行启用，编辑方案会同步影响使用它的聊天。"
+      /></strong>
+      <label class="pc-toggle">
+        <input v-model="editorDraft.shared" type="checkbox" aria-label="跨聊天共用" :disabled="saving" />
+        <span aria-hidden="true"></span>
+      </label>
+    </div>
 
     <div class="pc-segment pc-status-source-tabs" aria-label="数据来源">
       <button
@@ -156,11 +173,18 @@
       <section v-if="editorDraft.template" class="pc-status-editor-preview">
         <strong>预览</strong>
         <FrontendFrame
-          :active="true"
+          :active="
+            phone.isOpen &&
+            route.appId === 'status-display-settings' &&
+            route.page === 'editor' &&
+            editorScopeKey === phone.currentTavernScopeKey &&
+            !editorVariablesLoading
+          "
           :content="editorPreviewHtml"
           flush-content
           host-bridge
-          security-mode="trusted"
+          security-mode="status"
+          :status-context="{ scopeKey: editorScopeKey, messageId: 'latest' }"
           :theme="settingsStore.settings.theme"
           title="状态栏预览"
         />
@@ -168,19 +192,21 @@
     </template>
 
     <footer class="pc-form-actions">
-      <button class="pc-soft-btn" type="button" @click="phone.goBack">取消</button>
-      <button class="pc-primary-btn" type="button" @click="saveEditor">保存</button>
+      <button class="pc-soft-btn" type="button" :disabled="saving" @click="phone.goBack">取消</button>
+      <button class="pc-primary-btn" type="button" :disabled="saving" @click="saveEditor">保存</button>
     </footer>
   </section>
 </template>
 
 <script setup lang="ts">
 import { readMvuData, readMvuStatData, type MvuScope, type MvuStatData } from '@/apps/mvu-modifier/api';
-import { useRegexDisplayStore } from '@/apps/regex-display/store';
+import { RegexDisplayUsageSchema, type RegexDisplayUsage, useRegexDisplayStore } from '@/apps/regex-display/store';
 import EmptyState from '@/components/EmptyState.vue';
+import InfoHint from '@/components/InfoHint.vue';
 import FrontendFrame from '@/components/FrontendFrame.vue';
 import SearchableCombobox from '@/components/SearchableCombobox.vue';
 import { usePhoneStore } from '@/store/phone';
+import { isPlaceholderChatScopeKey } from '@/store/chatScoped';
 import { useSettingsStore } from '@/store/settings';
 import { getRegexRulesByOperation } from '@/util/regexDisplay';
 import { storeToRefs } from 'pinia';
@@ -196,9 +222,13 @@ const phone = usePhoneStore();
 const settingsStore = useSettingsStore();
 const statusStore = useStatusDisplayStore();
 const regexDisplay = useRegexDisplayStore();
-const { configError, schemes } = storeToRefs(statusStore);
+const { configError } = storeToRefs(statusStore);
+const schemes = computed(() => statusStore.getVisibleSchemes(phone.currentTavernScopeKey));
+const hasCurrentChat = computed(() => !isPlaceholderChatScopeKey(phone.currentTavernScopeKey));
 const route = computed(() => phone.currentRoute);
 const editorDraft = ref<StatusDisplayScheme | null>(null);
+const editorScopeKey = ref('');
+const saving = ref(false);
 const editorStatData = ref<MvuStatData>({});
 const editorVariablesLoading = ref(false);
 const editorVariablesError = ref('');
@@ -212,9 +242,7 @@ const mvuScopeOptions = [
   { label: '当前角色', value: 'character' },
   { label: '全局', value: 'global' },
 ];
-const editorRegexUsage = computed(() =>
-  editorDraft.value ? regexDisplay.getUsage(statusDisplayRegexTargetId(editorDraft.value.id)) : null,
-);
+const editorRegexUsage = ref<RegexDisplayUsage>(RegexDisplayUsageSchema.parse({}));
 const extractRules = computed(() => getRegexRulesByOperation(regexDisplay.rules, 'extract'));
 const displayRules = computed(() => getRegexRulesByOperation(regexDisplay.rules, 'replace'));
 const extractRuleOptions = computed(() => [
@@ -236,6 +264,8 @@ function mvuScopeLabel(scope: MvuScope) {
 
 function createScheme() {
   editorDraft.value = createStatusDisplayScheme();
+  editorScopeKey.value = phone.currentTavernScopeKey;
+  editorRegexUsage.value = RegexDisplayUsageSchema.parse({});
   editorStatData.value = {};
   phone.pushPage('editor', '新增状态方案', { schemeId: editorDraft.value.id });
 }
@@ -249,6 +279,8 @@ function toggleEnabledScheme(schemeId: string, enabled: boolean) {
 
 function editScheme(scheme: StatusDisplayScheme) {
   editorDraft.value = klona(scheme);
+  editorScopeKey.value = phone.currentTavernScopeKey;
+  editorRegexUsage.value = klona(regexDisplay.getUsage(statusDisplayRegexTargetId(scheme.id)));
   editorStatData.value = {};
   phone.pushPage('editor', '编辑状态方案', { schemeId: scheme.id });
   if (scheme.source === 'mvu') void loadEditorVariables();
@@ -270,40 +302,74 @@ function duplicateScheme(scheme: StatusDisplayScheme) {
 }
 
 async function deleteScheme(scheme: StatusDisplayScheme) {
-  const confirmed = await phone.confirmNotice(`要删除状态方案“${scheme.name}”吗？`, {
-    confirmLabel: '删除',
-    kind: 'warning',
-  });
+  const others = statusStore.getBindingScopes(scheme.id).filter(scope => scope !== phone.currentTavernScopeKey).length;
+  const confirmed = await phone.confirmNotice(
+    `要删除状态方案“${scheme.name}”吗？${others ? `另有 ${others} 个聊天将停止使用此方案。` : ''}`,
+    {
+      confirmLabel: '删除',
+      kind: 'warning',
+    },
+  );
   if (!confirmed) return;
+  if (!schemes.value.some(item => item.id === scheme.id)) return;
   regexDisplay.deleteUsage(statusDisplayRegexTargetId(scheme.id));
   statusStore.deleteScheme(scheme.id);
   toastr.success('状态方案已删除');
 }
 
 function saveDraft() {
-  if (!editorDraft.value) return null;
+  if (!editorDraft.value || editorScopeKey.value !== phone.currentTavernScopeKey) return null;
   editorDraft.value.name = editorDraft.value.name.trim() || '未命名状态栏';
   const saved = statusStore.upsertScheme(editorDraft.value);
+  regexDisplay.settings.usages[statusDisplayRegexTargetId(saved.id)] = klona(editorRegexUsage.value);
   statusStore.setActiveScheme(phone.currentTavernScopeKey, saved.id);
   editorDraft.value = klona(saved);
   return saved;
 }
 
-function saveEditor() {
-  if (!saveDraft()) return;
-  phone.goBack();
-  toastr.success('状态方案已保存');
+async function saveEditor() {
+  if (saving.value || !editorDraft.value) return;
+  saving.value = true;
+  const draft = editorDraft.value;
+  try {
+    const existing = schemes.value.find(scheme => scheme.id === draft.id);
+    const others = statusStore.getBindingScopes(draft.id).filter(scope => scope !== editorScopeKey.value).length;
+    if (existing?.shared && !draft.shared && others) {
+      const confirmed = await phone.confirmNotice(
+        `改为当前聊天私有后，其他 ${others} 个聊天将停止使用此方案。是否继续？`,
+        { kind: 'warning', confirmLabel: '改为私有' },
+      );
+      if (!confirmed) return;
+    }
+    if (editorDraft.value !== draft || route.value.page !== 'editor' || !saveDraft()) return;
+    phone.goBack();
+    toastr.success('状态方案已保存');
+  } catch (error) {
+    toastr.error(error instanceof Error ? error.message : String(error));
+  } finally {
+    saving.value = false;
+  }
 }
 
 function setEditorExtractRule(ruleId: string) {
   if (!editorDraft.value) return;
-  regexDisplay.setExtractionRule(statusDisplayRegexTargetId(editorDraft.value.id), 'content', ruleId);
+  editorRegexUsage.value.contentRuleId = ruleId;
 }
 
 function toggleEditorDisplayRule(ruleId: string, enabled: boolean) {
   if (!editorDraft.value) return;
-  regexDisplay.setDisplayRuleEnabled(statusDisplayRegexTargetId(editorDraft.value.id), ruleId, enabled);
+  editorRegexUsage.value.displayRuleIds = enabled
+    ? [...new Set([...editorRegexUsage.value.displayRuleIds, ruleId])]
+    : editorRegexUsage.value.displayRuleIds.filter(id => id !== ruleId);
 }
+
+watch(
+  () => phone.currentTavernScopeKey,
+  () => {
+    editorDraft.value = null;
+    editorStatData.value = {};
+  },
+);
 
 function selectMvuSource() {
   if (!editorDraft.value) return;
@@ -320,6 +386,11 @@ function changeEditorMvuScope(scope: string) {
 
 async function loadEditorVariables() {
   if (!editorDraft.value || editorDraft.value.source !== 'mvu') return;
+  const draft = editorDraft.value;
+  const scopeKey = editorScopeKey.value;
+  const mvuScope = draft.mvuScope;
+  const isCurrent = () =>
+    editorDraft.value === draft && editorScopeKey.value === scopeKey && draft.mvuScope === mvuScope;
   editorVariablesLoading.value = true;
   editorVariablesError.value = '';
   try {
@@ -328,12 +399,14 @@ async function loadEditorVariables() {
         ? { type: 'message' as const, message_id: 'latest' as const }
         : { type: editorDraft.value.mvuScope };
     const data = await readMvuData(options);
+    if (!isCurrent()) return;
     editorStatData.value = readMvuStatData(data);
   } catch (error) {
+    if (!isCurrent()) return;
     editorStatData.value = {};
     editorVariablesError.value = error instanceof Error ? error.message : String(error);
   } finally {
-    editorVariablesLoading.value = false;
+    if (isCurrent()) editorVariablesLoading.value = false;
   }
 }
 

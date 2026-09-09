@@ -5,6 +5,8 @@ import { VueUseComponentsResolver, VueUseDirectiveResolver } from 'unplugin-vue-
 import unpluginVueComponents from 'unplugin-vue-components/vite';
 import { defineConfig } from 'vite';
 import pluginExternal from 'vite-plugin-external';
+import manifest from './manifest.json';
+import packageInfo from './package.json';
 
 const externals = {
   jquery: '$',
@@ -24,6 +26,7 @@ const relative_sillytavern_path =
     : '../../../../../';
 
 export default defineConfig(({ mode }) => {
+  if (manifest.version !== packageInfo.version) throw new Error('manifest.json and package.json versions must match');
   const visualMode = mode === 'visual';
 
   return {

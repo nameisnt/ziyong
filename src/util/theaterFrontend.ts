@@ -1,9 +1,14 @@
+import { createStatusBridgeScript } from '@/util/statusFrameRuntime';
+import { stripOutputCodeFence } from '@/util/parseCandidates';
+
+export type FrontendSecurityMode = 'safe' | 'trusted' | 'status';
+
 export interface TheaterFrontendBuildOptions {
   channelId: string;
   documentFlow?: boolean;
   flushContent?: boolean;
   hostBridge?: boolean;
-  securityMode?: 'safe' | 'trusted';
+  securityMode?: FrontendSecurityMode;
   theme: 'dark' | 'light';
   title?: string;
 }
@@ -373,10 +378,10 @@ function createResizeBridgeScript(channelId: string, documentFlow: boolean) {
   ].join('\n');
 }
 
-function sanitizeFrontendHtml(rawHtml: string, securityMode: 'safe' | 'trusted') {
+function sanitizeFrontendHtml(rawHtml: string, securityMode: FrontendSecurityMode) {
   const parser = new DOMParser();
   const document = parser.parseFromString(rawHtml, 'text/html');
-  stripDangerousNodes(document);
+  if (securityMode !== 'status') stripDangerousNodes(document);
   if (securityMode === 'safe') stripUntrustedBehavior(document);
 
   if (hasDocumentShell(rawHtml)) {
@@ -394,12 +399,15 @@ function sanitizeFrontendHtml(rawHtml: string, securityMode: 'safe' | 'trusted')
 
 export function buildFrontendDocument(rawHtml: string, options: TheaterFrontendBuildOptions) {
   const securityMode = options.securityMode ?? 'trusted';
-  const sanitized = sanitizeFrontendHtml(rawHtml, securityMode);
+  const sanitized = sanitizeFrontendHtml(
+    securityMode === 'status' ? stripOutputCodeFence(rawHtml) : rawHtml,
+    securityMode,
+  );
   const title = options.title?.trim() || '小剧场';
   const nonce = `pc${options.channelId.replace(/[^A-Za-z0-9]/g, '')}`;
   const csp = securityMode === 'safe' ? createSafeFrontendCsp(nonce) : TRUSTED_FRONTEND_IFRAME_CSP;
   const hostBridge =
-    options.hostBridge && securityMode === 'trusted' ? `  <script>${createHostBridgeScript()}</script>` : '';
+    options.hostBridge && securityMode !== 'safe' ? `  <script>${createHostBridgeScript()}</script>` : '';
   const diagnostics = `  <script${securityMode === 'safe' ? ` nonce="${nonce}"` : ''}>${createRuntimeDiagnosticsScript(options.channelId)}</script>`;
 
   return [
@@ -408,11 +416,12 @@ export function buildFrontendDocument(rawHtml: string, options: TheaterFrontendB
     '<head>',
     '  <meta charset="utf-8" />',
     '  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />',
-    `  <meta http-equiv="Content-Security-Policy" content="${csp}" />`,
+    securityMode === 'status' ? '' : `  <meta http-equiv="Content-Security-Policy" content="${csp}" />`,
     `  <title>${escapeHtmlText(title)}</title>`,
     `  <style>${createBaseStyle(options.theme)}</style>`,
-    hostBridge,
     diagnostics,
+    hostBridge,
+    securityMode === 'status' ? `  <script>${createStatusBridgeScript()}</script>` : '',
     sanitized.headHtml,
     `  <style>${createLayoutGuardStyle(options.flushContent ?? false, options.documentFlow ?? false)}</style>`,
     '</head>',

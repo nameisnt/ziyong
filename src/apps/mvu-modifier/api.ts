@@ -21,7 +21,7 @@ function isMvuRuntime(value: unknown): value is MvuRuntime {
   return typeof runtime.getMvuData === 'function' && typeof runtime.replaceMvuData === 'function';
 }
 
-async function resolveMvuRuntime() {
+export async function resolveMvuRuntime() {
   const current = getOptionalGlobalValue<unknown>('Mvu');
   if (isMvuRuntime(current)) return current;
 
