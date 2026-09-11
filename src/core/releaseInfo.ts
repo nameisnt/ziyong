@@ -4,6 +4,10 @@ export const RUNNING_VERSION = manifest.version;
 export const RELEASE_SEEN_FIELD = 'sillytavern_phone_last_seen_release';
 export const RELEASE_HISTORY = [
   {
+    version: '1.2.3',
+    notes: ['修复条目库点击标题无法打开详情的问题：仅在实际拖拽时捕获指针，保留正常点击、返回与排序操作。'],
+  },
+  {
     version: '1.2.2',
     notes: [
       '设置快照查重新增可调整的相似度阈值，默认 100%；按 JSON 字段及结构一致率比较，忽略对象键顺序和排版，不按文字相似度判断。',

@@ -989,6 +989,35 @@ async function runInteractionChecks(page, scenario) {
       }
     }
 
+    if (scenario === 'entry-library-ordering' || scenario === 'entry-library-ordering-dark') {
+      const titles = page.locator('.pc-entry-library-item-main');
+      await titles.filter({ hasText: '第一条' }).click();
+      const editor = page.locator('.pc-entry-item-editor');
+      await editor.waitFor({ state: 'visible' });
+      if ((await editor.locator('textarea').inputValue()) !== '第一条正文') {
+        findings.push({ severity: 'fail', message: '条目点击后没有显示对应正文' });
+      }
+      await editor.getByRole('button', { name: '取消', exact: true }).click();
+      await titles.first().waitFor({ state: 'visible' });
+      const handle = page.locator('.pc-entry-drag-handle').first();
+      const start = await handle.boundingBox();
+      const end = await titles.last().boundingBox();
+      await page.mouse.move(start.x + start.width / 2, start.y + start.height / 2);
+      await page.mouse.down();
+      await page.mouse.move(end.x + end.width / 2, end.y + end.height, { steps: 12 });
+      await page.mouse.up();
+      if ((await titles.allTextContents()).map(text => text.trim()).join('|') !== '第一条|第二条|第三条') {
+        findings.push({ severity: 'fail', message: '条目拖拽排序失效' });
+      }
+      await page.waitForTimeout(350);
+      await titles.filter({ hasText: '第二条' }).click();
+      await editor.waitFor({ state: 'visible' });
+      if ((await editor.locator('textarea').inputValue()) !== '第二条正文') {
+        findings.push({ severity: 'fail', message: '排序后点击条目打开了错误正文' });
+      }
+      await editor.getByRole('button', { name: '取消', exact: true }).click();
+    }
+
     if (scenario === 'entry-library-action-menu') {
       const menu = page.locator('.pc-entry-library-head .pc-action-menu').first();
       const summary = menu.locator('summary');

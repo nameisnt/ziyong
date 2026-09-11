@@ -174,6 +174,7 @@ export function createVisualScenarioGroups(rootAppScenarios: string[]): VisualSc
         'entry-library-collect-manual-dedupe',
         'entry-library-collect-worldbook',
         'entry-library-ordering',
+        'entry-library-ordering-dark',
         'entry-library-scroll-return',
       ],
     },

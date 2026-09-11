@@ -2048,8 +2048,8 @@ async function applyScenario(name: VisualScenarioName, options: { height?: numbe
         `Entry library collection opened ${usePhoneStore().currentRoute.page} instead of returning to root`,
       );
     }
-  } else if (name === 'entry-library-ordering') {
-    useSettingsStore().setTheme('light');
+  } else if (name === 'entry-library-ordering' || name === 'entry-library-ordering-dark') {
+    useSettingsStore().setTheme(name.endsWith('-dark') ? 'dark' : 'light');
     const library = useEntryLibraryStore();
     library.importBackup({
       bindings: [],

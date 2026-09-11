@@ -402,7 +402,6 @@ function onItemPointerDown(event: PointerEvent, itemId: string, groupId: string)
       itemDragLongPressTimer = null;
     }, 320);
   }
-  (event.currentTarget as HTMLElement).setPointerCapture?.(event.pointerId);
 }
 
 function updateItemDragInsertion(clientY: number) {
@@ -435,6 +434,8 @@ function onItemPointerMove(event: PointerEvent) {
     return;
   }
   if (!itemDrag.isDragging && distance > 4) {
+    // Capturing on pointerdown would redirect the title button's click to the row.
+    (event.currentTarget as HTMLElement).setPointerCapture(event.pointerId);
     itemDrag.isDragging = true;
     suppressItemOpenUntil.value = Date.now() + 400;
   }
