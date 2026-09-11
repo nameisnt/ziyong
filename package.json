@@ -1,7 +1,8 @@
 {
   "name": "sillytavern-phone-extension",
-  "version": "1.2.1",
+  "version": "1.2.2",
   "scripts": {
+    "release:notes": "node scripts/release-notes.mjs",
     "build": "vite build",
     "build:check": "vite build --outDir tmp/build-check --emptyOutDir",
     "backup:check": "node scripts/backup-contract-check.mjs",

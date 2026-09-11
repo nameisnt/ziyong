@@ -21,6 +21,11 @@ test('public manifests agree and runtime version comes from the bundled manifest
   assert.equal(manifest.version, pkg.version);
   assert.equal(RUNNING_VERSION, manifest.version);
   assert.equal(RELEASE_HISTORY[0].version, RUNNING_VERSION);
+  const snapshotNotes = RELEASE_HISTORY.find(release => release.version === '1.2.2').notes;
+  assert.ok(snapshotNotes.some(note => note.includes('默认 100%')));
+  assert.ok(snapshotNotes.some(note => note.includes('保留项只能单选')));
+  assert.ok(snapshotNotes.some(note => note.includes('不会自动清理备份')));
+  assert.ok(snapshotNotes.some(note => note.includes('支持取消扫描')));
   const mvuNotes = RELEASE_HISTORY.find(release => release.version === '1.2.1').notes;
   assert.ok(mvuNotes.some(note => note.includes('双向查找最近快照')));
   assert.ok(mvuNotes.some(note => note.includes('不影响酒馆普通聊天')));
@@ -60,6 +65,8 @@ test('notice is once per release, independent of chat, with numeric version orde
   assert.equal(acknowledgeRelease(settings, '1.2.0'), false);
   assert.equal(acknowledgeRelease(settings, '1.2.1'), true);
   assert.equal(acknowledgeRelease(settings, '1.2.1'), false);
+  assert.equal(acknowledgeRelease(settings, '1.2.2'), true);
+  assert.equal(acknowledgeRelease(settings, '1.2.2'), false);
   assert.equal(acknowledgeRelease(settings, '1.0.1'), false);
   assert.equal(acknowledgeRelease(settings, '1.10.0'), true);
   assert.equal(acknowledgeRelease(settings, '1.9.0'), false);

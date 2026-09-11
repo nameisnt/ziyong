@@ -35,6 +35,7 @@ const recoveryScenarioNames = [
 ] as const;
 
 export function applyRecoveryVisualScenario(name: string, context: RecoveryScenarioContext) {
+  if (name === 'recovery-settings-duplicates-dark') name = 'recovery-settings-duplicates';
   if (!recoveryScenarioNames.includes(name as (typeof recoveryScenarioNames)[number])) return false;
   const recovery = useChatRecoveryStore();
   const characters = createRecoveryCharacters([{ avatar: 'visual-user.png', name: '测试角色' }]);
@@ -79,6 +80,18 @@ export function applyRecoveryVisualScenario(name: string, context: RecoveryScena
     { date: Date.parse('2026-08-11T10:00:00.000Z'), name: 'settings_20260811-100000.json', size: 245760 },
     { date: Date.parse('2026-08-10T22:00:00.000Z'), name: 'settings_20260810-220000.json', size: 238400 },
   ];
+  if (name === 'recovery-settings-duplicates') {
+    const originals = [...settingsSnapshots];
+    for (let group = 1; group < 3; group += 1) {
+      settingsSnapshots.push(
+        ...originals.map(item => ({
+          ...item,
+          date: item.date - group * 172800000,
+          name: item.name.replace('settings_', `settings_fixture${group}_`),
+        })),
+      );
+    }
+  }
   recovery.setVisualFixture({
     backups,
     characters,
@@ -137,17 +150,17 @@ export function applyRecoveryVisualScenario(name: string, context: RecoveryScena
   recovery.settingsDuplicateScanResult =
     name === 'recovery-settings-duplicates'
       ? {
-          groups: [
-            {
-              contentHash: 'visual-settings-hash',
-              duplicates: [{ contentHash: 'visual-settings-hash', summary: settingsSnapshots[1]! }],
-              id: 'visual-settings-hash',
-              keeper: { contentHash: 'visual-settings-hash', summary: settingsSnapshots[0]! },
-              reclaimBytes: settingsSnapshots[1]!.size,
-            },
-          ],
+          groups: [0, 1, 2].map(index => ({
+            minimumSimilarity: 99,
+            differingPaths: ['/extension_settings/example/theme'],
+            duplicates: [{ contentHash: 'visual-settings-hash', summary: settingsSnapshots[index * 2 + 1]! }],
+            id: `visual-settings-hash-${index}`,
+            keeper: { contentHash: 'visual-settings-hash', summary: settingsSnapshots[index * 2]! },
+            reclaimBytes: settingsSnapshots[index * 2 + 1]!.size,
+          })),
           rejected: [],
-          scannedFiles: 2,
+          scannedFiles: settingsSnapshots.length,
+          threshold: 99,
         }
       : null;
   recovery.settingsDeleteResult = null;

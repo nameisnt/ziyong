@@ -379,7 +379,8 @@ async function applyScenario(name: VisualScenarioName, options: { height?: numbe
       name === 'macro-builder-dark' ||
       name === 'status-display-mvu-dark' ||
       name === 'status-display-regex-dark' ||
-      name === 'status-display-settings-dark'
+      name === 'status-display-settings-dark' ||
+      name === 'recovery-settings-duplicates-dark'
       ? 'dark'
       : 'light',
   );

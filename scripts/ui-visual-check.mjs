@@ -581,6 +581,38 @@ async function runDomChecks(page) {
 async function runInteractionChecks(page, scenario) {
   const findings = [];
   try {
+    if (scenario.startsWith('recovery-settings-duplicates')) {
+      const radios = page.locator('.pc-recovery-cleanup-item input[type="radio"]');
+      if ((await radios.count()) !== 6 || !(await radios.first().isChecked()))
+        throw new Error('Newest snapshot must be the default keeper');
+      await radios.nth(1).check();
+      if ((await radios.first().isChecked()) || !(await radios.nth(1).isChecked()))
+        throw new Error('Keeper selection must be exclusive');
+      if (!(await radios.nth(2).isChecked())) throw new Error('Changing one group must not affect another');
+      const scrolled = await page.locator('.pc-recovery-duplicate-list').evaluate(el => {
+        el.scrollTop = el.scrollHeight;
+        const moved = el.scrollTop > 0;
+        el.scrollTop = 0;
+        return moved;
+      });
+      if (!scrolled) throw new Error('Snapshot results must scroll internally');
+      await page.locator('.pc-recovery-differences summary').first().click();
+      if (!(await page.getByText('/extension_settings/example/theme', { exact: true }).first().isVisible()))
+        throw new Error('Difference path must be visible');
+      const deleteButton = page.getByRole('button', { name: '删除其余 3 份快照', exact: true });
+      const deleteBox = await deleteButton.boundingBox();
+      if (!deleteBox || deleteBox.y + deleteBox.height > page.viewportSize().height)
+        throw new Error('Cleanup action must remain within the viewport');
+      await deleteButton.click();
+      const notice = page.locator('.pc-phone-notice[role="dialog"]');
+      await notice.waitFor();
+      if (!(await notice.textContent()).includes('不是完全相同'))
+        throw new Error('Similar deletion must warn about differences');
+      await notice.getByRole('button', { name: '取消', exact: true }).click();
+      if (!(await radios.nth(1).isChecked())) throw new Error('Cancel must preserve keeper selection');
+      await page.getByRole('spinbutton').fill('99');
+      if (await radios.count()) throw new Error('Changing threshold must invalidate stale results');
+    }
     if (scenario.startsWith('preset-notice-focus')) {
       const parent = page.locator('.pc-preset-group-manager-dialog');
       const trigger = parent.getByRole('button', { name: '新建条目分组', exact: true });

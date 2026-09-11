@@ -286,30 +286,6 @@ test('settings snapshot summaries reject unrelated or empty backup files', () =>
   );
 });
 
-test('settings duplicate groups keep the newest byte-identical snapshot', () => {
-  const older = { date: 100, name: 'settings_default-user_20260812-100000.json', size: 2048 };
-  const newest = { date: 200, name: 'settings_default-user_20260812-110000.json', size: 2048 };
-  const changed = { date: 300, name: 'settings_default-user_20260812-120000.json', size: 2050 };
-  const groups = recovery.createSettingsDuplicateGroups([
-    { contentHash: 'same', summary: older },
-    { contentHash: 'same', summary: newest },
-    { contentHash: 'changed', summary: changed },
-  ]);
-  assert.equal(groups.length, 1);
-  assert.equal(groups[0].keeper.summary.name, newest.name);
-  assert.deepEqual(
-    groups[0].duplicates.map(item => item.summary.name),
-    [older.name],
-  );
-  assert.equal(groups[0].reclaimBytes, older.size);
-});
-
-test('settings preview requires a JSON object and formats it for reading', () => {
-  assert.equal(recovery.formatSettingsSnapshotJson('{"theme":"dark"}'), '{\n  "theme": "dark"\n}');
-  assert.throws(() => recovery.formatSettingsSnapshotJson('[]'), /根节点不是 JSON 对象/);
-  assert.throws(() => recovery.formatSettingsSnapshotJson('{broken'), /JSON/);
-});
-
 test('a damaged middle JSONL line is rejected with its exact line number', () => {
   const text = [
     JSON.stringify({ chat_metadata: {}, character_name: 'Nova', user_name: 'User' }),

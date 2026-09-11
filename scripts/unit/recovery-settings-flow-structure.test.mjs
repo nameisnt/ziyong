@@ -25,7 +25,7 @@ test('RecoveryApp delegates settings snapshot list and duplicate cleanup to one 
     'confirmDeleteSettingsSnapshot',
     'openSettingsDuplicates',
     'scanSettingsDuplicates',
-    'toggleSettingsDuplicateCandidate',
+    'selectedKeepers',
     'confirmSettingsDuplicateDelete',
   ]) {
     assert.doesNotMatch(
@@ -43,5 +43,6 @@ test('RecoveryApp delegates settings snapshot list and duplicate cleanup to one 
   assert.match(root, /function openSettingsSnapshots\(\)[\s\S]*phone\.pushPage\('settings-snapshots', '设置快照'\)/u);
   assert.match(owner, /useChatRecoveryStore\(\)/u);
   assert.match(owner, /恢复会用这份快照覆盖酒馆当前 settings\.json/u);
-  assert.match(owner, /每组最新快照会保留/u);
+  assert.match(owner, /每组默认保留最新一份/u);
+  assert.match(owner, /type="radio"/u);
 });

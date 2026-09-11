@@ -134,7 +134,8 @@ export interface SettingsSnapshotFingerprint {
 }
 
 export interface SettingsDuplicateGroup {
-  contentHash: string;
+  minimumSimilarity: number;
+  differingPaths: string[];
   duplicates: SettingsSnapshotFingerprint[];
   id: string;
   keeper: SettingsSnapshotFingerprint;
@@ -142,6 +143,7 @@ export interface SettingsDuplicateGroup {
 }
 
 export interface SettingsDuplicateScanResult {
+  threshold: number;
   groups: SettingsDuplicateGroup[];
   rejected: Array<{ name: string; reason: string }>;
   scannedFiles: number;
@@ -343,10 +345,7 @@ export function createContainedBackupGroups(
   );
 }
 
-export function getBackupMessageSimilarity(
-  left: DuplicateBackupFingerprint,
-  right: DuplicateBackupFingerprint,
-) {
+export function getBackupMessageSimilarity(left: DuplicateBackupFingerprint, right: DuplicateBackupFingerprint) {
   const total = Math.max(left.messageHashes.length, right.messageHashes.length);
   if (!total || left.summary.ownerKey !== right.summary.ownerKey) return 0;
   const comparable = Math.min(left.messageHashes.length, right.messageHashes.length);
@@ -413,42 +412,6 @@ export function normalizeSettingsSnapshotSummary(raw: unknown): SettingsSnapshot
   if (!/^settings_.+_\d{8}-\d{6}\.json$/i.test(name)) return null;
   if (!Number.isFinite(date) || date <= 0 || !Number.isFinite(size) || size <= 0) return null;
   return { date, name, size };
-}
-
-export function formatSettingsSnapshotJson(raw: string) {
-  const parsed: unknown = JSON.parse(raw);
-  if (!isRecord(parsed)) throw new Error('设置快照根节点不是 JSON 对象');
-  return JSON.stringify(parsed, null, 2);
-}
-
-export function createSettingsDuplicateGroups(fingerprints: SettingsSnapshotFingerprint[]) {
-  const grouped = new Map<string, SettingsSnapshotFingerprint[]>();
-  fingerprints.forEach(fingerprint => {
-    if (!fingerprint.contentHash || fingerprint.summary.size <= 0) return;
-    const items = grouped.get(fingerprint.contentHash) ?? [];
-    items.push(fingerprint);
-    grouped.set(fingerprint.contentHash, items);
-  });
-
-  return [...grouped.entries()]
-    .flatMap(([contentHash, items]): SettingsDuplicateGroup[] => {
-      if (items.length < 2) return [];
-      const ordered = [...items].sort(
-        (a, b) => b.summary.date - a.summary.date || b.summary.name.localeCompare(a.summary.name),
-      );
-      const [keeper, ...duplicates] = ordered;
-      if (!keeper || !duplicates.length) return [];
-      return [
-        {
-          contentHash,
-          duplicates,
-          id: contentHash,
-          keeper,
-          reclaimBytes: duplicates.reduce((total, item) => total + item.summary.size, 0),
-        },
-      ];
-    })
-    .sort((a, b) => b.keeper.summary.date - a.keeper.summary.date);
 }
 
 export function createRecoveryCharacters(characters: unknown[]): RecoveryCharacter[] {

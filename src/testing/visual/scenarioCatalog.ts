@@ -81,6 +81,7 @@ export function createVisualScenarioGroups(rootAppScenarios: string[]): VisualSc
         'recovery-result',
         'recovery-settings',
         'recovery-settings-duplicates',
+        'recovery-settings-duplicates-dark',
       ],
     },
     {

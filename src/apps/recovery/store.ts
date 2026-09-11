@@ -14,7 +14,6 @@ import {
   restoreNativeSettingsSnapshot,
 } from '@/apps/recovery/api';
 import {
-  createSettingsDuplicateGroups,
   createRecoveryCharacters,
   createSingleFlight,
   describeBackupMessageCountMismatch,
@@ -27,7 +26,6 @@ import {
   isCleanupCandidate,
   isStrictMessagePrefix,
   parseChatBackupJsonl,
-  formatSettingsSnapshotJson,
   type CleanupDeleteResult,
   type CleanupScanResult,
   type ChatBackupSummary,
@@ -38,9 +36,10 @@ import {
   type RecoveryCharacter,
   type SettingsDeleteResult,
   type SettingsDuplicateScanResult,
-  type SettingsSnapshotFingerprint,
   type SettingsSnapshotSummary,
 } from '@/apps/recovery/model';
+import { selectSettingsCleanup } from '@/apps/recovery/settingsComparison';
+import { createSettingsComparisonClient } from '@/apps/recovery/settingsComparisonClient';
 
 export interface LoadedChatBackup {
   blob: Blob;
@@ -184,52 +183,56 @@ export const useChatRecoveryStore = defineStore('chat-recovery', () => {
     }
   }
 
-  async function fingerprintSettingsSnapshot(summary: SettingsSnapshotSummary): Promise<SettingsSnapshotFingerprint> {
-    const raw = await loadNativeSettingsSnapshot(summary.name);
-    formatSettingsSnapshotJson(raw);
-    return { contentHash: await hashText(raw), summary };
+  let settingsScanController: AbortController | undefined;
+  function cancelSettingsScan() {
+    settingsScanController?.abort();
   }
 
-  async function scanDuplicateSettingsSnapshots() {
+  async function scanDuplicateSettingsSnapshots(threshold = 100) {
     if (managementBusy.value) throw new Error('已有备份任务正在执行');
+    if (!Number.isFinite(threshold) || threshold < 1 || threshold > 100) throw new Error('相似度须为 1 到 100');
     settingsDuplicateScanning.value = true;
     settingsDuplicateScanCompleted.value = 0;
     settingsDuplicateScanTotal.value = 0;
     settingsDuplicateScanResult.value = null;
     settingsDeleteResult.value = null;
+    const controller = new AbortController();
+    settingsScanController = controller;
+    let comparison: ReturnType<typeof createSettingsComparisonClient> | undefined;
     try {
+      comparison = createSettingsComparisonClient(controller.signal);
       await refreshSettingsSnapshots();
+      controller.signal.throwIfAborted();
       const snapshots = [...settingsSnapshots.value];
       settingsDuplicateScanTotal.value = snapshots.length;
-      const fingerprints: SettingsSnapshotFingerprint[] = [];
       const rejected: SettingsDuplicateScanResult['rejected'] = [];
-      let nextIndex = 0;
-      const worker = async () => {
-        while (nextIndex < snapshots.length) {
-          const index = nextIndex++;
-          const summary = snapshots[index];
-          if (!summary) continue;
-          try {
-            fingerprints.push(await fingerprintSettingsSnapshot(summary));
-          } catch (caughtError) {
-            rejected.push({
-              name: summary.name,
-              reason: caughtError instanceof Error ? caughtError.message : '设置快照校验失败',
-            });
-          } finally {
-            settingsDuplicateScanCompleted.value += 1;
-          }
+      for (const summary of snapshots) {
+        try {
+          controller.signal.throwIfAborted();
+          const bytes = await loadNativeSettingsSnapshot(summary.name, controller.signal);
+          await comparison.add(bytes, summary);
+        } catch (caughtError) {
+          controller.signal.throwIfAborted();
+          if (caughtError instanceof Error && caughtError.name === 'SettingsComparisonWorkerError') throw caughtError;
+          rejected.push({
+            name: summary.name,
+            reason: caughtError instanceof Error ? caughtError.message : '设置快照校验失败',
+          });
+        } finally {
+          settingsDuplicateScanCompleted.value += 1;
         }
-      };
-      await Promise.all(Array.from({ length: Math.min(4, snapshots.length) }, () => worker()));
+      }
       const result = {
-        groups: createSettingsDuplicateGroups(fingerprints),
+        groups: await comparison.finish(threshold),
+        threshold,
         rejected,
         scannedFiles: snapshots.length,
       };
       settingsDuplicateScanResult.value = result;
       return result;
     } finally {
+      comparison?.dispose();
+      settingsScanController = undefined;
       settingsDuplicateScanning.value = false;
     }
   }
@@ -241,25 +244,27 @@ export const useChatRecoveryStore = defineStore('chat-recovery', () => {
     settingsDeleteResult.value = null;
   }
 
-  async function deleteSettingsSnapshots(names: string[]) {
+  async function deleteSettingsSnapshots(keepers: Record<string, string>) {
     if (managementBusy.value) throw new Error('已有备份任务正在执行');
     const scan = settingsDuplicateScanResult.value;
-    if (!scan) throw new Error('请先扫描完全相同的设置快照');
-    const selected = new Set(names);
-    if (!selected.size) throw new Error('没有选择要删除的设置快照');
+    if (!scan) throw new Error('请先扫描设置快照');
+    const selections = selectSettingsCleanup(scan.groups, keepers);
+    if (!selections.length) throw new Error('没有要删除的设置快照');
     settingsDeleting.value = true;
     const result: SettingsDeleteResult = { deleted: [], failed: [], reclaimedBytes: 0 };
     let cleanupToken = '';
+    let comparison: ReturnType<typeof createSettingsComparisonClient> | undefined;
     try {
+      comparison = createSettingsComparisonClient();
       const verifiedNames = new Set<string>();
-      for (const group of scan.groups) {
-        const candidates = group.duplicates.filter(item => selected.has(item.summary.name));
+      for (const selection of selections) {
+        const { candidates } = selection;
         if (!candidates.length) continue;
         try {
-          const keeper = settingsSnapshots.value.find(item => item.name === group.keeper.summary.name);
+          const keeper = settingsSnapshots.value.find(item => item.name === selection.keeper.summary.name);
           if (!keeper) throw new Error('预定保留的设置快照已经不存在，整组未删除');
-          const keeperFingerprint = await fingerprintSettingsSnapshot(keeper);
-          if (keeperFingerprint.contentHash !== group.contentHash) {
+          const keeperHash = await comparison.hash(await loadNativeSettingsSnapshot(keeper.name));
+          if (keeperHash !== selection.keeper.contentHash) {
             throw new Error('预定保留的设置快照内容已经变化，整组未删除');
           }
           for (const candidate of candidates) {
@@ -268,8 +273,8 @@ export const useChatRecoveryStore = defineStore('chat-recovery', () => {
               result.failed.push({ name: candidate.summary.name, reason: '设置快照已经不存在' });
               continue;
             }
-            const fingerprint = await fingerprintSettingsSnapshot(current);
-            if (fingerprint.contentHash !== group.contentHash) {
+            const contentHash = await comparison.hash(await loadNativeSettingsSnapshot(current.name));
+            if (contentHash !== candidate.contentHash) {
               result.failed.push({ name: current.name, reason: '设置快照内容在确认后发生变化' });
               continue;
             }
@@ -277,7 +282,11 @@ export const useChatRecoveryStore = defineStore('chat-recovery', () => {
           }
         } catch (caughtError) {
           const reason = caughtError instanceof Error ? caughtError.message : '无法复核保留快照';
-          candidates.forEach(item => result.failed.push({ name: item.summary.name, reason }));
+          candidates.forEach(item => {
+            verifiedNames.delete(item.summary.name);
+            if (!result.failed.some(failed => failed.name === item.summary.name))
+              result.failed.push({ name: item.summary.name, reason });
+          });
         }
       }
       if (!verifiedNames.size) {
@@ -315,6 +324,7 @@ export const useChatRecoveryStore = defineStore('chat-recovery', () => {
       settingsDeleteResult.value = result;
       return result;
     } finally {
+      comparison?.dispose();
       if (cleanupToken) {
         try {
           await finalizeSettingsCleanupToken(cleanupToken);
@@ -882,6 +892,7 @@ export const useChatRecoveryStore = defineStore('chat-recovery', () => {
     resetCleanup,
     resetDuplicates,
     resetSettingsDuplicates,
+    cancelSettingsScan,
     restoreSettingsSnapshot,
     scanCleanup,
     scanDuplicateBackups,

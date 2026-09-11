@@ -34,12 +34,13 @@ async function postJson(path: string, body: Record<string, unknown>) {
   return response;
 }
 
-async function postSettingsJson(path: string, body: Record<string, unknown>) {
+async function postSettingsJson(path: string, body: Record<string, unknown>, signal?: AbortSignal) {
   const response = await fetch(path, {
     body: JSON.stringify(body),
     cache: 'no-cache',
     headers: getRequestHeaders(),
     method: 'POST',
+    signal,
   });
   if (response.status === 404 || response.status === 405) {
     throw new Error('当前 SillyTavern 版本不支持设置快照管理');
@@ -88,10 +89,10 @@ export async function listNativeSettingsSnapshots(): Promise<SettingsSnapshotSum
     .sort((a, b) => b.date - a.date || b.name.localeCompare(a.name));
 }
 
-export async function loadNativeSettingsSnapshot(name: string) {
+export async function loadNativeSettingsSnapshot(name: string, signal?: AbortSignal) {
   if (!/^settings_.+_\d{8}-\d{6}\.json$/i.test(name)) throw new Error('选择的文件不是设置快照');
-  const response = await postSettingsJson('/api/settings/load-snapshot', { name });
-  return response.text();
+  const response = await postSettingsJson('/api/settings/load-snapshot', { name }, signal);
+  return response.arrayBuffer();
 }
 
 export async function makeNativeSettingsSnapshot() {

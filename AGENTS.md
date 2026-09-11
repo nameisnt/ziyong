@@ -1,5 +1,15 @@
 当用户输入`先分析`时，不要修改任何代码。
 
+## 更新说明录入
+
+当用户要求“加入更新说明”“补入更新说明”等，统一运行 `pnpm release:notes`，不要手工改写版本历史。先核对本次实际完成内容，再将说明通过重复的 `--note "文字"` 或标准输入逐行传给脚本。
+
+- 先用 `--dry-run` 查看拟写入的版本和说明，再移除该参数执行。
+- 新版本默认 patch 加一；用户要求 minor/major 或明确版本号时使用 `--version x.y.z`。
+- 同一尚未进入 Git 提交的当前版本补充说明，使用 `--append`，不另升版本。先比较工作树和 HEAD 的更新历史；已提交版本冻结，无法确认未发布时不得覆盖。
+- 脚本同步 `manifest.json`、`package.json` 和 `src/core/releaseInfo.ts`，旧记录保留。不自动打包、提交或推送。
+- 执行后运行 `node --test --test-isolation=none scripts/unit/release-updates.test.mjs scripts/unit/release-notes-script.test.mjs`。
+
 ## UI 复用优先硬规则
 
 制作或修改任何前端 UI 前，必须先检查现有全局样式、组件和文档，优先复用，不要在 App 内重新造一套相同控件。
