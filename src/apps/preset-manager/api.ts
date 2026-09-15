@@ -403,15 +403,28 @@ export async function duplicateTavernPresetPrompt(
 }
 
 export async function deleteTavernPresetPrompt(presetName: string, promptId: string) {
+  return deleteTavernPresetPrompts(presetName, [promptId]);
+}
+
+export function removePresetPrompts(preset: TavernPreset, promptIds: string[]) {
+  const ids = [...new Set(promptIds)];
+  if (ids.some(id => !preset.prompts.some(prompt => prompt.id === id))) {
+    throw new Error('预设条目已经发生变化，请刷新后重试');
+  }
+  ids.forEach(id => removePrompt(preset, id));
+  return preset;
+}
+
+export async function deleteTavernPresetPrompts(presetName: string, promptIds: string[]) {
   return enqueuePresetMutation(presetName, async () => {
     const updatePresetWith = requirePresetFunction<UpdatePresetFn>('updatePresetWith');
     const stored = assertPreset(
-      await updatePresetWith(presetName, preset => removePrompt(preset, promptId), { render: 'none' }),
+      await updatePresetWith(presetName, preset => removePresetPrompts(preset, promptIds), { render: 'none' }),
     );
     let liveSynced = true;
     if (getCurrentTavernPresetName() === presetName) {
       try {
-        await updatePresetWith('in_use', preset => removePrompt(preset, promptId), { render: 'immediate' });
+        await updatePresetWith('in_use', preset => removePresetPrompts(preset, promptIds), { render: 'immediate' });
       } catch {
         liveSynced = false;
       }

@@ -1,5 +1,5 @@
 <template>
-  <section class="pc-preset-page">
+  <section class="pc-preset-page" :class="{ 'pc-preset-catalog-selecting': selection.active.value }">
     <div class="pc-segment pc-preset-source-tabs" role="tablist" aria-label="预设来源">
       <button class="pc-segment-btn" :class="{ active: source === 'plugin' }" type="button" @click="source = 'plugin'">
         插件预设
@@ -10,6 +10,11 @@
     </div>
 
     <header class="pc-compact-toolbar pc-directory-toolbar pc-preset-current">
+      <ActionMenu align="start" icon-only label="管理预设">
+        <button type="button" :disabled="loading || !selectableIds.length" @click="selection.start()">
+          <i class="fa-solid fa-list-check"></i>批量删除预设
+        </button>
+      </ActionMenu>
       <span v-if="source === 'tavern'" class="pc-directory-count" :title="loadedPresetName">
         当前：{{ loadedPresetName || '未读取到预设' }}
       </span>
@@ -78,6 +83,12 @@
       class="pc-directory-list pc-preset-list"
     >
       <article v-if="visibleCurrentPreset" :key="visibleCurrentPreset" class="pc-list-row pc-preset-row current">
+        <BulkSelectionCheckbox
+          v-if="selection.active.value"
+          :model-value="false"
+          disabled
+          label="当前使用的预设不能删除"
+        />
         <button class="pc-preset-open" type="button" @click="$emit('open', visibleCurrentPreset)">
           <span class="pc-preset-copy">
             <strong :title="visibleCurrentPreset">{{ visibleCurrentPreset }}</strong>
@@ -89,14 +100,33 @@
         </span>
       </article>
       <section v-for="group in groupedTavernPresets" :key="group.name" class="pc-preset-catalog-group">
-        <strong class="pc-preset-group-label">{{ group.name }}</strong>
+        <div class="pc-compact-toolbar">
+          <BulkSelectionCheckbox
+            v-if="selection.active.value"
+            :label="`选择分组 ${group.name}`"
+            :model-value="groupSelected(group.items)"
+            @update:model-value="selectGroup(group.items, $event)"
+          />
+          <strong class="pc-preset-group-label">{{ group.name }}</strong>
+        </div>
         <article v-for="presetName in group.items" :key="presetName" class="pc-list-row pc-preset-row">
-          <button class="pc-preset-open" type="button" @click="$emit('open', presetName)">
+          <BulkSelectionCheckbox
+            v-if="selection.active.value"
+            :model-value="selection.selectedIdSet.value.has(presetName)"
+            :label="`选择预设 ${presetName}`"
+            @update:model-value="selection.setSelected(presetName, $event)"
+          />
+          <button
+            class="pc-preset-open"
+            type="button"
+            @click="selection.active.value ? toggleSelection(presetName) : $emit('open', presetName)"
+          >
             <span class="pc-preset-copy"
               ><strong :title="presetName">{{ presetName }}</strong></span
             >
           </button>
           <button
+            v-if="!selection.active.value"
             class="pc-icon-btn"
             type="button"
             title="设置分组"
@@ -106,6 +136,7 @@
             <i class="fa-solid fa-folder"></i>
           </button>
           <button
+            v-if="!selection.active.value"
             class="pc-icon-btn pc-preset-use"
             type="button"
             :disabled="switchingPreset === presetName"
@@ -120,14 +151,40 @@
     </div>
     <div v-else-if="source === 'plugin' && visiblePluginPresets.length" class="pc-directory-list pc-preset-list">
       <section v-for="group in groupedPluginPresets" :key="group.name" class="pc-preset-catalog-group">
-        <strong class="pc-preset-group-label">{{ group.name }}</strong>
+        <div class="pc-compact-toolbar">
+          <BulkSelectionCheckbox
+            v-if="selection.active.value"
+            :label="`选择分组 ${group.name}`"
+            :disabled="!group.items.some(preset => !preset.builtIn)"
+            :model-value="groupSelected(group.items.filter(preset => !preset.builtIn).map(preset => preset.id))"
+            @update:model-value="
+              selectGroup(
+                group.items.filter(preset => !preset.builtIn).map(preset => preset.id),
+                $event,
+              )
+            "
+          />
+          <strong class="pc-preset-group-label">{{ group.name }}</strong>
+        </div>
         <article
           v-for="preset in group.items"
           :key="preset.id"
           class="pc-list-row pc-preset-row"
           :class="{ disabled: preset.hidden }"
         >
-          <button class="pc-preset-open" type="button" @click="$emit('open-plugin', preset.id)">
+          <BulkSelectionCheckbox
+            v-if="selection.active.value"
+            :model-value="selection.selectedIdSet.value.has(preset.id)"
+            :disabled="preset.builtIn"
+            :label="`选择预设 ${preset.name}`"
+            @update:model-value="selection.setSelected(preset.id, $event)"
+          />
+          <button
+            class="pc-preset-open"
+            type="button"
+            :disabled="selection.active.value && preset.builtIn"
+            @click="selection.active.value ? toggleSelection(preset.id) : $emit('open-plugin', preset.id)"
+          >
             <span class="pc-preset-copy"
               ><strong :title="preset.name">{{ preset.name }}</strong
               ><small
@@ -137,6 +194,7 @@
             ><i class="fa-solid fa-chevron-right"></i>
           </button>
           <button
+            v-if="!selection.active.value"
             class="pc-icon-btn"
             type="button"
             title="设置分组"
@@ -152,11 +210,25 @@
       v-else-if="!loading && (source === 'plugin' ? !pluginErrorMessage : !errorMessage)"
       :title="emptyTitle"
     />
+    <BulkSelectionBar
+      v-if="selection.active.value"
+      class="pc-preset-catalog-bulk"
+      :all-selected="selection.allSelected.value"
+      :selected-count="selection.selectedIds.value.length"
+      :total-count="selectableIds.length"
+      @toggle-all="selection.toggleAll"
+      @cancel="selection.cancel"
+      @remove="$emit('delete-presets', source, [...selection.selectedIds.value])"
+    />
   </section>
 </template>
 
 <script setup lang="ts">
 import EmptyState from '@/components/EmptyState.vue';
+import ActionMenu from '@/components/ActionMenu.vue';
+import BulkSelectionBar from '@/components/BulkSelectionBar.vue';
+import BulkSelectionCheckbox from '@/components/BulkSelectionCheckbox.vue';
+import { useBulkSelection } from '@/composables/useBulkSelection';
 import { usePhoneStore } from '@/store/phone';
 import { usePresetCatalogGroupStore, type PresetCatalogSource } from '@/store/presetCatalogGroups';
 import type { PluginPresetRecord } from '../pluginPreset';
@@ -191,6 +263,22 @@ const visiblePluginPresets = computed(() => {
 const visibleCurrentPreset = computed(() =>
   source.value === 'tavern' && props.visiblePresetNames.includes(props.loadedPresetName) ? props.loadedPresetName : '',
 );
+const selectableIds = computed(() =>
+  source.value === 'tavern'
+    ? props.visiblePresetNames.filter(name => name !== props.loadedPresetName)
+    : visiblePluginPresets.value.filter(preset => !preset.builtIn).map(preset => preset.id),
+);
+const selection = useBulkSelection(selectableIds);
+watch(source, () => selection.cancel());
+function toggleSelection(id: string) {
+  if (selectableIds.value.includes(id)) selection.setSelected(id, !selection.selectedIdSet.value.has(id));
+}
+function groupSelected(ids: string[]) {
+  return ids.length > 0 && ids.every(id => selection.selectedIdSet.value.has(id));
+}
+function selectGroup(ids: string[], selected: boolean) {
+  ids.forEach(id => selection.setSelected(id, selected));
+}
 function grouped<T>(items: T[], sourceId: PresetCatalogSource, idOf: (item: T) => string) {
   const groups = new Map<string, T[]>();
   items.forEach(item => {
@@ -222,6 +310,7 @@ const emptyTitle = computed(() => {
 });
 
 const emit = defineEmits<{
+  'delete-presets': [source: 'plugin' | 'tavern', ids: string[]];
   import: [file: File];
   open: [presetName: string];
   'open-plugin': [presetId: string];
@@ -253,6 +342,12 @@ async function assignPreset(sourceId: PresetCatalogSource, id: string) {
 </script>
 
 <style scoped>
+.pc-preset-catalog-bulk {
+  position: sticky;
+  bottom: 0;
+  z-index: 2;
+  background: var(--pc-surface-strong);
+}
 .pc-preset-page {
   display: flex;
   height: 100%;
@@ -272,6 +367,9 @@ async function assignPreset(sourceId: PresetCatalogSource, id: string) {
 }
 .pc-preset-row {
   grid-template-columns: minmax(0, 1fr) auto auto;
+}
+.pc-preset-catalog-selecting .pc-preset-row {
+  grid-template-columns: auto minmax(0, 1fr) auto;
 }
 .pc-preset-catalog-group {
   display: grid;

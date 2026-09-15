@@ -10,6 +10,9 @@
         }}</span>
       </div>
       <ActionMenu icon-only :label="t`管理`" icon="fa-solid fa-bars">
+        <button type="button" :disabled="busy || !visibleEntryCount" @click="$emit('start-delete')">
+          <i class="fa-solid fa-trash"></i><span>批量删除条目</span>
+        </button>
         <button type="button" :disabled="busy" @click="entryGroupManagerOpen = true">
           <i class="fa-solid fa-folder-tree"></i><span>{{ t`管理条目分组` }}</span>
         </button>
@@ -24,19 +27,6 @@
         </button>
       </ActionMenu>
     </header>
-
-    <BulkSelectionBar
-      v-if="bulkActive"
-      action-icon="fa-solid fa-masks-theater"
-      :action-label="t`转为小剧场`"
-      :all-selected="bulkAllSelected"
-      :empty-label="t`请选择要转换的条目`"
-      :selected-count="bulkSelectedCount"
-      :total-count="visibleEntryCount"
-      @apply="$emit('convert-selected')"
-      @cancel="$emit('cancel-bulk')"
-      @toggle-all="$emit('toggle-all')"
-    />
 
     <label class="pc-search-field pc-worldbook-search">
       <i class="fa-solid fa-magnifying-glass"></i>
@@ -98,6 +88,24 @@
     <template v-if="status">
       <section v-for="section in sections" :key="section.id" class="pc-worldbook-group">
         <header class="pc-worldbook-group-head">
+          <BulkSelectionCheckbox
+            v-if="bulkActive"
+            :label="`选择分组 ${section.label}`"
+            :disabled="busy || !section.entries.some(entry => selectableUids.has(entry.uid))"
+            :model-value="
+              section.entries.some(entry => selectableUids.has(entry.uid)) &&
+              section.entries
+                .filter(entry => selectableUids.has(entry.uid))
+                .every(entry => bulkSelectedUids.has(entry.uid))
+            "
+            @update:model-value="
+              $emit(
+                'select-group',
+                section.entries.map(entry => entry.uid),
+                $event,
+              )
+            "
+          />
           <strong>{{ section.label }}</strong
           ><span>{{ section.entries.length }}</span>
         </header>
@@ -110,6 +118,7 @@
           >
             <BulkSelectionCheckbox
               v-if="bulkActive"
+              :disabled="busy || !selectableUids.has(entry.uid)"
               :label="`选择${entry.name || `条目 #${entry.uid}`}`"
               :model-value="bulkSelectedUids.has(entry.uid)"
               @update:model-value="$emit('set-selected', entry.uid, $event)"
@@ -117,6 +126,8 @@
             <button
               class="pc-worldbook-entry-open"
               type="button"
+              :disabled="busy || (bulkActive && !selectableUids.has(entry.uid))"
+              :title="bulkDelete && !selectableUids.has(entry.uid) ? '由世界书槽位管理，请到槽位中删除' : undefined"
               @click="bulkActive ? $emit('toggle-selected', entry.uid) : $emit('open-entry', entry)"
             >
               <span
@@ -172,6 +183,22 @@
       <EmptyState v-if="!visibleEntryCount" :title="query.trim() ? t`没有找到匹配的条目` : t`这本世界书没有条目`" />
     </template>
     <EmptyState v-else :title="t`正在读取世界书条目`" />
+
+    <BulkSelectionBar
+      v-if="bulkActive"
+      class="pc-worldbook-bulk-footer"
+      :busy="busy"
+      :action-icon="bulkDelete ? 'fa-solid fa-trash' : 'fa-solid fa-masks-theater'"
+      :action-label="bulkDelete ? undefined : t`转为小剧场`"
+      :all-selected="bulkAllSelected"
+      :empty-label="bulkDelete ? '请选择要删除的条目' : t`请选择要转换的条目`"
+      :selected-count="bulkSelectedCount"
+      :total-count="selectableUids.size"
+      @remove="$emit('delete-selected')"
+      @apply="$emit('convert-selected')"
+      @cancel="$emit('cancel-bulk')"
+      @toggle-all="$emit('toggle-all')"
+    />
 
     <Teleport to="#tavern-phone-root .pc-phone-shell">
       <section
@@ -287,6 +314,8 @@ interface ManagedEntryGroup {
 defineProps<{
   bookName: string;
   bulkActive: boolean;
+  bulkDelete: boolean;
+  selectableUids: Set<number>;
   bulkAllSelected: boolean;
   bulkSelectedCount: number;
   bulkSelectedUids: Set<number>;
@@ -304,6 +333,9 @@ defineProps<{
 const query = defineModel<string>('query', { required: true });
 
 const emit = defineEmits<{
+  'delete-selected': [];
+  'start-delete': [];
+  'select-group': [uids: number[], selected: boolean];
   'apply-profile': [];
   'assign-entry-group': [entry: WorldbookEntry];
   'cancel-bulk': [];
@@ -362,6 +394,12 @@ function confirmSingleSelection(group: ManagedEntryGroup) {
 </script>
 
 <style scoped>
+.pc-worldbook-bulk-footer {
+  position: sticky;
+  bottom: 0;
+  z-index: 2;
+  background: var(--pc-surface-strong);
+}
 .pc-worldbook-detail-page,
 .pc-worldbook-group {
   display: grid;

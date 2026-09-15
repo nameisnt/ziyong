@@ -18,6 +18,7 @@ declare module 'vue' {
     BaguScanPanel: typeof import('./src/components/BaguScanPanel.vue')['default']
     BatchGenerationPreviewPage: typeof import('./src/components/BatchGenerationPreviewPage.vue')['default']
     BookShelf: typeof import('./src/components/BookShelf.vue')['default']
+    BulkDeleteDialog: typeof import('./src/components/BulkDeleteDialog.vue')['default']
     BulkSelectionBar: typeof import('./src/components/BulkSelectionBar.vue')['default']
     BulkSelectionCheckbox: typeof import('./src/components/BulkSelectionCheckbox.vue')['default']
     CapsuleTag: typeof import('./src/components/CapsuleTag.vue')['default']

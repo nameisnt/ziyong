@@ -349,18 +349,29 @@ export function downloadChatFloorBackup(backup: ChatFloorBackup) {
   window.setTimeout(() => URL.revokeObjectURL(url), 5000);
 }
 
-export function isChatFloorBackupForTarget(
+export function rebindChatFloorBackupForImport(
   backup: ChatFloorBackup,
-  target: { aliases: Iterable<string>; avatar: string; chatId: string; kind: 'char' | 'group' },
+  target: {
+    aliases: Iterable<string>;
+    avatar: string;
+    ownerId: string;
+    name: string;
+    chatId: string;
+    chatTitle: string;
+    kind: 'char' | 'group';
+  },
 ) {
-  if (
-    backup.owner.kind !== target.kind ||
-    normalizeIdentityPart(backup.chat.id) !== normalizeIdentityPart(target.chatId)
-  ) {
-    return false;
-  }
   const aliases = new Set([...target.aliases, target.avatar].filter(Boolean).map(normalizeIdentityPart));
-  return aliases.has(normalizeIdentityPart(backup.owner.stableId));
+  if (backup.owner.kind !== target.kind || !aliases.has(normalizeIdentityPart(backup.owner.stableId))) {
+    throw new Error('备份中的角色卡或群组与目标档案不一致，已停止导入');
+  }
+  const stableId = target.kind === 'char' ? target.avatar || target.name : target.ownerId;
+  return {
+    ...backup,
+    key: buildChatFloorBackupKey(target.kind, stableId, target.chatId),
+    chat: { id: target.chatId, title: target.chatTitle },
+    owner: { ...backup.owner, kind: target.kind, stableId, avatar: target.avatar, displayName: target.name },
+  };
 }
 
 export async function restoreChatFloorBackupToCurrent(backup: ChatFloorBackup) {

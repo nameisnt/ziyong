@@ -1,10 +1,6 @@
-import {
-  areChatScopeKeysEquivalent,
-  getCurrentChatScopeKey,
-  useChatScopedDomain,
-} from '@/store/chatScoped';
+import { areChatScopeKeysEquivalent, getCurrentChatScopeKey, useChatScopedDomain } from '@/store/chatScoped';
 import type { PhoneAppResetContext } from '@/core/appRegistry';
-import { getOptionalGlobalFunction } from '@/util/runtime';
+import { getOptionalGlobalFunction, onTavernEvent } from '@/util/runtime';
 import { validateInplace } from '@/util/zod';
 
 export const worldSlotsField = 'sillytavern_phone_world_slots';
@@ -233,6 +229,29 @@ function nextEntryId(entries: Record<string, WorldBookEntry>) {
   return ids.length ? Math.max(...ids) + 1 : 0;
 }
 
+function readSlotFields(entry: WorldBookEntry): WorldSlotEditableFields {
+  return {
+    title: String(entry.comment ?? ''),
+    content: String(entry.content ?? ''),
+    enabled: !entry.disable,
+    strategyType: entry.constant ? 'constant' : 'selective',
+    keys: entry.key ?? [],
+    secondaryKeys: entry.keysecondary ?? [],
+    selectiveLogic: worldSlotLogicOptions[Number(entry.selectiveLogic ?? 0)]?.id ?? 'and_any',
+    position: (Object.entries(worldInfoPositionBySlot).find(([, value]) => value === entry.position)?.[0] ??
+      'before_character_definition') as WorldSlotPosition,
+    role: worldSlotRoleOptions[Number(entry.role ?? 0)]?.id ?? 'system',
+    insertionOrder: Number(entry.order ?? 100),
+    depth: Number(entry.depth ?? 4),
+    probability: Number(entry.probability ?? 100),
+    excludeRecursion: Boolean(entry.excludeRecursion),
+    preventRecursion: Boolean(entry.preventRecursion),
+    sticky: entry.sticky == null ? null : Number(entry.sticky),
+    cooldown: entry.cooldown == null ? null : Number(entry.cooldown),
+    delay: entry.delay == null ? null : Number(entry.delay),
+  };
+}
+
 export const useWorldSlotsStore = defineStore('world-slots', () => {
   const {
     data,
@@ -253,6 +272,94 @@ export const useWorldSlotsStore = defineStore('world-slots', () => {
   let syncRequestId = 0;
   let scopeSyncSequence = 0;
   let syncTail: Promise<void> = Promise.resolve();
+  let writtenScope = '';
+  let writingBook: unknown = null;
+  const pendingFields = new Map<string, WorldSlotEditableFields>();
+  const conflicts = ref<string[]>([]);
+  let worldbookSubscription: ReturnType<typeof onTavernEvent> | null = null;
+  onScopeDispose(() => worldbookSubscription?.stop());
+  const pendingKey = (id: string) => `${scopeKey.value}\n${id}`;
+
+  function markPending(slot: WorldSlot) {
+    if (!pendingFields.has(pendingKey(slot.id))) {
+      pendingFields.set(pendingKey(slot.id), readSlotFields(createWorldEntry(slot, slot.worldEntryId ?? 0)));
+    }
+  }
+
+  async function readWorldbookChanges(targetScope = scopeKey.value) {
+    const load =
+      getOptionalGlobalFunction<(name: string) => Promise<{ entries?: Record<string, WorldBookEntry> }>>(
+        'loadWorldInfo',
+      );
+    if (!load || !isCurrentChatScope.value) return;
+    const book = await load(WORLD_SLOTS_BOOK_NAME);
+    if (scopeKey.value !== targetScope || !isCurrentChatScope.value) return;
+    const entries = book?.entries ?? {};
+    const ids = new Set(data.value.slots.map(slot => slot.id));
+    // The shared book may still contain the previous chat during a scope switch.
+    if (Object.values(entries).some(entry => getEntrySlotId(entry) && !ids.has(getEntrySlotId(entry)))) return;
+    for (const slot of data.value.slots) {
+      if (slot.worldEntryId == null) continue;
+      const entry = entries[String(slot.worldEntryId)];
+      if (!entry || (getEntrySlotId(entry) && getEntrySlotId(entry) !== slot.id)) continue;
+      if (writtenScope !== targetScope && getEntrySlotId(entry) !== slot.id) continue;
+      const incoming = readSlotFields(entry);
+      const local = readSlotFields(createWorldEntry(slot, slot.worldEntryId));
+      const base = pendingFields.get(pendingKey(slot.id));
+      if (_.isEqual(local, incoming)) {
+        pendingFields.delete(pendingKey(slot.id));
+        conflicts.value = conflicts.value.filter(id => id !== slot.id);
+        continue;
+      }
+      if (base) {
+        if (!_.isEqual(base, incoming) && !conflicts.value.includes(slot.id)) {
+          conflicts.value.push(slot.id);
+          toastr.warning(`槽位“${slot.title}”与世界书均有修改，请在世界书槽位中选择保留内容。`);
+        }
+        continue;
+      }
+      Object.assign(slot, klona(incoming), { updatedAt: nowIso() });
+    }
+  }
+
+  function refreshFromWorldbook() {
+    const targetScope = scopeKey.value;
+    const task = syncTail.then(() => readWorldbookChanges(targetScope));
+    syncTail = task.catch(() => {});
+    return task;
+  }
+
+  async function resolveConflict(slotId: string, source: 'slot' | 'worldbook') {
+    if (!conflicts.value.includes(slotId) || !isCurrentChatScope.value) return;
+    const targetScope = scopeKey.value;
+    const task = syncTail.then(async () => {
+      const load =
+        getOptionalGlobalFunction<(name: string) => Promise<{ entries: Record<string, WorldBookEntry> }>>(
+          'loadWorldInfo',
+        );
+      const slot = getSlot(slotId);
+      if (!load || !slot || slot.worldEntryId == null) return;
+      const book = await load(WORLD_SLOTS_BOOK_NAME);
+      if (scopeKey.value !== targetScope || !isCurrentChatScope.value) return;
+      const entry = book?.entries?.[String(slot.worldEntryId)];
+      if (!entry || (getEntrySlotId(entry) && getEntrySlotId(entry) !== slotId)) {
+        throw new Error('绑定条目已不存在或归属已改变，请重新检查世界书');
+      }
+      if (source === 'slot') pendingFields.set(pendingKey(slotId), readSlotFields(entry));
+      else {
+        Object.assign(slot, klona(readSlotFields(entry)), { updatedAt: nowIso() });
+        pendingFields.delete(pendingKey(slotId));
+      }
+      conflicts.value = conflicts.value.filter(id => id !== slotId);
+      if (!conflicts.value.length) {
+        syncError.value = '';
+        syncStatus.value = 'idle';
+      }
+    });
+    syncTail = task.catch(() => {});
+    await task;
+    if (scopeKey.value === targetScope && source === 'slot') await syncToWorldBook();
+  }
 
   const slots = computed(() =>
     [...data.value.slots].sort((left, right) => right.updatedAt.localeCompare(left.updatedAt)),
@@ -305,6 +412,7 @@ export const useWorldSlotsStore = defineStore('world-slots', () => {
   function updateSlot(slotId: string, input: WorldSlotUpdateInput) {
     const slot = getSlot(slotId);
     if (!slot) return null;
+    markPending(slot);
     slot.title = input.title.trim() || slot.title;
     slot.strategyType = input.strategyType;
     slot.keys = cleanList(input.keys);
@@ -330,6 +438,7 @@ export const useWorldSlotsStore = defineStore('world-slots', () => {
   function setSlotEnabled(slotId: string, enabled: boolean) {
     const slot = getSlot(slotId);
     if (!slot || slot.enabled === enabled) return slot;
+    markPending(slot);
     slot.enabled = enabled;
     slot.updatedAt = nowIso();
     queueAutoSync();
@@ -409,6 +518,16 @@ export const useWorldSlotsStore = defineStore('world-slots', () => {
       }
     });
 
+    const claimedEntryIds = new Set(entryIdBySlot.values());
+    slotSnapshot.forEach(slot => {
+      if (entryIdBySlot.has(slot.id) || slot.worldEntryId == null) return;
+      const entry = entries[String(slot.worldEntryId)];
+      // Editors may strip the custom marker while retaining the bound entry ID.
+      if (!entry || getEntrySlotId(entry) || claimedEntryIds.has(slot.worldEntryId)) return;
+      entryIdBySlot.set(slot.id, slot.worldEntryId);
+      claimedEntryIds.add(slot.worldEntryId);
+    });
+
     let created = 0;
     let updated = 0;
     slotSnapshot.forEach(slot => {
@@ -428,7 +547,12 @@ export const useWorldSlotsStore = defineStore('world-slots', () => {
     book.entries = entries;
     const bookChanged = !loaded || originalName !== book.name || !_.isEqual(originalEntries, entries);
     if (bookChanged) {
-      await saveWorldInfo(bookName, book, true);
+      writingBook = book;
+      try {
+        await saveWorldInfo(bookName, book, true);
+      } finally {
+        writingBook = null;
+      }
       await updateWorldInfoList?.();
     }
     if (!isRequestCurrent(requestId, targetScopeKey)) return skippedResult();
@@ -450,7 +574,14 @@ export const useWorldSlotsStore = defineStore('world-slots', () => {
       });
       data.value.slots.forEach(slot => {
         slot.worldEntryId = syncedEntryIds.get(slot.id) ?? null;
+        const sent = slotSnapshot.find(item => item.id === slot.id);
+        if (sent && _.isEqual(readSlotFields(createWorldEntry(slot, 0)), readSlotFields(createWorldEntry(sent, 0)))) {
+          pendingFields.delete(pendingKey(slot.id));
+        } else if (sent) {
+          pendingFields.set(pendingKey(slot.id), readSlotFields(createWorldEntry(sent, 0)));
+        }
       });
+      writtenScope = targetScopeKey;
     }
 
     return {
@@ -471,7 +602,12 @@ export const useWorldSlotsStore = defineStore('world-slots', () => {
     syncError.value = '';
     syncStatus.value = 'syncing';
 
-    const task = syncTail.then(() => performSync(requestId, targetScopeKey));
+    const task = syncTail.then(async () => {
+      if (!isRequestCurrent(requestId, targetScopeKey)) return skippedResult();
+      await readWorldbookChanges(targetScopeKey);
+      if (conflicts.value.length) throw new Error('槽位与世界书内容冲突，请先选择保留内容');
+      return performSync(requestId, targetScopeKey);
+    });
     syncTail = task.then(
       () => undefined,
       () => undefined,
@@ -515,6 +651,13 @@ export const useWorldSlotsStore = defineStore('world-slots', () => {
   function startAutoSync() {
     if (autoSyncStarted) return;
     autoSyncStarted = true;
+    worldbookSubscription = onTavernEvent('WORLDINFO_UPDATED', (name, book) => {
+      if (name !== WORLD_SLOTS_BOOK_NAME || book === writingBook) return;
+      void refreshFromWorldbook().catch(error => {
+        syncError.value = error instanceof Error ? error.message : String(error);
+        syncStatus.value = 'error';
+      });
+    });
     void syncScopeWithRetry(scopeKey.value);
   }
 
@@ -610,11 +753,15 @@ export const useWorldSlotsStore = defineStore('world-slots', () => {
   }
 
   async function switchScope(nextScopeKey: string) {
+    if (scopeKey.value !== nextScopeKey) conflicts.value = [];
     switchScopedData(nextScopeKey);
     await syncScopeWithRetry(scopeKey.value);
   }
 
   return {
+    conflicts,
+    refreshFromWorldbook,
+    resolveConflict,
     autoSyncToWorldBook,
     createSlot,
     createSlots,

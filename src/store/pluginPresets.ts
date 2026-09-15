@@ -429,7 +429,18 @@ export const usePluginPresetStore = defineStore('pluginPresets', () => {
   }
 
   async function removePrompt(id: string, promptId: string) {
-    await mutateRecord(id, item => deletePluginPresetPrompt(item, promptId));
+    return removePrompts(id, [promptId]);
+  }
+
+  async function removePrompts(id: string, promptIds: string[]) {
+    await mutateRecord(id, item => {
+      const ids = [...new Set(promptIds)];
+      const preset = readPluginPreset(item);
+      if (ids.some(promptId => !preset.prompts.some(prompt => prompt.id === promptId))) {
+        throw new Error('预设条目已经发生变化，请刷新后重试');
+      }
+      ids.forEach(promptId => deletePluginPresetPrompt(item, promptId));
+    });
     return readPluginPreset(requireById(id));
   }
 
@@ -529,6 +540,7 @@ export const usePluginPresetStore = defineStore('pluginPresets', () => {
     replaceBackupBundle,
     replaceRecords,
     removePrompt,
+    removePrompts,
     renamePreset,
     reorderPrompts,
     setDefaultApps,

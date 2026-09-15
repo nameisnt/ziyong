@@ -18,6 +18,7 @@
       @open-plugin="openPluginPreset"
       @refresh="refreshRoot"
       @switch-preset="switchPreset"
+      @delete-presets="requestPresetDeletion"
     />
 
     <PresetDetailPage
@@ -52,6 +53,7 @@
       @drag-move="movePromptDrag"
       @drag-start="startPromptDrag"
       @delete-preset="removePreset"
+      @delete-prompts="removeSelectedPrompts"
       @export-preset="exportActivePreset"
       @move-preset="movePreset"
       @open-prompt="openPromptEditor"
@@ -92,11 +94,26 @@
       @back="phone.goBack()"
       @save="savePromptCopy"
     />
+    <BulkDeleteDialog
+      v-if="presetDeleteRequest"
+      title="批量删除预设"
+      :description="
+        presetDeleteRequest.source === 'plugin'
+          ? '删除插件预设及对应默认 App 设置，不删除酒馆预设。'
+          : '删除酒馆预设，并清理对应的插件聊天绑定、阅读规则和条目库绑定。当前使用的预设不能删除。'
+      "
+      :items="presetDeleteRequest.items"
+      :remove="deletePresetItem"
+      @close="presetDeleteRequest = null"
+      @finished="refreshRoot"
+    />
   </section>
 </template>
 
 <script setup lang="ts">
 import { useEntryLibraryStore } from '@/apps/entry-library/store';
+import BulkDeleteDialog from '@/components/BulkDeleteDialog.vue';
+import { usePresetCatalogGroupStore } from '@/store/presetCatalogGroups';
 import { BUILTIN_DIARY_PRESET_ID } from '@/apps/preset-manager/builtinDiaryPreset';
 import { usePresetLinkStore } from '@/apps/preset-link/store';
 import { getRegisteredPhoneGenerationActions } from '@/core/appRegistry';
@@ -112,6 +129,7 @@ import {
   deletePresetPromptGroup,
   deleteTavernPreset,
   deleteTavernPresetPrompt,
+  deleteTavernPresetPrompts,
   duplicateTavernPresetPrompt,
   getCurrentTavernPresetName,
   listTavernPresets,
@@ -140,6 +158,40 @@ const phone = usePhoneStore();
 const entryLibrary = useEntryLibraryStore();
 const presetLinks = usePresetLinkStore();
 const pluginPresets = usePluginPresetStore();
+const catalogGroups = usePresetCatalogGroupStore();
+const presetDeleteRequest = shallowRef<{ source: 'plugin' | 'tavern'; items: { id: string; label: string }[] } | null>(
+  null,
+);
+function requestPresetDeletion(source: 'plugin' | 'tavern', ids: string[]) {
+  const items = ids
+    .filter(id =>
+      source === 'plugin'
+        ? pluginPresets.getById(id) && !pluginPresets.getById(id)!.builtIn
+        : id !== getCurrentTavernPresetName(),
+    )
+    .map(id => ({ id, label: source === 'plugin' ? pluginPresets.getById(id)!.name : id }));
+  if (items.length) presetDeleteRequest.value = { source, items };
+}
+async function deletePresetItem(id: string) {
+  const source = presetDeleteRequest.value!.source;
+  let deleted = false;
+  try {
+    if (source === 'plugin') await pluginPresets.deletePreset(id);
+    else await deleteTavernPreset(id);
+    deleted = true;
+    if (source === 'tavern') {
+      presetLinks.removePresetReferences(id);
+      entryLibrary.removePresetReferences(id);
+    }
+    catalogGroups.assign(source, id, '-');
+    return { deleted, error: '' };
+  } catch (error) {
+    return {
+      deleted,
+      error: `${deleted ? '引用清理失败：' : ''}${error instanceof Error ? error.message : String(error)}`,
+    };
+  }
+}
 const generationOverrides = useGenerationOverrideStore();
 const {
   items: pluginPresetItems,
@@ -934,6 +986,7 @@ async function removePrompt() {
       return;
     }
     const result = await deleteTavernPresetPrompt(detailPresetName.value, prompt.id);
+    presetLinks.removePromptReferences(detailPresetName.value, [prompt.id]);
     matchingBindings.forEach(binding => entryLibrary.deleteBinding(binding.id));
     activePreset.value = result.preset;
     if (result.liveSynced) {
@@ -942,6 +995,60 @@ async function removePrompt() {
       toastr.warning('条目已经删除，但当前生效副本刷新失败；重新切换预设后会生效');
     }
     await phone.goBack();
+  } catch (error) {
+    toastr.error(error instanceof Error ? error.message : String(error));
+  } finally {
+    saving.value = false;
+  }
+}
+
+async function removeSelectedPrompts(ids: string[]) {
+  if (mutationBusy.value || !activePreset.value || !ids.length) return;
+  const presetName = detailPresetName.value;
+  const pluginId = detailPluginPresetId.value;
+  const plugin = isPluginDetail.value;
+  const selected = activePreset.value.prompts.filter(prompt => ids.includes(prompt.id));
+  if (selected.length !== ids.length || selected.some(prompt => typeof prompt.content !== 'string')) {
+    toastr.error('选择中包含占位条目或已不存在的条目，请重新选择');
+    return;
+  }
+  const confirmed = await phone.confirmNotice(
+    `从${plugin ? '插件' : '酒馆'}预设“${presetName}”删除 ${selected.length} 个条目？此操作不可撤销。${plugin ? '' : '对应的条目库绑定和预设绑定开关也会移除。'}\n${selected.map(prompt => prompt.name || prompt.id).join('\n')}`,
+    { title: '批量删除预设条目', confirmLabel: '删除所选', kind: 'warning' },
+  );
+  if (
+    !confirmed ||
+    mutationBusy.value ||
+    presetName !== detailPresetName.value ||
+    pluginId !== detailPluginPresetId.value
+  )
+    return;
+  saving.value = true;
+  try {
+    if (plugin) {
+      activePreset.value = await pluginPresets.removePrompts(pluginId, ids);
+      toastr.success(`已删除 ${ids.length} 个插件预设条目`);
+    } else {
+      const result = await deleteTavernPresetPrompts(presetName, ids);
+      activePreset.value = result.preset;
+      try {
+        presetLinks.removePromptReferences(presetName, ids);
+        entryLibrary.bindings
+          .filter(
+            binding =>
+              binding.presetName === presetName &&
+              binding.targetPromptSource === 'prompts' &&
+              ids.includes(binding.targetPromptId),
+          )
+          .forEach(binding => entryLibrary.deleteBinding(binding.id));
+      } catch (error) {
+        toastr.error(`条目已删除，但关联清理失败：${String(error)}`);
+        return;
+      }
+      if (result.liveSynced) toastr.success(`已删除 ${ids.length} 个酒馆预设条目`);
+      else toastr.warning('条目已删除，但当前生效副本刷新失败；重新切换预设后生效');
+    }
+    syncCollapsedGroups();
   } catch (error) {
     toastr.error(error instanceof Error ? error.message : String(error));
   } finally {

@@ -858,6 +858,17 @@ export async function updateWorldbookEntry(bookName: string, uid: number, patch:
 }
 
 export async function deleteWorldbookEntry(bookName: string, uid: number) {
+  return deleteWorldbookEntries(bookName, [uid]);
+}
+
+export async function deleteWorldbookEntries(bookName: string, uids: number[]) {
+  const selected = new Set(uids);
+  if (!selected.size) throw new Error('请选择要删除的世界书条目');
+  const assertPresent = (entries: WorldbookEntry[]) => {
+    if (uids.some(uid => !entries.some(entry => entry.uid === uid))) {
+      throw new Error('部分世界书条目已不存在，请刷新后重试');
+    }
+  };
   const updateWorldbook =
     getOptionalGlobalFunction<
       (
@@ -868,25 +879,21 @@ export async function deleteWorldbookEntry(bookName: string, uid: number) {
     >('updateWorldbookWith');
   if (updateWorldbook) {
     const before = (await loadRawWorldbook(bookName)).entries;
-    if (!before.some(entry => entry.uid === uid)) throw new Error(`世界书条目 #${uid} 已不存在`);
+    assertPresent(before);
     try {
-      let found = false;
       const entries = await updateWorldbook(
         bookName,
-        currentEntries =>
-          currentEntries.filter(entry => {
-            if (entry.uid !== uid) return true;
-            found = true;
-            return false;
-          }),
+        currentEntries => {
+          assertPresent(currentEntries);
+          return currentEntries.filter(entry => !selected.has(entry.uid));
+        },
         { render: 'immediate' },
       );
-      if (!found) throw new Error(`世界书条目 #${uid} 已不存在`);
       return entries;
     } catch (error) {
       if (error instanceof Error && error.message.includes('已不存在')) throw error;
       const after = await verifyRawWorldbookAfterFailure(bookName, '删除世界书条目', error);
-      if (!after.some(entry => entry.uid === uid)) return after;
+      if (!after.some(entry => selected.has(entry.uid))) return after;
       if (!worldbookEntriesEqual(before, after)) throw worldbookWriteUncertain('删除世界书条目', error);
     }
   }
@@ -894,29 +901,25 @@ export async function deleteWorldbookEntry(bookName: string, uid: number) {
   const saveWorldInfo =
     getOptionalGlobalFunction<(name: string, data: unknown, immediately?: boolean) => Promise<void>>('saveWorldInfo');
   if (!saveWorldInfo) throw new Error('当前酒馆环境没有开放世界书条目删除接口');
-  const { book } = await loadRawWorldbook(bookName);
+  const { book, entries } = await loadRawWorldbook(bookName);
+  assertPresent(entries);
   const rawEntries = (book as RawWorldbook).entries;
-  let found = false;
   if (Array.isArray(rawEntries)) {
-    const index = rawEntries.findIndex((value, entryIndex) => {
-      if (!value || typeof value !== 'object') return false;
-      return rawEntryUid(value as RawWorldbookEntry, String(entryIndex)) === uid;
-    });
-    if (index >= 0) {
-      rawEntries.splice(index, 1);
-      found = true;
+    for (let index = rawEntries.length - 1; index >= 0; index -= 1) {
+      const value = rawEntries[index];
+      const uid = value && typeof value === 'object' ? rawEntryUid(value as RawWorldbookEntry, String(index)) : null;
+      if (uid !== null && selected.has(uid)) {
+        rawEntries.splice(index, 1);
+      }
     }
   } else if (rawEntries && typeof rawEntries === 'object') {
-    const targetKey = Object.entries(rawEntries).find(([key, value]) => {
-      if (!value || typeof value !== 'object') return false;
-      return rawEntryUid(value as RawWorldbookEntry, key) === uid;
-    })?.[0];
-    if (targetKey !== undefined) {
-      delete (rawEntries as Record<string, unknown>)[targetKey];
-      found = true;
+    for (const [key, value] of Object.entries(rawEntries)) {
+      const uid = value && typeof value === 'object' ? rawEntryUid(value as RawWorldbookEntry, key) : null;
+      if (uid !== null && selected.has(uid)) {
+        delete (rawEntries as Record<string, unknown>)[key];
+      }
     }
   }
-  if (!found) throw new Error(`世界书条目 #${uid} 已不存在`);
   await saveWorldInfo(bookName, book, true);
   await getOptionalGlobalFunction<() => Promise<void>>('updateWorldInfoList')?.();
   getOptionalGlobalFunction<(file: string, loadIfNotSelected?: boolean) => void>('reloadWorldInfoEditor')?.(

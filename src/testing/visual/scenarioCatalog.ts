@@ -67,7 +67,7 @@ export function createVisualScenarioGroups(rootAppScenarios: string[]): VisualSc
         'card-writer-profile-direct-import-dark',
       ],
     },
-    { id: 'archive', scenarios: ['archive-owner-list', 'archive-current-browser', 'archive-floor-backup'] },
+    { id: 'archive', scenarios: ['archive-owner-list', 'archive-current-browser', 'archive-floor-backup', 'archive-delete-confirm', 'archive-delete-confirm-dark'] },
     {
       id: 'recovery',
       scenarios: [
@@ -185,12 +185,16 @@ export function createVisualScenarioGroups(rootAppScenarios: string[]): VisualSc
         'world-slots-entry-library',
         'world-slots-root-cleanup',
         'world-slots-root-cleanup-dark',
+        'world-slots-conflict',
+        'world-slots-conflict-dark',
       ],
     },
     {
       id: 'worldbook',
       scenarios: [
         'worldbook-link-legacy-entry',
+        'worldbook-bulk-delete',
+        'worldbook-bulk-delete-dark',
         'worldbook-entry-group-selection',
         'worldbook-entry-group-selection-dark',
         'worldbook-entry-editor',
@@ -233,6 +237,10 @@ export function createVisualScenarioGroups(rootAppScenarios: string[]): VisualSc
         'preset-owner-current',
         'preset-owner-history',
         'preset-detail',
+        'preset-bulk-delete',
+        'preset-bulk-delete-dark',
+        'preset-catalog-delete',
+        'preset-catalog-delete-dark',
         'preset-copy-reorder',
         'preset-copy-editor',
         'preset-editor',

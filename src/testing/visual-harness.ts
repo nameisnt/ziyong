@@ -2340,7 +2340,14 @@ async function applyScenario(name: VisualScenarioName, options: { height?: numbe
     if (titleField.value !== '林见夏' || contentArea.value !== profileReference.item.content.trim()) {
       throw new Error('Merged profile reference did not preserve its title and prefix-free content');
     }
-  } else if (name === 'world-slots-root-cleanup' || name === 'world-slots-root-cleanup-dark') {
+  } else if (
+    [
+      'world-slots-root-cleanup',
+      'world-slots-root-cleanup-dark',
+      'world-slots-conflict',
+      'world-slots-conflict-dark',
+    ].includes(name)
+  ) {
     useSettingsStore().setTheme(name.endsWith('-dark') ? 'dark' : 'light');
     const worldSlots = useWorldSlotsStore();
     worldSlots.resetCurrentScope();
@@ -2387,6 +2394,11 @@ async function applyScenario(name: VisualScenarioName, options: { height?: numbe
     const slotsApp = document.querySelector<HTMLElement>('.pc-world-slots-app');
     if (!slotsApp || slotsApp.scrollWidth > slotsApp.clientWidth + 1) {
       throw new Error('Long world slot content expanded the App width');
+    }
+    if (name.startsWith('world-slots-conflict')) {
+      managementTrigger.click();
+      worldSlots.conflicts = [slot.id];
+      await waitForPaint();
     }
   } else if (name === 'world-slots-batch-import') {
     useSettingsStore().setTheme('light');
@@ -3519,7 +3531,8 @@ async function applyScenario(name: VisualScenarioName, options: { height?: numbe
     if (!returned || !currentTab?.textContent?.includes('当前聊天')) {
       throw new Error('Archive random detail did not return to the current-chat browser');
     }
-  } else if (name === 'archive-floor-backup') {
+  } else if (['archive-floor-backup', 'archive-delete-confirm', 'archive-delete-confirm-dark'].includes(name)) {
+    useSettingsStore().setTheme(name.endsWith('-dark') ? 'dark' : 'light');
     await new Promise(resolve => window.setTimeout(resolve, 1000));
     await seedArchiveFloorBackupFixture();
     resetPhoneToRoute('settings', 'root', '设置');
@@ -3542,7 +3555,7 @@ async function applyScenario(name: VisualScenarioName, options: { height?: numbe
     ownerRow.click();
     await waitForVisualCondition(() => Boolean(document.querySelector('.pc-archive-toolbar .pc-icon-btn')));
     await waitForPaint();
-    const chatRefresh = document.querySelector<HTMLButtonElement>('.pc-archive-toolbar .pc-icon-btn');
+    const chatRefresh = document.querySelector<HTMLButtonElement>('.pc-archive-toolbar .pc-icon-btn[aria-label="刷新聊天"]');
     if (!chatRefresh) throw new Error('Archive chat refresh action is missing');
     chatRefresh.click();
     await waitForVisualCondition(() =>
@@ -3552,6 +3565,16 @@ async function applyScenario(name: VisualScenarioName, options: { height?: numbe
     );
     await waitForPaint();
     const chatRows = [...document.querySelectorAll<HTMLButtonElement>('.pc-chat-row')];
+    if (name.startsWith('archive-delete-confirm')) {
+      document.querySelector<HTMLElement>('.pc-archive-toolbar summary')?.click();
+      [...document.querySelectorAll<HTMLButtonElement>('.pc-action-menu-panel button')].find(button => button.textContent?.includes('批量删除'))?.click();
+      await waitForPaint();
+      [...document.querySelectorAll<HTMLButtonElement>('.pc-bulk-selection-bar button')].find(button => button.textContent?.trim() === '全选')?.click();
+      await waitForPaint();
+      [...document.querySelectorAll<HTMLButtonElement>('.pc-bulk-selection-bar button')].find(button => button.textContent?.includes('删除所选'))?.click();
+      await waitForVisualCondition(() => Boolean(document.querySelector('.pc-chat-delete-dialog')));
+      return { name, route: phone.currentRoute };
+    }
     const backupChat = chatRows.find(
       button => button.textContent?.includes('visual-chat.jsonl') && button.textContent.includes('已备份'),
     );
@@ -3616,6 +3639,27 @@ async function applyScenario(name: VisualScenarioName, options: { height?: numbe
         `Built-in diary preset detail did not open from preset management; route=${route.appId}/${route.page}; error=${detailError}`,
       );
     }
+  } else if (name.startsWith('preset-catalog-delete')) {
+    if (name.endsWith('-dark')) useSettingsStore().setTheme('dark');
+    (await import('./visual/memoryFileService')).installMemoryFileService();
+    const store = usePluginPresetStore();
+    await store.whenReady();
+    for (const suffix of ['A', 'B']) {
+      await store.importPreset({ prompts: [{ id: 'test', name: 'Test', role: 'system', content: 'Test', enabled: true }] }, `临时整份删除 ${suffix}.json`);
+    }
+    resetPhoneToRoute('preset-manager', 'root', '预设管理');
+    await waitForVisualCondition(() => Boolean(document.querySelector('.pc-preset-current summary')));
+    (document.querySelector('.pc-preset-current summary') as HTMLElement)?.click();
+    [...document.querySelectorAll<HTMLButtonElement>('.pc-preset-current button')]
+      .find(button => button.textContent?.includes('批量删除预设'))?.click();
+    await waitForVisualCondition(() => Boolean(document.querySelector('.pc-preset-catalog-bulk')));
+  } else if (name.startsWith('preset-bulk-delete')) {
+    resetPhoneToRoute('preset-manager', 'detail', '预设条目', { presetName: '视觉预设' });
+    await waitForVisualCondition(() => Boolean(document.querySelector('.pc-preset-prompt-row')));
+    (document.querySelector('.pc-preset-detail-head summary') as HTMLElement)?.click();
+    [...document.querySelectorAll<HTMLButtonElement>('.pc-preset-detail-head button')]
+      .find(button => button.textContent?.includes('批量删除条目'))?.click();
+    await waitForVisualCondition(() => Boolean(document.querySelector('.pc-preset-bulk-footer')));
   } else if (name === 'preset-detail') {
     resetPhoneToRoute('preset-manager', 'detail', '预设条目', { presetName: '视觉预设' });
   } else if (name === 'preset-copy-reorder') {
@@ -3645,8 +3689,8 @@ async function applyScenario(name: VisualScenarioName, options: { height?: numbe
       throw new Error('Deleted preset prompt remained in the prompt list');
     }
     const remainingPromptIds = preset.prompts.map(prompt => prompt.id);
-    if (readPresetPromptGroups(preset, remainingPromptIds).some(group => group.id === 'visual-group-writing')) {
-      throw new Error('Deleting a preset group boundary did not dissolve its range');
+    if (!readPresetPromptGroups(preset, remainingPromptIds).some(group => group.id === 'visual-group-writing')) {
+      throw new Error('Deleting a preset group boundary removed remaining members');
     }
     resetPhoneToRoute('preset-manager', 'detail', '预设条目', { presetName: '视觉预设' });
   } else if (name === 'preset-copy-editor') {
@@ -3804,6 +3848,14 @@ async function applyScenario(name: VisualScenarioName, options: { height?: numbe
     if (!document.querySelector('.pc-theater-app')) {
       throw new Error('Deferred app mount did not reactivate the cached app when the phone reopened');
     }
+  } else if (name.startsWith('worldbook-bulk-delete')) {
+    if (name.endsWith('-dark')) useSettingsStore().setTheme('dark');
+    resetPhoneToRoute('worldbook-link', 'detail', '【视觉】旧格式世界书', { bookName: '【视觉】旧格式世界书' });
+    await waitForVisualCondition(() => Boolean(document.querySelector('.pc-worldbook-entry')));
+    (document.querySelector('.pc-worldbook-detail-head summary') as HTMLElement)?.click();
+    [...document.querySelectorAll<HTMLButtonElement>('.pc-worldbook-detail-head button')]
+      .find(button => button.textContent?.includes('批量删除条目'))?.click();
+    await waitForVisualCondition(() => Boolean(document.querySelector('.pc-worldbook-bulk-footer')));
   } else if (name === 'worldbook-link-legacy-entry') {
     resetPhoneToRoute('worldbook-link', 'detail', '【视觉】旧格式世界书', { bookName: '【视觉】旧格式世界书' });
     const loaded = await waitForVisualCondition(() => Boolean(document.querySelector('.pc-worldbook-entry')));

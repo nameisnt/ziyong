@@ -1,28 +1,51 @@
 <template>
   <EmptyState v-if="!rows.length && !loading" compact :title="emptyTitle" />
   <div v-else :class="['pc-directory-list pc-chat-list', { scrollable }]">
-    <button
+    <div
       v-for="chat in rows"
       :key="chat.key"
       class="pc-list-row pc-chat-row"
-      type="button"
-      @click="$emit('select', chat)"
+      @click.self="
+        selection
+          ? chat.exists &&
+            selectableIds.includes(chat.key) &&
+            $emit('toggle', chat.key, !selectedIds.includes(chat.key))
+          : $emit('select', chat)
+      "
     >
-      <span class="pc-chat-main">
+      <BulkSelectionCheckbox
+        v-if="selection"
+        :model-value="selectedIds.includes(chat.key)"
+        :disabled="!chat.exists || !selectableIds.includes(chat.key)"
+        :label="`选择聊天 ${chat.title}`"
+        @update:model-value="$emit('toggle', chat.key, $event)"
+      />
+      <button
+        class="pc-chat-main"
+        type="button"
+        @click="
+          selection
+            ? chat.exists &&
+              selectableIds.includes(chat.key) &&
+              $emit('toggle', chat.key, !selectedIds.includes(chat.key))
+            : $emit('select', chat)
+        "
+      >
         <strong>{{ chat.title }}</strong>
         <small>
-          {{ chat.isUsed ? '有手机内容' : '无手机内容'
+          {{ !chat.exists && !chat.isCurrent ? '聊天已不存在 · ' : '' }}{{ chat.isUsed ? '有手机内容' : '无手机内容'
           }}{{ chat.floorBackup ? ` · 已备份 ${chat.floorBackup.messages.length} 层` : ''
           }}{{ chat.isCurrent ? ' · 当前聊天' : '' }}
         </small>
-      </span>
+      </button>
       <span v-if="chat.isUsed" class="pc-count-pill">{{ chat.contentCount }}</span>
-    </button>
+    </div>
   </div>
 </template>
 
 <script setup lang="ts">
 import EmptyState from '@/components/EmptyState.vue';
+import BulkSelectionCheckbox from '@/components/BulkSelectionCheckbox.vue';
 import type { ArchiveChatRow } from '@/apps/archive/useChatArchiveCatalogSession';
 
 withDefaults(
@@ -31,16 +54,23 @@ withDefaults(
     loading?: boolean;
     rows: ArchiveChatRow[];
     scrollable?: boolean;
+    selection?: boolean;
+    selectedIds?: string[];
+    selectableIds?: string[];
   }>(),
   {
     emptyTitle: '暂无聊天',
     loading: false,
     scrollable: false,
+    selection: false,
+    selectedIds: () => [],
+    selectableIds: () => [],
   },
 );
 
 defineEmits<{
   select: [chat: ArchiveChatRow];
+  toggle: [id: string, selected: boolean];
 }>();
 </script>
 
@@ -56,6 +86,11 @@ defineEmits<{
 }
 
 .pc-chat-main {
+  border: 0;
+  background: transparent;
+  color: var(--pc-text);
+  text-align: left;
+  cursor: pointer;
   min-width: 0;
   flex: 1 1 auto;
 }

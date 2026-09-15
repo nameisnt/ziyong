@@ -5,13 +5,21 @@
       'drop-before': dropBefore,
       dragging,
       muted: groupDisabled || !prompt.enabled,
-      'without-drag': !reorderable,
+      'without-drag': !reorderable && !selection,
+      selecting: selection,
     }"
     :data-preset-group-id="groupId"
     :data-preset-prompt-id="prompt.id"
   >
+    <BulkSelectionCheckbox
+      v-if="selection"
+      :model-value="selected"
+      :disabled="busy || !editable"
+      :label="`选择条目 ${prompt.name || prompt.id}`"
+      @update:model-value="$emit('select', prompt.id, $event)"
+    />
     <button
-      v-if="reorderable"
+      v-if="reorderable && !selection"
       class="pc-icon-btn pc-preset-drag-handle"
       type="button"
       :disabled="busy"
@@ -28,8 +36,11 @@
     <button
       class="pc-preset-prompt-main"
       type="button"
-      :title="editable ? '编辑条目内容' : '查看占位条目'"
-      @click="$emit('open', prompt)"
+      :disabled="busy || (selection && !editable)"
+      :title="
+        selection ? (editable ? '选择条目' : '占位条目不参与批量删除') : editable ? '编辑条目内容' : '查看占位条目'
+      "
+      @click="selection ? $emit('select', prompt.id, !selected) : $emit('open', prompt)"
     >
       <span class="pc-preset-prompt-copy">
         <strong :title="prompt.name || prompt.id">{{ prompt.name || prompt.id }}</strong>
@@ -42,7 +53,7 @@
       <i class="fa-solid fa-chevron-right"></i>
     </button>
     <button
-      v-if="editable"
+      v-if="editable && !selection"
       class="pc-icon-btn pc-preset-copy-btn"
       type="button"
       :disabled="busy"
@@ -52,7 +63,7 @@
     >
       <i class="fa-solid fa-copy"></i>
     </button>
-    <label class="pc-toggle" :title="prompt.enabled ? '停用条目' : '启用条目'">
+    <label v-if="!selection" class="pc-toggle" :title="prompt.enabled ? '停用条目' : '启用条目'">
       <input
         type="checkbox"
         :checked="prompt.enabled"
@@ -67,10 +78,13 @@
 
 <script setup lang="ts">
 import type { TavernPresetPrompt } from './api';
+import BulkSelectionCheckbox from '@/components/BulkSelectionCheckbox.vue';
 
 const props = withDefaults(
   defineProps<{
     busy?: boolean;
+    selection?: boolean;
+    selected?: boolean;
     dragging?: boolean;
     dropBefore?: boolean;
     groupId?: string;
@@ -80,6 +94,8 @@ const props = withDefaults(
   }>(),
   {
     busy: false,
+    selection: false,
+    selected: false,
     dragging: false,
     dropBefore: false,
     groupId: '__ungrouped__',
@@ -89,6 +105,7 @@ const props = withDefaults(
 );
 
 defineEmits<{
+  select: [id: string, selected: boolean];
   copy: [prompt: TavernPresetPrompt];
   'drag-cancel': [event: PointerEvent];
   'drag-end': [event: PointerEvent];
@@ -121,6 +138,10 @@ const roleLabel = computed(
 
 .pc-preset-prompt-row.without-drag {
   grid-template-columns: minmax(0, 1fr) auto auto;
+}
+
+.pc-preset-prompt-row.selecting {
+  grid-template-columns: auto minmax(0, 1fr);
 }
 
 .pc-preset-prompt-row.drop-before::before {

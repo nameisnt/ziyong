@@ -8,9 +8,26 @@ const source = await readFile(new URL('../../src/util/tavernChatAliases.ts', imp
 const code = transpileModule(source, {
   compilerOptions: { module: ModuleKind.ESNext, target: ScriptTarget.ES2022 },
 }).outputText;
-const { installTavernAliasProvider, getTavernAliasUnavailableReason } = await import(
+const { installTavernAliasProvider, installNativeUserMacro, getTavernAliasUnavailableReason } = await import(
   `data:text/javascript;base64,${Buffer.from(code).toString('base64')}`
 );
+
+test('native user macro reads the current native identity and unregisters on disposal', () => {
+  const definitions = new Map();
+  let name = 'Native User';
+  const stop = installNativeUserMacro({
+    registerMacro: (key, definition) => definitions.set(key, definition),
+    unregisterMacro: key => definitions.delete(key),
+  }, () => name);
+  const macro = definitions.get('pc_native_user');
+  assert.equal(macro.handler(), 'Native User');
+  assert.equal(fixture().evaluate().names.user, 'User $1');
+  assert.equal(macro.handler(), 'Native User');
+  name = 'Another $& User';
+  assert.equal(macro.handler(), name);
+  stop();
+  assert.equal(definitions.size, 0);
+});
 
 function fixture() {
   let readerState = {

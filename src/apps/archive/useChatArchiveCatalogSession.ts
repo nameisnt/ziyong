@@ -12,6 +12,7 @@ import {
 } from '@/util/chatArchive';
 import { listChatFloorBackups, type ChatFloorBackup } from '@/util/chatFloorBackup';
 import { getOptionalGlobalFunction } from '@/util/runtime';
+import { nativeGroups } from './chatDeletion';
 // eslint-disable-next-line import-x/no-nodejs-modules
 import { characters, getCharacters, getPastCharacterChats } from '@sillytavern/script';
 import { storeToRefs } from 'pinia';
@@ -31,6 +32,7 @@ export interface ArchiveOwner {
 }
 
 export interface ArchiveChatRow {
+  exists: boolean;
   contentCount: number;
   domains: ChatArchiveDomain[];
   floorBackup: ChatFloorBackup | null;
@@ -69,7 +71,9 @@ export function useChatArchiveCatalogSession() {
     if (scope.kind !== 'char' && scope.kind !== 'group') return null;
     return (
       owners.value.find(owner => owner.kind === scope.kind && owner.aliases.has(scope.ownerId)) ??
-      owners.value.find(owner => owner.kind === scope.kind && [...owner.aliases].some(alias => alias === scope.ownerId)) ??
+      owners.value.find(
+        owner => owner.kind === scope.kind && [...owner.aliases].some(alias => alias === scope.ownerId),
+      ) ??
       null
     );
   });
@@ -77,7 +81,10 @@ export function useChatArchiveCatalogSession() {
     const owner = currentOwner.value;
     const scope = currentScope.value;
     if (!owner || !scope.chatId || scope.chatId === '__no_chat__') return null;
-    return createChatRow(owner, scope.chatId, scope.chatId, createChatArchiveDomainReader());
+    return {
+      ...createChatRow(owner, scope.chatId, scope.chatId, createChatArchiveDomainReader()),
+      exists: currentOwnerChatRows.value.some(row => row.key === scope.chatId && row.exists),
+    };
   });
   const visibleOwners = computed(() => {
     const keyword = ownerQuery.value.trim().toLowerCase();
@@ -135,6 +142,25 @@ export function useChatArchiveCatalogSession() {
       const characterOwners = (Array.isArray(characters) ? characters : []).map((character, index) =>
         createCharacterOwner(character, index, usedByOwner),
       );
+      const groupModule = await nativeGroups();
+      groupModule.groups.forEach(group => {
+        const id = String(group.id);
+        characterOwners.push({
+          aliases: new Set([id]),
+          avatar: '',
+          avatarUrl: '',
+          characterId: null,
+          backupChatIds: new Set(),
+          initial: firstDisplayCharacter(group.name, '群'),
+          key: `group:${id}`,
+          kind: 'group',
+          name: group.name,
+          ownerId: id,
+          usedChatIds: new Set(
+            usedScopes.filter(scope => scope.kind === 'group' && scope.ownerId === id).map(scope => scope.chatId),
+          ),
+        });
+      });
       characterOwners.forEach(owner => {
         floorBackups.value
           .filter(backup => isBackupOwnedBy(backup, owner))
@@ -207,7 +233,8 @@ export function useChatArchiveCatalogSession() {
   function resolveCharacterAvatarUrl(avatar: string) {
     const normalized = avatar.trim();
     const fileName = normalized.split(/[\\/]/).pop()?.toLowerCase() ?? '';
-    if (!normalized || ['none', 'default', 'default.png', 'default_avatar.png', 'ai4.png'].includes(fileName)) return '';
+    if (!normalized || ['none', 'default', 'default.png', 'default_avatar.png', 'ai4.png'].includes(fileName))
+      return '';
     const getThumbnailUrl = getOptionalGlobalFunction<(type: string, file: string) => string>('getThumbnailUrl');
     if (getThumbnailUrl) {
       try {
@@ -235,7 +262,10 @@ export function useChatArchiveCatalogSession() {
   }
 
   function normalizeOwnerAlias(value: string) {
-    return value.trim().toLowerCase().replace(/\.[^/.]+$/, '');
+    return value
+      .trim()
+      .toLowerCase()
+      .replace(/\.[^/.]+$/, '');
   }
 
   function isBackupOwnedBy(backup: ChatFloorBackup, owner: ArchiveOwner) {
@@ -391,7 +421,15 @@ export function useChatArchiveCatalogSession() {
 
   async function buildChatRowsForOwner(owner: ArchiveOwner) {
     const [briefs, loadedBackups] = await Promise.all([
-      owner.characterId === null ? Promise.resolve([]) : getPastCharacterChats(owner.characterId),
+      owner.kind === 'group'
+        ? nativeGroups().then(module =>
+            (module.groups.find(group => String(group.id) === owner.ownerId)?.chats ?? []).map(name => ({
+              file_name: `${name}.jsonl`,
+            })),
+          )
+        : owner.characterId === null
+          ? Promise.resolve([])
+          : getPastCharacterChats(owner.characterId),
       loadFloorBackupsSafe(),
     ]);
     floorBackups.value = loadedBackups;
@@ -407,10 +445,11 @@ export function useChatArchiveCatalogSession() {
     const domainReader = createChatArchiveDomainReader();
     normalizedBriefs.forEach(brief => {
       const chatId = normalizeChatArchiveId(brief.fileName);
-      rows.set(chatId, createChatRow(owner, chatId, brief.title, domainReader));
+      rows.set(chatId, { ...createChatRow(owner, chatId, brief.title, domainReader), exists: true });
     });
     owner.usedChatIds.forEach(chatId => {
-      if (!rows.has(chatId)) rows.set(chatId, createChatRow(owner, chatId, formatArchiveChatTitle(chatId), domainReader));
+      if (!rows.has(chatId))
+        rows.set(chatId, createChatRow(owner, chatId, formatArchiveChatTitle(chatId), domainReader));
     });
     owner.backupChatIds.forEach(chatId => {
       if (!rows.has(chatId)) {
@@ -434,6 +473,7 @@ export function useChatArchiveCatalogSession() {
   ): ArchiveChatRow {
     const { domains, scopeKey } = findChatScope(owner, chatId, domainReader);
     return {
+      exists: false,
       contentCount: domains.reduce((sum, domain) => sum + domain.items, 0),
       domains,
       floorBackup: findFloorBackup(owner, chatId),

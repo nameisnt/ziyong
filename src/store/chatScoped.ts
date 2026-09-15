@@ -11,6 +11,14 @@ interface ChatScopedEnvelope {
   scopes: Record<string, unknown>;
 }
 
+const liveScopedDomains = new Set<{ flush: () => void; reload: () => void }>();
+export function flushChatScopedDomains() {
+  liveScopedDomains.forEach(domain => domain.flush());
+}
+export function reloadChatScopedDomains() {
+  liveScopedDomains.forEach(domain => domain.reload());
+}
+
 function isRecord(value: unknown): value is Record<string, unknown> {
   return Boolean(value) && typeof value === 'object' && !Array.isArray(value);
 }
@@ -345,7 +353,10 @@ export function useChatScopedDomain<T>(options: { field: string; schema: ZodType
   const stopChatChanged = onTavernEvent('CHAT_CHANGED', () => {
     switchScope(getCurrentChatScopeKey());
   });
+  const liveDomain = { flush: persistCurrentScope, reload: rehydrateFromSettings };
+  liveScopedDomains.add(liveDomain);
   onScopeDispose(() => {
+    liveScopedDomains.delete(liveDomain);
     if (persistTimer !== null) persistCurrentScope();
     stopChatChanged.stop();
   });

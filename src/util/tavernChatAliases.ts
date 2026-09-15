@@ -4,12 +4,24 @@ type MacroEnvironment = { names: { char: string; user: string } };
 type MacroInput = { name1Override?: string | null; name2Override?: string | null };
 type AliasReaderState = GenerationAliases & { nativeChar: string; nativeUser: string };
 type MacroProvider = (env: MacroEnvironment, input: MacroInput) => void;
+type MacroRegistry = {
+  registerMacro: (name: string, definition: { handler: () => string; description: string }) => void;
+  unregisterMacro: (name: string) => void;
+};
 export type TavernAliasContext = {
   name1: string;
   name2: string;
-  macros?: { envBuilder?: { registerProvider: (provider: MacroProvider) => void } };
+  macros?: { envBuilder?: { registerProvider: (provider: MacroProvider) => void }; registry?: MacroRegistry };
   powerUserSettings?: { experimental_macro_engine?: boolean };
 };
+
+export function installNativeUserMacro(registry: MacroRegistry, readNativeUser: () => string) {
+  registry.registerMacro('pc_native_user', {
+    description: '酒馆原始用户名，不受插件替换称呼影响',
+    handler: readNativeUser,
+  });
+  return () => registry.unregisterMacro('pc_native_user');
+}
 
 export function getTavernAliasUnavailableReason(context: Partial<TavernAliasContext>) {
   if (typeof context.macros?.envBuilder?.registerProvider !== 'function') return '当前酒馆不支持称呼扩展接口';

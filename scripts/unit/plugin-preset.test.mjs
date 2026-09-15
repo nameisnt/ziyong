@@ -196,7 +196,7 @@ test('raw array imports keep array exports until prompt groups require an object
   );
 });
 
-test('duplicating a range end extends the group and deleting a boundary dissolves it', () => {
+test('duplicating a range end extends the group and deleting a boundary preserves remaining members', () => {
   const raw = legacyPreset();
   raw.extensions = {
     baibaiToolkit: {
@@ -221,5 +221,6 @@ test('duplicating a range end extends the group and deleting a boundary dissolve
   assert.equal(presetRecord.raw.extensions.baibaiToolkit.presetPromptGroups.groups[0].startPromptId, copiedId);
   assert.equal(presetRecord.raw.extensions.baibaiToolkit.presetPromptGroups.groups[0].endPromptId, 'main');
   model.deletePluginPresetPrompt(presetRecord, copiedId);
-  assert.deepEqual(presetRecord.raw.extensions.baibaiToolkit.presetPromptGroups.groups, []);
+  assert.equal(presetRecord.raw.extensions.baibaiToolkit.presetPromptGroups.groups[0].startPromptId, 'main');
+  assert.equal(presetRecord.raw.extensions.baibaiToolkit.presetPromptGroups.groups[0].endPromptId, 'main');
 });

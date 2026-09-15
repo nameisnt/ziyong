@@ -60,13 +60,18 @@ test('range updates reject reversed and overlapping boundaries', () => {
   assert.equal(root.extensions.baibaiToolkit.presetPromptGroups.groups[1].startPromptId, 'fourth');
 });
 
-test('copying the range end extends it and deleting either boundary dissolves the group', () => {
+test('copying the range end extends it and deleting a boundary retains remaining members', () => {
   const root = legacyRoot();
   const copiedIds = ['first', 'second', 'third', 'copy', 'fourth'];
   groups.extendPresetPromptGroupAfterDuplicate(root, copiedIds, 'third', 'copy');
   assert.equal(root.extensions.baibaiToolkit.presetPromptGroups.groups[0].endPromptId, 'copy');
 
   groups.removePresetPromptBoundaryGroups(root, copiedIds, 'copy');
+  assert.equal(root.extensions.baibaiToolkit.presetPromptGroups.groups[0].endPromptId, 'third');
+  groups.removePresetPromptBoundaryGroups(root, ['first', 'second', 'third', 'fourth'], 'first');
+  assert.equal(root.extensions.baibaiToolkit.presetPromptGroups.groups[0].startPromptId, 'second');
+  groups.removePresetPromptBoundaryGroups(root, ['second', 'third', 'fourth'], 'second');
+  groups.removePresetPromptBoundaryGroups(root, ['third', 'fourth'], 'third');
   assert.deepEqual(root.extensions.baibaiToolkit.presetPromptGroups.groups, []);
 });
 

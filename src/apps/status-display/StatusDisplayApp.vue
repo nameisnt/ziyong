@@ -34,6 +34,9 @@
       </EmptyState>
     </div>
     <div v-else-if="activeScheme && renderedHtml" class="pc-status-content">
+      <div class="pc-compact-toolbar">
+        <span class="pc-list-row-meta">{{ activeScheme.shared ? '跨聊天共享方案' : '当前聊天专用方案' }}</span>
+      </div>
       <FrontendFrame
         :active="isActive"
         :content="renderedHtml"

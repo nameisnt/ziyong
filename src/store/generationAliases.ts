@@ -2,6 +2,7 @@ import { getCurrentChatScopeKey, isPlaceholderChatScopeKey, useChatScopedDomain 
 import {
   getTavernAliasUnavailableReason,
   installTavernAliasProvider,
+  installNativeUserMacro,
   type TavernAliasContext,
 } from '@/util/tavernChatAliases';
 import { validateInplace } from '@/util/zod';
@@ -43,9 +44,16 @@ export const useGenerationAliasesStore = defineStore('generationAliases', () => 
   });
   const tavernAliasUnavailableReason = ref('');
   let stopProvider: (() => void) | undefined;
+  let stopNativeUserMacro: (() => void) | undefined;
   function refreshTavernAliasSupport() {
     const context = getSillyTavernContext() as TavernAliasContext | null;
     tavernAliasUnavailableReason.value = getTavernAliasUnavailableReason(context ?? {});
+    if (!stopNativeUserMacro && context?.macros?.registry) {
+      stopNativeUserMacro = installNativeUserMacro(
+        context.macros.registry,
+        () => (getSillyTavernContext() as TavernAliasContext).name1,
+      );
+    }
     if (stopProvider || !context?.macros?.envBuilder?.registerProvider) return;
     stopProvider = installTavernAliasProvider(context.macros.envBuilder, () => {
       if (!data.value.applyToTavern) return null;
@@ -57,7 +65,10 @@ export const useGenerationAliasesStore = defineStore('generationAliases', () => 
     });
   }
   refreshTavernAliasSupport();
-  onScopeDispose(() => stopProvider?.());
+  onScopeDispose(() => {
+    stopProvider?.();
+    stopNativeUserMacro?.();
+  });
 
   return {
     charReplacement,

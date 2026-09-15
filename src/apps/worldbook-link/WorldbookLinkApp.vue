@@ -36,7 +36,9 @@
       :bulk-all-selected="entryBulkAllSelected"
       :bulk-selected-count="entryBulkSelectedIds.length"
       :bulk-selected-uids="selectedEntryUids"
-      :busy="busy"
+      :bulk-delete="entryBulkMode === 'delete'"
+      :selectable-uids="selectableEntryUids"
+      :busy="busy || entryBusyUids.size > 0"
       :category-label="activeCategoryLabel"
       :entry-busy-uids="entryBusyUids"
       :entry-groups="managedEntryGroups"
@@ -50,12 +52,15 @@
       @cancel-bulk="cancelEntryBulk"
       @capture-profile="captureCurrentProfile"
       @convert-selected="convertSelectedEntriesToTheaterTypes"
+      @delete-selected="removeSelectedEntries"
+      @select-group="selectEntryGroup"
       @copy-entry="openEntryCopy"
       @create-entry-group="createEntryGroup"
       @open-entry="openEntryEditor"
       @rename-book="renameCurrentBook"
       @set-selected="setEntrySelected"
-      @start-bulk="startEntryBulk"
+      @start-bulk="beginEntryBulk('convert')"
+      @start-delete="beginEntryBulk('delete')"
       @toggle-all="toggleAllEntries"
       @toggle-selected="toggleEntrySelected"
       @toggle-entry="toggleWorldbookEntry"
@@ -93,12 +98,11 @@ import EmptyState from '@/components/EmptyState.vue';
 import { useBulkSelection } from '@/composables/useBulkSelection';
 import { usePhoneStore } from '@/store/phone';
 import { usePromptStore } from '@/store/prompts';
-import {
-  type WorldbookEntryGroupSelectionMode,
-  useWorldbookCatalogGroupStore,
-} from '@/store/worldbookCatalogGroups';
+import { useWorldSlotsStore, WORLD_SLOTS_BOOK_NAME } from '@/apps/world-slots/store';
+import { type WorldbookEntryGroupSelectionMode, useWorldbookCatalogGroupStore } from '@/store/worldbookCatalogGroups';
 import {
   deleteWorldbookEntry,
+  deleteWorldbookEntries,
   duplicateWorldbookEntry,
   getCurrentWorldbookGroups,
   renameWorldbookSafely,
@@ -117,6 +121,8 @@ const phone = usePhoneStore();
 const prompts = usePromptStore();
 const worldbookLinks = useWorldbookLinkStore();
 const catalogGroups = useWorldbookCatalogGroupStore();
+const worldSlots = useWorldSlotsStore();
+const entryBulkMode = ref<'convert' | 'delete'>('convert');
 const route = computed(() => phone.currentRoute);
 const categories: Array<{ id: WorldbookCategoryId; label: string }> = [
   { id: 'global', label: '全局' },
@@ -246,8 +252,25 @@ const visibleEntryCount = computed(() =>
   visibleEntrySections.value.reduce((sum, section) => sum + section.entries.length, 0),
 );
 const visibleEntryUids = computed(() =>
-  visibleEntrySections.value.flatMap(section => section.entries.map(entry => String(entry.uid))),
+  visibleEntrySections.value.flatMap(section =>
+    section.entries
+      .filter(entry => entryBulkMode.value !== 'delete' || !isSlotEntry(entry.uid))
+      .map(entry => String(entry.uid)),
+  ),
 );
+const selectableEntryUids = computed(() => new Set(visibleEntryUids.value.map(Number)));
+function isSlotEntry(uid: number) {
+  return detailBookName.value === WORLD_SLOTS_BOOK_NAME && worldSlots.slots.some(slot => slot.worldEntryId === uid);
+}
+function beginEntryBulk(mode: 'convert' | 'delete') {
+  if (busy.value || entryBusyUids.value.size) return;
+  entryBulkMode.value = mode;
+  startEntryBulk();
+}
+function selectEntryGroup(uids: number[], selected: boolean) {
+  if (busy.value) return;
+  uids.filter(uid => selectableEntryUids.value.has(uid)).forEach(uid => setEntrySelected(uid, selected));
+}
 const {
   active: entryBulkActive,
   allSelected: entryBulkAllSelected,
@@ -710,6 +733,7 @@ function convertEditingEntryToTheaterType() {
 }
 
 function setEntrySelected(uid: number, selected: boolean) {
+  if (busy.value || !selectableEntryUids.value.has(uid)) return;
   setEntryBulkSelected(String(uid), selected);
 }
 
@@ -739,6 +763,10 @@ async function convertSelectedEntriesToTheaterTypes() {
 async function removeEditingEntry() {
   const entry = editingEntry.value;
   if (!entry || entryEditorBusy.value) return;
+  if (isSlotEntry(entry.uid)) {
+    toastr.warning('该条目由世界书槽位管理，请到槽位中删除');
+    return;
+  }
   const confirmed = await phone.confirmNotice(
     `要从世界书“${detailBookName.value}”中删除条目“${entry.name || `条目 #${entry.uid}`}”吗？此操作不可撤销。`,
     { confirmLabel: '删除', kind: 'warning', title: '删除世界书条目' },
@@ -756,6 +784,48 @@ async function removeEditingEntry() {
     toastr.error(error instanceof Error ? error.message : '删除世界书条目失败');
   } finally {
     entryEditorBusy.value = false;
+  }
+}
+
+async function removeSelectedEntries() {
+  if (busy.value || entryBusyUids.value.size || !entryBulkSelectedIds.value.length) return;
+  const bookName = detailBookName.value;
+  const scope = currentScopeKey.value;
+  const uids = [...selectedEntryUids.value];
+  if (uids.some(isSlotEntry)) {
+    toastr.warning('槽位托管条目请到世界书槽位中删除');
+    return;
+  }
+  const entries = (detailStatus.value?.currentEntries ?? []).filter(entry => uids.includes(entry.uid));
+  if (
+    !(await phone.confirmNotice(
+      `从酒馆世界书“${bookName}”删除 ${entries.length} 个条目？此操作不可撤销，对应的插件分组和联动引用也会清理。\n${entries.map(entry => entry.name || `条目 #${entry.uid}`).join('\n')}`,
+      { title: '批量删除世界书条目', confirmLabel: '删除所选', kind: 'warning' },
+    ))
+  )
+    return;
+  if (busy.value || entryBusyUids.value.size || bookName !== detailBookName.value || scope !== currentScopeKey.value)
+    return;
+  busy.value = true;
+  let deleted = false;
+  try {
+    const remaining = await deleteWorldbookEntries(bookName, uids);
+    deleted = true;
+    uids.forEach(uid => {
+      worldbookLinks.removeEntryReferences(bookName, uid);
+      catalogGroups.removeEntry(bookName, uid);
+    });
+    if (scope === currentScopeKey.value && bookName === detailBookName.value) {
+      detailStatus.value = await worldbookLinks.getStatus(scope, bookName, remaining);
+      cancelEntryBulk();
+    }
+    toastr.success(`已删除 ${uids.length} 个世界书条目`);
+  } catch (error) {
+    toastr.error(
+      `${deleted ? '条目已删除，但关联清理或列表刷新失败：' : ''}${error instanceof Error ? error.message : String(error)}`,
+    );
+  } finally {
+    busy.value = false;
   }
 }
 
@@ -783,15 +853,20 @@ async function commitEntryStates(bookName: string, scopeKey: string, states: Map
   const affectedUids = [...states.keys()];
   entryBusyUids.value = new Set([...entryBusyUids.value, ...affectedUids]);
   const previous = entryMutationQueues.get(bookName) ?? Promise.resolve();
-  const mutation = previous.catch(() => undefined).then(async () => {
-    const result = await setWorldbookEntryStates(bookName, states, false);
-    const status = worldbookLinks.getProfile(scopeKey, bookName)
-      ? worldbookLinks.captureProfileFromEntries(scopeKey, bookName, result.entries)
-      : await worldbookLinks.getStatus(scopeKey, bookName, result.entries);
-    if (currentScopeKey.value === scopeKey && detailBookName.value === bookName) detailStatus.value = status;
-    return result;
-  });
-  const settled = mutation.then(() => undefined, () => undefined);
+  const mutation = previous
+    .catch(() => undefined)
+    .then(async () => {
+      const result = await setWorldbookEntryStates(bookName, states, false);
+      const status = worldbookLinks.getProfile(scopeKey, bookName)
+        ? worldbookLinks.captureProfileFromEntries(scopeKey, bookName, result.entries)
+        : await worldbookLinks.getStatus(scopeKey, bookName, result.entries);
+      if (currentScopeKey.value === scopeKey && detailBookName.value === bookName) detailStatus.value = status;
+      return result;
+    });
+  const settled = mutation.then(
+    () => undefined,
+    () => undefined,
+  );
   entryMutationQueues.set(bookName, settled);
   void settled.finally(() => {
     if (entryMutationQueues.get(bookName) === settled) entryMutationQueues.delete(bookName);

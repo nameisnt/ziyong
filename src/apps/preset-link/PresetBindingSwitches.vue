@@ -1,7 +1,7 @@
 <template>
   <section class="pc-page-section pc-binding-switches">
     <div class="pc-compact-toolbar">
-      <strong>绑定条目开关</strong>
+      <strong>绑定配置：条目开关</strong>
       <label class="pc-toggle">
         <input
           type="checkbox"

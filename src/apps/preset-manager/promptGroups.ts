@@ -241,7 +241,16 @@ export function extendPresetPromptGroupAfterDuplicate(
 export function removePresetPromptBoundaryGroups(root: PromptGroupRoot, promptIds: string[], promptId: string) {
   if (!rawPromptGroupState(root)) return;
   const state = writePresetPromptGroups(root, promptIds);
-  state.groups = state.groups.filter(group => group.startPromptId !== promptId && group.endPromptId !== promptId);
+  state.groups = state.groups.filter(group => {
+    const start = promptIds.indexOf(group.startPromptId);
+    const end = promptIds.indexOf(group.endPromptId);
+    if (start < 0 || end < 0) return true;
+    const remaining = promptIds.slice(start, end + 1).filter(id => id !== promptId);
+    if (!remaining.length) return false;
+    group.startPromptId = remaining[0]!;
+    group.endPromptId = remaining[remaining.length - 1]!;
+    return true;
+  });
 }
 
 export function rebasePresetPromptGroupRanges(

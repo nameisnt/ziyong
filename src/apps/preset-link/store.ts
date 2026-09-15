@@ -555,6 +555,19 @@ export const usePresetLinkStore = defineStore('preset-link', () => {
     return changed;
   }
 
+  function removePromptReferences(presetName: string, promptIds: string[]) {
+    const remove = (states: PresetPromptStates | undefined) => {
+      if (states) promptIds.forEach(id => delete states[id]);
+    };
+    Object.values(settings.value.bindings).forEach(binding => {
+      if (binding.presetName === presetName) remove(binding.promptStates);
+    });
+    if (settings.value.activePromptOverride?.presetName === presetName) {
+      remove(settings.value.activePromptOverride.states);
+    }
+    revision.value += 1;
+  }
+
   function importBackup(data: unknown) {
     settings.value = readSettings(data);
     revision.value += 1;
@@ -580,6 +593,7 @@ export const usePresetLinkStore = defineStore('preset-link', () => {
     migratePresetReferences,
     removeBinding,
     removePresetReferences,
+    removePromptReferences,
     renameScope,
     resetCurrentScope,
     revision,

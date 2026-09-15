@@ -28,6 +28,28 @@
         </button>
       </div>
 
+      <div v-for="id in conflicts" :key="id" class="pc-page-section" role="alert">
+        <p>{{ worldSlots.getSlot(id)?.title }}：槽位与世界书均有修改，请选择保留内容。</p>
+        <div class="pc-form-actions">
+          <button
+            class="pc-soft-btn"
+            type="button"
+            :disabled="isSyncing || resolvingConflict"
+            @click="resolveConflict(id, 'worldbook')"
+          >
+            采用世界书
+          </button>
+          <button
+            class="pc-primary-btn"
+            type="button"
+            :disabled="isSyncing || resolvingConflict"
+            @click="resolveConflict(id, 'slot')"
+          >
+            保留槽位
+          </button>
+        </div>
+      </div>
+
       <section class="pc-compact-toolbar pc-world-search-toolbar">
         <label class="pc-search-field">
           <i class="fa-solid fa-magnifying-glass"></i>
@@ -272,7 +294,23 @@ import { storeToRefs } from 'pinia';
 
 const phone = usePhoneStore();
 const worldSlots = useWorldSlotsStore();
-const { isCurrentChatScope, slots, syncError, syncStatus } = storeToRefs(worldSlots);
+const { conflicts, isCurrentChatScope, slots, syncError, syncStatus } = storeToRefs(worldSlots);
+const resolvingConflict = ref(false);
+
+async function resolveConflict(id: string, source: 'slot' | 'worldbook') {
+  resolvingConflict.value = true;
+  try {
+    await worldSlots.resolveConflict(id, source);
+  } catch (error) {
+    toastr.error(error instanceof Error ? error.message : String(error));
+  } finally {
+    resolvingConflict.value = false;
+  }
+}
+
+onMounted(() => {
+  void worldSlots.refreshFromWorldbook().catch(error => toastr.error(String(error)));
+});
 const route = computed(() => phone.currentRoute);
 const query = ref('');
 const syncing = ref(false);

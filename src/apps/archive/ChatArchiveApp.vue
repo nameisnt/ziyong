@@ -183,6 +183,11 @@
     <section v-else-if="route.page === 'chats' && activeOwner" class="pc-archive-page">
       <div class="pc-compact-toolbar pc-directory-toolbar pc-archive-toolbar">
         <span class="pc-directory-count">{{ chatRows.length }} {{ t`个聊天` }}</span>
+        <ActionMenu icon-only label="管理聊天" icon="fa-solid fa-bars"
+          ><button type="button" :disabled="!selectableChatIds.length" @click="chatSelection.start()">
+            <i class="fa-solid fa-list-check"></i>批量删除
+          </button></ActionMenu
+        >
         <button
           class="pc-icon-btn"
           type="button"
@@ -195,10 +200,40 @@
         </button>
       </div>
 
-      <ChatArchiveChatList :loading="loadingChats" :rows="chatRows" @select="openChat" />
+      <BulkSelectionBar
+        v-if="chatSelection.active.value"
+        :all-selected="chatSelection.allSelected.value"
+        :selected-count="chatSelection.selectedIds.value.length"
+        :total-count="selectableChatIds.length"
+        @cancel="chatSelection.cancel"
+        @toggle-all="chatSelection.toggleAll"
+        @remove="requestChatDeletion(chatRows.filter(chat => chatSelection.selectedIdSet.value.has(chat.key)))"
+      />
+      <ChatArchiveChatList
+        :loading="loadingChats"
+        :rows="chatRows"
+        :selection="chatSelection.active.value"
+        :selected-ids="chatSelection.selectedIds.value"
+        :selectable-ids="selectableChatIds"
+        @toggle="chatSelection.setSelected"
+        @select="openChat"
+      />
     </section>
 
     <section v-else-if="route.page === 'detail' && activeOwner && selectedChat" class="pc-archive-page">
+      <div class="pc-compact-toolbar pc-directory-toolbar">
+        <span v-if="!selectedChat.exists">聊天已不存在，仅保留插件资料</span
+        ><ActionMenu icon-only label="管理聊天" icon="fa-solid fa-bars"
+          ><button
+            type="button"
+            class="danger"
+            :disabled="!selectedChat.exists || (isSelectedCurrentChat && deletionGenerationBusy)"
+            @click="requestChatDeletion([selectedChat])"
+          >
+            <i class="fa-solid fa-trash"></i>删除聊天
+          </button></ActionMenu
+        >
+      </div>
       <article class="pc-page-section pc-floor-backup-card">
         <div class="pc-domain-head">
           <div>
@@ -243,8 +278,8 @@
 
       <div v-if="!isSelectedCurrentChat" class="pc-page-section pc-readonly-card">
         <div class="pc-readonly-copy">
-          <strong>{{ t`历史聊天只读` }}</strong>
-          <p>{{ t`第一版不会切换酒馆当前聊天，因此此处禁用生成，只用于查看已保存内容。` }}</p>
+          <strong>{{ t`非当前聊天` }}</strong>
+          <p>{{ t`可查看和管理此聊天的档案；生成和楼层恢复需先切换到该聊天。` }}</p>
         </div>
         <div class="pc-readonly-actions">
           <button
@@ -298,10 +333,23 @@
       :restoring="restoringFloorBackup"
     />
   </section>
+  <ChatDeleteModal
+    v-if="deleteRequest"
+    :owner="deleteRequest.owner"
+    :chats="deleteRequest.chats"
+    @close="deleteRequest = null"
+    @finished="afterChatDeletion"
+  />
 </template>
 
 <script setup lang="ts">
 import EmptyState from '@/components/EmptyState.vue';
+import ActionMenu from '@/components/ActionMenu.vue';
+import BulkSelectionBar from '@/components/BulkSelectionBar.vue';
+import ChatDeleteModal from './ChatDeleteModal.vue';
+import { useBulkSelection } from '@/composables/useBulkSelection';
+import { nativeChatIsGenerating } from './chatDeletion';
+import { onTavernEvent } from '@/util/runtime';
 import ChatArchiveChatList from '@/apps/archive/ChatArchiveChatList.vue';
 import ChatArchiveFloorBackupPage from '@/apps/archive/ChatArchiveFloorBackupPage.vue';
 import {
@@ -324,7 +372,7 @@ import {
   deleteChatFloorBackup,
   downloadChatFloorBackup,
   getCurrentChatFloorMessageCount,
-  isChatFloorBackupForTarget,
+  rebindChatFloorBackupForImport,
   parseChatFloorBackupFile,
   restoreChatFloorBackupToCurrent,
   saveChatFloorBackup,
@@ -367,6 +415,50 @@ const {
   selectedDomains,
   visibleOwners,
 } = useChatArchiveCatalogSession();
+const nativeGenerationBusy = ref(false);
+const deletionGenerationBusy = computed(() => nativeGenerationBusy.value || generationTasks.activeTasks.length > 0);
+const generationListeners = [
+  onTavernEvent('GENERATION_STARTED', () => {
+    nativeGenerationBusy.value = true;
+  }),
+  onTavernEvent('GENERATION_ENDED', () => {
+    nativeGenerationBusy.value = false;
+  }),
+  onTavernEvent('GENERATION_STOPPED', () => {
+    nativeGenerationBusy.value = false;
+  }),
+];
+onMounted(() => {
+  void nativeChatIsGenerating().then(value => {
+    nativeGenerationBusy.value = value;
+  });
+});
+onBeforeUnmount(() => generationListeners.forEach(listener => listener.stop()));
+const selectableChatIds = computed(() =>
+  chatRows.value.filter(chat => chat.exists && !(chat.isCurrent && deletionGenerationBusy.value)).map(chat => chat.key),
+);
+const chatSelection = useBulkSelection(selectableChatIds);
+const deleteRequest = shallowRef<{ owner: ArchiveOwner; chats: ArchiveChatRow[] } | null>(null);
+watch(
+  () => route.value.params?.ownerKey,
+  () => chatSelection.cancel(),
+);
+function requestChatDeletion(chats: ArchiveChatRow[]) {
+  if (!activeOwner.value || !chats.length) return;
+  deleteRequest.value = {
+    owner: { ...activeOwner.value, aliases: new Set(activeOwner.value.aliases) },
+    chats: [...chats],
+  };
+}
+async function afterChatDeletion() {
+  chatSelection.cancel();
+  await phone.syncCurrentTavernScope();
+  await loadCharacters(true);
+  await refreshSelectedChatRow();
+  if (route.value.page === 'detail' && !selectedChat.value && activeOwner.value) {
+    phone.replacePage('chats', activeOwner.value.name, { ownerKey: activeOwner.value.key });
+  }
+}
 const migratingChat = ref(false);
 const restoringFloorBackup = ref(false);
 const savingFloorBackup = ref(false);
@@ -525,17 +617,15 @@ function exportCurrentFloorBackup() {
 }
 
 async function importFloorBackupFor(file: File, owner: ArchiveOwner, chat: ArchiveChatRow) {
-  const backup = await parseChatFloorBackupFile(file);
-  if (
-    !isChatFloorBackupForTarget(backup, {
-      aliases: owner.aliases,
-      avatar: owner.avatar,
-      chatId: chat.key,
-      kind: owner.kind,
-    })
-  ) {
-    throw new Error('备份中的角色卡或聊天名与当前档案不一致，已停止导入');
-  }
+  const backup = rebindChatFloorBackupForImport(await parseChatFloorBackupFile(file), {
+    aliases: owner.aliases,
+    avatar: owner.avatar,
+    ownerId: owner.ownerId,
+    name: owner.name,
+    chatId: chat.key,
+    chatTitle: chat.title,
+    kind: owner.kind,
+  });
   const existing = chat.floorBackup;
   if (
     existing &&

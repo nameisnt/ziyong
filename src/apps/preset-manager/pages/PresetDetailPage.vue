@@ -3,6 +3,9 @@
     <header class="pc-compact-toolbar pc-directory-toolbar pc-preset-detail-head">
       <div class="pc-directory-leading">
         <ActionMenu align="start" icon-only label="管理" icon="fa-solid fa-bars">
+          <button type="button" :disabled="mutationBusy || !selectableIds.length" @click="selection.start()">
+            <i class="fa-solid fa-list-check"></i><span>批量删除条目</span>
+          </button>
           <button type="button" :disabled="mutationBusy" @click="groupManagerOpen = true">
             <i class="fa-solid fa-folder-tree"></i><span>管理条目分组</span>
           </button>
@@ -92,12 +95,15 @@
       >
         <PresetPromptRow
           v-if="node.type === 'prompt'"
-          :busy="busyPromptIds.has(node.prompt.id)"
+          :busy="(mutationBusy && !promptDrag.isDragging) || busyPromptIds.has(node.prompt.id)"
+          :selection="selection.active.value"
+          :selected="selection.selectedIdSet.value.has(node.prompt.id)"
           :dragging="promptDrag.promptId === node.prompt.id && promptDrag.isDragging"
           :drop-before="promptDrag.insertBeforeId === node.prompt.id"
           group-id="__ungrouped__"
           :prompt="node.prompt"
           :reorderable="!enabledOnly"
+          @select="selection.setSelected"
           @copy="$emit('copy-prompt', $event)"
           @drag-cancel="$emit('drag-cancel', $event)"
           @drag-end="$emit('drag-end', $event)"
@@ -108,27 +114,48 @@
         />
 
         <section v-else class="pc-preset-group">
-          <button class="pc-preset-group-head" type="button" @click="$emit('toggle-group', node.group.id)">
-            <i class="fa-solid fa-chevron-right" :class="{ expanded: !collapsedGroupIds.has(node.group.id) }"></i>
-            <span>
-              <strong>{{ node.group.name }}</strong>
-              <small>
-                {{ node.prompts.filter(prompt => prompt.enabled).length }}/{{ node.prompts.length }} 启用
-                <template v-if="!node.group.enabled"> · 组已停用</template>
-              </small>
-            </span>
-          </button>
-          <div v-if="!collapsedGroupIds.has(node.group.id)" class="pc-preset-group-body">
+          <div class="pc-preset-group-selection-head">
+            <BulkSelectionCheckbox
+              v-if="selection.active.value"
+              :label="`选择分组 ${node.group.name}`"
+              :disabled="mutationBusy || !groupSelectableIds(node.prompts).length"
+              :model-value="groupSelected(node.prompts)"
+              @update:model-value="selectGroup(node.prompts, $event)"
+            />
+            <button
+              class="pc-preset-group-head"
+              type="button"
+              :disabled="mutationBusy"
+              @click="
+                selection.active.value
+                  ? selectGroup(node.prompts, !groupSelected(node.prompts))
+                  : $emit('toggle-group', node.group.id)
+              "
+            >
+              <i class="fa-solid fa-chevron-right" :class="{ expanded: !collapsedGroupIds.has(node.group.id) }"></i>
+              <span>
+                <strong>{{ node.group.name }}</strong>
+                <small>
+                  {{ node.prompts.filter(prompt => prompt.enabled).length }}/{{ node.prompts.length }} 启用
+                  <template v-if="!node.group.enabled"> · 组已停用</template>
+                </small>
+              </span>
+            </button>
+          </div>
+          <div v-if="selection.active.value || !collapsedGroupIds.has(node.group.id)" class="pc-preset-group-body">
             <PresetPromptRow
               v-for="prompt in node.prompts"
               :key="prompt.id"
-              :busy="busyPromptIds.has(prompt.id)"
+              :busy="(mutationBusy && !promptDrag.isDragging) || busyPromptIds.has(prompt.id)"
+              :selection="selection.active.value"
+              :selected="selection.selectedIdSet.value.has(prompt.id)"
               :dragging="promptDrag.promptId === prompt.id && promptDrag.isDragging"
               :drop-before="promptDrag.insertBeforeId === prompt.id"
               :group-id="node.group.id"
               :group-disabled="!node.group.enabled"
               :prompt="prompt"
               :reorderable="!enabledOnly"
+              @select="selection.setSelected"
               @copy="$emit('copy-prompt', $event)"
               @drag-cancel="$emit('drag-cancel', $event)"
               @drag-end="$emit('drag-end', $event)"
@@ -146,6 +173,18 @@
       />
     </div>
     <EmptyState v-else-if="loading" title="正在读取预设" />
+
+    <BulkSelectionBar
+      v-if="selection.active.value"
+      class="pc-preset-bulk-footer"
+      :busy="mutationBusy"
+      :all-selected="selection.allSelected.value"
+      :selected-count="selection.selectedIds.value.length"
+      :total-count="selectableIds.length"
+      @toggle-all="selection.toggleAll"
+      @cancel="selection.cancel"
+      @remove="$emit('delete-prompts', [...selection.selectedIds.value])"
+    />
 
     <Teleport to="#tavern-phone-root .pc-phone-shell">
       <section
@@ -308,6 +347,9 @@
 
 <script setup lang="ts">
 import EmptyState from '@/components/EmptyState.vue';
+import BulkSelectionBar from '@/components/BulkSelectionBar.vue';
+import BulkSelectionCheckbox from '@/components/BulkSelectionCheckbox.vue';
+import { useBulkSelection } from '@/composables/useBulkSelection';
 import ActionMenu from '@/components/ActionMenu.vue';
 import SearchableCombobox from '@/components/SearchableCombobox.vue';
 import { usePhoneModalLifecycle } from '@/composables/usePhoneModalLifecycle';
@@ -342,7 +384,27 @@ const props = defineProps<{
 
 const enabledOnly = defineModel<boolean>('enabledOnly', { required: true });
 
+function groupSelectableIds(prompts: TavernPresetPrompt[]) {
+  return prompts.filter(prompt => typeof prompt.content === 'string').map(prompt => prompt.id);
+}
+const selectableIds = computed(() =>
+  props.displayNodes.flatMap(node => groupSelectableIds(node.type === 'prompt' ? [node.prompt] : node.prompts)),
+);
+const selection = useBulkSelection(selectableIds);
+watch(
+  () => [props.presetName, props.pluginPreset],
+  () => selection.cancel(),
+);
+function groupSelected(prompts: TavernPresetPrompt[]) {
+  const ids = groupSelectableIds(prompts);
+  return ids.length > 0 && ids.every(id => selection.selectedIdSet.value.has(id));
+}
+function selectGroup(prompts: TavernPresetPrompt[], selected: boolean) {
+  groupSelectableIds(prompts).forEach(id => selection.setSelected(id, selected));
+}
+
 const emit = defineEmits<{
+  'delete-prompts': [ids: string[]];
   'native-grouping': [enabled: boolean, retained: Record<string, string>];
   'copy-prompt': [prompt: TavernPresetPrompt];
   'create-prompt-group': [];
@@ -427,6 +489,21 @@ defineExpose({ getScrollElement: () => pageEl.value });
 </script>
 
 <style scoped>
+.pc-preset-group-selection-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.pc-preset-group-selection-head > button {
+  min-width: 0;
+  flex: 1;
+}
+.pc-preset-bulk-footer {
+  position: sticky;
+  bottom: 0;
+  z-index: 2;
+  background: var(--pc-surface-strong);
+}
 .pc-preset-page {
   display: flex;
   height: 100%;
