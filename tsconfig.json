@@ -12,13 +12,22 @@
       "type-fest",
     ],
     "paths": {
+<<<<<<< HEAD
+=======
+      "@sillytavern/*": [
+        "../../../../../*"
+      ],
+>>>>>>> ca79a60657738624986a5eb77a4305c3a12174bd
       "@/*": [
         "./*"
       ]
     },
     "moduleDetection": "auto",
     "moduleResolution": "bundler",
+<<<<<<< HEAD
     "resolveJsonModule": true,
+=======
+>>>>>>> ca79a60657738624986a5eb77a4305c3a12174bd
     "isolatedModules": true,
     "importHelpers": true,
     "allowUmdGlobalAccess": true,
@@ -37,8 +46,13 @@
   },
   "include": [
     "*.d.ts",
+<<<<<<< HEAD
     "@types/**/*.d.ts",
     "src/**/*.ts"
+=======
+    "src/**/*.ts",
+    "../../../../**/*.js" // for intelligence
+>>>>>>> ca79a60657738624986a5eb77a4305c3a12174bd
   ],
   "exclude": [
     "**/node_modules/**",
