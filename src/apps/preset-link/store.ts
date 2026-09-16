@@ -316,6 +316,7 @@ export const usePresetLinkStore = defineStore('preset-link', () => {
   }
 
   function inheritBinding(sourceScopeKey: string, targetScopeKey: string) {
+    if (getBinding(targetScopeKey)) return false;
     const source = getBinding(sourceScopeKey);
     if (!source || sourceScopeKey === targetScopeKey) return false;
     assertScope(targetScopeKey);

@@ -17,7 +17,11 @@ test('entry-library preset writes are globally serialized and repeated binding s
 
 test('world-slot auto-sync failures remain visible with a direct retry action', () => {
   assert.match(slotStoreSource, /syncError\.value = error instanceof Error \? error\.message : '同步失败'/u);
-  assert.match(slotAppSource, /const \{ isCurrentChatScope, slots, syncError, syncStatus \} = storeToRefs\(worldSlots\)/u);
+  const refs = slotAppSource.match(/const\s*\{([^}]+)\}\s*=\s*storeToRefs\(worldSlots\)/u)?.[1] ?? '';
+  const fields = refs.split(',').map(field => field.trim());
+  for (const field of ['isCurrentChatScope', 'slots', 'syncError', 'syncStatus']) {
+    assert.ok(fields.includes(field), `world-slot reactive field missing: ${field}`);
+  }
   assert.match(slotAppSource, /v-if="syncStatus === 'error' && syncError"/u);
   assert.match(slotAppSource, /role="alert"/u);
   assert.match(slotAppSource, /@click="syncSlots"/u);

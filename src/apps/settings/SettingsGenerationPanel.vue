@@ -150,6 +150,24 @@
           ><input v-model="userReplacement" class="pc-field" type="text" placeholder="用户称呼"
         /></label>
       </div>
+      <div class="pc-setting-row">
+        <strong
+          >原生用户名宏联动（全局）
+          <InfoHint
+            text="全局生效，默认关闭。开启时将全局压缩相邻消息脚本的用户前缀改为 {{pc_native_user}}:，关闭时恢复原前缀。两次操作都需刷新页面。上方称呼替换仍仅当前聊天。"
+          />
+        </strong>
+        <label class="pc-toggle">
+          <input
+            :checked="nativeUserMacroEnabled"
+            type="checkbox"
+            aria-label="原生用户名宏联动（全局）"
+            :disabled="nativeMacroLinkBusy || (Boolean(tavernAliasUnavailableReason) && !nativeUserMacroEnabled)"
+            @change="setNativeMacroLink($event)"
+          />
+          <span aria-hidden="true"></span>
+        </label>
+      </div>
     </section>
   </div>
 </template>
@@ -161,14 +179,19 @@ import SearchableCombobox from '@/components/SearchableCombobox.vue';
 import { useGenerationAliasesStore } from '@/store/generationAliases';
 import { usePluginPresetStore } from '@/store/pluginPresets';
 import { useSettingsStore } from '@/store/settings';
+import { usePhoneStore } from '@/store/phone';
+import { setNativeUserPrefixLink } from '@/util/nativeUserPrefixLink';
 import { getPresetNamesSafe } from '@/util/runtime';
 import { storeToRefs } from 'pinia';
 
 const aliases = useGenerationAliasesStore();
 const settingsStore = useSettingsStore();
+const phone = usePhoneStore();
+const nativeMacroLinkBusy = ref(false);
 const pluginPresets = usePluginPresetStore();
 const { settings } = storeToRefs(settingsStore);
-const { charReplacement, userReplacement, applyToTavern, tavernAliasUnavailableReason } = storeToRefs(aliases);
+const { charReplacement, userReplacement, applyToTavern, nativeUserMacroEnabled, tavernAliasUnavailableReason } =
+  storeToRefs(aliases);
 const { items: pluginPresetItems } = storeToRefs(pluginPresets);
 const tavernPresetNames = ref<string[]>([]);
 const tavernPresetOptions = computed(() => {
@@ -192,6 +215,36 @@ function setTavernAliases(enabled: boolean) {
     return;
   }
   applyToTavern.value = enabled;
+}
+async function setNativeMacroLink(event: Event) {
+  const input = event.target as HTMLInputElement;
+  const enabled = input.checked;
+  // Keep the switch on the saved state while confirmation is pending.
+  input.checked = nativeUserMacroEnabled.value;
+  if (nativeMacroLinkBusy.value || enabled === nativeUserMacroEnabled.value) return;
+  nativeMacroLinkBusy.value = true;
+  try {
+    aliases.refreshTavernAliasSupport();
+    if (enabled && tavernAliasUnavailableReason.value) throw new Error(tavernAliasUnavailableReason.value);
+    if (
+      !(await phone.confirmNotice(
+        enabled
+          ? '将修改全局压缩相邻消息脚本的用户前缀，影响所有聊天。保存后需刷新页面。确认开启？'
+          : '将恢复该脚本开启前的用户前缀。保存后需刷新页面。确认关闭？',
+      ))
+    )
+      return;
+    settings.value.nativeUserPrefixLink = setNativeUserPrefixLink(settings.value.nativeUserPrefixLink);
+    phone.noticeInfo('配置已保存。请手动刷新整个 SillyTavern 页面，让脚本和宏重新加载。', {
+      title: enabled ? '全局前缀联动已开启' : '原前缀已恢复',
+      timeoutMs: 0,
+    });
+  } catch (error) {
+    phone.noticeError(error instanceof Error ? error.message : '前缀配置修改失败');
+  } finally {
+    input.checked = nativeUserMacroEnabled.value;
+    nativeMacroLinkBusy.value = false;
+  }
 }
 function refreshTavernPresetNames() {
   tavernPresetNames.value = getPresetNamesSafe();

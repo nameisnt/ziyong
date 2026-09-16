@@ -378,7 +378,6 @@ import { usePhoneStore } from '@/store/phone';
 import { useReaderStore } from '@/store/reader';
 import { useSettingsStore } from '@/store/settings';
 import { useDigestStore } from '@/apps/digest/store';
-import { useWorldbookLinkStore } from '@/apps/worldbook-link/store';
 import { usePresetLinkStore } from '@/apps/preset-link/store';
 import { getCurrentTavernPresetName } from '@/apps/preset-manager/api';
 import { canOpenBaguScan } from '@/util/baguScanGate';
@@ -402,7 +401,6 @@ import { storeToRefs } from 'pinia';
 const phone = usePhoneStore();
 const reader = useReaderStore();
 const digest = useDigestStore();
-const worldbookLinks = useWorldbookLinkStore();
 const presetLinks = usePresetLinkStore();
 const regexDisplay = useRegexDisplayStore();
 const settingsStore = useSettingsStore();
@@ -539,8 +537,6 @@ const readerSendDraft = ref('');
 const readerSendDialogRef = ref<HTMLElement | null>(null);
 const readerSendAreaRef = ref<HTMLTextAreaElement | null>(null);
 const branching = ref(false);
-let pendingBranchSourceScopeKey = '';
-let pendingBranchExpiresAt = 0;
 const { scrollToBottom, scrollToTop } = useDetailScroll(messageBodyEl, '.pc-reader-detail-page .pc-reader-content');
 const currentChatTitle = computed(() => selectedReaderTarget.value?.chatTitle || '聊天目录');
 const readerScopeLabel = computed(() =>
@@ -799,7 +795,6 @@ watch(
 
 const stopChatChanged = onTavernEvent('CHAT_CHANGED', () => {
   syncCurrentTavernPresetName();
-  applyPendingBranchInheritance();
 });
 const stopChatRenamed = onTavernChatRename(() => {
   void refreshReaderLibraryRoute();
@@ -919,31 +914,6 @@ function openReaderEditor() {
   }));
 }
 
-function clearPendingBranch() {
-  pendingBranchSourceScopeKey = '';
-  pendingBranchExpiresAt = 0;
-}
-
-function applyPendingBranchInheritance() {
-  if (!pendingBranchSourceScopeKey) return;
-  if (Date.now() > pendingBranchExpiresAt) {
-    clearPendingBranch();
-    return;
-  }
-
-  const targetScopeKey = getCurrentChatScopeKey();
-  if (isPlaceholderChatScopeKey(targetScopeKey) || targetScopeKey === pendingBranchSourceScopeKey) return;
-
-  const inheritedCount = worldbookLinks.inheritProfiles(pendingBranchSourceScopeKey, targetScopeKey);
-  const inheritedPreset = presetLinks.inheritBinding(pendingBranchSourceScopeKey, targetScopeKey);
-  clearPendingBranch();
-  const inheritedLabels = [
-    inheritedCount ? `${inheritedCount} 本世界书的条目开关` : '',
-    inheritedPreset ? '预设绑定' : '',
-  ].filter(Boolean);
-  toastr.success(inheritedLabels.length ? `已创建分支，并继承${inheritedLabels.join('、')}` : '已创建分支');
-}
-
 async function createReaderBranch() {
   if (!activeMessage.value || branching.value) return;
   if (!isReadingCurrentChat.value) {
@@ -958,18 +928,13 @@ async function createReaderBranch() {
   }
 
   branching.value = true;
-  pendingBranchSourceScopeKey = sourceScopeKey;
-  pendingBranchExpiresAt = Date.now() + 15_000;
   try {
     await executeSlashCommandSafe(`/branch-create ${activeMessage.value.sourceMessageId}`);
     if (getCurrentChatScopeKey() === sourceScopeKey) {
-      clearPendingBranch();
       toastr.error('酒馆未能创建分支');
       return;
     }
-    applyPendingBranchInheritance();
   } catch (caughtError) {
-    clearPendingBranch();
     const message = caughtError instanceof Error ? caughtError.message : '酒馆未能创建分支';
     toastr.error(message);
   } finally {

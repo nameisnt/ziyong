@@ -190,7 +190,7 @@
                 workbench.updateWorkflow(workflow.id, { insertAfterRun: ($event.target as HTMLInputElement).checked })
               "
             />
-            <span>{{ t`生成后插入聊天末尾` }}</span>
+            <span>{{ t`生成待插入草稿` }}</span>
           </label>
 
           <textarea
@@ -707,6 +707,7 @@ import {
   type WorkbenchWorkflow,
 } from './store';
 import { applyChatInsert, formatChatInsertTemplate } from '@/util/chatInsert';
+import { areChatScopeKeysEquivalent, getCurrentChatScopeKey } from '@/store/chatScoped';
 import { getPresetNamesSafe, onTavernEvent } from '@/util/runtime';
 import { storeToRefs } from 'pinia';
 import { buildPluginPresetSelectionOptions, pluginPresetIdFromSelection } from '@/apps/preset-manager/pluginPreset';
@@ -1077,6 +1078,15 @@ function previewInsertDraft(draft: WorkbenchInsertDraft) {
 }
 
 async function confirmInsertDraft(draft: WorkbenchInsertDraft) {
+  if (!areChatScopeKeysEquivalent(draft.scopeKey, getCurrentChatScopeKey())) {
+    toastr.warning('请先切回生成这条草稿时的聊天');
+    return;
+  }
+  const scopeKey = draft.scopeKey;
+  const draftId = draft.id;
+  const content = draft.content;
+  const template = draft.template;
+  const title = draft.workflowName;
   const preview = previewInsertDraft(draft);
   if (!preview.trim()) {
     toastr.warning('待插入内容为空');
@@ -1089,14 +1099,15 @@ async function confirmInsertDraft(draft: WorkbenchInsertDraft) {
   if (!shouldInsert) return;
   try {
     await applyChatInsert({
-      content: draft.content,
+      scopeKey,
+      content,
       hidden: false,
       mode: 'new-end',
       role: 'assistant',
-      template: draft.template,
-      title: draft.workflowName,
+      template,
+      title,
     });
-    workbench.deleteInsertDraft(draft.id);
+    workbench.deleteInsertDraft(draftId);
     toastr.success('已插入聊天末尾');
   } catch (error) {
     toastr.error(error instanceof Error ? error.message : '插入失败');

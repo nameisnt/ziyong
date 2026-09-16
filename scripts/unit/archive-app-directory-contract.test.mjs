@@ -5,7 +5,7 @@ import test from 'node:test';
 
 const source = relativePath => readFile(new URL(`../../${relativePath}`, import.meta.url), 'utf8');
 
-test('archive owns its root and three exclusive files without moving runtime services', async () => {
+test('archive owns its pages and deletion helpers without moving runtime services', async () => {
   const files = (await readdir(new URL('../../src/apps/archive/', import.meta.url)))
     .filter(file => file.endsWith('.vue') || file.endsWith('.ts'))
     .sort();
@@ -14,6 +14,8 @@ test('archive owns its root and three exclusive files without moving runtime ser
     'ChatArchiveApp.vue',
     'ChatArchiveChatList.vue',
     'ChatArchiveFloorBackupPage.vue',
+    'ChatDeleteModal.vue',
+    'chatDeletion.ts',
     'useChatArchiveCatalogSession.ts',
   ]);
 

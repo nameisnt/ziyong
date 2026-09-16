@@ -1,6 +1,6 @@
 {
   "name": "sillytavern-phone-extension",
-  "version": "1.2.4",
+  "version": "1.2.5",
   "scripts": {
     "release:notes": "node scripts/release-notes.mjs",
     "build": "vite build",

@@ -366,12 +366,21 @@ async function updateSelected() {
   const rows = selectedUpdateRows.value;
   if (!rows.length) return;
   updating.value = true;
+  let succeeded = 0;
+  const failures: string[] = [];
   try {
-    for (const row of rows) await updateThirdPartyExtension(row);
+    for (const row of rows) {
+      try {
+        await updateThirdPartyExtension(row);
+        succeeded += 1;
+      } catch (error) {
+        failures.push(`${row.name}：${error instanceof Error ? error.message : String(error)}`);
+      }
+    }
+    const message = `更新结束：成功 ${succeeded}，失败 ${failures.length}`;
+    if (failures.length) phone.noticeInfo(failures.join('\n'), { title: message, timeoutMs: 0 });
+    if (succeeded) notifyExtensionReloadRequired('扩展更新完成', message);
     await refreshInstalled();
-    notifyExtensionReloadRequired('扩展更新完成', `已更新 ${rows.length} 个扩展`);
-  } catch (error) {
-    toastr.error(error instanceof Error ? error.message : String(error));
   } finally {
     updating.value = false;
   }

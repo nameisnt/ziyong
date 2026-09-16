@@ -122,10 +122,22 @@
                 />
                 <span aria-hidden="true"></span>
               </label>
-              <button class="pc-icon-btn" type="button" title="重命名分组" aria-label="重命名分组" @click="renameGroup(group)">
+              <button
+                class="pc-icon-btn"
+                type="button"
+                title="重命名分组"
+                aria-label="重命名分组"
+                @click="renameGroup(group)"
+              >
                 <i class="fa-solid fa-pen"></i>
               </button>
-              <button class="pc-icon-btn" type="button" title="导出这个分组" aria-label="导出这个分组" @click="exportGroup(group)">
+              <button
+                class="pc-icon-btn"
+                type="button"
+                title="导出这个分组"
+                aria-label="导出这个分组"
+                @click="exportGroup(group)"
+              >
                 <i class="fa-solid fa-download"></i>
               </button>
             </div>
@@ -223,7 +235,9 @@ const visibleCatalog = computed(() => {
     }))
     .filter(section => section.groups.length);
 });
-const visibleItems = computed(() => visibleCatalog.value.flatMap(section => section.groups.flatMap(group => group.scripts)));
+const visibleItems = computed(() =>
+  visibleCatalog.value.flatMap(section => section.groups.flatMap(group => group.scripts)),
+);
 const selection = useBulkSelection(computed(() => visibleItems.value.map(item => item.key)));
 const selectedItems = computed(() => items.value.filter(item => selection.selectedIdSet.value.has(item.key)));
 
@@ -309,9 +323,7 @@ async function importFile(event: Event) {
     const value = JSON.parse((await file.text()).replace(/^\uFEFF/u, '')) as unknown;
     const result = importAssistantScriptFile(value, writeScope.value);
     refresh();
-    toastr.success(
-      result.kind === 'bundle' ? '已导入全部助手脚本' : `已导入到${scriptScopeLabel(result.scope)}`,
-    );
+    toastr.success(result.kind === 'bundle' ? '已导入全部助手脚本' : `已导入到${scriptScopeLabel(result.scope)}`);
   } catch (error) {
     toastr.error(error instanceof Error ? error.message : String(error));
   }
@@ -371,13 +383,21 @@ function toggleScriptEnabled(item: ScriptListItem, event: Event) {
 }
 
 async function groupSelected() {
+  const selected = [...selectedItems.value];
   const name = await phone.promptNotice('输入已有或新的分组名称。所选脚本会在各自作用域内移入同名文件夹。', {
     confirmLabel: '移动',
     title: '移动脚本',
   });
   if (!name?.trim()) return;
-  moveAssistantScriptsToFolder(selectedItems.value, name);
-  refresh();
+  try {
+    moveAssistantScriptsToFolder(selected, name);
+    selection.cancel();
+    toastr.success(`已移动 ${selected.length} 个脚本`);
+  } catch (error) {
+    toastr.error(error instanceof Error ? error.message : String(error));
+  } finally {
+    refresh();
+  }
 }
 
 async function removeSelected() {

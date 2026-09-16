@@ -28,15 +28,6 @@
           {{ option.label }}
         </button>
       </nav>
-      <label v-if="scope === 'message'" class="pc-field-group">
-        <span>{{ t`消息楼层` }}</span>
-        <div class="pc-mvu-message-source">
-          <input v-model="messageIdInput" class="pc-field" type="text" :placeholder="t`latest 或楼层号`" />
-          <button class="pc-soft-btn compact" type="button" :disabled="busy" @click="loadData(true)">
-            {{ t`读取` }}
-          </button>
-        </div>
-      </label>
     </div>
 
     <EmptyState v-if="!phone.isViewingCurrentChat" :title="t`历史聊天不能修改 MVU`">
@@ -214,13 +205,16 @@ import {
   cloneMvuStatData,
   readMvuData,
   readMvuStatData,
-  replaceMvuStatData,
+  resolveMvuRuntime,
+  mergeMvuStatData,
   type MvuData,
   type MvuOptions,
   type MvuScope,
   type MvuStatData,
 } from './api';
 import type { MvuPath, MvuTreeAddition, MvuTreeMutation } from './model';
+import { applyMvuFields, diffMvuFields, type MvuFieldPatch } from './patches';
+import { getLastMessageIdSafe } from '@/util/runtime';
 import {
   deleteMvuPathValue,
   formatMvuPath,
@@ -248,11 +242,11 @@ const scopeOptions: Array<{ label: string; value: MvuScope }> = [
   { label: '全局', value: 'global' },
 ];
 const scope = ref<MvuScope>('message');
-const messageIdInput = ref('latest');
 const sourceData = ref<MvuData | null>(null);
 const statData = ref<MvuStatData>({});
-const undoStack = ref<MvuStatData[]>([]);
-const redoStack = ref<MvuStatData[]>([]);
+type MvuUndoEntry = { patches: MvuFieldPatch[]; options: MvuOptions; scopeKey: string };
+const undoStack = ref<MvuUndoEntry[]>([]);
+const redoStack = ref<MvuUndoEntry[]>([]);
 const expandedKeys = ref<string[]>([]);
 const editingKey = ref<null | string>(null);
 const query = ref('');
@@ -271,11 +265,7 @@ let saveRevision = 0;
 
 const currentOptions = computed<MvuOptions>(() => {
   if (scope.value !== 'message') return { type: scope.value };
-  const input = messageIdInput.value.trim();
-  if (!input || input === 'latest') return { type: 'message', message_id: 'latest' };
-  const parsed = Number(input);
-  if (!Number.isInteger(parsed)) throw new Error('消息楼层必须是整数或 latest');
-  return { type: 'message', message_id: parsed };
+  return { type: 'message', message_id: 'latest' };
 });
 const rootEntries = computed(() =>
   Object.entries(statData.value).map(([label, value]) => ({
@@ -374,27 +364,51 @@ function loadData(force = false) {
 async function changeScope(nextScope: MvuScope) {
   if (nextScope === scope.value || busy.value) return;
   scope.value = nextScope;
+  contextVersion.value += 1;
+  undoStack.value = [];
+  redoStack.value = [];
   sourceData.value = null;
   statData.value = {};
   await loadData(true);
 }
 
-async function persistSnapshot(next: MvuStatData) {
-  if (!sourceData.value) return false;
+async function persistSnapshot(next: MvuStatData, history?: MvuUndoEntry, reverse = false) {
+  if (!sourceData.value || busy.value || !phone.isViewingCurrentChat) return false;
   const requestVersion = contextVersion.value;
   const requestScopeKey = activeChatKey.value;
   const requestId = ++saveRevision;
-  const source = sourceData.value;
   const previous = cloneMvuStatData(statData.value);
   savingContextVersion.value = requestVersion;
-  statData.value = cloneMvuStatData(next);
   try {
-    const requestOptions = currentOptions.value;
-    const updatedSource = await replaceMvuStatData(source, next, requestOptions);
+    const runtime = await resolveMvuRuntime();
+    if (!isMvuContextCurrent(requestVersion, requestScopeKey)) return false;
+    const requestOptions: MvuOptions =
+      scope.value === 'message' ? { type: 'message', message_id: getLastMessageIdSafe() } : { type: scope.value };
+    if (requestOptions.type === 'message' && Number(requestOptions.message_id) < 0)
+      throw new Error('当前聊天没有可修改的楼层');
+    if (
+      history &&
+      (!areChatScopeKeysEquivalent(history.scopeKey, requestScopeKey) || !sameData(history.options, requestOptions))
+    ) {
+      throw new Error('目标楼层或作用域已变化，请重新读取后操作');
+    }
+    const patches = history
+      ? history.patches.map(patch => (reverse ? { ...patch, before: patch.after, after: patch.before } : patch))
+      : diffMvuFields(previous, next);
+    const source = runtime.getMvuData(requestOptions);
+    const latest = readMvuStatData(source);
+    const updated = applyMvuFields(latest, patches, Boolean(history));
+    const updatedSource = mergeMvuStatData(source, updated);
+    await runtime.replaceMvuData(updatedSource, requestOptions);
     if (!isMvuContextCurrent(requestVersion, requestScopeKey)) return false;
     sourceData.value = updatedSource;
+    statData.value = updated;
+    if (!history) {
+      pushUndo({ patches: diffMvuFields(latest, updated), options: requestOptions, scopeKey: requestScopeKey });
+      redoStack.value = [];
+    }
     errorMessage.value = '';
-    return true;
+    return latest;
   } catch (error) {
     if (!isMvuContextCurrent(requestVersion, requestScopeKey)) return false;
     statData.value = previous;
@@ -405,7 +419,7 @@ async function persistSnapshot(next: MvuStatData) {
   }
 }
 
-function pushUndo(snapshot: MvuStatData) {
+function pushUndo(snapshot: MvuUndoEntry) {
   undoStack.value.push(cloneMvuStatData(snapshot));
   if (undoStack.value.length > HISTORY_LIMIT) undoStack.value.shift();
 }
@@ -432,17 +446,17 @@ async function updateValue(mutation: MvuTreeMutation) {
     editingKey.value = null;
     return;
   }
-  const previous = cloneMvuStatData(statData.value);
   const next = cloneMvuStatData(statData.value);
   setMvuPathValue(next, mutation.path, mutation.value);
-  if (!(await persistSnapshot(next))) return;
-  pushUndo(previous);
-  redoStack.value = [];
+  const previous = await persistSnapshot(next);
+  if (!previous) return;
   editingKey.value = null;
-  recordChange(mutation.path, oldValue, mutation.value);
+  recordChange(mutation.path, getMvuPathValue(previous, mutation.path), mutation.value);
 }
 
 async function addValue(addition: MvuTreeAddition) {
+  if (busy.value) return;
+  const version = contextVersion.value;
   const parent = getMvuPathValue(statData.value, addition.parentPath);
   if (!parent || typeof parent !== 'object') return;
   if (!Array.isArray(parent) && addition.key && Object.prototype.hasOwnProperty.call(parent, addition.key)) {
@@ -452,53 +466,48 @@ async function addValue(addition: MvuTreeAddition) {
     });
     if (!confirmed) return;
   }
-  const previous = cloneMvuStatData(statData.value);
+  if (version !== contextVersion.value || !phone.isViewingCurrentChat) return;
   const next = cloneMvuStatData(statData.value);
   const nextParent = getMvuPathValue(next, addition.parentPath);
   let targetPath: MvuPath;
-  let oldValue: unknown;
   if (Array.isArray(nextParent)) {
     targetPath = [...addition.parentPath, nextParent.length];
-    oldValue = undefined;
     nextParent.push(addition.value);
   } else if (nextParent && typeof nextParent === 'object' && addition.key) {
     targetPath = [...addition.parentPath, addition.key];
-    oldValue = (nextParent as Record<string, unknown>)[addition.key];
     (nextParent as Record<string, unknown>)[addition.key] = addition.value;
   } else {
     return;
   }
-  if (!(await persistSnapshot(next))) return;
-  pushUndo(previous);
-  redoStack.value = [];
-  recordChange(targetPath, oldValue, addition.value);
+  const previous = await persistSnapshot(next);
+  if (!previous) return;
+  recordChange(targetPath, getMvuPathValue(previous, targetPath), addition.value);
 }
 
 async function deleteValue(path: MvuPath) {
+  if (busy.value) return;
+  const version = contextVersion.value;
   const label = formatMvuPath(path);
   const confirmed = await phone.confirmNotice(`确定删除变量“${label}”吗？`, {
     confirmLabel: '删除',
     kind: 'warning',
   });
   if (!confirmed) return;
-  const oldValue = getMvuPathValue(statData.value, path);
-  const previous = cloneMvuStatData(statData.value);
+  if (version !== contextVersion.value || !phone.isViewingCurrentChat) return;
   const next = cloneMvuStatData(statData.value);
   deleteMvuPathValue(next, path);
-  if (!(await persistSnapshot(next))) return;
-  pushUndo(previous);
-  redoStack.value = [];
+  const previous = await persistSnapshot(next);
+  if (!previous) return;
   editingKey.value = null;
-  recordChange(path, oldValue, undefined);
+  recordChange(path, getMvuPathValue(previous, path), undefined);
 }
 
 async function undo() {
   const previous = undoStack.value.at(-1);
   if (!previous) return;
-  const current = cloneMvuStatData(statData.value);
-  if (!(await persistSnapshot(previous))) return;
+  if (!(await persistSnapshot(statData.value, previous, true))) return;
   undoStack.value.pop();
-  redoStack.value.push(current);
+  redoStack.value.push(previous);
   if (redoStack.value.length > HISTORY_LIMIT) redoStack.value.shift();
   editingKey.value = null;
 }
@@ -506,10 +515,9 @@ async function undo() {
 async function redo() {
   const next = redoStack.value.at(-1);
   if (!next) return;
-  const current = cloneMvuStatData(statData.value);
-  if (!(await persistSnapshot(next))) return;
+  if (!(await persistSnapshot(statData.value, next))) return;
   redoStack.value.pop();
-  pushUndo(current);
+  pushUndo(next);
   editingKey.value = null;
 }
 
@@ -618,8 +626,7 @@ onUnmounted(() => {
 <style scoped>
 .pc-mvu-section-head,
 .pc-mvu-favorite-row,
-.pc-mvu-history-row > div,
-.pc-mvu-message-source {
+.pc-mvu-history-row > div {
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -648,11 +655,6 @@ onUnmounted(() => {
 .pc-mvu-scope {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
-}
-
-.pc-mvu-message-source .pc-field {
-  min-width: 0;
-  flex: 1;
 }
 
 .pc-mvu-toolbar {

@@ -255,6 +255,7 @@ function readSlotFields(entry: WorldBookEntry): WorldSlotEditableFields {
 export const useWorldSlotsStore = defineStore('world-slots', () => {
   const {
     data,
+    inheritScope: inheritScopedData,
     rehydrateFromSettings: rehydrateScopedData,
     resetCurrentScope: resetScopedData,
     scopeKey,
@@ -532,7 +533,8 @@ export const useWorldSlotsStore = defineStore('world-slots', () => {
     let updated = 0;
     slotSnapshot.forEach(slot => {
       const existingId = entryIdBySlot.get(slot.id);
-      const entryId = typeof existingId === 'number' ? existingId : nextEntryId(entries);
+      // Do not reuse an ID removed from the previous chat in this synchronization.
+      const entryId = typeof existingId === 'number' ? existingId : nextEntryId({ ...originalEntries, ...entries });
       const nextEntry = createWorldEntry(slot, entryId);
       if (typeof existingId === 'number') {
         if (!_.isEqual(entries[String(entryId)], nextEntry)) updated += 1;
@@ -758,7 +760,20 @@ export const useWorldSlotsStore = defineStore('world-slots', () => {
     await syncScopeWithRetry(scopeKey.value);
   }
 
+  function inheritScope(source: string, target: string) {
+    return inheritScopedData(source, target, scope => ({
+      slots: scope.slots.map(slot => ({
+        ...slot,
+        id: createId('world_slot'),
+        worldEntryId: null,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      })),
+    }));
+  }
+
   return {
+    inheritScope,
     conflicts,
     refreshFromWorldbook,
     resolveConflict,

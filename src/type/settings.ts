@@ -276,6 +276,7 @@ export const Settings = z
     fontFamily: z.string().default(''),
     customFont: CustomFontSettingsSchema.default(() => ({ ...DEFAULT_CUSTOM_FONT_SETTINGS, fonts: [] })),
     generation: GenerationDefaultsSchema.default(() => ({ ...DEFAULT_GENERATION_SETTINGS })),
+    nativeUserPrefixLink: z.object({ scriptId: z.string(), originalPrefix: z.string() }).nullable().default(null),
     interfaceSize: InterfaceSizeSettingsSchema.default(() => ({ ...DEFAULT_INTERFACE_SIZE_SETTINGS })),
     themeProfiles: ThemeProfilesSchema.default(() => ({
       light: createDefaultThemeProfile('light'),
@@ -314,6 +315,7 @@ export const Settings = z
     fontFamily: '',
     customFont: { ...DEFAULT_CUSTOM_FONT_SETTINGS, fonts: [] },
     generation: { ...DEFAULT_GENERATION_SETTINGS },
+    nativeUserPrefixLink: null,
     interfaceSize: { ...DEFAULT_INTERFACE_SIZE_SETTINGS },
     themeProfiles: {
       light: createDefaultThemeProfile('light'),

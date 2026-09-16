@@ -127,7 +127,9 @@
 </template>
 
 <script setup lang="ts">
-import { applyChatInsert, formatChatInsertTemplate } from '@/util/chatInsert';
+import { applyChatInsert, formatChatInsertTemplate, type ChatInsertOptions } from '@/util/chatInsert';
+import { getCurrentChatScopeKey, isPlaceholderChatScopeKey } from '@/store/chatScoped';
+import { getLastMessageIdSafe } from '@/util/runtime';
 import ConfigurationRecoveryNotice from '@/components/ConfigurationRecoveryNotice.vue';
 import InfoHint from '@/components/InfoHint.vue';
 import ReferencePicker from '@/components/ReferencePicker.vue';
@@ -254,30 +256,46 @@ async function confirmInsert() {
     return;
   }
 
-  const shouldInsert = await phone.confirmNotice('确认要写入当前酒馆聊天吗？这个操作会修改聊天记录。', {
+  const scopeKey = getCurrentChatScopeKey();
+  if (isPlaceholderChatScopeKey(scopeKey)) {
+    toastr.warning('请先打开要写入的聊天');
+    return;
+  }
+  const mode = settings.value.mode === 'append-last' ? 'append-message' : settings.value.mode;
+  const targetMessageId =
+    settings.value.mode === 'append-last' ? getLastMessageIdSafe() : settings.value.targetMessageId;
+  const options: ChatInsertOptions = {
+    scopeKey,
+    content: '',
+    template: settings.value.template,
+    referenceReplacements: referenceTokens.value.map(token => ({
+      content: token.content,
+      time: token.time,
+      title: token.title,
+      token: token.value,
+    })),
+    references: [...referenceContents.value],
+    title: '',
+    hidden: settings.value.hidden,
+    mode,
+    targetMessageId,
+    role: settings.value.role,
+    separator: settings.value.separator,
+  };
+  const targetLabel =
+    mode === 'new-end'
+      ? '聊天末尾新增一楼'
+      : mode === 'new-before'
+        ? `第 ${targetMessageId} 楼之前新增一楼`
+        : `第 ${targetMessageId} 楼正文末尾`;
+  const shouldInsert = await phone.confirmNotice(`确认写入${targetLabel}吗？这个操作会修改当前聊天记录。`, {
     confirmLabel: '写入',
     kind: 'warning',
   });
   if (!shouldInsert) return;
 
   try {
-    const result = await applyChatInsert({
-      content: '',
-      hidden: settings.value.hidden,
-      mode: settings.value.mode,
-      referenceReplacements: referenceTokens.value.map(token => ({
-        content: token.content,
-        time: token.time,
-        title: token.title,
-        token: token.value,
-      })),
-      references: referenceContents.value,
-      role: settings.value.role,
-      separator: settings.value.separator,
-      targetMessageId: settings.value.targetMessageId,
-      template: settings.value.template,
-      title: '',
-    });
+    const result = await applyChatInsert(options);
     toastr.success(result.mode.startsWith('append') ? '已追加到聊天楼层' : '已插入新聊天楼层');
   } catch (caughtError) {
     const message = caughtError instanceof Error ? caughtError.message : '写入聊天失败';

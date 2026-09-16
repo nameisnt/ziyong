@@ -28,7 +28,7 @@ export async function applyFileRepositoryVisualScenario(
   name: string,
   { repository, resetPhoneToRoute, waitForCondition, waitForPaint }: FileRepositoryVisualContext,
 ) {
-  if (name !== 'file-repository-operations') return false;
+  if (name !== 'file-repository-operations' && name !== 'file-repository-operations-dark') return false;
 
   repository.stopAutoSnapshots();
   repository.settings = {
@@ -46,7 +46,11 @@ export async function applyFileRepositoryVisualScenario(
   const createButton = findButton('立即快照');
   if (!createButton) throw new Error('File repository create action is missing');
   createButton.click();
-  if (!(await waitForCondition(() => repository.snapshots.length === 1 && Boolean(document.querySelector('.pc-repository-row'))))) {
+  if (
+    !(await waitForCondition(
+      () => repository.snapshots.length === 1 && Boolean(document.querySelector('.pc-repository-row')),
+    ))
+  ) {
     throw new Error(`File repository did not create one snapshot: ${repository.lastError || 'no error'}`);
   }
 
@@ -77,7 +81,7 @@ export async function applyFileRepositoryVisualScenario(
     !(await waitForCondition(() =>
       Boolean(
         [...document.querySelectorAll<HTMLElement>('.pc-phone-notice')].some(notice =>
-          notice.textContent?.includes('确认删除这份文件快照吗'),
+          notice.textContent?.includes('的文件快照吗'),
         ),
       ),
     ))
@@ -89,8 +93,8 @@ export async function applyFileRepositoryVisualScenario(
   );
   confirmDelete?.click();
   if (
-    !(await waitForCondition(() =>
-      repository.snapshots.length === 0 && Boolean(document.querySelector('.pc-repository-settings')),
+    !(await waitForCondition(
+      () => repository.snapshots.length === 0 && Boolean(document.querySelector('.pc-repository-settings')),
     ))
   ) {
     throw new Error('File repository did not delete only the confirmed snapshot and return to its root');
@@ -99,8 +103,10 @@ export async function applyFileRepositoryVisualScenario(
   fileService.failRead('user/files/phone-file-repository-manifest.json');
   document.querySelector<HTMLButtonElement>('button[title="刷新仓库清单"]')?.click();
   if (
-    !(await waitForCondition(() =>
-      document.querySelector<HTMLElement>('.pc-status-card.danger')?.textContent?.includes('文件仓库操作失败') === true,
+    !(await waitForCondition(
+      () =>
+        document.querySelector<HTMLElement>('.pc-status-card.danger')?.textContent?.includes('文件仓库操作失败') ===
+        true,
     ))
   ) {
     throw new Error('File repository did not keep a failed refresh visible in its status card');

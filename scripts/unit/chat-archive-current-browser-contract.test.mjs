@@ -14,7 +14,9 @@ test('current archive page reuses one read-only catalog path for list and random
   assert.match(root, /pc-section-card pc-current-backup-status/u);
   assert.match(root, /class="pc-page-section pc-current-chat-browser"/u);
   assert.match(root, /<ChatArchiveChatList[\s\S]*?:rows="currentOwnerChatRows"[\s\S]*?@select="openCurrentOwnerChat"/u);
-  assert.match(root, /<ChatArchiveChatList :loading="loadingChats" :rows="chatRows" @select="openChat"/u);
+  const ownerList = root.match(/<ChatArchiveChatList\b[^>]*:rows="chatRows"[^>]*\/>/u)?.[0] ?? '';
+  assert.match(ownerList, /:loading="loadingChats"/u);
+  assert.match(ownerList, /@select="openChat"/u);
   assert.match(list, /v-for="chat in rows"/u);
   assert.match(root, /@click="randomCurrentOwnerChat"/u);
   assert.match(root, /:disabled="!currentOwnerChatRows\.length/u);

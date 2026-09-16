@@ -35,3 +35,5 @@ export async function importCharacterChat() {
 }
 
 export function saveSettingsDebounced() {}
+
+export async function saveSettings() {}

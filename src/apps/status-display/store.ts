@@ -180,7 +180,35 @@ export const useStatusDisplayStore = defineStore('statusDisplay', () => {
     migrateLegacy();
   }
 
+  function inheritScope(source: string, target: string) {
+    if (configError.value) throw new Error(configError.value);
+    if (
+      Object.hasOwn(settings.value.enabledSchemeIdsByScope, target) ||
+      Object.hasOwn(settings.value.activeSchemeByScope, target) ||
+      settings.value.schemes.some(scheme => scheme.ownerScopeKey === target)
+    )
+      return false;
+    const regex = useRegexDisplayStore();
+    const ids = new Map<string, string>();
+    const copies = getVisibleSchemes(source)
+      .filter(scheme => !scheme.shared)
+      .map(scheme => {
+        const id = `status_scheme_${crypto.randomUUID()}`;
+        ids.set(scheme.id, id);
+        const usage = regex.settings.usages[statusDisplayRegexTargetId(scheme.id)];
+        if (usage) regex.settings.usages[statusDisplayRegexTargetId(id)] = klona(usage);
+        return { ...klona(scheme), id, ownerScopeKey: target };
+      });
+    const enabled = getEnabledSchemeIds(source).map(id => ids.get(id) || id);
+    const active = getActiveSchemeId(source);
+    settings.value.schemes.push(...copies);
+    settings.value.enabledSchemeIdsByScope[target] = enabled;
+    if (active) settings.value.activeSchemeByScope[target] = ids.get(active) || active;
+    return copies.length > 0 || enabled.length > 0;
+  }
+
   return {
+    inheritScope,
     configError,
     deleteScheme,
     getActiveSchemeId,

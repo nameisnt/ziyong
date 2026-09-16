@@ -27,7 +27,8 @@ function getVisualMvuRuntime() {
 
 function findTreeNode(label: string) {
   return [...document.querySelectorAll<HTMLElement>('.pc-mvu-tree-node')].find(
-    node => node.querySelector<HTMLElement>(':scope > .pc-mvu-tree-row .pc-mvu-tree-main strong')?.textContent === label,
+    node =>
+      node.querySelector<HTMLElement>(':scope > .pc-mvu-tree-row .pc-mvu-tree-main strong')?.textContent === label,
   );
 }
 
@@ -55,11 +56,8 @@ function storedRecordCount(records: Record<string, unknown[]>) {
   return Object.values(records).reduce((sum, items) => sum + items.length, 0);
 }
 
-export async function applyMvuModifierVisualScenario(
-  name: string,
-  context: MvuModifierVisualScenarioContext,
-) {
-  if (name !== 'mvu-modifier-crud') return false;
+export async function applyMvuModifierVisualScenario(name: string, context: MvuModifierVisualScenarioContext) {
+  if (name !== 'mvu-modifier-crud' && name !== 'mvu-modifier-crud-dark') return false;
 
   const runtime = getVisualMvuRuntime();
   const options = { message_id: 'latest' as const, type: 'message' as const };

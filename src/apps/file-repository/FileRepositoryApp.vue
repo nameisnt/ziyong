@@ -140,6 +140,7 @@ const repository = useFileRepositoryStore();
 const route = computed(() => phone.currentRoute);
 const fileInput = ref<HTMLInputElement | null>(null);
 const detailLoading = ref(false);
+let detailRevision = 0;
 const detailPayload = ref<Awaited<ReturnType<typeof repository.readSnapshot>> | null>(null);
 const activeSnapshotId = computed(() => route.value.params?.snapshotId || '');
 const activeSnapshot = computed(
@@ -181,15 +182,19 @@ function openSnapshot(snapshotId: string) {
 }
 
 async function loadDetail() {
+  const revision = ++detailRevision;
+  const snapshotId = activeSnapshotId.value;
   detailPayload.value = null;
+  detailLoading.value = false;
   if (route.value.page !== 'detail' || !activeSnapshotId.value) return;
   detailLoading.value = true;
   try {
-    detailPayload.value = await repository.readSnapshot(activeSnapshotId.value);
+    const payload = await repository.readSnapshot(snapshotId);
+    if (revision === detailRevision && activeSnapshotId.value === snapshotId) detailPayload.value = payload;
   } catch (error) {
-    toastr.error(error instanceof Error ? error.message : String(error));
+    if (revision === detailRevision) toastr.error(error instanceof Error ? error.message : String(error));
   } finally {
-    detailLoading.value = false;
+    if (revision === detailRevision) detailLoading.value = false;
   }
 }
 
@@ -242,15 +247,20 @@ async function exportActive() {
 }
 
 async function removeActive() {
-  if (!activeSnapshot.value) return;
-  const confirmed = await phone.confirmNotice('确认删除这份文件快照吗？删除后不能从仓库恢复。', {
-    confirmLabel: '删除',
-    kind: 'warning',
-  });
+  const snapshot = activeSnapshot.value;
+  if (!snapshot) return;
+  const confirmed = await phone.confirmNotice(
+    `确认删除 ${formatDate(snapshot.createdAt)} 的文件快照吗？删除后不能从仓库恢复。`,
+    {
+      confirmLabel: '删除',
+      kind: 'warning',
+    },
+  );
   if (!confirmed) return;
   try {
-    await repository.removeSnapshot(activeSnapshot.value.id);
-    await phone.goBack();
+    if (!repository.snapshots.some(item => item.id === snapshot.id)) throw new Error('目标快照已不存在');
+    await repository.removeSnapshot(snapshot.id);
+    if (activeSnapshotId.value === snapshot.id) await phone.goBack();
     toastr.success('文件快照已删除');
   } catch (error) {
     toastr.error(error instanceof Error ? error.message : String(error));
@@ -258,14 +268,16 @@ async function removeActive() {
 }
 
 async function restoreActive() {
-  if (!activeSnapshot.value || !detailPayload.value) return;
+  const snapshot = activeSnapshot.value;
+  if (!snapshot || !detailPayload.value || detailLoading.value) return;
   const confirmed = await phone.confirmNotice(
-    `恢复到 ${formatDate(activeSnapshot.value.createdAt)} 的插件数据吗？当前资料、内容、设置和私有预设会被该版本替换。`,
+    `恢复到 ${formatDate(snapshot.createdAt)} 的插件数据吗？当前资料、内容、设置和私有预设会被该版本替换。`,
     { confirmLabel: '恢复', kind: 'warning' },
   );
   if (!confirmed) return;
   try {
-    await repository.restoreSnapshot(activeSnapshot.value.id);
+    if (!repository.snapshots.some(item => item.id === snapshot.id)) throw new Error('目标快照已不存在');
+    await repository.restoreSnapshot(snapshot.id);
     toastr.success('插件文件快照已恢复');
     phone.goHome();
   } catch (error) {
@@ -274,6 +286,17 @@ async function restoreActive() {
 }
 
 watch([() => route.value.page, activeSnapshotId], loadDetail, { immediate: true });
+onDeactivated(() => {
+  detailRevision += 1;
+  detailLoading.value = false;
+});
+onUnmounted(() => {
+  detailRevision += 1;
+});
+onActivated(() => {
+  if (route.value.page === 'detail' && activeSnapshotId.value && !detailPayload.value && !detailLoading.value)
+    void loadDetail();
+});
 onMounted(() => void repository.initialize());
 </script>
 

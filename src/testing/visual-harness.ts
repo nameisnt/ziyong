@@ -371,6 +371,9 @@ async function applyScenario(name: VisualScenarioName, options: { height?: numbe
   configurePhoneSize(options.width, options.height);
   document.querySelector('#visual-host-theme-override')?.remove();
   useSettingsStore().setTheme(
+    name === 'chat-insert-operations-dark' ||
+      name === 'mvu-modifier-crud-dark' ||
+      name === 'file-repository-operations-dark' ||
     name === 'diary-entry-editor-dark' ||
       name === 'diary-bookshelf-responsive-dark' ||
       name === 'preview-draft-deferred-save-dark' ||

@@ -30,6 +30,6 @@ test('the repository scenario exercises file operations and persistent failure f
   assert.match(scenario, /立即快照/);
   assert.match(scenario, /保护版本/);
   assert.match(scenario, /取消保护/);
-  assert.match(scenario, /确认删除这份文件快照吗/);
+  assert.match(scenario, /的文件快照吗/);
   assert.match(scenario, /文件仓库操作失败/);
 });

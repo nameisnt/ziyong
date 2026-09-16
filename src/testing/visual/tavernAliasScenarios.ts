@@ -1,6 +1,7 @@
 import { useGenerationAliasesStore, generationAliasesField } from '@/store/generationAliases';
 import { getCurrentChatScopeKey } from '@/store/chatScoped';
 import { useSettingsStore } from '@/store/settings';
+import { usePhoneStore } from '@/store/phone';
 import { extension_settings } from '@sillytavern/scripts/extensions';
 import { waitForVisualCondition, waitForVisualPaint } from './context';
 
@@ -22,7 +23,10 @@ export async function applyTavernAliasVisualScenario(
     name1: 'Native User',
     name2: 'Native Char',
     powerUserSettings: power,
-    macros: { envBuilder: { registerProvider: (fn: (typeof callbacks)[number]) => callbacks.push(fn) } },
+    macros: {
+      envBuilder: { registerProvider: (fn: (typeof callbacks)[number]) => callbacks.push(fn) },
+      registry: { registerMacro() {}, unregisterMacro() {} },
+    },
   });
   const aliases = useGenerationAliasesStore();
   aliases.refreshTavernAliasSupport();
@@ -76,7 +80,98 @@ export async function applyTavernAliasVisualScenario(
     toggle.click();
     await waitForVisualPaint();
     if (callbacks.length !== 1) throw new Error('Repeated toggles registered duplicate providers');
+    await checkNativePrefixLink();
   }
   document.querySelector('.pc-settings-chat-aliases')?.scrollIntoView({ block: 'center' });
   return true;
+}
+
+async function checkNativePrefixLink() {
+  const phone = usePhoneStore();
+  const settings = useSettingsStore();
+  const runtime = globalThis as unknown as {
+    updateScriptTreesWith?: (update: (trees: ScriptTree[]) => ScriptTree[]) => ScriptTree[];
+    getCurrentChatId: () => string;
+  };
+  const originalUpdate = runtime.updateScriptTreesWith;
+  const originalChat = runtime.getCurrentChatId;
+  let fail = false;
+  let trees = [
+    {
+      type: 'script',
+      id: 'visual-compression',
+      name: 'Visual compression',
+      info: '',
+      button: { enabled: false, buttons: [] },
+      export_with: { data: true, button: true },
+      enabled: true,
+      content: "import 'https://example.test/压缩相邻消息/index.js'",
+      data: { chat_history: { user_prefix: 'Original: ' } },
+    },
+  ] as ScriptTree[];
+  runtime.updateScriptTreesWith = update => {
+    if (fail) throw new Error('visual write failure');
+    trees = update(JSON.parse(JSON.stringify(trees)) as ScriptTree[]);
+    return trees;
+  };
+  const toggle = document.querySelector<HTMLInputElement>('input[aria-label="原生用户名宏联动（全局）"]')!;
+  async function choose(accept: boolean) {
+    const saved = Boolean(settings.settings.nativeUserPrefixLink);
+    toggle.click();
+    await waitForVisualPaint();
+    if (!toggle.disabled || toggle.checked !== saved) throw new Error('Pending switch differs from saved state');
+    const confirmation = phone.notices.find(notice => notice.actions?.some(action => action.id === 'confirm'));
+    if (!confirmation) throw new Error('Missing real confirmation notice');
+    const role = accept ? 'primary' : 'soft';
+    const button = document.querySelector<HTMLButtonElement>(`.pc-phone-notice-action[data-role="${role}"]`);
+    if (!button) throw new Error('Missing confirmation action');
+    button.click();
+    await waitForVisualPaint();
+    if (toggle.disabled) throw new Error('Switch remained busy after confirmation');
+  }
+  async function checkReloadNotice() {
+    const notice = phone.notices.find(item => item.message.includes('请手动刷新'));
+    if (!notice) throw new Error('Missing reload notice');
+    await new Promise(resolve => setTimeout(resolve, 3400));
+    if (!phone.notices.some(item => item.id === notice.id)) throw new Error('Reload notice expired automatically');
+    phone.dismissNotice(notice.id);
+    await waitForVisualPaint();
+  }
+  try {
+    if (!toggle || toggle.checked) throw new Error('Global link must default off');
+    await choose(false);
+    if (toggle.checked || settings.settings.nativeUserPrefixLink) throw new Error('Cancel changed the link');
+    await choose(true);
+    if (!toggle.checked || !settings.settings.nativeUserPrefixLink) throw new Error('Global link did not enable');
+    await checkReloadNotice();
+    runtime.getCurrentChatId = () => 'visual-native-link-b';
+    useGenerationAliasesStore().switchScope(getCurrentChatScopeKey());
+    await waitForVisualPaint();
+    if (!toggle.checked) throw new Error('Global link changed with chat');
+    await choose(false);
+    if (!toggle.checked || !settings.settings.nativeUserPrefixLink) throw new Error('Cancel disabled the link');
+    fail = true;
+    await choose(true);
+    if (!toggle.checked || !settings.settings.nativeUserPrefixLink) throw new Error('Failed disable changed the link');
+    phone.notices.slice().forEach(notice => phone.dismissNotice(notice.id));
+    fail = false;
+    await choose(true);
+    const script = trees[0] as Extract<ScriptTree, { type: 'script' }>;
+    if (toggle.checked || script.data.chat_history.user_prefix !== 'Original: ')
+      throw new Error('Disabling did not restore the original prefix');
+    await checkReloadNotice();
+    fail = true;
+    await choose(true);
+    if (
+      toggle.checked ||
+      settings.settings.nativeUserPrefixLink ||
+      !phone.notices.some(notice => notice.message.includes('visual write failure'))
+    )
+      throw new Error('Write failure was not reported without changing the switch');
+  } finally {
+    runtime.updateScriptTreesWith = originalUpdate;
+    runtime.getCurrentChatId = originalChat;
+    useGenerationAliasesStore().switchScope(getCurrentChatScopeKey());
+    phone.notices.slice().forEach(notice => phone.dismissNotice(notice.id));
+  }
 }

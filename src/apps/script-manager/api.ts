@@ -221,9 +221,15 @@ export function moveAssistantScriptsToFolder(items: ScriptListItem[], folderName
         const selected = items.filter(item => item.scope === scope.id);
         if (!selected.length) return [];
         const ids = new Set(selected.map(item => item.id));
+        const currentScripts = snapshot[scope.id].flatMap(node => (node.type === 'folder' ? node.scripts : [node]));
+        const scripts = selected.map(item => {
+          const current = currentScripts.find(script => script.id === item.id);
+          if (!current) throw new Error(`脚本“${item.name}”已不存在，请刷新后重试`);
+          return current;
+        });
         const next = pruneScriptTrees(snapshot[scope.id], ids);
         const target = next.find((node): node is ScriptFolder => node.type === 'folder' && node.name === name);
-        if (target) target.scripts.push(...selected.map(item => item.script));
+        if (target) target.scripts.push(...scripts);
         else {
           next.push({
             color: '',
@@ -231,7 +237,7 @@ export function moveAssistantScriptsToFolder(items: ScriptListItem[], folderName
             icon: '',
             id: `phone_script_folder_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`,
             name,
-            scripts: selected.map(item => item.script),
+            scripts,
             type: 'folder',
           });
         }

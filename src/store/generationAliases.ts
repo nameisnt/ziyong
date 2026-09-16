@@ -7,6 +7,7 @@ import {
 } from '@/util/tavernChatAliases';
 import { validateInplace } from '@/util/zod';
 import { getSillyTavernContext } from '@/util/runtime';
+import { useSettingsStore } from '@/store/settings';
 
 export const generationAliasesField = 'sillytavern_phone_generation_aliases';
 
@@ -17,7 +18,8 @@ export const GenerationAliasesSchema = z.object({
 });
 
 export const useGenerationAliasesStore = defineStore('generationAliases', () => {
-  const { data, rehydrateFromSettings, resetCurrentScope, scopeKey, switchScope } = useChatScopedDomain({
+  const settings = useSettingsStore();
+  const { data, inheritScope, rehydrateFromSettings, resetCurrentScope, scopeKey, switchScope } = useChatScopedDomain({
     field: generationAliasesField,
     schema: GenerationAliasesSchema,
     createDefault: () => validateInplace(GenerationAliasesSchema, {}),
@@ -43,12 +45,14 @@ export const useGenerationAliasesStore = defineStore('generationAliases', () => 
     },
   });
   const tavernAliasUnavailableReason = ref('');
+  const nativeUserMacroEnabled = computed(() => settings.settings.nativeUserPrefixLink !== null);
   let stopProvider: (() => void) | undefined;
   let stopNativeUserMacro: (() => void) | undefined;
   function refreshTavernAliasSupport() {
     const context = getSillyTavernContext() as TavernAliasContext | null;
     tavernAliasUnavailableReason.value = getTavernAliasUnavailableReason(context ?? {});
-    if (!stopNativeUserMacro && context?.macros?.registry) {
+    // The compression script caches its prefix until reload; keep its macro alive until then.
+    if (nativeUserMacroEnabled.value && !stopNativeUserMacro && context?.macros?.registry) {
       stopNativeUserMacro = installNativeUserMacro(
         context.macros.registry,
         () => (getSillyTavernContext() as TavernAliasContext).name1,
@@ -65,14 +69,17 @@ export const useGenerationAliasesStore = defineStore('generationAliases', () => 
     });
   }
   refreshTavernAliasSupport();
+  watch(nativeUserMacroEnabled, refreshTavernAliasSupport, { flush: 'sync' });
   onScopeDispose(() => {
     stopProvider?.();
     stopNativeUserMacro?.();
   });
 
   return {
+    inheritScope,
     charReplacement,
     applyToTavern,
+    nativeUserMacroEnabled,
     data,
     refreshTavernAliasSupport,
     tavernAliasUnavailableReason,

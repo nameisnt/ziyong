@@ -56,7 +56,7 @@ export function createVisualScenarioGroups(rootAppScenarios: string[]): VisualSc
       id: 'converter',
       scenarios: ['content-converter-source', 'content-converter-target', 'content-converter-complete'],
     },
-    { id: 'chat-insert', scenarios: ['chat-insert-operations'] },
+    { id: 'chat-insert', scenarios: ['chat-insert-operations', 'chat-insert-operations-dark'] },
     {
       id: 'card-writer',
       scenarios: [
@@ -67,7 +67,16 @@ export function createVisualScenarioGroups(rootAppScenarios: string[]): VisualSc
         'card-writer-profile-direct-import-dark',
       ],
     },
-    { id: 'archive', scenarios: ['archive-owner-list', 'archive-current-browser', 'archive-floor-backup', 'archive-delete-confirm', 'archive-delete-confirm-dark'] },
+    {
+      id: 'archive',
+      scenarios: [
+        'archive-owner-list',
+        'archive-current-browser',
+        'archive-floor-backup',
+        'archive-delete-confirm',
+        'archive-delete-confirm-dark',
+      ],
+    },
     {
       id: 'recovery',
       scenarios: [
@@ -128,7 +137,7 @@ export function createVisualScenarioGroups(rootAppScenarios: string[]): VisualSc
         'theme-home-cardstock',
       ],
     },
-    { id: 'mvu', scenarios: ['mvu-modifier-tree', 'mvu-modifier-crud'] },
+    { id: 'mvu', scenarios: ['mvu-modifier-tree', 'mvu-modifier-crud', 'mvu-modifier-crud-dark'] },
     {
       id: 'status-display',
       scenarios: [
@@ -315,7 +324,7 @@ export function createVisualScenarioGroups(rootAppScenarios: string[]): VisualSc
       id: 'relationship',
       scenarios: ['relationship-generation-background', 'relationship-crud'],
     },
-    { id: 'file-repository', scenarios: ['file-repository-operations'] },
+    { id: 'file-repository', scenarios: ['file-repository-operations', 'file-repository-operations-dark'] },
     {
       id: 'extras',
       scenarios: [

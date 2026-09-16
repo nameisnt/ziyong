@@ -45,7 +45,7 @@ function restoreRuntimeFunction(runtime: Record<string, unknown>, key: string, p
 }
 
 export async function applyChatInsertVisualScenario(name: string, context: ChatInsertVisualScenarioContext) {
-  if (name !== 'chat-insert-operations') return false;
+  if (name !== 'chat-insert-operations' && name !== 'chat-insert-operations-dark') return false;
 
   const runtime = globalThis as unknown as Record<string, unknown> & {
     SillyTavern: { chat: VisualChatMessage[] };
@@ -69,7 +69,8 @@ export async function applyChatInsertVisualScenario(name: string, context: ChatI
       mes: message.message,
       name: message.role === 'user' ? 'User' : 'Assistant',
     }));
-    if (typeof options?.insert_before === 'number') runtime.SillyTavern.chat.splice(options.insert_before, 0, ...converted);
+    if (typeof options?.insert_before === 'number')
+      runtime.SillyTavern.chat.splice(options.insert_before, 0, ...converted);
     else runtime.SillyTavern.chat.push(...converted);
   };
   runtime.setChatMessages = async (messages: RuntimeSetInput[], options?: { refresh?: string }) => {
@@ -91,7 +92,9 @@ export async function applyChatInsertVisualScenario(name: string, context: ChatI
       context.resetPhoneToRoute('chat-insert', 'root', '楼层插入');
       await context.waitForPaint();
 
-      const modeSelect = document.querySelector<HTMLSelectElement>('.pc-chat-insert-page > .pc-page-section .pc-select');
+      const modeSelect = document.querySelector<HTMLSelectElement>(
+        '.pc-chat-insert-page > .pc-page-section .pc-select',
+      );
       const template = document.querySelector<HTMLTextAreaElement>('.pc-chat-insert-page textarea.pc-area');
       if (!modeSelect || !template) throw new Error('Chat insert mode or template control is missing');
       setControlValue(modeSelect, mode);

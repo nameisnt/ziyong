@@ -140,6 +140,8 @@ const selectedSourceName = ref('');
 const sourceEntries = ref<SourceEntry[]>([]);
 const sourceQuery = ref('');
 const sourceLoading = ref(false);
+let sourceRevision = 0;
+let loadedSource: { name: string; type: 'preset' | 'worldbook' } | null = null;
 const selectedSourceKeys = ref(new Set<string>());
 const collectGroupId = ref('');
 const dismissedPairKeys = ref<string[]>([]);
@@ -484,6 +486,9 @@ function refreshSourceNames() {
 }
 
 function setSourceType(type: 'preset' | 'worldbook') {
+  sourceRevision += 1;
+  loadedSource = null;
+  sourceLoading.value = false;
   sourceType.value = type;
   selectedSourceName.value = '';
   sourceEntries.value = [];
@@ -492,13 +497,17 @@ function setSourceType(type: 'preset' | 'worldbook') {
 }
 
 async function loadSourceEntries() {
+  const revision = ++sourceRevision;
+  const source = { name: selectedSourceName.value, type: sourceType.value };
+  loadedSource = null;
   selectedSourceKeys.value = new Set();
   sourceEntries.value = [];
+  sourceLoading.value = false;
   if (!selectedSourceName.value) return;
   sourceLoading.value = true;
   try {
-    if (sourceType.value === 'preset') {
-      const preset = readTavernPreset(selectedSourceName.value);
+    if (source.type === 'preset') {
+      const preset = readTavernPreset(source.name);
       const entries: SourceEntry[] = [];
       const append = (source: 'prompts' | 'prompts_unused', prompt: TavernPresetPrompt, index: number) => {
         if (!isCollectablePresetPrompt(prompt) || !prompt.content?.trim()) return;
@@ -514,7 +523,7 @@ async function loadSourceEntries() {
       (preset.prompts_unused ?? []).forEach((prompt, index) => append('prompts_unused', prompt, index));
       sourceEntries.value = entries;
     } else {
-      sourceEntries.value = (await getWorldbookEntries(selectedSourceName.value))
+      const entries = (await getWorldbookEntries(source.name))
         .filter(entry => entry.content.trim())
         .map(entry => ({
           content: entry.content,
@@ -522,11 +531,15 @@ async function loadSourceEntries() {
           sourceEntryId: String(entry.uid),
           title: entry.name || `条目 #${entry.uid}`,
         }));
+      if (revision !== sourceRevision || source.name !== selectedSourceName.value || source.type !== sourceType.value)
+        return;
+      sourceEntries.value = entries;
     }
+    loadedSource = source;
   } catch (error) {
-    toastr.error(error instanceof Error ? error.message : String(error));
+    if (revision === sourceRevision) toastr.error(error instanceof Error ? error.message : String(error));
   } finally {
-    sourceLoading.value = false;
+    if (revision === sourceRevision) sourceLoading.value = false;
   }
 }
 
@@ -557,15 +570,20 @@ function clearSourceSelection() {
 }
 
 async function collectSelected() {
+  const source = loadedSource;
+  if (sourceLoading.value || !source || source.name !== selectedSourceName.value || source.type !== sourceType.value) {
+    toastr.warning('来源已变化，请重新读取条目');
+    return;
+  }
   const selected = sourceEntries.value.filter(entry => selectedSourceKeys.value.has(entry.key));
   const collected = library.collectItems(
     collectGroupId.value,
     selected.map(entry => ({
       content: entry.content,
       sourceEntryId: entry.sourceEntryId,
-      sourceName: selectedSourceName.value,
+      sourceName: source.name,
       sourceRole: entry.role,
-      sourceType: sourceType.value,
+      sourceType: source.type,
       title: entry.title,
     })),
   );
@@ -733,6 +751,11 @@ onMounted(() => {
 });
 
 onBeforeUnmount(() => {
+  sourceRevision += 1;
   clearItemDragLongPressTimer();
+});
+onDeactivated(() => {
+  sourceRevision += 1;
+  sourceLoading.value = false;
 });
 </script>

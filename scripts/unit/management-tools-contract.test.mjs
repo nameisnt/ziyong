@@ -62,7 +62,7 @@ test('extension installation and updates retain scope and refresh the list once 
   assert.match(extensionApp, /phone\.confirmNotice/u);
   assert.match(
     extensionApp,
-    /for \(const row of rows\) await updateThirdPartyExtension\(row\);[\s\S]*await refreshInstalled\(\)/u,
+    /for \(const row of rows\) \{[\s\S]*await updateThirdPartyExtension\(row\);[\s\S]*await refreshInstalled\(\)/u,
   );
   assert.match(extensionApp, /await runInstallWorkers\(rows\);[\s\S]*await refreshInstalled\(\)/u);
   assert.match(extensionApp, /sillytavern_phone_extension_metadata/u);

@@ -77,14 +77,3 @@ export async function readMvuData(options: MvuOptions) {
   const runtime = await resolveMvuRuntime();
   return cloneMvuData(runtime.getMvuData(options));
 }
-
-export async function replaceMvuData(data: MvuData, options: MvuOptions) {
-  const runtime = await resolveMvuRuntime();
-  await runtime.replaceMvuData(cloneMvuData(data), options);
-}
-
-export async function replaceMvuStatData(data: MvuData, statData: MvuStatData, options: MvuOptions) {
-  const next = mergeMvuStatData(data, statData);
-  await replaceMvuData(next, options);
-  return next;
-}

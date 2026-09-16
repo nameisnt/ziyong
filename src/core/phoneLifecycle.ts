@@ -7,6 +7,7 @@ import { usePhoneStore } from '@/store/phone';
 import { useGenerationAliasesStore } from '@/store/generationAliases';
 import { useNativePresetGroups } from '@/apps/preset-manager/nativeGroups';
 import { usePresetLinkStore } from '@/apps/preset-link/store';
+import { installChatBranchInheritance } from '@/util/chatBranchInheritance';
 // eslint-disable-next-line import-x/no-nodejs-modules
 import { saveSettingsDebounced } from '@sillytavern/script';
 import { extension_settings } from '@sillytavern/scripts/extensions';
@@ -83,6 +84,8 @@ export function initPhoneLifecycle() {
     app.use(i18n);
     app.mount(root);
     const phone = usePhoneStore(pinia);
+    const stopBranchInheritance = installChatBranchInheritance(pinia, () => phone.syncCurrentTavernScope(true));
+    app.onUnmount(stopBranchInheritance);
     void usePresetLinkStore(pinia).switchScope(phone.currentTavernScopeKey);
     useGenerationAliasesStore(pinia);
     void useNativePresetGroups(pinia)

@@ -194,6 +194,7 @@ export const useWorldbookLinkStore = defineStore('worldbook-link', () => {
   }
 
   function inheritProfiles(sourceScopeKey: string, targetScopeKey: string) {
+    if (settings.value.profiles[targetScopeKey]) return 0;
     assertUsableChatScope(sourceScopeKey);
     assertUsableChatScope(targetScopeKey);
     if (sourceScopeKey === targetScopeKey) return 0;

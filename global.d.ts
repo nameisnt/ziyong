@@ -40,6 +40,7 @@ declare module '@sillytavern/script' {
   export function saveChatConditional(): Promise<void> | void;
   export function saveChatDebounced(): Promise<void> | void;
   export function saveSettingsDebounced(): Promise<void> | void;
+  export function saveSettings(): Promise<void>;
 }
 
 declare module '@sillytavern/scripts/extensions' {

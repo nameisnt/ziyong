@@ -4,6 +4,7 @@ import {
   getOptionalGlobalFunction,
   setChatMessagesSafe,
 } from '@/util/runtime';
+import { areChatScopeKeysEquivalent, getCurrentChatScopeKey, isPlaceholderChatScopeKey } from '@/store/chatScoped';
 
 export type ChatInsertMode = 'append-last' | 'append-message' | 'new-before' | 'new-end';
 export type ChatInsertRole = 'assistant' | 'system' | 'user';
@@ -22,6 +23,7 @@ export interface ChatInsertTemplateValues {
 }
 
 export interface ChatInsertOptions extends ChatInsertTemplateValues {
+  scopeKey: string;
   hidden?: boolean;
   mode: ChatInsertMode;
   role: ChatInsertRole;
@@ -105,6 +107,17 @@ async function saveChatIfAvailable() {
 }
 
 export async function applyChatInsert(options: ChatInsertOptions): Promise<ChatInsertResult> {
+  const assertScope = (afterWrite = false) => {
+    const current = getCurrentChatScopeKey();
+    if (isPlaceholderChatScopeKey(current) || !areChatScopeKeysEquivalent(current, options.scopeKey)) {
+      throw new Error(
+        afterWrite
+          ? '写入后聊天已切换，未继续保存当前聊天；请回原聊天核对结果，勿重复插入'
+          : '聊天已切换，已取消写入，请回到原聊天重试',
+      );
+    }
+  };
+  assertScope();
   const message = formatChatInsertTemplate(options.template, options);
   if (!message.trim()) {
     throw new Error('插入内容不能为空');
@@ -137,6 +150,7 @@ export async function applyChatInsert(options: ChatInsertOptions): Promise<ChatI
         refresh: 'affected',
       },
     );
+    assertScope(true);
     await saveChatIfAvailable();
     return {
       message,
@@ -166,6 +180,7 @@ export async function applyChatInsert(options: ChatInsertOptions): Promise<ChatI
     ],
     { refresh: 'affected' },
   );
+  assertScope(true);
   await saveChatIfAvailable();
 
   return {

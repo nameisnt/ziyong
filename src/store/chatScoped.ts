@@ -331,6 +331,17 @@ export function useChatScopedDomain<T>(options: { field: string; schema: ZodType
     persistCurrentScope();
   }
 
+  function inheritScope(source: string, target: string, transform: (data: T) => T = value => value) {
+    if (source === target) return false;
+    persistCurrentScope();
+    if (Object.hasOwn(envelope.value.scopes, target)) return false;
+    const sourceData = getScopeData(source);
+    if (!sourceData) return false;
+    envelope.value.scopes[target] = parsePrettified(options.schema, transform(klona(sourceData)));
+    persistEnvelope();
+    return true;
+  }
+
   function rehydrateFromSettings() {
     hydrating.value = true;
     configError.value = '';
@@ -368,6 +379,7 @@ export function useChatScopedDomain<T>(options: { field: string; schema: ZodType
     data,
     flushCurrentScope: persistCurrentScope,
     getScopeData,
+    inheritScope,
     rawConfig,
     rehydrateFromSettings,
     resetCurrentScope,
