@@ -28,6 +28,7 @@ const DEFAULT_HOME_FOLDERS = [
       'status-display-settings',
       'mvu-modifier',
       'extension-transfer',
+      'resource-bundle',
       'script-manager',
       'chat-insert',
       'recovery',

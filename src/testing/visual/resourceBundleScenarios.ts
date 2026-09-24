@@ -4,6 +4,7 @@ import { readBundle } from '@/resource-bundle/zip';
 import { usePluginPresetStore } from '@/store/pluginPresets';
 import { useSettingsStore } from '@/store/settings';
 import { usePhoneStore } from '@/store/phone';
+import { characters } from '@/testing/sillytavern-script';
 import { extension_settings } from '@/testing/sillytavern-extensions';
 import { resetVisualPhoneRoute, waitForVisualCondition, waitForVisualPaint } from './context';
 import { installMemoryFileService } from './memoryFileService';
@@ -16,17 +17,19 @@ function button(text: string, root: ParentNode = document) {
 async function expect(fn: () => boolean, message: string) {
   if (!(await waitForVisualCondition(fn, 5000))) throw new Error(message);
 }
+async function confirm() {
+  await expect(
+    () => Boolean(document.querySelector('.pc-phone-notice-action[data-role="danger"]')),
+    'Missing confirmation',
+  );
+  document.querySelector<HTMLButtonElement>('.pc-phone-notice-action[data-role="danger"]')!.click();
+}
 function preset() {
   return {
     prompts: [{ identifier: 'one', name: '条目', role: 'system', content: 'test' }],
     prompt_order: [{ character_id: 100001, order: [{ identifier: 'one', enabled: true }] }],
     extensions: {
-      regex_scripts: Array.from({ length: 12 }, (_, i) => ({
-        id: String(i),
-        scriptName: `长名称正则-${i}-用于测试窄屏换行和内部滚动`,
-        findRegex: 'x',
-        replaceString: 'y',
-      })),
+      regex_scripts: [{ id: 'r', scriptName: '共享正则', findRegex: 'x', replaceString: 'y' }],
       tavern_helper: {
         scripts: [{ id: 's', type: 'script', name: '附带脚本', content: 'console.log(1)', enabled: true }],
       },
@@ -35,143 +38,229 @@ function preset() {
 }
 export async function applyResourceBundleScenario(name: string) {
   if (!name.startsWith('resource-bundle-')) return false;
-  const kind = name.includes('worldbook') ? 'worldbook' : name.includes('character') ? 'character' : 'preset';
-  const importing = name.includes('-import');
   useSettingsStore().setTheme(name.endsWith('-dark') ? 'dark' : 'light');
   installMemoryFileService();
   const store = usePluginPresetStore();
   await store.whenReady();
-  const runtime = globalThis as unknown as Record<string, unknown>;
   const raw = preset();
+  await store.importPreset(raw, '插件预设组合测试.json');
   (extension_settings as Record<string, unknown>).regex = raw.extensions.regex_scripts;
-  if (importing) {
-    resetVisualPhoneRoute(
-      kind === 'preset' ? 'preset-manager' : kind === 'worldbook' ? 'worldbook-link' : 'archive',
-      'root',
-      '组合包测试',
-    );
-    await expect(
-      () => [...document.querySelectorAll('button')].some(el => el.textContent?.trim() === '组合导入' && !el.disabled),
-      'Import entrance missing',
-    );
-    button('组合导入').click();
-    await expect(() => Boolean(document.querySelector('.pc-bundle-dialog input[type=file]')), 'Import dialog missing');
-    const manifest: BundleManifest = {
-      format: 'phone-resource-bundle',
-      version: 1,
-      pluginVersion: '1',
-      kind,
-      name: '组合测试',
-      items: [
-        {
-          id: '0',
-          kind,
-          name: '组合测试',
-          path: `resources/0.${kind === 'character' ? 'png' : 'json'}`,
-          ...(kind === 'preset' ? { presetSource: 'plugin' as const } : {}),
-        },
-      ],
-    };
-    const files: Record<string, Uint8Array> = {
-      [manifest.items[0]!.path]:
-        kind === 'character'
-          ? new Uint8Array([137, 80, 78, 71, 13, 10, 26, 10])
-          : encodeJson(kind === 'preset' ? { ...raw, extensions: {} } : { entries: {} }),
-    };
-    for (let i = 1; i <= 12; i++) {
-      const chat = kind === 'character';
-      const path = `resources/${i}.${chat ? 'jsonl' : 'json'}`;
-      manifest.items.push({
-        id: String(i),
-        parentId: '0',
-        kind: chat ? 'chat' : 'regex',
-        name: `附件-${i}-长名称滚动测试`,
-        path,
-      });
-      files[path] = chat
-        ? new TextEncoder().encode('{"user_name":"u","chat_metadata":{}}\n{"mes":"test"}')
-        : encodeJson(raw.extensions.regex_scripts[i - 1]);
+  characters.splice(0, characters.length, { avatar: 'one.png', name: '角色一' }, { avatar: 'two.png', name: '角色二' });
+  const runtime = globalThis as unknown as Record<string, unknown>;
+  const books = Array.from({ length: 12 }, (_, i) => `世界书-${i}-长名称换行与内部滚动测试`);
+  runtime.getPresetManager = () => ({
+    getPresetList: () => ({ presets: [raw], preset_names: { 酒馆预设: 0 } }),
+    getCompletionPresetByName: () => raw,
+  });
+  runtime.getWorldbookNames = () => books;
+  runtime.loadWorldInfo = async () => ({ entries: {} });
+  runtime.updateWorldInfoList = async () => {};
+  const originalFetch = globalThis.fetch;
+  const png = new Uint8Array([137, 80, 78, 71, 13, 10, 26, 10]);
+  const chatTargets: string[] = [];
+  let cardImports = 0,
+    worldAttempts = 0;
+  globalThis.fetch = async (input, init) => {
+    const path = String(input);
+    if (path === '/api/characters/export') return new Response(png);
+    if (path === '/api/chats/export')
+      return Response.json({ result: '{"user_name":"u","chat_metadata":{}}\n{"mes":"test"}' });
+    if (path === '/api/characters/import') {
+      const file_name = `bundle-import-${++cardImports}`;
+      characters.push({ avatar: `${file_name}.png`, name: `Imported ${cardImports}` });
+      return Response.json({ file_name });
     }
-    files['manifest.json'] = encodeJson(manifest);
-    const dt = new DataTransfer();
-    dt.items.add(new File([new Uint8Array(zipSync(files))], 'bundle.zip', { type: 'application/zip' }));
-    const input = document.querySelector<HTMLInputElement>('.pc-bundle-dialog input[type=file]')!;
-    input.files = dt.files;
-    input.dispatchEvent(new Event('change', { bubbles: true }));
-    await expect(() => document.querySelectorAll('.pc-bundle-row').length === 13, 'Import preview incomplete');
-    if (kind === 'preset') {
-      await expect(() => !button('导入所选').disabled, 'Import button remains disabled');
+    if (path === '/api/chats/get') return Response.json({});
+    if (path === '/api/chats/import') {
+      chatTargets.push(String((init!.body as FormData).get('avatar_url')));
+      return Response.json({ fileNames: ['imported.jsonl'] });
+    }
+    if (path === '/api/chats/rename') return Response.json({ ok: true });
+    if (path === '/api/worldinfo/import') {
+      if (++worldAttempts === 1) return new Response('测试失败：可重试', { status: 500 });
+      books.push('导入世界书');
+      return Response.json({ name: '导入世界书' });
+    }
+    return originalFetch(input, init);
+  };
+  resetVisualPhoneRoute('resource-bundle', 'root', '组合导出');
+  await expect(() => document.querySelectorAll('.pc-bundle-entry').length >= 17, 'Standalone catalog missing');
+  if (!button('导出所选').disabled) throw new Error('Empty selection can be exported');
+  const search = document.querySelector<HTMLInputElement>('.pc-bundle-app > .pc-search-field input')!;
+  search.value = 'no-matches-unique';
+  search.dispatchEvent(new Event('input', { bubbles: true }));
+  await expect(() => !document.querySelector('.pc-bundle-entry'), 'Search did not filter');
+  search.value = '';
+  search.dispatchEvent(new Event('input', { bubbles: true }));
+  await expect(() => document.querySelectorAll('.pc-bundle-entry').length >= 17, 'Search reset failed');
+  document.querySelector<HTMLButtonElement>('.pc-bundle-app button[aria-label="刷新目录"]')!.click();
+  await waitForVisualPaint();
+  await expect(
+    () => !document.querySelector<HTMLButtonElement>('.pc-bundle-app button[aria-label="刷新目录"]')!.disabled,
+    'Refresh stuck',
+  );
+  try {
+    if (name.includes('-import')) {
+      button('导入组合包').click();
+      await expect(
+        () => Boolean(document.querySelector('.pc-bundle-dialog input[type=file]')),
+        'Import dialog missing',
+      );
+      const manifest: BundleManifest = {
+        format: 'phone-resource-bundle',
+        version: 1,
+        pluginVersion: 'test',
+        kind: 'mixed',
+        name: '混合测试',
+        items: [
+          { id: '0', kind: 'character', name: '导入角色一', path: 'resources/0.png' },
+          { id: '1', kind: 'character', name: '导入角色二', path: 'resources/1.png' },
+          { id: '2', kind: 'preset', name: '导入预设', path: 'resources/2.json', presetSource: 'plugin' },
+          { id: '3', kind: 'regex', name: '随预设正则', path: 'resources/3.json', parentId: '2' },
+          { id: '4', kind: 'script', name: '随预设脚本', path: 'resources/4.json', parentId: '2' },
+          { id: '5', kind: 'worldbook', name: '导入世界书', path: 'resources/5.json' },
+        ],
+      };
+      const files: Record<string, Uint8Array> = {
+        'resources/0.png': png,
+        'resources/1.png': png,
+        'resources/2.json': encodeJson({ ...raw, extensions: {} }),
+        'resources/3.json': encodeJson(raw.extensions.regex_scripts[0]),
+        'resources/4.json': encodeJson(raw.extensions.tavern_helper.scripts[0]),
+        'resources/5.json': encodeJson({ entries: {} }),
+      };
+      for (let i = 6; i < 18; i++) {
+        const path = `resources/${i}.jsonl`;
+        manifest.items.push({
+          id: String(i),
+          kind: 'chat',
+          name: `记录-${i}-长名称滚动测试`,
+          path,
+          parentId: i % 2 ? '1' : '0',
+        });
+        files[path] = new TextEncoder().encode('{"user_name":"u","chat_metadata":{}}\n{"mes":"test"}');
+      }
+      files['manifest.json'] = encodeJson(manifest);
+      const dt = new DataTransfer();
+      dt.items.add(new File([new Uint8Array(zipSync(files))], 'bundle.zip'));
+      const input = document.querySelector<HTMLInputElement>('.pc-bundle-dialog input[type=file]')!;
+      const invalid = new DataTransfer();
+      invalid.items.add(new File(['invalid zip'], 'broken.zip'));
+      input.files = invalid.files;
+      input.dispatchEvent(new Event('change', { bubbles: true }));
+      await expect(() => Boolean(document.querySelector('.pc-bundle-error')), 'Malformed ZIP error missing');
+      input.files = dt.files;
+      input.dispatchEvent(new Event('change', { bubbles: true }));
+      await expect(() => document.querySelectorAll('.pc-bundle-row').length === 16, 'Mixed import preview incomplete');
+      const cardRows = [...document.querySelectorAll('.pc-bundle-row')].filter(row =>
+        row.querySelector('.pc-field-group'),
+      );
+      const target = cardRows[0]!.querySelector<HTMLSelectElement>('select')!;
+      target.value = 'one.png';
+      target.dispatchEvent(new Event('change', { bubbles: true }));
+      await waitForVisualPaint();
+      await expect(() => !button('导入所选').disabled, 'Existing target selection stuck');
+      if (cardRows[0]!.querySelector<HTMLInputElement>('input')!.checked)
+        throw new Error('Existing target imports duplicate card');
+      if (cardRows[1]!.querySelector<HTMLSelectElement>('select')!.value) throw new Error('Other card target changed');
+      target.value = '';
+      target.dispatchEvent(new Event('change', { bubbles: true }));
+      await waitForVisualPaint();
+      await expect(() => !button('导入所选').disabled, 'New-card target reset stuck');
       button('导入所选').click();
+      await confirm();
       await expect(
-        () => Boolean(document.querySelector('.pc-phone-notice-action[data-role="danger"]')),
-        'Import confirmation missing',
+        () => Boolean(document.querySelector('.pc-bundle-dialog')?.textContent?.includes('失败 1')),
+        'Failed import not reported',
       );
-      document.querySelector<HTMLButtonElement>('.pc-phone-notice-action[data-role="danger"]')!.click();
+      if (
+        cardImports !== 2 ||
+        chatTargets.filter(v => v === 'bundle-import-1.png').length !== 6 ||
+        chatTargets.filter(v => v === 'bundle-import-2.png').length !== 6
+      )
+        throw new Error('Chat ownership crossed');
+      button('重试失败项').click();
       await expect(
-        () => Boolean(document.querySelector('.pc-bundle-dialog')?.textContent?.includes('成功 13')),
-        'Import did not complete',
+        () => Boolean(document.querySelector('.pc-bundle-dialog')?.textContent?.includes('成功 18')),
+        'Retry failed',
       );
-      if (store.items.filter(item => item.name === '组合测试').length !== 1)
-        throw new Error('Preset not imported once');
-    }
-  } else if (kind === 'preset') {
-    const item = await store.importPreset(raw, '组合导出测试.json');
-    resetVisualPhoneRoute('preset-manager', 'detail', '预设条目', { presetSource: 'plugin', presetId: item.id });
-  } else if (kind === 'worldbook') {
-    runtime.loadWorldInfo = async () => ({ entries: {} });
-    resetVisualPhoneRoute('worldbook-link', 'detail', '世界书', { bookName: '视觉世界书' });
-  } else {
-    resetVisualPhoneRoute('archive', 'root', '聊天档案');
-  }
-  if (!importing) {
-    await expect(
-      () =>
-        [...document.querySelectorAll('button')].some(
-          el => el.textContent?.trim() === '组合导出' && !(el as HTMLButtonElement).disabled,
-        ),
-      'Export entrance missing',
-    );
-    button('组合导出').click();
-    await expect(() => document.querySelectorAll('.pc-bundle-row').length > 1, 'Export selection missing');
-    const checkboxes = [...document.querySelectorAll<HTMLInputElement>('.pc-bundle-scroll input[type=checkbox]')];
-    if (checkboxes.slice(1).some(el => el.checked !== (kind === 'preset')))
-      throw new Error('Attachment defaults incorrect');
-    button('全选', document.querySelector('.pc-bundle-dialog')!).click();
-    await waitForVisualPaint();
-    if (
-      [...document.querySelectorAll<HTMLInputElement>('.pc-bundle-scroll input[type=checkbox]')].some(el => !el.checked)
-    )
-      throw new Error('Select all did not work');
-    button('取消全选', document.querySelector('.pc-bundle-dialog')!).click();
-    await waitForVisualPaint();
-    if (!document.querySelector<HTMLInputElement>('.pc-bundle-scroll input[type=checkbox]')!.checked)
-      throw new Error('Main resource unselected');
-    if (kind === 'preset' || kind === 'worldbook') {
+      if (cardImports !== 2 || chatTargets.length !== 12) throw new Error('Retry duplicated successful resources');
+      const imported = store.items.find(item => item.name === '导入预设');
+      if (!imported) throw new Error('Preset not imported');
+      const data = store.exportPreset(imported.id) as ReturnType<typeof preset>;
+      if (data.extensions.tavern_helper.scripts[0]!.enabled !== false) throw new Error('Script enabled unexpectedly');
+    } else {
+      const footer = document.querySelector('.pc-bundle-app > footer')!;
+      const expand = document.querySelector<HTMLButtonElement>('.pc-bundle-entry button[aria-expanded]')!;
+      expand.click();
+      await expect(() => document.querySelectorAll('.pc-bundle-chat').length === 3, 'Chat expansion failed');
+      if ([...document.querySelectorAll<HTMLInputElement>('.pc-bundle-chat input')].some(input => input.checked))
+        throw new Error('Chats should not be selected by default');
+      button('全选聊天').click();
+      await waitForVisualPaint();
+      button('取消聊天').click();
+      await waitForVisualPaint();
+      const groups = [...document.querySelectorAll('.pc-bundle-group')];
+      groups.forEach(group => button('全选', group).click());
+      document.querySelector<HTMLInputElement>('.pc-bundle-chat input')!.click();
+      await waitForVisualPaint();
       let download: Blob | null = null;
-      const createUrl = URL.createObjectURL;
+      const originalUrl = URL.createObjectURL;
       URL.createObjectURL = value => {
         if (value instanceof Blob && value.type === 'application/zip') download = value;
-        return createUrl(value);
+        return originalUrl(value);
       };
       try {
-        button('导出组合包').click();
-        await expect(() => Boolean(download), 'ZIP download was not created');
-        const exported = await readBundle(new File([download!], 'export.zip'));
-        if (exported.manifest.items.some(item => item.kind === 'regex'))
-          throw new Error('Unselected regex leaked into export');
-        if (exported.manifest.kind !== kind) throw new Error('Wrong export kind');
+        button('导出所选', footer).click();
+        await expect(() => Boolean(download), 'Selected download missing');
+        const selected = await readBundle(new File([download!], 'selected.zip'));
+        if (
+          selected.manifest.kind !== 'mixed' ||
+          selected.manifest.items.filter(item => item.kind === 'chat').length !== 1
+        )
+          throw new Error('Selected chat filtering failed');
+        if (selected.manifest.items.filter(item => item.kind === 'script').length !== 2)
+          throw new Error('Preset attachments missing');
+        const regexPaths = selected.manifest.items.filter(item => item.kind === 'regex').map(item => item.path);
+        if (regexPaths.length !== 3 || new Set(regexPaths).size !== 1)
+          throw new Error('Shared regex payload not deduplicated');
+        await expect(() => !button('导出全部', footer).disabled, 'Export remained busy');
+        download = null;
+        button('导出全部', footer).click();
+        await expect(
+          () => Boolean(document.querySelector('.pc-phone-notice-action[data-role="danger"]')),
+          'Export-all confirmation missing',
+        );
+        button(
+          '取消',
+          document.querySelector('.pc-phone-notice-action[data-role="danger"]')!.closest('.pc-phone-notice')!,
+        ).click();
+        await expect(() => !button('导出全部', footer).disabled, 'Cancelled export remains busy');
+        if (download) throw new Error('Cancelled export still downloaded');
+        if (document.querySelectorAll('.pc-bundle-chat input:checked').length !== 1)
+          throw new Error('Export-all overwrote manual selection');
+        button('导出全部', footer).click();
+        await confirm();
+        await expect(() => Boolean(download), 'Export all download missing');
+        const all = await readBundle(new File([download!], 'all.zip'));
+        if (all.manifest.items.filter(item => item.kind === 'chat').length !== 6)
+          throw new Error('Export all omitted chats');
       } finally {
-        URL.createObjectURL = createUrl;
+        URL.createObjectURL = originalUrl;
       }
     }
+    const phone = usePhoneStore();
+    phone.notices.forEach(notice => phone.dismissNotice(notice.id));
+    const scroll = document.querySelector<HTMLElement>(
+      name.includes('-import') ? '.pc-bundle-scroll' : '.pc-bundle-catalog',
+    )!;
+    scroll.scrollTop = scroll.scrollHeight;
+    await waitForVisualPaint();
+    if (scroll.scrollHeight > scroll.clientHeight && !scroll.scrollTop) throw new Error('Internal scrolling failed');
+    scroll.scrollTop = 0;
+    await waitForVisualPaint();
+  } finally {
+    globalThis.fetch = originalFetch;
   }
-  const scroll = document.querySelector<HTMLElement>('.pc-bundle-scroll')!;
-  const phone = usePhoneStore();
-  phone.notices.forEach(notice => phone.dismissNotice(notice.id));
-  scroll.scrollTop = scroll.scrollHeight;
-  await waitForVisualPaint();
-  if (scroll.scrollHeight > scroll.clientHeight && !scroll.scrollTop) throw new Error('Internal scrolling failed');
-  scroll.scrollTop = 0;
-  await waitForVisualPaint();
   return true;
 }

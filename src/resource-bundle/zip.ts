@@ -11,15 +11,27 @@ export async function readBundle(file: File) {
 
 export async function writeBundle(manifest: BundleManifest, rows: ExportRow[], progress: (name: string) => void) {
   const files: Record<string, Uint8Array> = {};
+  const items = [];
+  const regexFiles = new Map<string, string>();
   for (const row of rows.filter(row => row.selected)) {
     progress(row.item.name);
     try {
-      files[row.item.path] = await row.read();
+      const bytes = await row.read();
+      const item = { ...row.item };
+      // Shared payloads keep distinct association records for each preset and the global catalog.
+      const key = item.kind === 'regex' ? new TextDecoder().decode(bytes) : undefined;
+      const sharedPath = key === undefined ? undefined : regexFiles.get(key);
+      if (sharedPath) item.path = sharedPath;
+      else {
+        files[item.path] = bytes;
+        if (key !== undefined) regexFiles.set(key, item.path);
+      }
+      items.push(item);
     } catch (error) {
       throw new Error(`${row.item.name}：${String(error)}`);
     }
   }
-  const selectedManifest = { ...manifest, items: rows.filter(row => row.selected).map(row => row.item) };
+  const selectedManifest = { ...manifest, items };
   files['manifest.json'] = encodeJson(selectedManifest);
   validateBundle(files);
   const { zip } = await import('fflate');

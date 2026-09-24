@@ -1,18 +1,5 @@
 <template>
   <section class="pc-preset-manager pc-app-fill">
-    <div v-if="route.page === 'root' || route.page === 'detail'" class="pc-compact-toolbar">
-      <ResourceBundleActions
-        kind="preset"
-        :allow-import="route.page === 'root'"
-        :source="
-          route.page === 'detail'
-            ? { kind: 'preset', name: detailPresetName, pluginId: detailPluginPresetId || undefined }
-            : undefined
-        "
-        :disabled="loading || mutationBusy"
-        @imported="refreshRoot"
-      />
-    </div>
     <PresetCatalogPage
       v-if="route.page === 'root'"
       v-model:query="presetQuery"
@@ -124,7 +111,6 @@
 </template>
 
 <script setup lang="ts">
-import ResourceBundleActions from '@/resource-bundle/ResourceBundleActions.vue';
 import { useEntryLibraryStore } from '@/apps/entry-library/store';
 import BulkDeleteDialog from '@/components/BulkDeleteDialog.vue';
 import { usePresetCatalogGroupStore } from '@/store/presetCatalogGroups';

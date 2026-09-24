@@ -94,14 +94,16 @@ export async function planExport(source: BundleSource) {
     data.scripts.forEach((script, i) =>
       add('script', String(script.name || `脚本 ${i + 1}`), async () => encodeJson(script)),
     );
+  } else if (source.kind === 'regex') {
+    const regex = globalRegexes()[source.index];
+    if (!regex || String(regex.scriptName || `正则 ${source.index + 1}`) !== source.name)
+      throw new Error('正则目录已变化，请刷新后重新选择');
+    const data = cloneJson(regex);
+    add('regex', source.name, async () => encodeJson(data));
   } else if (source.kind === 'worldbook') {
     const data = cloneJson(await required<(name: string) => Promise<unknown>>('loadWorldInfo')(source.name));
     asRecord(asRecord(data).entries);
     add('worldbook', source.name, async () => encodeJson(data));
-    globalRegexes().forEach((regex, i) => {
-      const snapshot = cloneJson(regex);
-      add('regex', String(regex.scriptName || `正则 ${i + 1}`), async () => encodeJson(snapshot), false);
-    });
   } else {
     const owner = { avatar: source.avatar, name: source.name };
     const id = characters.findIndex(character => asRecord(character).avatar === owner.avatar);
@@ -151,13 +153,33 @@ export async function planExport(source: BundleSource) {
     version: 1,
     pluginVersion: RUNNING_VERSION,
     name: source.name,
-    kind: source.kind,
+    kind: source.kind === 'regex' ? 'mixed' : source.kind,
     items: rows.map(row => row.item),
   };
   return { rows, manifest };
 }
 
-export type ImportContext = { presetTarget: 'plugin' | 'tavern'; characterAvatar: string; characterName: string };
+export type ImportContext = {
+  presetTarget: 'plugin' | 'tavern';
+  characterAvatar: string;
+  characterName: string;
+};
+export async function listExportSources(): Promise<BundleSource[]> {
+  const store = usePluginPresetStore();
+  await store.whenReady();
+  await getCharacters();
+  return [
+    ...getCharacterTargets().map(character => ({ kind: 'character' as const, ...character })),
+    ...Object.keys(presetManager().getPresetList().preset_names).map(name => ({ kind: 'preset' as const, name })),
+    ...store.items.map(item => ({ kind: 'preset' as const, name: item.name, pluginId: item.id })),
+    ...required<() => string[]>('getWorldbookNames')().map(name => ({ kind: 'worldbook' as const, name })),
+    ...globalRegexes().map((regex, index) => ({
+      kind: 'regex' as const,
+      name: String(regex.scriptName || `正则 ${index + 1}`),
+      index,
+    })),
+  ];
+}
 async function chatNames(context: ImportContext) {
   if (!context.characterAvatar) return [];
   const index = characters.findIndex(value => asRecord(value).avatar === context.characterAvatar);
@@ -188,8 +210,9 @@ function existingNames(row: ImportRow, context: ImportContext) {
   return [];
 }
 export async function planImport(bundle: ResourceBundle, context: ImportContext): Promise<ImportRow[]> {
-  if (bundle.manifest.kind === 'preset' && context.presetTarget === 'plugin') await usePluginPresetStore().whenReady();
-  if (bundle.manifest.kind === 'character') await getCharacters();
+  if (bundle.manifest.items.some(item => item.kind === 'preset') && context.presetTarget === 'plugin')
+    await usePluginPresetStore().whenReady();
+  if (bundle.manifest.items.some(item => item.kind === 'character')) await getCharacters();
   const rows = bundle.manifest.items.map(item => ({
     item,
     name: item.name,
@@ -200,9 +223,14 @@ export async function planImport(bundle: ResourceBundle, context: ImportContext)
     status: 'pending' as const,
     message: '',
   }));
+  const plannedNames = new Map<string, Set<string>>();
   for (const row of rows) {
-    if (row.item.parentId && bundle.manifest.kind === 'preset') continue;
-    row.conflict = existingNames(row, context).includes(row.name);
+    if (bundle.manifest.items.find(item => item.id === row.item.parentId)?.kind === 'preset') continue;
+    const scope = `${row.item.kind}:${row.item.parentId || ''}`;
+    const prior = plannedNames.get(scope) ?? new Set<string>();
+    row.conflict = existingNames(row, context).includes(row.name) || prior.has(row.name);
+    prior.add(row.name);
+    plannedNames.set(scope, prior);
     row.replaceable =
       row.item.kind === 'worldbook' ||
       (row.item.kind === 'preset' && context.presetTarget === 'tavern' && row.name !== getCurrentTavernPresetName());

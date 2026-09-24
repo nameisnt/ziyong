@@ -6,64 +6,43 @@
         class="pc-section-card pc-modal-dialog pc-bundle-dialog"
         role="dialog"
         aria-modal="true"
-        :aria-label="title"
+        aria-label="组合导入"
         tabindex="-1"
       >
         <header class="pc-section-head">
-          <strong>{{ title }}</strong>
+          <strong>组合导入</strong>
           <button class="pc-icon-btn" type="button" aria-label="关闭" title="关闭" :disabled="busy" @click="close">
             <i class="fa-solid fa-xmark"></i>
           </button>
         </header>
-        <template v-if="!source">
-          <button class="pc-soft-btn" type="button" :disabled="busy" @click="fileInput?.click()">
-            <i class="fa-solid fa-file-import"></i>选择组合包
-          </button>
-          <input ref="fileInput" hidden type="file" accept=".zip,application/zip" @change="readFile" />
-          <label v-if="bundle?.manifest.kind === 'preset'" class="pc-field-group">
-            <span class="pc-field-label">导入位置</span>
-            <select v-model="context.presetTarget" class="pc-select" :disabled="busy || started" @change="replan">
-              <option value="plugin">插件预设</option>
-              <option value="tavern">酒馆预设</option>
-            </select>
-          </label>
-          <label v-if="bundle?.manifest.kind === 'character'" class="pc-field-group">
-            <span class="pc-field-label">聊天目标角色卡</span>
-            <select
-              :value="existingAvatar"
-              class="pc-select"
-              :disabled="
-                busy ||
-                importRows.some(
-                  row => row.status === 'success' && (row.item.kind === 'character' || row.item.kind === 'chat'),
-                )
-              "
-              @change="selectCharacter(($event.target as HTMLSelectElement).value)"
-            >
-              <option value="">使用本次导入的角色卡</option>
-              <option v-for="character in characterTargets" :key="character.avatar" :value="character.avatar">
-                {{ character.name }} · {{ character.avatar }}
-              </option>
-            </select>
-          </label>
-        </template>
-        <label v-if="visibleRows.length" class="pc-search-field"
-          ><i class="fa-solid fa-magnifying-glass"></i><input v-model="query" type="search" placeholder="搜索附件名称"
-        /></label>
+        <button class="pc-soft-btn" type="button" :disabled="busy" @click="fileInput?.click()">
+          <i class="fa-solid fa-file-import"></i>选择组合包
+        </button>
+        <input ref="fileInput" hidden type="file" accept=".zip,application/zip" @change="readFile" />
+        <label v-if="hasPresets" class="pc-field-group">
+          <span class="pc-field-label">预设导入位置</span>
+          <select v-model="context.presetTarget" class="pc-select" :disabled="busy || started" @change="replan">
+            <option value="plugin">插件预设</option>
+            <option value="tavern">酒馆预设</option>
+          </select>
+        </label>
+        <label v-if="importRows.length" class="pc-search-field">
+          <i class="fa-solid fa-magnifying-glass"></i><input v-model="query" type="search" placeholder="搜索资源名称" />
+        </label>
         <p v-if="error" class="pc-bundle-error" role="alert">{{ error }}</p>
         <p v-if="busy" role="status">{{ progress || '正在读取…' }}</p>
         <p v-if="summary" role="status">{{ summary }}</p>
         <div class="pc-bundle-scroll">
-          <EmptyState v-if="!busy && !visibleRows.length && !error" title="尚无组合包内容" />
+          <EmptyState v-if="!busy && !importRows.length && !error" title="尚无组合包内容" />
           <template v-for="group in groups" :key="group.kind">
             <details v-if="group.rows.length" open>
               <summary>{{ labels[group.kind] }} · {{ group.rows.length }}</summary>
-              <div v-if="group.kind !== mainKind" class="pc-compact-toolbar">
+              <div class="pc-compact-toolbar">
                 <button
                   class="pc-soft-btn"
                   type="button"
                   :disabled="busy || started"
-                  @click="selectGroup(group.kind, true)"
+                  @click="selectGroup(group.rows, true)"
                 >
                   全选
                 </button>
@@ -71,7 +50,7 @@
                   class="pc-soft-btn"
                   type="button"
                   :disabled="busy || started"
-                  @click="selectGroup(group.kind, false)"
+                  @click="selectGroup(group.rows, false)"
                 >
                   取消全选
                 </button>
@@ -80,47 +59,58 @@
                 <div class="pc-bundle-choice">
                   <BulkSelectionCheckbox
                     :model-value="row.selected"
-                    :disabled="busy || started || isRequired(row.item.kind)"
+                    :disabled="
+                      busy ||
+                      started ||
+                      (row.item.kind === 'character' && Boolean(targets[row.item.id]?.characterAvatar))
+                    "
                     :label="row.item.name"
-                    @update:model-value="row.selected = $event"
+                    @update:model-value="setSelected(row, $event)"
                   />
                   <span>{{ row.item.name }}</span>
                 </div>
-                <template v-if="'status' in row">
-                  <template v-if="row.conflict && !row.item.parentId">
-                    <span class="pc-bundle-muted">同名资源已存在</span>
-                  </template>
+                <small v-if="row.item.parentId">{{ parentName(row) }}</small>
+                <small v-if="row.item.kind === 'preset'">{{
+                  row.item.presetSource === 'tavern' ? '酒馆预设' : '插件预设'
+                }}</small>
+                <small v-if="row.item.kind === 'preset' && attachmentCount(row)"
+                  >附带 {{ attachmentCount(row) }} 项正则 / 脚本</small
+                >
+                <label v-if="row.item.kind === 'character'" class="pc-field-group">
+                  <span class="pc-field-label">聊天目标角色卡</span>
                   <select
-                    v-if="row.conflict"
-                    v-model="row.mode"
+                    :value="targets[row.item.id]?.characterAvatar || ''"
                     class="pc-select"
-                    :disabled="busy || started"
-                    :aria-label="`${row.item.name} 冲突处理`"
+                    :disabled="busy || targetLocked(row)"
+                    @change="selectCharacter(row, ($event.target as HTMLSelectElement).value)"
                   >
-                    <option value="skip">跳过</option>
-                    <option value="copy">
-                      {{ row.item.kind === 'character' ? '作为新角色卡导入' : '另存为（自动编号）' }}
+                    <option value="">使用本次导入的角色卡</option>
+                    <option v-for="character in characterTargets" :key="character.avatar" :value="character.avatar">
+                      {{ character.name }} · {{ character.avatar }}
                     </option>
-                    <option v-if="row.replaceable" value="replace">替换</option>
                   </select>
-                  <p v-if="row.message" :class="{ 'pc-bundle-error': row.status === 'failed' }">{{ row.message }}</p>
-                </template>
+                </label>
+                <select
+                  v-if="row.conflict"
+                  v-model="row.mode"
+                  class="pc-select"
+                  :disabled="busy || started"
+                  :aria-label="`${row.item.name} 同名冲突处理`"
+                >
+                  <option value="skip">同名跳过</option>
+                  <option value="copy">
+                    {{ row.item.kind === 'character' ? '作为新角色卡导入' : '另存为（自动编号）' }}
+                  </option>
+                  <option v-if="row.replaceable" value="replace">替换</option>
+                </select>
+                <p v-if="row.message" :class="{ 'pc-bundle-error': row.status === 'failed' }">{{ row.message }}</p>
               </div>
             </details>
           </template>
         </div>
         <footer class="pc-form-actions">
           <button class="pc-soft-btn" type="button" :disabled="busy" @click="close">关闭</button>
-          <button
-            v-if="source"
-            class="pc-primary-btn"
-            type="button"
-            :disabled="busy || !exportPlan"
-            @click="exportFile"
-          >
-            <i class="fa-solid fa-file-export"></i>导出组合包
-          </button>
-          <button v-else class="pc-primary-btn" type="button" :disabled="busy || !canImport" @click="applyImport">
+          <button class="pc-primary-btn" type="button" :disabled="busy || !canImport" @click="applyImport">
             <i class="fa-solid fa-file-import"></i>{{ started ? '重试失败项' : '导入所选' }}
           </button>
         </footer>
@@ -134,19 +124,11 @@ import BulkSelectionCheckbox from '@/components/BulkSelectionCheckbox.vue';
 import EmptyState from '@/components/EmptyState.vue';
 import { usePhoneModalLifecycle } from '@/composables/usePhoneModalLifecycle';
 import { usePhoneStore } from '@/store/phone';
-import {
-  getCharacterTargets,
-  importResource,
-  planExport,
-  planImport,
-  refreshChatConflicts,
-  type ImportContext,
-} from './host';
+import { getCharacterTargets, importResource, planImport, refreshChatConflicts, type ImportContext } from './host';
 import { runBundleImport } from './importQueue';
-import { readBundle, writeBundle } from './zip';
-import type { BundleKind, BundleSource, ExportRow, ImportRow, ResourceBundle, ResourceKind } from './model';
+import { readBundle } from './zip';
+import type { ImportRow, ResourceBundle, ResourceKind } from './model';
 
-const props = defineProps<{ source?: BundleSource; kind: BundleKind }>();
 const emit = defineEmits<{ close: []; imported: [] }>();
 const phone = usePhoneStore();
 const dialogRef = ref<HTMLElement | null>(null),
@@ -157,63 +139,80 @@ const busy = ref(false),
   query = ref(''),
   summary = ref(''),
   started = ref(false);
-const stopNavigationGuard = phone.registerNavigationGuard(() => !busy.value);
-onBeforeUnmount(stopNavigationGuard);
-const exportPlan = ref<Awaited<ReturnType<typeof planExport>> | null>(null);
+const stopGuard = phone.registerNavigationGuard(() => !busy.value);
+onBeforeUnmount(stopGuard);
 const bundle = shallowRef<ResourceBundle | null>(null);
 const importRows = ref<ImportRow[]>([]);
 const context = reactive<ImportContext>({ presetTarget: 'plugin', characterAvatar: '', characterName: '' });
-const existingAvatar = ref(''),
-  characterTargets = ref<ReturnType<typeof getCharacterTargets>>([]);
+const targets = reactive<Record<string, ImportContext>>({});
+const characterTargets = ref<ReturnType<typeof getCharacterTargets>>([]);
 const labels: Record<ResourceKind, string> = {
   preset: '预设',
   character: '角色卡',
   worldbook: '世界书',
   regex: '正则',
-  script: '助手脚本 / 分组',
+  script: '助手脚本',
   chat: '聊天记录',
 };
-const title = computed(() => `${props.source ? '组合导出' : '组合导入'} · ${props.source?.name || labels[props.kind]}`);
-const mainKind = computed(() => props.source?.kind || bundle.value?.manifest.kind || props.kind);
-const visibleRows = computed<Array<ExportRow | ImportRow>>(() => exportPlan.value?.rows || importRows.value);
+const hasPresets = computed(() => importRows.value.some(row => row.item.kind === 'preset'));
+const parent = (row: ImportRow) => importRows.value.find(item => item.item.id === row.item.parentId);
+const parentName = (row: ImportRow) => parent(row)?.item.name || '';
+const attachmentCount = (row: ImportRow) => importRows.value.filter(item => item.item.parentId === row.item.id).length;
 const groups = computed(() =>
   (Object.keys(labels) as ResourceKind[]).map(kind => ({
     kind,
-    rows: visibleRows.value.filter(
+    rows: importRows.value.filter(
       row =>
         row.item.kind === kind &&
-        (!row.item.parentId || row.item.name.toLowerCase().includes(query.value.toLowerCase())),
+        parent(row)?.item.kind !== 'preset' &&
+        `${row.item.name} ${parentName(row)}`.toLowerCase().includes(query.value.trim().toLowerCase()),
     ),
   })),
 );
 const canImport = computed(() =>
-  Boolean(
-    bundle.value && importRows.value.some(row => row.selected && (row.status === 'pending' || row.status === 'failed')),
-  ),
+  importRows.value.some(row => row.selected && (row.status === 'pending' || row.status === 'failed')),
 );
 function close() {
   if (!busy.value) emit('close');
 }
-function isRequired(kind: ResourceKind) {
-  return kind === mainKind.value;
+function setSelected(row: ImportRow, selected: boolean) {
+  if (row.item.kind === 'character' && targets[row.item.id]?.characterAvatar) return;
+  row.selected = selected;
+  if (row.item.kind === 'preset')
+    importRows.value
+      .filter(item => item.item.parentId === row.item.id)
+      .forEach(item => {
+        item.selected = selected;
+      });
+  if (row.item.kind === 'character' && !selected && !targets[row.item.id]?.characterAvatar)
+    importRows.value
+      .filter(item => item.item.parentId === row.item.id)
+      .forEach(item => {
+        item.selected = false;
+      });
+  const owner = parent(row);
+  if (row.item.kind === 'chat' && selected && owner && !targets[owner.item.id]?.characterAvatar) owner.selected = true;
 }
-function selectGroup(kind: ResourceKind, selected: boolean) {
-  groups.value
-    .find(group => group.kind === kind)
-    ?.rows.forEach(row => {
-      row.selected = selected;
-    });
+function selectGroup(rows: ImportRow[], selected: boolean) {
+  rows.forEach(row => setSelected(row, selected));
 }
-async function selectCharacter(avatar: string) {
-  existingAvatar.value = avatar;
-  context.characterAvatar = avatar;
-  context.characterName = characterTargets.value.find(character => character.avatar === avatar)?.name || '';
-  const root = importRows.value.find(row => !row.item.parentId);
-  if (root) root.selected = !avatar;
+function targetLocked(row: ImportRow) {
+  return importRows.value.some(
+    item => item.status === 'success' && (item === row || item.item.parentId === row.item.id),
+  );
+}
+async function selectCharacter(row: ImportRow, avatar: string) {
+  const target = targets[row.item.id]!;
+  target.characterAvatar = avatar;
+  target.characterName = characterTargets.value.find(character => character.avatar === avatar)?.name || '';
+  row.selected = !avatar;
   busy.value = true;
   error.value = '';
   try {
-    await refreshChatConflicts(importRows.value, context);
+    await refreshChatConflicts(
+      importRows.value.filter(item => item.item.parentId === row.item.id),
+      target,
+    );
   } catch (caught) {
     error.value = String(caught);
   } finally {
@@ -222,11 +221,14 @@ async function selectCharacter(avatar: string) {
 }
 async function replan() {
   if (!bundle.value) return;
-  error.value = '';
   busy.value = true;
+  error.value = '';
   try {
     importRows.value = await planImport(bundle.value, context);
     characterTargets.value = getCharacterTargets();
+    for (const key of Object.keys(targets)) delete targets[key];
+    for (const row of importRows.value.filter(row => row.item.kind === 'character'))
+      targets[row.item.id] = { ...context, characterAvatar: '', characterName: '' };
   } catch (caught) {
     error.value = String(caught);
     importRows.value = [];
@@ -242,18 +244,13 @@ async function readFile(event: Event) {
   busy.value = true;
   error.value = '';
   summary.value = '';
-  started.value = false;
   query.value = '';
+  started.value = false;
   bundle.value = null;
   importRows.value = [];
-  existingAvatar.value = '';
-  context.characterAvatar = '';
-  context.characterName = '';
   try {
-    const parsed = await readBundle(file);
-    if (parsed.manifest.kind !== props.kind) throw new Error(`请在${labels[parsed.manifest.kind]}页面导入此组合包`);
-    bundle.value = parsed;
-    context.presetTarget = parsed.manifest.items.find(item => !item.parentId)?.presetSource || 'plugin';
+    bundle.value = await readBundle(file);
+    context.presetTarget = bundle.value.manifest.items.find(item => item.kind === 'preset')?.presetSource || 'plugin';
     await replan();
   } catch (caught) {
     error.value = String(caught);
@@ -261,30 +258,26 @@ async function readFile(event: Event) {
     busy.value = false;
   }
 }
-async function exportFile() {
-  if (!exportPlan.value || busy.value) return;
-  busy.value = true;
-  error.value = '';
-  summary.value = '';
-  try {
-    await writeBundle(exportPlan.value.manifest, exportPlan.value.rows, name => {
-      progress.value = `读取：${name}`;
-    });
-    summary.value = '组合包已导出';
-  } catch (caught) {
-    error.value = String(caught);
-  } finally {
-    busy.value = false;
-    progress.value = '';
-  }
-}
 async function applyImport() {
   if (!bundle.value || busy.value) return;
-  const replacements = importRows.value.filter(row => row.selected && row.conflict && row.mode === 'replace');
+  const selected = importRows.value.filter(row => row.selected);
+  const unresolved = selected.find(
+    row =>
+      row.item.kind === 'character' &&
+      row.conflict &&
+      row.mode === 'skip' &&
+      !targets[row.item.id]?.characterAvatar &&
+      selected.some(child => child.item.parentId === row.item.id),
+  );
+  if (unresolved) {
+    error.value = `${unresolved.name}：跳过同名角色卡时，请先选择聊天目标角色卡，或改为作为新角色卡导入。`;
+    return;
+  }
+  const replacements = selected.filter(row => row.conflict && row.mode === 'replace');
   if (
     !started.value &&
     !(await phone.confirmNotice(
-      `导入 ${importRows.value.filter(row => row.selected).length} 项${replacements.length ? `，将替换：${replacements.map(row => row.name).join('、')}` : ''}？新增全局正则和助手脚本默认停用。`,
+      `导入 ${selected.length} 项${replacements.length ? `，将替换：${replacements.map(row => row.name).join('、')}` : ''}？新增全局正则和助手脚本默认停用。`,
       { title: '确认组合导入', confirmLabel: '导入', kind: 'warning' },
     ))
   )
@@ -296,13 +289,23 @@ async function applyImport() {
     await runBundleImport(
       bundle.value,
       importRows.value,
-      () => Boolean(context.characterAvatar),
-      row => importResource(bundle.value!, row, importRows.value, context),
+      id => Boolean(targets[id]?.characterAvatar),
+      row =>
+        importResource(
+          bundle.value!,
+          row,
+          importRows.value,
+          row.item.kind === 'character'
+            ? targets[row.item.id]!
+            : row.item.kind === 'chat'
+              ? targets[row.item.parentId!]!
+              : context,
+        ),
       name => {
         progress.value = `导入：${name}`;
       },
     );
-    const selected = importRows.value.filter(row => row.selected);
+    characterTargets.value = getCharacterTargets();
     summary.value = `成功 ${selected.filter(row => row.status === 'success').length}，跳过 ${selected.filter(row => row.status === 'skipped').length}，失败 ${selected.filter(row => row.status === 'failed').length}`;
     emit('imported');
   } finally {
@@ -310,17 +313,6 @@ async function applyImport() {
     progress.value = '';
   }
 }
-onMounted(async () => {
-  if (!props.source) return;
-  busy.value = true;
-  try {
-    exportPlan.value = await planExport(props.source);
-  } catch (caught) {
-    error.value = String(caught);
-  } finally {
-    busy.value = false;
-  }
-});
 usePhoneModalLifecycle({ dialogRef, isOpen: () => true, onClose: close });
 </script>
 
@@ -369,7 +361,7 @@ usePhoneModalLifecycle({ dialogRef, isOpen: () => true, onClose: close });
 .pc-bundle-error {
   color: var(--pc-danger);
 }
-.pc-bundle-muted {
+.pc-bundle-row small {
   color: var(--pc-muted);
 }
 .pc-bundle-dialog p {

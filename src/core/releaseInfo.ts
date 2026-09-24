@@ -4,6 +4,16 @@ export const RUNNING_VERSION = manifest.version;
 export const RELEASE_SEEN_FIELD = 'sillytavern_phone_last_seen_release';
 export const RELEASE_HISTORY = [
   {
+    version: '1.2.8',
+    notes: [
+      '新增独立组合导出 App，可跨类别多选角色卡、预设、世界书和全局正则，统一导出为一个 ZIP 文件。',
+      '角色卡支持展开选择聊天记录；预设自动携带附带正则和助手脚本，无需逐项勾选。',
+      '支持导出所选与导出全部；全部导出包含角色卡聊天，执行前确认数量，取消不影响原有勾选。',
+      '组合导入支持逐角色卡指定聊天目标、包内同名冲突预览和失败项重试；重复正则共用文件并保留所属关联。',
+      '组合包入口统一移至独立 App，原有普通单项导入导出保留，教程同步更新。',
+    ],
+  },
+  {
     version: '1.2.7',
     notes: [
       '新增组合包导入导出：预设可携带所选正则和助手脚本，角色卡可携带所选聊天记录，世界书可携带所选全局正则，分别保存为一个 ZIP 文件。',

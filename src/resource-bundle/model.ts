@@ -6,7 +6,8 @@ export type JsonRecord = Record<string, unknown>;
 export type BundleSource =
   | { kind: 'preset'; name: string; pluginId?: string }
   | { kind: 'worldbook'; name: string }
-  | { kind: 'character'; name: string; avatar: string };
+  | { kind: 'character'; name: string; avatar: string }
+  | { kind: 'regex'; name: string; index: number };
 const itemSchema = z.object({
   id: z.string().min(1),
   name: z.string().min(1),
@@ -20,7 +21,7 @@ const manifestSchema = z.object({
   format: z.literal('phone-resource-bundle'),
   version: z.literal(1),
   pluginVersion: z.string(),
-  kind: z.enum(['preset', 'character', 'worldbook']),
+  kind: z.enum(['preset', 'character', 'worldbook', 'mixed']),
   name: z.string().min(1),
   items: z.array(itemSchema).min(1),
 });
@@ -122,15 +123,32 @@ export function validateBundle(files: Record<string, Uint8Array>): ResourceBundl
   if (!files['manifest.json']) throw new Error('缺少组合包 manifest.json');
   const manifest = manifestSchema.parse(decodeJson(files['manifest.json']));
   const ids = new Set<string>(),
-    paths = new Set<string>();
+    paths = new Map<string, BundleItem>();
   const roots = manifest.items.filter(item => item.kind === manifest.kind);
-  if (roots.length !== 1 || roots[0]!.parentId) throw new Error('组合包必须包含一个主体');
+  if (manifest.kind !== 'mixed' && (roots.length !== 1 || roots[0]!.parentId))
+    throw new Error('组合包必须包含一个主体');
   const root = roots[0]!;
+  const byId = new Map(manifest.items.map(item => [item.id, item]));
   for (const item of manifest.items) {
-    if (ids.has(item.id) || paths.has(item.path)) throw new Error(`重复资源：${item.name}`);
+    const shared = paths.get(item.path);
+    if (ids.has(item.id) || (shared && (shared.kind !== 'regex' || item.kind !== 'regex')))
+      throw new Error(`重复资源：${item.name}`);
     ids.add(item.id);
-    paths.add(item.path);
-    if (item !== root) {
+    paths.set(item.path, item);
+    if (manifest.kind === 'mixed') {
+      const parent = item.parentId ? byId.get(item.parentId) : undefined;
+      if (item.parentId) {
+        if (
+          !parent ||
+          parent.parentId ||
+          !(
+            (parent.kind === 'preset' && ['regex', 'script'].includes(item.kind)) ||
+            (parent.kind === 'character' && item.kind === 'chat')
+          )
+        )
+          throw new Error(`附件归属错误：${item.name}`);
+      } else if (item.kind === 'chat' || item.kind === 'script') throw new Error(`附件缺少主体：${item.name}`);
+    } else if (item !== root) {
       const allowed =
         manifest.kind === 'preset' ? ['regex', 'script'] : manifest.kind === 'character' ? ['chat'] : ['regex'];
       if (!allowed.includes(item.kind) || item.parentId !== root.id) throw new Error(`附件归属错误：${item.name}`);
@@ -148,7 +166,7 @@ export function validateBundle(files: Record<string, Uint8Array>): ResourceBundl
         if (
           item.kind === 'regex' &&
           typeof data.findRegex !== 'string' &&
-          !(manifest.kind === 'preset' && typeof data.find_regex === 'string')
+          !(byId.get(item.parentId || '')?.kind === 'preset' && typeof data.find_regex === 'string')
         )
           throw new Error('缺少正则表达式');
         if (item.kind === 'script') {

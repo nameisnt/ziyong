@@ -218,9 +218,10 @@
 
 ## 测试与构建
 
-- `src/resource-bundle/`：预设、角色卡和世界书的 ZIP 组合导入导出。`model.ts` 定义清单与附件关系，
+- `src/apps/resource-bundle/`：独立“组合导出”App，跨类别多选，角色卡展开选择聊天，预设自动携带附件；支持导出所选和确认后导出全部。
+- `src/resource-bundle/`：预设、角色卡、聊天、世界书和全局正则的 ZIP 组合导入导出。`model.ts` 定义清单与附件关系，
   `zip.ts` 按需加载压缩库，`host.ts` 对接宿主读写，`importQueue.ts` 保留逐项结果并仅重试失败项。
-  `ResourceBundleActions.vue` 是三个业务页面的共享入口，弹窗复用全局控件和导航保护。
+  `exportSelection.ts` 组装多资源清单；`ResourceBundleDialog.vue` 提供导入预览与逐卡目标选择，复用全局控件和导航保护。
   专项单测为 `scripts/unit/resource-bundle.test.mjs`，视觉场景前缀为 `resource-bundle-`。
 
 - `pnpm verify:static`：ESLint baseline、typecheck、unit tests、backup/config/recovery/structure contracts、style

@@ -325,13 +325,14 @@ test('export reads the named non-current preset and selects only its attachments
   assert.deepEqual(model.decodeJson(await plan.rows[0].read()).prompt_order, raw.prompt_order);
   assert.equal(model.decodeJson(await plan.rows[1].read()).scriptName, 'R');
 });
-test('worldbook regex export is opt-in and detached from later settings edits', async () => {
+test('worldbooks export independently; global regex snapshots are separate sources', async () => {
   const { host, settings } = await hostFixture();
   settings.regex.push({ id: 'r', scriptName: 'Before', findRegex: 'x' });
   const plan = await host.planExport({ kind: 'worldbook', name: 'World' });
-  assert.equal(plan.rows[1].selected, false);
+  assert.equal(plan.rows.length, 1);
+  const regex = await host.planExport({ kind: 'regex', name: 'Before', index: 0 });
   settings.regex[0].scriptName = 'After';
-  assert.equal(model.decodeJson(await plan.rows[1].read()).scriptName, 'Before');
+  assert.equal(model.decodeJson(await regex.rows[0].read()).scriptName, 'Before');
 });
 test('global regex import requires save confirmation and restores memory when persistence fails', async () => {
   const fixture = await hostFixture();
@@ -482,4 +483,167 @@ test('worldbook replacement updates the host cache only after the server confirm
   } finally {
     globalThis.fetch = previous;
   }
+});
+
+test('mixed selection keeps selected chats with their own card and includes all preset attachments', async () => {
+  const { host } = await hostFixture();
+  const { buildSelectedExport } = await load('resource-bundle/exportSelection.ts', {
+    '@/core/releaseInfo': { RUNNING_VERSION: 'test' },
+  });
+  const card = await host.planExport({ kind: 'character', name: 'Existing', avatar: 'existing.png' });
+  const sources = [
+    { kind: 'character', name: 'Existing', avatar: 'existing.png' },
+    { kind: 'preset', name: 'Other' },
+    { kind: 'worldbook', name: 'World' },
+    { kind: 'character', name: 'Existing', avatar: 'existing.png' },
+  ];
+  const choices = sources.map((source, index) => ({
+    source,
+    key: String(index),
+    selected: true,
+    expanded: false,
+    chats:
+      index === 3 ? card.rows.filter(row => row.item.kind === 'chat').map(row => ({ ...row, selected: true })) : null,
+  }));
+  const result = await buildSelectedExport(choices, host.planExport, () => {});
+  assert.equal(result.manifest.kind, 'mixed');
+  const items = result.manifest.items;
+  assert.equal(new Set(items.map(item => item.id)).size, items.length);
+  assert.equal(items.filter(item => item.kind === 'chat').length, 1);
+  assert.equal(items.at(-1).parentId, items.at(-2).id);
+  const preset = items.find(item => item.kind === 'preset');
+  assert.deepEqual(
+    items.filter(item => item.parentId === preset.id).map(item => item.kind),
+    ['regex', 'script'],
+  );
+  assert.ok(result.rows.every(row => row.selected));
+  choices[0].chats = [{ ...card.rows[1], selected: true, item: { ...card.rows[1].item, name: 'missing' } }];
+  await assert.rejects(
+    buildSelectedExport(choices, host.planExport, () => {}),
+    /所选聊天已不存在/,
+  );
+});
+
+test('mixed bundles accept multiple roots and shared regex payloads but reject broken ownership', () => {
+  const original = presetBundle();
+  const manifest = {
+    ...original.manifest,
+    kind: 'mixed',
+    items: [
+      ...original.manifest.items,
+      { id: '3', kind: 'regex', name: 'R', path: 'resources/1.json' },
+      { id: '4', kind: 'worldbook', name: 'World', path: 'resources/4.json' },
+    ],
+  };
+  const files = {
+    ...original.files,
+    'manifest.json': model.encodeJson(manifest),
+    'resources/4.json': model.encodeJson({ entries: {} }),
+  };
+  assert.equal(model.validateBundle(files).manifest.items.length, 5);
+  for (const mutate of [
+    m => {
+      m.items[1].parentId = '4';
+    },
+    m => {
+      m.items[2].parentId = undefined;
+    },
+    m => {
+      m.items[4].path = 'resources/0.json';
+    },
+    m => {
+      m.items[0].parentId = '0';
+    },
+  ]) {
+    const changed = structuredClone(manifest);
+    mutate(changed);
+    assert.throws(() => model.validateBundle({ ...files, 'manifest.json': model.encodeJson(changed) }));
+  }
+});
+
+test('mixed import is ordered by dependency and failed card cannot use another card target', async () => {
+  const bundle = presetBundle();
+  bundle.manifest.kind = 'mixed';
+  bundle.manifest.items = [
+    { id: 'c1', name: 'One', kind: 'character' },
+    { id: 'chat1', name: 'First', kind: 'chat', parentId: 'c1' },
+    { id: 'c2', name: 'Two', kind: 'character' },
+    { id: 'chat2', name: 'Second', kind: 'chat', parentId: 'c2' },
+    { id: 'w', name: 'World', kind: 'worldbook' },
+    { id: 'p', name: 'Preset', kind: 'preset' },
+    { id: 'r', name: 'Attached', kind: 'regex', parentId: 'p' },
+    { id: 'g', name: 'Global', kind: 'regex' },
+  ];
+  const items = rows(bundle),
+    targets = new Set(),
+    calls = [];
+  const apply = async row => {
+    calls.push(row.item.id);
+    if (row.item.id === 'c1') throw new Error('offline');
+    if (row.item.kind === 'character') targets.add(row.item.id);
+    return { message: 'ok' };
+  };
+  await runBundleImport(
+    bundle,
+    items,
+    id => targets.has(id),
+    apply,
+    () => {},
+  );
+  assert.deepEqual(calls, ['w', 'c1', 'c2', 'p', 'g', 'chat2']);
+  assert.equal(items.find(row => row.item.id === 'chat1').status, 'failed');
+  assert.equal(items.find(row => row.item.id === 'r').status, 'success');
+  targets.add('c1');
+  items[0].selected = false;
+  await runBundleImport(
+    bundle,
+    items,
+    id => targets.has(id),
+    apply,
+    () => {},
+  );
+  assert.deepEqual(calls, ['w', 'c1', 'c2', 'p', 'g', 'chat2', 'chat1']);
+});
+
+test('mixed import plans every root and excludes preset attachments from global conflict checks', async () => {
+  const { host, settings } = await hostFixture();
+  settings.regex = [{ scriptName: 'R', findRegex: 'foo' }];
+  const bundle = presetBundle();
+  bundle.manifest.kind = 'mixed';
+  bundle.manifest.items.push({ id: '3', name: 'R', kind: 'regex', path: 'resources/1.json' });
+  const result = await host.planImport(bundle, { presetTarget: 'plugin', characterAvatar: '', characterName: '' });
+  assert.equal(result[1].conflict, false);
+  assert.equal(result[3].conflict, true);
+});
+
+test('export catalog lists both preset stores, characters, worldbooks and independent global regex', async () => {
+  const { host, plugins, settings } = await hostFixture();
+  plugins.items.push({ id: 'p1', name: 'Plugin' });
+  settings.regex.push({ id: 'r', scriptName: 'Global', findRegex: 'x' });
+  assert.deepEqual(
+    (await host.listExportSources()).map(row => row.kind),
+    ['character', 'preset', 'preset', 'worldbook', 'regex'],
+  );
+});
+
+test('mixed preview detects same-name resources inside the package before any writes', async () => {
+  const { host } = await hostFixture();
+  const bundle = presetBundle();
+  bundle.manifest.kind = 'mixed';
+  bundle.manifest.items.push({
+    id: '3',
+    name: 'test',
+    kind: 'preset',
+    path: 'resources/3.json',
+    presetSource: 'tavern',
+  });
+  const result = await host.planImport(bundle, { presetTarget: 'plugin', characterAvatar: '', characterName: '' });
+  assert.equal(result[0].conflict, false);
+  assert.equal(result[3].conflict, true);
+});
+
+test('changed global regex catalog cannot silently export a different row at the old index', async () => {
+  const { host, settings } = await hostFixture();
+  settings.regex.push({ scriptName: 'Other', findRegex: 'x' });
+  await assert.rejects(host.planExport({ kind: 'regex', name: 'Original', index: 0 }), /目录已变化/);
 });

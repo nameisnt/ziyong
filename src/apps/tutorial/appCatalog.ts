@@ -121,6 +121,11 @@ export const tutorialAppGuides: TutorialAppGuide[] = [
     groupId: 'media',
     firstAction: '导出第三方扩展清单，或选择清单预览安装范围后批量安装。',
   },
+  {
+    appId: 'resource-bundle',
+    groupId: 'media',
+    firstAction: '混选角色卡、预设、世界书和正则；展开角色卡选择聊天。预设自动携带正则和脚本，导出全部包含全部聊天。',
+  },
   { appId: 'game-2048', groupId: 'media', firstAction: '滑动或使用方向键合并相同数字。' },
   { appId: 'game-snake', groupId: 'media', firstAction: '选择速度后开始，用方向键、方向按钮或滑动控制。' },
   { appId: 'game-minesweeper', groupId: 'media', firstAction: '选择翻开或插旗模式，再点击棋盘格。' },
