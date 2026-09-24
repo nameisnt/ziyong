@@ -35,12 +35,18 @@ export const usePresetCatalogGroupStore = defineStore('presetCatalogGroups', () 
   }
 
   function assign(source: PresetCatalogSource, id: string, requestedGroup: string) {
+    assignMany(source, [id], requestedGroup);
+  }
+
+  function assignMany(source: PresetCatalogSource, ids: string[], requestedGroup: string) {
     const group = requestedGroup.trim();
-    const key = itemKey(source, id);
-    if (!group || group === '-') delete settings.value.assignments[key];
-    else {
-      if (!settings.value.groups.includes(group)) settings.value.groups.push(group);
-      settings.value.assignments[key] = group;
+    for (const id of ids) {
+      const key = itemKey(source, id);
+      if (!group || group === '-') delete settings.value.assignments[key];
+      else {
+        if (!settings.value.groups.includes(group)) settings.value.groups.push(group);
+        settings.value.assignments[key] = group;
+      }
     }
     persist();
   }
@@ -53,5 +59,5 @@ export const usePresetCatalogGroupStore = defineStore('presetCatalogGroups', () 
     }
   }
 
-  return { assign, createGroup, groupOf, groups: computed(() => settings.value.groups) };
+  return { assign, assignMany, createGroup, groupOf, groups: computed(() => settings.value.groups) };
 });

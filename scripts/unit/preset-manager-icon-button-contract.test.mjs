@@ -6,7 +6,7 @@ import test from 'node:test';
 import { scanVueUiContracts } from '../ui-contract-check.mjs';
 
 const expectedCounts = new Map([
-  ['pages/PresetCatalogPage.vue', 7],
+  ['pages/PresetCatalogPage.vue', 8],
   ['pages/PresetPromptEditorPage.vue', 1],
   ['PresetPromptRow.vue', 2],
 ]);

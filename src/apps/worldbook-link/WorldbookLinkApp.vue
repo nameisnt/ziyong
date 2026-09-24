@@ -21,7 +21,6 @@
       :refreshing="refreshing"
       :sections="visibleBookSections"
       :visible-book-count="visibleBookCount"
-      @assign-book="assignBookGroup"
       @create-group="createBookGroup"
       @open-book="openBook"
       @refresh="refresh"
@@ -95,6 +94,7 @@
 
 <script setup lang="ts">
 import EmptyState from '@/components/EmptyState.vue';
+import { buildCatalogGroups } from '@/util/catalogGroups';
 import { useBulkSelection } from '@/composables/useBulkSelection';
 import { usePhoneStore } from '@/store/phone';
 import { usePromptStore } from '@/store/prompts';
@@ -202,17 +202,13 @@ function enabledFirst<T>(items: T[], isEnabled: (item: T) => boolean) {
 }
 
 const visibleBookSections = computed(() => {
-  const filterBooks = (names: string[]) => {
-    const keyword = searchQuery.value.trim().toLocaleLowerCase();
-    if (!keyword) return names;
-    return names.filter(name => name.toLocaleLowerCase().includes(keyword));
-  };
-  const grouped = new Map<string, string[]>();
-  filterBooks(groups[activeCategory.value]).forEach(bookName => {
-    const group = catalogGroups.bookGroupOf(bookName) || '未分组';
-    grouped.set(group, [...(grouped.get(group) || []), bookName]);
-  });
-  return [...grouped].map(([label, books]) => ({
+  return buildCatalogGroups(
+    catalogGroups.bookGroups,
+    groups[activeCategory.value],
+    catalogGroups.bookGroupOf,
+    name => name,
+    searchQuery.value,
+  ).map(({ name: label, items: books }) => ({
     books: activeCategory.value === 'global' ? enabledFirst(books, isGlobalEnabled) : books,
     id: `${activeCategory.value}:${label}`,
     label,
@@ -375,20 +371,27 @@ function openBook(bookName: string) {
 }
 
 async function createBookGroup() {
+  const category = activeCategory.value;
   const name = await phone.promptNotice('输入新的世界书分组名称。', {
     confirmLabel: '创建',
     title: '新建世界书分组',
   });
-  if (name?.trim()) catalogGroups.createBookGroup(name);
-}
-
-async function assignBookGroup(bookName: string) {
-  const name = await phone.promptNotice('输入分组名称；输入 - 移到未分组。', {
-    confirmLabel: '保存',
-    initialValue: catalogGroups.bookGroupOf(bookName),
-    title: '设置世界书分组',
-  });
-  if (name !== null) catalogGroups.assignBook(bookName, name);
+  if (!name?.trim() || category !== activeCategory.value) return;
+  const group = name.trim();
+  if (group === '-' || group === '未分组') {
+    phone.noticeWarning('该名称保留给未分组');
+    return;
+  }
+  if (catalogGroups.bookGroups.includes(group)) phone.noticeWarning('分组已存在');
+  else {
+    catalogGroups.createBookGroup(group);
+    phone.noticeSuccess('已创建分组');
+  }
+  searchQuery.value = '';
+  await nextTick();
+  document
+    .querySelector(`.pc-worldbook-catalog-page [data-catalog-group="${CSS.escape(group)}"]`)
+    ?.scrollIntoView({ block: 'nearest' });
 }
 
 async function createEntryGroup() {

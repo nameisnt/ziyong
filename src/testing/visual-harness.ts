@@ -35,6 +35,8 @@ import { applyFileRepositoryVisualScenario } from '@/testing/visual/fileReposito
 import { applyPresetManagerVisualScenario } from '@/testing/visual/presetManagerScenarios';
 import { applyPresetBindingVisualScenario } from '@/testing/visual/presetBindingScenarios';
 import { applyTavernAliasVisualScenario } from '@/testing/visual/tavernAliasScenarios';
+import { applyCatalogGroupScenario } from '@/testing/visual/catalogGroupScenarios';
+import { checkArchiveDeleteEntrance } from '@/testing/visual/archiveDeleteEntrances';
 import { applyStatusScopeVisualScenario } from '@/testing/visual/statusScopeScenarios';
 import { applyStatusWebVisualScenario } from '@/testing/visual/statusWebScenarios';
 import { applyReleaseVisualScenario } from '@/testing/visual/releaseScenarios';
@@ -592,6 +594,7 @@ async function applyScenario(name: VisualScenarioName, options: { height?: numbe
   if (await applyTavernAliasVisualScenario(name, resetPhoneToRoute)) {
     return { name, route: phone.currentRoute };
   }
+  if (await applyCatalogGroupScenario(name)) return { name, route: phone.currentRoute };
   if (await applySettingsVisualScenario(name, { resetPhoneToRoute, waitForPaint })) {
     await waitForPaint();
     return { name, route: usePhoneStore().currentRoute };
@@ -3534,7 +3537,7 @@ async function applyScenario(name: VisualScenarioName, options: { height?: numbe
     if (!returned || !currentTab?.textContent?.includes('当前聊天')) {
       throw new Error('Archive random detail did not return to the current-chat browser');
     }
-  } else if (['archive-floor-backup', 'archive-delete-confirm', 'archive-delete-confirm-dark'].includes(name)) {
+  } else if (['archive-floor-backup', 'archive-delete-confirm', 'archive-delete-confirm-dark', 'archive-delete-entrances', 'archive-delete-entrances-dark'].includes(name)) {
     useSettingsStore().setTheme(name.endsWith('-dark') ? 'dark' : 'light');
     await new Promise(resolve => window.setTimeout(resolve, 1000));
     await seedArchiveFloorBackupFixture();
@@ -3542,6 +3545,7 @@ async function applyScenario(name: VisualScenarioName, options: { height?: numbe
     await waitForPaint();
     resetPhoneToRoute('archive', 'root', '聊天档案');
     await waitForPaint();
+    if (name.startsWith('archive-delete-entrances')) await checkArchiveDeleteEntrance(true);
     const unusedTab = [...document.querySelectorAll<HTMLButtonElement>('.pc-tab-row .pc-segment-btn')].find(button =>
       button.textContent?.includes('未使用'),
     );
@@ -3601,6 +3605,10 @@ async function applyScenario(name: VisualScenarioName, options: { height?: numbe
     const columnLefts = new Set(actionRects.map(rect => Math.round(rect.left)));
     if (rowTops.size !== 2 || columnLefts.size !== 3) {
       throw new Error(`Archive floor backup actions are not 3 columns × 2 rows: ${columnLefts.size} × ${rowTops.size}`);
+    }
+    if (name.startsWith('archive-delete-entrances')) {
+      await checkArchiveDeleteEntrance(false);
+      return { name, route: phone.currentRoute };
     }
     const readBackup = actions.find(button => button.textContent?.includes('阅读备份'));
     if (!readBackup || readBackup.disabled) throw new Error('Archive seeded floor backup is not readable');

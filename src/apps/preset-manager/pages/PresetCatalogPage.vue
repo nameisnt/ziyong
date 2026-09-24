@@ -11,7 +11,10 @@
 
     <header class="pc-compact-toolbar pc-directory-toolbar pc-preset-current">
       <ActionMenu align="start" icon-only label="管理预设">
-        <button type="button" :disabled="loading || !selectableIds.length" @click="selection.start()">
+        <button type="button" :disabled="loading || !visibleIds.length" @click="startSelection('group')">
+          <i class="fa-solid fa-folder"></i>批量分组
+        </button>
+        <button type="button" :disabled="loading || !deletableIds.length" @click="startSelection('delete')">
           <i class="fa-solid fa-list-check"></i>批量删除预设
         </button>
       </ActionMenu>
@@ -71,43 +74,65 @@
     </div>
 
     <label
-      v-else-if="source === 'tavern' ? presetNames.length : catalogPluginPresets.length"
+      v-else-if="presetGroups.groups.length || (source === 'tavern' ? presetNames.length : catalogPluginPresets.length)"
       class="pc-search-field pc-preset-search"
     >
       <i class="fa-solid fa-magnifying-glass"></i>
-      <input v-model="query" type="search" placeholder="搜索预设名称" />
+      <input v-model="query" type="search" placeholder="搜索预设名称或分组" />
     </label>
 
     <div
-      v-if="source === 'tavern' && !errorMessage && visiblePresetNames.length"
+      v-if="source === 'tavern' && !errorMessage && (visibleCurrentPreset || groupedTavernPresets.length)"
       class="pc-directory-list pc-preset-list"
     >
       <article v-if="visibleCurrentPreset" :key="visibleCurrentPreset" class="pc-list-row pc-preset-row current">
         <BulkSelectionCheckbox
           v-if="selection.active.value"
-          :model-value="false"
-          disabled
-          label="当前使用的预设不能删除"
+          :model-value="selection.selectedIdSet.value.has(visibleCurrentPreset)"
+          :disabled="selectionMode === 'delete'"
+          :label="selectionMode === 'delete' ? '当前使用的预设不能删除' : `选择预设 ${visibleCurrentPreset}`"
+          @update:model-value="selection.setSelected(visibleCurrentPreset, $event)"
         />
-        <button class="pc-preset-open" type="button" @click="$emit('open', visibleCurrentPreset)">
+        <button
+          class="pc-preset-open"
+          type="button"
+          @click="selection.active.value ? toggleSelection(visibleCurrentPreset) : $emit('open', visibleCurrentPreset)"
+        >
           <span class="pc-preset-copy">
             <strong :title="visibleCurrentPreset">{{ visibleCurrentPreset }}</strong>
-            <small>当前使用</small>
+            <small>当前使用 · {{ presetGroups.groupOf('tavern', visibleCurrentPreset) || '未分组' }}</small>
           </span>
+        </button>
+        <button
+          v-if="!selection.active.value"
+          class="pc-icon-btn"
+          type="button"
+          title="设置分组"
+          aria-label="设置分组"
+          @click="assignPreset('tavern', visibleCurrentPreset)"
+        >
+          <i class="fa-solid fa-folder"></i>
         </button>
         <span class="pc-icon-btn pc-preset-use active" title="当前使用" aria-label="当前使用">
           <i class="fa-solid fa-check"></i>
         </span>
       </article>
-      <section v-for="group in groupedTavernPresets" :key="group.name" class="pc-preset-catalog-group">
+      <section
+        v-for="group in groupedTavernPresets"
+        :key="group.name"
+        :data-catalog-group="group.name"
+        class="pc-preset-catalog-group"
+      >
         <div class="pc-compact-toolbar">
           <BulkSelectionCheckbox
             v-if="selection.active.value"
             :label="`选择分组 ${group.name}`"
+            :disabled="!group.items.length"
             :model-value="groupSelected(group.items)"
             @update:model-value="selectGroup(group.items, $event)"
           />
           <strong class="pc-preset-group-label">{{ group.name }}</strong>
+          <span class="pc-directory-count">{{ group.items.length }}</span>
         </div>
         <article v-for="presetName in group.items" :key="presetName" class="pc-list-row pc-preset-row">
           <BulkSelectionCheckbox
@@ -149,22 +174,30 @@
         </article>
       </section>
     </div>
-    <div v-else-if="source === 'plugin' && visiblePluginPresets.length" class="pc-directory-list pc-preset-list">
-      <section v-for="group in groupedPluginPresets" :key="group.name" class="pc-preset-catalog-group">
+    <div v-else-if="source === 'plugin' && groupedPluginPresets.length" class="pc-directory-list pc-preset-list">
+      <section
+        v-for="group in groupedPluginPresets"
+        :key="group.name"
+        :data-catalog-group="group.name"
+        class="pc-preset-catalog-group"
+      >
         <div class="pc-compact-toolbar">
           <BulkSelectionCheckbox
             v-if="selection.active.value"
             :label="`选择分组 ${group.name}`"
-            :disabled="!group.items.some(preset => !preset.builtIn)"
-            :model-value="groupSelected(group.items.filter(preset => !preset.builtIn).map(preset => preset.id))"
+            :disabled="!group.items.some(preset => selectableIds.includes(preset.id))"
+            :model-value="
+              groupSelected(group.items.filter(preset => selectableIds.includes(preset.id)).map(preset => preset.id))
+            "
             @update:model-value="
               selectGroup(
-                group.items.filter(preset => !preset.builtIn).map(preset => preset.id),
+                group.items.filter(preset => selectableIds.includes(preset.id)).map(preset => preset.id),
                 $event,
               )
             "
           />
           <strong class="pc-preset-group-label">{{ group.name }}</strong>
+          <span class="pc-directory-count">{{ group.items.length }}</span>
         </div>
         <article
           v-for="preset in group.items"
@@ -175,14 +208,14 @@
           <BulkSelectionCheckbox
             v-if="selection.active.value"
             :model-value="selection.selectedIdSet.value.has(preset.id)"
-            :disabled="preset.builtIn"
+            :disabled="!selectableIds.includes(preset.id)"
             :label="`选择预设 ${preset.name}`"
             @update:model-value="selection.setSelected(preset.id, $event)"
           />
           <button
             class="pc-preset-open"
             type="button"
-            :disabled="selection.active.value && preset.builtIn"
+            :disabled="selection.active.value && !selectableIds.includes(preset.id)"
             @click="selection.active.value ? toggleSelection(preset.id) : $emit('open-plugin', preset.id)"
           >
             <span class="pc-preset-copy"
@@ -216,9 +249,21 @@
       :all-selected="selection.allSelected.value"
       :selected-count="selection.selectedIds.value.length"
       :total-count="selectableIds.length"
+      :action-label="selectionMode === 'group' ? '移入分组' : undefined"
+      :action-icon="selectionMode === 'group' ? 'fa-solid fa-folder' : undefined"
+      :empty-label="selectionMode === 'group' ? '请选择要分组的预设' : undefined"
       @toggle-all="selection.toggleAll"
       @cancel="selection.cancel"
       @remove="$emit('delete-presets', source, [...selection.selectedIds.value])"
+      @apply="openGroupPicker([...selection.selectedIds.value])"
+    />
+    <CatalogGroupDialog
+      v-if="groupRequest"
+      :groups="presetGroups.groups"
+      :count="groupRequest.ids.length"
+      :initial-group="groupRequest.initial"
+      @close="groupRequest = null"
+      @apply="applyGroup"
     />
   </section>
 </template>
@@ -228,6 +273,8 @@ import EmptyState from '@/components/EmptyState.vue';
 import ActionMenu from '@/components/ActionMenu.vue';
 import BulkSelectionBar from '@/components/BulkSelectionBar.vue';
 import BulkSelectionCheckbox from '@/components/BulkSelectionCheckbox.vue';
+import CatalogGroupDialog from '@/components/CatalogGroupDialog.vue';
+import { buildCatalogGroups } from '@/util/catalogGroups';
 import { useBulkSelection } from '@/composables/useBulkSelection';
 import { usePhoneStore } from '@/store/phone';
 import { usePresetCatalogGroupStore, type PresetCatalogSource } from '@/store/presetCatalogGroups';
@@ -254,22 +301,52 @@ const hiddenPluginPresetCount = computed(() => props.pluginPresets.filter(item =
 const catalogPluginPresets = computed(() =>
   showHidden.value ? props.pluginPresets : props.pluginPresets.filter(item => !item.hidden),
 );
-const visiblePluginPresets = computed(() => {
-  const keyword = query.value.trim().toLocaleLowerCase();
-  return keyword
-    ? catalogPluginPresets.value.filter(item => item.name.toLocaleLowerCase().includes(keyword))
-    : catalogPluginPresets.value;
-});
-const visibleCurrentPreset = computed(() =>
-  source.value === 'tavern' && props.visiblePresetNames.includes(props.loadedPresetName) ? props.loadedPresetName : '',
+const selectionMode = ref<'group' | 'delete'>('delete');
+const groupRequest = ref<{ source: PresetCatalogSource; ids: string[]; initial: string } | null>(null);
+const groupedTavernPresets = computed(() =>
+  grouped(
+    props.presetNames.filter(name => name !== props.loadedPresetName),
+    'tavern',
+    name => name,
+  ),
 );
-const selectableIds = computed(() =>
+const groupedPluginPresets = computed(() => grouped(catalogPluginPresets.value, 'plugin', item => item.id));
+const visiblePluginPresets = computed(() => groupedPluginPresets.value.flatMap(group => group.items));
+const visibleCurrentPreset = computed(() =>
+  source.value === 'tavern' &&
+  buildCatalogGroups(
+    [],
+    props.presetNames.filter(name => name === props.loadedPresetName),
+    name => presetGroups.groupOf('tavern', name),
+    name => name,
+    query.value,
+  ).some(group => group.items.length)
+    ? props.loadedPresetName
+    : '',
+);
+const visibleTavernNames = computed(() => [
+  ...(visibleCurrentPreset.value ? [visibleCurrentPreset.value] : []),
+  ...groupedTavernPresets.value.flatMap(group => group.items),
+]);
+const visibleIds = computed(() =>
+  source.value === 'tavern' ? visibleTavernNames.value : visiblePluginPresets.value.map(preset => preset.id),
+);
+const deletableIds = computed(() =>
   source.value === 'tavern'
-    ? props.visiblePresetNames.filter(name => name !== props.loadedPresetName)
+    ? visibleTavernNames.value.filter(name => name !== props.loadedPresetName)
     : visiblePluginPresets.value.filter(preset => !preset.builtIn).map(preset => preset.id),
 );
+const selectableIds = computed(() => (selectionMode.value === 'group' ? visibleIds.value : deletableIds.value));
 const selection = useBulkSelection(selectableIds);
-watch(source, () => selection.cancel());
+watch(source, () => {
+  selection.cancel();
+  groupRequest.value = null;
+});
+function startSelection(mode: 'group' | 'delete') {
+  selection.cancel();
+  selectionMode.value = mode;
+  selection.start();
+}
 function toggleSelection(id: string) {
   if (selectableIds.value.includes(id)) selection.setSelected(id, !selection.selectedIdSet.value.has(id));
 }
@@ -280,21 +357,14 @@ function selectGroup(ids: string[], selected: boolean) {
   ids.forEach(id => selection.setSelected(id, selected));
 }
 function grouped<T>(items: T[], sourceId: PresetCatalogSource, idOf: (item: T) => string) {
-  const groups = new Map<string, T[]>();
-  items.forEach(item => {
-    const name = presetGroups.groupOf(sourceId, idOf(item)) || '未分组';
-    groups.set(name, [...(groups.get(name) || []), item]);
-  });
-  return [...groups].map(([name, groupedItems]) => ({ items: groupedItems, name }));
+  return buildCatalogGroups(
+    presetGroups.groups,
+    items,
+    item => presetGroups.groupOf(sourceId, idOf(item)),
+    item => (typeof item === 'string' ? item : (item as PluginPresetRecord).name),
+    query.value,
+  );
 }
-const groupedTavernPresets = computed(() =>
-  grouped(
-    props.visiblePresetNames.filter(name => name !== props.loadedPresetName),
-    'tavern',
-    name => name,
-  ),
-);
-const groupedPluginPresets = computed(() => grouped(visiblePluginPresets.value, 'plugin', item => item.id));
 const emptyTitle = computed(() => {
   if (source.value === 'plugin') {
     if (
@@ -326,18 +396,48 @@ function importFile(event: Event) {
 }
 
 async function createGroup() {
+  const originalSource = source.value;
   const name = await phone.promptNotice('输入新的预设分组名称。', { confirmLabel: '创建', title: '新建预设分组' });
-  if (name?.trim()) presetGroups.createGroup(name);
+  if (!name?.trim() || originalSource !== source.value) return;
+  const group = name.trim();
+  if (group === '-' || group === '未分组') {
+    phone.noticeWarning('该名称保留给未分组');
+    return;
+  }
+  if (presetGroups.groups.includes(group)) phone.noticeWarning('分组已存在');
+  else {
+    presetGroups.createGroup(group);
+    phone.noticeSuccess('已创建分组');
+  }
+  await revealGroup(group);
 }
 
-async function assignPreset(sourceId: PresetCatalogSource, id: string) {
-  const current = presetGroups.groupOf(sourceId, id);
-  const name = await phone.promptNotice('输入分组名称；输入 - 移到未分组。', {
-    confirmLabel: '保存',
-    initialValue: current,
-    title: '设置预设分组',
-  });
-  if (name !== null) presetGroups.assign(sourceId, id, name);
+function openGroupPicker(ids: string[]) {
+  if (ids.length)
+    groupRequest.value = { source: source.value, ids, initial: presetGroups.groupOf(source.value, ids[0]) };
+}
+function assignPreset(sourceId: PresetCatalogSource, id: string) {
+  groupRequest.value = { source: sourceId, ids: [id], initial: presetGroups.groupOf(sourceId, id) };
+}
+async function applyGroup(name: string) {
+  const request = groupRequest.value;
+  if (!request || request.source !== source.value) return;
+  try {
+    presetGroups.assignMany(request.source, request.ids, name);
+    groupRequest.value = null;
+    selection.cancel();
+    phone.noticeSuccess(`已移动 ${request.ids.length} 个预设`);
+    await revealGroup(name || '未分组');
+  } catch (error) {
+    phone.noticeError(error instanceof Error ? error.message : '分组保存失败');
+  }
+}
+async function revealGroup(name: string) {
+  query.value = '';
+  await nextTick();
+  document
+    .querySelector(`.pc-preset-page [data-catalog-group="${CSS.escape(name)}"]`)
+    ?.scrollIntoView({ block: 'nearest' });
 }
 </script>
 

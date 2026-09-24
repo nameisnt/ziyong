@@ -98,13 +98,20 @@
             {{ t`导入备份` }}
           </button>
           <button
-            v-if="currentFloorBackup"
             class="pc-soft-btn"
             type="button"
-            :disabled="restoringFloorBackup"
+            :disabled="!currentFloorBackup || restoringFloorBackup"
             @click="restoreCurrentFloorBackup"
           >
             {{ restoringFloorBackup ? t`插入中…` : t`插入空聊天` }}
+          </button>
+          <button
+            class="pc-soft-btn danger"
+            type="button"
+            :disabled="!currentChatRow.exists || deletionGenerationBusy"
+            @click="requestChatDeletion([currentChatRow], currentOwner)"
+          >
+            <i class="fa-solid fa-trash"></i>删除聊天
           </button>
         </div>
         <input
@@ -221,19 +228,7 @@
     </section>
 
     <section v-else-if="route.page === 'detail' && activeOwner && selectedChat" class="pc-archive-page">
-      <div class="pc-compact-toolbar pc-directory-toolbar">
-        <span v-if="!selectedChat.exists">聊天已不存在，仅保留插件资料</span
-        ><ActionMenu icon-only label="管理聊天" icon="fa-solid fa-bars"
-          ><button
-            type="button"
-            class="danger"
-            :disabled="!selectedChat.exists || (isSelectedCurrentChat && deletionGenerationBusy)"
-            @click="requestChatDeletion([selectedChat])"
-          >
-            <i class="fa-solid fa-trash"></i>删除聊天
-          </button></ActionMenu
-        >
-      </div>
+      <p v-if="!selectedChat.exists">聊天已不存在，仅保留插件资料</p>
       <article class="pc-page-section pc-floor-backup-card">
         <div class="pc-domain-head">
           <div>
@@ -265,6 +260,14 @@
           </button>
           <button class="pc-soft-btn" type="button" :disabled="!selectedFloorBackup" @click="deleteSelectedFloorBackup">
             {{ t`删除备份` }}
+          </button>
+          <button
+            class="pc-soft-btn danger"
+            type="button"
+            :disabled="!selectedChat.exists || (isSelectedCurrentChat && deletionGenerationBusy)"
+            @click="requestChatDeletion([selectedChat])"
+          >
+            <i class="fa-solid fa-trash"></i>删除聊天
           </button>
         </div>
         <input
@@ -443,11 +446,11 @@ watch(
   () => route.value.params?.ownerKey,
   () => chatSelection.cancel(),
 );
-function requestChatDeletion(chats: ArchiveChatRow[]) {
-  if (!activeOwner.value || !chats.length) return;
+function requestChatDeletion(chats: ArchiveChatRow[], owner: ArchiveOwner | null = activeOwner.value) {
+  if (!owner || !chats.length) return;
   deleteRequest.value = {
-    owner: { ...activeOwner.value, aliases: new Set(activeOwner.value.aliases) },
-    chats: [...chats],
+    owner: { ...owner, aliases: new Set(owner.aliases) },
+    chats: chats.map(chat => ({ ...chat })),
   };
 }
 async function afterChatDeletion() {

@@ -45,11 +45,17 @@ export const useWorldbookCatalogGroupStore = defineStore('worldbookCatalogGroups
   }
 
   function assignBook(bookName: string, requestedGroup: string) {
+    assignBooks([bookName], requestedGroup);
+  }
+
+  function assignBooks(bookNames: string[], requestedGroup: string) {
     const group = normalizedGroup(requestedGroup);
-    if (!group) delete settings.value.bookAssignments[bookName];
-    else {
-      if (!settings.value.bookGroups.includes(group)) settings.value.bookGroups.push(group);
-      settings.value.bookAssignments[bookName] = group;
+    for (const bookName of bookNames) {
+      if (!group) delete settings.value.bookAssignments[bookName];
+      else {
+        if (!settings.value.bookGroups.includes(group)) settings.value.bookGroups.push(group);
+        settings.value.bookAssignments[bookName] = group;
+      }
     }
     persist();
   }
@@ -128,6 +134,7 @@ export const useWorldbookCatalogGroupStore = defineStore('worldbookCatalogGroups
 
   return {
     assignBook,
+    assignBooks,
     assignEntry,
     bookGroupOf,
     bookGroups: computed(() => settings.value.bookGroups),

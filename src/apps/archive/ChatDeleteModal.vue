@@ -58,6 +58,7 @@ import { usePhoneModalLifecycle } from '@/composables/usePhoneModalLifecycle';
 import { deleteArchivedChat, type DeleteChatResult } from './chatDeletion';
 import type { ArchiveChatRow, ArchiveOwner } from './useChatArchiveCatalogSession';
 import { areChatScopeKeysEquivalent, getCurrentChatScopeKey } from '@/store/chatScoped';
+import { usePhoneStore } from '@/store/phone';
 const props = defineProps<{ owner: ArchiveOwner; chats: ArchiveChatRow[] }>();
 const emit = defineEmits<{ close: []; finished: [] }>();
 const dialogRef = ref<HTMLElement | null>(null);
@@ -80,16 +81,23 @@ async function execute() {
       Number(areChatScopeKeysEquivalent(b.scopeKey, getCurrentChatScopeKey())),
   );
   try {
+    if (
+      !(await usePhoneStore().confirmNotice(
+        `确认永久删除以下 ${ordered.length} 份聊天？\n${ordered.map(chat => chat.title).join('\n')}`,
+        { title: '最后确认删除聊天', confirmLabel: '确认删除', kind: 'error' },
+      ))
+    )
+      return;
     for (const chat of ordered) {
       progress.value += 1;
       results.value.push(
         await deleteArchivedChat(props.owner, chat, { content: removeContent.value, backup: removeBackup.value }),
       );
     }
-  } finally {
-    busy.value = false;
     done.value = true;
     emit('finished');
+  } finally {
+    busy.value = false;
   }
 }
 </script>

@@ -22,6 +22,7 @@ declare module 'vue' {
     BulkSelectionBar: typeof import('./src/components/BulkSelectionBar.vue')['default']
     BulkSelectionCheckbox: typeof import('./src/components/BulkSelectionCheckbox.vue')['default']
     CapsuleTag: typeof import('./src/components/CapsuleTag.vue')['default']
+    CatalogGroupDialog: typeof import('./src/components/CatalogGroupDialog.vue')['default']
     CatalogModal: typeof import('./src/components/CatalogModal.vue')['default']
     ConfigurationRecoveryNotice: typeof import('./src/components/ConfigurationRecoveryNotice.vue')['default']
     ContentConversionPanel: typeof import('./src/components/ContentConversionPanel.vue')['default']

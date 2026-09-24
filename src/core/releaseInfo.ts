@@ -4,6 +4,13 @@ export const RUNNING_VERSION = manifest.version;
 export const RELEASE_SEEN_FIELD = 'sillytavern_phone_last_seen_release';
 export const RELEASE_HISTORY = [
   {
+    version: '1.2.6',
+    notes: [
+      '预设和世界书目录支持批量归组；新建空分组会显示，可按分组名搜索，也可将内容移回未分组。',
+      '聊天档案当前聊天增加删除入口，详情页删除聊天可直接操作；删除前保留清理选项并增加最终确认。',
+    ],
+  },
+  {
     version: '1.2.5',
     notes: [
       '设置的当前聊天称呼下方新增原生用户名宏开关，仅当前聊天生效，默认关闭。开启后 {{pc_native_user}} 读取酒馆当前用户名，关闭后注销；不影响 {{user}} 和 {{char}} 的替换称呼。',
