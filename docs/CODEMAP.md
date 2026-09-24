@@ -218,6 +218,11 @@
 
 ## 测试与构建
 
+- `src/resource-bundle/`：预设、角色卡和世界书的 ZIP 组合导入导出。`model.ts` 定义清单与附件关系，
+  `zip.ts` 按需加载压缩库，`host.ts` 对接宿主读写，`importQueue.ts` 保留逐项结果并仅重试失败项。
+  `ResourceBundleActions.vue` 是三个业务页面的共享入口，弹窗复用全局控件和导航保护。
+  专项单测为 `scripts/unit/resource-bundle.test.mjs`，视觉场景前缀为 `resource-bundle-`。
+
 - `pnpm verify:static`：ESLint baseline、typecheck、unit tests、backup/config/recovery/structure contracts、style
   guard、严格 UI 复用。
 - `pnpm build:check`：构建到 `tmp/build-check`，用于验证不改正式 dist。

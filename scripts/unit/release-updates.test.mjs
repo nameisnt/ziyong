@@ -73,9 +73,16 @@ test('notice is once per release, independent of chat, with numeric version orde
   assert.equal(acknowledgeRelease(settings, '2.0.0'), true);
 });
 
+const queueCode = transpileModule(
+  await readFile(new URL('../../src/apps/extension-transfer/installQueue.ts', import.meta.url), 'utf8'),
+  { compilerOptions: { module: ModuleKind.ESNext, target: ScriptTarget.ES2022 } },
+).outputText;
+const queueUrl = `data:text/javascript;base64,${Buffer.from(queueCode).toString('base64')}`;
 const apiSource = (
   await readFile(new URL('../../src/apps/extension-transfer/api.ts', import.meta.url), 'utf8')
-).replace(/import \{ getRequestHeaders \} from [^;]+;/, 'const getRequestHeaders = () => ({});');
+)
+  .replace(/import \{ getRequestHeaders \} from [^;]+;/, 'const getRequestHeaders = () => ({});')
+  .replace("from './installQueue'", `from '${queueUrl}'`);
 const apiCode = transpileModule(apiSource, {
   compilerOptions: { module: ModuleKind.ESNext, target: ScriptTarget.ES2022 },
 }).outputText;

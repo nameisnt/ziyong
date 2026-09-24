@@ -1,5 +1,20 @@
 <template>
   <section class="pc-archive-app">
+    <div v-if="route.page === 'root' || route.page === 'chats'" class="pc-compact-toolbar">
+      <ResourceBundleActions
+        kind="character"
+        :allow-import="route.page === 'root'"
+        :source="
+          route.page === 'chats' && activeOwner?.kind === 'char'
+            ? { kind: 'character', name: activeOwner.name, avatar: activeOwner.avatar }
+            : route.page === 'root' && activeTab === 'current' && currentOwner?.kind === 'char'
+              ? { kind: 'character', name: currentOwner.name, avatar: currentOwner.avatar }
+              : undefined
+        "
+        :disabled="loadingCharacters || loadingChats"
+        @imported="loadCharacters(true)"
+      />
+    </div>
     <section v-if="route.page === 'root'" class="pc-archive-page">
       <div v-if="activeTab !== 'current'" class="pc-compact-toolbar pc-archive-search-row">
         <label class="pc-search-field">
@@ -346,6 +361,7 @@
 </template>
 
 <script setup lang="ts">
+import ResourceBundleActions from '@/resource-bundle/ResourceBundleActions.vue';
 import EmptyState from '@/components/EmptyState.vue';
 import ActionMenu from '@/components/ActionMenu.vue';
 import BulkSelectionBar from '@/components/BulkSelectionBar.vue';

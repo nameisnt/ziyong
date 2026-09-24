@@ -1,5 +1,17 @@
 <template>
   <section class="pc-worldbook-link-app">
+    <div
+      v-if="phone.isViewingCurrentChat && (route.page === 'root' || route.page === 'detail')"
+      class="pc-compact-toolbar"
+    >
+      <ResourceBundleActions
+        kind="worldbook"
+        :allow-import="route.page === 'root'"
+        :source="route.page === 'detail' ? { kind: 'worldbook', name: detailBookName } : undefined"
+        :disabled="busy || refreshing"
+        @imported="refresh"
+      />
+    </div>
     <EmptyState v-if="!phone.isViewingCurrentChat" :title="t`历史聊天不能管理世界书`">
       <p>{{ t`世界书接口始终作用于酒馆当前聊天，请先返回当前聊天再查看或修改。` }}</p>
       <button class="pc-primary-btn" type="button" @click="returnToCurrentChat">
@@ -93,6 +105,7 @@
 </template>
 
 <script setup lang="ts">
+import ResourceBundleActions from '@/resource-bundle/ResourceBundleActions.vue';
 import EmptyState from '@/components/EmptyState.vue';
 import { buildCatalogGroups } from '@/util/catalogGroups';
 import { useBulkSelection } from '@/composables/useBulkSelection';

@@ -1,6 +1,6 @@
 {
   "name": "sillytavern-phone-extension",
-  "version": "1.2.6",
+  "version": "1.2.7",
   "scripts": {
     "release:notes": "node scripts/release-notes.mjs",
     "build": "vite build",
@@ -75,6 +75,7 @@
     "@vueuse/core": "^13.9.0",
     "@vueuse/integrations": "^13.9.0",
     "@vueuse/shared": "^13.9.0",
+    "fflate": "0.8.2",
     "klona": "^2.0.6",
     "lodash": "4.17.21",
     "mermaid": "^11.17.2",

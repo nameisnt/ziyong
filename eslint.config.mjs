@@ -33,7 +33,12 @@ export default [
         entryPoint: 'src/global.css',
         tailwindConfig: 'tailwind.config.js',
       },
-      'import-x/core-modules': ['@sillytavern/script', '@sillytavern/scripts/extensions', '@sillytavern/scripts/openai'],
+      'import-x/core-modules': [
+        '@sillytavern/script',
+        '@sillytavern/scripts/extensions',
+        '@sillytavern/scripts/openai',
+        '@sillytavern/scripts/world-info',
+      ],
     },
   },
   {

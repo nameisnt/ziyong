@@ -210,6 +210,7 @@ import {
   type InstalledExtension,
 } from './api';
 import { parseExtensionManifest, type ExtensionManifestItem, type ExtensionScope } from './model';
+import { runSerialInstall } from './installQueue';
 
 interface ImportRow extends ExtensionManifestItem {
   key: string;
@@ -423,26 +424,19 @@ function installErrorMessage(error: unknown) {
 }
 
 async function runInstallWorkers(rows: ImportRow[]) {
-  let nextIndex = 0;
-  const workers = Array.from({ length: Math.min(3, rows.length) }, async () => {
-    while (nextIndex < rows.length) {
-      const index = nextIndex;
-      nextIndex += 1;
-      const row = rows[index]!;
-      row.status = 'running';
-      row.message = '安装中';
-      try {
-        const result = await installThirdPartyExtension(row);
-        row.status = result;
-        row.message = result === 'installed' ? '安装成功' : '扩展已存在或发生目录冲突';
-        row.selected = false;
-      } catch (error) {
-        row.status = 'failed';
-        row.message = installErrorMessage(error);
-      }
+  await runSerialInstall(rows, async row => {
+    row.status = 'running';
+    row.message = '安装中';
+    try {
+      const result = await installThirdPartyExtension(row);
+      row.status = result;
+      row.message = result === 'installed' ? '安装成功' : '相同扩展已安装，已跳过';
+      row.selected = false;
+    } catch (error) {
+      row.status = 'failed';
+      row.message = installErrorMessage(error);
     }
   });
-  await Promise.all(workers);
 }
 
 async function installSelected() {
@@ -463,7 +457,7 @@ async function installSelected() {
     const installedCount = rows.length - failed - skipped;
     const message = `安装结束：成功 ${installedCount}，跳过 ${skipped}，失败 ${failed}`;
     if (failed) toastr.warning(message);
-    else if (!installedCount) toastr.success(message);
+    else if (!installedCount) toastr.info(message);
     if (installedCount) notifyExtensionReloadRequired('扩展安装完成', message);
     await refreshInstalled();
   } finally {

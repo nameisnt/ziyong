@@ -36,6 +36,7 @@ import { applyPresetManagerVisualScenario } from '@/testing/visual/presetManager
 import { applyPresetBindingVisualScenario } from '@/testing/visual/presetBindingScenarios';
 import { applyTavernAliasVisualScenario } from '@/testing/visual/tavernAliasScenarios';
 import { applyCatalogGroupScenario } from '@/testing/visual/catalogGroupScenarios';
+import { applyResourceBundleScenario } from '@/testing/visual/resourceBundleScenarios';
 import { checkArchiveDeleteEntrance } from '@/testing/visual/archiveDeleteEntrances';
 import { applyStatusScopeVisualScenario } from '@/testing/visual/statusScopeScenarios';
 import { applyStatusWebVisualScenario } from '@/testing/visual/statusWebScenarios';
@@ -595,6 +596,7 @@ async function applyScenario(name: VisualScenarioName, options: { height?: numbe
     return { name, route: phone.currentRoute };
   }
   if (await applyCatalogGroupScenario(name)) return { name, route: phone.currentRoute };
+  if (await applyResourceBundleScenario(name)) return { name, route: phone.currentRoute };
   if (await applySettingsVisualScenario(name, { resetPhoneToRoute, waitForPaint })) {
     await waitForPaint();
     return { name, route: usePhoneStore().currentRoute };

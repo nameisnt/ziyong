@@ -1,6 +1,7 @@
 // eslint-disable-next-line import-x/no-nodejs-modules
 import { getRequestHeaders } from '@sillytavern/script';
 import type { ExtensionManifestItem, ExtensionScope } from './model';
+import { repositoryIdentity } from './installQueue';
 
 interface DiscoveredExtension {
   name: string;
@@ -124,7 +125,37 @@ export async function installThirdPartyExtension(item: ExtensionManifestItem): P
     headers: getRequestHeaders(),
     method: 'POST',
   });
-  if (response.status === 409) return 'skipped';
+  if (response.status === 409) {
+    const detail = (await response.text()).trim();
+    const name = new URL(item.url).pathname
+      .replace(/\/+$/, '')
+      .split('/')
+      .at(-1)
+      ?.replace(/\.git$/i, '');
+    if (name) {
+      try {
+        const discoveredResponse = await request('/api/extensions/discover');
+        const discovered = (await discoveredResponse.json()) as DiscoveredExtension[];
+        const exists = discovered.some(
+          entry =>
+            entry.name === `third-party/${name}` &&
+            (entry.type.toLowerCase() === 'global' ? 'global' : 'local') === item.scope,
+        );
+        if (exists) {
+          const version = await readVersion(name, item.scope);
+          if (
+            version.currentCommitHash &&
+            version.remoteUrl &&
+            repositoryIdentity(version.remoteUrl) === repositoryIdentity(item.url)
+          )
+            return 'skipped';
+        }
+      } catch (error) {
+        throw new ExtensionRequestError(`${detail || '安装冲突'}；无法核实已有扩展：${String(error)}`, 409);
+      }
+    }
+    throw new ExtensionRequestError(detail || '安装目录冲突，未确认已安装相同扩展', 409);
+  }
   if (!response.ok) {
     const detail = (await response.text()).trim();
     throw new ExtensionRequestError(detail || `HTTP ${response.status}`, response.status);

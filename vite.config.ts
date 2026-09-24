@@ -92,6 +92,7 @@ export default defineConfig(({ mode }) => {
               '@sillytavern/scripts/extensions': path.resolve(__dirname, 'src/testing/sillytavern-extensions.ts'),
               '@sillytavern/scripts/i18n': path.resolve(__dirname, 'src/testing/sillytavern-i18n.ts'),
               '@sillytavern/scripts/openai': path.resolve(__dirname, 'src/testing/sillytavern-openai.ts'),
+              '@sillytavern/scripts/world-info': path.resolve(__dirname, 'src/testing/sillytavern-world-info.ts'),
               toastr: path.resolve(__dirname, 'src/testing/visual-toastr.ts'),
             }
           : {}),

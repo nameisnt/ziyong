@@ -6,6 +6,15 @@ export type VisualScenarioGroup = {
 export function createVisualScenarioGroups(rootAppScenarios: string[]): VisualScenarioGroup[] {
   return [
     {
+      id: 'resource-bundles',
+      scenarios: ['preset', 'worldbook', 'character'].flatMap(kind =>
+        ['export', 'import'].flatMap(action => [
+          `resource-bundle-${kind}-${action}`,
+          `resource-bundle-${kind}-${action}-dark`,
+        ]),
+      ),
+    },
+    {
       id: 'shell',
       scenarios: ['home', 'home-five-columns', 'home-tasks', 'home-tasks-dark', ...rootAppScenarios],
     },
