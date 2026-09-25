@@ -392,7 +392,7 @@ test('character response determines chat target, and a post-write refresh failur
     globalThis.fetch = previous;
   }
 });
-test('chat copy uses the explicitly selected character and skips same-name chats without writing', async () => {
+test('chat copy uses a complete missing-file request for TT and native hosts, and skips same-name chats without writing', async () => {
   const { host } = await hostFixture();
   const bundle = presetBundle();
   const item = {
@@ -408,7 +408,11 @@ test('chat copy uses the explicitly selected character and skips same-name chats
   let directoryReady = false;
   globalThis.fetch = async (path, init) => {
     if (path === '/api/chats/get') {
-      assert.deepEqual(JSON.parse(init.body), { avatar_url: 'existing.png' });
+      assert.deepEqual(JSON.parse(init.body), {
+        avatar_url: 'existing.png',
+        file_name: 'existing 2',
+        allow_not_found: true,
+      });
       directoryReady = true;
       return Response.json({});
     }

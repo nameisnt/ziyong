@@ -366,19 +366,24 @@ export async function importResource(
   if (row.item.kind === 'chat') {
     if (!context.characterAvatar) throw new Error('请先导入角色卡或选择已有目标角色卡');
     const prepared = prepareChat(bytes, required<() => string[]>('getWorldbookNames')());
+    const targetStem = uniqueName(row.name.replace(/\.jsonl$/i, ''), names);
     const form = new FormData();
     form.append('avatar', new Blob([new Uint8Array(prepared.bytes)], { type: 'application/jsonl' }), row.item.name);
     form.append('file_type', 'jsonl');
     form.append('avatar_url', context.characterAvatar);
     form.append('character_name', context.characterName);
     form.append('user_name', name1);
-    // Native import expects the character's chat directory to already exist.
-    await post('/api/chats/get', { avatar_url: context.characterAvatar });
+    // Initialize native chat directories with a complete request; TT requires a file name.
+    await post('/api/chats/get', {
+      avatar_url: context.characterAvatar,
+      file_name: targetStem,
+      allow_not_found: true,
+    });
     const result = asRecord(await (await post('/api/chats/import', form)).json());
     if (result.error || !Array.isArray(result.fileNames) || !result.fileNames.length)
       throw new Error(typeof result.error === 'string' ? result.error : '酒馆未确认聊天导入，请检查服务端日志');
     const importedName = String(result.fileNames[0]);
-    const targetName = `${uniqueName(row.name.replace(/\.jsonl$/i, ''), names)}.jsonl`;
+    const targetName = `${targetStem}.jsonl`;
     let finalName = importedName;
     if (targetName !== importedName) {
       try {

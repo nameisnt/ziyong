@@ -191,19 +191,39 @@ export async function applyResourceBundleScenario(name: string) {
       if (data.extensions.tavern_helper.scripts[0]!.enabled !== false) throw new Error('Script enabled unexpectedly');
     } else {
       const footer = document.querySelector('.pc-bundle-app > footer')!;
+      const characterGroup = document.querySelector('.pc-bundle-group')!;
+      const missingCharacter = characters.pop()!;
+      button('全选', characterGroup).click();
+      await expect(
+        () => Boolean(document.querySelector('.pc-bundle-error')?.textContent?.includes('角色卡不存在')),
+        'Missing character directory failure was not reported',
+      );
+      await expect(() => !button('全选', characterGroup).disabled, 'Failed selection remained busy');
+      characters.push(missingCharacter);
+      button('全选', characterGroup).click();
+      await waitForVisualPaint();
+      await expect(() => !button('全选', characterGroup).disabled, 'Collapsed character selection stuck');
+      if (document.querySelector('.pc-bundle-error')) throw new Error('Retry did not clear selection error');
+      if (document.querySelector('.pc-bundle-chat')) throw new Error('Select-all unexpectedly expanded chats');
       const expand = document.querySelector<HTMLButtonElement>('.pc-bundle-entry button[aria-expanded]')!;
       expand.click();
       await expect(() => document.querySelectorAll('.pc-bundle-chat').length === 3, 'Chat expansion failed');
+      if (document.querySelectorAll('.pc-bundle-chat input:checked').length !== 3)
+        throw new Error('Character select-all omitted unloaded chats');
+      button('取消全选', characterGroup).click();
+      await waitForVisualPaint();
       if ([...document.querySelectorAll<HTMLInputElement>('.pc-bundle-chat input')].some(input => input.checked))
-        throw new Error('Chats should not be selected by default');
+        throw new Error('Character deselection retained chats');
       button('全选聊天').click();
       await waitForVisualPaint();
       button('取消聊天').click();
       await waitForVisualPaint();
       const groups = [...document.querySelectorAll('.pc-bundle-group')];
-      groups.forEach(group => button('全选', group).click());
-      document.querySelector<HTMLInputElement>('.pc-bundle-chat input')!.click();
-      await waitForVisualPaint();
+      for (const group of groups) {
+        button('全选', group).click();
+        await waitForVisualPaint();
+        await expect(() => !button('全选', group).disabled, 'Group selection remained busy');
+      }
       let download: Blob | null = null;
       const originalUrl = URL.createObjectURL;
       URL.createObjectURL = value => {
@@ -211,6 +231,17 @@ export async function applyResourceBundleScenario(name: string) {
         return originalUrl(value);
       };
       try {
+        button('导出所选', footer).click();
+        await expect(() => Boolean(download), 'Character select-all download missing');
+        const bulk = await readBundle(new File([download!], 'bulk.zip'));
+        if (bulk.manifest.items.filter(item => item.kind === 'chat').length !== 6)
+          throw new Error('Character select-all omitted collapsed chats from export');
+        await expect(() => !button('导出所选', footer).disabled, 'Bulk export remained busy');
+        button('取消全选', characterGroup).click();
+        await waitForVisualPaint();
+        document.querySelector<HTMLInputElement>('.pc-bundle-chat input')!.click();
+        await waitForVisualPaint();
+        download = null;
         button('导出所选', footer).click();
         await expect(() => Boolean(download), 'Selected download missing');
         const selected = await readBundle(new File([download!], 'selected.zip'));

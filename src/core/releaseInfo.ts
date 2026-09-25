@@ -4,6 +4,13 @@ export const RUNNING_VERSION = manifest.version;
 export const RELEASE_SEEN_FIELD = 'sillytavern_phone_last_seen_release';
 export const RELEASE_HISTORY = [
   {
+    version: '1.2.9',
+    notes: [
+      '修复 TauriTavern 聊天记录组合导入失败：补全导入前检查的聊天文件名及允许文件不存在参数，避免 TT 返回 400 中断导入。',
+      '组合导出中，角色卡分类的全选会同时选中其全部聊天记录，包括尚未展开的角色卡；取消全选同步清除聊天勾选，单独勾选角色卡仍可只导出角色卡。',
+    ],
+  },
+  {
     version: '1.2.8',
     notes: [
       '新增独立组合导出 App，可跨类别多选角色卡、预设、世界书和全局正则，统一导出为一个 ZIP 文件。',

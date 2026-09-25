@@ -157,10 +157,27 @@ async function refresh() {
     busy.value = false;
   }
 }
-function selectGroup(rows: ExportChoice[], selected: boolean) {
-  rows.forEach(row => {
-    row.selected = selected;
-  });
+async function selectGroup(rows: ExportChoice[], selected: boolean) {
+  if (busy.value) return;
+  busy.value = true;
+  error.value = '';
+  try {
+    for (const row of rows) {
+      if (row.source.kind === 'character') {
+        if (selected && !row.chats) {
+          progress.value = `读取聊天目录：${row.source.name}`;
+          row.chats = (await planExport(row.source)).rows.filter(item => item.item.kind === 'chat');
+        }
+        selectChats(row, selected);
+      }
+      row.selected = selected;
+    }
+  } catch (caught) {
+    error.value = String(caught);
+  } finally {
+    busy.value = false;
+    progress.value = '';
+  }
 }
 function selectChats(choice: ExportChoice, selected: boolean) {
   choice.chats?.forEach(chat => {
