@@ -1,1 +1,9 @@
+<<<<<<< HEAD
 {}
+=======
+{
+  "插件示例": "Plugin Example",
+  "示例按钮": "Example Button",
+  "示例开关": "Example Switch"
+}
+>>>>>>> e000f17401bc15121c7e98e8b74f8f69bb0ff16c
