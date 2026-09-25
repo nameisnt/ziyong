@@ -594,7 +594,7 @@ test('mixed import is ordered by dependency and failed card cannot use another c
     apply,
     () => {},
   );
-  assert.deepEqual(calls, ['w', 'c1', 'c2', 'p', 'g', 'chat2']);
+  assert.deepEqual(calls, ['w', 'c1', 'c2', 'chat2', 'p', 'g']);
   assert.equal(items.find(row => row.item.id === 'chat1').status, 'failed');
   assert.equal(items.find(row => row.item.id === 'r').status, 'success');
   targets.add('c1');
@@ -606,7 +606,38 @@ test('mixed import is ordered by dependency and failed card cannot use another c
     apply,
     () => {},
   );
-  assert.deepEqual(calls, ['w', 'c1', 'c2', 'p', 'g', 'chat2', 'chat1']);
+  assert.deepEqual(calls, ['w', 'c1', 'c2', 'chat2', 'p', 'g', 'chat1']);
+});
+
+test('each character is followed by its chats, including existing targets and partial retries', async () => {
+  const bundle = presetBundle();
+  bundle.manifest.kind = 'mixed';
+  bundle.manifest.items = [
+    { id: 'c1', name: 'One', kind: 'character' },
+    { id: 'c2', name: 'Two', kind: 'character' },
+    { id: 'c3', name: 'Existing', kind: 'character' },
+    { id: 'chat2', name: 'Second', kind: 'chat', parentId: 'c2' },
+    { id: 'chat1a', name: 'First A', kind: 'chat', parentId: 'c1' },
+    { id: 'chat1b', name: 'First B', kind: 'chat', parentId: 'c1' },
+    { id: 'chat3', name: 'Existing chat', kind: 'chat', parentId: 'c3' },
+  ];
+  const items = rows(bundle);
+  items.find(row => row.item.id === 'c3').selected = false;
+  const targets = new Set(['c3']);
+  const calls = [];
+  let fail = true;
+  const apply = async row => {
+    calls.push(row.item.id);
+    if (row.item.kind === 'character') targets.add(row.item.id);
+    if (fail && row.item.id === 'chat1b') throw new Error('offline');
+    return { message: 'ok' };
+  };
+  await runBundleImport(bundle, items, id => targets.has(id), apply, () => {});
+  assert.deepEqual(calls, ['c1', 'chat1a', 'chat1b', 'c2', 'chat2', 'chat3']);
+  fail = false;
+  await runBundleImport(bundle, items, id => targets.has(id), apply, () => {});
+  assert.deepEqual(calls, ['c1', 'chat1a', 'chat1b', 'c2', 'chat2', 'chat3', 'chat1b']);
+  assert.ok(items.filter(row => row.selected).every(row => row.status === 'success'));
 });
 
 test('mixed import plans every root and excludes preset attachments from global conflict checks', async () => {

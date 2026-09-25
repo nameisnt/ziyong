@@ -9,8 +9,10 @@ export async function runBundleImport(
 ) {
   // A preset and its selected attachments are a single write, so partial attachment writes cannot occur.
   // Import worldbooks before chats so bindings can resolve books from this same package.
-  const priority = (row: ImportRow) => (row.item.kind === 'worldbook' ? 0 : row.item.parentId ? 2 : 1);
-  const queue = [...rows].sort((a, b) => priority(a) - priority(b));
+  const roots = rows.filter(row => !row.item.parentId);
+  roots.sort((a, b) => Number(b.item.kind === 'worldbook') - Number(a.item.kind === 'worldbook'));
+  // Finish each character's chats before importing the next character.
+  const queue = roots.flatMap(root => [root, ...rows.filter(row => row.item.parentId === root.item.id)]);
   for (const row of queue) {
     if (!row.selected || row.status === 'success' || row.status === 'skipped') continue;
     const parent = rows.find(parent => parent.item.id === row.item.parentId);
