@@ -4,6 +4,12 @@ export const RUNNING_VERSION = manifest.version;
 export const RELEASE_SEEN_FIELD = 'sillytavern_phone_last_seen_release';
 export const RELEASE_HISTORY = [
   {
+    version: '1.2.10',
+    notes: [
+      '组合导入调整为逐张角色卡处理：导入角色卡后，依次导入其所选聊天记录，再处理下一张角色卡；失败重试跳过已成功项目。',
+    ],
+  },
+  {
     version: '1.2.9',
     notes: [
       '修复 TauriTavern 聊天记录组合导入失败：补全导入前检查的聊天文件名及允许文件不存在参数，避免 TT 返回 400 中断导入。',
