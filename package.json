@@ -1,4 +1,5 @@
 {
+<<<<<<< HEAD
   "name": "sillytavern-phone-extension",
   "version": "1.2.9",
   "scripts": {
@@ -23,6 +24,15 @@
     "ui:contracts": "node scripts/ui-contract-check.mjs",
     "test:unit": "node --test scripts/unit/*.test.mjs",
     "ui:check": "node scripts/ui-visual-check.mjs",
+=======
+  "name": "<插件名称>",
+  "version": "1.0.0",
+  "scripts": {
+    "build": "vite build",
+    "watch": "vite build --watch --mode development",
+    "format": "prettier --write \"src/**/*.{ts,tsx,js,jsx,css,scss,html,vue}\"",
+    "lint": "eslint",
+>>>>>>> e000f17401bc15121c7e98e8b74f8f69bb0ff16c
     "lint:fix": "eslint --fix"
   },
   "browserslist": [
@@ -30,7 +40,10 @@
   ],
   "devDependencies": {
     "@eslint/js": "^9.39.5",
+<<<<<<< HEAD
     "@fortawesome/fontawesome-free": "^7.3.1",
+=======
+>>>>>>> e000f17401bc15121c7e98e8b74f8f69bb0ff16c
     "@popperjs/core": "^2.11.8",
     "@tailwindcss/postcss": "^4.3.3",
     "@types/jquery": "^3.5.34",
@@ -52,11 +65,18 @@
     "eslint-plugin-vue": "^10.11.1",
     "globals": "^16.5.0",
     "highlight.js": "^11.12.0",
+<<<<<<< HEAD
     "playwright": "^1.63.0",
+=======
+>>>>>>> e000f17401bc15121c7e98e8b74f8f69bb0ff16c
     "postcss-load-config": "^6.0.1",
     "postcss-loader": "^8.2.1",
     "postcss-minify": "^1.2.0",
     "prettier": "^3.9.9",
+<<<<<<< HEAD
+=======
+    "ts-node": "^10.9.2",
+>>>>>>> e000f17401bc15121c7e98e8b74f8f69bb0ff16c
     "tslib": "^2.8.1",
     "typescript": "6.0.0-dev.20250807",
     "typescript-eslint": "^8.70.1",
@@ -70,15 +90,22 @@
     "yaml": "^2.9.1"
   },
   "dependencies": {
+<<<<<<< HEAD
     "@korziee/klondike": "0.0.5",
+=======
+>>>>>>> e000f17401bc15121c7e98e8b74f8f69bb0ff16c
     "@vueuse/components": "^13.9.0",
     "@vueuse/core": "^13.9.0",
     "@vueuse/integrations": "^13.9.0",
     "@vueuse/shared": "^13.9.0",
+<<<<<<< HEAD
     "fflate": "0.8.2",
     "klona": "^2.0.6",
     "lodash": "4.17.21",
     "mermaid": "^11.17.2",
+=======
+    "klona": "^2.0.6",
+>>>>>>> e000f17401bc15121c7e98e8b74f8f69bb0ff16c
     "pinia": "^3.0.4",
     "tailwindcss": "^4.3.3",
     "type-fest": "^4.41.0",
