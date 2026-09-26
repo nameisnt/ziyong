@@ -42,6 +42,17 @@
               <small v-if="choice.source.kind === 'preset'">{{ choice.source.pluginId ? '插件' : '酒馆' }}</small>
             </span>
             <button
+              v-if="choice.source.kind === 'theme'"
+              class="pc-icon-btn"
+              type="button"
+              :disabled="busy"
+              title="导出原生主题 JSON"
+              :aria-label="`${choice.source.name}：导出原生主题 JSON`"
+              @click="exportTheme(choice)"
+            >
+              <i class="fa-solid fa-file-export"></i>
+            </button>
+            <button
               v-if="choice.source.kind === 'character'"
               class="pc-icon-btn"
               type="button"
@@ -97,7 +108,7 @@ import BulkSelectionCheckbox from '@/components/BulkSelectionCheckbox.vue';
 import EmptyState from '@/components/EmptyState.vue';
 import { listExportSources, planExport } from '@/resource-bundle/host';
 import { buildSelectedExport, type ExportChoice } from '@/resource-bundle/exportSelection';
-import { writeBundle } from '@/resource-bundle/zip';
+import { writeBundle, writeTheme } from '@/resource-bundle/zip';
 import { usePhoneStore } from '@/store/phone';
 
 const ResourceBundleDialog = defineAsyncComponent(() => import('@/resource-bundle/ResourceBundleDialog.vue'));
@@ -115,6 +126,7 @@ const categories = [
   { kind: 'preset', label: '预设' },
   { kind: 'worldbook', label: '世界书' },
   { kind: 'regex', label: '正则' },
+  { kind: 'theme', label: 'UI 主题' },
 ];
 const groups = computed(() =>
   categories.map(group => ({
@@ -199,6 +211,16 @@ async function toggleChats(choice: ExportChoice) {
     error.value = String(caught);
   } finally {
     busy.value = false;
+  }
+}
+function exportTheme(choice: ExportChoice) {
+  if (busy.value || choice.source.kind !== 'theme') return;
+  error.value = '';
+  try {
+    writeTheme(choice.source.data);
+    message.value = 'UI 主题 JSON 已导出';
+  } catch (caught) {
+    error.value = String(caught);
   }
 }
 async function exportFile(all: boolean) {

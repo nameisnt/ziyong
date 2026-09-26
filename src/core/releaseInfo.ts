@@ -4,6 +4,13 @@ export const RUNNING_VERSION = manifest.version;
 export const RELEASE_SEEN_FIELD = 'sillytavern_phone_last_seen_release';
 export const RELEASE_HISTORY = [
   {
+    version: '1.2.11',
+    notes: [
+      '组合导出新增酒馆 UI 主题分类，支持多选、导出所选和全部导出，以及原生主题 JSON 单独导入导出。',
+      'UI 主题逐个导入，支持同名跳过、另存及确认覆盖；保存后读回核对，失败重试避免重复写入，导入不切换当前外观并提示刷新酒馆。',
+    ],
+  },
+  {
     version: '1.2.10',
     notes: [
       '组合导入调整为逐张角色卡处理：导入角色卡后，依次导入其所选聊天记录，再处理下一张角色卡；失败重试跳过已成功项目。',

@@ -16,9 +16,15 @@
           </button>
         </header>
         <button class="pc-soft-btn" type="button" :disabled="busy" @click="fileInput?.click()">
-          <i class="fa-solid fa-file-import"></i>选择组合包
+          <i class="fa-solid fa-file-import"></i>选择组合包 / 主题 JSON
         </button>
-        <input ref="fileInput" hidden type="file" accept=".zip,application/zip" @change="readFile" />
+        <input
+          ref="fileInput"
+          hidden
+          type="file"
+          accept=".zip,.json,application/zip,application/json"
+          @change="readFile"
+        />
         <label v-if="hasPresets" class="pc-field-group">
           <span class="pc-field-label">预设导入位置</span>
           <select v-model="context.presetTarget" class="pc-select" :disabled="busy || started" @change="replan">
@@ -127,7 +133,7 @@ import { usePhoneStore } from '@/store/phone';
 import { getCharacterTargets, importResource, planImport, refreshChatConflicts, type ImportContext } from './host';
 import { runBundleImport } from './importQueue';
 import { readBundle } from './zip';
-import type { ImportRow, ResourceBundle, ResourceKind } from './model';
+import { decodeJson, readTheme, type ImportRow, type ResourceBundle, type ResourceKind } from './model';
 
 const emit = defineEmits<{ close: []; imported: [] }>();
 const phone = usePhoneStore();
@@ -153,6 +159,7 @@ const labels: Record<ResourceKind, string> = {
   regex: '正则',
   script: '助手脚本',
   chat: '聊天记录',
+  theme: 'UI 主题',
 };
 const hasPresets = computed(() => importRows.value.some(row => row.item.kind === 'preset'));
 const parent = (row: ImportRow) => importRows.value.find(item => item.item.id === row.item.parentId);
@@ -274,10 +281,15 @@ async function applyImport() {
     return;
   }
   const replacements = selected.filter(row => row.conflict && row.mode === 'replace');
+  const externalThemes = selected.filter(
+    row =>
+      row.item.kind === 'theme' &&
+      String(readTheme(decodeJson(bundle.value!.files[row.item.path]!)).custom_css || '').includes('@import'),
+  );
   if (
     !started.value &&
     !(await phone.confirmNotice(
-      `导入 ${selected.length} 项${replacements.length ? `，将替换：${replacements.map(row => row.name).join('、')}` : ''}？新增全局正则和助手脚本默认停用。`,
+      `导入 ${selected.length} 项${replacements.length ? `，将替换：${replacements.map(row => row.name).join('、')}` : ''}？新增全局正则和助手脚本默认停用。${externalThemes.length ? `以下主题含外部 CSS @import，启用时可能访问外部资源：${externalThemes.map(row => row.name).join('、')}。` : ''}`,
       { title: '确认组合导入', confirmLabel: '导入', kind: 'warning' },
     ))
   )

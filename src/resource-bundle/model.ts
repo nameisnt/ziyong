@@ -1,17 +1,18 @@
 import { z } from 'zod';
 
 export type BundleKind = 'preset' | 'character' | 'worldbook';
-export type ResourceKind = BundleKind | 'regex' | 'script' | 'chat';
+export type ResourceKind = BundleKind | 'regex' | 'script' | 'chat' | 'theme';
 export type JsonRecord = Record<string, unknown>;
 export type BundleSource =
   | { kind: 'preset'; name: string; pluginId?: string }
   | { kind: 'worldbook'; name: string }
   | { kind: 'character'; name: string; avatar: string }
+  | { kind: 'theme'; name: string; data: JsonRecord }
   | { kind: 'regex'; name: string; index: number };
 const itemSchema = z.object({
   id: z.string().min(1),
   name: z.string().min(1),
-  kind: z.enum(['preset', 'character', 'worldbook', 'regex', 'script', 'chat']),
+  kind: z.enum(['preset', 'character', 'worldbook', 'regex', 'script', 'chat', 'theme']),
   path: z.string().regex(/^resources\/[0-9]+\.(json|jsonl|png)$/),
   parentId: z.string().optional(),
   presetSource: z.enum(['plugin', 'tavern']).optional(),
@@ -37,6 +38,7 @@ export type ImportRow = {
   replaceable: boolean;
   status: 'pending' | 'success' | 'skipped' | 'failed';
   message: string;
+  themeWrite?: JsonRecord;
 };
 export function asRecord(value: unknown): JsonRecord {
   if (!value || typeof value !== 'object' || Array.isArray(value)) throw new Error('数据不是有效对象');
@@ -47,6 +49,14 @@ export function encodeJson(value: unknown) {
 }
 export function decodeJson(bytes: Uint8Array) {
   return JSON.parse(new TextDecoder().decode(bytes)) as unknown;
+}
+export function readTheme(value: unknown) {
+  const theme = asRecord(value);
+  if (typeof theme.name !== 'string' || !theme.name.trim()) throw new Error('UI 主题缺少名称');
+  if (!['main_text_color', 'blur_tint_color', 'custom_css', 'font_scale', 'chat_display'].some(key => key in theme))
+    throw new Error('文件不包含酒馆 UI 主题字段');
+  if ('custom_css' in theme && typeof theme.custom_css !== 'string') throw new Error('主题 custom_css 必须为文本');
+  return theme;
 }
 export function splitPreset(value: unknown) {
   const raw = structuredClone(asRecord(value));
@@ -163,6 +173,7 @@ export function validateBundle(files: Record<string, Uint8Array>): ResourceBundl
         const data = asRecord(decodeJson(bytes));
         if (item.kind === 'preset') splitPreset(data);
         if (item.kind === 'worldbook') asRecord(data.entries);
+        if (item.kind === 'theme') readTheme(data);
         if (
           item.kind === 'regex' &&
           typeof data.findRegex !== 'string' &&

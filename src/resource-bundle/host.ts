@@ -8,6 +8,7 @@ import {
   saveSettings,
 } from '@sillytavern/script';
 import { extension_settings } from '@sillytavern/scripts/extensions';
+import { isEqual } from 'lodash';
 import { worldInfoCache } from '@sillytavern/scripts/world-info';
 import { usePluginPresetStore } from '@/store/pluginPresets';
 import { createTavernPreset, getCurrentTavernPresetName, type TavernPreset } from '@/apps/preset-manager/api';
@@ -19,6 +20,7 @@ import {
   decodeJson,
   encodeJson,
   prepareChat,
+  readTheme,
   splitPreset,
   type BundleManifest,
   type BundleSource,
@@ -65,6 +67,17 @@ function globalRegexes() {
   if (!Array.isArray(values)) throw new Error('全局正则数据格式无效');
   return values.map(asRecord);
 }
+async function savedThemes() {
+  const data = asRecord(await (await post('/api/settings/get', {})).json());
+  if (!Array.isArray(data.themes)) throw new Error('酒馆 UI 主题目录读取失败');
+  return data.themes.map(readTheme);
+}
+async function verifyTheme(data: JsonRecord) {
+  const saved = (await savedThemes()).find(theme => theme.name === data.name);
+  if (!saved || Object.keys(data).some(key => !isEqual(saved[key], data[key])))
+    throw new Error(`UI 主题 ${String(data.name)} 写入后核对失败；重试只会重新核对，不会重复写入`);
+  return { message: `已导入 UI 主题 ${String(data.name)}；请刷新酒馆后在 UI 主题列表选择，当前外观未切换` };
+}
 export async function planExport(source: BundleSource) {
   const rows: ExportRow[] = [];
   function add(kind: ExportRow['item']['kind'], name: string, read: ExportRow['read'], selected = true) {
@@ -94,6 +107,9 @@ export async function planExport(source: BundleSource) {
     data.scripts.forEach((script, i) =>
       add('script', String(script.name || `脚本 ${i + 1}`), async () => encodeJson(script)),
     );
+  } else if (source.kind === 'theme') {
+    const data = cloneJson(readTheme(source.data));
+    add('theme', source.name, async () => encodeJson(data));
   } else if (source.kind === 'regex') {
     const regex = globalRegexes()[source.index];
     if (!regex || String(regex.scriptName || `正则 ${source.index + 1}`) !== source.name)
@@ -153,7 +169,7 @@ export async function planExport(source: BundleSource) {
     version: 1,
     pluginVersion: RUNNING_VERSION,
     name: source.name,
-    kind: source.kind === 'regex' ? 'mixed' : source.kind,
+    kind: source.kind === 'regex' || source.kind === 'theme' ? 'mixed' : source.kind,
     items: rows.map(row => row.item),
   };
   return { rows, manifest };
@@ -178,6 +194,7 @@ export async function listExportSources(): Promise<BundleSource[]> {
       name: String(regex.scriptName || `正则 ${index + 1}`),
       index,
     })),
+    ...(await savedThemes()).map(data => ({ kind: 'theme' as const, name: String(data.name), data })),
   ];
 }
 async function chatNames(context: ImportContext) {
@@ -199,7 +216,8 @@ export function getCharacterTargets() {
     return { avatar: String(character.avatar), name: String(character.name) };
   });
 }
-function existingNames(row: ImportRow, context: ImportContext) {
+async function existingNames(row: ImportRow, context: ImportContext) {
+  if (row.item.kind === 'theme') return (await savedThemes()).map(theme => String(theme.name));
   if (row.item.kind === 'preset')
     return context.presetTarget === 'plugin'
       ? usePluginPresetStore().items.map(item => item.name)
@@ -224,15 +242,21 @@ export async function planImport(bundle: ResourceBundle, context: ImportContext)
     message: '',
   }));
   const plannedNames = new Map<string, Set<string>>();
+  const themeNames = rows.some(row => row.item.kind === 'theme')
+    ? (await savedThemes()).map(theme => String(theme.name))
+    : [];
   for (const row of rows) {
     if (bundle.manifest.items.find(item => item.id === row.item.parentId)?.kind === 'preset') continue;
     const scope = `${row.item.kind}:${row.item.parentId || ''}`;
     const prior = plannedNames.get(scope) ?? new Set<string>();
-    row.conflict = existingNames(row, context).includes(row.name) || prior.has(row.name);
+    row.conflict =
+      (row.item.kind === 'theme' ? themeNames : await existingNames(row, context)).includes(row.name) ||
+      prior.has(row.name);
     prior.add(row.name);
     plannedNames.set(scope, prior);
     row.replaceable =
       row.item.kind === 'worldbook' ||
+      row.item.kind === 'theme' ||
       (row.item.kind === 'preset' && context.presetTarget === 'tavern' && row.name !== getCurrentTavernPresetName());
   }
   return rows;
@@ -265,9 +289,10 @@ export async function importResource(
   rows: ImportRow[],
   context: ImportContext,
 ) {
-  const names = row.item.kind === 'chat' ? await chatNames(context) : existingNames(row, context);
+  if (row.item.kind === 'theme' && row.themeWrite) return verifyTheme(row.themeWrite);
+  const names = row.item.kind === 'chat' ? await chatNames(context) : await existingNames(row, context);
   const conflict = names.includes(row.item.kind === 'chat' ? row.name.replace(/\.jsonl$/i, '') : row.name);
-  if (['preset', 'worldbook'].includes(row.item.kind) && (!row.name.trim() || /[\\/:*?"<>|]/.test(row.name)))
+  if (['preset', 'worldbook', 'theme'].includes(row.item.kind) && (!row.name.trim() || /[\\/:*?"<>|]/.test(row.name)))
     throw new Error('资源名称含文件名不支持的字符，请修改名称后重试');
   if (conflict && row.mode === 'skip') return { skipped: true, message: '同名资源已存在，已跳过' };
   if (
@@ -278,6 +303,13 @@ export async function importResource(
     throw new Error('该资源不能替换，请另存为');
   const name = row.mode === 'copy' ? uniqueName(row.name, names) : row.name;
   const bytes = bundle.files[row.item.path]!;
+  if (row.item.kind === 'theme') {
+    const data = { ...readTheme(decodeJson(bytes)), name };
+    await post('/api/themes/save', data);
+    // A confirmed write is not repeated if the subsequent read-back fails.
+    row.themeWrite = data;
+    return verifyTheme(data);
+  }
   if (row.item.kind === 'preset') {
     const attachments = rows.filter(child => child.selected && child.item.parentId === row.item.id);
     const data = assemblePreset(

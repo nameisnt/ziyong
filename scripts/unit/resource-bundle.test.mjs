@@ -632,10 +632,22 @@ test('each character is followed by its chats, including existing targets and pa
     if (fail && row.item.id === 'chat1b') throw new Error('offline');
     return { message: 'ok' };
   };
-  await runBundleImport(bundle, items, id => targets.has(id), apply, () => {});
+  await runBundleImport(
+    bundle,
+    items,
+    id => targets.has(id),
+    apply,
+    () => {},
+  );
   assert.deepEqual(calls, ['c1', 'chat1a', 'chat1b', 'c2', 'chat2', 'chat3']);
   fail = false;
-  await runBundleImport(bundle, items, id => targets.has(id), apply, () => {});
+  await runBundleImport(
+    bundle,
+    items,
+    id => targets.has(id),
+    apply,
+    () => {},
+  );
   assert.deepEqual(calls, ['c1', 'chat1a', 'chat1b', 'c2', 'chat2', 'chat3', 'chat1b']);
   assert.ok(items.filter(row => row.selected).every(row => row.status === 'success'));
 });
@@ -651,14 +663,108 @@ test('mixed import plans every root and excludes preset attachments from global 
   assert.equal(result[3].conflict, true);
 });
 
-test('export catalog lists both preset stores, characters, worldbooks and independent global regex', async () => {
+test('export catalog lists both preset stores, characters, worldbooks, regex and saved UI themes', async t => {
+  const previous = globalThis.fetch;
+  t.after(() => {
+    globalThis.fetch = previous;
+  });
+  globalThis.fetch = async path => {
+    assert.equal(path, '/api/settings/get');
+    return Response.json({ themes: [{ name: 'Paper', custom_css: 'body {color:red}' }] });
+  };
   const { host, plugins, settings } = await hostFixture();
   plugins.items.push({ id: 'p1', name: 'Plugin' });
   settings.regex.push({ id: 'r', scriptName: 'Global', findRegex: 'x' });
   assert.deepEqual(
     (await host.listExportSources()).map(row => row.kind),
-    ['character', 'preset', 'preset', 'worldbook', 'regex'],
+    ['character', 'preset', 'preset', 'worldbook', 'regex', 'theme'],
   );
+});
+
+test('native UI theme JSON and bundled themes retain all fields and reject unrelated JSON', async () => {
+  const { readBundle } = await load('resource-bundle/zip.ts', { './model': model });
+  const data = {
+    name: 'Paper',
+    custom_css: '@import url("https://example.com/theme.css");',
+    extra: { retained: true },
+  };
+  const bundle = await readBundle(new File([JSON.stringify(data)], 'paper.json'));
+  assert.equal(bundle.manifest.items[0].kind, 'theme');
+  assert.deepEqual(model.decodeJson(bundle.files['resources/0.json']), data);
+  const { host } = await hostFixture();
+  const plan = await host.planExport({ kind: 'theme', name: 'Paper', data });
+  assert.deepEqual(model.decodeJson(await plan.rows[0].read()), data);
+  await assert.rejects(readBundle(new File(['{"name":"Not a theme"}'], 'wrong.json')), /主题字段/);
+  assert.throws(() => model.readTheme({ name: 'Bad', custom_css: {} }), /必须为文本/);
+});
+
+test('theme import is serial, supports conflicts, verifies persistence and retries verification without another save', async t => {
+  const previous = globalThis.fetch;
+  t.after(() => {
+    globalThis.fetch = previous;
+  });
+  const themes = [{ name: 'Paper', custom_css: 'old' }];
+  const writes = [];
+  let failRead = false;
+  let failSave = false;
+  globalThis.fetch = async (path, init) => {
+    if (path === '/api/settings/get') {
+      if (failRead) {
+        failRead = false;
+        return new Response('offline', { status: 503 });
+      }
+      return Response.json({ themes });
+    }
+    assert.equal(path, '/api/themes/save');
+    if (failSave) return new Response('save failed', { status: 500 });
+    const data = JSON.parse(init.body);
+    writes.push(data);
+    const index = themes.findIndex(theme => theme.name === data.name);
+    if (index < 0) themes.push(data);
+    else themes[index] = data;
+    failRead = true;
+    return Response.json({ ok: true });
+  };
+  const { host } = await hostFixture();
+  const { readBundle } = await load('resource-bundle/zip.ts', { './model': model });
+  const bundle = await readBundle(new File(['{"name":"Paper","custom_css":"new"}'], 'paper.json'));
+  const context = { presetTarget: 'plugin', characterAvatar: '', characterName: '' };
+  const items = await host.planImport(bundle, context);
+  assert.equal(items[0].conflict, true);
+  assert.equal(items[0].replaceable, true);
+  assert.equal((await host.importResource(bundle, items[0], items, context)).skipped, true);
+  assert.equal(writes.length, 0);
+  items[0].mode = 'copy';
+  const apply = row => host.importResource(bundle, row, items, context);
+  await runBundleImport(
+    bundle,
+    items,
+    () => false,
+    apply,
+    () => {},
+  );
+  assert.equal(items[0].status, 'failed');
+  assert.equal(writes[0].name, 'Paper 2');
+  await runBundleImport(
+    bundle,
+    items,
+    () => false,
+    apply,
+    () => {},
+  );
+  assert.equal(items[0].status, 'success');
+  assert.match(items[0].message, /刷新酒馆/);
+  assert.equal(writes.length, 1);
+  const replacement = (await host.planImport(bundle, context))[0];
+  replacement.mode = 'replace';
+  failSave = true;
+  await assert.rejects(host.importResource(bundle, replacement, [replacement], context), /500/);
+  assert.equal(replacement.themeWrite, undefined);
+  failSave = false;
+  await assert.rejects(host.importResource(bundle, replacement, [replacement], context), /503/);
+  await host.importResource(bundle, replacement, [replacement], context);
+  assert.equal(themes[0].custom_css, 'new');
+  assert.equal(writes.length, 2);
 });
 
 test('mixed preview detects same-name resources inside the package before any writes', async () => {

@@ -58,10 +58,16 @@ export async function applyResourceBundleScenario(name: string) {
   const originalFetch = globalThis.fetch;
   const png = new Uint8Array([137, 80, 78, 71, 13, 10, 26, 10]);
   const chatTargets: string[] = [];
+  const themes: Record<string, unknown>[] = [{ name: '纸页 UI 主题', custom_css: 'body { color: #345; }' }];
   let cardImports = 0,
     worldAttempts = 0;
   globalThis.fetch = async (input, init) => {
     const path = String(input);
+    if (path === '/api/settings/get') return Response.json({ themes });
+    if (path === '/api/themes/save') {
+      themes.push(JSON.parse(String(init!.body)));
+      return Response.json({ ok: true });
+    }
     if (path === '/api/characters/export') return new Response(png);
     if (path === '/api/chats/export')
       return Response.json({ result: '{"user_name":"u","chat_metadata":{}}\n{"mes":"test"}' });
@@ -119,6 +125,7 @@ export async function applyResourceBundleScenario(name: string) {
           { id: '3', kind: 'regex', name: '随预设正则', path: 'resources/3.json', parentId: '2' },
           { id: '4', kind: 'script', name: '随预设脚本', path: 'resources/4.json', parentId: '2' },
           { id: '5', kind: 'worldbook', name: '导入世界书', path: 'resources/5.json' },
+          { id: '18', kind: 'theme', name: '导入 UI 主题', path: 'resources/18.json' },
         ],
       };
       const files: Record<string, Uint8Array> = {
@@ -128,6 +135,10 @@ export async function applyResourceBundleScenario(name: string) {
         'resources/3.json': encodeJson(raw.extensions.regex_scripts[0]),
         'resources/4.json': encodeJson(raw.extensions.tavern_helper.scripts[0]),
         'resources/5.json': encodeJson({ entries: {} }),
+        'resources/18.json': encodeJson({
+          name: '导入 UI 主题',
+          custom_css: '@import url("https://example.com/theme.css");',
+        }),
       };
       for (let i = 6; i < 18; i++) {
         const path = `resources/${i}.jsonl`;
@@ -151,7 +162,7 @@ export async function applyResourceBundleScenario(name: string) {
       await expect(() => Boolean(document.querySelector('.pc-bundle-error')), 'Malformed ZIP error missing');
       input.files = dt.files;
       input.dispatchEvent(new Event('change', { bubbles: true }));
-      await expect(() => document.querySelectorAll('.pc-bundle-row').length === 16, 'Mixed import preview incomplete');
+      await expect(() => document.querySelectorAll('.pc-bundle-row').length === 17, 'Mixed import preview incomplete');
       const cardRows = [...document.querySelectorAll('.pc-bundle-row')].filter(row =>
         row.querySelector('.pc-field-group'),
       );
@@ -168,6 +179,10 @@ export async function applyResourceBundleScenario(name: string) {
       await waitForVisualPaint();
       await expect(() => !button('导入所选').disabled, 'New-card target reset stuck');
       button('导入所选').click();
+      await expect(
+        () => Boolean(document.querySelector('.pc-phone-notice')?.textContent?.includes('@import')),
+        'External theme warning missing',
+      );
       await confirm();
       await expect(
         () => Boolean(document.querySelector('.pc-bundle-dialog')?.textContent?.includes('失败 1')),
@@ -181,14 +196,35 @@ export async function applyResourceBundleScenario(name: string) {
         throw new Error('Chat ownership crossed');
       button('重试失败项').click();
       await expect(
-        () => Boolean(document.querySelector('.pc-bundle-dialog')?.textContent?.includes('成功 18')),
+        () => Boolean(document.querySelector('.pc-bundle-dialog')?.textContent?.includes('成功 19')),
         'Retry failed',
       );
       if (cardImports !== 2 || chatTargets.length !== 12) throw new Error('Retry duplicated successful resources');
+      if (themes.length !== 2 || !document.querySelector('.pc-bundle-dialog')?.textContent?.includes('请刷新酒馆'))
+        throw new Error('Theme import or refresh feedback missing');
       const imported = store.items.find(item => item.name === '导入预设');
       if (!imported) throw new Error('Preset not imported');
       const data = store.exportPreset(imported.id) as ReturnType<typeof preset>;
       if (data.extensions.tavern_helper.scripts[0]!.enabled !== false) throw new Error('Script enabled unexpectedly');
+      button('关闭', document.querySelector('.pc-bundle-dialog')!).click();
+      await expect(() => !document.querySelector('.pc-bundle-dialog'), 'Import dialog did not close');
+      button('导入组合包').click();
+      await expect(() => Boolean(document.querySelector('.pc-bundle-dialog input[type=file]')), 'Reopen failed');
+      const native = new DataTransfer();
+      native.items.add(
+        new File([JSON.stringify({ name: '原生主题', custom_css: 'body { color: #123; }' })], 'native.json'),
+      );
+      const nativeInput = document.querySelector<HTMLInputElement>('.pc-bundle-dialog input[type=file]')!;
+      nativeInput.files = native.files;
+      nativeInput.dispatchEvent(new Event('change', { bubbles: true }));
+      await expect(() => document.querySelectorAll('.pc-bundle-row').length === 1, 'Native JSON preview missing');
+      button('导入所选').click();
+      await confirm();
+      await expect(
+        () => Boolean(document.querySelector('.pc-bundle-dialog')?.textContent?.includes('成功 1')),
+        'Native JSON import failed',
+      );
+      if (themes.length !== 3) throw new Error('Native theme was not saved exactly once');
     } else {
       const footer = document.querySelector('.pc-bundle-app > footer')!;
       const characterGroup = document.querySelector('.pc-bundle-group')!;
@@ -225,15 +261,24 @@ export async function applyResourceBundleScenario(name: string) {
         await expect(() => !button('全选', group).disabled, 'Group selection remained busy');
       }
       let download: Blob | null = null;
+      let nativeDownload: Blob | null = null;
       const originalUrl = URL.createObjectURL;
       URL.createObjectURL = value => {
         if (value instanceof Blob && value.type === 'application/zip') download = value;
+        if (value instanceof Blob && value.type === 'application/json') nativeDownload = value;
         return originalUrl(value);
       };
       try {
+        document.querySelector<HTMLButtonElement>('.pc-bundle-app button[title="导出原生主题 JSON"]')!.click();
+        await expect(() => Boolean(nativeDownload), 'Native theme export button failed');
+        const native = JSON.parse(await nativeDownload!.text());
+        if (native.name !== themes[0]!.name || native.custom_css !== themes[0]!.custom_css)
+          throw new Error('Native theme export changed saved settings');
         button('导出所选', footer).click();
         await expect(() => Boolean(download), 'Character select-all download missing');
         const bulk = await readBundle(new File([download!], 'bulk.zip'));
+        if (bulk.manifest.items.filter(item => item.kind === 'theme').length !== 1)
+          throw new Error('UI theme missing from export');
         if (bulk.manifest.items.filter(item => item.kind === 'chat').length !== 6)
           throw new Error('Character select-all omitted collapsed chats from export');
         await expect(() => !button('导出所选', footer).disabled, 'Bulk export remained busy');
