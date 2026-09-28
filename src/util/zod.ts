@@ -1,6 +1,10 @@
 export function validateInplace<T>(schema: z.ZodType<T>, data: unknown): T {
   const result = parsePrettified(schema, data);
+<<<<<<< HEAD
   return _.assign(data ?? {}, result) as T;
+=======
+  return _.assign(data, result) as T;
+>>>>>>> 4121a8d9abe908f3b0a6a37322b05eef37e5cadc
 }
 
 export function parsePrettified<T>(schema: z.ZodType<T>, data: unknown): T {
