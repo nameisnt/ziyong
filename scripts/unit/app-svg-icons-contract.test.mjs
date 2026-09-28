@@ -7,6 +7,24 @@ import { ModuleKind, ScriptTarget, transpileModule } from 'typescript';
 const source = await readFile(new URL('../../src/data/appSvgIcons.ts', import.meta.url), 'utf8');
 const identitySource = await readFile(new URL('../../src/data/appIdentitySvgIcons.ts', import.meta.url), 'utf8');
 const identityImageSource = await readFile(new URL('../../src/data/appIdentityImageIcons.ts', import.meta.url), 'utf8');
+
+test('resource bundle maps modern and illustrated assets to their matching paper families', async () => {
+  const mapping = identityImageSource.split("appIdentityImageIcons['resource-bundle'] = {")[1]?.split('};')[0];
+  assert.ok(mapping);
+  for (const paper of ['a4', 'graphite', 'parchment', 'velvet', 'xuan', 'cypress', 'sky', 'ocean', 'cardstock'])
+    assert.match(mapping, new RegExp(`${paper}: bundle`));
+  assert.match(mapping, /xuan: bundleInk/);
+  assert.match(mapping, /sky: bundleCrayon/);
+  assert.match(mapping, /parchment: bundleParchment/);
+  assert.match(mapping, /a4: bundleModern,/);
+  assert.match(mapping, /graphite: bundleModernDark,/);
+  for (const name of ['ink', 'crayon', 'parchment', 'modern', 'modern-dark']) {
+    const png = await readFile(new URL(`../../src/assets/resource-bundle-icons/${name}.png`, import.meta.url));
+    assert.equal(png.readUInt32BE(16), 192);
+    assert.equal(png.readUInt32BE(20), 192);
+    assert.equal(png[25], 6);
+  }
+});
 const appIcon = await readFile(new URL('../../src/components/AppIcon.vue', import.meta.url), 'utf8');
 const home = await readFile(new URL('../../src/components/PhoneHome.vue', import.meta.url), 'utf8');
 const theme = await readFile(new URL('../../src/apps/theme/ThemeApp.vue', import.meta.url), 'utf8');

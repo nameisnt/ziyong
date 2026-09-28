@@ -4,6 +4,13 @@ export const RUNNING_VERSION = manifest.version;
 export const RELEASE_SEEN_FIELD = 'sillytavern_phone_last_seen_release';
 export const RELEASE_HISTORY = [
   {
+    version: '1.2.12',
+    notes: [
+      '组合导出接入水墨、蜡笔、羊皮纸图标，现代白纸和石墨主题使用独立线描图标。',
+      '更新组合导出教程，补充酒馆 UI 主题 JSON、角色卡与聊天选择、逐卡导入、同名处理及刷新要求。',
+    ],
+  },
+  {
     version: '1.2.11',
     notes: [
       '组合导出新增酒馆 UI 主题分类，支持多选、导出所选和全部导出，以及原生主题 JSON 单独导入导出。',

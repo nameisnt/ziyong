@@ -7,10 +7,9 @@ export function createVisualScenarioGroups(rootAppScenarios: string[]): VisualSc
   return [
     {
       id: 'resource-bundles',
-      scenarios: ['export', 'import'].flatMap(action => [
-        `resource-bundle-${action}`,
-        `resource-bundle-${action}-dark`,
-      ]),
+      scenarios: ['export', 'import', 'icon-xuan', 'icon-sky', 'icon-parchment', 'icon-a4', 'icon-graphite'].flatMap(
+        action => [`resource-bundle-${action}`, `resource-bundle-${action}-dark`],
+      ),
     },
     {
       id: 'shell',

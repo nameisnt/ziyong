@@ -39,6 +39,23 @@ function preset() {
 export async function applyResourceBundleScenario(name: string) {
   if (!name.startsWith('resource-bundle-')) return false;
   useSettingsStore().setTheme(name.endsWith('-dark') ? 'dark' : 'light');
+  if (name.startsWith('resource-bundle-icon-')) {
+    const paper = name.replace('resource-bundle-icon-', '').replace(/-dark$/, '') as
+      'xuan' | 'sky' | 'parchment' | 'a4' | 'graphite';
+    useSettingsStore().settings.visualTheme.paperTextureId = paper;
+    resetVisualPhoneRoute('home', 'root', '主页');
+    await waitForVisualPaint();
+    const search = document.querySelector<HTMLInputElement>('input[placeholder="搜索 App"]')!;
+    search.value = '组合导出';
+    search.dispatchEvent(new Event('input', { bubbles: true }));
+    await expect(() => {
+      const img = document.querySelector<HTMLImageElement>('.pc-app-tile .pc-app-identity-image');
+      return Boolean(img?.complete && img.naturalWidth);
+    }, 'Resource bundle image icon did not load');
+    const tile = document.querySelector<HTMLButtonElement>('.pc-app-tile')!;
+    if (!tile.textContent?.includes('组合导出')) throw new Error('Wrong app icon tested');
+    return true;
+  }
   installMemoryFileService();
   const store = usePluginPresetStore();
   await store.whenReady();
@@ -224,7 +241,7 @@ export async function applyResourceBundleScenario(name: string) {
         () => Boolean(document.querySelector('.pc-bundle-dialog')?.textContent?.includes('成功 1')),
         'Native JSON import failed',
       );
-      if (themes.length !== 3) throw new Error('Native theme was not saved exactly once');
+      if (Number(themes.length) !== 3) throw new Error('Native theme was not saved exactly once');
     } else {
       const footer = document.querySelector('.pc-bundle-app > footer')!;
       const characterGroup = document.querySelector('.pc-bundle-group')!;

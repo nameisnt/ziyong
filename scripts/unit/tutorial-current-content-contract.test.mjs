@@ -55,6 +55,22 @@ test('tutorial corpus remains split behind an explicitly typed aggregate', () =>
   for (const name of articleFiles) assert.match(aggregate, new RegExp(`articles/${name}`, 'u'));
 });
 
+test('resource bundle tutorial documents native themes and current character selection rules', () => {
+  const data = articleSources[articleFiles.indexOf('data')];
+  const guide = data.slice(data.indexOf("id: 'resource-bundle-guide'"));
+  for (const text of [
+    'UI 主题',
+    '原生主题 JSON',
+    '角色卡分类的“全选”',
+    '导入角色卡 →',
+    '刷新整个酒馆',
+    '只重新核对',
+    '@import',
+    '不会额外下载',
+  ])
+    assert.ok(guide.includes(text), `missing bundle guidance: ${text}`);
+});
+
 test('tutorial search and navigation expose the current interaction contract', () => {
   assert.match(tutorial, /const searchIndex = tutorialArticles\.map/u);
   assert.match(tutorial, /blockIndex: match\.blockIndex/u);

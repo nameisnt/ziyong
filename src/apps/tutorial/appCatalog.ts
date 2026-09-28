@@ -124,7 +124,8 @@ export const tutorialAppGuides: TutorialAppGuide[] = [
   {
     appId: 'resource-bundle',
     groupId: 'media',
-    firstAction: '混选角色卡、预设、世界书和正则；展开角色卡选择聊天。预设自动携带正则和脚本，导出全部包含全部聊天。',
+    firstAction:
+      '混选角色卡、聊天、预设、世界书、正则和 UI 主题。角色卡分类全选包含聊天；主题可单独导入导出 JSON，导入后刷新酒馆。',
   },
   { appId: 'game-2048', groupId: 'media', firstAction: '滑动或使用方向键合并相同数字。' },
   { appId: 'game-snake', groupId: 'media', firstAction: '选择速度后开始，用方向键、方向按钮或滑动控制。' },
