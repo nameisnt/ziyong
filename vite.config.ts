@@ -5,8 +5,11 @@ import { VueUseComponentsResolver, VueUseDirectiveResolver } from 'unplugin-vue-
 import unpluginVueComponents from 'unplugin-vue-components/vite';
 import { defineConfig } from 'vite';
 import pluginExternal from 'vite-plugin-external';
+<<<<<<< HEAD
 import manifest from './manifest.json';
 import packageInfo from './package.json';
+=======
+>>>>>>> 29792ccc77088474d2c4eeb7c42285cd2b57f1e7
 
 const externals = {
   jquery: '$',
@@ -17,6 +20,7 @@ const externals = {
   '@popperjs/core': 'Popper',
 } as const;
 
+<<<<<<< HEAD
 const imageAssetExtensions = new Set(['.avif', '.gif', '.jpeg', '.jpg', '.png', '.svg', '.webp']);
 
 const publicPathIndex = __dirname.lastIndexOf('public');
@@ -31,26 +35,44 @@ export default defineConfig(({ mode }) => {
 
   return {
     base: './',
+=======
+const relative_sillytavern_path = path.relative(
+  path.join(__dirname, 'dist'),
+  __dirname.substring(0, __dirname.lastIndexOf('public') + 6),
+);
+
+export default defineConfig(({ mode }) => ({
+>>>>>>> 29792ccc77088474d2c4eeb7c42285cd2b57f1e7
     plugins: [
       vue({
         features: {
           optionsAPI: false,
+<<<<<<< HEAD
           prodDevtools: visualMode,
+=======
+        prodDevtools: process.env.CI !== 'true',
+>>>>>>> 29792ccc77088474d2c4eeb7c42285cd2b57f1e7
           prodHydrationMismatchDetails: false,
         },
       }),
       unpluginAutoImport({
         dts: true,
         dtsMode: 'overwrite',
+<<<<<<< HEAD
         // @types/toastr already declares the global; keep the runtime auto-import.
         ignoreDts: ['toastr'],
+=======
+>>>>>>> 29792ccc77088474d2c4eeb7c42285cd2b57f1e7
         imports: [
           'vue',
           'pinia',
           '@vueuse/core',
           { from: '@sillytavern/scripts/i18n', imports: ['t'] },
           { from: 'klona', imports: ['klona'] },
+<<<<<<< HEAD
           { from: 'toastr', imports: [['default', 'toastr']] },
+=======
+>>>>>>> 29792ccc77088474d2c4eeb7c42285cd2b57f1e7
           { from: 'vue-final-modal', imports: ['useModal'] },
           { from: 'zod', imports: ['z'] },
         ],
@@ -62,7 +84,11 @@ export default defineConfig(({ mode }) => {
         // globs: ['src/panel/component/*.vue'],
         resolvers: [VueUseComponentsResolver(), VueUseDirectiveResolver()],
       }),
+<<<<<<< HEAD
       !visualMode && {
+=======
+    {
+>>>>>>> 29792ccc77088474d2c4eeb7c42285cd2b57f1e7
         name: 'sillytavern_resolver',
         enforce: 'pre',
         resolveId(id) {
@@ -81,11 +107,16 @@ export default defineConfig(({ mode }) => {
           }
         },
       }),
+<<<<<<< HEAD
     ].filter(Boolean),
+=======
+  ],
+>>>>>>> 29792ccc77088474d2c4eeb7c42285cd2b57f1e7
 
     resolve: {
       alias: {
         '@': path.resolve(__dirname, 'src'),
+<<<<<<< HEAD
         ...(visualMode
           ? {
               '@sillytavern/script': path.resolve(__dirname, 'src/testing/sillytavern-script.ts'),
@@ -96,6 +127,8 @@ export default defineConfig(({ mode }) => {
               toastr: path.resolve(__dirname, 'src/testing/visual-toastr.ts'),
             }
           : {}),
+=======
+>>>>>>> 29792ccc77088474d2c4eeb7c42285cd2b57f1e7
       },
     },
 
@@ -106,18 +139,28 @@ export default defineConfig(({ mode }) => {
           format: 'es',
           entryFileNames: '[name].js',
           chunkFileNames: '[name].[hash].chunk.js',
+<<<<<<< HEAD
           assetFileNames: assetInfo =>
             imageAssetExtensions.has(path.extname(assetInfo.names[0] || '').toLowerCase())
               ? 'images/[name].[ext]'
               : '[name].[ext]',
+=======
+        assetFileNames: '[name].[ext]',
+>>>>>>> 29792ccc77088474d2c4eeb7c42285cd2b57f1e7
           preserveModules: false,
         },
       },
 
       outDir: 'dist',
+<<<<<<< HEAD
       emptyOutDir: true,
 
       sourcemap: false,
+=======
+    emptyOutDir: false,
+
+    sourcemap: mode === 'production' ? true : 'inline',
+>>>>>>> 29792ccc77088474d2c4eeb7c42285cd2b57f1e7
 
       minify: mode === 'production' ? 'terser' : false,
       terserOptions:
@@ -134,5 +177,9 @@ export default defineConfig(({ mode }) => {
 
       target: 'esnext',
     },
+<<<<<<< HEAD
   };
 });
+=======
+}));
+>>>>>>> 29792ccc77088474d2c4eeb7c42285cd2b57f1e7

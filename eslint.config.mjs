@@ -33,12 +33,15 @@ export default [
         entryPoint: 'src/global.css',
         tailwindConfig: 'tailwind.config.js',
       },
+<<<<<<< HEAD
       'import-x/core-modules': [
         '@sillytavern/script',
         '@sillytavern/scripts/extensions',
         '@sillytavern/scripts/openai',
         '@sillytavern/scripts/world-info',
       ],
+=======
+>>>>>>> 29792ccc77088474d2c4eeb7c42285cd2b57f1e7
     },
   },
   {
@@ -80,6 +83,7 @@ export default [
     },
   },
   eslintConfigPrettier,
+<<<<<<< HEAD
   globalIgnores([
     '.codex/**',
     '.github/**',
@@ -98,4 +102,7 @@ export default [
     'postcss.config.js',
     'vite.config.ts',
   ]),
+=======
+  globalIgnores(['dist/**', 'node_modules/**', 'eslint.config.mjs', 'postcss.config.js', 'vite.config.ts']),
+>>>>>>> 29792ccc77088474d2c4eeb7c42285cd2b57f1e7
 ];
