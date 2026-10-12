@@ -2585,8 +2585,8 @@ async function applyScenario(name: VisualScenarioName, options: { height?: numbe
     if (!redoPersisted) {
       throw new Error('MVU redo did not restore the edited value');
     }
-  } else if (name === 'entry-library-bindings') {
-    useSettingsStore().setTheme('light');
+  } else if (name === 'entry-library-bindings' || name === 'entry-library-bindings-dark') {
+    useSettingsStore().setTheme(name.endsWith('-dark') ? 'dark' : 'light');
     const library = useEntryLibraryStore();
     library.importBackup({
       bindings: [],
@@ -3433,8 +3433,13 @@ async function applyScenario(name: VisualScenarioName, options: { height?: numbe
     stats.style.display = 'none';
     input.scrollIntoView({ block: 'center' });
     await waitForPaint();
-  } else if (name.startsWith('app:')) {
-    const appId = name.slice('app:'.length);
+  } else if (name.startsWith('app:') || name.startsWith('card-writer-labels') || name.startsWith('timekeeper-labels')) {
+    const appId = name.startsWith('app:') ? name.slice('app:'.length) : name.split('-labels')[0];
+    if (!name.startsWith('app:')) useSettingsStore().setTheme(name.endsWith('-dark') ? 'dark' : 'light');
+    if (name.startsWith('timekeeper-labels')) {
+      const { useTimekeeperStore } = await import('@/apps/timekeeper/store');
+      useTimekeeperStore().settings.people = [{ id: 'label-person', name: '测试人物', selected: false, birth: { year: 2000, month: 1, day: 1 } }];
+    }
     const app = PHONE_APPS.find(item => item.id === appId);
     if (!app) throw new Error(`Unknown app visual scenario: ${name}`);
     prepareManagementToolsVisualRuntime(appId);

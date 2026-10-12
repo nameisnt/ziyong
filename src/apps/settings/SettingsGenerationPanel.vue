@@ -88,14 +88,15 @@
 
     <section class="pc-page-section">
       <div class="pc-settings-list">
-        <label class="pc-setting-row">
+        <div class="pc-setting-row">
           <strong
             >解析前清理思维链 <InfoHint text="按结束标签移除标签及其之前的内容，原始输出仍保存在生成记录中。"
           /></strong>
-          <span class="pc-toggle"
-            ><input v-model="settings.generation.outputCleaningEnabled" type="checkbox" /><span></span
-          ></span>
-        </label>
+          <label class="pc-toggle">
+            <input v-model="settings.generation.outputCleaningEnabled" type="checkbox" aria-label="解析前清理思维链" />
+            <span aria-hidden="true"></span>
+          </label>
+        </div>
       </div>
       <label v-if="settings.generation.outputCleaningEnabled" class="pc-field-group">
         <span class="pc-field-label">思维链结束标签（每行一个）</span>

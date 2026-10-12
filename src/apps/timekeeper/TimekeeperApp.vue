@@ -195,14 +195,20 @@
 
         <div v-else class="pc-people-list">
           <article v-for="person in settings.people" :key="person.id" class="pc-editor-card pc-person-card">
-            <label class="pc-check-row">
+            <div class="pc-check-row">
               <BulkSelectionCheckbox
                 :model-value="person.selected"
                 :label="`${person.name || '未命名人物'}参与时间计算`"
                 @update:model-value="person.selected = $event"
               />
-              <input v-model="person.name" class="pc-field name" type="text" :placeholder="t`人物名称`" />
-            </label>
+              <input
+                v-model="person.name"
+                class="pc-field name"
+                type="text"
+                :aria-label="t`人物名称`"
+                :placeholder="t`人物名称`"
+              />
+            </div>
             <input
               v-if="settings.calendar.kind === 'gregorian'"
               class="pc-field pc-date-field"

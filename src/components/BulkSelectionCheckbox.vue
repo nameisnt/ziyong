@@ -1,5 +1,5 @@
 <template>
-  <label class="pc-bulk-selection-checkbox" @click.stop>
+  <span class="pc-bulk-selection-checkbox" @click.stop>
     <input
       type="checkbox"
       :aria-label="label"
@@ -8,7 +8,7 @@
       @change="$emit('update:modelValue', ($event.target as HTMLInputElement).checked)"
     />
     <span aria-hidden="true"><i class="fa-solid fa-check"></i></span>
-  </label>
+  </span>
 </template>
 
 <script setup lang="ts">

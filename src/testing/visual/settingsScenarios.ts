@@ -18,6 +18,7 @@ export const settingsScenarioNames = [
   'settings-interface-app-labels-dark',
   'settings-reader-font',
   'settings-generation',
+  'settings-generation-dark',
   'settings-theme-persistence',
   'settings-connection',
   'settings-connection-external',
@@ -152,8 +153,31 @@ export async function applySettingsVisualScenario(name: string, context: Setting
         throw new Error('Reader font selector could not search the imported font');
       }
     }
-  } else if (name === 'settings-generation') {
+  } else if (name === 'settings-generation' || name === 'settings-generation-dark') {
+    settings.setTheme(name.endsWith('-dark') ? 'dark' : 'light');
+    settings.settings.generation.outputCleaningEnabled = false;
     context.resetPhoneToRoute('settings', 'root', '设置', { tab: 'generation' });
+    await context.waitForPaint();
+    const phone = usePhoneStore();
+    phone.clearNotices();
+    const input = document.querySelector<HTMLInputElement>('input[aria-label="解析前清理思维链"]');
+    const toggle = input?.closest('label');
+    const row = toggle?.closest('.pc-setting-row');
+    if (!input || !toggle || !row) throw new Error('Output cleaning toggle missing');
+    toggle.querySelector('span')!.click();
+    await context.waitForPaint();
+    if (!input.checked || !settings.settings.generation.outputCleaningEnabled || phone.notices.length)
+      throw new Error('Toggle opened help instead of enabling output cleaning');
+    if (!row.closest('section')?.querySelector('textarea')) throw new Error('End-tag editor did not open');
+    row.querySelector<HTMLButtonElement>('.pc-info-btn')!.click();
+    await context.waitForPaint();
+    if (!input.checked || !phone.notices.length) throw new Error('Help must show without changing the toggle');
+    phone.clearNotices();
+    toggle.querySelector('span')!.click();
+    await context.waitForPaint();
+    if (input.checked || settings.settings.generation.outputCleaningEnabled || phone.notices.length)
+      throw new Error('Output cleaning toggle did not disable independently');
+    if (row.closest('section')?.querySelector('textarea')) throw new Error('End-tag editor did not close');
   } else if (name === 'settings-theme-persistence') {
     settings.resetInterfaceSize();
     context.resetPhoneToRoute('settings', 'root', '设置', { tab: 'interface' });

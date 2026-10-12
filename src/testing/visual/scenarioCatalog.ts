@@ -63,9 +63,12 @@ export function createVisualScenarioGroups(rootAppScenarios: string[]): VisualSc
       scenarios: ['content-converter-source', 'content-converter-target', 'content-converter-complete'],
     },
     { id: 'chat-insert', scenarios: ['chat-insert-operations', 'chat-insert-operations-dark'] },
+    { id: 'timekeeper-labels', scenarios: ['timekeeper-labels', 'timekeeper-labels-dark'] },
     {
       id: 'card-writer',
       scenarios: [
+        'card-writer-labels',
+        'card-writer-labels-dark',
         'card-writer-generation-background',
         'card-writer-saved-preview',
         'card-writer-reasoning-modal',
@@ -116,6 +119,7 @@ export function createVisualScenarioGroups(rootAppScenarios: string[]): VisualSc
         'settings-interface-app-labels-dark',
         'settings-reader-font',
         'settings-generation',
+        'settings-generation-dark',
         'settings-tavern-aliases',
         'settings-tavern-aliases-dark',
         'settings-tavern-aliases-unsupported',
@@ -188,6 +192,7 @@ export function createVisualScenarioGroups(rootAppScenarios: string[]): VisualSc
         'entry-library-manual-create',
         'entry-library-item-editor',
         'entry-library-bindings',
+        'entry-library-bindings-dark',
         'entry-library-collect-manual-dedupe',
         'entry-library-collect-worldbook',
         'entry-library-ordering',

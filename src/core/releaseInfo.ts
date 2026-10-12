@@ -4,6 +4,14 @@ export const RUNNING_VERSION = manifest.version;
 export const RELEASE_SEEN_FIELD = 'sillytavern_phone_last_seen_release';
 export const RELEASE_HISTORY = [
   {
+    version: '1.2.13',
+    notes: [
+      '修复生成设置中‘解析前清理思维链’开关点击后误弹说明、无法切换的问题。',
+      '修复条目库点击‘绑定内容’标题误插入占位符，以及写卡工坊点击字段标题误弹说明的问题。',
+      '修正共享复选框的标签结构，保留删除确认文字点击勾选，并避免时间确认中的人物名称编辑干扰勾选状态。',
+    ],
+  },
+  {
     version: '1.2.12',
     notes: [
       '组合导出接入水墨、蜡笔、羊皮纸图标，现代白纸和石墨主题使用独立线描图标。',

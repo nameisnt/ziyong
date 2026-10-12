@@ -23,20 +23,19 @@
         <span>收藏分组</span>
         <SearchableCombobox v-model="groupId" :options="groupOptions" placeholder="选择或搜索分组" />
       </div>
-      <label class="pc-field-group pc-entry-binding-template"
-        ><span
-          ><span>绑定内容</span
-          ><button class="pc-soft-btn compact" type="button" @click.prevent="insertPlaceholder">
-            插入占位符
-          </button></span
+      <div class="pc-field-group pc-entry-binding-template">
+        <span
+          ><label :for="templateFieldId">绑定内容</label
+          ><button class="pc-soft-btn compact" type="button" @click="insertPlaceholder">插入占位符</button></span
         ><textarea
+          :id="templateFieldId"
           ref="templateField"
           v-model="contentTemplate"
           class="pc-area pc-area-multiline"
           rows="5"
           :placeholder="`<a>${placeholder}</a>`"
         ></textarea>
-      </label>
+      </div>
       <div class="pc-form-actions">
         <button
           class="pc-primary-btn"
@@ -115,6 +114,7 @@
   </section>
 </template>
 <script setup lang="ts">
+import { useId } from 'vue';
 import BulkSelectionBar from '@/components/BulkSelectionBar.vue';
 import BulkSelectionCheckbox from '@/components/BulkSelectionCheckbox.vue';
 import EmptyState from '@/components/EmptyState.vue';
@@ -150,6 +150,7 @@ const promptOptions = computed(() =>
 );
 const groupOptions = computed(() => props.groups.map(group => ({ label: group.name, value: group.id })));
 const templateField = ref<HTMLTextAreaElement | null>(null);
+const templateFieldId = useId();
 const {
   active: bulkMode,
   allSelected: allBulkSelected,

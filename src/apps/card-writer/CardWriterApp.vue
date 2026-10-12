@@ -3,10 +3,10 @@
     <section v-if="route.page === 'root'" class="pc-card-writer-page">
       <div class="pc-card-writer-task-row">
         <div class="pc-field-group">
-          <label class="pc-field-label">
+          <div class="pc-field-label">
             本次任务
             <InfoHint :text="selectedTask.description" />
-          </label>
+          </div>
           <SearchableCombobox
             :model-value="taskId"
             :options="taskOptions"
@@ -97,10 +97,10 @@
           </div>
 
           <div class="pc-field-group">
-            <label class="pc-field-label">
+            <div class="pc-field-label">
               写入世界书（可选）
               <InfoHint text="保存成品时直接新增为世界书条目；不选择则只保存到写卡成品库。" />
-            </label>
+            </div>
             <div class="pc-card-writer-worldbook-select">
               <SearchableCombobox
                 allow-custom

@@ -4,6 +4,7 @@ import { dirname, resolve } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 
 import { getInteractionContractScenarios } from './ui-interaction-contracts.mjs';
+import { checkLabelInteractions } from './ui-label-interaction-checks.mjs';
 import {
   APPEARANCE_PERCEPTUAL_HASH_MAX_DISTANCE,
   getAppearanceContract,
@@ -586,13 +587,17 @@ async function runInteractionChecks(page, scenario) {
     if (await checks.count() !== 2 || await checks.nth(0).isChecked() || await checks.nth(1).isChecked()) {
       findings.push({ severity: 'fail', message: '删除聊天的两个清理选项未默认关闭' });
     }
-    await checks.nth(0).check();
+    await dialog.getByText('同时删除所选聊天的插件内容及聊天专属配置', { exact: true }).click();
+    if (!(await checks.nth(0).isChecked())) findings.push({ severity: 'fail', message: '点击清理选项文字没有勾选' });
     if (await checks.nth(1).isChecked()) findings.push({ severity: 'fail', message: '两个清理选项不独立' });
     await checks.nth(1).check();
     await dialog.getByRole('button', { name: '取消', exact: true }).click();
     if (await dialog.count()) findings.push({ severity: 'fail', message: '取消没有关闭删除聊天弹窗' });
   }
   try {
+    if (/^(entry-library-bindings|card-writer-labels|timekeeper-labels|archive-delete-confirm|preset-catalog-delete)/.test(scenario)) {
+      await checkLabelInteractions(page, scenario);
+    }
     if (scenario.startsWith('preset-catalog-delete')) {
       const checks = page.getByRole('checkbox', { name: /^选择预设 临时整份删除/u });
       if (await checks.count() !== 2) throw new Error('Missing whole preset fixtures');
@@ -602,7 +607,8 @@ async function runInteractionChecks(page, scenario) {
       const dialog = page.getByRole('dialog', { name: '批量删除预设', exact: true });
       const remove = dialog.getByRole('button', { name: '删除所选' });
       if (!(await remove.isDisabled())) throw new Error('Destructive confirmation must start unchecked');
-      await dialog.getByRole('checkbox', { name: '确认删除以上对象' }).check();
+      await dialog.getByText('确认删除以上 2 个对象，此操作不可撤销', { exact: true }).click();
+      if (!(await dialog.getByRole('checkbox', { name: '确认删除以上对象' }).isChecked())) throw new Error('Confirmation label did not select the checkbox');
       await remove.click();
       await dialog.getByText('处理完成 2 / 2', { exact: true }).waitFor();
       if ((await dialog.textContent()).includes('未删除')) throw new Error('Fixture deletion failed');
