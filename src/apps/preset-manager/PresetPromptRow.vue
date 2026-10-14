@@ -7,12 +7,13 @@
       muted: groupDisabled || !prompt.enabled,
       'without-drag': !reorderable && !selection,
       selecting: selection,
+      'range-selected': rangeSelection && selected,
     }"
     :data-preset-group-id="groupId"
     :data-preset-prompt-id="prompt.id"
   >
     <BulkSelectionCheckbox
-      v-if="selection"
+      v-if="selection && !rangeSelection"
       :model-value="selected"
       :disabled="busy || !editable"
       :label="`选择条目 ${prompt.name || prompt.id}`"
@@ -36,9 +37,17 @@
     <button
       class="pc-preset-prompt-main"
       type="button"
-      :disabled="busy || (selection && !editable)"
+      :disabled="busy || (selection && !rangeSelection && !editable)"
       :title="
-        selection ? (editable ? '选择条目' : '占位条目不参与批量删除') : editable ? '编辑条目内容' : '查看占位条目'
+        rangeSelection
+          ? '选择范围边界'
+          : selection
+            ? editable
+              ? '选择条目'
+              : '占位条目不参与批量删除'
+            : editable
+              ? '编辑条目内容'
+              : '查看占位条目'
       "
       @click="selection ? $emit('select', prompt.id, !selected) : $emit('open', prompt)"
     >
@@ -50,7 +59,8 @@
           <template v-else-if="!editable"> · 占位条目</template>
         </small>
       </span>
-      <i class="fa-solid fa-chevron-right"></i>
+      <small v-if="rangeSelection">{{ boundaryLabel }}</small>
+      <i v-else class="fa-solid fa-chevron-right"></i>
     </button>
     <button
       v-if="editable && !selection"
@@ -84,6 +94,8 @@ const props = withDefaults(
   defineProps<{
     busy?: boolean;
     selection?: boolean;
+    rangeSelection?: boolean;
+    boundaryLabel?: string;
     selected?: boolean;
     dragging?: boolean;
     dropBefore?: boolean;
@@ -95,6 +107,8 @@ const props = withDefaults(
   {
     busy: false,
     selection: false,
+    rangeSelection: false,
+    boundaryLabel: '',
     selected: false,
     dragging: false,
     dropBefore: false,
@@ -142,6 +156,13 @@ const roleLabel = computed(
 
 .pc-preset-prompt-row.selecting {
   grid-template-columns: auto minmax(0, 1fr);
+}
+
+.pc-preset-prompt-row.selecting:has(.pc-preset-prompt-main:only-child) {
+  grid-template-columns: minmax(0, 1fr);
+}
+.pc-preset-prompt-row.range-selected {
+  background: color-mix(in srgb, var(--pc-theme-accent) 16%, transparent);
 }
 
 .pc-preset-prompt-row.drop-before::before {

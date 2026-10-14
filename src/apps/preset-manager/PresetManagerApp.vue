@@ -687,22 +687,24 @@ async function togglePrompt(prompt: TavernPresetPrompt, enabled: boolean) {
 }
 
 async function savePromptGroupMutation(update: (preset: TavernPreset) => void, successMessage: string) {
-  if (!activePreset.value || mutationBusy.value) return;
+  if (!activePreset.value || mutationBusy.value) return false;
   saving.value = true;
   try {
     if (isPluginDetail.value) {
       activePreset.value = await pluginPresets.updatePromptGroups(detailPluginPresetId.value, update);
       syncCollapsedGroups();
       toastr.success(successMessage);
-      return;
+      return true;
     }
     const result = await updateTavernPresetPromptGroups(detailPresetName.value, update);
     activePreset.value = result.preset;
     syncCollapsedGroups();
     if (result.liveSynced) toastr.success(successMessage);
     else toastr.warning(`${successMessage}，但当前生效副本刷新失败；重新切换预设后会生效`);
+    return true;
   } catch (error) {
     toastr.error(error instanceof Error ? error.message : String(error));
+    return false;
   } finally {
     saving.value = false;
   }
@@ -757,11 +759,17 @@ async function deletePromptGroup(group: BaibaiPresetGroup) {
   await savePromptGroupMutation(preset => deletePresetPromptGroup(preset, group.id), '条目分组已删除');
 }
 
-async function updatePromptGroupRange(group: BaibaiPresetGroup, startPromptId: string, endPromptId: string) {
-  await savePromptGroupMutation(
+async function updatePromptGroupRange(
+  group: BaibaiPresetGroup,
+  startPromptId: string,
+  endPromptId: string,
+  done?: (saved: boolean) => void,
+) {
+  const saved = await savePromptGroupMutation(
     preset => updatePresetPromptGroupRange(preset, group.id, startPromptId, endPromptId),
     startPromptId && endPromptId ? '条目分组范围已更新' : '条目分组范围已清除',
   );
+  done?.(saved);
 }
 
 async function updatePromptGroupMode(

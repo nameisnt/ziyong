@@ -5,8 +5,17 @@ import test from 'node:test';
 
 const frame = await readFile(new URL('../../src/components/FrontendFrame.vue', import.meta.url), 'utf8');
 const frontend = await readFile(new URL('../../src/util/theaterFrontend.ts', import.meta.url), 'utf8');
+const theater = await readFile(new URL('../../src/apps/theater/TheaterMixedContent.vue', import.meta.url), 'utf8');
 
-test('frontend document measures an isolated content wrapper instead of iframe viewport geometry', () => {
+test('theater opts into transparent backgrounds without changing other frame defaults', () => {
+  assert.match(theater, /\s+transparent-background\s/u);
+  assert.match(frame, /transparentBackground: false/u);
+  assert.match(frame, /transparentBackground: props\.transparentBackground/u);
+  assert.match(frame, /\.pc-frame-shell\.transparent-background\s*\{\s*background: transparent;/u);
+  assert.match(frontend, /transparentBackground \? 'transparent' : palette\.background/u);
+});
+
+test('HTML fragments measure an isolated content wrapper instead of iframe viewport geometry', () => {
   assert.match(frontend, /id="pc-frame-content"/u);
   assert.match(frontend, /getElementById\('pc-frame-content'\)/u);
   assert.match(frontend, /content\.getBoundingClientRect\(\)\.height/u);
@@ -14,7 +23,16 @@ test('frontend document measures an isolated content wrapper instead of iframe v
   assert.doesNotMatch(frontend, /setInterval\(postHeight/u);
 });
 
-test('frontend shell neutralizes document-height feedback while preserving natural content flow', () => {
+test('full documents retain their root tree and attributes instead of being wrapped as fragments', () => {
+  assert.match(frontend, /fullDocument: hasDocumentShell\(rawHtml\)/u);
+  assert.match(frontend, /document\.documentElement\.outerHTML/u);
+  assert.match(frontend, /FULL_DOCUMENT \? document\.body : document\.getElementById/u);
+  assert.match(frontend, /createResizeBridgeScript\(options\.channelId, false, true\)/u);
+  assert.match(frontend, /:where\(html\)/u);
+  assert.match(frontend, /if \(securityMode === 'safe'\) stripUntrustedBehavior\(document\)/u);
+});
+
+test('fragment shell neutralizes document-height feedback while preserving natural content flow', () => {
   assert.match(frontend, /html, body \{[\s\S]*?height: auto !important;[\s\S]*?min-height: 0 !important;/u);
   assert.match(frontend, /#pc-frame-content \{[\s\S]*?display: flow-root;[\s\S]*?box-sizing: border-box;/u);
   assert.match(frontend, /viewportHeight: window\.innerHeight/u);
@@ -48,4 +66,13 @@ test('frontend frame repairs collapsed generated layouts and reports remaining l
   assert.match(frame, /layoutCompatibilityState/u);
   assert.match(frame, /网页内容仍被生成样式隐藏/u);
   assert.match(frame, /网页脚本执行失败/u);
+});
+
+test('closed accordions are excluded from visual measurement and normal visible text prevents layout repair', () => {
+  assert.match(frontend, /child\.tagName !== 'DETAILS'/u);
+  assert.match(frontend, /parent\.tagName !== "DETAILS" \|\| parent\.open/u);
+  assert.match(frontend, /summary\?\.contains\(element\)/u);
+  assert.match(frontend, /if \(isCollapsedContent\(element\)\) continue/u);
+  assert.match(frontend, /if \(isCollapsedContent\(node\.parentElement\)\) continue/u);
+  assert.match(frontend, /measuredHeight > 80 \|\| hasVisibleText\(\)/u);
 });

@@ -252,6 +252,8 @@ export function createVisualScenarioGroups(rootAppScenarios: string[]): VisualSc
         'preset-builtin-diary',
         'preset-prompt-range-groups',
         'preset-prompt-range-groups-dark',
+        'preset-prompt-range-groups-native',
+        'preset-prompt-range-groups-native-dark',
         'preset-notice-focus',
         'preset-notice-focus-dark',
         'plugin-preset-lifecycle',

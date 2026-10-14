@@ -160,7 +160,10 @@ test('generation integration covers shared preview, native, plugin and external 
   assert.match(source, /getChatMessagesSafe\('0-\{\{lastMessageId\}\}'\)\.filter\(message => !message.is_hidden\)/);
   assert.match(source, /structuredClone\(selectedMvu\)/);
   assert.match(source, /withGenerationMvu\(generateConfig, mvuSnapshot, generateSafe\)/);
-  assert.match(source, /withGenerationMvu\(generateConfig, mvuSnapshot, generateRawSafe\)/);
+  assert.match(
+    source,
+    /withGenerationMvu\(generateConfig, mvuSnapshot, config =>\s*generateRawSafe\(\s*preparePluginPresetMacroConfig\(config,/,
+  );
   assert.match(source, /withGenerationMvu\(generateConfig, mvuSnapshot, config =>/);
   assert.equal((source.match(/prepared\.mvuSnapshot/g) || []).length, 6);
 });

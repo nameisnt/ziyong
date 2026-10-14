@@ -17,6 +17,8 @@ const model = await load('resource-bundle/model.ts');
 async function hostFixture() {
   const settings = { regex: [] };
   const worldInfoCache = new Map();
+  const serverWorldNames = ['Existing world'];
+  let cachedWorldNames = [...serverWorldNames];
   const characters = [{ avatar: 'existing.png', name: 'Existing' }];
   const plugins = {
     items: [],
@@ -42,11 +44,12 @@ async function hostFixture() {
     select: [{ add: () => {} }],
   };
   const globals = {
-    getWorldbookNames: () => ['Existing world'],
+    getWorldbookNames: () => cachedWorldNames,
     getPresetManager: () => manager,
     loadWorldInfo: async () => ({ entries: { 0: { uid: 0, content: 'world' } } }),
     updateWorldInfoList: async () => {
       if (refreshFails) throw new Error('refresh failed');
+      cachedWorldNames = [...serverWorldNames];
     },
   };
   const host = await load('resource-bundle/host.ts', {
@@ -86,6 +89,7 @@ async function hostFixture() {
     listeners,
     native,
     worldInfoCache,
+    serverWorldNames,
     setSaved: value => {
       saveConfirmed = value;
     },
@@ -349,6 +353,86 @@ test('global regex import requires save confirmation and restores memory when pe
   assert.equal(fixture.settings.regex[0].disabled, true);
   assert.notEqual(fixture.settings.regex[0].id, 'r');
 });
+test('character import keeps original bytes and refreshes embedded worlds before standalone same-name skip', async () => {
+  const fixture = await hostFixture();
+  const bundle = presetBundle();
+  bundle.manifest.kind = 'mixed';
+  bundle.manifest.items = [
+    { id: 'world', kind: 'worldbook', name: 'Embedded world', path: 'resources/0.json' },
+    { id: 'card', kind: 'character', name: 'Imported', path: 'resources/1.png' },
+  ];
+  const original = new Uint8Array([
+    137,
+    80,
+    78,
+    71,
+    13,
+    10,
+    26,
+    10,
+    ...model.encodeJson({
+      data: { character_book: { name: 'Embedded world', entries: [{ content: '保留内嵌内容' }] } },
+    }),
+  ]);
+  bundle.files['resources/0.json'] = model.encodeJson({ entries: {} });
+  bundle.files['resources/1.png'] = original;
+  const items = rows(bundle);
+  const context = { presetTarget: 'plugin', characterAvatar: '', characterName: '' };
+  const calls = [];
+  const previous = globalThis.fetch;
+  globalThis.fetch = async (path, init) => {
+    calls.push(path);
+    assert.equal(path, '/api/characters/import');
+    assert.deepEqual(new Uint8Array(await init.body.get('avatar').arrayBuffer()), original);
+    fixture.serverWorldNames.push('Embedded world');
+    return Response.json({ file_name: 'imported' });
+  };
+  try {
+    const run = () =>
+      runBundleImport(
+        bundle,
+        items,
+        () => !!context.characterAvatar,
+        row => fixture.host.importResource(bundle, row, items, context),
+        () => {},
+      );
+    await run();
+    assert.equal(items[0].status, 'skipped');
+    assert.equal(items[1].status, 'success');
+    await run();
+    assert.deepEqual(calls, ['/api/characters/import']);
+    assert.equal(fixture.serverWorldNames.filter(name => name === 'Embedded world').length, 1);
+  } finally {
+    globalThis.fetch = previous;
+  }
+});
+
+test('world directory refresh failure stops the write and can be retried without importing the card again', async () => {
+  const fixture = await hostFixture();
+  fixture.setRefreshFails(true);
+  const bundle = presetBundle();
+  const item = {
+    ...rows(bundle)[0],
+    item: { id: 'w', kind: 'worldbook', name: 'New world', path: 'resources/0.json' },
+  };
+  const previous = globalThis.fetch;
+  let writes = 0;
+  globalThis.fetch = async () => {
+    writes++;
+    return Response.json({ name: 'New world' });
+  };
+  try {
+    const context = { presetTarget: 'plugin', characterAvatar: '', characterName: '' };
+    await assert.rejects(fixture.host.importResource(bundle, item, [item], context), /refresh failed/);
+    assert.equal(writes, 0);
+    fixture.setRefreshFails(false);
+    await fixture.host.importResource(bundle, item, [item], context);
+    assert.equal(writes, 1);
+  } finally {
+    globalThis.fetch = previous;
+  }
+});
+
 test('character response determines chat target, and a post-write refresh failure does not cause a duplicate retry', async () => {
   const fixture = await hostFixture();
   fixture.setRefreshFails(true);
@@ -594,7 +678,7 @@ test('mixed import is ordered by dependency and failed card cannot use another c
     apply,
     () => {},
   );
-  assert.deepEqual(calls, ['w', 'c1', 'c2', 'chat2', 'p', 'g']);
+  assert.deepEqual(calls, ['c1', 'c2', 'w', 'p', 'g', 'chat2']);
   assert.equal(items.find(row => row.item.id === 'chat1').status, 'failed');
   assert.equal(items.find(row => row.item.id === 'r').status, 'success');
   targets.add('c1');
@@ -606,10 +690,10 @@ test('mixed import is ordered by dependency and failed card cannot use another c
     apply,
     () => {},
   );
-  assert.deepEqual(calls, ['w', 'c1', 'c2', 'chat2', 'p', 'g', 'chat1']);
+  assert.deepEqual(calls, ['c1', 'c2', 'w', 'p', 'g', 'chat2', 'chat1']);
 });
 
-test('each character is followed by its chats, including existing targets and partial retries', async () => {
+test('characters precede chats while per-character targets and partial retries remain isolated', async () => {
   const bundle = presetBundle();
   bundle.manifest.kind = 'mixed';
   bundle.manifest.items = [
@@ -639,7 +723,7 @@ test('each character is followed by its chats, including existing targets and pa
     apply,
     () => {},
   );
-  assert.deepEqual(calls, ['c1', 'chat1a', 'chat1b', 'c2', 'chat2', 'chat3']);
+  assert.deepEqual(calls, ['c1', 'c2', 'chat1a', 'chat1b', 'chat2', 'chat3']);
   fail = false;
   await runBundleImport(
     bundle,
@@ -648,7 +732,7 @@ test('each character is followed by its chats, including existing targets and pa
     apply,
     () => {},
   );
-  assert.deepEqual(calls, ['c1', 'chat1a', 'chat1b', 'c2', 'chat2', 'chat3', 'chat1b']);
+  assert.deepEqual(calls, ['c1', 'c2', 'chat1a', 'chat1b', 'chat2', 'chat3', 'chat1b']);
   assert.ok(items.filter(row => row.selected).every(row => row.status === 'success'));
 });
 

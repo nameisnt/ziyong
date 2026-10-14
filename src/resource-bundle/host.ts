@@ -290,6 +290,9 @@ export async function importResource(
   context: ImportContext,
 ) {
   if (row.item.kind === 'theme' && row.themeWrite) return verifyTheme(row.themeWrite);
+  // Character imports can create embedded worldbooks without updating the frontend directory.
+  // Do not decide skip/copy against the stale list, or a second book can be imported.
+  if (row.item.kind === 'worldbook') await required<() => Promise<void>>('updateWorldInfoList')();
   const names = row.item.kind === 'chat' ? await chatNames(context) : await existingNames(row, context);
   const conflict = names.includes(row.item.kind === 'chat' ? row.name.replace(/\.jsonl$/i, '') : row.name);
   if (['preset', 'worldbook', 'theme'].includes(row.item.kind) && (!row.name.trim() || /[\\/:*?"<>|]/.test(row.name)))

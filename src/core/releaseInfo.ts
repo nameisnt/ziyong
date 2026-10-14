@@ -4,6 +4,16 @@ export const RUNNING_VERSION = manifest.version;
 export const RELEASE_SEEN_FIELD = 'sillytavern_phone_last_seen_release';
 export const RELEASE_HISTORY = [
   {
+    version: '1.2.14',
+    notes: [
+      '修复插件预设中 setvar/getvar 等酒馆宏在捕获和生成时原样残留，按条目顺序解析，保留插件称呼、自定义宏和楼层变量处理。',
+      '预设条目分组支持在条目列表中点击开始和结束条目选择连续范围，替代长下拉框查找。',
+      '组合导入先导入角色卡并保留内嵌世界书，再刷新世界书目录处理独立资源，最后导入聊天，减少重复导入世界书。',
+      '小剧场网页渲染默认透明背景；完整 HTML 保留根节点属性和原有布局，不再额外包裹正文。',
+      '修复手风琴折叠内容被误计入网页高度的问题，保留展开高度、内部滚动和原有裁切样式。',
+    ],
+  },
+  {
     version: '1.2.13',
     notes: [
       '修复生成设置中‘解析前清理思维链’开关点击后误弹说明、无法切换的问题。',

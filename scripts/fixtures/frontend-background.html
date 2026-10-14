@@ -1,0 +1,40 @@
+<!doctype html>
+<html>
+  <head>
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <style>
+      body {
+        margin: 0;
+        padding: 12px;
+        background: #e7eedf;
+        --pc-surface-strong: #fff;
+        --pc-border: #889488;
+        --pc-text: #18251c;
+        --pc-muted: #556655;
+        --pc-card-radius: 8px;
+      }
+      body.dark {
+        background: #26372e;
+        --pc-surface-strong: #263040;
+        --pc-text: #eee;
+        --pc-muted: #bbc;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="app"></div>
+    <script type="module">
+      import { createApp, h, reactive } from 'vue';
+      import FrontendFrame from '/src/components/FrontendFrame.vue';
+      window.state = reactive({
+        theme: 'light',
+        transparentBackground: true,
+        content: '<p>Rendered content</p>',
+        active: true,
+      });
+      createApp({
+        render: () => h(FrontendFrame, { ...window.state, embedded: true, flushContent: true, documentFlow: true }),
+      }).mount('#app');
+    </script>
+  </body>
+</html>

@@ -1,194 +1,205 @@
 <template>
-  <section ref="pageEl" class="pc-preset-page">
-    <header class="pc-compact-toolbar pc-directory-toolbar pc-preset-detail-head">
-      <div class="pc-directory-leading">
-        <ActionMenu align="start" icon-only label="管理" icon="fa-solid fa-bars">
-          <button type="button" :disabled="mutationBusy || !selectableIds.length" @click="selection.start()">
-            <i class="fa-solid fa-list-check"></i><span>批量删除条目</span>
-          </button>
-          <button type="button" :disabled="mutationBusy" @click="groupManagerOpen = true">
-            <i class="fa-solid fa-folder-tree"></i><span>管理条目分组</span>
-          </button>
-          <button type="button" :disabled="mutationBusy" @click="$emit('rename-preset')">
-            <i class="fa-solid fa-pen"></i><span>预设改名</span>
-          </button>
-          <button v-if="pluginPreset" type="button" :disabled="mutationBusy" @click="$emit('export-preset')">
-            <i class="fa-solid fa-file-export"></i><span>导出预设</span>
-          </button>
-          <button
-            v-if="pluginPreset && pluginPresetBuiltIn"
-            type="button"
-            :disabled="mutationBusy"
-            @click="$emit('toggle-preset-visibility')"
-          >
-            <i :class="pluginPresetHidden ? 'fa-solid fa-eye' : 'fa-solid fa-eye-slash'"></i>
-            <span>{{ pluginPresetHidden ? '取消隐藏' : '隐藏预设' }}</span>
-          </button>
-          <button type="button" :disabled="mutationBusy || !presetMovable" @click="$emit('move-preset')">
-            <i class="fa-solid fa-right-left"></i><span>{{ movePresetLabel }}</span>
-          </button>
-          <button
-            v-if="presetDeletable"
-            class="danger"
-            type="button"
-            :disabled="mutationBusy"
-            @click="$emit('delete-preset')"
-          >
-            <i class="fa-solid fa-trash"></i><span>删除预设</span>
-          </button>
-        </ActionMenu>
-        <span class="pc-directory-count">
-          {{ preset ? `${preset.prompts.length} 个条目` : '正在读取条目' }}
-        </span>
-      </div>
-      <button
-        v-if="!pluginPreset && presetName !== loadedPresetName"
-        class="pc-icon-btn primary"
-        type="button"
-        :disabled="mutationBusy || switchingPreset === presetName"
-        title="使用这个预设"
-        aria-label="使用这个预设"
-        @click="$emit('switch-preset', presetName)"
-      >
-        <i class="fa-solid fa-play"></i>
-      </button>
-    </header>
-
-    <div v-if="errorMessage" class="pc-section-card pc-preset-error">
-      <strong>无法读取预设</strong>
-      <span>{{ errorMessage }}</span>
-    </div>
-
-    <section v-if="!errorMessage && preset && pluginPreset" class="pc-section-card pc-preset-default-apps">
-      <header>
-        <strong>默认使用此预设的 App</strong>
-        <span>打开所选 App 的生成页时，初始选择这个插件预设；仍可临时改选其他预设。</span>
-      </header>
-      <div class="pc-preset-app-grid">
-        <label v-for="app in defaultAppOptions" :key="app.id" class="pc-preset-app-option">
-          <input
-            type="checkbox"
-            :checked="defaultAppIds.includes(app.id)"
-            :disabled="mutationBusy"
-            @change="$emit('toggle-default-app', app.id, ($event.target as HTMLInputElement).checked)"
-          />
-          <i :class="['fa-solid', app.icon]"></i>
-          <span>{{ app.name }}</span>
-        </label>
-      </div>
-    </section>
-
-    <PresetOwnershipPanel v-if="!errorMessage && preset && !pluginPreset" :preset-name="presetName" />
-
-    <div v-if="!errorMessage && preset" class="pc-preset-filter-row">
-      <span>只看当前已启用条目</span>
-      <label class="pc-toggle" title="只显示当前实际启用的预设条目">
-        <input v-model="enabledOnly" type="checkbox" aria-label="只看当前已启用条目" />
-        <span aria-hidden="true"></span>
-      </label>
-    </div>
-
-    <div v-if="!errorMessage && preset" class="pc-preset-nodes">
-      <template
-        v-for="node in displayNodes"
-        :key="node.type === 'group' ? `group:${node.group.id}` : `prompt:${node.prompt.id}`"
-      >
-        <PresetPromptRow
-          v-if="node.type === 'prompt'"
-          :busy="(mutationBusy && !promptDrag.isDragging) || busyPromptIds.has(node.prompt.id)"
-          :selection="selection.active.value"
-          :selected="selection.selectedIdSet.value.has(node.prompt.id)"
-          :dragging="promptDrag.promptId === node.prompt.id && promptDrag.isDragging"
-          :drop-before="promptDrag.insertBeforeId === node.prompt.id"
-          group-id="__ungrouped__"
-          :prompt="node.prompt"
-          :reorderable="!enabledOnly"
-          @select="selection.setSelected"
-          @copy="$emit('copy-prompt', $event)"
-          @drag-cancel="$emit('drag-cancel', $event)"
-          @drag-end="$emit('drag-end', $event)"
-          @drag-move="$emit('drag-move', $event)"
-          @drag-start="$emit('drag-start', $event, node.prompt, '__ungrouped__')"
-          @open="$emit('open-prompt', $event)"
-          @toggle="(prompt, enabled) => $emit('toggle-prompt', prompt, enabled)"
-        />
-
-        <section v-else class="pc-preset-group">
-          <div class="pc-preset-group-selection-head">
-            <BulkSelectionCheckbox
-              v-if="selection.active.value"
-              :label="`选择分组 ${node.group.name}`"
-              :disabled="mutationBusy || !groupSelectableIds(node.prompts).length"
-              :model-value="groupSelected(node.prompts)"
-              @update:model-value="selectGroup(node.prompts, $event)"
-            />
+  <section ref="pageEl" class="pc-preset-page" :class="{ 'picking-range': rangeGroup }">
+    <PresetRangePicker
+      v-if="rangeGroup && preset"
+      :group="rangeGroup"
+      :groups="promptGroups"
+      :prompts="preset.prompts"
+      :busy="mutationBusy"
+      @cancel="finishRangeSelection"
+      @confirm="confirmRangeSelection"
+    />
+    <template v-else>
+      <header class="pc-compact-toolbar pc-directory-toolbar pc-preset-detail-head">
+        <div class="pc-directory-leading">
+          <ActionMenu align="start" icon-only label="管理" icon="fa-solid fa-bars">
+            <button type="button" :disabled="mutationBusy || !selectableIds.length" @click="selection.start()">
+              <i class="fa-solid fa-list-check"></i><span>批量删除条目</span>
+            </button>
+            <button type="button" :disabled="mutationBusy" @click="groupManagerOpen = true">
+              <i class="fa-solid fa-folder-tree"></i><span>管理条目分组</span>
+            </button>
+            <button type="button" :disabled="mutationBusy" @click="$emit('rename-preset')">
+              <i class="fa-solid fa-pen"></i><span>预设改名</span>
+            </button>
+            <button v-if="pluginPreset" type="button" :disabled="mutationBusy" @click="$emit('export-preset')">
+              <i class="fa-solid fa-file-export"></i><span>导出预设</span>
+            </button>
             <button
-              class="pc-preset-group-head"
+              v-if="pluginPreset && pluginPresetBuiltIn"
               type="button"
               :disabled="mutationBusy"
-              @click="
-                selection.active.value
-                  ? selectGroup(node.prompts, !groupSelected(node.prompts))
-                  : $emit('toggle-group', node.group.id)
-              "
+              @click="$emit('toggle-preset-visibility')"
             >
-              <i class="fa-solid fa-chevron-right" :class="{ expanded: !collapsedGroupIds.has(node.group.id) }"></i>
-              <span>
-                <strong>{{ node.group.name }}</strong>
-                <small>
-                  {{ node.prompts.filter(prompt => prompt.enabled).length }}/{{ node.prompts.length }} 启用
-                  <template v-if="!node.group.enabled"> · 组已停用</template>
-                </small>
-              </span>
+              <i :class="pluginPresetHidden ? 'fa-solid fa-eye' : 'fa-solid fa-eye-slash'"></i>
+              <span>{{ pluginPresetHidden ? '取消隐藏' : '隐藏预设' }}</span>
             </button>
-          </div>
-          <div v-if="selection.active.value || !collapsedGroupIds.has(node.group.id)" class="pc-preset-group-body">
-            <PresetPromptRow
-              v-for="prompt in node.prompts"
-              :key="prompt.id"
-              :busy="(mutationBusy && !promptDrag.isDragging) || busyPromptIds.has(prompt.id)"
-              :selection="selection.active.value"
-              :selected="selection.selectedIdSet.value.has(prompt.id)"
-              :dragging="promptDrag.promptId === prompt.id && promptDrag.isDragging"
-              :drop-before="promptDrag.insertBeforeId === prompt.id"
-              :group-id="node.group.id"
-              :group-disabled="!node.group.enabled"
-              :prompt="prompt"
-              :reorderable="!enabledOnly"
-              @select="selection.setSelected"
-              @copy="$emit('copy-prompt', $event)"
-              @drag-cancel="$emit('drag-cancel', $event)"
-              @drag-end="$emit('drag-end', $event)"
-              @drag-move="$emit('drag-move', $event)"
-              @drag-start="$emit('drag-start', $event, prompt, node.group.id)"
-              @open="$emit('open-prompt', $event)"
-              @toggle="(item, enabled) => $emit('toggle-prompt', item, enabled)"
+            <button type="button" :disabled="mutationBusy || !presetMovable" @click="$emit('move-preset')">
+              <i class="fa-solid fa-right-left"></i><span>{{ movePresetLabel }}</span>
+            </button>
+            <button
+              v-if="presetDeletable"
+              class="danger"
+              type="button"
+              :disabled="mutationBusy"
+              @click="$emit('delete-preset')"
+            >
+              <i class="fa-solid fa-trash"></i><span>删除预设</span>
+            </button>
+          </ActionMenu>
+          <span class="pc-directory-count">
+            {{ preset ? `${preset.prompts.length} 个条目` : '正在读取条目' }}
+          </span>
+        </div>
+        <button
+          v-if="!pluginPreset && presetName !== loadedPresetName"
+          class="pc-icon-btn primary"
+          type="button"
+          :disabled="mutationBusy || switchingPreset === presetName"
+          title="使用这个预设"
+          aria-label="使用这个预设"
+          @click="$emit('switch-preset', presetName)"
+        >
+          <i class="fa-solid fa-play"></i>
+        </button>
+      </header>
+
+      <div v-if="errorMessage" class="pc-section-card pc-preset-error">
+        <strong>无法读取预设</strong>
+        <span>{{ errorMessage }}</span>
+      </div>
+
+      <section v-if="!errorMessage && preset && pluginPreset" class="pc-section-card pc-preset-default-apps">
+        <header>
+          <strong>默认使用此预设的 App</strong>
+          <span>打开所选 App 的生成页时，初始选择这个插件预设；仍可临时改选其他预设。</span>
+        </header>
+        <div class="pc-preset-app-grid">
+          <label v-for="app in defaultAppOptions" :key="app.id" class="pc-preset-app-option">
+            <input
+              type="checkbox"
+              :checked="defaultAppIds.includes(app.id)"
+              :disabled="mutationBusy"
+              @change="$emit('toggle-default-app', app.id, ($event.target as HTMLInputElement).checked)"
             />
-          </div>
-        </section>
-      </template>
-      <EmptyState
-        v-if="!displayNodes.length"
-        :title="enabledOnly ? '这个预设没有当前已启用的条目' : '这个预设没有条目'"
+            <i :class="['fa-solid', app.icon]"></i>
+            <span>{{ app.name }}</span>
+          </label>
+        </div>
+      </section>
+
+      <PresetOwnershipPanel v-if="!errorMessage && preset && !pluginPreset" :preset-name="presetName" />
+
+      <div v-if="!errorMessage && preset" class="pc-preset-filter-row">
+        <span>只看当前已启用条目</span>
+        <label class="pc-toggle" title="只显示当前实际启用的预设条目">
+          <input v-model="enabledOnly" type="checkbox" aria-label="只看当前已启用条目" />
+          <span aria-hidden="true"></span>
+        </label>
+      </div>
+
+      <div v-if="!errorMessage && preset" class="pc-preset-nodes">
+        <template
+          v-for="node in displayNodes"
+          :key="node.type === 'group' ? `group:${node.group.id}` : `prompt:${node.prompt.id}`"
+        >
+          <PresetPromptRow
+            v-if="node.type === 'prompt'"
+            :busy="(mutationBusy && !promptDrag.isDragging) || busyPromptIds.has(node.prompt.id)"
+            :selection="selection.active.value"
+            :selected="selection.selectedIdSet.value.has(node.prompt.id)"
+            :dragging="promptDrag.promptId === node.prompt.id && promptDrag.isDragging"
+            :drop-before="promptDrag.insertBeforeId === node.prompt.id"
+            group-id="__ungrouped__"
+            :prompt="node.prompt"
+            :reorderable="!enabledOnly"
+            @select="selection.setSelected"
+            @copy="$emit('copy-prompt', $event)"
+            @drag-cancel="$emit('drag-cancel', $event)"
+            @drag-end="$emit('drag-end', $event)"
+            @drag-move="$emit('drag-move', $event)"
+            @drag-start="$emit('drag-start', $event, node.prompt, '__ungrouped__')"
+            @open="$emit('open-prompt', $event)"
+            @toggle="(prompt, enabled) => $emit('toggle-prompt', prompt, enabled)"
+          />
+
+          <section v-else class="pc-preset-group">
+            <div class="pc-preset-group-selection-head">
+              <BulkSelectionCheckbox
+                v-if="selection.active.value"
+                :label="`选择分组 ${node.group.name}`"
+                :disabled="mutationBusy || !groupSelectableIds(node.prompts).length"
+                :model-value="groupSelected(node.prompts)"
+                @update:model-value="selectGroup(node.prompts, $event)"
+              />
+              <button
+                class="pc-preset-group-head"
+                type="button"
+                :disabled="mutationBusy"
+                @click="
+                  selection.active.value
+                    ? selectGroup(node.prompts, !groupSelected(node.prompts))
+                    : $emit('toggle-group', node.group.id)
+                "
+              >
+                <i class="fa-solid fa-chevron-right" :class="{ expanded: !collapsedGroupIds.has(node.group.id) }"></i>
+                <span>
+                  <strong>{{ node.group.name }}</strong>
+                  <small>
+                    {{ node.prompts.filter(prompt => prompt.enabled).length }}/{{ node.prompts.length }} 启用
+                    <template v-if="!node.group.enabled"> · 组已停用</template>
+                  </small>
+                </span>
+              </button>
+            </div>
+            <div v-if="selection.active.value || !collapsedGroupIds.has(node.group.id)" class="pc-preset-group-body">
+              <PresetPromptRow
+                v-for="prompt in node.prompts"
+                :key="prompt.id"
+                :busy="(mutationBusy && !promptDrag.isDragging) || busyPromptIds.has(prompt.id)"
+                :selection="selection.active.value"
+                :selected="selection.selectedIdSet.value.has(prompt.id)"
+                :dragging="promptDrag.promptId === prompt.id && promptDrag.isDragging"
+                :drop-before="promptDrag.insertBeforeId === prompt.id"
+                :group-id="node.group.id"
+                :group-disabled="!node.group.enabled"
+                :prompt="prompt"
+                :reorderable="!enabledOnly"
+                @select="selection.setSelected"
+                @copy="$emit('copy-prompt', $event)"
+                @drag-cancel="$emit('drag-cancel', $event)"
+                @drag-end="$emit('drag-end', $event)"
+                @drag-move="$emit('drag-move', $event)"
+                @drag-start="$emit('drag-start', $event, prompt, node.group.id)"
+                @open="$emit('open-prompt', $event)"
+                @toggle="(item, enabled) => $emit('toggle-prompt', item, enabled)"
+              />
+            </div>
+          </section>
+        </template>
+        <EmptyState
+          v-if="!displayNodes.length"
+          :title="enabledOnly ? '这个预设没有当前已启用的条目' : '这个预设没有条目'"
+        />
+      </div>
+      <EmptyState v-else-if="loading" title="正在读取预设" />
+
+      <BulkSelectionBar
+        v-if="selection.active.value"
+        class="pc-preset-bulk-footer"
+        :busy="mutationBusy"
+        :all-selected="selection.allSelected.value"
+        :selected-count="selection.selectedIds.value.length"
+        :total-count="selectableIds.length"
+        @toggle-all="selection.toggleAll"
+        @cancel="selection.cancel"
+        @remove="$emit('delete-prompts', [...selection.selectedIds.value])"
       />
-    </div>
-    <EmptyState v-else-if="loading" title="正在读取预设" />
-
-    <BulkSelectionBar
-      v-if="selection.active.value"
-      class="pc-preset-bulk-footer"
-      :busy="mutationBusy"
-      :all-selected="selection.allSelected.value"
-      :selected-count="selection.selectedIds.value.length"
-      :total-count="selectableIds.length"
-      @toggle-all="selection.toggleAll"
-      @cancel="selection.cancel"
-      @remove="$emit('delete-prompts', [...selection.selectedIds.value])"
-    />
-
+    </template>
     <Teleport to="#tavern-phone-root .pc-phone-shell">
       <section
         v-if="groupManagerOpen && preset"
+        v-show="!rangeGroup"
         class="pc-modal-backdrop pc-preset-group-manager-backdrop"
         role="presentation"
         @click.self="groupManagerOpen = false"
@@ -298,33 +309,17 @@
                     <button class="pc-primary-btn" type="button" @click="confirmSingleSelection(group)">确定</button>
                   </div>
                 </section>
-                <div class="pc-preset-group-range-grid">
-                  <div class="pc-field-group">
-                    <span class="pc-field-label">开始条目</span>
-                    <SearchableCombobox
-                      :model-value="group.startPromptId"
-                      :options="promptBoundaryOptions"
-                      placeholder="选择开始条目"
-                      input-label="选择分组开始条目"
-                      :disabled="mutationBusy"
-                      @update:model-value="
-                        $emit('update-prompt-group-range', group, $event, group.endPromptId || $event)
-                      "
-                    />
-                  </div>
-                  <div class="pc-field-group">
-                    <span class="pc-field-label">结束条目</span>
-                    <SearchableCombobox
-                      :model-value="group.endPromptId"
-                      :options="promptBoundaryOptions"
-                      placeholder="选择结束条目"
-                      input-label="选择分组结束条目"
-                      :disabled="mutationBusy"
-                      @update:model-value="
-                        $emit('update-prompt-group-range', group, group.startPromptId || $event, $event)
-                      "
-                    />
-                  </div>
+                <div class="pc-preset-group-range-summary">
+                  <span>开始条目：{{ boundaryName(group.startPromptId) }}</span>
+                  <span>结束条目：{{ boundaryName(group.endPromptId) }}</span>
+                  <button
+                    class="pc-soft-btn"
+                    type="button"
+                    :disabled="mutationBusy || !preset.prompts.length"
+                    @click="startRangeSelection(group)"
+                  >
+                    <i class="fa-solid fa-list-check"></i><span>选择范围</span>
+                  </button>
                 </div>
                 <button
                   v-if="group.startPromptId || group.endPromptId"
@@ -351,7 +346,7 @@ import BulkSelectionBar from '@/components/BulkSelectionBar.vue';
 import BulkSelectionCheckbox from '@/components/BulkSelectionCheckbox.vue';
 import { useBulkSelection } from '@/composables/useBulkSelection';
 import ActionMenu from '@/components/ActionMenu.vue';
-import SearchableCombobox from '@/components/SearchableCombobox.vue';
+import PresetRangePicker from '../PresetRangePicker.vue';
 import { usePhoneModalLifecycle } from '@/composables/usePhoneModalLifecycle';
 import type { BaibaiPresetGroup, PresetDisplayNode, TavernPreset, TavernPresetPrompt } from '../api';
 import PresetOwnershipPanel from './PresetOwnershipPanel.vue';
@@ -424,7 +419,12 @@ const emit = defineEmits<{
     selectionMode: BaibaiPresetGroup['selectionMode'],
     retainedPromptId?: string,
   ];
-  'update-prompt-group-range': [group: BaibaiPresetGroup, startPromptId: string, endPromptId: string];
+  'update-prompt-group-range': [
+    group: BaibaiPresetGroup,
+    startPromptId: string,
+    endPromptId: string,
+    done?: (saved: boolean) => void,
+  ];
   'switch-preset': [presetName: string];
   'toggle-group': [groupId: string];
   'toggle-preset-visibility': [];
@@ -437,16 +437,58 @@ const groupManagerOpen = ref(false);
 const groupManagerDialogRef = ref<HTMLElement | null>(null);
 const retainedPromptId = ref('');
 const singleSelectionGroupId = ref('');
-const promptBoundaryOptions = computed(() =>
-  (props.preset?.prompts ?? []).map((prompt, index) => ({
-    label: `${index + 1}. ${prompt.name || prompt.id}`,
-    value: prompt.id,
-  })),
+const rangeGroupId = ref('');
+const rangeGroup = computed(() => props.promptGroups.find(group => group.id === rangeGroupId.value));
+let directoryScrollTop = 0;
+function boundaryName(id: string) {
+  const index = props.preset?.prompts.findIndex(prompt => prompt.id === id) ?? -1;
+  const prompt = props.preset?.prompts[index];
+  return prompt ? `${index + 1}. ${prompt.name || prompt.id}` : '未选择';
+}
+function startRangeSelection(group: BaibaiPresetGroup) {
+  directoryScrollTop = pageEl.value?.scrollTop ?? 0;
+  selection.cancel();
+  cancelSingleSelection();
+  rangeGroupId.value = group.id;
+}
+async function finishRangeSelection() {
+  rangeGroupId.value = '';
+  await nextTick();
+  if (pageEl.value) pageEl.value.scrollTop = directoryScrollTop;
+}
+function confirmRangeSelection(startId: string, endId: string) {
+  if (!rangeGroup.value || props.mutationBusy) return;
+  emit('update-prompt-group-range', rangeGroup.value, startId, endId, saved => {
+    if (saved) void finishRangeSelection();
+  });
+}
+watch(
+  () => [props.presetName, props.pluginPreset],
+  () => {
+    rangeGroupId.value = '';
+    groupManagerOpen.value = false;
+  },
 );
+function handleRangeBack(event: Event) {
+  if (!rangeGroup.value) return;
+  event.preventDefault();
+  if (!props.mutationBusy) void finishRangeSelection();
+}
+function handleRangeKey(event: KeyboardEvent) {
+  if (event.key === 'Escape') handleRangeBack(event);
+}
+onMounted(() => {
+  window.addEventListener('phone-before-back', handleRangeBack);
+  window.addEventListener('keydown', handleRangeKey);
+});
+onBeforeUnmount(() => {
+  window.removeEventListener('phone-before-back', handleRangeBack);
+  window.removeEventListener('keydown', handleRangeKey);
+});
 
 usePhoneModalLifecycle({
   dialogRef: groupManagerDialogRef,
-  isOpen: () => groupManagerOpen.value,
+  isOpen: () => groupManagerOpen.value && !rangeGroup.value,
   onClose: () => {
     groupManagerOpen.value = false;
   },
@@ -511,6 +553,9 @@ defineExpose({ getScrollElement: () => pageEl.value });
   flex-direction: column;
   gap: 12px;
   overflow-y: auto;
+}
+.pc-preset-page.picking-range {
+  overflow: hidden;
 }
 .pc-preset-filter-row {
   display: flex;
@@ -681,10 +726,11 @@ defineExpose({ getScrollElement: () => pageEl.value });
   color: var(--pc-muted);
   font-size: 11px;
 }
-.pc-preset-group-range-grid {
+.pc-preset-group-range-summary {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 8px;
+  font-size: 13px;
+  overflow-wrap: anywhere;
 }
 .pc-preset-group-mode-row {
   display: flex;
@@ -723,10 +769,5 @@ defineExpose({ getScrollElement: () => pageEl.value });
 }
 .pc-preset-clear-group-range {
   justify-self: end;
-}
-@media (max-width: 350px) {
-  .pc-preset-group-range-grid {
-    grid-template-columns: 1fr;
-  }
 }
 </style>

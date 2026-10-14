@@ -8,11 +8,18 @@ export async function runBundleImport(
   progress: (name: string) => void,
 ) {
   // A preset and its selected attachments are a single write, so partial attachment writes cannot occur.
-  // Import worldbooks before chats so bindings can resolve books from this same package.
+  // Hosts may import embedded worldbooks with the character. Import cards first, then standalone books,
+  // and only then chats so their worldbook bindings can resolve the completed directory.
   const roots = rows.filter(row => !row.item.parentId);
   roots.sort((a, b) => Number(b.item.kind === 'worldbook') - Number(a.item.kind === 'worldbook'));
-  // Finish each character's chats before importing the next character.
-  const queue = roots.flatMap(root => [root, ...rows.filter(row => row.item.parentId === root.item.id)]);
+  const cards = roots.filter(row => row.item.kind === 'character');
+  const queue = [
+    ...cards,
+    ...roots
+      .filter(row => row.item.kind !== 'character')
+      .flatMap(root => [root, ...rows.filter(row => row.item.parentId === root.item.id)]),
+    ...cards.flatMap(root => rows.filter(row => row.item.parentId === root.item.id)),
+  ];
   for (const row of queue) {
     if (!row.selected || row.status === 'success' || row.status === 'skipped') continue;
     const parent = rows.find(parent => parent.item.id === row.item.parentId);

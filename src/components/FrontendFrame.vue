@@ -1,5 +1,5 @@
 <template>
-  <div :class="['pc-frame-shell', { embedded, frameless }]">
+  <div :class="['pc-frame-shell', { embedded, frameless, 'transparent-background': transparentBackground }]">
     <template v-if="shouldRender">
       <iframe
         :ref="setIframeElement"
@@ -48,6 +48,7 @@ const props = withDefaults(
     securityMode?: FrontendSecurityMode;
     statusContext?: StatusFrameContext;
     theme?: 'dark' | 'light';
+    transparentBackground?: boolean;
     title?: string;
   }>(),
   {
@@ -60,6 +61,7 @@ const props = withDefaults(
     securityMode: 'trusted',
     statusContext: undefined,
     theme: 'light',
+    transparentBackground: false,
     title: '',
   },
 );
@@ -108,6 +110,7 @@ const documentHtml = computed(() =>
     hostBridge: props.hostBridge,
     securityMode: props.securityMode,
     theme: props.theme,
+    transparentBackground: props.transparentBackground,
     title: props.title,
   }),
 );
@@ -127,6 +130,7 @@ watch(
       props.hostBridge,
       props.securityMode,
       props.theme,
+      props.transparentBackground,
       props.title,
       props.statusContext?.scopeKey,
       props.statusContext?.messageId,
@@ -276,6 +280,10 @@ onBeforeUnmount(() => {
 
 .pc-frame-shell.embedded {
   margin-top: 0;
+}
+
+.pc-frame-shell.transparent-background {
+  background: transparent;
 }
 
 .pc-frame-shell.frameless {

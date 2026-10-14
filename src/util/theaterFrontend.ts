@@ -10,6 +10,7 @@ export interface TheaterFrontendBuildOptions {
   hostBridge?: boolean;
   securityMode?: FrontendSecurityMode;
   theme: 'dark' | 'light';
+  transparentBackground?: boolean;
   title?: string;
 }
 
@@ -74,7 +75,7 @@ function stripUntrustedBehavior(document: Document) {
   });
 }
 
-function createBaseStyle(theme: 'dark' | 'light') {
+function createBaseStyle(theme: 'dark' | 'light', transparentBackground: boolean, fullDocument = false) {
   const palette =
     theme === 'dark'
       ? {
@@ -90,14 +91,24 @@ function createBaseStyle(theme: 'dark' | 'light') {
           text: '#0f172a',
         };
 
-  return [
-    ':root {',
+  const rootStyle = [
+    fullDocument ? ':where(:root) {' : ':root {',
     `  color-scheme: ${theme};`,
-    `  --pc-frame-bg: ${palette.background};`,
+    `  --pc-frame-bg: ${transparentBackground ? 'transparent' : palette.background};`,
     `  --pc-frame-text: ${palette.text};`,
     `  --pc-frame-muted: ${palette.muted};`,
     `  --pc-frame-border: ${palette.border};`,
     '}',
+  ].join('\n');
+  if (fullDocument)
+    return [
+      rootStyle,
+      ':where(html) { background: var(--pc-frame-bg); color: var(--pc-frame-text); }',
+      ':where(body) { margin: 0; }',
+    ].join('\n');
+
+  return [
+    rootStyle,
     'html {',
     '  height: auto;',
     '  min-height: 0;',
@@ -229,13 +240,14 @@ function createRuntimeDiagnosticsScript(channelId: string) {
   ].join('\n');
 }
 
-function createResizeBridgeScript(channelId: string, documentFlow: boolean) {
+function createResizeBridgeScript(channelId: string, documentFlow: boolean, fullDocument = false) {
   return [
     '(() => {',
     `  const CHANNEL_ID = ${JSON.stringify(channelId)};`,
     `  const SOURCE = ${JSON.stringify(FRONTEND_FRAME_SOURCE)};`,
     `  const DOCUMENT_FLOW = ${JSON.stringify(documentFlow)};`,
-    "  const content = document.getElementById('pc-frame-content');",
+    `  const FULL_DOCUMENT = ${fullDocument ? 'true' : 'false'};`,
+    "  const content = FULL_DOCUMENT ? document.body : document.getElementById('pc-frame-content');",
     '  let heightQueued = false;',
     '  let lastHeight = -1;',
     '  let compatibilityApplied = false;',
@@ -244,11 +256,19 @@ function createResizeBridgeScript(channelId: string, documentFlow: boolean) {
     '    if (!DOCUMENT_FLOW || !content) return;',
     '    for (const child of content.children) {',
     '      const position = getComputedStyle(child).position;',
-    "      const shouldFlow = position === 'static' || position === 'relative';",
+    "      const shouldFlow = child.tagName !== 'DETAILS' && (position === 'static' || position === 'relative');",
     "      if (child.hasAttribute('data-pc-frame-flow-root') !== shouldFlow) {",
     "        child.toggleAttribute('data-pc-frame-flow-root', shouldFlow);",
     '      }',
     '    }',
+    '  };',
+    '  const isCollapsedContent = element => {',
+    '    for (let parent = element.parentElement; parent && parent !== content; parent = parent.parentElement) {',
+    '      if (parent.tagName !== "DETAILS" || parent.open) continue;',
+    '      const summary = [...parent.children].find(child => child.tagName === "SUMMARY");',
+    '      if (!summary?.contains(element)) return true;',
+    '    }',
+    '    return false;',
     '  };',
     '  const getVisualHeight = () => {',
     '    if (!content) return 0;',
@@ -258,6 +278,7 @@ function createResizeBridgeScript(channelId: string, documentFlow: boolean) {
     '    for (const element of content.querySelectorAll("*")) {',
     '      if (inspected >= 800) break;',
     '      inspected += 1;',
+    '      if (isCollapsedContent(element)) continue;',
     '      const style = getComputedStyle(element);',
     "      if (style.display === 'none' || style.visibility === 'hidden') continue;",
     '      const rect = element.getBoundingClientRect();',
@@ -275,6 +296,7 @@ function createResizeBridgeScript(channelId: string, documentFlow: boolean) {
     '      if (!node) break;',
     '      inspected += 1;',
     '      if (!String(node.textContent || "").trim()) continue;',
+    '      if (isCollapsedContent(node.parentElement)) continue;',
     '      const range = document.createRange();',
     '      range.selectNodeContents(node);',
     '      const rect = range.getBoundingClientRect();',
@@ -285,7 +307,7 @@ function createResizeBridgeScript(channelId: string, documentFlow: boolean) {
     '  const applyCompatibilityLayout = measuredHeight => {',
     '    if (!DOCUMENT_FLOW || !content || compatibilityApplied) return false;',
     '    const textLength = String(content.textContent || "").replace(/\\s+/g, "").length;',
-    '    if (textLength < 20 || measuredHeight > 80) return false;',
+    '    if (textLength < 20 || measuredHeight > 80 || hasVisibleText()) return false;',
     '    compatibilityApplied = true;',
     '    const repairHeight = Math.max(220, Math.min(560, Math.round(window.innerHeight || 320)));',
     "    content.setAttribute('data-pc-frame-compat', 'true');",
@@ -316,7 +338,13 @@ function createResizeBridgeScript(channelId: string, documentFlow: boolean) {
     '      content.offsetHeight || 0,',
     '      Math.ceil(content.getBoundingClientRect().height || bounds.height || 0),',
     '    );',
-    '    const height = DOCUMENT_FLOW && flowHeight <= 80 ? Math.max(flowHeight, getVisualHeight()) : flowHeight;',
+    '    let height = DOCUMENT_FLOW && flowHeight <= 80 ? Math.max(flowHeight, getVisualHeight()) : flowHeight;',
+    '    if (FULL_DOCUMENT) {',
+    '      const style = getComputedStyle(content);',
+    '      const bodyHeight = style.overflowY === "visible" ? flowHeight : bounds.height;',
+    '      height = Math.max(document.documentElement.getBoundingClientRect().height,',
+    '        bounds.top + bodyHeight + (parseFloat(style.marginBottom) || 0));',
+    '    }',
     '    if (applyCompatibilityLayout(height)) {',
     '      reportCompatibility("applied");',
     '      requestAnimationFrame(queueHeight);',
@@ -359,6 +387,7 @@ function createResizeBridgeScript(channelId: string, documentFlow: boolean) {
     '  if (typeof ResizeObserver === "function") {',
     '    const resizeObserver = new ResizeObserver(queueHeight);',
     '    if (content) resizeObserver.observe(content);',
+    '    if (FULL_DOCUMENT) resizeObserver.observe(document.documentElement);',
     '  }',
     '  if (typeof MutationObserver === "function") {',
     '    const mutationObserver = new MutationObserver(queueHeight);',
@@ -384,14 +413,9 @@ function sanitizeFrontendHtml(rawHtml: string, securityMode: FrontendSecurityMod
   if (securityMode !== 'status') stripDangerousNodes(document);
   if (securityMode === 'safe') stripUntrustedBehavior(document);
 
-  if (hasDocumentShell(rawHtml)) {
-    return {
-      bodyHtml: document.body.innerHTML.trim(),
-      headHtml: document.head.innerHTML.trim(),
-    };
-  }
-
   return {
+    document,
+    fullDocument: hasDocumentShell(rawHtml),
     bodyHtml: document.body.innerHTML.trim(),
     headHtml: document.head.innerHTML.trim(),
   };
@@ -410,6 +434,40 @@ export function buildFrontendDocument(rawHtml: string, options: TheaterFrontendB
     options.hostBridge && securityMode !== 'safe' ? `  <script>${createHostBridgeScript()}</script>` : '';
   const diagnostics = `  <script${securityMode === 'safe' ? ` nonce="${nonce}"` : ''}>${createRuntimeDiagnosticsScript(options.channelId)}</script>`;
 
+  if (sanitized.fullDocument) {
+    const document = sanitized.document;
+    if (!document.querySelector('meta[charset]')) {
+      const charset = document.createElement('meta');
+      charset.setAttribute('charset', 'utf-8');
+      document.head.prepend(charset);
+    }
+    if (!document.querySelector('meta[name="viewport"]')) {
+      const viewport = document.createElement('meta');
+      viewport.name = 'viewport';
+      viewport.content = 'width=device-width, initial-scale=1, viewport-fit=cover';
+      document.head.prepend(viewport);
+    }
+    if (!document.querySelector('title')) document.title = title;
+    // Defaults have zero specificity. Authored root styles and direct-child layouts remain authoritative.
+    const defaults = createBaseStyle(options.theme, options.transparentBackground ?? false, true);
+    document.head.insertAdjacentHTML(
+      'afterbegin',
+      [
+        securityMode === 'status' ? '' : `<meta http-equiv="Content-Security-Policy" content="${csp}">`,
+        `<style>${defaults}</style>`,
+        diagnostics,
+        hostBridge,
+        securityMode === 'status' ? `<script>${createStatusBridgeScript()}</script>` : '',
+      ].join('\n'),
+    );
+    document.body.insertAdjacentHTML(
+      'beforeend',
+      `<script${securityMode === 'safe' ? ` nonce="${nonce}"` : ''}>${createResizeBridgeScript(options.channelId, false, true)}</script>`,
+    );
+    const doctype = document.doctype ? new XMLSerializer().serializeToString(document.doctype) : '<!doctype html>';
+    return `${doctype}\n${document.documentElement.outerHTML}`;
+  }
+
   return [
     '<!doctype html>',
     '<html lang="zh-CN">',
@@ -418,7 +476,7 @@ export function buildFrontendDocument(rawHtml: string, options: TheaterFrontendB
     '  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />',
     securityMode === 'status' ? '' : `  <meta http-equiv="Content-Security-Policy" content="${csp}" />`,
     `  <title>${escapeHtmlText(title)}</title>`,
-    `  <style>${createBaseStyle(options.theme)}</style>`,
+    `  <style>${createBaseStyle(options.theme, options.transparentBackground ?? false)}</style>`,
     diagnostics,
     hostBridge,
     securityMode === 'status' ? `  <script>${createStatusBridgeScript()}</script>` : '',

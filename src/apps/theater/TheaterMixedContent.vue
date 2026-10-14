@@ -6,6 +6,7 @@
         document-flow
         embedded
         flush-content
+        transparent-background
         :active="active"
         :content="segment.content"
         :theme="theme"

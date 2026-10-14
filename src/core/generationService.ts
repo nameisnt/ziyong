@@ -32,6 +32,7 @@ import { ensureCurrentScopeRecovery } from '@/util/generationVisibility';
 import { cleanGenerationOutput } from '@/util/generationOutputCleaning';
 import { cleanSavedGenerationReasoning } from '@/util/generationReasoning';
 import { PLUGIN_MACRO_PATTERN, replacePluginMacros, resolvePluginMacro } from '@/util/pluginMacros';
+import { preparePluginPresetMacroConfig } from '@/util/pluginPresetMacros';
 import { mergeGenerationReasoning, normalizeGenerationResponse } from '@/util/generationResult';
 import type { GenerationReferenceItem } from '@/util/references';
 import {
@@ -360,6 +361,12 @@ function captureWithPhoneUserInput(
   signal?: AbortSignal,
   mvuSnapshot: GenerationMvuSnapshot | null = null,
 ) {
+  const macroContext = {
+    aliases: resolveGenerationIdentityAliases(useGenerationAliasesStore()),
+    phoneUserInput,
+    variables,
+    mvuSnapshot,
+  };
   const replaceRegisteredMacros = (content: string) => {
     const aliases = resolveGenerationIdentityAliases(useGenerationAliasesStore());
     let result =
@@ -379,7 +386,12 @@ function captureWithPhoneUserInput(
     variables,
     () =>
       withGenerationMvu(generateConfig, mvuSnapshot, config =>
-        captureTavernPromptPreview(config, 15000, signal, replaceRegisteredMacros),
+        captureTavernPromptPreview(
+          preparePluginPresetMacroConfig(config, macroContext),
+          15000,
+          signal,
+          replaceRegisteredMacros,
+        ),
       ),
     signal,
   );
@@ -410,7 +422,17 @@ function generateWithPluginPreset(
   return runWithPhoneUserInputMacro(
     phoneUserInput,
     variables,
-    () => withGenerationMvu(generateConfig, mvuSnapshot, generateRawSafe),
+    () =>
+      withGenerationMvu(generateConfig, mvuSnapshot, config =>
+        generateRawSafe(
+          preparePluginPresetMacroConfig(config, {
+            aliases: resolveGenerationIdentityAliases(useGenerationAliasesStore()),
+            phoneUserInput,
+            variables,
+            mvuSnapshot,
+          }),
+        ),
+      ),
     signal,
   );
 }

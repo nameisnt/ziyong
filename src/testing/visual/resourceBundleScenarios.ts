@@ -65,13 +65,16 @@ export async function applyResourceBundleScenario(name: string) {
   characters.splice(0, characters.length, { avatar: 'one.png', name: '角色一' }, { avatar: 'two.png', name: '角色二' });
   const runtime = globalThis as unknown as Record<string, unknown>;
   const books = Array.from({ length: 12 }, (_, i) => `世界书-${i}-长名称换行与内部滚动测试`);
+  const serverBooks = [...books];
   runtime.getPresetManager = () => ({
     getPresetList: () => ({ presets: [raw], preset_names: { 酒馆预设: 0 } }),
     getCompletionPresetByName: () => raw,
   });
   runtime.getWorldbookNames = () => books;
   runtime.loadWorldInfo = async () => ({ entries: {} });
-  runtime.updateWorldInfoList = async () => {};
+  runtime.updateWorldInfoList = async () => {
+    books.splice(0, books.length, ...serverBooks);
+  };
   const originalFetch = globalThis.fetch;
   const png = new Uint8Array([137, 80, 78, 71, 13, 10, 26, 10]);
   const chatTargets: string[] = [];
@@ -90,6 +93,7 @@ export async function applyResourceBundleScenario(name: string) {
       return Response.json({ result: '{"user_name":"u","chat_metadata":{}}\n{"mes":"test"}' });
     if (path === '/api/characters/import') {
       const file_name = `bundle-import-${++cardImports}`;
+      if (!serverBooks.includes('角色内嵌世界书')) serverBooks.push('角色内嵌世界书');
       characters.push({ avatar: `${file_name}.png`, name: `Imported ${cardImports}` });
       return Response.json({ file_name });
     }
@@ -100,8 +104,10 @@ export async function applyResourceBundleScenario(name: string) {
     }
     if (path === '/api/chats/rename') return Response.json({ ok: true });
     if (path === '/api/worldinfo/import') {
+      if (((init!.body as FormData).get('avatar') as File).name === '角色内嵌世界书.json')
+        throw new Error('Embedded worldbook was imported twice');
       if (++worldAttempts === 1) return new Response('测试失败：可重试', { status: 500 });
-      books.push('导入世界书');
+      serverBooks.push('导入世界书');
       return Response.json({ name: '导入世界书' });
     }
     return originalFetch(input, init);
@@ -143,6 +149,7 @@ export async function applyResourceBundleScenario(name: string) {
           { id: '4', kind: 'script', name: '随预设脚本', path: 'resources/4.json', parentId: '2' },
           { id: '5', kind: 'worldbook', name: '导入世界书', path: 'resources/5.json' },
           { id: '18', kind: 'theme', name: '导入 UI 主题', path: 'resources/18.json' },
+          { id: '19', kind: 'worldbook', name: '角色内嵌世界书', path: 'resources/19.json' },
         ],
       };
       const files: Record<string, Uint8Array> = {
@@ -152,6 +159,7 @@ export async function applyResourceBundleScenario(name: string) {
         'resources/3.json': encodeJson(raw.extensions.regex_scripts[0]),
         'resources/4.json': encodeJson(raw.extensions.tavern_helper.scripts[0]),
         'resources/5.json': encodeJson({ entries: {} }),
+        'resources/19.json': encodeJson({ entries: {} }),
         'resources/18.json': encodeJson({
           name: '导入 UI 主题',
           custom_css: '@import url("https://example.com/theme.css");',
@@ -179,7 +187,7 @@ export async function applyResourceBundleScenario(name: string) {
       await expect(() => Boolean(document.querySelector('.pc-bundle-error')), 'Malformed ZIP error missing');
       input.files = dt.files;
       input.dispatchEvent(new Event('change', { bubbles: true }));
-      await expect(() => document.querySelectorAll('.pc-bundle-row').length === 17, 'Mixed import preview incomplete');
+      await expect(() => document.querySelectorAll('.pc-bundle-row').length === 18, 'Mixed import preview incomplete');
       const cardRows = [...document.querySelectorAll('.pc-bundle-row')].filter(row =>
         row.querySelector('.pc-field-group'),
       );
@@ -217,6 +225,11 @@ export async function applyResourceBundleScenario(name: string) {
         'Retry failed',
       );
       if (cardImports !== 2 || chatTargets.length !== 12) throw new Error('Retry duplicated successful resources');
+      if (
+        !document.querySelector('.pc-bundle-dialog')?.textContent?.includes('跳过 1') ||
+        serverBooks.filter(book => book === '角色内嵌世界书').length !== 1
+      )
+        throw new Error('Embedded worldbook was not reused');
       if (themes.length !== 2 || !document.querySelector('.pc-bundle-dialog')?.textContent?.includes('请刷新酒馆'))
         throw new Error('Theme import or refresh feedback missing');
       const imported = store.items.find(item => item.name === '导入预设');

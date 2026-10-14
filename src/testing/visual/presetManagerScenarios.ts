@@ -152,10 +152,16 @@ export async function applyPresetManagerVisualScenario(
       },
       `__pc_test__区间分组_${Date.now()}.json`,
     );
-    resetPhoneToRoute('preset-manager', 'detail', '插件预设条目', {
-      presetId: imported.id,
-      presetSource: 'plugin',
-    });
+    const native = name.includes('-native');
+    const nativeName = `__pc_test__点击范围_${Date.now()}`;
+    if (native) await getVisualTavernPresetApi().createPreset(nativeName, imported.raw);
+    const readRaw = () => (native ? getVisualTavernPresetApi().TavernHelper.getPreset(nativeName) : imported.raw);
+    resetPhoneToRoute(
+      'preset-manager',
+      'detail',
+      native ? '预设条目' : '插件预设条目',
+      native ? { presetName: nativeName } : { presetId: imported.id, presetSource: 'plugin' },
+    );
     if (!(await waitForCondition(() => Boolean(document.querySelector('.pc-preset-nodes'))))) {
       throw new Error('Preset range fixture detail did not open');
     }
@@ -188,35 +194,42 @@ export async function applyPresetManagerVisualScenario(
 
     const readRangeState = () =>
       (
-        ((imported.raw.extensions as Record<string, unknown>).baibaiToolkit as Record<string, unknown>)
+        ((readRaw().extensions as Record<string, unknown>).baibaiToolkit as Record<string, unknown>)
           .presetPromptGroups as {
           groups: Array<{ endPromptId: string; selectionMode?: string; startPromptId: string }>;
         }
       ).groups[0];
-    let rangeToggles = document.querySelectorAll<HTMLButtonElement>('.pc-preset-group-range-grid .pc-combobox-toggle');
-    rangeToggles[0]?.click();
-    if (!(await waitForCondition(() => document.querySelectorAll('.pc-combobox-option').length === 4))) {
-      throw new Error('Preset range start options did not open');
-    }
-    document.querySelectorAll<HTMLButtonElement>('.pc-combobox-option')[0]?.click();
-    if (!(await waitForCondition(() => readRangeState()?.startPromptId === 'range-1'))) {
-      throw new Error('Preset range start boundary did not persist');
-    }
-
+    findButton('选择范围', document.querySelector('.pc-preset-group-manager-dialog') || document)?.click();
+    if (!(await waitForElement('.pc-preset-range-picker'))) throw new Error('Range picker did not open');
+    const pick = (id: string) =>
+      document
+        .querySelector<HTMLButtonElement>(
+          `.pc-preset-range-picker [data-preset-prompt-id="${id}"] .pc-preset-prompt-main`,
+        )
+        ?.click();
     if (
-      !(await waitForCondition(() => {
-        const toggles = document.querySelectorAll<HTMLButtonElement>('.pc-preset-group-range-grid .pc-combobox-toggle');
-        return toggles.length === 2 && toggles[1]?.disabled === false;
-      }))
-    ) {
-      throw new Error('Preset range controls did not unlock after saving the start boundary');
-    }
-    rangeToggles = document.querySelectorAll<HTMLButtonElement>('.pc-preset-group-range-grid .pc-combobox-toggle');
-    rangeToggles[1]?.click();
-    if (!(await waitForCondition(() => document.querySelectorAll('.pc-combobox-option').length === 4))) {
-      throw new Error('Preset range end options did not open');
-    }
-    document.querySelectorAll<HTMLButtonElement>('.pc-combobox-option')[2]?.click();
+      document.querySelector(
+        '.pc-preset-range-picker .pc-toggle, .pc-preset-range-picker .pc-preset-drag-handle, .pc-preset-range-picker .pc-preset-copy-btn',
+      )
+    )
+      throw new Error('Range picking exposes unrelated mutations');
+    pick('range-3');
+    await waitForPaint();
+    pick('range-1');
+    await waitForPaint();
+    if (!document.querySelector('.pc-preset-range-error')) throw new Error('Reversed range has no error');
+    if (!findButton('确认范围', document.querySelector('.pc-preset-range-picker') || document)?.disabled)
+      throw new Error('Reversed range can be saved');
+    findButton('重选', document.querySelector('.pc-preset-range-picker') || document)?.click();
+    await waitForPaint();
+    pick('range-1');
+    await waitForPaint();
+    pick('range-3');
+    await waitForPaint();
+    if (readRangeState()?.startPromptId) throw new Error('Range saved before confirmation');
+    if (document.querySelectorAll('.pc-preset-range-picker .range-selected').length !== 3)
+      throw new Error('Range highlight is incomplete');
+    findButton('确认范围', document.querySelector('.pc-preset-range-picker') || document)?.click();
     if (
       !(await waitForCondition(() =>
         Boolean(document.querySelector('.pc-preset-managed-group-row')?.textContent?.includes('3 个条目')),
@@ -237,7 +250,7 @@ export async function applyPresetManagerVisualScenario(
     findButton('确定', document.querySelector('.pc-preset-single-selection') || document)?.click();
     if (
       !(await waitForCondition(() => {
-        const enabled = (imported.raw.prompts as Array<{ enabled?: boolean; id?: unknown }>)
+        const enabled = (readRaw().prompts as Array<{ enabled?: boolean; id?: unknown }>)
           .filter(prompt => prompt.enabled !== false)
           .map(prompt => String(prompt.id ?? ''));
         return readRangeState()?.selectionMode === 'single' && enabled.join(',') === 'range-2,range-4';
@@ -245,6 +258,27 @@ export async function applyPresetManagerVisualScenario(
     ) {
       throw new Error('Preset single-select mode did not retain exactly one grouped prompt');
     }
+    const saved = JSON.stringify(readRaw());
+    if (
+      !(await waitForCondition(
+        () =>
+          findButton('选择范围', document.querySelector('.pc-preset-group-manager-dialog') || document)?.disabled ===
+          false,
+      ))
+    )
+      throw new Error('Range selector stayed busy');
+    findButton('选择范围', document.querySelector('.pc-preset-group-manager-dialog') || document)?.click();
+    if (!(await waitForElement('.pc-preset-range-picker'))) throw new Error('Range picker did not reopen');
+    pick('range-2');
+    await waitForPaint();
+    pick('range-2');
+    await waitForPaint();
+    if (document.querySelectorAll('.pc-preset-range-picker .range-selected').length !== 1)
+      throw new Error('Single-row range failed');
+    window.dispatchEvent(new Event('phone-before-back', { cancelable: true }));
+    await waitForPaint();
+    if (document.querySelector('.pc-preset-range-picker') || JSON.stringify(readRaw()) !== saved)
+      throw new Error('Cancel altered the preset or failed to return');
     await waitForPaint();
     return true;
   }
