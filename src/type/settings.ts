@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 export const ThemeMode = z.enum(['light', 'dark']);
 export type ThemeMode = z.infer<typeof ThemeMode>;
 
@@ -346,3 +347,13 @@ export const Settings = z
   }));
 
 export const setting_field = 'sillytavern_phone';
+=======
+export type Settings = z.infer<typeof Settings>;
+export const Settings = z
+  .object({
+    button_selected: z.boolean().default(false),
+  })
+  .prefault({});
+
+export const setting_field = 'tavern_extension_example';
+>>>>>>> 4f1d688abeae5deac599132e4f1f3af4e81fe335
