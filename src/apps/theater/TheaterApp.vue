@@ -159,6 +159,15 @@
             <span></span>
           </label>
         </div>
+        <button class="pc-soft-btn" type="button" :disabled="generationRunning" @click="typeRegexOpen = true">
+          <i class="fa-solid fa-code"></i>关联正则（{{ generationDraft.displayRuleIds.length }}）
+        </button>
+        <ContentRegexModal
+          v-if="typeRegexOpen"
+          v-model="generationDraft.displayRuleIds"
+          title="类型关联正则"
+          @close="typeRegexOpen = false"
+        />
         <button class="pc-soft-btn" type="button" :disabled="generationRunning" @click="openMacroBuilder">
           <i class="fa-solid fa-wand-magic-sparkles"></i>
           <span>{{ t`宏生成器` }}</span>
@@ -193,7 +202,7 @@
       <template #content="{ displayContent }">
         <TheaterMixedContent
           :active="isOpen"
-          :content="displayContent"
+          :content="applyTypeRegex(displayContent, generationState.preview)"
           :theme="settings.theme"
           :title="generationState.preview.title"
           @navigate-blocked="handleFrameNavigateBlocked"
@@ -229,6 +238,9 @@ import GenerationFormPage from '@/components/GenerationFormPage.vue';
 import GenerationPreviewPage from '@/components/GenerationPreviewPage.vue';
 import SearchableCombobox from '@/components/SearchableCombobox.vue';
 import TheaterTypeGroupField from '@/components/prompts/TheaterTypeGroupField.vue';
+import ContentRegexModal from '@/components/ContentRegexModal.vue';
+import { useRegexDisplayStore } from '@/apps/regex-display/store';
+import { applyRegexDisplayRules, getRegexRulesByIds, contentRegexUsageKey } from '@/util/regexDisplay';
 import TheaterCatalogPage from '@/apps/theater/TheaterCatalogPage.vue';
 import TheaterEntryDetailPage from '@/apps/theater/TheaterEntryDetailPage.vue';
 import TheaterEntryEditorPage from '@/apps/theater/TheaterEntryEditorPage.vue';
@@ -281,6 +293,18 @@ const replaySession = useGenerationReplaySession({
 });
 const { entries, failedDrafts } = storeToRefs(theater);
 const { appPrompts, typePromptGroups, typePrompts } = storeToRefs(prompts);
+const typeRegexOpen = ref(false);
+const regexDisplay = useRegexDisplayStore();
+function applyTypeRegex(content: string, preview: TheaterPreview) {
+  return applyRegexDisplayRules(
+    content,
+    getRegexRulesByIds(
+      regexDisplay.rules,
+      preview.displayRuleIds ?? prompts.getTypePrompt(preview.typeId ?? '')?.displayRuleIds ?? [],
+      'replace',
+    ),
+  ).content;
+}
 
 const query = ref('');
 const typeView = ref<'all' | 'recent'>('recent');
@@ -302,6 +326,7 @@ const draft = reactive({
   typeName: '',
 });
 const generationDraft = reactive({
+  displayRuleIds: [] as string[],
   fromStartEnd: 20,
   rangeText: '',
   recentCount: 20,
@@ -330,6 +355,7 @@ const generationState = reactive({
     targetEntryId: string;
     targetVersionId: string;
     typeId?: string;
+    displayRuleIds?: string[];
     typeName: string;
     warnings: string[];
   },
@@ -537,7 +563,8 @@ const generationTypePromptChanged = computed(() => {
   return Boolean(
     selected &&
     (generationDraft.typePrompt.trim() !== selected.prompt.trim() ||
-      generationDraft.typeGroupId !== (selected.groupId || '')),
+      generationDraft.typeGroupId !== (selected.groupId || '') ||
+      JSON.stringify(generationDraft.displayRuleIds) !== JSON.stringify(selected.displayRuleIds ?? [])),
   );
 });
 const customTypeNameConflict = computed(() => {
@@ -714,6 +741,7 @@ watch(
       generationDraft.typeGroupId = initialTypePrompt?.groupId || '';
       generationDraft.typeName = initialTypePrompt?.name || customTypeName;
       generationDraft.typePrompt = initialTypePrompt?.prompt || '';
+      generationDraft.displayRuleIds = [...(initialTypePrompt?.displayRuleIds ?? [])];
       generationDraft.userRequirement = '';
       generationCustomTypeSelected.value = Boolean(customTypeName && !initialTypePrompt);
       saveCustomTypeToLibrary.value = generationCustomTypeSelected.value;
@@ -792,6 +820,7 @@ function selectGenerationTypePrompt(promptId: string) {
   if (prompt) {
     generationDraft.typeName = prompt.name;
     generationDraft.typePrompt = prompt.prompt;
+    generationDraft.displayRuleIds = [...(prompt.displayRuleIds ?? [])];
     generationDraft.typeGroupId = prompt.groupId || '';
     generationDraft.renderMode = 'markdown';
   }
@@ -806,6 +835,7 @@ function startCustomGenerationType() {
   generationDraft.typeGroupId = '';
   generationDraft.typeName = '';
   generationDraft.typePrompt = '';
+  generationDraft.displayRuleIds = [];
   generationDraft.renderMode = 'markdown';
 }
 
@@ -1035,6 +1065,7 @@ function saveExistingGenerationTypePrompt() {
     groupId: generationDraft.typeGroupId,
     name: selected.name,
     prompt: generationDraft.typePrompt,
+    displayRuleIds: [...generationDraft.displayRuleIds],
   });
   if (!updated) {
     toastr.warning('类型提示词已不存在，无法保存到类型库');
@@ -1059,6 +1090,7 @@ function saveCustomGenerationTypePrompt() {
     groupId: generationDraft.typeGroupId,
     name: generationDraft.typeName,
     prompt: generationDraft.typePrompt,
+    displayRuleIds: [...generationDraft.displayRuleIds],
     renderMode: 'markdown',
   });
   generationDraft.typeId = created.id;
@@ -1172,6 +1204,7 @@ async function runGeneration() {
       targetEntryId: generationTarget.entryId,
       targetVersionId: generationTarget.versionId,
       typeId: generationDraft.typeId || undefined,
+      displayRuleIds: [...generationDraft.displayRuleIds],
       typeName: generationDraft.typeName.trim() || '未分类小剧场',
       warnings: result.warnings,
     };
@@ -1224,6 +1257,14 @@ function savePreview() {
   generationState.preview = null;
   const entry = 'entry' in saved ? saved.entry : saved;
   const versionId = 'version' in saved ? saved.version.id : '';
+  if (
+    preview.displayRuleIds !== undefined &&
+    JSON.stringify(preview.displayRuleIds) !== JSON.stringify(prompts.getTypePrompt(entry.typeId)?.displayRuleIds ?? [])
+  ) {
+    regexDisplay.getUsage(contentRegexUsageKey('theater', [entry.id, versionId])).displayRuleIds = [
+      ...preview.displayRuleIds,
+    ];
+  }
   toastr.success(preview.mode === 'rewrite' ? '已保存并切换到小剧场新版本' : '已保存小剧场');
   phone.replacePage('entry', versionId ? preview.title : entry.title, {
     entryId: entry.id,

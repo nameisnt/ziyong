@@ -4,6 +4,16 @@ export const RUNNING_VERSION = manifest.version;
 export const RELEASE_SEEN_FIELD = 'sillytavern_phone_last_seen_release';
 export const RELEASE_HISTORY = [
   {
+    version: '1.2.15',
+    notes: [
+      '网页正则替换按每次匹配单独补全 HTML 代码围栏，已有完整围栏不重复添加，未匹配正文和文本替换保持不变。',
+      '小剧场类型提示词支持关联正则，生成预览与阅读自动应用；单篇可清空选择或恢复跟随类型，原始内容不改写。',
+      '引用网页时提取静态正文，去除脚本、样式、隐藏内容和界面控件；正则生成的网页引用仍使用原始正文。',
+      '各 App 共用的正则选择弹窗支持分组折叠，显示已选数量，搜索自动展开匹配分组。',
+      '更新说明每5个版本合为一组，最多显示8组，最新组默认展开；录入脚本共用分组规则，完整历史保留。',
+    ],
+  },
+  {
     version: '1.2.14',
     notes: [
       '修复插件预设中 setvar/getvar 等酒馆宏在捕获和生成时原样残留，按条目顺序解析，保留插件称呼、自定义宏和楼层变量处理。',

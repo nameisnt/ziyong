@@ -218,7 +218,31 @@ export function applyRegexDisplayRules(input: string, rules: RegexDisplayRuleLik
       const regex = createDisplayRegex(pattern, rule.flags);
       if (!regex.test(content)) return;
       regex.lastIndex = 0;
-      content = content.replace(regex, rule.replacement);
+      if (rule.renderMode === 'html') {
+        content = content.replace(regex, (...args: unknown[]) => {
+          const named = typeof args.at(-1) === 'object' ? (args.pop() as Record<string, string>) : undefined;
+          const source = args.pop() as string;
+          const offset = args.pop() as number;
+          const matches = args as (string | undefined)[];
+          const replacement = rule.replacement.replace(/\$(\$|&|`|'|\d{1,2}|<[^>]*>)/g, (token, key: string) => {
+            if (key === '$') return '$';
+            if (key === '&') return matches[0]!;
+            if (key === '`') return source.slice(0, offset);
+            if (key === "'") return source.slice(offset + matches[0]!.length);
+            if (key.startsWith('<')) return named ? (named[key.slice(1, -1)] ?? '') : token;
+            const index = Number(key);
+            if (index > 0 && index < matches.length) return matches[index] ?? '';
+            if (key.length === 2 && Number(key[0]) > 0 && Number(key[0]) < matches.length)
+              return (matches[Number(key[0])] ?? '') + key[1];
+            return token;
+          });
+          if (!replacement.trim()) return replacement;
+          const html = replacement.trim();
+          return /^```[^\n]*\r?\n[\s\S]*\r?\n```$/.test(html)
+            ? `\n${html}\n`
+            : `\n\`\`\`html\n${replacement}\n\`\`\`\n`;
+        });
+      } else content = content.replace(regex, rule.replacement);
       applied.push(rule.name.trim() || pattern);
       renderMode = rule.renderMode;
     } catch (caughtError) {

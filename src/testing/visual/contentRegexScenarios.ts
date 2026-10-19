@@ -1,6 +1,8 @@
 import { useRegexDisplayStore } from '@/apps/regex-display/store';
 import { useSettingsStore } from '@/store/settings';
 import { useTheaterStore } from '@/store/theater';
+import { usePromptStore } from '@/store/prompts';
+import { referenceText } from '@/util/referenceText';
 import { contentRegexUsageKey } from '@/util/regexDisplay';
 
 type Context = {
@@ -118,7 +120,66 @@ export async function applyContentRegexScenario(name: string, context: Context) 
     return true;
   }
 
-  const rule = store.addRule({ name: '雨夜替换', pattern: '雨夜', replacement: '晴天' });
+  if (name.includes('type-binding')) {
+    const prompts = usePromptStore();
+    const rule = store.addRule({
+      name: '角色档案网页',
+      pattern: '角色档案:[^\\n]+',
+      flags: 'g',
+      renderMode: 'html',
+      replacement: '<article><h2>$&</h2><button onclick="this.textContent=\'已展开\'">展开</button></article>',
+    });
+    const type = prompts.createTypePrompt({ domain: 'theater', name: '档案测试', prompt: '角色档案' });
+    resetPhoneToRoute('prompts', 'type-editor', '类型编辑', { promptId: type.id });
+    await waitForPaint();
+    await click('关联正则（0）');
+    document.querySelector<HTMLInputElement>('.pc-content-regex-list input[type=checkbox]')?.click();
+    await click('完成');
+    await click('保存');
+    if (prompts.getTypePrompt(type.id)?.displayRuleIds?.[0] !== rule.id) throw new Error('Type binding not saved');
+    const theater = useTheaterStore();
+    const raw = '开场正文\n角色档案:米娅\n角色档案:凯奥斯\n结束正文';
+    const entry = theater.createEntry({
+      title: '绑定测试',
+      typeId: type.id,
+      typeName: type.name,
+      content: raw,
+      renderMode: 'markdown',
+    });
+    resetPhoneToRoute('theater', 'entry', '绑定测试', { entryId: entry.id });
+    await wait(
+      () => document.querySelectorAll('.pc-theater-mixed-content iframe').length === 2,
+      'Two independent frames missing',
+    );
+    await click('阅读工具');
+    await click('正则替换');
+    await click('清除选择');
+    await click('完成');
+    await wait(
+      () => !document.querySelector('.pc-theater-mixed-content iframe'),
+      'Explicit empty choice did not override type',
+    );
+    resetPhoneToRoute('theater', 'entry', '绑定测试', { entryId: entry.id });
+    await waitForPaint();
+    if (document.querySelector('.pc-theater-mixed-content iframe')) throw new Error('Empty override lost');
+    await click('阅读工具');
+    await click('正则替换');
+    await click('跟随类型');
+    await click('完成');
+    await wait(() => document.querySelectorAll('.pc-theater-mixed-content iframe').length === 2, 'Follow type failed');
+    if (theater.getEntry(entry.id)!.content !== raw || referenceText(raw) !== raw) throw new Error('Source modified');
+    const text = referenceText(
+      '<html><head><title>UI title</title></head><body><style>.x{color:red}</style><script>throw Error("executed")</script><div hidden>hidden secret</div><p>正文一</p><p>正文二</p><button>关闭</button></body></html>',
+    );
+    if (text !== '正文一\n\n正文二') throw new Error(`Reference extraction failed: ${text}`);
+    if (referenceText('```html\n<div id="empty"></div><script>build()</script>\n```'))
+      throw new Error('Empty document leaked script');
+    if (!referenceText('前文\n```html\n<p>网页正文</p>\n```\n后文').includes('网页正文'))
+      throw new Error('Mixed reference lost');
+    return true;
+  }
+
+  const rule = store.addRule({ name: '雨夜替换', pattern: '雨夜', replacement: '晴天', renderMode: 'text' });
   store.setDisplayRuleEnabled('theater', rule.id, true);
   const theater = useTheaterStore();
   theater.resetCurrentScope();
@@ -203,6 +264,29 @@ export async function applyContentRegexScenario(name: string, context: Context) 
   await click('阅读工具');
   await click('正则替换');
   await checkScroll('.pc-content-regex-list');
+  const groupToggle = document.querySelector<HTMLButtonElement>('.pc-content-regex-group-toggle')!;
+  const groupBody = groupToggle.nextElementSibling as HTMLElement;
+  const checkbox = groupBody.querySelector<HTMLInputElement>('input[type=checkbox]')!;
+  checkbox.click();
+  await waitForPaint();
+  const selectedBeforeFold = checkbox.checked;
+  groupToggle.click();
+  await waitForPaint();
+  if (groupToggle.getAttribute('aria-expanded') !== 'false' || groupBody.getClientRects().length)
+    throw new Error('Regex group did not collapse');
+  if (checkbox.checked !== selectedBeforeFold) throw new Error('Collapsing changed rule selection');
+  groupToggle.click();
+  await waitForPaint();
+  if (!groupBody.getClientRects().length || checkbox.checked !== selectedBeforeFold)
+    throw new Error('Expanding lost rule selection');
+  groupToggle.click();
+  await waitForPaint();
+  const search = document.querySelector<HTMLInputElement>('[aria-label="搜索替换规则"]')!;
+  search.value = '替换规则';
+  search.dispatchEvent(new Event('input', { bubbles: true }));
+  await waitForPaint();
+  if (document.querySelector('.pc-content-regex-group-toggle')?.getAttribute('aria-expanded') !== 'true')
+    throw new Error('Search did not expand matching regex group');
   document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
   await wait(() => !document.querySelector('.pc-content-regex-dialog'), 'Escape did not close regex selection');
   await click('阅读工具');

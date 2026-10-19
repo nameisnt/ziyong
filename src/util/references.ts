@@ -1,3 +1,5 @@
+import { referenceText } from './referenceText';
+
 export type GenerationReferenceItem = {
   content: string;
   id: string;
@@ -9,7 +11,7 @@ export type GenerationReferenceItem = {
 };
 
 function normalizeContent(value: string) {
-  return value.trim();
+  return referenceText(value);
 }
 
 export function formatGenerationReferences(items: GenerationReferenceItem[]) {

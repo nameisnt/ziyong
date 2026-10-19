@@ -131,6 +131,7 @@
 <script setup lang="ts">
 import { getRegisteredPhoneAppReferenceCatalog, type PhoneReferenceTreeNode } from '@/core/appRegistry';
 import type { GenerationReferenceItem } from '@/util/references';
+import { referenceText } from '@/util/referenceText';
 import { defineComponent, h, type PropType } from 'vue';
 
 const ReferenceTreeNode = defineComponent({
@@ -353,6 +354,14 @@ function toggleBranch(id: string) {
 
 function toggleLeaf(item: GenerationReferenceItem) {
   if (props.disabled) return;
+  if (!selectedIds.value.has(item.id) || props.insertMode) {
+    const content = referenceText(item.content);
+    if (!content) {
+      toastr.warning('没有可引用的正文');
+      return;
+    }
+    item = { ...item, content };
+  }
   if (props.insertMode) {
     emit('insert', item);
     return;

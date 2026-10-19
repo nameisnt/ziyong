@@ -177,6 +177,8 @@ export function createVisualScenarioGroups(rootAppScenarios: string[]): VisualSc
         'regex-display-preview',
         'regex-display-crud',
         'content-regex-import',
+        'content-regex-type-binding',
+        'content-regex-type-binding-dark',
         'content-regex-import-dark',
         'content-regex-selection',
         'content-regex-selection-dark',

@@ -584,7 +584,7 @@ async function runInteractionChecks(page, scenario) {
   if (scenario.startsWith('archive-delete-confirm')) {
     const dialog = page.getByRole('dialog', { name: '删除聊天', exact: true });
     const checks = dialog.getByRole('checkbox');
-    if (await checks.count() !== 2 || await checks.nth(0).isChecked() || await checks.nth(1).isChecked()) {
+    if ((await checks.count()) !== 2 || (await checks.nth(0).isChecked()) || (await checks.nth(1).isChecked())) {
       findings.push({ severity: 'fail', message: '删除聊天的两个清理选项未默认关闭' });
     }
     await dialog.getByText('同时删除所选聊天的插件内容及聊天专属配置', { exact: true }).click();
@@ -595,12 +595,16 @@ async function runInteractionChecks(page, scenario) {
     if (await dialog.count()) findings.push({ severity: 'fail', message: '取消没有关闭删除聊天弹窗' });
   }
   try {
-    if (/^(entry-library-bindings|card-writer-labels|timekeeper-labels|archive-delete-confirm|preset-catalog-delete)/.test(scenario)) {
+    if (
+      /^(entry-library-bindings|card-writer-labels|timekeeper-labels|archive-delete-confirm|preset-catalog-delete)/.test(
+        scenario,
+      )
+    ) {
       await checkLabelInteractions(page, scenario);
     }
     if (scenario.startsWith('preset-catalog-delete')) {
       const checks = page.getByRole('checkbox', { name: /^选择预设 临时整份删除/u });
-      if (await checks.count() !== 2) throw new Error('Missing whole preset fixtures');
+      if ((await checks.count()) !== 2) throw new Error('Missing whole preset fixtures');
       await checks.nth(0).check();
       await checks.nth(1).check();
       await page.locator('.pc-preset-catalog-bulk').getByRole('button', { name: '删除所选' }).click();
@@ -608,7 +612,8 @@ async function runInteractionChecks(page, scenario) {
       const remove = dialog.getByRole('button', { name: '删除所选' });
       if (!(await remove.isDisabled())) throw new Error('Destructive confirmation must start unchecked');
       await dialog.getByText('确认删除以上 2 个对象，此操作不可撤销', { exact: true }).click();
-      if (!(await dialog.getByRole('checkbox', { name: '确认删除以上对象' }).isChecked())) throw new Error('Confirmation label did not select the checkbox');
+      if (!(await dialog.getByRole('checkbox', { name: '确认删除以上对象' }).isChecked()))
+        throw new Error('Confirmation label did not select the checkbox');
       await remove.click();
       await dialog.getByText('处理完成 2 / 2', { exact: true }).waitFor();
       if ((await dialog.textContent()).includes('未删除')) throw new Error('Fixture deletion failed');
@@ -620,11 +625,11 @@ async function runInteractionChecks(page, scenario) {
       const before = await rows.count();
       const bar = page.locator('.pc-worldbook-bulk-footer');
       await bar.getByRole('button', { name: '全选', exact: true }).click();
-      if (await rows.locator('input:checked').count() !== before) throw new Error('Worldbook all selection failed');
+      if ((await rows.locator('input:checked').count()) !== before) throw new Error('Worldbook all selection failed');
       await bar.getByRole('button', { name: '删除所选' }).click();
       const notice = page.locator('.pc-phone-notice[role="dialog"]');
       await notice.getByRole('button', { name: '取消', exact: true }).click();
-      if (await rows.locator('input:checked').count() !== before) throw new Error('Cancel lost selection');
+      if ((await rows.locator('input:checked').count()) !== before) throw new Error('Cancel lost selection');
       await bar.getByRole('button', { name: '删除所选' }).click();
       await notice.getByRole('button', { name: '删除所选', exact: true }).click();
       await page.waitForFunction(() => document.querySelectorAll('.pc-worldbook-entry').length === 0);
@@ -641,10 +646,14 @@ async function runInteractionChecks(page, scenario) {
       await bar.getByRole('button', { name: '删除所选' }).click();
       const notice = page.locator('.pc-phone-notice[role="dialog"]');
       await notice.getByRole('button', { name: '取消', exact: true }).click();
-      if (await rows.locator('input[type="checkbox"]:checked').count() !== selected) throw new Error('Cancel lost selection');
+      if ((await rows.locator('input[type="checkbox"]:checked').count()) !== selected)
+        throw new Error('Cancel lost selection');
       await bar.getByRole('button', { name: '删除所选' }).click();
       await notice.getByRole('button', { name: '删除所选', exact: true }).click();
-      await page.waitForFunction(count => document.querySelectorAll('.pc-preset-prompt-row').length === count, before - selected);
+      await page.waitForFunction(
+        count => document.querySelectorAll('.pc-preset-prompt-row').length === count,
+        before - selected,
+      );
     }
     if (scenario.startsWith('recovery-settings-duplicates')) {
       const radios = page.locator('.pc-recovery-cleanup-item input[type="radio"]');
@@ -918,6 +927,14 @@ async function runInteractionChecks(page, scenario) {
       }
     }
 
+    if (scenario.startsWith('content-regex-type-binding')) {
+      for (let index = 0; index < 2; index++) {
+        const frame = page.frameLocator('.pc-theater-mixed-content iframe').nth(index);
+        await frame.getByRole('button', { name: '展开', exact: true }).click();
+        if ((await frame.getByRole('button', { name: '已展开', exact: true }).count()) !== 1)
+          findings.push({ severity: 'fail', message: '角色网页脚本按钮未执行' });
+      }
+    }
     if (scenario === 'status-display-mvu') {
       const frame = page.frameLocator('.pc-status-display-app iframe');
       if ((await frame.locator('#status-mvu-bridge-result').textContent()) !== '正在城镇休息') {
@@ -1403,8 +1420,15 @@ async function main() {
       args: options.listOnly ? ['--allow-file-access-from-files'] : [],
     });
     const page = await browser.newPage();
-    await page.route('**/scripts/group-chats.js', route => route.fulfill({ contentType: 'application/javascript', body: 'export const groups=[]; export async function getGroups() {}' }));
-    await page.route('**/script.js', route => route.fulfill({ contentType: 'application/javascript', body: 'export const isGenerating=()=>false;' }));
+    await page.route('**/scripts/group-chats.js', route =>
+      route.fulfill({
+        contentType: 'application/javascript',
+        body: 'export const groups=[]; export async function getGroups() {}',
+      }),
+    );
+    await page.route('**/script.js', route =>
+      route.fulfill({ contentType: 'application/javascript', body: 'export const isGenerating=()=>false;' }),
+    );
     page.setDefaultTimeout(10_000);
     page.setDefaultNavigationTimeout(15_000);
     await page.setViewportSize({ height: 780, width: 520 });

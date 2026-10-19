@@ -9,6 +9,7 @@
       display-app-id="theater"
       :display-identity="[entry.id, viewedVersionId]"
       :display-versions="entry.versions"
+      :inherited-display-rule-ids="prompts.getTypePrompt(entry.typeId)?.displayRuleIds ?? []"
       :favorite-active="entry.favorite"
       :next-disabled="!nextEntryId"
       :previous-disabled="!previousEntryId"
@@ -95,6 +96,8 @@
 </template>
 
 <script setup lang="ts">
+import { usePromptStore } from '@/store/prompts';
+const prompts = usePromptStore();
 import CapsuleTag from '@/components/CapsuleTag.vue';
 import CatalogModal from '@/components/CatalogModal.vue';
 import TheaterMixedContent from '@/apps/theater/TheaterMixedContent.vue';

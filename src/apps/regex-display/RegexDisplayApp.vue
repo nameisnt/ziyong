@@ -247,14 +247,19 @@
               <span v-for="error in previewResult.errors" :key="error">{{ error }}</span>
             </div>
             <div class="pc-preview-box">
-              <FrontendFrame
-                v-if="previewResult.renderMode === 'html'"
-                :active="true"
-                :content="previewResult.content"
-                security-mode="safe"
-                :theme="settingsStore.settings.theme"
-                title="正则显示预览"
-              />
+              <template v-if="previewResult.renderMode === 'html'">
+                <template v-for="(segment, index) in previewSegments" :key="index">
+                  <FrontendFrame
+                    v-if="segment.kind === 'html'"
+                    :active="true"
+                    :content="segment.content"
+                    security-mode="safe"
+                    :theme="settingsStore.settings.theme"
+                    title="正则显示预览"
+                  />
+                  <pre v-else>{{ segment.content }}</pre>
+                </template>
+              </template>
               <pre v-else>{{ previewResult.content || '暂无预览内容' }}</pre>
             </div>
           </section>
@@ -276,6 +281,7 @@ import { useBulkSelection } from '@/composables/useBulkSelection';
 import RegexImportModal from './RegexImportModal.vue';
 import EmptyState from '@/components/EmptyState.vue';
 import FrontendFrame from '@/components/FrontendFrame.vue';
+import { parseTheaterContentSegments } from '@/util/theaterMixedContent';
 import InfoHint from '@/components/InfoHint.vue';
 import SearchableCombobox from '@/components/SearchableCombobox.vue';
 import { usePhoneStore } from '@/store/phone';
@@ -331,6 +337,11 @@ const previewResult = computed(() => {
     ? extractWithRegexRules(settings.value.previewInput, [activeRule.value])
     : applyRegexDisplayRules(settings.value.previewInput, [activeRule.value]);
 });
+const previewSegments = computed(() =>
+  activeRule.value?.operation === 'extract'
+    ? [{ kind: 'html', content: previewResult.value.content }]
+    : parseTheaterContentSegments(previewResult.value.content),
+);
 const previewSummary = computed(() =>
   previewResult.value.errors.length
     ? `${previewResult.value.errors.length} 个错误`

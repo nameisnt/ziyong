@@ -68,6 +68,13 @@ test('release script creates next patch, preserves history and escapes note text
   const notes = ['说明包含 "引号"、\'单引号\'、\\路径、`代码` 和 ${text}', '第一行\n第二行'];
   const result = await updateReleaseNotes({ root, notes });
   assert.equal(result.version, '1.2.2');
+  assert.deepEqual(result.display, {
+    versionsPerGroup: 5,
+    maxGroups: 8,
+    groups: [['1.2.2', '1.2.1', '1.2.0']],
+    hiddenVersions: 0,
+    totalVersions: 3,
+  });
   const [manifest, pkg, source] = await contents(root);
   assert.deepEqual(JSON.parse(manifest), { version: '1.2.2', display_name: '测试插件' });
   assert.deepEqual(JSON.parse(pkg), { name: 'fixture', version: '1.2.2', scripts: { test: 'keep' } });
@@ -80,6 +87,25 @@ test('release script creates next patch, preserves history and escapes note text
   assert.equal(module.untouched(), 'unchanged');
   assert.ok(source.includes('// Keep this comment.'));
   assert.ok(source.includes('\r\n'));
+});
+
+test('release script keeps history beyond the eight visible groups', async t => {
+  const root = await fixture(t);
+  const older = Array.from({ length: 45 }, (_, index) => ({ version: `1.1.${44 - index}`, notes: [`note ${index}`] }));
+  const releases = [{ version: '1.2.1', notes: ['current'] }, ...older];
+  const entries = releases.map(
+    release => `{ version: ${JSON.stringify(release.version)}, notes: ${JSON.stringify(release.notes)} }`,
+  );
+  await writeFile(join(root, files[2]), `export const RELEASE_HISTORY = [${entries.join(',')}] as const;`);
+  const before = await contents(root);
+  const preview = await updateReleaseNotes({ root, notes: ['new'], dryRun: true });
+  assert.equal(preview.display.groups.length, 8);
+  assert.equal(preview.display.hiddenVersions, 7);
+  assert.equal(preview.display.totalVersions, 47);
+  assert.deepEqual(await contents(root), before);
+  const result = await updateReleaseNotes({ root, notes: ['new'] });
+  assert.deepEqual(result.display, preview.display);
+  assert.deepEqual((await history(root)).RELEASE_HISTORY.slice(1), releases);
 });
 
 test('explicit version and dry run do not change files until applied', async t => {

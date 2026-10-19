@@ -27,6 +27,7 @@ export const TypePromptConfigSchema = z.object({
   charReplacement: z.string().default(''),
   groupId: z.string().default(''),
   renderMode: z.enum(['markdown', 'frontend']).optional(),
+  displayRuleIds: z.array(z.string()).optional(),
   userReplacement: z.string().default(''),
   usageCount: z.number().int().nonnegative().default(0),
   createdAt: z.string(),
@@ -646,7 +647,9 @@ export const usePromptStore = defineStore('prompts', () => {
 
   function createTypePrompt(
     input: Pick<TypePromptConfig, 'domain' | 'name' | 'prompt'> &
-      Partial<Pick<TypePromptConfig, 'charReplacement' | 'groupId' | 'renderMode' | 'userReplacement'>>,
+      Partial<
+        Pick<TypePromptConfig, 'charReplacement' | 'groupId' | 'renderMode' | 'userReplacement' | 'displayRuleIds'>
+      >,
   ) {
     const timestamp = nowIso();
     const item: TypePromptConfig = {
@@ -657,6 +660,7 @@ export const usePromptStore = defineStore('prompts', () => {
       charReplacement: input.charReplacement?.trim() || '',
       groupId: input.groupId?.trim() || '',
       renderMode: undefined,
+      displayRuleIds: input.displayRuleIds,
       userReplacement: input.userReplacement?.trim() || '',
       usageCount: 0,
       createdAt: timestamp,
@@ -669,7 +673,9 @@ export const usePromptStore = defineStore('prompts', () => {
   function updateTypePrompt(
     promptId: string,
     input: Pick<TypePromptConfig, 'domain' | 'name' | 'prompt'> &
-      Partial<Pick<TypePromptConfig, 'charReplacement' | 'groupId' | 'renderMode' | 'userReplacement'>>,
+      Partial<
+        Pick<TypePromptConfig, 'charReplacement' | 'groupId' | 'renderMode' | 'userReplacement' | 'displayRuleIds'>
+      >,
   ) {
     const item = getTypePrompt(promptId);
     if (!item) return null;
@@ -679,6 +685,7 @@ export const usePromptStore = defineStore('prompts', () => {
     item.charReplacement = input.charReplacement?.trim() || '';
     item.groupId = input.groupId?.trim() || '';
     item.renderMode = undefined;
+    if (input.displayRuleIds !== undefined) item.displayRuleIds = [...input.displayRuleIds];
     item.userReplacement = input.userReplacement?.trim() || '';
     item.updatedAt = nowIso();
     return item;

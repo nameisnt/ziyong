@@ -1,4 +1,5 @@
 import { RUNNING_VERSION, RELEASE_SEEN_FIELD, RELEASE_HISTORY } from '@/core/releaseInfo';
+import { groupReleaseHistory } from '@/core/releaseGroups.mjs';
 import { usePhoneStore } from '@/store/phone';
 import { useSettingsStore } from '@/store/settings';
 import { extension_settings } from '@sillytavern/scripts/extensions';
@@ -61,19 +62,22 @@ export async function applyReleaseVisualScenario(name: string) {
     const check = () => panel().querySelector<HTMLButtonElement>('button')!;
     assert(panel().textContent?.includes(RUNNING_VERSION), 'Missing runtime version');
     const releases = [...panel().querySelectorAll<HTMLElement>('[data-release-version]')];
-    assert(releases.length === RELEASE_HISTORY.length, 'Missing historical release notes');
+    const groups = groupReleaseHistory(RELEASE_HISTORY);
+    assert(releases.length === groups.flat().length, 'Incorrect visible release count');
     for (const [index, section] of releases.entries()) {
       assert(section.dataset.releaseVersion === RELEASE_HISTORY[index].version, 'Release order is incorrect');
       assert(section.querySelectorAll('li').length === RELEASE_HISTORY[index].notes.length, 'Release notes omitted');
-      const disclosure = section.querySelector<HTMLDetailsElement>('details');
-      const notes = section.querySelector<HTMLElement>('ul')!;
-      if (section.dataset.releaseVersion === RUNNING_VERSION) {
-        assert(!disclosure && notes.checkVisibility(), 'Current release must remain expanded');
-        continue;
-      }
-      assert(disclosure && !disclosure.open && !notes.checkVisibility(), 'History must start collapsed');
+    }
+    const disclosures = [...panel().querySelectorAll<HTMLDetailsElement>('.pc-release-history')];
+    assert(disclosures.length === groups.length && disclosures.length <= 8, 'Incorrect release group count');
+    for (const [index, disclosure] of disclosures.entries()) {
+      const notes = disclosure.querySelector<HTMLElement>('ul')!;
+      assert(disclosure.open === (index === 0), 'Incorrect initial group state');
       const summary = disclosure!.querySelector<HTMLElement>('summary')!;
       summary.scrollIntoView({ block: 'center' });
+      if (disclosure.open) summary.click();
+      await waitForVisualPaint();
+      assert(!notes.checkVisibility(), 'Closed group still shows notes');
       summary.click();
       await waitForVisualPaint();
       assert(disclosure!.open && notes.checkVisibility(), 'History did not expand');
@@ -81,7 +85,7 @@ export async function applyReleaseVisualScenario(name: string) {
       await waitForVisualPaint();
       assert(!disclosure!.open && !notes.checkVisibility(), 'History did not collapse');
     }
-    const oldest = releases.at(-1)!;
+    const oldest = disclosures.at(-1)!;
     oldest.scrollIntoView({ block: 'start' });
     await waitForVisualPaint();
     const body = document.querySelector<HTMLElement>('.pc-settings-panels')!;

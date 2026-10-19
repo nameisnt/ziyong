@@ -19,7 +19,7 @@
       <slot name="version-navigation"></slot>
     </div>
 
-    <RegexErrorDisclosure :errors="displayResult.errors" />
+    <RegexErrorDisclosure :errors="displayErrors" />
     <article class="pc-detail-card pc-reader-detail-card">
       <slot name="kicker"></slot>
       <template v-if="customContent">
@@ -167,6 +167,7 @@
     <ContentRegexModal
       v-if="regexOpen && regexUsageKey"
       :usage-key="regexUsageKey"
+      :inherited-ids="inheritedDisplayRuleIds"
       :content="content"
       @close="regexOpen = false"
     />
@@ -203,6 +204,7 @@ const props = withDefaults(
     displayAppId?: string;
     displayIdentity?: (string | number)[];
     displayVersions?: { id: string; origin: string }[];
+    inheritedDisplayRuleIds?: string[];
     editDisabled?: boolean;
     editEnabled?: boolean;
     editLabel?: string;
@@ -239,6 +241,7 @@ const props = withDefaults(
     displayAppId: '',
     displayIdentity: () => [],
     displayVersions: () => [],
+    inheritedDisplayRuleIds: undefined,
     editDisabled: false,
     editEnabled: true,
     editLabel: '编辑',
@@ -312,7 +315,7 @@ watch(regexUsageKey, () => {
 const displayRules = computed(() =>
   getRegexRulesByIds(
     regexDisplay.rules,
-    regexDisplay.settings.usages[regexUsageKey.value]?.displayRuleIds ?? [],
+    regexDisplay.settings.usages[regexUsageKey.value]?.displayRuleIds ?? props.inheritedDisplayRuleIds ?? [],
     'replace',
   ),
 );
@@ -320,6 +323,11 @@ const simplified = ref(false);
 const simplifying = ref(false);
 const simplifyText = shallowRef<(text: string) => string>(text => text);
 const displayResult = computed(() => applyRegexDisplayRules(props.content, displayRules.value));
+const displayErrors = computed(() => {
+  const ids = regexDisplay.settings.usages[regexUsageKey.value]?.displayRuleIds ?? props.inheritedDisplayRuleIds ?? [];
+  const missing = ids.filter(id => !regexDisplay.rules.some(rule => rule.id === id));
+  return [...displayResult.value.errors, ...missing.map(id => `关联正则已不存在：${id}`)];
+});
 const displayContent = computed(() => {
   const content = displayResult.value.content;
   return simplified.value ? simplifyText.value(content) : content;

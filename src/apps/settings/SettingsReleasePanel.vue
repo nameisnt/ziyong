@@ -15,28 +15,29 @@
         </button>
       </div>
     </section>
-    <section
-      v-for="release in RELEASE_HISTORY"
-      :key="release.version"
-      class="pc-page-section"
-      :data-release-version="release.version"
-    >
-      <template v-if="release.version === RUNNING_VERSION">
-        <div class="pc-section-head">
-          <strong>本版更新</strong><span>{{ release.version }}</span>
-        </div>
-        <ul>
-          <li v-for="note in release.notes" :key="note">{{ note }}</li>
-        </ul>
-      </template>
-      <details v-else class="pc-release-history">
+    <section v-for="(group, index) in releaseGroups" :key="group[0].version" class="pc-page-section">
+      <details class="pc-release-history" :open="index === 0">
         <summary class="pc-section-head pc-soft-btn">
-          <strong><i class="fa-solid fa-chevron-right" aria-hidden="true"></i>历史更新</strong>
-          <span>{{ release.version }}</span>
+          <strong
+            ><i class="fa-solid fa-chevron-right" aria-hidden="true"></i
+            >{{ index === 0 ? '最近更新' : '历史更新' }}</strong
+          >
+          <span>{{ group[0].version }}{{ group.length > 1 ? ` ~ ${group[group.length - 1].version}` : '' }}</span>
         </summary>
-        <ul>
-          <li v-for="note in release.notes" :key="note">{{ note }}</li>
-        </ul>
+        <section
+          v-for="release in group"
+          :key="release.version"
+          class="pc-release-version"
+          :data-release-version="release.version"
+        >
+          <div class="pc-section-head">
+            <strong>{{ release.version === RUNNING_VERSION ? '本版更新' : '版本更新' }}</strong
+            ><span>{{ release.version }}</span>
+          </div>
+          <ul>
+            <li v-for="note in release.notes" :key="note">{{ note }}</li>
+          </ul>
+        </section>
       </details>
     </section>
   </div>
@@ -45,9 +46,11 @@
 <script setup lang="ts">
 import { checkExtensionUpdate, type ExtensionUpdateStatus } from '@/apps/extension-transfer/api';
 import { RELEASE_HISTORY, RUNNING_VERSION } from '@/core/releaseInfo';
+import { groupReleaseHistory } from '@/core/releaseGroups.mjs';
 import { usePhoneStore } from '@/store/phone';
 
 const phone = usePhoneStore();
+const releaseGroups = groupReleaseHistory(RELEASE_HISTORY);
 const checking = ref(false);
 const status = ref<ExtensionUpdateStatus | ''>('');
 const error = ref('');
@@ -108,7 +111,7 @@ function openUpdater() {
 .pc-release-history[open] > summary i {
   transform: rotate(90deg);
 }
-.pc-release-history[open] > ul {
+.pc-release-version {
   padding-top: 12px;
 }
 </style>

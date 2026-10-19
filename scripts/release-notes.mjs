@@ -4,6 +4,7 @@ import { readFile, writeFile } from 'node:fs/promises';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { format, resolveConfig } from 'prettier';
+import { groupReleaseHistory, RELEASE_GROUP_SIZE, RELEASE_GROUP_LIMIT } from '../src/core/releaseGroups.mjs';
 import {
   createSourceFile,
   ScriptTarget,
@@ -156,14 +157,23 @@ export async function updateReleaseNotes({ root = defaultRoot, notes, append = f
     for (let i = 0; i < paths.length; i += 1)
       if (contents[i] !== originals[i]) await writeFile(paths[i], contents[i], 'utf8');
   }
-  return { version: targetVersion, mode: append ? 'append' : 'new', dryRun, notes, changedFiles };
+  const releases = readHistory(nextSource).releases;
+  const groups = groupReleaseHistory(releases);
+  const display = {
+    versionsPerGroup: RELEASE_GROUP_SIZE,
+    maxGroups: RELEASE_GROUP_LIMIT,
+    groups: groups.map(group => group.map(release => release.version)),
+    hiddenVersions: releases.length - groups.flat().length,
+    totalVersions: releases.length,
+  };
+  return { version: targetVersion, mode: append ? 'append' : 'new', dryRun, notes, changedFiles, display };
 }
 
 async function main() {
   const options = parseReleaseArgs(process.argv.slice(2));
   if (options.help) {
     console.log(
-      'pnpm release:notes --note "说明一" --note "说明二" [--version 1.3.0] [--dry-run]\npnpm release:notes --append --note "补充说明"\n不传 --note 时从标准输入逐行读取。默认递增 patch；追加仅限尚未进入 Git 提交的当前版本。不会打包、提交或推送。',
+      'pnpm release:notes --note "说明一" --note "说明二" [--version 1.3.0] [--dry-run]\npnpm release:notes --append --note "补充说明"\n不传 --note 时从标准输入逐行读取。默认递增 patch；追加仅限尚未进入 Git 提交的当前版本。界面每5个版本一组，最多8组，全部历史保留。不会打包、提交或推送。',
     );
     return;
   }

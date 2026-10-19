@@ -12,6 +12,39 @@ const compiled = transpileModule(source, {
 }).outputText;
 const regex = await import(`data:text/javascript;base64,${Buffer.from(compiled).toString('base64')}`);
 
+test('HTML replacements fence each match, preserve surrounding text and native substitutions', () => {
+  const input = 'before Alice and Bob after';
+  const rule = {
+    name: 'cards',
+    pattern: '(Alice)|(Bob)',
+    flags: 'g',
+    renderMode: 'html',
+    replacement: '<p>$&:$1:$2:$$:$0</p>',
+  };
+  assert.equal(
+    regex.applyRegexDisplayRules(input, [rule]).content,
+    'before \n```html\n<p>Alice:Alice::$:$0</p>\n```\n and \n```html\n<p>Bob::Bob:$:$0</p>\n```\n after',
+  );
+  for (const replacement of ["$`-$&-$'", '$12/$01/$99', '$<name>/$<missing>']) {
+    const pattern = /(?<name>Alice)/;
+    const native = input.replace(pattern, replacement);
+    const expanded = native.slice(7, native.length - ' and Bob after'.length);
+    assert.equal(
+      regex.applyRegexDisplayRules(input, [{ ...rule, pattern: pattern.source, flags: '', replacement }]).content,
+      `before \n\`\`\`html\n${expanded}\n\`\`\`\n and Bob after`,
+    );
+  }
+  assert.equal(
+    regex.applyRegexDisplayRules('Alice', [{ ...rule, replacement: '```html\n<p>Alice</p>\n```' }]).content,
+    '\n```html\n<p>Alice</p>\n```\n',
+  );
+  assert.equal(regex.applyRegexDisplayRules('Alice', [{ ...rule, replacement: '' }]).content, '');
+  assert.equal(
+    regex.applyRegexDisplayRules('Alice', [{ ...rule, renderMode: 'text', replacement: '$&' }]).content,
+    'Alice',
+  );
+});
+
 test('content cleanup matches structured identities, preserving other apps, entries and versions', () => {
   const key = regex.contentRegexUsageKey;
   const usages = Object.fromEntries(

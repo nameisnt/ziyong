@@ -16,6 +16,15 @@
       <input v-model="draft.name" class="pc-field" type="text" :placeholder="t`类型名称`" />
       <TheaterTypeGroupField v-if="draft.domain === 'theater'" v-model="draft.groupId" />
       <textarea v-model="draft.prompt" class="pc-area pc-area-long" :placeholder="t`类型提示词正文`" />
+      <button v-if="draft.domain === 'theater'" class="pc-soft-btn" type="button" @click="regexOpen = true">
+        <i class="fa-solid fa-code"></i>关联正则（{{ draft.displayRuleIds.length }}）
+      </button>
+      <ContentRegexModal
+        v-if="regexOpen"
+        v-model="draft.displayRuleIds"
+        title="类型关联正则"
+        @close="regexOpen = false"
+      />
 
       <div class="pc-form-actions">
         <button class="pc-soft-btn" type="button" @click="$emit('back')">{{ t`取消` }}</button>
@@ -27,6 +36,7 @@
 
 <script setup lang="ts">
 import TheaterTypeGroupField from '@/components/prompts/TheaterTypeGroupField.vue';
+import ContentRegexModal from '@/components/ContentRegexModal.vue';
 import type { PhoneTypePromptDomain } from '@/core/appRegistry';
 import { usePromptStore, type TypePromptConfig } from '@/store/prompts';
 
@@ -36,7 +46,9 @@ const props = defineProps<{
 }>();
 const emit = defineEmits<{ back: [] }>();
 const prompts = usePromptStore();
+const regexOpen = ref(false);
 const draft = reactive({
+  displayRuleIds: [] as string[],
   domain: '',
   groupId: '',
   name: '',
@@ -44,6 +56,8 @@ const draft = reactive({
 });
 
 function loadDraft() {
+  regexOpen.value = false;
+  draft.displayRuleIds = [...(props.prompt?.displayRuleIds ?? [])];
   draft.domain = props.prompt?.domain || props.domains[0]?.key || '';
   draft.groupId = props.prompt?.groupId || '';
   draft.name = props.prompt?.name || '';
