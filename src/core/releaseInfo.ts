@@ -4,6 +4,14 @@ export const RUNNING_VERSION = manifest.version;
 export const RELEASE_SEEN_FIELD = 'sillytavern_phone_last_seen_release';
 export const RELEASE_HISTORY = [
   {
+    version: '1.2.16',
+    notes: [
+      '修复番外续写与重新生成期间按钮未禁用、实时输出不显示的问题，页面统一读取实际任务状态。',
+      '番外默认摘要规则支持移除正文内唯一完整的 summary 块；无法唯一定位时保留正文并提示，生成期间锁定摘要及相关配置。',
+      '写卡工坊在读取世界书前进入运行状态，防止重复启动；生成期间锁定任务相关选项，准备期间停止后不再发起生成，失败仅更新本次任务。',
+    ],
+  },
+  {
     version: '1.2.15',
     notes: [
       '网页正则替换按每次匹配单独补全 HTML 代码围栏，已有完整围栏不重复添加，未匹配正文和文本替换保持不变。',

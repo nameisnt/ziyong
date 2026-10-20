@@ -106,7 +106,7 @@
       v-model:source-mode="settings.generation.sourceMode"
       :capture="captureChapterPrompt"
       :capture-reset-key="chapterPromptPreview"
-      :generation-state="chapterGenerationState"
+      :generation-state="chapterGenerationViewState"
       :selected-type-value="selectedChapterTypeValue"
       :show-custom-type-field="showChapterCustomTypeField"
       :summary-rule-options="summaryRuleOptions"

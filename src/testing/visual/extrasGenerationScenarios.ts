@@ -1,6 +1,8 @@
 import { useRegexDisplayStore } from '@/apps/regex-display/store';
 import { useExtrasStore } from '@/store/extras';
 import { usePreviewDraftStore } from '@/store/previewDrafts';
+import { useGenerationTaskStore } from '@/store/generationTasks';
+import { useSettingsStore } from '@/store/settings';
 
 export function createExtrasSummaryFixture() {
   const extras = useExtrasStore();
@@ -33,6 +35,48 @@ type ExtrasGenerationScenarioContext = {
 };
 
 export async function applyExtrasGenerationVisualScenario(name: string, context: ExtrasGenerationScenarioContext) {
+  async function verifyTaskState(actionId: string, bookId: string) {
+    const tasks = useGenerationTaskStore();
+    const task = tasks.createTask({
+      appId: 'extras',
+      kind: 'single',
+      title: 'Generation state fixture',
+      total: 1,
+      routePage: actionId === 'chapter-generate' ? 'chapter-generate' : 'summary-generate',
+      config: {
+        actionId,
+        resultPage: '',
+        resultParams: {},
+        resultState: 'pending',
+        resultTitle: '',
+        sourcePage: '',
+        sourceParams: { bookId },
+      },
+    });
+    for (const theme of ['light', 'dark'] as const) {
+      useSettingsStore().setTheme(theme);
+      tasks.patchTask(task.id, { status: 'running', rawOutput: 'Live chapter output' });
+      await context.waitForPaint();
+      const panel = document.querySelector('.pc-extras-generation-panel')!;
+      const button = [...panel.querySelectorAll<HTMLButtonElement>('button')].find(
+        item => item.textContent?.trim() === '生成中',
+      );
+      if (!button?.disabled) throw new Error('Extras live task did not disable generation button');
+      for (const toggle of panel.querySelectorAll<HTMLInputElement>(
+        '.pc-extras-summary-options input[type="checkbox"]',
+      ))
+        if (!toggle.disabled) throw new Error('Extras summary settings remained editable during generation');
+      const output = panel.querySelector<HTMLTextAreaElement>('.pc-raw-output textarea');
+      if (output?.value !== 'Live chapter output') throw new Error('Extras live task output missing');
+      tasks.patchTask(task.id, { status: 'failed', error: 'Fixture failure' });
+      await context.waitForPaint();
+      if (panel.textContent?.includes('生成中') || !panel.textContent?.includes('Fixture failure'))
+        throw new Error('Extras failed task state did not update');
+    }
+    tasks.removeTask(task.id);
+    useSettingsStore().setTheme('light');
+    await context.waitForPaint();
+  }
   if (name === 'extras-chapter-preview-summary') {
     const extras = useExtrasStore();
     extras.resetCurrentScope();
@@ -103,10 +147,18 @@ export async function applyExtrasGenerationVisualScenario(name: string, context:
     });
     context.resetPhoneToRoute('extras', 'chapter-generate', '生成章节', { bookId: book.id });
     await context.waitForPaint();
+    await verifyTaskState('chapter-generate', book.id);
     const parseToggle = document.querySelector<HTMLInputElement>('.pc-extras-summary-options .pc-toggle input');
     if (!parseToggle) throw new Error('Extras summary parser toggle is missing');
     if (!parseToggle.checked) parseToggle.click();
     await context.waitForPaint();
+    const removeToggle = document.querySelector<HTMLInputElement>('.pc-extras-summary-remove-row input')!;
+    if (removeToggle.disabled) throw new Error('Default summary removal is disabled');
+    const before = removeToggle.checked;
+    removeToggle.click();
+    await context.waitForPaint();
+    if (removeToggle.checked === before) throw new Error('Default summary removal did not toggle');
+    removeToggle.click();
     const ruleGroup = [...document.querySelectorAll<HTMLElement>('.pc-extras-summary-options .pc-field-group')].find(
       group => group.textContent?.includes('摘要提取规则'),
     );
@@ -126,6 +178,7 @@ export async function applyExtrasGenerationVisualScenario(name: string, context:
     const { book, chapters } = createExtrasSummaryFixture();
     context.resetPhoneToRoute('extras', 'summary-generate', '生成章节总结', { bookId: book.id });
     await context.waitForPaint();
+    await verifyTaskState('chapter-summary', book.id);
     const chapterOptions = [...document.querySelectorAll<HTMLElement>('.pc-chapter-picks .pc-check-item')];
     const selectedOptions = document.querySelectorAll<HTMLInputElement>('.pc-chapter-picks input:checked');
     if (

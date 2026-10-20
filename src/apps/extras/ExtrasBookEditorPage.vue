@@ -3,7 +3,13 @@
     <div class="pc-page-section pc-extras-editor-section">
       <label class="pc-field-group">
         <span>{{ t`番外标题` }}</span>
-        <input v-model="bookTitle" class="pc-field" type="text" :placeholder="t`输入番外标题`" />
+        <input
+          v-model="bookTitle"
+          class="pc-field"
+          type="text"
+          :disabled="generationState.running"
+          :placeholder="t`输入番外标题`"
+        />
       </label>
 
       <GenerationPanel
@@ -62,6 +68,7 @@
             <input
               v-if="showCustomTypeField"
               v-model="chapterDraft.typeName"
+              :disabled="generationState.running"
               class="pc-field"
               type="text"
               :placeholder="t`自定义类型名称`"

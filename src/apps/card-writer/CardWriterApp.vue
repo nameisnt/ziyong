@@ -8,6 +8,7 @@
             <InfoHint :text="selectedTask.description" />
           </div>
           <SearchableCombobox
+            :disabled="running"
             :model-value="taskId"
             :options="taskOptions"
             input-label="选择写卡任务"
@@ -68,6 +69,7 @@
             <div class="pc-card-writer-persona-modes">
               <button
                 :class="['pc-segment-btn', { active: personaMode === 'normal' }]"
+                :disabled="running"
                 type="button"
                 @click="personaMode = 'normal'"
               >
@@ -75,6 +77,7 @@
               </button>
               <button
                 :class="['pc-segment-btn', { active: personaMode === 'multistage' }]"
+                :disabled="running"
                 type="button"
                 @click="personaMode = 'multistage'"
               >
@@ -91,7 +94,7 @@
               </strong>
             </div>
             <label class="pc-toggle" :title="includeWorldbook ? '不使用世界书素材' : '使用世界书素材'">
-              <input v-model="includeWorldbook" type="checkbox" aria-label="使用世界书素材" />
+              <input v-model="includeWorldbook" type="checkbox" :disabled="running" aria-label="使用世界书素材" />
               <span aria-hidden="true"></span>
             </label>
           </div>
@@ -104,6 +107,7 @@
             <div class="pc-card-writer-worldbook-select">
               <SearchableCombobox
                 allow-custom
+                :disabled="running"
                 empty-label="没有匹配的世界书，可直接输入新名称"
                 input-label="选择或输入目标世界书"
                 :model-value="targetWorldbookName"
@@ -116,6 +120,7 @@
                 class="pc-icon-btn"
                 type="button"
                 aria-label="刷新世界书列表"
+                :disabled="running"
                 title="刷新世界书列表"
                 @click="refreshWorldbooks"
               >
@@ -1143,9 +1148,16 @@ async function runWriter() {
   }));
   activePreviewStageId.value = stages[0]?.id || '';
 
+  let task: ReturnType<typeof generationSession.create> | undefined;
   try {
+    task = generationSession.create({
+      sourceParams: { taskId: writerTask.id },
+      title: `写卡工坊 · ${writerTask.label}`,
+    });
     const { messages: chatMessages, sourceLabel } = getSelectedChatMessages();
     const worldbookContent = await buildWorldbookText();
+    if (generationSession.task.value?.id !== task.id || !running.value || sourceScopeKey !== getCurrentChatScopeKey())
+      return;
     preview.providerSummary = '酒馆当前 API';
     preview.sourceLabel = `${sourceLabel}${includeWorldbook.value ? ' · 已加入世界书' : ' · 未加入世界书'}`;
     preview.sourceOwnerLabel = sourceOwnerLabel;
@@ -1158,10 +1170,6 @@ async function runWriter() {
     preview.worldbookIncluded = includeWorldbook.value;
     preview.worldbookWritten = false;
     persistWriterPreviewDraft();
-    const task = generationSession.create({
-      sourceParams: { taskId: writerTask.id },
-      title: `写卡工坊 · ${writerTask.label}`,
-    });
     const completed = await runStageSequence(0, chatMessages, worldbookContent, task.id);
     generationSession.complete(task.id, {
       currentLabel: completed ? '多阶段写卡已生成，等待确认' : '部分阶段失败，等待修复',
@@ -1171,8 +1179,7 @@ async function runWriter() {
     });
     void phone.presentGeneratedPage('card-writer', 'preview', '写卡预览');
   } catch (error) {
-    const task = generationSession.task.value;
-    if (task && (task.status === 'queued' || task.status === 'running')) generationSession.fail(task.id, error);
+    if (task) generationSession.fail(task.id, error);
     else generationFormError.value = error instanceof Error ? error.message : '写卡生成失败';
   }
 }

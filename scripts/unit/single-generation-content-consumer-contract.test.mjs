@@ -19,6 +19,15 @@ const summaryBatch = await readFile(
   'utf8',
 );
 
+test('Extras generation pages consume live task state rather than preview-only state', async () => {
+  const source = await readFile(new URL('../../src/apps/extras/ExtrasApp.vue', import.meta.url), 'utf8');
+  for (const component of ['ExtrasBookEditorPage', 'ExtrasChapterGeneratePage', 'ExtrasSummaryGeneratePage']) {
+    const tag = source.match(new RegExp(`<${component}\\b[\\s\\S]*?/>`))?.[0];
+    assert.ok(tag, component);
+    assert.match(tag, /:generation-state="(?:chapter|summary)GenerationViewState"/, component);
+  }
+});
+
 test('GEN02D content consumers delegate ordinary single requests to persistent sessions', () => {
   for (const { file, source } of consumers) {
     assert.match(source, /useSingleGenerationTaskSession/, file);

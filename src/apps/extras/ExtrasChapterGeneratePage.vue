@@ -61,6 +61,7 @@
             <input
               v-if="showCustomTypeField"
               v-model="chapterDraft.typeName"
+              :disabled="generationState.running"
               class="pc-field"
               type="text"
               :placeholder="t`自定义类型名称`"
@@ -106,7 +107,7 @@
             <div class="pc-section-head">
               <strong>{{ t`番外摘要` }}</strong>
               <label class="pc-toggle" :title="chapterDraft.parseSummary ? t`关闭摘要解析` : t`开启摘要解析`">
-                <input v-model="chapterDraft.parseSummary" type="checkbox" />
+                <input v-model="chapterDraft.parseSummary" type="checkbox" :disabled="generationState.running" />
                 <span></span>
               </label>
             </div>
@@ -139,7 +140,7 @@
                   <input
                     v-model="chapterDraft.removeSummaryBlock"
                     type="checkbox"
-                    :disabled="generationState.running || !chapterDraft.summaryRuleId"
+                    :disabled="generationState.running"
                   />
                   <span></span>
                 </label>

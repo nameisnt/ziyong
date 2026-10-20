@@ -3110,6 +3110,16 @@ async function applyScenario(name: VisualScenarioName, options: { height?: numbe
         `Card writer sequence task did not enter running state: status=${task?.status ?? 'missing'}, error=${task?.error || error}`,
       );
     }
+    await waitForPaint();
+    if (!generateButton.disabled) throw new Error('Writer generation button remained enabled');
+    for (const selector of [
+      '.pc-card-writer-task-row .pc-combobox-input',
+      'input[aria-label="使用世界书素材"]',
+      '.pc-card-writer-worldbook-select .pc-combobox-input',
+    ]) {
+      const control = document.querySelector<HTMLInputElement>(selector);
+      if (!control?.disabled) throw new Error(`Writer option remained editable: ${selector}`);
+    }
     await phone.goHome();
     await waitForPaint();
     if (document.querySelector('.pc-card-writer-app')) throw new Error('Card writer source App did not unmount');

@@ -12,6 +12,35 @@ const compiled = transpileModule(source, {
 }).outputText;
 const regex = await import(`data:text/javascript;base64,${Buffer.from(compiled).toString('base64')}`);
 
+test('Extras default summary removal requires one complete block and preserves custom rules', async () => {
+  const source = await read('src/core/extrasGeneration.ts');
+  const ast = createSourceFile('extrasGeneration.ts', source, ScriptTarget.Latest, true);
+  const fn = ast.statements.find(node => isFunctionDeclaration(node) && node.name?.text === 'removeSingleSummaryBlock');
+  const code = transpileModule(fn.getText(ast), { compilerOptions: { target: ScriptTarget.ES2022 } }).outputText;
+  const remove = runInNewContext(`${code}; removeSingleSummaryBlock`, { createDisplayRegex: regex.createDisplayRegex });
+  const config = { removeSummaryBlock: true, summaryRuleId: '' };
+  assert.equal(remove('正文<summary>摘要</summary>', config).content, '正文');
+  assert.equal(remove('正文<SUMMARY id="x">摘要\n下一行</SUMMARY>', config).content, '正文');
+  for (const text of [
+    '正文',
+    '正文<summary>未闭合',
+    '<summary>A</summary><summary>B</summary>',
+    '<summary>A<summary>B</summary></summary>',
+  ]) {
+    const result = remove(text, config);
+    assert.equal(result.content, text);
+    assert.ok(result.warning);
+  }
+  assert.equal(
+    remove('正文<summary>摘要</summary>', { removeSummaryBlock: false }).content,
+    '正文<summary>摘要</summary>',
+  );
+  assert.equal(
+    remove('正文[摘要]', { ...config, summaryRuleId: 'custom', summaryRulePattern: '\\[摘要\\]' }).content,
+    '正文',
+  );
+});
+
 test('HTML replacements fence each match, preserve surrounding text and native substitutions', () => {
   const input = 'before Alice and Bob after';
   const rule = {

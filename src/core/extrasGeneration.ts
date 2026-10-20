@@ -121,7 +121,23 @@ function extractStructuredSummary(raw: string) {
 }
 
 function removeSingleSummaryBlock(content: string, config: ExtraChapterGenerateConfig) {
-  if (!config.removeSummaryBlock || !config.summaryRulePattern?.trim()) return { content, warning: '' };
+  if (!config.removeSummaryBlock) return { content, warning: '' };
+  if (!config.summaryRuleId && !config.summaryRulePattern?.trim()) {
+    const openings = content.match(/<summary(?:\s[^>]*)?>/gi) || [];
+    const closings = content.match(/<\/summary\s*>/gi) || [];
+    const block = /<summary(?:\s[^>]*)?>[\s\S]*?<\/summary\s*>/i;
+    if (openings.length !== 1 || closings.length !== 1 || !block.test(content)) {
+      return {
+        content,
+        warning:
+          openings.length > 1 || closings.length > 1
+            ? '正文内摘要块不唯一，已保留正文'
+            : '正文内未定位到完整摘要块，已保留正文',
+      };
+    }
+    return { content: content.replace(block, '').trim(), warning: '' };
+  }
+  if (!config.summaryRulePattern?.trim()) return { content, warning: '摘要移除规则不可用，已保留正文' };
   try {
     const configured = createDisplayRegex(config.summaryRulePattern, config.summaryRuleFlags || '');
     const single = new RegExp(configured.source, configured.flags.replace(/g/g, ''));
