@@ -9,6 +9,7 @@ npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 pnpm-debug.log*
+<<<<<<< HEAD
 
 # Local editor and Codex working files
 .codex/
@@ -30,3 +31,5 @@ QITA/
 Anima正式版-文生图工作流.json
 手机端BUG分析.md
 一键安全推送dist到GitHub.cmd
+=======
+>>>>>>> 78b1e1fc2ac82d45754b4d277306f277c501e201
