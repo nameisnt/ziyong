@@ -138,7 +138,7 @@ ${Array.from({ length: 12 }, (_, i) => `<p>Entry ${i + 1}: original layout and s
 <footer><button id="add" onclick="document.querySelector('#count').textContent=Number(document.querySelector('#count').textContent)+1">Add</button>
 <button id="open" onclick="document.querySelector('dialog').showModal()">Open</button><button disabled>Disabled</button></footer>
 <dialog><button onclick="this.parentElement.close()">Close</button><div class="dialog-scroll"><p>Dialog scroll content</p></div></dialog>
-<script>document.body.dataset.script='ran';document.getElementById('reader').dataset.found='yes';<\/script>
+<script>document.body.dataset.script='ran';document.getElementById('reader').dataset.found='yes';</script>
 </body></html>`;
           },
           { theme, background, securityMode },

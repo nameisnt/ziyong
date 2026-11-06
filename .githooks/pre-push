@@ -1,0 +1,16 @@
+#!/bin/sh
+# Single gate before every push: the same checks CI would need, run locally.
+set -e
+
+repo_root=$(git rev-parse --show-toplevel)
+cd "$repo_root"
+
+echo "[pre-push] pnpm verify:static"
+if ! pnpm verify:static; then
+  echo "" >&2
+  echo "[pre-push] verify:static failed; push aborted." >&2
+  echo "[pre-push] fix the failure above, or rerun 'pnpm verify:static' to see the full log." >&2
+  echo "[pre-push] only 'git push --no-verify' skips this gate." >&2
+  exit 1
+fi
+echo "[pre-push] verify:static passed"
