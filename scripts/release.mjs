@@ -231,7 +231,7 @@ function main() {
   step('完成');
   console.log(`  主仓库:   ${gitRun(root, ['rev-parse', 'HEAD'], { capture: true })}`);
   console.log(`  安装仓库: ${gitRun(distRepo, ['rev-parse', 'HEAD'], { capture: true })}`);
-  console.log('  本地安装目录（如 SillyTavern/third-party）需要手动覆盖，或用 safe-push-dist 流程。');
+  console.log('  本地安装目录不在本脚本范围内，需要时单独同步。');
 }
 
 main();
