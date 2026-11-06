@@ -1,0 +1,500 @@
+{
+    "temperature": 0.8,
+    "frequency_penalty": 0,
+    "presence_penalty": 0,
+    "top_p": 0.6,
+    "top_k": 0,
+    "top_a": 0,
+    "min_p": 0,
+    "repetition_penalty": 1,
+    "max_context_unlocked": true,
+    "tool_reasoning_mode": "disabled",
+    "openai_max_context": 2000000,
+    "openai_max_tokens": 32000,
+    "names_behavior": 0,
+    "send_if_empty": "",
+    "impersonation_prompt": "[Write your next reply from the point of view of {{user}}, using the chat history so far as a guideline for the writing style of {{user}}. Don't write as {{char}} or system. Don't describe actions of {{char}}.]",
+    "new_chat_prompt": "[Start a new Chat]",
+    "new_group_chat_prompt": "[Start a new group chat. Group members: {{group}}]",
+    "new_example_chat_prompt": "[Example Chat]",
+    "continue_nudge_prompt": "[Continue your last message without repeating its original content.]",
+    "bias_preset_selected": "Default (none)",
+    "wi_format": "{0}",
+    "scenario_format": "{{scenario}}",
+    "personality_format": "{{personality}}",
+    "group_nudge_prompt": "[Write the next reply only as {{char}}.]",
+    "stream_openai": true,
+    "prompts": [
+        {
+            "identifier": "main",
+            "name": "Main Prompt",
+            "enabled": true,
+            "role": "system",
+            "content": "你是{{perspectiveName}}，现在你要写一篇今天经历的事情的日记，务必以你今天的状态与认知来写这篇日记，不知道的事不需要想，也不需要写。",
+            "system_prompt": true,
+            "marker": false,
+            "forbid_overrides": false,
+            "plugin_extra": false
+        },
+        {
+            "identifier": "phone_prompt_1786544783683_vwnt06d",
+            "name": "回应",
+            "enabled": true,
+            "injection_position": 0,
+            "injection_depth": 4,
+            "injection_order": 100,
+            "role": "assistant",
+            "content": "{{perspectiveName}}:我知道了。",
+            "system_prompt": false,
+            "marker": false,
+            "forbid_overrides": false,
+            "plugin_extra": false
+        },
+        {
+            "identifier": "phone_prompt_1786544110930_p75732v",
+            "name": "回顾",
+            "enabled": true,
+            "injection_position": 0,
+            "injection_depth": 4,
+            "injection_order": 100,
+            "role": "system",
+            "content": "在动笔写日记之前，你要先回顾今天发生过的事（尤其是与其他人物的互动）。\n下面是你所在的世界信息，有着世界观与你与其他人物的设定:\n<世界信息>",
+            "system_prompt": false,
+            "marker": false,
+            "forbid_overrides": false,
+            "plugin_extra": false
+        },
+        {
+            "identifier": "worldInfoBefore",
+            "name": "World Info (before)",
+            "enabled": true,
+            "injection_position": 0,
+            "injection_depth": 4,
+            "injection_order": 100,
+            "role": "system",
+            "system_prompt": true,
+            "marker": true,
+            "forbid_overrides": false,
+            "plugin_extra": false
+        },
+        {
+            "identifier": "personaDescription",
+            "name": "Persona Description",
+            "enabled": true,
+            "injection_position": 0,
+            "injection_depth": 4,
+            "injection_order": 100,
+            "role": "system",
+            "system_prompt": true,
+            "marker": true,
+            "forbid_overrides": false,
+            "plugin_extra": false
+        },
+        {
+            "identifier": "charDescription",
+            "name": "Char Description",
+            "enabled": true,
+            "injection_position": 0,
+            "injection_depth": 4,
+            "injection_order": 100,
+            "role": "system",
+            "system_prompt": true,
+            "marker": true,
+            "forbid_overrides": false,
+            "plugin_extra": false
+        },
+        {
+            "identifier": "charPersonality",
+            "name": "Char Personality",
+            "enabled": true,
+            "injection_position": 0,
+            "injection_depth": 4,
+            "injection_order": 100,
+            "role": "system",
+            "system_prompt": true,
+            "marker": true,
+            "forbid_overrides": false,
+            "plugin_extra": false
+        },
+        {
+            "identifier": "scenario",
+            "name": "Scenario",
+            "enabled": true,
+            "injection_position": 0,
+            "injection_depth": 4,
+            "injection_order": 100,
+            "role": "system",
+            "system_prompt": true,
+            "marker": true,
+            "forbid_overrides": false,
+            "plugin_extra": false
+        },
+        {
+            "identifier": "enhanceDefinitions",
+            "name": "Enhance Definitions",
+            "enabled": false,
+            "role": "system",
+            "content": "If you have more knowledge of {{char}}, add to the character's lore and personality to enhance them but keep the Character Sheet's definitions absolute.",
+            "system_prompt": true,
+            "marker": false,
+            "forbid_overrides": false,
+            "plugin_extra": false
+        },
+        {
+            "identifier": "nsfw",
+            "name": "Auxiliary Prompt",
+            "enabled": true,
+            "role": "system",
+            "content": "",
+            "system_prompt": true,
+            "marker": false,
+            "forbid_overrides": false,
+            "plugin_extra": false
+        },
+        {
+            "identifier": "dialogueExamples",
+            "name": "Chat Examples",
+            "enabled": true,
+            "role": "system",
+            "system_prompt": true,
+            "marker": true,
+            "forbid_overrides": false,
+            "plugin_extra": false
+        },
+        {
+            "identifier": "worldInfoAfter",
+            "name": "World Info (after)",
+            "enabled": true,
+            "injection_position": 0,
+            "injection_depth": 4,
+            "injection_order": 100,
+            "role": "system",
+            "system_prompt": true,
+            "marker": true,
+            "forbid_overrides": false,
+            "plugin_extra": false
+        },
+        {
+            "identifier": "phone_prompt_1786544168282_ypjmc3m",
+            "name": "回顾结束",
+            "enabled": true,
+            "injection_position": 0,
+            "injection_depth": 4,
+            "injection_order": 100,
+            "role": "system",
+            "content": "</世界信息>",
+            "system_prompt": false,
+            "marker": false,
+            "forbid_overrides": false,
+            "plugin_extra": false
+        },
+        {
+            "identifier": "phone_prompt_1786544268175_vf0i3yf",
+            "name": "回顾过往",
+            "enabled": true,
+            "injection_position": 0,
+            "injection_depth": 4,
+            "injection_order": 100,
+            "role": "system",
+            "content": "以下是你和{{user}}一起经历过的事情:\n<过往经历>",
+            "system_prompt": false,
+            "marker": false,
+            "forbid_overrides": false,
+            "plugin_extra": false
+        },
+        {
+            "identifier": "chatHistory",
+            "name": "Chat History",
+            "enabled": true,
+            "role": "system",
+            "system_prompt": true,
+            "marker": true,
+            "forbid_overrides": false,
+            "plugin_extra": false
+        },
+        {
+            "identifier": "jailbreak",
+            "name": "Post-History Instructions",
+            "enabled": true,
+            "role": "system",
+            "content": "",
+            "system_prompt": true,
+            "marker": false,
+            "forbid_overrides": false,
+            "plugin_extra": false
+        },
+        {
+            "identifier": "phone_prompt_1786544276685_ti2zfrh",
+            "name": "回顾过往结束",
+            "enabled": true,
+            "injection_position": 0,
+            "injection_depth": 4,
+            "injection_order": 100,
+            "role": "system",
+            "content": "</过往经历>",
+            "system_prompt": false,
+            "marker": false,
+            "forbid_overrides": false,
+            "plugin_extra": false
+        },
+        {
+            "identifier": "phone_prompt_1786544397424_m0n04de",
+            "name": "思维链开始",
+            "enabled": true,
+            "injection_position": 0,
+            "injection_depth": 4,
+            "injection_order": 100,
+            "role": "system",
+            "content": "你已经回顾了一遍自己的世界信息。\n现在，在心里进行一段自由联想的内心独白——像正常大脑那样跳跃、省略、不完整句。可以用省略号（……）表示思路的断裂和跳跃。",
+            "system_prompt": false,
+            "marker": false,
+            "forbid_overrides": false,
+            "plugin_extra": false
+        },
+        {
+            "identifier": "phone_prompt_1786546531683_o2qddqp",
+            "name": "格式 - 副本",
+            "enabled": true,
+            "injection_position": 0,
+            "injection_depth": 4,
+            "injection_order": 100,
+            "role": "system",
+            "content": "\n<重要规则>\n1.你的性格底色会从日记的字里行间透露出来，不需要特意进行说明自己是怎样的人。\n2. 日记记录的是认知滤镜下的主观真实，并非客观事实\n3.可自然包含：自我欺骗（Self-Deception）、合理化（Rationalization）、自我美化（Self-Enhancement）、消极偏差（Negativity Bias）、过度归因（Over-attribution）、认知失调缓解、记忆重构（Memory Reconstruction）、情感抑制（Suppression）、灾难化（Catastrophizing）、反刍（Rumination）、防御性投射等\n4.以上机制应由性格自动驱动，不在日记中提及术语本身\n5. 每句话都是角色当下真诚相信的\n</重要规则>",
+            "system_prompt": false,
+            "marker": false,
+            "forbid_overrides": false,
+            "plugin_extra": false
+        },
+        {
+            "identifier": "phone_prompt_1786544467227_nnylpqb",
+            "name": "思维链内容",
+            "enabled": true,
+            "injection_position": 0,
+            "injection_depth": 4,
+            "injection_order": 100,
+            "role": "system",
+            "content": "<!-- Start the Thinking-->\n<thinking>\n你是谁？你的性别是？你所在的世界是怎样的？\n你所在的世界对你的性别又持有什么态度？你对自己的性别有怎样的看法？\n你现在是什么状态，有哪些认知？你应该知道什么？又应该不知道什么？\n在这个状态与认知下，你是一个怎样的人？你会用怎样的语气写这篇日记呢？\n今天的日期是？周围的环境是？你写日记时周边的环境是？\n今天你身边发生了什么事？\n在这件事里，你是主角还是旁观者呢？\n在过去，你身边是否有类似的事情发生呢？\n你会从这件事联想到什么吗？\n你会思念什么吗？\n你对这件事有什么看法呢？\n你觉得这是好事，坏事还是普通的平常事呢？\n别人心理想的是什么，会这么说话和做事呢？\n如果你当时做了另一个选择，事情会发生很大的变化吗？\n今天发生了这么多事，如果只写一件，是哪一件？为什么是这一件？当然，并不真的需要只写一件。\n在写日记时，你需要说服自己什么？\n</thinking>\n<!-- End the Thinking-->",
+            "system_prompt": false,
+            "marker": false,
+            "forbid_overrides": false,
+            "plugin_extra": false
+        },
+        {
+            "identifier": "phone_prompt_1786544935419_bvl7bgf",
+            "name": "格式",
+            "enabled": true,
+            "injection_position": 0,
+            "injection_depth": 4,
+            "injection_order": 100,
+            "role": "system",
+            "content": "然后按照下面的格式开始写日记\n<日记>\n标题：日记标题\n时间：日记发生或写作的时间\n内容：日记正文\n</日记>",
+            "system_prompt": false,
+            "marker": false,
+            "forbid_overrides": false,
+            "plugin_extra": false
+        },
+        {
+            "identifier": "phone_prompt_1786544579625_o02r9db",
+            "name": "思维链内容 - 副本",
+            "enabled": true,
+            "injection_position": 0,
+            "injection_depth": 4,
+            "injection_order": 100,
+            "role": "assistant",
+            "content": "现在我要开始写日记了。\n<!-- Start the Thinking-->",
+            "system_prompt": false,
+            "marker": false,
+            "forbid_overrides": false,
+            "plugin_extra": false
+        },
+        {
+            "identifier": "phone_prompt_1786552417112_e9fasmy",
+            "name": "用户",
+            "enabled": false,
+            "injection_position": 0,
+            "injection_depth": 4,
+            "injection_order": 100,
+            "role": "user",
+            "content": "仔细认真思考下再开始写日记啊。",
+            "system_prompt": false,
+            "marker": false,
+            "forbid_overrides": false,
+            "plugin_extra": false
+        },
+        {
+            "identifier": "phone_prompt_1786551727267_ddwz5e2",
+            "name": "思维链内容 - 副本 - 副本",
+            "enabled": false,
+            "injection_position": 0,
+            "injection_depth": 4,
+            "injection_order": 100,
+            "role": "system",
+            "content": "那我先好好想想就开始写日记了\n<!-- Start the Thinking-->",
+            "system_prompt": false,
+            "marker": false,
+            "forbid_overrides": false,
+            "plugin_extra": false
+        },
+        {
+            "identifier": "phone_prompt_1786551446401_n6nuu2q",
+            "name": "开始",
+            "enabled": false,
+            "injection_position": 0,
+            "injection_depth": 4,
+            "injection_order": 100,
+            "role": "system",
+            "content": "那你现在就开始想想要怎么写日记吧\n<!-- Start the Thinking-->",
+            "system_prompt": false,
+            "marker": false,
+            "forbid_overrides": false,
+            "plugin_extra": false
+        }
+    ],
+    "prompt_order": [
+        {
+            "character_id": 100001,
+            "order": [
+                {
+                    "identifier": "main",
+                    "enabled": true
+                },
+                {
+                    "identifier": "phone_prompt_1786544783683_vwnt06d",
+                    "enabled": true
+                },
+                {
+                    "identifier": "phone_prompt_1786544110930_p75732v",
+                    "enabled": true
+                },
+                {
+                    "identifier": "worldInfoBefore",
+                    "enabled": true
+                },
+                {
+                    "identifier": "personaDescription",
+                    "enabled": true
+                },
+                {
+                    "identifier": "charDescription",
+                    "enabled": true
+                },
+                {
+                    "identifier": "charPersonality",
+                    "enabled": true
+                },
+                {
+                    "identifier": "scenario",
+                    "enabled": true
+                },
+                {
+                    "identifier": "enhanceDefinitions",
+                    "enabled": false
+                },
+                {
+                    "identifier": "nsfw",
+                    "enabled": true
+                },
+                {
+                    "identifier": "dialogueExamples",
+                    "enabled": true
+                },
+                {
+                    "identifier": "worldInfoAfter",
+                    "enabled": true
+                },
+                {
+                    "identifier": "phone_prompt_1786544168282_ypjmc3m",
+                    "enabled": true
+                },
+                {
+                    "identifier": "phone_prompt_1786544268175_vf0i3yf",
+                    "enabled": true
+                },
+                {
+                    "identifier": "chatHistory",
+                    "enabled": true
+                },
+                {
+                    "identifier": "jailbreak",
+                    "enabled": true
+                },
+                {
+                    "identifier": "phone_prompt_1786544276685_ti2zfrh",
+                    "enabled": true
+                },
+                {
+                    "identifier": "phone_prompt_1786544397424_m0n04de",
+                    "enabled": true
+                },
+                {
+                    "identifier": "phone_prompt_1786546531683_o2qddqp",
+                    "enabled": true
+                },
+                {
+                    "identifier": "phone_prompt_1786544467227_nnylpqb",
+                    "enabled": true
+                },
+                {
+                    "identifier": "phone_prompt_1786544935419_bvl7bgf",
+                    "enabled": true
+                },
+                {
+                    "identifier": "phone_prompt_1786544579625_o02r9db",
+                    "enabled": true
+                },
+                {
+                    "identifier": "phone_prompt_1786552417112_e9fasmy",
+                    "enabled": false
+                },
+                {
+                    "identifier": "phone_prompt_1786551727267_ddwz5e2",
+                    "enabled": false
+                },
+                {
+                    "identifier": "phone_prompt_1786551446401_n6nuu2q",
+                    "enabled": false
+                }
+            ]
+        }
+    ],
+    "assistant_prefill": "",
+    "assistant_impersonation": "",
+    "use_sysprompt": true,
+    "squash_system_messages": false,
+    "media_inlining": false,
+    "inline_image_quality": "auto",
+    "continue_prefill": false,
+    "continue_postfix": " ",
+    "function_calling": true,
+    "tool_call_recurse_limit": 5,
+    "show_thoughts": true,
+    "reasoning_effort": "medium",
+    "verbosity": "auto",
+    "enable_web_search": false,
+    "request_images": false,
+    "request_image_aspect_ratio": "",
+    "request_image_resolution": "",
+    "extensions": {
+        "baibaiToolkit": {
+            "regexGroups": {
+                "version": 1,
+                "groups": [],
+                "scripts": {},
+                "ungrouped": {
+                    "name": "默认分组",
+                    "collapsed": false
+                }
+            }
+        },
+        "luker": {
+            "prompt_layout": [],
+            "prompt_groups": []
+        },
+        "regex_scripts": []
+    },
+    "seed": -1,
+    "n": 1,
+    "custom_include_body": "",
+    "custom_exclude_body": "",
+    "custom_include_headers": ""
+}

@@ -1,4 +1,4 @@
-import diaryPresetJson from '../../../日记 (1).json';
+import diaryPresetJson from './builtinDiaryPreset.json';
 import { normalizePluginPresetImport, pluginPresetSelection, type PluginPresetRecord } from './pluginPreset';
 
 export const BUILTIN_DIARY_PRESET_ID = 'builtin_diary';
