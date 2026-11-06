@@ -106,6 +106,14 @@
             {{ restoringFloorBackup ? t`插入中…` : t`插入空聊天` }}
           </button>
           <button
+            class="pc-soft-btn"
+            type="button"
+            :disabled="renamingChat || !canRenameCurrentChat"
+            @click="renameCurrentChat"
+          >
+            {{ t`聊天改名` }}
+          </button>
+          <button
             class="pc-soft-btn danger"
             type="button"
             :disabled="!currentChatRow.exists || deletionGenerationBusy"
@@ -404,6 +412,7 @@ const {
   formatOwnerSummary,
   loadCharacters,
   loadChatsForActiveOwner,
+  loadCurrentOwnerChats,
   loadFloorBackupsSafe,
   loadingCharacters,
   loadingChats,
@@ -419,6 +428,7 @@ const {
   visibleOwners,
 } = useChatArchiveCatalogSession();
 const nativeGenerationBusy = ref(false);
+const renamingChat = ref(false);
 const deletionGenerationBusy = computed(() => nativeGenerationBusy.value || generationTasks.activeTasks.length > 0);
 const generationListeners = [
   onTavernEvent('GENERATION_STARTED', () => {
@@ -497,6 +507,13 @@ const canRenameSelectedChat = computed(() =>
     selectedChat.value.key !== '__no_chat__' &&
     activeOwner.value?.kind === 'char' &&
     activeOwner.value.characterId !== null,
+  ),
+);
+const canRenameCurrentChat = computed(() =>
+  Boolean(
+    currentChatRow.value?.exists &&
+    currentOwner.value?.kind === 'char' &&
+    currentOwner.value.characterId !== null,
   ),
 );
 const canMigrateSelectedChat = computed(() => {
@@ -732,10 +749,11 @@ async function deleteSelectedFloorBackup() {
   }
 }
 
-async function renameSelectedChat() {
-  const owner = activeOwner.value;
-  const chat = selectedChat.value;
-  if (!owner || !chat || owner.kind !== 'char' || owner.characterId === null) return;
+async function renameChat(owner: ArchiveOwner, chat: ArchiveChatRow) {
+  if (owner.kind !== 'char' || owner.characterId === null) {
+    toastr.error('群聊聊天暂不支持改名');
+    return null;
+  }
   const currentName = normalizeChatArchiveId(chat.title);
   const requested = await phone.promptNotice('输入新的酒馆聊天名。改名成功后，手机内容与本地楼层备份会一起迁移。', {
     confirmLabel: '改名',
@@ -744,12 +762,12 @@ async function renameSelectedChat() {
     title: '聊天改名',
   });
   const newName = requested?.trim();
-  if (!newName || normalizeChatArchiveId(newName) === currentName) return;
+  if (!newName || normalizeChatArchiveId(newName) === currentName) return null;
   const confirmed = await phone.confirmNotice(`确认把“${currentName}”改名为“${newName}”吗？`, {
     confirmLabel: '确认改名',
     kind: 'warning',
   });
-  if (!confirmed) return;
+  if (!confirmed) return null;
 
   try {
     const renamedName = await renameTavernCharacterChat({
@@ -764,6 +782,22 @@ async function renameSelectedChat() {
     owner.usedChatIds.delete(normalizeChatArchiveId(chat.key));
     owner.usedChatIds.add(normalizeChatArchiveId(renamedName));
     await loadChatsForActiveOwner(true);
+    toastr.success(`聊天已改名为“${renamedName}”`);
+    return renamedName;
+  } catch (caughtError) {
+    toastr.error(caughtError instanceof Error ? caughtError.message : '聊天改名失败');
+    return null;
+  }
+}
+
+async function renameSelectedChat() {
+  const owner = activeOwner.value;
+  const chat = selectedChat.value;
+  if (!owner || !chat || !canRenameSelectedChat.value || renamingChat.value) return;
+  renamingChat.value = true;
+  try {
+    const renamedName = await renameChat(owner, chat);
+    if (!renamedName) return;
     const renamedChat = chatRows.value.find(item => item.key === normalizeChatArchiveId(renamedName)) ?? null;
     selectedChat.value = renamedChat;
     selectedDomains.value = renamedChat?.domains ?? [];
@@ -771,9 +805,21 @@ async function renameSelectedChat() {
       await phone.setViewingScope(renamedChat.scopeKey, { chatTitle: renamedChat.title, ownerName: owner.name }, true);
       phone.replacePage('detail', renamedChat.title, { chatKey: renamedChat.key, ownerKey: owner.key });
     }
-    toastr.success(`聊天已改名为“${renamedName}”`);
-  } catch (caughtError) {
-    toastr.error(caughtError instanceof Error ? caughtError.message : '聊天改名失败');
+  } finally {
+    renamingChat.value = false;
+  }
+}
+
+async function renameCurrentChat() {
+  const owner = currentOwner.value;
+  const chat = currentChatRow.value;
+  if (!owner || !chat || !canRenameCurrentChat.value || renamingChat.value) return;
+  renamingChat.value = true;
+  try {
+    if (!(await renameChat(owner, chat))) return;
+    await Promise.all([loadCharacters(true), loadCurrentOwnerChats(true)]);
+  } finally {
+    renamingChat.value = false;
   }
 }
 

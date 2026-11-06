@@ -86,31 +86,33 @@
       />
     </div>
 
-    <div v-if="customTypeOpen" class="pc-custom-type-row">
-      <input
-        v-model="customTypeName"
-        class="pc-field"
-        type="text"
-        :placeholder="t`输入新类型名`"
-        @keydown.enter="$emit('open-custom-generate')"
-      />
-      <button
-        class="pc-primary-btn compact"
-        type="button"
-        :disabled="!customTypeName.trim()"
-        @click="$emit('open-custom-generate')"
-      >
-        {{ t`添加` }}
-      </button>
-    </div>
+    <div class="pc-theater-reserved">
+      <div v-if="customTypeOpen" class="pc-custom-type-row">
+        <input
+          v-model="customTypeName"
+          class="pc-field"
+          type="text"
+          :placeholder="t`输入新类型名`"
+          @keydown.enter="$emit('open-custom-generate')"
+        />
+        <button
+          class="pc-primary-btn compact"
+          type="button"
+          :disabled="!customTypeName.trim()"
+          @click="$emit('open-custom-generate')"
+        >
+          {{ t`添加` }}
+        </button>
+      </div>
 
-    <FailedDraftList
-      :drafts="failedDrafts"
-      :get-context="getFailedDraftContext"
-      :get-title="getFailedDraftTitle"
-      @open="$emit('open-failed-draft', $event)"
-      @remove="$emit('remove-failed-draft', $event)"
-    />
+      <FailedDraftList
+        :drafts="failedDrafts"
+        :get-context="getFailedDraftContext"
+        :get-title="getFailedDraftTitle"
+        @open="$emit('open-failed-draft', $event)"
+        @remove="$emit('remove-failed-draft', $event)"
+      />
+    </div>
   </section>
 </template>
 
@@ -160,6 +162,33 @@ defineEmits<{
 </script>
 
 <style scoped>
+.pc-theater-catalog-page.pc-page-grid {
+  /* 标签云按内容贴合，内容超出时压缩到可用高度；下方预留自定义输入行与失败草稿区。 */
+  display: flex;
+  height: 100%;
+  flex-direction: column;
+  align-content: normal;
+}
+
+.pc-theater-catalog-page.pc-page-grid > * {
+  flex: 0 0 auto;
+  min-width: 0;
+}
+
+.pc-theater-catalog-page.pc-page-grid > .pc-tag-cloud {
+  flex: 0 1 auto;
+  min-height: 120px;
+  max-height: none;
+}
+
+.pc-theater-catalog-page.pc-page-grid > .pc-theater-reserved {
+  display: flex;
+  flex: 0 0 auto;
+  min-height: 170px;
+  flex-direction: column;
+  gap: 14px;
+}
+
 .pc-toolbar {
   display: grid;
   grid-template-columns: minmax(0, 1fr);

@@ -4,6 +4,15 @@ export const RUNNING_VERSION = manifest.version;
 export const RELEASE_SEEN_FIELD = 'sillytavern_phone_last_seen_release';
 export const RELEASE_HISTORY = [
   {
+    version: '1.2.17',
+    notes: [
+      '生成随机宏与手机输入副本保持同源：同一请求内原生输入与 phoneUserInput 不再各自抽取随机数，称呼替换先于随机宏解析。',
+      '生成页「来源楼层模式」改用与「本次连接」「本次预设」相同的共享下拉组件，只读、不唤起手机键盘，打开时不再闪烁或翻转。',
+      '小剧场标签云高度贴合内容：取消 220px 上限，打开自定义行或存在解析草稿时高度保持不变；最近使用上限由 12 个提升到 20 个。',
+      '聊天档案「当前聊天」卡片新增「聊天改名」，与详情页共用改名流程并同步迁移楼层备份，群聊聊天按钮置灰。',
+    ],
+  },
+  {
     version: '1.2.16',
     notes: [
       '修复番外续写与重新生成期间按钮未禁用、实时输出不显示的问题，页面统一读取实际任务状态。',

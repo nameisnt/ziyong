@@ -31,7 +31,12 @@ import { withGenerationMvu } from '@/util/generationMvuRuntime';
 import { ensureCurrentScopeRecovery } from '@/util/generationVisibility';
 import { cleanGenerationOutput } from '@/util/generationOutputCleaning';
 import { cleanSavedGenerationReasoning } from '@/util/generationReasoning';
-import { PLUGIN_MACRO_PATTERN, replacePluginMacros, resolvePluginMacro } from '@/util/pluginMacros';
+import {
+  PLUGIN_MACRO_PATTERN,
+  replacePluginMacros,
+  resolvePluginMacro,
+  resolveGenerationRandomMacros,
+} from '@/util/pluginMacros';
 import { preparePluginPresetMacroConfig } from '@/util/pluginPresetMacros';
 import { mergeGenerationReasoning, normalizeGenerationResponse } from '@/util/generationResult';
 import type { GenerationReferenceItem } from '@/util/references';
@@ -546,22 +551,19 @@ function prepareGenerationRequest<TConfig, TResult, TSaveResult = { entityId: st
       );
   const explicitReferences = options.references?.trim() || '';
   const generationAliases = resolveGenerationIdentityAliases(useGenerationAliasesStore());
-  const request = options.replay
-    ? ({ ...baseRequest } satisfies GenerationRequestParts)
-    : applyGenerationAliases(
-        {
-          ...baseRequest,
-          taskInstruction,
-          references: [baseRequest.references?.trim() || '', explicitReferences].filter(Boolean).join('\n\n'),
-        } satisfies GenerationRequestParts,
-        generationAliases,
-      );
-  const formUserInput = options.replay
-    ? request.userRequirement || ''
-    : isRecord(parsedConfig) && typeof parsedConfig.userRequirement === 'string'
-      ? replaceGenerationAliases(parsedConfig.userRequirement, generationAliases) || ''
-      : '';
-  const phoneUserInput = buildPhoneUserInput(request, formUserInput);
+  const request = resolveGenerationRandomMacros(
+    options.replay
+      ? ({ ...baseRequest } satisfies GenerationRequestParts)
+      : applyGenerationAliases(
+          {
+            ...baseRequest,
+            taskInstruction,
+            references: [baseRequest.references?.trim() || '', explicitReferences].filter(Boolean).join('\n\n'),
+          } satisfies GenerationRequestParts,
+          generationAliases,
+        ),
+  );
+  const phoneUserInput = buildPhoneUserInput(request, request.userRequirement || '');
   const userInput = buildGenerationUserInput(request);
   const chatTail = buildGenerationChatTail(request);
   const chatHistoryPrompts = buildSelectedChatHistoryPrompts(source.selection, visibleMessages, chatTail, mvuSnapshot);
@@ -572,7 +574,7 @@ function prepareGenerationRequest<TConfig, TResult, TSaveResult = { entityId: st
   if (pluginPresetId && !pluginPresetRecord) throw new Error('本次选择的插件预设已经不存在，请重新选择');
   const generationMacroVariables = {
     ...(baseRequest.taskTemplateVariables || {}),
-    taskInstruction: taskInstruction || '',
+    taskInstruction: request.taskInstruction || '',
   };
   const generateConfig = cleanGenerateConfig({
     custom_api: customApi,

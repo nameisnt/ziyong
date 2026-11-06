@@ -7,7 +7,9 @@ function randomInteger(minimum: number, maximum: number) {
 }
 
 function readInteger(params: URLSearchParams, key: string, fallback: number) {
-  const value = Number(params.get(key));
+  const raw = params.get(key);
+  if (raw === null || !raw.trim()) return fallback;
+  const value = Number(raw);
   return Number.isInteger(value) ? value : fallback;
 }
 
@@ -85,6 +87,26 @@ export function replacePluginMacros(content: string) {
   return content.replace(PLUGIN_MACRO_PATTERN, (_match, kind: string, query: string) =>
     resolvePluginMacro(kind, query),
   );
+}
+
+/** Resolve source fields before duplicating them into native input and phoneUserInput. */
+export function resolveGenerationRandomMacros<
+  T extends {
+    appPrompt?: string;
+    taskInstruction?: string;
+    typePrompt?: string;
+    userRequirement?: string;
+    outputFormat: string;
+  },
+>(request: T): T {
+  return {
+    ...request,
+    appPrompt: request.appPrompt === undefined ? undefined : replacePluginMacros(request.appPrompt),
+    taskInstruction: request.taskInstruction === undefined ? undefined : replacePluginMacros(request.taskInstruction),
+    typePrompt: request.typePrompt === undefined ? undefined : replacePluginMacros(request.typePrompt),
+    userRequirement: request.userRequirement === undefined ? undefined : replacePluginMacros(request.userRequirement),
+    outputFormat: replacePluginMacros(request.outputFormat),
+  };
 }
 
 function encodeReadableMacroValue(value: string) {

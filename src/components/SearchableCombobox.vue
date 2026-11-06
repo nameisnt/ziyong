@@ -1,5 +1,10 @@
 <template>
-  <div ref="rootEl" class="pc-combobox" :class="{ 'menu-above': menuPlacement === 'top' }" :style="comboboxStyle">
+  <div
+    ref="rootEl"
+    class="pc-combobox"
+    :class="{ 'menu-above': menuPlacement === 'top', 'pc-combobox-plain': !searchable }"
+    :style="comboboxStyle"
+  >
     <input
       :id="inputId"
       ref="inputEl"
@@ -7,13 +12,14 @@
       type="text"
       role="combobox"
       autocomplete="off"
-      aria-autocomplete="list"
+      :aria-autocomplete="searchable ? 'list' : undefined"
       :aria-controls="listboxId"
       :aria-activedescendant="activeDescendant"
       :aria-expanded="isOpen"
       :aria-label="inputLabel"
       :disabled="disabled"
       :placeholder="placeholder"
+      :readonly="!searchable"
       :value="inputText"
       @click="openMenu"
       @focus="openMenu"
@@ -78,6 +84,7 @@ const props = withDefaults(
     modelValue: string;
     options: ComboboxOption[];
     placeholder?: string;
+    searchable?: boolean;
     toggleTitle?: string;
   }>(),
   {
@@ -88,6 +95,7 @@ const props = withDefaults(
     menuMaxHeight: 220,
     menuPlacement: 'bottom',
     placeholder: '',
+    searchable: true,
     toggleTitle: '展开选项',
   },
 );
@@ -114,6 +122,7 @@ const comboboxStyle = computed(() => ({
 
 const selectedOption = computed(() => props.options.find(option => option.value === props.modelValue) || null);
 const filteredOptions = computed(() => {
+  if (!props.searchable) return props.options;
   if (!queryDirty.value) return props.options;
   const query = inputText.value.trim().toLowerCase();
   if (!query) return props.options;
@@ -191,6 +200,7 @@ function toggleMenu() {
 }
 
 function handleInput(event: Event) {
+  if (!props.searchable) return;
   inputText.value = (event.target as HTMLInputElement).value;
   queryDirty.value = true;
   if (props.allowCustom) emit('update:modelValue', inputText.value);
@@ -278,6 +288,10 @@ defineExpose({ focusAndOpen });
 
 .pc-combobox-input {
   padding-right: 40px;
+}
+
+.pc-combobox-plain .pc-combobox-input {
+  cursor: pointer;
 }
 
 .pc-combobox-toggle {

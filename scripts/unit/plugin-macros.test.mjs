@@ -2,7 +2,8 @@
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import test from 'node:test';
-import { ModuleKind, ScriptTarget, transpileModule } from 'typescript';
+import { ModuleKind, ScriptTarget, transpileModule, createSourceFile, isFunctionDeclaration } from 'typescript';
+import { runInNewContext } from 'node:vm';
 
 const source = await readFile(new URL('../../src/util/pluginMacros.ts', import.meta.url), 'utf8');
 const output = transpileModule(source, {
@@ -11,6 +12,63 @@ const output = transpileModule(source, {
 }).outputText;
 const macros = await import(`data:text/javascript;base64,${Buffer.from(output).toString('base64')}`);
 const generationService = await readFile(new URL('../../src/core/generationService.ts', import.meta.url), 'utf8');
+
+test('missing and blank numeric arguments use defaults, while explicit zero remains valid', () => {
+  for (const suffix of ['', '&min=&max=']) {
+    assert.equal(macros.resolvePluginMacro('pick', `items=only${suffix}`), 'only');
+  }
+  assert.equal(macros.resolvePluginMacro('pick', 'items=only&min=0&max=0'), '');
+  assert.equal(macros.resolvePluginMacro('dice', 'min=6&max=6'), '6');
+  assert.equal(macros.resolvePluginMacro('dice', 'min=6&max=6&target='), '6');
+  assert.equal(macros.resolvePluginMacro('dice', 'min=6&max=6&target=0'), '6（成功）');
+});
+
+test('all random source fields are sampled once before native input and repeated phone input copies', async () => {
+  const source = await readFile(new URL('../../src/util/generation.ts', import.meta.url), 'utf8');
+  const ast = createSourceFile('generation.ts', source, ScriptTarget.Latest, true);
+  const functions = ast.statements.filter(
+    node =>
+      isFunctionDeclaration(node) &&
+      ['normalizeSegment', 'buildGenerationUserInput', 'buildPhoneUserInput'].includes(node.name?.text),
+  );
+  const code = transpileModule(functions.map(node => node.getText(ast).replace(/^export /, '')).join('\n'), {
+    compilerOptions: { target: ScriptTarget.ES2022 },
+  }).outputText;
+  const builders = runInNewContext(`${code}; ({buildGenerationUserInput, buildPhoneUserInput})`, {
+    parsePrettified: (_schema, input) => input,
+    GenerationRequestPartsSchema: {},
+  });
+  const original = Math.random;
+  let calls = 0;
+  Math.random = () => (++calls % 2 ? 0 : 0.99);
+  try {
+    const dice = '{{phone:dice?min=1&max=100}}';
+    const raw = {
+      appPrompt: dice,
+      taskInstruction: '{{phone:assign?roles=X%0AY&items=A%0AB}}',
+      typePrompt: '{{phone:pick?items=A%0AB&min=1&max=1}}',
+      userRequirement: `${dice} / ${dice}`,
+      outputFormat: 'plain {{user}} {{char}} {{setvar::x::1}} {{getvar::x}}',
+    };
+    const request = macros.resolveGenerationRandomMacros(raw);
+    const count = calls;
+    const native = builders.buildGenerationUserInput(request);
+    const phone = builders.buildPhoneUserInput(request, request.userRequirement);
+    assert.equal(native, phone);
+    assert.equal(macros.replacePluginMacros(`${phone}\n${phone}`), `${native}\n${native}`);
+    assert.equal(calls, count);
+    assert.doesNotMatch(native, /\{\{phone:/);
+    assert.equal(request.outputFormat, raw.outputFormat);
+    assert.notEqual(...request.userRequirement.split(' / '));
+    assert.equal(raw.appPrompt, dice);
+    macros.resolveGenerationRandomMacros(raw);
+    assert.ok(calls > count, 'new generation must draw again');
+    assert.match(generationService, /const request = resolveGenerationRandomMacros\(/);
+    assert.match(generationService, /buildPhoneUserInput\(request, request\.userRequirement \|\| ''\)/);
+  } finally {
+    Math.random = original;
+  }
+});
 
 test('dice macros include the roll and threshold result', () => {
   const originalRandom = Math.random;

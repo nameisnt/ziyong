@@ -624,8 +624,8 @@ const recentTypePrompts = computed(() => {
       seen.add(prompt.id);
       return true;
     })
-    .slice(0, 12);
-  return recent.length ? recent : filteredTypePrompts.value.slice(0, 12);
+    .slice(0, 20);
+  return recent.length ? recent : filteredTypePrompts.value.slice(0, 20);
 });
 const visibleTypePrompts = computed(() => {
   if (query.value.trim() || typeView.value === 'all') return filteredTypePrompts.value;

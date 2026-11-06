@@ -87,7 +87,7 @@ test('aliases, task variables and plugin macros are resolved before storing valu
     },
     context(),
   );
-  assert.equal(result.ordered_prompts[1].content, '插件用户/插件角色/任务要求/任务内容/7（成功）');
+  assert.equal(result.ordered_prompts[1].content, '插件用户/插件角色/任务要求/任务内容/7');
   assert.equal(nativeCalls.length, 2);
 });
 
@@ -95,7 +95,7 @@ test('native values containing aliases or plugin macros retain plugin semantics'
   reset();
   variables.saved = '{{user}}/<char>/{{phone:dice?min=9&max=9}}';
   const result = model.preparePluginPresetMacroConfig({ ordered_prompts: [prompt('{{getvar::saved}}')] }, context());
-  assert.equal(result.ordered_prompts[0].content, '插件用户/插件角色/9（成功）');
+  assert.equal(result.ordered_prompts[0].content, '插件用户/插件角色/9');
 });
 
 test('plugin random macro used in a variable is sampled once, then reused', () => {
@@ -116,7 +116,7 @@ test('plugin random macro used in a variable is sampled once, then reused', () =
       },
       context(),
     );
-    assert.equal(result.ordered_prompts[1].content, '4（成功）/4（成功）');
+    assert.equal(result.ordered_prompts[1].content, '4/4');
     assert.equal(count, 1);
   } finally {
     Math.random = original;

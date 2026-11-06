@@ -2,15 +2,17 @@
   <div class="pc-source-fields">
     <div class="pc-number-field">
       <label class="pc-field-label">{{ labelText }}</label>
-      <select :value="mode" class="pc-select" :disabled="disabled" @change="onModeChange">
-        <option value="none">{{ t`不使用聊天楼层` }}</option>
-        <option value="latest">{{ t`最新楼层` }}</option>
-        <option value="fromStart">{{ t`从 0 到指定楼层` }}</option>
-        <option value="all">{{ t`全部楼层` }}</option>
-        <option value="single">{{ t`指定单层` }}</option>
-        <option value="recent">{{ t`最近 N 楼` }}</option>
-        <option value="range">{{ t`自定义范围` }}</option>
-      </select>
+      <SearchableCombobox
+        :disabled="disabled"
+        :model-value="mode"
+        :options="modeOptions"
+        :searchable="false"
+        empty-label="没有可用的楼层模式"
+        input-label="选择来源楼层模式"
+        placeholder="选择来源楼层模式"
+        toggle-title="展开来源楼层模式列表"
+        @update:model-value="onModeChange"
+      />
     </div>
 
     <div v-if="mode === 'recent'" class="pc-number-field">
@@ -65,6 +67,7 @@
 </template>
 
 <script setup lang="ts">
+import SearchableCombobox from '@/components/SearchableCombobox.vue';
 import { describeGenerationMvu, findGenerationMvuSnapshot, type MvuMessage } from '@/util/generationMvu';
 import { buildSourceSelection } from '@/util/generationSource';
 import { getChatMessagesSafe, getSillyTavernContext, onTavernEvent } from '@/util/runtime';
@@ -95,6 +98,15 @@ const emit = defineEmits<{
 }>();
 
 const labelText = computed(() => props.label || '来源楼层模式');
+const modeOptions = [
+  { label: '不使用聊天楼层', value: 'none' },
+  { label: '最新楼层', value: 'latest' },
+  { label: '从 0 到指定楼层', value: 'fromStart' },
+  { label: '全部楼层', value: 'all' },
+  { label: '指定单层', value: 'single' },
+  { label: '最近 N 楼', value: 'recent' },
+  { label: '自定义范围', value: 'range' },
+];
 const chatRevision = ref(0);
 const mvuSourceLabel = computed(() => {
   void chatRevision.value;
@@ -133,8 +145,8 @@ function normalizeNumber(value: string, fallback: number) {
   return Number.isFinite(parsed) ? parsed : fallback;
 }
 
-function onModeChange(event: Event) {
-  emit('update:mode', (event.target as HTMLSelectElement).value as SourceMode);
+function onModeChange(value: string) {
+  emit('update:mode', value as SourceMode);
 }
 
 function onRecentCountInput(event: Event) {

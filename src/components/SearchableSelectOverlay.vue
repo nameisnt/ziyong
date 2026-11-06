@@ -201,11 +201,14 @@ function updatePosition() {
   }
 
   const edgeGap = 8;
+  const viewport = window.visualViewport;
+  const visibleTop = viewport ? Math.max(shellRect.top, viewport.offsetTop) : shellRect.top;
+  const visibleBottom = viewport ? Math.min(shellRect.bottom, viewport.offsetTop + viewport.height) : shellRect.bottom;
   const width = Math.min(selectRect.width, shellRect.width - edgeGap * 2);
   const left = Math.max(edgeGap, Math.min(selectRect.left - shellRect.left, shellRect.width - width - edgeGap));
   const top = selectRect.top - shellRect.top;
-  const availableBelow = shellRect.bottom - selectRect.bottom - edgeGap;
-  const availableAbove = selectRect.top - shellRect.top - edgeGap;
+  const availableBelow = visibleBottom - selectRect.bottom - edgeGap;
+  const availableAbove = selectRect.top - visibleTop - edgeGap;
   const groupCount = options.value.filter(
     (option, index, source) => option.group && option.group !== source[index - 1]?.group,
   ).length;
