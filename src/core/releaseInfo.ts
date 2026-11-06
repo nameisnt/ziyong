@@ -4,6 +4,14 @@ export const RUNNING_VERSION = manifest.version;
 export const RELEASE_SEEN_FIELD = 'sillytavern_phone_last_seen_release';
 export const RELEASE_HISTORY = [
   {
+    version: '1.2.18',
+    notes: [
+      '修复：内置日记预设改为随源码提交，干净克隆不再因引用本地被忽略的 JSON 而无法通过静态检查与构建。',
+      '新增：pnpm release 一条命令完成发版（默认干跑），pnpm deploy:local 按需同步本地安装目录。',
+      '新增：push 前自动执行 verify:static，GitHub Actions 每次推送运行静态闸门与生产构建。',
+    ],
+  },
+  {
     version: '1.2.17',
     notes: [
       '生成随机宏与手机输入副本保持同源：同一请求内原生输入与 phoneUserInput 不再各自抽取随机数，称呼替换先于随机宏解析。',
