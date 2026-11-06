@@ -13,6 +13,7 @@ test('release script defaults to a dry run and only acts with --apply', async ()
   const source = await readFile(resolve(root, 'scripts/release.mjs'), 'utf8');
 
   assert.match(source, /apply: false/, 'dry run must be the default');
+  assert.match(source, /arg === '--'/, 'pnpm forwards its own separator and it must be ignored');
   assert.match(source, /--apply/, 'help must document --apply');
   assert.match(source, /if \(!options\.apply\)/, 'dry run must return before any write');
   assert.match(source, /release:notes/, 'version notes must go through the existing release:notes script');

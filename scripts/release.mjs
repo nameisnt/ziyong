@@ -62,6 +62,7 @@ function parseArgs(argv) {
       index += 1;
       return value;
     };
+    if (arg === '--') continue;
     if (arg === '--apply') options.apply = true;
     else if (arg === '--note') options.notes.push(next());
     else if (arg === '--notes-file') options.notesFile = next();
