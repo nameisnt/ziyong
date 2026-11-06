@@ -1,0 +1,30 @@
+name: verify
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+concurrency:
+  group: verify-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  verify:
+    # Windows runner so the PowerShell guards (style + UI reuse) run exactly as they do locally.
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4.1.0
+        with: { version: 10 }
+      - uses: actions/setup-node@v4
+        with: { node-version: 22, cache: pnpm }
+
+      - run: pnpm install --frozen-lockfile
+
+      - name: Static gate (lint baseline, types, unit, contracts, style, UI reuse)
+        run: pnpm verify:static
+
+      - name: Production build
+        run: pnpm build:check
