@@ -10,7 +10,7 @@ const promptGroupsSource = await readFile(
   'utf8',
 );
 const builtinDiaryRaw = JSON.parse(
-  await readFile(new URL('../../%E6%97%A5%E8%AE%B0%20(1).json', import.meta.url), 'utf8'),
+  await readFile(new URL('../../src/apps/preset-manager/builtinDiaryPreset.json', import.meta.url), 'utf8'),
 );
 const compilerOptions = { module: ts.ModuleKind.ESNext, target: ts.ScriptTarget.ES2022 };
 const promptGroupsCompiled = ts.transpileModule(promptGroupsSource, { compilerOptions }).outputText;

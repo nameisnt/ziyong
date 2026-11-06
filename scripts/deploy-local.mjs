@@ -96,8 +96,12 @@ function main() {
   console.log(`  复制:     dist/${options.i18n && existsSync(sourceI18n) ? ' + i18n/' : ''} + manifest.json`);
   console.log(`  模式:     ${options.apply ? '执行 (--apply)' : 'dry-run'}`);
 
-  if (!existsSync(target)) fail(`目标目录不存在: ${target}`);
-  if (!statSync(target).isDirectory()) fail(`目标不是目录: ${target}`);
+  if (!existsSync(target)) {
+    if (options.apply) fail(`目标目录不存在: ${target}`);
+    console.log('  注意:     目标目录不存在，dry-run 仍只打印计划。');
+  } else if (!statSync(target).isDirectory()) {
+    fail(`目标不是目录: ${target}`);
+  }
 
   if (!options.apply) {
     console.log('\n[deploy] dry-run 完成：没有复制任何文件。确认后追加 --apply。');
