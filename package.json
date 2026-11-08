@@ -4,6 +4,7 @@
   "scripts": {
     "release:notes": "node scripts/release-notes.mjs",
     "hooks:install": "node scripts/install-hooks.mjs",
+    "postinstall": "node scripts/install-hooks.mjs",
     "build": "vite build",
     "build:check": "vite build --outDir tmp/build-check --emptyOutDir",
     "backup:check": "node scripts/backup-contract-check.mjs",

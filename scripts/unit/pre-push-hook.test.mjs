@@ -28,5 +28,7 @@ test('install-hooks script and package script point at the shared hooks director
 
   assert.match(installer, /core\.hooksPath/, 'installer must set core.hooksPath');
   assert.match(installer, /\.githooks/, 'installer must point at .githooks');
+  assert.match(installer, /catch \(error\)/, 'installer must not fail dependency installation when git is unavailable');
   assert.equal(pkg.scripts['hooks:install'], 'node scripts/install-hooks.mjs');
+  assert.equal(pkg.scripts.postinstall, 'node scripts/install-hooks.mjs', 'a fresh clone must install the hook without extra steps');
 });
