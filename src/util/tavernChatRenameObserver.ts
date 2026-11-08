@@ -84,6 +84,7 @@ async function notifyRename(request: TavernChatRenamedEvent, response: Response)
     try {
       await handler(event);
     } catch (error) {
+      // 宿主改名已经生效，单个订阅者失败不能把异常抛回酒馆的事件派发。
       console.warn('[SillyTavern Phone] Failed to handle a native chat rename.', error);
     }
   }

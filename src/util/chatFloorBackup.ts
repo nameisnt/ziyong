@@ -471,6 +471,7 @@ export function startChatFloorBackupService() {
       try {
         await migrateChatFloorBackupRename(payload);
       } catch (error) {
+        // 后台迁移失败不打断改名：下一次楼层变化会按新键重建备份，无需打断用户的改名流程。
         console.warn('[功能性阅读器] 迁移改名聊天的楼层备份失败', error);
       } finally {
         schedule();

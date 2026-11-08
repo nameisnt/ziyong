@@ -152,6 +152,7 @@ function rehydratePhoneStores() {
     try {
       handler();
     } catch (error) {
+      // 单个 store 重建失败不应中断整体改名；切换到该页面时会重新加载数据。
       console.warn('[SillyTavern Phone] Failed to rehydrate a store after chat rename.', error);
     }
   });

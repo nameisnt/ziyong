@@ -38,6 +38,7 @@ async function refreshTavernWelcomeScreen() {
     };
     await welcome.openWelcomeScreen({ force: true });
   } catch (error) {
+    // 改名已经写入酒馆，刷新最近聊天列表失败只影响列表即时性，不重试以免打断改名结果。
     console.warn('[SillyTavern Phone] Failed to refresh recent chats after rename.', error);
   }
 }
