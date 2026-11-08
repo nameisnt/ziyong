@@ -25,7 +25,9 @@ const soundNotes: Record<MiniGameSound, Array<[frequency: number, delay: number,
 export function playMiniGameSound(sound: MiniGameSound) {
   if (!miniGameSoundEnabled.value) return;
   audioContext ??= new AudioContext();
-  void audioContext.resume();
+  void audioContext.resume().catch(() => {
+    // 浏览器自动播放策略可能拒绝恢复音频上下文；音效静默跳过即可，不影响游戏。
+  });
   const start = audioContext.currentTime;
   soundNotes[sound].forEach(([frequency, delay, duration]) => {
     const oscillator = audioContext!.createOscillator();

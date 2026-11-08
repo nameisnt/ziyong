@@ -201,8 +201,12 @@ export const usePhoneStore = defineStore('phone', () => {
       isPlaceholderChatScopeKey(viewingScopeKey.value);
     const nextScopeKey = getCurrentChatScopeKey();
     currentTavernScopeKey.value = nextScopeKey;
-    if (forceViewCurrent || wasViewingCurrent) {
+    if (!forceViewCurrent && !wasViewingCurrent) return;
+    // 调用方多为不等待结果的同步入口：切换失败在这里收口，避免变成未处理的 Promise 拒绝。
+    try {
       await setViewingScope(nextScopeKey, undefined, forceApply);
+    } catch (error) {
+      noticeError(`切换聊天范围失败：${error instanceof Error ? error.message : String(error)}`);
     }
   }
 
@@ -302,18 +306,28 @@ export const usePhoneStore = defineStore('phone', () => {
     }
   }
 
+  async function canLeaveCurrentPage(options: PhoneNavigationOptions, actionLabel: string) {
+    // 导航守卫来自各 App，异常不应以未处理的 Promise 拒绝冒到点击事件里。
+    try {
+      return await confirmNavigationLeave(options);
+    } catch (error) {
+      noticeError(`${actionLabel}失败：${error instanceof Error ? error.message : String(error)}`);
+      return false;
+    }
+  }
+
   async function closePhone(options: PhoneNavigationOptions = {}) {
-    if (!(await confirmNavigationLeave(options))) return;
+    if (!(await canLeaveCurrentPage(options, '关闭面板'))) return;
     closePhoneNow();
   }
 
   async function goHome(options: PhoneNavigationOptions = {}) {
-    if (!(await confirmNavigationLeave(options))) return;
+    if (!(await canLeaveCurrentPage(options, '返回首页'))) return;
     stack.value = [{ appId: 'home', page: 'home', title: '功能性阅读器' }];
   }
 
   async function goBack(options: PhoneNavigationOptions = {}) {
-    if (!(await confirmNavigationLeave(options))) return;
+    if (!(await canLeaveCurrentPage(options, '返回上一页'))) return;
     if (stack.value.length > 1) {
       stack.value = stack.value.slice(0, -1);
       activateAppScope(currentRoute.value.appId);
@@ -391,32 +405,38 @@ export const usePhoneStore = defineStore('phone', () => {
   }
 
   async function presentGeneratedPage(appId: string, page: string, title: string, params?: Record<string, string>) {
-    const current = currentRoute.value;
-    const stillGenerating = current.appId === appId && current.page.toLocaleLowerCase().includes('generate');
-    if (stillGenerating) {
-      replaceRoute(appId, page, title, params);
-      return true;
-    }
+    try {
+      const current = currentRoute.value;
+      const stillGenerating = current.appId === appId && current.page.toLocaleLowerCase().includes('generate');
+      if (stillGenerating) {
+        replaceRoute(appId, page, title, params);
+        return true;
+      }
 
-    const isFailedDraft = page === 'failed-draft';
-    const isPreview = page === 'preview' || page.endsWith('-preview');
-    const shouldOpen = await confirmNotice(
-      isFailedDraft
-        ? '生成内容已保存为失败草稿，可以立即前往修复。'
-        : isPreview
-          ? '生成已经完成，结果已保存到预览草稿。'
-          : '生成已经完成并保存，可以立即查看结果。',
-      {
-        cancelLabel: '稍后处理',
-        confirmLabel: isFailedDraft ? '修复草稿' : isPreview ? '查看预览' : '查看结果',
-        dedupeKey: `generation:${appId}:${page}:${JSON.stringify(params ?? {})}`,
-        kind: isFailedDraft ? 'warning' : 'success',
-        title: isFailedDraft ? '生成需要处理' : '生成完成',
-      },
-    );
-    if (!shouldOpen) return false;
-    pushRoute(appId, page, title, params);
-    return true;
+      const isFailedDraft = page === 'failed-draft';
+      const isPreview = page === 'preview' || page.endsWith('-preview');
+      const shouldOpen = await confirmNotice(
+        isFailedDraft
+          ? '生成内容已保存为失败草稿，可以立即前往修复。'
+          : isPreview
+            ? '生成已经完成，结果已保存到预览草稿。'
+            : '生成已经完成并保存，可以立即查看结果。',
+        {
+          cancelLabel: '稍后处理',
+          confirmLabel: isFailedDraft ? '修复草稿' : isPreview ? '查看预览' : '查看结果',
+          dedupeKey: `generation:${appId}:${page}:${JSON.stringify(params ?? {})}`,
+          kind: isFailedDraft ? 'warning' : 'success',
+          title: isFailedDraft ? '生成需要处理' : '生成完成',
+        },
+      );
+      if (!shouldOpen) return false;
+      pushRoute(appId, page, title, params);
+      return true;
+    } catch (error) {
+      // 生成结果已落盘，跳转失败只需提示，不能让调用方拿到未处理的拒绝。
+      noticeError(`打开生成结果失败：${error instanceof Error ? error.message : String(error)}`);
+      return false;
+    }
   }
 
   function resetPhoneState() {
