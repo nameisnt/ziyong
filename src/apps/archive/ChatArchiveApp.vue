@@ -391,6 +391,7 @@ import {
 } from '@/util/chatFloorBackup';
 import { renameTavernCharacterChat } from '@/util/tavernChatRename';
 import { onTavernChatRename } from '@/util/tavernChatRenameObserver';
+import { reportFailure } from '@/util/feedback';
 import { storeToRefs } from 'pinia';
 
 const phone = usePhoneStore();
@@ -584,7 +585,7 @@ async function saveCurrentFloorBackup() {
     await refreshSelectedChatRow();
     toastr.success(result.status === 'unchanged' ? '楼层备份已经是最新内容' : '已保存当前聊天楼层备份');
   } catch (caughtError) {
-    toastr.error(caughtError instanceof Error ? caughtError.message : '保存聊天楼层备份失败');
+    reportFailure('保存聊天楼层备份', caughtError);
   } finally {
     savingFloorBackup.value = false;
   }
@@ -599,7 +600,7 @@ async function saveCurrentFloorBackupFromRoot() {
     await loadCharacters(true);
     toastr.success(result.status === 'unchanged' ? '楼层备份已经是最新内容' : '已保存当前聊天楼层备份');
   } catch (caughtError) {
-    toastr.error(caughtError instanceof Error ? caughtError.message : '保存聊天楼层备份失败');
+    reportFailure('保存聊天楼层备份', caughtError);
   } finally {
     savingFloorBackup.value = false;
   }
@@ -672,7 +673,7 @@ async function onFloorBackupSelected(event: Event) {
     await refreshSelectedChatRow();
     toastr.success('已导入到本地备份库，尚未写入聊天');
   } catch (caughtError) {
-    toastr.error(caughtError instanceof Error ? caughtError.message : '导入聊天楼层备份失败');
+    reportFailure('导入聊天楼层备份', caughtError);
   }
 }
 
@@ -688,7 +689,7 @@ async function onCurrentFloorBackupSelected(event: Event) {
     await loadCharacters(true);
     toastr.success('已导入到当前聊天的本地备份位置，尚未写入真实楼层');
   } catch (caughtError) {
-    toastr.error(caughtError instanceof Error ? caughtError.message : '导入聊天楼层备份失败');
+    reportFailure('导入聊天楼层备份', caughtError);
   }
 }
 
@@ -726,7 +727,7 @@ async function restoreFloorBackup(backup: ChatFloorBackup) {
     await phone.syncCurrentTavernScope(true);
     toastr.success(`已插入 ${backup.messages.length} 个聊天楼层`);
   } catch (caughtError) {
-    toastr.error(caughtError instanceof Error ? caughtError.message : '插入聊天楼层失败');
+    reportFailure('插入聊天楼层', caughtError);
   } finally {
     restoringFloorBackup.value = false;
   }
@@ -745,7 +746,7 @@ async function deleteSelectedFloorBackup() {
     await refreshSelectedChatRow();
     toastr.success('已删除本地楼层备份');
   } catch (caughtError) {
-    toastr.error(caughtError instanceof Error ? caughtError.message : '删除本地楼层备份失败');
+    reportFailure('删除本地楼层备份', caughtError);
   }
 }
 
@@ -785,7 +786,7 @@ async function renameChat(owner: ArchiveOwner, chat: ArchiveChatRow) {
     toastr.success(`聊天已改名为“${renamedName}”`);
     return renamedName;
   } catch (caughtError) {
-    toastr.error(caughtError instanceof Error ? caughtError.message : '聊天改名失败');
+    reportFailure('聊天改名', caughtError);
     return null;
   }
 }

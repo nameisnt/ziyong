@@ -59,6 +59,7 @@ test('native lifecycle installs once, exposes module failure for retry, and clea
   Object.defineProperty(host, 'promptManager', { enumerable: true, get: () => null });
   const imports = {
     '@/apps/preset-link/store': { usePresetLinkStore: () => ({ retainNativeGroupRestore() {} }) },
+    '@/util/feedback': { reportFailure() {} },
     './nativeToggle': {
       installNativePromptToggle: () => {
         installs++;

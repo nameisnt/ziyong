@@ -262,6 +262,7 @@ import {
 import type { FailedGenerationDraft, HiddenGenerationRecord } from '@/type/generation';
 import type { GenerationTask } from '@/type/generationTask';
 import type { CharacterRef } from '@/type/diary';
+import { reportFailure } from '@/util/feedback';
 import { storeToRefs } from 'pinia';
 
 const diary = useDiaryStore();
@@ -1041,7 +1042,7 @@ async function runGeneration() {
       title: '生成日记 · 单次生成',
     });
   } catch (error) {
-    toastr.error(error instanceof Error ? error.message : '无法建立日记生成任务');
+    reportFailure('建立日记生成任务', error);
     return;
   }
   const perspective = generationPerspective.value;
@@ -1246,7 +1247,7 @@ async function runReadReactionGeneration() {
       title: '生成阅读反应 · 单次生成',
     });
   } catch (error) {
-    toastr.error(error instanceof Error ? error.message : '无法建立阅读反应任务');
+    reportFailure('建立阅读反应任务', error);
     return;
   }
   const targetPerspective = reactionPerspective.value;
@@ -1459,7 +1460,7 @@ async function saveBatchPreview(edits: ManualBatchPreviewEdit[]) {
     toastr.success(`已保存 ${result.savedCount} 篇日记`);
     phone.replacePage(book ? 'book' : 'root', book?.title || '角色书架', book ? { bookId: book.id } : undefined);
   } catch (error) {
-    toastr.error(error instanceof Error ? error.message : '批量保存失败');
+    reportFailure('批量保存', error);
   }
 }
 

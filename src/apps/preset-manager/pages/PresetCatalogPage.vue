@@ -279,6 +279,7 @@ import { useBulkSelection } from '@/composables/useBulkSelection';
 import { usePhoneStore } from '@/store/phone';
 import { usePresetCatalogGroupStore, type PresetCatalogSource } from '@/store/presetCatalogGroups';
 import type { PluginPresetRecord } from '../pluginPreset';
+import { reportFailure } from '@/util/feedback';
 
 const props = defineProps<{
   errorMessage: string;
@@ -429,7 +430,7 @@ async function applyGroup(name: string) {
     phone.noticeSuccess(`已移动 ${request.ids.length} 个预设`);
     await revealGroup(name || '未分组');
   } catch (error) {
-    phone.noticeError(error instanceof Error ? error.message : '分组保存失败');
+    reportFailure('保存分组', error);
   }
 }
 async function revealGroup(name: string) {

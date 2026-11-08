@@ -269,6 +269,7 @@ import { resolveContentVersion } from '@/util/contentVersions';
 import { usePreviewDraftPersistence } from '@/util/previewDrafts';
 import { useInvalidRouteFallback } from '@/util/routeFallback';
 import { updateGenerationRecordReasoning } from '@/util/generationReasoning';
+import { reportFailure } from '@/util/feedback';
 import { storeToRefs } from 'pinia';
 
 const phone = usePhoneStore();
@@ -1218,7 +1219,7 @@ async function runGeneration() {
     void phone.presentGeneratedPage('theater', 'preview', '生成预览');
   } catch (error) {
     if (task) generationSession.fail(task.id, error);
-    else toastr.error(error instanceof Error ? error.message : '生成失败，请稍后再试');
+    else reportFailure('生成', error);
   }
 }
 

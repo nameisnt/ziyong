@@ -161,6 +161,7 @@ import { useBulkSelection } from '@/composables/useBulkSelection';
 import { useWorldbookCatalogGroupStore } from '@/store/worldbookCatalogGroups';
 import { usePhoneStore } from '@/store/phone';
 import type { CurrentWorldbookGroups, WorldbookCategoryId } from '../api';
+import { reportFailure } from '@/util/feedback';
 
 interface WorldbookCategory {
   id: WorldbookCategoryId;
@@ -214,7 +215,7 @@ async function applyGroup(name: string) {
       .querySelector(`.pc-worldbook-catalog-page [data-catalog-group="${CSS.escape(name || '未分组')}"]`)
       ?.scrollIntoView({ block: 'nearest' });
   } catch (error) {
-    phone.noticeError(error instanceof Error ? error.message : '分组保存失败');
+    reportFailure('保存分组', error);
   }
 }
 

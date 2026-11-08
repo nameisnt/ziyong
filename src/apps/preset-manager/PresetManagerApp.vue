@@ -153,6 +153,7 @@ import PresetDetailPage from './pages/PresetDetailPage.vue';
 import PresetPromptCopyPage from './pages/PresetPromptCopyPage.vue';
 import PresetPromptEditorPage from './pages/PresetPromptEditorPage.vue';
 import { configureNativeGrouping } from './nativeConfiguration';
+import { describeFailure, reportFailure } from '@/util/feedback';
 
 const phone = usePhoneStore();
 const entryLibrary = useEntryLibraryStore();
@@ -399,7 +400,7 @@ async function togglePresetVisibility() {
     await pluginPresets.setHidden(record.id, !record.hidden);
     toastr.success(record.hidden ? '内置预设已隐藏' : '内置预设已取消隐藏');
   } catch (error) {
-    toastr.error(error instanceof Error ? error.message : String(error));
+    reportFailure('切换内置预设可见性', error);
   } finally {
     saving.value = false;
   }
@@ -414,7 +415,7 @@ async function importPluginPreset(file: File) {
     toastr.success(`已导入插件预设“${imported.name}”`);
     openPluginPreset(imported.id);
   } catch (error) {
-    toastr.error(error instanceof Error ? error.message : String(error));
+    reportFailure('导入插件预设', error);
   } finally {
     loading.value = false;
   }
@@ -456,7 +457,7 @@ async function switchPreset(presetName: string) {
     loadedPresetName.value = presetName;
     toastr.success(`已切换到“${presetName}”`);
   } catch (error) {
-    toastr.error(error instanceof Error ? error.message : String(error));
+    reportFailure('切换预设', error);
   } finally {
     switchingPreset.value = '';
   }
@@ -489,7 +490,7 @@ async function renamePreset() {
     });
     toastr.success(`插件预设已改名为“${savedName}”`);
   } catch (error) {
-    toastr.error(error instanceof Error ? error.message : String(error));
+    reportFailure('重命名预设', error);
   } finally {
     saving.value = false;
   }
@@ -522,7 +523,7 @@ async function removePreset() {
     phone.replaceRoute('preset-manager', 'root', '预设管理');
     toastr.success(`预设已删除，并清理 ${removed} 处手机引用`);
   } catch (error) {
-    toastr.error(error instanceof Error ? error.message : String(error));
+    reportFailure('删除预设', error);
   } finally {
     saving.value = false;
   }
@@ -655,7 +656,7 @@ async function movePreset() {
     if (error instanceof PresetMigrationError && error.stage === 'source-delete') {
       toastr.error('目标预设已创建并校验，但来源删除失败；两边都还在');
     } else {
-      toastr.error(error instanceof Error ? error.message : String(error));
+      reportFailure('复制预设', error);
     }
   } finally {
     saving.value = false;
@@ -680,7 +681,7 @@ async function togglePrompt(prompt: TavernPresetPrompt, enabled: boolean) {
       toastr.warning('条目已经保存，但当前生效副本刷新失败；重新切换预设后会生效');
     }
   } catch (error) {
-    toastr.error(error instanceof Error ? error.message : String(error));
+    reportFailure('切换条目启用状态', error);
   } finally {
     setBusyPrompt(prompt.id, false);
   }
@@ -703,7 +704,7 @@ async function savePromptGroupMutation(update: (preset: TavernPreset) => void, s
     else toastr.warning(`${successMessage}，但当前生效副本刷新失败；重新切换预设后会生效`);
     return true;
   } catch (error) {
-    toastr.error(error instanceof Error ? error.message : String(error));
+    reportFailure('保存条目分组', error);
     return false;
   } finally {
     saving.value = false;
@@ -878,7 +879,7 @@ async function commitPromptDrag() {
       toastr.warning('顺序已经保存，但当前生效副本刷新失败；重新切换预设后会生效');
     }
   } catch (error) {
-    toastr.error(error instanceof Error ? error.message : String(error));
+    reportFailure('保存条目顺序', error);
   } finally {
     saving.value = false;
   }
@@ -924,7 +925,7 @@ async function savePromptContent() {
     }
     await phone.goBack();
   } catch (error) {
-    toastr.error(error instanceof Error ? error.message : String(error));
+    reportFailure('保存条目内容', error);
   } finally {
     saving.value = false;
   }
@@ -961,7 +962,7 @@ async function savePromptCopy() {
     }
     await phone.goBack();
   } catch (error) {
-    toastr.error(error instanceof Error ? error.message : String(error));
+    reportFailure('插入条目副本', error);
   } finally {
     saving.value = false;
   }
@@ -1004,7 +1005,7 @@ async function removePrompt() {
     }
     await phone.goBack();
   } catch (error) {
-    toastr.error(error instanceof Error ? error.message : String(error));
+    reportFailure('删除条目', error);
   } finally {
     saving.value = false;
   }
@@ -1050,7 +1051,7 @@ async function removeSelectedPrompts(ids: string[]) {
           )
           .forEach(binding => entryLibrary.deleteBinding(binding.id));
       } catch (error) {
-        toastr.error(`条目已删除，但关联清理失败：${String(error)}`);
+        toastr.error(`条目已删除，但关联清理失败：${describeFailure(error)}`);
         return;
       }
       if (result.liveSynced) toastr.success(`已删除 ${ids.length} 个酒馆预设条目`);
@@ -1058,7 +1059,7 @@ async function removeSelectedPrompts(ids: string[]) {
     }
     syncCollapsedGroups();
   } catch (error) {
-    toastr.error(error instanceof Error ? error.message : String(error));
+    reportFailure('删除选中条目', error);
   } finally {
     saving.value = false;
   }
@@ -1077,7 +1078,7 @@ function exportActivePreset() {
     URL.revokeObjectURL(url);
     toastr.success('插件预设已导出');
   } catch (error) {
-    toastr.error(error instanceof Error ? error.message : String(error));
+    reportFailure('导出插件预设', error);
   }
 }
 

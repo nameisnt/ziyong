@@ -116,6 +116,7 @@ import WorldbookCatalogPage from './pages/WorldbookCatalogPage.vue';
 import WorldbookDetailPage from './pages/WorldbookDetailPage.vue';
 import WorldbookEntryEditorPage from './pages/WorldbookEntryEditorPage.vue';
 import { type WorldbookLinkStatus, useWorldbookLinkStore } from './store';
+import { describeFailure, reportFailure } from '@/util/feedback';
 
 const phone = usePhoneStore();
 const prompts = usePromptStore();
@@ -421,7 +422,7 @@ async function assignEntryGroup(entry: WorldbookEntry) {
     }
     catalogGroups.assignEntry(detailBookName.value, entry.uid, name);
   } catch (error) {
-    toastr.error(error instanceof Error ? error.message : '设置条目分组失败');
+    reportFailure('设置条目分组', error);
   }
 }
 
@@ -434,7 +435,7 @@ async function loadDetail() {
     const status = await worldbookLinks.getStatus(scopeKey, bookName);
     if (currentScopeKey.value === scopeKey && detailBookName.value === bookName) detailStatus.value = status;
   } catch (error) {
-    toastr.error(error instanceof Error ? error.message : '读取世界书失败');
+    reportFailure('读取世界书', error);
   }
 }
 
@@ -454,7 +455,7 @@ async function captureCurrentProfile() {
     detailStatus.value = await worldbookLinks.captureProfile(currentScopeKey.value, detailBookName.value);
     toastr.success('已保存当前聊天的条目状态');
   } catch (error) {
-    toastr.error(error instanceof Error ? error.message : '保存配置失败');
+    reportFailure('保存配置', error);
   } finally {
     busy.value = false;
   }
@@ -467,7 +468,7 @@ async function applySavedProfile() {
     detailStatus.value = result.status;
     toastr.success(result.changed ? `已更新 ${result.changed} 个条目` : '当前条目状态已经一致');
   } catch (error) {
-    toastr.error(error instanceof Error ? error.message : '应用配置失败');
+    reportFailure('应用配置', error);
   } finally {
     busy.value = false;
   }
@@ -489,7 +490,7 @@ async function unlinkCurrentBook() {
     await loadDetail();
     toastr.success('已停止联动并恢复原状态');
   } catch (error) {
-    toastr.error(error instanceof Error ? error.message : '停止联动失败');
+    reportFailure('停止联动', error);
   } finally {
     busy.value = false;
   }
@@ -516,7 +517,7 @@ async function renameCurrentBook() {
     await loadDetail();
     toastr.success(`世界书已改名，并迁移 ${migrated} 处联动配置`);
   } catch (error) {
-    toastr.error(error instanceof Error ? error.message : '世界书改名失败');
+    reportFailure('世界书改名', error);
   } finally {
     busy.value = false;
   }
@@ -537,7 +538,7 @@ async function toggleGlobalWorldbook(bookName: string, event: Event) {
     toastr.success(enabled ? `已全局启用“${bookName}”` : `已停止全局启用“${bookName}”`);
   } catch (error) {
     input.checked = !enabled;
-    toastr.error(error instanceof Error ? error.message : '更新全局世界书失败');
+    reportFailure('更新全局世界书', error);
   } finally {
     const next = new Set(globalBusyBooks.value);
     next.delete(bookName);
@@ -634,7 +635,7 @@ async function loadEntryEditor() {
     setEntryDraft(entry, page === 'copy');
   } catch (error) {
     if (!isEntryEditorRequestCurrent(requestId, scopeKey, bookName, entryUid, page)) return;
-    toastr.error(error instanceof Error ? error.message : '读取世界书条目失败');
+    reportFailure('读取世界书条目', error);
   }
 }
 
@@ -678,7 +679,7 @@ async function saveEditingEntry() {
     toastr.success('世界书条目已保存');
   } catch (error) {
     if (!isEntryEditorRequestCurrent(requestId, scopeKey, bookName, entryUid, page)) return;
-    toastr.error(error instanceof Error ? error.message : '保存世界书条目失败');
+    reportFailure('保存世界书条目', error);
   } finally {
     entryEditorBusy.value = false;
   }
@@ -719,7 +720,7 @@ async function saveEntryCopy() {
     toastr.success('世界书条目副本已创建');
   } catch (error) {
     if (!isEntryEditorRequestCurrent(requestId, scopeKey, bookName, entryUid, page)) return;
-    toastr.error(error instanceof Error ? error.message : '复制世界书条目失败');
+    reportFailure('复制世界书条目', error);
   } finally {
     entryEditorBusy.value = false;
   }
@@ -784,7 +785,7 @@ async function removeEditingEntry() {
     await phone.goBack();
     toastr.success('世界书条目已删除');
   } catch (error) {
-    toastr.error(error instanceof Error ? error.message : '删除世界书条目失败');
+    reportFailure('删除世界书条目', error);
   } finally {
     entryEditorBusy.value = false;
   }
@@ -824,9 +825,8 @@ async function removeSelectedEntries() {
     }
     toastr.success(`已删除 ${uids.length} 个世界书条目`);
   } catch (error) {
-    toastr.error(
-      `${deleted ? '条目已删除，但关联清理或列表刷新失败：' : ''}${error instanceof Error ? error.message : String(error)}`,
-    );
+    const prefix = deleted ? '条目已删除，但关联清理或列表刷新失败：' : '删除世界书条目失败：';
+    toastr.error(`${prefix}${describeFailure(error)}`);
   } finally {
     busy.value = false;
   }
@@ -848,7 +848,7 @@ async function toggleWorldbookEntry(entry: WorldbookEntry, event: Event) {
     await commitEntryStates(bookName, currentScopeKey.value, states);
   } catch (error) {
     input.checked = entry.enabled;
-    toastr.error(error instanceof Error ? error.message : '更新条目状态失败');
+    reportFailure('更新条目状态', error);
   }
 }
 
@@ -908,7 +908,7 @@ async function updateEntryGroupMode(
     catalogGroups.setEntryGroupMode(detailBookName.value, groupName, mode);
     toastr.success(mode === 'single' ? '条目分组已设为单选' : '条目分组已设为复选');
   } catch (error) {
-    toastr.error(error instanceof Error ? error.message : '更新条目分组选择方式失败');
+    reportFailure('更新条目分组选择方式', error);
   }
 }
 </script>

@@ -1,4 +1,5 @@
 import { usePresetLinkStore } from '@/apps/preset-link/store';
+import { reportFailure } from '@/util/feedback';
 import { installNativePromptToggle, type NativePromptManager } from './nativeToggle';
 
 export const useNativePresetGroups = defineStore('nativePresetGroups', () => {
@@ -20,7 +21,7 @@ export const useNativePresetGroups = defineStore('nativePresetGroups', () => {
           document,
           getManager: () => host.promptManager as NativePromptManager | null,
           beforeChange: states => links.retainNativeGroupRestore(states),
-          onError: caught => toastr.error(caught instanceof Error ? caught.message : String(caught)),
+          onError: caught => reportFailure('保存酒馆条目联动', caught),
         });
         error.value = '';
       } catch (caught) {
