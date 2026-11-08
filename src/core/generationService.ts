@@ -713,6 +713,7 @@ async function generateFromExternalCompatibleApi(
       try {
         data = JSON.parse(payload) as Record<string, any>;
       } catch {
+        // 流式响应里可能混有心跳或半截被截断的行，跳过这一行继续读后续数据。
         return;
       }
       if (data.error) {

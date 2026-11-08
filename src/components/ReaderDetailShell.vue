@@ -297,6 +297,7 @@ const itemTransferAvailable = computed(() => {
   try {
     return Boolean(provider.exportItem(itemTransferParams.value));
   } catch {
+    // 提供方探测可转移物品失败时按「不可转移」处理，按钮保持禁用即可，不打断详情页。
     return false;
   }
 });

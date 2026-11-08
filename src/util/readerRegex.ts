@@ -52,6 +52,7 @@ export function resolveReaderBodySourceRange(
     });
     return candidates.length === 1 ? candidates[0] : null;
   } catch {
+    // 规则不匹配这段文本时返回 null 表示该规则不适用，不是错误。
     return null;
   }
 }
@@ -79,6 +80,7 @@ function buildRegex(rule) {
     const parsed = parsePattern(rule.find, rule.flags);
     return new RegExp(parsed.pattern, parsed.flags);
   } catch {
+    // 规则里的正则本身非法时返回 null，让调用方跳过这条规则。
     return null;
   }
 }
@@ -170,6 +172,7 @@ function transformReaderMessagesSync(
       const parsed = parsePattern(rule.find, rule.flags);
       return new RegExp(parsed.pattern, parsed.flags);
     } catch {
+      // 规则里的正则本身非法时返回 null，让调用方跳过这条规则。
       return null;
     }
   }

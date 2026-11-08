@@ -161,6 +161,7 @@ export function scanTextWithBaguRules(text: string, rules: BaguRule[]) {
         try {
           expression = new RegExp(compileTemplate(rule.template.trim()), 'gu');
         } catch {
+          // 单条模板规则编译失败只跳过这一条，其余规则照常检测。
           return;
         }
 

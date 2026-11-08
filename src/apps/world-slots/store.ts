@@ -636,6 +636,7 @@ export const useWorldSlotsStore = defineStore('world-slots', () => {
     try {
       return await syncToWorldBook();
     } catch (error) {
+      // 自动同步是后台动作，失败只记录日志并让槽位继续用本地数据，不打断用户操作。
       console.error('[功能性阅读器] 世界书槽位自动同步失败', error);
       return null;
     }

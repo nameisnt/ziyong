@@ -278,6 +278,7 @@ export function useChatScopedDomain<T>(options: { field: string; schema: ZodType
     try {
       return parsePrettified(options.schema, klona(raw));
     } catch {
+      // 存档里的 scope 可能来自旧版本或被手工改坏，解析失败按「没有数据」处理。
       return null;
     }
   }

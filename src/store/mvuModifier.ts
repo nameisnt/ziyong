@@ -45,6 +45,7 @@ function readLegacyStorageItem(key: string) {
   try {
     return globalThis.localStorage?.getItem(key) ?? null;
   } catch {
+    // 隐私模式或禁用站点存储时访问 localStorage 会抛错，按「没有旧数据」继续迁移。
     return null;
   }
 }

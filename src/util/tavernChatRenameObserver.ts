@@ -68,6 +68,7 @@ async function readRenameRequest(input: RequestInfo | URL, init?: RequestInit) {
       oldFileName,
     } satisfies TavernChatRenamedEvent;
   } catch {
+    // 宿主事件结构不符合预期时忽略本次事件，避免异常抛回酒馆的事件派发。
     return null;
   }
 }

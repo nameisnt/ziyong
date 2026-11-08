@@ -355,6 +355,7 @@ async function assertRejects(action: () => Promise<unknown>, message: string) {
   try {
     await action();
   } catch {
+    // 断言辅助函数：捕获到异常正是预期结果，这里返回表示通过。
     return;
   }
   throw new Error(message);

@@ -12,6 +12,7 @@ function parseContentRegexUsageKey(key: string): (string | number)[] | null {
       ? value
       : null;
   } catch {
+    // 内容键不是可解析的 JSON 数组时按无内容处理，展示层跳过这条记录即可。
     return null;
   }
 }

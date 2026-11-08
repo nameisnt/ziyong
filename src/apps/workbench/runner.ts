@@ -77,6 +77,7 @@ function stepHasExistingContent(step: WorkbenchStep) {
     try {
       return readExternalProfileTables().find(table => table.key === step.config.profileSheetKey)?.rows.length !== 0;
     } catch {
+      // 档案表读不到按「这一步未就绪」处理，让工作流跳过该步骤而不是整体中断。
       return false;
     }
   }
