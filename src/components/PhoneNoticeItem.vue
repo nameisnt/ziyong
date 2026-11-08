@@ -65,7 +65,7 @@ usePhoneModalLifecycle({
   border: 1px solid var(--pc-border);
   border-radius: 14px;
   padding: 9px 11px;
-  background: var(--pc-form-control-bg);
+  background: var(--pc-surface-strong);
   color: var(--pc-form-control-text);
   box-shadow: 0 12px 28px rgba(15, 23, 42, 0.18);
   cursor: pointer;
