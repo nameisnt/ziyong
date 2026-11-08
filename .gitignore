@@ -30,3 +30,9 @@ QITA/
 Anima正式版-文生图工作流.json
 手机端BUG分析.md
 一键安全推送dist到GitHub.cmd
+
+# 本地设计素材与参考（构建不依赖，留在磁盘上但不进仓库）
+output/imagegen/
+prototypes/ink-fish/
+*.mp4
+UI设计规范，给VibeCoder们的美学建议.pdf
