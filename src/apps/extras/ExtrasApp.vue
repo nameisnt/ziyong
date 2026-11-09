@@ -844,6 +844,18 @@ const shelfBooks = computed(() =>
 );
 
 watch(
+  () => extras.scopeKey,
+  (next, previous) => {
+    if (!previous || next === previous) return;
+    // 查看作用域变了：只读聊天留下的预览和草稿都属于旧书，必须作废，否则会拿着旧书继续显示生成页。
+    chapterGenerationState.preview = null;
+    generationState.preview = null;
+    selectedReferences.value = [];
+    if (route.value.appId === 'extras') phone.replacePage('root', '番外书架');
+  },
+);
+
+watch(
   () => route.value,
   (current, previous) => {
     if (current.appId !== 'extras') {

@@ -97,6 +97,8 @@ export const usePhoneStore = defineStore('phone', () => {
   const stack = ref<PhoneRoute[]>([{ appId: 'home', page: 'home', title: '功能性阅读器' }]);
   const currentTavernScopeKey = ref(getCurrentChatScopeKey());
   const viewingScopeKey = ref(currentTavernScopeKey.value);
+  // 打开过的 App 才需要跟着查看作用域切数据；从未打开的 App 保持惰性，避免为了切作用域实例化全部 store。
+  const activatedAppIds = new Set<string>();
   const viewingScopeMeta = ref<PhoneViewingScopeMeta>(createDefaultScopeMeta(viewingScopeKey.value));
   const notices = ref<PhoneNotice[]>([]);
   const previewLeaveConfirming = ref(false);
@@ -166,12 +168,18 @@ export const usePhoneStore = defineStore('phone', () => {
   }
 
   async function applyViewingScope(scopeKey: string) {
-    await Promise.all(
-      getRegisteredPhoneAppScopeSwitchHandlers(currentRoute.value.appId).map(item => item.switchScope(scopeKey)),
-    );
+    // 当前页面和打开过的 App 都要跟着切，否则在首页切作用域后，缓存中的 App 会继续拿着旧聊天的数据。
+    const handlers = new Map<string, { switchScope: (scopeKey: string) => void | Promise<void> }>();
+    for (const appId of [currentRoute.value.appId, ...activatedAppIds]) {
+      for (const item of getRegisteredPhoneAppScopeSwitchHandlers(appId)) {
+        handlers.set(item.app.id, item);
+      }
+    }
+    await Promise.all([...handlers.values()].map(item => item.switchScope(scopeKey)));
   }
 
   function activateAppScope(appId: string) {
+    activatedAppIds.add(appId);
     const switchScope = getRegisteredPhoneAppScopeSwitchHandler(appId);
     if (!switchScope) return;
     void Promise.resolve(switchScope(viewingScopeKey.value)).catch(error => {
@@ -237,6 +245,8 @@ export const usePhoneStore = defineStore('phone', () => {
 
   function openPhone() {
     isOpen.value = true;
+    // 重新打开面板时按当前查看作用域激活所在页面，避免缓存中的 App 用旧聊天的数据继续显示。
+    activateAppScope(currentRoute.value.appId);
     if (acknowledgeRelease(extension_settings)) {
       noticeInfo(`本版更新说明可在设置的“更新”标签页中查看。`, {
         title: `功能性阅读器 ${RUNNING_VERSION}`,
