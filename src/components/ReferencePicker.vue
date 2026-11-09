@@ -137,13 +137,21 @@
 import { getRegisteredPhoneAppReferenceCatalog, type PhoneReferenceTreeNode } from '@/core/appRegistry';
 import type { GenerationReferenceItem } from '@/util/references';
 import { referenceText } from '@/util/referenceText';
-import { defineComponent, h, type PropType } from 'vue';
+import { defineComponent, h, type DefineComponent, type PropType } from 'vue';
 
 function floorBadge(item: GenerationReferenceItem) {
   const label = item.timeLabel?.trim() ?? '';
   const match = label.match(/^第\s*(\d+(?:\s*[-–~]\s*\d+)?)\s*(?:章|楼)/u);
   return match?.[1]?.replace(/\s+/gu, '') ?? '';
 }
+
+type ReferenceTreeNodeProps = {
+  disabled: boolean;
+  insertMode: boolean;
+  level: number;
+  node: PhoneReferenceTreeNode;
+  selectedIds: Set<string>;
+};
 
 const ReferenceTreeNode = defineComponent({
   props: {
@@ -157,23 +165,24 @@ const ReferenceTreeNode = defineComponent({
   setup(props, { emit }) {
     return () => {
       const paddingLeft = `${props.level * 14 + 10}px`;
-      if (props.node.kind === 'leaf') {
-        const selected = props.selectedIds.has(props.node.item.id);
+      const node = props.node;
+      if (node.kind === 'leaf') {
+        const selected = props.selectedIds.has(node.item.id);
         if (props.insertMode) {
           return h(
             'button',
             {
               class: ['pc-reference-node', 'leaf', 'insert'],
               disabled: props.disabled,
-              onClick: () => emit('toggle-leaf', props.node.item),
+              onClick: () => emit('toggle-leaf', node.item),
               style: { paddingLeft },
               type: 'button',
             },
             [
               h('i', { class: 'fa-solid fa-plus' }),
-              h('span', { class: 'pc-reference-node-title' }, props.node.item.title),
-              floorBadge(props.node.item)
-                ? h('small', { class: 'pc-reference-node-floor' }, floorBadge(props.node.item))
+              h('span', { class: 'pc-reference-node-title' }, node.item.title),
+              floorBadge(node.item)
+                ? h('small', { class: 'pc-reference-node-floor' }, floorBadge(node.item))
                 : null,
             ],
           );
@@ -189,12 +198,12 @@ const ReferenceTreeNode = defineComponent({
               class: 'pc-reference-checkbox',
               checked: selected,
               disabled: props.disabled,
-              onChange: () => emit('toggle-leaf', props.node.item),
+              onChange: () => emit('toggle-leaf', node.item),
               type: 'checkbox',
             }),
-            h('span', { class: 'pc-reference-node-title' }, props.node.item.title),
-            floorBadge(props.node.item)
-              ? h('small', { class: 'pc-reference-node-floor' }, floorBadge(props.node.item))
+            h('span', { class: 'pc-reference-node-title' }, node.item.title),
+            floorBadge(node.item)
+              ? h('small', { class: 'pc-reference-node-floor' }, floorBadge(node.item))
               : null,
           ],
         );
@@ -206,20 +215,20 @@ const ReferenceTreeNode = defineComponent({
           {
             class: 'pc-reference-node branch',
             disabled: props.disabled,
-            onClick: () => emit('toggle-branch', props.node.id),
+            onClick: () => emit('toggle-branch', node.id),
             style: { paddingLeft },
             type: 'button',
           },
           [
             h('i', {
-              class: expanded.value.has(props.node.id) ? 'fa-solid fa-chevron-down' : 'fa-solid fa-chevron-right',
+              class: expanded.value.has(node.id) ? 'fa-solid fa-chevron-down' : 'fa-solid fa-chevron-right',
             }),
-            h('span', { class: 'pc-reference-node-title' }, props.node.label),
-            h('small', props.node.children.length),
+            h('span', { class: 'pc-reference-node-title' }, node.label),
+            h('small', node.children.length),
           ],
         ),
-        expanded.value.has(props.node.id)
-          ? props.node.children.map(child =>
+        expanded.value.has(node.id)
+          ? node.children.map(child =>
               h(ReferenceTreeNode, {
                 disabled: props.disabled,
                 insertMode: props.insertMode,
@@ -235,7 +244,7 @@ const ReferenceTreeNode = defineComponent({
       ]);
     };
   },
-});
+}) as DefineComponent<ReferenceTreeNodeProps>;
 
 const props = withDefaults(
   defineProps<{
@@ -311,7 +320,7 @@ function filterNode(node: PhoneReferenceTreeNode, normalizedQuery: string): Phon
 
   const children = node.children
     .map(child => filterNode(child, normalizedQuery))
-    .filter((child): child is ReferenceTreeNodeData => Boolean(child));
+    .filter((child): child is PhoneReferenceTreeNode => Boolean(child));
   if (children.length || node.label.toLowerCase().includes(normalizedQuery)) {
     return {
       ...node,

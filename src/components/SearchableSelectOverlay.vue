@@ -22,7 +22,7 @@
 import SearchableCombobox from '@/components/SearchableCombobox.vue';
 
 interface SelectOption {
-  disabled: boolean;
+  disabled?: boolean;
   group?: string;
   label: string;
   value: string;

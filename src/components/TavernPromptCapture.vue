@@ -52,9 +52,10 @@ const captured = ref<CapturedTavernPromptPreview | null>(null);
 const error = ref('');
 const expandedIds = ref<number[]>([]);
 const running = ref(false);
-const allExpanded = computed(
-  () => Boolean(captured.value?.messages.length) && expandedIds.value.length === captured.value.messages.length,
-);
+const allExpanded = computed(() => {
+  const preview = captured.value;
+  return Boolean(preview?.messages.length) && expandedIds.value.length === preview!.messages.length;
+});
 
 watch(
   () => props.resetKey,

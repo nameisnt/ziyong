@@ -13,7 +13,7 @@
     "structure:check": "node scripts/structure-contract-check.mjs",
     "test:contracts": "pnpm backup:check && pnpm config:check && pnpm recovery:check && pnpm structure:check",
     "verify": "pnpm verify:static && pnpm build:check && pnpm verify:ui",
-    "verify:static": "pnpm lint:baseline && pnpm typecheck && pnpm test:unit && pnpm test:contracts && pnpm style:check && powershell -ExecutionPolicy Bypass -File scripts/check-ui-reuse.ps1 -Strict",
+    "verify:static": "pnpm lint:baseline && pnpm typecheck && pnpm typecheck:sfc && pnpm test:unit && pnpm test:contracts && pnpm style:check && powershell -ExecutionPolicy Bypass -File scripts/check-ui-reuse.ps1 -Strict",
     "verify:ui": "pnpm ui:check -- --interaction-contracts --appearance-contracts --sizes=350x700,390x844,430x900 --out=tmp/ui-check/verify",
     "verify:full": "pnpm verify:static && pnpm build:check && pnpm ui:check -- --sizes=350x700,390x844,430x900 --out=tmp/ui-check/full",
     "watch": "vite build --watch --mode development",
@@ -27,7 +27,8 @@
     "ui:check": "node scripts/ui-visual-check.mjs",
     "lint:fix": "eslint --fix",
     "release": "node scripts/release.mjs",
-    "deploy:local": "node scripts/deploy-local.mjs"
+    "deploy:local": "node scripts/deploy-local.mjs",
+    "typecheck:sfc": "node scripts/check-sfc-typecheck.mjs"
   },
   "browserslist": [
     "defaults and partially supports es6-module"
@@ -71,6 +72,7 @@
     "vue-eslint-parser": "^10.4.2",
     "vue-loader": "^17.4.2",
     "vue-style-loader": "^4.1.3",
+    "vue-tsc": "2.2.12",
     "yaml": "^2.9.1"
   },
   "dependencies": {
