@@ -37,8 +37,16 @@ test('entries owned by another chat are skipped instead of being deleted', () =>
   const body = sliceFunction('performSync');
   const foreignBranch = body.match(/if \(!currentSlotIds\.has\(slotId\)\) \{[\s\S]*?\n {6}\}/u)?.[0] ?? '';
   assert.match(foreignBranch, /foreignSkipped \+= 1;/u);
-  assert.doesNotMatch(foreignBranch, /delete entries\[/u);
+  assert.match(foreignBranch, /removedSlotIds\.has\(slotId\)/u);
+  assert.match(foreignBranch, /delete entries\[/u);
   assert.match(body, /foreignSkipped,/u);
+});
+
+test('a slot the user deleted still removes its world book entry', () => {
+  const deleteBody = sliceFunction('deleteSlot');
+  assert.match(deleteBody, /removedSlotIds\.add\(slotId\);/u);
+  const body = sliceFunction('performSync');
+  assert.match(body, /removedSlotIds\.clear\(\);/u);
 });
 
 test('a shared book with foreign entries still refreshes the local slots', () => {

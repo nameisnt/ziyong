@@ -78,6 +78,7 @@ function fixture(entries, slots = [slot]) {
     WORLD_SLOTS_BOOK_NAME: 'Test book',
     exports: {},
     pendingFields: new Map(),
+    removedSlotIds: new Set(),
     pendingKey: id => id,
     writingBook: null,
     writtenScope: '',

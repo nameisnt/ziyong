@@ -278,6 +278,8 @@ export const useWorldSlotsStore = defineStore('world-slots', () => {
   let writtenScope = '';
   let writingBook: unknown = null;
   const pendingFields = new Map<string, WorldSlotEditableFields>();
+  // 用户主动删除的槽位：这些条目属于本次操作，和「其它聊天留下的条目」不同，必须一起删掉。
+  const removedSlotIds = new Set<string>();
   const conflicts = ref<string[]>([]);
   let worldbookSubscription: ReturnType<typeof onTavernEvent> | null = null;
   onScopeDispose(() => worldbookSubscription?.stop());
@@ -447,6 +449,7 @@ export const useWorldSlotsStore = defineStore('world-slots', () => {
   }
 
   function deleteSlot(slotId: string) {
+    removedSlotIds.add(slotId);
     data.value.slots = data.value.slots.filter(slot => slot.id !== slotId);
     queueAutoSync();
   }
@@ -511,6 +514,11 @@ export const useWorldSlotsStore = defineStore('world-slots', () => {
       const slotId = getEntrySlotId(entry);
       if (!slotId) return;
       if (!currentSlotIds.has(slotId)) {
+        if (removedSlotIds.has(slotId)) {
+          delete entries[key];
+          removed += 1;
+          return;
+        }
         // 其它聊天留在共享世界书里的条目：原样保留，不导入也不删除。
         foreignSkipped += 1;
         return;
@@ -614,6 +622,7 @@ export const useWorldSlotsStore = defineStore('world-slots', () => {
         }
       });
       writtenScope = targetScopeKey;
+      removedSlotIds.clear();
     }
 
     return {
