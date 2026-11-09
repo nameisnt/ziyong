@@ -306,7 +306,7 @@ const stopMessageEvents = [
   onTavernEvent('MESSAGE_EDITED', refreshLastMessageId),
 ];
 onScopeDispose(() => {
-  stopMessageEvents.forEach(stop => stop());
+  stopMessageEvents.forEach(stop => stop.stop());
 });
 const referenceFloorLabel = computed(() =>
   buildReferenceFloorLabel({
