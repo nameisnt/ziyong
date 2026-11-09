@@ -31,6 +31,7 @@
       :generation-state="chapterGenerationViewState"
       :selected-type-value="selectedChapterTypeValue"
       :show-custom-type-field="showChapterCustomTypeField"
+      :summary-rule-options="summaryRuleOptions"
       :type-blocking-message="chapterTypeBlockingMessage"
       :type-options="chapterTypeOptions"
       :type-prompt-changed="chapterTypePromptChanged"
@@ -55,6 +56,7 @@
       @generate-chapter="openGenerateChapter(activeBook.id)"
       @generate-summary="openGenerateSummary(activeBook.id)"
       @open-chapter="openChapter(activeBook.id, $event)"
+      @set-summary-skip-recent="setSummarySkipRecent"
       @toggle-summary="extras.toggleSummary(activeBook.id, $event)"
     />
 
@@ -880,7 +882,7 @@ watch(
 
     if (current.page === 'summary-generate' && previous?.page !== 'summary-preview') {
       selectedReferences.value = [];
-      generationDraft.coveredChapterIds = [];
+      generationDraft.coveredChapterIds = pickAutoCoveredChapterIds();
       generationDraft.enabled = true;
       generationDraft.rangeText = '';
       generationDraft.singleMessageId = 0;
@@ -1139,6 +1141,19 @@ function selectCatalogChapter(chapterId: string) {
 
 function openGenerateSummary(bookId: string) {
   phone.pushPage('summary-generate', '生成章节总结', { bookId });
+}
+
+function pickAutoCoveredChapterIds() {
+  const book = activeBook.value;
+  const skip = book?.summarySkipRecentChapters ?? 0;
+  if (!book || skip <= 0) return [];
+  const chapters = getSummarizableChapters(book);
+  return chapters.slice(0, Math.max(0, chapters.length - skip)).map(chapter => chapter.id);
+}
+
+function setSummarySkipRecent(count: number) {
+  if (!activeBook.value) return;
+  extras.setSummarySkipRecentChapters(activeBook.value.id, count);
 }
 
 function openEditSummary(bookId: string, summaryId: string) {

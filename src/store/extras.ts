@@ -19,6 +19,7 @@ import {
   resolveExtraChapterGenerationRecords,
   synchronizeExtraChapterGenerationRecords,
 } from '@/util/extraGenerationRecords';
+import { getSummarizableChapters } from '@/util/extrasSummary';
 import { validateInplace } from '@/util/zod';
 
 export const extrasField = 'sillytavern_phone_extras';
@@ -83,6 +84,7 @@ export const useExtrasStore = defineStore('extras', () => {
       title: input.title.trim() || '未命名番外',
       chapters: [],
       summaries: [],
+      summarySkipRecentChapters: 0,
       createdAt: timestamp,
       updatedAt: timestamp,
     };
@@ -100,6 +102,18 @@ export const useExtrasStore = defineStore('extras', () => {
     book.typeName = input.typeName.trim() || book.typeName;
     if (input.typePrompt !== undefined) book.typePrompt = input.typePrompt.trim();
     book.title = input.title.trim() || book.title;
+    book.updatedAt = nowIso();
+    return book;
+  }
+
+  function setSummarySkipRecentChapters(bookId: string, count: number) {
+    const book = getBook(bookId);
+    if (!book) return null;
+    const summarizable = getSummarizableChapters(book).length;
+    const max = Math.max(0, summarizable - 1);
+    const next = Number.isFinite(count) ? Math.min(Math.max(0, Math.trunc(count)), max) : 0;
+    if (book.summarySkipRecentChapters === next) return book;
+    book.summarySkipRecentChapters = next;
     book.updatedAt = nowIso();
     return book;
   }
@@ -372,6 +386,7 @@ export const useExtrasStore = defineStore('extras', () => {
     rehydrateFromSettings,
     resetCurrentScope,
     scopeKey,
+    setSummarySkipRecentChapters,
     switchScope,
     toggleFavorite,
     toggleSummary,

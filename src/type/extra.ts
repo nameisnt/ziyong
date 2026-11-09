@@ -82,6 +82,7 @@ export const ExtraBookSchema = z.object({
   outline: z.string().optional(),
   chapters: z.array(ExtraChapterSchema).default([]),
   summaries: z.array(ExtraSummarySchema).default([]),
+  summarySkipRecentChapters: z.number().int().min(0).default(0),
   createdAt: z.string(),
   updatedAt: z.string(),
 });

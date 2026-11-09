@@ -543,8 +543,11 @@ async function syncSlots() {
     const result = await worldSlots.syncToWorldBook();
     if (result.skipped) return;
     toastr.success(
-      `已同步到世界书“${result.bookName}”：${result.updated} 更新，${result.created} 新建，${result.removed} 移除`,
+      `已同步到世界书“${result.bookName}”：${result.updated} 更新，${result.created} 新建，${result.removed} 移除${result.imported ? `，${result.imported} 从世界书导入` : ''}`,
     );
+    if (result.foreignSkipped) {
+      toastr.warning(`世界书里有 ${result.foreignSkipped} 条其它聊天的条目，已跳过。`);
+    }
   } catch (error) {
     reportFailure('同步世界书', error);
   } finally {

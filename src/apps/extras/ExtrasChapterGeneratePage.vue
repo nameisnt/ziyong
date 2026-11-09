@@ -103,53 +103,14 @@
             <p v-if="typeBlockingMessage" class="pc-help-text warning">{{ typeBlockingMessage }}</p>
           </section>
 
-          <section class="pc-page-section pc-extras-summary-options">
-            <div class="pc-section-head">
-              <strong>{{ t`番外摘要` }}</strong>
-              <label class="pc-toggle" :title="chapterDraft.parseSummary ? t`关闭摘要解析` : t`开启摘要解析`">
-                <input v-model="chapterDraft.parseSummary" type="checkbox" :disabled="generationState.running" />
-                <span></span>
-              </label>
-            </div>
-            <template v-if="chapterDraft.parseSummary">
-              <label class="pc-field-group">
-                <span class="pc-field-label">{{ t`摘要提取规则` }}</span>
-                <SearchableCombobox
-                  v-model="chapterDraft.summaryRuleId"
-                  class="pc-extras-summary-rule-combobox"
-                  :disabled="generationState.running"
-                  :empty-label="t`没有匹配的摘要规则`"
-                  :input-label="t`选择摘要提取规则`"
-                  :options="summaryRuleSelectOptions"
-                  :placeholder="t`选择摘要提取规则`"
-                  :toggle-title="t`展开摘要提取规则`"
-                />
-              </label>
-              <label class="pc-field-group">
-                <span class="pc-field-label">{{ t`摘要格式提示` }}</span>
-                <textarea
-                  v-model="chapterDraft.summaryFormatHint"
-                  class="pc-area compact"
-                  :disabled="generationState.running"
-                  :placeholder="t`告诉 AI 应按什么标签或固定格式输出摘要`"
-                ></textarea>
-              </label>
-              <div class="pc-section-head pc-extras-summary-remove-row">
-                <span>{{ t`从章节正文移除匹配到的摘要块` }}</span>
-                <label class="pc-toggle" :title="t`仅在正文内能唯一定位完整摘要块时才会移除`">
-                  <input
-                    v-model="chapterDraft.removeSummaryBlock"
-                    type="checkbox"
-                    :disabled="generationState.running"
-                  />
-                  <span></span>
-                </label>
-              </div>
-              <p class="pc-help-text">
-                {{ t`结构化 summary 优先；正则仅作回退。未匹配时保留正文，仍可正常保存。` }}
-              </p>
-            </template>
-          </section>
+          <ExtrasSummaryOptions
+            v-model:parse-summary="chapterDraft.parseSummary"
+            v-model:remove-summary-block="chapterDraft.removeSummaryBlock"
+            v-model:summary-format-hint="chapterDraft.summaryFormatHint"
+            v-model:summary-rule-id="chapterDraft.summaryRuleId"
+            :disabled="generationState.running"
+            :summary-rule-options="summaryRuleOptions"
+          />
         </template>
       </GenerationPanel>
     </div>
@@ -157,6 +118,7 @@
 </template>
 
 <script setup lang="ts">
+import ExtrasSummaryOptions from '@/components/ExtrasSummaryOptions.vue';
 import GenerationPanel from '@/components/GenerationPanel.vue';
 import SearchableCombobox from '@/components/SearchableCombobox.vue';
 import TheaterTypeGroupField from '@/components/prompts/TheaterTypeGroupField.vue';
@@ -198,11 +160,6 @@ const props = defineProps<{
   typePromptChanged: boolean;
 }>();
 
-const summaryRuleSelectOptions = computed(() => [
-  { label: '仅识别结构化 summary 字段', value: '' },
-  ...props.summaryRuleOptions,
-]);
-
 const emit = defineEmits<{
   cancel: [];
   generate: [];
@@ -212,14 +169,3 @@ const emit = defineEmits<{
   syncIntent: [];
 }>();
 </script>
-
-<style scoped>
-.pc-extras-summary-options {
-  display: grid;
-  gap: 10px;
-}
-
-.pc-extras-summary-remove-row {
-  font-size: 13px;
-}
-</style>

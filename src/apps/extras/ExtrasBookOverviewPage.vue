@@ -56,6 +56,22 @@
           </button>
         </div>
 
+        <div class="pc-summary-skip-row">
+          <label class="pc-field-label" for="pc-summary-skip-input">{{ t`生成总结时自动排除最近` }}</label>
+          <input
+            id="pc-summary-skip-input"
+            class="pc-field pc-summary-skip-input"
+            type="number"
+            min="0"
+            :max="skipMax"
+            :value="book.summarySkipRecentChapters"
+            :disabled="!summarizableCount"
+            @input="onSkipRecentInput"
+          />
+          <span class="pc-help-text">{{ t`章` }}</span>
+        </div>
+        <p class="pc-help-text">{{ skipHint }}</p>
+
         <EmptyState v-if="!book.summaries.length" compact :title="t`还没有章节总结。`" />
 
         <div v-else class="pc-directory-list pc-summary-list">
@@ -113,6 +129,7 @@ import EmptyState from '@/components/EmptyState.vue';
 import ContentVersionBadge from '@/components/ContentVersionBadge.vue';
 import ItemTransferImportAction from '@/components/ItemTransferImportAction.vue';
 import type { ExtraBook, ExtraChapter } from '@/type/extra';
+import { getSummarizableChapters } from '@/util/extrasSummary';
 
 const props = defineProps<{
   book: ExtraBook;
@@ -130,8 +147,22 @@ const emit = defineEmits<{
   generateChapter: [];
   generateSummary: [];
   openChapter: [chapterId: string];
+  setSummarySkipRecent: [count: number];
   toggleSummary: [summaryId: string];
 }>();
+
+const summarizableCount = computed(() => getSummarizableChapters(props.book).length);
+const skipMax = computed(() => Math.max(0, summarizableCount.value - 1));
+const skipHint = computed(() => {
+  const skipped = props.book.summarySkipRecentChapters;
+  if (!summarizableCount.value) return '当前没有可总结的章节，新增章节后可以设置。';
+  if (!skipped) return '为 0 时不自动排除，进入生成总结后手动选择章节。';
+  return `进入生成总结时自动预选前 ${Math.max(0, summarizableCount.value - skipped)} 章，仍可手动调整。`;
+});
+
+function onSkipRecentInput(event: Event) {
+  emit('setSummarySkipRecent', Number((event.target as HTMLInputElement).value));
+}
 
 function formatCoveredChapters(ids: string[]) {
   if (!ids.length) return '未关联章节';
@@ -198,6 +229,16 @@ function formatCoveredChapters(ids: string[]) {
 
 .pc-summary-actions {
   justify-content: flex-end;
+}
+
+.pc-summary-skip-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.pc-summary-skip-input {
+  width: 76px;
 }
 
 .pc-entry-main strong {

@@ -110,7 +110,7 @@ export async function applyExtrasGenerationVisualScenario(name: string, context:
   if (name === 'extras-book-generate') {
     context.resetPhoneToRoute('extras', 'book-editor', '新建番外');
     await context.waitForPaint();
-    const typeSelector = document.querySelector<HTMLInputElement>('.pc-combobox-input');
+    const typeSelector = document.querySelector<HTMLInputElement>('input[aria-label="选择番外类型"]');
     if (!typeSelector) throw new Error('Extras type selector is missing');
     typeSelector.click();
     await context.waitForPaint();

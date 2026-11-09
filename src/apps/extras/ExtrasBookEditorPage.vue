@@ -41,14 +41,17 @@
             <label class="pc-field-label">
               {{ t`生成模式` }}
             </label>
-            <select
-              v-model="chapterDraft.mode"
-              class="pc-select pc-select-compact pc-extras-mode-select"
+            <SearchableCombobox
               :disabled="generationState.running"
-            >
-              <option value="新开一本书">{{ t`新开一本书` }}</option>
-              <option value="续写上一章">{{ t`续写上一章` }}</option>
-            </select>
+              :empty-label="t`没有可用的生成模式`"
+              :input-label="t`选择生成模式`"
+              :model-value="chapterDraft.mode"
+              :options="modeOptions"
+              :placeholder="t`选择生成模式`"
+              :searchable="false"
+              :toggle-title="t`展开生成模式列表`"
+              @update:model-value="onModeChange"
+            />
           </div>
 
           <section class="pc-type-prompt-card">
@@ -109,6 +112,15 @@
             </div>
             <p v-if="typeBlockingMessage" class="pc-help-text warning">{{ typeBlockingMessage }}</p>
           </section>
+
+          <ExtrasSummaryOptions
+            v-model:parse-summary="chapterDraft.parseSummary"
+            v-model:remove-summary-block="chapterDraft.removeSummaryBlock"
+            v-model:summary-format-hint="chapterDraft.summaryFormatHint"
+            v-model:summary-rule-id="chapterDraft.summaryRuleId"
+            :disabled="generationState.running"
+            :summary-rule-options="summaryRuleOptions"
+          />
         </template>
 
         <template #actions>
@@ -141,6 +153,7 @@
 </template>
 
 <script setup lang="ts">
+import ExtrasSummaryOptions from '@/components/ExtrasSummaryOptions.vue';
 import GenerationPanel from '@/components/GenerationPanel.vue';
 import SearchableCombobox from '@/components/SearchableCombobox.vue';
 import TheaterTypeGroupField from '@/components/prompts/TheaterTypeGroupField.vue';
@@ -154,9 +167,13 @@ const chapterDraft = defineModel<{
   fromStartEnd: number;
   generationIntent: ExtraChapterGenerationIntent;
   mode: ExtraChapterGenerationMode;
+  parseSummary: boolean;
   rangeText: string;
   recentCount: number;
+  removeSummaryBlock: boolean;
   singleMessageId: number;
+  summaryFormatHint: string;
+  summaryRuleId: string;
   typeGroupId: string;
   typeId: string;
   typeName: string;
@@ -167,6 +184,15 @@ const saveCustomTypeToLibrary = defineModel<boolean>('saveCustomTypeToLibrary', 
 const references = defineModel<GenerationReferenceItem[]>('references', { required: true });
 const sourceMode = defineModel<SummaryGenerationSourceMode>('sourceMode', { required: true });
 
+const modeOptions = [
+  { label: '新开一本书', value: '新开一本书' },
+  { label: '续写上一章', value: '续写上一章' },
+];
+
+function onModeChange(value: string) {
+  chapterDraft.value.mode = value as ExtraChapterGenerationMode;
+}
+
 defineProps<{
   capture: () => Promise<CapturedTavernPromptPreview>;
   captureResetKey: unknown;
@@ -174,6 +200,7 @@ defineProps<{
   generationState: { error: string; rawOutput: string; running: boolean };
   selectedTypeValue: string;
   showCustomTypeField: boolean;
+  summaryRuleOptions: Array<{ label: string; value: string }>;
   typeBlockingMessage: string;
   typePromptChanged: boolean;
   typeOptions: Array<{ label: string; value: string }>;
@@ -188,10 +215,3 @@ const emit = defineEmits<{
   stop: [];
 }>();
 </script>
-
-<style scoped>
-/* App-only layout: preserve the Extras generation form's established vertical rhythm. */
-.pc-extras-mode-select {
-  margin-top: 14px;
-}
-</style>

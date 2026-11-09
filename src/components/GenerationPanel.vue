@@ -137,6 +137,7 @@
         <ReferencePicker
           :model-value="references"
           :disabled="controlsDisabled"
+          :floor-label="referenceFloorLabel"
           @update:model-value="emit('update:references', $event)"
         />
 
@@ -196,8 +197,10 @@ import { usePluginPresetStore } from '@/store/pluginPresets';
 import { usePromptStore } from '@/store/prompts';
 import { useSettingsStore } from '@/store/settings';
 import type { SummaryGenerationSourceMode } from '@/util/generationSource';
+import { buildReferenceFloorLabel } from '@/util/generationSource';
 import type { GenerationReferenceItem } from '@/util/references';
 import type { CapturedTavernPromptPreview } from '@/util/runtime';
+import { getLastMessageIdSafe, onTavernEvent } from '@/util/runtime';
 import {
   formatTextProviderSelection,
   getCurrentTextProviderSelection,
@@ -292,6 +295,28 @@ const sourceModeLabel = computed(() => {
   if (props.sourceMode === 'all') return '全部楼层';
   return '最新楼层';
 });
+const lastMessageId = ref(getLastMessageIdSafe());
+function refreshLastMessageId() {
+  lastMessageId.value = getLastMessageIdSafe();
+}
+onMounted(refreshLastMessageId);
+const stopMessageEvents = [
+  onTavernEvent('CHAT_CHANGED', refreshLastMessageId),
+  onTavernEvent('MESSAGE_SENT', refreshLastMessageId),
+  onTavernEvent('MESSAGE_EDITED', refreshLastMessageId),
+];
+onScopeDispose(() => {
+  stopMessageEvents.forEach(stop => stop());
+});
+const referenceFloorLabel = computed(() =>
+  buildReferenceFloorLabel({
+    mode: props.sourceMode,
+    fromStartEnd: settings.value.generation.fromStartEnd,
+    lastMessageId: lastMessageId.value,
+    rangeText: props.rangeText,
+    singleMessageId: props.singleMessageId,
+  }),
+);
 const advancedSummary = computed(() => {
   const connection = formatTextProviderSelection(
     settings.value.textProvider,

@@ -11,7 +11,6 @@ test('fixed short enum selects use pc-select without changing their behavior bin
   const targets = [
     { binding: 'v-model="settings.mode"', source: chatSource },
     { binding: 'v-model="settings.role"', source: chatSource },
-    { binding: 'v-model="chapterDraft.mode"', source: extrasSource },
   ];
 
   for (const target of targets) {
@@ -34,15 +33,13 @@ test('fixed short enum selects use pc-select without changing their behavior bin
   assert.match(globalCss, /\.pc-phone-root \.pc-select\.pc-select-compact\s*\{[^}]*width:\s*fit-content;/su);
   assert.match(globalCss, /\.pc-phone-root \.pc-select\.pc-select-compact\s*\{[^}]*max-width:\s*100%;/su);
 
-  for (const behavior of [
-    "settings.mode.startsWith('append')",
-    ':disabled="generationState.running"',
-    'value="new-end"',
-    'value="assistant"',
-    'value="新开一本书"',
-  ]) {
+  for (const behavior of ["settings.mode.startsWith('append')", 'value="new-end"', 'value="assistant"']) {
     if (!`${chatSource}\n${extrasSource}`.includes(behavior))
       failures.push(`fixed select behavior changed: ${behavior}`);
+  }
+
+  if (/<select\b/.test(extrasSource)) {
+    failures.push('the extras generation mode must not fall back to a native select');
   }
 
   assert.deepEqual(failures, []);

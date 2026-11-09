@@ -123,6 +123,8 @@
             ></textarea>
           </article>
         </div>
+
+        <p v-if="floorLabel" class="pc-reference-floor">{{ floorLabel }}</p>
       </div>
     </div>
   </section>
@@ -225,6 +227,7 @@ const props = withDefaults(
     compactSelected?: boolean;
     disabled?: boolean;
     excludedRootIds?: string[];
+    floorLabel?: string;
     insertMode?: boolean;
     modelValue: GenerationReferenceItem[];
     preferredRootIds?: string[];
@@ -235,6 +238,7 @@ const props = withDefaults(
     compactSelected: false,
     disabled: false,
     excludedRootIds: () => [],
+    floorLabel: '',
     insertMode: false,
     preferredRootIds: () => [],
     reorderable: false,
@@ -705,6 +709,13 @@ function cancelReferenceDrag(event: PointerEvent) {
   flex: 0 0 auto;
   padding: 0 12px;
   white-space: nowrap;
+}
+
+.pc-reference-floor {
+  margin: 0;
+  color: var(--pc-muted);
+  font-size: 12px;
+  text-align: right;
 }
 
 .pc-reference-icon {

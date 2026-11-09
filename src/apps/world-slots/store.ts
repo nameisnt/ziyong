@@ -123,6 +123,8 @@ export type WorldSlotsSyncStatus = 'error' | 'idle' | 'synced' | 'syncing';
 export interface WorldSlotsSyncResult {
   bookName: string;
   created: number;
+  foreignSkipped: number;
+  imported: number;
   removed: number;
   skipped: boolean;
   total: number;
@@ -296,9 +298,7 @@ export const useWorldSlotsStore = defineStore('world-slots', () => {
     const book = await load(WORLD_SLOTS_BOOK_NAME);
     if (scopeKey.value !== targetScope || !isCurrentChatScope.value) return;
     const entries = book?.entries ?? {};
-    const ids = new Set(data.value.slots.map(slot => slot.id));
-    // The shared book may still contain the previous chat during a scope switch.
-    if (Object.values(entries).some(entry => getEntrySlotId(entry) && !ids.has(getEntrySlotId(entry)))) return;
+    // 共享世界里可能残留其它聊天的条目：按标记逐个跳过，不能因此放弃整本书的更新。
     for (const slot of data.value.slots) {
       if (slot.worldEntryId == null) continue;
       const entry = entries[String(slot.worldEntryId)];
@@ -463,6 +463,8 @@ export const useWorldSlotsStore = defineStore('world-slots', () => {
     return {
       bookName: WORLD_SLOTS_BOOK_NAME,
       created: 0,
+      foreignSkipped: 0,
+      imported: 0,
       removed: 0,
       skipped: true,
       total: data.value.slots.length,
@@ -502,12 +504,18 @@ export const useWorldSlotsStore = defineStore('world-slots', () => {
     const currentSlotIds = new Set(slotSnapshot.map(slot => slot.id));
     const retainedSlotIds = new Set<string>();
     let removed = 0;
+    let foreignSkipped = 0;
 
     Object.entries(entries).forEach(([key, entry]) => {
       if (!entry || typeof entry !== 'object') return;
       const slotId = getEntrySlotId(entry);
       if (!slotId) return;
-      if (!currentSlotIds.has(slotId) || retainedSlotIds.has(slotId)) {
+      if (!currentSlotIds.has(slotId)) {
+        // 其它聊天留在共享世界书里的条目：原样保留，不导入也不删除。
+        foreignSkipped += 1;
+        return;
+      }
+      if (retainedSlotIds.has(slotId)) {
         delete entries[key];
         removed += 1;
         return;
@@ -529,6 +537,27 @@ export const useWorldSlotsStore = defineStore('world-slots', () => {
       claimedEntryIds.add(slot.worldEntryId);
     });
 
+    const importTimestamp = nowIso();
+    const importedSlotIds = new Set<string>();
+    Object.entries(entries).forEach(([key, entry]) => {
+      if (!entry || typeof entry !== 'object') return;
+      const entryId = Number(key);
+      if (!Number.isFinite(entryId) || claimedEntryIds.has(entryId) || getEntrySlotId(entry)) return;
+      const fields = readSlotFields(entry);
+      // 编辑器里新建的条目没有插件标记，同步时收进槽位；内容完全相同的副本视为重复条目略过。
+      const duplicate = data.value.slots.some(slot =>
+        _.isEqual(readSlotFields(createWorldEntry(slot, 0)), fields),
+      );
+      if (duplicate) return;
+      const slot = buildSlot(fields, importTimestamp);
+      slotSnapshot.push(slot);
+      data.value.slots.push(slot);
+      // 原地接管这条世界书条目，避免再写出一份重复内容。
+      entryIdBySlot.set(slot.id, entryId);
+      claimedEntryIds.add(entryId);
+      importedSlotIds.add(slot.id);
+    });
+
     let created = 0;
     let updated = 0;
     slotSnapshot.forEach(slot => {
@@ -537,7 +566,8 @@ export const useWorldSlotsStore = defineStore('world-slots', () => {
       const entryId = typeof existingId === 'number' ? existingId : nextEntryId({ ...originalEntries, ...entries });
       const nextEntry = createWorldEntry(slot, entryId);
       if (typeof existingId === 'number') {
-        if (!_.isEqual(entries[String(entryId)], nextEntry)) updated += 1;
+        if (importedSlotIds.has(slot.id)) created += 1;
+        else if (!_.isEqual(entries[String(entryId)], nextEntry)) updated += 1;
       } else {
         created += 1;
       }
@@ -589,6 +619,8 @@ export const useWorldSlotsStore = defineStore('world-slots', () => {
     return {
       bookName,
       created,
+      foreignSkipped,
+      imported: importedSlotIds.size,
       removed,
       skipped: !isRequestCurrent(requestId, targetScopeKey),
       total: slotSnapshot.length,

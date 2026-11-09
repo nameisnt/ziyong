@@ -105,6 +105,28 @@ function buildLabel(
   return options.rangeText?.trim() || formatRanges(actualRanges);
 }
 
+export function buildReferenceFloorLabel(options: {
+  mode: GenerationSourceMode;
+  fromStartEnd?: number;
+  lastMessageId: number;
+  rangeText?: string;
+  singleMessageId?: number;
+}) {
+  const { mode, lastMessageId } = options;
+  if (mode === 'none') return '';
+  if (mode === 'single') {
+    return `生成楼层：第 ${normalizeFloorNumber(options.singleMessageId ?? 0, lastMessageId)} 楼`;
+  }
+  if (mode === 'fromStart') {
+    return `生成楼层：第 ${normalizeFloorNumber(options.fromStartEnd ?? 0, lastMessageId)} 楼`;
+  }
+  if (mode === 'range') {
+    const last = (options.rangeText ?? '').match(/\d+/gu)?.at(-1);
+    return last ? `生成楼层：第 ${Number(last)} 楼` : '';
+  }
+  return lastMessageId >= 0 ? `生成楼层：第 ${lastMessageId} 楼` : '';
+}
+
 export function buildSourceSelection(options: {
   mode: SummaryGenerationSourceMode;
   recentCount?: number;

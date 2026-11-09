@@ -14,6 +14,8 @@ const names = new Set([
   'readSlotFields',
   'nextEntryId',
   'cleanList',
+  'buildSlot',
+  'createId',
   'performSync',
   'readWorldbookChanges',
   'markPending',
@@ -143,14 +145,25 @@ test('renaming and toggling a slot preserves its entry id after prefix removal',
   assert.equal(f.book().entries[0].disable, true);
 });
 
-test('scope cleanup removes owned entries but preserves unrelated entries with the same title', async () => {
+test('entries written in the world book editor are adopted as slots', async () => {
   const unrelated = { uid: 5, comment: slot.title, content: 'Unrelated body' };
   const f = fixture({ 5: unrelated });
-  await f.sync();
+  const result = await f.sync();
+  assert.equal(result.imported, 1);
   assert.equal(Object.keys(f.book().entries).length, 2);
-  f.data.value.slots = [];
-  await f.sync();
-  assert.deepEqual(f.book().entries, { 5: unrelated });
+  const adopted = f.data.value.slots.find(item => item.content === 'Unrelated body');
+  assert.ok(adopted);
+  assert.equal(adopted.title, slot.title);
+  assert.equal(adopted.worldEntryId, 5);
+  assert.equal(f.book().entries[5].sillytavernPhoneSlotId, adopted.id);
+});
+
+test('entries belonging to another chat stay untouched and are reported', async () => {
+  const other = { uid: 3, content: 'Other chat', sillytavernPhoneSlotId: 'other-chat-slot' };
+  const f = fixture({ 3: other });
+  const result = await f.sync();
+  assert.equal(result.foreignSkipped, 1);
+  assert.deepEqual(f.book().entries[3], other);
 });
 
 test('bound entry ID survives external editing and marker removal, including ID zero', async () => {
@@ -173,9 +186,12 @@ test('bound entry ID survives external editing and marker removal, including ID 
 test('explicit slot identity wins over a stale saved entry ID', async () => {
   const unrelated = { uid: 7, content: 'Unrelated' };
   const f = fixture({ 7: unrelated, 9: { uid: 9, sillytavernPhoneSlotId: slot.id } }, [{ ...slot, worldEntryId: 7 }]);
-  assert.equal((await f.sync()).created, 0);
-  assert.deepEqual(f.book().entries[7], unrelated);
+  const result = await f.sync();
   assert.equal(f.data.value.slots[0].worldEntryId, 9);
+  // 陈旧 ID 指向的条目没有标记，按编辑器里新写的条目收进来，不会覆盖原槽位。
+  assert.equal(result.imported, 1);
+  assert.equal(f.data.value.slots.length, 2);
+  assert.equal(f.book().entries[7].content, 'Unrelated');
 });
 
 test('a bound ID cannot claim another current slot or be claimed twice', async () => {

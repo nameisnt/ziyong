@@ -7,6 +7,10 @@ const extrasSource = await readFile(
   new URL('../../src/apps/extras/ExtrasChapterGeneratePage.vue', import.meta.url),
   'utf8',
 );
+const summaryOptionsSource = await readFile(
+  new URL('../../src/components/ExtrasSummaryOptions.vue', import.meta.url),
+  'utf8',
+);
 const promptsSource = await readFile(
   new URL('../../src/apps/prompts/PromptTypeEditorPage.vue', import.meta.url),
   'utf8',
@@ -22,7 +26,7 @@ function openingTags(source, tagName) {
 test('user-grown regex and group resources use searchable selectors with preserved empty semantics', () => {
   const failures = [];
   const targets = [
-    { binding: 'chapterDraft.summaryRuleId', count: 1, source: extrasSource },
+    { binding: 'summaryRuleId', count: 1, source: summaryOptionsSource },
     { binding: 'groupId', count: 1, source: theaterGroupFieldSource },
   ];
 
@@ -50,13 +54,22 @@ test('user-grown regex and group resources use searchable selectors with preserv
   for (const evidence of [
     'summaryRuleSelectOptions',
     "label: '仅识别结构化 summary 字段', value: ''",
-    ':disabled="generationState.running"',
+    ':disabled="disabled"',
     'groupOptions',
     "label: '未分组', value: ''",
   ]) {
-    if (!`${extrasSource}\n${promptsSource}\n${theaterGroupFieldSource}`.includes(evidence)) {
+    if (!`${summaryOptionsSource}\n${promptsSource}\n${theaterGroupFieldSource}`.includes(evidence)) {
       failures.push(`dynamic selector semantics missing: ${evidence}`);
     }
+  }
+
+  for (const sharedProp of ['parseSummary', 'removeSummaryBlock', 'summaryFormatHint', 'summaryRuleId']) {
+    if (!summaryOptionsSource.includes(`defineModel<`) || !summaryOptionsSource.includes(`'${sharedProp}'`)) {
+      failures.push(`shared summary block must model ${sharedProp}`);
+    }
+  }
+  if (!/v-model:summary-rule-id="chapterDraft\.summaryRuleId"/.test(extrasSource)) {
+    failures.push('the chapter page must bind its draft into the shared summary block');
   }
 
   assert.deepEqual(failures, []);
