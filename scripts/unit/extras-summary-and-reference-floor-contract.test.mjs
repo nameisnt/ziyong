@@ -81,8 +81,12 @@ test('the reference list ends with the generation floor of this request', async 
   if (!/onTavernEvent\('CHAT_CHANGED', refreshLastMessageId\)/.test(generationPanel))
     failures.push('the floor of latest/all modes must refresh when the chat changes');
   if (!/floorLabel\?: string;/.test(referencePicker)) failures.push('the picker needs an optional floor label');
-  if (!/<p v-if="floorLabel" class="pc-reference-floor">/.test(referencePicker))
-    failures.push('the floor must render once at the end of the selected references');
+  if (
+    !/<span\s+v-if="floorLabel && item\.id === modelValue\[modelValue\.length - 1\]\?\.id"\s+class="pc-reference-floor"/.test(
+      referencePicker,
+    )
+  )
+    failures.push('the floor must sit at the right side of the last selected reference');
 
   const cases = [
     [{ mode: 'none', lastMessageId: 40 }, ''],

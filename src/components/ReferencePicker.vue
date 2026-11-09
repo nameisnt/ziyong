@@ -103,6 +103,11 @@
                   {{ t`原来源已删除，使用历史内容` }}
                 </small>
               </div>
+              <span
+                v-if="floorLabel && item.id === modelValue[modelValue.length - 1]?.id"
+                class="pc-reference-floor"
+                >{{ floorLabel }}</span
+              >
               <button
                 class="pc-reference-icon"
                 type="button"
@@ -123,8 +128,6 @@
             ></textarea>
           </article>
         </div>
-
-        <p v-if="floorLabel" class="pc-reference-floor">{{ floorLabel }}</p>
       </div>
     </div>
   </section>
@@ -712,10 +715,11 @@ function cancelReferenceDrag(event: PointerEvent) {
 }
 
 .pc-reference-floor {
+  flex: 0 0 auto;
   margin: 0;
   color: var(--pc-muted);
   font-size: 12px;
-  text-align: right;
+  white-space: nowrap;
 }
 
 .pc-reference-icon {
