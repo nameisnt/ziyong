@@ -87,6 +87,7 @@ import { useSettingsStore } from '@/store/settings';
 import type { ExternalApiPresetId } from '@/type/settings';
 import { EXTERNAL_API_PRESETS, getActiveExternalApiProfile, resolveExternalApiProfileUrl } from '@/util/textProvider';
 import { storeToRefs } from 'pinia';
+import { reportWarning } from '@/util/feedback';
 
 const phone = usePhoneStore();
 const settingsStore = useSettingsStore();
@@ -128,7 +129,7 @@ function onNameChange(event: Event) {
     settingsStore.renameExternalApiProfile(profile.id, input.value);
   } catch (error) {
     input.value = profile.name;
-    toastr.warning(error instanceof Error ? error.message : '配置名称无效');
+    reportWarning('重命名外部配置', error);
   }
 }
 function onPresetChange(event: Event) {

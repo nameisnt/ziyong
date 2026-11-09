@@ -239,6 +239,7 @@ import { useInvalidRouteFallback } from '@/util/routeFallback';
 import { getSourceLastFloor } from '@/util/sourceFloor';
 import { updateGenerationRecordReasoning } from '@/util/generationReasoning';
 import { storeToRefs } from 'pinia';
+import { reportFailure } from '@/util/feedback';
 
 const phone = usePhoneStore();
 const creationModeOpen = ref(false);
@@ -441,7 +442,7 @@ async function saveBatchPreview(edits: ManualBatchPreviewEdit[]) {
     toastr.success(`已保存 ${result.savedCount} 条总结`);
     phone.replacePage(book ? 'book' : 'root', book?.title || '总结', book ? { bookId: book.id } : undefined);
   } catch (error) {
-    toastr.error(error instanceof Error ? error.message : '批量保存失败');
+    reportFailure('批量保存总结', error);
   }
 }
 

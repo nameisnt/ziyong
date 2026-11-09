@@ -242,6 +242,7 @@ import type { FailedGenerationDraft, HiddenGenerationRecord } from '@/type/gener
 import type { GenerationTask } from '@/type/generationTask';
 import { useDigestStore } from './store';
 import { storeToRefs } from 'pinia';
+import { reportFailure } from '@/util/feedback';
 
 const phone = usePhoneStore();
 const digest = useDigestStore();
@@ -581,7 +582,7 @@ async function runGeneration() {
     void phone.presentGeneratedPage('digest', 'preview', '摘抄预览');
   } catch (caughtError) {
     if (task) generationSession.fail(task.id, caughtError);
-    else toastr.error(caughtError instanceof Error ? caughtError.message : '生成摘抄失败');
+    else reportFailure('生成摘抄', error);
   }
 }
 

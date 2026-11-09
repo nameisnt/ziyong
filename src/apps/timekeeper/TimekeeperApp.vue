@@ -339,6 +339,7 @@ import { appendToTavernInput } from '@/util/tavernInput';
 import { useBulkSelection } from '@/composables/useBulkSelection';
 import { GREGORIAN_CALENDAR, useTimekeeperStore, type TimekeeperDate } from './store';
 import { storeToRefs } from 'pinia';
+import { reportWarning } from '@/util/feedback';
 
 const timekeeper = useTimekeeperStore();
 const phone = usePhoneStore();
@@ -441,7 +442,7 @@ async function createPerson() {
     const person = await timekeeper.createPerson();
     toastr.success(`已新增人物“${person.name}”`);
   } catch (error) {
-    toastr.warning(error instanceof Error ? error.message : '新增人物失败');
+    reportWarning('新增人物', error);
   }
 }
 
@@ -458,7 +459,7 @@ async function deletePerson(personId: string) {
     await timekeeper.deletePerson(personId);
     toastr.success(`已删除“${person.name}”`);
   } catch (error) {
-    toastr.warning(error instanceof Error ? error.message : '删除人物失败');
+    reportWarning('删除人物', error);
   }
 }
 
@@ -476,7 +477,7 @@ async function deleteSelectedPeople() {
     cancelPeopleBulk();
     toastr.success(`已删除 ${selected.length} 个人物`);
   } catch (error) {
-    toastr.warning(error instanceof Error ? error.message : '批量删除人物失败');
+    reportWarning('批量删除人物', error);
   }
 }
 
@@ -492,7 +493,7 @@ async function saveCalendarTemplate() {
     const template = timekeeper.saveCurrentCalendarAsTemplate(name);
     toastr.success(`已保存历法“${template.name}”`);
   } catch (error) {
-    toastr.warning(error instanceof Error ? error.message : '保存历法失败');
+    reportWarning('保存历法', error);
   }
 }
 

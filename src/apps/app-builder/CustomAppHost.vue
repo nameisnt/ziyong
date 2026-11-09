@@ -438,6 +438,7 @@ import { updateGenerationRecordReasoning } from '@/util/generationReasoning';
 import { resolveCustomGeneratedTitle } from './generation';
 import { type CustomAppDefinition, type CustomAppEntry } from './schema';
 import { useCustomAppsStore } from './store';
+import { reportFailure } from '@/util/feedback';
 
 const phone = usePhoneStore();
 const settingsStore = useSettingsStore();
@@ -947,7 +948,7 @@ async function runGeneration() {
     void phone.presentGeneratedPage(app.id, 'preview', `${app.name}预览`);
   } catch (error) {
     if (task) generationSession.fail(task.id, error);
-    else toastr.error(error instanceof Error ? error.message : '生成失败');
+    else reportFailure('生成', error);
   }
 }
 

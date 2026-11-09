@@ -83,6 +83,7 @@ import { usePhoneStore } from '@/store/phone';
 import { usePresetLinkStore } from './store';
 import PresetBindingSwitches from './PresetBindingSwitches.vue';
 import { snapshotPromptStates, type PresetPromptStates } from './promptSwitches';
+import { reportFailure } from '@/util/feedback';
 
 const phone = usePhoneStore();
 const presetLinks = usePresetLinkStore();
@@ -122,7 +123,7 @@ function refreshDraft() {
     draftPromptStates.value = initialStates(draftPresetName.value);
   } catch (error) {
     draftPromptStates.value = undefined;
-    toastr.error(error instanceof Error ? error.message : String(error));
+    reportFailure('读取预设条目状态', error);
   }
   baseline.value = klona(draft.value);
 }
@@ -158,7 +159,7 @@ async function selectPreset(name: string) {
     draftPromptStates.value = states;
   } catch (error) {
     selectorRevision.value += 1;
-    toastr.error(error instanceof Error ? error.message : String(error));
+    reportFailure('读取预设条目状态', error);
   }
 }
 
@@ -168,7 +169,7 @@ function refreshPresets() {
     presetNames.value = listTavernPresets();
     loadedPresetName.value = getCurrentTavernPresetName();
   } catch (error) {
-    toastr.error(error instanceof Error ? error.message : String(error));
+    reportFailure('读取酒馆预设列表', error);
   } finally {
     loading.value = false;
   }
@@ -184,7 +185,7 @@ function saveBinding() {
     baseline.value = klona(draft.value);
     toastr.success(phone.isViewingCurrentChat ? '已保存当前聊天绑定' : '已保存历史聊天绑定');
   } catch (error) {
-    toastr.error(error instanceof Error ? error.message : String(error));
+    reportFailure('保存预设绑定', error);
   }
 }
 
@@ -200,7 +201,7 @@ async function applyPreset() {
     loadedPresetName.value = getCurrentTavernPresetName();
     toastr.success(result.reloaded ? '已应用预设并重新加载聊天' : '已应用预设绑定设置');
   } catch (error) {
-    toastr.error(error instanceof Error ? error.message : String(error));
+    reportFailure('应用预设绑定', error);
   } finally {
     busy.value = false;
   }
@@ -220,7 +221,7 @@ async function removeBinding() {
     refreshDraft();
     toastr.success('已解除预设绑定');
   } catch (error) {
-    toastr.error(error instanceof Error ? error.message : String(error));
+    reportFailure('解除预设绑定', error);
   } finally {
     busy.value = false;
   }

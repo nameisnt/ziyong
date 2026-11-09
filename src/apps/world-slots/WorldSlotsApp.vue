@@ -291,6 +291,7 @@ import {
   worldSlotRoleOptions,
 } from './store';
 import { storeToRefs } from 'pinia';
+import { reportFailure } from '@/util/feedback';
 
 const phone = usePhoneStore();
 const worldSlots = useWorldSlotsStore();
@@ -302,7 +303,7 @@ async function resolveConflict(id: string, source: 'slot' | 'worldbook') {
   try {
     await worldSlots.resolveConflict(id, source);
   } catch (error) {
-    toastr.error(error instanceof Error ? error.message : String(error));
+    reportFailure('解决冲突', error);
   } finally {
     resolvingConflict.value = false;
   }
@@ -545,7 +546,7 @@ async function syncSlots() {
       `已同步到世界书“${result.bookName}”：${result.updated} 更新，${result.created} 新建，${result.removed} 移除`,
     );
   } catch (error) {
-    toastr.error(error instanceof Error ? error.message : '同步失败');
+    reportFailure('同步世界书', error);
   } finally {
     syncing.value = false;
   }

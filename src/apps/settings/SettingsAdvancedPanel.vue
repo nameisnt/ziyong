@@ -75,6 +75,7 @@ import { saveSettingsDebounced } from '@sillytavern/script';
 import { extension_settings } from '@sillytavern/scripts/extensions';
 import { klona } from 'klona';
 import { storeToRefs } from 'pinia';
+import { reportFailure } from '@/util/feedback';
 
 const favorites = useFavoritesStore();
 const generationTasks = useGenerationTaskStore();
@@ -134,7 +135,7 @@ async function clearCurrentChatData() {
       },
     });
   } catch (error) {
-    toastr.error(error instanceof Error ? error.message : '清空当前聊天失败，原数据已恢复');
+    reportFailure('清空当前聊天', error);
     return;
   }
   generationTasks.clearScopeTasks();

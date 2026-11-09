@@ -293,6 +293,7 @@ import {
   type CustomAppDefinition,
 } from './schema';
 import { useCustomAppsStore } from './store';
+import { reportFailure } from '@/util/feedback';
 
 const phone = usePhoneStore();
 const customApps = useCustomAppsStore();
@@ -537,7 +538,7 @@ async function importApp(event: Event) {
     });
     toastr.success(existing ? 'ID 已存在，已作为副本导入' : '自制 App 已导入');
   } catch (error) {
-    toastr.error(error instanceof Error ? error.message : '无法读取 App 文件');
+    reportFailure('导入自制 App', error);
   }
 }
 

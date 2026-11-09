@@ -76,6 +76,7 @@ import {
 } from '@/util/backup';
 import { parseChatScopeKey } from '@/util/chatArchive';
 import { getOptionalGlobalValue } from '@/util/runtime';
+import { reportFailure } from '@/util/feedback';
 
 const bagu = useBaguStore();
 const favorites = useFavoritesStore();
@@ -143,7 +144,7 @@ async function downloadBackup() {
     await downloadPhoneBackup();
     toastr.success('已开始导出全部备份');
   } catch (error) {
-    toastr.error(error instanceof Error ? error.message : '完整备份导出失败');
+    reportFailure('导出完整备份', error);
   }
 }
 function downloadCurrentBackup() {
@@ -222,7 +223,7 @@ async function onBackupSelected(event: Event) {
     rehydrateImportedData();
     toastr.success('已导入到当前聊天');
   } catch (error) {
-    toastr.error(error instanceof Error ? error.message : '导入备份失败');
+    reportFailure('导入备份', error);
   }
 }
 </script>

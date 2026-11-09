@@ -356,6 +356,7 @@ import EmptyState from '@/components/EmptyState.vue';
 import type { ChatBackupSummary, DuplicateBackupGroup } from '@/apps/recovery/model';
 import { useChatRecoveryStore } from '@/apps/recovery/store';
 import { usePhoneStore } from '@/store/phone';
+import { reportFailure } from '@/util/feedback';
 
 const props = defineProps<{
   formatBackupCreatedAt: (summary: ChatBackupSummary) => string;
@@ -503,7 +504,7 @@ async function confirmSimilarDelete() {
     if (result.failed.length) toastr.warning(`已删除 ${result.deleted.length} 份，${result.failed.length} 份失败或跳过`);
     else toastr.success(`已删除 ${result.deleted.length} 份相似聊天备份`);
   } catch (error) {
-    toastr.error(error instanceof Error ? error.message : '删除相似聊天备份失败');
+    reportFailure('删除相似聊天备份', error);
   }
 }
 
@@ -527,7 +528,7 @@ async function confirmContainedDelete() {
       toastr.success(`已删除 ${result.deleted.length} 份较短聊天备份`);
     }
   } catch (error) {
-    toastr.error(error instanceof Error ? error.message : '删除较短聊天备份失败');
+    reportFailure('删除较短聊天备份', error);
   }
 }
 
@@ -542,7 +543,7 @@ async function scanDuplicates() {
       group.candidates.map(item => item.fingerprint.summary.fileName),
     );
   } catch (error) {
-    toastr.error(error instanceof Error ? error.message : '扫描重复备份失败');
+    reportFailure('扫描重复备份', error);
   }
 }
 
@@ -587,7 +588,7 @@ async function confirmDuplicateDelete() {
       toastr.success(`已删除 ${result.deleted.length} 份完全相同的旧备份`);
     }
   } catch (error) {
-    toastr.error(error instanceof Error ? error.message : '查重删除失败');
+    reportFailure('删除重复旧备份', error);
   }
 }
 
@@ -596,7 +597,7 @@ async function scanCleanup() {
     const result = await recovery.scanCleanup(Number(cleanupThreshold.value), route.value.params?.groupId ?? '');
     cleanupSelectedNames.value = result.candidates.map(candidate => candidate.summary.fileName);
   } catch (error) {
-    toastr.error(error instanceof Error ? error.message : '扫描可清理备份失败');
+    reportFailure('扫描可清理备份', error);
   }
 }
 
@@ -620,7 +621,7 @@ async function confirmCleanupDelete() {
     if (result.failed.length) toastr.warning(`已删除 ${result.deleted.length} 份，${result.failed.length} 份失败`);
     else toastr.success(`已删除 ${result.deleted.length} 份聊天备份`);
   } catch (error) {
-    toastr.error(error instanceof Error ? error.message : '快速清理失败');
+    reportFailure('快速清理备份', error);
   }
 }
 </script>

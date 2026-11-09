@@ -215,6 +215,7 @@ import type { SettingsDuplicateGroup, SettingsSnapshotSummary } from '@/apps/rec
 import { useChatRecoveryStore } from '@/apps/recovery/store';
 import EmptyState from '@/components/EmptyState.vue';
 import { usePhoneStore } from '@/store/phone';
+import { reportFailure } from '@/util/feedback';
 
 const props = defineProps<{
   formatBytes: (value: number) => string;
@@ -275,7 +276,7 @@ async function refreshSettingsSnapshots() {
   try {
     await recovery.refreshSettingsSnapshots();
   } catch (error) {
-    toastr.error(error instanceof Error ? error.message : '读取设置快照失败');
+    reportFailure('读取设置快照', error);
   }
 }
 
@@ -289,7 +290,7 @@ async function confirmMakeSettingsSnapshot() {
     await recovery.makeSettingsSnapshot();
     toastr.success('设置快照已创建');
   } catch (error) {
-    toastr.error(error instanceof Error ? error.message : '创建设置快照失败');
+    reportFailure('创建设置快照', error);
   }
 }
 
@@ -306,7 +307,7 @@ async function confirmRestoreSettingsSnapshot(snapshot: SettingsSnapshotSummary)
       title: '设置恢复完成',
     });
   } catch (error) {
-    toastr.error(error instanceof Error ? error.message : '恢复设置快照失败');
+    reportFailure('恢复设置快照', error);
   }
 }
 
@@ -320,7 +321,7 @@ async function confirmDeleteSettingsSnapshot(snapshot: SettingsSnapshotSummary) 
     await recovery.deleteSettingsSnapshot(snapshot);
     toastr.success('设置快照已删除');
   } catch (error) {
-    toastr.error(error instanceof Error ? error.message : '删除设置快照失败');
+    reportFailure('删除设置快照', error);
   }
 }
 
@@ -337,7 +338,7 @@ async function scanSettingsDuplicates() {
       toastr.info('已取消扫描，未删除任何快照');
       return;
     }
-    toastr.error(error instanceof Error ? error.message : '扫描设置快照失败');
+    reportFailure('扫描重复设置快照', error);
   }
 }
 
@@ -364,7 +365,7 @@ async function confirmSettingsDuplicateDelete() {
       toastr.success(`已删除 ${result.deleted.length} 份设置快照`);
     }
   } catch (error) {
-    toastr.error(error instanceof Error ? error.message : '删除重复设置快照失败');
+    reportFailure('删除重复设置快照', error);
   }
 }
 </script>

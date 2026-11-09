@@ -6,6 +6,7 @@
 
 <script setup lang="ts">
 import { downloadItemTransfer } from '@/util/itemTransfer';
+import { reportFailure } from '@/util/feedback';
 
 const props = withDefaults(
   defineProps<{
@@ -27,7 +28,7 @@ function runExport() {
     downloadItemTransfer(props.appId, props.params);
     toastr.success('已导出单条内容');
   } catch (error) {
-    toastr.error(error instanceof Error ? error.message : '单条内容导出失败');
+    reportFailure('导出单条内容', error);
   }
 }
 </script>

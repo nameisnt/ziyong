@@ -126,6 +126,7 @@ import type {
   EntryLibraryBindingPromptOption as BindingPromptOption,
   EntryLibrarySourceEntry as SourceEntry,
 } from './types';
+import { reportFailure } from '@/util/feedback';
 
 const phone = usePhoneStore();
 const library = useEntryLibraryStore();
@@ -537,7 +538,7 @@ async function loadSourceEntries() {
     }
     loadedSource = source;
   } catch (error) {
-    if (revision === sourceRevision) toastr.error(error instanceof Error ? error.message : String(error));
+    if (revision === sourceRevision) reportFailure('读取条目列表', error);
   } finally {
     if (revision === sourceRevision) sourceLoading.value = false;
   }
@@ -633,7 +634,7 @@ function loadBindingPrompts() {
     (preset.prompts_unused ?? []).forEach((prompt, index) => append('prompts_unused', prompt, index));
     bindingPrompts.value = options;
   } catch (error) {
-    toastr.error(error instanceof Error ? error.message : String(error));
+    reportFailure('读取预设条目', error);
   }
 }
 
@@ -658,7 +659,7 @@ async function createBinding() {
     toastr.success('已创建绑定并同步预设条目');
     loadBindingPrompts();
   } catch (error) {
-    toastr.error(error instanceof Error ? error.message : String(error));
+    reportFailure('创建绑定', error);
   } finally {
     bindingSaving.value = false;
   }
@@ -669,7 +670,7 @@ async function syncBinding(bindingId: string) {
     await library.syncBinding(bindingId);
     toastr.success('已同步收藏分组');
   } catch (error) {
-    toastr.error(error instanceof Error ? error.message : String(error));
+    reportFailure('同步收藏分组', error);
   }
 }
 

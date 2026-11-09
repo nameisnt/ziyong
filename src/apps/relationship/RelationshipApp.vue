@@ -235,6 +235,7 @@ import { formatTextProviderSummary } from '@/util/textProvider';
 import { storeToRefs } from 'pinia';
 import { parseRelationshipXmlResult } from './generation';
 import { useRelationshipStore, type RelationshipGeneratedResult } from './store';
+import { reportFailure } from '@/util/feedback';
 
 const phone = usePhoneStore();
 const relationship = useRelationshipStore();
@@ -507,7 +508,7 @@ async function runGeneration() {
     void phone.presentGeneratedPage('relationship', 'preview', '关系预览');
   } catch (error) {
     if (task) generationSession.fail(task.id, error);
-    else toastr.error(error instanceof Error ? error.message : '生成关系失败');
+    else reportFailure('生成关系', error);
   }
 }
 

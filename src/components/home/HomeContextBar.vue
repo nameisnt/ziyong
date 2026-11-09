@@ -43,6 +43,7 @@ import { useSettingsStore } from '@/store/settings';
 import { useStatsStore } from '@/store/stats';
 import { jumpToTavernChat } from '@/util/tavernNavigation';
 import { storeToRefs } from 'pinia';
+import { reportFailure } from '@/util/feedback';
 
 const emit = defineEmits<{
   'open-folder-creator': [];
@@ -77,7 +78,7 @@ async function jumpViewingChatToTavern() {
     window.setTimeout(() => void phone.syncCurrentTavernScope(true), 2400);
     toastr.success('正在跳转到酒馆聊天');
   } catch (caughtError) {
-    toastr.error(caughtError instanceof Error ? caughtError.message : '跳转酒馆聊天失败');
+    reportFailure('跳转酒馆聊天', error);
   }
 }
 
@@ -99,7 +100,7 @@ async function refreshPhoneData() {
     emit('refreshed');
     phone.noticeSuccess('插件数据已刷新');
   } catch (caughtError) {
-    phone.noticeError(caughtError instanceof Error ? caughtError.message : '刷新插件数据失败');
+    phone.reportFailure('刷新插件数据', error);
   } finally {
     refreshingPhoneData.value = false;
   }

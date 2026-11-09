@@ -133,6 +133,7 @@
 <script setup lang="ts">
 import EmptyState from '@/components/EmptyState.vue';
 import { usePhoneStore } from '@/store/phone';
+import { reportFailure } from '@/util/feedback';
 import { useFileRepositoryStore } from '@/store/fileRepository';
 
 const phone = usePhoneStore();
@@ -164,7 +165,7 @@ async function refresh() {
     await repository.initialize(true);
     toastr.success('仓库清单已刷新');
   } catch (error) {
-    toastr.error(error instanceof Error ? error.message : String(error));
+    reportFailure('刷新仓库清单', error);
   }
 }
 
@@ -173,7 +174,7 @@ async function createSnapshot() {
     await repository.createSnapshot('手动快照', true);
     toastr.success('文件快照已保存');
   } catch (error) {
-    toastr.error(error instanceof Error ? error.message : String(error));
+    reportFailure('保存文件快照', error);
   }
 }
 
@@ -192,7 +193,7 @@ async function loadDetail() {
     const payload = await repository.readSnapshot(snapshotId);
     if (revision === detailRevision && activeSnapshotId.value === snapshotId) detailPayload.value = payload;
   } catch (error) {
-    if (revision === detailRevision) toastr.error(error instanceof Error ? error.message : String(error));
+    if (revision === detailRevision) reportFailure('读取快照内容', error);
   } finally {
     if (revision === detailRevision) detailLoading.value = false;
   }
@@ -202,7 +203,7 @@ async function changeAutoEnabled(event: Event) {
   try {
     await repository.setAutoEnabled((event.target as HTMLInputElement).checked);
   } catch (error) {
-    toastr.error(error instanceof Error ? error.message : String(error));
+    reportFailure('切换自动快照', error);
   }
 }
 
@@ -210,7 +211,7 @@ async function changeRetention(event: Event) {
   try {
     await repository.setRetention(Number((event.target as HTMLInputElement).value));
   } catch (error) {
-    toastr.error(error instanceof Error ? error.message : String(error));
+    reportFailure('保存保留数量', error);
   }
 }
 
@@ -224,7 +225,7 @@ async function importSnapshot(event: Event) {
     toastr.success('快照已导入并自动保护');
     openSnapshot(snapshot.id);
   } catch (error) {
-    toastr.error(error instanceof Error ? error.message : String(error));
+    reportFailure('导入快照', error);
   }
 }
 
@@ -233,7 +234,7 @@ async function toggleProtection() {
   try {
     await repository.setProtected(activeSnapshot.value.id, !activeSnapshot.value.protected);
   } catch (error) {
-    toastr.error(error instanceof Error ? error.message : String(error));
+    reportFailure('切换快照保护', error);
   }
 }
 
@@ -242,7 +243,7 @@ async function exportActive() {
   try {
     await repository.exportSnapshot(activeSnapshot.value.id);
   } catch (error) {
-    toastr.error(error instanceof Error ? error.message : String(error));
+    reportFailure('导出快照', error);
   }
 }
 
@@ -263,7 +264,7 @@ async function removeActive() {
     if (activeSnapshotId.value === snapshot.id) await phone.goBack();
     toastr.success('文件快照已删除');
   } catch (error) {
-    toastr.error(error instanceof Error ? error.message : String(error));
+    reportFailure('删除快照', error);
   }
 }
 
@@ -281,7 +282,7 @@ async function restoreActive() {
     toastr.success('插件文件快照已恢复');
     phone.goHome();
   } catch (error) {
-    toastr.error(error instanceof Error ? error.message : String(error));
+    reportFailure('恢复快照', error);
   }
 }
 

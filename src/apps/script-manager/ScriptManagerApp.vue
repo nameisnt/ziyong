@@ -183,6 +183,7 @@ import BulkSelectionCheckbox from '@/components/BulkSelectionCheckbox.vue';
 import EmptyState from '@/components/EmptyState.vue';
 import { useBulkSelection } from '@/composables/useBulkSelection';
 import { usePhoneStore } from '@/store/phone';
+import { reportFailure } from '@/util/feedback';
 import {
   createAssistantScriptBundle,
   createAssistantScriptFolder,
@@ -298,7 +299,7 @@ function exportAll() {
     downloadJson(`助手脚本_全部_${dateTag()}.json`, createAssistantScriptBundle());
     toastr.success('已导出全部助手脚本');
   } catch (error) {
-    toastr.error(error instanceof Error ? error.message : String(error));
+    reportFailure('导出全部助手脚本', error);
   }
 }
 
@@ -310,7 +311,7 @@ function exportGroup(group: ScriptFolderGroup) {
     downloadJson(`酒馆助手脚本文件夹-${filename}.json`, folder);
     toastr.success(`已导出分组“${folder.name}”`);
   } catch (error) {
-    toastr.error(error instanceof Error ? error.message : String(error));
+    reportFailure('导出脚本文件夹', error);
   }
 }
 
@@ -325,7 +326,7 @@ async function importFile(event: Event) {
     refresh();
     toastr.success(result.kind === 'bundle' ? '已导入全部助手脚本' : `已导入到${scriptScopeLabel(result.scope)}`);
   } catch (error) {
-    toastr.error(error instanceof Error ? error.message : String(error));
+    reportFailure('导入助手脚本', error);
   }
 }
 
@@ -339,7 +340,7 @@ async function createGroup() {
     createAssistantScriptFolder(writeScope.value, name);
     refresh();
   } catch (error) {
-    toastr.error(error instanceof Error ? error.message : String(error));
+    reportFailure('新建脚本分组', error);
   }
 }
 
@@ -355,7 +356,7 @@ async function renameGroup(group: ScriptFolderGroup) {
     renameAssistantScriptFolder(group.scope, group.folder.id, name);
     refresh();
   } catch (error) {
-    toastr.error(error instanceof Error ? error.message : String(error));
+    reportFailure('重命名脚本分组', error);
   }
 }
 
@@ -367,7 +368,7 @@ function toggleFolderEnabled(group: ScriptFolderGroup, event: Event) {
     refresh();
   } catch (error) {
     input.checked = !input.checked;
-    toastr.error(error instanceof Error ? error.message : String(error));
+    reportFailure('切换脚本分组状态', error);
   }
 }
 
@@ -378,7 +379,7 @@ function toggleScriptEnabled(item: ScriptListItem, event: Event) {
     refresh();
   } catch (error) {
     input.checked = !input.checked;
-    toastr.error(error instanceof Error ? error.message : String(error));
+    reportFailure('切换脚本状态', error);
   }
 }
 
@@ -394,7 +395,7 @@ async function groupSelected() {
     selection.cancel();
     toastr.success(`已移动 ${selected.length} 个脚本`);
   } catch (error) {
-    toastr.error(error instanceof Error ? error.message : String(error));
+    reportFailure('移动脚本', error);
   } finally {
     refresh();
   }
@@ -414,7 +415,7 @@ async function removeSelected() {
     toastr.success(`已删除 ${selected.length} 个助手脚本`);
     refresh();
   } catch (error) {
-    toastr.error(error instanceof Error ? error.message : String(error));
+    reportFailure('删除脚本', error);
     refresh();
   }
 }

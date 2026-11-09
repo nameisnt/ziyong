@@ -1,7 +1,7 @@
 /**
  * 用户可见的失败反馈统一入口。
  *
- * 背景：界面里大量 `toastr.error(error instanceof Error ? error.message : '…')`
+ * 背景：界面里过去大量直接把 `error.message` 交给 toastr 的写法，
  * 会在出错时把 `Failed to fetch`、`HTTP 500`、半截 HTML 直接甩给用户，
  * 用户看不到「是哪个动作失败了」。这里把「动作 + 失败 + 原因」拼成一句话，
  * 并把常见底层错误翻译成中文短句。
@@ -14,7 +14,14 @@ const MAX_DETAIL_LENGTH = 120;
 
 const NETWORK_HINTS = ['failed to fetch', 'load failed', 'networkerror', 'network error', 'fetch failed'];
 const TIMEOUT_HINTS = ['timeout', 'timed out'];
-const PARSE_HINTS = ['unexpected token', 'json.parse', 'is not valid json'];
+const PARSE_HINTS = [
+  'unexpected token',
+  'json.parse',
+  'is not valid json',
+  'json at position',
+  'expected property name',
+  'unexpected end of json',
+];
 const ABORT_HINTS = ['aborterror', 'the operation was aborted'];
 
 const HTTP_HINTS: Array<{ pattern: RegExp; describe: (code: string) => string }> = [

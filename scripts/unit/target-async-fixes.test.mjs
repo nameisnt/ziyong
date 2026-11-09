@@ -13,6 +13,12 @@ async function functions(path, names, context) {
     .filter(n => names.includes(n.name?.getText(ast)))
     .map(n => n.getText(ast).replace(/^export /u, ''))
     .join('\n');
+  const report = (action, error) => {
+    const reason = error instanceof Error ? error.message : String(error);
+    context.toastr?.error?.(action ? `${action}失败：${reason}` : reason);
+  };
+  context.reportFailure = report;
+  context.reportWarning = report;
   return runInNewContext(
     transpileModule(code, {
       compilerOptions: { target: ScriptTarget.ES2022, module: ModuleKind.ESNext },

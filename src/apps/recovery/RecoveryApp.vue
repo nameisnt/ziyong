@@ -234,6 +234,7 @@ import type { ChatBackupGroup, ChatBackupSummary } from '@/apps/recovery/model';
 import { useChatRecoveryStore } from '@/apps/recovery/store';
 import { useBulkSelection } from '@/composables/useBulkSelection';
 import { usePhoneStore } from '@/store/phone';
+import { reportFailure } from '@/util/feedback';
 
 const phone = usePhoneStore();
 const recovery = useChatRecoveryStore();
@@ -322,7 +323,7 @@ async function openBackup(summary: ChatBackupSummary) {
       from: route.value.page,
     });
   } catch (error) {
-    toastr.error(error instanceof Error ? error.message : '读取聊天备份失败');
+    reportFailure('读取聊天备份', error);
   }
 }
 
@@ -347,7 +348,7 @@ async function confirmDeleteBackup(summary: ChatBackupSummary, navigateWhenGroup
     }
     return true;
   } catch (error) {
-    toastr.error(error instanceof Error ? error.message : '删除聊天备份失败');
+    reportFailure('删除聊天备份', error);
     return false;
   }
 }
@@ -370,7 +371,7 @@ async function deleteSelectedBackups() {
       phone.replacePage('root', '酒馆备份管理');
     }
   } catch (error) {
-    toastr.error(error instanceof Error ? error.message : '批量删除聊天备份失败');
+    reportFailure('批量删除聊天备份', error);
   }
 }
 

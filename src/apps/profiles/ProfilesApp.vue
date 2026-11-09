@@ -372,6 +372,7 @@ import {
   type ExternalProfileTable,
   type ExternalProfilesViewState,
 } from './externalBridge';
+import { reportFailure } from '@/util/feedback';
 
 const phone = usePhoneStore();
 const settingsStore = useSettingsStore();
@@ -541,7 +542,7 @@ async function saveRowEdit() {
     });
     toastr.success('资料已更新');
   } catch (error) {
-    toastr.error(error instanceof Error ? error.message : '资料更新失败');
+    reportFailure('更新资料', error);
   } finally {
     rowEditSaving.value = false;
   }
@@ -618,7 +619,7 @@ async function saveRepairedDraft() {
     toastr.success('已保存到外部资料表');
     phone.replacePage('table', table.name, { sheetKey: table.key });
   } catch (error) {
-    toastr.error(error instanceof Error ? error.message : '外部资料保存失败');
+    reportFailure('保存外部资料', error);
   }
 }
 
@@ -631,7 +632,7 @@ async function openVisualizer() {
     if (await bridge.openVisualizer()) return;
     toastr.warning('当前外部数据库没有提供完整编辑器入口');
   } catch (error) {
-    toastr.error(error instanceof Error ? error.message : '打开完整数据库失败');
+    reportFailure('打开完整数据库', error);
   }
 }
 

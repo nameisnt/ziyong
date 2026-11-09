@@ -149,6 +149,7 @@ import { useChatRecoveryStore } from '@/apps/recovery/store';
 import { usePhoneStore } from '@/store/phone';
 import { jumpToTavernChat } from '@/util/tavernNavigation';
 import { storeToRefs } from 'pinia';
+import { reportFailure } from '@/util/feedback';
 
 const props = defineProps<{
   confirmDeleteBackup: (summary: ChatBackupSummary, navigateWhenGroupEmpty?: boolean) => Promise<boolean>;
@@ -229,7 +230,7 @@ async function confirmImport() {
     await recovery.importActiveBackup(targetId);
     phone.replacePage('result', '导入完成');
   } catch (error) {
-    toastr.error(error instanceof Error ? error.message : '聊天备份导入失败');
+    reportFailure('导入聊天备份', error);
   }
 }
 
@@ -244,7 +245,7 @@ async function openImportedChat() {
       ownerName: result.target.name,
     });
   } catch (error) {
-    toastr.error(error instanceof Error ? error.message : '无法打开导入后的聊天');
+    reportFailure('打开导入后的聊天', error);
   }
 }
 </script>

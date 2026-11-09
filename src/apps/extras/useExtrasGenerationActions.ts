@@ -87,7 +87,7 @@ export function useExtrasGenerationActions(options: ExtrasGenerationActionsOptio
         title: draft.mode === '重写当前章节' ? '重新生成番外章节' : '生成番外 · 单次生成',
       });
     } catch (error) {
-      toastr.error(error instanceof Error ? error.message : '无法建立番外生成任务');
+      reportFailure('建立番外生成任务', error);
       return;
     }
     if (draft.mode === '重写当前章节' && !chapterId) {
@@ -257,7 +257,7 @@ export function useExtrasGenerationActions(options: ExtrasGenerationActionsOptio
     try {
       task = summarySession.create({ sourceParams: { bookId }, title: '生成章节总结 · 单次生成' });
     } catch (error) {
-      toastr.error(error instanceof Error ? error.message : '无法建立章节总结任务');
+      reportFailure('建立章节总结任务', error);
       return;
     }
     if (!draft.coveredChapterIds.length) {
@@ -377,3 +377,4 @@ export function useExtrasGenerationActions(options: ExtrasGenerationActionsOptio
   };
 }
 import { useSingleGenerationTaskSession } from '@/composables/useSingleGenerationTaskSession';
+import { reportFailure } from '@/util/feedback';

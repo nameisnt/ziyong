@@ -27,6 +27,7 @@
 <script setup lang="ts">
 import { usePhoneStore } from '@/store/phone';
 import { usePromptStore, type PromptTransferSelection } from '@/store/prompts';
+import { reportFailure } from '@/util/feedback';
 
 const phone = usePhoneStore();
 const prompts = usePromptStore();
@@ -72,7 +73,7 @@ function exportSelected() {
     window.setTimeout(() => URL.revokeObjectURL(url), 5000);
     toastr.success('已导出所选提示词配置');
   } catch (error) {
-    toastr.error(error instanceof Error ? error.message : '导出提示词失败');
+    reportFailure('导出提示词', error);
   }
 }
 
@@ -81,7 +82,7 @@ function openImport() {
     requireSelection();
     inputEl.value?.click();
   } catch (error) {
-    toastr.error(error instanceof Error ? error.message : '请选择要导入的区段');
+    reportFailure('导入提示词', error);
   }
 }
 
@@ -102,7 +103,7 @@ async function importSelected(event: Event) {
     prompts.applyTransfer(transfer, selected);
     toastr.success('已导入所选提示词配置');
   } catch (error) {
-    toastr.error(error instanceof Error ? error.message : '导入提示词失败');
+    reportFailure('导入提示词', error);
   }
 }
 </script>

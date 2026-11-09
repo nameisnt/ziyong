@@ -449,6 +449,7 @@ import {
   type ThemePreset,
   type VisualTheme,
 } from './themeCatalog';
+import { reportFailure } from '@/util/feedback';
 
 type ThemeView = 'root' | 'icons' | 'advanced';
 const settingsStore = useSettingsStore();
@@ -646,7 +647,7 @@ async function uploadHomeIcon(event: Event) {
     settings.value.visualTheme.appIconAssetIds[selectedApp.value.id] = asset.id;
     toastr.success('图片图标已上传');
   } catch (error) {
-    toastr.error(error instanceof Error ? error.message : '图片图标上传失败');
+    reportFailure('上传图片图标', error);
   }
 }
 
@@ -661,7 +662,7 @@ async function deleteSelectedHomeIcon() {
     toastr.success('图片图标已删除');
   } catch (error) {
     settings.value.visualTheme.appIconAssetIds[app.id] = assetId;
-    toastr.error(error instanceof Error ? error.message : '图片图标删除失败');
+    reportFailure('删除图片图标', error);
   }
 }
 
@@ -717,7 +718,7 @@ async function onThemeFontSelected(event: Event) {
     settingsStore.selectCustomFont(font.id);
     toastr.success(`已导入并使用字体：${font.name}`);
   } catch (caughtError) {
-    toastr.error(caughtError instanceof Error ? caughtError.message : '导入字体失败');
+    reportFailure('导入字体', error);
   }
 }
 
@@ -789,7 +790,7 @@ async function onIconPackSelected(event: Event) {
     settings.value.visualTheme.appIconOverrides = { ...settings.value.visualTheme.appIconOverrides, ...overrides };
     toastr.success(`已导入 ${Object.keys(overrides).length} 个图标`);
   } catch (caughtError) {
-    toastr.error(caughtError instanceof Error ? caughtError.message : '导入图标失败');
+    reportFailure('导入图标', error);
   }
 }
 
@@ -811,7 +812,7 @@ async function onThemeSelected(event: Event) {
     if (typeof parsed.readerFontFamily === 'string') settingsStore.setReaderFontFamily(parsed.readerFontFamily);
     toastr.success(`已导入到${settings.value.theme === 'light' ? '日间' : '夜间'}方案`);
   } catch (caughtError) {
-    toastr.error(caughtError instanceof Error ? caughtError.message : '导入主题失败');
+    reportFailure('导入主题', error);
   }
 }
 </script>

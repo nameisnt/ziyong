@@ -217,6 +217,7 @@ import {
   type StatusDisplayScheme,
   useStatusDisplayStore,
 } from './store';
+import { reportFailure } from '@/util/feedback';
 
 const phone = usePhoneStore();
 const settingsStore = useSettingsStore();
@@ -345,7 +346,7 @@ async function saveEditor() {
     phone.goBack();
     toastr.success('状态方案已保存');
   } catch (error) {
-    toastr.error(error instanceof Error ? error.message : String(error));
+    reportFailure('保存状态方案', error);
   } finally {
     saving.value = false;
   }

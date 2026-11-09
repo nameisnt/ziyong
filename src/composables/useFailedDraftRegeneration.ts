@@ -2,6 +2,7 @@ import { getRegisteredPhoneGenerationAdapter } from '@/core/appRegistry';
 import { regenerateFailedGenerationDraft } from '@/core/generationService';
 import type { FailedGenerationDraft } from '@/type/generation';
 import type { Ref } from 'vue';
+import { reportFailure } from '@/util/feedback';
 
 export function useFailedDraftRegeneration(options: {
   draft: () => FailedGenerationDraft | null;
@@ -27,7 +28,7 @@ export function useFailedDraftRegeneration(options: {
       }
       await options.reparse();
     } catch (error) {
-      toastr.error(error instanceof Error ? error.message : '重新生成失败');
+      reportFailure('重新生成', error);
     }
   };
 }

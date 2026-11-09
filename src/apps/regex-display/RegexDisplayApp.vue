@@ -289,6 +289,7 @@ import { useSettingsStore } from '@/store/settings';
 import { applyRegexDisplayRules, extractWithRegexRules } from '@/util/regexDisplay';
 import { storeToRefs } from 'pinia';
 import { defaultReaderBodyRegexDisplayRuleId, useRegexDisplayStore } from './store';
+import { reportFailure } from '@/util/feedback';
 
 const regexDisplay = useRegexDisplayStore();
 const phone = usePhoneStore();
@@ -304,7 +305,7 @@ function moveSelected() {
     toastr.success(`已移动 ${bulk.selectedIds.value.length} 条规则`);
     bulk.cancel();
   } catch (error) {
-    toastr.error(error instanceof Error ? error.message : String(error));
+    reportFailure('移动规则到分组', error);
   }
 }
 const draggingRuleId = ref('');

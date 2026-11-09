@@ -571,6 +571,7 @@ import {
   type CardWriterProfileKind,
 } from './profileImport';
 import { storeToRefs } from 'pinia';
+import { reportFailure } from '@/util/feedback';
 
 type StageState = CardWriterStageResult;
 
@@ -1533,7 +1534,7 @@ async function savePreview() {
     refreshWorldbooks();
     toastr.success(`已保存，并向世界书“${preview.targetWorldbookName}”写入 ${count} 个条目`);
   } catch (error) {
-    toastr.error(error instanceof Error ? error.message : '写入世界书失败');
+    reportFailure('写入世界书', error);
   } finally {
     savingPreview.value = false;
   }

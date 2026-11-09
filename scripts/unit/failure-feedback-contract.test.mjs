@@ -19,8 +19,8 @@ const migratedApps = [
   'src/apps/theater',
 ];
 
-/** 全库还没迁移的裸 error.message 反馈数量，只许下降。 */
-const RAW_FEEDBACK_BASELINE = 91;
+/** 全库裸 error.message 反馈必须为 0：新增即失败，改用 reportFailure(action, error)。 */
+const RAW_FEEDBACK_BASELINE = 0;
 
 const rawFeedbackPattern =
   /(?:toastr\.(?:error|warning)|notice(?:Error|Warning))\(\s*\w+ instanceof Error \? \w+\.message/gu;
@@ -60,6 +60,19 @@ test('network, abort and HTTP failures turn into readable reasons', () => {
   assert.equal(describeFailure(new Error('request timeout after 30s')), '等待超时，请稍后重试');
   assert.equal(
     describeFailure(new SyntaxError('Unexpected token < in JSON at position 0')),
+    '返回内容不是有效的 JSON，可能被代理或错误页替换',
+  );
+  // V8 对残缺 JSON 的报错措辞不止一种，都要归到同一句人话。
+  assert.equal(
+    describeFailure(new SyntaxError("Expected property name or '}' in JSON at position 1 (line 1 column 2)")),
+    '返回内容不是有效的 JSON，可能被代理或错误页替换',
+  );
+  assert.equal(
+    describeFailure(new SyntaxError('Unexpected end of JSON input')),
+    '返回内容不是有效的 JSON，可能被代理或错误页替换',
+  );
+  assert.equal(
+    describeFailure(new SyntaxError("Expected ',' or '}' after property value in JSON at position 3")),
     '返回内容不是有效的 JSON，可能被代理或错误页替换',
   );
 });

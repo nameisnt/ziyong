@@ -711,6 +711,7 @@ import { areChatScopeKeysEquivalent, getCurrentChatScopeKey } from '@/store/chat
 import { getPresetNamesSafe, onTavernEvent } from '@/util/runtime';
 import { storeToRefs } from 'pinia';
 import { buildPluginPresetSelectionOptions, pluginPresetIdFromSelection } from '@/apps/preset-manager/pluginPreset';
+import { reportFailure } from '@/util/feedback';
 
 const workbench = useWorkbenchStore();
 const phone = usePhoneStore();
@@ -1110,7 +1111,7 @@ async function confirmInsertDraft(draft: WorkbenchInsertDraft) {
     workbench.deleteInsertDraft(draftId);
     toastr.success('已插入聊天末尾');
   } catch (error) {
-    toastr.error(error instanceof Error ? error.message : '插入失败');
+    reportFailure('插入到聊天末尾', error);
   }
 }
 

@@ -184,6 +184,7 @@ import { usePhoneStore } from '@/store/phone';
 import { setNativeUserPrefixLink } from '@/util/nativeUserPrefixLink';
 import { getPresetNamesSafe } from '@/util/runtime';
 import { storeToRefs } from 'pinia';
+import { reportFailure } from '@/util/feedback';
 
 const aliases = useGenerationAliasesStore();
 const settingsStore = useSettingsStore();
@@ -241,7 +242,7 @@ async function setNativeMacroLink(event: Event) {
       timeoutMs: 0,
     });
   } catch (error) {
-    phone.noticeError(error instanceof Error ? error.message : '前缀配置修改失败');
+    phone.reportFailure('修改前缀配置', error);
   } finally {
     input.checked = nativeUserMacroEnabled.value;
     nativeMacroLinkBusy.value = false;

@@ -186,6 +186,7 @@ import { resolveContentVersion } from '@/util/contentVersions';
 import { useInvalidRouteFallback } from '@/util/routeFallback';
 import { updateGenerationRecordReasoning } from '@/util/generationReasoning';
 import { storeToRefs } from 'pinia';
+import { reportFailure, reportWarning } from '@/util/feedback';
 
 const letters = useLettersStore();
 const phone = usePhoneStore();
@@ -799,7 +800,7 @@ function submitEntry() {
     if (!saved) return;
     phone.replacePage('entry', saved.entry.title, { bookId: saved.book.id, entryId: saved.entry.id });
   } catch (error) {
-    toastr.warning(error instanceof Error ? error.message : '请先补齐发信人与收信人');
+    reportWarning('保存信件', error);
   }
 }
 
@@ -1049,7 +1050,7 @@ async function runGeneration() {
     void phone.presentGeneratedPage('letters', 'preview', '生成预览', previewParams);
   } catch (error) {
     if (task) generationSession.fail(task.id, error);
-    else toastr.error(error instanceof Error ? error.message : '生成失败，请稍后再试');
+    else reportFailure('生成', error);
   }
 }
 

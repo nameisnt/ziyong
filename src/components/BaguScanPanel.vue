@@ -118,6 +118,7 @@ import {
   scanTextWithBaguRules,
 } from '@/util/bagu';
 import { storeToRefs } from 'pinia';
+import { reportFailure } from '@/util/feedback';
 
 const props = defineProps<{
   applyHandler?: (content: string) => BaguWritebackResult | Promise<BaguWritebackResult>;
@@ -277,7 +278,7 @@ async function commitContent(nextContent: string, successMessage: string, record
     phone.noticeSuccess(successMessage);
     return true;
   } catch (error) {
-    phone.noticeError(error instanceof Error ? error.message : '正文写回失败，请返回后重试');
+    phone.reportFailure('写回正文', error);
     return false;
   } finally {
     writing.value = false;

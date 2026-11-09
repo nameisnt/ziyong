@@ -184,7 +184,7 @@ export function useForumGenerationActions(options: ForumGenerationActionsOptions
       void phone.presentGeneratedPage('forum', 'preview', '生成预览', routeParams);
     } catch (error) {
       if (task) threadSession.fail(task.id, error);
-      else toastr.error(error instanceof Error ? error.message : '生成失败，请稍后再试');
+      else reportFailure('生成', error);
     }
   }
 
@@ -287,7 +287,7 @@ export function useForumGenerationActions(options: ForumGenerationActionsOptions
       void phone.presentGeneratedPage('forum', 'preview', '生成预览', routeParams);
     } catch (error) {
       if (task) replySession.fail(task.id, error);
-      else toastr.error(error instanceof Error ? error.message : '生成失败，请稍后再试');
+      else reportFailure('生成', error);
     }
   }
 
@@ -299,3 +299,4 @@ export function useForumGenerationActions(options: ForumGenerationActionsOptions
   return { replySession, runReplyGeneration, runThreadGeneration, stopGeneration, threadSession };
 }
 import { useSingleGenerationTaskSession } from '@/composables/useSingleGenerationTaskSession';
+import { reportFailure } from '@/util/feedback';

@@ -228,6 +228,7 @@ import { areChatScopeKeysEquivalent, getCurrentChatScopeKey } from '@/store/chat
 import { useMvuModifierPersistenceStore, type MvuChangeRecord } from '@/store/mvuModifier';
 import { usePhoneStore } from '@/store/phone';
 import { storeToRefs } from 'pinia';
+import { reportFailure } from '@/util/feedback';
 
 const HISTORY_LIMIT = 30;
 const CHANGE_RECORD_LIMIT = 100;
@@ -412,7 +413,7 @@ async function persistSnapshot(next: MvuStatData, history?: MvuUndoEntry, revers
   } catch (error) {
     if (!isMvuContextCurrent(requestVersion, requestScopeKey)) return false;
     statData.value = previous;
-    toastr.error(error instanceof Error ? error.message : String(error));
+    reportFailure('读取状态数据', error);
     return false;
   } finally {
     if (requestId === saveRevision) savingContextVersion.value = null;

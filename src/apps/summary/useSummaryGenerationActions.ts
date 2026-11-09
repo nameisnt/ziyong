@@ -155,7 +155,7 @@ export function useSummaryGenerationActions(options: SummaryGenerationActionsOpt
       void phone.presentGeneratedPage('summary', 'preview', '生成预览', { bookId });
     } catch (error) {
       if (task) generationSession.fail(task.id, error);
-      else toastr.error(error instanceof Error ? error.message : '生成失败，请稍后再试');
+      else reportFailure('生成', error);
     }
   }
 
@@ -172,3 +172,4 @@ export function useSummaryGenerationActions(options: SummaryGenerationActionsOpt
   };
 }
 import { useSingleGenerationTaskSession } from '@/composables/useSingleGenerationTaskSession';
+import { reportFailure } from '@/util/feedback';
