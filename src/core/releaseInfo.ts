@@ -4,6 +4,17 @@ export const RUNNING_VERSION = manifest.version;
 export const RELEASE_SEEN_FIELD = 'sillytavern_phone_last_seen_release';
 export const RELEASE_HISTORY = [
   {
+    version: '1.2.19',
+    notes: [
+      '新增：世界书槽位同步时会把在酒馆编辑器里新建的条目导入为槽位，其他聊天的条目不再被删除；打开世界书槽位 App 时自动导入。',
+      '修复：删除槽位时对应的世界书条目仍会被移除。',
+      '新增：新建番外页补上「番外摘要」区块（与生成章节页共用同一组件），生成模式改为与生成设置一致的下拉框。',
+      '新增：番外目录可设置生成总结时自动排除最近 N 章，进入生成总结时按该设置预选章节。',
+      '新增：已选引用列表末尾显示本次生成用到的楼层。',
+      '改进：各个 App 的失败提示统一为「动作失败：原因」，不再直接抛出原始的报错文本。',
+    ],
+  },
+  {
     version: '1.2.18',
     notes: [
       '修复：内置日记预设改为随源码提交，干净克隆不再因引用本地被忽略的 JSON 而无法通过静态检查与构建。',
