@@ -57,7 +57,7 @@
         </div>
 
         <div class="pc-summary-skip-row">
-          <label class="pc-field-label" for="pc-summary-skip-input">{{ t`生成总结时自动排除最近` }}</label>
+          <label class="pc-field-label" for="pc-summary-skip-input">{{ t`生成章节时最近` }}</label>
           <input
             id="pc-summary-skip-input"
             class="pc-field pc-summary-skip-input"
@@ -65,7 +65,7 @@
             min="0"
             :max="skipMax"
             :value="book.summarySkipRecentChapters"
-            :disabled="!summarizableCount"
+            :disabled="!book.chapters.length"
             @input="onSkipRecentInput"
           />
           <span class="pc-help-text">{{ t`章` }}</span>
@@ -129,7 +129,6 @@ import EmptyState from '@/components/EmptyState.vue';
 import ContentVersionBadge from '@/components/ContentVersionBadge.vue';
 import ItemTransferImportAction from '@/components/ItemTransferImportAction.vue';
 import type { ExtraBook, ExtraChapter } from '@/type/extra';
-import { getSummarizableChapters } from '@/util/extrasSummary';
 
 const props = defineProps<{
   book: ExtraBook;
@@ -151,13 +150,12 @@ const emit = defineEmits<{
   toggleSummary: [summaryId: string];
 }>();
 
-const summarizableCount = computed(() => getSummarizableChapters(props.book).length);
-const skipMax = computed(() => Math.max(0, summarizableCount.value - 1));
+const skipMax = computed(() => props.book.chapters.length);
 const skipHint = computed(() => {
   const skipped = props.book.summarySkipRecentChapters;
-  if (!summarizableCount.value) return '当前没有可总结的章节，新增章节后可以设置。';
-  if (!skipped) return '为 0 时不自动排除，进入生成总结后手动选择章节。';
-  return `进入生成总结时自动预选前 ${Math.max(0, summarizableCount.value - skipped)} 章，仍可手动调整。`;
+  if (!props.book.chapters.length) return '当前还没有章节，新增章节后可以设置。';
+  if (!skipped) return '为 0 时全部章节都可以用总结替代原文。';
+  return `生成章节时，最近 ${skipped} 章始终写入原文，覆盖这些章节的总结会跳过不用。`;
 });
 
 function onSkipRecentInput(event: Event) {

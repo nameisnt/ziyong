@@ -52,22 +52,67 @@ test('both extras pages share one summary block instead of duplicating it', () =
   assert.deepEqual(failures, []);
 });
 
-test('the book overview page stores how many recent chapters to leave out', () => {
+test('the book overview page decides how many recent chapters stay raw while generating', () => {
   const failures = [];
   if (!/summarySkipRecentChapters: z\.number\(\)\.int\(\)\.min\(0\)\.default\(0\)/.test(extraType))
     failures.push('ExtraBook must persist summarySkipRecentChapters');
   if (!/function setSummarySkipRecentChapters\(/.test(extrasStore))
-    failures.push('the extras store needs a setter for the skip count');
-  if (!/const summarizable = getSummarizableChapters\(book\)\.length;/.test(extrasStore))
-    failures.push('the skip count must be clamped against the summarizable chapters');
-  if (!/Math\.min\(Math\.max\(0, Math\.trunc\(count\)\), max\)/.test(extrasStore))
-    failures.push('the stored skip count must stay inside 0..summarizable-1');
-  if (!/emit\('setSummarySkipRecent'/.test(overview)) failures.push('the overview page must emit the skip count');
-  if (!/:disabled="!summarizableCount"/.test(overview)) failures.push('the skip input must disable without chapters');
-  if (!/pickAutoCoveredChapterIds\(\)/.test(extrasApp))
-    failures.push('opening the summary page must preselect chapters from the stored count');
+    failures.push('the extras store needs a setter for the raw chapter count');
+  if (!/const max = book\.chapters\.length;/.test(extrasStore))
+    failures.push('the raw chapter count must be clamped against the chapters');
+  if (!/Math\.min\(\(?Math\.max\(0, Math\.trunc\(count\)\)\), max\)/.test(extrasStore) && !/Math\.min\(Math\.max\(0, Math\.trunc\(count\)\), max\)/.test(extrasStore))
+    failures.push('the stored count must stay inside 0..chapters');
+  if (!/emit\('setSummarySkipRecent'/.test(overview)) failures.push('the overview page must emit the raw chapter count');
+  if (!/:disabled="!book\.chapters\.length"/.test(overview)) failures.push('the count input must disable without chapters');
+  if (/pickAutoCoveredChapterIds/.test(extrasApp))
+    failures.push('the summary page must not preselect chapters from this setting anymore');
+  if (!/rawRecentChapters: book\.summarySkipRecentChapters \?\? 0/.test(extrasApp))
+    failures.push('chapter generation must hand the raw chapter count to the history builder');
   if (!/@set-summary-skip-recent="setSummarySkipRecent"/.test(extrasApp))
-    failures.push('the app must persist the skip count coming from the overview page');
+    failures.push('the app must persist the raw chapter count coming from the overview page');
+  assert.deepEqual(failures, []);
+});
+
+test('summaries stop at the recent chapters that are written out in full', async () => {
+  const { buildExtraHistoryContext } = await import('../../src/util/extrasSummary.ts');
+  const chapters = [1, 2, 3, 4, 5].map(number => ({
+    id: `ch-${number}`,
+    chapterNumber: number,
+    title: `第 ${number} 章`,
+    content: `正文${number}`,
+  }));
+  const summary = (id, ids, updatedAt) => ({
+    id,
+    enabled: true,
+    content: `总结${id}`,
+    coveredChapterIds: ids.map(number => `ch-${number}`),
+    updatedAt,
+  });
+  const book = {
+    chapters,
+    summaries: [
+      summary('s1', [1, 2], '2026-01-01'),
+      summary('s2', [3, 4], '2026-01-02'),
+      summary('s3', [5], '2026-01-03'),
+    ],
+  };
+  const failures = [];
+  const allSummarized = buildExtraHistoryContext(book, chapters);
+  if (!allSummarized.includes('总结s1') || !allSummarized.includes('总结s2') || !allSummarized.includes('总结s3'))
+    failures.push('without a raw window every summary may replace its chapters');
+
+  const rawTwo = buildExtraHistoryContext(book, chapters, { rawRecentChapters: 2 });
+  if (!rawTwo.includes('正文4') || !rawTwo.includes('正文5'))
+    failures.push('the last two chapters must keep their original text');
+  if (rawTwo.includes('总结s2') || rawTwo.includes('总结s3'))
+    failures.push('a summary touching the raw window must be dropped as a whole');
+  if (!rawTwo.includes('总结s1')) failures.push('summaries older than the raw window still apply');
+  if (rawTwo.includes('正文1') || rawTwo.includes('正文2'))
+    failures.push('chapters covered by an older summary must not be repeated as raw text');
+
+  const rawEverything = buildExtraHistoryContext(book, chapters, { rawRecentChapters: 5 });
+  if (rawEverything.includes('总结')) failures.push('asking for every chapter raw must drop all summaries');
+
   assert.deepEqual(failures, []);
 });
 

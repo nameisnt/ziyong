@@ -34,10 +34,23 @@ function formatSummaryLabel(chapters: ExtraChapter[]) {
   return `${chapters.map(chapter => `第 ${chapter.chapterNumber} 章`).join('、')}总结`;
 }
 
-export function buildExtraHistoryContext(book: ExtraBook, chapters: ExtraChapter[]) {
+export type ExtraHistoryContextOptions = {
+  /** 最近多少章必须以原文进入提示词；覆盖这些章节的总结整条不再使用。 */
+  rawRecentChapters?: number;
+};
+
+export function buildExtraHistoryContext(
+  book: ExtraBook,
+  chapters: ExtraChapter[],
+  options: ExtraHistoryContextOptions = {},
+) {
   const orderedChapters = [...chapters].sort((left, right) => left.chapterNumber - right.chapterNumber);
   const includedChapterIds = new Set(orderedChapters.map(chapter => chapter.id));
   const occupiedChapterIds = new Set<string>();
+  const rawRecentChapters = Math.max(0, Math.trunc(options.rawRecentChapters ?? 0));
+  const rawChapterIds = new Set(
+    rawRecentChapters > 0 ? orderedChapters.slice(-rawRecentChapters).map(chapter => chapter.id) : [],
+  );
 
   // Newer summaries win only when legacy data contains overlapping enabled ranges.
   const acceptedSummaries = [...book.summaries]
@@ -48,6 +61,8 @@ export function buildExtraHistoryContext(book: ExtraBook, chapters: ExtraChapter
       const coversOnlyIncludedChapters =
         coveredChapters.length > 0 && summary.coveredChapterIds.every(chapterId => includedChapterIds.has(chapterId));
       if (!coversOnlyIncludedChapters || coveredChapters.some(chapter => occupiedChapterIds.has(chapter.id))) return [];
+      // 最近若干章要保留原文：跨到这些章节的总结整条不用，避免同一段剧情在提示词里出现两次。
+      if (coveredChapters.some(chapter => rawChapterIds.has(chapter.id))) return [];
       coveredChapters.forEach(chapter => occupiedChapterIds.add(chapter.id));
       return [{ coveredChapters, summary }];
     })

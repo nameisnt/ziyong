@@ -882,7 +882,7 @@ watch(
 
     if (current.page === 'summary-generate' && previous?.page !== 'summary-preview') {
       selectedReferences.value = [];
-      generationDraft.coveredChapterIds = pickAutoCoveredChapterIds();
+      generationDraft.coveredChapterIds = [];
       generationDraft.enabled = true;
       generationDraft.rangeText = '';
       generationDraft.singleMessageId = 0;
@@ -1143,14 +1143,6 @@ function openGenerateSummary(bookId: string) {
   phone.pushPage('summary-generate', '生成章节总结', { bookId });
 }
 
-function pickAutoCoveredChapterIds() {
-  const book = activeBook.value;
-  const skip = book?.summarySkipRecentChapters ?? 0;
-  if (!book || skip <= 0) return [];
-  const chapters = getSummarizableChapters(book);
-  return chapters.slice(0, Math.max(0, chapters.length - skip)).map(chapter => chapter.id);
-}
-
 function setSummarySkipRecent(count: number) {
   if (!activeBook.value) return;
   extras.setSummarySkipRecentChapters(activeBook.value.id, count);
@@ -1191,7 +1183,9 @@ function buildPreviousChapterContext(book = activeBook.value) {
         : contextChapters.filter(chapter => chapter.chapterNumber < activeChapter.value!.chapterNumber);
   }
 
-  const historyContext = buildExtraHistoryContext(book, contextChapters);
+  const historyContext = buildExtraHistoryContext(book, contextChapters, {
+    rawRecentChapters: book.summarySkipRecentChapters ?? 0,
+  });
 
   return [
     `番外书名：${book.title}`,

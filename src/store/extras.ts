@@ -19,7 +19,6 @@ import {
   resolveExtraChapterGenerationRecords,
   synchronizeExtraChapterGenerationRecords,
 } from '@/util/extraGenerationRecords';
-import { getSummarizableChapters } from '@/util/extrasSummary';
 import { validateInplace } from '@/util/zod';
 
 export const extrasField = 'sillytavern_phone_extras';
@@ -109,8 +108,7 @@ export const useExtrasStore = defineStore('extras', () => {
   function setSummarySkipRecentChapters(bookId: string, count: number) {
     const book = getBook(bookId);
     if (!book) return null;
-    const summarizable = getSummarizableChapters(book).length;
-    const max = Math.max(0, summarizable - 1);
+    const max = book.chapters.length;
     const next = Number.isFinite(count) ? Math.min(Math.max(0, Math.trunc(count)), max) : 0;
     if (book.summarySkipRecentChapters === next) return book;
     book.summarySkipRecentChapters = next;
