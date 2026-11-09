@@ -132,6 +132,11 @@ test('the reference list ends with the generation floor of this request', async 
     )
   )
     failures.push('the floor must sit at the right side of the last selected reference');
+  if (!/function floorBadge\(/.test(referencePicker)) failures.push('the tree rows must show the floor number');
+  if (!/\.pc-reference-node\.leaf \{\n\s+grid-template-columns: auto minmax\(0, 1fr\) auto;/.test(referencePicker))
+    failures.push('the floor number needs its own trailing column');
+  if (!/\.pc-reference-node-floor \{/.test(referencePicker))
+    failures.push('the floor number must reuse the muted text style');
 
   const cases = [
     [{ mode: 'none', lastMessageId: 40 }, ''],
