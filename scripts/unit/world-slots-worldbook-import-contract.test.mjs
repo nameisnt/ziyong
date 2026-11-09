@@ -33,6 +33,12 @@ test('sync adopts world book entries that carry no plugin marker', () => {
   assert.match(body, /imported: importedSlotIds\.size,/u);
 });
 
+test('opening the app imports edits made in the world book editor', () => {
+  const mounted = appSource.match(/onMounted\(\(\) => \{[\s\S]*?\n\}\);/u)?.[0] ?? '';
+  assert.match(mounted, /refreshFromWorldbook\(\)/u);
+  assert.match(mounted, /syncToWorldBook\(\)/u);
+});
+
 test('entries owned by another chat are skipped instead of being deleted', () => {
   const body = sliceFunction('performSync');
   const foreignBranch = body.match(/if \(!currentSlotIds\.has\(slotId\)\) \{[\s\S]*?\n {6}\}/u)?.[0] ?? '';

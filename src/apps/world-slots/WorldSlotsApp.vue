@@ -310,7 +310,10 @@ async function resolveConflict(id: string, source: 'slot' | 'worldbook') {
 }
 
 onMounted(() => {
-  void worldSlots.refreshFromWorldbook().catch(error => toastr.error(String(error)));
+  void worldSlots
+    .refreshFromWorldbook()
+    .then(() => worldSlots.syncToWorldBook())
+    .catch(error => toastr.error(String(error)));
 });
 const route = computed(() => phone.currentRoute);
 const query = ref('');
