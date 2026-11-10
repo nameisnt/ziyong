@@ -9,6 +9,7 @@ npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 pnpm-debug.log*
+<<<<<<< HEAD
 
 # Local editor and Codex working files
 .codex/
@@ -36,3 +37,5 @@ output/imagegen/
 prototypes/ink-fish/
 *.mp4
 UI设计规范，给VibeCoder们的美学建议.pdf
+=======
+>>>>>>> 6661c4bed4631109d0e13dccff2d6cc5b5b85fd9

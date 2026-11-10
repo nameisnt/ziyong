@@ -1,4 +1,5 @@
 {
+<<<<<<< HEAD
   "name": "sillytavern-phone-extension",
   "version": "1.2.20",
   "scripts": {
@@ -29,13 +30,26 @@
     "release": "node scripts/release.mjs",
     "deploy:local": "node scripts/deploy-local.mjs",
     "typecheck:sfc": "node scripts/check-sfc-typecheck.mjs"
+=======
+  "name": "<插件名称>",
+  "version": "1.0.0",
+  "scripts": {
+    "build": "vite build",
+    "watch": "vite build --watch --mode development",
+    "format": "prettier --write \"src/**/*.{ts,tsx,js,jsx,css,scss,html,vue}\"",
+    "lint": "eslint",
+    "lint:fix": "eslint --fix"
+>>>>>>> 6661c4bed4631109d0e13dccff2d6cc5b5b85fd9
   },
   "browserslist": [
     "defaults and partially supports es6-module"
   ],
   "devDependencies": {
     "@eslint/js": "^9.39.5",
+<<<<<<< HEAD
     "@fortawesome/fontawesome-free": "^7.3.1",
+=======
+>>>>>>> 6661c4bed4631109d0e13dccff2d6cc5b5b85fd9
     "@popperjs/core": "^2.11.8",
     "@tailwindcss/postcss": "^4.3.5",
     "@types/jquery": "^3.5.34",
@@ -57,11 +71,18 @@
     "eslint-plugin-vue": "^10.12.1",
     "globals": "^16.5.0",
     "highlight.js": "^11.12.0",
+<<<<<<< HEAD
     "playwright": "^1.65.0",
+=======
+>>>>>>> 6661c4bed4631109d0e13dccff2d6cc5b5b85fd9
     "postcss-load-config": "^6.0.1",
     "postcss-loader": "^8.2.1",
     "postcss-minify": "^1.2.0",
     "prettier": "^3.9.10",
+<<<<<<< HEAD
+=======
+    "ts-node": "^10.9.2",
+>>>>>>> 6661c4bed4631109d0e13dccff2d6cc5b5b85fd9
     "tslib": "^2.9.1",
     "typescript": "6.0.0-dev.20250807",
     "typescript-eslint": "^8.72.2",
@@ -72,19 +93,29 @@
     "vue-eslint-parser": "^10.4.2",
     "vue-loader": "^17.4.2",
     "vue-style-loader": "^4.1.3",
+<<<<<<< HEAD
     "vue-tsc": "2.2.12",
     "yaml": "^2.9.1"
   },
   "dependencies": {
     "@korziee/klondike": "0.0.5",
+=======
+    "yaml": "^2.9.1"
+  },
+  "dependencies": {
+>>>>>>> 6661c4bed4631109d0e13dccff2d6cc5b5b85fd9
     "@vueuse/components": "^13.9.0",
     "@vueuse/core": "^13.9.0",
     "@vueuse/integrations": "^13.9.0",
     "@vueuse/shared": "^13.9.0",
+<<<<<<< HEAD
     "fflate": "0.8.2",
     "klona": "^2.0.6",
     "lodash": "4.17.21",
     "mermaid": "^11.17.2",
+=======
+    "klona": "^2.0.6",
+>>>>>>> 6661c4bed4631109d0e13dccff2d6cc5b5b85fd9
     "pinia": "^3.0.4",
     "tailwindcss": "^4.3.5",
     "type-fest": "^4.41.0",
