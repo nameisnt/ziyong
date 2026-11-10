@@ -139,6 +139,8 @@ function createFailedDraftRecoveryProvider(
   };
 }
 
+// 引用面板会同时读取所有提供引用的 App 的数据：查看作用域一变，这些 App 必须跟着切，
+// 否则没打开过的 App 会继续用上一个聊天的内容，引用里就混进了别的聊天。
 export const BUILTIN_PHONE_APP_MODULES: PhoneAppModule[] = [
   definePhoneApp({
     id: 'summary',
@@ -161,6 +163,7 @@ export const BUILTIN_PHONE_APP_MODULES: PhoneAppModule[] = [
     promptDefinitions: [createSummaryPromptDefinition()],
     taskTemplateDefinitions: createSummaryTaskTemplateDefinitions(),
     referenceProvider: createSummaryReferenceTree,
+    scopeSwitchMode: 'always',
     resetCurrentScope: () => useSummaryStore().resetCurrentScope(),
     scopeSwitchHandler: scopeKey => useSummaryStore().switchScope(scopeKey),
   }),
@@ -184,6 +187,7 @@ export const BUILTIN_PHONE_APP_MODULES: PhoneAppModule[] = [
     itemTransferProvider: diaryItemTransferProvider,
     promptDefinitions: [createDiaryPromptDefinition()],
     referenceProvider: createDiaryReferenceTree,
+    scopeSwitchMode: 'always',
     resetCurrentScope: () => useDiaryStore().resetCurrentScope(),
     scopeSwitchHandler: scopeKey => useDiaryStore().switchScope(scopeKey),
     specialPromptDefinitions: [createDiaryReactionPromptDefinition()],
@@ -209,6 +213,7 @@ export const BUILTIN_PHONE_APP_MODULES: PhoneAppModule[] = [
     itemTransferProvider: extrasItemTransferProvider,
     promptDefinitions: [createExtrasPromptDefinition(), createExtrasContinuePromptDefinition()],
     referenceProvider: createExtrasReferenceTree,
+    scopeSwitchMode: 'always',
     resetCurrentScope: () => useExtrasStore().resetCurrentScope(),
     scopeSwitchHandler: scopeKey => useExtrasStore().switchScope(scopeKey),
     specialPromptDefinitions: [createExtraSummaryPromptDefinition()],
@@ -235,6 +240,7 @@ export const BUILTIN_PHONE_APP_MODULES: PhoneAppModule[] = [
     itemTransferProvider: forumItemTransferProvider,
     promptDefinitions: [createForumPromptDefinition()],
     referenceProvider: createForumReferenceTree,
+    scopeSwitchMode: 'always',
     resetCurrentScope: () => useForumStore().resetCurrentScope(),
     scopeSwitchHandler: scopeKey => useForumStore().switchScope(scopeKey),
     specialPromptDefinitions: [createForumReplyPromptDefinition()],
@@ -261,6 +267,7 @@ export const BUILTIN_PHONE_APP_MODULES: PhoneAppModule[] = [
     itemTransferProvider: theaterItemTransferProvider,
     promptDefinitions: [createTheaterPromptDefinition()],
     referenceProvider: createTheaterReferenceTree,
+    scopeSwitchMode: 'always',
     resetCurrentScope: () => {
       useTheaterStore().resetCurrentScope();
       useGenerationAliasesStore().resetCurrentScope();
@@ -293,6 +300,7 @@ export const BUILTIN_PHONE_APP_MODULES: PhoneAppModule[] = [
     promptDefinitions: [createLettersPromptDefinition()],
     taskTemplateDefinitions: createLettersTaskTemplateDefinitions(),
     referenceProvider: createLettersReferenceTree,
+    scopeSwitchMode: 'always',
     resetCurrentScope: () => useLettersStore().resetCurrentScope(),
     scopeSwitchHandler: scopeKey => useLettersStore().switchScope(scopeKey),
   }),

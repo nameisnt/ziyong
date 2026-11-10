@@ -97,7 +97,8 @@ export const usePhoneStore = defineStore('phone', () => {
   const stack = ref<PhoneRoute[]>([{ appId: 'home', page: 'home', title: '功能性阅读器' }]);
   const currentTavernScopeKey = ref(getCurrentChatScopeKey());
   const viewingScopeKey = ref(currentTavernScopeKey.value);
-  // 打开过的 App 才需要跟着查看作用域切数据；从未打开的 App 保持惰性，避免为了切作用域实例化全部 store。
+  // 打开过的 App 才需要跟着查看作用域切数据；未打开的 App 保持惰性，避免为了切作用域实例化全部 store。
+  // 例外是标记了 scopeSwitchMode: 'always' 的 App（引用来源、后台联动），它们在任何作用域变化时都要跟上。
   const activatedAppIds = new Set<string>();
   const viewingScopeMeta = ref<PhoneViewingScopeMeta>(createDefaultScopeMeta(viewingScopeKey.value));
   const notices = ref<PhoneNotice[]>([]);

@@ -22,7 +22,17 @@ test('scope switching distinguishes background links from Apps activated on dema
   for (const source of [presetLink, worldbookLink, worldSlots]) {
     assert.match(source, /scopeSwitchMode:\s*'always'/u);
   }
-  assert.doesNotMatch(builtin, /scopeSwitchMode:\s*'always'/u);
+  // 引用面板会把各 App 的数据拼在一起：提供引用的 App 必须随查看作用域同步，
+  // 其余内置 App 仍然按需实例化，避免为了切作用域加载全部聊天数据。
+  const builtinModules = builtin.split('definePhoneApp({').slice(1);
+  assert.ok(builtinModules.length >= 10);
+  for (const module of builtinModules) {
+    if (module.includes('referenceProvider:')) {
+      assert.match(module, /scopeSwitchMode:\s*'always'/u, 'reference sources must follow the viewing scope');
+    } else {
+      assert.doesNotMatch(module, /scopeSwitchMode:\s*'always'/u);
+    }
+  }
   assert.doesNotMatch(workbench, /scopeSwitchMode:\s*'always'/u);
 });
 
