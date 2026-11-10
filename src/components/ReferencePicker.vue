@@ -870,7 +870,14 @@ function cancelReferenceDrag(event: PointerEvent) {
 }
 
 :deep(.pc-reference-node.leaf) {
-  grid-template-columns: auto minmax(0, 1fr);
+  grid-template-columns: auto minmax(0, 1fr) auto;
+}
+
+:deep(.pc-reference-node-floor) {
+  color: var(--pc-muted);
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
 }
 
 :deep(.pc-reference-node.leaf.selected) {
