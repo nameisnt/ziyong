@@ -12,6 +12,7 @@ const names = new Set([
   'getEntrySlotId',
   'createWorldEntry',
   'readSlotFields',
+  'readOptionalTiming',
   'nextEntryId',
   'cleanList',
   'buildSlot',
@@ -74,7 +75,7 @@ function fixture(entries, slots = [slot]) {
   };
   const conflicts = { value: [] };
   const scopeKey = { value: 'test-scope' };
-  const methods = runInNewContext(`${code}\n({sync: performSync, pull: readWorldbookChanges, markPending})`, {
+  const methods = runInNewContext(`${code}\n({sync: performSync, pull: readWorldbookChanges, markPending, readFields: readSlotFields})`, {
     WORLD_SLOTS_BOOK_NAME: 'Test book',
     exports: {},
     pendingFields: new Map(),
@@ -97,6 +98,7 @@ function fixture(entries, slots = [slot]) {
     sync: () => methods.sync(1, 'test-scope'),
     pull: methods.pull,
     markPending: methods.markPending,
+    readFields: methods.readFields,
     conflicts,
     scopeKey,
     data,
@@ -250,4 +252,17 @@ test('previous chat ownership prevents reverse import', async () => {
   await f.pull();
   assert.equal(f.data.value.slots[0].content, slot.content);
   assert.equal(f.saves(), 0);
+});
+
+test('world book timing of zero reads as "off" instead of an invalid number', () => {
+  const { readFields } = fixture([]);
+  const off = readFields({ comment: '关闭', sticky: 0, cooldown: 0, delay: 0 });
+  assert.equal(off.sticky, null);
+  assert.equal(off.cooldown, null);
+  assert.equal(off.delay, null);
+  const on = readFields({ comment: '开启', sticky: 5, cooldown: 3, delay: 7 });
+  assert.equal(on.sticky, 5);
+  assert.equal(on.cooldown, 3);
+  assert.equal(on.delay, 7);
+  assert.equal(readFields({ comment: '缺失' }).sticky, null);
 });

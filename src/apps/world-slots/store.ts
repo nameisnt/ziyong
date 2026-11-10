@@ -231,6 +231,12 @@ function nextEntryId(entries: Record<string, WorldBookEntry>) {
   return ids.length ? Math.max(...ids) + 1 : 0;
 }
 
+function readOptionalTiming(value: unknown): number | null {
+  // 酒馆把「关闭」存成 0，而槽位字段只接受 1 以上或 null，否则校验失败会让整份作用域数据都写不进去。
+  const numeric = Number(value);
+  return Number.isFinite(numeric) && numeric >= 1 ? Math.trunc(numeric) : null;
+}
+
 function readSlotFields(entry: WorldBookEntry): WorldSlotEditableFields {
   return {
     title: String(entry.comment ?? ''),
@@ -248,9 +254,9 @@ function readSlotFields(entry: WorldBookEntry): WorldSlotEditableFields {
     probability: Number(entry.probability ?? 100),
     excludeRecursion: Boolean(entry.excludeRecursion),
     preventRecursion: Boolean(entry.preventRecursion),
-    sticky: entry.sticky == null ? null : Number(entry.sticky),
-    cooldown: entry.cooldown == null ? null : Number(entry.cooldown),
-    delay: entry.delay == null ? null : Number(entry.delay),
+    sticky: readOptionalTiming(entry.sticky),
+    cooldown: readOptionalTiming(entry.cooldown),
+    delay: readOptionalTiming(entry.delay),
   };
 }
 

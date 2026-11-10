@@ -55,3 +55,10 @@ test('the extras app drops stale generation state when the viewing scope changes
   assert.match(extras, /generationState\.preview = null;/u);
   assert.match(extras, /phone\.replacePage\('root', '番外书架'\)/u);
 });
+
+test('one failing App cannot abort the rest of the viewing scope switch', () => {
+  assert.match(phone, /const pending = \[\.\.\.handlers\.entries\(\)\]/u);
+  assert.match(phone, /Promise\.allSettled\(pending\.map/u);
+  assert.match(phone, /切换「\$\{pending\[index\]\[0\]\}」的聊天范围失败/u);
+  assert.doesNotMatch(phone, /await Promise\.all\(\[\.\.\.handlers\.values\(\)\]/u);
+});

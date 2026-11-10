@@ -176,7 +176,14 @@ export const usePhoneStore = defineStore('phone', () => {
         handlers.set(item.app.id, item);
       }
     }
-    await Promise.all([...handlers.values()].map(item => item.switchScope(scopeKey)));
+    const pending = [...handlers.entries()];
+    const results = await Promise.allSettled(pending.map(([, item]) => Promise.resolve(item.switchScope(scopeKey))));
+    results.forEach((result, index) => {
+      if (result.status === 'rejected') {
+        const reason = result.reason;
+        noticeError(`切换「${pending[index][0]}」的聊天范围失败：${reason instanceof Error ? reason.message : String(reason)}`);
+      }
+    });
   }
 
   function activateAppScope(appId: string) {
