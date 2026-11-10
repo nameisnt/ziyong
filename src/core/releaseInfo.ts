@@ -4,6 +4,17 @@ export const RUNNING_VERSION = manifest.version;
 export const RELEASE_SEEN_FIELD = 'sillytavern_phone_last_seen_release';
 export const RELEASE_HISTORY = [
   {
+    version: '1.2.20',
+    notes: [
+      '修复：引用区的生成楼层移到已选引用最后一张卡片右侧，候选行右侧显示来源楼层数字。',
+      '新增：引用行数字取自各条内容保存的生成记录（日记、小剧场、书信、论坛、番外章节、总结），旧条目没有记录时不显示。',
+      '修复：番外摘要的「最近 N 章」改为生成章节时保留原文，覆盖这些章节的总结整条不再使用。',
+      '修复：打开过的 App 会跟随「回到当前聊天」重新同步作用域，不再停在只读聊天的生成页。',
+      '修复：世界书槽位的自动同步只订阅一次，避免事件句柄清理报错把页面卡住。',
+      '新增：静态闸门用 vue-tsc 检查 .vue 脚本块（基线棘轮），并接入 CI 与 push 钩子。',
+    ],
+  },
+  {
     version: '1.2.19',
     notes: [
       '新增：世界书槽位同步时会把在酒馆编辑器里新建的条目导入为槽位，其他聊天的条目不再被删除；打开世界书槽位 App 时自动导入。',
