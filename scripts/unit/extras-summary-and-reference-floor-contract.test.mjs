@@ -24,6 +24,35 @@ const referencePicker = await readFile(
   new URL('../../src/components/ReferencePicker.vue', import.meta.url),
   'utf8',
 );
+const referenceTypes = await readFile(new URL('../../src/util/references.ts', import.meta.url), 'utf8');
+const builtinReferences = await readFile(new URL('../../src/apps/builtinReferences.ts', import.meta.url), 'utf8');
+
+test('every reference row takes its floor from the saved generation record', () => {
+  const failures = [];
+  if (!/floorEnd\?: number;/.test(referenceTypes)) failures.push('a reference item needs an optional floor');
+  if (!/function lastSourceFloor\(record: HiddenGenerationRecord \| undefined\)/.test(builtinReferences))
+    failures.push('the floor must come from the replay source of the saved record');
+  if (!/messageIds\.reduce\(\(last, messageId\) => Math\.max\(last, messageId\), 0\)/.test(builtinReferences))
+    failures.push('the last floor of a replay must be the highest message id');
+  if (!/floorEnd: entry\.sourceFloorEnd \?\? lastSourceFloor\(entry\.generationRecord\)/.test(builtinReferences))
+    failures.push('a diary entry shows the floor it was written from');
+  if (!/floorEnd: lastSourceFloor\(entry\.generationRecord\)/.test(builtinReferences))
+    failures.push('letters and theater entries show the floor of their replay');
+  if (!/floorEnd: lastSourceFloor\(thread\.generationRecord\)/.test(builtinReferences))
+    failures.push('forum threads show the floor of their replay');
+  if (!/floorEnd: chapter\.chapterNumber/.test(builtinReferences))
+    failures.push('an extras chapter shows its chapter number');
+  if (!/floorEnd: entry\.sourceFloorEnd,/.test(builtinReferences))
+    failures.push('a summary entry shows the floor it covers');
+
+  const badge = referencePicker.match(/function floorBadge\(item: GenerationReferenceItem\) \{[\s\S]*?\n\}/u)?.[0] ?? '';
+  if (!badge) failures.push('the picker must keep the floor badge helper');
+  if (!/typeof item\.floorEnd === 'number'/.test(badge) || !/String\(item\.floorEnd\)/.test(badge))
+    failures.push('the badge must prefer the stored floor over parsing text');
+  if (badge.indexOf('String(item.floorEnd)') > badge.indexOf("label.match("))
+    failures.push('the stored floor must win before the text fallback');
+  assert.deepEqual(failures, []);
+});
 
 test('the new extras book page offers the summary block and the shared mode dropdown', () => {
   const failures = [];

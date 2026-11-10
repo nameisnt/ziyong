@@ -2,6 +2,7 @@ import { referenceText } from './referenceText';
 
 export type GenerationReferenceItem = {
   content: string;
+  floorEnd?: number;
   id: string;
   sourcePath: string[];
   timeLabel?: string;

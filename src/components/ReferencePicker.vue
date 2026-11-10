@@ -140,6 +140,7 @@ import { referenceText } from '@/util/referenceText';
 import { defineComponent, h, type DefineComponent, type PropType } from 'vue';
 
 function floorBadge(item: GenerationReferenceItem) {
+  if (typeof item.floorEnd === 'number' && Number.isFinite(item.floorEnd)) return String(item.floorEnd);
   const label = item.timeLabel?.trim() ?? '';
   const match = label.match(/^第\s*(\d+(?:\s*[-–~]\s*\d+)?)\s*(?:章|楼)/u);
   return match?.[1]?.replace(/\s+/gu, '') ?? '';

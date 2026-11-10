@@ -6,9 +6,11 @@ import { useLettersStore } from '@/store/letters';
 import { useSummaryStore } from '@/store/summary';
 import { useTheaterStore } from '@/store/theater';
 import type { GenerationReferenceItem } from '@/util/references';
+import type { HiddenGenerationRecord } from '@/type/generation';
 
 function makeItem(input: {
   content: string;
+  floorEnd?: number;
   id: string;
   sourcePath: string[];
   timeLabel?: string;
@@ -17,12 +19,23 @@ function makeItem(input: {
 }): GenerationReferenceItem {
   return {
     content: input.content,
+    floorEnd: input.floorEnd,
     id: input.id,
     sourcePath: input.sourcePath,
     timeLabel: input.timeLabel,
     title: input.title,
     updatedAt: input.updatedAt,
   };
+}
+
+/**
+ * 取这次生成实际用到的最后一层：世界书里的旧条目可能没有生成记录，取不到就不显示。
+ * 引用列表行尾的数字用它，而不是再去解析时长的文本。
+ */
+function lastSourceFloor(record: HiddenGenerationRecord | undefined) {
+  const messageIds = record?.replay?.source?.messageIds ?? [];
+  if (!messageIds.length) return undefined;
+  return messageIds.reduce((last, messageId) => Math.max(last, messageId), 0);
 }
 
 function leaf(item: GenerationReferenceItem): PhoneReferenceLeafNode {
@@ -60,6 +73,7 @@ export function createExtrasReferenceTree() {
           leaf(
             makeItem({
               content: chapter.content,
+              floorEnd: chapter.chapterNumber,
               id: `extras:${book.id}:chapter:${chapter.id}`,
               sourcePath: ['番外', book.title],
               timeLabel: `第 ${chapter.chapterNumber} 章`,
@@ -98,6 +112,7 @@ export function createDiaryReferenceTree() {
           leaf(
             makeItem({
               content: entry.content,
+              floorEnd: entry.sourceFloorEnd ?? lastSourceFloor(entry.generationRecord),
               id: `diary:${book.id}:entry:${entry.id}`,
               sourcePath: ['日记', book.title],
               timeLabel: entry.occurredAt,
@@ -124,6 +139,7 @@ export function createLettersReferenceTree() {
           leaf(
             makeItem({
               content: entry.content,
+              floorEnd: lastSourceFloor(entry.generationRecord),
               id: `letters:${book.id}:entry:${entry.id}`,
               sourcePath: ['书信', book.title],
               title: entry.title,
@@ -154,6 +170,7 @@ export function createTheaterReferenceTree() {
           leaf(
             makeItem({
               content: entry.content,
+              floorEnd: lastSourceFloor(entry.generationRecord),
               id: `theater:entry:${entry.id}`,
               sourcePath: ['小剧场', typeName],
               timeLabel: entry.typeName || typeName,
@@ -180,6 +197,7 @@ export function createSummaryReferenceTree() {
           leaf(
             makeItem({
               content: entry.content,
+              floorEnd: entry.sourceFloorEnd,
               id: `summary:${book.id}:entry:${entry.id}`,
               sourcePath: ['总结', book.title],
               timeLabel: entry.rangeLabel,
@@ -207,6 +225,7 @@ export function createForumReferenceTree() {
             leaf(
               makeItem({
                 content: `帖子标题：${thread.title}\n主楼作者：${thread.author}（楼主）\n\n${thread.content}`,
+                floorEnd: lastSourceFloor(thread.generationRecord),
                 id: `forum:${board.id}:thread:${thread.id}:main`,
                 sourcePath: ['论坛', board.name, thread.title],
                 title: '仅引用主题',
@@ -224,6 +243,7 @@ export function createForumReferenceTree() {
                     reply.content,
                   ]),
                 ].join('\n\n'),
+                floorEnd: lastSourceFloor(thread.generationRecord),
                 id: `forum:${board.id}:thread:${thread.id}:full`,
                 sourcePath: ['论坛', board.name, thread.title],
                 title: `引用主题和全部回复（${thread.replies.length}）`,
