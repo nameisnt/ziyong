@@ -718,7 +718,7 @@ async function onThemeFontSelected(event: Event) {
     settingsStore.selectCustomFont(font.id);
     toastr.success(`已导入并使用字体：${font.name}`);
   } catch (caughtError) {
-    reportFailure('导入字体', error);
+    reportFailure('导入字体', caughtError);
   }
 }
 
@@ -790,7 +790,7 @@ async function onIconPackSelected(event: Event) {
     settings.value.visualTheme.appIconOverrides = { ...settings.value.visualTheme.appIconOverrides, ...overrides };
     toastr.success(`已导入 ${Object.keys(overrides).length} 个图标`);
   } catch (caughtError) {
-    reportFailure('导入图标', error);
+    reportFailure('导入图标', caughtError);
   }
 }
 
@@ -812,7 +812,7 @@ async function onThemeSelected(event: Event) {
     if (typeof parsed.readerFontFamily === 'string') settingsStore.setReaderFontFamily(parsed.readerFontFamily);
     toastr.success(`已导入到${settings.value.theme === 'light' ? '日间' : '夜间'}方案`);
   } catch (caughtError) {
-    reportFailure('导入主题', error);
+    reportFailure('导入主题', caughtError);
   }
 }
 </script>

@@ -582,7 +582,7 @@ async function runGeneration() {
     void phone.presentGeneratedPage('digest', 'preview', '摘抄预览');
   } catch (caughtError) {
     if (task) generationSession.fail(task.id, caughtError);
-    else reportFailure('生成摘抄', error);
+    else reportFailure('生成摘抄', caughtError);
   }
 }
 

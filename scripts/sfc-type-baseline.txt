@@ -9,7 +9,6 @@ src/apps/diary/DiaryApp.vue	TS2322	Type '{ bookId: string; } | { bookId?: undefi
 src/apps/diary/DiaryApp.vue	TS2322	Type '{ count: number; icon: string; id: string; subtitle: string; title: string; }[]' is not assignable to type 'DiaryShelfBook[]'.	1
 src/apps/diary/DiaryApp.vue	TS2322	Type 'string | undefined' is not assignable to type 'string'.	1
 src/apps/diary/DiaryApp.vue	TS2345	Argument of type '{ bookId: string; } | { bookId?: undefined; }' is not assignable to parameter of type 'Record<string, string> | undefined'.	1
-src/apps/digest/DigestApp.vue	TS2552	Cannot find name 'error'. Did you mean 'Error'?	1
 src/apps/entry-library/EntryLibraryApp.vue	TS2322	Type '{ enableState: string; group: { id: string; name: string; enabled: boolean; createdAt: string; }; items: { id: string; groupId: string; order: number; title: string; content: string; enabled: boolean; sourceType: "manual" | ... 1 more ... | "worldbook"; ... 4 more ...; sourceRole?: "user" | ... 2 more ... | undefine...' is not assignable to type 'CatalogSection[]'.	1
 src/apps/entry-library/EntryLibraryApp.vue	TS6133	'compactContent' is declared but its value is never read.	1
 src/apps/extras/ExtrasApp.vue	TS18047	'__VLS_ctx.viewedChapter' is possibly 'null'.	2
@@ -64,8 +63,6 @@ src/apps/reader/ReaderApp.vue	TS2345	Argument of type 'string | undefined' is no
 src/apps/reader/ReaderApp.vue	TS7006	Parameter '_' implicitly has an 'any' type.	1
 src/apps/reader/ReaderApp.vue	TS7006	Parameter 'index' implicitly has an 'any' type.	1
 src/apps/recovery/RecoveryApp.vue	TS2345	Argument of type '{ checked: boolean; label: string; 'onUpdate:checked': any; }' is not assignable to parameter of type '{ readonly label?: string | undefined; readonly disabled?: boolean | undefined; readonly modelValue: boolean; readonly "onUpdate:modelValue"?: ((selected: boolean) => any) | undefined; } & VNodeProps & AllowedComponentProps & ComponentCustomProps & Record<...>'.	1
-src/apps/settings/SettingsGenerationPanel.vue	TS2339	Property 'reportFailure' does not exist on type 'Store<"phone", Pick<{ canGoBack: ComputedRef<boolean>; chooseNoticeAction: (noticeId: string, actionId: string) => void; clearNotices: () => void; closePhone: (options?: PhoneNavigationOptions) => Promise<...>; ... 34 more ...; viewingScopeMeta: Ref<...>; }, "stack" | ... 4 more ... | "viewingScopeMeta">, Pick<...>,...'.	1
-src/apps/settings/SettingsGenerationPanel.vue	TS6133	'reportFailure' is declared but its value is never read.	1
 src/apps/status-display/StatusDisplaySettingsApp.vue	TS2322	Type '{ label: string; value: string | undefined; }[]' is not assignable to type 'ComboboxOption[]'.	1
 src/apps/status-display/StatusDisplaySettingsApp.vue	TS2345	Argument of type '{ type: "button"; disabled: boolean; class: string; onClick: (options?: PhoneNavigationOptions) => Promise<void>; }' is not assignable to parameter of type 'ButtonHTMLAttributes & ReservedProps & Record<string, unknown>'.	1
 src/apps/status-display/StatusDisplaySettingsApp.vue	TS2345	Argument of type 'string | undefined' is not assignable to parameter of type 'string'.	2
@@ -87,16 +84,11 @@ src/apps/theater/TheaterApp.vue	TS2322	Type '{ id: string; title: string; conten
 src/apps/theater/TheaterApp.vue	TS2345	Argument of type 'string | undefined' is not assignable to parameter of type 'string'.	2
 src/apps/theater/TheaterApp.vue	TS6133	'selectedEditorTypePrompt' is declared but its value is never read.	1
 src/apps/theater/TheaterEntryDetailPage.vue	TS2345	Argument of type 'string | undefined' is not assignable to parameter of type 'string'.	1
-src/apps/theme/ThemeApp.vue	TS2552	Cannot find name 'error'. Did you mean 'Error'?	3
 src/apps/timekeeper/TimekeeperApp.vue	TS2339	Property 'configError' does not exist on type 'ToRefs<Pick<{ applyNextDate: () => void; buildPromptText: () => string; createPerson: () => { id: string; name: string; selected: boolean; birth: { year: number; month: number; day: number; }; }; deleteCalendarTemplate: (templateId: string) => void; ... 15 more ...; switchScope: (nextScopeKey: string) => void; }, "s...'.	1
 src/apps/timekeeper/TimekeeperApp.vue	TS2339	Property 'rawConfig' does not exist on type 'ToRefs<Pick<{ applyNextDate: () => void; buildPromptText: () => string; createPerson: () => { id: string; name: string; selected: boolean; birth: { year: number; month: number; day: number; }; }; deleteCalendarTemplate: (templateId: string) => void; ... 15 more ...; switchScope: (nextScopeKey: string) => void; }, "s...'.	1
 src/apps/tutorial/TutorialApp.vue	TS2339	Property 'blockIndex' does not exist on type '{ text: string; }'.	1
 src/apps/worldbook-link/WorldbookLinkApp.vue	TS2322	Type 'WorldbookLinkStatus | Promise<WorldbookLinkStatus>' is not assignable to type 'WorldbookLinkStatus | { currentEntries: { uid: number; name: string; enabled: boolean; strategy: { type: "constant" | "selective" | "vectorized"; keys: (string | RegExp)[]; keys_secondary: { ...; }; scan_depth: number | "same_as_global"; }; ... 5 more ...; extra?: Record<...> | undefined; }[]; enabledCount: number; ...'.	2
-src/components/BaguScanPanel.vue	TS2339	Property 'reportFailure' does not exist on type 'Store<"phone", Pick<{ canGoBack: ComputedRef<boolean>; chooseNoticeAction: (noticeId: string, actionId: string) => void; clearNotices: () => void; closePhone: (options?: PhoneNavigationOptions) => Promise<...>; ... 34 more ...; viewingScopeMeta: Ref<...>; }, "stack" | ... 4 more ... | "viewingScopeMeta">, Pick<...>,...'.	1
-src/components/BaguScanPanel.vue	TS6133	'reportFailure' is declared but its value is never read.	1
 src/components/GenerationPreviewPanel.vue	TS6133	'phone' is declared but its value is never read.	1
-src/components/home/HomeContextBar.vue	TS2339	Property 'reportFailure' does not exist on type 'Store<"phone", Pick<{ canGoBack: ComputedRef<boolean>; chooseNoticeAction: (noticeId: string, actionId: string) => void; clearNotices: () => void; closePhone: (options?: PhoneNavigationOptions) => Promise<...>; ... 34 more ...; viewingScopeMeta: Ref<...>; }, "stack" | ... 4 more ... | "viewingScopeMeta">, Pick<...>,...'.	1
-src/components/home/HomeContextBar.vue	TS2552	Cannot find name 'error'. Did you mean 'Error'?	2
 src/components/home/HomeContextBar.vue	TS7030	Not all code paths return a value.	2
 src/components/PhoneHome.vue	TS18048	'target' is possibly 'undefined'.	1
 src/components/ReaderDetailShell.vue	TS2769	No overload matches this call.	2

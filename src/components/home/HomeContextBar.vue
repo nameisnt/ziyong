@@ -78,7 +78,7 @@ async function jumpViewingChatToTavern() {
     window.setTimeout(() => void phone.syncCurrentTavernScope(true), 2400);
     toastr.success('正在跳转到酒馆聊天');
   } catch (caughtError) {
-    reportFailure('跳转酒馆聊天', error);
+    reportFailure('跳转酒馆聊天', caughtError);
   }
 }
 
@@ -100,7 +100,7 @@ async function refreshPhoneData() {
     emit('refreshed');
     phone.noticeSuccess('插件数据已刷新');
   } catch (caughtError) {
-    phone.reportFailure('刷新插件数据', error);
+    reportFailure('刷新插件数据', caughtError);
   } finally {
     refreshingPhoneData.value = false;
   }

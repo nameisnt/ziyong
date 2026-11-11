@@ -278,7 +278,7 @@ async function commitContent(nextContent: string, successMessage: string, record
     phone.noticeSuccess(successMessage);
     return true;
   } catch (error) {
-    phone.reportFailure('写回正文', error);
+    reportFailure('写回正文', error);
     return false;
   } finally {
     writing.value = false;

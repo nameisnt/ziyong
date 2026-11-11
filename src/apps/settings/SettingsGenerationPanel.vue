@@ -242,7 +242,7 @@ async function setNativeMacroLink(event: Event) {
       timeoutMs: 0,
     });
   } catch (error) {
-    phone.reportFailure('修改前缀配置', error);
+    reportFailure('修改前缀配置', error);
   } finally {
     input.checked = nativeUserMacroEnabled.value;
     nativeMacroLinkBusy.value = false;
