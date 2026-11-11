@@ -245,6 +245,12 @@ export const useWorldbookLinkStore = defineStore('worldbook-link', () => {
     return changed;
   }
 
+  function getStatus(scopeKey: string, bookName: string): Promise<WorldbookLinkStatus>;
+  function getStatus(
+    scopeKey: string,
+    bookName: string,
+    suppliedEntries: WorldbookEntry[],
+  ): WorldbookLinkStatus;
   function getStatus(
     scopeKey: string,
     bookName: string,

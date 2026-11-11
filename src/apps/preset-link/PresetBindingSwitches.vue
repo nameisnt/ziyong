@@ -93,6 +93,7 @@ import {
   getCurrentTavernPresetName,
   readTavernPreset,
   updatePresetPromptSelection,
+  type PresetDisplayNode,
   type TavernPreset,
 } from '@/apps/preset-manager/api';
 import EmptyState from '@/components/EmptyState.vue';
@@ -120,7 +121,7 @@ const nodes = computed(() => (preview.value ? buildPresetDisplayNodes(preview.va
 const filteredNodes = computed(() => {
   const query = search.value.trim().toLocaleLowerCase();
   if (!query) return nodes.value;
-  return nodes.value.flatMap(node => {
+  return nodes.value.flatMap<PresetDisplayNode>(node => {
     if (node.type === 'prompt') return node.prompt.name.toLocaleLowerCase().includes(query) ? [node] : [];
     const prompts = node.group.name.toLocaleLowerCase().includes(query)
       ? node.prompts

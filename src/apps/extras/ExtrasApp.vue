@@ -73,7 +73,7 @@
       v-else-if="route.page === 'chapter' && activeBook && activeChapter"
       v-model:catalog-open="showCatalogModal"
       :catalog-items="chapterCatalogItems"
-      :chapter="viewedChapter"
+      :chapter="viewedChapter!"
       :next-id="chapterNextId || ''"
       :previous-id="chapterPrevId || ''"
       :versions="activeChapter.versions"
@@ -96,8 +96,8 @@
     <BaguDetailPage
       v-else-if="route.page === 'bagu-scan' && activeBook && activeChapter"
       :apply-handler="applyExtrasBaguContent"
-      :content="viewedChapter.content"
-      :title="`第 ${activeChapter.chapterNumber} 章 · ${viewedChapter.title}`"
+      :content="viewedChapter!.content"
+      :title="`第 ${activeChapter.chapterNumber} 章 · ${viewedChapter!.title}`"
     />
 
     <ExtrasChapterGeneratePage
@@ -242,11 +242,10 @@ import { useRegexDisplayStore } from '@/apps/regex-display/store';
 import { usePhoneStore } from '@/store/phone';
 import { usePromptStore } from '@/store/prompts';
 import { useSettingsStore } from '@/store/settings';
-import type { ExtraBook, ExtraChapter } from '@/type/extra';
+import type { ExtraChapter } from '@/type/extra';
 import type { FailedGenerationDraft } from '@/type/generation';
 import { canOpenBaguScan } from '@/util/baguScanGate';
 import { useDetailScroll } from '@/util/detailScroll';
-import { parseContentXmlResult } from '@/util/generation';
 import {
   formatMessageIdsAsRanges,
   resolveGenerationReplayReferences,
@@ -254,7 +253,7 @@ import {
 } from '@/util/generationReplay';
 import { usePreviewDraftPersistence } from '@/util/previewDrafts';
 import { formatGenerationReferences, type GenerationReferenceItem } from '@/util/references';
-import { getRegexRulesByOperation } from '@/util/regexDisplay';
+import { buildRegexRuleOptions, getRegexRulesByOperation } from '@/util/regexDisplay';
 import { resolveContentVersion } from '@/util/contentVersions';
 import { buildExtraHistoryContext, getSummarizableChapters } from '@/util/extrasSummary';
 import { resolveExtraChapterGenerationRecords } from '@/util/extraGenerationRecords';
@@ -274,7 +273,7 @@ const { currentRoute: route } = storeToRefs(phone);
 const { settings } = storeToRefs(settingsStore);
 const summaryExtractionRules = computed(() => getRegexRulesByOperation(regexDisplay.rules, 'extract'));
 const summaryRuleOptions = computed(() =>
-  summaryExtractionRules.value.map(rule => ({ label: rule.name || '未命名规则', value: rule.id })),
+  buildRegexRuleOptions(summaryExtractionRules.value),
 );
 const generationSourceMode = computed({
   get: () => settings.value.generation.sourceMode,
@@ -333,7 +332,7 @@ const {
   appId: 'extras',
   consumeFailedDraft: draftId => extras.deleteFailedDraft(draftId),
   getPreview: () => chapterGenerationState.preview,
-  getRouteParams: () => {
+  getRouteParams: (): Record<string, string> => {
     const preview = chapterGenerationState.preview;
     const bookId = preview?.bookId || route.value.params?.bookId || '';
     const chapterId = preview?.chapterId || route.value.params?.chapterId || '';
@@ -347,6 +346,10 @@ const {
   page: 'chapter-preview',
   route,
   setPreview: preview => {
+    if (!preview) {
+      chapterGenerationState.preview = null;
+      return;
+    }
     chapterGenerationState.preview = {
       ...preview,
       bookId: preview.bookId || route.value.params?.bookId || '',
@@ -370,7 +373,7 @@ const {
   appId: 'extras',
   consumeFailedDraft: draftId => extras.deleteFailedDraft(draftId),
   getPreview: () => generationState.preview,
-  getRouteParams: () => (generationState.preview?.bookId ? { bookId: generationState.preview.bookId } : {}),
+  getRouteParams: (): Record<string, string> => (generationState.preview?.bookId ? { bookId: generationState.preview.bookId } : {}),
   page: 'summary-preview',
   route,
   setPreview: preview => {
@@ -454,7 +457,7 @@ const viewedChapterVersion = computed(() => {
 const viewedChapterVersionId = computed(
   () => viewedChapterVersion.value?.id || activeChapter.value?.activeVersionId || '',
 );
-const viewedChapter = computed(() => {
+const viewedChapter = computed<ExtraChapter | null>(() => {
   const chapter = activeChapter.value;
   const version = viewedChapterVersion.value;
   return chapter && version
@@ -571,7 +574,7 @@ const { removeSummary, saveSummary: submitSummary } = useExtrasSummaryEditorSess
   navigateToBook: book => phone.replacePage('book', book.title, { bookId: book.id }),
   notifySuccess: message => toastr.success(message),
 });
-const { removeBook, removeChapter, removeChapterVersion } = useExtrasDeletionSession({
+const { removeBook, removeChapter } = useExtrasDeletionSession({
   confirmDelete: (message, confirmLabel) => phone.confirmNotice(message, { confirmLabel, kind: 'warning' }),
   getActiveBook: () => activeBook.value,
   getActiveChapter: () => activeChapter.value,

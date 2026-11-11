@@ -39,7 +39,6 @@ import type { FailedGenerationDraft } from '@/type/generation';
 
 interface ExtrasShelfBook {
   count: number | string;
-  gradient: string;
   icon: string;
   id: string;
   subtitle: string;

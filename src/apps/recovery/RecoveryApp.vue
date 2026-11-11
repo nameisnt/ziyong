@@ -166,9 +166,9 @@
         <div v-for="backup in activeGroup.backups" :key="backup.fileName" class="pc-recovery-backup-row">
           <BulkSelectionCheckbox
             v-if="backupSelection.active.value"
-            :checked="backupSelection.selectedIdSet.value.has(backup.fileName)"
             :label="`选择 ${backup.fileName}`"
-            @update:checked="backupSelection.setSelected(backup.fileName, $event)"
+            :model-value="backupSelection.selectedIdSet.value.has(backup.fileName)"
+            @update:model-value="backupSelection.setSelected(backup.fileName, $event)"
           />
           <button
             class="pc-list-row pc-recovery-backup-open"

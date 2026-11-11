@@ -33,6 +33,7 @@ export const GomokuSchema = GomokuSnapshotSchema.extend({
   boardSize: z.enum(['large', 'medium', 'small']).default('medium'),
   previous: GomokuSnapshotSchema.nullable().default(null),
 });
+export type GomokuSnapshot = z.infer<typeof GomokuSnapshotSchema>;
 
 const MinesweeperCellSchema = z.object({
   flag: z.boolean().default(false),
@@ -104,7 +105,7 @@ const SerializedSolitaireSchema = z.object({
     hearts: SolitairePileSchema,
     spades: SolitairePileSchema,
   }),
-  history: z.array(z.json()).default([]),
+  history: z.array(z.unknown()).default([]),
   stock: SolitairePileSchema,
   tableau: z.object({ piles: z.array(SolitairePileSchema).length(7) }),
   waste: SolitairePileSchema,

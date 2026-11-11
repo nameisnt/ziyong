@@ -373,7 +373,7 @@ const {
   appId: 'diary',
   consumeFailedDraft: draftId => diary.deleteFailedDraft(draftId),
   getPreview: () => generationState.preview,
-  getRouteParams: () => {
+  getRouteParams: (): Record<string, string> => {
     const preview = generationState.preview;
     if (preview?.action === 'read-reaction' && preview.sourceBookId && preview.sourceEntryId) {
       return { bookId: preview.sourceBookId, entryId: preview.sourceEntryId };
@@ -1132,7 +1132,7 @@ async function runGeneration() {
       title: result.data.title,
       warnings: result.warnings,
     };
-    const previewParams = activeBook.value?.id ? { bookId: activeBook.value.id } : {};
+    const previewParams: Record<string, string> = activeBook.value?.id ? { bookId: activeBook.value.id } : {};
     persistDiaryPreviewDraft(previewParams);
     diaryGenerationSession.complete(task.id, {
       currentLabel: '日记已生成，等待确认',
@@ -1554,7 +1554,7 @@ function reparseFailedDraft() {
   failedDraftRawOutput.value = '';
   phone.replacePage('preview', isReaction ? '阅读反应预览' : '日记预览', {
     bookId: typeof draft.context.sourceBookId === 'string' ? draft.context.sourceBookId : bookId,
-    entryId: typeof draft.context.sourceEntryId === 'string' ? draft.context.sourceEntryId : undefined,
+    ...(typeof draft.context.sourceEntryId === 'string' ? { entryId: draft.context.sourceEntryId } : {}),
   });
 }
 

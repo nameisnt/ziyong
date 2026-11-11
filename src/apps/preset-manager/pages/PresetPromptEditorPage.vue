@@ -4,7 +4,6 @@
       <div class="pc-compact-toolbar pc-preset-editor-head">
         <span :title="presetName">{{ presetName }}</span>
         <h2>{{ prompt.id }}</h2>
-        <small>{{ roleLabel }}</small>
       </div>
       <label class="pc-field-group">
         <span class="pc-field-label">条目名称</span>

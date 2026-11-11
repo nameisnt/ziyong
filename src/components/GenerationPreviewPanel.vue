@@ -145,7 +145,6 @@ import RawOutputEditor from '@/components/RawOutputEditor.vue';
 import ReasoningDisclosure from '@/components/ReasoningDisclosure.vue';
 import type { RawOutputSemantics } from '@/type/generation';
 import { usePhoneModalLifecycle } from '@/composables/usePhoneModalLifecycle';
-import { usePhoneStore } from '@/store/phone';
 import { renderMarkdown } from '@/util/markdown';
 
 type PreviewView = 'bagu' | 'preview' | 'raw';
@@ -228,7 +227,6 @@ const emit = defineEmits<{
   'update:reasoning': [value: string];
 }>();
 
-const phone = usePhoneStore();
 const activeView = ref<PreviewView>('preview');
 const acceptedContent = ref(props.content);
 const acceptedRaw = ref(props.raw);

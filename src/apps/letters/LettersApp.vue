@@ -39,7 +39,7 @@
       v-else-if="route.page === 'entry' && activeBook && activeEntry"
       v-model:catalog-open="showCatalogModal"
       :catalog-items="entryCatalogItems"
-      :entry="viewedLetterEntry"
+      :entry="viewedLetterEntry!"
       :next-id="nextEntryId"
       :previous-id="previousEntryId"
       :versions="activeEntry.versions"
@@ -62,7 +62,7 @@
     <LettersBaguPage
       v-else-if="route.page === 'bagu-scan' && activeBook && activeEntry"
       :apply-handler="applyLettersBaguContent"
-      :entry="viewedLetterEntry"
+      :entry="viewedLetterEntry!"
     />
 
     <LettersEntryEditorPage
@@ -173,7 +173,7 @@ import { usePromptStore } from '@/store/prompts';
 import { useSettingsStore } from '@/store/settings';
 import type { CharacterRef } from '@/type/diary';
 import type { FailedGenerationDraft, GenerationReplaySnapshot, HiddenGenerationRecord } from '@/type/generation';
-import type { LetterFormat } from '@/type/letter';
+import type { LetterEntry, LetterFormat } from '@/type/letter';
 import type { GenerationTask } from '@/type/generationTask';
 import { canOpenBaguScan } from '@/util/baguScanGate';
 import { useDetailScroll } from '@/util/detailScroll';
@@ -332,7 +332,7 @@ const viewedLetterVersion = computed(() => {
   return resolveContentVersion(entry.versions, entry.activeVersionId, route.value.params?.versionId);
 });
 const viewedLetterVersionId = computed(() => viewedLetterVersion.value?.id || activeEntry.value?.activeVersionId || '');
-const viewedLetterEntry = computed(() => {
+const viewedLetterEntry = computed<LetterEntry | null>(() => {
   const entry = activeEntry.value;
   const version = viewedLetterVersion.value;
   return entry && version
@@ -420,6 +420,7 @@ const letterPromptPreview = computed(() => {
         bookId: activeBook.value?.id || '',
         bookTitle: generationDraft.bookTitle || activeBook.value?.title || '',
         format: generationFormatDescription.value,
+        formatPrompt: generationDraft.formatPrompt,
         entryId: rewriteLetterEntry.value?.id || '',
         existingContent: '',
         mode: letterGenerationMode.value,
@@ -701,12 +702,6 @@ async function removeLetterVersion(versionId: string) {
   toastr.success('已删除当前书信版本');
 }
 
-function openRenameBook(bookId: string) {
-  const book = letters.getBook(bookId);
-  if (!book) return;
-  phone.pushPage('rename-book', '重命名分册', { bookId });
-}
-
 function openBook(bookId: string) {
   const book = letters.getBook(bookId);
   if (!book) return;
@@ -818,20 +813,6 @@ function applyLettersBaguContent(content: string) {
   if (!entry) return false;
   letters.flushCurrentScope();
   return versionId ? entry.versions.find(version => version.id === versionId)?.content || false : entry.content;
-}
-
-async function removeBook(bookId: string) {
-  const book = letters.getBook(bookId);
-  const shouldDelete = await phone.confirmNotice(
-    `要删除书信分册“${book?.title || '未命名分册'}”吗？里面的信件也会一起删除。`,
-    {
-      confirmLabel: '删除',
-      kind: 'warning',
-    },
-  );
-  if (!shouldDelete) return;
-  letters.deleteBook(bookId);
-  toastr.success('已删除书信分册');
 }
 
 async function removeEntry(bookId: string, entryId: string) {
@@ -946,6 +927,7 @@ async function runGeneration() {
         bookId: activeBook.value?.id || '',
         bookTitle: generationDraft.bookTitle || activeBook.value?.title || '',
         format: generationFormatDescription.value,
+        formatPrompt: generationDraft.formatPrompt,
         entryId: rewriteLetterEntry.value?.id || '',
         existingContent: '',
         mode: letterGenerationMode.value,
@@ -1092,7 +1074,7 @@ function savePreview() {
   }
   clearLettersPreviewDraft();
   generationState.preview = null;
-  const versionId = 'version' in saved ? saved.version.id : '';
+  const versionId = 'version' in saved ? (saved.version as { id: string }).id : '';
   toastr.success(preview.mode === 'rewrite' ? '已保存并切换到书信新版本' : '已保存信件');
   phone.replacePage('entry', versionId ? preview.title : saved.entry.title, {
     bookId: saved.book.id,
@@ -1200,6 +1182,7 @@ function reparseFailedDraft() {
     content: parsed.data.content,
     draftId: null,
     format,
+    formatPrompt: typeof draft.context.formatPrompt === 'string' ? draft.context.formatPrompt : '',
     generationRecord: draft.generationRecord,
     mode: draft.context.mode === 'rewrite' ? 'rewrite' : 'create',
     raw: rawOutput,

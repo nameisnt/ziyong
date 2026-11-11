@@ -33,7 +33,6 @@ import type { FailedGenerationDraft } from '@/type/generation';
 
 interface LettersShelfBook {
   count: number | string;
-  gradient: string;
   icon: string;
   id: string;
   subtitle: string;

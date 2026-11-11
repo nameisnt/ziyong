@@ -837,7 +837,6 @@ const { removeQuickPhrase, removeQuickPhraseGroup, removeQuickTemplate, removeQu
 const {
   resetDefaults,
   restoreDefaultPrompt,
-  updatePromptValue: updateAppPromptValue,
 } = usePromptDefaultsSession({
   confirmNotice: phone.confirmNotice,
   notify: toastr,

@@ -1226,7 +1226,7 @@ async function runStageSequence(
       state.reasoning = result.reasoning;
       state.content = parseCardWriterArtifact(stageRaw, stage.label);
       state.status = 'completed';
-      preview.providerSummary = providerSummary(result);
+      preview.providerSummary = providerSummary(result.textProvider);
       updatePreviewAggregate();
       generationSession.setRawOutput(preview.raw, taskId);
       persistWriterPreviewDraft();
@@ -1406,7 +1406,7 @@ async function importSelectedProfiles() {
   const confirmed = await phone.confirmNotice(
     `把 ${selected.length} 项成品导入“${phone.viewingScopeMeta.ownerName} / ${phone.viewingScopeMeta.chatTitle}”的资料表吗？${
       conflictCount
-        ? `其中 ${conflictCount} 项存在相同来源资料，将按“${importConflictOptions.find(item => item.value === importConflictMode)?.label}”处理。`
+        ? `其中 ${conflictCount} 项存在相同来源资料，将按“${importConflictOptions.find(item => item.value === importConflictMode.value)?.label}”处理。`
         : ''
     }`,
     {

@@ -425,6 +425,7 @@ import { usePhoneStore } from '@/store/phone';
 import { usePromptStore } from '@/store/prompts';
 import { useSettingsStore } from '@/store/settings';
 import type { GenerationTask } from '@/type/generationTask';
+import type { HiddenGenerationRecord } from '@/type/generation';
 import { storeToRefs } from 'pinia';
 import { buildSourceSelection, type SummaryGenerationSourceMode } from '@/util/generationSource';
 import { parseSimpleXmlResult } from '@/util/generation';
@@ -494,6 +495,7 @@ const generationState = reactive({
   preview: null as null | {
     content: string;
     draftId: null | string;
+    generationRecord?: HiddenGenerationRecord;
     raw: string;
     source: { floorEnd?: number; label: string };
     title: string;

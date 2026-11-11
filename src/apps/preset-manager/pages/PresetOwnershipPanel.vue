@@ -57,8 +57,8 @@
           <label v-for="rule in readerCleanupRules" :key="rule.id" class="pc-preset-cleanup-item">
             <input
               type="checkbox"
-              :checked="draftReaderCleanupRuleIds.includes(rule.id)"
-              @change="toggleCleanupRule(rule.id, ($event.target as HTMLInputElement).checked)"
+              :checked="draftReaderCleanupRuleIds.includes(rule.id ?? '')"
+              @change="toggleCleanupRule(rule.id ?? '', ($event.target as HTMLInputElement).checked)"
             />
             <span>{{ rule.name || '未命名规则' }}</span>
           </label>
@@ -78,7 +78,7 @@ import { defaultReaderBodyRegexDisplayRuleId, useRegexDisplayStore } from '@/app
 import { usePresetLinkStore, type PresetReaderProfile } from '@/apps/preset-link/store';
 import InfoHint from '@/components/InfoHint.vue';
 import SearchableCombobox from '@/components/SearchableCombobox.vue';
-import { getRegexRulesByOperation } from '@/util/regexDisplay';
+import { buildRegexRuleOptions, getRegexRulesByOperation } from '@/util/regexDisplay';
 
 const props = defineProps<{ presetName: string }>();
 const presetLinks = usePresetLinkStore();
@@ -92,10 +92,10 @@ const readerCleanupRules = computed(() => getRegexRulesByOperation(regexDisplay.
 const readerTitleRuleOptions = computed(() => [
   { label: '跟随全局阅读规则', value: '' },
   { label: '无正则', value: '__default_title__' },
-  ...extractionRules.value.map(rule => ({ label: rule.name || '未命名规则', value: rule.id })),
+  ...buildRegexRuleOptions(extractionRules.value),
 ]);
 const readerContentRuleOptions = computed(() => {
-  const options = extractionRules.value.map(rule => ({ label: rule.name || '未命名规则', value: rule.id }));
+  const options = buildRegexRuleOptions(extractionRules.value);
   return [
     { label: '跟随全局阅读规则', value: '' },
     ...(options.some(option => option.value === defaultReaderBodyRegexDisplayRuleId)

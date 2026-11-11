@@ -1,4 +1,5 @@
 import type { ExtraChapterGenerationRecord } from '@/type/extra';
+import type { HiddenGenerationRecord } from '@/type/generation';
 import type { ExtraChapterGenerationIntent, ExtraChapterGenerationMode } from '@/core/extrasGeneration';
 
 export function useExtrasGenerationState() {
@@ -50,6 +51,7 @@ export function useExtrasGenerationState() {
       coveredChapterIds: string[];
       draftId: string | null;
       enabled: boolean;
+      generationRecord?: HiddenGenerationRecord;
       raw: string;
       warnings: string[];
     },

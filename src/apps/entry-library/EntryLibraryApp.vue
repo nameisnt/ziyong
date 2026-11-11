@@ -211,12 +211,7 @@ const duplicatePairs = computed(() =>
   library.findDuplicates(0.8).filter(pair => !dismissedPairKeys.value.includes(pairKey(pair))),
 );
 
-function compactContent(content: string, max = 96) {
-  const compact = content.replace(/\s+/g, ' ').trim();
-  return compact.length > max ? `${compact.slice(0, max)}...` : compact;
-}
-
-function groupEnableState(groupItems: EntryLibraryItem[]) {
+function groupEnableState(groupItems: EntryLibraryItem[]): 'all' | 'mixed' | 'none' {
   if (!groupItems.length || groupItems.every(item => !item.enabled)) return 'none';
   if (groupItems.every(item => item.enabled)) return 'all';
   return 'mixed';

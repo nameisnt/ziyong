@@ -32,6 +32,7 @@ export type ForumGenerationPreview =
       boardId: string;
       boardName: string;
       draftId: string | null;
+      generationRecord?: HiddenGenerationRecord;
       raw: string;
       replies: PreviewReply[];
       threadId: string;

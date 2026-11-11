@@ -130,12 +130,12 @@ function dealtGame() {
 
 function createState(wins = 0): SolitaireState {
   const next = dealtGame();
-  return { completed: false, game: stripHistory(next.serialize()), moves: 0, previous: null, wins };
+  return { completed: false, game: stripHistory(next.serialize()) as unknown as SolitaireState['game'], moves: 0, previous: null, wins };
 }
 
 const phone = usePhoneStore();
 const state = ref<SolitaireState>(readMiniGameSettings(miniGameFields.solitaire, SolitaireSchema, () => createState()));
-const game = shallowRef(KlondikeGame.unserialize(state.value.game as ISerializedKlondikeGame));
+const game = shallowRef(KlondikeGame.unserialize(state.value.game as unknown as ISerializedKlondikeGame));
 const revision = ref(0);
 const selected = ref<Selection | null>(null);
 const foundationSuits: TSuit[] = ['Hearts', 'Diamonds', 'Clubs', 'Spades'];
@@ -166,12 +166,19 @@ const foundationCount = computed(() => {
 });
 
 function save() {
-  state.value.game = stripHistory(game.value.serialize()) as SolitaireState['game'];
+  const serialized: unknown = stripHistory(game.value.serialize());
+  state.value = {
+    completed: state.value.completed,
+    game: serialized as unknown as SolitaireState['game'],
+    moves: state.value.moves,
+    previous: state.value.previous,
+    wins: state.value.wins,
+  };
   writeMiniGameSettings(miniGameFields.solitaire, SolitaireSchema, state.value);
 }
 
 function beginMove() {
-  state.value.previous = stripHistory(game.value.serialize()) as SolitaireState['previous'];
+  state.value.previous = stripHistory(game.value.serialize()) as unknown as SolitaireState['previous'];
 }
 
 function finishMove() {
@@ -313,7 +320,7 @@ function newGame() {
   game.value = next;
   state.value = {
     completed: false,
-    game: stripHistory(next.serialize()) as SolitaireState['game'],
+    game: stripHistory(next.serialize()) as unknown as SolitaireState['game'],
     moves: 0,
     previous: null,
     wins: state.value.wins,

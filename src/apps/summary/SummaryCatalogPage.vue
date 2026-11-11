@@ -36,7 +36,6 @@ import type { FailedGenerationDraft } from '@/type/generation';
 
 interface SummaryShelfBook {
   count: number | string;
-  gradient: string;
   icon: string;
   id: string;
   subtitle: string;

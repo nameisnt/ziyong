@@ -285,7 +285,9 @@ function diffDates(from: TimekeeperDate, to: TimekeeperDate, calendar: Timekeepe
 export const useTimekeeperStore = defineStore('timekeeper', () => {
   const settingsStore = useSettingsStore();
   const {
+    configError,
     data: settings,
+    rawConfig,
     rehydrateFromSettings,
     resetCurrentScope,
     scopeKey,
@@ -428,6 +430,7 @@ export const useTimekeeperStore = defineStore('timekeeper', () => {
   return {
     applyNextDate,
     buildPromptText,
+    configError,
     createPerson,
     deleteCalendarTemplate,
     deletePerson,
@@ -438,6 +441,7 @@ export const useTimekeeperStore = defineStore('timekeeper', () => {
     getDaysInMonth,
     nextDate,
     normalizeCurrentDates,
+    rawConfig,
     rehydrateFromSettings,
     resetCurrentScope,
     saveCurrentCalendarAsTemplate,

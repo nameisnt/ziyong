@@ -85,8 +85,8 @@
 <script setup lang="ts">
 import EmptyState from '@/components/EmptyState.vue';
 import SearchableCombobox from '@/components/SearchableCombobox.vue';
-import type { ChatReaderRegexRule } from '@/store/reader';
 import type { SummaryBook } from '@/type/summary';
+import { buildRegexRuleOptions, type RegexDisplayRuleLike } from '@/util/regexDisplay';
 
 interface SummaryImportItem {
   content: string;
@@ -100,7 +100,7 @@ const props = defineProps<{
   error: string;
   items: SummaryImportItem[];
   loading: boolean;
-  rules: ChatReaderRegexRule[];
+  rules: RegexDisplayRuleLike[];
   selectedIds: string[];
   targetBookExists: boolean;
 }>();
@@ -121,7 +121,7 @@ const targetBookId = defineModel<string>('targetBookId', { required: true });
 const bookOptions = computed(() => props.books.map(book => ({ label: book.title, value: book.id })));
 const ruleOptions = computed(() => [
   { label: '默认楼层正文提取', value: '__default_body__' },
-  ...props.rules.map(rule => ({ label: rule.name || '未命名规则', value: rule.id })),
+  ...buildRegexRuleOptions(props.rules),
 ]);
 
 function updateRule(value: string) {

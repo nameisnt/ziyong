@@ -85,7 +85,6 @@ import { SnakeSchema } from './backupSchemas';
 
 type Direction = 'down' | 'left' | 'right' | 'up';
 type SnakeSpeed = 'fast' | 'normal' | 'slow';
-type SnakeStatus = 'idle' | 'lost' | 'paused' | 'running';
 type Point = { x: number; y: number };
 
 const size = 12;

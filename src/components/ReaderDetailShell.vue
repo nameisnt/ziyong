@@ -452,9 +452,26 @@ function toggleFooter() {
 }
 
 function runFooterAction(event: 'bottom' | 'catalog' | 'next' | 'previous' | 'top') {
-  emit(event);
-  if (event === 'catalog' || event === 'next' || event === 'previous' || event === 'top') {
-    void scrollContentToTop();
+  switch (event) {
+    case 'bottom':
+      emit('bottom');
+      break;
+    case 'catalog':
+      emit('catalog');
+      void scrollContentToTop();
+      break;
+    case 'next':
+      emit('next');
+      void scrollContentToTop();
+      break;
+    case 'previous':
+      emit('previous');
+      void scrollContentToTop();
+      break;
+    case 'top':
+      emit('top');
+      void scrollContentToTop();
+      break;
   }
 }
 
@@ -534,7 +551,20 @@ function toggleToolMenu() {
 }
 
 function runToolAction(event: 'bagu' | 'branch' | 'edit' | 'favorite') {
-  emit(event);
+  switch (event) {
+    case 'bagu':
+      emit('bagu');
+      break;
+    case 'branch':
+      emit('branch');
+      break;
+    case 'edit':
+      emit('edit');
+      break;
+    case 'favorite':
+      emit('favorite');
+      break;
+  }
 }
 
 function formatUpdatedAt(value: string) {

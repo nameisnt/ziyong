@@ -72,7 +72,7 @@ import MiniGameSoundButton from './MiniGameSoundButton.vue';
 import { playMiniGameSound } from './miniGameAudio';
 import { miniGameFields } from './fields';
 import { readMiniGameSettings, writeMiniGameSettings } from './miniGameStorage';
-import { GomokuSchema } from './backupSchemas';
+import { GomokuSchema, type GomokuSnapshot } from './backupSchemas';
 
 type Cell = 0 | 1 | 2;
 type BoardSize = 'large' | 'medium' | 'small';
@@ -139,7 +139,7 @@ function setBoardSize(boardSize: BoardSize) {
   playMiniGameSound('reset');
 }
 
-function createSnapshot(): z.infer<typeof GomokuSnapshotSchema> {
+function createSnapshot(): GomokuSnapshot {
   return {
     blackWins: state.value.blackWins,
     board: [...state.value.board] as Cell[],

@@ -421,7 +421,7 @@ async function persistSnapshot(next: MvuStatData, history?: MvuUndoEntry, revers
 }
 
 function pushUndo(snapshot: MvuUndoEntry) {
-  undoStack.value.push(cloneMvuStatData(snapshot));
+  undoStack.value.push(cloneMvuStatData(snapshot) as MvuUndoEntry);
   if (undoStack.value.length > HISTORY_LIMIT) undoStack.value.shift();
 }
 

@@ -16,6 +16,7 @@ export const LetterGenerateConfigSchema = z.object({
   bookId: z.string().default(''),
   bookTitle: z.string().default(''),
   format: LetterFormatSchema,
+  formatPrompt: z.string().default(''),
   entryId: z.string().default(''),
   existingContent: z.string().default(''),
   mode: z.enum(['create', 'rewrite']).default('create'),

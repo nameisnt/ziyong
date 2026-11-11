@@ -100,7 +100,6 @@ import { MinesweeperSchema } from './backupSchemas';
 type Cell = { flag: boolean; id: number; mine: boolean; near: number; open: boolean };
 type BoardSize = 'large' | 'medium' | 'small';
 type MineDifficulty = 'easy' | 'hard' | 'normal';
-type MineStatus = 'lost' | 'playing' | 'ready' | 'won';
 
 const difficultyOptions: Array<{ density: number; id: MineDifficulty; label: string }> = [
   { density: 0.12, id: 'easy', label: '简' },

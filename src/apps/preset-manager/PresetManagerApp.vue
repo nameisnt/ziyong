@@ -144,6 +144,7 @@ import {
   updateTavernPresetPromptGroups,
   updateTavernPresetPrompt,
   type BaibaiPresetGroup,
+  type PresetDisplayNode,
   type TavernPreset,
   type TavernPresetPrompt,
 } from './api';
@@ -276,11 +277,11 @@ const promptGroupIds = computed(() => {
   return result;
 });
 const promptGroups = computed(() => (activePreset.value ? listPresetPromptGroups(activePreset.value) : []));
-const displayNodes = computed(() => {
+const displayNodes = computed<PresetDisplayNode[]>(() => {
   if (!activePreset.value) return [];
   const nodes = buildPresetDisplayNodes(activePreset.value);
   if (!enabledOnly.value) return nodes;
-  return nodes.flatMap(node => {
+  return nodes.flatMap<PresetDisplayNode>(node => {
     if (node.type === 'prompt') return node.prompt.enabled ? [node] : [];
     if (!node.group.enabled) return [];
     const prompts = node.prompts.filter(prompt => prompt.enabled);
@@ -593,7 +594,7 @@ async function movePreset() {
     isPluginDetail.value
       ? `确认把“${sourceName}”移到${targetOwner}吗？目标创建并校验成功后，才会删除来源。`
       : `确认把“${sourceName}”复制到${targetOwner}吗？酒馆来源及其引用都会保留。`,
-    { confirmLabel: actionLabel, kind: isPluginDetail.value ? 'warning' : 'default' },
+    { confirmLabel: actionLabel, kind: isPluginDetail.value ? 'warning' : 'info' },
   );
   if (!confirmed || mutationBusy.value) return;
 
@@ -603,7 +604,9 @@ async function movePreset() {
       const sourceId = detailPluginPresetId.value;
       const affectedAppIds = pluginPresets.getDefaultAppIds(sourceId);
       await movePresetTransactional({
-        createTarget: preset => createTavernPreset(targetName, preset),
+        createTarget: async preset => {
+          await createTavernPreset(targetName, preset);
+        },
         deleteSource: () => pluginPresets.deletePreset(sourceId),
         deleteTarget: () => deleteTavernPreset(targetName),
         readSource: () => readPluginPresetTransferPayload(sourceId),

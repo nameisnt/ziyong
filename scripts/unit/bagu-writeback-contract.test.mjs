@@ -9,9 +9,11 @@ const source = relativePath => readFile(new URL(`../../${relativePath}`, import.
 
 function functionSource(fileSource, name) {
   const start = fileSource.indexOf(`function ${name}(`);
-  const end = fileSource.indexOf('\n}\n', start);
+  // 同时兼容 LF 与 CRLF 检出，Windows 上工作区经常是 CRLF。
+  const endMatch = /\r?\n\}\r?\n/u.exec(fileSource.slice(start));
+  const end = endMatch && start >= 0 ? start + endMatch.index : -1;
   assert.ok(start >= 0 && end > start, `${name} is missing`);
-  return fileSource.slice(start, end + 2);
+  return fileSource.slice(start, end + (endMatch[0].length - 1));
 }
 
 test('Bagu reports success only after the writeback returns the stored content', async () => {
@@ -48,7 +50,7 @@ test('stored-content Bagu handlers flush their chat scope and return the updated
 
 test('reader Bagu verifies the Tavern floor before reporting success', async () => {
   const reader = functionSource(await source('src/apps/reader/ReaderApp.vue'), 'applyReaderBaguContent');
-  const reread = reader.indexOf('getChatMessagesSafe(sourceMessageId, { include_swipes: false })[0]');
+  const reread = reader.search(/getChatMessagesSafe\((?:String\()?sourceMessageId\)?, \{ include_swipes: false \}\)\[0\]/u);
   const result = reader.indexOf('storedMessage?.message === nextRawText ? content : false');
 
   assert.ok(reread >= 0, 'reader Bagu does not reread the written Tavern floor');

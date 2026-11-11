@@ -645,7 +645,7 @@ function onAppPointerMove(event: PointerEvent) {
         );
       });
     const targetToken = target?.dataset.homeToken || '';
-    if (targetToken && targetToken !== appDrag.itemToken) {
+    if (target && targetToken && targetToken !== appDrag.itemToken) {
       const rect = target.getBoundingClientRect();
       const centered =
         Math.abs(event.clientX - (rect.left + rect.width / 2)) < rect.width * 0.28 &&

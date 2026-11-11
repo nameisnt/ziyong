@@ -115,8 +115,8 @@
           <label v-for="rule in displayRules" :key="rule.id">
             <input
               type="checkbox"
-              :checked="editorRegexUsage?.displayRuleIds.includes(rule.id)"
-              @change="toggleEditorDisplayRule(rule.id, ($event.target as HTMLInputElement).checked)"
+              :checked="editorRegexUsage?.displayRuleIds.includes(rule.id ?? '')"
+              @change="toggleEditorDisplayRule(rule.id ?? '', ($event.target as HTMLInputElement).checked)"
             />
             <span>{{ rule.name || '未命名规则' }}</span>
           </label>
@@ -192,7 +192,7 @@
     </template>
 
     <footer class="pc-form-actions">
-      <button class="pc-soft-btn" type="button" :disabled="saving" @click="phone.goBack">取消</button>
+      <button class="pc-soft-btn" type="button" :disabled="saving" @click="() => phone.goBack()">取消</button>
       <button class="pc-primary-btn" type="button" :disabled="saving" @click="saveEditor">保存</button>
     </footer>
   </section>
@@ -208,7 +208,7 @@ import SearchableCombobox from '@/components/SearchableCombobox.vue';
 import { usePhoneStore } from '@/store/phone';
 import { isPlaceholderChatScopeKey } from '@/store/chatScoped';
 import { useSettingsStore } from '@/store/settings';
-import { getRegexRulesByOperation } from '@/util/regexDisplay';
+import { buildRegexRuleOptions, getRegexRulesByOperation } from '@/util/regexDisplay';
 import { storeToRefs } from 'pinia';
 import { flattenMvuTemplateLeaves, renderMvuStatusTemplate } from './model';
 import {
@@ -248,7 +248,7 @@ const extractRules = computed(() => getRegexRulesByOperation(regexDisplay.rules,
 const displayRules = computed(() => getRegexRulesByOperation(regexDisplay.rules, 'replace'));
 const extractRuleOptions = computed(() => [
   { label: '无正则', value: '' },
-  ...extractRules.value.map(rule => ({ label: rule.name || '未命名规则', value: rule.id })),
+  ...buildRegexRuleOptions(extractRules.value),
 ]);
 const editorVariables = computed(() => flattenMvuTemplateLeaves(editorStatData.value));
 const filteredEditorVariables = computed(() => {

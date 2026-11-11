@@ -46,7 +46,7 @@
 
           <section class="pc-type-prompt-card">
             <div class="pc-section-head">
-              <strong>{{ t`本次类型提示词` }}</strong>
+              <strong>{{ t`番外类型` }}</strong>
             </div>
             <SearchableCombobox
               :disabled="generationState.running"
@@ -148,7 +148,7 @@ const saveCustomTypeToLibrary = defineModel<boolean>('saveCustomTypeToLibrary', 
 const references = defineModel<GenerationReferenceItem[]>('references', { required: true });
 const sourceMode = defineModel<SummaryGenerationSourceMode>('sourceMode', { required: true });
 
-const props = defineProps<{
+defineProps<{
   capture: () => Promise<CapturedTavernPromptPreview>;
   captureResetKey: unknown;
   generationState: { error: string; rawOutput: string; running: boolean };

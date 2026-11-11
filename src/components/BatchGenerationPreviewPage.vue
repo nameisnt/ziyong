@@ -116,7 +116,8 @@ const props = defineProps<{
   canSave?: boolean;
   items: ManualBatchPreviewItem[];
   kind: 'diary' | 'summary';
-  parseHandler: (rawOutput: string, occurredAt?: string) => XmlParseResult<BatchPreviewParsedData>;
+  // 方法式签名让两个调用方（日记带 occurredAt、总结只传原始输出）都能直接绑定解析函数。
+  parseHandler(rawOutput: string, occurredAt?: unknown): XmlParseResult<BatchPreviewParsedData>;
   saveHandler: (edits: ManualBatchPreviewEdit[]) => Promise<void>;
 }>();
 

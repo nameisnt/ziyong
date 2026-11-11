@@ -91,9 +91,9 @@
     <BaguDetailPage
       v-else-if="route.page === 'bagu-scan' && activeBoard && activeThread"
       :apply-handler="applyForumBaguContent"
-      :content="viewedForumThread.content"
-      :meta="`${activeBoard.name} · ${viewedForumThread.author}`"
-      :title="viewedForumThread.title"
+      :content="viewedForumThread!.content"
+      :meta="`${activeBoard.name} · ${viewedForumThread!.author}`"
+      :title="viewedForumThread!.title"
     />
 
     <ForumThreadGeneratePage
@@ -205,7 +205,7 @@ import { usePhoneStore } from '@/store/phone';
 import { usePromptStore } from '@/store/prompts';
 import { useSettingsStore } from '@/store/settings';
 import type { FailedGenerationDraft } from '@/type/generation';
-import { type ForumThread, resolveForumBoardTypeName, resolveForumBoardTypePrompt } from '@/type/forum';
+import { type ForumThread, resolveForumBoardTypePrompt } from '@/type/forum';
 import { canOpenBaguScan } from '@/util/baguScanGate';
 import { resolveGenerationReplayReferences } from '@/util/generationReplay';
 import { resolveHiddenGenerationReplay } from '@/util/hiddenGenerationRecord';
@@ -431,7 +431,7 @@ const threadEditorSession = useForumThreadEditorSession(threadDraft, {
 });
 const selectThreadEditorBoardType = threadEditorSession.selectBoardType;
 const submitThread = threadEditorSession.submit;
-const { removeBoard, removeBoards, removeForumVersion, removeThread } = useForumDeletionSession({
+const { removeBoard, removeBoards, removeThread } = useForumDeletionSession({
   confirmDelete: (message, confirmLabel) => phone.confirmNotice(message, { confirmLabel, kind: 'warning' }),
   getActiveBoard: () => activeBoard.value,
   getActiveThread: () => activeThread.value,

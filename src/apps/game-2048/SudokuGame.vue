@@ -75,7 +75,6 @@ import { miniGameFields } from './fields';
 import { readMiniGameSettings, writeMiniGameSettings } from './miniGameStorage';
 import { SudokuSchema } from './backupSchemas';
 
-type SudokuStatus = 'done' | 'playing';
 
 type SudokuState = z.infer<typeof SudokuSchema>;
 

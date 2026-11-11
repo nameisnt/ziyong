@@ -506,7 +506,7 @@ function assertViewingCurrentChatForGeneration() {
 function prepareGenerationRequest<TConfig, TResult, TSaveResult = { entityId: string }>(
   adapter: GenerationAdapter<TConfig, TResult, TSaveResult>,
   config: TConfig,
-  options: Pick<GenerateContentOptions, 'generationDefaults' | 'references' | 'replay' | 'source' | 'textProvider'>,
+  options: Pick<GenerateContentOptions, 'generationDefaults' | 'referenceItems' | 'references' | 'replay' | 'source' | 'textProvider'>,
   generationId: string,
   textProvider = resolveTextProviderSettings(options.textProvider),
 ) {
@@ -1090,7 +1090,7 @@ export async function regenerateFailedGenerationDraft<TConfig, TResult, TSaveRes
 export function buildGenerationPreview<TConfig, TResult, TSaveResult = { entityId: string }>(
   adapter: GenerationAdapter<TConfig, TResult, TSaveResult>,
   config: TConfig,
-  requestedOptions: Pick<GenerateContentOptions, 'generationDefaults' | 'references' | 'source' | 'textProvider'>,
+  requestedOptions: Pick<GenerateContentOptions, 'generationDefaults' | 'referenceItems' | 'references' | 'source' | 'textProvider'>,
 ) {
   const options = applyInteractiveGenerationOverride(adapter.appId, requestedOptions);
   assertViewingCurrentChatForGeneration();
@@ -1165,7 +1165,7 @@ export function buildGenerationPreview<TConfig, TResult, TSaveResult = { entityI
 export async function captureGenerationPrompt<TConfig, TResult, TSaveResult = { entityId: string }>(
   adapter: GenerationAdapter<TConfig, TResult, TSaveResult>,
   config: TConfig,
-  requestedOptions: Pick<GenerateContentOptions, 'generationDefaults' | 'references' | 'source' | 'textProvider'>,
+  requestedOptions: Pick<GenerateContentOptions, 'generationDefaults' | 'referenceItems' | 'references' | 'source' | 'textProvider'>,
 ) {
   const options = applyInteractiveGenerationOverride(adapter.appId, requestedOptions);
   assertViewingCurrentChatForGeneration();

@@ -56,7 +56,7 @@
       :phone-open="isOpen"
       :previous-entry-id="previousEntryId"
       :theme="settings.theme"
-      :viewed-entry="viewedEntry"
+      :viewed-entry="viewedEntry!"
       :viewed-version-id="viewedEntryVersionId"
       @bagu="openTheaterBaguScan"
       @bottom="scrollToBottom"
@@ -78,8 +78,8 @@
     <BaguDetailPage
       v-else-if="route.page === 'bagu-scan' && activeEntry"
       :apply-handler="applyTheaterBaguContent"
-      :content="viewedEntry.content"
-      :title="viewedEntry.title"
+      :content="viewedEntry!.content"
+      :title="viewedEntry!.title"
     />
 
     <GenerationFormPage
@@ -413,7 +413,7 @@ const viewedEntryVersion = computed(() => {
   return resolveContentVersion(entry.versions, entry.activeVersionId, route.value.params?.versionId);
 });
 const viewedEntryVersionId = computed(() => viewedEntryVersion.value?.id || activeEntry.value?.activeVersionId || '');
-const viewedEntry = computed(() => {
+const viewedEntry = computed<TheaterEntry | null>(() => {
   const entry = activeEntry.value;
   const version = viewedEntryVersion.value;
   return entry && version
@@ -484,7 +484,6 @@ const activeFailedDraft = computed(() => {
   return draftId ? theater.getFailedDraft(draftId) : null;
 });
 const formattedReferences = computed(() => formatGenerationReferences(selectedReferences.value));
-const selectedEditorTypePrompt = computed(() => (draft.typeId ? prompts.getTypePrompt(draft.typeId) : null));
 const selectedGenerationTypePrompt = computed(() =>
   generationDraft.typeId ? prompts.getTypePrompt(generationDraft.typeId) : null,
 );
@@ -618,7 +617,7 @@ const recentTypePrompts = computed(() => {
   const seen = new Set<string>();
   const recent = [...entries.value]
     .sort((left, right) => right.updatedAt.localeCompare(left.updatedAt))
-    .map(entry => promptByKey.get(entry.typeId) || promptByKey.get(entry.typeName))
+    .map(entry => promptByKey.get(entry.typeId ?? '') || promptByKey.get(entry.typeName))
     .filter((prompt): prompt is (typeof theaterTypePrompts.value)[number] => Boolean(prompt))
     .filter(prompt => {
       if (seen.has(prompt.id)) return false;
@@ -1260,7 +1259,8 @@ function savePreview() {
   const versionId = 'version' in saved ? saved.version.id : '';
   if (
     preview.displayRuleIds !== undefined &&
-    JSON.stringify(preview.displayRuleIds) !== JSON.stringify(prompts.getTypePrompt(entry.typeId)?.displayRuleIds ?? [])
+    JSON.stringify(preview.displayRuleIds) !==
+      JSON.stringify(prompts.getTypePrompt(entry.typeId ?? '')?.displayRuleIds ?? [])
   ) {
     regexDisplay.getUsage(contentRegexUsageKey('theater', [entry.id, versionId])).displayRuleIds = [
       ...preview.displayRuleIds,

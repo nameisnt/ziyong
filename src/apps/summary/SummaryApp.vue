@@ -226,13 +226,13 @@ import {
 import { useGenerationTaskStore } from '@/store/generationTasks';
 import { usePhoneStore } from '@/store/phone';
 import { usePromptStore } from '@/store/prompts';
-import { useRecoveryStore } from '@/store/recovery';
 import { useSettingsStore } from '@/store/settings';
 import { useSummaryStore } from '@/store/summary';
-import type { FailedGenerationDraft } from '@/type/generation';
+import type { FailedGenerationDraft, HiddenGenerationRecord } from '@/type/generation';
 import { canOpenBaguScan } from '@/util/baguScanGate';
 import { useDetailScroll } from '@/util/detailScroll';
 import { parseSimpleXmlResult } from '@/util/generation';
+import { formatTextProviderSummary } from '@/util/textProvider';
 import { formatGenerationReferences, type GenerationReferenceItem } from '@/util/references';
 import { usePreviewDraftPersistence } from '@/util/previewDrafts';
 import { useInvalidRouteFallback } from '@/util/routeFallback';
@@ -249,14 +249,12 @@ const summaryCreationOptions: CreationModeOption[] = [
   { description: '按多个范围依次总结', icon: 'fa-solid fa-layer-group', id: 'batch', label: '批量总结' },
 ];
 const prompts = usePromptStore();
-const recovery = useRecoveryStore();
 const settingsStore = useSettingsStore();
 const summary = useSummaryStore();
 const generationTasks = useGenerationTaskStore();
 const summaryGenerationAdapter = getRegisteredPhoneGenerationAdapter('summary', 'generate');
 const { books, failedDrafts } = storeToRefs(summary);
 const { currentRoute: route } = storeToRefs(phone);
-const { entries: recoveryEntries } = storeToRefs(recovery);
 const { settings } = storeToRefs(settingsStore);
 
 const bookTitle = ref('');
@@ -278,6 +276,7 @@ const generationState = reactive({
     bookId: string;
     content: string;
     draftId: null | string;
+    generationRecord?: HiddenGenerationRecord;
     raw: string;
     source: {
       floorEnd?: number;
@@ -310,6 +309,8 @@ const {
 
 type SummaryPreview = NonNullable<typeof generationState.preview>;
 
+const textProviderSummary = computed(() => formatTextProviderSummary(settings.value.textProvider));
+
 const {
   beginPreviewDraft: beginSummaryPreviewDraft,
   clearPreviewDraft: clearSummaryPreviewDraft,
@@ -321,13 +322,17 @@ const {
   appId: 'summary',
   consumeFailedDraft: draftId => summary.deleteFailedDraft(draftId),
   getPreview: () => generationState.preview,
-  getRouteParams: () => {
+  getRouteParams: (): Record<string, string> => {
     const bookId = generationState.preview?.bookId || route.value.params?.bookId || '';
     return bookId ? { bookId } : {};
   },
   page: 'preview',
   route,
   setPreview: preview => {
+    if (!preview) {
+      generationState.preview = null;
+      return;
+    }
     generationState.preview = {
       ...preview,
       bookId: preview.bookId || route.value.params?.bookId || '',

@@ -143,9 +143,9 @@
             <div v-if="readerCleanupRules.length" class="pc-reader-cleanup-list">
               <label v-for="rule in readerCleanupRules" :key="rule.id" class="pc-reader-cleanup-item">
                 <input
-                  :checked="readerRegexUsage.displayRuleIds.includes(rule.id)"
+                  :checked="readerRegexUsage.displayRuleIds.includes(rule.id ?? '')"
                   type="checkbox"
-                  @change="onCleanupRuleChange(rule.id, ($event.target as HTMLInputElement).checked)"
+                  @change="onCleanupRuleChange(rule.id ?? '', ($event.target as HTMLInputElement).checked)"
                 />
                 <span>{{ rule.name || t`未命名规则` }}</span>
               </label>
@@ -371,7 +371,6 @@ import {
 } from '@/store/reader';
 import {
   defaultReaderBodyRegexDisplayRuleId,
-  type RegexDisplayRule,
   useRegexDisplayStore,
 } from '@/apps/regex-display/store';
 import { usePhoneStore } from '@/store/phone';
@@ -382,7 +381,7 @@ import { usePresetLinkStore } from '@/apps/preset-link/store';
 import { getCurrentTavernPresetName } from '@/apps/preset-manager/api';
 import { canOpenBaguScan } from '@/util/baguScanGate';
 import { useDetailScroll } from '@/util/detailScroll';
-import { getRegexRulesByOperation } from '@/util/regexDisplay';
+import { buildRegexRuleOptions, getRegexRulesByOperation, type RegexDisplayRuleLike } from '@/util/regexDisplay';
 import {
   executeSlashCommandSafe,
   getChatMessagesSafe,
@@ -549,10 +548,10 @@ const readerBodyRegexRules = computed(() => getRegexRulesByOperation(regexDispla
 const readerTitleRuleOptions = computed(() => [
   ...(effectiveReaderPresetName.value ? [{ label: '跟随全局阅读规则', value: '' }] : []),
   { label: '无正则', value: '__default_title__' },
-  ...readerTitleRegexRules.value.map(rule => ({ label: rule.name || '未命名规则', value: rule.id })),
+  ...buildRegexRuleOptions(readerTitleRegexRules.value),
 ]);
 const readerBodyRuleOptions = computed(() => {
-  const options = readerBodyRegexRules.value.map(rule => ({ label: rule.name || '未命名规则', value: rule.id }));
+  const options = buildRegexRuleOptions(readerBodyRegexRules.value);
   if (!options.some(option => option.value === defaultReaderBodyRegexDisplayRuleId)) {
     options.unshift({ label: '默认楼层正文提取', value: '__default_body__' });
   }
@@ -566,7 +565,7 @@ const selectedBodyRegexRule = computed(() =>
   getSelectedReaderRegexRule(readerRegexUsage.value.contentRuleId, readerBodyRegexRules.value),
 );
 const selectedCleanupRules = computed(() =>
-  readerCleanupRules.value.filter(rule => readerRegexUsage.value.displayRuleIds.includes(rule.id)),
+  readerCleanupRules.value.filter(rule => readerRegexUsage.value.displayRuleIds.includes(rule.id ?? '')),
 );
 const activeTitleRule = computed(() => toReaderRegexRule(selectedTitleRegexRule.value, defaultTitleRule));
 const activeBodyRule = computed(() => toReaderRegexRule(selectedBodyRegexRule.value, defaultReaderBodyRule));
@@ -670,7 +669,7 @@ function selectSwipeCandidate(index: number) {
   selectedSwipeIndex.value = index;
 }
 
-function getSelectedReaderRegexRule(ruleId: string, availableRules: RegexDisplayRule[]) {
+function getSelectedReaderRegexRule(ruleId: string, availableRules: RegexDisplayRuleLike[]) {
   if (ruleId === '__default_body__') {
     return availableRules.find(rule => rule.id === defaultReaderBodyRegexDisplayRuleId) ?? null;
   }
@@ -678,7 +677,7 @@ function getSelectedReaderRegexRule(ruleId: string, availableRules: RegexDisplay
   return availableRules.find(rule => rule.id === ruleId) ?? null;
 }
 
-function toReaderRegexRule(rule: RegexDisplayRule | null, fallback: ChatReaderRegexRule): ChatReaderRegexRule {
+function toReaderRegexRule(rule: RegexDisplayRuleLike | null, fallback: ChatReaderRegexRule): ChatReaderRegexRule {
   if (!rule) return fallback;
   return {
     find: rule.pattern,
@@ -1079,7 +1078,7 @@ async function applyReaderBaguContent(content: string) {
     { refresh: 'affected' },
   );
   await saveChatIfAvailable();
-  const storedMessage = getChatMessagesSafe(sourceMessageId, { include_swipes: false })[0];
+  const storedMessage = getChatMessagesSafe(String(sourceMessageId), { include_swipes: false })[0];
   await loadCurrentChat(true);
   return storedMessage?.message === nextRawText ? content : false;
 }
@@ -1164,7 +1163,14 @@ async function saveReaderReasoning(reasoning: string) {
   if (!activeMessage.value || !isReadingCurrentChat.value || !isViewingActiveSwipe.value) return;
   const sourceMessage = getChatMessagesSafe('0-{{lastMessageId}}', { include_swipes: true }).find(
     message => message.message_id === activeMessage.value?.sourceMessageId,
-  );
+  ) as
+    | {
+        extra?: Record<string, unknown>;
+        message_id: number;
+        swipes?: string[];
+        swipes_data?: Record<string, unknown>[];
+      }
+    | undefined;
   if (!sourceMessage) return;
 
   const swipeIndex = activeMessage.value.activeSwipeIndex;

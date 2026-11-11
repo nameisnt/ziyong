@@ -143,6 +143,21 @@ export function getRegexRulesByIds(rules: RegexDisplayRuleLike[], ruleIds: strin
   return getRegexRulesByOperation(rules, operation).filter(rule => Boolean(rule.id && selected.has(rule.id)));
 }
 
+export interface RegexRuleOption {
+  label: string;
+  value: string;
+}
+
+/** 规则下拉选项：没有 id 的规则无法被选中，直接跳过。 */
+export function buildRegexRuleOptions(
+  rules: RegexDisplayRuleLike[],
+  fallbackLabel = '未命名规则',
+): RegexRuleOption[] {
+  return rules.flatMap<RegexRuleOption>(rule =>
+    rule.id ? [{ label: rule.name || fallbackLabel, value: rule.id }] : [],
+  );
+}
+
 export function extractWithRegexRules(input: string, rules: RegexDisplayRuleLike[]): RegexDisplayApplyResult {
   const errors: string[] = [];
   for (const rule of rules) {

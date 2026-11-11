@@ -65,7 +65,10 @@ const refreshingPhoneData = ref(false);
 async function jumpViewingChatToTavern() {
   if (isViewingCurrentChat.value) return;
   const target = phone.getTavernJumpTarget();
-  if (!target) return toastr.warning('当前阅览没有对应的酒馆聊天');
+  if (!target) {
+    toastr.warning('当前阅览没有对应的酒馆聊天');
+    return;
+  }
   try {
     await jumpToTavernChat({
       chatFile: target.chatId,
@@ -84,7 +87,10 @@ async function jumpViewingChatToTavern() {
 
 async function refreshPhoneData() {
   if (refreshingPhoneData.value) return;
-  if (generationTasks.hasRunningTasks) return phone.noticeWarning('生成任务运行中，请暂停或等待任务完成后再刷新');
+  if (generationTasks.hasRunningTasks) {
+    phone.noticeWarning('生成任务运行中，请暂停或等待任务完成后再刷新');
+    return;
+  }
   refreshingPhoneData.value = true;
   await new Promise<void>(resolve => window.requestAnimationFrame(() => resolve()));
   try {

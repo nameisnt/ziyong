@@ -314,7 +314,7 @@ watch(
   { immediate: true },
 );
 
-function articleTextSegments(article: TutorialArticle) {
+function articleTextSegments(article: TutorialArticle): { blockIndex?: number; text: string }[] {
   const blockText = article.blocks.flatMap((block, blockIndex) => {
     if (block.type === 'app-directory') return [{ blockIndex, text: appDirectorySearchText }];
     if (block.type === 'steps') return [block.title || '', ...block.items].map(text => ({ blockIndex, text }));
