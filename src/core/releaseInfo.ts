@@ -4,6 +4,14 @@ export const RUNNING_VERSION = manifest.version;
 export const RELEASE_SEEN_FIELD = 'sillytavern_phone_last_seen_release';
 export const RELEASE_HISTORY = [
   {
+    version: '1.2.21',
+    notes: [
+      '修复：在只读或历史聊天里打开引用时，会把上一个聊天的日记、小剧场、番外等引用带进来；现在引用来源会跟着手机正在查看的聊天一起切换。',
+      '修复：酒馆把世界书里的粘性、冷却、延迟关闭状态存成 0，导入槽位后会让槽位数据校验失败，切换聊天范围时报「数值过小」。',
+      '改进：某个 App 切换聊天范围失败时不再中断其它 App，只提示该 App 切换失败。',
+    ],
+  },
+  {
     version: '1.2.20',
     notes: [
       '修复：引用区的生成楼层移到已选引用最后一张卡片右侧，候选行右侧显示来源楼层数字。',
