@@ -563,6 +563,15 @@ import {
   type CardWriterStage,
   type FullCardMode,
 } from './preset';
+import {
+  buildPreviewContent,
+  buildPreviewRaw,
+  buildRequirementText,
+  buildStageUserInput,
+  getStagePriorOutputs,
+  parseActorInput,
+  stageIcon,
+} from './prompt';
 import { formatCardWriterDocumentChat, isCardWriterDocumentFromScope } from './references';
 import { useCardWriterStore, type CardWriterDocument, type CardWriterStageResult } from './store';
 import {
@@ -795,8 +804,8 @@ const previewSaveLabel = computed(() => {
 usePreviewSession({
   appId: 'card-writer',
   getStatus: () => {
-    const content = buildPreviewContent();
-    const raw = buildPreviewRaw();
+    const content = buildPreviewContent(stageStates.value);
+    const raw = buildPreviewRaw(stageStates.value);
     if (!content.trim() && !raw.trim()) return null;
     if (!savedPreviewBaseline.value) return 'unsaved';
     return savedPreviewBaseline.value.content === content && savedPreviewBaseline.value.raw === raw ? 'saved' : 'dirty';
@@ -804,22 +813,9 @@ usePreviewSession({
   page: 'preview',
 });
 
-function buildPreviewContent() {
-  const completed = stageStates.value.filter(stage => stage.status === 'completed' && stage.content.trim());
-  if (completed.length === 1) return completed[0].content.trim();
-  return completed.map(stage => `## ${stage.label}\n\n${stage.content.trim()}`).join('\n\n');
-}
-
-function buildPreviewRaw() {
-  return stageStates.value
-    .filter(stage => stage.raw.trim())
-    .map(stage => `【${stage.label}】\n${stage.raw.trim()}`)
-    .join('\n\n');
-}
-
 function updatePreviewAggregate() {
-  preview.content = buildPreviewContent();
-  preview.raw = buildPreviewRaw();
+  preview.content = buildPreviewContent(stageStates.value);
+  preview.raw = buildPreviewRaw(stageStates.value);
 }
 
 function persistWriterPreviewDraft() {
@@ -937,37 +933,9 @@ function reparseActiveStage() {
 
 function markPreviewSaved() {
   savedPreviewBaseline.value = {
-    content: buildPreviewContent(),
-    raw: buildPreviewRaw(),
+    content: buildPreviewContent(stageStates.value),
+    raw: buildPreviewRaw(stageStates.value),
   };
-}
-
-function stageIcon(status: StageState['status']) {
-  if (status === 'completed') return 'fa-solid fa-check';
-  if (status === 'running') return 'fa-solid fa-spinner fa-spin';
-  if (status === 'failed') return 'fa-solid fa-triangle-exclamation';
-  return 'fa-regular fa-circle';
-}
-
-function parseActorInput(value: string, fallbackLabel: string, optional = false) {
-  const normalized = value.trim();
-  if (!normalized) return { error: optional ? '' : `请填写至少一个${fallbackLabel}`, names: [] as string[] };
-  if (/^\d+$/u.test(normalized)) {
-    const count = Number(normalized);
-    if (count < 1 || count > 20) return { error: `${fallbackLabel}数量需为 1-20`, names: [] as string[] };
-    return { error: '', names: Array.from({ length: count }, (_item, index) => `${fallbackLabel}${index + 1}`) };
-  }
-  const tokens = normalized
-    .split(/[\s,，、]+/u)
-    .map(name => name.trim())
-    .filter(Boolean);
-  if (tokens.some(token => /^\d+$/u.test(token))) {
-    return { error: '姓名列表和数量不能混填', names: [] as string[] };
-  }
-  const names = [...new Set(tokens)];
-  return names.length
-    ? { error: '', names }
-    : { error: optional ? '' : `请填写至少一个${fallbackLabel}`, names: [] as string[] };
 }
 
 function fillBriefExample() {
@@ -1043,30 +1011,6 @@ function buildReferenceText() {
     .join('\n\n');
 }
 
-function buildRequirementText() {
-  if (taskId.value !== 'full-card') {
-    return generationDraft.userRequirement.trim() || '请根据已选择的聊天、引用与世界书素材完成创作。';
-  }
-  if (fullCardMode.value === 'plot') {
-    return [
-      `主角：${parsedProtagonists.value.names.join('、')}`,
-      `NPC：${parsedNpcs.value.names.join('、') || '不额外生成 NPC'}`,
-      '写卡依据：优先依据选中的聊天楼层、引用和世界书还原当前剧情，不要擅自改写已经发生的事实。',
-      `剧情与要求：${plotBrief.requirement.trim() || '根据所选素材提炼剧情，并补全适合继续互动的角色卡。'}`,
-    ].join('\n');
-  }
-  const worldDescription =
-    brief.worldMode === 'auto'
-      ? '由 AI 自动安排适合角色发展的世界。'
-      : brief.worldHint.trim() || (brief.worldMode === 'existing' ? '沿用用户指定的已有世界。' : '补全自定义世界。');
-  return [
-    `角色核心点子：${brief.concept.trim()}`,
-    `与玩家的关系：${brief.relationship.trim() || '未指定，请安排适合展开故事的初始关系。'}`,
-    `期望体验：${brief.experience.trim() || '未指定，请根据角色设定安排自然的互动氛围。'}`,
-    `故事世界：${worldDescription}`,
-  ].join('\n');
-}
-
 async function buildWorldbookText() {
   if (!includeWorldbook.value) return '';
   const groups = getCurrentWorldbookGroups();
@@ -1083,38 +1027,6 @@ async function buildWorldbookText() {
     );
   }
   return sections.join('\n\n');
-}
-
-function buildStageUserInput(
-  stageLabel: string,
-  instruction: string,
-  priorOutputs: Array<{ label: string; content: string }>,
-  requirement: string,
-) {
-  return [
-    '【小手机自动写卡任务】',
-    `当前阶段：${stageLabel}`,
-    instruction,
-    '',
-    '【用户要求】',
-    requirement,
-    ...(buildReferenceText() ? ['', '【其他 App 引用】', buildReferenceText()] : []),
-    ...priorOutputs.flatMap(item => ['', `【已完成阶段：${item.label}】`, item.content]),
-    '',
-    '【自动执行约定】',
-    '用户已经完成本轮信息提供。不要继续提问，不要声称调用 Write、Edit、Read 或 SetAttribute。',
-    '直接生成当前阶段最终成品；用户未明确的细节只做不冲突的最小补足。',
-    '最终成品必须放入 <content><artifact>...</artifact></content>，不要输出下一步建议。',
-  ].join('\n');
-}
-
-function getStagePriorOutputs(stage: CardWriterStage) {
-  const completed = stageStates.value.filter(item => item.status === 'completed' && item.content.trim());
-  if (!stage.dependencyIds) return completed.map(item => ({ content: item.content, label: item.label }));
-  const dependencyIds = new Set(stage.dependencyIds);
-  return completed
-    .filter(item => dependencyIds.has(item.id))
-    .map(item => ({ content: item.content, label: item.label }));
 }
 
 function providerSummary(result: Awaited<ReturnType<typeof generateOrderedPromptContent>>['textProvider']) {
@@ -1192,7 +1104,17 @@ async function runStageSequence(
   taskId: string,
 ) {
   const requirement =
-    replaceGenerationAliases(buildRequirementText(), {
+    replaceGenerationAliases(
+      buildRequirementText({
+        brief,
+        fullCardMode: fullCardMode.value,
+        npcNames: parsedNpcs.value.names,
+        plotRequirement: plotBrief.requirement,
+        protagonistNames: parsedProtagonists.value.names,
+        taskId: selectedTask.value.id,
+        userRequirement: generationDraft.userRequirement,
+      }),
+      {
       charReplacement: generationAliases.charReplacement,
       userReplacement: generationAliases.userReplacement,
     }) || '';
@@ -1204,7 +1126,13 @@ async function runStageSequence(
     state.status = 'running';
     state.error = '';
     activePreviewStageId.value = state.id;
-    const userInput = buildStageUserInput(stage.label, stage.instruction, getStagePriorOutputs(stage), requirement);
+    const userInput = buildStageUserInput(
+      stage.label,
+      stage.instruction,
+      getStagePriorOutputs(stageStates.value, stage),
+      requirement,
+      buildReferenceText(),
+    );
     try {
       const messagesForStage: RawOrderedPrompt[] = buildCardWriterOrderedPrompts({
         assistantPrefillEnabled: writerSettings.value.assistantPrefillEnabled,
@@ -1281,7 +1209,7 @@ function openDocument(document: CardWriterDocument) {
   activeStageDefinitions.value = [];
   activePreviewStageId.value = stageStates.value[0]?.id || '';
   preview.content = document.content;
-  preview.raw = document.raw || buildPreviewRaw();
+  preview.raw = document.raw || buildPreviewRaw(stageStates.value);
   preview.providerSummary = '已保存成品';
   preview.sourceLabel = document.sourceLabel;
   preview.sourceOwnerLabel = document.sourceOwnerLabel;
@@ -1440,7 +1368,7 @@ async function importSelectedProfiles() {
 }
 
 function buildWorldbookDrafts(): WorldbookEntryDraft[] {
-  const content = buildPreviewContent().trim();
+  const content = buildPreviewContent(stageStates.value).trim();
   if (!content) return [];
   const headingPattern = /^##\s+(.+)$/gmu;
   const headings = [...content.matchAll(headingPattern)];
