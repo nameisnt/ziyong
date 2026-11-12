@@ -18,6 +18,10 @@ const summaryBatch = await readFile(
   new URL('../../src/apps/summary/useSummaryBatchSession.ts', import.meta.url),
   'utf8',
 );
+const sharedRunner = await readFile(
+  new URL('../../src/composables/runSingleGeneration.ts', import.meta.url),
+  'utf8',
+);
 
 test('Extras generation pages consume live task state rather than preview-only state', async () => {
   const source = await readFile(new URL('../../src/apps/extras/ExtrasApp.vue', import.meta.url), 'utf8');
@@ -31,11 +35,15 @@ test('Extras generation pages consume live task state rather than preview-only s
 test('GEN02D content consumers delegate ordinary single requests to persistent sessions', () => {
   for (const { file, source } of consumers) {
     assert.match(source, /useSingleGenerationTaskSession/, file);
+    assert.match(source, /\.complete\(task\.id,/, file);
+    if (source.includes('runSingleGeneration')) continue;
     assert.match(source, /\.create\(/, file);
     assert.match(source, /\.lifecycle\(task\.id\)/, file);
-    assert.match(source, /\.complete\(task\.id,/, file);
     assert.match(source, /\.fail\(task\.id,/, file);
   }
+  assert.match(sharedRunner, /task = options\.session\.create\(options\.createOverrides\);/u);
+  assert.match(sharedRunner, /lifecycle: options\.session\.lifecycle\(task\.id\),/u);
+  assert.match(sharedRunner, /options\.session\.fail\(task\.id, error\);/u);
 });
 
 test('GEN02D content consumers no longer own generation ids or unload-stop text requests', () => {

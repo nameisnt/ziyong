@@ -24,7 +24,8 @@ export interface SingleGenerationRunOptions<TConfig, TResult, TSaveResult = { en
   /** Used when the run session itself cannot be created. */
   failureLabel: string;
   payload: () => TConfig;
-  resetPreview: () => void;
+  /** Optional hook for Apps that drop stale previews before the task is created. */
+  resetPreview?: () => void;
   session: SingleGenerationSession;
   settings: SingleGenerationRunSettings;
   /** Return an error message to fail the task before any request is sent. */
@@ -58,7 +59,7 @@ export async function runSingleGeneration<TConfig, TResult, TSaveResult = { enti
     return null;
   }
 
-  options.resetPreview();
+  options.resetPreview?.();
   try {
     const result = await generateContent(options.adapter, options.payload(), {
       createFailedDraft: options.createFailedDraft,
