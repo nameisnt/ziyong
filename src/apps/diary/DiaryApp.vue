@@ -219,6 +219,7 @@ import DiaryEntryEditorPage from '@/apps/diary/DiaryEntryEditorPage.vue';
 import DiaryFailedDraftPage from '@/apps/diary/DiaryFailedDraftPage.vue';
 import DiaryGeneratePage from '@/apps/diary/DiaryGeneratePage.vue';
 import DiaryPreviewPage from '@/apps/diary/DiaryPreviewPage.vue';
+import { buildDiaryBatchJobs, selectDiaryBatchFloors } from '@/apps/diary/batch';
 import { BUILTIN_DIARY_PRESET_SELECTION, resolveDiaryPresetSelection } from '@/apps/preset-manager/builtinDiaryPreset';
 import { useCatalogDetailNavigation } from '@/composables/useCatalogDetailNavigation';
 import { useDirectorySort } from '@/composables/useDirectorySort';
@@ -885,136 +886,12 @@ function buildDiaryOutputFormat(outputId = 'diary.generate') {
   return prompts.resolveOutputFormat(outputId);
 }
 
-function parseBatchFloorText(rawValue: string) {
-  const normalized = rawValue.trim();
-  if (!normalized) {
-    throw new Error('请先填写楼层范围，例如 1-30,35,40-45');
-  }
-
-  const segments = normalized
-    .split(/[\s,，;；\n]+/)
-    .map(item => item.trim())
-    .filter(Boolean);
-  const floorSet = new Set<number>();
-
-  for (const segment of segments) {
-    const singleMatch = segment.match(/^(\d+)$/);
-    if (singleMatch) {
-      floorSet.add(Number(singleMatch[1]));
-      continue;
-    }
-
-    const rangeMatch = segment.match(/^(\d+)\s*-\s*(\d+)$/);
-    if (!rangeMatch) {
-      throw new Error(`无法识别楼层片段：${segment}`);
-    }
-
-    const left = Number(rangeMatch[1]);
-    const right = Number(rangeMatch[2]);
-    const start = Math.min(left, right);
-    const end = Math.max(left, right);
-    for (let floor = start; floor <= end; floor += 1) {
-      floorSet.add(floor);
-    }
-  }
-
-  return [...floorSet].sort((left, right) => left - right);
-}
-
-function formatBatchRange(floors: number[]) {
-  if (!floors.length) return '';
-  const sorted = [...floors].sort((left, right) => left - right);
-  const ranges: Array<{ start: number; end: number }> = [];
-  let start = sorted[0];
-  let end = sorted[0];
-
-  for (let index = 1; index < sorted.length; index += 1) {
-    const current = sorted[index];
-    if (current === end + 1) {
-      end = current;
-      continue;
-    }
-    ranges.push({ start, end });
-    start = current;
-    end = current;
-  }
-  ranges.push({ start, end });
-
-  return ranges.map(range => (range.start === range.end ? `${range.start}` : `${range.start}-${range.end}`)).join(', ');
-}
-
 function getBatchVisibleFloors() {
-  if (!batchDraft.includeAi && !batchDraft.includeUser) {
-    throw new Error('请至少选择 AI 楼层或用户楼层');
-  }
-
-  const visibleMessages = getChatMessagesSafe('0-{{lastMessageId}}', { hide_state: 'unhidden' });
-  const requestedFloors =
-    batchDraft.floorMode === 'all'
-      ? visibleMessages.map(message => message.message_id)
-      : parseBatchFloorText(batchDraft.floorText);
-  const visibleById = new Map(visibleMessages.map(message => [message.message_id, message]));
-  const floors = requestedFloors.filter(floor => {
-    const message = visibleById.get(floor);
-    if (!message) return false;
-    if (message.role === 'assistant') return batchDraft.includeAi;
-    if (message.role === 'user') return batchDraft.includeUser;
-    return false;
-  });
-
-  if (!floors.length) {
-    throw new Error(
-      batchDraft.floorMode === 'all'
-        ? '当前聊天没有符合条件的可见 AI/用户楼层'
-        : '给定范围内没有符合条件的可见 AI/用户楼层',
-    );
-  }
-  return floors;
+  return selectDiaryBatchFloors(getChatMessagesSafe('0-{{lastMessageId}}', { hide_state: 'unhidden' }), batchDraft);
 }
 
 function buildBatchJobs() {
-  const floors = getBatchVisibleFloors();
-  const groupSize = Math.min(50, Math.max(1, Math.round(batchDraft.groupSize || 1)));
-  if (!batchDraft.groupMode) {
-    const jobs: Array<{
-      fromStartEnd: number;
-      label: string;
-      mode: 'fromStart';
-      rangeText: string;
-      singleMessageId: number;
-    }> = [];
-    for (let index = 0; index < floors.length; index += groupSize) {
-      const endFloor = floors.slice(index, index + groupSize).at(-1)!;
-      jobs.push({
-        fromStartEnd: endFloor,
-        label: `第 0-${endFloor} 楼`,
-        mode: 'fromStart',
-        rangeText: '',
-        singleMessageId: 0,
-      });
-    }
-    return jobs;
-  }
-
-  const jobs: Array<{
-    fromStartEnd: number;
-    label: string;
-    mode: 'range';
-    rangeText: string;
-    singleMessageId: number;
-  }> = [];
-  for (let index = 0; index < floors.length; index += groupSize) {
-    const group = floors.slice(index, index + groupSize);
-    const rangeText = formatBatchRange(group);
-    jobs.push({
-      fromStartEnd: 0,
-      label: `第 ${rangeText} 楼`,
-      mode: 'range',
-      rangeText,
-      singleMessageId: 0,
-    });
-  }
-  return jobs;
+  return buildDiaryBatchJobs(getBatchVisibleFloors(), batchDraft.groupMode, batchDraft.groupSize);
 }
 
 function returnToGenerate() {
