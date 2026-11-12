@@ -174,6 +174,12 @@ import { useSettingsStore } from '@/store/settings';
 import type { CharacterRef } from '@/type/diary';
 import type { FailedGenerationDraft, GenerationReplaySnapshot, HiddenGenerationRecord } from '@/type/generation';
 import type { LetterEntry, LetterFormat } from '@/type/letter';
+import {
+  buildRecentLettersContext as buildRecentLettersContextFrom,
+  formatDirection,
+  formatLabel,
+  formatParticipants,
+} from './format';
 import type { GenerationTask } from '@/type/generationTask';
 import { canOpenBaguScan } from '@/util/baguScanGate';
 import { useDetailScroll } from '@/util/detailScroll';
@@ -844,34 +850,12 @@ function buildOutputFormat() {
   return prompts.resolveOutputFormat('letters.generate');
 }
 
-function clampRecentEntryCount(value: number) {
-  return Math.max(0, Math.min(20, Math.round(value || 0)));
-}
-
 function buildRecentLettersContext(book = activeBook.value, count = generationDraft.recentEntryCount) {
-  if (!book) return '';
-  const effectiveCount = clampRecentEntryCount(count);
-  if (!effectiveCount) return '';
-  let availableEntries = [...book.entries];
-  if (letterGenerationMode.value === 'rewrite' && rewriteLetterEntry.value) {
-    const targetIndex = availableEntries.findIndex(entry => entry.id === rewriteLetterEntry.value?.id);
-    availableEntries =
-      targetIndex >= 0
-        ? availableEntries.slice(targetIndex + 1)
-        : availableEntries.filter(entry => entry.id !== rewriteLetterEntry.value?.id);
-  }
-  const entries = availableEntries.slice(0, effectiveCount).reverse();
-  if (!entries.length) return '';
-  const blocks = entries.map(entry =>
-    [
-      `${formatLabel(entry.format)} · ${entry.title}`,
-      `${entry.sender.name} -> ${entry.receiver.name}`,
-      entry.content,
-    ].join('\n'),
-  );
-  return ['最近相关书信：', blocks.join('\n\n')].join('\n\n');
+  return buildRecentLettersContextFrom(book?.entries ?? [], {
+    count,
+    rewriteEntryId: letterGenerationMode.value === 'rewrite' ? (rewriteLetterEntry.value?.id ?? null) : null,
+  });
 }
-
 function buildSelectedRecentLettersContext() {
   if (!activeBook.value || !generationDraft.includeRecentEntries) return '';
   return buildRecentLettersContext(activeBook.value, generationDraft.recentEntryCount);
@@ -1199,21 +1183,6 @@ function reparseFailedDraft() {
   phone.replacePage('preview', '生成预览', bookId ? { bookId } : undefined);
 }
 
-function formatDirection(senderName: string, receiverName: string) {
-  return `${senderName} -> ${receiverName}`;
-}
-
-function formatParticipants(participants: CharacterRef[]) {
-  return participants.map(item => item.name).join('、') || '未指定参与者';
-}
-
-function formatLabel(format: LetterFormat) {
-  if (format === 'sms') return '短信';
-  if (format === 'email') return '邮件';
-  if (format === 'note') return '便签';
-  if (format === 'formal') return '正式信';
-  return format.replace(/^custom:/, '') || '自定义书信';
-}
 const regenerateFailedDraft = useFailedDraftRegeneration({
   draft: () => activeFailedDraft.value,
   rawOutput: failedDraftRawOutput,
