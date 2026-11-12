@@ -4,6 +4,14 @@ export const RUNNING_VERSION = manifest.version;
 export const RELEASE_SEEN_FIELD = 'sillytavern_phone_last_seen_release';
 export const RELEASE_HISTORY = [
   {
+    version: '1.2.22',
+    notes: [
+      '修复：8 处失败提示把不存在的 phone.reportFailure 与错误的 error 变量写进提示，改为直接使用 reportFailure 与 catch 到的参数。',
+      '新增：静态闸门用 vue-tsc 检查 .vue 脚本块并清零既有类型错误，此后新增类型错误会直接让闸门失败。',
+      '修复：新建番外与生成章节页的「番外类型」区块与类型提示词不再同名。',
+    ],
+  },
+  {
     version: '1.2.21',
     notes: [
       '修复：在只读或历史聊天里打开引用时，会把上一个聊天的日记、小剧场、番外等引用带进来；现在引用来源会跟着手机正在查看的聊天一起切换。',
