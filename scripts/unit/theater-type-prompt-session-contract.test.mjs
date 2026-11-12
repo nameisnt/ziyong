@@ -52,7 +52,7 @@ test('theater generation freezes rewrite ownership before awaiting the result', 
   const runEnd = theaterSource.indexOf('\nfunction savePreview()', runStart);
   const runSource = theaterSource.slice(runStart, runEnd);
   const targetIndex = runSource.indexOf('const generationTarget =');
-  const awaitIndex = runSource.indexOf('await generateContent(');
+  const awaitIndex = runSource.indexOf('await runSingleGeneration(');
   assert.ok(targetIndex >= 0 && targetIndex < awaitIndex);
   assert.match(runSource, /mode: generationTarget\.mode/u);
   assert.match(runSource, /targetEntryId: generationTarget\.entryId/u);

@@ -249,16 +249,16 @@ import TheaterMixedContent from '@/apps/theater/TheaterMixedContent.vue';
 import { pickVisibleTheaterType } from '@/apps/theater/theaterTypeRandom';
 import { useGenerationReplaySession } from '@/composables/useGenerationReplaySession';
 import { useFailedDraftRegeneration } from '@/composables/useFailedDraftRegeneration';
+import { completeSingleGenerationFailedDraft, runSingleGeneration } from '@/composables/runSingleGeneration';
 import { useSingleGenerationTaskSession } from '@/composables/useSingleGenerationTaskSession';
 import { getRegisteredPhoneGenerationAdapter } from '@/core/appRegistry';
-import { buildGenerationPreview, captureGenerationPrompt, generateContent } from '@/core/generationService';
+import { buildGenerationPreview, captureGenerationPrompt } from '@/core/generationService';
 import { buildTheaterGenerateConfig, buildTheaterVersionSplitPrompt } from './generation';
 import { usePhoneStore } from '@/store/phone';
 import { usePromptStore } from '@/store/prompts';
 import { useSettingsStore } from '@/store/settings';
 import { useTheaterStore } from '@/store/theater';
 import type { FailedGenerationDraft, GenerationReplaySnapshot, HiddenGenerationRecord } from '@/type/generation';
-import type { GenerationTask } from '@/type/generationTask';
 import type { TheaterEntry, TheaterRenderMode } from '@/type/theater';
 import { canOpenBaguScan } from '@/util/baguScanGate';
 import { useDetailScroll } from '@/util/detailScroll';
@@ -270,7 +270,6 @@ import { resolveContentVersion } from '@/util/contentVersions';
 import { usePreviewDraftPersistence } from '@/util/previewDrafts';
 import { useInvalidRouteFallback } from '@/util/routeFallback';
 import { updateGenerationRecordReasoning } from '@/util/generationReasoning';
-import { reportFailure } from '@/util/feedback';
 import { storeToRefs } from 'pinia';
 
 const phone = usePhoneStore();
@@ -1116,14 +1115,16 @@ async function runGeneration() {
     mode: theaterGenerationMode.value,
     versionId: rewriteTargetVersion.value?.id || '',
   };
-  let task: GenerationTask | null = null;
-  try {
-    task = generationSession.create({
+
+  const outcome = await runSingleGeneration({
+    adapter: theaterGenerationAdapter,
+    createFailedDraft: input => theater.createFailedDraft(input),
+    createOverrides: {
       sourceParams: generationTarget.entryId ? { entryId: generationTarget.entryId } : {},
       title: generationTarget.mode === 'rewrite' ? '重新生成小剧场' : '生成小剧场 · 单次生成',
-    });
-    const result = await generateContent(
-      theaterGenerationAdapter,
+    },
+    failureLabel: '建立小剧场生成任务',
+    payload: () =>
       buildTheaterGenerateConfig({
         appPrompt: theaterGenerationAppPrompt.value,
         entryId: generationTarget.entryId,
@@ -1134,92 +1135,88 @@ async function runGeneration() {
         typePrompt: generationDraft.typePrompt,
         userRequirement: generationDraft.userRequirement,
       }),
-      {
-        createFailedDraft: input => theater.createFailedDraft(input),
-        generationDefaults: {
-          resultMode: settings.value.generation.resultMode,
-          stream: settings.value.generation.stream,
-          tavernPresetName: settings.value.generation.tavernPresetName,
-        },
-        references: formattedReferences.value,
-        referenceItems: selectedReferences.value,
-        lifecycle: generationSession.lifecycle(task.id),
-        source: {
-          fromStartEnd: generationDraft.fromStartEnd,
-          mode: settings.value.generation.sourceMode,
-          rangeText: generationDraft.rangeText,
-          recentCount: generationDraft.recentCount,
-          singleMessageId: generationDraft.singleMessageId,
-        },
-        textProvider: settings.value.textProvider,
+    session: generationSession,
+    settings: {
+      generationDefaults: {
+        resultMode: settings.value.generation.resultMode,
+        stream: settings.value.generation.stream,
+        tavernPresetName: settings.value.generation.tavernPresetName,
       },
-    );
+      referenceItems: selectedReferences.value,
+      references: formattedReferences.value,
+      source: {
+        fromStartEnd: generationDraft.fromStartEnd,
+        mode: settings.value.generation.sourceMode,
+        rangeText: generationDraft.rangeText,
+        recentCount: generationDraft.recentCount,
+        singleMessageId: generationDraft.singleMessageId,
+      },
+      textProvider: settings.value.textProvider,
+    },
+  });
+  if (!outcome) return;
+  const { result, task } = outcome;
 
-    if (result.status === 'failed') {
-      failedDraftRawOutput.value = result.rawOutput;
-      generationSession.complete(task.id, {
-        currentLabel: '解析失败草稿已保留',
-        resultPage: 'failed-draft',
-        resultParams: { draftId: result.draft.id },
-        resultState: 'failed-draft',
-        resultTitle: '解析失败草稿',
-      });
-      toastr.warning('XML 解析失败，已保存到失败草稿');
-      void phone.presentGeneratedPage('theater', 'failed-draft', '解析失败草稿', { draftId: result.draft.id });
-      return;
-    }
+  if (result.status === 'failed') {
+    completeSingleGenerationFailedDraft({
+      appId: 'theater',
+      draftId: result.draft.id,
+      rawOutput: result.rawOutput,
+      session: generationSession,
+      setRawOutput: rawOutput => {
+        failedDraftRawOutput.value = rawOutput;
+      },
+      taskId: task.id,
+    });
+    return;
+  }
 
-    if (result.status === 'saved') {
-      generationSession.complete(task.id, {
-        currentLabel: `已保存小剧场：${result.data.title}`,
-        resultPage: 'entry',
-        resultParams: {
-          entryId: result.saved.entry.id,
-          ...(result.saved.versionId ? { versionId: result.saved.versionId } : {}),
-        },
-        resultState: 'saved',
-        resultTitle: result.data.title,
-      });
-      toastr.success(generationTarget.mode === 'rewrite' ? '已保存并切换到小剧场新版本' : '已生成并保存小剧场');
-      void phone.presentGeneratedPage('theater', 'entry', result.data.title, {
+  if (result.status === 'saved') {
+    generationSession.complete(task.id, {
+      currentLabel: `已保存小剧场：${result.data.title}`,
+      resultPage: 'entry',
+      resultParams: {
         entryId: result.saved.entry.id,
         ...(result.saved.versionId ? { versionId: result.saved.versionId } : {}),
-      });
-      return;
-    }
-
-    generationState.preview = {
-      content: result.data.content,
-      draftId: null,
-      raw: result.rawOutput,
-      renderMode: 'markdown',
-      source: {
-        label: result.source.label,
       },
-      title: result.data.title,
-      mode: generationTarget.mode,
-      generationRecord: result.generationRecord,
-      targetEntryId: generationTarget.entryId,
-      targetVersionId: generationTarget.versionId,
-      typeId: generationDraft.typeId || undefined,
-      displayRuleIds: [...generationDraft.displayRuleIds],
-      typeName: generationDraft.typeName.trim() || '未分类小剧场',
-      warnings: result.warnings,
-    };
-    persistTheaterPreviewDraft();
-    generationSession.complete(task.id, {
-      currentLabel: '小剧场已生成，等待确认',
-      resultPage: 'preview',
-      resultState: 'preview',
-      resultTitle: '生成预览',
+      resultState: 'saved',
+      resultTitle: result.data.title,
     });
-    void phone.presentGeneratedPage('theater', 'preview', '生成预览');
-  } catch (error) {
-    if (task) generationSession.fail(task.id, error);
-    else reportFailure('生成', error);
+    toastr.success(generationTarget.mode === 'rewrite' ? '已保存并切换到小剧场新版本' : '已生成并保存小剧场');
+    void phone.presentGeneratedPage('theater', 'entry', result.data.title, {
+      entryId: result.saved.entry.id,
+      ...(result.saved.versionId ? { versionId: result.saved.versionId } : {}),
+    });
+    return;
   }
-}
 
+  generationState.preview = {
+    content: result.data.content,
+    displayRuleIds: [...generationDraft.displayRuleIds],
+    draftId: null,
+    generationRecord: result.generationRecord,
+    mode: generationTarget.mode,
+    raw: result.rawOutput,
+    renderMode: 'markdown',
+    source: {
+      label: result.source.label,
+    },
+    targetEntryId: generationTarget.entryId,
+    targetVersionId: generationTarget.versionId,
+    title: result.data.title,
+    typeId: generationDraft.typeId || undefined,
+    typeName: generationDraft.typeName.trim() || '未分类小剧场',
+    warnings: result.warnings,
+  };
+  persistTheaterPreviewDraft();
+  generationSession.complete(task.id, {
+    currentLabel: '小剧场已生成，等待确认',
+    resultPage: 'preview',
+    resultState: 'preview',
+    resultTitle: '生成预览',
+  });
+  void phone.presentGeneratedPage('theater', 'preview', '生成预览');
+}
 function savePreview() {
   const preview = generationState.preview;
   if (!preview) return;
