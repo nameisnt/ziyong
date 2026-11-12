@@ -224,6 +224,7 @@ import { BUILTIN_DIARY_PRESET_SELECTION, resolveDiaryPresetSelection } from '@/a
 import { useCatalogDetailNavigation } from '@/composables/useCatalogDetailNavigation';
 import { useDirectorySort } from '@/composables/useDirectorySort';
 import { useFailedDraftRegeneration } from '@/composables/useFailedDraftRegeneration';
+import { completeSingleGenerationFailedDraft, runSingleGeneration } from '@/composables/runSingleGeneration';
 import { useSingleGenerationTaskSession } from '@/composables/useSingleGenerationTaskSession';
 import { getRegisteredPhoneGenerationAdapter } from '@/core/appRegistry';
 import { parseDiaryGeneratedResult } from '@/core/diaryGeneration';
@@ -912,121 +913,110 @@ function returnToGenerate() {
 }
 
 async function runGeneration() {
-  let task: GenerationTask | null = null;
-  try {
-    task = diaryGenerationSession.create({
+  const outcome = await runSingleGeneration({
+    adapter: diaryGenerationAdapter,
+    createFailedDraft: input => diary.createFailedDraft(input),
+    createOverrides: {
       sourceParams: activeBook.value?.id ? { bookId: activeBook.value.id } : {},
       title: '生成日记 · 单次生成',
-    });
-  } catch (error) {
-    reportFailure('建立日记生成任务', error);
-    return;
-  }
-  const perspective = generationPerspective.value;
-  if (!perspective) {
-    diaryGenerationSession.fail(task.id, new Error('请先填写视角角色名'));
-    return;
-  }
-
-  beginDiaryPreviewDraft();
-  generationState.preview = null;
-
-  try {
-    const result = await generateContent(
-      diaryGenerationAdapter,
-      {
-        appPrompt: prompts.appPrompts.diary,
-        bookId: activeBook.value?.id || '',
-        bookTitle: generationTargetBookTitle.value,
-        occurredAt: generationDraft.occurredAt,
-        outputFormat: buildDiaryOutputFormat(),
-        perspective,
-        userRequirement: generationDraft.userRequirement,
-      },
-      {
-        createFailedDraft: input => diary.createFailedDraft(input),
-        generationDefaults: {
-          resultMode: settings.value.generation.resultMode,
-          stream: settings.value.generation.stream,
-          tavernPresetName: resolveDiaryPresetSelection(settings.value.generation.tavernPresetName),
-        },
-        references: formattedReferences.value,
-        lifecycle: diaryGenerationSession.lifecycle(task.id),
-        source: {
-          fromStartEnd: generationDraft.fromStartEnd,
-          mode: settings.value.generation.sourceMode,
-          rangeText: generationDraft.rangeText,
-          recentCount: generationDraft.recentCount,
-          singleMessageId: generationDraft.singleMessageId,
-        },
-        textProvider: settings.value.textProvider,
-      },
-    );
-
-    if (result.status === 'failed') {
-      failedDraftRawOutput.value = result.rawOutput;
-      diaryGenerationSession.complete(task.id, {
-        currentLabel: '解析失败草稿已保留',
-        resultPage: 'failed-draft',
-        resultParams: { draftId: result.draft.id },
-        resultState: 'failed-draft',
-        resultTitle: '解析失败草稿',
-      });
-      toastr.warning('XML 解析失败，已保存到失败草稿');
-      void phone.presentGeneratedPage('diary', 'failed-draft', '解析失败草稿', { draftId: result.draft.id });
-      return;
-    }
-
-    if (result.status === 'saved') {
-      diaryGenerationSession.complete(task.id, {
-        currentLabel: `已保存日记：${result.saved.entry.title}`,
-        resultPage: 'entry',
-        resultParams: { bookId: result.saved.bookId, entryId: result.saved.entry.id },
-        resultState: 'saved',
-        resultTitle: result.saved.entry.title,
-      });
-      toastr.success('已生成并保存日记');
-      void phone.presentGeneratedPage('diary', 'entry', result.saved.entry.title, {
-        bookId: result.saved.bookId,
-        entryId: result.saved.entry.id,
-      });
-      return;
-    }
-
-    generationState.preview = {
-      action: 'generate',
+    },
+    failureLabel: '建立日记生成任务',
+    payload: () => ({
+      appPrompt: prompts.appPrompts.diary,
       bookId: activeBook.value?.id || '',
-      bookTitle: generationTargetBookTitle.value || `${perspective.name}的日记`,
-      content: result.data.content,
-      draftId: null,
-      generationRecord: result.generationRecord,
-      occurredAt: result.data.occurredAt || generationDraft.occurredAt,
-      perspective,
-      raw: result.rawOutput,
-      sourceBookId: activeBook.value?.id || '',
-      sourceEntryId: '',
-      sourceFloorEnd: getSourceLastFloor(result.source),
-      title: result.data.title,
-      warnings: result.warnings,
-    };
-    const previewParams: Record<string, string> = activeBook.value?.id ? { bookId: activeBook.value.id } : {};
-    persistDiaryPreviewDraft(previewParams);
-    diaryGenerationSession.complete(task.id, {
-      currentLabel: '日记已生成，等待确认',
-      resultPage: 'preview',
-      resultParams: previewParams,
-      resultState: 'preview',
-      resultTitle: '日记预览',
+      bookTitle: generationTargetBookTitle.value,
+      occurredAt: generationDraft.occurredAt,
+      outputFormat: buildDiaryOutputFormat(),
+      perspective: generationPerspective.value!,
+      userRequirement: generationDraft.userRequirement,
+    }),
+    resetPreview: () => {
+      beginDiaryPreviewDraft();
+      generationState.preview = null;
+    },
+    session: diaryGenerationSession,
+    settings: {
+      generationDefaults: {
+        resultMode: settings.value.generation.resultMode,
+        stream: settings.value.generation.stream,
+        tavernPresetName: resolveDiaryPresetSelection(settings.value.generation.tavernPresetName),
+      },
+      references: formattedReferences.value,
+      source: {
+        fromStartEnd: generationDraft.fromStartEnd,
+        mode: settings.value.generation.sourceMode,
+        rangeText: generationDraft.rangeText,
+        recentCount: generationDraft.recentCount,
+        singleMessageId: generationDraft.singleMessageId,
+      },
+      textProvider: settings.value.textProvider,
+    },
+    validate: () => (generationPerspective.value ? null : '请先填写视角角色名'),
+  });
+  if (!outcome) return;
+  const { result, task } = outcome;
+
+  if (result.status === 'failed') {
+    completeSingleGenerationFailedDraft({
+      appId: 'diary',
+      draftId: result.draft.id,
+      rawOutput: result.rawOutput,
+      session: diaryGenerationSession,
+      setRawOutput: rawOutput => {
+        failedDraftRawOutput.value = rawOutput;
+      },
+      taskId: task.id,
     });
-    void phone.presentGeneratedPage(
-      'diary',
-      'preview',
-      '日记预览',
-      activeBook.value?.id ? { bookId: activeBook.value.id } : undefined,
-    );
-  } catch (error) {
-    diaryGenerationSession.fail(task.id, error);
+    return;
   }
+
+  if (result.status === 'saved') {
+    diaryGenerationSession.complete(task.id, {
+      currentLabel: `已保存日记：${result.saved.entry.title}`,
+      resultPage: 'entry',
+      resultParams: { bookId: result.saved.bookId, entryId: result.saved.entry.id },
+      resultState: 'saved',
+      resultTitle: result.saved.entry.title,
+    });
+    toastr.success('已生成并保存日记');
+    void phone.presentGeneratedPage('diary', 'entry', result.saved.entry.title, {
+      bookId: result.saved.bookId,
+      entryId: result.saved.entry.id,
+    });
+    return;
+  }
+
+  generationState.preview = {
+    action: 'generate',
+    bookId: activeBook.value?.id || '',
+    bookTitle: generationTargetBookTitle.value || `${generationPerspective.value!.name}的日记`,
+    content: result.data.content,
+    draftId: null,
+    generationRecord: result.generationRecord,
+    occurredAt: result.data.occurredAt || generationDraft.occurredAt,
+    perspective: generationPerspective.value!,
+    raw: result.rawOutput,
+    sourceBookId: activeBook.value?.id || '',
+    sourceEntryId: '',
+    sourceFloorEnd: getSourceLastFloor(result.source),
+    title: result.data.title,
+    warnings: result.warnings,
+  };
+  const previewParams: Record<string, string> = activeBook.value?.id ? { bookId: activeBook.value.id } : {};
+  persistDiaryPreviewDraft(previewParams);
+  diaryGenerationSession.complete(task.id, {
+    currentLabel: '日记已生成，等待确认',
+    resultPage: 'preview',
+    resultParams: previewParams,
+    resultState: 'preview',
+    resultTitle: '日记预览',
+  });
+  void phone.presentGeneratedPage(
+    'diary',
+    'preview',
+    '日记预览',
+    activeBook.value?.id ? { bookId: activeBook.value.id } : undefined,
+  );
 }
 
 async function runBatchGeneration() {
