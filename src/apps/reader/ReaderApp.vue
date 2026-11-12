@@ -391,7 +391,11 @@ import {
 } from '@/util/runtime';
 import { getCurrentChatScopeKey, isPlaceholderChatScopeKey } from '@/store/chatScoped';
 import { buildChatScopeKey, normalizeChatArchiveId, parseChatScopeKey } from '@/util/chatArchive';
-import { resolveReaderBodySourceRange, type ReaderBodySourceRange } from '@/util/readerRegex';
+import {
+  applyReaderCleanupRules as applyReaderCleanupRulesTo,
+  replaceReaderBodyInRaw,
+  toReaderRegexRule,
+} from '@/util/readerRegex';
 import { getTavernInputValue, sendTavernInput } from '@/util/tavernInput';
 import { onTavernChatRename } from '@/util/tavernChatRenameObserver';
 import { characters, getCharacters, getPastCharacterChats } from '@sillytavern/script';
@@ -675,15 +679,6 @@ function getSelectedReaderRegexRule(ruleId: string, availableRules: RegexDisplay
   }
   if (!ruleId || ruleId.startsWith('__default_')) return null;
   return availableRules.find(rule => rule.id === ruleId) ?? null;
-}
-
-function toReaderRegexRule(rule: RegexDisplayRuleLike | null, fallback: ChatReaderRegexRule): ChatReaderRegexRule {
-  if (!rule) return fallback;
-  return {
-    find: rule.pattern,
-    flags: rule.flags,
-    replace: rule.replacement,
-  };
 }
 
 function onReaderTitleRuleSelect(ruleId: string) {
@@ -1008,47 +1003,8 @@ async function saveChatIfAvailable() {
   if (saveChat) await Promise.resolve(saveChat());
 }
 
-function parseReaderRegexPattern(find: string, flags: string) {
-  const allowed = new Set(['g', 'i', 'm', 's', 'u', 'y']);
-  const normalizeFlags = (value: string) => {
-    let normalized = '';
-    for (const char of value.trim()) {
-      if (allowed.has(char) && !normalized.includes(char)) normalized += char;
-    }
-    return normalized;
-  };
-  const source = find.trim();
-  const literal = source.match(/^\/([\s\S]*)\/([gimsuy]*)$/);
-  if (!literal) return { flags: normalizeFlags(flags), pattern: source };
-  return { flags: normalizeFlags(`${literal[2] || ''}${flags}`), pattern: literal[1] };
-}
-
-function replaceReaderBodyInRaw(
-  rawText: string,
-  currentBody: string,
-  nextBody: string,
-  sourceRange: ReaderBodySourceRange | null = resolveReaderBodySourceRange(
-    rawText,
-    currentBody,
-    activeBodyRule.value,
-    readerRegexUsage.value.contentRuleId,
-  ),
-) {
-  if (rawText === currentBody) return nextBody;
-  if (!sourceRange || rawText.slice(sourceRange.start, sourceRange.end) !== currentBody) return null;
-  return `${rawText.slice(0, sourceRange.start)}${nextBody}${rawText.slice(sourceRange.end)}`;
-}
-
 function applyReaderCleanupRules(body: string) {
-  return selectedCleanupRules.value.reduce((nextBody, rule) => {
-    try {
-      const parsed = parseReaderRegexPattern(rule.pattern, rule.flags);
-      if (!parsed.pattern.trim()) return nextBody;
-      return nextBody.replace(new RegExp(parsed.pattern, parsed.flags), rule.replacement).trim();
-    } catch {
-      return nextBody;
-    }
-  }, body);
+  return applyReaderCleanupRulesTo(body, selectedCleanupRules.value);
 }
 
 async function applyReaderBaguContent(content: string) {

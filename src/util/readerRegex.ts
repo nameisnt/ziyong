@@ -1,4 +1,5 @@
 import type { ChatReaderRegexRule } from '@/store/reader';
+import type { RegexDisplayRuleLike } from '@/util/regexDisplay';
 
 export interface ReaderRegexInput {
   messageIndex: number;
@@ -309,4 +310,63 @@ export function transformReaderMessages(
       finish(() => resolve(transformReaderMessagesSync(safeMessages, safeTitleRule, safeBodyRule)));
     }
   });
+}
+
+const ALLOWED_REGEX_FLAGS = new Set(['g', 'i', 'm', 's', 'u', 'y']);
+
+function normalizeRegexFlags(value: string): string {
+  let normalized = '';
+  for (const char of value.trim()) {
+    if (ALLOWED_REGEX_FLAGS.has(char) && !normalized.includes(char)) normalized += char;
+  }
+  return normalized;
+}
+
+export function parseReaderRegexPattern(find: string, flags: string): { flags: string; pattern: string } {
+  const source = find.trim();
+  const literal = source.match(/^\/([\s\S]*)\/([gimsuy]*)$/);
+  if (!literal) return { flags: normalizeRegexFlags(flags), pattern: source };
+  return { flags: normalizeRegexFlags(`${literal[2] || ''}${flags}`), pattern: literal[1] };
+}
+
+export interface ReaderCleanupRule {
+  pattern: string;
+  flags: string;
+  replacement: string;
+}
+
+export function applyReaderCleanupRules(body: string, rules: readonly ReaderCleanupRule[]): string {
+  return rules.reduce((nextBody, rule) => {
+    try {
+      const parsed = parseReaderRegexPattern(rule.pattern, rule.flags);
+      if (!parsed.pattern.trim()) return nextBody;
+      return nextBody.replace(new RegExp(parsed.pattern, parsed.flags), rule.replacement).trim();
+    } catch {
+      // 单条清理规则不生效不该拖垮整段正文，保持上一步的结果继续往下走。
+      return nextBody;
+    }
+  }, body);
+}
+
+export function replaceReaderBodyInRaw(
+  rawText: string,
+  currentBody: string,
+  nextBody: string,
+  sourceRange: ReaderBodySourceRange | null,
+): string | null {
+  if (rawText === currentBody) return nextBody;
+  if (!sourceRange || rawText.slice(sourceRange.start, sourceRange.end) !== currentBody) return null;
+  return `${rawText.slice(0, sourceRange.start)}${nextBody}${rawText.slice(sourceRange.end)}`;
+}
+
+export function toReaderRegexRule(
+  rule: RegexDisplayRuleLike | null,
+  fallback: ChatReaderRegexRule,
+): ChatReaderRegexRule {
+  if (!rule) return fallback;
+  return {
+    find: rule.pattern,
+    flags: rule.flags,
+    replace: rule.replacement,
+  };
 }
