@@ -17,6 +17,7 @@ test('theater root and domain files have one app-owned directory', async () => {
     'TheaterEntryEditorPage.vue',
     'TheaterHistoryPage.vue',
     'TheaterMixedContent.vue',
+    'generation.ts',
     'theaterTypeRandom.ts',
   ]);
 

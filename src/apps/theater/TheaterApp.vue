@@ -252,6 +252,7 @@ import { useFailedDraftRegeneration } from '@/composables/useFailedDraftRegenera
 import { useSingleGenerationTaskSession } from '@/composables/useSingleGenerationTaskSession';
 import { getRegisteredPhoneGenerationAdapter } from '@/core/appRegistry';
 import { buildGenerationPreview, captureGenerationPrompt, generateContent } from '@/core/generationService';
+import { buildTheaterGenerateConfig, buildTheaterVersionSplitPrompt } from './generation';
 import { usePhoneStore } from '@/store/phone';
 import { usePromptStore } from '@/store/prompts';
 import { useSettingsStore } from '@/store/settings';
@@ -682,18 +683,16 @@ const generationPromptPreview = computed(() => {
 function captureTheaterPrompt() {
   return captureGenerationPrompt(
     theaterGenerationAdapter,
-    {
+    buildTheaterGenerateConfig({
       appPrompt: theaterGenerationAppPrompt.value,
       entryId: rewriteTargetEntry.value?.id || '',
-      existingContent: '',
       mode: theaterGenerationMode.value,
       outputFormat: buildOutputFormat(),
-      renderMode: 'markdown',
       typeId: generationDraft.typeId,
       typeName: generationDraft.typeName,
       typePrompt: generationDraft.typePrompt,
       userRequirement: generationDraft.userRequirement,
-    },
+    }),
     {
       generationDefaults: {
         resultMode: settings.value.generation.resultMode,
@@ -846,12 +845,13 @@ function openEditEntry(entryId: string, versionId?: string) {
 async function splitCurrentTheaterVersion() {
   const entry = activeEntry.value;
   const versionId = viewedEntryVersionId.value;
-  if (!entry || !versionId || entry.versions.length <= 1) return;
-  const versionIndex = entry.versions.findIndex(version => version.id === versionId);
-  const confirmed = await phone.confirmNotice(
-    `将当前版本 ${versionIndex + 1}/${entry.versions.length} 拆分为独立小剧场，并从原记录中移除吗？`,
-    { confirmLabel: '拆分版本', kind: 'warning' },
-  );
+  if (!entry) return;
+  const prompt = buildTheaterVersionSplitPrompt(entry.versions, versionId);
+  if (!prompt) return;
+  const confirmed = await phone.confirmNotice(prompt.message, {
+    confirmLabel: prompt.confirmLabel,
+    kind: prompt.kind,
+  });
   if (!confirmed) return;
   const result = theater.splitEntryVersion(entry.id, versionId);
   if (!result) {
@@ -1124,18 +1124,16 @@ async function runGeneration() {
     });
     const result = await generateContent(
       theaterGenerationAdapter,
-      {
+      buildTheaterGenerateConfig({
         appPrompt: theaterGenerationAppPrompt.value,
         entryId: generationTarget.entryId,
-        existingContent: '',
         mode: generationTarget.mode,
         outputFormat: buildOutputFormat(),
-        renderMode: 'markdown',
         typeId: generationDraft.typeId,
         typeName: generationDraft.typeName,
         typePrompt: generationDraft.typePrompt,
         userRequirement: generationDraft.userRequirement,
-      },
+      }),
       {
         createFailedDraft: input => theater.createFailedDraft(input),
         generationDefaults: {
