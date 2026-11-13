@@ -1,4 +1,5 @@
 import '@/global.css';
+<<<<<<< HEAD
 import { ensureNativeLauncher } from '@/core/nativeLauncher';
 import { scheduleIdleTask } from '@/util/idleTask';
 
@@ -62,3 +63,10 @@ if (document.readyState === 'loading') {
 } else {
   boot();
 }
+=======
+import { initPanel } from '@/panel';
+
+$(() => {
+  initPanel();
+});
+>>>>>>> 39003e313f7f920435509ae1b66da388a67acda2
