@@ -4,6 +4,14 @@ export const RUNNING_VERSION = manifest.version;
 export const RELEASE_SEEN_FIELD = 'sillytavern_phone_last_seen_release';
 export const RELEASE_HISTORY = [
   {
+    version: '1.2.23',
+    notes: [
+      '重构：日记批量、写卡提示词、阅读正则、书信格式化、小剧场的纯逻辑拆成独立模块并补上单元测试，用户可见行为不变。',
+      '重构：日记、书信、小剧场共用同一条单次生成流程；写卡工坊的成品页、资料导入页与提示词详情弹窗拆成独立组件；类型整理与阅读规则的状态搬进 composable。均无行为变化。',
+      '修复：内置日记预设默认启用思维链提示词，与界面直接使用该预设时的默认开关一致。',
+    ],
+  },
+  {
     version: '1.2.22',
     notes: [
       '修复：8 处失败提示把不存在的 phone.reportFailure 与错误的 error 变量写进提示，改为直接使用 reportFailure 与 catch 到的参数。',
