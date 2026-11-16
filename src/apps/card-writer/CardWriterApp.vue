@@ -330,204 +330,66 @@
       </GenerationPanel>
     </section>
 
-    <section v-else-if="route.page === 'preview'" class="pc-card-writer-page pc-card-writer-preview-page">
-      <nav v-if="previewStages.length > 1" class="pc-card-writer-preview-stages" aria-label="生成阶段">
-        <button
-          v-for="stage in previewStages"
-          :key="stage.id"
-          :class="['pc-segment-btn', stage.status, { active: activePreviewStageId === stage.id }]"
-          type="button"
-          :title="stage.error || stage.label"
-          @click="activePreviewStageId = stage.id"
-        >
-          <i :class="stageIcon(stage.status)"></i>
-          <span>{{ stage.label }}</span>
-        </button>
-      </nav>
-      <GenerationPreviewPanel
-        :key="activePreviewStage?.id || 'preview'"
-        :content="activePreviewStage?.content || ''"
-        :raw="activePreviewStage?.raw || ''"
-        :editable="true"
-        copy-enabled
-        :raw-editable="true"
-        :save-disabled="savingPreview || running"
-        :scan-enabled="true"
-        :short-content-guard="false"
-        :source-label="preview.sourceLabel"
-        :text-provider-summary="preview.providerSummary"
-        :title="activePreviewStage?.label || preview.title"
-        :warnings="activePreviewWarnings"
-        :save-label="previewSaveLabel"
-        :reparse-handler="reparseActiveStage"
-        :reasoning="activePreviewStage?.reasoning || ''"
-        reasoning-editable
-        @update:content="updateActiveStageContent"
-        @update:raw="updateActiveStageRaw"
-        @update:reasoning="updateActiveStageReasoning"
-        @save="savePreview"
-      />
-    </section>
+    <CardWriterPreviewPage
+      v-else-if="route.page === 'preview'"
+      :active-stage-id="activePreviewStageId"
+      :preview="preview"
+      :reparse-handler="reparseActiveStage"
+      :running="running"
+      :save-label="previewSaveLabel"
+      :saving="savingPreview"
+      :stages="previewStages"
+      :warnings="activePreviewWarnings"
+      @save="savePreview"
+      @update:active-stage-id="activePreviewStageId = $event"
+      @update:content="updateActiveStageContent"
+      @update:raw="updateActiveStageRaw"
+      @update:reasoning="updateActiveStageReasoning"
+    />
 
-    <section v-else-if="route.page === 'library'" class="pc-card-writer-page">
-      <header class="pc-directory-toolbar pc-card-writer-head">
-        <span class="pc-directory-count">{{ filteredDocuments.length }}/{{ documents.length }} 个成品</span>
-        <SearchableCombobox
-          class="pc-card-writer-chat-filter"
-          input-label="筛选来源聊天"
-          :model-value="libraryChatFilter"
-          :options="libraryChatOptions"
-          placeholder="全部聊天"
-          toggle-title="展开来源聊天筛选"
-          @update:model-value="libraryChatFilter = $event"
-        />
-        <button
-          class="pc-icon-btn"
-          type="button"
-          :class="{ active: documentBulkMode }"
-          :disabled="!filteredDocuments.length"
-          aria-label="批量删除写卡成品"
-          title="批量删除写卡成品"
-          @click="documentBulkMode ? cancelDocumentBulk() : startDocumentBulk()"
-        >
-          <i class="fa-solid fa-list-check"></i>
-        </button>
-      </header>
-      <BulkSelectionBar
-        v-if="documentBulkMode"
-        :all-selected="allDocumentsSelected"
-        :selected-count="selectedDocumentIds.length"
-        :total-count="filteredDocuments.length"
-        @cancel="cancelDocumentBulk"
-        @remove="deleteSelectedDocuments"
-        @toggle-all="toggleAllDocuments"
-      />
-      <div v-if="filteredDocuments.length" class="pc-directory-list pc-card-writer-library">
-        <article v-for="document in filteredDocuments" :key="document.id" class="pc-list-row pc-card-writer-document">
-          <BulkSelectionCheckbox
-            v-if="documentBulkMode"
-            :model-value="selectedDocumentIdSet.has(document.id)"
-            :label="`选择 ${document.title}`"
-            @update:model-value="setDocumentSelected(document.id, $event)"
-          />
-          <button
-            type="button"
-            class="pc-card-writer-document-open"
-            @click="
-              documentBulkMode
-                ? setDocumentSelected(document.id, !selectedDocumentIdSet.has(document.id))
-                : openDocument(document)
-            "
-          >
-            <strong :title="document.title">{{ document.title }}</strong>
-            <small :title="formatDocumentMeta(document)">{{ formatDocumentMeta(document) }}</small>
-          </button>
-          <button
-            v-if="!documentBulkMode"
-            class="pc-icon-btn"
-            type="button"
-            aria-label="复制成品"
-            title="复制成品"
-            @click="copyDocument(document)"
-          >
-            <i class="fa-solid fa-copy"></i>
-          </button>
-          <button
-            v-if="!documentBulkMode"
-            class="pc-icon-btn"
-            type="button"
-            aria-label="导入资料表"
-            title="导入资料表"
-            @click="openProfileImport(document)"
-          >
-            <i class="fa-solid fa-table-list"></i>
-          </button>
-          <button
-            v-if="!documentBulkMode"
-            class="pc-icon-btn danger"
-            type="button"
-            aria-label="删除成品"
-            title="删除成品"
-            @click="deleteDocument(document)"
-          >
-            <i class="fa-solid fa-trash"></i>
-          </button>
-        </article>
-      </div>
-      <EmptyState v-else :title="documents.length ? '当前筛选下没有写卡成品' : '还没有保存写卡成品'" />
-    </section>
+    <CardWriterLibraryPage
+      v-else-if="route.page === 'library'"
+      :all-selected="allDocumentsSelected"
+      :bulk-mode="documentBulkMode"
+      :chat-filter="libraryChatFilter"
+      :chat-options="libraryChatOptions"
+      :document-count="documents.length"
+      :rows="libraryRows"
+      :selected-count="selectedDocumentIds.length"
+      @cancel-bulk="cancelDocumentBulk"
+      @copy="copyDocument"
+      @delete="deleteDocument"
+      @import-profiles="openProfileImport"
+      @open="openDocument"
+      @remove-selected="deleteSelectedDocuments"
+      @select="setDocumentSelected"
+      @toggle-all="toggleAllDocuments"
+      @toggle-bulk="documentBulkMode ? cancelDocumentBulk() : startDocumentBulk()"
+      @update:chat-filter="libraryChatFilter = $event"
+    />
 
-    <section v-else-if="route.page === 'profile-import'" class="pc-card-writer-page">
-      <article class="pc-section-card pc-card-writer-import-summary">
-        <div>
-          <span class="pc-kicker">
-            导入目标
-            <InfoHint text="成品按 XML 标签拆分。世界观区域、详情和事件会成为独立资料；同名人物的基础与性格会合并。" />
-          </span>
-          <strong>{{ phone.viewingScopeMeta.ownerName }} / {{ phone.viewingScopeMeta.chatTitle }}</strong>
-          <small>只会写入上方聊天的资料表，不会改动写卡成品或创建聊天文件。</small>
-        </div>
-      </article>
-
-      <div class="pc-field-group">
-        <label class="pc-field-label">遇到相同来源资料</label>
-        <div class="pc-card-writer-conflict-modes">
-          <button
-            v-for="option in importConflictOptions"
-            :key="option.value"
-            :class="['pc-segment-btn', { active: importConflictMode === option.value }]"
-            type="button"
-            @click="importConflictMode = option.value"
-          >
-            {{ option.label }}
-          </button>
-        </div>
-      </div>
-
-      <p v-if="profileImportError" class="pc-card-writer-import-error">{{ profileImportError }}</p>
-
-      <div v-if="profileImportItems.length" class="pc-directory-list pc-card-writer-import-list">
-        <article v-for="item in profileImportItems" :key="item.candidate.sourceKey" class="pc-list-row">
-          <input v-model="item.selected" type="checkbox" :aria-label="`选择 ${item.candidate.title}`" />
-          <span class="pc-card-writer-import-copy">
-            <strong>{{ item.candidate.title }}</strong>
-            <small>{{ profileKindLabel(item.candidate.kind) }} · &lt;{{ item.candidate.tagName }}&gt;</small>
-          </span>
-          <span v-if="findImportConflict(item)" class="pc-card-writer-import-conflict">已存在</span>
-          <SearchableCombobox
-            class="pc-card-writer-import-mapping"
-            input-label="目标资料表"
-            :model-value="item.sheetKey"
-            :options="profileTableOptions"
-            placeholder="选择资料表"
-            @update:model-value="onImportTableChange(item, $event)"
-          />
-        </article>
-      </div>
-      <EmptyState
-        v-else
-        title="没有识别到可导入的 XML 标签"
-        description="请在成品中使用世界观、角色基础、性格或 NPC 标签。"
-      />
-
-      <div class="pc-form-actions">
-        <button class="pc-soft-btn" type="button" :disabled="!profileImportItems.length" @click="toggleAllImportItems">
-          {{ allImportItemsSelected ? '取消全选' : '全选' }}
-        </button>
-        <button class="pc-primary-btn" type="button" :disabled="!selectedImportCount" @click="importSelectedProfiles">
-          导入 {{ selectedImportCount }} 项
-        </button>
-      </div>
-    </section>
+    <CardWriterProfileImportPage
+      v-else-if="route.page === 'profile-import'"
+      :all-selected="allImportItemsSelected"
+      :chat-title="phone.viewingScopeMeta.chatTitle"
+      :conflict-mode="importConflictMode"
+      :conflict-options="importConflictOptions"
+      :error-message="profileImportError"
+      :owner-name="phone.viewingScopeMeta.ownerName"
+      :rows="profileImportRows"
+      :selected-count="selectedImportCount"
+      :table-options="profileTableOptions"
+      @import="importSelectedProfiles"
+      @select="onImportRowSelect"
+      @toggle-all="toggleAllImportItems"
+      @update:conflict-mode="importConflictMode = $event"
+      @update-sheet="onImportRowSheet"
+    />
   </section>
 </template>
 
 <script setup lang="ts">
-import BulkSelectionBar from '@/components/BulkSelectionBar.vue';
-import BulkSelectionCheckbox from '@/components/BulkSelectionCheckbox.vue';
-import EmptyState from '@/components/EmptyState.vue';
 import GenerationPanel from '@/components/GenerationPanel.vue';
-import GenerationPreviewPanel from '@/components/GenerationPreviewPanel.vue';
 import InfoHint from '@/components/InfoHint.vue';
 import PreviewDraftNotice from '@/components/PreviewDraftNotice.vue';
 import SearchableCombobox from '@/components/SearchableCombobox.vue';
@@ -572,7 +434,10 @@ import {
   parseActorInput,
   stageIcon,
 } from './prompt';
-import { formatCardWriterDocumentChat, isCardWriterDocumentFromScope } from './references';
+import { formatCardWriterDocumentChat, formatCardWriterDocumentMeta, isCardWriterDocumentFromScope } from './references';
+import CardWriterLibraryPage from './CardWriterLibraryPage.vue';
+import CardWriterPreviewPage from './CardWriterPreviewPage.vue';
+import CardWriterProfileImportPage from './CardWriterProfileImportPage.vue';
 import { useCardWriterStore, type CardWriterDocument, type CardWriterStageResult } from './store';
 import {
   parseCardWriterProfileCandidates,
@@ -747,6 +612,13 @@ const filteredDocuments = computed(() => {
   }
   return documents.value.filter(document => document.sourceScopeKey === libraryChatFilter.value);
 });
+const libraryRows = computed(() =>
+  filteredDocuments.value.map(document => ({
+    document,
+    meta: formatCardWriterDocumentMeta(document, currentChatScopeKey.value),
+    selected: selectedDocumentIdSet.value.has(document.id),
+  })),
+);
 const {
   active: documentBulkMode,
   allSelected: allDocumentsSelected,
@@ -758,6 +630,17 @@ const {
   toggleAll: toggleAllDocuments,
 } = useBulkSelection(() => filteredDocuments.value.map(document => document.id));
 const selectedImportCount = computed(() => profileImportItems.value.filter(item => item.selected).length);
+const profileImportRows = computed(() =>
+  profileImportItems.value.map(item => ({
+    conflict: Boolean(findImportConflict(item)),
+    key: item.candidate.sourceKey,
+    kindLabel: profileKindLabel(item.candidate.kind),
+    selected: item.selected,
+    sheetKey: item.sheetKey,
+    tagName: item.candidate.tagName,
+    title: item.candidate.title,
+  })),
+);
 const allImportItemsSelected = computed(
   () => Boolean(profileImportItems.value.length) && profileImportItems.value.every(item => item.selected),
 );
@@ -1278,6 +1161,16 @@ function onImportTableChange(item: CardWriterProfileImportItem, sheetKey: string
   item.sheetKey = sheetKey;
 }
 
+function onImportRowSelect(key: string, selected: boolean) {
+  const item = profileImportItems.value.find(row => row.candidate.sourceKey === key);
+  if (item) item.selected = selected;
+}
+
+function onImportRowSheet(key: string, sheetKey: string) {
+  const item = profileImportItems.value.find(row => row.candidate.sourceKey === key);
+  if (item) onImportTableChange(item, sheetKey);
+}
+
 function toggleAllImportItems() {
   const selected = !allImportItemsSelected.value;
   profileImportItems.value.forEach(item => {
@@ -1492,17 +1385,6 @@ async function deleteSelectedDocuments() {
   toastr.success(`已删除 ${selected.length} 个写卡成品`);
 }
 
-function formatDate(value: string) {
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return value;
-  return new Intl.DateTimeFormat('zh-CN', {
-    month: '2-digit',
-    day: '2-digit',
-    hour: '2-digit',
-    minute: '2-digit',
-  }).format(date);
-}
-
 function getCurrentOwnerLabel(scopeKey: string) {
   const scope = parseChatScopeKey(scopeKey);
   if (scope.kind === 'group') {
@@ -1532,10 +1414,6 @@ function isCurrentChatDocument(document: CardWriterDocument) {
   return isCardWriterDocumentFromScope(document, currentChatScopeKey.value);
 }
 
-function formatDocumentMeta(document: CardWriterDocument) {
-  return `${isCurrentChatDocument(document) ? '当前 · ' : ''}${formatCardWriterDocumentChat(document)} · ${document.taskLabel} · ${formatDate(document.updatedAt)}`;
-}
-
 onMounted(() => {
   void refreshWorldbooks();
   if (route.value.page === 'preview' && !activeDocumentId.value) restoreWriterPreviewDraft();
@@ -1555,26 +1433,15 @@ onMounted(() => {
   padding: 14px;
 }
 
-.pc-card-writer-head,
 .pc-card-writer-task-row,
 .pc-card-writer-worldbook,
 .pc-card-writer-option-row,
 .pc-card-writer-brief-head,
-.pc-card-writer-progress header,
-.pc-card-writer-document {
+.pc-card-writer-progress header {
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 12px;
-}
-
-.pc-card-writer-head .pc-directory-count {
-  flex: 0 0 auto;
-}
-
-.pc-card-writer-chat-filter {
-  min-width: 0;
-  flex: 0 1 230px;
 }
 
 .pc-card-writer-task-row {
@@ -1695,12 +1562,6 @@ onMounted(() => {
   padding: 14px 0;
 }
 
-.pc-card-writer-document small {
-  color: var(--pc-muted);
-  font-size: 12px;
-  line-height: 1.45;
-}
-
 .pc-card-writer-worldbook {
   padding: 12px 0;
 }
@@ -1716,8 +1577,7 @@ onMounted(() => {
   gap: 6px;
 }
 
-.pc-card-writer-worldbook > div,
-.pc-card-writer-document-open {
+.pc-card-writer-worldbook > div {
   display: grid;
   min-width: 0;
   gap: 4px;
@@ -1734,65 +1594,9 @@ onMounted(() => {
   font-weight: 700;
 }
 
-.pc-card-writer-stage-list,
-.pc-card-writer-library {
+.pc-card-writer-stage-list {
   display: grid;
   gap: 0;
-}
-
-.pc-card-writer-import-summary,
-.pc-card-writer-import-summary > div,
-.pc-card-writer-import-copy {
-  display: grid;
-  min-width: 0;
-  gap: 4px;
-}
-
-.pc-card-writer-import-summary {
-  grid-template-columns: minmax(0, 1fr) auto;
-  align-items: start;
-}
-
-.pc-card-writer-import-summary small,
-.pc-card-writer-import-copy small {
-  color: var(--pc-muted);
-  font-size: 12px;
-}
-
-.pc-card-writer-conflict-modes {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 8px;
-}
-
-.pc-card-writer-import-list {
-  display: grid;
-  gap: 0;
-}
-
-.pc-card-writer-import-list .pc-list-row {
-  grid-template-columns: auto minmax(0, 1fr) auto;
-}
-
-.pc-card-writer-import-mapping {
-  grid-column: 2 / -1;
-  width: 100%;
-}
-
-.pc-card-writer-import-error {
-  min-width: 0;
-  max-width: 100%;
-  margin: 0;
-  color: var(--pc-danger);
-  font-size: 12px;
-  overflow-wrap: anywhere;
-  word-break: break-word;
-}
-
-.pc-card-writer-import-conflict {
-  color: var(--pc-danger);
-  font-size: 11px;
-  font-weight: 700;
 }
 
 .pc-card-writer-stage {
@@ -1828,54 +1632,5 @@ onMounted(() => {
   font-size: 11px;
   text-overflow: ellipsis;
   white-space: nowrap;
-}
-
-.pc-card-writer-document-open {
-  flex: 1;
-  border: 0;
-  padding: 0;
-  background: transparent;
-  color: var(--pc-text);
-  text-align: left;
-  cursor: pointer;
-}
-
-.pc-card-writer-document-open strong,
-.pc-card-writer-document-open small {
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.pc-card-writer-preview-page {
-  grid-template-rows: auto minmax(0, 1fr);
-  height: 100%;
-}
-
-.pc-card-writer-preview-stages {
-  display: flex;
-  min-width: 0;
-  gap: 8px;
-  overflow-x: auto;
-  padding-bottom: 2px;
-}
-
-.pc-card-writer-preview-stages .pc-segment-btn {
-  flex: 0 0 auto;
-  max-width: 190px;
-}
-
-.pc-card-writer-preview-stages .pc-segment-btn span {
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.pc-card-writer-preview-stages .pc-segment-btn.failed {
-  color: var(--pc-danger);
-}
-
-.pc-card-writer-preview-page :deep(.pc-generation-preview) {
-  min-height: 100%;
 }
 </style>

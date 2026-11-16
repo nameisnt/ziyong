@@ -15,6 +15,22 @@ export function formatCardWriterDocumentChat(document: CardWriterDocument) {
   return [document.sourceOwnerLabel, chatLabel].filter(Boolean).join(' / ');
 }
 
+function formatDocumentDate(value: string) {
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return value;
+  return new Intl.DateTimeFormat('zh-CN', {
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+  }).format(date);
+}
+
+export function formatCardWriterDocumentMeta(document: CardWriterDocument, scopeKey: string) {
+  const current = isCardWriterDocumentFromScope(document, scopeKey) ? '当前 · ' : '';
+  return `${current}${formatCardWriterDocumentChat(document)} · ${document.taskLabel} · ${formatDocumentDate(document.updatedAt)}`;
+}
+
 export function isCardWriterDocumentFromScope(document: CardWriterDocument, scopeKey: string) {
   return Boolean(document.sourceScopeKey && scopeKey && areChatScopeKeysEquivalent(document.sourceScopeKey, scopeKey));
 }

@@ -5,11 +5,12 @@ import test from 'node:test';
 
 const readSource = relativePath => readFile(new URL(`../../${relativePath}`, import.meta.url), 'utf8');
 
-const [panel, page, failedPage, cardWriter, digest, relationship, customHost] = await Promise.all([
+const [panel, page, failedPage, cardWriter, cardWriterPreview, digest, relationship, customHost] = await Promise.all([
   readSource('src/components/GenerationPreviewPanel.vue'),
   readSource('src/components/GenerationPreviewPage.vue'),
   readSource('src/components/FailedDraftRepairPage.vue'),
   readSource('src/apps/card-writer/CardWriterApp.vue'),
+  readSource('src/apps/card-writer/CardWriterPreviewPage.vue'),
   readSource('src/apps/digest/DigestApp.vue'),
   readSource('src/apps/relationship/RelationshipApp.vue'),
   readSource('src/apps/app-builder/CustomAppHost.vue'),
@@ -35,8 +36,9 @@ test('shared failed-draft shell owns reasoning, warnings, and raw-output semanti
 });
 
 test('special preview consumers use the shared capabilities instead of a second raw/failed shell', () => {
-  assert.match(cardWriter, /:reasoning="activePreviewStage\?\.reasoning \|\| ''"/);
+  assert.match(cardWriterPreview, /:reasoning="activeStage\?\.reasoning \|\| ''"/);
   assert.doesNotMatch(cardWriter, /<ReasoningModal/);
+  assert.doesNotMatch(cardWriterPreview, /<ReasoningModal/);
   for (const source of [digest, relationship, customHost]) {
     assert.match(source, /<FailedDraftRepairPage/);
     assert.doesNotMatch(source, /<RawOutputEditor/);
