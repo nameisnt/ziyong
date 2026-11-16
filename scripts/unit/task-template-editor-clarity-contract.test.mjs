@@ -5,9 +5,10 @@ import test from 'node:test';
 
 const readSource = relativePath => readFile(new URL(`../../${relativePath}`, import.meta.url), 'utf8');
 
-const [editor, promptsApp, relationshipModule, relationshipGeneration] = await Promise.all([
+const [editor, promptsApp, promptDialogs, relationshipModule, relationshipGeneration] = await Promise.all([
   readSource('src/apps/prompts/PromptAppEditorPage.vue'),
   readSource('src/apps/prompts/PromptsApp.vue'),
+  readSource('src/apps/prompts/PromptDetailDialogs.vue'),
   readSource('src/apps/relationship/index.ts'),
   readSource('src/apps/relationship/generation.ts'),
 ]);
@@ -16,7 +17,7 @@ test('task template editor shows variable meaning beside its placeholder', () =>
   assert.match(editor, /<span>\{\{ variable\.label \}\}<\/span>/);
   assert.match(editor, /<code>\{\{ formatVariable\(variable\.key\) \}\}<\/code>/);
   assert.match(editor, /aria-label="`插入\$\{variable\.label\}占位符/);
-  assert.match(promptsApp, /<span>\{\{ variable\.label \}\}<\/span>\s*<code>/);
+  assert.match(promptDialogs, /<span>\{\{ variable\.label \}\}<\/span>\s*<code>/);
 });
 
 test('task template editor provides a readable substitution preview', () => {

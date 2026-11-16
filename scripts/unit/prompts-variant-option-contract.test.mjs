@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import test from 'node:test';
 
-const source = await readFile(new URL('../../src/apps/prompts/PromptsApp.vue', import.meta.url), 'utf8');
+const source = await readFile(new URL('../../src/apps/prompts/PromptDetailDialogs.vue', import.meta.url), 'utf8');
 
 function rulesFor(selector) {
   return [...source.matchAll(/([^{}]+)\{([^{}]*)\}/g)]
@@ -20,17 +20,17 @@ function declarationsFor(body) {
 test('prompt variants use shared option buttons instead of segment navigation', () => {
   const failures = [];
 
-  const groupStart = source.slice(source.indexOf('<div\n            v-if="activeAppPromptGroup.items.length > 1"'));
-  const groupTag = groupStart.slice(0, groupStart.indexOf('\n          >') + 12);
+  const groupStart = source.slice(source.indexOf('v-if="appGroup.items.length > 1"'));
+  const groupTag = groupStart.slice(0, 240);
   if (
     !groupTag.includes('class="pc-prompt-variant-grid"') ||
     !groupTag.includes('role="group"') ||
-    !groupTag.includes(':aria-label="`${activeAppPromptGroup.label}提示词选项`"')
+    !groupTag.includes(':aria-label="`${appGroup.label}提示词选项`"')
   ) {
     failures.push('prompt variants are not exposed as a labelled same-page option group');
   }
   if (
-    !/:class="\['pc-soft-btn', 'pc-prompt-variant-option', \{ active: activeAppPrompt\.openKey === item\.openKey \}\]"/.test(
+    !/:class="\['pc-soft-btn', 'pc-prompt-variant-option', \{ active: appPrompt\.openKey === item\.openKey \}\]"/.test(
       source,
     )
   ) {
@@ -39,7 +39,7 @@ test('prompt variants use shared option buttons instead of segment navigation', 
   if (/pc-prompt-variant-grid[\s\S]*?:class="\['pc-segment-btn'/.test(source)) {
     failures.push('prompt variants still use the segment tab class');
   }
-  if (!/:aria-pressed="activeAppPrompt\.openKey === item\.openKey"/.test(source)) {
+  if (!/:aria-pressed="appPrompt.openKey === item.openKey"/.test(source)) {
     failures.push('prompt variant options do not expose their selected state');
   }
   if (rulesFor('.pc-prompt-variant-grid .pc-segment-btn').length) {

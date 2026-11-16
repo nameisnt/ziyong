@@ -8,7 +8,7 @@ const sources = Object.fromEntries(
     [
       ['creation', '../../src/components/CreationModeModal.vue'],
       ['preview', '../../src/components/GenerationPreviewPanel.vue'],
-      ['prompts', '../../src/apps/prompts/PromptsApp.vue'],
+      ['prompts', '../../src/apps/prompts/PromptDetailDialogs.vue'],
     ].map(async ([key, path]) => [key, await readFile(new URL(path, import.meta.url), 'utf8')]),
   ),
 );

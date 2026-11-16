@@ -10,7 +10,7 @@ const modalSources = await Promise.all(
     ['creation', '../../src/components/CreationModeModal.vue', '.pc-creation-modal-mask'],
     ['bagu', '../../src/components/BaguHitDetailsModal.vue', '.pc-bagu-hit-modal-mask'],
     ['preview', '../../src/components/GenerationPreviewPanel.vue', '.pc-preview-dialog-backdrop'],
-    ['prompts', '../../src/apps/prompts/PromptsApp.vue', '.pc-prompt-detail-backdrop'],
+    ['prompts', '../../src/apps/prompts/PromptDetailDialogs.vue', '.pc-prompt-detail-backdrop'],
     ['phone', '../../src/components/PhoneHome.vue', '.pc-home-group-manager-backdrop'],
   ].map(async ([key, path, selector]) => ({
     key,

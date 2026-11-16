@@ -12,6 +12,7 @@ test('prompts owns its root and exclusive files while the theater group field re
 
   assert.deepEqual(files, [
     'PromptAppEditorPage.vue',
+    'PromptDetailDialogs.vue',
     'PromptGroupEditorPage.vue',
     'PromptOutputEditorPage.vue',
     'PromptPhraseEditorPage.vue',

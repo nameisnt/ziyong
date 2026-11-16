@@ -3,12 +3,13 @@ import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import test from 'node:test';
 
-const [globalCss, home, overlay, theme, prompts, bookShelf, diary, extras, letters, summary] = await Promise.all([
+const [globalCss, home, overlay, theme, prompts, promptDialogs, bookShelf, diary, extras, letters, summary] = await Promise.all([
   readFile(new URL('../../src/global.css', import.meta.url), 'utf8'),
   readFile(new URL('../../src/components/PhoneHome.vue', import.meta.url), 'utf8'),
   readFile(new URL('../../src/components/PhoneOverlay.vue', import.meta.url), 'utf8'),
   readFile(new URL('../../src/apps/theme/ThemeApp.vue', import.meta.url), 'utf8'),
   readFile(new URL('../../src/apps/prompts/PromptsApp.vue', import.meta.url), 'utf8'),
+  readFile(new URL('../../src/apps/prompts/PromptDetailDialogs.vue', import.meta.url), 'utf8'),
   readFile(new URL('../../src/components/BookShelf.vue', import.meta.url), 'utf8'),
   readFile(new URL('../../src/apps/diary/DiaryApp.vue', import.meta.url), 'utf8'),
   readFile(new URL('../../src/apps/extras/ExtrasApp.vue', import.meta.url), 'utf8'),
@@ -52,9 +53,10 @@ test('each paper theme gives the shared semantic glyph its own rendering profile
 });
 
 test('prompt App choices reuse the same theme-aware AppIcon entry as the home screen', () => {
-  assert.ok((prompts.match(/<AppIcon/gu) || []).length >= 3);
+  assert.ok((`${prompts}${promptDialogs}`.match(/<AppIcon/gu) || []).length >= 3);
   assert.match(prompts, /:asset-path="group\.assetPath"/u);
-  assert.match(prompts, /:default-icon="activeAppPromptGroup\.defaultIcon"/u);
+  assert.match(promptDialogs, /:asset-path="appGroup\.assetPath"/u);
+  assert.match(promptDialogs, /:default-icon="appGroup\.defaultIcon"/u);
 });
 
 test('paper artwork stays unframed on home navigation and prompt App choices', () => {

@@ -617,144 +617,23 @@
 
     <PromptTransferPage v-else-if="route.page === 'transfer'" />
 
-    <Teleport to=".pc-phone-shell">
-      <div
-        v-if="activeAppPromptGroup && activeAppPrompt"
-        class="pc-modal-backdrop pc-prompt-detail-backdrop"
-        role="presentation"
-        @click.self="closeAppPromptDetail"
-      >
-        <section
-          ref="appPromptDialogRef"
-          class="pc-section-card pc-modal-dialog pc-prompt-detail-dialog"
-          role="dialog"
-          aria-modal="true"
-          :aria-label="activeAppPrompt.label"
-          tabindex="-1"
-        >
-          <header class="pc-prompt-detail-head">
-            <div class="pc-app-prompt-dialog-title">
-              <span class="pc-app-prompt-icon" :style="{ '--pc-prompt-accent': activeAppPromptGroup.accent }">
-                <AppIcon
-                  :app-id="activeAppPromptGroup.appId"
-                  :asset-path="activeAppPromptGroup.assetPath"
-                  :default-icon="activeAppPromptGroup.defaultIcon"
-                  :icon="activeAppPromptGroup.icon"
-                />
-              </span>
-              <div>
-                <span class="pc-kicker">{{ activeAppPromptGroup.label }}</span>
-                <h2>{{ activeAppPrompt.label }}</h2>
-              </div>
-            </div>
-            <button
-              class="pc-icon-btn"
-              type="button"
-              :title="t`关闭`"
-              :aria-label="t`关闭`"
-              @click="closeAppPromptDetail"
-            >
-              <i class="fa-solid fa-xmark"></i>
-            </button>
-          </header>
-          <div
-            v-if="activeAppPromptGroup.items.length > 1"
-            class="pc-prompt-variant-grid"
-            role="group"
-            :aria-label="`${activeAppPromptGroup.label}提示词选项`"
-          >
-            <button
-              v-for="item in activeAppPromptGroup.items"
-              :key="item.openKey"
-              :class="['pc-soft-btn', 'pc-prompt-variant-option', { active: activeAppPrompt.openKey === item.openKey }]"
-              type="button"
-              :aria-pressed="activeAppPrompt.openKey === item.openKey"
-              @click="selectAppPrompt(item.openKey)"
-            >
-              {{ item.label }}
-            </button>
-          </div>
-          <div class="pc-prompt-detail-body">
-            <p class="pc-prewrap">{{ activeAppPrompt.value || activePromptEmptyLabel }}</p>
-            <div
-              v-if="activeAppPrompt.kind === 'task' && activeAppPrompt.variables.length"
-              class="pc-chip-row pc-task-variable-summary"
-            >
-              <span v-for="variable in activeAppPrompt.variables" :key="variable.key">
-                <span>{{ variable.label }}</span>
-                <code>{{ formatTaskVariable(variable.key) }}</code>
-              </span>
-            </div>
-          </div>
-          <div class="pc-form-actions pc-prompt-detail-actions">
-            <button class="pc-soft-btn" type="button" @click="copyText(activeAppPrompt.value, activePromptCopyMessage)">
-              <i class="fa-solid fa-copy"></i>
-              <span>{{ t`复制` }}</span>
-            </button>
-            <button class="pc-soft-btn" type="button" @click="editActiveAppPrompt">
-              <i class="fa-solid fa-pen"></i>
-              <span>{{ t`编辑` }}</span>
-            </button>
-            <button class="pc-soft-btn" type="button" @click="restoreActiveAppPrompt">
-              <i class="fa-solid fa-arrow-rotate-left"></i>
-              <span>{{ t`默认` }}</span>
-            </button>
-          </div>
-        </section>
-      </div>
-
-      <div
-        v-else-if="activeTypePrompt"
-        class="pc-modal-backdrop pc-prompt-detail-backdrop"
-        role="presentation"
-        @click.self="closeTypePromptDetail"
-      >
-        <section
-          ref="typePromptDialogRef"
-          class="pc-section-card pc-modal-dialog pc-prompt-detail-dialog"
-          role="dialog"
-          aria-modal="true"
-          :aria-label="activeTypePrompt.name"
-          tabindex="-1"
-        >
-          <header class="pc-prompt-detail-head">
-            <div>
-              <span class="pc-kicker">{{ activeTypePromptDomainLabel }}</span>
-              <h2>{{ activeTypePrompt.name }}</h2>
-            </div>
-            <button
-              class="pc-icon-btn"
-              type="button"
-              :title="t`关闭`"
-              :aria-label="t`关闭`"
-              @click="closeTypePromptDetail"
-            >
-              <i class="fa-solid fa-xmark"></i>
-            </button>
-          </header>
-          <div class="pc-prompt-detail-body">
-            <p v-if="activeTypePrompt.domain === 'theater'" class="pc-prompt-render-mode">
-              {{ activeTypePromptGroupName }}
-            </p>
-            <p class="pc-prewrap">{{ activeTypePrompt.prompt || t`未填写类型提示词正文` }}</p>
-          </div>
-          <div class="pc-form-actions pc-prompt-detail-actions">
-            <button class="pc-soft-btn" type="button" @click="copyText(activeTypePrompt.prompt, '已复制类型提示词')">
-              <i class="fa-solid fa-copy"></i>
-              <span>{{ t`复制` }}</span>
-            </button>
-            <button class="pc-soft-btn" type="button" @click="editActiveTypePrompt">
-              <i class="fa-solid fa-pen"></i>
-              <span>{{ t`编辑` }}</span>
-            </button>
-            <button class="pc-soft-btn danger" type="button" @click="removeTypePrompt(activeTypePrompt.id)">
-              <i class="fa-solid fa-trash"></i>
-              <span>{{ t`删除` }}</span>
-            </button>
-          </div>
-        </section>
-      </div>
-    </Teleport>
+    <PromptDetailDialogs
+      :app-group="activeAppPromptGroup"
+      :app-prompt="activeAppPrompt"
+      :app-prompt-empty-label="activePromptEmptyLabel"
+      :app-prompt-copy-message="activePromptCopyMessage"
+      :type-prompt="activeTypePrompt"
+      :type-prompt-domain-label="activeTypePromptDomainLabel"
+      :type-prompt-group-name="activeTypePromptGroupName"
+      @close-app="closeAppPromptDetail"
+      @close-type="closeTypePromptDetail"
+      @copy="copyText"
+      @edit-app="editActiveAppPrompt"
+      @edit-type="editActiveTypePrompt"
+      @remove-type="removeTypePrompt"
+      @restore-app="restoreActiveAppPrompt"
+      @select-app="selectAppPrompt"
+    />
   </section>
 </template>
 
@@ -766,11 +645,11 @@ import BulkSelectionCheckbox from '@/components/BulkSelectionCheckbox.vue';
 import EmptyState from '@/components/EmptyState.vue';
 import SearchableCombobox from '@/components/SearchableCombobox.vue';
 import { useBulkSelection } from '@/composables/useBulkSelection';
-import { usePhoneModalLifecycle } from '@/composables/usePhoneModalLifecycle';
 import PromptAppEditorPage from '@/apps/prompts/PromptAppEditorPage.vue';
 import PromptGroupEditorPage from '@/apps/prompts/PromptGroupEditorPage.vue';
 import PromptOutputEditorPage from '@/apps/prompts/PromptOutputEditorPage.vue';
 import PromptPhraseEditorPage from '@/apps/prompts/PromptPhraseEditorPage.vue';
+import PromptDetailDialogs from '@/apps/prompts/PromptDetailDialogs.vue';
 import PromptTransferPage from '@/apps/prompts/PromptTransferPage.vue';
 import PromptTypeEditorPage from '@/apps/prompts/PromptTypeEditorPage.vue';
 import { usePromptLibraryActions } from '@/apps/prompts/usePromptLibraryActions';
@@ -824,8 +703,6 @@ const activePromptTab = ref<PromptTab>('app');
 const activeAppPromptGroupId = ref('');
 const activeAppPromptOpenKey = ref('');
 const activeTypePromptId = ref('');
-const appPromptDialogRef = ref<HTMLElement | null>(null);
-const typePromptDialogRef = ref<HTMLElement | null>(null);
 const { removeQuickPhrase, removeQuickPhraseGroup, removeQuickTemplate, removeQuickTemplateGroup, removeTypePrompt } =
   usePromptLibraryActions({
     confirmNotice: phone.confirmNotice,
@@ -1046,18 +923,6 @@ const activeTypePromptGroupName = computed(() => {
   return typePromptGroups.value.find(group => group.id === groupId)?.name || '未分组';
 });
 
-usePhoneModalLifecycle({
-  dialogRef: appPromptDialogRef,
-  isOpen: () => Boolean(activeAppPromptGroup.value && activeAppPrompt.value),
-  onClose: closeAppPromptDetail,
-});
-
-usePhoneModalLifecycle({
-  dialogRef: typePromptDialogRef,
-  isOpen: () => Boolean(activeTypePrompt.value),
-  onClose: closeTypePromptDetail,
-});
-
 const editingAppPrompt = computed(() =>
   route.value.params?.openKey
     ? (allPromptCards.value.find(item => item.openKey === route.value.params?.openKey) ?? null)
@@ -1135,10 +1000,6 @@ function editActiveAppPrompt() {
   if (!item) return;
   closeAppPromptDetail();
   phone.pushPage('app-prompt-editor', `编辑${item.label}`, { openKey: item.openKey });
-}
-
-function formatTaskVariable(key: string) {
-  return `{{${key}}}`;
 }
 
 const activePromptEmptyLabel = computed(() =>
@@ -1652,90 +1513,6 @@ async function copyText(text: string, successMessage: string) {
   -webkit-line-clamp: 2;
 }
 
-.pc-prompt-detail-backdrop {
-  --pc-modal-inset: 55px 0 0;
-  --pc-modal-z: 64;
-}
-
-.pc-prompt-detail-dialog {
-  display: flex;
-  flex-direction: column;
-  width: min(100%, 340px);
-  max-height: calc(100% - 36px);
-  overflow: hidden;
-}
-
-.pc-prompt-detail-head {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) 40px;
-  align-items: start;
-  gap: 12px;
-}
-
-.pc-prompt-detail-head h2 {
-  margin: 4px 0 0;
-  overflow-wrap: anywhere;
-  font-size: 20px;
-  line-height: 1.35;
-}
-
-.pc-app-prompt-dialog-title {
-  display: grid;
-  grid-template-columns: 40px minmax(0, 1fr);
-  align-items: center;
-  gap: 10px;
-  min-width: 0;
-}
-
-.pc-prompt-variant-grid {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 4px;
-  padding: 4px;
-  border-radius: var(--pc-control-radius);
-  background: color-mix(in srgb, var(--pc-text) 8%, transparent);
-}
-
-.pc-prompt-variant-option {
-  width: 100%;
-  min-inline-size: 0;
-  white-space: normal;
-}
-
-.pc-prompt-detail-body {
-  min-height: 0;
-  overflow-y: auto;
-  overscroll-behavior: contain;
-}
-
-.pc-prompt-detail-body p {
-  margin: 0;
-  color: var(--pc-text);
-  line-height: 1.7;
-  overflow-wrap: anywhere;
-}
-
-.pc-prompt-detail-body .pc-prompt-render-mode {
-  width: fit-content;
-  margin-bottom: 10px;
-  padding: 4px 8px;
-  border-radius: var(--pc-control-radius);
-  background: color-mix(in srgb, var(--pc-theme-accent) 14%, var(--pc-surface) 86%);
-  color: var(--pc-theme-accent);
-  font-size: 12px;
-  font-weight: 800;
-}
-
-.pc-prompt-detail-actions {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-}
-
-/* ui-reuse-allow: UI-PROMPT-DETAIL-001 detail actions share three equal narrow columns. */
-.pc-prompt-detail-actions :is(.pc-soft-btn, .pc-primary-btn) {
-  min-inline-size: 0;
-  padding-inline: 10px;
-}
 
 .pc-card-head strong,
 .pc-accordion-title-button {
