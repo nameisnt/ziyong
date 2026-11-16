@@ -21,6 +21,7 @@ test('prompts owns its root and exclusive files while the theater group field re
     'PromptsApp.vue',
     'usePromptDefaultsSession.ts',
     'usePromptLibraryActions.ts',
+    'useTypeOrganize.ts',
   ]);
 
   const builtin = await source('src/apps/builtin.ts');

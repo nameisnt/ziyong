@@ -645,6 +645,7 @@ import BulkSelectionCheckbox from '@/components/BulkSelectionCheckbox.vue';
 import EmptyState from '@/components/EmptyState.vue';
 import SearchableCombobox from '@/components/SearchableCombobox.vue';
 import { useBulkSelection } from '@/composables/useBulkSelection';
+import { useTypeOrganize } from '@/apps/prompts/useTypeOrganize';
 import PromptAppEditorPage from '@/apps/prompts/PromptAppEditorPage.vue';
 import PromptGroupEditorPage from '@/apps/prompts/PromptGroupEditorPage.vue';
 import PromptOutputEditorPage from '@/apps/prompts/PromptOutputEditorPage.vue';
@@ -722,9 +723,6 @@ const promptMenuOpen = ref(false);
 const promptMenuRoot = ref<HTMLElement | null>(null);
 const phraseGroupOpen = reactive<Record<string, boolean>>({});
 const templateGroupOpen = reactive<Record<string, boolean>>({});
-const typeOrganizeMode = ref(false);
-const selectedTypePromptIds = ref(new Set<string>());
-const typeOrganizeTargetGroupId = ref('');
 type PromptBulkTarget = 'phrase-groups' | 'phrases' | 'template-groups' | 'templates';
 const promptBulkTarget = ref<PromptBulkTarget>('phrases');
 const quickPhraseCount = computed(() => quickPhraseGroups.value.reduce((sum, group) => sum + group.phrases.length, 0));
@@ -894,6 +892,26 @@ const typePromptDomainCards = computed(() =>
   }),
 );
 const theaterTypePromptItems = computed(() => typePrompts.value.filter(item => item.domain === 'theater'));
+const {
+  applyTypeGroupMove,
+  cancelTypeOrganize,
+  clearTypePromptSelection,
+  isTypePromptGroupSelected,
+  removeSelectedTypePrompts,
+  selectAllTypePrompts,
+  selectedTypePromptIds,
+  selectTypePromptGroup,
+  startTypeOrganize,
+  toggleTypePromptSelection,
+  typeOrganizeMode,
+  typeOrganizeTargetGroupId,
+} = useTypeOrganize({
+  items: theaterTypePromptItems,
+  moveToGroup: (promptIds, groupId) => prompts.moveTypePromptsToGroup('theater', promptIds, groupId),
+  deletePrompt: prompts.deleteTypePrompt,
+  confirm: (message, confirmOptions) => phone.confirmNotice(message, confirmOptions),
+  notifySuccess: message => toastr.success(message),
+});
 const theaterTypeGroupOptions = computed(() => [
   { label: '未分组', value: '' },
   ...typePromptGroups.value
@@ -1029,70 +1047,6 @@ function startPromptBulk(target: PromptBulkTarget) {
   startBulk();
 }
 
-function startTypeOrganize() {
-  selectedTypePromptIds.value = new Set();
-  typeOrganizeTargetGroupId.value = '';
-  typeOrganizeMode.value = true;
-}
-
-function cancelTypeOrganize() {
-  typeOrganizeMode.value = false;
-  selectedTypePromptIds.value = new Set();
-  typeOrganizeTargetGroupId.value = '';
-}
-
-function toggleTypePromptSelection(promptId: string) {
-  if (!theaterTypePromptItems.value.some(item => item.id === promptId)) return;
-  const next = new Set(selectedTypePromptIds.value);
-  if (next.has(promptId)) next.delete(promptId);
-  else next.add(promptId);
-  selectedTypePromptIds.value = next;
-}
-
-function selectAllTypePrompts() {
-  selectedTypePromptIds.value = new Set(theaterTypePromptItems.value.map(item => item.id));
-}
-
-function clearTypePromptSelection() {
-  selectedTypePromptIds.value = new Set();
-}
-
-function isTypePromptGroupSelected(promptIds: string[]) {
-  return Boolean(promptIds.length) && promptIds.every(promptId => selectedTypePromptIds.value.has(promptId));
-}
-
-function selectTypePromptGroup(promptIds: string[]) {
-  const next = new Set(selectedTypePromptIds.value);
-  const remove = isTypePromptGroupSelected(promptIds);
-  promptIds.forEach(promptId => {
-    if (remove) next.delete(promptId);
-    else next.add(promptId);
-  });
-  selectedTypePromptIds.value = next;
-}
-
-function applyTypeGroupMove() {
-  const movedCount = prompts.moveTypePromptsToGroup(
-    'theater',
-    [...selectedTypePromptIds.value],
-    typeOrganizeTargetGroupId.value,
-  );
-  toastr.success(movedCount ? `已移动 ${movedCount} 个小剧场类型` : '所选类型已在目标分组');
-  cancelTypeOrganize();
-}
-
-async function removeSelectedTypePrompts() {
-  const promptIds = [...selectedTypePromptIds.value];
-  if (!promptIds.length) return;
-  const confirmed = await phone.confirmNotice(`要删除所选 ${promptIds.length} 个小剧场类型吗？`, {
-    confirmLabel: '删除所选',
-    kind: 'warning',
-  });
-  if (!confirmed) return;
-  promptIds.forEach(prompts.deleteTypePrompt);
-  cancelTypeOrganize();
-  toastr.success(`已删除 ${promptIds.length} 个小剧场类型`);
-}
 
 async function removePromptBulkSelection() {
   const ids = [...promptBulkSelectedIds.value];
