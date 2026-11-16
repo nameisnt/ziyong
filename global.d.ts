@@ -1,5 +1,6 @@
 declare const hljs: typeof import('highlight.js').default;
 declare const Popper: typeof import('@popperjs/core');
+<<<<<<< HEAD
 
 declare namespace TypeFest {
   type LiteralUnion<LiteralType, BaseType extends Primitive = string> = import('type-fest').LiteralUnion<LiteralType, BaseType>;
@@ -58,3 +59,5 @@ declare module '@sillytavern/scripts/i18n' {
 declare module '@sillytavern/scripts/openai' {
   export const promptManager: import('./src/apps/preset-manager/nativeToggle').NativePromptManager | null;
 }
+=======
+>>>>>>> a0a79888653a214809336ac02f8b0255ab8f1526
