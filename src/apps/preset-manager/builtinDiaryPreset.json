@@ -296,7 +296,7 @@
         {
             "identifier": "phone_prompt_1786544579625_o02r9db",
             "name": "思维链内容 - 副本",
-            "enabled": true,
+            "enabled": false,
             "injection_position": 0,
             "injection_depth": 4,
             "injection_order": 100,
@@ -324,7 +324,7 @@
         {
             "identifier": "phone_prompt_1786551727267_ddwz5e2",
             "name": "思维链内容 - 副本 - 副本",
-            "enabled": false,
+            "enabled": true,
             "injection_position": 0,
             "injection_depth": 4,
             "injection_order": 100,
@@ -440,7 +440,7 @@
                 },
                 {
                     "identifier": "phone_prompt_1786544579625_o02r9db",
-                    "enabled": true
+                    "enabled": false
                 },
                 {
                     "identifier": "phone_prompt_1786552417112_e9fasmy",
@@ -448,7 +448,7 @@
                 },
                 {
                     "identifier": "phone_prompt_1786551727267_ddwz5e2",
-                    "enabled": false
+                    "enabled": true
                 },
                 {
                     "identifier": "phone_prompt_1786551446401_n6nuu2q",
