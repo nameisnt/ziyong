@@ -10,7 +10,7 @@ test('reader owns its root and chat session while shared reading surfaces remain
     .filter(file => file.endsWith('.vue') || file.endsWith('.ts'))
     .sort();
 
-  assert.deepEqual(files, ['ReaderApp.vue', 'useReaderChatSession.ts', 'useReaderLibrarySession.ts']);
+  assert.deepEqual(files, ['ReaderApp.vue', 'useReaderChatSession.ts', 'useReaderLibrarySession.ts', 'useReaderRules.ts']);
 
   const builtin = await source('src/apps/builtin.ts');
   const root = await source('src/apps/reader/ReaderApp.vue');

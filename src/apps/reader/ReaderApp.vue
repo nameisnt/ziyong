@@ -354,34 +354,27 @@
 </template>
 
 <script setup lang="ts">
+import { canOpenBaguScan } from '@/util/baguScanGate';
+import { useDetailScroll } from '@/util/detailScroll';
+import { buildRegexRuleOptions, getRegexRulesByOperation } from '@/util/regexDisplay';
 import CatalogModal from '@/components/CatalogModal.vue';
 import BaguDetailPage from '@/components/BaguDetailPage.vue';
 import BookShelf from '@/components/BookShelf.vue';
 import EmptyState from '@/components/EmptyState.vue';
 import ReaderDetailShell from '@/components/ReaderDetailShell.vue';
+import { useReaderRules } from '@/apps/reader/useReaderRules';
 import { useReaderChatSession, type ReaderChatTarget } from '@/apps/reader/useReaderChatSession';
 import { useReaderLibrarySession } from '@/apps/reader/useReaderLibrarySession';
 import { usePhoneModalLifecycle } from '@/composables/usePhoneModalLifecycle';
 import SearchableCombobox from '@/components/SearchableCombobox.vue';
-import {
-  defaultReaderBodyRule,
-  defaultReaderSettings,
-  type ChatReaderRegexRule,
-  type ReaderMessage,
-} from '@/store/reader';
-import {
-  defaultReaderBodyRegexDisplayRuleId,
-  useRegexDisplayStore,
-} from '@/apps/regex-display/store';
+import { defaultReaderBodyRule, defaultReaderSettings, type ReaderMessage } from '@/store/reader';
+import { defaultReaderBodyRegexDisplayRuleId, useRegexDisplayStore } from '@/apps/regex-display/store';
 import { usePhoneStore } from '@/store/phone';
 import { useReaderStore } from '@/store/reader';
 import { useSettingsStore } from '@/store/settings';
 import { useDigestStore } from '@/apps/digest/store';
 import { usePresetLinkStore } from '@/apps/preset-link/store';
 import { getCurrentTavernPresetName } from '@/apps/preset-manager/api';
-import { canOpenBaguScan } from '@/util/baguScanGate';
-import { useDetailScroll } from '@/util/detailScroll';
-import { buildRegexRuleOptions, getRegexRulesByOperation, type RegexDisplayRuleLike } from '@/util/regexDisplay';
 import {
   executeSlashCommandSafe,
   getChatMessagesSafe,
@@ -526,13 +519,7 @@ const effectiveReaderPresetName = computed(
   () => readerBinding.value?.presetName || (isReadingCurrentChat.value ? currentTavernPresetName.value : ''),
 );
 const readerPresetProfile = computed(() => presetLinks.getReaderProfile(effectiveReaderPresetName.value));
-const readerRegexUsage = computed(() => ({
-  contentRuleId: readerPresetProfile.value?.readerContentRuleId || globalReaderRegexUsage.value.contentRuleId,
-  displayRuleIds: readerPresetProfile.value?.readerCleanupRuleIds ?? globalReaderRegexUsage.value.displayRuleIds,
-  titleRuleId: readerPresetProfile.value?.readerTitleRuleId || globalReaderRegexUsage.value.titleRuleId,
-}));
 const showCatalogModal = ref(false);
-const rulesOpen = ref(true);
 const messageBodyEl = ref<HTMLElement | null>(null);
 const readerEditDraft = ref('');
 const readerSendComposerOpen = ref(false);
@@ -546,58 +533,43 @@ const readerScopeLabel = computed(() =>
   selectedReaderTarget.value?.isCurrent ? '当前聊天' : selectedReaderTarget.value?.ownerName || '历史聊天',
 );
 
-const defaultTitleRule: ChatReaderRegexRule = { find: '', flags: '', replace: '' };
-const readerTitleRegexRules = computed(() => getRegexRulesByOperation(regexDisplayRules.value, 'extract'));
-const readerBodyRegexRules = computed(() => getRegexRulesByOperation(regexDisplayRules.value, 'extract'));
-const readerTitleRuleOptions = computed(() => [
-  ...(effectiveReaderPresetName.value ? [{ label: '跟随全局阅读规则', value: '' }] : []),
-  { label: '无正则', value: '__default_title__' },
-  ...buildRegexRuleOptions(readerTitleRegexRules.value),
-]);
-const readerBodyRuleOptions = computed(() => {
-  const options = buildRegexRuleOptions(readerBodyRegexRules.value);
-  if (!options.some(option => option.value === defaultReaderBodyRegexDisplayRuleId)) {
-    options.unshift({ label: '默认楼层正文提取', value: '__default_body__' });
-  }
-  return [...(effectiveReaderPresetName.value ? [{ label: '跟随全局阅读规则', value: '' }] : []), ...options];
+const {
+  activeBodyRule,
+  activeTitleRule,
+  bodyRuleSelectValue,
+  cleanupSummary,
+  contentRuleId,
+  onCleanupRuleChange,
+  onReaderBodyRuleSelect,
+  onReaderTitleRuleSelect,
+  readerBodyRegexRules,
+  readerBodyRuleOptions,
+  readerCleanupRules,
+  readerRegexUsage,
+  readerRuleSummary,
+  readerTitleRegexRules,
+  readerTitleRuleOptions,
+  rulesOpen,
+  selectedCleanupRules,
+  titleRuleSelectValue,
+} = useReaderRules({
+  effectivePresetName: effectiveReaderPresetName,
+  globalUsage: globalReaderRegexUsage,
+  presetProfile: readerPresetProfile,
+  buildRuleOptions: rules => buildRegexRuleOptions(rules),
+  defaultBodyRule: defaultReaderBodyRule,
+  getRulesByOperation: (rules, operation) => getRegexRulesByOperation(rules, operation),
+  toRule: (rule, fallback) => toReaderRegexRule(rule, fallback),
+  defaultBodyRuleId: defaultReaderBodyRegexDisplayRuleId,
+  regexDisplayRules,
+  savePresetRule: (presetName, kind, ruleId) => presetLinks.setReaderRule(presetName, kind, ruleId),
+  savePresetProfile: (presetName, profile) => presetLinks.saveReaderProfile(presetName, profile),
+  setExtractionRule: (kind, ruleId) => regexDisplay.setExtractionRule('reader', kind, ruleId),
+  setDisplayRuleEnabled: (ruleId, enabled) => regexDisplay.setDisplayRuleEnabled('reader', ruleId, enabled),
+  storeRuleSelection: (kind, ruleId) => reader.setReaderRegexSelection(kind, ruleId),
+  storeCleanupRuleEnabled: (ruleId, enabled) => reader.setCleanupRuleEnabled(ruleId, enabled),
+  notifySuccess: message => toastr.success(message),
 });
-const readerCleanupRules = computed(() => getRegexRulesByOperation(regexDisplayRules.value, 'replace'));
-const selectedTitleRegexRule = computed(() =>
-  getSelectedReaderRegexRule(readerRegexUsage.value.titleRuleId, readerTitleRegexRules.value),
-);
-const selectedBodyRegexRule = computed(() =>
-  getSelectedReaderRegexRule(readerRegexUsage.value.contentRuleId, readerBodyRegexRules.value),
-);
-const selectedCleanupRules = computed(() =>
-  readerCleanupRules.value.filter(rule => readerRegexUsage.value.displayRuleIds.includes(rule.id ?? '')),
-);
-const activeTitleRule = computed(() => toReaderRegexRule(selectedTitleRegexRule.value, defaultTitleRule));
-const activeBodyRule = computed(() => toReaderRegexRule(selectedBodyRegexRule.value, defaultReaderBodyRule));
-const cleanupSummary = computed(() =>
-  selectedCleanupRules.value.length ? `已选 ${selectedCleanupRules.value.length} 条` : '未选择',
-);
-const readerRuleSummary = computed(
-  () =>
-    `${effectiveReaderPresetName.value ? `预设 ${effectiveReaderPresetName.value} · ` : ''}${selectedTitleRegexRule.value?.name || '无正则'} / ${selectedBodyRegexRule.value?.name || '默认正文'} / 清理 ${selectedCleanupRules.value.length}`,
-);
-const titleRuleSelectValue = computed(() =>
-  effectiveReaderPresetName.value
-    ? readerPresetProfile.value?.readerTitleRuleId || ''
-    : globalReaderRegexUsage.value.titleRuleId || '__default_title__',
-);
-const bodyRuleSelectValue = computed(() => {
-  const selectedRuleId = effectiveReaderPresetName.value
-    ? readerPresetProfile.value?.readerContentRuleId || ''
-    : globalReaderRegexUsage.value.contentRuleId;
-  if (effectiveReaderPresetName.value && !selectedRuleId) return '';
-  if (!selectedRuleId || selectedRuleId === '__default_body__') {
-    return readerBodyRegexRules.value.some(rule => rule.id === defaultReaderBodyRegexDisplayRuleId)
-      ? defaultReaderBodyRegexDisplayRuleId
-      : '__default_body__';
-  }
-  return selectedRuleId;
-});
-const contentRuleId = computed(() => readerRegexUsage.value.contentRuleId);
 const { currentMessages, error, loadingDetail, loadCurrentChat, resetReaderChatSession } = useReaderChatSession({
   activeBodyRule,
   activeTitleRule,
@@ -673,50 +645,9 @@ function selectSwipeCandidate(index: number) {
   selectedSwipeIndex.value = index;
 }
 
-function getSelectedReaderRegexRule(ruleId: string, availableRules: RegexDisplayRuleLike[]) {
-  if (ruleId === '__default_body__') {
-    return availableRules.find(rule => rule.id === defaultReaderBodyRegexDisplayRuleId) ?? null;
-  }
-  if (!ruleId || ruleId.startsWith('__default_')) return null;
-  return availableRules.find(rule => rule.id === ruleId) ?? null;
-}
 
-function onReaderTitleRuleSelect(ruleId: string) {
-  if (effectiveReaderPresetName.value) {
-    presetLinks.setReaderRule(effectiveReaderPresetName.value, 'title', ruleId);
-    toastr.success(`已更新预设“${effectiveReaderPresetName.value}”的共享阅读标题规则`);
-    return;
-  }
-  regexDisplay.setExtractionRule('reader', 'title', ruleId);
-  reader.setReaderRegexSelection('title', ruleId);
-}
 
-function onReaderBodyRuleSelect(ruleId: string) {
-  if (effectiveReaderPresetName.value) {
-    presetLinks.setReaderRule(effectiveReaderPresetName.value, 'content', ruleId);
-    toastr.success(`已更新预设“${effectiveReaderPresetName.value}”的共享阅读正文规则`);
-    return;
-  }
-  regexDisplay.setExtractionRule('reader', 'content', ruleId);
-  reader.setReaderRegexSelection('body', ruleId);
-}
 
-function onCleanupRuleChange(ruleId: string, enabled: boolean) {
-  if (effectiveReaderPresetName.value) {
-    const profile = readerPresetProfile.value;
-    const selected = new Set(profile?.readerCleanupRuleIds ?? []);
-    if (enabled) selected.add(ruleId);
-    else selected.delete(ruleId);
-    presetLinks.saveReaderProfile(effectiveReaderPresetName.value, {
-      readerCleanupRuleIds: [...selected],
-      readerContentRuleId: profile?.readerContentRuleId || '',
-      readerTitleRuleId: profile?.readerTitleRuleId || '',
-    });
-    return;
-  }
-  regexDisplay.setDisplayRuleEnabled('reader', ruleId, enabled);
-  reader.setCleanupRuleEnabled(ruleId, enabled);
-}
 
 function onHideEmptyAfterCleanupChange(event: Event) {
   reader.setHideEmptyAfterCleanup((event.target as HTMLInputElement).checked);
