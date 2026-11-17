@@ -326,13 +326,20 @@ function parseForumXmlCandidate(raw: string): XmlParseResult<ForumXmlResult> {
   const replyElements = repliesParent
     ? Array.from(repliesParent.children).filter(item => item.tagName === 'reply')
     : Array.from(root.children).filter(item => item.tagName === 'reply');
-  const replies = replyElements.map(reply => ({
-    author: getDirectChildText(reply, 'author'),
-    content: getDirectChildText(reply, 'content'),
-    isOriginalPoster: getDirectChildText(reply, 'is_op'),
-  }));
+  const replies = replyElements.map(reply => {
+    const authorElement = Array.from(reply.children).find(item => item.tagName === 'author');
+    const opAuthorElement = Array.from(reply.children).find(item => item.tagName === 'op_author');
+    const legacyFlag = getDirectChildText(reply, 'is_op');
+    return {
+      // 新格式用 <op_author> 代替 <author> 表示楼主本人；旧格式回退到 <is_op>true</is_op>。
+      author: opAuthorElement?.textContent?.trim() || authorElement?.textContent?.trim() || '',
+      content: getDirectChildText(reply, 'content'),
+      isOriginalPoster:
+        opAuthorElement || authorElement?.hasAttribute('is_op') ? 'true' : legacyFlag || 'false',
+    };
+  });
 
-  const incompleteReplyIndex = replies.findIndex(reply => !reply.author || !reply.content || !reply.isOriginalPoster);
+  const incompleteReplyIndex = replies.findIndex(reply => !reply.author || !reply.content);
   if (!board || !title || !author || !content || incompleteReplyIndex >= 0) {
     const warnings = [
       !board ? '缺少必填字段「板块名称」(<board>)' : '',
@@ -345,9 +352,7 @@ function parseForumXmlCandidate(raw: string): XmlParseResult<ForumXmlResult> {
       incompleteReplyIndex >= 0 && !replies[incompleteReplyIndex]!.content
         ? `第 ${incompleteReplyIndex + 1} 条回复缺少 <content>`
         : '',
-      incompleteReplyIndex >= 0 && !replies[incompleteReplyIndex]!.isOriginalPoster
-        ? `第 ${incompleteReplyIndex + 1} 条回复缺少 <is_op>`
-        : '',
+
     ].filter(Boolean);
     return {
       ok: false,
@@ -398,20 +403,23 @@ function parseForumRepliesXmlCandidate(raw: string): XmlParseResult<ForumReplies
   const replyElements = repliesParent
     ? Array.from(repliesParent.children).filter(item => item.tagName === 'reply')
     : Array.from(root.children).filter(item => item.tagName === 'reply');
-  const replies = replyElements.map(reply => ({
-    author: getDirectChildText(reply, 'author'),
-    content: getDirectChildText(reply, 'content'),
-    isOriginalPoster: getDirectChildText(reply, 'is_op'),
-  }));
+  const replies = replyElements.map(reply => {
+    const authorElement = Array.from(reply.children).find(item => item.tagName === 'author');
+    const legacyFlag = getDirectChildText(reply, 'is_op');
+    return {
+      author: authorElement?.textContent?.trim() || '',
+      content: getDirectChildText(reply, 'content'),
+      isOriginalPoster: authorElement?.hasAttribute('is_op') ? 'true' : legacyFlag || 'false',
+    };
+  });
 
-  if (!replies.length || replies.some(reply => !reply.author || !reply.content || !reply.isOriginalPoster)) {
-    const incompleteIndex = replies.findIndex(reply => !reply.author || !reply.content || !reply.isOriginalPoster);
+  if (!replies.length || replies.some(reply => !reply.author || !reply.content)) {
+    const incompleteIndex = replies.findIndex(reply => !reply.author || !reply.content);
     const warnings = !replies.length
       ? ['缺少必填字段「回复列表」(<reply>)']
       : [
           !replies[incompleteIndex]!.author ? `第 ${incompleteIndex + 1} 条回复缺少 <author>` : '',
           !replies[incompleteIndex]!.content ? `第 ${incompleteIndex + 1} 条回复缺少 <content>` : '',
-          !replies[incompleteIndex]!.isOriginalPoster ? `第 ${incompleteIndex + 1} 条回复缺少 <is_op>` : '',
         ].filter(Boolean);
     return {
       ok: false,

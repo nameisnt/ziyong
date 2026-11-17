@@ -948,7 +948,18 @@ export async function generateContent<TConfig, TResult, TSaveResult = { entityId
       }
       options.lifecycle?.onRawOutput?.(rawOutput);
 
-      const parsed = adapter.parse(parseInput, prepared.parsedConfig);
+      let parsed: ReturnType<typeof adapter.parse>;
+      try {
+        parsed = adapter.parse(parseInput, prepared.parsedConfig);
+      } catch (error) {
+        // 解析器抛出（旧格式、未知标记等）时不能当生成失败：保留原文并落到失败草稿，
+        // 让用户能在草稿页用「重新解析」修，而不是只看到一条报错。
+        parsed = {
+          ok: false,
+          raw: rawOutput,
+          warnings: [`解析失败：${error instanceof Error ? error.message : String(error)}`],
+        };
+      }
       abortSignal.throwIfAborted();
       if (!parsed.ok) {
         const draft = options.createFailedDraft({

@@ -120,13 +120,26 @@ export const SimpleXmlResultSchema = z.object({
 });
 export type SimpleXmlResult = z.infer<typeof SimpleXmlResultSchema>;
 
+const FORUM_OP_FALSE_TOKENS = ['false', 'no', '不是', '否', '0', '０', 'off'];
+const FORUM_OP_TRUE_TOKENS = ['true', 'yes', '是', '楼主', '1', '１', 'on'];
+
+/**
+ * 模型偶尔把 <is_op> 写成「是（楼主）」「TRUE」「1.0」这类带修饰的文本。
+ * 统一去掉首尾引号、括号和标点后再判断；实在认不出来就按「不是楼主」处理，
+ * 不因为一个展示标记让整次生成被判失败。
+ */
 const ForumOriginalPosterFlagSchema = z.preprocess(value => {
   if (typeof value === 'boolean') return value;
   if (typeof value !== 'string') return value;
-  const normalized = value.trim().toLowerCase();
-  if (['true', '1', 'yes', '是'].includes(normalized)) return true;
-  if (['false', '0', 'no', '否'].includes(normalized)) return false;
-  return value;
+  const normalized = value
+    .trim()
+    .toLowerCase()
+    .replace(/^[^\p{L}\p{N}]+/u, '')
+    .replace(/[^\p{L}\p{N}]+$/u, '');
+  if (!normalized) return value;
+  if (FORUM_OP_FALSE_TOKENS.some(token => normalized.startsWith(token))) return false;
+  if (FORUM_OP_TRUE_TOKENS.some(token => normalized.startsWith(token))) return true;
+  return false;
 }, z.boolean());
 
 export const ForumXmlReplySchema = z.object({
