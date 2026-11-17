@@ -27,6 +27,14 @@ test('output cleaning removes a configured closing tag and its prefix', () => {
   assert.ok(result.removedLength > 0);
 });
 
+test('output cleaning cuts through the last configured closing tag', () => {
+  const raw = '<think>第一段过程</think>\n<think>第二段过程</think>\n<result>正文</result>';
+  const result = cleaning.cleanGenerationOutput(raw, { enabled: true, endTags: '</think>' });
+  assert.equal(result.content, '<result>正文</result>');
+  assert.equal(result.matchedTag, '</think>');
+  assert.equal(result.removedContent, '<think>第一段过程</think>\n<think>第二段过程</think>');
+});
+
 test('output cleaning leaves content untouched when no configured tag exists', () => {
   const raw = '<result>正文</result>';
   assert.equal(cleaning.cleanGenerationOutput(raw, { enabled: true, endTags: '</think>' }).content, raw);

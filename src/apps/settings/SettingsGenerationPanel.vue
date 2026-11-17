@@ -90,7 +90,7 @@
       <div class="pc-settings-list">
         <div class="pc-setting-row">
           <strong
-            >解析前清理思维链 <InfoHint text="按结束标签移除标签及其之前的内容，原始输出仍保存在生成记录中。"
+            >解析前清理思维链 <InfoHint text="按最后一个结束标签移除它及其之前的内容，原始输出仍保存在生成记录中。"
           /></strong>
           <label class="pc-toggle">
             <input v-model="settings.generation.outputCleaningEnabled" type="checkbox" aria-label="解析前清理思维链" />

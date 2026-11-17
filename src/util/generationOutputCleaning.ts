@@ -35,15 +35,17 @@ export function cleanGenerationOutput(
   if (!tags.length) return { content: rawOutput, matchedTag: '', removedContent: '', removedLength: 0 };
 
   const lowerOutput = rawOutput.toLowerCase();
+  // 每个标签取最后一次出现的位置，再取其中最靠后的那个。
   const matches = tags
-    .map(tag => ({ index: lowerOutput.indexOf(tag.toLowerCase()), tag }))
+    .map(tag => ({ index: lowerOutput.lastIndexOf(tag.toLowerCase()), tag }))
     .filter(match => match.index >= 0)
     .sort((left, right) => left.index - right.index);
-  const firstMatch = matches[0];
-  if (!firstMatch) return { content: rawOutput, matchedTag: '', removedContent: '', removedLength: 0 };
+  const lastMatch = matches[matches.length - 1];
+  if (!lastMatch) return { content: rawOutput, matchedTag: '', removedContent: '', removedLength: 0 };
 
-  let cutEnd = firstMatch.index + firstMatch.tag.length;
-  // 兼容 </think> 后紧接另一层已配置结束标签；只扫描连续标签，不误删后续正文中的同名标签。
+  // 以最后一个已配置结束标签为界：思维链可能分成多段，第一个标签之后仍会残留标签和过程文字，
+  // 只切到第一段会让这些残留进入正文并干扰格式校验。
+  let cutEnd = lastMatch.index + lastMatch.tag.length;
   while (cutEnd < rawOutput.length) {
     const remaining = rawOutput.slice(cutEnd);
     const whitespaceLength = remaining.match(/^\s*/u)?.[0].length ?? 0;
@@ -57,7 +59,7 @@ export function cleanGenerationOutput(
 
   return {
     content: rawOutput.slice(cutEnd).trimStart(),
-    matchedTag: firstMatch.tag,
+    matchedTag: lastMatch.tag,
     removedContent: rawOutput.slice(0, cutEnd).trim(),
     removedLength: cutEnd,
   };
