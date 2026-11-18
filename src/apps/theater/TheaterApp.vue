@@ -371,6 +371,15 @@ const { error: generationError, rawOutput: generationRawOutput, running: generat
 
 type TheaterPreview = NonNullable<typeof generationState.preview>;
 
+function normalizeTheaterPreview(preview: TheaterPreview, routeParams: Record<string, string>): TheaterPreview {
+  if (preview.mode !== 'rewrite') return preview;
+  return {
+    ...preview,
+    targetEntryId: preview.targetEntryId || routeParams.rewriteEntryId || '',
+    targetVersionId: preview.targetVersionId || routeParams.versionId || '',
+  };
+}
+
 const {
   beginPreviewDraft: beginTheaterPreviewDraft,
   clearPreviewDraft: clearTheaterPreviewDraft,
@@ -382,7 +391,14 @@ const {
   appId: 'theater',
   consumeFailedDraft: draftId => theater.deleteFailedDraft(draftId),
   getPreview: () => generationState.preview,
-  getRouteParams: () => ({}),
+  getRouteParams: () => ({
+    ...(typeof route.value.params?.typeId === 'string' ? { typeId: route.value.params.typeId } : {}),
+    ...(typeof route.value.params?.rewriteEntryId === 'string'
+      ? { rewriteEntryId: route.value.params.rewriteEntryId }
+      : {}),
+    ...(typeof route.value.params?.versionId === 'string' ? { versionId: route.value.params.versionId } : {}),
+  }),
+  normalizePreview: (preview, routeParams) => normalizeTheaterPreview(preview, routeParams),
   page: 'preview',
   route,
   setPreview: preview => {
@@ -1049,10 +1065,16 @@ function returnToGenerate() {
     return;
   }
   const preview = generationState.preview;
+  const targetEntryId = preview?.targetEntryId || route.value.params?.rewriteEntryId || '';
+  const targetVersionId = preview?.targetVersionId || route.value.params?.versionId || '';
+  if (preview?.mode === 'rewrite' && !targetEntryId) {
+    toastr.warning('找不到要重写的小剧场，无法保留重写状态');
+    return;
+  }
   phone.replacePage('generate', preview?.mode === 'rewrite' ? '重新生成小剧场' : '小剧场配置', {
     ...(preview?.typeId ? { typeId: preview.typeId } : {}),
-    ...(preview?.targetEntryId ? { rewriteEntryId: preview.targetEntryId } : {}),
-    ...(preview?.targetVersionId ? { versionId: preview.targetVersionId } : {}),
+    ...(targetEntryId ? { rewriteEntryId: targetEntryId } : {}),
+    ...(targetVersionId ? { versionId: targetVersionId } : {}),
   });
 }
 
@@ -1220,6 +1242,11 @@ async function runGeneration() {
 function savePreview() {
   const preview = generationState.preview;
   if (!preview) return;
+
+  if (preview.mode === 'rewrite' && !preview.targetEntryId) {
+    toastr.warning('找不到要重写的小剧场，无法保存为新版本');
+    return;
+  }
 
   const saved =
     preview.mode === 'rewrite' && preview.targetEntryId

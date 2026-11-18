@@ -48,6 +48,10 @@ export function useExtrasChapterPreviewSession(options: ExtraChapterPreviewSessi
       return;
     }
     const chapterId = preview.chapterId || fallbackRouteParams.chapterId;
+    if (preview.mode === '重写当前章节' && !chapterId) {
+      options.notify.warning('找不到要重写的章节，无法保存为新版本');
+      return;
+    }
     const saved = saveExtraChapterPreview(options.store, {
       bookId,
       chapterId,

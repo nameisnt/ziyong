@@ -317,6 +317,7 @@ const {
   },
   page: 'preview',
   route,
+  normalizePreview: (preview, routeParams) => normalizeForumPreview(preview, routeParams),
   setPreview: preview => {
     generationState.preview = preview;
   },
@@ -885,6 +886,15 @@ function formatBoardMeta(threadCount: number) {
   return `${threadCount} 帖`;
 }
 
+function normalizeForumPreview(preview: ForumPreview, routeParams: Record<string, string>): ForumPreview {
+  if (preview.action !== 'thread' || preview.mode !== 'rewrite') return preview;
+  return {
+    ...preview,
+    targetThreadId: preview.targetThreadId || routeParams.rewriteThreadId || '',
+    targetVersionId: preview.targetVersionId || routeParams.versionId || '',
+  };
+}
+
 function returnToGenerate() {
   const preview = generationState.preview;
   if (!preview) return;
@@ -893,9 +903,14 @@ function returnToGenerate() {
     return;
   }
   if (preview.action === 'thread') {
+    const targetThreadId = preview.targetThreadId || route.value.params?.rewriteThreadId || '';
+    if (preview.mode === 'rewrite' && !targetThreadId) {
+      toastr.warning('找不到要重写的帖子，无法保留重写状态');
+      return;
+    }
     phone.replacePage('generate-thread', preview.mode === 'rewrite' ? '重新生成论坛主题' : '生成帖子', {
       ...(preview.boardId ? { boardId: preview.boardId } : {}),
-      ...(preview.targetThreadId ? { rewriteThreadId: preview.targetThreadId } : {}),
+      ...(targetThreadId ? { rewriteThreadId: targetThreadId } : {}),
       ...(preview.targetVersionId ? { versionId: preview.targetVersionId } : {}),
     });
     return;

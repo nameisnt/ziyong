@@ -9,6 +9,7 @@ export interface PreviewDraftPersistenceOptions<TPreview> {
   getPreview: () => null | TPreview;
   getRouteParams?: () => Record<string, string>;
   getSessionStatus?: () => PhonePreviewSessionStatus;
+  normalizePreview?: (preview: TPreview, routeParams: Record<string, string>) => TPreview;
   page: string;
   route: Ref<PhoneRoute>;
   setPreview: (preview: null | TPreview) => void;
@@ -38,7 +39,10 @@ export function usePreviewDraftPersistence<TPreview>(options: PreviewDraftPersis
     const saved = id ? previewDrafts.getPreviewDraftById(id) : null;
     if (!saved) return null;
     activeDraftId.value = saved.id;
-    options.setPreview(klona(saved.preview) as TPreview);
+    const restored = klona(saved.preview) as TPreview;
+    options.setPreview(
+      options.normalizePreview ? options.normalizePreview(restored, { ...saved.routeParams }) : restored,
+    );
     return saved;
   }
 

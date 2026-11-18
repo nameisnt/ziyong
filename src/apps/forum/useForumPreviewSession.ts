@@ -60,6 +60,10 @@ export function useForumPreviewSession(options: ForumPreviewSessionOptions) {
     if (!preview) return;
 
     if (preview.action === 'thread') {
+      if (preview.mode === 'rewrite' && !preview.targetThreadId) {
+        options.notify.warning('找不到要重写的帖子，无法保存为新版本');
+        return;
+      }
       const board = preview.boardId
         ? options.store.getBoard(preview.boardId) ||
           options.store.ensureBoard(preview.boardName, preview.boardTypePrompt, {

@@ -343,6 +343,7 @@ const {
       ...(versionId ? { versionId } : {}),
     };
   },
+  normalizePreview: (preview, routeParams) => normalizeExtraChapterPreview(preview, routeParams),
   page: 'chapter-preview',
   route,
   setPreview: preview => {
@@ -957,6 +958,20 @@ function buildNewBookGenerationContext() {
   return title ? `番外书名：${title}` : '';
 }
 
+function normalizeExtraChapterPreview(
+  preview: ExtraChapterPreview,
+  routeParams: Record<string, string>,
+): ExtraChapterPreview {
+  return {
+    ...preview,
+    bookId: preview.bookId || routeParams.bookId || '',
+    chapterId: preview.chapterId || routeParams.chapterId || '',
+    mode: normalizeChapterGenerationMode(preview.mode),
+    summary: preview.summary || '',
+    targetVersionId: preview.targetVersionId || routeParams.versionId || '',
+  };
+}
+
 function normalizeChapterGenerationMode(value: unknown): ExtraChapterGenerationMode {
   if (value === '新开一本书' || value === '重写当前章节') return value;
   return '续写上一章';
@@ -1247,14 +1262,15 @@ function returnToGenerate() {
 
 function returnToChapterGenerate() {
   const bookId = route.value.params?.bookId || activeBook.value?.id;
+  const chapterId = route.value.params?.chapterId || chapterGenerationState.preview?.chapterId || '';
   if (!bookId) return;
   phone.replacePage(
     'chapter-generate',
     chapterGenerationDraft.mode === '重写当前章节' ? '重新生成章节' : '生成章节',
-    route.value.params?.chapterId
+    chapterId
       ? {
           bookId,
-          chapterId: route.value.params.chapterId,
+          chapterId,
           ...(chapterGenerationState.preview?.targetVersionId
             ? { versionId: chapterGenerationState.preview.targetVersionId }
             : route.value.params?.versionId
