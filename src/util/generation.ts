@@ -34,9 +34,15 @@ function extractFirstResultBlock(raw: string) {
   return raw.slice(start, close + '</result>'.length);
 }
 
+// 旧提示词和模型常把布尔标记写成无值属性（<author is_op>），XML 解析器会整份判错。
+// 这里只补齐无值的 is_op，不动其它属性，避免把正文里的普通文字改坏。
+function normalizeLooseXmlFlags(raw: string) {
+  return raw.replace(/<[^>]*>/gu, tag => tag.replace(/(\s)is_op(?=[\s/>])/gu, '$1is_op="true"'));
+}
+
 function parseXmlDocument(raw: string) {
   const parser = new DOMParser();
-  const document = parser.parseFromString(raw, 'application/xml');
+  const document = parser.parseFromString(normalizeLooseXmlFlags(raw), 'application/xml');
   if (document.querySelector('parsererror')) {
     return null;
   }
@@ -308,7 +314,9 @@ function readForumReplyElement(reply: Element) {
     author: opAuthorElement?.textContent?.trim() || authorElement?.textContent?.trim() || '',
     content: getDirectChildText(reply, 'content'),
     isOriginalPoster:
-      opAuthorElement || authorElement?.hasAttribute('is_op') ? 'true' : legacyFlag || 'false',
+      opAuthorElement || authorElement?.hasAttribute('is_op') || reply.hasAttribute('is_op')
+        ? 'true'
+        : legacyFlag || 'false',
   };
 }
 

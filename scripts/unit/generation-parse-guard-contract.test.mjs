@@ -21,9 +21,15 @@ const builtinPrompts = await readFile(new URL('../../src/apps/builtinPrompts.ts'
 
 test('the forum parser reads the original poster mark from the op_author tag and keeps older forms working', () => {
   assert.match(forumParser, /find\(item => item\.tagName === 'op_author'\)/u);
-  assert.match(forumParser, /opAuthorElement \|\| authorElement\?\.hasAttribute\('is_op'\) \? 'true' : legacyFlag \|\| 'false'/u);
+  assert.match(forumParser, /authorElement\?\.hasAttribute\('is_op'\) \|\| reply\.hasAttribute\('is_op'\)/u);
   assert.match(forumParser, /getDirectChildText\(reply, 'is_op'\)/u);
   assert.doesNotMatch(forumParser, /缺少 <is_op>/u);
+});
+
+test('bare is_op attributes are repaired before XML parsing instead of failing the whole result', () => {
+  assert.match(forumParser, /function normalizeLooseXmlFlags\(raw: string\)/u);
+  assert.match(forumParser, /\$1is_op="true"/u);
+  assert.match(forumParser, /parseFromString\(normalizeLooseXmlFlags\(raw\), 'application\/xml'\)/u);
 });
 
 test('the main post and the reply generator read reply authors through the same helper', () => {
