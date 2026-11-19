@@ -922,6 +922,62 @@
   border-bottom: 0;
 }
 
+/* 列表加载占位：作者与聊天列表在数据回来前先显示骨架，避免页面空白。 */
+.pc-phone-root .pc-skeleton-row {
+  display: grid;
+  grid-template-columns: 36px minmax(0, 1fr);
+  align-items: center;
+  gap: 12px;
+  min-height: 56px;
+  padding: 10px 0;
+  border-bottom: 1px solid var(--pc-border);
+}
+
+.pc-phone-root .pc-skeleton-row:last-child {
+  border-bottom: 0;
+}
+
+.pc-phone-root .pc-skeleton-row.lines-only {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.pc-phone-root .pc-skeleton-block {
+  border-radius: 6px;
+  background: var(--pc-form-control-bg);
+  animation: pc-skeleton-pulse 1.6s ease-in-out infinite;
+}
+
+.pc-phone-root .pc-skeleton-avatar {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+}
+
+.pc-phone-root .pc-skeleton-lines {
+  display: grid;
+  gap: 8px;
+}
+
+.pc-phone-root .pc-skeleton-line {
+  height: 12px;
+}
+
+.pc-phone-root .pc-skeleton-line.short {
+  width: 45%;
+}
+
+@keyframes pc-skeleton-pulse {
+  0% {
+    opacity: 0.55;
+  }
+  50% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0.55;
+  }
+}
+
 .pc-phone-root .pc-directory-toolbar {
   min-height: 44px;
   padding-bottom: 4px;

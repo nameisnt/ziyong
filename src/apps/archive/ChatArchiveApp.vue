@@ -57,6 +57,8 @@
               v-if="currentOwner.avatarUrl && !failedAvatars.has(currentOwner.key)"
               :src="currentOwner.avatarUrl"
               :alt="currentOwner.name"
+              decoding="async"
+              loading="lazy"
               @error="markAvatarFailed(currentOwner.key)"
             />
             <span v-else>{{ currentOwner.initial }}</span>
@@ -68,7 +70,7 @@
         </div>
         <div :class="['pc-section-card pc-current-backup-status', { danger: currentBackupIsLonger }]">
           <strong>{{
-            currentFloorBackup ? `已备份 ${currentFloorBackup.messages.length} 层` : t`尚无楼层备份`
+            currentFloorBackup ? `已备份 ${currentFloorBackup.messageCount} 层` : t`尚无楼层备份`
           }}</strong>
           <p v-if="currentBackupIsLonger">
             {{ t`本地备份比当前聊天更长。保存时会再次要求确认，导出不会覆盖旧备份。` }}
@@ -121,6 +123,10 @@
           >
             <i class="fa-solid fa-trash"></i>删除聊天
           </button>
+          <button class="pc-soft-btn" type="button" :disabled="loadingCharacters" @click="loadCharacters(true)">
+            <i :class="['fa-solid fa-rotate-right', { spinning: loadingCharacters }]"></i>
+            {{ loadingCharacters ? t`刷新中…` : t`刷新角色` }}
+          </button>
         </div>
         <input
           ref="currentFloorBackupInputEl"
@@ -164,6 +170,20 @@
         :title="t`酒馆当前没有打开角色聊天`"
       />
 
+      <div
+        v-if="activeTab !== 'current' && loadingCharacters && !visibleOwners.length"
+        class="pc-directory-list pc-owner-list"
+        aria-hidden="true"
+      >
+        <div v-for="index in 6" :key="index" class="pc-skeleton-row">
+          <span class="pc-skeleton-block pc-skeleton-avatar"></span>
+          <span class="pc-skeleton-lines">
+            <span class="pc-skeleton-block pc-skeleton-line"></span>
+            <span class="pc-skeleton-block pc-skeleton-line short"></span>
+          </span>
+        </div>
+      </div>
+
       <EmptyState
         v-if="activeTab !== 'current' && !visibleOwners.length && !loadingCharacters"
         :title="activeTab === 'used' ? t`还没有用过手机创作的角色` : t`没有未使用角色`"
@@ -171,7 +191,7 @@
 
       <div v-else-if="activeTab !== 'current'" class="pc-directory-list pc-owner-list">
         <button
-          v-for="owner in visibleOwners"
+          v-for="owner in renderedOwners"
           :key="owner.key"
           class="pc-list-row pc-owner-row"
           type="button"
@@ -182,6 +202,8 @@
               v-if="owner.avatarUrl && !failedAvatars.has(owner.key)"
               :src="owner.avatarUrl"
               :alt="owner.name"
+              decoding="async"
+              loading="lazy"
               @error="markAvatarFailed(owner.key)"
             />
             <span v-else>{{ owner.initial }}</span>
@@ -191,6 +213,9 @@
             <small>{{ formatOwnerSummary(owner) }}</small>
           </span>
           <i class="fa-solid fa-chevron-right"></i>
+        </button>
+        <button v-if="hiddenOwnerCount" class="pc-soft-btn pc-load-more" type="button" @click="loadMoreOwners">
+          {{ t`加载更多角色` }}（{{ hiddenOwnerCount }}）
         </button>
       </div>
     </section>
@@ -335,8 +360,8 @@
     </section>
 
     <ChatArchiveFloorBackupPage
-      v-else-if="route.page === 'floor-backup' && selectedFloorBackup"
-      :backup="selectedFloorBackup"
+      v-else-if="route.page === 'floor-backup' && openedFloorBackup"
+      :backup="openedFloorBackup"
       :export-backup="exportSelectedFloorBackup"
       :format-backup-time="formatBackupTime"
       :is-current-chat="isSelectedCurrentChat"
@@ -382,6 +407,7 @@ import {
   captureCurrentChatFloorBackup,
   deleteChatFloorBackup,
   downloadChatFloorBackup,
+  getChatFloorBackup,
   getCurrentChatFloorMessageCount,
   rebindChatFloorBackupForImport,
   parseChatFloorBackupFile,
@@ -429,6 +455,17 @@ const {
   visibleOwners,
 } = useChatArchiveCatalogSession();
 const nativeGenerationBusy = ref(false);
+// 角色多时（作用域很多）一次性渲染会拖慢首屏，先渲染一页，按需追加。
+const OWNER_PAGE_SIZE = 30;
+const ownerRenderLimit = ref(OWNER_PAGE_SIZE);
+const renderedOwners = computed(() => visibleOwners.value.slice(0, ownerRenderLimit.value));
+const hiddenOwnerCount = computed(() => Math.max(0, visibleOwners.value.length - ownerRenderLimit.value));
+watch([activeTab, ownerQuery], () => {
+  ownerRenderLimit.value = OWNER_PAGE_SIZE;
+});
+function loadMoreOwners() {
+  ownerRenderLimit.value += OWNER_PAGE_SIZE;
+}
 const renamingChat = ref(false);
 const deletionGenerationBusy = computed(() => nativeGenerationBusy.value || generationTasks.activeTasks.length > 0);
 const generationListeners = [
@@ -480,7 +517,7 @@ const floorBackupInputEl = ref<HTMLInputElement | null>(null);
 const currentFloorBackupInputEl = ref<HTMLInputElement | null>(null);
 const currentFloorBackup = computed(() => currentChatRow.value?.floorBackup ?? null);
 const currentBackupIsLonger = computed(() =>
-  Boolean(currentFloorBackup.value && currentFloorBackup.value.messages.length > getCurrentChatFloorMessageCount()),
+  Boolean(currentFloorBackup.value && currentFloorBackup.value.messageCount > getCurrentChatFloorMessageCount()),
 );
 const selectedFloorBackup = computed(() => selectedChat.value?.floorBackup ?? null);
 const stopNativeChatRename = onTavernChatRename(payload => refreshArchiveAfterNativeChatRename(payload));
@@ -489,7 +526,7 @@ const floorBackupSummary = computed(() => {
   const backup = selectedFloorBackup.value;
   if (!backup)
     return isSelectedCurrentChat.value ? '尚无备份，可立即保存当前楼层' : '尚无备份；需先在酒馆打开该聊天才能建立';
-  return `${backup.messages.length} 层 · ${formatBackupTime(backup.updatedAt)}`;
+  return `${backup.messageCount} 层 · ${formatBackupTime(backup.updatedAt)}`;
 });
 const isSelectedCurrentChat = computed(() =>
   Boolean(selectedChat.value && areChatScopeKeysEquivalent(selectedChat.value.scopeKey, currentTavernScopeKey.value)),
@@ -544,16 +581,30 @@ function formatBackupTime(value: string) {
   return new Date(timestamp).toLocaleString('zh-CN', { hour12: false });
 }
 
-function openFloorBackup() {
+// 列表只拿索引；阅读/导出/插入时才按 key 取回楼层正文。
+const openedFloorBackup = ref<ChatFloorBackup | null>(null);
+
+async function loadFullFloorBackup(key: string) {
+  const backup = await getChatFloorBackup(key);
+  if (!backup) toastr.error('找不到这份楼层备份，可能已被删除');
+  return backup;
+}
+
+async function openFloorBackup() {
   if (!selectedChat.value || !selectedFloorBackup.value) return;
+  const backup = await loadFullFloorBackup(selectedFloorBackup.value.key);
+  if (!backup) return;
+  openedFloorBackup.value = backup;
   phone.pushPage('floor-backup', '阅读楼层备份', {
     chatKey: selectedChat.value.key,
     ownerKey: activeOwner.value?.key || '',
   });
 }
 
-function exportSelectedFloorBackup() {
-  const backup = selectedFloorBackup.value;
+async function exportSelectedFloorBackup() {
+  const summary = selectedFloorBackup.value;
+  if (!summary) return;
+  const backup = await loadFullFloorBackup(summary.key);
   if (!backup) return;
   downloadChatFloorBackup(backup);
   toastr.success('已开始导出聊天楼层备份');
@@ -630,8 +681,10 @@ async function openCurrentFloorBackup() {
   openFloorBackup();
 }
 
-function exportCurrentFloorBackup() {
-  const backup = currentFloorBackup.value;
+async function exportCurrentFloorBackup() {
+  const summary = currentFloorBackup.value;
+  if (!summary) return;
+  const backup = await loadFullFloorBackup(summary.key);
   if (!backup) return;
   downloadChatFloorBackup(backup);
   toastr.success('已开始导出聊天楼层备份，未覆盖现有备份');
@@ -651,7 +704,7 @@ async function importFloorBackupFor(file: File, owner: ArchiveOwner, chat: Archi
   if (
     existing &&
     !(await phone.confirmNotice(
-      `当前已有 ${existing.messages.length} 层的备份。要用导入文件中的 ${backup.messages.length} 层替换吗？`,
+      `当前已有 ${existing.messageCount} 层的备份。要用导入文件中的 ${backup.messages.length} 层替换吗？`,
       { confirmLabel: '导入并替换', kind: 'warning' },
     ))
   ) {
@@ -694,19 +747,21 @@ async function onCurrentFloorBackupSelected(event: Event) {
 }
 
 async function restoreSelectedFloorBackup() {
-  const backup = selectedFloorBackup.value;
-  if (!backup || restoringFloorBackup.value) return;
+  const summary = selectedFloorBackup.value;
+  if (!summary || restoringFloorBackup.value) return;
   if (!isSelectedCurrentChat.value) {
     toastr.error('酒馆当前打开的不是这份档案对应的聊天，不能插入');
     return;
   }
-  await restoreFloorBackup(backup);
+  const backup = await loadFullFloorBackup(summary.key);
+  if (backup) await restoreFloorBackup(backup);
 }
 
 async function restoreCurrentFloorBackup() {
-  const backup = currentFloorBackup.value;
-  if (!backup || restoringFloorBackup.value) return;
-  await restoreFloorBackup(backup);
+  const summary = currentFloorBackup.value;
+  if (!summary || restoringFloorBackup.value) return;
+  const backup = await loadFullFloorBackup(summary.key);
+  if (backup) await restoreFloorBackup(backup);
 }
 
 async function restoreFloorBackup(backup: ChatFloorBackup) {
@@ -1128,5 +1183,10 @@ async function migrateSelectedChatToCurrent() {
 
 .pc-domain-item {
   display: block;
+}
+
+.pc-load-more {
+  justify-self: center;
+  margin: 10px 0 4px;
 }
 </style>

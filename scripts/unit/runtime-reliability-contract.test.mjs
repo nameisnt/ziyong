@@ -44,8 +44,10 @@ test('replacing floor backups clears and writes inside one transaction', () => {
   const replacement = floorBackup.slice(replacementStart, replacementEnd);
   assert.match(replacement, /parsed\.forEach\(assertBackupIdentity\)/u);
   assert.match(replacement, /runStoreTransaction\('readwrite'/u);
-  assert.match(replacement, /store\.clear\(\)/u);
-  assert.match(replacement, /store\.put\(backup\)/u);
+  assert.match(replacement, /indexes\.clear\(\)/u);
+  assert.match(replacement, /bodies\.clear\(\)/u);
+  assert.match(replacement, /indexes\.put\(toBackupSummary\(backup\)\)/u);
+  assert.match(replacement, /bodies\.put\(\{ key: backup\.key, messages: backup\.messages \}\)/u);
   assert.doesNotMatch(replacement, /listChatFloorBackups|deleteChatFloorBackup|saveChatFloorBackup/u);
 });
 

@@ -5,8 +5,10 @@ import { getChatMessagesSafe, getOptionalGlobalFunction, getOptionalGlobalValue,
 import { onTavernChatRename } from '@/util/tavernChatRenameObserver';
 
 const DATABASE_NAME = 'sillytavern-phone-chat-floor-backups';
-const DATABASE_VERSION = 1;
+// v2 把「索引」和「楼层正文」拆成两个 store：打开档案列表时只读索引，不再整表反序列化正文。
+const DATABASE_VERSION = 2;
 const STORE_NAME = 'backups';
+const BODY_STORE_NAME = 'backupBodies';
 const FILE_KIND = 'tavern-phone-chat-floor-backup';
 
 const JsonRecordSchema = z.record(z.string(), z.unknown()).default({});
@@ -42,6 +44,49 @@ export const ChatFloorBackupSchema = z.object({
 
 export type ChatFloorBackup = z.infer<typeof ChatFloorBackupSchema>;
 export type ChatFloorBackupMessage = z.infer<typeof ChatFloorBackupMessageSchema>;
+
+export const ChatFloorBackupSummarySchema = z.object({
+  chat: z.object({
+    id: z.string().min(1),
+    title: z.string().default(''),
+  }),
+  createdAt: z.string(),
+  key: z.string().min(1),
+  kind: z.literal(FILE_KIND),
+  messageCount: z.number().int().nonnegative(),
+  owner: z.object({
+    avatar: z.string().default(''),
+    displayName: z.string().default(''),
+    kind: z.enum(['char', 'group']),
+    stableId: z.string().min(1),
+  }),
+  schemaVersion: z.literal(2),
+  updatedAt: z.string(),
+});
+
+export type ChatFloorBackupSummary = z.infer<typeof ChatFloorBackupSummarySchema>;
+
+function toBackupSummary(backup: ChatFloorBackup): ChatFloorBackupSummary {
+  return {
+    chat: backup.chat,
+    createdAt: backup.createdAt,
+    key: backup.key,
+    kind: backup.kind,
+    messageCount: backup.messages.length,
+    owner: backup.owner,
+    schemaVersion: 2,
+    updatedAt: backup.updatedAt,
+  };
+}
+
+function mergeBackupSummary(
+  summary: ChatFloorBackupSummary,
+  messages: ChatFloorBackupMessage[] | undefined,
+): ChatFloorBackup | null {
+  if (!messages || !messages.length) return null;
+  const parsed = ChatFloorBackupSchema.safeParse({ ...summary, messages, schemaVersion: 1 });
+  return parsed.success ? parsed.data : null;
+}
 
 export type ChatFloorBackupCaptureResult =
   | { backup: ChatFloorBackup; status: 'created' | 'updated' }
@@ -79,8 +124,25 @@ function openDatabase() {
     request.addEventListener(
       'upgradeneeded',
       () => {
-        if (!request.result.objectStoreNames.contains(STORE_NAME)) {
-          request.result.createObjectStore(STORE_NAME, { keyPath: 'key' });
+        const database = request.result;
+        const upgradeTransaction = request.transaction;
+        const storeNames = Array.from(database.objectStoreNames);
+        if (!storeNames.includes(STORE_NAME)) database.createObjectStore(STORE_NAME, { keyPath: 'key' });
+        if (!storeNames.includes(BODY_STORE_NAME)) database.createObjectStore(BODY_STORE_NAME, { keyPath: 'key' });
+        // v1 的每条记录都带着 messages：迁移时拆成「索引 + 正文」，旧数据一条不丢。
+        if (storeNames.includes(STORE_NAME) && upgradeTransaction) {
+          const legacyStore = upgradeTransaction.objectStore(STORE_NAME);
+          const legacyRequest = legacyStore.getAll();
+          legacyRequest.addEventListener('success', () => {
+            const indexes = upgradeTransaction.objectStore(STORE_NAME);
+            const bodies = upgradeTransaction.objectStore(BODY_STORE_NAME);
+            for (const legacy of legacyRequest.result as unknown[]) {
+              const parsed = ChatFloorBackupSchema.safeParse(legacy);
+              if (!parsed.success) continue;
+              bodies.put({ key: parsed.data.key, messages: parsed.data.messages });
+              indexes.put(toBackupSummary(parsed.data));
+            }
+          });
         }
       },
       { once: true },
@@ -92,12 +154,16 @@ function openDatabase() {
   });
 }
 
-async function runStore<T>(mode: IDBTransactionMode, action: (store: IDBObjectStore) => IDBRequest<T>) {
+async function runStore<T>(
+  mode: IDBTransactionMode,
+  storeName: string,
+  action: (store: IDBObjectStore) => IDBRequest<T>,
+) {
   const database = await openDatabase();
   try {
-    const transaction = database.transaction(STORE_NAME, mode);
+    const transaction = database.transaction(storeName, mode);
     const completed = transactionToPromise(transaction);
-    const request = action(transaction.objectStore(STORE_NAME));
+    const request = action(transaction.objectStore(storeName));
     const result = await requestToPromise(request);
     await completed;
     return result;
@@ -106,12 +172,20 @@ async function runStore<T>(mode: IDBTransactionMode, action: (store: IDBObjectSt
   }
 }
 
-async function runStoreTransaction(mode: IDBTransactionMode, action: (store: IDBObjectStore) => void) {
+async function runStoreTransaction(
+  mode: IDBTransactionMode,
+  storeNames: string | string[],
+  action: (stores: IDBObjectStore[], transaction: IDBTransaction) => void,
+) {
   const database = await openDatabase();
   try {
-    const transaction = database.transaction(STORE_NAME, mode);
+    const names = Array.isArray(storeNames) ? storeNames : [storeNames];
+    const transaction = database.transaction(names, mode);
     const completed = transactionToPromise(transaction);
-    action(transaction.objectStore(STORE_NAME));
+    action(
+      names.map(name => transaction.objectStore(name)),
+      transaction,
+    );
     await completed;
   } finally {
     database.close();
@@ -234,39 +308,75 @@ function sameCurrentMessages(left: ChatFloorBackupMessage[], right: CurrentChatM
   });
 }
 
-export async function listChatFloorBackups() {
-  const records = await runStore<ChatFloorBackup[]>('readonly', store => store.getAll());
+export async function listChatFloorBackupIndexes() {
+  const records = await runStore<unknown[]>('readonly', STORE_NAME, store => store.getAll());
   return records
-    .map(record => ChatFloorBackupSchema.safeParse(record))
-    .filter((result): result is z.ZodSafeParseSuccess<ChatFloorBackup> => result.success)
+    .map(record => ChatFloorBackupSummarySchema.safeParse(record))
+    .filter((result): result is z.ZodSafeParseSuccess<ChatFloorBackupSummary> => result.success)
     .map(result => result.data)
     .sort((left, right) => right.updatedAt.localeCompare(left.updatedAt));
 }
 
+export async function listChatFloorBackups() {
+  const summaries = await listChatFloorBackupIndexes();
+  if (!summaries.length) return [];
+  const bodies = await runStore<Array<{ key: string; messages: unknown }>>(
+    'readonly',
+    BODY_STORE_NAME,
+    store => store.getAll(),
+  );
+  const messagesByKey = new Map(
+    bodies.map(body => {
+      const parsed = z.array(ChatFloorBackupMessageSchema).safeParse(body.messages);
+      return [body.key, parsed.success ? parsed.data : []] as const;
+    }),
+  );
+  return summaries
+    .map(summary => mergeBackupSummary(summary, messagesByKey.get(summary.key)))
+    .filter((backup): backup is ChatFloorBackup => backup !== null);
+}
+
 export async function getChatFloorBackup(key: string) {
-  const record = await runStore<ChatFloorBackup | undefined>('readonly', store => store.get(key));
-  if (!record) return null;
-  const parsed = ChatFloorBackupSchema.safeParse(record);
-  return parsed.success ? parsed.data : null;
+  const record = await runStore<unknown>('readonly', STORE_NAME, store => store.get(key));
+  const summary = ChatFloorBackupSummarySchema.safeParse(record);
+  if (!summary.success) return null;
+  const body = await runStore<{ key: string; messages: unknown } | undefined>(
+    'readonly',
+    BODY_STORE_NAME,
+    store => store.get(key),
+  );
+  if (!body) return null;
+  const messages = z.array(ChatFloorBackupMessageSchema).safeParse(body.messages);
+  return mergeBackupSummary(summary.data, messages.success ? messages.data : []);
 }
 
 export async function saveChatFloorBackup(backup: ChatFloorBackup) {
   const parsed = ChatFloorBackupSchema.parse(backup);
   assertBackupIdentity(parsed);
-  await runStore<IDBValidKey>('readwrite', store => store.put(parsed));
+  await runStoreTransaction('readwrite', [STORE_NAME, BODY_STORE_NAME], ([indexes, bodies]) => {
+    indexes.put(toBackupSummary(parsed));
+    bodies.put({ key: parsed.key, messages: parsed.messages });
+  });
   return parsed;
 }
 
 export async function deleteChatFloorBackup(key: string) {
-  await runStore<undefined>('readwrite', store => store.delete(key));
+  await runStoreTransaction('readwrite', [STORE_NAME, BODY_STORE_NAME], ([indexes, bodies]) => {
+    indexes.delete(key);
+    bodies.delete(key);
+  });
 }
 
 export async function replaceChatFloorBackups(backups: ChatFloorBackup[]) {
   const parsed = z.array(ChatFloorBackupSchema).parse(backups);
   parsed.forEach(assertBackupIdentity);
-  await runStoreTransaction('readwrite', store => {
-    store.clear();
-    parsed.forEach(backup => store.put(backup));
+  await runStoreTransaction('readwrite', [STORE_NAME, BODY_STORE_NAME], ([indexes, bodies]) => {
+    indexes.clear();
+    bodies.clear();
+    parsed.forEach(backup => {
+      indexes.put(toBackupSummary(backup));
+      bodies.put({ key: backup.key, messages: backup.messages });
+    });
   });
 }
 

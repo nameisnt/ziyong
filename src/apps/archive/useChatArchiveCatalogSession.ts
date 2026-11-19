@@ -10,7 +10,7 @@ import {
   type ChatArchiveDomain,
   type ChatScopeRef,
 } from '@/util/chatArchive';
-import { listChatFloorBackups, type ChatFloorBackup } from '@/util/chatFloorBackup';
+import { listChatFloorBackupIndexes, type ChatFloorBackupSummary } from '@/util/chatFloorBackup';
 import { getOptionalGlobalFunction } from '@/util/runtime';
 import { nativeGroups } from './chatDeletion';
 // eslint-disable-next-line import-x/no-nodejs-modules
@@ -35,7 +35,7 @@ export interface ArchiveChatRow {
   exists: boolean;
   contentCount: number;
   domains: ChatArchiveDomain[];
-  floorBackup: ChatFloorBackup | null;
+  floorBackup: ChatFloorBackupSummary | null;
   isCurrent: boolean;
   isUsed: boolean;
   key: string;
@@ -52,7 +52,7 @@ export function useChatArchiveCatalogSession() {
   const currentOwnerChatRows = ref<ArchiveChatRow[]>([]);
   const selectedChat = ref<ArchiveChatRow | null>(null);
   const selectedDomains = ref<ChatArchiveDomain[]>([]);
-  const floorBackups = ref<ChatFloorBackup[]>([]);
+  const floorBackups = ref<ChatFloorBackupSummary[]>([]);
   const ownerQuery = ref('');
   const loadingCharacters = ref(false);
   const loadingChats = ref(false);
@@ -97,12 +97,15 @@ export function useChatArchiveCatalogSession() {
     });
   });
 
+  // 声明必须早于下面的 immediate watch：打开档案时它会立刻触发，晚声明会踩 TDZ。
+  let floorBackupsPromise: Promise<ChatFloorBackupSummary[]> | null = null;
+
   watch(
     () => route.value,
     async current => {
       if (current.appId !== 'archive') return;
       if (current.page === 'root') {
-        await loadCharacters(true);
+        await loadCharacters();
         return;
       }
       if (current.page === 'chats') {
@@ -134,7 +137,11 @@ export function useChatArchiveCatalogSession() {
     loadingCharacters.value = true;
     error.value = '';
     try {
-      const [, loadedBackups] = await Promise.all([getCharacters(), loadFloorBackupsSafe()]);
+      // 角色列表在酒馆启动时已经加载过：只在用户主动刷新或列表为空时才重新拉取，
+      // 否则每次进入档案都会重新下载整份角色卡（本机实测 9 MB 级别）。
+      const characterRefresh =
+        force || !Array.isArray(characters) || characters.length === 0 ? getCharacters() : Promise.resolve();
+      const [, loadedBackups] = await Promise.all([characterRefresh, loadFloorBackupsSafe()]);
       if (requestSequence !== characterLoadSequence) return;
       floorBackups.value = loadedBackups;
       const usedScopes = getUsedChatArchiveScopes();
@@ -170,7 +177,7 @@ export function useChatArchiveCatalogSession() {
       const orphanOwners = [...usedByOwner.entries()]
         .filter(([ownerId]) => !matched.has(ownerId))
         .map(([ownerId, scopes]) => createOrphanOwner(ownerId, scopes));
-      const backupOrphans = new Map<string, ChatFloorBackup[]>();
+      const backupOrphans = new Map<string, ChatFloorBackupSummary[]>();
       loadedBackups
         .filter(backup => !characterOwners.some(owner => isBackupOwnedBy(backup, owner)))
         .forEach(backup => {
@@ -196,15 +203,19 @@ export function useChatArchiveCatalogSession() {
     }
   }
 
-  async function loadFloorBackupsSafe() {
-    try {
-      const backups = await listChatFloorBackups();
-      floorBackupError.value = '';
-      return backups;
-    } catch (caughtError) {
-      floorBackupError.value = caughtError instanceof Error ? caughtError.message : '无法读取浏览器本地备份库';
-      return [];
-    }
+  async function loadFloorBackupsSafe(force = false) {
+    if (!force && floorBackupsPromise) return floorBackupsPromise;
+    floorBackupsPromise = listChatFloorBackupIndexes()
+      .then(backups => {
+        floorBackupError.value = '';
+        return backups;
+      })
+      .catch(caughtError => {
+        floorBackupError.value = caughtError instanceof Error ? caughtError.message : '无法读取浏览器本地备份库';
+        floorBackupsPromise = null;
+        return [];
+      });
+    return floorBackupsPromise;
   }
 
   function groupUsedScopesByOwner(scopes: ChatScopeRef[]) {
@@ -268,7 +279,7 @@ export function useChatArchiveCatalogSession() {
       .replace(/\.[^/.]+$/, '');
   }
 
-  function isBackupOwnedBy(backup: ChatFloorBackup, owner: ArchiveOwner) {
+  function isBackupOwnedBy(backup: ChatFloorBackupSummary, owner: ArchiveOwner) {
     if (backup.owner.kind !== owner.kind) return false;
     const candidates = new Set(
       [...owner.aliases, owner.avatar]
@@ -332,7 +343,7 @@ export function useChatArchiveCatalogSession() {
     };
   }
 
-  function createBackupOrphanOwner(key: string, backups: ChatFloorBackup[]): ArchiveOwner {
+  function createBackupOrphanOwner(key: string, backups: ChatFloorBackupSummary[]): ArchiveOwner {
     const first = backups[0];
     const stableId = first?.owner.stableId || key;
     const name = first?.owner.displayName || formatArchiveOwnerName(stableId);

@@ -1,8 +1,16 @@
 <template>
   <EmptyState v-if="!rows.length && !loading" compact :title="emptyTitle" />
+  <div v-else-if="loading && !rows.length" :class="['pc-directory-list pc-chat-list', { scrollable }]" aria-hidden="true">
+    <div v-for="index in 5" :key="index" class="pc-skeleton-row lines-only">
+      <span class="pc-skeleton-lines">
+        <span class="pc-skeleton-block pc-skeleton-line"></span>
+        <span class="pc-skeleton-block pc-skeleton-line short"></span>
+      </span>
+    </div>
+  </div>
   <div v-else :class="['pc-directory-list pc-chat-list', { scrollable }]">
     <div
-      v-for="chat in rows"
+      v-for="chat in displayedRows"
       :key="chat.key"
       class="pc-list-row pc-chat-row"
       @click.self="
@@ -34,21 +42,26 @@
         <strong>{{ chat.title }}</strong>
         <small>
           {{ !chat.exists && !chat.isCurrent ? '聊天已不存在 · ' : '' }}{{ chat.isUsed ? '有手机内容' : '无手机内容'
-          }}{{ chat.floorBackup ? ` · 已备份 ${chat.floorBackup.messages.length} 层` : ''
+          }}{{ chat.floorBackup ? ` · 已备份 ${chat.floorBackup.messageCount} 层` : ''
           }}{{ chat.isCurrent ? ' · 当前聊天' : '' }}
         </small>
       </button>
       <span v-if="chat.isUsed" class="pc-count-pill">{{ chat.contentCount }}</span>
     </div>
+    <button v-if="hiddenChatCount" class="pc-soft-btn pc-load-more" type="button" @click="loadMoreChats">
+      加载更多聊天（{{ hiddenChatCount }}）
+    </button>
   </div>
 </template>
 
 <script setup lang="ts">
+import { computed, ref, watch } from 'vue';
 import EmptyState from '@/components/EmptyState.vue';
 import BulkSelectionCheckbox from '@/components/BulkSelectionCheckbox.vue';
 import type { ArchiveChatRow } from '@/apps/archive/useChatArchiveCatalogSession';
 
-withDefaults(
+const CHAT_PAGE_SIZE = 50;
+const props = withDefaults(
   defineProps<{
     emptyTitle?: string;
     loading?: boolean;
@@ -67,6 +80,19 @@ withDefaults(
     selectableIds: () => [],
   },
 );
+
+const renderLimit = ref(CHAT_PAGE_SIZE);
+const displayedRows = computed(() => props.rows.slice(0, renderLimit.value));
+const hiddenChatCount = computed(() => Math.max(0, props.rows.length - displayedRows.value.length));
+watch(
+  () => props.rows,
+  () => {
+    renderLimit.value = CHAT_PAGE_SIZE;
+  },
+);
+function loadMoreChats() {
+  renderLimit.value += CHAT_PAGE_SIZE;
+}
 
 defineEmits<{
   select: [chat: ArchiveChatRow];

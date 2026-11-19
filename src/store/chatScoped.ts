@@ -12,6 +12,13 @@ interface ChatScopedEnvelope {
 }
 
 const liveScopedDomains = new Set<{ flush: () => void; reload: () => void }>();
+
+// 任何一次作用域数据写入都会推进这个版本号，供「用过的作用域」等扫描结果做缓存失效。
+let chatScopedRevision = 0;
+export function getChatScopedRevision() {
+  return chatScopedRevision;
+}
+
 export function flushChatScopedDomains() {
   liveScopedDomains.forEach(domain => domain.flush());
 }
@@ -284,6 +291,7 @@ export function useChatScopedDomain<T>(options: { field: string; schema: ZodType
   }
 
   function persistEnvelope() {
+    chatScopedRevision += 1;
     _.set(extension_settings, options.field, {
       __chatScoped: true,
       legacyScopeMigrations: envelope.value.legacyScopeMigrations,
@@ -345,6 +353,7 @@ export function useChatScopedDomain<T>(options: { field: string; schema: ZodType
 
   function rehydrateFromSettings() {
     hydrating.value = true;
+    chatScopedRevision += 1;
     configError.value = '';
     rawConfig.value = undefined;
     envelope.value = readChatScopedEnvelope(options.field, scopeKey.value);

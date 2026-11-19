@@ -4,6 +4,7 @@ import {
   type PhoneArchiveItem,
 } from '@/core/appRegistry';
 import {
+  getChatScopedRevision,
   getCurrentChatScopeKey,
   getLegacyNoChatScopeKeys,
   isPlaceholderChatScopeKey,
@@ -55,8 +56,22 @@ export function buildChatScopeKey(kind: 'char' | 'group', ownerId: string, chatI
   return `${kind}:${ownerId}:chat:${normalizeChatArchiveId(chatId)}`;
 }
 
+let usedScopesCache: { currentScopeKey: string; revision: number; value: ChatScopeRef[] } | null = null;
+
 export function getUsedChatArchiveScopes() {
-  return createChatArchiveDomainReader().getUsedScopes();
+  // 逐 App、逐作用域扫描的成本随存档数量线性增长，结果只依赖「作用域数据版本 + 当前聊天」。
+  const currentScopeKey = getCurrentChatScopeKey();
+  const revision = getChatScopedRevision();
+  if (
+    usedScopesCache &&
+    usedScopesCache.currentScopeKey === currentScopeKey &&
+    usedScopesCache.revision === revision
+  ) {
+    return usedScopesCache.value;
+  }
+  const value = createChatArchiveDomainReader().getUsedScopes();
+  usedScopesCache = { currentScopeKey, revision, value };
+  return value;
 }
 
 export function createChatArchiveDomainReader() {

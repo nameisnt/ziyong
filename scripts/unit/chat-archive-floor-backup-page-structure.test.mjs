@@ -10,7 +10,7 @@ test('ChatArchive delegates the floor backup reader view while retaining its tra
   assert.match(root, /import ChatArchiveFloorBackupPage from '@\/apps\/archive\/ChatArchiveFloorBackupPage\.vue'/u);
   assert.match(
     root,
-    /<ChatArchiveFloorBackupPage[\s\S]*route\.page === 'floor-backup'[\s\S]*:backup="selectedFloorBackup"[\s\S]*:export-backup="exportSelectedFloorBackup"[\s\S]*:restore-backup="restoreSelectedFloorBackup"/u,
+    /<ChatArchiveFloorBackupPage[\s\S]*route\.page === 'floor-backup'[\s\S]*:backup="openedFloorBackup"[\s\S]*:export-backup="exportSelectedFloorBackup"[\s\S]*:restore-backup="restoreSelectedFloorBackup"/u,
   );
 
   for (const legacyView of ['pc-floor-message-list', 'pc-floor-backup-footer', 'getBackupReasoning']) {
