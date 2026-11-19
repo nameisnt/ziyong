@@ -457,8 +457,8 @@ function runFooterAction(event: 'bottom' | 'catalog' | 'next' | 'previous' | 'to
       emit('bottom');
       break;
     case 'catalog':
+      // 打开目录只弹窗，不改变阅读位置；选中条目后正文变化会由 content watch 归零。
       emit('catalog');
-      void scrollContentToTop();
       break;
     case 'next':
       emit('next');

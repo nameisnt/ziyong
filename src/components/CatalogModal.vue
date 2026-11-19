@@ -15,7 +15,7 @@
         </button>
       </header>
 
-      <div class="pc-catalog-list">
+      <div ref="listRef" class="pc-catalog-list">
         <button
           v-for="item in items"
           :key="item.id"
@@ -59,6 +59,7 @@ const emit = defineEmits<{
 }>();
 
 const dialogRef = ref<HTMLElement | null>(null);
+const listRef = ref<HTMLElement | null>(null);
 const itemRefs = new Map<string, HTMLElement>();
 
 usePhoneModalLifecycle({
@@ -76,12 +77,13 @@ function setItemRef(itemId: string, element: Element | ComponentPublicInstance |
 }
 
 function scrollActiveIntoView() {
-  if (!props.open || !props.activeId) return;
+  const list = listRef.value;
   const activeElement = itemRefs.get(props.activeId);
-  activeElement?.scrollIntoView({
-    block: 'center',
-    inline: 'nearest',
-  });
+  if (!props.open || !props.activeId || !list || !activeElement) return;
+  // 只滚动目录自身，避免 scrollIntoView 连带滚动背后的正文/页面。
+  const listRect = list.getBoundingClientRect();
+  const itemRect = activeElement.getBoundingClientRect();
+  list.scrollTop += itemRect.top - listRect.top - (list.clientHeight - itemRect.height) / 2;
 }
 
 watch(
