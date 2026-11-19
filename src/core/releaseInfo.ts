@@ -4,6 +4,13 @@ export const RUNNING_VERSION = manifest.version;
 export const RELEASE_SEEN_FIELD = 'sillytavern_phone_last_seen_release';
 export const RELEASE_HISTORY = [
   {
+    version: '1.2.25',
+    notes: [
+      '修复：打开阅读目录时正文会被拉回顶部；小剧场、日记、番外、聊天书库等共用阅读详情页一并生效。',
+      '修复：论坛生成追评时，楼主回复使用 <op_author> 格式会被误判为缺少作者，现在与主楼解析规则一致。',
+    ],
+  },
+  {
     version: '1.2.24',
     notes: [
       '聊天档案打开更快：不再每次重新拉取全部角色卡，改为复用已加载的数据；当前聊天卡新增「刷新角色」按钮，需要时手动刷新。',
