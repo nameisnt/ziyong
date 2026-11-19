@@ -298,6 +298,20 @@ export function parseContentXmlResult(
   return parseResultCandidates(raw, candidate => parseContentXmlCandidate(candidate, options));
 }
 
+// 楼主的回复有两种写法：新格式用 <op_author> 顶替 <author>，旧格式给 <author> 加 is_op 或单独给 <is_op>。
+// 主楼与追评都走这里，避免两边解析规则不一致导致「楼主回复被当成缺 author」。
+function readForumReplyElement(reply: Element) {
+  const authorElement = Array.from(reply.children).find(item => item.tagName === 'author');
+  const opAuthorElement = Array.from(reply.children).find(item => item.tagName === 'op_author');
+  const legacyFlag = getDirectChildText(reply, 'is_op');
+  return {
+    author: opAuthorElement?.textContent?.trim() || authorElement?.textContent?.trim() || '',
+    content: getDirectChildText(reply, 'content'),
+    isOriginalPoster:
+      opAuthorElement || authorElement?.hasAttribute('is_op') ? 'true' : legacyFlag || 'false',
+  };
+}
+
 function parseForumXmlCandidate(raw: string): XmlParseResult<ForumXmlResult> {
   const resultBlock = extractFirstResultBlock(raw);
   if (!resultBlock) {
@@ -326,18 +340,7 @@ function parseForumXmlCandidate(raw: string): XmlParseResult<ForumXmlResult> {
   const replyElements = repliesParent
     ? Array.from(repliesParent.children).filter(item => item.tagName === 'reply')
     : Array.from(root.children).filter(item => item.tagName === 'reply');
-  const replies = replyElements.map(reply => {
-    const authorElement = Array.from(reply.children).find(item => item.tagName === 'author');
-    const opAuthorElement = Array.from(reply.children).find(item => item.tagName === 'op_author');
-    const legacyFlag = getDirectChildText(reply, 'is_op');
-    return {
-      // 新格式用 <op_author> 代替 <author> 表示楼主本人；旧格式回退到 <is_op>true</is_op>。
-      author: opAuthorElement?.textContent?.trim() || authorElement?.textContent?.trim() || '',
-      content: getDirectChildText(reply, 'content'),
-      isOriginalPoster:
-        opAuthorElement || authorElement?.hasAttribute('is_op') ? 'true' : legacyFlag || 'false',
-    };
-  });
+  const replies = replyElements.map(readForumReplyElement);
 
   const incompleteReplyIndex = replies.findIndex(reply => !reply.author || !reply.content);
   if (!board || !title || !author || !content || incompleteReplyIndex >= 0) {
@@ -347,7 +350,7 @@ function parseForumXmlCandidate(raw: string): XmlParseResult<ForumXmlResult> {
       !author ? '缺少必填字段「主楼作者」(<author>)' : '',
       !content ? '缺少必填字段「主楼正文」(<content>)' : '',
       incompleteReplyIndex >= 0 && !replies[incompleteReplyIndex]!.author
-        ? `第 ${incompleteReplyIndex + 1} 条回复缺少 <author>`
+        ? `第 ${incompleteReplyIndex + 1} 条回复缺少作者（<author> 或 <op_author>）`
         : '',
       incompleteReplyIndex >= 0 && !replies[incompleteReplyIndex]!.content
         ? `第 ${incompleteReplyIndex + 1} 条回复缺少 <content>`
@@ -403,22 +406,14 @@ function parseForumRepliesXmlCandidate(raw: string): XmlParseResult<ForumReplies
   const replyElements = repliesParent
     ? Array.from(repliesParent.children).filter(item => item.tagName === 'reply')
     : Array.from(root.children).filter(item => item.tagName === 'reply');
-  const replies = replyElements.map(reply => {
-    const authorElement = Array.from(reply.children).find(item => item.tagName === 'author');
-    const legacyFlag = getDirectChildText(reply, 'is_op');
-    return {
-      author: authorElement?.textContent?.trim() || '',
-      content: getDirectChildText(reply, 'content'),
-      isOriginalPoster: authorElement?.hasAttribute('is_op') ? 'true' : legacyFlag || 'false',
-    };
-  });
+  const replies = replyElements.map(readForumReplyElement);
 
   if (!replies.length || replies.some(reply => !reply.author || !reply.content)) {
     const incompleteIndex = replies.findIndex(reply => !reply.author || !reply.content);
     const warnings = !replies.length
       ? ['缺少必填字段「回复列表」(<reply>)']
       : [
-          !replies[incompleteIndex]!.author ? `第 ${incompleteIndex + 1} 条回复缺少 <author>` : '',
+          !replies[incompleteIndex]!.author ? `第 ${incompleteIndex + 1} 条回复缺少作者（<author> 或 <op_author>）` : '',
           !replies[incompleteIndex]!.content ? `第 ${incompleteIndex + 1} 条回复缺少 <content>` : '',
         ].filter(Boolean);
     return {

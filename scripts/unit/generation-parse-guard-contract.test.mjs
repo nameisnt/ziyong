@@ -26,6 +26,11 @@ test('the forum parser reads the original poster mark from the op_author tag and
   assert.doesNotMatch(forumParser, /缺少 <is_op>/u);
 });
 
+test('the main post and the reply generator read reply authors through the same helper', () => {
+  assert.match(forumParser, /function readForumReplyElement\(reply: Element\)/u);
+  assert.equal((forumParser.match(/replyElements\.map\(readForumReplyElement\)/gu) ?? []).length, 2);
+});
+
 test('the builtin forum output format teaches the op_author tag', () => {
   assert.match(builtinPrompts, /<op_author>楼主本人回复的作者名<\/op_author>/u);
   assert.equal((builtinPrompts.match(/<op_author>楼主本人回复的作者名<\/op_author>/gu) ?? []).length, 2);
