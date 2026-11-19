@@ -39,13 +39,13 @@ test('opening the app imports edits made in the world book editor', () => {
   assert.match(mounted, /syncToWorldBook\(\)/u);
 });
 
-test('entries owned by another chat are skipped instead of being deleted', () => {
+test('entries owned by another chat are removed so the book mirrors only this chat', () => {
   const body = sliceFunction('performSync');
   const foreignBranch = body.match(/if \(!currentSlotIds\.has\(slotId\)\) \{[\s\S]*?\n {6}\}/u)?.[0] ?? '';
-  assert.match(foreignBranch, /foreignSkipped \+= 1;/u);
+  assert.match(foreignBranch, /foreignRemoved \+= 1;/u);
   assert.match(foreignBranch, /removedSlotIds\.has\(slotId\)/u);
   assert.match(foreignBranch, /delete entries\[/u);
-  assert.match(body, /foreignSkipped,/u);
+  assert.match(body, /foreignRemoved,/u);
 });
 
 test('a slot the user deleted still removes its world book entry', () => {
@@ -61,9 +61,9 @@ test('a shared book with foreign entries still refreshes the local slots', () =>
   assert.match(body, /按标记逐个跳过/u);
 });
 
-test('the sync toast reports adopted entries and skipped foreign ones', () => {
+test('the sync toast reports adopted entries and cleaned foreign ones', () => {
   const body = appSource.match(/async function syncSlots[\s\S]*?\n\}/u)?.[0] ?? '';
   assert.match(body, /从世界书导入/u);
-  assert.match(body, /result\.foreignSkipped/u);
-  assert.match(body, /toastr\.warning/u);
+  assert.match(body, /result\.foreignRemoved/u);
+  assert.match(body, /toastr\.info/u);
 });

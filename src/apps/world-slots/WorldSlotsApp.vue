@@ -548,8 +548,8 @@ async function syncSlots() {
     toastr.success(
       `已同步到世界书“${result.bookName}”：${result.updated} 更新，${result.created} 新建，${result.removed} 移除${result.imported ? `，${result.imported} 从世界书导入` : ''}`,
     );
-    if (result.foreignSkipped) {
-      toastr.warning(`世界书里有 ${result.foreignSkipped} 条其它聊天的条目，已跳过。`);
+    if (result.foreignRemoved) {
+      toastr.info(`已从世界书“${result.bookName}”清理 ${result.foreignRemoved} 条其它聊天的条目，切回对应聊天会自动恢复。`);
     }
   } catch (error) {
     reportFailure('同步世界书', error);

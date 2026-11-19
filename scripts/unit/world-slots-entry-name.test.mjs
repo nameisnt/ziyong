@@ -161,12 +161,12 @@ test('entries written in the world book editor are adopted as slots', async () =
   assert.equal(f.book().entries[5].sillytavernPhoneSlotId, adopted.id);
 });
 
-test('entries belonging to another chat stay untouched and are reported', async () => {
+test('entries belonging to another chat are removed from the mirror book', async () => {
   const other = { uid: 3, content: 'Other chat', sillytavernPhoneSlotId: 'other-chat-slot' };
   const f = fixture({ 3: other });
   const result = await f.sync();
-  assert.equal(result.foreignSkipped, 1);
-  assert.deepEqual(f.book().entries[3], other);
+  assert.equal(result.foreignRemoved, 1);
+  assert.equal(f.book().entries[3], undefined);
 });
 
 test('bound entry ID survives external editing and marker removal, including ID zero', async () => {

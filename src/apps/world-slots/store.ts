@@ -123,7 +123,7 @@ export type WorldSlotsSyncStatus = 'error' | 'idle' | 'synced' | 'syncing';
 export interface WorldSlotsSyncResult {
   bookName: string;
   created: number;
-  foreignSkipped: number;
+  foreignRemoved: number;
   imported: number;
   removed: number;
   skipped: boolean;
@@ -472,7 +472,7 @@ export const useWorldSlotsStore = defineStore('world-slots', () => {
     return {
       bookName: WORLD_SLOTS_BOOK_NAME,
       created: 0,
-      foreignSkipped: 0,
+      foreignRemoved: 0,
       imported: 0,
       removed: 0,
       skipped: true,
@@ -513,7 +513,7 @@ export const useWorldSlotsStore = defineStore('world-slots', () => {
     const currentSlotIds = new Set(slotSnapshot.map(slot => slot.id));
     const retainedSlotIds = new Set<string>();
     let removed = 0;
-    let foreignSkipped = 0;
+    let foreignRemoved = 0;
 
     Object.entries(entries).forEach(([key, entry]) => {
       if (!entry || typeof entry !== 'object') return;
@@ -525,8 +525,10 @@ export const useWorldSlotsStore = defineStore('world-slots', () => {
           removed += 1;
           return;
         }
-        // 其它聊天留在共享世界书里的条目：原样保留，不导入也不删除。
-        foreignSkipped += 1;
+        // 《当前聊天》只镜像当前聊天的槽位：其它聊天的槽位数据存在各自的作用域设置里，
+        // 这里删掉它们的条目，切回那个聊天时会自动重新写入，避免条目越积越多、互相干扰。
+        delete entries[key];
+        foreignRemoved += 1;
         return;
       }
       if (retainedSlotIds.has(slotId)) {
@@ -634,7 +636,7 @@ export const useWorldSlotsStore = defineStore('world-slots', () => {
     return {
       bookName,
       created,
-      foreignSkipped,
+      foreignRemoved,
       imported: importedSlotIds.size,
       removed,
       skipped: !isRequestCurrent(requestId, targetScopeKey),
