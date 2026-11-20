@@ -4,6 +4,15 @@ export const RUNNING_VERSION = manifest.version;
 export const RELEASE_SEEN_FIELD = 'sillytavern_phone_last_seen_release';
 export const RELEASE_HISTORY = [
   {
+    version: '1.2.26',
+    notes: [
+      '论坛解析兼容旧写法：<author is_op> 与 <op_author> 现在都能认作楼主',
+      '世界书「当前聊天」改为当前聊天镜像书，切换聊天时自动清理其它聊天的条目',
+      '论坛、书信、番外的重写在生成期间切换页面时不再丢失目标，保存不会变成新建',
+      '日记支持多版本：可重写并保存为新版本，详情页可切换版本，旧日记首次打开自动补一版',
+    ],
+  },
+  {
     version: '1.2.25',
     notes: [
       '修复：打开阅读目录时正文会被拉回顶部；小剧场、日记、番外、聊天书库等共用阅读详情页一并生效。',
