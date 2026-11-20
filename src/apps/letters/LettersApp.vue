@@ -191,6 +191,7 @@ import { completePreviewSave } from '@/util/previewSave';
 import { usePreviewDraftPersistence } from '@/util/previewDrafts';
 import { formatGenerationReferences, type GenerationReferenceItem } from '@/util/references';
 import { resolveContentVersion } from '@/util/contentVersions';
+import { deleteContentVersionWithFallback } from '@/util/deleteContentVersion';
 import { useInvalidRouteFallback } from '@/util/routeFallback';
 import { updateGenerationRecordReasoning } from '@/util/generationReasoning';
 import { storeToRefs } from 'pinia';
@@ -687,27 +688,30 @@ function selectLetterVersion(versionId: string) {
 }
 
 async function removeLetterVersion(versionId: string) {
-  if (!activeBook.value || !activeEntry.value || activeEntry.value.versions.length <= 1) return;
-  const versionIndex = activeEntry.value.versions.findIndex(version => version.id === versionId);
-  if (versionIndex < 0) return;
-  const shouldDelete = await phone.confirmNotice(
-    `要删除当前查看的书信版本 ${versionIndex + 1}/${activeEntry.value.versions.length} 吗？只会删除这个版本。`,
-    { confirmLabel: '删除此版本', kind: 'warning' },
-  );
-  if (!shouldDelete || !activeBook.value || !activeEntry.value) return;
-  const versions = [...activeEntry.value.versions];
-  const previousVersion = versions[(versionIndex - 1 + versions.length) % versions.length];
-  const result = letters.deleteEntryVersion(activeBook.value.id, activeEntry.value.id, versionId);
-  if (!result) return;
-  const entry = previousVersion
-    ? letters.activateEntryVersion(activeBook.value.id, result.entry.id, previousVersion.id)
-    : result.entry;
-  phone.replacePage('entry', entry?.title || result.activeVersion.title, {
-    bookId: activeBook.value.id,
-    entryId: result.entry.id,
-    versionId: previousVersion?.id || result.activeVersion.id,
+  const book = activeBook.value;
+  const entry = activeEntry.value;
+  if (!book || !entry) return;
+  await deleteContentVersionWithFallback({
+    versions: entry.versions,
+    versionId,
+    confirm: (message, confirmLabel) => phone.confirmNotice(message, { confirmLabel, kind: 'warning' }),
+    confirmLabel: '删除此版本',
+    confirmMessage: ({ index, total }) =>
+      `要删除当前查看的书信版本 ${index}/${total} 吗？只会删除这个版本。`,
+    remove: () => letters.deleteEntryVersion(book.id, entry.id, versionId),
+    activate: previous => {
+      letters.activateEntryVersion(book.id, entry.id, previous.id);
+    },
+    navigate: result => {
+      phone.replacePage('entry', result.entry.title, {
+        bookId: book.id,
+        entryId: result.entry.id,
+        versionId: result.entry.activeVersionId,
+      });
+    },
+    successMessage: '已删除当前书信版本',
+    notifySuccess: message => toastr.success(message),
   });
-  toastr.success('已删除当前书信版本');
 }
 
 function openBook(bookId: string) {

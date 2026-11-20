@@ -268,6 +268,7 @@ import { resolveGenerationReplayReferences } from '@/util/generationReplay';
 import { createHiddenGenerationRecord, resolveHiddenGenerationReplay } from '@/util/hiddenGenerationRecord';
 import { formatGenerationReferences, type GenerationReferenceItem } from '@/util/references';
 import { resolveContentVersion } from '@/util/contentVersions';
+import { deleteContentVersionWithFallback } from '@/util/deleteContentVersion';
 import { completePreviewSave } from '@/util/previewSave';
 import { usePreviewDraftPersistence } from '@/util/previewDrafts';
 import { useInvalidRouteFallback } from '@/util/routeFallback';
@@ -933,24 +934,27 @@ function selectTheaterVersion(versionId: string) {
 }
 
 async function removeTheaterVersion(versionId: string) {
-  if (!activeEntry.value || activeEntry.value.versions.length <= 1) return;
-  const versionIndex = activeEntry.value.versions.findIndex(version => version.id === versionId);
-  if (versionIndex < 0) return;
-  const shouldDelete = await phone.confirmNotice(
-    `要删除当前查看的版本 ${versionIndex + 1}/${activeEntry.value.versions.length} 吗？只会删除这个版本。`,
-    { confirmLabel: '删除此版本', kind: 'warning' },
-  );
-  if (!shouldDelete || !activeEntry.value) return;
-  const versions = [...activeEntry.value.versions];
-  const previousVersion = versions[(versionIndex - 1 + versions.length) % versions.length];
-  const result = theater.deleteEntryVersion(activeEntry.value.id, versionId);
-  if (!result) return;
-  const entry = previousVersion ? theater.activateEntryVersion(result.entry.id, previousVersion.id) : result.entry;
-  phone.replacePage('entry', entry?.title || result.activeVersion.title, {
-    entryId: result.entry.id,
-    versionId: previousVersion?.id || result.activeVersion.id,
+  const entry = activeEntry.value;
+  if (!entry) return;
+  await deleteContentVersionWithFallback({
+    versions: entry.versions,
+    versionId,
+    confirm: (message, confirmLabel) => phone.confirmNotice(message, { confirmLabel, kind: 'warning' }),
+    confirmLabel: '删除此版本',
+    confirmMessage: ({ index, total }) => `要删除当前查看的版本 ${index}/${total} 吗？只会删除这个版本。`,
+    remove: () => theater.deleteEntryVersion(entry.id, versionId),
+    activate: previous => {
+      theater.activateEntryVersion(entry.id, previous.id);
+    },
+    navigate: result => {
+      phone.replacePage('entry', result.entry.title, {
+        entryId: result.entry.id,
+        versionId: result.entry.activeVersionId,
+      });
+    },
+    successMessage: '已删除当前小剧场版本',
+    notifySuccess: message => toastr.success(message),
   });
-  toastr.success('已删除当前小剧场版本');
 }
 
 function openCustomGenerate() {

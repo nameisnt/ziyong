@@ -1,5 +1,6 @@
 import { useForumStore } from '@/store/forum';
 import type { ForumBoard, ForumThread } from '@/type/forum';
+import { deleteContentVersionWithFallback } from '@/util/deleteContentVersion';
 
 export function useForumDeletionSession(options: {
   confirmDelete: (message: string, confirmLabel: string) => Promise<boolean>;
@@ -16,31 +17,28 @@ export function useForumDeletionSession(options: {
   async function removeForumVersion(versionId: string) {
     const board = options.getActiveBoard();
     const thread = options.getActiveThread();
-    if (!board || !thread || thread.versions.length <= 1) return;
-    const versionIndex = thread.versions.findIndex(version => version.id === versionId);
-    if (versionIndex < 0) return;
-    const shouldDelete = await options.confirmDelete(
-      `要删除当前查看的主题版本 ${versionIndex + 1}/${thread.versions.length} 吗？该版本的主楼和回复会一起删除。`,
-      '删除此版本',
-    );
-    if (!shouldDelete) return;
-
-    const currentBoard = options.getActiveBoard();
-    const currentThread = options.getActiveThread();
-    if (!currentBoard || !currentThread) return;
-    const versions = [...currentThread.versions];
-    const previousVersion = versions[(versionIndex - 1 + versions.length) % versions.length];
-    const result = forum.deleteThreadVersion(currentBoard.id, currentThread.id, versionId);
-    if (!result) return;
-    const nextThread = previousVersion
-      ? forum.activateThreadVersion(currentBoard.id, result.thread.id, previousVersion.id)
-      : result.thread;
-    options.navigateToThread(nextThread?.title || result.activeVersion.title, {
-      boardId: currentBoard.id,
-      threadId: result.thread.id,
-      versionId: previousVersion?.id || result.activeVersion.id,
+    if (!board || !thread) return;
+    await deleteContentVersionWithFallback({
+      versions: thread.versions,
+      versionId,
+      confirm: options.confirmDelete,
+      confirmLabel: '删除此版本',
+      confirmMessage: ({ index, total }) =>
+        `要删除当前查看的主题版本 ${index}/${total} 吗？该版本的主楼和回复会一起删除。`,
+      remove: () => forum.deleteThreadVersion(board.id, thread.id, versionId),
+      activate: previous => {
+        forum.activateThreadVersion(board.id, thread.id, previous.id);
+      },
+      navigate: result => {
+        options.navigateToThread(result.thread.title || result.activeVersion.title, {
+          boardId: board.id,
+          threadId: result.thread.id,
+          versionId: result.thread.activeVersionId,
+        });
+      },
+      successMessage: '已删除当前论坛主题版本',
+      notifySuccess: options.notifySuccess,
     });
-    options.notifySuccess('已删除当前论坛主题版本');
   }
 
   async function removeBoard(boardId: string) {

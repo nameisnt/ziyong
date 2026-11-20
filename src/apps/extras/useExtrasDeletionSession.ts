@@ -1,5 +1,6 @@
 import { useExtrasStore } from '@/store/extras';
 import type { ExtraBook, ExtraChapter } from '@/type/extra';
+import { deleteContentVersionWithFallback } from '@/util/deleteContentVersion';
 
 export function useExtrasDeletionSession(options: {
   confirmDelete: (message: string, confirmLabel: string) => Promise<boolean>;
@@ -29,31 +30,28 @@ export function useExtrasDeletionSession(options: {
   async function removeChapterVersion(versionId: string) {
     const book = options.getActiveBook();
     const chapter = options.getActiveChapter();
-    if (!book || !chapter || chapter.versions.length <= 1) return;
-    const versionIndex = chapter.versions.findIndex(version => version.id === versionId);
-    if (versionIndex < 0) return;
-    const shouldDelete = await options.confirmDelete(
-      `要删除当前查看的版本 ${versionIndex + 1}/${chapter.versions.length} 吗？`,
-      '删除此版本',
-    );
-    if (!shouldDelete) return;
-
-    const currentBook = options.getActiveBook();
-    const currentChapter = options.getActiveChapter();
-    if (!currentBook || !currentChapter) return;
-    const versions = [...currentChapter.versions];
-    const previousVersion = versions[(versionIndex - 1 + versions.length) % versions.length];
-    const result = extras.deleteChapterVersion(currentBook.id, currentChapter.id, versionId);
-    if (!result) return;
-    const nextChapter = previousVersion
-      ? extras.activateChapterVersion(currentBook.id, result.chapter.id, previousVersion.id)
-      : result.chapter;
-    options.navigateToChapter(nextChapter?.title || result.activeVersion.title, {
-      bookId: currentBook.id,
-      chapterId: result.chapter.id,
-      versionId: previousVersion?.id || result.activeVersion.id,
+    if (!book || !chapter) return;
+    await deleteContentVersionWithFallback({
+      versions: chapter.versions,
+      versionId,
+      confirm: options.confirmDelete,
+      confirmLabel: '删除此版本',
+      confirmMessage: ({ index, total }) => `要删除当前查看的版本 ${index}/${total} 吗？`,
+      remove: () => extras.deleteChapterVersion(book.id, chapter.id, versionId),
+      activate: previous => {
+        extras.activateChapterVersion(book.id, chapter.id, previous.id);
+      },
+      navigate: result => {
+        const nextChapter = options.getActiveChapter() || result.chapter;
+        options.navigateToChapter(nextChapter.title || result.activeVersion.title, {
+          bookId: book.id,
+          chapterId: result.chapter.id,
+          versionId: result.chapter.activeVersionId,
+        });
+      },
+      successMessage: '已删除当前章节版本',
+      notifySuccess: options.notifySuccess,
     });
-    options.notifySuccess('已删除当前章节版本');
   }
 
   async function removeChapter(bookId: string, chapterId: string) {

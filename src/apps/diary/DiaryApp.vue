@@ -272,6 +272,7 @@ import type { FailedGenerationDraft, HiddenGenerationRecord } from '@/type/gener
 import type { GenerationTask } from '@/type/generationTask';
 import type { CharacterRef, DiaryEntryVersion } from '@/type/diary';
 import { resolveContentVersion } from '@/util/contentVersions';
+import { deleteContentVersionWithFallback } from '@/util/deleteContentVersion';
 import { reportFailure } from '@/util/feedback';
 import { storeToRefs } from 'pinia';
 
@@ -1630,22 +1631,28 @@ async function removeEntry(bookId: string, entryId: string) {
   const entry = diary.getEntry(bookId, entryId);
   const versionId = route.value.params?.versionId || entry?.activeVersionId || '';
   if (entry && entry.versions.length > 1 && versionId) {
-    const shouldDeleteVersion = await phone.confirmNotice('要删除这篇日记的当前版本吗？', {
+    const outcome = await deleteContentVersionWithFallback({
+      versions: entry.versions,
+      versionId,
+      confirm: (message, confirmLabel) => phone.confirmNotice(message, { confirmLabel, kind: 'warning' }),
       confirmLabel: '删除版本',
-      kind: 'warning',
+      confirmMessage: () => '要删除这篇日记的当前版本吗？',
+      remove: () => diary.deleteEntryVersion(bookId, entryId, versionId),
+      activate: previous => {
+        diary.activateEntryVersion(bookId, entryId, previous.id);
+      },
+      navigate: result => {
+        phone.replacePage('entry', result.entry.title, {
+          bookId,
+          entryId,
+          versionId: result.entry.activeVersionId,
+        });
+      },
+      successMessage: '已删除该版本',
+      notifySuccess: message => toastr.success(message),
     });
-    if (!shouldDeleteVersion) return;
-    const removed = diary.deleteEntryVersion(bookId, entryId, versionId);
-    if (!removed) {
-      toastr.warning('这是最后一个版本，请直接删除整篇日记');
-      return;
-    }
-    toastr.success('已删除该版本');
-    phone.replacePage('entry', removed.entry.title, {
-      bookId,
-      entryId,
-      versionId: removed.entry.activeVersionId,
-    });
+    if (outcome.status === 'deleted') return;
+    if (outcome.status === 'rejected') toastr.warning('这是最后一个版本，请直接删除整篇日记');
     return;
   }
   const shouldDelete = await phone.confirmNotice(`要删除日记“${entry?.title || '未命名日记'}”吗？`, {
