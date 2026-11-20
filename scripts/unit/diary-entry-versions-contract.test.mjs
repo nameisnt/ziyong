@@ -46,3 +46,13 @@ test('the entry detail page exposes version navigation and rewrite', () => {
   assert.match(detail, /emit\('rewrite'\)/u);
   assert.match(detail, /emit\('selectVersion', \$event\)/u);
 });
+
+test('rewriting refills the previous requirement, source, and references', () => {
+  assert.match(app, /restoreGenerationReplayDraft\(replay, generationDraft\)/u);
+  assert.match(app, /selectedReferences\.value = resolveGenerationReplayReferences\(replay\)/u);
+  const watchIndex = app.indexOf("current.page === 'generate' && previous?.page !== 'preview'");
+  const restoreIndex = app.indexOf('restoreGenerationReplayDraft(replay, generationDraft)');
+  assert.ok(watchIndex > 0 && restoreIndex > watchIndex, 'rewrite refill must live in the generate page watch');
+  const openRewrite = app.slice(app.indexOf('function openRewriteEntry'), app.indexOf('function selectEntryVersion'));
+  assert.ok(!/replay\.config\.userRequirement/u.test(openRewrite), 'openRewriteEntry must not read the legacy config field');
+});

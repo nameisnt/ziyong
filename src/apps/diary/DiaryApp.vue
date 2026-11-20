@@ -254,6 +254,7 @@ import { useSettingsStore } from '@/store/settings';
 import { canOpenBaguScan } from '@/util/baguScanGate';
 import { replaceGenerationAliases, resolveGenerationIdentityAliases } from '@/util/generationAliases';
 import { formatGenerationReferences, type GenerationReferenceItem } from '@/util/references';
+import { resolveGenerationReplayReferences, restoreGenerationReplayDraft } from '@/util/generationReplay';
 import { usePreviewDraftPersistence } from '@/util/previewDrafts';
 import { useInvalidRouteFallback } from '@/util/routeFallback';
 import { getChatMessagesSafe } from '@/util/runtime';
@@ -738,6 +739,15 @@ watch(
     }
 
     if (current.page === 'generate' && previous?.page !== 'preview') {
+      const rewriteEntry = current.params?.entryId ? activeEntry.value : null;
+      const rewriteVersion = rewriteEntry
+        ? resolveContentVersion(
+            rewriteEntry.versions,
+            rewriteEntry.activeVersionId,
+            current.params?.versionId,
+          )
+        : null;
+      const rewriteRecord = rewriteVersion?.generationRecord ?? rewriteEntry?.generationRecord;
       selectedReferences.value = [];
       generationDraft.bookTitle = activeBook.value?.title || '';
       generationDraft.occurredAt = '';
@@ -746,6 +756,14 @@ watch(
       generationDraft.singleMessageId = 0;
       generationDraft.userRequirement = '';
       generationState.preview = null;
+      if (rewriteEntry && rewriteRecord?.replay) {
+        // 重写时要沿用上次生成的条件：追加要求、楼层范围、引用，和番外/小剧场保持一致。
+        const replay = rewriteRecord.replay;
+        settings.value.generation.sourceMode = restoreGenerationReplayDraft(replay, generationDraft);
+        selectedReferences.value = resolveGenerationReplayReferences(replay);
+        generationDraft.occurredAt = rewriteEntry.occurredAt || '';
+        generationDraft.perspectiveName = activeBook.value?.perspective.name || rewriteEntry.perspective.name;
+      }
     }
 
     if (current.page === 'batch-generate') {
@@ -949,12 +967,7 @@ function openRewriteEntry() {
   const book = activeBook.value;
   const entry = activeEntry.value;
   const version = viewedEntryVersion.value;
-  const config = version?.generationRecord?.replay.config ?? {};
-  if (typeof config.userRequirement === 'string') {
-    generationDraft.userRequirement = config.userRequirement;
-  }
-  generationDraft.occurredAt = entry.occurredAt || '';
-  generationDraft.perspectiveName = book.perspective.name;
+  // 生成页的空白重置在路由 watch 里；这里只负责带上目标，重写条件由 watch 从上次生成记录回填。
   phone.pushPage('generate', '重新生成日记', {
     bookId: book.id,
     entryId: entry.id,
@@ -1039,6 +1052,10 @@ async function runGeneration() {
         tavernPresetName: resolveDiaryPresetSelection(settings.value.generation.tavernPresetName),
       },
       references: formattedReferences.value,
+      referenceItems: selectedReferences.value.map(reference => ({
+        ...reference,
+        sourcePath: [...reference.sourcePath],
+      })),
       source: {
         fromStartEnd: generationDraft.fromStartEnd,
         mode: settings.value.generation.sourceMode,
