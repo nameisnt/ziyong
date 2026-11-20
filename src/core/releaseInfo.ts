@@ -4,6 +4,14 @@ export const RUNNING_VERSION = manifest.version;
 export const RELEASE_SEEN_FIELD = 'sillytavern_phone_last_seen_release';
 export const RELEASE_HISTORY = [
   {
+    version: '1.2.28',
+    notes: [
+      '论坛回复可以直接编辑：点回复右侧的铅笔，改作者、正文和「标记为楼主」，保存后立即生效。',
+      '日记、书信、小剧场改用同一套生成流程，生成途中退出或切页时，保存仍会回到原来的条目并追加版本。',
+      '五个写作 App 的版本切换、删除与预览保存收尾统一走同一套逻辑，行为不变。',
+    ],
+  },
+  {
     version: '1.2.27',
     notes: [
       '日记重写会带回上次的追加要求、来源范围和引用',
