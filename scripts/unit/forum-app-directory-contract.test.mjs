@@ -17,6 +17,7 @@ test('forum root and domain files have one app-owned directory with one external
     'ForumCatalogPage.vue',
     'ForumPreviewPage.vue',
     'ForumRepliesGeneratePage.vue',
+    'ForumReplyEditDialog.vue',
     'ForumReplyList.vue',
     'ForumThreadDetailPage.vue',
     'ForumThreadEditorPage.vue',

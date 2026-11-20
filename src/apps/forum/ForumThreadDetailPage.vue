@@ -40,7 +40,12 @@
         />
       </template>
       <template #after-content>
-        <ForumReplyList :replies="replies" :regex-identity="[thread.id, viewedVersionId]" />
+        <ForumReplyList
+          editable
+          :replies="replies"
+          :regex-identity="[thread.id, viewedVersionId]"
+          @edit="editingReply = $event"
+        />
       </template>
       <template #actions>
         <button class="pc-soft-btn" type="button" @click="$emit('generate-replies')">
@@ -54,6 +59,12 @@
         </button>
       </template>
     </ReaderDetailShell>
+    <ForumReplyEditDialog
+      v-if="editingReply"
+      :reply="editingReply"
+      @close="editingReply = null"
+      @save="saveReply"
+    />
   </section>
 </template>
 
@@ -62,6 +73,7 @@ import CapsuleTag from '@/components/CapsuleTag.vue';
 import ReaderDetailShell from '@/components/ReaderDetailShell.vue';
 import VersionNavigator from '@/components/VersionNavigator.vue';
 import ForumReplyList from '@/apps/forum/ForumReplyList.vue';
+import ForumReplyEditDialog from '@/apps/forum/ForumReplyEditDialog.vue';
 import type { ForumReply, ForumThread, ForumThreadVersion } from '@/type/forum';
 
 const props = defineProps<{
@@ -74,13 +86,14 @@ const props = defineProps<{
   viewedVersionId: string;
 }>();
 
-const viewedGenerationRecord = computed(
-  () =>
-    props.versions.find(version => version.id === props.viewedVersionId)?.generationRecord ||
-    props.thread.generationRecord,
-);
+const editingReply = ref<{
+  id?: string;
+  author: string;
+  content: string;
+  isOriginalPoster: boolean;
+} | null>(null);
 
-defineEmits<{
+const emit = defineEmits<{
   bagu: [];
   bottom: [];
   catalog: [];
@@ -89,10 +102,24 @@ defineEmits<{
   'generate-replies': [];
   remove: [];
   rewrite: [];
+  'save-reply': [replyId: string, input: Pick<ForumReply, 'author' | 'content' | 'isOriginalPoster'>];
   'select-version': [versionId: string];
   top: [];
   'update:reasoning': [reasoning: string];
 }>();
+
+function saveReply(input: Pick<ForumReply, 'author' | 'content' | 'isOriginalPoster'>) {
+  const reply = editingReply.value;
+  if (!reply?.id) return;
+  emit('save-reply', reply.id, input);
+  editingReply.value = null;
+}
+
+const viewedGenerationRecord = computed(
+  () =>
+    props.versions.find(version => version.id === props.viewedVersionId)?.generationRecord ||
+    props.thread.generationRecord,
+);
 </script>
 
 <style scoped>

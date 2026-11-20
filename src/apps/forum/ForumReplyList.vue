@@ -37,14 +37,14 @@
           </div>
           <span class="pc-forum-floor-number">{{ `#${reply.floor}` }}</span>
           <button
-            v-if="regexIdentity.length && reply.id"
+            v-if="editable && reply.id"
             class="pc-icon-btn"
             type="button"
-            title="本条回复正则替换"
-            aria-label="本条回复正则替换"
-            @click="editingReplyId = reply.id"
+            title="编辑回复"
+            aria-label="编辑回复"
+            @click="$emit('edit', reply)"
           >
-            <i class="fa-solid fa-code"></i>
+            <i class="fa-solid fa-pen"></i>
           </button>
         </header>
         <p v-if="parentFloor(reply.parentReplyId)" class="pc-forum-reply-target">
@@ -54,19 +54,12 @@
         <p class="pc-forum-floor-content">{{ formatReplyContent(reply) }}</p>
       </article>
     </div>
-    <ContentRegexModal
-      v-if="editingReply"
-      :usage-key="replyUsageKey(editingReply.id!)"
-      :content="editingReply.content"
-      @close="editingReplyId = ''"
-    />
   </section>
 </template>
 
 <script setup lang="ts">
 import CapsuleTag from '@/components/CapsuleTag.vue';
 import EmptyState from '@/components/EmptyState.vue';
-import ContentRegexModal from '@/components/ContentRegexModal.vue';
 import { useRegexDisplayStore } from '@/apps/regex-display/store';
 import { applyRegexDisplayRules, contentRegexUsageKey, getRegexRulesByIds } from '@/util/regexDisplay';
 import { useSettingsStore } from '@/store/settings';
@@ -85,28 +78,26 @@ interface ForumReplyListItem {
 
 const props = withDefaults(
   defineProps<{
+    editable?: boolean;
     emptyTitle?: string;
     replies: ForumReplyListItem[];
     title?: string;
     regexIdentity?: string[];
   }>(),
   {
+    editable: false,
     emptyTitle: '还没有回复。',
     title: '回复',
     regexIdentity: () => [],
   },
 );
 
+defineEmits<{
+  edit: [reply: ForumReplyListItem];
+}>();
+
 const filter = ref<'all' | 'op'>('all');
 const regexDisplay = useRegexDisplayStore();
-const editingReplyId = ref('');
-const editingReply = computed(() => props.replies.find(reply => reply.id === editingReplyId.value));
-watch(
-  () => props.regexIdentity.join('\n'),
-  () => {
-    editingReplyId.value = '';
-  },
-);
 function replyUsageKey(id: string) {
   return contentRegexUsageKey('forum-reply', [...props.regexIdentity, id]);
 }

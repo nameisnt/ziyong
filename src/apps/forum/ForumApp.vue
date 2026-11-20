@@ -83,6 +83,7 @@
       @generate-replies="openGenerateReplies(activeBoard.id, activeThread.id)"
       @remove="removeThread(activeBoard.id, activeThread.id)"
       @rewrite="openRewriteThread"
+      @save-reply="saveReply"
       @select-version="selectForumVersion"
       @top="scrollForumDetail('top')"
       @update:reasoning="updateViewedForumReasoning"
@@ -767,6 +768,21 @@ function selectForumVersion(versionId: string) {
     threadId: thread.id,
     versionId,
   });
+}
+
+function saveReply(
+  replyId: string,
+  input: { author: string; content: string; isOriginalPoster: boolean },
+) {
+  if (!activeBoard.value || !activeThread.value) return;
+  const updated = forum.updateReply(
+    activeBoard.value.id,
+    activeThread.value.id,
+    replyId,
+    input,
+    viewedForumVersionId.value,
+  );
+  if (!updated) toastr.warning('找不到这条回复，可能已被删除');
 }
 
 function scrollForumDetail(position: 'bottom' | 'top') {

@@ -30,7 +30,7 @@ test('shared soft controls reveal the paper surface instead of using opaque butt
 });
 
 test('forum detail and preview share a flat floor list with an original-poster filter', () => {
-  assert.match(detailPage, /<ForumReplyList :replies="replies"/u);
+  assert.match(detailPage, /<ForumReplyList\s+editable\s+:replies="replies"/u);
   assert.match(previewPage, /<ForumReplyList/u);
   assert.match(replyList, /只看楼主/u);
   assert.match(replyList, /class="pc-forum-floor"/u);
