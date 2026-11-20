@@ -4,6 +4,13 @@ export const RUNNING_VERSION = manifest.version;
 export const RELEASE_SEEN_FIELD = 'sillytavern_phone_last_seen_release';
 export const RELEASE_HISTORY = [
   {
+    version: '1.2.27',
+    notes: [
+      '日记重写会带回上次的追加要求、来源范围和引用',
+      '日记详情的按钮顺序改为「他人阅读、重写、删除」，与其他 App 一致',
+    ],
+  },
+  {
     version: '1.2.26',
     notes: [
       '论坛解析兼容旧写法：<author is_op> 与 <op_author> 现在都能认作楼主',
