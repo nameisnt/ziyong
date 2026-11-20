@@ -45,13 +45,13 @@
         />
       </template>
       <template #actions>
-        <button class="pc-soft-btn" type="button" :title="t`重写日记`" @click="emit('rewrite')">
-          <i class="fa-solid fa-rotate"></i>
-          <span>{{ t`重写` }}</span>
-        </button>
         <button class="pc-soft-btn" type="button" :title="t`让他人阅读`" @click="emit('readReaction')">
           <i class="fa-solid fa-book-open-reader"></i>
           <span>{{ t`他人阅读` }}</span>
+        </button>
+        <button class="pc-soft-btn" type="button" :title="t`重写日记`" @click="emit('rewrite')">
+          <i class="fa-solid fa-rotate"></i>
+          <span>{{ t`重写` }}</span>
         </button>
         <button
           class="pc-soft-btn danger"
