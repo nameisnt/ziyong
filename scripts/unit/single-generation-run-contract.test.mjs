@@ -41,13 +41,16 @@ test('apps route single-task generation through the shared runner', () => {
   }
 });
 
-test('diary delegates its single generation to the shared runner', () => {
-  assert.match(diarySource, /const outcome = await runSingleGeneration\(\{/u);
+test('diary delegates its single generation to the shared flow', () => {
+  assert.match(diarySource, /runContentGenerationFlow\(\{/u);
+  assert.match(diarySource, /run: target =>\s*runSingleGeneration\(\{/u);
   assert.match(diarySource, /session: diaryGenerationSession,/u);
-  assert.match(diarySource, /completeSingleGenerationFailedDraft\(\{/u);
+  assert.doesNotMatch(diarySource, /completeSingleGenerationFailedDraft\(\{/u);
 });
 
-test('letters and theater keep their explicit generation targets before awaiting', () => {
-  assert.match(lettersSource, /async function runGeneration\(\)/u);
-  assert.match(theaterSource, /const generationTarget =/u);
+test('letters and theater keep their explicit generation targets inside the flow snapshot', () => {
+  assert.match(lettersSource, /captureTarget: \(\) => \{[\s\S]*targetEntryId: rewriteLetterEntry\.value\?\.id \|\| '',/u);
+  assert.match(theaterSource, /captureTarget: \(\) => \{[\s\S]*entryId: rewriteTargetEntry\.value\?\.id \|\| '',/u);
+  assert.match(lettersSource, /run: target =>\s*runSingleGeneration\(\{/u);
+  assert.match(theaterSource, /run: target =>\s*runSingleGeneration\(\{/u);
 });

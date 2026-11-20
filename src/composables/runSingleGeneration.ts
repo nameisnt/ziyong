@@ -7,7 +7,7 @@ import type { GenerationTask } from '@/type/generationTask';
 import { reportFailure } from '@/util/feedback';
 import type { GenerationReferenceItem } from '@/util/references';
 
-type SingleGenerationSession = ReturnType<typeof useSingleGenerationTaskSession>;
+export type SingleGenerationSession = ReturnType<typeof useSingleGenerationTaskSession>;
 
 export interface SingleGenerationRunSettings {
   generationDefaults: GenerateContentOptions['generationDefaults'];

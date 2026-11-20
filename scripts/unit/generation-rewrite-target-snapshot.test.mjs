@@ -44,12 +44,16 @@ test('the forum reply generation keeps the version seen when it started', () => 
 });
 
 test('the letters rewrite target is captured before generation can outlive the route', () => {
-  const snapshot = indexOfOrFail(lettersApp, /const targetEntryId = rewriteLetterEntry\.value\?\.id \|\| '';/u, '书信重写目标快照');
-  const awaitIndex = indexOfOrFail(lettersApp, /await runSingleGeneration\(/u, '书信生成 await');
-  assert.ok(snapshot < awaitIndex, '书信重写目标必须在等待生成之前固定');
-  const previewBlock = lettersApp.slice(lettersApp.indexOf('generationState.preview = {'));
-  assert.match(previewBlock, /mode: generationMode,/u);
-  assert.match(previewBlock, /targetEntryId,\s*targetVersionId,/u);
+  const snapshot = indexOfOrFail(
+    lettersApp,
+    /captureTarget: \(\) => \{[\s\S]*targetEntryId: rewriteLetterEntry\.value\?\.id \|\| '',/u,
+    '书信重写目标快照',
+  );
+  const runIndex = indexOfOrFail(lettersApp, /run: target =>/u, '书信生成调用');
+  assert.ok(snapshot < runIndex, '书信重写目标必须在发起生成之前固定');
+  const previewBlock = lettersApp.slice(lettersApp.indexOf('planPreview: ({ result, target }) =>'));
+  assert.match(previewBlock, /mode: target\.mode,/u);
+  assert.match(previewBlock, /targetEntryId: target\.targetEntryId,\s*targetVersionId: target\.targetVersionId,/u);
 });
 
 test('the extras rewrite base version is captured before generation can outlive the route', () => {

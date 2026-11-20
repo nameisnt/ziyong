@@ -31,10 +31,10 @@ test('the preview saves rewrites as versions instead of new entries', () => {
 });
 
 test('generation snapshots the rewrite target before awaiting', () => {
-  const snapshotIndex = app.indexOf("const target = {\n    bookId: activeBook.value?.id || '',");
-  const awaitIndex = app.indexOf('await runSingleGeneration({');
+  const snapshotIndex = app.indexOf('captureTarget: () => {');
+  const runIndex = app.indexOf('run: target =>');
   assert.ok(snapshotIndex > 0, 'missing rewrite target snapshot');
-  assert.ok(awaitIndex > snapshotIndex, 'snapshot must run before generation starts');
+  assert.ok(runIndex > snapshotIndex, 'snapshot must run before generation starts');
   assert.match(app, /entryId: route\.value\.params\?\.entryId \|\| ''/u);
   assert.match(app, /targetEntryId: target\.entryId/u);
 });

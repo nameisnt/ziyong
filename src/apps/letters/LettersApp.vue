@@ -165,7 +165,8 @@ import { useDirectorySort } from '@/composables/useDirectorySort';
 import { useGenerationReplaySession } from '@/composables/useGenerationReplaySession';
 import { useFailedDraftRegeneration } from '@/composables/useFailedDraftRegeneration';
 import { getRegisteredPhoneGenerationAdapter } from '@/core/appRegistry';
-import { completeSingleGenerationFailedDraft, runSingleGeneration } from '@/composables/runSingleGeneration';
+import { runContentGenerationFlow } from '@/composables/runContentGenerationFlow';
+import { runSingleGeneration } from '@/composables/runSingleGeneration';
 import { useSingleGenerationTaskSession } from '@/composables/useSingleGenerationTaskSession';
 import { buildGenerationPreview, captureGenerationPrompt } from '@/core/generationService';
 import { useLettersStore } from '@/store/letters';
@@ -891,129 +892,132 @@ function returnToGenerate() {
 }
 
 async function runGeneration() {
-  beginLettersPreviewDraft();
-  generationState.preview = null;
-  const { receiver, sender } = normalizeDraftPair(generationDraft.senderName, generationDraft.receiverName);
-  // 生成期间用户可能后退或回主页，路由参数会清空；重写目标必须在发起瞬间固定，
-  // 否则生成完成后会按“新建”处理，保存时变成一封新信。
-  const generationMode = letterGenerationMode.value;
-  const targetBook = activeBook.value;
-  const targetEntryId = rewriteLetterEntry.value?.id || '';
-  const targetVersionId = rewriteLetterVersion.value?.id || '';
-
-  const outcome = await runSingleGeneration({
-    adapter: lettersGenerationAdapter,
-    createFailedDraft: input => letters.createFailedDraft(input),
-    createOverrides: {
-      sourceParams: activeBook.value?.id ? { bookId: activeBook.value.id } : {},
-      title: letterGenerationMode.value === 'rewrite' ? '重新生成书信' : '生成书信 · 单次生成',
+  await runContentGenerationFlow({
+    appId: 'letters',
+    captureTarget: () => {
+      beginLettersPreviewDraft();
+      generationState.preview = null;
+      const { receiver, sender } = normalizeDraftPair(generationDraft.senderName, generationDraft.receiverName);
+      // 生成期间用户可能后退或回主页，路由参数会清空；重写目标必须在发起瞬间固定，
+      // 否则生成完成后会按“新建”处理，保存时变成一封新信。
+      return {
+        mode: letterGenerationMode.value,
+        receiver,
+        replyToEntryId: route.value.params?.replyToEntryId || '',
+        sender,
+        targetBook: activeBook.value,
+        targetEntryId: rewriteLetterEntry.value?.id || '',
+        targetVersionId: rewriteLetterVersion.value?.id || '',
+      };
     },
-    failureLabel: '建立书信生成任务',
-    payload: () => ({
-      appPrompt: letterGenerationAppPrompt.value,
-      bookId: activeBook.value?.id || '',
-      bookTitle: generationDraft.bookTitle || activeBook.value?.title || '',
-      entryId: rewriteLetterEntry.value?.id || '',
-      existingContent: '',
-      format: generationFormatDescription.value,
-      formatPrompt: generationDraft.formatPrompt,
-      mode: letterGenerationMode.value,
-      outputFormat: buildOutputFormat(),
-      receiver,
-      recentLettersContext: buildSelectedRecentLettersContext(),
-      sender,
-      userRequirement: generationDraft.userRequirement,
-    }),
+    run: target =>
+      runSingleGeneration({
+        adapter: lettersGenerationAdapter,
+        createFailedDraft: input => letters.createFailedDraft(input),
+        createOverrides: {
+          sourceParams: target.targetBook?.id ? { bookId: target.targetBook.id } : {},
+          title: target.mode === 'rewrite' ? '重新生成书信' : '生成书信 · 单次生成',
+        },
+        failureLabel: '建立书信生成任务',
+        payload: () => ({
+          appPrompt: letterGenerationAppPrompt.value,
+          bookId: target.targetBook?.id || '',
+          bookTitle: generationDraft.bookTitle || target.targetBook?.title || '',
+          entryId: target.targetEntryId,
+          existingContent: '',
+          format: generationFormatDescription.value,
+          formatPrompt: generationDraft.formatPrompt,
+          mode: target.mode,
+          outputFormat: buildOutputFormat(),
+          receiver: target.receiver,
+          recentLettersContext: buildSelectedRecentLettersContext(),
+          sender: target.sender,
+          userRequirement: generationDraft.userRequirement,
+        }),
+        session: generationSession,
+        settings: {
+          generationDefaults: {
+            resultMode: settings.value.generation.resultMode,
+            stream: settings.value.generation.stream,
+            tavernPresetName: settings.value.generation.tavernPresetName,
+          },
+          referenceItems: selectedReferences.value,
+          references: formattedReferences.value,
+          source: {
+            fromStartEnd: generationDraft.fromStartEnd,
+            mode: settings.value.generation.sourceMode,
+            rangeText: generationDraft.rangeText,
+            recentCount: generationDraft.recentCount,
+            singleMessageId: generationDraft.singleMessageId,
+          },
+          textProvider: settings.value.textProvider,
+        },
+        validate: () =>
+          matchesActiveBook(target.sender, target.receiver) ? null : '当前分册只允许这两位参与者互通信件',
+      }),
     session: generationSession,
-    settings: {
-      generationDefaults: {
-        resultMode: settings.value.generation.resultMode,
-        stream: settings.value.generation.stream,
-        tavernPresetName: settings.value.generation.tavernPresetName,
-      },
-      referenceItems: selectedReferences.value,
-      references: formattedReferences.value,
-      source: {
-        fromStartEnd: generationDraft.fromStartEnd,
-        mode: settings.value.generation.sourceMode,
-        rangeText: generationDraft.rangeText,
-        recentCount: generationDraft.recentCount,
-        singleMessageId: generationDraft.singleMessageId,
-      },
-      textProvider: settings.value.textProvider,
+    setRawOutput: rawOutput => {
+      failedDraftRawOutput.value = rawOutput;
     },
-    validate: () => (matchesActiveBook(sender, receiver) ? null : '当前分册只允许这两位参与者互通信件'),
-  });
-  if (!outcome) return;
-  const { result, task } = outcome;
-
-  if (result.status === 'failed') {
-    completeSingleGenerationFailedDraft({
-      appId: 'letters',
-      draftId: result.draft.id,
-      rawOutput: result.rawOutput,
-      session: generationSession,
-      setRawOutput: rawOutput => {
-        failedDraftRawOutput.value = rawOutput;
-      },
-      taskId: task.id,
-    });
-    return;
-  }
-
-  if (result.status === 'saved') {
-    generationSession.complete(task.id, {
-      currentLabel: `已保存书信：${result.data.title}`,
-      resultPage: 'entry',
-      resultParams: {
+    onSaved: ({ result, target, task }) => {
+      generationSession.complete(task.id, {
+        currentLabel: `已保存书信：${result.data.title}`,
+        resultPage: 'entry',
+        resultParams: {
+          bookId: result.saved.book.id,
+          entryId: result.saved.entry.id,
+          ...(result.saved.versionId ? { versionId: result.saved.versionId } : {}),
+        },
+        resultState: 'saved',
+        resultTitle: result.data.title,
+      });
+      toastr.success(target.mode === 'rewrite' ? '已保存并切换到书信新版本' : '已生成并保存信件');
+      void phone.presentGeneratedPage('letters', 'entry', result.data.title, {
         bookId: result.saved.book.id,
         entryId: result.saved.entry.id,
         ...(result.saved.versionId ? { versionId: result.saved.versionId } : {}),
-      },
-      resultState: 'saved',
-      resultTitle: result.data.title,
-    });
-    toastr.success(generationMode === 'rewrite' ? '已保存并切换到书信新版本' : '已生成并保存信件');
-    void phone.presentGeneratedPage('letters', 'entry', result.data.title, {
-      bookId: result.saved.book.id,
-      entryId: result.saved.entry.id,
-      ...(result.saved.versionId ? { versionId: result.saved.versionId } : {}),
-    });
-    return;
-  }
-
-  generationState.preview = {
-    bookId: targetBook?.id || '',
-    bookTitle: generationDraft.bookTitle || targetBook?.title || `${sender.name} 与 ${receiver.name}的书信`,
-    content: result.data.content,
-    draftId: null,
-    format: generationDraft.format,
-    formatPrompt: generationDraft.formatPrompt,
-    generationRecord: result.generationRecord,
-    mode: generationMode,
-    raw: result.rawOutput,
-    receiver,
-    sender,
-    targetEntryId,
-    targetVersionId,
-    title: result.data.title,
-    warnings: result.warnings,
-  };
-  const previewParams = {
-    ...(targetBook?.id ? { bookId: targetBook.id } : {}),
-    ...(route.value.params?.replyToEntryId ? { replyToEntryId: route.value.params.replyToEntryId } : {}),
-    ...(targetEntryId ? { rewriteEntryId: targetEntryId } : {}),
-    ...(targetVersionId ? { versionId: targetVersionId } : {}),
-  };
-  persistLettersPreviewDraft(previewParams);
-  generationSession.complete(task.id, {
-    currentLabel: '书信已生成，等待确认',
-    resultPage: 'preview',
-    resultParams: previewParams,
-    resultState: 'preview',
-    resultTitle: '生成预览',
+      });
+    },
+    planPreview: ({ result, target }) => {
+      const previewParams: Record<string, string> = {
+        ...(target.targetBook?.id ? { bookId: target.targetBook.id } : {}),
+        ...(target.replyToEntryId ? { replyToEntryId: target.replyToEntryId } : {}),
+        ...(target.targetEntryId ? { rewriteEntryId: target.targetEntryId } : {}),
+        ...(target.targetVersionId ? { versionId: target.targetVersionId } : {}),
+      };
+      return {
+        completeLabel: '书信已生成，等待确认',
+        params: previewParams,
+        presentParams: previewParams,
+        preview: {
+          bookId: target.targetBook?.id || '',
+          bookTitle:
+            generationDraft.bookTitle ||
+            target.targetBook?.title ||
+            `${target.sender.name} 与 ${target.receiver.name}的书信`,
+          content: result.data.content,
+          draftId: null,
+          format: generationDraft.format,
+          formatPrompt: generationDraft.formatPrompt,
+          generationRecord: result.generationRecord,
+          mode: target.mode,
+          raw: result.rawOutput,
+          receiver: target.receiver,
+          sender: target.sender,
+          targetEntryId: target.targetEntryId,
+          targetVersionId: target.targetVersionId,
+          title: result.data.title,
+          warnings: result.warnings,
+        },
+        resultTitle: '生成预览',
+      };
+    },
+    applyPreview: preview => {
+      generationState.preview = preview;
+    },
+    persistDraft: params => persistLettersPreviewDraft(params),
+    present: { page: 'preview', title: '生成预览' },
   });
-  void phone.presentGeneratedPage('letters', 'preview', '生成预览', previewParams);
 }
 function savePreview() {
   const preview = generationState.preview;

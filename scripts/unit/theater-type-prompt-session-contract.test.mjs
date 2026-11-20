@@ -51,12 +51,13 @@ test('theater generation freezes rewrite ownership before awaiting the result', 
   const runStart = theaterSource.indexOf('async function runGeneration()');
   const runEnd = theaterSource.indexOf('\nfunction savePreview()', runStart);
   const runSource = theaterSource.slice(runStart, runEnd);
-  const targetIndex = runSource.indexOf('const generationTarget =');
-  const awaitIndex = runSource.indexOf('await runSingleGeneration(');
-  assert.ok(targetIndex >= 0 && targetIndex < awaitIndex);
-  assert.match(runSource, /mode: generationTarget\.mode/u);
-  assert.match(runSource, /targetEntryId: generationTarget\.entryId/u);
-  assert.match(runSource, /targetVersionId: generationTarget\.versionId/u);
+  const snapshotIndex = runSource.indexOf('captureTarget: () =>');
+  const runIndex = runSource.indexOf('run: target =>');
+  assert.ok(snapshotIndex >= 0 && snapshotIndex < runIndex);
+  assert.match(runSource, /mode: theaterGenerationMode\.value,/u);
+  assert.match(runSource, /mode: target\.mode,/u);
+  assert.match(runSource, /targetEntryId: target\.entryId,/u);
+  assert.match(runSource, /targetVersionId: target\.versionId,/u);
 });
 
 test('theater type prompt lifecycle has an isolated browser scenario', () => {
