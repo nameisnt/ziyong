@@ -1,3 +1,4 @@
+import { ContentVersionBaseSchema } from '@/type/contentVersion';
 import { FailedGenerationDraftSchema, HiddenGenerationRecordSchema } from '@/type/generation';
 
 export const CharacterRefSchema = z.object({
@@ -6,10 +7,17 @@ export const CharacterRefSchema = z.object({
 });
 export type CharacterRef = z.infer<typeof CharacterRefSchema>;
 
+export const DiaryEntryVersionSchema = ContentVersionBaseSchema.extend({
+  generationRecord: HiddenGenerationRecordSchema.optional(),
+});
+export type DiaryEntryVersion = z.infer<typeof DiaryEntryVersionSchema>;
+
 export const DiaryEntrySchema = z.object({
   id: z.string(),
   title: z.string(),
   content: z.string(),
+  activeVersionId: z.string().default(''),
+  versions: z.array(DiaryEntryVersionSchema).default([]),
   favorite: z.boolean().default(false),
   createdAt: z.string(),
   updatedAt: z.string(),

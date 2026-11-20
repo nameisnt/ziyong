@@ -21,7 +21,7 @@ import GenerationPreviewPage from '@/components/GenerationPreviewPage.vue';
 import type { RawOutputSemantics } from '@/type/generation';
 
 const props = defineProps<{
-  action: 'generate' | 'read-reaction';
+  action: 'generate' | 'read-reaction' | 'rewrite';
   occurredAt: string;
   perspectiveName: string;
   rawOutputSemantics?: RawOutputSemantics;
@@ -36,7 +36,10 @@ const content = defineModel<string>('content', { required: true });
 const raw = defineModel<string>('raw', { required: true });
 const reasoning = defineModel<string>('reasoning', { default: '' });
 const displayTitle = computed(() => (props.action === 'read-reaction' ? `📖 ${props.title}` : props.title));
-const saveLabel = computed(() => (props.action === 'read-reaction' ? '保存阅读反应' : '保存日记'));
+const saveLabel = computed(() => {
+  if (props.action === 'read-reaction') return '保存阅读反应';
+  return props.action === 'rewrite' ? '保存为新版本' : '保存日记';
+});
 const sourceLabel = computed(
   () => props.occurredAt || (props.action === 'read-reaction' ? '阅读反应预览' : '日记预览'),
 );

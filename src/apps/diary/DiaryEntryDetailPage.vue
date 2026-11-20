@@ -1,11 +1,12 @@
 <template>
   <section class="pc-diary-page pc-diary-detail-page pc-page-stack">
     <ReaderDetailShell
-      actions-class="five"
+      actions-class="six"
       :content="entry.content"
       :context-label="entry.kind === 'read-reaction' ? t`阅读感想` : t`日记`"
       display-app-id="diary"
-      :display-identity="[entry.id]"
+      :display-identity="[entry.id, viewedVersionId]"
+      :display-versions="versions"
       :favorite-active="entry.favorite"
       :next-disabled="!nextId"
       :previous-disabled="!previousId"
@@ -14,6 +15,7 @@
       :source-label="entry.generationRecord?.replay.source.label"
       :title="entry.kind === 'read-reaction' ? `📖 ${entry.title}` : entry.title"
       :updated-at="entry.updatedAt"
+      :version-count="versions.length"
       @bagu="emit('bagu')"
       @bottom="emit('bottom')"
       @catalog="emit('update:catalogOpen', true)"
@@ -35,12 +37,28 @@
           <span>{{ entry.readers.map(reader => reader.name).join('、') }}</span>
         </div>
       </template>
+      <template #version-navigation>
+        <VersionNavigator
+          :versions="versions"
+          :viewed-version-id="viewedVersionId"
+          @select="emit('selectVersion', $event)"
+        />
+      </template>
       <template #actions>
+        <button class="pc-soft-btn" type="button" :title="t`重写日记`" @click="emit('rewrite')">
+          <i class="fa-solid fa-rotate"></i>
+          <span>{{ t`重写` }}</span>
+        </button>
         <button class="pc-soft-btn" type="button" :title="t`让他人阅读`" @click="emit('readReaction')">
           <i class="fa-solid fa-book-open-reader"></i>
           <span>{{ t`他人阅读` }}</span>
         </button>
-        <button class="pc-soft-btn danger" type="button" :title="t`删除`" @click="emit('delete')">
+        <button
+          class="pc-soft-btn danger"
+          type="button"
+          :title="versions.length > 1 ? t`删除当前版本` : t`删除`"
+          @click="emit('delete')"
+        >
           <i class="fa-solid fa-trash"></i>
           <span>{{ t`删除` }}</span>
         </button>
@@ -62,7 +80,8 @@
 import CatalogModal from '@/components/CatalogModal.vue';
 import type { CatalogModalItem } from '@/type/catalog';
 import ReaderDetailShell from '@/components/ReaderDetailShell.vue';
-import type { DiaryEntry } from '@/type/diary';
+import VersionNavigator from '@/components/VersionNavigator.vue';
+import type { DiaryEntry, DiaryEntryVersion } from '@/type/diary';
 
 defineProps<{
   catalogItems: CatalogModalItem[];
@@ -70,6 +89,8 @@ defineProps<{
   entry: DiaryEntry;
   nextId: string;
   previousId: string;
+  versions: DiaryEntryVersion[];
+  viewedVersionId: string;
 }>();
 
 const emit = defineEmits<{
@@ -81,7 +102,9 @@ const emit = defineEmits<{
   next: [];
   previous: [];
   readReaction: [];
+  rewrite: [];
   selectCatalog: [entryId: string];
+  selectVersion: [versionId: string];
   top: [];
   'update:catalogOpen': [open: boolean];
   'update:reasoning': [reasoning: string];

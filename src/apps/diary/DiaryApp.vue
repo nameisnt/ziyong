@@ -44,9 +44,11 @@
       v-else-if="route.page === 'entry' && activeBook && activeEntry"
       v-model:catalog-open="showCatalogModal"
       :catalog-items="entryCatalogItems"
-      :entry="activeEntry"
+      :entry="viewedEntry || activeEntry"
       :next-id="nextEntryId"
       :previous-id="previousEntryId"
+      :versions="activeEntry.versions"
+      :viewed-version-id="viewedEntryVersionId"
       @bagu="openDiaryBaguScan"
       @bottom="scrollToBottom"
       @delete="removeEntry(activeBook.id, activeEntry.id)"
@@ -55,7 +57,9 @@
       @next="openEntry(activeBook.id, nextEntryId, true)"
       @previous="openEntry(activeBook.id, previousEntryId, true)"
       @read-reaction="openReadReaction(activeBook.id, activeEntry.id)"
+      @rewrite="openRewriteEntry"
       @select-catalog="selectCatalogEntry"
+      @select-version="selectEntryVersion"
       @top="scrollToTop"
       @update:reasoning="updateGenerationRecordReasoning(activeEntry, $event)"
     />
@@ -63,7 +67,7 @@
     <DiaryBaguPage
       v-else-if="route.page === 'bagu-scan' && activeBook && activeEntry"
       :apply-handler="applyDiaryBaguContent"
-      :entry="activeEntry"
+      :entry="viewedEntry || activeEntry"
     />
 
     <DiaryEntryEditorPage
@@ -102,7 +106,7 @@
       :raw-output="diaryGenerationRawOutput"
       requirement-placeholder="例如：更克制、更私密一点，少写结论，多写当下情绪。"
       :running="diaryGenerationRunning"
-      title="生成一篇新的日记"
+      :title="isRewriteEntry ? '重新生成日记' : '生成一篇新的日记'"
       @cancel="phone.goBack()"
       @generate="runGeneration"
       @stop="stopGeneration"
@@ -263,7 +267,8 @@ import {
 } from '@/util/textProvider';
 import type { FailedGenerationDraft, HiddenGenerationRecord } from '@/type/generation';
 import type { GenerationTask } from '@/type/generationTask';
-import type { CharacterRef } from '@/type/diary';
+import type { CharacterRef, DiaryEntryVersion } from '@/type/diary';
+import { resolveContentVersion } from '@/util/contentVersions';
 import { reportFailure } from '@/util/feedback';
 import { storeToRefs } from 'pinia';
 
@@ -323,7 +328,7 @@ const reactionDraft = reactive({
 });
 const generationState = reactive({
   preview: null as null | {
-    action: 'generate' | 'read-reaction';
+    action: 'generate' | 'read-reaction' | 'rewrite';
     bookId: string;
     bookTitle: string;
     content: string;
@@ -335,6 +340,8 @@ const generationState = reactive({
     sourceBookId: string;
     sourceEntryId: string;
     sourceFloorEnd?: number;
+    targetEntryId: string;
+    targetVersionId: string;
     title: string;
     warnings: string[];
   },
@@ -380,9 +387,17 @@ const {
     if (preview?.action === 'read-reaction' && preview.sourceBookId && preview.sourceEntryId) {
       return { bookId: preview.sourceBookId, entryId: preview.sourceEntryId };
     }
+    if (preview?.action === 'rewrite') {
+      return {
+        ...(preview.bookId ? { bookId: preview.bookId } : {}),
+        ...(preview.targetEntryId ? { entryId: preview.targetEntryId } : {}),
+        ...(preview.targetVersionId ? { versionId: preview.targetVersionId } : {}),
+      };
+    }
     const bookId = preview?.bookId || route.value.params?.bookId || '';
     return bookId ? { bookId } : {};
   },
+  normalizePreview: (preview, routeParams) => normalizeDiaryPreview(preview, routeParams),
   page: 'preview',
   route,
   setPreview: preview => {
@@ -432,6 +447,28 @@ const activeEntry = computed(() => {
 });
 
 const editingEntry = computed(() => (route.value.params?.entryId && activeEntry.value ? activeEntry.value : null));
+const viewedEntryVersion = computed<DiaryEntryVersion | null>(() => {
+  const entry = activeEntry.value;
+  return entry ? resolveContentVersion(entry.versions, entry.activeVersionId, route.value.params?.versionId) : null;
+});
+const viewedEntryVersionId = computed(
+  () => viewedEntryVersion.value?.id || activeEntry.value?.activeVersionId || '',
+);
+const viewedEntry = computed(() => {
+  const entry = activeEntry.value;
+  const version = viewedEntryVersion.value;
+  return entry && version
+    ? {
+        ...entry,
+        content: version.content,
+        generationRecord: version.generationRecord ?? entry.generationRecord,
+        title: version.title,
+      }
+    : entry;
+});
+const isRewriteEntry = computed(
+  () => route.value.page === 'generate' && Boolean(route.value.params?.bookId && route.value.params?.entryId),
+);
 const activeFailedDraft = computed(() => {
   const draftId = route.value.params?.draftId;
   return draftId ? diary.getFailedDraft(draftId) : null;
@@ -895,6 +932,47 @@ function buildBatchJobs() {
   return buildDiaryBatchJobs(getBatchVisibleFloors(), batchDraft.groupMode, batchDraft.groupSize);
 }
 
+function normalizeDiaryPreview(preview: DiaryPreview, routeParams: Record<string, string>): DiaryPreview {
+  if (preview.action === 'read-reaction') return preview;
+  const targetEntryId = preview.targetEntryId || routeParams.entryId || '';
+  return {
+    ...preview,
+    action: targetEntryId ? 'rewrite' : 'generate',
+    bookId: preview.bookId || routeParams.bookId || '',
+    targetEntryId,
+    targetVersionId: preview.targetVersionId || routeParams.versionId || '',
+  };
+}
+
+function openRewriteEntry() {
+  if (!activeBook.value || !activeEntry.value) return;
+  const book = activeBook.value;
+  const entry = activeEntry.value;
+  const version = viewedEntryVersion.value;
+  const config = version?.generationRecord?.replay.config ?? {};
+  if (typeof config.userRequirement === 'string') {
+    generationDraft.userRequirement = config.userRequirement;
+  }
+  generationDraft.occurredAt = entry.occurredAt || '';
+  generationDraft.perspectiveName = book.perspective.name;
+  phone.pushPage('generate', '重新生成日记', {
+    bookId: book.id,
+    entryId: entry.id,
+    ...(version ? { versionId: version.id } : {}),
+  });
+}
+
+function selectEntryVersion(versionId: string) {
+  if (!activeBook.value || !activeEntry.value) return;
+  const entry = diary.activateEntryVersion(activeBook.value.id, activeEntry.value.id, versionId);
+  if (!entry) return;
+  phone.replacePage('entry', entry.title, {
+    bookId: activeBook.value.id,
+    entryId: entry.id,
+    versionId: entry.activeVersionId,
+  });
+}
+
 function returnToGenerate() {
   if (generationState.preview?.draftId) {
     phone.replacePage('failed-draft', '解析失败草稿', { draftId: generationState.preview.draftId });
@@ -908,27 +986,46 @@ function returnToGenerate() {
     });
     return;
   }
+  if (preview?.action === 'rewrite' && preview.targetEntryId) {
+    phone.replacePage('generate', '重新生成日记', {
+      bookId: preview.bookId,
+      entryId: preview.targetEntryId,
+      ...(preview.targetVersionId ? { versionId: preview.targetVersionId } : {}),
+    });
+    return;
+  }
   const bookId = preview?.bookId || route.value.params?.bookId;
   phone.replacePage('generate', '生成日记', bookId ? { bookId } : undefined);
 }
 
 async function runGeneration() {
+  // 生成可能持续很久；开始后用户可能后退或回主页，route 参数会被清空。
+  // 重写目标必须在等待前固定下来，否则保存时会退化成新建条目。
+  const target = {
+    bookId: activeBook.value?.id || '',
+    bookTitle: generationTargetBookTitle.value,
+    entryId: route.value.params?.entryId || '',
+    occurredAt: generationDraft.occurredAt,
+    perspective: generationPerspective.value,
+    userRequirement: generationDraft.userRequirement,
+    versionId: route.value.params?.versionId || '',
+  };
   const outcome = await runSingleGeneration({
     adapter: diaryGenerationAdapter,
     createFailedDraft: input => diary.createFailedDraft(input),
     createOverrides: {
-      sourceParams: activeBook.value?.id ? { bookId: activeBook.value.id } : {},
+      sourceParams: target.bookId ? { bookId: target.bookId } : {},
       title: '生成日记 · 单次生成',
     },
     failureLabel: '建立日记生成任务',
     payload: () => ({
       appPrompt: prompts.appPrompts.diary,
-      bookId: activeBook.value?.id || '',
-      bookTitle: generationTargetBookTitle.value,
-      occurredAt: generationDraft.occurredAt,
+      bookId: target.bookId,
+      bookTitle: target.bookTitle,
+      occurredAt: target.occurredAt,
       outputFormat: buildDiaryOutputFormat(),
-      perspective: generationPerspective.value!,
-      userRequirement: generationDraft.userRequirement,
+      perspective: target.perspective!,
+      userRequirement: target.userRequirement,
     }),
     resetPreview: () => {
       beginDiaryPreviewDraft();
@@ -951,7 +1048,7 @@ async function runGeneration() {
       },
       textProvider: settings.value.textProvider,
     },
-    validate: () => (generationPerspective.value ? null : '请先填写视角角色名'),
+    validate: () => (target.perspective ? null : '请先填写视角角色名'),
   });
   if (!outcome) return;
   const { result, task } = outcome;
@@ -987,25 +1084,31 @@ async function runGeneration() {
   }
 
   generationState.preview = {
-    action: 'generate',
-    bookId: activeBook.value?.id || '',
-    bookTitle: generationTargetBookTitle.value || `${generationPerspective.value!.name}的日记`,
+    action: target.entryId ? 'rewrite' : 'generate',
+    bookId: target.bookId,
+    bookTitle: target.bookTitle || `${target.perspective!.name}的日记`,
     content: result.data.content,
     draftId: null,
     generationRecord: result.generationRecord,
-    occurredAt: result.data.occurredAt || generationDraft.occurredAt,
-    perspective: generationPerspective.value!,
+    occurredAt: result.data.occurredAt || target.occurredAt,
+    perspective: target.perspective!,
     raw: result.rawOutput,
-    sourceBookId: activeBook.value?.id || '',
+    sourceBookId: target.bookId,
     sourceEntryId: '',
     sourceFloorEnd: getSourceLastFloor(result.source),
+    targetEntryId: target.entryId,
+    targetVersionId: target.versionId,
     title: result.data.title,
     warnings: result.warnings,
   };
-  const previewParams: Record<string, string> = activeBook.value?.id ? { bookId: activeBook.value.id } : {};
+  const previewParams: Record<string, string> = target.bookId ? { bookId: target.bookId } : {};
+  if (target.entryId) {
+    previewParams.entryId = target.entryId;
+    if (target.versionId) previewParams.versionId = target.versionId;
+  }
   persistDiaryPreviewDraft(previewParams);
   diaryGenerationSession.complete(task.id, {
-    currentLabel: '日记已生成，等待确认',
+    currentLabel: target.entryId ? '日记已重写，等待确认' : '日记已生成，等待确认',
     resultPage: 'preview',
     resultParams: previewParams,
     resultState: 'preview',
@@ -1015,7 +1118,7 @@ async function runGeneration() {
     'diary',
     'preview',
     '日记预览',
-    activeBook.value?.id ? { bookId: activeBook.value.id } : undefined,
+    target.bookId ? { bookId: target.bookId } : undefined,
   );
 }
 
@@ -1206,6 +1309,8 @@ async function runReadReactionGeneration() {
       sourceBookId: sourceBook.id,
       sourceEntryId: sourceEntry.id,
       sourceFloorEnd: getSourceLastFloor(result.source),
+      targetEntryId: '',
+      targetVersionId: '',
       title: result.data.title,
       warnings: result.warnings,
     };
@@ -1230,30 +1335,58 @@ function savePreview() {
   const preview = generationState.preview;
   if (!preview) return;
 
-  const created = diary.createEntry({
-    bookId: preview.action === 'generate' ? preview.bookId || undefined : preview.bookId || undefined,
-    bookTitle: preview.bookTitle || undefined,
-    content: preview.content,
-    kind: preview.action === 'read-reaction' ? 'read-reaction' : 'normal',
-    occurredAt: preview.occurredAt,
-    perspective: preview.perspective,
-    readers: preview.action === 'read-reaction' ? [preview.perspective] : undefined,
-    title: preview.title,
-    directoryOrder: preview.sourceFloorEnd,
-    generationRecord: preview.generationRecord,
-    sourceFloorEnd: preview.sourceFloorEnd,
-  });
-  if (!created) {
-    toastr.warning('目标日记书架不存在，无法保存生成结果');
-    return;
+  let bookId = preview.bookId;
+  let entryId = '';
+  let entryTitle = preview.title;
+  let versionId = '';
+
+  if (preview.action === 'rewrite' && preview.targetEntryId) {
+    const rewritten = diary.appendEntryVersion(preview.bookId, preview.targetEntryId, {
+      content: preview.content,
+      generationRecord: preview.generationRecord,
+      title: preview.title,
+    });
+    if (!rewritten) {
+      toastr.warning('目标日记已不存在，无法保存为新版本');
+      return;
+    }
+    bookId = preview.bookId;
+    entryId = rewritten.entry.id;
+    entryTitle = rewritten.entry.title;
+    versionId = rewritten.version.id;
+  } else {
+    const created = diary.createEntry({
+      bookId: preview.bookId || undefined,
+      bookTitle: preview.bookTitle || undefined,
+      content: preview.content,
+      kind: preview.action === 'read-reaction' ? 'read-reaction' : 'normal',
+      occurredAt: preview.occurredAt,
+      perspective: preview.perspective,
+      readers: preview.action === 'read-reaction' ? [preview.perspective] : undefined,
+      title: preview.title,
+      directoryOrder: preview.sourceFloorEnd,
+      generationRecord: preview.generationRecord,
+      sourceFloorEnd: preview.sourceFloorEnd,
+    });
+    if (!created) {
+      toastr.warning('目标日记书架不存在，无法保存生成结果');
+      return;
+    }
+    bookId = created.book.id;
+    entryId = created.entry.id;
+    entryTitle = created.entry.title;
   }
   if (preview.draftId) {
     diary.deleteFailedDraft(preview.draftId);
   }
   clearDiaryPreviewDraft();
   generationState.preview = null;
-  toastr.success('已保存生成结果');
-  phone.replacePage('entry', created.entry.title, { bookId: created.book.id, entryId: created.entry.id });
+  toastr.success(preview.action === 'rewrite' ? '已保存为新版本' : '已保存生成结果');
+  phone.replacePage('entry', entryTitle, {
+    bookId,
+    entryId,
+    ...(versionId ? { versionId } : {}),
+  });
 }
 
 function reparsePreviewRaw() {
@@ -1409,6 +1542,8 @@ function reparseFailedDraft() {
     sourceBookId: typeof draft.context.sourceBookId === 'string' ? draft.context.sourceBookId : bookId,
     sourceEntryId: typeof draft.context.sourceEntryId === 'string' ? draft.context.sourceEntryId : '',
     sourceFloorEnd: getSourceLastFloor(draft.source),
+    targetEntryId: '',
+    targetVersionId: '',
     title: parsed.data.title,
     warnings: parsed.warnings,
   };
@@ -1461,20 +1596,46 @@ function submitEntry() {
 
 function applyDiaryBaguContent(content: string) {
   if (!activeBook.value || !activeEntry.value) return false;
-  const entry = diary.updateEntry(activeBook.value.id, activeEntry.value.id, {
-    content,
-    kind: activeEntry.value.kind,
-    occurredAt: activeEntry.value.occurredAt || '',
-    readers: activeEntry.value.readers,
-    title: activeEntry.value.title,
-  });
+  const versionId = viewedEntryVersionId.value;
+  const entry = versionId
+    ? diary.updateEntryVersion(activeBook.value.id, activeEntry.value.id, versionId, {
+        content,
+        title: viewedEntryVersion.value?.title || activeEntry.value.title,
+      })
+    : diary.updateEntry(activeBook.value.id, activeEntry.value.id, {
+        content,
+        kind: activeEntry.value.kind,
+        occurredAt: activeEntry.value.occurredAt || '',
+        readers: activeEntry.value.readers,
+        title: activeEntry.value.title,
+      });
   if (!entry) return false;
   diary.flushCurrentScope();
-  return entry.content;
+  return entry.versions.find(version => version.id === versionId)?.content ?? content;
 }
 
 async function removeEntry(bookId: string, entryId: string) {
   const entry = diary.getEntry(bookId, entryId);
+  const versionId = route.value.params?.versionId || entry?.activeVersionId || '';
+  if (entry && entry.versions.length > 1 && versionId) {
+    const shouldDeleteVersion = await phone.confirmNotice('要删除这篇日记的当前版本吗？', {
+      confirmLabel: '删除版本',
+      kind: 'warning',
+    });
+    if (!shouldDeleteVersion) return;
+    const removed = diary.deleteEntryVersion(bookId, entryId, versionId);
+    if (!removed) {
+      toastr.warning('这是最后一个版本，请直接删除整篇日记');
+      return;
+    }
+    toastr.success('已删除该版本');
+    phone.replacePage('entry', removed.entry.title, {
+      bookId,
+      entryId,
+      versionId: removed.entry.activeVersionId,
+    });
+    return;
+  }
   const shouldDelete = await phone.confirmNotice(`要删除日记“${entry?.title || '未命名日记'}”吗？`, {
     confirmLabel: '删除',
     kind: 'warning',
