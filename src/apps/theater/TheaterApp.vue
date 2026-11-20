@@ -267,6 +267,7 @@ import { resolveGenerationReplayReferences } from '@/util/generationReplay';
 import { createHiddenGenerationRecord, resolveHiddenGenerationReplay } from '@/util/hiddenGenerationRecord';
 import { formatGenerationReferences, type GenerationReferenceItem } from '@/util/references';
 import { resolveContentVersion } from '@/util/contentVersions';
+import { completePreviewSave } from '@/util/previewSave';
 import { usePreviewDraftPersistence } from '@/util/previewDrafts';
 import { useInvalidRouteFallback } from '@/util/routeFallback';
 import { updateGenerationRecordReasoning } from '@/util/generationReasoning';
@@ -1272,11 +1273,6 @@ function savePreview() {
     toastr.warning('目标小剧场不存在，无法保存重写版本');
     return;
   }
-  if (preview.draftId) {
-    theater.deleteFailedDraft(preview.draftId);
-  }
-  clearTheaterPreviewDraft();
-  generationState.preview = null;
   const entry = 'entry' in saved ? saved.entry : saved;
   const versionId = 'version' in saved ? saved.version.id : '';
   if (
@@ -1288,10 +1284,21 @@ function savePreview() {
       ...preview.displayRuleIds,
     ];
   }
-  toastr.success(preview.mode === 'rewrite' ? '已保存并切换到小剧场新版本' : '已保存小剧场');
-  phone.replacePage('entry', versionId ? preview.title : entry.title, {
-    entryId: entry.id,
-    ...(versionId ? { versionId } : {}),
+  completePreviewSave({
+    clearDraft: clearTheaterPreviewDraft,
+    closePreview: () => {
+      generationState.preview = null;
+    },
+    deleteFailedDraft: theater.deleteFailedDraft,
+    draftId: preview.draftId,
+    navigate: () => {
+      phone.replacePage('entry', versionId ? preview.title : entry.title, {
+        entryId: entry.id,
+        ...(versionId ? { versionId } : {}),
+      });
+    },
+    notify: message => toastr.success(message),
+    successMessage: preview.mode === 'rewrite' ? '已保存并切换到小剧场新版本' : '已保存小剧场',
   });
 }
 

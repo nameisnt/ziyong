@@ -255,6 +255,7 @@ import { canOpenBaguScan } from '@/util/baguScanGate';
 import { replaceGenerationAliases, resolveGenerationIdentityAliases } from '@/util/generationAliases';
 import { formatGenerationReferences, type GenerationReferenceItem } from '@/util/references';
 import { resolveGenerationReplayReferences, restoreGenerationReplayDraft } from '@/util/generationReplay';
+import { completePreviewSave } from '@/util/previewSave';
 import { usePreviewDraftPersistence } from '@/util/previewDrafts';
 import { useInvalidRouteFallback } from '@/util/routeFallback';
 import { getChatMessagesSafe } from '@/util/runtime';
@@ -1393,16 +1394,22 @@ function savePreview() {
     entryId = created.entry.id;
     entryTitle = created.entry.title;
   }
-  if (preview.draftId) {
-    diary.deleteFailedDraft(preview.draftId);
-  }
-  clearDiaryPreviewDraft();
-  generationState.preview = null;
-  toastr.success(preview.action === 'rewrite' ? '已保存为新版本' : '已保存生成结果');
-  phone.replacePage('entry', entryTitle, {
-    bookId,
-    entryId,
-    ...(versionId ? { versionId } : {}),
+  completePreviewSave({
+    clearDraft: clearDiaryPreviewDraft,
+    closePreview: () => {
+      generationState.preview = null;
+    },
+    deleteFailedDraft: diary.deleteFailedDraft,
+    draftId: preview.draftId,
+    navigate: () => {
+      phone.replacePage('entry', entryTitle, {
+        bookId,
+        entryId,
+        ...(versionId ? { versionId } : {}),
+      });
+    },
+    notify: message => toastr.success(message),
+    successMessage: preview.action === 'rewrite' ? '已保存为新版本' : '已保存生成结果',
   });
 }
 

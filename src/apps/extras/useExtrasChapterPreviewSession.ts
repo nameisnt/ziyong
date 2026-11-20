@@ -6,6 +6,7 @@ import {
 } from '@/core/extrasGeneration';
 import type { ExtraChapterGenerationRecord } from '@/type/extra';
 import { parseSimpleXmlResult } from '@/util/generation';
+import { completePreviewSave } from '@/util/previewSave';
 
 export interface ExtraChapterPreviewSessionPreview {
   bookId: string;
@@ -66,16 +67,19 @@ export function useExtrasChapterPreviewSession(options: ExtraChapterPreviewSessi
       options.notify.warning('目标番外不存在，无法保存章节');
       return;
     }
-    if (preview.draftId) {
-      options.deleteFailedDraft(preview.draftId);
-    }
-    options.clearPreviewDraft();
-    options.setPreview(null);
-    options.notify.success(preview.mode === '重写当前章节' ? '已保存重写章节' : '已保存新章节');
-    options.navigateToChapter(preview.title, {
-      bookId,
-      chapterId: saved.chapter.id,
-      ...(saved.versionId ? { versionId: saved.versionId } : {}),
+    completePreviewSave({
+      clearDraft: options.clearPreviewDraft,
+      closePreview: () => options.setPreview(null),
+      deleteFailedDraft: options.deleteFailedDraft,
+      draftId: preview.draftId,
+      navigate: () =>
+        options.navigateToChapter(preview.title, {
+          bookId,
+          chapterId: saved.chapter.id,
+          ...(saved.versionId ? { versionId: saved.versionId } : {}),
+        }),
+      notify: message => options.notify.success(message),
+      successMessage: preview.mode === '重写当前章节' ? '已保存重写章节' : '已保存新章节',
     });
   }
 

@@ -186,6 +186,7 @@ import { useDetailScroll } from '@/util/detailScroll';
 import { parseSimpleXmlResult } from '@/util/generation';
 import { resolveGenerationReplayReferences } from '@/util/generationReplay';
 import { createHiddenGenerationRecord, resolveHiddenGenerationReplay } from '@/util/hiddenGenerationRecord';
+import { completePreviewSave } from '@/util/previewSave';
 import { usePreviewDraftPersistence } from '@/util/previewDrafts';
 import { formatGenerationReferences, type GenerationReferenceItem } from '@/util/references';
 import { resolveContentVersion } from '@/util/contentVersions';
@@ -1047,17 +1048,23 @@ function savePreview() {
     toastr.warning('保存失败，目标书信分册不存在');
     return;
   }
-  if (preview.draftId) {
-    letters.deleteFailedDraft(preview.draftId);
-  }
-  clearLettersPreviewDraft();
-  generationState.preview = null;
   const versionId = 'version' in saved ? (saved.version as { id: string }).id : '';
-  toastr.success(preview.mode === 'rewrite' ? '已保存并切换到书信新版本' : '已保存信件');
-  phone.replacePage('entry', versionId ? preview.title : saved.entry.title, {
-    bookId: saved.book.id,
-    entryId: saved.entry.id,
-    ...(versionId ? { versionId } : {}),
+  completePreviewSave({
+    clearDraft: clearLettersPreviewDraft,
+    closePreview: () => {
+      generationState.preview = null;
+    },
+    deleteFailedDraft: letters.deleteFailedDraft,
+    draftId: preview.draftId,
+    navigate: () => {
+      phone.replacePage('entry', versionId ? preview.title : saved.entry.title, {
+        bookId: saved.book.id,
+        entryId: saved.entry.id,
+        ...(versionId ? { versionId } : {}),
+      });
+    },
+    notify: message => toastr.success(message),
+    successMessage: preview.mode === 'rewrite' ? '已保存并切换到书信新版本' : '已保存信件',
   });
 }
 

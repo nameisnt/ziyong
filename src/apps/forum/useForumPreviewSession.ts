@@ -3,6 +3,7 @@ import { useForumStore } from '@/store/forum';
 import type { GenerationReplaySnapshot, HiddenGenerationRecord } from '@/type/generation';
 import { parseForumRepliesXmlResult, parseForumXmlResult } from '@/util/generation';
 import { createHiddenGenerationRecord } from '@/util/hiddenGenerationRecord';
+import { completePreviewSave } from '@/util/previewSave';
 
 type PreviewReply = ReturnType<typeof materializeForumReplies>['replies'][number];
 
@@ -99,9 +100,6 @@ export function useForumPreviewSession(options: ForumPreviewSessionOptions) {
         options.notify.warning('目标板块不存在，无法保存帖子');
         return;
       }
-      if (preview.draftId) options.store.deleteFailedDraft(preview.draftId);
-      options.clearPreviewDraft();
-      options.setPreview(null);
       const versionId =
         'version' in saved &&
         saved.version &&
@@ -110,11 +108,19 @@ export function useForumPreviewSession(options: ForumPreviewSessionOptions) {
         typeof saved.version.id === 'string'
           ? saved.version.id
           : '';
-      options.notify.success(preview.mode === 'rewrite' ? '已保存并切换到主帖新版本' : '已保存帖子');
-      options.navigateToThread(versionId ? preview.title : saved.thread.title, {
-        boardId: board.id,
-        threadId: saved.thread.id,
-        ...(versionId ? { versionId } : {}),
+      completePreviewSave({
+        clearDraft: options.clearPreviewDraft,
+        closePreview: () => options.setPreview(null),
+        deleteFailedDraft: options.store.deleteFailedDraft,
+        draftId: preview.draftId,
+        navigate: () =>
+          options.navigateToThread(versionId ? preview.title : saved.thread.title, {
+            boardId: board.id,
+            threadId: saved.thread.id,
+            ...(versionId ? { versionId } : {}),
+          }),
+        notify: message => options.notify.success(message),
+        successMessage: preview.mode === 'rewrite' ? '已保存并切换到主帖新版本' : '已保存帖子',
       });
       return;
     }
@@ -126,18 +132,23 @@ export function useForumPreviewSession(options: ForumPreviewSessionOptions) {
       preview.replies,
       preview.versionId,
     );
-    if (preview.draftId) options.store.deleteFailedDraft(preview.draftId);
     const thread = options.store.getThread(preview.boardId, preview.threadId);
-    options.clearPreviewDraft();
-    options.setPreview(null);
-    options.notify.success('已保存回复');
-    if (thread) {
-      options.navigateToThread(thread.title, {
-        boardId: preview.boardId,
-        threadId: preview.threadId,
-        ...(preview.versionId ? { versionId: preview.versionId } : {}),
-      });
-    }
+    completePreviewSave({
+      clearDraft: options.clearPreviewDraft,
+      closePreview: () => options.setPreview(null),
+      deleteFailedDraft: options.store.deleteFailedDraft,
+      draftId: preview.draftId,
+      navigate: () => {
+        if (!thread) return;
+        options.navigateToThread(thread.title, {
+          boardId: preview.boardId,
+          threadId: preview.threadId,
+          ...(preview.versionId ? { versionId: preview.versionId } : {}),
+        });
+      },
+      notify: message => options.notify.success(message),
+      successMessage: '已保存回复',
+    });
   }
 
   function reparsePreviewRaw() {
