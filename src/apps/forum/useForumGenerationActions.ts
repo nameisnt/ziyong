@@ -97,9 +97,14 @@ export function useForumGenerationActions(options: ForumGenerationActionsOptions
     let task: GenerationTask | null = null;
     try {
       const config = options.buildThreadGenerationConfig();
+      // 生成期间用户可能后退或回主页，路由参数随之清空；重写目标必须在发起瞬间固定，
+      // 否则生成完成后会按“新建”处理，保存时变成一篇新帖。
+      const generationMode = options.threadGenerationMode.value;
+      const rewriteThreadId = options.rewriteForumThread.value?.id || '';
+      const rewriteVersionId = options.rewriteForumVersion.value?.id || '';
       task = threadSession.create({
         sourceParams: config.boardId ? { boardId: config.boardId } : {},
-        title: options.threadGenerationMode.value === 'rewrite' ? '重新生成论坛主题' : '生成论坛主题 · 单次生成',
+        title: generationMode === 'rewrite' ? '重新生成论坛主题' : '生成论坛主题 · 单次生成',
       });
       const result = await generateContent(threadAdapter, config, {
         createFailedDraft: input => forum.createFailedDraft(input),
@@ -137,9 +142,7 @@ export function useForumGenerationActions(options: ForumGenerationActionsOptions
           resultState: 'saved',
           resultTitle: result.data.title,
         });
-        toastr.success(
-          options.threadGenerationMode.value === 'rewrite' ? '已保存并切换到主帖新版本' : '已生成并保存帖子',
-        );
+        toastr.success(generationMode === 'rewrite' ? '已保存并切换到主帖新版本' : '已生成并保存帖子');
         void phone.presentGeneratedPage('forum', 'thread', result.data.title, {
           boardId: result.saved.board.id,
           threadId: result.saved.thread.id,
@@ -162,9 +165,9 @@ export function useForumGenerationActions(options: ForumGenerationActionsOptions
         raw: result.rawOutput,
         replies: materialized.replies,
         generationRecord: result.generationRecord,
-        mode: options.threadGenerationMode.value,
-        targetThreadId: options.rewriteForumThread.value?.id || '',
-        targetVersionId: options.rewriteForumVersion.value?.id || '',
+        mode: generationMode,
+        targetThreadId: rewriteThreadId,
+        targetVersionId: rewriteVersionId,
         title: result.data.title,
         warnings: [...result.warnings, ...materialized.warnings],
       };
@@ -194,6 +197,8 @@ export function useForumGenerationActions(options: ForumGenerationActionsOptions
     const thread = options.viewedForumThread.value;
     const state = options.generationState;
     if (!boardId || !threadId || !thread) return;
+    // 同上：回复生成期间路由可能已经变化，版本号取发起瞬间的值，避免保存到错误的版本上下文。
+    const viewedVersionId = options.viewedForumVersionId.value;
 
     options.beginPreviewDraft();
     state.preview = null;
@@ -210,7 +215,7 @@ export function useForumGenerationActions(options: ForumGenerationActionsOptions
         threadContext: options.buildReplyThreadContext(thread),
         threadId,
         userRequirement: options.replyGenerationDraft.userRequirement,
-        versionId: options.viewedForumVersionId.value,
+        versionId: viewedVersionId,
       };
       const result = await generateContent(replyAdapter, config, {
         createFailedDraft: input => forum.createFailedDraft(input),
@@ -240,7 +245,7 @@ export function useForumGenerationActions(options: ForumGenerationActionsOptions
         const savedParams = {
           boardId,
           threadId,
-          ...(options.viewedForumVersionId.value ? { versionId: options.viewedForumVersionId.value } : {}),
+          ...(viewedVersionId ? { versionId: viewedVersionId } : {}),
         };
         replySession.complete(task.id, {
           currentLabel: '论坛回复已保存',
@@ -253,7 +258,7 @@ export function useForumGenerationActions(options: ForumGenerationActionsOptions
         void phone.presentGeneratedPage('forum', 'thread', thread.title, {
           boardId,
           threadId,
-          ...(options.viewedForumVersionId.value ? { versionId: options.viewedForumVersionId.value } : {}),
+          ...(viewedVersionId ? { versionId: viewedVersionId } : {}),
         });
         return;
       }
@@ -268,13 +273,13 @@ export function useForumGenerationActions(options: ForumGenerationActionsOptions
         replies: materialized.replies,
         threadId,
         threadTitle: thread.title,
-        versionId: options.viewedForumVersionId.value,
+        versionId: viewedVersionId,
         warnings: [...result.warnings, ...materialized.warnings],
       };
       const routeParams = {
         boardId,
         threadId,
-        ...(options.viewedForumVersionId.value ? { versionId: options.viewedForumVersionId.value } : {}),
+        ...(viewedVersionId ? { versionId: viewedVersionId } : {}),
       };
       options.persistPreviewDraft(routeParams);
       replySession.complete(task.id, {

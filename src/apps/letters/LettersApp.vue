@@ -893,6 +893,12 @@ async function runGeneration() {
   beginLettersPreviewDraft();
   generationState.preview = null;
   const { receiver, sender } = normalizeDraftPair(generationDraft.senderName, generationDraft.receiverName);
+  // 生成期间用户可能后退或回主页，路由参数会清空；重写目标必须在发起瞬间固定，
+  // 否则生成完成后会按“新建”处理，保存时变成一封新信。
+  const generationMode = letterGenerationMode.value;
+  const targetBook = activeBook.value;
+  const targetEntryId = rewriteLetterEntry.value?.id || '';
+  const targetVersionId = rewriteLetterVersion.value?.id || '';
 
   const outcome = await runSingleGeneration({
     adapter: lettersGenerationAdapter,
@@ -966,7 +972,7 @@ async function runGeneration() {
       resultState: 'saved',
       resultTitle: result.data.title,
     });
-    toastr.success(letterGenerationMode.value === 'rewrite' ? '已保存并切换到书信新版本' : '已生成并保存信件');
+    toastr.success(generationMode === 'rewrite' ? '已保存并切换到书信新版本' : '已生成并保存信件');
     void phone.presentGeneratedPage('letters', 'entry', result.data.title, {
       bookId: result.saved.book.id,
       entryId: result.saved.entry.id,
@@ -976,27 +982,27 @@ async function runGeneration() {
   }
 
   generationState.preview = {
-    bookId: activeBook.value?.id || '',
-    bookTitle: generationDraft.bookTitle || activeBook.value?.title || `${sender.name} 与 ${receiver.name}的书信`,
+    bookId: targetBook?.id || '',
+    bookTitle: generationDraft.bookTitle || targetBook?.title || `${sender.name} 与 ${receiver.name}的书信`,
     content: result.data.content,
     draftId: null,
     format: generationDraft.format,
     formatPrompt: generationDraft.formatPrompt,
     generationRecord: result.generationRecord,
-    mode: letterGenerationMode.value,
+    mode: generationMode,
     raw: result.rawOutput,
     receiver,
     sender,
-    targetEntryId: rewriteLetterEntry.value?.id || '',
-    targetVersionId: rewriteLetterVersion.value?.id || '',
+    targetEntryId,
+    targetVersionId,
     title: result.data.title,
     warnings: result.warnings,
   };
   const previewParams = {
-    ...(activeBook.value?.id ? { bookId: activeBook.value.id } : {}),
+    ...(targetBook?.id ? { bookId: targetBook.id } : {}),
     ...(route.value.params?.replyToEntryId ? { replyToEntryId: route.value.params.replyToEntryId } : {}),
-    ...(rewriteLetterEntry.value ? { rewriteEntryId: rewriteLetterEntry.value.id } : {}),
-    ...(rewriteLetterVersion.value ? { versionId: rewriteLetterVersion.value.id } : {}),
+    ...(targetEntryId ? { rewriteEntryId: targetEntryId } : {}),
+    ...(targetVersionId ? { versionId: targetVersionId } : {}),
   };
   persistLettersPreviewDraft(previewParams);
   generationSession.complete(task.id, {
