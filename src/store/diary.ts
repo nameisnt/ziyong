@@ -5,9 +5,14 @@ import { DiaryScopeDataSchema, type CharacterRef, type DiaryBook, type DiaryEntr
 import {
   createContentVersion,
   ensureContentVersions,
-  removeContentVersion,
   resolveContentVersion,
 } from '@/util/contentVersions';
+import {
+  activateContentVersion,
+  appendContentVersion,
+  deleteContentVersion,
+  updateContentVersion,
+} from '@/util/contentVersionStore';
 import { validateInplace } from '@/util/zod';
 
 export const diaryField = 'sillytavern_phone_diaries';
@@ -240,6 +245,13 @@ export const useDiaryStore = defineStore('diary', () => {
     return entry;
   }
 
+  function applyEntryVersion(entry: DiaryEntry, book: DiaryBook) {
+    syncEntryToActiveVersion(entry);
+    const timestamp = nowIso();
+    entry.updatedAt = timestamp;
+    book.updatedAt = timestamp;
+  }
+
   function appendEntryVersion(
     bookId: string,
     entryId: string,
@@ -248,43 +260,30 @@ export const useDiaryStore = defineStore('diary', () => {
     const book = getBook(bookId);
     const entry = getEntry(bookId, entryId);
     if (!book || !entry) return null;
-    const state = ensureContentVersions<DiaryEntryVersion>(
-      entry.versions,
-      entry.activeVersionId,
-      () => ({
+    const version = appendContentVersion<DiaryEntryVersion>(entry, 'diary_version', {
+      createOriginal: () => ({
         content: entry.content,
         createdAt: entry.createdAt,
         generationRecord: entry.generationRecord,
         title: entry.title,
       }),
-      'diary_version',
-    );
-    const version = createContentVersion<DiaryEntryVersion>('diary_version', {
-      content: input.content.trim(),
-      generationRecord: input.generationRecord,
-      title: input.title.trim() || entry.title,
+      buildVersion: () => ({
+        content: input.content.trim(),
+        generationRecord: input.generationRecord,
+        title: input.title.trim() || entry.title,
+      }),
+      onVersionsChanged: versions => useRegexDisplayStore().migrateOriginalUsage('diary', entry.id, versions),
+      syncFromVersion: () => applyEntryVersion(entry, book),
     });
-    entry.versions = [...state.versions, version];
-    useRegexDisplayStore().migrateOriginalUsage('diary', entry.id, state.versions);
-    const timestamp = nowIso();
-    entry.activeVersionId = version.id;
-    syncEntryToActiveVersion(entry);
-    entry.updatedAt = timestamp;
-    book.updatedAt = timestamp;
     return { entry, version };
   }
 
   function activateEntryVersion(bookId: string, entryId: string, versionId: string) {
     const book = getBook(bookId);
     const entry = getEntry(bookId, entryId);
-    const version = entry?.versions.find(item => item.id === versionId);
-    if (!book || !entry || !version) return null;
-    const timestamp = nowIso();
-    entry.activeVersionId = version.id;
-    syncEntryToActiveVersion(entry);
-    entry.updatedAt = timestamp;
-    book.updatedAt = timestamp;
-    return entry;
+    if (!book || !entry) return null;
+    const version = activateContentVersion(entry, versionId, () => applyEntryVersion(entry, book));
+    return version ? entry : null;
   }
 
   function updateEntryVersion(
@@ -295,33 +294,25 @@ export const useDiaryStore = defineStore('diary', () => {
   ) {
     const book = getBook(bookId);
     const entry = getEntry(bookId, entryId);
-    const version = entry?.versions.find(item => item.id === versionId);
-    if (!book || !entry || !version) return null;
-    const timestamp = nowIso();
-    version.title = input.title.trim() || version.title;
-    version.content = input.content.trim();
-    if (entry.activeVersionId === version.id) {
-      syncEntryToActiveVersion(entry);
-      entry.updatedAt = timestamp;
-      book.updatedAt = timestamp;
-    }
-    return entry;
+    const current = entry?.versions.find(item => item.id === versionId);
+    if (!book || !entry || !current) return null;
+    const version = updateContentVersion(
+      entry,
+      versionId,
+      { content: input.content.trim(), title: input.title.trim() || current.title },
+      () => applyEntryVersion(entry, book),
+    );
+    return version ? entry : null;
   }
 
   function deleteEntryVersion(bookId: string, entryId: string, versionId: string) {
     const book = getBook(bookId);
     const entry = getEntry(bookId, entryId);
     if (!book || !entry) return null;
-    const state = removeContentVersion(entry.versions, entry.activeVersionId, versionId);
-    if (!state) return null;
-    useRegexDisplayStore().deleteContentUsages('diary', [entryId, versionId]);
-    const timestamp = nowIso();
-    entry.versions = state.versions;
-    entry.activeVersionId = state.activeVersionId;
-    syncEntryToActiveVersion(entry);
-    entry.updatedAt = timestamp;
-    book.updatedAt = timestamp;
-    return { activeVersion: state.activeVersion, entry };
+    const activeVersion = deleteContentVersion(entry, versionId, () => applyEntryVersion(entry, book), {
+      onVersionRemoved: removedId => useRegexDisplayStore().deleteContentUsages('diary', [entryId, removedId]),
+    });
+    return activeVersion ? { activeVersion, entry } : null;
   }
 
   function deleteEntry(bookId: string, entryId: string) {

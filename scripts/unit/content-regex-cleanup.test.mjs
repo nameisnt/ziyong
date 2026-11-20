@@ -13,7 +13,7 @@ async function moduleAt(path) {
   return import(`data:text/javascript;base64,${Buffer.from(code).toString('base64')}`);
 }
 const { deleteContentRegexUsages, contentRegexUsageKey: key } = await moduleAt('src/util/regexDisplay.ts');
-const { removeContentVersion } = await moduleAt('src/util/contentVersions.ts');
+const { removeContentVersion, resolveContentVersion } = await moduleAt('src/util/contentVersions.ts');
 async function functionsAt(path, names, context) {
   const ast = createSourceFile(path, await read(path), ScriptTarget.Latest, true);
   const functions = [];
@@ -70,9 +70,26 @@ for (const [app, path, deleteOne, deleteVersion, deleteParent, collection] of [
       normalizeChapterNumbers: value => value,
       resolveExtraChapterGenerationRecords: () => [],
       removeContentVersion,
+      deleteContentVersion: (holder, versionId, sync, options = {}) => {
+        const state = removeContentVersion(holder.versions, holder.activeVersionId, versionId);
+        if (!state) return null;
+        options.onVersionRemoved?.(versionId);
+        holder.versions = state.versions;
+        holder.activeVersionId = state.activeVersionId;
+        sync(state.activeVersion);
+        return state.activeVersion;
+      },
       useRegexDisplayStore: () => regexStore,
+      resolveContentVersion,
     };
-    const methods = await functionsAt(path, [deleteOne, deleteVersion, deleteParent].filter(Boolean), context);
+    const applyFunction = {
+      theater: 'applyEntryVersion',
+      extras: 'applyChapterVersion',
+      letters: 'applyEntryVersion',
+      forum: 'applyThreadVersion',
+    }[app];
+    const names = [applyFunction, deleteOne, deleteVersion, deleteParent].filter(Boolean);
+    const methods = await functionsAt(path, names, context);
     if (deleteVersion) {
       const args = app === 'theater' ? ['e', 'v1'] : ['b', 'e', 'v1'];
       methods[deleteVersion](...args);

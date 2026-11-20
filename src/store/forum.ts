@@ -8,12 +8,13 @@ import {
   type ForumThreadVersion,
   ForumScopeDataSchema,
 } from '@/type/forum';
+import { resolveContentVersion } from '@/util/contentVersions';
 import {
-  createContentVersion,
-  ensureContentVersions,
-  removeContentVersion,
-  resolveContentVersion,
-} from '@/util/contentVersions';
+  activateContentVersion,
+  appendContentVersion,
+  deleteContentVersion,
+  updateContentVersion,
+} from '@/util/contentVersionStore';
 import { validateInplace } from '@/util/zod';
 
 export const forumField = 'sillytavern_phone_forum';
@@ -149,6 +150,20 @@ export const useForumStore = defineStore('forum', () => {
     return thread;
   }
 
+  function applyThreadVersion(thread: ForumThread, board: ForumBoard) {
+    const version = resolveContentVersion(thread.versions, thread.activeVersionId);
+    if (version) {
+      thread.author = version.author;
+      thread.title = version.title;
+      thread.content = version.content;
+      thread.generationRecord = version.generationRecord;
+      thread.generationReplay = version.generationReplay;
+      thread.replies = (version.replies || thread.replies).map(reply => ({ ...reply }));
+    }
+    thread.updatedAt = nowIso();
+    board.updatedAt = thread.updatedAt;
+  }
+
   function appendThreadVersion(
     boardId: string,
     threadId: string,
@@ -158,10 +173,8 @@ export const useForumStore = defineStore('forum', () => {
     const board = getBoard(boardId);
     const thread = getThread(boardId, threadId);
     if (!board || !thread) return null;
-    const state = ensureContentVersions<ForumThreadVersion>(
-      thread.versions,
-      thread.activeVersionId,
-      () => ({
+    const version = appendContentVersion<ForumThreadVersion>(thread, 'forum_thread_version', {
+      createOriginal: () => ({
         author: thread.author,
         content: thread.content,
         createdAt: thread.createdAt,
@@ -170,47 +183,26 @@ export const useForumStore = defineStore('forum', () => {
         replies: thread.replies.map(reply => ({ ...reply })),
         title: thread.title,
       }),
-      'forum_thread_version',
-    );
-    const version = createContentVersion<ForumThreadVersion>('forum_thread_version', {
-      author: input.author.trim() || thread.author,
-      content: input.content.trim(),
-      generationRecord: input.generationRecord,
-      generationReplay: input.generationReplay,
-      replies: (input.replies || thread.replies).map(reply => ({ ...reply })),
-      title: input.title.trim() || thread.title,
+      buildVersion: () => ({
+        author: input.author.trim() || thread.author,
+        content: input.content.trim(),
+        generationRecord: input.generationRecord,
+        generationReplay: input.generationReplay,
+        replies: (input.replies || thread.replies).map(reply => ({ ...reply })),
+        title: input.title.trim() || thread.title,
+      }),
+      onVersionsChanged: versions => useRegexDisplayStore().migrateOriginalUsage('forum', thread.id, versions),
+      syncFromVersion: () => applyThreadVersion(thread, board),
     });
-    thread.versions = [...state.versions, version];
-    useRegexDisplayStore().migrateOriginalUsage('forum', thread.id, state.versions);
-    const timestamp = nowIso();
-    thread.activeVersionId = version.id;
-    thread.author = version.author;
-    thread.title = version.title;
-    thread.content = version.content;
-    thread.generationRecord = version.generationRecord;
-    thread.generationReplay = version.generationReplay;
-    thread.replies = version.replies.map(reply => ({ ...reply }));
-    thread.updatedAt = timestamp;
-    board.updatedAt = timestamp;
     return { board, thread, version };
   }
 
   function activateThreadVersion(boardId: string, threadId: string, versionId: string) {
     const board = getBoard(boardId);
     const thread = getThread(boardId, threadId);
-    const version = thread?.versions.find(item => item.id === versionId);
-    if (!board || !thread || !version) return null;
-    const timestamp = nowIso();
-    thread.activeVersionId = version.id;
-    thread.author = version.author;
-    thread.title = version.title;
-    thread.content = version.content;
-    thread.generationRecord = version.generationRecord;
-    thread.generationReplay = version.generationReplay;
-    thread.replies = version.replies.map(reply => ({ ...reply }));
-    thread.updatedAt = timestamp;
-    board.updatedAt = timestamp;
-    return thread;
+    if (!board || !thread) return null;
+    const version = activateContentVersion(thread, versionId, () => applyThreadVersion(thread, board));
+    return version ? thread : null;
   }
 
   function updateThreadVersion(
@@ -221,41 +213,29 @@ export const useForumStore = defineStore('forum', () => {
   ) {
     const board = getBoard(boardId);
     const thread = getThread(boardId, threadId);
-    const version = thread?.versions.find(item => item.id === versionId);
-    if (!board || !thread || !version) return null;
-    const timestamp = nowIso();
-    version.author = input.author.trim() || version.author;
-    version.title = input.title.trim() || version.title;
-    version.content = input.content.trim();
-    if (thread.activeVersionId === version.id) {
-      thread.author = version.author;
-      thread.title = version.title;
-      thread.content = version.content;
-      thread.updatedAt = timestamp;
-      board.updatedAt = timestamp;
-    }
-    return thread;
+    const current = thread?.versions.find(item => item.id === versionId);
+    if (!board || !thread || !current) return null;
+    const version = updateContentVersion(
+      thread,
+      versionId,
+      {
+        author: input.author.trim() || current.author,
+        content: input.content.trim(),
+        title: input.title.trim() || current.title,
+      },
+      () => applyThreadVersion(thread, board),
+    );
+    return version ? thread : null;
   }
 
   function deleteThreadVersion(boardId: string, threadId: string, versionId: string) {
     const board = getBoard(boardId);
     const thread = getThread(boardId, threadId);
     if (!board || !thread) return null;
-    const state = removeContentVersion(thread.versions, thread.activeVersionId, versionId);
-    if (!state) return null;
-    useRegexDisplayStore().deleteContentUsages('forum', [threadId, versionId]);
-    const timestamp = nowIso();
-    thread.versions = state.versions;
-    thread.activeVersionId = state.activeVersionId;
-    thread.author = state.activeVersion.author;
-    thread.title = state.activeVersion.title;
-    thread.content = state.activeVersion.content;
-    thread.generationRecord = state.activeVersion.generationRecord;
-    thread.generationReplay = state.activeVersion.generationReplay;
-    thread.replies = state.activeVersion.replies.map(reply => ({ ...reply }));
-    thread.updatedAt = timestamp;
-    board.updatedAt = timestamp;
-    return { activeVersion: state.activeVersion, thread };
+    const activeVersion = deleteContentVersion(thread, versionId, () => applyThreadVersion(thread, board), {
+      onVersionRemoved: removedId => useRegexDisplayStore().deleteContentUsages('forum', [threadId, removedId]),
+    });
+    return activeVersion ? { activeVersion, thread } : null;
   }
 
   function deleteThread(boardId: string, threadId: string) {

@@ -9,12 +9,13 @@ import {
   type ExtraChapterVersion,
   type ExtraSummary,
 } from '@/type/extra';
+import { resolveContentVersion } from '@/util/contentVersions';
 import {
-  createContentVersion,
-  ensureContentVersions,
-  removeContentVersion,
-  resolveContentVersion,
-} from '@/util/contentVersions';
+  activateContentVersion,
+  appendContentVersion,
+  deleteContentVersion,
+  updateContentVersion,
+} from '@/util/contentVersionStore';
 import {
   resolveExtraChapterGenerationRecords,
   synchronizeExtraChapterGenerationRecords,
@@ -169,6 +170,17 @@ export const useExtrasStore = defineStore('extras', () => {
     return chapter;
   }
 
+  function applyChapterVersion(chapter: ExtraChapter, book: ExtraBook, withRecords = false) {
+    const version = resolveContentVersion(chapter.versions, chapter.activeVersionId);
+    if (version) {
+      chapter.title = version.title;
+      chapter.content = version.content;
+    }
+    if (withRecords) chapter.generationRecords = resolveExtraChapterGenerationRecords(chapter).slice(-10);
+    chapter.updatedAt = nowIso();
+    book.updatedAt = chapter.updatedAt;
+  }
+
   function appendChapterVersion(
     bookId: string,
     chapterId: string,
@@ -177,46 +189,30 @@ export const useExtrasStore = defineStore('extras', () => {
     const book = getBook(bookId);
     const chapter = getChapter(bookId, chapterId);
     if (!book || !chapter) return null;
-    const state = ensureContentVersions<ExtraChapterVersion>(
-      chapter.versions,
-      chapter.activeVersionId,
-      () => ({
+    const version = appendContentVersion<ExtraChapterVersion>(chapter, 'extra_version', {
+      createOriginal: () => ({
         content: chapter.content,
         createdAt: chapter.createdAt,
         generationRecord: chapter.generationRecords.at(-1),
         title: chapter.title,
       }),
-      'extra_version',
-    );
-    const version = createContentVersion<ExtraChapterVersion>('extra_version', {
-      content: input.content.trim(),
-      generationRecord: input.generationRecord,
-      title: input.title.trim() || chapter.title,
+      buildVersion: () => ({
+        content: input.content.trim(),
+        generationRecord: input.generationRecord,
+        title: input.title.trim() || chapter.title,
+      }),
+      onVersionsChanged: versions => useRegexDisplayStore().migrateOriginalUsage('extras', chapter.id, versions),
+      syncFromVersion: () => applyChapterVersion(chapter, book, true),
     });
-    chapter.versions = [...state.versions, version];
-    useRegexDisplayStore().migrateOriginalUsage('extras', chapter.id, state.versions);
-    const timestamp = nowIso();
-    chapter.activeVersionId = version.id;
-    chapter.title = version.title;
-    chapter.content = version.content;
-    chapter.generationRecords = resolveExtraChapterGenerationRecords(chapter).slice(-10);
-    chapter.updatedAt = timestamp;
-    book.updatedAt = timestamp;
     return { chapter, version };
   }
 
   function activateChapterVersion(bookId: string, chapterId: string, versionId: string) {
     const book = getBook(bookId);
     const chapter = getChapter(bookId, chapterId);
-    const version = chapter?.versions.find(item => item.id === versionId);
-    if (!book || !chapter || !version) return null;
-    const timestamp = nowIso();
-    chapter.activeVersionId = version.id;
-    chapter.title = version.title;
-    chapter.content = version.content;
-    chapter.updatedAt = timestamp;
-    book.updatedAt = timestamp;
-    return chapter;
+    if (!book || !chapter) return null;
+    const version = activateContentVersion(chapter, versionId, () => applyChapterVersion(chapter, book));
+    return version ? chapter : null;
   }
 
   function updateChapterVersion(
@@ -227,36 +223,25 @@ export const useExtrasStore = defineStore('extras', () => {
   ) {
     const book = getBook(bookId);
     const chapter = getChapter(bookId, chapterId);
-    const version = chapter?.versions.find(item => item.id === versionId);
-    if (!book || !chapter || !version) return null;
-    const timestamp = nowIso();
-    version.title = input.title.trim() || version.title;
-    version.content = input.content.trim();
-    if (chapter.activeVersionId === version.id) {
-      chapter.title = version.title;
-      chapter.content = version.content;
-      chapter.updatedAt = timestamp;
-      book.updatedAt = timestamp;
-    }
-    return chapter;
+    const current = chapter?.versions.find(item => item.id === versionId);
+    if (!book || !chapter || !current) return null;
+    const version = updateContentVersion(
+      chapter,
+      versionId,
+      { content: input.content.trim(), title: input.title.trim() || current.title },
+      () => applyChapterVersion(chapter, book),
+    );
+    return version ? chapter : null;
   }
 
   function deleteChapterVersion(bookId: string, chapterId: string, versionId: string) {
     const book = getBook(bookId);
     const chapter = getChapter(bookId, chapterId);
     if (!book || !chapter) return null;
-    const state = removeContentVersion(chapter.versions, chapter.activeVersionId, versionId);
-    if (!state) return null;
-    useRegexDisplayStore().deleteContentUsages('extras', [chapterId, versionId]);
-    const timestamp = nowIso();
-    chapter.versions = state.versions;
-    chapter.generationRecords = resolveExtraChapterGenerationRecords(chapter).slice(-10);
-    chapter.activeVersionId = state.activeVersionId;
-    chapter.title = state.activeVersion.title;
-    chapter.content = state.activeVersion.content;
-    chapter.updatedAt = timestamp;
-    book.updatedAt = timestamp;
-    return { activeVersion: state.activeVersion, chapter };
+    const activeVersion = deleteContentVersion(chapter, versionId, () => applyChapterVersion(chapter, book, true), {
+      onVersionRemoved: removedId => useRegexDisplayStore().deleteContentUsages('extras', [chapterId, removedId]),
+    });
+    return activeVersion ? { activeVersion, chapter } : null;
   }
 
   function deleteChapter(bookId: string, chapterId: string) {

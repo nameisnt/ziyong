@@ -2,12 +2,13 @@ import { useChatScopedDomain } from '@/store/chatScoped';
 import { useRegexDisplayStore } from '@/apps/regex-display/store';
 import { createFailedDraftCollection } from '@/store/failedDrafts';
 import { TheaterScopeDataSchema, type TheaterEntry, type TheaterEntryVersion } from '@/type/theater';
+import { removeContentVersion, resolveContentVersion } from '@/util/contentVersions';
 import {
-  createContentVersion,
-  ensureContentVersions,
-  removeContentVersion,
-  resolveContentVersion,
-} from '@/util/contentVersions';
+  activateContentVersion,
+  appendContentVersion,
+  deleteContentVersion,
+  updateContentVersion,
+} from '@/util/contentVersionStore';
 import { validateInplace } from '@/util/zod';
 import { wrapLegacyTheaterFrontend } from '@/util/theaterMixedContent';
 
@@ -116,6 +117,18 @@ export const useTheaterStore = defineStore('theater', () => {
     return entry;
   }
 
+  function applyEntryVersion(entry: TheaterEntry) {
+    const version = resolveContentVersion(entry.versions, entry.activeVersionId);
+    if (version) {
+      entry.title = version.title;
+      entry.content = version.content;
+      entry.renderMode = version.renderMode;
+      entry.generationRecord = version.generationRecord;
+      entry.generationReplay = version.generationReplay;
+    }
+    entry.updatedAt = nowIso();
+  }
+
   function appendEntryVersion(
     entryId: string,
     input: Pick<TheaterEntryVersion, 'title' | 'content' | 'renderMode'> &
@@ -123,10 +136,8 @@ export const useTheaterStore = defineStore('theater', () => {
   ) {
     const entry = getEntry(entryId);
     if (!entry) return null;
-    const state = ensureContentVersions<TheaterEntryVersion>(
-      entry.versions,
-      entry.activeVersionId,
-      () => ({
+    const version = appendContentVersion<TheaterEntryVersion>(entry, 'theater_version', {
+      createOriginal: () => ({
         content: entry.content,
         createdAt: entry.createdAt,
         generationRecord: entry.generationRecord,
@@ -134,39 +145,24 @@ export const useTheaterStore = defineStore('theater', () => {
         renderMode: entry.renderMode,
         title: entry.title,
       }),
-      'theater_version',
-    );
-    const version = createContentVersion<TheaterEntryVersion>('theater_version', {
-      content: input.content.trim(),
-      generationRecord: input.generationRecord,
-      generationReplay: input.generationReplay,
-      renderMode: input.renderMode,
-      title: input.title.trim() || entry.title,
+      buildVersion: () => ({
+        content: input.content.trim(),
+        generationRecord: input.generationRecord,
+        generationReplay: input.generationReplay,
+        renderMode: input.renderMode,
+        title: input.title.trim() || entry.title,
+      }),
+      onVersionsChanged: versions => useRegexDisplayStore().migrateOriginalUsage('theater', entry.id, versions),
+      syncFromVersion: () => applyEntryVersion(entry),
     });
-    entry.versions = [...state.versions, version];
-    useRegexDisplayStore().migrateOriginalUsage('theater', entry.id, state.versions);
-    entry.activeVersionId = version.id;
-    entry.title = version.title;
-    entry.content = version.content;
-    entry.renderMode = version.renderMode;
-    entry.generationRecord = version.generationRecord;
-    entry.generationReplay = version.generationReplay;
-    entry.updatedAt = nowIso();
     return { entry, version };
   }
 
   function activateEntryVersion(entryId: string, versionId: string) {
     const entry = getEntry(entryId);
-    const version = entry?.versions.find(item => item.id === versionId);
-    if (!entry || !version) return null;
-    entry.activeVersionId = version.id;
-    entry.title = version.title;
-    entry.content = version.content;
-    entry.renderMode = version.renderMode;
-    entry.generationRecord = version.generationRecord;
-    entry.generationReplay = version.generationReplay;
-    entry.updatedAt = nowIso();
-    return entry;
+    if (!entry) return null;
+    const version = activateContentVersion(entry, versionId, () => applyEntryVersion(entry));
+    return version ? entry : null;
   }
 
   function updateEntryVersion(
@@ -175,35 +171,24 @@ export const useTheaterStore = defineStore('theater', () => {
     input: Pick<TheaterEntryVersion, 'title' | 'content' | 'renderMode'>,
   ) {
     const entry = getEntry(entryId);
-    const version = entry?.versions.find(item => item.id === versionId);
-    if (!entry || !version) return null;
-    version.title = input.title.trim() || version.title;
-    version.content = input.content.trim();
-    version.renderMode = input.renderMode;
-    if (entry.activeVersionId === version.id) {
-      entry.title = version.title;
-      entry.content = version.content;
-      entry.renderMode = version.renderMode;
-      entry.updatedAt = nowIso();
-    }
-    return entry;
+    const current = entry?.versions.find(item => item.id === versionId);
+    if (!entry || !current) return null;
+    const version = updateContentVersion(
+      entry,
+      versionId,
+      { content: input.content.trim(), renderMode: input.renderMode, title: input.title.trim() || current.title },
+      () => applyEntryVersion(entry),
+    );
+    return version ? entry : null;
   }
 
   function deleteEntryVersion(entryId: string, versionId: string) {
     const entry = getEntry(entryId);
     if (!entry) return null;
-    const state = removeContentVersion(entry.versions, entry.activeVersionId, versionId);
-    if (!state) return null;
-    useRegexDisplayStore().deleteContentUsages('theater', [entryId, versionId]);
-    entry.versions = state.versions;
-    entry.activeVersionId = state.activeVersionId;
-    entry.title = state.activeVersion.title;
-    entry.content = state.activeVersion.content;
-    entry.renderMode = state.activeVersion.renderMode;
-    entry.generationRecord = state.activeVersion.generationRecord;
-    entry.generationReplay = state.activeVersion.generationReplay;
-    entry.updatedAt = nowIso();
-    return { activeVersion: state.activeVersion, entry };
+    const activeVersion = deleteContentVersion(entry, versionId, () => applyEntryVersion(entry), {
+      onVersionRemoved: removedId => useRegexDisplayStore().deleteContentUsages('theater', [entryId, removedId]),
+    });
+    return activeVersion ? { activeVersion, entry } : null;
   }
 
   function splitEntryVersion(entryId: string, versionId: string) {

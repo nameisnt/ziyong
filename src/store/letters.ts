@@ -3,12 +3,13 @@ import { useRegexDisplayStore } from '@/apps/regex-display/store';
 import { createFailedDraftCollection } from '@/store/failedDrafts';
 import type { CharacterRef } from '@/type/diary';
 import { type LetterBook, type LetterEntry, type LetterEntryVersion, LettersScopeDataSchema } from '@/type/letter';
+import { resolveContentVersion } from '@/util/contentVersions';
 import {
-  createContentVersion,
-  ensureContentVersions,
-  removeContentVersion,
-  resolveContentVersion,
-} from '@/util/contentVersions';
+  activateContentVersion,
+  appendContentVersion,
+  deleteContentVersion,
+  updateContentVersion,
+} from '@/util/contentVersionStore';
 import { validateInplace } from '@/util/zod';
 
 export const lettersField = 'sillytavern_phone_letters';
@@ -176,6 +177,21 @@ export const useLettersStore = defineStore('letters', () => {
     return entry;
   }
 
+  function applyEntryVersion(entry: LetterEntry, book: LetterBook) {
+    const version = resolveContentVersion(entry.versions, entry.activeVersionId);
+    if (version) {
+      entry.title = version.title;
+      entry.content = version.content;
+      entry.format = version.format;
+      entry.formatName = version.formatName;
+      entry.formatPrompt = version.formatPrompt;
+      entry.generationRecord = version.generationRecord;
+      entry.generationReplay = version.generationReplay;
+    }
+    entry.updatedAt = nowIso();
+    book.updatedAt = entry.updatedAt;
+  }
+
   function appendEntryVersion(
     bookId: string,
     entryId: string,
@@ -186,10 +202,8 @@ export const useLettersStore = defineStore('letters', () => {
     const book = getBook(bookId);
     const entry = getEntry(bookId, entryId);
     if (!book || !entry) return null;
-    const state = ensureContentVersions<LetterEntryVersion>(
-      entry.versions,
-      entry.activeVersionId,
-      () => ({
+    const version = appendContentVersion<LetterEntryVersion>(entry, 'letter_version', {
+      createOriginal: () => ({
         content: entry.content,
         createdAt: entry.createdAt,
         format: entry.format,
@@ -199,50 +213,27 @@ export const useLettersStore = defineStore('letters', () => {
         generationReplay: entry.generationReplay,
         title: entry.title,
       }),
-      'letter_version',
-    );
-    const version = createContentVersion<LetterEntryVersion>('letter_version', {
-      content: input.content.trim(),
-      format: input.format,
-      formatName: input.formatName?.trim() || entry.formatName,
-      formatPrompt: input.formatPrompt?.trim() || entry.formatPrompt,
-      generationRecord: input.generationRecord,
-      generationReplay: input.generationReplay,
-      title: input.title.trim() || entry.title,
+      buildVersion: () => ({
+        content: input.content.trim(),
+        format: input.format,
+        formatName: input.formatName?.trim() || entry.formatName,
+        formatPrompt: input.formatPrompt?.trim() || entry.formatPrompt,
+        generationRecord: input.generationRecord,
+        generationReplay: input.generationReplay,
+        title: input.title.trim() || entry.title,
+      }),
+      onVersionsChanged: versions => useRegexDisplayStore().migrateOriginalUsage('letters', entry.id, versions),
+      syncFromVersion: () => applyEntryVersion(entry, book),
     });
-    entry.versions = [...state.versions, version];
-    useRegexDisplayStore().migrateOriginalUsage('letters', entry.id, state.versions);
-    const timestamp = nowIso();
-    entry.activeVersionId = version.id;
-    entry.title = version.title;
-    entry.content = version.content;
-    entry.format = version.format;
-    entry.formatName = version.formatName;
-    entry.formatPrompt = version.formatPrompt;
-    entry.generationRecord = version.generationRecord;
-    entry.generationReplay = version.generationReplay;
-    entry.updatedAt = timestamp;
-    book.updatedAt = timestamp;
     return { book, entry, version };
   }
 
   function activateEntryVersion(bookId: string, entryId: string, versionId: string) {
     const book = getBook(bookId);
     const entry = getEntry(bookId, entryId);
-    const version = entry?.versions.find(item => item.id === versionId);
-    if (!book || !entry || !version) return null;
-    const timestamp = nowIso();
-    entry.activeVersionId = version.id;
-    entry.title = version.title;
-    entry.content = version.content;
-    entry.format = version.format;
-    entry.formatName = version.formatName;
-    entry.formatPrompt = version.formatPrompt;
-    entry.generationRecord = version.generationRecord;
-    entry.generationReplay = version.generationReplay;
-    entry.updatedAt = timestamp;
-    book.updatedAt = timestamp;
-    return entry;
+    if (!book || !entry) return null;
+    const version = activateContentVersion(entry, versionId, () => applyEntryVersion(entry, book));
+    return version ? entry : null;
   }
 
   function updateEntryVersion(
@@ -254,44 +245,31 @@ export const useLettersStore = defineStore('letters', () => {
   ) {
     const book = getBook(bookId);
     const entry = getEntry(bookId, entryId);
-    const version = entry?.versions.find(item => item.id === versionId);
-    if (!book || !entry || !version) return null;
-    const timestamp = nowIso();
-    version.title = input.title.trim() || version.title;
-    version.content = input.content.trim();
-    version.format = input.format;
-    version.formatName = input.formatName?.trim() || version.formatName;
-    version.formatPrompt = input.formatPrompt?.trim() || version.formatPrompt;
-    if (entry.activeVersionId === version.id) {
-      entry.title = version.title;
-      entry.content = version.content;
-      entry.format = version.format;
-      entry.formatName = version.formatName;
-      entry.formatPrompt = version.formatPrompt;
-      entry.updatedAt = timestamp;
-      book.updatedAt = timestamp;
-    }
-    return entry;
+    const current = entry?.versions.find(item => item.id === versionId);
+    if (!book || !entry || !current) return null;
+    const version = updateContentVersion(
+      entry,
+      versionId,
+      {
+        content: input.content.trim(),
+        format: input.format,
+        formatName: input.formatName?.trim() || current.formatName,
+        formatPrompt: input.formatPrompt?.trim() || current.formatPrompt,
+        title: input.title.trim() || current.title,
+      },
+      () => applyEntryVersion(entry, book),
+    );
+    return version ? entry : null;
   }
 
   function deleteEntryVersion(bookId: string, entryId: string, versionId: string) {
     const book = getBook(bookId);
     const entry = getEntry(bookId, entryId);
     if (!book || !entry) return null;
-    const state = removeContentVersion(entry.versions, entry.activeVersionId, versionId);
-    if (!state) return null;
-    useRegexDisplayStore().deleteContentUsages('letters', [entryId, versionId]);
-    const timestamp = nowIso();
-    entry.versions = state.versions;
-    entry.activeVersionId = state.activeVersionId;
-    entry.title = state.activeVersion.title;
-    entry.content = state.activeVersion.content;
-    entry.format = state.activeVersion.format;
-    entry.generationRecord = state.activeVersion.generationRecord;
-    entry.generationReplay = state.activeVersion.generationReplay;
-    entry.updatedAt = timestamp;
-    book.updatedAt = timestamp;
-    return { activeVersion: state.activeVersion, entry };
+    const activeVersion = deleteContentVersion(entry, versionId, () => applyEntryVersion(entry, book), {
+      onVersionRemoved: removedId => useRegexDisplayStore().deleteContentUsages('letters', [entryId, removedId]),
+    });
+    return activeVersion ? { activeVersion, entry } : null;
   }
 
   function deleteEntry(bookId: string, entryId: string) {
