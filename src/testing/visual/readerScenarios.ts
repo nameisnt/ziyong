@@ -106,18 +106,18 @@ export async function applyReaderVisualScenario(name: string, context: ReaderSce
     }
     context.resetPhoneToRoute('reader', 'detail', message.title, { messageId: message.id });
     const selectorLoaded = await context.waitForCondition(
-      () => document.querySelectorAll('.pc-reader-swipe-options button').length === 3,
+      () => document.querySelectorAll('.pc-version-navigator .pc-version-step').length === 2,
       2_000,
     );
-    if (!selectorLoaded) throw new Error('Reader swipe selector did not render all candidates');
+    if (!selectorLoaded) throw new Error('Reader version navigator did not render both steps');
     if (!document.querySelector('.pc-reader-content')?.textContent?.includes('当前候选正文')) {
-      throw new Error('Reader swipe selector did not default to Tavern active swipe');
+      throw new Error('Reader version navigator did not default to Tavern active swipe');
     }
-    const firstCandidate = document.querySelector<HTMLButtonElement>('.pc-reader-swipe-options button');
-    firstCandidate?.click();
+    const previousVersion = document.querySelector<HTMLButtonElement>('.pc-version-step[aria-label="上一个版本"]');
+    previousVersion?.click();
     await context.waitForPaint();
     if (!document.querySelector('.pc-reader-content')?.textContent?.includes('备选回复一')) {
-      throw new Error('Reader swipe selector did not switch only the local preview');
+      throw new Error('Reader version navigator did not switch only the local preview');
     }
     await context.openReaderTools();
     const writeActions = [...document.querySelectorAll<HTMLButtonElement>('.pc-reader-tool-menu button')].filter(

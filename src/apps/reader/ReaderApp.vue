@@ -232,27 +232,17 @@
           <span v-if="activeMessage.isUser" class="pc-hidden-pill">{{ t`用户` }}</span>
           <span v-if="activeMessage.isHidden" class="pc-hidden-pill">{{ t`隐藏` }}</span>
         </template>
-        <template #before-content>
-          <section v-if="activeSwipeCandidates.length > 1" class="pc-reader-swipe-selector" aria-label="候选回复">
-            <div class="pc-reader-swipe-head">
-              <strong>{{ t`候选回复` }}</strong>
-              <span
-                >{{ t`当前酒馆选择` }} {{ activeMessage.activeSwipeIndex + 1 }}/{{ activeSwipeCandidates.length }}</span
-              >
-            </div>
-            <div class="pc-reader-swipe-options">
-              <button
-                v-for="candidate in activeSwipeCandidates"
-                :key="candidate.index"
-                :class="['pc-segment-btn', 'compact', { active: candidate.index === selectedSwipeIndex }]"
-                type="button"
-                @click="selectSwipeCandidate(candidate.index)"
-              >
-                {{ t`候选` }} {{ candidate.index + 1 }}
-              </button>
-            </div>
-            <p v-if="!isViewingActiveSwipe">{{ t`正在只读查看其他候选，不会改动酒馆当前回复。` }}</p>
-          </section>
+        <template #version-navigation>
+          <VersionNavigator
+            v-if="activeSwipeCandidates.length > 1"
+            :versions="swipeVersionItems"
+            :viewed-version-id="String(selectedSwipeIndex)"
+            :active-version-id="String(activeMessage.activeSwipeIndex)"
+            @select="selectSwipeVersion"
+          />
+        </template>
+        <template #detail-context>
+          <span v-if="!isViewingActiveSwipe">{{ t`只读查看其他候选，不改动酒馆当前回复` }}</span>
         </template>
         <template #actions>
           <button
@@ -362,6 +352,7 @@ import BaguDetailPage from '@/components/BaguDetailPage.vue';
 import BookShelf from '@/components/BookShelf.vue';
 import EmptyState from '@/components/EmptyState.vue';
 import ReaderDetailShell from '@/components/ReaderDetailShell.vue';
+import VersionNavigator from '@/components/VersionNavigator.vue';
 import { useReaderRules } from '@/apps/reader/useReaderRules';
 import { useReaderChatSession, type ReaderChatTarget } from '@/apps/reader/useReaderChatSession';
 import { useReaderLibrarySession } from '@/apps/reader/useReaderLibrarySession';
@@ -643,6 +634,16 @@ watch(
 function selectSwipeCandidate(index: number) {
   if (!activeSwipeCandidates.value.some(candidate => candidate.index === index)) return;
   selectedSwipeIndex.value = index;
+}
+
+const swipeVersionItems = computed(() =>
+  activeSwipeCandidates.value.map(candidate => ({ createdAt: '', id: String(candidate.index) })),
+);
+
+function selectSwipeVersion(versionId: string) {
+  const index = Number(versionId);
+  if (!Number.isInteger(index)) return;
+  selectSwipeCandidate(index);
 }
 
 
@@ -1470,37 +1471,5 @@ function formatReaderBody(value: string) {
 
 .pc-reader-detail-title {
   min-width: 0;
-}
-
-.pc-reader-swipe-selector {
-  display: grid;
-  gap: 8px;
-  margin: 0 0 14px;
-  padding: 10px;
-  border: 1px solid var(--pc-border);
-  border-radius: min(var(--pc-card-radius), 10px);
-  background: var(--pc-surface-strong);
-}
-
-.pc-reader-swipe-head,
-.pc-reader-swipe-options {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
-.pc-reader-swipe-head {
-  justify-content: space-between;
-}
-
-.pc-reader-swipe-head span,
-.pc-reader-swipe-selector p {
-  margin: 0;
-  color: var(--pc-muted);
-  font-size: 12px;
-}
-
-.pc-reader-swipe-options {
-  flex-wrap: wrap;
 }
 </style>

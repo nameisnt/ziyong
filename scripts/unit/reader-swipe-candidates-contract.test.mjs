@@ -4,12 +4,13 @@ import { readFile } from 'node:fs/promises';
 import test from 'node:test';
 
 const readSource = relativePath => readFile(new URL(`../../${relativePath}`, import.meta.url), 'utf8');
-const [readerStore, readerSession, readerApp, runtime, scenario] = await Promise.all([
+const [readerStore, readerSession, readerApp, runtime, scenario, versionNavigator] = await Promise.all([
   readSource('src/store/reader.ts'),
   readSource('src/apps/reader/useReaderChatSession.ts'),
   readSource('src/apps/reader/ReaderApp.vue'),
   readSource('src/util/runtime.ts'),
   readSource('src/testing/visual/readerScenarios.ts'),
+  readSource('src/components/VersionNavigator.vue'),
 ]);
 
 test('Reader loads and normalizes every swipe while retaining the Tavern active selection', () => {
@@ -32,4 +33,15 @@ test('Reader swipe selection remains page-local and suppresses write-capable too
   assert.match(readerApp, /v-if="isReadingCurrentChat && isViewingActiveSwipe"/u);
   assert.match(scenario, /reader-swipe-candidates/u);
   assert.match(scenario, /Non-active swipe must disable every content-writing reader tool/u);
+});
+
+test('Reader shows swipes through the shared top-right version navigator', () => {
+  assert.doesNotMatch(readerApp, /pc-reader-swipe-selector/u);
+  assert.match(readerApp, /<VersionNavigator/u);
+  assert.match(readerApp, /:viewed-version-id="String\(selectedSwipeIndex\)"/u);
+  assert.match(readerApp, /:active-version-id="String\(activeMessage\.activeSwipeIndex\)"/u);
+  assert.match(readerApp, /function selectSwipeVersion\(versionId: string\)/u);
+  assert.match(versionNavigator, /activeVersionId\?: string;/u);
+  assert.match(versionNavigator, /\.pc-version-status\.is-continued \{\s*color: var\(--pc-danger\);/u);
+  assert.match(versionNavigator, /\.pc-version-continued \{\s*color: var\(--pc-danger\);/u);
 });

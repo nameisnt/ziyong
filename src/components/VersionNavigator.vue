@@ -25,7 +25,7 @@
     />
     <button
       v-else
-      class="pc-soft-btn compact pc-version-status"
+      :class="['pc-soft-btn', 'compact', 'pc-version-status', { 'is-continued': viewingContinuedVersion }]"
       type="button"
       :aria-label="`当前第 ${currentVersionNumber} 个版本，共 ${versions.length} 个；点击输入版本序号`"
       title="输入版本序号"
@@ -33,6 +33,12 @@
     >
       {{ currentVersionNumber }} / {{ versions.length }}
     </button>
+    <span
+      v-if="activeVersionNumber > 0 && !viewingContinuedVersion"
+      class="pc-version-continued"
+      :title="t`酒馆会继续写这一版`"
+      >{{ activeVersionNumber }}</span
+    >
     <button
       class="pc-icon-btn pc-version-step"
       type="button"
@@ -52,10 +58,14 @@ export type VersionNavigatorItem = {
   id: string;
 };
 
-const props = defineProps<{
-  versions: VersionNavigatorItem[];
-  viewedVersionId: string;
-}>();
+const props = withDefaults(
+  defineProps<{
+    versions: VersionNavigatorItem[];
+    viewedVersionId: string;
+    activeVersionId?: string;
+  }>(),
+  { activeVersionId: '' },
+);
 
 const emit = defineEmits<{
   select: [versionId: string];
@@ -63,6 +73,14 @@ const emit = defineEmits<{
 
 const currentIndex = computed(() => props.versions.findIndex(version => version.id === props.viewedVersionId));
 const currentVersionNumber = computed(() => Math.max(0, currentIndex.value) + 1);
+const activeVersionNumber = computed(() => {
+  if (!props.activeVersionId) return 0;
+  const index = props.versions.findIndex(version => version.id === props.activeVersionId);
+  return index < 0 ? 0 : index + 1;
+});
+const viewingContinuedVersion = computed(
+  () => props.activeVersionId !== '' && props.activeVersionId === props.viewedVersionId,
+);
 const indexEditing = ref(false);
 const indexDraft = ref('');
 const indexInputEl = ref<HTMLInputElement | null>(null);
@@ -118,6 +136,16 @@ function selectOffset(offset: number) {
   font-size: 12px;
   font-weight: 750;
   text-align: center;
+}
+
+.pc-version-status.is-continued {
+  color: var(--pc-danger);
+}
+
+.pc-version-continued {
+  color: var(--pc-danger);
+  font-size: 12px;
+  font-weight: 750;
 }
 
 .pc-version-index-input {
