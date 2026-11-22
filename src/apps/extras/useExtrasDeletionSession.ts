@@ -1,6 +1,6 @@
 import { useExtrasStore } from '@/store/extras';
 import type { ExtraBook, ExtraChapter } from '@/type/extra';
-import { deleteContentVersionWithFallback } from '@/util/deleteContentVersion';
+import { deleteContentVersionWithConfirmation } from '@/util/deleteContentVersion';
 
 export function useExtrasDeletionSession(options: {
   confirmDelete: (message: string, confirmLabel: string) => Promise<boolean>;
@@ -31,12 +31,12 @@ export function useExtrasDeletionSession(options: {
     const book = options.getActiveBook();
     const chapter = options.getActiveChapter();
     if (!book || !chapter) return;
-    await deleteContentVersionWithFallback({
+    await deleteContentVersionWithConfirmation({
       versions: chapter.versions,
       versionId,
-      confirm: options.confirmDelete,
-      confirmLabel: '删除此版本',
-      confirmMessage: ({ index, total }) => `要删除当前查看的版本 ${index}/${total} 吗？`,
+      confirmNotice: (message, settings) => options.confirmDelete(message, settings.confirmLabel),
+      entityLabel: '章节',
+      note: '只会删除这个版本。',
       remove: () => extras.deleteChapterVersion(book.id, chapter.id, versionId),
       activate: previous => {
         extras.activateChapterVersion(book.id, chapter.id, previous.id);

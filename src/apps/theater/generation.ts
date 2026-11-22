@@ -9,6 +9,7 @@ export interface TheaterGenerateConfigInput {
   typeName: string;
   typePrompt: string;
   userRequirement: string;
+  versionId?: string;
 }
 
 export interface TheaterVersionSplitPrompt {
@@ -29,6 +30,7 @@ export function buildTheaterGenerateConfig(input: TheaterGenerateConfigInput): T
     typeName: input.typeName,
     typePrompt: input.typePrompt,
     userRequirement: input.userRequirement,
+    versionId: input.versionId ?? '',
   };
 }
 

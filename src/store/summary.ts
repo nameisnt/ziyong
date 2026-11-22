@@ -1,7 +1,15 @@
 import { useChatScopedDomain } from '@/store/chatScoped';
 import { useRegexDisplayStore } from '@/apps/regex-display/store';
 import { createFailedDraftCollection } from '@/store/failedDrafts';
-import { SummaryScopeDataSchema, type SummaryBook, type SummaryEntry } from '@/type/summary';
+import { SummaryScopeDataSchema, type SummaryBook, type SummaryEntry, type SummaryEntryVersion } from '@/type/summary';
+import { captureContentCleanupSnapshot } from '@/util/contentCleanup';
+import {
+  activateContentVersion,
+  appendContentVersion,
+  deleteContentVersion,
+  updateContentVersion,
+} from '@/util/contentVersionStore';
+import { createContentVersion, ensureContentVersions, resolveContentVersion } from '@/util/contentVersions';
 import { validateInplace } from '@/util/zod';
 
 export const summaryField = 'sillytavern_phone_summaries';
@@ -53,7 +61,45 @@ export const useSummaryStore = defineStore('summary', () => {
     }
   }
 
-  watch(data, normalizeDirectoryOrders, { deep: true, immediate: true });
+  function applyEntryVersion(entry: SummaryEntry) {
+    const version = resolveContentVersion(entry.versions, entry.activeVersionId);
+    if (!version) return;
+    entry.title = version.title;
+    entry.content = version.content;
+    entry.generationRecord = version.generationRecord;
+    entry.updatedAt = nowIso();
+  }
+
+  function normalizeEntryVersions() {
+    for (const book of data.value.books) {
+      for (const entry of book.entries) {
+        if (entry.versions.some(version => version.id === entry.activeVersionId)) continue;
+        const normalized = ensureContentVersions<SummaryEntryVersion>(
+          entry.versions,
+          entry.activeVersionId,
+          () => ({
+            cleanup: captureContentCleanupSnapshot(),
+            content: entry.content,
+            generationRecord: entry.generationRecord,
+            title: entry.title,
+          }),
+          'summary_version',
+        );
+        entry.versions = normalized.versions;
+        entry.activeVersionId = normalized.activeVersionId;
+        applyEntryVersion(entry);
+      }
+    }
+  }
+
+  watch(
+    data,
+    () => {
+      normalizeDirectoryOrders();
+      normalizeEntryVersions();
+    },
+    { deep: true, immediate: true },
+  );
 
   function getNextDirectoryOrder(book: SummaryBook) {
     return book.entries.reduce((maximum, entry) => Math.max(maximum, entry.directoryOrder ?? 0), 0) + 1;
@@ -96,17 +142,26 @@ export const useSummaryStore = defineStore('summary', () => {
     const book = getBook(bookId);
     if (!book) return null;
     const timestamp = nowIso();
+    const version = createContentVersion<SummaryEntryVersion>('summary_version', {
+      cleanup: captureContentCleanupSnapshot(),
+      content: input.content.trim(),
+      generationRecord: input.generationRecord,
+      origin: 'original',
+      title: input.title.trim() || '未命名总结',
+    });
     const entry: SummaryEntry = {
       id: createId('summary_entry'),
-      title: input.title.trim() || '未命名总结',
-      content: input.content.trim(),
+      title: version.title,
+      content: version.content,
       rangeLabel: input.rangeLabel.trim() || '未标注范围',
       favorite: false,
       createdAt: timestamp,
       updatedAt: timestamp,
       directoryOrder: input.directoryOrder ?? input.sourceFloorEnd ?? getNextDirectoryOrder(book),
       sourceFloorEnd: input.sourceFloorEnd,
-      generationRecord: input.generationRecord,
+      generationRecord: version.generationRecord,
+      activeVersionId: version.id,
+      versions: [version],
     };
     book.entries = [entry, ...book.entries];
     book.updatedAt = timestamp;
@@ -126,14 +181,92 @@ export const useSummaryStore = defineStore('summary', () => {
     entry.content = input.content.trim();
     entry.rangeLabel = input.rangeLabel.trim() || entry.rangeLabel;
     if (typeof input.directoryOrder === 'number') entry.directoryOrder = Math.max(0, Math.round(input.directoryOrder));
+    const activeVersion = resolveContentVersion(entry.versions, entry.activeVersionId);
+    if (activeVersion) {
+      activeVersion.title = entry.title;
+      activeVersion.content = entry.content;
+    }
     entry.updatedAt = timestamp;
     book.updatedAt = timestamp;
     return entry;
   }
 
+  function appendEntryVersion(
+    bookId: string,
+    entryId: string,
+    input: Pick<SummaryEntryVersion, 'title' | 'content'> & {
+      cleanup?: SummaryEntryVersion['cleanup'];
+      generationRecord?: SummaryEntryVersion['generationRecord'];
+      rangeLabel?: string;
+    },
+  ) {
+    const book = getBook(bookId);
+    const entry = getEntry(bookId, entryId);
+    if (!book || !entry) return null;
+    const version = appendContentVersion<SummaryEntryVersion>(entry, 'summary_version', {
+      createOriginal: () => ({
+        content: entry.content,
+        createdAt: entry.createdAt,
+        generationRecord: entry.generationRecord,
+        title: entry.title,
+      }),
+      buildVersion: () => ({
+        cleanup: input.cleanup ?? captureContentCleanupSnapshot(),
+        content: input.content.trim(),
+        generationRecord: input.generationRecord,
+        title: input.title.trim() || entry.title,
+      }),
+      onVersionsChanged: versions => useRegexDisplayStore().migrateOriginalUsage('summary', entry.id, versions),
+      syncFromVersion: () => applyEntryVersion(entry),
+    });
+    if (!version) return null;
+    entry.rangeLabel = input.rangeLabel?.trim() || entry.rangeLabel;
+    book.updatedAt = nowIso();
+    return { entry, version };
+  }
+
+  function activateEntryVersion(bookId: string, entryId: string, versionId: string) {
+    const book = getBook(bookId);
+    const entry = getEntry(bookId, entryId);
+    if (!book || !entry) return null;
+    const version = activateContentVersion(entry, versionId, () => applyEntryVersion(entry));
+    return version ? entry : null;
+  }
+
+  function updateEntryVersion(
+    bookId: string,
+    entryId: string,
+    versionId: string,
+    input: Pick<SummaryEntryVersion, 'title' | 'content'>,
+  ) {
+    const book = getBook(bookId);
+    const entry = getEntry(bookId, entryId);
+    const current = entry?.versions.find(version => version.id === versionId);
+    if (!book || !entry || !current) return null;
+    const version = updateContentVersion(
+      entry,
+      versionId,
+      { content: input.content.trim(), title: input.title.trim() || current.title },
+      () => applyEntryVersion(entry),
+    );
+    return version ? entry : null;
+  }
+
+  function deleteEntryVersion(bookId: string, entryId: string, versionId: string) {
+    const book = getBook(bookId);
+    const entry = getEntry(bookId, entryId);
+    if (!book || !entry) return null;
+    const activeVersion = deleteContentVersion(entry, versionId, () => applyEntryVersion(entry), {
+      onVersionRemoved: removedId => useRegexDisplayStore().deleteContentUsages('summary', [entryId, removedId]),
+    });
+    return activeVersion ? { activeVersion, entry } : null;
+  }
+
   function deleteEntry(bookId: string, entryId: string) {
     const book = getBook(bookId);
     if (!book) return;
+    const entry = getEntry(bookId, entryId);
+    entry?.versions.forEach(version => useRegexDisplayStore().deleteContentUsages('summary', [entryId, version.id]));
     useRegexDisplayStore().deleteContentUsages('summary', [entryId]);
     book.entries = book.entries.filter(entry => entry.id !== entryId);
     book.updatedAt = nowIso();
@@ -150,11 +283,14 @@ export const useSummaryStore = defineStore('summary', () => {
   }
 
   return {
+    activateEntryVersion,
+    appendEntryVersion,
     books,
     createFailedDraft,
     createBook,
     createEntry,
     data,
+    deleteEntryVersion,
     deleteFailedDraft,
     deleteBook,
     deleteEntry,
@@ -169,6 +305,7 @@ export const useSummaryStore = defineStore('summary', () => {
     scopeKey,
     switchScope,
     toggleFavorite,
+    updateEntryVersion,
     updateFailedDraft,
     updateEntry,
   };

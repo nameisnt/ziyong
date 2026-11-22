@@ -14,8 +14,8 @@ const consumers = [
 test('every versioned app delegates single-version deletion to the shared flow', async () => {
   for (const path of consumers) {
     const source = await readFile(new URL(`../../${path}`, import.meta.url), 'utf8');
-    assert.match(source, /from '@\/util\/deleteContentVersion'/u, `${path} must import the shared deletion flow`);
-    assert.match(source, /deleteContentVersionWithFallback\(/u, `${path} must call the shared deletion flow`);
+    assert.match(source, /from '@\/util\/deleteContentVersion'/u, `${path} must import the shared deletion flow with confirmation`);
+    assert.match(source, /deleteContentVersionWithConfirmation\(/u, `${path} must call the shared deletion flow with confirmation`);
     assert.doesNotMatch(
       source,
       /versions\.length <= 1\) return;/u,

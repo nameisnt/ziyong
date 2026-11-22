@@ -268,8 +268,9 @@ import { resolveGenerationReplayReferences } from '@/util/generationReplay';
 import { createHiddenGenerationRecord, resolveHiddenGenerationReplay } from '@/util/hiddenGenerationRecord';
 import { formatGenerationReferences, type GenerationReferenceItem } from '@/util/references';
 import { resolveContentVersion } from '@/util/contentVersions';
-import { deleteContentVersionWithFallback } from '@/util/deleteContentVersion';
+import { deleteContentVersionWithConfirmation } from '@/util/deleteContentVersion';
 import { completePreviewSave } from '@/util/previewSave';
+import { completeFailedDraftReparse, readFailedDraftTarget } from '@/util/failedDraftReparse';
 import { usePreviewDraftPersistence } from '@/util/previewDrafts';
 import { useInvalidRouteFallback } from '@/util/routeFallback';
 import { updateGenerationRecordReasoning } from '@/util/generationReasoning';
@@ -936,12 +937,12 @@ function selectTheaterVersion(versionId: string) {
 async function removeTheaterVersion(versionId: string) {
   const entry = activeEntry.value;
   if (!entry) return;
-  await deleteContentVersionWithFallback({
+  await deleteContentVersionWithConfirmation({
     versions: entry.versions,
     versionId,
-    confirm: (message, confirmLabel) => phone.confirmNotice(message, { confirmLabel, kind: 'warning' }),
-    confirmLabel: '删除此版本',
-    confirmMessage: ({ index, total }) => `要删除当前查看的版本 ${index}/${total} 吗？只会删除这个版本。`,
+    confirmNotice: phone.confirmNotice,
+    entityLabel: '小剧场',
+    note: '只会删除这个版本。',
     remove: () => theater.deleteEntryVersion(entry.id, versionId),
     activate: previous => {
       theater.activateEntryVersion(entry.id, previous.id);
@@ -1166,6 +1167,7 @@ async function runGeneration() {
             typeName: generationDraft.typeName,
             typePrompt: generationDraft.typePrompt,
             userRequirement: generationDraft.userRequirement,
+            versionId: target.versionId,
           }),
         session: generationSession,
         settings: {
@@ -1385,23 +1387,21 @@ function reparseFailedDraft() {
     return;
   }
 
-  theater.updateFailedDraft(failedDraft.id, {
-    rawOutput,
-    warnings: parsed.warnings,
-  });
-  generationState.preview = {
+  const target = readFailedDraftTarget(failedDraft.context);
+  const mode = failedDraft.context.mode === 'rewrite' && target.entryId ? 'rewrite' : 'create';
+  const preview: TheaterPreview = {
     content: parsed.data.content,
     draftId: null,
     raw: rawOutput,
     renderMode: 'markdown',
-    mode: failedDraft.context.mode === 'rewrite' ? 'rewrite' : 'create',
+    mode,
     source: {
       label: failedDraft.source.label,
     },
     title: parsed.data.title,
     generationRecord: failedDraft.generationRecord,
-    targetEntryId: typeof failedDraft.context.entryId === 'string' ? failedDraft.context.entryId : '',
-    targetVersionId: '',
+    targetEntryId: mode === 'rewrite' ? target.entryId : '',
+    targetVersionId: mode === 'rewrite' ? target.versionId : '',
     typeId: typeof failedDraft.context.typeId === 'string' ? failedDraft.context.typeId : undefined,
     typeName:
       typeof failedDraft.context.typeName === 'string' && failedDraft.context.typeName.trim()
@@ -1409,10 +1409,22 @@ function reparseFailedDraft() {
         : '未分类小剧场',
     warnings: parsed.warnings,
   };
-  persistTheaterPreviewDraft();
-  theater.deleteFailedDraft(failedDraft.id);
-  failedDraftRawOutput.value = '';
-  phone.replacePage('preview', '生成预览');
+  completeFailedDraftReparse({
+    deleteDraft: draftId => theater.deleteFailedDraft(draftId),
+    draft: failedDraft,
+    navigate: () => {
+      failedDraftRawOutput.value = '';
+      phone.replacePage('preview', '生成预览');
+    },
+    persistDraft: () => persistTheaterPreviewDraft(),
+    preview,
+    rawOutput,
+    setPreview: preview => {
+      generationState.preview = preview;
+    },
+    updateDraft: (draftId, patch) => theater.updateFailedDraft(draftId, patch),
+    warnings: parsed.warnings,
+  });
 }
 
 function handleFrameNavigateBlocked() {

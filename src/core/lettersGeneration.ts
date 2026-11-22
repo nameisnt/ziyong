@@ -25,6 +25,7 @@ export const LetterGenerateConfigSchema = z.object({
   receiver: CharacterRefSchema,
   sender: CharacterRefSchema,
   userRequirement: z.string().default(''),
+  versionId: z.string().default(''),
 });
 export type LetterGenerateConfig = z.infer<typeof LetterGenerateConfigSchema>;
 

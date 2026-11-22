@@ -1,4 +1,10 @@
+import { ContentVersionBaseSchema } from '@/type/contentVersion';
 import { FailedGenerationDraftSchema, HiddenGenerationRecordSchema } from '@/type/generation';
+
+export const SummaryEntryVersionSchema = ContentVersionBaseSchema.extend({
+  generationRecord: HiddenGenerationRecordSchema.optional(),
+});
+export type SummaryEntryVersion = z.infer<typeof SummaryEntryVersionSchema>;
 
 export const SummaryEntrySchema = z.object({
   id: z.string(),
@@ -11,6 +17,8 @@ export const SummaryEntrySchema = z.object({
   directoryOrder: z.number().int().nonnegative().optional(),
   sourceFloorEnd: z.number().int().nonnegative().optional(),
   generationRecord: HiddenGenerationRecordSchema.optional(),
+  activeVersionId: z.string().default(''),
+  versions: z.array(SummaryEntryVersionSchema).default([]),
 });
 export type SummaryEntry = z.infer<typeof SummaryEntrySchema>;
 

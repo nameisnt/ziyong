@@ -13,12 +13,22 @@ import { parsePrettified } from '@/util/zod';
 export const SummaryGenerateConfigSchema = z.object({
   appPrompt: z.string(),
   bookId: z.string(),
+  entryId: z.string().default(''),
+  versionId: z.string().default(''),
   outputFormat: z.string(),
   userRequirement: z.string().default(''),
 });
 export type SummaryGenerateConfig = z.infer<typeof SummaryGenerateConfigSchema>;
 
 export function createSummaryGenerationAdapter(summaryStore: {
+  appendEntryVersion: (
+    bookId: string,
+    entryId: string,
+    input: Pick<SummaryEntry, 'title' | 'content'> & {
+      generationRecord?: SummaryEntry['generationRecord'];
+      rangeLabel?: string;
+    },
+  ) => { entry: SummaryEntry } | null;
   createEntry: (
     bookId: string,
     input: Pick<SummaryEntry, 'title' | 'content' | 'rangeLabel'> & {
@@ -45,6 +55,22 @@ export function createSummaryGenerationAdapter(summaryStore: {
     },
     async save(result, context) {
       const sourceFloorEnd = getSourceLastFloor(context.source);
+      const entryId = context.config.entryId || '';
+      if (entryId) {
+        const appended = summaryStore.appendEntryVersion(context.config.bookId, entryId, {
+          content: result.content,
+          generationRecord: context.generationRecord,
+          rangeLabel: context.source.label,
+          title: result.title,
+        });
+        if (!appended) {
+          throw new Error('目标总结条目已不存在，无法保存为新版本');
+        }
+        return {
+          entityId: appended.entry.id,
+          entry: appended.entry,
+        };
+      }
       const entry = summaryStore.createEntry(context.config.bookId, {
         content: result.content,
         rangeLabel: context.source.label,

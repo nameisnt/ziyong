@@ -4,6 +4,7 @@ import { useForumStore } from '@/store/forum';
 import { usePhoneStore } from '@/store/phone';
 import type { FailedGenerationDraft } from '@/type/generation';
 import { parseForumRepliesXmlResult, parseForumXmlResult } from '@/util/generation';
+import { completeFailedDraftReparse } from '@/util/failedDraftReparse';
 import type { Ref } from 'vue';
 
 export function useForumFailedDraftRepair(options: {
@@ -49,6 +50,7 @@ export function useForumFailedDraftRepair(options: {
       if (!parsed.ok) return updateUnparsedDraft(draft, rawOutput, parsed.warnings);
 
       const materialized = materializeForumReplies([], parsed.data.replies);
+      const targetVersionId = typeof draft.context.versionId === 'string' ? draft.context.versionId : '';
       const preview: ForumGenerationPreview = {
         action: 'thread',
         author: parsed.data.author,
@@ -69,16 +71,24 @@ export function useForumFailedDraftRepair(options: {
         replies: materialized.replies,
         mode: draft.context.mode === 'rewrite' ? 'rewrite' : 'create',
         targetThreadId: typeof draft.context.threadId === 'string' ? draft.context.threadId : '',
-        targetVersionId: '',
+        targetVersionId,
         title: parsed.data.title,
         warnings: [...parsed.warnings, ...materialized.warnings],
       };
-      forum.updateFailedDraft(draft.id, { rawOutput, warnings: preview.warnings });
-      options.setPreview(preview);
-      options.persistPreviewDraft(preview.boardId ? { boardId: preview.boardId } : {});
-      forum.deleteFailedDraft(draft.id);
-      options.rawOutput.value = '';
-      phone.replacePage('preview', '生成预览', preview.boardId ? { boardId: preview.boardId } : undefined);
+      completeFailedDraftReparse({
+        deleteDraft: draftId => forum.deleteFailedDraft(draftId),
+        draft,
+        navigate: () => {
+          options.rawOutput.value = '';
+          phone.replacePage('preview', '生成预览', preview.boardId ? { boardId: preview.boardId } : undefined);
+        },
+        persistDraft: () => options.persistPreviewDraft(preview.boardId ? { boardId: preview.boardId } : {}),
+        preview,
+        rawOutput,
+        setPreview: options.setPreview,
+        updateDraft: (draftId, patch) => forum.updateFailedDraft(draftId, patch),
+        warnings: preview.warnings,
+      });
       return;
     }
 
@@ -107,12 +117,20 @@ export function useForumFailedDraftRepair(options: {
       versionId,
       warnings: [...parsed.warnings, ...materialized.warnings],
     };
-    forum.updateFailedDraft(draft.id, { rawOutput, warnings: preview.warnings });
-    options.setPreview(preview);
-    options.persistPreviewDraft({ boardId, threadId, ...(versionId ? { versionId } : {}) });
-    forum.deleteFailedDraft(draft.id);
-    options.rawOutput.value = '';
-    phone.replacePage('preview', '生成预览', { boardId, threadId, ...(versionId ? { versionId } : {}) });
+    completeFailedDraftReparse({
+      deleteDraft: draftId => forum.deleteFailedDraft(draftId),
+      draft,
+      navigate: () => {
+        options.rawOutput.value = '';
+        phone.replacePage('preview', '生成预览', { boardId, threadId, ...(versionId ? { versionId } : {}) });
+      },
+      persistDraft: () => options.persistPreviewDraft({ boardId, threadId, ...(versionId ? { versionId } : {}) }),
+      preview,
+      rawOutput,
+      setPreview: options.setPreview,
+      updateDraft: (draftId, patch) => forum.updateFailedDraft(draftId, patch),
+      warnings: preview.warnings,
+    });
   }
 
   return { removeFailedDraft, reparseFailedDraft };

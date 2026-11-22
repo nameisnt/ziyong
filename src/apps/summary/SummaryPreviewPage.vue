@@ -5,7 +5,7 @@
     v-model:reasoning="reasoning"
     :reparse-handler="reparseHandler"
     :raw-output-semantics="rawOutputSemantics"
-    save-label="保存条目"
+    :save-label="saveLabel"
     :source-label="sourceLabel"
     :text-provider-summary="textProviderSummary"
     :title="title"
@@ -23,6 +23,7 @@ import type { RawOutputSemantics } from '@/type/generation';
 defineProps<{
   reparseHandler: () => boolean | Promise<boolean>;
   rawOutputSemantics?: RawOutputSemantics;
+  saveLabel: string;
   sourceLabel: string;
   textProviderSummary: string;
   title: string;

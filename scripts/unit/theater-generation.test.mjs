@@ -26,6 +26,7 @@ test('theater generation config keeps the draft fields and fixed capture values'
     typeName: '花吐症',
     typePrompt: '类型提示词',
     userRequirement: '追加要求',
+    versionId: '',
   });
 });
 

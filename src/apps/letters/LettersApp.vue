@@ -188,10 +188,11 @@ import { parseSimpleXmlResult } from '@/util/generation';
 import { resolveGenerationReplayReferences } from '@/util/generationReplay';
 import { createHiddenGenerationRecord, resolveHiddenGenerationReplay } from '@/util/hiddenGenerationRecord';
 import { completePreviewSave } from '@/util/previewSave';
+import { completeFailedDraftReparse, readFailedDraftTarget } from '@/util/failedDraftReparse';
 import { usePreviewDraftPersistence } from '@/util/previewDrafts';
 import { formatGenerationReferences, type GenerationReferenceItem } from '@/util/references';
 import { resolveContentVersion } from '@/util/contentVersions';
-import { deleteContentVersionWithFallback } from '@/util/deleteContentVersion';
+import { deleteContentVersionWithConfirmation } from '@/util/deleteContentVersion';
 import { useInvalidRouteFallback } from '@/util/routeFallback';
 import { updateGenerationRecordReasoning } from '@/util/generationReasoning';
 import { storeToRefs } from 'pinia';
@@ -691,13 +692,12 @@ async function removeLetterVersion(versionId: string) {
   const book = activeBook.value;
   const entry = activeEntry.value;
   if (!book || !entry) return;
-  await deleteContentVersionWithFallback({
+  await deleteContentVersionWithConfirmation({
     versions: entry.versions,
     versionId,
-    confirm: (message, confirmLabel) => phone.confirmNotice(message, { confirmLabel, kind: 'warning' }),
-    confirmLabel: '删除此版本',
-    confirmMessage: ({ index, total }) =>
-      `要删除当前查看的书信版本 ${index}/${total} 吗？只会删除这个版本。`,
+    confirmNotice: phone.confirmNotice,
+    entityLabel: '书信',
+    note: '只会删除这个版本。',
     remove: () => letters.deleteEntryVersion(book.id, entry.id, versionId),
     activate: previous => {
       letters.activateEntryVersion(book.id, entry.id, previous.id);
@@ -937,6 +937,7 @@ async function runGeneration() {
           recentLettersContext: buildSelectedRecentLettersContext(),
           sender: target.sender,
           userRequirement: generationDraft.userRequirement,
+          versionId: target.targetVersionId,
         }),
         session: generationSession,
         settings: {
@@ -1165,11 +1166,9 @@ function reparseFailedDraft() {
       ? draft.context.bookTitle
       : letters.getBook(bookId)?.title || `${sender.name} 与 ${receiver.name}的书信`;
 
-  letters.updateFailedDraft(draft.id, {
-    rawOutput,
-    warnings: parsed.warnings,
-  });
-  generationState.preview = {
+  const target = readFailedDraftTarget(draft.context);
+  const mode = draft.context.mode === 'rewrite' && target.entryId ? 'rewrite' : 'create';
+  const preview: LettersPreview = {
     bookId,
     bookTitle: bookTitleValue,
     content: parsed.data.content,
@@ -1177,19 +1176,31 @@ function reparseFailedDraft() {
     format,
     formatPrompt: typeof draft.context.formatPrompt === 'string' ? draft.context.formatPrompt : '',
     generationRecord: draft.generationRecord,
-    mode: draft.context.mode === 'rewrite' ? 'rewrite' : 'create',
+    mode,
     raw: rawOutput,
     receiver,
     sender,
     title: parsed.data.title,
-    targetEntryId: typeof draft.context.entryId === 'string' ? draft.context.entryId : '',
-    targetVersionId: '',
+    targetEntryId: mode === 'rewrite' ? target.entryId : '',
+    targetVersionId: mode === 'rewrite' ? target.versionId : '',
     warnings: parsed.warnings,
   };
-  persistLettersPreviewDraft(bookId ? { bookId } : {});
-  letters.deleteFailedDraft(draft.id);
-  failedDraftRawOutput.value = '';
-  phone.replacePage('preview', '生成预览', bookId ? { bookId } : undefined);
+  completeFailedDraftReparse({
+    deleteDraft: draftId => letters.deleteFailedDraft(draftId),
+    draft,
+    navigate: () => {
+      failedDraftRawOutput.value = '';
+      phone.replacePage('preview', '生成预览', bookId ? { bookId } : undefined);
+    },
+    persistDraft: () => persistLettersPreviewDraft(bookId ? { bookId } : {}),
+    preview,
+    rawOutput,
+    setPreview: preview => {
+      generationState.preview = preview;
+    },
+    updateDraft: (draftId, patch) => letters.updateFailedDraft(draftId, patch),
+    warnings: parsed.warnings,
+  });
 }
 
 const regenerateFailedDraft = useFailedDraftRegeneration({

@@ -11,6 +11,7 @@ export const DiaryGenerateConfigSchema = z.object({
   appPrompt: z.string(),
   bookId: z.string(),
   bookTitle: z.string().default(''),
+  entryId: z.string().default(''),
   occurredAt: z.string().default(''),
   outputFormat: z.string(),
   perspective: z.object({
@@ -18,6 +19,7 @@ export const DiaryGenerateConfigSchema = z.object({
     name: z.string(),
   }),
   userRequirement: z.string().default(''),
+  versionId: z.string().default(''),
 });
 export type DiaryGenerateConfig = z.infer<typeof DiaryGenerateConfigSchema>;
 

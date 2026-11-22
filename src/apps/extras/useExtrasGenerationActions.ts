@@ -118,6 +118,8 @@ export function useExtrasGenerationActions(options: ExtrasGenerationActionsOptio
       const summaryRule = draft.summaryRuleId
         ? regexDisplay.rules.find(rule => rule.id === draft.summaryRuleId && rule.operation === 'extract')
         : null;
+      // 重写基准版本必须在 await 前快照：生成途中切页会让 route 推导出的版本 id 塌空。
+      const baseVersionId = options.viewedChapterVersion.value?.id || '';
       const generationConfig = {
         appPrompt: options.getChapterAppPrompt(draft.generationIntent),
         bookId,
@@ -148,9 +150,8 @@ export function useExtrasGenerationActions(options: ExtrasGenerationActionsOptio
         typeName: draft.typeName,
         typePrompt: options.currentChapterTypePrompt.value,
         userRequirement: draft.userRequirement,
+        versionId: baseVersionId,
       } satisfies ExtraChapterGenerateConfig;
-      // 重写基准版本必须在 await 前快照：生成途中切页会让 route 推导出的版本 id 塌空。
-      const baseVersionId = options.viewedChapterVersion.value?.id || '';
       const result = await generateContent(chapterAdapter, generationConfig, {
         createFailedDraft: input => extras.createFailedDraft(input),
         generationDefaults: {

@@ -20,6 +20,7 @@ export const TheaterGenerateConfigSchema = z.object({
   typeName: z.string().default(''),
   typePrompt: z.string().default(''),
   userRequirement: z.string().default(''),
+  versionId: z.string().default(''),
 });
 export type TheaterGenerateConfig = z.infer<typeof TheaterGenerateConfigSchema>;
 

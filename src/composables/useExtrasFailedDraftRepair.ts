@@ -9,6 +9,7 @@ import { usePhoneStore } from '@/store/phone';
 import type { ExtraChapterGenerationRecord } from '@/type/extra';
 import type { FailedGenerationDraft } from '@/type/generation';
 import { parseContentXmlResult, parseSimpleXmlResult } from '@/util/generation';
+import { completeFailedDraftReparse } from '@/util/failedDraftReparse';
 import type { Ref } from 'vue';
 
 export interface ExtraChapterGenerationPreview {
@@ -89,7 +90,8 @@ export function useExtrasFailedDraftRepair(options: {
       extras.updateFailedDraft(draft.id, { rawOutput, warnings: parsed.warnings });
       const bookId = getDraftContextValue<string>(draft, 'bookId', '');
       const chapterId = getDraftContextValue<string>(draft, 'chapterId', '');
-      options.setChapterPreview({
+      const versionId = getDraftContextValue<string>(draft, 'versionId', '');
+      const preview: ExtraChapterGenerationPreview = {
         bookId,
         chapterId,
         content: parsed.data.content,
@@ -103,20 +105,32 @@ export function useExtrasFailedDraftRepair(options: {
         mode: options.normalizeChapterMode(draft.context.chapterMode),
         raw: rawOutput,
         summary: 'summary' in parsed.data && typeof parsed.data.summary === 'string' ? parsed.data.summary : '',
-        targetVersionId: '',
+        targetVersionId: chapterId ? versionId : '',
         title: parsed.data.title,
         warnings: parsed.warnings,
-      });
+      };
       if (!extras.getBook(bookId)) {
+        options.setChapterPreview(preview);
         toastr.warning('原番外已经不存在，暂时不能恢复这条章节草稿');
         return;
       }
       const routeParams: Record<string, string> = { bookId };
       if (chapterId) routeParams.chapterId = chapterId;
-      options.persistChapterPreviewDraft(routeParams);
-      extras.deleteFailedDraft(draft.id);
-      options.rawOutput.value = '';
-      phone.replacePage('chapter-preview', '番外预览', routeParams);
+      if (versionId) routeParams.versionId = versionId;
+      completeFailedDraftReparse({
+        deleteDraft: draftId => extras.deleteFailedDraft(draftId),
+        draft,
+        navigate: () => {
+          options.rawOutput.value = '';
+          phone.replacePage('chapter-preview', '番外预览', routeParams);
+        },
+        persistDraft: () => options.persistChapterPreviewDraft(routeParams),
+        preview,
+        rawOutput,
+        setPreview: options.setChapterPreview,
+        updateDraft: (draftId, patch) => extras.updateFailedDraft(draftId, patch),
+        warnings: parsed.warnings,
+      });
       return;
     }
 

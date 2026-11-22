@@ -50,3 +50,39 @@ export async function deleteContentVersionWithFallback<TVersion extends ContentV
   if (options.successMessage) options.notifySuccess?.(options.successMessage);
   return { previousVersionId: previous.id, result, status: 'deleted' };
 }
+
+export interface DeleteContentVersionWithConfirmationOptions<
+  TVersion extends ContentVersionRef,
+  TResult,
+> extends Omit<
+    DeleteContentVersionWithFallbackOptions<TVersion, TResult>,
+    'confirm' | 'confirmLabel' | 'confirmMessage' | 'successMessage'
+  > {
+  confirmLabel?: string;
+  confirmMessage?: (position: { index: number; total: number }) => string;
+  /** 手机端的确认弹窗（`phone.confirmNotice`）。 */
+  confirmNotice: (message: string, options: { confirmLabel: string; kind: 'warning' }) => Promise<boolean>;
+  /** 出现在提示与确认文案里的内容名，例如「书信」「主题」。 */
+  entityLabel: string;
+  note?: string;
+  successMessage?: string;
+}
+
+/**
+ * 五类写作 App 的「删当前版本」入口共用：确认弹窗、默认文案与成功提示。
+ * 各 App 只保留自己的 store 删除调用、相邻版本激活和路由跳转。
+ */
+export async function deleteContentVersionWithConfirmation<TVersion extends ContentVersionRef, TResult>(
+  options: DeleteContentVersionWithConfirmationOptions<TVersion, TResult>,
+): Promise<DeleteContentVersionOutcome<TResult>> {
+  return deleteContentVersionWithFallback({
+    ...options,
+    confirm: (message, confirmLabel) => options.confirmNotice(message, { confirmLabel, kind: 'warning' }),
+    confirmLabel: options.confirmLabel ?? '删除此版本',
+    confirmMessage:
+      options.confirmMessage ??
+      (({ index, total }) =>
+        `要删除当前查看的${options.entityLabel}版本 ${index}/${total} 吗？${options.note ?? ''}`.trim()),
+    successMessage: options.successMessage ?? `已删除当前${options.entityLabel}版本`,
+  });
+}

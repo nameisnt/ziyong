@@ -20,12 +20,15 @@ interface SummaryGenerationDraft {
 }
 
 interface SummaryGenerationPreview {
+  action: 'generate' | 'rewrite';
   bookId: string;
   content: string;
   draftId: null | string;
   generationRecord?: HiddenGenerationRecord;
   raw: string;
   source: { floorEnd?: number; label: string };
+  targetEntryId: string;
+  targetVersionId: string;
   title: string;
   warnings: string[];
 }
@@ -65,6 +68,8 @@ export function useSummaryGenerationActions(options: SummaryGenerationActionsOpt
 
   async function runGeneration() {
     const bookId = options.route.value.params?.bookId;
+    const entryId = options.route.value.params?.entryId || '';
+    const targetVersionId = options.route.value.params?.versionId || '';
     if (!bookId) return;
     const state = options.state;
     options.beginPreviewDraft();
@@ -77,8 +82,10 @@ export function useSummaryGenerationActions(options: SummaryGenerationActionsOpt
         {
           appPrompt: prompts.appPrompts.summaries,
           bookId,
+          entryId,
           outputFormat: options.buildOutputFormat(),
           userRequirement: options.draft.userRequirement,
+          versionId: targetVersionId,
         },
         {
           createFailedDraft: input => summary.createFailedDraft(input),
@@ -135,16 +142,23 @@ export function useSummaryGenerationActions(options: SummaryGenerationActionsOpt
       }
 
       state.preview = {
+        action: entryId ? 'rewrite' : 'generate',
         bookId,
         content: result.data.content,
         draftId: null,
         generationRecord: result.generationRecord,
         raw: result.rawOutput,
         source: { floorEnd: getSourceLastFloor(result.source), label: result.source.label },
+        targetEntryId: entryId,
+        targetVersionId,
         title: result.data.title,
         warnings: result.warnings,
       };
-      options.persistPreviewDraft({ bookId });
+      options.persistPreviewDraft({
+        bookId,
+        ...(entryId ? { entryId } : {}),
+        ...(targetVersionId ? { versionId: targetVersionId } : {}),
+      });
       generationSession.complete(task.id, {
         currentLabel: '总结已生成，等待确认',
         resultPage: 'preview',

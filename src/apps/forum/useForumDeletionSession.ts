@@ -1,6 +1,6 @@
 import { useForumStore } from '@/store/forum';
 import type { ForumBoard, ForumThread } from '@/type/forum';
-import { deleteContentVersionWithFallback } from '@/util/deleteContentVersion';
+import { deleteContentVersionWithConfirmation } from '@/util/deleteContentVersion';
 
 export function useForumDeletionSession(options: {
   confirmDelete: (message: string, confirmLabel: string) => Promise<boolean>;
@@ -18,13 +18,12 @@ export function useForumDeletionSession(options: {
     const board = options.getActiveBoard();
     const thread = options.getActiveThread();
     if (!board || !thread) return;
-    await deleteContentVersionWithFallback({
+    await deleteContentVersionWithConfirmation({
       versions: thread.versions,
       versionId,
-      confirm: options.confirmDelete,
-      confirmLabel: '删除此版本',
-      confirmMessage: ({ index, total }) =>
-        `要删除当前查看的主题版本 ${index}/${total} 吗？该版本的主楼和回复会一起删除。`,
+      confirmNotice: (message, settings) => options.confirmDelete(message, settings.confirmLabel),
+      entityLabel: '主题',
+      note: '该版本的主楼和回复会一起删除。',
       remove: () => forum.deleteThreadVersion(board.id, thread.id, versionId),
       activate: previous => {
         forum.activateThreadVersion(board.id, thread.id, previous.id);

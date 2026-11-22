@@ -256,6 +256,7 @@ import { canOpenBaguScan } from '@/util/baguScanGate';
 import { replaceGenerationAliases, resolveGenerationIdentityAliases } from '@/util/generationAliases';
 import { formatGenerationReferences, type GenerationReferenceItem } from '@/util/references';
 import { resolveGenerationReplayReferences, restoreGenerationReplayDraft } from '@/util/generationReplay';
+import { completeFailedDraftReparse, readFailedDraftTarget } from '@/util/failedDraftReparse';
 import { completePreviewSave } from '@/util/previewSave';
 import { usePreviewDraftPersistence } from '@/util/previewDrafts';
 import { useInvalidRouteFallback } from '@/util/routeFallback';
@@ -272,7 +273,7 @@ import type { FailedGenerationDraft, HiddenGenerationRecord } from '@/type/gener
 import type { GenerationTask } from '@/type/generationTask';
 import type { CharacterRef, DiaryEntryVersion } from '@/type/diary';
 import { resolveContentVersion } from '@/util/contentVersions';
-import { deleteContentVersionWithFallback } from '@/util/deleteContentVersion';
+import { deleteContentVersionWithConfirmation } from '@/util/deleteContentVersion';
 import { reportFailure } from '@/util/feedback';
 import { storeToRefs } from 'pinia';
 
@@ -1045,10 +1046,12 @@ async function runGeneration() {
           appPrompt: prompts.appPrompts.diary,
           bookId: target.bookId,
           bookTitle: target.bookTitle,
+          entryId: target.entryId,
           occurredAt: target.occurredAt,
           outputFormat: buildDiaryOutputFormat(),
           perspective: target.perspective!,
           userRequirement: target.userRequirement,
+          versionId: target.versionId,
         }),
         session: diaryGenerationSession,
         settings: {
@@ -1536,13 +1539,23 @@ function reparseFailedDraft() {
     return;
   }
 
-  diary.updateFailedDraft(draft.id, {
-    rawOutput,
-    warnings: parsed.warnings,
-  });
   const storedPerspective = diary.getBook(bookId)?.perspective;
-  generationState.preview = {
-    action: isReaction ? 'read-reaction' : 'generate',
+  const target = isReaction ? { entryId: '', versionId: '' } : readFailedDraftTarget(draft.context);
+  const rewriteEntry = target.entryId && bookId ? diary.getEntry(bookId, target.entryId) : null;
+  const isRewrite = Boolean(rewriteEntry);
+  const sourceBookId = typeof draft.context.sourceBookId === 'string' ? draft.context.sourceBookId : bookId;
+  const sourceEntryId = typeof draft.context.sourceEntryId === 'string' ? draft.context.sourceEntryId : '';
+  const previewRouteParams: Record<string, string> = { bookId: sourceBookId };
+  if (sourceEntryId) previewRouteParams.entryId = sourceEntryId;
+  const navigateParams: Record<string, string> = { bookId: sourceBookId };
+  if (isRewrite && rewriteEntry) {
+    navigateParams.entryId = rewriteEntry.id;
+    if (target.versionId) navigateParams.versionId = target.versionId;
+  } else if (sourceEntryId) {
+    navigateParams.entryId = sourceEntryId;
+  }
+  const preview: DiaryPreview = {
+    action: isReaction ? 'read-reaction' : isRewrite ? 'rewrite' : 'generate',
     bookId,
     bookTitle,
     content: parsed.data.content,
@@ -1552,24 +1565,29 @@ function reparseFailedDraft() {
     perspective: perspective ||
       (storedPerspective ? resolveDiaryPerspective(storedPerspective) : null) || { name: '当前视角' },
     raw: rawOutput,
-    sourceBookId: typeof draft.context.sourceBookId === 'string' ? draft.context.sourceBookId : bookId,
-    sourceEntryId: typeof draft.context.sourceEntryId === 'string' ? draft.context.sourceEntryId : '',
+    sourceBookId,
+    sourceEntryId,
     sourceFloorEnd: getSourceLastFloor(draft.source),
-    targetEntryId: '',
-    targetVersionId: '',
+    targetEntryId: isRewrite && rewriteEntry ? rewriteEntry.id : '',
+    targetVersionId: isRewrite ? target.versionId : '',
     title: parsed.data.title,
     warnings: parsed.warnings,
   };
-  const previewRouteParams: Record<string, string> = {
-    bookId: typeof draft.context.sourceBookId === 'string' ? draft.context.sourceBookId : bookId,
-  };
-  if (typeof draft.context.sourceEntryId === 'string') previewRouteParams.entryId = draft.context.sourceEntryId;
-  persistDiaryPreviewDraft(previewRouteParams);
-  diary.deleteFailedDraft(draft.id);
-  failedDraftRawOutput.value = '';
-  phone.replacePage('preview', isReaction ? '阅读反应预览' : '日记预览', {
-    bookId: typeof draft.context.sourceBookId === 'string' ? draft.context.sourceBookId : bookId,
-    ...(typeof draft.context.sourceEntryId === 'string' ? { entryId: draft.context.sourceEntryId } : {}),
+  completeFailedDraftReparse({
+    deleteDraft: draftId => diary.deleteFailedDraft(draftId),
+    draft,
+    navigate: () => {
+      failedDraftRawOutput.value = '';
+      phone.replacePage('preview', isReaction ? '阅读反应预览' : isRewrite ? '重新生成日记' : '日记预览', navigateParams);
+    },
+    persistDraft: () => persistDiaryPreviewDraft(previewRouteParams),
+    preview,
+    rawOutput,
+    setPreview: preview => {
+      generationState.preview = preview;
+    },
+    updateDraft: (draftId, patch) => diary.updateFailedDraft(draftId, patch),
+    warnings: parsed.warnings,
   });
 }
 
@@ -1631,10 +1649,11 @@ async function removeEntry(bookId: string, entryId: string) {
   const entry = diary.getEntry(bookId, entryId);
   const versionId = route.value.params?.versionId || entry?.activeVersionId || '';
   if (entry && entry.versions.length > 1 && versionId) {
-    const outcome = await deleteContentVersionWithFallback({
+    const outcome = await deleteContentVersionWithConfirmation({
       versions: entry.versions,
       versionId,
-      confirm: (message, confirmLabel) => phone.confirmNotice(message, { confirmLabel, kind: 'warning' }),
+      confirmNotice: phone.confirmNotice,
+      entityLabel: '日记',
       confirmLabel: '删除版本',
       confirmMessage: () => '要删除这篇日记的当前版本吗？',
       remove: () => diary.deleteEntryVersion(bookId, entryId, versionId),

@@ -45,9 +45,12 @@
       v-else-if="route.page === 'entry' && activeBook && activeEntry"
       v-model:catalog-open="showCatalogModal"
       :catalog-items="entryCatalogItems"
-      :entry="activeEntry"
+      :cleanup-snapshot="viewedEntryVersion?.cleanup"
+      :entry="viewedEntry || activeEntry"
       :next-id="nextEntryId"
       :previous-id="previousEntryId"
+      :versions="activeEntry.versions"
+      :viewed-version-id="viewedEntryVersionId"
       @bagu="openSummaryBaguScan"
       @bottom="scrollToBottom"
       @delete="removeEntry(activeBook.id, activeEntry.id)"
@@ -55,17 +58,19 @@
       @favorite="summary.toggleFavorite(activeBook.id, activeEntry.id)"
       @next="openEntry(activeBook.id, nextEntryId, true)"
       @previous="openEntry(activeBook.id, previousEntryId, true)"
+      @rewrite="openRewriteEntry"
       @select-catalog="selectCatalogEntry"
+      @select-version="selectEntryVersion"
       @top="scrollToTop"
-      @update:reasoning="updateGenerationRecordReasoning(activeEntry, $event)"
+      @update:reasoning="updateGenerationRecordReasoning(viewedEntryVersion || activeEntry, $event)"
     />
 
     <SummaryBaguPage
       v-else-if="route.page === 'bagu-scan' && activeBook && activeEntry"
       :apply-handler="applySummaryBaguContent"
-      :content="activeEntry.content"
+      :content="viewedEntry?.content || activeEntry.content"
       :range-label="activeEntry.rangeLabel"
-      :title="activeEntry.title"
+      :title="viewedEntry?.title || activeEntry.title"
     />
 
     <SummaryEntryEditorPage
@@ -161,6 +166,7 @@
       v-model:raw="generationState.preview.raw"
       :reparse-handler="reparsePreviewRaw"
       :reasoning="generationState.preview.generationRecord?.reasoning || ''"
+      :save-label="generationState.preview.action === 'rewrite' ? '保存为新版本' : '保存条目'"
       :source-label="generationState.preview.source.label"
       :text-provider-summary="textProviderSummary"
       :title="generationState.preview.title"
@@ -237,6 +243,10 @@ import { formatGenerationReferences, type GenerationReferenceItem } from '@/util
 import { usePreviewDraftPersistence } from '@/util/previewDrafts';
 import { useInvalidRouteFallback } from '@/util/routeFallback';
 import { getSourceLastFloor } from '@/util/sourceFloor';
+import { deleteContentVersionWithConfirmation } from '@/util/deleteContentVersion';
+import { completeFailedDraftReparse, readFailedDraftTarget } from '@/util/failedDraftReparse';
+import { resolveGenerationReplayReferences, restoreGenerationReplayDraft } from '@/util/generationReplay';
+import { resolveContentVersion } from '@/util/contentVersions';
 import { updateGenerationRecordReasoning } from '@/util/generationReasoning';
 import { storeToRefs } from 'pinia';
 import { reportFailure } from '@/util/feedback';
@@ -273,6 +283,7 @@ const generationDraft = reactive({
 });
 const generationState = reactive({
   preview: null as null | {
+    action: 'generate' | 'rewrite';
     bookId: string;
     content: string;
     draftId: null | string;
@@ -282,6 +293,8 @@ const generationState = reactive({
       floorEnd?: number;
       label: string;
     };
+    targetEntryId: string;
+    targetVersionId: string;
     title: string;
     warnings: string[];
   },
@@ -323,8 +336,14 @@ const {
   consumeFailedDraft: draftId => summary.deleteFailedDraft(draftId),
   getPreview: () => generationState.preview,
   getRouteParams: (): Record<string, string> => {
-    const bookId = generationState.preview?.bookId || route.value.params?.bookId || '';
-    return bookId ? { bookId } : {};
+    const preview = generationState.preview;
+    const bookId = preview?.bookId || route.value.params?.bookId || '';
+    if (!bookId) return {};
+    return {
+      bookId,
+      ...(preview?.targetEntryId ? { entryId: preview.targetEntryId } : {}),
+      ...(preview?.targetVersionId ? { versionId: preview.targetVersionId } : {}),
+    };
   },
   page: 'preview',
   route,
@@ -333,9 +352,13 @@ const {
       generationState.preview = null;
       return;
     }
+    const targetEntryId = preview.targetEntryId || route.value.params?.entryId || '';
     generationState.preview = {
       ...preview,
+      action: preview.action || (targetEntryId ? 'rewrite' : 'generate'),
       bookId: preview.bookId || route.value.params?.bookId || '',
+      targetEntryId,
+      targetVersionId: preview.targetVersionId || route.value.params?.versionId || '',
     };
   },
   title: '生成预览',
@@ -376,6 +399,23 @@ const activeEntry = computed(() => {
   const bookId = route.value.params?.bookId;
   const entryId = route.value.params?.entryId;
   return bookId && entryId ? summary.getEntry(bookId, entryId) : null;
+});
+const viewedEntryVersion = computed(() => {
+  const entry = activeEntry.value;
+  if (!entry) return null;
+  return resolveContentVersion(entry.versions, entry.activeVersionId, route.value.params?.versionId);
+});
+const viewedEntryVersionId = computed(() => viewedEntryVersion.value?.id || '');
+const viewedEntry = computed(() => {
+  const entry = activeEntry.value;
+  const version = viewedEntryVersion.value;
+  if (!entry || !version) return entry;
+  return {
+    ...entry,
+    content: version.content,
+    generationRecord: version.generationRecord,
+    title: version.title,
+  };
 });
 const {
   catalogItems: entryCatalogItems,
@@ -570,6 +610,19 @@ watch(
       generationDraft.singleMessageId = 0;
       generationDraft.userRequirement = '';
       generationState.preview = null;
+      const bookId = current.params?.bookId || '';
+      const rewriteEntryId = current.params?.entryId || '';
+      const rewriteEntry = bookId && rewriteEntryId ? summary.getEntry(bookId, rewriteEntryId) : null;
+      const rewriteVersion = rewriteEntry
+        ? resolveContentVersion(rewriteEntry.versions, rewriteEntry.activeVersionId, current.params?.versionId)
+        : null;
+      const rewriteRecord = rewriteVersion?.generationRecord ?? rewriteEntry?.generationRecord;
+      if (rewriteRecord?.replay) {
+        // 重写要沿用上次生成的条件：追加要求、楼层范围、引用，和其他写作 App 保持一致。
+        const replay = rewriteRecord.replay;
+        settings.value.generation.sourceMode = restoreGenerationReplayDraft(replay, generationDraft);
+        selectedReferences.value = resolveGenerationReplayReferences(replay);
+      }
     }
 
     if (current.page === 'import-chat' && previous?.page !== 'import-chat') {
@@ -679,7 +732,7 @@ function openEntry(bookId: string, entryId: string, replaceCurrent = false) {
 
 function openSummaryBaguScan() {
   if (!activeBook.value || !activeEntry.value) return;
-  if (!canOpenBaguScan(activeEntry.value.content)) return;
+  if (!canOpenBaguScan(viewedEntry.value?.content || activeEntry.value.content)) return;
   phone.pushPage('bagu-scan', '八股检测', {
     bookId: activeBook.value.id,
     entryId: activeEntry.value.id,
@@ -690,6 +743,26 @@ function selectCatalogEntry(entryId: string) {
   if (!activeBook.value) return;
   showCatalogModal.value = false;
   openEntry(activeBook.value.id, entryId, true);
+}
+
+function openRewriteEntry() {
+  if (!activeBook.value || !activeEntry.value) return;
+  phone.pushPage('generate', '重新生成总结', {
+    bookId: activeBook.value.id,
+    entryId: activeEntry.value.id,
+    ...(viewedEntryVersionId.value ? { versionId: viewedEntryVersionId.value } : {}),
+  });
+}
+
+function selectEntryVersion(versionId: string) {
+  if (!activeBook.value || !activeEntry.value) return;
+  const entry = summary.activateEntryVersion(activeBook.value.id, activeEntry.value.id, versionId);
+  if (!entry) return;
+  phone.replacePage('entry', entry.title, {
+    bookId: activeBook.value.id,
+    entryId: entry.id,
+    versionId: entry.activeVersionId,
+  });
 }
 
 function openFailedDraft(draftId: string) {
@@ -732,14 +805,21 @@ function submitEntry() {
 
 function applySummaryBaguContent(content: string) {
   if (!activeBook.value || !activeEntry.value) return false;
-  const entry = summary.updateEntry(activeBook.value.id, activeEntry.value.id, {
-    content,
-    rangeLabel: activeEntry.value.rangeLabel,
-    title: activeEntry.value.title,
-  });
+  const versionId = viewedEntryVersionId.value;
+  const entry =
+    versionId && versionId !== activeEntry.value.activeVersionId
+      ? summary.updateEntryVersion(activeBook.value.id, activeEntry.value.id, versionId, {
+          content,
+          title: viewedEntry.value?.title || activeEntry.value.title,
+        })
+      : summary.updateEntry(activeBook.value.id, activeEntry.value.id, {
+          content,
+          rangeLabel: activeEntry.value.rangeLabel,
+          title: activeEntry.value.title,
+        });
   if (!entry) return false;
   summary.flushCurrentScope();
-  return entry.content;
+  return entry.versions.find(version => version.id === versionId)?.content ?? content;
 }
 
 function buildSummaryOutputFormat() {
@@ -752,6 +832,15 @@ function returnToGenerate() {
     phone.replacePage('failed-draft', '解析失败草稿', {
       bookId,
       draftId: generationState.preview.draftId,
+    });
+    return;
+  }
+  const preview = generationState.preview;
+  if (preview?.action === 'rewrite' && preview.targetEntryId) {
+    phone.replacePage('generate', '重新生成总结', {
+      bookId: preview.bookId,
+      entryId: preview.targetEntryId,
+      ...(preview.targetVersionId ? { versionId: preview.targetVersionId } : {}),
     });
     return;
   }
@@ -769,6 +858,31 @@ function savePreview() {
   const bookId = preview.bookId || route.value.params?.bookId || summaryPreviewDraft.value?.routeParams.bookId;
   if (!bookId) {
     toastr.warning('草稿缺少目标总结集信息，无法保存条目');
+    return;
+  }
+
+  if (preview.action === 'rewrite' && preview.targetEntryId) {
+    const appended = summary.appendEntryVersion(bookId, preview.targetEntryId, {
+      content: preview.content,
+      generationRecord: preview.generationRecord,
+      rangeLabel: preview.source.label,
+      title: preview.title,
+    });
+    if (!appended) {
+      toastr.warning('目标总结条目已不存在，无法保存为新版本');
+      return;
+    }
+    if (preview.draftId) {
+      summary.deleteFailedDraft(preview.draftId);
+    }
+    clearSummaryPreviewDraft();
+    generationState.preview = null;
+    toastr.success('已保存为新版本');
+    phone.replacePage('entry', appended.entry.title, {
+      bookId,
+      entryId: appended.entry.id,
+      versionId: appended.version.id,
+    });
     return;
   }
 
@@ -859,11 +973,11 @@ function reparseFailedDraft() {
     return;
   }
 
-  summary.updateFailedDraft(draft.id, {
-    rawOutput,
-    warnings: parsed.warnings,
-  });
-  generationState.preview = {
+  const target = readFailedDraftTarget(draft.context);
+  const rewriteEntry = target.entryId ? summary.getEntry(bookId, target.entryId) : null;
+  const isRewrite = Boolean(rewriteEntry);
+  const preview: SummaryPreview = {
+    action: isRewrite ? 'rewrite' : 'generate',
     bookId,
     content: parsed.data.content,
     draftId: null,
@@ -873,18 +987,58 @@ function reparseFailedDraft() {
       floorEnd: getSourceLastFloor(draft.source),
       label: draft.source.label,
     },
+    targetEntryId: isRewrite ? target.entryId : '',
+    targetVersionId: isRewrite ? target.versionId : '',
     title: parsed.data.title,
     warnings: parsed.warnings,
   };
-  persistSummaryPreviewDraft({ bookId });
-  summary.deleteFailedDraft(draft.id);
+  completeFailedDraftReparse({
+    deleteDraft: draftId => summary.deleteFailedDraft(draftId),
+    draft,
+    navigate: () =>
+      phone.replacePage('preview', '生成预览', {
+        bookId,
+        ...(isRewrite ? { entryId: target.entryId } : {}),
+        ...(isRewrite && target.versionId ? { versionId: target.versionId } : {}),
+      }),
+    persistDraft: () =>
+      persistSummaryPreviewDraft({
+        bookId,
+        ...(isRewrite ? { entryId: target.entryId } : {}),
+        ...(isRewrite && target.versionId ? { versionId: target.versionId } : {}),
+      }),
+    preview,
+    rawOutput,
+    setPreview: value => {
+      generationState.preview = value;
+    },
+    updateDraft: (draftId, patch) => summary.updateFailedDraft(draftId, patch),
+    warnings: parsed.warnings,
+  });
   failedDraftRawOutput.value = '';
-  phone.replacePage('preview', '生成预览', { bookId });
 }
 
 async function removeEntry(bookId: string, entryId: string) {
   const entry = summary.getEntry(bookId, entryId);
-  const shouldDelete = await phone.confirmNotice(`要删除总结条目“${entry?.title || '未命名条目'}”吗？`, {
+  if (!entry) return;
+  if (entry.versions.length > 1) {
+    const result = await deleteContentVersionWithConfirmation({
+      confirmNotice: phone.confirmNotice,
+      remove: () => summary.deleteEntryVersion(bookId, entryId, viewedEntryVersionId.value || entry.activeVersionId),
+      entityLabel: '总结',
+      note: '只会删除这个版本。',
+      versionId: viewedEntryVersionId.value || entry.activeVersionId,
+      versions: entry.versions,
+    });
+    if (result.status !== 'deleted') return;
+    phone.replacePage('entry', result.result.entry.title, {
+      bookId,
+      entryId,
+      versionId: result.result.activeVersion.id,
+    });
+    return;
+  }
+  const shouldDelete = await phone.confirmNotice(`要删除总结条目“${entry.title || '未命名条目'}”吗？`, {
     confirmLabel: '删除',
     kind: 'warning',
   });

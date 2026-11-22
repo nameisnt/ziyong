@@ -4382,6 +4382,7 @@ async function applyScenario(name: VisualScenarioName, options: { height?: numbe
       typeName: extraBook.typeName,
       typePrompt: '',
       userRequirement: '原版生成要求，应在删除重写版后保留。',
+      versionId: '',
     });
     chapter.generationRecords = [originalGenerationRecord];
     const deletedGenerationRecord = createExtraChapterGenerationRecord({
@@ -4402,6 +4403,7 @@ async function applyScenario(name: VisualScenarioName, options: { height?: numbe
       typeName: extraBook.typeName,
       typePrompt: '',
       userRequirement: '重写版本要求，删除该版本后必须消失。',
+      versionId: '',
     });
     const extraSaved = extras.appendChapterVersion(extraBook.id, chapter.id, {
       content: '准备删除的番外采用版本。',

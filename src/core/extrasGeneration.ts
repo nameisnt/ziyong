@@ -67,6 +67,7 @@ export const ExtraChapterGenerateConfigSchema = z.object({
   summaryRuleName: z.string().optional(),
   summaryRulePattern: z.string().optional(),
   summaryRuleReplacement: z.string().optional(),
+  versionId: z.string().optional(),
 });
 export type ExtraChapterGenerateConfig = z.infer<typeof ExtraChapterGenerateConfigSchema>;
 
