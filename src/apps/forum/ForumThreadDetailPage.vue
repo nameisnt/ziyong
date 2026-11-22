@@ -5,6 +5,7 @@
       :context-label="boardName"
       display-app-id="forum"
       :display-identity="[thread.id, viewedVersionId]"
+      :cleanup-snapshot="cleanupSnapshot"
       :display-versions="versions"
       :favorite-active="favorite"
       next-disabled
@@ -114,6 +115,9 @@ function saveReply(input: Pick<ForumReply, 'author' | 'content' | 'isOriginalPos
   emit('save-reply', reply.id, input);
   editingReply.value = null;
 }
+
+const viewedVersion = computed(() => props.versions.find(version => version.id === props.viewedVersionId) ?? props.versions.find(version => version.id === props.thread.activeVersionId));
+const cleanupSnapshot = computed(() => viewedVersion.value?.cleanup);
 
 const viewedGenerationRecord = computed(
   () =>

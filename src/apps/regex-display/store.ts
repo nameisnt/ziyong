@@ -34,6 +34,7 @@ export const RegexDisplayRuleSchema = z.object({
 export type RegexDisplayRule = z.infer<typeof RegexDisplayRuleSchema>;
 
 export const RegexDisplayUsageSchema = z.object({
+  cleanupEnabled: z.boolean().default(true),
   contentRuleId: z.string().default(''),
   displayRuleIds: z.array(z.string()).default([]),
   titleRuleId: z.string().default(''),
@@ -269,6 +270,10 @@ export const useRegexDisplayStore = defineStore('regex-display', () => {
     else usage.contentRuleId = ruleId;
   }
 
+  function setCleanupEnabled(usageKey: string, enabled: boolean) {
+    ensureUsage(settings.value, usageKey).cleanupEnabled = enabled;
+  }
+
   function setDisplayRuleEnabled(appId: string, ruleId: string, enabled: boolean) {
     const usage = ensureUsage(settings.value, appId);
     usage.displayRuleIds = enabled
@@ -396,6 +401,7 @@ export const useRegexDisplayStore = defineStore('regex-display', () => {
     moveRulesToGroup,
     renameGroup,
     rehydrateFromSettings,
+    setCleanupEnabled,
     setDisplayRuleEnabled,
     setExtractionRule,
     setRuleEnabled,

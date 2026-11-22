@@ -3,7 +3,7 @@ import { useRegexDisplayStore } from '@/apps/regex-display/store';
 import { createFailedDraftCollection } from '@/store/failedDrafts';
 import type { CharacterRef } from '@/type/diary';
 import { type LetterBook, type LetterEntry, type LetterEntryVersion, LettersScopeDataSchema } from '@/type/letter';
-import { resolveContentVersion } from '@/util/contentVersions';
+import { createContentVersion, resolveContentVersion } from '@/util/contentVersions';
 import {
   activateContentVersion,
   appendContentVersion,
@@ -11,6 +11,7 @@ import {
   updateContentVersion,
 } from '@/util/contentVersionStore';
 import { validateInplace } from '@/util/zod';
+import { captureContentCleanupSnapshot } from '@/util/contentCleanup';
 
 export const lettersField = 'sillytavern_phone_letters';
 
@@ -144,6 +145,19 @@ export const useLettersStore = defineStore('letters', () => {
       activeVersionId: '',
       versions: [],
     };
+    const version = createContentVersion<LetterEntryVersion>('letter_version', {
+      cleanup: captureContentCleanupSnapshot(),
+      content: entry.content,
+      format: entry.format,
+      formatName: entry.formatName,
+      formatPrompt: entry.formatPrompt,
+      generationRecord: entry.generationRecord,
+      generationReplay: entry.generationReplay,
+      origin: 'original',
+      title: entry.title,
+    });
+    entry.versions = [version];
+    entry.activeVersionId = version.id;
     book.entries = [entry, ...book.entries];
     book.updatedAt = timestamp;
     return { book, entry };
@@ -195,7 +209,7 @@ export const useLettersStore = defineStore('letters', () => {
   function appendEntryVersion(
     bookId: string,
     entryId: string,
-    input: Pick<LetterEntryVersion, 'title' | 'content' | 'format'> &
+    input: Pick<LetterEntryVersion, 'title' | 'content' | 'format' | 'cleanup'> &
       Partial<Pick<LetterEntryVersion, 'formatName' | 'formatPrompt'>> &
       Partial<Pick<LetterEntryVersion, 'generationRecord' | 'generationReplay'>>,
   ) {
@@ -214,6 +228,7 @@ export const useLettersStore = defineStore('letters', () => {
         title: entry.title,
       }),
       buildVersion: () => ({
+        cleanup: input.cleanup ?? captureContentCleanupSnapshot(),
         content: input.content.trim(),
         format: input.format,
         formatName: input.formatName?.trim() || entry.formatName,

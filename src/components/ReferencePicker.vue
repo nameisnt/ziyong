@@ -135,7 +135,7 @@
 
 <script setup lang="ts">
 import { getRegisteredPhoneAppReferenceCatalog, type PhoneReferenceTreeNode } from '@/core/appRegistry';
-import type { GenerationReferenceItem } from '@/util/references';
+import { referenceHasContent, type GenerationReferenceItem } from '@/util/references';
 import { referenceText } from '@/util/referenceText';
 import { defineComponent, h, type DefineComponent, type PropType } from 'vue';
 
@@ -297,14 +297,23 @@ const referenceCatalog = computed(() => {
   return getRegisteredPhoneAppReferenceCatalog();
 });
 
+function pruneReferenceTree(nodes: PhoneReferenceTreeNode[]): PhoneReferenceTreeNode[] {
+  const pruned: PhoneReferenceTreeNode[] = [];
+  for (const node of nodes) {
+    if (node.kind === 'leaf') {
+      if (referenceHasContent(node.item)) pruned.push(node);
+      continue;
+    }
+    const children = pruneReferenceTree(node.children);
+    if (children.length) pruned.push({ ...node, children });
+  }
+  return pruned;
+}
+
 const tree = computed(() => {
   const preferredOrder = new Map(props.preferredRootIds.map((id, index) => [id, index]));
-  return referenceCatalog.value.nodes
-    .filter(
-      item =>
-        !props.excludedRootIds.includes(item.id) &&
-        (item.kind === 'branch' ? item.children.length > 0 : Boolean(item.item.content.trim())),
-    )
+  return pruneReferenceTree(referenceCatalog.value.nodes)
+    .filter(item => !props.excludedRootIds.includes(item.id))
     .sort((left, right) => {
       const leftOrder = preferredOrder.get(left.id) ?? Number.MAX_SAFE_INTEGER;
       const rightOrder = preferredOrder.get(right.id) ?? Number.MAX_SAFE_INTEGER;
@@ -385,7 +394,7 @@ function toggleLeaf(item: GenerationReferenceItem) {
   if (props.disabled) return;
   if (!selectedIds.value.has(item.id) || props.insertMode) {
     const content = referenceText(item.content);
-    if (!content) {
+    if (!content || !referenceHasContent(item)) {
       toastr.warning('没有可引用的正文');
       return;
     }

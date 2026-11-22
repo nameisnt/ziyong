@@ -6,6 +6,7 @@
       :context-label="`${entry.sender.name} → ${entry.receiver.name}`"
       display-app-id="letters"
       :display-identity="[entry.id, viewedVersionId]"
+      :cleanup-snapshot="cleanupSnapshot"
       :display-versions="versions"
       :favorite-active="entry.favorite"
       :next-disabled="!nextId"
@@ -81,6 +82,9 @@ const props = defineProps<{
   versions: LetterEntryVersion[];
   viewedVersionId: string;
 }>();
+
+const viewedVersion = computed(() => props.versions.find(version => version.id === props.viewedVersionId) ?? props.versions.find(version => version.id === props.entry.activeVersionId));
+const cleanupSnapshot = computed(() => viewedVersion.value?.cleanup);
 
 const viewedGenerationRecord = computed(
   () =>

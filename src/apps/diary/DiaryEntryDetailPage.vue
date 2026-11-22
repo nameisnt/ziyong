@@ -6,6 +6,7 @@
       :context-label="entry.kind === 'read-reaction' ? t`阅读感想` : t`日记`"
       display-app-id="diary"
       :display-identity="[entry.id, viewedVersionId]"
+      :cleanup-snapshot="cleanupSnapshot"
       :display-versions="versions"
       :favorite-active="entry.favorite"
       :next-disabled="!nextId"
@@ -83,7 +84,7 @@ import ReaderDetailShell from '@/components/ReaderDetailShell.vue';
 import VersionNavigator from '@/components/VersionNavigator.vue';
 import type { DiaryEntry, DiaryEntryVersion } from '@/type/diary';
 
-defineProps<{
+const props = defineProps<{
   catalogItems: CatalogModalItem[];
   catalogOpen: boolean;
   entry: DiaryEntry;
@@ -92,6 +93,9 @@ defineProps<{
   versions: DiaryEntryVersion[];
   viewedVersionId: string;
 }>();
+
+const viewedVersion = computed(() => props.versions.find(version => version.id === props.viewedVersionId) ?? props.versions.find(version => version.id === props.entry.activeVersionId));
+const cleanupSnapshot = computed(() => viewedVersion.value?.cleanup);
 
 const emit = defineEmits<{
   bagu: [];

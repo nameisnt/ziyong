@@ -5,10 +5,13 @@ import { useForumStore } from '@/store/forum';
 import { useLettersStore } from '@/store/letters';
 import { useSummaryStore } from '@/store/summary';
 import { useTheaterStore } from '@/store/theater';
+import type { ContentCleanupSnapshot, ContentVersionBase } from '@/type/contentVersion';
+import { resolveContentVersion } from '@/util/contentVersions';
 import type { GenerationReferenceItem } from '@/util/references';
 import type { HiddenGenerationRecord } from '@/type/generation';
 
 function makeItem(input: {
+  cleanup?: ContentCleanupSnapshot;
   content: string;
   floorEnd?: number;
   id: string;
@@ -18,6 +21,7 @@ function makeItem(input: {
   updatedAt?: string;
 }): GenerationReferenceItem {
   return {
+    cleanup: input.cleanup,
     content: input.content,
     floorEnd: input.floorEnd,
     id: input.id,
@@ -57,6 +61,10 @@ function branch(id: string, label: string, children: PhoneReferenceTreeNode[]): 
   };
 }
 
+function activeCleanup(record: { activeVersionId: string; versions: ContentVersionBase[] }) {
+  return resolveContentVersion(record.versions, record.activeVersionId)?.cleanup;
+}
+
 function sortByUpdatedAt<T extends { updatedAt?: string }>(items: T[]) {
   return [...items].sort((left, right) => (right.updatedAt || '').localeCompare(left.updatedAt || ''));
 }
@@ -72,6 +80,7 @@ export function createExtrasReferenceTree() {
         .map(chapter =>
           leaf(
             makeItem({
+              cleanup: activeCleanup(chapter),
               content: chapter.content,
               floorEnd: chapter.chapterNumber,
               id: `extras:${book.id}:chapter:${chapter.id}`,
@@ -111,6 +120,7 @@ export function createDiaryReferenceTree() {
         sortByUpdatedAt(book.entries).map(entry =>
           leaf(
             makeItem({
+              cleanup: activeCleanup(entry),
               content: entry.content,
               floorEnd: entry.sourceFloorEnd ?? lastSourceFloor(entry.generationRecord),
               id: `diary:${book.id}:entry:${entry.id}`,
@@ -138,6 +148,7 @@ export function createLettersReferenceTree() {
         sortByUpdatedAt(book.entries).map(entry =>
           leaf(
             makeItem({
+              cleanup: activeCleanup(entry),
               content: entry.content,
               floorEnd: lastSourceFloor(entry.generationRecord),
               id: `letters:${book.id}:entry:${entry.id}`,
@@ -224,7 +235,8 @@ export function createForumReferenceTree() {
           branch(`forum:${board.id}:thread:${thread.id}`, thread.title, [
             leaf(
               makeItem({
-                content: `帖子标题：${thread.title}\n主楼作者：${thread.author}（楼主）\n\n${thread.content}`,
+                cleanup: activeCleanup(thread),
+              content: `帖子标题：${thread.title}\n主楼作者：${thread.author}（楼主）\n\n${thread.content}`,
                 floorEnd: lastSourceFloor(thread.generationRecord),
                 id: `forum:${board.id}:thread:${thread.id}:main`,
                 sourcePath: ['论坛', board.name, thread.title],
@@ -234,6 +246,7 @@ export function createForumReferenceTree() {
             ),
             leaf(
               makeItem({
+                cleanup: activeCleanup(thread),
                 content: [
                   `帖子标题：${thread.title}`,
                   `主楼作者：${thread.author}（楼主）`,

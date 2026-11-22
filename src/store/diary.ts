@@ -14,6 +14,7 @@ import {
   updateContentVersion,
 } from '@/util/contentVersionStore';
 import { validateInplace } from '@/util/zod';
+import { captureContentCleanupSnapshot } from '@/util/contentCleanup';
 
 export const diaryField = 'sillytavern_phone_diaries';
 
@@ -206,6 +207,7 @@ export const useDiaryStore = defineStore('diary', () => {
       generationRecord: input.generationRecord,
     };
     const version = createContentVersion<DiaryEntryVersion>('diary_version', {
+      cleanup: captureContentCleanupSnapshot(),
       content: entry.content,
       generationRecord: entry.generationRecord,
       origin: 'original',
@@ -255,7 +257,9 @@ export const useDiaryStore = defineStore('diary', () => {
   function appendEntryVersion(
     bookId: string,
     entryId: string,
-    input: Pick<DiaryEntryVersion, 'title' | 'content'> & { generationRecord?: DiaryEntry['generationRecord'] },
+    input: Pick<DiaryEntryVersion, 'title' | 'content' | 'cleanup'> & {
+      generationRecord?: DiaryEntry['generationRecord'];
+    },
   ) {
     const book = getBook(bookId);
     const entry = getEntry(bookId, entryId);
@@ -268,6 +272,7 @@ export const useDiaryStore = defineStore('diary', () => {
         title: entry.title,
       }),
       buildVersion: () => ({
+        cleanup: input.cleanup ?? captureContentCleanupSnapshot(),
         content: input.content.trim(),
         generationRecord: input.generationRecord,
         title: input.title.trim() || entry.title,

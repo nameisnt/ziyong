@@ -9,7 +9,7 @@ import {
   type ExtraChapterVersion,
   type ExtraSummary,
 } from '@/type/extra';
-import { resolveContentVersion } from '@/util/contentVersions';
+import { createContentVersion, resolveContentVersion } from '@/util/contentVersions';
 import {
   activateContentVersion,
   appendContentVersion,
@@ -21,6 +21,7 @@ import {
   synchronizeExtraChapterGenerationRecords,
 } from '@/util/extraGenerationRecords';
 import { validateInplace } from '@/util/zod';
+import { captureContentCleanupSnapshot } from '@/util/contentCleanup';
 
 export const extrasField = 'sillytavern_phone_extras';
 
@@ -141,6 +142,15 @@ export const useExtrasStore = defineStore('extras', () => {
       createdAt: timestamp,
       updatedAt: timestamp,
     };
+    const version = createContentVersion<ExtraChapterVersion>('extra_version', {
+      cleanup: captureContentCleanupSnapshot(),
+      content: chapter.content,
+      generationRecord: input.generationRecord,
+      origin: 'original',
+      title: chapter.title,
+    });
+    chapter.versions = [version];
+    chapter.activeVersionId = version.id;
     book.chapters = [...book.chapters, chapter];
     book.updatedAt = timestamp;
     return chapter;
@@ -184,7 +194,9 @@ export const useExtrasStore = defineStore('extras', () => {
   function appendChapterVersion(
     bookId: string,
     chapterId: string,
-    input: Pick<ExtraChapterVersion, 'title' | 'content'> & { generationRecord?: ExtraChapterGenerationRecord },
+    input: Pick<ExtraChapterVersion, 'title' | 'content' | 'cleanup'> & {
+      generationRecord?: ExtraChapterGenerationRecord;
+    },
   ) {
     const book = getBook(bookId);
     const chapter = getChapter(bookId, chapterId);
@@ -197,6 +209,7 @@ export const useExtrasStore = defineStore('extras', () => {
         title: chapter.title,
       }),
       buildVersion: () => ({
+        cleanup: input.cleanup ?? captureContentCleanupSnapshot(),
         content: input.content.trim(),
         generationRecord: input.generationRecord,
         title: input.title.trim() || chapter.title,

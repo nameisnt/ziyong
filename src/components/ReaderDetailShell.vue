@@ -119,6 +119,14 @@
           <i class="fa-solid fa-code"></i><span>正则替换</span>
         </button>
         <button
+          v-if="cleanupAvailable"
+          :class="['pc-soft-btn', { active: cleanupEnabled }]"
+          type="button"
+          @click="toggleCleanup"
+        >
+          <i class="fa-solid fa-broom"></i><span>{{ cleanupEnabled ? '正文清理：开' : '正文清理：关' }}</span>
+        </button>
+        <button
           v-if="simplifyEnabled"
           class="pc-soft-btn"
           type="button"
@@ -184,8 +192,10 @@ import ReaderContent from '@/components/ReaderContent.vue';
 import ReasoningDisclosure from '@/components/ReasoningDisclosure.vue';
 import { getRegisteredPhoneApp } from '@/core/appRegistry';
 import { useRegexDisplayStore } from '@/apps/regex-display/store';
+import type { ContentCleanupSnapshot } from '@/type/contentVersion';
 import { usePhoneStore } from '@/store/phone';
 import { loadChineseConverter } from '@/util/chineseConversion';
+import { applyContentCleanup } from '@/util/contentCleanupApply';
 import { applyRegexDisplayRules, contentRegexUsageKey, getRegexRulesByIds } from '@/util/regexDisplay';
 
 const props = withDefaults(
@@ -197,6 +207,7 @@ const props = withDefaults(
     branchEnabled?: boolean;
     branchLabel?: string;
     catalogLabel?: string;
+    cleanupSnapshot?: ContentCleanupSnapshot;
     content?: string;
     contentFormatted?: boolean;
     contextLabel?: string;
@@ -234,6 +245,7 @@ const props = withDefaults(
     branchEnabled: false,
     branchLabel: '创建分支',
     catalogLabel: '目录',
+    cleanupSnapshot: undefined,
     content: '',
     contentFormatted: false,
     contextLabel: '',
@@ -320,14 +332,22 @@ const displayRules = computed(() =>
     'replace',
   ),
 );
+const cleanupAvailable = computed(() => Boolean(props.cleanupSnapshot?.rules.length));
+const cleanupEnabled = computed(
+  () => regexDisplay.settings.usages[regexUsageKey.value]?.cleanupEnabled ?? true,
+);
+const cleanupResult = computed(() => applyContentCleanup(props.content, props.cleanupSnapshot, cleanupEnabled.value));
+function toggleCleanup() {
+  regexDisplay.setCleanupEnabled(regexUsageKey.value, !cleanupEnabled.value);
+}
 const simplified = ref(false);
 const simplifying = ref(false);
 const simplifyText = shallowRef<(text: string) => string>(text => text);
-const displayResult = computed(() => applyRegexDisplayRules(props.content, displayRules.value));
+const displayResult = computed(() => applyRegexDisplayRules(cleanupResult.value.content, displayRules.value));
 const displayErrors = computed(() => {
   const ids = regexDisplay.settings.usages[regexUsageKey.value]?.displayRuleIds ?? props.inheritedDisplayRuleIds ?? [];
   const missing = ids.filter(id => !regexDisplay.rules.some(rule => rule.id === id));
-  return [...displayResult.value.errors, ...missing.map(id => `关联正则已不存在：${id}`)];
+  return [...cleanupResult.value.errors, ...displayResult.value.errors, ...missing.map(id => `关联正则已不存在：${id}`)];
 });
 const displayContent = computed(() => {
   const content = displayResult.value.content;

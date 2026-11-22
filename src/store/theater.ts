@@ -2,7 +2,7 @@ import { useChatScopedDomain } from '@/store/chatScoped';
 import { useRegexDisplayStore } from '@/apps/regex-display/store';
 import { createFailedDraftCollection } from '@/store/failedDrafts';
 import { TheaterScopeDataSchema, type TheaterEntry, type TheaterEntryVersion } from '@/type/theater';
-import { removeContentVersion, resolveContentVersion } from '@/util/contentVersions';
+import { createContentVersion, removeContentVersion, resolveContentVersion } from '@/util/contentVersions';
 import {
   activateContentVersion,
   appendContentVersion,
@@ -11,6 +11,7 @@ import {
 } from '@/util/contentVersionStore';
 import { validateInplace } from '@/util/zod';
 import { wrapLegacyTheaterFrontend } from '@/util/theaterMixedContent';
+import { captureContentCleanupSnapshot } from '@/util/contentCleanup';
 
 export const theaterField = 'sillytavern_phone_theater';
 
@@ -92,6 +93,17 @@ export const useTheaterStore = defineStore('theater', () => {
       activeVersionId: '',
       versions: [],
     };
+    const version = createContentVersion<TheaterEntryVersion>('theater_version', {
+      cleanup: captureContentCleanupSnapshot(),
+      content: entry.content,
+      generationRecord: entry.generationRecord,
+      generationReplay: entry.generationReplay,
+      origin: 'original',
+      renderMode: entry.renderMode,
+      title: entry.title,
+    });
+    entry.versions = [version];
+    entry.activeVersionId = version.id;
     data.value.entries = [entry, ...data.value.entries];
     return entry;
   }
@@ -131,7 +143,7 @@ export const useTheaterStore = defineStore('theater', () => {
 
   function appendEntryVersion(
     entryId: string,
-    input: Pick<TheaterEntryVersion, 'title' | 'content' | 'renderMode'> &
+    input: Pick<TheaterEntryVersion, 'title' | 'content' | 'renderMode' | 'cleanup'> &
       Partial<Pick<TheaterEntryVersion, 'generationRecord' | 'generationReplay'>>,
   ) {
     const entry = getEntry(entryId);
@@ -146,6 +158,7 @@ export const useTheaterStore = defineStore('theater', () => {
         title: entry.title,
       }),
       buildVersion: () => ({
+        cleanup: input.cleanup ?? captureContentCleanupSnapshot(),
         content: input.content.trim(),
         generationRecord: input.generationRecord,
         generationReplay: input.generationReplay,

@@ -53,6 +53,7 @@ export async function applyStatusScopeVisualScenario(
     name: '旧状态方案',
   };
   regex.settings.usages[statusDisplayRegexTargetId(legacy.id)] = {
+    cleanupEnabled: true,
     contentRuleId: 'test-extract',
     titleRuleId: '',
     displayRuleIds: ['test-replace'],

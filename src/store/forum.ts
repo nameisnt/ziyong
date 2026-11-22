@@ -8,7 +8,7 @@ import {
   type ForumThreadVersion,
   ForumScopeDataSchema,
 } from '@/type/forum';
-import { resolveContentVersion } from '@/util/contentVersions';
+import { createContentVersion, resolveContentVersion } from '@/util/contentVersions';
 import {
   activateContentVersion,
   appendContentVersion,
@@ -16,6 +16,7 @@ import {
   updateContentVersion,
 } from '@/util/contentVersionStore';
 import { validateInplace } from '@/util/zod';
+import { captureContentCleanupSnapshot } from '@/util/contentCleanup';
 
 export const forumField = 'sillytavern_phone_forum';
 
@@ -126,6 +127,18 @@ export const useForumStore = defineStore('forum', () => {
       createdAt: timestamp,
       updatedAt: timestamp,
     };
+    const version = createContentVersion<ForumThreadVersion>('forum_thread_version', {
+      author: thread.author,
+      cleanup: captureContentCleanupSnapshot(),
+      content: thread.content,
+      generationRecord: thread.generationRecord,
+      generationReplay: thread.generationReplay,
+      origin: 'original',
+      replies: thread.replies.map(reply => ({ ...reply })),
+      title: thread.title,
+    });
+    thread.versions = [version];
+    thread.activeVersionId = version.id;
     board.threads = [thread, ...board.threads];
     board.updatedAt = timestamp;
     return { board, thread };
@@ -167,7 +180,7 @@ export const useForumStore = defineStore('forum', () => {
   function appendThreadVersion(
     boardId: string,
     threadId: string,
-    input: Pick<ForumThreadVersion, 'title' | 'author' | 'content'> &
+    input: Pick<ForumThreadVersion, 'title' | 'author' | 'content' | 'cleanup'> &
       Partial<Pick<ForumThreadVersion, 'generationRecord' | 'generationReplay' | 'replies'>>,
   ) {
     const board = getBoard(boardId);
@@ -185,6 +198,7 @@ export const useForumStore = defineStore('forum', () => {
       }),
       buildVersion: () => ({
         author: input.author.trim() || thread.author,
+        cleanup: input.cleanup ?? captureContentCleanupSnapshot(),
         content: input.content.trim(),
         generationRecord: input.generationRecord,
         generationReplay: input.generationReplay,

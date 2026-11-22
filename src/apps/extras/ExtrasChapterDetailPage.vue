@@ -6,6 +6,7 @@
       :context-label="`番外 · 第 ${chapter.chapterNumber} 章`"
       display-app-id="extras"
       :display-identity="[chapter.id, viewedVersionId]"
+      :cleanup-snapshot="cleanupSnapshot"
       :display-versions="versions"
       :favorite-active="chapter.favorite"
       :next-disabled="!nextId"
@@ -83,6 +84,9 @@ const props = defineProps<{
   versions: ExtraChapterVersion[];
   viewedVersionId: string;
 }>();
+
+const viewedVersion = computed(() => props.versions.find(version => version.id === props.viewedVersionId) ?? props.versions.find(version => version.id === props.chapter.activeVersionId));
+const cleanupSnapshot = computed(() => viewedVersion.value?.cleanup);
 
 const viewedGenerationRecord = computed(
   () =>

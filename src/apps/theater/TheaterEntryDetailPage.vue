@@ -8,6 +8,7 @@
       custom-content
       display-app-id="theater"
       :display-identity="[entry.id, viewedVersionId]"
+      :cleanup-snapshot="cleanupSnapshot"
       :display-versions="entry.versions"
       :inherited-display-rule-ids="prompts.getTypePrompt(entry.typeId ?? '')?.displayRuleIds ?? []"
       :favorite-active="entry.favorite"
@@ -108,7 +109,7 @@ import type { TheaterEntry } from '@/type/theater';
 
 const readerShell = ref<InstanceType<typeof ReaderDetailShell> | null>(null);
 
-defineProps<{
+const props = defineProps<{
   catalogItems: CatalogModalItem[];
   entry: TheaterEntry;
   nextEntryId: string;
@@ -118,6 +119,9 @@ defineProps<{
   viewedEntry: TheaterEntry;
   viewedVersionId: string;
 }>();
+
+const viewedVersion = computed(() => props.entry.versions.find(version => version.id === props.viewedVersionId) ?? props.entry.versions.find(version => version.id === props.entry.activeVersionId));
+const cleanupSnapshot = computed(() => viewedVersion.value?.cleanup);
 
 const catalogOpen = defineModel<boolean>('catalogOpen', { required: true });
 
