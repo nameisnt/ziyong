@@ -183,6 +183,7 @@ import {
   formatLabel,
   formatParticipants,
 } from './format';
+import { applyBaguWriteback } from '@/util/baguWriteback';
 import { canOpenBaguScan } from '@/util/baguScanGate';
 import { useDetailScroll } from '@/util/detailScroll';
 import { parseSimpleXmlResult } from '@/util/generation';
@@ -813,19 +814,22 @@ function submitEntry() {
 }
 
 function applyLettersBaguContent(content: string) {
-  if (!activeBook.value || !activeEntry.value || !viewedLetterEntry.value) return false;
-  const input = {
-    content,
-    format: viewedLetterEntry.value.format,
-    title: viewedLetterEntry.value.title,
-  };
+  const book = activeBook.value;
+  const entry = activeEntry.value;
+  const viewed = viewedLetterEntry.value;
+  if (!book || !entry || !viewed) return false;
   const versionId = route.value.params?.versionId;
-  const entry = versionId
-    ? letters.updateEntryVersion(activeBook.value.id, activeEntry.value.id, versionId, input)
-    : letters.updateEntry(activeBook.value.id, activeEntry.value.id, input);
-  if (!entry) return false;
-  letters.flushCurrentScope();
-  return versionId ? entry.versions.find(version => version.id === versionId)?.content || false : entry.content;
+  return applyBaguWriteback({
+    content,
+    flush: () => letters.flushCurrentScope(),
+    versionId,
+    update: next => {
+      const input = { content: next, format: viewed.format, title: viewed.title };
+      return versionId
+        ? letters.updateEntryVersion(book.id, entry.id, versionId, input)
+        : letters.updateEntry(book.id, entry.id, input);
+    },
+  });
 }
 
 async function removeEntry(bookId: string, entryId: string) {

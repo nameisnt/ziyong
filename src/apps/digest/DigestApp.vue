@@ -243,6 +243,7 @@ import type { GenerationTask } from '@/type/generationTask';
 import { useDigestStore } from './store';
 import { storeToRefs } from 'pinia';
 import { reportFailure } from '@/util/feedback';
+import { applyBaguWriteback } from '@/util/baguWriteback';
 
 const phone = usePhoneStore();
 const digest = useDigestStore();
@@ -455,17 +456,20 @@ function submitEntry() {
 }
 
 function applyDigestBaguContent(content: string) {
-  if (!activeEntry.value) return false;
-  const entry = digest.updateEntry(activeEntry.value.id, {
-    content,
-    sourceLabel: activeEntry.value.sourceLabel,
-    sourceText: activeEntry.value.sourceText,
-    tags: [...activeEntry.value.tags],
-    title: activeEntry.value.title,
-  });
+  const entry = activeEntry.value;
   if (!entry) return false;
-  digest.flushCurrentScope();
-  return entry.content;
+  return applyBaguWriteback({
+    content,
+    flush: () => digest.flushCurrentScope(),
+    update: next =>
+      digest.updateEntry(entry.id, {
+        content: next,
+        sourceLabel: entry.sourceLabel,
+        sourceText: entry.sourceText,
+        tags: [...entry.tags],
+        title: entry.title,
+      }),
+  });
 }
 
 async function removeEntry(entryId: string) {

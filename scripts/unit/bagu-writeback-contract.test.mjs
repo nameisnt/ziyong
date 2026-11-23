@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import test from 'node:test';
 import { runInNewContext } from 'node:vm';
-import { ScriptTarget, transpileModule } from 'typescript';
+import { ModuleKind, ScriptTarget, transpileModule } from 'typescript';
 
 const source = relativePath => readFile(new URL(`../../${relativePath}`, import.meta.url), 'utf8');
 
@@ -26,7 +26,7 @@ test('Bagu reports success only after the writeback returns the stored content',
   assert.ok(successNotice > failureCheck, 'Bagu success is reported before the stored content is verified');
 });
 
-test('stored-content Bagu handlers flush their chat scope and return the updated target', async () => {
+test('stored-content Bagu handlers delegate to the shared writeback helper', async () => {
   const handlers = [
     ['src/apps/diary/DiaryApp.vue', 'applyDiaryBaguContent', 'diary'],
     ['src/apps/summary/SummaryApp.vue', 'applySummaryBaguContent', 'summary'],
@@ -39,8 +39,8 @@ test('stored-content Bagu handlers flush their chat scope and return the updated
 
   for (const [file, functionName, store] of handlers) {
     const handler = functionSource(await source(file), functionName);
-    assert.match(handler, new RegExp(`${store}\\.flushCurrentScope\\(\\)`, 'u'), file);
-    assert.match(handler, /return [^;]*\.content/u, file);
+    assert.match(handler, /return applyBaguWriteback\(/u, file);
+    assert.match(handler, new RegExp(`flush: \\(\\) => ${store}\\.flushCurrentScope\\(\\)`, 'u'), file);
     assert.doesNotMatch(handler, /return Boolean\(/u, file);
   }
 
@@ -82,4 +82,36 @@ test('reader Bagu accepts a written current swipe and rejects an unchanged floor
     });
     assert.equal(await run('after'), writeSucceeds ? 'after' : false);
   }
+});
+
+test('shared Bagu writeback returns the stored content and honours the viewed version', async () => {
+  const file = await source('src/util/baguWriteback.ts');
+  const compiled = transpileModule(file, {
+    compilerOptions: { module: ModuleKind.ESNext, target: ScriptTarget.ES2022 },
+  }).outputText.replace(/\bexport\s+/gu, '');
+  const helper = runInNewContext(`${compiled}\napplyBaguWriteback`, {});
+
+  let flushed = 0;
+  let written = '';
+  const entry = {
+    content: 'before',
+    versions: [
+      { content: 'v1', id: 'v1' },
+      { content: 'v2', id: 'v2' },
+    ],
+  };
+  const base = {
+    flush: () => { flushed += 1; },
+    update: content => {
+      written = content;
+      return { ...entry, content };
+    },
+  };
+
+  assert.equal(helper({ ...base, content: 'after' }), 'after');
+  assert.equal(written, 'after');
+  assert.equal(flushed, 1);
+  assert.equal(helper({ ...base, content: 'after', versionId: 'v2' }), 'v2');
+  assert.equal(helper({ ...base, content: 'after', versionId: 'missing' }), false);
+  assert.equal(helper({ content: 'x', flush: () => {}, update: () => null }), false);
 });

@@ -216,6 +216,7 @@ import { resolveContentVersion } from '@/util/contentVersions';
 import { useInvalidRouteFallback } from '@/util/routeFallback';
 import { updateGenerationRecordReasoning } from '@/util/generationReasoning';
 import { storeToRefs } from 'pinia';
+import { applyBaguWriteback } from '@/util/baguWriteback';
 
 type BoardNameMode = 'ai' | 'fixed';
 const CUSTOM_BOARD_ID = '__custom_forum_board__';
@@ -806,19 +807,22 @@ function openFailedDraft(draftId: string) {
 }
 
 function applyForumBaguContent(content: string) {
-  if (!activeBoard.value || !activeThread.value || !viewedForumThread.value) return false;
-  const input = {
-    author: viewedForumThread.value.author,
-    content,
-    title: viewedForumThread.value.title,
-  };
+  const board = activeBoard.value;
+  const thread = activeThread.value;
+  const viewed = viewedForumThread.value;
+  if (!board || !thread || !viewed) return false;
   const versionId = route.value.params?.versionId;
-  const thread = versionId
-    ? forum.updateThreadVersion(activeBoard.value.id, activeThread.value.id, versionId, input)
-    : forum.updateThread(activeBoard.value.id, activeThread.value.id, input);
-  if (!thread) return false;
-  forum.flushCurrentScope();
-  return versionId ? thread.versions.find(version => version.id === versionId)?.content || false : thread.content;
+  return applyBaguWriteback({
+    content,
+    flush: () => forum.flushCurrentScope(),
+    versionId,
+    update: next => {
+      const input = { author: viewed.author, content: next, title: viewed.title };
+      return versionId
+        ? forum.updateThreadVersion(board.id, thread.id, versionId, input)
+        : forum.updateThread(board.id, thread.id, input);
+    },
+  });
 }
 
 function openForumBaguScan() {

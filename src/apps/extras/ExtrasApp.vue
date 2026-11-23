@@ -260,6 +260,7 @@ import { resolveExtraChapterGenerationRecords } from '@/util/extraGenerationReco
 import { useInvalidRouteFallback } from '@/util/routeFallback';
 import { updateGenerationRecordReasoning } from '@/util/generationReasoning';
 import { storeToRefs } from 'pinia';
+import { applyBaguWriteback } from '@/util/baguWriteback';
 
 const extras = useExtrasStore();
 const regexDisplay = useRegexDisplayStore();
@@ -1128,20 +1129,25 @@ function openEditChapter(bookId: string, chapterId: string, versionId?: string) 
 }
 
 function applyExtrasBaguContent(content: string) {
-  if (!activeBook.value || !activeChapter.value) return false;
+  const book = activeBook.value;
+  const chapter = activeChapter.value;
+  if (!book || !chapter) return false;
   const versionId = route.value.params?.versionId;
-  const chapter = versionId
-    ? extras.updateChapterVersion(activeBook.value.id, activeChapter.value.id, versionId, {
-        content,
-        title: viewedChapter.value?.title || activeChapter.value.title,
-      })
-    : extras.updateChapter(activeBook.value.id, activeChapter.value.id, {
-        content,
-        title: activeChapter.value.title,
-      });
-  if (!chapter) return false;
-  extras.flushCurrentScope();
-  return versionId ? chapter.versions.find(version => version.id === versionId)?.content || false : chapter.content;
+  return applyBaguWriteback({
+    content,
+    flush: () => extras.flushCurrentScope(),
+    versionId,
+    update: next =>
+      versionId
+        ? extras.updateChapterVersion(book.id, chapter.id, versionId, {
+            content: next,
+            title: viewedChapter.value?.title || chapter.title,
+          })
+        : extras.updateChapter(book.id, chapter.id, {
+            content: next,
+            title: chapter.title,
+          }),
+  });
 }
 
 function openChapter(bookId: string, chapterId: string, replaceCurrent = false) {

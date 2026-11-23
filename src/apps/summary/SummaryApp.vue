@@ -271,6 +271,7 @@ import { resolveContentVersion } from '@/util/contentVersions';
 import { updateGenerationRecordReasoning } from '@/util/generationReasoning';
 import { storeToRefs } from 'pinia';
 import { reportFailure } from '@/util/feedback';
+import { applyBaguWriteback } from '@/util/baguWriteback';
 
 const phone = usePhoneStore();
 const creationModeOpen = ref(false);
@@ -829,22 +830,26 @@ function submitEntry() {
 }
 
 function applySummaryBaguContent(content: string) {
-  if (!activeBook.value || !activeEntry.value) return false;
+  const book = activeBook.value;
+  const entry = activeEntry.value;
+  if (!book || !entry) return false;
   const versionId = viewedEntryVersionId.value;
-  const entry =
-    versionId && versionId !== activeEntry.value.activeVersionId
-      ? summary.updateEntryVersion(activeBook.value.id, activeEntry.value.id, versionId, {
-          content,
-          title: viewedEntry.value?.title || activeEntry.value.title,
-        })
-      : summary.updateEntry(activeBook.value.id, activeEntry.value.id, {
-          content,
-          rangeLabel: activeEntry.value.rangeLabel,
-          title: activeEntry.value.title,
-        });
-  if (!entry) return false;
-  summary.flushCurrentScope();
-  return entry.versions.find(version => version.id === versionId)?.content ?? content;
+  return applyBaguWriteback({
+    content,
+    flush: () => summary.flushCurrentScope(),
+    versionId,
+    update: next =>
+      versionId && versionId !== entry.activeVersionId
+        ? summary.updateEntryVersion(book.id, entry.id, versionId, {
+            content: next,
+            title: viewedEntry.value?.title || entry.title,
+          })
+        : summary.updateEntry(book.id, entry.id, {
+            content: next,
+            rangeLabel: entry.rangeLabel,
+            title: entry.title,
+          }),
+  });
 }
 
 function buildSummaryOutputFormat() {

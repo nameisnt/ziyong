@@ -277,6 +277,7 @@ import { resolveContentVersion } from '@/util/contentVersions';
 import { deleteContentVersionWithConfirmation } from '@/util/deleteContentVersion';
 import { reportFailure } from '@/util/feedback';
 import { storeToRefs } from 'pinia';
+import { applyBaguWriteback } from '@/util/baguWriteback';
 
 const diary = useDiaryStore();
 const diaryGenerationAdapter = getRegisteredPhoneGenerationAdapter('diary', 'generate');
@@ -1627,23 +1628,28 @@ function submitEntry() {
 }
 
 function applyDiaryBaguContent(content: string) {
-  if (!activeBook.value || !activeEntry.value) return false;
+  const book = activeBook.value;
+  const entry = activeEntry.value;
+  if (!book || !entry) return false;
   const versionId = viewedEntryVersionId.value;
-  const entry = versionId
-    ? diary.updateEntryVersion(activeBook.value.id, activeEntry.value.id, versionId, {
-        content,
-        title: viewedEntryVersion.value?.title || activeEntry.value.title,
-      })
-    : diary.updateEntry(activeBook.value.id, activeEntry.value.id, {
-        content,
-        kind: activeEntry.value.kind,
-        occurredAt: activeEntry.value.occurredAt || '',
-        readers: activeEntry.value.readers,
-        title: activeEntry.value.title,
-      });
-  if (!entry) return false;
-  diary.flushCurrentScope();
-  return entry.versions.find(version => version.id === versionId)?.content ?? content;
+  return applyBaguWriteback({
+    content,
+    flush: () => diary.flushCurrentScope(),
+    versionId,
+    update: next =>
+      versionId
+        ? diary.updateEntryVersion(book.id, entry.id, versionId, {
+            content: next,
+            title: viewedEntryVersion.value?.title || entry.title,
+          })
+        : diary.updateEntry(book.id, entry.id, {
+            content: next,
+            kind: entry.kind,
+            occurredAt: entry.occurredAt || '',
+            readers: entry.readers,
+            title: entry.title,
+          }),
+  });
 }
 
 async function removeEntry(bookId: string, entryId: string) {

@@ -275,6 +275,7 @@ import { usePreviewDraftPersistence } from '@/util/previewDrafts';
 import { useInvalidRouteFallback } from '@/util/routeFallback';
 import { updateGenerationRecordReasoning } from '@/util/generationReasoning';
 import { storeToRefs } from 'pinia';
+import { applyBaguWriteback } from '@/util/baguWriteback';
 
 const phone = usePhoneStore();
 const prompts = usePromptStore();
@@ -1045,21 +1046,27 @@ function submitEntry() {
 }
 
 function applyTheaterBaguContent(content: string) {
-  if (!activeEntry.value || !viewedEntry.value) return false;
-  const input = {
-    content,
-    renderMode: viewedEntry.value.renderMode,
-    title: viewedEntry.value.title,
-    typeId: activeEntry.value.typeId,
-    typeName: activeEntry.value.typeName,
-  };
+  const entry = activeEntry.value;
+  const viewed = viewedEntry.value;
+  if (!entry || !viewed) return false;
   const versionId = route.value.params?.versionId;
-  const entry = versionId
-    ? theater.updateEntryVersion(activeEntry.value.id, versionId, input)
-    : theater.updateEntry(activeEntry.value.id, input);
-  if (!entry) return false;
-  theater.flushCurrentScope();
-  return versionId ? entry.versions.find(version => version.id === versionId)?.content || false : entry.content;
+  return applyBaguWriteback({
+    content,
+    flush: () => theater.flushCurrentScope(),
+    versionId,
+    update: next => {
+      const input = {
+        content: next,
+        renderMode: viewed.renderMode,
+        title: viewed.title,
+        typeId: entry.typeId,
+        typeName: entry.typeName,
+      };
+      return versionId
+        ? theater.updateEntryVersion(entry.id, versionId, input)
+        : theater.updateEntry(entry.id, input);
+    },
+  });
 }
 
 function buildOutputFormat() {
