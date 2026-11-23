@@ -137,12 +137,13 @@
       @save="savePreview"
     />
 
-    <LettersFailedDraftPage
+    <FailedDraftPage
       v-else-if="route.page === 'failed-draft' && activeFailedDraft"
       v-model:raw-output="failedDraftRawOutput"
       :regenerate-handler="regenerateFailedDraft"
       :reasoning="activeFailedDraft.generationRecord?.reasoning || ''"
       :source-label="activeFailedDraft.source.label"
+      title="修复解析失败草稿"
       @delete="removeFailedDraft(activeFailedDraft.id)"
       @reparse="reparseFailedDraft"
       @update:reasoning="updateGenerationRecordReasoning(activeFailedDraft, $event)"
@@ -151,12 +152,12 @@
 </template>
 
 <script setup lang="ts">
+import FailedDraftPage from '@/components/FailedDraftPage.vue';
 import LettersBookPage from '@/apps/letters/LettersBookPage.vue';
 import LettersBookEditorPage from '@/apps/letters/LettersBookEditorPage.vue';
 import LettersBaguPage from '@/apps/letters/LettersBaguPage.vue';
 import LettersCatalogPage from '@/apps/letters/LettersCatalogPage.vue';
 import LettersEntryEditorPage from '@/apps/letters/LettersEntryEditorPage.vue';
-import LettersFailedDraftPage from '@/apps/letters/LettersFailedDraftPage.vue';
 import LettersGeneratePage from '@/apps/letters/LettersGeneratePage.vue';
 import LettersPreviewPage from '@/apps/letters/LettersPreviewPage.vue';
 import LettersEntryDetailPage from '@/apps/letters/LettersEntryDetailPage.vue';

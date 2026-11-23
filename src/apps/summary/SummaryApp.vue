@@ -177,17 +177,36 @@
       @save="savePreview"
     />
 
-    <SummaryFailedDraftPage
+    <FailedDraftPage
       v-else-if="route.page === 'failed-draft' && activeFailedDraft"
       v-model:raw-output="failedDraftRawOutput"
-      v-model:target-book-id="failedDraftTargetBookId"
-      :books="books"
-      :draft="activeFailedDraft"
+      :reasoning="activeFailedDraft.generationRecord?.reasoning || ''"
       :regenerate-handler="regenerateFailedDraft"
+      :reparse-disabled="!books.length"
+      :source-label="activeFailedDraft.source.label"
+      title="修复解析失败草稿"
+      raw-label="原始输出"
       @delete="removeFailedDraft(activeFailedDraft.id)"
       @reparse="reparseFailedDraft"
       @update:reasoning="updateGenerationRecordReasoning(activeFailedDraft, $event)"
-    />
+    >
+      <template #before-editor>
+        <div class="pc-field-group">
+          <label class="pc-field-label">保存到总结集</label>
+          <SearchableCombobox
+            input-label="搜索总结集"
+            :model-value="failedDraftTargetBookId"
+            :options="summaryBookOptions"
+            placeholder="选择总结集"
+            toggle-title="展开总结集"
+            @update:model-value="failedDraftTargetBookId = $event"
+          />
+        </div>
+        <EmptyState v-if="!books.length" title="还没有总结集">
+          <p>先建一个总结集，修好的内容才能保存进去。</p>
+        </EmptyState>
+      </template>
+    </FailedDraftPage>
     <CreationModeModal
       :open="creationModeOpen"
       :options="summaryCreationOptions"
@@ -207,9 +226,11 @@ import SummaryBaguPage from '@/apps/summary/SummaryBaguPage.vue';
 import SummaryCatalogPage from '@/apps/summary/SummaryCatalogPage.vue';
 import BatchGenerationPreviewPage from '@/components/BatchGenerationPreviewPage.vue';
 import CreationModeModal, { type CreationModeOption } from '@/components/CreationModeModal.vue';
+import EmptyState from '@/components/EmptyState.vue';
+import FailedDraftPage from '@/components/FailedDraftPage.vue';
+import SearchableCombobox from '@/components/SearchableCombobox.vue';
 import SummaryEntryDetailPage from '@/apps/summary/SummaryEntryDetailPage.vue';
 import SummaryEntryEditorPage from '@/apps/summary/SummaryEntryEditorPage.vue';
-import SummaryFailedDraftPage from '@/apps/summary/SummaryFailedDraftPage.vue';
 import SummaryGeneratePage from '@/apps/summary/SummaryGeneratePage.vue';
 import SummaryImportPage from '@/apps/summary/SummaryImportPage.vue';
 import SummaryPreviewPage from '@/apps/summary/SummaryPreviewPage.vue';
@@ -378,6 +399,10 @@ const sortedActiveBookEntries = computed(() =>
       (left.directoryOrder ?? 0) - (right.directoryOrder ?? 0) || left.createdAt.localeCompare(right.createdAt);
     return summaryEntrySortDesc.value ? -compare : compare;
   }),
+);
+
+const summaryBookOptions = computed(() =>
+  books.value.map(book => ({ label: book.title, value: book.id })),
 );
 
 const shelfBooks = computed(() =>

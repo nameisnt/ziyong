@@ -189,12 +189,13 @@
       @save="savePreview"
     />
 
-    <DiaryFailedDraftPage
+    <FailedDraftPage
       v-else-if="route.page === 'failed-draft' && activeFailedDraft"
       v-model:raw-output="failedDraftRawOutput"
       :regenerate-handler="regenerateFailedDraft"
       :reasoning="activeFailedDraft.generationRecord?.reasoning || ''"
       :source-label="activeFailedDraft.source.label"
+      title="修复日记草稿"
       @delete="removeFailedDraft(activeFailedDraft.id)"
       @reparse="reparseFailedDraft"
       @update:reasoning="updateGenerationRecordReasoning(activeFailedDraft, $event)"
@@ -218,9 +219,9 @@ import DiaryBatchPage from '@/apps/diary/DiaryBatchPage.vue';
 import DiaryCatalogPage from '@/apps/diary/DiaryCatalogPage.vue';
 import BatchGenerationPreviewPage from '@/components/BatchGenerationPreviewPage.vue';
 import CreationModeModal, { type CreationModeOption } from '@/components/CreationModeModal.vue';
+import FailedDraftPage from '@/components/FailedDraftPage.vue';
 import DiaryEntryDetailPage from '@/apps/diary/DiaryEntryDetailPage.vue';
 import DiaryEntryEditorPage from '@/apps/diary/DiaryEntryEditorPage.vue';
-import DiaryFailedDraftPage from '@/apps/diary/DiaryFailedDraftPage.vue';
 import DiaryGeneratePage from '@/apps/diary/DiaryGeneratePage.vue';
 import DiaryPreviewPage from '@/apps/diary/DiaryPreviewPage.vue';
 import { buildDiaryBatchJobs, selectDiaryBatchFloors } from '@/apps/diary/batch';

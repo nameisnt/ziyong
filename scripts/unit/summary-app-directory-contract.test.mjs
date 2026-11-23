@@ -19,7 +19,6 @@ test('summary root, live pages and sessions have one app-owned directory', async
     'SummaryCatalogPage.vue',
     'SummaryEntryDetailPage.vue',
     'SummaryEntryEditorPage.vue',
-    'SummaryFailedDraftPage.vue',
     'SummaryGeneratePage.vue',
     'SummaryImportPage.vue',
     'SummaryPreviewPage.vue',
@@ -31,7 +30,7 @@ test('summary root, live pages and sessions have one app-owned directory', async
   const builtin = await source('src/apps/builtin.ts');
   const root = await source('src/apps/summary/SummaryApp.vue');
   assert.match(builtin, /import\('@\/apps\/summary\/SummaryApp\.vue'\)/u);
-  assert.equal([...root.matchAll(/from '@\/apps\/summary\/[^']+'/gu)].length, 14);
+  assert.equal([...root.matchAll(/from '@\/apps\/summary\/[^']+'/gu)].length, 13);
   await assert.rejects(access(new URL('../../src/components/SummaryApp.vue', import.meta.url)));
   await assert.rejects(access(new URL('../../src/components/summary/', import.meta.url)));
 });
