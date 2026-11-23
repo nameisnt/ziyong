@@ -19,14 +19,13 @@ test('diary root and live domain files have one app-owned directory', async () =
     'DiaryCatalogPage.vue',
     'DiaryEntryDetailPage.vue',
     'DiaryEntryEditorPage.vue',
-    'DiaryGeneratePage.vue',
     'DiaryPreviewPage.vue',
   ]);
 
   const builtin = await source('src/apps/builtin.ts');
   const root = await source('src/apps/diary/DiaryApp.vue');
   assert.match(builtin, /import\('@\/apps\/diary\/DiaryApp\.vue'\)/u);
-  assert.equal([...root.matchAll(/from '@\/apps\/diary\/Diary[^']+\.vue'/gu)].length, 9);
+  assert.equal([...root.matchAll(/from '@\/apps\/diary\/Diary[^']+\.vue'/gu)].length, 8);
   await assert.rejects(access(new URL('../../src/components/DiaryApp.vue', import.meta.url)));
   await assert.rejects(access(new URL('../../src/components/diary/', import.meta.url)));
 });

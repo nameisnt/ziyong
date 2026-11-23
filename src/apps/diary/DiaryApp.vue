@@ -87,9 +87,8 @@
       @save="submitEntry"
     />
 
-    <DiaryGeneratePage
+    <ContentGenerateForm
       v-else-if="route.page === 'generate'"
-      v-model:extra-field="generationDraft.perspectiveName"
       v-model:from-start-end="generationDraft.fromStartEnd"
       v-model:range-text="generationDraft.rangeText"
       v-model:recent-count="generationDraft.recentCount"
@@ -101,8 +100,6 @@
       :capture-reset-key="generationPromptPreview"
       :default-preset-selection="BUILTIN_DIARY_PRESET_SELECTION"
       :error="diaryGenerationError"
-      extra-field-placeholder="视角角色名"
-      :extra-field-visible="!activeBook"
       :raw-output="diaryGenerationRawOutput"
       requirement-placeholder="例如：更克制、更私密一点，少写结论，多写当下情绪。"
       :running="diaryGenerationRunning"
@@ -110,7 +107,17 @@
       @cancel="phone.goBack()"
       @generate="runGeneration"
       @stop="stopGeneration"
-    />
+    >
+      <template v-if="!activeBook" #before-fields>
+        <input
+          v-model="generationDraft.perspectiveName"
+          class="pc-field"
+          type="text"
+          :disabled="diaryGenerationRunning"
+          placeholder="视角角色名"
+        />
+      </template>
+    </ContentGenerateForm>
 
     <BatchGenerationPreviewPage
       v-else-if="route.page === 'batch-preview' && batchPreviewTask"
@@ -148,9 +155,8 @@
       @stop="stopBatchGeneration"
     />
 
-    <DiaryGeneratePage
+    <ContentGenerateForm
       v-else-if="route.page === 'reaction-generate' && activeBook && activeEntry"
-      v-model:extra-field="reactionDraft.readerName"
       v-model:from-start-end="reactionDraft.fromStartEnd"
       v-model:range-text="reactionDraft.rangeText"
       v-model:recent-count="reactionDraft.recentCount"
@@ -161,8 +167,6 @@
       :capture="captureReactionPrompt"
       :capture-reset-key="reactionPromptPreview"
       :error="reactionGenerationError"
-      extra-field-placeholder="阅读者名字"
-      extra-field-visible
       :raw-output="reactionGenerationRawOutput"
       requirement-placeholder="例如：更像读完以后压在心里的私密独白。"
       :running="reactionGenerationRunning"
@@ -170,7 +174,17 @@
       @cancel="phone.goBack()"
       @generate="runReadReactionGeneration"
       @stop="stopGeneration"
-    />
+    >
+      <template #before-fields>
+        <input
+          v-model="reactionDraft.readerName"
+          class="pc-field"
+          type="text"
+          :disabled="reactionGenerationRunning"
+          placeholder="阅读者名字"
+        />
+      </template>
+    </ContentGenerateForm>
 
     <DiaryPreviewPage
       v-else-if="route.page === 'preview' && generationState.preview"
@@ -222,7 +236,7 @@ import CreationModeModal, { type CreationModeOption } from '@/components/Creatio
 import FailedDraftPage from '@/components/FailedDraftPage.vue';
 import DiaryEntryDetailPage from '@/apps/diary/DiaryEntryDetailPage.vue';
 import DiaryEntryEditorPage from '@/apps/diary/DiaryEntryEditorPage.vue';
-import DiaryGeneratePage from '@/apps/diary/DiaryGeneratePage.vue';
+import ContentGenerateForm from '@/components/ContentGenerateForm.vue';
 import DiaryPreviewPage from '@/apps/diary/DiaryPreviewPage.vue';
 import { buildDiaryBatchJobs, selectDiaryBatchFloors } from '@/apps/diary/batch';
 import { BUILTIN_DIARY_PRESET_SELECTION, resolveDiaryPresetSelection } from '@/apps/preset-manager/builtinDiaryPreset';

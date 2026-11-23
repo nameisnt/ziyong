@@ -106,7 +106,7 @@
       @toggle-item="toggleSummaryImport"
     />
 
-    <SummaryGeneratePage
+    <ContentGenerateForm
       v-else-if="route.page === 'generate' && activeBook"
       v-model:from-start-end="generationDraft.fromStartEnd"
       v-model:range-text="generationDraft.rangeText"
@@ -120,6 +120,7 @@
       :error="generationError"
       :raw-output="generationRawOutput"
       :running="generationRunning"
+      title="生成一条新的总结"
       @cancel="phone.goBack()"
       @generate="runGeneration"
       @stop="stopGeneration"
@@ -231,7 +232,7 @@ import FailedDraftPage from '@/components/FailedDraftPage.vue';
 import SearchableCombobox from '@/components/SearchableCombobox.vue';
 import SummaryEntryDetailPage from '@/apps/summary/SummaryEntryDetailPage.vue';
 import SummaryEntryEditorPage from '@/apps/summary/SummaryEntryEditorPage.vue';
-import SummaryGeneratePage from '@/apps/summary/SummaryGeneratePage.vue';
+import ContentGenerateForm from '@/components/ContentGenerateForm.vue';
 import SummaryImportPage from '@/apps/summary/SummaryImportPage.vue';
 import SummaryPreviewPage from '@/apps/summary/SummaryPreviewPage.vue';
 import { useSummaryBookSession } from '@/apps/summary/useSummaryBookSession';

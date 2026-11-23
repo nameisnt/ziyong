@@ -26,6 +26,7 @@ declare module 'vue' {
     CatalogModal: typeof import('./src/components/CatalogModal.vue')['default']
     ConfigurationRecoveryNotice: typeof import('./src/components/ConfigurationRecoveryNotice.vue')['default']
     ContentConversionPanel: typeof import('./src/components/ContentConversionPanel.vue')['default']
+    ContentGenerateForm: typeof import('./src/components/ContentGenerateForm.vue')['default']
     ContentRegexModal: typeof import('./src/components/ContentRegexModal.vue')['default']
     ContentVersionBadge: typeof import('./src/components/ContentVersionBadge.vue')['default']
     CreationModeModal: typeof import('./src/components/CreationModeModal.vue')['default']

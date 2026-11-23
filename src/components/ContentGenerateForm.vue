@@ -9,14 +9,20 @@
     v-model:user-requirement="userRequirement"
     :capture="capture"
     :capture-reset-key="captureResetKey"
+    :default-preset-selection="defaultPresetSelection"
     :error="error"
     :raw-output="rawOutput"
+    :requirement-placeholder="requirementPlaceholder"
     :running="running"
-    title="生成一条新的总结"
+    :title="title"
     @cancel="$emit('cancel')"
     @generate="$emit('generate')"
     @stop="$emit('stop')"
-  />
+  >
+    <template v-if="$slots['before-fields']" #before-fields>
+      <slot name="before-fields"></slot>
+    </template>
+  </GenerationFormPage>
 </template>
 
 <script setup lang="ts">
@@ -25,19 +31,21 @@ import type { SummaryGenerationSourceMode } from '@/util/generationSource';
 import type { GenerationReferenceItem } from '@/util/references';
 import type { CapturedTavernPromptPreview } from '@/util/runtime';
 
-defineProps<{
-  capture: () => Promise<CapturedTavernPromptPreview>;
-  captureResetKey: unknown;
-  error: string;
-  rawOutput: string;
-  running: boolean;
-}>();
+withDefaults(
+  defineProps<{
+    capture: () => Promise<CapturedTavernPromptPreview>;
+    captureResetKey: unknown;
+    defaultPresetSelection?: string;
+    error: string;
+    rawOutput: string;
+    requirementPlaceholder?: string;
+    running: boolean;
+    title: string;
+  }>(),
+  { defaultPresetSelection: undefined, requirementPlaceholder: '' },
+);
 
-defineEmits<{
-  cancel: [];
-  generate: [];
-  stop: [];
-}>();
+defineEmits<{ cancel: []; generate: []; stop: [] }>();
 
 const fromStartEnd = defineModel<number>('fromStartEnd', { required: true });
 const rangeText = defineModel<string>('rangeText', { required: true });
