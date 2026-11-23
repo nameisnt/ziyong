@@ -34,6 +34,7 @@ declare module 'vue' {
     ExternalProfileReferencePicker: typeof import('./src/components/ExternalProfileReferencePicker.vue')['default']
     ExtrasSummaryOptions: typeof import('./src/components/ExtrasSummaryOptions.vue')['default']
     FailedDraftList: typeof import('./src/components/FailedDraftList.vue')['default']
+    FailedDraftPage: typeof import('./src/components/FailedDraftPage.vue')['default']
     FailedDraftRepairPage: typeof import('./src/components/FailedDraftRepairPage.vue')['default']
     FloatingBall: typeof import('./src/components/FloatingBall.vue')['default']
     FrontendFrame: typeof import('./src/components/FrontendFrame.vue')['default']
