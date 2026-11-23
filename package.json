@@ -1,6 +1,6 @@
 {
   "name": "sillytavern-phone-extension",
-  "version": "1.2.28",
+  "version": "1.2.29",
   "scripts": {
     "release:notes": "node scripts/release-notes.mjs",
     "hooks:install": "node scripts/install-hooks.mjs",

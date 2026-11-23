@@ -4,6 +4,17 @@ export const RUNNING_VERSION = manifest.version;
 export const RELEASE_SEEN_FIELD = 'sillytavern_phone_last_seen_release';
 export const RELEASE_HISTORY = [
   {
+    version: '1.2.29',
+    notes: [
+      '阅读器的多条候选回复改用共享版本导航，红字标出酒馆会继续写的那一版',
+      '新增正文清理：生成时固化预设清理规则，每个版本可单独开关，清空后显示空白，引用候选自动剔除空内容',
+      '摘要支持多版本与重写，失败草稿重新解析会按原目标保存为新版本',
+      '修复日记重写失败后点重新生成会新建条目；书信、小剧场、番外、论坛、摘要的重写目标同样在生成期间被保留',
+      '五个 App 删除当前版本改用同一套确认提示',
+      '重构：共享失败草稿页、八股写回和日记/摘要的生成页表单',
+    ],
+  },
+  {
     version: '1.2.28',
     notes: [
       '论坛回复可以直接编辑：点回复右侧的铅笔，改作者、正文和「标记为楼主」，保存后立即生效。',
